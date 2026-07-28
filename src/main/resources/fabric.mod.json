@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "alpaka",
+  "version": "${version}",
+  "name": "Alpaka Addons",
+  "description": "Ein Fabric-Mod fuer Minecraft.",
+  "authors": [
+    "Alpaka Team"
+  ],
+  "contact": {
+    "homepage": "",
+    "sources": ""
+  },
+  "license": "MIT",
+  "icon": "assets/alpaka/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "net.alpaka.addons.AlpakaAddons"
+    ]
+  },
+  "mixins": [],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~26.1.2",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}

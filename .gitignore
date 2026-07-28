@@ -1,0 +1,17 @@
+# Gradle build folder
+build/
+.gradle/
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+*.ipr
+*.iws
+
+# Minecraft run directory (logs, saves, run cache)
+run/
+
+# OS specific files
+.DS_Store
+Thumbs.db

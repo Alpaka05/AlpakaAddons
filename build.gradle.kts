@@ -10,6 +10,8 @@ base {
     archivesName.set(project.property("mod_id") as String)
 }
 
+
+
 repositories {
     mavenCentral()
     maven("https://repo.spongepowered.org/repository/maven-public/")
@@ -19,17 +21,17 @@ repositories {
 dependencies {
     // Minecraft
     minecraft("com.mojang:minecraft:${project.property("minecraft_version")}")
-    "mappings"("net.fabricmc:yarn:${project.property("yarn_mappings")}:v2")
 
     // Fabric Loader & API
-    "modImplementation"("net.fabricmc:fabric-loader:${project.property("loader_version")}")
-    "modImplementation"("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
+    implementation("net.fabricmc:fabric-loader:${project.property("loader_version")}")
+    implementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
+    implementation("net.fabricmc.fabric-api:fabric-command-api-v2:3.0.5+e2bdee784c")
 
     // Mixin compile dependency
     compileOnly("org.spongepowered:mixin:0.8.5")
 
     // Mod Menu compile dependency
-    "modCompileOnly"("com.terraformersmc:modmenu:12.0.0")
+    compileOnly("com.terraformersmc:modmenu:20.0.0-beta.2")
 }
 
 tasks.processResources {

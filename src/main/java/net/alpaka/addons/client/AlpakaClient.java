@@ -1,18 +1,18 @@
 package net.alpaka.addons.client;
 
 import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
-import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.Minecraft;
 
 public class AlpakaClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-            dispatcher.register(ClientCommandManager.literal("alpakaconfig")
+            dispatcher.register(ClientCommands.literal("alpakaconfig")
                 .executes(context -> {
-                    MinecraftClient.getInstance().send(() -> {
-                        MinecraftClient.getInstance().setScreen(new AlpakaConfigScreen(null));
+                    Minecraft.getInstance().execute(() -> {
+                        Minecraft.getInstance().setScreen(new AlpakaConfigScreen(null));
                     });
                     return 1;
                 })

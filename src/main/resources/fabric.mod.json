@@ -18,6 +18,9 @@
     "main": [
       "net.alpaka.addons.AlpakaAddons"
     ],
+    "client": [
+      "net.alpaka.addons.client.AlpakaClient"
+    ],
     "modmenu": [
       "net.alpaka.addons.client.AlpakaModMenu"
     ]

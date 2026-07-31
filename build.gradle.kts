@@ -19,16 +19,17 @@ repositories {
 dependencies {
     // Minecraft
     minecraft("com.mojang:minecraft:${project.property("minecraft_version")}")
+    "mappings"("net.fabricmc:yarn:${project.property("yarn_mappings")}:v2")
 
     // Fabric Loader & API
-    implementation("net.fabricmc:fabric-loader:${project.property("loader_version")}")
-    implementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
+    "modImplementation"("net.fabricmc:fabric-loader:${project.property("loader_version")}")
+    "modImplementation"("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
 
     // Mixin compile dependency
     compileOnly("org.spongepowered:mixin:0.8.5")
 
     // Mod Menu compile dependency
-    compileOnly("com.terraformersmc:modmenu:12.0.0")
+    "modCompileOnly"("com.terraformersmc:modmenu:12.0.0")
 }
 
 tasks.processResources {
@@ -50,6 +51,3 @@ java {
     }
 }
 
-tasks.jar {
-    exclude("net/minecraft/**")
-}

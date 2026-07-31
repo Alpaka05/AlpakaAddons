@@ -13,6 +13,7 @@ base {
 repositories {
     mavenCentral()
     maven("https://repo.spongepowered.org/repository/maven-public/")
+    maven("https://maven.terraformersmc.com/")
 }
 
 dependencies {
@@ -25,6 +26,9 @@ dependencies {
 
     // Mixin compile dependency
     compileOnly("org.spongepowered:mixin:0.8.5")
+
+    // Mod Menu compile dependency
+    compileOnly("com.terraformersmc:modmenu:12.0.0")
 }
 
 tasks.processResources {
@@ -44,4 +48,8 @@ java {
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(25))
     }
+}
+
+tasks.jar {
+    exclude("net/minecraft/**")
 }

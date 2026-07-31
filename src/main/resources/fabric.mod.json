@@ -17,6 +17,9 @@
   "entrypoints": {
     "main": [
       "net.alpaka.addons.AlpakaAddons"
+    ],
+    "modmenu": [
+      "net.alpaka.addons.client.AlpakaModMenu"
     ]
   },
   "mixins": [

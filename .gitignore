@@ -15,3 +15,6 @@ run/
 # OS specific files
 .DS_Store
 Thumbs.db
+
+# Compile-time helpers
+src/main/java/net/minecraft/

@@ -7,6 +7,7 @@ import org.joml.Matrix4fc;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
+import net.alpaka.addons.config.AlpakaConfig;
 
 @Mixin(GameRenderer.class)
 public class GameRendererMixin {
@@ -19,7 +20,10 @@ public class GameRendererMixin {
         )
     )
     private boolean redirectIsFirstPerson(CameraType cameraType) {
-        // Force the hand/items to render even in third-person (F5) views.
-        return true;
+        // Force the hand/items to render even in third-person (F5) views, if config is enabled.
+        if (AlpakaConfig.instance.renderHandInThirdPerson) {
+            return true;
+        }
+        return cameraType.isFirstPerson();
     }
 }

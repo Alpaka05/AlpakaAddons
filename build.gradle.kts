@@ -12,6 +12,7 @@ base {
 
 repositories {
     mavenCentral()
+    maven("https://repo.spongepowered.org/repository/maven-public/")
 }
 
 dependencies {
@@ -21,6 +22,9 @@ dependencies {
     // Fabric Loader & API
     implementation("net.fabricmc:fabric-loader:${project.property("loader_version")}")
     implementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
+
+    // Mixin compile dependency
+    compileOnly("org.spongepowered:mixin:0.8.5")
 }
 
 tasks.processResources {

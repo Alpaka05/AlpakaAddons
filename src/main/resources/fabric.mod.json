@@ -19,7 +19,9 @@
       "net.alpaka.addons.AlpakaAddons"
     ]
   },
-  "mixins": [],
+  "mixins": [
+    "alpaka.mixins.json"
+  ],
   "depends": {
     "fabricloader": ">=0.16.0",
     "minecraft": "~26.1.2",

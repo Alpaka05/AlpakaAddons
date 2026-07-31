@@ -53,3 +53,16 @@ java {
     }
 }
 
+val oneClientModsDir = file("${System.getProperty("user.home")}/Library/Application Support/org.Polyfrost.OneClient/clusters/26.1.2 Fabric/mods")
+
+tasks.register<Copy>("copyToLauncher") {
+    dependsOn("jar")
+    from(tasks.jar.get().archiveFile)
+    into(oneClientModsDir)
+}
+
+tasks.build {
+    finalizedBy("copyToLauncher")
+}
+
+

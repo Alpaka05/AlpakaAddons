@@ -24,6 +24,9 @@ public class AlpakaConfig {
     public boolean slayerDropTrackerEnabled = true;
     public boolean partyCommandsEnabled = true;
     public boolean nameHighlightingEnabled = true;
+    public boolean inventorySnowEnabled = true;
+    public float inventorySnowSpeed = 1.0f;
+    public boolean cleanBlazeEnabled = true;
     public Map<SlayerType, SlayerData> slayerBossMap = new HashMap<>();
 
     public static class SlayerData {

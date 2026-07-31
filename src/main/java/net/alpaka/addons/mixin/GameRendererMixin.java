@@ -26,3 +26,4 @@ public class GameRendererMixin {
         return cameraType.isFirstPerson();
     }
 }
+

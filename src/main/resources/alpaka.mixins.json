@@ -2,10 +2,17 @@
   "required": true,
   "package": "net.alpaka.addons.mixin",
   "compatibilityLevel": "JAVA_21",
+  "refmap": "alpaka.refmap.json",
   "client": [
     "GameRendererMixin",
     "PlayerMixin",
-    "PlayerInfoMixin"
+    "PlayerInfoMixin",
+    "MouseHandlerMixin",
+    "AbstractClientPlayerMixin",
+    "ScreenMixin",
+    "BlazeMixin",
+    "ParticleEngineMixin",
+    "EntityRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

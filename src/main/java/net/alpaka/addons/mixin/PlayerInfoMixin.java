@@ -28,7 +28,7 @@ public abstract class PlayerInfoMixin {
         } else {
             GameProfile profile = getProfile();
             if (profile != null && "Alpakaa".equals(profile.name())) {
-                info.setReturnValue(Component.literal("Alpakaa").withStyle(style -> style.withColor(ChatFormatting.GOLD).withBold(true)));
+                info.setReturnValue(Component.literal("Alpakaa").withStyle(style -> style.withColor(ChatFormatting.LIGHT_PURPLE).withBold(true)));
             }
         }
     }

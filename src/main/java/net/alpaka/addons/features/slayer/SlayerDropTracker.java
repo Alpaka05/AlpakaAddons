@@ -44,6 +44,16 @@ public class SlayerDropTracker {
 
         ClientReceiveMessageEvents.ALLOW_GAME.register((message, overlay) -> {
             if (overlay) return true;
+
+            if (AlpakaConfig.instance.cleanBlazeEnabled) {
+                String clean = cleanColor(message.getString()).trim();
+                if ("Your radio is weak. Find another enjoyer to boost it.".equals(clean) ||
+                    "Your radio signal is strong!".equals(clean) ||
+                    "Your radio lost signal. There's too many enjoyers on this channel.".equals(clean)) {
+                    return false;
+                }
+            }
+
             if (!AlpakaConfig.instance.nameHighlightingEnabled) return true;
             if (IS_PROCESSING.get()) return true;
 
@@ -175,7 +185,7 @@ public class SlayerDropTracker {
                 container.append(Component.literal(text.substring(lastIdx, idx)).withStyle(style));
             }
             container.append(Component.literal("Alpakaa")
-                    .withStyle(style.withColor(ChatFormatting.GOLD).withBold(true)));
+                    .withStyle(style.withColor(ChatFormatting.LIGHT_PURPLE).withBold(true)));
             lastIdx = idx + "Alpakaa".length();
         }
         if (lastIdx < text.length()) {

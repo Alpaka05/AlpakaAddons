@@ -3,9 +3,9 @@
   "id": "alpaka",
   "version": "${version}",
   "name": "Alpaka Addons",
-  "description": "Ein Fabric-Mod fuer Minecraft.",
+  "description": "Adds addons to Alpaka",
   "authors": [
-    "Alpaka Team"
+    "Spongebob"
   ],
   "contact": {
     "homepage": "",

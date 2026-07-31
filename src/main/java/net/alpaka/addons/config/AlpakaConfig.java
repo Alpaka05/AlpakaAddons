@@ -9,6 +9,10 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 
+import net.alpaka.addons.features.slayer.SlayerType;
+import java.util.HashMap;
+import java.util.Map;
+
 public class AlpakaConfig {
     private static final File FILE = FabricLoader.getInstance().getConfigDir().resolve("alpaka.json").toFile();
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -16,6 +20,22 @@ public class AlpakaConfig {
     public static AlpakaConfig instance = new AlpakaConfig();
 
     public boolean renderHandInThirdPerson = true;
+
+    public boolean slayerDropTrackerEnabled = true;
+    public boolean partyCommandsEnabled = true;
+    public boolean nameHighlightingEnabled = true;
+    public Map<SlayerType, SlayerData> slayerBossMap = new HashMap<>();
+
+    public static class SlayerData {
+        public int kills = 0;
+        public Map<String, Integer> drops = new HashMap<>();
+    }
+
+    public AlpakaConfig() {
+        for (SlayerType type : SlayerType.values()) {
+            slayerBossMap.put(type, new SlayerData());
+        }
+    }
 
     public static void load() {
         if (FILE.exists()) {
@@ -26,6 +46,15 @@ public class AlpakaConfig {
             }
         } else {
             save();
+        }
+
+        if (instance.slayerBossMap == null) {
+            instance.slayerBossMap = new HashMap<>();
+        }
+        for (SlayerType type : SlayerType.values()) {
+            if (!instance.slayerBossMap.containsKey(type)) {
+                instance.slayerBossMap.put(type, new SlayerData());
+            }
         }
     }
 

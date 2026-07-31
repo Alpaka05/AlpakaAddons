@@ -3,7 +3,9 @@
   "package": "net.alpaka.addons.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
-    "GameRendererMixin"
+    "GameRendererMixin",
+    "PlayerMixin",
+    "PlayerInfoMixin"
   ],
   "injectors": {
     "defaultRequire": 1

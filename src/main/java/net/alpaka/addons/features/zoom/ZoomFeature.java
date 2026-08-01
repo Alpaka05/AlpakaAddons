@@ -1,49 +1,63 @@
 package net.alpaka.addons.features.zoom;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import net.alpaka.addons.client.AlpakaKeyCategory;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
-import net.minecraft.client.Minecraft;
-import net.minecraft.resources.Identifier;
 import org.lwjgl.glfw.GLFW;
 
 public class ZoomFeature {
-    public static KeyMapping zoomKeyBinding;
-    private static double zoomFactor = 4.0;
-    private static final double DEFAULT_ZOOM = 4.0;
+    public static KeyMapping ZOOM_KEY;
+    private static double zoomFactor = 1.0;
+    private static boolean isZooming = false;
     private static final double MIN_ZOOM = 1.0;
     private static final double MAX_ZOOM = 50.0;
+    private static final double DEFAULT_ZOOM = 4.0;
 
     public static void register() {
-        KeyMapping.Category category = KeyMapping.Category.register(Identifier.parse("alpaka:addons"));
-        zoomKeyBinding = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-            "key.alpaka.zoom",
-            InputConstants.Type.KEYSYM,
-            GLFW.GLFW_KEY_C,
-            category
+        ZOOM_KEY = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+                "key.alpaka.zoom",
+                InputConstants.Type.KEYSYM,
+                GLFW.GLFW_KEY_C,
+                AlpakaKeyCategory.CATEGORY
         ));
     }
 
     public static boolean isZooming() {
-        if (zoomKeyBinding == null) return false;
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.screen != null) return false;
-        return zoomKeyBinding.isDown();
+        if (ZOOM_KEY != null && ZOOM_KEY.isDown()) {
+            if (!isZooming) {
+                isZooming = true;
+                if (zoomFactor == 1.0) {
+                    zoomFactor = DEFAULT_ZOOM;
+                }
+            }
+            return true;
+        }
+        isZooming = false;
+        return false;
     }
 
     public static double getZoomFactor() {
         return zoomFactor;
     }
 
-    public static void onMouseScroll(double yoffset) {
-        if (yoffset > 0) {
+    public static void adjustZoom(double scrollDelta) {
+        if (!isZooming()) return;
+
+        if (scrollDelta > 0) {
             zoomFactor = Math.min(MAX_ZOOM, zoomFactor * 1.2);
-        } else if (yoffset < 0) {
+        } else if (scrollDelta < 0) {
             zoomFactor = Math.max(MIN_ZOOM, zoomFactor / 1.2);
         }
     }
 
+    public static void onMouseScroll(double scrollDelta) {
+        adjustZoom(scrollDelta);
+    }
+
     public static void resetZoom() {
-        zoomFactor = DEFAULT_ZOOM;
+        if (!isZooming) {
+            zoomFactor = 1.0;
+        }
     }
 }

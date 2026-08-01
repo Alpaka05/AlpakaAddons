@@ -1,10 +1,10 @@
 package net.alpaka.addons.features.wheel;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import net.alpaka.addons.client.AlpakaKeyCategory;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
-import net.minecraft.resources.Identifier;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
@@ -30,12 +30,11 @@ public class CommandWheelFeature {
     }
 
     public static void register() {
-        KeyMapping.Category category = KeyMapping.Category.register(Identifier.parse("alpaka:addons"));
         COMMAND_WHEEL_KEY = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "key.alpaka.command_wheel",
                 InputConstants.Type.KEYSYM,
                 GLFW.GLFW_KEY_V,
-                category
+                AlpakaKeyCategory.CATEGORY
         ));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {

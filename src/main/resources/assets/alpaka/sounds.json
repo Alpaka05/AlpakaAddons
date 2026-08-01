@@ -35,10 +35,34 @@
       "alpaka:boss_spawn"
     ]
   },
-  "hyperion_implosion": {
+  "explode1": {
     "category": "master",
     "sounds": [
-      "alpaka:hyperion_implosion"
+      "alpaka:random/explode1"
+    ]
+  },
+  "explode2": {
+    "category": "master",
+    "sounds": [
+      "alpaka:random/explode2"
+    ]
+  },
+  "explode3": {
+    "category": "master",
+    "sounds": [
+      "alpaka:random/explode3"
+    ]
+  },
+  "explode4": {
+    "category": "master",
+    "sounds": [
+      "alpaka:random/explode4"
+    ]
+  },
+  "successful_hit": {
+    "category": "master",
+    "sounds": [
+      "alpaka:random/successful_hit"
     ]
   },
   "hotbar_equip": {

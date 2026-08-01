@@ -9,6 +9,7 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvent;
+import net.minecraft.util.RandomSource;
 
 public class CustomSoundFeature {
     public static SoundEvent BUTTON_CLICK_SOUND;
@@ -17,11 +18,16 @@ public class CustomSoundFeature {
     public static SoundEvent XP_ORB_SOUND;
     public static SoundEvent HEARTBEAT_SOUND;
     public static SoundEvent BOSS_SPAWN_SOUND;
-    public static SoundEvent HYPERION_IMPLOSION_SOUND;
+    public static SoundEvent EXPLODE_1_SOUND;
+    public static SoundEvent EXPLODE_2_SOUND;
+    public static SoundEvent EXPLODE_3_SOUND;
+    public static SoundEvent EXPLODE_4_SOUND;
+    public static SoundEvent SUCCESSFUL_HIT_SOUND;
     public static SoundEvent HOTBAR_EQUIP_SOUND;
     public static SoundEvent RARE_DROP_SOUND;
     public static SoundEvent INSANE_DROP_SOUND;
 
+    private static final RandomSource RANDOM = RandomSource.create();
     private static long lastHeartbeatTime = 0;
     private static int lastSelectedSlot = -1;
 
@@ -32,7 +38,11 @@ public class CustomSoundFeature {
         XP_ORB_SOUND = registerSound("alpaka:xp_orb");
         HEARTBEAT_SOUND = registerSound("alpaka:heartbeat");
         BOSS_SPAWN_SOUND = registerSound("alpaka:boss_spawn");
-        HYPERION_IMPLOSION_SOUND = registerSound("alpaka:hyperion_implosion");
+        EXPLODE_1_SOUND = registerSound("alpaka:explode1");
+        EXPLODE_2_SOUND = registerSound("alpaka:explode2");
+        EXPLODE_3_SOUND = registerSound("alpaka:explode3");
+        EXPLODE_4_SOUND = registerSound("alpaka:explode4");
+        SUCCESSFUL_HIT_SOUND = registerSound("alpaka:successful_hit");
         HOTBAR_EQUIP_SOUND = registerSound("alpaka:hotbar_equip");
         RARE_DROP_SOUND = registerSound("alpaka:rare_drop");
         INSANE_DROP_SOUND = registerSound("alpaka:insane_drop");
@@ -93,8 +103,19 @@ public class CustomSoundFeature {
         playSound(BOSS_SPAWN_SOUND);
     }
 
-    public static void playHyperionImplosionSound() {
-        playSound(HYPERION_IMPLOSION_SOUND);
+    public static void playRandomHyperionExplodeSound() {
+        int choice = RANDOM.nextInt(4);
+        SoundEvent sound = switch (choice) {
+            case 0 -> EXPLODE_1_SOUND;
+            case 1 -> EXPLODE_2_SOUND;
+            case 2 -> EXPLODE_3_SOUND;
+            default -> EXPLODE_4_SOUND;
+        };
+        playSound(sound);
+    }
+
+    public static void playHitSound() {
+        playSound(SUCCESSFUL_HIT_SOUND);
     }
 
     public static void playHotbarEquipSound() {

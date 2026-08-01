@@ -12,6 +12,7 @@ base {
 
 repositories {
     mavenCentral()
+    maven("https://maven.fabricmc.net/")
     maven("https://repo.spongepowered.org/repository/maven-public/")
     maven("https://maven.terraformersmc.com/")
 }
@@ -51,26 +52,24 @@ java {
     }
 }
 
-val oneClientModsDir = file("${System.getProperty("user.home")}/Library/Application Support/org.Polyfrost.OneClient/clusters/26.1.2 Fabric/mods")
-val oneClientImportedDir = file("${System.getProperty("user.home")}/Library/Application Support/org.Polyfrost.OneClient/metadata/packages/mods/local/imported/fc57d24811772224")
+tasks.named<JavaExec>("runClient") {
+    setDependsOn(listOf(tasks.jar.get()))
+    mainClass.set("net.fabricmc.loader.impl.launch.knot.KnotClient")
+    classpath = sourceSets.main.get().runtimeClasspath
+    workingDir = file("run")
 
-tasks.register("copyToLauncher") {
-    dependsOn("jar")
-    doLast {
-        val jarFile = tasks.jar.get().archiveFile.get().asFile
-        val targetName = "alpaka-${project.version}.jar"
-        
-        listOf(oneClientModsDir, oneClientImportedDir).forEach { dir ->
-            if (dir.exists()) {
-                dir.listFiles()?.filter { it.name.startsWith("alpaka") && it.name.endsWith(".jar") }?.forEach { oldJar ->
-                    oldJar.delete()
-                }
-                jarFile.copyTo(File(dir, targetName), overwrite = true)
-            }
-        }
+    args(
+        "--gameDir", file("run").absolutePath,
+        "--assetsDir", file("${System.getProperty("user.home")}/.gradle/caches/fabric-loom/assets").absolutePath,
+        "--assetIndex", "26.1.2"
+    )
+
+    jvmArgs(
+        "-Dfabric.development=true",
+        "-Dfabric.gameJarPath=" + file("${System.getProperty("user.home")}/.gradle/caches/fabric-loom/minecraftMaven/net/minecraft/minecraft-merged-deobf/26.1.2/minecraft-merged-deobf-26.1.2.jar").absolutePath
+    )
+
+    doFirst {
+        file("run").mkdirs()
     }
-}
-
-tasks.build {
-    finalizedBy("copyToLauncher")
 }

@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.wheel;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -21,8 +22,14 @@ public class CommandWheelScreen extends Screen {
     @Override
     public void tick() {
         super.tick();
-        if (this.minecraft != null && !CommandWheelFeature.COMMAND_WHEEL_KEY.isDown()) {
-            executeSelectedCommandAndClose();
+        if (this.minecraft != null) {
+            InputConstants.Key key = CommandWheelFeature.COMMAND_WHEEL_KEY.getDefaultKey();
+            if (key != null) {
+                int keyCode = key.getValue();
+                if (keyCode > 0 && !InputConstants.isKeyDown(this.minecraft.getWindow(), keyCode)) {
+                    executeSelectedCommandAndClose();
+                }
+            }
         }
     }
 

@@ -251,6 +251,12 @@ public class SlayerDropTracker {
             return;
         }
 
+        // Check boss spawn message
+        String lowerMsg = string.toLowerCase();
+        if (lowerMsg.contains("slayer boss spawned") || lowerMsg.contains("boss spawned!") || lowerMsg.contains("slayer spawned!")) {
+            CustomSoundFeature.playBossSpawnSound();
+        }
+
         // Check drop message
         Matcher dropMatcher = DROP_PATTERN.matcher(string);
         if (dropMatcher.matches()) {

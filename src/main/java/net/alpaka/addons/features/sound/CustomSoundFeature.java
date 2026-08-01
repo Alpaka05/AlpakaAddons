@@ -1,7 +1,9 @@
 package net.alpaka.addons.features.sound;
 
 import net.alpaka.addons.config.AlpakaConfig;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -12,15 +14,38 @@ public class CustomSoundFeature {
     public static SoundEvent BUTTON_CLICK_SOUND;
     public static SoundEvent BLAZE_DEATH_SOUND;
     public static SoundEvent INVENTORY_CLICK_SOUND;
+    public static SoundEvent XP_ORB_SOUND;
+    public static SoundEvent HEARTBEAT_SOUND;
+    public static SoundEvent BOSS_SPAWN_SOUND;
     public static SoundEvent RARE_DROP_SOUND;
     public static SoundEvent INSANE_DROP_SOUND;
+
+    private static long lastHeartbeatTime = 0;
 
     public static void register() {
         BUTTON_CLICK_SOUND = registerSound("alpaka:button_click");
         BLAZE_DEATH_SOUND = registerSound("alpaka:blaze_death");
         INVENTORY_CLICK_SOUND = registerSound("alpaka:inventory_click");
+        XP_ORB_SOUND = registerSound("alpaka:xp_orb");
+        HEARTBEAT_SOUND = registerSound("alpaka:heartbeat");
+        BOSS_SPAWN_SOUND = registerSound("alpaka:boss_spawn");
         RARE_DROP_SOUND = registerSound("alpaka:rare_drop");
         INSANE_DROP_SOUND = registerSound("alpaka:insane_drop");
+
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            if (!AlpakaConfig.instance.customSoundsEnabled) return;
+            if (client.player != null && client.level != null) {
+                LocalPlayer player = client.player;
+                float healthRatio = player.getHealth() / player.getMaxHealth();
+                if (healthRatio > 0 && healthRatio <= 0.25f) {
+                    long now = System.currentTimeMillis();
+                    if (now - lastHeartbeatTime >= 900) {
+                        lastHeartbeatTime = now;
+                        playHeartbeatSound();
+                    }
+                }
+            }
+        });
     }
 
     private static SoundEvent registerSound(String path) {
@@ -40,6 +65,18 @@ public class CustomSoundFeature {
 
     public static void playInventoryClickSound() {
         playSound(INVENTORY_CLICK_SOUND);
+    }
+
+    public static void playXpOrbSound() {
+        playSound(XP_ORB_SOUND);
+    }
+
+    public static void playHeartbeatSound() {
+        playSound(HEARTBEAT_SOUND);
+    }
+
+    public static void playBossSpawnSound() {
+        playSound(BOSS_SPAWN_SOUND);
     }
 
     public static void playRareDropSound() {

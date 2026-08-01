@@ -21,7 +21,7 @@ public class SoundEngineMixin {
         if (sound == null || sound.getIdentifier() == null) return;
         String path = sound.getIdentifier().getPath();
 
-        if ("gui.button.press".equals(path)) {
+        if (path.contains("button.click") || "gui.button.press".equals(path) || "ui.button.click".equals(path)) {
             IS_INTERNAL_PLAY = true;
             try {
                 CustomSoundFeature.playButtonClickSound();
@@ -41,6 +41,14 @@ public class SoundEngineMixin {
             IS_INTERNAL_PLAY = true;
             try {
                 CustomSoundFeature.playInventoryClickSound();
+            } finally {
+                IS_INTERNAL_PLAY = false;
+            }
+            cir.setReturnValue(SoundEngine.PlayResult.STARTED);
+        } else if ("entity.experience_orb.pickup".equals(path)) {
+            IS_INTERNAL_PLAY = true;
+            try {
+                CustomSoundFeature.playXpOrbSound();
             } finally {
                 IS_INTERNAL_PLAY = false;
             }

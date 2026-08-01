@@ -17,6 +17,24 @@
       "alpaka:inventory_click"
     ]
   },
+  "xp_orb": {
+    "category": "master",
+    "sounds": [
+      "alpaka:xp_orb"
+    ]
+  },
+  "heartbeat": {
+    "category": "master",
+    "sounds": [
+      "alpaka:heartbeat"
+    ]
+  },
+  "boss_spawn": {
+    "category": "master",
+    "sounds": [
+      "alpaka:boss_spawn"
+    ]
+  },
   "rare_drop": {
     "category": "master",
     "sounds": [

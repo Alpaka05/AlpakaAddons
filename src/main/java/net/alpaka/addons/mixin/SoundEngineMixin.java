@@ -53,6 +53,14 @@ public class SoundEngineMixin {
                 IS_INTERNAL_PLAY = false;
             }
             cir.setReturnValue(SoundEngine.PlayResult.STARTED);
+        } else if ("entity.generic.explode".equals(path) || "entity.dragon_fireball.explode".equals(path)) {
+            IS_INTERNAL_PLAY = true;
+            try {
+                CustomSoundFeature.playHyperionImplosionSound();
+            } finally {
+                IS_INTERNAL_PLAY = false;
+            }
+            cir.setReturnValue(SoundEngine.PlayResult.STARTED);
         }
     }
 }

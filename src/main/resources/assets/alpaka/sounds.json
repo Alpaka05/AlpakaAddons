@@ -35,6 +35,18 @@
       "alpaka:boss_spawn"
     ]
   },
+  "hyperion_implosion": {
+    "category": "master",
+    "sounds": [
+      "alpaka:hyperion_implosion"
+    ]
+  },
+  "hotbar_equip": {
+    "category": "master",
+    "sounds": [
+      "alpaka:hotbar_equip"
+    ]
+  },
   "rare_drop": {
     "category": "master",
     "sounds": [

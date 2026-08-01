@@ -17,10 +17,13 @@ public class CustomSoundFeature {
     public static SoundEvent XP_ORB_SOUND;
     public static SoundEvent HEARTBEAT_SOUND;
     public static SoundEvent BOSS_SPAWN_SOUND;
+    public static SoundEvent HYPERION_IMPLOSION_SOUND;
+    public static SoundEvent HOTBAR_EQUIP_SOUND;
     public static SoundEvent RARE_DROP_SOUND;
     public static SoundEvent INSANE_DROP_SOUND;
 
     private static long lastHeartbeatTime = 0;
+    private static int lastSelectedSlot = -1;
 
     public static void register() {
         BUTTON_CLICK_SOUND = registerSound("alpaka:button_click");
@@ -29,6 +32,8 @@ public class CustomSoundFeature {
         XP_ORB_SOUND = registerSound("alpaka:xp_orb");
         HEARTBEAT_SOUND = registerSound("alpaka:heartbeat");
         BOSS_SPAWN_SOUND = registerSound("alpaka:boss_spawn");
+        HYPERION_IMPLOSION_SOUND = registerSound("alpaka:hyperion_implosion");
+        HOTBAR_EQUIP_SOUND = registerSound("alpaka:hotbar_equip");
         RARE_DROP_SOUND = registerSound("alpaka:rare_drop");
         INSANE_DROP_SOUND = registerSound("alpaka:insane_drop");
 
@@ -36,6 +41,8 @@ public class CustomSoundFeature {
             if (!AlpakaConfig.instance.customSoundsEnabled) return;
             if (client.player != null && client.level != null) {
                 LocalPlayer player = client.player;
+
+                // 1. Low Health Heartbeat
                 float healthRatio = player.getHealth() / player.getMaxHealth();
                 if (healthRatio > 0 && healthRatio <= 0.25f) {
                     long now = System.currentTimeMillis();
@@ -44,6 +51,13 @@ public class CustomSoundFeature {
                         playHeartbeatSound();
                     }
                 }
+
+                // 2. Hotbar Slot Equip Sound
+                int currentSlot = player.getInventory().getSelectedSlot();
+                if (lastSelectedSlot != -1 && currentSlot != lastSelectedSlot) {
+                    playHotbarEquipSound();
+                }
+                lastSelectedSlot = currentSlot;
             }
         });
     }
@@ -77,6 +91,14 @@ public class CustomSoundFeature {
 
     public static void playBossSpawnSound() {
         playSound(BOSS_SPAWN_SOUND);
+    }
+
+    public static void playHyperionImplosionSound() {
+        playSound(HYPERION_IMPLOSION_SOUND);
+    }
+
+    public static void playHotbarEquipSound() {
+        playSound(HOTBAR_EQUIP_SOUND);
     }
 
     public static void playRareDropSound() {

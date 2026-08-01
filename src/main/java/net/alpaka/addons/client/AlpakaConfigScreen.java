@@ -195,12 +195,45 @@ public class AlpakaConfigScreen extends Screen {
         };
         this.addRenderableWidget(durationSlider);
 
+        // 11. Dark Mode Skyblock Toggle
+        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 220, 150, 20, 
+                Component.literal("Dark Mode Skyblock"), this.font));
+
+        Button toggleButton8 = Button.builder(
+                CommonComponents.optionStatus(AlpakaConfig.instance.darkModeSkyblockEnabled),
+                button -> {
+                    AlpakaConfig.instance.darkModeSkyblockEnabled = !AlpakaConfig.instance.darkModeSkyblockEnabled;
+                    AlpakaConfig.save();
+                    button.setMessage(CommonComponents.optionStatus(AlpakaConfig.instance.darkModeSkyblockEnabled));
+                    net.alpaka.addons.features.darkmode.DarkModeSkyblockFeature.applyState(AlpakaConfig.instance.darkModeSkyblockEnabled);
+                }
+        )
+        .bounds(this.width / 2 + 5, centerY + 220, 150, 20)
+        .build();
+        this.addRenderableWidget(toggleButton8);
+
+        // 12. Custom Escape Menu Toggle
+        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 242, 150, 20, 
+                Component.literal("Custom Escape Menu"), this.font));
+
+        Button toggleButton9 = Button.builder(
+                CommonComponents.optionStatus(AlpakaConfig.instance.customEscapeMenuEnabled),
+                button -> {
+                    AlpakaConfig.instance.customEscapeMenuEnabled = !AlpakaConfig.instance.customEscapeMenuEnabled;
+                    AlpakaConfig.save();
+                    button.setMessage(CommonComponents.optionStatus(AlpakaConfig.instance.customEscapeMenuEnabled));
+                }
+        )
+        .bounds(this.width / 2 + 5, centerY + 242, 150, 20)
+        .build();
+        this.addRenderableWidget(toggleButton9);
+
         // Add Done Button
         this.addRenderableWidget(Button.builder(
                 CommonComponents.GUI_DONE,
                 button -> this.onClose()
         )
-        .bounds(this.width / 2 - 100, centerY + 225, 200, 20)
+        .bounds(this.width / 2 - 100, centerY + 270, 200, 20)
         .build());
     }
 

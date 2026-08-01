@@ -52,24 +52,40 @@ java {
     }
 }
 
-tasks.named<JavaExec>("runClient") {
+val oneClientDir = file("${System.getProperty("user.home")}/Library/Application Support/org.Polyfrost.OneClient")
+val minecraftModsDir = file("${System.getProperty("user.home")}/Library/Application Support/org.Polyfrost.OneClient/.minecraft/mods")
+val fabricProcessedDir = file("${System.getProperty("user.home")}/Library/Application Support/org.Polyfrost.OneClient/.minecraft/.fabric/processedMods")
+
+tasks.named("runClient") {
     setDependsOn(listOf(tasks.jar.get()))
-    mainClass.set("net.fabricmc.loader.impl.launch.knot.KnotClient")
-    classpath = sourceSets.main.get().runtimeClasspath
-    workingDir = file("run")
+    actions.clear()
+    doLast {
+        val jarFile = tasks.jar.get().archiveFile.get().asFile
+        val targetName = "alpaka-${project.version}.jar"
 
-    args(
-        "--gameDir", file("run").absolutePath,
-        "--assetsDir", file("${System.getProperty("user.home")}/.gradle/caches/fabric-loom/assets").absolutePath,
-        "--assetIndex", "26.1.2"
-    )
+        // 1. Copy to .minecraft/mods where OneClient auto-detects new/updated mods
+        minecraftModsDir.mkdirs()
+        minecraftModsDir.listFiles()?.filter { it.name.startsWith("alpaka") }?.forEach { it.delete() }
+        jarFile.copyTo(File(minecraftModsDir, targetName), overwrite = true)
+        println("Copied ${targetName} to .minecraft/mods")
 
-    jvmArgs(
-        "-Dfabric.development=true",
-        "-Dfabric.gameJarPath=" + file("${System.getProperty("user.home")}/.gradle/caches/fabric-loom/minecraftMaven/net/minecraft/minecraft-merged-deobf/26.1.2/minecraft-merged-deobf-26.1.2.jar").absolutePath
-    )
+        // 2. Clear Fabric Loader's processedMods cache for alpaka
+        if (fabricProcessedDir.exists()) {
+            fabricProcessedDir.listFiles()?.filter { it.name.startsWith("alpaka") }?.forEach {
+                it.delete()
+                println("Deleted Fabric processedMod cache: ${it.name}")
+            }
+        }
 
-    doFirst {
-        file("run").mkdirs()
+        // 3. Update all existing alpaka jar files in OneClient launcher caches
+        if (oneClientDir.exists()) {
+            oneClientDir.walkTopDown().filter { it.isFile && it.name.startsWith("alpaka") && it.name.endsWith(".jar") }.forEach { targetFile ->
+                jarFile.copyTo(targetFile, overwrite = true)
+                println("Updated OneClient mod file: ${targetFile.absolutePath}")
+            }
+        }
+
+        // 4. Launch OneClient app
+        ProcessBuilder("open", "-a", "/Applications/OneClient.app").start()
     }
 }

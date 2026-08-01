@@ -13,7 +13,8 @@
     "BlazeMixin",
     "ParticleEngineMixin",
     "EntityRendererMixin",
-    "SoundEngineMixin"
+    "SoundEngineMixin",
+    "MinecraftMixin"
   ],
   "injectors": {
     "defaultRequire": 1

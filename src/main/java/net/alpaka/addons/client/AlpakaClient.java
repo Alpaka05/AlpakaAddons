@@ -1,18 +1,21 @@
 package net.alpaka.addons.client;
 
-import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
-import net.minecraft.client.Minecraft;
 import net.alpaka.addons.features.slayer.SlayerDropTracker;
+import net.alpaka.addons.features.sound.CustomSoundFeature;
+import net.alpaka.addons.features.wheel.CommandWheelFeature;
 import net.alpaka.addons.features.zoom.ZoomFeature;
+import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
+import net.minecraft.client.Minecraft;
 
 public class AlpakaClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
+        CustomSoundFeature.register();
         SlayerDropTracker.registerEvents();
         ZoomFeature.register();
-        net.alpaka.addons.features.wheel.CommandWheelFeature.register();
+        CommandWheelFeature.register();
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             dispatcher.register(ClientCommands.literal("alpakaconfig")
@@ -44,4 +47,3 @@ public class AlpakaClient implements ClientModInitializer {
         });
     }
 }
-

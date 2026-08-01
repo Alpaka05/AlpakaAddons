@@ -10,8 +10,6 @@ base {
     archivesName.set(project.property("mod_id") as String)
 }
 
-
-
 repositories {
     mavenCentral()
     maven("https://repo.spongepowered.org/repository/maven-public/")
@@ -54,15 +52,25 @@ java {
 }
 
 val oneClientModsDir = file("${System.getProperty("user.home")}/Library/Application Support/org.Polyfrost.OneClient/clusters/26.1.2 Fabric/mods")
+val oneClientImportedDir = file("${System.getProperty("user.home")}/Library/Application Support/org.Polyfrost.OneClient/metadata/packages/mods/local/imported/fc57d24811772224")
 
-tasks.register<Copy>("copyToLauncher") {
+tasks.register("copyToLauncher") {
     dependsOn("jar")
-    from(tasks.jar.get().archiveFile)
-    into(oneClientModsDir)
+    doLast {
+        val jarFile = tasks.jar.get().archiveFile.get().asFile
+        val targetName = "alpaka-${project.version}.jar"
+        
+        listOf(oneClientModsDir, oneClientImportedDir).forEach { dir ->
+            if (dir.exists()) {
+                dir.listFiles()?.filter { it.name.startsWith("alpaka") && it.name.endsWith(".jar") }?.forEach { oldJar ->
+                    oldJar.delete()
+                }
+                jarFile.copyTo(File(dir, targetName), overwrite = true)
+            }
+        }
+    }
 }
 
 tasks.build {
     finalizedBy("copyToLauncher")
 }
-
-

@@ -2,6 +2,7 @@ package net.alpaka.addons.features.slayer;
 
 import net.alpaka.addons.AlpakaAddons;
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.features.sound.CustomSoundFeature;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientEntityEvents;
 import net.minecraft.client.Minecraft;
@@ -217,6 +218,15 @@ public class SlayerDropTracker {
         if (!AlpakaConfig.instance.slayerDropTrackerEnabled) return;
 
         String string = cleanColor(message.getString());
+
+        if (AlpakaConfig.instance.customSoundsEnabled) {
+            String lower = string.toLowerCase();
+            if (lower.contains("insane drop!") || lower.contains("crazy rare drop!") || lower.contains("judgement core") || lower.contains("warden heart") || lower.contains("archfiend dice")) {
+                CustomSoundFeature.playInsaneDropSound();
+            } else if (lower.contains("rare drop!") || lower.contains("very rare drop!")) {
+                CustomSoundFeature.playRareDropSound();
+            }
+        }
 
         // Check boss defeat message
         Matcher bossMatcher = BOSS_TYPE_PATTERN.matcher(string);

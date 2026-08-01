@@ -1,0 +1,14 @@
+{
+  "rare_drop": {
+    "category": "master",
+    "sounds": [
+      "alpaka:rare_drop"
+    ]
+  },
+  "insane_drop": {
+    "category": "master",
+    "sounds": [
+      "alpaka:insane_drop"
+    ]
+  }
+}

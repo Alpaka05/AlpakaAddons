@@ -18,7 +18,7 @@ public class AlpakaConfigScreen extends Screen {
 
     @Override
     protected void init() {
-        int centerY = this.height / 2 - 110;
+        int centerY = this.height / 2 - 125;
 
         // Add Title
         this.addRenderableWidget(new StringWidget(0, 10, this.width, 20, this.title, this.font));
@@ -71,8 +71,24 @@ public class AlpakaConfigScreen extends Screen {
         .build();
         this.addRenderableWidget(toggleButton3);
 
-        // 4. Name Highlighting
+        // 4. Custom Slayer Sounds
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 75, 150, 20, 
+                Component.literal("Custom Slayer Sounds"), this.font));
+
+        Button toggleButtonSound = Button.builder(
+                CommonComponents.optionStatus(AlpakaConfig.instance.customSoundsEnabled),
+                button -> {
+                    AlpakaConfig.instance.customSoundsEnabled = !AlpakaConfig.instance.customSoundsEnabled;
+                    AlpakaConfig.save();
+                    button.setMessage(CommonComponents.optionStatus(AlpakaConfig.instance.customSoundsEnabled));
+                }
+        )
+        .bounds(this.width / 2 + 5, centerY + 75, 150, 20)
+        .build();
+        this.addRenderableWidget(toggleButtonSound);
+
+        // 5. Name Highlighting
+        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 100, 150, 20, 
                 Component.literal("Name Highlighting"), this.font));
 
         Button toggleButton4 = Button.builder(
@@ -83,12 +99,12 @@ public class AlpakaConfigScreen extends Screen {
                     button.setMessage(CommonComponents.optionStatus(AlpakaConfig.instance.nameHighlightingEnabled));
                 }
         )
-        .bounds(this.width / 2 + 5, centerY + 75, 150, 20)
+        .bounds(this.width / 2 + 5, centerY + 100, 150, 20)
         .build();
         this.addRenderableWidget(toggleButton4);
 
-        // 5. Inventory Snowflakes
-        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 100, 150, 20, 
+        // 6. Inventory Snowflakes
+        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 125, 150, 20, 
                 Component.literal("Inventory Snowflakes"), this.font));
 
         Button toggleButton5 = Button.builder(
@@ -99,31 +115,9 @@ public class AlpakaConfigScreen extends Screen {
                     button.setMessage(CommonComponents.optionStatus(AlpakaConfig.instance.inventorySnowEnabled));
                 }
         )
-        .bounds(this.width / 2 + 5, centerY + 100, 150, 20)
+        .bounds(this.width / 2 + 5, centerY + 125, 150, 20)
         .build();
         this.addRenderableWidget(toggleButton5);
-
-        // 6. Snow Animation Speed Slider
-        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 125, 150, 20, 
-                Component.literal("Snow Animation Speed"), this.font));
-
-        AbstractSliderButton speedSlider = new AbstractSliderButton(
-                this.width / 2 + 5, centerY + 125, 150, 20,
-                Component.literal(String.format("%.1fx", AlpakaConfig.instance.inventorySnowSpeed)),
-                (AlpakaConfig.instance.inventorySnowSpeed - 0.1) / 4.9
-        ) {
-            @Override
-            protected void updateMessage() {
-                setMessage(Component.literal(String.format("%.1fx", AlpakaConfig.instance.inventorySnowSpeed)));
-            }
-
-            @Override
-            protected void applyValue() {
-                AlpakaConfig.instance.inventorySnowSpeed = (float) (0.1 + this.value * 4.9);
-                AlpakaConfig.save();
-            }
-        };
-        this.addRenderableWidget(speedSlider);
 
         // 7. Clean Blaze Toggle
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 150, 150, 20, 

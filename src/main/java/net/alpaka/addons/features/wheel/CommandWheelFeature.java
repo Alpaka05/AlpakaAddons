@@ -26,13 +26,13 @@ public class CommandWheelFeature {
 
     static {
         ITEMS.add(new WheelItem("Hub", "/warp hub", Items.EMERALD));
-        ITEMS.add(new WheelItem("Private Island", "/warp is", Items.GRASS_BLOCK));
+        ITEMS.add(new WheelItem("Island", "/warp is", Items.GRASS_BLOCK));
         ITEMS.add(new WheelItem("Garden", "/warp garden", Items.GOLDEN_HOE));
-        ITEMS.add(new WheelItem("Dungeon Hub", "/warp dungeon_hub", Items.WITHER_SKELETON_SKULL));
-        ITEMS.add(new WheelItem("Smoldering Tomb", "/warp smoldering", Items.BLAZE_ROD));
+        ITEMS.add(new WheelItem("Dungeons", "/warp dungeon_hub", Items.WITHER_SKELETON_SKULL));
+        ITEMS.add(new WheelItem("Blaze", "/warp smoldering", Items.BLAZE_ROD));
         ITEMS.add(new WheelItem("Crimson Isle", "/warp isle", Items.NETHERRACK));
         ITEMS.add(new WheelItem("The Barn", "/warp barn", Items.HAY_BLOCK));
-        ITEMS.add(new WheelItem("Backwoods Bayou", "/warp bayou", Items.LILY_PAD));
+        ITEMS.add(new WheelItem("Bayou", "/warp bayou", Items.LILY_PAD));
         ITEMS.add(new WheelItem("Dwarven Mines", "/warp mines", Items.DIAMOND_PICKAXE));
         ITEMS.add(new WheelItem("Crystal Nucleus", "/warp nucleus", Items.PRISMARINE_CRYSTALS));
     }

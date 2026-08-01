@@ -29,6 +29,8 @@ public class AlpakaConfig {
     public boolean cleanBlazeEnabled = true;
     public boolean smoothPerspectiveEnabled = true;
     public int smoothPerspectiveDurationMs = 350;
+    public boolean customSoundsEnabled = true;
+    public float customSoundsVolume = 1.0f;
     public Map<SlayerType, SlayerData> slayerBossMap = new HashMap<>();
 
     public static class SlayerData {

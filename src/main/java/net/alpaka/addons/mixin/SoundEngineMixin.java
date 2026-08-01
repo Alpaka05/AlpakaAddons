@@ -29,7 +29,7 @@ public class SoundEngineMixin {
                 IS_INTERNAL_PLAY = false;
             }
             cir.setReturnValue(SoundEngine.PlayResult.STARTED);
-        } else if ("entity.blaze.death".equals(path)) {
+        } else if ("entity.blaze.death".equals(path) || path.contains("blaze/death")) {
             IS_INTERNAL_PLAY = true;
             try {
                 CustomSoundFeature.playBlazeDeathSound();
@@ -57,6 +57,14 @@ public class SoundEngineMixin {
             IS_INTERNAL_PLAY = true;
             try {
                 CustomSoundFeature.playRandomHyperionExplodeSound();
+            } finally {
+                IS_INTERNAL_PLAY = false;
+            }
+            cir.setReturnValue(SoundEngine.PlayResult.STARTED);
+        } else if ("entity.zombie_villager.cure".equals(path) || path.contains("remedy")) {
+            IS_INTERNAL_PLAY = true;
+            try {
+                CustomSoundFeature.playZombieRemedySound();
             } finally {
                 IS_INTERNAL_PLAY = false;
             }

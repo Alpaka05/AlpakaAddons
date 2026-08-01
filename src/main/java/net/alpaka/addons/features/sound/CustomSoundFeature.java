@@ -22,6 +22,7 @@ public class CustomSoundFeature {
     public static SoundEvent EXPLODE_2_SOUND;
     public static SoundEvent EXPLODE_3_SOUND;
     public static SoundEvent EXPLODE_4_SOUND;
+    public static SoundEvent ZOMBIE_REMEDY_SOUND;
     public static SoundEvent SUCCESSFUL_HIT_SOUND;
     public static SoundEvent HOTBAR_EQUIP_SOUND;
     public static SoundEvent RARE_DROP_SOUND;
@@ -42,6 +43,7 @@ public class CustomSoundFeature {
         EXPLODE_2_SOUND = registerSound("alpaka:explode2");
         EXPLODE_3_SOUND = registerSound("alpaka:explode3");
         EXPLODE_4_SOUND = registerSound("alpaka:explode4");
+        ZOMBIE_REMEDY_SOUND = registerSound("alpaka:zombie_remedy");
         SUCCESSFUL_HIT_SOUND = registerSound("alpaka:successful_hit");
         HOTBAR_EQUIP_SOUND = registerSound("alpaka:hotbar_equip");
         RARE_DROP_SOUND = registerSound("alpaka:rare_drop");
@@ -112,6 +114,10 @@ public class CustomSoundFeature {
             default -> EXPLODE_4_SOUND;
         };
         playSound(sound);
+    }
+
+    public static void playZombieRemedySound() {
+        playSound(ZOMBIE_REMEDY_SOUND);
     }
 
     public static void playHitSound() {

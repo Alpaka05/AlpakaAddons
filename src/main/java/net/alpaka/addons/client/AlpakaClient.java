@@ -12,6 +12,7 @@ public class AlpakaClient implements ClientModInitializer {
     public void onInitializeClient() {
         SlayerDropTracker.registerEvents();
         ZoomFeature.register();
+        net.alpaka.addons.features.wheel.CommandWheelFeature.register();
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             dispatcher.register(ClientCommands.literal("alpakaconfig")

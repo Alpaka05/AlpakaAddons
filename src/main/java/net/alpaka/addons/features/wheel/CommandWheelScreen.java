@@ -3,15 +3,19 @@ package net.alpaka.addons.features.wheel;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
 import java.util.List;
 
 public class CommandWheelScreen extends Screen {
     private int selectedSector = -1;
+    private final long openTime;
+    private boolean wasHeldPastThreshold = false;
 
     public CommandWheelScreen() {
         super(Component.literal("Command Wheel"));
+        this.openTime = System.currentTimeMillis();
     }
 
     @Override
@@ -23,14 +27,30 @@ public class CommandWheelScreen extends Screen {
     public void tick() {
         super.tick();
         if (this.minecraft != null) {
+            long elapsed = System.currentTimeMillis() - openTime;
             InputConstants.Key key = CommandWheelFeature.COMMAND_WHEEL_KEY.getDefaultKey();
             if (key != null) {
                 int keyCode = key.getValue();
-                if (keyCode > 0 && !InputConstants.isKeyDown(this.minecraft.getWindow(), keyCode)) {
-                    executeSelectedCommandAndClose();
+                if (keyCode > 0) {
+                    boolean isKeyDown = InputConstants.isKeyDown(this.minecraft.getWindow(), keyCode);
+                    if (isKeyDown && elapsed > 150) {
+                        wasHeldPastThreshold = true;
+                    }
+                    if (wasHeldPastThreshold && !isKeyDown) {
+                        executeSelectedCommandAndClose();
+                    }
                 }
             }
         }
+    }
+
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean isDoubleClick) {
+        if (event.button() == 0 && selectedSector >= 0) {
+            executeSelectedCommandAndClose();
+            return true;
+        }
+        return super.mouseClicked(event, isDoubleClick);
     }
 
     private void executeSelectedCommandAndClose() {

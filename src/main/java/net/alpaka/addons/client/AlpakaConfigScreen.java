@@ -71,9 +71,9 @@ public class AlpakaConfigScreen extends Screen {
         .build();
         this.addRenderableWidget(toggleButton3);
 
-        // 4. Custom Slayer Sounds
+        // 4. Custom Sounds
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 75, 150, 20, 
-                Component.literal("Custom Slayer Sounds"), this.font));
+                Component.literal("Custom Sounds"), this.font));
 
         Button toggleButtonSound = Button.builder(
                 CommonComponents.optionStatus(AlpakaConfig.instance.customSoundsEnabled),

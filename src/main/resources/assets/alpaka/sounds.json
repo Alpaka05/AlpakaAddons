@@ -1,4 +1,22 @@
 {
+  "button_click": {
+    "category": "master",
+    "sounds": [
+      "alpaka:button_click"
+    ]
+  },
+  "blaze_death": {
+    "category": "master",
+    "sounds": [
+      "alpaka:blaze_death"
+    ]
+  },
+  "inventory_click": {
+    "category": "master",
+    "sounds": [
+      "alpaka:inventory_click"
+    ]
+  },
   "rare_drop": {
     "category": "master",
     "sounds": [

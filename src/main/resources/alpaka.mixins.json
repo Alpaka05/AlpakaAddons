@@ -12,7 +12,8 @@
     "ScreenMixin",
     "BlazeMixin",
     "ParticleEngineMixin",
-    "EntityRendererMixin"
+    "EntityRendererMixin",
+    "SoundEngineMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -34,7 +34,8 @@ public class SmoothPerspectiveFeature {
         }
 
         float progress = (float) elapsed / duration;
-        float easeOut = 1.0f - (float) Math.pow(1.0f - progress, 3);
+        // Instant zoom-in at frame 0 (0.18x), followed by immediate decelerating zoom-out to 1.0x
+        float easeOut = 1.0f - (float) Math.pow(1.0f - progress, 2.5);
 
         return START_SCALE + (1.0f - START_SCALE) * easeOut;
     }

@@ -27,6 +27,7 @@ public class AlpakaConfig {
     public boolean inventorySnowEnabled = true;
     public float inventorySnowSpeed = 1.0f;
     public boolean cleanBlazeEnabled = true;
+    public boolean smoothPerspectiveEnabled = true;
     public Map<SlayerType, SlayerData> slayerBossMap = new HashMap<>();
 
     public static class SlayerData {

@@ -18,7 +18,7 @@ public class AlpakaConfigScreen extends Screen {
 
     @Override
     protected void init() {
-        int centerY = this.height / 2 - 85;
+        int centerY = this.height / 2 - 95;
 
         // Add Title
         this.addRenderableWidget(new StringWidget(0, 10, this.width, 20, this.title, this.font));
@@ -141,12 +141,28 @@ public class AlpakaConfigScreen extends Screen {
         .build();
         this.addRenderableWidget(toggleButton6);
 
+        // 8. Smooth Perspective Toggle
+        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 175, 150, 20, 
+                Component.literal("Smooth Perspective"), this.font));
+
+        Button toggleButton7 = Button.builder(
+                CommonComponents.optionStatus(AlpakaConfig.instance.smoothPerspectiveEnabled),
+                button -> {
+                    AlpakaConfig.instance.smoothPerspectiveEnabled = !AlpakaConfig.instance.smoothPerspectiveEnabled;
+                    AlpakaConfig.save();
+                    button.setMessage(CommonComponents.optionStatus(AlpakaConfig.instance.smoothPerspectiveEnabled));
+                }
+        )
+        .bounds(this.width / 2 + 5, centerY + 175, 150, 20)
+        .build();
+        this.addRenderableWidget(toggleButton7);
+
         // Add Done Button
         this.addRenderableWidget(Button.builder(
                 CommonComponents.GUI_DONE,
                 button -> this.onClose()
         )
-        .bounds(this.width / 2 - 100, centerY + 180, 200, 20)
+        .bounds(this.width / 2 - 100, centerY + 205, 200, 20)
         .build());
     }
 

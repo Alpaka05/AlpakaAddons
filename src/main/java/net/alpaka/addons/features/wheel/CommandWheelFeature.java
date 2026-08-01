@@ -5,6 +5,9 @@ import net.alpaka.addons.client.AlpakaKeyCategory;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
@@ -13,20 +16,25 @@ import java.util.List;
 public class CommandWheelFeature {
     public static KeyMapping COMMAND_WHEEL_KEY;
 
-    public record WheelItem(String displayName, String command) {}
+    public record WheelItem(String displayName, String command, Item iconItem) {
+        public ItemStack iconStack() {
+            return new ItemStack(iconItem);
+        }
+    }
 
     public static final List<WheelItem> ITEMS = new ArrayList<>();
 
     static {
-        ITEMS.add(new WheelItem("Hub", "/warp hub"));
-        ITEMS.add(new WheelItem("Private Island", "/warp is"));
-        ITEMS.add(new WheelItem("Dungeon Hub", "/warp dungeon_hub"));
-        ITEMS.add(new WheelItem("Smoldering Tomb", "/warp smoldering"));
-        ITEMS.add(new WheelItem("Crimson Isle", "/warp isle"));
-        ITEMS.add(new WheelItem("The Barn", "/warp barn"));
-        ITEMS.add(new WheelItem("Backwoods Bayou", "/warp bayou"));
-        ITEMS.add(new WheelItem("Dwarven Mines", "/warp mines"));
-        ITEMS.add(new WheelItem("Crystal Nucleus", "/warp nucleus"));
+        ITEMS.add(new WheelItem("Hub", "/warp hub", Items.EMERALD));
+        ITEMS.add(new WheelItem("Private Island", "/warp is", Items.GRASS_BLOCK));
+        ITEMS.add(new WheelItem("Garden", "/warp garden", Items.GOLDEN_HOE));
+        ITEMS.add(new WheelItem("Dungeon Hub", "/warp dungeon_hub", Items.WITHER_SKELETON_SKULL));
+        ITEMS.add(new WheelItem("Smoldering Tomb", "/warp smoldering", Items.BLAZE_ROD));
+        ITEMS.add(new WheelItem("Crimson Isle", "/warp isle", Items.NETHERRACK));
+        ITEMS.add(new WheelItem("The Barn", "/warp barn", Items.HAY_BLOCK));
+        ITEMS.add(new WheelItem("Backwoods Bayou", "/warp bayou", Items.LILY_PAD));
+        ITEMS.add(new WheelItem("Dwarven Mines", "/warp mines", Items.DIAMOND_PICKAXE));
+        ITEMS.add(new WheelItem("Crystal Nucleus", "/warp nucleus", Items.PRISMARINE_CRYSTALS));
     }
 
     public static void register() {

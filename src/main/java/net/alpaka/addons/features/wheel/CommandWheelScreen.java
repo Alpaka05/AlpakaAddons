@@ -10,12 +10,10 @@ import java.util.List;
 
 public class CommandWheelScreen extends Screen {
     private int selectedSector = -1;
-    private final long openTime;
-    private boolean wasHeldPastThreshold = false;
+    private int openTicks = 0;
 
     public CommandWheelScreen() {
         super(Component.literal("Command Wheel"));
-        this.openTime = System.currentTimeMillis();
     }
 
     @Override
@@ -26,17 +24,14 @@ public class CommandWheelScreen extends Screen {
     @Override
     public void tick() {
         super.tick();
-        if (this.minecraft != null) {
-            long elapsed = System.currentTimeMillis() - openTime;
+        openTicks++;
+        if (this.minecraft != null && openTicks >= 1) {
             InputConstants.Key key = CommandWheelFeature.COMMAND_WHEEL_KEY.getDefaultKey();
             if (key != null) {
                 int keyCode = key.getValue();
                 if (keyCode > 0) {
                     boolean isKeyDown = InputConstants.isKeyDown(this.minecraft.getWindow(), keyCode);
-                    if (isKeyDown && elapsed > 150) {
-                        wasHeldPastThreshold = true;
-                    }
-                    if (wasHeldPastThreshold && !isKeyDown) {
+                    if (!isKeyDown) {
                         executeSelectedCommandAndClose();
                     }
                 }
@@ -98,38 +93,58 @@ public class CommandWheelScreen extends Screen {
             selectedSector = (int) Math.floor(shiftedAngle / sectorAngle) % count;
         }
 
-        graphicsExtractor.fill(cx - (int) outerRadius - 10, cy - (int) outerRadius - 10, cx + (int) outerRadius + 10, cy + (int) outerRadius + 10, 0x88000000);
+        graphicsExtractor.fill(cx - (int) outerRadius - 15, cy - (int) outerRadius - 15, cx + (int) outerRadius + 15, cy + (int) outerRadius + 15, 0x99000000);
 
         double sectorAngle = 2 * Math.PI / count;
-        double midRadius = (innerRadius + outerRadius) / 2.0;
 
         for (int i = 0; i < count; i++) {
             boolean isSelected = (i == selectedSector);
             CommandWheelFeature.WheelItem item = items.get(i);
 
             double angle = -Math.PI / 2 + i * sectorAngle;
-            int lx = cx + (int) Math.round(Math.cos(angle) * midRadius);
-            int ly = cy + (int) Math.round(Math.sin(angle) * midRadius);
+            double currentOuter = isSelected ? outerRadius + 10 : outerRadius;
 
-            int btnWidth = 100;
-            int btnHeight = 20;
-            int x1 = lx - btnWidth / 2;
-            int y1 = ly - btnHeight / 2;
-            int x2 = lx + btnWidth / 2;
-            int y2 = ly + btnHeight / 2;
+            double startAngle = angle - sectorAngle / 2.0;
+            double endAngle = angle + sectorAngle / 2.0;
+            int steps = 14;
 
-            int bgColor = isSelected ? 0xCC7C4DFF : 0xAA222533;
+            int sectorColor = isSelected ? 0xDD7C4DFF : 0xAA222533;
+
+            for (int s = 0; s < steps; s++) {
+                double a1 = startAngle + (endAngle - startAngle) * s / steps;
+                double a2 = startAngle + (endAngle - startAngle) * (s + 1) / steps;
+
+                int x1 = cx + (int) Math.round(Math.cos(a1) * innerRadius);
+                int y1 = cy + (int) Math.round(Math.sin(a1) * innerRadius);
+                int x2 = cx + (int) Math.round(Math.cos(a1) * currentOuter);
+                int y2 = cy + (int) Math.round(Math.sin(a1) * currentOuter);
+                int x3 = cx + (int) Math.round(Math.cos(a2) * currentOuter);
+                int y3 = cy + (int) Math.round(Math.sin(a2) * currentOuter);
+
+                int minX = Math.min(Math.min(x1, x2), x3);
+                int maxX = Math.max(Math.max(x1, x2), x3);
+                int minY = Math.min(Math.min(y1, y2), y3);
+                int maxY = Math.max(Math.max(y1, y2), y3);
+
+                graphicsExtractor.fill(minX, minY, maxX, maxY, sectorColor);
+            }
+
+            double midRadius = (innerRadius + currentOuter) / 2.0;
+            int ix = cx + (int) Math.round(Math.cos(angle) * midRadius) - 8;
+            int iy = cy + (int) Math.round(Math.sin(angle) * midRadius) - 14;
+
+            graphicsExtractor.fakeItem(item.iconStack(), ix, iy);
+
             int textColor = isSelected ? 0xFFFFFF55 : 0xFFFFFFFF;
-
-            graphicsExtractor.fill(x1, y1, x2, y2, bgColor);
-            graphicsExtractor.centeredText(this.font, item.displayName(), lx, ly - 4, textColor);
+            graphicsExtractor.centeredText(this.font, item.displayName(), ix + 8, iy + 17, textColor);
         }
 
-        graphicsExtractor.fill(cx - (int) innerRadius, cy - (int) innerRadius, cx + (int) innerRadius, cy + (int) innerRadius, 0xDD111625);
+        graphicsExtractor.fill(cx - (int) innerRadius, cy - (int) innerRadius, cx + (int) innerRadius, cy + (int) innerRadius, 0xEE111625);
         if (selectedSector >= 0 && selectedSector < count) {
             CommandWheelFeature.WheelItem selected = items.get(selectedSector);
-            graphicsExtractor.centeredText(this.font, selected.displayName(), cx, cy - 10, 0xFFFF55);
-            graphicsExtractor.centeredText(this.font, selected.command(), cx, cy + 3, 0xAAAAAA);
+            graphicsExtractor.fakeItem(selected.iconStack(), cx - 8, cy - 22);
+            graphicsExtractor.centeredText(this.font, selected.displayName(), cx, cy - 2, 0xFFFF55);
+            graphicsExtractor.centeredText(this.font, selected.command(), cx, cy + 10, 0xAAAAAA);
         } else {
             graphicsExtractor.centeredText(this.font, "SELECT WARP", cx, cy - 4, 0x888888);
         }

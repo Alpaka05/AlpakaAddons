@@ -53,6 +53,14 @@ public class CommandWheelScreen extends Screen {
         }
     }
 
+    private void fillCircle(GuiGraphicsExtractor graphicsExtractor, int cx, int cy, int radius, int color) {
+        int r2 = radius * radius;
+        for (int y = -radius; y <= radius; y++) {
+            int dx = (int) Math.round(Math.sqrt(r2 - y * y));
+            graphicsExtractor.fill(cx - dx, cy + y, cx + dx, cy + y + 1, color);
+        }
+    }
+
     @Override
     public void extractBackground(GuiGraphicsExtractor graphicsExtractor, int mouseX, int mouseY, float partialTick) {
         super.extractBackground(graphicsExtractor, mouseX, mouseY, partialTick);
@@ -68,8 +76,8 @@ public class CommandWheelScreen extends Screen {
         double dy = mouseY - cy;
         double dist = Math.sqrt(dx * dx + dy * dy);
 
-        double innerRadius = 40.0;
-        double outerRadius = 135.0;
+        double innerRadius = 42.0;
+        double outerRadius = 145.0;
 
         selectedSector = -1;
         if (dist >= innerRadius && dist <= outerRadius + 20) {
@@ -83,53 +91,62 @@ public class CommandWheelScreen extends Screen {
             selectedSector = (int) Math.floor(shiftedAngle / sectorAngle) % count;
         }
 
-        graphicsExtractor.fill(cx - (int) outerRadius - 15, cy - (int) outerRadius - 15, cx + (int) outerRadius + 15, cy + (int) outerRadius + 15, 0x99000000);
+        // 1. Draw 100% Round Dark Circular Background Disk
+        fillCircle(graphicsExtractor, cx, cy, (int) outerRadius + 15, 0x99000000);
+        fillCircle(graphicsExtractor, cx, cy, (int) outerRadius + 5, 0xBB0B0D16);
 
         double sectorAngle = 2 * Math.PI / count;
+
+        // 2. Draw Radial Separator Lines
+        for (int i = 0; i < count; i++) {
+            double sepAngle = -Math.PI / 2 + i * sectorAngle - sectorAngle / 2.0;
+            for (double r = innerRadius; r <= outerRadius + 5; r += 2.0) {
+                int sx = cx + (int) Math.round(Math.cos(sepAngle) * r);
+                int sy = cy + (int) Math.round(Math.sin(sepAngle) * r);
+                graphicsExtractor.fill(sx - 1, sy - 1, sx + 1, sy + 1, 0x44555577);
+            }
+        }
+
+        // 3. Render Non-Overlapping Crisp Sector Tile Cards
+        double midRadius = (innerRadius + outerRadius) / 2.0 + 5;
 
         for (int i = 0; i < count; i++) {
             boolean isSelected = (i == selectedSector);
             CommandWheelFeature.WheelItem item = items.get(i);
 
             double angle = -Math.PI / 2 + i * sectorAngle;
-            double currentOuter = isSelected ? outerRadius + 10 : outerRadius;
+            int ix = cx + (int) Math.round(Math.cos(angle) * midRadius);
+            int iy = cy + (int) Math.round(Math.sin(angle) * midRadius);
 
-            double startAngle = angle - sectorAngle / 2.0;
-            double endAngle = angle + sectorAngle / 2.0;
-            int steps = 14;
+            int btnWidth = 94;
+            int btnHeight = 24;
+            int x1 = ix - btnWidth / 2;
+            int y1 = iy - btnHeight / 2;
+            int x2 = ix + btnWidth / 2;
+            int y2 = iy + btnHeight / 2;
 
-            int sectorColor = isSelected ? 0xDD7C4DFF : 0xAA222533;
-
-            for (int s = 0; s < steps; s++) {
-                double a1 = startAngle + (endAngle - startAngle) * s / steps;
-                double a2 = startAngle + (endAngle - startAngle) * (s + 1) / steps;
-
-                int x1 = cx + (int) Math.round(Math.cos(a1) * innerRadius);
-                int y1 = cy + (int) Math.round(Math.sin(a1) * innerRadius);
-                int x2 = cx + (int) Math.round(Math.cos(a1) * currentOuter);
-                int y2 = cy + (int) Math.round(Math.sin(a1) * currentOuter);
-                int x3 = cx + (int) Math.round(Math.cos(a2) * currentOuter);
-                int y3 = cy + (int) Math.round(Math.sin(a2) * currentOuter);
-
-                int minX = Math.min(Math.min(x1, x2), x3);
-                int maxX = Math.max(Math.max(x1, x2), x3);
-                int minY = Math.min(Math.min(y1, y2), y3);
-                int maxY = Math.max(Math.max(y1, y2), y3);
-
-                graphicsExtractor.fill(minX, minY, maxX, maxY, sectorColor);
+            if (isSelected) {
+                // Gold outer highlight border
+                graphicsExtractor.fill(x1 - 2, y1 - 2, x2 + 2, y2 + 2, 0xFFFFAA00);
+                // Vibrant Purple tile fill
+                graphicsExtractor.fill(x1 - 1, y1 - 1, x2 + 1, y2 + 1, 0xEE6C38FF);
+            } else {
+                // Sleek dark tile fill
+                graphicsExtractor.fill(x1, y1, x2, y2, 0xDD1B1F30);
             }
 
-            double midRadius = (innerRadius + currentOuter) / 2.0;
-            int ix = cx + (int) Math.round(Math.cos(angle) * midRadius) - 8;
-            int iy = cy + (int) Math.round(Math.sin(angle) * midRadius) - 14;
+            // Render Item Icon inside tile
+            graphicsExtractor.fakeItem(item.iconStack(), ix - btnWidth / 2 + 5, iy - 8);
 
-            graphicsExtractor.fakeItem(item.iconStack(), ix, iy);
-
+            // Render Item Title text inside tile
             int textColor = isSelected ? 0xFFFFFF55 : 0xFFFFFFFF;
-            graphicsExtractor.centeredText(this.font, item.displayName(), ix + 8, iy + 17, textColor);
+            graphicsExtractor.centeredText(this.font, item.displayName(), ix + 8, iy - 4, textColor);
         }
 
-        graphicsExtractor.fill(cx - (int) innerRadius, cy - (int) innerRadius, cx + (int) innerRadius, cy + (int) innerRadius, 0xEE111625);
+        // 4. Render 100% Round Center Hub Disk
+        fillCircle(graphicsExtractor, cx, cy, (int) innerRadius + 2, 0xFF5533AA);
+        fillCircle(graphicsExtractor, cx, cy, (int) innerRadius, 0xFF0D0F18);
+
         if (selectedSector >= 0 && selectedSector < count) {
             CommandWheelFeature.WheelItem selected = items.get(selectedSector);
             graphicsExtractor.fakeItem(selected.iconStack(), cx - 8, cy - 22);

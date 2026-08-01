@@ -18,7 +18,7 @@ public class AlpakaConfigScreen extends Screen {
 
     @Override
     protected void init() {
-        int centerY = this.height / 2 - 95;
+        int centerY = this.height / 2 - 110;
 
         // Add Title
         this.addRenderableWidget(new StringWidget(0, 10, this.width, 20, this.title, this.font));
@@ -157,12 +157,34 @@ public class AlpakaConfigScreen extends Screen {
         .build();
         this.addRenderableWidget(toggleButton7);
 
+        // 9. Smooth Perspective Duration Slider
+        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 200, 150, 20, 
+                Component.literal("Transition Duration"), this.font));
+
+        AbstractSliderButton durationSlider = new AbstractSliderButton(
+                this.width / 2 + 5, centerY + 200, 150, 20,
+                Component.literal(AlpakaConfig.instance.smoothPerspectiveDurationMs + " ms"),
+                (AlpakaConfig.instance.smoothPerspectiveDurationMs - 100) / 900.0
+        ) {
+            @Override
+            protected void updateMessage() {
+                setMessage(Component.literal(AlpakaConfig.instance.smoothPerspectiveDurationMs + " ms"));
+            }
+
+            @Override
+            protected void applyValue() {
+                AlpakaConfig.instance.smoothPerspectiveDurationMs = 100 + (int) Math.round(this.value * 900.0);
+                AlpakaConfig.save();
+            }
+        };
+        this.addRenderableWidget(durationSlider);
+
         // Add Done Button
         this.addRenderableWidget(Button.builder(
                 CommonComponents.GUI_DONE,
                 button -> this.onClose()
         )
-        .bounds(this.width / 2 - 100, centerY + 205, 200, 20)
+        .bounds(this.width / 2 - 100, centerY + 230, 200, 20)
         .build());
     }
 

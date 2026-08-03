@@ -14,7 +14,8 @@
     "ParticleEngineMixin",
     "EntityRendererMixin",
     "SoundEngineMixin",
-    "MinecraftMixin"
+    "MinecraftMixin",
+    "CameraMixin"
   ],
   "injectors": {
     "defaultRequire": 1

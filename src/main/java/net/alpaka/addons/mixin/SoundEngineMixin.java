@@ -45,14 +45,7 @@ public class SoundEngineMixin {
                 IS_INTERNAL_PLAY = false;
             }
             cir.setReturnValue(SoundEngine.PlayResult.STARTED);
-        } else if ("entity.experience_orb.pickup".equals(path)) {
-            IS_INTERNAL_PLAY = true;
-            try {
-                CustomSoundFeature.playXpOrbSound();
-            } finally {
-                IS_INTERNAL_PLAY = false;
-            }
-            cir.setReturnValue(SoundEngine.PlayResult.STARTED);
+
         } else if ("entity.generic.explode".equals(path) || "entity.dragon_fireball.explode".equals(path) || path.contains("explode")) {
             IS_INTERNAL_PLAY = true;
             try {

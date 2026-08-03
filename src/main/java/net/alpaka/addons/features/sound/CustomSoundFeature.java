@@ -15,7 +15,6 @@ public class CustomSoundFeature {
     public static SoundEvent BUTTON_CLICK_SOUND;
     public static SoundEvent BLAZE_DEATH_SOUND;
     public static SoundEvent INVENTORY_CLICK_SOUND;
-    public static SoundEvent XP_ORB_SOUND;
     public static SoundEvent HEARTBEAT_SOUND;
     public static SoundEvent BOSS_SPAWN_SOUND;
     public static SoundEvent EXPLODE_1_SOUND;
@@ -36,7 +35,6 @@ public class CustomSoundFeature {
         BUTTON_CLICK_SOUND = registerSound("alpaka:button_click");
         BLAZE_DEATH_SOUND = registerSound("alpaka:blaze_death");
         INVENTORY_CLICK_SOUND = registerSound("alpaka:inventory_click");
-        XP_ORB_SOUND = registerSound("alpaka:xp_orb");
         HEARTBEAT_SOUND = registerSound("alpaka:heartbeat");
         BOSS_SPAWN_SOUND = registerSound("alpaka:boss_spawn");
         EXPLODE_1_SOUND = registerSound("alpaka:explode1");
@@ -91,10 +89,6 @@ public class CustomSoundFeature {
 
     public static void playInventoryClickSound() {
         playSound(INVENTORY_CLICK_SOUND);
-    }
-
-    public static void playXpOrbSound() {
-        playSound(XP_ORB_SOUND);
     }
 
     public static void playHeartbeatSound() {

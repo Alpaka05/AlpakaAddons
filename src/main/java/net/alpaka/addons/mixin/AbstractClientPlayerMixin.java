@@ -16,13 +16,6 @@ public class AbstractClientPlayerMixin {
         float originalFov = info.getReturnValue();
         if (ZoomFeature.isZooming()) {
             info.setReturnValue((float) (originalFov / ZoomFeature.getZoomFactor()));
-        } else if (AlpakaConfig.instance.smoothPerspectiveEnabled) {
-            float transitionScale = SmoothPerspectiveFeature.getTransitionScale();
-            if (transitionScale < 1.0f) {
-                info.setReturnValue(originalFov * transitionScale);
-            } else {
-                ZoomFeature.resetZoom();
-            }
         } else {
             ZoomFeature.resetZoom();
         }

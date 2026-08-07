@@ -46,14 +46,6 @@ public class SoundEngineMixin {
             }
             cir.setReturnValue(SoundEngine.PlayResult.STARTED);
 
-        } else if ("entity.generic.explode".equals(path) || "entity.dragon_fireball.explode".equals(path) || path.contains("explode")) {
-            IS_INTERNAL_PLAY = true;
-            try {
-                CustomSoundFeature.playRandomHyperionExplodeSound();
-            } finally {
-                IS_INTERNAL_PLAY = false;
-            }
-            cir.setReturnValue(SoundEngine.PlayResult.STARTED);
         } else if ("entity.zombie_villager.cure".equals(path) || path.contains("remedy")) {
             IS_INTERNAL_PLAY = true;
             try {

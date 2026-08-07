@@ -35,28 +35,22 @@
       "alpaka:boss_spawn"
     ]
   },
-  "explode1": {
+  "inventory_open": {
     "category": "master",
     "sounds": [
-      "alpaka:random/explode1"
+      "alpaka:inventory_open"
     ]
   },
-  "explode2": {
+  "inventory_close": {
     "category": "master",
     "sounds": [
-      "alpaka:random/explode2"
+      "alpaka:inventory_close"
     ]
   },
-  "explode3": {
+  "player_hurt": {
     "category": "master",
     "sounds": [
-      "alpaka:random/explode3"
-    ]
-  },
-  "explode4": {
-    "category": "master",
-    "sounds": [
-      "alpaka:random/explode4"
+      "alpaka:player_hurt"
     ]
   },
   "zombie_remedy": {

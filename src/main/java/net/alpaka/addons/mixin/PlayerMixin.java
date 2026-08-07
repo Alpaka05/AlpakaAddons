@@ -20,4 +20,11 @@ public class PlayerMixin {
             info.setReturnValue(SlayerDropTracker.highlightName(original));
         }
     }
+
+    @Inject(method = "getHurtSound", at = @At("HEAD"), cancellable = true)
+    private void onGetHurtSound(net.minecraft.world.damagesource.DamageSource damageSource, CallbackInfoReturnable<net.minecraft.sounds.SoundEvent> cir) {
+        if (AlpakaConfig.instance.customSoundsEnabled && (Object)this == net.minecraft.client.Minecraft.getInstance().player) {
+            cir.setReturnValue(net.alpaka.addons.features.sound.CustomSoundFeature.DAMAGE_SOUND);
+        }
+    }
 }

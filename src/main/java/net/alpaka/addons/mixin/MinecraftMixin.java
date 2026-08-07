@@ -22,4 +22,21 @@ public abstract class MinecraftMixin {
             this.setScreen(new CustomPauseScreen());
         }
     }
+
+    @Inject(method = "setScreen", at = @At("HEAD"))
+    private void onSetScreen(Screen screen, CallbackInfo ci) {
+        Minecraft mc = (Minecraft)(Object)this;
+        Screen oldScreen = mc.screen;
+        
+        boolean isOldInventory = oldScreen instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen 
+            || oldScreen instanceof net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
+        boolean isNewInventory = screen instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen 
+            || screen instanceof net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
+        
+        if (isOldInventory && !isNewInventory) {
+            net.alpaka.addons.features.sound.CustomSoundFeature.playInventoryCloseSound();
+        } else if (!isOldInventory && isNewInventory) {
+            net.alpaka.addons.features.sound.CustomSoundFeature.playInventoryOpenSound();
+        }
+    }
 }

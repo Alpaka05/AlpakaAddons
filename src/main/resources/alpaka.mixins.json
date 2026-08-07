@@ -10,12 +10,17 @@
     "MouseHandlerMixin",
     "AbstractClientPlayerMixin",
     "ScreenMixin",
-    "BlazeMixin",
     "ParticleEngineMixin",
     "EntityRendererMixin",
     "SoundEngineMixin",
     "MinecraftMixin",
-    "CameraMixin"
+    "CameraMixin",
+    "GuiMixin",
+    "ItemInHandRendererMixin",
+    "LightmapMixin",
+    "LevelRendererMixin",
+    "DepthStencilStateMixin",
+    "ChatComponentMixin"
   ],
   "injectors": {
     "defaultRequire": 1

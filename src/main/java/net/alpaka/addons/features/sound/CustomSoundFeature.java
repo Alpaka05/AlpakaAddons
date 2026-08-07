@@ -10,17 +10,23 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.RandomSource;
+import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
+import net.fabricmc.fabric.api.resource.ResourcePackActivationType;
+import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.packs.repository.PackRepository;
+import java.util.ArrayList;
+import java.util.List;
 
 public class CustomSoundFeature {
     public static SoundEvent BUTTON_CLICK_SOUND;
     public static SoundEvent BLAZE_DEATH_SOUND;
     public static SoundEvent INVENTORY_CLICK_SOUND;
+    public static SoundEvent INVENTORY_OPEN_SOUND;
+    public static SoundEvent INVENTORY_CLOSE_SOUND;
+    public static SoundEvent DAMAGE_SOUND;
     public static SoundEvent HEARTBEAT_SOUND;
     public static SoundEvent BOSS_SPAWN_SOUND;
-    public static SoundEvent EXPLODE_1_SOUND;
-    public static SoundEvent EXPLODE_2_SOUND;
-    public static SoundEvent EXPLODE_3_SOUND;
-    public static SoundEvent EXPLODE_4_SOUND;
     public static SoundEvent ZOMBIE_REMEDY_SOUND;
     public static SoundEvent SUCCESSFUL_HIT_SOUND;
     public static SoundEvent HOTBAR_EQUIP_SOUND;
@@ -35,12 +41,11 @@ public class CustomSoundFeature {
         BUTTON_CLICK_SOUND = registerSound("alpaka:button_click");
         BLAZE_DEATH_SOUND = registerSound("alpaka:blaze_death");
         INVENTORY_CLICK_SOUND = registerSound("alpaka:inventory_click");
+        INVENTORY_OPEN_SOUND = registerSound("alpaka:inventory_open");
+        INVENTORY_CLOSE_SOUND = registerSound("alpaka:inventory_close");
+        DAMAGE_SOUND = registerSound("alpaka:player_hurt");
         HEARTBEAT_SOUND = registerSound("alpaka:heartbeat");
         BOSS_SPAWN_SOUND = registerSound("alpaka:boss_spawn");
-        EXPLODE_1_SOUND = registerSound("alpaka:explode1");
-        EXPLODE_2_SOUND = registerSound("alpaka:explode2");
-        EXPLODE_3_SOUND = registerSound("alpaka:explode3");
-        EXPLODE_4_SOUND = registerSound("alpaka:explode4");
         ZOMBIE_REMEDY_SOUND = registerSound("alpaka:zombie_remedy");
         SUCCESSFUL_HIT_SOUND = registerSound("alpaka:successful_hit");
         HOTBAR_EQUIP_SOUND = registerSound("alpaka:hotbar_equip");
@@ -54,7 +59,7 @@ public class CustomSoundFeature {
 
                 // 1. Low Health Heartbeat
                 float healthRatio = player.getHealth() / player.getMaxHealth();
-                if (healthRatio > 0 && healthRatio <= 0.25f) {
+                if (healthRatio > 0 && healthRatio <= 0.30f) {
                     long now = System.currentTimeMillis();
                     if (now - lastHeartbeatTime >= 900) {
                         lastHeartbeatTime = now;
@@ -99,15 +104,12 @@ public class CustomSoundFeature {
         playSound(BOSS_SPAWN_SOUND);
     }
 
-    public static void playRandomHyperionExplodeSound() {
-        int choice = RANDOM.nextInt(4);
-        SoundEvent sound = switch (choice) {
-            case 0 -> EXPLODE_1_SOUND;
-            case 1 -> EXPLODE_2_SOUND;
-            case 2 -> EXPLODE_3_SOUND;
-            default -> EXPLODE_4_SOUND;
-        };
-        playSound(sound);
+    public static void playInventoryOpenSound() {
+        playSound(INVENTORY_OPEN_SOUND);
+    }
+
+    public static void playInventoryCloseSound() {
+        playSound(INVENTORY_CLOSE_SOUND);
     }
 
     public static void playZombieRemedySound() {

@@ -18,7 +18,7 @@ public class AlpakaConfigScreen extends Screen {
 
     @Override
     protected void init() {
-        int centerY = this.height / 2 - 130;
+        int centerY = this.height / 2 - 160;
 
         // Add Title
         this.addRenderableWidget(new StringWidget(0, 8, this.width, 20, this.title, this.font));
@@ -55,16 +55,16 @@ public class AlpakaConfigScreen extends Screen {
         .build();
         this.addRenderableWidget(toggleButton2);
 
-        // 3. Slayer Party Commands
+        // 3. Fullbright
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 44, 150, 20, 
-                Component.literal("Slayer Party Commands"), this.font));
+                Component.literal("Fullbright"), this.font));
 
         Button toggleButton3 = Button.builder(
-                CommonComponents.optionStatus(AlpakaConfig.instance.partyCommandsEnabled),
+                CommonComponents.optionStatus(AlpakaConfig.instance.fullbrightEnabled),
                 button -> {
-                    AlpakaConfig.instance.partyCommandsEnabled = !AlpakaConfig.instance.partyCommandsEnabled;
+                    AlpakaConfig.instance.fullbrightEnabled = !AlpakaConfig.instance.fullbrightEnabled;
                     AlpakaConfig.save();
-                    button.setMessage(CommonComponents.optionStatus(AlpakaConfig.instance.partyCommandsEnabled));
+                    button.setMessage(CommonComponents.optionStatus(AlpakaConfig.instance.fullbrightEnabled));
                 }
         )
         .bounds(this.width / 2 + 5, centerY + 44, 150, 20)
@@ -195,25 +195,8 @@ public class AlpakaConfigScreen extends Screen {
         };
         this.addRenderableWidget(durationSlider);
 
-        // 11. Dark Mode Skyblock Toggle
+        // 11. Custom Escape Menu Toggle
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 220, 150, 20, 
-                Component.literal("Dark Mode Skyblock"), this.font));
-
-        Button toggleButton8 = Button.builder(
-                CommonComponents.optionStatus(AlpakaConfig.instance.darkModeSkyblockEnabled),
-                button -> {
-                    AlpakaConfig.instance.darkModeSkyblockEnabled = !AlpakaConfig.instance.darkModeSkyblockEnabled;
-                    AlpakaConfig.save();
-                    button.setMessage(CommonComponents.optionStatus(AlpakaConfig.instance.darkModeSkyblockEnabled));
-                    net.alpaka.addons.features.darkmode.DarkModeSkyblockFeature.applyState(AlpakaConfig.instance.darkModeSkyblockEnabled);
-                }
-        )
-        .bounds(this.width / 2 + 5, centerY + 220, 150, 20)
-        .build();
-        this.addRenderableWidget(toggleButton8);
-
-        // 12. Custom Escape Menu Toggle
-        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 242, 150, 20, 
                 Component.literal("Custom Escape Menu"), this.font));
 
         Button toggleButton9 = Button.builder(
@@ -224,16 +207,80 @@ public class AlpakaConfigScreen extends Screen {
                     button.setMessage(CommonComponents.optionStatus(AlpakaConfig.instance.customEscapeMenuEnabled));
                 }
         )
-        .bounds(this.width / 2 + 5, centerY + 242, 150, 20)
+        .bounds(this.width / 2 + 5, centerY + 220, 150, 20)
         .build();
         this.addRenderableWidget(toggleButton9);
+
+        // 11b. Expand Chat History Toggle
+        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 242, 150, 20,
+                Component.literal("Expand Chat History"), this.font));
+
+        Button toggleChatHistory = Button.builder(
+                CommonComponents.optionStatus(AlpakaConfig.instance.expandChatHistory),
+                button -> {
+                    AlpakaConfig.instance.expandChatHistory = !AlpakaConfig.instance.expandChatHistory;
+                    AlpakaConfig.save();
+                    button.setMessage(CommonComponents.optionStatus(AlpakaConfig.instance.expandChatHistory));
+                }
+        )
+        .bounds(this.width / 2 + 5, centerY + 242, 150, 20)
+        .build();
+        this.addRenderableWidget(toggleChatHistory);
+
+        // 12. Player Model settings button
+        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 264, 150, 20,
+                Component.literal("Player Model Settings"), this.font));
+
+        Button playerModelButton = Button.builder(
+                Component.literal("Configure..."),
+                button -> {
+                    if (this.minecraft != null) {
+                        this.minecraft.setScreen(new PlayerModelConfigScreen(this));
+                    }
+                }
+        )
+        .bounds(this.width / 2 + 5, centerY + 264, 150, 20)
+        .build();
+        this.addRenderableWidget(playerModelButton);
+
+        // 13. Item Size settings button
+        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 286, 150, 20,
+                Component.literal("Item Size Settings"), this.font));
+
+        Button itemSizeButton = Button.builder(
+                Component.literal("Configure..."),
+                button -> {
+                    if (this.minecraft != null) {
+                        this.minecraft.setScreen(new ItemSizeConfigScreen(this));
+                    }
+                }
+        )
+        .bounds(this.width / 2 + 5, centerY + 286, 150, 20)
+        .build();
+        this.addRenderableWidget(itemSizeButton);
+
+        // 14. Block Overlay settings button
+        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 308, 150, 20,
+                Component.literal("Block Overlay Settings"), this.font));
+
+        Button blockOverlayButton = Button.builder(
+                Component.literal("Configure..."),
+                button -> {
+                    if (this.minecraft != null) {
+                        this.minecraft.setScreen(new BlockOverlayConfigScreen(this));
+                    }
+                }
+        )
+        .bounds(this.width / 2 + 5, centerY + 308, 150, 20)
+        .build();
+        this.addRenderableWidget(blockOverlayButton);
 
         // Add Done Button
         this.addRenderableWidget(Button.builder(
                 CommonComponents.GUI_DONE,
                 button -> this.onClose()
         )
-        .bounds(this.width / 2 - 100, centerY + 270, 200, 20)
+        .bounds(this.width / 2 - 100, centerY + 338, 200, 20)
         .build());
     }
 

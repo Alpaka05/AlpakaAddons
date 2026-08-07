@@ -318,7 +318,7 @@ public class SlayerDropTracker {
     }
 
     public static void handlePartyCommand(String message) {
-        if (!AlpakaConfig.instance.partyCommandsEnabled) return;
+        if (!AlpakaConfig.instance.slayerDropTrackerEnabled) return;
 
         Matcher matcher = PARTY_PATTERN.matcher(message);
         if (matcher.matches()) {

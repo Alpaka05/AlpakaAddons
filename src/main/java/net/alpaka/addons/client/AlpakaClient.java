@@ -1,6 +1,5 @@
 package net.alpaka.addons.client;
 
-import net.alpaka.addons.features.darkmode.DarkModeSkyblockFeature;
 import net.alpaka.addons.features.slayer.SlayerDropTracker;
 import net.alpaka.addons.features.sound.CustomSoundFeature;
 import net.alpaka.addons.features.wheel.CommandWheelFeature;
@@ -13,7 +12,6 @@ import net.minecraft.client.Minecraft;
 public class AlpakaClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
-        DarkModeSkyblockFeature.register();
         CustomSoundFeature.register();
         SlayerDropTracker.registerEvents();
         ZoomFeature.register();

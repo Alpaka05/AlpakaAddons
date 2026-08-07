@@ -352,5 +352,35 @@ public class SlayerDropTracker {
             int kills = data != null ? data.kills : 0;
             sendModMessage("§e" + type.display + ": §a" + kills + " §7kills");
         }
+
+        sendModMessage("§6--- RNG Drops Tracker ---");
+        sendModMessage("§eHigh Class Archfiend Dice: §a" + getSinceLastDropText("High class archfiend dice"));
+        sendModMessage("§eJudgement Core: §a" + getSinceLastDropText("Judgement core"));
+        sendModMessage("§eWarden Heart: §a" + getSinceLastDropText("warden heart"));
+        sendModMessage("§ePrimordial Eye: §a" + getSinceLastDropText("primordial eye"));
+        sendModMessage("§eOverflux Capacitor: §a" + getSinceLastDropText("overflux capacitor"));
+    }
+
+    private static String getSinceLastDropText(String dropName) {
+        String value = getSinceLastDrop(dropName);
+        if (value.equals("never")) {
+            return "§cnever";
+        }
+        return "§a" + value + " §7bosses";
+    }
+
+    private static String getSinceLastDrop(String dropName) {
+        for (Map.Entry<SlayerType, AlpakaConfig.SlayerData> entry : AlpakaConfig.instance.slayerBossMap.entrySet()) {
+            AlpakaConfig.SlayerData data = entry.getValue();
+            if (data == null || data.drops == null) continue;
+            for (Map.Entry<String, Integer> dropEntry : data.drops.entrySet()) {
+                if (dropEntry.getKey().equalsIgnoreCase(dropName)) {
+                    int lastDroppedKill = dropEntry.getValue();
+                    int sinceLast = data.kills - lastDroppedKill;
+                    return String.valueOf(sinceLast);
+                }
+            }
+        }
+        return "never";
     }
 }

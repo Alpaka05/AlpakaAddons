@@ -27,6 +27,12 @@ public class AlpakaConfigScreen extends Screen {
     // Scrolling & Layout
     private double scrollY = 0.0;
     private double targetScrollY = 0.0;
+    private double maxScrollY = 0.0;
+
+    private double sidebarScrollY = 0.0;
+    private double targetSidebarScrollY = 0.0;
+    private double maxSidebarScrollY = 0.0;
+
     private long openTimeMs = 0L;
     private long lastFrameTime = System.currentTimeMillis();
 
@@ -56,20 +62,21 @@ public class AlpakaConfigScreen extends Screen {
         float deltaSec = Math.min(0.1f, (now - lastFrameTime) / 1000.0f);
         lastFrameTime = now;
 
-        // Smooth scroll interpolation
+        // Smooth scroll interpolation for main content and sidebar
         scrollY += (targetScrollY - scrollY) * Math.min(1.0f, deltaSec * 14.0f);
+        sidebarScrollY += (targetSidebarScrollY - sidebarScrollY) * Math.min(1.0f, deltaSec * 14.0f);
 
         // Render translucent backdrop so game is visible behind and around the config panel
         graphics.fill(0, 0, this.width, this.height, 0x70000000);
 
-        // Calculate Window Panel Dimensions
-        int winW = Math.min(880, Math.max(600, this.width - 70));
-        int winH = Math.min(560, Math.max(400, this.height - 40));
+        // Calculate Window Panel Dimensions (compact window leaving game visible around sides)
+        int winW = Math.min(660, Math.max(480, (int) (this.width * 0.70)));
+        int winH = Math.min(440, Math.max(340, (int) (this.height * 0.68)));
         int winX = (this.width - winW) / 2;
         int winY = (this.height - winH) / 2;
 
-        int headerHeight = 44;
-        int sidebarWidth = 200;
+        int headerHeight = 38;
+        int sidebarWidth = 160;
 
         int contentX = winX + sidebarWidth;
         int contentY = winY + headerHeight;
@@ -106,22 +113,22 @@ public class AlpakaConfigScreen extends Screen {
 
         // Header Title
         String mainTitle = "ALPAKA ADDONS";
-        graphics.text(this.font, Component.literal(mainTitle), winX + 16, winY + 14, ModernGuiUtils.COLOR_TEXT_PRIMARY);
-        graphics.text(this.font, Component.literal("v1.0.29"), winX + 16 + this.font.width(mainTitle) + 8, winY + 15, ModernGuiUtils.COLOR_TEXT_MUTED);
+        graphics.text(this.font, Component.literal(mainTitle), winX + 12, winY + 11, ModernGuiUtils.COLOR_TEXT_PRIMARY);
+        graphics.text(this.font, Component.literal("v1.0.29"), winX + 12 + this.font.width(mainTitle) + 6, winY + 12, ModernGuiUtils.COLOR_TEXT_MUTED);
 
-        // Close / Done Button in Header (low-key, not fully primary highlighted)
-        int closeW = 86;
-        int closeH = 24;
-        int closeX = winX + winW - closeW - 12;
-        int closeY = winY + 10;
+        // Close / Done Button in Header (low-key)
+        int closeW = 68;
+        int closeH = 22;
+        int closeX = winX + winW - closeW - 8;
+        int closeY = winY + 8;
         boolean isHoveringClose = mouseX >= closeX && mouseX <= closeX + closeW && mouseY >= closeY && mouseY <= closeY + closeH;
         ModernGuiUtils.drawModernButton(graphics, this.font, closeX, closeY, closeW, closeH, "Done ✕", isHoveringClose, false);
 
         // Search Bar in Header
-        int searchW = 210;
-        int searchH = 24;
-        int searchX = closeX - searchW - 12;
-        int searchY = winY + 10;
+        int searchW = 160;
+        int searchH = 22;
+        int searchX = closeX - searchW - 8;
+        int searchY = winY + 8;
 
         boolean isHoveringSearch = mouseX >= searchX && mouseX <= searchX + searchW && mouseY >= searchY && mouseY <= searchY + searchH;
         int searchBorder = searchFocused ? ModernGuiUtils.COLOR_ACCENT : (isHoveringSearch ? ModernGuiUtils.COLOR_ACCENT_DIM : ModernGuiUtils.COLOR_CARD_BORDER);
@@ -146,15 +153,30 @@ public class AlpakaConfigScreen extends Screen {
             graphics.text(this.font, Component.literal("✕"), clearX + 2, searchY + (searchH - 8) / 2, hoverClear ? ModernGuiUtils.COLOR_ACCENT : ModernGuiUtils.COLOR_TEXT_MUTED);
         }
 
-        // 4. Sidebar Categories (Selecting shifts text right instead of thick bar border)
+        // 4. Sidebar Categories with Scissor Clipping to keep categories strictly inside the panel
         ConfigCategory[] categories = ConfigCategory.values();
-        int catY = winY + headerHeight + 10;
-        int catH = 34;
+        int catH = 28;
+        int catSpacing = 4;
         int catW = sidebarWidth - 16;
+
+        int sideClipX = winX + 4;
+        int sideClipY = winY + headerHeight + 4;
+        int sideClipW = sidebarWidth - 8;
+        int sideClipH = winH - headerHeight - 8;
+
+        int totalSidebarH = categories.length * (catH + catSpacing) + 8;
+        maxSidebarScrollY = Math.max(0, totalSidebarH - sideClipH);
+        targetSidebarScrollY = Math.max(0, Math.min(maxSidebarScrollY, targetSidebarScrollY));
+
+        graphics.enableScissor(sideClipX, sideClipY, sideClipX + sideClipW, sideClipY + sideClipH);
+
+        int catY = sideClipY + 4 - (int) sidebarScrollY;
 
         for (ConfigCategory cat : categories) {
             boolean isSelected = (cat == activeCategory);
-            boolean isHovered = mouseX >= winX + 8 && mouseX <= winX + 8 + catW && mouseY >= catY && mouseY <= catY + catH;
+            boolean isHovered = mouseX >= winX + 8 && mouseX <= winX + 8 + catW &&
+                                mouseY >= catY && mouseY <= catY + catH &&
+                                mouseY >= sideClipY && mouseY <= sideClipY + sideClipH;
 
             int catBg = isSelected ? ModernGuiUtils.COLOR_CARD_BG : (isHovered ? ModernGuiUtils.COLOR_CARD_BG_HOVER : ModernGuiUtils.COLOR_SIDEBAR_BG);
             int catBorder = isSelected ? ModernGuiUtils.COLOR_ACCENT_DIM : (isHovered ? ModernGuiUtils.COLOR_CARD_BORDER : 0x00000000);
@@ -165,60 +187,62 @@ public class AlpakaConfigScreen extends Screen {
             }
 
             // Category Label: Shift text right when selected
-            int textX = winX + (isSelected ? 24 : 16);
+            int textX = winX + (isSelected ? 22 : 14);
             int labelColor = isSelected ? ModernGuiUtils.COLOR_ACCENT : (isHovered ? ModernGuiUtils.COLOR_TEXT_PRIMARY : ModernGuiUtils.COLOR_TEXT_MUTED);
             graphics.text(this.font, Component.literal(cat.getFullLabel()), textX, catY + (catH - 8) / 2, labelColor);
 
             // Option Count Badge
             List<ConfigOption> optionsForCat = AlpakaConfigRegistry.getOptions(cat, searchQuery);
             String countText = String.valueOf(optionsForCat.size());
-            int countX = winX + 8 + catW - this.font.width(countText) - 10;
+            int countX = winX + 8 + catW - this.font.width(countText) - 8;
             graphics.text(this.font, Component.literal(countText), countX, catY + (catH - 8) / 2, ModernGuiUtils.COLOR_TEXT_DARK);
 
-            catY += catH + 4;
+            catY += catH + catSpacing;
         }
+
+        graphics.disableScissor();
 
         // 5. Render Options in Main Panel with Scissor Clipping to prevent scrolling overlap
         List<ConfigOption> options = AlpakaConfigRegistry.getOptions(activeCategory, searchQuery);
 
-        int totalContentHeight = 50 + options.size() * 60 + 30;
-        int maxScroll = Math.max(0, totalContentHeight - contentH);
-        targetScrollY = Math.max(0, Math.min(maxScroll, targetScrollY));
+        int totalContentHeight = 40 + options.size() * 52 + 20;
+        maxScrollY = Math.max(0, totalContentHeight - contentH);
+        targetScrollY = Math.max(0, Math.min(maxScrollY, targetScrollY));
 
         int clipY = contentY + 6;
         int clipH = contentH - 12;
 
         graphics.enableScissor(contentX, clipY, contentX + contentW, clipY + clipH);
 
-        int startOptionY = contentY + 16 - (int) scrollY;
+        int startOptionY = contentY + 12 - (int) scrollY;
 
         // Render Category Header inside Content Area
         String catTitle = activeCategory.getDisplayName();
         if (!searchQuery.isEmpty()) {
             catTitle = "Search results for: \"" + searchQuery + "\"";
         }
-        graphics.text(this.font, Component.literal(catTitle), contentX + 20, startOptionY, ModernGuiUtils.COLOR_TEXT_PRIMARY);
-        graphics.text(this.font, Component.literal(activeCategory.getDescription()), contentX + 20, startOptionY + 14, ModernGuiUtils.COLOR_TEXT_MUTED);
+        graphics.text(this.font, Component.literal(catTitle), contentX + 16, startOptionY, ModernGuiUtils.COLOR_TEXT_PRIMARY);
+        graphics.text(this.font, Component.literal(activeCategory.getDescription()), contentX + 16, startOptionY + 13, ModernGuiUtils.COLOR_TEXT_MUTED);
 
-        startOptionY += 34;
+        startOptionY += 30;
 
         if (options.isEmpty()) {
             String emptyMsg = "No settings found for \"" + searchQuery + "\".";
-            graphics.text(this.font, Component.literal(emptyMsg), contentX + 20, startOptionY + 16, ModernGuiUtils.COLOR_TOGGLE_OFF_TEXT);
+            graphics.text(this.font, Component.literal(emptyMsg), contentX + 16, startOptionY + 12, ModernGuiUtils.COLOR_TOGGLE_OFF_TEXT);
         } else {
-            int cardW = contentW - 36;
-            int cardH = 50;
+            int cardW = contentW - 28;
+            int cardH = 44;
 
             for (ConfigOption opt : options) {
                 if (startOptionY + cardH >= clipY && startOptionY <= clipY + clipH) {
                     if (opt.getType() == ConfigOption.Type.HEADER) {
-                        ModernGuiUtils.drawRect(graphics, contentX + 20, startOptionY + 10, cardW, 1, ModernGuiUtils.COLOR_CARD_BORDER);
-                        graphics.text(this.font, Component.literal("• " + opt.getTitle().toUpperCase()), contentX + 20, startOptionY + 16, ModernGuiUtils.COLOR_ACCENT);
-                        startOptionY += 34;
+                        ModernGuiUtils.drawRect(graphics, contentX + 14, startOptionY + 8, cardW, 1, ModernGuiUtils.COLOR_CARD_BORDER);
+                        graphics.text(this.font, Component.literal("• " + opt.getTitle().toUpperCase()), contentX + 14, startOptionY + 14, ModernGuiUtils.COLOR_ACCENT);
+                        startOptionY += 30;
                         continue;
                     }
 
-                    boolean isCardHovered = mouseX >= contentX + 20 && mouseX <= contentX + 20 + cardW &&
+                    boolean isCardHovered = mouseX >= contentX + 14 && mouseX <= contentX + 14 + cardW &&
                                            mouseY >= startOptionY && mouseY <= startOptionY + cardH &&
                                            mouseY >= clipY && mouseY <= clipY + clipH;
 
@@ -228,31 +252,32 @@ public class AlpakaConfigScreen extends Screen {
                     float popScale = 1.0f + 0.015f * opt.getHoverProgress() - 0.015f * opt.getClickProgress();
 
                     graphics.pose().pushMatrix();
-                    float cardCenterX = contentX + 20 + cardW / 2.0f;
+                    float cardCenterX = contentX + 14 + cardW / 2.0f;
                     float cardCenterY = startOptionY + cardH / 2.0f;
                     graphics.pose().scaleAround(popScale, popScale, cardCenterX, cardCenterY);
 
-                    ModernGuiUtils.drawModernCard(graphics, contentX + 20, startOptionY, cardW, cardH, isCardHovered, false);
+                    ModernGuiUtils.drawModernCard(graphics, contentX + 14, startOptionY, cardW, cardH, isCardHovered, false);
 
-                    // Right Control Widgets
-                    int widgetW = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 54 : (opt.getType() == ConfigOption.Type.ACTION ? (opt.getId().contains("color") ? 64 : 110) : 120);
-                    int widgetH = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 22 : 24;
-                    int widgetX = contentX + 20 + cardW - widgetW - 14;
+                    // Right Control Widgets (Compact sizing to fit smaller panel)
+                    int widgetW = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 42 :
+                                  (opt.getType() == ConfigOption.Type.ACTION ? (opt.getId().contains("color") ? 40 : 85) : 90);
+                    int widgetH = 18;
+                    int widgetX = contentX + 14 + cardW - widgetW - 10;
                     int widgetY = startOptionY + (cardH - widgetH) / 2;
 
                     // Title & Description (Wrapped to maxDescW to prevent overlap with control widgets)
-                    graphics.text(this.font, Component.literal(opt.getTitle()), contentX + 32, startOptionY + 10, ModernGuiUtils.COLOR_TEXT_PRIMARY);
+                    graphics.text(this.font, Component.literal(opt.getTitle()), contentX + 24, startOptionY + 8, ModernGuiUtils.COLOR_TEXT_PRIMARY);
 
                     String desc = opt.getDescription();
-                    int maxDescW = widgetX - (contentX + 32) - 12;
+                    int maxDescW = widgetX - (contentX + 24) - 10;
                     List<net.minecraft.network.chat.FormattedText> descLines = this.font.getSplitter().splitLines(desc, maxDescW, net.minecraft.network.chat.Style.EMPTY);
 
                     if (descLines.size() > 1) {
                         for (int i = 0; i < Math.min(2, descLines.size()); i++) {
-                            graphics.text(this.font, Component.literal(descLines.get(i).getString()), contentX + 32, startOptionY + 23 + i * 10, ModernGuiUtils.COLOR_TEXT_MUTED);
+                            graphics.text(this.font, Component.literal(descLines.get(i).getString()), contentX + 24, startOptionY + 20 + i * 9, ModernGuiUtils.COLOR_TEXT_MUTED);
                         }
                     } else {
-                        graphics.text(this.font, Component.literal(desc), contentX + 32, startOptionY + 25, ModernGuiUtils.COLOR_TEXT_MUTED);
+                        graphics.text(this.font, Component.literal(desc), contentX + 24, startOptionY + 22, ModernGuiUtils.COLOR_TEXT_MUTED);
                     }
 
                     if (opt.getType() == ConfigOption.Type.BOOLEAN) {
@@ -276,7 +301,7 @@ public class AlpakaConfigScreen extends Screen {
                     graphics.pose().popMatrix();
                 }
 
-                startOptionY += cardH + 8;
+                startOptionY += cardH + 6;
             }
         }
 
@@ -292,13 +317,13 @@ public class AlpakaConfigScreen extends Screen {
         double mouseX = event.x();
         double mouseY = event.y();
 
-        int winW = Math.min(880, Math.max(600, this.width - 70));
-        int winH = Math.min(560, Math.max(400, this.height - 40));
+        int winW = Math.min(660, Math.max(480, (int) (this.width * 0.70)));
+        int winH = Math.min(440, Math.max(340, (int) (this.height * 0.68)));
         int winX = (this.width - winW) / 2;
         int winY = (this.height - winH) / 2;
 
-        int headerHeight = 44;
-        int sidebarWidth = 200;
+        int headerHeight = 38;
+        int sidebarWidth = 160;
 
         int contentX = winX + sidebarWidth;
         int contentY = winY + headerHeight;
@@ -306,10 +331,10 @@ public class AlpakaConfigScreen extends Screen {
         int contentH = winH - headerHeight;
 
         // Close / Done button click
-        int closeW = 86;
-        int closeH = 24;
-        int closeX = winX + winW - closeW - 12;
-        int closeY = winY + 10;
+        int closeW = 68;
+        int closeH = 22;
+        int closeX = winX + winW - closeW - 8;
+        int closeY = winY + 8;
         if (mouseX >= closeX && mouseX <= closeX + closeW && mouseY >= closeY && mouseY <= closeY + closeH) {
             playPloppSound();
             this.onClose();
@@ -317,10 +342,10 @@ public class AlpakaConfigScreen extends Screen {
         }
 
         // Search bar click
-        int searchW = 210;
-        int searchH = 24;
-        int searchX = closeX - searchW - 12;
-        int searchY = winY + 10;
+        int searchW = 160;
+        int searchH = 22;
+        int searchX = closeX - searchW - 8;
+        int searchY = winY + 8;
 
         if (searchQuery.length() > 0) {
             int clearX = searchX + searchW - 18;
@@ -341,14 +366,18 @@ public class AlpakaConfigScreen extends Screen {
         }
 
         // Category Sidebar click
-        if (mouseX >= winX && mouseX <= winX + sidebarWidth && mouseY >= winY + headerHeight && mouseY <= winY + winH) {
+        int sideClipY = winY + headerHeight + 4;
+        int sideClipH = winH - headerHeight - 8;
+
+        if (mouseX >= winX && mouseX <= winX + sidebarWidth && mouseY >= sideClipY && mouseY <= sideClipY + sideClipH) {
             ConfigCategory[] categories = ConfigCategory.values();
-            int catY = winY + headerHeight + 10;
-            int catH = 34;
+            int catH = 28;
+            int catSpacing = 4;
             int catW = sidebarWidth - 16;
+            int catY = sideClipY + 4 - (int) sidebarScrollY;
 
             for (ConfigCategory cat : categories) {
-                if (mouseX >= winX + 8 && mouseX <= winX + 8 + catW && mouseY >= catY && mouseY <= catY + catH) {
+                if (mouseX >= winX + 8 && mouseX <= winX + 8 + catW && mouseY >= catY && mouseY <= catY + catH && mouseY >= sideClipY && mouseY <= sideClipY + sideClipH) {
                     playPloppSound();
                     this.activeCategory = cat;
                     this.searchQuery = "";
@@ -356,7 +385,7 @@ public class AlpakaConfigScreen extends Screen {
                     this.scrollY = 0.0;
                     return true;
                 }
-                catY += catH + 4;
+                catY += catH + catSpacing;
             }
         }
 
@@ -366,23 +395,24 @@ public class AlpakaConfigScreen extends Screen {
 
         if (mouseX >= contentX && mouseX <= contentX + contentW && mouseY >= clipY && mouseY <= clipY + clipH) {
             List<ConfigOption> options = AlpakaConfigRegistry.getOptions(activeCategory, searchQuery);
-            int startOptionY = contentY + 16 + 34 - (int) scrollY;
-            int cardW = contentW - 36;
-            int cardH = 50;
+            int startOptionY = contentY + 12 + 30 - (int) scrollY;
+            int cardW = contentW - 28;
+            int cardH = 44;
 
             for (ConfigOption opt : options) {
                 if (opt.getType() == ConfigOption.Type.HEADER) {
-                    startOptionY += 34;
+                    startOptionY += 30;
                     continue;
                 }
 
-                int widgetW = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 54 : (opt.getType() == ConfigOption.Type.ACTION ? (opt.getId().contains("color") ? 64 : 110) : 120);
-                int widgetH = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 22 : 24;
-                int widgetX = contentX + 20 + cardW - widgetW - 14;
+                int widgetW = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 42 :
+                              (opt.getType() == ConfigOption.Type.ACTION ? (opt.getId().contains("color") ? 40 : 85) : 90);
+                int widgetH = 18;
+                int widgetX = contentX + 14 + cardW - widgetW - 10;
                 int widgetY = startOptionY + (cardH - widgetH) / 2;
 
                 boolean isWidgetClicked = mouseX >= widgetX && mouseX <= widgetX + widgetW && mouseY >= widgetY && mouseY <= widgetY + widgetH;
-                boolean isCardClicked = mouseX >= contentX + 20 && mouseX <= contentX + 20 + cardW && mouseY >= startOptionY && mouseY <= startOptionY + cardH;
+                boolean isCardClicked = mouseX >= contentX + 14 && mouseX <= contentX + 14 + cardW && mouseY >= startOptionY && mouseY <= startOptionY + cardH;
 
                 if ((isWidgetClicked || isCardClicked) && startOptionY + cardH >= clipY && startOptionY <= clipY + clipH) {
                     opt.triggerClickAnimation();
@@ -407,7 +437,7 @@ public class AlpakaConfigScreen extends Screen {
                     }
                 }
 
-                startOptionY += cardH + 8;
+                startOptionY += cardH + 6;
             }
         }
 
@@ -428,14 +458,14 @@ public class AlpakaConfigScreen extends Screen {
     @Override
     public boolean mouseDragged(MouseButtonEvent event, double deltaX, double deltaY) {
         if (draggedOption != null && draggedOption.getType() == ConfigOption.Type.SLIDER) {
-            int winW = Math.min(880, Math.max(600, this.width - 70));
+            int winW = Math.min(660, Math.max(480, (int) (this.width * 0.70)));
             int winX = (this.width - winW) / 2;
-            int sidebarWidth = 200;
+            int sidebarWidth = 160;
             int contentX = winX + sidebarWidth;
             int contentW = winW - sidebarWidth;
-            int cardW = contentW - 36;
-            int widgetW = 120;
-            int widgetX = contentX + 20 + cardW - widgetW - 14;
+            int cardW = contentW - 28;
+            int widgetW = 90;
+            int widgetX = contentX + 14 + cardW - widgetW - 10;
 
             double norm = Math.max(0.0, Math.min(1.0, (event.x() - widgetX) / (double) widgetW));
             draggedOption.setSliderNormalizedValue(norm);

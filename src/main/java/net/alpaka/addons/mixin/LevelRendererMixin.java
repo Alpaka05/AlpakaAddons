@@ -19,6 +19,13 @@ public class LevelRendererMixin {
     )
     private void onRenderHitOutline(PoseStack poseStack, VertexConsumer vertexConsumer, double camX, double camY, double camZ, BlockOutlineRenderState state, int light, float alpha, CallbackInfo ci) {
         if (net.alpaka.addons.config.AlpakaConfig.instance.blockOverlayEnabled) {
+            net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+            if (net.alpaka.addons.config.AlpakaConfig.instance.blockIgnorePlants && mc.level != null && state != null) {
+                if (BlockOverlayFeature.isPlantBlock(mc.level.getBlockState(state.pos()))) {
+                    ci.cancel();
+                    return;
+                }
+            }
             ci.cancel();
             BlockOverlayFeature.render(poseStack, camX, camY, camZ, state);
         }

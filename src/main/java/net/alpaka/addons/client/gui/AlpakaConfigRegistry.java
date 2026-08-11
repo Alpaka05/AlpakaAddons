@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 
 public class AlpakaConfigRegistry {
     private static final List<ConfigOption> OPTIONS = new ArrayList<>();
+    private static final java.util.Map<ConfigCategory, List<ConfigOption>> CATEGORY_CACHE = new java.util.EnumMap<>(ConfigCategory.class);
 
     static {
         registerAllOptions();
@@ -68,11 +69,33 @@ public class AlpakaConfigRegistry {
                 "chat history limit scroll log"));
 
         OPTIONS.add(new ConfigOption("name_highlighting", "Name Highlighting",
-                "Highlights player names in chat and overhead tags.",
+                "Highlights important player and boss names in chat.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.nameHighlightingEnabled,
                 v -> { AlpakaConfig.instance.nameHighlightingEnabled = v; AlpakaConfig.save(); },
-                "name tags chat highlight player color"));
+                "name highlight chat player color tag"));
+
+        OPTIONS.add(new ConfigOption("custom_escape_menu", "Custom Escape Menu",
+                "Enables custom styled Alpaka pause screen (ESC).",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customEscapeMenuEnabled,
+                v -> { AlpakaConfig.instance.customEscapeMenuEnabled = v; AlpakaConfig.save(); },
+                "custom escape menu pause screen esc button design visuals"));
+
+        OPTIONS.add(new ConfigOption("smooth_perspective", "Smooth Perspective",
+                "Smooth transition animation when toggling perspective.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.smoothPerspectiveEnabled,
+                v -> { AlpakaConfig.instance.smoothPerspectiveEnabled = v; AlpakaConfig.save(); },
+                "smooth perspective camera transition f5 third person first person"));
+
+        OPTIONS.add(new ConfigOption("smooth_perspective_duration", "Transition Duration",
+                "Duration of perspective switch transition in ms.",
+                ConfigCategory.VISUALS,
+                () -> (float) AlpakaConfig.instance.smoothPerspectiveDurationMs,
+                v -> { AlpakaConfig.instance.smoothPerspectiveDurationMs = Math.round(v); AlpakaConfig.save(); },
+                100.0f, 1000.0f, val -> String.format("%d ms", Math.round(val)),
+                "smooth perspective camera speed duration transition time ms"));
 
         // --- 2. ITEM VIEWMODEL ---
         OPTIONS.add(new ConfigOption("item_size_feature", "Enable Viewmodel Modifiers",
@@ -287,6 +310,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.blockIgnoreDepth = v; AlpakaConfig.save(); },
                 "ignore depth wall xray see through blocks outline"));
 
+        OPTIONS.add(new ConfigOption("block_ignore_plants", "Ignore Plants",
+                "Disables block highlighting when targeting foliage like grass, flowers, or crops.",
+                ConfigCategory.BLOCK_OVERLAY,
+                () -> AlpakaConfig.instance.blockIgnorePlants,
+                v -> { AlpakaConfig.instance.blockIgnorePlants = v; AlpakaConfig.save(); },
+                "ignore plants foliage grass flowers crops outline disable overlay"));
+
         OPTIONS.add(new ConfigOption("block_fill_enabled", "Block Fill",
                 "Fills target block faces with transparent color.",
                 ConfigCategory.BLOCK_OVERLAY,
@@ -341,23 +371,7 @@ public class AlpakaConfigRegistry {
                 parent -> Minecraft.getInstance().setScreen(new PlayerModelHudEditorScreen(parent)),
                 "player model position edit dragging hud screen drag move"));
 
-        // --- 5. CAMERA & MOTION ---
-        OPTIONS.add(new ConfigOption("smooth_perspective", "Smooth Perspective",
-                "Smooth transition animation when toggling perspective.",
-                ConfigCategory.CAMERA,
-                () -> AlpakaConfig.instance.smoothPerspectiveEnabled,
-                v -> { AlpakaConfig.instance.smoothPerspectiveEnabled = v; AlpakaConfig.save(); },
-                "smooth perspective camera transition f5 third person first person"));
-
-        OPTIONS.add(new ConfigOption("smooth_perspective_duration", "Transition Duration",
-                "Duration of perspective switch transition in ms.",
-                ConfigCategory.CAMERA,
-                () -> (float) AlpakaConfig.instance.smoothPerspectiveDurationMs,
-                v -> { AlpakaConfig.instance.smoothPerspectiveDurationMs = Math.round(v); AlpakaConfig.save(); },
-                100.0f, 1000.0f, val -> String.format("%d ms", Math.round(val)),
-                "smooth perspective camera speed duration transition time ms"));
-
-        // --- 6. SKYBLOCK ---
+        // --- 5. SKYBLOCK ---
         OPTIONS.add(new ConfigOption("slayer_drop_tracker", "Slayer Drop Tracker",
                 "Automatically tracks loot drops and kills for Hypixel Slayer bosses.",
                 ConfigCategory.SKYBLOCK,
@@ -365,7 +379,7 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.slayerDropTrackerEnabled = v; AlpakaConfig.save(); },
                 "slayer drop tracker hypixel loot boss kill stats counter skyblock"));
 
-        // --- 7. SOUND & UTILITY ---
+        // --- 6. SOUND & UTILITY ---
         OPTIONS.add(new ConfigOption("custom_sounds", "Master Custom Sounds",
                 "Master switch for custom sound effects throughout the mod.",
                 ConfigCategory.SOUND_MISC,
@@ -409,17 +423,24 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customSoundNotification = v; AlpakaConfig.save(); },
                 "boss spawn sound notification alert audio"));
 
-        OPTIONS.add(new ConfigOption("custom_escape_menu", "Custom Escape Menu",
-                "Enables custom styled Alpaka pause screen (ESC).",
-                ConfigCategory.SOUND_MISC,
-                () -> AlpakaConfig.instance.customEscapeMenuEnabled,
-                v -> { AlpakaConfig.instance.customEscapeMenuEnabled = v; AlpakaConfig.save(); },
-                "custom escape menu pause screen esc button design"));
+        buildCategoryCache();
+    }
+
+    private static void buildCategoryCache() {
+        CATEGORY_CACHE.clear();
+        for (ConfigCategory cat : ConfigCategory.values()) {
+            List<ConfigOption> list = OPTIONS.stream()
+                    .filter(opt -> cat == ConfigCategory.ALL || opt.getCategory() == cat)
+                    .collect(Collectors.toList());
+            CATEGORY_CACHE.put(cat, java.util.Collections.unmodifiableList(list));
+        }
     }
 
     public static List<ConfigOption> getOptions(ConfigCategory category, String searchQuery) {
-        return OPTIONS.stream()
-                .filter(option -> (category == ConfigCategory.ALL || option.getCategory() == category))
+        if (searchQuery == null || searchQuery.trim().isEmpty()) {
+            return CATEGORY_CACHE.getOrDefault(category, java.util.Collections.emptyList());
+        }
+        return CATEGORY_CACHE.getOrDefault(category, java.util.Collections.emptyList()).stream()
                 .filter(option -> option.matches(searchQuery))
                 .collect(Collectors.toList());
     }

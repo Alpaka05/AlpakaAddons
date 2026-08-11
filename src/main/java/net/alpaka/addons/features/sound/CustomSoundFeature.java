@@ -86,7 +86,7 @@ public class CustomSoundFeature {
 
     public static void playButtonClickSound() {
         if (!AlpakaConfig.instance.customSoundButtonClick) return;
-        playSound(BUTTON_CLICK_SOUND);
+        playSound(BUTTON_CLICK_SOUND, 1.0f);
     }
 
     public static void playBlazeDeathSound() {
@@ -137,11 +137,15 @@ public class CustomSoundFeature {
     }
 
     private static void playSound(SoundEvent sound) {
+        playSound(sound, 1.0f);
+    }
+
+    private static void playSound(SoundEvent sound, float pitch) {
         if (!AlpakaConfig.instance.customSoundsEnabled) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc != null && mc.getSoundManager() != null && sound != null) {
             float vol = AlpakaConfig.instance.customSoundsVolume;
-            mc.getSoundManager().play(SimpleSoundInstance.forUI(sound, 1.0f, vol));
+            mc.getSoundManager().play(SimpleSoundInstance.forUI(sound, pitch, vol));
         }
     }
 }

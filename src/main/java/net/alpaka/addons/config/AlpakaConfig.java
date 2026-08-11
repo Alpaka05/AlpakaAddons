@@ -51,6 +51,7 @@ public class AlpakaConfig {
     public boolean blockChromaEnabled = false;
     public float blockChromaSpeed = 1.0f;
     public boolean blockIgnoreDepth = false;
+    public boolean blockIgnorePlants = false;
     public boolean blockFillEnabled = false;
     public int blockFillColor = 0x440000FF; // Default semi-transparent blue
 

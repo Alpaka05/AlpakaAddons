@@ -18,6 +18,28 @@ public class BlockOverlayFeature {
     public static boolean isRenderingBlockOverlay = false;
     public static boolean ignoreDepthActive = false;
 
+    public static boolean isPlantBlock(net.minecraft.world.level.block.state.BlockState blockState) {
+        if (blockState == null) return false;
+        net.minecraft.world.level.block.Block block = blockState.getBlock();
+        if (block instanceof net.minecraft.world.level.block.BushBlock ||
+            block instanceof net.minecraft.world.level.block.LeavesBlock ||
+            block instanceof net.minecraft.world.level.block.FlowerBlock ||
+            block instanceof net.minecraft.world.level.block.TallGrassBlock ||
+            block instanceof net.minecraft.world.level.block.DoublePlantBlock ||
+            block instanceof net.minecraft.world.level.block.CropBlock ||
+            block instanceof net.minecraft.world.level.block.SaplingBlock ||
+            block instanceof net.minecraft.world.level.block.SugarCaneBlock ||
+            block instanceof net.minecraft.world.level.block.CactusBlock ||
+            block instanceof net.minecraft.world.level.block.MushroomBlock ||
+            block instanceof net.minecraft.world.level.block.NetherWartBlock) {
+            return true;
+        }
+        return blockState.is(net.minecraft.tags.BlockTags.FLOWERS) ||
+               blockState.is(net.minecraft.tags.BlockTags.CROPS) ||
+               blockState.is(net.minecraft.tags.BlockTags.LEAVES) ||
+               blockState.is(net.minecraft.tags.BlockTags.SAPLINGS);
+    }
+
     public static void render(PoseStack poseStack, double camX, double camY, double camZ, BlockOutlineRenderState renderState) {
         isRenderingBlockOverlay = true;
         ignoreDepthActive = AlpakaConfig.instance.blockIgnoreDepth;
@@ -27,6 +49,10 @@ public class BlockOverlayFeature {
             if (mc.level == null) return;
 
             BlockPos pos = renderState.pos();
+            if (AlpakaConfig.instance.blockIgnorePlants && isPlantBlock(mc.level.getBlockState(pos))) {
+                return;
+            }
+
             VoxelShape shape = renderState.shape();
             if (shape == null || shape.isEmpty()) return;
 

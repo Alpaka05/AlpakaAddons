@@ -58,36 +58,20 @@ public class ModernGuiUtils {
     }
 
     public static void drawModernToggle(GuiGraphicsExtractor graphics, Font font, int x, int y, int width, int height, boolean state, boolean isHovered) {
-        int bg = state ? COLOR_TOGGLE_ON_BG : COLOR_TOGGLE_OFF_BG;
-        int border = state ? COLOR_TOGGLE_ON_BORDER : COLOR_TOGGLE_OFF_BORDER;
-        int textColor = state ? COLOR_TOGGLE_ON_TEXT : COLOR_TOGGLE_OFF_TEXT;
+        int trackBg = state ? COLOR_ACCENT_BG : COLOR_CARD_BG;
+        int border = isHovered ? COLOR_ACCENT : (state ? COLOR_ACCENT_DIM : COLOR_CARD_BORDER);
 
-        if (isHovered) {
-            // Brighten slightly on hover
-            bg = (bg & 0xFF000000) | (((bg & 0xFFFFFF) + 0x1A1A24) & 0xFFFFFF);
-            border = (border & 0xFF000000) | (((border & 0xFFFFFF) + 0x151515) & 0xFFFFFF);
-        }
-
-        drawRect(graphics, x, y, width, height, bg);
+        drawRect(graphics, x, y, width, height, trackBg);
         drawOutline(graphics, x, y, width, height, border);
 
-        // Knob dimensions
-        int knobWidth = Math.max(16, width / 2 - 2);
-        int knobHeight = height - 4;
-        int knobX = state ? (x + width - knobWidth - 2) : (x + 2);
+        // Compact sliding grey square knob (no text)
+        int knobSize = height - 4;
+        int knobX = state ? (x + width - knobSize - 2) : (x + 2);
         int knobY = y + 2;
 
-        int knobColor = state ? COLOR_TOGGLE_ON_BORDER : 0xFF555B6E;
-        drawRect(graphics, knobX, knobY, knobWidth, knobHeight, knobColor);
-
-        // Status label text ("AN" / "AUS") if width allows
-        if (width >= 40) {
-            String text = state ? "AN" : "AUS";
-            int textWidth = font.width(text);
-            int textX = state ? (x + 5) : (x + width - textWidth - 5);
-            int textY = y + (height - 8) / 2;
-            graphics.text(font, Component.literal(text), textX, textY, textColor);
-        }
+        int knobColor = state ? COLOR_ACCENT : 0xFF64748B; // Sleek grey when OFF, Warm Gold when ON
+        drawRect(graphics, knobX, knobY, knobSize, knobSize, knobColor);
+        drawOutline(graphics, knobX, knobY, knobSize, knobSize, 0x40000000);
     }
 
     public static void drawModernSlider(GuiGraphicsExtractor graphics, Font font, int x, int y, int width, int height, double value, String displayValue, boolean isHovered) {

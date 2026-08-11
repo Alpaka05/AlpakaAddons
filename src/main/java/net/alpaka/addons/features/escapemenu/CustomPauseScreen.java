@@ -42,16 +42,16 @@ public class CustomPauseScreen extends Screen {
         int centerX = this.width / 2;
         int centerY = this.height / 2;
 
-        int cardWidth = 260;
-        int cardHeight = 310;
+        int cardWidth = 200;
+        int cardHeight = 250;
         int startX = centerX - cardWidth / 2;
         int startY = centerY - cardHeight / 2;
 
-        int buttonWidth = 220;
-        int buttonHeight = 30;
+        int buttonWidth = 168;
+        int buttonHeight = 26;
         int buttonX = centerX - buttonWidth / 2;
-        int buttonStartY = startY + 54;
-        int spacing = 38;
+        int buttonStartY = startY + 46;
+        int spacing = 32;
 
         // 1. Resume Button
         this.resumeButton = new CustomPauseButton(buttonX, buttonStartY, buttonWidth, buttonHeight,
@@ -109,22 +109,22 @@ public class CustomPauseScreen extends Screen {
         this.addRenderableWidget(this.disconnectButton);
 
         // Disconnect Prompt Buttons
-        int promptWidth = 250;
-        int promptHeight = 140;
+        int promptWidth = 220;
+        int promptHeight = 130;
         int promptX = centerX - promptWidth / 2;
         int promptY = centerY - promptHeight / 2;
 
-        int pBtnWidth = 100;
-        int pBtnHeight = 26;
-        int pBtnY = promptY + 96;
+        int pBtnWidth = 88;
+        int pBtnHeight = 24;
+        int pBtnY = promptY + 88;
 
-        this.promptCancelButton = new CustomPauseButton(promptX + 18, pBtnY, pBtnWidth, pBtnHeight,
+        this.promptCancelButton = new CustomPauseButton(promptX + 16, pBtnY, pBtnWidth, pBtnHeight,
                 Component.literal("Cancel"), false, btn -> {
             this.showDisconnectPrompt = false;
             this.updateWidgetStates();
         });
 
-        this.promptConfirmButton = new CustomPauseButton(promptX + promptWidth - 18 - pBtnWidth, pBtnY, pBtnWidth, pBtnHeight,
+        this.promptConfirmButton = new CustomPauseButton(promptX + promptWidth - 16 - pBtnWidth, pBtnY, pBtnWidth, pBtnHeight,
                 Component.literal("Disconnect"), true, btn -> {
             if (this.minecraft != null) {
                 if (this.minecraft.level != null) {
@@ -160,8 +160,8 @@ public class CustomPauseScreen extends Screen {
         // Dark Translucent Backdrop Overlay
         graphics.fill(0, 0, this.width, this.height, 0x70000000);
 
-        int cardWidth = 260;
-        int cardHeight = 310;
+        int cardWidth = 200;
+        int cardHeight = 250;
         int startX = centerX - cardWidth / 2;
         int startY = centerY - cardHeight / 2;
 
@@ -182,16 +182,16 @@ public class CustomPauseScreen extends Screen {
         ModernGuiUtils.drawOutline(graphics, startX, startY, cardWidth, cardHeight, ModernGuiUtils.COLOR_CARD_BORDER);
 
         // Top Header Bar
-        int headerH = 44;
+        int headerH = 38;
         ModernGuiUtils.drawRect(graphics, startX, startY, cardWidth, headerH, ModernGuiUtils.COLOR_SIDEBAR_BG);
         ModernGuiUtils.drawRect(graphics, startX, startY + headerH - 1, cardWidth, 1, ModernGuiUtils.COLOR_ACCENT);
 
         // Header Title & Version
-        graphics.centeredText(this.font, Component.literal("ALPAKA ADDONS"), centerX, startY + 10, ModernGuiUtils.COLOR_TEXT_PRIMARY);
+        graphics.centeredText(this.font, Component.literal("ALPAKA ADDONS"), centerX, startY + 8, ModernGuiUtils.COLOR_TEXT_PRIMARY);
 
         String status = (this.minecraft != null && this.minecraft.isSingleplayer()) ? "Singleplayer" : "Multiplayer";
         String user = (this.minecraft != null && this.minecraft.getUser() != null) ? this.minecraft.getUser().getName() : "Player";
-        graphics.centeredText(this.font, Component.literal(user + " • " + status), centerX, startY + 25, ModernGuiUtils.COLOR_TEXT_MUTED);
+        graphics.centeredText(this.font, Component.literal(user + " • " + status), centerX, startY + 22, ModernGuiUtils.COLOR_TEXT_MUTED);
 
         graphics.pose().popMatrix();
     }

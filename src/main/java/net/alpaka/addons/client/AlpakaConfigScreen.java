@@ -1,15 +1,37 @@
 package net.alpaka.addons.client;
 
-import net.alpaka.addons.config.AlpakaConfig;
-import net.minecraft.client.gui.components.AbstractSliderButton;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.StringWidget;
+import net.alpaka.addons.client.gui.AlpakaConfigRegistry;
+import net.alpaka.addons.client.gui.ConfigCategory;
+import net.alpaka.addons.client.gui.ConfigOption;
+import net.alpaka.addons.client.gui.ModernGuiUtils;
+import net.alpaka.addons.client.gui.PloppAnimation;
+import net.alpaka.addons.features.sound.CustomSoundFeature;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.network.chat.CommonComponents;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
+
+import java.util.List;
 
 public class AlpakaConfigScreen extends Screen {
     private final Screen parent;
+    private ConfigCategory activeCategory = ConfigCategory.ALL;
+
+    // Search state
+    private String searchQuery = "";
+    private boolean searchFocused = false;
+    private long cursorBlinkTimer = 0L;
+
+    // Scrolling & Layout
+    private double scrollY = 0.0;
+    private double targetScrollY = 0.0;
+    private long openTimeMs = 0L;
+    private long lastFrameTime = System.currentTimeMillis();
+
+    // Currently dragged slider option
+    private ConfigOption draggedOption = null;
 
     public AlpakaConfigScreen(Screen parent) {
         super(Component.literal("Alpaka Addons Config"));
@@ -18,274 +40,422 @@ public class AlpakaConfigScreen extends Screen {
 
     @Override
     protected void init() {
-        int centerY = this.height / 2 - 160;
+        this.openTimeMs = System.currentTimeMillis();
+        this.lastFrameTime = System.currentTimeMillis();
+    }
 
-        // Add Title
-        this.addRenderableWidget(new StringWidget(0, 8, this.width, 20, this.title, this.font));
+    private void playPloppSound() {
+        try {
+            CustomSoundFeature.playButtonClickSound();
+        } catch (Throwable ignored) {}
+    }
 
-        // 1. Show Hand in 3rd Person
-        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY, 150, 20, 
-                Component.literal("Show Hand in 3rd Person"), this.font));
+    @Override
+    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        long now = System.currentTimeMillis();
+        float deltaSec = Math.min(0.1f, (now - lastFrameTime) / 1000.0f);
+        lastFrameTime = now;
 
-        Button toggleButton1 = Button.builder(
-                CommonComponents.optionStatus(AlpakaConfig.instance.renderHandInThirdPerson),
-                button -> {
-                    AlpakaConfig.instance.renderHandInThirdPerson = !AlpakaConfig.instance.renderHandInThirdPerson;
-                    AlpakaConfig.save();
-                    button.setMessage(CommonComponents.optionStatus(AlpakaConfig.instance.renderHandInThirdPerson));
-                }
-        )
-        .bounds(this.width / 2 + 5, centerY, 150, 20)
-        .build();
-        this.addRenderableWidget(toggleButton1);
+        // Smooth scroll interpolation
+        scrollY += (targetScrollY - scrollY) * Math.min(1.0f, deltaSec * 14.0f);
 
-        // 2. Slayer Drop Tracker
-        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 22, 150, 20, 
-                Component.literal("Slayer Drop Tracker"), this.font));
+        // Render dark backdrop
+        graphics.fill(0, 0, this.width, this.height, ModernGuiUtils.COLOR_BG_BACKDROP);
 
-        Button toggleButton2 = Button.builder(
-                CommonComponents.optionStatus(AlpakaConfig.instance.slayerDropTrackerEnabled),
-                button -> {
-                    AlpakaConfig.instance.slayerDropTrackerEnabled = !AlpakaConfig.instance.slayerDropTrackerEnabled;
-                    AlpakaConfig.save();
-                    button.setMessage(CommonComponents.optionStatus(AlpakaConfig.instance.slayerDropTrackerEnabled));
-                }
-        )
-        .bounds(this.width / 2 + 5, centerY + 22, 150, 20)
-        .build();
-        this.addRenderableWidget(toggleButton2);
+        // Apply open plopp scale animation
+        float openScale = PloppAnimation.getOpenScale(openTimeMs);
+        boolean isAnimatingOpen = openScale < 0.999f;
 
-        // 3. Fullbright
-        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 44, 150, 20, 
-                Component.literal("Fullbright"), this.font));
+        if (isAnimatingOpen) {
+            graphics.pose().pushMatrix();
+            graphics.pose().scaleAround(openScale, openScale, this.width / 2.0f, this.height / 2.0f);
+        }
 
-        Button toggleButton3 = Button.builder(
-                CommonComponents.optionStatus(AlpakaConfig.instance.fullbrightEnabled),
-                button -> {
-                    AlpakaConfig.instance.fullbrightEnabled = !AlpakaConfig.instance.fullbrightEnabled;
-                    AlpakaConfig.save();
-                    button.setMessage(CommonComponents.optionStatus(AlpakaConfig.instance.fullbrightEnabled));
-                }
-        )
-        .bounds(this.width / 2 + 5, centerY + 44, 150, 20)
-        .build();
-        this.addRenderableWidget(toggleButton3);
+        int headerHeight = 46;
+        int sidebarWidth = 220;
 
-        // 4. Custom Sounds
-        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 66, 150, 20, 
-                Component.literal("Custom Sounds"), this.font));
+        // 1. Render Left Sidebar Background
+        ModernGuiUtils.drawRect(graphics, 0, headerHeight, sidebarWidth, this.height - headerHeight, ModernGuiUtils.COLOR_SIDEBAR_BG);
+        ModernGuiUtils.drawRect(graphics, sidebarWidth - 1, headerHeight, 1, this.height - headerHeight, ModernGuiUtils.COLOR_CARD_BORDER);
 
-        Button toggleButtonSound = Button.builder(
-                CommonComponents.optionStatus(AlpakaConfig.instance.customSoundsEnabled),
-                button -> {
-                    AlpakaConfig.instance.customSoundsEnabled = !AlpakaConfig.instance.customSoundsEnabled;
-                    AlpakaConfig.save();
-                    button.setMessage(CommonComponents.optionStatus(AlpakaConfig.instance.customSoundsEnabled));
-                }
-        )
-        .bounds(this.width / 2 + 5, centerY + 66, 150, 20)
-        .build();
-        this.addRenderableWidget(toggleButtonSound);
+        // 2. Render Main Content Panel Background
+        int contentX = sidebarWidth;
+        int contentY = headerHeight;
+        int contentW = this.width - sidebarWidth;
+        int contentH = this.height - headerHeight;
+        ModernGuiUtils.drawRect(graphics, contentX, contentY, contentW, contentH, ModernGuiUtils.COLOR_PANEL_BG);
 
-        // 5. Name Highlighting
-        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 88, 150, 20, 
-                Component.literal("Name Highlighting"), this.font));
+        // 3. Render Top Header Bar
+        ModernGuiUtils.drawRect(graphics, 0, 0, this.width, headerHeight, ModernGuiUtils.COLOR_SIDEBAR_BG);
+        ModernGuiUtils.drawRect(graphics, 0, headerHeight - 1, this.width, 1, ModernGuiUtils.COLOR_ACCENT);
 
-        Button toggleButton4 = Button.builder(
-                CommonComponents.optionStatus(AlpakaConfig.instance.nameHighlightingEnabled),
-                button -> {
-                    AlpakaConfig.instance.nameHighlightingEnabled = !AlpakaConfig.instance.nameHighlightingEnabled;
-                    AlpakaConfig.save();
-                    button.setMessage(CommonComponents.optionStatus(AlpakaConfig.instance.nameHighlightingEnabled));
-                }
-        )
-        .bounds(this.width / 2 + 5, centerY + 88, 150, 20)
-        .build();
-        this.addRenderableWidget(toggleButton4);
+        // Header Title
+        String mainTitle = "🦙 ALPAKA ADDONS";
+        graphics.text(this.font, Component.literal(mainTitle), 16, 12, ModernGuiUtils.COLOR_TEXT_PRIMARY);
+        graphics.text(this.font, Component.literal("v1.0.28"), 16 + this.font.width(mainTitle) + 8, 14, ModernGuiUtils.COLOR_TEXT_MUTED);
 
-        // 6. Inventory Snowflakes
-        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 110, 150, 20, 
-                Component.literal("Inventory Snowflakes"), this.font));
+        // Search Bar in Header
+        int searchW = 260;
+        int searchH = 26;
+        int searchX = this.width - 220 - searchW;
+        int searchY = 10;
 
-        Button toggleButton5 = Button.builder(
-                CommonComponents.optionStatus(AlpakaConfig.instance.inventorySnowEnabled),
-                button -> {
-                    AlpakaConfig.instance.inventorySnowEnabled = !AlpakaConfig.instance.inventorySnowEnabled;
-                    AlpakaConfig.save();
-                    button.setMessage(CommonComponents.optionStatus(AlpakaConfig.instance.inventorySnowEnabled));
-                }
-        )
-        .bounds(this.width / 2 + 5, centerY + 110, 150, 20)
-        .build();
-        this.addRenderableWidget(toggleButton5);
+        boolean isHoveringSearch = mouseX >= searchX && mouseX <= searchX + searchW && mouseY >= searchY && mouseY <= searchY + searchH;
+        int searchBorder = searchFocused ? ModernGuiUtils.COLOR_ACCENT : (isHoveringSearch ? ModernGuiUtils.COLOR_ACCENT_DIM : ModernGuiUtils.COLOR_CARD_BORDER);
 
-        // 7. Snow Animation Speed Slider
-        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 132, 150, 20, 
-                Component.literal("Snow Animation Speed"), this.font));
+        ModernGuiUtils.drawRect(graphics, searchX, searchY, searchW, searchH, ModernGuiUtils.COLOR_CARD_BG);
+        ModernGuiUtils.drawOutline(graphics, searchX, searchY, searchW, searchH, searchBorder);
 
-        AbstractSliderButton speedSlider = new AbstractSliderButton(
-                this.width / 2 + 5, centerY + 132, 150, 20,
-                Component.literal(String.format("%.1fx", AlpakaConfig.instance.inventorySnowSpeed)),
-                (AlpakaConfig.instance.inventorySnowSpeed - 0.1) / 4.9
-        ) {
-            @Override
-            protected void updateMessage() {
-                setMessage(Component.literal(String.format("%.1fx", AlpakaConfig.instance.inventorySnowSpeed)));
+        String searchDisplayText = searchQuery;
+        if (searchDisplayText.isEmpty() && !searchFocused) {
+            graphics.text(this.font, Component.literal("🔍 Settings suchen..."), searchX + 8, searchY + (searchH - 8) / 2, ModernGuiUtils.COLOR_TEXT_MUTED);
+        } else {
+            if (searchFocused && (System.currentTimeMillis() - cursorBlinkTimer) % 1000 < 500) {
+                searchDisplayText += "|";
+            }
+            graphics.text(this.font, Component.literal("🔍 " + searchDisplayText), searchX + 8, searchY + (searchH - 8) / 2, ModernGuiUtils.COLOR_TEXT_PRIMARY);
+        }
+
+        if (!searchQuery.isEmpty()) {
+            // Clear search button '✕'
+            int clearX = searchX + searchW - 20;
+            int clearY = searchY + 4;
+            boolean hoverClear = mouseX >= clearX && mouseX <= clearX + 16 && mouseY >= clearY && mouseY <= clearY + 18;
+            graphics.text(this.font, Component.literal("✕"), clearX + 4, searchY + (searchH - 8) / 2, hoverClear ? ModernGuiUtils.COLOR_ACCENT : ModernGuiUtils.COLOR_TEXT_MUTED);
+        }
+
+        // Close / Done Button in Header
+        int closeW = 90;
+        int closeH = 26;
+        int closeX = this.width - closeW - 16;
+        int closeY = 10;
+        boolean isHoveringClose = mouseX >= closeX && mouseX <= closeX + closeW && mouseY >= closeY && mouseY <= closeY + closeH;
+        ModernGuiUtils.drawModernButton(graphics, this.font, closeX, closeY, closeW, closeH, "Fertig ✕", isHoveringClose, true);
+
+        // 4. Render Sidebar Categories
+        ConfigCategory[] categories = ConfigCategory.values();
+        int catY = headerHeight + 12;
+        int catH = 36;
+        int catW = sidebarWidth - 16;
+
+        for (ConfigCategory cat : categories) {
+            boolean isSelected = (cat == activeCategory);
+            boolean isHovered = mouseX >= 8 && mouseX <= 8 + catW && mouseY >= catY && mouseY <= catY + catH;
+
+            int catBg = isSelected ? ModernGuiUtils.COLOR_CARD_BG : (isHovered ? ModernGuiUtils.COLOR_CARD_BG_HOVER : ModernGuiUtils.COLOR_SIDEBAR_BG);
+            int catBorder = isSelected ? ModernGuiUtils.COLOR_ACCENT : (isHovered ? ModernGuiUtils.COLOR_ACCENT_DIM : 0x00000000);
+
+            ModernGuiUtils.drawRect(graphics, 8, catY, catW, catH, catBg);
+            if (catBorder != 0) {
+                ModernGuiUtils.drawOutline(graphics, 8, catY, catW, catH, catBorder);
             }
 
-            @Override
-            protected void applyValue() {
-                AlpakaConfig.instance.inventorySnowSpeed = (float) (0.1 + this.value * 4.9);
-                AlpakaConfig.save();
-            }
-        };
-        this.addRenderableWidget(speedSlider);
-
-        // 8. Clean Blaze Toggle
-        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 154, 150, 20, 
-                Component.literal("Clean Blaze"), this.font));
-
-        Button toggleButton6 = Button.builder(
-                CommonComponents.optionStatus(AlpakaConfig.instance.cleanBlazeEnabled),
-                button -> {
-                    AlpakaConfig.instance.cleanBlazeEnabled = !AlpakaConfig.instance.cleanBlazeEnabled;
-                    AlpakaConfig.save();
-                    button.setMessage(CommonComponents.optionStatus(AlpakaConfig.instance.cleanBlazeEnabled));
-                }
-        )
-        .bounds(this.width / 2 + 5, centerY + 154, 150, 20)
-        .build();
-        this.addRenderableWidget(toggleButton6);
-
-        // 9. Smooth Perspective Toggle
-        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 176, 150, 20, 
-                Component.literal("Smooth Perspective"), this.font));
-
-        Button toggleButton7 = Button.builder(
-                CommonComponents.optionStatus(AlpakaConfig.instance.smoothPerspectiveEnabled),
-                button -> {
-                    AlpakaConfig.instance.smoothPerspectiveEnabled = !AlpakaConfig.instance.smoothPerspectiveEnabled;
-                    AlpakaConfig.save();
-                    button.setMessage(CommonComponents.optionStatus(AlpakaConfig.instance.smoothPerspectiveEnabled));
-                }
-        )
-        .bounds(this.width / 2 + 5, centerY + 176, 150, 20)
-        .build();
-        this.addRenderableWidget(toggleButton7);
-
-        // 10. Smooth Perspective Duration Slider
-        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 198, 150, 20, 
-                Component.literal("Transition Duration"), this.font));
-
-        AbstractSliderButton durationSlider = new AbstractSliderButton(
-                this.width / 2 + 5, centerY + 198, 150, 20,
-                Component.literal(AlpakaConfig.instance.smoothPerspectiveDurationMs + " ms"),
-                (AlpakaConfig.instance.smoothPerspectiveDurationMs - 100) / 900.0
-        ) {
-            @Override
-            protected void updateMessage() {
-                setMessage(Component.literal(AlpakaConfig.instance.smoothPerspectiveDurationMs + " ms"));
+            if (isSelected) {
+                ModernGuiUtils.drawRect(graphics, 8, catY, 4, catH, ModernGuiUtils.COLOR_ACCENT);
             }
 
-            @Override
-            protected void applyValue() {
-                AlpakaConfig.instance.smoothPerspectiveDurationMs = 100 + (int) Math.round(this.value * 900.0);
-                AlpakaConfig.save();
+            // Category Label
+            int labelColor = isSelected ? ModernGuiUtils.COLOR_ACCENT : (isHovered ? ModernGuiUtils.COLOR_TEXT_PRIMARY : ModernGuiUtils.COLOR_TEXT_MUTED);
+            graphics.text(this.font, Component.literal(cat.getFullLabel()), 20, catY + (catH - 8) / 2, labelColor);
+
+            // Option Count Badge
+            List<ConfigOption> optionsForCat = AlpakaConfigRegistry.getOptions(cat, searchQuery);
+            String countText = String.valueOf(optionsForCat.size());
+            int countX = 8 + catW - this.font.width(countText) - 10;
+            graphics.text(this.font, Component.literal(countText), countX, catY + (catH - 8) / 2, ModernGuiUtils.COLOR_TEXT_DARK);
+
+            catY += catH + 4;
+        }
+
+        // 5. Render Options in Main Panel
+        List<ConfigOption> options = AlpakaConfigRegistry.getOptions(activeCategory, searchQuery);
+
+        // Clamp scrolling
+        int totalContentHeight = 60 + options.size() * 64 + 40;
+        int maxScroll = Math.max(0, totalContentHeight - contentH);
+        targetScrollY = Math.max(0, Math.min(maxScroll, targetScrollY));
+
+        int startOptionY = contentY + 20 - (int) scrollY;
+
+        // Render Category Header inside Content Area
+        String catTitle = activeCategory.getIcon() + "  " + activeCategory.getDisplayName();
+        if (!searchQuery.isEmpty()) {
+            catTitle = "🔍 Suchergebnisse für: \"" + searchQuery + "\"";
+        }
+        graphics.text(this.font, Component.literal(catTitle), contentX + 24, startOptionY, ModernGuiUtils.COLOR_TEXT_PRIMARY);
+        graphics.text(this.font, Component.literal(activeCategory.getDescription()), contentX + 24, startOptionY + 14, ModernGuiUtils.COLOR_TEXT_MUTED);
+
+        startOptionY += 36;
+
+        if (options.isEmpty()) {
+            // Empty state view
+            String emptyMsg = "Keine Einstellungen für \"" + searchQuery + "\" gefunden.";
+            graphics.text(this.font, Component.literal(emptyMsg), contentX + 24, startOptionY + 20, ModernGuiUtils.COLOR_TOGGLE_OFF_TEXT);
+        } else {
+            int cardW = contentW - 48;
+            int cardH = 54;
+
+            for (ConfigOption opt : options) {
+                // Check if card is visible within viewport
+                if (startOptionY + cardH >= contentY && startOptionY <= contentY + contentH) {
+                    if (opt.getType() == ConfigOption.Type.HEADER) {
+                        // Section Header Divider
+                        ModernGuiUtils.drawRect(graphics, contentX + 24, startOptionY + 10, cardW, 1, ModernGuiUtils.COLOR_CARD_BORDER);
+                        graphics.text(this.font, Component.literal("• " + opt.getTitle().toUpperCase()), contentX + 24, startOptionY + 16, ModernGuiUtils.COLOR_ACCENT);
+                        startOptionY += 36;
+                        continue;
+                    }
+
+                    boolean isCardHovered = mouseX >= contentX + 24 && mouseX <= contentX + 24 + cardW &&
+                                           mouseY >= startOptionY && mouseY <= startOptionY + cardH &&
+                                           mouseY >= contentY && mouseY <= contentY + contentH;
+
+                    opt.updateHoverProgress(isCardHovered, deltaSec);
+                    opt.updateClickProgress(deltaSec);
+
+                    // Apply micro pop scale animation on hover & click
+                    float popScale = 1.0f + 0.02f * opt.getHoverProgress() - 0.02f * opt.getClickProgress();
+
+                    graphics.pose().pushMatrix();
+                    float cardCenterX = contentX + 24 + cardW / 2.0f;
+                    float cardCenterY = startOptionY + cardH / 2.0f;
+                    graphics.pose().scaleAround(popScale, popScale, cardCenterX, cardCenterY);
+
+                    // Draw Modern Card Frame
+                    ModernGuiUtils.drawModernCard(graphics, contentX + 24, startOptionY, cardW, cardH, isCardHovered, false);
+
+                    // Option Title
+                    graphics.text(this.font, Component.literal(opt.getTitle()), contentX + 40, startOptionY + 12, ModernGuiUtils.COLOR_TEXT_PRIMARY);
+
+                    // Option Category Tag & Description
+                    String desc = opt.getDescription();
+                    graphics.text(this.font, Component.literal(desc), contentX + 40, startOptionY + 28, ModernGuiUtils.COLOR_TEXT_MUTED);
+
+                    // Render Right-Hand Control Widget
+                    int widgetW = 120;
+                    int widgetH = 26;
+                    int widgetX = contentX + 24 + cardW - widgetW - 16;
+                    int widgetY = startOptionY + (cardH - widgetH) / 2;
+
+                    boolean isWidgetHovered = mouseX >= widgetX && mouseX <= widgetX + widgetW && mouseY >= widgetY && mouseY <= widgetY + widgetH;
+
+                    if (opt.getType() == ConfigOption.Type.BOOLEAN) {
+                        ModernGuiUtils.drawModernToggle(graphics, this.font, widgetX, widgetY, widgetW, widgetH, opt.getBool(), isWidgetHovered);
+                    } else if (opt.getType() == ConfigOption.Type.SLIDER) {
+                        double normVal = opt.getSliderNormalizedValue();
+                        ModernGuiUtils.drawModernSlider(graphics, this.font, widgetX, widgetY, widgetW, widgetH, normVal, opt.getFormattedValue(), isWidgetHovered);
+                    } else if (opt.getType() == ConfigOption.Type.ACTION) {
+                        ModernGuiUtils.drawModernButton(graphics, this.font, widgetX, widgetY, widgetW, widgetH, opt.getActionLabel(), isWidgetHovered, false);
+                    }
+
+                    graphics.pose().popMatrix();
+                }
+
+                startOptionY += cardH + 10;
             }
-        };
-        this.addRenderableWidget(durationSlider);
+        }
 
-        // 11. Custom Escape Menu Toggle
-        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 220, 150, 20, 
-                Component.literal("Custom Escape Menu"), this.font));
+        if (isAnimatingOpen) {
+            graphics.pose().popMatrix();
+        }
+    }
 
-        Button toggleButton9 = Button.builder(
-                CommonComponents.optionStatus(AlpakaConfig.instance.customEscapeMenuEnabled),
-                button -> {
-                    AlpakaConfig.instance.customEscapeMenuEnabled = !AlpakaConfig.instance.customEscapeMenuEnabled;
-                    AlpakaConfig.save();
-                    button.setMessage(CommonComponents.optionStatus(AlpakaConfig.instance.customEscapeMenuEnabled));
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+
+        int headerHeight = 46;
+        int sidebarWidth = 220;
+
+        // Close / Done button click
+        int closeW = 90;
+        int closeH = 26;
+        int closeX = this.width - closeW - 16;
+        int closeY = 10;
+        if (mouseX >= closeX && mouseX <= closeX + closeW && mouseY >= closeY && mouseY <= closeY + closeH) {
+            playPloppSound();
+            this.onClose();
+            return true;
+        }
+
+        // Search bar click
+        int searchW = 260;
+        int searchH = 26;
+        int searchX = this.width - 220 - searchW;
+        int searchY = 10;
+
+        if (searchQuery.length() > 0) {
+            // Check clear button '✕'
+            int clearX = searchX + searchW - 20;
+            int clearY = searchY + 4;
+            if (mouseX >= clearX && mouseX <= clearX + 16 && mouseY >= clearY && mouseY <= clearY + 18) {
+                playPloppSound();
+                this.searchQuery = "";
+                return true;
+            }
+        }
+
+        if (mouseX >= searchX && mouseX <= searchX + searchW && mouseY >= searchY && mouseY <= searchY + searchH) {
+            this.searchFocused = true;
+            this.cursorBlinkTimer = System.currentTimeMillis();
+            return true;
+        } else {
+            this.searchFocused = false;
+        }
+
+        // Category Sidebar click
+        if (mouseX >= 0 && mouseX <= sidebarWidth && mouseY >= headerHeight) {
+            ConfigCategory[] categories = ConfigCategory.values();
+            int catY = headerHeight + 12;
+            int catH = 36;
+            int catW = sidebarWidth - 16;
+
+            for (ConfigCategory cat : categories) {
+                if (mouseX >= 8 && mouseX <= 8 + catW && mouseY >= catY && mouseY <= catY + catH) {
+                    playPloppSound();
+                    this.activeCategory = cat;
+                    this.searchQuery = "";
+                    this.targetScrollY = 0.0;
+                    this.scrollY = 0.0;
+                    return true;
                 }
-        )
-        .bounds(this.width / 2 + 5, centerY + 220, 150, 20)
-        .build();
-        this.addRenderableWidget(toggleButton9);
+                catY += catH + 4;
+            }
+        }
 
-        // 11b. Expand Chat History Toggle
-        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 242, 150, 20,
-                Component.literal("Expand Chat History"), this.font));
+        // Options List click
+        int contentX = sidebarWidth;
+        int contentY = headerHeight;
+        int contentW = this.width - sidebarWidth;
+        int contentH = this.height - headerHeight;
 
-        Button toggleChatHistory = Button.builder(
-                CommonComponents.optionStatus(AlpakaConfig.instance.expandChatHistory),
-                button -> {
-                    AlpakaConfig.instance.expandChatHistory = !AlpakaConfig.instance.expandChatHistory;
-                    AlpakaConfig.save();
-                    button.setMessage(CommonComponents.optionStatus(AlpakaConfig.instance.expandChatHistory));
+        if (mouseX >= contentX && mouseX <= contentX + contentW && mouseY >= contentY && mouseY <= contentY + contentH) {
+            List<ConfigOption> options = AlpakaConfigRegistry.getOptions(activeCategory, searchQuery);
+            int startOptionY = contentY + 20 + 36 - (int) scrollY;
+            int cardW = contentW - 48;
+            int cardH = 54;
+
+            for (ConfigOption opt : options) {
+                if (opt.getType() == ConfigOption.Type.HEADER) {
+                    startOptionY += 36;
+                    continue;
                 }
-        )
-        .bounds(this.width / 2 + 5, centerY + 242, 150, 20)
-        .build();
-        this.addRenderableWidget(toggleChatHistory);
 
-        // 12. Player Model settings button
-        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 264, 150, 20,
-                Component.literal("Player Model Settings"), this.font));
+                int widgetW = 120;
+                int widgetH = 26;
+                int widgetX = contentX + 24 + cardW - widgetW - 16;
+                int widgetY = startOptionY + (cardH - widgetH) / 2;
 
-        Button playerModelButton = Button.builder(
-                Component.literal("Configure..."),
-                button -> {
-                    if (this.minecraft != null) {
-                        this.minecraft.setScreen(new PlayerModelConfigScreen(this));
+                boolean isWidgetClicked = mouseX >= widgetX && mouseX <= widgetX + widgetW && mouseY >= widgetY && mouseY <= widgetY + widgetH;
+                boolean isCardClicked = mouseX >= contentX + 24 && mouseX <= contentX + 24 + cardW && mouseY >= startOptionY && mouseY <= startOptionY + cardH;
+
+                if (isWidgetClicked || isCardClicked) {
+                    opt.triggerClickAnimation();
+
+                    if (opt.getType() == ConfigOption.Type.BOOLEAN) {
+                        playPloppSound();
+                        opt.toggleBool();
+                        return true;
+                    } else if (opt.getType() == ConfigOption.Type.SLIDER) {
+                        if (isWidgetClicked) {
+                            playPloppSound();
+                            this.draggedOption = opt;
+                            double norm = Math.max(0.0, Math.min(1.0, (mouseX - widgetX) / (double) widgetW));
+                            opt.setSliderNormalizedValue(norm);
+                            opt.setDragging(true);
+                            return true;
+                        }
+                    } else if (opt.getType() == ConfigOption.Type.ACTION) {
+                        playPloppSound();
+                        opt.triggerAction(this);
+                        return true;
                     }
                 }
-        )
-        .bounds(this.width / 2 + 5, centerY + 264, 150, 20)
-        .build();
-        this.addRenderableWidget(playerModelButton);
 
-        // 13. Item Size settings button
-        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 286, 150, 20,
-                Component.literal("Item Size Settings"), this.font));
+                startOptionY += cardH + 10;
+            }
+        }
 
-        Button itemSizeButton = Button.builder(
-                Component.literal("Configure..."),
-                button -> {
-                    if (this.minecraft != null) {
-                        this.minecraft.setScreen(new ItemSizeConfigScreen(this));
-                    }
+        return super.mouseClicked(event, doubleClick);
+    }
+
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        if (event.button() == 0) {
+            if (draggedOption != null) {
+                draggedOption.setDragging(false);
+                draggedOption = null;
+            }
+        }
+        return super.mouseReleased(event);
+    }
+
+    @Override
+    public boolean mouseDragged(MouseButtonEvent event, double deltaX, double deltaY) {
+        if (draggedOption != null && draggedOption.getType() == ConfigOption.Type.SLIDER) {
+            int headerHeight = 46;
+            int sidebarWidth = 220;
+            int contentX = sidebarWidth;
+            int contentW = this.width - sidebarWidth;
+            int cardW = contentW - 48;
+            int widgetW = 120;
+            int widgetX = contentX + 24 + cardW - widgetW - 16;
+
+            double norm = Math.max(0.0, Math.min(1.0, (event.x() - widgetX) / (double) widgetW));
+            draggedOption.setSliderNormalizedValue(norm);
+            return true;
+        }
+        return super.mouseDragged(event, deltaX, deltaY);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (scrollY != 0) {
+            this.targetScrollY -= scrollY * 28.0;
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    }
+
+    @Override
+    public boolean charTyped(CharacterEvent event) {
+        if (searchFocused) {
+            int codePoint = event.codepoint();
+            if (codePoint >= 32 && codePoint != 127) {
+                if (searchQuery.length() < 35) {
+                    searchQuery += (char) codePoint;
+                    targetScrollY = 0;
+                    scrollY = 0;
+                    return true;
                 }
-        )
-        .bounds(this.width / 2 + 5, centerY + 286, 150, 20)
-        .build();
-        this.addRenderableWidget(itemSizeButton);
+            }
+        }
+        return super.charTyped(event);
+    }
 
-        // 14. Block Overlay settings button
-        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 308, 150, 20,
-                Component.literal("Block Overlay Settings"), this.font));
-
-        Button blockOverlayButton = Button.builder(
-                Component.literal("Configure..."),
-                button -> {
-                    if (this.minecraft != null) {
-                        this.minecraft.setScreen(new BlockOverlayConfigScreen(this));
-                    }
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        if (searchFocused) {
+            if (event.key() == 259) { // GLFW_KEY_BACKSPACE
+                if (!searchQuery.isEmpty()) {
+                    searchQuery = searchQuery.substring(0, searchQuery.length() - 1);
+                    targetScrollY = 0;
+                    scrollY = 0;
                 }
-        )
-        .bounds(this.width / 2 + 5, centerY + 308, 150, 20)
-        .build();
-        this.addRenderableWidget(blockOverlayButton);
-
-        // Add Done Button
-        this.addRenderableWidget(Button.builder(
-                CommonComponents.GUI_DONE,
-                button -> this.onClose()
-        )
-        .bounds(this.width / 2 - 100, centerY + 338, 200, 20)
-        .build());
+                return true;
+            } else if (event.key() == 256) { // GLFW_KEY_ESCAPE
+                searchFocused = false;
+                return true;
+            }
+        }
+        return super.keyPressed(event);
     }
 
     @Override
     public void onClose() {
-        this.minecraft.setScreen(this.parent);
+        if (this.minecraft != null) {
+            this.minecraft.setScreen(this.parent);
+        }
     }
 }

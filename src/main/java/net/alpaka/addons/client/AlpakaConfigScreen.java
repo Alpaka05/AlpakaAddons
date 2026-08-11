@@ -33,6 +33,9 @@ public class AlpakaConfigScreen extends Screen {
     private double targetSidebarScrollY = 0.0;
     private double maxSidebarScrollY = 0.0;
 
+    // Smooth panel horizontal shift animation for Viewmodel live hand preview
+    private double currentWinX = -1.0;
+
     private long openTimeMs = 0L;
     private long lastFrameTime = System.currentTimeMillis();
 
@@ -48,6 +51,7 @@ public class AlpakaConfigScreen extends Screen {
     protected void init() {
         this.openTimeMs = System.currentTimeMillis();
         this.lastFrameTime = System.currentTimeMillis();
+        this.currentWinX = -1.0;
     }
 
     private void playPloppSound() {
@@ -72,7 +76,18 @@ public class AlpakaConfigScreen extends Screen {
         // Calculate Window Panel Dimensions (compact window leaving game visible around sides)
         int winW = Math.min(660, Math.max(480, (int) (this.width * 0.70)));
         int winH = Math.min(440, Math.max(340, (int) (this.height * 0.68)));
-        int winX = (this.width - winW) / 2;
+
+        int centerWinX = (this.width - winW) / 2;
+        int sideWinX = Math.max(12, (this.width - winW) / 10);
+        int targetWinX = (activeCategory == ConfigCategory.VIEWMODEL && searchQuery.isEmpty()) ? sideWinX : centerWinX;
+
+        if (currentWinX < 0) {
+            currentWinX = targetWinX;
+        } else {
+            currentWinX += (targetWinX - currentWinX) * Math.min(1.0f, deltaSec * 12.0f);
+        }
+
+        int winX = (int) Math.round(currentWinX);
         int winY = (this.height - winH) / 2;
 
         int headerHeight = 38;
@@ -115,6 +130,10 @@ public class AlpakaConfigScreen extends Screen {
         String mainTitle = "ALPAKA ADDONS";
         graphics.text(this.font, Component.literal(mainTitle), winX + 12, winY + 11, ModernGuiUtils.COLOR_TEXT_PRIMARY);
         graphics.text(this.font, Component.literal("v1.0.29"), winX + 12 + this.font.width(mainTitle) + 6, winY + 12, ModernGuiUtils.COLOR_TEXT_MUTED);
+
+        if (activeCategory == ConfigCategory.VIEWMODEL && searchQuery.isEmpty()) {
+            graphics.text(this.font, Component.literal("👁 Live Hand View"), winX + 12 + this.font.width(mainTitle) + 60, winY + 12, ModernGuiUtils.COLOR_ACCENT);
+        }
 
         // Close / Done Button in Header (low-key)
         int closeW = 68;
@@ -259,9 +278,9 @@ public class AlpakaConfigScreen extends Screen {
                     ModernGuiUtils.drawModernCard(graphics, contentX + 14, startOptionY, cardW, cardH, isCardHovered, false);
 
                     // Right Control Widgets (Compact sizing to fit smaller panel)
-                    int widgetW = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 42 :
-                                  (opt.getType() == ConfigOption.Type.ACTION ? (opt.getId().contains("color") ? 40 : 85) : 90);
-                    int widgetH = 18;
+                    int widgetW = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 32 :
+                                  (opt.getType() == ConfigOption.Type.ACTION ? (opt.getId().contains("color") ? 38 : 80) : 85);
+                    int widgetH = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 15 : 18;
                     int widgetX = contentX + 14 + cardW - widgetW - 10;
                     int widgetY = startOptionY + (cardH - widgetH) / 2;
 
@@ -312,6 +331,15 @@ public class AlpakaConfigScreen extends Screen {
         }
     }
 
+    private int getEffectiveWinX(int winW) {
+        if (currentWinX >= 0) {
+            return (int) Math.round(currentWinX);
+        }
+        int centerWinX = (this.width - winW) / 2;
+        int sideWinX = Math.max(12, (this.width - winW) / 10);
+        return (activeCategory == ConfigCategory.VIEWMODEL && searchQuery.isEmpty()) ? sideWinX : centerWinX;
+    }
+
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         double mouseX = event.x();
@@ -319,7 +347,7 @@ public class AlpakaConfigScreen extends Screen {
 
         int winW = Math.min(660, Math.max(480, (int) (this.width * 0.70)));
         int winH = Math.min(440, Math.max(340, (int) (this.height * 0.68)));
-        int winX = (this.width - winW) / 2;
+        int winX = getEffectiveWinX(winW);
         int winY = (this.height - winH) / 2;
 
         int headerHeight = 38;
@@ -405,9 +433,9 @@ public class AlpakaConfigScreen extends Screen {
                     continue;
                 }
 
-                int widgetW = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 42 :
-                              (opt.getType() == ConfigOption.Type.ACTION ? (opt.getId().contains("color") ? 40 : 85) : 90);
-                int widgetH = 18;
+                int widgetW = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 32 :
+                              (opt.getType() == ConfigOption.Type.ACTION ? (opt.getId().contains("color") ? 38 : 80) : 85);
+                int widgetH = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 15 : 18;
                 int widgetX = contentX + 14 + cardW - widgetW - 10;
                 int widgetY = startOptionY + (cardH - widgetH) / 2;
 
@@ -459,7 +487,7 @@ public class AlpakaConfigScreen extends Screen {
     public boolean mouseDragged(MouseButtonEvent event, double deltaX, double deltaY) {
         if (draggedOption != null && draggedOption.getType() == ConfigOption.Type.SLIDER) {
             int winW = Math.min(660, Math.max(480, (int) (this.width * 0.70)));
-            int winX = (this.width - winW) / 2;
+            int winX = getEffectiveWinX(winW);
             int sidebarWidth = 160;
             int contentX = winX + sidebarWidth;
             int contentW = winW - sidebarWidth;
@@ -477,8 +505,22 @@ public class AlpakaConfigScreen extends Screen {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (scrollY != 0) {
-            this.targetScrollY -= scrollY * 28.0;
-            return true;
+            int winW = Math.min(660, Math.max(480, (int) (this.width * 0.70)));
+            int winH = Math.min(440, Math.max(340, (int) (this.height * 0.68)));
+            int winX = getEffectiveWinX(winW);
+            int winY = (this.height - winH) / 2;
+            int headerHeight = 38;
+            int sidebarWidth = 160;
+
+            if (mouseX >= winX && mouseX <= winX + sidebarWidth && mouseY >= winY + headerHeight && mouseY <= winY + winH) {
+                // Independent scroll for category sidebar on left
+                this.targetSidebarScrollY = Math.max(0, Math.min(maxSidebarScrollY, targetSidebarScrollY - scrollY * 24.0));
+                return true;
+            } else {
+                // Independent scroll for feature list on right
+                this.targetScrollY = Math.max(0, Math.min(maxScrollY, targetScrollY - scrollY * 28.0));
+                return true;
+            }
         }
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }

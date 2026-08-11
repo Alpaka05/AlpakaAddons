@@ -191,7 +191,7 @@ public class AlpakaConfigRegistry {
                 "ignore empty hand fist bare item only"));
 
         // Swing Customizations Section Header
-        OPTIONS.add(new ConfigOption("Swing Customizations Header", ConfigCategory.VIEWMODEL));
+        OPTIONS.add(new ConfigOption("Swing Customizations", ConfigCategory.VIEWMODEL));
 
         OPTIONS.add(new ConfigOption("swing_drift_x", "Swing Drift X",
                 "Lateral swing drift displacement.",
@@ -422,6 +422,13 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.customSoundNotification,
                 v -> { AlpakaConfig.instance.customSoundNotification = v; AlpakaConfig.save(); },
                 "boss spawn sound notification alert audio"));
+
+        OPTIONS.add(new ConfigOption("command_wheel_custom_commands", "Quick Command Menu",
+                "Add, edit, or remove custom commands for the quick command overlay.",
+                ConfigCategory.SOUND_MISC,
+                "Edit Commands",
+                parent -> Minecraft.getInstance().setScreen(new net.alpaka.addons.client.CommandWheelConfigScreen(parent)),
+                "quick command wheel commands add remove edit custom list menu keybind"));
 
         buildCategoryCache();
     }

@@ -58,6 +58,16 @@ public class AlpakaConfig {
     // Chat options
     public boolean expandChatHistory = true;
 
+    // Quick Command Menu options
+    public java.util.List<String> commandWheelCommands = new java.util.ArrayList<>(java.util.List.of(
+            "/hub",
+            "/island",
+            "/warp dh",
+            "/wardrobe",
+            "/pets",
+            "/pv"
+    ));
+
     // Item viewmodel options
     public boolean itemSizeFeatureEnabled = true;
     public float itemScale = 1.0f;

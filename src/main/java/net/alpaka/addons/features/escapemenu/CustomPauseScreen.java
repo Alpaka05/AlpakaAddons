@@ -157,22 +157,28 @@ public class CustomPauseScreen extends Screen {
         int centerX = this.width / 2;
         int centerY = this.height / 2;
 
-        // Dark Translucent Backdrop Overlay
-        graphics.fill(0, 0, this.width, this.height, 0x70000000);
+        float elapsedSec = (System.currentTimeMillis() - openTime) / 1000.0f;
+        float animProgress = Math.min(1.0f, elapsedSec / 0.15f); // 150ms fast snappy animation
+        float anim = 1.0f - (float) Math.pow(1.0f - animProgress, 3); // Smooth cubic ease-out
+
+        float slideOffsetY = (1.0f - anim) * 24.0f; // Subtle 24px slide up from slightly below
+
+        // Dark Translucent Backdrop Overlay with Fade-In
+        int bgAlpha = (int) (0x70 * anim);
+        graphics.fill(0, 0, this.width, this.height, (bgAlpha << 24));
 
         int cardWidth = 200;
         int cardHeight = 250;
         int startX = centerX - cardWidth / 2;
         int startY = centerY - cardHeight / 2;
 
-        // Smooth Scale Pop Animation
-        float scale = PloppAnimation.getOpenScale(openTime);
+        // Smooth Slide Up Animation
         graphics.pose().pushMatrix();
-        graphics.pose().scaleAround(scale, scale, centerX, centerY);
+        graphics.pose().translate(0.0f, slideOffsetY);
 
         // Soft Multi-Layer Drop Shadow
         for (int i = 1; i <= 6; i++) {
-            int shadowAlpha = (int) (0x24 * (1.0f - (float) i / 6.0f));
+            int shadowAlpha = (int) ((0x24 * anim) * (1.0f - (float) i / 6.0f));
             ModernGuiUtils.drawRect(graphics, startX - i, startY - i, cardWidth + i * 2, cardHeight + i * 2, (shadowAlpha << 24));
         }
         ModernGuiUtils.drawOutline(graphics, startX - 1, startY - 1, cardWidth + 2, cardHeight + 2, 0x60000000);
@@ -200,10 +206,14 @@ public class CustomPauseScreen extends Screen {
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         int centerX = this.width / 2;
         int centerY = this.height / 2;
-        float scale = PloppAnimation.getOpenScale(openTime);
+
+        float elapsedSec = (System.currentTimeMillis() - openTime) / 1000.0f;
+        float animProgress = Math.min(1.0f, elapsedSec / 0.15f);
+        float anim = 1.0f - (float) Math.pow(1.0f - animProgress, 3);
+        float slideOffsetY = (1.0f - anim) * 24.0f;
 
         graphics.pose().pushMatrix();
-        graphics.pose().scaleAround(scale, scale, centerX, centerY);
+        graphics.pose().translate(0.0f, slideOffsetY);
 
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 

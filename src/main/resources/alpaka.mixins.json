@@ -20,7 +20,8 @@
     "LightmapMixin",
     "LevelRendererMixin",
     "DepthStencilStateMixin",
-    "ChatComponentMixin"
+    "ChatComponentMixin",
+    "CameraTypeMixin"
   ],
   "injectors": {
     "defaultRequire": 1

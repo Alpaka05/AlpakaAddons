@@ -11,6 +11,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import net.alpaka.addons.features.mainmenu.CustomMainMenuScreen;
+import net.minecraft.client.gui.screens.TitleScreen;
+
 @Mixin(Minecraft.class)
 public abstract class MinecraftMixin {
     @Shadow public abstract void setScreen(Screen guiScreen);
@@ -20,6 +23,14 @@ public abstract class MinecraftMixin {
         if (screen != null && screen.getClass() == PauseScreen.class && AlpakaConfig.instance.customEscapeMenuEnabled) {
             ci.cancel();
             this.setScreen(new CustomPauseScreen());
+        }
+    }
+
+    @Inject(method = "setScreen", at = @At("HEAD"), cancellable = true)
+    private void replaceTitleScreen(Screen screen, CallbackInfo ci) {
+        if (screen != null && screen.getClass() == TitleScreen.class && AlpakaConfig.instance.customMainMenuEnabled) {
+            ci.cancel();
+            this.setScreen(new CustomMainMenuScreen());
         }
     }
 

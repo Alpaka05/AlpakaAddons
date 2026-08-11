@@ -82,12 +82,26 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customEscapeMenuEnabled = v; AlpakaConfig.save(); },
                 "custom escape menu pause screen esc button design visuals"));
 
+        OPTIONS.add(new ConfigOption("custom_main_menu", "Custom Main Menu",
+                "Enables Hypixel-themed custom title screen on launch.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customMainMenuEnabled,
+                v -> { AlpakaConfig.instance.customMainMenuEnabled = v; AlpakaConfig.save(); },
+                "custom main menu title screen hypixel start launch background GUI"));
+
         OPTIONS.add(new ConfigOption("smooth_perspective", "Smooth Perspective",
                 "Smooth transition animation when toggling perspective.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.smoothPerspectiveEnabled,
                 v -> { AlpakaConfig.instance.smoothPerspectiveEnabled = v; AlpakaConfig.save(); },
                 "smooth perspective camera transition f5 third person first person"));
+
+        OPTIONS.add(new ConfigOption("disable_front_perspective", "Disable Front Perspective",
+                "Skips front 3rd-person view when pressing F5 so it only toggles between 1st person and 3rd person back.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.disableFrontPerspective,
+                v -> { AlpakaConfig.instance.disableFrontPerspective = v; AlpakaConfig.save(); },
+                "disable front perspective skip view f5 third person first person camera"));
 
         OPTIONS.add(new ConfigOption("smooth_perspective_duration", "Transition Duration",
                 "Duration of perspective switch transition in ms.",

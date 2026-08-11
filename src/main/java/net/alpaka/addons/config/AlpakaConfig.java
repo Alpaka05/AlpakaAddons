@@ -28,6 +28,7 @@ public class AlpakaConfig {
     public float inventorySnowSpeed = 1.0f;
     public boolean cleanBlazeEnabled = true;
     public boolean smoothPerspectiveEnabled = true;
+    public boolean disableFrontPerspective = false;
     public int smoothPerspectiveDurationMs = 350;
     public boolean customSoundsEnabled = true;
     public float customSoundsVolume = 1.0f;
@@ -36,6 +37,7 @@ public class AlpakaConfig {
     public boolean customSoundRareDrop = true;
     public boolean customSoundNotification = true;
     public boolean customEscapeMenuEnabled = true;
+    public boolean customMainMenuEnabled = true;
     public boolean playerModelEnabled = true;
     public boolean playerModelOnlyActions = true;
     public int playerModelScale = 30;

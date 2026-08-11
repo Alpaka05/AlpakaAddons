@@ -1,26 +1,24 @@
 package net.alpaka.addons.client.gui;
 
 public enum ConfigCategory {
-    ALL("🔍", "Alle Settings", "Alle Features und Einstellungen im Überblick"),
-    VISUALS("🎨", "Visuals & Rendering", "Optische Effekte, Brightness, Snowflakes & Highlights"),
-    VIEWMODEL("⚔️", "Item Viewmodel", "Hand-Positionierung, Skalierung, Rotation & Swing-Animationen"),
-    BLOCK_OVERLAY("🧱", "Block Overlay", "Custom Block-Outline, Colors, Chroma & Fill-Effekte"),
-    PLAYER_MODEL("🧍", "Player Model HUD", "Spieler-Charakter Vorschau im HUD konfigurieren"),
-    CAMERA("🎥", "Kamera & Motion", "Smooth Perspective Switch & Umschalt-Animationen"),
-    SOUND_MISC("🔊", "Sound & Utility", "Custom Sounds, Lautstärke, Escape Menu & Slayer Tracker");
+    ALL("All Settings", "Overview of all available features and settings"),
+    VISUALS("Visuals & Rendering", "Visual effects, fullbright, snowflakes & highlights"),
+    VIEWMODEL("Item Viewmodel", "Hand positioning, scaling, rotations & swing animations"),
+    BLOCK_OVERLAY("Block Overlay", "Custom block outline, colors, chroma & fill effects"),
+    PLAYER_MODEL("Player Model HUD", "Configure 3D player character preview on HUD"),
+    CAMERA("Camera & Motion", "Smooth perspective switching & motion animations"),
+    SOUND_MISC("Sound & Utility", "Custom sounds, volume, escape menu & slayer tracker");
 
-    private final String icon;
     private final String displayName;
     private final String description;
 
-    ConfigCategory(String icon, String displayName, String description) {
-        this.icon = icon;
+    ConfigCategory(String displayName, String description) {
         this.displayName = displayName;
         this.description = description;
     }
 
     public String getIcon() {
-        return icon;
+        return "";
     }
 
     public String getDisplayName() {
@@ -32,6 +30,7 @@ public enum ConfigCategory {
     }
 
     public String getFullLabel() {
-        return icon + "  " + displayName;
+        return displayName;
     }
 }
+

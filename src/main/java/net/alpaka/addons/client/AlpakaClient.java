@@ -27,6 +27,24 @@ public class AlpakaClient implements ClientModInitializer {
                 })
             );
 
+            dispatcher.register(ClientCommands.literal("alpaka")
+                .executes(context -> {
+                    Minecraft.getInstance().execute(() -> {
+                        Minecraft.getInstance().setScreen(new AlpakaConfigScreen(null));
+                    });
+                    return 1;
+                })
+            );
+
+            dispatcher.register(ClientCommands.literal("alpakaddons")
+                .executes(context -> {
+                    Minecraft.getInstance().execute(() -> {
+                        Minecraft.getInstance().setScreen(new AlpakaConfigScreen(null));
+                    });
+                    return 1;
+                })
+            );
+
             dispatcher.register(ClientCommands.literal("aa")
                 .executes(context -> {
                     Minecraft.getInstance().execute(() -> {

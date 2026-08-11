@@ -13,9 +13,9 @@ public class ModernGuiUtils {
     public static final int COLOR_CARD_BG_HOVER = 0xFF222633;
     public static final int COLOR_CARD_BORDER = 0xFF2B3042;
 
-    public static final int COLOR_ACCENT = 0xFF00E5FF;       // Electric Cyan
-    public static final int COLOR_ACCENT_DIM = 0xFF008899;   // Muted Cyan
-    public static final int COLOR_ACCENT_BG = 0x3300E5FF;    // Cyan overlay
+    public static final int COLOR_ACCENT = 0xFFE5B849;       // Warm Gold
+    public static final int COLOR_ACCENT_DIM = 0xFFA37722;   // Muted Bronze/Gold
+    public static final int COLOR_ACCENT_BG = 0x33E5B849;    // Gold overlay
 
     public static final int COLOR_TOGGLE_ON_BG = 0xFF133824;
     public static final int COLOR_TOGGLE_ON_BORDER = 0xFF00E676;
@@ -64,25 +64,30 @@ public class ModernGuiUtils {
 
         if (isHovered) {
             // Brighten slightly on hover
-            bg = (bg & 0xFF000000) | (((bg & 0xFFFFFF) + 0x111111) & 0xFFFFFF);
+            bg = (bg & 0xFF000000) | (((bg & 0xFFFFFF) + 0x1A1A24) & 0xFFFFFF);
+            border = (border & 0xFF000000) | (((border & 0xFFFFFF) + 0x151515) & 0xFFFFFF);
         }
 
         drawRect(graphics, x, y, width, height, bg);
         drawOutline(graphics, x, y, width, height, border);
 
-        // Rectangular status knob inside toggle
-        int knobWidth = width / 2 - 2;
+        // Knob dimensions
+        int knobWidth = Math.max(16, width / 2 - 2);
         int knobHeight = height - 4;
         int knobX = state ? (x + width - knobWidth - 2) : (x + 2);
         int knobY = y + 2;
 
-        drawRect(graphics, knobX, knobY, knobWidth, knobHeight, border);
+        int knobColor = state ? COLOR_TOGGLE_ON_BORDER : 0xFF555B6E;
+        drawRect(graphics, knobX, knobY, knobWidth, knobHeight, knobColor);
 
-        // Status label text ("AN" / "AUS" or "ON" / "OFF")
-        String text = state ? "AN" : "AUS";
-        int textX = state ? (x + 6) : (x + width - font.width(text) - 6);
-        int textY = y + (height - 8) / 2;
-        graphics.text(font, Component.literal(text), textX, textY, textColor);
+        // Status label text ("AN" / "AUS") if width allows
+        if (width >= 40) {
+            String text = state ? "AN" : "AUS";
+            int textWidth = font.width(text);
+            int textX = state ? (x + 5) : (x + width - textWidth - 5);
+            int textY = y + (height - 8) / 2;
+            graphics.text(font, Component.literal(text), textX, textY, textColor);
+        }
     }
 
     public static void drawModernSlider(GuiGraphicsExtractor graphics, Font font, int x, int y, int width, int height, double value, String displayValue, boolean isHovered) {
@@ -121,4 +126,18 @@ public class ModernGuiUtils {
         int textY = y + (height - 8) / 2;
         graphics.text(font, Component.literal(label), textX, textY, textColor);
     }
+
+    public static void drawModernColorButton(GuiGraphicsExtractor graphics, Font font, int x, int y, int width, int height, int color, boolean isHovered) {
+        int border = isHovered ? COLOR_ACCENT : COLOR_CARD_BORDER;
+
+        // Dark background base for alpha transparency grid representation
+        drawRect(graphics, x, y, width, height, 0xFF000000);
+
+        // Filled color swatch box
+        drawRect(graphics, x + 2, y + 2, width - 4, height - 4, color);
+
+        // Border outline
+        drawOutline(graphics, x, y, width, height, border);
+    }
 }
+

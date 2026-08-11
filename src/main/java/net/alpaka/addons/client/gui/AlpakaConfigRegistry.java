@@ -25,35 +25,35 @@ public class AlpakaConfigRegistry {
 
         // --- 1. VISUALS & RENDERING ---
         OPTIONS.add(new ConfigOption("render_hand_third_person", "Show Hand in 3rd Person",
-                "Rendert das gehaltene Item auch in der 3. Person Perspektive.",
+                "Renders held items in 3rd person perspective.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.renderHandInThirdPerson,
                 v -> { AlpakaConfig.instance.renderHandInThirdPerson = v; AlpakaConfig.save(); },
                 "hand view third person render"));
 
         OPTIONS.add(new ConfigOption("fullbright", "Fullbright",
-                "Aktiviert maximale Helligkeit überall in der Welt ohne Fackeln.",
+                "Enables maximum brightness everywhere in the world without torches.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.fullbrightEnabled,
                 v -> { AlpakaConfig.instance.fullbrightEnabled = v; AlpakaConfig.save(); },
                 "gamma brightness light fullbright vision"));
 
         OPTIONS.add(new ConfigOption("clean_blaze", "Clean Blaze",
-                "Entfernt störende Rauchpartikel von Blazes für bessere Sicht.",
+                "Removes smoke particles from blazes for a clearer view.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.cleanBlazeEnabled,
                 v -> { AlpakaConfig.instance.cleanBlazeEnabled = v; AlpakaConfig.save(); },
                 "blaze smoke particles clear view"));
 
         OPTIONS.add(new ConfigOption("inventory_snow", "Inventory Snowflakes",
-                "Rendert verschneite Schneeflocken-Animationen im Inventar & Guis.",
+                "Renders cozy snowflake animations in inventory GUIs.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.inventorySnowEnabled,
                 v -> { AlpakaConfig.instance.inventorySnowEnabled = v; AlpakaConfig.save(); },
                 "snow winter effect gui inventory snowflakes"));
 
         OPTIONS.add(new ConfigOption("inventory_snow_speed", "Snow Animation Speed",
-                "Geschwindigkeit des Schneefall-Effekts im Inventar.",
+                "Speed of the falling snow effect in inventory.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.inventorySnowSpeed,
                 v -> { AlpakaConfig.instance.inventorySnowSpeed = v; AlpakaConfig.save(); },
@@ -61,14 +61,14 @@ public class AlpakaConfigRegistry {
                 "snow speed animation winter velocity"));
 
         OPTIONS.add(new ConfigOption("expand_chat_history", "Expand Chat History",
-                "Erhöht das Chat-Limit, um mehr vergangene Nachrichten zu speichern.",
+                "Increases chat history limit to store more past messages.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.expandChatHistory,
                 v -> { AlpakaConfig.instance.expandChatHistory = v; AlpakaConfig.save(); },
                 "chat history limit scroll log"));
 
         OPTIONS.add(new ConfigOption("name_highlighting", "Name Highlighting",
-                "Hebt Spielernamen im Chat und in Namensschildern hervor.",
+                "Highlights player names in chat and overhead tags.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.nameHighlightingEnabled,
                 v -> { AlpakaConfig.instance.nameHighlightingEnabled = v; AlpakaConfig.save(); },
@@ -76,14 +76,14 @@ public class AlpakaConfigRegistry {
 
         // --- 2. ITEM VIEWMODEL ---
         OPTIONS.add(new ConfigOption("item_size_feature", "Enable Viewmodel Modifiers",
-                "Hauptschalter für benutzerdefinierte Hand- & Item-Anpassungen.",
+                "Master toggle for custom hand and item adjustments.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemSizeFeatureEnabled,
                 v -> { AlpakaConfig.instance.itemSizeFeatureEnabled = v; AlpakaConfig.save(); },
                 "viewmodel item size scale enable custom hand"));
 
         OPTIONS.add(new ConfigOption("item_scale", "Item Scale (Size)",
-                "Skalierung des gehaltenen Gegenstandes in der Hand.",
+                "Scale multiplier for held items in hand.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemScale,
                 v -> { AlpakaConfig.instance.itemScale = v; AlpakaConfig.save(); },
@@ -91,7 +91,7 @@ public class AlpakaConfigRegistry {
                 "scale size item hand viewmodel big small"));
 
         OPTIONS.add(new ConfigOption("item_x_offset", "X Offset (Left/Right)",
-                "Horizontale Verschiebung der Hand nach links oder rechts.",
+                "Horizontal offset of the hand to the left or right.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemXOffset,
                 v -> { AlpakaConfig.instance.itemXOffset = v; AlpakaConfig.save(); },
@@ -99,7 +99,7 @@ public class AlpakaConfigRegistry {
                 "position x offset left right hand"));
 
         OPTIONS.add(new ConfigOption("item_y_offset", "Y Offset (Up/Down)",
-                "Vertikale Verschiebung der Hand nach oben oder unten.",
+                "Vertical offset of the hand up or down.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemYOffset,
                 v -> { AlpakaConfig.instance.itemYOffset = v; AlpakaConfig.save(); },
@@ -107,7 +107,7 @@ public class AlpakaConfigRegistry {
                 "position y offset up down height hand"));
 
         OPTIONS.add(new ConfigOption("item_z_offset", "Z Offset (Forward/Back)",
-                "Tiefen-Verschiebung der Hand nach vorne oder hinten.",
+                "Depth offset of the hand forward or backward.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemZOffset,
                 v -> { AlpakaConfig.instance.itemZOffset = v; AlpakaConfig.save(); },
@@ -115,7 +115,7 @@ public class AlpakaConfigRegistry {
                 "position z offset forward back depth hand"));
 
         OPTIONS.add(new ConfigOption("item_rotation_x", "Rotation Pitch (X)",
-                "Neigung der Hand nach vorne/hinten.",
+                "Pitch tilt of the hand forward or backward.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemRotationX,
                 v -> { AlpakaConfig.instance.itemRotationX = v; AlpakaConfig.save(); },
@@ -123,7 +123,7 @@ public class AlpakaConfigRegistry {
                 "rotation pitch x angle tilt"));
 
         OPTIONS.add(new ConfigOption("item_rotation_y", "Rotation Yaw (Y)",
-                "Drehung der Hand zur Seite.",
+                "Yaw turn of the hand side to side.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemRotationY,
                 v -> { AlpakaConfig.instance.itemRotationY = v; AlpakaConfig.save(); },
@@ -131,7 +131,7 @@ public class AlpakaConfigRegistry {
                 "rotation yaw y angle turn"));
 
         OPTIONS.add(new ConfigOption("item_rotation_z", "Rotation Roll (Z)",
-                "Kippen der Hand zur Seite.",
+                "Roll tilt of the hand side to side.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemRotationZ,
                 v -> { AlpakaConfig.instance.itemRotationZ = v; AlpakaConfig.save(); },
@@ -139,7 +139,7 @@ public class AlpakaConfigRegistry {
                 "rotation roll z angle side tilt"));
 
         OPTIONS.add(new ConfigOption("item_swing_speed", "Swing Speed",
-                "Geschwindigkeit der Schlag-Animation.",
+                "Speed multiplier for swing animations.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemSwingSpeed,
                 v -> { AlpakaConfig.instance.itemSwingSpeed = v; AlpakaConfig.save(); },
@@ -147,21 +147,21 @@ public class AlpakaConfigRegistry {
                 "swing speed attack animation fast slow"));
 
         OPTIONS.add(new ConfigOption("item_sway_disabled", "Disable Hand Sway",
-                "Deaktiviert das Wackeln der Hand beim Umschauen.",
+                "Disables hand sway when turning the camera.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemSwayDisabled,
                 v -> { AlpakaConfig.instance.itemSwayDisabled = v; AlpakaConfig.save(); },
                 "sway hand motion movement camera steady"));
 
         OPTIONS.add(new ConfigOption("item_no_equip", "Disable Re-equip Animation",
-                "Deaktiviert die Absenk-Animation beim Wechseln des ausgewählten Items.",
+                "Disables lower re-equip animation when switching slots.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemNoEquipEnabled,
                 v -> { AlpakaConfig.instance.itemNoEquipEnabled = v; AlpakaConfig.save(); },
                 "no equip reequip animation slot switch instant"));
 
         OPTIONS.add(new ConfigOption("item_ignore_empty_hand", "Ignore Empty Hand",
-                "Wendet Viewmodel-Anpassungen nur an, wenn ein Item gehalten wird.",
+                "Applies viewmodel changes only when holding an item.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemIgnoreEmptyHandEnabled,
                 v -> { AlpakaConfig.instance.itemIgnoreEmptyHandEnabled = v; AlpakaConfig.save(); },
@@ -171,7 +171,7 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Swing Customizations Header", ConfigCategory.VIEWMODEL));
 
         OPTIONS.add(new ConfigOption("swing_drift_x", "Swing Drift X",
-                "Seitlicher Drift-Versatz während des Schlags.",
+                "Lateral swing drift displacement.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.swingDriftX,
                 v -> { AlpakaConfig.instance.swingDriftX = v; AlpakaConfig.save(); },
@@ -179,7 +179,7 @@ public class AlpakaConfigRegistry {
                 "swing drift x lateral motion"));
 
         OPTIONS.add(new ConfigOption("swing_drift_y", "Swing Drift Y",
-                "Vertikaler Drift-Versatz während des Schlags.",
+                "Vertical swing drift displacement.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.swingDriftY,
                 v -> { AlpakaConfig.instance.swingDriftY = v; AlpakaConfig.save(); },
@@ -187,7 +187,7 @@ public class AlpakaConfigRegistry {
                 "swing drift y vertical motion"));
 
         OPTIONS.add(new ConfigOption("swing_drift_z", "Swing Drift Z",
-                "Tiefen-Drift-Versatz während des Schlags.",
+                "Depth swing drift displacement.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.swingDriftZ,
                 v -> { AlpakaConfig.instance.swingDriftZ = v; AlpakaConfig.save(); },
@@ -195,7 +195,7 @@ public class AlpakaConfigRegistry {
                 "swing drift z depth motion"));
 
         OPTIONS.add(new ConfigOption("swing_arc_x", "Swing Arc Pitch",
-                "Zusätzlicher Schwung-Winkel um die X-Achse.",
+                "Additional swing rotation angle around X axis.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.swingArcX,
                 v -> { AlpakaConfig.instance.swingArcX = v; AlpakaConfig.save(); },
@@ -203,7 +203,7 @@ public class AlpakaConfigRegistry {
                 "swing arc pitch angle rot"));
 
         OPTIONS.add(new ConfigOption("swing_arc_y", "Swing Arc Yaw",
-                "Zusätzlicher Schwung-Winkel um die Y-Achse.",
+                "Additional swing rotation angle around Y axis.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.swingArcY,
                 v -> { AlpakaConfig.instance.swingArcY = v; AlpakaConfig.save(); },
@@ -211,7 +211,7 @@ public class AlpakaConfigRegistry {
                 "swing arc yaw angle rot"));
 
         OPTIONS.add(new ConfigOption("swing_arc_z", "Swing Arc Roll",
-                "Zusätzlicher Schwung-Winkel um die Z-Achse.",
+                "Additional swing rotation angle around Z axis.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.swingArcZ,
                 v -> { AlpakaConfig.instance.swingArcZ = v; AlpakaConfig.save(); },
@@ -219,14 +219,14 @@ public class AlpakaConfigRegistry {
                 "swing arc roll angle rot"));
 
         OPTIONS.add(new ConfigOption("item_swing_trans_disable", "Disable Swing Translation",
-                "Deaktiviert die Positions-Verschiebung während des Schwungs.",
+                "Disables position translation during swings.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemSwingTranslationDisabled,
                 v -> { AlpakaConfig.instance.itemSwingTranslationDisabled = v; AlpakaConfig.save(); },
                 "disable swing translation movement offset shift"));
 
         OPTIONS.add(new ConfigOption("item_swing_always_finish", "Always Finish Swing",
-                "Schlag-Animation wird stets vollständig bis zum Ende ausgeführt.",
+                "Forces swing animations to always complete fully.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemSwingAlwaysFinishEnabled,
                 v -> { AlpakaConfig.instance.itemSwingAlwaysFinishEnabled = v; AlpakaConfig.save(); },
@@ -234,31 +234,31 @@ public class AlpakaConfigRegistry {
 
         // --- 3. BLOCK OVERLAY ---
         OPTIONS.add(new ConfigOption("block_overlay_enabled", "Enable Block Overlay",
-                "Aktiviert die benutzerdefinierte Block-Hervorhebung.",
+                "Enables custom targeted block highlight rendering.",
                 ConfigCategory.BLOCK_OVERLAY,
                 () -> AlpakaConfig.instance.blockOverlayEnabled,
                 v -> { AlpakaConfig.instance.blockOverlayEnabled = v; AlpakaConfig.save(); },
                 "block overlay outline highlight render custom enable"));
 
         OPTIONS.add(new ConfigOption("block_outline_enabled", "Block Outline",
-                "Zeigt die äußeren Kanten des visierten Blocks an.",
+                "Draws outline borders around targeted blocks.",
                 ConfigCategory.BLOCK_OVERLAY,
                 () -> AlpakaConfig.instance.blockOutlineEnabled,
                 v -> { AlpakaConfig.instance.blockOutlineEnabled = v; AlpakaConfig.save(); },
                 "block outline border edge line draw"));
 
         OPTIONS.add(new ConfigOption("block_outline_thickness", "Outline Thickness",
-                "Liniendicke des Block-Rahmens.",
+                "Thickness of the block outline frame.",
                 ConfigCategory.BLOCK_OVERLAY,
                 () -> AlpakaConfig.instance.blockOutlineThickness,
                 v -> { AlpakaConfig.instance.blockOutlineThickness = v; AlpakaConfig.save(); },
-                0.5f, 10.0f, val -> String.format("%.1fpz", val),
+                0.5f, 10.0f, val -> String.format("%.1fpx", val),
                 "outline thickness line width border size"));
 
         OPTIONS.add(new ConfigOption("block_outline_color", "Outline Color",
-                "Wähle die Farbe der Block-Outline.",
+                "Select color for the block outline.",
                 ConfigCategory.BLOCK_OVERLAY,
-                "Farbe wählen",
+                "Choose Color",
                 parent -> Minecraft.getInstance().setScreen(new ColorPickerScreen(parent, "Block Outline Color", AlpakaConfig.instance.blockOutlineColor, color -> {
                     AlpakaConfig.instance.blockOutlineColor = color;
                     AlpakaConfig.save();
@@ -266,14 +266,14 @@ public class AlpakaConfigRegistry {
                 "block outline color picker rgb alpha cyan red blue"));
 
         OPTIONS.add(new ConfigOption("block_chroma_enabled", "Chroma RGB Effect",
-                "Dynamischer Regenbogen-Farbverlauf für den Block-Rahmen.",
+                "Dynamic rainbow color cycle gradient for block overlay.",
                 ConfigCategory.BLOCK_OVERLAY,
                 () -> AlpakaConfig.instance.blockChromaEnabled,
                 v -> { AlpakaConfig.instance.blockChromaEnabled = v; AlpakaConfig.save(); },
                 "chroma rgb rainbow color cycle gradient block"));
 
         OPTIONS.add(new ConfigOption("block_chroma_speed", "Chroma Speed",
-                "Geschwindigkeit des Regenbogen-Farbwechsels.",
+                "Speed multiplier for rainbow color cycling.",
                 ConfigCategory.BLOCK_OVERLAY,
                 () -> AlpakaConfig.instance.blockChromaSpeed,
                 v -> { AlpakaConfig.instance.blockChromaSpeed = v; AlpakaConfig.save(); },
@@ -281,23 +281,23 @@ public class AlpakaConfigRegistry {
                 "chroma speed rainbow velocity rgb cycle"));
 
         OPTIONS.add(new ConfigOption("block_ignore_depth", "Ignore Depth (X-Ray)",
-                "Macht den Block-Rahmen auch durch Wände hindurch sichtbar.",
+                "Renders block overlay through walls (X-Ray mode).",
                 ConfigCategory.BLOCK_OVERLAY,
                 () -> AlpakaConfig.instance.blockIgnoreDepth,
                 v -> { AlpakaConfig.instance.blockIgnoreDepth = v; AlpakaConfig.save(); },
                 "ignore depth wall xray see through blocks outline"));
 
         OPTIONS.add(new ConfigOption("block_fill_enabled", "Block Fill",
-                "Füllt die Flächen des angeschauten Blocks farbig aus.",
+                "Fills target block faces with transparent color.",
                 ConfigCategory.BLOCK_OVERLAY,
                 () -> AlpakaConfig.instance.blockFillEnabled,
                 v -> { AlpakaConfig.instance.blockFillEnabled = v; AlpakaConfig.save(); },
                 "block fill solid transparent face shading color"));
 
         OPTIONS.add(new ConfigOption("block_fill_color", "Fill Color",
-                "Wähle die Füllfarbe und Transparenz für Blöcke.",
+                "Select fill color and transparency for targeted blocks.",
                 ConfigCategory.BLOCK_OVERLAY,
-                "Farbe wählen",
+                "Choose Color",
                 parent -> Minecraft.getInstance().setScreen(new ColorPickerScreen(parent, "Block Fill Color", AlpakaConfig.instance.blockFillColor, color -> {
                     AlpakaConfig.instance.blockFillColor = color;
                     AlpakaConfig.save();
@@ -306,28 +306,28 @@ public class AlpakaConfigRegistry {
 
         // --- 4. PLAYER MODEL HUD ---
         OPTIONS.add(new ConfigOption("player_model_enabled", "Enable Player Model HUD",
-                "Zeigt ein Miniatur-Spielermodell auf dem Bildschirm an.",
+                "Displays a miniature 3D player avatar on the HUD.",
                 ConfigCategory.PLAYER_MODEL,
                 () -> AlpakaConfig.instance.playerModelEnabled,
                 v -> { AlpakaConfig.instance.playerModelEnabled = v; AlpakaConfig.save(); },
                 "player model hud avatar skin 3d display preview"));
 
         OPTIONS.add(new ConfigOption("player_model_only_actions", "Only Show On Action",
-                "Blendet das Modell nur ein wenn der Spieler rennt, fliegt oder schlägt.",
+                "Only displays avatar while sprinting, flying, or swinging.",
                 ConfigCategory.PLAYER_MODEL,
                 () -> AlpakaConfig.instance.playerModelOnlyActions,
                 v -> { AlpakaConfig.instance.playerModelOnlyActions = v; AlpakaConfig.save(); },
                 "only action sprint fly swing dynamic hide avatar"));
 
         OPTIONS.add(new ConfigOption("player_model_disable_movement", "Disable Movement Sway",
-                "Modell bleibt auf dem HUD fixiert ohne Lauf-Wackeln.",
+                "Fixes avatar position without walking sway motion.",
                 ConfigCategory.PLAYER_MODEL,
                 () -> AlpakaConfig.instance.playerModelDisableMovement,
                 v -> { AlpakaConfig.instance.playerModelDisableMovement = v; AlpakaConfig.save(); },
                 "disable movement sway steady static hud player model"));
 
         OPTIONS.add(new ConfigOption("player_model_scale", "Model Scale",
-                "Größe des Spielermodells auf dem Bildschirm.",
+                "Size scale of the HUD player avatar.",
                 ConfigCategory.PLAYER_MODEL,
                 () -> (float) AlpakaConfig.instance.playerModelScale,
                 v -> { AlpakaConfig.instance.playerModelScale = Math.round(v); AlpakaConfig.save(); },
@@ -335,22 +335,22 @@ public class AlpakaConfigRegistry {
                 "player model scale size zoom width height"));
 
         OPTIONS.add(new ConfigOption("player_model_hud_editor", "Configure HUD Position",
-                "Öffne den visuellen Editor um das Modell auf dem HUD zu verschieben.",
+                "Opens visual editor to drag and position HUD avatar.",
                 ConfigCategory.PLAYER_MODEL,
-                "Position anpassen",
+                "Adjust Position",
                 parent -> Minecraft.getInstance().setScreen(new PlayerModelHudEditorScreen(parent)),
                 "player model position edit dragging hud screen drag move"));
 
         // --- 5. CAMERA & MOTION ---
         OPTIONS.add(new ConfigOption("smooth_perspective", "Smooth Perspective",
-                "Sanfter, fließender Übergang beim Wechsel der Kamera-Perspektive.",
+                "Smooth transition animation when toggling perspective.",
                 ConfigCategory.CAMERA,
                 () -> AlpakaConfig.instance.smoothPerspectiveEnabled,
                 v -> { AlpakaConfig.instance.smoothPerspectiveEnabled = v; AlpakaConfig.save(); },
                 "smooth perspective camera transition f5 third person first person"));
 
         OPTIONS.add(new ConfigOption("smooth_perspective_duration", "Transition Duration",
-                "Dauer der Kamera-Umschaltanimation in Millisekunden.",
+                "Duration of perspective switch transition in ms.",
                 ConfigCategory.CAMERA,
                 () -> (float) AlpakaConfig.instance.smoothPerspectiveDurationMs,
                 v -> { AlpakaConfig.instance.smoothPerspectiveDurationMs = Math.round(v); AlpakaConfig.save(); },
@@ -359,14 +359,14 @@ public class AlpakaConfigRegistry {
 
         // --- 6. SOUND & UTILITY ---
         OPTIONS.add(new ConfigOption("custom_sounds", "Custom Sounds",
-                "Spielt benutzerspezifische Sounds für Feedback & Aktionen ab.",
+                "Plays custom sound effects for button clicks and actions.",
                 ConfigCategory.SOUND_MISC,
                 () -> AlpakaConfig.instance.customSoundsEnabled,
                 v -> { AlpakaConfig.instance.customSoundsEnabled = v; AlpakaConfig.save(); },
                 "custom sounds audio effects click chime notification"));
 
         OPTIONS.add(new ConfigOption("custom_sounds_volume", "Custom Sounds Volume",
-                "Lautstärke für benutzerspezifische Soundeffekte.",
+                "Volume level for custom sound effects.",
                 ConfigCategory.SOUND_MISC,
                 () -> AlpakaConfig.instance.customSoundsVolume,
                 v -> { AlpakaConfig.instance.customSoundsVolume = v; AlpakaConfig.save(); },
@@ -374,14 +374,14 @@ public class AlpakaConfigRegistry {
                 "custom sounds volume loudness audio gain percent"));
 
         OPTIONS.add(new ConfigOption("custom_escape_menu", "Custom Escape Menu",
-                "Aktiviert das gestaltete Alpaka Pause-Menü (ESC).",
+                "Enables custom styled Alpaka pause screen (ESC).",
                 ConfigCategory.SOUND_MISC,
                 () -> AlpakaConfig.instance.customEscapeMenuEnabled,
                 v -> { AlpakaConfig.instance.customEscapeMenuEnabled = v; AlpakaConfig.save(); },
                 "custom escape menu pause screen esc button design"));
 
         OPTIONS.add(new ConfigOption("slayer_drop_tracker", "Slayer Drop Tracker",
-                "Trackt automatisch Beute & Kills bei Hypixel Slayer-Bossen.",
+                "Automatically tracks loot drops and kills for Hypixel Slayer bosses.",
                 ConfigCategory.SOUND_MISC,
                 () -> AlpakaConfig.instance.slayerDropTrackerEnabled,
                 v -> { AlpakaConfig.instance.slayerDropTrackerEnabled = v; AlpakaConfig.save(); },

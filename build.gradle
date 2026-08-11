@@ -52,53 +52,74 @@ java {
     }
 }
 
-def oneClientDir = file("${System.getProperty("user.home")}/Library/Application Support/org.Polyfrost.OneClient")
-def minecraftModsDir = file("${System.getProperty("user.home")}/Library/Application Support/org.Polyfrost.OneClient/.minecraft/mods")
-def fabricProcessedDir = file("${System.getProperty("user.home")}/Library/Application Support/org.Polyfrost.OneClient/.minecraft/.fabric/processedMods")
+def deployToLauncher(File jarFile, String versionStr) {
+    def homeDir = System.getProperty("user.home")
+    def oneClientDir = new File("${homeDir}/Library/Application Support/org.Polyfrost.OneClient")
+    def targetName = "alpaka-${versionStr}.jar"
+
+    if (!oneClientDir.exists()) return
+
+    // 1. Replace ALL existing alpaka jar files anywhere in OneClient caches & imported packages
+    oneClientDir.eachFileRecurse { f ->
+        if (f.isFile() && f.name.startsWith("alpaka") && f.name.endsWith(".jar")) {
+            try {
+                java.nio.file.Files.copy(jarFile.toPath(), f.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+                println "Overwrote OneClient cached jar: ${f.absolutePath}"
+            } catch (Exception e) {
+                println "Failed to overwrite ${f.absolutePath}: ${e.message}"
+            }
+        }
+    }
+
+    // 2. Ensure new version jar is copied to all cluster mods directories
+    def clustersDir = new File(oneClientDir, "clusters")
+    if (clustersDir.exists()) {
+        clustersDir.listFiles()?.findAll { it.isDirectory() }?.each { clusterFolder ->
+            def modsFolder = new File(clusterFolder, "mods")
+            if (modsFolder.exists()) {
+                modsFolder.listFiles()?.findAll { it.name.startsWith("alpaka") && it.name.endsWith(".jar") && it.name != targetName }?.each {
+                    it.delete()
+                    println "Removed old mod file: ${it.name} from ${clusterFolder.name}"
+                }
+                def destFile = new File(modsFolder, targetName)
+                java.nio.file.Files.copy(jarFile.toPath(), destFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+                println "Deployed ${targetName} to OneClient cluster: ${clusterFolder.name}"
+            }
+        }
+    }
+
+    // 3. Ensure copy to .minecraft/mods
+    def mcModsDir = new File(oneClientDir, ".minecraft/mods")
+    mcModsDir.mkdirs()
+    mcModsDir.listFiles()?.findAll { it.name.startsWith("alpaka") && it.name.endsWith(".jar") && it.name != targetName }?.each {
+        it.delete()
+    }
+    def destMcFile = new File(mcModsDir, targetName)
+    java.nio.file.Files.copy(jarFile.toPath(), destMcFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+    println "Deployed ${targetName} to .minecraft/mods"
+
+    // 4. Clear Fabric Loader processedMods cache
+    def processedDir = new File(oneClientDir, ".minecraft/.fabric/processedMods")
+    if (processedDir.exists()) {
+        processedDir.listFiles()?.findAll { it.name.startsWith("alpaka") }?.each {
+            it.delete()
+            println "Cleared Fabric processedMod cache: ${it.name}"
+        }
+    }
+}
+
+tasks.named("jar") {
+    doLast {
+        deployToLauncher(archiveFile.get().asFile, project.version.toString())
+    }
+}
 
 tasks.named("runClient") {
     dependsOn(tasks.jar)
     doLast {
-        def jarFile = tasks.jar.archiveFile.get().asFile
-        def targetName = "alpaka-${project.version}.jar"
-
-        // 1. Copy to .minecraft/mods where OneClient auto-detects new/updated mods
-        minecraftModsDir.mkdirs()
-        if (minecraftModsDir.exists()) {
-            minecraftModsDir.listFiles()?.findAll { it.name.startsWith("alpaka") }?.each { it.delete() }
-            project.copy {
-                from jarFile
-                into minecraftModsDir
-                rename { targetName }
-            }
-            println "Copied ${targetName} to .minecraft/mods"
-        }
-
-        // 2. Clear Fabric Loader's processedMods cache for alpaka
-        if (fabricProcessedDir.exists()) {
-            fabricProcessedDir.listFiles()?.findAll { it.name.startsWith("alpaka") }?.each {
-                it.delete()
-                println "Deleted Fabric processedMod cache: ${it.name}"
-            }
-        }
-
-        // 3. Update all existing alpaka jar files in OneClient launcher caches
-        if (oneClientDir.exists()) {
-            oneClientDir.eachFileRecurse { targetFile ->
-                if (targetFile.isFile() && targetFile.name.startsWith("alpaka") && targetFile.name.endsWith(".jar")) {
-                    project.copy {
-                        from jarFile
-                        into targetFile.parentFile
-                        rename { targetFile.name }
-                    }
-                    println "Updated OneClient mod file: ${targetFile.absolutePath}"
-                }
-            }
-        }
-
-        // 4. Launch OneClient app
         new ProcessBuilder("open", "-a", "/Applications/OneClient.app").start()
     }
 }
+
 
 

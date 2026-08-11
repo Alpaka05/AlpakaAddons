@@ -357,13 +357,21 @@ public class AlpakaConfigRegistry {
                 100.0f, 1000.0f, val -> String.format("%d ms", Math.round(val)),
                 "smooth perspective camera speed duration transition time ms"));
 
-        // --- 6. SOUND & UTILITY ---
-        OPTIONS.add(new ConfigOption("custom_sounds", "Custom Sounds",
-                "Plays custom sound effects for button clicks and actions.",
+        // --- 6. SKYBLOCK ---
+        OPTIONS.add(new ConfigOption("slayer_drop_tracker", "Slayer Drop Tracker",
+                "Automatically tracks loot drops and kills for Hypixel Slayer bosses.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slayerDropTrackerEnabled,
+                v -> { AlpakaConfig.instance.slayerDropTrackerEnabled = v; AlpakaConfig.save(); },
+                "slayer drop tracker hypixel loot boss kill stats counter skyblock"));
+
+        // --- 7. SOUND & UTILITY ---
+        OPTIONS.add(new ConfigOption("custom_sounds", "Master Custom Sounds",
+                "Master switch for custom sound effects throughout the mod.",
                 ConfigCategory.SOUND_MISC,
                 () -> AlpakaConfig.instance.customSoundsEnabled,
                 v -> { AlpakaConfig.instance.customSoundsEnabled = v; AlpakaConfig.save(); },
-                "custom sounds audio effects click chime notification"));
+                "custom sounds audio effects click chime notification master"));
 
         OPTIONS.add(new ConfigOption("custom_sounds_volume", "Custom Sounds Volume",
                 "Volume level for custom sound effects.",
@@ -373,19 +381,40 @@ public class AlpakaConfigRegistry {
                 0.0f, 1.0f, val -> String.format("%d%%", Math.round(val * 100)),
                 "custom sounds volume loudness audio gain percent"));
 
+        OPTIONS.add(new ConfigOption("custom_sound_button_click", "UI Button Click Sound",
+                "Plays custom chime when clicking buttons in menus.",
+                ConfigCategory.SOUND_MISC,
+                () -> AlpakaConfig.instance.customSoundButtonClick,
+                v -> { AlpakaConfig.instance.customSoundButtonClick = v; AlpakaConfig.save(); },
+                "button click sound ui audio feedback chime"));
+
+        OPTIONS.add(new ConfigOption("custom_sound_toggle", "Option Toggle Sound",
+                "Plays sound effect when toggling switches on or off.",
+                ConfigCategory.SOUND_MISC,
+                () -> AlpakaConfig.instance.customSoundToggle,
+                v -> { AlpakaConfig.instance.customSoundToggle = v; AlpakaConfig.save(); },
+                "toggle switch sound option change audio"));
+
+        OPTIONS.add(new ConfigOption("custom_sound_rare_drop", "Slayer Rare Drop Sound",
+                "Plays sound effect when getting a rare Slayer loot drop.",
+                ConfigCategory.SOUND_MISC,
+                () -> AlpakaConfig.instance.customSoundRareDrop,
+                v -> { AlpakaConfig.instance.customSoundRareDrop = v; AlpakaConfig.save(); },
+                "rare drop sound slayer loot celebration audio"));
+
+        OPTIONS.add(new ConfigOption("custom_sound_notification", "Boss Spawn Sound",
+                "Plays sound effect when a Slayer boss spawns.",
+                ConfigCategory.SOUND_MISC,
+                () -> AlpakaConfig.instance.customSoundNotification,
+                v -> { AlpakaConfig.instance.customSoundNotification = v; AlpakaConfig.save(); },
+                "boss spawn sound notification alert audio"));
+
         OPTIONS.add(new ConfigOption("custom_escape_menu", "Custom Escape Menu",
                 "Enables custom styled Alpaka pause screen (ESC).",
                 ConfigCategory.SOUND_MISC,
                 () -> AlpakaConfig.instance.customEscapeMenuEnabled,
                 v -> { AlpakaConfig.instance.customEscapeMenuEnabled = v; AlpakaConfig.save(); },
                 "custom escape menu pause screen esc button design"));
-
-        OPTIONS.add(new ConfigOption("slayer_drop_tracker", "Slayer Drop Tracker",
-                "Automatically tracks loot drops and kills for Hypixel Slayer bosses.",
-                ConfigCategory.SOUND_MISC,
-                () -> AlpakaConfig.instance.slayerDropTrackerEnabled,
-                v -> { AlpakaConfig.instance.slayerDropTrackerEnabled = v; AlpakaConfig.save(); },
-                "slayer drop tracker hypixel loot boss kill stats counter"));
     }
 
     public static List<ConfigOption> getOptions(ConfigCategory category, String searchQuery) {

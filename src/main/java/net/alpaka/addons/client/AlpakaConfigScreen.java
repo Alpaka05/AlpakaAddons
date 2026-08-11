@@ -234,31 +234,35 @@ public class AlpakaConfigScreen extends Screen {
 
                     ModernGuiUtils.drawModernCard(graphics, contentX + 20, startOptionY, cardW, cardH, isCardHovered, false);
 
-                    // Title & Description
-                    graphics.text(this.font, Component.literal(opt.getTitle()), contentX + 32, startOptionY + 11, ModernGuiUtils.COLOR_TEXT_PRIMARY);
-                    graphics.text(this.font, Component.literal(opt.getDescription()), contentX + 32, startOptionY + 26, ModernGuiUtils.COLOR_TEXT_MUTED);
-
                     // Right Control Widgets
+                    int widgetW = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 54 : (opt.getType() == ConfigOption.Type.ACTION ? (opt.getId().contains("color") ? 64 : 110) : 120);
+                    int widgetH = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 22 : 24;
+                    int widgetX = contentX + 20 + cardW - widgetW - 14;
+                    int widgetY = startOptionY + (cardH - widgetH) / 2;
+
+                    // Title & Description (Wrapped to maxDescW to prevent overlap with control widgets)
+                    graphics.text(this.font, Component.literal(opt.getTitle()), contentX + 32, startOptionY + 10, ModernGuiUtils.COLOR_TEXT_PRIMARY);
+
+                    String desc = opt.getDescription();
+                    int maxDescW = widgetX - (contentX + 32) - 12;
+                    List<net.minecraft.network.chat.FormattedText> descLines = this.font.getSplitter().splitLines(desc, maxDescW, net.minecraft.network.chat.Style.EMPTY);
+
+                    if (descLines.size() > 1) {
+                        for (int i = 0; i < Math.min(2, descLines.size()); i++) {
+                            graphics.text(this.font, Component.literal(descLines.get(i).getString()), contentX + 32, startOptionY + 23 + i * 10, ModernGuiUtils.COLOR_TEXT_MUTED);
+                        }
+                    } else {
+                        graphics.text(this.font, Component.literal(desc), contentX + 32, startOptionY + 25, ModernGuiUtils.COLOR_TEXT_MUTED);
+                    }
+
                     if (opt.getType() == ConfigOption.Type.BOOLEAN) {
-                        int widgetW = 54;
-                        int widgetH = 22;
-                        int widgetX = contentX + 20 + cardW - widgetW - 14;
-                        int widgetY = startOptionY + (cardH - widgetH) / 2;
                         boolean isWidgetHovered = mouseX >= widgetX && mouseX <= widgetX + widgetW && mouseY >= widgetY && mouseY <= widgetY + widgetH && mouseY >= clipY && mouseY <= clipY + clipH;
                         ModernGuiUtils.drawModernToggle(graphics, this.font, widgetX, widgetY, widgetW, widgetH, opt.getBool(), isWidgetHovered);
                     } else if (opt.getType() == ConfigOption.Type.SLIDER) {
-                        int widgetW = 120;
-                        int widgetH = 24;
-                        int widgetX = contentX + 20 + cardW - widgetW - 14;
-                        int widgetY = startOptionY + (cardH - widgetH) / 2;
                         boolean isWidgetHovered = mouseX >= widgetX && mouseX <= widgetX + widgetW && mouseY >= widgetY && mouseY <= widgetY + widgetH && mouseY >= clipY && mouseY <= clipY + clipH;
                         double normVal = opt.getSliderNormalizedValue();
                         ModernGuiUtils.drawModernSlider(graphics, this.font, widgetX, widgetY, widgetW, widgetH, normVal, opt.getFormattedValue(), isWidgetHovered);
                     } else if (opt.getType() == ConfigOption.Type.ACTION) {
-                        int widgetW = opt.getId().contains("color") ? 64 : 110;
-                        int widgetH = 24;
-                        int widgetX = contentX + 20 + cardW - widgetW - 14;
-                        int widgetY = startOptionY + (cardH - widgetH) / 2;
                         boolean isWidgetHovered = mouseX >= widgetX && mouseX <= widgetX + widgetW && mouseY >= widgetY && mouseY <= widgetY + widgetH && mouseY >= clipY && mouseY <= clipY + clipH;
 
                         if (opt.getId().contains("color")) {

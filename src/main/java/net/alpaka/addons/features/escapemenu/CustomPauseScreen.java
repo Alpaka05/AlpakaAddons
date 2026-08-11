@@ -1,6 +1,8 @@
 package net.alpaka.addons.features.escapemenu;
 
 import net.alpaka.addons.client.AlpakaConfigScreen;
+import net.alpaka.addons.client.gui.ModernGuiUtils;
+import net.alpaka.addons.client.gui.PloppAnimation;
 import net.alpaka.addons.features.sound.CustomSoundFeature;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -30,7 +32,7 @@ public class CustomPauseScreen extends Screen {
     private CustomPauseButton promptConfirmButton;
 
     public CustomPauseScreen() {
-        super(Component.literal("Custom Pause Screen"));
+        super(Component.literal("Alpaka Escape Menu"));
     }
 
     @Override
@@ -40,16 +42,16 @@ public class CustomPauseScreen extends Screen {
         int centerX = this.width / 2;
         int centerY = this.height / 2;
 
-        int cardWidth = 240;
-        int cardHeight = 275;
+        int cardWidth = 260;
+        int cardHeight = 310;
         int startX = centerX - cardWidth / 2;
         int startY = centerY - cardHeight / 2;
 
-        int buttonWidth = 200;
-        int buttonHeight = 28;
+        int buttonWidth = 220;
+        int buttonHeight = 30;
         int buttonX = centerX - buttonWidth / 2;
-        int buttonStartY = startY + 45;
-        int spacing = 36;
+        int buttonStartY = startY + 54;
+        int spacing = 38;
 
         // 1. Resume Button
         this.resumeButton = new CustomPauseButton(buttonX, buttonStartY, buttonWidth, buttonHeight,
@@ -107,22 +109,22 @@ public class CustomPauseScreen extends Screen {
         this.addRenderableWidget(this.disconnectButton);
 
         // Disconnect Prompt Buttons
-        int promptWidth = 240;
-        int promptHeight = 135;
+        int promptWidth = 250;
+        int promptHeight = 140;
         int promptX = centerX - promptWidth / 2;
         int promptY = centerY - promptHeight / 2;
 
-        int pBtnWidth = 95;
-        int pBtnHeight = 24;
-        int pBtnY = promptY + 95;
+        int pBtnWidth = 100;
+        int pBtnHeight = 26;
+        int pBtnY = promptY + 96;
 
-        this.promptCancelButton = new CustomPauseButton(promptX + 20, pBtnY, pBtnWidth, pBtnHeight,
+        this.promptCancelButton = new CustomPauseButton(promptX + 18, pBtnY, pBtnWidth, pBtnHeight,
                 Component.literal("Cancel"), false, btn -> {
             this.showDisconnectPrompt = false;
             this.updateWidgetStates();
         });
 
-        this.promptConfirmButton = new CustomPauseButton(promptX + promptWidth - 20 - pBtnWidth, pBtnY, pBtnWidth, pBtnHeight,
+        this.promptConfirmButton = new CustomPauseButton(promptX + promptWidth - 18 - pBtnWidth, pBtnY, pBtnWidth, pBtnHeight,
                 Component.literal("Disconnect"), true, btn -> {
             if (this.minecraft != null) {
                 if (this.minecraft.level != null) {
@@ -148,52 +150,6 @@ public class CustomPauseScreen extends Screen {
         if (this.promptConfirmButton != null) this.promptConfirmButton.active = this.showDisconnectPrompt;
     }
 
-    private float getAnimationScale() {
-        long elapsed = System.currentTimeMillis() - this.openTime;
-        float t = Math.min(1.0f, elapsed / 200.0f);
-        // Smooth Ease-Out Back spring curve
-        return (float) (0.82 + 0.18 * (1.0 - Math.pow(1.0 - t, 3.0)) + 0.05 * Math.sin(t * Math.PI) * (1.0 - t));
-    }
-
-    private static void fillRoundedRect(GuiGraphicsExtractor graphics, int x, int y, int w, int h, int r, int color) {
-        if (r <= 0) {
-            graphics.fill(x, y, x + w, y + h, color);
-            return;
-        }
-        r = Math.min(r, Math.min(w, h) / 2);
-        for (int iy = 0; iy < h; iy++) {
-            int dx = 0;
-            if (iy < r) {
-                int dy = r - 1 - iy;
-                dx = (int) Math.round(r - Math.sqrt(r * r - dy * dy));
-            } else if (iy >= h - r) {
-                int dy = iy - (h - r);
-                dx = (int) Math.round(r - Math.sqrt(r * r - dy * dy));
-            }
-            graphics.fill(x + dx, y + iy, x + w - dx, y + iy + 1, color);
-        }
-    }
-
-    private static void drawRoundedOutline(GuiGraphicsExtractor graphics, int x, int y, int w, int h, int r, int color) {
-        r = Math.min(r, Math.min(w, h) / 2);
-        for (int iy = 0; iy < h; iy++) {
-            int dx = 0;
-            if (iy < r) {
-                int dy = r - 1 - iy;
-                dx = (int) Math.round(r - Math.sqrt(r * r - dy * dy));
-            } else if (iy >= h - r) {
-                int dy = iy - (h - r);
-                dx = (int) Math.round(r - Math.sqrt(r * r - dy * dy));
-            }
-            if (iy == 0 || iy == h - 1) {
-                graphics.fill(x + dx, y + iy, x + w - dx, y + iy + 1, color);
-            } else {
-                graphics.fill(x + dx, y + iy, x + dx + 1, y + iy + 1, color);
-                graphics.fill(x + w - 1 - dx, y + iy, x + w - dx, y + iy + 1, color);
-            }
-        }
-    }
-
     @Override
     public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         super.extractBackground(graphics, mouseX, mouseY, partialTick);
@@ -201,25 +157,41 @@ public class CustomPauseScreen extends Screen {
         int centerX = this.width / 2;
         int centerY = this.height / 2;
 
-        long elapsed = System.currentTimeMillis() - this.openTime;
-        float progress = Math.min(1.0f, elapsed / 200.0f);
+        // Dark Translucent Backdrop Overlay
+        graphics.fill(0, 0, this.width, this.height, 0x70000000);
 
-        // Dark Backdrop Overlay with fade-in
-        int alpha = (int) (0x88 * progress);
-        graphics.fill(0, 0, this.width, this.height, (alpha << 24) | 0x0B0F17);
+        int cardWidth = 260;
+        int cardHeight = 310;
+        int startX = centerX - cardWidth / 2;
+        int startY = centerY - cardHeight / 2;
 
-        // Apply smooth scale pop-up animation to main card
-        float scale = getAnimationScale();
+        // Smooth Scale Pop Animation
+        float scale = PloppAnimation.getOpenScale(openTime);
         graphics.pose().pushMatrix();
         graphics.pose().scaleAround(scale, scale, centerX, centerY);
 
-        int cardHeight = 275;
-        int startY = centerY - cardHeight / 2;
+        // Soft Multi-Layer Drop Shadow
+        for (int i = 1; i <= 6; i++) {
+            int shadowAlpha = (int) (0x24 * (1.0f - (float) i / 6.0f));
+            ModernGuiUtils.drawRect(graphics, startX - i, startY - i, cardWidth + i * 2, cardHeight + i * 2, (shadowAlpha << 24));
+        }
+        ModernGuiUtils.drawOutline(graphics, startX - 1, startY - 1, cardWidth + 2, cardHeight + 2, 0x60000000);
 
-        // Subtitle Status
-        String status = (this.minecraft != null && this.minecraft.isSingleplayer()) ? "Singleplayer World" : "Multiplayer Server";
+        // Outer Panel Base & Border
+        ModernGuiUtils.drawRect(graphics, startX, startY, cardWidth, cardHeight, ModernGuiUtils.COLOR_PANEL_BG);
+        ModernGuiUtils.drawOutline(graphics, startX, startY, cardWidth, cardHeight, ModernGuiUtils.COLOR_CARD_BORDER);
+
+        // Top Header Bar
+        int headerH = 44;
+        ModernGuiUtils.drawRect(graphics, startX, startY, cardWidth, headerH, ModernGuiUtils.COLOR_SIDEBAR_BG);
+        ModernGuiUtils.drawRect(graphics, startX, startY + headerH - 1, cardWidth, 1, ModernGuiUtils.COLOR_ACCENT);
+
+        // Header Title & Version
+        graphics.centeredText(this.font, Component.literal("ALPAKA ADDONS"), centerX, startY + 10, ModernGuiUtils.COLOR_TEXT_PRIMARY);
+
+        String status = (this.minecraft != null && this.minecraft.isSingleplayer()) ? "Singleplayer" : "Multiplayer";
         String user = (this.minecraft != null && this.minecraft.getUser() != null) ? this.minecraft.getUser().getName() : "Player";
-        graphics.centeredText(this.font, Component.literal(user + " • " + status), centerX, startY + 20, 0xFF94A3B8);
+        graphics.centeredText(this.font, Component.literal(user + " • " + status), centerX, startY + 25, ModernGuiUtils.COLOR_TEXT_MUTED);
 
         graphics.pose().popMatrix();
     }
@@ -228,33 +200,40 @@ public class CustomPauseScreen extends Screen {
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         int centerX = this.width / 2;
         int centerY = this.height / 2;
-        float scale = getAnimationScale();
+        float scale = PloppAnimation.getOpenScale(openTime);
 
         graphics.pose().pushMatrix();
         graphics.pose().scaleAround(scale, scale, centerX, centerY);
 
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 
-        // If Disconnect Prompt is Active: Draw Dark Overlay, Modal Card Box and Prompt Buttons IN FRONT OF EVERYTHING
+        // Disconnect Modal Prompt Overlay
         if (this.showDisconnectPrompt) {
-            // Full-screen Dim Overlay inside scale
-            graphics.fill(0, 0, this.width, this.height, 0xAA000000);
+            graphics.fill(0, 0, this.width, this.height, 0x90000000);
 
-            int promptWidth = 240;
-            int promptHeight = 135;
+            int promptWidth = 250;
+            int promptHeight = 140;
             int promptX = centerX - promptWidth / 2;
             int promptY = centerY - promptHeight / 2;
 
-            // Modal Card Box with Red Border Accent
-            fillRoundedRect(graphics, promptX - 1, promptY - 1, promptWidth + 2, promptHeight + 2, 10, 0x30EF4444);
-            fillRoundedRect(graphics, promptX, promptY, promptWidth, promptHeight, 9, 0x751A1A1C);
+            // Modal Drop Shadow & Card Frame
+            for (int i = 1; i <= 5; i++) {
+                int shadowAlpha = (int) (0x20 * (1.0f - (float) i / 5.0f));
+                ModernGuiUtils.drawRect(graphics, promptX - i, promptY - i, promptWidth + i * 2, promptHeight + i * 2, (shadowAlpha << 24));
+            }
+            ModernGuiUtils.drawRect(graphics, promptX, promptY, promptWidth, promptHeight, ModernGuiUtils.COLOR_PANEL_BG);
+            ModernGuiUtils.drawOutline(graphics, promptX, promptY, promptWidth, promptHeight, 0xFFEF4444);
+
+            // Header Line
+            ModernGuiUtils.drawRect(graphics, promptX, promptY, promptWidth, 32, ModernGuiUtils.COLOR_SIDEBAR_BG);
+            ModernGuiUtils.drawRect(graphics, promptX, promptY + 31, promptWidth, 1, 0xFFEF4444);
 
             // Modal Text
-            graphics.centeredText(this.font, Component.literal("Leave Server?"), centerX, promptY + 15, 0xFFEF4444);
-            graphics.centeredText(this.font, Component.literal("Bist du sicher, dass du bereits"), centerX, promptY + 42, 0xFFF8FAFC);
-            graphics.centeredText(this.font, Component.literal("das Spiel verlassen möchtest?"), centerX, promptY + 56, 0xFFCBD5E1);
+            graphics.centeredText(this.font, Component.literal("Leave World / Server?"), centerX, promptY + 10, 0xFFEF4444);
+            graphics.centeredText(this.font, Component.literal("Are you sure you want to"), centerX, promptY + 44, ModernGuiUtils.COLOR_TEXT_PRIMARY);
+            graphics.centeredText(this.font, Component.literal("leave the game session?"), centerX, promptY + 58, ModernGuiUtils.COLOR_TEXT_MUTED);
 
-            // Render Prompt Buttons in Front
+            // Render Modal Buttons
             if (this.promptCancelButton != null) {
                 this.promptCancelButton.extractRenderState(graphics, mouseX, mouseY, partialTick);
             }
@@ -275,7 +254,7 @@ public class CustomPauseScreen extends Screen {
             if (this.promptConfirmButton != null && this.promptConfirmButton.mouseClicked(event, doubleClick)) {
                 return true;
             }
-            return true; // Block clicks on underlying elements
+            return true;
         }
         return super.mouseClicked(event, doubleClick);
     }
@@ -294,7 +273,7 @@ public class CustomPauseScreen extends Screen {
         return super.keyPressed(event);
     }
 
-    // Modern Animated Custom Button Class
+    // Modern Animated Custom Button Class matching Config Theme
     private static class CustomPauseButton extends AbstractButton {
         private final boolean isRed;
         private final ButtonAction action;
@@ -308,11 +287,7 @@ public class CustomPauseScreen extends Screen {
 
         @Override
         public void onPress(InputWithModifiers input) {
-            if (CustomSoundFeature.BUTTON_CLICK_SOUND != null && Minecraft.getInstance().getSoundManager() != null) {
-                Minecraft.getInstance().getSoundManager().play(
-                    net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(CustomSoundFeature.BUTTON_CLICK_SOUND, 1.0f)
-                );
-            }
+            CustomSoundFeature.playButtonClickSound();
             if (this.action != null) {
                 this.action.onPress(this);
             }
@@ -323,7 +298,6 @@ public class CustomPauseScreen extends Screen {
             boolean hovered = mouseX >= this.getX() && mouseX < this.getX() + this.width &&
                               mouseY >= this.getY() && mouseY < this.getY() + this.height && this.active;
 
-            // Interpolate smooth hover animation
             float targetHover = hovered ? 1.0f : 0.0f;
             this.hoverTime += (targetHover - this.hoverTime) * 0.25f;
 
@@ -332,47 +306,21 @@ public class CustomPauseScreen extends Screen {
             int w = this.width;
             int h = this.height;
 
-            // Smoothly slide button up 2px on hover
             int yOffset = (int) (-2.0f * this.hoverTime);
             int drawY = y + yOffset;
 
-            // Colors (modern transparent glassmorphism in white/gray, white highlights on hover)
-            int bgNormal = this.isRed ? 0x12EF4444 : 0x10FFFFFF;
-            int bgHover = this.isRed ? 0x50EF4444 : 0x48FFFFFF;
-            int borderNormal = this.isRed ? 0x20EF4444 : 0x15FFFFFF;
-            int borderHover = this.isRed ? 0xD0EF4444 : 0xD0FFFFFF;
+            int bg = hovered ? (this.isRed ? 0x40EF4444 : ModernGuiUtils.COLOR_CARD_BG_HOVER) : ModernGuiUtils.COLOR_CARD_BG;
+            int border = hovered ? (this.isRed ? 0xFFEF4444 : ModernGuiUtils.COLOR_ACCENT) : ModernGuiUtils.COLOR_CARD_BORDER;
+            int textColor = hovered ? (this.isRed ? 0xFFEF4444 : ModernGuiUtils.COLOR_ACCENT) : ModernGuiUtils.COLOR_TEXT_PRIMARY;
 
-            int currentBg = interpolateColor(bgNormal, bgHover, this.hoverTime);
-            int currentBorder = interpolateColor(borderNormal, borderHover, this.hoverTime);
-
-            // Draw Button Box
-            fillRoundedRect(graphics, x, drawY, w, h, 8, currentBg);
-            
-            // Draw Button 1px Border Outline
-            drawRoundedOutline(graphics, x, drawY, w, h, 8, currentBorder);
-
-            // Draw Button Text (Fades to bright white on hover)
-            int textNormal = this.active ? 0xCCF1F5F9 : 0x4094A3B8;
-            int textHover = this.active ? 0xFFFFFFFF : 0x4094A3B8;
-            int textColor = interpolateColor(textNormal, textHover, this.hoverTime);
+            ModernGuiUtils.drawRect(graphics, x, drawY, w, h, bg);
+            ModernGuiUtils.drawOutline(graphics, x, drawY, w, h, border);
 
             graphics.centeredText(Minecraft.getInstance().font, this.getMessage(), x + w / 2, drawY + (h - 8) / 2, textColor);
         }
 
         @Override
         protected void updateWidgetNarration(NarrationElementOutput narration) {}
-
-        private int interpolateColor(int c1, int c2, float factor) {
-            int a1 = (c1 >> 24) & 0xFF, r1 = (c1 >> 16) & 0xFF, g1 = (c1 >> 8) & 0xFF, b1 = c1 & 0xFF;
-            int a2 = (c2 >> 24) & 0xFF, r2 = (c2 >> 16) & 0xFF, g2 = (c2 >> 8) & 0xFF, b2 = c2 & 0xFF;
-
-            int a = (int) (a1 + (a2 - a1) * factor);
-            int r = (int) (r1 + (r2 - r1) * factor);
-            int g = (int) (g1 + (g2 - g1) * factor);
-            int b = (int) (b1 + (b2 - b1) * factor);
-
-            return (a << 24) | (r << 16) | (g << 8) | b;
-        }
     }
 
     @FunctionalInterface

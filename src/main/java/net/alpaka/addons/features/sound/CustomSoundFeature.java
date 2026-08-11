@@ -85,6 +85,7 @@ public class CustomSoundFeature {
     }
 
     public static void playButtonClickSound() {
+        if (!AlpakaConfig.instance.customSoundButtonClick) return;
         playSound(BUTTON_CLICK_SOUND);
     }
 
@@ -101,6 +102,7 @@ public class CustomSoundFeature {
     }
 
     public static void playBossSpawnSound() {
+        if (!AlpakaConfig.instance.customSoundNotification) return;
         playSound(BOSS_SPAWN_SOUND);
     }
 
@@ -125,10 +127,12 @@ public class CustomSoundFeature {
     }
 
     public static void playRareDropSound() {
+        if (!AlpakaConfig.instance.customSoundRareDrop) return;
         playSound(RARE_DROP_SOUND);
     }
 
     public static void playInsaneDropSound() {
+        if (!AlpakaConfig.instance.customSoundRareDrop) return;
         playSound(INSANE_DROP_SOUND);
     }
 

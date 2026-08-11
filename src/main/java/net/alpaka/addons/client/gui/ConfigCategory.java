@@ -7,7 +7,8 @@ public enum ConfigCategory {
     BLOCK_OVERLAY("Block Overlay", "Custom block outline, colors, chroma & fill effects"),
     PLAYER_MODEL("Player Model HUD", "Configure 3D player character preview on HUD"),
     CAMERA("Camera & Motion", "Smooth perspective switching & motion animations"),
-    SOUND_MISC("Sound & Utility", "Custom sounds, volume, escape menu & slayer tracker");
+    SKYBLOCK("Skyblock", "Hypixel Skyblock utilities & slayer drop trackers"),
+    SOUND_MISC("Sound & Utility", "Custom sounds, volume & escape menu settings");
 
     private final String displayName;
     private final String description;

@@ -1,6 +1,7 @@
 plugins {
     id "fabric-loom" version "1.13.6"
     id "maven-publish"
+    id "org.jetbrains.kotlin.jvm" version "2.1.10"
 }
 
 version = project.property("mod_version")
@@ -31,6 +32,9 @@ dependencies {
 
     // Mod Menu compile dependency
     compileOnly "com.terraformersmc:modmenu:20.0.0-beta.2"
+
+    // Kotlin
+    implementation "org.jetbrains.kotlin:kotlin-stdlib"
 }
 
 tasks.processResources {
@@ -43,6 +47,12 @@ tasks.processResources {
 
 tasks.withType(JavaCompile).configureEach {
     options.release = 25
+}
+
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_23
+    }
 }
 
 java {

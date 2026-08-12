@@ -2,6 +2,7 @@ package net.alpaka.addons.features.slayer;
 
 import net.alpaka.addons.AlpakaAddons;
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.features.blaze.CleanBlazeFeature;
 import net.alpaka.addons.features.sound.CustomSoundFeature;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientEntityEvents;
@@ -46,13 +47,8 @@ public class SlayerDropTracker {
         ClientReceiveMessageEvents.ALLOW_GAME.register((message, overlay) -> {
             if (overlay) return true;
 
-            if (AlpakaConfig.instance.cleanBlazeEnabled) {
-                String clean = cleanColor(message.getString()).trim();
-                if ("Your radio is weak. Find another enjoyer to boost it.".equals(clean) ||
-                    "Your radio signal is strong!".equals(clean) ||
-                    "Your radio lost signal. There's too many enjoyers on this channel.".equals(clean)) {
-                    return false;
-                }
+            if (CleanBlazeFeature.shouldCancelChatMessage(cleanColor(message.getString()))) {
+                return false;
             }
 
             if (!AlpakaConfig.instance.nameHighlightingEnabled) return true;

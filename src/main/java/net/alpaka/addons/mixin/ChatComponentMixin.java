@@ -1,6 +1,7 @@
 package net.alpaka.addons.mixin;
 
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.features.blaze.CleanBlazeFeature;
 import net.minecraft.client.gui.components.ChatComponent;
 import net.minecraft.client.multiplayer.chat.GuiMessageSource;
 import net.minecraft.client.multiplayer.chat.GuiMessageTag;
@@ -29,15 +30,8 @@ public class ChatComponentMixin {
         cancellable = true
     )
     private void onAddMessage(Component component, MessageSignature signature, GuiMessageSource source, GuiMessageTag tag, CallbackInfo ci) {
-        if (AlpakaConfig.instance.cleanBlazeEnabled) {
-            String text = component.getString();
-            if (text.equals("Your Slayer Kill gave you 160 HP healing for 10 seconds!") ||
-                text.equals("  SLAYER QUEST COMPLETE!") ||
-                text.equals("   Blaze Slayer LVL 9 - LVL MAXED OUT!") ||
-                text.equals("   » Slay 33,600 Combat XP worth of Blazes.") ||
-                text.startsWith("RARE DROP! Netherrack-Looking Sunshade")) {
-                ci.cancel();
-            }
+        if (CleanBlazeFeature.shouldCancelChatMessage(component.getString())) {
+            ci.cancel();
         }
     }
 }

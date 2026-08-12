@@ -21,7 +21,8 @@
     "LevelRendererMixin",
     "DepthStencilStateMixin",
     "ChatComponentMixin",
-    "CameraTypeMixin"
+    "CameraTypeMixin",
+    "BlazeModelMixin"
   ],
   "injectors": {
     "defaultRequire": 1

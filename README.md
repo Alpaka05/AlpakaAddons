@@ -2,41 +2,17 @@
 
 > *This is just a silly little project intended for private use.*
 
-**AlpakaAddons** is a feature-rich, highly customizable client-side utility mod for Minecraft (Fabric 1.21.1+). Built with a modern aesthetic, fluid animations, and clean UI components, it brings a collection of quality-of-life enhancements, visual tweaks, audio effects, and Skyblock utility tools together in one lightweight addon.
+**AlpakaAddons** is a modern, lightweight client-side utility mod for Minecraft (Fabric 1.21.1+). It brings clean quality-of-life enhancements, custom menus, visual tweaks, and Skyblock utility tools together in one place.
 
 ---
 
 ## 🌟 Main Features
 
-### 🎨 Modern Config Menu & Design System
-- **Floating Panel GUI**: Sleek dark mode config interface (`/alpaka`) with category sidebar, live search, and smooth drop shadows.
-- **Live Hand Preview**: When customizing Item Viewmodel settings, the config window automatically glides to the side so you can fine-tune your held item and hand positions in real time!
-- **Compact Controls**: Customized sliders, color pickers, and compact toggle switches.
-
-### ⚔️ Item Viewmodel & Hand Customization
-- **3D Position & Scale**: Fine-tune held item `X / Y / Z` offsets, scale, and pitch/yaw/roll rotation angles.
-- **Swing Motion**: Custom swing speed multiplier, 3D swing drift (`X / Y / Z`), swing arc rotations, and an *Always Finish Swing* toggle.
-- **Tweak Toggles**: Disable camera hand sway, disable re-equip animations when switching hotbar slots, and toggle empty hand application.
-
-### 🛡️ Skyblock Slayer Drop Tracker
-- **Automatic Tracker**: Real-time boss kill count and rare drop tracking overlay for Hypixel Skyblock Slayers (*Revenant, Tarantula, Sven, Voidgloom, Inferno Blaze, Riftstalker*).
-- **Audio Alerts**: Play custom sound effects for boss spawns and rare loot drops.
-
-### 👁️ Visuals & Rendering
-- **Block Overlay**: Fully customizable targeted block highlight outline & fill color with chroma RGB mode, line thickness slider, foliage/plant ignore option, and depth-test bypass.
-- **Fullbright**: Instantly toggle maximum gamma lighting in dark caves and dungeons.
-- **Smooth Perspective**: Smooth camera transition animations when switching perspectives (`F5`).
-- **Custom ESC Pause Menu**: Redesigned floating pause screen with player head preview, live server status, quick buttons, and a snappy slide-up animation.
-- **Inventory Snow**: Aesthetic customizable snow particle animation inside container and inventory GUIs.
-- **Clean Rendering**: Removes distracting blaze fire particles and adds player name highlighting.
-
-### ⚡ Quick Command Overlay
-- **Radial Command Menu**: Press `V` to open a quick floating overlay around your crosshair for instant muscle-memory flicking.
-- **Custom Command Editor**: Add, edit, or remove your own custom commands (`/hub`, `/island`, `/warp dh`, `/wardrobe`, `/pv`, etc.) directly inside the config menu.
-
-### 🔊 Custom Sound Effects
-- **UI Audio**: Crisp custom click sound effects for buttons, toggle switches, and menus.
-- **Individual Toggles**: Master volume slider and separate toggles for each sound effect type.
+- **Custom Menus**: Redesigned Main Menu with a Hypixel Quick-Join Dashboard and an animated ESC Pause Screen with live player stats.
+- **Item Viewmodel Customization**: Adjust held item 3D position, scale, rotation, swing speed, and swing motion with live preview.
+- **Skyblock Slayer Tracker**: Real-time boss kill and rare drop tracking overlay with audio alerts for Hypixel Skyblock.
+- **Radial Command Menu**: Press `V` to open a quick flick overlay for your favorite commands (`/hub`, `/wardrobe`, `/warp`, etc.).
+- **Visual & Audio Enhancements**: Customizable Block Overlay (chroma RGB), Clean Blaze (hides fire/spinning rods), Fullbright, and crisp custom UI sound effects.
 
 ---
 

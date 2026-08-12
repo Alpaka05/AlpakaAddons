@@ -28,9 +28,15 @@ public abstract class MinecraftMixin {
 
     @Inject(method = "setScreen", at = @At("HEAD"), cancellable = true)
     private void replaceTitleScreen(Screen screen, CallbackInfo ci) {
-        if (screen != null && screen.getClass() == TitleScreen.class && AlpakaConfig.instance.customMainMenuEnabled) {
-            ci.cancel();
-            this.setScreen(new CustomMainMenuScreen());
+        if (!AlpakaConfig.instance.customMainMenuEnabled) return;
+        Minecraft mc = (Minecraft)(Object)this;
+        if (mc.level == null) {
+            if (screen == null || screen instanceof TitleScreen) {
+                if (!(mc.screen instanceof CustomMainMenuScreen) || screen instanceof TitleScreen) {
+                    ci.cancel();
+                    this.setScreen(new CustomMainMenuScreen());
+                }
+            }
         }
     }
 

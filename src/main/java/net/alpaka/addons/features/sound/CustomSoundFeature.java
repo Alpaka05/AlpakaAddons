@@ -123,6 +123,7 @@ public class CustomSoundFeature {
     }
 
     public static void playHotbarEquipSound() {
+        if (!AlpakaConfig.instance.customSoundHotbarScroll) return;
         playSound(HOTBAR_EQUIP_SOUND);
     }
 

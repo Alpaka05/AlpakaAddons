@@ -46,6 +46,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.cleanBlazeEnabled = v; AlpakaConfig.save(); },
                 "blaze smoke particles clear view"));
 
+        OPTIONS.add(new ConfigOption("stop_blaze_spinning", "Stop Blaze Spinning",
+                "Stops blaze rods from spinning around blaze mobs.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.stopBlazeSpinning,
+                v -> { AlpakaConfig.instance.stopBlazeSpinning = v; AlpakaConfig.save(); },
+                "blaze rods spin spinning rotation animation stop mob"));
+
         OPTIONS.add(new ConfigOption("inventory_snow", "Inventory Snowflakes",
                 "Renders cozy snowflake animations in inventory GUIs.",
                 ConfigCategory.VISUALS,
@@ -416,12 +423,12 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customSoundButtonClick = v; AlpakaConfig.save(); },
                 "button click sound ui audio feedback chime"));
 
-        OPTIONS.add(new ConfigOption("custom_sound_toggle", "Option Toggle Sound",
-                "Plays sound effect when toggling switches on or off.",
+        OPTIONS.add(new ConfigOption("custom_sound_hotbar_scroll", "Hotbar Scroll Sound",
+                "Plays custom sound effect when scrolling or switching hotbar slots.",
                 ConfigCategory.SOUND_MISC,
-                () -> AlpakaConfig.instance.customSoundToggle,
-                v -> { AlpakaConfig.instance.customSoundToggle = v; AlpakaConfig.save(); },
-                "toggle switch sound option change audio"));
+                () -> AlpakaConfig.instance.customSoundHotbarScroll,
+                v -> { AlpakaConfig.instance.customSoundHotbarScroll = v; AlpakaConfig.save(); },
+                "hotbar scroll slot equip switch audio sound"));
 
         OPTIONS.add(new ConfigOption("custom_sound_rare_drop", "Slayer Rare Drop Sound",
                 "Plays sound effect when getting a rare Slayer loot drop.",

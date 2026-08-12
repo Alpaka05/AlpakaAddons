@@ -27,13 +27,14 @@ public class AlpakaConfig {
     public boolean inventorySnowEnabled = true;
     public float inventorySnowSpeed = 1.0f;
     public boolean cleanBlazeEnabled = true;
+    public boolean stopBlazeSpinning = true;
     public boolean smoothPerspectiveEnabled = true;
     public boolean disableFrontPerspective = false;
     public int smoothPerspectiveDurationMs = 350;
     public boolean customSoundsEnabled = true;
     public float customSoundsVolume = 1.0f;
     public boolean customSoundButtonClick = true;
-    public boolean customSoundToggle = true;
+    public boolean customSoundHotbarScroll = true;
     public boolean customSoundRareDrop = true;
     public boolean customSoundNotification = true;
     public boolean customEscapeMenuEnabled = true;

@@ -40,6 +40,11 @@ object CleanBlazeFeature {
     }
 
     @JvmStatic
+    fun shouldStopBlazeRodSpin(): Boolean {
+        return AlpakaConfig.instance.cleanBlazeEnabled && AlpakaConfig.instance.stopBlazeSpinning
+    }
+
+    @JvmStatic
     fun shouldHideNameTag(entity: Entity): Boolean {
         if (!AlpakaConfig.instance.cleanBlazeEnabled) return false
 

@@ -178,7 +178,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         ModernGuiUtils.drawRect(graphics, sidebarX + 14, sidebarY + 276, sidebarW - 28, 1, ModernGuiUtils.COLOR_CARD_BORDER)
 
         // Footer Version Label
-        graphics.text(this.font, Component.literal("AlpakaAddons v1.0.29"), 12, this.height - 20, ModernGuiUtils.COLOR_TEXT_PRIMARY)
+        graphics.text(this.font, Component.literal("AlpakaAddons v1.0.40"), 12, this.height - 20, ModernGuiUtils.COLOR_TEXT_PRIMARY)
         graphics.text(this.font, Component.literal("Minecraft 1.21.1 • Fabric"), 12, this.height - 10, ModernGuiUtils.COLOR_TEXT_MUTED)
     }
 
@@ -188,14 +188,6 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         val iconSize = 42
         val iconX = centerX - iconSize / 2
         val iconY = sidebarY + 6
-
-        // Golden Wing Accent Lines on left and right of icon
-        for (i in 0 until 4) {
-            val lineW = 28 - i * 5
-            val lineY = iconY + 12 + i * 4
-            ModernGuiUtils.drawRect(graphics, sidebarX + 16, lineY, lineW, 1, 0xFFE5B849.toInt())
-            ModernGuiUtils.drawRect(graphics, sidebarX + sidebarW - 16 - lineW, lineY, lineW, 1, 0xFFE5B849.toInt())
-        }
 
         // Render Mod Icon Image
         ensureModIconRegistered()

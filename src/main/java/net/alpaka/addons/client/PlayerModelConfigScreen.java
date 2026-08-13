@@ -18,7 +18,7 @@ public class PlayerModelConfigScreen extends Screen {
 
     @Override
     protected void init() {
-        int centerY = this.height / 2 - 65;
+        int centerY = this.height / 2 - 75;
 
         // Title
         this.addRenderableWidget(new StringWidget(0, 8, this.width, 20, this.title, this.font));
@@ -40,7 +40,7 @@ public class PlayerModelConfigScreen extends Screen {
         this.addRenderableWidget(toggleEnable);
 
         // 2. Only Show on Actions
-        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 25, 150, 20,
+        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 24, 150, 20,
                 Component.literal("Only Show on Actions"), this.font));
 
         Button toggleOnlyActions = Button.builder(
@@ -51,12 +51,12 @@ public class PlayerModelConfigScreen extends Screen {
                     button.setMessage(CommonComponents.optionStatus(AlpakaConfig.instance.playerModelOnlyActions));
                 }
         )
-        .bounds(this.width / 2 + 5, centerY + 25, 150, 20)
+        .bounds(this.width / 2 + 5, centerY + 24, 150, 20)
         .build();
         this.addRenderableWidget(toggleOnlyActions);
 
         // 3. Disable Movement
-        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 50, 150, 20,
+        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 48, 150, 20,
                 Component.literal("Disable Movement Animations"), this.font));
 
         Button toggleDisableMovement = Button.builder(
@@ -67,12 +67,12 @@ public class PlayerModelConfigScreen extends Screen {
                     button.setMessage(CommonComponents.optionStatus(AlpakaConfig.instance.playerModelDisableMovement));
                 }
         )
-        .bounds(this.width / 2 + 5, centerY + 50, 150, 20)
+        .bounds(this.width / 2 + 5, centerY + 48, 150, 20)
         .build();
         this.addRenderableWidget(toggleDisableMovement);
 
         // 4. Hide Armor
-        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 75, 150, 20,
+        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 72, 150, 20,
                 Component.literal("Hide Armor on Model"), this.font));
 
         Button toggleHideArmor = Button.builder(
@@ -83,11 +83,27 @@ public class PlayerModelConfigScreen extends Screen {
                     button.setMessage(CommonComponents.optionStatus(AlpakaConfig.instance.playerModelHideArmor));
                 }
         )
-        .bounds(this.width / 2 + 5, centerY + 75, 150, 20)
+        .bounds(this.width / 2 + 5, centerY + 72, 150, 20)
         .build();
         this.addRenderableWidget(toggleHideArmor);
 
-        // 5. Edit HUD Layout Button
+        // 5. Show in GUIs / Menus
+        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 96, 150, 20,
+                Component.literal("Show in GUIs / Menus"), this.font));
+
+        Button toggleShowInGuis = Button.builder(
+                CommonComponents.optionStatus(AlpakaConfig.instance.playerModelShowInGuis),
+                button -> {
+                    AlpakaConfig.instance.playerModelShowInGuis = !AlpakaConfig.instance.playerModelShowInGuis;
+                    AlpakaConfig.save();
+                    button.setMessage(CommonComponents.optionStatus(AlpakaConfig.instance.playerModelShowInGuis));
+                }
+        )
+        .bounds(this.width / 2 + 5, centerY + 96, 150, 20)
+        .build();
+        this.addRenderableWidget(toggleShowInGuis);
+
+        // 6. Edit HUD Layout Button
         Button editHudButton = Button.builder(
                 Component.literal("Edit HUD Layout"),
                 button -> {
@@ -96,7 +112,7 @@ public class PlayerModelConfigScreen extends Screen {
                     }
                 }
         )
-        .bounds(this.width / 2 - 100, centerY + 105, 200, 20)
+        .bounds(this.width / 2 - 100, centerY + 124, 200, 20)
         .build();
         this.addRenderableWidget(editHudButton);
 
@@ -105,7 +121,7 @@ public class PlayerModelConfigScreen extends Screen {
                 CommonComponents.GUI_DONE,
                 button -> this.onClose()
         )
-        .bounds(this.width / 2 - 100, centerY + 132, 200, 20)
+        .bounds(this.width / 2 - 100, centerY + 150, 200, 20)
         .build());
     }
 

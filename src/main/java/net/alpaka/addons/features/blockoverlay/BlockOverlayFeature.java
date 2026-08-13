@@ -18,6 +18,10 @@ public class BlockOverlayFeature {
     public static boolean isRenderingBlockOverlay = false;
     public static boolean ignoreDepthActive = false;
 
+    private static BlockPos lastTargetPos = null;
+    private static long targetStartTime = 0L;
+    private static long lastRenderTime = 0L;
+
     public static boolean isPlantBlock(net.minecraft.world.level.block.state.BlockState blockState) {
         if (blockState == null) return false;
         net.minecraft.world.level.block.Block block = blockState.getBlock();
@@ -62,18 +66,34 @@ public class BlockOverlayFeature {
             MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
             PoseStack.Pose pose = poseStack.last();
 
+            long now = System.currentTimeMillis();
+            if (now - lastRenderTime > 120L || lastTargetPos == null || !lastTargetPos.equals(pos)) {
+                lastTargetPos = pos;
+                targetStartTime = now;
+            }
+            lastRenderTime = now;
+
+            float fadeInFactor = 1.0f;
+            if (AlpakaConfig.instance.blockFadeInEnabled) {
+                long elapsed = now - targetStartTime;
+                int duration = Math.max(10, AlpakaConfig.instance.blockFadeInDurationMs);
+                float progress = Math.min(1.0f, (float) elapsed / (float) duration);
+                // Quadratic ease-in curve for a dramatic, sleek fade-in effect
+                fadeInFactor = progress * progress;
+            }
+
             float outlineR, outlineG, outlineB, outlineA;
             if (AlpakaConfig.instance.blockChromaEnabled) {
                 float[] chroma = getChromaColor(AlpakaConfig.instance.blockChromaSpeed);
                 outlineR = chroma[0];
                 outlineG = chroma[1];
                 outlineB = chroma[2];
-                outlineA = ((AlpakaConfig.instance.blockOutlineColor >> 24) & 0xFF) / 255.0f;
+                outlineA = (((AlpakaConfig.instance.blockOutlineColor >> 24) & 0xFF) / 255.0f) * fadeInFactor;
             } else {
                 outlineR = ((AlpakaConfig.instance.blockOutlineColor >> 16) & 0xFF) / 255.0f;
                 outlineG = ((AlpakaConfig.instance.blockOutlineColor >> 8) & 0xFF) / 255.0f;
                 outlineB = (AlpakaConfig.instance.blockOutlineColor & 0xFF) / 255.0f;
-                outlineA = ((AlpakaConfig.instance.blockOutlineColor >> 24) & 0xFF) / 255.0f;
+                outlineA = (((AlpakaConfig.instance.blockOutlineColor >> 24) & 0xFF) / 255.0f) * fadeInFactor;
             }
 
             float fillR, fillG, fillB, fillA;
@@ -82,12 +102,12 @@ public class BlockOverlayFeature {
                 fillR = chroma[0];
                 fillG = chroma[1];
                 fillB = chroma[2];
-                fillA = ((AlpakaConfig.instance.blockFillColor >> 24) & 0xFF) / 255.0f;
+                fillA = (((AlpakaConfig.instance.blockFillColor >> 24) & 0xFF) / 255.0f) * fadeInFactor;
             } else {
                 fillR = ((AlpakaConfig.instance.blockFillColor >> 16) & 0xFF) / 255.0f;
                 fillG = ((AlpakaConfig.instance.blockFillColor >> 8) & 0xFF) / 255.0f;
                 fillB = (AlpakaConfig.instance.blockFillColor & 0xFF) / 255.0f;
-                fillA = ((AlpakaConfig.instance.blockFillColor >> 24) & 0xFF) / 255.0f;
+                fillA = (((AlpakaConfig.instance.blockFillColor >> 24) & 0xFF) / 255.0f) * fadeInFactor;
             }
 
             double relX = (double) pos.getX() - camX;

@@ -13,6 +13,7 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class AlpakaConfigScreen extends Screen {
@@ -45,6 +46,28 @@ public class AlpakaConfigScreen extends Screen {
     public AlpakaConfigScreen(Screen parent) {
         super(Component.literal("Alpaka Addons Config"));
         this.parent = parent;
+    }
+
+    private List<ConfigCategory> getVisibleCategories() {
+        List<ConfigCategory> list = new ArrayList<>();
+        for (ConfigCategory cat : ConfigCategory.values()) {
+            long count = AlpakaConfigRegistry.getOptions(cat, searchQuery).stream()
+                    .filter(opt -> opt.getType() != ConfigOption.Type.HEADER)
+                    .count();
+            if (searchQuery.isEmpty() || count > 0) {
+                list.add(cat);
+            }
+        }
+        return list;
+    }
+
+    private void ensureValidActiveCategory() {
+        List<ConfigCategory> visible = getVisibleCategories();
+        if (!visible.isEmpty() && !visible.contains(activeCategory)) {
+            activeCategory = visible.get(0);
+            targetScrollY = 0;
+            scrollY = 0;
+        }
     }
 
     @Override
@@ -163,10 +186,9 @@ public class AlpakaConfigScreen extends Screen {
             boolean hoverClear = mouseX >= clearX && mouseX <= clearX + 10 && mouseY >= searchY && mouseY <= searchY + searchH;
             graphics.text(this.font, Component.literal("✕"), clearX + 2, searchY + (searchH - 8) / 2, hoverClear ? ModernGuiUtils.getAccentColor() : ModernGuiUtils.COLOR_TEXT_MUTED);
         }
-
         // 4. Sidebar Categories with Scissor Clipping to keep categories strictly inside the panel
-        ConfigCategory[] categories = ConfigCategory.values();
-        int catH = 28;
+        ensureValidActiveCategory();
+        List<ConfigCategory> categories = getVisibleCategories();
         int catItemH = 32;
         int catSpacing = 4;
 
@@ -175,7 +197,7 @@ public class AlpakaConfigScreen extends Screen {
         int sideClipW = sidebarWidth - 8;
         int sideClipH = winH - headerHeight - 8;
 
-        int totalSidebarH = categories.length * (catItemH + catSpacing) + 8;
+        int totalSidebarH = categories.size() * (catItemH + catSpacing) + 8;
         maxSidebarScrollY = Math.max(0, totalSidebarH - sideClipH);
         targetSidebarScrollY = Math.max(0, Math.min(maxSidebarScrollY, targetSidebarScrollY));
 
@@ -310,7 +332,11 @@ public class AlpakaConfigScreen extends Screen {
                         boolean isWidgetHovered = mouseX >= widgetX && mouseX <= widgetX + widgetW && mouseY >= widgetY && mouseY <= widgetY + widgetH && mouseY >= clipY && mouseY <= clipY + clipH;
 
                         if (opt.getId().contains("color")) {
-                            int colorVal = opt.getId().contains("fill") ? net.alpaka.addons.config.AlpakaConfig.instance.blockFillColor : net.alpaka.addons.config.AlpakaConfig.instance.blockOutlineColor;
+                            int colorVal = switch (opt.getId()) {
+                                case "menu_accent_color" -> net.alpaka.addons.config.AlpakaConfig.instance.menuAccentColor;
+                                case "block_fill_color" -> net.alpaka.addons.config.AlpakaConfig.instance.blockFillColor;
+                                default -> net.alpaka.addons.config.AlpakaConfig.instance.blockOutlineColor;
+                            };
                             ModernGuiUtils.drawModernColorButton(graphics, this.font, widgetX, widgetY, widgetW, widgetH, colorVal, isWidgetHovered);
                         } else {
                             ModernGuiUtils.drawModernButton(graphics, this.font, widgetX, widgetY, widgetW, widgetH, opt.getActionLabel(), isWidgetHovered, false);
@@ -388,7 +414,7 @@ public class AlpakaConfigScreen extends Screen {
         int sideClipH = winH - headerHeight - 8;
 
         if (mouseX >= winX && mouseX <= winX + sidebarWidth && mouseY >= sideClipY && mouseY <= sideClipY + sideClipH) {
-            ConfigCategory[] categories = ConfigCategory.values();
+            List<ConfigCategory> categories = getVisibleCategories();
             int catItemH = 32;
             int catSpacing = 4;
             int catW = sidebarWidth - 20;
@@ -400,7 +426,7 @@ public class AlpakaConfigScreen extends Screen {
                     mouseY >= sideClipY && mouseY <= sideClipY + sideClipH) {
                     playPloppSound();
                     this.activeCategory = cat;
-                    this.searchQuery = "";
+                    // Keep searchQuery so search term remains active in search bar when swapping categories!
                     this.targetScrollY = 0.0;
                     this.scrollY = 0.0;
                     return true;
@@ -522,6 +548,7 @@ public class AlpakaConfigScreen extends Screen {
             if (codePoint >= 32 && codePoint != 127) {
                 if (searchQuery.length() < 35) {
                     searchQuery += (char) codePoint;
+                    ensureValidActiveCategory();
                     targetScrollY = 0;
                     scrollY = 0;
                     return true;
@@ -533,10 +560,18 @@ public class AlpakaConfigScreen extends Screen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
+        // Cmd+F on Mac, Ctrl+F on Windows to focus search bar
+        if (event.hasControlDownWithQuirk() && (event.key() == 70 || event.key() == 102)) { // GLFW_KEY_F
+            this.searchFocused = true;
+            this.cursorBlinkTimer = System.currentTimeMillis();
+            return true;
+        }
+
         if (searchFocused) {
             if (event.key() == 259) { // GLFW_KEY_BACKSPACE
                 if (!searchQuery.isEmpty()) {
                     searchQuery = searchQuery.substring(0, searchQuery.length() - 1);
+                    ensureValidActiveCategory();
                     targetScrollY = 0;
                     scrollY = 0;
                 }

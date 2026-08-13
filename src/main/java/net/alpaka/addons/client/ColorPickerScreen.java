@@ -4,6 +4,8 @@ import net.alpaka.addons.client.gui.ModernGuiUtils;
 import net.alpaka.addons.features.sound.CustomSoundFeature;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
@@ -15,6 +17,11 @@ public class ColorPickerScreen extends Screen {
     private int r, g, b, a;
 
     private int activeSlider = -1; // 0: R, 1: G, 2: B, 3: A
+
+    // Interactive HEX Text Field state
+    private String hexInput = "";
+    private boolean hexFocused = false;
+    private long cursorBlinkTimer = 0L;
 
     // 10 Color Presets
     private static final int[] PRESETS = new int[] {
@@ -38,12 +45,40 @@ public class ColorPickerScreen extends Screen {
         this.r = (initialColor >> 16) & 0xFF;
         this.g = (initialColor >> 8) & 0xFF;
         this.b = initialColor & 0xFF;
+        this.hexInput = String.format("#%02X%02X%02X%02X", a, r, g, b);
     }
 
     private void playSound() {
         try {
             CustomSoundFeature.playButtonClickSound();
         } catch (Throwable ignored) {}
+    }
+
+    private void syncHexFromColor() {
+        if (!hexFocused) {
+            this.hexInput = String.format("#%02X%02X%02X%02X", a, r, g, b);
+        }
+    }
+
+    private void tryParseHexInput() {
+        String clean = hexInput.trim().replace("#", "");
+        if (clean.length() == 6) {
+            try {
+                long val = Long.parseLong(clean, 16);
+                this.a = 255;
+                this.r = (int) ((val >> 16) & 0xFF);
+                this.g = (int) ((val >> 8) & 0xFF);
+                this.b = (int) (val & 0xFF);
+            } catch (NumberFormatException ignored) {}
+        } else if (clean.length() == 8) {
+            try {
+                long val = Long.parseUnsignedLong(clean, 16);
+                this.a = (int) ((val >> 24) & 0xFF);
+                this.r = (int) ((val >> 16) & 0xFF);
+                this.g = (int) ((val >> 8) & 0xFF);
+                this.b = (int) (val & 0xFF);
+            } catch (NumberFormatException ignored) {}
+        }
     }
 
     @Override
@@ -85,15 +120,21 @@ public class ColorPickerScreen extends Screen {
         ModernGuiUtils.drawRect(graphics, prevX + 2, prevY + 2, prevW - 4, prevH - 4, currentColor);
         ModernGuiUtils.drawOutline(graphics, prevX, prevY, prevW, prevH, ModernGuiUtils.COLOR_CARD_BORDER);
 
-        // HEX Display Box
+        // HEX Input Field Box
         int hexY = prevY + prevH + 10;
         int hexH = 24;
-        ModernGuiUtils.drawRect(graphics, prevX, hexY, prevW, hexH, ModernGuiUtils.COLOR_CARD_BG);
-        ModernGuiUtils.drawOutline(graphics, prevX, hexY, prevW, hexH, ModernGuiUtils.COLOR_CARD_BORDER);
+        boolean hoverHex = mouseX >= prevX && mouseX <= prevX + prevW && mouseY >= hexY && mouseY <= hexY + hexH;
+        int hexBorder = hexFocused ? ModernGuiUtils.getAccentColor() : (hoverHex ? ModernGuiUtils.getAccentDimColor() : ModernGuiUtils.COLOR_CARD_BORDER);
 
-        String hexStr = String.format("#%02X%02X%02X%02X", a, r, g, b);
-        int hexStrX = prevX + (prevW - this.font.width(hexStr)) / 2;
-        graphics.text(this.font, Component.literal(hexStr), hexStrX, hexY + 7, ModernGuiUtils.getAccentColor());
+        ModernGuiUtils.drawRect(graphics, prevX, hexY, prevW, hexH, ModernGuiUtils.COLOR_CARD_BG);
+        ModernGuiUtils.drawOutline(graphics, prevX, hexY, prevW, hexH, hexBorder);
+
+        String displayText = hexFocused ? hexInput : String.format("#%02X%02X%02X%02X", a, r, g, b);
+        if (hexFocused && (System.currentTimeMillis() / 500) % 2 == 0) {
+            displayText += "|";
+        }
+        int hexStrX = prevX + (prevW - this.font.width(displayText)) / 2;
+        graphics.text(this.font, Component.literal(displayText), hexStrX, hexY + 7, hexFocused ? ModernGuiUtils.getAccentColor() : ModernGuiUtils.COLOR_TEXT_PRIMARY);
 
         // Presets Header
         int presetY = hexY + hexH + 12;
@@ -177,9 +218,24 @@ public class ColorPickerScreen extends Screen {
             return true;
         }
 
-        // Presets grid click
+        // HEX Input Field click
         int prevX = winX + 20;
         int hexY = winY + 52 + 90 + 10;
+        int hexH = 24;
+        if (mouseX >= prevX && mouseX <= prevX + 140 && mouseY >= hexY && mouseY <= hexY + hexH) {
+            playSound();
+            this.hexFocused = true;
+            this.cursorBlinkTimer = System.currentTimeMillis();
+            if (this.hexInput.isEmpty()) {
+                this.hexInput = String.format("#%02X%02X%02X%02X", a, r, g, b);
+            }
+            return true;
+        } else {
+            this.hexFocused = false;
+            syncHexFromColor();
+        }
+
+        // Presets grid click
         int presetY = hexY + 24 + 12;
         int swatchSize = 22;
         int swatchGap = 7;
@@ -199,6 +255,7 @@ public class ColorPickerScreen extends Screen {
                 this.r = (color >> 16) & 0xFF;
                 this.g = (color >> 8) & 0xFF;
                 this.b = color & 0xFF;
+                syncHexFromColor();
                 return true;
             }
         }
@@ -278,6 +335,41 @@ public class ColorPickerScreen extends Screen {
             case 2 -> this.b = val;
             case 3 -> this.a = val;
         }
+        syncHexFromColor();
+    }
+
+    @Override
+    public boolean charTyped(CharacterEvent event) {
+        if (hexFocused) {
+            int codePoint = event.codepoint();
+            char c = (char) codePoint;
+            if (c == '#' || (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+                if (hexInput.length() < 9) {
+                    hexInput += c;
+                    tryParseHexInput();
+                    return true;
+                }
+            }
+        }
+        return super.charTyped(event);
+    }
+
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        if (hexFocused) {
+            if (event.key() == 259) { // GLFW_KEY_BACKSPACE
+                if (!hexInput.isEmpty()) {
+                    hexInput = hexInput.substring(0, hexInput.length() - 1);
+                    tryParseHexInput();
+                }
+                return true;
+            } else if (event.key() == 256 || event.key() == 257) { // ESCAPE or ENTER
+                hexFocused = false;
+                syncHexFromColor();
+                return true;
+            }
+        }
+        return super.keyPressed(event);
     }
 
     @Override
@@ -287,4 +379,3 @@ public class ColorPickerScreen extends Screen {
         }
     }
 }
-

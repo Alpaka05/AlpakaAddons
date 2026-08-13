@@ -26,6 +26,9 @@ public class AlpakaConfig {
     public boolean nameHighlightingEnabled = true;
     public boolean inventorySnowEnabled = true;
     public float inventorySnowSpeed = 1.0f;
+    public float containerBgOpacity = 0.75f;
+    public boolean containerBgFadeInEnabled = true;
+    public int containerBgFadeInDurationMs = 250;
     public boolean cleanBlazeEnabled = true;
     public boolean stopBlazeSpinning = true;
     public boolean smoothPerspectiveEnabled = true;
@@ -40,6 +43,7 @@ public class AlpakaConfig {
     public boolean customSoundPlayerHurt = true;
     public boolean customSoundInventoryOpenClose = true;
     public boolean customSoundLowHpHeartbeat = true;
+    public float lowHpHeartbeatThreshold = 0.30f;
     public int menuAccentColor = 0xFFE5B849; // Default Warm Gold
     public boolean customEscapeMenuEnabled = true;
     public boolean customMainMenuEnabled = true;
@@ -50,9 +54,12 @@ public class AlpakaConfig {
     public int playerModelY = 85;
     public boolean playerModelDisableMovement = false;
     public boolean playerModelHideArmor = false;
+    public boolean playerModelShowInGuis = false;
 
     // Block Overlay options
     public boolean blockOverlayEnabled = false;
+    public boolean blockFadeInEnabled = true;
+    public int blockFadeInDurationMs = 450;
     public boolean blockOutlineEnabled = true;
     public float blockOutlineThickness = 2.0f;
     public int blockOutlineColor = 0xFF0000FF; // Default blue

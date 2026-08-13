@@ -60,13 +60,36 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.inventorySnowEnabled = v; AlpakaConfig.save(); },
                 "snow winter effect gui inventory snowflakes"));
 
-        OPTIONS.add(new ConfigOption("inventory_snow_speed", "Snow Animation Speed",
-                "Speed of the falling snow effect in inventory.",
+        OPTIONS.add(new ConfigOption("inventory_snow_speed", "Snow Fall Speed",
+                "Speed of falling snow particles in inventory.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.inventorySnowSpeed,
                 v -> { AlpakaConfig.instance.inventorySnowSpeed = v; AlpakaConfig.save(); },
                 0.1f, 5.0f, val -> String.format("%.1fx", val),
                 "snow speed animation winter velocity"));
+
+        OPTIONS.add(new ConfigOption("container_bg_opacity", "Container Background Opacity",
+                "Opacity of container background darkening (Default Minecraft: 75%, 100%: Fully Black, 0%: Disabled).",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.containerBgOpacity * 100.0f,
+                v -> { AlpakaConfig.instance.containerBgOpacity = v / 100.0f; AlpakaConfig.save(); },
+                0.0f, 100.0f, val -> val == 0.0f ? "Disabled (0%)" : String.format("%.0f%%", val),
+                "container background darkening opacity overlay tint inventory chest GUI"));
+
+        OPTIONS.add(new ConfigOption("container_bg_fade_in", "Container Background Fade In",
+                "Smoothly fades in the dark container background when opening GUIs.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.containerBgFadeInEnabled,
+                v -> { AlpakaConfig.instance.containerBgFadeInEnabled = v; AlpakaConfig.save(); },
+                "container background fade in smooth transition gui"));
+
+        OPTIONS.add(new ConfigOption("container_bg_fade_duration", "Container Fade Speed",
+                "Duration of container background fade-in animation in ms.",
+                ConfigCategory.VISUALS,
+                () -> (float) AlpakaConfig.instance.containerBgFadeInDurationMs,
+                v -> { AlpakaConfig.instance.containerBgFadeInDurationMs = Math.round(v); AlpakaConfig.save(); },
+                50.0f, 1000.0f, val -> String.format("%d ms", Math.round(val)),
+                "container background fade speed duration time ms transition"));
 
         OPTIONS.add(new ConfigOption("expand_chat_history", "Expand Chat History",
                 "Increases chat history limit to store more past messages.",
@@ -294,6 +317,21 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.blockOverlayEnabled = v; AlpakaConfig.save(); },
                 "block overlay outline highlight render custom enable"));
 
+        OPTIONS.add(new ConfigOption("block_fade_in", "Smooth Fade In",
+                "Smoothly fades in block overlay when targeting a new block.",
+                ConfigCategory.BLOCK_OVERLAY,
+                () -> AlpakaConfig.instance.blockFadeInEnabled,
+                v -> { AlpakaConfig.instance.blockFadeInEnabled = v; AlpakaConfig.save(); },
+                "block overlay smooth fade in transition animation visuals"));
+
+        OPTIONS.add(new ConfigOption("block_fade_in_duration", "Fade In Duration",
+                "Duration of block overlay fade in transition in ms.",
+                ConfigCategory.BLOCK_OVERLAY,
+                () -> (float) AlpakaConfig.instance.blockFadeInDurationMs,
+                v -> { AlpakaConfig.instance.blockFadeInDurationMs = Math.round(v); AlpakaConfig.save(); },
+                50.0f, 1000.0f, val -> String.format("%d ms", Math.round(val)),
+                "block fade in duration speed time ms transition overlay"));
+
         OPTIONS.add(new ConfigOption("block_outline_enabled", "Block Outline",
                 "Draws outline borders around targeted blocks.",
                 ConfigCategory.BLOCK_OVERLAY,
@@ -394,6 +432,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.playerModelHideArmor = v; AlpakaConfig.save(); },
                 "player model hide armor helmet chestplate leggings boots overlay"));
 
+        OPTIONS.add(new ConfigOption("player_model_show_in_guis", "Show in GUIs / Menus",
+                "Renders player model HUD even when container or menu GUIs are open.",
+                ConfigCategory.PLAYER_MODEL,
+                () -> AlpakaConfig.instance.playerModelShowInGuis,
+                v -> { AlpakaConfig.instance.playerModelShowInGuis = v; AlpakaConfig.save(); },
+                "player model show in guis menus screen open container inventory HUD"));
+
         OPTIONS.add(new ConfigOption("player_model_scale", "Model Scale",
                 "Size scale of the HUD player avatar.",
                 ConfigCategory.PLAYER_MODEL,
@@ -476,11 +521,19 @@ public class AlpakaConfigRegistry {
                 "inventory open close gui container sound audio custom"));
 
         OPTIONS.add(new ConfigOption("custom_sound_low_hp_heartbeat", "Low HP Heartbeat Sound",
-                "Plays low health heartbeat sound when below 30% HP in survival mode.",
+                "Plays low health heartbeat sound when below configured HP percentage in survival mode.",
                 ConfigCategory.SOUND_MISC,
                 () -> AlpakaConfig.instance.customSoundLowHpHeartbeat,
                 v -> { AlpakaConfig.instance.customSoundLowHpHeartbeat = v; AlpakaConfig.save(); },
                 "low hp health heartbeat sound survival audio custom lowhp pulse alert"));
+
+        OPTIONS.add(new ConfigOption("low_hp_heartbeat_threshold", "Heartbeat HP Threshold",
+                "Percentage of max health at which low HP heartbeat sound starts playing.",
+                ConfigCategory.SOUND_MISC,
+                () -> AlpakaConfig.instance.lowHpHeartbeatThreshold * 100.0f,
+                v -> { AlpakaConfig.instance.lowHpHeartbeatThreshold = v / 100.0f; AlpakaConfig.save(); },
+                5.0f, 80.0f, val -> String.format("%.0f%%", val),
+                "heartbeat low hp health percentage threshold trigger sound volume"));
 
         OPTIONS.add(new ConfigOption("command_wheel_custom_commands", "Quick Command Menu",
                 "Add, edit, or remove custom commands for the quick command overlay.",

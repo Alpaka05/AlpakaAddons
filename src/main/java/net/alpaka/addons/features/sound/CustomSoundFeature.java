@@ -60,7 +60,7 @@ public class CustomSoundFeature {
                 // 1. Low Health Heartbeat (only in Survival/Adventure mode when low HP and alive)
                 if (AlpakaConfig.instance.customSoundLowHpHeartbeat && !player.isCreative() && !player.isSpectator() && player.isAlive()) {
                     float healthRatio = player.getHealth() / player.getMaxHealth();
-                    if (healthRatio > 0 && healthRatio <= 0.30f) {
+                    if (healthRatio > 0 && healthRatio <= AlpakaConfig.instance.lowHpHeartbeatThreshold) {
                         long now = System.currentTimeMillis();
                         if (now - lastHeartbeatTime >= 900) {
                             lastHeartbeatTime = now;

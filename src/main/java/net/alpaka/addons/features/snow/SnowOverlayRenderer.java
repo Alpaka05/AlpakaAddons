@@ -12,6 +12,9 @@ public class SnowOverlayRenderer {
     private static final Random random = new Random();
     private static long lastTime = System.currentTimeMillis();
 
+    private static int lastScreenWidth = 0;
+    private static int lastScreenHeight = 0;
+
     private static class Snowflake {
         float x;
         float y;
@@ -58,6 +61,20 @@ public class SnowOverlayRenderer {
         if (width <= 0 || height <= 0) return;
 
         ensureParticles(width, height);
+
+        // Handle window resize dynamically to prevent empty spaces when going fullscreen
+        if (width != lastScreenWidth || height != lastScreenHeight) {
+            if (lastScreenWidth > 0 && lastScreenHeight > 0) {
+                float scaleX = (float) width / (float) lastScreenWidth;
+                float scaleY = (float) height / (float) lastScreenHeight;
+                for (Snowflake flake : snowflakes) {
+                    flake.x *= scaleX;
+                    flake.y *= scaleY;
+                }
+            }
+            lastScreenWidth = width;
+            lastScreenHeight = height;
+        }
 
         long currentTime = System.currentTimeMillis();
         float dt = Math.min((currentTime - lastTime) / 1000.0f, 0.1f);

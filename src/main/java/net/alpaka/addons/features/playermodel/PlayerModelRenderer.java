@@ -39,8 +39,8 @@ public class PlayerModelRenderer {
         if (!AlpakaConfig.instance.playerModelEnabled) return false;
         
         Minecraft mc = Minecraft.getInstance();
-        // Hide in normal menus (allow in chat screen)
-        if (mc.screen != null && !(mc.screen instanceof ChatScreen)) {
+        // Hide in normal menus unless showInGuis is enabled (always allow in chat screen)
+        if (mc.screen != null && !(mc.screen instanceof ChatScreen) && !AlpakaConfig.instance.playerModelShowInGuis) {
             return false;
         }
 

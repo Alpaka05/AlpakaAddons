@@ -41,7 +41,7 @@ object CleanBlazeFeature {
 
     @JvmStatic
     fun shouldStopBlazeRodSpin(): Boolean {
-        return AlpakaConfig.instance.cleanBlazeEnabled && AlpakaConfig.instance.stopBlazeSpinning
+        return AlpakaConfig.instance.stopBlazeSpinning
     }
 
     @JvmStatic

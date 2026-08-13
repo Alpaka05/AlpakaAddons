@@ -96,6 +96,16 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customMainMenuEnabled = v; AlpakaConfig.save(); },
                 "custom main menu title screen hypixel start launch background GUI"));
 
+        OPTIONS.add(new ConfigOption("menu_accent_color", "Menu Accent Color",
+                "Select custom accent color for all mod GUI borders, headers, and highlights.",
+                ConfigCategory.VISUALS,
+                "Choose Color",
+                parent -> Minecraft.getInstance().setScreen(new ColorPickerScreen(parent, "Menu Accent Color", AlpakaConfig.instance.menuAccentColor, color -> {
+                    AlpakaConfig.instance.menuAccentColor = color;
+                    AlpakaConfig.save();
+                })),
+                "menu accent color theme custom picker border highlight gui gold cyan red green blue"));
+
         OPTIONS.add(new ConfigOption("smooth_perspective", "Smooth Perspective",
                 "Smooth transition animation when toggling perspective.",
                 ConfigCategory.VISUALS,
@@ -321,7 +331,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.BLOCK_OVERLAY,
                 () -> AlpakaConfig.instance.blockChromaSpeed,
                 v -> { AlpakaConfig.instance.blockChromaSpeed = v; AlpakaConfig.save(); },
-                0.1f, 5.0f, val -> String.format("%.1fx", val),
+                0.1f, 2.0f, val -> String.format("%.1fx", val),
                 "chroma speed rainbow velocity rgb cycle"));
 
         OPTIONS.add(new ConfigOption("block_ignore_depth", "Ignore Depth (X-Ray)",
@@ -376,6 +386,13 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.playerModelDisableMovement,
                 v -> { AlpakaConfig.instance.playerModelDisableMovement = v; AlpakaConfig.save(); },
                 "disable movement sway steady static hud player model"));
+
+        OPTIONS.add(new ConfigOption("player_model_hide_armor", "Hide Armor on Model",
+                "Hides armor pieces from rendering on the player model HUD.",
+                ConfigCategory.PLAYER_MODEL,
+                () -> AlpakaConfig.instance.playerModelHideArmor,
+                v -> { AlpakaConfig.instance.playerModelHideArmor = v; AlpakaConfig.save(); },
+                "player model hide armor helmet chestplate leggings boots overlay"));
 
         OPTIONS.add(new ConfigOption("player_model_scale", "Model Scale",
                 "Size scale of the HUD player avatar.",
@@ -443,6 +460,27 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.customSoundNotification,
                 v -> { AlpakaConfig.instance.customSoundNotification = v; AlpakaConfig.save(); },
                 "boss spawn sound notification alert audio"));
+
+        OPTIONS.add(new ConfigOption("custom_sound_player_hurt", "Player Hurt Sound",
+                "Plays custom sound effect when taking damage.",
+                ConfigCategory.SOUND_MISC,
+                () -> AlpakaConfig.instance.customSoundPlayerHurt,
+                v -> { AlpakaConfig.instance.customSoundPlayerHurt = v; AlpakaConfig.save(); },
+                "player hurt sound damage hit audio custom"));
+
+        OPTIONS.add(new ConfigOption("custom_sound_inventory_open_close", "Inventory Open/Close Sound",
+                "Plays custom sound effect when opening or closing container GUIs.",
+                ConfigCategory.SOUND_MISC,
+                () -> AlpakaConfig.instance.customSoundInventoryOpenClose,
+                v -> { AlpakaConfig.instance.customSoundInventoryOpenClose = v; AlpakaConfig.save(); },
+                "inventory open close gui container sound audio custom"));
+
+        OPTIONS.add(new ConfigOption("custom_sound_low_hp_heartbeat", "Low HP Heartbeat Sound",
+                "Plays low health heartbeat sound when below 30% HP in survival mode.",
+                ConfigCategory.SOUND_MISC,
+                () -> AlpakaConfig.instance.customSoundLowHpHeartbeat,
+                v -> { AlpakaConfig.instance.customSoundLowHpHeartbeat = v; AlpakaConfig.save(); },
+                "low hp health heartbeat sound survival audio custom lowhp pulse alert"));
 
         OPTIONS.add(new ConfigOption("command_wheel_custom_commands", "Quick Command Menu",
                 "Add, edit, or remove custom commands for the quick command overlay.",

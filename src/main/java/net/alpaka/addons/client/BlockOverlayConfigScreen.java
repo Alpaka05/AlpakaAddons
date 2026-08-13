@@ -106,13 +106,13 @@ public class BlockOverlayConfigScreen extends Screen {
         .build();
         this.addRenderableWidget(toggleChroma);
 
-        // 6. Chroma Speed Slider (0.1 to 5.0)
+        // 6. Chroma Speed Slider (0.1 to 2.0)
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 110, 150, 20,
                 Component.literal("Chroma Speed"), this.font));
         AbstractSliderButton speedSlider = new AbstractSliderButton(
                 this.width / 2 + 5, centerY + 110, 150, 20,
                 Component.literal(String.format("%.2fx", AlpakaConfig.instance.blockChromaSpeed)),
-                (AlpakaConfig.instance.blockChromaSpeed - 0.05f) / 1.95f
+                (AlpakaConfig.instance.blockChromaSpeed - 0.1f) / 1.9f
         ) {
             @Override
             protected void updateMessage() {
@@ -120,7 +120,7 @@ public class BlockOverlayConfigScreen extends Screen {
             }
             @Override
             protected void applyValue() {
-                AlpakaConfig.instance.blockChromaSpeed = (float) (0.05f + this.value * 1.95f);
+                AlpakaConfig.instance.blockChromaSpeed = (float) (0.1f + this.value * 1.9f);
                 AlpakaConfig.save();
             }
         };

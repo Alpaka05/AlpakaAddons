@@ -18,7 +18,7 @@ public class PlayerModelConfigScreen extends Screen {
 
     @Override
     protected void init() {
-        int centerY = this.height / 2 - 50;
+        int centerY = this.height / 2 - 65;
 
         // Title
         this.addRenderableWidget(new StringWidget(0, 8, this.width, 20, this.title, this.font));
@@ -71,7 +71,23 @@ public class PlayerModelConfigScreen extends Screen {
         .build();
         this.addRenderableWidget(toggleDisableMovement);
 
-        // 4. Edit HUD Layout Button
+        // 4. Hide Armor
+        this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 75, 150, 20,
+                Component.literal("Hide Armor on Model"), this.font));
+
+        Button toggleHideArmor = Button.builder(
+                CommonComponents.optionStatus(AlpakaConfig.instance.playerModelHideArmor),
+                button -> {
+                    AlpakaConfig.instance.playerModelHideArmor = !AlpakaConfig.instance.playerModelHideArmor;
+                    AlpakaConfig.save();
+                    button.setMessage(CommonComponents.optionStatus(AlpakaConfig.instance.playerModelHideArmor));
+                }
+        )
+        .bounds(this.width / 2 + 5, centerY + 75, 150, 20)
+        .build();
+        this.addRenderableWidget(toggleHideArmor);
+
+        // 5. Edit HUD Layout Button
         Button editHudButton = Button.builder(
                 Component.literal("Edit HUD Layout"),
                 button -> {
@@ -80,7 +96,7 @@ public class PlayerModelConfigScreen extends Screen {
                     }
                 }
         )
-        .bounds(this.width / 2 - 100, centerY + 80, 200, 20)
+        .bounds(this.width / 2 - 100, centerY + 105, 200, 20)
         .build();
         this.addRenderableWidget(editHudButton);
 
@@ -89,7 +105,7 @@ public class PlayerModelConfigScreen extends Screen {
                 CommonComponents.GUI_DONE,
                 button -> this.onClose()
         )
-        .bounds(this.width / 2 - 100, centerY + 110, 200, 20)
+        .bounds(this.width / 2 - 100, centerY + 132, 200, 20)
         .build());
     }
 

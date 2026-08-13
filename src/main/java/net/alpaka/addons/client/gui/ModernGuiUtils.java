@@ -5,17 +5,34 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
 public class ModernGuiUtils {
-    // Theme Colors (Dark slate black/grey with Electric Cyan accent & Green/Red states)
-    public static final int COLOR_BG_BACKDROP = 0xEE0B0C10;
-    public static final int COLOR_PANEL_BG = 0xFF12141A;
-    public static final int COLOR_SIDEBAR_BG = 0xFF0E1015;
-    public static final int COLOR_CARD_BG = 0xFF181B24;
-    public static final int COLOR_CARD_BG_HOVER = 0xFF222633;
-    public static final int COLOR_CARD_BORDER = 0xFF2B3042;
+    // Theme Colors (Neutral Dark Charcoal/Gray with Gold accent & Green/Red states)
+    public static final int COLOR_BG_BACKDROP = 0xEE111111;
+    public static final int COLOR_PANEL_BG = 0xFF191919;
+    public static final int COLOR_SIDEBAR_BG = 0xFF131313;
+    public static final int COLOR_CARD_BG = 0xFF222222;
+    public static final int COLOR_CARD_BG_HOVER = 0xFF2D2D2D;
+    public static final int COLOR_CARD_BORDER = 0xFF3B3B3B;
 
-    public static final int COLOR_ACCENT = 0xFFE5B849;       // Warm Gold
-    public static final int COLOR_ACCENT_DIM = 0xFFA37722;   // Muted Bronze/Gold
-    public static final int COLOR_ACCENT_BG = 0x33E5B849;    // Gold overlay
+    public static int getAccentColor() {
+        return net.alpaka.addons.config.AlpakaConfig.instance.menuAccentColor;
+    }
+
+    public static int getAccentDimColor() {
+        int color = net.alpaka.addons.config.AlpakaConfig.instance.menuAccentColor;
+        int a = (color >> 24) & 0xFF;
+        int r = (int) (((color >> 16) & 0xFF) * 0.65f);
+        int g = (int) (((color >> 8) & 0xFF) * 0.65f);
+        int b = (int) ((color & 0xFF) * 0.65f);
+        return (a << 24) | (r << 16) | (g << 8) | b;
+    }
+
+    public static int getAccentBgColor() {
+        int color = net.alpaka.addons.config.AlpakaConfig.instance.menuAccentColor;
+        int r = (color >> 16) & 0xFF;
+        int g = (color >> 8) & 0xFF;
+        int b = color & 0xFF;
+        return (0x33 << 24) | (r << 16) | (g << 8) | b;
+    }
 
     public static final int COLOR_TOGGLE_ON_BG = 0xFF133824;
     public static final int COLOR_TOGGLE_ON_BORDER = 0xFF00E676;
@@ -25,9 +42,9 @@ public class ModernGuiUtils {
     public static final int COLOR_TOGGLE_OFF_BORDER = 0xFFFF5252;
     public static final int COLOR_TOGGLE_OFF_TEXT = 0xFFFF5252;
 
-    public static final int COLOR_TEXT_PRIMARY = 0xFFF0F0F5;
-    public static final int COLOR_TEXT_MUTED = 0xFF8A90A0;
-    public static final int COLOR_TEXT_DARK = 0xFF505565;
+    public static final int COLOR_TEXT_PRIMARY = 0xFFF0F0F0;
+    public static final int COLOR_TEXT_MUTED = 0xFF909090;
+    public static final int COLOR_TEXT_DARK = 0xFF555555;
 
     public static void drawRect(GuiGraphicsExtractor graphics, int x, int y, int width, int height, int color) {
         graphics.fill(x, y, x + width, y + height, color);
@@ -46,20 +63,20 @@ public class ModernGuiUtils {
 
     public static void drawModernCard(GuiGraphicsExtractor graphics, int x, int y, int width, int height, boolean isHovered, boolean isSelected) {
         int bg = isHovered ? COLOR_CARD_BG_HOVER : COLOR_CARD_BG;
-        int border = isSelected ? COLOR_ACCENT : (isHovered ? COLOR_ACCENT_DIM : COLOR_CARD_BORDER);
+        int border = isSelected ? getAccentColor() : (isHovered ? getAccentDimColor() : COLOR_CARD_BORDER);
 
         drawRect(graphics, x, y, width, height, bg);
         drawOutline(graphics, x, y, width, height, border);
 
         if (isSelected) {
             // Accent indicator bar on left side
-            drawRect(graphics, x, y, 3, height, COLOR_ACCENT);
+            drawRect(graphics, x, y, 3, height, getAccentColor());
         }
     }
 
     public static void drawModernToggle(GuiGraphicsExtractor graphics, Font font, int x, int y, int width, int height, boolean state, boolean isHovered) {
-        int trackBg = state ? COLOR_ACCENT_BG : COLOR_CARD_BG;
-        int border = isHovered ? COLOR_ACCENT : (state ? COLOR_ACCENT_DIM : COLOR_CARD_BORDER);
+        int trackBg = state ? getAccentBgColor() : COLOR_CARD_BG;
+        int border = isHovered ? getAccentColor() : (state ? getAccentDimColor() : COLOR_CARD_BORDER);
 
         drawRect(graphics, x, y, width, height, trackBg);
         drawOutline(graphics, x, y, width, height, border);
@@ -69,14 +86,14 @@ public class ModernGuiUtils {
         int knobX = state ? (x + width - knobSize - 2) : (x + 2);
         int knobY = y + 2;
 
-        int knobColor = state ? COLOR_ACCENT : 0xFF64748B; // Sleek grey when OFF, Warm Gold when ON
+        int knobColor = state ? getAccentColor() : 0xFF64748B; // Sleek grey when OFF, Accent when ON
         drawRect(graphics, knobX, knobY, knobSize, knobSize, knobColor);
         drawOutline(graphics, knobX, knobY, knobSize, knobSize, 0x40000000);
     }
 
     public static void drawModernSlider(GuiGraphicsExtractor graphics, Font font, int x, int y, int width, int height, double value, String displayValue, boolean isHovered) {
         int trackBg = COLOR_CARD_BG;
-        int border = isHovered ? COLOR_ACCENT : COLOR_CARD_BORDER;
+        int border = isHovered ? getAccentColor() : COLOR_CARD_BORDER;
 
         drawRect(graphics, x, y, width, height, trackBg);
         drawOutline(graphics, x, y, width, height, border);
@@ -84,13 +101,13 @@ public class ModernGuiUtils {
         // Filled track area
         int fillWidth = Math.max(0, Math.min(width - 4, (int) ((width - 4) * value)));
         if (fillWidth > 0) {
-            drawRect(graphics, x + 2, y + 2, fillWidth, height - 4, COLOR_ACCENT_BG);
+            drawRect(graphics, x + 2, y + 2, fillWidth, height - 4, getAccentBgColor());
         }
 
         // Rectangular slider thumb
         int thumbWidth = 6;
         int thumbX = Math.max(x + 2, Math.min(x + width - thumbWidth - 2, x + (int) ((width - thumbWidth) * value)));
-        drawRect(graphics, thumbX, y + 1, thumbWidth, height - 2, COLOR_ACCENT);
+        drawRect(graphics, thumbX, y + 1, thumbWidth, height - 2, getAccentColor());
 
         // Value text
         int textX = x + (width - font.width(displayValue)) / 2;
@@ -99,8 +116,8 @@ public class ModernGuiUtils {
     }
 
     public static void drawModernButton(GuiGraphicsExtractor graphics, Font font, int x, int y, int width, int height, String label, boolean isHovered, boolean isPrimary) {
-        int bg = isHovered ? (isPrimary ? COLOR_ACCENT : COLOR_CARD_BG_HOVER) : (isPrimary ? COLOR_ACCENT_DIM : COLOR_CARD_BG);
-        int border = isHovered ? COLOR_ACCENT : COLOR_CARD_BORDER;
+        int bg = isHovered ? (isPrimary ? getAccentColor() : COLOR_CARD_BG_HOVER) : (isPrimary ? getAccentDimColor() : COLOR_CARD_BG);
+        int border = isHovered ? getAccentColor() : COLOR_CARD_BORDER;
         int textColor = (isPrimary && isHovered) ? 0xFF0E1015 : COLOR_TEXT_PRIMARY;
 
         drawRect(graphics, x, y, width, height, bg);
@@ -112,7 +129,7 @@ public class ModernGuiUtils {
     }
 
     public static void drawModernColorButton(GuiGraphicsExtractor graphics, Font font, int x, int y, int width, int height, int color, boolean isHovered) {
-        int border = isHovered ? COLOR_ACCENT : COLOR_CARD_BORDER;
+        int border = isHovered ? getAccentColor() : COLOR_CARD_BORDER;
 
         // Dark background base for alpha transparency grid representation
         drawRect(graphics, x, y, width, height, 0xFF000000);

@@ -64,7 +64,7 @@ public class CommandWheelConfigScreen extends Screen {
         // Header Bar
         int headerH = 38;
         ModernGuiUtils.drawRect(graphics, winX, winY, winW, headerH, ModernGuiUtils.COLOR_SIDEBAR_BG);
-        ModernGuiUtils.drawRect(graphics, winX, winY + headerH - 1, winW, 1, ModernGuiUtils.COLOR_ACCENT);
+        ModernGuiUtils.drawRect(graphics, winX, winY + headerH - 1, winW, 1, ModernGuiUtils.getAccentColor());
 
         graphics.text(this.font, Component.literal("Quick Command Settings"), winX + 16, winY + 12, ModernGuiUtils.COLOR_TEXT_PRIMARY);
 
@@ -108,7 +108,7 @@ public class CommandWheelConfigScreen extends Screen {
             boolean hoverItem = mouseX >= listX + 8 && mouseX <= listX + 8 + itemW && mouseY >= curY && mouseY <= curY + itemH && mouseY >= listY && mouseY <= listY + listH;
 
             ModernGuiUtils.drawRect(graphics, listX + 8, curY, itemW, itemH, hoverItem ? ModernGuiUtils.COLOR_CARD_BG_HOVER : ModernGuiUtils.COLOR_CARD_BG);
-            ModernGuiUtils.drawOutline(graphics, listX + 8, curY, itemW, itemH, hoverItem ? ModernGuiUtils.COLOR_ACCENT_DIM : ModernGuiUtils.COLOR_CARD_BORDER);
+            ModernGuiUtils.drawOutline(graphics, listX + 8, curY, itemW, itemH, hoverItem ? ModernGuiUtils.getAccentDimColor() : ModernGuiUtils.COLOR_CARD_BORDER);
 
             // Command label
             graphics.text(this.font, Component.literal(cmd), listX + 18, curY + (itemH - 8) / 2, ModernGuiUtils.COLOR_TEXT_PRIMARY);
@@ -139,7 +139,7 @@ public class CommandWheelConfigScreen extends Screen {
         int inputH = 24;
 
         boolean hoverInput = mouseX >= inputX && mouseX <= inputX + inputW && mouseY >= bottomY && mouseY <= bottomY + inputH;
-        int inputBorder = inputFocused ? ModernGuiUtils.COLOR_ACCENT : (hoverInput ? ModernGuiUtils.COLOR_ACCENT_DIM : ModernGuiUtils.COLOR_CARD_BORDER);
+        int inputBorder = inputFocused ? ModernGuiUtils.getAccentColor() : (hoverInput ? ModernGuiUtils.getAccentDimColor() : ModernGuiUtils.COLOR_CARD_BORDER);
 
         ModernGuiUtils.drawRect(graphics, inputX, bottomY, inputW, inputH, ModernGuiUtils.COLOR_CARD_BG);
         ModernGuiUtils.drawOutline(graphics, inputX, bottomY, inputW, inputH, inputBorder);

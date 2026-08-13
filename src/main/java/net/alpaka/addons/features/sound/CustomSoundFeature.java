@@ -57,13 +57,15 @@ public class CustomSoundFeature {
             if (client.player != null && client.level != null) {
                 LocalPlayer player = client.player;
 
-                // 1. Low Health Heartbeat
-                float healthRatio = player.getHealth() / player.getMaxHealth();
-                if (healthRatio > 0 && healthRatio <= 0.30f) {
-                    long now = System.currentTimeMillis();
-                    if (now - lastHeartbeatTime >= 900) {
-                        lastHeartbeatTime = now;
-                        playHeartbeatSound();
+                // 1. Low Health Heartbeat (only in Survival/Adventure mode when low HP and alive)
+                if (AlpakaConfig.instance.customSoundLowHpHeartbeat && !player.isCreative() && !player.isSpectator() && player.isAlive()) {
+                    float healthRatio = player.getHealth() / player.getMaxHealth();
+                    if (healthRatio > 0 && healthRatio <= 0.30f) {
+                        long now = System.currentTimeMillis();
+                        if (now - lastHeartbeatTime >= 900) {
+                            lastHeartbeatTime = now;
+                            playHeartbeatSound();
+                        }
                     }
                 }
 
@@ -98,6 +100,7 @@ public class CustomSoundFeature {
     }
 
     public static void playHeartbeatSound() {
+        if (!AlpakaConfig.instance.customSoundLowHpHeartbeat) return;
         playSound(HEARTBEAT_SOUND);
     }
 
@@ -107,10 +110,12 @@ public class CustomSoundFeature {
     }
 
     public static void playInventoryOpenSound() {
+        if (!AlpakaConfig.instance.customSoundInventoryOpenClose) return;
         playSound(INVENTORY_OPEN_SOUND);
     }
 
     public static void playInventoryCloseSound() {
+        if (!AlpakaConfig.instance.customSoundInventoryOpenClose) return;
         playSound(INVENTORY_CLOSE_SOUND);
     }
 

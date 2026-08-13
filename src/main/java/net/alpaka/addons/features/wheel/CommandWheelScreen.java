@@ -73,7 +73,7 @@ public class CommandWheelScreen extends Screen {
         int count = commands.size();
 
         // Small center dot / crosshair
-        ModernGuiUtils.drawRect(graphics, cx - 2, cy - 2, 4, 4, ModernGuiUtils.COLOR_ACCENT);
+        ModernGuiUtils.drawRect(graphics, cx - 2, cy - 2, 4, 4, ModernGuiUtils.getAccentColor());
         ModernGuiUtils.drawOutline(graphics, cx - 3, cy - 3, 6, 6, 0xFF0E1015);
 
         // Dynamic elliptical radius based on command count to prevent top & bottom horizontal card overlap
@@ -130,8 +130,8 @@ public class CommandWheelScreen extends Screen {
             int by = boxCy - boxH / 2;
 
             int bg = isSelected ? ModernGuiUtils.COLOR_CARD_BG_HOVER : ModernGuiUtils.COLOR_CARD_BG;
-            int border = isSelected ? ModernGuiUtils.COLOR_ACCENT : ModernGuiUtils.COLOR_CARD_BORDER;
-            int textColor = isSelected ? ModernGuiUtils.COLOR_ACCENT : ModernGuiUtils.COLOR_TEXT_PRIMARY;
+            int border = isSelected ? ModernGuiUtils.getAccentColor() : ModernGuiUtils.COLOR_CARD_BORDER;
+            int textColor = isSelected ? ModernGuiUtils.getAccentColor() : ModernGuiUtils.COLOR_TEXT_PRIMARY;
 
             // Hover pop scaling effect
             graphics.pose().pushMatrix();

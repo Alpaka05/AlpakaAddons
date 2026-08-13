@@ -37,6 +37,10 @@ public class AlpakaConfig {
     public boolean customSoundHotbarScroll = true;
     public boolean customSoundRareDrop = true;
     public boolean customSoundNotification = true;
+    public boolean customSoundPlayerHurt = true;
+    public boolean customSoundInventoryOpenClose = true;
+    public boolean customSoundLowHpHeartbeat = true;
+    public int menuAccentColor = 0xFFE5B849; // Default Warm Gold
     public boolean customEscapeMenuEnabled = true;
     public boolean customMainMenuEnabled = true;
     public boolean playerModelEnabled = true;
@@ -45,6 +49,7 @@ public class AlpakaConfig {
     public int playerModelX = 40;
     public int playerModelY = 85;
     public boolean playerModelDisableMovement = false;
+    public boolean playerModelHideArmor = false;
 
     // Block Overlay options
     public boolean blockOverlayEnabled = false;

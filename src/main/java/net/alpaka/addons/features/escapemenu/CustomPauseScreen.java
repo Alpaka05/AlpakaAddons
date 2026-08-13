@@ -190,7 +190,7 @@ public class CustomPauseScreen extends Screen {
         // Top Header Bar
         int headerH = 38;
         ModernGuiUtils.drawRect(graphics, startX, startY, cardWidth, headerH, ModernGuiUtils.COLOR_SIDEBAR_BG);
-        ModernGuiUtils.drawRect(graphics, startX, startY + headerH - 1, cardWidth, 1, ModernGuiUtils.COLOR_ACCENT);
+        ModernGuiUtils.drawRect(graphics, startX, startY + headerH - 1, cardWidth, 1, ModernGuiUtils.getAccentColor());
 
         // Header Title & Version
         graphics.centeredText(this.font, Component.literal("ALPAKA ADDONS"), centerX, startY + 8, ModernGuiUtils.COLOR_TEXT_PRIMARY);
@@ -320,8 +320,8 @@ public class CustomPauseScreen extends Screen {
             int drawY = y + yOffset;
 
             int bg = hovered ? (this.isRed ? 0x40EF4444 : ModernGuiUtils.COLOR_CARD_BG_HOVER) : ModernGuiUtils.COLOR_CARD_BG;
-            int border = hovered ? (this.isRed ? 0xFFEF4444 : ModernGuiUtils.COLOR_ACCENT) : ModernGuiUtils.COLOR_CARD_BORDER;
-            int textColor = hovered ? (this.isRed ? 0xFFEF4444 : ModernGuiUtils.COLOR_ACCENT) : ModernGuiUtils.COLOR_TEXT_PRIMARY;
+            int border = hovered ? (this.isRed ? 0xFFEF4444 : ModernGuiUtils.getAccentColor()) : ModernGuiUtils.COLOR_CARD_BORDER;
+            int textColor = hovered ? (this.isRed ? 0xFFEF4444 : ModernGuiUtils.getAccentColor()) : ModernGuiUtils.COLOR_TEXT_PRIMARY;
 
             ModernGuiUtils.drawRect(graphics, x, drawY, w, h, bg);
             ModernGuiUtils.drawOutline(graphics, x, drawY, w, h, border);

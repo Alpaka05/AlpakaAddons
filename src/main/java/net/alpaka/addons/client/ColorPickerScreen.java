@@ -63,7 +63,7 @@ public class ColorPickerScreen extends Screen {
         // Header bar
         int headerH = 38;
         ModernGuiUtils.drawRect(graphics, winX, winY, winW, headerH, ModernGuiUtils.COLOR_SIDEBAR_BG);
-        ModernGuiUtils.drawRect(graphics, winX, winY + headerH - 1, winW, 1, ModernGuiUtils.COLOR_ACCENT);
+        ModernGuiUtils.drawRect(graphics, winX, winY + headerH - 1, winW, 1, ModernGuiUtils.getAccentColor());
 
         graphics.text(this.font, this.title, winX + 16, winY + 13, ModernGuiUtils.COLOR_TEXT_PRIMARY);
 
@@ -71,7 +71,7 @@ public class ColorPickerScreen extends Screen {
         int closeX = winX + winW - 28;
         int closeY = winY + 9;
         boolean hoverClose = mouseX >= closeX && mouseX <= closeX + 18 && mouseY >= closeY && mouseY <= closeY + 18;
-        graphics.text(this.font, Component.literal("✕"), closeX + 4, closeY + 3, hoverClose ? ModernGuiUtils.COLOR_ACCENT : ModernGuiUtils.COLOR_TEXT_MUTED);
+        graphics.text(this.font, Component.literal("✕"), closeX + 4, closeY + 3, hoverClose ? ModernGuiUtils.getAccentColor() : ModernGuiUtils.COLOR_TEXT_MUTED);
 
         // LEFT COLUMN: Color Preview, HEX Code, Presets
         int prevX = winX + 20;
@@ -93,7 +93,7 @@ public class ColorPickerScreen extends Screen {
 
         String hexStr = String.format("#%02X%02X%02X%02X", a, r, g, b);
         int hexStrX = prevX + (prevW - this.font.width(hexStr)) / 2;
-        graphics.text(this.font, Component.literal(hexStr), hexStrX, hexY + 7, ModernGuiUtils.COLOR_ACCENT);
+        graphics.text(this.font, Component.literal(hexStr), hexStrX, hexY + 7, ModernGuiUtils.getAccentColor());
 
         // Presets Header
         int presetY = hexY + hexH + 12;
@@ -116,7 +116,7 @@ public class ColorPickerScreen extends Screen {
 
             ModernGuiUtils.drawRect(graphics, sx, sy, swatchSize, swatchSize, 0xFF000000);
             ModernGuiUtils.drawRect(graphics, sx + 1, sy + 1, swatchSize - 2, swatchSize - 2, presetColor);
-            ModernGuiUtils.drawOutline(graphics, sx, sy, swatchSize, swatchSize, isHovered ? ModernGuiUtils.COLOR_ACCENT : ModernGuiUtils.COLOR_CARD_BORDER);
+            ModernGuiUtils.drawOutline(graphics, sx, sy, swatchSize, swatchSize, isHovered ? ModernGuiUtils.getAccentColor() : ModernGuiUtils.COLOR_CARD_BORDER);
         }
 
         // RIGHT COLUMN: Sliders (R, G, B, A)

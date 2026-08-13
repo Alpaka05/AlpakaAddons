@@ -168,8 +168,8 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         ModernGuiUtils.drawRect(graphics, sidebarX, sidebarY, sidebarW, sidebarH, ModernGuiUtils.COLOR_PANEL_BG)
         ModernGuiUtils.drawOutline(graphics, sidebarX, sidebarY, sidebarW, sidebarH, ModernGuiUtils.COLOR_CARD_BORDER)
 
-        // Top Gold Accent Line
-        ModernGuiUtils.drawRect(graphics, sidebarX, sidebarY, sidebarW, 3, ModernGuiUtils.COLOR_ACCENT)
+        // Top Accent Line
+        ModernGuiUtils.drawRect(graphics, sidebarX, sidebarY, sidebarW, 3, ModernGuiUtils.getAccentColor())
 
         // Render Fancy Ornate AlpakaAddons Header Banner Logo
         renderFancyHeader(graphics, sidebarX, sidebarW, sidebarY)
@@ -339,8 +339,8 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
             val drawY = by + yOffset
 
             val bg = if (hovered) (if (isRed) 0x40EF4444.toInt() else ModernGuiUtils.COLOR_CARD_BG_HOVER) else ModernGuiUtils.COLOR_CARD_BG
-            val border = if (hovered) (if (isRed) 0xFFEF4444.toInt() else ModernGuiUtils.COLOR_ACCENT) else ModernGuiUtils.COLOR_CARD_BORDER
-            val textColor = if (hovered) (if (isRed) 0xFFEF4444.toInt() else ModernGuiUtils.COLOR_ACCENT) else ModernGuiUtils.COLOR_TEXT_PRIMARY
+            val border = if (hovered) (if (isRed) 0xFFEF4444.toInt() else ModernGuiUtils.getAccentColor()) else ModernGuiUtils.COLOR_CARD_BORDER
+            val textColor = if (hovered) (if (isRed) 0xFFEF4444.toInt() else ModernGuiUtils.getAccentColor()) else ModernGuiUtils.COLOR_TEXT_PRIMARY
 
             ModernGuiUtils.drawRect(graphics, bx, drawY, bw, bh, bg)
             ModernGuiUtils.drawOutline(graphics, bx, drawY, bw, bh, border)

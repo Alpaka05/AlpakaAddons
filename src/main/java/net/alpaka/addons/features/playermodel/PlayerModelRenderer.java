@@ -7,6 +7,8 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.ItemStack;
 
 public class PlayerModelRenderer {
     private static float modelAlpha = 0.0f;
@@ -143,10 +145,29 @@ public class PlayerModelRenderer {
         int y1 = y + (int)(scale * 0.2f);
 
         // Calculate yaw and pitch to face slightly forward-right
-        // Center of the bounding box is (x0 + x1)/2 = x
-        // Vertical center is (y0 + y1)/2 = y - scale * 1.1f
         float mouseX = x - 20;
         float mouseY = y - (scale * 1.1f) - 15;
+
+        // Save original equipment if hiding armor on model
+        boolean hideArmor = AlpakaConfig.instance.playerModelHideArmor;
+        ItemStack savedHead = hideArmor ? player.getItemBySlot(EquipmentSlot.HEAD) : ItemStack.EMPTY;
+        ItemStack savedChest = hideArmor ? player.getItemBySlot(EquipmentSlot.CHEST) : ItemStack.EMPTY;
+        ItemStack savedLegs = hideArmor ? player.getItemBySlot(EquipmentSlot.LEGS) : ItemStack.EMPTY;
+        ItemStack savedFeet = hideArmor ? player.getItemBySlot(EquipmentSlot.FEET) : ItemStack.EMPTY;
+        ItemStack savedBody = hideArmor ? player.getItemBySlot(EquipmentSlot.BODY) : ItemStack.EMPTY;
+
+        if (hideArmor) {
+            player.setItemSlot(EquipmentSlot.HEAD, ItemStack.EMPTY);
+            player.setItemSlot(EquipmentSlot.CHEST, ItemStack.EMPTY);
+            player.setItemSlot(EquipmentSlot.LEGS, ItemStack.EMPTY);
+            player.setItemSlot(EquipmentSlot.FEET, ItemStack.EMPTY);
+            player.setItemSlot(EquipmentSlot.BODY, ItemStack.EMPTY);
+        }
+
+        // Save fire state - player model HUD avatar never burns even if player is on fire
+        int savedFireTicks = player.getRemainingFireTicks();
+        player.setRemainingFireTicks(0);
+        player.setSharedFlagOnFire(false);
 
         try {
             InventoryScreen.extractEntityInInventoryFollowsMouse(
@@ -161,6 +182,18 @@ public class PlayerModelRenderer {
             );
         } catch (Exception e) {
             // Safety catch to prevent game crash if rendering state is invalid
+        } finally {
+            player.setRemainingFireTicks(savedFireTicks);
+            if (savedFireTicks > 0) {
+                player.setSharedFlagOnFire(true);
+            }
+            if (hideArmor) {
+                player.setItemSlot(EquipmentSlot.HEAD, savedHead);
+                player.setItemSlot(EquipmentSlot.CHEST, savedChest);
+                player.setItemSlot(EquipmentSlot.LEGS, savedLegs);
+                player.setItemSlot(EquipmentSlot.FEET, savedFeet);
+                player.setItemSlot(EquipmentSlot.BODY, savedBody);
+            }
         }
     }
 }

@@ -14,6 +14,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import net.alpaka.addons.features.mainmenu.CustomMainMenuScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
 
+import net.alpaka.addons.features.guifade.GuiFadeTracker;
+
 @Mixin(Minecraft.class)
 public abstract class MinecraftMixin {
     @Shadow public abstract void setScreen(Screen guiScreen);
@@ -45,6 +47,12 @@ public abstract class MinecraftMixin {
         Minecraft mc = (Minecraft)(Object)this;
         Screen oldScreen = mc.screen;
         
+        if (oldScreen == null && screen != null) {
+            GuiFadeTracker.onGuiOpened();
+        } else if (screen == null) {
+            GuiFadeTracker.onGuiClosed();
+        }
+
         boolean isOldInventory = oldScreen instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen 
             || oldScreen instanceof net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
         boolean isNewInventory = screen instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen 

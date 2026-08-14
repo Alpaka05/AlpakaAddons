@@ -119,6 +119,15 @@ def deployToLauncher(File jarFile, String versionStr) {
 }
 
 tasks.named("jar") {
+    doFirst {
+        def libsDir = file("${layout.buildDirectory.get()}/libs")
+        if (libsDir.exists()) {
+            libsDir.listFiles()?.findAll { it.name.startsWith("alpaka-") && it.name.endsWith(".jar") && !it.name.contains(project.version.toString()) }?.each {
+                it.delete()
+                println "Cleaned up old version jar: ${it.name} from build/libs"
+            }
+        }
+    }
     doLast {
         deployToLauncher(archiveFile.get().asFile, project.version.toString())
     }

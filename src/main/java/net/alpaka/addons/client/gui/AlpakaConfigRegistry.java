@@ -499,6 +499,13 @@ public class AlpakaConfigRegistry {
                 },
                 "world age recent visit threshold window seconds time minutes slider"));
 
+        OPTIONS.add(new ConfigOption("only_crit_damage", "Only Show Crit Damage",
+                "Hides non-crit, fire, poison, and secondary ability damage nametags in Skyblock, keeping only critical hits.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.onlyCritDamageEnabled,
+                v -> { AlpakaConfig.instance.onlyCritDamageEnabled = v; AlpakaConfig.save(); },
+                "damage indicator tags numbers hide non-crit fire poison abilities crit skyblock"));
+
         // --- 6. SOUND & UTILITY ---
         OPTIONS.add(new ConfigOption("custom_sounds", "Master Custom Sounds",
                 "Master switch for custom sound effects throughout the mod.",

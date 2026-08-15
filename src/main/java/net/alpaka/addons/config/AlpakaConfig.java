@@ -63,6 +63,7 @@ public class AlpakaConfig {
     public float worldAgeHudScale = 1.0f;
     public boolean worldAgeJoinMessageEnabled = true;
     public int worldAgeRecentThresholdSec = 60;
+    public boolean onlyCritDamageEnabled = true;
 
     // Block Overlay options
     public boolean blockOverlayEnabled = false;

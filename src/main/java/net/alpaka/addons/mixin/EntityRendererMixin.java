@@ -1,6 +1,7 @@
 package net.alpaka.addons.mixin;
 
 import net.alpaka.addons.features.blaze.CleanBlazeFeature;
+import net.alpaka.addons.features.damagetags.DamageTagFeature;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
@@ -21,14 +22,14 @@ public class EntityRendererMixin<T extends Entity, S extends EntityRenderState> 
 
     @Inject(method = "shouldShowName", at = @At("HEAD"), cancellable = true)
     private void hideBlazeNameTags(T entity, double distance, CallbackInfoReturnable<Boolean> info) {
-        if (CleanBlazeFeature.shouldHideNameTag(entity)) {
+        if (CleanBlazeFeature.shouldHideNameTag(entity) || DamageTagFeature.shouldHideNameTag(entity)) {
             info.setReturnValue(false);
         }
     }
 
     @Inject(method = "shouldRender", at = @At("HEAD"), cancellable = true)
     private void filterBlazeEntities(T entity, Frustum frustum, double x, double y, double z, CallbackInfoReturnable<Boolean> info) {
-        if (CleanBlazeFeature.shouldHideEntity(entity)) {
+        if (CleanBlazeFeature.shouldHideEntity(entity) || DamageTagFeature.shouldHideEntity(entity)) {
             info.setReturnValue(false);
         }
     }

@@ -9,10 +9,13 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import net.alpaka.addons.features.worldage.WorldAgeHudRenderer;
+
 @Mixin(Gui.class)
 public class GuiMixin {
     @Inject(method = "extractRenderState", at = @At("TAIL"))
     private void onExtractRenderState(GuiGraphicsExtractor graphicsExtractor, DeltaTracker deltaTracker, CallbackInfo ci) {
         PlayerModelRenderer.render(graphicsExtractor, deltaTracker);
+        WorldAgeHudRenderer.render(graphicsExtractor, deltaTracker);
     }
 }

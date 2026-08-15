@@ -9,6 +9,8 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallba
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
 import net.minecraft.client.Minecraft;
 
+import net.alpaka.addons.features.worldage.WorldAgeHudRenderer;
+
 public class AlpakaClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
@@ -16,6 +18,7 @@ public class AlpakaClient implements ClientModInitializer {
         SlayerDropTracker.registerEvents();
         ZoomFeature.register();
         CommandWheelFeature.register();
+        WorldAgeHudRenderer.registerEvents();
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             dispatcher.register(ClientCommands.literal("alpakaconfig")

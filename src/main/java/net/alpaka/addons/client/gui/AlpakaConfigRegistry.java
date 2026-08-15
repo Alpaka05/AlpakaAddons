@@ -462,6 +462,43 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.slayerDropTrackerEnabled = v; AlpakaConfig.save(); },
                 "slayer drop tracker hypixel loot boss kill stats counter skyblock"));
 
+        OPTIONS.add(new ConfigOption("world_age_hud_enabled", "Enable World Age (Day) HUD",
+                "Displays the current server's world age in days.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.worldAgeHudEnabled,
+                v -> { AlpakaConfig.instance.worldAgeHudEnabled = v; AlpakaConfig.save(); },
+                "world age day hud server days time skyblock color red orange green"));
+
+        OPTIONS.add(new ConfigOption("world_age_hud_editor", "Configure World Age Position",
+                "Opens visual editor to drag, position, and resize the World Age HUD text.",
+                ConfigCategory.SKYBLOCK,
+                "Adjust Position",
+                parent -> Minecraft.getInstance().setScreen(new net.alpaka.addons.features.worldage.WorldAgeHudEditorScreen(parent)),
+                "world age position edit dragging hud screen drag move resize scale"));
+
+        OPTIONS.add(new ConfigOption("world_age_join_message_enabled", "Server Age Join Message",
+                "Shows a chat notification with the server age and recent visit status when joining a server.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.worldAgeJoinMessageEnabled,
+                v -> { AlpakaConfig.instance.worldAgeJoinMessageEnabled = v; AlpakaConfig.save(); },
+                "world age server join chat message notification alert day time"));
+
+        OPTIONS.add(new ConfigOption("world_age_recent_threshold", "Recent Visit Window",
+                "Time window threshold in seconds to report if you recently visited this server.",
+                ConfigCategory.SKYBLOCK,
+                () -> (float) AlpakaConfig.instance.worldAgeRecentThresholdSec,
+                v -> { AlpakaConfig.instance.worldAgeRecentThresholdSec = Math.round(v); AlpakaConfig.save(); },
+                10.0f, 300.0f, val -> {
+                    int sec = Math.round(val);
+                    if (sec >= 60) {
+                        int m = sec / 60;
+                        int s = sec % 60;
+                        return s > 0 ? String.format("%dm %ds", m, s) : String.format("%dm", m);
+                    }
+                    return String.format("%ds", sec);
+                },
+                "world age recent visit threshold window seconds time minutes slider"));
+
         // --- 6. SOUND & UTILITY ---
         OPTIONS.add(new ConfigOption("custom_sounds", "Master Custom Sounds",
                 "Master switch for custom sound effects throughout the mod.",

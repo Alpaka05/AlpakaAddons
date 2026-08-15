@@ -25,6 +25,7 @@ public class SlayerDropTracker {
 
     private static final Pattern BOSS_TYPE_PATTERN = Pattern.compile("^ +(Wolf|Zombie|Blaze|Vampire|Spider|Enderman|Guardian) Slayer LVL \\d.*");
     private static final Pattern DROP_PATTERN = Pattern.compile("^(?:VERY RARE|RARE|INSANE|CRAZY RARE) DROP! \\((?:(?<amount>\\d+x) )?(?<item>[^)]+)\\)(?: .+)?");
+    private static final Pattern SERVER_DROP_PATTERN = Pattern.compile("^\\s*(?:RARE|VERY RARE|INSANE|CRAZY RARE|PET) DROP! .*");
     private static final Pattern PARTY_PATTERN = Pattern.compile("^Party > (?:\\[[A-Z+]+] )?\\w+: !since (?<item>.+)$");
     private static final Pattern COLOR_PATTERN = Pattern.compile("(?i)§[0-9A-FK-OR]");
 
@@ -92,24 +93,7 @@ public class SlayerDropTracker {
     }
 
     public static boolean isOnSkyblock() {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null || mc.player == null) return false;
-
-        var serverData = mc.getCurrentServer();
-        if (serverData != null && serverData.ip != null) {
-            String ip = serverData.ip.toLowerCase();
-            if (!ip.contains("hypixel.net") && !ip.contains("localhost")) {
-                return false;
-            }
-        }
-
-        Scoreboard scoreboard = mc.level.getScoreboard();
-        Objective objective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR);
-        if (objective != null) {
-            String displayName = cleanColor(objective.getDisplayName().getString()).toLowerCase();
-            return displayName.contains("skyblock") || displayName.contains("rift");
-        }
-        return false;
+        return net.alpaka.addons.utils.SkyblockUtils.isOnSkyblock();
     }
 
     public static boolean isInRift() {
@@ -215,7 +199,7 @@ public class SlayerDropTracker {
 
         String string = cleanColor(message.getString());
 
-        if (AlpakaConfig.instance.customSoundsEnabled) {
+        if (AlpakaConfig.instance.customSoundsEnabled && SERVER_DROP_PATTERN.matcher(string).matches()) {
             String lower = string.toLowerCase();
             if (lower.contains("insane drop!") || lower.contains("crazy rare drop!") || lower.contains("judgement core") || lower.contains("warden heart") || lower.contains("archfiend dice")) {
                 CustomSoundFeature.playInsaneDropSound();

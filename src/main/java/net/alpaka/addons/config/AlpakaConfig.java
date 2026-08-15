@@ -56,6 +56,14 @@ public class AlpakaConfig {
     public boolean playerModelHideArmor = false;
     public boolean playerModelShowInGuis = false;
 
+    // World Age HUD & Join Notification options
+    public boolean worldAgeHudEnabled = true;
+    public int worldAgeHudX = 10;
+    public int worldAgeHudY = 10;
+    public float worldAgeHudScale = 1.0f;
+    public boolean worldAgeJoinMessageEnabled = true;
+    public int worldAgeRecentThresholdSec = 60;
+
     // Block Overlay options
     public boolean blockOverlayEnabled = false;
     public boolean blockFadeInEnabled = true;

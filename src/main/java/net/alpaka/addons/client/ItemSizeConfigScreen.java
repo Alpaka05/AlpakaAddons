@@ -274,57 +274,14 @@ public class ItemSizeConfigScreen extends Screen {
     }
 
     private void loadPreset(int index) {
-        if (AlpakaConfig.instance.itemPresets != null && index >= 0 && index < AlpakaConfig.instance.itemPresets.length) {
-            AlpakaConfig.ItemPreset preset = AlpakaConfig.instance.itemPresets[index];
-            AlpakaConfig.instance.itemScale = preset.scale;
-            AlpakaConfig.instance.itemXOffset = preset.xOffset;
-            AlpakaConfig.instance.itemYOffset = preset.yOffset;
-            AlpakaConfig.instance.itemZOffset = preset.zOffset;
-            AlpakaConfig.instance.itemRotationX = preset.rotationX;
-            AlpakaConfig.instance.itemRotationY = preset.rotationY;
-            AlpakaConfig.instance.itemRotationZ = preset.rotationZ;
-            AlpakaConfig.instance.itemSwingSpeed = preset.swingSpeed;
-            AlpakaConfig.instance.itemSwayDisabled = preset.swayDisabled;
-            AlpakaConfig.instance.itemSwingTranslationDisabled = preset.swingTranslationDisabled;
-            AlpakaConfig.instance.itemNoEquipEnabled = preset.noEquipEnabled;
-            AlpakaConfig.instance.itemSwingAlwaysFinishEnabled = preset.swingAlwaysFinishEnabled;
-            AlpakaConfig.instance.swingDriftX = preset.swingDriftX;
-            AlpakaConfig.instance.swingDriftY = preset.swingDriftY;
-            AlpakaConfig.instance.swingDriftZ = preset.swingDriftZ;
-            AlpakaConfig.instance.swingArcX = preset.swingArcX;
-            AlpakaConfig.instance.swingArcY = preset.swingArcY;
-            AlpakaConfig.instance.swingArcZ = preset.swingArcZ;
-            AlpakaConfig.save();
-            if (this.minecraft != null) {
-                this.minecraft.setScreen(this);
-            }
+        AlpakaConfig.instance.loadPreset(index);
+        if (this.minecraft != null) {
+            this.minecraft.setScreen(this);
         }
     }
 
     private void savePreset(int index) {
-        if (AlpakaConfig.instance.itemPresets != null && index >= 0 && index < AlpakaConfig.instance.itemPresets.length) {
-            AlpakaConfig.instance.itemPresets[index] = new AlpakaConfig.ItemPreset(
-                    AlpakaConfig.instance.itemScale,
-                    AlpakaConfig.instance.itemXOffset,
-                    AlpakaConfig.instance.itemYOffset,
-                    AlpakaConfig.instance.itemZOffset,
-                    AlpakaConfig.instance.itemRotationX,
-                    AlpakaConfig.instance.itemRotationY,
-                    AlpakaConfig.instance.itemRotationZ,
-                    AlpakaConfig.instance.itemSwingSpeed,
-                    AlpakaConfig.instance.itemSwayDisabled,
-                    AlpakaConfig.instance.itemSwingTranslationDisabled,
-                    AlpakaConfig.instance.itemNoEquipEnabled,
-                    AlpakaConfig.instance.itemSwingAlwaysFinishEnabled,
-                    AlpakaConfig.instance.swingDriftX,
-                    AlpakaConfig.instance.swingDriftY,
-                    AlpakaConfig.instance.swingDriftZ,
-                    AlpakaConfig.instance.swingArcX,
-                    AlpakaConfig.instance.swingArcY,
-                    AlpakaConfig.instance.swingArcZ
-            );
-            AlpakaConfig.save();
-        }
+        AlpakaConfig.instance.savePreset(index);
     }
 
     @Override

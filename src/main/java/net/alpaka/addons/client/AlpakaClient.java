@@ -65,6 +65,27 @@ public class AlpakaClient implements ClientModInitializer {
                     return 1;
                 })
             );
+
+            // --- Viewmodel Preset Command ---
+            dispatcher.register(ClientCommands.literal("alpakapreset")
+                .then(ClientCommands.argument("number", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1, 3))
+                    .executes(context -> {
+                        int num = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "number");
+                        Minecraft.getInstance().execute(() -> {
+                            net.alpaka.addons.config.AlpakaConfig.instance.loadPreset(num - 1);
+                            SlayerDropTracker.sendModMessage("§aSwitched to Viewmodel Preset " + num + ".");
+                            try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
+                        });
+                        return 1;
+                    })
+                )
+                .executes(context -> {
+                    Minecraft.getInstance().execute(() -> {
+                        SlayerDropTracker.sendModMessage("§7Current preset: §ePreset " + (net.alpaka.addons.config.AlpakaConfig.instance.activeItemPresetIndex + 1) + "§7. Usage: §6/alpakapreset <1|2|3>");
+                    });
+                    return 1;
+                })
+            );
         });
     }
 }

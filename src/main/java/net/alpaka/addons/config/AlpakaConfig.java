@@ -166,6 +166,68 @@ public class AlpakaConfig {
         new ItemPreset(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, false, false, false, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f)
     };
 
+    public int activeItemPresetIndex = 0;
+
+    public void loadPreset(int index) {
+        if (itemPresets != null && index >= 0 && index < itemPresets.length) {
+            ItemPreset preset = itemPresets[index];
+            this.itemScale = preset.scale;
+            this.itemXOffset = preset.xOffset;
+            this.itemYOffset = preset.yOffset;
+            this.itemZOffset = preset.zOffset;
+            this.itemRotationX = preset.rotationX;
+            this.itemRotationY = preset.rotationY;
+            this.itemRotationZ = preset.rotationZ;
+            this.itemSwingSpeed = preset.swingSpeed;
+            this.itemSwayDisabled = preset.swayDisabled;
+            this.itemSwingTranslationDisabled = preset.swingTranslationDisabled;
+            this.itemNoEquipEnabled = preset.noEquipEnabled;
+            this.itemSwingAlwaysFinishEnabled = preset.swingAlwaysFinishEnabled;
+            this.swingDriftX = preset.swingDriftX;
+            this.swingDriftY = preset.swingDriftY;
+            this.swingDriftZ = preset.swingDriftZ;
+            this.swingArcX = preset.swingArcX;
+            this.swingArcY = preset.swingArcY;
+            this.swingArcZ = preset.swingArcZ;
+            this.activeItemPresetIndex = index;
+            save();
+        }
+    }
+
+    public void savePreset(int index) {
+        if (itemPresets == null || itemPresets.length < 3) {
+            itemPresets = new ItemPreset[] {
+                new ItemPreset(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, false, false, false, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f),
+                new ItemPreset(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, false, false, false, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f),
+                new ItemPreset(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, false, false, false, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f)
+            };
+        }
+        if (index >= 0 && index < itemPresets.length) {
+            itemPresets[index] = new ItemPreset(
+                    this.itemScale,
+                    this.itemXOffset,
+                    this.itemYOffset,
+                    this.itemZOffset,
+                    this.itemRotationX,
+                    this.itemRotationY,
+                    this.itemRotationZ,
+                    this.itemSwingSpeed,
+                    this.itemSwayDisabled,
+                    this.itemSwingTranslationDisabled,
+                    this.itemNoEquipEnabled,
+                    this.itemSwingAlwaysFinishEnabled,
+                    this.swingDriftX,
+                    this.swingDriftY,
+                    this.swingDriftZ,
+                    this.swingArcX,
+                    this.swingArcY,
+                    this.swingArcZ
+            );
+            this.activeItemPresetIndex = index;
+            save();
+        }
+    }
+
     public Map<SlayerType, SlayerData> slayerBossMap = new HashMap<>();
 
     public static class SlayerData {

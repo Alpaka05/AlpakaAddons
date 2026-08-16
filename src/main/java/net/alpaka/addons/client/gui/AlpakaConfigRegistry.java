@@ -7,6 +7,7 @@ import net.alpaka.addons.client.ItemSwingConfigScreen;
 import net.alpaka.addons.client.PlayerModelConfigScreen;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.playermodel.PlayerModelHudEditorScreen;
+import net.alpaka.addons.features.sound.CustomSoundFeature;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
@@ -160,6 +161,9 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.itemSizeFeatureEnabled = v; AlpakaConfig.save(); },
                 "viewmodel item size scale enable custom hand"));
 
+        // Adjustments Header
+        OPTIONS.add(new ConfigOption("Viewmodel Adjustments", ConfigCategory.VIEWMODEL));
+
         OPTIONS.add(new ConfigOption("item_scale", "Item Scale (Size)",
                 "Scale multiplier for held items in hand.",
                 ConfigCategory.VIEWMODEL,
@@ -309,6 +313,69 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.itemSwingAlwaysFinishEnabled,
                 v -> { AlpakaConfig.instance.itemSwingAlwaysFinishEnabled = v; AlpakaConfig.save(); },
                 "always finish swing complete attack animation"));
+
+        // Presets Header
+        OPTIONS.add(new ConfigOption("Viewmodel Presets", ConfigCategory.VIEWMODEL));
+
+        OPTIONS.add(new ConfigOption("load_preset_1", "Load Preset 1",
+                "Applies viewmodel and swing settings from Preset 1.",
+                ConfigCategory.VIEWMODEL,
+                "Load P1",
+                parent -> {
+                    AlpakaConfig.instance.loadPreset(0);
+                    try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
+                },
+                "preset load 1 slot viewmodel hand size offset"));
+
+        OPTIONS.add(new ConfigOption("save_preset_1", "Save to Preset 1",
+                "Saves your current viewmodel and swing settings to Preset 1.",
+                ConfigCategory.VIEWMODEL,
+                "Save P1",
+                parent -> {
+                    AlpakaConfig.instance.savePreset(0);
+                    try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
+                },
+                "preset save 1 slot viewmodel hand size offset"));
+
+        OPTIONS.add(new ConfigOption("load_preset_2", "Load Preset 2",
+                "Applies viewmodel and swing settings from Preset 2.",
+                ConfigCategory.VIEWMODEL,
+                "Load P2",
+                parent -> {
+                    AlpakaConfig.instance.loadPreset(1);
+                    try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
+                },
+                "preset load 2 slot viewmodel hand size offset"));
+
+        OPTIONS.add(new ConfigOption("save_preset_2", "Save to Preset 2",
+                "Saves your current viewmodel and swing settings to Preset 2.",
+                ConfigCategory.VIEWMODEL,
+                "Save P2",
+                parent -> {
+                    AlpakaConfig.instance.savePreset(1);
+                    try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
+                },
+                "preset save 2 slot viewmodel hand size offset"));
+
+        OPTIONS.add(new ConfigOption("load_preset_3", "Load Preset 3",
+                "Applies viewmodel and swing settings from Preset 3.",
+                ConfigCategory.VIEWMODEL,
+                "Load P3",
+                parent -> {
+                    AlpakaConfig.instance.loadPreset(2);
+                    try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
+                },
+                "preset load 3 slot viewmodel hand size offset"));
+
+        OPTIONS.add(new ConfigOption("save_preset_3", "Save to Preset 3",
+                "Saves your current viewmodel and swing settings to Preset 3.",
+                ConfigCategory.VIEWMODEL,
+                "Save P3",
+                parent -> {
+                    AlpakaConfig.instance.savePreset(2);
+                    try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
+                },
+                "preset save 3 slot viewmodel hand size offset"));
 
         // --- 3. BLOCK OVERLAY ---
         OPTIONS.add(new ConfigOption("block_overlay_enabled", "Enable Block Overlay",

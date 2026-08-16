@@ -8,6 +8,7 @@ import net.alpaka.addons.client.PlayerModelConfigScreen;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.playermodel.PlayerModelHudEditorScreen;
 import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -585,6 +586,24 @@ public class AlpakaConfigRegistry {
                 "Edit Commands",
                 parent -> Minecraft.getInstance().setScreen(new net.alpaka.addons.client.CommandWheelConfigScreen(parent)),
                 "quick command wheel commands add remove edit custom list menu keybind"));
+
+        OPTIONS.add(new ConfigOption("disable_all_features", "Disable All Features",
+                "Disables every feature in the mod after confirmation.",
+                ConfigCategory.SOUND_MISC,
+                "Disable All",
+                parent -> Minecraft.getInstance().setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(
+                        confirmed -> {
+                            if (confirmed) {
+                                AlpakaConfig.instance.disableAllFeatures();
+                            }
+                            Minecraft.getInstance().setScreen(parent);
+                        },
+                        Component.literal("§c§lDisable All Features"),
+                        Component.literal("Are you sure you want to disable all features of Alpaka Addons?"),
+                        Component.literal("§cDisable All"),
+                        Component.literal("Cancel")
+                )),
+                "disable all features turn off reset everywhere confirm prompt"));
 
         buildCategoryCache();
     }

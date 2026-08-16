@@ -208,6 +208,52 @@ public class AlpakaConfig {
         }
     }
 
+    public void disableAllFeatures() {
+        this.renderHandInThirdPerson = false;
+        this.slayerDropTrackerEnabled = false;
+        this.fullbrightEnabled = false;
+        this.nameHighlightingEnabled = false;
+        this.inventorySnowEnabled = false;
+        this.containerBgFadeInEnabled = false;
+        this.cleanBlazeEnabled = false;
+        this.stopBlazeSpinning = false;
+        this.smoothPerspectiveEnabled = false;
+        this.disableFrontPerspective = false;
+        this.customSoundsEnabled = false;
+        this.customSoundButtonClick = false;
+        this.customSoundHotbarScroll = false;
+        this.customSoundRareDrop = false;
+        this.customSoundNotification = false;
+        this.customSoundPlayerHurt = false;
+        this.customSoundInventoryOpenClose = false;
+        this.customSoundLowHpHeartbeat = false;
+        this.customEscapeMenuEnabled = false;
+        this.customMainMenuEnabled = false;
+        this.playerModelEnabled = false;
+        this.playerModelOnlyActions = false;
+        this.playerModelDisableMovement = false;
+        this.playerModelHideArmor = false;
+        this.playerModelShowInGuis = false;
+        this.worldAgeHudEnabled = false;
+        this.worldAgeJoinMessageEnabled = false;
+        this.onlyCritDamageEnabled = false;
+        this.blockOverlayEnabled = false;
+        this.blockFadeInEnabled = false;
+        this.blockOutlineEnabled = false;
+        this.blockChromaEnabled = false;
+        this.blockIgnoreDepth = false;
+        this.blockIgnorePlants = false;
+        this.blockFillEnabled = false;
+        this.expandChatHistory = false;
+        this.itemSizeFeatureEnabled = false;
+        this.itemSwayDisabled = false;
+        this.itemSwingTranslationDisabled = false;
+        this.itemNoEquipEnabled = false;
+        this.itemSwingAlwaysFinishEnabled = false;
+        this.itemIgnoreEmptyHandEnabled = false;
+        save();
+    }
+
     public static void save() {
         try (FileWriter writer = new FileWriter(FILE)) {
             GSON.toJson(instance, writer);

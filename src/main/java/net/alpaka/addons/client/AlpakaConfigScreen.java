@@ -338,6 +338,8 @@ public class AlpakaConfigScreen extends Screen {
                                 default -> net.alpaka.addons.config.AlpakaConfig.instance.blockOutlineColor;
                             };
                             ModernGuiUtils.drawModernColorButton(graphics, this.font, widgetX, widgetY, widgetW, widgetH, colorVal, isWidgetHovered);
+                        } else if (opt.getId().equals("disable_all_features")) {
+                            ModernGuiUtils.drawModernDestructiveButton(graphics, this.font, widgetX, widgetY, widgetW, widgetH, opt.getActionLabel(), isWidgetHovered);
                         } else {
                             ModernGuiUtils.drawModernButton(graphics, this.font, widgetX, widgetY, widgetW, widgetH, opt.getActionLabel(), isWidgetHovered, false);
                         }

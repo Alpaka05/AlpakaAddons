@@ -140,5 +140,18 @@ public class ModernGuiUtils {
         // Border outline
         drawOutline(graphics, x, y, width, height, border);
     }
+
+    public static void drawModernDestructiveButton(GuiGraphicsExtractor graphics, Font font, int x, int y, int width, int height, String label, boolean isHovered) {
+        int bg = isHovered ? 0xFFDC2626 : 0x44DC2626;
+        int border = isHovered ? 0xFFEF4444 : 0x88DC2626;
+        int textColor = isHovered ? 0xFFFFFFFF : 0xFFFCA5A5;
+
+        drawRect(graphics, x, y, width, height, bg);
+        drawOutline(graphics, x, y, width, height, border);
+
+        int textX = x + (width - font.width(label)) / 2;
+        int textY = y + (height - 8) / 2;
+        graphics.text(font, Component.literal(label), textX, textY, textColor);
+    }
 }
 

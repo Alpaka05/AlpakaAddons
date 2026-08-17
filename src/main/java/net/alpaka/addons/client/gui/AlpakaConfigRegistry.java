@@ -470,6 +470,13 @@ public class AlpakaConfigRegistry {
                 })),
                 "block fill color picker rgb alpha transparency tint"));
 
+        OPTIONS.add(new ConfigOption("block_hide_on_etherwarp", "Hide While Aiming Etherwarp",
+                "Hides the overlay while sneaking with an Etherwarp item, so Skyblock teleport indicators stay clear.",
+                ConfigCategory.BLOCK_OVERLAY,
+                () -> AlpakaConfig.instance.blockHideOnEtherwarp,
+                v -> { AlpakaConfig.instance.blockHideOnEtherwarp = v; AlpakaConfig.save(); },
+                "etherwarp ether transmission conduit aspect void end teleport sneak hide overlay skyblock"));
+
         // --- 4. PLAYER MODEL HUD ---
         OPTIONS.add(new ConfigOption("player_model_enabled", "Enable Player Model HUD",
                 "Displays a miniature 3D player avatar on the HUD.",
@@ -498,6 +505,13 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.playerModelHideArmor,
                 v -> { AlpakaConfig.instance.playerModelHideArmor = v; AlpakaConfig.save(); },
                 "player model hide armor helmet chestplate leggings boots overlay"));
+
+        OPTIONS.add(new ConfigOption("player_model_slow_swing", "Slow Swing",
+                "Plays the avatar's attack swing slower and smoother than the real player's.",
+                ConfigCategory.PLAYER_MODEL,
+                () -> AlpakaConfig.instance.playerModelSlowSwing,
+                v -> { AlpakaConfig.instance.playerModelSlowSwing = v; AlpakaConfig.save(); },
+                "slow swing smooth attack animation arm hand punch hit speed player model"));
 
         OPTIONS.add(new ConfigOption("player_model_show_in_guis", "Show in GUIs / Menus",
                 "Renders player model HUD even when container or menu GUIs are open.",

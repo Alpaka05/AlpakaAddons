@@ -55,6 +55,7 @@ public class AlpakaConfig {
     public boolean playerModelDisableMovement = false;
     public boolean playerModelHideArmor = false;
     public boolean playerModelShowInGuis = false;
+    public boolean playerModelSlowSwing = false;
 
     // World Age HUD & Join Notification options
     public boolean worldAgeHudEnabled = true;
@@ -78,6 +79,7 @@ public class AlpakaConfig {
     public boolean blockIgnorePlants = false;
     public boolean blockFillEnabled = false;
     public int blockFillColor = 0x440000FF; // Default semi-transparent blue
+    public boolean blockHideOnEtherwarp = false;
 
     // Chat options
     public boolean expandChatHistory = true;
@@ -296,6 +298,7 @@ public class AlpakaConfig {
         this.playerModelDisableMovement = false;
         this.playerModelHideArmor = false;
         this.playerModelShowInGuis = false;
+        this.playerModelSlowSwing = false;
         this.worldAgeHudEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
@@ -306,6 +309,7 @@ public class AlpakaConfig {
         this.blockIgnoreDepth = false;
         this.blockIgnorePlants = false;
         this.blockFillEnabled = false;
+        this.blockHideOnEtherwarp = false;
         this.expandChatHistory = false;
         this.itemSizeFeatureEnabled = false;
         this.itemSwayDisabled = false;

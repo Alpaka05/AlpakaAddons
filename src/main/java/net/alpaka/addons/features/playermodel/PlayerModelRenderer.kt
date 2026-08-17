@@ -7,6 +7,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.ChatScreen
 import net.minecraft.client.player.LocalPlayer
+import net.minecraft.client.renderer.entity.state.ArmedEntityRenderState
 import net.minecraft.client.renderer.entity.state.AvatarRenderState
 import net.minecraft.client.renderer.entity.state.EntityRenderState
 import net.minecraft.client.renderer.entity.state.HumanoidRenderState
@@ -58,8 +59,21 @@ object PlayerModelRenderer {
     /** Squared horizontal speed above which the player counts as moving. */
     private const val MOVE_EPSILON = 0.002
 
+    /**
+     * Wall-clock length of the slowed swing. Vanilla runs the arm through its arc in the held
+     * item's swing duration - 6 ticks, so ~300ms - making this roughly half speed.
+     */
+    private const val SLOW_SWING_DURATION_MS = 600.0f
+
     private var alpha = 0.0f
     private var lastTimeMs = System.currentTimeMillis()
+
+    // Slow-swing tracking. Only ever drives the HUD avatar's render state; the real player's
+    // swing timing, reach and hit registration are untouched.
+    private var slowSwingStartMs = 0L
+    private var slowSwingActive = false
+    private var wasSwinging = false
+    private var lastSwingTime = 0
 
     @JvmStatic
     fun render(graphics: GuiGraphicsExtractor, @Suppress("UNUSED_PARAMETER") deltaTracker: DeltaTracker) {
@@ -74,6 +88,9 @@ object PlayerModelRenderer {
         lastTimeMs = now
 
         val cfg = AlpakaConfig.instance
+        // Ticked before the visibility check so an in-flight slow swing can keep the avatar up.
+        updateSlowSwing(player, cfg)
+
         alpha = if (shouldShowModel(mc, player, cfg)) {
             (alpha + dt * FADE_SPEED).coerceAtMost(1.0f)
         } else {
@@ -109,12 +126,15 @@ object PlayerModelRenderer {
         if (!cfg.playerModelOnlyActions) return true
 
         // Cheapest predicates first - || short-circuits, so the common cases cost one read
-        // instead of evaluating all eight.
+        // instead of evaluating every one of them.
         if (!player.onGround() ||
             player.isCrouching ||
             player.isSprinting ||
             player.isPassenger ||
             player.swingTime > 0 ||
+            // A slowed swing outlives the player's own swingTime, so keep the avatar up until
+            // the stretched animation has finished rather than fading out mid-arc.
+            slowSwingActive ||
             player.isSwimming ||
             player.isFallFlying
         ) {
@@ -197,6 +217,11 @@ object PlayerModelRenderer {
             val cfg = AlpakaConfig.instance
             if (cfg.playerModelDisableMovement) freezeMovementPose(state, entity)
             if (cfg.playerModelHideArmor) hideArmor(state)
+            // Replaces the player's own attack progress with our stretched one. attackTime is
+            // the 0..1 value the humanoid model derives the whole arm arc from.
+            if (cfg.playerModelSlowSwing && state is ArmedEntityRenderState) {
+                state.attackTime = slowSwingProgress()
+            }
 
             state.bodyRot = 180.0f + yaw * LOOK_STRENGTH
             state.yRot = yaw * LOOK_STRENGTH
@@ -217,6 +242,47 @@ object PlayerModelRenderer {
             x1,
             y1
         )
+    }
+
+    /**
+     * Watches the player's swing counter and restarts a wall-clock timer whenever a new swing
+     * begins, so the avatar's arm can be animated on our own slower schedule.
+     *
+     * Called once per frame from [render]. Repeat calls within a frame are harmless: the player's
+     * swing counter cannot change between them, so no second swing is detected.
+     */
+    private fun updateSlowSwing(player: LocalPlayer, cfg: AlpakaConfig) {
+        val swinging = player.swinging
+        val swingTime = player.swingTime
+
+        if (!cfg.playerModelSlowSwing) {
+            slowSwingActive = false
+            wasSwinging = swinging
+            lastSwingTime = swingTime
+            return
+        }
+
+        // Either a swing starting from rest, or a re-swing that reset the counter mid-arc.
+        if (swinging && (!wasSwinging || swingTime < lastSwingTime)) {
+            slowSwingStartMs = System.currentTimeMillis()
+            slowSwingActive = true
+        }
+        wasSwinging = swinging
+        lastSwingTime = swingTime
+
+        if (slowSwingActive && System.currentTimeMillis() - slowSwingStartMs >= SLOW_SWING_DURATION_MS) {
+            slowSwingActive = false
+        }
+    }
+
+    /** Eased 0..1 progress through the slowed swing, or 0 while idle. */
+    private fun slowSwingProgress(): Float {
+        if (!slowSwingActive) return 0.0f
+        val elapsed = (System.currentTimeMillis() - slowSwingStartMs).toFloat()
+        val progress = (elapsed / SLOW_SWING_DURATION_MS).coerceIn(0.0f, 1.0f)
+        // Smoothstep, so the arm eases into and out of the arc instead of starting and
+        // stopping at full angular speed.
+        return progress * progress * (3.0f - 2.0f * progress)
     }
 
     /**

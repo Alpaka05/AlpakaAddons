@@ -3,6 +3,7 @@ package net.alpaka.addons.mixin;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.alpaka.addons.features.blockoverlay.BlockOverlayFeature;
+import net.alpaka.addons.features.etherwarp.EtherwarpDetector;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.state.level.BlockOutlineRenderState;
 import org.spongepowered.asm.mixin.Mixin;
@@ -19,6 +20,14 @@ public class LevelRendererMixin {
     )
     private void onRenderHitOutline(PoseStack poseStack, VertexConsumer vertexConsumer, double camX, double camY, double camZ, BlockOutlineRenderState state, int light, float alpha, CallbackInfo ci) {
         if (net.alpaka.addons.config.AlpakaConfig.instance.blockOverlayEnabled) {
+            // Aiming an Etherwarp teleport: draw nothing at all, so the teleport-target
+            // indicators other Skyblock mods render are not overlapped.
+            if (net.alpaka.addons.config.AlpakaConfig.instance.blockHideOnEtherwarp
+                    && EtherwarpDetector.isAimingEtherwarp()) {
+                ci.cancel();
+                return;
+            }
+
             net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
             if (net.alpaka.addons.config.AlpakaConfig.instance.blockIgnorePlants && mc.level != null && state != null) {
                 if (BlockOverlayFeature.isPlantBlock(mc.level.getBlockState(state.pos()))) {

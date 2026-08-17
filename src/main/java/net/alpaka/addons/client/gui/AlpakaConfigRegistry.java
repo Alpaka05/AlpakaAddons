@@ -487,11 +487,11 @@ public class AlpakaConfigRegistry {
                 "only action sprint fly swing dynamic hide avatar"));
 
         OPTIONS.add(new ConfigOption("player_model_disable_movement", "Disable Movement Sway",
-                "Fixes avatar position without walking sway motion.",
+                "Fixes avatar position without walking or swimming sway motion.",
                 ConfigCategory.PLAYER_MODEL,
                 () -> AlpakaConfig.instance.playerModelDisableMovement,
                 v -> { AlpakaConfig.instance.playerModelDisableMovement = v; AlpakaConfig.save(); },
-                "disable movement sway steady static hud player model"));
+                "disable movement sway steady static hud player model swim swimming"));
 
         OPTIONS.add(new ConfigOption("player_model_hide_armor", "Hide Armor on Model",
                 "Hides armor pieces from rendering on the player model HUD.",

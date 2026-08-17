@@ -246,7 +246,10 @@ public class AlpakaConfigScreen extends Screen {
         // 5. Render Options in Main Panel with Scissor Clipping to prevent scrolling overlap
         List<ConfigOption> options = AlpakaConfigRegistry.getOptions(activeCategory, searchQuery);
 
-        int totalContentHeight = 40 + options.size() * 52 + 20;
+        int totalContentHeight = 40 + 20;
+        for (ConfigOption opt : options) {
+            totalContentHeight += (opt.getType() == ConfigOption.Type.HEADER) ? 30 : 50;
+        }
         maxScrollY = Math.max(0, totalContentHeight - contentH);
         targetScrollY = Math.max(0, Math.min(maxScrollY, targetScrollY));
 
@@ -275,80 +278,80 @@ public class AlpakaConfigScreen extends Screen {
             int cardH = 44;
 
             for (ConfigOption opt : options) {
-                if (startOptionY + cardH >= clipY && startOptionY <= clipY + clipH) {
+                int itemHeight = (opt.getType() == ConfigOption.Type.HEADER) ? 30 : (cardH + 6);
+
+                if (startOptionY + itemHeight >= clipY && startOptionY <= clipY + clipH) {
                     if (opt.getType() == ConfigOption.Type.HEADER) {
                         ModernGuiUtils.drawRect(graphics, contentX + 14, startOptionY + 8, cardW, 1, ModernGuiUtils.COLOR_CARD_BORDER);
                         graphics.text(this.font, Component.literal("• " + opt.getTitle().toUpperCase()), contentX + 14, startOptionY + 14, ModernGuiUtils.getAccentColor());
-                        startOptionY += 30;
-                        continue;
-                    }
-
-                    boolean isCardHovered = mouseX >= contentX + 14 && mouseX <= contentX + 14 + cardW &&
-                                           mouseY >= startOptionY && mouseY <= startOptionY + cardH &&
-                                           mouseY >= clipY && mouseY <= clipY + clipH;
-
-                    opt.updateHoverProgress(isCardHovered, deltaSec);
-                    opt.updateClickProgress(deltaSec);
-
-                    float popScale = 1.0f + 0.015f * opt.getHoverProgress() - 0.015f * opt.getClickProgress();
-
-                    graphics.pose().pushMatrix();
-                    float cardCenterX = contentX + 14 + cardW / 2.0f;
-                    float cardCenterY = startOptionY + cardH / 2.0f;
-                    graphics.pose().scaleAround(popScale, popScale, cardCenterX, cardCenterY);
-
-                    ModernGuiUtils.drawModernCard(graphics, contentX + 14, startOptionY, cardW, cardH, isCardHovered, false);
-
-                    // Right Control Widgets (Compact sizing to fit smaller panel)
-                    int widgetW = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 32 :
-                                  (opt.getType() == ConfigOption.Type.ACTION ? (opt.getId().contains("color") ? 38 : 80) : 85);
-                    int widgetH = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 15 : 18;
-                    int widgetX = contentX + 14 + cardW - widgetW - 10;
-                    int widgetY = startOptionY + (cardH - widgetH) / 2;
-
-                    // Title & Description (Wrapped to maxDescW to prevent overlap with control widgets)
-                    graphics.text(this.font, Component.literal(opt.getTitle()), contentX + 24, startOptionY + 8, ModernGuiUtils.COLOR_TEXT_PRIMARY);
-
-                    String desc = opt.getDescription();
-                    int maxDescW = widgetX - (contentX + 24) - 10;
-                    List<net.minecraft.network.chat.FormattedText> descLines = this.font.getSplitter().splitLines(desc, maxDescW, net.minecraft.network.chat.Style.EMPTY);
-
-                    if (descLines.size() > 1) {
-                        for (int i = 0; i < Math.min(2, descLines.size()); i++) {
-                            graphics.text(this.font, Component.literal(descLines.get(i).getString()), contentX + 24, startOptionY + 20 + i * 9, ModernGuiUtils.COLOR_TEXT_MUTED);
-                        }
                     } else {
-                        graphics.text(this.font, Component.literal(desc), contentX + 24, startOptionY + 22, ModernGuiUtils.COLOR_TEXT_MUTED);
-                    }
+                        boolean isCardHovered = mouseX >= contentX + 14 && mouseX <= contentX + 14 + cardW &&
+                                               mouseY >= startOptionY && mouseY <= startOptionY + cardH &&
+                                               mouseY >= clipY && mouseY <= clipY + clipH;
 
-                    if (opt.getType() == ConfigOption.Type.BOOLEAN) {
-                        boolean isWidgetHovered = mouseX >= widgetX && mouseX <= widgetX + widgetW && mouseY >= widgetY && mouseY <= widgetY + widgetH && mouseY >= clipY && mouseY <= clipY + clipH;
-                        ModernGuiUtils.drawModernToggle(graphics, this.font, widgetX, widgetY, widgetW, widgetH, opt.getBool(), isWidgetHovered);
-                    } else if (opt.getType() == ConfigOption.Type.SLIDER) {
-                        boolean isWidgetHovered = mouseX >= widgetX && mouseX <= widgetX + widgetW && mouseY >= widgetY && mouseY <= widgetY + widgetH && mouseY >= clipY && mouseY <= clipY + clipH;
-                        double normVal = opt.getSliderNormalizedValue();
-                        ModernGuiUtils.drawModernSlider(graphics, this.font, widgetX, widgetY, widgetW, widgetH, normVal, opt.getFormattedValue(), isWidgetHovered);
-                    } else if (opt.getType() == ConfigOption.Type.ACTION) {
-                        boolean isWidgetHovered = mouseX >= widgetX && mouseX <= widgetX + widgetW && mouseY >= widgetY && mouseY <= widgetY + widgetH && mouseY >= clipY && mouseY <= clipY + clipH;
+                        opt.updateHoverProgress(isCardHovered, deltaSec);
+                        opt.updateClickProgress(deltaSec);
 
-                        if (opt.getId().contains("color")) {
-                            int colorVal = switch (opt.getId()) {
-                                case "menu_accent_color" -> net.alpaka.addons.config.AlpakaConfig.instance.menuAccentColor;
-                                case "block_fill_color" -> net.alpaka.addons.config.AlpakaConfig.instance.blockFillColor;
-                                default -> net.alpaka.addons.config.AlpakaConfig.instance.blockOutlineColor;
-                            };
-                            ModernGuiUtils.drawModernColorButton(graphics, this.font, widgetX, widgetY, widgetW, widgetH, colorVal, isWidgetHovered);
-                        } else if (opt.getId().equals("disable_all_features")) {
-                            ModernGuiUtils.drawModernDestructiveButton(graphics, this.font, widgetX, widgetY, widgetW, widgetH, opt.getActionLabel(), isWidgetHovered);
+                        float popScale = 1.0f + 0.015f * opt.getHoverProgress() - 0.015f * opt.getClickProgress();
+
+                        graphics.pose().pushMatrix();
+                        float cardCenterX = contentX + 14 + cardW / 2.0f;
+                        float cardCenterY = startOptionY + cardH / 2.0f;
+                        graphics.pose().scaleAround(popScale, popScale, cardCenterX, cardCenterY);
+
+                        ModernGuiUtils.drawModernCard(graphics, contentX + 14, startOptionY, cardW, cardH, isCardHovered, false);
+
+                        // Right Control Widgets (Compact sizing to fit smaller panel)
+                        int widgetW = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 32 :
+                                      (opt.getType() == ConfigOption.Type.ACTION ? (opt.getId().contains("color") ? 38 : 80) : 90);
+                        int widgetH = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 15 : 18;
+                        int widgetX = contentX + 14 + cardW - widgetW - 10;
+                        int widgetY = startOptionY + (cardH - widgetH) / 2;
+
+                        // Title & Description (Wrapped to maxDescW to prevent overlap with control widgets)
+                        graphics.text(this.font, Component.literal(opt.getTitle()), contentX + 24, startOptionY + 8, ModernGuiUtils.COLOR_TEXT_PRIMARY);
+
+                        String desc = opt.getDescription();
+                        int maxDescW = widgetX - (contentX + 24) - 10;
+                        List<net.minecraft.network.chat.FormattedText> descLines = this.font.getSplitter().splitLines(desc, maxDescW, net.minecraft.network.chat.Style.EMPTY);
+
+                        if (descLines.size() > 1) {
+                            for (int i = 0; i < Math.min(2, descLines.size()); i++) {
+                                graphics.text(this.font, Component.literal(descLines.get(i).getString()), contentX + 24, startOptionY + 20 + i * 9, ModernGuiUtils.COLOR_TEXT_MUTED);
+                            }
                         } else {
-                            ModernGuiUtils.drawModernButton(graphics, this.font, widgetX, widgetY, widgetW, widgetH, opt.getActionLabel(), isWidgetHovered, false);
+                            graphics.text(this.font, Component.literal(desc), contentX + 24, startOptionY + 22, ModernGuiUtils.COLOR_TEXT_MUTED);
                         }
-                    }
 
-                    graphics.pose().popMatrix();
+                        if (opt.getType() == ConfigOption.Type.BOOLEAN) {
+                            boolean isWidgetHovered = mouseX >= widgetX && mouseX <= widgetX + widgetW && mouseY >= widgetY && mouseY <= widgetY + widgetH && mouseY >= clipY && mouseY <= clipY + clipH;
+                            ModernGuiUtils.drawModernToggle(graphics, this.font, widgetX, widgetY, widgetW, widgetH, opt.getBool(), isWidgetHovered);
+                        } else if (opt.getType() == ConfigOption.Type.SLIDER) {
+                            boolean isWidgetHovered = mouseX >= widgetX && mouseX <= widgetX + widgetW && mouseY >= widgetY && mouseY <= widgetY + widgetH && mouseY >= clipY && mouseY <= clipY + clipH;
+                            double normVal = opt.getSliderNormalizedValue();
+                            ModernGuiUtils.drawModernSlider(graphics, this.font, widgetX, widgetY, widgetW, widgetH, normVal, opt.getFormattedValue(), isWidgetHovered);
+                        } else if (opt.getType() == ConfigOption.Type.ACTION) {
+                            boolean isWidgetHovered = mouseX >= widgetX && mouseX <= widgetX + widgetW && mouseY >= widgetY && mouseY <= widgetY + widgetH && mouseY >= clipY && mouseY <= clipY + clipH;
+
+                            if (opt.getId().contains("color")) {
+                                int colorVal = switch (opt.getId()) {
+                                    case "menu_accent_color" -> net.alpaka.addons.config.AlpakaConfig.instance.menuAccentColor;
+                                    case "block_fill_color" -> net.alpaka.addons.config.AlpakaConfig.instance.blockFillColor;
+                                    default -> net.alpaka.addons.config.AlpakaConfig.instance.blockOutlineColor;
+                                };
+                                ModernGuiUtils.drawModernColorButton(graphics, this.font, widgetX, widgetY, widgetW, widgetH, colorVal, isWidgetHovered);
+                            } else if (opt.getId().equals("disable_all_features")) {
+                                ModernGuiUtils.drawModernDestructiveButton(graphics, this.font, widgetX, widgetY, widgetW, widgetH, opt.getActionLabel(), isWidgetHovered);
+                            } else {
+                                ModernGuiUtils.drawModernButton(graphics, this.font, widgetX, widgetY, widgetW, widgetH, opt.getActionLabel(), isWidgetHovered, false);
+                            }
+                        }
+
+                        graphics.pose().popMatrix();
+                    }
                 }
 
-                startOptionY += cardH + 6;
+                startOptionY += itemHeight;
             }
         }
 
@@ -448,8 +451,10 @@ public class AlpakaConfigScreen extends Screen {
             int cardH = 44;
 
             for (ConfigOption opt : options) {
+                int itemHeight = (opt.getType() == ConfigOption.Type.HEADER) ? 30 : (cardH + 6);
+
                 if (opt.getType() == ConfigOption.Type.HEADER) {
-                    startOptionY += 30;
+                    startOptionY += itemHeight;
                     continue;
                 }
 
@@ -462,7 +467,7 @@ public class AlpakaConfigScreen extends Screen {
                 boolean isWidgetClicked = mouseX >= widgetX && mouseX <= widgetX + widgetW && mouseY >= widgetY && mouseY <= widgetY + widgetH;
                 boolean isCardClicked = mouseX >= contentX + 14 && mouseX <= contentX + 14 + cardW && mouseY >= startOptionY && mouseY <= startOptionY + cardH;
 
-                if ((isWidgetClicked || isCardClicked) && startOptionY + cardH >= clipY && startOptionY <= clipY + clipH) {
+                if ((isWidgetClicked || isCardClicked) && startOptionY + itemHeight >= clipY && startOptionY <= clipY + clipH) {
                     opt.triggerClickAnimation();
 
                     if (opt.getType() == ConfigOption.Type.BOOLEAN) {
@@ -483,7 +488,7 @@ public class AlpakaConfigScreen extends Screen {
                     }
                 }
 
-                startOptionY += cardH + 6;
+                startOptionY += itemHeight;
             }
         }
 

@@ -4,7 +4,6 @@ import net.alpaka.addons.client.BlockOverlayConfigScreen;
 import net.alpaka.addons.client.ColorPickerScreen;
 import net.alpaka.addons.client.ItemSizeConfigScreen;
 import net.alpaka.addons.client.ItemSwingConfigScreen;
-import net.alpaka.addons.client.PlayerModelConfigScreen;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.playermodel.PlayerModelHudEditorScreen;
 import net.alpaka.addons.features.sound.CustomSoundFeature;

@@ -4,6 +4,7 @@ import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.features.snow.SnowOverlayRenderer
 import net.alpaka.addons.features.sound.CustomSoundFeature
+import net.alpaka.addons.utils.ModVersion
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.AbstractButton
@@ -177,9 +178,9 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         // Section Divider Line
         ModernGuiUtils.drawRect(graphics, sidebarX + 14, sidebarY + 276, sidebarW - 28, 1, ModernGuiUtils.COLOR_CARD_BORDER)
 
-        // Footer Version Label
-        graphics.text(this.font, Component.literal("AlpakaAddons v1.0.40"), 12, this.height - 20, ModernGuiUtils.COLOR_TEXT_PRIMARY)
-        graphics.text(this.font, Component.literal("Minecraft 1.21.1 • Fabric"), 12, this.height - 10, ModernGuiUtils.COLOR_TEXT_MUTED)
+        // Footer Version Label - read from the running build, never hard-coded
+        graphics.text(this.font, Component.literal("AlpakaAddons v${ModVersion.mod()}"), 12, this.height - 20, ModernGuiUtils.COLOR_TEXT_PRIMARY)
+        graphics.text(this.font, Component.literal("Minecraft ${ModVersion.minecraft()} • Fabric"), 12, this.height - 10, ModernGuiUtils.COLOR_TEXT_MUTED)
     }
 
     // Render Header with Mod Icon

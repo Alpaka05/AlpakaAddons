@@ -152,10 +152,6 @@ public class AlpakaConfigScreen extends Screen {
         String mainTitle = "ALPAKA ADDONS";
         graphics.text(this.font, Component.literal(mainTitle), winX + 12, winY + 12, ModernGuiUtils.COLOR_TEXT_PRIMARY);
 
-        if (activeCategory == ConfigCategory.VIEWMODEL && searchQuery.isEmpty()) {
-            graphics.text(this.font, Component.literal("👁 Live Hand View"), winX + 12 + this.font.width(mainTitle) + 60, winY + 12, ModernGuiUtils.getAccentColor());
-        }
-
         // Render Search Box
         int searchX = winX + winW - 170;
         int searchY = winY + 8;

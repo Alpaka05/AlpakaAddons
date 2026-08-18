@@ -196,6 +196,39 @@ public class AlpakaConfig {
         }
     }
 
+    /**
+     * Restores the item viewmodel and swing values to their defaults.
+     *
+     * The saved presets and the active preset index are deliberately left alone, so this is a way
+     * back to stock without losing tuned setups - a preset can be re-applied afterwards. The
+     * feature's own master toggle ({@link #itemSizeFeatureEnabled}) is also left as-is, since
+     * resetting values should not switch a feature back on behind the user's back.
+     */
+    public void resetItemViewmodel() {
+        this.itemScale = 1.0f;
+        this.itemXOffset = 0.0f;
+        this.itemYOffset = 0.0f;
+        this.itemZOffset = 0.0f;
+        this.itemRotationX = 0.0f;
+        this.itemRotationY = 0.0f;
+        this.itemRotationZ = 0.0f;
+        this.itemSwingSpeed = 1.0f;
+        this.itemSwayDisabled = false;
+        this.itemSwingTranslationDisabled = false;
+        this.itemNoEquipEnabled = false;
+        this.itemSwingAlwaysFinishEnabled = false;
+        this.itemIgnoreEmptyHandEnabled = false;
+
+        this.swingDriftX = 0.0f;
+        this.swingDriftY = 0.0f;
+        this.swingDriftZ = 0.0f;
+        this.swingArcX = 0.0f;
+        this.swingArcY = 0.0f;
+        this.swingArcZ = 0.0f;
+
+        save();
+    }
+
     public void savePreset(int index) {
         if (itemPresets == null || itemPresets.length < 3) {
             itemPresets = new ItemPreset[] {

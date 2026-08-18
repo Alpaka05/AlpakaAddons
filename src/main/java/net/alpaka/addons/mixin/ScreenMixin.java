@@ -4,6 +4,7 @@ import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.snow.SnowOverlayRenderer;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -26,13 +27,15 @@ public abstract class ScreenMixin {
 
     @Inject(method = "extractTransparentBackground", at = @At("HEAD"), cancellable = true)
     private void onExtractTransparentBackground(GuiGraphicsExtractor graphicsExtractor, CallbackInfo ci) {
-        long now = System.currentTimeMillis();
-        long openTime = GuiFadeTracker.getGuiOpenTime();
-
         float opacity = AlpakaConfig.instance.containerBgOpacity;
 
-        if (AlpakaConfig.instance.containerBgFadeInEnabled) {
-            long elapsed = now - openTime;
+        // The fade belongs to container GUIs only. Applying it to every screen also animated the
+        // backdrop behind the mod's own menus and the pause screen, which draw their own panel
+        // animation on top - the two together made the whole background look like it moved.
+        boolean isContainer = (Object) this instanceof AbstractContainerScreen;
+
+        if (AlpakaConfig.instance.containerBgFadeInEnabled && isContainer) {
+            long elapsed = System.currentTimeMillis() - GuiFadeTracker.getGuiOpenTime();
             int duration = Math.max(10, AlpakaConfig.instance.containerBgFadeInDurationMs);
             float progress = Math.min(1.0f, (float) elapsed / (float) duration);
             float fadeFactor = progress * progress;

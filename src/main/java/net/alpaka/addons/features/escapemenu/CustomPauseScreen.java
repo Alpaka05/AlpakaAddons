@@ -163,9 +163,9 @@ public class CustomPauseScreen extends Screen {
 
         float slideOffsetY = (1.0f - anim) * 24.0f; // Subtle 24px slide up from slightly below
 
-        // Dark Translucent Backdrop Overlay with Fade-In
-        int bgAlpha = (int) (0x70 * anim);
-        graphics.fill(0, 0, this.width, this.height, (bgAlpha << 24));
+        // Dark translucent backdrop. Deliberately not animated: only the panel should slide and
+        // fade, while the darkening behind it stays put from the first frame.
+        graphics.fill(0, 0, this.width, this.height, 0x70000000);
 
         int cardWidth = 200;
         int cardHeight = 250;

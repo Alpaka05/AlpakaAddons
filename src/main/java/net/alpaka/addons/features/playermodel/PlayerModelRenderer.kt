@@ -1,6 +1,6 @@
 package net.alpaka.addons.features.playermodel
 
-import net.alpaka.addons.client.gui.ModernGuiUtils
+import net.alpaka.addons.client.hud.HudBounds
 import net.alpaka.addons.config.AlpakaConfig
 import net.minecraft.client.DeltaTracker
 import net.minecraft.client.Minecraft
@@ -43,6 +43,23 @@ object PlayerModelRenderer {
     private const val BOX_HALF_WIDTH = 0.8f
     private const val BOX_TOP = 2.4f
     private const val BOX_BOTTOM = 0.2f
+
+    /**
+     * Extra room added to all four sides of the *render* rect, as a multiple of the scale.
+     *
+     * The rect handed to [GuiGraphicsExtractor.entity] doubles as a hard clip: vanilla allocates a
+     * picture-in-picture texture of exactly that size, so anything reaching past an edge is cut
+     * off - which is what used to lop the hand off mid-swing, since a swinging arm reaches well
+     * outside the avatar's resting silhouette.
+     *
+     * Padding every side by the same amount leaves the rect's centre where it was, and the centre
+     * is the only thing about the rect that affects the result: vanilla anchors the avatar there
+     * and takes its size from `scale` alone. So this buys room without moving or resizing
+     * anything. The padding is kept to roughly an arm's length rather than something huge because
+     * the rect is also the element's bounds for GUI layering, and an oversized one would start
+     * intersecting - and so reordering itself against - unrelated HUD elements.
+     */
+    private const val RENDER_PADDING = 0.8f
 
     /** Vanilla inventory-preview constants, from InventoryScreen.extractEntityInInventoryFollowsMouse. */
     private const val Y_OFFSET = 0.0625f
@@ -145,38 +162,46 @@ object PlayerModelRenderer {
         return motion.x * motion.x + motion.z * motion.z > MOVE_EPSILON
     }
 
+    /**
+     * The space the resting avatar occupies on screen. This is what the HUD editor outlines and
+     * hit-tests, so it deliberately tracks the avatar's silhouette rather than the padded rect the
+     * render actually clips against.
+     */
+    @JvmStatic
+    fun footprint(x: Int, y: Int, scale: Int): HudBounds {
+        val halfWidth = (scale * BOX_HALF_WIDTH).toInt()
+        return HudBounds(
+            x - halfWidth,
+            y - (scale * BOX_TOP).toInt(),
+            x + halfWidth,
+            y + (scale * BOX_BOTTOM).toInt()
+        )
+    }
+
     @JvmStatic
     fun renderPlayerModel(graphics: GuiGraphicsExtractor, x: Int, y: Int, scale: Int, player: LocalPlayer) {
-        val halfWidth = (scale * BOX_HALF_WIDTH).toInt()
-        val top = y - (scale * BOX_TOP).toInt()
-        val bottom = y + (scale * BOX_BOTTOM).toInt()
+        val box = footprint(x, y, scale)
+        val padding = (scale * RENDER_PADDING).toInt()
 
         // Imaginary cursor position fed through vanilla's look-at math.
         val lookX = x - LOOK_OFFSET_X
         val lookY = y - scale * LOOK_OFFSET_Y_SCALE - LOOK_OFFSET_Y
 
         try {
-            renderAvatar(graphics, x - halfWidth, top, x + halfWidth, bottom, scale, lookX, lookY, player)
+            renderAvatar(
+                graphics,
+                box.x0 - padding,
+                box.y0 - padding,
+                box.x1 + padding,
+                box.y1 + padding,
+                scale,
+                lookX,
+                lookY,
+                player
+            )
         } catch (e: Exception) {
             // Safety catch: an invalid render state must never take the game down with it.
         }
-    }
-
-    /** Hit-tests the avatar's HUD bounding box. Used by the editor screen. */
-    @JvmStatic
-    fun isOverModel(mouseX: Double, mouseY: Double, x: Int, y: Int, scale: Int): Boolean {
-        val halfWidth = (scale * BOX_HALF_WIDTH).toInt()
-        return mouseX >= x - halfWidth && mouseX <= x + halfWidth &&
-            mouseY >= y - (scale * BOX_TOP).toInt() && mouseY <= y + (scale * BOX_BOTTOM).toInt()
-    }
-
-    /** Draws a 1px guide around the avatar's HUD bounding box. Used by the editor screen. */
-    @JvmStatic
-    fun outlineModel(graphics: GuiGraphicsExtractor, x: Int, y: Int, scale: Int, color: Int) {
-        val halfWidth = (scale * BOX_HALF_WIDTH).toInt()
-        val top = y - (scale * BOX_TOP).toInt()
-        val bottom = y + (scale * BOX_BOTTOM).toInt()
-        ModernGuiUtils.drawOutline(graphics, x - halfWidth, top, halfWidth * 2, bottom - top, color)
     }
 
     /**

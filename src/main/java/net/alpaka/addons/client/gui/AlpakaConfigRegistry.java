@@ -4,8 +4,8 @@ import net.alpaka.addons.client.BlockOverlayConfigScreen;
 import net.alpaka.addons.client.ColorPickerScreen;
 import net.alpaka.addons.client.ItemSizeConfigScreen;
 import net.alpaka.addons.client.ItemSwingConfigScreen;
+import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.config.AlpakaConfig;
-import net.alpaka.addons.features.playermodel.PlayerModelHudEditorScreen;
 import net.alpaka.addons.features.sound.CustomSoundFeature;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
@@ -313,6 +313,16 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.itemSwingAlwaysFinishEnabled = v; AlpakaConfig.save(); },
                 "always finish swing complete attack animation"));
 
+        OPTIONS.add(new ConfigOption("item_viewmodel_reset", "Reset Viewmodel Settings",
+                "Restores every viewmodel and swing value above to its default. Saved presets are left untouched.",
+                ConfigCategory.VIEWMODEL,
+                "Reset",
+                parent -> {
+                    AlpakaConfig.instance.resetItemViewmodel();
+                    try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
+                },
+                "reset viewmodel default defaults revert restore clear hand item size offset rotation swing"));
+
         // Presets Header
         OPTIONS.add(new ConfigOption("Viewmodel Presets", ConfigCategory.VIEWMODEL));
 
@@ -520,20 +530,12 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.playerModelShowInGuis = v; AlpakaConfig.save(); },
                 "player model show in guis menus screen open container inventory HUD"));
 
-        OPTIONS.add(new ConfigOption("player_model_scale", "Model Scale",
-                "Size scale of the HUD player avatar.",
-                ConfigCategory.PLAYER_MODEL,
-                () -> (float) AlpakaConfig.instance.playerModelScale,
-                v -> { AlpakaConfig.instance.playerModelScale = Math.round(v); AlpakaConfig.save(); },
-                10.0f, 100.0f, val -> String.format("%d%%", Math.round(val)),
-                "player model scale size zoom width height"));
-
         OPTIONS.add(new ConfigOption("player_model_hud_editor", "Configure HUD Position",
-                "Opens visual editor to drag and position HUD avatar.",
+                "Opens the HUD editor, where every HUD - including this avatar - can be dragged and resized.",
                 ConfigCategory.PLAYER_MODEL,
-                "Adjust Position",
-                parent -> Minecraft.getInstance().setScreen(new PlayerModelHudEditorScreen(parent)),
-                "player model position edit dragging hud screen drag move"));
+                "Open HUD Editor",
+                parent -> Minecraft.getInstance().setScreen(new HudEditorScreen(parent)),
+                "player model position edit dragging hud screen drag move editor alpakahud"));
 
         // --- 5. SKYBLOCK ---
         OPTIONS.add(new ConfigOption("slayer_drop_tracker", "Slayer Drop Tracker",
@@ -551,11 +553,11 @@ public class AlpakaConfigRegistry {
                 "world age day hud server days time skyblock color red orange green"));
 
         OPTIONS.add(new ConfigOption("world_age_hud_editor", "Configure World Age Position",
-                "Opens visual editor to drag, position, and resize the World Age HUD text.",
+                "Opens the HUD editor, where every HUD - including this one - can be dragged and resized.",
                 ConfigCategory.SKYBLOCK,
-                "Adjust Position",
-                parent -> Minecraft.getInstance().setScreen(new net.alpaka.addons.features.worldage.WorldAgeHudEditorScreen(parent)),
-                "world age position edit dragging hud screen drag move resize scale"));
+                "Open HUD Editor",
+                parent -> Minecraft.getInstance().setScreen(new HudEditorScreen(parent)),
+                "world age position edit dragging hud screen drag move resize scale editor alpakahud"));
 
         OPTIONS.add(new ConfigOption("world_age_join_message_enabled", "Server Age Join Message",
                 "Shows a chat notification with the server age and recent visit status when joining a server.",

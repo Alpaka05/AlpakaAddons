@@ -1,5 +1,6 @@
 package net.alpaka.addons.client;
 
+import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.features.slayer.SlayerDropTracker;
 import net.alpaka.addons.features.sound.CustomSoundFeature;
 import net.alpaka.addons.features.wheel.CommandWheelFeature;
@@ -52,6 +53,15 @@ public class AlpakaClient implements ClientModInitializer {
                 .executes(context -> {
                     Minecraft.getInstance().execute(() -> {
                         Minecraft.getInstance().setScreen(new AlpakaConfigScreen(null));
+                    });
+                    return 1;
+                })
+            );
+
+            dispatcher.register(ClientCommands.literal("alpakahud")
+                .executes(context -> {
+                    Minecraft.getInstance().execute(() -> {
+                        Minecraft.getInstance().setScreen(new HudEditorScreen(null));
                     });
                     return 1;
                 })

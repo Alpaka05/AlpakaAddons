@@ -93,8 +93,15 @@ public class AlpakaConfigScreen extends Screen {
         scrollY += (targetScrollY - scrollY) * Math.min(1.0f, deltaSec * 14.0f);
         sidebarScrollY += (targetSidebarScrollY - sidebarScrollY) * Math.min(1.0f, deltaSec * 14.0f);
 
-        // Render translucent backdrop so game is visible behind and around the config panel
+        // Render translucent backdrop so game is visible behind and around the config panel.
+        // Drawn against an identity matrix rather than whatever is already on the pose stack -
+        // other installed GUI mods (SmoothGui and friends) apply their own open-transition
+        // transform around Screen's render calls, and without this the fill inherited that
+        // transform and slid along with it instead of staying still behind the panel.
+        graphics.pose().pushMatrix();
+        graphics.pose().identity();
         graphics.fill(0, 0, this.width, this.height, 0x70000000);
+        graphics.pose().popMatrix();
 
         // Calculate Window Panel Dimensions (compact window leaving game visible around sides)
         int winW = Math.min(660, Math.max(480, (int) (this.width * 0.70)));

@@ -12,6 +12,20 @@ import java.util.List;
 
 public class SkyblockUtils {
 
+    /**
+     * The Skyblock area marker Hypixel prefixes the zone line with, e.g. "⏣ Torrhus Canyon".
+     * Present on effectively every Skyblock sidebar and, unlike the title, never renamed.
+     */
+    private static final String AREA_MARKER = "⏣";
+
+    /**
+     * Whether the player is on Hypixel Skyblock.
+     *
+     * Detection is deliberately not based on the sidebar title alone. Hypixel renames that title
+     * during events - it reads "BLAZE SIMULATOR" during one - which used to make this return false in
+     * the middle of normal play and silently switch off every feature gated on it. The zone marker is
+     * checked as well, which survives those renames.
+     */
     public static boolean isOnSkyblock() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) return false;
@@ -26,9 +40,13 @@ public class SkyblockUtils {
 
         Scoreboard scoreboard = mc.level.getScoreboard();
         Objective objective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR);
-        if (objective != null) {
-            String displayName = cleanColor(objective.getDisplayName().getString()).toLowerCase();
-            return displayName.contains("skyblock") || displayName.contains("rift");
+        if (objective == null) return false;
+
+        String title = cleanColor(objective.getDisplayName().getString()).toLowerCase();
+        if (title.contains("skyblock") || title.contains("rift")) return true;
+
+        for (String line : getSidebarLines()) {
+            if (line.contains(AREA_MARKER)) return true;
         }
         return false;
     }
@@ -78,8 +96,17 @@ public class SkyblockUtils {
         return entry.ownerName() != null ? entry.ownerName().getString() : entry.owner();
     }
 
-    private static String cleanColor(String input) {
+    /**
+     * Strips every legacy formatting code, not just the ones Minecraft itself defines.
+     *
+     * Scoreboard entries have to be unique strings, so Hypixel pads each sidebar row with otherwise
+     * meaningless codes drawn from outside the standard set - {@code §g}-{@code §j}, {@code §p}-{@code
+     * §z} - and drops them anywhere in the line, including mid-word. A real captured row reads
+     * {@code "Inferno Demonl§jord IV"}. Matching only {@code §[0-9A-FK-OR]} left those in place and
+     * silently broke every substring test done against a sidebar line.
+     */
+    public static String cleanColor(String input) {
         if (input == null) return "";
-        return input.replaceAll("(?i)§[0-9A-FK-OR]", "").trim();
+        return input.replaceAll("§.", "").trim();
     }
 }

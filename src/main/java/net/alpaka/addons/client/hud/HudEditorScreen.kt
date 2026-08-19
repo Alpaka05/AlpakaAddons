@@ -76,7 +76,11 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
-        extractBackground(graphics, mouseX, mouseY, partialTick)
+        // The backdrop is deliberately NOT drawn here. Vanilla already calls extractBackground for
+        // us, and drawing it here as well both doubled its opacity and - because GUI animation mods
+        // such as SmoothGui wrap extractRenderState in their open transform while explicitly
+        // exempting extractBackground - let the full-screen darkening slide with the animation
+        // instead of sitting still behind it.
         super.extractRenderState(graphics, mouseX, mouseY, partialTick)
 
         graphics.centeredText(this.font, INSTRUCTIONS, this.width / 2, 12, TEXT_COLOR)

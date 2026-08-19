@@ -317,10 +317,19 @@ public class AlpakaConfigRegistry {
                 "Restores every viewmodel and swing value above to its default. Saved presets are left untouched.",
                 ConfigCategory.VIEWMODEL,
                 "Reset",
-                parent -> {
-                    AlpakaConfig.instance.resetItemViewmodel();
-                    try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
-                },
+                parent -> Minecraft.getInstance().setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(
+                        confirmed -> {
+                            if (confirmed) {
+                                AlpakaConfig.instance.resetItemViewmodel();
+                                try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
+                            }
+                            Minecraft.getInstance().setScreen(parent);
+                        },
+                        Component.literal("§c§lReset Viewmodel Settings"),
+                        Component.literal("Are you sure you want to reset every viewmodel and swing value to its default? Saved presets are left untouched."),
+                        Component.literal("§cReset"),
+                        Component.literal("Cancel")
+                )),
                 "reset viewmodel default defaults revert restore clear hand item size offset rotation swing"));
 
         // Presets Header

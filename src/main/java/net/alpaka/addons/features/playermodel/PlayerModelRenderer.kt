@@ -92,6 +92,26 @@ object PlayerModelRenderer {
     private var wasSwinging = false
     private var lastSwingTime = 0
 
+    /**
+     * Set when the player swings while a slowed arc is still playing, and consumed the moment that
+     * arc finishes. A single flag rather than a counter on purpose: holding attack should chain one
+     * smooth arc into the next, but releasing must not leave a backlog of arcs still to play out.
+     */
+    private var slowSwingQueued = false
+
+    /** Wall-clock time of the last real swing detected, queued or not. */
+    private var lastNewSwingAtMs = 0L
+
+    /**
+     * How stale a queued swing is allowed to be before it's discarded instead of chained into.
+     *
+     * A real swing lasts ~300ms, so a held attack keeps producing a fresh one at least this often.
+     * Slightly more than that tells apart "still holding the button" from "clicked once early in
+     * this arc, then let go" - without this, that single early click would still be honored the
+     * moment the current arc ends, playing one extra arc for free after the player had stopped.
+     */
+    private const val SLOW_SWING_QUEUE_GRACE_MS = 350L
+
     @JvmStatic
     fun render(graphics: GuiGraphicsExtractor, @Suppress("UNUSED_PARAMETER") deltaTracker: DeltaTracker) {
         val mc = Minecraft.getInstance()
@@ -282,22 +302,41 @@ object PlayerModelRenderer {
 
         if (!cfg.playerModelSlowSwing) {
             slowSwingActive = false
+            slowSwingQueued = false
             wasSwinging = swinging
             lastSwingTime = swingTime
             return
         }
 
+        val now = System.currentTimeMillis()
+
         // Either a swing starting from rest, or a re-swing that reset the counter mid-arc.
-        if (swinging && (!wasSwinging || swingTime < lastSwingTime)) {
-            slowSwingStartMs = System.currentTimeMillis()
-            slowSwingActive = true
-        }
+        val newSwing = swinging && (!wasSwinging || swingTime < lastSwingTime)
         wasSwinging = swinging
         lastSwingTime = swingTime
+        if (newSwing) lastNewSwingAtMs = now
 
-        if (slowSwingActive && System.currentTimeMillis() - slowSwingStartMs >= SLOW_SWING_DURATION_MS) {
+        if (slowSwingActive && now - slowSwingStartMs >= SLOW_SWING_DURATION_MS) {
             slowSwingActive = false
         }
+
+        if (slowSwingActive) {
+            // Mid-arc. Remember the click but leave the running arc alone - restarting it here is
+            // what used to snap the avatar's arm back to the start and break the smooth motion.
+            // This is purely the HUD avatar's animation; the real swing is untouched either way.
+            if (newSwing) slowSwingQueued = true
+            return
+        }
+
+        // A queued swing only gets to chain in if the player is still recently attacking. Without
+        // this check, a click made early in the current arc stayed queued for its whole remaining
+        // duration, so releasing the button before the arc finished still played one extra arc.
+        val queueStillFresh = slowSwingQueued && now - lastNewSwingAtMs <= SLOW_SWING_QUEUE_GRACE_MS
+        if (newSwing || queueStillFresh) {
+            slowSwingStartMs = now
+            slowSwingActive = true
+        }
+        slowSwingQueued = false
     }
 
     /** Eased 0..1 progress through the slowed swing, or 0 while idle. */

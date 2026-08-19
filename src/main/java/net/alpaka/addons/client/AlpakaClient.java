@@ -1,8 +1,8 @@
 package net.alpaka.addons.client;
 
 import net.alpaka.addons.client.hud.HudEditorScreen;
-import net.alpaka.addons.features.critters.PangolinHighlightFeature;
 import net.alpaka.addons.features.slayer.SlayerDropTracker;
+import net.alpaka.addons.utils.AlpakaDiagnostics;
 import net.alpaka.addons.features.sound.CustomSoundFeature;
 import net.alpaka.addons.features.wheel.CommandWheelFeature;
 import net.alpaka.addons.features.zoom.ZoomFeature;
@@ -70,7 +70,7 @@ public class AlpakaClient implements ClientModInitializer {
 
             dispatcher.register(ClientCommands.literal("alpakadebug")
                 .executes(context -> {
-                    Minecraft.getInstance().execute(PangolinHighlightFeature::printDiagnostics);
+                    Minecraft.getInstance().execute(AlpakaDiagnostics::print);
                     return 1;
                 })
             );

@@ -47,6 +47,9 @@ tasks.processResources {
 
 tasks.withType(JavaCompile).configureEach {
     options.release = 25
+    // Sources contain non-ASCII literals (Hypixel's ⏣ area marker, the ◆ rune prefix). Without this
+    // javac uses the platform charset - windows-1252 on this machine - and silently mangles them.
+    options.encoding = "UTF-8"
 }
 
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {

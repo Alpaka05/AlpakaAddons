@@ -1,7 +1,6 @@
 package net.alpaka.addons.features.critters
 
 import net.alpaka.addons.config.AlpakaConfig
-import net.alpaka.addons.features.slayer.SlayerDropTracker
 import net.alpaka.addons.utils.SkyblockUtils
 import net.minecraft.client.Minecraft
 import net.minecraft.client.multiplayer.ClientLevel
@@ -145,55 +144,5 @@ object PangolinHighlightFeature {
     private fun pruneVisibilityCache(now: Long) {
         if (visibilityCache.isEmpty()) return
         visibilityCache.entries.removeIf { now - it.value.checkedAtMs > LOCATION_REFRESH_MS }
-    }
-
-    /**
-     * Prints what the feature currently sees, for when the highlight is not appearing: which sidebar
-     * lines were read, whether the area matched, and the classes of nearby mobs so the Pangolin's
-     * actual entity type can be confirmed. Driven by `/alpakadebug`.
-     */
-    @JvmStatic
-    fun printDiagnostics() {
-        val cfg = AlpakaConfig.instance
-        val mc = Minecraft.getInstance()
-        val player = mc.player
-        val level = mc.level
-
-        SlayerDropTracker.sendModMessage("§6--- Pangolin Highlight diagnostics ---")
-        SlayerDropTracker.sendModMessage("§7Enabled: §f${cfg.pangolinHighlightEnabled}")
-
-        val lines = SkyblockUtils.getSidebarLines()
-        val matched = lines.any { TORRHUS_CANYON.containsMatchIn(it) }
-        SlayerDropTracker.sendModMessage("§7Area matched: ${if (matched) "§ayes" else "§cno"}")
-        SlayerDropTracker.sendModMessage("§7Sidebar lines read: §f${lines.size}")
-        lines.forEach { SlayerDropTracker.sendModMessage("§8  \"$it\"") }
-
-        if (player == null || level == null) {
-            SlayerDropTracker.sendModMessage("§cNo player/world.")
-            return
-        }
-
-        // Short radius on purpose: this is a developer diagnostic, not a locator.
-        val nearby = level.getEntities(player, player.boundingBox.inflate(16.0))
-        val counts = LinkedHashMap<String, Int>()
-        for (entity in nearby) {
-            counts.merge(entity.javaClass.simpleName, 1, Int::plus)
-        }
-        SlayerDropTracker.sendModMessage("§7Entity classes within 16 blocks:")
-        if (counts.isEmpty()) {
-            SlayerDropTracker.sendModMessage("§8  (none)")
-        } else {
-            counts.forEach { (name, count) -> SlayerDropTracker.sendModMessage("§8  $name x$count") }
-        }
-
-        for (entity in nearby) {
-            if (entity !is Armadillo) continue
-            val distance = String.format("%.1f", player.distanceTo(entity))
-            val visible = player.hasLineOfSight(entity)
-            SlayerDropTracker.sendModMessage(
-                "§7Armadillo at §f${distance}m§7 - line of sight: ${if (visible) "§ayes" else "§cno"}" +
-                    "§7, invisible: §f${entity.isInvisible}"
-            )
-        }
     }
 }

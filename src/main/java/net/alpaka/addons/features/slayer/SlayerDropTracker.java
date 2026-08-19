@@ -2,10 +2,9 @@ package net.alpaka.addons.features.slayer;
 
 import net.alpaka.addons.AlpakaAddons;
 import net.alpaka.addons.config.AlpakaConfig;
-import net.alpaka.addons.features.blaze.CleanBlazeFeature;
 import net.alpaka.addons.features.sound.CustomSoundFeature;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientEntityEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
@@ -23,34 +22,95 @@ import java.util.regex.Pattern;
 
 public class SlayerDropTracker {
 
-    private static final Pattern BOSS_TYPE_PATTERN = Pattern.compile("^ +(Wolf|Zombie|Blaze|Vampire|Spider|Enderman|Guardian) Slayer LVL \\d.*");
-    private static final Pattern DROP_PATTERN = Pattern.compile("^(?:VERY RARE|RARE|INSANE|CRAZY RARE) DROP! \\((?:(?<amount>\\d+x) )?(?<item>[^)]+)\\)(?: .+)?");
-    private static final Pattern SERVER_DROP_PATTERN = Pattern.compile("^\\s*(?:RARE|VERY RARE|INSANE|CRAZY RARE|PET) DROP! .*");
+    /**
+     * A slayer boss was killed. This is the only message Hypixel sends on a kill, and it does not
+     * name the slayer - which is why the type comes from {@link SlayerQuestDetector} instead.
+     */
+    private static final Pattern QUEST_COMPLETE_PATTERN = Pattern.compile("^\\s*SLAYER QUEST COMPLETE!\\s*$");
+
+    /**
+     * A rare drop. Hypixel's slayer drops put the item in parentheses and use <em>two</em> spaces
+     * after "DROP!" - e.g. {@code "VERY RARE DROP!  (High Class Archfiend Dice) +305% ✯ Magic Find"}
+     * once colour codes are stripped. The previous pattern required exactly one space and no leading
+     * whitespace, so it never matched a single real drop.
+     */
+    private static final Pattern DROP_PATTERN = Pattern.compile(
+            "^\\s*(?:UNCOMMON|RARE|VERY RARE|CRAZY RARE|INSANE|PRAY TO RNGESUS) DROP!\\s+\\((?<item>[^)]+)\\).*");
+
+    /** Leading noise on a drop's item name, e.g. "3x " or the rune "◆ " marker. */
+    private static final Pattern DROP_ITEM_PREFIX = Pattern.compile("^(?:\\d+x\\s+)?(?:◆\\s*)?");
+
+    private static final Pattern SERVER_DROP_PATTERN = Pattern.compile("^\\s*(?:UNCOMMON|RARE|VERY RARE|CRAZY RARE|INSANE|PRAY TO RNGESUS|PET) DROP!.*");
     private static final Pattern PARTY_PATTERN = Pattern.compile("^Party > (?:\\[[A-Z+]+] )?\\w+: !since (?<item>.+)$");
-    private static final Pattern COLOR_PATTERN = Pattern.compile("(?i)§[0-9A-FK-OR]");
+    /**
+     * Every legacy formatting code, not just the standard set - Hypixel uses codes outside it as
+     * padding. See {@link net.alpaka.addons.utils.SkyblockUtils#cleanColor}.
+     */
+    private static final Pattern COLOR_PATTERN = Pattern.compile("§.");
+
+    /** Ignore a second completion message this soon after one was counted. */
+    private static final long KILL_DEBOUNCE_MS = 2000L;
+
+    /**
+     * Ticks to hold a drop before reporting it. The drop message arrives just before the quest
+     * completion, so waiting lets the kill be counted first and keeps "took N bosses" off by none.
+     */
+    private static final int DROP_DELAY_TICKS = 30;
 
     public static SlayerType currentBoss = null;
-    public static boolean hasWorldChanged = false;
     public static final ThreadLocal<Boolean> IS_PROCESSING = ThreadLocal.withInitial(() -> false);
 
+    private static long lastKillCountedAtMs = 0L;
+    private static int tickCounter = 0;
+    private static final java.util.List<PendingDrop> PENDING_DROPS = new java.util.ArrayList<>();
+
+    /** A drop waiting for its boss kill to be counted. */
+    private record PendingDrop(String item, Component message, SlayerType type, int dueTick) {}
+
     public static void registerEvents() {
+        // No isOnSkyblock() gate here on purpose. That check requires the sidebar *title* to contain
+        // "skyblock", but Hypixel renames it during events (it reads "BLAZE SIMULATOR" during one),
+        // which silently switched off all slayer tracking. The patterns below are specific enough to
+        // stand on their own, and a drop is only ever recorded once a slayer quest has been read off
+        // the sidebar.
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
             if (overlay) return;
-            if (!isOnSkyblock()) return;
             onChat(message);
         });
 
         ClientReceiveMessageEvents.CHAT.register((message, signedMessage, sender, params, receptionTimestamp) -> {
-            if (!isOnSkyblock()) return;
             onChat(message);
         });
 
+        // Drives the deferred drop reporting, and keeps the sidebar read warm so a boss type is
+        // already known by the time the kill message lands.
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            tickCounter++;
+            SlayerQuestDetector.INSTANCE.refresh();
+
+            // Primary kill signal: the sidebar leaving the boss fight. Chat is unreliable here.
+            SlayerType killed = SlayerQuestDetector.INSTANCE.consumeKill();
+            if (killed != null) countKill(killed);
+
+            // Only signal for a boss spawning: Hypixel never sends a chat announcement for a
+            // regular slayer boss (unlike the Ender Dragon, Arachne, etc.), confirmed against
+            // SkyHanni's own pattern list, which has no such entry for slayer bosses.
+            SlayerType spawned = SlayerQuestDetector.INSTANCE.consumeSpawn();
+            if (spawned != null && AlpakaConfig.instance.customSoundsEnabled) {
+                CustomSoundFeature.playBossSpawnSound();
+            }
+
+            flushPendingDrops();
+        });
+
+        // Messages that CleanBlazeFeature wants hidden are NOT cancelled here. ALLOW_GAME runs
+        // before the GAME event above, so returning false would discard the message before onChat
+        // ever sees it - which is exactly what silently broke slayer-quest and kill tracking whenever
+        // clean-blaze mode was on. Hiding a message from the visible chat log and letting mods still
+        // process it are different concerns; only ChatComponentMixin (which cancels the GUI's
+        // addMessage call, downstream of all processing events) does the former.
         ClientReceiveMessageEvents.ALLOW_GAME.register((message, overlay) -> {
             if (overlay) return true;
-
-            if (CleanBlazeFeature.shouldCancelChatMessage(cleanColor(message.getString()))) {
-                return false;
-            }
 
             if (!AlpakaConfig.instance.nameHighlightingEnabled) return true;
             if (IS_PROCESSING.get()) return true;
@@ -85,11 +145,6 @@ public class SlayerDropTracker {
             return true;
         });
 
-        ClientEntityEvents.ENTITY_LOAD.register((entity, world) -> {
-            if (entity == Minecraft.getInstance().player) {
-                hasWorldChanged = true;
-            }
-        });
     }
 
     public static boolean isOnSkyblock() {
@@ -208,93 +263,95 @@ public class SlayerDropTracker {
             }
         }
 
-        // Check boss defeat message
-        Matcher bossMatcher = BOSS_TYPE_PATTERN.matcher(string);
-        if (bossMatcher.matches()) {
-            String slayerDisplay = bossMatcher.group(1);
-            SlayerType detectedType = null;
-            for (SlayerType type : SlayerType.values()) {
-                if (type.display.equals(slayerDisplay)) {
-                    detectedType = type;
-                    break;
-                }
-            }
-            if (detectedType != null) {
-                currentBoss = detectedType;
-                AlpakaConfig.SlayerData data = AlpakaConfig.instance.slayerBossMap.get(currentBoss);
-                if (data != null) {
-                    data.kills++;
-                    AlpakaConfig.save();
-                }
-                hasWorldChanged = false;
-            }
+        // Secondary kill signal. Hypixel does not always send this, and other Skyblock mods often
+        // swallow it, so the sidebar transition in the tick handler is the one that usually fires.
+        if (QUEST_COMPLETE_PATTERN.matcher(string).matches()) {
+            SlayerType type = SlayerQuestDetector.INSTANCE.currentOrRecent();
+            if (type != null) countKill(type);
             return;
-        }
-
-        // Check boss spawn message
-        String lowerMsg = string.toLowerCase();
-        if (lowerMsg.contains("slayer boss spawned") || lowerMsg.contains("boss spawned!") || lowerMsg.contains("slayer spawned!")) {
-            CustomSoundFeature.playBossSpawnSound();
         }
 
         // Check drop message
         Matcher dropMatcher = DROP_PATTERN.matcher(string);
         if (dropMatcher.matches()) {
-            final String matchedString = string;
-            final Component matchedMessage = message;
+            SlayerType activeBoss = isInRift() ? SlayerType.VAMPIRE : SlayerQuestDetector.INSTANCE.currentOrRecent();
+            if (activeBoss == null) {
+                // Not on a slayer - this was a drop from farming, mining, a dungeon, etc.
+                return;
+            }
 
-            new Thread(() -> {
-                try {
-                    Thread.sleep(1500); // Wait 1.5 seconds (30 ticks)
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
+            String drop = DROP_ITEM_PREFIX.matcher(dropMatcher.group("item").trim()).replaceFirst("").trim();
+            if (drop.isEmpty()) return;
 
-                Minecraft.getInstance().execute(() -> {
-                    if (!AlpakaConfig.instance.slayerDropTrackerEnabled) return;
-
-                    SlayerType activeBoss = currentBoss;
-                    if (isInRift()) {
-                        activeBoss = SlayerType.VAMPIRE;
-                    }
-
-                    if (activeBoss == null) {
-                        AlpakaAddons.LOGGER.info("Dropped {} but no active boss tracked", matchedString);
-                        return;
-                    }
-
-                    Matcher m = DROP_PATTERN.matcher(matchedString);
-                    if (!m.matches()) return;
-
-                    String drop = m.group("item");
-                    AlpakaConfig.SlayerData data = AlpakaConfig.instance.slayerBossMap.get(activeBoss);
-                    if (data == null) return;
-
-                    if (hasWorldChanged && !data.drops.containsKey(drop)) {
-                        AlpakaAddons.LOGGER.info("Dropped {} but world swap and boss hasn't dropped this before", matchedString);
-                        return;
-                    }
-
-                    int currentKills = data.kills;
-                    int lastDropped = data.drops.getOrDefault(drop, 0);
-                    data.drops.put(drop, currentKills);
-
-                    Component dropComponent = getDropComponent(matchedMessage, drop);
-                    int sinceLast = currentKills - lastDropped;
-
-                    MutableComponent feedback = Component.literal("Took " + sinceLast + " boss" + (sinceLast != 1 ? "es" : "") + " to drop ")
-                            .append(dropComponent);
-
-                    sendModMessage(feedback);
-
-                    AlpakaConfig.save();
-                });
-            }).start();
+            // Held briefly so the kill lands first; see DROP_DELAY_TICKS.
+            PENDING_DROPS.add(new PendingDrop(drop, message, activeBoss, tickCounter + DROP_DELAY_TICKS));
             return;
         }
 
         // Check party command
         handlePartyCommand(string);
+    }
+
+    /**
+     * Records one boss kill, debounced so the sidebar and chat signals cannot both count it.
+     */
+    private static void countKill(SlayerType type) {
+        if (!AlpakaConfig.instance.slayerDropTrackerEnabled) return;
+
+        long now = System.currentTimeMillis();
+        if (now - lastKillCountedAtMs < KILL_DEBOUNCE_MS) return;
+        lastKillCountedAtMs = now;
+
+        currentBoss = type;
+
+        AlpakaConfig.SlayerData data = AlpakaConfig.instance.slayerBossMap.get(type);
+        if (data == null) {
+            data = new AlpakaConfig.SlayerData();
+            AlpakaConfig.instance.slayerBossMap.put(type, data);
+        }
+        data.kills++;
+        AlpakaConfig.save();
+    }
+
+    /** Reports drops whose hold-off has elapsed. Called once per client tick. */
+    private static void flushPendingDrops() {
+        if (PENDING_DROPS.isEmpty()) return;
+
+        java.util.Iterator<PendingDrop> iterator = PENDING_DROPS.iterator();
+        boolean changed = false;
+
+        while (iterator.hasNext()) {
+            PendingDrop pending = iterator.next();
+            if (tickCounter < pending.dueTick()) continue;
+            iterator.remove();
+
+            if (!AlpakaConfig.instance.slayerDropTrackerEnabled) continue;
+
+            AlpakaConfig.SlayerData data = AlpakaConfig.instance.slayerBossMap.get(pending.type());
+            if (data == null) {
+                data = new AlpakaConfig.SlayerData();
+                AlpakaConfig.instance.slayerBossMap.put(pending.type(), data);
+            }
+
+            int currentKills = data.kills;
+            Integer lastDropped = data.drops.get(pending.item());
+            data.drops.put(pending.item(), currentKills);
+            changed = true;
+
+            Component dropComponent = getDropComponent(pending.message(), pending.item());
+            MutableComponent feedback;
+            if (lastDropped == null) {
+                feedback = Component.literal("First ").append(dropComponent)
+                        .append(Component.literal(" - at " + currentKills + " " + pending.type().display + " kills"));
+            } else {
+                int sinceLast = currentKills - lastDropped;
+                feedback = Component.literal("Took " + sinceLast + " boss" + (sinceLast != 1 ? "es" : "") + " to drop ")
+                        .append(dropComponent);
+            }
+            sendModMessage(feedback);
+        }
+
+        if (changed) AlpakaConfig.save();
     }
 
     public static void handlePartyCommand(String message) {
@@ -333,34 +390,28 @@ public class SlayerDropTracker {
             sendModMessage("§e" + type.display + ": §a" + kills + " §7kills");
         }
 
-        sendModMessage("§6--- RNG Drops Tracker ---");
-        sendModMessage("§eHigh Class Archfiend Dice: §a" + getSinceLastDropText("High class archfiend dice"));
-        sendModMessage("§eJudgement Core: §a" + getSinceLastDropText("Judgement core"));
-        sendModMessage("§eWarden Heart: §a" + getSinceLastDropText("warden heart"));
-        sendModMessage("§ePrimordial Eye: §a" + getSinceLastDropText("primordial eye"));
-        sendModMessage("§eOverflux Capacitor: §a" + getSinceLastDropText("overflux capacitor"));
+        // Every drop that has actually been recorded, rather than a fixed list of names. The old
+        // hard-coded list only matched on exact spelling, so a tracked "Archfiend Dice" was reported
+        // as "never" simply because the list asked for "High class archfiend dice".
+        sendModMessage("§6--- Tracked Drops ---");
+        boolean any = false;
+        for (SlayerType type : SlayerType.values()) {
+            AlpakaConfig.SlayerData data = AlpakaConfig.instance.slayerBossMap.get(type);
+            if (data == null || data.drops == null || data.drops.isEmpty()) continue;
+            any = true;
+
+            sendModMessage("§e" + type.display + "§7:");
+            data.drops.entrySet().stream()
+                    .sorted(java.util.Map.Entry.comparingByValue(java.util.Comparator.reverseOrder()))
+                    .forEach(entry -> {
+                        int sinceLast = data.kills - entry.getValue();
+                        sendModMessage("§7  " + entry.getKey() + " §8- §a" + sinceLast + " §7boss"
+                                + (sinceLast != 1 ? "es" : "") + " ago");
+                    });
+        }
+        if (!any) {
+            sendModMessage("§7  §8nothing recorded yet");
+        }
     }
 
-    private static String getSinceLastDropText(String dropName) {
-        String value = getSinceLastDrop(dropName);
-        if (value.equals("never")) {
-            return "§cnever";
-        }
-        return "§a" + value + " §7bosses";
-    }
-
-    private static String getSinceLastDrop(String dropName) {
-        for (Map.Entry<SlayerType, AlpakaConfig.SlayerData> entry : AlpakaConfig.instance.slayerBossMap.entrySet()) {
-            AlpakaConfig.SlayerData data = entry.getValue();
-            if (data == null || data.drops == null) continue;
-            for (Map.Entry<String, Integer> dropEntry : data.drops.entrySet()) {
-                if (dropEntry.getKey().equalsIgnoreCase(dropName)) {
-                    int lastDroppedKill = dropEntry.getValue();
-                    int sinceLast = data.kills - lastDroppedKill;
-                    return String.valueOf(sinceLast);
-                }
-            }
-        }
-        return "never";
-    }
 }

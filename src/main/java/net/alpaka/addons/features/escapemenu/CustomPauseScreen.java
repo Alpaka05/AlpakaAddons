@@ -164,8 +164,14 @@ public class CustomPauseScreen extends Screen {
         float slideOffsetY = (1.0f - anim) * 24.0f; // Subtle 24px slide up from slightly below
 
         // Dark translucent backdrop. Deliberately not animated: only the panel should slide and
-        // fade, while the darkening behind it stays put from the first frame.
+        // fade, while the darkening behind it stays put from the first frame. Drawn against an
+        // identity matrix rather than whatever is already on the pose stack - other installed GUI
+        // mods (SmoothGui and friends) apply their own open-transition transform around Screen's
+        // render calls, and without this the fill inherited that transform and slid along with it.
+        graphics.pose().pushMatrix();
+        graphics.pose().identity();
         graphics.fill(0, 0, this.width, this.height, 0x70000000);
+        graphics.pose().popMatrix();
 
         int cardWidth = 200;
         int cardHeight = 250;
@@ -212,6 +218,18 @@ public class CustomPauseScreen extends Screen {
         float anim = 1.0f - (float) Math.pow(1.0f - animProgress, 3);
         float slideOffsetY = (1.0f - anim) * 24.0f;
 
+        // The modal's full-screen dim is drawn outside the slide transform below, for the same
+        // reason the backdrop is: a full-screen darkening must never move with the panel. Unlike
+        // the backdrop, this runs inside extractRenderState, which is exactly the call other GUI
+        // mods animate - so the pose stack can already carry an inherited transform before this
+        // method even starts, and it needs the same identity reset to stay put.
+        if (this.showDisconnectPrompt) {
+            graphics.pose().pushMatrix();
+            graphics.pose().identity();
+            graphics.fill(0, 0, this.width, this.height, 0x90000000);
+            graphics.pose().popMatrix();
+        }
+
         graphics.pose().pushMatrix();
         graphics.pose().translate(0.0f, slideOffsetY);
 
@@ -219,8 +237,6 @@ public class CustomPauseScreen extends Screen {
 
         // Disconnect Modal Prompt Overlay
         if (this.showDisconnectPrompt) {
-            graphics.fill(0, 0, this.width, this.height, 0x90000000);
-
             int promptWidth = 250;
             int promptHeight = 140;
             int promptX = centerX - promptWidth / 2;

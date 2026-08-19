@@ -82,6 +82,22 @@ public class AlpakaClient implements ClientModInitializer {
                     });
                     return 1;
                 })
+                // Clears the live session stats behind the slayer HUD. Lifetime kill and drop
+                // history is untouched - that is the persisted record, not part of a session.
+                .then(ClientCommands.literal("reset")
+                    .executes(context -> {
+                        Minecraft.getInstance().execute(() -> {
+                            net.alpaka.addons.features.slayer.SlayerType cleared =
+                                    net.alpaka.addons.features.slayer.SlayerSessionTracker.INSTANCE.resetCurrent();
+                            if (cleared != null) {
+                                SlayerDropTracker.sendModMessage("§7Reset the §e" + cleared.display + "§7 slayer session.");
+                            } else {
+                                SlayerDropTracker.sendModMessage("§7Reset all slayer sessions.");
+                            }
+                        });
+                        return 1;
+                    })
+                )
             );
 
             // --- Viewmodel Preset Command ---

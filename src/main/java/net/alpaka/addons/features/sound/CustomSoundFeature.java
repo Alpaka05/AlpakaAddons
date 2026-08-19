@@ -92,11 +92,22 @@ public class CustomSoundFeature {
     }
 
     public static void playBlazeDeathSound() {
+        if (!AlpakaConfig.instance.customSoundBlazeDeath) return;
         playSound(BLAZE_DEATH_SOUND);
     }
 
     public static void playInventoryClickSound() {
+        if (!AlpakaConfig.instance.customSoundInventoryClick) return;
         playSound(INVENTORY_CLICK_SOUND);
+    }
+
+    /**
+     * The custom hurt sound, for when the server plays the hurt sound itself rather than letting
+     * {@code Player.getHurtSound} choose it. See the player-hurt branch in SoundEngineMixin.
+     */
+    public static void playDamageSound() {
+        if (!AlpakaConfig.instance.customSoundPlayerHurt) return;
+        playSound(DAMAGE_SOUND);
     }
 
     public static void playHeartbeatSound() {
@@ -120,10 +131,12 @@ public class CustomSoundFeature {
     }
 
     public static void playZombieRemedySound() {
+        if (!AlpakaConfig.instance.customSoundZombieRemedy) return;
         playSound(ZOMBIE_REMEDY_SOUND);
     }
 
     public static void playHitSound() {
+        if (!AlpakaConfig.instance.customSoundSuccessfulHit) return;
         playSound(SUCCESSFUL_HIT_SOUND);
     }
 

@@ -70,6 +70,34 @@ public class AlpakaConfigScreen extends Screen {
         }
     }
 
+    /** Feature card height. Shared so every layout pass agrees on where each row starts. */
+    private static final int CARD_H = 44;
+
+    /** Height of one tickable line inside an expanded dropdown. */
+    private static final int DROPDOWN_ENTRY_H = 18;
+
+    /** Gap between a dropdown's card and its first line, and below its last. */
+    private static final int DROPDOWN_TOP_PAD = 2;
+    private static final int DROPDOWN_BOTTOM_PAD = 6;
+
+    private static final int CHECKBOX_SIZE = 11;
+
+    /**
+     * Vertical space one option occupies, expansion included.
+     *
+     * Every pass over the list - measuring total scroll height, drawing, and hit-testing clicks -
+     * goes through this. They previously each inlined the same arithmetic, which is exactly the kind
+     * of duplication that lets a dropdown draw in one place and be clickable in another.
+     */
+    private static int optionItemHeight(ConfigOption opt) {
+        if (opt.getType() == ConfigOption.Type.HEADER) return 30;
+        int height = CARD_H + 6;
+        if (opt.getType() == ConfigOption.Type.DROPDOWN && opt.isExpanded()) {
+            height += DROPDOWN_TOP_PAD + opt.getEntryCount() * DROPDOWN_ENTRY_H + DROPDOWN_BOTTOM_PAD;
+        }
+        return height;
+    }
+
     @Override
     protected void init() {
         this.openTimeMs = System.currentTimeMillis();
@@ -251,7 +279,7 @@ public class AlpakaConfigScreen extends Screen {
 
         int totalContentHeight = 40 + 20;
         for (ConfigOption opt : options) {
-            totalContentHeight += (opt.getType() == ConfigOption.Type.HEADER) ? 30 : 50;
+            totalContentHeight += optionItemHeight(opt);
         }
         maxScrollY = Math.max(0, totalContentHeight - contentH);
         targetScrollY = Math.max(0, Math.min(maxScrollY, targetScrollY));
@@ -278,10 +306,10 @@ public class AlpakaConfigScreen extends Screen {
             graphics.text(this.font, Component.literal(emptyMsg), contentX + 16, startOptionY + 12, ModernGuiUtils.COLOR_TOGGLE_OFF_TEXT);
         } else {
             int cardW = contentW - 28;
-            int cardH = 44;
+            int cardH = CARD_H;
 
             for (ConfigOption opt : options) {
-                int itemHeight = (opt.getType() == ConfigOption.Type.HEADER) ? 30 : (cardH + 6);
+                int itemHeight = optionItemHeight(opt);
 
                 if (startOptionY + itemHeight >= clipY && startOptionY <= clipY + clipH) {
                     if (opt.getType() == ConfigOption.Type.HEADER) {
@@ -333,6 +361,12 @@ public class AlpakaConfigScreen extends Screen {
                             boolean isWidgetHovered = mouseX >= widgetX && mouseX <= widgetX + widgetW && mouseY >= widgetY && mouseY <= widgetY + widgetH && mouseY >= clipY && mouseY <= clipY + clipH;
                             double normVal = opt.getSliderNormalizedValue();
                             ModernGuiUtils.drawModernSlider(graphics, this.font, widgetX, widgetY, widgetW, widgetH, normVal, opt.getFormattedValue(), isWidgetHovered);
+                        } else if (opt.getType() == ConfigOption.Type.DROPDOWN) {
+                            boolean isWidgetHovered = mouseX >= widgetX && mouseX <= widgetX + widgetW && mouseY >= widgetY && mouseY <= widgetY + widgetH && mouseY >= clipY && mouseY <= clipY + clipH;
+                            // Summary doubles as the affordance: how many lines are on, and which way
+                            // the arrow points, so a collapsed dropdown still says what it contains.
+                            String summary = opt.getEnabledEntryCount() + "/" + opt.getEntryCount() + (opt.isExpanded() ? " ▲" : " ▼");
+                            ModernGuiUtils.drawModernButton(graphics, this.font, widgetX, widgetY, widgetW, widgetH, summary, isWidgetHovered, opt.isExpanded());
                         } else if (opt.getType() == ConfigOption.Type.ACTION) {
                             boolean isWidgetHovered = mouseX >= widgetX && mouseX <= widgetX + widgetW && mouseY >= widgetY && mouseY <= widgetY + widgetH && mouseY >= clipY && mouseY <= clipY + clipH;
 
@@ -352,6 +386,31 @@ public class AlpakaConfigScreen extends Screen {
                         }
 
                         graphics.pose().popMatrix();
+
+                        // Drawn after popMatrix on purpose: the lines belong to the list, not to the
+                        // card, and must not inherit the card's hover pop-scale.
+                        if (opt.getType() == ConfigOption.Type.DROPDOWN && opt.isExpanded()) {
+                            int entryY = startOptionY + cardH + DROPDOWN_TOP_PAD;
+                            for (ConfigOption.ToggleEntry entry : opt.getEntries()) {
+                                boolean entryHovered = mouseX >= contentX + 14 && mouseX <= contentX + 14 + cardW
+                                        && mouseY >= entryY && mouseY < entryY + DROPDOWN_ENTRY_H
+                                        && mouseY >= clipY && mouseY <= clipY + clipH;
+
+                                if (entryHovered) {
+                                    ModernGuiUtils.drawRect(graphics, contentX + 14, entryY, cardW, DROPDOWN_ENTRY_H, ModernGuiUtils.COLOR_CARD_BG_HOVER);
+                                }
+
+                                int boxX = contentX + 14 + 22;
+                                int boxY = entryY + (DROPDOWN_ENTRY_H - CHECKBOX_SIZE) / 2;
+                                ModernGuiUtils.drawModernCheckbox(graphics, this.font, boxX, boxY, CHECKBOX_SIZE, entry.get(), entryHovered);
+
+                                int labelColor = entry.get() ? ModernGuiUtils.COLOR_TEXT_PRIMARY : ModernGuiUtils.COLOR_TEXT_MUTED;
+                                graphics.text(this.font, Component.literal(entry.getLabel()),
+                                        boxX + CHECKBOX_SIZE + 7, entryY + (DROPDOWN_ENTRY_H - 8) / 2, labelColor);
+
+                                entryY += DROPDOWN_ENTRY_H;
+                            }
+                        }
                     }
                 }
 
@@ -452,10 +511,10 @@ public class AlpakaConfigScreen extends Screen {
             List<ConfigOption> options = AlpakaConfigRegistry.getOptions(activeCategory, searchQuery);
             int startOptionY = contentY + 12 + 30 - (int) scrollY;
             int cardW = contentW - 28;
-            int cardH = 44;
+            int cardH = CARD_H;
 
             for (ConfigOption opt : options) {
-                int itemHeight = (opt.getType() == ConfigOption.Type.HEADER) ? 30 : (cardH + 6);
+                int itemHeight = optionItemHeight(opt);
 
                 if (opt.getType() == ConfigOption.Type.HEADER) {
                     startOptionY += itemHeight;
@@ -467,6 +526,23 @@ public class AlpakaConfigScreen extends Screen {
                 int widgetH = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 16 : 18;
                 int widgetX = contentX + 14 + cardW - widgetW - 10;
                 int widgetY = startOptionY + (cardH - widgetH) / 2;
+
+                // Expanded lines are hit-tested before the card. They sit below it so the two cannot
+                // overlap, but checking them first keeps that independent of the card's exact height.
+                if (opt.getType() == ConfigOption.Type.DROPDOWN && opt.isExpanded()) {
+                    int entryY = startOptionY + cardH + DROPDOWN_TOP_PAD;
+                    for (ConfigOption.ToggleEntry entry : opt.getEntries()) {
+                        boolean insideViewport = entryY + DROPDOWN_ENTRY_H >= clipY && entryY <= clipY + clipH;
+                        if (insideViewport
+                                && mouseX >= contentX + 14 && mouseX <= contentX + 14 + cardW
+                                && mouseY >= entryY && mouseY < entryY + DROPDOWN_ENTRY_H) {
+                            playPloppSound();
+                            entry.toggle();
+                            return true;
+                        }
+                        entryY += DROPDOWN_ENTRY_H;
+                    }
+                }
 
                 boolean isWidgetClicked = mouseX >= widgetX && mouseX <= widgetX + widgetW && mouseY >= widgetY && mouseY <= widgetY + widgetH;
                 boolean isCardClicked = mouseX >= contentX + 14 && mouseX <= contentX + 14 + cardW && mouseY >= startOptionY && mouseY <= startOptionY + cardH;
@@ -484,6 +560,10 @@ public class AlpakaConfigScreen extends Screen {
                         double norm = Math.max(0.0, Math.min(1.0, (mouseX - widgetX) / (double) widgetW));
                         opt.setSliderNormalizedValue(norm);
                         opt.setDragging(true);
+                        return true;
+                    } else if (opt.getType() == ConfigOption.Type.DROPDOWN) {
+                        playPloppSound();
+                        opt.toggleExpanded();
                         return true;
                     } else if (opt.getType() == ConfigOption.Type.ACTION) {
                         playPloppSound();

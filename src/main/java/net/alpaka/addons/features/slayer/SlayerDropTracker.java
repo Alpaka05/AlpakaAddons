@@ -23,10 +23,15 @@ import java.util.regex.Pattern;
 public class SlayerDropTracker {
 
     /**
-     * A slayer boss was killed. This is the only message Hypixel sends on a kill, and it does not
-     * name the slayer - which is why the type comes from {@link SlayerQuestDetector} instead.
+     * A slayer boss was killed. Neither message names the slayer, which is why the type comes from
+     * {@link SlayerQuestDetector} instead.
+     *
+     * Hypixel sends both {@code "  SLAYER QUEST COMPLETE!"} and {@code "  NICE! SLAYER BOSS SLAIN!"};
+     * either is accepted since the kill is debounced anyway. Both were confirmed against SkyHanni's
+     * captured-message tests rather than guessed.
      */
-    private static final Pattern QUEST_COMPLETE_PATTERN = Pattern.compile("^\\s*SLAYER QUEST COMPLETE!\\s*$");
+    private static final Pattern QUEST_COMPLETE_PATTERN =
+            Pattern.compile("^\\s*(?:SLAYER QUEST COMPLETE!|NICE! SLAYER BOSS SLAIN!)\\s*$");
 
     /**
      * A rare drop. Hypixel's slayer drops put the item in parentheses and use <em>two</em> spaces
@@ -39,6 +44,18 @@ public class SlayerDropTracker {
 
     /** Leading noise on a drop's item name, e.g. "3x " or the rune "◆ " marker. */
     private static final Pattern DROP_ITEM_PREFIX = Pattern.compile("^(?:\\d+x\\s+)?(?:◆\\s*)?");
+
+    /**
+     * The RNG meter reading Hypixel prints after every slayer boss kill, e.g.
+     * {@code "RNG Meter - 69,300 Stored XP"} once colour codes are stripped.
+     *
+     * This is the only message that states a slayer XP figure, and the step between two consecutive
+     * readings is the XP that kill awarded - two captured back to back read 69,300 then 69,850. It
+     * only arrives when the player has an RNG meter set for the slayer, which is why
+     * {@link SlayerSessionTracker} keeps a per-tier fallback.
+     */
+    private static final Pattern RNG_METER_PATTERN =
+            Pattern.compile("^\\s*RNG Meter\\s*-\\s*(?<xp>[\\d,]+)\\s+Stored XP\\s*$");
 
     private static final Pattern SERVER_DROP_PATTERN = Pattern.compile("^\\s*(?:UNCOMMON|RARE|VERY RARE|CRAZY RARE|INSANE|PRAY TO RNGESUS|PET) DROP!.*");
     private static final Pattern PARTY_PATTERN = Pattern.compile("^Party > (?:\\[[A-Z+]+] )?\\w+: !since (?<item>.+)$");
@@ -87,15 +104,23 @@ public class SlayerDropTracker {
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             tickCounter++;
             SlayerQuestDetector.INSTANCE.refresh();
+            SlayerSessionTracker.INSTANCE.tick();
+            SlayerMenuXpReader.INSTANCE.tick();
 
             // Primary kill signal: the sidebar leaving the boss fight. Chat is unreliable here.
             SlayerType killed = SlayerQuestDetector.INSTANCE.consumeKill();
-            if (killed != null) countKill(killed);
+            if (killed != null) {
+                countKill(killed);
+                SlayerSessionTracker.INSTANCE.onBossKilled(killed);
+            }
 
             // Only signal for a boss spawning: Hypixel never sends a chat announcement for a
             // regular slayer boss (unlike the Ender Dragon, Arachne, etc.), confirmed against
             // SkyHanni's own pattern list, which has no such entry for slayer bosses.
             SlayerType spawned = SlayerQuestDetector.INSTANCE.consumeSpawn();
+            if (spawned != null) {
+                SlayerSessionTracker.INSTANCE.onBossSpawned(spawned);
+            }
             if (spawned != null && AlpakaConfig.instance.customSoundsEnabled) {
                 CustomSoundFeature.playBossSpawnSound();
             }
@@ -261,6 +286,20 @@ public class SlayerDropTracker {
             } else if (lower.contains("rare drop!") || lower.contains("very rare drop!")) {
                 CustomSoundFeature.playRareDropSound();
             }
+        }
+
+        Matcher meterMatcher = RNG_METER_PATTERN.matcher(string);
+        if (meterMatcher.matches()) {
+            SlayerType meterType = SlayerQuestDetector.INSTANCE.currentOrRecent();
+            if (meterType != null) {
+                try {
+                    long stored = Long.parseLong(meterMatcher.group("xp").replace(",", ""));
+                    SlayerSessionTracker.INSTANCE.onRngMeterReading(meterType, stored);
+                } catch (NumberFormatException ignored) {
+                    // A figure too large for a long is not a real reading; nothing to record.
+                }
+            }
+            return;
         }
 
         // Secondary kill signal. Hypixel does not always send this, and other Skyblock mods often

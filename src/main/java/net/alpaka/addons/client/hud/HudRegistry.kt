@@ -1,6 +1,7 @@
 package net.alpaka.addons.client.hud
 
 import net.alpaka.addons.features.playermodel.PlayerModelHudElement
+import net.alpaka.addons.features.slayer.SlayerHudElement
 import net.alpaka.addons.features.worldage.WorldAgeHudElement
 
 /**
@@ -14,6 +15,7 @@ object HudRegistry {
     @JvmField
     val ELEMENTS: List<HudElement> = listOf(
         WorldAgeHudElement,
+        SlayerHudElement,
         PlayerModelHudElement
     )
 

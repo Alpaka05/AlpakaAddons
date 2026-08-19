@@ -547,12 +547,75 @@ public class AlpakaConfigRegistry {
                 "player model position edit dragging hud screen drag move editor alpakahud"));
 
         // --- 5. SKYBLOCK ---
+        OPTIONS.add(new ConfigOption("Slayer Tracking", ConfigCategory.SKYBLOCK));
+
         OPTIONS.add(new ConfigOption("slayer_drop_tracker", "Slayer Drop Tracker",
                 "Automatically tracks loot drops and kills for Hypixel Slayer bosses.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.slayerDropTrackerEnabled,
                 v -> { AlpakaConfig.instance.slayerDropTrackerEnabled = v; AlpakaConfig.save(); },
                 "slayer drop tracker hypixel loot boss kill stats counter skyblock"));
+
+        // Slayer session HUD
+        OPTIONS.add(new ConfigOption("Slayer Session HUD", ConfigCategory.SKYBLOCK));
+
+        OPTIONS.add(new ConfigOption("slayer_hud_enabled", "Enable Slayer Session HUD",
+                "Shows live session stats while a Slayer quest is active. Position it in the HUD editor.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slayerHudEnabled,
+                v -> { AlpakaConfig.instance.slayerHudEnabled = v; AlpakaConfig.save(); },
+                "slayer session hud stats xp bosses per hour timer rng dry streak skyblock"));
+
+        OPTIONS.add(new ConfigOption("slayer_hud_lines", "Slayer HUD Lines",
+                "Pick which lines the Slayer HUD shows. Click to open, then tick the ones you want.",
+                ConfigCategory.SKYBLOCK,
+                java.util.List.of(
+                        new ConfigOption.ToggleEntry("Slayer name (and paused state)",
+                                () -> AlpakaConfig.instance.slayerHudShowTitle,
+                                v -> { AlpakaConfig.instance.slayerHudShowTitle = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Total slayer XP",
+                                () -> AlpakaConfig.instance.slayerHudShowTotalXp,
+                                v -> { AlpakaConfig.instance.slayerHudShowTotalXp = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Session XP",
+                                () -> AlpakaConfig.instance.slayerHudShowSessionXp,
+                                v -> { AlpakaConfig.instance.slayerHudShowSessionXp = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Boss count",
+                                () -> AlpakaConfig.instance.slayerHudShowBossCount,
+                                v -> { AlpakaConfig.instance.slayerHudShowBossCount = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Average boss time",
+                                () -> AlpakaConfig.instance.slayerHudShowAvgBossTime,
+                                v -> { AlpakaConfig.instance.slayerHudShowAvgBossTime = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Bosses per hour",
+                                () -> AlpakaConfig.instance.slayerHudShowBossesPerHour,
+                                v -> { AlpakaConfig.instance.slayerHudShowBossesPerHour = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Session time",
+                                () -> AlpakaConfig.instance.slayerHudShowSessionTime,
+                                v -> { AlpakaConfig.instance.slayerHudShowSessionTime = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Bosses since RNG drop",
+                                () -> AlpakaConfig.instance.slayerHudShowSinceRngDrop,
+                                v -> { AlpakaConfig.instance.slayerHudShowSinceRngDrop = v; AlpakaConfig.save(); })
+                ),
+                "slayer hud lines toggle show hide xp bosses per hour session time rng dry streak average"));
+
+        OPTIONS.add(new ConfigOption("slayer_hud_afk_pause", "Session Pause After Standing Still",
+                "How long to stand still before the session timer pauses. The whole idle stretch is removed, not just the part past this.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slayerHudAfkPauseSeconds,
+                v -> { AlpakaConfig.instance.slayerHudAfkPauseSeconds = v; AlpakaConfig.save(); },
+                5.0f, 300.0f, val -> val >= 60.0f
+                        ? String.format("%dm %02ds", (int) (val / 60), (int) (val % 60))
+                        : String.format("%ds", val.intValue()),
+                "slayer session timer pause afk idle stand still seconds duration threshold"));
+
+        OPTIONS.add(new ConfigOption("slayer_hud_pause_outside_area", "Pause Session Outside Slayer Area",
+                "Pauses the session timer as soon as the sidebar shows you have left the slayer's area.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slayerHudPauseOutsideArea,
+                v -> { AlpakaConfig.instance.slayerHudPauseOutsideArea = v; AlpakaConfig.save(); },
+                "slayer session pause outside area zone leave region timer stop"));
+
+        // --- World Age HUD ---
+        OPTIONS.add(new ConfigOption("World Age HUD", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("world_age_hud_enabled", "Enable World Age (Day) HUD",
                 "Displays the current server's world age in days.",
@@ -591,6 +654,8 @@ public class AlpakaConfigRegistry {
                 },
                 "world age recent visit threshold window seconds time minutes slider"));
 
+        OPTIONS.add(new ConfigOption("Mob Highlights", ConfigCategory.SKYBLOCK));
+
         OPTIONS.add(new ConfigOption("pangolin_highlight_enabled", "Highlight Pangolins",
                 "Outlines Pangolins on Torrhus Canyon with the vanilla glowing effect, but only while they are in your line of sight.",
                 ConfigCategory.SKYBLOCK,
@@ -607,6 +672,8 @@ public class AlpakaConfigRegistry {
                     AlpakaConfig.save();
                 })),
                 "pangolin outline color glow highlight picker critter torrhus canyon"));
+
+        OPTIONS.add(new ConfigOption("Damage Display", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("only_crit_damage", "Only Show Crit Damage",
                 "Hides non-crit, fire, poison, and secondary ability damage nametags in Skyblock, keeping only critical hits.",
@@ -672,6 +739,41 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.customSoundInventoryOpenClose,
                 v -> { AlpakaConfig.instance.customSoundInventoryOpenClose = v; AlpakaConfig.save(); },
                 "inventory open close gui container sound audio custom"));
+
+        OPTIONS.add(new ConfigOption("custom_sound_blaze_death", "Blaze Death Sound",
+                "Plays custom sound when a blaze you are fighting dies. Kills by other players are left alone.",
+                ConfigCategory.SOUND_MISC,
+                () -> AlpakaConfig.instance.customSoundBlazeDeath,
+                v -> { AlpakaConfig.instance.customSoundBlazeDeath = v; AlpakaConfig.save(); },
+                "blaze death sound kill slayer audio custom own kills"));
+
+        OPTIONS.add(new ConfigOption("custom_sound_inventory_click", "Inventory Click Sound",
+                "Plays custom sound when clicking items or picking them up.",
+                ConfigCategory.SOUND_MISC,
+                () -> AlpakaConfig.instance.customSoundInventoryClick,
+                v -> { AlpakaConfig.instance.customSoundInventoryClick = v; AlpakaConfig.save(); },
+                "inventory click item pickup container sound audio custom"));
+
+        OPTIONS.add(new ConfigOption("custom_sound_zombie_remedy", "Zombie Remedy Sound",
+                "Plays custom sound for the zombie villager cure effect.",
+                ConfigCategory.SOUND_MISC,
+                () -> AlpakaConfig.instance.customSoundZombieRemedy,
+                v -> { AlpakaConfig.instance.customSoundZombieRemedy = v; AlpakaConfig.save(); },
+                "zombie remedy cure villager sound audio custom"));
+
+        OPTIONS.add(new ConfigOption("custom_sound_successful_hit", "Successful Hit Sound",
+                "Plays custom sound on a critical or successful hit.",
+                ConfigCategory.SOUND_MISC,
+                () -> AlpakaConfig.instance.customSoundSuccessfulHit,
+                v -> { AlpakaConfig.instance.customSoundSuccessfulHit = v; AlpakaConfig.save(); },
+                "successful hit crit critical attack sound audio custom"));
+
+        OPTIONS.add(new ConfigOption("mute_vanilla_sounds_blaze_slayer", "Silence Game Audio in Blaze Slayer",
+                "Mutes all Minecraft and Hypixel sounds while a Blaze Slayer quest is active, so this mod's own cues can be heard. Alpaka sounds still play.",
+                ConfigCategory.SOUND_MISC,
+                () -> AlpakaConfig.instance.muteVanillaSoundsInBlazeSlayer,
+                v -> { AlpakaConfig.instance.muteVanillaSoundsInBlazeSlayer = v; AlpakaConfig.save(); },
+                "mute silence vanilla game audio blaze slayer quiet boss spawn hear"));
 
         OPTIONS.add(new ConfigOption("custom_sound_low_hp_heartbeat", "Low HP Heartbeat Sound",
                 "Plays low health heartbeat sound when below configured HP percentage in survival mode.",

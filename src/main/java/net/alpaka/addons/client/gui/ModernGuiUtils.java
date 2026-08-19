@@ -91,6 +91,28 @@ public class ModernGuiUtils {
         drawOutline(graphics, knobX, knobY, knobSize, knobSize, 0x40000000);
     }
 
+    /**
+     * A small square tick box, for the individually switchable lines inside a dropdown.
+     *
+     * Distinct from {@link #drawModernToggle} on purpose: a toggle is a wide ON/OFF pill sized for a
+     * feature card, which would dominate a compact list of lines.
+     */
+    public static void drawModernCheckbox(GuiGraphicsExtractor graphics, Font font, int x, int y, int size, boolean state, boolean isHovered) {
+        int background = state ? COLOR_TOGGLE_ON_BG : COLOR_CARD_BG;
+        int border = state ? COLOR_TOGGLE_ON_BORDER : (isHovered ? getAccentColor() : COLOR_CARD_BORDER);
+
+        drawRect(graphics, x, y, size, size, background);
+        drawOutline(graphics, x, y, size, size, border);
+
+        if (state) {
+            // Centred by measuring, so the mark stays put if the box size is ever changed.
+            String mark = "✔";
+            int markX = x + (size - font.width(mark)) / 2;
+            int markY = y + (size - 8) / 2;
+            graphics.text(font, Component.literal(mark), markX, markY, COLOR_TOGGLE_ON_TEXT);
+        }
+    }
+
     public static void drawModernSlider(GuiGraphicsExtractor graphics, Font font, int x, int y, int width, int height, double value, String displayValue, boolean isHovered) {
         int trackBg = COLOR_CARD_BG;
         int border = isHovered ? getAccentColor() : COLOR_CARD_BORDER;

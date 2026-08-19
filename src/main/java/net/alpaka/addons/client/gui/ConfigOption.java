@@ -3,6 +3,7 @@ package net.alpaka.addons.client.gui;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -12,7 +13,33 @@ public class ConfigOption {
         BOOLEAN,
         SLIDER,
         ACTION,
-        HEADER
+        HEADER,
+        DROPDOWN
+    }
+
+    /**
+     * One tickable line inside a {@link Type#DROPDOWN}.
+     *
+     * Deliberately not a nested {@link ConfigOption}: an entry has no card, no description and no
+     * animation state of its own, and letting the search index or the layout treat it as a normal
+     * option would put it back in the flat list this exists to get it out of.
+     */
+    public static class ToggleEntry {
+        private final String label;
+        private final Supplier<Boolean> getter;
+        private final Consumer<Boolean> setter;
+
+        public ToggleEntry(String label, Supplier<Boolean> getter, Consumer<Boolean> setter) {
+            this.label = label;
+            this.getter = getter;
+            this.setter = setter;
+        }
+
+        public String getLabel() { return label; }
+        public boolean get() { return getter != null && getter.get(); }
+        public void toggle() {
+            if (setter != null) setter.accept(!get());
+        }
     }
 
     private final String id;
@@ -36,6 +63,10 @@ public class ConfigOption {
     // Action
     private Consumer<Screen> actionHandler;
     private String actionLabel;
+
+    // Dropdown
+    private List<ToggleEntry> entries;
+    private boolean expanded = false;
 
     // Animation & Hover state tracking
     private float hoverProgress = 0.0f;
@@ -95,6 +126,24 @@ public class ConfigOption {
         this.keywords = (title + " " + description + " " + keywords).toLowerCase();
     }
 
+    // Dropdown constructor
+    public ConfigOption(String id, String title, String description, ConfigCategory category,
+                        List<ToggleEntry> entries, String keywords) {
+        this.id = id;
+        this.title = title;
+        this.description = description;
+        this.category = category;
+        this.type = Type.DROPDOWN;
+        this.entries = entries;
+        // Entry labels join the search index, so searching for a line by name still finds the
+        // dropdown that holds it rather than turning up nothing.
+        StringBuilder entryText = new StringBuilder();
+        if (entries != null) {
+            for (ToggleEntry entry : entries) entryText.append(' ').append(entry.getLabel());
+        }
+        this.keywords = (title + " " + description + " " + keywords + entryText).toLowerCase();
+    }
+
     public String getId() { return id; }
     public String getTitle() { return title; }
     public String getDescription() { return description; }
@@ -105,6 +154,23 @@ public class ConfigOption {
         if (query == null || query.isBlank()) return true;
         String q = query.trim().toLowerCase();
         return title.toLowerCase().contains(q) || description.toLowerCase().contains(q) || keywords.contains(q);
+    }
+
+    // Dropdown getters/setters
+    public List<ToggleEntry> getEntries() { return entries; }
+    public int getEntryCount() { return entries == null ? 0 : entries.size(); }
+    public boolean isExpanded() { return expanded; }
+    public void setExpanded(boolean expanded) { this.expanded = expanded; }
+    public void toggleExpanded() { this.expanded = !this.expanded; }
+
+    /** How many of this dropdown's lines are ticked, for the collapsed summary. */
+    public int getEnabledEntryCount() {
+        if (entries == null) return 0;
+        int count = 0;
+        for (ToggleEntry entry : entries) {
+            if (entry.get()) count++;
+        }
+        return count;
     }
 
     // Boolean getters/setters

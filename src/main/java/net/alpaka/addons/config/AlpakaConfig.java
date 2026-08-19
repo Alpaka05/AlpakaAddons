@@ -43,6 +43,11 @@ public class AlpakaConfig {
     public boolean customSoundPlayerHurt = true;
     public boolean customSoundInventoryOpenClose = true;
     public boolean customSoundLowHpHeartbeat = true;
+    public boolean customSoundBlazeDeath = true;
+    public boolean customSoundInventoryClick = true;
+    public boolean customSoundZombieRemedy = true;
+    public boolean customSoundSuccessfulHit = true;
+    public boolean muteVanillaSoundsInBlazeSlayer = false;
     public float lowHpHeartbeatThreshold = 0.30f;
     public int menuAccentColor = 0xFFE5B849; // Default Warm Gold
     public boolean customEscapeMenuEnabled = true;
@@ -62,6 +67,25 @@ public class AlpakaConfig {
     public int worldAgeHudX = 10;
     public int worldAgeHudY = 10;
     public float worldAgeHudScale = 1.0f;
+
+    // Slayer session HUD. Each line has its own toggle so the HUD can be trimmed to just the
+    // numbers being watched; the whole HUD hides unless a slayer quest is active.
+    public boolean slayerHudEnabled = false;
+    public int slayerHudX = 10;
+    public int slayerHudY = 60;
+    public float slayerHudScale = 1.0f;
+    public boolean slayerHudShowTitle = true;
+    public boolean slayerHudShowTotalXp = true;
+    public boolean slayerHudShowSessionXp = true;
+    public boolean slayerHudShowAvgBossTime = true;
+    public boolean slayerHudShowBossCount = true;
+    public boolean slayerHudShowBossesPerHour = true;
+    public boolean slayerHudShowSessionTime = true;
+    public boolean slayerHudShowSinceRngDrop = true;
+    /** Seconds of standing still before the session clock stops. */
+    public float slayerHudAfkPauseSeconds = 60.0f;
+    /** Stop the clock the moment the sidebar says the player is no longer in the slayer's zone. */
+    public boolean slayerHudPauseOutsideArea = false;
     public boolean worldAgeJoinMessageEnabled = true;
     public int worldAgeRecentThresholdSec = 60;
     public boolean onlyCritDamageEnabled = true;
@@ -272,6 +296,15 @@ public class AlpakaConfig {
     public static class SlayerData {
         public int kills = 0;
         public Map<String, Integer> drops = new HashMap<>();
+
+        /**
+         * Last known lifetime slayer XP for this slayer, or -1 when it has never been observed.
+         *
+         * Hypixel does not tell the client this figure during play - the only place it appears is
+         * the Slayer menu's own item text - so it is remembered here once seen and the session's
+         * own gains are added on top for display.
+         */
+        public long totalXp = -1L;
     }
 
     public AlpakaConfig() {
@@ -329,6 +362,11 @@ public class AlpakaConfig {
         this.customSoundPlayerHurt = false;
         this.customSoundInventoryOpenClose = false;
         this.customSoundLowHpHeartbeat = false;
+        this.customSoundBlazeDeath = false;
+        this.customSoundInventoryClick = false;
+        this.customSoundZombieRemedy = false;
+        this.customSoundSuccessfulHit = false;
+        this.muteVanillaSoundsInBlazeSlayer = false;
         this.customEscapeMenuEnabled = false;
         this.customMainMenuEnabled = false;
         this.playerModelEnabled = false;
@@ -338,6 +376,8 @@ public class AlpakaConfig {
         this.playerModelShowInGuis = false;
         this.playerModelSlowSwing = false;
         this.worldAgeHudEnabled = false;
+        this.slayerHudEnabled = false;
+        this.slayerHudPauseOutsideArea = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
         this.blockOverlayEnabled = false;

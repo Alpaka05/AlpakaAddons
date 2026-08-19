@@ -582,6 +582,23 @@ public class AlpakaConfigRegistry {
                 },
                 "world age recent visit threshold window seconds time minutes slider"));
 
+        OPTIONS.add(new ConfigOption("pangolin_highlight_enabled", "Highlight Pangolins",
+                "Outlines Pangolins on Torrhus Canyon with the vanilla glowing effect, but only while they are in your line of sight.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.pangolinHighlightEnabled,
+                v -> { AlpakaConfig.instance.pangolinHighlightEnabled = v; AlpakaConfig.save(); },
+                "pangolin highlight glow outline critter torrhus torhus canyon hideaway armadillo skyblock"));
+
+        OPTIONS.add(new ConfigOption("pangolin_highlight_color", "Pangolin Outline Color",
+                "Select the glowing outline color used for highlighted Pangolins.",
+                ConfigCategory.SKYBLOCK,
+                "Choose Color",
+                parent -> Minecraft.getInstance().setScreen(new ColorPickerScreen(parent, "Pangolin Outline Color", AlpakaConfig.instance.pangolinHighlightColor, color -> {
+                    AlpakaConfig.instance.pangolinHighlightColor = color;
+                    AlpakaConfig.save();
+                })),
+                "pangolin outline color glow highlight picker critter torrhus canyon"));
+
         OPTIONS.add(new ConfigOption("only_crit_damage", "Only Show Crit Damage",
                 "Hides non-crit, fire, poison, and secondary ability damage nametags in Skyblock, keeping only critical hits.",
                 ConfigCategory.SKYBLOCK,

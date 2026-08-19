@@ -333,6 +333,7 @@ public class AlpakaConfigScreen extends Screen {
                                 int colorVal = switch (opt.getId()) {
                                     case "menu_accent_color" -> net.alpaka.addons.config.AlpakaConfig.instance.menuAccentColor;
                                     case "block_fill_color" -> net.alpaka.addons.config.AlpakaConfig.instance.blockFillColor;
+                                    case "pangolin_highlight_color" -> net.alpaka.addons.config.AlpakaConfig.instance.pangolinHighlightColor;
                                     default -> net.alpaka.addons.config.AlpakaConfig.instance.blockOutlineColor;
                                 };
                                 ModernGuiUtils.drawModernColorButton(graphics, this.font, widgetX, widgetY, widgetW, widgetH, colorVal, isWidgetHovered);

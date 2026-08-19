@@ -66,6 +66,10 @@ public class AlpakaConfig {
     public int worldAgeRecentThresholdSec = 60;
     public boolean onlyCritDamageEnabled = true;
 
+    // Pangolin highlight (Torrhus Canyon critters)
+    public boolean pangolinHighlightEnabled = true;
+    public int pangolinHighlightColor = 0xFFFFAA00; // Default orange/gold
+
     // Block Overlay options
     public boolean blockOverlayEnabled = false;
     public boolean blockFadeInEnabled = true;
@@ -308,6 +312,7 @@ public class AlpakaConfig {
     public void disableAllFeatures() {
         this.renderHandInThirdPerson = false;
         this.slayerDropTrackerEnabled = false;
+        this.pangolinHighlightEnabled = false;
         this.fullbrightEnabled = false;
         this.nameHighlightingEnabled = false;
         this.inventorySnowEnabled = false;

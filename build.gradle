@@ -118,18 +118,26 @@ def deployToLauncher(File jarFile, String versionStr) {
         def mcModsDir = new File(oneClientDir, ".minecraft/mods")
         mcModsDir.mkdirs()
         mcModsDir.listFiles()?.findAll { it.name.startsWith("alpaka") && it.name.endsWith(".jar") && it.name != targetName }?.each {
-            it.delete()
+            try { it.delete() } catch (Exception ignored) {}
         }
         def destMcFile = new File(mcModsDir, targetName)
-        java.nio.file.Files.copy(jarFile.toPath(), destMcFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-        println "Deployed ${targetName} to .minecraft/mods"
+        try {
+            java.nio.file.Files.copy(jarFile.toPath(), destMcFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            println "Deployed ${targetName} to .minecraft/mods"
+        } catch (Exception e) {
+            println "Warning: Could not overwrite ${destMcFile.absolutePath} (file may be in use by running game): ${e.message}"
+        }
 
         // 4. Clear Fabric Loader processedMods cache
         def processedDir = new File(oneClientDir, ".minecraft/.fabric/processedMods")
         if (processedDir.exists()) {
             processedDir.listFiles()?.findAll { it.name.startsWith("alpaka") }?.each {
-                it.delete()
-                println "Cleared Fabric processedMod cache: ${it.name}"
+                try {
+                    it.delete()
+                    println "Cleared Fabric processedMod cache: ${it.name}"
+                } catch (Exception e) {
+                    println "Warning: Could not clear cache ${it.name}: ${e.message}"
+                }
             }
         }
     }

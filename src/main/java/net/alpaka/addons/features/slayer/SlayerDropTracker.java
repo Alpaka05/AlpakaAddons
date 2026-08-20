@@ -385,7 +385,9 @@ public class SlayerDropTracker {
             } else {
                 int sinceLast = currentKills - lastDropped;
                 feedback = Component.literal("Dropped ").append(dropComponent)
-                        .append(Component.literal(" (" + sinceLast + " Boss" + (sinceLast != 1 ? "es" : "") + " since the last one)"));
+                        .append(Component.literal(" after "))
+                        .append(Component.literal(String.valueOf(sinceLast)).withStyle(ChatFormatting.GREEN))
+                        .append(Component.literal(" Boss" + (sinceLast != 1 ? "es" : "")));
             }
             sendModMessage(feedback);
         }

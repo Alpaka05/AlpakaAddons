@@ -64,6 +64,12 @@ object SlayerSessionTracker {
             if (activeMs <= 0L || bossCount <= 0) return null
             return bossCount * 3_600_000.0 / activeMs
         }
+
+        /** Slayer XP gained extrapolated to an hour of *active* play, or null before any time has accrued. */
+        fun xpPerHour(): Double? {
+            if (activeMs <= 0L || xpGained <= 0L) return null
+            return xpGained * 3_600_000.0 / activeMs
+        }
     }
 
     private val sessions = HashMap<SlayerType, Session>()

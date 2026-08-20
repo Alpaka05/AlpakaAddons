@@ -9,6 +9,7 @@ import net.minecraft.client.gui.screens.ChatScreen
 import net.minecraft.network.chat.Component
 import kotlin.math.ceil
 import kotlin.math.roundToInt
+import kotlin.math.roundToLong
 
 /**
  * Draws the slayer session HUD: a stack of one-line statistics for the slayer currently being run.
@@ -81,11 +82,12 @@ object SlayerHudRenderer {
         if (cfg.slayerHudShowTitle) mask = mask or (1 shl 0)
         if (cfg.slayerHudShowTotalXp) mask = mask or (1 shl 1)
         if (cfg.slayerHudShowSessionXp) mask = mask or (1 shl 2)
-        if (cfg.slayerHudShowBossCount) mask = mask or (1 shl 3)
-        if (cfg.slayerHudShowAvgBossTime) mask = mask or (1 shl 4)
-        if (cfg.slayerHudShowBossesPerHour) mask = mask or (1 shl 5)
-        if (cfg.slayerHudShowSessionTime) mask = mask or (1 shl 6)
-        if (cfg.slayerHudShowSinceRngDrop) mask = mask or (1 shl 7)
+        if (cfg.slayerHudShowXpPerHour) mask = mask or (1 shl 3)
+        if (cfg.slayerHudShowBossCount) mask = mask or (1 shl 4)
+        if (cfg.slayerHudShowAvgBossTime) mask = mask or (1 shl 5)
+        if (cfg.slayerHudShowBossesPerHour) mask = mask or (1 shl 6)
+        if (cfg.slayerHudShowSessionTime) mask = mask or (1 shl 7)
+        if (cfg.slayerHudShowSinceRngDrop) mask = mask or (1 shl 8)
         return mask
     }
 
@@ -145,7 +147,7 @@ object SlayerHudRenderer {
      */
     private fun buildRows(type: SlayerType?, preview: Boolean): List<Line> {
         val cfg = AlpakaConfig.instance
-        val rows = ArrayList<Line>(8)
+        val rows = ArrayList<Line>(9)
 
         val shown = type ?: SlayerType.BLAZE
         val session = if (preview) null else SlayerSessionTracker.session(shown)
@@ -159,7 +161,7 @@ object SlayerHudRenderer {
                 SlayerSessionTracker.PauseReason.OUTSIDE_AREA -> " (left area)"
                 null -> ""
             }
-            rows.add(Line("${shown.display} Slayer", suffix, if (suffix.isEmpty()) COLOR_TITLE else COLOR_PAUSED))
+            rows.add(Line("${shown.colorCode}§l${shown.display} Slayer", suffix, if (suffix.isEmpty()) COLOR_TITLE else COLOR_PAUSED))
         }
 
         if (cfg.slayerHudShowTotalXp) {
@@ -170,6 +172,11 @@ object SlayerHudRenderer {
         if (cfg.slayerHudShowSessionXp) {
             val gained = if (preview) 12_650L else session?.xpGained ?: 0L
             rows.add(Line("Session XP", "+" + formatNumber(gained), COLOR_GOOD))
+        }
+
+        if (cfg.slayerHudShowXpPerHour) {
+            val xpPerHour = if (preview) 41_250.0 else session?.xpPerHour()
+            rows.add(Line("XP/hr", xpPerHour?.let { formatNumber(it.roundToLong()) } ?: "-", COLOR_VALUE))
         }
 
         if (cfg.slayerHudShowBossCount) {

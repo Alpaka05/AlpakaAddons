@@ -77,6 +77,7 @@ public class AlpakaConfig {
     public boolean slayerHudShowTitle = true;
     public boolean slayerHudShowTotalXp = true;
     public boolean slayerHudShowSessionXp = true;
+    public boolean slayerHudShowXpPerHour = true;
     public boolean slayerHudShowAvgBossTime = true;
     public boolean slayerHudShowBossCount = true;
     public boolean slayerHudShowBossesPerHour = true;

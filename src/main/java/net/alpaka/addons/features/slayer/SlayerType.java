@@ -9,28 +9,29 @@ package net.alpaka.addons.features.slayer;
  * quest is identified - the sidebar says "Inferno Demonlord IV", never "Blaze Slayer".
  */
 public enum SlayerType {
-    ZOMBIE("Zombie", "Warden Heart",
+    ZOMBIE("Zombie", "§2", "Warden Heart",
             new String[]{"Graveyard", "Revenant Cave", "Crypts"},
             "Revenant Horror", "Atoned Horror"),
-    SPIDER("Spider", "Primordial Eye",
+    SPIDER("Spider", "§4", "Primordial Eye",
             new String[]{"Spider Mound", "Arachne's Burrow", "Arachne's Sanctuary", "Burning Desert"},
             "Tarantula Broodfather", "Conjoined Brood"),
-    WOLF("Wolf", "Overflux Capacitor",
+    WOLF("Wolf", "§f", "Overflux Capacitor",
             new String[]{"Ruins", "Howling Cave", "Soul Cave", "Spirit Cave"},
             "Sven Packmaster"),
-    ENDERMAN("Enderman", "Judgement Core",
+    ENDERMAN("Enderman", "§5", "Judgement Core",
             new String[]{"Void Sepulture", "Zealot Bruiser Hideout", "Dragon's Nest"},
             "Voidgloom Seraph"),
-    BLAZE("Blaze", "High Class Archfiend Dice",
+    BLAZE("Blaze", "§e", "High Class Archfiend Dice",
             new String[]{"Smoldering Tomb"},
             "Inferno Demonlord"),
-    VAMPIRE("Vampire", "Unfanged Vampire Part",
+    VAMPIRE("Vampire", "§c", "Unfanged Vampire Part",
             new String[]{"Stillgore Château", "Oubliette"},
             "Bloodfiend", "Riftstalker Bloodfiend"),
     /** No such slayer exists on Hypixel; kept only so older configs still deserialize. */
-    GUARDIAN("Guardian", null, new String[0]);
+    GUARDIAN("Guardian", "§3", null, new String[0]);
 
     public final String display;
+    public final String colorCode;
 
     /**
      * The slayer's headline RNG drop - the valuable one worth counting a dry streak against.
@@ -61,8 +62,9 @@ public enum SlayerType {
 
     public final String[] bossNames;
 
-    SlayerType(String display, String rngDropItem, String[] slayerAreas, String... bossNames) {
+    SlayerType(String display, String colorCode, String rngDropItem, String[] slayerAreas, String... bossNames) {
         this.display = display;
+        this.colorCode = colorCode;
         this.rngDropItem = rngDropItem;
         this.slayerAreas = slayerAreas;
         this.bossNames = bossNames;

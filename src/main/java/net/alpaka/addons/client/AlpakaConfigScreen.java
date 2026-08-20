@@ -6,6 +6,7 @@ import net.alpaka.addons.client.gui.ConfigOption;
 import net.alpaka.addons.client.gui.ModernGuiUtils;
 import net.alpaka.addons.client.gui.PloppAnimation;
 import net.alpaka.addons.features.sound.CustomSoundFeature;
+import net.alpaka.addons.utils.ModVersion;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.CharacterEvent;
@@ -185,7 +186,9 @@ public class AlpakaConfigScreen extends Screen {
         ModernGuiUtils.drawRect(graphics, winX, winY + headerHeight - 1, winW, 1, ModernGuiUtils.getAccentColor());
 
         String mainTitle = "ALPAKA ADDONS";
+        int titleWidth = this.font.width(mainTitle);
         graphics.text(this.font, Component.literal(mainTitle), winX + 12, winY + 12, ModernGuiUtils.COLOR_TEXT_PRIMARY);
+        graphics.text(this.font, Component.literal("v" + ModVersion.mod()), winX + 12 + titleWidth + 6, winY + 12, ModernGuiUtils.COLOR_TEXT_MUTED);
 
         // Render Search Box
         int searchX = winX + winW - 170;

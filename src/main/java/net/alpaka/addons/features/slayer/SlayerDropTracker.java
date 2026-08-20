@@ -384,8 +384,8 @@ public class SlayerDropTracker {
                         .append(Component.literal(" - at " + currentKills + " " + pending.type().display + " kills"));
             } else {
                 int sinceLast = currentKills - lastDropped;
-                feedback = Component.literal("Took " + sinceLast + " boss" + (sinceLast != 1 ? "es" : "") + " to drop ")
-                        .append(dropComponent);
+                feedback = Component.literal("Dropped ").append(dropComponent)
+                        .append(Component.literal(" (" + sinceLast + " Boss" + (sinceLast != 1 ? "es" : "") + " since the last one)"));
             }
             sendModMessage(feedback);
         }

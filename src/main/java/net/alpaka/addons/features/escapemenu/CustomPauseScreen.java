@@ -15,9 +15,28 @@ import net.minecraft.client.gui.screens.options.OptionsScreen;
 import net.minecraft.client.input.InputWithModifiers;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.renderer.texture.SimpleTexture;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 
 public class CustomPauseScreen extends Screen {
+    private static final Identifier MOD_ICON_ID = Identifier.parse("alpaka:textures/gui/alpaka_icon.png");
+    private static boolean modIconRegistered = false;
+
+    private static void ensureModIconRegistered() {
+        if (!modIconRegistered) {
+            modIconRegistered = true;
+            try {
+                SimpleTexture texture = new SimpleTexture(MOD_ICON_ID);
+                Minecraft.getInstance().getTextureManager().registerAndLoad(MOD_ICON_ID, texture);
+            } catch (Throwable t) {
+                System.err.println("[AlpakaAddons] Failed to register SimpleTexture for alpaka_icon.png: " + t.getMessage());
+            }
+        }
+    }
+
     private boolean showDisconnectPrompt = false;
     private long openTime = 0L;
 
@@ -43,15 +62,15 @@ public class CustomPauseScreen extends Screen {
         int centerY = this.height / 2;
 
         int cardWidth = 200;
-        int cardHeight = 250;
+        int cardHeight = 254;
         int startX = centerX - cardWidth / 2;
         int startY = centerY - cardHeight / 2;
 
         int buttonWidth = 168;
-        int buttonHeight = 26;
+        int buttonHeight = 25;
         int buttonX = centerX - buttonWidth / 2;
-        int buttonStartY = startY + 46;
-        int spacing = 32;
+        int buttonStartY = startY + 64;
+        int spacing = 30;
 
         // 1. Resume Button
         this.resumeButton = new CustomPauseButton(buttonX, buttonStartY, buttonWidth, buttonHeight,
@@ -174,7 +193,7 @@ public class CustomPauseScreen extends Screen {
         graphics.pose().popMatrix();
 
         int cardWidth = 200;
-        int cardHeight = 250;
+        int cardHeight = 254;
         int startX = centerX - cardWidth / 2;
         int startY = centerY - cardHeight / 2;
 
@@ -194,16 +213,29 @@ public class CustomPauseScreen extends Screen {
         ModernGuiUtils.drawOutline(graphics, startX, startY, cardWidth, cardHeight, ModernGuiUtils.COLOR_CARD_BORDER);
 
         // Top Header Bar
-        int headerH = 38;
+        int headerH = 56;
         ModernGuiUtils.drawRect(graphics, startX, startY, cardWidth, headerH, ModernGuiUtils.COLOR_SIDEBAR_BG);
         ModernGuiUtils.drawRect(graphics, startX, startY + headerH - 1, cardWidth, 1, ModernGuiUtils.getAccentColor());
 
-        // Header Title & Version
-        graphics.centeredText(this.font, Component.literal("ALPAKA ADDONS"), centerX, startY + 8, ModernGuiUtils.COLOR_TEXT_PRIMARY);
+        // Mod Logo
+        ensureModIconRegistered();
+        int iconSize = 34;
+        int iconX = centerX - iconSize / 2;
+        int iconY = startY + 5;
+        graphics.blit(RenderPipelines.GUI_TEXTURED, MOD_ICON_ID, iconX, iconY, 0.0f, 0.0f, iconSize, iconSize, 128, 128, 128, 128);
 
-        String status = (this.minecraft != null && this.minecraft.isSingleplayer()) ? "Singleplayer" : "Multiplayer";
+        // Subtitle: User & Status (IP on server, Singleplayer in local world)
+        String status = "Singleplayer";
+        if (this.minecraft != null && !this.minecraft.isSingleplayer()) {
+            ServerData serverData = this.minecraft.getCurrentServer();
+            if (serverData != null && serverData.ip != null && !serverData.ip.isBlank()) {
+                status = serverData.ip;
+            } else {
+                status = "Multiplayer";
+            }
+        }
         String user = (this.minecraft != null && this.minecraft.getUser() != null) ? this.minecraft.getUser().getName() : "Player";
-        graphics.centeredText(this.font, Component.literal(user + " • " + status), centerX, startY + 22, ModernGuiUtils.COLOR_TEXT_MUTED);
+        graphics.centeredText(this.font, Component.literal(user + " • " + status), centerX, startY + 42, ModernGuiUtils.COLOR_TEXT_MUTED);
 
         graphics.pose().popMatrix();
     }

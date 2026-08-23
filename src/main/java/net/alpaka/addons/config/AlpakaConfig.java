@@ -110,6 +110,18 @@ public class AlpakaConfig {
     public int blockFillColor = 0x440000FF; // Default semi-transparent blue
     public boolean blockHideOnEtherwarp = false;
 
+    // Inventory HUD. Shows the 27 main-inventory slots on screen; position and scale are set in
+    // the HUD editor, or it can ride directly above the hotbar.
+    public boolean inventoryHudEnabled = false;
+    public int inventoryHudX = 10;
+    public int inventoryHudY = 10;
+    public float inventoryHudScale = 1.0f;
+    public boolean inventoryHudAttachToHotbar = true;
+    public boolean inventoryHudAlwaysVisible = true;
+    public boolean inventoryHudShowOnItemChange = false;
+    /** Backdrop strength behind the slots, in percent. 0 leaves only the accent frame. */
+    public float inventoryHudBackgroundOpacity = 70.0f;
+
     // Chat options
     public boolean expandChatHistory = true;
 
@@ -390,6 +402,7 @@ public class AlpakaConfig {
         this.blockFillEnabled = false;
         this.blockHideOnEtherwarp = false;
         this.expandChatHistory = false;
+        this.inventoryHudEnabled = false;
         this.itemSizeFeatureEnabled = false;
         this.itemSwayDisabled = false;
         this.itemSwingTranslationDisabled = false;

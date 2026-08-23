@@ -5,7 +5,7 @@ public enum ConfigCategory {
     VISUALS("Visuals & Rendering", "Visual effects, fullbright, snowflakes & highlights"),
     VIEWMODEL("Item Viewmodel", "Hand positioning, scaling, rotations & swing animations"),
     BLOCK_OVERLAY("Block Overlay", "Custom block outline, colors, chroma & fill effects"),
-    PLAYER_MODEL("Player Model HUD", "Configure 3D player character preview on HUD"),
+    CUSTOM_HUD("Custom HUD", "On-screen overlays: player model preview & inventory readout"),
     SKYBLOCK("Skyblock", "Hypixel Skyblock utilities & slayer drop trackers"),
     SOUND_MISC("Sound & Utility", "Custom sounds, volume & escape menu settings");
 

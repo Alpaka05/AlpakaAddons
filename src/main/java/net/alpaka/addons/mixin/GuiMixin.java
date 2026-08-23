@@ -1,5 +1,6 @@
 package net.alpaka.addons.mixin;
 
+import net.alpaka.addons.features.inventoryhud.InventoryHudRenderer;
 import net.alpaka.addons.features.playermodel.PlayerModelRenderer;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.Gui;
@@ -19,5 +20,6 @@ public class GuiMixin {
         PlayerModelRenderer.render(graphicsExtractor, deltaTracker);
         WorldAgeHudRenderer.render(graphicsExtractor, deltaTracker);
         SlayerHudRenderer.render(graphicsExtractor, deltaTracker);
+        InventoryHudRenderer.render(graphicsExtractor, deltaTracker);
     }
 }

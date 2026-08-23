@@ -28,6 +28,17 @@ object SlayerHudRenderer {
     /** Gap between the label column and the value column, in unscaled pixels. */
     private const val LABEL_GAP = 5
 
+    /**
+     * Gap between the bold title and the pause note beside it, in unscaled pixels.
+     *
+     * Wider than [LABEL_GAP] on purpose. The title is the only bold row, and bold glyphs carry an
+     * extra pixel of advance plus a second offset draw, so the same numeric gap that looks right
+     * after a regular label reads as the pause note touching the word "Slayer". It is also its own
+     * constant rather than reusing the label column, so the spacing no longer depends on whichever
+     * stat label happens to be widest.
+     */
+    private const val TITLE_GAP = 14
+
     /** Height of one glyph row, used for the last line's contribution to the total height. */
     private const val GLYPH_HEIGHT = 9
 
@@ -47,8 +58,18 @@ object SlayerHudRenderer {
     private const val COLOR_GOOD = 0xFF55FF55.toInt()
     private const val COLOR_PAUSED = 0xFFFF5555.toInt()
 
-    /** One rendered row: a label, a value, and the colour the value is drawn in. */
-    data class Line(val label: String, val value: String, val valueColor: Int)
+    /**
+     * One rendered row: a label, a value, and the colour the value is drawn in.
+     *
+     * [spansColumns] marks a row that is prose rather than a label/value pair - the title and its
+     * pause note. Such a row is laid out from its own width instead of the shared value column.
+     */
+    data class Line(
+        val label: String,
+        val value: String,
+        val valueColor: Int,
+        val spansColumns: Boolean = false
+    )
 
     /**
      * A laid-out HUD, cached between rebuilds.
@@ -60,7 +81,9 @@ object SlayerHudRenderer {
         val rows: List<Line>,
         val labelWidth: Int,
         val unscaledWidth: Int,
-        val unscaledHeight: Int
+        val unscaledHeight: Int,
+        /** Where each row's value starts, parallel to [rows]. Precomputed to keep drawing measure-free. */
+        val valueXs: IntArray
     )
 
     private var cached: Layout? = null
@@ -117,19 +140,42 @@ object SlayerHudRenderer {
         val labelWidth: Int
         val width: Int
         val height: Int
+        val valueXs: IntArray
         if (rows.isEmpty() || font == null) {
             labelWidth = 0
             width = 0
             height = 0
+            valueXs = IntArray(0)
         } else {
+            // Spanning rows are excluded from the label column deliberately: the title is by far the
+            // widest label, and letting it set the column pushed every stat value across the HUD to
+            // clear a name none of them line up with.
             // Measured without concatenating a spacer onto every label, which would allocate a
             // throwaway string per row per rebuild.
-            labelWidth = rows.maxOf { font.width(it.label) } + LABEL_GAP
-            width = rows.maxOf { labelWidth + font.width(it.value) }
+            var labelMax = 0
+            for (row in rows) {
+                if (row.spansColumns) continue
+                val measured = font.width(row.label)
+                if (measured > labelMax) labelMax = measured
+            }
+            labelWidth = if (labelMax > 0) labelMax + LABEL_GAP else 0
+
+            valueXs = IntArray(rows.size)
+            var widest = 0
+            for (index in rows.indices) {
+                val row = rows[index]
+                val labelEnd = font.width(row.label)
+                val valueX = if (row.spansColumns) labelEnd + TITLE_GAP else labelWidth
+                valueXs[index] = valueX
+
+                val rowWidth = if (row.value.isEmpty()) labelEnd else valueX + font.width(row.value)
+                if (rowWidth > widest) widest = rowWidth
+            }
+            width = widest
             height = (rows.size - 1) * LINE_HEIGHT + GLYPH_HEIGHT
         }
 
-        val built = Layout(rows, labelWidth, width, height)
+        val built = Layout(rows, labelWidth, width, height, valueXs)
         cached = built
         cachedAtMs = now
         cachedType = type
@@ -155,13 +201,21 @@ object SlayerHudRenderer {
         if (cfg.slayerHudShowTitle) {
             // Naming the reason matters: "away" and "left area" are states the player can fix, and a
             // bare "(paused)" would leave them guessing which one stopped the clock.
+            // No leading space: the separation is TITLE_GAP now, so a space here would double it.
             val suffix = if (preview) "" else when (SlayerSessionTracker.pauseReason()) {
-                SlayerSessionTracker.PauseReason.MANUAL -> " (held)"
-                SlayerSessionTracker.PauseReason.IDLE -> " (away)"
-                SlayerSessionTracker.PauseReason.OUTSIDE_AREA -> " (left area)"
+                SlayerSessionTracker.PauseReason.MANUAL -> "(held)"
+                SlayerSessionTracker.PauseReason.IDLE -> "(away)"
+                SlayerSessionTracker.PauseReason.OUTSIDE_AREA -> "(left area)"
                 null -> ""
             }
-            rows.add(Line("${shown.colorCode}§l${shown.display} Slayer", suffix, if (suffix.isEmpty()) COLOR_TITLE else COLOR_PAUSED))
+            rows.add(
+                Line(
+                    "${shown.colorCode}§l${shown.display} Slayer",
+                    suffix,
+                    if (suffix.isEmpty()) COLOR_TITLE else COLOR_PAUSED,
+                    spansColumns = true
+                )
+            )
         }
 
         if (cfg.slayerHudShowTotalXp) {
@@ -244,10 +298,11 @@ object SlayerHudRenderer {
         graphics.pose().scale(scale, scale)
 
         var top = 0
-        for (line in laid.rows) {
+        for (index in laid.rows.indices) {
+            val line = laid.rows[index]
             graphics.text(font, Component.literal(line.label), 0, top, COLOR_LABEL)
             if (line.value.isNotEmpty()) {
-                graphics.text(font, Component.literal(line.value), laid.labelWidth, top, line.valueColor)
+                graphics.text(font, Component.literal(line.value), laid.valueXs[index], top, line.valueColor)
             }
             top += LINE_HEIGHT
         }

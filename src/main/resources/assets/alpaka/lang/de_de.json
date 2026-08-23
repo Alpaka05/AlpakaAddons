@@ -2,5 +2,6 @@
   "key.category.alpaka.addons": "Alpaka Addons",
   "category.alpaka.addons": "Alpaka Addons",
   "key.alpaka.zoom": "Zoom",
-  "key.alpaka.command_wheel": "Befehlsrad"
+  "key.alpaka.command_wheel": "Befehlsrad",
+  "key.alpaka.inventory_hud": "Inventar-HUD"
 }

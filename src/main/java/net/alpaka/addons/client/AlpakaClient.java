@@ -1,6 +1,7 @@
 package net.alpaka.addons.client;
 
 import net.alpaka.addons.client.hud.HudEditorScreen;
+import net.alpaka.addons.features.inventoryhud.InventoryHudFeature;
 import net.alpaka.addons.features.slayer.SlayerDropTracker;
 import net.alpaka.addons.utils.AlpakaDiagnostics;
 import net.alpaka.addons.features.sound.CustomSoundFeature;
@@ -20,6 +21,7 @@ public class AlpakaClient implements ClientModInitializer {
         SlayerDropTracker.registerEvents();
         ZoomFeature.register();
         CommandWheelFeature.register();
+        InventoryHudFeature.register();
         WorldAgeHudRenderer.registerEvents();
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {

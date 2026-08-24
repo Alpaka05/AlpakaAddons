@@ -67,7 +67,7 @@ public class AlpakaConfigRegistry {
                 "smooth perspective camera transition f5 third person first person"));
 
         OPTIONS.add(new ConfigOption("disable_front_perspective", "Disable Front Perspective",
-                "Skips front 3rd-person view when pressing F5 so it only toggles between 1st person and 3rd person back.",
+                "F5 skips the front view and only toggles 1st and 3rd person.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.disableFrontPerspective,
                 v -> { AlpakaConfig.instance.disableFrontPerspective = v; AlpakaConfig.save(); },
@@ -84,7 +84,7 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Interfaces", ConfigCategory.VISUALS));
 
         OPTIONS.add(new ConfigOption("container_bg_opacity", "Container Background Opacity",
-                "Opacity of container background darkening (Default Minecraft: 75%, 100%: Fully Black, 0%: Disabled).",
+                "Darkening behind container GUIs. Vanilla is 75%, 0% is off.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.containerBgOpacity * 100.0f,
                 v -> { AlpakaConfig.instance.containerBgOpacity = v / 100.0f; AlpakaConfig.save(); },
@@ -99,7 +99,7 @@ public class AlpakaConfigRegistry {
                 "container background fade in smooth transition gui"));
 
         OPTIONS.add(new ConfigOption("container_bg_fade_duration", "Container Fade Speed",
-                "Duration of container background fade-in animation in ms.",
+                "Container fade-in duration in ms.",
                 ConfigCategory.VISUALS,
                 () -> (float) AlpakaConfig.instance.containerBgFadeInDurationMs,
                 v -> { AlpakaConfig.instance.containerBgFadeInDurationMs = Math.round(v); AlpakaConfig.save(); },
@@ -325,7 +325,7 @@ public class AlpakaConfigRegistry {
                 "always finish swing complete attack animation"));
 
         OPTIONS.add(new ConfigOption("item_viewmodel_reset", "Reset Viewmodel Settings",
-                "Restores every viewmodel and swing value above to its default. Saved presets are left untouched.",
+                "Resets every viewmodel and swing value. Presets are kept.",
                 ConfigCategory.VIEWMODEL,
                 "Reset",
                 parent -> Minecraft.getInstance().setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(
@@ -510,7 +510,7 @@ public class AlpakaConfigRegistry {
                 "ignore plants foliage grass flowers crops outline disable overlay"));
 
         OPTIONS.add(new ConfigOption("block_hide_on_etherwarp", "Hide While Aiming Etherwarp",
-                "Hides the overlay while sneaking with an Etherwarp item, so Skyblock teleport indicators stay clear.",
+                "Hides the overlay while sneaking with an Etherwarp item.",
                 ConfigCategory.BLOCK_OVERLAY,
                 () -> AlpakaConfig.instance.blockHideOnEtherwarp,
                 v -> { AlpakaConfig.instance.blockHideOnEtherwarp = v; AlpakaConfig.save(); },
@@ -573,28 +573,28 @@ public class AlpakaConfigRegistry {
                 "inventory hud overlay slots items show always screen backpack"));
 
         OPTIONS.add(new ConfigOption("inventory_hud_attach", "Attach Above Hotbar",
-                "Keeps the inventory centred directly above the hotbar so the two read as one block. Off = free position from the HUD editor.",
+                "Centres the inventory just above the hotbar. Off = free position.",
                 ConfigCategory.CUSTOM_HUD,
                 () -> AlpakaConfig.instance.inventoryHudAttachToHotbar,
                 v -> { AlpakaConfig.instance.inventoryHudAttachToHotbar = v; AlpakaConfig.save(); },
                 "inventory hud hotbar attach above merge dock position free"));
 
         OPTIONS.add(new ConfigOption("inventory_hud_always", "Always Visible",
-                "Keeps the inventory on screen permanently. Off = it stays hidden until the keybind opens it.",
+                "Keeps the inventory on screen. Off = only the keybind opens it.",
                 ConfigCategory.CUSTOM_HUD,
                 () -> AlpakaConfig.instance.inventoryHudAlwaysVisible,
                 v -> { AlpakaConfig.instance.inventoryHudAlwaysVisible = v; AlpakaConfig.save(); },
                 "inventory hud always visible permanent keybind toggle hidden"));
 
         OPTIONS.add(new ConfigOption("inventory_hud_on_change", "Show On Item Change",
-                "Slides the inventory up for a few seconds whenever an item is picked up or dropped.",
+                "Slides the inventory up briefly when an item is picked up or dropped.",
                 ConfigCategory.CUSTOM_HUD,
                 () -> AlpakaConfig.instance.inventoryHudShowOnItemChange,
                 v -> { AlpakaConfig.instance.inventoryHudShowOnItemChange = v; AlpakaConfig.save(); },
                 "inventory hud show on pickup drop item change peek temporary"));
 
         OPTIONS.add(new ConfigOption("inventory_hud_bg_opacity", "Background Opacity",
-                "How strongly the backdrop behind the slots is tinted. 0% leaves just the accent frame and the items.",
+                "Backdrop tint behind the slots. 0% leaves only the frame.",
                 ConfigCategory.CUSTOM_HUD,
                 () -> AlpakaConfig.instance.inventoryHudBackgroundOpacity,
                 v -> { AlpakaConfig.instance.inventoryHudBackgroundOpacity = v; AlpakaConfig.save(); },
@@ -604,7 +604,7 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("HUD Layout", ConfigCategory.CUSTOM_HUD));
 
         OPTIONS.add(new ConfigOption("player_model_hud_editor", "Configure HUD Position",
-                "Opens the HUD editor, where every HUD - including this avatar - can be dragged and resized.",
+                "Opens the HUD editor for moving and resizing every HUD.",
                 ConfigCategory.CUSTOM_HUD,
                 "Open HUD Editor",
                 parent -> Minecraft.getInstance().setScreen(new HudEditorScreen(parent)),
@@ -625,14 +625,14 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Slayer Session HUD", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("slayer_hud_enabled", "Enable Slayer Session HUD",
-                "Shows live session stats while a Slayer quest is active. Position it in the HUD editor.",
+                "Live session stats while a Slayer quest is active.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.slayerHudEnabled,
                 v -> { AlpakaConfig.instance.slayerHudEnabled = v; AlpakaConfig.save(); },
                 "slayer session hud stats xp bosses per hour timer rng dry streak skyblock"));
 
         OPTIONS.add(new ConfigOption("slayer_hud_lines", "Slayer HUD Lines",
-                "Pick which lines the Slayer HUD shows. Click to open, then tick the ones you want.",
+                "Pick which lines the Slayer HUD shows.",
                 ConfigCategory.SKYBLOCK,
                 java.util.List.of(
                         new ConfigOption.ToggleEntry("Slayer name (and paused state)",
@@ -666,7 +666,7 @@ public class AlpakaConfigRegistry {
                 "slayer hud lines toggle show hide xp bosses per hour session time rng dry streak average"));
 
         OPTIONS.add(new ConfigOption("slayer_hud_afk_pause", "Session Pause After Standing Still",
-                "How long to stand still before the session timer pauses. The whole idle stretch is removed, not just the part past this.",
+                "Idle time before the session timer pauses.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.slayerHudAfkPauseSeconds,
                 v -> { AlpakaConfig.instance.slayerHudAfkPauseSeconds = v; AlpakaConfig.save(); },
@@ -676,7 +676,7 @@ public class AlpakaConfigRegistry {
                 "slayer session timer pause afk idle stand still seconds duration threshold"));
 
         OPTIONS.add(new ConfigOption("slayer_hud_pause_outside_area", "Pause Session Outside Slayer Area",
-                "Pauses the session timer as soon as the sidebar shows you have left the slayer's area.",
+                "Pauses the session timer once you leave the slayer's area.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.slayerHudPauseOutsideArea,
                 v -> { AlpakaConfig.instance.slayerHudPauseOutsideArea = v; AlpakaConfig.save(); },
@@ -692,21 +692,21 @@ public class AlpakaConfigRegistry {
                 "world age day hud server days time skyblock color red orange green"));
 
         OPTIONS.add(new ConfigOption("world_age_hud_editor", "Configure World Age Position",
-                "Opens the HUD editor, where every HUD - including this one - can be dragged and resized.",
+                "Opens the HUD editor for moving and resizing every HUD.",
                 ConfigCategory.SKYBLOCK,
                 "Open HUD Editor",
                 parent -> Minecraft.getInstance().setScreen(new HudEditorScreen(parent)),
                 "world age position edit dragging hud screen drag move resize scale editor alpakahud"));
 
         OPTIONS.add(new ConfigOption("world_age_join_message_enabled", "Server Age Join Message",
-                "Shows a chat notification with the server age and recent visit status when joining a server.",
+                "Chat notice with the server age and recent visit status on join.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.worldAgeJoinMessageEnabled,
                 v -> { AlpakaConfig.instance.worldAgeJoinMessageEnabled = v; AlpakaConfig.save(); },
                 "world age server join chat message notification alert day time"));
 
         OPTIONS.add(new ConfigOption("world_age_recent_threshold", "Recent Visit Window",
-                "Time window threshold in seconds to report if you recently visited this server.",
+                "How recently you must have visited to be told about it.",
                 ConfigCategory.SKYBLOCK,
                 () -> (float) AlpakaConfig.instance.worldAgeRecentThresholdSec,
                 v -> { AlpakaConfig.instance.worldAgeRecentThresholdSec = Math.round(v); AlpakaConfig.save(); },
@@ -724,14 +724,14 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Guild Bridge", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("bridge_bot_formatter", "Bridge Bot Formatter",
-                "Reformats guild messages relayed from Discord so the real author is shown in front.",
+                "Reformats relayed Discord messages to show the real author first.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.bridgeBotFormatterEnabled,
                 v -> { AlpakaConfig.instance.bridgeBotFormatterEnabled = v; AlpakaConfig.save(); },
                 "bridge bot discord guild chat relay formatter format author webhook"));
 
         OPTIONS.add(new ConfigOption("bridge_bot_name", "Bridge Bot Name",
-                "The in-game name of the account that relays Discord messages into guild chat.",
+                "In-game name of the relay account.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.bridgeBotName,
                 v -> { AlpakaConfig.instance.bridgeBotName = v; },
@@ -741,7 +741,7 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Mob Highlights", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("pangolin_highlight_enabled", "Highlight Pangolins",
-                "Outlines Pangolins on Torrhus Canyon with the vanilla glowing effect, but only while they are in your line of sight.",
+                "Outlines Pangolins in Torrhus Canyon, only in your line of sight.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.pangolinHighlightEnabled,
                 v -> { AlpakaConfig.instance.pangolinHighlightEnabled = v; AlpakaConfig.save(); },
@@ -760,7 +760,7 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Damage Display", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("only_crit_damage", "Only Show Crit Damage",
-                "Hides non-crit, fire, poison, and secondary ability damage nametags in Skyblock, keeping only critical hits.",
+                "Hides non-crit, fire, poison and ability damage tags in Skyblock.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.onlyCritDamageEnabled,
                 v -> { AlpakaConfig.instance.onlyCritDamageEnabled = v; AlpakaConfig.save(); },
@@ -840,7 +840,7 @@ public class AlpakaConfigRegistry {
                 "player hurt sound damage hit audio custom"));
 
         OPTIONS.add(new ConfigOption("custom_sound_blaze_death", "Blaze Death Sound",
-                "Plays custom sound when a blaze you are fighting dies. Kills by other players are left alone.",
+                "Custom sound when a blaze you fought dies. Other kills are ignored.",
                 ConfigCategory.SOUND_MISC,
                 () -> AlpakaConfig.instance.customSoundBlazeDeath,
                 v -> { AlpakaConfig.instance.customSoundBlazeDeath = v; AlpakaConfig.save(); },
@@ -861,7 +861,7 @@ public class AlpakaConfigRegistry {
                 "successful hit crit critical attack sound audio custom"));
 
         OPTIONS.add(new ConfigOption("mute_vanilla_sounds_blaze_slayer", "Silence Game Audio in Blaze Slayer",
-                "Mutes all Minecraft and Hypixel sounds while a Blaze Slayer quest is active, so this mod's own cues can be heard. Alpaka sounds still play.",
+                "Mutes game audio during a Blaze Slayer quest. Mod sounds still play.",
                 ConfigCategory.SOUND_MISC,
                 () -> AlpakaConfig.instance.muteVanillaSoundsInBlazeSlayer,
                 v -> { AlpakaConfig.instance.muteVanillaSoundsInBlazeSlayer = v; AlpakaConfig.save(); },
@@ -870,14 +870,14 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Low HP Warning", ConfigCategory.SOUND_MISC));
 
         OPTIONS.add(new ConfigOption("custom_sound_low_hp_heartbeat", "Low HP Heartbeat Sound",
-                "Plays low health heartbeat sound when below configured HP percentage in survival mode.",
+                "Heartbeat sound when your health drops below the threshold.",
                 ConfigCategory.SOUND_MISC,
                 () -> AlpakaConfig.instance.customSoundLowHpHeartbeat,
                 v -> { AlpakaConfig.instance.customSoundLowHpHeartbeat = v; AlpakaConfig.save(); },
                 "low hp health heartbeat sound survival audio custom lowhp pulse alert"));
 
         OPTIONS.add(new ConfigOption("low_hp_heartbeat_threshold", "Heartbeat HP Threshold",
-                "Percentage of max health at which low HP heartbeat sound starts playing.",
+                "Health percentage at which the heartbeat starts.",
                 ConfigCategory.SOUND_MISC,
                 () -> AlpakaConfig.instance.lowHpHeartbeatThreshold * 100.0f,
                 v -> { AlpakaConfig.instance.lowHpHeartbeatThreshold = v / 100.0f; AlpakaConfig.save(); },
@@ -887,7 +887,7 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Utility", ConfigCategory.SOUND_MISC));
 
         OPTIONS.add(new ConfigOption("command_wheel_custom_commands", "Quick Command Menu",
-                "Add, edit, or remove custom commands for the quick command overlay.",
+                "Add, edit or remove the quick command entries.",
                 ConfigCategory.SOUND_MISC,
                 "Edit Commands",
                 parent -> Minecraft.getInstance().setScreen(new net.alpaka.addons.client.CommandWheelConfigScreen(parent)),

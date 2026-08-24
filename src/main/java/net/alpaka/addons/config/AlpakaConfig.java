@@ -122,6 +122,10 @@ public class AlpakaConfig {
     /** Backdrop strength behind the slots, in percent. 0 leaves only the accent frame. */
     public float inventoryHudBackgroundOpacity = 70.0f;
 
+    // Guild bridge-bot chat formatting. The name is the in-game account that relays Discord.
+    public boolean bridgeBotFormatterEnabled = false;
+    public String bridgeBotName = "";
+
     // Chat options
     public boolean expandChatHistory = true;
 
@@ -403,6 +407,7 @@ public class AlpakaConfig {
         this.blockHideOnEtherwarp = false;
         this.expandChatHistory = false;
         this.inventoryHudEnabled = false;
+        this.bridgeBotFormatterEnabled = false;
         this.itemSizeFeatureEnabled = false;
         this.itemSwayDisabled = false;
         this.itemSwingTranslationDisabled = false;

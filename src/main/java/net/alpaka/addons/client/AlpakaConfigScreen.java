@@ -24,6 +24,9 @@ public class AlpakaConfigScreen extends Screen {
     // Search state
     private String searchQuery = "";
     private boolean searchFocused = false;
+
+    /** The inline text option currently accepting keystrokes, or null. */
+    private ConfigOption focusedTextOption = null;
     private long cursorBlinkTimer = 0L;
 
     // Scrolling & Layout
@@ -82,6 +85,9 @@ public class AlpakaConfigScreen extends Screen {
     private static final int DROPDOWN_BOTTOM_PAD = 6;
 
     private static final int CHECKBOX_SIZE = 11;
+
+    /** Cap on an inline text option's value, long enough for any account name. */
+    private static final int MAX_TEXT_OPTION_LENGTH = 32;
 
     /**
      * Vertical space one option occupies, expansion included.
@@ -337,7 +343,8 @@ public class AlpakaConfigScreen extends Screen {
 
                         // Right Control Widgets (Compact sizing to fit smaller panel)
                         int widgetW = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 32 :
-                                      (opt.getType() == ConfigOption.Type.ACTION ? (opt.getId().contains("color") ? 38 : 80) : 90);
+                                      (opt.getType() == ConfigOption.Type.TEXT ? 120 :
+                                      (opt.getType() == ConfigOption.Type.ACTION ? (opt.getId().contains("color") ? 38 : 80) : 90));
                         int widgetH = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 15 : 18;
                         int widgetX = contentX + 14 + cardW - widgetW - 10;
                         int widgetY = startOptionY + (cardH - widgetH) / 2;
@@ -370,6 +377,10 @@ public class AlpakaConfigScreen extends Screen {
                             // the arrow points, so a collapsed dropdown still says what it contains.
                             String summary = opt.getEnabledEntryCount() + "/" + opt.getEntryCount() + (opt.isExpanded() ? " ▲" : " ▼");
                             ModernGuiUtils.drawModernButton(graphics, this.font, widgetX, widgetY, widgetW, widgetH, summary, isWidgetHovered, opt.isExpanded());
+                        } else if (opt.getType() == ConfigOption.Type.TEXT) {
+                            boolean isWidgetHovered = mouseX >= widgetX && mouseX <= widgetX + widgetW && mouseY >= widgetY && mouseY <= widgetY + widgetH && mouseY >= clipY && mouseY <= clipY + clipH;
+                            ModernGuiUtils.drawModernTextField(graphics, this.font, widgetX, widgetY, widgetW, widgetH,
+                                    opt.getText(), opt.getPlaceholder(), focusedTextOption == opt, isWidgetHovered);
                         } else if (opt.getType() == ConfigOption.Type.ACTION) {
                             boolean isWidgetHovered = mouseX >= widgetX && mouseX <= widgetX + widgetW && mouseY >= widgetY && mouseY <= widgetY + widgetH && mouseY >= clipY && mouseY <= clipY + clipH;
 
@@ -439,6 +450,11 @@ public class AlpakaConfigScreen extends Screen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        // Released up front: any click that then lands on a text field re-focuses it below, and
+        // every other click - sidebar, toggle, backdrop - should drop the caret.
+        ConfigOption previouslyFocusedText = focusedTextOption;
+        focusedTextOption = null;
+        if (previouslyFocusedText != null) net.alpaka.addons.config.AlpakaConfig.save();
         double mouseX = event.x();
         double mouseY = event.y();
 
@@ -524,8 +540,23 @@ public class AlpakaConfigScreen extends Screen {
                     continue;
                 }
 
+                if (opt.getType() == ConfigOption.Type.TEXT) {
+                    int tw = 120;
+                    int th = 18;
+                    int tx = contentX + 14 + cardW - tw - 10;
+                    int ty = startOptionY + (cardH - th) / 2;
+                    if (mouseX >= tx && mouseX <= tx + tw && mouseY >= ty && mouseY <= ty + th) {
+                        playPloppSound();
+                        focusedTextOption = opt;
+                        searchFocused = false;
+                        cursorBlinkTimer = System.currentTimeMillis();
+                        return true;
+                    }
+                }
+
                 int widgetW = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 32 :
-                              (opt.getType() == ConfigOption.Type.ACTION ? (opt.getId().contains("color") ? 38 : 80) : 90);
+                              (opt.getType() == ConfigOption.Type.TEXT ? 120 :
+                              (opt.getType() == ConfigOption.Type.ACTION ? (opt.getId().contains("color") ? 38 : 80) : 90));
                 int widgetH = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 16 : 18;
                 int widgetX = contentX + 14 + cardW - widgetW - 10;
                 int widgetY = startOptionY + (cardH - widgetH) / 2;
@@ -637,6 +668,17 @@ public class AlpakaConfigScreen extends Screen {
 
     @Override
     public boolean charTyped(CharacterEvent event) {
+        if (focusedTextOption != null) {
+            int codePoint = event.codepoint();
+            if (codePoint >= 32 && codePoint != 127) {
+                String current = focusedTextOption.getText();
+                if (current.length() < MAX_TEXT_OPTION_LENGTH) {
+                    focusedTextOption.setText(current + (char) codePoint);
+                }
+            }
+            return true;
+        }
+
         if (searchFocused) {
             int codePoint = event.codepoint();
             if (codePoint >= 32 && codePoint != 127) {
@@ -659,6 +701,20 @@ public class AlpakaConfigScreen extends Screen {
             this.searchFocused = true;
             this.cursorBlinkTimer = System.currentTimeMillis();
             return true;
+        }
+
+        if (focusedTextOption != null) {
+            if (event.key() == 259) { // GLFW_KEY_BACKSPACE
+                String current = focusedTextOption.getText();
+                if (!current.isEmpty()) focusedTextOption.setText(current.substring(0, current.length() - 1));
+                return true;
+            }
+            // Escape and Enter both just commit and let go; the value is already written through.
+            if (event.key() == 256 || event.key() == 257 || event.key() == 335) {
+                focusedTextOption = null;
+                net.alpaka.addons.config.AlpakaConfig.save();
+                return true;
+            }
         }
 
         if (searchFocused) {

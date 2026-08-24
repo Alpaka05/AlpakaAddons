@@ -175,5 +175,34 @@ public class ModernGuiUtils {
         int textY = y + (height - 8) / 2;
         graphics.text(font, Component.literal(label), textX, textY, textColor);
     }
+
+    /**
+     * An inline text field, styled like the config screen's own search box so the two read as the
+     * same control. Draws its own blinking caret while focused, since it is not a real widget.
+     */
+    public static void drawModernTextField(GuiGraphicsExtractor graphics, Font font, int x, int y, int width, int height,
+                                           String value, String placeholder, boolean isFocused, boolean isHovered) {
+        int border = isFocused ? getAccentColor() : (isHovered ? getAccentDimColor() : COLOR_CARD_BORDER);
+        drawRect(graphics, x, y, width, height, COLOR_CARD_BG);
+        drawOutline(graphics, x, y, width, height, border);
+
+        boolean empty = value == null || value.isEmpty();
+        String shown = empty ? placeholder : value;
+        int textColor = empty ? COLOR_TEXT_DARK : COLOR_TEXT_PRIMARY;
+
+        // Trimmed from the left, so the end being typed stays visible instead of scrolling away.
+        int maxWidth = width - 8;
+        while (shown.length() > 1 && font.width(shown) > maxWidth) {
+            shown = shown.substring(1);
+        }
+
+        int textY = y + (height - 8) / 2;
+        graphics.text(font, Component.literal(shown), x + 4, textY, textColor);
+
+        if (isFocused && (System.currentTimeMillis() / 500) % 2 == 0) {
+            int caretX = x + 4 + (empty ? 0 : font.width(shown));
+            drawRect(graphics, Math.min(caretX, x + width - 2), textY - 1, 1, 10, getAccentColor());
+        }
+    }
 }
 

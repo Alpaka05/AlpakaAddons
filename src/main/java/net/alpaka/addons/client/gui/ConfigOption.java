@@ -14,7 +14,8 @@ public class ConfigOption {
         SLIDER,
         ACTION,
         HEADER,
-        DROPDOWN
+        DROPDOWN,
+        TEXT
     }
 
     /**
@@ -41,6 +42,10 @@ public class ConfigOption {
             if (setter != null) setter.accept(!get());
         }
     }
+
+    private Supplier<String> textGetter;
+    private Consumer<String> textSetter;
+    private String placeholder = "";
 
     private final String id;
     private final String title;
@@ -230,4 +235,37 @@ public class ConfigOption {
 
     public boolean isDragging() { return isDragging; }
     public void setDragging(boolean dragging) { isDragging = dragging; }
+
+    /**
+     * A free-text option, edited inline in the config list.
+     *
+     * Exists because some settings are a name rather than a choice - the bridge bot's account, say -
+     * and routing those through a button that opens its own screen makes typing one word a
+     * three-click detour.
+     */
+    public ConfigOption(String id, String title, String description, ConfigCategory category,
+                        Supplier<String> getter, Consumer<String> setter,
+                        String placeholder, String keywords) {
+        this.id = id;
+        this.title = title;
+        this.description = description;
+        this.category = category;
+        this.type = Type.TEXT;
+        this.textGetter = getter;
+        this.textSetter = setter;
+        this.placeholder = placeholder;
+        this.keywords = keywords;
+    }
+
+    public String getText() {
+        return textGetter != null ? textGetter.get() : "";
+    }
+
+    public void setText(String value) {
+        if (textSetter != null) textSetter.accept(value);
+    }
+
+    public String getPlaceholder() {
+        return placeholder;
+    }
 }

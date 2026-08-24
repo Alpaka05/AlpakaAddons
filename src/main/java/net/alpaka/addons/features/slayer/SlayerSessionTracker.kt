@@ -92,6 +92,11 @@ object SlayerSessionTracker {
     private var cachedSidebarLines: List<String> = emptyList()
     private var areaCheckedAtMs = 0L
 
+    /** Island name refresh interval. Reading it walks every tab-list entry, so not per frame. */
+    private const val ISLAND_REFRESH_MS = 1_000L
+    private var cachedIsland: String? = null
+    private var islandCheckedAtMs = 0L
+
     /**
      * Last "Stored XP" seen on the RNG meter, per slayer.
      *
@@ -177,6 +182,35 @@ object SlayerSessionTracker {
         if (type.slayerAreas.isEmpty()) return false
         if (cachedSidebarLines.isEmpty() && SkyblockUtils.getSidebarLines().isEmpty()) return false
         return !isInSlayerArea(type)
+    }
+
+    /** The Skyblock island the player is on, re-read at most once a second. */
+    fun currentIsland(): String? {
+        val now = System.currentTimeMillis()
+        if (now - islandCheckedAtMs >= ISLAND_REFRESH_MS) {
+            islandCheckedAtMs = now
+            cachedIsland = SkyblockUtils.getCurrentIsland()
+        }
+        return cachedIsland
+    }
+
+    /**
+     * Whether the slayer HUD belongs on screen at all.
+     *
+     * Two conditions, both about existence rather than pausing - this is deliberately independent of
+     * the AFK and leave-the-area pause settings, which only stop the clock on a HUD that is already
+     * up.
+     *
+     *  - The session must have begun. A slayer quest survives logging out, so one is very often
+     *    already sitting on the sidebar the moment the player joins, with no boss fought and nothing
+     *    worth reporting. [Session.started] is only set once the player has been seen in the
+     *    slayer's own zone with a quest up, or has actually killed a boss.
+     *  - The player must be on that slayer's island. Anywhere on Crimson Isle counts for Blaze, not
+     *    just the Smoldering Tomb, so this is a coarser test than [isInSlayerArea].
+     */
+    fun shouldShowHud(type: SlayerType): Boolean {
+        if (!session(type).started) return false
+        return type.isOnSlayerIsland(currentIsland())
     }
 
     /** This slayer's session, creating it on first use. */
@@ -312,6 +346,8 @@ object SlayerSessionTracker {
         manuallyPaused = false
         cachedSidebarLines = emptyList()
         areaCheckedAtMs = 0L
+        cachedIsland = null
+        islandCheckedAtMs = 0L
     }
 
     /**

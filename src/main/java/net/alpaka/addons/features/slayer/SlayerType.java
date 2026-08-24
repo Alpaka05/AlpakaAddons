@@ -9,26 +9,26 @@ package net.alpaka.addons.features.slayer;
  * quest is identified - the sidebar says "Inferno Demonlord IV", never "Blaze Slayer".
  */
 public enum SlayerType {
-    ZOMBIE("Zombie", "§2", "Warden Heart",
+    ZOMBIE("Zombie", "§2", "Warden Heart", "Hub",
             new String[]{"Graveyard", "Revenant Cave", "Crypts"},
             "Revenant Horror", "Atoned Horror"),
-    SPIDER("Spider", "§4", "Primordial Eye",
+    SPIDER("Spider", "§4", "Primordial Eye", "Spider's Den",
             new String[]{"Spider Mound", "Arachne's Burrow", "Arachne's Sanctuary", "Burning Desert"},
             "Tarantula Broodfather", "Conjoined Brood"),
-    WOLF("Wolf", "§f", "Overflux Capacitor",
+    WOLF("Wolf", "§f", "Overflux Capacitor", "The Park",
             new String[]{"Ruins", "Howling Cave", "Soul Cave", "Spirit Cave"},
             "Sven Packmaster"),
-    ENDERMAN("Enderman", "§5", "Judgement Core",
+    ENDERMAN("Enderman", "§5", "Judgement Core", "The End",
             new String[]{"Void Sepulture", "Zealot Bruiser Hideout", "Dragon's Nest"},
             "Voidgloom Seraph"),
-    BLAZE("Blaze", "§e", "High Class Archfiend Dice",
+    BLAZE("Blaze", "§e", "High Class Archfiend Dice", "Crimson Isle",
             new String[]{"Smoldering Tomb"},
             "Inferno Demonlord"),
-    VAMPIRE("Vampire", "§c", "Unfanged Vampire Part",
+    VAMPIRE("Vampire", "§c", "Unfanged Vampire Part", "The Rift",
             new String[]{"Stillgore Château", "Oubliette"},
             "Bloodfiend", "Riftstalker Bloodfiend"),
     /** No such slayer exists on Hypixel; kept only so older configs still deserialize. */
-    GUARDIAN("Guardian", "§3", null, new String[0]);
+    GUARDIAN("Guardian", "§3", null, "", new String[0]);
 
     public final String display;
     public final String colorCode;
@@ -60,9 +60,24 @@ public enum SlayerType {
      */
     public final String[] slayerAreas;
 
+    /**
+     * The Skyblock island this slayer is fought on, as the player list writes it after "Area:".
+     *
+     * Distinct from {@link #slayerAreas}, which names the one zone the boss actually spawns in and
+     * is deliberately narrow so leaving it can pause the session. This is the whole island, used for
+     * the coarser question of whether the HUD belongs on screen at all - anywhere on Crimson Isle
+     * counts for Blaze, not just the Smoldering Tomb.
+     *
+     * Spellings are taken from SkyHanni's IslandType enum, which is the same string the player list
+     * carries, so they are exact rather than guessed. Empty means "unknown", which
+     * {@link #isOnSlayerIsland} treats as always matching so a missing entry cannot hide the HUD.
+     */
+    public final String island;
+
     public final String[] bossNames;
 
-    SlayerType(String display, String colorCode, String rngDropItem, String[] slayerAreas, String... bossNames) {
+    SlayerType(String display, String colorCode, String rngDropItem, String island, String[] slayerAreas, String... bossNames) {
+        this.island = island;
         this.display = display;
         this.colorCode = colorCode;
         this.rngDropItem = rngDropItem;
@@ -101,5 +116,19 @@ public enum SlayerType {
             }
         }
         return null;
+    }
+
+    /**
+     * Whether the given island is the one this slayer is fought on.
+     *
+     * Fails open on an unknown or unreadable island: a HUD that stays hidden because the player list
+     * changed shape is a worse failure than one that shows a moment early.
+     */
+    public boolean isOnSlayerIsland(String currentIsland) {
+        if (island == null || island.isEmpty()) return true;
+        if (currentIsland == null || currentIsland.isEmpty()) return true;
+        // Exact, as SkyHanni matches island names: a substring test would put "Hub" inside
+        // "Dungeon Hub" and show the Revenant HUD in the dungeon hub.
+        return currentIsland.equalsIgnoreCase(island);
     }
 }

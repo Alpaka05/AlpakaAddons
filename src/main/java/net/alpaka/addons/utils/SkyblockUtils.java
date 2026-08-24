@@ -1,6 +1,7 @@
 package net.alpaka.addons.utils;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.scores.DisplaySlot;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.PlayerScoreEntry;
@@ -108,5 +109,46 @@ public class SkyblockUtils {
     public static String cleanColor(String input) {
         if (input == null) return "";
         return input.replaceAll("§.", "").trim();
+    }
+
+    /**
+     * Prefixes Hypixel writes in front of the island name in the player list.
+     *
+     * Both forms taken from SkyHanni's tab-list widget, which matches
+     * {@code (Area|Dungeon): (?<island>.*)} - the dungeon variant is used inside the Catacombs,
+     * where the line reads "Dungeon: Catacombs" instead.
+     */
+    private static final String[] AREA_PREFIXES = {"Area:", "Dungeon:"};
+
+    /**
+     * The Skyblock island the player is on, or null when it cannot be read.
+     *
+     * The sidebar only ever names the current <em>zone</em> - "Smoldering Tomb", "Blazing Volcano" -
+     * so it cannot answer which island those belong to. Hypixel puts the island itself in the player
+     * list instead, which is why this reads from there.
+     *
+     * Purely a read of a list the client is already showing; nothing is requested from the server.
+     * Callers should cache: this walks every tab-list entry.
+     */
+    public static String getCurrentIsland() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.player.connection == null) return null;
+
+        try {
+            for (var info : mc.player.connection.getListedOnlinePlayers()) {
+                Component name = info.getTabListDisplayName();
+                if (name == null) continue;
+
+                String line = cleanColor(name.getString());
+                for (String prefix : AREA_PREFIXES) {
+                    int at = line.indexOf(prefix);
+                    if (at < 0) continue;
+
+                    String island = line.substring(at + prefix.length()).trim();
+                    if (!island.isEmpty()) return island;
+                }
+            }
+        } catch (Exception ignored) {}
+        return null;
     }
 }

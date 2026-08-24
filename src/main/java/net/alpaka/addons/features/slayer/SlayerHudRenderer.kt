@@ -277,6 +277,10 @@ object SlayerHudRenderer {
         // No quest on the sidebar means there is no slayer being run, and so nothing to report.
         val type = SlayerQuestDetector.currentOrRecent() ?: return
 
+        // Only once the session has actually begun, and only on that slayer's own island. Separate
+        // from the pause settings: those stop the clock, this decides whether the HUD exists.
+        if (!SlayerSessionTracker.shouldShowHud(type)) return
+
         // Clamped so a GUI-scale change cannot leave the HUD off screen; the stored position is
         // untouched, so returning to the old scale restores it exactly.
         val screenWidth = mc.window.guiScaledWidth

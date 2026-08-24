@@ -89,7 +89,7 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
 
         // Only the element actually being dragged should count as hovered, so the highlight does
         // not jump to a HUD that happens to slide under the cursor mid-drag.
-        val active = dragging ?: HudRegistry.topmostAt(mouseX.toDouble(), mouseY.toDouble())
+        val active = dragging ?: HudRegistry.topmostAt(mouseX.toDouble(), mouseY.toDouble(), this.width, this.height)
 
         for (element in HudRegistry.ELEMENTS) {
             drawElement(graphics, element, element === active)
@@ -100,7 +100,7 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
         // Draw the HUD exactly as it appears in-game, then annotate it.
         element.render(graphics)
 
-        val box = element.bounds()
+        val box = element.visibleBounds(this.width, this.height)
         val disabled = !element.isFeatureEnabled
 
         if (disabled) {
@@ -136,8 +136,8 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
     private fun statusLine(): Component {
         val element = selected ?: return NO_SELECTION
 
-        val x = element.anchorX
-        val y = element.anchorY
+        val x = element.visibleAnchorX(this.width, this.height)
+        val y = element.visibleAnchorY(this.width, this.height)
         val scale = element.scaleValue()
 
         var status = cachedStatus
@@ -154,12 +154,14 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
 
     override fun mouseClicked(event: MouseButtonEvent, doubleClick: Boolean): Boolean {
         if (event.button() == 0) {
-            val hit = HudRegistry.topmostAt(event.x(), event.y())
+            val hit = HudRegistry.topmostAt(event.x(), event.y(), this.width, this.height)
             if (hit != null) {
                 select(hit)
                 dragging = hit
-                dragOffsetX = event.x() - hit.anchorX
-                dragOffsetY = event.y() - hit.anchorY
+                // Grabbed relative to where it is actually drawn, so a clamped element does not
+                // jump back to its stored off-screen position on the first pixel of movement.
+                dragOffsetX = event.x() - hit.visibleAnchorX(this.width, this.height)
+                dragOffsetY = event.y() - hit.visibleAnchorY(this.width, this.height)
                 return true
             }
         }
@@ -194,7 +196,7 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
 
         // Resize whatever is under the cursor; fall back to the selection so the wheel still works
         // while pointing at empty space.
-        val element = HudRegistry.topmostAt(mouseX, mouseY)
+        val element = HudRegistry.topmostAt(mouseX, mouseY, this.width, this.height)
             ?: selected
             ?: return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)
 

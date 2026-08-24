@@ -48,8 +48,23 @@ public class AlpakaConfigScreen extends Screen {
     private ConfigOption draggedOption = null;
 
     public AlpakaConfigScreen(Screen parent) {
+        this(parent, "");
+    }
+
+    /**
+     * Opens with the search box already filled, for {@code /aa <term>}.
+     *
+     * The active category is left on ALL, which holds every option, so a term typed at the command
+     * line lands on the widest possible result set instead of being narrowed by whichever tab
+     * happened to be showing.
+     */
+    public AlpakaConfigScreen(Screen parent, String initialSearch) {
         super(Component.literal("Alpaka Addons Config"));
         this.parent = parent;
+        this.searchQuery = initialSearch == null ? "" : initialSearch.trim();
+        if (!this.searchQuery.isEmpty()) {
+            ensureValidActiveCategory();
+        }
     }
 
     private List<ConfigCategory> getVisibleCategories() {

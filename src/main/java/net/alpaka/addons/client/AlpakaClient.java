@@ -25,57 +25,17 @@ public class AlpakaClient implements ClientModInitializer {
         WorldAgeHudRenderer.registerEvents();
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-            dispatcher.register(ClientCommands.literal("alpakaconfig")
-                .executes(context -> {
-                    Minecraft.getInstance().execute(() -> {
-                        Minecraft.getInstance().setScreen(new AlpakaConfigScreen(null));
-                    });
-                    return 1;
-                })
-            );
-
-            dispatcher.register(ClientCommands.literal("alpaka")
-                .executes(context -> {
-                    Minecraft.getInstance().execute(() -> {
-                        Minecraft.getInstance().setScreen(new AlpakaConfigScreen(null));
-                    });
-                    return 1;
-                })
-            );
-
-            dispatcher.register(ClientCommands.literal("alpakaddons")
-                .executes(context -> {
-                    Minecraft.getInstance().execute(() -> {
-                        Minecraft.getInstance().setScreen(new AlpakaConfigScreen(null));
-                    });
-                    return 1;
-                })
-            );
-
-            dispatcher.register(ClientCommands.literal("aa")
-                .executes(context -> {
-                    Minecraft.getInstance().execute(() -> {
-                        Minecraft.getInstance().setScreen(new AlpakaConfigScreen(null));
-                    });
-                    return 1;
-                })
-            );
-
-            dispatcher.register(ClientCommands.literal("alpakahud")
-                .executes(context -> {
-                    Minecraft.getInstance().execute(() -> {
-                        Minecraft.getInstance().setScreen(new HudEditorScreen(null));
-                    });
-                    return 1;
-                })
-            );
-
-            dispatcher.register(ClientCommands.literal("alpakadebug")
-                .executes(context -> {
-                    Minecraft.getInstance().execute(AlpakaDiagnostics::print);
-                    return 1;
-                })
-            );
+            // Every alias takes an optional search term: "/aa" opens the config as before, and
+            // "/aa snow" opens it with that already typed into the search box. greedyString is what
+            // lets the term contain spaces, since it swallows the rest of the line.
+            for (String alias : new String[]{"alpakaconfig", "alpaka", "alpakaddons", "aa"}) {
+                dispatcher.register(ClientCommands.literal(alias)
+                    .executes(context -> openConfig(""))
+                    .then(ClientCommands.argument("search", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
+                        .executes(context -> openConfig(
+                                com.mojang.brigadier.arguments.StringArgumentType.getString(context, "search"))))
+                );
+            }
 
             dispatcher.register(ClientCommands.literal("alpakaslayer")
                 .executes(context -> {
@@ -123,5 +83,12 @@ public class AlpakaClient implements ClientModInitializer {
                 })
             );
         });
+    }
+
+    /** Opens the config screen, optionally with a search term already applied. */
+    private static int openConfig(String search) {
+        Minecraft.getInstance().execute(() ->
+                Minecraft.getInstance().setScreen(new AlpakaConfigScreen(null, search)));
+        return 1;
     }
 }

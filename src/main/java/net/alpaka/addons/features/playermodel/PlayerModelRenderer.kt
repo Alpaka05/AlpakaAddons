@@ -135,7 +135,12 @@ object PlayerModelRenderer {
         }
         if (alpha <= ALPHA_EPSILON) return
 
-        val targetX = cfg.playerModelX
+        // Clamped so a GUI-scale change cannot strand the avatar off screen. The stored position
+        // is untouched, so dropping the scale back restores the original spot exactly.
+        val screenWidth = mc.window.guiScaledWidth
+        val screenHeight = mc.window.guiScaledHeight
+        val targetX = PlayerModelHudElement.visibleAnchorX(screenWidth, screenHeight)
+        val targetY = PlayerModelHudElement.visibleAnchorY(screenWidth, screenHeight)
         val scale = cfg.playerModelScale
 
         val x = if (alpha >= 1.0f) {
@@ -144,13 +149,12 @@ object PlayerModelRenderer {
             targetX
         } else {
             // Slide in from whichever horizontal edge the HUD sits closest to.
-            val screenWidth = mc.window.guiScaledWidth
             val startX = if (targetX < screenWidth / 2) -scale else screenWidth + scale
             val eased = 1.0f - (1.0f - alpha) * (1.0f - alpha) // ease-out quadratic
             (startX + (targetX - startX) * eased).toInt()
         }
 
-        renderPlayerModel(graphics, x, cfg.playerModelY, scale, player)
+        renderPlayerModel(graphics, x, targetY, scale, player)
     }
 
     private fun shouldShowModel(mc: Minecraft, player: LocalPlayer, cfg: AlpakaConfig): Boolean {

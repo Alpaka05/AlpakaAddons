@@ -67,7 +67,9 @@ object InventoryHudRenderer {
         if (open <= 0.001f) return
 
         val scale = cfg.inventoryHudScale
-        val box = footprint(cfg, mc)
+        // visibleBounds, not footprint: attached-to-hotbar is on screen by construction, but a
+        // freely positioned panel can be stranded by a GUI-scale change.
+        val box = InventoryHudElement.visibleBounds(mc.window.guiScaledWidth, mc.window.guiScaledHeight)
         drawPanel(graphics, box.x0, box.y0, scale, open)
     }
 

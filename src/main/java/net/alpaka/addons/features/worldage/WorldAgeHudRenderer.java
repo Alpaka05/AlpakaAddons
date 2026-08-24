@@ -211,7 +211,14 @@ public class WorldAgeHudRenderer {
             return;
         }
 
-        renderHud(graphics, AlpakaConfig.instance.worldAgeHudX, AlpakaConfig.instance.worldAgeHudY, AlpakaConfig.instance.worldAgeHudScale);
+        // Clamped so a GUI-scale change cannot leave the HUD off screen; the stored position is
+        // untouched, so returning to the old scale restores it exactly.
+        int screenWidth = mc.getWindow().getGuiScaledWidth();
+        int screenHeight = mc.getWindow().getGuiScaledHeight();
+        renderHud(graphics,
+                WorldAgeHudElement.INSTANCE.visibleAnchorX(screenWidth, screenHeight),
+                WorldAgeHudElement.INSTANCE.visibleAnchorY(screenWidth, screenHeight),
+                AlpakaConfig.instance.worldAgeHudScale);
     }
 
     public static void renderHud(GuiGraphicsExtractor graphics, int x, int y, float scale) {

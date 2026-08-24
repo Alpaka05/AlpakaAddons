@@ -25,6 +25,6 @@ object HudRegistry {
      * The element under the cursor, or null. Searches back to front so that when two boxes
      * overlap, the one drawn on top is the one you grab.
      */
-    fun topmostAt(mouseX: Double, mouseY: Double): HudElement? =
-        ELEMENTS.lastOrNull { it.bounds().contains(mouseX, mouseY) }
+    fun topmostAt(mouseX: Double, mouseY: Double, screenWidth: Int, screenHeight: Int): HudElement? =
+        ELEMENTS.lastOrNull { it.visibleBounds(screenWidth, screenHeight).contains(mouseX, mouseY) }
 }

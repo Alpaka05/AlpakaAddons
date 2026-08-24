@@ -277,7 +277,16 @@ object SlayerHudRenderer {
         // No quest on the sidebar means there is no slayer being run, and so nothing to report.
         val type = SlayerQuestDetector.currentOrRecent() ?: return
 
-        renderHud(graphics, cfg.slayerHudX, cfg.slayerHudY, cfg.slayerHudScale, type, preview = false)
+        // Clamped so a GUI-scale change cannot leave the HUD off screen; the stored position is
+        // untouched, so returning to the old scale restores it exactly.
+        val screenWidth = mc.window.guiScaledWidth
+        val screenHeight = mc.window.guiScaledHeight
+        renderHud(
+            graphics,
+            SlayerHudElement.visibleAnchorX(screenWidth, screenHeight),
+            SlayerHudElement.visibleAnchorY(screenWidth, screenHeight),
+            cfg.slayerHudScale, type, preview = false
+        )
     }
 
     /** Draws the HUD at an explicit position and size. Shared with the editor. */

@@ -70,4 +70,47 @@ interface HudElement {
 
     /** Current size formatted for the status line, e.g. `30x` or `1.25x`. */
     fun scaleLabel(): String
+
+    /**
+     * The box this element actually occupies, nudged so it lies fully on screen.
+     *
+     * Positions are stored as absolute pixels, so raising Minecraft's GUI scale shrinks the screen
+     * out from under them and an element configured near an edge ends up past it - invisible in
+     * game and unreachable in the editor, with no way back except lowering the scale again.
+     *
+     * The nudge is applied when drawing and hit-testing only; the stored position is left alone, so
+     * returning to the old GUI scale puts everything exactly back where it was.
+     */
+    fun visibleBounds(screenWidth: Int, screenHeight: Int): HudBounds {
+        val box = bounds()
+        val dx = clampShift(box.x0, box.x1, screenWidth)
+        val dy = clampShift(box.y0, box.y1, screenHeight)
+        if (dx == 0 && dy == 0) return box
+        return HudBounds(box.x0 + dx, box.y0 + dy, box.x1 + dx, box.y1 + dy)
+    }
+
+    /** Anchor X shifted by the same amount as [visibleBounds]. Never written back to the config. */
+    fun visibleAnchorX(screenWidth: Int, screenHeight: Int): Int {
+        val box = bounds()
+        return anchorX + clampShift(box.x0, box.x1, screenWidth)
+    }
+
+    /** Anchor Y shifted by the same amount as [visibleBounds]. Never written back to the config. */
+    fun visibleAnchorY(screenWidth: Int, screenHeight: Int): Int {
+        val box = bounds()
+        return anchorY + clampShift(box.y0, box.y1, screenHeight)
+    }
+}
+
+/**
+ * How far a span must move to sit inside `0..limit`.
+ *
+ * An element larger than the screen cannot fit either way, so it is pinned to the near edge -
+ * showing its start beats showing its middle with both ends cut off.
+ */
+private fun clampShift(low: Int, high: Int, limit: Int): Int = when {
+    high - low >= limit -> -low
+    low < 0 -> -low
+    high > limit -> limit - high
+    else -> 0
 }

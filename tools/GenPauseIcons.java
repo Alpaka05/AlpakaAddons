@@ -15,8 +15,11 @@ import javax.imageio.ImageIO;
  * Run it from the repository root, no build needed:
  *
  * <pre>
- *   java tools/GenPauseIcons.java                     # writes the sprite sheet
- *   java tools/GenPauseIcons.java preview.png         # ...and a magnified preview to look at
+ *   java tools/GenPauseIcons.java                        # rewrites the sprite sheet in place
+ *   java tools/GenPauseIcons.java "" preview.png         # ...and a magnified preview to look at
+ *
+ * The first argument is the sheet's destination and the second an optional preview; an empty first
+ * argument keeps the default location.
  * </pre>
  *
  * The sheet is one row of {@link #CELL}x{@link #CELL} cells. Cell order is what maps them onto
@@ -51,18 +54,24 @@ public class GenPauseIcons {
         ".##.......",
         ".........."};
 
-    /** Alpaka Config. A square hub with a bore, four teeth on the axes. */
+    /**
+     * Alpaka Config. A cog: a toothed ring rather than a filled disc.
+     *
+     * Hollow on purpose. A solid cog at this size carries half again as many lit pixels as this one
+     * and reads as a heavy blob next to the text; leaving the centre open, and a pixel of air around
+     * the outside, is what lets the teeth register as teeth.
+     */
     static final String[] GEAR = {
-        "....##....",
-        "....##....",
+        "..........",
+        "...#..#...",
         "..######..",
+        ".###..###.",
+        ".##....##.",
+        ".##....##.",
+        ".###..###.",
         "..######..",
-        "####..####",
-        "####..####",
-        "..######..",
-        "..######..",
-        "....##....",
-        "....##...."};
+        "...#..#...",
+        ".........."};
 
     /** Mods. A crate with a lid seam - a strap through the middle read as a window instead. */
     static final String[] BOX = {
@@ -121,7 +130,7 @@ public class GenPauseIcons {
     static final String[] NAMES = {"play", "gear", "box", "sliders", "book", "door"};
 
     public static void main(String[] args) throws Exception {
-        String sheetPath = args.length > 0 ? args[0] : DEFAULT_SHEET;
+        String sheetPath = args.length > 0 && !args[0].isEmpty() ? args[0] : DEFAULT_SHEET;
 
         BufferedImage sheet = new BufferedImage(CELL * ICONS.length, CELL, BufferedImage.TYPE_INT_ARGB);
         for (int i = 0; i < ICONS.length; i++) {
@@ -155,7 +164,8 @@ public class GenPauseIcons {
      * A magnified sheet on the menu's own background, with each icon also drawn at 1:1 and 3:1.
      *
      * Small pixel art is impossible to judge at actual size, and a stray pixel is invisible until
-     * it is a block on screen - the first two passes at the cog looked like a blob and a diamond.
+     * it is a block on screen - the cog this alpaca replaced took three passes to stop looking
+     * like a blob.
      */
     private static void writePreview(File out) throws Exception {
         int zoom = 14, pad = 10, labelHeight = 16;

@@ -417,7 +417,36 @@ public class AlpakaConfig {
         save();
     }
 
+    /**
+     * While set, {@link #save()} only records that a write is due instead of performing it.
+     *
+     * Every option setter saves, which is right for a click but wrong for a drag: a slider fires its
+     * setter on every mouse-move event, and each one serialised the whole config and wrote it to
+     * disk from the render thread. Holding the writes back for the length of the drag turns a few
+     * dozen file writes into one.
+     */
+    private static boolean deferSaves = false;
+    private static boolean saveDueAfterDefer = false;
+
+    /** Starts holding writes back. Must be paired with {@link #endDeferredSaves()}. */
+    public static void beginDeferredSaves() {
+        deferSaves = true;
+    }
+
+    /** Stops holding writes back, and performs the pending one if any setting changed meanwhile. */
+    public static void endDeferredSaves() {
+        deferSaves = false;
+        if (saveDueAfterDefer) {
+            saveDueAfterDefer = false;
+            save();
+        }
+    }
+
     public static void save() {
+        if (deferSaves) {
+            saveDueAfterDefer = true;
+            return;
+        }
         try (FileWriter writer = new FileWriter(FILE)) {
             GSON.toJson(instance, writer);
         } catch (Exception e) {

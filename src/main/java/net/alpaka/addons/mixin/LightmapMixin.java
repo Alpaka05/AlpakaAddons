@@ -53,10 +53,15 @@ public class LightmapMixin {
         }
 
         // render() returns immediately unless needsUpdate is set, and vanilla only sets it once per
-        // tick. Forcing it while fullbright is on - and for a short window after it is switched off,
-        // so the restored values actually get uploaded - is what makes both directions take effect
-        // straight away instead of lingering until something else invalidates the lightmap.
-        if (enabled || System.currentTimeMillis() < alpaka$forceUpdateUntilMs) {
+        // tick. Forcing it for a short window after the setting changes - in either direction - is
+        // what makes the toggle take effect straight away instead of lingering until something else
+        // invalidates the lightmap.
+        //
+        // Only within that window, though. Forcing it for as long as fullbright stayed on rebuilt
+        // and re-uploaded the lightmap texture every single frame, for values that had not changed
+        // since the last upload: once the window has run out, vanilla's own once-per-tick update is
+        // enough, and this injector has already written its values by the time that update runs.
+        if (System.currentTimeMillis() < alpaka$forceUpdateUntilMs) {
             state.needsUpdate = true;
         }
     }

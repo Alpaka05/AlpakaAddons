@@ -20,14 +20,56 @@ public class SkyblockUtils {
     private static final String AREA_MARKER = "⏣";
 
     /**
-     * Whether the player is on Hypixel Skyblock.
+     * How long an {@link #isOnSkyblock()} verdict is reused.
      *
+     * The answer changes only when the player changes server, which no amount of polling will catch
+     * sooner than the next sidebar packet anyway. Half a second is the same interval
+     * {@code PangolinHighlightFeature} caches its own sidebar read at.
+     */
+    private static final long SKYBLOCK_CACHE_MS = 500L;
+
+    private static long skyblockCheckedAtMs = 0L;
+    private static boolean cachedOnSkyblock = false;
+
+    /**
+     * The level the cached verdict belongs to; a world change invalidates it immediately.
+     *
+     * Weak on purpose. Nothing calls in while the player sits in the main menu, so a strong field
+     * would keep the whole ClientLevel of the world they just left alive until they load another.
+     */
+    private static java.lang.ref.WeakReference<Object> cachedForLevel = null;
+
+    /**
+     * Whether the player is on Hypixel Skyblock, cached for {@link #SKYBLOCK_CACHE_MS}.
+     *
+     * The cache is what makes this callable from a render hook at all. Working the answer out means
+     * a scoreboard lookup, a colour strip and possibly a walk over every sidebar line, and
+     * {@code EntityRendererMixin} asks twice per entity per frame - so an uncached call was hundreds
+     * of scoreboard walks a frame in a busy slayer lobby.
+     */
+    public static boolean isOnSkyblock() {
+        Minecraft mc = Minecraft.getInstance();
+        Object level = mc.level;
+
+        long now = System.currentTimeMillis();
+        Object cachedLevel = cachedForLevel == null ? null : cachedForLevel.get();
+        if (level == cachedLevel && now - skyblockCheckedAtMs < SKYBLOCK_CACHE_MS) {
+            return cachedOnSkyblock;
+        }
+
+        skyblockCheckedAtMs = now;
+        cachedForLevel = level == null ? null : new java.lang.ref.WeakReference<>(level);
+        cachedOnSkyblock = computeOnSkyblock();
+        return cachedOnSkyblock;
+    }
+
+    /**
      * Detection is deliberately not based on the sidebar title alone. Hypixel renames that title
      * during events - it reads "BLAZE SIMULATOR" during one - which used to make this return false in
      * the middle of normal play and silently switch off every feature gated on it. The zone marker is
      * checked as well, which survives those renames.
      */
-    public static boolean isOnSkyblock() {
+    private static boolean computeOnSkyblock() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) return false;
 
@@ -108,7 +150,56 @@ public class SkyblockUtils {
      */
     public static String cleanColor(String input) {
         if (input == null) return "";
-        return input.replaceAll("§.", "").trim();
+        return COLOR_PATTERN.matcher(input).replaceAll("").trim();
+    }
+
+    /**
+     * The formatting codes {@link #cleanColor} strips, compiled once.
+     *
+     * {@code String.replaceAll} compiles its pattern on every single call, which is invisible until
+     * the caller sits in a render hook - this one is reached per sidebar line and, through
+     * {@code DamageTagFeature}, per entity per frame.
+     */
+    private static final java.util.regex.Pattern COLOR_PATTERN = java.util.regex.Pattern.compile("§.");
+
+    /**
+     * Whether {@code needle} appears in {@code text} once formatting codes are ignored, without
+     * building the stripped string.
+     *
+     * Hypixel drops codes anywhere in a line, mid-word included, so a plain {@code contains} on the
+     * raw text misses matches - but stripping first allocates a fresh String, and the callers doing
+     * this run once per entity per frame. Walking both strings at once gets the same answer for no
+     * allocation at all.
+     *
+     * Case-sensitive, matching the {@code contains} calls it replaces.
+     */
+    public static boolean containsIgnoringFormatting(String text, String needle) {
+        if (text == null || needle == null) return false;
+        int textLength = text.length();
+        int needleLength = needle.length();
+        if (needleLength == 0) return true;
+
+        for (int start = 0; start < textLength; start++) {
+            if (text.charAt(start) == '§') {
+                start++; // Skip the code's second character too.
+                continue;
+            }
+
+            int at = start;
+            int matched = 0;
+            while (at < textLength && matched < needleLength) {
+                char c = text.charAt(at);
+                if (c == '§') {
+                    at += 2;
+                    continue;
+                }
+                if (c != needle.charAt(matched)) break;
+                at++;
+                matched++;
+            }
+            if (matched == needleLength) return true;
+        }
+        return false;
     }
 
     /**

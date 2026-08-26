@@ -2,6 +2,7 @@ package net.alpaka.addons.features.blaze
 
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.features.slayer.SlayerDropTracker
+import net.alpaka.addons.utils.SkyblockUtils
 import net.minecraft.client.renderer.entity.state.EntityRenderState
 import net.minecraft.core.particles.ParticleOptions
 import net.minecraft.core.particles.ParticleTypes
@@ -75,8 +76,12 @@ object CleanBlazeFeature {
         if (entity.hasCustomName()) {
             val customName = entity.customName
             if (customName != null) {
-                val clean = SlayerDropTracker.cleanColor(customName.string)
-                if (clean.contains("Smoldering Blaze") || clean.contains("Blaze")) {
+                // Matched against the raw name: stripping the codes first built a throwaway String
+                // and ran a regex, per named entity per frame, for a plain substring test.
+                val raw = customName.string
+                if (SkyblockUtils.containsIgnoringFormatting(raw, "Smoldering Blaze") ||
+                    SkyblockUtils.containsIgnoringFormatting(raw, "Blaze")
+                ) {
                     return true
                 }
             }
@@ -93,8 +98,7 @@ object CleanBlazeFeature {
         if (entity.hasCustomName()) {
             val customName = entity.customName
             if (customName != null) {
-                val clean = SlayerDropTracker.cleanColor(customName.string)
-                if (clean.contains("Smoldering Blaze")) {
+                if (SkyblockUtils.containsIgnoringFormatting(customName.string, "Smoldering Blaze")) {
                     return true
                 }
             }

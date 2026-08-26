@@ -60,6 +60,9 @@ public enum SlayerType {
      */
     public final String[] slayerAreas;
 
+    /** [slayerAreas] lowercased once, so the per-line area test allocates nothing. */
+    private final String[] slayerAreasLower;
+
     /**
      * The Skyblock island this slayer is fought on, as the player list writes it after "Area:".
      *
@@ -82,6 +85,10 @@ public enum SlayerType {
         this.colorCode = colorCode;
         this.rngDropItem = rngDropItem;
         this.slayerAreas = slayerAreas;
+        this.slayerAreasLower = new String[slayerAreas.length];
+        for (int i = 0; i < slayerAreas.length; i++) {
+            this.slayerAreasLower[i] = slayerAreas[i].toLowerCase();
+        }
         this.bossNames = bossNames;
     }
 
@@ -93,15 +100,24 @@ public enum SlayerType {
      */
     public boolean isSlayerArea(String area) {
         if (area == null || area.isEmpty() || slayerAreas.length == 0) return false;
-        for (String known : slayerAreas) {
-            if (area.equalsIgnoreCase(known)
-                    || area.toLowerCase().contains(known.toLowerCase())
-                    || known.toLowerCase().contains(area.toLowerCase())) {
+        // Lowercased once for the whole loop; the zone names are pre-lowercased at construction.
+        String lowerArea = area.toLowerCase();
+        for (int i = 0; i < slayerAreas.length; i++) {
+            String knownLower = slayerAreasLower[i];
+            if (lowerArea.equals(knownLower)
+                    || lowerArea.contains(knownLower)
+                    || knownLower.contains(lowerArea)) {
                 return true;
             }
         }
         return false;
     }
+
+    /**
+     * {@link #values()} without the array copy it makes on every call. This is reached per sidebar
+     * line on every refresh, and the enum cannot change at runtime.
+     */
+    private static final SlayerType[] VALUES = values();
 
     /**
      * The slayer whose boss name appears in the given sidebar line, or null.
@@ -110,7 +126,7 @@ public enum SlayerType {
      */
     public static SlayerType fromScoreboardLine(String line) {
         if (line == null || line.isEmpty()) return null;
-        for (SlayerType type : values()) {
+        for (SlayerType type : VALUES) {
             for (String bossName : type.bossNames) {
                 if (line.contains(bossName)) return type;
             }

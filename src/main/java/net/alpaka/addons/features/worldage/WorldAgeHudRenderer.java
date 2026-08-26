@@ -3,6 +3,7 @@ package net.alpaka.addons.features.worldage;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.slayer.SlayerDropTracker;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientEntityEvents;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -17,7 +18,6 @@ import net.minecraft.world.scores.Scoreboard;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -28,8 +28,36 @@ public class WorldAgeHudRenderer {
     private static String currentServerKey = "";
     private static long currentServerJoinTime = 0L;
     private static final Map<String, Long> SERVER_LEAVE_MAP = new HashMap<>();
-    private static final AtomicBoolean IS_PENDING = new AtomicBoolean(false);
+    /**
+     * Client ticks to wait after joining before reading the clock and the sidebar, so the overworld
+     * clock and the scoreboard packets have arrived. 50 ticks is the 2.5 seconds this used to sleep.
+     */
+    private static final int JOIN_DELAY_TICKS = 50;
+    private static int joinCountdownTicks = 0;
     private static final Pattern HYPIXEL_DATE_SERVER_PATTERN = Pattern.compile("\\d{1,2}/\\d{1,2}/\\d{2,4}\\s+([a-zA-Z0-9_-]+)");
+
+    /** How often the presence timestamp is refreshed while the player stays on one server. */
+    private static final long PRESENCE_STAMP_INTERVAL_MS = 1000L;
+    private static long lastPresenceStampMs = 0L;
+
+    /**
+     * The drawn line, kept between frames.
+     *
+     * The text changes once per in-game day at most, so building {@code "Day: " + day} and wrapping
+     * it in a Component every frame was two allocations for a string that is almost always the same
+     * one as last frame.
+     */
+    private static long cachedDay = Long.MIN_VALUE;
+    private static Component cachedDayComponent = null;
+
+    /** The rendered text for a day count, built at most once per change. */
+    private static Component dayComponent(long day) {
+        if (day != cachedDay || cachedDayComponent == null) {
+            cachedDay = day;
+            cachedDayComponent = Component.literal("Day: " + day);
+        }
+        return cachedDayComponent;
+    }
 
     public static void registerEvents() {
         ClientEntityEvents.ENTITY_LOAD.register((entity, world) -> {
@@ -37,35 +65,30 @@ public class WorldAgeHudRenderer {
                 onServerJoin();
             }
         });
+
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            if (joinCountdownTicks <= 0) return;
+            if (--joinCountdownTicks == 0) {
+                processServerJoin();
+            }
+        });
     }
 
+    /**
+     * Arms the delayed join read.
+     *
+     * Counted in client ticks rather than slept off on a thread of its own: the work has to happen
+     * on the client thread anyway, so a thread that exists only to sleep and then hand back is pure
+     * overhead - and ticks are the better clock here, since they stop while the game is loading
+     * instead of running the countdown out before a single packet has arrived.
+     */
     private static void onServerJoin() {
         long now = System.currentTimeMillis();
         if (now - currentServerJoinTime < 2000L) {
             return;
         }
         currentServerJoinTime = now;
-
-        if (IS_PENDING.compareAndSet(false, true)) {
-            new Thread(() -> {
-                try {
-                    // Wait 2500ms so level overworld clock and scoreboard packets are fully loaded and synced
-                    Thread.sleep(2500);
-                } catch (InterruptedException ignored) {}
-                Minecraft mc = Minecraft.getInstance();
-                if (mc != null) {
-                    mc.execute(() -> {
-                        try {
-                            processServerJoin();
-                        } finally {
-                            IS_PENDING.set(false);
-                        }
-                    });
-                } else {
-                    IS_PENDING.set(false);
-                }
-            }).start();
-        }
+        joinCountdownTicks = JOIN_DELAY_TICKS;
     }
 
     private static String getServerKey() {
@@ -105,7 +128,7 @@ public class WorldAgeHudRenderer {
                         lineText = entry.owner();
                     }
 
-                    String clean = cleanColor(lineText);
+                    String clean = SkyblockUtils.cleanColor(lineText);
                     Matcher m = HYPIXEL_DATE_SERVER_PATTERN.matcher(clean);
                     if (m.find()) {
                         return m.group(1);
@@ -114,11 +137,6 @@ public class WorldAgeHudRenderer {
             }
         } catch (Exception ignored) {}
         return "";
-    }
-
-    private static String cleanColor(String input) {
-        if (input == null) return "";
-        return input.replaceAll("(?i)§[0-9A-FK-OR]", "").trim();
     }
 
     private static void processServerJoin() {
@@ -188,7 +206,9 @@ public class WorldAgeHudRenderer {
         long totalTicks = mc.level.getOverworldClockTime();
         long totalDays = Math.max(0L, totalTicks / 24000L);
 
-        if (SkyblockUtils.isOnSkyblock() || totalDays > 1000) {
+        // Day count first: it is a comparison against a local, and short-circuiting on it keeps the
+        // scoreboard read out of the common case entirely. This runs once per frame from the HUD.
+        if (totalDays > 1000 || SkyblockUtils.isOnSkyblock()) {
             // Hypixel mini-servers reboot on a 36-day (12-hour) cycle
             return totalDays % 36;
         }
@@ -196,9 +216,14 @@ public class WorldAgeHudRenderer {
     }
 
     public static void render(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
-        // Continuously update active presence timestamp so SERVER_LEAVE_MAP holds when player was LAST active on current server
-        if (!currentServerKey.isEmpty()) {
-            SERVER_LEAVE_MAP.put(currentServerKey, System.currentTimeMillis());
+        // Keeps SERVER_LEAVE_MAP holding when the player was LAST active on the current server.
+        // Throttled to once a second: this runs before the enabled check, so an untouched second of
+        // map writes is work the feature does even while switched off, and the value it stores is
+        // only ever read at second resolution anyway.
+        long nowMs = System.currentTimeMillis();
+        if (!currentServerKey.isEmpty() && nowMs - lastPresenceStampMs >= PRESENCE_STAMP_INTERVAL_MS) {
+            lastPresenceStampMs = nowMs;
+            SERVER_LEAVE_MAP.put(currentServerKey, nowMs);
         }
 
         if (!AlpakaConfig.instance.worldAgeHudEnabled) return;
@@ -227,13 +252,12 @@ public class WorldAgeHudRenderer {
         if (font == null) return;
 
         long day = getWorldDay();
-        String text = "Day: " + day;
         int color = getDayColor(day);
 
         graphics.pose().pushMatrix();
         graphics.pose().translate((float) x, (float) y);
         graphics.pose().scale(scale, scale);
-        graphics.text(font, Component.literal(text), 0, 0, color);
+        graphics.text(font, dayComponent(day), 0, 0, color);
         graphics.pose().popMatrix();
     }
 

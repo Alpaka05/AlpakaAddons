@@ -85,7 +85,7 @@ public class ConfigOption {
         this.description = "";
         this.category = category;
         this.type = Type.HEADER;
-        this.keywords = title;
+        this.keywords = title.toLowerCase();
     }
 
     // Boolean option constructor
@@ -155,10 +155,25 @@ public class ConfigOption {
     public ConfigCategory getCategory() { return category; }
     public Type getType() { return type; }
 
+    /**
+     * A search box's contents in the form {@link #matchesNormalized} expects.
+     *
+     * Kept separate so a caller filtering the whole option list normalises once instead of once per
+     * option - the config screen does this several times a frame while a search is active.
+     */
+    public static String normalizeQuery(String query) {
+        return query == null ? "" : query.trim().toLowerCase();
+    }
+
+    /** Whether this option matches an already-normalised query. Allocation-free. */
+    public boolean matchesNormalized(String normalizedQuery) {
+        if (normalizedQuery.isEmpty()) return true;
+        // keywords already holds the title and description, lowercased, so one test covers all three.
+        return keywords.contains(normalizedQuery);
+    }
+
     public boolean matches(String query) {
-        if (query == null || query.isBlank()) return true;
-        String q = query.trim().toLowerCase();
-        return title.toLowerCase().contains(q) || description.toLowerCase().contains(q) || keywords.contains(q);
+        return matchesNormalized(normalizeQuery(query));
     }
 
     // Dropdown getters/setters
@@ -254,7 +269,7 @@ public class ConfigOption {
         this.textGetter = getter;
         this.textSetter = setter;
         this.placeholder = placeholder;
-        this.keywords = keywords;
+        this.keywords = (title + " " + description + " " + keywords).toLowerCase();
     }
 
     public String getText() {

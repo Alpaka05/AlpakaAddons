@@ -53,14 +53,14 @@ public class BlockOverlayFeature {
             if (mc.level == null) return;
 
             BlockPos pos = renderState.pos();
-            if (AlpakaConfig.instance.blockIgnorePlants && isPlantBlock(mc.level.getBlockState(pos))) {
-                return;
-            }
+
+            // No plant test here: LevelRendererMixin already made it before calling in, and doing it
+            // again meant a second block-state lookup plus four tag lookups every frame.
 
             VoxelShape shape = renderState.shape();
             if (shape == null || shape.isEmpty()) return;
 
-            List<AABB> boxes = shape.toAabbs();
+            List<AABB> boxes = boxesOf(shape);
             if (boxes.isEmpty()) return;
 
             MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
@@ -82,33 +82,35 @@ public class BlockOverlayFeature {
                 fadeInFactor = progress * progress;
             }
 
+            // Resolved once and shared by both passes. It used to be worked out separately for the
+            // outline and the fill, which ran the HSB conversion twice a frame and allocated a
+            // three-float array each time for the same colour.
+            boolean chromaEnabled = AlpakaConfig.instance.blockChromaEnabled;
+            int chromaRgb = chromaEnabled ? chromaRgb(AlpakaConfig.instance.blockChromaSpeed) : 0;
+
             float outlineR, outlineG, outlineB, outlineA;
-            if (AlpakaConfig.instance.blockChromaEnabled) {
-                float[] chroma = getChromaColor(AlpakaConfig.instance.blockChromaSpeed);
-                outlineR = chroma[0];
-                outlineG = chroma[1];
-                outlineB = chroma[2];
-                outlineA = (((AlpakaConfig.instance.blockOutlineColor >> 24) & 0xFF) / 255.0f) * fadeInFactor;
+            if (chromaEnabled) {
+                outlineR = ((chromaRgb >> 16) & 0xFF) / 255.0f;
+                outlineG = ((chromaRgb >> 8) & 0xFF) / 255.0f;
+                outlineB = (chromaRgb & 0xFF) / 255.0f;
             } else {
                 outlineR = ((AlpakaConfig.instance.blockOutlineColor >> 16) & 0xFF) / 255.0f;
                 outlineG = ((AlpakaConfig.instance.blockOutlineColor >> 8) & 0xFF) / 255.0f;
                 outlineB = (AlpakaConfig.instance.blockOutlineColor & 0xFF) / 255.0f;
-                outlineA = (((AlpakaConfig.instance.blockOutlineColor >> 24) & 0xFF) / 255.0f) * fadeInFactor;
             }
+            outlineA = (((AlpakaConfig.instance.blockOutlineColor >> 24) & 0xFF) / 255.0f) * fadeInFactor;
 
             float fillR, fillG, fillB, fillA;
-            if (AlpakaConfig.instance.blockChromaEnabled) {
-                float[] chroma = getChromaColor(AlpakaConfig.instance.blockChromaSpeed);
-                fillR = chroma[0];
-                fillG = chroma[1];
-                fillB = chroma[2];
-                fillA = (((AlpakaConfig.instance.blockFillColor >> 24) & 0xFF) / 255.0f) * fadeInFactor;
+            if (chromaEnabled) {
+                fillR = ((chromaRgb >> 16) & 0xFF) / 255.0f;
+                fillG = ((chromaRgb >> 8) & 0xFF) / 255.0f;
+                fillB = (chromaRgb & 0xFF) / 255.0f;
             } else {
                 fillR = ((AlpakaConfig.instance.blockFillColor >> 16) & 0xFF) / 255.0f;
                 fillG = ((AlpakaConfig.instance.blockFillColor >> 8) & 0xFF) / 255.0f;
                 fillB = (AlpakaConfig.instance.blockFillColor & 0xFF) / 255.0f;
-                fillA = (((AlpakaConfig.instance.blockFillColor >> 24) & 0xFF) / 255.0f) * fadeInFactor;
             }
+            fillA = (((AlpakaConfig.instance.blockFillColor >> 24) & 0xFF) / 255.0f) * fadeInFactor;
 
             double relX = (double) pos.getX() - camX;
             double relY = (double) pos.getY() - camY;
@@ -139,14 +141,29 @@ public class BlockOverlayFeature {
         }
     }
 
-    private static float[] getChromaColor(float speed) {
+    /** The current chroma colour as packed RGB. Returned packed so nothing has to be allocated. */
+    private static int chromaRgb(float speed) {
         double timeSec = (double) System.currentTimeMillis() / 1000.0 * speed;
         float hue = (float) (timeSec % 1.0);
-        int rgb = java.awt.Color.HSBtoRGB(hue, 1.0f, 1.0f);
-        float r = ((rgb >> 16) & 0xFF) / 255.0f;
-        float g = ((rgb >> 8) & 0xFF) / 255.0f;
-        float b = (rgb & 0xFF) / 255.0f;
-        return new float[]{r, g, b};
+        return java.awt.Color.HSBtoRGB(hue, 1.0f, 1.0f);
+    }
+
+    private static VoxelShape cachedShape = null;
+    private static List<AABB> cachedBoxes = java.util.List.of();
+
+    /**
+     * The shape's boxes, reusing the last result while the shape is unchanged.
+     *
+     * {@code toAabbs()} builds a fresh list on every call, and the targeted block usually stays the
+     * same for many frames in a row - and block states share their shape instances, so even looking
+     * at a different block of the same kind hits this.
+     */
+    private static List<AABB> boxesOf(VoxelShape shape) {
+        if (shape != cachedShape) {
+            cachedShape = shape;
+            cachedBoxes = shape.toAabbs();
+        }
+        return cachedBoxes;
     }
 
     private static void drawOutlineAsQuads(VertexConsumer buffer, PoseStack.Pose pose, AABB box, double minX, double minY, double minZ, float r, float g, float b, float a) {

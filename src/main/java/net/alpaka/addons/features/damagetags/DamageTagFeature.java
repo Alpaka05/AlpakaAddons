@@ -32,7 +32,12 @@ public class DamageTagFeature {
     public static boolean isNonCritDamageTag(String customName) {
         if (customName == null || customName.isEmpty()) return false;
 
-        String clean = cleanColor(customName);
+        // Almost every name this is handed - players, mobs, holograms - carries a character no
+        // damage tag can contain, and rejecting those without stripping the string first is what
+        // keeps this allocation-free on the overwhelming majority of entities.
+        if (!couldBeDamageTag(customName)) return false;
+
+        String clean = SkyblockUtils.cleanColor(customName);
         if (clean.isEmpty()) return false;
 
         // Check if it matches a damage number indicator
@@ -45,8 +50,27 @@ public class DamageTagFeature {
         return false;
     }
 
-    private static String cleanColor(String input) {
-        if (input == null) return "";
-        return input.replaceAll("(?i)§[0-9A-FK-OR]", "").trim();
+    /**
+     * Cheap pre-filter for {@link #isNonCritDamageTag}, run over the raw name.
+     *
+     * Accepts exactly the alphabet {@link #DAMAGE_TAG_PATTERN} can match, so anything rejected here
+     * the pattern would have rejected as well - this only saves the strip and the match, it never
+     * changes the verdict. Formatting codes are skipped rather than judged, since stripping would
+     * have removed them anyway.
+     */
+    private static boolean couldBeDamageTag(String name) {
+        for (int i = 0; i < name.length(); i++) {
+            char c = name.charAt(i);
+            if (c == '§') {
+                i++; // The code's second character belongs to the code, whatever it is.
+                continue;
+            }
+            boolean allowed = (c >= '0' && c <= '9')
+                    || c == ',' || c == '.' || c == '*' || Character.isWhitespace(c)
+                    || c == 'k' || c == 'K' || c == 'm' || c == 'M' || c == 'b' || c == 'B'
+                    || c == '✧' || c == '✦';
+            if (!allowed) return false;
+        }
+        return true;
     }
 }

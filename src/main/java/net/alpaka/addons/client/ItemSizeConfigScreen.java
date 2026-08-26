@@ -6,6 +6,7 @@ import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.StringWidget;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 
@@ -286,8 +287,31 @@ public class ItemSizeConfigScreen extends Screen {
 
     @Override
     public void onClose() {
+        // A drag cut short by the screen closing never sees its mouse-up, so flush here as well.
+        AlpakaConfig.endDeferredSaves();
         if (this.minecraft != null) {
             this.minecraft.setScreen(this.parent);
         }
+    }
+
+    /**
+     * Holds config writes back for the length of a slider drag.
+     *
+     * Each of this screen's sliders saves from {@code applyValue}, which the vanilla slider calls on
+     * every mouse-move event while it is being dragged - a full serialise and file write per pixel.
+     * Deferring here collects the whole drag into the single write done on release.
+     */
+    @Override
+    public boolean mouseDragged(MouseButtonEvent event, double deltaX, double deltaY) {
+        AlpakaConfig.beginDeferredSaves();
+        return super.mouseDragged(event, deltaX, deltaY);
+    }
+
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        // super first, so the slider's final applyValue still lands inside the deferred window.
+        boolean handled = super.mouseReleased(event);
+        AlpakaConfig.endDeferredSaves();
+        return handled;
     }
 }

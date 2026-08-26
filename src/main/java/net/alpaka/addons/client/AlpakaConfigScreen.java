@@ -67,16 +67,31 @@ public class AlpakaConfigScreen extends Screen {
         }
     }
 
+    /** The visible-category list, and the search term it was built for. */
+    private List<ConfigCategory> cachedVisibleCategories = null;
+    private String cachedVisibleCategoriesQuery = null;
+
+    /**
+     * The categories worth showing in the sidebar, cached against the search term.
+     *
+     * Rendering asks for this twice per frame and the click handler once more, and each pass used to
+     * walk and count every category's options - with the filtering underneath it re-running too.
+     * The answer only changes on a keystroke.
+     */
     private List<ConfigCategory> getVisibleCategories() {
+        if (cachedVisibleCategories != null && searchQuery.equals(cachedVisibleCategoriesQuery)) {
+            return cachedVisibleCategories;
+        }
+
         List<ConfigCategory> list = new ArrayList<>();
         for (ConfigCategory cat : ConfigCategory.values()) {
-            long count = AlpakaConfigRegistry.getOptions(cat, searchQuery).stream()
-                    .filter(opt -> opt.getType() != ConfigOption.Type.HEADER)
-                    .count();
-            if (searchQuery.isEmpty() || count > 0) {
+            if (searchQuery.isEmpty() || AlpakaConfigRegistry.countOptions(cat, searchQuery) > 0) {
                 list.add(cat);
             }
         }
+
+        cachedVisibleCategories = list;
+        cachedVisibleCategoriesQuery = searchQuery;
         return list;
     }
 
@@ -282,9 +297,7 @@ public class AlpakaConfigScreen extends Screen {
             graphics.text(this.font, Component.literal(cat.getDisplayName()), textX, itemY + (catItemH - 8) / 2, labelColor);
 
             // Category Settings Count Badge
-            List<ConfigOption> optionsForCat = AlpakaConfigRegistry.getOptions(cat, searchQuery);
-            long optionCount = optionsForCat.stream().filter(opt -> opt.getType() != ConfigOption.Type.HEADER).count();
-            String countText = String.valueOf(optionCount);
+            String countText = String.valueOf(AlpakaConfigRegistry.countOptions(cat, searchQuery));
             int countX = winX + 8 + (sidebarWidth - 20) - this.font.width(countText) - 10;
             int countColor = isSelected ? ModernGuiUtils.getAccentColor() : (isHovered ? ModernGuiUtils.COLOR_TEXT_MUTED : ModernGuiUtils.COLOR_TEXT_DARK);
             graphics.text(this.font, Component.literal(countText), countX, itemY + (catItemH - 8) / 2, countColor);
@@ -606,6 +619,9 @@ public class AlpakaConfigScreen extends Screen {
                     } else if (opt.getType() == ConfigOption.Type.SLIDER) {
                         playPloppSound();
                         this.draggedOption = opt;
+                        // Held back until the button comes up: every setter saves, and a drag fires
+                        // one per mouse-move event - each a full serialise and file write.
+                        net.alpaka.addons.config.AlpakaConfig.beginDeferredSaves();
                         double norm = Math.max(0.0, Math.min(1.0, (mouseX - widgetX) / (double) widgetW));
                         opt.setSliderNormalizedValue(norm);
                         opt.setDragging(true);
@@ -634,6 +650,8 @@ public class AlpakaConfigScreen extends Screen {
             if (draggedOption != null) {
                 draggedOption.setDragging(false);
                 draggedOption = null;
+                // One write for the whole drag, with the value the slider actually ended on.
+                net.alpaka.addons.config.AlpakaConfig.endDeferredSaves();
             }
         }
         return super.mouseReleased(event);
@@ -751,6 +769,14 @@ public class AlpakaConfigScreen extends Screen {
 
     @Override
     public void onClose() {
+        // Safety net: a drag interrupted by the screen closing (Escape, a keybind) never sees its
+        // mouse-up, and leaving saves deferred would swallow every later write for the session.
+        if (draggedOption != null) {
+            draggedOption.setDragging(false);
+            draggedOption = null;
+            net.alpaka.addons.config.AlpakaConfig.endDeferredSaves();
+        }
+
         if (this.minecraft != null) {
             this.minecraft.setScreen(this.parent);
         }

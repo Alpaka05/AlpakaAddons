@@ -924,12 +924,47 @@ public class AlpakaConfigRegistry {
         }
     }
 
+    /**
+     * The filtered result of the last search term, per category.
+     *
+     * The config screen asks for this several times per frame - once to decide which categories have
+     * any hits, once per category for its badge, once for the list it draws - and every one of those
+     * used to re-filter the whole option list from scratch. The term only changes on a keystroke, so
+     * the answer is worked out once per term and handed back afterwards.
+     */
+    private static final java.util.Map<ConfigCategory, List<ConfigOption>> SEARCH_CACHE =
+            new java.util.EnumMap<>(ConfigCategory.class);
+    private static String searchCacheQuery = null;
+
     public static List<ConfigOption> getOptions(ConfigCategory category, String searchQuery) {
-        if (searchQuery == null || searchQuery.trim().isEmpty()) {
+        String normalized = ConfigOption.normalizeQuery(searchQuery);
+        if (normalized.isEmpty()) {
             return CATEGORY_CACHE.getOrDefault(category, java.util.Collections.emptyList());
         }
-        return CATEGORY_CACHE.getOrDefault(category, java.util.Collections.emptyList()).stream()
-                .filter(option -> option.matches(searchQuery))
-                .collect(Collectors.toList());
+
+        if (!normalized.equals(searchCacheQuery)) {
+            SEARCH_CACHE.clear();
+            searchCacheQuery = normalized;
+        }
+
+        List<ConfigOption> cached = SEARCH_CACHE.get(category);
+        if (cached != null) return cached;
+
+        List<ConfigOption> filtered = new ArrayList<>();
+        for (ConfigOption option : CATEGORY_CACHE.getOrDefault(category, java.util.Collections.emptyList())) {
+            if (option.matchesNormalized(normalized)) filtered.add(option);
+        }
+        List<ConfigOption> result = java.util.Collections.unmodifiableList(filtered);
+        SEARCH_CACHE.put(category, result);
+        return result;
+    }
+
+    /** How many non-header options a category holds for the current search term. */
+    public static int countOptions(ConfigCategory category, String searchQuery) {
+        int count = 0;
+        for (ConfigOption option : getOptions(category, searchQuery)) {
+            if (option.getType() != ConfigOption.Type.HEADER) count++;
+        }
+        return count;
     }
 }

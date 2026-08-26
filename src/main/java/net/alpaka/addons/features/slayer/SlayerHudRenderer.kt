@@ -83,7 +83,16 @@ object SlayerHudRenderer {
         val unscaledWidth: Int,
         val unscaledHeight: Int,
         /** Where each row's value starts, parallel to [rows]. Precomputed to keep drawing measure-free. */
-        val valueXs: IntArray
+        val valueXs: IntArray,
+        /**
+         * The rows as drawable Components, parallel to [rows].
+         *
+         * Built here rather than in the draw loop, which wrapped every label and value in a fresh
+         * Component on every frame - up to eighteen throwaway objects a frame for text the cache
+         * has already established does not change.
+         */
+        val labelTexts: Array<Component>,
+        val valueTexts: Array<Component?>
     )
 
     private var cached: Layout? = null
@@ -141,11 +150,15 @@ object SlayerHudRenderer {
         val width: Int
         val height: Int
         val valueXs: IntArray
+        val labelTexts: Array<Component>
+        val valueTexts: Array<Component?>
         if (rows.isEmpty() || font == null) {
             labelWidth = 0
             width = 0
             height = 0
             valueXs = IntArray(0)
+            labelTexts = emptyArray()
+            valueTexts = emptyArray()
         } else {
             // Spanning rows are excluded from the label column deliberately: the title is by far the
             // widest label, and letting it set the column pushed every stat value across the HUD to
@@ -161,12 +174,15 @@ object SlayerHudRenderer {
             labelWidth = if (labelMax > 0) labelMax + LABEL_GAP else 0
 
             valueXs = IntArray(rows.size)
+            labelTexts = Array(rows.size) { Component.literal(rows[it].label) }
+            valueTexts = arrayOfNulls(rows.size)
             var widest = 0
             for (index in rows.indices) {
                 val row = rows[index]
                 val labelEnd = font.width(row.label)
                 val valueX = if (row.spansColumns) labelEnd + TITLE_GAP else labelWidth
                 valueXs[index] = valueX
+                if (row.value.isNotEmpty()) valueTexts[index] = Component.literal(row.value)
 
                 val rowWidth = if (row.value.isEmpty()) labelEnd else valueX + font.width(row.value)
                 if (rowWidth > widest) widest = rowWidth
@@ -175,7 +191,7 @@ object SlayerHudRenderer {
             height = (rows.size - 1) * LINE_HEIGHT + GLYPH_HEIGHT
         }
 
-        val built = Layout(rows, labelWidth, width, height, valueXs)
+        val built = Layout(rows, labelWidth, width, height, valueXs, labelTexts, valueTexts)
         cached = built
         cachedAtMs = now
         cachedType = type
@@ -313,9 +329,10 @@ object SlayerHudRenderer {
         var top = 0
         for (index in laid.rows.indices) {
             val line = laid.rows[index]
-            graphics.text(font, Component.literal(line.label), 0, top, COLOR_LABEL)
-            if (line.value.isNotEmpty()) {
-                graphics.text(font, Component.literal(line.value), laid.valueXs[index], top, line.valueColor)
+            graphics.text(font, laid.labelTexts[index], 0, top, COLOR_LABEL)
+            val valueText = laid.valueTexts[index]
+            if (valueText != null) {
+                graphics.text(font, valueText, laid.valueXs[index], top, line.valueColor)
             }
             top += LINE_HEIGHT
         }

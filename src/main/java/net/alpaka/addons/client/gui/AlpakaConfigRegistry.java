@@ -622,6 +622,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.slayerDropTrackerEnabled = v; AlpakaConfig.save(); },
                 "slayer drop tracker hypixel loot boss kill stats counter skyblock"));
 
+        OPTIONS.add(new ConfigOption("hide_hypixel_drop_message", "Hide Hypixel Drop Line",
+                "Hides Hypixel's own drop message when the tracker reports that drop.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.hideHypixelDropMessage,
+                v -> { AlpakaConfig.instance.hideHypixelDropMessage = v; AlpakaConfig.save(); },
+                "hide hypixel drop message duplicate chat slayer very rare clean"));
+
         OPTIONS.add(new ConfigOption("Slayer Session HUD", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("slayer_hud_enabled", "Enable Slayer Session HUD",

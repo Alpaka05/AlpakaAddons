@@ -22,6 +22,11 @@ public class AlpakaConfig {
     public boolean renderHandInThirdPerson = true;
 
     public boolean slayerDropTrackerEnabled = true;
+    /**
+     * Keeps Hypixel's own drop line out of the chat log when the tracker reports that same drop,
+     * so a slayer drop is announced once rather than twice.
+     */
+    public boolean hideHypixelDropMessage = true;
     public boolean fullbrightEnabled = false;
     public boolean nameHighlightingEnabled = true;
     public boolean inventorySnowEnabled = true;
@@ -362,6 +367,7 @@ public class AlpakaConfig {
     public void disableAllFeatures() {
         this.renderHandInThirdPerson = false;
         this.slayerDropTrackerEnabled = false;
+        this.hideHypixelDropMessage = false;
         this.pangolinHighlightEnabled = false;
         this.fullbrightEnabled = false;
         this.nameHighlightingEnabled = false;

@@ -84,6 +84,55 @@ public class SlayerDropTracker {
     /** A drop waiting for its boss kill to be counted. */
     private record PendingDrop(String item, Component message, SlayerType type, int dueTick) {}
 
+    /**
+     * How long a queued drop line stays eligible to be hidden from the chat log.
+     *
+     * The display call follows the receive event within the same tick, so this only has to cover
+     * that hop. Expiring at all matters because a message another mod swallows never reaches the
+     * chat log, and a stale entry would otherwise hide the next identical drop instead.
+     */
+    private static final long HIDE_WINDOW_MS = 2000L;
+
+    /** One drop line the tracker has taken over announcing, keyed by its colour-stripped text. */
+    private record PendingHide(String text, long expiresAtMs) {}
+
+    private static final java.util.List<PendingHide> PENDING_HIDES = new java.util.ArrayList<>();
+
+    /**
+     * Whether this chat line is a drop the tracker is about to report itself.
+     *
+     * Deliberately not a pattern test. Matching "RARE DROP!" outright would also swallow drops from
+     * fishing, mining and dungeons, which the tracker never echoes - the line would simply vanish.
+     * Instead only the exact lines queued in {@link #onChat} are hidden, so what disappears is
+     * always replaced by the tracker's own message.
+     *
+     * Consumes the entry it matches, so two identical drops in a row each hide exactly once.
+     *
+     * Must be called from the chat GUI rather than from a receive event: cancelling a message
+     * before the events have run would take the tracker's own input away with it.
+     */
+    public static boolean shouldHideDropMessage(Component component) {
+        if (PENDING_HIDES.isEmpty()) return false;
+        if (!AlpakaConfig.instance.slayerDropTrackerEnabled) return false;
+        if (!AlpakaConfig.instance.hideHypixelDropMessage) return false;
+
+        String text = cleanColor(component.getString());
+        long now = System.currentTimeMillis();
+
+        boolean hide = false;
+        java.util.Iterator<PendingHide> iterator = PENDING_HIDES.iterator();
+        while (iterator.hasNext()) {
+            PendingHide pending = iterator.next();
+            if (now > pending.expiresAtMs()) {
+                iterator.remove();
+            } else if (!hide && pending.text().equals(text)) {
+                iterator.remove();
+                hide = true;
+            }
+        }
+        return hide;
+    }
+
     public static void registerEvents() {
         // No isOnSkyblock() gate here on purpose. That check requires the sidebar *title* to contain
         // "skyblock", but Hypixel renames it during events (it reads "BLAZE SIMULATOR" during one),
@@ -324,6 +373,13 @@ public class SlayerDropTracker {
 
             // Held briefly so the kill lands first; see DROP_DELAY_TICKS.
             PENDING_DROPS.add(new PendingDrop(drop, message, activeBoss, tickCounter + DROP_DELAY_TICKS));
+
+            // Marked here rather than in the chat GUI: this is the point at which the tracker
+            // commits to announcing this drop, and so the point at which Hypixel's own line becomes
+            // a duplicate rather than the only report of it.
+            if (AlpakaConfig.instance.hideHypixelDropMessage) {
+                PENDING_HIDES.add(new PendingHide(string, System.currentTimeMillis() + HIDE_WINDOW_MS));
+            }
             return;
         }
 

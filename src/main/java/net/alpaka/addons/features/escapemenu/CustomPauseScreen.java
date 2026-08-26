@@ -19,11 +19,47 @@ import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.SimpleTexture;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.FontDescription;
 import net.minecraft.resources.Identifier;
 
 public class CustomPauseScreen extends Screen {
     private static final Identifier MOD_ICON_ID = Identifier.parse("alpaka:textures/gui/alpaka_icon.png");
     private static boolean modIconRegistered = false;
+
+    /**
+     * The button icons, as a font rather than as blitted textures.
+     *
+     * They used to be emoji written straight into the labels. Minecraft's font has no glyphs for
+     * 📦 🛠 📖 🚪 - they sit outside the Basic Multilingual Plane - so they fell through to the
+     * Unifont fallback and were drawn as coarse monochrome bitmaps next to otherwise clean text.
+     *
+     * Drawing them as glyphs instead of blitting a texture is what keeps them lined up: they sit on
+     * the text baseline, scale with the GUI scale, and take the colour the label is drawn in, so
+     * they follow the hover and accent colours for free.
+     */
+    private static final FontDescription ICON_FONT =
+            new FontDescription.Resource(Identifier.fromNamespaceAndPath("alpaka", "pause_icons"));
+
+    /** Private-use codepoints, in the order the sprite sheet lays them out. */
+    private static final String ICON_PLAY = "\uE000";
+    private static final String ICON_GEAR = "\uE001";
+    private static final String ICON_BOX = "\uE002";
+    private static final String ICON_SLIDERS = "\uE003";
+    private static final String ICON_BOOK = "\uE004";
+    private static final String ICON_DOOR = "\uE005";
+
+    /**
+     * A button label: the icon glyph, then the text.
+     *
+     * Built on an empty root so the text sibling inherits the root's default font rather than the
+     * icon's - a label appended onto the icon component would be drawn in the icon font, where
+     * every ordinary letter is a missing glyph.
+     */
+    private static Component iconLabel(String icon, String text) {
+        return Component.empty()
+                .append(Component.literal(icon).withStyle(style -> style.withFont(ICON_FONT)))
+                .append(Component.literal("  " + text));
+    }
 
     private static void ensureModIconRegistered() {
         if (!modIconRegistered) {
@@ -74,12 +110,12 @@ public class CustomPauseScreen extends Screen {
 
         // 1. Resume Button
         this.resumeButton = new CustomPauseButton(buttonX, buttonStartY, buttonWidth, buttonHeight,
-                Component.literal("▶  Resume Game"), false, btn -> this.onClose());
+                iconLabel(ICON_PLAY, "Resume Game"), false, btn -> this.onClose());
         this.addRenderableWidget(this.resumeButton);
 
         // 2. Alpaka Config Button
         this.configButton = new CustomPauseButton(buttonX, buttonStartY + spacing, buttonWidth, buttonHeight,
-                Component.literal("⚙  Alpaka Config"), false, btn -> {
+                iconLabel(ICON_GEAR, "Alpaka Config"), false, btn -> {
             if (this.minecraft != null) {
                 this.minecraft.setScreen(new AlpakaConfigScreen(this));
             }
@@ -88,7 +124,7 @@ public class CustomPauseScreen extends Screen {
 
         // 3. Mods Button (Mod Menu mod list)
         this.modsButton = new CustomPauseButton(buttonX, buttonStartY + spacing * 2, buttonWidth, buttonHeight,
-                Component.literal("📦  Mods"), false, btn -> {
+                iconLabel(ICON_BOX, "Mods"), false, btn -> {
             if (this.minecraft != null) {
                 try {
                     this.minecraft.setScreen(new com.terraformersmc.modmenu.gui.ModsScreen(this));
@@ -101,7 +137,7 @@ public class CustomPauseScreen extends Screen {
 
         // 4. Minecraft Options Button
         this.optionsButton = new CustomPauseButton(buttonX, buttonStartY + spacing * 3, buttonWidth, buttonHeight,
-                Component.literal("🛠  Options"), false, btn -> {
+                iconLabel(ICON_SLIDERS, "Options"), false, btn -> {
             if (this.minecraft != null) {
                 this.minecraft.setScreen(new OptionsScreen(this, this.minecraft.options, false));
             }
@@ -110,7 +146,7 @@ public class CustomPauseScreen extends Screen {
 
         // 5. Skyblock Wiki Button
         this.wikiButton = new CustomPauseButton(buttonX, buttonStartY + spacing * 4, buttonWidth, buttonHeight,
-                Component.literal("📖  Skyblock Wiki"), false, btn -> {
+                iconLabel(ICON_BOOK, "Skyblock Wiki"), false, btn -> {
             if (this.minecraft != null) {
                 ConfirmLinkScreen.confirmLinkNow(this, "https://hypixelskyblock.minecraft.wiki/");
             }
@@ -119,7 +155,7 @@ public class CustomPauseScreen extends Screen {
 
         // 6. Disconnect Button (Red Accent)
         boolean isSingleplayer = this.minecraft != null && this.minecraft.isSingleplayer();
-        Component disconnectText = isSingleplayer ? Component.literal("🚪  Save & Quit") : Component.literal("🚪  Disconnect");
+        Component disconnectText = isSingleplayer ? iconLabel(ICON_DOOR, "Save & Quit") : iconLabel(ICON_DOOR, "Disconnect");
         this.disconnectButton = new CustomPauseButton(buttonX, buttonStartY + spacing * 5, buttonWidth, buttonHeight,
                 disconnectText, true, btn -> {
             this.showDisconnectPrompt = true;

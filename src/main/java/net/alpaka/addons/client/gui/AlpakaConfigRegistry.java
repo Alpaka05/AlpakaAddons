@@ -37,11 +37,11 @@ public class AlpakaConfigRegistry {
                 "gamma brightness light fullbright vision"));
 
         OPTIONS.add(new ConfigOption("clean_blaze", "Clean Blaze",
-                "Removes smoke particles from blazes for a clearer view.",
+                "Removes blaze particles, fire and name tags for a clearer view.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.cleanBlazeEnabled,
                 v -> { AlpakaConfig.instance.cleanBlazeEnabled = v; AlpakaConfig.save(); },
-                "blaze smoke particles clear view"));
+                "blaze smoke particles fire nametag clear view"));
 
         OPTIONS.add(new ConfigOption("stop_blaze_spinning", "Stop Blaze Spinning",
                 "Stops blaze rods from spinning around blaze mobs.",
@@ -628,6 +628,13 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.hideHypixelDropMessage,
                 v -> { AlpakaConfig.instance.hideHypixelDropMessage = v; AlpakaConfig.save(); },
                 "hide hypixel drop message duplicate chat slayer very rare clean"));
+
+        OPTIONS.add(new ConfigOption("hide_slayer_chat", "Hide Slayer Chat Spam",
+                "Hides Hypixel's slayer quest, level-up and radio messages.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.hideSlayerChatMessages,
+                v -> { AlpakaConfig.instance.hideSlayerChatMessages = v; AlpakaConfig.save(); },
+                "hide slayer chat spam quest complete started radio level up messages"));
 
         OPTIONS.add(new ConfigOption("Slayer Session HUD", ConfigCategory.SKYBLOCK));
 

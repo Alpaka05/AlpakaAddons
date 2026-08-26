@@ -35,6 +35,13 @@ public class AlpakaConfig {
     public boolean containerBgFadeInEnabled = true;
     public int containerBgFadeInDurationMs = 250;
     public boolean cleanBlazeEnabled = true;
+    /**
+     * Hides Hypixel's slayer chatter - quest started/complete, level-ups, the radio lines.
+     *
+     * Used to be part of cleanBlazeEnabled, which forced a choice between the blaze effects and a
+     * quiet chat. Defaults to true so that split changes nothing for anyone who had clean blaze on.
+     */
+    public boolean hideSlayerChatMessages = true;
     public boolean stopBlazeSpinning = true;
     public boolean smoothPerspectiveEnabled = true;
     public boolean disableFrontPerspective = false;
@@ -374,6 +381,7 @@ public class AlpakaConfig {
         this.inventorySnowEnabled = false;
         this.containerBgFadeInEnabled = false;
         this.cleanBlazeEnabled = false;
+        this.hideSlayerChatMessages = false;
         this.stopBlazeSpinning = false;
         this.smoothPerspectiveEnabled = false;
         this.disableFrontPerspective = false;

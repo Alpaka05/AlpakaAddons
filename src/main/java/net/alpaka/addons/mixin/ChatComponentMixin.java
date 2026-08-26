@@ -1,8 +1,8 @@
 package net.alpaka.addons.mixin;
 
 import net.alpaka.addons.config.AlpakaConfig;
-import net.alpaka.addons.features.blaze.CleanBlazeFeature;
 import net.alpaka.addons.features.bridge.BridgeBotFormatter;
+import net.alpaka.addons.features.slayer.SlayerChatFilter;
 import net.alpaka.addons.features.slayer.SlayerDropTracker;
 import net.minecraft.client.gui.components.ChatComponent;
 import net.minecraft.client.multiplayer.chat.GuiMessageSource;
@@ -49,7 +49,7 @@ public class ChatComponentMixin {
         // downstream of every listener, so the message is kept out of the visible log while the
         // slayer tracking that reads it still sees it.
         if (SlayerDropTracker.shouldHideDropMessage(component)
-                || CleanBlazeFeature.shouldCancelChatMessage(component.getString())) {
+                || SlayerChatFilter.shouldCancelChatMessage(component.getString())) {
             ci.cancel();
         }
     }

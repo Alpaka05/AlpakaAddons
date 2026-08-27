@@ -25,6 +25,41 @@ public class AlpakaConfigRegistry {
     private static void registerAllOptions() {
         OPTIONS.clear();
 
+        // The General tab is what opens first, so it holds only what a new player needs before
+        // anything else: whether the mod may reach the network at all, the one place HUDs are
+        // arranged, and the way back out of everything.
+        OPTIONS.add(new ConfigOption("allow_api_calls", "Allow API Calls",
+                "Lets the mod read public Hypixel data. Used for the mayor's slayer XP buff.",
+                ConfigCategory.GENERAL,
+                () -> AlpakaConfig.instance.allowApiCalls,
+                v -> { AlpakaConfig.instance.allowApiCalls = v; AlpakaConfig.save(); },
+                "api network internet hypixel request mayor election offline privacy"));
+
+        OPTIONS.add(new ConfigOption("hud_editor", "HUD Editor",
+                "Move and resize every HUD - session, boss timer, world age, inventory, avatar.",
+                ConfigCategory.GENERAL,
+                "Open HUD Editor",
+                parent -> Minecraft.getInstance().setScreen(new HudEditorScreen(parent)),
+                "hud editor position edit dragging screen drag move resize scale layout alpakahud"));
+
+        OPTIONS.add(new ConfigOption("disable_all_features", "Disable All Features",
+                "Disables every feature in the mod after confirmation.",
+                ConfigCategory.GENERAL,
+                "Disable All",
+                parent -> Minecraft.getInstance().setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(
+                        confirmed -> {
+                            if (confirmed) {
+                                AlpakaConfig.instance.disableAllFeatures();
+                            }
+                            Minecraft.getInstance().setScreen(parent);
+                        },
+                        Component.literal("§c§lDisable All Features"),
+                        Component.literal("Are you sure you want to disable all features of Alpaka Addons?"),
+                        Component.literal("§cDisable All"),
+                        Component.literal("Cancel")
+                )),
+                "disable all features turn off reset everywhere confirm prompt"));
+
         // --- 1. VISUALS & RENDERING ---
 
         OPTIONS.add(new ConfigOption("World & Mobs", ConfigCategory.VISUALS));
@@ -601,15 +636,6 @@ public class AlpakaConfigRegistry {
                 0.0f, 100.0f, val -> val == 0.0f ? "Off (0%)" : String.format("%.0f%%", val),
                 "inventory hud background opacity transparent blur tint backdrop strength"));
 
-        OPTIONS.add(new ConfigOption("HUD Layout", ConfigCategory.CUSTOM_HUD));
-
-        OPTIONS.add(new ConfigOption("player_model_hud_editor", "Configure HUD Position",
-                "Opens the HUD editor for moving and resizing every HUD.",
-                ConfigCategory.CUSTOM_HUD,
-                "Open HUD Editor",
-                parent -> Minecraft.getInstance().setScreen(new HudEditorScreen(parent)),
-                "player model position edit dragging hud screen drag move editor alpakahud"));
-
 
         // --- 5. SKYBLOCK ---
 
@@ -771,25 +797,6 @@ public class AlpakaConfigRegistry {
                     return String.format("%ds", sec);
                 },
                 "world age recent visit threshold window seconds time minutes slider"));
-
-        OPTIONS.add(new ConfigOption("HUD Layout", ConfigCategory.SKYBLOCK));
-
-
-        OPTIONS.add(new ConfigOption("hud_editor", "HUD Editor",
-                "Move and resize every HUD - session, boss timer, world age, inventory, avatar.",
-                ConfigCategory.SKYBLOCK,
-                "Open HUD Editor",
-                parent -> Minecraft.getInstance().setScreen(new HudEditorScreen(parent)),
-                "world age slayer timer position edit dragging hud screen drag move resize scale editor alpakahud"));
-
-        OPTIONS.add(new ConfigOption("Network", ConfigCategory.SKYBLOCK));
-
-        OPTIONS.add(new ConfigOption("allow_api_calls", "Allow API Calls",
-                "Lets the mod read public Hypixel data. Used for the mayor's slayer XP buff.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.allowApiCalls,
-                v -> { AlpakaConfig.instance.allowApiCalls = v; AlpakaConfig.save(); },
-                "api network internet hypixel request mayor election offline privacy"));
 
         OPTIONS.add(new ConfigOption("Guild Bridge", ConfigCategory.SKYBLOCK));
 
@@ -963,24 +970,6 @@ public class AlpakaConfigRegistry {
                 parent -> Minecraft.getInstance().setScreen(new net.alpaka.addons.client.CommandWheelConfigScreen(parent)),
                 "quick command wheel commands add remove edit custom list menu keybind"));
 
-        OPTIONS.add(new ConfigOption("disable_all_features", "Disable All Features",
-                "Disables every feature in the mod after confirmation.",
-                ConfigCategory.SOUND_MISC,
-                "Disable All",
-                parent -> Minecraft.getInstance().setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(
-                        confirmed -> {
-                            if (confirmed) {
-                                AlpakaConfig.instance.disableAllFeatures();
-                            }
-                            Minecraft.getInstance().setScreen(parent);
-                        },
-                        Component.literal("§c§lDisable All Features"),
-                        Component.literal("Are you sure you want to disable all features of Alpaka Addons?"),
-                        Component.literal("§cDisable All"),
-                        Component.literal("Cancel")
-                )),
-                "disable all features turn off reset everywhere confirm prompt"));
-
         buildCategoryCache();
     }
 
@@ -988,7 +977,7 @@ public class AlpakaConfigRegistry {
         CATEGORY_CACHE.clear();
         for (ConfigCategory cat : ConfigCategory.values()) {
             List<ConfigOption> list = OPTIONS.stream()
-                    .filter(opt -> cat == ConfigCategory.ALL || opt.getCategory() == cat)
+                    .filter(opt -> opt.getCategory() == cat)
                     .collect(Collectors.toList());
             CATEGORY_CACHE.put(cat, java.util.Collections.unmodifiableList(list));
         }

@@ -19,7 +19,7 @@ import java.util.List;
 
 public class AlpakaConfigScreen extends Screen {
     private final Screen parent;
-    private ConfigCategory activeCategory = ConfigCategory.ALL;
+    private ConfigCategory activeCategory = ConfigCategory.GENERAL;
 
     // Search state
     private String searchQuery = "";
@@ -54,9 +54,9 @@ public class AlpakaConfigScreen extends Screen {
     /**
      * Opens with the search box already filled, for {@code /aa <term>}.
      *
-     * The active category is left on ALL, which holds every option, so a term typed at the command
-     * line lands on the widest possible result set instead of being narrowed by whichever tab
-     * happened to be showing.
+     * The General tab holds only a handful of settings, so a term typed at the command line would
+     * almost always come up empty there. ensureValidActiveCategory moves to the first tab that has
+     * a hit, which is what makes the term land on a result rather than on an empty General page.
      */
     public AlpakaConfigScreen(Screen parent, String initialSearch) {
         super(Component.literal("Alpaka Addons Config"));
@@ -329,14 +329,18 @@ public class AlpakaConfigScreen extends Screen {
         int startOptionY = contentY + 12 - (int) scrollY;
 
         // Render Category Header inside Content Area
-        String catTitle = activeCategory.getDisplayName();
-        if (!searchQuery.isEmpty()) {
-            catTitle = "Search results for: \"" + searchQuery + "\"";
+        boolean welcome = activeCategory == ConfigCategory.GENERAL && searchQuery.isEmpty();
+        if (welcome) {
+            startOptionY += drawWelcome(graphics, contentX + 16, startOptionY);
+        } else {
+            String catTitle = activeCategory.getDisplayName();
+            if (!searchQuery.isEmpty()) {
+                catTitle = "Search results for: \"" + searchQuery + "\"";
+            }
+            graphics.text(this.font, Component.literal(catTitle), contentX + 16, startOptionY, ModernGuiUtils.COLOR_TEXT_PRIMARY);
+            graphics.text(this.font, Component.literal(activeCategory.getDescription()), contentX + 16, startOptionY + 13, ModernGuiUtils.COLOR_TEXT_MUTED);
+            startOptionY += 30;
         }
-        graphics.text(this.font, Component.literal(catTitle), contentX + 16, startOptionY, ModernGuiUtils.COLOR_TEXT_PRIMARY);
-        graphics.text(this.font, Component.literal(activeCategory.getDescription()), contentX + 16, startOptionY + 13, ModernGuiUtils.COLOR_TEXT_MUTED);
-
-        startOptionY += 30;
 
         if (options.isEmpty()) {
             String emptyMsg = "No settings found for \"" + searchQuery + "\".";
@@ -465,6 +469,35 @@ public class AlpakaConfigScreen extends Screen {
         if (isAnimatingOpen) {
             graphics.pose().popMatrix();
         }
+    }
+
+    /** Scale of the greeting line. Large enough to read as a heading rather than another label. */
+    private static final float WELCOME_SCALE = 1.8f;
+
+    /**
+     * Draws the General tab's greeting and returns the vertical space it took.
+     *
+     * Scaled through the pose rather than drawn with a larger font: Minecraft has one GUI font, so
+     * size is a transform. The height is returned rather than assumed so the options below start
+     * under it whatever the scale is set to.
+     */
+    private int drawWelcome(GuiGraphicsExtractor graphics, int x, int y) {
+        String greeting = "Thanks for installing Alpaka Addons";
+
+        graphics.pose().pushMatrix();
+        graphics.pose().translate((float) x, (float) y);
+        graphics.pose().scale(WELCOME_SCALE, WELCOME_SCALE);
+        graphics.text(this.font, Component.literal(greeting), 0, 0, ModernGuiUtils.getAccentColor());
+        graphics.pose().popMatrix();
+
+        int greetingHeight = Math.round(9 * WELCOME_SCALE);
+
+        graphics.text(this.font, Component.literal("Everything below is optional. Pick a category on the left to set it up."),
+                x, y + greetingHeight + 4, ModernGuiUtils.COLOR_TEXT_MUTED);
+        graphics.text(this.font, Component.literal("v" + ModVersion.mod() + " · Minecraft " + ModVersion.minecraft()),
+                x, y + greetingHeight + 15, ModernGuiUtils.COLOR_TEXT_DARK);
+
+        return greetingHeight + 34;
     }
 
     private int getEffectiveWinX(int winW) {

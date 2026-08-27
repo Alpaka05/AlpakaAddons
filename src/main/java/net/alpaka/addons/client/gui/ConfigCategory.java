@@ -1,7 +1,7 @@
 package net.alpaka.addons.client.gui;
 
 public enum ConfigCategory {
-    ALL("All Settings", "Overview of all available features and settings"),
+    GENERAL("General", "The essentials. Everything else is grouped in the tabs below."),
     VISUALS("Visuals & Rendering", "Visual effects, fullbright, snowflakes & highlights"),
     VIEWMODEL("Item Viewmodel", "Hand positioning, scaling, rotations & swing animations"),
     BLOCK_OVERLAY("Block Overlay", "Custom block outline, colors, chroma & fill effects"),

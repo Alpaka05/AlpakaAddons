@@ -629,6 +629,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.hideHypixelDropMessage = v; AlpakaConfig.save(); },
                 "hide hypixel drop message duplicate chat slayer very rare clean"));
 
+        OPTIONS.add(new ConfigOption("slayer_hud_only_in_areas", "Slayer HUD Only In Slayer Areas",
+                "Shows the HUD only where that slayer is run, like SkyHanni's profit tracker.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slayerHudOnlyInSlayerAreas,
+                v -> { AlpakaConfig.instance.slayerHudOnlyInSlayerAreas = v; AlpakaConfig.save(); },
+                "slayer hud area island restrict show everywhere anywhere zone"));
+
         OPTIONS.add(new ConfigOption("hide_slayer_chat", "Hide Slayer Chat Spam",
                 "Hides Hypixel's slayer quest, level-up and radio messages.",
                 ConfigCategory.SKYBLOCK,

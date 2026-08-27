@@ -203,43 +203,31 @@ public class SkyblockUtils {
     }
 
     /**
-     * Prefixes Hypixel writes in front of the island name in the player list.
+     * Every line the player list is currently showing, colour codes stripped.
      *
-     * Both forms taken from SkyHanni's tab-list widget, which matches
-     * {@code (Area|Dungeon): (?<island>.*)} - the dungeon variant is used inside the Catacombs,
-     * where the line reads "Dungeon: Catacombs" instead.
+     * Hypixel puts widgets into the tab list alongside the player rows, and the slayer quest is one
+     * of them - which matters because the sidebar does not always carry the quest, while the tab
+     * widget does. SkyHanni reads the same two sources for the same reason, sidebar first and tab
+     * list as the fallback.
+     *
+     * Purely a read of a list the client is already displaying; nothing is requested from the
+     * server. Expensive enough to need caching by the caller: it walks every entry and builds a
+     * String for each.
      */
-    private static final String[] AREA_PREFIXES = {"Area:", "Dungeon:"};
-
-    /**
-     * The Skyblock island the player is on, or null when it cannot be read.
-     *
-     * The sidebar only ever names the current <em>zone</em> - "Smoldering Tomb", "Blazing Volcano" -
-     * so it cannot answer which island those belong to. Hypixel puts the island itself in the player
-     * list instead, which is why this reads from there.
-     *
-     * Purely a read of a list the client is already showing; nothing is requested from the server.
-     * Callers should cache: this walks every tab-list entry.
-     */
-    public static String getCurrentIsland() {
+    public static List<String> getTabListLines() {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || mc.player.connection == null) return null;
+        if (mc.player == null || mc.player.connection == null) return List.of();
 
         try {
+            List<String> lines = new ArrayList<>();
             for (var info : mc.player.connection.getListedOnlinePlayers()) {
                 Component name = info.getTabListDisplayName();
                 if (name == null) continue;
-
-                String line = cleanColor(name.getString());
-                for (String prefix : AREA_PREFIXES) {
-                    int at = line.indexOf(prefix);
-                    if (at < 0) continue;
-
-                    String island = line.substring(at + prefix.length()).trim();
-                    if (!island.isEmpty()) return island;
-                }
+                lines.add(cleanColor(name.getString()));
             }
-        } catch (Exception ignored) {}
-        return null;
+            return lines;
+        } catch (Exception ignored) {
+            return List.of();
+        }
     }
 }

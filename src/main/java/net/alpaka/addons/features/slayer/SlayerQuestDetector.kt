@@ -20,6 +20,19 @@ object SlayerQuestDetector {
     private const val REFRESH_MS = 250L
 
     /**
+     * How often the tab list may be consulted when the sidebar carries no quest.
+     *
+     * Slower than [REFRESH_MS] on purpose. Reading the tab list builds a String per listed player,
+     * and the sidebar-less case is the common one - standing around with no slayer running - so at
+     * the sidebar's cadence this would walk eighty entries four times a second for nothing. Kill
+     * detection is unaffected: during a fight the quest is on the sidebar, which stays at 250ms.
+     */
+    private const val TAB_FALLBACK_MS = 1_000L
+
+    private var tabCheckedAtMs = 0L
+    private var cachedTabLines: List<String> = emptyList()
+
+    /**
      * How long a boss type stays usable after it has vanished from the sidebar.
      *
      * The quest lines clear within a moment of the boss dying, which can happen before the drop and
@@ -79,7 +92,7 @@ object SlayerQuestDetector {
 
         // Scanned rather than indexed relative to a header line: the scoreboard API hands back rows
         // in no guaranteed order, so "the line after the boss name" is not a safe assumption.
-        for (line in SkyblockUtils.getSidebarLines()) {
+        for (line in linesToScan(now)) {
             val type = SlayerType.fromScoreboardLine(line)
             if (type != null && foundType == null) {
                 foundType = type
@@ -103,6 +116,26 @@ object SlayerQuestDetector {
         }
 
         detectKill(foundProgress, foundType)
+    }
+
+    /**
+     * The lines to look for a quest in: the sidebar, or the tab list when the sidebar has none.
+     *
+     * Hypixel does not always put the slayer quest on the sidebar - away from the slayer's own area
+     * it is frequently missing while the tab list still carries it, which is what made the HUD come
+     * and go. SkyHanni reads the same two sources in the same order.
+     */
+    private fun linesToScan(now: Long): List<String> {
+        val sidebar = SkyblockUtils.getSidebarLines()
+        if (sidebar.any { SlayerType.fromScoreboardLine(it) != null }) return sidebar
+
+        if (now - tabCheckedAtMs >= TAB_FALLBACK_MS) {
+            tabCheckedAtMs = now
+            cachedTabLines = SkyblockUtils.getTabListLines()
+        }
+        if (cachedTabLines.any { SlayerType.fromScoreboardLine(it) != null }) return cachedTabLines
+
+        return sidebar
     }
 
     /**

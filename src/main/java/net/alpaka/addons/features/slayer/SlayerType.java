@@ -9,26 +9,26 @@ package net.alpaka.addons.features.slayer;
  * quest is identified - the sidebar says "Inferno Demonlord IV", never "Blaze Slayer".
  */
 public enum SlayerType {
-    ZOMBIE("Zombie", "§2", "Warden Heart", "Hub",
+    ZOMBIE("Zombie", "§2", "Warden Heart", new String[]{"Graveyard", "Revenant Cave", "Crypts"},
             new String[]{"Graveyard", "Revenant Cave", "Crypts"},
             "Revenant Horror", "Atoned Horror"),
-    SPIDER("Spider", "§4", "Primordial Eye", "Spider's Den",
+    SPIDER("Spider", "§4", "Primordial Eye", new String[]{"Spider Mound", "Arachne's Burrow", "Arachne's Sanctuary", "Burning Desert"},
             new String[]{"Spider Mound", "Arachne's Burrow", "Arachne's Sanctuary", "Burning Desert"},
             "Tarantula Broodfather", "Conjoined Brood"),
-    WOLF("Wolf", "§f", "Overflux Capacitor", "The Park",
+    WOLF("Wolf", "§f", "Overflux Capacitor", new String[]{"Ruins", "Howling Cave", "Soul Cave", "Spirit Cave"},
             new String[]{"Ruins", "Howling Cave", "Soul Cave", "Spirit Cave"},
             "Sven Packmaster"),
-    ENDERMAN("Enderman", "§5", "Judgement Core", "The End",
+    ENDERMAN("Enderman", "§5", "Judgement Core", new String[]{"Void Sepulture", "Zealot Bruiser Hideout", "Dragon's Nest"},
             new String[]{"Void Sepulture", "Zealot Bruiser Hideout", "Dragon's Nest"},
             "Voidgloom Seraph"),
-    BLAZE("Blaze", "§e", "High Class Archfiend Dice", "Crimson Isle",
+    BLAZE("Blaze", "§e", "High Class Archfiend Dice", new String[]{"Stronghold", "The Wasteland", "Smoldering Tomb"},
             new String[]{"Smoldering Tomb"},
             "Inferno Demonlord"),
-    VAMPIRE("Vampire", "§c", "Unfanged Vampire Part", "The Rift",
+    VAMPIRE("Vampire", "§c", "Unfanged Vampire Part", new String[]{"Stillgore Château", "Oubliette"},
             new String[]{"Stillgore Château", "Oubliette"},
             "Bloodfiend", "Riftstalker Bloodfiend"),
     /** No such slayer exists on Hypixel; kept only so older configs still deserialize. */
-    GUARDIAN("Guardian", "§3", null, "", new String[0]);
+    GUARDIAN("Guardian", "§3", null, new String[0], new String[0]);
 
     public final String display;
     public final String colorCode;
@@ -64,23 +64,32 @@ public enum SlayerType {
     private final String[] slayerAreasLower;
 
     /**
-     * The Skyblock island this slayer is fought on, as the player list writes it after "Area:".
+     * Every zone this slayer is normally fought in, as the sidebar writes the area name.
      *
-     * Distinct from {@link #slayerAreas}, which names the one zone the boss actually spawns in and
-     * is deliberately narrow so leaving it can pause the session. This is the whole island, used for
-     * the coarser question of whether the HUD belongs on screen at all - anywhere on Crimson Isle
-     * counts for Blaze, not just the Smoldering Tomb.
+     * Wider than {@link #slayerAreas}, and answering a different question. That list names only the
+     * one zone the boss spawns in, and is deliberately narrow so that walking out of it can pause
+     * the session clock. This one decides whether the HUD belongs on screen at all, so it covers the
+     * whole stretch of ground a slayer is actually run over - Blaze is fought across the Stronghold
+     * and the Wasteland as well as the Smoldering Tomb.
      *
-     * Spellings are taken from SkyHanni's IslandType enum, which is the same string the player list
-     * carries, so they are exact rather than guessed. Empty means "unknown", which
-     * {@link #isOnSlayerIsland} treats as always matching so a missing entry cannot hide the HUD.
+     * Taken from SkyHanni's own area-to-slayer table (SlayerApi.checkTypeForCurrentArea), so that
+     * the HUD appears exactly where its slayer profit tracker does. Guessing at this was the
+     * original mistake: the HUD used to be gated on a single *island* per slayer, which hid it for
+     * any slayer run anywhere but its home island.
      */
-    public final String island;
+    public final String[] trackerAreas;
+
+    /** [trackerAreas] lowercased once, for the same reason as [slayerAreasLower]. */
+    private final String[] trackerAreasLower;
 
     public final String[] bossNames;
 
-    SlayerType(String display, String colorCode, String rngDropItem, String island, String[] slayerAreas, String... bossNames) {
-        this.island = island;
+    SlayerType(String display, String colorCode, String rngDropItem, String[] trackerAreas, String[] slayerAreas, String... bossNames) {
+        this.trackerAreas = trackerAreas;
+        this.trackerAreasLower = new String[trackerAreas.length];
+        for (int i = 0; i < trackerAreas.length; i++) {
+            this.trackerAreasLower[i] = trackerAreas[i].toLowerCase();
+        }
         this.display = display;
         this.colorCode = colorCode;
         this.rngDropItem = rngDropItem;
@@ -135,16 +144,18 @@ public enum SlayerType {
     }
 
     /**
-     * Whether the given island is the one this slayer is fought on.
+     * Whether a sidebar line names a zone this slayer is run in.
      *
-     * Fails open on an unknown or unreadable island: a HUD that stays hidden because the player list
-     * changed shape is a worse failure than one that shows a moment early.
+     * Matched against every sidebar line rather than against the one area line. Finding that line
+     * means recognising Hypixel's zone marker, and depending on that glyph is fragile - one
+     * unexpected marker and the area reads as empty, which silently switches the HUD off.
      */
-    public boolean isOnSlayerIsland(String currentIsland) {
-        if (island == null || island.isEmpty()) return true;
-        if (currentIsland == null || currentIsland.isEmpty()) return true;
-        // Exact, as SkyHanni matches island names: a substring test would put "Hub" inside
-        // "Dungeon Hub" and show the Revenant HUD in the dungeon hub.
-        return currentIsland.equalsIgnoreCase(island);
+    public boolean isTrackerArea(String line) {
+        if (line == null || line.isEmpty() || trackerAreasLower.length == 0) return false;
+        String lower = line.toLowerCase();
+        for (String known : trackerAreasLower) {
+            if (lower.contains(known)) return true;
+        }
+        return false;
     }
 }

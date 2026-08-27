@@ -92,10 +92,6 @@ object SlayerSessionTracker {
     private var cachedSidebarLines: List<String> = emptyList()
     private var areaCheckedAtMs = 0L
 
-    /** Island name refresh interval. Reading it walks every tab-list entry, so not per frame. */
-    private const val ISLAND_REFRESH_MS = 1_000L
-    private var cachedIsland: String? = null
-    private var islandCheckedAtMs = 0L
 
     /**
      * Last "Stored XP" seen on the RNG meter, per slayer.
@@ -184,33 +180,46 @@ object SlayerSessionTracker {
         return !isInSlayerArea(type)
     }
 
-    /** The Skyblock island the player is on, re-read at most once a second. */
-    fun currentIsland(): String? {
+    /**
+     * Whether any sidebar line names a zone this slayer is run in.
+     *
+     * Uses the same cached sidebar read as [isInSlayerArea], but against the wider
+     * [SlayerType.trackerAreas] list - see the note there on why the two lists differ.
+     */
+    fun isInTrackerArea(type: SlayerType): Boolean {
+        if (type.trackerAreas.isEmpty()) return false
+
         val now = System.currentTimeMillis()
-        if (now - islandCheckedAtMs >= ISLAND_REFRESH_MS) {
-            islandCheckedAtMs = now
-            cachedIsland = SkyblockUtils.getCurrentIsland()
+        if (now - areaCheckedAtMs >= AREA_REFRESH_MS) {
+            areaCheckedAtMs = now
+            cachedSidebarLines = SkyblockUtils.getSidebarLines()
         }
-        return cachedIsland
+
+        if (cachedSidebarLines.isEmpty()) return false
+        return cachedSidebarLines.any { line -> type.isTrackerArea(line) }
     }
 
     /**
      * Whether the slayer HUD belongs on screen at all.
      *
-     * Two conditions, both about existence rather than pausing - this is deliberately independent of
-     * the AFK and leave-the-area pause settings, which only stop the clock on a HUD that is already
-     * up.
+     * Deliberately independent of the AFK and leave-the-area pause settings, which only stop the
+     * clock on a HUD that is already up.
      *
      *  - The session must have begun. A slayer quest survives logging out, so one is very often
      *    already sitting on the sidebar the moment the player joins, with no boss fought and nothing
-     *    worth reporting. [Session.started] is only set once the player has been seen in the
-     *    slayer's own zone with a quest up, or has actually killed a boss.
-     *  - The player must be on that slayer's island. Anywhere on Crimson Isle counts for Blaze, not
-     *    just the Smoldering Tomb, so this is a coarser test than [isInSlayerArea].
+     *    worth reporting.
+     *  - The player must be somewhere this slayer is actually run, which mirrors the condition
+     *    SkyHanni's slayer profit tracker shows under (`isInCorrectArea`: the current area's slayer
+     *    type equals the active quest's). Switching [AlpakaConfig.slayerHudOnlyInSlayerAreas] off
+     *    drops that requirement and shows the HUD wherever the quest is active.
+     *
+     * This used to be gated on a single *island* per slayer instead, which hid the HUD for any
+     * slayer run away from its home island - a spider quest on the Crimson Isle, for instance.
      */
     fun shouldShowHud(type: SlayerType): Boolean {
         if (!session(type).started) return false
-        return type.isOnSlayerIsland(currentIsland())
+        if (!AlpakaConfig.instance.slayerHudOnlyInSlayerAreas) return true
+        return isInTrackerArea(type)
     }
 
     /** This slayer's session, creating it on first use. */
@@ -256,9 +265,14 @@ object SlayerSessionTracker {
         val type = SlayerQuestDetector.activeType ?: return
         val session = session(type)
 
-        // Being in the slayer's own zone with a quest up is what starts the clock. Until then the
-        // session stays at zero no matter how long the game has been open.
-        if (!session.started && isInSlayerArea(type)) session.started = true
+        // Having a quest up somewhere the slayer is actually run is what starts the clock. Until
+        // then the session stays at zero no matter how long the game has been open.
+        //
+        // Tested against the wider tracker areas, not the narrow pause zone: gating the start on the
+        // boss's own spawn room meant a session never began while grinding the approach to it, and
+        // the HUD stayed hidden for the whole run.
+        val inRunnableArea = !AlpakaConfig.instance.slayerHudOnlyInSlayerAreas || isInTrackerArea(type)
+        if (!session.started && inRunnableArea) session.started = true
         if (!session.started) return
 
         if (isPaused) return
@@ -346,8 +360,6 @@ object SlayerSessionTracker {
         manuallyPaused = false
         cachedSidebarLines = emptyList()
         areaCheckedAtMs = 0L
-        cachedIsland = null
-        islandCheckedAtMs = 0L
     }
 
     /**

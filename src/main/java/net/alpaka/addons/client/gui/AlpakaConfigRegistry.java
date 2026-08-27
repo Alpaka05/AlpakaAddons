@@ -798,7 +798,23 @@ public class AlpakaConfigRegistry {
                 },
                 "world age recent visit threshold window seconds time minutes slider"));
 
-        OPTIONS.add(new ConfigOption("Guild Bridge", ConfigCategory.SKYBLOCK));
+        OPTIONS.add(new ConfigOption("Guild Chat", ConfigCategory.SKYBLOCK));
+
+        OPTIONS.add(new ConfigOption("guild_prefix", "Custom Guild Tag",
+                "Replaces Hypixel's \"Guild >\" with your own tag.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.guildPrefixEnabled,
+                v -> { AlpakaConfig.instance.guildPrefixEnabled = v; AlpakaConfig.save(); },
+                "guild chat prefix tag name replace custom colour color"));
+
+        OPTIONS.add(new ConfigOption("guild_prefix_text", "Guild Tag",
+                "Shown instead of \"Guild >\". Use & for colours, e.g. &eLEMAN >",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.guildPrefixText,
+                v -> { AlpakaConfig.instance.guildPrefixText = v; AlpakaConfig.save(); },
+                "&eLEMAN >",
+                "guild tag text prefix colour color code ampersand"));
+
 
         OPTIONS.add(new ConfigOption("bridge_bot_formatter", "Bridge Bot Formatter",
                 "Reformats relayed Discord messages to show the real author first.",

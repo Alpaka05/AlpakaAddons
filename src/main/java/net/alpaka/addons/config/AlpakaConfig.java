@@ -163,6 +163,16 @@ public class AlpakaConfig {
     public boolean bridgeBotFormatterEnabled = false;
     public String bridgeBotName = "";
 
+    /**
+     * Replace Hypixel's "Guild >" marker with the guild's own tag.
+     *
+     * The text may carry `&`-style colour codes, which are translated to section signs when the
+     * line is drawn - `§` cannot be typed on a keyboard, so `&` is the convention every Hypixel mod
+     * uses for this.
+     */
+    public boolean guildPrefixEnabled = false;
+    public String guildPrefixText = "";
+
     // Chat options
     public boolean expandChatHistory = true;
 
@@ -461,6 +471,7 @@ public class AlpakaConfig {
         this.expandChatHistory = false;
         this.inventoryHudEnabled = false;
         this.bridgeBotFormatterEnabled = false;
+        this.guildPrefixEnabled = false;
         this.itemSizeFeatureEnabled = false;
         this.itemSwayDisabled = false;
         this.itemSwingTranslationDisabled = false;

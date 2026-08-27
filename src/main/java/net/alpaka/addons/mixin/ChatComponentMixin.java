@@ -2,6 +2,7 @@ package net.alpaka.addons.mixin;
 
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.bridge.BridgeBotFormatter;
+import net.alpaka.addons.features.guild.GuildPrefixFormatter;
 import net.alpaka.addons.features.slayer.SlayerChatFilter;
 import net.alpaka.addons.features.slayer.SlayerDropTracker;
 import net.minecraft.client.gui.components.ChatComponent;
@@ -34,9 +35,15 @@ public class ChatComponentMixin {
      * source and tag intact, and avoids re-entering this injector.
      */
     @ModifyVariable(method = "addMessage", at = @At("HEAD"), argsOnly = true, ordinal = 0)
-    private Component formatBridgeMessage(Component component) {
+    private Component formatGuildMessage(Component component) {
+        // Bridge formatting first, on purpose. It recognises a relay by the line starting with
+        // Hypixel's "Guild > " marker and rebuilds the line around that marker - swapping the marker
+        // out beforehand would leave it with nothing to match.
         Component reformatted = BridgeBotFormatter.reformat(component);
-        return reformatted != null ? reformatted : component;
+        if (reformatted != null) component = reformatted;
+
+        Component retagged = GuildPrefixFormatter.rewrite(component);
+        return retagged != null ? retagged : component;
     }
 
     @Inject(

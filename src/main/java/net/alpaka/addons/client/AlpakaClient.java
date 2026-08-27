@@ -37,6 +37,29 @@ public class AlpakaClient implements ClientModInitializer {
                 );
             }
 
+            // Registered on their own rather than folded into the alias loop above: that loop is
+            // specifically the aliases that open the config screen with an optional search term.
+            // These two open something else, which is how they came to be dropped when the loop was
+            // introduced - they simply were not on the alias list.
+
+            /** Opens the HUD editor. Also reachable from the edit buttons in the config. */
+            dispatcher.register(ClientCommands.literal("alpakahud")
+                .executes(context -> {
+                    Minecraft.getInstance().execute(() -> {
+                        Minecraft.getInstance().setScreen(new HudEditorScreen(null));
+                    });
+                    return 1;
+                })
+            );
+
+            /** Prints what the mod currently detects - Skyblock, island, sidebar - into chat. */
+            dispatcher.register(ClientCommands.literal("alpakadebug")
+                .executes(context -> {
+                    Minecraft.getInstance().execute(AlpakaDiagnostics::print);
+                    return 1;
+                })
+            );
+
             dispatcher.register(ClientCommands.literal("alpakaslayer")
                 .executes(context -> {
                     Minecraft.getInstance().execute(() -> {

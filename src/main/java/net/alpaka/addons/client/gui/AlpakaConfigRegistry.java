@@ -782,6 +782,15 @@ public class AlpakaConfigRegistry {
                 parent -> Minecraft.getInstance().setScreen(new HudEditorScreen(parent)),
                 "world age slayer timer position edit dragging hud screen drag move resize scale editor alpakahud"));
 
+        OPTIONS.add(new ConfigOption("Network", ConfigCategory.SKYBLOCK));
+
+        OPTIONS.add(new ConfigOption("allow_api_calls", "Allow API Calls",
+                "Lets the mod read public Hypixel data. Used for the mayor's slayer XP buff.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.allowApiCalls,
+                v -> { AlpakaConfig.instance.allowApiCalls = v; AlpakaConfig.save(); },
+                "api network internet hypixel request mayor election offline privacy"));
+
         OPTIONS.add(new ConfigOption("Guild Bridge", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("bridge_bot_formatter", "Bridge Bot Formatter",

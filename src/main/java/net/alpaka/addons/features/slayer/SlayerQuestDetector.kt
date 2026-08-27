@@ -74,16 +74,25 @@ object SlayerQuestDetector {
     private var lastSeenAtMs = 0L
 
     /**
-     * How long after a cancelled quest the quest lines vanishing is not read as a kill.
+     * Tier of the quest last seen on the sidebar, kept for the same reason as [lastSeenType].
      *
-     * Hypixel leaves the quest on the sidebar for a moment after cancelling it - four seconds in the
-     * capture that exposed this - so the window has to outlast that. It cannot swallow a real kill:
-     * cancelling clears the quest, and starting a new one and killing its boss inside ten seconds is
-     * not possible.
+     * [tier] is cleared the instant the quest lines go, and a kill is usually detected from exactly
+     * that - so reading [tier] when crediting a kill yields nothing. This holds the last real value.
      */
-    private const val CANCEL_GRACE_MS = 10_000L
+    var lastSeenTier: Int = 0
+        private set
 
-    private var cancelledAtMs = 0L
+    /**
+     * How long after a quest ends without a kill the vanishing quest lines are not read as one.
+     *
+     * Hypixel leaves the quest on the sidebar for a moment afterwards - four seconds in the capture
+     * that exposed this - so the window has to outlast that. It cannot swallow a real kill: the
+     * quest is gone, and starting a new one and killing its boss inside ten seconds is not possible.
+     */
+    private const val VOID_GRACE_MS = 10_000L
+
+    private var questVoidedAtMs = 0L
+    private var wasDead = false
 
     private var lastProgress = ""
     private var pendingKill: SlayerType? = null
@@ -107,6 +116,10 @@ object SlayerQuestDetector {
 
     /** Re-reads the sidebar, at most once per [REFRESH_MS]. */
     fun refresh() {
+        // Before the interval guard: a death lasts a moment and must not be missed because the
+        // sidebar happened to have been re-read a few milliseconds earlier.
+        checkDeath()
+
         val now = System.currentTimeMillis()
         // Fast only while there is a quest to watch, which is the only time the resolution matters.
         // Without a quest up this is reached per frame through currentOrRecent(), and re-scanning
@@ -142,6 +155,7 @@ object SlayerQuestDetector {
         if (foundType != null) {
             lastSeenType = foundType
             lastSeenAtMs = now
+            if (foundTier > 0) lastSeenTier = foundTier
         }
 
         detectKill(foundProgress, foundType)
@@ -189,9 +203,38 @@ object SlayerQuestDetector {
      * The running fight is dropped as well: there is no boss any more, so the timer has nothing left
      * to time and its clock would otherwise keep running on the HUD.
      */
-    fun onQuestCancelled() {
-        cancelledAtMs = System.currentTimeMillis()
+    fun onQuestCancelled() = onQuestVoided()
+
+    /**
+     * The quest ended without the boss dying - cancelled at Maddox, or failed because the player
+     * died. Stops the quest disappearing from the sidebar being read as a kill.
+     *
+     * Without this, ending a quest any other way counted as a boss killed: it inflated lifetime
+     * kills, the session's boss count and average, the dry streak since an RNG drop, and recorded a
+     * boss time no fight had produced. Both routes were caught in captured logs, each time with
+     * SkyHanni reporting no kill at all at that moment.
+     *
+     * The running fight is dropped as well: there is no boss any more, so the timer has nothing left
+     * to time and its clock would otherwise keep running on the HUD.
+     */
+    fun onQuestVoided() {
+        questVoidedAtMs = System.currentTimeMillis()
         SlayerTimer.clear()
+    }
+
+    /**
+     * Notices the player dying, which fails a slayer quest.
+     *
+     * Read from the client's own player rather than from the "SLAYER QUEST FAILED!" line, because
+     * that line arrives *after* the sidebar has already dropped the quest - in the captured case the
+     * phantom kill was reported a moment before Hypixel said the quest had failed. The client knows
+     * it is dead as soon as the health packet lands, which is early enough.
+     */
+    private fun checkDeath() {
+        val player = net.minecraft.client.Minecraft.getInstance().player
+        val dead = player != null && player.isDeadOrDying
+        if (dead && !wasDead) onQuestVoided()
+        wasDead = dead
     }
 
     private fun detectKill(newProgress: String, newType: SlayerType?) {
@@ -200,13 +243,13 @@ object SlayerQuestDetector {
         val wasFighting = lastProgress == STATE_BOSS_FIGHT
 
         // "Boss slain!" is stated outright and can be trusted whatever else happened. The other two
-        // are only inferred from the quest going away, which is also what cancelling looks like, so
-        // those are ignored for a moment after Hypixel says the quest was cancelled.
+        // are only inferred from the quest going away, which is also what cancelling the quest and
+        // dying look like, so those are ignored for a moment after either of those.
         val slain = newProgress == STATE_BOSS_SLAIN
         val vanished = newProgress.isEmpty() || newType == null
-        val recentlyCancelled = System.currentTimeMillis() - cancelledAtMs < CANCEL_GRACE_MS
+        val recentlyVoided = System.currentTimeMillis() - questVoidedAtMs < VOID_GRACE_MS
 
-        if (wasFighting && (slain || (vanished && !recentlyCancelled))) {
+        if (wasFighting && (slain || (vanished && !recentlyVoided))) {
             pendingKill = lastSeenType
         }
 

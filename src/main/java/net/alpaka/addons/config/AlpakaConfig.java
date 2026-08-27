@@ -99,6 +99,11 @@ public class AlpakaConfig {
     public float slayerHudAfkPauseSeconds = 60.0f;
     /** Stop the clock the moment the sidebar says the player is no longer in the slayer's zone. */
     public boolean slayerHudPauseOutsideArea = false;
+    /**
+     * Restrict the HUD to areas the slayer is actually run in, matching where SkyHanni's slayer
+     * profit tracker appears. Off shows it wherever a quest is active, island and area regardless.
+     */
+    public boolean slayerHudOnlyInSlayerAreas = true;
     public boolean worldAgeJoinMessageEnabled = true;
     public int worldAgeRecentThresholdSec = 60;
     public boolean onlyCritDamageEnabled = true;
@@ -409,6 +414,7 @@ public class AlpakaConfig {
         this.worldAgeHudEnabled = false;
         this.slayerHudEnabled = false;
         this.slayerHudPauseOutsideArea = false;
+        this.slayerHudOnlyInSlayerAreas = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
         this.blockOverlayEnabled = false;

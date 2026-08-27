@@ -67,6 +67,26 @@ public class AlpakaClient implements ClientModInitializer {
                     });
                     return 1;
                 })
+                // The overview only lists each slayer's headline RNG drop; naming a slayer here
+                // prints its full drop history. Declared after the "reset" literal below matters
+                // not at all - brigadier tries literals before arguments, so "reset" still lands
+                // on the literal rather than being read as a slayer name.
+                .then(ClientCommands.argument("slayer", com.mojang.brigadier.arguments.StringArgumentType.word())
+                    .executes(context -> {
+                        String raw = com.mojang.brigadier.arguments.StringArgumentType.getString(context, "slayer");
+                        Minecraft.getInstance().execute(() -> {
+                            net.alpaka.addons.features.slayer.SlayerType type =
+                                    net.alpaka.addons.features.slayer.SlayerType.fromUserInput(raw);
+                            if (type == null) {
+                                SlayerDropTracker.sendModMessage("§cUnknown slayer '" + raw + "'. Try: §7"
+                                        + net.alpaka.addons.features.slayer.SlayerType.userInputNames());
+                            } else {
+                                SlayerDropTracker.printDropsFor(Minecraft.getInstance().player, type);
+                            }
+                        });
+                        return 1;
+                    })
+                )
                 // Clears the live session stats behind the slayer HUD. Lifetime kill and drop
                 // history is untouched - that is the persisted record, not part of a session.
                 .then(ClientCommands.literal("reset")

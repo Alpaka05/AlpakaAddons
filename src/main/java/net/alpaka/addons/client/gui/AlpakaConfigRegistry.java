@@ -643,6 +643,27 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.hideSlayerChatMessages = v; AlpakaConfig.save(); },
                 "hide slayer chat spam quest complete started radio level up messages"));
 
+        OPTIONS.add(new ConfigOption("slayer_timer", "Slayer Boss Timer",
+                "Times each slayer boss fight, from the boss spawning until it dies.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slayerTimerEnabled,
+                v -> { AlpakaConfig.instance.slayerTimerEnabled = v; AlpakaConfig.save(); },
+                "slayer boss timer time fight duration personal best pb"));
+
+        OPTIONS.add(new ConfigOption("slayer_timer_chat", "Boss Time In Chat",
+                "Posts each boss's time in chat, and calls out a new personal best.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slayerTimerChatEnabled,
+                v -> { AlpakaConfig.instance.slayerTimerChatEnabled = v; AlpakaConfig.save(); },
+                "slayer boss timer chat message announce personal best"));
+
+        OPTIONS.add(new ConfigOption("slayer_timer_hud", "Boss Timer HUD",
+                "Shows the running boss time on screen while the boss is up.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slayerTimerHudEnabled,
+                v -> { AlpakaConfig.instance.slayerTimerHudEnabled = v; AlpakaConfig.save(); },
+                "slayer boss timer hud live overlay screen"));
+
         OPTIONS.add(new ConfigOption("Slayer Session HUD", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("slayer_hud_enabled", "Enable Slayer Session HUD",

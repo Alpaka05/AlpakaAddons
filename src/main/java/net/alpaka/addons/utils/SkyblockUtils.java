@@ -95,15 +95,47 @@ public class SkyblockUtils {
     }
 
     /**
-     * The sidebar's lines with colour codes stripped, title first.
+     * How long one sidebar snapshot is shared, in milliseconds. One client tick.
+     *
+     * The sidebar only changes when the server sends a scoreboard packet, so re-reading it more
+     * often than the client ticks cannot produce a newer answer - it only repeats the work. Four
+     * separate features poll this on timers of their own that do not line up, so without a shared
+     * snapshot each of them paid for its own walk over the scoreboard.
+     */
+    private static final long SIDEBAR_CACHE_MS = 50L;
+
+    private static long sidebarReadAtMs = 0L;
+    private static List<String> cachedSidebarLines = List.of();
+    private static Object cachedSidebarLevel = null;
+
+    /**
+     * The sidebar's lines with colour codes stripped, title first, at most one scoreboard walk per
+     * client tick however many callers ask.
      *
      * Hypixel writes the player's current zone onto one of these lines, which makes this the
      * client-visible, server-provided answer to "where am I" - no world or chunk scanning involved.
      *
-     * Callers should cache the result: assembling this walks the scoreboard and allocates, so it is
-     * not suited to per-entity or per-frame use.
+     * This is what lets the slayer quest detector sample every tick during a fight instead of four
+     * times a second: the extra polling reads a snapshot that was going to be built anyway, so the
+     * cost is the cheap scan over the lines rather than another walk over the scoreboard.
      */
     public static List<String> getSidebarLines() {
+        Minecraft mc = Minecraft.getInstance();
+        Object level = mc.level;
+
+        long now = System.currentTimeMillis();
+        if (level == cachedSidebarLevel && now - sidebarReadAtMs < SIDEBAR_CACHE_MS) {
+            return cachedSidebarLines;
+        }
+
+        sidebarReadAtMs = now;
+        cachedSidebarLevel = level;
+        cachedSidebarLines = readSidebarLines();
+        return cachedSidebarLines;
+    }
+
+    /** Builds the snapshot. Callers want {@link #getSidebarLines()}, which shares one per tick. */
+    private static List<String> readSidebarLines() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return List.of();
 

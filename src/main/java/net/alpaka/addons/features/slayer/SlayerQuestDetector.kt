@@ -20,6 +20,19 @@ object SlayerQuestDetector {
     private const val REFRESH_MS = 250L
 
     /**
+     * Re-parse interval while a slayer quest is actually up, in milliseconds. One client tick.
+     *
+     * The boss timer measures from this poll noticing the progress line enter "Slay the boss!" to it
+     * noticing the line leave again, so the sampling interval is the timer's error bar at both ends.
+     * At 250ms that is up to half a second added to a fight; at tick resolution it is a tenth of it.
+     *
+     * Affordable because [SkyblockUtils.getSidebarLines] shares one scoreboard walk per tick: the
+     * extra polls re-scan a snapshot that already exists rather than building another. Going below
+     * a tick would buy nothing either way - Hypixel does not send scoreboard updates faster.
+     */
+    private const val ACTIVE_QUEST_REFRESH_MS = 50L
+
+    /**
      * How often the tab list may be consulted when the sidebar carries no quest.
      *
      * Slower than [REFRESH_MS] on purpose. Reading the tab list builds a String per listed player,
@@ -83,7 +96,11 @@ object SlayerQuestDetector {
     /** Re-reads the sidebar, at most once per [REFRESH_MS]. */
     fun refresh() {
         val now = System.currentTimeMillis()
-        if (now - checkedAtMs < REFRESH_MS) return
+        // Fast only while there is a quest to watch, which is the only time the resolution matters.
+        // Without a quest up this is reached per frame through currentOrRecent(), and re-scanning
+        // the sidebar at frame rate to keep learning there is still no slayer is pure waste.
+        val interval = if (activeType != null) ACTIVE_QUEST_REFRESH_MS else REFRESH_MS
+        if (now - checkedAtMs < interval) return
         checkedAtMs = now
 
         var foundType: SlayerType? = null

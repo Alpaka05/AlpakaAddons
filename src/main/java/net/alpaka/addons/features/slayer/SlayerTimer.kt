@@ -141,6 +141,27 @@ object SlayerTimer {
 
     private var trackedLevel: Any? = null
 
+    /**
+     * Forgets the recorded best for one slayer, or for all of them when [type] is null.
+     *
+     * Returns how many were actually cleared, so the command can say so rather than claim to have
+     * reset something that was never set. Exists because a best is all-time and nothing else can
+     * remove one - and the detector used to record phantom bests from cancelled quests, which left
+     * a figure on screen that no fight had ever produced.
+     */
+    fun clearPersonalBest(type: SlayerType?): Int {
+        var cleared = 0
+        for ((slayer, data) in AlpakaConfig.instance.slayerBossMap) {
+            if (type != null && slayer != type) continue
+            if (data.bestBossMs > 0L) {
+                data.bestBossMs = -1L
+                cleared++
+            }
+        }
+        if (cleared > 0) AlpakaConfig.save()
+        return cleared
+    }
+
     /** Drops a running fight, for a world change or a session reset. */
     fun clear() {
         startMs = 0L

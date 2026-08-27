@@ -102,6 +102,30 @@ public class AlpakaClient implements ClientModInitializer {
                         });
                         return 1;
                     })
+                    // Personal bests are all-time and survive a session reset, so clearing one needs
+                    // its own command. Kills and drop history are deliberately left alone.
+                    .then(ClientCommands.literal("pb")
+                        .executes(context -> {
+                            Minecraft.getInstance().execute(() -> clearPersonalBests(null, "all slayers"));
+                            return 1;
+                        })
+                        .then(ClientCommands.argument("slayer", com.mojang.brigadier.arguments.StringArgumentType.word())
+                            .executes(context -> {
+                                String raw = com.mojang.brigadier.arguments.StringArgumentType.getString(context, "slayer");
+                                Minecraft.getInstance().execute(() -> {
+                                    net.alpaka.addons.features.slayer.SlayerType type =
+                                            net.alpaka.addons.features.slayer.SlayerType.fromUserInput(raw);
+                                    if (type == null) {
+                                        SlayerDropTracker.sendModMessage("§cUnknown slayer '" + raw + "'. Try: §7"
+                                                + net.alpaka.addons.features.slayer.SlayerType.userInputNames());
+                                    } else {
+                                        clearPersonalBests(type, type.display);
+                                    }
+                                });
+                                return 1;
+                            })
+                        )
+                    )
                 )
             );
 
@@ -126,6 +150,16 @@ public class AlpakaClient implements ClientModInitializer {
                 })
             );
         });
+    }
+
+    /** Clears recorded best boss times and reports what was actually removed. */
+    private static void clearPersonalBests(net.alpaka.addons.features.slayer.SlayerType type, String label) {
+        int cleared = net.alpaka.addons.features.slayer.SlayerTimer.INSTANCE.clearPersonalBest(type);
+        if (cleared > 0) {
+            SlayerDropTracker.sendModMessage("§7Cleared the personal best for §e" + label + "§7.");
+        } else {
+            SlayerDropTracker.sendModMessage("§7No personal best recorded for §e" + label + "§7.");
+        }
     }
 
     /** Opens the config screen, optionally with a search term already applied. */

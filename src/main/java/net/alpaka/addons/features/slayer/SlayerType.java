@@ -144,6 +144,47 @@ public enum SlayerType {
     }
 
     /**
+     * The slayer a player typed on the command line, or null.
+     *
+     * Matches the mob-flavoured name the mod prints ("blaze", "wolf"), the enum's own name, and any
+     * part of a boss name. That last one is why "sven" and "inferno" work: those are what the
+     * community actually calls these slayers, even though nothing in this mod's output says them.
+     *
+     * The boss-name match needs three characters so a stray letter cannot land on a slayer, and it
+     * is tried last so an exact mob name always wins over a partial boss name.
+     */
+    public static SlayerType fromUserInput(String input) {
+        if (input == null || input.isBlank()) return null;
+        String needle = input.trim();
+
+        for (SlayerType type : VALUES) {
+            if (type.display.equalsIgnoreCase(needle) || type.name().equalsIgnoreCase(needle)) {
+                return type;
+            }
+        }
+
+        if (needle.length() < 3) return null;
+        String lower = needle.toLowerCase();
+        for (SlayerType type : VALUES) {
+            for (String bossName : type.bossNames) {
+                if (bossName.toLowerCase().contains(lower)) return type;
+            }
+        }
+        return null;
+    }
+
+    /** The accepted spellings, for the error message when one is not recognised. */
+    public static String userInputNames() {
+        StringBuilder out = new StringBuilder();
+        for (SlayerType type : VALUES) {
+            if (type == GUARDIAN) continue;
+            if (out.length() > 0) out.append(", ");
+            out.append(type.display.toLowerCase());
+        }
+        return out.toString();
+    }
+
+    /**
      * Whether a sidebar line names a zone this slayer is run in.
      *
      * Matched against every sidebar line rather than against the one area line. Finding that line

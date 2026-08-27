@@ -354,6 +354,9 @@ object SlayerSessionTracker {
     fun reset() {
         sessions.clear()
         lastStoredXp.clear()
+        // A fight cannot survive the disconnect that ended it; leaving the timer running would have
+        // it counting across the gap and announce a boss time measured in minutes of menu.
+        SlayerTimer.clear()
         bossStartMs = 0L
         lastTickMs = 0L
         lastActivityMs = 0L
@@ -370,6 +373,7 @@ object SlayerSessionTracker {
      */
     fun resetCurrent(): SlayerType? {
         manuallyPaused = false
+        SlayerTimer.clear()
         bossStartMs = 0L
 
         val type = SlayerQuestDetector.currentOrRecent()

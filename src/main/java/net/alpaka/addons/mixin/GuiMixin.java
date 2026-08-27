@@ -11,6 +11,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import net.alpaka.addons.features.slayer.SlayerHudRenderer;
+import net.alpaka.addons.features.slayer.SlayerTimerHudRenderer;
 import net.alpaka.addons.features.worldage.WorldAgeHudRenderer;
 
 @Mixin(Gui.class)
@@ -20,6 +21,7 @@ public class GuiMixin {
         PlayerModelRenderer.render(graphicsExtractor, deltaTracker);
         WorldAgeHudRenderer.render(graphicsExtractor, deltaTracker);
         SlayerHudRenderer.render(graphicsExtractor, deltaTracker);
+        SlayerTimerHudRenderer.render(graphicsExtractor, deltaTracker);
         InventoryHudRenderer.render(graphicsExtractor, deltaTracker);
     }
 }

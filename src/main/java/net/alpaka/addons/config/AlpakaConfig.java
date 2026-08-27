@@ -104,6 +104,17 @@ public class AlpakaConfig {
      * profit tracker appears. Off shows it wherever a quest is active, island and area regardless.
      */
     public boolean slayerHudOnlyInSlayerAreas = true;
+
+    // Slayer boss timer. Times a single boss fight, from the sidebar announcing the boss to it
+    // dying, and remembers the fastest ever per slayer.
+    public boolean slayerTimerEnabled = true;
+    /** Announce each boss's time in chat once it dies. */
+    public boolean slayerTimerChatEnabled = true;
+    /** Show the running time on screen while the boss is up. */
+    public boolean slayerTimerHudEnabled = true;
+    public int slayerTimerHudX = 10;
+    public int slayerTimerHudY = 120;
+    public float slayerTimerHudScale = 1.0f;
     public boolean worldAgeJoinMessageEnabled = true;
     public int worldAgeRecentThresholdSec = 60;
     public boolean onlyCritDamageEnabled = true;
@@ -332,6 +343,15 @@ public class AlpakaConfig {
         public Map<String, Integer> drops = new HashMap<>();
 
         /**
+         * Fastest boss kill ever recorded for this slayer, in milliseconds, or -1 when none is.
+         *
+         * All-time rather than per session: a personal best that resets when the game restarts is
+         * not a personal best. Lives here with the kill and drop history because this is the part of
+         * the slayer data that is meant to persist.
+         */
+        public long bestBossMs = -1L;
+
+        /**
          * Last known lifetime slayer XP for this slayer, or -1 when it has never been observed.
          *
          * Hypixel does not tell the client this figure during play - the only place it appears is
@@ -415,6 +435,9 @@ public class AlpakaConfig {
         this.slayerHudEnabled = false;
         this.slayerHudPauseOutsideArea = false;
         this.slayerHudOnlyInSlayerAreas = false;
+        this.slayerTimerEnabled = false;
+        this.slayerTimerChatEnabled = false;
+        this.slayerTimerHudEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
         this.blockOverlayEnabled = false;

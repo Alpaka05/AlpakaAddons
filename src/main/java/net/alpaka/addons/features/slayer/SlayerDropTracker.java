@@ -154,6 +154,7 @@ public class SlayerDropTracker {
             tickCounter++;
             SlayerQuestDetector.INSTANCE.refresh();
             SlayerSessionTracker.INSTANCE.tick();
+            SlayerTimer.INSTANCE.tick();
             SlayerMenuXpReader.INSTANCE.tick();
 
             // Primary kill signal: the sidebar leaving the boss fight. Chat is unreliable here.
@@ -161,6 +162,7 @@ public class SlayerDropTracker {
             if (killed != null) {
                 countKill(killed);
                 SlayerSessionTracker.INSTANCE.onBossKilled(killed);
+                SlayerTimer.INSTANCE.onBossKilled(killed);
             }
 
             // Only signal for a boss spawning: Hypixel never sends a chat announcement for a
@@ -169,6 +171,7 @@ public class SlayerDropTracker {
             SlayerType spawned = SlayerQuestDetector.INSTANCE.consumeSpawn();
             if (spawned != null) {
                 SlayerSessionTracker.INSTANCE.onBossSpawned(spawned);
+                SlayerTimer.INSTANCE.onBossSpawned(spawned);
             }
             if (spawned != null && AlpakaConfig.instance.customSoundsEnabled) {
                 CustomSoundFeature.playBossSpawnSound();
@@ -487,28 +490,77 @@ public class SlayerDropTracker {
             sendModMessage("§e" + type.display + ": §a" + kills + " §7kills");
         }
 
-        // Every drop that has actually been recorded, rather than a fixed list of names. The old
-        // hard-coded list only matched on exact spelling, so a tracked "Archfiend Dice" was reported
-        // as "never" simply because the list asked for "High class archfiend dice".
-        sendModMessage("§6--- Tracked Drops ---");
-        boolean any = false;
+        sendModMessage("§6--- Personal Bests ---");
+        boolean anyBest = false;
         for (SlayerType type : SlayerType.values()) {
-            AlpakaConfig.SlayerData data = AlpakaConfig.instance.slayerBossMap.get(type);
-            if (data == null || data.drops == null || data.drops.isEmpty()) continue;
-            any = true;
-
-            sendModMessage("§e" + type.display + "§7:");
-            data.drops.entrySet().stream()
-                    .sorted(java.util.Map.Entry.comparingByValue(java.util.Comparator.reverseOrder()))
-                    .forEach(entry -> {
-                        int sinceLast = data.kills - entry.getValue();
-                        sendModMessage("§7  " + entry.getKey() + " §8- §a" + sinceLast + " §7boss"
-                                + (sinceLast != 1 ? "es" : "") + " ago");
-                    });
+            Long best = SlayerTimer.INSTANCE.personalBest(type);
+            if (best == null) continue;
+            anyBest = true;
+            sendModMessage("§e" + type.display + ": §a" + SlayerTimer.INSTANCE.format(best));
         }
-        if (!any) {
+        if (!anyBest) {
+            sendModMessage("§7  §8no boss timed yet");
+        }
+
+        // Only each slayer's headline RNG drop, the one worth counting a dry streak against - the
+        // same line the slayer HUD shows. The full history is a lot of lines for something that is
+        // usually read to answer "how dry am I", so it moved behind /alpakaslayer <slayer>.
+        sendModMessage("§6--- RNG Drops ---");
+        boolean anyDrop = false;
+        for (SlayerType type : SlayerType.values()) {
+            String item = type.rngDropItem;
+            if (item == null) continue;
+
+            AlpakaConfig.SlayerData data = AlpakaConfig.instance.slayerBossMap.get(type);
+            if (data == null || data.kills == 0) continue;
+            anyDrop = true;
+
+            Integer since = SlayerRngDropTracker.INSTANCE.bossesSince(type);
+            if (since == null) {
+                sendModMessage("§e" + type.display + "§7: " + item + " §8- §cnever §7in " + data.kills + " bosses");
+            } else {
+                sendModMessage("§e" + type.display + "§7: " + item + " §8- §a" + since + " §7boss"
+                        + (since != 1 ? "es" : "") + " ago");
+            }
+        }
+        if (!anyDrop) {
             sendModMessage("§7  §8nothing recorded yet");
         }
+        sendModMessage("§8Use /alpakaslayer <slayer> for every drop of one slayer.");
     }
 
+    /**
+     * Every drop recorded for one slayer, most recent first.
+     *
+     * Listed from what has actually been recorded rather than from a fixed list of names: the old
+     * hard-coded list only matched on exact spelling, so a tracked "Archfiend Dice" was reported as
+     * "never" simply because the list asked for "High class archfiend dice".
+     */
+    public static void printDropsFor(LocalPlayer player, SlayerType type) {
+        if (player == null) return;
+
+        AlpakaConfig.SlayerData data = AlpakaConfig.instance.slayerBossMap.get(type);
+        sendModMessage("§6--- " + type.display + " Drops ---");
+
+        int kills = data != null ? data.kills : 0;
+        sendModMessage("§7" + kills + " §7boss" + (kills != 1 ? "es" : "") + " killed");
+
+        Long best = SlayerTimer.INSTANCE.personalBest(type);
+        if (best != null) {
+            sendModMessage("§7Personal best: §a" + SlayerTimer.INSTANCE.format(best));
+        }
+
+        if (data == null || data.drops == null || data.drops.isEmpty()) {
+            sendModMessage("§7  §8nothing recorded yet");
+            return;
+        }
+
+        data.drops.entrySet().stream()
+                .sorted(java.util.Map.Entry.comparingByValue(java.util.Comparator.reverseOrder()))
+                .forEach(entry -> {
+                    int sinceLast = data.kills - entry.getValue();
+                    sendModMessage("§7  " + entry.getKey() + " §8- §a" + sinceLast + " §7boss"
+                            + (sinceLast != 1 ? "es" : "") + " ago");
+                });
+    }
 }

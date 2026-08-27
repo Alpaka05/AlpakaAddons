@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.mainmenu
 
+import net.alpaka.addons.client.AlpakaConfigScreen
 import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.features.snow.SnowOverlayRenderer
@@ -15,6 +16,7 @@ import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen
 import net.minecraft.client.gui.screens.options.OptionsScreen
 import net.minecraft.client.gui.screens.worldselection.SelectWorldScreen
 import net.minecraft.client.input.InputWithModifiers
+import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.multiplayer.ServerData
 import net.minecraft.client.multiplayer.resolver.ServerAddress
 import net.minecraft.client.renderer.RenderPipelines
@@ -28,6 +30,21 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         // Use the static resource identifier - Minecraft's TextureManager loads from resource pack system
         val HERO_TEXTURE_ID: Identifier = Identifier.parse("alpaka:textures/gui/join_hypixel_button.png")
         val MOD_ICON_ID: Identifier = Identifier.parse("alpaka:textures/gui/alpaka_icon.png")
+
+        /**
+         * The sidebar's box. Shared rather than restated per method - it was written out twice
+         * already, in the layout and again in the drawing. The logo doubles as the button into the
+         * Alpaka config now and its clickable area is derived from these, so a third copy would be
+         * one edit away from leaving the hit test pointing at empty space.
+         */
+        private const val SIDEBAR_X = 40
+        private const val SIDEBAR_W = 230
+        private const val SIDEBAR_H = 330
+
+        /** Logo size, its gap below the sidebar's top edge, and the padding its highlight adds. */
+        private const val LOGO_SIZE = 42
+        private const val LOGO_TOP_INSET = 6
+        private const val LOGO_HIGHLIGHT_PAD = 3
         private var textureRegistered = false
         private var modIconRegistered = false
 
@@ -60,6 +77,22 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         }
     }
 
+    /**
+     * Eased hover amount for the logo, smoothed the same way the menu's buttons smooth theirs so it
+     * lights up on the same curve rather than snapping.
+     */
+    private var logoHover = 0.0f
+
+    private fun sidebarTop() = (this.height - SIDEBAR_H) / 2
+    private fun logoLeft() = SIDEBAR_X + SIDEBAR_W / 2 - LOGO_SIZE / 2
+    private fun logoTop() = sidebarTop() + LOGO_TOP_INSET
+
+    private fun isOverLogo(mouseX: Double, mouseY: Double): Boolean {
+        val x = logoLeft()
+        val y = logoTop()
+        return mouseX >= x && mouseX < x + LOGO_SIZE && mouseY >= y && mouseY < y + LOGO_SIZE
+    }
+
     override fun shouldCloseOnEsc(): Boolean = false
 
     private fun playPloppSound() {
@@ -79,10 +112,10 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
     override fun init() {
         this.clearWidgets()
 
-        val sidebarX = 40
-        val sidebarW = 230
-        val sidebarH = 330
-        val sidebarY = (this.height - sidebarH) / 2
+        val sidebarX = SIDEBAR_X
+        val sidebarW = SIDEBAR_W
+        val sidebarH = SIDEBAR_H
+        val sidebarY = sidebarTop()
 
         val innerX = sidebarX + 14
         val innerW = sidebarW - 28
@@ -154,10 +187,10 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
             SnowOverlayRenderer.render(graphics, this.width, this.height)
         }
 
-        val sidebarX = 40
-        val sidebarW = 230
-        val sidebarH = 330
-        val sidebarY = (this.height - sidebarH) / 2
+        val sidebarX = SIDEBAR_X
+        val sidebarW = SIDEBAR_W
+        val sidebarH = SIDEBAR_H
+        val sidebarY = sidebarTop()
 
         // Multi-Layer Drop Shadow for Sidebar Panel
         for (i in 1..6) {
@@ -173,7 +206,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         ModernGuiUtils.drawRect(graphics, sidebarX, sidebarY, sidebarW, 3, ModernGuiUtils.getAccentColor())
 
         // Render Fancy Ornate AlpakaAddons Header Banner Logo
-        renderFancyHeader(graphics, sidebarX, sidebarW, sidebarY)
+        renderFancyHeader(graphics, mouseX, mouseY)
 
         // Section Divider Line
         ModernGuiUtils.drawRect(graphics, sidebarX + 14, sidebarY + 276, sidebarW - 28, 1, ModernGuiUtils.COLOR_CARD_BORDER)
@@ -183,16 +216,48 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         graphics.text(this.font, Component.literal("Minecraft ${ModVersion.minecraft()} • Fabric"), 12, this.height - 10, ModernGuiUtils.COLOR_TEXT_MUTED)
     }
 
-    // Render Header with Mod Icon
-    private fun renderFancyHeader(graphics: GuiGraphicsExtractor, sidebarX: Int, sidebarW: Int, sidebarY: Int) {
-        val centerX = sidebarX + sidebarW / 2
-        val iconSize = 42
-        val iconX = centerX - iconSize / 2
-        val iconY = sidebarY + 6
+    /**
+     * Draws the mod logo, which is also the way into the Alpaka config from here - the same as in
+     * the escape menu, so the logo means the same thing in both places.
+     */
+    private fun renderFancyHeader(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
+        val iconX = logoLeft()
+        val iconY = logoTop()
 
-        // Render Mod Icon Image
+        val hovered = isOverLogo(mouseX.toDouble(), mouseY.toDouble())
+        logoHover += ((if (hovered) 1.0f else 0.0f) - logoHover) * 0.25f
+
+        if (logoHover > 0.01f) {
+            // Card background, accent border and a 2px lift, exactly what the buttons give
+            // themselves, so the logo reads as one of them rather than as decoration that reacts.
+            val alpha = (logoHover * 255.0f).toInt()
+            val pad = LOGO_HIGHLIGHT_PAD
+            ModernGuiUtils.drawRect(
+                graphics, iconX - pad, iconY - pad, LOGO_SIZE + pad * 2, LOGO_SIZE + pad * 2,
+                (alpha / 3 shl 24) or (ModernGuiUtils.COLOR_CARD_BG_HOVER and 0xFFFFFF),
+            )
+            ModernGuiUtils.drawOutline(
+                graphics, iconX - pad, iconY - pad, LOGO_SIZE + pad * 2, LOGO_SIZE + pad * 2,
+                (alpha shl 24) or (ModernGuiUtils.getAccentColor() and 0xFFFFFF),
+            )
+        }
+
+        val lift = (-2.0f * logoHover).toInt()
+
         ensureModIconRegistered()
-        graphics.blit(RenderPipelines.GUI_TEXTURED, MOD_ICON_ID, iconX, iconY, 0.0f, 0.0f, iconSize, iconSize, 128, 128, 128, 128)
+        graphics.blit(
+            RenderPipelines.GUI_TEXTURED, MOD_ICON_ID, iconX, iconY + lift, 0.0f, 0.0f,
+            LOGO_SIZE, LOGO_SIZE, 128, 128, 128, 128,
+        )
+    }
+
+    override fun mouseClicked(event: MouseButtonEvent, doubleClick: Boolean): Boolean {
+        if (event.button() == 0 && isOverLogo(event.x(), event.y())) {
+            CustomSoundFeature.playButtonClickSound()
+            this.minecraft?.setScreen(AlpakaConfigScreen(this))
+            return true
+        }
+        return super.mouseClicked(event, doubleClick)
     }
 
     // High-Performance Retro Hypixel Hero Button with Ornate Gold Brackets & Hypixel Logo Crest

@@ -107,6 +107,15 @@ public class AlpakaConfig {
 
     // Slayer boss timer. Times a single boss fight, from the sidebar announcing the boss to it
     // dying, and remembers the fastest ever per slayer.
+    /**
+     * Whether the mod may read public Hypixel data over the network.
+     *
+     * Everything else in this mod works from what the client already has. This is the one setting
+     * that lets it reach outside, currently for a single endpoint describing the running election -
+     * no API key, no player named, the same answer for everybody. Off means no request is made and
+     * nothing derived from one is used.
+     */
+    public boolean allowApiCalls = true;
     public boolean slayerTimerEnabled = true;
     /** Announce each boss's time in chat once it dies. */
     public boolean slayerTimerChatEnabled = true;
@@ -435,6 +444,7 @@ public class AlpakaConfig {
         this.slayerHudEnabled = false;
         this.slayerHudPauseOutsideArea = false;
         this.slayerHudOnlyInSlayerAreas = false;
+        this.allowApiCalls = false;
         this.slayerTimerEnabled = false;
         this.slayerTimerChatEnabled = false;
         this.slayerTimerHudEnabled = false;

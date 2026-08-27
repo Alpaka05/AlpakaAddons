@@ -1,6 +1,7 @@
 package net.alpaka.addons.features.slayer
 
 import net.alpaka.addons.config.AlpakaConfig
+import net.alpaka.addons.utils.HypixelMayor
 import net.alpaka.addons.utils.SkyblockUtils
 import net.minecraft.client.Minecraft
 import kotlin.math.abs
@@ -102,7 +103,6 @@ object SlayerSessionTracker {
      * over guessing from the tier; [xpForTier] covers the case where no meter is set for the slayer
      * and the message therefore never arrives.
      */
-    private val lastStoredXp = HashMap<SlayerType, Long>()
 
     /** Why the clock is currently stopped, or null while it is running. */
     enum class PauseReason { MANUAL, IDLE, OUTSIDE_AREA }
@@ -315,45 +315,40 @@ object SlayerSessionTracker {
             bossStartMs = 0L
         }
 
-        // Only used when the RNG meter never told us the real figure; see lastStoredXp.
-        if (!lastStoredXp.containsKey(type)) {
-            session.xpGained += xpForTier(SlayerQuestDetector.tier)
-        }
+        session.xpGained += xpForTier(SlayerQuestDetector.lastSeenTier)
     }
 
     /**
-     * Records an RNG meter reading, crediting the step since the previous one as slayer XP.
+     * Slayer XP a boss of this tier awards. The only source, deliberately.
      *
-     * A reading that has gone *down* means the meter completed and reset, so the step is
-     * meaningless and only the new baseline is kept.
+     * The step between two RNG meter readings was used before, on the reasoning that a real reading
+     * of 550 for a tier 4 boss proved the awarded amount could exceed the base figure. That was the
+     * wrong conclusion: the meter is inflated by an unlockable 10% boost, so the step measures the
+     * meter's gain rather than the slayer XP, and it is only correct for players who happen to have
+     * that boost. These flat per-tier values are what a boss actually awards.
+     *
+     * Raised by a quarter while the "Slayer XP Buff" perk is in force - "Earn 25% more Slayer XP",
+     * applying to every slayer. Tied to the perk rather than to Aatrox holding office, because a
+     * mayor's perks are drawn per election and he can serve a term without this one; see
+     * [HypixelMayor].
      */
-    fun onRngMeterReading(type: SlayerType, storedXp: Long) {
-        val previous = lastStoredXp.put(type, storedXp)
-        if (previous != null && storedXp > previous) {
-            session(type).xpGained += storedXp - previous
+    private fun xpForTier(tier: Int): Long {
+        val base = when (tier) {
+            1 -> 5L
+            2 -> 25L
+            3 -> 100L
+            4 -> 500L
+            5 -> 1_500L
+            else -> return 0L
         }
-    }
-
-    /**
-     * Slayer XP a boss of this tier awards, used only as a fallback.
-     *
-     * These are the long-standing Skyblock per-tier values. They are a fallback rather than the
-     * primary source because a real reading of 550 for a tier 4 boss shows the awarded amount can
-     * exceed the base figure.
-     */
-    private fun xpForTier(tier: Int): Long = when (tier) {
-        1 -> 5L
-        2 -> 25L
-        3 -> 100L
-        4 -> 500L
-        5 -> 1_500L
-        else -> 0L
+        // Rounded rather than truncated: at tier 1 the buffed figure is 6.25, and 6 is nearer the
+        // truth than 6. Every other tier lands on a whole number anyway.
+        return Math.round(base * HypixelMayor.slayerXpMultiplier())
     }
 
     /** Clears every session. Used when the player disconnects. */
     fun reset() {
         sessions.clear()
-        lastStoredXp.clear()
         // A fight cannot survive the disconnect that ended it; leaving the timer running would have
         // it counting across the gap and announce a boss time measured in minutes of menu.
         SlayerTimer.clear()
@@ -379,12 +374,10 @@ object SlayerSessionTracker {
         val type = SlayerQuestDetector.currentOrRecent()
         if (type == null) {
             sessions.clear()
-            lastStoredXp.clear()
-            return null
+                return null
         }
 
         sessions.remove(type)
-        lastStoredXp.remove(type)
         return type
     }
 }

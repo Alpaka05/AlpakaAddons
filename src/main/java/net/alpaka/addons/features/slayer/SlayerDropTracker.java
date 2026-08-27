@@ -65,6 +65,16 @@ public class SlayerDropTracker {
      * unrelated messages such as "Ragnarock was cancelled due to taking damage!", which has nothing
      * to do with the slayer quest.
      */
+    /**
+     * Hypixel's line when a quest ends because the player died.
+     *
+     * A second net rather than the main one: this arrives *after* the sidebar has already dropped
+     * the quest, so the death itself is what the detector reacts to. Kept because the ordering is
+     * only known for the captured case, and a message that sometimes arrives first costs nothing.
+     */
+    private static final Pattern QUEST_FAILED_PATTERN =
+            Pattern.compile("^\\s*SLAYER QUEST FAILED!\\s*$");
+
     private static final Pattern QUEST_CANCELLED_PATTERN =
             Pattern.compile("^\\s*Your Slayer Quest has been cancelled!\\s*$");
 
@@ -166,6 +176,7 @@ public class SlayerDropTracker {
             SlayerQuestDetector.INSTANCE.refresh();
             SlayerSessionTracker.INSTANCE.tick();
             SlayerTimer.INSTANCE.tick();
+            net.alpaka.addons.utils.HypixelMayor.INSTANCE.tick();
             SlayerMenuXpReader.INSTANCE.tick();
 
             // Primary kill signal: the sidebar leaving the boss fight. Chat is unreliable here.
@@ -351,24 +362,17 @@ public class SlayerDropTracker {
             }
         }
 
-        Matcher meterMatcher = RNG_METER_PATTERN.matcher(string);
-        if (meterMatcher.matches()) {
-            SlayerType meterType = SlayerQuestDetector.INSTANCE.currentOrRecent();
-            if (meterType != null) {
-                try {
-                    long stored = Long.parseLong(meterMatcher.group("xp").replace(",", ""));
-                    SlayerSessionTracker.INSTANCE.onRngMeterReading(meterType, stored);
-                } catch (NumberFormatException ignored) {
-                    // A figure too large for a long is not a real reading; nothing to record.
-                }
-            }
-            return;
-        }
+        // The RNG meter line is still swallowed here so it does not fall through to the drop and
+        // party handling below, but nothing reads its figure any more. Session XP used to be the
+        // step between two readings; that step is the meter's gain, which an unlockable 10% boost
+        // inflates, so it only ever matched players who had the boost. See xpForTier.
+        if (RNG_METER_PATTERN.matcher(string).matches()) return;
 
         // A cancelled quest leaves the sidebar looking exactly like a completed one, so the
         // detector has to be told which of the two happened.
-        if (QUEST_CANCELLED_PATTERN.matcher(string).matches()) {
-            SlayerQuestDetector.INSTANCE.onQuestCancelled();
+        if (QUEST_CANCELLED_PATTERN.matcher(string).matches()
+                || QUEST_FAILED_PATTERN.matcher(string).matches()) {
+            SlayerQuestDetector.INSTANCE.onQuestVoided();
             return;
         }
 

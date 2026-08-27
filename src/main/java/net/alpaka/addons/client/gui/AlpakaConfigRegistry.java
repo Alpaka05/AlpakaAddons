@@ -817,7 +817,7 @@ public class AlpakaConfigRegistry {
 
 
         OPTIONS.add(new ConfigOption("bridge_bot_formatter", "Bridge Bot Formatter",
-                "Reformats relayed Discord messages to show the real author first.",
+                "Shows relayed Discord messages as [Discord] instead of the bot's name and rank.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.bridgeBotFormatterEnabled,
                 v -> { AlpakaConfig.instance.bridgeBotFormatterEnabled = v; AlpakaConfig.save(); },

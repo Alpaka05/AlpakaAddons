@@ -11,6 +11,7 @@ import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.ConfirmLinkScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
 import net.minecraft.client.gui.screens.options.OptionsScreen;
 import net.minecraft.client.input.InputWithModifiers;
 import net.minecraft.client.input.KeyEvent;
@@ -42,7 +43,7 @@ public class CustomPauseScreen extends Screen {
 
     /** Private-use codepoints, in the order the sprite sheet lays them out. */
     private static final String ICON_PLAY = "\uE000";
-    private static final String ICON_GEAR = "\uE001";
+    private static final String ICON_SERVER = "\uE001";
     private static final String ICON_BOX = "\uE002";
     private static final String ICON_SLIDERS = "\uE003";
     private static final String ICON_BOOK = "\uE004";
@@ -76,8 +77,50 @@ public class CustomPauseScreen extends Screen {
     private boolean showDisconnectPrompt = false;
     private long openTime = 0L;
 
+    /**
+     * Eased hover amount for the mod logo, which doubles as the Alpaka config button.
+     *
+     * Smoothed the same way {@link CustomPauseButton} smooths its own, so the logo lifts and lights
+     * up on the same curve as everything else on the panel instead of snapping.
+     */
+    private float logoHover = 0.0f;
+
+    /**
+     * The panel's box. Shared rather than restated per method: the logo's clickable area is derived
+     * from it, so a size only changed in one place would leave the hit test pointing at empty space.
+     */
+    private static final int CARD_WIDTH = 200;
+    private static final int CARD_HEIGHT = 254;
+
+    /** Gap between the panel's top edge and the logo. */
+    private static final int LOGO_TOP_INSET = 5;
+
+    /** Side length of the logo, and the padding its hover highlight adds around it. */
+    private static final int LOGO_SIZE = 34;
+    private static final int LOGO_HIGHLIGHT_PAD = 3;
+
+    /**
+     * Where the logo sits, in the settled layout.
+     *
+     * Derived here rather than inline so drawing and hit-testing cannot drift apart. The open
+     * animation slides the panel, and with it the drawn logo, for 150ms; the rectangle returned here
+     * is the resting one, which is what a click should be measured against.
+     */
+    private int logoLeft() {
+        return this.width / 2 - LOGO_SIZE / 2;
+    }
+
+    private int logoTop() {
+        return (this.height - CARD_HEIGHT) / 2 + LOGO_TOP_INSET;
+    }
+
+    private boolean isOverLogo(double mouseX, double mouseY) {
+        int x = logoLeft(), y = logoTop();
+        return mouseX >= x && mouseX < x + LOGO_SIZE && mouseY >= y && mouseY < y + LOGO_SIZE;
+    }
+
     private CustomPauseButton resumeButton;
-    private CustomPauseButton configButton;
+    private CustomPauseButton serverListButton;
     private CustomPauseButton modsButton;
     private CustomPauseButton optionsButton;
     private CustomPauseButton wikiButton;
@@ -97,8 +140,8 @@ public class CustomPauseScreen extends Screen {
         int centerX = this.width / 2;
         int centerY = this.height / 2;
 
-        int cardWidth = 200;
-        int cardHeight = 254;
+        int cardWidth = CARD_WIDTH;
+        int cardHeight = CARD_HEIGHT;
         int startX = centerX - cardWidth / 2;
         int startY = centerY - cardHeight / 2;
 
@@ -113,14 +156,20 @@ public class CustomPauseScreen extends Screen {
                 iconLabel(ICON_PLAY, "Resume Game"), false, btn -> this.onClose());
         this.addRenderableWidget(this.resumeButton);
 
-        // 2. Alpaka Config Button
-        this.configButton = new CustomPauseButton(buttonX, buttonStartY + spacing, buttonWidth, buttonHeight,
-                iconLabel(ICON_GEAR, "Alpaka Config"), false, btn -> {
+        // 2. Server List Button
+        //
+        // Opens the multiplayer list with this screen as its parent, which is what makes it a
+        // detour rather than an exit: JoinMultiplayerScreen's own Escape hands control back to
+        // whatever it was opened from, so the player returns here and then to the game, still
+        // connected. Nothing here disconnects - that is the point, it is for glancing at player
+        // counts and ping on other servers mid-session.
+        this.serverListButton = new CustomPauseButton(buttonX, buttonStartY + spacing, buttonWidth, buttonHeight,
+                iconLabel(ICON_SERVER, "Server List"), false, btn -> {
             if (this.minecraft != null) {
-                this.minecraft.setScreen(new AlpakaConfigScreen(this));
+                this.minecraft.setScreen(new JoinMultiplayerScreen(this));
             }
         });
-        this.addRenderableWidget(this.configButton);
+        this.addRenderableWidget(this.serverListButton);
 
         // 3. Mods Button (Mod Menu mod list)
         this.modsButton = new CustomPauseButton(buttonX, buttonStartY + spacing * 2, buttonWidth, buttonHeight,
@@ -195,7 +244,7 @@ public class CustomPauseScreen extends Screen {
     private void updateWidgetStates() {
         boolean mainActive = !this.showDisconnectPrompt;
         if (this.resumeButton != null) this.resumeButton.active = mainActive;
-        if (this.configButton != null) this.configButton.active = mainActive;
+        if (this.serverListButton != null) this.serverListButton.active = mainActive;
         if (this.modsButton != null) this.modsButton.active = mainActive;
         if (this.optionsButton != null) this.optionsButton.active = mainActive;
         if (this.wikiButton != null) this.wikiButton.active = mainActive;
@@ -228,8 +277,8 @@ public class CustomPauseScreen extends Screen {
         graphics.fill(0, 0, this.width, this.height, 0x70000000);
         graphics.pose().popMatrix();
 
-        int cardWidth = 200;
-        int cardHeight = 254;
+        int cardWidth = CARD_WIDTH;
+        int cardHeight = CARD_HEIGHT;
         int startX = centerX - cardWidth / 2;
         int startY = centerY - cardHeight / 2;
 
@@ -253,12 +302,29 @@ public class CustomPauseScreen extends Screen {
         ModernGuiUtils.drawRect(graphics, startX, startY, cardWidth, headerH, ModernGuiUtils.COLOR_SIDEBAR_BG);
         ModernGuiUtils.drawRect(graphics, startX, startY + headerH - 1, cardWidth, 1, ModernGuiUtils.getAccentColor());
 
-        // Mod Logo
+        // Mod Logo, which is also the way into the Alpaka config now that the button is gone.
         ensureModIconRegistered();
-        int iconSize = 34;
+        int iconSize = LOGO_SIZE;
         int iconX = centerX - iconSize / 2;
-        int iconY = startY + 5;
-        graphics.blit(RenderPipelines.GUI_TEXTURED, MOD_ICON_ID, iconX, iconY, 0.0f, 0.0f, iconSize, iconSize, 128, 128, 128, 128);
+        int iconY = startY + LOGO_TOP_INSET;
+
+        boolean logoHovered = !this.showDisconnectPrompt && isOverLogo(mouseX, mouseY);
+        this.logoHover += ((logoHovered ? 1.0f : 0.0f) - this.logoHover) * 0.25f;
+
+        if (this.logoHover > 0.01f) {
+            // Same treatment the buttons give themselves - card background, accent border, a 2px
+            // lift - so the logo reads as one of them rather than as decoration that happens to
+            // react. Alpha is scaled by the eased amount so it fades rather than pops.
+            int alpha = (int) (this.logoHover * 255.0f);
+            int pad = LOGO_HIGHLIGHT_PAD;
+            ModernGuiUtils.drawRect(graphics, iconX - pad, iconY - pad, iconSize + pad * 2, iconSize + pad * 2,
+                    (alpha / 3 << 24) | (ModernGuiUtils.COLOR_CARD_BG_HOVER & 0xFFFFFF));
+            ModernGuiUtils.drawOutline(graphics, iconX - pad, iconY - pad, iconSize + pad * 2, iconSize + pad * 2,
+                    (alpha << 24) | (ModernGuiUtils.getAccentColor() & 0xFFFFFF));
+        }
+
+        int logoLift = (int) (-2.0f * this.logoHover);
+        graphics.blit(RenderPipelines.GUI_TEXTURED, MOD_ICON_ID, iconX, iconY + logoLift, 0.0f, 0.0f, iconSize, iconSize, 128, 128, 128, 128);
 
         // Subtitle: User & Status (IP on server, Singleplayer in local world)
         String status = "Singleplayer";
@@ -350,6 +416,13 @@ public class CustomPauseScreen extends Screen {
             }
             return true;
         }
+
+        if (event.button() == 0 && isOverLogo(event.x(), event.y()) && this.minecraft != null) {
+            CustomSoundFeature.playButtonClickSound();
+            this.minecraft.setScreen(new AlpakaConfigScreen(this));
+            return true;
+        }
+
         return super.mouseClicked(event, doubleClick);
     }
 

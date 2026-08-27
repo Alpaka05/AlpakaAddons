@@ -55,23 +55,22 @@ public class GenPauseIcons {
         ".........."};
 
     /**
-     * Alpaka Config. A cog: a toothed ring rather than a filled disc.
+     * Server List. Signal bars, for the connection strength the button is opened to look at.
      *
-     * Hollow on purpose. A solid cog at this size carries half again as many lit pixels as this one
-     * and reads as a heavy blob next to the text; leaving the centre open, and a pixel of air around
-     * the outside, is what lets the teeth register as teeth.
+     * A globe or a rack would name the thing rather than the reason; bars say ping. They also stay
+     * clear of the crate used for Mods, which a stacked-rack drawing collides with at this size.
      */
-    static final String[] GEAR = {
+    static final String[] SERVER = {
         "..........",
-        "...#..#...",
-        "..######..",
-        ".###..###.",
-        ".##....##.",
-        ".##....##.",
-        ".###..###.",
-        "..######..",
-        "...#..#...",
-        ".........."};
+        "........##",
+        "........##",
+        "........##",
+        "....##..##",
+        "....##..##",
+        "....##..##",
+        "##..##..##",
+        "##..##..##",
+        "##..##..##"};
 
     /** Mods. A crate with a lid seam - a strap through the middle read as a window instead. */
     static final String[] BOX = {
@@ -86,7 +85,7 @@ public class GenPauseIcons {
         "##########",
         ".........."};
 
-    /** Minecraft Options. Sliders rather than a wrench, so it reads apart from the config cog. */
+    /** Minecraft Options. Sliders, distinct from the signal bars next to them. */
     static final String[] SLIDERS = {
         "......##..",
         "##########",
@@ -126,8 +125,8 @@ public class GenPauseIcons {
         ".........."};
 
     /** Order matters: this is what fixes each icon's codepoint. */
-    static final String[][] ICONS = {PLAY, GEAR, BOX, SLIDERS, BOOK, DOOR};
-    static final String[] NAMES = {"play", "gear", "box", "sliders", "book", "door"};
+    static final String[][] ICONS = {PLAY, SERVER, BOX, SLIDERS, BOOK, DOOR};
+    static final String[] NAMES = {"play", "server", "box", "sliders", "book", "door"};
 
     public static void main(String[] args) throws Exception {
         String sheetPath = args.length > 0 && !args[0].isEmpty() ? args[0] : DEFAULT_SHEET;

@@ -57,6 +57,16 @@ public class SlayerDropTracker {
     private static final Pattern RNG_METER_PATTERN =
             Pattern.compile("^\\s*RNG Meter\\s*-\\s*(?<xp>[\\d,]+)\\s+Stored XP\\s*$");
 
+    /**
+     * Hypixel's own wording when a slayer quest is dropped, from a captured log.
+     *
+     * Anchored on the whole line rather than searched for: "cancelled" alone also appears in
+     * unrelated messages such as "Ragnarock was cancelled due to taking damage!", which has nothing
+     * to do with the slayer quest.
+     */
+    private static final Pattern QUEST_CANCELLED_PATTERN =
+            Pattern.compile("^\\s*Your Slayer Quest has been cancelled!\\s*$");
+
     private static final Pattern SERVER_DROP_PATTERN = Pattern.compile("^\\s*(?:UNCOMMON|RARE|VERY RARE|CRAZY RARE|INSANE|PRAY TO RNGESUS|PET) DROP!.*");
     private static final Pattern PARTY_PATTERN = Pattern.compile("^Party > (?:\\[[A-Z+]+] )?\\w+: !since (?<item>.+)$");
     /**
@@ -351,6 +361,13 @@ public class SlayerDropTracker {
                     // A figure too large for a long is not a real reading; nothing to record.
                 }
             }
+            return;
+        }
+
+        // A cancelled quest leaves the sidebar looking exactly like a completed one, so the
+        // detector has to be told which of the two happened.
+        if (QUEST_CANCELLED_PATTERN.matcher(string).matches()) {
+            SlayerQuestDetector.INSTANCE.onQuestCancelled();
             return;
         }
 

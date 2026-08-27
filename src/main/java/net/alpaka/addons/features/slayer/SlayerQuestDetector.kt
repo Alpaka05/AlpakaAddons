@@ -73,6 +73,18 @@ object SlayerQuestDetector {
     private var lastSeenType: SlayerType? = null
     private var lastSeenAtMs = 0L
 
+    /**
+     * How long after a cancelled quest the quest lines vanishing is not read as a kill.
+     *
+     * Hypixel leaves the quest on the sidebar for a moment after cancelling it - four seconds in the
+     * capture that exposed this - so the window has to outlast that. It cannot swallow a real kill:
+     * cancelling clears the quest, and starting a new one and killing its boss inside ten seconds is
+     * not possible.
+     */
+    private const val CANCEL_GRACE_MS = 10_000L
+
+    private var cancelledAtMs = 0L
+
     private var lastProgress = ""
     private var pendingKill: SlayerType? = null
     private var pendingSpawn: SlayerType? = null
@@ -166,12 +178,35 @@ object SlayerQuestDetector {
      * The quest clearing straight out of the boss fight counts too - at a 250ms poll the brief
      * "Boss slain!" state is easy to miss entirely.
      */
+    /**
+     * Hypixel says the quest was cancelled. Stops the disappearing quest being read as a kill.
+     *
+     * Cancelling looks exactly like a kill from the sidebar alone - the boss was up, then the quest
+     * lines are gone - so without this every cancelled quest counted as a boss killed. Comparing
+     * against SkyHanni over three sessions made it plain: identical counts in the two sessions with
+     * no cancellation, exactly one kill too many in the session with one.
+     *
+     * The running fight is dropped as well: there is no boss any more, so the timer has nothing left
+     * to time and its clock would otherwise keep running on the HUD.
+     */
+    fun onQuestCancelled() {
+        cancelledAtMs = System.currentTimeMillis()
+        SlayerTimer.clear()
+    }
+
     private fun detectKill(newProgress: String, newType: SlayerType?) {
         if (newProgress == lastProgress) return
 
         val wasFighting = lastProgress == STATE_BOSS_FIGHT
-        val ended = newProgress == STATE_BOSS_SLAIN || newProgress.isEmpty() || newType == null
-        if (wasFighting && ended) {
+
+        // "Boss slain!" is stated outright and can be trusted whatever else happened. The other two
+        // are only inferred from the quest going away, which is also what cancelling looks like, so
+        // those are ignored for a moment after Hypixel says the quest was cancelled.
+        val slain = newProgress == STATE_BOSS_SLAIN
+        val vanished = newProgress.isEmpty() || newType == null
+        val recentlyCancelled = System.currentTimeMillis() - cancelledAtMs < CANCEL_GRACE_MS
+
+        if (wasFighting && (slain || (vanished && !recentlyCancelled))) {
             pendingKill = lastSeenType
         }
 

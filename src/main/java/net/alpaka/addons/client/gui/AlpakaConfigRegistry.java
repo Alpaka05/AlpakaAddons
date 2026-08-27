@@ -615,12 +615,14 @@ public class AlpakaConfigRegistry {
 
         OPTIONS.add(new ConfigOption("Slayer Tracking", ConfigCategory.SKYBLOCK));
 
+
         OPTIONS.add(new ConfigOption("slayer_drop_tracker", "Slayer Drop Tracker",
                 "Automatically tracks loot drops and kills for Hypixel Slayer bosses.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.slayerDropTrackerEnabled,
                 v -> { AlpakaConfig.instance.slayerDropTrackerEnabled = v; AlpakaConfig.save(); },
                 "slayer drop tracker hypixel loot boss kill stats counter skyblock"));
+
 
         OPTIONS.add(new ConfigOption("hide_hypixel_drop_message", "Hide Hypixel Drop Line",
                 "Hides Hypixel's own drop message when the tracker reports that drop.",
@@ -629,12 +631,6 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.hideHypixelDropMessage = v; AlpakaConfig.save(); },
                 "hide hypixel drop message duplicate chat slayer very rare clean"));
 
-        OPTIONS.add(new ConfigOption("slayer_hud_only_in_areas", "Slayer HUD Only In Slayer Areas",
-                "Shows the HUD only where that slayer is run, like SkyHanni's profit tracker.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.slayerHudOnlyInSlayerAreas,
-                v -> { AlpakaConfig.instance.slayerHudOnlyInSlayerAreas = v; AlpakaConfig.save(); },
-                "slayer hud area island restrict show everywhere anywhere zone"));
 
         OPTIONS.add(new ConfigOption("hide_slayer_chat", "Hide Slayer Chat Spam",
                 "Hides Hypixel's slayer quest, level-up and radio messages.",
@@ -643,6 +639,9 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.hideSlayerChatMessages = v; AlpakaConfig.save(); },
                 "hide slayer chat spam quest complete started radio level up messages"));
 
+        OPTIONS.add(new ConfigOption("Slayer Boss Timer", ConfigCategory.SKYBLOCK));
+
+
         OPTIONS.add(new ConfigOption("slayer_timer", "Slayer Boss Timer",
                 "Times each slayer boss fight, from the boss spawning until it dies.",
                 ConfigCategory.SKYBLOCK,
@@ -650,12 +649,14 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.slayerTimerEnabled = v; AlpakaConfig.save(); },
                 "slayer boss timer time fight duration personal best pb"));
 
+
         OPTIONS.add(new ConfigOption("slayer_timer_chat", "Boss Time In Chat",
                 "Posts each boss's time in chat, and calls out a new personal best.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.slayerTimerChatEnabled,
                 v -> { AlpakaConfig.instance.slayerTimerChatEnabled = v; AlpakaConfig.save(); },
                 "slayer boss timer chat message announce personal best"));
+
 
         OPTIONS.add(new ConfigOption("slayer_timer_hud", "Boss Timer HUD",
                 "Shows the running boss time on screen while the boss is up.",
@@ -666,12 +667,14 @@ public class AlpakaConfigRegistry {
 
         OPTIONS.add(new ConfigOption("Slayer Session HUD", ConfigCategory.SKYBLOCK));
 
+
         OPTIONS.add(new ConfigOption("slayer_hud_enabled", "Enable Slayer Session HUD",
                 "Live session stats while a Slayer quest is active.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.slayerHudEnabled,
                 v -> { AlpakaConfig.instance.slayerHudEnabled = v; AlpakaConfig.save(); },
                 "slayer session hud stats xp bosses per hour timer rng dry streak skyblock"));
+
 
         OPTIONS.add(new ConfigOption("slayer_hud_lines", "Slayer HUD Lines",
                 "Pick which lines the Slayer HUD shows.",
@@ -707,6 +710,15 @@ public class AlpakaConfigRegistry {
                 ),
                 "slayer hud lines toggle show hide xp bosses per hour session time rng dry streak average"));
 
+
+        OPTIONS.add(new ConfigOption("slayer_hud_only_in_areas", "Slayer HUD Only In Slayer Areas",
+                "Shows the HUD only where that slayer is run, like SkyHanni's profit tracker.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slayerHudOnlyInSlayerAreas,
+                v -> { AlpakaConfig.instance.slayerHudOnlyInSlayerAreas = v; AlpakaConfig.save(); },
+                "slayer hud area island restrict show everywhere anywhere zone"));
+
+
         OPTIONS.add(new ConfigOption("slayer_hud_afk_pause", "Session Pause After Standing Still",
                 "Idle time before the session timer pauses.",
                 ConfigCategory.SKYBLOCK,
@@ -717,6 +729,7 @@ public class AlpakaConfigRegistry {
                         : String.format("%ds", val.intValue()),
                 "slayer session timer pause afk idle stand still seconds duration threshold"));
 
+
         OPTIONS.add(new ConfigOption("slayer_hud_pause_outside_area", "Pause Session Outside Slayer Area",
                 "Pauses the session timer once you leave the slayer's area.",
                 ConfigCategory.SKYBLOCK,
@@ -724,7 +737,8 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.slayerHudPauseOutsideArea = v; AlpakaConfig.save(); },
                 "slayer session pause outside area zone leave region timer stop"));
 
-        OPTIONS.add(new ConfigOption("World Age HUD", ConfigCategory.SKYBLOCK));
+        OPTIONS.add(new ConfigOption("World Age", ConfigCategory.SKYBLOCK));
+
 
         OPTIONS.add(new ConfigOption("world_age_hud_enabled", "Enable World Age (Day) HUD",
                 "Displays the current server's world age in days.",
@@ -733,12 +747,6 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.worldAgeHudEnabled = v; AlpakaConfig.save(); },
                 "world age day hud server days time skyblock color red orange green"));
 
-        OPTIONS.add(new ConfigOption("world_age_hud_editor", "Configure World Age Position",
-                "Opens the HUD editor for moving and resizing every HUD.",
-                ConfigCategory.SKYBLOCK,
-                "Open HUD Editor",
-                parent -> Minecraft.getInstance().setScreen(new HudEditorScreen(parent)),
-                "world age position edit dragging hud screen drag move resize scale editor alpakahud"));
 
         OPTIONS.add(new ConfigOption("world_age_join_message_enabled", "Server Age Join Message",
                 "Chat notice with the server age and recent visit status on join.",
@@ -746,6 +754,7 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.worldAgeJoinMessageEnabled,
                 v -> { AlpakaConfig.instance.worldAgeJoinMessageEnabled = v; AlpakaConfig.save(); },
                 "world age server join chat message notification alert day time"));
+
 
         OPTIONS.add(new ConfigOption("world_age_recent_threshold", "Recent Visit Window",
                 "How recently you must have visited to be told about it.",
@@ -762,6 +771,16 @@ public class AlpakaConfigRegistry {
                     return String.format("%ds", sec);
                 },
                 "world age recent visit threshold window seconds time minutes slider"));
+
+        OPTIONS.add(new ConfigOption("HUD Layout", ConfigCategory.SKYBLOCK));
+
+
+        OPTIONS.add(new ConfigOption("hud_editor", "HUD Editor",
+                "Move and resize every HUD - session, boss timer, world age, inventory, avatar.",
+                ConfigCategory.SKYBLOCK,
+                "Open HUD Editor",
+                parent -> Minecraft.getInstance().setScreen(new HudEditorScreen(parent)),
+                "world age slayer timer position edit dragging hud screen drag move resize scale editor alpakahud"));
 
         OPTIONS.add(new ConfigOption("Guild Bridge", ConfigCategory.SKYBLOCK));
 

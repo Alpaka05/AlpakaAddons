@@ -19,6 +19,7 @@ public class AlpakaClient implements ClientModInitializer {
     public void onInitializeClient() {
         CustomSoundFeature.register();
         SlayerDropTracker.registerEvents();
+        net.alpaka.addons.features.slayer.SkyblockProfileTracker.INSTANCE.register();
         ZoomFeature.register();
         CommandWheelFeature.register();
         InventoryHudFeature.register();

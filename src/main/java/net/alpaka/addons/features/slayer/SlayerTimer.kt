@@ -1,6 +1,7 @@
 package net.alpaka.addons.features.slayer
 
 import net.alpaka.addons.config.AlpakaConfig
+import net.alpaka.addons.config.AlpakaStats
 
 /**
  * Times a single slayer boss fight, from the boss appearing to it dying.
@@ -55,7 +56,7 @@ object SlayerTimer {
 
     /** The fastest kill ever recorded for a slayer, or null if it has none yet. */
     fun personalBest(type: SlayerType): Long? {
-        val data = AlpakaConfig.instance.slayerBossMap[type] ?: return null
+        val data = AlpakaStats.slayerBossMap()[type] ?: return null
         return if (data.bestBossMs > 0L) data.bestBossMs else null
     }
 
@@ -84,12 +85,12 @@ object SlayerTimer {
         lastResultMs = elapsed
         lastResultAtMs = System.currentTimeMillis()
 
-        val data = AlpakaConfig.instance.slayerBossMap.getOrPut(type) { AlpakaConfig.SlayerData() }
+        val data = AlpakaStats.slayerBossMap().getOrPut(type) { AlpakaConfig.SlayerData() }
         val previousBest = if (data.bestBossMs > 0L) data.bestBossMs else null
         val isBest = previousBest == null || elapsed < previousBest
         if (isBest) {
             data.bestBossMs = elapsed
-            AlpakaConfig.save()
+            AlpakaStats.save()
         }
 
         if (AlpakaConfig.instance.slayerTimerChatEnabled) {
@@ -151,14 +152,14 @@ object SlayerTimer {
      */
     fun clearPersonalBest(type: SlayerType?): Int {
         var cleared = 0
-        for ((slayer, data) in AlpakaConfig.instance.slayerBossMap) {
+        for ((slayer, data) in AlpakaStats.slayerBossMap()) {
             if (type != null && slayer != type) continue
             if (data.bestBossMs > 0L) {
                 data.bestBossMs = -1L
                 cleared++
             }
         }
-        if (cleared > 0) AlpakaConfig.save()
+        if (cleared > 0) AlpakaStats.save()
         return cleared
     }
 

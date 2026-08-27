@@ -2,6 +2,7 @@ package net.alpaka.addons.features.slayer;
 
 import net.alpaka.addons.AlpakaAddons;
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.config.AlpakaStats;
 import net.alpaka.addons.features.sound.CustomSoundFeature;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
@@ -419,13 +420,13 @@ public class SlayerDropTracker {
 
         currentBoss = type;
 
-        AlpakaConfig.SlayerData data = AlpakaConfig.instance.slayerBossMap.get(type);
+        AlpakaConfig.SlayerData data = AlpakaStats.slayerBossMap().get(type);
         if (data == null) {
             data = new AlpakaConfig.SlayerData();
-            AlpakaConfig.instance.slayerBossMap.put(type, data);
+            AlpakaStats.slayerBossMap().put(type, data);
         }
         data.kills++;
-        AlpakaConfig.save();
+        AlpakaStats.save();
     }
 
     /** Reports drops whose hold-off has elapsed. Called once per client tick. */
@@ -442,10 +443,10 @@ public class SlayerDropTracker {
 
             if (!AlpakaConfig.instance.slayerDropTrackerEnabled) continue;
 
-            AlpakaConfig.SlayerData data = AlpakaConfig.instance.slayerBossMap.get(pending.type());
+            AlpakaConfig.SlayerData data = AlpakaStats.slayerBossMap().get(pending.type());
             if (data == null) {
                 data = new AlpakaConfig.SlayerData();
-                AlpakaConfig.instance.slayerBossMap.put(pending.type(), data);
+                AlpakaStats.slayerBossMap().put(pending.type(), data);
             }
 
             int currentKills = data.kills;
@@ -468,7 +469,7 @@ public class SlayerDropTracker {
             sendModMessage(feedback);
         }
 
-        if (changed) AlpakaConfig.save();
+        if (changed) AlpakaStats.save();
     }
 
     public static void handlePartyCommand(String message) {
@@ -478,7 +479,7 @@ public class SlayerDropTracker {
         if (matcher.matches()) {
             String queryDrop = matcher.group("item").trim();
 
-            for (Map.Entry<SlayerType, AlpakaConfig.SlayerData> entry : AlpakaConfig.instance.slayerBossMap.entrySet()) {
+            for (Map.Entry<SlayerType, AlpakaConfig.SlayerData> entry : AlpakaStats.slayerBossMap().entrySet()) {
                 AlpakaConfig.SlayerData data = entry.getValue();
                 if (data == null || data.drops == null) continue;
 
@@ -499,7 +500,7 @@ public class SlayerDropTracker {
         if (player == null) return;
         sendModMessage("§6--- Slayer Kills ---");
         for (SlayerType type : SlayerType.values()) {
-            AlpakaConfig.SlayerData data = AlpakaConfig.instance.slayerBossMap.get(type);
+            AlpakaConfig.SlayerData data = AlpakaStats.slayerBossMap().get(type);
             if (type == SlayerType.GUARDIAN && (data == null || data.kills == 0)) {
                 continue;
             }
@@ -528,7 +529,7 @@ public class SlayerDropTracker {
             String item = type.rngDropItem;
             if (item == null) continue;
 
-            AlpakaConfig.SlayerData data = AlpakaConfig.instance.slayerBossMap.get(type);
+            AlpakaConfig.SlayerData data = AlpakaStats.slayerBossMap().get(type);
             if (data == null || data.kills == 0) continue;
             anyDrop = true;
 
@@ -556,7 +557,7 @@ public class SlayerDropTracker {
     public static void printDropsFor(LocalPlayer player, SlayerType type) {
         if (player == null) return;
 
-        AlpakaConfig.SlayerData data = AlpakaConfig.instance.slayerBossMap.get(type);
+        AlpakaConfig.SlayerData data = AlpakaStats.slayerBossMap().get(type);
         sendModMessage("§6--- " + type.display + " Drops ---");
 
         int kills = data != null ? data.kills : 0;

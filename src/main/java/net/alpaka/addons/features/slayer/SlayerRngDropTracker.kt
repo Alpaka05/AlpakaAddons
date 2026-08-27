@@ -1,6 +1,7 @@
 package net.alpaka.addons.features.slayer
 
 import net.alpaka.addons.config.AlpakaConfig
+import net.alpaka.addons.config.AlpakaStats
 
 /**
  * How many bosses have been killed since a slayer's headline RNG drop last appeared.
@@ -22,7 +23,7 @@ object SlayerRngDropTracker {
      */
     fun bossesSince(type: SlayerType): Int? {
         val item = type.rngDropItem ?: return null
-        val data = AlpakaConfig.instance.slayerBossMap[type] ?: return null
+        val data = AlpakaStats.slayerBossMap()[type] ?: return null
         val drops = data.drops ?: return null
 
         val lastDropAtKill = drops.entries

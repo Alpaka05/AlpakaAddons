@@ -1,6 +1,7 @@
 package net.alpaka.addons.features.slayer
 
 import net.alpaka.addons.config.AlpakaConfig
+import net.alpaka.addons.config.AlpakaStats
 
 /**
  * Lifetime slayer XP per slayer, as far as the client can know it.
@@ -32,13 +33,13 @@ object SlayerXpTracker {
     fun observeTotal(type: SlayerType, xp: Long) {
         if (xp < 0L) return
 
-        val data = AlpakaConfig.instance.slayerBossMap.getOrPut(type) { AlpakaConfig.SlayerData() }
+        val data = AlpakaStats.slayerBossMap().getOrPut(type) { AlpakaConfig.SlayerData() }
         val alreadyKnown = data.totalXp == xp
         sessionXpAtObservation[type] = SlayerSessionTracker.session(type).xpGained
         if (alreadyKnown) return
 
         data.totalXp = xp
-        AlpakaConfig.save()
+        AlpakaStats.save()
     }
 
     /**
@@ -46,7 +47,7 @@ object SlayerXpTracker {
      * earned since it was read. Null when no figure has ever been observed.
      */
     fun totalXp(type: SlayerType): Long? {
-        val baseline = AlpakaConfig.instance.slayerBossMap[type]?.totalXp ?: -1L
+        val baseline = AlpakaStats.slayerBossMap()[type]?.totalXp ?: -1L
         if (baseline < 0L) return null
 
         val gainedSince = SlayerSessionTracker.session(type).xpGained - (sessionXpAtObservation[type] ?: 0L)

@@ -1,6 +1,7 @@
 package net.alpaka.addons.utils
 
 import net.alpaka.addons.config.AlpakaConfig
+import net.alpaka.addons.config.AlpakaStats
 import net.alpaka.addons.features.slayer.SlayerDropTracker
 import net.alpaka.addons.features.slayer.SlayerQuestDetector
 import net.alpaka.addons.features.slayer.SlayerType
@@ -42,8 +43,8 @@ object AlpakaDiagnostics {
         }
         line("§7Slayer tracking enabled: ${yesNo(cfg.slayerDropTrackerEnabled)}")
 
-        val totalKills = SlayerType.entries.sumOf { cfg.slayerBossMap[it]?.kills ?: 0 }
-        val trackedDrops = SlayerType.entries.sumOf { cfg.slayerBossMap[it]?.drops?.size ?: 0 }
+        val totalKills = SlayerType.entries.sumOf { AlpakaStats.slayerBossMap()[it]?.kills ?: 0 }
+        val trackedDrops = SlayerType.entries.sumOf { AlpakaStats.slayerBossMap()[it]?.drops?.size ?: 0 }
         line("§7Recorded: §f$totalKills §7kills, §f$trackedDrops §7distinct drops §8(/alpakaslayer for detail)")
 
         line("§7Pangolin highlight: ${yesNo(cfg.pangolinHighlightEnabled)}")

@@ -1,5 +1,6 @@
 package net.alpaka.addons.client;
 
+import java.util.Locale;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractSliderButton;
@@ -94,12 +95,12 @@ public class BlockOverlayConfigScreen extends Screen {
                 Component.literal("Outline Thickness"), this.font));
         AbstractSliderButton thicknessSlider = new AbstractSliderButton(
                 this.width / 2 + 5, centerY + 88, 150, 20,
-                Component.literal(String.format("%.1f", AlpakaConfig.instance.blockOutlineThickness)),
+                Component.literal(String.format(Locale.ROOT, "%.1f", AlpakaConfig.instance.blockOutlineThickness)),
                 (AlpakaConfig.instance.blockOutlineThickness - 0.5f) / 4.5f
         ) {
             @Override
             protected void updateMessage() {
-                setMessage(Component.literal(String.format("%.1f", AlpakaConfig.instance.blockOutlineThickness)));
+                setMessage(Component.literal(String.format(Locale.ROOT, "%.1f", AlpakaConfig.instance.blockOutlineThickness)));
             }
             @Override
             protected void applyValue() {
@@ -147,12 +148,12 @@ public class BlockOverlayConfigScreen extends Screen {
                 Component.literal("Chroma Speed"), this.font));
         AbstractSliderButton speedSlider = new AbstractSliderButton(
                 this.width / 2 + 5, centerY + 154, 150, 20,
-                Component.literal(String.format("%.2fx", AlpakaConfig.instance.blockChromaSpeed)),
+                Component.literal(String.format(Locale.ROOT, "%.2fx", AlpakaConfig.instance.blockChromaSpeed)),
                 (AlpakaConfig.instance.blockChromaSpeed - 0.1f) / 1.9f
         ) {
             @Override
             protected void updateMessage() {
-                setMessage(Component.literal(String.format("%.2fx", AlpakaConfig.instance.blockChromaSpeed)));
+                setMessage(Component.literal(String.format(Locale.ROOT, "%.2fx", AlpakaConfig.instance.blockChromaSpeed)));
             }
             @Override
             protected void applyValue() {

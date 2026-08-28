@@ -1,5 +1,6 @@
 package net.alpaka.addons.client.gui;
 
+import java.util.Locale;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 
@@ -223,7 +224,7 @@ public class ConfigOption {
 
     public String getFormattedValue() {
         if (formatter != null) return formatter.apply(getFloat());
-        return String.format("%.1f", getFloat());
+        return String.format(Locale.ROOT, "%.1f", getFloat());
     }
 
     // Action

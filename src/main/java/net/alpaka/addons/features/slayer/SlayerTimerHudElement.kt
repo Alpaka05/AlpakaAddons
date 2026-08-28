@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.slayer
 
+import java.util.Locale
 import net.alpaka.addons.client.hud.HudBounds
 import net.alpaka.addons.client.hud.HudElement
 import net.alpaka.addons.config.AlpakaConfig
@@ -77,5 +78,5 @@ object SlayerTimerHudElement : HudElement {
 
     override fun scaleValue(): Float = AlpakaConfig.instance.slayerTimerHudScale
 
-    override fun scaleLabel(): String = String.format("%.2fx", AlpakaConfig.instance.slayerTimerHudScale)
+    override fun scaleLabel(): String = String.format(Locale.ROOT, "%.2fx", AlpakaConfig.instance.slayerTimerHudScale)
 }

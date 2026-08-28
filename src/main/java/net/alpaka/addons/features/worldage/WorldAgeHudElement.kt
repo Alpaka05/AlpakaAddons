@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.worldage
 
+import java.util.Locale
 import net.alpaka.addons.client.hud.HudBounds
 import net.alpaka.addons.client.hud.HudElement
 import net.alpaka.addons.config.AlpakaConfig
@@ -73,5 +74,5 @@ object WorldAgeHudElement : HudElement {
 
     override fun scaleValue(): Float = AlpakaConfig.instance.worldAgeHudScale
 
-    override fun scaleLabel(): String = String.format("%.2fx", AlpakaConfig.instance.worldAgeHudScale)
+    override fun scaleLabel(): String = String.format(Locale.ROOT, "%.2fx", AlpakaConfig.instance.worldAgeHudScale)
 }

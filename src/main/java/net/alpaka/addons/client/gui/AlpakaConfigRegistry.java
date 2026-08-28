@@ -1,5 +1,6 @@
 package net.alpaka.addons.client.gui;
 
+import java.util.Locale;
 import net.alpaka.addons.client.BlockOverlayConfigScreen;
 import net.alpaka.addons.client.ColorPickerScreen;
 import net.alpaka.addons.client.ItemSizeConfigScreen;
@@ -123,7 +124,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.containerBgOpacity * 100.0f,
                 v -> { AlpakaConfig.instance.containerBgOpacity = v / 100.0f; AlpakaConfig.save(); },
-                0.0f, 100.0f, val -> val == 0.0f ? "Disabled (0%)" : String.format("%.0f%%", val),
+                0.0f, 100.0f, val -> val == 0.0f ? "Disabled (0%)" : String.format(Locale.ROOT, "%.0f%%", val),
                 "container background darkening opacity overlay tint inventory chest GUI"));
 
         OPTIONS.add(new ConfigOption("container_bg_fade_in", "Container Background Fade In",
@@ -153,7 +154,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.inventorySnowSpeed,
                 v -> { AlpakaConfig.instance.inventorySnowSpeed = v; AlpakaConfig.save(); },
-                0.1f, 5.0f, val -> String.format("%.1fx", val),
+                0.1f, 5.0f, val -> String.format(Locale.ROOT, "%.1fx", val),
                 "snow speed animation winter velocity"));
 
         OPTIONS.add(new ConfigOption("Chat", ConfigCategory.VISUALS));
@@ -215,7 +216,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemScale,
                 v -> { AlpakaConfig.instance.itemScale = v; AlpakaConfig.save(); },
-                0.2f, 2.5f, val -> String.format("%.2fx", val),
+                0.2f, 2.5f, val -> String.format(Locale.ROOT, "%.2fx", val),
                 "scale size item hand viewmodel big small"));
 
         OPTIONS.add(new ConfigOption("item_x_offset", "X Offset (Left/Right)",
@@ -223,7 +224,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemXOffset,
                 v -> { AlpakaConfig.instance.itemXOffset = v; AlpakaConfig.save(); },
-                -1.5f, 1.5f, val -> String.format("%.2f", val),
+                -1.5f, 1.5f, val -> String.format(Locale.ROOT, "%.2f", val),
                 "position x offset left right hand"));
 
         OPTIONS.add(new ConfigOption("item_y_offset", "Y Offset (Up/Down)",
@@ -231,7 +232,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemYOffset,
                 v -> { AlpakaConfig.instance.itemYOffset = v; AlpakaConfig.save(); },
-                -1.5f, 1.5f, val -> String.format("%.2f", val),
+                -1.5f, 1.5f, val -> String.format(Locale.ROOT, "%.2f", val),
                 "position y offset up down height hand"));
 
         OPTIONS.add(new ConfigOption("item_z_offset", "Z Offset (Forward/Back)",
@@ -239,7 +240,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemZOffset,
                 v -> { AlpakaConfig.instance.itemZOffset = v; AlpakaConfig.save(); },
-                -1.5f, 1.5f, val -> String.format("%.2f", val),
+                -1.5f, 1.5f, val -> String.format(Locale.ROOT, "%.2f", val),
                 "position z offset forward back depth hand"));
 
         OPTIONS.add(new ConfigOption("item_rotation_x", "Rotation Pitch (X)",
@@ -247,7 +248,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemRotationX,
                 v -> { AlpakaConfig.instance.itemRotationX = v; AlpakaConfig.save(); },
-                -180.0f, 180.0f, val -> String.format("%.0f°", val),
+                -180.0f, 180.0f, val -> String.format(Locale.ROOT, "%.0f°", val),
                 "rotation pitch x angle tilt"));
 
         OPTIONS.add(new ConfigOption("item_rotation_y", "Rotation Yaw (Y)",
@@ -255,7 +256,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemRotationY,
                 v -> { AlpakaConfig.instance.itemRotationY = v; AlpakaConfig.save(); },
-                -180.0f, 180.0f, val -> String.format("%.0f°", val),
+                -180.0f, 180.0f, val -> String.format(Locale.ROOT, "%.0f°", val),
                 "rotation yaw y angle turn"));
 
         OPTIONS.add(new ConfigOption("item_rotation_z", "Rotation Roll (Z)",
@@ -263,7 +264,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemRotationZ,
                 v -> { AlpakaConfig.instance.itemRotationZ = v; AlpakaConfig.save(); },
-                -180.0f, 180.0f, val -> String.format("%.0f°", val),
+                -180.0f, 180.0f, val -> String.format(Locale.ROOT, "%.0f°", val),
                 "rotation roll z angle side tilt"));
 
         OPTIONS.add(new ConfigOption("item_swing_speed", "Swing Speed",
@@ -271,7 +272,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemSwingSpeed,
                 v -> { AlpakaConfig.instance.itemSwingSpeed = v; AlpakaConfig.save(); },
-                0.1f, 1.5f, val -> String.format("%.2fx", val),
+                0.1f, 1.5f, val -> String.format(Locale.ROOT, "%.2fx", val),
                 "swing speed attack animation fast slow"));
 
         OPTIONS.add(new ConfigOption("item_sway_disabled", "Disable Hand Sway",
@@ -302,7 +303,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.swingDriftX,
                 v -> { AlpakaConfig.instance.swingDriftX = v; AlpakaConfig.save(); },
-                -100.0f, 100.0f, val -> String.format("%.1f", val),
+                -100.0f, 100.0f, val -> String.format(Locale.ROOT, "%.1f", val),
                 "swing drift x lateral motion"));
 
         OPTIONS.add(new ConfigOption("swing_drift_y", "Swing Drift Y",
@@ -310,7 +311,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.swingDriftY,
                 v -> { AlpakaConfig.instance.swingDriftY = v; AlpakaConfig.save(); },
-                -100.0f, 100.0f, val -> String.format("%.1f", val),
+                -100.0f, 100.0f, val -> String.format(Locale.ROOT, "%.1f", val),
                 "swing drift y vertical motion"));
 
         OPTIONS.add(new ConfigOption("swing_drift_z", "Swing Drift Z",
@@ -318,7 +319,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.swingDriftZ,
                 v -> { AlpakaConfig.instance.swingDriftZ = v; AlpakaConfig.save(); },
-                -100.0f, 100.0f, val -> String.format("%.1f", val),
+                -100.0f, 100.0f, val -> String.format(Locale.ROOT, "%.1f", val),
                 "swing drift z depth motion"));
 
         OPTIONS.add(new ConfigOption("swing_arc_x", "Swing Arc Pitch",
@@ -326,7 +327,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.swingArcX,
                 v -> { AlpakaConfig.instance.swingArcX = v; AlpakaConfig.save(); },
-                -180.0f, 180.0f, val -> String.format("%.0f°", val),
+                -180.0f, 180.0f, val -> String.format(Locale.ROOT, "%.0f°", val),
                 "swing arc pitch angle rot"));
 
         OPTIONS.add(new ConfigOption("swing_arc_y", "Swing Arc Yaw",
@@ -334,7 +335,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.swingArcY,
                 v -> { AlpakaConfig.instance.swingArcY = v; AlpakaConfig.save(); },
-                -180.0f, 180.0f, val -> String.format("%.0f°", val),
+                -180.0f, 180.0f, val -> String.format(Locale.ROOT, "%.0f°", val),
                 "swing arc yaw angle rot"));
 
         OPTIONS.add(new ConfigOption("swing_arc_z", "Swing Arc Roll",
@@ -342,7 +343,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.swingArcZ,
                 v -> { AlpakaConfig.instance.swingArcZ = v; AlpakaConfig.save(); },
-                -180.0f, 180.0f, val -> String.format("%.0f°", val),
+                -180.0f, 180.0f, val -> String.format(Locale.ROOT, "%.0f°", val),
                 "swing arc roll angle rot"));
 
         OPTIONS.add(new ConfigOption("item_swing_trans_disable", "Disable Swing Translation",
@@ -464,7 +465,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.BLOCK_OVERLAY,
                 () -> AlpakaConfig.instance.blockOutlineThickness,
                 v -> { AlpakaConfig.instance.blockOutlineThickness = v; AlpakaConfig.save(); },
-                0.5f, 10.0f, val -> String.format("%.1fpx", val),
+                0.5f, 10.0f, val -> String.format(Locale.ROOT, "%.1fpx", val),
                 "outline thickness line width border size"));
 
         OPTIONS.add(new ConfigOption("block_outline_color", "Outline Color",
@@ -525,7 +526,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.BLOCK_OVERLAY,
                 () -> AlpakaConfig.instance.blockChromaSpeed,
                 v -> { AlpakaConfig.instance.blockChromaSpeed = v; AlpakaConfig.save(); },
-                0.1f, 2.0f, val -> String.format("%.1fx", val),
+                0.1f, 2.0f, val -> String.format(Locale.ROOT, "%.1fx", val),
                 "chroma speed rainbow velocity rgb cycle"));
 
         OPTIONS.add(new ConfigOption("Filters", ConfigCategory.BLOCK_OVERLAY));
@@ -633,7 +634,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.CUSTOM_HUD,
                 () -> AlpakaConfig.instance.inventoryHudBackgroundOpacity,
                 v -> { AlpakaConfig.instance.inventoryHudBackgroundOpacity = v; AlpakaConfig.save(); },
-                0.0f, 100.0f, val -> val == 0.0f ? "Off (0%)" : String.format("%.0f%%", val),
+                0.0f, 100.0f, val -> val == 0.0f ? "Off (0%)" : String.format(Locale.ROOT, "%.0f%%", val),
                 "inventory hud background opacity transparent blur tint backdrop strength"));
 
 
@@ -974,7 +975,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.SOUND_MISC,
                 () -> AlpakaConfig.instance.lowHpHeartbeatThreshold * 100.0f,
                 v -> { AlpakaConfig.instance.lowHpHeartbeatThreshold = v / 100.0f; AlpakaConfig.save(); },
-                5.0f, 80.0f, val -> String.format("%.0f%%", val),
+                5.0f, 80.0f, val -> String.format(Locale.ROOT, "%.0f%%", val),
                 "heartbeat low hp health percentage threshold trigger sound volume"));
 
         OPTIONS.add(new ConfigOption("Utility", ConfigCategory.SOUND_MISC));

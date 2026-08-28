@@ -1,5 +1,6 @@
 package net.alpaka.addons.client;
 
+import java.util.Locale;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractSliderButton;
@@ -50,12 +51,12 @@ public class ItemSizeConfigScreen extends Screen {
                 Component.literal("Item Scale (Size)"), this.font));
         AbstractSliderButton scaleSlider = new AbstractSliderButton(
                 this.width / 2 + 5, centerY + 24, 150, 20,
-                Component.literal(String.format("%.2fx", AlpakaConfig.instance.itemScale)),
+                Component.literal(String.format(Locale.ROOT, "%.2fx", AlpakaConfig.instance.itemScale)),
                 (AlpakaConfig.instance.itemScale - 0.2f) / 2.3f
         ) {
             @Override
             protected void updateMessage() {
-                setMessage(Component.literal(String.format("%.2fx", AlpakaConfig.instance.itemScale)));
+                setMessage(Component.literal(String.format(Locale.ROOT, "%.2fx", AlpakaConfig.instance.itemScale)));
             }
             @Override
             protected void applyValue() {
@@ -70,12 +71,12 @@ public class ItemSizeConfigScreen extends Screen {
                 Component.literal("X Offset (Left/Right)"), this.font));
         AbstractSliderButton xSlider = new AbstractSliderButton(
                 this.width / 2 + 5, centerY + 48, 150, 20,
-                Component.literal(String.format("%.2f", AlpakaConfig.instance.itemXOffset)),
+                Component.literal(String.format(Locale.ROOT, "%.2f", AlpakaConfig.instance.itemXOffset)),
                 (AlpakaConfig.instance.itemXOffset + 1.5f) / 3.0f
         ) {
             @Override
             protected void updateMessage() {
-                setMessage(Component.literal(String.format("%.2f", AlpakaConfig.instance.itemXOffset)));
+                setMessage(Component.literal(String.format(Locale.ROOT, "%.2f", AlpakaConfig.instance.itemXOffset)));
             }
             @Override
             protected void applyValue() {
@@ -90,12 +91,12 @@ public class ItemSizeConfigScreen extends Screen {
                 Component.literal("Y Offset (Up/Down)"), this.font));
         AbstractSliderButton ySlider = new AbstractSliderButton(
                 this.width / 2 + 5, centerY + 72, 150, 20,
-                Component.literal(String.format("%.2f", AlpakaConfig.instance.itemYOffset)),
+                Component.literal(String.format(Locale.ROOT, "%.2f", AlpakaConfig.instance.itemYOffset)),
                 (AlpakaConfig.instance.itemYOffset + 1.5f) / 3.0f
         ) {
             @Override
             protected void updateMessage() {
-                setMessage(Component.literal(String.format("%.2f", AlpakaConfig.instance.itemYOffset)));
+                setMessage(Component.literal(String.format(Locale.ROOT, "%.2f", AlpakaConfig.instance.itemYOffset)));
             }
             @Override
             protected void applyValue() {
@@ -110,12 +111,12 @@ public class ItemSizeConfigScreen extends Screen {
                 Component.literal("Z Offset (Forward/Back)"), this.font));
         AbstractSliderButton zSlider = new AbstractSliderButton(
                 this.width / 2 + 5, centerY + 96, 150, 20,
-                Component.literal(String.format("%.2f", AlpakaConfig.instance.itemZOffset)),
+                Component.literal(String.format(Locale.ROOT, "%.2f", AlpakaConfig.instance.itemZOffset)),
                 (AlpakaConfig.instance.itemZOffset + 1.5f) / 3.0f
         ) {
             @Override
             protected void updateMessage() {
-                setMessage(Component.literal(String.format("%.2f", AlpakaConfig.instance.itemZOffset)));
+                setMessage(Component.literal(String.format(Locale.ROOT, "%.2f", AlpakaConfig.instance.itemZOffset)));
             }
             @Override
             protected void applyValue() {
@@ -130,12 +131,12 @@ public class ItemSizeConfigScreen extends Screen {
                 Component.literal("Swing Speed"), this.font));
         AbstractSliderButton swingSlider = new AbstractSliderButton(
                 this.width / 2 + 5, centerY + 120, 150, 20,
-                Component.literal(String.format("%.2fx", AlpakaConfig.instance.itemSwingSpeed)),
+                Component.literal(String.format(Locale.ROOT, "%.2fx", AlpakaConfig.instance.itemSwingSpeed)),
                 (AlpakaConfig.instance.itemSwingSpeed - 0.1f) / 1.4f
         ) {
             @Override
             protected void updateMessage() {
-                setMessage(Component.literal(String.format("%.2fx", AlpakaConfig.instance.itemSwingSpeed)));
+                setMessage(Component.literal(String.format(Locale.ROOT, "%.2fx", AlpakaConfig.instance.itemSwingSpeed)));
             }
             @Override
             protected void applyValue() {

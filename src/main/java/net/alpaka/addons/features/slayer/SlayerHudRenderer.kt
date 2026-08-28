@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.slayer
 
+import java.util.Locale
 import net.alpaka.addons.config.AlpakaConfig
 import net.minecraft.client.DeltaTracker
 import net.minecraft.client.Minecraft
@@ -261,7 +262,7 @@ object SlayerHudRenderer {
 
         if (cfg.slayerHudShowBossesPerHour) {
             val perHour = if (preview) 78.4 else session?.bossesPerHour()
-            rows.add(Line("Bosses/hr", perHour?.let { String.format("%.1f", it) } ?: "-", COLOR_VALUE))
+            rows.add(Line("Bosses/hr", perHour?.let { String.format(Locale.ROOT, "%.1f", it) } ?: "-", COLOR_VALUE))
         }
 
         if (cfg.slayerHudShowSessionTime) {
@@ -366,7 +367,7 @@ object SlayerHudRenderer {
     }
 
     /** Boss times read best in seconds with one decimal, matching how the community quotes them. */
-    private fun formatSeconds(ms: Long): String = String.format("%.1fs", ms / 1000.0)
+    private fun formatSeconds(ms: Long): String = String.format(Locale.ROOT, "%.1fs", ms / 1000.0)
 
     private fun formatDuration(ms: Long): String {
         val totalSeconds = (ms / 1000.0).roundToInt()

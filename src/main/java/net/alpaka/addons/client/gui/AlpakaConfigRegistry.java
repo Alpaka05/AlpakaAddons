@@ -866,7 +866,7 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Custom Sounds", ConfigCategory.SOUND_MISC));
 
         OPTIONS.add(new ConfigOption("custom_sounds", "Master Custom Sounds",
-                "Master switch for custom sound effects throughout the mod.",
+                "Master switch for custom sounds. Currently work in progress.",
                 ConfigCategory.SOUND_MISC,
                 () -> AlpakaConfig.instance.customSoundsEnabled,
                 v -> { AlpakaConfig.instance.customSoundsEnabled = v; AlpakaConfig.save(); },

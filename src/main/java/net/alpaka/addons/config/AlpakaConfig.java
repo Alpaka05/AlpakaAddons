@@ -46,7 +46,7 @@ public class AlpakaConfig {
     public boolean smoothPerspectiveEnabled = true;
     public boolean disableFrontPerspective = false;
     public int smoothPerspectiveDurationMs = 350;
-    public boolean customSoundsEnabled = true;
+    public boolean customSoundsEnabled = false;
     public float customSoundsVolume = 1.0f;
     public boolean customSoundButtonClick = true;
     public boolean customSoundHotbarScroll = true;

@@ -63,7 +63,7 @@ public class AlpakaConfig {
     public float lowHpHeartbeatThreshold = 0.30f;
     public int menuAccentColor = 0xFFE5B849; // Default Warm Gold
     public boolean customEscapeMenuEnabled = true;
-    public boolean customMainMenuEnabled = true;
+    public boolean customMainMenuEnabled = false;
     public boolean playerModelEnabled = true;
     public boolean playerModelOnlyActions = true;
     public int playerModelScale = 30;
@@ -75,7 +75,7 @@ public class AlpakaConfig {
     public boolean playerModelSlowSwing = false;
 
     // World Age HUD & Join Notification options
-    public boolean worldAgeHudEnabled = true;
+    public boolean worldAgeHudEnabled = false;
     public int worldAgeHudX = 10;
     public int worldAgeHudY = 10;
     public float worldAgeHudScale = 1.0f;
@@ -129,7 +129,7 @@ public class AlpakaConfig {
     public boolean onlyCritDamageEnabled = true;
 
     // Pangolin highlight (Torrhus Canyon critters)
-    public boolean pangolinHighlightEnabled = true;
+    public boolean pangolinHighlightEnabled = false;
     public int pangolinHighlightColor = 0xFFFFAA00; // Default orange/gold
 
     // Block Overlay options
@@ -187,7 +187,7 @@ public class AlpakaConfig {
     ));
 
     // Item viewmodel options
-    public boolean itemSizeFeatureEnabled = true;
+    public boolean itemSizeFeatureEnabled = false;
     public float itemScale = 1.0f;
     public float itemXOffset = 0.0f;
     public float itemYOffset = 0.0f;

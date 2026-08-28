@@ -390,7 +390,13 @@ public class AlpakaConfigScreen extends Screen {
 
                         if (descLines.size() > 1) {
                             for (int i = 0; i < Math.min(2, descLines.size()); i++) {
-                                graphics.text(this.font, Component.literal(descLines.get(i).getString()), contentX + 24, startOptionY + 20 + i * 9, ModernGuiUtils.COLOR_TEXT_MUTED);
+                                // Drawn through the visual order rather than as a plain string: a
+                                // wrapped line carries the styles the splitter tracked across the
+                                // break, and getString() would flatten them away. That is what lets
+                                // a description colour a clause - a caveat, say - while the flat
+                                // colour below still applies to everything unstyled.
+                                graphics.text(this.font, net.minecraft.locale.Language.getInstance().getVisualOrder(descLines.get(i)),
+                                        contentX + 24, startOptionY + 20 + i * 9, ModernGuiUtils.COLOR_TEXT_MUTED);
                             }
                         } else {
                             graphics.text(this.font, Component.literal(desc), contentX + 24, startOptionY + 22, ModernGuiUtils.COLOR_TEXT_MUTED);

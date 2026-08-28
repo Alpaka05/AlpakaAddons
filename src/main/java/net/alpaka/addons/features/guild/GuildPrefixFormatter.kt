@@ -58,6 +58,21 @@ object GuildPrefixFormatter {
     private fun isColorCode(c: Char): Boolean =
         c in '0'..'9' || c.lowercaseChar() in 'a'..'f' || c.lowercaseChar() in "klmnor"
 
+    private var translatedFrom: String? = null
+    private var translated: String = ""
+
+    /**
+     * The configured tag with its colour codes translated, built once per value rather than per
+     * message. The setting changes when somebody types in the config; chat arrives all day.
+     */
+    private fun tag(raw: String): String {
+        if (raw != translatedFrom) {
+            translatedFrom = raw
+            translated = translateColorCodes(raw.trim())
+        }
+        return translated
+    }
+
     /**
      * The rewritten line, or null when this message is not guild chat or the feature is off, in
      * which case the caller keeps the message exactly as it arrived.
@@ -67,10 +82,36 @@ object GuildPrefixFormatter {
         val cfg = AlpakaConfig.instance
         if (!cfg.guildPrefixEnabled) return null
 
-        val replacement = translateColorCodes(cfg.guildPrefixText.trim())
+        val replacement = tag(cfg.guildPrefixText)
         if (replacement.isEmpty()) return null
 
+        // The cheap look before the expensive one. replaceFirst has to build its copy of the tree as
+        // it walks and only finds out at the end whether anything matched, so every message that is
+        // not guild chat - which is most of them - cost a whole discarded copy. Worse on a chat
+        // re-wrap, where the stored history is replayed through here in one go.
+        if (!containsTarget(original)) return null
+
         return replaceFirst(original, replacement, Replaced())
+    }
+
+    /**
+     * Whether the marker is in the tree at all, without building a string or a copy.
+     *
+     * Indexed rather than iterated on purpose: this runs for every message that reaches the chat,
+     * and an iterator per node is exactly the allocation the check exists to avoid.
+     *
+     * Agrees with [replaceFirst] by construction - both look only at plain text runs, so a marker
+     * split across two siblings is invisible to both, and neither touches it.
+     */
+    private fun containsTarget(component: Component): Boolean {
+        val contents = component.contents
+        if (contents is PlainTextContents && contents.text().contains(TARGET)) return true
+
+        val siblings = component.siblings
+        for (index in siblings.indices) {
+            if (containsTarget(siblings[index])) return true
+        }
+        return false
     }
 
     /** Carries "already done" down the recursion, so only the first marker in the line is replaced. */

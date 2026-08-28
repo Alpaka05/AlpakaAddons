@@ -328,11 +328,11 @@ public class AlpakaConfigScreen extends Screen {
 
         int startOptionY = contentY + 12 - (int) scrollY;
 
-        // Render Category Header inside Content Area
-        boolean welcome = activeCategory == ConfigCategory.GENERAL && searchQuery.isEmpty();
-        if (welcome) {
-            startOptionY += drawWelcome(graphics, contentX + 16, startOptionY);
-        } else {
+        // Render Category Header inside Content Area. The General tab goes without one: it holds
+        // three switches whose own labels already say what they do, so a heading over them would
+        // only push them down the screen. A search still gets its header, General or not.
+        boolean bare = activeCategory == ConfigCategory.GENERAL && searchQuery.isEmpty();
+        if (!bare) {
             String catTitle = activeCategory.getDisplayName();
             if (!searchQuery.isEmpty()) {
                 catTitle = "Search results for: \"" + searchQuery + "\"";
@@ -469,35 +469,6 @@ public class AlpakaConfigScreen extends Screen {
         if (isAnimatingOpen) {
             graphics.pose().popMatrix();
         }
-    }
-
-    /** Scale of the greeting line. Large enough to read as a heading rather than another label. */
-    private static final float WELCOME_SCALE = 1.8f;
-
-    /**
-     * Draws the General tab's greeting and returns the vertical space it took.
-     *
-     * Scaled through the pose rather than drawn with a larger font: Minecraft has one GUI font, so
-     * size is a transform. The height is returned rather than assumed so the options below start
-     * under it whatever the scale is set to.
-     */
-    private int drawWelcome(GuiGraphicsExtractor graphics, int x, int y) {
-        String greeting = "Thanks for installing Alpaka Addons";
-
-        graphics.pose().pushMatrix();
-        graphics.pose().translate((float) x, (float) y);
-        graphics.pose().scale(WELCOME_SCALE, WELCOME_SCALE);
-        graphics.text(this.font, Component.literal(greeting), 0, 0, ModernGuiUtils.getAccentColor());
-        graphics.pose().popMatrix();
-
-        int greetingHeight = Math.round(9 * WELCOME_SCALE);
-
-        graphics.text(this.font, Component.literal("Everything below is optional. Pick a category on the left to set it up."),
-                x, y + greetingHeight + 4, ModernGuiUtils.COLOR_TEXT_MUTED);
-        graphics.text(this.font, Component.literal("v" + ModVersion.mod() + " · Minecraft " + ModVersion.minecraft()),
-                x, y + greetingHeight + 15, ModernGuiUtils.COLOR_TEXT_DARK);
-
-        return greetingHeight + 34;
     }
 
     private int getEffectiveWinX(int winW) {

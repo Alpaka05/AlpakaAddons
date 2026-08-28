@@ -812,7 +812,7 @@ public class AlpakaConfigRegistry {
                 "Shown instead of \"Guild >\". Use & for colours, e.g. &eLEMAN >",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.guildPrefixText,
-                v -> { AlpakaConfig.instance.guildPrefixText = v; AlpakaConfig.save(); },
+                v -> { AlpakaConfig.instance.guildPrefixText = v; },
                 "&eLEMAN >",
                 "guild tag text prefix colour color code ampersand"));
 

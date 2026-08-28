@@ -802,7 +802,7 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Guild Chat", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("guild_prefix", "Custom Guild Tag",
-                "Replaces Hypixel's \"Guild >\" with your own tag.",
+                "Your own tag instead of \"Guild >\". §cCurrently breaks chat tab mods.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.guildPrefixEnabled,
                 v -> { AlpakaConfig.instance.guildPrefixEnabled = v; AlpakaConfig.save(); },

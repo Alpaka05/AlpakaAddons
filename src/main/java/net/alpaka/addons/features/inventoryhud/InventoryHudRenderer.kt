@@ -7,6 +7,8 @@ import net.minecraft.client.DeltaTracker
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.ChatScreen
+import net.minecraft.client.renderer.RenderPipelines
+import net.minecraft.resources.Identifier
 
 /**
  * Draws the player's main inventory on the HUD, so its 27 slots can be read without opening a
@@ -29,9 +31,45 @@ object InventoryHudRenderer {
     /** Panel margin around the grid. Slim, so the backdrop hugs the slots. */
     private const val PAD = 3
 
-    /** Unscaled panel size. Matches the generated sprite exactly, so it never has to stretch. */
-    const val PANEL_WIDTH = COLS * PITCH + PAD * 2
-    const val PANEL_HEIGHT = ROWS * PITCH + PAD * 2
+    /** Unscaled size of the flat panel: the slot grid plus its own thin margin. */
+    private const val FLAT_WIDTH = COLS * PITCH + PAD * 2
+    private const val FLAT_HEIGHT = ROWS * PITCH + PAD * 2
+
+    /**
+     * Unscaled size of the chest panel, and where its three pieces come from in the texture.
+     *
+     * A container GUI is 176 wide however many rows it has, and vanilla draws a chest as one slab
+     * from the top of the texture followed by the player's own inventory. Neither piece is what the
+     * HUD wants: the first carries the band a chest keeps its title in, ten pixels of empty grey
+     * with nothing to put in it, and cut short it has a raw edge along the bottom.
+     *
+     * So the panel is built from three strips instead - the frame above the band, the three rows of
+     * slots, and the frame that closes the GUI off at its foot. The result is bordered on all four
+     * sides and no taller than the slots need.
+     */
+    private const val CHEST_WIDTH = 176
+    private const val CHEST_FRAME_HEIGHT = 7
+    private const val CHEST_ROWS_V = 17
+    private const val CHEST_ROWS_HEIGHT = ROWS * PITCH
+    private const val CHEST_HEIGHT = CHEST_FRAME_HEIGHT * 2 + CHEST_ROWS_HEIGHT
+
+    /** Where the closing frame sits: the last rows of vanilla's 222-tall six-row chest GUI. */
+    private const val CHEST_FOOT_V = 222 - CHEST_FRAME_HEIGHT
+
+    /** Item face of the first slot, measured from the panel's top left, in each style. */
+    private const val FLAT_SLOT_X = PAD + 1
+    private const val FLAT_SLOT_Y = PAD + 1
+    private const val CHEST_SLOT_X = 8
+    private const val CHEST_SLOT_Y = CHEST_FRAME_HEIGHT + 1
+
+    private fun chestStyle(): Boolean = AlpakaConfig.instance.inventoryHudVanillaTexture
+
+    /** Unscaled panel size. Asked for rather than stored, because the style decides it. */
+    @JvmStatic
+    fun panelWidth(): Int = if (chestStyle()) CHEST_WIDTH else FLAT_WIDTH
+
+    @JvmStatic
+    fun panelHeight(): Int = if (chestStyle()) CHEST_HEIGHT else FLAT_HEIGHT
 
     /** Main inventory occupies slots 9..35; 0..8 is the hotbar, which vanilla already draws. */
     private const val FIRST_SLOT = 9
@@ -48,6 +86,19 @@ object InventoryHudRenderer {
 
     /** Backdrop colour, matching the config menu's panel. Alpha comes from the player's slider. */
     private const val PANEL_BG = 0x191919
+
+    /**
+     * The texture a chest GUI is drawn from.
+     *
+     * Named rather than copied on purpose: a resource pack replaces this very file, so pointing at
+     * it is what makes the HUD wear whatever pack is loaded. Every offset here was read off the
+     * shipped copy rather than assumed: the frame runs to row 221, the title band to row 16, and
+     * the three rows of slots from row 17 to row 70.
+     */
+    private val CHEST_TEXTURE: Identifier = Identifier.parse("minecraft:textures/gui/container/generic_54.png")
+
+    /** The texture is authored against a 256x256 sheet; a pack at higher resolution still maps. */
+    private const val SHEET = 256
 
     /** Replaces the alpha byte of an RGB colour. */
     private fun withAlpha(rgb: Int, alpha: Int): Int = (alpha shl 24) or (rgb and 0xFFFFFF)
@@ -81,8 +132,8 @@ object InventoryHudRenderer {
      */
     @JvmStatic
     fun footprint(cfg: AlpakaConfig, mc: Minecraft): HudBounds {
-        val width = Math.round(PANEL_WIDTH * cfg.inventoryHudScale)
-        val height = Math.round(PANEL_HEIGHT * cfg.inventoryHudScale)
+        val width = Math.round(panelWidth() * cfg.inventoryHudScale)
+        val height = Math.round(panelHeight() * cfg.inventoryHudScale)
 
         if (cfg.inventoryHudAttachToHotbar) {
             val screenWidth = mc.window.guiScaledWidth
@@ -101,8 +152,8 @@ object InventoryHudRenderer {
     fun drawPanel(graphics: GuiGraphicsExtractor, x: Int, y: Int, scale: Float, open: Float) {
         val mc = Minecraft.getInstance()
         val player = mc.player ?: return
-        val width = Math.round(PANEL_WIDTH * scale)
-        val height = Math.round(PANEL_HEIGHT * scale)
+        val width = Math.round(panelWidth() * scale)
+        val height = Math.round(panelHeight() * scale)
 
         // Clipped to its final box so the slide reads as the panel emerging from behind the hotbar
         // rather than sweeping across it.
@@ -119,19 +170,46 @@ object InventoryHudRenderer {
             AlpakaConfig.instance.inventoryHudBackgroundOpacity / 100.0f * 255.0f
         ).coerceIn(0, 255)
 
-        if (backdropAlpha > 0) {
-            ModernGuiUtils.drawRect(graphics, 0, 0, PANEL_WIDTH, PANEL_HEIGHT, withAlpha(PANEL_BG, backdropAlpha))
-            // The inner frame fades with the backdrop, so turning the background off leaves only the
-            // accent outline rather than a stranded grey rectangle.
-            ModernGuiUtils.drawOutline(
-                graphics, 1, 1, PANEL_WIDTH - 2, PANEL_HEIGHT - 2,
-                withAlpha(ModernGuiUtils.COLOR_CARD_BORDER, backdropAlpha)
-            )
-        }
+        if (chestStyle()) {
+            // Tinted white so the opacity slider still means something here: white leaves every
+            // colour as the pack drew it and only the alpha does any work.
+            if (backdropAlpha > 0) {
+                val tint = withAlpha(0xFFFFFF, backdropAlpha)
+                // The frame above the title band, the slots, then the frame from the foot of the
+                // GUI - the band itself is skipped, which is the only seam in the whole panel and
+                // falls between two rows of frame that are identical grey anyway.
+                graphics.blit(
+                    RenderPipelines.GUI_TEXTURED, CHEST_TEXTURE, 0, 0, 0.0f, 0.0f,
+                    CHEST_WIDTH, CHEST_FRAME_HEIGHT, CHEST_WIDTH, CHEST_FRAME_HEIGHT, SHEET, SHEET, tint
+                )
+                graphics.blit(
+                    RenderPipelines.GUI_TEXTURED, CHEST_TEXTURE, 0, CHEST_FRAME_HEIGHT,
+                    0.0f, CHEST_ROWS_V.toFloat(),
+                    CHEST_WIDTH, CHEST_ROWS_HEIGHT, CHEST_WIDTH, CHEST_ROWS_HEIGHT, SHEET, SHEET, tint
+                )
+                graphics.blit(
+                    RenderPipelines.GUI_TEXTURED, CHEST_TEXTURE, 0, CHEST_FRAME_HEIGHT + CHEST_ROWS_HEIGHT,
+                    0.0f, CHEST_FOOT_V.toFloat(),
+                    CHEST_WIDTH, CHEST_FRAME_HEIGHT, CHEST_WIDTH, CHEST_FRAME_HEIGHT, SHEET, SHEET, tint
+                )
+            }
+            // No accent frame in this style. The whole point is that the panel passes for a real
+            // container, and a coloured outline is the one thing that would give it away.
+        } else {
+            if (backdropAlpha > 0) {
+                ModernGuiUtils.drawRect(graphics, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, withAlpha(PANEL_BG, backdropAlpha))
+                // The inner frame fades with the backdrop, so turning the background off leaves only
+                // the accent outline rather than a stranded grey rectangle.
+                ModernGuiUtils.drawOutline(
+                    graphics, 1, 1, FLAT_WIDTH - 2, FLAT_HEIGHT - 2,
+                    withAlpha(ModernGuiUtils.COLOR_CARD_BORDER, backdropAlpha)
+                )
+            }
 
-        // The accent outline stays at full strength whatever the backdrop does - it is the frame,
-        // and it is what keeps the HUD locatable at zero opacity.
-        ModernGuiUtils.drawOutline(graphics, 0, 0, PANEL_WIDTH, PANEL_HEIGHT, ModernGuiUtils.getAccentColor())
+            // The accent outline stays at full strength whatever the backdrop does - it is the
+            // frame, and it is what keeps the HUD locatable at zero opacity.
+            ModernGuiUtils.drawOutline(graphics, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, ModernGuiUtils.getAccentColor())
+        }
 
         val inventory = player.inventory
         for (row in 0 until ROWS) {
@@ -141,9 +219,11 @@ object InventoryHudRenderer {
                 val stack = inventory.getItem(slot)
                 if (stack.isEmpty) continue
 
-                // +1 puts the 16x16 item face inside the 18px cell, as the real inventory does.
-                val slotX = PAD + col * PITCH + 1
-                val slotY = PAD + row * PITCH + 1
+                // Where the 16x16 face sits inside its 18px cell, which the two styles put in
+                // different places: the flat panel insets by its own margin, the chest style lands
+                // on the slots the texture already has.
+                val slotX = (if (chestStyle()) CHEST_SLOT_X else FLAT_SLOT_X) + col * PITCH
+                val slotY = (if (chestStyle()) CHEST_SLOT_Y else FLAT_SLOT_Y) + row * PITCH
                 graphics.item(stack, slotX, slotY)
                 // Stack counts and durability bars, so the readout matches the real inventory.
                 graphics.itemDecorations(mc.font, stack, slotX, slotY)

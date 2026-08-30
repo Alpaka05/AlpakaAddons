@@ -157,6 +157,16 @@ public class AlpakaConfig {
     public boolean inventoryHudShowOnItemChange = false;
     /** Backdrop strength behind the slots, in percent. 0 leaves only the accent frame. */
     public float inventoryHudBackgroundOpacity = 70.0f;
+    /**
+     * Whether the panel is drawn from Minecraft's own inventory texture instead of a flat backdrop.
+     *
+     * The point is that a resource pack reaches the HUD: the slots are cut out of
+     * textures/gui/container/inventory.png, the same file the inventory screen uses, so whatever
+     * pack is loaded paints them.
+     *
+     * Off restores the flat panel with the accent frame.
+     */
+    public boolean inventoryHudVanillaTexture = false;
 
     // Guild bridge-bot chat formatting. The name is the in-game account that relays Discord.
     public boolean bridgeBotFormatterEnabled = false;

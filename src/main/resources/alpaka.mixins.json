@@ -6,7 +6,6 @@
   "client": [
     "GameRendererMixin",
     "PlayerMixin",
-    "PlayerInfoMixin",
     "MouseHandlerMixin",
     "AbstractClientPlayerMixin",
     "ScreenMixin",

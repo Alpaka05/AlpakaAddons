@@ -96,7 +96,6 @@ public class SlayerDropTracker {
     private static final int DROP_DELAY_TICKS = 30;
 
     public static SlayerType currentBoss = null;
-    public static final ThreadLocal<Boolean> IS_PROCESSING = ThreadLocal.withInitial(() -> false);
 
     private static long lastKillCountedAtMs = 0L;
     private static int tickCounter = 0;
@@ -202,48 +201,6 @@ public class SlayerDropTracker {
             flushPendingDrops();
         });
 
-        // Messages that CleanBlazeFeature wants hidden are NOT cancelled here. ALLOW_GAME runs
-        // before the GAME event above, so returning false would discard the message before onChat
-        // ever sees it - which is exactly what silently broke slayer-quest and kill tracking whenever
-        // clean-blaze mode was on. Hiding a message from the visible chat log and letting mods still
-        // process it are different concerns; only ChatComponentMixin (which cancels the GUI's
-        // addMessage call, downstream of all processing events) does the former.
-        ClientReceiveMessageEvents.ALLOW_GAME.register((message, overlay) -> {
-            if (overlay) return true;
-
-            if (!AlpakaConfig.instance.nameHighlightingEnabled) return true;
-            if (IS_PROCESSING.get()) return true;
-
-            if (message.getString().contains("Alpakaa")) {
-                IS_PROCESSING.set(true);
-                try {
-                    Component highlighted = highlightName(message);
-                    sendPlainMessage(highlighted);
-                    return false; // Cancel original message
-                } finally {
-                    IS_PROCESSING.set(false);
-                }
-            }
-            return true;
-        });
-
-        ClientReceiveMessageEvents.ALLOW_CHAT.register((message, signedMessage, sender, params, receptionTimestamp) -> {
-            if (!AlpakaConfig.instance.nameHighlightingEnabled) return true;
-            if (IS_PROCESSING.get()) return true;
-
-            if (message.getString().contains("Alpakaa")) {
-                IS_PROCESSING.set(true);
-                try {
-                    Component highlighted = highlightName(message);
-                    sendPlainMessage(highlighted);
-                    return false; // Cancel original message
-                } finally {
-                    IS_PROCESSING.set(false);
-                }
-            }
-            return true;
-        });
-
     }
 
     public static boolean isOnSkyblock() {
@@ -285,50 +242,6 @@ public class SlayerDropTracker {
         return component;
     }
 
-    public static Component highlightName(Component component) {
-        if (component == null) return null;
-        if (!component.getString().contains("Alpakaa")) {
-            return component;
-        }
-
-        MutableComponent result;
-
-        if (component.getContents() instanceof PlainTextContents plainTextContents) {
-            String text = plainTextContents.text();
-            if (text.contains("Alpakaa")) {
-                result = highlightLiteralString(text, component.getStyle());
-            } else {
-                result = Component.literal(text).withStyle(component.getStyle());
-            }
-        } else {
-            result = MutableComponent.create(component.getContents()).withStyle(component.getStyle());
-        }
-
-        for (Component sibling : component.getSiblings()) {
-            result.append(highlightName(sibling));
-        }
-
-        return result;
-    }
-
-    private static MutableComponent highlightLiteralString(String text, Style style) {
-        MutableComponent container = Component.empty();
-        int lastIdx = 0;
-        int idx;
-        while ((idx = text.indexOf("Alpakaa", lastIdx)) != -1) {
-            if (idx > lastIdx) {
-                container.append(Component.literal(text.substring(lastIdx, idx)).withStyle(style));
-            }
-            container.append(Component.literal("Alpakaa")
-                    .withStyle(style.withColor(ChatFormatting.LIGHT_PURPLE).withBold(true)));
-            lastIdx = idx + "Alpakaa".length();
-        }
-        if (lastIdx < text.length()) {
-            container.append(Component.literal(text.substring(lastIdx)).withStyle(style));
-        }
-        return container;
-    }
-
     public static void sendModMessage(Component message) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null) {
@@ -339,13 +252,6 @@ public class SlayerDropTracker {
 
     public static void sendModMessage(String message) {
         sendModMessage(Component.literal(message));
-    }
-
-    private static void sendPlainMessage(Component message) {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player != null) {
-            mc.player.sendSystemMessage(message);
-        }
     }
 
     public static void onChat(Component message) {

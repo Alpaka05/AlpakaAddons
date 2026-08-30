@@ -1,6 +1,7 @@
 package net.alpaka.addons.features.slayer
 
 import net.alpaka.addons.config.AlpakaConfig
+import net.alpaka.addons.features.notification.AlpakaNotifications
 import net.alpaka.addons.config.AlpakaStats
 
 /**
@@ -62,6 +63,12 @@ object SlayerTimer {
 
     /** The sidebar says the boss is up. */
     fun onBossSpawned(type: SlayerType) {
+        // Announced before the timer's own switch is consulted, because the alert is a separate
+        // feature that happens to hang off the same moment.
+        if (AlpakaConfig.instance.bossSpawnAlertEnabled) {
+            AlpakaNotifications.send("Boss Spawned", type.display + " slayer boss is up")
+        }
+
         if (!AlpakaConfig.instance.slayerTimerEnabled) return
         startMs = System.currentTimeMillis()
         runningType = type

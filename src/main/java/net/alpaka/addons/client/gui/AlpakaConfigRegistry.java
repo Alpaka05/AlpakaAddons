@@ -686,6 +686,13 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Slayer Boss Timer", ConfigCategory.SKYBLOCK));
 
 
+        OPTIONS.add(new ConfigOption("boss_spawn_alert", "Boss Spawn Alert",
+                "Slides in a notice the moment your slayer boss spawns.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.bossSpawnAlertEnabled,
+                v -> { AlpakaConfig.instance.bossSpawnAlertEnabled = v; AlpakaConfig.save(); },
+                "boss spawn alert notification slayer popup toast warning"));
+
         OPTIONS.add(new ConfigOption("slayer_timer", "Slayer Boss Timer",
                 "Times each slayer boss fight, from the boss spawning until it dies.",
                 ConfigCategory.SKYBLOCK,

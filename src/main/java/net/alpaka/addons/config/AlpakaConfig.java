@@ -28,6 +28,20 @@ public class AlpakaConfig {
      */
     public boolean hideHypixelDropMessage = true;
     public boolean fullbrightEnabled = false;
+    /**
+     * Whether a notice slides in when somebody says the player's name in chat.
+     *
+     * On by default, unlike most of what the mod adds: it changes nothing about how the game looks
+     * until the moment somebody actually addresses the player, which is a moment worth not missing.
+     */
+    public boolean mentionNotificationEnabled = true;
+    /**
+     * How long a notification stays on screen, in seconds, before it slides back out.
+     *
+     * Counts the still part only. The two slides are the same length whatever this is set to, since
+     * they are how the notice arrives and leaves rather than part of how long it is readable.
+     */
+    public float notificationHoldSeconds = 4.5f;
     public boolean inventorySnowEnabled = true;
     public float inventorySnowSpeed = 1.0f;
     public float containerBgOpacity = 0.75f;

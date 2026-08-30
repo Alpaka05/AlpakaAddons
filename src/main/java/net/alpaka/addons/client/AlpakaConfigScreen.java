@@ -126,6 +126,15 @@ public class AlpakaConfigScreen extends Screen {
      * goes through this. They previously each inlined the same arithmetic, which is exactly the kind
      * of duplication that lets a dropdown draw in one place and be clickable in another.
      */
+    /**
+     * Height of the heading above a category's options.
+     *
+     * Shared rather than written out at each site. Drawing skipped it for one category while
+     * hit-testing added it unconditionally, so on that tab every click landed on the option above
+     * the one under the cursor.
+     */
+    private static final int CATEGORY_HEADER_H = 30;
+
     private static int optionItemHeight(ConfigOption opt) {
         if (opt.getType() == ConfigOption.Type.HEADER) return 30;
         int height = CARD_H + 6;
@@ -328,19 +337,14 @@ public class AlpakaConfigScreen extends Screen {
 
         int startOptionY = contentY + 12 - (int) scrollY;
 
-        // Render Category Header inside Content Area. The General tab goes without one: it holds
-        // three switches whose own labels already say what they do, so a heading over them would
-        // only push them down the screen. A search still gets its header, General or not.
-        boolean bare = activeCategory == ConfigCategory.GENERAL && searchQuery.isEmpty();
-        if (!bare) {
-            String catTitle = activeCategory.getDisplayName();
-            if (!searchQuery.isEmpty()) {
-                catTitle = "Search results for: \"" + searchQuery + "\"";
-            }
-            graphics.text(this.font, Component.literal(catTitle), contentX + 16, startOptionY, ModernGuiUtils.COLOR_TEXT_PRIMARY);
-            graphics.text(this.font, Component.literal(activeCategory.getDescription()), contentX + 16, startOptionY + 13, ModernGuiUtils.COLOR_TEXT_MUTED);
-            startOptionY += 30;
+        // Render Category Header inside Content Area
+        String catTitle = activeCategory.getHeading();
+        if (!searchQuery.isEmpty()) {
+            catTitle = "Search results for: \"" + searchQuery + "\"";
         }
+        graphics.text(this.font, Component.literal(catTitle), contentX + 16, startOptionY, ModernGuiUtils.COLOR_TEXT_PRIMARY);
+        graphics.text(this.font, Component.literal(activeCategory.getDescription()), contentX + 16, startOptionY + 13, ModernGuiUtils.COLOR_TEXT_MUTED);
+        startOptionY += CATEGORY_HEADER_H;
 
         if (options.isEmpty()) {
             String emptyMsg = "No settings found for \"" + searchQuery + "\".";
@@ -566,7 +570,7 @@ public class AlpakaConfigScreen extends Screen {
 
         if (mouseX >= contentX && mouseX <= contentX + contentW && mouseY >= clipY && mouseY <= clipY + clipH) {
             List<ConfigOption> options = AlpakaConfigRegistry.getOptions(activeCategory, searchQuery);
-            int startOptionY = contentY + 12 + 30 - (int) scrollY;
+            int startOptionY = contentY + 12 + CATEGORY_HEADER_H - (int) scrollY;
             int cardW = contentW - 28;
             int cardH = CARD_H;
 

@@ -13,11 +13,16 @@ import net.minecraft.network.chat.Component
  * `Guild > [MVP+] BridgeBot [Member]: SomeUser: hello`. That reads as if the bot said it, and the
  * rank block is noise on every single line.
  *
- * All of that is dropped and replaced by a blue `[Discord]` marker, with whatever the bot actually
- * wrote kept verbatim:
+ * The bot's identity is replaced by a blue `[Discord]` marker while the channel marker stays where
+ * it was, so a relay still reads as the guild line it is, and whatever the bot actually wrote is
+ * kept verbatim:
  *
  *     in : Guild > [VIP] VultureGround [Helper]: Alpakaa: spammer get banned
- *     out: [Discord] Alpakaa: spammer get banned
+ *     out: Guild > [Discord] Alpakaa: spammer get banned
+ *
+ * Keeping the channel marker is also what lets the custom guild tag reach these lines: it runs after
+ * this and swaps "Guild >" for whatever the player chose, so a relay ends up tagged the same way
+ * every other guild message is - `LEMAN > [Discord] Alpakaa: spammer get banned`.
  *
  * ### Why nothing in the message is parsed
  *
@@ -37,7 +42,7 @@ object BridgeBotFormatter {
     /** Guild and officer chat are the only channels a bridge bot relays into. */
     private val CHANNEL_PREFIXES = arrayOf("Guild > ", "Officer > ", "G > ", "O > ")
 
-    /** What replaces the channel marker and the bot's own name and rank. */
+    /** What replaces the bot's own name and rank. The channel marker in front of it is kept. */
     private const val TAG = "[Discord] "
 
     /**
@@ -74,9 +79,12 @@ object BridgeBotFormatter {
         val body = if (codedSplit < 0) raw.substring(split + 2) else coded.substring(codedSplit + 2)
         if (body.isEmpty()) return null
 
-        // Built as two siblings of an empty root rather than by appending to the tag, because a
-        // sibling inherits its parent's style - hung off the tag, the whole line would come out blue.
+        // Built as siblings of an empty root rather than by appending to one another, because a
+        // sibling inherits its parent's style - hung off the marker, the whole line would come out
+        // dark green. The marker keeps the colour Hypixel gives it, so a relay sits among the other
+        // guild lines rather than looking like a different kind of message.
         return Component.empty()
+            .append(Component.literal(prefix).withStyle(ChatFormatting.DARK_GREEN))
             .append(Component.literal(TAG).withStyle(ChatFormatting.BLUE))
             .append(Component.literal(body).withStyle(ChatFormatting.WHITE))
     }

@@ -62,8 +62,8 @@ public class ChatComponentMixin {
 
         // Bridge formatting first, on purpose. It recognises a relay by the line starting with
         // Hypixel's "Guild > " marker, so swapping that marker out beforehand would leave it with
-        // nothing to match. A reformatted relay carries no marker any more and the guild tag below
-        // then finds nothing to do, which is right: a relay is labelled [Discord], not by guild.
+        // nothing to match. It puts the marker back on the line it rebuilds, which is what lets the
+        // guild tag below reach a relay too - so a relay carries the same tag as everything else.
         Component reformatted = BridgeBotFormatter.reformat(component);
         if (reformatted != null) component = reformatted;
 

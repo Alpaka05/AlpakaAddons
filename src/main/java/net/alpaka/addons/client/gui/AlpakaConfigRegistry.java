@@ -166,13 +166,6 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.expandChatHistory = v; AlpakaConfig.save(); },
                 "chat history limit scroll log"));
 
-        OPTIONS.add(new ConfigOption("name_highlighting", "Name Highlighting",
-                "Highlights important player and boss names in chat.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.nameHighlightingEnabled,
-                v -> { AlpakaConfig.instance.nameHighlightingEnabled = v; AlpakaConfig.save(); },
-                "name highlight chat player color tag"));
-
         OPTIONS.add(new ConfigOption("Mod Menus", ConfigCategory.VISUALS));
 
         OPTIONS.add(new ConfigOption("custom_escape_menu", "Custom Escape Menu",

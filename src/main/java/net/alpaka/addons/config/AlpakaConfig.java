@@ -28,7 +28,6 @@ public class AlpakaConfig {
      */
     public boolean hideHypixelDropMessage = true;
     public boolean fullbrightEnabled = false;
-    public boolean nameHighlightingEnabled = true;
     public boolean inventorySnowEnabled = true;
     public float inventorySnowSpeed = 1.0f;
     public float containerBgOpacity = 0.75f;
@@ -421,7 +420,6 @@ public class AlpakaConfig {
         this.hideHypixelDropMessage = false;
         this.pangolinHighlightEnabled = false;
         this.fullbrightEnabled = false;
-        this.nameHighlightingEnabled = false;
         this.inventorySnowEnabled = false;
         this.containerBgFadeInEnabled = false;
         this.cleanBlazeEnabled = false;

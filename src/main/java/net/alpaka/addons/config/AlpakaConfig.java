@@ -42,6 +42,13 @@ public class AlpakaConfig {
      * they are how the notice arrives and leaves rather than part of how long it is readable.
      */
     public float notificationHoldSeconds = 4.5f;
+    /**
+     * Whether a notice slides in when a slayer boss spawns.
+     *
+     * Separate from the boss timer even though the same moment drives both: one is a clock, this is
+     * a nudge for somebody who was looking elsewhere while the quest finished spawning.
+     */
+    public boolean bossSpawnAlertEnabled = true;
     public boolean inventorySnowEnabled = true;
     public float inventorySnowSpeed = 1.0f;
     public float containerBgOpacity = 0.75f;

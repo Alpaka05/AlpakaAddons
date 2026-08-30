@@ -36,6 +36,14 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.allowApiCalls = v; AlpakaConfig.save(); },
                 "api network internet hypixel request mayor election offline privacy"));
 
+        OPTIONS.add(new ConfigOption("notification_hold", "Notification Duration",
+                "How long a notice stays in the corner before sliding away.",
+                ConfigCategory.GENERAL,
+                () -> AlpakaConfig.instance.notificationHoldSeconds,
+                v -> { AlpakaConfig.instance.notificationHoldSeconds = v; AlpakaConfig.save(); },
+                1.0f, 15.0f, val -> String.format(Locale.ROOT, "%.1fs", val),
+                "notification duration hold seconds popup toast time linger"));
+
         OPTIONS.add(new ConfigOption("hud_editor", "HUD Editor",
                 "Move and resize every HUD - session, boss timer, world age, inventory, avatar.",
                 ConfigCategory.GENERAL,
@@ -165,6 +173,15 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.expandChatHistory,
                 v -> { AlpakaConfig.instance.expandChatHistory = v; AlpakaConfig.save(); },
                 "chat history limit scroll log"));
+
+        OPTIONS.add(new ConfigOption("Notifications", ConfigCategory.VISUALS));
+
+        OPTIONS.add(new ConfigOption("mention_notification", "Chat Mentions",
+                "Slides in a notice when somebody says your name in chat.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.mentionNotificationEnabled,
+                v -> { AlpakaConfig.instance.mentionNotificationEnabled = v; AlpakaConfig.save(); },
+                "mention notification popup toast chat name ping alert"));
 
         OPTIONS.add(new ConfigOption("Mod Menus", ConfigCategory.VISUALS));
 

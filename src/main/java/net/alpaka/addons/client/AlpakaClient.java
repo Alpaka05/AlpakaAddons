@@ -23,6 +23,7 @@ public class AlpakaClient implements ClientModInitializer {
         ZoomFeature.register();
         CommandWheelFeature.register();
         InventoryHudFeature.register();
+        net.alpaka.addons.features.notification.MentionNotifier.register();
         WorldAgeHudRenderer.registerEvents();
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {

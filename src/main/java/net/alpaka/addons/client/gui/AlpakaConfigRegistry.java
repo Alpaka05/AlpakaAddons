@@ -622,6 +622,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.inventoryHudShowOnItemChange = v; AlpakaConfig.save(); },
                 "inventory hud show on pickup drop item change peek temporary"));
 
+        OPTIONS.add(new ConfigOption("inventory_hud_vanilla_texture", "Chest Style",
+                "Draws the panel as a three-row chest, using your resource pack.",
+                ConfigCategory.CUSTOM_HUD,
+                () -> AlpakaConfig.instance.inventoryHudVanillaTexture,
+                v -> { AlpakaConfig.instance.inventoryHudVanillaTexture = v; AlpakaConfig.save(); },
+                "inventory texture resource pack vanilla slots real look skin"));
+
         OPTIONS.add(new ConfigOption("inventory_hud_bg_opacity", "Background Opacity",
                 "Backdrop tint behind the slots. 0% leaves only the frame.",
                 ConfigCategory.CUSTOM_HUD,

@@ -80,8 +80,8 @@ public class CustomPauseScreen extends Screen {
     /**
      * Eased hover amount for the mod logo, which doubles as the Alpaka config button.
      *
-     * Smoothed the same way {@link CustomPauseButton} smooths its own, so the logo lifts and lights
-     * up on the same curve as everything else on the panel instead of snapping.
+     * Smoothed on the same curve {@link CustomPauseButton} uses for its own hover, so the logo eases
+     * up to size rather than snapping to it.
      */
     private float logoHover = 0.0f;
 
@@ -95,9 +95,16 @@ public class CustomPauseScreen extends Screen {
     /** Gap between the panel's top edge and the logo. */
     private static final int LOGO_TOP_INSET = 5;
 
-    /** Side length of the logo, and the padding its hover highlight adds around it. */
+    /** Side length of the logo. */
     private static final int LOGO_SIZE = 34;
-    private static final int LOGO_HIGHLIGHT_PAD = 3;
+
+    /**
+     * How far the logo grows on each side when hovered, as a fraction of its own size.
+     *
+     * The same fraction the main menu's larger copy of this logo uses, so the two swell by the same
+     * proportion rather than by the same number of pixels.
+     */
+    private static final float LOGO_HOVER_GROWTH = 0.07f;
 
     /**
      * Where the logo sits, in the settled layout.
@@ -311,20 +318,14 @@ public class CustomPauseScreen extends Screen {
         boolean logoHovered = !this.showDisconnectPrompt && isOverLogo(mouseX, mouseY);
         this.logoHover += ((logoHovered ? 1.0f : 0.0f) - this.logoHover) * 0.25f;
 
-        if (this.logoHover > 0.01f) {
-            // Same treatment the buttons give themselves - card background, accent border, a 2px
-            // lift - so the logo reads as one of them rather than as decoration that happens to
-            // react. Alpha is scaled by the eased amount so it fades rather than pops.
-            int alpha = (int) (this.logoHover * 255.0f);
-            int pad = LOGO_HIGHLIGHT_PAD;
-            ModernGuiUtils.drawRect(graphics, iconX - pad, iconY - pad, iconSize + pad * 2, iconSize + pad * 2,
-                    (alpha / 3 << 24) | (ModernGuiUtils.COLOR_CARD_BG_HOVER & 0xFFFFFF));
-            ModernGuiUtils.drawOutline(graphics, iconX - pad, iconY - pad, iconSize + pad * 2, iconSize + pad * 2,
-                    (alpha << 24) | (ModernGuiUtils.getAccentColor() & 0xFFFFFF));
-        }
-
-        int logoLift = (int) (-2.0f * this.logoHover);
-        graphics.blit(RenderPipelines.GUI_TEXTURED, MOD_ICON_ID, iconX, iconY + logoLift, 0.0f, 0.0f, iconSize, iconSize, 128, 128, 128, 128);
+        // Hovering grows the logo and does nothing else - no card behind it, no border, no lift. It
+        // used to take the same treatment the panel's buttons give themselves, which framed a piece
+        // of artwork in a box and made it read as a widget that had been selected rather than as one
+        // being pointed at. This matches the main menu's Join Hypixel button: the growth goes on all
+        // four sides, so the logo swells in place instead of drifting.
+        int grow = (int) (iconSize * LOGO_HOVER_GROWTH * this.logoHover);
+        graphics.blit(RenderPipelines.GUI_TEXTURED, MOD_ICON_ID, iconX - grow, iconY - grow, 0.0f, 0.0f,
+                iconSize + grow * 2, iconSize + grow * 2, 128, 128, 128, 128);
 
         // Subtitle: User & Status (IP on server, Singleplayer in local world)
         String status = "Singleplayer";

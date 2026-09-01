@@ -7,20 +7,15 @@ import net.minecraft.client.model.player.PlayerModel;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.RenderLayerParent;
-import net.minecraft.client.renderer.entity.layers.RenderLayer;
 import net.minecraft.client.renderer.entity.player.AvatarRenderer;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.world.entity.Avatar;
-import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-
-import java.util.List;
 
 /**
  * Hooks the player renderer for the two cosmetics: the chroma hat rides along as an extra render
@@ -29,18 +24,18 @@ import java.util.List;
 @Mixin(AvatarRenderer.class)
 public class AvatarRendererMixin {
 
-    /** Inherited from LivingEntityRenderer: the layers drawn over the model, capes and all. */
-    @Shadow @Final protected List<RenderLayer<AvatarRenderState, PlayerModel>> layers;
-
     /**
      * Both player renderers - wide and slim - are built through this constructor, so adding the
      * layer here covers every player model the game can draw.
+     *
+     * The layer list belongs to LivingEntityRenderer, which a mixin on the subclass cannot shadow;
+     * hence the accessor. See {@link LivingEntityRendererAccessor}.
      */
     @Inject(method = "<init>", at = @At("TAIL"))
     private void alpaka$addCosmeticLayers(EntityRendererProvider.Context context, boolean slim, CallbackInfo ci) {
         @SuppressWarnings("unchecked")
         RenderLayerParent<AvatarRenderState, PlayerModel> parent = (RenderLayerParent<AvatarRenderState, PlayerModel>) (Object) this;
-        layers.add(new ChromaHatLayer(parent));
+        ((LivingEntityRendererAccessor) (Object) this).alpaka$addLayer(new ChromaHatLayer(parent));
     }
 
     /**

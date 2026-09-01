@@ -65,7 +65,95 @@ java {
     }
 }
 
+/**
+ * Copies the finished jar into whichever launcher is currently being played on.
+ *
+ * The target is `deploy_target` in gradle.properties - "modrinth", "oneclient", "both" or "none" -
+ * and a one-off run can override it without editing anything:
+ *
+ *     ./gradlew build -Pdeploy_target=oneclient
+ */
 def deployToLauncher(File jarFile, String versionStr) {
+    def target = (project.findProperty("deploy_target") ?: "modrinth").toString().toLowerCase()
+
+    if (target == "none") {
+        println "deploy_target=none - jar left in build/libs only."
+        return
+    }
+    if (target !in ["modrinth", "oneclient", "both"]) {
+        println "Unknown deploy_target '${target}'. Expected modrinth, oneclient, both or none."
+        return
+    }
+
+    if (target in ["modrinth", "both"]) deployToModrinth(jarFile, versionStr)
+    if (target in ["oneclient", "both"]) deployToOneClient(jarFile, versionStr)
+}
+
+/**
+ * Drops the jar into one Modrinth App profile's mods folder.
+ *
+ * Only that one folder, unlike the OneClient deploy below: the Modrinth App keeps a profile's mods
+ * where you would expect them and does not re-materialise stale copies out of a package cache, so
+ * there is nothing to hunt down afterwards. Old alpaka jars in the profile are removed first, since
+ * a version bump changes the filename and two of them would make Fabric refuse to start on a
+ * duplicate mod id.
+ */
+def deployToModrinth(File jarFile, String versionStr) {
+    def profileName = (project.findProperty("modrinth_profile") ?: "").toString()
+    if (profileName.isEmpty()) {
+        println "No modrinth_profile set in gradle.properties - skipping Modrinth deployment."
+        return
+    }
+
+    def homeDir = System.getProperty("user.home")
+    def appData = System.getenv("APPDATA")
+    def roots = [
+        appData ? new File(appData, "ModrinthApp") : null,
+        new File("${homeDir}/Library/Application Support/ModrinthApp"),
+        new File("${homeDir}/.local/share/ModrinthApp")
+    ].findAll { it != null && it.exists() }
+
+    if (roots.isEmpty()) {
+        println "No Modrinth App directory found for deployment."
+        return
+    }
+
+    def targetName = "alpaka-${versionStr}.jar"
+    def deployed = false
+
+    roots.each { root ->
+        def profilesDir = new File(root, "profiles")
+        def profileDir = new File(profilesDir, profileName)
+        if (!profileDir.exists()) {
+            // Named rather than silently skipped: a typo in the profile name would otherwise look
+            // exactly like a successful build, with the game still running the previous jar.
+            def available = profilesDir.exists() ? profilesDir.listFiles()?.findAll { it.isDirectory() }*.name : []
+            println "Modrinth profile '${profileName}' not found in ${profilesDir.absolutePath}."
+            println "  Available profiles: ${available ? available.join(', ') : '(none)'}"
+            return
+        }
+
+        def modsDir = new File(profileDir, "mods")
+        modsDir.mkdirs()
+        modsDir.listFiles()?.findAll { it.name.startsWith("alpaka") && it.name.endsWith(".jar") && it.name != targetName }?.each {
+            if (it.delete()) println "Removed old mod file: ${it.name} from Modrinth profile '${profileName}'"
+            else println "Warning: could not remove ${it.name} (game running?) - two alpaka jars will break Fabric startup."
+        }
+
+        def destFile = new File(modsDir, targetName)
+        try {
+            java.nio.file.Files.copy(jarFile.toPath(), destFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            println "Deployed ${targetName} to Modrinth profile: ${profileName}"
+            deployed = true
+        } catch (Exception e) {
+            println "Warning: Could not write ${destFile.absolutePath} (file may be in use by running game): ${e.message}"
+        }
+    }
+
+    if (!deployed) println "Modrinth deployment did not place the jar anywhere."
+}
+
+def deployToOneClient(File jarFile, String versionStr) {
     def homeDir = System.getProperty("user.home")
     def targetName = "alpaka-${versionStr}.jar"
     def localAppData = System.getenv("LOCALAPPDATA")
@@ -153,9 +241,26 @@ tasks.named("jar") {
             }
         }
     }
+}
+
+/**
+ * Copies the built jar into the launcher named by `deploy_target`.
+ *
+ * A task of its own rather than a `doLast` on `jar`, because switching launcher is a reason to
+ * deploy that leaves the sources untouched: with the copy hanging off `jar`, an up-to-date jar meant
+ * `./gradlew build -Pdeploy_target=...` printed nothing and copied nothing. Never up to date, since
+ * what it is bringing up to date lives outside the build directory.
+ */
+tasks.register("deployJar") {
+    dependsOn(tasks.named("jar"))
+    outputs.upToDateWhen { false }
     doLast {
-        deployToLauncher(archiveFile.get().asFile, project.version.toString())
+        deployToLauncher(tasks.named("jar").get().archiveFile.get().asFile, project.version.toString())
     }
+}
+
+tasks.named("build") {
+    finalizedBy(tasks.named("deployJar"))
 }
 
 tasks.named("runClient") {

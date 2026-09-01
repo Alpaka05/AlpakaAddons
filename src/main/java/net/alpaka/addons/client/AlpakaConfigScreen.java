@@ -22,7 +22,10 @@ public class AlpakaConfigScreen extends Screen {
     private ConfigCategory activeCategory = ConfigCategory.GENERAL;
 
     // Search state
-    private String searchQuery = "";
+    /** Longest search term the bar accepts. */
+    private static final int MAX_SEARCH_LENGTH = 35;
+
+    private final net.alpaka.addons.client.gui.EditableText search = new net.alpaka.addons.client.gui.EditableText(MAX_SEARCH_LENGTH);
     private boolean searchFocused = false;
 
     /** The inline text option currently accepting keystrokes, or null. */
@@ -61,8 +64,8 @@ public class AlpakaConfigScreen extends Screen {
     public AlpakaConfigScreen(Screen parent, String initialSearch) {
         super(Component.literal("Alpaka Addons Config"));
         this.parent = parent;
-        this.searchQuery = initialSearch == null ? "" : initialSearch.trim();
-        if (!this.searchQuery.isEmpty()) {
+        this.search.setText(initialSearch == null ? "" : initialSearch.trim());
+        if (!this.search.getText().isEmpty()) {
             ensureValidActiveCategory();
         }
     }
@@ -79,19 +82,19 @@ public class AlpakaConfigScreen extends Screen {
      * The answer only changes on a keystroke.
      */
     private List<ConfigCategory> getVisibleCategories() {
-        if (cachedVisibleCategories != null && searchQuery.equals(cachedVisibleCategoriesQuery)) {
+        if (cachedVisibleCategories != null && search.getText().equals(cachedVisibleCategoriesQuery)) {
             return cachedVisibleCategories;
         }
 
         List<ConfigCategory> list = new ArrayList<>();
         for (ConfigCategory cat : ConfigCategory.values()) {
-            if (searchQuery.isEmpty() || AlpakaConfigRegistry.countOptions(cat, searchQuery) > 0) {
+            if (search.getText().isEmpty() || AlpakaConfigRegistry.countOptions(cat, search.getText()) > 0) {
                 list.add(cat);
             }
         }
 
         cachedVisibleCategories = list;
-        cachedVisibleCategoriesQuery = searchQuery;
+        cachedVisibleCategoriesQuery = search.getText();
         return list;
     }
 
@@ -183,7 +186,7 @@ public class AlpakaConfigScreen extends Screen {
 
         int centerWinX = (this.width - winW) / 2;
         int sideWinX = Math.max(12, (this.width - winW) / 10);
-        int targetWinX = (activeCategory == ConfigCategory.VIEWMODEL && searchQuery.isEmpty()) ? sideWinX : centerWinX;
+        int targetWinX = (activeCategory == ConfigCategory.VIEWMODEL && search.getText().isEmpty()) ? sideWinX : centerWinX;
 
         if (currentWinX < 0) {
             currentWinX = targetWinX;
@@ -248,19 +251,34 @@ public class AlpakaConfigScreen extends Screen {
         ModernGuiUtils.drawRect(graphics, searchX, searchY, searchW, searchH, searchBg);
         ModernGuiUtils.drawOutline(graphics, searchX, searchY, searchW, searchH, searchBorder);
 
-        String displayText = searchQuery;
-        if (searchQuery.isEmpty() && !searchFocused) {
-            displayText = "🔍 Search...";
-            graphics.text(this.font, Component.literal(displayText), searchX + 6, searchY + (searchH - 8) / 2, ModernGuiUtils.COLOR_TEXT_MUTED);
+        int searchTextX = searchX + 6;
+        int searchTextY = searchY + (searchH - 8) / 2;
+
+        if (search.isEmpty() && !searchFocused) {
+            graphics.text(this.font, Component.literal("🔍 Search..."), searchTextX, searchTextY, ModernGuiUtils.COLOR_TEXT_MUTED);
         } else {
-            if (searchFocused && (System.currentTimeMillis() / 500) % 2 == 0) {
-                displayText += "|";
+            String text = search.getText();
+
+            // Behind the glyphs, so the text stays readable on top of it.
+            if (searchFocused && search.hasSelection()) {
+                int from = searchTextX + this.font.width(text.substring(0, search.getSelectionStart()));
+                int to = searchTextX + this.font.width(text.substring(0, search.getSelectionEnd()));
+                ModernGuiUtils.drawRect(graphics, from, searchTextY - 2, to - from, 12, ModernGuiUtils.getAccentDimColor());
             }
-            graphics.text(this.font, Component.literal(displayText), searchX + 6, searchY + (searchH - 8) / 2, ModernGuiUtils.COLOR_TEXT_PRIMARY);
+
+            graphics.text(this.font, Component.literal(text), searchTextX, searchTextY, ModernGuiUtils.COLOR_TEXT_PRIMARY);
+
+            // Drawn at the caret rather than appended to the string, so it sits where editing will
+            // happen instead of always at the end. The blink is restarted on every keystroke, which
+            // keeps the caret solid while typing rather than winking out mid-word.
+            if (searchFocused && (System.currentTimeMillis() - cursorBlinkTimer) / 500 % 2 == 0) {
+                int caretX = searchTextX + this.font.width(text.substring(0, search.getCaret()));
+                ModernGuiUtils.drawRect(graphics, caretX, searchTextY - 1, 1, 10, ModernGuiUtils.COLOR_TEXT_PRIMARY);
+            }
         }
 
         // Search clear button 'X'
-        if (!searchQuery.isEmpty()) {
+        if (!search.getText().isEmpty()) {
             int clearX = searchX + searchW - 14;
             boolean hoverClear = mouseX >= clearX && mouseX <= clearX + 10 && mouseY >= searchY && mouseY <= searchY + searchH;
             graphics.text(this.font, Component.literal("✕"), clearX + 2, searchY + (searchH - 8) / 2, hoverClear ? ModernGuiUtils.getAccentColor() : ModernGuiUtils.COLOR_TEXT_MUTED);
@@ -306,7 +324,7 @@ public class AlpakaConfigScreen extends Screen {
             graphics.text(this.font, Component.literal(cat.getDisplayName()), textX, itemY + (catItemH - 8) / 2, labelColor);
 
             // Category Settings Count Badge
-            String countText = String.valueOf(AlpakaConfigRegistry.countOptions(cat, searchQuery));
+            String countText = String.valueOf(AlpakaConfigRegistry.countOptions(cat, search.getText()));
             int countX = winX + 8 + (sidebarWidth - 20) - this.font.width(countText) - 10;
             int countColor = isSelected ? ModernGuiUtils.getAccentColor() : (isHovered ? ModernGuiUtils.COLOR_TEXT_MUTED : ModernGuiUtils.COLOR_TEXT_DARK);
             graphics.text(this.font, Component.literal(countText), countX, itemY + (catItemH - 8) / 2, countColor);
@@ -321,7 +339,7 @@ public class AlpakaConfigScreen extends Screen {
         graphics.disableScissor();
 
         // 5. Render Options in Main Panel with Scissor Clipping to prevent scrolling overlap
-        List<ConfigOption> options = AlpakaConfigRegistry.getOptions(activeCategory, searchQuery);
+        List<ConfigOption> options = AlpakaConfigRegistry.getOptions(activeCategory, search.getText());
 
         int totalContentHeight = 40 + 20;
         for (ConfigOption opt : options) {
@@ -339,15 +357,15 @@ public class AlpakaConfigScreen extends Screen {
 
         // Render Category Header inside Content Area
         String catTitle = activeCategory.getHeading();
-        if (!searchQuery.isEmpty()) {
-            catTitle = "Search results for: \"" + searchQuery + "\"";
+        if (!search.getText().isEmpty()) {
+            catTitle = "Search results for: \"" + search.getText() + "\"";
         }
         graphics.text(this.font, Component.literal(catTitle), contentX + 16, startOptionY, ModernGuiUtils.COLOR_TEXT_PRIMARY);
         graphics.text(this.font, Component.literal(activeCategory.getDescription()), contentX + 16, startOptionY + 13, ModernGuiUtils.COLOR_TEXT_MUTED);
         startOptionY += CATEGORY_HEADER_H;
 
         if (options.isEmpty()) {
-            String emptyMsg = "No settings found for \"" + searchQuery + "\".";
+            String emptyMsg = "No settings found for \"" + search.getText() + "\".";
             graphics.text(this.font, Component.literal(emptyMsg), contentX + 16, startOptionY + 12, ModernGuiUtils.COLOR_TOGGLE_OFF_TEXT);
         } else {
             int cardW = contentW - 28;
@@ -487,7 +505,7 @@ public class AlpakaConfigScreen extends Screen {
         }
         int centerWinX = (this.width - winW) / 2;
         int sideWinX = Math.max(12, (this.width - winW) / 10);
-        return (activeCategory == ConfigCategory.VIEWMODEL && searchQuery.isEmpty()) ? sideWinX : centerWinX;
+        return (activeCategory == ConfigCategory.VIEWMODEL && search.getText().isEmpty()) ? sideWinX : centerWinX;
     }
 
     @Override
@@ -519,11 +537,11 @@ public class AlpakaConfigScreen extends Screen {
         int searchX = winX + winW - 170;
         int searchY = winY + 8;
 
-        if (!searchQuery.isEmpty()) {
+        if (!search.getText().isEmpty()) {
             int clearX = searchX + searchW - 14;
             if (mouseX >= clearX && mouseX <= clearX + 10 && mouseY >= searchY && mouseY <= searchY + searchH) {
                 playPloppSound();
-                this.searchQuery = "";
+                this.search.setText("");
                 this.targetScrollY = 0.0;
                 this.scrollY = 0.0;
                 return true;
@@ -533,9 +551,13 @@ public class AlpakaConfigScreen extends Screen {
         if (mouseX >= searchX && mouseX <= searchX + searchW && mouseY >= searchY && mouseY <= searchY + searchH) {
             this.searchFocused = true;
             this.cursorBlinkTimer = System.currentTimeMillis();
+            // Caret where the click landed, not blindly at the end - clicking into the middle of a
+            // term to fix one letter is the reason to click a text field at all.
+            search.setCaretFromX((int) mouseX - (searchX + 6), this.font);
             return true;
-        } else {
+        } else if (this.searchFocused) {
             this.searchFocused = false;
+            search.clearSelection();
         }
 
         // Category Sidebar click
@@ -555,7 +577,7 @@ public class AlpakaConfigScreen extends Screen {
                     mouseY >= sideClipY && mouseY <= sideClipY + sideClipH) {
                     playPloppSound();
                     this.activeCategory = cat;
-                    // Keep searchQuery so search term remains active in search bar when swapping categories!
+                    // Keep the search term so search term remains active in search bar when swapping categories!
                     this.targetScrollY = 0.0;
                     this.scrollY = 0.0;
                     return true;
@@ -569,7 +591,7 @@ public class AlpakaConfigScreen extends Screen {
         int clipH = contentH - 12;
 
         if (mouseX >= contentX && mouseX <= contentX + contentW && mouseY >= clipY && mouseY <= clipY + clipH) {
-            List<ConfigOption> options = AlpakaConfigRegistry.getOptions(activeCategory, searchQuery);
+            List<ConfigOption> options = AlpakaConfigRegistry.getOptions(activeCategory, search.getText());
             int startOptionY = contentY + 12 + CATEGORY_HEADER_H - (int) scrollY;
             int cardW = contentW - 28;
             int cardH = CARD_H;
@@ -713,6 +735,19 @@ public class AlpakaConfigScreen extends Screen {
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
+    /**
+     * The search term changed: re-pick a category that still has results and go back to the top.
+     *
+     * One place rather than repeated at every edit, which is what the search bar's growing set of
+     * editing keys would otherwise have needed - the old code only had to do it for typing and
+     * backspace, and every key added since would have been a chance to forget it.
+     */
+    private void onSearchChanged() {
+        ensureValidActiveCategory();
+        targetScrollY = 0;
+        scrollY = 0;
+    }
+
     @Override
     public boolean charTyped(CharacterEvent event) {
         if (focusedTextOption != null) {
@@ -727,16 +762,12 @@ public class AlpakaConfigScreen extends Screen {
         }
 
         if (searchFocused) {
-            int codePoint = event.codepoint();
-            if (codePoint >= 32 && codePoint != 127) {
-                if (searchQuery.length() < 35) {
-                    searchQuery += (char) codePoint;
-                    ensureValidActiveCategory();
-                    targetScrollY = 0;
-                    scrollY = 0;
-                    return true;
-                }
+            if (search.insert((char) event.codepoint())) {
+                onSearchChanged();
             }
+            // Swallowed either way: a full field must not let the character fall through to a
+            // keybind that happens to use the same letter.
+            return true;
         }
         return super.charTyped(event);
     }
@@ -747,6 +778,8 @@ public class AlpakaConfigScreen extends Screen {
         if (event.hasControlDownWithQuirk() && (event.key() == 70 || event.key() == 102)) { // GLFW_KEY_F
             this.searchFocused = true;
             this.cursorBlinkTimer = System.currentTimeMillis();
+            // Ctrl+F on a bar that already has a term selects it, so the next keystroke replaces it.
+            search.selectAll();
             return true;
         }
 
@@ -765,16 +798,16 @@ public class AlpakaConfigScreen extends Screen {
         }
 
         if (searchFocused) {
-            if (event.key() == 259) { // GLFW_KEY_BACKSPACE
-                if (!searchQuery.isEmpty()) {
-                    searchQuery = searchQuery.substring(0, searchQuery.length() - 1);
-                    ensureValidActiveCategory();
-                    targetScrollY = 0;
-                    scrollY = 0;
-                }
-                return true;
-            } else if (event.key() == 256) { // GLFW_KEY_ESCAPE
+            if (event.key() == 256) { // GLFW_KEY_ESCAPE
                 searchFocused = false;
+                search.clearSelection();
+                return true;
+            }
+
+            String before = search.getText();
+            if (search.keyPressed(event.key(), event.hasControlDownWithQuirk(), event.hasShiftDown())) {
+                if (!search.getText().equals(before)) onSearchChanged();
+                cursorBlinkTimer = System.currentTimeMillis();
                 return true;
             }
         }

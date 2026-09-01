@@ -25,6 +25,7 @@
     "CameraTypeMixin",
     "BlazeModelMixin",
     "EntityRenderDispatcherMixin",
+    "LivingEntityRendererAccessor",
     "AvatarRendererMixin"
   ],
   "injectors": {

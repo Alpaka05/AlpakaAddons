@@ -3,7 +3,9 @@ package net.alpaka.addons.utils
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.config.AlpakaStats
 import net.alpaka.addons.features.slayer.SlayerDropTracker
+import net.alpaka.addons.features.slayer.SlayerBossEntityTracker
 import net.alpaka.addons.features.slayer.SlayerQuestDetector
+import net.alpaka.addons.features.slayer.SlayerTimer
 import net.alpaka.addons.features.slayer.SlayerType
 import net.minecraft.client.Minecraft
 
@@ -43,6 +45,8 @@ object AlpakaDiagnostics {
         }
         line("§7Slayer tracking enabled: ${yesNo(cfg.slayerDropTrackerEnabled)}")
 
+        printBossTimer(cfg)
+
         val totalKills = SlayerType.entries.sumOf { AlpakaStats.slayerBossMap()[it]?.kills ?: 0 }
         val trackedDrops = SlayerType.entries.sumOf { AlpakaStats.slayerBossMap()[it]?.drops?.size ?: 0 }
         line("§7Recorded: §f$totalKills §7kills, §f$trackedDrops §7distinct drops §8(/alpakaslayer for detail)")
@@ -56,6 +60,30 @@ object AlpakaDiagnostics {
         } else {
             lines.forEach { line("§8  \"$it\"") }
         }
+    }
+
+    /**
+     * How the boss timer measured the last fight, broken into its four moments.
+     *
+     * Here because the one question this feature attracts is "why does my time not match
+     * SkyHanni's", and that is only answerable by seeing which end of the fight the two disagree
+     * about. The offsets are printed relative to the sidebar, since the sidebar timing is what the
+     * mod did before the entity mode existed and so is the baseline to compare against.
+     */
+    private fun printBossTimer(cfg: AlpakaConfig) {
+        line("§7Boss timer: ${yesNo(cfg.slayerTimerEnabled)}")
+        line(
+            "§7Boss entity right now - name tag: ${yesNo(SlayerBossEntityTracker.isTracking)}§7, " +
+                "mob behind it: ${yesNo(SlayerBossEntityTracker.hasMob)}",
+        )
+
+        val fight = SlayerTimer.lastFight
+        if (fight == null) {
+            line("§8  no fight measured yet this session")
+            return
+        }
+        line("§7Last fight:")
+        fight.lines().forEach(::line)
     }
 
     private fun yesNo(value: Boolean) = if (value) "§ayes" else "§cno"

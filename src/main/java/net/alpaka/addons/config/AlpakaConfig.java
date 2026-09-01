@@ -125,8 +125,9 @@ public class AlpakaConfig {
      */
     public boolean slayerHudOnlyInSlayerAreas = true;
 
-    // Slayer boss timer. Times a single boss fight, from the sidebar announcing the boss to it
-    // dying, and remembers the fastest ever per slayer.
+    // Slayer boss timer. Times a single boss fight over the boss entity's own lifetime - the way
+    // SkyHanni does - and remembers the fastest ever per slayer. The sidebar is only the fallback
+    // for a fight where the boss entity could not be watched, so there is no setting for it.
     /**
      * Whether the mod may read public Hypixel data over the network.
      *

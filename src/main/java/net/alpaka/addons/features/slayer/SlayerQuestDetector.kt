@@ -94,8 +94,40 @@ object SlayerQuestDetector {
     private var questVoidedAtMs = 0L
     private var wasDead = false
 
+    /**
+     * How long a kill inferred from the quest merely vanishing is held before it is acted on.
+     *
+     * Not a nicety. Dying fails the quest, and Hypixel takes the quest lines off the sidebar for
+     * that at the same moment it would for a kill - while both messages that say what really
+     * happened, "SLAYER QUEST FAILED!" and the " ☠ You were killed by ..." line, arrive *after*. So
+     * [VOID_GRACE_MS] alone could never help: by the time the truth landed, the kill had already been
+     * counted, announced, and written as a personal best. Holding the inference for a moment is what
+     * lets a late veto still arrive in time.
+     *
+     * Only inferred kills wait. "Boss slain!" is Hypixel stating the boss died and is acted on at
+     * once, so the common case is not delayed at all.
+     */
+    private const val KILL_CONFIRM_MS = 1_000L
+
     private var lastProgress = ""
     private var pendingKill: SlayerType? = null
+
+    /**
+     * When the transition that produced [pendingKill] was noticed.
+     *
+     * Handed to the consumers rather than letting them read the clock themselves, because a held
+     * kill is acted on up to [KILL_CONFIRM_MS] after the boss actually died - and timing the fight
+     * to when the mod got around to believing it would add that hold onto every reported time.
+     */
+    private var pendingKillAtMs = 0L
+
+    /** Whether [pendingKill] was inferred from the quest vanishing rather than stated outright. */
+    private var pendingKillInferred = false
+
+    /** When the kill that [consumeKill] last handed out was noticed. */
+    var killDetectedAtMs = 0L
+        private set
+
     private var pendingSpawn: SlayerType? = null
 
     /** True while the sidebar says the boss itself is up. */
@@ -219,6 +251,12 @@ object SlayerQuestDetector {
      */
     fun onQuestVoided() {
         questVoidedAtMs = System.currentTimeMillis()
+
+        // Takes back a kill that was only inferred from the quest disappearing and has not been
+        // acted on yet - which is the whole point of holding it. A stated "Boss slain!" is left
+        // alone: dying a moment after the boss died does not undo the kill.
+        if (pendingKillInferred) pendingKill = null
+
         SlayerTimer.clear()
     }
 
@@ -251,6 +289,8 @@ object SlayerQuestDetector {
 
         if (wasFighting && (slain || (vanished && !recentlyVoided))) {
             pendingKill = lastSeenType
+            pendingKillAtMs = System.currentTimeMillis()
+            pendingKillInferred = !slain
         }
 
         // The reverse transition: the boss just spawned. There is no chat announcement to fall
@@ -265,10 +305,18 @@ object SlayerQuestDetector {
         lastProgress = newProgress
     }
 
-    /** Returns the slayer whose boss just died, once per kill, or null. */
+    /**
+     * Returns the slayer whose boss just died, once per kill, or null.
+     *
+     * An inferred kill is withheld until [KILL_CONFIRM_MS] has passed, so that a quest which ended
+     * some other way can still be vetoed by [onQuestVoided] before anything is counted.
+     */
     fun consumeKill(): SlayerType? {
-        val killed = pendingKill
+        val killed = pendingKill ?: return null
+        if (pendingKillInferred && System.currentTimeMillis() - pendingKillAtMs < KILL_CONFIRM_MS) return null
+
         pendingKill = null
+        killDetectedAtMs = pendingKillAtMs
         return killed
     }
 

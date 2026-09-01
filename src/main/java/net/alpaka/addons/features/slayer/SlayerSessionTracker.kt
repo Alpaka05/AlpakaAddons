@@ -300,9 +300,12 @@ object SlayerSessionTracker {
      * Killing a boss counts as activity in its own right, so a fight that ends after a long
      * stationary ranged phase does not leave the session looking idle.
      */
-    fun onBossKilled(type: SlayerType) {
-        val now = System.currentTimeMillis()
-        lastActivityMs = now
+    fun onBossKilled(type: SlayerType, killedAtMs: Long = System.currentTimeMillis()) {
+        // The moment the kill was noticed rather than the moment it is acted on, for the same reason
+        // SlayerTimer takes it as a parameter: an inferred kill is held back for a second so dying
+        // can veto it, and that hold must not land in the session's boss times.
+        val now = killedAtMs
+        lastActivityMs = System.currentTimeMillis()
 
         val session = session(type)
         // Killing a boss is proof the slayer is being run, whatever the sidebar says about zones.

@@ -68,15 +68,34 @@ public class SlayerDropTracker {
     /**
      * Hypixel's line when a quest ends because the player died.
      *
-     * A second net rather than the main one: this arrives *after* the sidebar has already dropped
-     * the quest, so the death itself is what the detector reacts to. Kept because the ordering is
-     * only known for the captured case, and a message that sometimes arrives first costs nothing.
+     * Arrives <em>after</em> the sidebar has already dropped the quest, so this used to be too late
+     * to stop the vanishing quest being counted as a kill - watching the client's own player die was
+     * meant to catch it first, and did not. Since {@link SlayerQuestDetector} holds an inferred kill
+     * back for a moment, this line is early enough to be the reliable signal rather than a spare one.
      */
     private static final Pattern QUEST_FAILED_PATTERN =
             Pattern.compile("^\\s*SLAYER QUEST FAILED!\\s*$");
 
     private static final Pattern QUEST_CANCELLED_PATTERN =
             Pattern.compile("^\\s*Your Slayer Quest has been cancelled!\\s*$");
+
+    /**
+     * Hypixel's death announcement, e.g. {@code " ☠ You were killed by Inferno Demonlord."} once
+     * colour codes are stripped.
+     *
+     * A second net for the player dying, because the first one - watching the client's own player go
+     * to zero health - was seen to miss it: a boss killed the player and the mod still counted a
+     * kill, announced a time and wrote it as a personal best. Hypixel does not put the player
+     * through a normal death in Skyblock, so the health it syncs is not a reliable signal.
+     *
+     * Shape and samples taken from SkyHanni's {@code PlayerDeathManager}, whose pattern is
+     * {@code " ☠ (?<name>\w+) (?<reason>.+)"} with captured tests including {@code " ☠ You fell into
+     * the void."} and {@code " ☠ ZeroHazel was killed by Ashfang."}. That second sample is why the
+     * name has to be checked: the same line announces other players' deaths, and one of those must
+     * not void our quest.
+     */
+    private static final Pattern PLAYER_DEATH_PATTERN =
+            Pattern.compile("^\\s*☠\\s+(?<name>\\w+)\\s+.+$");
 
     private static final Pattern SERVER_DROP_PATTERN = Pattern.compile("^\\s*(?:UNCOMMON|RARE|VERY RARE|CRAZY RARE|INSANE|PRAY TO RNGESUS|PET) DROP!.*");
     private static final Pattern PARTY_PATTERN = Pattern.compile("^Party > (?:\\[[A-Z+]+] )?\\w+: !since (?<item>.+)$");
@@ -181,9 +200,10 @@ public class SlayerDropTracker {
             // Primary kill signal: the sidebar leaving the boss fight. Chat is unreliable here.
             SlayerType killed = SlayerQuestDetector.INSTANCE.consumeKill();
             if (killed != null) {
+                long killedAtMs = SlayerQuestDetector.INSTANCE.getKillDetectedAtMs();
                 countKill(killed);
-                SlayerSessionTracker.INSTANCE.onBossKilled(killed);
-                SlayerTimer.INSTANCE.onBossKilled(killed);
+                SlayerSessionTracker.INSTANCE.onBossKilled(killed, killedAtMs);
+                SlayerTimer.INSTANCE.onBossKilled(killed, killedAtMs);
             }
 
             // Only signal for a boss spawning: Hypixel never sends a chat announcement for a
@@ -255,9 +275,14 @@ public class SlayerDropTracker {
     }
 
     public static void onChat(Component message) {
-        if (!AlpakaConfig.instance.slayerDropTrackerEnabled) return;
-
         String string = cleanColor(message.getString());
+
+        // Ahead of the drop tracker's own switch, because these say a quest ended *without* a kill
+        // and the boss timer is a separate feature that would otherwise count a phantom one. The
+        // tracker being off used to disable these nets along with everything else in this method.
+        if (handleQuestVoided(string)) return;
+
+        if (!AlpakaConfig.instance.slayerDropTrackerEnabled) return;
 
         if (AlpakaConfig.instance.customSoundsEnabled && SERVER_DROP_PATTERN.matcher(string).matches()) {
             String lower = string.toLowerCase();
@@ -273,14 +298,6 @@ public class SlayerDropTracker {
         // step between two readings; that step is the meter's gain, which an unlockable 10% boost
         // inflates, so it only ever matched players who had the boost. See xpForTier.
         if (RNG_METER_PATTERN.matcher(string).matches()) return;
-
-        // A cancelled quest leaves the sidebar looking exactly like a completed one, so the
-        // detector has to be told which of the two happened.
-        if (QUEST_CANCELLED_PATTERN.matcher(string).matches()
-                || QUEST_FAILED_PATTERN.matcher(string).matches()) {
-            SlayerQuestDetector.INSTANCE.onQuestVoided();
-            return;
-        }
 
         // Secondary kill signal. Hypixel does not always send this, and other Skyblock mods often
         // swallow it, so the sidebar transition in the tick handler is the one that usually fires.
@@ -316,6 +333,44 @@ public class SlayerDropTracker {
 
         // Check party command
         handlePartyCommand(string);
+    }
+
+    /**
+     * Tells the detector a quest ended without the boss dying. True when this line was one of those.
+     *
+     * A cancelled or failed quest leaves the sidebar looking exactly like a completed one, so the
+     * detector has to be told which of the two happened - otherwise ending a quest any other way is
+     * counted as a boss killed, complete with an announced time and a personal best.
+     *
+     * All three of these arrive <em>after</em> the sidebar has already dropped the quest, which is
+     * why {@link SlayerQuestDetector} holds an inferred kill back for a moment instead of acting on
+     * it at once. Without that hold, none of these could ever arrive in time to veto anything.
+     */
+    private static boolean handleQuestVoided(String message) {
+        if (QUEST_CANCELLED_PATTERN.matcher(message).matches()
+                || QUEST_FAILED_PATTERN.matcher(message).matches()) {
+            SlayerQuestDetector.INSTANCE.onQuestVoided();
+            return true;
+        }
+
+        Matcher death = PLAYER_DEATH_PATTERN.matcher(message);
+        if (death.matches() && namesLocalPlayer(death.group("name"))) {
+            SlayerQuestDetector.INSTANCE.onQuestVoided();
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Whether a name out of a death line refers to this client's own player.
+     *
+     * Hypixel writes "You" for the local player, but the very same line announces other players'
+     * deaths by name - voiding our quest for one of those would throw away a real kill.
+     */
+    private static boolean namesLocalPlayer(String name) {
+        if ("You".equals(name)) return true;
+        Minecraft mc = Minecraft.getInstance();
+        return mc.player != null && name.equals(mc.player.getGameProfile().name());
     }
 
     /**

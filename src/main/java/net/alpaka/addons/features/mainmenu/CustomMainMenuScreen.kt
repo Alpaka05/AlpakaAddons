@@ -41,10 +41,17 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         private const val SIDEBAR_W = 230
         private const val SIDEBAR_H = 330
 
-        /** Logo size, its gap below the sidebar's top edge, and the padding its highlight adds. */
+        /** Logo size and its gap below the sidebar's top edge. */
         private const val LOGO_SIZE = 42
         private const val LOGO_TOP_INSET = 6
-        private const val LOGO_HIGHLIGHT_PAD = 3
+
+        /**
+         * How far the logo grows on each side when hovered, as a fraction of its own size.
+         *
+         * A fraction rather than a pixel count so the escape menu's smaller copy of this logo swells
+         * by the same proportion rather than by the same amount.
+         */
+        private const val LOGO_HOVER_GROWTH = 0.07f
         private var textureRegistered = false
         private var modIconRegistered = false
 
@@ -78,8 +85,8 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
     }
 
     /**
-     * Eased hover amount for the logo, smoothed the same way the menu's buttons smooth theirs so it
-     * lights up on the same curve rather than snapping.
+     * Eased hover amount for the logo, smoothed on the same curve the menu's buttons use for their
+     * own hover so the growth eases in rather than snapping to size.
      */
     private var logoHover = 0.0f
 
@@ -227,27 +234,17 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         val hovered = isOverLogo(mouseX.toDouble(), mouseY.toDouble())
         logoHover += ((if (hovered) 1.0f else 0.0f) - logoHover) * 0.25f
 
-        if (logoHover > 0.01f) {
-            // Card background, accent border and a 2px lift, exactly what the buttons give
-            // themselves, so the logo reads as one of them rather than as decoration that reacts.
-            val alpha = (logoHover * 255.0f).toInt()
-            val pad = LOGO_HIGHLIGHT_PAD
-            ModernGuiUtils.drawRect(
-                graphics, iconX - pad, iconY - pad, LOGO_SIZE + pad * 2, LOGO_SIZE + pad * 2,
-                (alpha / 3 shl 24) or (ModernGuiUtils.COLOR_CARD_BG_HOVER and 0xFFFFFF),
-            )
-            ModernGuiUtils.drawOutline(
-                graphics, iconX - pad, iconY - pad, LOGO_SIZE + pad * 2, LOGO_SIZE + pad * 2,
-                (alpha shl 24) or (ModernGuiUtils.getAccentColor() and 0xFFFFFF),
-            )
-        }
-
-        val lift = (-2.0f * logoHover).toInt()
+        // Hovering grows the logo and does nothing else - no card behind it, no border, no lift. It
+        // used to take the same treatment the panel's buttons give themselves, which framed a piece
+        // of artwork in a box and made it read as a widget that had been selected rather than as one
+        // being pointed at. This is what the Join Hypixel button already does: the growth is applied
+        // to all four sides, so the logo swells in place instead of drifting.
+        val grow = (LOGO_SIZE * LOGO_HOVER_GROWTH * logoHover).toInt()
 
         ensureModIconRegistered()
         graphics.blit(
-            RenderPipelines.GUI_TEXTURED, MOD_ICON_ID, iconX, iconY + lift, 0.0f, 0.0f,
-            LOGO_SIZE, LOGO_SIZE, 128, 128, 128, 128,
+            RenderPipelines.GUI_TEXTURED, MOD_ICON_ID, iconX - grow, iconY - grow, 0.0f, 0.0f,
+            LOGO_SIZE + grow * 2, LOGO_SIZE + grow * 2, 128, 128, 128, 128,
         )
     }
 

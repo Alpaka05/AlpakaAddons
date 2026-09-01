@@ -7,6 +7,7 @@ import net.alpaka.addons.client.ItemSizeConfigScreen;
 import net.alpaka.addons.client.ItemSwingConfigScreen;
 import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.features.nametag.CustomNameTagFeature;
 import net.alpaka.addons.features.sound.CustomSoundFeature;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
@@ -676,6 +677,14 @@ public class AlpakaConfigRegistry {
                 "hide hypixel drop message duplicate chat slayer very rare clean"));
 
 
+        OPTIONS.add(new ConfigOption("slayer_rng_drop_guild_chat", "Announce Top Drop In Guild Chat",
+                "Posts the tracker's message to guild chat when a slayer's rarest drop lands.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slayerRngDropGuildChatEnabled,
+                v -> { AlpakaConfig.instance.slayerRngDropGuildChatEnabled = v; AlpakaConfig.save(); },
+                "guild chat gc announce share rng drop rare dice judgement core warden heart flex"));
+
+
         OPTIONS.add(new ConfigOption("hide_slayer_chat", "Hide Slayer Chat Spam",
                 "Hides Hypixel's slayer quest, level-up and radio messages.",
                 ConfigCategory.SKYBLOCK,
@@ -885,7 +894,141 @@ public class AlpakaConfigRegistry {
                 "damage indicator tags numbers hide non-crit fire poison abilities crit skyblock"));
 
 
-        // --- 6. SOUND & UTILITY ---
+        // --- 6. COSMETICS ---
+
+        OPTIONS.add(new ConfigOption("Own Name Tag", ConfigCategory.COSMETICS));
+
+        OPTIONS.add(new ConfigOption("custom_name_tag", "Custom Name Tag",
+                "Shows your own name tag in third person, drawn with effects. Only you can see it.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.customNameTagEnabled,
+                v -> { AlpakaConfig.instance.customNameTagEnabled = v; AlpakaConfig.save(); },
+                "name tag nametag own player third person f5 cosmetic animation norisk"));
+
+        OPTIONS.add(new ConfigOption("name_tag_color_mode", "Colour Effect",
+                "Vanilla keeps Hypixel's colours. Rainbow, Gradient and Pulse recolour the letters.",
+                ConfigCategory.COSMETICS,
+                () -> (float) AlpakaConfig.instance.nameTagColorMode,
+                v -> { AlpakaConfig.instance.nameTagColorMode = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (CustomNameTagFeature.COLOR_MODE_NAMES.length - 1),
+                val -> CustomNameTagFeature.COLOR_MODE_NAMES[Math.round(val)],
+                "name tag colour color rainbow chroma gradient pulse effect mode"));
+
+        OPTIONS.add(new ConfigOption("name_tag_motion_mode", "Letter Motion",
+                "Wave makes the letters bob one after another, Bounce hops the whole tag, Shake jitters.",
+                ConfigCategory.COSMETICS,
+                () -> (float) AlpakaConfig.instance.nameTagMotionMode,
+                v -> { AlpakaConfig.instance.nameTagMotionMode = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (CustomNameTagFeature.MOTION_MODE_NAMES.length - 1),
+                val -> CustomNameTagFeature.MOTION_MODE_NAMES[Math.round(val)],
+                "name tag motion wave wobble bounce jump shake jitter letters animation"));
+
+        OPTIONS.add(new ConfigOption("name_tag_speed", "Animation Speed",
+                "How fast the colours move and the letters bob.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.nameTagAnimationSpeed,
+                v -> { AlpakaConfig.instance.nameTagAnimationSpeed = v; AlpakaConfig.save(); },
+                0.2f, 3.0f, val -> String.format(Locale.ROOT, "%.1fx", val),
+                "name tag animation speed fast slow"));
+
+        OPTIONS.add(new ConfigOption("name_tag_scale", "Name Tag Size",
+                "Size of the tag relative to vanilla.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.nameTagScale,
+                v -> { AlpakaConfig.instance.nameTagScale = v; AlpakaConfig.save(); },
+                0.5f, 2.0f, val -> String.format(Locale.ROOT, "%.2fx", val),
+                "name tag size scale big small"));
+
+        OPTIONS.add(new ConfigOption("name_tag_color_whole", "Colour The Rank Too",
+                "Applies the colour effect to the whole tag, rank prefix included, not just your name.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.nameTagColorWholeTag,
+                v -> { AlpakaConfig.instance.nameTagColorWholeTag = v; AlpakaConfig.save(); },
+                "name tag rank prefix mvp vip colour whole tag"));
+
+        OPTIONS.add(new ConfigOption("name_tag_outline", "Text Outline",
+                "Draws each letter with a dark outline instead of a shadow.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.nameTagOutlineEnabled,
+                v -> { AlpakaConfig.instance.nameTagOutlineEnabled = v; AlpakaConfig.save(); },
+                "name tag outline border text glow"));
+
+        OPTIONS.add(new ConfigOption("name_tag_shadow", "Text Shadow",
+                "Adds the usual Minecraft drop shadow to the letters.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.nameTagShadowEnabled,
+                v -> { AlpakaConfig.instance.nameTagShadowEnabled = v; AlpakaConfig.save(); },
+                "name tag shadow text drop"));
+
+        OPTIONS.add(new ConfigOption("name_tag_chroma_border", "Chroma Frame",
+                "A thin rainbow frame around the tag's backdrop.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.nameTagChromaBorderEnabled,
+                v -> { AlpakaConfig.instance.nameTagChromaBorderEnabled = v; AlpakaConfig.save(); },
+                "name tag frame border chroma rainbow backdrop"));
+
+        OPTIONS.add(new ConfigOption("name_tag_bg_opacity", "Backdrop Opacity",
+                "Darkening behind the letters. Vanilla is 25%, 0% removes it.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.nameTagBackgroundOpacity,
+                v -> { AlpakaConfig.instance.nameTagBackgroundOpacity = v; AlpakaConfig.save(); },
+                0.0f, 100.0f, val -> val == 0.0f ? "Off (0%)" : String.format(Locale.ROOT, "%.0f%%", val),
+                "name tag background backdrop opacity dark box"));
+
+        OPTIONS.add(new ConfigOption("name_tag_gradient_start", "Gradient Start Colour",
+                "First colour of the Gradient effect.",
+                ConfigCategory.COSMETICS,
+                "Choose Color",
+                parent -> Minecraft.getInstance().setScreen(new ColorPickerScreen(parent, "Gradient Start Colour", AlpakaConfig.instance.nameTagGradientStart, color -> {
+                    AlpakaConfig.instance.nameTagGradientStart = color;
+                    AlpakaConfig.save();
+                })),
+                "name tag gradient colour color start first picker"));
+
+        OPTIONS.add(new ConfigOption("name_tag_gradient_end", "Gradient End Colour",
+                "Second colour of the Gradient effect.",
+                ConfigCategory.COSMETICS,
+                "Choose Color",
+                parent -> Minecraft.getInstance().setScreen(new ColorPickerScreen(parent, "Gradient End Colour", AlpakaConfig.instance.nameTagGradientEnd, color -> {
+                    AlpakaConfig.instance.nameTagGradientEnd = color;
+                    AlpakaConfig.save();
+                })),
+                "name tag gradient colour color end second picker"));
+
+        OPTIONS.add(new ConfigOption("Chroma Hat", ConfigCategory.COSMETICS));
+
+        OPTIONS.add(new ConfigOption("chroma_hat", "Chroma Samurai Hat",
+                "A translucent, rainbow-glowing samurai hat on your own head. Only you can see it.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.chromaHatEnabled,
+                v -> { AlpakaConfig.instance.chromaHatEnabled = v; AlpakaConfig.save(); },
+                "chroma hat samurai kasa jingasa cosmetic head rainbow glow"));
+
+        OPTIONS.add(new ConfigOption("chroma_hat_opacity", "Hat Opacity",
+                "How solid the hat looks.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.chromaHatOpacity,
+                v -> { AlpakaConfig.instance.chromaHatOpacity = v; AlpakaConfig.save(); },
+                10.0f, 100.0f, val -> String.format(Locale.ROOT, "%.0f%%", val),
+                "chroma hat opacity transparent translucent alpha"));
+
+        OPTIONS.add(new ConfigOption("chroma_hat_size", "Hat Size",
+                "Brim width and height of the hat.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.chromaHatSize,
+                v -> { AlpakaConfig.instance.chromaHatSize = v; AlpakaConfig.save(); },
+                0.6f, 1.6f, val -> String.format(Locale.ROOT, "%.2fx", val),
+                "chroma hat size scale big small brim"));
+
+        OPTIONS.add(new ConfigOption("chroma_hat_speed", "Hat Colour Speed",
+                "How fast the rainbow spins around the hat.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.chromaHatSpeed,
+                v -> { AlpakaConfig.instance.chromaHatSpeed = v; AlpakaConfig.save(); },
+                0.2f, 3.0f, val -> String.format(Locale.ROOT, "%.1fx", val),
+                "chroma hat speed rainbow spin fast slow"));
+
+        // --- 7. SOUND & UTILITY ---
 
         OPTIONS.add(new ConfigOption("Custom Sounds", ConfigCategory.SOUND_MISC));
 

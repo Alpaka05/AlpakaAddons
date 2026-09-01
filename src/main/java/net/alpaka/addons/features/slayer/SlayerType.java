@@ -12,8 +12,13 @@ public enum SlayerType {
     ZOMBIE("Zombie", "§2", "Warden Heart", new String[]{"Graveyard", "Revenant Cave", "Crypts"},
             new String[]{"Graveyard", "Revenant Cave", "Crypts"},
             "Revenant Horror", "Atoned Horror"),
-    SPIDER("Spider", "§4", "Primordial Eye", new String[]{"Spider Mound", "Arachne's Burrow", "Arachne's Sanctuary", "Burning Desert"},
-            new String[]{"Spider Mound", "Arachne's Burrow", "Arachne's Sanctuary", "Burning Desert"},
+    // "Dragontail" is not in SkyHanni's table, and for a reason that matters here: SkyHanni keys its
+    // slayer areas off its own navigation-graph regions, and its "Burning Desert" region covers the
+    // whole tarantula ground on the Crimson Isle. The sidebar, which is what this mod reads, names
+    // the sub-zones instead, and over part of that ground it says "Dragontail". Without it the HUD
+    // vanished mid-run there.
+    SPIDER("Spider", "§4", "Primordial Eye", new String[]{"Spider Mound", "Arachne's Burrow", "Arachne's Sanctuary", "Burning Desert", "Dragontail"},
+            new String[]{"Spider Mound", "Arachne's Burrow", "Arachne's Sanctuary", "Burning Desert", "Dragontail"},
             "Tarantula Broodfather", "Conjoined Brood"),
     WOLF("Wolf", "§f", "Overflux Capacitor", new String[]{"Ruins", "Howling Cave", "Soul Cave", "Spirit Cave"},
             new String[]{"Ruins", "Howling Cave", "Soul Cave", "Spirit Cave"},

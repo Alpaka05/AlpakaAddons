@@ -318,7 +318,11 @@ object SlayerSessionTracker {
             bossStartMs = 0L
         }
 
-        session.xpGained += xpForTier(SlayerQuestDetector.lastSeenTier)
+        val awarded = xpForTier(SlayerQuestDetector.lastSeenTier)
+        session.xpGained += awarded
+        // The persisted lifetime figure moves with it, so a disconnect cannot lose this kill's XP.
+        // See SlayerXpTracker for why it is not derived from the session total.
+        SlayerXpTracker.credit(type, awarded)
     }
 
     /**

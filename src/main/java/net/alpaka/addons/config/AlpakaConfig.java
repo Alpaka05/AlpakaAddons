@@ -27,7 +27,44 @@ public class AlpakaConfig {
      * so a slayer drop is announced once rather than twice.
      */
     public boolean hideHypixelDropMessage = true;
+    /**
+     * Post a slayer's headline RNG drop - the one the slayer HUD counts a dry streak against, e.g.
+     * High Class Archfiend Dice for Inferno - to the guild chat too, in the same words the tracker
+     * writes to the player's own chat.
+     *
+     * Off by default: it sends a message on the player's behalf, which is something to opt into.
+     */
+    public boolean slayerRngDropGuildChatEnabled = false;
     public boolean fullbrightEnabled = false;
+
+    // Cosmetics. Both are drawn by this client for this client only - nothing is sent, nobody else
+    // sees them - and both apply to the player's own model in third person.
+    /** Draw the player's own name tag with effects instead of vanilla's (which never shows it). */
+    public boolean customNameTagEnabled = false;
+    /** Index into {@code CustomNameTagFeature.COLOR_MODE_NAMES}: vanilla, rainbow, gradient, pulse. */
+    public int nameTagColorMode = 1;
+    /** Index into {@code CustomNameTagFeature.MOTION_MODE_NAMES}: none, wave, bounce, shake. */
+    public int nameTagMotionMode = 1;
+    /** Apply the colour effect to the rank prefix as well, not only to the name itself. */
+    public boolean nameTagColorWholeTag = false;
+    public boolean nameTagOutlineEnabled = false;
+    public boolean nameTagShadowEnabled = false;
+    /** A thin frame around the backdrop whose colours sweep along it. */
+    public boolean nameTagChromaBorderEnabled = true;
+    /** Backdrop darkness in percent. Vanilla's default text background is 25. */
+    public float nameTagBackgroundOpacity = 25.0f;
+    public float nameTagScale = 1.0f;
+    public float nameTagAnimationSpeed = 1.0f;
+    /** The two ends of the gradient colour mode. */
+    public int nameTagGradientStart = 0xFF55FFFF;
+    public int nameTagGradientEnd = 0xFFFF55FF;
+
+    /** A translucent, chroma-lit samurai hat on the player's own head. */
+    public boolean chromaHatEnabled = false;
+    /** Hat opacity in percent. */
+    public float chromaHatOpacity = 55.0f;
+    public float chromaHatSize = 1.0f;
+    public float chromaHatSpeed = 1.0f;
     /**
      * Whether a notice slides in when somebody says the player's name in chat.
      *
@@ -409,6 +446,16 @@ public class AlpakaConfig {
          * own gains are added on top for display.
          */
         public long totalXp = -1L;
+
+        /**
+         * When the mod last added a boss kill's XP to {@link #totalXp}, as a wall-clock millisecond
+         * timestamp, or 0 when it never has.
+         *
+         * Persisted because it decides whether a lower figure read from the Slayer menu is a stale
+         * leaderboard entry or a real correction, and that question comes up right after relaunching
+         * too. See SlayerXpTracker.
+         */
+        public long lastXpCreditedAtMs = 0L;
     }
 
     public AlpakaConfig() {
@@ -450,6 +497,12 @@ public class AlpakaConfig {
         this.renderHandInThirdPerson = false;
         this.slayerDropTrackerEnabled = false;
         this.hideHypixelDropMessage = false;
+        this.slayerRngDropGuildChatEnabled = false;
+        this.customNameTagEnabled = false;
+        this.nameTagOutlineEnabled = false;
+        this.nameTagShadowEnabled = false;
+        this.nameTagChromaBorderEnabled = false;
+        this.chromaHatEnabled = false;
         this.pangolinHighlightEnabled = false;
         this.fullbrightEnabled = false;
         this.inventorySnowEnabled = false;

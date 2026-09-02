@@ -115,7 +115,7 @@ object PlayerModelRenderer {
     @JvmStatic
     fun render(graphics: GuiGraphicsExtractor, @Suppress("UNUSED_PARAMETER") deltaTracker: DeltaTracker) {
         val mc = Minecraft.getInstance()
-        if (mc.gui.hud.isHidden()) return
+        if (mc.options.hideGui) return
         val player = mc.player ?: return
 
         // The two early returns above deliberately leave the timestamp stale: a long stretch
@@ -161,7 +161,7 @@ object PlayerModelRenderer {
         if (!cfg.playerModelEnabled) return false
 
         // Hidden behind menus unless explicitly allowed; the chat screen never counts as a menu.
-        val screen = mc.gui.screen()
+        val screen = mc.screen
         if (screen != null && screen !is ChatScreen && !cfg.playerModelShowInGuis) return false
 
         if (!cfg.playerModelOnlyActions) return true

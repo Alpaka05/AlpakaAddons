@@ -37,8 +37,8 @@ object SlayerTimerHudRenderer {
         if (!cfg.slayerTimerEnabled || !cfg.slayerTimerHudEnabled) return
 
         val mc = Minecraft.getInstance()
-        if (mc.gui.hud.isHidden() || mc.level == null || mc.player == null) return
-        if (mc.gui.screen() != null && mc.gui.screen() !is ChatScreen) return
+        if (mc.options.hideGui || mc.level == null || mc.player == null) return
+        if (mc.screen != null && mc.screen !is ChatScreen) return
 
         if (SlayerTimer.displayMs() == null) return
 

@@ -195,7 +195,7 @@ public class ItemSwingConfigScreen extends Screen {
         // A drag cut short by the screen closing never sees its mouse-up, so flush here as well.
         AlpakaConfig.endDeferredSaves();
         if (this.minecraft != null) {
-            this.minecraft.gui.setScreen(this.parent);
+            this.minecraft.setScreen(this.parent);
         }
     }
 

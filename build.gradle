@@ -25,14 +25,15 @@ dependencies {
     // Fabric Loader & API
     implementation "net.fabricmc:fabric-loader:${project.property("loader_version")}"
     implementation "net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}"
+    implementation "net.fabricmc.fabric-api:fabric-command-api-v2:3.0.5+e2bdee784c"
 
     // Mixin compile dependency
     compileOnly "org.spongepowered:mixin:0.8.5"
 
     // Mod Menu: compiled against, and present in the dev client so its Mods screens can be tested.
     // localRuntime keeps it out of the published POM. Players get it from their own mod list.
-    compileOnly "com.terraformersmc:modmenu:20.0.1"
-    localRuntime "com.terraformersmc:modmenu:20.0.1"
+    compileOnly "com.terraformersmc:modmenu:18.0.0"
+    localRuntime "com.terraformersmc:modmenu:18.0.0"
 
     // Kotlin
     implementation "org.jetbrains.kotlin:kotlin-stdlib"
@@ -280,6 +281,9 @@ loom {
         }
     }
 }
+
+
+
 
 
 

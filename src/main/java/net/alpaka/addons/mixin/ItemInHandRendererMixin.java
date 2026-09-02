@@ -50,7 +50,7 @@ public class ItemInHandRendererMixin {
     }
 
     @Redirect(
-            method = "submitHandsWithItems",
+            method = "renderHandsWithItems",
             at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;mulPose(Lorg/joml/Quaternionfc;)V")
     )
     private void redirectMulPose(PoseStack poseStack, org.joml.Quaternionfc quaternion) {
@@ -104,7 +104,7 @@ public class ItemInHandRendererMixin {
     }
 
     @Inject(
-            method = "submitArmWithItem",
+            method = "renderArmWithItem",
             at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;pushPose()V", shift = At.Shift.AFTER)
     )
     private void onBeforeRenderItem(
@@ -128,7 +128,7 @@ public class ItemInHandRendererMixin {
     }
 
     @Inject(
-            method = "submitArmWithItem",
+            method = "renderArmWithItem",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;renderItem(Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/item/ItemDisplayContext;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;I)V")
     )
     private void onRenderItem(
@@ -191,7 +191,7 @@ public class ItemInHandRendererMixin {
         }
     }
 
-    @ModifyVariable(method = "submitArmWithItem", at = @At("HEAD"), ordinal = 2, argsOnly = true)
+    @ModifyVariable(method = "renderArmWithItem", at = @At("HEAD"), ordinal = 2, argsOnly = true)
     private float modifySwingProgress(
             float swingProgress, AbstractClientPlayer player, float tickProgress, float pitch,
             InteractionHand hand, float swingProgressArg, ItemStack item) {

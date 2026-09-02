@@ -173,7 +173,7 @@ public class CustomPauseScreen extends Screen {
         this.serverListButton = new CustomPauseButton(buttonX, buttonStartY + spacing, buttonWidth, buttonHeight,
                 iconLabel(ICON_SERVER, "Server List"), false, btn -> {
             if (this.minecraft != null) {
-                this.minecraft.gui.setScreen(new JoinMultiplayerScreen(this));
+                this.minecraft.setScreen(new JoinMultiplayerScreen(this));
             }
         });
         this.addRenderableWidget(this.serverListButton);
@@ -187,7 +187,7 @@ public class CustomPauseScreen extends Screen {
                 if (net.alpaka.addons.compat.ModMenuCompat.isLoaded()) {
                     net.alpaka.addons.compat.ModMenuCompat.openModsScreen(this);
                 } else {
-                    this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options, false));
+                    this.minecraft.setScreen(new OptionsScreen(this, this.minecraft.options, false));
                 }
             }
         });
@@ -197,7 +197,7 @@ public class CustomPauseScreen extends Screen {
         this.optionsButton = new CustomPauseButton(buttonX, buttonStartY + spacing * 3, buttonWidth, buttonHeight,
                 iconLabel(ICON_SLIDERS, "Options"), false, btn -> {
             if (this.minecraft != null) {
-                this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options, false));
+                this.minecraft.setScreen(new OptionsScreen(this, this.minecraft.options, false));
             }
         });
         this.addRenderableWidget(this.optionsButton);
@@ -212,7 +212,7 @@ public class CustomPauseScreen extends Screen {
         this.addRenderableWidget(this.wikiButton);
 
         // 6. Disconnect Button (Red Accent)
-        boolean isSingleplayer = isSingleplayerWorld();
+        boolean isSingleplayer = this.minecraft != null && this.minecraft.isSingleplayer();
         Component disconnectText = isSingleplayer ? iconLabel(ICON_DOOR, "Save & Quit") : iconLabel(ICON_DOOR, "Disconnect");
         this.disconnectButton = new CustomPauseButton(buttonX, buttonStartY + spacing * 5, buttonWidth, buttonHeight,
                 disconnectText, true, btn -> {
@@ -331,7 +331,7 @@ public class CustomPauseScreen extends Screen {
 
         // Subtitle: User & Status (IP on server, Singleplayer in local world)
         String status = "Singleplayer";
-        if (this.minecraft != null && !isSingleplayerWorld()) {
+        if (this.minecraft != null && !this.minecraft.isSingleplayer()) {
             ServerData serverData = this.minecraft.getCurrentServer();
             if (serverData != null && serverData.ip != null && !serverData.ip.isBlank()) {
                 status = serverData.ip;
@@ -422,7 +422,7 @@ public class CustomPauseScreen extends Screen {
 
         if (event.button() == 0 && isOverLogo(event.x(), event.y()) && this.minecraft != null) {
             CustomSoundFeature.playButtonClickSound();
-            this.minecraft.gui.setScreen(new AlpakaConfigScreen(this));
+            this.minecraft.setScreen(new AlpakaConfigScreen(this));
             return true;
         }
 
@@ -496,17 +496,5 @@ public class CustomPauseScreen extends Screen {
     @FunctionalInterface
     public interface ButtonAction {
         void onPress(CustomPauseButton button);
-    }
-
-    /**
-     * Whether this is a local world that has not been opened to LAN.
-     *
-     * Minecraft.isSingleplayer() said exactly this until 26.2 removed it; hasSingleplayerServer()
-     * alone would also be true for a world shared over LAN, which vanilla treats as multiplayer.
-     */
-    private boolean isSingleplayerWorld() {
-        if (this.minecraft == null || !this.minecraft.hasSingleplayerServer()) return false;
-        net.minecraft.client.server.IntegratedServer server = this.minecraft.getSingleplayerServer();
-        return server != null && !server.isPublished();
     }
 }

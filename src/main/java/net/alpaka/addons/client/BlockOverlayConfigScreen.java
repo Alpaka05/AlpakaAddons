@@ -117,7 +117,7 @@ public class BlockOverlayConfigScreen extends Screen {
                 Component.literal("Choose Color..."),
                 button -> {
                     if (this.minecraft != null) {
-                        this.minecraft.gui.setScreen(new ColorPickerScreen(this, "Block Outline Color", AlpakaConfig.instance.blockOutlineColor, color -> {
+                        this.minecraft.setScreen(new ColorPickerScreen(this, "Block Outline Color", AlpakaConfig.instance.blockOutlineColor, color -> {
                             AlpakaConfig.instance.blockOutlineColor = color;
                             AlpakaConfig.save();
                         }));
@@ -200,7 +200,7 @@ public class BlockOverlayConfigScreen extends Screen {
                 Component.literal("Choose Color..."),
                 button -> {
                     if (this.minecraft != null) {
-                        this.minecraft.gui.setScreen(new ColorPickerScreen(this, "Block Fill Color", AlpakaConfig.instance.blockFillColor, color -> {
+                        this.minecraft.setScreen(new ColorPickerScreen(this, "Block Fill Color", AlpakaConfig.instance.blockFillColor, color -> {
                             AlpakaConfig.instance.blockFillColor = color;
                             AlpakaConfig.save();
                         }));
@@ -242,7 +242,7 @@ public class BlockOverlayConfigScreen extends Screen {
         // A drag cut short by the screen closing never sees its mouse-up, so flush here as well.
         AlpakaConfig.endDeferredSaves();
         if (this.minecraft != null) {
-            this.minecraft.gui.setScreen(this.parent);
+            this.minecraft.setScreen(this.parent);
         }
     }
 

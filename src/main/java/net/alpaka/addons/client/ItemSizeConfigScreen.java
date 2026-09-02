@@ -196,7 +196,7 @@ public class ItemSizeConfigScreen extends Screen {
                 Component.literal("Swing Customizations..."),
                 button -> {
                     if (this.minecraft != null) {
-                        this.minecraft.gui.setScreen(new ItemSwingConfigScreen(this));
+                        this.minecraft.setScreen(new ItemSwingConfigScreen(this));
                     }
                 }
         )
@@ -267,7 +267,7 @@ public class ItemSizeConfigScreen extends Screen {
                     AlpakaConfig.instance.swingArcZ = 0.0f;
                     AlpakaConfig.save();
                     if (this.minecraft != null) {
-                        this.minecraft.gui.setScreen(this);
+                        this.minecraft.setScreen(this);
                     }
                 }
         )
@@ -278,7 +278,7 @@ public class ItemSizeConfigScreen extends Screen {
     private void loadPreset(int index) {
         AlpakaConfig.instance.loadPreset(index);
         if (this.minecraft != null) {
-            this.minecraft.gui.setScreen(this);
+            this.minecraft.setScreen(this);
         }
     }
 
@@ -291,7 +291,7 @@ public class ItemSizeConfigScreen extends Screen {
         // A drag cut short by the screen closing never sees its mouse-up, so flush here as well.
         AlpakaConfig.endDeferredSaves();
         if (this.minecraft != null) {
-            this.minecraft.gui.setScreen(this.parent);
+            this.minecraft.setScreen(this.parent);
         }
     }
 

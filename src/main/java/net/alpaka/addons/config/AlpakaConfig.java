@@ -51,9 +51,13 @@ public class AlpakaConfig {
     public boolean nameTagShadowEnabled = false;
     /** A thin frame around the backdrop whose colours sweep along it. */
     public boolean nameTagChromaBorderEnabled = true;
+    /** Whether the dark box behind the letters is drawn at all. */
+    public boolean nameTagBackgroundEnabled = true;
     /** Backdrop darkness in percent. Vanilla's default text background is 25. */
     public float nameTagBackgroundOpacity = 25.0f;
     public float nameTagScale = 1.0f;
+    /** Extra height above vanilla's position, in blocks. Negative brings the tag down. */
+    public float nameTagHeightOffset = 0.0f;
     public float nameTagAnimationSpeed = 1.0f;
     /** The two ends of the gradient colour mode. */
     public int nameTagGradientStart = 0xFF55FFFF;
@@ -65,6 +69,8 @@ public class AlpakaConfig {
     public float chromaHatOpacity = 55.0f;
     public float chromaHatSize = 1.0f;
     public float chromaHatSpeed = 1.0f;
+    /** Raises (positive) or lowers the hat from where it rests on the head, in blocks. */
+    public float chromaHatHeightOffset = 0.0f;
     /**
      * Whether a notice slides in when somebody says the player's name in chat.
      *
@@ -79,6 +85,11 @@ public class AlpakaConfig {
      * they are how the notice arrives and leaves rather than part of how long it is readable.
      */
     public float notificationHoldSeconds = 4.5f;
+    /**
+     * Which screen corner notices slide in at. Index into {@code AlpakaNotifications.CORNER_NAMES}:
+     * bottom right, bottom left, top right, top left.
+     */
+    public int notificationCorner = 0;
     /**
      * Whether a notice slides in when a slayer boss spawns.
      *

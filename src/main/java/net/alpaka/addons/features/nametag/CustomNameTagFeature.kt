@@ -155,7 +155,7 @@ object CustomNameTagFeature {
         val time = animationTime(cfg.nameTagAnimationSpeed)
 
         poseStack.pushPose()
-        poseStack.translate(attachment.x, attachment.y + ATTACHMENT_LIFT, attachment.z)
+        poseStack.translate(attachment.x, attachment.y + ATTACHMENT_LIFT + cfg.nameTagHeightOffset, attachment.z)
         poseStack.mulPose(camera.orientation)
         val scale = NAMETAG_SCALE * cfg.nameTagScale
         poseStack.scale(scale, -scale, scale)
@@ -298,7 +298,8 @@ object CustomNameTagFeature {
         time: Double,
         seeThrough: Boolean,
     ) {
-        val backdropAlpha = (cfg.nameTagBackgroundOpacity / 100f * 255f).toInt().coerceIn(0, 255)
+        val backdropAlpha = if (!cfg.nameTagBackgroundEnabled) 0
+            else (cfg.nameTagBackgroundOpacity / 100f * 255f).toInt().coerceIn(0, 255)
         val frame = cfg.nameTagChromaBorderEnabled
         if (backdropAlpha == 0 && !frame) return
 

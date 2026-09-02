@@ -12,7 +12,7 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Small notices that slide in from the bottom right corner, stack upwards and slide back out.
+ * Small notices that slide in at a screen corner, stack away from it and slide back out.
  *
  * This is the mod's general notification channel, not one feature's private overlay: anything that
  * needs to tell the player something without writing to chat calls [send] and is done. Nothing here
@@ -22,8 +22,21 @@ import kotlin.math.min
  *
  * Everything is measured in wall-clock milliseconds rather than ticks, so the animation keeps its
  * timing while the game is paused mid-tick or running below twenty ticks a second.
+ *
+ * The corner is a setting ([AlpakaConfig.notificationCorner]). Notices slide in horizontally from
+ * the nearer screen edge and stack vertically away from that edge: upwards from a bottom corner,
+ * downwards from a top one, with the newest always taking the slot nearest the corner.
  */
 object AlpakaNotifications {
+
+    const val CORNER_BOTTOM_RIGHT = 0
+    const val CORNER_BOTTOM_LEFT = 1
+    const val CORNER_TOP_RIGHT = 2
+    const val CORNER_TOP_LEFT = 3
+
+    /** Names for the config slider, indexed by the CORNER_* constants. */
+    @JvmField
+    val CORNER_NAMES = arrayOf("Bottom Right", "Bottom Left", "Top Right", "Top Left")
 
     /** How long a notice takes to slide in, and again to slide out. */
     private const val SLIDE_MS = 260L
@@ -142,20 +155,26 @@ object AlpakaNotifications {
         val screenWidth = mc.window.guiScaledWidth
         val screenHeight = mc.window.guiScaledHeight
 
-        // Walked newest first, so the newest takes the bottom slot and the older ones ride up above
-        // it as further notices arrive.
-        var stackBottom = (screenHeight - MARGIN).toFloat()
+        val corner = AlpakaConfig.instance.notificationCorner
+        val atBottom = corner == CORNER_BOTTOM_RIGHT || corner == CORNER_BOTTOM_LEFT
+        val atRight = corner == CORNER_BOTTOM_RIGHT || corner == CORNER_TOP_RIGHT
+
+        // Walked newest first, so the newest takes the slot in the corner and the older ones are
+        // pushed further from it as more arrive: up the screen from a bottom corner, down from a top.
+        var stackEdge = if (atBottom) (screenHeight - MARGIN).toFloat() else MARGIN.toFloat()
         for (index in snapshot.indices.reversed()) {
             val notice = snapshot[index]
-            val targetY = stackBottom - notice.height
-            stackBottom = targetY - GAP
+            val targetY = if (atBottom) stackEdge - notice.height else stackEdge
+            stackEdge = if (atBottom) targetY - GAP else targetY + notice.height + GAP
 
             if (notice.settledY.isNaN()) notice.settledY = targetY
             notice.settledY = ease(notice.settledY, targetY, deltaMs)
 
+            // Slides in from the side edge it sits against, so it never crosses the screen.
             val hidden = 1.0f - visibility(notice, now)
-            val x = screenWidth - MARGIN - WIDTH + Math.round(hidden * (WIDTH + MARGIN))
-            if (x >= screenWidth) continue
+            val slide = Math.round(hidden * (WIDTH + MARGIN))
+            val x = if (atRight) screenWidth - MARGIN - WIDTH + slide else MARGIN - slide
+            if (x >= screenWidth || x + WIDTH <= 0) continue
 
             draw(graphics, font, notice, x, Math.round(notice.settledY))
         }

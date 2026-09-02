@@ -77,7 +77,7 @@ object InventoryHudFeature {
             // consumeClick drains one press per tick, so holding the key does not strobe the toggle.
             var pressed = false
             while (key.consumeClick()) pressed = true
-            if (pressed && client.screen == null) inverted = !inverted
+            if (pressed && client.gui.screen() == null) inverted = !inverted
 
             trackInventoryChanges(client)
         }

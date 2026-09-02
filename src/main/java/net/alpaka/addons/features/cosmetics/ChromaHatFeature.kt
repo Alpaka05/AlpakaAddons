@@ -43,15 +43,17 @@ object ChromaHatFeature {
     private const val SEGMENTS = 32
 
     /**
-     * Where the brim sits, in head-part space, where +y points *down* the body.
+     * The head the hat rests on, in head-part space, where +y points *down* the body.
      *
-     * The head cube spans y from -0.5 (its top) to 0 in this space, and a helmet adds a little on
-     * top of that, so the brim floats just clear of a worn helmet rather than cutting through it.
+     * Measured on the skin's outer "hat" layer rather than the bare head cube, since that is what
+     * every skin actually shows: the cube inflated by half a pixel, so it spans 4.5/16 of a block
+     * either side and reaches up to -8.5/16. A helmet's own cube is inflated by a full pixel on top
+     * of that, hence the larger figures when one is worn.
      */
-    private const val BRIM_Y = -0.56f
-
-    /** How much further the brim is raised when the player wears something on their head. */
-    private const val HELMET_LIFT = 0.05f
+    private const val HEAD_TOP = -8.5f / 16f
+    private const val HEAD_HALF_WIDTH = 4.5f / 16f
+    private const val HELMET_TOP = -9f / 16f
+    private const val HELMET_HALF_WIDTH = 5f / 16f
 
     /** Brim radius and cone height at size 1, in blocks. Wide and shallow is what reads as a jingasa. */
     private const val BRIM_RADIUS = 0.72f
@@ -92,10 +94,19 @@ object ChromaHatFeature {
         val time = (System.currentTimeMillis() % 3_600_000L) / 1000.0 * cfg.chromaHatSpeed
         val hueShift = time * HUE_TURNS_PER_SECOND
 
-        val brimY = BRIM_Y - (if (wearingHelmet) HELMET_LIFT else 0f)
         val height = CONE_HEIGHT * size
         val radius = BRIM_RADIUS * size
-        val apexY = brimY - height
+
+        // Seated rather than hovering: the cone is lowered until its surface just touches the head's
+        // top corners - the points of the head box farthest from its axis - so it rests on the head
+        // the way a real kasa does, while every part of it stays outside the skin. Anything at the
+        // corners' distance or further is clear of the box in every direction, so the brim, which
+        // sits lower than the head's top, cannot cut into the face.
+        val headTop = if (wearingHelmet) HELMET_TOP else HEAD_TOP
+        val halfWidth = if (wearingHelmet) HELMET_HALF_WIDTH else HEAD_HALF_WIDTH
+        val cornerRadius = halfWidth * sqrt(2f)
+        val apexY = headTop - height * (cornerRadius / radius) - cfg.chromaHatHeightOffset
+        val brimY = apexY + height
 
         // The hat proper: top surface, then the underside so it also reads from below.
         emitCone(pose, consumer, apexY, brimY, radius, hueShift, alpha, outward = true)

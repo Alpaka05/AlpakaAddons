@@ -8,6 +8,7 @@ import net.alpaka.addons.client.ItemSwingConfigScreen;
 import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.nametag.CustomNameTagFeature;
+import net.alpaka.addons.features.notification.AlpakaNotifications;
 import net.alpaka.addons.features.sound.CustomSoundFeature;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
@@ -44,6 +45,15 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.notificationHoldSeconds = v; AlpakaConfig.save(); },
                 1.0f, 15.0f, val -> String.format(Locale.ROOT, "%.1fs", val),
                 "notification duration hold seconds popup toast time linger"));
+
+        OPTIONS.add(new ConfigOption("notification_corner", "Notification Corner",
+                "Which corner of the screen notices slide in at.",
+                ConfigCategory.GENERAL,
+                () -> (float) AlpakaConfig.instance.notificationCorner,
+                v -> { AlpakaConfig.instance.notificationCorner = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (AlpakaNotifications.CORNER_NAMES.length - 1),
+                val -> AlpakaNotifications.CORNER_NAMES[Math.round(val)],
+                "notification corner position bottom top left right popup toast side"));
 
         OPTIONS.add(new ConfigOption("hud_editor", "HUD Editor",
                 "Move and resize every HUD - session, boss timer, world age, inventory, avatar.",
@@ -175,8 +185,6 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.expandChatHistory = v; AlpakaConfig.save(); },
                 "chat history limit scroll log"));
 
-        OPTIONS.add(new ConfigOption("Notifications", ConfigCategory.VISUALS));
-
         OPTIONS.add(new ConfigOption("mention_notification", "Chat Mentions",
                 "Slides in a notice when somebody says your name in chat.",
                 ConfigCategory.VISUALS,
@@ -209,6 +217,98 @@ public class AlpakaConfigRegistry {
                     AlpakaConfig.save();
                 })),
                 "menu accent color theme custom picker border highlight gui gold cyan red green blue"));
+
+        // Player model and inventory HUD lived on their own Custom HUD tab; they are overlays like
+        // everything else here, and one tab fewer is one fewer place to look.
+
+        OPTIONS.add(new ConfigOption("Player Model", ConfigCategory.VISUALS));
+
+        OPTIONS.add(new ConfigOption("player_model_enabled", "Enable Player Model HUD",
+                "Displays a miniature 3D player avatar on the HUD.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.playerModelEnabled,
+                v -> { AlpakaConfig.instance.playerModelEnabled = v; AlpakaConfig.save(); },
+                "player model hud avatar skin 3d display preview"));
+
+        OPTIONS.add(new ConfigOption("player_model_only_actions", "Only Show On Action",
+                "Only displays avatar while sprinting, flying, or swinging.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.playerModelOnlyActions,
+                v -> { AlpakaConfig.instance.playerModelOnlyActions = v; AlpakaConfig.save(); },
+                "only action sprint fly swing dynamic hide avatar"));
+
+        OPTIONS.add(new ConfigOption("player_model_disable_movement", "Disable Movement Sway",
+                "Fixes avatar position without walking or swimming sway motion.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.playerModelDisableMovement,
+                v -> { AlpakaConfig.instance.playerModelDisableMovement = v; AlpakaConfig.save(); },
+                "disable movement sway steady static hud player model swim swimming"));
+
+        OPTIONS.add(new ConfigOption("player_model_hide_armor", "Hide Armor on Model",
+                "Hides armor pieces from rendering on the player model HUD.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.playerModelHideArmor,
+                v -> { AlpakaConfig.instance.playerModelHideArmor = v; AlpakaConfig.save(); },
+                "player model hide armor helmet chestplate leggings boots overlay"));
+
+        OPTIONS.add(new ConfigOption("player_model_slow_swing", "Slow Swing",
+                "Plays the avatar's attack swing slower and smoother than the real player's.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.playerModelSlowSwing,
+                v -> { AlpakaConfig.instance.playerModelSlowSwing = v; AlpakaConfig.save(); },
+                "slow swing smooth attack animation arm hand punch hit speed player model"));
+
+        OPTIONS.add(new ConfigOption("player_model_show_in_guis", "Show in GUIs / Menus",
+                "Renders player model HUD even when container or menu GUIs are open.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.playerModelShowInGuis,
+                v -> { AlpakaConfig.instance.playerModelShowInGuis = v; AlpakaConfig.save(); },
+                "player model show in guis menus screen open container inventory HUD"));
+
+        OPTIONS.add(new ConfigOption("Inventory HUD", ConfigCategory.VISUALS));
+
+        OPTIONS.add(new ConfigOption("inventory_hud_enabled", "Enable Inventory HUD",
+                "Shows your 27 inventory slots on screen without opening the inventory.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.inventoryHudEnabled,
+                v -> { AlpakaConfig.instance.inventoryHudEnabled = v; AlpakaConfig.save(); },
+                "inventory hud overlay slots items show always screen backpack"));
+
+        OPTIONS.add(new ConfigOption("inventory_hud_attach", "Attach Above Hotbar",
+                "Centres the inventory just above the hotbar. Off = free position.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.inventoryHudAttachToHotbar,
+                v -> { AlpakaConfig.instance.inventoryHudAttachToHotbar = v; AlpakaConfig.save(); },
+                "inventory hud hotbar attach above merge dock position free"));
+
+        OPTIONS.add(new ConfigOption("inventory_hud_always", "Always Visible",
+                "Keeps the inventory on screen. Off = only the keybind opens it.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.inventoryHudAlwaysVisible,
+                v -> { AlpakaConfig.instance.inventoryHudAlwaysVisible = v; AlpakaConfig.save(); },
+                "inventory hud always visible permanent keybind toggle hidden"));
+
+        OPTIONS.add(new ConfigOption("inventory_hud_on_change", "Show On Item Change",
+                "Slides the inventory up briefly when an item is picked up or dropped.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.inventoryHudShowOnItemChange,
+                v -> { AlpakaConfig.instance.inventoryHudShowOnItemChange = v; AlpakaConfig.save(); },
+                "inventory hud show on pickup drop item change peek temporary"));
+
+        OPTIONS.add(new ConfigOption("inventory_hud_vanilla_texture", "Chest Style",
+                "Draws the panel as a three-row chest, using your resource pack.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.inventoryHudVanillaTexture,
+                v -> { AlpakaConfig.instance.inventoryHudVanillaTexture = v; AlpakaConfig.save(); },
+                "inventory texture resource pack vanilla slots real look skin"));
+
+        OPTIONS.add(new ConfigOption("inventory_hud_bg_opacity", "Background Opacity",
+                "Backdrop tint behind the slots. 0% leaves only the frame.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.inventoryHudBackgroundOpacity,
+                v -> { AlpakaConfig.instance.inventoryHudBackgroundOpacity = v; AlpakaConfig.save(); },
+                0.0f, 100.0f, val -> val == 0.0f ? "Off (0%)" : String.format(Locale.ROOT, "%.0f%%", val),
+                "inventory hud background opacity transparent blur tint backdrop strength"));
 
 
         // --- 2. ITEM VIEWMODEL ---
@@ -564,97 +664,6 @@ public class AlpakaConfigRegistry {
                 "etherwarp ether transmission conduit aspect void end teleport sneak hide overlay skyblock"));
 
 
-        // --- 4. CUSTOM HUD ---
-
-        OPTIONS.add(new ConfigOption("Player Model", ConfigCategory.CUSTOM_HUD));
-
-        OPTIONS.add(new ConfigOption("player_model_enabled", "Enable Player Model HUD",
-                "Displays a miniature 3D player avatar on the HUD.",
-                ConfigCategory.CUSTOM_HUD,
-                () -> AlpakaConfig.instance.playerModelEnabled,
-                v -> { AlpakaConfig.instance.playerModelEnabled = v; AlpakaConfig.save(); },
-                "player model hud avatar skin 3d display preview"));
-
-        OPTIONS.add(new ConfigOption("player_model_only_actions", "Only Show On Action",
-                "Only displays avatar while sprinting, flying, or swinging.",
-                ConfigCategory.CUSTOM_HUD,
-                () -> AlpakaConfig.instance.playerModelOnlyActions,
-                v -> { AlpakaConfig.instance.playerModelOnlyActions = v; AlpakaConfig.save(); },
-                "only action sprint fly swing dynamic hide avatar"));
-
-        OPTIONS.add(new ConfigOption("player_model_disable_movement", "Disable Movement Sway",
-                "Fixes avatar position without walking or swimming sway motion.",
-                ConfigCategory.CUSTOM_HUD,
-                () -> AlpakaConfig.instance.playerModelDisableMovement,
-                v -> { AlpakaConfig.instance.playerModelDisableMovement = v; AlpakaConfig.save(); },
-                "disable movement sway steady static hud player model swim swimming"));
-
-        OPTIONS.add(new ConfigOption("player_model_hide_armor", "Hide Armor on Model",
-                "Hides armor pieces from rendering on the player model HUD.",
-                ConfigCategory.CUSTOM_HUD,
-                () -> AlpakaConfig.instance.playerModelHideArmor,
-                v -> { AlpakaConfig.instance.playerModelHideArmor = v; AlpakaConfig.save(); },
-                "player model hide armor helmet chestplate leggings boots overlay"));
-
-        OPTIONS.add(new ConfigOption("player_model_slow_swing", "Slow Swing",
-                "Plays the avatar's attack swing slower and smoother than the real player's.",
-                ConfigCategory.CUSTOM_HUD,
-                () -> AlpakaConfig.instance.playerModelSlowSwing,
-                v -> { AlpakaConfig.instance.playerModelSlowSwing = v; AlpakaConfig.save(); },
-                "slow swing smooth attack animation arm hand punch hit speed player model"));
-
-        OPTIONS.add(new ConfigOption("player_model_show_in_guis", "Show in GUIs / Menus",
-                "Renders player model HUD even when container or menu GUIs are open.",
-                ConfigCategory.CUSTOM_HUD,
-                () -> AlpakaConfig.instance.playerModelShowInGuis,
-                v -> { AlpakaConfig.instance.playerModelShowInGuis = v; AlpakaConfig.save(); },
-                "player model show in guis menus screen open container inventory HUD"));
-
-        OPTIONS.add(new ConfigOption("Inventory HUD", ConfigCategory.CUSTOM_HUD));
-
-        OPTIONS.add(new ConfigOption("inventory_hud_enabled", "Enable Inventory HUD",
-                "Shows your 27 inventory slots on screen without opening the inventory.",
-                ConfigCategory.CUSTOM_HUD,
-                () -> AlpakaConfig.instance.inventoryHudEnabled,
-                v -> { AlpakaConfig.instance.inventoryHudEnabled = v; AlpakaConfig.save(); },
-                "inventory hud overlay slots items show always screen backpack"));
-
-        OPTIONS.add(new ConfigOption("inventory_hud_attach", "Attach Above Hotbar",
-                "Centres the inventory just above the hotbar. Off = free position.",
-                ConfigCategory.CUSTOM_HUD,
-                () -> AlpakaConfig.instance.inventoryHudAttachToHotbar,
-                v -> { AlpakaConfig.instance.inventoryHudAttachToHotbar = v; AlpakaConfig.save(); },
-                "inventory hud hotbar attach above merge dock position free"));
-
-        OPTIONS.add(new ConfigOption("inventory_hud_always", "Always Visible",
-                "Keeps the inventory on screen. Off = only the keybind opens it.",
-                ConfigCategory.CUSTOM_HUD,
-                () -> AlpakaConfig.instance.inventoryHudAlwaysVisible,
-                v -> { AlpakaConfig.instance.inventoryHudAlwaysVisible = v; AlpakaConfig.save(); },
-                "inventory hud always visible permanent keybind toggle hidden"));
-
-        OPTIONS.add(new ConfigOption("inventory_hud_on_change", "Show On Item Change",
-                "Slides the inventory up briefly when an item is picked up or dropped.",
-                ConfigCategory.CUSTOM_HUD,
-                () -> AlpakaConfig.instance.inventoryHudShowOnItemChange,
-                v -> { AlpakaConfig.instance.inventoryHudShowOnItemChange = v; AlpakaConfig.save(); },
-                "inventory hud show on pickup drop item change peek temporary"));
-
-        OPTIONS.add(new ConfigOption("inventory_hud_vanilla_texture", "Chest Style",
-                "Draws the panel as a three-row chest, using your resource pack.",
-                ConfigCategory.CUSTOM_HUD,
-                () -> AlpakaConfig.instance.inventoryHudVanillaTexture,
-                v -> { AlpakaConfig.instance.inventoryHudVanillaTexture = v; AlpakaConfig.save(); },
-                "inventory texture resource pack vanilla slots real look skin"));
-
-        OPTIONS.add(new ConfigOption("inventory_hud_bg_opacity", "Background Opacity",
-                "Backdrop tint behind the slots. 0% leaves only the frame.",
-                ConfigCategory.CUSTOM_HUD,
-                () -> AlpakaConfig.instance.inventoryHudBackgroundOpacity,
-                v -> { AlpakaConfig.instance.inventoryHudBackgroundOpacity = v; AlpakaConfig.save(); },
-                0.0f, 100.0f, val -> val == 0.0f ? "Off (0%)" : String.format(Locale.ROOT, "%.0f%%", val),
-                "inventory hud background opacity transparent blur tint backdrop strength"));
-
 
         // --- 5. SKYBLOCK ---
 
@@ -939,6 +948,14 @@ public class AlpakaConfigRegistry {
                 0.5f, 2.0f, val -> String.format(Locale.ROOT, "%.2fx", val),
                 "name tag size scale big small"));
 
+        OPTIONS.add(new ConfigOption("name_tag_height", "Name Tag Height",
+                "Raises or lowers the tag from where vanilla would put it.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.nameTagHeightOffset,
+                v -> { AlpakaConfig.instance.nameTagHeightOffset = v; AlpakaConfig.save(); },
+                -0.5f, 0.5f, val -> String.format(Locale.ROOT, "%+.2f blocks", val),
+                "name tag height offset raise lower position up down"));
+
         OPTIONS.add(new ConfigOption("name_tag_color_whole", "Colour The Rank Too",
                 "Applies the colour effect to the whole tag, rank prefix included, not just your name.",
                 ConfigCategory.COSMETICS,
@@ -967,8 +984,15 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.nameTagChromaBorderEnabled = v; AlpakaConfig.save(); },
                 "name tag frame border chroma rainbow backdrop"));
 
+        OPTIONS.add(new ConfigOption("name_tag_background", "Backdrop",
+                "The dark box behind the letters. Off leaves the text floating on its own.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.nameTagBackgroundEnabled,
+                v -> { AlpakaConfig.instance.nameTagBackgroundEnabled = v; AlpakaConfig.save(); },
+                "name tag background backdrop box remove hide off"));
+
         OPTIONS.add(new ConfigOption("name_tag_bg_opacity", "Backdrop Opacity",
-                "Darkening behind the letters. Vanilla is 25%, 0% removes it.",
+                "Darkening behind the letters when the backdrop is on. Vanilla is 25%.",
                 ConfigCategory.COSMETICS,
                 () -> AlpakaConfig.instance.nameTagBackgroundOpacity,
                 v -> { AlpakaConfig.instance.nameTagBackgroundOpacity = v; AlpakaConfig.save(); },
@@ -1019,6 +1043,14 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.chromaHatSize = v; AlpakaConfig.save(); },
                 0.6f, 1.6f, val -> String.format(Locale.ROOT, "%.2fx", val),
                 "chroma hat size scale big small brim"));
+
+        OPTIONS.add(new ConfigOption("chroma_hat_height", "Hat Height",
+                "Raises or lowers the hat. At 0 it rests on the head without touching the skin.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.chromaHatHeightOffset,
+                v -> { AlpakaConfig.instance.chromaHatHeightOffset = v; AlpakaConfig.save(); },
+                -0.3f, 0.3f, val -> String.format(Locale.ROOT, "%+.2f blocks", val),
+                "chroma hat height offset raise lower float sit position"));
 
         OPTIONS.add(new ConfigOption("chroma_hat_speed", "Hat Colour Speed",
                 "How fast the rainbow spins around the hat.",

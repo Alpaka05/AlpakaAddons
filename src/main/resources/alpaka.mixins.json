@@ -23,7 +23,10 @@
     "ChatComponentMixin",
     "ChatScreenMixin",
     "CameraTypeMixin",
-    "BlazeModelMixin"
+    "BlazeModelMixin",
+    "EntityRenderDispatcherMixin",
+    "LivingEntityRendererAccessor",
+    "AvatarRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

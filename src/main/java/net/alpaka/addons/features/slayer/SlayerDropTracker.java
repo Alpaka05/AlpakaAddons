@@ -432,9 +432,42 @@ public class SlayerDropTracker {
                         .append(Component.literal(" Boss" + (sinceLast != 1 ? "es" : "")));
             }
             sendModMessage(feedback);
+
+            if (AlpakaConfig.instance.slayerRngDropGuildChatEnabled && isHeadlineDrop(pending.type(), pending.item())) {
+                announceToGuild(feedback);
+            }
         }
 
         if (changed) AlpakaStats.save();
+    }
+
+    /**
+     * Whether a drop is its slayer's headline RNG drop - the one the slayer HUD counts a dry streak
+     * against, High Class Archfiend Dice for Inferno and so on. See {@link SlayerType#rngDropItem}.
+     */
+    private static boolean isHeadlineDrop(SlayerType type, String item) {
+        return type.rngDropItem != null && type.rngDropItem.equalsIgnoreCase(item);
+    }
+
+    /** Hypixel's chat limit is 256; the drop line is far shorter, this only guards against surprises. */
+    private static final int GUILD_MESSAGE_MAX_LENGTH = 250;
+
+    /**
+     * Posts the tracker's own drop line to the guild chat, exactly as the player typing "/gc" would.
+     *
+     * The same words the player just read in their own chat, with the formatting stripped - Hypixel
+     * discards colour codes typed into chat anyway. Only ever reached for a headline drop with the
+     * setting on: this is the one place the mod speaks in the player's name, and posting that line is
+     * precisely what the setting asks for.
+     */
+    private static void announceToGuild(Component feedback) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.player.connection == null) return;
+
+        String text = cleanColor(feedback.getString()).trim();
+        if (text.isEmpty()) return;
+        if (text.length() > GUILD_MESSAGE_MAX_LENGTH) text = text.substring(0, GUILD_MESSAGE_MAX_LENGTH);
+        mc.player.connection.sendCommand("gc " + text);
     }
 
     public static void handlePartyCommand(String message) {

@@ -29,8 +29,61 @@ import java.util.Map;
  */
 public class AlpakaStats {
 
-    private static final File FILE = FabricLoader.getInstance().getConfigDir().resolve("alpaka-stats.json").toFile();
+    /**
+     * Where the record used to live: inside the instance's own config folder.
+     *
+     * Still read, but only to move it out. Kept per instance, a second launcher on the same machine
+     * - or a reinstall - started the player from zero, which is the opposite of what a lifetime kill
+     * count is for.
+     */
+    private static final File LEGACY_FILE =
+            FabricLoader.getInstance().getConfigDir().resolve("alpaka-stats.json").toFile();
+
+    private static final String FILE_NAME = "alpaka-stats.json";
+
+    /** Copy of the last good file, kept beside it. See {@link #load()}. */
+    private static final String BACKUP_NAME = "alpaka-stats.json.bak";
+
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+
+    /**
+     * The folder the record is kept in.
+     *
+     * Outside any one instance by default, so every launcher and every reinstall on this machine
+     * sees the same history. {@link AlpakaConfig#statsDirectory} can point it somewhere else - at a
+     * folder a cloud client syncs, which is what carries the record to another PC without this mod
+     * needing a server or an account of its own.
+     *
+     * That override deliberately lives in the per-instance settings rather than in the record: it is
+     * a fact about this machine, and the path to a synced folder is not the same on the next one.
+     */
+    public static File directory() {
+        String override = AlpakaConfig.instance.statsDirectory;
+        if (override != null && !override.isBlank()) return new File(override.trim());
+        return defaultDirectory();
+    }
+
+    /** The per-user application-data folder for this OS, which is shared across instances. */
+    private static File defaultDirectory() {
+        String os = System.getProperty("os.name", "").toLowerCase();
+        String home = System.getProperty("user.home", ".");
+
+        if (os.contains("win")) {
+            String appData = System.getenv("APPDATA");
+            if (appData != null && !appData.isBlank()) return new File(appData, "AlpakaAddons");
+        } else if (os.contains("mac")) {
+            return new File(home, "Library/Application Support/AlpakaAddons");
+        } else {
+            String dataHome = System.getenv("XDG_DATA_HOME");
+            if (dataHome != null && !dataHome.isBlank()) return new File(dataHome, "AlpakaAddons");
+            return new File(home, ".local/share/AlpakaAddons");
+        }
+        return new File(home, ".alpaka-addons");
+    }
+
+    public static File file() {
+        return new File(directory(), FILE_NAME);
+    }
 
     /** Bucket used when the account cannot be read at all, which should not happen in practice. */
     private static final String UNKNOWN_ACCOUNT = "unknown-account";
@@ -178,22 +231,123 @@ public class AlpakaStats {
     }
 
     public static void load() {
-        if (FILE.exists()) {
-            try (FileReader reader = new FileReader(FILE)) {
-                AlpakaStats loaded = GSON.fromJson(reader, AlpakaStats.class);
-                if (loaded != null) instance = loaded;
-            } catch (Exception e) {
-                AlpakaAddons.LOGGER.error("Failed to load stats", e);
-            }
+        File file = file();
+        migrateLegacy(file);
+
+        AlpakaStats loaded = read(file);
+        if (loaded == null) {
+            // A record that now lives in a folder something else may be syncing can be caught
+            // half-written. The backup is the last copy that parsed, which beats starting over.
+            loaded = read(new File(directory(), BACKUP_NAME));
+            if (loaded != null) AlpakaAddons.LOGGER.warn("Slayer stats were unreadable; fell back to the backup");
         }
+        if (loaded != null) instance = loaded;
         if (instance.accounts == null) instance.accounts = new HashMap<>();
     }
 
-    public static void save() {
-        try (FileWriter writer = new FileWriter(FILE)) {
-            GSON.toJson(instance, writer);
+    /**
+     * Moves a record left in the instance's own config folder to the shared one, once.
+     *
+     * Copied rather than moved: if this machine is later pointed back at an older build, or the
+     * shared copy is lost, the original is still where that build would look for it.
+     */
+    private static void migrateLegacy(File target) {
+        if (target.exists() || !LEGACY_FILE.exists()) return;
+        try {
+            File dir = target.getParentFile();
+            if (dir != null) dir.mkdirs();
+            java.nio.file.Files.copy(LEGACY_FILE.toPath(), target.toPath());
+            AlpakaAddons.LOGGER.info("Moved the slayer record to the shared store at {}", target.getAbsolutePath());
         } catch (Exception e) {
-            AlpakaAddons.LOGGER.error("Failed to save stats", e);
+            AlpakaAddons.LOGGER.error("Failed to move the slayer record to the shared store", e);
         }
+    }
+
+    private static AlpakaStats read(File file) {
+        if (!file.exists()) return null;
+        try (FileReader reader = new FileReader(file)) {
+            return GSON.fromJson(reader, AlpakaStats.class);
+        } catch (Exception e) {
+            AlpakaAddons.LOGGER.error("Failed to load stats from {}", file.getAbsolutePath(), e);
+            return null;
+        }
+    }
+
+    /**
+     * Writes the record, keeping what other machines have put there.
+     *
+     * The file may be shared through a sync folder, so it can have moved on since this session read
+     * it - the same player on their other PC, on another Skyblock profile. Blindly writing what is
+     * in memory would throw that away, so the file is re-read and only the account and profile
+     * <em>this</em> session is playing is overlaid onto it. That granularity is what makes the merge
+     * sound rather than clever: this client is the only authority on the profile in front of it, and
+     * has nothing to say about any other.
+     *
+     * It does not make two machines playing the same profile at the same time safe, and nothing
+     * short of a server would.
+     */
+    public static void save() {
+        File file = file();
+        File dir = file.getParentFile();
+        if (dir != null) dir.mkdirs();
+
+        mergeFromDisk(file);
+
+        try {
+            if (file.exists()) {
+                java.nio.file.Files.copy(file.toPath(), new File(dir, BACKUP_NAME).toPath(),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+
+            // Written aside and moved into place, so a reader - or a sync client - never sees a
+            // half-written record where a complete one used to be.
+            File temp = new File(dir, FILE_NAME + ".tmp");
+            try (FileWriter writer = new FileWriter(temp)) {
+                GSON.toJson(instance, writer);
+            }
+
+            try {
+                java.nio.file.Files.move(temp.toPath(), file.toPath(),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            } catch (Exception moveFailed) {
+                // The whole point of this setting is to put the file on a drive a cloud client
+                // provides, and those are not always real filesystems - Google Drive's streaming
+                // mount refuses some operations a local disk allows. Writing straight to the target
+                // gives up the atomicity rather than giving up the save, and the backup taken above
+                // is what covers the window this opens.
+                AlpakaAddons.LOGGER.warn("Atomic replace not supported at {}; writing in place", dir.getAbsolutePath());
+                try (FileWriter writer = new FileWriter(file)) {
+                    GSON.toJson(instance, writer);
+                }
+                temp.delete();
+            }
+        } catch (Exception e) {
+            AlpakaAddons.LOGGER.error("Failed to save stats to {}", file.getAbsolutePath(), e);
+        }
+    }
+
+    /** Folds anything on disk that this session is not responsible for back into memory. */
+    private static void mergeFromDisk(File file) {
+        AlpakaStats onDisk = read(file);
+        if (onDisk == null || onDisk.accounts == null) return;
+
+        String account = accountKey();
+        Account ours = instance.accounts.get(account);
+        String profile = ours == null ? null : ours.lastProfile;
+
+        for (Map.Entry<String, Account> entry : onDisk.accounts.entrySet()) {
+            // Another account entirely: nothing this session did concerns it, take theirs.
+            if (!entry.getKey().equals(account) || ours == null || profile == null) {
+                instance.accounts.putIfAbsent(entry.getKey(), entry.getValue());
+                continue;
+            }
+
+            for (Map.Entry<String, ProfileStats> profileEntry : entry.getValue().profiles.entrySet()) {
+                if (profileEntry.getKey().equals(profile)) continue; // Ours; memory wins.
+                ours.profiles.putIfAbsent(profileEntry.getKey(), profileEntry.getValue());
+            }
+        }
+
+        if (onDisk.legacyImported) instance.legacyImported = true;
     }
 }

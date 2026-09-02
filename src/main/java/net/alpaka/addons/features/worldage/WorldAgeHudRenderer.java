@@ -229,10 +229,10 @@ public class WorldAgeHudRenderer {
         if (!AlpakaConfig.instance.worldAgeHudEnabled) return;
 
         Minecraft mc = Minecraft.getInstance();
-        if (mc.options.hideGui || mc.level == null || mc.player == null) return;
+        if (mc.gui.hud.isHidden() || mc.level == null || mc.player == null) return;
 
         // Hide in menu screens (always allow in ChatScreen)
-        if (mc.screen != null && !(mc.screen instanceof ChatScreen)) {
+        if (mc.gui.screen() != null && !(mc.gui.screen() instanceof ChatScreen)) {
             return;
         }
 

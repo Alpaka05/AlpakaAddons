@@ -45,8 +45,8 @@ object CommandWheelFeature {
 
         ClientTickEvents.END_CLIENT_TICK.register { client ->
             val key = COMMAND_WHEEL_KEY ?: return@register
-            if (key.isDown && client.screen == null && client.player != null) {
-                client.setScreen(CommandWheelScreen())
+            if (key.isDown && client.gui.screen() == null && client.player != null) {
+                client.gui.setScreen(CommandWheelScreen())
             }
         }
     }

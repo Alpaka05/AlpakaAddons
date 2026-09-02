@@ -47,7 +47,7 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
             }
             player.connection.sendCommand(cmd)
         }
-        mc.gui.setScreen(null)
+        mc.setScreen(null)
     }
 
     override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {

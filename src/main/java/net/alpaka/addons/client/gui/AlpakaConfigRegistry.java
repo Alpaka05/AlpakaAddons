@@ -59,19 +59,19 @@ public class AlpakaConfigRegistry {
                 "Move and resize every HUD - session, boss timer, world age, inventory, avatar.",
                 ConfigCategory.GENERAL,
                 "Open HUD Editor",
-                parent -> Minecraft.getInstance().gui.setScreen(new HudEditorScreen(parent)),
+                parent -> Minecraft.getInstance().setScreen(new HudEditorScreen(parent)),
                 "hud editor position edit dragging screen drag move resize scale layout alpakahud"));
 
         OPTIONS.add(new ConfigOption("disable_all_features", "Disable All Features",
                 "Disables every feature in the mod after confirmation.",
                 ConfigCategory.GENERAL,
                 "Disable All",
-                parent -> Minecraft.getInstance().gui.setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(
+                parent -> Minecraft.getInstance().setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(
                         confirmed -> {
                             if (confirmed) {
                                 AlpakaConfig.instance.disableAllFeatures();
                             }
-                            Minecraft.getInstance().gui.setScreen(parent);
+                            Minecraft.getInstance().setScreen(parent);
                         },
                         Component.literal("§c§lDisable All Features"),
                         Component.literal("Are you sure you want to disable all features of Alpaka Addons?"),
@@ -212,7 +212,7 @@ public class AlpakaConfigRegistry {
                 "Select custom accent color for all mod GUI borders, headers, and highlights.",
                 ConfigCategory.VISUALS,
                 "Choose Color",
-                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Menu Accent Color", AlpakaConfig.instance.menuAccentColor, color -> {
+                parent -> Minecraft.getInstance().setScreen(new ColorPickerScreen(parent, "Menu Accent Color", AlpakaConfig.instance.menuAccentColor, color -> {
                     AlpakaConfig.instance.menuAccentColor = color;
                     AlpakaConfig.save();
                 })),
@@ -475,13 +475,13 @@ public class AlpakaConfigRegistry {
                 "Resets every viewmodel and swing value. Presets are kept.",
                 ConfigCategory.VIEWMODEL,
                 "Reset",
-                parent -> Minecraft.getInstance().gui.setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(
+                parent -> Minecraft.getInstance().setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(
                         confirmed -> {
                             if (confirmed) {
                                 AlpakaConfig.instance.resetItemViewmodel();
                                 try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
                             }
-                            Minecraft.getInstance().gui.setScreen(parent);
+                            Minecraft.getInstance().setScreen(parent);
                         },
                         Component.literal("§c§lReset Viewmodel Settings"),
                         Component.literal("Are you sure you want to reset every viewmodel and swing value to its default? Saved presets are left untouched."),
@@ -583,7 +583,7 @@ public class AlpakaConfigRegistry {
                 "Select color for the block outline.",
                 ConfigCategory.BLOCK_OVERLAY,
                 "Choose Color",
-                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Block Outline Color", AlpakaConfig.instance.blockOutlineColor, color -> {
+                parent -> Minecraft.getInstance().setScreen(new ColorPickerScreen(parent, "Block Outline Color", AlpakaConfig.instance.blockOutlineColor, color -> {
                     AlpakaConfig.instance.blockOutlineColor = color;
                     AlpakaConfig.save();
                 })),
@@ -602,7 +602,7 @@ public class AlpakaConfigRegistry {
                 "Select fill color and transparency for targeted blocks.",
                 ConfigCategory.BLOCK_OVERLAY,
                 "Choose Color",
-                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Block Fill Color", AlpakaConfig.instance.blockFillColor, color -> {
+                parent -> Minecraft.getInstance().setScreen(new ColorPickerScreen(parent, "Block Fill Color", AlpakaConfig.instance.blockFillColor, color -> {
                     AlpakaConfig.instance.blockFillColor = color;
                     AlpakaConfig.save();
                 })),
@@ -887,7 +887,7 @@ public class AlpakaConfigRegistry {
                 "Select the glowing outline color used for highlighted Pangolins.",
                 ConfigCategory.SKYBLOCK,
                 "Choose Color",
-                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Pangolin Outline Color", AlpakaConfig.instance.pangolinHighlightColor, color -> {
+                parent -> Minecraft.getInstance().setScreen(new ColorPickerScreen(parent, "Pangolin Outline Color", AlpakaConfig.instance.pangolinHighlightColor, color -> {
                     AlpakaConfig.instance.pangolinHighlightColor = color;
                     AlpakaConfig.save();
                 })),
@@ -1003,7 +1003,7 @@ public class AlpakaConfigRegistry {
                 "First colour of the Gradient effect.",
                 ConfigCategory.COSMETICS,
                 "Choose Color",
-                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Gradient Start Colour", AlpakaConfig.instance.nameTagGradientStart, color -> {
+                parent -> Minecraft.getInstance().setScreen(new ColorPickerScreen(parent, "Gradient Start Colour", AlpakaConfig.instance.nameTagGradientStart, color -> {
                     AlpakaConfig.instance.nameTagGradientStart = color;
                     AlpakaConfig.save();
                 })),
@@ -1013,7 +1013,7 @@ public class AlpakaConfigRegistry {
                 "Second colour of the Gradient effect.",
                 ConfigCategory.COSMETICS,
                 "Choose Color",
-                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Gradient End Colour", AlpakaConfig.instance.nameTagGradientEnd, color -> {
+                parent -> Minecraft.getInstance().setScreen(new ColorPickerScreen(parent, "Gradient End Colour", AlpakaConfig.instance.nameTagGradientEnd, color -> {
                     AlpakaConfig.instance.nameTagGradientEnd = color;
                     AlpakaConfig.save();
                 })),
@@ -1183,7 +1183,7 @@ public class AlpakaConfigRegistry {
                 "Add, edit or remove the quick command entries.",
                 ConfigCategory.SOUND_MISC,
                 "Edit Commands",
-                parent -> Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.client.CommandWheelConfigScreen(parent)),
+                parent -> Minecraft.getInstance().setScreen(new net.alpaka.addons.client.CommandWheelConfigScreen(parent)),
                 "quick command wheel commands add remove edit custom list menu keybind"));
 
         buildCategoryCache();

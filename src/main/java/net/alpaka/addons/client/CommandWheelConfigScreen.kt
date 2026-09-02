@@ -28,7 +28,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
     }
 
     override fun onClose() {
-        this.minecraft?.gui?.setScreen(this.parent)
+        this.minecraft?.setScreen(this.parent)
     }
 
     override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {

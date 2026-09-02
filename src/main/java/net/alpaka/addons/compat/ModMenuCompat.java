@@ -33,7 +33,7 @@ public final class ModMenuCompat {
     /** Separate class so that ModMenuCompat itself verifies without Mod Menu on the classpath. */
     private static final class ModsScreenOpener {
         static void open(Screen parent) {
-            Minecraft.getInstance().gui.setScreen(new com.terraformersmc.modmenu.gui.ModsScreen(parent));
+            Minecraft.getInstance().setScreen(new com.terraformersmc.modmenu.gui.ModsScreen(parent));
         }
     }
 }

@@ -238,7 +238,7 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
 
     override fun onClose() {
         flush()
-        this.minecraft?.gui?.setScreen(parent)
+        this.minecraft?.setScreen(parent)
     }
 
     private fun select(element: HudElement?) {

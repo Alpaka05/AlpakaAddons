@@ -107,7 +107,7 @@ object CustomNameTagFeature {
         val mc = Minecraft.getInstance()
         val player = mc.player ?: return false
         if (entity !== player) return false
-        if (Minecraft.getInstance().gui.hud.isHidden()) return false
+        if (!Minecraft.renderNames()) return false
         if (mc.options.cameraType.isFirstPerson) return false
         return !player.isSpectator && !player.isInvisible
     }

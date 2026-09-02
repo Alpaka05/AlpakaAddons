@@ -13,21 +13,20 @@
     "EntityRendererMixin",
     "SoundEngineMixin",
     "MultiPlayerGameModeMixin",
+    "MinecraftMixin",
     "CameraMixin",
     "GuiMixin",
-    "HudMixin",
     "ItemInHandRendererMixin",
     "LightmapMixin",
     "LevelRendererMixin",
+    "DepthStencilStateMixin",
     "ChatComponentMixin",
     "ChatScreenMixin",
     "CameraTypeMixin",
     "BlazeModelMixin",
     "EntityRenderDispatcherMixin",
     "LivingEntityRendererAccessor",
-    "AvatarRendererMixin",
-    "RenderPipelinesAccessor",
-    "RenderTypeInvoker"
+    "AvatarRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

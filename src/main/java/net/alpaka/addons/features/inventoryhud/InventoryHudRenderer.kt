@@ -110,9 +110,9 @@ object InventoryHudRenderer {
         if (!cfg.inventoryHudEnabled) return
 
         val mc = Minecraft.getInstance()
-        if (mc.gui.hud.isHidden() || mc.level == null || mc.player == null) return
+        if (mc.options.hideGui || mc.level == null || mc.player == null) return
         // Behind a real menu the inventory is on screen anyway; chat is not a menu.
-        if (mc.gui.screen() != null && mc.gui.screen() !is ChatScreen) return
+        if (mc.screen != null && mc.screen !is ChatScreen) return
 
         val open = InventoryHudFeature.openAmount()
         if (open <= 0.001f) return

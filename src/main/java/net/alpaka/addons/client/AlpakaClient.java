@@ -10,6 +10,7 @@ import net.alpaka.addons.features.zoom.ZoomFeature;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
+import net.alpaka.addons.config.AlpakaConfig;
 import net.minecraft.client.Minecraft;
 
 import net.alpaka.addons.features.worldage.WorldAgeHudRenderer;
@@ -151,7 +152,69 @@ public class AlpakaClient implements ClientModInitializer {
                     return 1;
                 })
             );
+
+            // Where the slayer record is kept. A command rather than a field in the config screen
+            // because the value is a filesystem path: too long for a card that has to fit a label
+            // beside it, and normally pasted rather than typed.
+            dispatcher.register(ClientCommands.literal("alpakastats")
+                .executes(context -> {
+                    Minecraft.getInstance().execute(AlpakaClient::printStatsLocation);
+                    return 1;
+                })
+                .then(ClientCommands.literal("folder")
+                    .then(ClientCommands.literal("default")
+                        .executes(context -> {
+                            Minecraft.getInstance().execute(() -> setStatsDirectory(""));
+                            return 1;
+                        })
+                    )
+                    .then(ClientCommands.argument("path", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
+                        .executes(context -> {
+                            String path = com.mojang.brigadier.arguments.StringArgumentType.getString(context, "path");
+                            Minecraft.getInstance().execute(() -> setStatsDirectory(path));
+                            return 1;
+                        })
+                    )
+                )
+            );
         });
+    }
+
+    /** Reports where the slayer record lives and whether it is actually there. */
+    private static void printStatsLocation() {
+        java.io.File file = net.alpaka.addons.config.AlpakaStats.file();
+        boolean custom = !AlpakaConfig.instance.statsDirectory.isBlank();
+
+        SlayerDropTracker.sendModMessage("§7Slayer stats: §f" + file.getAbsolutePath());
+        SlayerDropTracker.sendModMessage(custom
+                ? "§8  custom folder - /alpakastats folder default to go back to the shared one"
+                : "§8  shared default - /alpakastats folder <path> to point it at a synced folder");
+        SlayerDropTracker.sendModMessage(file.exists()
+                ? "§8  file present (" + file.length() + " bytes)"
+                : "§8  no file yet; it is written on the next kill");
+    }
+
+    /**
+     * Points the record at another folder and moves the current one into it.
+     *
+     * Saved through rather than only remembered, so the change takes effect without a restart: the
+     * record in memory is written to the new location immediately, which is also what creates it.
+     */
+    private static void setStatsDirectory(String path) {
+        AlpakaConfig.instance.statsDirectory = path == null ? "" : path.trim();
+        AlpakaConfig.save();
+
+        java.io.File dir = net.alpaka.addons.config.AlpakaStats.directory();
+        if (!dir.exists() && !dir.mkdirs()) {
+            SlayerDropTracker.sendModMessage("§cCould not create §f" + dir.getAbsolutePath());
+            SlayerDropTracker.sendModMessage("§7The setting was kept; check the path and try again.");
+            return;
+        }
+
+        // Merges with whatever is already there rather than replacing it, so pointing a second PC
+        // at a folder that already holds a record adds to it instead of flattening it.
+        net.alpaka.addons.config.AlpakaStats.save();
+        printStatsLocation();
     }
 
     /** Clears recorded best boss times and reports what was actually removed. */

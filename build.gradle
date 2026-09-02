@@ -1,5 +1,5 @@
 plugins {
-    id "fabric-loom" version "1.13.6"
+    id "net.fabricmc.fabric-loom" version "1.17.20"
     id "maven-publish"
     id "org.jetbrains.kotlin.jvm" version "2.1.10"
 }
@@ -30,8 +30,10 @@ dependencies {
     // Mixin compile dependency
     compileOnly "org.spongepowered:mixin:0.8.5"
 
-    // Mod Menu compile dependency
-    compileOnly "com.terraformersmc:modmenu:20.0.0-beta.2"
+    // Mod Menu: compiled against, and present in the dev client so its Mods screens can be tested.
+    // localRuntime keeps it out of the published POM. Players get it from their own mod list.
+    compileOnly "com.terraformersmc:modmenu:18.0.0"
+    localRuntime "com.terraformersmc:modmenu:18.0.0"
 
     // Kotlin
     implementation "org.jetbrains.kotlin:kotlin-stdlib"
@@ -263,12 +265,25 @@ tasks.named("build") {
     finalizedBy(tasks.named("deployJar"))
 }
 
-tasks.named("runClient") {
-    dependsOn(tasks.jar)
-    doLast {
-        new ProcessBuilder("open", "-a", "/Applications/OneClient.app").start()
+/**
+ * Dev client.
+ *
+ * `./gradlew runClient` starts the game from `run/` with this mod on the classpath. Passing
+ * `-PquickPlayWorld="<save name>"` skips the menus and loads that world from `run/saves/` straight
+ * away, which is what makes an unattended in-game check of the HUD and world rendering possible.
+ */
+loom {
+    runs {
+        client {
+            if (project.hasProperty("quickPlayWorld")) {
+                programArgs("--quickPlaySingleplayer", project.property("quickPlayWorld").toString())
+            }
+        }
     }
 }
+
+
+
 
 
 

@@ -182,9 +182,11 @@ public class CustomPauseScreen extends Screen {
         this.modsButton = new CustomPauseButton(buttonX, buttonStartY + spacing * 2, buttonWidth, buttonHeight,
                 iconLabel(ICON_BOX, "Mods"), false, btn -> {
             if (this.minecraft != null) {
-                try {
-                    this.minecraft.gui.setScreen(new com.terraformersmc.modmenu.gui.ModsScreen(this));
-                } catch (Throwable t) {
+                // Falls back to the options screen without Mod Menu; see ModMenuCompat for why the
+                // Mod Menu class must not be named here.
+                if (net.alpaka.addons.compat.ModMenuCompat.isLoaded()) {
+                    net.alpaka.addons.compat.ModMenuCompat.openModsScreen(this);
+                } else {
                     this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options, false));
                 }
             }

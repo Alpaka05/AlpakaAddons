@@ -185,6 +185,19 @@ public class AlpakaConfig {
      * nothing derived from one is used.
      */
     public boolean allowApiCalls = true;
+
+    /**
+     * Folder holding the slayer record, or empty for this machine's shared default.
+     *
+     * Point it at a folder a cloud client keeps in sync and the record follows the player to another
+     * PC - the file is already keyed by account and Skyblock profile, so two machines writing to it
+     * describe the same history rather than competing ones. No server and no account of this mod's
+     * own is involved; the sync is whatever the player already uses.
+     *
+     * Kept with the per-instance settings on purpose, and never inside the record itself: it is a
+     * fact about this machine, and the path to the same synced folder differs on the next one.
+     */
+    public String statsDirectory = "";
     public boolean slayerTimerEnabled = true;
     /** Announce each boss's time in chat once it dies. */
     public boolean slayerTimerChatEnabled = true;

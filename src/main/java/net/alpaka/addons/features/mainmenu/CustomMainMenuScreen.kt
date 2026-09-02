@@ -145,9 +145,11 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         this.addRenderableWidget(CustomMenuButton(innerX, startY + spacing * 2, innerW, btnH, Component.literal("Mods"), isRed = false) {
             val mc = this.minecraft ?: return@CustomMenuButton
             playPloppSound()
-            try {
-                mc.gui.setScreen(com.terraformersmc.modmenu.gui.ModsScreen(this))
-            } catch (_: Throwable) {
+            // Falls back to the options screen without Mod Menu; see ModMenuCompat for why the
+            // Mod Menu class must not be named here.
+            if (net.alpaka.addons.compat.ModMenuCompat.isLoaded()) {
+                net.alpaka.addons.compat.ModMenuCompat.openModsScreen(this)
+            } else {
                 mc.gui.setScreen(OptionsScreen(this, mc.options, false))
             }
         })

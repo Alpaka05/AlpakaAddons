@@ -56,7 +56,7 @@ object SlayerMenuXpReader {
 
     /** Called once per client tick. */
     fun tick() {
-        val screen = Minecraft.getInstance().screen
+        val screen = Minecraft.getInstance().gui.screen()
 
         if (screen !is AbstractContainerScreen<*>) {
             lastScannedScreen = null

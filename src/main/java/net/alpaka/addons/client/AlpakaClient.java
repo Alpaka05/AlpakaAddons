@@ -17,6 +17,9 @@ import net.alpaka.addons.features.worldage.WorldAgeHudRenderer;
 public class AlpakaClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
+        // First, so the overlay's own render pipeline is registered before the shader manager
+        // precompiles vanilla's; see BlockOverlayRenderTypes.
+        net.alpaka.addons.features.blockoverlay.BlockOverlayRenderTypes.init();
         CustomSoundFeature.register();
         SlayerDropTracker.registerEvents();
         net.alpaka.addons.features.slayer.SkyblockProfileTracker.INSTANCE.register();
@@ -48,7 +51,7 @@ public class AlpakaClient implements ClientModInitializer {
             dispatcher.register(ClientCommands.literal("alpakahud")
                 .executes(context -> {
                     Minecraft.getInstance().execute(() -> {
-                        Minecraft.getInstance().setScreen(new HudEditorScreen(null));
+                        Minecraft.getInstance().gui.setScreen(new HudEditorScreen(null));
                     });
                     return 1;
                 })
@@ -167,7 +170,7 @@ public class AlpakaClient implements ClientModInitializer {
     /** Opens the config screen, optionally with a search term already applied. */
     private static int openConfig(String search) {
         Minecraft.getInstance().execute(() ->
-                Minecraft.getInstance().setScreen(new AlpakaConfigScreen(null, search)));
+                Minecraft.getInstance().gui.setScreen(new AlpakaConfigScreen(null, search)));
         return 1;
     }
 }

@@ -138,7 +138,7 @@ object AlpakaNotifications {
     @JvmStatic
     fun render(graphics: GuiGraphicsExtractor, @Suppress("UNUSED_PARAMETER") deltaTracker: DeltaTracker) {
         val mc = Minecraft.getInstance()
-        if (mc.options.hideGui || mc.level == null) return
+        if (mc.gui.hud.isHidden() || mc.level == null) return
 
         val font = mc.font ?: return
         val now = System.currentTimeMillis()

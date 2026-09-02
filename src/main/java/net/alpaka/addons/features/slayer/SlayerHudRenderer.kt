@@ -288,8 +288,8 @@ object SlayerHudRenderer {
         if (!cfg.slayerHudEnabled) return
 
         val mc = Minecraft.getInstance()
-        if (mc.options.hideGui || mc.level == null || mc.player == null) return
-        if (mc.screen != null && mc.screen !is ChatScreen) return
+        if (mc.gui.hud.isHidden() || mc.level == null || mc.player == null) return
+        if (mc.gui.screen() != null && mc.gui.screen() !is ChatScreen) return
 
         // No quest on the sidebar means there is no slayer being run, and so nothing to report.
         val type = SlayerQuestDetector.currentOrRecent() ?: return

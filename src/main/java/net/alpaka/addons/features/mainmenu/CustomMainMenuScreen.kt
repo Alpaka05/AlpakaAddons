@@ -133,12 +133,12 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
 
         // 1. Singleplayer
         this.addRenderableWidget(CustomMenuButton(innerX, startY, innerW, btnH, Component.literal("Singleplayer"), isRed = false) {
-            this.minecraft?.setScreen(SelectWorldScreen(this))
+            this.minecraft?.gui?.setScreen(SelectWorldScreen(this))
         })
 
         // 2. Multiplayer
         this.addRenderableWidget(CustomMenuButton(innerX, startY + spacing, innerW, btnH, Component.literal("Multiplayer"), isRed = false) {
-            this.minecraft?.setScreen(JoinMultiplayerScreen(this))
+            this.minecraft?.gui?.setScreen(JoinMultiplayerScreen(this))
         })
 
         // 3. Mods (Opens Mod Menu GUI or Options fallback)
@@ -150,7 +150,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
             if (net.alpaka.addons.compat.ModMenuCompat.isLoaded()) {
                 net.alpaka.addons.compat.ModMenuCompat.openModsScreen(this)
             } else {
-                mc.setScreen(OptionsScreen(this, mc.options, false))
+                mc.gui.setScreen(OptionsScreen(this, mc.options, false))
             }
         })
 
@@ -175,7 +175,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         // Options
         this.addRenderableWidget(CustomMenuButton(innerX, bottomY, halfW, btnH, Component.literal("Options"), isRed = false) {
             val mc = this.minecraft ?: return@CustomMenuButton
-            mc.setScreen(OptionsScreen(this, mc.options, false))
+            mc.gui.setScreen(OptionsScreen(this, mc.options, false))
         })
 
         // Quit Game
@@ -253,7 +253,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
     override fun mouseClicked(event: MouseButtonEvent, doubleClick: Boolean): Boolean {
         if (event.button() == 0 && isOverLogo(event.x(), event.y())) {
             CustomSoundFeature.playButtonClickSound()
-            this.minecraft?.setScreen(AlpakaConfigScreen(this))
+            this.minecraft?.gui?.setScreen(AlpakaConfigScreen(this))
             return true
         }
         return super.mouseClicked(event, doubleClick)

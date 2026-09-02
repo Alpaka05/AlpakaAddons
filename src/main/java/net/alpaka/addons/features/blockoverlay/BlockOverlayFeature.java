@@ -3,20 +3,18 @@ package net.alpaka.addons.features.blockoverlay;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.alpaka.addons.config.AlpakaConfig;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.rendertype.RenderType;
-import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.state.level.BlockOutlineRenderState;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 import java.util.List;
 
 public class BlockOverlayFeature {
-    public static boolean isRenderingBlockOverlay = false;
-    public static boolean ignoreDepthActive = false;
 
     private static BlockPos lastTargetPos = null;
     private static long targetStartTime = 0L;
@@ -38,107 +36,108 @@ public class BlockOverlayFeature {
             block instanceof net.minecraft.world.level.block.NetherWartBlock) {
             return true;
         }
+        // No SAPLINGS tag any more since 26.2; the SaplingBlock check above covers them.
         return blockState.is(net.minecraft.tags.BlockTags.FLOWERS) ||
                blockState.is(net.minecraft.tags.BlockTags.CROPS) ||
-               blockState.is(net.minecraft.tags.BlockTags.LEAVES) ||
-               blockState.is(net.minecraft.tags.BlockTags.SAPLINGS);
+               blockState.is(net.minecraft.tags.BlockTags.LEAVES);
     }
 
-    public static void render(PoseStack poseStack, double camX, double camY, double camZ, BlockOutlineRenderState renderState) {
-        isRenderingBlockOverlay = true;
-        ignoreDepthActive = AlpakaConfig.instance.blockIgnoreDepth;
+    /**
+     * Submits the overlay for the targeted block in place of vanilla's outline.
+     *
+     * Called from the hook on LevelRenderer.submitBlockOutline, so this runs in the level's submit
+     * phase: nothing is drawn here. The quads go to the collector as custom geometry and the feature
+     * renderer draws them later in the frame, in the pass the vanilla outline would have used. The
+     * pose is copied when the geometry is submitted, which is why it can be popped straight after,
+     * exactly as vanilla does with its own outline.
+     */
+    public static void submit(PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera, BlockOutlineRenderState renderState) {
+        BlockPos pos = renderState.pos();
 
-        try {
-            Minecraft mc = Minecraft.getInstance();
-            if (mc.level == null) return;
+        // No plant test here: LevelRendererMixin already made it before calling in, and doing it
+        // again meant a second block-state lookup plus four tag lookups every frame.
 
-            BlockPos pos = renderState.pos();
+        VoxelShape shape = renderState.shape();
+        if (shape == null || shape.isEmpty()) return;
 
-            // No plant test here: LevelRendererMixin already made it before calling in, and doing it
-            // again meant a second block-state lookup plus four tag lookups every frame.
+        List<AABB> boxes = boxesOf(shape);
+        if (boxes.isEmpty()) return;
 
-            VoxelShape shape = renderState.shape();
-            if (shape == null || shape.isEmpty()) return;
-
-            List<AABB> boxes = boxesOf(shape);
-            if (boxes.isEmpty()) return;
-
-            MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
-            PoseStack.Pose pose = poseStack.last();
-
-            long now = System.currentTimeMillis();
-            if (now - lastRenderTime > 120L || lastTargetPos == null || !lastTargetPos.equals(pos)) {
-                lastTargetPos = pos;
-                targetStartTime = now;
-            }
-            lastRenderTime = now;
-
-            float fadeInFactor = 1.0f;
-            if (AlpakaConfig.instance.blockFadeInEnabled) {
-                long elapsed = now - targetStartTime;
-                int duration = Math.max(10, AlpakaConfig.instance.blockFadeInDurationMs);
-                float progress = Math.min(1.0f, (float) elapsed / (float) duration);
-                // Quadratic ease-in curve for a dramatic, sleek fade-in effect
-                fadeInFactor = progress * progress;
-            }
-
-            // Resolved once and shared by both passes. It used to be worked out separately for the
-            // outline and the fill, which ran the HSB conversion twice a frame and allocated a
-            // three-float array each time for the same colour.
-            boolean chromaEnabled = AlpakaConfig.instance.blockChromaEnabled;
-            int chromaRgb = chromaEnabled ? chromaRgb(AlpakaConfig.instance.blockChromaSpeed) : 0;
-
-            float outlineR, outlineG, outlineB, outlineA;
-            if (chromaEnabled) {
-                outlineR = ((chromaRgb >> 16) & 0xFF) / 255.0f;
-                outlineG = ((chromaRgb >> 8) & 0xFF) / 255.0f;
-                outlineB = (chromaRgb & 0xFF) / 255.0f;
-            } else {
-                outlineR = ((AlpakaConfig.instance.blockOutlineColor >> 16) & 0xFF) / 255.0f;
-                outlineG = ((AlpakaConfig.instance.blockOutlineColor >> 8) & 0xFF) / 255.0f;
-                outlineB = (AlpakaConfig.instance.blockOutlineColor & 0xFF) / 255.0f;
-            }
-            outlineA = (((AlpakaConfig.instance.blockOutlineColor >> 24) & 0xFF) / 255.0f) * fadeInFactor;
-
-            float fillR, fillG, fillB, fillA;
-            if (chromaEnabled) {
-                fillR = ((chromaRgb >> 16) & 0xFF) / 255.0f;
-                fillG = ((chromaRgb >> 8) & 0xFF) / 255.0f;
-                fillB = (chromaRgb & 0xFF) / 255.0f;
-            } else {
-                fillR = ((AlpakaConfig.instance.blockFillColor >> 16) & 0xFF) / 255.0f;
-                fillG = ((AlpakaConfig.instance.blockFillColor >> 8) & 0xFF) / 255.0f;
-                fillB = (AlpakaConfig.instance.blockFillColor & 0xFF) / 255.0f;
-            }
-            fillA = (((AlpakaConfig.instance.blockFillColor >> 24) & 0xFF) / 255.0f) * fadeInFactor;
-
-            double relX = (double) pos.getX() - camX;
-            double relY = (double) pos.getY() - camY;
-            double relZ = (double) pos.getZ() - camZ;
-
-            // 1. Render Fill
-            if (AlpakaConfig.instance.blockFillEnabled) {
-                RenderType fillRenderType = RenderTypes.debugQuads();
-                VertexConsumer fillBuffer = bufferSource.getBuffer(fillRenderType);
-                for (AABB box : boxes) {
-                    drawFill(fillBuffer, pose, box.inflate(0.001d), relX, relY, relZ, fillR, fillG, fillB, fillA);
-                }
-                bufferSource.endBatch(fillRenderType);
-            }
-
-            // 2. Render Outline as 3D Cuboids
-            if (AlpakaConfig.instance.blockOutlineEnabled) {
-                RenderType outlineRenderType = RenderTypes.debugQuads();
-                VertexConsumer outlineBuffer = bufferSource.getBuffer(outlineRenderType);
-                for (AABB box : boxes) {
-                    drawOutlineAsQuads(outlineBuffer, pose, box.inflate(0.002d), relX, relY, relZ, outlineR, outlineG, outlineB, outlineA);
-                }
-                bufferSource.endBatch(outlineRenderType);
-            }
-        } finally {
-            isRenderingBlockOverlay = false;
-            ignoreDepthActive = false;
+        long now = System.currentTimeMillis();
+        if (now - lastRenderTime > 120L || lastTargetPos == null || !lastTargetPos.equals(pos)) {
+            lastTargetPos = pos;
+            targetStartTime = now;
         }
+        lastRenderTime = now;
+
+        float fadeInFactor = 1.0f;
+        if (AlpakaConfig.instance.blockFadeInEnabled) {
+            long elapsed = now - targetStartTime;
+            int duration = Math.max(10, AlpakaConfig.instance.blockFadeInDurationMs);
+            float progress = Math.min(1.0f, (float) elapsed / (float) duration);
+            // Quadratic ease-in curve for a dramatic, sleek fade-in effect
+            fadeInFactor = progress * progress;
+        }
+
+        // Resolved once and shared by both passes. It used to be worked out separately for the
+        // outline and the fill, which ran the HSB conversion twice a frame and allocated a
+        // three-float array each time for the same colour.
+        boolean chromaEnabled = AlpakaConfig.instance.blockChromaEnabled;
+        int chromaRgb = chromaEnabled ? chromaRgb(AlpakaConfig.instance.blockChromaSpeed) : 0;
+
+        final float outlineR, outlineG, outlineB, outlineA;
+        if (chromaEnabled) {
+            outlineR = ((chromaRgb >> 16) & 0xFF) / 255.0f;
+            outlineG = ((chromaRgb >> 8) & 0xFF) / 255.0f;
+            outlineB = (chromaRgb & 0xFF) / 255.0f;
+        } else {
+            outlineR = ((AlpakaConfig.instance.blockOutlineColor >> 16) & 0xFF) / 255.0f;
+            outlineG = ((AlpakaConfig.instance.blockOutlineColor >> 8) & 0xFF) / 255.0f;
+            outlineB = (AlpakaConfig.instance.blockOutlineColor & 0xFF) / 255.0f;
+        }
+        outlineA = (((AlpakaConfig.instance.blockOutlineColor >> 24) & 0xFF) / 255.0f) * fadeInFactor;
+
+        final float fillR, fillG, fillB, fillA;
+        if (chromaEnabled) {
+            fillR = ((chromaRgb >> 16) & 0xFF) / 255.0f;
+            fillG = ((chromaRgb >> 8) & 0xFF) / 255.0f;
+            fillB = (chromaRgb & 0xFF) / 255.0f;
+        } else {
+            fillR = ((AlpakaConfig.instance.blockFillColor >> 16) & 0xFF) / 255.0f;
+            fillG = ((AlpakaConfig.instance.blockFillColor >> 8) & 0xFF) / 255.0f;
+            fillB = (AlpakaConfig.instance.blockFillColor & 0xFF) / 255.0f;
+        }
+        fillA = (((AlpakaConfig.instance.blockFillColor >> 24) & 0xFF) / 255.0f) * fadeInFactor;
+
+        final boolean drawFill = AlpakaConfig.instance.blockFillEnabled;
+        final boolean drawOutline = AlpakaConfig.instance.blockOutlineEnabled;
+        if (!drawFill && !drawOutline) return;
+
+        // Read now rather than inside the callback: the callback runs later in the frame, and the
+        // values used there should be the ones the render type below was chosen with.
+        final float edgeThickness = AlpakaConfig.instance.blockOutlineThickness * 0.002f;
+        RenderType renderType = BlockOverlayRenderTypes.current(AlpakaConfig.instance.blockIgnoreDepth);
+
+        // Same camera-relative translation vanilla applies to its own outline, so the shape's boxes
+        // can be used in block-local coordinates.
+        Vec3 cam = camera.pos;
+        poseStack.pushPose();
+        poseStack.translate(pos.getX() - cam.x, pos.getY() - cam.y, pos.getZ() - cam.z);
+        collector.submitCustomGeometry(poseStack, renderType, (pose, buffer) -> {
+            // 1. Fill
+            if (drawFill) {
+                for (AABB box : boxes) {
+                    drawFill(buffer, pose, box.inflate(0.001d), fillR, fillG, fillB, fillA);
+                }
+            }
+            // 2. Outline as 3D cuboids along each edge
+            if (drawOutline) {
+                for (AABB box : boxes) {
+                    drawOutlineAsQuads(buffer, pose, box.inflate(0.002d), edgeThickness, outlineR, outlineG, outlineB, outlineA);
+                }
+            }
+        });
+        poseStack.popPose();
     }
 
     /** The current chroma colour as packed RGB. Returned packed so nothing has to be allocated. */
@@ -166,15 +165,13 @@ public class BlockOverlayFeature {
         return cachedBoxes;
     }
 
-    private static void drawOutlineAsQuads(VertexConsumer buffer, PoseStack.Pose pose, AABB box, double minX, double minY, double minZ, float r, float g, float b, float a) {
-        float x1 = (float) (box.minX + minX);
-        float y1 = (float) (box.minY + minY);
-        float z1 = (float) (box.minZ + minZ);
-        float x2 = (float) (box.maxX + minX);
-        float y2 = (float) (box.maxY + minY);
-        float z2 = (float) (box.maxZ + minZ);
-
-        float t = AlpakaConfig.instance.blockOutlineThickness * 0.002f;
+    private static void drawOutlineAsQuads(VertexConsumer buffer, PoseStack.Pose pose, AABB box, float t, float r, float g, float b, float a) {
+        float x1 = (float) box.minX;
+        float y1 = (float) box.minY;
+        float z1 = (float) box.minZ;
+        float x2 = (float) box.maxX;
+        float y2 = (float) box.maxY;
+        float z2 = (float) box.maxZ;
 
         // 4 bottom horizontal edges along X
         drawEdge(buffer, pose, x1, y1, z1, x2, y1, z1, t, r, g, b, a);
@@ -231,13 +228,13 @@ public class BlockOverlayFeature {
         quad(buffer, pose, maxX, minY, minZ, maxX, maxY, minZ, maxX, maxY, maxZ, maxX, minY, maxZ, r, g, b, a);
     }
 
-    private static void drawFill(VertexConsumer buffer, PoseStack.Pose pose, AABB box, double minX, double minY, double minZ, float r, float g, float b, float a) {
-        float x1 = (float) (box.minX + minX);
-        float y1 = (float) (box.minY + minY);
-        float z1 = (float) (box.minZ + minZ);
-        float x2 = (float) (box.maxX + minX);
-        float y2 = (float) (box.maxY + minY);
-        float z2 = (float) (box.maxZ + minZ);
+    private static void drawFill(VertexConsumer buffer, PoseStack.Pose pose, AABB box, float r, float g, float b, float a) {
+        float x1 = (float) box.minX;
+        float y1 = (float) box.minY;
+        float z1 = (float) box.minZ;
+        float x2 = (float) box.maxX;
+        float y2 = (float) box.maxY;
+        float z2 = (float) box.maxZ;
 
         quad(buffer, pose, x1, y1, z1, x2, y1, z1, x2, y1, z2, x1, y1, z2, r, g, b, a);
         quad(buffer, pose, x1, y2, z1, x1, y2, z2, x2, y2, z2, x2, y2, z1, r, g, b, a);
@@ -248,9 +245,9 @@ public class BlockOverlayFeature {
     }
 
     private static void quad(VertexConsumer buffer, PoseStack.Pose pose, float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3, float x4, float y4, float z4, float r, float g, float b, float a) {
-        buffer.addVertex(pose.pose(), x1, y1, z1).setColor(r, g, b, a);
-        buffer.addVertex(pose.pose(), x2, y2, z2).setColor(r, g, b, a);
-        buffer.addVertex(pose.pose(), x3, y3, z3).setColor(r, g, b, a);
-        buffer.addVertex(pose.pose(), x4, y4, z4).setColor(r, g, b, a);
+        buffer.addVertex(pose, x1, y1, z1).setColor(r, g, b, a);
+        buffer.addVertex(pose, x2, y2, z2).setColor(r, g, b, a);
+        buffer.addVertex(pose, x3, y3, z3).setColor(r, g, b, a);
+        buffer.addVertex(pose, x4, y4, z4).setColor(r, g, b, a);
     }
 }

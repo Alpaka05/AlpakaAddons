@@ -2,6 +2,7 @@ package net.alpaka.addons.utils
 
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.config.AlpakaStats
+import net.alpaka.addons.features.slayer.SkyblockProfileTracker
 import net.alpaka.addons.features.slayer.SlayerDropTracker
 import net.alpaka.addons.features.slayer.SlayerBossEntityTracker
 import net.alpaka.addons.features.slayer.SlayerQuestDetector
@@ -44,6 +45,12 @@ object AlpakaDiagnostics {
             line("§7Slayer quest: §8none on the sidebar §7(last seen: §f${SlayerQuestDetector.currentOrRecent()?.display ?: "none"}§7)")
         }
         line("§7Slayer tracking enabled: ${yesNo(cfg.slayerDropTrackerEnabled)}")
+
+        // The record is keyed by account and profile, so a missing profile is the first thing to
+        // check when the kill count looks wrong: everything is then filed under the placeholder.
+        val profile = SkyblockProfileTracker.current
+        line("§7Skyblock profile: " + (if (profile != null) "§f$profile" else "§cnot announced yet §7- kills are filed under the placeholder"))
+        line("§7Stats file: §f${AlpakaStats.file().absolutePath}")
 
         printBossTimer(cfg)
 

@@ -3,6 +3,11 @@ param(
     [string]$Keys = "",     # comma separated key names: TAB,RETURN,F2,ESCAPE,E,F5,T ...
     [string]$Text = "",     # literal text, delivered as WM_CHAR (for the chat box)
     [switch]$Close,         # WM_CLOSE: the game shuts down cleanly
+    [string]$KeyDown = "",  # press these keys and leave them held (for hold-to-open menus such as the wheel)
+    [string]$KeyUp = "",    # release keys held by an earlier -KeyDown call
+    [string]$MouseMove = "",# "x,y" in window client pixels: WM_MOUSEMOVE, moves the GUI cursor
+    [switch]$LeftClick,     # WM_LBUTTONDOWN/UP at the -MouseMove position
+    [switch]$RightClick,    # WM_RBUTTONDOWN/UP at the -MouseMove position
     [int]$GapMs = 250,
     [int]$HoldMs = 60
 )
@@ -28,17 +33,45 @@ $p = Get-Process -Id $TargetPid -ErrorAction Stop
 $h = $p.MainWindowHandle
 if ($h -eq [IntPtr]::Zero) { Write-Output "NO_WINDOW for pid $TargetPid"; exit 1 }
 
-function Send-Key([string]$n) {
+function Key-LParams([string]$n) {
     $code = [uint32]$script:vk[$n]
     $scan = [K]::MapVirtualKey($code, 0)
     $extended = 0
     if ($n -in @("LEFT","UP","RIGHT","DOWN")) { $extended = 0x01000000 }
     $down = [IntPtr]([int64](1) -bor ([int64]$scan -shl 16) -bor $extended)
     $up   = [IntPtr]([int64](1) -bor ([int64]$scan -shl 16) -bor $extended -bor 0xC0000000)
-    [K]::PostMessage($script:h, 0x0100, [IntPtr]$code, $down) | Out-Null
+    return @($code, $down, $up)
+}
+
+function Send-KeyDown([string]$n) {
+    $p = Key-LParams $n
+    [K]::PostMessage($script:h, 0x0100, [IntPtr]$p[0], $p[1]) | Out-Null
+}
+
+function Send-KeyUp([string]$n) {
+    $p = Key-LParams $n
+    [K]::PostMessage($script:h, 0x0101, [IntPtr]$p[0], $p[2]) | Out-Null
+}
+
+function Send-Key([string]$n) {
+    Send-KeyDown $n
     Start-Sleep -Milliseconds $script:HoldMs
-    [K]::PostMessage($script:h, 0x0101, [IntPtr]$code, $up) | Out-Null
+    Send-KeyUp $n
     Start-Sleep -Milliseconds $script:GapMs
+}
+
+# Client-pixel position packed the way mouse messages expect it (y in the high word).
+function Mouse-LParam([int]$x, [int]$y) {
+    return [IntPtr]([int64]$x -bor ([int64]$y -shl 16))
+}
+
+if ($KeyDown -ne "") {
+    foreach ($name in $KeyDown.Split(",")) {
+        $n = $name.Trim().ToUpper()
+        if (-not $vk.ContainsKey($n)) { Write-Output "unknown key $n"; continue }
+        Send-KeyDown $n
+        Start-Sleep -Milliseconds $GapMs
+    }
 }
 
 if ($Keys -ne "") {
@@ -52,6 +85,36 @@ if ($Text -ne "") {
     foreach ($ch in $Text.ToCharArray()) {
         [K]::PostMessage($h, 0x0102, [IntPtr][int][char]$ch, [IntPtr]1) | Out-Null
         Start-Sleep -Milliseconds 40
+    }
+}
+$mouseX = -1; $mouseY = -1
+if ($MouseMove -ne "") {
+    $parts = $MouseMove.Split(",")
+    $mouseX = [int]$parts[0].Trim(); $mouseY = [int]$parts[1].Trim()
+    # Twice: the game ignores the first move after the cursor was released from the world.
+    [K]::PostMessage($h, 0x0200, [IntPtr]0, (Mouse-LParam $mouseX $mouseY)) | Out-Null
+    Start-Sleep -Milliseconds 40
+    [K]::PostMessage($h, 0x0200, [IntPtr]0, (Mouse-LParam $mouseX $mouseY)) | Out-Null
+    Start-Sleep -Milliseconds $GapMs
+}
+if ($LeftClick -and $mouseX -ge 0) {
+    [K]::PostMessage($h, 0x0201, [IntPtr]1, (Mouse-LParam $mouseX $mouseY)) | Out-Null
+    Start-Sleep -Milliseconds $HoldMs
+    [K]::PostMessage($h, 0x0202, [IntPtr]0, (Mouse-LParam $mouseX $mouseY)) | Out-Null
+    Start-Sleep -Milliseconds $GapMs
+}
+if ($RightClick -and $mouseX -ge 0) {
+    [K]::PostMessage($h, 0x0204, [IntPtr]2, (Mouse-LParam $mouseX $mouseY)) | Out-Null
+    Start-Sleep -Milliseconds $HoldMs
+    [K]::PostMessage($h, 0x0205, [IntPtr]0, (Mouse-LParam $mouseX $mouseY)) | Out-Null
+    Start-Sleep -Milliseconds $GapMs
+}
+if ($KeyUp -ne "") {
+    foreach ($name in $KeyUp.Split(",")) {
+        $n = $name.Trim().ToUpper()
+        if (-not $vk.ContainsKey($n)) { Write-Output "unknown key $n"; continue }
+        Send-KeyUp $n
+        Start-Sleep -Milliseconds $GapMs
     }
 }
 if ($Close) {

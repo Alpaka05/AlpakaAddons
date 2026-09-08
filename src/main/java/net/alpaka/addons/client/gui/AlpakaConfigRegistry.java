@@ -8,6 +8,7 @@ import net.alpaka.addons.client.ItemSwingConfigScreen;
 import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.blaze.BlazeScaleFeature;
+import net.alpaka.addons.features.etherwarp.EtherwarpOverlayFeature;
 import net.alpaka.addons.features.nametag.CustomNameTagFeature;
 import net.alpaka.addons.features.notification.AlpakaNotifications;
 import net.alpaka.addons.features.playerscale.PlayerScaleFeature;
@@ -698,6 +699,110 @@ public class AlpakaConfigRegistry {
 
         // --- 5. SKYBLOCK ---
 
+        OPTIONS.add(new ConfigOption("Etherwarp Overlay", ConfigCategory.SKYBLOCK));
+
+        OPTIONS.add(new ConfigOption("etherwarp_overlay", "Etherwarp Overlay",
+                "Marks the block you will land on while sneaking with an Etherwarp item.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.etherwarpOverlayEnabled,
+                v -> { AlpakaConfig.instance.etherwarpOverlayEnabled = v; AlpakaConfig.save(); },
+                "etherwarp ether transmission conduit aspect void teleport target block highlight overlay guess"));
+
+        OPTIONS.add(new ConfigOption("etherwarp_overlay_color", "Target Colour",
+                "Box colour when the warp will work.",
+                ConfigCategory.SKYBLOCK,
+                "Choose Color",
+                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Etherwarp Target Colour", AlpakaConfig.instance.etherwarpOverlayColor, color -> {
+                    AlpakaConfig.instance.etherwarpOverlayColor = color;
+                    AlpakaConfig.save();
+                })),
+                "etherwarp colour color target box gold"));
+
+        OPTIONS.add(new ConfigOption("etherwarp_show_fail", "Show Blocked Targets",
+                "Also marks a target with no room to stand, in the fail colour.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.etherwarpOverlayShowFail,
+                v -> { AlpakaConfig.instance.etherwarpOverlayShowFail = v; AlpakaConfig.save(); },
+                "etherwarp fail blocked invalid red no space"));
+
+        OPTIONS.add(new ConfigOption("etherwarp_fail_color", "Fail Colour",
+                "Box colour when the warp will be refused.",
+                ConfigCategory.SKYBLOCK,
+                "Choose Color",
+                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Etherwarp Fail Colour", AlpakaConfig.instance.etherwarpOverlayFailColor, color -> {
+                    AlpakaConfig.instance.etherwarpOverlayFailColor = color;
+                    AlpakaConfig.save();
+                })),
+                "etherwarp fail colour color red blocked"));
+
+        OPTIONS.add(new ConfigOption("etherwarp_fill", "Fill Target Block",
+                "Fills the box translucently instead of drawing only its edges.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.etherwarpOverlayFill,
+                v -> { AlpakaConfig.instance.etherwarpOverlayFill = v; AlpakaConfig.save(); },
+                "etherwarp fill filled box solid"));
+
+        OPTIONS.add(new ConfigOption("etherwarp_thickness", "Outline Thickness",
+                "Edge thickness of the target box.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.etherwarpOverlayThickness,
+                v -> { AlpakaConfig.instance.etherwarpOverlayThickness = v; AlpakaConfig.save(); },
+                0.5f, 6.0f, val -> String.format(Locale.ROOT, "%.1f", val),
+                "etherwarp outline thickness width line"));
+
+        OPTIONS.add(new ConfigOption("etherwarp_through_walls", "Show Through Walls",
+                "Draws the box even when terrain is in front of it.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.etherwarpOverlayThroughWalls,
+                v -> { AlpakaConfig.instance.etherwarpOverlayThroughWalls = v; AlpakaConfig.save(); },
+                "etherwarp through walls depth xray see"));
+
+        OPTIONS.add(new ConfigOption("etherwarp_line", "Line To Target",
+                "Draws a line from your feet to the target block.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.etherwarpLineEnabled,
+                v -> { AlpakaConfig.instance.etherwarpLineEnabled = v; AlpakaConfig.save(); },
+                "etherwarp line tracer path feet target"));
+
+        OPTIONS.add(new ConfigOption("etherwarp_line_width", "Line Thickness",
+                "Width of the line to the target.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.etherwarpLineWidth,
+                v -> { AlpakaConfig.instance.etherwarpLineWidth = v; AlpakaConfig.save(); },
+                1.0f, 12.0f, val -> String.format(Locale.ROOT, "%.0f", val),
+                "etherwarp line thickness width thin thick"));
+
+        OPTIONS.add(new ConfigOption("etherwarp_sound", "Custom Warp Sound",
+                "Plays the mod's own sound instead of Hypixel's when you warp.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.etherwarpSoundEnabled,
+                v -> { AlpakaConfig.instance.etherwarpSoundEnabled = v; AlpakaConfig.save(); },
+                "etherwarp sound custom teleport audio warp"));
+
+        OPTIONS.add(new ConfigOption("etherwarp_sound_type", "Warp Sound",
+                "Which sound plays. Whoosh sweeps down, Pling and Chime ring, Thud is dull and short, Pop is a blip. Plays a preview when changed.",
+                ConfigCategory.SKYBLOCK,
+                () -> (float) AlpakaConfig.instance.etherwarpSoundIndex,
+                v -> {
+                    int index = Math.round(v);
+                    if (index != AlpakaConfig.instance.etherwarpSoundIndex) {
+                        AlpakaConfig.instance.etherwarpSoundIndex = index;
+                        AlpakaConfig.save();
+                        EtherwarpOverlayFeature.previewWarpSound();
+                    }
+                },
+                0.0f, (float) (EtherwarpOverlayFeature.SOUND_NAMES.length - 1),
+                val -> EtherwarpOverlayFeature.SOUND_NAMES[Math.round(val)],
+                "etherwarp sound type whoosh pling thud chime pop bell dull"));
+
+        OPTIONS.add(new ConfigOption("etherwarp_sound_volume", "Warp Sound Volume",
+                "Volume of the custom warp sound.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.etherwarpSoundVolume,
+                v -> { AlpakaConfig.instance.etherwarpSoundVolume = v; AlpakaConfig.save(); },
+                0.1f, 2.0f, val -> String.format(Locale.ROOT, "%.0f%%", val * 100.0f),
+                "etherwarp sound volume loud quiet"));
+
         OPTIONS.add(new ConfigOption("Slayer Tracking", ConfigCategory.SKYBLOCK));
 
 
@@ -1050,14 +1155,31 @@ public class AlpakaConfigRegistry {
                 })),
                 "name tag gradient colour color end second picker"));
 
-        OPTIONS.add(new ConfigOption("Chroma Hat", ConfigCategory.COSMETICS));
+        OPTIONS.add(new ConfigOption("Samurai Hat", ConfigCategory.COSMETICS));
 
-        OPTIONS.add(new ConfigOption("chroma_hat", "Chroma Samurai Hat",
-                "A translucent, rainbow-glowing samurai hat on your own head. Only you can see it.",
+        OPTIONS.add(new ConfigOption("chroma_hat", "Samurai Hat",
+                "A translucent straw samurai hat on your own head. Only you can see it.",
                 ConfigCategory.COSMETICS,
                 () -> AlpakaConfig.instance.chromaHatEnabled,
                 v -> { AlpakaConfig.instance.chromaHatEnabled = v; AlpakaConfig.save(); },
-                "chroma hat samurai kasa jingasa cosmetic head rainbow glow"));
+                "chroma hat samurai kasa jingasa cosmetic head straw"));
+
+        OPTIONS.add(new ConfigOption("chroma_hat_rainbow", "Chroma Colours",
+                "Rainbow colours sweeping around the hat, glowing in the dark. Off keeps the plain hat colour.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.chromaHatRainbow,
+                v -> { AlpakaConfig.instance.chromaHatRainbow = v; AlpakaConfig.save(); },
+                "chroma hat rainbow colours glow emissive"));
+
+        OPTIONS.add(new ConfigOption("chroma_hat_color", "Hat Colour",
+                "Colour of the plain hat while Chroma Colours is off.",
+                ConfigCategory.COSMETICS,
+                "Choose Color",
+                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Hat Colour", AlpakaConfig.instance.chromaHatColor, color -> {
+                    AlpakaConfig.instance.chromaHatColor = color;
+                    AlpakaConfig.save();
+                })),
+                "chroma hat colour color straw plain picker"));
 
         OPTIONS.add(new ConfigOption("chroma_hat_opacity", "Hat Opacity",
                 "How solid the hat looks.",
@@ -1084,7 +1206,7 @@ public class AlpakaConfigRegistry {
                 "chroma hat height offset raise lower float sit position"));
 
         OPTIONS.add(new ConfigOption("chroma_hat_speed", "Hat Colour Speed",
-                "How fast the rainbow spins around the hat.",
+                "How fast the rainbow spins around the hat. Chroma Colours only.",
                 ConfigCategory.COSMETICS,
                 () -> AlpakaConfig.instance.chromaHatSpeed,
                 v -> { AlpakaConfig.instance.chromaHatSpeed = v; AlpakaConfig.save(); },

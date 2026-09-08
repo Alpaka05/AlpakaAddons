@@ -63,8 +63,12 @@ public class AlpakaConfig {
     public int nameTagGradientStart = 0xFF55FFFF;
     public int nameTagGradientEnd = 0xFFFF55FF;
 
-    /** A translucent, chroma-lit samurai hat on the player's own head. */
+    /** A translucent samurai hat on the player's own head. Plain straw by default; see chromaHatRainbow. */
     public boolean chromaHatEnabled = false;
+    /** Rainbow colours sweeping around the hat, self-lit, instead of the plain colour. */
+    public boolean chromaHatRainbow = false;
+    /** Colour of the plain hat. Default: straw. */
+    public int chromaHatColor = 0xFFC8A65A;
     /** Hat opacity in percent. */
     public float chromaHatOpacity = 55.0f;
     public float chromaHatSize = 1.0f;
@@ -245,6 +249,26 @@ public class AlpakaConfig {
     public boolean blockFillEnabled = false;
     public int blockFillColor = 0x440000FF; // Default semi-transparent blue
     public boolean blockHideOnEtherwarp = false;
+
+    // Etherwarp overlay. Marks the block an Etherwarp teleport would land on while it is aimed.
+    // Display only - the ray is worked out the way the server does it, nothing is sent.
+    public boolean etherwarpOverlayEnabled = false;
+    /** Box colour when the warp will succeed. Default: translucent gold. */
+    public int etherwarpOverlayColor = 0xD9FFAA00;
+    /** Also mark a target the warp will refuse (no room to stand), in the fail colour. */
+    public boolean etherwarpOverlayShowFail = true;
+    public int etherwarpOverlayFailColor = 0xD9FF5555;
+    public boolean etherwarpOverlayFill = false;
+    public float etherwarpOverlayThickness = 2.0f;
+    public boolean etherwarpOverlayThroughWalls = false;
+    /** A line from the player's feet to the target block. Always drawn on top, so it never vanishes into terrain. */
+    public boolean etherwarpLineEnabled = false;
+    public float etherwarpLineWidth = 5.0f;
+    /** Replace Hypixel's warp sound with the mod's own. Independent of the Custom Sounds toggle. */
+    public boolean etherwarpSoundEnabled = false;
+    /** Index into {@code EtherwarpOverlayFeature.SOUND_NAMES}: whoosh, pling, thud, chime, pop. */
+    public int etherwarpSoundIndex = 0;
+    public float etherwarpSoundVolume = 1.0f;
 
     // Inventory HUD. Shows the 27 main-inventory slots on screen; position and scale are set in
     // the HUD editor, or it can ride directly above the hotbar.
@@ -599,6 +623,9 @@ public class AlpakaConfig {
         this.blockIgnorePlants = false;
         this.blockFillEnabled = false;
         this.blockHideOnEtherwarp = false;
+        this.etherwarpOverlayEnabled = false;
+        this.etherwarpLineEnabled = false;
+        this.etherwarpSoundEnabled = false;
         this.expandChatHistory = false;
         this.inventoryHudEnabled = false;
         this.bridgeBotFormatterEnabled = false;

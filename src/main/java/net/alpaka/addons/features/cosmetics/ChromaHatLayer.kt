@@ -41,7 +41,15 @@ class ChromaHatLayer(parent: RenderLayerParent<AvatarRenderState, PlayerModel>) 
         // Chroma glow comes from full-bright lightmap coordinates on the vertices rather than from an
         // emissive type, which gives the same result and keeps the one render type for both looks.
         val rainbow = AlpakaConfig.instance.chromaHatRainbow
-        val renderType = RenderTypes.entityTranslucentCullItemTarget(ChromaHatFeature.TEXTURE)
+        // The weave texture is itself part-transparent (its alpha averages about 200 of 255), so a
+        // translucent type can never make the hat fully opaque. At 100% opacity the solid type is
+        // used instead, which ignores alpha altogether and is what "opaque" should mean here.
+        val opaque = AlpakaConfig.instance.chromaHatOpacity >= 100f
+        val renderType = if (opaque) {
+            RenderTypes.entitySolid(ChromaHatFeature.TEXTURE)
+        } else {
+            RenderTypes.entityTranslucentCullItemTarget(ChromaHatFeature.TEXTURE)
+        }
         poseStack.pushPose()
         parentModel.head.translateAndRotate(poseStack)
         collector.submitCustomGeometry(poseStack, renderType) { pose, consumer ->

@@ -268,7 +268,9 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
 
         // Labels sit just outside their segment. Each is anchored by the edge nearest the ring, so a
         // long name on the left or right grows away from the wheel instead of into it, and the
-        // selected one scales up around that same anchor.
+        // selected one scales up around that same anchor and takes the accent colour, lifted a
+        // little towards white so it stays readable even with a dark accent.
+        val labelSelected = lerpColor(accent, 0xFFFFFFFF.toInt(), 0.25f)
         for (i in 0 until count) {
             val command = commands[i]
             val h = highlight[i]
@@ -283,7 +285,7 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
             val x = (anchorX + (cosA - 1f) * textWidth / 2f).roundToInt()
             val y = (anchorY + (sinA - 1f) * textHeight / 2f).roundToInt()
 
-            val color = scaleAlpha(lerpColor(COLOR_LABEL, COLOR_LABEL_SELECTED, h), open)
+            val color = scaleAlpha(lerpColor(COLOR_LABEL, labelSelected, h), open)
             if ((color ushr 24) < 8) continue
 
             val scale = 1f + LABEL_GROWTH * h
@@ -323,6 +325,5 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
         private const val COLOR_SEGMENT_OUTER = 0xE82C2C2C.toInt()
         private const val COLOR_HUB = 0xF6171717.toInt()
         private const val COLOR_LABEL = 0xFFB8B8B8.toInt()
-        private const val COLOR_LABEL_SELECTED = 0xFFFFFFFF.toInt()
     }
 }

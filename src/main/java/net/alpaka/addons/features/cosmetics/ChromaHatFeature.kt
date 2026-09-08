@@ -16,7 +16,7 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * A translucent samurai hat - a sugegasa, the tall pointed straw hat a sensei wears - on the local
+ * A translucent samurai hat - a jingasa, the wide, shallow straw hat - on the local
  * player's head.
  *
  * Client-side cosmetic only. The geometry is built here and handed to the renderer every frame; no
@@ -26,9 +26,9 @@ import kotlin.math.sqrt
  * ### Shape
  *
  * The hat is a solid of revolution: a 2D profile - knob, crown, brim lip, underside - is swept
- * around the head's axis in [SEGMENTS] steps and stitched into quads. The crown is a steep cone that
+ * around the head's axis in [SEGMENTS] steps and stitched into quads. The crown is a shallow cone that
  * flares towards the brim (radius grows as a power of the height), which is what separates a proper
- * kasa from a flat disc: a real point on top, a swooping skirt, and a brim that turns out at the
+ * kasa from a flat disc: a defined point on top, a gentle swoop, and a brim that turns out at the
  * edge. The brim has actual thickness, closed by a rounded lip, so it reads as an object from every
  * angle, and the profile continues under the brim so the hat is not hollow from below. A small
  * two-part knob sits on the apex.
@@ -66,29 +66,29 @@ object ChromaHatFeature {
     private const val HELMET_TOP = -9f / 16f
     private const val HELMET_HALF_WIDTH = 5f / 16f
 
-    /** Brim radius and crown height at size 1, in blocks. Taller than wide-and-flat, as a sensei's is. */
-    private const val BRIM_RADIUS = 0.66f
-    private const val CROWN_HEIGHT = 0.42f
+    /** Brim radius and crown height at size 1, in blocks. Wide and shallow is what reads as a jingasa. */
+    private const val BRIM_RADIUS = 0.72f
+    private const val CROWN_HEIGHT = 0.30f
 
     /**
      * How the crown flares: radius = BRIM_RADIUS * t^FLARE for height fraction t from the apex. Above 1
      * the cone is steep at the point and eases out towards the brim - the classic kasa swoop.
      */
-    private const val FLARE = 1.35f
+    private const val FLARE = 1.12f
 
     /** Rings along the crown; more rings, smoother swoop. */
     private const val CROWN_RINGS = 7
 
     /** Thickness of the brim and the radius of its rounded lip. */
-    private const val BRIM_THICKNESS = 0.035f
+    private const val BRIM_THICKNESS = 0.045f
 
     /** Inner radius where the underside stops; anything nearer the axis is inside the head. */
     private const val UNDERSIDE_INNER_RADIUS = 0.30f
 
     /** The knob on the apex: a short neck and a bulb. */
     private const val KNOB_NECK_RADIUS = 0.028f
-    private const val KNOB_BULB_RADIUS = 0.06f
-    private const val KNOB_HEIGHT = 0.13f
+    private const val KNOB_BULB_RADIUS = 0.045f
+    private const val KNOB_HEIGHT = 0.08f
 
     /** The underside is drawn a little fainter than the top so the two do not stack into a solid. */
     private const val UNDERSIDE_ALPHA = 0.7f

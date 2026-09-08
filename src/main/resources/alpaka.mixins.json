@@ -29,6 +29,7 @@
     "RenderPipelinesAccessor",
     "RenderTypeInvoker",
     "AvatarRenderStateMixin",
+    "AbstractSoundInstanceAccessor",
     "LivingEntityRendererMixin",
     "SubmitNodeCollectionMixin",
     "ItemFeatureRendererMixin"

@@ -70,6 +70,9 @@ object ChromaHatFeature {
     /** The underside is drawn a little fainter than the top so the two do not stack into a solid. */
     private const val UNDERSIDE_ALPHA = 0.6f
 
+    /** How much darker than the hat the plain knob is drawn. */
+    private const val KNOB_SHADE = 0.45f
+
     /** Full turns of the rainbow around the hat per second, at speed 1. */
     private const val HUE_TURNS_PER_SECOND = 0.25
 
@@ -86,13 +89,25 @@ object ChromaHatFeature {
      * Emits the hat's triangles. The pose is the head part's own space (see [ChromaHatLayer]).
      *
      * @param wearingHelmet lifts the hat so it does not intersect a helmet's overlay cube.
+     * @param rainbow chroma colours sweeping around the hat, self-lit; false is the plain hat in the
+     *   configured colour, lit by [light] like the rest of the model.
      */
-    fun emit(pose: PoseStack.Pose, consumer: VertexConsumer, wearingHelmet: Boolean) {
+    fun emit(pose: PoseStack.Pose, consumer: VertexConsumer, wearingHelmet: Boolean, rainbow: Boolean, light: Int) {
         val cfg = AlpakaConfig.instance
         val alpha = (cfg.chromaHatOpacity / 100f).coerceIn(0.05f, 1f)
         val size = cfg.chromaHatSize
         val time = (System.currentTimeMillis() % 3_600_000L) / 1000.0 * cfg.chromaHatSpeed
         val hueShift = time * HUE_TURNS_PER_SECOND
+
+        // Colour by position around the brim (in turns) and alpha byte. The plain hat ignores the
+        // position; its knob is a darker shade so it still reads as a separate piece.
+        val plainRgb = cfg.chromaHatColor and 0xFFFFFF
+        val knobRgb = ARGB.scaleRGB(plainRgb, KNOB_SHADE)
+        val hatColor: (Double, Int) -> Int =
+            if (rainbow) { turns, a -> hueColor(turns + hueShift, a) } else { _, a -> ARGB.color(a, plainRgb) }
+        val knobColor: (Double, Int) -> Int =
+            if (rainbow) hatColor else { _, a -> ARGB.color(a, knobRgb) }
+        val vertexLight = if (rainbow) FULL_BRIGHT else light
 
         val height = CONE_HEIGHT * size
         val radius = BRIM_RADIUS * size
@@ -109,15 +124,18 @@ object ChromaHatFeature {
         val brimY = apexY + height
 
         // The hat proper: top surface, then the underside so it also reads from below.
-        emitCone(pose, consumer, apexY, brimY, radius, hueShift, alpha, outward = true)
-        emitCone(pose, consumer, apexY, brimY, radius, hueShift, alpha * UNDERSIDE_ALPHA, outward = false)
+        emitCone(pose, consumer, apexY, brimY, radius, hatColor, alpha, vertexLight, outward = true)
+        emitCone(pose, consumer, apexY, brimY, radius, hatColor, alpha * UNDERSIDE_ALPHA, vertexLight, outward = false)
 
         // The knob: a tiny cone standing on the apex.
-        emitCone(pose, consumer, apexY - KNOB_HEIGHT * size, apexY, KNOB_RADIUS * size, hueShift, alpha, outward = true)
+        emitCone(pose, consumer, apexY - KNOB_HEIGHT * size, apexY, KNOB_RADIUS * size, knobColor, alpha, vertexLight, outward = true)
 
-        // The glow shell, sharing the apex so it hugs the hat's silhouette.
-        val glowHeight = height * GLOW_SCALE
-        emitCone(pose, consumer, apexY, apexY + glowHeight, radius * GLOW_SCALE, hueShift, alpha * GLOW_ALPHA, outward = true)
+        // The glow shell, sharing the apex so it hugs the hat's silhouette. Chroma only: a plain
+        // straw hat has no glow to soften.
+        if (rainbow) {
+            val glowHeight = height * GLOW_SCALE
+            emitCone(pose, consumer, apexY, apexY + glowHeight, radius * GLOW_SCALE, hatColor, alpha * GLOW_ALPHA, vertexLight, outward = true)
+        }
     }
 
     /**
@@ -141,8 +159,9 @@ object ChromaHatFeature {
         apexY: Float,
         brimY: Float,
         radius: Float,
-        hueShift: Double,
+        colorAt: (Double, Int) -> Int,
         alpha: Float,
+        light: Int,
         outward: Boolean,
     ) {
         val alphaByte = (alpha * 255f).toInt().coerceIn(0, 255)
@@ -162,9 +181,9 @@ object ChromaHatFeature {
             val p0 = Vector3f((cos(a0) * radius).toFloat(), brimY, (sin(a0) * radius).toFloat())
             val p1 = Vector3f((cos(a1) * radius).toFloat(), brimY, (sin(a1) * radius).toFloat())
 
-            val c0 = hueColor(i.toDouble() / SEGMENTS + hueShift, alphaByte)
-            val c1 = hueColor((i + 1).toDouble() / SEGMENTS + hueShift, alphaByte)
-            val cApex = hueColor((i + 0.5) / SEGMENTS + hueShift, alphaByte)
+            val c0 = colorAt(i.toDouble() / SEGMENTS, alphaByte)
+            val c1 = colorAt((i + 1).toDouble() / SEGMENTS, alphaByte)
+            val cApex = colorAt((i + 0.5) / SEGMENTS, alphaByte)
 
             var nx = (cos(aMid) * nRadial).toFloat()
             var ny = nUp
@@ -190,10 +209,10 @@ object ChromaHatFeature {
             val uFirst = if (flip) u1 else u0
             val uSecond = if (flip) u0 else u1
 
-            vertex(pose, consumer, apex, cApex, uMid, 0f, nx, ny, nz)
-            vertex(pose, consumer, first, firstColor, uFirst, 1f, nx, ny, nz)
-            vertex(pose, consumer, second, secondColor, uSecond, 1f, nx, ny, nz)
-            vertex(pose, consumer, second, secondColor, uSecond, 1f, nx, ny, nz)
+            vertex(pose, consumer, apex, cApex, uMid, 0f, nx, ny, nz, light)
+            vertex(pose, consumer, first, firstColor, uFirst, 1f, nx, ny, nz, light)
+            vertex(pose, consumer, second, secondColor, uSecond, 1f, nx, ny, nz, light)
+            vertex(pose, consumer, second, secondColor, uSecond, 1f, nx, ny, nz, light)
         }
     }
 
@@ -207,12 +226,13 @@ object ChromaHatFeature {
         nx: Float,
         ny: Float,
         nz: Float,
+        light: Int,
     ) {
         consumer.addVertex(pose, position.x, position.y, position.z)
             .setColor(color)
             .setUv(u, v)
             .setOverlay(OverlayTexture.NO_OVERLAY)
-            .setLight(FULL_BRIGHT)
+            .setLight(light)
             .setNormal(pose, nx, ny, nz)
     }
 

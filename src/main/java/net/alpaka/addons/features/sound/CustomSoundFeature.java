@@ -32,6 +32,8 @@ public class CustomSoundFeature {
     public static SoundEvent HOTBAR_EQUIP_SOUND;
     public static SoundEvent RARE_DROP_SOUND;
     public static SoundEvent INSANE_DROP_SOUND;
+    /** Stand-in for Hypixel's Etherwarp cue; played by EtherwarpOverlayFeature under its own toggle. */
+    public static SoundEvent ETHERWARP_SOUND;
 
     private static final RandomSource RANDOM = RandomSource.create();
     private static long lastHeartbeatTime = 0;
@@ -51,6 +53,7 @@ public class CustomSoundFeature {
         HOTBAR_EQUIP_SOUND = registerSound("alpaka:hotbar_equip");
         RARE_DROP_SOUND = registerSound("alpaka:rare_drop");
         INSANE_DROP_SOUND = registerSound("alpaka:insane_drop");
+        ETHERWARP_SOUND = registerSound("alpaka:etherwarp");
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (!AlpakaConfig.instance.customSoundsEnabled) return;

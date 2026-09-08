@@ -40,8 +40,12 @@ object EtherwarpDetector {
     fun isAimingEtherwarp(): Boolean {
         val player = Minecraft.getInstance().player ?: return false
 
-        // Cheapest gate first: a shared-flag read that is false on the vast majority of frames.
-        if (!player.isShiftKeyDown) return false
+        // Cheapest gate first: two flag reads that are false on the vast majority of frames.
+        // isCrouching is the pose flag the player's tick sets from the sneak key and keeps for the
+        // whole tick. isShiftKeyDown alone is not enough here: on this version it reads the current
+        // tick's key presses, which the local player hands off once they are sent, so from a render
+        // hook it reports false even while the key is held.
+        if (!player.isCrouching && !player.isShiftKeyDown) return false
         if (!holdsEtherwarpItem(player.mainHandItem)) return false
 
         // Deliberately last - isOnSkyblock() does a scoreboard lookup plus a regex strip, so it

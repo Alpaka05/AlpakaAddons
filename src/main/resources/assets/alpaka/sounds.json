@@ -5,6 +5,30 @@
       "alpaka:etherwarp"
     ]
   },
+  "etherwarp_pling": {
+    "category": "master",
+    "sounds": [
+      "alpaka:etherwarp_pling"
+    ]
+  },
+  "etherwarp_thud": {
+    "category": "master",
+    "sounds": [
+      "alpaka:etherwarp_thud"
+    ]
+  },
+  "etherwarp_chime": {
+    "category": "master",
+    "sounds": [
+      "alpaka:etherwarp_chime"
+    ]
+  },
+  "etherwarp_pop": {
+    "category": "master",
+    "sounds": [
+      "alpaka:etherwarp_pop"
+    ]
+  },
   "button_click": {
     "category": "master",
     "sounds": [

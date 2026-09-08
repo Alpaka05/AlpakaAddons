@@ -9,6 +9,7 @@ import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.nametag.CustomNameTagFeature;
 import net.alpaka.addons.features.notification.AlpakaNotifications;
+import net.alpaka.addons.features.playerscale.PlayerScaleFeature;
 import net.alpaka.addons.features.sound.CustomSoundFeature;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
@@ -1073,6 +1074,58 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.chromaHatSpeed = v; AlpakaConfig.save(); },
                 0.2f, 3.0f, val -> String.format(Locale.ROOT, "%.1fx", val),
                 "chroma hat speed rainbow spin fast slow"));
+
+        OPTIONS.add(new ConfigOption("Player Scale", ConfigCategory.COSMETICS));
+
+        OPTIONS.add(new ConfigOption("player_scale", "Player Scale",
+                "Stretches or shrinks your model in third person. Purely visual, only you can see it.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.playerScaleEnabled,
+                v -> { AlpakaConfig.instance.playerScaleEnabled = v; AlpakaConfig.save(); },
+                "player scale size model body big small tall wide giant tiny stretch shrink cosmetic third person f5"));
+
+        OPTIONS.add(new ConfigOption("player_scale_x", "Width (X)",
+                "Side to side, across the shoulders. 1.00x is vanilla.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.playerScaleX,
+                v -> { AlpakaConfig.instance.playerScaleX = PlayerScaleFeature.snap(v); AlpakaConfig.save(); },
+                PlayerScaleFeature.MIN_SCALE, PlayerScaleFeature.MAX_SCALE, val -> String.format(Locale.ROOT, "%.2fx", val),
+                "player scale width x axis wide thin narrow broad"));
+
+        OPTIONS.add(new ConfigOption("player_scale_y", "Height (Y)",
+                "Feet to head. The feet stay on the ground, so the model grows upwards.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.playerScaleY,
+                v -> { AlpakaConfig.instance.playerScaleY = PlayerScaleFeature.snap(v); AlpakaConfig.save(); },
+                PlayerScaleFeature.MIN_SCALE, PlayerScaleFeature.MAX_SCALE, val -> String.format(Locale.ROOT, "%.2fx", val),
+                "player scale height y axis tall short giant tiny"));
+
+        OPTIONS.add(new ConfigOption("player_scale_z", "Depth (Z)",
+                "Front to back. Turns with the body, whichever way you face.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.playerScaleZ,
+                v -> { AlpakaConfig.instance.playerScaleZ = PlayerScaleFeature.snap(v); AlpakaConfig.save(); },
+                PlayerScaleFeature.MIN_SCALE, PlayerScaleFeature.MAX_SCALE, val -> String.format(Locale.ROOT, "%.2fx", val),
+                "player scale depth z axis thick flat paper thin"));
+
+        OPTIONS.add(new ConfigOption("player_scale_others", "Scale Other Players Too",
+                "Applies the same scale to every other player you can see.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.playerScaleOthers,
+                v -> { AlpakaConfig.instance.playerScaleOthers = v; AlpakaConfig.save(); },
+                "player scale others other players everyone all everybody"));
+
+        OPTIONS.add(new ConfigOption("player_scale_reset", "Reset Scale",
+                "Puts all three axes back to 1.00x. The toggle stays as it is.",
+                ConfigCategory.COSMETICS,
+                "Reset",
+                parent -> {
+                    AlpakaConfig.instance.playerScaleX = 1.0f;
+                    AlpakaConfig.instance.playerScaleY = 1.0f;
+                    AlpakaConfig.instance.playerScaleZ = 1.0f;
+                    AlpakaConfig.save();
+                },
+                "player scale reset default vanilla normal 1.0"));
 
         // --- 7. SOUND & UTILITY ---
 

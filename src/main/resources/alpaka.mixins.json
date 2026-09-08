@@ -27,6 +27,7 @@
     "EntityRenderDispatcherMixin",
     "LivingEntityRendererAccessor",
     "AvatarRendererMixin",
+    "AvatarRenderStateMixin",
     "LivingEntityRendererMixin",
     "SubmitNodeCollectionMixin",
     "ItemFeatureRendererMixin"

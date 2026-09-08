@@ -204,15 +204,42 @@ public class AlpakaClient implements ClientModInitializer {
      * record in memory is written to the new location immediately, which is also what creates it.
      */
     private static void setStatsDirectory(String path) {
-        AlpakaConfig.instance.statsDirectory = path == null ? "" : path.trim();
-        AlpakaConfig.save();
+        String cleaned = path == null ? "" : path.trim();
+
+        // Pasted paths often arrive wrapped in quotes. A quote is a legal character in a path as far
+        // as Java is concerned, so "D:\..." was resolved relative to the game folder and failed there.
+        if (cleaned.length() >= 2
+                && (cleaned.startsWith("\"") && cleaned.endsWith("\"") || cleaned.startsWith("'") && cleaned.endsWith("'"))) {
+            cleaned = cleaned.substring(1, cleaned.length() - 1).trim();
+        }
+
+        if (!cleaned.isEmpty()) {
+            java.io.File candidate = new java.io.File(cleaned);
+            // The setting names the folder the record lives in, not the record. Pointed at the file
+            // itself, the mod looked for alpaka-stats.json inside alpaka-stats.json, found nothing,
+            // started from zero and failed every save - for a whole night.
+            if (candidate.isFile() || candidate.getName().toLowerCase(java.util.Locale.ROOT).endsWith(".json")) {
+                java.io.File parent = candidate.getAbsoluteFile().getParentFile();
+                SlayerDropTracker.sendModMessage("§cThat is a file, not a folder: §f" + candidate.getAbsolutePath());
+                if (parent != null) {
+                    SlayerDropTracker.sendModMessage("§7Give the folder it is in: §f/alpakastats folder " + parent.getAbsolutePath());
+                }
+                SlayerDropTracker.sendModMessage("§7The setting was not changed.");
+                return;
+            }
+        }
+
+        String previous = AlpakaConfig.instance.statsDirectory;
+        AlpakaConfig.instance.statsDirectory = cleaned;
 
         java.io.File dir = net.alpaka.addons.config.AlpakaStats.directory();
-        if (!dir.exists() && !dir.mkdirs()) {
+        if (!dir.isDirectory() && !dir.mkdirs()) {
+            AlpakaConfig.instance.statsDirectory = previous;
             SlayerDropTracker.sendModMessage("§cCould not create §f" + dir.getAbsolutePath());
-            SlayerDropTracker.sendModMessage("§7The setting was kept; check the path and try again.");
+            SlayerDropTracker.sendModMessage("§7The setting was not changed; check the path and try again.");
             return;
         }
+        AlpakaConfig.save();
 
         // Merges with whatever is already there rather than replacing it, so pointing a second PC
         // at a folder that already holds a record adds to it instead of flattening it.

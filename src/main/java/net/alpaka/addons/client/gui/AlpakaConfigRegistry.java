@@ -105,6 +105,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.stopBlazeSpinning = v; AlpakaConfig.save(); },
                 "blaze rods spin spinning rotation animation stop mob"));
 
+        OPTIONS.add(new ConfigOption("hide_hurt_overlay", "Hide Damage Flash",
+                "Hides the red flash on mobs and players when they take a hit. Cosmetic only.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.hideHurtOverlayEnabled,
+                v -> { AlpakaConfig.instance.hideHurtOverlayEnabled = v; AlpakaConfig.save(); },
+                "hurt damage red flash tint overlay hit mob entity hide"));
+
         OPTIONS.add(new ConfigOption("Camera", ConfigCategory.VISUALS));
 
         OPTIONS.add(new ConfigOption("render_hand_third_person", "Show Hand in 3rd Person",
@@ -392,6 +399,13 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.itemSwayDisabled,
                 v -> { AlpakaConfig.instance.itemSwayDisabled = v; AlpakaConfig.save(); },
                 "sway hand motion movement camera steady"));
+
+        OPTIONS.add(new ConfigOption("item_lighting_disabled", "Disable Item Lighting",
+                "Removes the directional shading on the held item so it stays evenly lit while moving or turning.",
+                ConfigCategory.VIEWMODEL,
+                () -> AlpakaConfig.instance.itemLightingDisabled,
+                v -> { AlpakaConfig.instance.itemLightingDisabled = v; AlpakaConfig.save(); },
+                "lighting light shading shadow flat unlit held item hand flicker"));
 
         OPTIONS.add(new ConfigOption("item_no_equip", "Disable Re-equip Animation",
                 "Disables lower re-equip animation when switching slots.",

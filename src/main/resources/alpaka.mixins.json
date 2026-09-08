@@ -27,7 +27,10 @@
     "LivingEntityRendererAccessor",
     "AvatarRendererMixin",
     "RenderPipelinesAccessor",
-    "RenderTypeInvoker"
+    "RenderTypeInvoker",
+    "LivingEntityRendererMixin",
+    "SubmitNodeCollectionMixin",
+    "ItemFeatureRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

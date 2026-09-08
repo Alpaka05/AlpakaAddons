@@ -24,6 +24,10 @@ public class AlpakaClient implements ClientModInitializer {
         CustomSoundFeature.register();
         SlayerDropTracker.registerEvents();
         net.alpaka.addons.features.slayer.SkyblockProfileTracker.INSTANCE.register();
+        // The slayer record waits for its folder when a cloud drive comes up after the game did;
+        // polled from the tick so the wait ends even while nothing reads the record.
+        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(
+                client -> net.alpaka.addons.config.AlpakaStats.retryLoadIfAwaiting());
         ZoomFeature.register();
         CommandWheelFeature.register();
         InventoryHudFeature.register();
@@ -185,6 +189,7 @@ public class AlpakaClient implements ClientModInitializer {
 
     /** Reports where the slayer record lives and whether it is actually there. */
     private static void printStatsLocation() {
+        net.alpaka.addons.config.AlpakaStats.retryLoadIfAwaiting();
         java.io.File file = net.alpaka.addons.config.AlpakaStats.file();
         boolean custom = !AlpakaConfig.instance.statsDirectory.isBlank();
 
@@ -192,9 +197,13 @@ public class AlpakaClient implements ClientModInitializer {
         SlayerDropTracker.sendModMessage(custom
                 ? "§8  custom folder - /alpakastats folder default to go back to the shared one"
                 : "§8  shared default - /alpakastats folder <path> to point it at a synced folder");
-        SlayerDropTracker.sendModMessage(file.exists()
-                ? "§8  file present (" + file.length() + " bytes)"
-                : "§8  no file yet; it is written on the next kill");
+        if (net.alpaka.addons.config.AlpakaStats.isAwaitingStore()) {
+            SlayerDropTracker.sendModMessage("§e  folder not available - drive not mounted? Kills wait in memory until it appears");
+        } else {
+            SlayerDropTracker.sendModMessage(file.exists()
+                    ? "§8  file present (" + file.length() + " bytes)"
+                    : "§8  no file yet; it is written on the next kill");
+        }
     }
 
     /**

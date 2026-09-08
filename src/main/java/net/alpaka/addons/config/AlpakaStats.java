@@ -145,6 +145,7 @@ public class AlpakaStats {
 
     /** The record for the account and profile in play, created on first use. */
     private static ProfileStats current() {
+        retryLoadIfAwaiting();
         String account = accountKey();
         Account entry = instance.accounts.computeIfAbsent(account, key -> new Account());
 
@@ -288,6 +289,17 @@ public class AlpakaStats {
     }
 
     public static void load() {
+        if (storeMissing()) {
+            // Google Drive's mount, and every other cloud drive, comes up some seconds after login;
+            // a game launched from the desktop straight after booting beats it. Reading nothing and
+            // starting from zero is what made a whole history look wiped. Wait instead.
+            awaitingStore = true;
+            AlpakaAddons.LOGGER.warn("Slayer stats folder {} is not there yet (drive not mounted?); "
+                    + "waiting for it before reading or writing the record", directory().getAbsolutePath());
+            return;
+        }
+        awaitingStore = false;
+
         File file = file();
         migrateLegacy(file);
 
@@ -308,6 +320,99 @@ public class AlpakaStats {
             if (account.profiles == null) account.profiles = new HashMap<>();
             if (UNKNOWN_PROFILE.equals(account.lastProfile)) account.lastProfile = null;
         }
+    }
+
+    /**
+     * True while the record could not be read at start-up because its folder was not there.
+     *
+     * Only ever set for a folder the player chose: the default folder is created on demand and its
+     * absence just means first use, but a chosen folder existed when it was chosen (the command checks),
+     * so its absence means the drive behind it has not come up yet. While this is set nothing is
+     * written, so a missing drive can never be "fixed" by a fresh empty record appearing on it, and
+     * kills made in the meantime stay in memory until the folder shows up.
+     */
+    private static boolean awaitingStore = false;
+
+    private static long nextStoreCheckNanos = 0L;
+
+    /** Whether a folder the player chose is not reachable right now. */
+    private static boolean storeMissing() {
+        String override = AlpakaConfig.instance.statsDirectory;
+        if (override == null || override.isBlank()) return false;
+        return !directory().isDirectory();
+    }
+
+    /**
+     * Reads the record once its folder turns up, and folds what this session did meanwhile into it.
+     *
+     * Called from every read and write of the record, which happens every frame while the HUD is
+     * on, so the filesystem is only asked every couple of seconds.
+     */
+    public static void retryLoadIfAwaiting() {
+        if (!awaitingStore) return;
+        long now = System.nanoTime();
+        if (now < nextStoreCheckNanos) return;
+        nextStoreCheckNanos = now + 2_000_000_000L;
+        if (storeMissing()) return;
+
+        AlpakaStats session = instance;
+        instance = new AlpakaStats();
+        load();
+        if (awaitingStore) {
+            instance = session;
+            return;
+        }
+
+        int folded = foldInto(instance, session);
+        AlpakaAddons.LOGGER.info("Slayer stats folder {} is available now; loaded the record and folded {} kills from this session into it",
+                directory().getAbsolutePath(), folded);
+        SlayerDropTracker.sendModMessage("§aSlayer stats folder is available again; the record was loaded"
+                + (folded > 0 ? " and §f" + folded + "§a kills from this session were added." : "."));
+        save();
+    }
+
+    /** Adds every account and profile of {@code from} to {@code into}; returns the kills moved. */
+    private static int foldInto(AlpakaStats into, AlpakaStats from) {
+        int moved = 0;
+        if (from == null || from.accounts == null) return 0;
+        for (Map.Entry<String, Account> accountEntry : from.accounts.entrySet()) {
+            Account theirs = accountEntry.getValue();
+            if (theirs == null || theirs.profiles == null) continue;
+            Account ours = into.accounts.computeIfAbsent(accountEntry.getKey(), key -> new Account());
+            if (ours.profiles == null) ours.profiles = new HashMap<>();
+            if (theirs.lastProfile != null) ours.lastProfile = theirs.lastProfile;
+
+            for (Map.Entry<String, ProfileStats> profileEntry : theirs.profiles.entrySet()) {
+                ProfileStats source = profileEntry.getValue();
+                if (source == null || source.slayerBossMap == null) continue;
+                ProfileStats target = ours.profiles.computeIfAbsent(profileEntry.getKey(), key -> new ProfileStats());
+                for (Map.Entry<SlayerType, AlpakaConfig.SlayerData> e : source.slayerBossMap.entrySet()) {
+                    AlpakaConfig.SlayerData data = e.getValue();
+                    if (data == null) continue;
+                    moved += data.kills;
+                    mergeInto(target.slayerBossMap.computeIfAbsent(e.getKey(), key -> new AlpakaConfig.SlayerData()), data);
+                }
+            }
+        }
+        return moved;
+    }
+
+    private static long lastStoreMissingNoticeMs = 0L;
+
+    /** Tells the player, at most every few minutes, that kills are waiting for the folder to appear. */
+    private static void warnStoreMissing() {
+        long now = System.currentTimeMillis();
+        if (now - lastStoreMissingNoticeMs < SAVE_FAILURE_NOTICE_INTERVAL_MS) return;
+        lastStoreMissingNoticeMs = now;
+        AlpakaAddons.LOGGER.warn("Slayer stats not saved: folder {} is still not there", directory().getAbsolutePath());
+        SlayerDropTracker.sendModMessage("§eSlayer stats folder is not available: §f" + directory().getAbsolutePath());
+        SlayerDropTracker.sendModMessage("§7Is the drive mounted? Kills are kept in memory and written as soon as the folder appears. "
+                + "§f/alpakastats folder default §7switches to the shared folder instead.");
+    }
+
+    /** Whether the record is waiting for its folder to appear. */
+    public static boolean isAwaitingStore() {
+        return awaitingStore;
     }
 
     /**
@@ -352,6 +457,12 @@ public class AlpakaStats {
      * short of a server would.
      */
     public static void save() {
+        retryLoadIfAwaiting();
+        if (awaitingStore) {
+            warnStoreMissing();
+            return;
+        }
+
         File file = file();
         File dir = file.getParentFile();
         if (dir != null) dir.mkdirs();

@@ -1,6 +1,7 @@
 package net.alpaka.addons.features.cosmetics
 
 import com.mojang.blaze3d.vertex.PoseStack
+import net.alpaka.addons.config.AlpakaConfig
 import net.minecraft.client.model.player.PlayerModel
 import net.minecraft.client.renderer.SubmitNodeCollector
 import net.minecraft.client.renderer.entity.RenderLayerParent
@@ -33,10 +34,18 @@ class ChromaHatLayer(parent: RenderLayerParent<AvatarRenderState, PlayerModel>) 
         if (!ChromaHatFeature.shouldRender(state)) return
 
         val wearingHelmet = !state.headEquipment.isEmpty
+        // Chroma glows on its own and ignores world light; the plain hat is lit like the rest of the
+        // model, so a dark cave darkens it too.
+        val rainbow = AlpakaConfig.instance.chromaHatRainbow
+        val renderType = if (rainbow) {
+            RenderTypes.entityTranslucentEmissive(ChromaHatFeature.TEXTURE)
+        } else {
+            RenderTypes.entityTranslucent(ChromaHatFeature.TEXTURE)
+        }
         poseStack.pushPose()
         parentModel.head.translateAndRotate(poseStack)
-        collector.submitCustomGeometry(poseStack, RenderTypes.entityTranslucentEmissive(ChromaHatFeature.TEXTURE)) { pose, consumer ->
-            ChromaHatFeature.emit(pose, consumer, wearingHelmet)
+        collector.submitCustomGeometry(poseStack, renderType) { pose, consumer ->
+            ChromaHatFeature.emit(pose, consumer, wearingHelmet, rainbow, packedLight)
         }
         poseStack.popPose()
     }

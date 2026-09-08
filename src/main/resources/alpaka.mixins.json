@@ -28,6 +28,7 @@
     "LivingEntityRendererAccessor",
     "AvatarRendererMixin",
     "AvatarRenderStateMixin",
+    "AbstractSoundInstanceAccessor",
     "LivingEntityRendererMixin",
     "SubmitNodeCollectionMixin",
     "ItemFeatureRendererMixin"

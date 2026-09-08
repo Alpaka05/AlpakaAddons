@@ -1,6 +1,7 @@
 package net.alpaka.addons.mixin;
 
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.features.etherwarp.EtherwarpOverlayFeature;
 import net.alpaka.addons.features.slayer.SlayerQuestDetector;
 import net.alpaka.addons.features.slayer.SlayerType;
 import net.alpaka.addons.features.sound.CustomSoundFeature;
@@ -41,6 +42,21 @@ public class SoundEngineMixin {
         if (sound == null || sound.getIdentifier() == null) return;
 
         Identifier id = sound.getIdentifier();
+
+        // The Etherwarp cue has its own toggle rather than living under Custom Sounds, so it is
+        // resolved ahead of tryReplace, which is gated on that master switch. The pitch comes from
+        // the raw field: getPitch() needs the resolved sound, which does not exist yet at HEAD.
+        if (sound instanceof AbstractSoundInstanceAccessor raw
+                && EtherwarpOverlayFeature.isOwnWarpSound(id, raw.alpaka$rawPitch(), sound.getX(), sound.getY(), sound.getZ())) {
+            IS_INTERNAL_PLAY = true;
+            try {
+                EtherwarpOverlayFeature.playWarpSound();
+            } finally {
+                IS_INTERNAL_PLAY = false;
+            }
+            cir.setReturnValue(SoundEngine.PlayResult.STARTED);
+            return;
+        }
 
         // Replacements are resolved BEFORE any silencing. Every custom sound in this mod is
         // triggered by the vanilla sound it stands in for, so silencing first threw away the

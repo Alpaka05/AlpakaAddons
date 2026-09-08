@@ -1,4 +1,10 @@
 {
+  "etherwarp": {
+    "category": "master",
+    "sounds": [
+      "alpaka:etherwarp"
+    ]
+  },
   "button_click": {
     "category": "master",
     "sounds": [

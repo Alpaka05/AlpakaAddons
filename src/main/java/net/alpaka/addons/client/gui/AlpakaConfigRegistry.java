@@ -8,6 +8,7 @@ import net.alpaka.addons.client.ItemSwingConfigScreen;
 import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.blaze.BlazeScaleFeature;
+import net.alpaka.addons.features.etherwarp.EtherwarpOverlayFeature;
 import net.alpaka.addons.features.nametag.CustomNameTagFeature;
 import net.alpaka.addons.features.notification.AlpakaNotifications;
 import net.alpaka.addons.features.playerscale.PlayerScaleFeature;
@@ -763,12 +764,36 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.etherwarpLineEnabled = v; AlpakaConfig.save(); },
                 "etherwarp line tracer path feet target"));
 
+        OPTIONS.add(new ConfigOption("etherwarp_line_width", "Line Thickness",
+                "Width of the line to the target.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.etherwarpLineWidth,
+                v -> { AlpakaConfig.instance.etherwarpLineWidth = v; AlpakaConfig.save(); },
+                1.0f, 12.0f, val -> String.format(Locale.ROOT, "%.0f", val),
+                "etherwarp line thickness width thin thick"));
+
         OPTIONS.add(new ConfigOption("etherwarp_sound", "Custom Warp Sound",
                 "Plays the mod's own sound instead of Hypixel's when you warp.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.etherwarpSoundEnabled,
                 v -> { AlpakaConfig.instance.etherwarpSoundEnabled = v; AlpakaConfig.save(); },
                 "etherwarp sound custom teleport audio warp"));
+
+        OPTIONS.add(new ConfigOption("etherwarp_sound_type", "Warp Sound",
+                "Which sound plays. Whoosh sweeps down, Pling and Chime ring, Thud is dull and short, Pop is a blip. Plays a preview when changed.",
+                ConfigCategory.SKYBLOCK,
+                () -> (float) AlpakaConfig.instance.etherwarpSoundIndex,
+                v -> {
+                    int index = Math.round(v);
+                    if (index != AlpakaConfig.instance.etherwarpSoundIndex) {
+                        AlpakaConfig.instance.etherwarpSoundIndex = index;
+                        AlpakaConfig.save();
+                        EtherwarpOverlayFeature.previewWarpSound();
+                    }
+                },
+                0.0f, (float) (EtherwarpOverlayFeature.SOUND_NAMES.length - 1),
+                val -> EtherwarpOverlayFeature.SOUND_NAMES[Math.round(val)],
+                "etherwarp sound type whoosh pling thud chime pop bell dull"));
 
         OPTIONS.add(new ConfigOption("etherwarp_sound_volume", "Warp Sound Volume",
                 "Volume of the custom warp sound.",

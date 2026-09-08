@@ -261,10 +261,13 @@ public class AlpakaConfig {
     public boolean etherwarpOverlayFill = false;
     public float etherwarpOverlayThickness = 2.0f;
     public boolean etherwarpOverlayThroughWalls = false;
-    /** A line from the player's feet to the target block. */
+    /** A line from the player's feet to the target block. Always drawn on top, so it never vanishes into terrain. */
     public boolean etherwarpLineEnabled = false;
+    public float etherwarpLineWidth = 5.0f;
     /** Replace Hypixel's warp sound with the mod's own. Independent of the Custom Sounds toggle. */
     public boolean etherwarpSoundEnabled = false;
+    /** Index into {@code EtherwarpOverlayFeature.SOUND_NAMES}: whoosh, pling, thud, chime, pop. */
+    public int etherwarpSoundIndex = 0;
     public float etherwarpSoundVolume = 1.0f;
 
     // Inventory HUD. Shows the 27 main-inventory slots on screen; position and scale are set in

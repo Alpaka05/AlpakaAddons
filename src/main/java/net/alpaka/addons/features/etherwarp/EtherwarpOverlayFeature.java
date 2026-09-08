@@ -16,6 +16,7 @@ import net.minecraft.gizmos.Gizmos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.ARGB;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
@@ -125,8 +126,8 @@ public final class EtherwarpOverlayFeature {
     /** The fill, when on, is this fraction of the outline's alpha. */
     private static final float FILL_ALPHA = 0.35f;
 
-    /** Width of the line to the target, in the gizmo renderer's line units. */
-    private static final float LINE_WIDTH = 2.0f;
+    /** Names for the config slider, indexed like {@code CustomSoundFeature.ETHERWARP_SOUNDS}. */
+    public static final String[] SOUND_NAMES = {"Whoosh", "Pling", "Thud", "Chime", "Pop"};
 
     /** How far off the block faces the box is drawn, so it does not z-fight with them. */
     private static final double BOX_INFLATE = 0.003;
@@ -182,7 +183,9 @@ public final class EtherwarpOverlayFeature {
             Vec3 feet = player.getPosition(partialTick);
             double top = target.shape.max(Direction.Axis.Y);
             Vec3 to = new Vec3(target.pos.getX() + 0.5, target.pos.getY() + top, target.pos.getZ() + 0.5);
-            onTop(Gizmos.line(feet, to, color, LINE_WIDTH), onTop);
+            // Always on top, whatever the box does: a line from the feet skims the ground for most of
+            // its length, and with the depth test on it kept vanishing into every rise in the terrain.
+            Gizmos.line(feet, to, color, cfg.etherwarpLineWidth).setAlwaysOnTop();
         }
     }
 
@@ -364,11 +367,18 @@ public final class EtherwarpOverlayFeature {
         return SkyblockUtils.isOnSkyblock();
     }
 
-    /** Plays the mod's warp sound. Independent of the Custom Sounds master toggle on purpose. */
+    /** Plays the selected warp sound. Independent of the Custom Sounds master toggle on purpose. */
     public static void playWarpSound() {
-        Minecraft mc = Minecraft.getInstance();
-        if (CustomSoundFeature.ETHERWARP_SOUND == null) return;
+        var sounds = CustomSoundFeature.ETHERWARP_SOUNDS;
+        if (sounds.length == 0) return;
+        int index = Mth.clamp(AlpakaConfig.instance.etherwarpSoundIndex, 0, sounds.length - 1);
+        if (sounds[index] == null) return;
         float volume = AlpakaConfig.instance.etherwarpSoundVolume;
-        mc.getSoundManager().play(SimpleSoundInstance.forUI(CustomSoundFeature.ETHERWARP_SOUND, 1.0f, volume));
+        Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(sounds[index], 1.0f, volume));
+    }
+
+    /** Previews the selected sound, for the config slider. */
+    public static void previewWarpSound() {
+        playWarpSound();
     }
 }

@@ -1,7 +1,10 @@
 package net.alpaka.addons.mixin;
 
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.features.viewmodel.HandItemLightingFeature;
 import net.minecraft.client.Minecraft;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.ItemInHandRenderer;
@@ -233,6 +236,25 @@ public class ItemInHandRendererMixin {
             this.oMainHandHeight = 1.0f;
             this.oOffHandHeight = 1.0f;
         }
+    }
+
+    @Unique
+    private static final String ALPAKA$ITEM_STATE_SUBMIT =
+            "Lnet/minecraft/client/renderer/item/ItemStackRenderState;submit(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;III)V";
+
+    // Everything the item state submits between these two points is one first-person hand item,
+    // which is how the hand item lighting feature tells those submits apart from every other item
+    // in the world (this method also serves third-person held items, filtered out by context).
+    @Inject(method = "renderItem", at = @At(value = "INVOKE", target = ALPAKA$ITEM_STATE_SUBMIT))
+    private void alpaka$beforeHandItemSubmit(LivingEntity entity, ItemStack stack, ItemDisplayContext context,
+                                             PoseStack poseStack, SubmitNodeCollector collector, int light, CallbackInfo ci) {
+        HandItemLightingFeature.beginHandItem(entity, context);
+    }
+
+    @Inject(method = "renderItem", at = @At(value = "INVOKE", target = ALPAKA$ITEM_STATE_SUBMIT, shift = At.Shift.AFTER))
+    private void alpaka$afterHandItemSubmit(LivingEntity entity, ItemStack stack, ItemDisplayContext context,
+                                            PoseStack poseStack, SubmitNodeCollector collector, int light, CallbackInfo ci) {
+        HandItemLightingFeature.endHandItem();
     }
 
     private float getCustomSwingProgress(AbstractClientPlayer player, float originalProgress) {

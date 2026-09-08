@@ -26,7 +26,10 @@
     "BlazeModelMixin",
     "EntityRenderDispatcherMixin",
     "LivingEntityRendererAccessor",
-    "AvatarRendererMixin"
+    "AvatarRendererMixin",
+    "LivingEntityRendererMixin",
+    "SubmitNodeCollectionMixin",
+    "ItemFeatureRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

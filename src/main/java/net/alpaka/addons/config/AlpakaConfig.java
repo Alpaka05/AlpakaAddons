@@ -111,6 +111,8 @@ public class AlpakaConfig {
      */
     public boolean hideSlayerChatMessages = true;
     public boolean stopBlazeSpinning = true;
+    /** Hides the red hurt flash on mobs and players. Cosmetic only, the hit itself is untouched. */
+    public boolean hideHurtOverlayEnabled = false;
     public boolean smoothPerspectiveEnabled = true;
     public boolean disableFrontPerspective = false;
     public int smoothPerspectiveDurationMs = 350;
@@ -289,6 +291,8 @@ public class AlpakaConfig {
     public float itemRotationZ = 0.0f;
     public float itemSwingSpeed = 1.0f;
     public boolean itemSwayDisabled = false;
+    /** Drops the directional shading from the first-person held item; see HandItemLightingFeature. */
+    public boolean itemLightingDisabled = false;
     public boolean itemSwingTranslationDisabled = false;
     public boolean itemNoEquipEnabled = false;
     public boolean itemSwingAlwaysFinishEnabled = false;
@@ -398,6 +402,7 @@ public class AlpakaConfig {
         this.itemRotationZ = 0.0f;
         this.itemSwingSpeed = 1.0f;
         this.itemSwayDisabled = false;
+        this.itemLightingDisabled = false;
         this.itemSwingTranslationDisabled = false;
         this.itemNoEquipEnabled = false;
         this.itemSwingAlwaysFinishEnabled = false;
@@ -534,6 +539,7 @@ public class AlpakaConfig {
         this.cleanBlazeEnabled = false;
         this.hideSlayerChatMessages = false;
         this.stopBlazeSpinning = false;
+        this.hideHurtOverlayEnabled = false;
         this.smoothPerspectiveEnabled = false;
         this.disableFrontPerspective = false;
         this.customSoundsEnabled = false;
@@ -581,6 +587,7 @@ public class AlpakaConfig {
         this.guildPrefixEnabled = false;
         this.itemSizeFeatureEnabled = false;
         this.itemSwayDisabled = false;
+        this.itemLightingDisabled = false;
         this.itemSwingTranslationDisabled = false;
         this.itemNoEquipEnabled = false;
         this.itemSwingAlwaysFinishEnabled = false;

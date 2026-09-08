@@ -43,7 +43,13 @@ public final class HandItemLightingFeature {
     /** Whether the ItemSubmit currently being drawn by the feature renderer is one of ours. */
     private static boolean drawingUnlit = false;
 
-    private static RenderType unlitRenderType;
+    /**
+     * Unlit twins of the vanilla item sheets, keyed by the sheet they stand in for. Cached because
+     * BufferSource keys its buffers by render type, so a fresh instance per quad would open a new
+     * buffer every time.
+     */
+    private static RenderType unlitItemSheet;
+    private static RenderType unlitBlockItemSheet;
 
     public static boolean isEnabled() {
         return AlpakaConfig.instance.itemSizeFeatureEnabled && AlpakaConfig.instance.itemLightingDisabled;
@@ -77,16 +83,31 @@ public final class HandItemLightingFeature {
         UNLIT_SUBMITS.clear();
     }
 
-    /** Render type to draw the quad with; the original unless the current submit is a hand item. */
+    /**
+     * Render type to draw the quad with; the original unless the current submit is a hand item.
+     *
+     * Item sprites and block sprites live on two different atlases, and the quad UVs only make
+     * sense against the atlas their own render type binds. So the swap is done per vanilla sheet:
+     * the two item sheets get an unlit type on the items atlas, the two block-item sheets one on the
+     * blocks atlas. Anything else (a mod's own type, a special renderer) is left as it is; a shaded
+     * item beats one drawn with the wrong texture.
+     */
     public static RenderType pickRenderType(RenderType original) {
         if (!drawingUnlit) {
             return original;
         }
-        if (unlitRenderType == null) {
-            // Cached: BufferSource keys its buffers by render type, so a fresh instance per quad
-            // would open a new buffer every time.
-            unlitRenderType = RenderTypes.breezeWind(Sheets.BLOCKS_MAPPER.sheet(), 0.0f, 0.0f);
+        if (original == Sheets.cutoutItemSheet() || original == Sheets.translucentItemSheet()) {
+            if (unlitItemSheet == null) {
+                unlitItemSheet = RenderTypes.breezeWind(Sheets.ITEMS_MAPPER.sheet(), 0.0f, 0.0f);
+            }
+            return unlitItemSheet;
         }
-        return unlitRenderType;
+        if (original == Sheets.cutoutBlockItemSheet() || original == Sheets.translucentBlockItemSheet()) {
+            if (unlitBlockItemSheet == null) {
+                unlitBlockItemSheet = RenderTypes.breezeWind(Sheets.BLOCKS_MAPPER.sheet(), 0.0f, 0.0f);
+            }
+            return unlitBlockItemSheet;
+        }
+        return original;
     }
 }

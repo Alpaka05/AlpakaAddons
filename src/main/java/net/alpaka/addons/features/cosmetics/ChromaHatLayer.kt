@@ -34,14 +34,14 @@ class ChromaHatLayer(parent: RenderLayerParent<AvatarRenderState, PlayerModel>) 
         if (!ChromaHatFeature.shouldRender(state)) return
 
         val wearingHelmet = !state.headEquipment.isEmpty
-        // Chroma glows on its own and ignores world light; the plain hat is lit like the rest of the
-        // model, so a dark cave darkens it too.
+        // The item-target translucent type: what vanilla draws translucent items in the world with.
+        // The plain entity translucent types vanished wherever leaves stood behind the hat - they
+        // land in a target that the transparency pass composites after the cutout terrain has
+        // already claimed those pixels - while the item target is sorted against terrain correctly.
+        // Chroma glow comes from full-bright lightmap coordinates on the vertices rather than from an
+        // emissive type, which gives the same result and keeps the one render type for both looks.
         val rainbow = AlpakaConfig.instance.chromaHatRainbow
-        val renderType = if (rainbow) {
-            RenderTypes.entityTranslucentEmissive(ChromaHatFeature.TEXTURE)
-        } else {
-            RenderTypes.entityTranslucent(ChromaHatFeature.TEXTURE)
-        }
+        val renderType = RenderTypes.entityTranslucentCullItemTarget(ChromaHatFeature.TEXTURE)
         poseStack.pushPose()
         parentModel.head.translateAndRotate(poseStack)
         collector.submitCustomGeometry(poseStack, renderType) { pose, consumer ->

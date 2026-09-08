@@ -34,21 +34,24 @@ class ChromaHatLayer(parent: RenderLayerParent<AvatarRenderState, PlayerModel>) 
         if (!ChromaHatFeature.shouldRender(state)) return
 
         val wearingHelmet = !state.headEquipment.isEmpty
-        // The item-target translucent type: what vanilla draws translucent items in the world with.
-        // The plain entity translucent types vanished wherever leaves stood behind the hat - they
-        // land in a target that the transparency pass composites after the cutout terrain has
-        // already claimed those pixels - while the item target is sorted against terrain correctly.
-        // Chroma glow comes from full-bright lightmap coordinates on the vertices rather than from an
-        // emissive type, which gives the same result and keeps the one render type for both looks.
-        val rainbow = AlpakaConfig.instance.chromaHatRainbow
+        // Chroma glows on its own and ignores world light; the plain hat is lit like the rest of the
+        // model, so a dark cave darkens it too.
+        //
         // The weave texture is itself part-transparent (its alpha averages about 200 of 255), so a
         // translucent type can never make the hat fully opaque. At 100% opacity the solid type is
         // used instead, which ignores alpha altogether and is what "opaque" should mean here.
+        //
+        // Below 100% the plain entity translucent types are used, knowingly: they vanish where leaves
+        // stand behind the hat, because they land in a target the transparency pass composites after
+        // the cutout terrain. The item-target type does not have that problem but has the opposite
+        // one - the hat then shows through the leaves like an x-ray - which is worse. Anyone who
+        // wants the hat to hold up against foliage sets the opacity to 100%.
+        val rainbow = AlpakaConfig.instance.chromaHatRainbow
         val opaque = AlpakaConfig.instance.chromaHatOpacity >= 100f
-        val renderType = if (opaque) {
-            RenderTypes.entitySolid(ChromaHatFeature.TEXTURE)
-        } else {
-            RenderTypes.entityTranslucentCullItemTarget(ChromaHatFeature.TEXTURE)
+        val renderType = when {
+            opaque -> RenderTypes.entitySolid(ChromaHatFeature.TEXTURE)
+            rainbow -> RenderTypes.entityTranslucentEmissive(ChromaHatFeature.TEXTURE)
+            else -> RenderTypes.entityTranslucent(ChromaHatFeature.TEXTURE)
         }
         poseStack.pushPose()
         parentModel.head.translateAndRotate(poseStack)

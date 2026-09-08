@@ -3,6 +3,7 @@ package net.alpaka.addons.mixin;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.alpaka.addons.features.cosmetics.ChromaHatLayer;
 import net.alpaka.addons.features.nametag.CustomNameTagFeature;
+import net.alpaka.addons.features.playerscale.PlayerScaleFeature;
 import net.minecraft.client.model.player.PlayerModel;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
@@ -18,11 +19,50 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Hooks the player renderer for the two cosmetics: the chroma hat rides along as an extra render
- * layer, and the local player's own name tag is drawn by the mod instead of by vanilla.
+ * Hooks the player renderer for the cosmetics: the chroma hat rides along as an extra render layer,
+ * the local player's own name tag is drawn by the mod instead of by vanilla, and the player scale
+ * stretches or shrinks the model per axis.
  */
 @Mixin(AvatarRenderer.class)
 public class AvatarRendererMixin {
+
+    /**
+     * Decides, before vanilla fills the state, whether this player is drawn scaled, and records the
+     * answer on the state. HEAD rather than TAIL because vanilla's shadow extraction runs inside this
+     * method and asks {@code getShadowRadius}, which reads the answer.
+     *
+     * The descriptor is spelled out: the class also carries the erased bridges
+     * extractRenderState(LivingEntity, ...) and extractRenderState(Entity, ...).
+     */
+    @Inject(
+        method = "extractRenderState(Lnet/minecraft/world/entity/Avatar;Lnet/minecraft/client/renderer/entity/state/AvatarRenderState;F)V",
+        at = @At("HEAD")
+    )
+    private void alpaka$rememberPlayerScale(Avatar entity, AvatarRenderState state, float partialTick, CallbackInfo ci) {
+        PlayerScaleFeature.extract(entity, state);
+    }
+
+    /** Lifts the name tag attachment with the head, once vanilla has filled it in. */
+    @Inject(
+        method = "extractRenderState(Lnet/minecraft/world/entity/Avatar;Lnet/minecraft/client/renderer/entity/state/AvatarRenderState;F)V",
+        at = @At("TAIL")
+    )
+    private void alpaka$scaleNameTagAttachment(Avatar entity, AvatarRenderState state, float partialTick, CallbackInfo ci) {
+        PlayerScaleFeature.adjustNameTag(state);
+    }
+
+    /**
+     * Applies the per-axis scale on top of vanilla's uniform 0.9375. This runs after setupRotations
+     * and the y-flip, so the axes are the body's own, and before the translation onto the feet, so
+     * the model stays standing on the ground. See {@link PlayerScaleFeature}.
+     */
+    @Inject(
+        method = "scale(Lnet/minecraft/client/renderer/entity/state/AvatarRenderState;Lcom/mojang/blaze3d/vertex/PoseStack;)V",
+        at = @At("TAIL")
+    )
+    private void alpaka$applyPlayerScale(AvatarRenderState state, PoseStack poseStack, CallbackInfo ci) {
+        PlayerScaleFeature.applyScale(state, poseStack);
+    }
 
     /**
      * Both player renderers - wide and slim - are built through this constructor, so adding the

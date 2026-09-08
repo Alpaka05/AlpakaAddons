@@ -39,19 +39,28 @@ object InventoryHudRenderer {
      * Unscaled size of the chest panel, and where its three pieces come from in the texture.
      *
      * A container GUI is 176 wide however many rows it has, and vanilla draws a chest as one slab
-     * from the top of the texture followed by the player's own inventory. Neither piece is what the
-     * HUD wants: the first carries the band a chest keeps its title in, ten pixels of empty grey
-     * with nothing to put in it, and cut short it has a raw edge along the bottom.
-     *
-     * So the panel is built from three strips instead - the frame above the band, the three rows of
-     * slots, and the frame that closes the GUI off at its foot. The result is bordered on all four
-     * sides and no taller than the slots need.
+     * from the top of the texture followed by the player's own inventory. Cut short after the third
+     * row that slab has a raw edge along the bottom, so the panel is built from two pieces: the head
+     * of the GUI (frame, the band a chest keeps its title in, and the three rows of slots as one
+     * continuous run of the texture) and the frame that closes the GUI off at its foot. The result
+     * is what a small chest looks like when opened, bordered on all four sides, with the title band
+     * carrying "Inventory" where the real thing says "Chest".
      */
     private const val CHEST_WIDTH = 176
     private const val CHEST_FRAME_HEIGHT = 7
-    private const val CHEST_ROWS_V = 17
+    /** Frame plus title band: the slots start at row 17 of the texture. */
+    private const val CHEST_HEAD_HEIGHT = 17
     private const val CHEST_ROWS_HEIGHT = ROWS * PITCH
-    private const val CHEST_HEIGHT = CHEST_FRAME_HEIGHT * 2 + CHEST_ROWS_HEIGHT
+    private const val CHEST_HEIGHT = CHEST_HEAD_HEIGHT + CHEST_ROWS_HEIGHT + CHEST_FRAME_HEIGHT
+
+    /**
+     * The title, where and how a container screen puts its own: eight pixels in, six down, dark
+     * grey without a shadow (AbstractContainerScreen's titleLabelX/Y and the vanilla label colour).
+     */
+    private const val CHEST_TITLE = "Inventory"
+    private const val CHEST_TITLE_X = 8
+    private const val CHEST_TITLE_Y = 6
+    private const val CHEST_TITLE_COLOR = 0x404040
 
     /** Where the closing frame sits: the last rows of vanilla's 222-tall six-row chest GUI. */
     private const val CHEST_FOOT_V = 222 - CHEST_FRAME_HEIGHT
@@ -60,7 +69,7 @@ object InventoryHudRenderer {
     private const val FLAT_SLOT_X = PAD + 1
     private const val FLAT_SLOT_Y = PAD + 1
     private const val CHEST_SLOT_X = 8
-    private const val CHEST_SLOT_Y = CHEST_FRAME_HEIGHT + 1
+    private const val CHEST_SLOT_Y = CHEST_HEAD_HEIGHT + 1
 
     private fun chestStyle(): Boolean = AlpakaConfig.instance.inventoryHudVanillaTexture
 
@@ -175,22 +184,23 @@ object InventoryHudRenderer {
             // colour as the pack drew it and only the alpha does any work.
             if (backdropAlpha > 0) {
                 val tint = withAlpha(0xFFFFFF, backdropAlpha)
-                // The frame above the title band, the slots, then the frame from the foot of the
-                // GUI - the band itself is skipped, which is the only seam in the whole panel and
-                // falls between two rows of frame that are identical grey anyway.
+                // The head of the GUI with its title band and the slots in one piece, then the
+                // frame from the foot of the GUI. The only seam is above the foot, between two rows
+                // of frame that are identical grey anyway.
                 graphics.blit(
                     RenderPipelines.GUI_TEXTURED, CHEST_TEXTURE, 0, 0, 0.0f, 0.0f,
-                    CHEST_WIDTH, CHEST_FRAME_HEIGHT, CHEST_WIDTH, CHEST_FRAME_HEIGHT, SHEET, SHEET, tint
+                    CHEST_WIDTH, CHEST_HEAD_HEIGHT + CHEST_ROWS_HEIGHT,
+                    CHEST_WIDTH, CHEST_HEAD_HEIGHT + CHEST_ROWS_HEIGHT, SHEET, SHEET, tint
                 )
                 graphics.blit(
-                    RenderPipelines.GUI_TEXTURED, CHEST_TEXTURE, 0, CHEST_FRAME_HEIGHT,
-                    0.0f, CHEST_ROWS_V.toFloat(),
-                    CHEST_WIDTH, CHEST_ROWS_HEIGHT, CHEST_WIDTH, CHEST_ROWS_HEIGHT, SHEET, SHEET, tint
-                )
-                graphics.blit(
-                    RenderPipelines.GUI_TEXTURED, CHEST_TEXTURE, 0, CHEST_FRAME_HEIGHT + CHEST_ROWS_HEIGHT,
+                    RenderPipelines.GUI_TEXTURED, CHEST_TEXTURE, 0, CHEST_HEAD_HEIGHT + CHEST_ROWS_HEIGHT,
                     0.0f, CHEST_FOOT_V.toFloat(),
                     CHEST_WIDTH, CHEST_FRAME_HEIGHT, CHEST_WIDTH, CHEST_FRAME_HEIGHT, SHEET, SHEET, tint
+                )
+                // The title fades with the panel it sits on; on its own it would float in mid-air.
+                graphics.text(
+                    mc.font, CHEST_TITLE, CHEST_TITLE_X, CHEST_TITLE_Y,
+                    withAlpha(CHEST_TITLE_COLOR, backdropAlpha), false
                 )
             }
             // No accent frame in this style. The whole point is that the panel passes for a real

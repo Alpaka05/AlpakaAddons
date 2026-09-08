@@ -123,6 +123,9 @@ public class AlpakaConfig {
      */
     public boolean hideSlayerChatMessages = true;
     public boolean stopBlazeSpinning = true;
+    /** Draw blazes at {@link #blazeScale} times their size. Visual only, the hitbox stays vanilla. */
+    public boolean blazeScaleEnabled = false;
+    public float blazeScale = 1.0f;
     /** Hides the red hurt flash on mobs and players. Cosmetic only, the hit itself is untouched. */
     public boolean hideHurtOverlayEnabled = false;
     public boolean smoothPerspectiveEnabled = true;
@@ -553,6 +556,7 @@ public class AlpakaConfig {
         this.cleanBlazeEnabled = false;
         this.hideSlayerChatMessages = false;
         this.stopBlazeSpinning = false;
+        this.blazeScaleEnabled = false;
         this.hideHurtOverlayEnabled = false;
         this.smoothPerspectiveEnabled = false;
         this.disableFrontPerspective = false;

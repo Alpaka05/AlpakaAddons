@@ -7,6 +7,7 @@ import net.alpaka.addons.client.ItemSizeConfigScreen;
 import net.alpaka.addons.client.ItemSwingConfigScreen;
 import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.features.blaze.BlazeScaleFeature;
 import net.alpaka.addons.features.nametag.CustomNameTagFeature;
 import net.alpaka.addons.features.notification.AlpakaNotifications;
 import net.alpaka.addons.features.playerscale.PlayerScaleFeature;
@@ -105,6 +106,21 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.stopBlazeSpinning,
                 v -> { AlpakaConfig.instance.stopBlazeSpinning = v; AlpakaConfig.save(); },
                 "blaze rods spin spinning rotation animation stop mob"));
+
+        OPTIONS.add(new ConfigOption("blaze_scale", "Blaze Scale",
+                "Draws blazes bigger or smaller. Visual only, the hitbox stays vanilla.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.blazeScaleEnabled,
+                v -> { AlpakaConfig.instance.blazeScaleEnabled = v; AlpakaConfig.save(); },
+                "blaze scale size big small giant tiny mob slayer inferno demonlord"));
+
+        OPTIONS.add(new ConfigOption("blaze_scale_factor", "Blaze Size",
+                "Size of every blaze relative to vanilla. 1.00x is vanilla.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.blazeScale,
+                v -> { AlpakaConfig.instance.blazeScale = BlazeScaleFeature.snap(v); AlpakaConfig.save(); },
+                BlazeScaleFeature.MIN_SCALE, BlazeScaleFeature.MAX_SCALE, val -> String.format(Locale.ROOT, "%.2fx", val),
+                "blaze scale size factor big small"));
 
         OPTIONS.add(new ConfigOption("hide_hurt_overlay", "Hide Damage Flash",
                 "Hides the red flash on mobs and players when they take a hit. Cosmetic only.",

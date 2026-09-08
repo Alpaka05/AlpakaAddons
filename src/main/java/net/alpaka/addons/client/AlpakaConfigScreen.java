@@ -449,6 +449,9 @@ public class AlpakaConfigScreen extends Screen {
                                     case "menu_accent_color" -> net.alpaka.addons.config.AlpakaConfig.instance.menuAccentColor;
                                     case "block_fill_color" -> net.alpaka.addons.config.AlpakaConfig.instance.blockFillColor;
                                     case "pangolin_highlight_color" -> net.alpaka.addons.config.AlpakaConfig.instance.pangolinHighlightColor;
+                                    case "chroma_hat_color" -> net.alpaka.addons.config.AlpakaConfig.instance.chromaHatColor;
+                                    case "etherwarp_overlay_color" -> net.alpaka.addons.config.AlpakaConfig.instance.etherwarpOverlayColor;
+                                    case "etherwarp_fail_color" -> net.alpaka.addons.config.AlpakaConfig.instance.etherwarpOverlayFailColor;
                                     default -> net.alpaka.addons.config.AlpakaConfig.instance.blockOutlineColor;
                                 };
                                 ModernGuiUtils.drawModernColorButton(graphics, this.font, widgetX, widgetY, widgetW, widgetH, colorVal, isWidgetHovered);

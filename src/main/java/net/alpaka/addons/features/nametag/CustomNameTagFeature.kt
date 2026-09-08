@@ -87,6 +87,9 @@ object CustomNameTagFeature {
     /**
      * True while `EntityRenderDispatcher.extractEntity` is running, i.e. while the state being
      * filled belongs to an entity the world is about to draw rather than to a GUI preview.
+     *
+     * The player scale feature reads this too, for the same reason: it must not stretch the
+     * inventory preview.
      */
     @JvmStatic
     var extractingWorldEntity: Boolean = false

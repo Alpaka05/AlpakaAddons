@@ -71,6 +71,18 @@ public class AlpakaConfig {
     public float chromaHatSpeed = 1.0f;
     /** Raises (positive) or lowers the hat from where it rests on the head, in blocks. */
     public float chromaHatHeightOffset = 0.0f;
+
+    // Player scale. The model is drawn stretched or shrunk per axis, in the world only; the hitbox,
+    // eye height, camera and reach are untouched, and nothing is sent, so nobody else sees it.
+    public boolean playerScaleEnabled = false;
+    /** Width across the shoulders, as a factor of vanilla. */
+    public float playerScaleX = 1.0f;
+    /** Height, feet to head. The feet stay on the ground. */
+    public float playerScaleY = 1.0f;
+    /** Depth, front to back. */
+    public float playerScaleZ = 1.0f;
+    /** Draw every other player at the same scale too, not only the player's own model. */
+    public boolean playerScaleOthers = false;
     /**
      * Whether a notice slides in when somebody says the player's name in chat.
      *
@@ -532,6 +544,8 @@ public class AlpakaConfig {
         this.nameTagShadowEnabled = false;
         this.nameTagChromaBorderEnabled = false;
         this.chromaHatEnabled = false;
+        this.playerScaleEnabled = false;
+        this.playerScaleOthers = false;
         this.pangolinHighlightEnabled = false;
         this.fullbrightEnabled = false;
         this.inventorySnowEnabled = false;

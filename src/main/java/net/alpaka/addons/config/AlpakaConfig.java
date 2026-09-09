@@ -307,6 +307,14 @@ public class AlpakaConfig {
 
     // Chat options
     public boolean expandChatHistory = true;
+    /** Hold the Peek Chat key to see the whole chat, scrollable, without opening it. */
+    public boolean chatPeekEnabled = true;
+    /** Open, Copy and Delete buttons on the screenshot notice instead of vanilla's line. */
+    public boolean betterScreenshotMessageEnabled = true;
+    /** All / Party / Guild / PMs tabs above the chat input. */
+    public boolean chatTabsEnabled = true;
+    /** With chat tabs: a plain message typed on a channel tab goes to that channel (/pc, /gc, /r). */
+    public boolean chatTabsSendToChannel = false;
 
     // Quick Command Menu options
     public java.util.List<String> commandWheelCommands = new java.util.ArrayList<>(java.util.List.of(
@@ -626,6 +634,10 @@ public class AlpakaConfig {
         this.etherwarpLineEnabled = false;
         this.etherwarpSoundEnabled = false;
         this.expandChatHistory = false;
+        this.chatPeekEnabled = false;
+        this.betterScreenshotMessageEnabled = false;
+        this.chatTabsEnabled = false;
+        this.chatTabsSendToChannel = false;
         this.inventoryHudEnabled = false;
         this.bridgeBotFormatterEnabled = false;
         this.guildPrefixEnabled = false;

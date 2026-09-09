@@ -1,5 +1,6 @@
 package net.alpaka.addons.mixin;
 
+import net.alpaka.addons.features.chat.ChatPeekFeature;
 import net.alpaka.addons.features.zoom.ZoomFeature;
 import net.minecraft.client.MouseHandler;
 import org.spongepowered.asm.mixin.Mixin;
@@ -15,6 +16,11 @@ public class MouseHandlerMixin {
             if (yoffset != 0) {
                 ZoomFeature.onMouseScroll(yoffset);
             }
+            info.cancel();
+            return;
+        }
+        // Scrolls the held-open chat instead of the hotbar.
+        if (ChatPeekFeature.onScroll(yoffset)) {
             info.cancel();
         }
     }

@@ -208,6 +208,34 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.mentionNotificationEnabled = v; AlpakaConfig.save(); },
                 "mention notification popup toast chat name ping alert"));
 
+        OPTIONS.add(new ConfigOption("chat_peek", "Chat Peek",
+                "Hold the Peek Chat key to read the whole chat while playing and scroll it with the mouse wheel. Set the key under Options > Controls.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatPeekEnabled,
+                v -> { AlpakaConfig.instance.chatPeekEnabled = v; AlpakaConfig.save(); },
+                "chat peek hold key read scroll history keybind open bigger larger"));
+
+        OPTIONS.add(new ConfigOption("better_screenshot_message", "Better Screenshot Message",
+                "Replaces the screenshot notice with Open, Copy and Delete buttons.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.betterScreenshotMessageEnabled,
+                v -> { AlpakaConfig.instance.betterScreenshotMessageEnabled = v; AlpakaConfig.save(); },
+                "screenshot message notice open copy delete clipboard f2 buttons"));
+
+        OPTIONS.add(new ConfigOption("chat_tabs", "Chat Tabs",
+                "All, Party, Guild and PMs tabs above the chat input. Works with the custom guild tag.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatTabsEnabled,
+                v -> { AlpakaConfig.instance.chatTabsEnabled = v; AlpakaConfig.save(); },
+                "chat tabs party guild pm private messages filter channel switch"));
+
+        OPTIONS.add(new ConfigOption("chat_tabs_send_to_channel", "Send To Tab Channel",
+                "A plain message typed on the Party, Guild or PMs tab goes to that channel (/pc, /gc, /r).",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatTabsSendToChannel,
+                v -> { AlpakaConfig.instance.chatTabsSendToChannel = v; AlpakaConfig.save(); },
+                "chat tabs send channel prefix party guild reply pc gc r"));
+
         OPTIONS.add(new ConfigOption("Mod Menus", ConfigCategory.VISUALS));
 
         OPTIONS.add(new ConfigOption("custom_escape_menu", "Custom Escape Menu",
@@ -971,7 +999,7 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Guild Chat", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("guild_prefix", "Custom Guild Tag",
-                "Your own tag instead of \"Guild >\". §cCurrently breaks chat tab mods.",
+                "Your own tag instead of \"Guild >\". Works with the mod's Chat Tabs; §cmay break other chat tab mods.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.guildPrefixEnabled,
                 v -> { AlpakaConfig.instance.guildPrefixEnabled = v; AlpakaConfig.save(); },

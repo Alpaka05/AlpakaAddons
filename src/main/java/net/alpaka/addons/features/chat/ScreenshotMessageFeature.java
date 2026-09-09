@@ -28,9 +28,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 /**
- * Replaces "Saved screenshot as ..." with a line that carries Open, Copy and Delete buttons.
+ * What happens to the "Saved screenshot as ..." notice: the line with Open, Copy and Delete buttons,
+ * and the automatic copy to the clipboard.
  *
  * ### How the buttons work
  *
@@ -50,6 +52,13 @@ import java.util.Optional;
  * the toolkit is first created, and nothing in the game creates one, so it is switched off right
  * before the first use; on a client where something else already brought AWT up headless the copy
  * fails and says so. macOS is left out entirely, since AWT and GLFW do not share its main thread.
+ *
+ * ### Auto copy
+ *
+ * With the auto copy toggle on, the copy starts the moment the notice arrives. When the button line
+ * is on as well, the notice is held back until the copy is done and then posted with "copied" - or
+ * the failure - at its end, so one line says everything and nothing is announced twice. With the
+ * vanilla notice kept, the copy is silent unless it fails.
  */
 public final class ScreenshotMessageFeature {
 
@@ -61,19 +70,47 @@ public final class ScreenshotMessageFeature {
     public static final Identifier COPY = Identifier.fromNamespaceAndPath(NAMESPACE, "screenshot/copy");
     public static final Identifier DELETE = Identifier.fromNamespaceAndPath(NAMESPACE, "screenshot/delete");
 
-    /** The replacement for a vanilla screenshot notice, or null to leave the message as it is. */
-    public static Component rewrite(Component message) {
-        if (!AlpakaConfig.instance.betterScreenshotMessageEnabled) return null;
-        if (!(message.getContents() instanceof TranslatableContents contents)) return null;
-        if (!"screenshot.success".equals(contents.getKey())) return null;
-
+    /**
+     * Takes a message that is about to enter the chat and, if it is vanilla's screenshot notice,
+     * does what the toggles ask for. Returns true when the vanilla line must not be shown, because
+     * a replacement is posted through {@code repost} - now, or once the automatic copy has finished.
+     */
+    public static boolean handleNotice(Component message, Consumer<Component> repost) {
+        if (!(message.getContents() instanceof TranslatableContents contents)) return false;
+        if (!"screenshot.success".equals(contents.getKey())) return false;
         File file = fileOf(contents);
-        if (file == null) return null;
-        String name = file.getName();
+        if (file == null) return false;
 
+        boolean buttons = AlpakaConfig.instance.betterScreenshotMessageEnabled;
+        if (AlpakaConfig.instance.autoCopyScreenshots) {
+            copy(file, error -> {
+                if (buttons) {
+                    Component note = error == null
+                            ? Component.literal("copied").withStyle(ChatFormatting.DARK_GRAY)
+                            : Component.literal("copy failed").withStyle(ChatFormatting.RED);
+                    repost.accept(buttonLine(file, note));
+                } else if (error != null) {
+                    feedback("§cCouldn't copy the screenshot (" + error + ").");
+                }
+            });
+            return buttons;
+        }
+        if (buttons) {
+            repost.accept(buttonLine(file, null));
+            return true;
+        }
+        return false;
+    }
+
+    /** "Saved screenshot [Open] [Copy] [Delete]", with an optional note between the text and the buttons. */
+    private static Component buttonLine(File file, Component note) {
+        String name = file.getName();
         MutableComponent line = Component.literal("Saved screenshot").withStyle(style -> style
                 .withColor(ChatFormatting.GRAY)
                 .withHoverEvent(new HoverEvent.ShowText(Component.literal(name).withStyle(ChatFormatting.WHITE))));
+        if (note != null) {
+            line.append(" ").append(note);
+        }
         line.append(" ").append(button("[Open]", ChatFormatting.GREEN, new ClickEvent.OpenFile(file), "Open " + name));
         line.append(" ").append(button("[Copy]", ChatFormatting.AQUA, custom(COPY, name), "Copy the image to the clipboard"));
         line.append(" ").append(button("[Delete]", ChatFormatting.RED, custom(DELETE, name), "Delete " + name));
@@ -112,7 +149,9 @@ public final class ScreenshotMessageFeature {
         if (file == null) {
             feedback("§cThat screenshot link is not valid.");
         } else if (COPY.equals(event.id())) {
-            copy(file);
+            copy(file, error -> feedback(error == null
+                    ? "§aScreenshot copied to the clipboard."
+                    : "§cCouldn't copy the screenshot (" + error + ")."));
         } else if (DELETE.equals(event.id())) {
             delete(file);
         }
@@ -128,16 +167,20 @@ public final class ScreenshotMessageFeature {
         return new File(folder, name);
     }
 
-    private static void copy(File file) {
+    /**
+     * Puts the image on the system clipboard, off the render thread, and reports back with null or a
+     * short reason for the failure. The callback may run on any thread.
+     */
+    private static void copy(File file, Consumer<String> done) {
         if (Util.getPlatform() == Util.OS.OSX) {
-            feedback("§cCopying screenshots is not supported on macOS.");
+            done.accept("not supported on macOS");
             return;
         }
         // Off the render thread: decoding a full-size screenshot takes a noticeable moment.
         Util.ioPool().execute(() -> {
             try {
                 if (!file.isFile()) {
-                    feedback("§cThat screenshot no longer exists.");
+                    done.accept("file not found");
                     return;
                 }
                 System.setProperty("java.awt.headless", "false");
@@ -149,10 +192,10 @@ public final class ScreenshotMessageFeature {
                 g.drawImage(decoded, 0, 0, null);
                 g.dispose();
                 Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new ImageTransferable(image), null);
-                feedback("§aScreenshot copied to the clipboard.");
+                done.accept(null);
             } catch (Throwable t) {
                 LOGGER.warn("Couldn't copy screenshot {} to the clipboard", file, t);
-                feedback("§cCouldn't copy the screenshot (" + t.getClass().getSimpleName() + ").");
+                done.accept(t.getClass().getSimpleName());
             }
         });
     }

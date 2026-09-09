@@ -6,6 +6,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.alpaka.addons.features.bridge.BridgeBotFormatter;
 import net.alpaka.addons.features.chat.ChatPeekFeature;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
+import net.alpaka.addons.features.chat.CompactChatFeature;
 import net.alpaka.addons.features.chat.ScreenshotMessageFeature;
 import net.alpaka.addons.features.guild.GuildPrefixFormatter;
 import net.alpaka.addons.features.slayer.SlayerChatFilter;
@@ -17,6 +18,8 @@ import net.minecraft.client.multiplayer.chat.GuiMessageSource;
 import net.minecraft.client.multiplayer.chat.GuiMessageTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MessageSignature;
+
+import java.util.List;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -31,6 +34,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(ChatComponent.class)
 public class ChatComponentMixin {
     @Shadow @Final private Minecraft minecraft;
+    @Shadow @Final private List<GuiMessage> allMessages;
+    @Shadow @Final private List<GuiMessage.Line> trimmedMessages;
+    @Shadow @Final private List<?> messageDeletionQueue;
 
     @ModifyConstant(
         method = {"<init>", "addMessageToDisplayQueue", "addMessageToQueue", "addRecentChat"},
@@ -99,18 +105,55 @@ public class ChatComponentMixin {
             ci.cancel();
             return;
         }
+        // The screenshot notice: replaced by the line with buttons, or held back until the automatic
+        // copy is done. The replacement comes back in through addClientSystemMessage, as a plain
+        // literal that this hook then lets through.
+        ChatComponent self = (ChatComponent) (Object) this;
+        if (ScreenshotMessageFeature.handleNotice(component,
+                replacement -> this.minecraft.execute(() -> self.addClientSystemMessage(replacement)))) {
+            ci.cancel();
+            return;
+        }
         // Only messages that actually reach the chat count towards a tab's unread number.
         ChatTabsFeature.onMessage(component);
     }
 
     /**
-     * Swaps vanilla's screenshot notice for the one with buttons. On the argument, so the stored
-     * message, the log line and the filters all see the replacement as the message itself.
+     * Compact chat, on the one place the record for a new message is built. Every filter that may
+     * cancel the message has run by now, and nothing has stored or laid it out yet - so a repeat can
+     * still take the previous copy out of both lists and go in with the counter in its place.
      */
-    @ModifyVariable(method = "addMessage", at = @At("HEAD"), argsOnly = true, ordinal = 0)
-    private Component alpaka$betterScreenshotMessage(Component component) {
-        Component rewritten = ScreenshotMessageFeature.rewrite(component);
-        return rewritten != null ? rewritten : component;
+    @WrapOperation(
+        method = "addMessage",
+        at = @At(value = "NEW", target = "net/minecraft/client/multiplayer/chat/GuiMessage")
+    )
+    private GuiMessage alpaka$compactRepeats(int addedTime, Component content, MessageSignature signature, GuiMessageSource source, GuiMessageTag tag, Operation<GuiMessage> original) {
+        Component stored = CompactChatFeature.compact(content, this.allMessages, this.trimmedMessages);
+        GuiMessage message = original.call(addedTime, stored, signature, source, tag);
+        CompactChatFeature.onAdded(message);
+        return message;
+    }
+
+    /**
+     * Keeps the chat across a disconnect while Expand Chat History is on.
+     *
+     * Leaving a server runs onDisconnected, whose clearMessages(true) wipes both the messages and
+     * the sent-message history; F3+D clears with false and is left alone, so the player can still
+     * empty the chat on purpose. The two things the call did besides clearing - flushing the delayed
+     * message queue and dropping pending deletions - still happen here.
+     */
+    @Inject(method = "clearMessages", at = @At("HEAD"), cancellable = true)
+    private void alpaka$keepHistoryAcrossServers(boolean history, CallbackInfo ci) {
+        if (history && AlpakaConfig.instance.expandChatHistory) {
+            this.minecraft.gui.chatListener().flushQueue();
+            this.messageDeletionQueue.clear();
+            ci.cancel();
+        }
+    }
+
+    @Inject(method = "clearMessages", at = @At("TAIL"))
+    private void alpaka$forgetCompactedMessage(boolean history, CallbackInfo ci) {
+        CompactChatFeature.forget();
     }
 
     /**

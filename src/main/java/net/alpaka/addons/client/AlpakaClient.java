@@ -29,6 +29,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(
                 client -> net.alpaka.addons.config.AlpakaStats.retryLoadIfAwaiting());
         ZoomFeature.register();
+        net.alpaka.addons.features.chat.ChatPeekFeature.register();
         CommandWheelFeature.register();
         InventoryHudFeature.register();
         net.alpaka.addons.features.notification.MentionNotifier.register();

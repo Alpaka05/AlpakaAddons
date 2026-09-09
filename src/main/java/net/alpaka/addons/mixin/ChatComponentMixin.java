@@ -1,26 +1,37 @@
 package net.alpaka.addons.mixin;
 
 import net.alpaka.addons.config.AlpakaConfig;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.alpaka.addons.features.bridge.BridgeBotFormatter;
+import net.alpaka.addons.features.chat.ChatPeekFeature;
+import net.alpaka.addons.features.chat.ChatTabsFeature;
+import net.alpaka.addons.features.chat.ScreenshotMessageFeature;
 import net.alpaka.addons.features.guild.GuildPrefixFormatter;
 import net.alpaka.addons.features.slayer.SlayerChatFilter;
 import net.alpaka.addons.features.slayer.SlayerDropTracker;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.ChatComponent;
 import net.minecraft.client.multiplayer.chat.GuiMessage;
 import net.minecraft.client.multiplayer.chat.GuiMessageSource;
 import net.minecraft.client.multiplayer.chat.GuiMessageTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MessageSignature;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(ChatComponent.class)
 public class ChatComponentMixin {
+    @Shadow @Final private Minecraft minecraft;
+
     @ModifyConstant(
         method = {"<init>", "addMessageToDisplayQueue", "addMessageToQueue", "addRecentChat"},
         constant = @Constant(intValue = 100)
@@ -86,6 +97,65 @@ public class ChatComponentMixin {
         if (SlayerDropTracker.shouldHideDropMessage(component)
                 || SlayerChatFilter.shouldCancelChatMessage(component.getString())) {
             ci.cancel();
+            return;
         }
+        // Only messages that actually reach the chat count towards a tab's unread number.
+        ChatTabsFeature.onMessage(component);
+    }
+
+    /**
+     * Swaps vanilla's screenshot notice for the one with buttons. On the argument, so the stored
+     * message, the log line and the filters all see the replacement as the message itself.
+     */
+    @ModifyVariable(method = "addMessage", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+    private Component alpaka$betterScreenshotMessage(Component component) {
+        Component rewritten = ScreenshotMessageFeature.rewrite(component);
+        return rewritten != null ? rewritten : component;
+    }
+
+    /**
+     * The chat tabs' filter, wrapped around both places a message is laid out into visible lines:
+     * on arrival and on the replay that rebuilds the lines after a resize or a tab switch.
+     *
+     * Wrapping the call rather than the method matters: this way the check sees the message as it
+     * is stored, before the formatGuildMessage hook above rewrites the copy that gets drawn, which
+     * is what lets a tab recognise guild chat that carries the custom guild tag on screen. The
+     * stored history is untouched either way, so switching tabs never loses a message.
+     */
+    @WrapOperation(
+        method = {"addMessage", "refreshTrimmedMessages"},
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/ChatComponent;addMessageToDisplayQueue(Lnet/minecraft/client/multiplayer/chat/GuiMessage;)V")
+    )
+    private void alpaka$onlyActiveTab(ChatComponent chat, GuiMessage message, Operation<Void> original) {
+        if (ChatTabsFeature.accepts(message)) {
+            original.call(chat, message);
+        }
+    }
+
+    /**
+     * Chat peek: while the key is held the HUD chat takes the focused height, so as many lines show
+     * as the chat screen would show.
+     */
+    @Inject(method = "getHeight()I", at = @At("HEAD"), cancellable = true)
+    private void alpaka$peekHeight(CallbackInfoReturnable<Integer> cir) {
+        if (ChatPeekFeature.isPeeking()) {
+            cir.setReturnValue(ChatComponent.getHeight(this.minecraft.options.chatHeightFocused().get()));
+        }
+    }
+
+    /**
+     * Chat peek: the HUD's background draw becomes the foreground one, which is every line at full
+     * opacity plus the scrollbar - the chat screen's look, without the chat screen.
+     */
+    @ModifyVariable(
+        method = "extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/client/gui/Font;IIILnet/minecraft/client/gui/components/ChatComponent$DisplayMode;Z)V",
+        at = @At("HEAD"),
+        argsOnly = true
+    )
+    private ChatComponent.DisplayMode alpaka$peekDisplayMode(ChatComponent.DisplayMode mode) {
+        if (mode == ChatComponent.DisplayMode.BACKGROUND && ChatPeekFeature.isPeeking()) {
+            return ChatComponent.DisplayMode.FOREGROUND;
+        }
+        return mode;
     }
 }

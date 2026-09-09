@@ -195,11 +195,18 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Chat", ConfigCategory.VISUALS));
 
         OPTIONS.add(new ConfigOption("expand_chat_history", "Expand Chat History",
-                "Increases chat history limit to store more past messages.",
+                "Keeps 5000 messages instead of 100, and keeps the chat when you leave a server and join again.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.expandChatHistory,
                 v -> { AlpakaConfig.instance.expandChatHistory = v; AlpakaConfig.save(); },
-                "chat history limit scroll log"));
+                "chat history limit scroll log keep disconnect rejoin server leave"));
+
+        OPTIONS.add(new ConfigOption("compact_chat", "Compact Chat",
+                "A message repeated right after itself becomes one line with (x2), (x3)... Hypixel's separator lines and blank lines are left alone.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.compactChatEnabled,
+                v -> { AlpakaConfig.instance.compactChatEnabled = v; AlpakaConfig.save(); },
+                "compact chat duplicate repeated messages merge counter spam x2 stack"));
 
         OPTIONS.add(new ConfigOption("mention_notification", "Chat Mentions",
                 "Slides in a notice when somebody says your name in chat.",
@@ -221,6 +228,13 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.betterScreenshotMessageEnabled,
                 v -> { AlpakaConfig.instance.betterScreenshotMessageEnabled = v; AlpakaConfig.save(); },
                 "screenshot message notice open copy delete clipboard f2 buttons"));
+
+        OPTIONS.add(new ConfigOption("auto_copy_screenshots", "Auto Copy Screenshots",
+                "Copies every screenshot to the clipboard as soon as it is taken.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.autoCopyScreenshots,
+                v -> { AlpakaConfig.instance.autoCopyScreenshots = v; AlpakaConfig.save(); },
+                "screenshot auto copy clipboard automatic f2 paste"));
 
         OPTIONS.add(new ConfigOption("chat_tabs", "Chat Tabs",
                 "All, Party, Guild and PMs tabs above the chat input. Works with the custom guild tag.",

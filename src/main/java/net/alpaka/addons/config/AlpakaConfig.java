@@ -311,6 +311,10 @@ public class AlpakaConfig {
     public boolean chatPeekEnabled = true;
     /** Open, Copy and Delete buttons on the screenshot notice instead of vanilla's line. */
     public boolean betterScreenshotMessageEnabled = true;
+    /** Every screenshot goes to the clipboard the moment it is taken. */
+    public boolean autoCopyScreenshots = false;
+    /** A message repeated right after itself becomes one line with (x2), (x3)... */
+    public boolean compactChatEnabled = true;
     /** All / Party / Guild / PMs tabs above the chat input. */
     public boolean chatTabsEnabled = true;
     /** With chat tabs: a plain message typed on a channel tab goes to that channel (/pc, /gc, /r). */
@@ -636,6 +640,8 @@ public class AlpakaConfig {
         this.expandChatHistory = false;
         this.chatPeekEnabled = false;
         this.betterScreenshotMessageEnabled = false;
+        this.autoCopyScreenshots = false;
+        this.compactChatEnabled = false;
         this.chatTabsEnabled = false;
         this.chatTabsSendToChannel = false;
         this.inventoryHudEnabled = false;

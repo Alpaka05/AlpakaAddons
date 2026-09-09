@@ -3,6 +3,7 @@ package net.alpaka.addons.mixin;
 import net.alpaka.addons.features.blaze.CleanBlazeFeature;
 import net.alpaka.addons.features.critters.PangolinHighlightFeature;
 import net.alpaka.addons.features.damagetags.DamageTagFeature;
+import net.alpaka.addons.features.mobdeath.HideMobDeathsFeature;
 import net.alpaka.addons.features.playerscale.PlayerScaleFeature;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.entity.EntityRenderer;
@@ -47,7 +48,8 @@ public class EntityRendererMixin<T extends Entity, S extends EntityRenderState> 
 
     @Inject(method = "shouldRender", at = @At("HEAD"), cancellable = true)
     private void filterBlazeEntities(T entity, Frustum frustum, double x, double y, double z, CallbackInfoReturnable<Boolean> info) {
-        if (CleanBlazeFeature.shouldHideEntity(entity) || DamageTagFeature.shouldHideEntity(entity)) {
+        if (CleanBlazeFeature.shouldHideEntity(entity) || DamageTagFeature.shouldHideEntity(entity)
+                || HideMobDeathsFeature.shouldHideEntity(entity)) {
             info.setReturnValue(false);
         }
     }

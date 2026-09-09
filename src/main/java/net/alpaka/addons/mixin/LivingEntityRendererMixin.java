@@ -1,6 +1,5 @@
 package net.alpaka.addons.mixin;
 
-import net.alpaka.addons.features.blaze.BlazeScaleFeature;
 import net.alpaka.addons.features.hurtoverlay.HurtOverlayFeature;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
@@ -23,7 +22,5 @@ public class LivingEntityRendererMixin {
         // TAIL: vanilla has just derived hasRedOverlay from hurtTime/deathTime, and nothing after
         // this point reads it before the layers are drawn.
         HurtOverlayFeature.apply(state);
-        // Also TAIL: state.scale has just been filled from the entity, and submit reads it later.
-        BlazeScaleFeature.apply(entity, state);
     }
 }

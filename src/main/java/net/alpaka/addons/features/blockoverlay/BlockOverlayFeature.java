@@ -12,8 +12,6 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-import java.util.List;
-
 public class BlockOverlayFeature {
 
     private static BlockPos lastTargetPos = null;
@@ -60,8 +58,7 @@ public class BlockOverlayFeature {
         VoxelShape shape = renderState.shape();
         if (shape == null || shape.isEmpty()) return;
 
-        List<AABB> boxes = boxesOf(shape);
-        if (boxes.isEmpty()) return;
+        AABB box = outerBoxOf(shape);
 
         long now = System.currentTimeMillis();
         if (now - lastRenderTime > 120L || lastTargetPos == null || !lastTargetPos.equals(pos)) {
@@ -126,15 +123,11 @@ public class BlockOverlayFeature {
         collector.submitCustomGeometry(poseStack, renderType, (pose, buffer) -> {
             // 1. Fill
             if (drawFill) {
-                for (AABB box : boxes) {
-                    drawFill(buffer, pose, box.inflate(0.001d), fillR, fillG, fillB, fillA);
-                }
+                drawFill(buffer, pose, box.inflate(0.001d), fillR, fillG, fillB, fillA);
             }
             // 2. Outline as 3D cuboids along each edge
             if (drawOutline) {
-                for (AABB box : boxes) {
-                    drawOutlineAsQuads(buffer, pose, box.inflate(0.002d), edgeThickness, outlineR, outlineG, outlineB, outlineA);
-                }
+                drawOutlineAsQuads(buffer, pose, box.inflate(0.002d), edgeThickness, outlineR, outlineG, outlineB, outlineA);
             }
         });
         poseStack.popPose();
@@ -148,21 +141,27 @@ public class BlockOverlayFeature {
     }
 
     private static VoxelShape cachedShape = null;
-    private static List<AABB> cachedBoxes = java.util.List.of();
+    private static AABB cachedBox = null;
 
     /**
-     * The shape's boxes, reusing the last result while the shape is unchanged.
+     * The one box that encloses the whole shape, reusing the last result while the shape is unchanged.
      *
-     * {@code toAabbs()} builds a fresh list on every call, and the targeted block usually stays the
+     * The overlay used to draw every box of {@code toAabbs()} separately. Shapes such as stairs,
+     * cauldrons or fences are unions of several boxes, and outlining each of them put lines along
+     * every seam where two boxes meet - a cauldron ended up as a cage of overlapping edges. Only the
+     * outer edges are wanted, so the shape's bounding box is drawn instead: twelve edges, however
+     * the shape is put together.
+     *
+     * {@code bounds()} allocates a fresh box on every call, and the targeted block usually stays the
      * same for many frames in a row - and block states share their shape instances, so even looking
      * at a different block of the same kind hits this.
      */
-    private static List<AABB> boxesOf(VoxelShape shape) {
+    private static AABB outerBoxOf(VoxelShape shape) {
         if (shape != cachedShape) {
             cachedShape = shape;
-            cachedBoxes = shape.toAabbs();
+            cachedBox = shape.bounds();
         }
-        return cachedBoxes;
+        return cachedBox;
     }
 
     private static void drawOutlineAsQuads(VertexConsumer buffer, PoseStack.Pose pose, AABB box, float t, float r, float g, float b, float a) {

@@ -16,7 +16,7 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * A translucent samurai hat - a jingasa, the wide, shallow straw hat - on the local
+ * A translucent sensei hat - a jingasa, the wide, shallow straw hat - on the local
  * player's head.
  *
  * Client-side cosmetic only. The geometry is built here and handed to the renderer every frame; no

@@ -63,7 +63,7 @@ public class AlpakaConfig {
     public int nameTagGradientStart = 0xFF55FFFF;
     public int nameTagGradientEnd = 0xFFFF55FF;
 
-    /** A translucent samurai hat on the player's own head. Plain straw by default; see chromaHatRainbow. */
+    /** A translucent sensei hat on the player's own head. Plain straw by default; see chromaHatRainbow. */
     public boolean chromaHatEnabled = false;
     /** Rainbow colours sweeping around the hat, self-lit, instead of the plain colour. */
     public boolean chromaHatRainbow = false;
@@ -127,11 +127,10 @@ public class AlpakaConfig {
      */
     public boolean hideSlayerChatMessages = true;
     public boolean stopBlazeSpinning = true;
-    /** Draw blazes at {@link #blazeScale} times their size. Visual only, the hitbox stays vanilla. */
-    public boolean blazeScaleEnabled = false;
-    public float blazeScale = 1.0f;
     /** Hides the red hurt flash on mobs and players. Cosmetic only, the hit itself is untouched. */
     public boolean hideHurtOverlayEnabled = false;
+    /** Stops drawing a mob the moment it dies, skipping vanilla's tip-over. Cosmetic only. */
+    public boolean hideMobDeathsEnabled = false;
     public boolean smoothPerspectiveEnabled = true;
     public boolean disableFrontPerspective = false;
     public int smoothPerspectiveDurationMs = 350;
@@ -580,8 +579,8 @@ public class AlpakaConfig {
         this.cleanBlazeEnabled = false;
         this.hideSlayerChatMessages = false;
         this.stopBlazeSpinning = false;
-        this.blazeScaleEnabled = false;
         this.hideHurtOverlayEnabled = false;
+        this.hideMobDeathsEnabled = false;
         this.smoothPerspectiveEnabled = false;
         this.disableFrontPerspective = false;
         this.customSoundsEnabled = false;

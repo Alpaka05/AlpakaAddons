@@ -7,7 +7,6 @@ import net.alpaka.addons.client.ItemSizeConfigScreen;
 import net.alpaka.addons.client.ItemSwingConfigScreen;
 import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.config.AlpakaConfig;
-import net.alpaka.addons.features.blaze.BlazeScaleFeature;
 import net.alpaka.addons.features.etherwarp.EtherwarpOverlayFeature;
 import net.alpaka.addons.features.nametag.CustomNameTagFeature;
 import net.alpaka.addons.features.notification.AlpakaNotifications;
@@ -108,27 +107,19 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.stopBlazeSpinning = v; AlpakaConfig.save(); },
                 "blaze rods spin spinning rotation animation stop mob"));
 
-        OPTIONS.add(new ConfigOption("blaze_scale", "Blaze Scale",
-                "Draws blazes bigger or smaller. Visual only, the hitbox stays vanilla.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.blazeScaleEnabled,
-                v -> { AlpakaConfig.instance.blazeScaleEnabled = v; AlpakaConfig.save(); },
-                "blaze scale size big small giant tiny mob slayer inferno demonlord"));
-
-        OPTIONS.add(new ConfigOption("blaze_scale_factor", "Blaze Size",
-                "Size of every blaze relative to vanilla. 1.00x is vanilla.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.blazeScale,
-                v -> { AlpakaConfig.instance.blazeScale = BlazeScaleFeature.snap(v); AlpakaConfig.save(); },
-                BlazeScaleFeature.MIN_SCALE, BlazeScaleFeature.MAX_SCALE, val -> String.format(Locale.ROOT, "%.2fx", val),
-                "blaze scale size factor big small"));
-
         OPTIONS.add(new ConfigOption("hide_hurt_overlay", "Hide Damage Flash",
                 "Hides the red flash on mobs and players when they take a hit. Cosmetic only.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.hideHurtOverlayEnabled,
                 v -> { AlpakaConfig.instance.hideHurtOverlayEnabled = v; AlpakaConfig.save(); },
                 "hurt damage red flash tint overlay hit mob entity hide"));
+
+        OPTIONS.add(new ConfigOption("hide_mob_deaths", "Hide Mob Deaths",
+                "Mobs vanish the moment they die instead of tipping over first. Cosmetic only.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.hideMobDeathsEnabled,
+                v -> { AlpakaConfig.instance.hideMobDeathsEnabled = v; AlpakaConfig.save(); },
+                "hide mob death deaths animation tip over fall corpse vanish instant remove"));
 
         OPTIONS.add(new ConfigOption("Camera", ConfigCategory.VISUALS));
 
@@ -1155,14 +1146,14 @@ public class AlpakaConfigRegistry {
                 })),
                 "name tag gradient colour color end second picker"));
 
-        OPTIONS.add(new ConfigOption("Samurai Hat", ConfigCategory.COSMETICS));
+        OPTIONS.add(new ConfigOption("Sensei Hat", ConfigCategory.COSMETICS));
 
-        OPTIONS.add(new ConfigOption("chroma_hat", "Samurai Hat",
-                "A translucent straw samurai hat on your own head. Only you can see it.",
+        OPTIONS.add(new ConfigOption("chroma_hat", "Sensei Hat",
+                "A translucent straw sensei hat on your own head. Only you can see it.",
                 ConfigCategory.COSMETICS,
                 () -> AlpakaConfig.instance.chromaHatEnabled,
                 v -> { AlpakaConfig.instance.chromaHatEnabled = v; AlpakaConfig.save(); },
-                "chroma hat samurai kasa jingasa cosmetic head straw"));
+                "chroma hat sensei samurai kasa jingasa cosmetic head straw"));
 
         OPTIONS.add(new ConfigOption("chroma_hat_rainbow", "Chroma Colours",
                 "Rainbow colours sweeping around the hat, glowing in the dark. Off keeps the plain hat colour.",

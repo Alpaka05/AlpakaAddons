@@ -195,14 +195,14 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Chat", ConfigCategory.VISUALS));
 
         OPTIONS.add(new ConfigOption("expand_chat_history", "Expand Chat History",
-                "Keeps 5000 messages instead of 100, and keeps the chat when you leave a server and join again.",
+                "Keeps 5000 messages, even after leaving a server.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.expandChatHistory,
                 v -> { AlpakaConfig.instance.expandChatHistory = v; AlpakaConfig.save(); },
                 "chat history limit scroll log keep disconnect rejoin server leave"));
 
         OPTIONS.add(new ConfigOption("compact_chat", "Compact Chat",
-                "A message repeated right after itself becomes one line with (x2), (x3)... Hypixel's separator lines and blank lines are left alone.",
+                "Stacks repeated messages into one line with (x2).",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.compactChatEnabled,
                 v -> { AlpakaConfig.instance.compactChatEnabled = v; AlpakaConfig.save(); },
@@ -216,35 +216,35 @@ public class AlpakaConfigRegistry {
                 "mention notification popup toast chat name ping alert"));
 
         OPTIONS.add(new ConfigOption("chat_peek", "Chat Peek",
-                "Hold the Peek Chat key to read the whole chat while playing and scroll it with the mouse wheel. Set the key under Options > Controls.",
+                "Hold the Peek Chat key to read and scroll the full chat.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.chatPeekEnabled,
                 v -> { AlpakaConfig.instance.chatPeekEnabled = v; AlpakaConfig.save(); },
                 "chat peek hold key read scroll history keybind open bigger larger"));
 
         OPTIONS.add(new ConfigOption("better_screenshot_message", "Better Screenshot Message",
-                "Replaces the screenshot notice with Open, Copy and Delete buttons.",
+                "Open, Copy and Delete buttons on the screenshot notice.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.betterScreenshotMessageEnabled,
                 v -> { AlpakaConfig.instance.betterScreenshotMessageEnabled = v; AlpakaConfig.save(); },
                 "screenshot message notice open copy delete clipboard f2 buttons"));
 
         OPTIONS.add(new ConfigOption("auto_copy_screenshots", "Auto Copy Screenshots",
-                "Copies every screenshot to the clipboard as soon as it is taken.",
+                "Copies every screenshot to the clipboard right away.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.autoCopyScreenshots,
                 v -> { AlpakaConfig.instance.autoCopyScreenshots = v; AlpakaConfig.save(); },
                 "screenshot auto copy clipboard automatic f2 paste"));
 
         OPTIONS.add(new ConfigOption("chat_tabs", "Chat Tabs",
-                "All, Party, Guild and PMs tabs above the chat input. Works with the custom guild tag.",
+                "All, Party, Guild and PMs tabs above the chat input.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.chatTabsEnabled,
                 v -> { AlpakaConfig.instance.chatTabsEnabled = v; AlpakaConfig.save(); },
                 "chat tabs party guild pm private messages filter channel switch"));
 
         OPTIONS.add(new ConfigOption("chat_tabs_send_to_channel", "Send To Tab Channel",
-                "A plain message typed on the Party, Guild or PMs tab goes to that channel (/pc, /gc, /r).",
+                "Messages typed on a channel tab go to that channel.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.chatTabsSendToChannel,
                 v -> { AlpakaConfig.instance.chatTabsSendToChannel = v; AlpakaConfig.save(); },
@@ -1013,7 +1013,7 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Guild Chat", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("guild_prefix", "Custom Guild Tag",
-                "Your own tag instead of \"Guild >\". Works with the mod's Chat Tabs; §cmay break other chat tab mods.",
+                "Your own tag instead of \"Guild >\". Works with Chat Tabs.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.guildPrefixEnabled,
                 v -> { AlpakaConfig.instance.guildPrefixEnabled = v; AlpakaConfig.save(); },

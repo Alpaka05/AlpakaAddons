@@ -12,8 +12,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
-import java.util.List;
-
 public class BlockOverlayFeature {
     public static boolean isRenderingBlockOverlay = false;
     public static boolean ignoreDepthActive = false;
@@ -60,8 +58,7 @@ public class BlockOverlayFeature {
             VoxelShape shape = renderState.shape();
             if (shape == null || shape.isEmpty()) return;
 
-            List<AABB> boxes = boxesOf(shape);
-            if (boxes.isEmpty()) return;
+            AABB box = outerBoxOf(shape);
 
             MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
             PoseStack.Pose pose = poseStack.last();
@@ -120,9 +117,7 @@ public class BlockOverlayFeature {
             if (AlpakaConfig.instance.blockFillEnabled) {
                 RenderType fillRenderType = RenderTypes.debugQuads();
                 VertexConsumer fillBuffer = bufferSource.getBuffer(fillRenderType);
-                for (AABB box : boxes) {
-                    drawFill(fillBuffer, pose, box.inflate(0.001d), relX, relY, relZ, fillR, fillG, fillB, fillA);
-                }
+                drawFill(fillBuffer, pose, box.inflate(0.001d), relX, relY, relZ, fillR, fillG, fillB, fillA);
                 bufferSource.endBatch(fillRenderType);
             }
 
@@ -130,9 +125,7 @@ public class BlockOverlayFeature {
             if (AlpakaConfig.instance.blockOutlineEnabled) {
                 RenderType outlineRenderType = RenderTypes.debugQuads();
                 VertexConsumer outlineBuffer = bufferSource.getBuffer(outlineRenderType);
-                for (AABB box : boxes) {
-                    drawOutlineAsQuads(outlineBuffer, pose, box.inflate(0.002d), relX, relY, relZ, outlineR, outlineG, outlineB, outlineA);
-                }
+                drawOutlineAsQuads(outlineBuffer, pose, box.inflate(0.002d), relX, relY, relZ, outlineR, outlineG, outlineB, outlineA);
                 bufferSource.endBatch(outlineRenderType);
             }
         } finally {
@@ -149,21 +142,27 @@ public class BlockOverlayFeature {
     }
 
     private static VoxelShape cachedShape = null;
-    private static List<AABB> cachedBoxes = java.util.List.of();
+    private static AABB cachedBox = null;
 
     /**
-     * The shape's boxes, reusing the last result while the shape is unchanged.
+     * The one box that encloses the whole shape, reusing the last result while the shape is unchanged.
      *
-     * {@code toAabbs()} builds a fresh list on every call, and the targeted block usually stays the
+     * The overlay used to draw every box of {@code toAabbs()} separately. Shapes such as stairs,
+     * cauldrons or fences are unions of several boxes, and outlining each of them put lines along
+     * every seam where two boxes meet - a cauldron ended up as a cage of overlapping edges. Only the
+     * outer edges are wanted, so the shape's bounding box is drawn instead: twelve edges, however
+     * the shape is put together.
+     *
+     * {@code bounds()} allocates a fresh box on every call, and the targeted block usually stays the
      * same for many frames in a row - and block states share their shape instances, so even looking
      * at a different block of the same kind hits this.
      */
-    private static List<AABB> boxesOf(VoxelShape shape) {
+    private static AABB outerBoxOf(VoxelShape shape) {
         if (shape != cachedShape) {
             cachedShape = shape;
-            cachedBoxes = shape.toAabbs();
+            cachedBox = shape.bounds();
         }
-        return cachedBoxes;
+        return cachedBox;
     }
 
     private static void drawOutlineAsQuads(VertexConsumer buffer, PoseStack.Pose pose, AABB box, double minX, double minY, double minZ, float r, float g, float b, float a) {

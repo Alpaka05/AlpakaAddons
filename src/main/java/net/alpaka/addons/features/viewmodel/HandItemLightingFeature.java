@@ -77,6 +77,11 @@ public final class HandItemLightingFeature {
         drawingUnlit = !UNLIT_SUBMITS.isEmpty() && UNLIT_SUBMITS.remove(itemSubmit);
     }
 
+    /** Whether the ItemSubmit currently being drawn is a hand item that should lose its shading. */
+    public static boolean isDrawingUnlit() {
+        return drawingUnlit;
+    }
+
     /** Called once the translucent item pass is done; anything left over was never drawn. */
     public static void endFrame() {
         drawingUnlit = false;

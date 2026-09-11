@@ -31,7 +31,8 @@
     "AbstractSoundInstanceAccessor",
     "LivingEntityRendererMixin",
     "SubmitNodeCollectionMixin",
-    "ItemFeatureRendererMixin"
+    "ItemFeatureRendererMixin",
+    "RenderTypeInvoker"
   ],
   "injectors": {
     "defaultRequire": 1

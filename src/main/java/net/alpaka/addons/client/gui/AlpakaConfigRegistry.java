@@ -27,6 +27,16 @@ public class AlpakaConfigRegistry {
         registerAllOptions();
     }
 
+    /** The Compact Chat Window value: "Back-to-back only", "45 s", "1 min", "2 min 30 s". */
+    private static String formatWindow(float value) {
+        int seconds = Math.round(value);
+        if (seconds == 0) return "Back-to-back only";
+        if (seconds < 60) return seconds + " s";
+        int minutes = seconds / 60;
+        int rest = seconds % 60;
+        return rest == 0 ? minutes + " min" : minutes + " min " + rest + " s";
+    }
+
     private static void registerAllOptions() {
         OPTIONS.clear();
 
@@ -213,7 +223,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VISUALS,
                 () -> (float) AlpakaConfig.instance.compactChatWindowSeconds,
                 v -> { AlpakaConfig.instance.compactChatWindowSeconds = Math.round(v); AlpakaConfig.save(); },
-                0.0f, 300.0f, val -> Math.round(val) == 0 ? "Back-to-back only" : String.format(Locale.ROOT, "%d s", Math.round(val)),
+                0.0f, 300.0f, AlpakaConfigRegistry::formatWindow,
                 "compact chat window time seconds stack repeated between other messages delay gap"));
 
         OPTIONS.add(new ConfigOption("mention_notification", "Chat Mentions",

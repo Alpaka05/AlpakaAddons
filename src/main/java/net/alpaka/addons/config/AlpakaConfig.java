@@ -317,6 +317,8 @@ public class AlpakaConfig {
     public boolean autoCopyScreenshots = false;
     /** A message repeated right after itself becomes one line with (x2), (x3)... */
     public boolean compactChatEnabled = true;
+    /** Seconds since the last identical message within which a repeat still stacks; 0 = back-to-back only. */
+    public int compactChatWindowSeconds = 30;
     /** All / Party / Guild / PMs tabs above the chat input. */
     public boolean chatTabsEnabled = true;
     /** With chat tabs: a plain message typed on a channel tab goes to that channel (/pc, /gc, /r). */

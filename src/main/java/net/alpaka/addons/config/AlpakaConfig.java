@@ -309,6 +309,8 @@ public class AlpakaConfig {
     public boolean expandChatHistory = true;
     /** Hold the Peek Chat key to see the whole chat, scrollable, without opening it. */
     public boolean chatPeekEnabled = true;
+    /** Peek Chat also works with an inventory or another menu open, drawn on top of it. */
+    public boolean chatPeekInMenus = true;
     /** Open, Copy and Delete buttons on the screenshot notice instead of vanilla's line. */
     public boolean betterScreenshotMessageEnabled = true;
     /** Every screenshot goes to the clipboard the moment it is taken. */
@@ -639,6 +641,7 @@ public class AlpakaConfig {
         this.etherwarpSoundEnabled = false;
         this.expandChatHistory = false;
         this.chatPeekEnabled = false;
+        this.chatPeekInMenus = false;
         this.betterScreenshotMessageEnabled = false;
         this.autoCopyScreenshots = false;
         this.compactChatEnabled = false;

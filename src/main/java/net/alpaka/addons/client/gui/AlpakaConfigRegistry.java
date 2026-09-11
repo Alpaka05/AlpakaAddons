@@ -222,6 +222,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.chatPeekEnabled = v; AlpakaConfig.save(); },
                 "chat peek hold key read scroll history keybind open bigger larger"));
 
+        OPTIONS.add(new ConfigOption("chat_peek_in_menus", "Chat Peek In Menus",
+                "Peek Chat also works while an inventory or menu is open.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatPeekInMenus,
+                v -> { AlpakaConfig.instance.chatPeekInMenus = v; AlpakaConfig.save(); },
+                "chat peek menu inventory gui screen container open hold key foreground"));
+
         OPTIONS.add(new ConfigOption("better_screenshot_message", "Better Screenshot Message",
                 "Open, Copy and Delete buttons on the screenshot notice.",
                 ConfigCategory.VISUALS,

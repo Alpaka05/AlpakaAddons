@@ -1,5 +1,6 @@
 package net.alpaka.addons.mixin;
 
+import net.alpaka.addons.features.chat.ChatPeekFeature;
 import net.alpaka.addons.features.inventoryhud.InventoryHudRenderer;
 import net.alpaka.addons.features.notification.AlpakaNotifications;
 import net.alpaka.addons.features.playermodel.PlayerModelRenderer;
@@ -32,5 +33,16 @@ public class HudMixin {
         InventoryHudRenderer.render(graphicsExtractor, deltaTracker);
         // Last, so a notice sits above every other overlay rather than under one.
         AlpakaNotifications.render(graphicsExtractor, deltaTracker);
+    }
+
+    /**
+     * Chat peek in a menu: the HUD's own chat stays away while the chat is drawn on top of the menu
+     * instead - otherwise the blurred copy would show through the translucent line backgrounds.
+     */
+    @Inject(method = "extractChat", at = @At("HEAD"), cancellable = true)
+    private void alpaka$hideChatBehindPeekedMenu(GuiGraphicsExtractor graphicsExtractor, DeltaTracker deltaTracker, CallbackInfo ci) {
+        if (ChatPeekFeature.hidesHudChat()) {
+            ci.cancel();
+        }
     }
 }

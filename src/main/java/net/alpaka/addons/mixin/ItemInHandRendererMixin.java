@@ -2,6 +2,7 @@ package net.alpaka.addons.mixin;
 
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.viewmodel.HandItemLightingFeature;
+import net.alpaka.addons.features.viewmodel.ItemMotionBlurFeature;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemDisplayContext;
@@ -242,25 +243,49 @@ public class ItemInHandRendererMixin {
     private static final String ALPAKA$ITEM_STATE_SUBMIT =
             "Lnet/minecraft/client/renderer/item/ItemStackRenderState;submit(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;III)V";
 
+    /**
+     * Tells the motion blur which hand is about to be drawn and how far into its swing it is. Hooked
+     * at the renderItem call rather than at HEAD so the swing progress seen here is the one the
+     * ModifyVariable above has already adjusted.
+     */
+    @Inject(
+            method = "submitArmWithItem",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;renderItem(Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/item/ItemDisplayContext;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;I)V")
+    )
+    private void alpaka$noteSwing(
+            AbstractClientPlayer player, float tickProgress, float pitch, InteractionHand hand,
+            float swingProgress, ItemStack item, float equipProgress, PoseStack matrices,
+            SubmitNodeCollector queue, int light, CallbackInfo ci) {
+        if (player == Minecraft.getInstance().player) {
+            ItemMotionBlurFeature.noteArmItem(hand, swingProgress);
+        }
+    }
+
     // Everything the item state submits between these two points is one first-person hand item,
-    // which is how the hand item lighting feature tells those submits apart from every other item
-    // in the world (this method also serves third-person held items, filtered out by context).
+    // which is how the hand item lighting and motion blur features tell those submits apart from
+    // every other item in the world (this method also serves third-person held items, filtered out
+    // by context).
     @Inject(method = "submitHandsWithItems", at = @At("HEAD"))
     private void alpaka$forgetLastFrameHandItems(CallbackInfo ci) {
         // 26.2 builds the item groups per render phase, so there is no single "all items drawn"
         // point to clean up at; the start of the next hand render is the frame boundary instead.
         HandItemLightingFeature.endFrame();
+        ItemMotionBlurFeature.endFrame();
     }
 
     @Inject(method = "renderItem", at = @At(value = "INVOKE", target = ALPAKA$ITEM_STATE_SUBMIT))
     private void alpaka$beforeHandItemSubmit(LivingEntity entity, ItemStack stack, ItemDisplayContext context,
                                              PoseStack poseStack, SubmitNodeCollector collector, int light, CallbackInfo ci) {
         HandItemLightingFeature.beginHandItem(entity, context);
+        ItemMotionBlurFeature.beginHandItem(entity, context);
     }
 
     @Inject(method = "renderItem", at = @At(value = "INVOKE", target = ALPAKA$ITEM_STATE_SUBMIT, shift = At.Shift.AFTER))
     private void alpaka$afterHandItemSubmit(LivingEntity entity, ItemStack stack, ItemDisplayContext context,
                                             PoseStack poseStack, SubmitNodeCollector collector, int light, CallbackInfo ci) {
+        // The ghosts are submitted while the lighting feature is still capturing, so they lose their
+        // shading along with the item they trail.
+        ItemMotionBlurFeature.endHandItem(collector);
         HandItemLightingFeature.endHandItem();
     }
 

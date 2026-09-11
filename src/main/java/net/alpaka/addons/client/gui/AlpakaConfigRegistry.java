@@ -5,6 +5,7 @@ import net.alpaka.addons.client.BlockOverlayConfigScreen;
 import net.alpaka.addons.client.ColorPickerScreen;
 import net.alpaka.addons.client.ItemSizeConfigScreen;
 import net.alpaka.addons.client.ItemSwingConfigScreen;
+import net.alpaka.addons.features.viewmodel.ItemMotionBlurFeature;
 import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.etherwarp.EtherwarpOverlayFeature;
@@ -560,6 +561,41 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.itemSwingAlwaysFinishEnabled,
                 v -> { AlpakaConfig.instance.itemSwingAlwaysFinishEnabled = v; AlpakaConfig.save(); },
                 "always finish swing complete attack animation"));
+
+        OPTIONS.add(new ConfigOption("Swing Motion Blur", ConfigCategory.VIEWMODEL));
+
+        OPTIONS.add(new ConfigOption("item_motion_blur", "Swing Motion Blur",
+                "The held item leaves a fading trail while swinging.",
+                ConfigCategory.VIEWMODEL,
+                () -> AlpakaConfig.instance.itemMotionBlurEnabled,
+                v -> { AlpakaConfig.instance.itemMotionBlurEnabled = v; AlpakaConfig.save(); },
+                "motion blur trail ghost smear swing smooth afterimage fight"));
+
+        OPTIONS.add(new ConfigOption("item_motion_blur_length", "Blur Length",
+                "How far behind the item the trail reaches.",
+                ConfigCategory.VIEWMODEL,
+                () -> AlpakaConfig.instance.itemMotionBlurLength,
+                v -> { AlpakaConfig.instance.itemMotionBlurLength = (float) Math.round(v); AlpakaConfig.save(); },
+                ItemMotionBlurFeature.MIN_LENGTH_MS, ItemMotionBlurFeature.MAX_LENGTH_MS,
+                val -> String.format(Locale.ROOT, "%.0f ms", val),
+                "motion blur trail length duration time long short"));
+
+        OPTIONS.add(new ConfigOption("item_motion_blur_opacity", "Blur Opacity",
+                "How strongly the trail is drawn.",
+                ConfigCategory.VIEWMODEL,
+                () -> AlpakaConfig.instance.itemMotionBlurOpacity,
+                v -> { AlpakaConfig.instance.itemMotionBlurOpacity = Math.round(v * 100.0f) / 100.0f; AlpakaConfig.save(); },
+                0.05f, 1.0f, val -> String.format(Locale.ROOT, "%.0f%%", val * 100.0f),
+                "motion blur trail opacity alpha strength transparency intensity"));
+
+        OPTIONS.add(new ConfigOption("item_motion_blur_steps", "Blur Steps",
+                "Number of ghost copies that make up the trail.",
+                ConfigCategory.VIEWMODEL,
+                () -> AlpakaConfig.instance.itemMotionBlurSteps,
+                v -> { AlpakaConfig.instance.itemMotionBlurSteps = (float) Math.round(v); AlpakaConfig.save(); },
+                (float) ItemMotionBlurFeature.MIN_STEPS, (float) ItemMotionBlurFeature.MAX_STEPS,
+                val -> String.format(Locale.ROOT, "%.0f", val),
+                "motion blur trail steps copies ghosts quality samples"));
 
         OPTIONS.add(new ConfigOption("item_viewmodel_reset", "Reset Viewmodel Settings",
                 "Resets every viewmodel and swing value. Presets are kept.",

@@ -352,6 +352,15 @@ public class AlpakaConfig {
     public boolean itemSwingAlwaysFinishEnabled = false;
     public boolean itemIgnoreEmptyHandEnabled = false;
 
+    // Swing motion blur: faded copies trail behind the held item while it swings; see ItemMotionBlurFeature.
+    public boolean itemMotionBlurEnabled = false;
+    /** How far back in time the trail reaches, in milliseconds. */
+    public float itemMotionBlurLength = 80.0f;
+    /** Opacity of the newest ghost copy; the older ones fade out from there. */
+    public float itemMotionBlurOpacity = 0.35f;
+    /** Number of ghost copies spread over the trail length. */
+    public float itemMotionBlurSteps = 8.0f;
+
     // Swing Animation Customizations
     public float swingDriftX = 0.0f;
     public float swingDriftY = 0.0f;
@@ -379,6 +388,11 @@ public class AlpakaConfig {
         public float swingArcX = 0.0f;
         public float swingArcY = 0.0f;
         public float swingArcZ = 0.0f;
+        // Newer than the constructor below; presets saved before these existed load with the defaults.
+        public boolean motionBlurEnabled = false;
+        public float motionBlurLength = 80.0f;
+        public float motionBlurOpacity = 0.35f;
+        public float motionBlurSteps = 8.0f;
 
         public ItemPreset() {}
 
@@ -433,6 +447,10 @@ public class AlpakaConfig {
             this.swingArcX = preset.swingArcX;
             this.swingArcY = preset.swingArcY;
             this.swingArcZ = preset.swingArcZ;
+            this.itemMotionBlurEnabled = preset.motionBlurEnabled;
+            this.itemMotionBlurLength = preset.motionBlurLength;
+            this.itemMotionBlurOpacity = preset.motionBlurOpacity;
+            this.itemMotionBlurSteps = preset.motionBlurSteps;
             this.activeItemPresetIndex = index;
             save();
         }
@@ -461,6 +479,10 @@ public class AlpakaConfig {
         this.itemNoEquipEnabled = false;
         this.itemSwingAlwaysFinishEnabled = false;
         this.itemIgnoreEmptyHandEnabled = false;
+        this.itemMotionBlurEnabled = false;
+        this.itemMotionBlurLength = 80.0f;
+        this.itemMotionBlurOpacity = 0.35f;
+        this.itemMotionBlurSteps = 8.0f;
 
         this.swingDriftX = 0.0f;
         this.swingDriftY = 0.0f;
@@ -501,6 +523,10 @@ public class AlpakaConfig {
                     this.swingArcY,
                     this.swingArcZ
             );
+            itemPresets[index].motionBlurEnabled = this.itemMotionBlurEnabled;
+            itemPresets[index].motionBlurLength = this.itemMotionBlurLength;
+            itemPresets[index].motionBlurOpacity = this.itemMotionBlurOpacity;
+            itemPresets[index].motionBlurSteps = this.itemMotionBlurSteps;
             this.activeItemPresetIndex = index;
             save();
         }

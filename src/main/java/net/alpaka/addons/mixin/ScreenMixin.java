@@ -1,6 +1,7 @@
 package net.alpaka.addons.mixin;
 
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.features.chat.ChatPeekFeature;
 import net.alpaka.addons.features.snow.SnowOverlayRenderer;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
@@ -51,5 +52,17 @@ public abstract class ScreenMixin {
         int alpha = Math.round(255.0f * opacity);
         int color = (alpha << 24);
         graphicsExtractor.fillGradient(0, 0, this.width, this.height, color, color);
+    }
+
+    /**
+     * Chat peek in a menu: the chat goes in after the menu's content and before its tooltips, so it
+     * sits above the blur and dimming while a hovered item's tooltip still comes out on top of it.
+     */
+    @Inject(
+        method = "extractRenderStateWithTooltipAndSubtitles",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;extractDeferredElements(IIF)V")
+    )
+    private void alpaka$peekChatOverMenu(GuiGraphicsExtractor graphicsExtractor, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
+        ChatPeekFeature.renderOverMenu(graphicsExtractor, mouseX, mouseY);
     }
 }

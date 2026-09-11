@@ -208,6 +208,14 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.compactChatEnabled = v; AlpakaConfig.save(); },
                 "compact chat duplicate repeated messages merge counter spam x2 stack"));
 
+        OPTIONS.add(new ConfigOption("compact_chat_window", "Compact Chat Window",
+                "How long ago the last identical message may be to still stack.",
+                ConfigCategory.VISUALS,
+                () -> (float) AlpakaConfig.instance.compactChatWindowSeconds,
+                v -> { AlpakaConfig.instance.compactChatWindowSeconds = Math.round(v); AlpakaConfig.save(); },
+                0.0f, 300.0f, val -> Math.round(val) == 0 ? "Back-to-back only" : String.format(Locale.ROOT, "%d s", Math.round(val)),
+                "compact chat window time seconds stack repeated between other messages delay gap"));
+
         OPTIONS.add(new ConfigOption("mention_notification", "Chat Mentions",
                 "Slides in a notice when somebody says your name in chat.",
                 ConfigCategory.VISUALS,

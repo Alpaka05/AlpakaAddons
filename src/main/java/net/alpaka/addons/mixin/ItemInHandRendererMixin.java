@@ -4,6 +4,7 @@ import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.viewmodel.HandItemLightingFeature;
 import net.alpaka.addons.features.viewmodel.ItemMotionBlurFeature;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.Options;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.client.player.AbstractClientPlayer;
@@ -300,10 +301,12 @@ public class ItemInHandRendererMixin {
      * A vanilla swing that begins while a custom swing is still playing is handled one of two ways.
      * Without "Always Finish Swing" it restarts the animation (after a short debounce), which is the
      * responsive look at the price of a visible jump back to rest. With it, the new swing is queued
-     * and starts the instant the current one ends. Held attacks - mining, farming - fire a vanilla
-     * swing every few ticks, so the queue turns them into one unbroken rhythm; without it the hand
-     * finished its swing, then rested until the next vanilla swing happened to begin, up to 150 ms
-     * later, and the motion read as swing, pause, swing.
+     * and starts the instant the current one ends - but only while the attack or use button is
+     * still held at that moment. Held attacks - mining, farming - fire a vanilla swing every few
+     * ticks, so the queue turns them into one unbroken rhythm; without it the hand finished its
+     * swing, then rested until the next vanilla swing happened to begin, up to 150 ms later, and
+     * the motion read as swing, pause, swing. Once the button is released the queued swing is
+     * dropped, so the hand comes to rest with the current stroke instead of throwing one more.
      */
     private float getCustomSwingProgress(AbstractClientPlayer player, float originalProgress) {
         int currentSwingTime = player.swingTime;
@@ -335,8 +338,9 @@ public class ItemInHandRendererMixin {
         float duration = 250.0f / AlpakaConfig.instance.itemSwingSpeed;
         long elapsed = now - swingStartTime;
         if (elapsed >= duration) {
-            if (!pendingSwing) {
+            if (!pendingSwing || !alpaka$attackHeld()) {
                 wasSwinging = false;
+                pendingSwing = false;
                 return 0.0f;
             }
             // Chain the queued swing onto the end of this one, keeping the time already spent past
@@ -351,5 +355,12 @@ public class ItemInHandRendererMixin {
             }
         }
         return elapsed / duration;
+    }
+
+    /** Whether the player is still holding the button that produces swings. */
+    @Unique
+    private static boolean alpaka$attackHeld() {
+        Options options = Minecraft.getInstance().options;
+        return options.keyAttack.isDown() || options.keyUse.isDown();
     }
 }

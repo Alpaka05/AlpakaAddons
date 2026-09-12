@@ -289,38 +289,67 @@ public class ItemInHandRendererMixin {
         HandItemLightingFeature.endHandItem();
     }
 
+    /** Set when a vanilla swing began while a custom swing was still playing under "Always Finish Swing". */
+    @Unique
+    private static boolean pendingSwing = false;
+
+    /**
+     * The swing progress the hand is drawn at, on the mod's own clock rather than vanilla's tick
+     * counter, so the swing speed setting can stretch or shorten it.
+     *
+     * A vanilla swing that begins while a custom swing is still playing is handled one of two ways.
+     * Without "Always Finish Swing" it restarts the animation (after a short debounce), which is the
+     * responsive look at the price of a visible jump back to rest. With it, the new swing is queued
+     * and starts the instant the current one ends. Held attacks - mining, farming - fire a vanilla
+     * swing every few ticks, so the queue turns them into one unbroken rhythm; without it the hand
+     * finished its swing, then rested until the next vanilla swing happened to begin, up to 150 ms
+     * later, and the motion read as swing, pause, swing.
+     */
     private float getCustomSwingProgress(AbstractClientPlayer player, float originalProgress) {
         int currentSwingTime = player.swingTime;
         boolean isSwingingNow = player.swinging;
+        long now = System.currentTimeMillis();
+        boolean alwaysFinish = AlpakaConfig.instance.itemSwingAlwaysFinishEnabled;
 
         if (isSwingingNow) {
             boolean freshStart = !lastSwinging;
             boolean newSwingReset = lastSwinging && (currentSwingTime < lastSwingTime);
-
             if (freshStart || newSwingReset) {
-                if (!AlpakaConfig.instance.itemSwingAlwaysFinishEnabled || !wasSwinging) {
-                    long elapsed = System.currentTimeMillis() - swingStartTime;
-                    if (!wasSwinging || elapsed > 100) {
-                        swingStartTime = System.currentTimeMillis();
-                        wasSwinging = true;
-                    }
+                if (!wasSwinging) {
+                    swingStartTime = now;
+                    wasSwinging = true;
+                } else if (alwaysFinish) {
+                    pendingSwing = true;
+                } else if (now - swingStartTime > 100) {
+                    swingStartTime = now;
                 }
             }
         }
         lastSwingTime = currentSwingTime;
         lastSwinging = isSwingingNow;
 
-        if (wasSwinging) {
-            long elapsed = System.currentTimeMillis() - swingStartTime;
-            float duration = 250.0f; // Base swing duration in ms
-            float speedMultiplier = AlpakaConfig.instance.itemSwingSpeed;
-            float progress = (elapsed / (duration / speedMultiplier));
-            if (progress >= 1.0f) {
+        if (!wasSwinging) {
+            pendingSwing = false;
+            return 0.0f;
+        }
+        float duration = 250.0f / AlpakaConfig.instance.itemSwingSpeed;
+        long elapsed = now - swingStartTime;
+        if (elapsed >= duration) {
+            if (!pendingSwing) {
                 wasSwinging = false;
                 return 0.0f;
             }
-            return progress;
+            // Chain the queued swing onto the end of this one, keeping the time already spent past
+            // the boundary so the motion does not hitch by a frame. After a stall long enough to
+            // miss a whole swing, resync to now instead of racing to catch up.
+            pendingSwing = false;
+            swingStartTime += (long) duration;
+            elapsed -= (long) duration;
+            if (elapsed >= duration) {
+                swingStartTime = now;
+                elapsed = 0L;
+            }
         }
-        return 0.0f;
+        return elapsed / duration;
     }
 }

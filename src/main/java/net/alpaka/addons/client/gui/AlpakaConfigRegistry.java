@@ -556,7 +556,7 @@ public class AlpakaConfigRegistry {
                 "disable swing translation movement offset shift"));
 
         OPTIONS.add(new ConfigOption("item_swing_always_finish", "Always Finish Swing",
-                "Forces swing animations to always complete fully.",
+                "Finishes every swing and chains held attacks without a pause.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemSwingAlwaysFinishEnabled,
                 v -> { AlpakaConfig.instance.itemSwingAlwaysFinishEnabled = v; AlpakaConfig.save(); },

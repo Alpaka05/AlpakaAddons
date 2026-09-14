@@ -73,19 +73,40 @@ public class ModernGuiUtils {
         }
     }
 
-    public static void drawModernToggle(GuiGraphicsExtractor graphics, Font font, int x, int y, int width, int height, boolean state, boolean isHovered) {
-        int trackBg = state ? getAccentBgColor() : COLOR_CARD_BG;
-        int border = isHovered ? getAccentColor() : (state ? getAccentDimColor() : COLOR_CARD_BORDER);
+    /**
+     * Linearly blends two ARGB colours; {@code t} 0 gives {@code from}, 1 gives {@code to}.
+     * For controls whose colour follows an animation instead of flipping with the state.
+     */
+    public static int lerpColor(int from, int to, float t) {
+        t = Math.max(0.0f, Math.min(1.0f, t));
+        int a = Math.round(((from >>> 24) & 0xFF) + (((to >>> 24) & 0xFF) - ((from >>> 24) & 0xFF)) * t);
+        int r = Math.round(((from >> 16) & 0xFF) + (((to >> 16) & 0xFF) - ((from >> 16) & 0xFF)) * t);
+        int g = Math.round(((from >> 8) & 0xFF) + (((to >> 8) & 0xFF) - ((from >> 8) & 0xFF)) * t);
+        int b = Math.round((from & 0xFF) + ((to & 0xFF) - (from & 0xFF)) * t);
+        return (a << 24) | (r << 16) | (g << 8) | b;
+    }
+
+    /**
+     * An ON/OFF pill whose knob sits at {@code progress} - 0 left and off, 1 right and on.
+     *
+     * The caller animates progress toward the real state, so a click slides the knob across and
+     * fades the track through the accent colour rather than jumping. Grey knob when off, accent
+     * when on, blended in between.
+     */
+    public static void drawModernToggle(GuiGraphicsExtractor graphics, Font font, int x, int y, int width, int height, float progress, boolean isHovered) {
+        progress = Math.max(0.0f, Math.min(1.0f, progress));
+        int trackBg = lerpColor(COLOR_CARD_BG, getAccentBgColor(), progress);
+        int border = isHovered ? getAccentColor() : lerpColor(COLOR_CARD_BORDER, getAccentDimColor(), progress);
 
         drawRect(graphics, x, y, width, height, trackBg);
         drawOutline(graphics, x, y, width, height, border);
 
-        // Compact sliding grey square knob (no text)
         int knobSize = height - 4;
-        int knobX = state ? (x + width - knobSize - 2) : (x + 2);
+        int travel = width - knobSize - 4;
+        int knobX = x + 2 + Math.round(travel * progress);
         int knobY = y + 2;
 
-        int knobColor = state ? getAccentColor() : 0xFF64748B; // Sleek grey when OFF, Accent when ON
+        int knobColor = lerpColor(0xFF64748B, getAccentColor(), progress);
         drawRect(graphics, knobX, knobY, knobSize, knobSize, knobColor);
         drawOutline(graphics, knobX, knobY, knobSize, knobSize, 0x40000000);
     }

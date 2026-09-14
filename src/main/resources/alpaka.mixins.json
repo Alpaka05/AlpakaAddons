@@ -34,7 +34,8 @@
     "ItemFeatureRendererMixin",
     "RenderTypeInvoker",
     "GuiGraphicsExtractorMixin",
-    "KeyboardHandlerMixin"
+    "KeyboardHandlerMixin",
+    "SkyHanniTabListRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

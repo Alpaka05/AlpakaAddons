@@ -71,30 +71,29 @@ object AlpakaNotifications {
     private const val GAP = 4
     private const val MARGIN = 8
 
-    /** Width of the coloured stripe down the left edge, which is what carries the accent. */
-    private const val STRIPE = 2
-
     /** Height of the time-left bar along the bottom edge, and the gap kept above it. */
-    private const val BAR = 2
+    private const val BAR = 1
     private const val BAR_GAP = 3
 
     /** At most this many wrapped lines of body text; the rest is dropped rather than shown cut. */
     private const val MAX_BODY_LINES = 2
 
     /**
-     * The glass the box is made of: a little more solid at the top than the bottom, and solid
-     * enough overall to read over bright terrain.
+     * The glass the box is made of: one flat, dark, translucent pane with its corner pixels left
+     * out, which the eye reads as a soft corner at the GUI scales the game runs at.
      *
-     * Graded rather than flat so the box settles into the screen instead of sitting on it as a
-     * slab; the header band under the title carries a whisper of the accent for the same reason.
+     * What sells the glass is not a gradient but the edge: a light line along the top where light
+     * would catch a pane, a fainter one down the left, and nothing else. Solid enough to read over
+     * bright terrain, open enough to see the world through.
      */
-    private const val GLASS_TOP = 0xD20F1216.toInt()
-    private const val GLASS_BOTTOM = 0x960F1216.toInt()
-    private const val EDGE = 0x40FFFFFF
-    private const val SHEEN = 0x30FFFFFF
-    private const val SHADOW = 0x40000000
-    private const val BAR_TRACK = 0x24FFFFFF
-    private const val BODY_TEXT = 0xFFE4E7EA.toInt()
+    private const val GLASS = 0xC70F1216.toInt()
+    private const val EDGE_TOP = 0x38FFFFFF
+    private const val EDGE_LEFT = 0x14FFFFFF
+    private const val BAR_TRACK = 0x1AFFFFFF
+    private const val BODY_TEXT = 0xFFD6DBE0.toInt()
+
+    /** How many pieces the bar's fade towards its tip is drawn in; the game has no horizontal gradient. */
+    private const val BAR_STEPS = 6
 
     /**
      * How quickly a notice slides to the slot it should be in, as a time constant in milliseconds.
@@ -162,7 +161,7 @@ object AlpakaNotifications {
 
     private fun wrap(text: FormattedText): List<FormattedCharSequence> {
         val font = Minecraft.getInstance().font ?: return emptyList()
-        return font.split(text, WIDTH - PAD * 2 - STRIPE)
+        return font.split(text, WIDTH - PAD * 2)
     }
 
     private fun enqueue(title: String, lines: List<FormattedCharSequence>, accent: Int, holdMs: Long): Long {
@@ -279,35 +278,44 @@ object AlpakaNotifications {
     private fun draw(graphics: GuiGraphicsExtractor, font: Font, notice: Notice, x: Int, y: Int, shown: Float, now: Long) {
         val accent = if (notice.accent != 0) notice.accent else ModernGuiUtils.getAccentColor()
         val height = notice.height
+        val glass = faded(GLASS, shown)
 
-        // A soft shadow lifts the box off whatever is behind it.
-        graphics.fill(x + 1, y + 2, x + WIDTH + 1, y + height + 2, faded(SHADOW, shown))
-        // Graded top to bottom, so the box fades out towards its lower edge rather than ending.
-        graphics.fillGradient(x, y, x + WIDTH, y + height, faded(GLASS_TOP, shown), faded(GLASS_BOTTOM, shown))
-        // The header band: a whisper of the accent behind the title, gone by the first body line.
-        graphics.fillGradient(x + STRIPE, y, x + WIDTH, y + PAD + LINE, faded(withAlpha(accent, 0x30), shown), faded(withAlpha(accent, 0x00), shown))
-        // A single bright line along the top is what reads as a lit edge on glass.
-        ModernGuiUtils.drawRect(graphics, x, y, WIDTH, 1, faded(SHEEN, shown))
-        ModernGuiUtils.drawOutline(graphics, x, y, WIDTH, height, faded(EDGE, shown))
-        // The accent fades with the glass instead of running full strength to the bottom corner.
-        graphics.fillGradient(x, y, x + STRIPE, y + height, faded(accent, shown), faded(withAlpha(accent, 0x50), shown))
+        // The pane, in three pieces so the four corner pixels stay empty: a soft corner, as far
+        // as a pixel grid allows one.
+        graphics.fill(x + 1, y, x + WIDTH - 1, y + height, glass)
+        graphics.fill(x, y + 1, x + 1, y + height - 1, glass)
+        graphics.fill(x + WIDTH - 1, y + 1, x + WIDTH, y + height - 1, glass)
+        // Light catches the top edge, and a little of the left one; that is the whole "glass".
+        graphics.fill(x + 1, y, x + WIDTH - 1, y + 1, faded(EDGE_TOP, shown))
+        graphics.fill(x, y + 1, x + 1, y + height - 1, faded(EDGE_LEFT, shown))
 
-        val textX = x + STRIPE + PAD
+        val textX = x + PAD
         graphics.text(font, Component.literal(notice.title), textX, y + PAD, faded(accent, shown))
         for (line in notice.body.indices) {
             graphics.text(font, notice.body[line], textX, y + PAD + LINE + line * LINE, faded(BODY_TEXT, shown))
         }
 
-        // The time left, as a bar along the bottom edge that runs down from full while the notice
-        // waits; it is full while sliding in and empty once the slide out begins.
+        // The time left, as a hairline along the bottom edge that runs down from full while the
+        // notice waits: full while sliding in, empty once the slide out begins. Inset a pixel on
+        // either side so it ends before the missing corner pixels, and thinning towards its tip.
         val barY = y + height - BAR
-        val barLeft = x + STRIPE
-        val barWidth = WIDTH - STRIPE
-        graphics.fill(barLeft, barY, x + WIDTH, y + height, faded(BAR_TRACK, shown))
+        val barLeft = x + 1
+        val barWidth = WIDTH - 2
+        graphics.fill(barLeft, barY, barLeft + barWidth, y + height, faded(BAR_TRACK, shown))
         val remaining = ((notice.retireAtMs - SLIDE_MS - now).toFloat() / notice.holdMs.toFloat()).coerceIn(0.0f, 1.0f)
         val filled = (barWidth * remaining).roundToInt()
         if (filled > 0) {
-            graphics.fillGradient(barLeft, barY, barLeft + filled, y + height, faded(accent, shown), faded(withAlpha(accent, 0xB0), shown))
+            val step = max(1, filled / BAR_STEPS)
+            var from = barLeft
+            var piece = 0
+            while (from < barLeft + filled) {
+                val to = min(from + step, barLeft + filled)
+                // From full strength at the root to a little over half at the tip.
+                val alpha = 0xFF - (0xFF - 0x8C) * piece / (BAR_STEPS - 1).coerceAtLeast(1)
+                graphics.fill(from, barY, to, y + height, faded(withAlpha(accent, alpha), shown))
+                from = to
+                piece = min(piece + 1, BAR_STEPS - 1)
+            }
         }
     }
 }

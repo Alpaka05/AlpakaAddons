@@ -1,27 +1,30 @@
 package net.alpaka.addons.features.party;
 
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.features.notification.AlpakaNotifications;
 import net.alpaka.addons.utils.SkyblockUtils;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * A Y/N prompt for Hypixel party invites.
+ * A Y/N notice for Hypixel party invites.
  *
  * Hypixel announces an invite in chat and offers a clickable line to accept it, which means
  * opening the chat, finding the line and clicking it before the sixty seconds run out. With this on,
- * the invite puts a prompt on the HUD instead: Y sends {@code /party accept <name>} for the player
- * who invited, N takes the prompt away and nothing else happens. Both keys are only taken while the
- * prompt is up and no screen is open, so they keep their normal meaning the rest of the time.
+ * the invite raises one of the mod's notifications instead: Y sends {@code /party accept <name>}
+ * for the player who invited, N takes the notice away and nothing else happens. Both keys are only
+ * taken while the notice is up and no screen is open, so they keep their normal meaning the rest of
+ * the time - and once the notice has slid out, the chat line still works as it always did.
  *
- * The prompt also goes away on its own when Hypixel says the invite expired, when the player joined
- * a party by other means (clicking the line, or typing the command), or after the sixty seconds an
- * invite lives for, so a stale prompt can never send an accept for an invite that is gone.
+ * The notice also goes away on its own when Hypixel says the invite expired or the player joined a
+ * party by other means, so a stale one can never send an accept for an invite that is gone.
  *
  * The chat patterns follow SkyHanni's AcceptLastPartyInvite: with the colour codes stripped, the
  * invite line reads {@code [RANK] Name has invited you to join their party!} and the expiry
@@ -42,8 +45,15 @@ public final class PartyInviteFeature {
     /** How long Hypixel keeps an invite open. */
     public static final long INVITE_TTL_MS = 60_000L;
 
+    /**
+     * The notice stays at least this long, whatever the notification duration is set to, so there
+     * is time to read the name and reach for Y. A longer configured duration still applies.
+     */
+    private static final long MIN_HOLD_MS = 8_000L;
+
     private static String inviter = null;
     private static long invitedAtMs = 0L;
+    private static long noticeId = 0L;
 
     public static boolean isEnabled() {
         return AlpakaConfig.instance.partyInvitePromptEnabled;
@@ -61,8 +71,7 @@ public final class PartyInviteFeature {
 
         Matcher invite = INVITE.matcher(text);
         if (invite.find()) {
-            inviter = invite.group("player");
-            invitedAtMs = System.currentTimeMillis();
+            show(invite.group("player"));
             return;
         }
         if (inviter == null) return;
@@ -77,35 +86,41 @@ public final class PartyInviteFeature {
         }
     }
 
-    /** Whether a prompt should be on screen right now. Clears an invite that has run out. */
+    private static void show(String name) {
+        if (noticeId != 0L) {
+            AlpakaNotifications.dismiss(noticeId);
+        }
+        inviter = name;
+        invitedAtMs = System.currentTimeMillis();
+        List<Component> lines = List.of(
+                Component.literal(name + " invited you"),
+                Component.literal("[Y]").withStyle(ChatFormatting.GREEN)
+                        .append(Component.literal(" Join    ").withStyle(ChatFormatting.WHITE))
+                        .append(Component.literal("[N]").withStyle(ChatFormatting.RED))
+                        .append(Component.literal(" Decline").withStyle(ChatFormatting.WHITE)));
+        long hold = Math.max(AlpakaNotifications.configuredHoldMs(), MIN_HOLD_MS);
+        noticeId = AlpakaNotifications.sendLines("Party Invite", lines, 0, hold);
+    }
+
+    /** Whether the notice is up and its keys should answer. Clears an invite that has run out. */
     public static boolean isShowing() {
         if (inviter == null) return false;
-        if (!isEnabled() || System.currentTimeMillis() - invitedAtMs > INVITE_TTL_MS) {
+        if (!isEnabled() || System.currentTimeMillis() - invitedAtMs > INVITE_TTL_MS
+                || !AlpakaNotifications.isShowing(noticeId)) {
             inviter = null;
+            noticeId = 0L;
             return false;
         }
         return true;
     }
 
-    /** The name of the player who invited, while a prompt is showing. */
-    public static String inviterName() {
-        return inviter;
-    }
-
-    /** How much of the invite's lifetime is left, 1 fresh to 0 gone. */
-    public static float remainingFraction() {
-        if (inviter == null) return 0.0f;
-        long left = INVITE_TTL_MS - (System.currentTimeMillis() - invitedAtMs);
-        return Math.max(0.0f, Math.min(1.0f, left / (float) INVITE_TTL_MS));
-    }
-
     /**
-     * A key press with no screen open. True when the key was the prompt's Y or N, which then goes
+     * A key press with no screen open. True when the key was the notice's Y or N, which then goes
      * no further.
      *
      * The key is identified by the character it produces on the player's keyboard layout, not by
      * its GLFW code: GLFW codes name positions on a US keyboard, so on a German QWERTZ keyboard the
-     * key labelled Y arrives as {@code GLFW_KEY_Z}. The prompt says Y, so the key that says Y is the
+     * key labelled Y arrives as {@code GLFW_KEY_Z}. The notice says Y, so the key that says Y is the
      * one that joins.
      */
     public static boolean onKey(int key, int scancode, boolean repeat) {
@@ -138,5 +153,9 @@ public final class PartyInviteFeature {
 
     public static void dismiss() {
         inviter = null;
+        if (noticeId != 0L) {
+            AlpakaNotifications.dismiss(noticeId);
+            noticeId = 0L;
+        }
     }
 }

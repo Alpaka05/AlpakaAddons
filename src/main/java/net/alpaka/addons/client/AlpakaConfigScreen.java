@@ -140,6 +140,9 @@ public class AlpakaConfigScreen extends Screen {
 
     private static final int CHECKBOX_SIZE = 11;
 
+    /** Corner radius of the sidebar's selected and hovered rows. */
+    private static final int TAB_CORNER_RADIUS = 5;
+
     /** Cap on an inline text option's value, long enough for any account name. */
     private static final int MAX_TEXT_OPTION_LENGTH = 32;
 
@@ -325,9 +328,9 @@ public class AlpakaConfigScreen extends Screen {
         int tabX = winX + 8;
         int tabW = sidebarWidth - 20;
 
-        // The highlight is a single bar that glides to the selected tab, rather than a box redrawn
-        // under the new one, so a tab change reads as movement. No outline: the tinted row and the
-        // accent bar are enough to mark it.
+        // The highlight is a single rounded, tinted row that glides to the selected tab, rather than
+        // a box redrawn under the new one, so a tab change reads as movement. No outline and no
+        // accent bar: the tint and the accent-coloured label are enough to mark it.
         int selectedTabY = itemY;
         for (int i = 0; i < categories.size(); i++) {
             if (categories.get(i) == activeCategory) selectedTabY = itemY + i * (catItemH + catSpacing);
@@ -338,8 +341,7 @@ public class AlpakaConfigScreen extends Screen {
             selectorY += (selectedTabY - selectorY) * Math.min(1.0f, deltaSec * 14.0f);
         }
         int highlightY = (int) Math.round(selectorY);
-        ModernGuiUtils.drawRect(graphics, tabX, highlightY, tabW, catItemH, ModernGuiUtils.COLOR_CARD_BG);
-        ModernGuiUtils.drawRect(graphics, tabX, highlightY, 3, catItemH, ModernGuiUtils.getAccentColor());
+        ModernGuiUtils.drawRoundedRect(graphics, tabX, highlightY, tabW, catItemH, TAB_CORNER_RADIUS, ModernGuiUtils.COLOR_CARD_BG);
 
         for (ConfigCategory cat : categories) {
             boolean isSelected = (activeCategory == cat);
@@ -353,7 +355,7 @@ public class AlpakaConfigScreen extends Screen {
             tabSelectProgress.put(cat, select);
 
             if (isHovered && !isSelected) {
-                ModernGuiUtils.drawRect(graphics, tabX, itemY, tabW, catItemH, ModernGuiUtils.COLOR_CARD_BG_HOVER);
+                ModernGuiUtils.drawRoundedRect(graphics, tabX, itemY, tabW, catItemH, TAB_CORNER_RADIUS, ModernGuiUtils.COLOR_CARD_BG_HOVER);
             }
 
             int textX = winX + 14 + Math.round(8 * select);

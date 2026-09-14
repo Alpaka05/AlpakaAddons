@@ -74,6 +74,28 @@ public class ModernGuiUtils {
     }
 
     /**
+     * A filled rectangle with rounded corners of the given radius.
+     *
+     * Built from horizontal strips: one full-width fill for the middle, and one strip per row inside
+     * the corner radius whose ends are pulled in along a quarter circle. Strips never overlap, so a
+     * translucent colour stays even.
+     */
+    public static void drawRoundedRect(GuiGraphicsExtractor graphics, int x, int y, int width, int height, int radius, int color) {
+        radius = Math.max(0, Math.min(radius, Math.min(width, height) / 2));
+        if (radius == 0) {
+            drawRect(graphics, x, y, width, height, color);
+            return;
+        }
+        drawRect(graphics, x, y + radius, width, height - 2 * radius, color);
+        for (int i = 0; i < radius; i++) {
+            double dy = radius - i - 0.5;
+            int inset = radius - (int) Math.round(Math.sqrt(radius * (double) radius - dy * dy));
+            drawRect(graphics, x + inset, y + i, width - 2 * inset, 1, color);
+            drawRect(graphics, x + inset, y + height - 1 - i, width - 2 * inset, 1, color);
+        }
+    }
+
+    /**
      * Linearly blends two ARGB colours; {@code t} 0 gives {@code from}, 1 gives {@code to}.
      * For controls whose colour follows an animation instead of flipping with the state.
      */

@@ -8,6 +8,7 @@ param(
     [string]$MouseMove = "",# "x,y" in window client pixels: WM_MOUSEMOVE, moves the GUI cursor
     [switch]$LeftClick,     # WM_LBUTTONDOWN/UP at the -MouseMove position
     [switch]$RightClick,    # WM_RBUTTONDOWN/UP at the -MouseMove position
+    [int]$Wheel = 0,        # WM_MOUSEWHEEL: notches, positive scrolls up, negative down
     [int]$GapMs = 250,
     [int]$HoldMs = 60
 )
@@ -107,6 +108,13 @@ if ($RightClick -and $mouseX -ge 0) {
     [K]::PostMessage($h, 0x0204, [IntPtr]2, (Mouse-LParam $mouseX $mouseY)) | Out-Null
     Start-Sleep -Milliseconds $HoldMs
     [K]::PostMessage($h, 0x0205, [IntPtr]0, (Mouse-LParam $mouseX $mouseY)) | Out-Null
+    Start-Sleep -Milliseconds $GapMs
+}
+if ($Wheel -ne 0) {
+    # One notch is WHEEL_DELTA (120) in the high word of wParam; GLFW ignores the position in lParam.
+    $delta = [int](120 * $Wheel)
+    $w = [IntPtr]([int64]($delta -band 0xFFFF) -shl 16)
+    [K]::PostMessage($h, 0x020A, $w, [IntPtr]0) | Out-Null
     Start-Sleep -Milliseconds $GapMs
 }
 if ($KeyUp -ne "") {

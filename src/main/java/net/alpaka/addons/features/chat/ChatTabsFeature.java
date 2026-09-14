@@ -6,9 +6,11 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.multiplayer.chat.GuiMessage;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import org.lwjgl.glfw.GLFW;
 
 /**
  * All / Party / Guild / PMs tabs in the chat screen.
@@ -71,6 +73,52 @@ public final class ChatTabsFeature {
         active = tab;
         // Re-lays the history out under the new filter and jumps back to the newest line.
         Minecraft.getInstance().gui.getChat().rescaleChat();
+    }
+
+    /** Moves to the next tab, or the previous one, wrapping around at either end. */
+    public static void cycle(boolean backwards) {
+        ChatTab[] tabs = ChatTab.values();
+        int step = backwards ? tabs.length - 1 : 1;
+        select(tabs[(active.ordinal() + step) % tabs.length]);
+    }
+
+    /** Whether the tab row shows while peeking and Tab cycles the tabs. */
+    public static boolean tabKeyEnabled() {
+        return isEnabled() && AlpakaConfig.instance.chatTabsTabKey;
+    }
+
+    /**
+     * A key press in the chat screen. True when it was Tab cycling the tabs, which then goes no
+     * further. Tab keeps its vanilla job - completing - while a command is being typed or a
+     * suggestion popup is open.
+     */
+    public static boolean onChatScreenKey(int key, boolean shift, boolean suggestionsVisible, String input) {
+        if (!tabKeyEnabled() || key != GLFW.GLFW_KEY_TAB) return false;
+        if (suggestionsVisible || input.startsWith("/")) return false;
+        cycle(shift);
+        return true;
+    }
+
+    /** A key press outside the chat screen. True when it was Tab cycling the tabs while peeking. */
+    public static boolean onPeekKey(int key, boolean shift) {
+        if (!tabKeyEnabled() || key != GLFW.GLFW_KEY_TAB || !ChatPeekFeature.isPeeking()) return false;
+        cycle(shift);
+        return true;
+    }
+
+    /**
+     * Whether the player list should stay hidden because Tab means "next chat tab" right now: in
+     * the chat screen, and while the chat is held open with Peek Chat.
+     */
+    public static boolean suppressesTabList() {
+        if (!tabKeyEnabled()) return false;
+        return Minecraft.getInstance().screen instanceof ChatScreen || ChatPeekFeature.isPeeking();
+    }
+
+    /** The tab row under the held-open chat, without hover since there is no cursor on it. */
+    public static void renderWhilePeeking(GuiGraphicsExtractor graphics) {
+        if (!tabKeyEnabled() || !ChatPeekFeature.isPeeking()) return;
+        render(graphics, graphics.guiHeight(), -1, -1);
     }
 
     /**

@@ -323,6 +323,19 @@ public class AlpakaConfig {
     public boolean chatTabsEnabled = true;
     /** With chat tabs: a plain message typed on a channel tab goes to that channel (/pc, /gc, /r). */
     public boolean chatTabsSendToChannel = false;
+    /** With chat tabs: the row also shows while peeking, and Tab cycles the tabs in chat and while peeking. */
+    public boolean chatTabsTabKey = true;
+
+    // Interface options
+    /** The mouse wheel scrolls a tooltip that is taller than the screen. */
+    public boolean scrollableTooltipsEnabled = true;
+    /** The held item's name above the hotbar stays up instead of fading out. */
+    public boolean persistentItemNameEnabled = false;
+
+    // Party invite prompt: Y joins, N dismisses. X of Integer.MIN_VALUE keeps it horizontally centred.
+    public boolean partyInvitePromptEnabled = true;
+    public int partyInvitePromptX = Integer.MIN_VALUE;
+    public int partyInvitePromptY = 40;
 
     // Quick Command Menu options
     public java.util.List<String> commandWheelCommands = new java.util.ArrayList<>(java.util.List.of(

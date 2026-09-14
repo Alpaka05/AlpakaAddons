@@ -203,6 +203,20 @@ public class AlpakaConfigRegistry {
                 0.1f, 5.0f, val -> String.format(Locale.ROOT, "%.1fx", val),
                 "snow speed animation winter velocity"));
 
+        OPTIONS.add(new ConfigOption("scrollable_tooltips", "Scrollable Tooltips",
+                "Scroll a tooltip taller than the screen with the mouse wheel.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.scrollableTooltipsEnabled,
+                v -> { AlpakaConfig.instance.scrollableTooltipsEnabled = v; AlpakaConfig.save(); },
+                "tooltip scroll wheel long tall item lore overflow cut off screen"));
+
+        OPTIONS.add(new ConfigOption("persistent_item_name", "Keep Item Name Visible",
+                "The held item's name above the hotbar no longer fades out.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.persistentItemNameEnabled,
+                v -> { AlpakaConfig.instance.persistentItemNameEnabled = v; AlpakaConfig.save(); },
+                "item name hotbar held tool highlight fade permanent always show"));
+
         OPTIONS.add(new ConfigOption("Chat", ConfigCategory.VISUALS));
 
         OPTIONS.add(new ConfigOption("expand_chat_history", "Expand Chat History",
@@ -275,6 +289,13 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.chatTabsSendToChannel,
                 v -> { AlpakaConfig.instance.chatTabsSendToChannel = v; AlpakaConfig.save(); },
                 "chat tabs send channel prefix party guild reply pc gc r"));
+
+        OPTIONS.add(new ConfigOption("chat_tabs_tab_key", "Tabs While Peeking & Tab Key",
+                "Shows the tabs while peeking and cycles them with Tab.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatTabsTabKey,
+                v -> { AlpakaConfig.instance.chatTabsTabKey = v; AlpakaConfig.save(); },
+                "chat tabs tab key cycle switch next peek player list tablist"));
 
         OPTIONS.add(new ConfigOption("Mod Menus", ConfigCategory.VISUALS));
 
@@ -1070,6 +1091,15 @@ public class AlpakaConfigRegistry {
                     return String.format("%ds", sec);
                 },
                 "world age recent visit threshold window seconds time minutes slider"));
+
+        OPTIONS.add(new ConfigOption("Party", ConfigCategory.SKYBLOCK));
+
+        OPTIONS.add(new ConfigOption("party_invite_prompt", "Party Invite Prompt",
+                "Shows a Y/N prompt on screen when someone invites you to a party.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.partyInvitePromptEnabled,
+                v -> { AlpakaConfig.instance.partyInvitePromptEnabled = v; AlpakaConfig.save(); },
+                "party invite prompt accept join decline y n key popup hypixel"));
 
         OPTIONS.add(new ConfigOption("Guild Chat", ConfigCategory.SKYBLOCK));
 

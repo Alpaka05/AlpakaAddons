@@ -103,6 +103,7 @@ public final class ChatPeekFeature {
         graphics.nextStratum();
         mc.gui.getChat().extractRenderState(graphics, mc.font, mc.gui.getGuiTicks(), mouseX, mouseY,
                 ChatComponent.DisplayMode.FOREGROUND, false);
+        ChatTabsFeature.renderWhilePeeking(graphics);
     }
 
     /** Whether the HUD should skip its own chat draw because {@link #renderOverMenu} draws it instead. */

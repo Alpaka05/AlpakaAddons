@@ -5,7 +5,6 @@ import net.alpaka.addons.features.chat.ChatPeekFeature;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
 import net.alpaka.addons.features.inventoryhud.InventoryHudRenderer;
 import net.alpaka.addons.features.notification.AlpakaNotifications;
-import net.alpaka.addons.features.party.PartyInvitePromptElement;
 import net.alpaka.addons.features.playermodel.PlayerModelRenderer;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.Gui;
@@ -33,7 +32,6 @@ public class GuiMixin {
         SlayerHudRenderer.render(graphicsExtractor, deltaTracker);
         SlayerTimerHudRenderer.render(graphicsExtractor, deltaTracker);
         InventoryHudRenderer.render(graphicsExtractor, deltaTracker);
-        PartyInvitePromptElement.renderHud(graphicsExtractor);
         // Last, so a notice sits above every other overlay rather than under one.
         AlpakaNotifications.render(graphicsExtractor, deltaTracker);
     }

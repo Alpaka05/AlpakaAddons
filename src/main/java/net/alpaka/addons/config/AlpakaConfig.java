@@ -332,10 +332,8 @@ public class AlpakaConfig {
     /** The held item's name above the hotbar stays up instead of fading out. */
     public boolean persistentItemNameEnabled = false;
 
-    // Party invite prompt: Y joins, N dismisses. X of Integer.MIN_VALUE keeps it horizontally centred.
+    /** A Hypixel party invite raises a notification: Y joins, N dismisses. */
     public boolean partyInvitePromptEnabled = true;
-    public int partyInvitePromptX = Integer.MIN_VALUE;
-    public int partyInvitePromptY = 40;
 
     // Quick Command Menu options
     public java.util.List<String> commandWheelCommands = new java.util.ArrayList<>(java.util.List.of(

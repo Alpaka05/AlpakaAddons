@@ -59,8 +59,8 @@ public class AlpakaConfigRegistry {
                 1.0f, 15.0f, val -> String.format(Locale.ROOT, "%.1fs", val),
                 "notification duration hold seconds popup toast time linger"));
 
-        OPTIONS.add(new ConfigOption("notification_corner", "Notification Corner",
-                "Which corner of the screen notices slide in at.",
+        OPTIONS.add(new ConfigOption("notification_corner", "Notification Position",
+                "Where notices appear: a corner, or the top centre.",
                 ConfigCategory.GENERAL,
                 () -> (float) AlpakaConfig.instance.notificationCorner,
                 v -> { AlpakaConfig.instance.notificationCorner = Math.round(v); AlpakaConfig.save(); },

@@ -32,7 +32,9 @@
     "AbstractSoundInstanceAccessor",
     "LivingEntityRendererMixin",
     "SubmitNodeCollectionMixin",
-    "ItemFeatureRendererMixin"
+    "ItemFeatureRendererMixin",
+    "GuiGraphicsExtractorMixin",
+    "KeyboardHandlerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -5,11 +5,15 @@ import net.alpaka.addons.features.chat.ScreenshotMessageFeature;
 import net.alpaka.addons.features.slayer.SlayerHudElement;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.CommandSuggestions;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.ChatScreen;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Style;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -26,6 +30,22 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  */
 @Mixin(ChatScreen.class)
 public class ChatScreenMixin {
+    @Shadow private CommandSuggestions commandSuggestions;
+    @Shadow protected EditBox input;
+
+    /**
+     * Tab cycles the chat tabs, Shift+Tab the other way. Left to vanilla while a command is being
+     * typed or a suggestion popup is up, where Tab completes; otherwise it would only bring up the
+     * player list, which the HUD hook holds back meanwhile.
+     */
+    @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
+    private void alpaka$tabCyclesChatTabs(KeyEvent event, CallbackInfoReturnable<Boolean> cir) {
+        if (ChatTabsFeature.onChatScreenKey(event.key(), event.hasShiftDown(),
+                this.commandSuggestions != null && this.commandSuggestions.isVisible(),
+                this.input == null ? "" : this.input.getValue())) {
+            cir.setReturnValue(true);
+        }
+    }
 
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
     private void onMouseClicked(MouseButtonEvent event, boolean doubleClick, CallbackInfoReturnable<Boolean> cir) {

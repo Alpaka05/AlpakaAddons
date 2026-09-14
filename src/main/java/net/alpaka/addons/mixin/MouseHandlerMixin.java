@@ -1,7 +1,9 @@
 package net.alpaka.addons.mixin;
 
 import net.alpaka.addons.features.chat.ChatPeekFeature;
+import net.alpaka.addons.features.tooltip.ScrollableTooltipsFeature;
 import net.alpaka.addons.features.zoom.ZoomFeature;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.MouseHandler;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -21,6 +23,11 @@ public class MouseHandlerMixin {
         }
         // Scrolls the held-open chat instead of the hotbar.
         if (ChatPeekFeature.onScroll(yoffset)) {
+            info.cancel();
+            return;
+        }
+        // Scrolls an oversized tooltip instead of the screen under it.
+        if (Minecraft.getInstance().gui.screen() != null && ScrollableTooltipsFeature.onScroll(yoffset)) {
             info.cancel();
         }
     }

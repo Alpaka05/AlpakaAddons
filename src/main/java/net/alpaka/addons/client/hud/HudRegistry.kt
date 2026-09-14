@@ -1,6 +1,7 @@
 package net.alpaka.addons.client.hud
 
 import net.alpaka.addons.features.inventoryhud.InventoryHudElement
+import net.alpaka.addons.features.party.PartyInvitePromptElement
 import net.alpaka.addons.features.playermodel.PlayerModelHudElement
 import net.alpaka.addons.features.slayer.SlayerHudElement
 import net.alpaka.addons.features.slayer.SlayerTimerHudElement
@@ -20,7 +21,8 @@ object HudRegistry {
         SlayerHudElement,
         SlayerTimerHudElement,
         PlayerModelHudElement,
-        InventoryHudElement
+        InventoryHudElement,
+        PartyInvitePromptElement
     )
 
     /**

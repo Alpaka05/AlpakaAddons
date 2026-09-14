@@ -108,21 +108,20 @@ public final class PartyInviteFeature {
      * key labelled Y arrives as {@code GLFW_KEY_Z}. The prompt says Y, so the key that says Y is the
      * one that joins.
      */
-    public static boolean onKey(int key, int scancode) {
+    public static boolean onKey(int key, int scancode, boolean repeat) {
         if (!isShowing()) return false;
         Minecraft mc = Minecraft.getInstance();
         if (mc.screen != null || mc.player == null) return false;
         char pressed = keyCharacter(key, scancode);
-        if (pressed == 'y') {
-            mc.player.connection.sendCommand("party accept " + inviter);
+        if (pressed != 'y' && pressed != 'n') return false;
+        // A held key's repeats are taken as well, so nothing else sees them, but act only once.
+        if (!repeat) {
+            if (pressed == 'y') {
+                mc.player.connection.sendCommand("party accept " + inviter);
+            }
             dismiss();
-            return true;
         }
-        if (pressed == 'n') {
-            dismiss();
-            return true;
-        }
-        return false;
+        return true;
     }
 
     /** The lower-case character a key produces on the current layout, or 0 when it has none. */

@@ -24,12 +24,16 @@ public class KeyboardHandlerMixin {
 
     @Inject(method = "keyPress", at = @At("HEAD"), cancellable = true)
     private void alpaka$interceptKeys(long window, int action, KeyEvent event, CallbackInfo ci) {
-        if (action != InputConstants.PRESS) return;
-        if (PartyInviteFeature.onKey(event.key(), event.scancode())) {
+        if (action == InputConstants.RELEASE) return;
+        // A held key repeats, and vanilla treats a repeat like a press: it would set the key
+        // mapping down - the player list's, for Tab - even though the press itself was taken. So a
+        // repeat of a taken key is swallowed too, without acting on it again.
+        boolean repeat = action == InputConstants.REPEAT;
+        if (PartyInviteFeature.onKey(event.key(), event.scancode(), repeat)) {
             ci.cancel();
             return;
         }
-        if (ChatTabsFeature.onPeekKey(event.key(), event.hasShiftDown())) {
+        if (ChatTabsFeature.onPeekKey(event.key(), event.hasShiftDown(), repeat)) {
             ci.cancel();
         }
     }

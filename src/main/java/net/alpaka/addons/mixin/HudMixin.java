@@ -68,6 +68,7 @@ public class HudMixin {
     @Inject(method = "extractTabList", at = @At("HEAD"), cancellable = true)
     private void alpaka$noTabListWhileTabCyclesChatTabs(GuiGraphicsExtractor graphicsExtractor, DeltaTracker deltaTracker, CallbackInfo ci) {
         if (ChatTabsFeature.suppressesTabList()) {
+            ChatTabsFeature.releasePlayerListKey();
             ci.cancel();
         }
     }

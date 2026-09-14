@@ -99,10 +99,14 @@ public final class ChatTabsFeature {
         return true;
     }
 
-    /** A key press outside the chat screen. True when it was Tab cycling the tabs while peeking. */
-    public static boolean onPeekKey(int key, boolean shift) {
+    /**
+     * A key press outside the chat screen. True when it was Tab while peeking, which cycles the
+     * tabs on a press and is merely swallowed on a repeat, so a held Tab does not race through them.
+     */
+    public static boolean onPeekKey(int key, boolean shift, boolean repeat) {
         if (!tabKeyEnabled() || key != GLFW.GLFW_KEY_TAB || !ChatPeekFeature.isPeeking()) return false;
-        cycle(shift);
+        if (!repeat) cycle(shift);
+        releasePlayerListKey();
         return true;
     }
 
@@ -115,9 +119,19 @@ public final class ChatTabsFeature {
         return Minecraft.getInstance().gui.screen() instanceof ChatScreen || ChatPeekFeature.isPeeking();
     }
 
+    /**
+     * Marks the player list key as not held. Vanilla's own list is cancelled at its hook, but
+     * other mods draw a tab HUD of their own off this very mapping, so it is kept released for as
+     * long as Tab means "next chat tab".
+     */
+    public static void releasePlayerListKey() {
+        Minecraft.getInstance().options.keyPlayerList.setDown(false);
+    }
+
     /** The tab row under the held-open chat, without hover since there is no cursor on it. */
     public static void renderWhilePeeking(GuiGraphicsExtractor graphics) {
         if (!tabKeyEnabled() || !ChatPeekFeature.isPeeking()) return;
+        releasePlayerListKey();
         render(graphics, graphics.guiHeight(), -1, -1);
     }
 

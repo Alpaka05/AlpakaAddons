@@ -155,6 +155,8 @@ public class AlpakaConfig {
      * vanilla pixel font; the default is Inter.
      */
     public int menuFont = 1;
+    /** Draw the menu font in its heavier cut (SemiBold, Bold for Lato; vanilla uses its own bold). */
+    public boolean menuFontBold = false;
     public boolean customEscapeMenuEnabled = true;
     public boolean customMainMenuEnabled = false;
     public boolean playerModelEnabled = true;
@@ -656,6 +658,7 @@ public class AlpakaConfig {
         this.muteVanillaSoundsInBlazeSlayer = false;
         this.customEscapeMenuEnabled = false;
         this.menuFont = 0;
+        this.menuFontBold = false;
         this.customMainMenuEnabled = false;
         this.playerModelEnabled = false;
         this.playerModelOnlyActions = false;

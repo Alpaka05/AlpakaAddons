@@ -1,13 +1,17 @@
 package net.alpaka.addons.mixin;
 
+import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.chat.ChatPeekFeature;
+import net.alpaka.addons.features.chat.ChatTabsFeature;
 import net.alpaka.addons.features.inventoryhud.InventoryHudRenderer;
 import net.alpaka.addons.features.notification.AlpakaNotifications;
 import net.alpaka.addons.features.playermodel.PlayerModelRenderer;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -18,6 +22,9 @@ import net.alpaka.addons.features.worldage.WorldAgeHudRenderer;
 
 @Mixin(Gui.class)
 public class GuiMixin {
+    @Shadow private int toolHighlightTimer;
+    @Shadow private ItemStack lastToolHighlight;
+
     @Inject(method = "extractRenderState", at = @At("TAIL"))
     private void onExtractRenderState(GuiGraphicsExtractor graphicsExtractor, DeltaTracker deltaTracker, CallbackInfo ci) {
         PlayerModelRenderer.render(graphicsExtractor, deltaTracker);
@@ -37,6 +44,36 @@ public class GuiMixin {
     private void alpaka$hideChatBehindPeekedMenu(GuiGraphicsExtractor graphicsExtractor, DeltaTracker deltaTracker, CallbackInfo ci) {
         if (ChatPeekFeature.hidesHudChat()) {
             ci.cancel();
+        }
+    }
+
+    /** Chat peek in the world: the tab row goes under the held-open chat, as in the chat screen. */
+    @Inject(method = "extractChat", at = @At("TAIL"))
+    private void alpaka$chatTabsWhilePeeking(GuiGraphicsExtractor graphicsExtractor, DeltaTracker deltaTracker, CallbackInfo ci) {
+        ChatTabsFeature.renderWhilePeeking(graphicsExtractor);
+    }
+
+    /**
+     * While Tab cycles the chat tabs, the player list it is bound to stays away - in the chat screen
+     * and while peeking - so the key does one thing there and not two.
+     */
+    @Inject(method = "extractTabList", at = @At("HEAD"), cancellable = true)
+    private void alpaka$noTabListWhileTabCyclesChatTabs(GuiGraphicsExtractor graphicsExtractor, DeltaTracker deltaTracker, CallbackInfo ci) {
+        if (ChatTabsFeature.suppressesTabList()) {
+            ChatTabsFeature.releasePlayerListKey();
+            ci.cancel();
+        }
+    }
+
+    /**
+     * Keeps the held item's name up. Vanilla counts the highlight timer down every tick and fades
+     * the name once it drops below ten; topping it up after that count keeps the fade from ever
+     * starting, while an empty hand still clears the name the vanilla way.
+     */
+    @Inject(method = "tick()V", at = @At("TAIL"))
+    private void alpaka$keepItemNameVisible(CallbackInfo ci) {
+        if (AlpakaConfig.instance.persistentItemNameEnabled && !this.lastToolHighlight.isEmpty()) {
+            this.toolHighlightTimer = Math.max(this.toolHighlightTimer, 20);
         }
     }
 }

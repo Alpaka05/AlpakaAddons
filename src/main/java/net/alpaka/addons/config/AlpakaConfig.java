@@ -323,6 +323,17 @@ public class AlpakaConfig {
     public boolean chatTabsEnabled = true;
     /** With chat tabs: a plain message typed on a channel tab goes to that channel (/pc, /gc, /r). */
     public boolean chatTabsSendToChannel = false;
+    /** With chat tabs: the row also shows while peeking, and Tab cycles the tabs in chat and while peeking. */
+    public boolean chatTabsTabKey = true;
+
+    // Interface options
+    /** The mouse wheel scrolls a tooltip that is taller than the screen. */
+    public boolean scrollableTooltipsEnabled = true;
+    /** The held item's name above the hotbar stays up instead of fading out. */
+    public boolean persistentItemNameEnabled = false;
+
+    /** A Hypixel party invite raises a notification: Y joins, N dismisses. */
+    public boolean partyInvitePromptEnabled = true;
 
     // Quick Command Menu options
     public java.util.List<String> commandWheelCommands = new java.util.ArrayList<>(java.util.List.of(

@@ -30,6 +30,7 @@ public class AlpakaClient implements ClientModInitializer {
         CommandWheelFeature.register();
         InventoryHudFeature.register();
         net.alpaka.addons.features.notification.MentionNotifier.register();
+        net.alpaka.addons.features.party.PartyInviteFeature.register();
         WorldAgeHudRenderer.registerEvents();
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {

@@ -4,28 +4,38 @@ import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.config.AlpakaConfig
 import net.minecraft.client.DeltaTracker
 import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.network.chat.Component
-import net.minecraft.network.chat.Style
+import net.minecraft.network.chat.FormattedText
+import net.minecraft.util.FormattedCharSequence
 import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 /**
- * Small notices that slide in at a screen corner, stack away from it and slide back out.
+ * Small notices that slide in at a screen edge, stack away from it and slide back out.
  *
  * This is the mod's general notification channel, not one feature's private overlay: anything that
  * needs to tell the player something without writing to chat calls [send] and is done. Nothing here
- * knows what a mention is - see [MentionNotifier] for the first thing that uses it.
+ * knows what a mention or a party invite is - see [MentionNotifier] for the first thing that uses it.
  *
  *     AlpakaNotifications.send("Slayer", "Personal best: 42.3s")
+ *
+ * A notice may carry styled lines ([sendLines]) and hands back an id, so a feature that has to act
+ * while its notice is up - the party invite's Y and N - can ask [isShowing] and take it away early
+ * with [dismiss]. A thin bar along the bottom edge runs down while the notice waits, so how long it
+ * has left is visible at a glance.
  *
  * Everything is measured in wall-clock milliseconds rather than ticks, so the animation keeps its
  * timing while the game is paused mid-tick or running below twenty ticks a second.
  *
- * The corner is a setting ([AlpakaConfig.notificationCorner]). Notices slide in horizontally from
- * the nearer screen edge and stack vertically away from that edge: upwards from a bottom corner,
- * downwards from a top one, with the newest always taking the slot nearest the corner.
+ * Where notices appear is a setting ([AlpakaConfig.notificationCorner]): one of the four corners,
+ * or the top centre. From a corner a notice slides in sideways from the nearer edge and the stack
+ * grows away from that corner - up from a bottom corner, down from a top one - with the newest
+ * always in the slot nearest the corner. At the top centre it drops in from above and the stack
+ * grows downwards, the newest on top.
  */
 object AlpakaNotifications {
 
@@ -33,48 +43,57 @@ object AlpakaNotifications {
     const val CORNER_BOTTOM_LEFT = 1
     const val CORNER_TOP_RIGHT = 2
     const val CORNER_TOP_LEFT = 3
+    const val TOP_CENTER = 4
 
-    /** Names for the config slider, indexed by the CORNER_* constants. */
+    /** Names for the config slider, indexed by the position constants. */
     @JvmField
-    val CORNER_NAMES = arrayOf("Bottom Right", "Bottom Left", "Top Right", "Top Left")
+    val CORNER_NAMES = arrayOf("Bottom Right", "Bottom Left", "Top Right", "Top Left", "Top Center")
 
     /** How long a notice takes to slide in, and again to slide out. */
     private const val SLIDE_MS = 260L
 
     /**
-     * How long it stays put between the two, unless the caller asks for something else.
+     * How long a notice stays put between the two, unless the caller asks for something else.
      *
      * Read at the moment the notice is queued rather than while it is on screen, so moving the
      * slider cannot cut short something already being read.
      */
-    private fun configuredHoldMs(): Long =
+    @JvmStatic
+    fun configuredHoldMs(): Long =
         (AlpakaConfig.instance.notificationHoldSeconds.coerceIn(1.0f, 15.0f) * 1000.0f).toLong()
 
     /** Beyond this the oldest is retired early, so a burst cannot cover the screen. */
     private const val MAX_VISIBLE = 4
 
-    private const val WIDTH = 180
+    private const val WIDTH = 196
     private const val PAD = 6
     private const val LINE = 10
     private const val GAP = 4
     private const val MARGIN = 8
 
-    /** Width of the coloured stripe down the left edge, which is what carries the accent. */
-    private const val STRIPE = 2
+    /** Height of the time-left bar along the bottom edge, and the gap kept above it. */
+    private const val BAR = 1
+    private const val BAR_GAP = 3
 
     /** At most this many wrapped lines of body text; the rest is dropped rather than shown cut. */
     private const val MAX_BODY_LINES = 2
 
     /**
-     * The glass the box is made of: a little more solid at the top than the bottom.
+     * The glass the box is made of: one flat, dark, translucent pane with its corner pixels left
+     * out, which the eye reads as a soft corner at the GUI scales the game runs at.
      *
-     * Kept translucent enough to read the world through, and graded rather than flat so the box
-     * settles into the screen instead of sitting on it as a slab.
+     * What sells the glass is not a gradient but the edge: a light line along the top where light
+     * would catch a pane, a fainter one down the left, and nothing else. Solid enough to read over
+     * bright terrain, open enough to see the world through.
      */
-    private const val GLASS_TOP = 0xB2101418.toInt()
-    private const val GLASS_BOTTOM = 0x59101418
-    private const val EDGE = 0x3CFFFFFF
-    private const val SHEEN = 0x26FFFFFF
+    private const val GLASS = 0xC70F1216.toInt()
+    private const val EDGE_TOP = 0x38FFFFFF
+    private const val EDGE_LEFT = 0x14FFFFFF
+    private const val BAR_TRACK = 0x1AFFFFFF
+    private const val BODY_TEXT = 0xFFD6DBE0.toInt()
+
+    /** How many pieces the bar's fade towards its tip is drawn in; the game has no horizontal gradient. */
+    private const val BAR_STEPS = 6
 
     /**
      * How quickly a notice slides to the slot it should be in, as a time constant in milliseconds.
@@ -85,46 +104,75 @@ object AlpakaNotifications {
     private const val SETTLE_TAU = 70.0f
 
     private class Notice(
+        val id: Long,
         val title: String,
-        val body: List<String>,
+        val body: List<FormattedCharSequence>,
         val accent: Int,
         val bornAtMs: Long,
         val holdMs: Long,
     ) {
-        val height: Int = PAD * 2 + LINE + body.size * LINE
+        val height: Int = PAD * 2 + LINE + body.size * LINE + BAR_GAP + BAR
         var settledY: Float = Float.NaN
         var retireAtMs: Long = bornAtMs + SLIDE_MS + holdMs + SLIDE_MS
     }
 
     private val active = ArrayList<Notice>()
+    private var nextId = 1L
     private var lastFrameMs = 0L
 
     /**
-     * Queues a notice. Safe to call from any thread the game runs on; drawing happens on its own.
+     * Queues a notice with a plain-text body, wrapped to the box. Safe to call from any thread the
+     * game runs on; drawing happens on its own. Returns the notice's id.
      *
      * [accent] of zero means the menu's own accent colour, which is what a caller with no reason to
-     * pick something else should pass.
+     * pick something else should pass. [holdMs] of zero means the configured duration.
      */
     @JvmStatic
     @JvmOverloads
-    fun send(title: String, body: String = "", accent: Int = 0, holdMs: Long = 0L) {
-        val hold = if (holdMs > 0L) holdMs else configuredHoldMs()
-        val font = Minecraft.getInstance().font ?: return
-        val room = WIDTH - PAD * 2 - STRIPE
+    fun send(title: String, body: String = "", accent: Int = 0, holdMs: Long = 0L): Long {
+        val lines = if (body.isEmpty()) emptyList() else wrap(FormattedText.of(body))
+        return enqueue(title, lines, accent, holdMs)
+    }
 
-        val lines = if (body.isEmpty()) {
-            emptyList()
-        } else {
-            font.getSplitter().splitLines(body, room, Style.EMPTY)
-                .take(MAX_BODY_LINES)
-                .map { it.string }
-        }
+    /** Queues a notice whose body lines carry their own styling. Each line is wrapped on its own. */
+    @JvmStatic
+    @JvmOverloads
+    fun sendLines(title: String, lines: List<Component>, accent: Int = 0, holdMs: Long = 0L): Long =
+        enqueue(title, lines.flatMap { wrap(it) }, accent, holdMs)
 
+    /** Whether the notice is on screen and not yet on its way out. */
+    @JvmStatic
+    fun isShowing(id: Long): Boolean {
+        if (id == 0L) return false
         synchronized(active) {
-            active.add(Notice(title, lines, accent, System.currentTimeMillis(), hold))
+            val notice = active.firstOrNull { it.id == id } ?: return false
+            return System.currentTimeMillis() < notice.retireAtMs - SLIDE_MS
+        }
+    }
+
+    /** Slides the notice out now instead of at the end of its hold. */
+    @JvmStatic
+    fun dismiss(id: Long) {
+        if (id == 0L) return
+        synchronized(active) {
+            active.firstOrNull { it.id == id }?.let { retireEarly(it) }
+        }
+    }
+
+    private fun wrap(text: FormattedText): List<FormattedCharSequence> {
+        val font = Minecraft.getInstance().font ?: return emptyList()
+        return font.split(text, WIDTH - PAD * 2)
+    }
+
+    private fun enqueue(title: String, lines: List<FormattedCharSequence>, accent: Int, holdMs: Long): Long {
+        val hold = if (holdMs > 0L) holdMs else configuredHoldMs()
+        synchronized(active) {
+            val id = nextId++
+            active.add(Notice(id, title, lines.take(MAX_BODY_LINES), accent, System.currentTimeMillis(), hold))
             // Retire from the top rather than refusing the new one: the newest notice is the one
             // the player is most likely waiting for.
             while (active.size > MAX_VISIBLE) retireEarly(active[0])
+            return id
         }
     }
 
@@ -156,11 +204,13 @@ object AlpakaNotifications {
         val screenHeight = mc.window.guiScaledHeight
 
         val corner = AlpakaConfig.instance.notificationCorner
+        val topCenter = corner == TOP_CENTER
         val atBottom = corner == CORNER_BOTTOM_RIGHT || corner == CORNER_BOTTOM_LEFT
         val atRight = corner == CORNER_BOTTOM_RIGHT || corner == CORNER_TOP_RIGHT
 
-        // Walked newest first, so the newest takes the slot in the corner and the older ones are
-        // pushed further from it as more arrive: up the screen from a bottom corner, down from a top.
+        // Walked newest first, so the newest takes the slot at the edge and the older ones are
+        // pushed further from it as more arrive: up the screen from a bottom corner, down from the
+        // top otherwise.
         var stackEdge = if (atBottom) (screenHeight - MARGIN).toFloat() else MARGIN.toFloat()
         for (index in snapshot.indices.reversed()) {
             val notice = snapshot[index]
@@ -170,13 +220,24 @@ object AlpakaNotifications {
             if (notice.settledY.isNaN()) notice.settledY = targetY
             notice.settledY = ease(notice.settledY, targetY, deltaMs)
 
-            // Slides in from the side edge it sits against, so it never crosses the screen.
-            val hidden = 1.0f - visibility(notice, now)
-            val slide = Math.round(hidden * (WIDTH + MARGIN))
-            val x = if (atRight) screenWidth - MARGIN - WIDTH + slide else MARGIN - slide
-            if (x >= screenWidth || x + WIDTH <= 0) continue
+            val shown = visibility(notice, now)
+            val hidden = 1.0f - shown
+            val x: Int
+            val y: Int
+            if (topCenter) {
+                // Drops in from above the screen edge and climbs back out the same way.
+                x = (screenWidth - WIDTH) / 2
+                y = Math.round(notice.settledY - hidden * (notice.height + MARGIN))
+                if (y + notice.height <= 0) continue
+            } else {
+                // Slides in from the side edge it sits against, so it never crosses the screen.
+                val slide = Math.round(hidden * (WIDTH + MARGIN))
+                x = if (atRight) screenWidth - MARGIN - WIDTH + slide else MARGIN - slide
+                y = Math.round(notice.settledY)
+                if (x >= screenWidth || x + WIDTH <= 0) continue
+            }
 
-            draw(graphics, font, notice, x, Math.round(notice.settledY))
+            draw(graphics, font, notice, x, y, shown, now)
         }
     }
 
@@ -204,26 +265,57 @@ object AlpakaNotifications {
     }
 
     /** Replaces the alpha byte of a colour, keeping its rgb. */
-    private fun withAlpha(color: Int, alpha: Int): Int = (alpha shl 24) or (color and 0xFFFFFF)
+    private fun withAlpha(color: Int, alpha: Int): Int = (alpha.coerceIn(0, 255) shl 24) or (color and 0xFFFFFF)
 
-    private fun draw(graphics: GuiGraphicsExtractor, font: net.minecraft.client.gui.Font, notice: Notice, x: Int, y: Int) {
+    /**
+     * A colour faded by how far in the notice is, so the box and its text arrive together instead
+     * of the text popping in over a still-transparent box. Never below the few units the font
+     * renderer would otherwise read as "opaque".
+     */
+    private fun faded(color: Int, shown: Float): Int =
+        withAlpha(color, ((color ushr 24) * shown).roundToInt().coerceAtLeast(4))
+
+    private fun draw(graphics: GuiGraphicsExtractor, font: Font, notice: Notice, x: Int, y: Int, shown: Float, now: Long) {
         val accent = if (notice.accent != 0) notice.accent else ModernGuiUtils.getAccentColor()
+        val height = notice.height
+        val glass = faded(GLASS, shown)
 
-        // Graded top to bottom, so the box fades out towards its lower edge rather than ending.
-        graphics.fillGradient(x, y, x + WIDTH, y + notice.height, GLASS_TOP, GLASS_BOTTOM)
-        // A single bright line along the top is what reads as a lit edge on glass.
-        ModernGuiUtils.drawRect(graphics, x, y, WIDTH, 1, SHEEN)
-        ModernGuiUtils.drawOutline(graphics, x, y, WIDTH, notice.height, EDGE)
-        // The accent fades with the glass instead of running full strength to the bottom corner.
-        graphics.fillGradient(x, y, x + STRIPE, y + notice.height, accent, withAlpha(accent, 0x40))
+        // The pane, in three pieces so the four corner pixels stay empty: a soft corner, as far
+        // as a pixel grid allows one.
+        graphics.fill(x + 1, y, x + WIDTH - 1, y + height, glass)
+        graphics.fill(x, y + 1, x + 1, y + height - 1, glass)
+        graphics.fill(x + WIDTH - 1, y + 1, x + WIDTH, y + height - 1, glass)
+        // Light catches the top edge, and a little of the left one; that is the whole "glass".
+        graphics.fill(x + 1, y, x + WIDTH - 1, y + 1, faded(EDGE_TOP, shown))
+        graphics.fill(x, y + 1, x + 1, y + height - 1, faded(EDGE_LEFT, shown))
 
-        val textX = x + STRIPE + PAD
-        graphics.text(font, Component.literal(notice.title), textX, y + PAD, accent)
+        val textX = x + PAD
+        graphics.text(font, Component.literal(notice.title), textX, y + PAD, faded(accent, shown))
         for (line in notice.body.indices) {
-            graphics.text(
-                font, Component.literal(notice.body[line]),
-                textX, y + PAD + LINE + line * LINE, ModernGuiUtils.COLOR_TEXT_PRIMARY
-            )
+            graphics.text(font, notice.body[line], textX, y + PAD + LINE + line * LINE, faded(BODY_TEXT, shown))
+        }
+
+        // The time left, as a hairline along the bottom edge that runs down from full while the
+        // notice waits: full while sliding in, empty once the slide out begins. Inset a pixel on
+        // either side so it ends before the missing corner pixels, and thinning towards its tip.
+        val barY = y + height - BAR
+        val barLeft = x + 1
+        val barWidth = WIDTH - 2
+        graphics.fill(barLeft, barY, barLeft + barWidth, y + height, faded(BAR_TRACK, shown))
+        val remaining = ((notice.retireAtMs - SLIDE_MS - now).toFloat() / notice.holdMs.toFloat()).coerceIn(0.0f, 1.0f)
+        val filled = (barWidth * remaining).roundToInt()
+        if (filled > 0) {
+            val step = max(1, filled / BAR_STEPS)
+            var from = barLeft
+            var piece = 0
+            while (from < barLeft + filled) {
+                val to = min(from + step, barLeft + filled)
+                // From full strength at the root to a little over half at the tip.
+                val alpha = 0xFF - (0xFF - 0x8C) * piece / (BAR_STEPS - 1).coerceAtLeast(1)
+                graphics.fill(from, barY, to, y + height, faded(withAlpha(accent, alpha), shown))
+                from = to
+                piece = min(piece + 1, BAR_STEPS - 1)
+            }
         }
     }
 }

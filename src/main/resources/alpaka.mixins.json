@@ -32,7 +32,10 @@
     "LivingEntityRendererMixin",
     "SubmitNodeCollectionMixin",
     "ItemFeatureRendererMixin",
-    "RenderTypeInvoker"
+    "RenderTypeInvoker",
+    "GuiGraphicsExtractorMixin",
+    "KeyboardHandlerMixin",
+    "SkyHanniTabListRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

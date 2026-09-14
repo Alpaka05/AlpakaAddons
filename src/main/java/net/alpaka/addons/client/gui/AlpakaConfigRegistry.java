@@ -323,6 +323,15 @@ public class AlpakaConfigRegistry {
                 })),
                 "menu accent color theme custom picker border highlight gui gold cyan red green blue"));
 
+        OPTIONS.add(new ConfigOption("menu_font", "Menu Font",
+                "The typeface the Alpaka menus are written in.",
+                ConfigCategory.VISUALS,
+                () -> (float) GuiFont.selectedIndex(),
+                v -> { AlpakaConfig.instance.menuFont = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (GuiFont.NAMES.length - 1),
+                val -> GuiFont.NAMES[Math.round(val)],
+                "menu font typeface text smooth modern inter poppins varela round outfit lato minecraft pixel gui"));
+
         // Player model and inventory HUD lived on their own Custom HUD tab; they are overlays like
         // everything else here, and one tab fewer is one fewer place to look.
 

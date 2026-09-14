@@ -1,5 +1,6 @@
 package net.alpaka.addons.client;
 
+import net.alpaka.addons.client.gui.GuiFont;
 import java.util.Locale;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -9,13 +10,12 @@ import net.minecraft.client.gui.components.StringWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.CommonComponents;
-import net.minecraft.network.chat.Component;
 
 public class ItemSwingConfigScreen extends Screen {
     private final Screen parent;
 
     public ItemSwingConfigScreen(Screen parent) {
-        super(Component.literal("Swing Animation Customizations"));
+        super(GuiFont.text("Swing Animation Customizations"));
         this.parent = parent;
     }
 
@@ -33,15 +33,15 @@ public class ItemSwingConfigScreen extends Screen {
 
         // 1. Swing Drift X (-100 to 100)
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY, 150, 20,
-                Component.literal("Swing Drift X (Width)"), this.font));
+                GuiFont.text("Swing Drift X (Width)"), this.font));
         AbstractSliderButton driftXSlider = new AbstractSliderButton(
                 this.width / 2 + 5, centerY, 150, 20,
-                Component.literal(String.format(Locale.ROOT, "%.1f", AlpakaConfig.instance.swingDriftX)),
+                GuiFont.text(String.format(Locale.ROOT, "%.1f", AlpakaConfig.instance.swingDriftX)),
                 (AlpakaConfig.instance.swingDriftX + 100.0f) / 200.0f
         ) {
             @Override
             protected void updateMessage() {
-                setMessage(Component.literal(String.format(Locale.ROOT, "%.1f", AlpakaConfig.instance.swingDriftX)));
+                setMessage(GuiFont.text(String.format(Locale.ROOT, "%.1f", AlpakaConfig.instance.swingDriftX)));
             }
             @Override
             protected void applyValue() {
@@ -53,15 +53,15 @@ public class ItemSwingConfigScreen extends Screen {
 
         // 2. Swing Drift Y (-100 to 100)
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 24, 150, 20,
-                Component.literal("Swing Drift Y (Height)"), this.font));
+                GuiFont.text("Swing Drift Y (Height)"), this.font));
         AbstractSliderButton driftYSlider = new AbstractSliderButton(
                 this.width / 2 + 5, centerY + 24, 150, 20,
-                Component.literal(String.format(Locale.ROOT, "%.1f", AlpakaConfig.instance.swingDriftY)),
+                GuiFont.text(String.format(Locale.ROOT, "%.1f", AlpakaConfig.instance.swingDriftY)),
                 (AlpakaConfig.instance.swingDriftY + 100.0f) / 200.0f
         ) {
             @Override
             protected void updateMessage() {
-                setMessage(Component.literal(String.format(Locale.ROOT, "%.1f", AlpakaConfig.instance.swingDriftY)));
+                setMessage(GuiFont.text(String.format(Locale.ROOT, "%.1f", AlpakaConfig.instance.swingDriftY)));
             }
             @Override
             protected void applyValue() {
@@ -73,15 +73,15 @@ public class ItemSwingConfigScreen extends Screen {
 
         // 3. Swing Drift Z (-100 to 100)
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 48, 150, 20,
-                Component.literal("Swing Drift Z (Depth)"), this.font));
+                GuiFont.text("Swing Drift Z (Depth)"), this.font));
         AbstractSliderButton driftZSlider = new AbstractSliderButton(
                 this.width / 2 + 5, centerY + 48, 150, 20,
-                Component.literal(String.format(Locale.ROOT, "%.1f", AlpakaConfig.instance.swingDriftZ)),
+                GuiFont.text(String.format(Locale.ROOT, "%.1f", AlpakaConfig.instance.swingDriftZ)),
                 (AlpakaConfig.instance.swingDriftZ + 100.0f) / 200.0f
         ) {
             @Override
             protected void updateMessage() {
-                setMessage(Component.literal(String.format(Locale.ROOT, "%.1f", AlpakaConfig.instance.swingDriftZ)));
+                setMessage(GuiFont.text(String.format(Locale.ROOT, "%.1f", AlpakaConfig.instance.swingDriftZ)));
             }
             @Override
             protected void applyValue() {
@@ -93,15 +93,15 @@ public class ItemSwingConfigScreen extends Screen {
 
         // 4. Swing Arc X (-180 to 180)
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 76, 150, 20,
-                Component.literal("Swing Rotation X"), this.font));
+                GuiFont.text("Swing Rotation X"), this.font));
         AbstractSliderButton arcXSlider = new AbstractSliderButton(
                 this.width / 2 + 5, centerY + 76, 150, 20,
-                Component.literal(String.format(Locale.ROOT, "%.0f°", AlpakaConfig.instance.swingArcX)),
+                GuiFont.text(String.format(Locale.ROOT, "%.0f°", AlpakaConfig.instance.swingArcX)),
                 (AlpakaConfig.instance.swingArcX + 180.0f) / 360.0f
         ) {
             @Override
             protected void updateMessage() {
-                setMessage(Component.literal(String.format(Locale.ROOT, "%.0f°", AlpakaConfig.instance.swingArcX)));
+                setMessage(GuiFont.text(String.format(Locale.ROOT, "%.0f°", AlpakaConfig.instance.swingArcX)));
             }
             @Override
             protected void applyValue() {
@@ -113,15 +113,15 @@ public class ItemSwingConfigScreen extends Screen {
 
         // 5. Swing Arc Y (-180 to 180)
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 100, 150, 20,
-                Component.literal("Swing Rotation Y"), this.font));
+                GuiFont.text("Swing Rotation Y"), this.font));
         AbstractSliderButton arcYSlider = new AbstractSliderButton(
                 this.width / 2 + 5, centerY + 100, 150, 20,
-                Component.literal(String.format(Locale.ROOT, "%.0f°", AlpakaConfig.instance.swingArcY)),
+                GuiFont.text(String.format(Locale.ROOT, "%.0f°", AlpakaConfig.instance.swingArcY)),
                 (AlpakaConfig.instance.swingArcY + 180.0f) / 360.0f
         ) {
             @Override
             protected void updateMessage() {
-                setMessage(Component.literal(String.format(Locale.ROOT, "%.0f°", AlpakaConfig.instance.swingArcY)));
+                setMessage(GuiFont.text(String.format(Locale.ROOT, "%.0f°", AlpakaConfig.instance.swingArcY)));
             }
             @Override
             protected void applyValue() {
@@ -133,15 +133,15 @@ public class ItemSwingConfigScreen extends Screen {
 
         // 6. Swing Arc Z (-180 to 180)
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 124, 150, 20,
-                Component.literal("Swing Rotation Z"), this.font));
+                GuiFont.text("Swing Rotation Z"), this.font));
         AbstractSliderButton arcZSlider = new AbstractSliderButton(
                 this.width / 2 + 5, centerY + 124, 150, 20,
-                Component.literal(String.format(Locale.ROOT, "%.0f°", AlpakaConfig.instance.swingArcZ)),
+                GuiFont.text(String.format(Locale.ROOT, "%.0f°", AlpakaConfig.instance.swingArcZ)),
                 (AlpakaConfig.instance.swingArcZ + 180.0f) / 360.0f
         ) {
             @Override
             protected void updateMessage() {
-                setMessage(Component.literal(String.format(Locale.ROOT, "%.0f°", AlpakaConfig.instance.swingArcZ)));
+                setMessage(GuiFont.text(String.format(Locale.ROOT, "%.0f°", AlpakaConfig.instance.swingArcZ)));
             }
             @Override
             protected void applyValue() {
@@ -153,7 +153,7 @@ public class ItemSwingConfigScreen extends Screen {
 
         // 7. Disable Forward Swing Toggle
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 152, 150, 20,
-                Component.literal("Disable Forward Swing"), this.font));
+                GuiFont.text("Disable Forward Swing"), this.font));
         Button toggleSwingTrans = Button.builder(
                 CommonComponents.optionStatus(AlpakaConfig.instance.itemSwingTranslationDisabled),
                 button -> {
@@ -168,7 +168,7 @@ public class ItemSwingConfigScreen extends Screen {
 
         // 8. Always Finish Swing Toggle
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 176, 150, 20,
-                Component.literal("Always Finish Swing"), this.font));
+                GuiFont.text("Always Finish Swing"), this.font));
         Button toggleAlwaysFinish = Button.builder(
                 CommonComponents.optionStatus(AlpakaConfig.instance.itemSwingAlwaysFinishEnabled),
                 button -> {

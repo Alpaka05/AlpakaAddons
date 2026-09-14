@@ -1,5 +1,6 @@
 package net.alpaka.addons.client;
 
+import net.alpaka.addons.client.gui.GuiFont;
 import net.alpaka.addons.client.gui.ModernGuiUtils;
 import net.alpaka.addons.features.sound.CustomSoundFeature;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -7,7 +8,6 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.network.chat.Component;
 
 import java.util.function.Consumer;
 
@@ -38,7 +38,7 @@ public class ColorPickerScreen extends Screen {
     };
 
     public ColorPickerScreen(Screen parent, String title, int initialColor, Consumer<Integer> onSave) {
-        super(Component.literal(title));
+        super(GuiFont.text(title));
         this.parent = parent;
         this.onSave = onSave;
         this.a = (initialColor >> 24) & 0xFF;
@@ -106,7 +106,7 @@ public class ColorPickerScreen extends Screen {
         int closeX = winX + winW - 28;
         int closeY = winY + 9;
         boolean hoverClose = mouseX >= closeX && mouseX <= closeX + 18 && mouseY >= closeY && mouseY <= closeY + 18;
-        graphics.text(this.font, Component.literal("✕"), closeX + 4, closeY + 3, hoverClose ? ModernGuiUtils.getAccentColor() : ModernGuiUtils.COLOR_TEXT_MUTED);
+        graphics.text(this.font, GuiFont.text("✕"), closeX + 4, closeY + 3, hoverClose ? ModernGuiUtils.getAccentColor() : ModernGuiUtils.COLOR_TEXT_MUTED);
 
         // LEFT COLUMN: Color Preview, HEX Code, Presets
         int prevX = winX + 20;
@@ -133,12 +133,12 @@ public class ColorPickerScreen extends Screen {
         if (hexFocused && (System.currentTimeMillis() / 500) % 2 == 0) {
             displayText += "|";
         }
-        int hexStrX = prevX + (prevW - this.font.width(displayText)) / 2;
-        graphics.text(this.font, Component.literal(displayText), hexStrX, hexY + 7, hexFocused ? ModernGuiUtils.getAccentColor() : ModernGuiUtils.COLOR_TEXT_PRIMARY);
+        int hexStrX = prevX + (prevW - GuiFont.width(this.font, displayText)) / 2;
+        graphics.text(this.font, GuiFont.text(displayText), hexStrX, hexY + 7, hexFocused ? ModernGuiUtils.getAccentColor() : ModernGuiUtils.COLOR_TEXT_PRIMARY);
 
         // Presets Header
         int presetY = hexY + hexH + 12;
-        graphics.text(this.font, Component.literal("Presets:"), prevX, presetY, ModernGuiUtils.COLOR_TEXT_MUTED);
+        graphics.text(this.font, GuiFont.text("Presets:"), prevX, presetY, ModernGuiUtils.COLOR_TEXT_MUTED);
 
         // Presets Grid (5 cols x 2 rows)
         int swatchSize = 22;
@@ -172,7 +172,7 @@ public class ColorPickerScreen extends Screen {
         for (int i = 0; i < 4; i++) {
             int sy = sliderY + i * rowGap;
             String labelText = sliderNames[i] + ": " + sliderVals[i];
-            graphics.text(this.font, Component.literal(labelText), rightX, sy, ModernGuiUtils.COLOR_TEXT_PRIMARY);
+            graphics.text(this.font, GuiFont.text(labelText), rightX, sy, ModernGuiUtils.COLOR_TEXT_PRIMARY);
 
             int swY = sy + 14;
             int swH = 22;

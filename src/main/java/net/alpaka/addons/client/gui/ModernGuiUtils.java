@@ -2,7 +2,6 @@ package net.alpaka.addons.client.gui;
 
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.network.chat.Component;
 
 public class ModernGuiUtils {
     // Theme Colors (Neutral Dark Charcoal/Gray with Gold accent & Green/Red states)
@@ -107,9 +106,9 @@ public class ModernGuiUtils {
         if (state) {
             // Centred by measuring, so the mark stays put if the box size is ever changed.
             String mark = "✔";
-            int markX = x + (size - font.width(mark)) / 2;
+            int markX = x + (size - GuiFont.width(font, mark)) / 2;
             int markY = y + (size - 8) / 2;
-            graphics.text(font, Component.literal(mark), markX, markY, COLOR_TOGGLE_ON_TEXT);
+            graphics.text(font, GuiFont.text(mark), markX, markY, COLOR_TOGGLE_ON_TEXT);
         }
     }
 
@@ -132,9 +131,9 @@ public class ModernGuiUtils {
         drawRect(graphics, thumbX, y + 1, thumbWidth, height - 2, getAccentColor());
 
         // Value text
-        int textX = x + (width - font.width(displayValue)) / 2;
+        int textX = x + (width - GuiFont.width(font, displayValue)) / 2;
         int textY = y + (height - 8) / 2;
-        graphics.text(font, Component.literal(displayValue), textX, textY, COLOR_TEXT_PRIMARY);
+        graphics.text(font, GuiFont.text(displayValue), textX, textY, COLOR_TEXT_PRIMARY);
     }
 
     public static void drawModernButton(GuiGraphicsExtractor graphics, Font font, int x, int y, int width, int height, String label, boolean isHovered, boolean isPrimary) {
@@ -145,9 +144,9 @@ public class ModernGuiUtils {
         drawRect(graphics, x, y, width, height, bg);
         drawOutline(graphics, x, y, width, height, border);
 
-        int textX = x + (width - font.width(label)) / 2;
+        int textX = x + (width - GuiFont.width(font, label)) / 2;
         int textY = y + (height - 8) / 2;
-        graphics.text(font, Component.literal(label), textX, textY, textColor);
+        graphics.text(font, GuiFont.text(label), textX, textY, textColor);
     }
 
     public static void drawModernColorButton(GuiGraphicsExtractor graphics, Font font, int x, int y, int width, int height, int color, boolean isHovered) {
@@ -171,9 +170,9 @@ public class ModernGuiUtils {
         drawRect(graphics, x, y, width, height, bg);
         drawOutline(graphics, x, y, width, height, border);
 
-        int textX = x + (width - font.width(label)) / 2;
+        int textX = x + (width - GuiFont.width(font, label)) / 2;
         int textY = y + (height - 8) / 2;
-        graphics.text(font, Component.literal(label), textX, textY, textColor);
+        graphics.text(font, GuiFont.text(label), textX, textY, textColor);
     }
 
     /**
@@ -192,15 +191,15 @@ public class ModernGuiUtils {
 
         // Trimmed from the left, so the end being typed stays visible instead of scrolling away.
         int maxWidth = width - 8;
-        while (shown.length() > 1 && font.width(shown) > maxWidth) {
+        while (shown.length() > 1 && GuiFont.width(font, shown) > maxWidth) {
             shown = shown.substring(1);
         }
 
         int textY = y + (height - 8) / 2;
-        graphics.text(font, Component.literal(shown), x + 4, textY, textColor);
+        graphics.text(font, GuiFont.text(shown), x + 4, textY, textColor);
 
         if (isFocused && (System.currentTimeMillis() / 500) % 2 == 0) {
-            int caretX = x + 4 + (empty ? 0 : font.width(shown));
+            int caretX = x + 4 + (empty ? 0 : GuiFont.width(font, shown));
             drawRect(graphics, Math.min(caretX, x + width - 2), textY - 1, 1, 10, getAccentColor());
         }
     }

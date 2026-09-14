@@ -150,6 +150,11 @@ public class AlpakaConfig {
     public boolean muteVanillaSoundsInBlazeSlayer = false;
     public float lowHpHeartbeatThreshold = 0.30f;
     public int menuAccentColor = 0xFFE5B849; // Default Warm Gold
+    /**
+     * Index into {@code GuiFont.NAMES}: the typeface the Alpaka menus are written in. 0 is the
+     * vanilla pixel font; the default is Inter.
+     */
+    public int menuFont = 1;
     public boolean customEscapeMenuEnabled = true;
     public boolean customMainMenuEnabled = false;
     public boolean playerModelEnabled = true;
@@ -650,6 +655,7 @@ public class AlpakaConfig {
         this.customSoundSuccessfulHit = false;
         this.muteVanillaSoundsInBlazeSlayer = false;
         this.customEscapeMenuEnabled = false;
+        this.menuFont = 0;
         this.customMainMenuEnabled = false;
         this.playerModelEnabled = false;
         this.playerModelOnlyActions = false;

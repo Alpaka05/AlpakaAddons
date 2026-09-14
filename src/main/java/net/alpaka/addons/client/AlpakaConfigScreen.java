@@ -3,6 +3,7 @@ package net.alpaka.addons.client;
 import net.alpaka.addons.client.gui.AlpakaConfigRegistry;
 import net.alpaka.addons.client.gui.ConfigCategory;
 import net.alpaka.addons.client.gui.ConfigOption;
+import net.alpaka.addons.client.gui.GuiFont;
 import net.alpaka.addons.client.gui.ModernGuiUtils;
 import net.alpaka.addons.client.gui.PloppAnimation;
 import net.alpaka.addons.features.sound.CustomSoundFeature;
@@ -12,7 +13,6 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -62,7 +62,7 @@ public class AlpakaConfigScreen extends Screen {
      * a hit, which is what makes the term land on a result rather than on an empty General page.
      */
     public AlpakaConfigScreen(Screen parent, String initialSearch) {
-        super(Component.literal("Alpaka Addons Config"));
+        super(GuiFont.text("Alpaka Addons Config"));
         this.parent = parent;
         this.search.setText(initialSearch == null ? "" : initialSearch.trim());
         if (!this.search.getText().isEmpty()) {
@@ -234,9 +234,9 @@ public class AlpakaConfigScreen extends Screen {
         ModernGuiUtils.drawRect(graphics, winX, winY + headerHeight - 1, winW, 1, ModernGuiUtils.getAccentColor());
 
         String mainTitle = "ALPAKA ADDONS";
-        int titleWidth = this.font.width(mainTitle);
-        graphics.text(this.font, Component.literal(mainTitle), winX + 12, winY + 12, ModernGuiUtils.COLOR_TEXT_PRIMARY);
-        graphics.text(this.font, Component.literal("v" + ModVersion.mod()), winX + 12 + titleWidth + 6, winY + 12, ModernGuiUtils.COLOR_TEXT_MUTED);
+        int titleWidth = GuiFont.width(this.font, mainTitle);
+        graphics.text(this.font, GuiFont.text(mainTitle), winX + 12, winY + 12, ModernGuiUtils.COLOR_TEXT_PRIMARY);
+        graphics.text(this.font, GuiFont.text("v" + ModVersion.mod()), winX + 12 + titleWidth + 6, winY + 12, ModernGuiUtils.COLOR_TEXT_MUTED);
 
         // Render Search Box
         int searchX = winX + winW - 170;
@@ -255,24 +255,24 @@ public class AlpakaConfigScreen extends Screen {
         int searchTextY = searchY + (searchH - 8) / 2;
 
         if (search.isEmpty() && !searchFocused) {
-            graphics.text(this.font, Component.literal("🔍 Search..."), searchTextX, searchTextY, ModernGuiUtils.COLOR_TEXT_MUTED);
+            graphics.text(this.font, GuiFont.text("🔍 Search..."), searchTextX, searchTextY, ModernGuiUtils.COLOR_TEXT_MUTED);
         } else {
             String text = search.getText();
 
             // Behind the glyphs, so the text stays readable on top of it.
             if (searchFocused && search.hasSelection()) {
-                int from = searchTextX + this.font.width(text.substring(0, search.getSelectionStart()));
-                int to = searchTextX + this.font.width(text.substring(0, search.getSelectionEnd()));
+                int from = searchTextX + GuiFont.width(this.font, text.substring(0, search.getSelectionStart()));
+                int to = searchTextX + GuiFont.width(this.font, text.substring(0, search.getSelectionEnd()));
                 ModernGuiUtils.drawRect(graphics, from, searchTextY - 2, to - from, 12, ModernGuiUtils.getAccentDimColor());
             }
 
-            graphics.text(this.font, Component.literal(text), searchTextX, searchTextY, ModernGuiUtils.COLOR_TEXT_PRIMARY);
+            graphics.text(this.font, GuiFont.text(text), searchTextX, searchTextY, ModernGuiUtils.COLOR_TEXT_PRIMARY);
 
             // Drawn at the caret rather than appended to the string, so it sits where editing will
             // happen instead of always at the end. The blink is restarted on every keystroke, which
             // keeps the caret solid while typing rather than winking out mid-word.
             if (searchFocused && (System.currentTimeMillis() - cursorBlinkTimer) / 500 % 2 == 0) {
-                int caretX = searchTextX + this.font.width(text.substring(0, search.getCaret()));
+                int caretX = searchTextX + GuiFont.width(this.font, text.substring(0, search.getCaret()));
                 ModernGuiUtils.drawRect(graphics, caretX, searchTextY - 1, 1, 10, ModernGuiUtils.COLOR_TEXT_PRIMARY);
             }
         }
@@ -281,7 +281,7 @@ public class AlpakaConfigScreen extends Screen {
         if (!search.getText().isEmpty()) {
             int clearX = searchX + searchW - 14;
             boolean hoverClear = mouseX >= clearX && mouseX <= clearX + 10 && mouseY >= searchY && mouseY <= searchY + searchH;
-            graphics.text(this.font, Component.literal("✕"), clearX + 2, searchY + (searchH - 8) / 2, hoverClear ? ModernGuiUtils.getAccentColor() : ModernGuiUtils.COLOR_TEXT_MUTED);
+            graphics.text(this.font, GuiFont.text("✕"), clearX + 2, searchY + (searchH - 8) / 2, hoverClear ? ModernGuiUtils.getAccentColor() : ModernGuiUtils.COLOR_TEXT_MUTED);
         }
         // 4. Sidebar Categories with Scissor Clipping to keep categories strictly inside the panel
         ensureValidActiveCategory();
@@ -321,13 +321,13 @@ public class AlpakaConfigScreen extends Screen {
             // Category Label: Shift text right when selected
             int textX = winX + (isSelected ? 22 : 14);
             int labelColor = isSelected ? ModernGuiUtils.getAccentColor() : (isHovered ? ModernGuiUtils.COLOR_TEXT_PRIMARY : ModernGuiUtils.COLOR_TEXT_MUTED);
-            graphics.text(this.font, Component.literal(cat.getDisplayName()), textX, itemY + (catItemH - 8) / 2, labelColor);
+            graphics.text(this.font, GuiFont.text(cat.getDisplayName()), textX, itemY + (catItemH - 8) / 2, labelColor);
 
             // Category Settings Count Badge
             String countText = String.valueOf(AlpakaConfigRegistry.countOptions(cat, search.getText()));
-            int countX = winX + 8 + (sidebarWidth - 20) - this.font.width(countText) - 10;
+            int countX = winX + 8 + (sidebarWidth - 20) - GuiFont.width(this.font, countText) - 10;
             int countColor = isSelected ? ModernGuiUtils.getAccentColor() : (isHovered ? ModernGuiUtils.COLOR_TEXT_MUTED : ModernGuiUtils.COLOR_TEXT_DARK);
-            graphics.text(this.font, Component.literal(countText), countX, itemY + (catItemH - 8) / 2, countColor);
+            graphics.text(this.font, GuiFont.text(countText), countX, itemY + (catItemH - 8) / 2, countColor);
 
             if (isSelected) {
                 ModernGuiUtils.drawRect(graphics, winX + 8, itemY, 3, catItemH, ModernGuiUtils.getAccentColor());
@@ -360,13 +360,13 @@ public class AlpakaConfigScreen extends Screen {
         if (!search.getText().isEmpty()) {
             catTitle = "Search results for: \"" + search.getText() + "\"";
         }
-        graphics.text(this.font, Component.literal(catTitle), contentX + 16, startOptionY, ModernGuiUtils.COLOR_TEXT_PRIMARY);
-        graphics.text(this.font, Component.literal(activeCategory.getDescription()), contentX + 16, startOptionY + 13, ModernGuiUtils.COLOR_TEXT_MUTED);
+        graphics.text(this.font, GuiFont.text(catTitle), contentX + 16, startOptionY, ModernGuiUtils.COLOR_TEXT_PRIMARY);
+        graphics.text(this.font, GuiFont.text(activeCategory.getDescription()), contentX + 16, startOptionY + 13, ModernGuiUtils.COLOR_TEXT_MUTED);
         startOptionY += CATEGORY_HEADER_H;
 
         if (options.isEmpty()) {
             String emptyMsg = "No settings found for \"" + search.getText() + "\".";
-            graphics.text(this.font, Component.literal(emptyMsg), contentX + 16, startOptionY + 12, ModernGuiUtils.COLOR_TOGGLE_OFF_TEXT);
+            graphics.text(this.font, GuiFont.text(emptyMsg), contentX + 16, startOptionY + 12, ModernGuiUtils.COLOR_TOGGLE_OFF_TEXT);
         } else {
             int cardW = contentW - 28;
             int cardH = CARD_H;
@@ -377,7 +377,7 @@ public class AlpakaConfigScreen extends Screen {
                 if (startOptionY + itemHeight >= clipY && startOptionY <= clipY + clipH) {
                     if (opt.getType() == ConfigOption.Type.HEADER) {
                         ModernGuiUtils.drawRect(graphics, contentX + 14, startOptionY + 8, cardW, 1, ModernGuiUtils.COLOR_CARD_BORDER);
-                        graphics.text(this.font, Component.literal("• " + opt.getTitle().toUpperCase()), contentX + 14, startOptionY + 14, ModernGuiUtils.getAccentColor());
+                        graphics.text(this.font, GuiFont.text("• " + opt.getTitle().toUpperCase()), contentX + 14, startOptionY + 14, ModernGuiUtils.getAccentColor());
                     } else {
                         boolean isCardHovered = mouseX >= contentX + 14 && mouseX <= contentX + 14 + cardW &&
                                                mouseY >= startOptionY && mouseY <= startOptionY + cardH &&
@@ -396,19 +396,17 @@ public class AlpakaConfigScreen extends Screen {
                         ModernGuiUtils.drawModernCard(graphics, contentX + 14, startOptionY, cardW, cardH, isCardHovered, false);
 
                         // Right Control Widgets (Compact sizing to fit smaller panel)
-                        int widgetW = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 32 :
-                                      (opt.getType() == ConfigOption.Type.TEXT ? 120 :
-                                      (opt.getType() == ConfigOption.Type.ACTION ? (opt.getId().contains("color") ? 38 : 80) : 90));
+                        int widgetW = widgetWidth(opt);
                         int widgetH = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 15 : 18;
                         int widgetX = contentX + 14 + cardW - widgetW - 10;
                         int widgetY = startOptionY + (cardH - widgetH) / 2;
 
                         // Title & Description (Wrapped to maxDescW to prevent overlap with control widgets)
-                        graphics.text(this.font, Component.literal(opt.getTitle()), contentX + 24, startOptionY + 8, ModernGuiUtils.COLOR_TEXT_PRIMARY);
+                        graphics.text(this.font, GuiFont.text(opt.getTitle()), contentX + 24, startOptionY + 8, ModernGuiUtils.COLOR_TEXT_PRIMARY);
 
                         String desc = opt.getDescription();
                         int maxDescW = widgetX - (contentX + 24) - 10;
-                        List<net.minecraft.network.chat.FormattedText> descLines = this.font.getSplitter().splitLines(desc, maxDescW, net.minecraft.network.chat.Style.EMPTY);
+                        List<net.minecraft.network.chat.FormattedText> descLines = GuiFont.splitLines(this.font, desc, maxDescW);
 
                         if (descLines.size() > 1) {
                             for (int i = 0; i < Math.min(2, descLines.size()); i++) {
@@ -421,7 +419,7 @@ public class AlpakaConfigScreen extends Screen {
                                         contentX + 24, startOptionY + 20 + i * 9, ModernGuiUtils.COLOR_TEXT_MUTED);
                             }
                         } else {
-                            graphics.text(this.font, Component.literal(desc), contentX + 24, startOptionY + 22, ModernGuiUtils.COLOR_TEXT_MUTED);
+                            graphics.text(this.font, GuiFont.text(desc), contentX + 24, startOptionY + 22, ModernGuiUtils.COLOR_TEXT_MUTED);
                         }
 
                         if (opt.getType() == ConfigOption.Type.BOOLEAN) {
@@ -482,7 +480,7 @@ public class AlpakaConfigScreen extends Screen {
                                 ModernGuiUtils.drawModernCheckbox(graphics, this.font, boxX, boxY, CHECKBOX_SIZE, entry.get(), entryHovered);
 
                                 int labelColor = entry.get() ? ModernGuiUtils.COLOR_TEXT_PRIMARY : ModernGuiUtils.COLOR_TEXT_MUTED;
-                                graphics.text(this.font, Component.literal(entry.getLabel()),
+                                graphics.text(this.font, GuiFont.text(entry.getLabel()),
                                         boxX + CHECKBOX_SIZE + 7, entryY + (DROPDOWN_ENTRY_H - 8) / 2, labelColor);
 
                                 entryY += DROPDOWN_ENTRY_H;
@@ -500,6 +498,23 @@ public class AlpakaConfigScreen extends Screen {
         if (isAnimatingOpen) {
             graphics.pose().popMatrix();
         }
+    }
+
+    /**
+     * Width of an option's control, shared by drawing and hit-testing.
+     *
+     * Buttons grow with their label. Labels are measured in the configured typeface, and most run
+     * wider there than in the pixel font the fixed 80 px was sized for - "Open HUD Editor" spilled
+     * past both ends of its button in Inter.
+     */
+    private int widgetWidth(ConfigOption opt) {
+        return switch (opt.getType()) {
+            case BOOLEAN -> 32;
+            case TEXT -> 120;
+            case ACTION -> opt.getId().contains("color") ? 38
+                    : Math.max(80, GuiFont.width(this.font, opt.getActionLabel()) + 16);
+            default -> 90;
+        };
     }
 
     private int getEffectiveWinX(int winW) {
@@ -556,7 +571,7 @@ public class AlpakaConfigScreen extends Screen {
             this.cursorBlinkTimer = System.currentTimeMillis();
             // Caret where the click landed, not blindly at the end - clicking into the middle of a
             // term to fix one letter is the reason to click a text field at all.
-            search.setCaretFromX((int) mouseX - (searchX + 6), this.font);
+            search.setCaretFromX((int) mouseX - (searchX + 6), s -> GuiFont.width(this.font, s));
             return true;
         } else if (this.searchFocused) {
             this.searchFocused = false;
@@ -621,9 +636,7 @@ public class AlpakaConfigScreen extends Screen {
                     }
                 }
 
-                int widgetW = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 32 :
-                              (opt.getType() == ConfigOption.Type.TEXT ? 120 :
-                              (opt.getType() == ConfigOption.Type.ACTION ? (opt.getId().contains("color") ? 38 : 80) : 90));
+                int widgetW = widgetWidth(opt);
                 int widgetH = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 16 : 18;
                 int widgetX = contentX + 14 + cardW - widgetW - 10;
                 int widgetY = startOptionY + (cardH - widgetH) / 2;

@@ -1,5 +1,6 @@
 package net.alpaka.addons.client;
 
+import net.alpaka.addons.client.gui.GuiFont;
 import java.util.Locale;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -9,13 +10,12 @@ import net.minecraft.client.gui.components.StringWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.CommonComponents;
-import net.minecraft.network.chat.Component;
 
 public class BlockOverlayConfigScreen extends Screen {
     private final Screen parent;
 
     public BlockOverlayConfigScreen(Screen parent) {
-        super(Component.literal("Block Overlay Settings"));
+        super(GuiFont.text("Block Overlay Settings"));
         this.parent = parent;
     }
 
@@ -27,7 +27,7 @@ public class BlockOverlayConfigScreen extends Screen {
 
         // 1. Enable Block Overlay Toggle
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY, 150, 20,
-                Component.literal("Enable Block Overlay"), this.font));
+                GuiFont.text("Enable Block Overlay"), this.font));
         Button toggleOverlay = Button.builder(
                 CommonComponents.optionStatus(AlpakaConfig.instance.blockOverlayEnabled),
                 button -> {
@@ -42,7 +42,7 @@ public class BlockOverlayConfigScreen extends Screen {
 
         // 2. Smooth Fade In Toggle
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 22, 150, 20,
-                Component.literal("Smooth Fade In"), this.font));
+                GuiFont.text("Smooth Fade In"), this.font));
         Button toggleFadeIn = Button.builder(
                 CommonComponents.optionStatus(AlpakaConfig.instance.blockFadeInEnabled),
                 button -> {
@@ -57,15 +57,15 @@ public class BlockOverlayConfigScreen extends Screen {
 
         // 3. Fade In Duration Slider (50 ms to 1000 ms)
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 44, 150, 20,
-                Component.literal("Fade In Duration"), this.font));
+                GuiFont.text("Fade In Duration"), this.font));
         AbstractSliderButton durationSlider = new AbstractSliderButton(
                 this.width / 2 + 5, centerY + 44, 150, 20,
-                Component.literal(AlpakaConfig.instance.blockFadeInDurationMs + " ms"),
+                GuiFont.text(AlpakaConfig.instance.blockFadeInDurationMs + " ms"),
                 (AlpakaConfig.instance.blockFadeInDurationMs - 50.0f) / 950.0f
         ) {
             @Override
             protected void updateMessage() {
-                setMessage(Component.literal(AlpakaConfig.instance.blockFadeInDurationMs + " ms"));
+                setMessage(GuiFont.text(AlpakaConfig.instance.blockFadeInDurationMs + " ms"));
             }
             @Override
             protected void applyValue() {
@@ -77,7 +77,7 @@ public class BlockOverlayConfigScreen extends Screen {
 
         // 4. Enable Outline Toggle
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 66, 150, 20,
-                Component.literal("Render Outline"), this.font));
+                GuiFont.text("Render Outline"), this.font));
         Button toggleOutline = Button.builder(
                 CommonComponents.optionStatus(AlpakaConfig.instance.blockOutlineEnabled),
                 button -> {
@@ -92,15 +92,15 @@ public class BlockOverlayConfigScreen extends Screen {
 
         // 5. Outline Thickness Slider (0.5 to 5.0)
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 88, 150, 20,
-                Component.literal("Outline Thickness"), this.font));
+                GuiFont.text("Outline Thickness"), this.font));
         AbstractSliderButton thicknessSlider = new AbstractSliderButton(
                 this.width / 2 + 5, centerY + 88, 150, 20,
-                Component.literal(String.format(Locale.ROOT, "%.1f", AlpakaConfig.instance.blockOutlineThickness)),
+                GuiFont.text(String.format(Locale.ROOT, "%.1f", AlpakaConfig.instance.blockOutlineThickness)),
                 (AlpakaConfig.instance.blockOutlineThickness - 0.5f) / 4.5f
         ) {
             @Override
             protected void updateMessage() {
-                setMessage(Component.literal(String.format(Locale.ROOT, "%.1f", AlpakaConfig.instance.blockOutlineThickness)));
+                setMessage(GuiFont.text(String.format(Locale.ROOT, "%.1f", AlpakaConfig.instance.blockOutlineThickness)));
             }
             @Override
             protected void applyValue() {
@@ -112,9 +112,9 @@ public class BlockOverlayConfigScreen extends Screen {
 
         // 6. Outline Color Button (opens ColorPickerScreen)
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 110, 150, 20,
-                Component.literal("Outline Color"), this.font));
+                GuiFont.text("Outline Color"), this.font));
         Button btnOutlineColor = Button.builder(
-                Component.literal("Choose Color..."),
+                GuiFont.text("Choose Color..."),
                 button -> {
                     if (this.minecraft != null) {
                         this.minecraft.gui.setScreen(new ColorPickerScreen(this, "Block Outline Color", AlpakaConfig.instance.blockOutlineColor, color -> {
@@ -130,7 +130,7 @@ public class BlockOverlayConfigScreen extends Screen {
 
         // 7. Chroma Toggle
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 132, 150, 20,
-                Component.literal("Chroma (Rainbow)"), this.font));
+                GuiFont.text("Chroma (Rainbow)"), this.font));
         Button toggleChroma = Button.builder(
                 CommonComponents.optionStatus(AlpakaConfig.instance.blockChromaEnabled),
                 button -> {
@@ -145,15 +145,15 @@ public class BlockOverlayConfigScreen extends Screen {
 
         // 8. Chroma Speed Slider (0.1 to 2.0)
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 154, 150, 20,
-                Component.literal("Chroma Speed"), this.font));
+                GuiFont.text("Chroma Speed"), this.font));
         AbstractSliderButton speedSlider = new AbstractSliderButton(
                 this.width / 2 + 5, centerY + 154, 150, 20,
-                Component.literal(String.format(Locale.ROOT, "%.2fx", AlpakaConfig.instance.blockChromaSpeed)),
+                GuiFont.text(String.format(Locale.ROOT, "%.2fx", AlpakaConfig.instance.blockChromaSpeed)),
                 (AlpakaConfig.instance.blockChromaSpeed - 0.1f) / 1.9f
         ) {
             @Override
             protected void updateMessage() {
-                setMessage(Component.literal(String.format(Locale.ROOT, "%.2fx", AlpakaConfig.instance.blockChromaSpeed)));
+                setMessage(GuiFont.text(String.format(Locale.ROOT, "%.2fx", AlpakaConfig.instance.blockChromaSpeed)));
             }
             @Override
             protected void applyValue() {
@@ -165,7 +165,7 @@ public class BlockOverlayConfigScreen extends Screen {
 
         // 9. Ignore Depth Toggle
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 176, 150, 20,
-                Component.literal("Ignore Depth (X-Ray)"), this.font));
+                GuiFont.text("Ignore Depth (X-Ray)"), this.font));
         Button toggleDepth = Button.builder(
                 CommonComponents.optionStatus(AlpakaConfig.instance.blockIgnoreDepth),
                 button -> {
@@ -180,7 +180,7 @@ public class BlockOverlayConfigScreen extends Screen {
 
         // 10. Enable Fill Toggle
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 198, 150, 20,
-                Component.literal("Fill Block Faces"), this.font));
+                GuiFont.text("Fill Block Faces"), this.font));
         Button toggleFill = Button.builder(
                 CommonComponents.optionStatus(AlpakaConfig.instance.blockFillEnabled),
                 button -> {
@@ -195,9 +195,9 @@ public class BlockOverlayConfigScreen extends Screen {
 
         // 11. Fill Color Button (opens ColorPickerScreen)
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 220, 150, 20,
-                Component.literal("Fill Color"), this.font));
+                GuiFont.text("Fill Color"), this.font));
         Button btnFillColor = Button.builder(
-                Component.literal("Choose Color..."),
+                GuiFont.text("Choose Color..."),
                 button -> {
                     if (this.minecraft != null) {
                         this.minecraft.gui.setScreen(new ColorPickerScreen(this, "Block Fill Color", AlpakaConfig.instance.blockFillColor, color -> {

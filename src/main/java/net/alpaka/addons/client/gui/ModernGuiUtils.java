@@ -12,6 +12,9 @@ public class ModernGuiUtils {
     public static final int COLOR_CARD_BG_HOVER = 0xFF2D2D2D;
     public static final int COLOR_CARD_BORDER = 0xFF3B3B3B;
 
+    /** Corner radius shared by buttons, sliders, text fields and the search box. */
+    public static final int WIDGET_RADIUS = 4;
+
     public static int getAccentColor() {
         return net.alpaka.addons.config.AlpakaConfig.instance.menuAccentColor;
     }
@@ -73,26 +76,77 @@ public class ModernGuiUtils {
         }
     }
 
+    // ---- Rounded shapes -------------------------------------------------------------------------
+    //
+    // Everything rounded is built from one-pixel-high horizontal strips, because fills are the only
+    // primitive available. Strips never overlap, so translucent colours stay even. A quarter circle
+    // decides how far each strip inside the corner radius is pulled in from the side.
+
     /**
-     * A filled rectangle with rounded corners of the given radius.
-     *
-     * Built from horizontal strips: one full-width fill for the middle, and one strip per row inside
-     * the corner radius whose ends are pulled in along a quarter circle. Strips never overlap, so a
-     * translucent colour stays even.
+     * How many pixels the strip at {@code row} (0-based, within a shape {@code height} tall) is
+     * indented from the side by corners of {@code radius}. Zero for rows outside the corners.
      */
+    private static int cornerInset(int radius, int row, int height) {
+        int fromEdge = Math.min(row, height - 1 - row);
+        if (radius <= 0 || fromEdge >= radius) return 0;
+        double dy = radius - fromEdge - 0.5;
+        return radius - (int) Math.round(Math.sqrt(radius * (double) radius - dy * dy));
+    }
+
+    private static int clampRadius(int radius, int width, int height) {
+        return Math.max(0, Math.min(radius, Math.min(width, height) / 2));
+    }
+
+    /** A filled rectangle with rounded corners of the given radius. */
     public static void drawRoundedRect(GuiGraphicsExtractor graphics, int x, int y, int width, int height, int radius, int color) {
-        radius = Math.max(0, Math.min(radius, Math.min(width, height) / 2));
+        radius = clampRadius(radius, width, height);
         if (radius == 0) {
             drawRect(graphics, x, y, width, height, color);
             return;
         }
         drawRect(graphics, x, y + radius, width, height - 2 * radius, color);
         for (int i = 0; i < radius; i++) {
-            double dy = radius - i - 0.5;
-            int inset = radius - (int) Math.round(Math.sqrt(radius * (double) radius - dy * dy));
+            int inset = cornerInset(radius, i, height);
             drawRect(graphics, x + inset, y + i, width - 2 * inset, 1, color);
             drawRect(graphics, x + inset, y + height - 1 - i, width - 2 * inset, 1, color);
         }
+    }
+
+    /**
+     * A one-pixel outline with rounded corners: the ring between the rounded rectangle and the
+     * rounded rectangle one pixel inside it. Drawn as a ring rather than as a filled shape under the
+     * background, so a translucent background is not tinted by the border colour beneath it.
+     */
+    public static void drawRoundedOutline(GuiGraphicsExtractor graphics, int x, int y, int width, int height, int radius, int color) {
+        radius = clampRadius(radius, width, height);
+        if (radius == 0) {
+            drawOutline(graphics, x, y, width, height, color);
+            return;
+        }
+        for (int row = 0; row < height; row++) {
+            int outer = cornerInset(radius, row, height);
+            int left = x + outer;
+            int right = x + width - outer; // exclusive
+            if (row == 0 || row == height - 1) {
+                drawRect(graphics, left, y + row, right - left, 1, color);
+                continue;
+            }
+            int inner = cornerInset(radius - 1, row - 1, height - 2);
+            int innerLeft = x + 1 + inner;
+            int innerRight = x + width - 1 - inner; // exclusive
+            if (innerLeft >= innerRight) {
+                drawRect(graphics, left, y + row, right - left, 1, color);
+            } else {
+                drawRect(graphics, left, y + row, innerLeft - left, 1, color);
+                drawRect(graphics, innerRight, y + row, right - innerRight, 1, color);
+            }
+        }
+    }
+
+    /** A rounded, filled rectangle with a one-pixel rounded border: the shape most controls share. */
+    public static void drawRoundedPanel(GuiGraphicsExtractor graphics, int x, int y, int width, int height, int radius, int background, int border) {
+        drawRoundedRect(graphics, x, y, width, height, radius, background);
+        drawRoundedOutline(graphics, x, y, width, height, radius, border);
     }
 
     /**
@@ -108,20 +162,21 @@ public class ModernGuiUtils {
         return (a << 24) | (r << 16) | (g << 8) | b;
     }
 
+    // ---- Controls -------------------------------------------------------------------------------
+
     /**
      * An ON/OFF pill whose knob sits at {@code progress} - 0 left and off, 1 right and on.
      *
      * The caller animates progress toward the real state, so a click slides the knob across and
      * fades the track through the accent colour rather than jumping. Grey knob when off, accent
-     * when on, blended in between.
+     * when on, blended in between. Track and knob are fully rounded: a pill and a disc.
      */
     public static void drawModernToggle(GuiGraphicsExtractor graphics, Font font, int x, int y, int width, int height, float progress, boolean isHovered) {
         progress = Math.max(0.0f, Math.min(1.0f, progress));
         int trackBg = lerpColor(COLOR_CARD_BG, getAccentBgColor(), progress);
         int border = isHovered ? getAccentColor() : lerpColor(COLOR_CARD_BORDER, getAccentDimColor(), progress);
 
-        drawRect(graphics, x, y, width, height, trackBg);
-        drawOutline(graphics, x, y, width, height, border);
+        drawRoundedPanel(graphics, x, y, width, height, height / 2, trackBg, border);
 
         int knobSize = height - 4;
         int travel = width - knobSize - 4;
@@ -129,12 +184,12 @@ public class ModernGuiUtils {
         int knobY = y + 2;
 
         int knobColor = lerpColor(0xFF64748B, getAccentColor(), progress);
-        drawRect(graphics, knobX, knobY, knobSize, knobSize, knobColor);
-        drawOutline(graphics, knobX, knobY, knobSize, knobSize, 0x40000000);
+        drawRoundedRect(graphics, knobX, knobY, knobSize, knobSize, knobSize / 2, knobColor);
+        drawRoundedOutline(graphics, knobX, knobY, knobSize, knobSize, knobSize / 2, 0x40000000);
     }
 
     /**
-     * A small square tick box, for the individually switchable lines inside a dropdown.
+     * A small tick box, for the individually switchable lines inside a dropdown.
      *
      * Distinct from {@link #drawModernToggle} on purpose: a toggle is a wide ON/OFF pill sized for a
      * feature card, which would dominate a compact list of lines.
@@ -143,8 +198,7 @@ public class ModernGuiUtils {
         int background = state ? COLOR_TOGGLE_ON_BG : COLOR_CARD_BG;
         int border = state ? COLOR_TOGGLE_ON_BORDER : (isHovered ? getAccentColor() : COLOR_CARD_BORDER);
 
-        drawRect(graphics, x, y, size, size, background);
-        drawOutline(graphics, x, y, size, size, border);
+        drawRoundedPanel(graphics, x, y, size, size, 3, background, border);
 
         if (state) {
             // Centred by measuring, so the mark stays put if the box size is ever changed.
@@ -159,19 +213,18 @@ public class ModernGuiUtils {
         int trackBg = COLOR_CARD_BG;
         int border = isHovered ? getAccentColor() : COLOR_CARD_BORDER;
 
-        drawRect(graphics, x, y, width, height, trackBg);
-        drawOutline(graphics, x, y, width, height, border);
+        drawRoundedPanel(graphics, x, y, width, height, WIDGET_RADIUS, trackBg, border);
 
-        // Filled track area
+        // Filled track area, rounded to sit inside the track's own corners
         int fillWidth = Math.max(0, Math.min(width - 4, (int) ((width - 4) * value)));
         if (fillWidth > 0) {
-            drawRect(graphics, x + 2, y + 2, fillWidth, height - 4, getAccentBgColor());
+            drawRoundedRect(graphics, x + 2, y + 2, fillWidth, height - 4, WIDGET_RADIUS - 1, getAccentBgColor());
         }
 
-        // Rectangular slider thumb
+        // Slider thumb: a narrow pill
         int thumbWidth = 6;
         int thumbX = Math.max(x + 2, Math.min(x + width - thumbWidth - 2, x + (int) ((width - thumbWidth) * value)));
-        drawRect(graphics, thumbX, y + 1, thumbWidth, height - 2, getAccentColor());
+        drawRoundedRect(graphics, thumbX, y + 1, thumbWidth, height - 2, thumbWidth / 2, getAccentColor());
 
         // Value text
         int textX = x + (width - GuiFont.width(font, displayValue)) / 2;
@@ -184,8 +237,7 @@ public class ModernGuiUtils {
         int border = isHovered ? getAccentColor() : COLOR_CARD_BORDER;
         int textColor = (isPrimary && isHovered) ? 0xFF0E1015 : COLOR_TEXT_PRIMARY;
 
-        drawRect(graphics, x, y, width, height, bg);
-        drawOutline(graphics, x, y, width, height, border);
+        drawRoundedPanel(graphics, x, y, width, height, WIDGET_RADIUS, bg, border);
 
         int textX = x + (width - GuiFont.width(font, label)) / 2;
         int textY = y + (height - 8) / 2;
@@ -195,14 +247,13 @@ public class ModernGuiUtils {
     public static void drawModernColorButton(GuiGraphicsExtractor graphics, Font font, int x, int y, int width, int height, int color, boolean isHovered) {
         int border = isHovered ? getAccentColor() : COLOR_CARD_BORDER;
 
-        // Dark background base for alpha transparency grid representation
-        drawRect(graphics, x, y, width, height, 0xFF000000);
+        // Dark base behind the swatch, so a translucent colour reads against black
+        drawRoundedRect(graphics, x, y, width, height, WIDGET_RADIUS, 0xFF000000);
 
-        // Filled color swatch box
-        drawRect(graphics, x + 2, y + 2, width - 4, height - 4, color);
+        // Colour swatch, inset inside the border
+        drawRoundedRect(graphics, x + 2, y + 2, width - 4, height - 4, WIDGET_RADIUS - 1, color);
 
-        // Border outline
-        drawOutline(graphics, x, y, width, height, border);
+        drawRoundedOutline(graphics, x, y, width, height, WIDGET_RADIUS, border);
     }
 
     public static void drawModernDestructiveButton(GuiGraphicsExtractor graphics, Font font, int x, int y, int width, int height, String label, boolean isHovered) {
@@ -210,8 +261,7 @@ public class ModernGuiUtils {
         int border = isHovered ? 0xFFEF4444 : 0x88DC2626;
         int textColor = isHovered ? 0xFFFFFFFF : 0xFFFCA5A5;
 
-        drawRect(graphics, x, y, width, height, bg);
-        drawOutline(graphics, x, y, width, height, border);
+        drawRoundedPanel(graphics, x, y, width, height, WIDGET_RADIUS, bg, border);
 
         int textX = x + (width - GuiFont.width(font, label)) / 2;
         int textY = y + (height - 8) / 2;
@@ -225,8 +275,7 @@ public class ModernGuiUtils {
     public static void drawModernTextField(GuiGraphicsExtractor graphics, Font font, int x, int y, int width, int height,
                                            String value, String placeholder, boolean isFocused, boolean isHovered) {
         int border = isFocused ? getAccentColor() : (isHovered ? getAccentDimColor() : COLOR_CARD_BORDER);
-        drawRect(graphics, x, y, width, height, COLOR_CARD_BG);
-        drawOutline(graphics, x, y, width, height, border);
+        drawRoundedPanel(graphics, x, y, width, height, WIDGET_RADIUS, COLOR_CARD_BG, border);
 
         boolean empty = value == null || value.isEmpty();
         String shown = empty ? placeholder : value;
@@ -247,4 +296,3 @@ public class ModernGuiUtils {
         }
     }
 }
-

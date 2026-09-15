@@ -142,6 +142,9 @@ public class AlpakaClient implements ClientModInitializer {
             );
 
             // --- Viewmodel Preset Command ---
+            // "/alpakapreset <n>" switches to a slot, "/alpakapreset save <n>" writes the current
+            // viewmodel settings into one - the same thing the "Save Preset" buttons on the Item
+            // Size screen do, reachable without opening it.
             dispatcher.register(ClientCommands.literal("alpakapreset")
                 .then(ClientCommands.argument("number", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1, 3))
                     .executes(context -> {
@@ -154,9 +157,28 @@ public class AlpakaClient implements ClientModInitializer {
                         return 1;
                     })
                 )
+                .then(ClientCommands.literal("save")
+                    .then(ClientCommands.argument("number", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1, 3))
+                        .executes(context -> {
+                            int num = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "number");
+                            Minecraft.getInstance().execute(() -> {
+                                net.alpaka.addons.config.AlpakaConfig.instance.savePreset(num - 1);
+                                SlayerDropTracker.sendModMessage("§aSaved the current viewmodel settings to Preset " + num + ".");
+                                try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
+                            });
+                            return 1;
+                        })
+                    )
+                    .executes(context -> {
+                        Minecraft.getInstance().execute(() ->
+                                SlayerDropTracker.sendModMessage("§7Usage: §6/alpakapreset save <1|2|3>"));
+                        return 1;
+                    })
+                )
                 .executes(context -> {
                     Minecraft.getInstance().execute(() -> {
-                        SlayerDropTracker.sendModMessage("§7Current preset: §ePreset " + (net.alpaka.addons.config.AlpakaConfig.instance.activeItemPresetIndex + 1) + "§7. Usage: §6/alpakapreset <1|2|3>");
+                        SlayerDropTracker.sendModMessage("§7Current preset: §ePreset " + (net.alpaka.addons.config.AlpakaConfig.instance.activeItemPresetIndex + 1)
+                                + "§7. Usage: §6/alpakapreset <1|2|3> §7to switch, §6/alpakapreset save <1|2|3> §7to save.");
                     });
                     return 1;
                 })

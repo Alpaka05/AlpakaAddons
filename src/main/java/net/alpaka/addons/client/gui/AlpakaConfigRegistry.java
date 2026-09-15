@@ -68,6 +68,24 @@ public class AlpakaConfigRegistry {
                 val -> AlpakaNotifications.CORNER_NAMES[Math.round(val)],
                 "notification corner position bottom top left right popup toast side"));
 
+        // The menu's own typeface sits here rather than under Visuals: it changes the screen the
+        // player is looking at right now, so it belongs on the tab that screen opens on.
+        OPTIONS.add(new ConfigOption("menu_font", "Menu Font",
+                "The typeface the Alpaka menus are written in.",
+                ConfigCategory.GENERAL,
+                () -> (float) GuiFont.selectedIndex(),
+                v -> { AlpakaConfig.instance.menuFont = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (GuiFont.NAMES.length - 1),
+                val -> GuiFont.NAMES[Math.round(val)],
+                "menu font typeface text smooth modern inter poppins varela round outfit lato minecraft pixel gui"));
+
+        OPTIONS.add(new ConfigOption("menu_font_bold", "Bold Menu Font",
+                "Draws the menu font in a heavier cut.",
+                ConfigCategory.GENERAL,
+                () -> AlpakaConfig.instance.menuFontBold,
+                v -> { AlpakaConfig.instance.menuFontBold = v; AlpakaConfig.save(); },
+                "menu font bold heavy thick weight semibold typeface"));
+
         OPTIONS.add(new ConfigOption("hud_editor", "HUD Editor",
                 "Move and resize every HUD - session, boss timer, world age, inventory, avatar.",
                 ConfigCategory.GENERAL,
@@ -322,22 +340,6 @@ public class AlpakaConfigRegistry {
                     AlpakaConfig.save();
                 })),
                 "menu accent color theme custom picker border highlight gui gold cyan red green blue"));
-
-        OPTIONS.add(new ConfigOption("menu_font", "Menu Font",
-                "The typeface the Alpaka menus are written in.",
-                ConfigCategory.VISUALS,
-                () -> (float) GuiFont.selectedIndex(),
-                v -> { AlpakaConfig.instance.menuFont = Math.round(v); AlpakaConfig.save(); },
-                0.0f, (float) (GuiFont.NAMES.length - 1),
-                val -> GuiFont.NAMES[Math.round(val)],
-                "menu font typeface text smooth modern inter poppins varela round outfit lato minecraft pixel gui"));
-
-        OPTIONS.add(new ConfigOption("menu_font_bold", "Bold Menu Font",
-                "Draws the menu font in a heavier cut.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.menuFontBold,
-                v -> { AlpakaConfig.instance.menuFontBold = v; AlpakaConfig.save(); },
-                "menu font bold heavy thick weight semibold typeface"));
 
         // Player model and inventory HUD lived on their own Custom HUD tab; they are overlays like
         // everything else here, and one tab fewer is one fewer place to look.

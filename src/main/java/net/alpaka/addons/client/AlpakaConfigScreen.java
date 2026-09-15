@@ -272,8 +272,7 @@ public class AlpakaConfigScreen extends Screen {
         int searchBg = ModernGuiUtils.COLOR_CARD_BG;
         int searchBorder = searchFocused ? ModernGuiUtils.getAccentColor() : (isHoveringSearch ? ModernGuiUtils.getAccentDimColor() : ModernGuiUtils.COLOR_CARD_BORDER);
 
-        ModernGuiUtils.drawRect(graphics, searchX, searchY, searchW, searchH, searchBg);
-        ModernGuiUtils.drawOutline(graphics, searchX, searchY, searchW, searchH, searchBorder);
+        ModernGuiUtils.drawRoundedPanel(graphics, searchX, searchY, searchW, searchH, ModernGuiUtils.WIDGET_RADIUS, searchBg, searchBorder);
 
         int searchTextX = searchX + 6;
         int searchTextY = searchY + (searchH - 8) / 2;

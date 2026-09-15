@@ -166,7 +166,14 @@ def deployToModrinth(File jarFile, String versionStr) {
             it.setWritable(true)
             def disabled = new File(it.parentFile, it.name + ".disabled")
             if (disabled.exists()) disabled.delete()
-            if (it.renameTo(disabled)) println "Disabled old mod file: ${it.name} in Modrinth profile '${profileName}'"
+            // A game that has just closed can still hold its jar for a few seconds, so the rename is retried
+            // for a while before giving up.
+            def renamed = false
+            for (int attempt = 0; attempt < 20 && !renamed; attempt++) {
+                renamed = it.renameTo(disabled)
+                if (!renamed) Thread.sleep(500)
+            }
+            if (renamed) println "Disabled old mod file: ${it.name} in Modrinth profile '${profileName}'"
             else println "Warning: could not disable ${it.name} (game running?) - two active alpaka jars will break Fabric startup."
         }
 

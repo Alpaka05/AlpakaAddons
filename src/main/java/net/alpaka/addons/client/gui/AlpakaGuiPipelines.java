@@ -23,11 +23,31 @@ import net.minecraft.resources.Identifier;
  */
 public final class AlpakaGuiPipelines {
     private static RenderPipeline roundedRect;
+    private static RenderPipeline blurRect;
 
     private AlpakaGuiPipelines() {}
 
     public static void init() {
         roundedRect();
+        blurRect();
+    }
+
+    /**
+     * The rounded rectangle again, filled with the blurred frame behind it: the same vertices and
+     * vertex shader as {@link #roundedRect()}, on top of vanilla's textured GUI snippet so the
+     * fragment shader gets a sampler for the blurred copy. See {@link BlurRectRenderState}.
+     */
+    public static RenderPipeline blurRect() {
+        if (blurRect == null) {
+            blurRect = RenderPipelinesAccessor.alpaka$register(
+                    RenderPipeline.builder(RenderPipelinesAccessor.alpaka$guiTexturedSnippet())
+                            .withLocation(Identifier.fromNamespaceAndPath("alpaka", "pipeline/gui_blur_rect"))
+                            .withVertexShader(Identifier.fromNamespaceAndPath("alpaka", "core/rounded_rect"))
+                            .withFragmentShader(Identifier.fromNamespaceAndPath("alpaka", "core/blur_rect"))
+                            .withVertexBinding(0, DefaultVertexFormat.ENTITY)
+                            .build());
+        }
+        return blurRect;
     }
 
     public static RenderPipeline roundedRect() {

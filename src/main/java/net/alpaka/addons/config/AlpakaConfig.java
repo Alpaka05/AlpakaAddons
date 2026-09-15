@@ -311,6 +311,12 @@ public class AlpakaConfig {
     public String guildPrefixText = "";
 
     // Chat options
+    /** A new message slides up into the chat and fades in instead of appearing at once. */
+    public boolean smoothChatEnabled = true;
+    /** How long the slide takes, 1 (quick) to 10 (slow); each step is 60 ms. */
+    public int smoothChatStrength = 5;
+    /** One rounded, padded panel behind the chat that shows the world blurred through it. */
+    public boolean chatBlurEnabled = true;
     public boolean expandChatHistory = true;
     /** Hold the Peek Chat key to see the whole chat, scrollable, without opening it. */
     public boolean chatPeekEnabled = true;
@@ -703,6 +709,8 @@ public class AlpakaConfig {
         this.etherwarpOverlayEnabled = false;
         this.etherwarpLineEnabled = false;
         this.etherwarpSoundEnabled = false;
+        this.smoothChatEnabled = false;
+        this.chatBlurEnabled = false;
         this.expandChatHistory = false;
         this.chatPeekEnabled = false;
         this.chatPeekInMenus = false;

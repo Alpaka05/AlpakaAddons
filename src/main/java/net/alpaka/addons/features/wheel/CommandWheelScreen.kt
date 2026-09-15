@@ -12,6 +12,7 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
+import kotlin.math.asin
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.exp
@@ -48,6 +49,9 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
     /** Per segment, 0 = idle and 1 = fully highlighted; eased towards its target every frame. */
     private var highlight = FloatArray(0)
     private var selectedIndex = -1
+
+    /** False from the moment a hovered arrow turned the page until the mouse leaves the arrows. */
+    private var arrowHoverArmed = true
 
     /** 0 while nothing is aimed at, 1 while a segment is selected; fades the wedge and hub rim. */
     private var aim = 0f
@@ -96,11 +100,8 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
     override fun mouseClicked(event: MouseButtonEvent, isDoubleClick: Boolean): Boolean {
         when (event.button()) {
             0 -> {
-                val arrow = arrowAt(event.x(), event.y())
-                if (arrow >= 0) {
-                    stepPage(if (arrow == 0) -1 else 1)
-                    return true
-                }
+                // Hovering an arrow already turned the page; a click on it must not run a command.
+                if (arrowAt(event.x(), event.y()) >= 0) return true
                 if (selectedIndex >= 0) {
                     runSelectedAndClose()
                     return true
@@ -229,6 +230,17 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
         val accent = ModernGuiUtils.getAccentColor()
         val hoveredArrow = arrowAt(mouseX.toDouble(), mouseY.toDouble())
 
+        // Pointing at an arrow turns the page, no click needed. It turns once per visit: the mouse
+        // has to leave the arrow before it can turn again, so resting on it does not keep flipping.
+        if (hoveredArrow >= 0) {
+            if (arrowHoverArmed) {
+                arrowHoverArmed = false
+                stepPage(if (hoveredArrow == 0) -1 else 1)
+            }
+        } else {
+            arrowHoverArmed = true
+        }
+
         val count = commands.size
         if (count == 0) {
             selectedIndex = -1
@@ -302,23 +314,26 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
         )
         mesh.submit(graphics)
 
-        // The wedge: a short, wide triangle whose base sits on the hub rim, pointing outwards along
-        // the selected segment's axis. Its base corners are placed along the rim's arc rather than on
-        // a tangent, so they lie on the circle and the wedge stays centred on the line it points
-        // along. It fades with the selection, so an idle hub is just the plain disc.
+        // The wedge: a short, wide triangle growing out of the hub's rim line, pointing outwards
+        // along the selected segment's axis. Its base is not a straight chord but follows the rim's
+        // arc, from the inner edge of the hairline ring, so the wedge sits exactly on the circle with
+        // nothing of it hanging inside the disc. It fades with the selection, so an idle hub is just
+        // the plain disc.
         if (aim > 0.02f) {
             val tip = layout.hubRadius + WEDGE_LENGTH * aim
-            val base = layout.hubRadius - WEDGE_INSET
+            val base = layout.hubRadius - 1f
             val halfWidth = WEDGE_HALF_WIDTH * (0.6f + 0.4f * aim)
-            val spread = halfWidth / base
-            mesh.convexPolygon(
-                floatArrayOf(
-                    layout.cx + cos(wedgeAngle) * tip, layout.cy + sin(wedgeAngle) * tip,
-                    layout.cx + cos(wedgeAngle + spread) * base, layout.cy + sin(wedgeAngle + spread) * base,
-                    layout.cx + cos(wedgeAngle - spread) * base, layout.cy + sin(wedgeAngle - spread) * base
-                ),
-                scaleAlpha(accent, open * aim)
-            )
+            val spread = asin((halfWidth / base).coerceIn(-1f, 1f))
+            val arcPoints = 6
+            val points = FloatArray(2 + 2 * (arcPoints + 1))
+            points[0] = layout.cx + cos(wedgeAngle) * tip
+            points[1] = layout.cy + sin(wedgeAngle) * tip
+            for (i in 0..arcPoints) {
+                val a = wedgeAngle + spread - 2f * spread * (i / arcPoints.toFloat())
+                points[2 + 2 * i] = layout.cx + cos(a) * base
+                points[3 + 2 * i] = layout.cy + sin(a) * base
+            }
+            mesh.convexPolygon(points, scaleAlpha(accent, open * aim))
             mesh.submit(graphics)
         }
 
@@ -421,7 +436,6 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
         private const val SEGMENT_GAP = 2.5f
         private const val SELECT_GROWTH = 5f
         private const val WEDGE_LENGTH = 6f
-        private const val WEDGE_INSET = 3f
         private const val WEDGE_HALF_WIDTH = 4.5f
         private const val LABEL_GROWTH = 0.22f
 

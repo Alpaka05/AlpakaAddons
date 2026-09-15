@@ -247,6 +247,28 @@ public class AlpakaConfigRegistry {
 
         OPTIONS.add(new ConfigOption("Chat", ConfigCategory.VISUALS));
 
+        OPTIONS.add(new ConfigOption("smooth_chat", "Smooth Chat",
+                "New messages slide in and fade in instead of appearing at once.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.smoothChatEnabled,
+                v -> { AlpakaConfig.instance.smoothChatEnabled = v; AlpakaConfig.save(); },
+                "smooth chat animation slide fade new message appear soft patcher"));
+
+        OPTIONS.add(new ConfigOption("smooth_chat_strength", "Smooth Chat Strength",
+                "How long the slide takes; higher is slower and more visible.",
+                ConfigCategory.VISUALS,
+                () -> (float) AlpakaConfig.instance.smoothChatStrength,
+                v -> { AlpakaConfig.instance.smoothChatStrength = Math.round(v); AlpakaConfig.save(); },
+                1.0f, 10.0f, v -> Math.round(v) + " / 10",
+                "smooth chat strength speed duration animation slow fast slider"));
+
+        OPTIONS.add(new ConfigOption("chat_blur", "Blurred Chat Background",
+                "One rounded, blurred panel behind the chat instead of flat line boxes.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatBlurEnabled,
+                v -> { AlpakaConfig.instance.chatBlurEnabled = v; AlpakaConfig.save(); },
+                "chat blur background rounded corners panel glass frosted clean padding smooth"));
+
         OPTIONS.add(new ConfigOption("expand_chat_history", "Expand Chat History",
                 "Keeps 5000 messages, even after leaving a server.",
                 ConfigCategory.VISUALS,

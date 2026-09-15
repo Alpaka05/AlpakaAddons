@@ -44,7 +44,9 @@ public abstract class WideHealthBarMixin {
                                              int currentHealth, int oldHealth, int absorption, boolean blink,
                                              CallbackInfo ci) {
         if (alpaka$wideBar()) {
-            WideHealthBarFeature.renderHearts(graphics, player, xLeft, yLineBase, heartOffsetIndex, maxHealth,
+            // The hunger bar's right edge, as vanilla computes it for the bars on the right.
+            int xRight = graphics.guiWidth() / 2 + 91;
+            WideHealthBarFeature.renderHearts(graphics, player, xLeft, xRight, yLineBase, heartOffsetIndex, maxHealth,
                     currentHealth, oldHealth, absorption, blink, this.random);
             ci.cancel();
         }
@@ -70,7 +72,7 @@ public abstract class WideHealthBarMixin {
     }
 
     /**
-     * Air bubbles go above the top heart row, on the right, in from the hotbar edge like the hearts.
+     * Air bubbles go above the top heart row, on the right, where vanilla keeps them.
      * Vanilla raises the line it is handed by one row for a player on foot, which is why the
      * target here is two rows above the top heart row.
      */
@@ -86,7 +88,6 @@ public abstract class WideHealthBarMixin {
             int rows = WideHealthBarFeature.rows(player, this.displayHealth);
             int topRow = yLineBase - (rows - 1) * WideHealthBarFeature.rowHeight(rows);
             yLineAir = topRow - 20;
-            xRight = WideHealthBarFeature.xEnd(xRight);
         }
         original.call(hud, graphics, player, vehicleHearts, yLineAir, xRight);
     }

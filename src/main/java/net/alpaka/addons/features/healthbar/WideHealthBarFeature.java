@@ -14,10 +14,11 @@ import net.minecraft.world.entity.player.Player;
  *
  * SkyBlock has no hunger, yet vanilla keeps the hunger bar on the right and stacks the player's
  * forty health points into two rows of ten hearts on the left, with absorption from effects on a
- * third row above. Here a row holds twenty hearts, so the second row moves into the hunger bar's
- * space and the absorption hearts drop a row to sit directly on top of the health. The row is set
- * in from the hotbar edges to stay centred over it, the air bubbles follow it, and the armor bar goes
- * too: SkyBlock reports defence in the action bar, so its icons only took space.
+ * third row above. Here a row holds twenty hearts: the left ten stay exactly where vanilla puts them,
+ * the right ten take the hunger bar's exact place, and the gap between the two halves is left for the
+ * experience level number. The absorption hearts drop a row to sit directly on top of the health, the
+ * air bubbles follow, and the armor bar goes too: SkyBlock reports defence in the action bar, so its
+ * icons only took space.
  *
  * The hearts themselves are vanilla's: damage blink, regeneration bounce, low-health shake, the
  * poison, wither and frozen tints and the hardcore variants all behave exactly as before, and a
@@ -28,21 +29,21 @@ public final class WideHealthBarFeature {
     public static final int HEARTS_PER_ROW = 20;
     private static final int HEART_SIZE = 9;
     private static final int HEART_STEP = 8;
-    private static final int ROW_WIDTH = (HEARTS_PER_ROW - 1) * HEART_STEP + HEART_SIZE;
-    /** The hotbar is 182 wide and the row 161, so ten pixels on either side keep it centred. */
-    private static final int INSET = (182 - ROW_WIDTH) / 2;
+    /** Icons in a right-hand vanilla bar run from its right edge leftwards, nine wide and eight apart. */
+    private static final int RIGHT_BAR_WIDTH = (HEARTS_PER_ROW / 2 - 1) * HEART_STEP + HEART_SIZE;
 
     private WideHealthBarFeature() {
     }
 
-    /** Left edge of the row, given the left edge vanilla would have used for its hearts. */
-    public static int xStart(int xLeft) {
-        return xLeft + INSET;
-    }
-
-    /** Right edge of the row, given the right edge vanilla would have used for the hunger bar. */
-    public static int xEnd(int xRight) {
-        return xRight - INSET;
+    /**
+     * Where a column sits: the first ten hearts at vanilla's own positions, the next ten in the hunger
+     * bar's slots, reading left to right so the row fills the way one bar would.
+     */
+    public static int columnX(int column, int xLeft, int xRight) {
+        if (column < HEARTS_PER_ROW / 2) {
+            return xLeft + column * HEART_STEP;
+        }
+        return xRight - RIGHT_BAR_WIDTH + (column - HEARTS_PER_ROW / 2) * HEART_STEP;
     }
 
     /**
@@ -67,9 +68,9 @@ public final class WideHealthBarFeature {
     /**
      * Draws the hearts in rows of twenty. Takes exactly what vanilla's own heart pass takes, so the
      * mixin swaps one for the other; the logic is vanilla's with the row length changed and the
-     * row centred.
+     * right half moved into the hunger bar's slots.
      */
-    public static void renderHearts(GuiGraphicsExtractor graphics, Player player, int xLeft, int yLineBase,
+    public static void renderHearts(GuiGraphicsExtractor graphics, Player player, int xLeft, int xRight, int yLineBase,
                                     int heartOffsetIndex, float maxHealth, int currentHealth, int oldHealth,
                                     int absorption, boolean blink, RandomSource random) {
         HeartStyle style = HeartStyle.forPlayer(player);
@@ -79,10 +80,9 @@ public final class WideHealthBarFeature {
         int absorptionContainers = Mth.ceil(absorption / 2.0);
         int maxHealthHalves = healthContainers * 2;
         int rowHeight = rowHeight(rows(maxHealth, absorption));
-        int xStart = xStart(xLeft);
 
         for (int index = healthContainers + absorptionContainers - 1; index >= 0; index--) {
-            int x = xStart + (index % HEARTS_PER_ROW) * HEART_STEP;
+            int x = columnX(index % HEARTS_PER_ROW, xLeft, xRight);
             int y = yLineBase - (index / HEARTS_PER_ROW) * rowHeight;
             if (currentHealth + absorption <= 4) {
                 y += random.nextInt(2);

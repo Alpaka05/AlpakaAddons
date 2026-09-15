@@ -1,0 +1,14 @@
+{
+    "providers": [
+        {
+            "type": "ttf",
+            "file": "alpaka:inter.ttf",
+            "size": 9.5,
+            "oversample": 2.0
+        },
+        {
+            "type": "reference",
+            "id": "minecraft:default"
+        }
+    ]
+}

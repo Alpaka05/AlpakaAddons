@@ -67,20 +67,29 @@ public class ModernGuiUtils {
         int bg = isHovered ? COLOR_CARD_BG_HOVER : COLOR_CARD_BG;
         int border = isSelected ? getAccentColor() : (isHovered ? getAccentDimColor() : COLOR_CARD_BORDER);
 
-        drawRect(graphics, x, y, width, height, bg);
-        drawOutline(graphics, x, y, width, height, border);
+        // Rounded like the controls that sit on it, with the same hairline border.
+        drawRoundedPanel(graphics, x, y, width, height, CARD_RADIUS, bg, border);
 
         if (isSelected) {
             // Accent indicator bar on left side
-            drawRect(graphics, x, y, 3, height, getAccentColor());
+            drawRoundedRect(graphics, x, y, 3, height, 1, getAccentColor());
         }
     }
+
+    /** Corner radius of an option card; a little larger than its controls, as the outer shape. */
+    public static final int CARD_RADIUS = 6;
 
     // ---- Rounded shapes -------------------------------------------------------------------------
     //
     // Everything rounded is built from one-pixel-high horizontal strips, because fills are the only
     // primitive available. Strips never overlap, so translucent colours stay even. A quarter circle
     // decides how far each strip inside the corner radius is pulled in from the side.
+    //
+    // The strips are laid out in *screen* pixels, not GUI pixels. The GUI is normally drawn at the
+    // window's GUI scale, so at scale 3 every step of a curve and every border would be three pixels
+    // thick and the corners visibly stepped. Each shape instead pushes a 1/scale transform and
+    // draws its strips scale times finer - the same GUI-space rectangle, with the curve resolved at
+    // the resolution the monitor actually has, and borders as hairlines.
 
     /**
      * How many pixels the strip at {@code row} (0-based, within a shape {@code height} tall) is
@@ -97,8 +106,19 @@ public class ModernGuiUtils {
         return Math.max(0, Math.min(radius, Math.min(width, height) / 2));
     }
 
-    /** A filled rectangle with rounded corners of the given radius. */
-    public static void drawRoundedRect(GuiGraphicsExtractor graphics, int x, int y, int width, int height, int radius, int color) {
+    /** The window's GUI scale: how many screen pixels one GUI pixel spans. */
+    private static int guiScale() {
+        com.mojang.blaze3d.platform.Window window = net.minecraft.client.Minecraft.getInstance().getWindow();
+        return window == null ? 1 : Math.max(1, window.getGuiScale());
+    }
+
+    /** Border thickness in screen pixels: a hairline at GUI scale 2 and 3, two pixels from 4 up. */
+    private static int hairline(int scale) {
+        return Math.max(1, Math.round(scale * 0.5f));
+    }
+
+    /** Fills a rounded rectangle whose coordinates are already in the current (screen-pixel) space. */
+    private static void fillRounded(GuiGraphicsExtractor graphics, int x, int y, int width, int height, int radius, int color) {
         radius = clampRadius(radius, width, height);
         if (radius == 0) {
             drawRect(graphics, x, y, width, height, color);
@@ -113,27 +133,24 @@ public class ModernGuiUtils {
     }
 
     /**
-     * A one-pixel outline with rounded corners: the ring between the rounded rectangle and the
-     * rounded rectangle one pixel inside it. Drawn as a ring rather than as a filled shape under the
-     * background, so a translucent background is not tinted by the border colour beneath it.
+     * Fills the ring between a rounded rectangle and the same shape {@code thickness} pixels inside
+     * it. A ring rather than a filled shape under the background, so a translucent background is
+     * not tinted by the border colour beneath it.
      */
-    public static void drawRoundedOutline(GuiGraphicsExtractor graphics, int x, int y, int width, int height, int radius, int color) {
+    private static void fillRoundedRing(GuiGraphicsExtractor graphics, int x, int y, int width, int height, int radius, int thickness, int color) {
         radius = clampRadius(radius, width, height);
-        if (radius == 0) {
-            drawOutline(graphics, x, y, width, height, color);
-            return;
-        }
+        thickness = Math.max(1, Math.min(thickness, Math.min(width, height) / 2));
         for (int row = 0; row < height; row++) {
             int outer = cornerInset(radius, row, height);
             int left = x + outer;
             int right = x + width - outer; // exclusive
-            if (row == 0 || row == height - 1) {
+            if (row < thickness || row >= height - thickness) {
                 drawRect(graphics, left, y + row, right - left, 1, color);
                 continue;
             }
-            int inner = cornerInset(radius - 1, row - 1, height - 2);
-            int innerLeft = x + 1 + inner;
-            int innerRight = x + width - 1 - inner; // exclusive
+            int inner = cornerInset(Math.max(0, radius - thickness), row - thickness, height - 2 * thickness);
+            int innerLeft = x + thickness + inner;
+            int innerRight = x + width - thickness - inner; // exclusive
             if (innerLeft >= innerRight) {
                 drawRect(graphics, left, y + row, right - left, 1, color);
             } else {
@@ -141,6 +158,24 @@ public class ModernGuiUtils {
                 drawRect(graphics, innerRight, y + row, right - innerRight, 1, color);
             }
         }
+    }
+
+    /** A filled rectangle with rounded corners of the given radius, in GUI coordinates. */
+    public static void drawRoundedRect(GuiGraphicsExtractor graphics, int x, int y, int width, int height, int radius, int color) {
+        int scale = guiScale();
+        graphics.pose().pushMatrix();
+        graphics.pose().scale(1.0f / scale, 1.0f / scale);
+        fillRounded(graphics, x * scale, y * scale, width * scale, height * scale, radius * scale, color);
+        graphics.pose().popMatrix();
+    }
+
+    /** A hairline outline with rounded corners of the given radius, in GUI coordinates. */
+    public static void drawRoundedOutline(GuiGraphicsExtractor graphics, int x, int y, int width, int height, int radius, int color) {
+        int scale = guiScale();
+        graphics.pose().pushMatrix();
+        graphics.pose().scale(1.0f / scale, 1.0f / scale);
+        fillRoundedRing(graphics, x * scale, y * scale, width * scale, height * scale, radius * scale, hairline(scale), color);
+        graphics.pose().popMatrix();
     }
 
     /** A rounded, filled rectangle with a one-pixel rounded border: the shape most controls share. */

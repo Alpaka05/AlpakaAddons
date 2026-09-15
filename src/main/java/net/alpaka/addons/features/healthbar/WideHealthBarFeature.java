@@ -16,7 +16,8 @@ import net.minecraft.world.entity.player.Player;
  * forty health points into two rows of ten hearts on the left, with absorption from effects on a
  * third row above. Here a row holds twenty hearts, so the second row moves into the hunger bar's
  * space and the absorption hearts drop a row to sit directly on top of the health. The row is set
- * in from the hotbar's edges to stay centred over it, and the armor and air rows follow it.
+ * in from the hotbar edges to stay centred over it, the air bubbles follow it, and the armor bar goes
+ * too: SkyBlock reports defence in the action bar, so its icons only took space.
  *
  * The hearts themselves are vanilla's: damage blink, regeneration bounce, low-health shake, the
  * poison, wither and frozen tints and the hardcore variants all behave exactly as before, and a

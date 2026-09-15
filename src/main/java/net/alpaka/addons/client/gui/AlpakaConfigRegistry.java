@@ -218,11 +218,11 @@ public class AlpakaConfigRegistry {
                 "item name hotbar held tool highlight fade permanent always show"));
 
         OPTIONS.add(new ConfigOption("wide_health_bar", "Wide Health Bar",
-                "Hides the hunger bar and joins both heart rows into one long row.",
+                "Hides the hunger and armor bars and joins both heart rows into one long row.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.wideHealthBarEnabled,
                 v -> { AlpakaConfig.instance.wideHealthBarEnabled = v; AlpakaConfig.save(); },
-                "health hearts hunger food bar hide long wide single row absorption hotbar skyblock life"));
+                "health hearts hunger food armor bar hide long wide single row absorption hotbar skyblock life"));
 
         OPTIONS.add(new ConfigOption("Chat", ConfigCategory.VISUALS));
 

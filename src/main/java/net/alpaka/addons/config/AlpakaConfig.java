@@ -338,6 +338,11 @@ public class AlpakaConfig {
     public boolean scrollableTooltipsEnabled = true;
     /** The held item's name above the hotbar stays up instead of fading out. */
     public boolean persistentItemNameEnabled = false;
+    /**
+     * One long row of twenty hearts in place of the two short ones, the hunger bar and the armor bar,
+     * neither of which SkyBlock needs; absorption hearts sit on the row above it.
+     */
+    public boolean wideHealthBarEnabled = false;
 
     /** A Hypixel party invite raises a notification: Y joins, N dismisses. */
     public boolean partyInvitePromptEnabled = true;
@@ -641,6 +646,7 @@ public class AlpakaConfig {
         this.stopBlazeSpinning = false;
         this.hideHurtOverlayEnabled = false;
         this.hideMobDeathsEnabled = false;
+        this.wideHealthBarEnabled = false;
         this.smoothPerspectiveEnabled = false;
         this.disableFrontPerspective = false;
         this.customSoundsEnabled = false;

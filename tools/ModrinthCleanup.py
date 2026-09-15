@@ -39,9 +39,14 @@ def main(profile: str) -> int:
             (instance_id,)).fetchall()
         for file_id, relative_path in rows:
             on_disk = os.path.join(ROOT, "profiles", profile, relative_path.replace("/", os.sep))
-            if os.path.exists(on_disk) or os.path.exists(on_disk + ".disabled"):
+            if os.path.exists(on_disk):
                 # Present after all: clear a stale "missing" flag the app may have set mid-copy.
                 cur.execute("update instance_files set missing = 0 where id = ? and missing = 1", (file_id,))
+                continue
+            if os.path.exists(on_disk + ".disabled"):
+                # The deploy switched it off the way the app does itself; record it as such rather
+                # than leaving the app to notice on its next scan, which may come after the launch check.
+                cur.execute("update instance_files set enabled = 0, missing = 0 where id = ?", (file_id,))
                 continue
             cur.execute("delete from store_instance_files where file_id = ?", (file_id,))
             cur.execute("delete from instance_files where id = ?", (file_id,))

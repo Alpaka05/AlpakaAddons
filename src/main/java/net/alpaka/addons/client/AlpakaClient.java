@@ -21,6 +21,7 @@ public class AlpakaClient implements ClientModInitializer {
         // First, so the overlay's own render pipeline is registered before the shader manager
         // precompiles vanilla's; see BlockOverlayRenderTypes.
         net.alpaka.addons.features.blockoverlay.BlockOverlayRenderTypes.init();
+        net.alpaka.addons.client.gui.AlpakaGuiPipelines.init();
         CustomSoundFeature.register();
         SlayerDropTracker.registerEvents();
         net.alpaka.addons.features.slayer.SkyblockProfileTracker.INSTANCE.register();

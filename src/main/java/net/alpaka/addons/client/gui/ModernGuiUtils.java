@@ -81,30 +81,12 @@ public class ModernGuiUtils {
 
     // ---- Rounded shapes -------------------------------------------------------------------------
     //
-    // Everything rounded is built from one-pixel-high horizontal strips, because fills are the only
-    // primitive available. Strips never overlap, so translucent colours stay even. A quarter circle
-    // decides how far each strip inside the corner radius is pulled in from the side.
-    //
-    // The strips are laid out in *screen* pixels, not GUI pixels. The GUI is normally drawn at the
-    // window's GUI scale, so at scale 3 every step of a curve and every border would be three pixels
-    // thick and the corners visibly stepped. Each shape instead pushes a 1/scale transform and
-    // draws its strips scale times finer - the same GUI-space rectangle, with the curve resolved at
-    // the resolution the monitor actually has, and borders as hairlines.
-
-    /**
-     * How many pixels the strip at {@code row} (0-based, within a shape {@code height} tall) is
-     * indented from the side by corners of {@code radius}. Zero for rows outside the corners.
-     */
-    private static int cornerInset(int radius, int row, int height) {
-        int fromEdge = Math.min(row, height - 1 - row);
-        if (radius <= 0 || fromEdge >= radius) return 0;
-        double dy = radius - fromEdge - 0.5;
-        return radius - (int) Math.round(Math.sqrt(radius * (double) radius - dy * dy));
-    }
-
-    private static int clampRadius(int radius, int width, int height) {
-        return Math.max(0, Math.min(radius, Math.min(width, height) / 2));
-    }
+    // Every rounded shape is one quad drawn by the mod's own pipeline (AlpakaGuiPipelines), whose
+    // fragment shader measures the distance to the shape's edge and fades coverage over one screen
+    // pixel. That gives properly anti-aliased curves and hairline borders at any GUI scale; the
+    // earlier strip-built shapes were resolved to pixels and showed their steps at every corner.
+    // The shape parameters are handed over in screen pixels so the falloff is one *screen* pixel
+    // wide however the GUI is scaled.
 
     /** The window's GUI scale: how many screen pixels one GUI pixel spans. */
     private static int guiScale() {
@@ -117,65 +99,32 @@ public class ModernGuiUtils {
         return Math.max(1, Math.round(scale * 0.5f));
     }
 
-    /** Fills a rounded rectangle whose coordinates are already in the current (screen-pixel) space. */
-    private static void fillRounded(GuiGraphicsExtractor graphics, int x, int y, int width, int height, int radius, int color) {
-        radius = clampRadius(radius, width, height);
-        if (radius == 0) {
+    private static void submitRounded(GuiGraphicsExtractor graphics, int x, int y, int width, int height,
+                                      int radiusPx, int thicknessPx, int color) {
+        if (width <= 0 || height <= 0 || (color >>> 24) == 0) return;
+        if (!(graphics instanceof AlpakaGuiElementSink sink)) {
+            // Without the mixin there is no way to submit a custom element; a square fill is the
+            // honest fallback rather than nothing.
             drawRect(graphics, x, y, width, height, color);
             return;
         }
-        drawRect(graphics, x, y + radius, width, height - 2 * radius, color);
-        for (int i = 0; i < radius; i++) {
-            int inset = cornerInset(radius, i, height);
-            drawRect(graphics, x + inset, y + i, width - 2 * inset, 1, color);
-            drawRect(graphics, x + inset, y + height - 1 - i, width - 2 * inset, 1, color);
-        }
-    }
-
-    /**
-     * Fills the ring between a rounded rectangle and the same shape {@code thickness} pixels inside
-     * it. A ring rather than a filled shape under the background, so a translucent background is
-     * not tinted by the border colour beneath it.
-     */
-    private static void fillRoundedRing(GuiGraphicsExtractor graphics, int x, int y, int width, int height, int radius, int thickness, int color) {
-        radius = clampRadius(radius, width, height);
-        thickness = Math.max(1, Math.min(thickness, Math.min(width, height) / 2));
-        for (int row = 0; row < height; row++) {
-            int outer = cornerInset(radius, row, height);
-            int left = x + outer;
-            int right = x + width - outer; // exclusive
-            if (row < thickness || row >= height - thickness) {
-                drawRect(graphics, left, y + row, right - left, 1, color);
-                continue;
-            }
-            int inner = cornerInset(Math.max(0, radius - thickness), row - thickness, height - 2 * thickness);
-            int innerLeft = x + thickness + inner;
-            int innerRight = x + width - thickness - inner; // exclusive
-            if (innerLeft >= innerRight) {
-                drawRect(graphics, left, y + row, right - left, 1, color);
-            } else {
-                drawRect(graphics, left, y + row, innerLeft - left, 1, color);
-                drawRect(graphics, innerRight, y + row, right - innerRight, 1, color);
-            }
-        }
+        int scale = guiScale();
+        sink.alpaka$submitElement(new RoundedRectRenderState(
+                new org.joml.Matrix3x2f(graphics.pose()),
+                x, y, x + width, y + height,
+                radiusPx, thicknessPx, color, scale,
+                sink.alpaka$currentScissor()));
     }
 
     /** A filled rectangle with rounded corners of the given radius, in GUI coordinates. */
     public static void drawRoundedRect(GuiGraphicsExtractor graphics, int x, int y, int width, int height, int radius, int color) {
-        int scale = guiScale();
-        graphics.pose().pushMatrix();
-        graphics.pose().scale(1.0f / scale, 1.0f / scale);
-        fillRounded(graphics, x * scale, y * scale, width * scale, height * scale, radius * scale, color);
-        graphics.pose().popMatrix();
+        submitRounded(graphics, x, y, width, height, Math.max(0, radius) * guiScale(), 0, color);
     }
 
     /** A hairline outline with rounded corners of the given radius, in GUI coordinates. */
     public static void drawRoundedOutline(GuiGraphicsExtractor graphics, int x, int y, int width, int height, int radius, int color) {
         int scale = guiScale();
-        graphics.pose().pushMatrix();
-        graphics.pose().scale(1.0f / scale, 1.0f / scale);
-        fillRoundedRing(graphics, x * scale, y * scale, width * scale, height * scale, radius * scale, hairline(scale), color);
-        graphics.pose().popMatrix();
+        submitRounded(graphics, x, y, width, height, Math.max(0, radius) * scale, hairline(scale), color);
     }
 
     /** A rounded, filled rectangle with a one-pixel rounded border: the shape most controls share. */
@@ -240,7 +189,7 @@ public class ModernGuiUtils {
             String mark = "✔";
             int markX = x + (size - GuiFont.width(font, mark)) / 2;
             int markY = y + (size - 8) / 2;
-            graphics.text(font, GuiFont.text(mark), markX, markY, COLOR_TOGGLE_ON_TEXT);
+            graphics.text(font, GuiFont.text(mark), markX, markY, COLOR_TOGGLE_ON_TEXT, false);
         }
     }
 
@@ -264,7 +213,7 @@ public class ModernGuiUtils {
         // Value text
         int textX = x + (width - GuiFont.width(font, displayValue)) / 2;
         int textY = y + (height - 8) / 2;
-        graphics.text(font, GuiFont.text(displayValue), textX, textY, COLOR_TEXT_PRIMARY);
+        graphics.text(font, GuiFont.text(displayValue), textX, textY, COLOR_TEXT_PRIMARY, false);
     }
 
     public static void drawModernButton(GuiGraphicsExtractor graphics, Font font, int x, int y, int width, int height, String label, boolean isHovered, boolean isPrimary) {
@@ -276,7 +225,7 @@ public class ModernGuiUtils {
 
         int textX = x + (width - GuiFont.width(font, label)) / 2;
         int textY = y + (height - 8) / 2;
-        graphics.text(font, GuiFont.text(label), textX, textY, textColor);
+        graphics.text(font, GuiFont.text(label), textX, textY, textColor, false);
     }
 
     public static void drawModernColorButton(GuiGraphicsExtractor graphics, Font font, int x, int y, int width, int height, int color, boolean isHovered) {
@@ -300,7 +249,7 @@ public class ModernGuiUtils {
 
         int textX = x + (width - GuiFont.width(font, label)) / 2;
         int textY = y + (height - 8) / 2;
-        graphics.text(font, GuiFont.text(label), textX, textY, textColor);
+        graphics.text(font, GuiFont.text(label), textX, textY, textColor, false);
     }
 
     /**
@@ -323,7 +272,7 @@ public class ModernGuiUtils {
         }
 
         int textY = y + (height - 8) / 2;
-        graphics.text(font, GuiFont.text(shown), x + 4, textY, textColor);
+        graphics.text(font, GuiFont.text(shown), x + 4, textY, textColor, false);
 
         if (isFocused && (System.currentTimeMillis() / 500) % 2 == 0) {
             int caretX = x + 4 + (empty ? 0 : GuiFont.width(font, shown));

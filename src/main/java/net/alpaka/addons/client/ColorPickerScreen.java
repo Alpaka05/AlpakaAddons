@@ -100,13 +100,13 @@ public class ColorPickerScreen extends Screen {
         ModernGuiUtils.drawRect(graphics, winX, winY, winW, headerH, ModernGuiUtils.COLOR_SIDEBAR_BG);
         ModernGuiUtils.drawRect(graphics, winX, winY + headerH - 1, winW, 1, ModernGuiUtils.getAccentColor());
 
-        graphics.text(this.font, this.title, winX + 16, winY + 13, ModernGuiUtils.COLOR_TEXT_PRIMARY);
+        graphics.text(this.font, this.title, winX + 16, winY + 13, ModernGuiUtils.COLOR_TEXT_PRIMARY, false);
 
         // Close '✕' button in header
         int closeX = winX + winW - 28;
         int closeY = winY + 9;
         boolean hoverClose = mouseX >= closeX && mouseX <= closeX + 18 && mouseY >= closeY && mouseY <= closeY + 18;
-        graphics.text(this.font, GuiFont.text("✕"), closeX + 4, closeY + 3, hoverClose ? ModernGuiUtils.getAccentColor() : ModernGuiUtils.COLOR_TEXT_MUTED);
+        graphics.text(this.font, GuiFont.text("✕"), closeX + 4, closeY + 3, hoverClose ? ModernGuiUtils.getAccentColor() : ModernGuiUtils.COLOR_TEXT_MUTED, false);
 
         // LEFT COLUMN: Color Preview, HEX Code, Presets
         int prevX = winX + 20;
@@ -134,11 +134,11 @@ public class ColorPickerScreen extends Screen {
             displayText += "|";
         }
         int hexStrX = prevX + (prevW - GuiFont.width(this.font, displayText)) / 2;
-        graphics.text(this.font, GuiFont.text(displayText), hexStrX, hexY + 7, hexFocused ? ModernGuiUtils.getAccentColor() : ModernGuiUtils.COLOR_TEXT_PRIMARY);
+        graphics.text(this.font, GuiFont.text(displayText), hexStrX, hexY + 7, hexFocused ? ModernGuiUtils.getAccentColor() : ModernGuiUtils.COLOR_TEXT_PRIMARY, false);
 
         // Presets Header
         int presetY = hexY + hexH + 12;
-        graphics.text(this.font, GuiFont.text("Presets:"), prevX, presetY, ModernGuiUtils.COLOR_TEXT_MUTED);
+        graphics.text(this.font, GuiFont.text("Presets:"), prevX, presetY, ModernGuiUtils.COLOR_TEXT_MUTED, false);
 
         // Presets Grid (5 cols x 2 rows)
         int swatchSize = 22;
@@ -172,7 +172,7 @@ public class ColorPickerScreen extends Screen {
         for (int i = 0; i < 4; i++) {
             int sy = sliderY + i * rowGap;
             String labelText = sliderNames[i] + ": " + sliderVals[i];
-            graphics.text(this.font, GuiFont.text(labelText), rightX, sy, ModernGuiUtils.COLOR_TEXT_PRIMARY);
+            graphics.text(this.font, GuiFont.text(labelText), rightX, sy, ModernGuiUtils.COLOR_TEXT_PRIMARY, false);
 
             int swY = sy + 14;
             int swH = 22;

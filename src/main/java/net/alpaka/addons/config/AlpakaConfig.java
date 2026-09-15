@@ -346,6 +346,13 @@ public class AlpakaConfig {
     public boolean partyInvitePromptEnabled = true;
 
     // Quick Command Menu options
+    /**
+     * The quick command wheel, one list per page. Null until CommandWheelPages first folds the
+     * legacy flat list below into pages; from then on this is the record and the flat list is null.
+     */
+    public java.util.List<java.util.List<String>> commandWheelPages = null;
+
+    /** Legacy, pre-pages. Read once by CommandWheelPages and then cleared. */
     public java.util.List<String> commandWheelCommands = new java.util.ArrayList<>(java.util.List.of(
             "/hub",
             "/island",

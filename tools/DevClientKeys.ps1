@@ -7,6 +7,10 @@ param(
     [string]$KeyUp = "",    # release keys held by an earlier -KeyDown call
     [string]$MouseMove = "",# "x,y" in window client pixels: WM_MOUSEMOVE, moves the GUI cursor
     [switch]$LeftClick,     # WM_LBUTTONDOWN/UP at the -MouseMove position
+    [switch]$LeftDown,      # WM_LBUTTONDOWN only, to start a drag; finish it with -LeftUp
+    [switch]$LeftUp,        # WM_LBUTTONUP only, at the -MouseMove position
+    [switch]$FakeFocus,     # WM_SETFOCUS: GLFW then reports the window active, which mouse drags need; no real focus change
+    [switch]$DropFocus,     # WM_KILLFOCUS: undo -FakeFocus
     [switch]$RightClick,    # WM_RBUTTONDOWN/UP at the -MouseMove position
     [int]$Wheel = 0,        # WM_MOUSEWHEEL: notches, positive scrolls up, negative down
     [int]$GapMs = 250,
@@ -66,6 +70,13 @@ function Mouse-LParam([int]$x, [int]$y) {
     return [IntPtr]([int64]$x -bor ([int64]$y -shl 16))
 }
 
+# Minecraft only dispatches mouse moves and drags to a screen while it believes the window is
+# focused (Minecraft.isWindowActive). Posting WM_SETFOCUS makes GLFW report exactly that without
+# the window actually coming to the front or taking the keyboard.
+if ($FakeFocus) {
+    [K]::PostMessage($h, 0x0007, [IntPtr]0, [IntPtr]0) | Out-Null
+    Start-Sleep -Milliseconds $GapMs
+}
 if ($KeyDown -ne "") {
     foreach ($name in $KeyDown.Split(",")) {
         $n = $name.Trim().ToUpper()
@@ -104,6 +115,14 @@ if ($LeftClick -and $mouseX -ge 0) {
     [K]::PostMessage($h, 0x0202, [IntPtr]0, (Mouse-LParam $mouseX $mouseY)) | Out-Null
     Start-Sleep -Milliseconds $GapMs
 }
+if ($LeftDown -and $mouseX -ge 0) {
+    [K]::PostMessage($h, 0x0201, [IntPtr]1, (Mouse-LParam $mouseX $mouseY)) | Out-Null
+    Start-Sleep -Milliseconds $GapMs
+}
+if ($LeftUp -and $mouseX -ge 0) {
+    [K]::PostMessage($h, 0x0202, [IntPtr]0, (Mouse-LParam $mouseX $mouseY)) | Out-Null
+    Start-Sleep -Milliseconds $GapMs
+}
 if ($RightClick -and $mouseX -ge 0) {
     [K]::PostMessage($h, 0x0204, [IntPtr]2, (Mouse-LParam $mouseX $mouseY)) | Out-Null
     Start-Sleep -Milliseconds $HoldMs
@@ -124,6 +143,10 @@ if ($KeyUp -ne "") {
         Send-KeyUp $n
         Start-Sleep -Milliseconds $GapMs
     }
+}
+if ($DropFocus) {
+    [K]::PostMessage($h, 0x0008, [IntPtr]0, [IntPtr]0) | Out-Null
+    Start-Sleep -Milliseconds $GapMs
 }
 if ($Close) {
     [K]::PostMessage($h, 0x0010, [IntPtr]0, [IntPtr]0) | Out-Null

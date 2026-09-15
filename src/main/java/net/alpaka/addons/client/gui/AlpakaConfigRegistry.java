@@ -140,14 +140,14 @@ public class AlpakaConfigRegistry {
                 "blaze rods spin spinning rotation animation stop mob"));
 
         OPTIONS.add(new ConfigOption("hide_hurt_overlay", "Hide Damage Flash",
-                "Hides the red flash on mobs and players when they take a hit. Cosmetic only.",
+                "Hides the red flash on mobs and players when they take a hit.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.hideHurtOverlayEnabled,
                 v -> { AlpakaConfig.instance.hideHurtOverlayEnabled = v; AlpakaConfig.save(); },
                 "hurt damage red flash tint overlay hit mob entity hide"));
 
         OPTIONS.add(new ConfigOption("hide_mob_deaths", "Hide Mob Deaths",
-                "Mobs vanish the moment they die instead of tipping over first. Cosmetic only.",
+                "Mobs vanish the moment they die instead of tipping over first.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.hideMobDeathsEnabled,
                 v -> { AlpakaConfig.instance.hideMobDeathsEnabled = v; AlpakaConfig.save(); },

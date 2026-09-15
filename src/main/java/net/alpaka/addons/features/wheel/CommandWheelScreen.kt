@@ -1,7 +1,8 @@
 package net.alpaka.addons.features.wheel
 
+import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.client.gui.ModernGuiUtils
-import net.alpaka.addons.config.AlpakaConfig
+import net.alpaka.addons.features.sound.CustomSoundFeature
 import net.alpaka.addons.features.wheel.WheelMesh.Companion.TAU
 import net.alpaka.addons.features.wheel.WheelMesh.Companion.lerpColor
 import net.alpaka.addons.features.wheel.WheelMesh.Companion.scaleAlpha
@@ -21,21 +22,27 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * The quick command wheel: a segmented dial around a small hub, one segment per configured command,
- * with the command names sitting just outside their segment.
+ * The quick command wheel: a segmented dial around a small hub, one segment per command on the
+ * current page, with the command names sitting just outside their segment.
  *
  * Selection is by direction, not by hitting a box. Anywhere outside the hub the mouse's bearing
  * from the centre picks the segment, so a flick of a few pixels in roughly the right direction is
  * enough - the point of the wheel is that it is faster than typing. A short, wide wedge on the rim
- * of the hub turns smoothly towards the mouse and points at the segment being aimed at; that
- * segment fills with the accent colour and swells outwards, and its label grows with it. Releasing
- * the wheel key or clicking runs the command; right-click or Escape closes without running anything.
+ * of the hub turns smoothly to the centre of the segment being aimed at; that segment fills with the
+ * accent colour and swells outwards, and its label grows with it. Releasing the wheel key or
+ * clicking runs the command; right-click or Escape closes without running anything.
+ *
+ * The commands come in pages ([CommandWheelPages]), so a long list never crowds the dial. Arrows at
+ * the left and right screen edges step through the pages, as does the mouse wheel; the arrows sit
+ * far enough out that aiming at them never counts as aiming at a segment.
  *
  * Everything moves on eased curves driven by real frame time, so it looks the same at 60 and 240
  * frames per second, and everything rounded is drawn by [WheelMesh] rather than stacked rectangles.
  */
 class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
 
+    private var pages: List<List<String>> = emptyList()
+    private var page = 0
     private var commands: List<String> = emptyList()
 
     /** Per segment, 0 = idle and 1 = fully highlighted; eased towards its target every frame. */
@@ -48,15 +55,31 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
     /** Where the wedge points, radians in screen space. Starts pointing up. */
     private var wedgeAngle = -TAU / 4f
 
+    /** Eased hover glow of the two page arrows, left then right. */
+    private val arrowGlow = FloatArray(2)
+
     private val openedAtNanos = System.nanoTime()
     private var lastFrameNanos = openedAtNanos
 
     override fun isPauseScreen(): Boolean = false
 
     override fun init() {
-        val configured = AlpakaConfig.instance.commandWheelCommands
-        commands = if (configured == null) emptyList() else ArrayList(configured)
-        if (highlight.size != commands.size) highlight = FloatArray(commands.size)
+        pages = CommandWheelPages.pages().map { ArrayList(it) }
+        showPage(lastPage)
+    }
+
+    private fun showPage(index: Int) {
+        page = if (pages.isEmpty()) 0 else index.coerceIn(0, pages.size - 1)
+        lastPage = page
+        commands = if (pages.isEmpty()) emptyList() else pages[page]
+        highlight = FloatArray(commands.size)
+        selectedIndex = -1
+    }
+
+    private fun stepPage(delta: Int) {
+        if (pages.size <= 1) return
+        showPage(((page + delta) % pages.size + pages.size) % pages.size)
+        try { CustomSoundFeature.playButtonClickSound() } catch (_: Throwable) {}
     }
 
     // ------------------------------------------------------------------ input
@@ -72,9 +95,16 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
 
     override fun mouseClicked(event: MouseButtonEvent, isDoubleClick: Boolean): Boolean {
         when (event.button()) {
-            0 -> if (selectedIndex >= 0) {
-                runSelectedAndClose()
-                return true
+            0 -> {
+                val arrow = arrowAt(event.x(), event.y())
+                if (arrow >= 0) {
+                    stepPage(if (arrow == 0) -1 else 1)
+                    return true
+                }
+                if (selectedIndex >= 0) {
+                    runSelectedAndClose()
+                    return true
+                }
             }
             1 -> {
                 close()
@@ -82,6 +112,14 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
             }
         }
         return super.mouseClicked(event, isDoubleClick)
+    }
+
+    override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
+        if (scrollY != 0.0 && pages.size > 1) {
+            stepPage(if (scrollY < 0) 1 else -1)
+            return true
+        }
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)
     }
 
     private fun runSelectedAndClose() {
@@ -114,7 +152,7 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
         val sweep = TAU / count
 
         var maxLabelWidth = 0
-        for (command in commands) maxLabelWidth = max(maxLabelWidth, this.font.width(command))
+        for (command in commands) maxLabelWidth = max(maxLabelWidth, GuiFont.width(this.font, command))
 
         // Neighbouring labels near the top and bottom of the wheel sit almost side by side, so the
         // label circle has to be wide enough for the longest name to clear its neighbour there.
@@ -141,6 +179,21 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
         var bearing = atan2(dy, dx) + TAU / 4f + layout.sweep / 2f
         bearing = ((bearing % TAU) + TAU) % TAU
         return (bearing / layout.sweep).toInt().coerceIn(0, count - 1)
+    }
+
+    /** Centre x of the page arrow: 0 is the left one, 1 the right one. */
+    private fun arrowCenterX(arrow: Int): Float = if (arrow == 0) ARROW_MARGIN else this.width - ARROW_MARGIN
+
+    /** Which page arrow the mouse is over, 0 left, 1 right, or -1. Only with more than one page. */
+    private fun arrowAt(mouseX: Double, mouseY: Double): Int {
+        if (pages.size <= 1) return -1
+        val ay = this.height / 2f
+        for (arrow in 0..1) {
+            val dx = mouseX - arrowCenterX(arrow)
+            val dy = mouseY - ay
+            if (dx * dx + dy * dy <= ARROW_HIT * ARROW_HIT) return arrow
+        }
+        return -1
     }
 
     // -------------------------------------------------------------- animation
@@ -171,29 +224,33 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
 
         graphics.fill(0, 0, this.width, this.height, scaleAlpha(0x38000000, open))
 
+        val guiScale = (this.minecraft ?: Minecraft.getInstance()).window.guiScale.coerceAtLeast(1)
+        val mesh = WheelMesh(1.15f / guiScale)
+        val accent = ModernGuiUtils.getAccentColor()
+        val hoveredArrow = arrowAt(mouseX.toDouble(), mouseY.toDouble())
+
         val count = commands.size
         if (count == 0) {
             selectedIndex = -1
             drawEmptyState(graphics, open)
+            drawPageChrome(graphics, mesh, accent, open, hoveredArrow, dt)
             return
         }
         if (highlight.size != count) highlight = FloatArray(count)
 
         val layout = layout(count)
-        selectedIndex = pick(layout, mouseX, mouseY, count)
+        // Aiming at a page arrow is not aiming at the wheel, so nothing lights up behind it.
+        selectedIndex = if (hoveredArrow >= 0) -1 else pick(layout, mouseX, mouseY, count)
 
         if (selectedIndex >= 0) {
-            val target = atan2(mouseY - layout.cy, mouseX - layout.cx)
-            wedgeAngle = approachAngle(wedgeAngle, target, ease(dt, 26f))
+            // The wedge points at the selected segment's centre line rather than at the mouse, so it
+            // always sits exactly on the axis of the segment that is lit.
+            wedgeAngle = approachAngle(wedgeAngle, segmentAngle(layout, selectedIndex), ease(dt, 26f))
         }
         aim = approach(aim, if (selectedIndex >= 0) 1f else 0f, ease(dt, 16f))
         for (i in 0 until count) {
             highlight[i] = approach(highlight[i], if (i == selectedIndex) 1f else 0f, ease(dt, 15f))
         }
-
-        val guiScale = (this.minecraft ?: Minecraft.getInstance()).window.guiScale.coerceAtLeast(1)
-        val mesh = WheelMesh(1.15f / guiScale)
-        val accent = ModernGuiUtils.getAccentColor()
 
         val pose = graphics.pose()
         pose.pushMatrix()
@@ -245,21 +302,20 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
         )
         mesh.submit(graphics)
 
-        // The wedge: a short, wide triangle sitting on the hub rim, pointing outwards at the mouse.
-        // It fades with the selection, so an idle hub is just the plain disc.
+        // The wedge: a short, wide triangle whose base sits on the hub rim, pointing outwards along
+        // the selected segment's axis. Its base corners are placed along the rim's arc rather than on
+        // a tangent, so they lie on the circle and the wedge stays centred on the line it points
+        // along. It fades with the selection, so an idle hub is just the plain disc.
         if (aim > 0.02f) {
-            val dirX = cos(wedgeAngle)
-            val dirY = sin(wedgeAngle)
-            val sideX = -dirY
-            val sideY = dirX
             val tip = layout.hubRadius + WEDGE_LENGTH * aim
             val base = layout.hubRadius - WEDGE_INSET
             val halfWidth = WEDGE_HALF_WIDTH * (0.6f + 0.4f * aim)
+            val spread = halfWidth / base
             mesh.convexPolygon(
                 floatArrayOf(
-                    layout.cx + dirX * tip, layout.cy + dirY * tip,
-                    layout.cx + dirX * base + sideX * halfWidth, layout.cy + dirY * base + sideY * halfWidth,
-                    layout.cx + dirX * base - sideX * halfWidth, layout.cy + dirY * base - sideY * halfWidth
+                    layout.cx + cos(wedgeAngle) * tip, layout.cy + sin(wedgeAngle) * tip,
+                    layout.cx + cos(wedgeAngle + spread) * base, layout.cy + sin(wedgeAngle + spread) * base,
+                    layout.cx + cos(wedgeAngle - spread) * base, layout.cy + sin(wedgeAngle - spread) * base
                 ),
                 scaleAlpha(accent, open * aim)
             )
@@ -280,7 +336,7 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
             val radius = layout.labelRadius + SELECT_GROWTH * h
             val anchorX = layout.cx + cosA * radius
             val anchorY = layout.cy + sinA * radius
-            val textWidth = this.font.width(command)
+            val textWidth = GuiFont.width(this.font, command)
             val textHeight = this.font.lineHeight - 1
             val x = (anchorX + (cosA - 1f) * textWidth / 2f).roundToInt()
             val y = (anchorY + (sinA - 1f) * textHeight / 2f).roundToInt()
@@ -291,11 +347,56 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
             val scale = 1f + LABEL_GROWTH * h
             pose.pushMatrix()
             pose.scaleAround(scale, scale, anchorX, anchorY)
-            graphics.text(this.font, command, x, y, color, false)
+            graphics.text(this.font, GuiFont.text(command), x, y, color, false)
             pose.popMatrix()
         }
 
         pose.popMatrix()
+
+        drawPageChrome(graphics, mesh, accent, open, hoveredArrow, dt)
+    }
+
+    /**
+     * The page arrows at the screen edges and the page counter at the bottom. Drawn outside the
+     * wheel's open-scale transform: they belong to the screen, not to the dial.
+     */
+    private fun drawPageChrome(graphics: GuiGraphicsExtractor, mesh: WheelMesh, accent: Int, open: Float, hoveredArrow: Int, dt: Float) {
+        if (pages.size <= 1) return
+
+        val ay = this.height / 2f
+        for (arrow in 0..1) {
+            arrowGlow[arrow] = approach(arrowGlow[arrow], if (hoveredArrow == arrow) 1f else 0f, ease(dt, 16f))
+            val glow = arrowGlow[arrow]
+            val ax = arrowCenterX(arrow)
+            val direction = if (arrow == 0) -1f else 1f
+            val lift = 1f + 0.08f * glow
+
+            mesh.disc(ax, ay, ARROW_RADIUS * lift, scaleAlpha(COLOR_HUB, open))
+            mesh.ring(
+                ax, ay, ARROW_RADIUS * lift - 1f, ARROW_RADIUS * lift,
+                scaleAlpha(lerpColor(ModernGuiUtils.COLOR_CARD_BORDER, accent, glow), open)
+            )
+            mesh.submit(graphics)
+
+            // A chevron: two slanted bars meeting at the point, drawn as thin quads.
+            val color = scaleAlpha(lerpColor(COLOR_LABEL, accent, glow), open)
+            val tipX = ax + direction * 3.5f
+            val backX = ax - direction * 2.5f
+            val t = 1.6f
+            mesh.quad(
+                backX, ay - 6f, color, backX + direction * t, ay - 6f, color,
+                tipX + direction * t, ay, color, tipX, ay, color
+            )
+            mesh.quad(
+                tipX, ay, color, tipX + direction * t, ay, color,
+                backX + direction * t, ay + 6f, color, backX, ay + 6f, color
+            )
+            mesh.submit(graphics)
+        }
+
+        val counter = "${page + 1} / ${pages.size}"
+        ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text(counter), this.width / 2,
+            this.height - 24, scaleAlpha(ModernGuiUtils.COLOR_TEXT_MUTED, open))
     }
 
     private fun drawEmptyState(graphics: GuiGraphicsExtractor, open: Float) {
@@ -304,11 +405,14 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
         val primary = scaleAlpha(ModernGuiUtils.COLOR_TEXT_PRIMARY, open)
         val muted = scaleAlpha(ModernGuiUtils.COLOR_TEXT_MUTED, open)
         if ((primary ushr 24) < 8) return
-        graphics.centeredText(this.font, "No quick commands yet", cx, cy - 10, primary)
-        graphics.centeredText(this.font, "Add some under Alpaka Config → Quick Command Menu", cx, cy + 4, muted)
+        ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("No quick commands yet"), cx, cy - 10, primary)
+        ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("Add some under Alpaka Config → Quick Command Menu"), cx, cy + 4, muted)
     }
 
     companion object {
+        /** The page shown when the wheel last closed, so reopening lands where the player was. */
+        private var lastPage = 0
+
         private const val OPEN_SECONDS = 0.16
         private const val HUB_RADIUS = 19f
         private const val DEAD_ZONE = 13f
@@ -320,6 +424,11 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
         private const val WEDGE_INSET = 3f
         private const val WEDGE_HALF_WIDTH = 4.5f
         private const val LABEL_GROWTH = 0.22f
+
+        /** Distance of the page arrows' centres from the screen edge, and their size and hit radius. */
+        private const val ARROW_MARGIN = 30f
+        private const val ARROW_RADIUS = 13f
+        private const val ARROW_HIT = 20f
 
         private const val COLOR_SEGMENT = 0xE8262626.toInt()
         private const val COLOR_SEGMENT_OUTER = 0xE82C2C2C.toInt()

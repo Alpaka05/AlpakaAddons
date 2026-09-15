@@ -76,7 +76,8 @@ public class ConfigOption {
 
     // Animation & Hover state tracking
     private float hoverProgress = 0.0f;
-    private float clickProgress = 0.0f;
+    /** 0..1 knob position of a BOOLEAN option, easing toward its state; -1 until first drawn. */
+    private float toggleProgress = -1.0f;
     private boolean isDragging = false;
 
     // Header constructor
@@ -241,12 +242,14 @@ public class ConfigOption {
         this.hoverProgress = PloppAnimation.interpolate(hoverProgress, isHovered ? 1.0f : 0.0f, deltaSec, 12.0f);
     }
 
-    public float getClickProgress() { return clickProgress; }
-    public void triggerClickAnimation() { this.clickProgress = 1.0f; }
-    public void updateClickProgress(float deltaSec) {
-        if (clickProgress > 0.0f) {
-            clickProgress = Math.max(0.0f, clickProgress - deltaSec * 8.0f);
-        }
+    /** Where the toggle knob is drawn, 0 (off) to 1 (on); the real state until first updated. */
+    public float getToggleProgress() {
+        return toggleProgress < 0.0f ? (getBool() ? 1.0f : 0.0f) : toggleProgress;
+    }
+
+    public void updateToggleProgress(float deltaSec) {
+        float target = getBool() ? 1.0f : 0.0f;
+        toggleProgress = toggleProgress < 0.0f ? target : PloppAnimation.interpolate(toggleProgress, target, deltaSec, 12.0f);
     }
 
     public boolean isDragging() { return isDragging; }

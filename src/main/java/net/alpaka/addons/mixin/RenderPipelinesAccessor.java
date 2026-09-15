@@ -21,6 +21,18 @@ public interface RenderPipelinesAccessor {
         throw new AssertionError("replaced by mixin");
     }
 
+    /** The snippet vanilla builds its GUI fills from: gui shaders, translucent blend, no texture. */
+    @Accessor("GUI_SNIPPET")
+    static RenderPipeline.Snippet alpaka$guiSnippet() {
+        throw new AssertionError("replaced by mixin");
+    }
+
+    /** The snippet vanilla's textured GUI blits are built from: adds a sampler for texture 0. */
+    @Accessor("GUI_TEXTURED_SNIPPET")
+    static RenderPipeline.Snippet alpaka$guiTexturedSnippet() {
+        throw new AssertionError("replaced by mixin");
+    }
+
     /** Registers the pipeline so the shader manager precompiles it with vanilla's own. */
     @Invoker("register")
     static RenderPipeline alpaka$register(RenderPipeline pipeline) {

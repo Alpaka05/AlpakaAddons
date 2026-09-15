@@ -91,6 +91,28 @@ def deployToLauncher(File jarFile, String versionStr) {
 }
 
 /**
+ * Drops the Modrinth App's records of alpaka jars the deploy just removed.
+ *
+ * Since the app's blob-store update, deleting a jar it has launched with leaves a dangling record
+ * in its database, and the instance then refuses to start ("needs repair or re-import"). The
+ * Python helper in tools/ removes those records; without Python on the machine the deploy still
+ * works and only prints a hint.
+ */
+def runModrinthCleanup(String profileName) {
+    def script = file("tools/ModrinthCleanup.py")
+    if (!script.exists()) return
+    try {
+        def process = new ProcessBuilder("python", script.absolutePath, profileName)
+            .redirectErrorStream(true).start()
+        def output = process.inputStream.text.trim()
+        process.waitFor()
+        if (output) println output
+    } catch (Exception e) {
+        println "Modrinth cleanup skipped (python not available?): ${e.message}"
+    }
+}
+
+/**
  * Drops the jar into one Modrinth App profile's mods folder.
  *
  * Only that one folder, unlike the OneClient deploy below: the Modrinth App keeps a profile's mods
@@ -144,7 +166,14 @@ def deployToModrinth(File jarFile, String versionStr) {
             it.setWritable(true)
             def disabled = new File(it.parentFile, it.name + ".disabled")
             if (disabled.exists()) disabled.delete()
-            if (it.renameTo(disabled)) println "Disabled old mod file: ${it.name} in Modrinth profile '${profileName}'"
+            // A game that has just closed can still hold its jar for a few seconds, so the rename is retried
+            // for a while before giving up.
+            def renamed = false
+            for (int attempt = 0; attempt < 20 && !renamed; attempt++) {
+                renamed = it.renameTo(disabled)
+                if (!renamed) Thread.sleep(500)
+            }
+            if (renamed) println "Disabled old mod file: ${it.name} in Modrinth profile '${profileName}'"
             else println "Warning: could not disable ${it.name} (game running?) - two active alpaka jars will break Fabric startup."
         }
 
@@ -154,6 +183,7 @@ def deployToModrinth(File jarFile, String versionStr) {
             java.nio.file.Files.copy(jarFile.toPath(), destFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
             println "Deployed ${targetName} to Modrinth profile: ${profileName}"
             deployed = true
+            runModrinthCleanup(profileName)
         } catch (Exception e) {
             println "Warning: Could not write ${destFile.absolutePath} (file may be in use by running game): ${e.message}"
         }

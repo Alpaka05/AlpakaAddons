@@ -149,7 +149,12 @@ public class AlpakaConfig {
     public boolean customSoundSuccessfulHit = true;
     public boolean muteVanillaSoundsInBlazeSlayer = false;
     public float lowHpHeartbeatThreshold = 0.30f;
-    public int menuAccentColor = 0xFFE5B849; // Default Warm Gold
+    public int menuAccentColor = 0xFF29B6B2; // Default teal
+    /**
+     * Index into {@code GuiFont.NAMES}: the typeface the Alpaka menus are written in. 0 is the
+     * vanilla pixel font; the default is Inter.
+     */
+    public int menuFont = 1;
     public boolean customEscapeMenuEnabled = true;
     public boolean customMainMenuEnabled = false;
     public boolean playerModelEnabled = true;
@@ -306,6 +311,12 @@ public class AlpakaConfig {
     public String guildPrefixText = "";
 
     // Chat options
+    /** A new message slides up into the chat and fades in instead of appearing at once. */
+    public boolean smoothChatEnabled = true;
+    /** How long the slide takes, 1 (quick) to 10 (slow); each step is 60 ms. */
+    public int smoothChatStrength = 5;
+    /** One rounded, padded panel behind the chat that shows the world blurred through it. */
+    public boolean chatBlurEnabled = true;
     public boolean expandChatHistory = true;
     /** Hold the Peek Chat key to see the whole chat, scrollable, without opening it. */
     public boolean chatPeekEnabled = true;
@@ -341,6 +352,13 @@ public class AlpakaConfig {
     public boolean partyInvitePromptEnabled = true;
 
     // Quick Command Menu options
+    /**
+     * The quick command wheel, one list per page. Null until CommandWheelPages first folds the
+     * legacy flat list below into pages; from then on this is the record and the flat list is null.
+     */
+    public java.util.List<java.util.List<String>> commandWheelPages = null;
+
+    /** Legacy, pre-pages. Read once by CommandWheelPages and then cleared. */
     public java.util.List<String> commandWheelCommands = new java.util.ArrayList<>(java.util.List.of(
             "/hub",
             "/island",
@@ -600,6 +618,12 @@ public class AlpakaConfig {
             save();
         }
 
+        // The menu's default accent moved from warm gold to teal. A config still on the exact old
+        // default never chose gold, so it follows the new default; any other colour is a choice.
+        if (instance.menuAccentColor == 0xFFE5B849) {
+            instance.menuAccentColor = 0xFF29B6B2;
+        }
+
         if (instance.slayerBossMap == null) {
             instance.slayerBossMap = new HashMap<>();
         }
@@ -656,6 +680,7 @@ public class AlpakaConfig {
         this.customSoundSuccessfulHit = false;
         this.muteVanillaSoundsInBlazeSlayer = false;
         this.customEscapeMenuEnabled = false;
+        this.menuFont = 0;
         this.customMainMenuEnabled = false;
         this.playerModelEnabled = false;
         this.playerModelOnlyActions = false;
@@ -684,6 +709,8 @@ public class AlpakaConfig {
         this.etherwarpOverlayEnabled = false;
         this.etherwarpLineEnabled = false;
         this.etherwarpSoundEnabled = false;
+        this.smoothChatEnabled = false;
+        this.chatBlurEnabled = false;
         this.expandChatHistory = false;
         this.chatPeekEnabled = false;
         this.chatPeekInMenus = false;

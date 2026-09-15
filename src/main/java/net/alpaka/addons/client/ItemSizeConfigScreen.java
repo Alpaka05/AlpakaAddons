@@ -1,5 +1,6 @@
 package net.alpaka.addons.client;
 
+import net.alpaka.addons.client.gui.GuiFont;
 import java.util.Locale;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -9,13 +10,12 @@ import net.minecraft.client.gui.components.StringWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.CommonComponents;
-import net.minecraft.network.chat.Component;
 
 public class ItemSizeConfigScreen extends Screen {
     private final Screen parent;
 
     public ItemSizeConfigScreen(Screen parent) {
-        super(Component.literal("Item Size & Viewmodel Settings"));
+        super(GuiFont.text("Item Size & Viewmodel Settings"));
         this.parent = parent;
     }
 
@@ -33,7 +33,7 @@ public class ItemSizeConfigScreen extends Screen {
 
         // 1. Enable Modifiers Toggle
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY, 150, 20,
-                Component.literal("Enable Viewmodel Modifiers"), this.font));
+                GuiFont.text("Enable Viewmodel Modifiers"), this.font));
         Button toggleFeature = Button.builder(
                 CommonComponents.optionStatus(AlpakaConfig.instance.itemSizeFeatureEnabled),
                 button -> {
@@ -48,15 +48,15 @@ public class ItemSizeConfigScreen extends Screen {
 
         // 2. Scale Slider (0.2x to 2.5x)
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 24, 150, 20,
-                Component.literal("Item Scale (Size)"), this.font));
+                GuiFont.text("Item Scale (Size)"), this.font));
         AbstractSliderButton scaleSlider = new AbstractSliderButton(
                 this.width / 2 + 5, centerY + 24, 150, 20,
-                Component.literal(String.format(Locale.ROOT, "%.2fx", AlpakaConfig.instance.itemScale)),
+                GuiFont.text(String.format(Locale.ROOT, "%.2fx", AlpakaConfig.instance.itemScale)),
                 (AlpakaConfig.instance.itemScale - 0.2f) / 2.3f
         ) {
             @Override
             protected void updateMessage() {
-                setMessage(Component.literal(String.format(Locale.ROOT, "%.2fx", AlpakaConfig.instance.itemScale)));
+                setMessage(GuiFont.text(String.format(Locale.ROOT, "%.2fx", AlpakaConfig.instance.itemScale)));
             }
             @Override
             protected void applyValue() {
@@ -68,15 +68,15 @@ public class ItemSizeConfigScreen extends Screen {
 
         // 3. X Offset Slider (-1.5 to 1.5)
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 48, 150, 20,
-                Component.literal("X Offset (Left/Right)"), this.font));
+                GuiFont.text("X Offset (Left/Right)"), this.font));
         AbstractSliderButton xSlider = new AbstractSliderButton(
                 this.width / 2 + 5, centerY + 48, 150, 20,
-                Component.literal(String.format(Locale.ROOT, "%.2f", AlpakaConfig.instance.itemXOffset)),
+                GuiFont.text(String.format(Locale.ROOT, "%.2f", AlpakaConfig.instance.itemXOffset)),
                 (AlpakaConfig.instance.itemXOffset + 1.5f) / 3.0f
         ) {
             @Override
             protected void updateMessage() {
-                setMessage(Component.literal(String.format(Locale.ROOT, "%.2f", AlpakaConfig.instance.itemXOffset)));
+                setMessage(GuiFont.text(String.format(Locale.ROOT, "%.2f", AlpakaConfig.instance.itemXOffset)));
             }
             @Override
             protected void applyValue() {
@@ -88,15 +88,15 @@ public class ItemSizeConfigScreen extends Screen {
 
         // 4. Y Offset Slider (-1.5 to 1.5)
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 72, 150, 20,
-                Component.literal("Y Offset (Up/Down)"), this.font));
+                GuiFont.text("Y Offset (Up/Down)"), this.font));
         AbstractSliderButton ySlider = new AbstractSliderButton(
                 this.width / 2 + 5, centerY + 72, 150, 20,
-                Component.literal(String.format(Locale.ROOT, "%.2f", AlpakaConfig.instance.itemYOffset)),
+                GuiFont.text(String.format(Locale.ROOT, "%.2f", AlpakaConfig.instance.itemYOffset)),
                 (AlpakaConfig.instance.itemYOffset + 1.5f) / 3.0f
         ) {
             @Override
             protected void updateMessage() {
-                setMessage(Component.literal(String.format(Locale.ROOT, "%.2f", AlpakaConfig.instance.itemYOffset)));
+                setMessage(GuiFont.text(String.format(Locale.ROOT, "%.2f", AlpakaConfig.instance.itemYOffset)));
             }
             @Override
             protected void applyValue() {
@@ -108,15 +108,15 @@ public class ItemSizeConfigScreen extends Screen {
 
         // 5. Z Offset Slider (-1.5 to 1.5)
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 96, 150, 20,
-                Component.literal("Z Offset (Forward/Back)"), this.font));
+                GuiFont.text("Z Offset (Forward/Back)"), this.font));
         AbstractSliderButton zSlider = new AbstractSliderButton(
                 this.width / 2 + 5, centerY + 96, 150, 20,
-                Component.literal(String.format(Locale.ROOT, "%.2f", AlpakaConfig.instance.itemZOffset)),
+                GuiFont.text(String.format(Locale.ROOT, "%.2f", AlpakaConfig.instance.itemZOffset)),
                 (AlpakaConfig.instance.itemZOffset + 1.5f) / 3.0f
         ) {
             @Override
             protected void updateMessage() {
-                setMessage(Component.literal(String.format(Locale.ROOT, "%.2f", AlpakaConfig.instance.itemZOffset)));
+                setMessage(GuiFont.text(String.format(Locale.ROOT, "%.2f", AlpakaConfig.instance.itemZOffset)));
             }
             @Override
             protected void applyValue() {
@@ -128,15 +128,15 @@ public class ItemSizeConfigScreen extends Screen {
 
         // 6. Swing Speed Slider (0.1x to 1.5x)
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 120, 150, 20,
-                Component.literal("Swing Speed"), this.font));
+                GuiFont.text("Swing Speed"), this.font));
         AbstractSliderButton swingSlider = new AbstractSliderButton(
                 this.width / 2 + 5, centerY + 120, 150, 20,
-                Component.literal(String.format(Locale.ROOT, "%.2fx", AlpakaConfig.instance.itemSwingSpeed)),
+                GuiFont.text(String.format(Locale.ROOT, "%.2fx", AlpakaConfig.instance.itemSwingSpeed)),
                 (AlpakaConfig.instance.itemSwingSpeed - 0.1f) / 1.4f
         ) {
             @Override
             protected void updateMessage() {
-                setMessage(Component.literal(String.format(Locale.ROOT, "%.2fx", AlpakaConfig.instance.itemSwingSpeed)));
+                setMessage(GuiFont.text(String.format(Locale.ROOT, "%.2fx", AlpakaConfig.instance.itemSwingSpeed)));
             }
             @Override
             protected void applyValue() {
@@ -148,7 +148,7 @@ public class ItemSizeConfigScreen extends Screen {
 
         // 7. Disable Hand Sway Toggle
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 144, 150, 20,
-                Component.literal("Disable Hand Sway"), this.font));
+                GuiFont.text("Disable Hand Sway"), this.font));
         Button toggleSway = Button.builder(
                 CommonComponents.optionStatus(AlpakaConfig.instance.itemSwayDisabled),
                 button -> {
@@ -163,7 +163,7 @@ public class ItemSizeConfigScreen extends Screen {
 
         // 8. Disable Re-equip Toggle
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 168, 150, 20,
-                Component.literal("Disable Re-equip"), this.font));
+                GuiFont.text("Disable Re-equip"), this.font));
         Button toggleNoEquip = Button.builder(
                 CommonComponents.optionStatus(AlpakaConfig.instance.itemNoEquipEnabled),
                 button -> {
@@ -178,7 +178,7 @@ public class ItemSizeConfigScreen extends Screen {
 
         // 9. Ignore Empty Hand Toggle
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, centerY + 192, 150, 20,
-                Component.literal("Ignore Empty Hand"), this.font));
+                GuiFont.text("Ignore Empty Hand"), this.font));
         Button toggleIgnoreEmptyHand = Button.builder(
                 CommonComponents.optionStatus(AlpakaConfig.instance.itemIgnoreEmptyHandEnabled),
                 button -> {
@@ -193,7 +193,7 @@ public class ItemSizeConfigScreen extends Screen {
 
         // 10. Swing Customizations Subscreen Button
         Button swingCustomsButton = Button.builder(
-                Component.literal("Swing Customizations..."),
+                GuiFont.text("Swing Customizations..."),
                 button -> {
                     if (this.minecraft != null) {
                         this.minecraft.gui.setScreen(new ItemSwingConfigScreen(this));
@@ -207,13 +207,13 @@ public class ItemSizeConfigScreen extends Screen {
         // 11. Load Preset row
         int loadY = centerY + 246;
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, loadY, 100, 20,
-                Component.literal("Load Preset:"), this.font));
+                GuiFont.text("Load Preset:"), this.font));
 
-        Button loadP1 = Button.builder(Component.literal("P1"), button -> loadPreset(0))
+        Button loadP1 = Button.builder(GuiFont.text("P1"), button -> loadPreset(0))
                 .bounds(this.width / 2 - 40, loadY, 50, 20).build();
-        Button loadP2 = Button.builder(Component.literal("P2"), button -> loadPreset(1))
+        Button loadP2 = Button.builder(GuiFont.text("P2"), button -> loadPreset(1))
                 .bounds(this.width / 2 + 15, loadY, 50, 20).build();
-        Button loadP3 = Button.builder(Component.literal("P3"), button -> loadPreset(2))
+        Button loadP3 = Button.builder(GuiFont.text("P3"), button -> loadPreset(2))
                 .bounds(this.width / 2 + 70, loadY, 50, 20).build();
         this.addRenderableWidget(loadP1);
         this.addRenderableWidget(loadP2);
@@ -222,13 +222,13 @@ public class ItemSizeConfigScreen extends Screen {
         // 12. Save Preset row
         int saveY = centerY + 270;
         this.addRenderableWidget(new StringWidget(this.width / 2 - 155, saveY, 100, 20,
-                Component.literal("Save Preset:"), this.font));
+                GuiFont.text("Save Preset:"), this.font));
 
-        Button saveP1 = Button.builder(Component.literal("to P1"), button -> savePreset(0))
+        Button saveP1 = Button.builder(GuiFont.text("to P1"), button -> savePreset(0))
                 .bounds(this.width / 2 - 40, saveY, 50, 20).build();
-        Button saveP2 = Button.builder(Component.literal("to P2"), button -> savePreset(1))
+        Button saveP2 = Button.builder(GuiFont.text("to P2"), button -> savePreset(1))
                 .bounds(this.width / 2 + 15, saveY, 50, 20).build();
-        Button saveP3 = Button.builder(Component.literal("to P3"), button -> savePreset(2))
+        Button saveP3 = Button.builder(GuiFont.text("to P3"), button -> savePreset(2))
                 .bounds(this.width / 2 + 70, saveY, 50, 20).build();
         this.addRenderableWidget(saveP1);
         this.addRenderableWidget(saveP2);
@@ -244,7 +244,7 @@ public class ItemSizeConfigScreen extends Screen {
 
         // Reset Defaults button
         this.addRenderableWidget(Button.builder(
-                Component.literal("Reset Defaults"),
+                GuiFont.text("Reset Defaults"),
                 button -> {
                     AlpakaConfig.instance.itemScale = 1.0f;
                     AlpakaConfig.instance.itemXOffset = 0.0f;

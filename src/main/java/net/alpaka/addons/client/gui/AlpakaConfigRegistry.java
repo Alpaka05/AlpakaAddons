@@ -68,6 +68,27 @@ public class AlpakaConfigRegistry {
                 val -> AlpakaNotifications.CORNER_NAMES[Math.round(val)],
                 "notification corner position bottom top left right popup toast side"));
 
+        // The menu's own typeface sits here rather than under Visuals: it changes the screen the
+        // player is looking at right now, so it belongs on the tab that screen opens on.
+        OPTIONS.add(new ConfigOption("menu_font", "Menu Font",
+                "The typeface the Alpaka menus are written in.",
+                ConfigCategory.GENERAL,
+                () -> (float) GuiFont.selectedIndex(),
+                v -> { AlpakaConfig.instance.menuFont = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (GuiFont.NAMES.length - 1),
+                val -> GuiFont.NAMES[Math.round(val)],
+                "menu font typeface text smooth modern inter poppins varela round outfit minecraft pixel gui bold"));
+
+        OPTIONS.add(new ConfigOption("menu_accent_color", "Menu Accent Color",
+                "The highlight colour of every Alpaka menu.",
+                ConfigCategory.GENERAL,
+                "Choose Color",
+                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Menu Accent Color", AlpakaConfig.instance.menuAccentColor, color -> {
+                    AlpakaConfig.instance.menuAccentColor = color;
+                    AlpakaConfig.save();
+                })),
+                "menu accent color theme custom picker border highlight gui teal gold cyan red green blue"));
+
         OPTIONS.add(new ConfigOption("hud_editor", "HUD Editor",
                 "Move and resize every HUD - session, boss timer, world age, inventory, avatar.",
                 ConfigCategory.GENERAL,
@@ -119,14 +140,14 @@ public class AlpakaConfigRegistry {
                 "blaze rods spin spinning rotation animation stop mob"));
 
         OPTIONS.add(new ConfigOption("hide_hurt_overlay", "Hide Damage Flash",
-                "Hides the red flash on mobs and players when they take a hit. Cosmetic only.",
+                "Hides the red flash on mobs and players when they take a hit.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.hideHurtOverlayEnabled,
                 v -> { AlpakaConfig.instance.hideHurtOverlayEnabled = v; AlpakaConfig.save(); },
                 "hurt damage red flash tint overlay hit mob entity hide"));
 
         OPTIONS.add(new ConfigOption("hide_mob_deaths", "Hide Mob Deaths",
-                "Mobs vanish the moment they die instead of tipping over first. Cosmetic only.",
+                "Mobs vanish the moment they die instead of tipping over first.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.hideMobDeathsEnabled,
                 v -> { AlpakaConfig.instance.hideMobDeathsEnabled = v; AlpakaConfig.save(); },
@@ -226,6 +247,28 @@ public class AlpakaConfigRegistry {
 
         OPTIONS.add(new ConfigOption("Chat", ConfigCategory.VISUALS));
 
+        OPTIONS.add(new ConfigOption("smooth_chat", "Smooth Chat",
+                "New messages slide in and fade in instead of appearing at once.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.smoothChatEnabled,
+                v -> { AlpakaConfig.instance.smoothChatEnabled = v; AlpakaConfig.save(); },
+                "smooth chat animation slide fade new message appear soft patcher"));
+
+        OPTIONS.add(new ConfigOption("smooth_chat_strength", "Smooth Chat Strength",
+                "How long the slide takes; higher is slower and more visible.",
+                ConfigCategory.VISUALS,
+                () -> (float) AlpakaConfig.instance.smoothChatStrength,
+                v -> { AlpakaConfig.instance.smoothChatStrength = Math.round(v); AlpakaConfig.save(); },
+                1.0f, 10.0f, v -> Math.round(v) + " / 10",
+                "smooth chat strength speed duration animation slow fast slider"));
+
+        OPTIONS.add(new ConfigOption("chat_blur", "Blurred Chat Background",
+                "One rounded, blurred panel behind the chat instead of flat line boxes.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatBlurEnabled,
+                v -> { AlpakaConfig.instance.chatBlurEnabled = v; AlpakaConfig.save(); },
+                "chat blur background rounded corners panel glass frosted clean padding smooth"));
+
         OPTIONS.add(new ConfigOption("expand_chat_history", "Expand Chat History",
                 "Keeps 5000 messages, even after leaving a server.",
                 ConfigCategory.VISUALS,
@@ -319,16 +362,6 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.customMainMenuEnabled,
                 v -> { AlpakaConfig.instance.customMainMenuEnabled = v; AlpakaConfig.save(); },
                 "custom main menu title screen hypixel start launch background GUI"));
-
-        OPTIONS.add(new ConfigOption("menu_accent_color", "Menu Accent Color",
-                "Select custom accent color for all mod GUI borders, headers, and highlights.",
-                ConfigCategory.VISUALS,
-                "Choose Color",
-                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Menu Accent Color", AlpakaConfig.instance.menuAccentColor, color -> {
-                    AlpakaConfig.instance.menuAccentColor = color;
-                    AlpakaConfig.save();
-                })),
-                "menu accent color theme custom picker border highlight gui gold cyan red green blue"));
 
         // Player model and inventory HUD lived on their own Custom HUD tab; they are overlays like
         // everything else here, and one tab fewer is one fewer place to look.
@@ -1398,6 +1431,17 @@ public class AlpakaConfigRegistry {
 
         // --- 7. SOUND & UTILITY ---
 
+        // The quick command list is edited far more often than any sound is retuned, so it heads
+        // the tab rather than sitting below every sound option.
+        OPTIONS.add(new ConfigOption("Utility", ConfigCategory.SOUND_MISC));
+
+        OPTIONS.add(new ConfigOption("command_wheel_custom_commands", "Quick Command Menu",
+                "Add, edit or remove the quick command entries.",
+                ConfigCategory.SOUND_MISC,
+                "Edit Commands",
+                parent -> Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.client.CommandWheelConfigScreen(parent)),
+                "quick command wheel commands add remove edit custom list menu keybind"));
+
         OPTIONS.add(new ConfigOption("Custom Sounds", ConfigCategory.SOUND_MISC));
 
         OPTIONS.add(new ConfigOption("custom_sounds", "Master Custom Sounds",
@@ -1512,15 +1556,6 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.lowHpHeartbeatThreshold = v / 100.0f; AlpakaConfig.save(); },
                 5.0f, 80.0f, val -> String.format(Locale.ROOT, "%.0f%%", val),
                 "heartbeat low hp health percentage threshold trigger sound volume"));
-
-        OPTIONS.add(new ConfigOption("Utility", ConfigCategory.SOUND_MISC));
-
-        OPTIONS.add(new ConfigOption("command_wheel_custom_commands", "Quick Command Menu",
-                "Add, edit or remove the quick command entries.",
-                ConfigCategory.SOUND_MISC,
-                "Edit Commands",
-                parent -> Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.client.CommandWheelConfigScreen(parent)),
-                "quick command wheel commands add remove edit custom list menu keybind"));
 
         buildCategoryCache();
     }

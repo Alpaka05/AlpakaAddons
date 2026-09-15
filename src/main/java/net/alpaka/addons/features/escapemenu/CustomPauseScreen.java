@@ -1,6 +1,7 @@
 package net.alpaka.addons.features.escapemenu;
 
 import net.alpaka.addons.client.AlpakaConfigScreen;
+import net.alpaka.addons.client.gui.GuiFont;
 import net.alpaka.addons.client.gui.ModernGuiUtils;
 import net.alpaka.addons.client.gui.PloppAnimation;
 import net.alpaka.addons.features.sound.CustomSoundFeature;
@@ -59,7 +60,7 @@ public class CustomPauseScreen extends Screen {
     private static Component iconLabel(String icon, String text) {
         return Component.empty()
                 .append(Component.literal(icon).withStyle(style -> style.withFont(ICON_FONT)))
-                .append(Component.literal("  " + text));
+                .append(GuiFont.text("  " + text));
     }
 
     private static void ensureModIconRegistered() {
@@ -232,13 +233,13 @@ public class CustomPauseScreen extends Screen {
         int pBtnY = promptY + 88;
 
         this.promptCancelButton = new CustomPauseButton(promptX + 16, pBtnY, pBtnWidth, pBtnHeight,
-                Component.literal("Cancel"), false, btn -> {
+                GuiFont.text("Cancel"), false, btn -> {
             this.showDisconnectPrompt = false;
             this.updateWidgetStates();
         });
 
         this.promptConfirmButton = new CustomPauseButton(promptX + promptWidth - 16 - pBtnWidth, pBtnY, pBtnWidth, pBtnHeight,
-                Component.literal("Disconnect"), true, btn -> {
+                GuiFont.text("Disconnect"), true, btn -> {
             if (this.minecraft != null) {
                 if (this.minecraft.level != null) {
                     this.minecraft.level.disconnect(Component.literal("Disconnected"));
@@ -295,21 +296,18 @@ public class CustomPauseScreen extends Screen {
         graphics.pose().pushMatrix();
         graphics.pose().translate(0.0f, slideOffsetY);
 
-        // Soft Multi-Layer Drop Shadow
-        for (int i = 1; i <= 6; i++) {
-            int shadowAlpha = (int) ((0x24 * anim) * (1.0f - (float) i / 6.0f));
-            ModernGuiUtils.drawRect(graphics, startX - i, startY - i, cardWidth + i * 2, cardHeight + i * 2, (shadowAlpha << 24));
-        }
-        ModernGuiUtils.drawOutline(graphics, startX - 1, startY - 1, cardWidth + 2, cardHeight + 2, 0x60000000);
+        // The same panel the config screen is made of: rounded, hairline border, soft shadow.
+        int radius = ModernGuiUtils.PANEL_RADIUS;
+        ModernGuiUtils.drawPanelShadow(graphics, startX, startY, cardWidth, cardHeight, radius, anim);
+        ModernGuiUtils.drawRoundedPanel(graphics, startX, startY, cardWidth, cardHeight, radius,
+                ModernGuiUtils.COLOR_PANEL_BG, ModernGuiUtils.COLOR_CARD_BORDER);
 
-        // Outer Panel Base & Border
-        ModernGuiUtils.drawRect(graphics, startX, startY, cardWidth, cardHeight, ModernGuiUtils.COLOR_PANEL_BG);
-        ModernGuiUtils.drawOutline(graphics, startX, startY, cardWidth, cardHeight, ModernGuiUtils.COLOR_CARD_BORDER);
-
-        // Top Header Bar
+        // Header band: rounded along the panel's top corners, straight where it meets the buttons.
+        // Inset by one pixel so it sits inside the hairline border rather than over it.
         int headerH = 56;
-        ModernGuiUtils.drawRect(graphics, startX, startY, cardWidth, headerH, ModernGuiUtils.COLOR_SIDEBAR_BG);
-        ModernGuiUtils.drawRect(graphics, startX, startY + headerH - 1, cardWidth, 1, ModernGuiUtils.getAccentColor());
+        ModernGuiUtils.drawRoundedRect(graphics, startX + 1, startY + 1, cardWidth - 2, headerH - 1, radius - 1, ModernGuiUtils.COLOR_SIDEBAR_BG);
+        ModernGuiUtils.drawRect(graphics, startX + 1, startY + headerH - radius, cardWidth - 2, radius, ModernGuiUtils.COLOR_SIDEBAR_BG);
+        ModernGuiUtils.drawRect(graphics, startX + 1, startY + headerH - 1, cardWidth - 2, 1, ModernGuiUtils.getAccentColor());
 
         // Mod Logo, which is also the way into the Alpaka config now that the button is gone.
         ensureModIconRegistered();
@@ -340,7 +338,7 @@ public class CustomPauseScreen extends Screen {
             }
         }
         String user = (this.minecraft != null && this.minecraft.getUser() != null) ? this.minecraft.getUser().getName() : "Player";
-        graphics.centeredText(this.font, Component.literal(user + " • " + status), centerX, startY + 42, ModernGuiUtils.COLOR_TEXT_MUTED);
+        ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text(user + " • " + status), centerX, startY + 42, ModernGuiUtils.COLOR_TEXT_MUTED);
 
         graphics.pose().popMatrix();
     }
@@ -379,22 +377,19 @@ public class CustomPauseScreen extends Screen {
             int promptX = centerX - promptWidth / 2;
             int promptY = centerY - promptHeight / 2;
 
-            // Modal Drop Shadow & Card Frame
-            for (int i = 1; i <= 5; i++) {
-                int shadowAlpha = (int) (0x20 * (1.0f - (float) i / 5.0f));
-                ModernGuiUtils.drawRect(graphics, promptX - i, promptY - i, promptWidth + i * 2, promptHeight + i * 2, (shadowAlpha << 24));
-            }
-            ModernGuiUtils.drawRect(graphics, promptX, promptY, promptWidth, promptHeight, ModernGuiUtils.COLOR_PANEL_BG);
-            ModernGuiUtils.drawOutline(graphics, promptX, promptY, promptWidth, promptHeight, 0xFFEF4444);
-
-            // Header Line
-            ModernGuiUtils.drawRect(graphics, promptX, promptY, promptWidth, 32, ModernGuiUtils.COLOR_SIDEBAR_BG);
-            ModernGuiUtils.drawRect(graphics, promptX, promptY + 31, promptWidth, 1, 0xFFEF4444);
+            // Modal card: the panel style with a red hairline, and a header band like the menu's.
+            int radius = ModernGuiUtils.PANEL_RADIUS;
+            ModernGuiUtils.drawPanelShadow(graphics, promptX, promptY, promptWidth, promptHeight, radius, 1.0f);
+            ModernGuiUtils.drawRoundedPanel(graphics, promptX, promptY, promptWidth, promptHeight, radius,
+                    ModernGuiUtils.COLOR_PANEL_BG, 0xFFEF4444);
+            ModernGuiUtils.drawRoundedRect(graphics, promptX + 1, promptY + 1, promptWidth - 2, 31, radius - 1, ModernGuiUtils.COLOR_SIDEBAR_BG);
+            ModernGuiUtils.drawRect(graphics, promptX + 1, promptY + 32 - radius, promptWidth - 2, radius, ModernGuiUtils.COLOR_SIDEBAR_BG);
+            ModernGuiUtils.drawRect(graphics, promptX + 1, promptY + 31, promptWidth - 2, 1, 0xFFEF4444);
 
             // Modal Text
-            graphics.centeredText(this.font, Component.literal("Leave World / Server?"), centerX, promptY + 10, 0xFFEF4444);
-            graphics.centeredText(this.font, Component.literal("Are you sure you want to"), centerX, promptY + 44, ModernGuiUtils.COLOR_TEXT_PRIMARY);
-            graphics.centeredText(this.font, Component.literal("leave the game session?"), centerX, promptY + 58, ModernGuiUtils.COLOR_TEXT_MUTED);
+            ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("Leave World / Server?"), centerX, promptY + 12, 0xFFEF4444);
+            ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("Are you sure you want to"), centerX, promptY + 44, ModernGuiUtils.COLOR_TEXT_PRIMARY);
+            ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("leave the game session?"), centerX, promptY + 58, ModernGuiUtils.COLOR_TEXT_MUTED);
 
             // Render Modal Buttons
             if (this.promptCancelButton != null) {
@@ -483,10 +478,9 @@ public class CustomPauseScreen extends Screen {
             int border = hovered ? (this.isRed ? 0xFFEF4444 : ModernGuiUtils.getAccentColor()) : ModernGuiUtils.COLOR_CARD_BORDER;
             int textColor = hovered ? (this.isRed ? 0xFFEF4444 : ModernGuiUtils.getAccentColor()) : ModernGuiUtils.COLOR_TEXT_PRIMARY;
 
-            ModernGuiUtils.drawRect(graphics, x, drawY, w, h, bg);
-            ModernGuiUtils.drawOutline(graphics, x, drawY, w, h, border);
+            ModernGuiUtils.drawRoundedPanel(graphics, x, drawY, w, h, ModernGuiUtils.WIDGET_RADIUS + 1, bg, border);
 
-            graphics.centeredText(Minecraft.getInstance().font, this.getMessage(), x + w / 2, drawY + (h - 8) / 2, textColor);
+            ModernGuiUtils.centeredText(graphics, Minecraft.getInstance().font, this.getMessage(), x + w / 2, drawY + (h - 8) / 2, textColor);
         }
 
         @Override

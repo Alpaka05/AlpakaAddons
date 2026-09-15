@@ -1,6 +1,7 @@
 package net.alpaka.addons.features.mainmenu
 
 import net.alpaka.addons.client.AlpakaConfigScreen
+import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.features.snow.SnowOverlayRenderer
@@ -132,17 +133,17 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         val spacing = 27
 
         // 1. Singleplayer
-        this.addRenderableWidget(CustomMenuButton(innerX, startY, innerW, btnH, Component.literal("Singleplayer"), isRed = false) {
+        this.addRenderableWidget(CustomMenuButton(innerX, startY, innerW, btnH, GuiFont.text("Singleplayer"), isRed = false) {
             this.minecraft?.gui?.setScreen(SelectWorldScreen(this))
         })
 
         // 2. Multiplayer
-        this.addRenderableWidget(CustomMenuButton(innerX, startY + spacing, innerW, btnH, Component.literal("Multiplayer"), isRed = false) {
+        this.addRenderableWidget(CustomMenuButton(innerX, startY + spacing, innerW, btnH, GuiFont.text("Multiplayer"), isRed = false) {
             this.minecraft?.gui?.setScreen(JoinMultiplayerScreen(this))
         })
 
         // 3. Mods (Opens Mod Menu GUI or Options fallback)
-        this.addRenderableWidget(CustomMenuButton(innerX, startY + spacing * 2, innerW, btnH, Component.literal("Mods"), isRed = false) {
+        this.addRenderableWidget(CustomMenuButton(innerX, startY + spacing * 2, innerW, btnH, GuiFont.text("Mods"), isRed = false) {
             val mc = this.minecraft ?: return@CustomMenuButton
             playPloppSound()
             // Falls back to the options screen without Mod Menu; see ModMenuCompat for why the
@@ -155,7 +156,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         })
 
         // 4. Join Alpha
-        this.addRenderableWidget(CustomMenuButton(innerX, startY + spacing * 3, innerW, btnH, Component.literal("Join Alpha"), isRed = false) {
+        this.addRenderableWidget(CustomMenuButton(innerX, startY + spacing * 3, innerW, btnH, GuiFont.text("Join Alpha"), isRed = false) {
             joinServer("alpha.hypixel.net")
         })
 
@@ -173,13 +174,13 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         val halfW = (innerW - 8) / 2
 
         // Options
-        this.addRenderableWidget(CustomMenuButton(innerX, bottomY, halfW, btnH, Component.literal("Options"), isRed = false) {
+        this.addRenderableWidget(CustomMenuButton(innerX, bottomY, halfW, btnH, GuiFont.text("Options"), isRed = false) {
             val mc = this.minecraft ?: return@CustomMenuButton
             mc.gui.setScreen(OptionsScreen(this, mc.options, false))
         })
 
         // Quit Game
-        this.addRenderableWidget(CustomMenuButton(innerX + halfW + 8, bottomY, halfW, btnH, Component.literal("Quit"), isRed = true) {
+        this.addRenderableWidget(CustomMenuButton(innerX + halfW + 8, bottomY, halfW, btnH, GuiFont.text("Quit"), isRed = true) {
             this.minecraft?.stop()
         })
     }
@@ -201,28 +202,23 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         val sidebarH = SIDEBAR_H
         val sidebarY = sidebarTop()
 
-        // Multi-Layer Drop Shadow for Sidebar Panel
-        for (i in 1..6) {
-            val alpha = (0x20 * (1.0f - i.toFloat() / 6.0f)).toInt()
-            ModernGuiUtils.drawRect(graphics, sidebarX - i, sidebarY - i, sidebarW + i * 2, sidebarH + i * 2, alpha shl 24)
-        }
-
-        // Sidebar Panel Base & Frame
-        ModernGuiUtils.drawRect(graphics, sidebarX, sidebarY, sidebarW, sidebarH, ModernGuiUtils.COLOR_PANEL_BG)
-        ModernGuiUtils.drawOutline(graphics, sidebarX, sidebarY, sidebarW, sidebarH, ModernGuiUtils.COLOR_CARD_BORDER)
-
-        // Top Accent Line
-        ModernGuiUtils.drawRect(graphics, sidebarX, sidebarY, sidebarW, 3, ModernGuiUtils.getAccentColor())
+        // The same panel the config screen is made of: rounded, hairline border, soft shadow.
+        ModernGuiUtils.drawPanelShadow(graphics, sidebarX, sidebarY, sidebarW, sidebarH, ModernGuiUtils.PANEL_RADIUS, 1.0f)
+        ModernGuiUtils.drawRoundedPanel(graphics, sidebarX, sidebarY, sidebarW, sidebarH, ModernGuiUtils.PANEL_RADIUS,
+            ModernGuiUtils.COLOR_PANEL_BG, ModernGuiUtils.COLOR_CARD_BORDER)
 
         // Render Fancy Ornate AlpakaAddons Header Banner Logo
         renderFancyHeader(graphics, mouseX, mouseY)
+
+        // Accent rule under the logo, where the config screen draws the one under its header.
+        ModernGuiUtils.drawRect(graphics, sidebarX + 14, sidebarY + 48, sidebarW - 28, 1, ModernGuiUtils.getAccentColor())
 
         // Section Divider Line
         ModernGuiUtils.drawRect(graphics, sidebarX + 14, sidebarY + 276, sidebarW - 28, 1, ModernGuiUtils.COLOR_CARD_BORDER)
 
         // Footer Version Label - read from the running build, never hard-coded
-        graphics.text(this.font, Component.literal("AlpakaAddons v${ModVersion.mod()}"), 12, this.height - 20, ModernGuiUtils.COLOR_TEXT_PRIMARY)
-        graphics.text(this.font, Component.literal("Minecraft ${ModVersion.minecraft()} • Fabric"), 12, this.height - 10, ModernGuiUtils.COLOR_TEXT_MUTED)
+        graphics.text(this.font, GuiFont.text("AlpakaAddons v${ModVersion.mod()}"), 12, this.height - 20, ModernGuiUtils.COLOR_TEXT_PRIMARY, false)
+        graphics.text(this.font, GuiFont.text("Minecraft ${ModVersion.minecraft()} • Fabric"), 12, this.height - 10, ModernGuiUtils.COLOR_TEXT_MUTED, false)
     }
 
     /**
@@ -399,11 +395,10 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
             val border = if (hovered) (if (isRed) 0xFFEF4444.toInt() else ModernGuiUtils.getAccentColor()) else ModernGuiUtils.COLOR_CARD_BORDER
             val textColor = if (hovered) (if (isRed) 0xFFEF4444.toInt() else ModernGuiUtils.getAccentColor()) else ModernGuiUtils.COLOR_TEXT_PRIMARY
 
-            ModernGuiUtils.drawRect(graphics, bx, drawY, bw, bh, bg)
-            ModernGuiUtils.drawOutline(graphics, bx, drawY, bw, bh, border)
+            ModernGuiUtils.drawRoundedPanel(graphics, bx, drawY, bw, bh, ModernGuiUtils.WIDGET_RADIUS + 1, bg, border)
 
             val mc = this@CustomMainMenuScreen.minecraft ?: return
-            graphics.centeredText(mc.font, this.message, bx + bw / 2, drawY + (bh - 8) / 2, textColor)
+            ModernGuiUtils.centeredText(graphics, mc.font, this.message, bx + bw / 2, drawY + (bh - 8) / 2, textColor)
         }
 
         override fun updateWidgetNarration(narration: NarrationElementOutput) {}

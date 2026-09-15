@@ -31,6 +31,7 @@ import java.util.Map;
  * Every file under {@code assets/alpaka/font/} is a static cut. Variable-weight fonts
  * (Nunito[wght], Outfit[wght]) came up in their thinnest weight in the game: FreeType opens the
  * default instance and Minecraft never selects a named one, so the strokes were hairlines.
+ * Poppins and Outfit ship only in SemiBold - their regular cuts looked frail at menu size.
  *
  * <h2>One definition per GUI scale</h2>
  *
@@ -47,19 +48,10 @@ import java.util.Map;
  */
 public final class GuiFont {
     /** Display names, indexed by {@link AlpakaConfig#menuFont}. */
-    public static final String[] NAMES = {"Minecraft", "Inter", "Poppins", "Varela Round", "Outfit", "Lato"};
+    public static final String[] NAMES = {"Minecraft", "Inter", "Poppins", "Varela Round", "Outfit"};
 
     /** Font definition names under {@code assets/alpaka/font/}; null means vanilla's font. */
-    private static final String[] REGULAR_IDS = {null, "inter", "poppins", "varela_round", "outfit", "lato"};
-
-    /**
-     * The heavier cut of each face, for {@link AlpakaConfig#menuFontBold}. SemiBold where the family
-     * has one, Bold for Lato. Varela Round comes in a single weight and keeps its regular cut.
-     */
-    private static final String[] BOLD_IDS = {null, "inter_bold", "poppins_bold", null, "outfit_bold", "lato_bold"};
-
-    /** Vanilla's font has no heavier file, but it does have its own bold rendering. */
-    private static final Style VANILLA_BOLD = Style.EMPTY.withBold(true);
+    private static final String[] FONT_IDS = {null, "inter", "poppins_bold", "varela_round", "outfit_bold"};
 
     private static final Map<String, Style> STYLE_CACHE = new HashMap<>();
 
@@ -85,11 +77,9 @@ public final class GuiFont {
 
     /** The style every string in the mod's screens should carry. */
     public static Style style() {
-        int index = selectedIndex();
-        boolean bold = AlpakaConfig.instance.menuFontBold;
-        String id = bold && BOLD_IDS[index] != null ? BOLD_IDS[index] : REGULAR_IDS[index];
+        String id = FONT_IDS[selectedIndex()];
         if (id == null) {
-            return bold ? VANILLA_BOLD : Style.EMPTY;
+            return Style.EMPTY;
         }
         String fullId = id + scaleSuffix();
         return STYLE_CACHE.computeIfAbsent(fullId, key ->

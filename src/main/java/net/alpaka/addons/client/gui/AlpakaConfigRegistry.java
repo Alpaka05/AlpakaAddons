@@ -77,14 +77,17 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.menuFont = Math.round(v); AlpakaConfig.save(); },
                 0.0f, (float) (GuiFont.NAMES.length - 1),
                 val -> GuiFont.NAMES[Math.round(val)],
-                "menu font typeface text smooth modern inter poppins varela round outfit lato minecraft pixel gui"));
+                "menu font typeface text smooth modern inter poppins varela round outfit minecraft pixel gui bold"));
 
-        OPTIONS.add(new ConfigOption("menu_font_bold", "Bold Menu Font",
-                "Draws the menu font in a heavier cut.",
+        OPTIONS.add(new ConfigOption("menu_accent_color", "Menu Accent Color",
+                "The highlight colour of every Alpaka menu.",
                 ConfigCategory.GENERAL,
-                () -> AlpakaConfig.instance.menuFontBold,
-                v -> { AlpakaConfig.instance.menuFontBold = v; AlpakaConfig.save(); },
-                "menu font bold heavy thick weight semibold typeface"));
+                "Choose Color",
+                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Menu Accent Color", AlpakaConfig.instance.menuAccentColor, color -> {
+                    AlpakaConfig.instance.menuAccentColor = color;
+                    AlpakaConfig.save();
+                })),
+                "menu accent color theme custom picker border highlight gui teal gold cyan red green blue"));
 
         OPTIONS.add(new ConfigOption("hud_editor", "HUD Editor",
                 "Move and resize every HUD - session, boss timer, world age, inventory, avatar.",
@@ -337,16 +340,6 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.customMainMenuEnabled,
                 v -> { AlpakaConfig.instance.customMainMenuEnabled = v; AlpakaConfig.save(); },
                 "custom main menu title screen hypixel start launch background GUI"));
-
-        OPTIONS.add(new ConfigOption("menu_accent_color", "Menu Accent Color",
-                "Select custom accent color for all mod GUI borders, headers, and highlights.",
-                ConfigCategory.VISUALS,
-                "Choose Color",
-                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Menu Accent Color", AlpakaConfig.instance.menuAccentColor, color -> {
-                    AlpakaConfig.instance.menuAccentColor = color;
-                    AlpakaConfig.save();
-                })),
-                "menu accent color theme custom picker border highlight gui gold cyan red green blue"));
 
         // Player model and inventory HUD lived on their own Custom HUD tab; they are overlays like
         // everything else here, and one tab fewer is one fewer place to look.
@@ -1416,6 +1409,17 @@ public class AlpakaConfigRegistry {
 
         // --- 7. SOUND & UTILITY ---
 
+        // The quick command list is edited far more often than any sound is retuned, so it heads
+        // the tab rather than sitting below every sound option.
+        OPTIONS.add(new ConfigOption("Utility", ConfigCategory.SOUND_MISC));
+
+        OPTIONS.add(new ConfigOption("command_wheel_custom_commands", "Quick Command Menu",
+                "Add, edit or remove the quick command entries.",
+                ConfigCategory.SOUND_MISC,
+                "Edit Commands",
+                parent -> Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.client.CommandWheelConfigScreen(parent)),
+                "quick command wheel commands add remove edit custom list menu keybind"));
+
         OPTIONS.add(new ConfigOption("Custom Sounds", ConfigCategory.SOUND_MISC));
 
         OPTIONS.add(new ConfigOption("custom_sounds", "Master Custom Sounds",
@@ -1530,15 +1534,6 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.lowHpHeartbeatThreshold = v / 100.0f; AlpakaConfig.save(); },
                 5.0f, 80.0f, val -> String.format(Locale.ROOT, "%.0f%%", val),
                 "heartbeat low hp health percentage threshold trigger sound volume"));
-
-        OPTIONS.add(new ConfigOption("Utility", ConfigCategory.SOUND_MISC));
-
-        OPTIONS.add(new ConfigOption("command_wheel_custom_commands", "Quick Command Menu",
-                "Add, edit or remove the quick command entries.",
-                ConfigCategory.SOUND_MISC,
-                "Edit Commands",
-                parent -> Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.client.CommandWheelConfigScreen(parent)),
-                "quick command wheel commands add remove edit custom list menu keybind"));
 
         buildCategoryCache();
     }

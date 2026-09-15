@@ -128,10 +128,12 @@ object PlayerModelRenderer {
         // Ticked before the visibility check so an in-flight slow swing can keep the avatar up.
         updateSlowSwing(player, cfg)
 
+        // Fades and slides in, but vanishes at once: the slide-out read as the avatar swiping
+        // away every time the player stood still, which drew the eye exactly when nothing happens.
         alpha = if (shouldShowModel(mc, player, cfg)) {
             (alpha + dt * FADE_SPEED).coerceAtMost(1.0f)
         } else {
-            (alpha - dt * FADE_SPEED).coerceAtLeast(0.0f)
+            0.0f
         }
         if (alpha <= ALPHA_EPSILON) return
 

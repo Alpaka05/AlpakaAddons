@@ -149,14 +149,12 @@ public class AlpakaConfig {
     public boolean customSoundSuccessfulHit = true;
     public boolean muteVanillaSoundsInBlazeSlayer = false;
     public float lowHpHeartbeatThreshold = 0.30f;
-    public int menuAccentColor = 0xFFE5B849; // Default Warm Gold
+    public int menuAccentColor = 0xFF29B6B2; // Default teal
     /**
      * Index into {@code GuiFont.NAMES}: the typeface the Alpaka menus are written in. 0 is the
      * vanilla pixel font; the default is Inter.
      */
     public int menuFont = 1;
-    /** Draw the menu font in its heavier cut (SemiBold, Bold for Lato; vanilla uses its own bold). */
-    public boolean menuFontBold = false;
     public boolean customEscapeMenuEnabled = true;
     public boolean customMainMenuEnabled = false;
     public boolean playerModelEnabled = true;
@@ -607,6 +605,12 @@ public class AlpakaConfig {
             save();
         }
 
+        // The menu's default accent moved from warm gold to teal. A config still on the exact old
+        // default never chose gold, so it follows the new default; any other colour is a choice.
+        if (instance.menuAccentColor == 0xFFE5B849) {
+            instance.menuAccentColor = 0xFF29B6B2;
+        }
+
         if (instance.slayerBossMap == null) {
             instance.slayerBossMap = new HashMap<>();
         }
@@ -664,7 +668,6 @@ public class AlpakaConfig {
         this.muteVanillaSoundsInBlazeSlayer = false;
         this.customEscapeMenuEnabled = false;
         this.menuFont = 0;
-        this.menuFontBold = false;
         this.customMainMenuEnabled = false;
         this.playerModelEnabled = false;
         this.playerModelOnlyActions = false;

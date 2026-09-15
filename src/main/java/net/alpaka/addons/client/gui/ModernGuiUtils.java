@@ -133,6 +133,26 @@ public class ModernGuiUtils {
         drawRoundedOutline(graphics, x, y, width, height, radius, border);
     }
 
+    /** Corner radius of a free-standing panel such as the main and escape menus' boxes. */
+    public static final int PANEL_RADIUS = 8;
+
+    /**
+     * A panel's soft drop shadow: a few translucent, progressively larger and fainter copies of its
+     * rounded outline behind it.
+     */
+    public static void drawPanelShadow(GuiGraphicsExtractor graphics, int x, int y, int width, int height, int radius, float strength) {
+        for (int i = 1; i <= 6; i++) {
+            int alpha = (int) ((0x22 * strength) * (1.0f - (float) i / 6.0f));
+            if (alpha <= 0) continue;
+            drawRoundedRect(graphics, x - i, y - i, width + i * 2, height + i * 2, radius + i, alpha << 24);
+        }
+    }
+
+    /** Centred text in the configured menu font, without vanilla's drop shadow. */
+    public static void centeredText(GuiGraphicsExtractor graphics, Font font, net.minecraft.network.chat.Component text, int centerX, int y, int color) {
+        graphics.text(font, text, centerX - font.width(text) / 2, y, color, false);
+    }
+
     /**
      * Linearly blends two ARGB colours; {@code t} 0 gives {@code from}, 1 gives {@code to}.
      * For controls whose colour follows an animation instead of flipping with the state.

@@ -205,11 +205,11 @@ public class AlpakaConfigScreen extends Screen {
         graphics.pose().popMatrix();
 
         // Calculate Window Panel Dimensions (compact window leaving game visible around sides)
-        int winW = Math.min(660, Math.max(480, (int) (this.width * 0.70)));
-        int winH = Math.min(440, Math.max(340, (int) (this.height * 0.68)));
+        int winW = panelWidth();
+        int winH = panelHeight();
 
         int centerWinX = (this.width - winW) / 2;
-        int sideWinX = Math.max(12, (this.width - winW) / 10);
+        int sideWinX = Math.min(Math.max(12, (this.width - winW) / 10), Math.max(0, this.width - winW - 4));
         int targetWinX = (activeCategory == ConfigCategory.VIEWMODEL && search.getText().isEmpty()) ? sideWinX : centerWinX;
 
         if (currentWinX < 0) {
@@ -570,12 +570,28 @@ public class AlpakaConfigScreen extends Screen {
         };
     }
 
+    /**
+     * The panel's size: compact, so the game stays visible around it, but never wider or taller
+     * than the screen itself. A windowed game can be smaller than the panel's preferred minimum,
+     * and a panel hanging off the screen used to clip its sidebar at a negative position, which the
+     * renderer rejects hard enough to crash the game.
+     */
+    private int panelWidth() {
+        int preferred = Math.min(660, Math.max(480, (int) (this.width * 0.70)));
+        return Math.max(240, Math.min(preferred, this.width - 8));
+    }
+
+    private int panelHeight() {
+        int preferred = Math.min(440, Math.max(340, (int) (this.height * 0.68)));
+        return Math.max(160, Math.min(preferred, this.height - 8));
+    }
+
     private int getEffectiveWinX(int winW) {
         if (currentWinX >= 0) {
             return (int) Math.round(currentWinX);
         }
         int centerWinX = (this.width - winW) / 2;
-        int sideWinX = Math.max(12, (this.width - winW) / 10);
+        int sideWinX = Math.min(Math.max(12, (this.width - winW) / 10), Math.max(0, this.width - winW - 4));
         return (activeCategory == ConfigCategory.VIEWMODEL && search.getText().isEmpty()) ? sideWinX : centerWinX;
     }
 
@@ -589,8 +605,8 @@ public class AlpakaConfigScreen extends Screen {
         double mouseX = event.x();
         double mouseY = event.y();
 
-        int winW = Math.min(660, Math.max(480, (int) (this.width * 0.70)));
-        int winH = Math.min(440, Math.max(340, (int) (this.height * 0.68)));
+        int winW = panelWidth();
+        int winH = panelHeight();
         int winX = getEffectiveWinX(winW);
         int winY = (this.height - winH) / 2;
 
@@ -761,7 +777,7 @@ public class AlpakaConfigScreen extends Screen {
     @Override
     public boolean mouseDragged(MouseButtonEvent event, double deltaX, double deltaY) {
         if (draggedOption != null && draggedOption.getType() == ConfigOption.Type.SLIDER) {
-            int winW = Math.min(660, Math.max(480, (int) (this.width * 0.70)));
+            int winW = panelWidth();
             int winX = getEffectiveWinX(winW);
             int sidebarWidth = 160;
             int contentX = winX + sidebarWidth;
@@ -780,8 +796,8 @@ public class AlpakaConfigScreen extends Screen {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (scrollY != 0) {
-            int winW = Math.min(660, Math.max(480, (int) (this.width * 0.70)));
-            int winH = Math.min(440, Math.max(340, (int) (this.height * 0.68)));
+            int winW = panelWidth();
+            int winH = panelHeight();
             int winX = getEffectiveWinX(winW);
             int winY = (this.height - winH) / 2;
             int headerHeight = 38;

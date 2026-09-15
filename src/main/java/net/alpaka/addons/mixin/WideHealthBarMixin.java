@@ -18,8 +18,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * The wide health bar: rows of twenty hearts where vanilla draws ten, no hunger bar, and the armor
- * and air rows moved along so they still sit against the hearts.
+ * The wide health bar: rows of twenty hearts where vanilla draws ten, no hunger bar, no armor bar,
+ * and the air bubbles moved along so they still sit against the hearts.
  *
  * Every hook stands down while the player rides something with hearts of its own, because vanilla
  * draws those in the hunger bar's place - the very space the long row takes over - and the
@@ -50,17 +50,14 @@ public abstract class WideHealthBarMixin {
         }
     }
 
-    /** The armor row moves up or down with the new row count and in with the centred hearts. */
+    /** No armor row either: SkyBlock shows its defence in the action bar, so the icons only took space. */
     @WrapOperation(
             method = "extractPlayerHealth",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/Hud;extractArmor(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/world/entity/player/Player;IIII)V")
     )
-    private void alpaka$armorAboveTheWideRows(GuiGraphicsExtractor graphics, Player player, int yLineBase, int numHealthRows,
+    private void alpaka$noArmorBar(GuiGraphicsExtractor graphics, Player player, int yLineBase, int numHealthRows,
                                               int healthRowHeight, int xLeft, Operation<Void> original) {
-        if (alpaka$wideBar()) {
-            int rows = WideHealthBarFeature.rows(player, this.displayHealth);
-            original.call(graphics, player, yLineBase, rows, WideHealthBarFeature.rowHeight(rows), WideHealthBarFeature.xStart(xLeft));
-        } else {
+        if (!alpaka$wideBar()) {
             original.call(graphics, player, yLineBase, numHealthRows, healthRowHeight, xLeft);
         }
     }
@@ -73,9 +70,9 @@ public abstract class WideHealthBarMixin {
     }
 
     /**
-     * Air bubbles go level with the armor, on the right: above the top heart row and in from the
-     * hotbar's edge like the hearts. Vanilla raises the line it is handed by one row for a player
-     * on foot, which is why the target here is one row below the armor line.
+     * Air bubbles go above the top heart row, on the right, in from the hotbar edge like the hearts.
+     * Vanilla raises the line it is handed by one row for a player on foot, which is why the
+     * target here is two rows above the top heart row.
      */
     @WrapOperation(
             method = "extractPlayerHealth",

@@ -332,8 +332,8 @@ public class AlpakaConfig {
     /** The held item's name above the hotbar stays up instead of fading out. */
     public boolean persistentItemNameEnabled = false;
     /**
-     * One long row of twenty hearts in place of the two short ones and the hunger bar, which SkyBlock
-     * never uses; absorption hearts sit on the row above it.
+     * One long row of twenty hearts in place of the two short ones, the hunger bar and the armor bar,
+     * neither of which SkyBlock needs; absorption hearts sit on the row above it.
      */
     public boolean wideHealthBarEnabled = false;
 

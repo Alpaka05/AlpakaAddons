@@ -16,6 +16,7 @@
     "MinecraftMixin",
     "CameraMixin",
     "GuiMixin",
+    "WideHealthBarMixin",
     "ItemInHandRendererMixin",
     "LightmapMixin",
     "LevelRendererMixin",

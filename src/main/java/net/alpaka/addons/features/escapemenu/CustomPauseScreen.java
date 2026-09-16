@@ -59,6 +59,7 @@ public class CustomPauseScreen extends Screen {
     private static final String ICON_SLIDERS = "";
     private static final String ICON_BOOK = "";
     private static final String ICON_DOOR = "";
+    private static final String ICON_PUZZLE = "";
 
     /**
      * A button label: the icon glyph, then the text.
@@ -222,7 +223,7 @@ public class CustomPauseScreen extends Screen {
         this.addRenderableWidget(this.serverListButton);
 
         this.modsButton = new CustomPauseButton(this, 3, rightX, rowY + ROW_PITCH, HALF_WIDTH, BUTTON_HEIGHT,
-                iconLabel(ICON_BOX, "Mods"), false, btn -> {
+                iconLabel(ICON_PUZZLE, "Mods"), false, btn -> {
             if (this.minecraft != null) {
                 // Falls back to the options screen without Mod Menu; see ModMenuCompat for why the
                 // Mod Menu class must not be named here.

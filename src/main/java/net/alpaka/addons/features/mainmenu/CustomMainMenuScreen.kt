@@ -56,6 +56,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         private const val ICON_BOX = ""
         private const val ICON_SLIDERS = ""
         private const val ICON_DOOR = ""
+        private const val ICON_PUZZLE = ""
 
         /** Left edge of the column, and the logo in its corner. */
         private const val COLUMN_X = 28
@@ -63,11 +64,17 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         private const val LOGO_Y = 20
         private const val LOGO_HOVER_GROWTH = 0.07f
 
-        /** The Join Hypixel artwork at its native 1.808:1, and a smaller cut for short windows. */
-        private const val HERO_W = 166
-        private const val HERO_H = 92
-        private const val HERO_W_COMPACT = 124
-        private const val HERO_H_COMPACT = 69
+        /**
+         * The Join Hypixel emblem. Its artwork has a straight left edge made to sit flush against the
+         * screen edge, so it is drawn at x = 0; the texture is 1016 x 1024 and shown at this size, with
+         * a smaller cut for short windows.
+         */
+        private const val HERO_TEX_W = 1016
+        private const val HERO_TEX_H = 1024
+        private const val HERO_W = 139
+        private const val HERO_H = 140
+        private const val HERO_W_COMPACT = 99
+        private const val HERO_H_COMPACT = 100
 
         /** The tabs: anchored at x = 0, this wide, with the right end slanted by this much. */
         private const val TAB_WIDTH = 190
@@ -181,8 +188,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         this.clearWidgets()
         this.openTime = System.currentTimeMillis()
 
-        val heroX = COLUMN_X
-        this.addRenderableWidget(RetroHeroJoinButton(heroX, heroY(), heroW, heroH) {
+        this.addRenderableWidget(RetroHeroJoinButton(0, heroY(), heroW, heroH) {
             joinServer("mc.hypixel.net")
         })
 
@@ -202,7 +208,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         tab(iconLabel(ICON_SERVER, "Join Alpha"), false) {
             joinServer("alpha.hypixel.net")
         }
-        tab(iconLabel(ICON_BOX, "Mods"), false) {
+        tab(iconLabel(ICON_PUZZLE, "Mods"), false) {
             val mc = this.minecraft ?: return@tab
             // Falls back to the options screen without Mod Menu; see ModMenuCompat for why the
             // Mod Menu class must not be named here.
@@ -354,7 +360,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
             ensureTextureRegistered()
             graphics.blit(
                 RenderPipelines.GUI_TEXTURED, HERO_TEXTURE_ID, this.x - grow, drawY - grow, 0.0f, 0.0f,
-                this.width + grow * 2, this.height + grow * 2, 1024, 566, 1024, 566, fade(0xFFFFFFFF.toInt(), appear),
+                this.width + grow * 2, this.height + grow * 2, HERO_TEX_W, HERO_TEX_H, HERO_TEX_W, HERO_TEX_H, fade(0xFFFFFFFF.toInt(), appear),
             )
         }
 

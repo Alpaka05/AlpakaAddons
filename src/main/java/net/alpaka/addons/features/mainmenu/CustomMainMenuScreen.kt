@@ -96,6 +96,8 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
 
         /** Hypixel is pinged again this often while the menu stays open. */
         private const val PING_INTERVAL_MS = 60_000L
+        /** An attempt still unanswered after this long is shown as offline. */
+        private const val PING_TIMEOUT_MS = 8_000L
 
         private var textureRegistered = false
         private var modIconRegistered = false
@@ -225,13 +227,15 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         val mc = this.minecraft ?: return
         lastPingMs = System.currentTimeMillis()
         // The pinger fills in players and ping but leaves the state to its caller, like the server
-        // list does: the first callback fires with the status, the second when the ping failed.
+        // list does: the first callback fires when the status (with the player count) has arrived,
+        // the second when the round-trip time is known. A failed attempt never calls back, so the
+        // line falls back to "offline" once the attempt has taken too long; see onlineLine.
         hypixel.setState(ServerData.State.PINGING)
         try {
             pinger.pingServer(
                 hypixel,
                 { mc.execute { hypixel.setState(ServerData.State.SUCCESSFUL) } },
-                { mc.execute { hypixel.setState(ServerData.State.UNREACHABLE) } },
+                { mc.execute { hypixel.setState(ServerData.State.SUCCESSFUL) } },
                 EventLoopGroupHolder.remote(mc.options.useNativeTransport()),
             )
         } catch (_: UnknownHostException) {
@@ -307,7 +311,10 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
             }
             ServerData.State.UNREACHABLE, ServerData.State.INCOMPATIBLE ->
                 ModernGuiUtils.COLOR_TEXT_MUTED to "offline"
-            else -> ModernGuiUtils.COLOR_TEXT_MUTED to "connecting…"
+            else -> if (System.currentTimeMillis() - lastPingMs > PING_TIMEOUT_MS)
+                ModernGuiUtils.COLOR_TEXT_MUTED to "offline"
+            else
+                ModernGuiUtils.COLOR_TEXT_MUTED to "connecting…"
         }
     }
 

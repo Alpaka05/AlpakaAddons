@@ -6,6 +6,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.alpaka.addons.features.bridge.BridgeBotFormatter;
 import net.alpaka.addons.features.chat.ChatBlurFeature;
 import net.alpaka.addons.features.chat.ChatPeekFeature;
+import net.alpaka.addons.features.chat.ChatSearchFeature;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
 import net.alpaka.addons.features.chat.CompactChatFeature;
 import net.alpaka.addons.features.chat.ScreenshotMessageFeature;
@@ -312,7 +313,7 @@ public class ChatComponentMixin {
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/ChatComponent;addMessageToDisplayQueue(Lnet/minecraft/client/multiplayer/chat/GuiMessage;)V")
     )
     private void alpaka$onlyActiveTab(ChatComponent chat, GuiMessage message, Operation<Void> original) {
-        if (ChatTabsFeature.accepts(message)) {
+        if (ChatTabsFeature.accepts(message) && ChatSearchFeature.accepts(message)) {
             original.call(chat, message);
         }
     }

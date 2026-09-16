@@ -38,7 +38,8 @@
     "KeyboardHandlerMixin",
     "SkyHanniTabListRendererMixin",
     "FontTextureMixin",
-    "GuiRendererMixin"
+    "GuiRendererMixin",
+    "KeyboardInputMixin"
   ],
   "injectors": {
     "defaultRequire": 1

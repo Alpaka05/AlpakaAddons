@@ -317,6 +317,10 @@ public class AlpakaConfig {
     public int smoothChatStrength = 5;
     /** One rounded, padded panel behind the chat that shows the world blurred through it. */
     public boolean chatBlurEnabled = true;
+    /** Ctrl+F in the chat turns the input line into a search that filters the visible messages. */
+    public boolean chatSearchEnabled = true;
+    /** Moving forward sprints on its own, without holding the sprint key. */
+    public boolean alwaysSprintEnabled = true;
     public boolean expandChatHistory = true;
     /** Hold the Peek Chat key to see the whole chat, scrollable, without opening it. */
     public boolean chatPeekEnabled = true;
@@ -711,6 +715,8 @@ public class AlpakaConfig {
         this.etherwarpSoundEnabled = false;
         this.smoothChatEnabled = false;
         this.chatBlurEnabled = false;
+        this.chatSearchEnabled = false;
+        this.alwaysSprintEnabled = false;
         this.expandChatHistory = false;
         this.chatPeekEnabled = false;
         this.chatPeekInMenus = false;

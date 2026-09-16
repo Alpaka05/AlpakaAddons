@@ -1,5 +1,7 @@
 package net.alpaka.addons.mixin;
 
+import com.mojang.blaze3d.platform.InputConstants;
+import net.alpaka.addons.features.chat.ChatSearchFeature;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
 import net.alpaka.addons.features.chat.ScreenshotMessageFeature;
 import net.alpaka.addons.features.slayer.SlayerHudElement;
@@ -16,6 +18,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
@@ -40,11 +43,47 @@ public class ChatScreenMixin {
      */
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
     private void alpaka$tabCyclesChatTabs(KeyEvent event, CallbackInfoReturnable<Boolean> cir) {
+        // Chat search: Ctrl+F toggles it, and Enter sends nothing while it is on.
+        if (ChatSearchFeature.isEnabled() && event.key() == InputConstants.KEY_F && event.hasControlDown()) {
+            ChatSearchFeature.toggle(this.input);
+            cir.setReturnValue(true);
+            return;
+        }
+        if (ChatSearchFeature.isSearching()
+                && (event.key() == InputConstants.KEY_RETURN || event.key() == InputConstants.KEY_NUMPADENTER)) {
+            cir.setReturnValue(true);
+            return;
+        }
         if (ChatTabsFeature.onChatScreenKey(event.key(), event.hasShiftDown(),
                 this.commandSuggestions != null && this.commandSuggestions.isVisible(),
                 this.input == null ? "" : this.input.getValue())) {
             cir.setReturnValue(true);
         }
+    }
+
+    /** While searching, the typed text is the search, not a message: no command suggestions for it. */
+    @Inject(method = "onEdited", at = @At("HEAD"), cancellable = true)
+    private void alpaka$editSearch(String text, CallbackInfo ci) {
+        if (ChatSearchFeature.isSearching()) {
+            ChatSearchFeature.onEdited(text, this.input);
+            ci.cancel();
+        }
+    }
+
+    /** Before vanilla saves the draft: the search text must not become the draft. */
+    @Inject(method = "removed", at = @At("HEAD"))
+    private void alpaka$leaveSearchOnClose(CallbackInfo ci) {
+        ChatSearchFeature.exit(this.input);
+    }
+
+    /** The input bar's background takes the accent while searching. */
+    @ModifyArg(
+            method = "extractRenderState",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;fill(IIIII)V"),
+            index = 4
+    )
+    private int alpaka$tintSearchBar(int color) {
+        return ChatSearchFeature.isSearching() ? ChatSearchFeature.barColor() : color;
     }
 
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)

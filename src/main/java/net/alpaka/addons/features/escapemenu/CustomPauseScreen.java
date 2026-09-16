@@ -137,6 +137,11 @@ public class CustomPauseScreen extends Screen {
     private CustomPauseButton promptCancelButton;
     private CustomPauseButton promptConfirmButton;
 
+    /** The disconnect prompt: two lines of question, then the buttons; sized once for layout and drawing. */
+    private static final int PROMPT_WIDTH = 236;
+    private static final int PROMPT_HEIGHT = 96;
+    private static final int PROMPT_BUTTON_Y = 56;
+
     public CustomPauseScreen() {
         super(Component.literal("Alpaka Escape Menu"));
     }
@@ -223,14 +228,14 @@ public class CustomPauseScreen extends Screen {
         this.addRenderableWidget(this.disconnectButton);
 
         // Disconnect Prompt Buttons
-        int promptWidth = 220;
-        int promptHeight = 130;
+        int promptWidth = PROMPT_WIDTH;
+        int promptHeight = PROMPT_HEIGHT;
         int promptX = centerX - promptWidth / 2;
         int promptY = centerY - promptHeight / 2;
 
         int pBtnWidth = 88;
         int pBtnHeight = 24;
-        int pBtnY = promptY + 88;
+        int pBtnY = promptY + PROMPT_BUTTON_Y;
 
         this.promptCancelButton = new CustomPauseButton(promptX + 16, pBtnY, pBtnWidth, pBtnHeight,
                 GuiFont.text("Cancel"), false, btn -> {
@@ -372,24 +377,20 @@ public class CustomPauseScreen extends Screen {
 
         // Disconnect Modal Prompt Overlay
         if (this.showDisconnectPrompt) {
-            int promptWidth = 250;
-            int promptHeight = 140;
+            int promptWidth = PROMPT_WIDTH;
+            int promptHeight = PROMPT_HEIGHT;
             int promptX = centerX - promptWidth / 2;
             int promptY = centerY - promptHeight / 2;
 
-            // Modal card: the panel style with a red hairline, and a header band like the menu's.
+            // Modal card: the panel style with a red hairline; just the question and the two
+            // buttons, no header band.
             int radius = ModernGuiUtils.PANEL_RADIUS;
             ModernGuiUtils.drawPanelShadow(graphics, promptX, promptY, promptWidth, promptHeight, radius, 1.0f);
             ModernGuiUtils.drawRoundedPanel(graphics, promptX, promptY, promptWidth, promptHeight, radius,
                     ModernGuiUtils.COLOR_PANEL_BG, 0xFFEF4444);
-            ModernGuiUtils.drawRoundedRect(graphics, promptX + 1, promptY + 1, promptWidth - 2, 31, radius - 1, ModernGuiUtils.COLOR_SIDEBAR_BG);
-            ModernGuiUtils.drawRect(graphics, promptX + 1, promptY + 32 - radius, promptWidth - 2, radius, ModernGuiUtils.COLOR_SIDEBAR_BG);
-            ModernGuiUtils.drawRect(graphics, promptX + 1, promptY + 31, promptWidth - 2, 1, 0xFFEF4444);
 
-            // Modal Text
-            ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("Leave World / Server?"), centerX, promptY + 12, 0xFFEF4444);
-            ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("Are you sure you want to"), centerX, promptY + 44, ModernGuiUtils.COLOR_TEXT_PRIMARY);
-            ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("leave the game session?"), centerX, promptY + 58, ModernGuiUtils.COLOR_TEXT_MUTED);
+            ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("Are you sure you want to"), centerX, promptY + 18, ModernGuiUtils.COLOR_TEXT_PRIMARY);
+            ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("leave the game session?"), centerX, promptY + 32, ModernGuiUtils.COLOR_TEXT_MUTED);
 
             // Render Modal Buttons
             if (this.promptCancelButton != null) {

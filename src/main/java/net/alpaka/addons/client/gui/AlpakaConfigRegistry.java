@@ -269,6 +269,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.chatBlurEnabled = v; AlpakaConfig.save(); },
                 "chat blur background rounded corners panel glass frosted clean padding smooth"));
 
+        OPTIONS.add(new ConfigOption("chat_search", "Chat Search",
+                "Ctrl+F in the chat filters it to messages containing your text.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatSearchEnabled,
+                v -> { AlpakaConfig.instance.chatSearchEnabled = v; AlpakaConfig.save(); },
+                "chat search find filter ctrl f messages history lookup"));
+
         OPTIONS.add(new ConfigOption("expand_chat_history", "Expand Chat History",
                 "Keeps 5000 messages, even after leaving a server.",
                 ConfigCategory.VISUALS,
@@ -1441,6 +1448,13 @@ public class AlpakaConfigRegistry {
                 "Edit Commands",
                 parent -> Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.client.CommandWheelConfigScreen(parent)),
                 "quick command wheel commands add remove edit custom list menu keybind"));
+
+        OPTIONS.add(new ConfigOption("always_sprint", "Always Sprint",
+                "Walking forward sprints on its own, no sprint key needed.",
+                ConfigCategory.SOUND_MISC,
+                () -> AlpakaConfig.instance.alwaysSprintEnabled,
+                v -> { AlpakaConfig.instance.alwaysSprintEnabled = v; AlpakaConfig.save(); },
+                "always sprint auto run toggle movement key hold forward"));
 
         OPTIONS.add(new ConfigOption("Custom Sounds", ConfigCategory.SOUND_MISC));
 

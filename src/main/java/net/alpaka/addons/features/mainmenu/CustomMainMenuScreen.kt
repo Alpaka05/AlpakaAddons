@@ -72,26 +72,25 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
          */
         private const val HERO_TEX_W = 1012
         private const val HERO_TEX_H = 1024
-        private const val HERO_W = 138
-        private const val HERO_H = 140
-        private const val HERO_W_COMPACT = 99
-        private const val HERO_H_COMPACT = 100
+        private const val HERO_W = 119
+        private const val HERO_H = 120
+        private const val HERO_W_COMPACT = 89
+        private const val HERO_H_COMPACT = 90
 
         /** The tabs: anchored at x = 0, this wide, with the right end slanted by this much. */
         private const val TAB_WIDTH = 190
-        private const val TAB_SLANT = 14
-        private const val TAB_HEIGHT = 22
-        private const val TAB_PITCH = 28
-        private const val TAB_HEIGHT_COMPACT = 20
-        private const val TAB_PITCH_COMPACT = 24
+        private const val TAB_SLANT = 16
+        private const val TAB_HEIGHT = 30
+        private const val TAB_PITCH = 34
+        private const val TAB_HEIGHT_COMPACT = 26
+        private const val TAB_PITCH_COMPACT = 30
         private const val TAB_TEXT_X = 14
         /** How far a hovered tab pulls out of the edge. */
         private const val TAB_PULL = 16f
 
-        private const val TAB_FILL = 0x66080C14
-        private const val TAB_FILL_HOVER = 0x9E0A0E18.toInt()
-        private const val TAB_LINE = 0x40FFFFFF
-        private const val TAB_LINE_HOVER = 0x70FFFFFF
+        /** Dark glass, a little denser than before now that no hairline outlines the shape. */
+        private const val TAB_FILL = 0x7A080C14
+        private const val TAB_FILL_HOVER = 0xA80A0E18.toInt()
         private const val TAB_TEXT = 0xE8FFFFFF.toInt()
         private const val TAB_TEXT_HOVER = 0xFFFFFFFF.toInt()
         private const val RED = 0xFFEF4444.toInt()
@@ -418,13 +417,6 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
                 x1 - TAB_SLANT, y1, fill,
                 x1, y0, fill,
             )
-
-            // A hairline along the three free edges, so the shape still reads over a dark panorama
-            // where dark glass alone would vanish.
-            val line = fade(WheelMesh.lerpColor(TAB_LINE, TAB_LINE_HOVER, hover), appear)
-            mesh.quad(x0, y0, line, x0, y0 + 1f, line, x1 - 1f, y0 + 1f, line, x1, y0, line)
-            mesh.quad(x0, y1 - 1f, line, x0, y1, line, x1 - TAB_SLANT, y1, line, x1 - TAB_SLANT + 1f, y1 - 1f, line)
-            mesh.quad(x1 - 1f, y0, line, x1 - TAB_SLANT - 1f, y1, line, x1 - TAB_SLANT, y1, line, x1, y0, line)
 
             // The accent strip, only as bright as the hover; it sits on the edge the tab pulls away from.
             if (hover > 0.02f) {

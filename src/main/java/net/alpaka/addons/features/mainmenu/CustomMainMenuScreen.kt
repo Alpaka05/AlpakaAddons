@@ -6,6 +6,7 @@ import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.features.snow.SnowOverlayRenderer
 import net.alpaka.addons.features.sound.CustomSoundFeature
+import net.alpaka.addons.features.wheel.WheelMesh
 import net.alpaka.addons.utils.ModVersion
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
@@ -19,40 +20,83 @@ import net.minecraft.client.gui.screens.worldselection.SelectWorldScreen
 import net.minecraft.client.input.InputWithModifiers
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.multiplayer.ServerData
+import net.minecraft.client.multiplayer.ServerStatusPinger
 import net.minecraft.client.multiplayer.resolver.ServerAddress
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.client.renderer.texture.SimpleTexture
 import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.FontDescription
 import net.minecraft.resources.Identifier
+import net.minecraft.server.network.EventLoopGroupHolder
+import java.net.UnknownHostException
 
+/**
+ * The main menu: the panorama, and down its left edge a column of tabs.
+ *
+ * There is no panel. The logo and the mod's name sit in the top-left corner, the Join Hypixel
+ * artwork below them with Hypixel's live player count and ping under it, and then the tabs: dark
+ * glass shapes anchored to the left edge of the screen with a slanted right end. Pointing at one
+ * pulls it out of the edge, brightens it and lights an accent strip along its left side; leaving
+ * lets it slide back. The dark glass rather than the light one of the pause menu is what keeps
+ * the labels readable over a bright sky without any darkening of the panorama itself.
+ *
+ * Everything appears in a short stagger when the screen opens: the logo, then the artwork, then
+ * the tabs one after another sliding in from the left.
+ */
 class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
 
     companion object {
-        // Use the static resource identifier - Minecraft's TextureManager loads from resource pack system
         val HERO_TEXTURE_ID: Identifier = Identifier.parse("alpaka:textures/gui/join_hypixel_button.png")
         val MOD_ICON_ID: Identifier = Identifier.parse("alpaka:textures/gui/alpaka_icon.png")
 
-        /**
-         * The sidebar's box. Shared rather than restated per method - it was written out twice
-         * already, in the layout and again in the drawing. The logo doubles as the button into the
-         * Alpaka config now and its clickable area is derived from these, so a third copy would be
-         * one edit away from leaving the hit test pointing at empty space.
-         */
-        private const val SIDEBAR_X = 40
-        private const val SIDEBAR_W = 230
-        private const val SIDEBAR_H = 330
+        /** The pause menu's icon font; see CustomPauseScreen for why the icons are glyphs. */
+        private val ICON_FONT = FontDescription.Resource(Identifier.fromNamespaceAndPath("alpaka", "pause_icons"))
+        private const val ICON_PLAY = ""
+        private const val ICON_SERVER = ""
+        private const val ICON_BOX = ""
+        private const val ICON_SLIDERS = ""
+        private const val ICON_DOOR = ""
 
-        /** Logo size and its gap below the sidebar's top edge. */
-        private const val LOGO_SIZE = 42
-        private const val LOGO_TOP_INSET = 6
-
-        /**
-         * How far the logo grows on each side when hovered, as a fraction of its own size.
-         *
-         * A fraction rather than a pixel count so the escape menu's smaller copy of this logo swells
-         * by the same proportion rather than by the same amount.
-         */
+        /** Left edge of the column, and the logo in its corner. */
+        private const val COLUMN_X = 28
+        private const val LOGO_SIZE = 38
+        private const val LOGO_Y = 20
         private const val LOGO_HOVER_GROWTH = 0.07f
+
+        /** The Join Hypixel artwork at its native 1.808:1, and a smaller cut for short windows. */
+        private const val HERO_W = 166
+        private const val HERO_H = 92
+        private const val HERO_W_COMPACT = 124
+        private const val HERO_H_COMPACT = 69
+
+        /** The tabs: anchored at x = 0, this wide, with the right end slanted by this much. */
+        private const val TAB_WIDTH = 190
+        private const val TAB_SLANT = 14
+        private const val TAB_HEIGHT = 22
+        private const val TAB_PITCH = 28
+        private const val TAB_HEIGHT_COMPACT = 20
+        private const val TAB_PITCH_COMPACT = 24
+        private const val TAB_TEXT_X = 14
+        /** How far a hovered tab pulls out of the edge. */
+        private const val TAB_PULL = 16f
+
+        private const val TAB_FILL = 0x66080C14
+        private const val TAB_FILL_HOVER = 0x9E0A0E18.toInt()
+        private const val TAB_LINE = 0x40FFFFFF
+        private const val TAB_LINE_HOVER = 0x70FFFFFF
+        private const val TAB_TEXT = 0xE8FFFFFF.toInt()
+        private const val TAB_TEXT_HOVER = 0xFFFFFFFF.toInt()
+        private const val RED = 0xFFEF4444.toInt()
+        private const val RED_TEXT = 0xFFF0B4B4.toInt()
+        private const val RED_TEXT_HOVER = 0xFFF87171.toInt()
+        private const val ONLINE_TEXT = 0xFFD8DEE8.toInt()
+
+        private const val APPEAR_SECONDS = 0.18f
+        private const val STAGGER_SECONDS = 0.03f
+
+        /** Hypixel is pinged again this often while the menu stays open. */
+        private const val PING_INTERVAL_MS = 60_000L
+
         private var textureRegistered = false
         private var modIconRegistered = false
 
@@ -60,9 +104,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
             if (!textureRegistered) {
                 textureRegistered = true
                 try {
-                    val texture = SimpleTexture(HERO_TEXTURE_ID)
-                    Minecraft.getInstance().textureManager.registerAndLoad(HERO_TEXTURE_ID, texture)
-                    println("[AlpakaAddons] Registered and loaded Hypixel hero join button texture via SimpleTexture")
+                    Minecraft.getInstance().textureManager.registerAndLoad(HERO_TEXTURE_ID, SimpleTexture(HERO_TEXTURE_ID))
                 } catch (e: Throwable) {
                     System.err.println("[AlpakaAddons] Failed to register SimpleTexture for join_hypixel_button.png:")
                     e.printStackTrace()
@@ -74,44 +116,60 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
             if (!modIconRegistered) {
                 modIconRegistered = true
                 try {
-                    val texture = SimpleTexture(MOD_ICON_ID)
-                    Minecraft.getInstance().textureManager.registerAndLoad(MOD_ICON_ID, texture)
-                    println("[AlpakaAddons] Registered and loaded mod icon texture via SimpleTexture")
+                    Minecraft.getInstance().textureManager.registerAndLoad(MOD_ICON_ID, SimpleTexture(MOD_ICON_ID))
                 } catch (e: Throwable) {
                     System.err.println("[AlpakaAddons] Failed to register SimpleTexture for alpaka_icon.png:")
                     e.printStackTrace()
                 }
             }
         }
+
+        private fun iconLabel(icon: String, text: String): Component =
+            Component.empty()
+                .append(Component.literal(icon).withStyle { it.withFont(ICON_FONT) })
+                .append(GuiFont.text("  $text"))
+
+        private fun fade(color: Int, factor: Float): Int {
+            val alpha = Math.round(((color ushr 24) and 0xFF) * factor.coerceIn(0f, 1f))
+            return (alpha shl 24) or (color and 0x00FFFFFF)
+        }
     }
 
-    /**
-     * Eased hover amount for the logo, smoothed on the same curve the menu's buttons use for their
-     * own hover so the growth eases in rather than snapping to size.
-     */
+    private var openTime = 0L
     private var logoHover = 0.0f
 
-    private fun sidebarTop() = (this.height - SIDEBAR_H) / 2
-    private fun logoLeft() = SIDEBAR_X + SIDEBAR_W / 2 - LOGO_SIZE / 2
-    private fun logoTop() = sidebarTop() + LOGO_TOP_INSET
+    /** Hypixel's status, kept alive for the live player count; pinged on open and once a minute. */
+    private val pinger = ServerStatusPinger()
+    private val hypixel = ServerData("Hypixel Network", "mc.hypixel.net", ServerData.Type.OTHER)
+    private var lastPingMs = 0L
 
-    private fun isOverLogo(mouseX: Double, mouseY: Double): Boolean {
-        val x = logoLeft()
-        val y = logoTop()
-        return mouseX >= x && mouseX < x + LOGO_SIZE && mouseY >= y && mouseY < y + LOGO_SIZE
+    private val compact get() = this.height < 380
+    private val heroW get() = if (compact) HERO_W_COMPACT else HERO_W
+    private val heroH get() = if (compact) HERO_H_COMPACT else HERO_H
+    private val tabHeight get() = if (compact) TAB_HEIGHT_COMPACT else TAB_HEIGHT
+    private val tabPitch get() = if (compact) TAB_PITCH_COMPACT else TAB_PITCH
+
+    private fun heroY() = LOGO_Y + LOGO_SIZE + 14
+    private fun onlineY() = heroY() + heroH + 6
+    private fun tabsY() = onlineY() + 18
+
+    private fun isOverLogo(mouseX: Double, mouseY: Double): Boolean =
+        mouseX >= COLUMN_X && mouseX < COLUMN_X + LOGO_SIZE && mouseY >= LOGO_Y && mouseY < LOGO_Y + LOGO_SIZE
+
+    /** 0 → 1 appearance of the element with this stagger index, eased out. */
+    private fun appear(index: Int): Float {
+        val t = ((System.currentTimeMillis() - openTime) / 1000.0f - index * STAGGER_SECONDS) / APPEAR_SECONDS
+        if (t <= 0f) return 0f
+        if (t >= 1f) return 1f
+        val inv = 1f - t
+        return 1f - inv * inv * inv
     }
 
     override fun shouldCloseOnEsc(): Boolean = false
 
-    private fun playPloppSound() {
-        try {
-            CustomSoundFeature.playButtonClickSound()
-        } catch (_: Throwable) {}
-    }
-
     private fun joinServer(ip: String) {
         val mc = this.minecraft ?: return
-        playPloppSound()
+        CustomSoundFeature.playButtonClickSound()
         val address = ServerAddress.parseString(ip)
         val data = ServerData(if (ip.contains("alpha")) "Hypixel Alpha" else "Hypixel Network", ip, ServerData.Type.OTHER)
         ConnectScreen.startConnecting(this, mc, address, data, false, null)
@@ -119,33 +177,31 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
 
     override fun init() {
         this.clearWidgets()
+        this.openTime = System.currentTimeMillis()
 
-        val sidebarX = SIDEBAR_X
-        val sidebarW = SIDEBAR_W
-        val sidebarH = SIDEBAR_H
-        val sidebarY = sidebarTop()
+        val heroX = COLUMN_X
+        this.addRenderableWidget(RetroHeroJoinButton(heroX, heroY(), heroW, heroH) {
+            joinServer("mc.hypixel.net")
+        })
 
-        val innerX = sidebarX + 14
-        val innerW = sidebarW - 28
+        var y = tabsY()
+        var index = 2
+        fun tab(label: Component, red: Boolean, action: () -> Unit) {
+            this.addRenderableWidget(EdgeTab(index++, y, TAB_WIDTH, tabHeight, label, red, action))
+            y += tabPitch
+        }
 
-        val btnH = 24
-        val startY = sidebarY + 52
-        val spacing = 27
-
-        // 1. Singleplayer
-        this.addRenderableWidget(CustomMenuButton(innerX, startY, innerW, btnH, GuiFont.text("Singleplayer"), isRed = false) {
+        tab(iconLabel(ICON_PLAY, "Singleplayer"), false) {
             this.minecraft?.gui?.setScreen(SelectWorldScreen(this))
-        })
-
-        // 2. Multiplayer
-        this.addRenderableWidget(CustomMenuButton(innerX, startY + spacing, innerW, btnH, GuiFont.text("Multiplayer"), isRed = false) {
+        }
+        tab(iconLabel(ICON_SERVER, "Multiplayer"), false) {
             this.minecraft?.gui?.setScreen(JoinMultiplayerScreen(this))
-        })
-
-        // 3. Mods (Opens Mod Menu GUI or Options fallback)
-        this.addRenderableWidget(CustomMenuButton(innerX, startY + spacing * 2, innerW, btnH, GuiFont.text("Mods"), isRed = false) {
-            val mc = this.minecraft ?: return@CustomMenuButton
-            playPloppSound()
+        }
+        tab(iconLabel(ICON_SERVER, "Join Alpha"), false) {
+            joinServer("alpha.hypixel.net")
+        }
+        tab(iconLabel(ICON_BOX, "Mods"), false) {
+            val mc = this.minecraft ?: return@tab
             // Falls back to the options screen without Mod Menu; see ModMenuCompat for why the
             // Mod Menu class must not be named here.
             if (net.alpaka.addons.compat.ModMenuCompat.isLoaded()) {
@@ -153,97 +209,106 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
             } else {
                 mc.gui.setScreen(OptionsScreen(this, mc.options, false))
             }
-        })
-
-        // 4. Join Alpha
-        this.addRenderableWidget(CustomMenuButton(innerX, startY + spacing * 3, innerW, btnH, GuiFont.text("Join Alpha"), isRed = false) {
-            joinServer("alpha.hypixel.net")
-        })
-
-        // 5. Featured Ornate Retro "JOIN HYPIXEL" Hero Action Button (Exact 1.808:1 original proportions)
-        val heroW = 166
-        val heroH = 92
-        val heroX = innerX + (innerW - heroW) / 2
-        val heroY = startY + spacing * 4 + 8
-        this.addRenderableWidget(RetroHeroJoinButton(heroX, heroY, heroW, heroH) {
-            joinServer("mc.hypixel.net")
-        })
-
-        // 6. Bottom System Actions Row (Options & Quit side by side)
-        val bottomY = sidebarY + 288
-        val halfW = (innerW - 8) / 2
-
-        // Options
-        this.addRenderableWidget(CustomMenuButton(innerX, bottomY, halfW, btnH, GuiFont.text("Options"), isRed = false) {
-            val mc = this.minecraft ?: return@CustomMenuButton
+        }
+        tab(iconLabel(ICON_SLIDERS, "Options"), false) {
+            val mc = this.minecraft ?: return@tab
             mc.gui.setScreen(OptionsScreen(this, mc.options, false))
-        })
-
-        // Quit Game
-        this.addRenderableWidget(CustomMenuButton(innerX + halfW + 8, bottomY, halfW, btnH, GuiFont.text("Quit"), isRed = true) {
+        }
+        tab(iconLabel(ICON_DOOR, "Quit"), true) {
             this.minecraft?.stop()
-        })
+        }
+
+        pingHypixel()
+    }
+
+    private fun pingHypixel() {
+        val mc = this.minecraft ?: return
+        lastPingMs = System.currentTimeMillis()
+        // The pinger fills in players and ping but leaves the state to its caller, like the server
+        // list does: the first callback fires with the status, the second when the ping failed.
+        hypixel.setState(ServerData.State.PINGING)
+        try {
+            pinger.pingServer(
+                hypixel,
+                { mc.execute { hypixel.setState(ServerData.State.SUCCESSFUL) } },
+                { mc.execute { hypixel.setState(ServerData.State.UNREACHABLE) } },
+                EventLoopGroupHolder.remote(mc.options.useNativeTransport()),
+            )
+        } catch (_: UnknownHostException) {
+            hypixel.setState(ServerData.State.UNREACHABLE)
+        } catch (_: Throwable) {
+            hypixel.setState(ServerData.State.UNREACHABLE)
+        }
+    }
+
+    override fun tick() {
+        super.tick()
+        pinger.tick()
+        if (System.currentTimeMillis() - lastPingMs > PING_INTERVAL_MS) pingHypixel()
+    }
+
+    override fun removed() {
+        super.removed()
+        pinger.removeAll()
     }
 
     override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
-        // Render 3D Panorama from Minecraft / Active Resource Pack
+        // The panorama, undimmed: the tabs bring their own darkness.
         this.extractPanorama(graphics, partialTick)
 
-        // Light translucent veil over panorama so text & sidebar remain clean & readable
-        graphics.fill(0, 0, this.width, this.height, 0x30000000)
-
-        // Render Inventory / GUI Snow Overlay Particles if enabled in AlpakaConfig
         if (AlpakaConfig.instance.inventorySnowEnabled) {
             SnowOverlayRenderer.render(graphics, this.width, this.height)
         }
 
-        val sidebarX = SIDEBAR_X
-        val sidebarW = SIDEBAR_W
-        val sidebarH = SIDEBAR_H
-        val sidebarY = sidebarTop()
-
-        // The same panel the config screen is made of: rounded, hairline border, soft shadow.
-        ModernGuiUtils.drawPanelShadow(graphics, sidebarX, sidebarY, sidebarW, sidebarH, ModernGuiUtils.PANEL_RADIUS, 1.0f)
-        ModernGuiUtils.drawRoundedPanel(graphics, sidebarX, sidebarY, sidebarW, sidebarH, ModernGuiUtils.PANEL_RADIUS,
-            ModernGuiUtils.COLOR_PANEL_BG, ModernGuiUtils.COLOR_CARD_BORDER)
-
-        // Render Fancy Ornate AlpakaAddons Header Banner Logo
-        renderFancyHeader(graphics, mouseX, mouseY)
-
-        // Accent rule under the logo, where the config screen draws the one under its header.
-        ModernGuiUtils.drawRect(graphics, sidebarX + 14, sidebarY + 48, sidebarW - 28, 1, ModernGuiUtils.getAccentColor())
-
-        // Section Divider Line
-        ModernGuiUtils.drawRect(graphics, sidebarX + 14, sidebarY + 276, sidebarW - 28, 1, ModernGuiUtils.COLOR_CARD_BORDER)
-
-        // Footer Version Label - read from the running build, never hard-coded
-        graphics.text(this.font, GuiFont.text("AlpakaAddons v${ModVersion.mod()}"), 12, this.height - 20, ModernGuiUtils.COLOR_TEXT_PRIMARY, false)
-        graphics.text(this.font, GuiFont.text("Minecraft ${ModVersion.minecraft()} • Fabric"), 12, this.height - 10, ModernGuiUtils.COLOR_TEXT_MUTED, false)
-    }
-
-    /**
-     * Draws the mod logo, which is also the way into the Alpaka config from here - the same as in
-     * the escape menu, so the logo means the same thing in both places.
-     */
-    private fun renderFancyHeader(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
-        val iconX = logoLeft()
-        val iconY = logoTop()
-
+        // Logo and name in the corner. The logo is also the way into the Alpaka config, and hovering
+        // grows it in place like the pause menu's copy of it.
+        val logoAppear = appear(0)
         val hovered = isOverLogo(mouseX.toDouble(), mouseY.toDouble())
         logoHover += ((if (hovered) 1.0f else 0.0f) - logoHover) * 0.25f
-
-        // Hovering grows the logo and does nothing else - no card behind it, no border, no lift. It
-        // used to take the same treatment the panel's buttons give themselves, which framed a piece
-        // of artwork in a box and made it read as a widget that had been selected rather than as one
-        // being pointed at. This is what the Join Hypixel button already does: the growth is applied
-        // to all four sides, so the logo swells in place instead of drifting.
         val grow = (LOGO_SIZE * LOGO_HOVER_GROWTH * logoHover).toInt()
+        val logoY = LOGO_Y + Math.round((1f - logoAppear) * 6f)
 
         ensureModIconRegistered()
-        graphics.blit(
-            RenderPipelines.GUI_TEXTURED, MOD_ICON_ID, iconX - grow, iconY - grow, 0.0f, 0.0f,
-            LOGO_SIZE + grow * 2, LOGO_SIZE + grow * 2, 128, 128, 128, 128,
-        )
+        if (logoAppear > 0.01f) {
+            graphics.blit(
+                RenderPipelines.GUI_TEXTURED, MOD_ICON_ID, COLUMN_X - grow, logoY - grow, 0.0f, 0.0f,
+                LOGO_SIZE + grow * 2, LOGO_SIZE + grow * 2, 128, 128, 128, 128, fade(0xFFFFFFFF.toInt(), logoAppear),
+            )
+
+            val textX = COLUMN_X + LOGO_SIZE + 10
+            graphics.pose().pushMatrix()
+            graphics.pose().translate(textX.toFloat(), (logoY + 5).toFloat())
+            graphics.pose().scale(1.5f, 1.5f)
+            graphics.text(this.font, GuiFont.text("Alpaka Addons"), 0, 0, fade(TAB_TEXT_HOVER, logoAppear), false)
+            graphics.pose().popMatrix()
+            graphics.text(this.font, GuiFont.text("v${ModVersion.mod()} · Minecraft ${ModVersion.minecraft()}"),
+                textX, logoY + 24, fade(ModernGuiUtils.COLOR_TEXT_MUTED, logoAppear), false)
+        }
+
+        // Hypixel's player count under the artwork: a dot in the accent while it is reachable.
+        val onlineAppear = appear(1)
+        if (onlineAppear > 0.01f) {
+            val (dot, line) = onlineLine()
+            val x = COLUMN_X + 4
+            val y = onlineY()
+            graphics.text(this.font, GuiFont.text("●"), x, y, fade(dot, onlineAppear), false)
+            graphics.text(this.font, GuiFont.text(line), x + 10, y, fade(ONLINE_TEXT, onlineAppear), false)
+        }
+    }
+
+    /** The dot colour and the text of the online line, from whatever the last ping learned. */
+    private fun onlineLine(): Pair<Int, String> {
+        val players = hypixel.players
+        return when (hypixel.state()) {
+            ServerData.State.SUCCESSFUL -> {
+                val count = players?.let { String.format("%,d", it.online()).replace(',', '.') } ?: "?"
+                val ping = if (hypixel.ping > 0) " · ${hypixel.ping} ms" else ""
+                ModernGuiUtils.getAccentColor() to "$count online$ping"
+            }
+            ServerData.State.UNREACHABLE, ServerData.State.INCOMPATIBLE ->
+                ModernGuiUtils.COLOR_TEXT_MUTED to "offline"
+            else -> ModernGuiUtils.COLOR_TEXT_MUTED to "connecting…"
+        }
     }
 
     override fun mouseClicked(event: MouseButtonEvent, doubleClick: Boolean): Boolean {
@@ -255,7 +320,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         return super.mouseClicked(event, doubleClick)
     }
 
-    // High-Performance Retro Hypixel Hero Button with Ornate Gold Brackets & Hypixel Logo Crest
+    /** The Join Hypixel artwork, which swells a little when pointed at. */
     private inner class RetroHeroJoinButton(
         x: Int, y: Int, width: Int, height: Int,
         private val onClickAction: () -> Unit
@@ -269,105 +334,39 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         }
 
         override fun extractContents(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
+            val appear = appear(1)
+            if (appear <= 0.01f) return
+
             val hovered = mouseX >= this.x && mouseX < this.x + this.width &&
                           mouseY >= this.y && mouseY < this.y + this.height && this.active
+            this.hoverTime += ((if (hovered) 1.0f else 0.0f) - this.hoverTime) * 0.25f
 
-            val targetHover = if (hovered) 1.0f else 0.0f
-            this.hoverTime += (targetHover - this.hoverTime) * 0.25f
+            val grow = (5.0f * this.hoverTime).toInt()
+            val drawY = this.y + Math.round((1f - appear) * 6f)
 
-            val bx = this.x
-            val by = this.y
-            val bw = this.width
-            val bh = this.height
-
-            // Smooth scale-up expansion on hover (5px expansion on all sides)
-            val scaleOffset = (5.0f * this.hoverTime).toInt()
-            val renderX = bx - scaleOffset
-            val renderY = by - scaleOffset
-            val renderW = bw + scaleOffset * 2
-            val renderH = bh + scaleOffset * 2
-
-            // Render Generated Ornate Hypixel Texture Image (1024x566 RGBA with 100% original un-distorted aspect ratio)
             ensureTextureRegistered()
-            graphics.blit(RenderPipelines.GUI_TEXTURED, HERO_TEXTURE_ID, renderX, renderY, 0.0f, 0.0f, renderW, renderH, 1024, 566, 1024, 566)
-        }
-
-        private fun renderOrnateCorners(graphics: GuiGraphicsExtractor, x: Int, y: Int, w: Int, h: Int, borderCol: Int, mainCol: Int) {
-            // Corner Studs (4 Corners)
-            ModernGuiUtils.drawRect(graphics, x + 3, y + 3, 4, 4, mainCol)
-            ModernGuiUtils.drawOutline(graphics, x + 3, y + 3, 4, 4, borderCol)
-
-            ModernGuiUtils.drawRect(graphics, x + w - 7, y + 3, 4, 4, mainCol)
-            ModernGuiUtils.drawOutline(graphics, x + w - 7, y + 3, 4, 4, borderCol)
-
-            ModernGuiUtils.drawRect(graphics, x + 3, y + h - 7, 4, 4, mainCol)
-            ModernGuiUtils.drawOutline(graphics, x + 3, y + h - 7, 4, 4, borderCol)
-
-            ModernGuiUtils.drawRect(graphics, x + w - 7, y + h - 7, 4, 4, mainCol)
-            ModernGuiUtils.drawOutline(graphics, x + w - 7, y + h - 7, 4, 4, borderCol)
-
-            // Ornate Filigree Accent Wings (Top & Bottom Center)
-            val cx = x + w / 2
-            ModernGuiUtils.drawRect(graphics, cx - 14, y + 2, 28, 1, mainCol)
-            ModernGuiUtils.drawRect(graphics, cx - 8, y + 3, 16, 1, borderCol)
-
-            ModernGuiUtils.drawRect(graphics, cx - 14, y + h - 3, 28, 1, mainCol)
-            ModernGuiUtils.drawRect(graphics, cx - 8, y + h - 4, 16, 1, borderCol)
-        }
-
-        // Procedural Vector Hypixel Logo Shield & Crown Crest Engine
-        private fun renderHypixelShieldLogo(graphics: GuiGraphicsExtractor, sx: Int, sy: Int) {
-            val sw = 26
-            val sh = 28
-
-            // Shield Golden Bevel Outer Border
-            ModernGuiUtils.drawRect(graphics, sx, sy, sw, sh - 4, 0xFFF59E0B.toInt())
-            ModernGuiUtils.drawRect(graphics, sx + 2, sy + sh - 4, sw - 4, 2, 0xFFF59E0B.toInt())
-            ModernGuiUtils.drawRect(graphics, sx + 5, sy + sh - 2, sw - 10, 2, 0xFFF59E0B.toInt())
-            ModernGuiUtils.drawRect(graphics, sx + 10, sy + sh, 6, 2, 0xFFF59E0B.toInt())
-
-            // Shield Crimson & Obsidian Fill
-            ModernGuiUtils.drawRect(graphics, sx + 2, sy + 2, sw - 4, sh - 7, 0xFF881337.toInt())
-            ModernGuiUtils.drawRect(graphics, sx + 4, sy + sh - 5, sw - 8, 2, 0xFF881337.toInt())
-            ModernGuiUtils.drawRect(graphics, sx + 7, sy + sh - 3, sw - 14, 2, 0xFF881337.toInt())
-
-            // Top Golden Crown Crest on Shield
-            ModernGuiUtils.drawRect(graphics, sx + 4, sy - 3, 4, 3, 0xFFF59E0B.toInt()) // Left Point
-            ModernGuiUtils.drawRect(graphics, sx + 11, sy - 5, 4, 5, 0xFFFEF08A.toInt()) // Center Point (Taller)
-            ModernGuiUtils.drawRect(graphics, sx + 18, sy - 3, 4, 3, 0xFFF59E0B.toInt()) // Right Point
-
-            // Crown Gemstone Studs
-            ModernGuiUtils.drawRect(graphics, sx + 5, sy - 2, 2, 2, 0xFFEF4444.toInt())
-            ModernGuiUtils.drawRect(graphics, sx + 12, sy - 4, 2, 2, 0xFF3B82F6.toInt())
-            ModernGuiUtils.drawRect(graphics, sx + 19, sy - 2, 2, 2, 0xFFEF4444.toInt())
-
-            // Iconic Hypixel 'H' Emblem in Center of Shield
-            val hx = sx + 7
-            val hy = sy + 6
-
-            // Left Stem of H
-            ModernGuiUtils.drawRect(graphics, hx + 1, hy + 1, 3, 11, 0xFF000000.toInt()) // Shadow
-            ModernGuiUtils.drawRect(graphics, hx, hy, 3, 11, 0xFFFEF08A.toInt()) // Bright Gold
-
-            // Right Stem of H
-            ModernGuiUtils.drawRect(graphics, hx + 10, hy + 1, 3, 11, 0xFF000000.toInt()) // Shadow
-            ModernGuiUtils.drawRect(graphics, hx + 9, hy, 3, 11, 0xFFFEF08A.toInt()) // Bright Gold
-
-            // Center Crossbar of H
-            ModernGuiUtils.drawRect(graphics, hx + 3, hy + 5, 6, 3, 0xFF000000.toInt()) // Shadow
-            ModernGuiUtils.drawRect(graphics, hx + 2, hy + 4, 6, 3, 0xFFF59E0B.toInt()) // Warm Gold
+            graphics.blit(
+                RenderPipelines.GUI_TEXTURED, HERO_TEXTURE_ID, this.x - grow, drawY - grow, 0.0f, 0.0f,
+                this.width + grow * 2, this.height + grow * 2, 1024, 566, 1024, 566, fade(0xFFFFFFFF.toInt(), appear),
+            )
         }
 
         override fun updateWidgetNarration(narration: NarrationElementOutput) {}
     }
 
-    // Modern Animated Custom Button Class matching Mod Config & Pause Theme
-    private inner class CustomMenuButton(
-        x: Int, y: Int, width: Int, height: Int,
+    /**
+     * A tab on the left edge: dark glass with a slanted right end, drawn as a real quad so the
+     * slant is smooth. Hover pulls it out of the edge by [TAB_PULL] pixels, darkens the glass a
+     * touch so the label gains contrast, and lights an accent strip along its left side; the quit
+     * tab does all of that in red. On open it slides in from off screen.
+     */
+    private inner class EdgeTab(
+        private val appearIndex: Int,
+        y: Int, width: Int, height: Int,
         message: Component,
         private val isRed: Boolean,
         private val onClickAction: () -> Unit
-    ) : AbstractButton(x, y, width, height, message) {
+    ) : AbstractButton(0, y, width, height, message) {
 
         private var hoverTime = 0.0f
 
@@ -377,28 +376,54 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         }
 
         override fun extractContents(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
+            val appear = appear(appearIndex)
+            if (appear <= 0.01f) return
+
             val hovered = mouseX >= this.x && mouseX < this.x + this.width &&
                           mouseY >= this.y && mouseY < this.y + this.height && this.active
+            this.hoverTime += ((if (hovered) 1.0f else 0.0f) - this.hoverTime) * 0.25f
+            val hover = this.hoverTime
 
-            val targetHover = if (hovered) 1.0f else 0.0f
-            this.hoverTime += (targetHover - this.hoverTime) * 0.25f
+            val guiScale = (this@CustomMainMenuScreen.minecraft ?: Minecraft.getInstance()).window.guiScale.coerceAtLeast(1)
+            val mesh = WheelMesh(1.15f / guiScale)
 
-            val bx = this.x
-            val by = this.y
-            val bw = this.width
-            val bh = this.height
+            // Slides in from the left on open, pulls out to the right on hover.
+            val x0 = (1f - appear) * -(this.width + 20f) + hover * TAB_PULL
+            val y0 = this.y.toFloat()
+            val y1 = y0 + this.height
+            val x1 = x0 + this.width
 
-            val yOffset = (-2.0f * this.hoverTime).toInt()
-            val drawY = by + yOffset
+            val fill = fade(WheelMesh.lerpColor(TAB_FILL, TAB_FILL_HOVER, hover), appear)
+            mesh.quad(
+                x0, y0, fill,
+                x0, y1, fill,
+                x1 - TAB_SLANT, y1, fill,
+                x1, y0, fill,
+            )
 
-            val bg = if (hovered) (if (isRed) 0x40EF4444.toInt() else ModernGuiUtils.COLOR_CARD_BG_HOVER) else ModernGuiUtils.COLOR_CARD_BG
-            val border = if (hovered) (if (isRed) 0xFFEF4444.toInt() else ModernGuiUtils.getAccentColor()) else ModernGuiUtils.COLOR_CARD_BORDER
-            val textColor = if (hovered) (if (isRed) 0xFFEF4444.toInt() else ModernGuiUtils.getAccentColor()) else ModernGuiUtils.COLOR_TEXT_PRIMARY
+            // A hairline along the three free edges, so the shape still reads over a dark panorama
+            // where dark glass alone would vanish.
+            val line = fade(WheelMesh.lerpColor(TAB_LINE, TAB_LINE_HOVER, hover), appear)
+            mesh.quad(x0, y0, line, x0, y0 + 1f, line, x1 - 1f, y0 + 1f, line, x1, y0, line)
+            mesh.quad(x0, y1 - 1f, line, x0, y1, line, x1 - TAB_SLANT, y1, line, x1 - TAB_SLANT + 1f, y1 - 1f, line)
+            mesh.quad(x1 - 1f, y0, line, x1 - TAB_SLANT - 1f, y1, line, x1 - TAB_SLANT, y1, line, x1, y0, line)
 
-            ModernGuiUtils.drawRoundedPanel(graphics, bx, drawY, bw, bh, ModernGuiUtils.WIDGET_RADIUS + 1, bg, border)
+            // The accent strip, only as bright as the hover; it sits on the edge the tab pulls away from.
+            if (hover > 0.02f) {
+                val strip = fade(if (isRed) RED else ModernGuiUtils.getAccentColor(), appear * hover)
+                mesh.quad(
+                    x0, y0, strip,
+                    x0, y1, strip,
+                    x0 + 3f, y1, strip,
+                    x0 + 3f, y0, strip,
+                )
+            }
+            mesh.submit(graphics)
 
+            val text = if (isRed) WheelMesh.lerpColor(RED_TEXT, RED_TEXT_HOVER, hover)
+                       else WheelMesh.lerpColor(TAB_TEXT, TAB_TEXT_HOVER, hover)
             val mc = this@CustomMainMenuScreen.minecraft ?: return
-            ModernGuiUtils.centeredText(graphics, mc.font, this.message, bx + bw / 2, drawY + (bh - 8) / 2, textColor)
+            graphics.text(mc.font, this.message, Math.round(x0) + TAB_TEXT_X, this.y + (this.height - 8) / 2, fade(text, appear), false)
         }
 
         override fun updateWidgetNarration(narration: NarrationElementOutput) {}

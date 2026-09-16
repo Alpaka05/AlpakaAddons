@@ -3,7 +3,6 @@ package net.alpaka.addons.features.escapemenu;
 import net.alpaka.addons.client.AlpakaConfigScreen;
 import net.alpaka.addons.client.gui.GuiFont;
 import net.alpaka.addons.client.gui.ModernGuiUtils;
-import net.alpaka.addons.client.gui.PloppAnimation;
 import net.alpaka.addons.features.sound.CustomSoundFeature;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -17,13 +16,24 @@ import net.minecraft.client.gui.screens.options.OptionsScreen;
 import net.minecraft.client.input.InputWithModifiers;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.SimpleTexture;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FontDescription;
 import net.minecraft.resources.Identifier;
 
+/**
+ * The pause menu: vanilla's arrangement on the blurred world, without a panel.
+ *
+ * There is deliberately no card. The world stays visible through the menu blur and a light dim,
+ * and on it sit the logo (which is also the way into the Alpaka config) and the buttons in the
+ * shape vanilla uses - one full-width row, two rows of two, one full-width row. The buttons are
+ * glass: a faint white fill and hairline that brighten on hover, the leaving one tinted red. That
+ * keeps it clearly apart from the config screen, which is built from opaque panels.
+ *
+ * Everything appears in a short stagger: the dim fades in, then the logo and the rows follow one
+ * another 25 ms apart, each fading in as it drifts up a few pixels.
+ */
 public class CustomPauseScreen extends Screen {
     private static final Identifier MOD_ICON_ID = Identifier.parse("alpaka:textures/gui/alpaka_icon.png");
     private static boolean modIconRegistered = false;
@@ -43,12 +53,12 @@ public class CustomPauseScreen extends Screen {
             new FontDescription.Resource(Identifier.fromNamespaceAndPath("alpaka", "pause_icons"));
 
     /** Private-use codepoints, in the order the sprite sheet lays them out. */
-    private static final String ICON_PLAY = "\uE000";
-    private static final String ICON_SERVER = "\uE001";
-    private static final String ICON_BOX = "\uE002";
-    private static final String ICON_SLIDERS = "\uE003";
-    private static final String ICON_BOOK = "\uE004";
-    private static final String ICON_DOOR = "\uE005";
+    private static final String ICON_PLAY = "";
+    private static final String ICON_SERVER = "";
+    private static final String ICON_BOX = "";
+    private static final String ICON_SLIDERS = "";
+    private static final String ICON_BOOK = "";
+    private static final String ICON_DOOR = "";
 
     /**
      * A button label: the icon glyph, then the text.
@@ -75,56 +85,21 @@ public class CustomPauseScreen extends Screen {
         }
     }
 
-    private boolean showDisconnectPrompt = false;
-    private long openTime = 0L;
+    // ------------------------------------------------------------------ layout
 
-    /**
-     * Eased hover amount for the mod logo, which doubles as the Alpaka config button.
-     *
-     * Smoothed on the same curve {@link CustomPauseButton} uses for its own hover, so the logo eases
-     * up to size rather than snapping to it.
-     */
-    private float logoHover = 0.0f;
+    /** Vanilla's widths: a full row, or two halves with a gap between them that add up to it. */
+    private static final int BUTTON_WIDTH = 204;
+    private static final int HALF_WIDTH = 98;
+    private static final int HALF_GAP = BUTTON_WIDTH - 2 * HALF_WIDTH;
+    private static final int BUTTON_HEIGHT = 22;
+    private static final int ROW_PITCH = 26;
 
-    /**
-     * The panel's box. Shared rather than restated per method: the logo's clickable area is derived
-     * from it, so a size only changed in one place would leave the hit test pointing at empty space.
-     */
-    private static final int CARD_WIDTH = 200;
-    private static final int CARD_HEIGHT = 254;
+    /** Side length of the logo, and the gap between it and the first row. */
+    private static final int LOGO_SIZE = 44;
+    private static final int LOGO_GAP = 14;
 
-    /**
-     * The panel's vertical layout, which tightens when the window is too short for the full one.
-     *
-     * At full size the header is 56 tall and the six buttons are 25 tall on a 30 pitch. A windowed
-     * game at a small size can be shorter than that whole panel, so between the full layout and a
-     * compact one (48 header, 20 buttons on a 23 pitch, less padding) everything is interpolated by
-     * how much room is missing. The compact panel is 197 tall, which still fits a 480-pixel-high
-     * window at GUI scale 2.
-     */
-    private record Layout(int cardHeight, int headerHeight, int buttonHeight, int spacing,
-                          int buttonStartY, int logoInset, int subtitleY) {}
-
-    private Layout layout() {
-        int available = this.height - 12;
-        float t = CARD_HEIGHT <= available ? 0.0f
-                : Math.min(1.0f, (CARD_HEIGHT - available) / (float) (CARD_HEIGHT - 197));
-        int header = Math.round(56 + (48 - 56) * t);
-        int buttonHeight = Math.round(25 + (20 - 25) * t);
-        int spacing = Math.round(30 + (23 - 30) * t);
-        int gap = Math.round(8 + (6 - 8) * t);
-        int pad = Math.round(15 + (8 - 15) * t);
-        int cardHeight = header + gap + 5 * spacing + buttonHeight + pad;
-        int logoInset = Math.round(LOGO_TOP_INSET + (3 - LOGO_TOP_INSET) * t);
-        int subtitleY = Math.round(42 + (37 - 42) * t);
-        return new Layout(cardHeight, header, buttonHeight, spacing, header + gap, logoInset, subtitleY);
-    }
-
-    /** Gap between the panel's top edge and the logo. */
-    private static final int LOGO_TOP_INSET = 5;
-
-    /** Side length of the logo. */
-    private static final int LOGO_SIZE = 34;
+    /** Logo, gap, three row pitches and the last row: the whole stack, centred on the screen. */
+    private static final int STACK_HEIGHT = LOGO_SIZE + LOGO_GAP + 3 * ROW_PITCH + BUTTON_HEIGHT;
 
     /**
      * How far the logo grows on each side when hovered, as a fraction of its own size.
@@ -134,26 +109,39 @@ public class CustomPauseScreen extends Screen {
      */
     private static final float LOGO_HOVER_GROWTH = 0.07f;
 
-    /**
-     * Where the logo sits, in the settled layout.
-     *
-     * Derived here rather than inline so drawing and hit-testing cannot drift apart. The open
-     * animation slides the panel, and with it the drawn logo, for 150ms; the rectangle returned here
-     * is the resting one, which is what a click should be measured against.
-     */
-    private int logoLeft() {
-        return this.width / 2 - LOGO_SIZE / 2;
-    }
+    /** The disconnect prompt: two lines of question, then the buttons; sized once for layout and drawing. */
+    private static final int PROMPT_WIDTH = 236;
+    private static final int PROMPT_HEIGHT = 96;
+    private static final int PROMPT_BUTTON_Y = 56;
 
-    private int logoTop() {
-        Layout layout = layout();
-        return (this.height - layout.cardHeight()) / 2 + layout.logoInset();
-    }
+    // --------------------------------------------------------------- appearance
 
-    private boolean isOverLogo(double mouseX, double mouseY) {
-        int x = logoLeft(), y = logoTop();
-        return mouseX >= x && mouseX < x + LOGO_SIZE && mouseY >= y && mouseY < y + LOGO_SIZE;
-    }
+    /** The dim over the blurred world; light, so the world stays part of the picture. */
+    private static final int COLOR_DIM = 0x52000000;
+
+    private static final int GLASS_FILL = 0x14FFFFFF;
+    private static final int GLASS_FILL_HOVER = 0x2EFFFFFF;
+    private static final int GLASS_BORDER = 0x30FFFFFF;
+    private static final int GLASS_TEXT = 0xE8FFFFFF;
+    private static final int GLASS_TEXT_HOVER = 0xFFFFFFFF;
+
+    private static final int RED = 0xFFEF4444;
+    private static final int RED_BORDER = 0x66EF4444;
+    private static final int RED_FILL_HOVER = 0x38EF4444;
+    private static final int RED_TEXT = 0xFFF0B4B4;
+    private static final int RED_TEXT_HOVER = 0xFFF87171;
+
+    private static final int PROMPT_BG = 0xD0121419;
+
+    /** How long the dim and each element take to appear, and the delay between successive rows. */
+    private static final float APPEAR_SECONDS = 0.16f;
+    private static final float STAGGER_SECONDS = 0.025f;
+
+    private boolean showDisconnectPrompt = false;
+    private long openTime = 0L;
+
+    /** Eased hover amount for the logo, on the same curve the buttons use for theirs. */
+    private float logoHover = 0.0f;
 
     private CustomPauseButton resumeButton;
     private CustomPauseButton serverListButton;
@@ -165,13 +153,44 @@ public class CustomPauseScreen extends Screen {
     private CustomPauseButton promptCancelButton;
     private CustomPauseButton promptConfirmButton;
 
-    /** The disconnect prompt: two lines of question, then the buttons; sized once for layout and drawing. */
-    private static final int PROMPT_WIDTH = 236;
-    private static final int PROMPT_HEIGHT = 96;
-    private static final int PROMPT_BUTTON_Y = 56;
-
     public CustomPauseScreen() {
         super(Component.literal("Alpaka Escape Menu"));
+    }
+
+    private int stackTop() {
+        return (this.height - STACK_HEIGHT) / 2;
+    }
+
+    private int logoLeft() {
+        return this.width / 2 - LOGO_SIZE / 2;
+    }
+
+    private int logoTop() {
+        return stackTop();
+    }
+
+    private boolean isOverLogo(double mouseX, double mouseY) {
+        int x = logoLeft(), y = logoTop();
+        return mouseX >= x && mouseX < x + LOGO_SIZE && mouseY >= y && mouseY < y + LOGO_SIZE;
+    }
+
+    /**
+     * 0 → 1 appearance of the element with this stagger index, eased out; the dim is index 0, the
+     * logo 1, the rows 2 to 5. Index -1 is always fully there (the prompt's buttons).
+     */
+    private float appear(int index) {
+        if (index < 0) return 1.0f;
+        float t = ((System.currentTimeMillis() - openTime) / 1000.0f - index * STAGGER_SECONDS) / APPEAR_SECONDS;
+        if (t <= 0.0f) return 0.0f;
+        if (t >= 1.0f) return 1.0f;
+        float inv = 1.0f - t;
+        return 1.0f - inv * inv * inv;
+    }
+
+    /** The colour with its alpha scaled by the factor. */
+    private static int fade(int color, float factor) {
+        int alpha = Math.round(((color >>> 24) & 0xFF) * Math.max(0.0f, Math.min(1.0f, factor)));
+        return (alpha << 24) | (color & 0x00FFFFFF);
     }
 
     @Override
@@ -180,32 +199,21 @@ public class CustomPauseScreen extends Screen {
 
         int centerX = this.width / 2;
         int centerY = this.height / 2;
+        int fullX = centerX - BUTTON_WIDTH / 2;
+        int rightX = fullX + HALF_WIDTH + HALF_GAP;
+        int rowY = stackTop() + LOGO_SIZE + LOGO_GAP;
 
-        Layout layout = layout();
-        int cardWidth = CARD_WIDTH;
-        int cardHeight = layout.cardHeight();
-        int startX = centerX - cardWidth / 2;
-        int startY = centerY - cardHeight / 2;
-
-        int buttonWidth = 168;
-        int buttonHeight = layout.buttonHeight();
-        int buttonX = centerX - buttonWidth / 2;
-        int buttonStartY = startY + layout.buttonStartY();
-        int spacing = layout.spacing();
-
-        // 1. Resume Button
-        this.resumeButton = new CustomPauseButton(buttonX, buttonStartY, buttonWidth, buttonHeight,
+        // Row 1: back to the game, full width.
+        this.resumeButton = new CustomPauseButton(this, 2, fullX, rowY, BUTTON_WIDTH, BUTTON_HEIGHT,
                 iconLabel(ICON_PLAY, "Resume Game"), false, btn -> this.onClose());
         this.addRenderableWidget(this.resumeButton);
 
-        // 2. Server List Button
+        // Row 2: the server list and the mods.
         //
-        // Opens the multiplayer list with this screen as its parent, which is what makes it a
-        // detour rather than an exit: JoinMultiplayerScreen's own Escape hands control back to
-        // whatever it was opened from, so the player returns here and then to the game, still
-        // connected. Nothing here disconnects - that is the point, it is for glancing at player
-        // counts and ping on other servers mid-session.
-        this.serverListButton = new CustomPauseButton(buttonX, buttonStartY + spacing, buttonWidth, buttonHeight,
+        // The server list opens with this screen as its parent, which is what makes it a detour
+        // rather than an exit: JoinMultiplayerScreen's own Escape hands control back to whatever it
+        // was opened from, so the player returns here and then to the game, still connected.
+        this.serverListButton = new CustomPauseButton(this, 3, fullX, rowY + ROW_PITCH, HALF_WIDTH, BUTTON_HEIGHT,
                 iconLabel(ICON_SERVER, "Server List"), false, btn -> {
             if (this.minecraft != null) {
                 this.minecraft.gui.setScreen(new JoinMultiplayerScreen(this));
@@ -213,8 +221,7 @@ public class CustomPauseScreen extends Screen {
         });
         this.addRenderableWidget(this.serverListButton);
 
-        // 3. Mods Button (Mod Menu mod list)
-        this.modsButton = new CustomPauseButton(buttonX, buttonStartY + spacing * 2, buttonWidth, buttonHeight,
+        this.modsButton = new CustomPauseButton(this, 3, rightX, rowY + ROW_PITCH, HALF_WIDTH, BUTTON_HEIGHT,
                 iconLabel(ICON_BOX, "Mods"), false, btn -> {
             if (this.minecraft != null) {
                 // Falls back to the options screen without Mod Menu; see ModMenuCompat for why the
@@ -228,8 +235,8 @@ public class CustomPauseScreen extends Screen {
         });
         this.addRenderableWidget(this.modsButton);
 
-        // 4. Minecraft Options Button
-        this.optionsButton = new CustomPauseButton(buttonX, buttonStartY + spacing * 3, buttonWidth, buttonHeight,
+        // Row 3: options and the wiki.
+        this.optionsButton = new CustomPauseButton(this, 4, fullX, rowY + ROW_PITCH * 2, HALF_WIDTH, BUTTON_HEIGHT,
                 iconLabel(ICON_SLIDERS, "Options"), false, btn -> {
             if (this.minecraft != null) {
                 this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options, false));
@@ -237,42 +244,37 @@ public class CustomPauseScreen extends Screen {
         });
         this.addRenderableWidget(this.optionsButton);
 
-        // 5. Skyblock Wiki Button
-        this.wikiButton = new CustomPauseButton(buttonX, buttonStartY + spacing * 4, buttonWidth, buttonHeight,
-                iconLabel(ICON_BOOK, "Skyblock Wiki"), false, btn -> {
+        this.wikiButton = new CustomPauseButton(this, 4, rightX, rowY + ROW_PITCH * 2, HALF_WIDTH, BUTTON_HEIGHT,
+                iconLabel(ICON_BOOK, "Wiki"), false, btn -> {
             if (this.minecraft != null) {
                 ConfirmLinkScreen.confirmLinkNow(this, "https://hypixelskyblock.minecraft.wiki/");
             }
         });
         this.addRenderableWidget(this.wikiButton);
 
-        // 6. Disconnect Button (Red Accent)
-        boolean isSingleplayer = isSingleplayerWorld();
-        Component disconnectText = isSingleplayer ? iconLabel(ICON_DOOR, "Save & Quit") : iconLabel(ICON_DOOR, "Disconnect");
-        this.disconnectButton = new CustomPauseButton(buttonX, buttonStartY + spacing * 5, buttonWidth, buttonHeight,
+        // Row 4: leaving, full width, tinted red.
+        Component disconnectText = isSingleplayerWorld() ? iconLabel(ICON_DOOR, "Save & Quit") : iconLabel(ICON_DOOR, "Disconnect");
+        this.disconnectButton = new CustomPauseButton(this, 5, fullX, rowY + ROW_PITCH * 3, BUTTON_WIDTH, BUTTON_HEIGHT,
                 disconnectText, true, btn -> {
             this.showDisconnectPrompt = true;
             this.updateWidgetStates();
         });
         this.addRenderableWidget(this.disconnectButton);
 
-        // Disconnect Prompt Buttons
-        int promptWidth = PROMPT_WIDTH;
-        int promptHeight = PROMPT_HEIGHT;
-        int promptX = centerX - promptWidth / 2;
-        int promptY = centerY - promptHeight / 2;
-
+        // The disconnect prompt's buttons, drawn and clicked by hand while the prompt is up.
+        int promptX = centerX - PROMPT_WIDTH / 2;
+        int promptY = centerY - PROMPT_HEIGHT / 2;
         int pBtnWidth = 88;
         int pBtnHeight = 24;
         int pBtnY = promptY + PROMPT_BUTTON_Y;
 
-        this.promptCancelButton = new CustomPauseButton(promptX + 16, pBtnY, pBtnWidth, pBtnHeight,
+        this.promptCancelButton = new CustomPauseButton(this, -1, promptX + 16, pBtnY, pBtnWidth, pBtnHeight,
                 GuiFont.text("Cancel"), false, btn -> {
             this.showDisconnectPrompt = false;
             this.updateWidgetStates();
         });
 
-        this.promptConfirmButton = new CustomPauseButton(promptX + promptWidth - 16 - pBtnWidth, pBtnY, pBtnWidth, pBtnHeight,
+        this.promptConfirmButton = new CustomPauseButton(this, -1, promptX + PROMPT_WIDTH - 16 - pBtnWidth, pBtnY, pBtnWidth, pBtnHeight,
                 GuiFont.text("Disconnect"), true, btn -> {
             if (this.minecraft != null) {
                 if (this.minecraft.level != null) {
@@ -300,82 +302,34 @@ public class CustomPauseScreen extends Screen {
 
     @Override
     public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-        super.extractBackground(graphics, mouseX, mouseY, partialTick);
+        // Vanilla's menu blur, but not vanilla's heavy in-world darkening: the dim here is lighter
+        // and fades in, so the world stays visible behind the menu.
+        this.extractBlurredBackground(graphics);
 
-        int centerX = this.width / 2;
-        int centerY = this.height / 2;
-
-        float elapsedSec = (System.currentTimeMillis() - openTime) / 1000.0f;
-        float animProgress = Math.min(1.0f, elapsedSec / 0.15f); // 150ms fast snappy animation
-        float anim = 1.0f - (float) Math.pow(1.0f - animProgress, 3); // Smooth cubic ease-out
-
-        float slideOffsetY = (1.0f - anim) * 24.0f; // Subtle 24px slide up from slightly below
-
-        // Dark translucent backdrop. Deliberately not animated: only the panel should slide and
-        // fade, while the darkening behind it stays put from the first frame. Drawn against an
-        // identity matrix rather than whatever is already on the pose stack - other installed GUI
-        // mods (SmoothGui and friends) apply their own open-transition transform around Screen's
-        // render calls, and without this the fill inherited that transform and slid along with it.
+        // Drawn against an identity matrix rather than whatever is already on the pose stack -
+        // other installed GUI mods (SmoothGui and friends) apply their own open-transition
+        // transform around Screen's render calls, and without this the fill inherited that
+        // transform and slid along with it instead of staying still.
         graphics.pose().pushMatrix();
         graphics.pose().identity();
-        graphics.fill(0, 0, this.width, this.height, 0x70000000);
+        graphics.fill(0, 0, this.width, this.height, fade(COLOR_DIM, appear(0)));
         graphics.pose().popMatrix();
 
-        Layout layout = layout();
-        int cardWidth = CARD_WIDTH;
-        int cardHeight = layout.cardHeight();
-        int startX = centerX - cardWidth / 2;
-        int startY = centerY - cardHeight / 2;
-
-        // Smooth Slide Up Animation
-        graphics.pose().pushMatrix();
-        graphics.pose().translate(0.0f, slideOffsetY);
-
-        // The same panel the config screen is made of: rounded, hairline border, soft shadow.
-        int radius = ModernGuiUtils.PANEL_RADIUS;
-        ModernGuiUtils.drawPanelShadow(graphics, startX, startY, cardWidth, cardHeight, radius, anim);
-        ModernGuiUtils.drawRoundedPanel(graphics, startX, startY, cardWidth, cardHeight, radius,
-                ModernGuiUtils.COLOR_PANEL_BG, ModernGuiUtils.COLOR_CARD_BORDER);
-
-        // Header band: rounded along the panel's top corners, straight where it meets the buttons.
-        // Inset by one pixel so it sits inside the hairline border rather than over it.
-        int headerH = layout.headerHeight();
-        ModernGuiUtils.drawRoundedRect(graphics, startX + 1, startY + 1, cardWidth - 2, headerH - 1, radius - 1, ModernGuiUtils.COLOR_SIDEBAR_BG);
-        ModernGuiUtils.drawRect(graphics, startX + 1, startY + headerH - radius, cardWidth - 2, radius, ModernGuiUtils.COLOR_SIDEBAR_BG);
-        ModernGuiUtils.drawRect(graphics, startX + 1, startY + headerH - 1, cardWidth - 2, 1, ModernGuiUtils.getAccentColor());
-
-        // Mod Logo, which is also the way into the Alpaka config now that the button is gone.
+        // The logo, which is also the way into the Alpaka config. Hovering grows it in place and
+        // does nothing else - no card behind it, no border - like the main menu's copy of it.
         ensureModIconRegistered();
-        int iconSize = LOGO_SIZE;
-        int iconX = centerX - iconSize / 2;
-        int iconY = startY + layout.logoInset();
+        float logoAppear = appear(1);
+        int iconX = logoLeft();
+        int iconY = logoTop() + Math.round((1.0f - logoAppear) * 6.0f);
 
         boolean logoHovered = !this.showDisconnectPrompt && isOverLogo(mouseX, mouseY);
         this.logoHover += ((logoHovered ? 1.0f : 0.0f) - this.logoHover) * 0.25f;
 
-        // Hovering grows the logo and does nothing else - no card behind it, no border, no lift. It
-        // used to take the same treatment the panel's buttons give themselves, which framed a piece
-        // of artwork in a box and made it read as a widget that had been selected rather than as one
-        // being pointed at. This matches the main menu's Join Hypixel button: the growth goes on all
-        // four sides, so the logo swells in place instead of drifting.
-        int grow = (int) (iconSize * LOGO_HOVER_GROWTH * this.logoHover);
-        graphics.blit(RenderPipelines.GUI_TEXTURED, MOD_ICON_ID, iconX - grow, iconY - grow, 0.0f, 0.0f,
-                iconSize + grow * 2, iconSize + grow * 2, 128, 128, 128, 128);
-
-        // Subtitle: User & Status (IP on server, Singleplayer in local world)
-        String status = "Singleplayer";
-        if (this.minecraft != null && !isSingleplayerWorld()) {
-            ServerData serverData = this.minecraft.getCurrentServer();
-            if (serverData != null && serverData.ip != null && !serverData.ip.isBlank()) {
-                status = serverData.ip;
-            } else {
-                status = "Multiplayer";
-            }
+        int grow = (int) (LOGO_SIZE * LOGO_HOVER_GROWTH * this.logoHover);
+        if (logoAppear > 0.01f) {
+            graphics.blit(RenderPipelines.GUI_TEXTURED, MOD_ICON_ID, iconX - grow, iconY - grow, 0.0f, 0.0f,
+                    LOGO_SIZE + grow * 2, LOGO_SIZE + grow * 2, 128, 128, 128, 128, fade(0xFFFFFFFF, logoAppear));
         }
-        String user = (this.minecraft != null && this.minecraft.getUser() != null) ? this.minecraft.getUser().getName() : "Player";
-        ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text(user + " • " + status), centerX, startY + layout.subtitleY(), ModernGuiUtils.COLOR_TEXT_MUTED);
-
-        graphics.pose().popMatrix();
     }
 
     @Override
@@ -383,46 +337,29 @@ public class CustomPauseScreen extends Screen {
         int centerX = this.width / 2;
         int centerY = this.height / 2;
 
-        float elapsedSec = (System.currentTimeMillis() - openTime) / 1000.0f;
-        float animProgress = Math.min(1.0f, elapsedSec / 0.15f);
-        float anim = 1.0f - (float) Math.pow(1.0f - animProgress, 3);
-        float slideOffsetY = (1.0f - anim) * 24.0f;
-
-        // The modal's full-screen dim is drawn outside the slide transform below, for the same
-        // reason the backdrop is: a full-screen darkening must never move with the panel. Unlike
-        // the backdrop, this runs inside extractRenderState, which is exactly the call other GUI
-        // mods animate - so the pose stack can already carry an inherited transform before this
-        // method even starts, and it needs the same identity reset to stay put.
+        // The prompt's full-screen dim, against an identity matrix for the same reason as the
+        // backdrop: a full-screen darkening must never move with an inherited transform.
         if (this.showDisconnectPrompt) {
             graphics.pose().pushMatrix();
             graphics.pose().identity();
-            graphics.fill(0, 0, this.width, this.height, 0x90000000);
+            graphics.fill(0, 0, this.width, this.height, 0x80000000);
             graphics.pose().popMatrix();
         }
 
-        graphics.pose().pushMatrix();
-        graphics.pose().translate(0.0f, slideOffsetY);
-
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
 
-        // Disconnect Modal Prompt Overlay
         if (this.showDisconnectPrompt) {
-            int promptWidth = PROMPT_WIDTH;
-            int promptHeight = PROMPT_HEIGHT;
-            int promptX = centerX - promptWidth / 2;
-            int promptY = centerY - promptHeight / 2;
+            int promptX = centerX - PROMPT_WIDTH / 2;
+            int promptY = centerY - PROMPT_HEIGHT / 2;
 
-            // Modal card: the panel style with a red hairline; just the question and the two
-            // buttons, no header band.
+            // The prompt is glass too, with a red hairline: the question and the two buttons.
             int radius = ModernGuiUtils.PANEL_RADIUS;
-            ModernGuiUtils.drawPanelShadow(graphics, promptX, promptY, promptWidth, promptHeight, radius, 1.0f);
-            ModernGuiUtils.drawRoundedPanel(graphics, promptX, promptY, promptWidth, promptHeight, radius,
-                    ModernGuiUtils.COLOR_PANEL_BG, 0xFFEF4444);
+            ModernGuiUtils.drawPanelShadow(graphics, promptX, promptY, PROMPT_WIDTH, PROMPT_HEIGHT, radius, 1.0f);
+            ModernGuiUtils.drawRoundedPanel(graphics, promptX, promptY, PROMPT_WIDTH, PROMPT_HEIGHT, radius, PROMPT_BG, RED);
 
             ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("Are you sure you want to"), centerX, promptY + 18, ModernGuiUtils.COLOR_TEXT_PRIMARY);
             ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("leave the game session?"), centerX, promptY + 32, ModernGuiUtils.COLOR_TEXT_MUTED);
 
-            // Render Modal Buttons
             if (this.promptCancelButton != null) {
                 this.promptCancelButton.extractRenderState(graphics, mouseX, mouseY, partialTick);
             }
@@ -430,8 +367,6 @@ public class CustomPauseScreen extends Screen {
                 this.promptConfirmButton.extractRenderState(graphics, mouseX, mouseY, partialTick);
             }
         }
-
-        graphics.pose().popMatrix();
     }
 
     @Override
@@ -469,14 +404,23 @@ public class CustomPauseScreen extends Screen {
         return super.keyPressed(event);
     }
 
-    // Modern Animated Custom Button Class matching Config Theme
+    /**
+     * A glass button: faint white fill and hairline over the blurred world, brightening on hover
+     * with the border taking the accent; the leaving button is tinted red instead. Each button
+     * fades in and drifts up a few pixels at its own moment of the open stagger.
+     */
     private static class CustomPauseButton extends AbstractButton {
+        private final CustomPauseScreen owner;
+        private final int appearIndex;
         private final boolean isRed;
         private final ButtonAction action;
         private float hoverTime = 0.0f;
 
-        public CustomPauseButton(int x, int y, int width, int height, Component message, boolean isRed, ButtonAction action) {
+        public CustomPauseButton(CustomPauseScreen owner, int appearIndex, int x, int y, int width, int height,
+                                 Component message, boolean isRed, ButtonAction action) {
             super(x, y, width, height, message);
+            this.owner = owner;
+            this.appearIndex = appearIndex;
             this.isRed = isRed;
             this.action = action;
         }
@@ -491,27 +435,37 @@ public class CustomPauseScreen extends Screen {
 
         @Override
         protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+            // The menu's own buttons step aside while the prompt is up: the prompt is glass, and
+            // they would otherwise show through it behind the question.
+            if (this.appearIndex >= 0 && this.owner.showDisconnectPrompt) return;
+            float appear = this.owner.appear(this.appearIndex);
+            if (appear <= 0.01f) return;
+
             boolean hovered = mouseX >= this.getX() && mouseX < this.getX() + this.width &&
                               mouseY >= this.getY() && mouseY < this.getY() + this.height && this.active;
-
-            float targetHover = hovered ? 1.0f : 0.0f;
-            this.hoverTime += (targetHover - this.hoverTime) * 0.25f;
+            this.hoverTime += ((hovered ? 1.0f : 0.0f) - this.hoverTime) * 0.25f;
+            float hover = this.hoverTime;
 
             int x = this.getX();
-            int y = this.getY();
+            int y = this.getY() + Math.round((1.0f - appear) * 6.0f) - Math.round(hover);
             int w = this.width;
             int h = this.height;
 
-            int yOffset = (int) (-2.0f * this.hoverTime);
-            int drawY = y + yOffset;
+            int fill, border, text;
+            if (this.isRed) {
+                fill = ModernGuiUtils.lerpColor(GLASS_FILL, RED_FILL_HOVER, hover);
+                border = ModernGuiUtils.lerpColor(RED_BORDER, RED, hover);
+                text = ModernGuiUtils.lerpColor(RED_TEXT, RED_TEXT_HOVER, hover);
+            } else {
+                fill = ModernGuiUtils.lerpColor(GLASS_FILL, GLASS_FILL_HOVER, hover);
+                border = ModernGuiUtils.lerpColor(GLASS_BORDER, ModernGuiUtils.getAccentColor(), hover);
+                text = ModernGuiUtils.lerpColor(GLASS_TEXT, GLASS_TEXT_HOVER, hover);
+            }
 
-            int bg = hovered ? (this.isRed ? 0x40EF4444 : ModernGuiUtils.COLOR_CARD_BG_HOVER) : ModernGuiUtils.COLOR_CARD_BG;
-            int border = hovered ? (this.isRed ? 0xFFEF4444 : ModernGuiUtils.getAccentColor()) : ModernGuiUtils.COLOR_CARD_BORDER;
-            int textColor = hovered ? (this.isRed ? 0xFFEF4444 : ModernGuiUtils.getAccentColor()) : ModernGuiUtils.COLOR_TEXT_PRIMARY;
-
-            ModernGuiUtils.drawRoundedPanel(graphics, x, drawY, w, h, ModernGuiUtils.WIDGET_RADIUS + 1, bg, border);
-
-            ModernGuiUtils.centeredText(graphics, Minecraft.getInstance().font, this.getMessage(), x + w / 2, drawY + (h - 8) / 2, textColor);
+            ModernGuiUtils.drawRoundedPanel(graphics, x, y, w, h, ModernGuiUtils.WIDGET_RADIUS + 2,
+                    fade(fill, appear), fade(border, appear));
+            ModernGuiUtils.centeredText(graphics, Minecraft.getInstance().font, this.getMessage(),
+                    x + w / 2, y + (h - 8) / 2, fade(text, appear));
         }
 
         @Override

@@ -9,7 +9,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.ConfirmLinkScreen;
-import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
 import net.minecraft.client.gui.screens.options.OptionsScreen;
@@ -34,7 +34,7 @@ import net.minecraft.resources.Identifier;
  * Everything appears in a short stagger: the dim fades in, then the logo and the rows follow one
  * another 25 ms apart, each fading in as it drifts up a few pixels.
  */
-public class CustomPauseScreen extends Screen {
+public class CustomPauseScreen extends PauseScreen {
     private static final Identifier MOD_ICON_ID = Identifier.parse("alpaka:textures/gui/alpaka_icon.png");
     private static boolean modIconRegistered = false;
 
@@ -154,8 +154,15 @@ public class CustomPauseScreen extends Screen {
     private CustomPauseButton promptCancelButton;
     private CustomPauseButton promptConfirmButton;
 
+    /**
+     * A {@link PauseScreen} by inheritance, with vanilla's own title, so that other mods recognise
+     * it as the pause menu. Essential in particular draws its player preview, wardrobe and friends
+     * next to any PauseScreen whose title is not the "Game paused" one, and hooks the base class's
+     * rendering to do so; the vanilla {@code init} that would add the vanilla buttons is not run,
+     * so the menu itself stays this one.
+     */
     public CustomPauseScreen() {
-        super(Component.literal("Alpaka Escape Menu"));
+        super(true);
     }
 
     private int stackTop() {

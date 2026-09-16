@@ -6,6 +6,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.alpaka.addons.features.bridge.BridgeBotFormatter;
 import net.alpaka.addons.features.chat.ChatBlurFeature;
 import net.alpaka.addons.features.chat.ChatPeekFeature;
+import net.alpaka.addons.features.chat.ChatScrollAnimator;
 import net.alpaka.addons.features.chat.ChatSearchFeature;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
 import net.alpaka.addons.features.chat.CompactChatFeature;
@@ -23,6 +24,7 @@ import net.minecraft.client.multiplayer.chat.GuiMessageSource;
 import net.minecraft.client.multiplayer.chat.GuiMessageTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MessageSignature;
+import net.minecraft.util.Mth;
 
 import java.util.List;
 import org.spongepowered.asm.mixin.Final;
@@ -40,7 +42,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
 @Mixin(ChatComponent.class)
-public class ChatComponentMixin {
+public abstract class ChatComponentMixin {
     private static final String EXTRACT_PUBLIC =
         "extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/client/gui/Font;IIILnet/minecraft/client/gui/components/ChatComponent$DisplayMode;Z)V";
     private static final String EXTRACT_PRIVATE =
@@ -56,9 +58,16 @@ public class ChatComponentMixin {
 
     @Shadow private int getLineHeight() { throw new AssertionError("replaced by mixin"); }
     @Shadow private double getScale() { throw new AssertionError("replaced by mixin"); }
+    @Shadow private int getWidth() { throw new AssertionError("replaced by mixin"); }
+    @Shadow public abstract int getLinesPerPage();
 
     /** Lines a live message has added at the front of the display list so far; see smooth chat below. */
     @Unique private int alpaka$liveLines;
+
+    /** The graphics the chat is being extracted into, while it is; null during clickable-text capture. */
+    @Unique private GuiGraphicsExtractor alpaka$graphics;
+    /** Whether the current extraction pushed a scissor that its end has to pop. */
+    @Unique private boolean alpaka$scissored;
 
     @ModifyConstant(
         method = {"<init>", "addMessageToDisplayQueue", "addMessageToQueue", "addRecentChat"},
@@ -177,6 +186,7 @@ public class ChatComponentMixin {
     private void alpaka$forgetCompactedMessage(boolean history, CallbackInfo ci) {
         CompactChatFeature.forget();
         SmoothChatFeature.clear();
+        ChatScrollAnimator.reset();
     }
 
     // ------------------------------------------------------------------ smooth chat
@@ -232,11 +242,49 @@ public class ChatComponentMixin {
         )
     )
     private void alpaka$slideChat(ChatComponent.ChatGraphicsAccess access, int guiHeight, int ticks, ChatComponent.DisplayMode mode, CallbackInfo ci) {
-        if (this.chatScrollbarPos != 0 || !SmoothChatFeature.isEnabled()) return;
-        float offset = SmoothChatFeature.slideOffset(this.getLineHeight());
-        if (offset > 0.01f) {
-            access.updatePose(pose -> pose.translate(0.0f, offset));
+        float offset = 0.0f;
+        if (this.chatScrollbarPos == 0 && SmoothChatFeature.isEnabled()) {
+            offset += SmoothChatFeature.slideOffset(this.getLineHeight());
         }
+        // Smooth scrolling: the lines are drawn where the eased scroll position puts them, and glide
+        // to where the real one does.
+        offset += ChatScrollAnimator.offsetLines(this.chatScrollbarPos) * this.getLineHeight();
+
+        if (Math.abs(offset) > 0.01f) {
+            final float shift = offset;
+            access.updatePose(pose -> pose.translate(0.0f, shift));
+            // While anything is in motion the chat is clipped to its own box, so a line gliding in
+            // or out does not show above the chat or below it. Only while drawing, not while
+            // capturing clickable text, which has no graphics to clip.
+            if (this.alpaka$graphics != null && !this.alpaka$scissored) {
+                float scale = (float) this.getScale();
+                int width = Mth.ceil(this.getWidth() / scale);
+                int bottom = Mth.floor((guiHeight - 40) / scale);
+                int top = bottom - this.getLinesPerPage() * this.getLineHeight();
+                int pad = ChatBlurFeature.PADDING + 1;
+                // In chat coordinates, which the pose already scales; the offset just applied is
+                // undone for the box so the box itself stays put.
+                this.alpaka$graphics.pose().pushMatrix();
+                this.alpaka$graphics.pose().translate(0.0f, -offset);
+                this.alpaka$graphics.enableScissor(-4 - pad, top - pad, width + 8 + pad, bottom + pad);
+                this.alpaka$graphics.pose().popMatrix();
+                this.alpaka$scissored = true;
+            }
+        }
+    }
+
+    @Inject(method = EXTRACT_PRIVATE, at = @At("RETURN"))
+    private void alpaka$endChatClip(ChatComponent.ChatGraphicsAccess access, int guiHeight, int ticks, ChatComponent.DisplayMode mode, CallbackInfo ci) {
+        if (this.alpaka$scissored) {
+            this.alpaka$scissored = false;
+            if (this.alpaka$graphics != null) this.alpaka$graphics.disableScissor();
+        }
+    }
+
+    /** Vanilla bumps the scroll position for each line a new message adds while scrolled up; follow it. */
+    @Inject(method = "addMessageToDisplayQueue", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/ChatComponent;scrollChat(I)V"))
+    private void alpaka$followInsertScroll(GuiMessage message, CallbackInfo ci) {
+        ChatScrollAnimator.snap(1);
     }
 
     /**
@@ -267,12 +315,14 @@ public class ChatComponentMixin {
     private void alpaka$beginBlurExtraction(GuiGraphicsExtractor graphics, Font font, int ticks, int mouseX, int mouseY,
                                             ChatComponent.DisplayMode mode, boolean focused, CallbackInfo ci) {
         ChatBlurFeature.beginExtraction(graphics);
+        this.alpaka$graphics = graphics;
     }
 
     @Inject(method = EXTRACT_PUBLIC, at = @At("RETURN"))
     private void alpaka$endBlurExtraction(GuiGraphicsExtractor graphics, Font font, int ticks, int mouseX, int mouseY,
                                           ChatComponent.DisplayMode mode, boolean focused, CallbackInfo ci) {
         ChatBlurFeature.endExtraction();
+        this.alpaka$graphics = null;
     }
 
     @Inject(method = EXTRACT_PRIVATE, at = @At("HEAD"))

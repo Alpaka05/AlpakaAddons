@@ -262,6 +262,13 @@ public class AlpakaConfigRegistry {
                 1.0f, 10.0f, v -> Math.round(v) + " / 10",
                 "smooth chat strength speed duration animation slow fast slider"));
 
+        OPTIONS.add(new ConfigOption("chat_smooth_scroll", "Smooth Chat Scrolling",
+                "Scrolling the chat glides instead of jumping line by line.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatSmoothScrollEnabled,
+                v -> { AlpakaConfig.instance.chatSmoothScrollEnabled = v; AlpakaConfig.save(); },
+                "smooth chat scroll scrolling wheel glide peek animation"));
+
         OPTIONS.add(new ConfigOption("chat_blur", "Blurred Chat Background",
                 "One rounded, blurred panel behind the chat instead of flat line boxes.",
                 ConfigCategory.VISUALS,

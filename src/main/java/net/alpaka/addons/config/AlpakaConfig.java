@@ -319,6 +319,8 @@ public class AlpakaConfig {
     public boolean chatBlurEnabled = true;
     /** Ctrl+F in the chat turns the input line into a search that filters the visible messages. */
     public boolean chatSearchEnabled = true;
+    /** Scrolling the chat glides the lines into place instead of jumping a line per notch. */
+    public boolean chatSmoothScrollEnabled = true;
     /** Moving forward sprints on its own, without holding the sprint key. */
     public boolean alwaysSprintEnabled = true;
     public boolean expandChatHistory = true;
@@ -716,6 +718,7 @@ public class AlpakaConfig {
         this.smoothChatEnabled = false;
         this.chatBlurEnabled = false;
         this.chatSearchEnabled = false;
+        this.chatSmoothScrollEnabled = false;
         this.alwaysSprintEnabled = false;
         this.expandChatHistory = false;
         this.chatPeekEnabled = false;

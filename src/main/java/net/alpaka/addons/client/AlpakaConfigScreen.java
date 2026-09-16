@@ -41,8 +41,18 @@ public class AlpakaConfigScreen extends Screen {
     private double targetSidebarScrollY = 0.0;
     private double maxSidebarScrollY = 0.0;
 
-    // Smooth panel horizontal shift animation for Viewmodel live hand preview
+    // Smooth panel horizontal shift animation for the viewmodel setup mode
     private double currentWinX = -1.0;
+
+    /**
+     * Setup mode, for the Item Viewmodel tab: the panel moves to the side and its sidebar folds
+     * away, so the held item is in view while its settings are changed. Toggled by the small
+     * handle on the panel's top edge, which is only there on that tab.
+     */
+    private boolean setupMode = false;
+
+    /** 1 with the sidebar fully shown, 0 folded away; eased between the two. */
+    private float sidebarVisible = 1.0f;
 
     /** Where the sidebar highlight is drawn; it glides toward the selected tab. -1 until the first frame. */
     private double selectorY = -1.0;
@@ -123,6 +133,7 @@ public class AlpakaConfigScreen extends Screen {
     private void setActiveCategory(ConfigCategory category) {
         if (category == activeCategory) return;
         activeCategory = category;
+        if (category != ConfigCategory.VIEWMODEL) setupMode = false;
         targetScrollY = 0;
         scrollY = 0;
         contentTransition = 0.0f;
@@ -193,6 +204,8 @@ public class AlpakaConfigScreen extends Screen {
         // Smooth scroll interpolation for main content and sidebar
         scrollY += (targetScrollY - scrollY) * Math.min(1.0f, deltaSec * 14.0f);
         sidebarScrollY += (targetSidebarScrollY - sidebarScrollY) * Math.min(1.0f, deltaSec * 14.0f);
+        sidebarVisible = PloppAnimation.interpolate(sidebarVisible, setupMode ? 0.0f : 1.0f, deltaSec, 12.0f);
+        if (Math.abs(sidebarVisible - (setupMode ? 0.0f : 1.0f)) < 0.005f) sidebarVisible = setupMode ? 0.0f : 1.0f;
 
         // Render translucent backdrop so game is visible behind and around the config panel.
         // Drawn against an identity matrix rather than whatever is already on the pose stack -
@@ -205,12 +218,12 @@ public class AlpakaConfigScreen extends Screen {
         graphics.pose().popMatrix();
 
         // Calculate Window Panel Dimensions (compact window leaving game visible around sides)
-        int winW = panelWidth();
+        int winW = windowWidth();
         int winH = panelHeight();
 
         int centerWinX = (this.width - winW) / 2;
         int sideWinX = Math.min(Math.max(12, (this.width - winW) / 10), Math.max(0, this.width - winW - 4));
-        int targetWinX = (activeCategory == ConfigCategory.VIEWMODEL && search.getText().isEmpty()) ? sideWinX : centerWinX;
+        int targetWinX = setupMode ? sideWinX : centerWinX;
 
         if (currentWinX < 0) {
             currentWinX = targetWinX;
@@ -222,7 +235,7 @@ public class AlpakaConfigScreen extends Screen {
         int winY = (this.height - winH) / 2;
 
         int headerHeight = 38;
-        int sidebarWidth = 160;
+        int sidebarWidth = sidebarWidth();
 
         int contentX = winX + sidebarWidth;
         int contentY = winY + headerHeight;
@@ -249,9 +262,11 @@ public class AlpakaConfigScreen extends Screen {
         ModernGuiUtils.drawRect(graphics, winX, winY, winW, winH, ModernGuiUtils.COLOR_PANEL_BG);
         ModernGuiUtils.drawOutline(graphics, winX, winY, winW, winH, ModernGuiUtils.COLOR_CARD_BORDER);
 
-        // 2. Left Sidebar Background
-        ModernGuiUtils.drawRect(graphics, winX, winY + headerHeight, sidebarWidth, winH - headerHeight, ModernGuiUtils.COLOR_SIDEBAR_BG);
-        ModernGuiUtils.drawRect(graphics, winX + sidebarWidth - 1, winY + headerHeight, 1, winH - headerHeight, ModernGuiUtils.COLOR_CARD_BORDER);
+        // 2. Left Sidebar Background (folded away in setup mode)
+        if (sidebarWidth > 0) {
+            ModernGuiUtils.drawRect(graphics, winX, winY + headerHeight, sidebarWidth, winH - headerHeight, ModernGuiUtils.COLOR_SIDEBAR_BG);
+            ModernGuiUtils.drawRect(graphics, winX + sidebarWidth - 1, winY + headerHeight, 1, winH - headerHeight, ModernGuiUtils.COLOR_CARD_BORDER);
+        }
 
         // Top Header Section & Title
         ModernGuiUtils.drawRect(graphics, winX, winY, winW, headerHeight, ModernGuiUtils.COLOR_PANEL_BG);
@@ -317,6 +332,7 @@ public class AlpakaConfigScreen extends Screen {
         int sideClipW = sidebarWidth - 8;
         int sideClipH = winH - headerHeight - 8;
 
+        if (sideClipW >= 4) {
         int totalSidebarH = categories.size() * (catItemH + catSpacing) + 8;
         maxSidebarScrollY = Math.max(0, totalSidebarH - sideClipH);
         targetSidebarScrollY = Math.max(0, Math.min(maxSidebarScrollY, targetSidebarScrollY));
@@ -373,6 +389,7 @@ public class AlpakaConfigScreen extends Screen {
         }
 
         graphics.disableScissor();
+        }
 
         // 5. Render Options in Main Panel with Scissor Clipping to prevent scrolling overlap
         List<ConfigOption> options = AlpakaConfigRegistry.getOptions(activeCategory, search.getText());
@@ -548,6 +565,26 @@ public class AlpakaConfigScreen extends Screen {
 
         graphics.disableScissor();
 
+        // The setup-mode handle on the panel's top edge, only on the Item Viewmodel tab: a small
+        // tab that folds the sidebar away and moves the panel aside, or brings both back.
+        if (showsHandle()) {
+            int hx = handleX(winX, winW);
+            int hy = handleY(winY);
+            boolean hoverHandle = isOverHandle(mouseX, mouseY, winX, winY, winW);
+            int radius = ModernGuiUtils.WIDGET_RADIUS;
+            int bg = hoverHandle ? ModernGuiUtils.COLOR_CARD_BG_HOVER : ModernGuiUtils.COLOR_SIDEBAR_BG;
+            int border = (hoverHandle || setupMode) ? ModernGuiUtils.getAccentColor() : ModernGuiUtils.COLOR_CARD_BORDER;
+            // Rounded on top, joined to the panel below: the rounded shape reaches down under the
+            // panel's top edge, and the panel colour covers the join.
+            ModernGuiUtils.drawRoundedPanel(graphics, hx, hy, HANDLE_W, HANDLE_H + radius, radius, bg, border);
+            ModernGuiUtils.drawRect(graphics, hx + 1, winY + 1, HANDLE_W - 2, radius, ModernGuiUtils.COLOR_PANEL_BG);
+            ModernGuiUtils.drawRect(graphics, hx + 1, winY, HANDLE_W - 2, 1, bg);
+            String glyph = setupMode ? "»" : "«";
+            String label = setupMode ? "Back" : "Setup";
+            int textColor = (hoverHandle || setupMode) ? ModernGuiUtils.getAccentColor() : ModernGuiUtils.COLOR_TEXT_MUTED;
+            ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text(glyph + " " + label), hx + HANDLE_W / 2, hy + 3, textColor);
+        }
+
         if (isAnimatingOpen) {
             graphics.pose().popMatrix();
         }
@@ -586,13 +623,48 @@ public class AlpakaConfigScreen extends Screen {
         return Math.max(160, Math.min(preferred, this.height - 8));
     }
 
+    private static final int SIDEBAR_FULL_WIDTH = 160;
+
+    /** The sidebar's current width: full, or folding away in setup mode. */
+    private int sidebarWidth() {
+        return Math.round(SIDEBAR_FULL_WIDTH * sidebarVisible);
+    }
+
+    /** The panel's width: the content keeps its width, so the panel loses what the sidebar gives up. */
+    private int windowWidth() {
+        return panelWidth() - (SIDEBAR_FULL_WIDTH - sidebarWidth());
+    }
+
+    /** The setup-mode handle: a small tab on the panel's top edge, above the content's right end. */
+    private static final int HANDLE_W = 46;
+    private static final int HANDLE_H = 13;
+
+    private boolean showsHandle() {
+        return activeCategory == ConfigCategory.VIEWMODEL;
+    }
+
+    private int handleX(int winX, int winW) {
+        return winX + winW - HANDLE_W - 14;
+    }
+
+    private int handleY(int winY) {
+        return winY - HANDLE_H + 1;
+    }
+
+    private boolean isOverHandle(double mouseX, double mouseY, int winX, int winY, int winW) {
+        if (!showsHandle()) return false;
+        int hx = handleX(winX, winW);
+        int hy = handleY(winY);
+        return mouseX >= hx && mouseX <= hx + HANDLE_W && mouseY >= hy && mouseY <= hy + HANDLE_H;
+    }
+
     private int getEffectiveWinX(int winW) {
         if (currentWinX >= 0) {
             return (int) Math.round(currentWinX);
         }
         int centerWinX = (this.width - winW) / 2;
         int sideWinX = Math.min(Math.max(12, (this.width - winW) / 10), Math.max(0, this.width - winW - 4));
-        return (activeCategory == ConfigCategory.VIEWMODEL && search.getText().isEmpty()) ? sideWinX : centerWinX;
+        return setupMode ? sideWinX : centerWinX;
     }
 
     @Override
@@ -605,18 +677,25 @@ public class AlpakaConfigScreen extends Screen {
         double mouseX = event.x();
         double mouseY = event.y();
 
-        int winW = panelWidth();
+        int winW = windowWidth();
         int winH = panelHeight();
         int winX = getEffectiveWinX(winW);
         int winY = (this.height - winH) / 2;
 
         int headerHeight = 38;
-        int sidebarWidth = 160;
+        int sidebarWidth = sidebarWidth();
 
         int contentX = winX + sidebarWidth;
         int contentY = winY + headerHeight;
         int contentW = winW - sidebarWidth;
         int contentH = winH - headerHeight;
+
+        // The setup-mode handle above the panel
+        if (event.button() == 0 && isOverHandle(mouseX, mouseY, winX, winY, winW)) {
+            playPloppSound();
+            setupMode = !setupMode;
+            return true;
+        }
 
         // Search bar click
         int searchW = 158;
@@ -651,7 +730,7 @@ public class AlpakaConfigScreen extends Screen {
         int sideClipY = winY + headerHeight + 4;
         int sideClipH = winH - headerHeight - 8;
 
-        if (mouseX >= winX && mouseX <= winX + sidebarWidth && mouseY >= sideClipY && mouseY <= sideClipY + sideClipH) {
+        if (sidebarWidth > 0 && mouseX >= winX && mouseX <= winX + sidebarWidth && mouseY >= sideClipY && mouseY <= sideClipY + sideClipH) {
             List<ConfigCategory> categories = getVisibleCategories();
             int catItemH = 32;
             int catSpacing = 4;
@@ -777,9 +856,9 @@ public class AlpakaConfigScreen extends Screen {
     @Override
     public boolean mouseDragged(MouseButtonEvent event, double deltaX, double deltaY) {
         if (draggedOption != null && draggedOption.getType() == ConfigOption.Type.SLIDER) {
-            int winW = panelWidth();
+            int winW = windowWidth();
             int winX = getEffectiveWinX(winW);
-            int sidebarWidth = 160;
+            int sidebarWidth = sidebarWidth();
             int contentX = winX + sidebarWidth;
             int contentW = winW - sidebarWidth;
             int cardW = contentW - 28;
@@ -796,14 +875,14 @@ public class AlpakaConfigScreen extends Screen {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (scrollY != 0) {
-            int winW = panelWidth();
+            int winW = windowWidth();
             int winH = panelHeight();
             int winX = getEffectiveWinX(winW);
             int winY = (this.height - winH) / 2;
             int headerHeight = 38;
-            int sidebarWidth = 160;
+            int sidebarWidth = sidebarWidth();
 
-            if (mouseX >= winX && mouseX <= winX + sidebarWidth && mouseY >= winY + headerHeight && mouseY <= winY + winH) {
+            if (sidebarWidth > 0 && mouseX >= winX && mouseX <= winX + sidebarWidth && mouseY >= winY + headerHeight && mouseY <= winY + winH) {
                 // Independent scroll for category sidebar on left
                 this.targetSidebarScrollY = Math.max(0, Math.min(maxSidebarScrollY, targetSidebarScrollY - scrollY * 24.0));
                 return true;

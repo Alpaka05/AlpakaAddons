@@ -25,8 +25,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(GuiRenderer.class)
 public class GuiRendererMixin {
 
-    @Inject(method = "render", at = @At("HEAD"))
-    private void alpaka$captureFrameForChatBlur(CallbackInfo ci) {
+    /**
+     * Right before the elements are prepared: the panorama, which the renderer draws first of all
+     * when a screen shows one, is in the frame by now, so a menu's glass blurs it too.
+     */
+    @Inject(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/render/GuiRenderer;prepare()V"))
+    private void alpaka$captureFrameForBlur(CallbackInfo ci) {
         ChatBlurFeature.captureFrame();
     }
 

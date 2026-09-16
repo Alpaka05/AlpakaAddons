@@ -61,27 +61,25 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         /** Left edge of the column, and the logo in its corner. */
         private const val COLUMN_X = 28
         private const val LOGO_SIZE = 38
+        /** The column never sits higher than this, even on a short screen. */
         private const val LOGO_Y = 20
         private const val LOGO_HOVER_GROWTH = 0.07f
 
         /**
-         * The Join Hypixel tab: the same edge-tab shape as the entries below, twice as tall, wider
-         * and in Hypixel's gold rather than dark glass, with a gold strip along its left side that is
-         * always lit. Two lines: the name, then the address and the live player count.
+         * The Join Hypixel tab: the same edge-tab shape and glass as the entries below, twice as tall
+         * and wider. Two lines: the name, then the address and the live player count.
          */
         private const val HERO_WIDTH = 230
         private const val HERO_SLANT = 22
         private const val HERO_HEIGHT = 46
         private const val HERO_HEIGHT_COMPACT = 40
         /**
-         * At rest the Hypixel tab is the same dark glass as the entries, told apart only by its size
-         * and a muted gold strip; the gold comes in under the mouse, and gently - a warm tint on the
-         * glass, a soft gold on the name, never a solid gold block.
+         * At rest the Hypixel tab is the same glass as the entries, told apart only by its size; the
+         * gold comes in under the mouse, and gently - a warm tint on the glass, a soft gold on the
+         * name, never a solid gold block.
          */
-        private const val HERO_FILL = 0x7A080C14
-        private const val HERO_FILL_HOVER = 0xB0503A12.toInt()
-        private const val HERO_EDGE = 0x90D9AE4C.toInt()
-        private const val HERO_EDGE_HOVER = 0xFFF2C14E.toInt()
+        private const val HERO_FILL = 0xFF4A5062.toInt()
+        private const val HERO_FILL_HOVER = 0xFF6E5A2E.toInt()
         private const val HERO_TITLE = 0xF0FFFFFF.toInt()
         private const val HERO_TITLE_HOVER = 0xFFF2D58A.toInt()
         private const val HERO_SUBLINE = 0xFFD8DEE8.toInt()
@@ -98,9 +96,15 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         /** How far a hovered tab pulls out of the edge. */
         private const val TAB_PULL = 16f
 
-        /** Dark glass, a little denser than before now that no hairline outlines the shape. */
-        private const val TAB_FILL = 0x7A080C14
-        private const val TAB_FILL_HOVER = 0xA80A0E18.toInt()
+        /**
+         * The tabs are frosted glass: the panorama shows through blurred, tinted with these colours
+         * at [GLASS_TINT] strength. A mid-grey rather than near-black tint, so a tab reads on a dark
+         * panorama as a lighter shape and on a bright one as a darker shape. In blur mode the colour's
+         * alpha is the shape's coverage, so these are opaque.
+         */
+        private const val GLASS_TINT = 0.6f
+        private const val TAB_FILL = 0xFF4A5062.toInt()
+        private const val TAB_FILL_HOVER = 0xFF606A80.toInt()
         private const val TAB_TEXT = 0xE8FFFFFF.toInt()
         private const val TAB_TEXT_HOVER = 0xFFFFFFFF.toInt()
         private const val RED = 0xFFEF4444.toInt()
@@ -153,11 +157,14 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
     private val tabHeight get() = if (compact) TAB_HEIGHT_COMPACT else TAB_HEIGHT
     private val tabPitch get() = if (compact) TAB_PITCH_COMPACT else TAB_PITCH
 
-    private fun heroY() = LOGO_Y + LOGO_SIZE + 14
+    /** Logo, the Hypixel tab and the six entries: the whole column, centred on the screen's height. */
+    private fun columnHeight() = LOGO_SIZE + 14 + heroHeight + 12 + 5 * tabPitch + tabHeight
+    private fun logoY() = maxOf(LOGO_Y, (this.height - columnHeight()) / 2)
+    private fun heroY() = logoY() + LOGO_SIZE + 14
     private fun tabsY() = heroY() + heroHeight + 12
 
     private fun isOverLogo(mouseX: Double, mouseY: Double): Boolean =
-        mouseX >= COLUMN_X && mouseX < COLUMN_X + LOGO_SIZE && mouseY >= LOGO_Y && mouseY < LOGO_Y + LOGO_SIZE
+        mouseX >= COLUMN_X && mouseX < COLUMN_X + LOGO_SIZE && mouseY >= logoY() && mouseY < logoY() + LOGO_SIZE
 
     /** 0 → 1 appearance of the element with this stagger index, eased out. */
     private fun appear(index: Int): Float {
@@ -270,7 +277,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         val hovered = isOverLogo(mouseX.toDouble(), mouseY.toDouble())
         logoHover += ((if (hovered) 1.0f else 0.0f) - logoHover) * 0.25f
         val grow = (LOGO_SIZE * LOGO_HOVER_GROWTH * logoHover).toInt()
-        val logoY = LOGO_Y + Math.round((1f - logoAppear) * 6f)
+        val logoY = logoY() + Math.round((1f - logoAppear) * 6f)
 
         ensureModIconRegistered()
         if (logoAppear > 0.01f) {
@@ -345,18 +352,18 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
             val hover = this.hoverTime
 
             val guiScale = (this@CustomMainMenuScreen.minecraft ?: Minecraft.getInstance()).window.guiScale.coerceAtLeast(1)
-            val mesh = WheelMesh(1.15f / guiScale)
+            val glass = WheelMesh(1.15f / guiScale, blur = true, blurTint = GLASS_TINT)
 
-            val x0 = (1f - appear) * -(this.width + 20f) + hover * TAB_PULL
+            // Slides in from the left on open; hover lengthens the tab to the right while its left
+            // side stays on the screen edge.
+            val x0 = (1f - appear) * -(this.width + 20f)
             val y0 = this.y.toFloat()
             val y1 = y0 + this.height
-            val x1 = x0 + this.width
+            val x1 = x0 + this.width + hover * TAB_PULL
 
             val fill = fade(WheelMesh.lerpColor(HERO_FILL, HERO_FILL_HOVER, hover), appear)
-            mesh.quad(x0, y0, fill, x0, y1, fill, x1 - HERO_SLANT, y1, fill, x1, y0, fill)
-            val edge = fade(WheelMesh.lerpColor(HERO_EDGE, HERO_EDGE_HOVER, hover), appear)
-            mesh.quad(x0, y0, edge, x0, y1, edge, x0 + 4f, y1, edge, x0 + 4f, y0, edge)
-            mesh.submit(graphics)
+            glass.quad(x0, y0, fill, x0, y1, fill, x1 - HERO_SLANT, y1, fill, x1, y0, fill)
+            glass.submit(graphics)
 
             val mc = this@CustomMainMenuScreen.minecraft ?: return
             val textX = Math.round(x0) + 16
@@ -414,23 +421,26 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
             val hover = this.hoverTime
 
             val guiScale = (this@CustomMainMenuScreen.minecraft ?: Minecraft.getInstance()).window.guiScale.coerceAtLeast(1)
+            val glass = WheelMesh(1.15f / guiScale, blur = true, blurTint = GLASS_TINT)
             val mesh = WheelMesh(1.15f / guiScale)
 
-            // Slides in from the left on open, pulls out to the right on hover.
-            val x0 = (1f - appear) * -(this.width + 20f) + hover * TAB_PULL
+            // Slides in from the left on open; hover lengthens the tab to the right while its left
+            // side stays on the screen edge.
+            val x0 = (1f - appear) * -(this.width + 20f)
             val y0 = this.y.toFloat()
             val y1 = y0 + this.height
-            val x1 = x0 + this.width
+            val x1 = x0 + this.width + hover * TAB_PULL
 
             val fill = fade(WheelMesh.lerpColor(TAB_FILL, TAB_FILL_HOVER, hover), appear)
-            mesh.quad(
+            glass.quad(
                 x0, y0, fill,
                 x0, y1, fill,
                 x1 - TAB_SLANT, y1, fill,
                 x1, y0, fill,
             )
+            glass.submit(graphics)
 
-            // The accent strip, only as bright as the hover; it sits on the edge the tab pulls away from.
+            // The accent strip on the screen edge, only as bright as the hover.
             if (hover > 0.02f) {
                 val strip = fade(if (isRed) RED else ModernGuiUtils.getAccentColor(), appear * hover)
                 mesh.quad(

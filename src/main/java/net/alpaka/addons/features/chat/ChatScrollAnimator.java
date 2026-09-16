@@ -22,7 +22,7 @@ public final class ChatScrollAnimator {
      * so the glide has to be slow enough to be seen over that distance: 10 per second settles in
      * about 300 ms. Overridable with -Dalpaka.scrollRate for tuning.
      */
-    private static final float RATE = Float.parseFloat(System.getProperty("alpaka.scrollRate", "10"));
+    private static final float RATE = Float.parseFloat(System.getProperty("alpaka.scrollRate", "7"));
 
     private ChatScrollAnimator() {}
 

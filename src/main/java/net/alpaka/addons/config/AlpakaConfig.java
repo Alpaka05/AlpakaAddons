@@ -164,6 +164,8 @@ public class AlpakaConfig {
     public int playerModelY = 85;
     public boolean playerModelDisableMovement = false;
     public boolean playerModelHideArmor = false;
+    /** The name tag above the HUD avatar. */
+    public boolean playerModelShowNameTag = true;
     public boolean playerModelShowInGuis = false;
     public boolean playerModelSlowSwing = false;
 

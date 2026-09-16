@@ -242,18 +242,19 @@ public abstract class ChatComponentMixin {
         )
     )
     private void alpaka$slideChat(ChatComponent.ChatGraphicsAccess access, int guiHeight, int ticks, ChatComponent.DisplayMode mode, CallbackInfo ci) {
-        float offset = 0.0f;
+        // Two movements, kept apart because the box treats them differently: the arrival slide
+        // moves box and lines together, the scroll moves the lines inside a box that stays put.
+        float slide = 0.0f;
         if (this.chatScrollbarPos == 0 && SmoothChatFeature.isEnabled()) {
-            offset += SmoothChatFeature.slideOffset(this.getLineHeight());
+            slide = SmoothChatFeature.slideOffset(this.getLineHeight());
         }
-        // Smooth scrolling: the lines are drawn where the eased scroll position puts them, and glide
-        // to where the real one does.
-        offset += ChatScrollAnimator.offsetLines(this.chatScrollbarPos) * this.getLineHeight();
+        float scroll = ChatScrollAnimator.offsetLines(this.chatScrollbarPos) * this.getLineHeight();
+        ChatBlurFeature.setScrollOffset(scroll);
 
-        // The chat is clipped to its own box whenever it is drawn, so a line gliding in or out while
-        // scrolling or arriving never shows above the chat or below it. Only while drawing, not
-        // while capturing clickable text, which has no graphics to clip. The box is placed before
-        // the offset is applied, so it stays put while the lines move inside it.
+        // Whenever the chat is drawn it is clipped to the area its page can cover, so a line
+        // gliding in or out never shows above the chat or below it. Only while drawing, not while
+        // capturing clickable text, which has no graphics to clip. Placed before the offsets, so
+        // the box stays put while the lines move inside it.
         if (this.alpaka$graphics != null && !this.alpaka$scissored) {
             float scale = (float) this.getScale();
             int width = Mth.ceil(this.getWidth() / scale);
@@ -264,6 +265,7 @@ public abstract class ChatComponentMixin {
             this.alpaka$scissored = true;
         }
 
+        float offset = slide + scroll;
         if (Math.abs(offset) > 0.01f) {
             final float shift = offset;
             access.updatePose(pose -> pose.translate(0.0f, shift));
@@ -272,6 +274,10 @@ public abstract class ChatComponentMixin {
 
     @Inject(method = EXTRACT_PRIVATE, at = @At("RETURN"))
     private void alpaka$endChatClip(ChatComponent.ChatGraphicsAccess access, int guiHeight, int ticks, ChatComponent.DisplayMode mode, CallbackInfo ci) {
+        // The blurred panel's own clip first (pushed later), then the page clip.
+        if (ChatBlurFeature.takeClipped() && this.alpaka$graphics != null) {
+            this.alpaka$graphics.disableScissor();
+        }
         if (this.alpaka$scissored) {
             this.alpaka$scissored = false;
             if (this.alpaka$graphics != null) this.alpaka$graphics.disableScissor();
@@ -311,7 +317,7 @@ public abstract class ChatComponentMixin {
     @Inject(method = EXTRACT_PUBLIC, at = @At("HEAD"))
     private void alpaka$beginBlurExtraction(GuiGraphicsExtractor graphics, Font font, int ticks, int mouseX, int mouseY,
                                             ChatComponent.DisplayMode mode, boolean focused, CallbackInfo ci) {
-        ChatBlurFeature.beginExtraction(graphics);
+        ChatBlurFeature.beginExtraction(graphics, mouseX, mouseY);
         this.alpaka$graphics = graphics;
     }
 
@@ -324,7 +330,7 @@ public abstract class ChatComponentMixin {
 
     @Inject(method = EXTRACT_PRIVATE, at = @At("HEAD"))
     private void alpaka$resetBlurPanel(ChatComponent.ChatGraphicsAccess access, int guiHeight, int ticks, ChatComponent.DisplayMode mode, CallbackInfo ci) {
-        ChatBlurFeature.resetPanel();
+        ChatBlurFeature.resetPanel(mode.foreground);
     }
 
     /**

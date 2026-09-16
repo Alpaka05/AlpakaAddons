@@ -403,6 +403,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.playerModelDisableMovement = v; AlpakaConfig.save(); },
                 "disable movement sway steady static hud player model swim swimming"));
 
+        OPTIONS.add(new ConfigOption("player_model_show_name_tag", "Show Name Tag",
+                "Draws your name tag above the HUD avatar.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.playerModelShowNameTag,
+                v -> { AlpakaConfig.instance.playerModelShowNameTag = v; AlpakaConfig.save(); },
+                "player model hud avatar name tag label hide show"));
+
         OPTIONS.add(new ConfigOption("player_model_hide_armor", "Hide Armor on Model",
                 "Hides armor pieces from rendering on the player model HUD.",
                 ConfigCategory.VISUALS,
@@ -1313,7 +1320,7 @@ public class AlpakaConfigRegistry {
                 0.0f, 100.0f, val -> val == 0.0f ? "Off (0%)" : String.format(Locale.ROOT, "%.0f%%", val),
                 "name tag background backdrop opacity dark box"));
 
-        OPTIONS.add(new ConfigOption("name_tag_gradient_start", "Gradient Start Colour",
+        OPTIONS.add(new ConfigOption("name_tag_gradient_start_color", "Gradient Start Colour",
                 "First colour of the Gradient effect.",
                 ConfigCategory.COSMETICS,
                 "Choose Color",
@@ -1323,7 +1330,7 @@ public class AlpakaConfigRegistry {
                 })),
                 "name tag gradient colour color start first picker"));
 
-        OPTIONS.add(new ConfigOption("name_tag_gradient_end", "Gradient End Colour",
+        OPTIONS.add(new ConfigOption("name_tag_gradient_end_color", "Gradient End Colour",
                 "Second colour of the Gradient effect.",
                 ConfigCategory.COSMETICS,
                 "Choose Color",

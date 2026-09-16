@@ -260,6 +260,8 @@ object PlayerModelRenderer {
         state.outlineColor = EntityRenderState.NO_OUTLINE
         // The HUD avatar never burns, even while the real player is on fire.
         state.displayFireAnimation = false
+        // The name tag above the avatar is optional; without it only the model is drawn.
+        if (!AlpakaConfig.instance.playerModelShowNameTag) state.nameTag = null
 
         if (state is LivingEntityRenderState) {
             val cfg = AlpakaConfig.instance

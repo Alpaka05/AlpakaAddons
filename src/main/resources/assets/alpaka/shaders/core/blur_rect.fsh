@@ -23,9 +23,18 @@ float roundedBoxDistance(vec2 p, vec2 b, float r) {
 }
 
 void main() {
-    float radius = clamp(shape.x, 0.0, min(halfSize.x, halfSize.y));
-    float d = roundedBoxDistance(localPos, halfSize, radius);
-    float coverage = 1.0 - smoothstep(-0.5, 0.5, d);
+    float coverage;
+    vec4 tint = vertexColor * ColorModulator;
+    if (halfSize.x <= 0.0) {
+        // Free geometry rather than a rectangle: the vertex alpha carries the shape's coverage
+        // (including feathered edges), and the tint strength rides in UV2.y as 0..255.
+        coverage = tint.a;
+        tint.a = shape.y / 255.0;
+    } else {
+        float radius = clamp(shape.x, 0.0, min(halfSize.x, halfSize.y));
+        float d = roundedBoxDistance(localPos, halfSize, radius);
+        coverage = 1.0 - smoothstep(-0.5, 0.5, d);
+    }
     if (coverage <= 0.002) {
         discard;
     }
@@ -35,9 +44,8 @@ void main() {
     vec2 uv = gl_FragCoord.xy / vec2(textureSize(Sampler0, 0));
     vec3 blurred = texture(Sampler0, uv).rgb;
 
-    // The tint's alpha is how much of it covers the blur; the rounded edge is the only place the
+    // The tint's alpha is how much of it covers the blur; the shape's edge is the only place the
     // panel itself becomes translucent.
-    vec4 tint = vertexColor * ColorModulator;
     vec3 color = mix(blurred, tint.rgb, clamp(tint.a, 0.0, 1.0));
     fragColor = vec4(color, coverage);
 }

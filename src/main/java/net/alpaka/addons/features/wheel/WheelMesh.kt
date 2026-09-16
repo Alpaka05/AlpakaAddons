@@ -2,6 +2,8 @@ package net.alpaka.addons.features.wheel
 
 import com.mojang.blaze3d.pipeline.RenderPipeline
 import com.mojang.blaze3d.vertex.VertexConsumer
+import net.alpaka.addons.client.gui.AlpakaGuiPipelines
+import net.alpaka.addons.features.chat.ChatBlurFeature
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.navigation.ScreenRectangle
 import net.minecraft.client.gui.render.TextureSetup
@@ -34,7 +36,7 @@ import kotlin.math.sqrt
  * downwards. Vertices are transformed by whatever pose is current when [submit] is called, so an
  * open animation that scales the pose scales this geometry too.
  */
-class WheelMesh(private val feather: Float) {
+class WheelMesh @JvmOverloads constructor(private val feather: Float, private val blur: Boolean = false, private val blurTint: Float = 0.55f) {
     private var xy = FloatArray(2048)
     private var colors = IntArray(1024)
     private var count = 0
@@ -270,28 +272,51 @@ class WheelMesh(private val feather: Float) {
             return
         }
 
+        if (blur) ChatBlurFeature.request()
         graphics.guiRenderState.addGuiElement(
-            Element(pose, xy.copyOf(2 * count), colors.copyOf(count), count, scissor, bounds)
+            Element(pose, xy.copyOf(2 * count), colors.copyOf(count), count, scissor, bounds, blur, blurTint)
         )
         count = 0
     }
 
+    /**
+     * The submitted geometry. In blur mode the same quads go through the blurred-glass pipeline
+     * the chat background uses: the frame behind them is shown blurred and tinted with the vertex
+     * colour, and the vertex alpha - which carries the feathered edges - becomes the coverage. If
+     * no blurred copy of the frame could be made this frame, the quads fall back to plain colour.
+     */
     private class Element(
         private val pose: Matrix3x2fc,
         private val xy: FloatArray,
         private val colors: IntArray,
         private val count: Int,
         private val scissor: ScreenRectangle?,
-        private val bounds: ScreenRectangle
+        private val bounds: ScreenRectangle,
+        private val blur: Boolean,
+        private val blurTint: Float
     ) : GuiElementRenderState {
+        private fun blurActive() = blur && ChatBlurFeature.isReady()
+
         override fun buildVertices(consumer: VertexConsumer) {
-            for (i in 0 until count) {
-                consumer.addVertexWith2DPose(pose, xy[2 * i], xy[2 * i + 1]).setColor(colors[i])
+            if (blurActive()) {
+                val tint = (blurTint.coerceIn(0f, 1f) * 255f).toInt()
+                for (i in 0 until count) {
+                    consumer.addVertexWith2DPose(pose, xy[2 * i], xy[2 * i + 1])
+                        .setColor(colors[i])
+                        .setUv(0f, 0f)
+                        .setUv1(0, 0)
+                        .setUv2(0, tint)
+                        .setNormal(0f, 0f, 1f)
+                }
+            } else {
+                for (i in 0 until count) {
+                    consumer.addVertexWith2DPose(pose, xy[2 * i], xy[2 * i + 1]).setColor(colors[i])
+                }
             }
         }
 
-        override fun pipeline(): RenderPipeline = RenderPipelines.GUI
-        override fun textureSetup(): TextureSetup = TextureSetup.noTexture()
+        override fun pipeline(): RenderPipeline = if (blurActive()) AlpakaGuiPipelines.blurRect() else RenderPipelines.GUI
+        override fun textureSetup(): TextureSetup = if (blurActive()) ChatBlurFeature.textureSetup() else TextureSetup.noTexture()
         override fun scissorArea(): ScreenRectangle? = scissor
         override fun bounds(): ScreenRectangle = bounds
     }

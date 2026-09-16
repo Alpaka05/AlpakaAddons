@@ -513,6 +513,8 @@ public class AlpakaConfigScreen extends Screen {
                                     case "chroma_hat_color" -> net.alpaka.addons.config.AlpakaConfig.instance.chromaHatColor;
                                     case "etherwarp_overlay_color" -> net.alpaka.addons.config.AlpakaConfig.instance.etherwarpOverlayColor;
                                     case "etherwarp_fail_color" -> net.alpaka.addons.config.AlpakaConfig.instance.etherwarpOverlayFailColor;
+                                    case "name_tag_gradient_start_color" -> net.alpaka.addons.config.AlpakaConfig.instance.nameTagGradientStart;
+                                    case "name_tag_gradient_end_color" -> net.alpaka.addons.config.AlpakaConfig.instance.nameTagGradientEnd;
                                     default -> net.alpaka.addons.config.AlpakaConfig.instance.blockOutlineColor;
                                 };
                                 ModernGuiUtils.drawModernColorButton(graphics, this.font, widgetX, widgetY, widgetW, widgetH, colorVal, isWidgetHovered);

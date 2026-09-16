@@ -9,6 +9,8 @@ import com.mojang.blaze3d.textures.FilterMode;
 import com.mojang.blaze3d.textures.GpuTexture;
 import net.alpaka.addons.client.gui.AlpakaGuiElementSink;
 import net.alpaka.addons.client.gui.BlurRectRenderState;
+import net.alpaka.addons.client.gui.RoundedRectRenderState;
+import org.joml.Vector2f;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -60,11 +62,20 @@ public final class ChatBlurFeature {
     // background pass measured. Vanilla draws one box per line in that pass; with the panel on,
     // those boxes are only measured, and the panel is submitted in their place before the text.
     private static GuiGraphicsExtractor currentGraphics;
+    private static int mouseX;
+    private static int mouseY;
+    private static boolean foreground;
+    private static float scrollOffset;
     private static float panelHeight;
     private static float panelAlpha;
+    private static int panelLines;
     private static int panelBottom;
     private static int panelWidth;
+    private static int panelLineHeight;
     private static float panelOpacity;
+
+    /** The lift of the line under the mouse, over the panel's own tint. */
+    private static final int HOVER_HIGHLIGHT = 0x22FFFFFF;
 
     private ChatBlurFeature() {}
 
@@ -72,19 +83,34 @@ public final class ChatBlurFeature {
         return AlpakaConfig.instance.chatBlurEnabled;
     }
 
-    /** The chat is about to be extracted into this graphics. */
-    public static void beginExtraction(GuiGraphicsExtractor graphics) {
+    /** The chat is about to be extracted into this graphics, with the mouse here. */
+    public static void beginExtraction(GuiGraphicsExtractor graphics, int mx, int my) {
         currentGraphics = graphics;
-        resetPanel();
+        mouseX = mx;
+        mouseY = my;
+        resetPanel(false);
     }
 
     public static void endExtraction() {
         currentGraphics = null;
     }
 
-    public static void resetPanel() {
+    /** A new layout pass starts; whether it draws the chat as open (mouse visible) or as the HUD. */
+    public static void resetPanel(boolean foregroundMode) {
         panelHeight = 0.0f;
         panelAlpha = 0.0f;
+        panelLines = 0;
+        scrollOffset = 0.0f;
+        foreground = foregroundMode;
+    }
+
+    /**
+     * How far the lines are currently shifted by the smooth scroll, in chat pixels. The panel is
+     * the box the lines scroll inside, so it stays put while they move and the lines are clipped to
+     * it; the arrival slide, by contrast, moves box and lines together.
+     */
+    public static void setScrollOffset(float offset) {
+        scrollOffset = offset;
     }
 
     /**
@@ -99,10 +125,24 @@ public final class ChatBlurFeature {
         if (currentGraphics == null || !isEnabled()) return false;
         panelBottom = chatBottom;
         panelWidth = width;
+        panelLineHeight = lineHeight;
         panelOpacity = backgroundOpacity;
         panelHeight += alpha * lineHeight;
         panelAlpha = Math.max(panelAlpha, alpha);
+        panelLines++;
         return true;
+    }
+
+    /**
+     * Whether the panel was submitted with a clip around it that the chat's end must pop. The
+     * clip is what keeps scrolling lines inside the box.
+     */
+    private static boolean clipped;
+
+    public static boolean takeClipped() {
+        boolean was = clipped;
+        clipped = false;
+        return was;
     }
 
     /**
@@ -126,10 +166,40 @@ public final class ChatBlurFeature {
         int alpha = Math.round(Mth.clamp(panelAlpha * panelOpacity, 0.0f, 1.0f) * 255.0f);
         if (alpha <= 0) return;
 
+        // The pose the lines are drawn with carries the scroll shift; the box must not, so it is
+        // taken back out for the panel and for the clip around it.
+        Matrix3x2f linePose = new Matrix3x2f(graphics.pose());
+        Matrix3x2f boxPose = new Matrix3x2f(linePose).translate(0.0f, -scrollOffset);
+
         sink.alpaka$submitElement(new BlurRectRenderState(
-                new Matrix3x2f(graphics.pose()), x0, y0, x1, y1,
+                boxPose, x0, y0, x1, y1,
                 Math.round(RADIUS * toScreen), alpha << 24, toScreen, sink.alpaka$currentScissor()));
         request();
+
+        // Everything the chat draws from here on - lines, tags, the hover lift - stays inside the
+        // box, so a line gliding in or out while scrolling is cut at the box's edge.
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(0.0f, -scrollOffset);
+        graphics.enableScissor(x0, y0, x1, y1);
+        graphics.pose().popMatrix();
+        clipped = true;
+
+        // With the chat open, the line under the mouse is lifted a little. The mouse is taken into
+        // the lines' own coordinates, so the lift follows the lines while they scroll.
+        if (foreground && panelLines > 0 && panelLineHeight > 0) {
+            Matrix3x2f inverse = new Matrix3x2f(linePose).invert();
+            Vector2f local = inverse.transformPosition(new Vector2f(mouseX, mouseY));
+            if (local.x >= x0 && local.x <= x1 && local.y <= panelBottom) {
+                int line = Mth.floor((panelBottom - local.y) / panelLineHeight);
+                if (line >= 0 && line < panelLines) {
+                    int top = panelBottom - (line + 1) * panelLineHeight;
+                    sink.alpaka$submitElement(new RoundedRectRenderState(
+                            linePose, x0 + 1, top, x1 - 1, top + panelLineHeight,
+                            Math.round(3 * toScreen), 0, HOVER_HIGHLIGHT,
+                            Math.max(1, Math.round(toScreen)), sink.alpaka$currentScissor()));
+                }
+            }
+        }
     }
 
     /** A panel was extracted this frame; the frame has to be captured and blurred before drawing. */

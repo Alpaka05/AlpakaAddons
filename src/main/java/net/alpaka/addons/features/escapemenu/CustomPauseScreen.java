@@ -93,6 +93,33 @@ public class CustomPauseScreen extends Screen {
     private static final int CARD_WIDTH = 200;
     private static final int CARD_HEIGHT = 254;
 
+    /**
+     * The panel's vertical layout, which tightens when the window is too short for the full one.
+     *
+     * At full size the header is 56 tall and the six buttons are 25 tall on a 30 pitch. A windowed
+     * game at a small size can be shorter than that whole panel, so between the full layout and a
+     * compact one (48 header, 20 buttons on a 23 pitch, less padding) everything is interpolated by
+     * how much room is missing. The compact panel is 197 tall, which still fits a 480-pixel-high
+     * window at GUI scale 2.
+     */
+    private record Layout(int cardHeight, int headerHeight, int buttonHeight, int spacing,
+                          int buttonStartY, int logoInset, int subtitleY) {}
+
+    private Layout layout() {
+        int available = this.height - 12;
+        float t = CARD_HEIGHT <= available ? 0.0f
+                : Math.min(1.0f, (CARD_HEIGHT - available) / (float) (CARD_HEIGHT - 197));
+        int header = Math.round(56 + (48 - 56) * t);
+        int buttonHeight = Math.round(25 + (20 - 25) * t);
+        int spacing = Math.round(30 + (23 - 30) * t);
+        int gap = Math.round(8 + (6 - 8) * t);
+        int pad = Math.round(15 + (8 - 15) * t);
+        int cardHeight = header + gap + 5 * spacing + buttonHeight + pad;
+        int logoInset = Math.round(LOGO_TOP_INSET + (3 - LOGO_TOP_INSET) * t);
+        int subtitleY = Math.round(42 + (37 - 42) * t);
+        return new Layout(cardHeight, header, buttonHeight, spacing, header + gap, logoInset, subtitleY);
+    }
+
     /** Gap between the panel's top edge and the logo. */
     private static final int LOGO_TOP_INSET = 5;
 
@@ -119,7 +146,8 @@ public class CustomPauseScreen extends Screen {
     }
 
     private int logoTop() {
-        return (this.height - CARD_HEIGHT) / 2 + LOGO_TOP_INSET;
+        Layout layout = layout();
+        return (this.height - layout.cardHeight()) / 2 + layout.logoInset();
     }
 
     private boolean isOverLogo(double mouseX, double mouseY) {
@@ -153,16 +181,17 @@ public class CustomPauseScreen extends Screen {
         int centerX = this.width / 2;
         int centerY = this.height / 2;
 
+        Layout layout = layout();
         int cardWidth = CARD_WIDTH;
-        int cardHeight = CARD_HEIGHT;
+        int cardHeight = layout.cardHeight();
         int startX = centerX - cardWidth / 2;
         int startY = centerY - cardHeight / 2;
 
         int buttonWidth = 168;
-        int buttonHeight = 25;
+        int buttonHeight = layout.buttonHeight();
         int buttonX = centerX - buttonWidth / 2;
-        int buttonStartY = startY + 64;
-        int spacing = 30;
+        int buttonStartY = startY + layout.buttonStartY();
+        int spacing = layout.spacing();
 
         // 1. Resume Button
         this.resumeButton = new CustomPauseButton(buttonX, buttonStartY, buttonWidth, buttonHeight,
@@ -292,8 +321,9 @@ public class CustomPauseScreen extends Screen {
         graphics.fill(0, 0, this.width, this.height, 0x70000000);
         graphics.pose().popMatrix();
 
+        Layout layout = layout();
         int cardWidth = CARD_WIDTH;
-        int cardHeight = CARD_HEIGHT;
+        int cardHeight = layout.cardHeight();
         int startX = centerX - cardWidth / 2;
         int startY = centerY - cardHeight / 2;
 
@@ -309,7 +339,7 @@ public class CustomPauseScreen extends Screen {
 
         // Header band: rounded along the panel's top corners, straight where it meets the buttons.
         // Inset by one pixel so it sits inside the hairline border rather than over it.
-        int headerH = 56;
+        int headerH = layout.headerHeight();
         ModernGuiUtils.drawRoundedRect(graphics, startX + 1, startY + 1, cardWidth - 2, headerH - 1, radius - 1, ModernGuiUtils.COLOR_SIDEBAR_BG);
         ModernGuiUtils.drawRect(graphics, startX + 1, startY + headerH - radius, cardWidth - 2, radius, ModernGuiUtils.COLOR_SIDEBAR_BG);
         ModernGuiUtils.drawRect(graphics, startX + 1, startY + headerH - 1, cardWidth - 2, 1, ModernGuiUtils.getAccentColor());
@@ -318,7 +348,7 @@ public class CustomPauseScreen extends Screen {
         ensureModIconRegistered();
         int iconSize = LOGO_SIZE;
         int iconX = centerX - iconSize / 2;
-        int iconY = startY + LOGO_TOP_INSET;
+        int iconY = startY + layout.logoInset();
 
         boolean logoHovered = !this.showDisconnectPrompt && isOverLogo(mouseX, mouseY);
         this.logoHover += ((logoHovered ? 1.0f : 0.0f) - this.logoHover) * 0.25f;
@@ -343,7 +373,7 @@ public class CustomPauseScreen extends Screen {
             }
         }
         String user = (this.minecraft != null && this.minecraft.getUser() != null) ? this.minecraft.getUser().getName() : "Player";
-        ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text(user + " • " + status), centerX, startY + 42, ModernGuiUtils.COLOR_TEXT_MUTED);
+        ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text(user + " • " + status), centerX, startY + layout.subtitleY(), ModernGuiUtils.COLOR_TEXT_MUTED);
 
         graphics.pose().popMatrix();
     }

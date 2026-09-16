@@ -46,7 +46,6 @@ import java.net.UnknownHostException
 class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
 
     companion object {
-        val HERO_TEXTURE_ID: Identifier = Identifier.parse("alpaka:textures/gui/join_hypixel_button.png")
         val MOD_ICON_ID: Identifier = Identifier.parse("alpaka:textures/gui/alpaka_icon.png")
 
         /** The pause menu's icon font; see CustomPauseScreen for why the icons are glyphs. */
@@ -66,16 +65,21 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         private const val LOGO_HOVER_GROWTH = 0.07f
 
         /**
-         * The Join Hypixel emblem. Its artwork has a straight left edge made to sit flush against the
-         * screen edge, so it is drawn at x = 0; the texture is 1016 x 1024 and shown at this size, with
-         * a smaller cut for short windows.
+         * The Join Hypixel tab: the same edge-tab shape as the entries below, twice as tall, wider
+         * and in Hypixel's gold rather than dark glass, with a gold strip along its left side that is
+         * always lit. Two lines: the name, then the address and the live player count.
          */
-        private const val HERO_TEX_W = 1012
-        private const val HERO_TEX_H = 1024
-        private const val HERO_W = 119
-        private const val HERO_H = 120
-        private const val HERO_W_COMPACT = 89
-        private const val HERO_H_COMPACT = 90
+        private const val HERO_WIDTH = 230
+        private const val HERO_SLANT = 22
+        private const val HERO_HEIGHT = 46
+        private const val HERO_HEIGHT_COMPACT = 40
+        private const val HERO_FILL = 0xB8785414.toInt()
+        private const val HERO_FILL_HOVER = 0xD8946A1C.toInt()
+        private const val HERO_EDGE = 0xFFF2C14E.toInt()
+        private const val HERO_EDGE_HOVER = 0xFFFFE08A.toInt()
+        private const val HERO_TITLE = 0xFFFFD86B.toInt()
+        private const val HERO_TITLE_HOVER = 0xFFFFF0C2.toInt()
+        private const val HERO_SUBLINE = 0xFFFFE9B3.toInt()
 
         /** The tabs: anchored at x = 0, this wide, with the right end slanted by this much. */
         private const val TAB_WIDTH = 190
@@ -96,7 +100,6 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         private const val RED = 0xFFEF4444.toInt()
         private const val RED_TEXT = 0xFFF0B4B4.toInt()
         private const val RED_TEXT_HOVER = 0xFFF87171.toInt()
-        private const val ONLINE_TEXT = 0xFFD8DEE8.toInt()
 
         private const val APPEAR_SECONDS = 0.18f
         private const val STAGGER_SECONDS = 0.03f
@@ -106,20 +109,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         /** An attempt still unanswered after this long is shown as offline. */
         private const val PING_TIMEOUT_MS = 8_000L
 
-        private var textureRegistered = false
         private var modIconRegistered = false
-
-        fun ensureTextureRegistered() {
-            if (!textureRegistered) {
-                textureRegistered = true
-                try {
-                    Minecraft.getInstance().textureManager.registerAndLoad(HERO_TEXTURE_ID, SimpleTexture(HERO_TEXTURE_ID))
-                } catch (e: Throwable) {
-                    System.err.println("[AlpakaAddons] Failed to register SimpleTexture for join_hypixel_button.png:")
-                    e.printStackTrace()
-                }
-            }
-        }
 
         fun ensureModIconRegistered() {
             if (!modIconRegistered) {
@@ -153,14 +143,12 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
     private var lastPingMs = 0L
 
     private val compact get() = this.height < 380
-    private val heroW get() = if (compact) HERO_W_COMPACT else HERO_W
-    private val heroH get() = if (compact) HERO_H_COMPACT else HERO_H
+    private val heroHeight get() = if (compact) HERO_HEIGHT_COMPACT else HERO_HEIGHT
     private val tabHeight get() = if (compact) TAB_HEIGHT_COMPACT else TAB_HEIGHT
     private val tabPitch get() = if (compact) TAB_PITCH_COMPACT else TAB_PITCH
 
     private fun heroY() = LOGO_Y + LOGO_SIZE + 14
-    private fun onlineY() = heroY() + heroH + 6
-    private fun tabsY() = onlineY() + 18
+    private fun tabsY() = heroY() + heroHeight + 12
 
     private fun isOverLogo(mouseX: Double, mouseY: Double): Boolean =
         mouseX >= COLUMN_X && mouseX < COLUMN_X + LOGO_SIZE && mouseY >= LOGO_Y && mouseY < LOGO_Y + LOGO_SIZE
@@ -188,7 +176,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         this.clearWidgets()
         this.openTime = System.currentTimeMillis()
 
-        this.addRenderableWidget(RetroHeroJoinButton(0, heroY(), heroW, heroH) {
+        this.addRenderableWidget(HeroTab(heroY(), HERO_WIDTH, heroHeight) {
             joinServer("mc.hypixel.net")
         })
 
@@ -294,16 +282,6 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
             graphics.text(this.font, GuiFont.text("v${ModVersion.mod()} · Minecraft ${ModVersion.minecraft()}"),
                 textX, logoY + 24, fade(ModernGuiUtils.COLOR_TEXT_MUTED, logoAppear), false)
         }
-
-        // Hypixel's player count under the artwork: a dot in the accent while it is reachable.
-        val onlineAppear = appear(1)
-        if (onlineAppear > 0.01f) {
-            val (dot, line) = onlineLine()
-            val x = COLUMN_X + 4
-            val y = onlineY()
-            graphics.text(this.font, GuiFont.text("●"), x, y, fade(dot, onlineAppear), false)
-            graphics.text(this.font, GuiFont.text(line), x + 10, y, fade(ONLINE_TEXT, onlineAppear), false)
-        }
     }
 
     /** The dot colour and the text of the online line, from whatever the last ping learned. */
@@ -333,11 +311,16 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         return super.mouseClicked(event, doubleClick)
     }
 
-    /** The Join Hypixel artwork, which swells a little when pointed at. */
-    private inner class RetroHeroJoinButton(
-        x: Int, y: Int, width: Int, height: Int,
+    /**
+     * The Join Hypixel tab at the head of the column: the edge-tab shape in Hypixel's gold, twice
+     * the height of an entry, with a lit gold strip on its left side, the name in large type and
+     * the address with the live player count beneath. Hover pulls it out of the edge and brightens
+     * the gold, like the entries below it.
+     */
+    private inner class HeroTab(
+        y: Int, width: Int, height: Int,
         private val onClickAction: () -> Unit
-    ) : AbstractButton(x, y, width, height, Component.literal("")) {
+    ) : AbstractButton(0, y, width, height, Component.literal("Join Hypixel")) {
 
         private var hoverTime = 0.0f
 
@@ -353,19 +336,41 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
             val hovered = mouseX >= this.x && mouseX < this.x + this.width &&
                           mouseY >= this.y && mouseY < this.y + this.height && this.active
             this.hoverTime += ((if (hovered) 1.0f else 0.0f) - this.hoverTime) * 0.25f
+            val hover = this.hoverTime
 
-            // The emblem hangs off the screen edge, so it grows away from that edge rather than
-            // around its centre: the left side stays put, the right side and the top and bottom
-            // move out, and the artwork brightens from a slightly dimmed rest state.
-            val grow = (6.0f * this.hoverTime).toInt()
-            val drawY = this.y + Math.round((1f - appear) * 6f)
-            val tint = WheelMesh.lerpColor(0xFFDCDCDC.toInt(), 0xFFFFFFFF.toInt(), this.hoverTime)
+            val guiScale = (this@CustomMainMenuScreen.minecraft ?: Minecraft.getInstance()).window.guiScale.coerceAtLeast(1)
+            val mesh = WheelMesh(1.15f / guiScale)
 
-            ensureTextureRegistered()
-            graphics.blit(
-                RenderPipelines.GUI_TEXTURED, HERO_TEXTURE_ID, this.x, drawY - grow, 0.0f, 0.0f,
-                this.width + grow * 2, this.height + grow * 2, HERO_TEX_W, HERO_TEX_H, HERO_TEX_W, HERO_TEX_H, fade(tint, appear),
-            )
+            val x0 = (1f - appear) * -(this.width + 20f) + hover * TAB_PULL
+            val y0 = this.y.toFloat()
+            val y1 = y0 + this.height
+            val x1 = x0 + this.width
+
+            val fill = fade(WheelMesh.lerpColor(HERO_FILL, HERO_FILL_HOVER, hover), appear)
+            mesh.quad(x0, y0, fill, x0, y1, fill, x1 - HERO_SLANT, y1, fill, x1, y0, fill)
+            val edge = fade(WheelMesh.lerpColor(HERO_EDGE, HERO_EDGE_HOVER, hover), appear)
+            mesh.quad(x0, y0, edge, x0, y1, edge, x0 + 4f, y1, edge, x0 + 4f, y0, edge)
+            mesh.submit(graphics)
+
+            val mc = this@CustomMainMenuScreen.minecraft ?: return
+            val textX = Math.round(x0) + 16
+            val compactTab = this.height < HERO_HEIGHT
+            val titleScale = if (compactTab) 1.2f else 1.4f
+            val title = fade(WheelMesh.lerpColor(HERO_TITLE, HERO_TITLE_HOVER, hover), appear)
+            graphics.pose().pushMatrix()
+            graphics.pose().translate(textX.toFloat(), y0 + (if (compactTab) 5f else 6f))
+            graphics.pose().scale(titleScale, titleScale)
+            graphics.text(mc.font, GuiFont.text("JOIN HYPIXEL"), 0, 0, title, false)
+            graphics.pose().popMatrix()
+
+            // Address, then the live dot and count, on one line under the name.
+            val (dot, line) = onlineLine()
+            val subY = this.y + this.height - 15
+            val address = "mc.hypixel.net  "
+            graphics.text(mc.font, GuiFont.text(address), textX, subY, fade(HERO_SUBLINE, appear), false)
+            val dotX = textX + GuiFont.width(mc.font, address)
+            graphics.text(mc.font, GuiFont.text("●"), dotX, subY, fade(dot, appear), false)
+            graphics.text(mc.font, GuiFont.text(line), dotX + 10, subY, fade(HERO_SUBLINE, appear), false)
         }
 
         override fun updateWidgetNarration(narration: NarrationElementOutput) {}

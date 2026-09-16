@@ -57,6 +57,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         private const val ICON_SLIDERS = ""
         private const val ICON_DOOR = ""
         private const val ICON_PUZZLE = ""
+        private const val ICON_POTION = ""
 
         /** Left edge of the column, and the logo in its corner. */
         private const val COLUMN_X = 28
@@ -69,9 +70,9 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
          * screen edge, so it is drawn at x = 0; the texture is 1016 x 1024 and shown at this size, with
          * a smaller cut for short windows.
          */
-        private const val HERO_TEX_W = 1016
+        private const val HERO_TEX_W = 1012
         private const val HERO_TEX_H = 1024
-        private const val HERO_W = 139
+        private const val HERO_W = 138
         private const val HERO_H = 140
         private const val HERO_W_COMPACT = 99
         private const val HERO_H_COMPACT = 100
@@ -205,7 +206,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         tab(iconLabel(ICON_SERVER, "Multiplayer"), false) {
             this.minecraft?.gui?.setScreen(JoinMultiplayerScreen(this))
         }
-        tab(iconLabel(ICON_SERVER, "Join Alpha"), false) {
+        tab(iconLabel(ICON_POTION, "Join Alpha"), false) {
             joinServer("alpha.hypixel.net")
         }
         tab(iconLabel(ICON_PUZZLE, "Mods"), false) {
@@ -354,13 +355,17 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
                           mouseY >= this.y && mouseY < this.y + this.height && this.active
             this.hoverTime += ((if (hovered) 1.0f else 0.0f) - this.hoverTime) * 0.25f
 
-            val grow = (5.0f * this.hoverTime).toInt()
+            // The emblem hangs off the screen edge, so it grows away from that edge rather than
+            // around its centre: the left side stays put, the right side and the top and bottom
+            // move out, and the artwork brightens from a slightly dimmed rest state.
+            val grow = (6.0f * this.hoverTime).toInt()
             val drawY = this.y + Math.round((1f - appear) * 6f)
+            val tint = WheelMesh.lerpColor(0xFFDCDCDC.toInt(), 0xFFFFFFFF.toInt(), this.hoverTime)
 
             ensureTextureRegistered()
             graphics.blit(
-                RenderPipelines.GUI_TEXTURED, HERO_TEXTURE_ID, this.x - grow, drawY - grow, 0.0f, 0.0f,
-                this.width + grow * 2, this.height + grow * 2, HERO_TEX_W, HERO_TEX_H, HERO_TEX_W, HERO_TEX_H, fade(0xFFFFFFFF.toInt(), appear),
+                RenderPipelines.GUI_TEXTURED, HERO_TEXTURE_ID, this.x, drawY - grow, 0.0f, 0.0f,
+                this.width + grow * 2, this.height + grow * 2, HERO_TEX_W, HERO_TEX_H, HERO_TEX_W, HERO_TEX_H, fade(tint, appear),
             )
         }
 

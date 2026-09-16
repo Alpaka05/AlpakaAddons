@@ -315,6 +315,10 @@ loom {
             if (project.hasProperty("quickPlayWorld")) {
                 programArgs("--quickPlaySingleplayer", project.property("quickPlayWorld").toString())
             }
+            // -PscrollRate=<per second> slows or speeds up the chat's smooth scrolling for tuning.
+            if (project.hasProperty("scrollRate")) {
+                vmArg("-Dalpaka.scrollRate=" + project.property("scrollRate").toString())
+            }
         }
     }
 }

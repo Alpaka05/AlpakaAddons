@@ -568,21 +568,8 @@ public class AlpakaConfigScreen extends Screen {
         // The setup-mode handle on the panel's top edge, only on the Item Viewmodel tab: a small
         // tab that folds the sidebar away and moves the panel aside, or brings both back.
         if (showsHandle()) {
-            int hx = handleX(winX, winW);
-            int hy = handleY(winY);
-            boolean hoverHandle = isOverHandle(mouseX, mouseY, winX, winY, winW);
-            int radius = ModernGuiUtils.WIDGET_RADIUS;
-            int bg = hoverHandle ? ModernGuiUtils.COLOR_CARD_BG_HOVER : ModernGuiUtils.COLOR_SIDEBAR_BG;
-            int border = (hoverHandle || setupMode) ? ModernGuiUtils.getAccentColor() : ModernGuiUtils.COLOR_CARD_BORDER;
-            // Rounded on top, joined to the panel below: the rounded shape reaches down under the
-            // panel's top edge, and the panel colour covers the join.
-            ModernGuiUtils.drawRoundedPanel(graphics, hx, hy, HANDLE_W, HANDLE_H + radius, radius, bg, border);
-            ModernGuiUtils.drawRect(graphics, hx + 1, winY + 1, HANDLE_W - 2, radius, ModernGuiUtils.COLOR_PANEL_BG);
-            ModernGuiUtils.drawRect(graphics, hx + 1, winY, HANDLE_W - 2, 1, bg);
-            String glyph = setupMode ? "»" : "«";
-            String label = setupMode ? "Back" : "Setup";
-            int textColor = (hoverHandle || setupMode) ? ModernGuiUtils.getAccentColor() : ModernGuiUtils.COLOR_TEXT_MUTED;
-            ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text(glyph + " " + label), hx + HANDLE_W / 2, hy + 3, textColor);
+            drawHandle(graphics, winX, winY, winW, headerHeight,
+                    isOverHandle(mouseX, mouseY, winX, winY, winW, headerHeight), deltaSec);
         }
 
         if (isAnimatingOpen) {
@@ -635,27 +622,62 @@ public class AlpakaConfigScreen extends Screen {
         return panelWidth() - (SIDEBAR_FULL_WIDTH - sidebarWidth());
     }
 
-    /** The setup-mode handle: a small tab on the panel's top edge, above the content's right end. */
-    private static final int HANDLE_W = 46;
-    private static final int HANDLE_H = 13;
+    /**
+     * The setup-mode handle: a large chevron in the content area's top-right corner, level with the
+     * tab's heading. Pointing left while the panel is centred (it will move left), right in setup
+     * mode (it will come back).
+     */
+    private static final int HANDLE_SIZE = 28;
 
     private boolean showsHandle() {
         return activeCategory == ConfigCategory.VIEWMODEL;
     }
 
     private int handleX(int winX, int winW) {
-        return winX + winW - HANDLE_W - 14;
+        return winX + winW - HANDLE_SIZE - 16;
     }
 
-    private int handleY(int winY) {
-        return winY - HANDLE_H + 1;
+    private int handleY(int winY, int headerHeight) {
+        return winY + headerHeight + 10;
     }
 
-    private boolean isOverHandle(double mouseX, double mouseY, int winX, int winY, int winW) {
+    private boolean isOverHandle(double mouseX, double mouseY, int winX, int winY, int winW, int headerHeight) {
         if (!showsHandle()) return false;
         int hx = handleX(winX, winW);
-        int hy = handleY(winY);
-        return mouseX >= hx && mouseX <= hx + HANDLE_W && mouseY >= hy && mouseY <= hy + HANDLE_H;
+        int hy = handleY(winY, headerHeight);
+        return mouseX >= hx && mouseX <= hx + HANDLE_SIZE && mouseY >= hy && mouseY <= hy + HANDLE_SIZE;
+    }
+
+    /** Eased hover of the handle, so its colour and size glide. */
+    private float handleHover = 0.0f;
+
+    /**
+     * Draws the chevron: two thick strokes meeting at the point, drawn as quads so the diagonals are
+     * smooth, in the muted text colour at rest and the accent when hovered or while setup mode is on.
+     */
+    private void drawHandle(GuiGraphicsExtractor graphics, int winX, int winY, int winW, int headerHeight, boolean hovered, float deltaSec) {
+        handleHover = PloppAnimation.interpolate(handleHover, hovered ? 1.0f : 0.0f, deltaSec, 14.0f);
+        int hx = handleX(winX, winW);
+        int hy = handleY(winY, headerHeight);
+        float cx = hx + HANDLE_SIZE / 2.0f;
+        float cy = hy + HANDLE_SIZE / 2.0f;
+        int resting = setupMode ? ModernGuiUtils.getAccentColor() : ModernGuiUtils.COLOR_TEXT_MUTED;
+        int color = ModernGuiUtils.lerpColor(resting, ModernGuiUtils.getAccentColor(), handleHover);
+        // Points left to go into setup mode, right to come back; grows a little under the mouse.
+        float direction = setupMode ? 1.0f : -1.0f;
+        float size = 7.0f + 1.0f * handleHover;
+        float thickness = 2.4f;
+        float tipX = cx + direction * size * 0.5f;
+        float backX = cx - direction * size * 0.5f;
+        int guiScale = (int) Math.max(1, this.minecraft == null ? 2 : this.minecraft.getWindow().getGuiScale());
+        net.alpaka.addons.features.wheel.WheelMesh mesh = new net.alpaka.addons.features.wheel.WheelMesh(1.15f / guiScale);
+        mesh.quad(
+                backX, cy - size, color, backX + direction * thickness, cy - size, color,
+                tipX + direction * thickness, cy, color, tipX, cy, color);
+        mesh.quad(
+                tipX, cy, color, tipX + direction * thickness, cy, color,
+                backX + direction * thickness, cy + size, color, backX, cy + size, color);
+        mesh.submit(graphics);
     }
 
     private int getEffectiveWinX(int winW) {
@@ -691,7 +713,7 @@ public class AlpakaConfigScreen extends Screen {
         int contentH = winH - headerHeight;
 
         // The setup-mode handle above the panel
-        if (event.button() == 0 && isOverHandle(mouseX, mouseY, winX, winY, winW)) {
+        if (event.button() == 0 && isOverHandle(mouseX, mouseY, winX, winY, winW, headerHeight)) {
             playPloppSound();
             setupMode = !setupMode;
             return true;

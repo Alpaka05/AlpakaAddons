@@ -73,13 +73,19 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         private const val HERO_SLANT = 22
         private const val HERO_HEIGHT = 46
         private const val HERO_HEIGHT_COMPACT = 40
-        private const val HERO_FILL = 0xB8785414.toInt()
-        private const val HERO_FILL_HOVER = 0xD8946A1C.toInt()
-        private const val HERO_EDGE = 0xFFF2C14E.toInt()
-        private const val HERO_EDGE_HOVER = 0xFFFFE08A.toInt()
-        private const val HERO_TITLE = 0xFFFFD86B.toInt()
-        private const val HERO_TITLE_HOVER = 0xFFFFF0C2.toInt()
-        private const val HERO_SUBLINE = 0xFFFFE9B3.toInt()
+        /**
+         * At rest the Hypixel tab is the same dark glass as the entries, told apart only by its size
+         * and a muted gold strip; the gold comes in under the mouse, and gently - a warm tint on the
+         * glass, a soft gold on the name, never a solid gold block.
+         */
+        private const val HERO_FILL = 0x7A080C14
+        private const val HERO_FILL_HOVER = 0xB0503A12.toInt()
+        private const val HERO_EDGE = 0x90D9AE4C.toInt()
+        private const val HERO_EDGE_HOVER = 0xFFF2C14E.toInt()
+        private const val HERO_TITLE = 0xF0FFFFFF.toInt()
+        private const val HERO_TITLE_HOVER = 0xFFF2D58A.toInt()
+        private const val HERO_SUBLINE = 0xFFD8DEE8.toInt()
+        private const val HERO_SUBLINE_HOVER = 0xFFFFE9B3.toInt()
 
         /** The tabs: anchored at x = 0, this wide, with the right end slanted by this much. */
         private const val TAB_WIDTH = 190
@@ -367,10 +373,11 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
             val (dot, line) = onlineLine()
             val subY = this.y + this.height - 15
             val address = "mc.hypixel.net  "
-            graphics.text(mc.font, GuiFont.text(address), textX, subY, fade(HERO_SUBLINE, appear), false)
+            val subline = fade(WheelMesh.lerpColor(HERO_SUBLINE, HERO_SUBLINE_HOVER, hover), appear)
+            graphics.text(mc.font, GuiFont.text(address), textX, subY, subline, false)
             val dotX = textX + GuiFont.width(mc.font, address)
             graphics.text(mc.font, GuiFont.text("●"), dotX, subY, fade(dot, appear), false)
-            graphics.text(mc.font, GuiFont.text(line), dotX + 10, subY, fade(HERO_SUBLINE, appear), false)
+            graphics.text(mc.font, GuiFont.text(line), dotX + 10, subY, subline, false)
         }
 
         override fun updateWidgetNarration(narration: NarrationElementOutput) {}

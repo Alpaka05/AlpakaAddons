@@ -17,6 +17,13 @@ public final class ChatScrollAnimator {
     private static float visual;
     private static long lastNanos;
 
+    /**
+     * How fast the visual position closes in, per second. A wheel notch moves the chat seven lines,
+     * so the glide has to be slow enough to be seen over that distance: 10 per second settles in
+     * about 300 ms. Overridable with -Dalpaka.scrollRate for tuning.
+     */
+    private static final float RATE = Float.parseFloat(System.getProperty("alpaka.scrollRate", "10"));
+
     private ChatScrollAnimator() {}
 
     public static boolean isEnabled() {
@@ -36,7 +43,7 @@ public final class ChatScrollAnimator {
             visual = target;
             return 0.0f;
         }
-        visual += (target - visual) * (1.0f - (float) Math.exp(-dt * 18.0f));
+        visual += (target - visual) * (1.0f - (float) Math.exp(-dt * RATE));
         if (Math.abs(target - visual) < 0.002f) visual = target;
         return visual - target;
     }

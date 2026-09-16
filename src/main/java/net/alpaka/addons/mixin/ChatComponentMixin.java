@@ -250,26 +250,23 @@ public abstract class ChatComponentMixin {
         // to where the real one does.
         offset += ChatScrollAnimator.offsetLines(this.chatScrollbarPos) * this.getLineHeight();
 
+        // The chat is clipped to its own box whenever it is drawn, so a line gliding in or out while
+        // scrolling or arriving never shows above the chat or below it. Only while drawing, not
+        // while capturing clickable text, which has no graphics to clip. The box is placed before
+        // the offset is applied, so it stays put while the lines move inside it.
+        if (this.alpaka$graphics != null && !this.alpaka$scissored) {
+            float scale = (float) this.getScale();
+            int width = Mth.ceil(this.getWidth() / scale);
+            int bottom = Mth.floor((guiHeight - 40) / scale);
+            int top = bottom - this.getLinesPerPage() * this.getLineHeight();
+            int pad = ChatBlurFeature.PADDING + 1;
+            this.alpaka$graphics.enableScissor(-4 - pad, top - pad, width + 8 + pad, bottom + pad);
+            this.alpaka$scissored = true;
+        }
+
         if (Math.abs(offset) > 0.01f) {
             final float shift = offset;
             access.updatePose(pose -> pose.translate(0.0f, shift));
-            // While anything is in motion the chat is clipped to its own box, so a line gliding in
-            // or out does not show above the chat or below it. Only while drawing, not while
-            // capturing clickable text, which has no graphics to clip.
-            if (this.alpaka$graphics != null && !this.alpaka$scissored) {
-                float scale = (float) this.getScale();
-                int width = Mth.ceil(this.getWidth() / scale);
-                int bottom = Mth.floor((guiHeight - 40) / scale);
-                int top = bottom - this.getLinesPerPage() * this.getLineHeight();
-                int pad = ChatBlurFeature.PADDING + 1;
-                // In chat coordinates, which the pose already scales; the offset just applied is
-                // undone for the box so the box itself stays put.
-                this.alpaka$graphics.pose().pushMatrix();
-                this.alpaka$graphics.pose().translate(0.0f, -offset);
-                this.alpaka$graphics.enableScissor(-4 - pad, top - pad, width + 8 + pad, bottom + pad);
-                this.alpaka$graphics.pose().popMatrix();
-                this.alpaka$scissored = true;
-            }
         }
     }
 

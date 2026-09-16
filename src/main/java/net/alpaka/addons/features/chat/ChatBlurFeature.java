@@ -133,17 +133,6 @@ public final class ChatBlurFeature {
         return true;
     }
 
-    /**
-     * Whether the panel was submitted with a clip around it that the chat's end must pop. The
-     * clip is what keeps scrolling lines inside the box.
-     */
-    private static boolean clipped;
-
-    public static boolean takeClipped() {
-        boolean was = clipped;
-        clipped = false;
-        return was;
-    }
 
     /**
      * Submits the panel for the lines measured so far, under the chat's current pose. Called right
@@ -166,23 +155,15 @@ public final class ChatBlurFeature {
         int alpha = Math.round(Mth.clamp(panelAlpha * panelOpacity, 0.0f, 1.0f) * 255.0f);
         if (alpha <= 0) return;
 
-        // The pose the lines are drawn with carries the scroll shift; the box must not, so it is
-        // taken back out for the panel and for the clip around it.
-        Matrix3x2f linePose = new Matrix3x2f(graphics.pose());
-        Matrix3x2f boxPose = new Matrix3x2f(linePose).translate(0.0f, -scrollOffset);
+        // Submitted before the lines are shifted by the scroll, so the current pose is the box's;
+        // the lines will be drawn shifted down by the scroll offset, and the hover lift follows them.
+        Matrix3x2f boxPose = new Matrix3x2f(graphics.pose());
+        Matrix3x2f linePose = new Matrix3x2f(boxPose).translate(0.0f, scrollOffset);
 
         sink.alpaka$submitElement(new BlurRectRenderState(
                 boxPose, x0, y0, x1, y1,
                 Math.round(RADIUS * toScreen), alpha << 24, toScreen, sink.alpaka$currentScissor()));
         request();
-
-        // Everything the chat draws from here on - lines, tags, the hover lift - stays inside the
-        // box, so a line gliding in or out while scrolling is cut at the box's edge.
-        graphics.pose().pushMatrix();
-        graphics.pose().translate(0.0f, -scrollOffset);
-        graphics.enableScissor(x0, y0, x1, y1);
-        graphics.pose().popMatrix();
-        clipped = true;
 
         // With the chat open, the line under the mouse is lifted a little. The mouse is taken into
         // the lines' own coordinates, so the lift follows the lines while they scroll.

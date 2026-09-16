@@ -39,7 +39,8 @@
     "SkyHanniTabListRendererMixin",
     "FontTextureMixin",
     "GuiRendererMixin",
-    "KeyboardInputMixin"
+    "KeyboardInputMixin",
+    "ChatGraphicsAccessClipMixin"
   ],
   "injectors": {
     "defaultRequire": 1

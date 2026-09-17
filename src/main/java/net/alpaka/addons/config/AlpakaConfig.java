@@ -299,6 +299,9 @@ public class AlpakaConfig {
     public boolean inventoryHudVanillaTexture = false;
     /** Flat style only: the panel shows the world behind it blurred, like the chat's background. */
     public boolean inventoryHudBlur = true;
+    /** The two ends of the flat panel's frame gradient, top left to bottom right. */
+    public int inventoryHudFrameStart = 0xFF29B6B2;
+    public int inventoryHudFrameEnd = 0xFFB04FFF;
 
     // Guild bridge-bot chat formatting. The name is the in-game account that relays Discord.
     public boolean bridgeBotFormatterEnabled = false;

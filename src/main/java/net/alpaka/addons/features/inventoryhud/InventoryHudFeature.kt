@@ -11,7 +11,8 @@ import net.minecraft.world.item.Item
 import org.lwjgl.glfw.GLFW
 
 /**
- * Decides when the inventory HUD is on screen, and animates it sliding up out of the hotbar.
+ * Decides when the inventory HUD is on screen, and animates it sliding up out of the hotbar when
+ * it is attached there; a freely placed panel switches on and off without a slide.
  *
  * Three inputs feed one number, [openAmount]:
  *  - the "always visible" setting,
@@ -132,6 +133,13 @@ object InventoryHudFeature {
         val base = cfg.inventoryHudEnabled &&
             (cfg.inventoryHudAlwaysVisible || (cfg.inventoryHudShowOnItemChange && peeking()))
         val target = if (base != inverted && cfg.inventoryHudEnabled) 1.0f else 0.0f
+
+        // The slide is the panel emerging from behind the hotbar. A freely placed panel has nothing
+        // to emerge from, so it simply appears and disappears.
+        if (!cfg.inventoryHudAttachToHotbar) {
+            openAmount = target
+            return openAmount
+        }
 
         openAmount = if (openAmount < target) {
             (openAmount + dt * SLIDE_SPEED).coerceAtMost(target)

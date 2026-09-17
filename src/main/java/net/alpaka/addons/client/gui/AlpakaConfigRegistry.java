@@ -475,6 +475,26 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.inventoryHudBlur = v; AlpakaConfig.save(); },
                 "inventory hud blur frosted glass background panel flat"));
 
+        OPTIONS.add(new ConfigOption("inventory_hud_frame_start_color", "Frame Start Colour",
+                "First colour of the flat panel's frame gradient.",
+                ConfigCategory.VISUALS,
+                "Choose Color",
+                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Frame Start Colour", AlpakaConfig.instance.inventoryHudFrameStart, color -> {
+                    AlpakaConfig.instance.inventoryHudFrameStart = color;
+                    AlpakaConfig.save();
+                })),
+                "inventory hud frame border outline gradient colour color start first picker"));
+
+        OPTIONS.add(new ConfigOption("inventory_hud_frame_end_color", "Frame End Colour",
+                "Second colour of the flat panel's frame gradient.",
+                ConfigCategory.VISUALS,
+                "Choose Color",
+                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Frame End Colour", AlpakaConfig.instance.inventoryHudFrameEnd, color -> {
+                    AlpakaConfig.instance.inventoryHudFrameEnd = color;
+                    AlpakaConfig.save();
+                })),
+                "inventory hud frame border outline gradient colour color end second picker"));
+
         OPTIONS.add(new ConfigOption("inventory_hud_bg_opacity", "Background Opacity",
                 "Backdrop tint behind the slots. 0% leaves only the frame.",
                 ConfigCategory.VISUALS,

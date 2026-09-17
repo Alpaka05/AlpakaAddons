@@ -1,8 +1,14 @@
 package net.alpaka.addons.features.inventoryhud
 
+import kotlin.math.abs
+import net.alpaka.addons.client.gui.AlpakaGuiElementSink
+import net.alpaka.addons.client.gui.BlurRectRenderState
+import net.alpaka.addons.client.gui.GradientRoundedRectRenderState
 import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.client.hud.HudBounds
 import net.alpaka.addons.config.AlpakaConfig
+import net.alpaka.addons.features.chat.ChatBlurFeature
+import org.joml.Matrix3x2f
 import net.minecraft.client.DeltaTracker
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
@@ -95,6 +101,17 @@ object InventoryHudRenderer {
 
     /** Backdrop colour, matching the config menu's panel. Alpha comes from the player's slider. */
     private const val PANEL_BG = 0x191919
+
+    /** Corner radius of the flat panel, in panel pixels. */
+    private const val RADIUS = 6
+
+    /**
+     * The frame's gradient runs from the accent colour to this far a turn around the colour wheel,
+     * lifted a little towards white, so it reads as a second colour of the same family rather than
+     * the accent again.
+     */
+    private const val FRAME_HUE_SHIFT = 40.0f
+    private const val FRAME_LIFT = 0.15f
 
     /**
      * The texture a chest GUI is drawn from.
@@ -206,19 +223,7 @@ object InventoryHudRenderer {
             // No accent frame in this style. The whole point is that the panel passes for a real
             // container, and a coloured outline is the one thing that would give it away.
         } else {
-            if (backdropAlpha > 0) {
-                ModernGuiUtils.drawRect(graphics, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, withAlpha(PANEL_BG, backdropAlpha))
-                // The inner frame fades with the backdrop, so turning the background off leaves only
-                // the accent outline rather than a stranded grey rectangle.
-                ModernGuiUtils.drawOutline(
-                    graphics, 1, 1, FLAT_WIDTH - 2, FLAT_HEIGHT - 2,
-                    withAlpha(ModernGuiUtils.COLOR_CARD_BORDER, backdropAlpha)
-                )
-            }
-
-            // The accent outline stays at full strength whatever the backdrop does - it is the
-            // frame, and it is what keeps the HUD locatable at zero opacity.
-            ModernGuiUtils.drawOutline(graphics, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, ModernGuiUtils.getAccentColor())
+            drawFlatPanel(graphics, scale, backdropAlpha)
         }
 
         val inventory = player.inventory
@@ -242,5 +247,98 @@ object InventoryHudRenderer {
 
         graphics.pose().popMatrix()
         graphics.disableScissor()
+    }
+
+    /**
+     * The flat panel: a rounded box with the world blurred behind it, or a plain tinted fill when
+     * the blur is off, inside a one-pixel frame whose colour runs diagonally from the accent to a
+     * neighbouring hue. Drawn under the current pose, which already places and scales the panel.
+     *
+     * The frame stays at full strength whatever the opacity slider does - it is what keeps the HUD
+     * locatable when the backdrop is turned all the way down.
+     */
+    private fun drawFlatPanel(graphics: GuiGraphicsExtractor, scale: Float, backdropAlpha: Int) {
+        val sink = graphics as? AlpakaGuiElementSink
+        if (sink == null) {
+            // Without the extractor mixin nothing rounded can be submitted; square is better than nothing.
+            if (backdropAlpha > 0) {
+                ModernGuiUtils.drawRect(graphics, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, withAlpha(PANEL_BG, backdropAlpha))
+            }
+            ModernGuiUtils.drawOutline(graphics, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, ModernGuiUtils.getAccentColor())
+            return
+        }
+
+        val toScreen = Minecraft.getInstance().window.guiScale.toFloat() * scale
+        val pose = Matrix3x2f(graphics.pose())
+        val scissor = sink.`alpaka$currentScissor`()
+        val radiusPx = Math.round(RADIUS * toScreen)
+        val tint = withAlpha(PANEL_BG, backdropAlpha)
+
+        if (AlpakaConfig.instance.inventoryHudBlur) {
+            // The slider is the tint's strength over the blur: 0 % is clear frosted glass, 100 % the
+            // solid panel colour. The frame is captured and blurred once per frame for every panel
+            // that asks, so this shares the copy with the chat.
+            sink.`alpaka$submitElement`(
+                BlurRectRenderState(pose, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, radiusPx, tint, toScreen, scissor)
+            )
+            ChatBlurFeature.request()
+        } else if (backdropAlpha > 0) {
+            sink.`alpaka$submitElement`(
+                GradientRoundedRectRenderState(
+                    pose, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, radiusPx, 0,
+                    tint, tint, tint, tint, toScreen, scissor
+                )
+            )
+        }
+
+        // Top-left carries the accent, bottom-right its shifted partner; the other two corners hold
+        // the midpoint so the ramp runs straight along the diagonal without a seam.
+        val start = ModernGuiUtils.getAccentColor()
+        val end = hueShifted(start, FRAME_HUE_SHIFT, FRAME_LIFT)
+        val mid = ModernGuiUtils.lerpColor(start, end, 0.5f)
+        sink.`alpaka$submitElement`(
+            GradientRoundedRectRenderState(
+                pose, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, radiusPx, maxOf(1, Math.round(toScreen)),
+                start, mid, end, mid, toScreen, scissor
+            )
+        )
+    }
+
+    /**
+     * The colour turned [degrees] around the hue wheel and lifted towards white by [lift] (0..1 of
+     * the remaining headroom), keeping its saturation and alpha. Written out rather than borrowed
+     * from AWT, which the client should not have to load for one colour.
+     */
+    private fun hueShifted(argb: Int, degrees: Float, lift: Float): Int {
+        val r = ((argb shr 16) and 0xFF) / 255.0f
+        val g = ((argb shr 8) and 0xFF) / 255.0f
+        val b = (argb and 0xFF) / 255.0f
+        val max = maxOf(r, g, b)
+        val min = minOf(r, g, b)
+        val delta = max - min
+
+        var hue = when {
+            delta <= 0.0f -> 0.0f
+            max == r -> 60.0f * (((g - b) / delta) % 6.0f)
+            max == g -> 60.0f * (((b - r) / delta) + 2.0f)
+            else -> 60.0f * (((r - g) / delta) + 4.0f)
+        }
+        val saturation = if (max <= 0.0f) 0.0f else delta / max
+        val value = (max + (1.0f - max) * lift).coerceIn(0.0f, 1.0f)
+
+        hue = ((hue + degrees) % 360.0f + 360.0f) % 360.0f
+        val c = value * saturation
+        val x = c * (1.0f - abs((hue / 60.0f) % 2.0f - 1.0f))
+        val m = value - c
+        val (r1, g1, b1) = when {
+            hue < 60.0f -> Triple(c, x, 0.0f)
+            hue < 120.0f -> Triple(x, c, 0.0f)
+            hue < 180.0f -> Triple(0.0f, c, x)
+            hue < 240.0f -> Triple(0.0f, x, c)
+            hue < 300.0f -> Triple(x, 0.0f, c)
+            else -> Triple(c, 0.0f, x)
+        }
+        fun channel(v: Float): Int = Math.round((v + m) * 255.0f).coerceIn(0, 255)
+        return (argb and 0xFF000000.toInt()) or (channel(r1) shl 16) or (channel(g1) shl 8) or channel(b1)
     }
 }

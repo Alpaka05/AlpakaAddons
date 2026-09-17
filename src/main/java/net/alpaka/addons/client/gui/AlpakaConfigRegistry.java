@@ -468,6 +468,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.inventoryHudVanillaTexture = v; AlpakaConfig.save(); },
                 "inventory texture resource pack vanilla slots real look skin"));
 
+        OPTIONS.add(new ConfigOption("inventory_hud_blur", "Blur Background",
+                "Shows the world blurred behind the flat panel.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.inventoryHudBlur,
+                v -> { AlpakaConfig.instance.inventoryHudBlur = v; AlpakaConfig.save(); },
+                "inventory hud blur frosted glass background panel flat"));
+
         OPTIONS.add(new ConfigOption("inventory_hud_bg_opacity", "Background Opacity",
                 "Backdrop tint behind the slots. 0% leaves only the frame.",
                 ConfigCategory.VISUALS,

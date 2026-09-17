@@ -273,17 +273,25 @@ public abstract class ChatComponentMixin {
         return (float) ((this.alpaka$smoothScroll - Math.floor(this.alpaka$smoothScroll)) * this.getLineHeight());
     }
 
-    /** Sets the target, clamps it to the chat's range through vanilla's own clamp, and keeps the layout position in step. */
+    /**
+     * Sets the target, clamps both positions to the chat's range, and keeps the layout position in
+     * step. The range's top is taken from vanilla's own clamp, by asking it to clamp a position far
+     * beyond it; the smooth position is clamped to that same top, not to the target - a scroll
+     * towards newer lines has the target below the smooth position, and clamping to the target
+     * there snapped the glide straight to its end.
+     */
     @Unique
     private void alpaka$setScrollTarget(double target) {
-        this.chatScrollbarPos = (int) Math.ceil(target);
+        this.chatScrollbarPos = Integer.MAX_VALUE / 2;
         this.alpaka$vanillaScrollChat(0);
-        if (target > this.chatScrollbarPos) target = this.chatScrollbarPos;
-        if (target < 0.0) target = 0.0;
-        this.alpaka$targetScroll = target;
-        if (this.alpaka$smoothScroll > this.chatScrollbarPos) this.alpaka$smoothScroll = this.chatScrollbarPos;
-        if (this.alpaka$smoothScroll < 0.0) this.alpaka$smoothScroll = 0.0;
+        int max = this.chatScrollbarPos;
+        this.alpaka$targetScroll = Math.max(0.0, Math.min(max, target));
+        this.alpaka$smoothScroll = Math.max(0.0, Math.min(max, this.alpaka$smoothScroll));
         this.chatScrollbarPos = (int) Math.floor(this.alpaka$smoothScroll);
+        if (this.alpaka$targetScroll <= 0.0 && this.alpaka$smoothScroll <= 0.0) {
+            // Vanilla clears the "new message" marker whenever the position reaches the bottom.
+            this.alpaka$vanillaScrollChat(0);
+        }
     }
 
     @Unique private boolean alpaka$inVanillaScroll;

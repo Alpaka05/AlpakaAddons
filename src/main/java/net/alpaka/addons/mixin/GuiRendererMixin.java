@@ -5,6 +5,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.mojang.blaze3d.systems.RenderPass;
 import net.alpaka.addons.features.chat.ChatBlurFeature;
 import net.minecraft.client.gui.render.GuiRenderer;
+import net.minecraft.client.renderer.GameRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -15,7 +16,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  *
  * The blurred chat background needs the one moment when the frame holds the finished world and
  * not yet a single GUI element, with every element of the frame already extracted; the copy of
- * the frame the chat panel samples is taken there. See {@link ChatBlurFeature}.
+ * the frame the chat panel samples is taken there. A screen whose background is itself made of
+ * GUI elements can move the copy to the renderer's blur point instead, after its background
+ * strata are drawn. See {@link ChatBlurFeature}.
  *
  * And scissor rectangles are clamped to the window. Vanilla only trims a scissor's right and bottom
  * edges to the window; a rectangle whose left or top edge lies off screen goes to the render pass
@@ -31,7 +34,20 @@ public class GuiRendererMixin {
      */
     @Inject(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/render/GuiRenderer;prepare()V"))
     private void alpaka$captureFrameForBlur(CallbackInfo ci) {
-        ChatBlurFeature.captureFrame();
+        ChatBlurFeature.captureFrameBeforeGui();
+    }
+
+    /**
+     * The renderer's blur point: the strata before the blur marker are drawn, the render pass is
+     * closed, and vanilla blurs the frame before drawing the rest. A screen that asked for its
+     * copy to be taken here gets it now, in place of that blur.
+     */
+    @WrapOperation(
+        method = "draw",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/GameRenderer;processBlurEffect()V")
+    )
+    private void alpaka$captureAtBlurPoint(GameRenderer renderer, Operation<Void> original) {
+        if (!ChatBlurFeature.captureAtBlurPoint()) original.call(renderer);
     }
 
     @WrapOperation(

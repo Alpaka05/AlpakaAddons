@@ -58,6 +58,11 @@ public final class ChatBlurFeature {
     private static boolean ready;
     private static boolean warned;
 
+    // A screen can ask for the copy to be taken after its background strata rather than before
+    // any GUI element: asked during extraction, decided when the frame is drawn.
+    private static boolean captureAfterBackground;
+    private static boolean deferred;
+
     // The extraction in progress: the graphics to submit the panel to, and what the chat's own
     // background pass measured. Vanilla draws one box per line in that pass; with the panel on,
     // those boxes are only measured, and the panel is submitted in their place before the text.
@@ -193,7 +198,37 @@ public final class ChatBlurFeature {
         return ready && blurred != null;
     }
 
-    /** Called at the start of the GUI renderer's frame, before any GUI element is drawn. */
+    /**
+     * A screen's background is drawn as GUI elements too - the main menu's panorama overlay, which
+     * resource packs replace with whole backgrounds - and a copy taken before the GUI misses it.
+     * Calling this while extracting, right after {@code graphics.nextStratum()} and
+     * {@code graphics.blurBeforeThisStratum()}, moves this frame's copy to the GUI renderer's blur
+     * point, where the strata before it are already on the frame; vanilla's own blur, which that
+     * marker would otherwise run there, is skipped.
+     */
+    public static void captureAfterBackground() {
+        captureAfterBackground = true;
+    }
+
+    /** Called before the GUI renderer prepares the frame's elements: the world is on the frame, nothing of the GUI yet. */
+    public static void captureFrameBeforeGui() {
+        deferred = captureAfterBackground;
+        captureAfterBackground = false;
+        if (!deferred) captureFrame();
+    }
+
+    /**
+     * Called at the GUI renderer's blur point, between the strata before it and those after.
+     * Returns true when the copy was taken here, in which case vanilla's blur is to be skipped.
+     */
+    public static boolean captureAtBlurPoint() {
+        if (!deferred) return false;
+        deferred = false;
+        captureFrame();
+        return true;
+    }
+
+    /** Copies and blurs the frame as it is now, if a panel asked for it. */
     public static void captureFrame() {
         if (!requested) return;
         requested = false;

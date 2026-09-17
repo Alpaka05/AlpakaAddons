@@ -4,6 +4,7 @@ import net.alpaka.addons.client.AlpakaConfigScreen
 import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.config.AlpakaConfig
+import net.alpaka.addons.features.chat.ChatBlurFeature
 import net.alpaka.addons.features.snow.SnowOverlayRenderer
 import net.alpaka.addons.features.sound.CustomSoundFeature
 import net.alpaka.addons.features.wheel.WheelMesh
@@ -266,6 +267,18 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
     override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
         // The panorama, undimmed: the tabs bring their own darkness.
         this.extractPanorama(graphics, partialTick)
+
+        // The panorama's overlay is a GUI element, and resource packs put whole backgrounds in it.
+        // The glass has to blur that too, so the frame copy it samples is taken after this first
+        // stratum rather than before any GUI element: the blur marker splits the draw there, and
+        // the capture takes vanilla's blur's place. Only one marker is allowed per frame; another
+        // mod's leaves the glass with the copy from before the GUI.
+        graphics.nextStratum()
+        try {
+            graphics.blurBeforeThisStratum()
+            ChatBlurFeature.captureAfterBackground()
+        } catch (_: IllegalStateException) {
+        }
 
         if (AlpakaConfig.instance.inventorySnowEnabled) {
             SnowOverlayRenderer.render(graphics, this.width, this.height)

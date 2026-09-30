@@ -1002,17 +1002,24 @@ public class AlpakaConfigScreen extends Screen {
 
     @Override
     public void onClose() {
-        // Safety net: a drag interrupted by the screen closing (Escape, a keybind) never sees its
-        // mouse-up, and leaving saves deferred would swallow every later write for the session.
-        if (draggedOption != null) {
-            draggedOption.setDragging(false);
-            draggedOption = null;
-            net.alpaka.addons.config.AlpakaConfig.endDeferredSaves();
-        }
-
         if (this.minecraft != null) {
             this.minecraft.gui.setScreen(this.parent);
         }
+    }
+
+    /**
+     * Safety net for a drag the screen never sees end: Escape, a keybind, or another screen opening
+     * on top. Done here rather than in onClose, because replacing the screen calls removed() and not
+     * onClose(), and leaving saves deferred would swallow every later write for the session.
+     */
+    @Override
+    public void removed() {
+        if (draggedOption != null) {
+            draggedOption.setDragging(false);
+            draggedOption = null;
+        }
+        net.alpaka.addons.config.AlpakaConfig.endDeferredSaves();
+        super.removed();
     }
 }
 

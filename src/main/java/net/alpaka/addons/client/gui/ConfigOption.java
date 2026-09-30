@@ -204,7 +204,16 @@ public class ConfigOption {
     }
 
     // Slider getters/setters
-    public float getFloat() { return getterFloat != null ? getterFloat.get() : minVal; }
+    /**
+     * The value, clamped to the slider's range. A hand-edited or old config can hold an index past
+     * the end of a choice list, and the formatters index their name arrays with it every frame.
+     */
+    public float getFloat() {
+        if (getterFloat == null) return minVal;
+        float value = getterFloat.get();
+        if (maxVal <= minVal || Float.isNaN(value)) return Float.isNaN(value) ? minVal : value;
+        return Math.max(minVal, Math.min(maxVal, value));
+    }
     public void setFloat(float val) {
         if (setterFloat != null) {
             setterFloat.accept(Math.max(minVal, Math.min(maxVal, val)));

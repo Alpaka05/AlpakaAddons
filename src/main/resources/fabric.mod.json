@@ -3,21 +3,19 @@
   "id": "alpaka",
   "version": "${version}",
   "name": "Alpaka Addons",
-  "description": "Adds addons to Alpaka",
+  "description": "Client-side quality-of-life for Hypixel SkyBlock: slayer tracking, a better chat, movable HUDs and a cleaner look. Sends nothing on your behalf.",
   "authors": [
-    "Spongebob"
+    "Alpaka05"
   ],
   "contact": {
-    "homepage": "",
-    "sources": ""
+    "homepage": "https://github.com/Alpaka05/AlpakaAddons",
+    "sources": "https://github.com/Alpaka05/AlpakaAddons",
+    "issues": "https://github.com/Alpaka05/AlpakaAddons/issues"
   },
   "license": "MIT",
   "icon": "assets/alpaka/icon.png",
-  "environment": "*",
+  "environment": "client",
   "entrypoints": {
-    "main": [
-      "net.alpaka.addons.AlpakaAddons"
-    ],
     "client": [
       "net.alpaka.addons.client.AlpakaClient"
     ],
@@ -32,6 +30,10 @@
     "fabricloader": ">=0.16.0",
     "minecraft": "~26.2",
     "java": ">=25",
-    "fabric-api": "*"
+    "fabric-api": ">=0.159.0",
+    "fabric-language-kotlin": ">=1.13.1"
+  },
+  "suggests": {
+    "modmenu": "*"
   }
 }

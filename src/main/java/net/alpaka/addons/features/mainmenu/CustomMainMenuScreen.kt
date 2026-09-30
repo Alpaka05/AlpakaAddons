@@ -21,15 +21,12 @@ import net.minecraft.client.gui.screens.worldselection.SelectWorldScreen
 import net.minecraft.client.input.InputWithModifiers
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.multiplayer.ServerData
-import net.minecraft.client.multiplayer.ServerStatusPinger
 import net.minecraft.client.multiplayer.resolver.ServerAddress
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.client.renderer.texture.SimpleTexture
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.FontDescription
 import net.minecraft.resources.Identifier
-import net.minecraft.server.network.EventLoopGroupHolder
-import java.net.UnknownHostException
 
 /**
  * The main menu: the panorama, and down its left edge a column of tabs.
@@ -115,11 +112,6 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         private const val APPEAR_SECONDS = 0.18f
         private const val STAGGER_SECONDS = 0.03f
 
-        /** Hypixel is pinged again this often while the menu stays open. */
-        private const val PING_INTERVAL_MS = 60_000L
-        /** An attempt still unanswered after this long is shown as offline. */
-        private const val PING_TIMEOUT_MS = 8_000L
-
         private var modIconRegistered = false
 
         fun ensureModIconRegistered() {
@@ -148,10 +140,6 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
     private var openTime = 0L
     private var logoHover = 0.0f
 
-    /** Hypixel's status, kept alive for the live player count; pinged on open and once a minute. */
-    private val pinger = ServerStatusPinger()
-    private val hypixel = ServerData("Hypixel Network", "mc.hypixel.net", ServerData.Type.OTHER)
-    private var lastPingMs = 0L
 
     private val compact get() = this.height < 380
     private val heroHeight get() = if (compact) HERO_HEIGHT_COMPACT else HERO_HEIGHT
@@ -188,7 +176,9 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
 
     override fun init() {
         this.clearWidgets()
-        this.openTime = System.currentTimeMillis()
+        // Stamped once: init() runs again on every resize and on the return from a sub-screen, and
+        // replaying the entrance each time made the menu slide in again after every Options visit.
+        if (this.openTime == 0L) this.openTime = System.currentTimeMillis()
 
         this.addRenderableWidget(HeroTab(heroY(), HERO_WIDTH, heroHeight) {
             joinServer("mc.hypixel.net")
@@ -228,40 +218,17 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
             this.minecraft?.stop()
         }
 
-        pingHypixel()
-    }
-
-    private fun pingHypixel() {
-        val mc = this.minecraft ?: return
-        lastPingMs = System.currentTimeMillis()
-        // The pinger fills in players and ping but leaves the state to its caller, like the server
-        // list does: the first callback fires when the status (with the player count) has arrived,
-        // the second when the round-trip time is known. A failed attempt never calls back, so the
-        // line falls back to "offline" once the attempt has taken too long; see onlineLine.
-        hypixel.setState(ServerData.State.PINGING)
-        try {
-            pinger.pingServer(
-                hypixel,
-                { mc.execute { hypixel.setState(ServerData.State.SUCCESSFUL) } },
-                { mc.execute { hypixel.setState(ServerData.State.SUCCESSFUL) } },
-                EventLoopGroupHolder.remote(mc.options.useNativeTransport()),
-            )
-        } catch (_: UnknownHostException) {
-            hypixel.setState(ServerData.State.UNREACHABLE)
-        } catch (_: Throwable) {
-            hypixel.setState(ServerData.State.UNREACHABLE)
-        }
+        HypixelStatus.requestRefresh()
     }
 
     override fun tick() {
         super.tick()
-        pinger.tick()
-        if (System.currentTimeMillis() - lastPingMs > PING_INTERVAL_MS) pingHypixel()
+        HypixelStatus.tick()
     }
 
     override fun removed() {
         super.removed()
-        pinger.removeAll()
+        HypixelStatus.onMenuClosed()
     }
 
     override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
@@ -310,22 +277,19 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         }
     }
 
-    /** The dot colour and the text of the online line, from whatever the last ping learned. */
-    private fun onlineLine(): Pair<Int, String> {
-        val players = hypixel.players
-        return when (hypixel.state()) {
-            ServerData.State.SUCCESSFUL -> {
-                val count = players?.let { String.format("%,d", it.online()).replace(',', '.') } ?: "?"
-                val ping = if (hypixel.ping > 0) " · ${hypixel.ping} ms" else ""
-                ModernGuiUtils.getAccentColor() to "$count online$ping"
-            }
-            ServerData.State.UNREACHABLE, ServerData.State.INCOMPATIBLE ->
-                ModernGuiUtils.COLOR_TEXT_MUTED to "offline"
-            else -> if (System.currentTimeMillis() - lastPingMs > PING_TIMEOUT_MS)
-                ModernGuiUtils.COLOR_TEXT_MUTED to "offline"
-            else
-                ModernGuiUtils.COLOR_TEXT_MUTED to "connecting…"
+    /**
+     * The dot colour and the text of the online line, from whatever the last ping learned, or null
+     * when network features are off and nothing is pinged.
+     */
+    private fun onlineLine(): Pair<Int, String>? = when (HypixelStatus.state) {
+        HypixelStatus.State.OFF -> null
+        HypixelStatus.State.ONLINE -> {
+            val count = HypixelStatus.online?.let { String.format("%,d", it).replace(',', '.') } ?: "?"
+            val ping = if (HypixelStatus.pingMs > 0) " · ${HypixelStatus.pingMs} ms" else ""
+            ModernGuiUtils.getAccentColor() to "$count online$ping"
         }
+        HypixelStatus.State.OFFLINE -> ModernGuiUtils.COLOR_TEXT_MUTED to "can't reach Hypixel"
+        HypixelStatus.State.CONNECTING -> ModernGuiUtils.COLOR_TEXT_MUTED to "connecting…"
     }
 
     override fun mouseClicked(event: MouseButtonEvent, doubleClick: Boolean): Boolean {
@@ -390,14 +354,17 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
             graphics.pose().popMatrix()
 
             // Address, then the live dot and count, on one line under the name.
-            val (dot, line) = onlineLine()
+            val status = onlineLine()
             val subY = this.y + this.height - 15
-            val address = "mc.hypixel.net  "
+            val address = if (status == null) "mc.hypixel.net" else "mc.hypixel.net  "
             val subline = fade(WheelMesh.lerpColor(HERO_SUBLINE, HERO_SUBLINE_HOVER, hover), appear)
             graphics.text(mc.font, GuiFont.text(address), textX, subY, subline, false)
-            val dotX = textX + GuiFont.width(mc.font, address)
-            graphics.text(mc.font, GuiFont.text("●"), dotX, subY, fade(dot, appear), false)
-            graphics.text(mc.font, GuiFont.text(line), dotX + 10, subY, subline, false)
+            if (status != null) {
+                val (dot, line) = status
+                val dotX = textX + GuiFont.width(mc.font, address)
+                graphics.text(mc.font, GuiFont.text("●"), dotX, subY, fade(dot, appear), false)
+                graphics.text(mc.font, GuiFont.text(line), dotX + 10, subY, subline, false)
+            }
         }
 
         override fun updateWidgetNarration(narration: NarrationElementOutput) {}

@@ -34,8 +34,11 @@ dependencies {
     compileOnly "com.terraformersmc:modmenu:20.0.1"
     localRuntime "com.terraformersmc:modmenu:20.0.1"
 
-    // Kotlin
+    // Kotlin. Compiled against the stdlib of the Kotlin plugin above; at runtime players get it from
+    // Fabric Language Kotlin, which fabric.mod.json requires. The dev client needs that mod too,
+    // since the dependency check runs there as well.
     implementation "org.jetbrains.kotlin:kotlin-stdlib"
+    localRuntime "net.fabricmc:fabric-language-kotlin:1.14.1+kotlin.2.4.20"
 }
 
 tasks.processResources {

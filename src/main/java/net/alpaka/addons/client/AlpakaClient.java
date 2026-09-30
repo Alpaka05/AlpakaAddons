@@ -18,17 +18,28 @@ import net.alpaka.addons.features.worldage.WorldAgeHudRenderer;
 public class AlpakaClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
-        // First, so the overlay's own render pipeline is registered before the shader manager
+        // Before anything else reads them. The slayer record is loaded separately because it is keyed
+        // by account and Skyblock profile rather than by instance; see AlpakaStats.
+        AlpakaConfig.load();
+        net.alpaka.addons.config.AlpakaStats.load();
+        net.alpaka.addons.AlpakaAddons.LOGGER.info("Alpaka Addons {} loaded", net.alpaka.addons.utils.ModVersion.mod());
+
+        // Next, so the overlay's own render pipeline is registered before the shader manager
         // precompiles vanilla's; see BlockOverlayRenderTypes.
         net.alpaka.addons.features.blockoverlay.BlockOverlayRenderTypes.init();
         net.alpaka.addons.client.gui.AlpakaGuiPipelines.init();
         CustomSoundFeature.register();
+        SessionLifecycle.register();
+        StartupNotices.register();
         SlayerDropTracker.registerEvents();
         net.alpaka.addons.features.slayer.SkyblockProfileTracker.INSTANCE.register();
         // The slayer record waits for its folder when a cloud drive comes up after the game did;
         // polled from the tick so the wait ends even while nothing reads the record.
-        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(
-                client -> net.alpaka.addons.config.AlpakaStats.retryLoadIfAwaiting());
+        // The same tick writes the record once if anything changed it; see AlpakaStats.markDirty.
+        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            net.alpaka.addons.config.AlpakaStats.retryLoadIfAwaiting();
+            net.alpaka.addons.config.AlpakaStats.flushIfDirty();
+        });
         ZoomFeature.register();
         net.alpaka.addons.features.chat.ChatPeekFeature.register();
         CommandWheelFeature.register();
@@ -99,6 +110,17 @@ public class AlpakaClient implements ClientModInitializer {
                         });
                         return 1;
                     })
+                )
+                // "/alpakaslayer since <item>": how many bosses ago a drop last came, answered locally
+                // with buttons that put it in the chat box. The player asks, the player sends.
+                .then(ClientCommands.literal("since")
+                    .then(ClientCommands.argument("item", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
+                        .executes(context -> {
+                            String item = com.mojang.brigadier.arguments.StringArgumentType.getString(context, "item");
+                            Minecraft.getInstance().execute(() -> SlayerDropTracker.printSince(item));
+                            return 1;
+                        })
+                    )
                 )
                 // Clears the live session stats behind the slayer HUD. Lifetime kill and drop
                 // history is untouched - that is the persisted record, not part of a session.
@@ -264,11 +286,15 @@ public class AlpakaClient implements ClientModInitializer {
         }
 
         String previous = AlpakaConfig.instance.statsDirectory;
+        boolean previousHadFile = AlpakaConfig.instance.statsDirectoryHadFile;
         AlpakaConfig.instance.statsDirectory = cleaned;
+        // A new folder has never held the record, so an empty one is not a folder still syncing.
+        AlpakaConfig.instance.statsDirectoryHadFile = false;
 
         java.io.File dir = net.alpaka.addons.config.AlpakaStats.directory();
         if (!dir.isDirectory() && !dir.mkdirs()) {
             AlpakaConfig.instance.statsDirectory = previous;
+            AlpakaConfig.instance.statsDirectoryHadFile = previousHadFile;
             SlayerDropTracker.sendModMessage("§cCould not create §f" + dir.getAbsolutePath());
             SlayerDropTracker.sendModMessage("§7The setting was not changed; check the path and try again.");
             return;

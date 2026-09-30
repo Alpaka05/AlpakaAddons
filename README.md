@@ -27,7 +27,7 @@ Alpaka Addons is most useful for **Slayers**, but a lot of it helps anywhere in 
 
 ## Getting Started
 
-1. **Install:** you need [Fabric Loader](https://fabricmc.net/use/installer/), [Fabric API](https://modrinth.com/mod/fabric-api) and Java 25. Download the latest `alpaka-<version>-mc26.2.jar` from [Releases](https://github.com/Alpaka05/AlpakaAddons/releases/latest) and put it in your `mods` folder. [Mod Menu](https://modrinth.com/mod/modmenu) is optional.
+1. **Install:** you need [Fabric Loader](https://fabricmc.net/use/installer/), [Fabric API](https://modrinth.com/mod/fabric-api), [Fabric Language Kotlin](https://modrinth.com/mod/fabric-language-kotlin) and Java 25. Download the latest `alpaka-<version>-mc26.2.jar` from [Releases](https://github.com/Alpaka05/AlpakaAddons/releases/latest) and put it in your `mods` folder. [Mod Menu](https://modrinth.com/mod/modmenu) is optional.
 2. **Set up:** type `/aa` in-game to open the config. Every feature has its own toggle and is easy to find with the search bar, and `/aa <term>` opens the config with that search already filled in.
 3. **Arrange your HUD:** `/alpakahud` opens the HUD editor, where you can move and resize every overlay.
 
@@ -36,7 +36,7 @@ Alpaka Addons is most useful for **Slayers**, but a lot of it helps anywhere in 
 <details>
 <summary><b>Slayer</b></summary>
 
-- **Slayer Drop Tracker:** counts kills and rare drops per slayer, with a sound on rare drops and an optional guild chat announcement for the rarest one.
+- **Slayer Drop Tracker:** counts kills and rare drops per slayer, with a sound on rare drops and optional share buttons for the rarest one. `/alpakaslayer since <item>` tells you how many bosses ago a drop last came.
 - **Boss Timer:** times every fight from spawn to death, calls out personal bests and shows the running time on screen.
 - **Session HUD:** live stats while a quest is active, with a choice of lines. It can be limited to slayer areas and pauses when you are idle.
 - **Boss Spawn Alert** and an option to hide Hypixel's slayer chat spam.
@@ -109,6 +109,7 @@ Alpaka Addons is most useful for **Slayers**, but a lot of it helps anywhere in 
 | `/aa` (also `/alpaka`) | Opens the config. `/aa <term>` searches it. |
 | `/alpakahud` | Opens the HUD editor. |
 | `/alpakaslayer [slayer]` | Shows your slayer kills and drops, or the full drop history of one slayer. |
+| `/alpakaslayer since <item>` | Shows how many bosses ago a drop last came, with buttons to share it. |
 | `/alpakastats folder <path>` | Moves your stats to another folder. `folder default` moves them back. |
 | `/alpakapreset <1-3>` | Loads a viewmodel preset. `save <1-3>` saves the current settings. |
 
@@ -116,7 +117,7 @@ Keybinds for **Zoom**, **Peek Chat**, **Command Wheel** and **Inventory HUD** ar
 
 ## Fair Play
 
-Alpaka Addons runs entirely on your client and follows the [Hypixel rules](https://hypixel.net/rules). It only shows or rearranges what the game already tells you. There are no macros, no automation and nothing that plays the game for you.
+Alpaka Addons runs entirely on your client and follows the [Hypixel rules](https://hypixel.net/rules). It only shows or rearranges what the game already tells you. There are no macros, no automation and nothing that plays the game for you. The mod never sends a chat message or command unless you press a key, click a button or press Enter: share buttons only fill your chat box.
 
 ## Feedback & Bugs
 

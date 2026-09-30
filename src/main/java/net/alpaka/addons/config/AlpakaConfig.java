@@ -6,8 +6,6 @@ import net.alpaka.addons.AlpakaAddons;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 
 import net.alpaka.addons.features.slayer.SlayerType;
 import java.util.HashMap;
@@ -15,6 +13,8 @@ import java.util.Map;
 
 public class AlpakaConfig {
     private static final File FILE = FabricLoader.getInstance().getConfigDir().resolve("alpaka.json").toFile();
+    /** The last file that loaded cleanly, copied aside at start-up. See {@link #load()}. */
+    private static final File BACKUP = FabricLoader.getInstance().getConfigDir().resolve("alpaka.json.bak").toFile();
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     public static AlpakaConfig instance = new AlpakaConfig();
@@ -28,13 +28,21 @@ public class AlpakaConfig {
      */
     public boolean hideHypixelDropMessage = true;
     /**
-     * Post a slayer's headline RNG drop - the one the slayer HUD counts a dry streak against, e.g.
-     * High Class Archfiend Dice for Inferno - to the guild chat too, in the same words the tracker
-     * writes to the player's own chat.
+     * Adds [Share: Guild] [Party] buttons to the tracker's line for a slayer's headline RNG drop -
+     * the one the slayer HUD counts a dry streak against, e.g. High Class Archfiend Dice for Inferno.
      *
-     * Off by default: it sends a message on the player's behalf, which is something to opt into.
+     * A click only fills the chat box; the player sends it with Enter. This used to post to guild
+     * chat by itself, which sent a message without any action from the player. The key keeps its old
+     * name so the setting carries over for players who had turned the announcement on.
      */
     public boolean slayerRngDropGuildChatEnabled = false;
+    /**
+     * When a party member types "!since &lt;item&gt;", show the player their own count with a
+     * [Reply in party] button. Nothing is sent unless the player clicks it and presses Enter.
+     *
+     * Off by default. It replaces an automatic reply that answered in the player's name.
+     */
+    public boolean slayerSinceReplyOffer = false;
     public boolean fullbrightEnabled = false;
 
     // Cosmetics. Both are drawn by this client for this client only - nothing is sent, nobody else
@@ -204,12 +212,13 @@ public class AlpakaConfig {
     // SkyHanni does - and remembers the fastest ever per slayer. The sidebar is only the fallback
     // for a fight where the boss entity could not be watched, so there is no setting for it.
     /**
-     * Whether the mod may read public Hypixel data over the network.
+     * Whether the mod may contact anything over the network ("Allow Network Features").
      *
      * Everything else in this mod works from what the client already has. This is the one setting
-     * that lets it reach outside, currently for a single endpoint describing the running election -
-     * no API key, no player named, the same answer for everybody. Off means no request is made and
-     * nothing derived from one is used.
+     * that lets it reach outside, for two things: a public endpoint describing the running election
+     * (no API key, no player named, the same answer for everybody), and the main menu's player
+     * count, an ordinary status ping to mc.hypixel.net like the server list sends. Off means no
+     * request is made and nothing derived from one is used. The JSON key keeps its old name.
      */
     public boolean allowApiCalls = true;
 
@@ -225,6 +234,19 @@ public class AlpakaConfig {
      * fact about this machine, and the path to the same synced folder differs on the next one.
      */
     public String statsDirectory = "";
+    /**
+     * Whether the record has been read from or written to {@link #statsDirectory} before.
+     *
+     * A chosen folder that is there but no longer holds the file it once held is most likely a
+     * cloud folder still syncing, so the record waits for the file instead of starting from zero and
+     * then writing that over the real one. Reset whenever the folder setting changes.
+     */
+    public boolean statsDirectoryHadFile = false;
+    /**
+     * The mod version that last ran with this config, so an update can say once what changed.
+     * Empty in a config written before this field existed. See StartupNotices.
+     */
+    public String lastSeenVersion = "";
     public boolean slayerTimerEnabled = true;
     /** Announce each boss's time in chat once it dies. */
     public boolean slayerTimerChatEnabled = true;
@@ -620,15 +642,33 @@ public class AlpakaConfig {
         }
     }
 
+    /**
+     * What to tell the player once they are in game, when the file could not be read at start-up.
+     * Taken by {@link #takeLoadNotice()}.
+     */
+    private static String loadNotice = null;
+
+    /** Whether this start found an existing settings file, as opposed to a fresh install. */
+    private static boolean existedAtStart = false;
+
+    public static boolean existedAtStart() {
+        return existedAtStart;
+    }
+
     public static void load() {
-        if (FILE.exists()) {
-            try (FileReader reader = new FileReader(FILE)) {
-                instance = GSON.fromJson(reader, AlpakaConfig.class);
-            } catch (Exception e) {
-                AlpakaAddons.LOGGER.error("Failed to load config", e);
-            }
-        } else {
+        existedAtStart = FILE.exists();
+        if (!FILE.exists()) {
             save();
+        } else {
+            AlpakaConfig loaded = read(FILE);
+            if (loaded != null) {
+                instance = loaded;
+                // A copy of the last file that loaded, taken once per start rather than on every
+                // save: every write is atomic now, so this only has to cover damage from outside.
+                AtomicJsonFile.backup(FILE, BACKUP);
+            } else {
+                recoverUnreadable();
+            }
         }
 
         // The menu's default accent moved from warm gold to teal. A config still on the exact old
@@ -655,11 +695,55 @@ public class AlpakaConfig {
         }
     }
 
+    /**
+     * The file is there but unusable: empty, cut short, or not valid JSON.
+     *
+     * It is moved aside rather than overwritten, the backup is tried next, and only then does the
+     * config fall back to defaults. Either way the player hears about it once in game, instead of
+     * finding their settings silently reset. An empty file used to crash every launch, because Gson
+     * reads it as null, and a malformed one was replaced with defaults without a word.
+     */
+    private static void recoverUnreadable() {
+        File aside = AtomicJsonFile.quarantine(FILE);
+        AlpakaConfig fromBackup = read(BACKUP);
+        String where = aside != null ? " The damaged file was kept as " + aside.getName() + "." : "";
+        if (fromBackup != null) {
+            instance = fromBackup;
+            loadNotice = "§eYour Alpaka Addons settings file was damaged, so the last good copy was restored." + where;
+            AlpakaAddons.LOGGER.warn("alpaka.json was unreadable; restored the backup.{}", where);
+        } else {
+            instance = new AlpakaConfig();
+            loadNotice = "§eYour Alpaka Addons settings file was damaged and there was no backup, so the settings were reset." + where;
+            AlpakaAddons.LOGGER.warn("alpaka.json was unreadable and no backup could be read; using defaults.{}", where);
+        }
+        save();
+    }
+
+    /** The config in {@code file}, or null when it is missing, empty or cannot be parsed. */
+    private static AlpakaConfig read(File file) {
+        try {
+            String json = AtomicJsonFile.read(file);
+            if (json == null || json.isBlank()) return null;
+            return GSON.fromJson(json, AlpakaConfig.class);
+        } catch (Exception e) {
+            AlpakaAddons.LOGGER.error("Failed to read {}", file.getAbsolutePath(), e);
+            return null;
+        }
+    }
+
+    /** The one-time message about a damaged settings file, or null. Cleared once taken. */
+    public static String takeLoadNotice() {
+        String notice = loadNotice;
+        loadNotice = null;
+        return notice;
+    }
+
     public void disableAllFeatures() {
         this.renderHandInThirdPerson = false;
         this.slayerDropTrackerEnabled = false;
         this.hideHypixelDropMessage = false;
         this.slayerRngDropGuildChatEnabled = false;
+        this.slayerSinceReplyOffer = false;
         this.customNameTagEnabled = false;
         this.nameTagOutlineEnabled = false;
         this.nameTagShadowEnabled = false;
@@ -778,8 +862,8 @@ public class AlpakaConfig {
             saveDueAfterDefer = true;
             return;
         }
-        try (FileWriter writer = new FileWriter(FILE)) {
-            GSON.toJson(instance, writer);
+        try {
+            AtomicJsonFile.write(FILE, GSON.toJson(instance));
         } catch (Exception e) {
             AlpakaAddons.LOGGER.error("Failed to save config", e);
         }

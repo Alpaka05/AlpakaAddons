@@ -70,6 +70,18 @@ object PangolinHighlightFeature {
     private val visibilityCache = HashMap<Int, Visibility>()
 
     /**
+     * Forgets the level and everything cached for it. Called on world change and disconnect, so a
+     * left world is not held in memory until the next Armadillo happens to be rendered.
+     */
+    @JvmStatic
+    fun reset() {
+        trackedLevel = null
+        visibilityCache.clear()
+        locationCheckedAtMs = 0L
+        onTorrhusCanyon = false
+    }
+
+    /**
      * Called for every entity vanilla extracts a render state for. Sets the outline colour when the
      * entity is a Pangolin the player can currently see, and otherwise leaves the state untouched.
      */

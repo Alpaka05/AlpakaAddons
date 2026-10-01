@@ -15,6 +15,7 @@
     "CameraMixin",
     "GuiMixin",
     "HudMixin",
+    "HudOverlayAccessor",
     "WideHealthBarMixin",
     "ItemInHandRendererMixin",
     "LightmapMixin",

@@ -63,7 +63,11 @@ public final class DevScreenshotTour {
             new Stop("chat-slide", DevScreenshotTour::chatBurst, () -> true, 2),
             new Stop("chat-rest", () -> {}, () -> true, 40),
             new Stop("chat-open", () -> Minecraft.getInstance().gui.setScreen(new ChatScreen("", false)), () -> true, 10),
-            new Stop("third-person", DevScreenshotTour::thirdPerson, () -> true, 40)
+            new Stop("third-person", DevScreenshotTour::thirdPerson, () -> true, 40),
+            // Survival with armour and an action bar: what the attached inventory HUD has to clear.
+            new Stop(null, DevScreenshotTour::survival,
+                    () -> Minecraft.getInstance().gameMode != null && Minecraft.getInstance().gameMode.canHurtPlayer(), 20),
+            new Stop("survival-hud", DevScreenshotTour::actionBar, () -> true, 10)
     );
 
     private static int ticks = 0;
@@ -155,6 +159,28 @@ public final class DevScreenshotTour {
         for (int i = 1; i <= 6; i++) {
             mc.gui.hud.getChat().addClientSystemMessage(Component.literal("§7Tour line " + i + " §8- a message arriving in a burst"));
         }
+    }
+
+    /** Back in first person, in survival and wearing a chestplate, so hearts and armour show. */
+    private static void survival() {
+        Minecraft mc = Minecraft.getInstance();
+        mc.options.setCameraType(CameraType.FIRST_PERSON);
+        java.util.UUID id = mc.player.getUUID();
+        net.minecraft.client.server.IntegratedServer server = mc.getSingleplayerServer();
+        if (server == null) return;
+        server.execute(() -> {
+            net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayer(id);
+            if (player == null) return;
+            player.setGameMode(GameType.SURVIVAL);
+            player.setItemSlot(net.minecraft.world.entity.EquipmentSlot.CHEST,
+                    new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_CHESTPLATE));
+        });
+    }
+
+    /** An action bar line like Hypixel's, which is up the whole time on SkyBlock. */
+    private static void actionBar() {
+        Minecraft.getInstance().gui.hud.setOverlayMessage(
+                Component.literal("§c100/100❤     §a50❈ Defense     §b100/100✎ Mana"), false);
     }
 
     /** Third person with the custom name tag, so the camera glide's end and the tag are visible. */

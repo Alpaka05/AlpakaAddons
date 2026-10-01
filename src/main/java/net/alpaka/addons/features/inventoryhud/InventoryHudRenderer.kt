@@ -7,6 +7,9 @@ import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.client.hud.HudBounds
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.features.chat.ChatBlurFeature
+import net.alpaka.addons.mixin.HudOverlayAccessor
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudStatusBarHeightRegistry
+import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements
 import org.joml.Matrix3x2f
 import net.minecraft.client.DeltaTracker
 import net.minecraft.client.Minecraft
@@ -14,6 +17,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.ChatScreen
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.resources.Identifier
+import net.minecraft.tags.FluidTags
 
 /**
  * Draws the player's main inventory on the HUD, so its 27 slots can be read without opening a
@@ -92,6 +96,14 @@ object InventoryHudRenderer {
     private const val HOTBAR_HEIGHT = 22
     private const val HOTBAR_GAP = 1
 
+    /** Vanilla's status bar rows: one every 10 pixels, the first (hearts, food) 39 up from the bottom. */
+    private const val BAR_ROW = 10
+    private const val FIRST_BAR = 39
+
+    /** The line vanilla draws the action bar on, and how far its text reaches above that line. */
+    private const val ACTION_BAR_LINE = 68
+    private const val ACTION_BAR_ABOVE_LINE = 4
+
     const val DEFAULT_X = net.alpaka.addons.client.hud.HudDefaults.INVENTORY_X
     const val DEFAULT_Y = net.alpaka.addons.client.hud.HudDefaults.INVENTORY_Y
     const val DEFAULT_SCALE = 1.0f
@@ -156,7 +168,7 @@ object InventoryHudRenderer {
             val screenWidth = mc.window.guiScaledWidth
             val screenHeight = mc.window.guiScaledHeight
             val x = (screenWidth - width) / 2
-            val y = screenHeight - statusStackHeight() - HOTBAR_GAP - height
+            val y = screenHeight - statusStackHeight(mc) - HOTBAR_GAP - height
             return HudBounds(x, y, x + width, y + height)
         }
 
@@ -165,19 +177,45 @@ object InventoryHudRenderer {
     }
 
     /**
-     * How far up from the bottom of the screen the hotbar's status block reaches: the hotbar, the
-     * hearts, armour and food, the experience bar and Hypixel's action bar, as Fabric's own status
-     * bar registry adds them up - including what other mods register there. The attached panel sits
-     * above all of it; it used to sit straight on the hotbar and cover the rest.
+     * How far up from the bottom of the screen the hotbar's status block reaches: the hotbar, then
+     * hearts and armour on the left, food (or a mount's hearts) and air on the right, and the action
+     * bar while one is showing - on Hypixel that is all the time. The attached panel sits above all
+     * of it.
+     *
+     * Where each column starts comes from Fabric's status bar registry, which also counts extra heart
+     * rows and bars other mods add. It only knows the bars themselves, not the action bar, so asking
+     * it for the action bar - as this used to - always failed and left the panel on the hearts.
      */
-    private fun statusStackHeight(): Int {
-        val registered = try {
-            net.fabricmc.fabric.api.client.rendering.v1.hud.HudStatusBarHeightRegistry.getHeight(
-                net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements.OVERLAY_MESSAGE)
-        } catch (_: RuntimeException) {
-            0
+    private fun statusStackHeight(mc: Minecraft): Int {
+        val player = mc.player ?: return HOTBAR_HEIGHT
+        var top = HOTBAR_HEIGHT
+        // Creative and spectator draw no status bars.
+        if (mc.gameMode?.canHurtPlayer() == true) {
+            val airShown = player.isEyeInFluid(FluidTags.WATER) || player.airSupply < player.maxAirSupply
+            top = maxOf(top,
+                columnTop(VanillaHudElements.ARMOR_BAR, player.armorValue > 0),
+                columnTop(VanillaHudElements.AIR_BAR, airShown))
         }
-        return maxOf(HOTBAR_HEIGHT, registered)
+        if ((mc.gui.hud as HudOverlayAccessor).`alpaka$getOverlayMessageTime`() > 0) {
+            top = maxOf(top, registeredHeight(VanillaHudElements.OVERLAY_MESSAGE, ACTION_BAR_LINE) + ACTION_BAR_ABOVE_LINE)
+        }
+        return top
+    }
+
+    /**
+     * The top of a column of status bars, given its topmost bar and whether that bar is showing.
+     * Fabric reports where a bar would start; when it is hidden the row below it is the top.
+     */
+    private fun columnTop(topBar: Identifier, shown: Boolean): Int {
+        val start = registeredHeight(topBar, FIRST_BAR + BAR_ROW)
+        return if (shown) start else start - BAR_ROW
+    }
+
+    /** Fabric's height for a HUD element, or vanilla's when the registry has none for it. */
+    private fun registeredHeight(element: Identifier, vanilla: Int): Int = try {
+        HudStatusBarHeightRegistry.getHeight(element)
+    } catch (_: RuntimeException) {
+        vanilla
     }
 
     /** Draws the panel and its items. Shared with the HUD editor, which always passes a full [open]. */

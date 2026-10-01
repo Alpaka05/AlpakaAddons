@@ -65,6 +65,12 @@ object AlpakaNotifications {
     /** Beyond this the oldest is retired early, so a burst cannot cover the screen. */
     private const val MAX_VISIBLE = 4
 
+    /**
+     * Hard limit on the list, notices sliding out included. Only reached while nothing prunes the
+     * list, for example with the HUD hidden, and then the oldest are dropped outright.
+     */
+    private const val MAX_KEPT = MAX_VISIBLE * 2
+
     private const val WIDTH = 196
     private const val PAD = 6
     private const val LINE = 10
@@ -114,6 +120,8 @@ object AlpakaNotifications {
         val height: Int = PAD * 2 + LINE + body.size * LINE + BAR_GAP + BAR
         var settledY: Float = Float.NaN
         var retireAtMs: Long = bornAtMs + SLIDE_MS + holdMs + SLIDE_MS
+        /** Already sent on its way out early; it no longer counts towards [MAX_VISIBLE]. */
+        var retiring = false
     }
 
     private val active = ArrayList<Notice>()
@@ -167,11 +175,24 @@ object AlpakaNotifications {
     private fun enqueue(title: String, lines: List<FormattedCharSequence>, accent: Int, holdMs: Long): Long {
         val hold = if (holdMs > 0L) holdMs else configuredHoldMs()
         synchronized(active) {
+            val now = System.currentTimeMillis()
+            active.removeAll { now >= it.retireAtMs }
+
             val id = nextId++
-            active.add(Notice(id, title, lines.take(MAX_BODY_LINES), accent, System.currentTimeMillis(), hold))
+            active.add(Notice(id, title, lines.take(MAX_BODY_LINES), accent, now, hold))
+
             // Retire from the top rather than refusing the new one: the newest notice is the one
-            // the player is most likely waiting for.
-            while (active.size > MAX_VISIBLE) retireEarly(active[0])
+            // the player is most likely waiting for. Only notices still on screen count, and the
+            // loop walks the list once. It used to loop on the list's size, which retiring never
+            // changes, so a fifth notice while four were up froze the game.
+            var live = active.count { !it.retiring }
+            for (notice in active) {
+                if (live <= MAX_VISIBLE) break
+                if (notice.retiring) continue
+                retireEarly(notice)
+                live--
+            }
+            while (active.size > MAX_KEPT) active.removeAt(0)
             return id
         }
     }
@@ -180,16 +201,19 @@ object AlpakaNotifications {
     private fun retireEarly(notice: Notice) {
         val soonest = System.currentTimeMillis() + SLIDE_MS
         if (notice.retireAtMs > soonest) notice.retireAtMs = soonest
+        notice.retiring = true
     }
 
     /** Called every frame from the HUD hook. */
     @JvmStatic
     fun render(graphics: GuiGraphicsExtractor, @Suppress("UNUSED_PARAMETER") deltaTracker: DeltaTracker) {
         val mc = Minecraft.getInstance()
+        val now = System.currentTimeMillis()
+        // Pruned before the early return, so expired notices leave even while nothing is drawn.
+        synchronized(active) { active.removeAll { now >= it.retireAtMs } }
         if (mc.gui.hud.isHidden() || mc.level == null) return
 
         val font = mc.font ?: return
-        val now = System.currentTimeMillis()
         val deltaMs = if (lastFrameMs == 0L) 16L else (now - lastFrameMs).coerceIn(0L, 250L)
         lastFrameMs = now
 

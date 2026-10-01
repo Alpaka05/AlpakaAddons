@@ -11,8 +11,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.User;
 
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -149,7 +147,7 @@ public class AlpakaStats {
         String account = accountKey();
         Account entry = instance.accounts.computeIfAbsent(account, key -> new Account());
 
-        String profile = SkyblockProfileTracker.INSTANCE.getCurrent();
+        String profile = SkyblockProfileTracker.INSTANCE.currentFor(account);
         if (profile == null) profile = entry.lastProfile;
 
         boolean known = profile != null;
@@ -211,7 +209,7 @@ public class AlpakaStats {
         entry.profiles.remove(UNKNOWN_PROFILE);
         AlpakaAddons.LOGGER.info("Folded {} stranded slayer kills from the placeholder bucket into profile {}",
                 moved, entry.lastProfile);
-        save();
+        markDirty();
     }
 
     /** Adds one slayer's stranded record to the profile's own. */
@@ -242,6 +240,10 @@ public class AlpakaStats {
         if (from.lastXpCreditedAtMs > into.lastXpCreditedAtMs) into.lastXpCreditedAtMs = from.lastXpCreditedAtMs;
     }
 
+    private static AlpakaConfig.SlayerData copyOf(AlpakaConfig.SlayerData data) {
+        return GSON.fromJson(GSON.toJson(data), AlpakaConfig.SlayerData.class);
+    }
+
     /** Whether a record holds anything worth keeping. */
     private static boolean hasProgress(Map<SlayerType, AlpakaConfig.SlayerData> map) {
         for (AlpakaConfig.SlayerData data : map.values()) {
@@ -263,15 +265,23 @@ public class AlpakaStats {
      */
     private static void importLegacyInto(ProfileStats stats) {
         if (instance.legacyImported) return;
+        // Not while waiting for the folder: the record there has usually taken over the legacy one
+        // long ago, and this session's kills are folded into it once it appears. Importing now put
+        // the whole pre-split history into the session, and folding the session in then counted it
+        // a second time.
+        if (awaitingStore) return;
         if (hasProgress(stats.slayerBossMap)) return;
 
         Map<SlayerType, AlpakaConfig.SlayerData> legacy = AlpakaConfig.instance.slayerBossMap;
         if (legacy == null || !hasProgress(legacy)) return;
 
-        stats.slayerBossMap.putAll(legacy);
+        // Copied, so the record and the settings file never share the same objects.
+        for (Map.Entry<SlayerType, AlpakaConfig.SlayerData> e : legacy.entrySet()) {
+            if (e.getValue() != null) stats.slayerBossMap.put(e.getKey(), copyOf(e.getValue()));
+        }
         instance.legacyImported = true;
         AlpakaAddons.LOGGER.info("Imported the existing slayer record into the per-profile store");
-        save();
+        markDirty();
     }
 
     /**
@@ -294,7 +304,7 @@ public class AlpakaStats {
             // a game launched from the desktop straight after booting beats it. Reading nothing and
             // starting from zero is what made a whole history look wiped. Wait instead.
             awaitingStore = true;
-            AlpakaAddons.LOGGER.warn("Slayer stats folder {} is not there yet (drive not mounted?); "
+            AlpakaAddons.LOGGER.warn("Slayer stats folder {} or its file is not there yet (drive not mounted or still syncing?); "
                     + "waiting for it before reading or writing the record", directory().getAbsolutePath());
             return;
         }
@@ -304,6 +314,7 @@ public class AlpakaStats {
         migrateLegacy(file);
 
         AlpakaStats loaded = read(file);
+        if (loaded != null) markFolderHadFile();
         if (loaded == null) {
             // A record that now lives in a folder something else may be syncing can be caught
             // half-written. The backup is the last copy that parsed, which beats starting over.
@@ -335,11 +346,24 @@ public class AlpakaStats {
 
     private static long nextStoreCheckNanos = 0L;
 
-    /** Whether a folder the player chose is not reachable right now. */
+    /**
+     * Whether a folder the player chose is not reachable right now: the folder is gone, or it is
+     * there without the file it held before, which is what a cloud folder looks like while it is
+     * still syncing.
+     */
     private static boolean storeMissing() {
         String override = AlpakaConfig.instance.statsDirectory;
         if (override == null || override.isBlank()) return false;
-        return !directory().isDirectory();
+        if (!directory().isDirectory()) return true;
+        return AlpakaConfig.instance.statsDirectoryHadFile && !file().exists();
+    }
+
+    /** Remembers that the chosen folder holds the record now; see AlpakaConfig#statsDirectoryHadFile. */
+    private static void markFolderHadFile() {
+        String override = AlpakaConfig.instance.statsDirectory;
+        if (override == null || override.isBlank() || AlpakaConfig.instance.statsDirectoryHadFile) return;
+        AlpakaConfig.instance.statsDirectoryHadFile = true;
+        AlpakaConfig.save();
     }
 
     /**
@@ -368,7 +392,7 @@ public class AlpakaStats {
                 directory().getAbsolutePath(), folded);
         SlayerDropTracker.sendModMessage("§aSlayer stats folder is available again; the record was loaded"
                 + (folded > 0 ? " and §f" + folded + "§a kills from this session were added." : "."));
-        save();
+        markDirty();
     }
 
     /** Adds every account and profile of {@code from} to {@code into}; returns the kills moved. */
@@ -404,10 +428,17 @@ public class AlpakaStats {
         long now = System.currentTimeMillis();
         if (now - lastStoreMissingNoticeMs < SAVE_FAILURE_NOTICE_INTERVAL_MS) return;
         lastStoreMissingNoticeMs = now;
-        AlpakaAddons.LOGGER.warn("Slayer stats not saved: folder {} is still not there", directory().getAbsolutePath());
-        SlayerDropTracker.sendModMessage("§eSlayer stats folder is not available: §f" + directory().getAbsolutePath());
-        SlayerDropTracker.sendModMessage("§7Is the drive mounted? Kills are kept in memory and written as soon as the folder appears. "
-                + "§f/alpakastats folder default §7switches to the shared folder instead.");
+        boolean folderThere = directory().isDirectory();
+        AlpakaAddons.LOGGER.warn("Slayer stats not saved: {} is still not there", (folderThere ? file() : directory()).getAbsolutePath());
+        if (folderThere) {
+            SlayerDropTracker.sendModMessage("§eThe slayer stats file is missing from §f" + directory().getAbsolutePath());
+            SlayerDropTracker.sendModMessage("§7Is the folder still syncing? Kills are kept in memory and written as soon as the file is back. "
+                    + "§f/alpakastats folder default §7switches to the shared folder instead.");
+        } else {
+            SlayerDropTracker.sendModMessage("§eSlayer stats folder is not available: §f" + directory().getAbsolutePath());
+            SlayerDropTracker.sendModMessage("§7Is the drive mounted? Kills are kept in memory and written as soon as the folder appears. "
+                    + "§f/alpakastats folder default §7switches to the shared folder instead.");
+        }
     }
 
     /** Whether the record is waiting for its folder to appear. */
@@ -434,73 +465,141 @@ public class AlpakaStats {
     }
 
     private static AlpakaStats read(File file) {
-        if (!file.exists()) return null;
-        try (FileReader reader = new FileReader(file)) {
-            return GSON.fromJson(reader, AlpakaStats.class);
+        try {
+            String json = AtomicJsonFile.read(file);
+            if (json == null || json.isBlank()) return null;
+            return GSON.fromJson(json, AlpakaStats.class);
         } catch (Exception e) {
             AlpakaAddons.LOGGER.error("Failed to load stats from {}", file.getAbsolutePath(), e);
             return null;
         }
     }
 
+    private static boolean dirty = false;
+    private static long nextFlushAttemptNanos = 0L;
+
     /**
-     * Writes the record, keeping what other machines have put there.
-     *
-     * The file may be shared through a sync folder, so it can have moved on since this session read
-     * it - the same player on their other PC, on another Skyblock profile. Blindly writing what is
-     * in memory would throw that away, so the file is re-read and only the account and profile
-     * <em>this</em> session is playing is overlaid onto it. That granularity is what makes the merge
-     * sound rather than clever: this client is the only authority on the profile in front of it, and
-     * has nothing to say about any other.
-     *
-     * It does not make two machines playing the same profile at the same time safe, and nothing
-     * short of a server would.
+     * Records that the record changed; it is written at the end of the tick, once, however many
+     * changes the tick made. A boss kill used to write the whole file two or three times over - the
+     * kill, the XP and the best time each saved on their own - which hitched the game at the moment
+     * the boss died, and more so on a cloud drive.
      */
-    public static void save() {
-        retryLoadIfAwaiting();
+    public static void markDirty() {
+        dirty = true;
+    }
+
+    /**
+     * Writes the record if anything changed. Called every client tick, and on disconnect and exit.
+     * A failed write is retried every couple of seconds rather than every tick.
+     */
+    public static void flushIfDirty() {
+        if (!dirty) return;
         if (awaitingStore) {
+            // Rate-limited inside: says every few minutes that kills are waiting for the folder.
             warnStoreMissing();
             return;
         }
+        long now = System.nanoTime();
+        if (now < nextFlushAttemptNanos) return;
+        dirty = false;
+        if (!save()) {
+            dirty = true;
+            nextFlushAttemptNanos = now + 2_000_000_000L;
+        }
+    }
+
+    /** Writes a pending change now, ignoring the retry pause. For disconnecting and quitting. */
+    public static void flushNow() {
+        if (!dirty || awaitingStore) return;
+        dirty = false;
+        if (!save()) dirty = true;
+    }
+
+    /** Sibling file used to keep two local instances from saving at the same moment. */
+    private static final String LOCK_NAME = "alpaka-stats.lock";
+
+    /**
+     * Writes the record now, keeping what other sessions have put there. Returns whether it was
+     * written. Gameplay code calls {@link #markDirty()} instead and lets the tick write it.
+     *
+     * The file may be shared - by a second instance on this machine, or through a sync folder with
+     * another PC - so it can have moved on since this session read it. The file is re-read and merged
+     * slayer by slayer before writing (see {@link #mergeFromDisk}), under a lock that keeps two local
+     * instances from interleaving the read and the write.
+     *
+     * Two machines playing the same profile at the same time can still lose the smaller of their two
+     * sets of new kills, since only the larger count survives the merge; nothing short of one file
+     * per machine fixes that.
+     */
+    public static boolean save() {
+        retryLoadIfAwaiting();
+        if (awaitingStore) {
+            warnStoreMissing();
+            return false;
+        }
+        // The folder or its file went away mid-session. Nothing is written until it is back, so an
+        // empty folder can never receive a fresh record in place of the real one; memory still holds
+        // everything, and the next save after it returns writes it.
+        if (storeMissing()) {
+            warnStoreMissing();
+            return false;
+        }
 
         File file = file();
-        File dir = file.getParentFile();
-        if (dir != null) dir.mkdirs();
-
-        mergeFromDisk(file);
-
+        File dir = file.getAbsoluteFile().getParentFile();
         try {
-            if (file.exists()) {
-                java.nio.file.Files.copy(file.toPath(), new File(dir, BACKUP_NAME).toPath(),
-                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-            }
+            if (dir != null && !dir.isDirectory()) java.nio.file.Files.createDirectories(dir.toPath());
 
-            // Written aside and moved into place, so a reader - or a sync client - never sees a
-            // half-written record where a complete one used to be.
-            File temp = new File(dir, FILE_NAME + ".tmp");
-            try (FileWriter writer = new FileWriter(temp)) {
-                GSON.toJson(instance, writer);
+            try (java.nio.channels.FileChannel channel = openLock(dir);
+                 java.nio.channels.FileLock lock = channel == null ? null : tryLock(channel)) {
+                AlpakaStats onDisk = read(file);
+                mergeFromDisk(onDisk);
+                // Only a copy that parsed becomes the backup, so a damaged file can never replace
+                // the last good one.
+                if (onDisk != null) AtomicJsonFile.backup(file, new File(dir, BACKUP_NAME));
+                AtomicJsonFile.write(file, GSON.toJson(instance));
             }
-
-            try {
-                java.nio.file.Files.move(temp.toPath(), file.toPath(),
-                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-            } catch (Exception moveFailed) {
-                // The whole point of this setting is to put the file on a drive a cloud client
-                // provides, and those are not always real filesystems - Google Drive's streaming
-                // mount refuses some operations a local disk allows. Writing straight to the target
-                // gives up the atomicity rather than giving up the save, and the backup taken above
-                // is what covers the window this opens.
-                AlpakaAddons.LOGGER.warn("Atomic replace not supported at {}; writing in place", dir.getAbsolutePath());
-                try (FileWriter writer = new FileWriter(file)) {
-                    GSON.toJson(instance, writer);
-                }
-                temp.delete();
-            }
+            markFolderHadFile();
+            dirty = false;
+            return true;
         } catch (Exception e) {
             AlpakaAddons.LOGGER.error("Failed to save stats to {}", file.getAbsolutePath(), e);
             warnSaveFailed(file, e);
+            return false;
         }
+    }
+
+    private static java.nio.channels.FileChannel openLock(File dir) {
+        if (dir == null) return null;
+        try {
+            return java.nio.channels.FileChannel.open(new File(dir, LOCK_NAME).toPath(),
+                    java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.WRITE);
+        } catch (Exception e) {
+            // Some cloud drives refuse this; the save goes ahead without the lock.
+            return null;
+        }
+    }
+
+    /**
+     * Best effort: a few short tries, then carry on unlocked. Another instance only holds the lock
+     * for the few milliseconds its own save takes.
+     */
+    private static java.nio.channels.FileLock tryLock(java.nio.channels.FileChannel channel) {
+        for (int attempt = 0; attempt < 10; attempt++) {
+            try {
+                java.nio.channels.FileLock lock = channel.tryLock();
+                if (lock != null) return lock;
+            } catch (Exception e) {
+                return null;
+            }
+            try {
+                Thread.sleep(10L);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return null;
+            }
+        }
+        return null;
     }
 
     /** How often, at most, a failing save is announced in chat; a save follows every kill and drop. */
@@ -528,64 +627,78 @@ public class AlpakaStats {
     }
 
     /**
-     * Folds anything on disk that this session is not responsible for back into memory.
+     * Folds what is on disk into memory, slayer by slayer, for every account and profile.
      *
-     * Other accounts and other profiles are taken as they are on disk. For the profile this session
-     * plays, memory wins - with one exception: a slayer whose kill count on disk is <em>higher</em>
-     * than in memory was written by a more recent session on another machine, and kills only ever
-     * go up, so the larger record is the newer one and is taken over. Without that, switching this
-     * machine onto a synced folder that held a newer record flattened the newer record with the
-     * older one.
+     * Each slayer keeps the higher kill count, the later position of each drop, the better best time
+     * and the newer XP reading. Kills only ever go up, so whichever side is behind simply catches up.
+     * This used to keep memory's copy of every account and profile other than the one in play, so two
+     * instances on different accounts each wrote back a stale copy of the other and erased its kills.
      *
-     * The placeholder bucket is this session's as well, whatever the disk says: only the account
-     * playing right now writes it, and it has usually just been folded into its profile by
+     * The placeholder bucket of the account in play is this session's, whatever the disk says: only
+     * that account writes it, and it has usually just been folded into its profile by
      * {@link #rescueStranded}; taking a stale copy back from disk would count that record twice.
      */
-    private static void mergeFromDisk(File file) {
-        AlpakaStats onDisk = read(file);
+    private static void mergeFromDisk(AlpakaStats onDisk) {
         if (onDisk == null || onDisk.accounts == null) return;
 
-        String account = accountKey();
-        Account ours = instance.accounts.get(account);
-
+        String playing = accountKey();
         for (Map.Entry<String, Account> entry : onDisk.accounts.entrySet()) {
             Account theirs = entry.getValue();
-            if (theirs == null) continue;
+            if (theirs == null || theirs.profiles == null) continue;
+            boolean isPlaying = entry.getKey().equals(playing);
 
-            // Another account entirely: nothing this session did concerns it, take theirs.
-            if (!entry.getKey().equals(account) || ours == null) {
-                instance.accounts.putIfAbsent(entry.getKey(), theirs);
-                continue;
-            }
+            Account ours = instance.accounts.computeIfAbsent(entry.getKey(), key -> new Account());
+            if (ours.profiles == null) ours.profiles = new HashMap<>();
+            // Which profile another account was last on is for that account's own session to say.
+            if (!isPlaying && theirs.lastProfile != null) ours.lastProfile = theirs.lastProfile;
 
-            if (theirs.profiles == null) continue;
             for (Map.Entry<String, ProfileStats> profileEntry : theirs.profiles.entrySet()) {
                 String name = profileEntry.getKey();
-                if (UNKNOWN_PROFILE.equals(name)) continue;
+                ProfileStats disk = profileEntry.getValue();
+                if (disk == null || disk.slayerBossMap == null) continue;
+                if (isPlaying && UNKNOWN_PROFILE.equals(name)) continue;
 
-                if (name.equals(ours.lastProfile)) {
-                    adoptNewerSlayers(ours.profiles.get(name), profileEntry.getValue(), name);
-                    continue;
+                ProfileStats mine = ours.profiles.get(name);
+                if (mine == null || mine.slayerBossMap == null) {
+                    ours.profiles.put(name, disk);
+                } else {
+                    mergeNewer(mine, disk, name);
                 }
-                ours.profiles.putIfAbsent(name, profileEntry.getValue());
             }
         }
 
         if (onDisk.legacyImported) instance.legacyImported = true;
     }
 
-    /** Takes over each slayer record that the disk has with more kills than memory does. */
-    private static void adoptNewerSlayers(ProfileStats ours, ProfileStats theirs, String profile) {
-        if (ours == null || theirs == null || theirs.slayerBossMap == null) return;
-        for (Map.Entry<SlayerType, AlpakaConfig.SlayerData> e : theirs.slayerBossMap.entrySet()) {
-            AlpakaConfig.SlayerData disk = e.getValue();
-            if (disk == null) continue;
-            AlpakaConfig.SlayerData memory = ours.slayerBossMap.get(e.getKey());
-            if (memory != null && memory.kills >= disk.kills) continue;
+    /** Merges one profile's record from disk into memory's; see {@link #mergeFromDisk}. */
+    private static void mergeNewer(ProfileStats mine, ProfileStats disk, String profile) {
+        for (Map.Entry<SlayerType, AlpakaConfig.SlayerData> e : disk.slayerBossMap.entrySet()) {
+            AlpakaConfig.SlayerData theirs = e.getValue();
+            if (theirs == null) continue;
+            AlpakaConfig.SlayerData ours = mine.slayerBossMap.get(e.getKey());
+            if (ours == null) {
+                mine.slayerBossMap.put(e.getKey(), theirs);
+                continue;
+            }
 
-            AlpakaAddons.LOGGER.info("Took the {} {} record from disk ({} kills) over the one in memory ({} kills)",
-                    profile, e.getKey(), disk.kills, memory == null ? 0 : memory.kills);
-            ours.slayerBossMap.put(e.getKey(), disk);
+            if (theirs.kills > ours.kills) {
+                AlpakaAddons.LOGGER.info("Took the {} {} kill count from disk ({} kills) over the one in memory ({} kills)",
+                        profile, e.getKey(), theirs.kills, ours.kills);
+                ours.kills = theirs.kills;
+            }
+            if (theirs.drops != null) {
+                if (ours.drops == null) ours.drops = new HashMap<>();
+                for (Map.Entry<String, Integer> drop : theirs.drops.entrySet()) {
+                    if (drop.getValue() == null) continue;
+                    Integer at = ours.drops.get(drop.getKey());
+                    if (at == null || drop.getValue() > at) ours.drops.put(drop.getKey(), drop.getValue());
+                }
+            }
+            if (theirs.bestBossMs > 0 && (ours.bestBossMs <= 0 || theirs.bestBossMs < ours.bestBossMs)) {
+                ours.bestBossMs = theirs.bestBossMs;
+            }
+            if (theirs.totalXp > ours.totalXp) ours.totalXp = theirs.totalXp;
+            if (theirs.lastXpCreditedAtMs > ours.lastXpCreditedAtMs) ours.lastXpCreditedAtMs = theirs.lastXpCreditedAtMs;
         }
     }
 }

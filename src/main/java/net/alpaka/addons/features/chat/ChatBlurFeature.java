@@ -40,9 +40,17 @@ import org.slf4j.LoggerFactory;
  * tints it with the chat's background colour and fades the rounded edge over one pixel.
  *
  * The copy is only made in frames where a panel asked for it ({@link #request()}), so a hidden
- * chat costs nothing, and the sampled view is looked up at draw time ({@link #textureSetup()}),
- * after the copy of that frame exists, so a window resize between extraction and drawing can never
- * hand the GUI a view of a texture that has just been replaced.
+ * chat costs nothing.
+ *
+ * ### Resizes
+ *
+ * The GUI renderer asks each element for its texture while preparing the frame, before anything is
+ * drawn. With the copy deferred to the blur point ({@link #captureAfterBackground()}), that is before
+ * the copy of this frame exists. So the target is sized in {@link #captureFrameBeforeGui()}, before
+ * the elements are prepared, and never replaced later in the frame. A target that no longer fits is
+ * set aside and closed a frame later, and the frame that replaced it draws its panels without blur.
+ * Destroying it at the blur point instead, as this once did, left the main menu's glass tabs holding
+ * a closed texture, and resizing the window crashed the game.
  */
 public final class ChatBlurFeature {
     private static final Logger LOGGER = LoggerFactory.getLogger("AlpakaAddons/ChatBlur");
@@ -53,6 +61,8 @@ public final class ChatBlurFeature {
     public static final int RADIUS = 5;
 
     private static TextureTarget blurred;
+    /** Targets replaced after a resize, closed at the start of the next frame. */
+    private static final java.util.List<TextureTarget> PENDING_CLOSE = new java.util.ArrayList<>();
     private static CrossFrameResourcePool pool;
     private static boolean requested;
     private static boolean ready;
@@ -212,9 +222,45 @@ public final class ChatBlurFeature {
 
     /** Called before the GUI renderer prepares the frame's elements: the world is on the frame, nothing of the GUI yet. */
     public static void captureFrameBeforeGui() {
+        // Last frame's draws are done, so nothing can still sample the targets set aside then.
+        for (TextureTarget old : PENDING_CLOSE) old.destroyBuffers();
+        PENDING_CLOSE.clear();
+
+        // A deferred copy that never reached the blur point leaves the last copy stale; draw this
+        // frame's panels without blur rather than sample it.
+        if (deferred) ready = false;
+
+        boolean wanted = requested || captureAfterBackground;
         deferred = captureAfterBackground;
         captureAfterBackground = false;
+        if (wanted) ensureTarget();
         if (!deferred) captureFrame();
+    }
+
+    /**
+     * Creates the target, or replaces it when the window size changed. Only called before the GUI
+     * prepares its elements, so no element of this frame can hold a view of a replaced texture.
+     */
+    private static void ensureTarget() {
+        RenderTarget main = Minecraft.getInstance().gameRenderer.mainRenderTarget();
+        GpuTexture source = main.getColorTexture();
+        if (source == null || main.width <= 0 || main.height <= 0) return;
+        if (blurred != null && blurred.width == main.width && blurred.height == main.height) return;
+
+        if (blurred != null) {
+            PENDING_CLOSE.add(blurred);
+            blurred = null;
+        }
+        // The new target holds nothing yet: this frame's panels are prepared without blur.
+        ready = false;
+        try {
+            blurred = new TextureTarget("Alpaka chat blur", main.width, main.height, false, source.getFormat());
+        } catch (RuntimeException e) {
+            if (!warned) {
+                warned = true;
+                LOGGER.warn("Could not create the chat blur target; drawing the chat background without blur", e);
+            }
+        }
     }
 
     /**
@@ -242,12 +288,11 @@ public final class ChatBlurFeature {
         int width = main.width;
         int height = main.height;
         if (width <= 0 || height <= 0) return;
+        // Sized before the GUI was prepared (see ensureTarget); never replaced here, where this
+        // frame's elements may already hold its view. A mismatch only skips the copy.
+        if (blurred == null || blurred.width != width || blurred.height != height) return;
 
         try {
-            if (blurred == null || blurred.width != width || blurred.height != height) {
-                if (blurred != null) blurred.destroyBuffers();
-                blurred = new TextureTarget("Alpaka chat blur", width, height, false, source.getFormat());
-            }
             CommandEncoder encoder = RenderSystem.getDevice().createCommandEncoder();
             encoder.copyTextureToTexture(source, blurred.getColorTexture(), 0, 0, 0, 0, 0, width, height);
 

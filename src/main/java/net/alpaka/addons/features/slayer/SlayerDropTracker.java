@@ -98,7 +98,23 @@ public class SlayerDropTracker {
             Pattern.compile("^\\s*☠\\s+(?<name>\\w+)\\s+.+$");
 
     private static final Pattern SERVER_DROP_PATTERN = Pattern.compile("^\\s*(?:UNCOMMON|RARE|VERY RARE|CRAZY RARE|INSANE|PRAY TO RNGESUS|PET) DROP!.*");
-    private static final Pattern PARTY_PATTERN = Pattern.compile("^Party > (?:\\[[A-Z+]+] )?\\w+: !since (?<item>.+)$");
+
+    /**
+     * A party member asking "!since &lt;item&gt;", the convention party bots answer.
+     *
+     * This client never answers on its own: another player's message must not make it send anything.
+     * With the option on it only shows the player their own count, with a button that puts the reply
+     * in their chat box. See {@link #offerSinceReply}.
+     */
+    private static final Pattern SINCE_REQUEST_PATTERN =
+            Pattern.compile("^Party > (?:\\[[A-Z+]+] )?(?<name>\\w+): !since (?<item>.+)$");
+
+    /** A request for the same item this soon after the last one gets no second offer. */
+    private static final long SINCE_REPEAT_MS = 30_000L;
+    /** Minimum gap between two offers of any item, so a party spamming the trigger cannot flood chat. */
+    private static final long SINCE_MIN_GAP_MS = 3_000L;
+    private static final Map<String, Long> SINCE_OFFERED_AT = new java.util.HashMap<>();
+    private static long lastSinceOfferMs = 0L;
     /**
      * Every legacy formatting code, not just the standard set - Hypixel uses codes outside it as
      * padding. See {@link net.alpaka.addons.utils.SkyblockUtils#cleanColor}.
@@ -331,8 +347,7 @@ public class SlayerDropTracker {
             return;
         }
 
-        // Check party command
-        handlePartyCommand(string);
+        offerSinceReply(string);
     }
 
     /**
@@ -354,7 +369,8 @@ public class SlayerDropTracker {
         }
 
         Matcher death = PLAYER_DEATH_PATTERN.matcher(message);
-        if (death.matches() && namesLocalPlayer(death.group("name"))) {
+        if (death.matches() && namesLocalPlayer(death.group("name"))
+                && SlayerQuestDetector.INSTANCE.getDeathCanVoidQuest()) {
             SlayerQuestDetector.INSTANCE.onQuestVoided();
             return true;
         }
@@ -391,7 +407,7 @@ public class SlayerDropTracker {
             AlpakaStats.slayerBossMap().put(type, data);
         }
         data.kills++;
-        AlpakaStats.save();
+        AlpakaStats.markDirty();
     }
 
     /** Reports drops whose hold-off has elapsed. Called once per client tick. */
@@ -431,14 +447,15 @@ public class SlayerDropTracker {
                         .append(Component.literal(String.valueOf(sinceLast)).withStyle(ChatFormatting.GREEN))
                         .append(Component.literal(" Boss" + (sinceLast != 1 ? "es" : "")));
             }
-            sendModMessage(feedback);
-
             if (AlpakaConfig.instance.slayerRngDropGuildChatEnabled && isHeadlineDrop(pending.type(), pending.item())) {
-                announceToGuild(feedback);
+                String shared = cleanColor(feedback.getString()).trim();
+                feedback.append(" ").append(shareButton("[Share: Guild]", "gc", shared))
+                        .append(" ").append(shareButton("[Party]", "pc", shared));
             }
+            sendModMessage(feedback);
         }
 
-        if (changed) AlpakaStats.save();
+        if (changed) AlpakaStats.markDirty();
     }
 
     /**
@@ -450,48 +467,93 @@ public class SlayerDropTracker {
     }
 
     /** Hypixel's chat limit is 256; the drop line is far shorter, this only guards against surprises. */
-    private static final int GUILD_MESSAGE_MAX_LENGTH = 250;
+    private static final int SHARE_MESSAGE_MAX_LENGTH = 250;
 
     /**
-     * Posts the tracker's own drop line to the guild chat, exactly as the player typing "/gc" would.
+     * A button that puts "/&lt;channel&gt; &lt;text&gt;" into the player's chat box.
      *
-     * The same words the player just read in their own chat, with the formatting stripped - Hypixel
-     * discards colour codes typed into chat anyway. Only ever reached for a headline drop with the
-     * setting on: this is the one place the mod speaks in the player's name, and posting that line is
-     * precisely what the setting asks for.
+     * Suggest rather than run: the click only fills the input, and nothing reaches the server until
+     * the player reads it and presses Enter. The mod never posts to a channel by itself - it used to,
+     * for the guild drop announcement and the "!since" reply, and both broke the rule that every
+     * message needs a direct action from the player.
      */
-    private static void announceToGuild(Component feedback) {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || mc.player.connection == null) return;
-
-        String text = cleanColor(feedback.getString()).trim();
-        if (text.isEmpty()) return;
-        if (text.length() > GUILD_MESSAGE_MAX_LENGTH) text = text.substring(0, GUILD_MESSAGE_MAX_LENGTH);
-        mc.player.connection.sendCommand("gc " + text);
+    private static Component shareButton(String label, String channel, String text) {
+        String trimmed = text.length() > SHARE_MESSAGE_MAX_LENGTH ? text.substring(0, SHARE_MESSAGE_MAX_LENGTH) : text;
+        String command = "/" + channel + " " + trimmed;
+        return Component.literal(label).withStyle(style -> style
+                .withColor(ChatFormatting.AQUA)
+                .withClickEvent(new net.minecraft.network.chat.ClickEvent.SuggestCommand(command))
+                .withHoverEvent(new net.minecraft.network.chat.HoverEvent.ShowText(
+                        Component.literal("Puts this in your chat box. Press Enter to send it.\n")
+                                .append(Component.literal(command).withStyle(ChatFormatting.GRAY)))));
     }
 
-    public static void handlePartyCommand(String message) {
-        if (!AlpakaConfig.instance.slayerDropTrackerEnabled) return;
+    /** One recorded drop and how many bosses ago it came, for "!since" and /alpakaslayer since. */
+    private record SinceAnswer(String item, int bossesSince) {
+        String text() {
+            return "Bosses since last " + item + ": " + bossesSince;
+        }
+    }
 
-        Matcher matcher = PARTY_PATTERN.matcher(message);
-        if (matcher.matches()) {
-            String queryDrop = matcher.group("item").trim();
-
-            for (Map.Entry<SlayerType, AlpakaConfig.SlayerData> entry : AlpakaStats.slayerBossMap().entrySet()) {
-                AlpakaConfig.SlayerData data = entry.getValue();
-                if (data == null || data.drops == null) continue;
-
-                for (Map.Entry<String, Integer> dropEntry : data.drops.entrySet()) {
-                    if (dropEntry.getKey().equalsIgnoreCase(queryDrop)) {
-                        int sinceLast = data.kills - dropEntry.getValue();
-                        Minecraft mc = Minecraft.getInstance();
-                        if (mc.player != null && mc.player.connection != null) {
-                            mc.player.connection.sendCommand("pc Bosses since last " + dropEntry.getKey() + ": " + sinceLast);
-                        }
-                    }
+    /**
+     * The first recorded drop whose name matches, ignoring case. Slayers are searched in their
+     * declared order, so an item recorded under two of them always answers the same way.
+     */
+    private static SinceAnswer findSince(String query) {
+        String wanted = query.trim();
+        if (wanted.isEmpty()) return null;
+        for (SlayerType type : SlayerType.values()) {
+            AlpakaConfig.SlayerData data = AlpakaStats.slayerBossMap().get(type);
+            if (data == null || data.drops == null) continue;
+            for (Map.Entry<String, Integer> drop : data.drops.entrySet()) {
+                if (drop.getKey().equalsIgnoreCase(wanted)) {
+                    return new SinceAnswer(drop.getKey(), data.kills - drop.getValue());
                 }
             }
         }
+        return null;
+    }
+
+    /**
+     * Shows the player their own count when a party member asks "!since &lt;item&gt;", with a button
+     * that puts the reply in their chat box.
+     *
+     * Off by default, and never an answer in the player's name: the offer is local, and the reply only
+     * goes out if the player clicks it and presses Enter. Repeats are dropped (see
+     * {@link #SINCE_REPEAT_MS} and {@link #SINCE_MIN_GAP_MS}) so a party cannot flood the chat with it.
+     */
+    private static void offerSinceReply(String message) {
+        if (!AlpakaConfig.instance.slayerSinceReplyOffer) return;
+
+        Matcher matcher = SINCE_REQUEST_PATTERN.matcher(message);
+        if (!matcher.matches()) return;
+
+        SinceAnswer answer = findSince(matcher.group("item"));
+        if (answer == null) return;
+
+        long now = System.currentTimeMillis();
+        String key = answer.item().toLowerCase(java.util.Locale.ROOT);
+        Long offeredAt = SINCE_OFFERED_AT.get(key);
+        if (offeredAt != null && now - offeredAt < SINCE_REPEAT_MS) return;
+        if (now - lastSinceOfferMs < SINCE_MIN_GAP_MS) return;
+        SINCE_OFFERED_AT.put(key, now);
+        lastSinceOfferMs = now;
+
+        sendModMessage(Component.literal("§7" + matcher.group("name") + " asked: §f" + answer.text() + " ")
+                .append(shareButton("[Reply in party]", "pc", answer.text())));
+    }
+
+    /** /alpakaslayer since &lt;item&gt;: the player's own count, with buttons to share it. */
+    public static void printSince(String query) {
+        SinceAnswer answer = findSince(query);
+        if (answer == null) {
+            sendModMessage("§7No §f" + query.trim() + "§7 drop recorded yet. §8/alpakaslayer <slayer> lists every recorded drop.");
+            return;
+        }
+        sendModMessage(Component.literal("§f" + answer.text() + " ")
+                .append(shareButton("[Share: Party]", "pc", answer.text()))
+                .append(" ")
+                .append(shareButton("[Guild]", "gc", answer.text())));
     }
 
     public static void printKills(LocalPlayer player) {

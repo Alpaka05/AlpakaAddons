@@ -44,8 +44,8 @@ public class AlpakaConfigRegistry {
         // The General tab is what opens first, so it holds only what a new player needs before
         // anything else: whether the mod may reach the network at all, the one place HUDs are
         // arranged, and the way back out of everything.
-        OPTIONS.add(new ConfigOption("allow_api_calls", "Allow API Calls",
-                "Lets the mod read public Hypixel data. Used for the mayor's slayer XP buff.",
+        OPTIONS.add(new ConfigOption("allow_api_calls", "Allow Network Features",
+                "Lets the mod contact Hypixel: the mayor's slayer XP buff and the main menu's player count.",
                 ConfigCategory.GENERAL,
                 () -> AlpakaConfig.instance.allowApiCalls,
                 v -> { AlpakaConfig.instance.allowApiCalls = v; AlpakaConfig.save(); },
@@ -1025,12 +1025,20 @@ public class AlpakaConfigRegistry {
                 "hide hypixel drop message duplicate chat slayer very rare clean"));
 
 
-        OPTIONS.add(new ConfigOption("slayer_rng_drop_guild_chat", "Announce Top Drop In Guild Chat",
-                "Posts the tracker's message to guild chat when a slayer's rarest drop lands.",
+        OPTIONS.add(new ConfigOption("slayer_rng_drop_guild_chat", "Share Buttons On Top Drops",
+                "Adds Guild and Party share buttons to a slayer's rarest drop. A click fills your chat box.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.slayerRngDropGuildChatEnabled,
                 v -> { AlpakaConfig.instance.slayerRngDropGuildChatEnabled = v; AlpakaConfig.save(); },
-                "guild chat gc announce share rng drop rare dice judgement core warden heart flex"));
+                "guild party chat gc pc announce share button rng drop rare dice judgement core warden heart flex"));
+
+
+        OPTIONS.add(new ConfigOption("slayer_since_reply_offer", "Offer Replies To !since",
+                "Shows your count when a party member asks !since <item>, with a Reply button.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slayerSinceReplyOffer,
+                v -> { AlpakaConfig.instance.slayerSinceReplyOffer = v; AlpakaConfig.save(); },
+                "since !since party reply answer bosses since last drop dry streak pc"));
 
 
         OPTIONS.add(new ConfigOption("hide_slayer_chat", "Hide Slayer Chat Spam",

@@ -54,7 +54,7 @@ object SlayerXpTracker {
         // Nothing to advance until the menu has given a starting point; adding kills to "unknown"
         // would only invent a number.
         if (data.totalXp >= 0L) data.totalXp += xp
-        AlpakaStats.save()
+        AlpakaStats.markDirty()
     }
 
     /** Records a lifetime XP figure read from the Slayer menu. */
@@ -77,7 +77,7 @@ object SlayerXpTracker {
         }
 
         data.totalXp = xp
-        AlpakaStats.save()
+        AlpakaStats.markDirty()
     }
 
     /** Lifetime slayer XP as currently known, or null when the menu has never been read. */

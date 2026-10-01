@@ -173,7 +173,7 @@ object SlayerTimer {
         val isBest = previousBest == null || elapsed < previousBest
         if (isBest) {
             data.bestBossMs = elapsed
-            AlpakaStats.save()
+            AlpakaStats.markDirty()
         }
 
         if (AlpakaConfig.instance.slayerTimerChatEnabled) {
@@ -304,7 +304,7 @@ object SlayerTimer {
                 cleared++
             }
         }
-        if (cleared > 0) AlpakaStats.save()
+        if (cleared > 0) AlpakaStats.markDirty()
         return cleared
     }
 

@@ -130,6 +130,18 @@ object SlayerQuestDetector {
 
     private var pendingSpawn: SlayerType? = null
 
+    /**
+     * The level the last sidebar sample came from, held weakly so a left world can be collected.
+     * A sample from another level starts over; see [resetForLevelChange].
+     */
+    private var sampledLevel: java.lang.ref.WeakReference<Any>? = null
+
+    /**
+     * Set when the world changed: the next readable state only becomes the baseline. Whatever the
+     * quest looks like in a new world, arriving there is neither a boss spawning nor one dying.
+     */
+    private var freshLevel = false
+
     /** True while the sidebar says the boss itself is up. */
     val inBossFight: Boolean get() = progress == STATE_BOSS_FIGHT
 
@@ -160,13 +172,21 @@ object SlayerQuestDetector {
         if (now - checkedAtMs < interval) return
         checkedAtMs = now
 
+        val level = net.minecraft.client.Minecraft.getInstance().level
+        if (level != null && sampledLevel?.get() !== level) {
+            sampledLevel = java.lang.ref.WeakReference(level)
+            resetForLevelChange()
+        }
+
         var foundType: SlayerType? = null
         var foundTier = 0
         var foundProgress = ""
 
+        val lines = linesToScan(now)
+
         // Scanned rather than indexed relative to a header line: the scoreboard API hands back rows
         // in no guaranteed order, so "the line after the boss name" is not a safe assumption.
-        for (line in linesToScan(now)) {
+        for (line in lines) {
             val type = SlayerType.fromScoreboardLine(line)
             if (type != null && foundType == null) {
                 foundType = type
@@ -190,8 +210,43 @@ object SlayerQuestDetector {
             if (foundTier > 0) lastSeenTier = foundTier
         }
 
+        // No sidebar at all - between servers, or before the new one has sent its scoreboard - says
+        // nothing about the quest. Read as the quest vanishing, a server switch in the middle of a
+        // fight used to count a boss that never died.
+        if (level == null || lines.isEmpty()) return
+
         detectKill(foundProgress, foundType)
     }
+
+    /**
+     * Forgets what the quest looked like in the previous world. A kill only inferred from the quest
+     * lines going away is dropped, since changing world takes them away too; a stated "Boss slain!"
+     * still counts. The first state read in the new world is taken as it is, so arriving mid-fight
+     * does not sound the spawn alert either.
+     */
+    fun resetForLevelChange() {
+        if (pendingKillInferred) pendingKill = null
+        pendingSpawn = null
+        freshLevel = true
+    }
+
+    /** As [resetForLevelChange], and forgets the recent slayer too: the next server says it anew. */
+    fun resetForDisconnect() {
+        resetForLevelChange()
+        lastSeenType = null
+        lastSeenAtMs = 0L
+        activeType = null
+        tier = 0
+        progress = ""
+    }
+
+    /**
+     * Whether the player dying now says anything about the quest: during the boss fight, or while
+     * a kill inferred from the quest vanishing is still held back. A death while grinding mobs
+     * fails nothing, and must not stop the next real kill from being recognised.
+     */
+    val deathCanVoidQuest: Boolean
+        get() = inBossFight || (pendingKill != null && pendingKillInferred)
 
     /**
      * The lines to look for a quest in: the sidebar, or the tab list when the sidebar has none.
@@ -276,6 +331,14 @@ object SlayerQuestDetector {
     }
 
     private fun detectKill(newProgress: String, newType: SlayerType?) {
+        // Before the unchanged check: the first readable state in a new world is the baseline even
+        // when it reads the same as the last one before the change, or the flag would stay set and
+        // swallow the next real transition - the kill itself, after warping mid-fight.
+        if (freshLevel) {
+            freshLevel = false
+            lastProgress = newProgress
+            return
+        }
         if (newProgress == lastProgress) return
 
         val wasFighting = lastProgress == STATE_BOSS_FIGHT

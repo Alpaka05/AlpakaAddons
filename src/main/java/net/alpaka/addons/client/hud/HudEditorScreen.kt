@@ -26,6 +26,10 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
     private var selected: HudElement? = null
 
     private var dragging: HudElement? = null
+    /** Where the drag started, and whether it has moved past [DRAG_THRESHOLD] yet. */
+    private var pressX = 0.0
+    private var pressY = 0.0
+    private var dragMoved = false
     private var dragOffsetX = 0.0
     private var dragOffsetY = 0.0
 
@@ -98,7 +102,7 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
 
     private fun drawElement(graphics: GuiGraphicsExtractor, element: HudElement, isHovered: Boolean) {
         // Draw the HUD exactly as it appears in-game, then annotate it.
-        element.render(graphics)
+        element.render(graphics, element.visibleAnchorX(this.width, this.height), element.visibleAnchorY(this.width, this.height))
 
         val box = element.visibleBounds(this.width, this.height)
         val disabled = !element.isFeatureEnabled
@@ -153,11 +157,18 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
     }
 
     override fun mouseClicked(event: MouseButtonEvent, doubleClick: Boolean): Boolean {
+        // The buttons first: the attached inventory HUD's preview sits right over them, and used
+        // to take their clicks - detaching itself from the hotbar in the process.
+        if (children().any { it.isMouseOver(event.x(), event.y()) }) return super.mouseClicked(event, doubleClick)
+
         if (event.button() == 0) {
             val hit = HudRegistry.topmostAt(event.x(), event.y(), this.width, this.height)
             if (hit != null) {
                 select(hit)
                 dragging = hit
+                dragMoved = false
+                pressX = event.x()
+                pressY = event.y()
                 // Grabbed relative to where it is actually drawn, so a clamped element does not
                 // jump back to its stored off-screen position on the first pixel of movement.
                 dragOffsetX = event.x() - hit.visibleAnchorX(this.width, this.height)
@@ -185,8 +196,26 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
     override fun mouseDragged(event: MouseButtonEvent, deltaX: Double, deltaY: Double): Boolean {
         val element = dragging ?: return super.mouseDragged(event, deltaX, deltaY)
 
-        element.anchorX = (event.x() - dragOffsetX).toInt()
-        element.anchorY = (event.y() - dragOffsetY).toInt()
+        // A few pixels of travel before anything moves, so selecting an element - or clicking the
+        // attached inventory HUD - cannot nudge it or detach it from the hotbar.
+        if (!dragMoved) {
+            val dx = event.x() - pressX
+            val dy = event.y() - pressY
+            if (dx * dx + dy * dy < DRAG_THRESHOLD * DRAG_THRESHOLD) return true
+            dragMoved = true
+        }
+
+        val x = (event.x() - dragOffsetX).toInt()
+        val y = (event.y() - dragOffsetY).toInt()
+        element.anchorX = x
+        element.anchorY = y
+        // Kept on screen: the stored position is clamped to where the box is actually visible, so a
+        // drag past an edge does not store a position the game will never show.
+        val box = element.bounds()
+        val shiftX = clampShift(box.x0, box.x1, this.width)
+        val shiftY = clampShift(box.y0, box.y1, this.height)
+        if (shiftX != 0) element.anchorX = x + shiftX
+        if (shiftY != 0) element.anchorY = y + shiftY
         dirty = true
         return true
     }
@@ -264,6 +293,8 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
     }
 
     private companion object {
+        /** Travel in GUI pixels before a press on an element starts moving it. */
+        const val DRAG_THRESHOLD = 3.0
         const val BACKDROP_COLOR = 0x88000000.toInt()
         const val TEXT_COLOR = 0xFFFFFFFF.toInt()
         const val HINT_COLOR = 0xFF8A8A8A.toInt()

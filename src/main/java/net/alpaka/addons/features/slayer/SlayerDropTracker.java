@@ -59,13 +59,6 @@ public class SlayerDropTracker {
             Pattern.compile("^\\s*RNG Meter\\s*-\\s*(?<xp>[\\d,]+)\\s+Stored XP\\s*$");
 
     /**
-     * Hypixel's own wording when a slayer quest is dropped, from a captured log.
-     *
-     * Anchored on the whole line rather than searched for: "cancelled" alone also appears in
-     * unrelated messages such as "Ragnarock was cancelled due to taking damage!", which has nothing
-     * to do with the slayer quest.
-     */
-    /**
      * Hypixel's line when a quest ends because the player died.
      *
      * Arrives <em>after</em> the sidebar has already dropped the quest, so this used to be too late
@@ -76,6 +69,13 @@ public class SlayerDropTracker {
     private static final Pattern QUEST_FAILED_PATTERN =
             Pattern.compile("^\\s*SLAYER QUEST FAILED!\\s*$");
 
+    /**
+     * Hypixel's own wording when a slayer quest is dropped, from a captured log.
+     *
+     * Anchored on the whole line rather than searched for: "cancelled" alone also appears in
+     * unrelated messages such as "Ragnarock was cancelled due to taking damage!", which has nothing
+     * to do with the slayer quest.
+     */
     private static final Pattern QUEST_CANCELLED_PATTERN =
             Pattern.compile("^\\s*Your Slayer Quest has been cancelled!\\s*$");
 
@@ -129,8 +129,6 @@ public class SlayerDropTracker {
      * completion, so waiting lets the kill be counted first and keeps "took N bosses" off by none.
      */
     private static final int DROP_DELAY_TICKS = 30;
-
-    public static SlayerType currentBoss = null;
 
     private static long lastKillCountedAtMs = 0L;
     private static int tickCounter = 0;
@@ -196,47 +194,68 @@ public class SlayerDropTracker {
         // the sidebar.
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
             if (overlay) return;
-            onChat(message);
+            onChat(message, false);
         });
 
         ClientReceiveMessageEvents.CHAT.register((message, signedMessage, sender, params, receptionTimestamp) -> {
-            onChat(message);
+            onChat(message, false);
+        });
+
+        // Lines another mod's chat filter hides - SkyHanni and Skyblocker both hide kill and drop
+        // lines on request - arrive only through these. They still count; they just never reach
+        // the chat, so nothing is queued to be hidden for them.
+        ClientReceiveMessageEvents.GAME_CANCELED.register((message, overlay) -> {
+            if (overlay) return;
+            onChat(message, true);
+        });
+
+        ClientReceiveMessageEvents.CHAT_CANCELED.register((message, signedMessage, sender, params, receptionTimestamp) -> {
+            onChat(message, true);
         });
 
         // Drives the deferred drop reporting, and keeps the sidebar read warm so a boss type is
         // already known by the time the kill message lands.
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            tickCounter++;
-            SlayerQuestDetector.INSTANCE.refresh();
-            SlayerSessionTracker.INSTANCE.tick();
-            SlayerTimer.INSTANCE.tick();
-            net.alpaka.addons.utils.HypixelMayor.INSTANCE.tick();
-            SlayerMenuXpReader.INSTANCE.tick();
-
-            // Primary kill signal: the sidebar leaving the boss fight. Chat is unreliable here.
-            SlayerType killed = SlayerQuestDetector.INSTANCE.consumeKill();
-            if (killed != null) {
-                long killedAtMs = SlayerQuestDetector.INSTANCE.getKillDetectedAtMs();
-                countKill(killed);
-                SlayerSessionTracker.INSTANCE.onBossKilled(killed, killedAtMs);
-                SlayerTimer.INSTANCE.onBossKilled(killed, killedAtMs);
+            long perf = net.alpaka.addons.utils.AlpakaPerf.begin(net.alpaka.addons.utils.AlpakaPerf.Section.SLAYER_TICK);
+            try {
+                tick();
+            } finally {
+                net.alpaka.addons.utils.AlpakaPerf.end(net.alpaka.addons.utils.AlpakaPerf.Section.SLAYER_TICK, perf);
             }
-
-            // Only signal for a boss spawning: Hypixel never sends a chat announcement for a
-            // regular slayer boss (unlike the Ender Dragon, Arachne, etc.), confirmed against
-            // SkyHanni's own pattern list, which has no such entry for slayer bosses.
-            SlayerType spawned = SlayerQuestDetector.INSTANCE.consumeSpawn();
-            if (spawned != null) {
-                SlayerSessionTracker.INSTANCE.onBossSpawned(spawned);
-                SlayerTimer.INSTANCE.onBossSpawned(spawned);
-            }
-            if (spawned != null && AlpakaConfig.instance.customSoundsEnabled) {
-                CustomSoundFeature.playBossSpawnSound();
-            }
-
-            flushPendingDrops();
         });
+    }
 
+    /** Runs every client tick; see registerEvents. */
+    private static void tick() {
+        tickCounter++;
+        SlayerQuestDetector.INSTANCE.refresh();
+        SlayerSessionTracker.INSTANCE.tick();
+        SlayerTimer.INSTANCE.tick();
+        net.alpaka.addons.utils.HypixelMayor.INSTANCE.tick();
+        SlayerMenuXpReader.INSTANCE.tick();
+
+        // Primary kill signal: the sidebar leaving the boss fight. Chat is unreliable here.
+        SlayerType killed = SlayerQuestDetector.INSTANCE.consumeKill();
+        if (killed != null) {
+            long killedAtMs = SlayerQuestDetector.INSTANCE.getKillDetectedAtMs();
+            countKill(killed);
+            SlayerSessionTracker.INSTANCE.onBossKilled(killed, killedAtMs);
+            SlayerTimer.INSTANCE.onBossKilled(killed, killedAtMs, SlayerQuestDetector.INSTANCE.getKillTimed());
+        }
+
+        // Only signal for a boss spawning: Hypixel never sends a chat announcement for a
+        // regular slayer boss (unlike the Ender Dragon, Arachne, etc.), confirmed against
+        // SkyHanni's own pattern list, which has no such entry for slayer bosses.
+        SlayerType spawned = SlayerQuestDetector.INSTANCE.consumeSpawn();
+        if (spawned != null) {
+            SlayerSessionTracker.INSTANCE.onBossSpawned(spawned);
+            SlayerTimer.INSTANCE.onBossSpawned(spawned, SlayerQuestDetector.INSTANCE.getSpawnVerified());
+        }
+        if (spawned != null && AlpakaConfig.instance.customSoundsEnabled) {
+            CustomSoundFeature.playBossSpawnSound();
+        }
+
+        flushPendingDrops();
     }
 
     public static boolean isOnSkyblock() {
@@ -290,7 +309,11 @@ public class SlayerDropTracker {
         sendModMessage(Component.literal(message));
     }
 
-    public static void onChat(Component message) {
+    /**
+     * One chat line. {@code hiddenByOtherMod} is true for a line another mod's filter cancelled: it
+     * is tracked like any other, but never reaches the chat, so it is not queued to be hidden.
+     */
+    public static void onChat(Component message, boolean hiddenByOtherMod) {
         String string = cleanColor(message.getString());
 
         // Ahead of the drop tracker's own switch, because these say a quest ended *without* a kill
@@ -317,9 +340,10 @@ public class SlayerDropTracker {
 
         // Secondary kill signal. Hypixel does not always send this, and other Skyblock mods often
         // swallow it, so the sidebar transition in the tick handler is the one that usually fires.
+        // Goes through the detector, which hands it out once per boss whether the sidebar or this
+        // line reports it first - so session, timer and XP see it too, not only the lifetime count.
         if (QUEST_COMPLETE_PATTERN.matcher(string).matches()) {
-            SlayerType type = SlayerQuestDetector.INSTANCE.currentOrRecent();
-            if (type != null) countKill(type);
+            SlayerQuestDetector.INSTANCE.onChatKill(SlayerQuestDetector.INSTANCE.currentOrRecent());
             return;
         }
 
@@ -341,7 +365,7 @@ public class SlayerDropTracker {
             // Marked here rather than in the chat GUI: this is the point at which the tracker
             // commits to announcing this drop, and so the point at which Hypixel's own line becomes
             // a duplicate rather than the only report of it.
-            if (AlpakaConfig.instance.hideHypixelDropMessage) {
+            if (AlpakaConfig.instance.hideHypixelDropMessage && !hiddenByOtherMod) {
                 PENDING_HIDES.add(new PendingHide(string, System.currentTimeMillis() + HIDE_WINDOW_MS));
             }
             return;
@@ -398,8 +422,6 @@ public class SlayerDropTracker {
         long now = System.currentTimeMillis();
         if (now - lastKillCountedAtMs < KILL_DEBOUNCE_MS) return;
         lastKillCountedAtMs = now;
-
-        currentBoss = type;
 
         AlpakaConfig.SlayerData data = AlpakaStats.slayerBossMap().get(type);
         if (data == null) {

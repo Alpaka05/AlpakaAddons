@@ -197,6 +197,12 @@ object AlpakaNotifications {
         }
     }
 
+    /** For tests: how many notices are kept, sliding-out ones included. */
+    internal fun keptCount(): Int = synchronized(active) { active.size }
+
+    /** For tests: how many notices are still on screen and not on their way out. */
+    internal fun liveCount(): Int = synchronized(active) { active.count { !it.retiring } }
+
     /** Brings a notice's slide-out forward, without cutting the animation itself short. */
     private fun retireEarly(notice: Notice) {
         val soonest = System.currentTimeMillis() + SLIDE_MS

@@ -117,7 +117,24 @@ Keybinds for **Zoom**, **Peek Chat**, **Command Wheel** and **Inventory HUD** ar
 
 ## Fair Play
 
-Alpaka Addons runs entirely on your client and follows the [Hypixel rules](https://hypixel.net/rules). It only shows or rearranges what the game already tells you. There are no macros, no automation and nothing that plays the game for you. The mod never sends a chat message or command unless you press a key, click a button or press Enter: share buttons only fill your chat box.
+Alpaka Addons runs entirely on your client and follows the [Hypixel rules](https://hypixel.net/rules). It only shows or rearranges what the game already tells you. There are no macros, no automation and nothing that plays the game for you.
+
+**Chat and commands.** The mod never sends anything unless you act: pressing Enter in chat, pressing the party-accept key, or picking a command on the command wheel. Each of those sends exactly one command. Share buttons only fill your chat box, so you read the message and send it yourself. Every outgoing command goes through one place in the code, and a test fails the build if anything else tries to send one.
+
+**What the mod reads.** Only what your client already has:
+
+- chat lines, the sidebar, the tab list and boss name tags, for the slayer tracker and timers
+- the item data of your own items, for the Etherwarp overlay
+- the contents of menus, and only once you have opened them yourself
+
+**What it contacts.** With "Allow Network Features" on (it can be turned off in General), the mod fetches the current SkyBlock mayor from Hypixel's public API to get slayer XP right, and pings the Hypixel server from the main menu to show its player count. Neither one sends anything about you. With the setting off, the mod makes no network requests at all.
+
+**Guardrails.**
+
+- Smooth perspective only eases between the vanilla camera views. There is no free look, and every transition ends exactly where vanilla's camera is.
+- Highlights such as the pangolin outline appear only when you have a clear line of sight. Nothing is drawn through walls.
+- Commands that delete or move your data (`/alpakaslayer reset`, `/alpakastats folder`, `/alpakapreset save`) work only when you type them. A clickable chat message cannot run them.
+- Screenshot buttons only act on screenshots this session posted, and Delete needs a second click.
 
 ## Feedback & Bugs
 

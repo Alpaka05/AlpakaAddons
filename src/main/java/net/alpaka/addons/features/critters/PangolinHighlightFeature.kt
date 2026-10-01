@@ -54,7 +54,7 @@ object PangolinHighlightFeature {
     private const val LOCATION_REFRESH_MS = 500L
 
     /** Likewise for the occlusion raycast, which is rerun a couple of times a second per mob. */
-    private const val VISIBILITY_TTL_MS = 100L
+    private const val VISIBILITY_TTL_MS = 50L
 
     /** Hard cap on how far away a mob may be to qualify, in blocks. */
     private const val MAX_DISTANCE = 64.0
@@ -65,6 +65,22 @@ object PangolinHighlightFeature {
     private var trackedLevel: ClientLevel? = null
 
     private class Visibility(var checkedAtMs: Long, var visible: Boolean)
+
+    private fun clearSightlines(player: LocalPlayer, entity: Entity): Int {
+        val level = player.level()
+        val from = player.eyePosition
+        val box = entity.boundingBox
+        val center = box.center
+        val targets = arrayOf(entity.eyePosition, center, net.minecraft.world.phys.Vec3(center.x, box.minY + 0.1, center.z))
+        var clear = 0
+        for (target in targets) {
+            val hit = level.clip(net.minecraft.world.level.ClipContext(
+                from, target, net.minecraft.world.level.ClipContext.Block.OUTLINE,
+                net.minecraft.world.level.ClipContext.Fluid.NONE, player))
+            if (hit.type == net.minecraft.world.phys.HitResult.Type.MISS) clear++
+        }
+        return clear
+    }
 
     /** Keyed by entity id. Pruned whenever the location check refreshes; cleared on world change. */
     private val visibilityCache = HashMap<Int, Visibility>()
@@ -131,8 +147,13 @@ object PangolinHighlightFeature {
     }
 
     /**
-     * Vanilla's own eyes-to-eyes occlusion raycast, cached briefly. This is the check that keeps
-     * the feature honest: terrain in the way means no highlight.
+     * Whether the Pangolin is clearly in view, re-checked every tick. This is the check that keeps
+     * the feature honest: the glow outline is drawn through everything, so it must only ever go on
+     * an animal the player can actually see.
+     *
+     * Three sightlines - to its eyes, its middle and just above its feet - traced against block
+     * outlines, so grass, flowers and leaves count as cover; at least two must be clear. Vanilla's
+     * single eyes-to-eyes check ignored foliage, which let the glow show through a bush.
      */
     private fun isVisibleToPlayer(player: LocalPlayer, entity: Entity): Boolean {
         val now = System.currentTimeMillis()
@@ -142,7 +163,7 @@ object PangolinHighlightFeature {
             return cached.visible
         }
 
-        val visible = player.hasLineOfSight(entity)
+        val visible = clearSightlines(player, entity) >= 2
         if (cached != null) {
             cached.checkedAtMs = now
             cached.visible = visible

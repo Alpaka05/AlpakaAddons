@@ -33,24 +33,30 @@ public class EntityRendererMixin<T extends Entity, S extends EntityRenderState> 
 
     @Inject(method = "extractRenderState", at = @At("TAIL"))
     private void onExtractRenderState(T entity, S state, float partialTick, CallbackInfo ci) {
-        CleanBlazeFeature.shouldHideEntityFire(state);
+        long t = net.alpaka.addons.utils.AlpakaPerf.begin(net.alpaka.addons.utils.AlpakaPerf.Section.ENTITY_RULES);
+        CleanBlazeFeature.shouldHideEntityFire(entity, state);
         // TAIL, so this lands after vanilla has decided outlineColor from the glowing effect, and
         // still before LevelRenderer reads appearsGlowing() to build the outline pass.
         PangolinHighlightFeature.applyOutline(entity, state);
+        net.alpaka.addons.utils.AlpakaPerf.end(net.alpaka.addons.utils.AlpakaPerf.Section.ENTITY_RULES, t);
     }
 
     @Inject(method = "shouldShowName", at = @At("HEAD"), cancellable = true)
     private void hideBlazeNameTags(T entity, double distance, CallbackInfoReturnable<Boolean> info) {
+        long t = net.alpaka.addons.utils.AlpakaPerf.begin(net.alpaka.addons.utils.AlpakaPerf.Section.ENTITY_RULES);
         if (CleanBlazeFeature.shouldHideNameTag(entity) || DamageTagFeature.shouldHideNameTag(entity)) {
             info.setReturnValue(false);
         }
+        net.alpaka.addons.utils.AlpakaPerf.end(net.alpaka.addons.utils.AlpakaPerf.Section.ENTITY_RULES, t);
     }
 
     @Inject(method = "shouldRender", at = @At("HEAD"), cancellable = true)
     private void filterBlazeEntities(T entity, Frustum frustum, double x, double y, double z, CallbackInfoReturnable<Boolean> info) {
+        long t = net.alpaka.addons.utils.AlpakaPerf.begin(net.alpaka.addons.utils.AlpakaPerf.Section.ENTITY_RULES);
         if (CleanBlazeFeature.shouldHideEntity(entity) || DamageTagFeature.shouldHideEntity(entity)
                 || HideMobDeathsFeature.shouldHideEntity(entity)) {
             info.setReturnValue(false);
         }
+        net.alpaka.addons.utils.AlpakaPerf.end(net.alpaka.addons.utils.AlpakaPerf.Section.ENTITY_RULES, t);
     }
 }

@@ -13,7 +13,7 @@ import net.minecraft.network.chat.MutableComponent;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * All / Party / Guild / PMs tabs in the chat screen.
+ * All / Party / Guild / Co-op / PMs tabs in the chat screen.
  *
  * The tabs sit in the gap between the lowest chat line and the input box, where vanilla draws
  * nothing. Picking one narrows the chat to that channel: the filter runs where messages are laid
@@ -21,8 +21,10 @@ import org.lwjgl.glfw.GLFW;
  * including what arrived while another tab was up. A channel tab that received messages while it
  * was not the active one shows how many, until it is opened.
  *
- * The choice persists while the game runs - closing the chat does not reset it, so the HUD too shows
- * only the chosen channel until All is picked again - and starts on All every launch.
+ * Closing the chat goes back to All, unless "Keep Tab After Closing Chat" is on; then the HUD chat
+ * stays filtered too, and a chip where the tab row sits says so. It used to stay filtered silently,
+ * hiding slayer and drop lines with nothing on screen to explain where they went. The mod's own
+ * lines and party invites show on every tab.
  *
  * Optionally a plain message typed on a channel tab is sent to that channel, with /pc, /gc or /r in
  * front. That is its own toggle and off by default, so a tab is only ever a view unless asked for.
@@ -55,7 +57,19 @@ public final class ChatTabsFeature {
      */
     public static boolean accepts(GuiMessage message) {
         if (!isEnabled() || active == ChatTab.ALL) return true;
-        return ChatTab.classify(message.content()) == active;
+        if (message.source() == net.minecraft.client.multiplayer.chat.GuiMessageSource.SYSTEM_CLIENT) return true;
+        String text = ChatTab.strip(message.content().getString());
+        if (text.startsWith(MOD_PREFIX) || ChatTab.isUrgent(text)) return true;
+        return ChatTab.classify(text) == active;
+    }
+
+    /** The prefix of the mod's own chat lines, which show on every tab. */
+    private static final String MOD_PREFIX = "[AA] ";
+
+    /** The chat screen closed: back to All, unless the player keeps the tab. */
+    public static void onChatClosed() {
+        if (!isEnabled() || AlpakaConfig.instance.chatTabsKeepAfterClose) return;
+        if (active != ChatTab.ALL) select(ChatTab.ALL);
     }
 
     /** Counts a newly arrived message for the channel tab it belongs to, if that tab is not up. */
@@ -88,13 +102,13 @@ public final class ChatTabsFeature {
     }
 
     /**
-     * A key press in the chat screen. True when it was Tab cycling the tabs, which then goes no
-     * further. Tab keeps its vanilla job - completing - while a command is being typed or a
-     * suggestion popup is open.
+     * A key press in the chat screen. True when it cycled the tabs, which then goes no further.
+     * Ctrl+Tab always cycles, Ctrl+Shift+Tab backwards. Plain Tab only does on an empty line: with
+     * text typed it is vanilla's player-name completion, which it used to take over.
      */
-    public static boolean onChatScreenKey(int key, boolean shift, boolean suggestionsVisible, String input) {
+    public static boolean onChatScreenKey(int key, boolean shift, boolean control, boolean suggestionsVisible, String input) {
         if (!tabKeyEnabled() || key != GLFW.GLFW_KEY_TAB) return false;
-        if (suggestionsVisible || input.startsWith("/")) return false;
+        if (!control && (suggestionsVisible || !input.isBlank())) return false;
         cycle(shift);
         return true;
     }
@@ -128,6 +142,26 @@ public final class ChatTabsFeature {
         Minecraft.getInstance().options.keyPlayerList.setDown(false);
     }
 
+    /**
+     * With the tab kept after closing the chat, a chip where the tab row sits says which channel the
+     * HUD chat is showing, so a filtered chat never looks like an empty one.
+     */
+    public static void renderFilterChip(GuiGraphicsExtractor graphics) {
+        if (!isEnabled() || active == ChatTab.ALL || ChatPeekFeature.isPeeking()) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.gui.screen() instanceof ChatScreen) return;
+        Font font = mc.font;
+        Component label = Component.literal(active.label + " only");
+        int y1 = graphics.guiHeight() - BOTTOM_GAP;
+        int y0 = y1 - TAB_HEIGHT;
+        int width = font.width(label) + TAB_PAD * 2;
+        int accent = ModernGuiUtils.getAccentColor();
+        graphics.fill(LEFT, y0, LEFT + width, y1, mc.options.getBackgroundColor(Integer.MIN_VALUE));
+        graphics.fill(LEFT, y0, LEFT + width, y1, (accent & 0xFFFFFF) | 0x30000000);
+        graphics.fill(LEFT, y1 - 1, LEFT + width, y1, accent);
+        graphics.text(font, label, LEFT + TAB_PAD, y0 + 2, 0xFFFFFFFF);
+    }
+
     /** The tab row under the held-open chat, without hover since there is no cursor on it. */
     public static void renderWhilePeeking(GuiGraphicsExtractor graphics) {
         if (!tabKeyEnabled() || !ChatPeekFeature.isPeeking()) return;
@@ -145,6 +179,7 @@ public final class ChatTabsFeature {
         return switch (active) {
             case PARTY -> "pc " + normalizedMessage;
             case GUILD -> "gc " + normalizedMessage;
+            case COOP -> "cc " + normalizedMessage;
             case PRIVATE -> "r " + normalizedMessage;
             default -> null;
         };

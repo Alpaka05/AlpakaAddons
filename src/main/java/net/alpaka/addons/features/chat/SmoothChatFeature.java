@@ -11,9 +11,12 @@ import java.util.Iterator;
  *
  * The chat keeps its lines newest-first, and a new message is laid out by adding its lines at the
  * front. Each such arrival is remembered here with the number of lines it added and when. While an
- * arrival is still animating, the whole chat is drawn shifted down by the height its lines have not
- * yet claimed, so the older lines glide up rather than jump, and the arrival's own lines are drawn
- * with the animation's progress as their alpha, so they fade in where they land.
+ * arrival is still animating, the lines are drawn shifted down by the height the new ones have not
+ * yet claimed - inside the chat's box, which stays put and clips them - so the older lines glide up
+ * rather than jump, and the arrival's own lines rise in from the bottom edge as they fade in.
+ *
+ * A burst of messages arriving within {@link #MERGE_NANOS} of each other counts as one arrival, and
+ * the slide never covers more than {@link #MAX_SLIDE_LINES}, so busy chat is not in constant motion.
  *
  * Arrivals are kept newest-first and finish oldest-first (same duration, later start), so the
  * finished ones are always at the tail and can be dropped without shifting the line indices the
@@ -23,6 +26,11 @@ import java.util.Iterator;
 public final class SmoothChatFeature {
 
     private record Arrival(long startNanos, int lines) {}
+
+    /** Lines arriving this soon after the newest arrival join it rather than starting their own. */
+    private static final long MERGE_NANOS = 50_000_000L;
+    /** The slide covers at most this many lines; any more simply appear. */
+    private static final int MAX_SLIDE_LINES = 3;
 
     /** Newest first. */
     private static final ArrayDeque<Arrival> ARRIVALS = new ArrayDeque<>();
@@ -54,8 +62,36 @@ public final class SmoothChatFeature {
     /** A live message just added this many lines at the front of the chat. */
     public static void onLinesAdded(int count) {
         if (count <= 0 || replaying || !isEnabled()) return;
-        prune(System.nanoTime());
-        ARRIVALS.addFirst(new Arrival(System.nanoTime(), count));
+        long now = System.nanoTime();
+        prune(now);
+        Arrival newest = ARRIVALS.peekFirst();
+        if (newest != null && now - newest.startNanos < MERGE_NANOS) {
+            ARRIVALS.pollFirst();
+            ARRIVALS.addFirst(new Arrival(newest.startNanos, newest.lines + count));
+            return;
+        }
+        ARRIVALS.addFirst(new Arrival(now, count));
+    }
+
+    /**
+     * Lines at this index of the newest-first list were taken out - a compacted repeat lifting its
+     * earlier copy - so the arrivals covering them shrink, and the ones after keep pointing at the
+     * same lines.
+     */
+    public static void onLinesRemoved(int index, int count) {
+        if (count <= 0 || ARRIVALS.isEmpty()) return;
+        int end = index + count;
+        int covered = 0;
+        ArrayDeque<Arrival> kept = new ArrayDeque<>();
+        for (Arrival arrival : ARRIVALS) {
+            int from = covered;
+            int to = covered + arrival.lines;
+            int overlap = Math.max(0, Math.min(to, end) - Math.max(from, index));
+            if (arrival.lines - overlap > 0) kept.addLast(new Arrival(arrival.startNanos, arrival.lines - overlap));
+            covered = to;
+        }
+        ARRIVALS.clear();
+        ARRIVALS.addAll(kept);
     }
 
     /** The chat was cleared; nothing left to animate. */
@@ -90,7 +126,7 @@ public final class SmoothChatFeature {
         for (Arrival arrival : ARRIVALS) {
             offset += (1.0f - progress(arrival, now)) * arrival.lines * lineHeight;
         }
-        return offset;
+        return Math.min(offset, MAX_SLIDE_LINES * lineHeight);
     }
 
     /**

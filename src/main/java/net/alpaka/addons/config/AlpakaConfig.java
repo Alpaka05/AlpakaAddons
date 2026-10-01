@@ -19,7 +19,11 @@ public class AlpakaConfig {
 
     public static AlpakaConfig instance = new AlpakaConfig();
 
-    public boolean renderHandInThirdPerson = true;
+    /**
+     * Draws the first-person hand over the third-person back view. Off for fresh installs: a
+     * floating arm in F5 surprised players who never asked for it.
+     */
+    public boolean renderHandInThirdPerson = false;
 
     public boolean slayerDropTrackerEnabled = true;
     /**
@@ -121,12 +125,22 @@ public class AlpakaConfig {
      * a nudge for somebody who was looking elsewhere while the quest finished spawning.
      */
     public boolean bossSpawnAlertEnabled = true;
-    public boolean inventorySnowEnabled = true;
+    /** Snow over container screens and the main menu. Off for fresh installs; it is seasonal decoration. */
+    public boolean inventorySnowEnabled = false;
     public float inventorySnowSpeed = 1.0f;
     public float containerBgOpacity = 0.75f;
     public boolean containerBgFadeInEnabled = true;
     public int containerBgFadeInDurationMs = 250;
+    /**
+     * Clean Blaze, only on SkyBlock in the Blaze slayer's zones or during a Blaze quest. The four
+     * fields after it pick what it hides.
+     */
     public boolean cleanBlazeEnabled = true;
+    public boolean cleanBlazeParticles = true;
+    public boolean cleanBlazeFire = true;
+    public boolean cleanBlazeFireballs = true;
+    /** Off by default: the health on blaze name tags is what a grinder watches. */
+    public boolean cleanBlazeNameTags = false;
     /**
      * Hides Hypixel's slayer chatter - quest started/complete, level-ups, the radio lines.
      *
@@ -156,6 +170,11 @@ public class AlpakaConfig {
     public boolean customSoundZombieRemedy = true;
     public boolean customSoundSuccessfulHit = true;
     public boolean muteVanillaSoundsInBlazeSlayer = false;
+    /**
+     * With the Blaze slayer mute on: every world sound instead of only the fight's own noise
+     * (blazes, fire, lava, ghasts, lightning). The UI, master, voice and music channels never are.
+     */
+    public boolean blazeMuteAllWorldAudio = false;
     public float lowHpHeartbeatThreshold = 0.30f;
     public int menuAccentColor = 0xFF29B6B2; // Default teal
     /**
@@ -165,11 +184,12 @@ public class AlpakaConfig {
     public int menuFont = 1;
     public boolean customEscapeMenuEnabled = true;
     public boolean customMainMenuEnabled = false;
-    public boolean playerModelEnabled = true;
+    /** The small player model on the HUD. Off for fresh installs. */
+    public boolean playerModelEnabled = false;
     public boolean playerModelOnlyActions = true;
     public int playerModelScale = 30;
-    public int playerModelX = 40;
-    public int playerModelY = 85;
+    public int playerModelX = net.alpaka.addons.client.hud.HudDefaults.PLAYER_MODEL_X;
+    public int playerModelY = net.alpaka.addons.client.hud.HudDefaults.PLAYER_MODEL_Y;
     public boolean playerModelDisableMovement = false;
     public boolean playerModelHideArmor = false;
     /** The name tag above the HUD avatar. */
@@ -179,15 +199,16 @@ public class AlpakaConfig {
 
     // World Age HUD & Join Notification options
     public boolean worldAgeHudEnabled = false;
-    public int worldAgeHudX = 10;
-    public int worldAgeHudY = 10;
+    public int worldAgeHudX = net.alpaka.addons.client.hud.HudDefaults.WORLD_AGE_X;
+    public int worldAgeHudY = net.alpaka.addons.client.hud.HudDefaults.WORLD_AGE_Y;
     public float worldAgeHudScale = 1.0f;
 
     // Slayer session HUD. Each line has its own toggle so the HUD can be trimmed to just the
     // numbers being watched; the whole HUD hides unless a slayer quest is active.
-    public boolean slayerHudEnabled = false;
-    public int slayerHudX = 10;
-    public int slayerHudY = 60;
+    /** The slayer session HUD, the mod's flagship. On for fresh installs. */
+    public boolean slayerHudEnabled = true;
+    public int slayerHudX = net.alpaka.addons.client.hud.HudDefaults.SLAYER_SESSION_X;
+    public int slayerHudY = net.alpaka.addons.client.hud.HudDefaults.SLAYER_SESSION_Y;
     public float slayerHudScale = 1.0f;
     public boolean slayerHudShowTitle = true;
     public boolean slayerHudShowTotalXp = true;
@@ -252,8 +273,8 @@ public class AlpakaConfig {
     public boolean slayerTimerChatEnabled = true;
     /** Show the running time on screen while the boss is up. */
     public boolean slayerTimerHudEnabled = true;
-    public int slayerTimerHudX = 10;
-    public int slayerTimerHudY = 120;
+    public int slayerTimerHudX = net.alpaka.addons.client.hud.HudDefaults.SLAYER_TIMER_X;
+    public int slayerTimerHudY = net.alpaka.addons.client.hud.HudDefaults.SLAYER_TIMER_Y;
     public float slayerTimerHudScale = 1.0f;
     public boolean worldAgeJoinMessageEnabled = true;
     public int worldAgeRecentThresholdSec = 60;
@@ -301,11 +322,15 @@ public class AlpakaConfig {
     // Inventory HUD. Shows the 27 main-inventory slots on screen; position and scale are set in
     // the HUD editor, or it can ride directly above the hotbar.
     public boolean inventoryHudEnabled = false;
-    public int inventoryHudX = 10;
-    public int inventoryHudY = 10;
+    public int inventoryHudX = net.alpaka.addons.client.hud.HudDefaults.INVENTORY_X;
+    public int inventoryHudY = net.alpaka.addons.client.hud.HudDefaults.INVENTORY_Y;
     public float inventoryHudScale = 1.0f;
     public boolean inventoryHudAttachToHotbar = true;
-    public boolean inventoryHudAlwaysVisible = true;
+    /**
+     * Off for fresh installs: attached above the hotbar, an always-open panel sits where the player
+     * looks for health and the action bar. It still opens on an item change or the toggle key.
+     */
+    public boolean inventoryHudAlwaysVisible = false;
     public boolean inventoryHudShowOnItemChange = false;
     /** Backdrop strength behind the slots, in percent. 0 leaves only the accent frame. */
     public float inventoryHudBackgroundOpacity = 70.0f;
@@ -351,7 +376,8 @@ public class AlpakaConfig {
     /** Scrolling the chat glides the lines into place instead of jumping a line per notch. */
     public boolean chatSmoothScrollEnabled = true;
     /** Moving forward sprints on its own, without holding the sprint key. */
-    public boolean alwaysSprintEnabled = true;
+    /** Off for fresh installs. Vanilla's own toggle-sprint option already does this for most players. */
+    public boolean alwaysSprintEnabled = false;
     public boolean expandChatHistory = true;
     /** Hold the Peek Chat key to see the whole chat, scrollable, without opening it. */
     public boolean chatPeekEnabled = true;
@@ -371,6 +397,8 @@ public class AlpakaConfig {
     public boolean chatTabsSendToChannel = false;
     /** With chat tabs: the row also shows while peeking, and Tab cycles the tabs in chat and while peeking. */
     public boolean chatTabsTabKey = true;
+    /** Keep the chosen chat tab, and so the filtered HUD chat, after the chat closes. Off: back to All. */
+    public boolean chatTabsKeepAfterClose = false;
 
     // Interface options
     /** The mouse wheel scrolls a tooltip that is taller than the screen. */
@@ -634,6 +662,12 @@ public class AlpakaConfig {
          * too. See SlayerXpTracker.
          */
         public long lastXpCreditedAtMs = 0L;
+        /**
+         * XP credited since the run of credits that ended at lastXpCreditedAtMs began, so a lower
+         * menu reading can be told apart: lag of about this much is the leaderboard cache, a much
+         * larger gap is a total that drifted high and is corrected. See SlayerXpTracker.
+         */
+        public long recentlyCreditedXp = 0L;
     }
 
     public AlpakaConfig() {
@@ -756,6 +790,7 @@ public class AlpakaConfig {
         this.inventorySnowEnabled = false;
         this.containerBgFadeInEnabled = false;
         this.cleanBlazeEnabled = false;
+        this.cleanBlazeNameTags = false;
         this.hideSlayerChatMessages = false;
         this.stopBlazeSpinning = false;
         this.hideHurtOverlayEnabled = false;

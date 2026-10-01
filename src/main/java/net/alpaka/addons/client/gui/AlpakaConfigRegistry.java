@@ -1,10 +1,7 @@
 package net.alpaka.addons.client.gui;
 
 import java.util.Locale;
-import net.alpaka.addons.client.BlockOverlayConfigScreen;
 import net.alpaka.addons.client.ColorPickerScreen;
-import net.alpaka.addons.client.ItemSizeConfigScreen;
-import net.alpaka.addons.client.ItemSwingConfigScreen;
 import net.alpaka.addons.features.viewmodel.ItemMotionBlurFeature;
 import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.config.AlpakaConfig;
@@ -45,7 +42,7 @@ public class AlpakaConfigRegistry {
         // anything else: whether the mod may reach the network at all, the one place HUDs are
         // arranged, and the way back out of everything.
         OPTIONS.add(new ConfigOption("allow_api_calls", "Allow Network Features",
-                "Lets the mod contact Hypixel: the mayor's slayer XP buff and the main menu's player count.",
+                "Used for the mayor's XP buff and the main menu's player count.",
                 ConfigCategory.GENERAL,
                 () -> AlpakaConfig.instance.allowApiCalls,
                 v -> { AlpakaConfig.instance.allowApiCalls = v; AlpakaConfig.save(); },
@@ -126,11 +123,39 @@ public class AlpakaConfigRegistry {
                 "gamma brightness light fullbright vision"));
 
         OPTIONS.add(new ConfigOption("clean_blaze", "Clean Blaze",
-                "Removes blaze particles, fire and name tags for a clearer view.",
+                "Clears blaze noise during Blaze slayer, on SkyBlock only. Pick what below.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.cleanBlazeEnabled,
                 v -> { AlpakaConfig.instance.cleanBlazeEnabled = v; AlpakaConfig.save(); },
-                "blaze smoke particles fire nametag clear view"));
+                "blaze smoke particles fire nametag clear view slayer inferno crimson"));
+
+        OPTIONS.add(new ConfigOption("clean_blaze_particles", "Clean Blaze: Particles",
+                "Hides flame and smoke particles in the Blaze slayer's zones.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.cleanBlazeParticles,
+                v -> { AlpakaConfig.instance.cleanBlazeParticles = v; AlpakaConfig.save(); },
+                "blaze flame smoke particles clean"));
+
+        OPTIONS.add(new ConfigOption("clean_blaze_fire", "Clean Blaze: Burning",
+                "Hides the burning overlay on blazes. Your own fire stays visible.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.cleanBlazeFire,
+                v -> { AlpakaConfig.instance.cleanBlazeFire = v; AlpakaConfig.save(); },
+                "blaze fire burning overlay clean"));
+
+        OPTIONS.add(new ConfigOption("clean_blaze_fireballs", "Clean Blaze: Fireballs",
+                "Hides the small fireballs blazes throw.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.cleanBlazeFireballs,
+                v -> { AlpakaConfig.instance.cleanBlazeFireballs = v; AlpakaConfig.save(); },
+                "blaze fireball projectile clean"));
+
+        OPTIONS.add(new ConfigOption("clean_blaze_name_tags", "Clean Blaze: Name Tags",
+                "Also hides blaze and Smoldering Blaze name tags, health included.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.cleanBlazeNameTags,
+                v -> { AlpakaConfig.instance.cleanBlazeNameTags = v; AlpakaConfig.save(); },
+                "blaze nametag name tag health smoldering clean hide"));
 
         OPTIONS.add(new ConfigOption("stop_blaze_spinning", "Stop Blaze Spinning",
                 "Stops blaze rods from spinning around blaze mobs.",
@@ -155,8 +180,8 @@ public class AlpakaConfigRegistry {
 
         OPTIONS.add(new ConfigOption("Camera", ConfigCategory.VISUALS));
 
-        OPTIONS.add(new ConfigOption("render_hand_third_person", "Show Hand in 3rd Person",
-                "Renders held items in 3rd person perspective.",
+        OPTIONS.add(new ConfigOption("render_hand_third_person", "First-Person Hand in F5",
+                "Also draws your first-person hand and item in the third-person back view.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.renderHandInThirdPerson,
                 v -> { AlpakaConfig.instance.renderHandInThirdPerson = v; AlpakaConfig.save(); },
@@ -210,7 +235,7 @@ public class AlpakaConfigRegistry {
                 "container background fade speed duration time ms transition"));
 
         OPTIONS.add(new ConfigOption("inventory_snow", "Inventory Snowflakes",
-                "Renders cozy snowflake animations in inventory GUIs.",
+                "Snowflakes fall over container screens, like chests and your inventory.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.inventorySnowEnabled,
                 v -> { AlpakaConfig.instance.inventorySnowEnabled = v; AlpakaConfig.save(); },
@@ -334,14 +359,14 @@ public class AlpakaConfigRegistry {
                 "screenshot message notice open copy delete clipboard f2 buttons"));
 
         OPTIONS.add(new ConfigOption("auto_copy_screenshots", "Auto Copy Screenshots",
-                "Copies every screenshot to the clipboard right away.",
+                "Copies every screenshot to the clipboard right away. Not available on macOS.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.autoCopyScreenshots,
                 v -> { AlpakaConfig.instance.autoCopyScreenshots = v; AlpakaConfig.save(); },
                 "screenshot auto copy clipboard automatic f2 paste"));
 
         OPTIONS.add(new ConfigOption("chat_tabs", "Chat Tabs",
-                "All, Party, Guild and PMs tabs above the chat input.",
+                "All, Party, Guild, Co-op and PMs tabs above the chat input.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.chatTabsEnabled,
                 v -> { AlpakaConfig.instance.chatTabsEnabled = v; AlpakaConfig.save(); },
@@ -352,14 +377,21 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.chatTabsSendToChannel,
                 v -> { AlpakaConfig.instance.chatTabsSendToChannel = v; AlpakaConfig.save(); },
-                "chat tabs send channel prefix party guild reply pc gc r"));
+                "chat tabs send channel prefix party guild coop reply pc gc cc r"));
 
         OPTIONS.add(new ConfigOption("chat_tabs_tab_key", "Tabs While Peeking & Tab Key",
-                "Shows the tabs while peeking and cycles them with Tab.",
+                "Shows the tabs while peeking. Tab on an empty line, or Ctrl+Tab, cycles them.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.chatTabsTabKey,
                 v -> { AlpakaConfig.instance.chatTabsTabKey = v; AlpakaConfig.save(); },
                 "chat tabs tab key cycle switch next peek player list tablist"));
+
+        OPTIONS.add(new ConfigOption("chat_tabs_keep_after_close", "Keep Tab After Closing Chat",
+                "The in-game chat stays filtered to the chosen tab. Off: back to All.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatTabsKeepAfterClose,
+                v -> { AlpakaConfig.instance.chatTabsKeepAfterClose = v; AlpakaConfig.save(); },
+                "chat tabs keep remember filter hud close stay"));
 
         OPTIONS.add(new ConfigOption("Mod Menus", ConfigCategory.VISUALS));
 
@@ -745,7 +777,7 @@ public class AlpakaConfigRegistry {
                     AlpakaConfig.instance.savePreset(0);
                     try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
                 },
-                "preset save 1 slot viewmodel hand size offset"));
+                "preset save 1 slot viewmodel hand size offset").confirmFirst());
 
         OPTIONS.add(new ConfigOption("load_preset_2", "Load Preset 2",
                 "Applies viewmodel and swing settings from Preset 2.",
@@ -765,7 +797,7 @@ public class AlpakaConfigRegistry {
                     AlpakaConfig.instance.savePreset(1);
                     try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
                 },
-                "preset save 2 slot viewmodel hand size offset"));
+                "preset save 2 slot viewmodel hand size offset").confirmFirst());
 
         OPTIONS.add(new ConfigOption("load_preset_3", "Load Preset 3",
                 "Applies viewmodel and swing settings from Preset 3.",
@@ -785,7 +817,7 @@ public class AlpakaConfigRegistry {
                     AlpakaConfig.instance.savePreset(2);
                     try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
                 },
-                "preset save 3 slot viewmodel hand size offset"));
+                "preset save 3 slot viewmodel hand size offset").confirmFirst());
 
 
         // --- 3. BLOCK OVERLAY ---
@@ -877,12 +909,12 @@ public class AlpakaConfigRegistry {
 
         OPTIONS.add(new ConfigOption("Filters", ConfigCategory.BLOCK_OVERLAY));
 
-        OPTIONS.add(new ConfigOption("block_ignore_depth", "Ignore Depth (X-Ray)",
-                "Renders block overlay through walls (X-Ray mode).",
+        OPTIONS.add(new ConfigOption("block_ignore_depth", "Draw On Top",
+                "Draws the outline of the block you aim at over anything in front of it. Only that block.",
                 ConfigCategory.BLOCK_OVERLAY,
                 () -> AlpakaConfig.instance.blockIgnoreDepth,
                 v -> { AlpakaConfig.instance.blockIgnoreDepth = v; AlpakaConfig.save(); },
-                "ignore depth wall xray see through blocks outline"));
+                "ignore depth on top over walls see through blocks outline"));
 
         OPTIONS.add(new ConfigOption("block_ignore_plants", "Ignore Plants",
                 "Disables block highlighting when targeting foliage like grass, flowers, or crops.",
@@ -958,7 +990,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.etherwarpOverlayThroughWalls,
                 v -> { AlpakaConfig.instance.etherwarpOverlayThroughWalls = v; AlpakaConfig.save(); },
-                "etherwarp through walls depth xray see"));
+                "etherwarp through walls depth on top see"));
 
         OPTIONS.add(new ConfigOption("etherwarp_line", "Line To Target",
                 "Draws a line from your feet to the target block.",
@@ -1026,7 +1058,7 @@ public class AlpakaConfigRegistry {
 
 
         OPTIONS.add(new ConfigOption("slayer_rng_drop_guild_chat", "Share Buttons On Top Drops",
-                "Adds Guild and Party share buttons to a slayer's rarest drop. A click fills your chat box.",
+                "Adds Guild and Party share buttons to a slayer's rarest drop.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.slayerRngDropGuildChatEnabled,
                 v -> { AlpakaConfig.instance.slayerRngDropGuildChatEnabled = v; AlpakaConfig.save(); },
@@ -1034,7 +1066,7 @@ public class AlpakaConfigRegistry {
 
 
         OPTIONS.add(new ConfigOption("slayer_since_reply_offer", "Offer Replies To !since",
-                "Shows your count when a party member asks !since <item>, with a Reply button.",
+                "Shows your count when your party asks !since, with a Reply button.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.slayerSinceReplyOffer,
                 v -> { AlpakaConfig.instance.slayerSinceReplyOffer = v; AlpakaConfig.save(); },
@@ -1233,7 +1265,7 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Mob Highlights", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("pangolin_highlight_enabled", "Highlight Pangolins",
-                "Outlines Pangolins in Torrhus Canyon, only in your line of sight.",
+                "Outlines Pangolins in Torrhus Canyon while they are clearly in view.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.pangolinHighlightEnabled,
                 v -> { AlpakaConfig.instance.pangolinHighlightEnabled = v; AlpakaConfig.save(); },
@@ -1467,7 +1499,7 @@ public class AlpakaConfigRegistry {
                 "player scale depth z axis thick flat paper thin"));
 
         OPTIONS.add(new ConfigOption("player_scale_others", "Scale Other Players Too",
-                "Applies the same scale to every other player you can see.",
+                "Other real players on SkyBlock too, shrunk only, never enlarged. Hitboxes are unchanged.",
                 ConfigCategory.COSMETICS,
                 () -> AlpakaConfig.instance.playerScaleOthers,
                 v -> { AlpakaConfig.instance.playerScaleOthers = v; AlpakaConfig.save(); },
@@ -1483,7 +1515,7 @@ public class AlpakaConfigRegistry {
                     AlpakaConfig.instance.playerScaleZ = 1.0f;
                     AlpakaConfig.save();
                 },
-                "player scale reset default vanilla normal 1.0"));
+                "player scale reset default vanilla normal 1.0").confirmFirst());
 
         // --- 7. SOUND & UTILITY ---
 
@@ -1596,12 +1628,19 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customSoundSuccessfulHit = v; AlpakaConfig.save(); },
                 "successful hit crit critical attack sound audio custom"));
 
-        OPTIONS.add(new ConfigOption("mute_vanilla_sounds_blaze_slayer", "Silence Game Audio in Blaze Slayer",
-                "Mutes game audio during a Blaze Slayer quest. Mod sounds still play.",
+        OPTIONS.add(new ConfigOption("mute_vanilla_sounds_blaze_slayer", "Silence Blaze Slayer Noise",
+                "Mutes blazes, fire, lava and ghasts during a Blaze quest. Menu and mod sounds play.",
                 ConfigCategory.SOUND_MISC,
                 () -> AlpakaConfig.instance.muteVanillaSoundsInBlazeSlayer,
                 v -> { AlpakaConfig.instance.muteVanillaSoundsInBlazeSlayer = v; AlpakaConfig.save(); },
                 "mute silence vanilla game audio blaze slayer quiet boss spawn hear"));
+
+        OPTIONS.add(new ConfigOption("blaze_mute_all_world_audio", "Silence: All World Audio",
+                "Mutes every world sound during a Blaze quest, not just the fight's noise.",
+                ConfigCategory.SOUND_MISC,
+                () -> AlpakaConfig.instance.blazeMuteAllWorldAudio,
+                v -> { AlpakaConfig.instance.blazeMuteAllWorldAudio = v; AlpakaConfig.save(); },
+                "mute silence all world audio blaze slayer quiet"));
 
         OPTIONS.add(new ConfigOption("Low HP Warning", ConfigCategory.SOUND_MISC));
 

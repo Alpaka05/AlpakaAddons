@@ -9,14 +9,6 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvent;
-import net.minecraft.util.RandomSource;
-import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
-import net.fabricmc.fabric.api.resource.ResourcePackActivationType;
-import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.network.chat.Component;
-import net.minecraft.server.packs.repository.PackRepository;
-import java.util.ArrayList;
-import java.util.List;
 
 public class CustomSoundFeature {
     public static SoundEvent BUTTON_CLICK_SOUND;
@@ -38,7 +30,6 @@ public class CustomSoundFeature {
      */
     public static SoundEvent[] ETHERWARP_SOUNDS = new SoundEvent[0];
 
-    private static final RandomSource RANDOM = RandomSource.create();
     private static long lastHeartbeatTime = 0;
     private static int lastSelectedSlot = -1;
 

@@ -92,8 +92,8 @@ object InventoryHudRenderer {
     private const val HOTBAR_HEIGHT = 22
     private const val HOTBAR_GAP = 1
 
-    const val DEFAULT_X = 10
-    const val DEFAULT_Y = 10
+    const val DEFAULT_X = net.alpaka.addons.client.hud.HudDefaults.INVENTORY_X
+    const val DEFAULT_Y = net.alpaka.addons.client.hud.HudDefaults.INVENTORY_Y
     const val DEFAULT_SCALE = 1.0f
     const val MIN_SCALE = 0.5f
     const val MAX_SCALE = 3.0f
@@ -156,12 +156,28 @@ object InventoryHudRenderer {
             val screenWidth = mc.window.guiScaledWidth
             val screenHeight = mc.window.guiScaledHeight
             val x = (screenWidth - width) / 2
-            val y = screenHeight - HOTBAR_HEIGHT - HOTBAR_GAP - height
+            val y = screenHeight - statusStackHeight() - HOTBAR_GAP - height
             return HudBounds(x, y, x + width, y + height)
         }
 
         return HudBounds(cfg.inventoryHudX, cfg.inventoryHudY,
             cfg.inventoryHudX + width, cfg.inventoryHudY + height)
+    }
+
+    /**
+     * How far up from the bottom of the screen the hotbar's status block reaches: the hotbar, the
+     * hearts, armour and food, the experience bar and Hypixel's action bar, as Fabric's own status
+     * bar registry adds them up - including what other mods register there. The attached panel sits
+     * above all of it; it used to sit straight on the hotbar and cover the rest.
+     */
+    private fun statusStackHeight(): Int {
+        val registered = try {
+            net.fabricmc.fabric.api.client.rendering.v1.hud.HudStatusBarHeightRegistry.getHeight(
+                net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements.OVERLAY_MESSAGE)
+        } catch (_: RuntimeException) {
+            0
+        }
+        return maxOf(HOTBAR_HEIGHT, registered)
     }
 
     /** Draws the panel and its items. Shared with the HUD editor, which always passes a full [open]. */

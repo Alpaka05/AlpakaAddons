@@ -1,126 +1,78 @@
 package net.alpaka.addons.mixin;
 
-import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.features.perspective.SmoothPerspectiveFeature;
 import net.minecraft.client.Camera;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+/**
+ * Applies the smooth perspective transition; see {@link SmoothPerspectiveFeature}.
+ *
+ * Right after vanilla has aligned the camera with the player, before it works out the FOV, the view
+ * matrix and the cull frustum, so all three follow the smoothed pose. At the end of update, as this
+ * used to run, the frustum had already been built from vanilla's pose: chunks and entities popped in
+ * and out during the glide.
+ */
 @Mixin(Camera.class)
 public abstract class CameraMixin {
 
     @Shadow protected abstract void setPosition(Vec3 pos);
     @Shadow protected abstract void setRotation(float yRot, float xRot);
-    @Shadow public abstract Vec3 position();
-    @Shadow public abstract float yRot();
-    @Shadow public abstract float xRot();
+    @Shadow protected abstract void move(float forwards, float up, float left);
+    @Shadow private float getMaxZoom(float distance) { return distance; }
+    @Shadow public abstract float getCameraEntityPartialTicks(DeltaTracker deltaTracker);
     @Shadow private Entity entity;
+    @Shadow private Vec3 position;
+    @Shadow private boolean detached;
+    @Shadow private float eyeHeight;
+    @Shadow private float eyeHeightOld;
 
-    @Unique private CameraType alpaka$lastCameraType = null;
-    @Unique private long alpaka$transitionStartTime = 0;
-    @Unique private Vec3 alpaka$startOffset = Vec3.ZERO;
-    @Unique private float alpaka$startYaw = 0.0f;
-    @Unique private float alpaka$startPitch = 0.0f;
-    @Unique private Vec3 alpaka$lastOffset = Vec3.ZERO;
-    @Unique private float alpaka$lastYaw = 0.0f;
-    @Unique private float alpaka$lastPitch = 0.0f;
-
-    @Inject(method = "update", at = @At("RETURN"))
-    private void onUpdate(DeltaTracker deltaTracker, CallbackInfo ci) {
-        if (!AlpakaConfig.instance.smoothPerspectiveEnabled) {
-            alpaka$lastCameraType = null;
-            alpaka$transitionStartTime = 0;
+    @Inject(
+            method = "update",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Camera;alignWithEntity(F)V", shift = At.Shift.AFTER)
+    )
+    private void alpaka$smoothPerspective(DeltaTracker deltaTracker, CallbackInfo ci) {
+        Entity camEntity = this.entity;
+        // Riding: vanilla places the camera off the vehicle, which this does not model.
+        if (camEntity == null || camEntity.isPassenger()) {
+            SmoothPerspectiveFeature.reset();
             return;
         }
 
-        Minecraft mc = Minecraft.getInstance();
-        if (mc == null || mc.options == null || this.entity == null) return;
+        CameraType type = Minecraft.getInstance().options.getCameraType();
+        float partialTick = getCameraEntityPartialTicks(deltaTracker);
 
-        CameraType currentType = mc.options.getCameraType();
-        Vec3 vanillaPos = this.position();
-        float vanillaYaw = this.yRot();
-        float vanillaPitch = this.xRot();
+        // The eye, built the way vanilla builds it before moving a detached camera back. Read from
+        // the entity rather than position(), which other mods wrap.
+        Vec3 eye = new Vec3(
+                Mth.lerp(partialTick, camEntity.xo, camEntity.getX()),
+                Mth.lerp(partialTick, camEntity.yo, camEntity.getY()) + Mth.lerp(partialTick, this.eyeHeightOld, this.eyeHeight),
+                Mth.lerp(partialTick, camEntity.zo, camEntity.getZ()));
+        float liveYaw = camEntity.getViewYRot(partialTick);
+        float livePitch = camEntity.getViewXRot(partialTick);
 
-        float tickDelta = deltaTracker.getGameTimeDeltaPartialTick(true);
-        Vec3 eyePos = this.entity.getEyePosition(tickDelta);
-        Vec3 targetOffset = vanillaPos.subtract(eyePos);
+        // What vanilla shows now, as distance and offsets from the live view. Its distance already
+        // stops short of walls, so the glide never ends further out than vanilla would.
+        float targetDistance = type.isFirstPerson() ? 0.0f : (float) this.position.distanceTo(eye);
+        float targetYaw = type.isMirrored() ? 180.0f : 0.0f;
+        float targetPitch = type.isMirrored() ? -2.0f * livePitch : 0.0f;
 
-        if (alpaka$lastCameraType == null) {
-            alpaka$lastCameraType = currentType;
-            alpaka$lastOffset = targetOffset;
-            alpaka$lastYaw = vanillaYaw;
-            alpaka$lastPitch = vanillaPitch;
-            return;
-        }
+        SmoothPerspectiveFeature.Pose pose = SmoothPerspectiveFeature.update(type, targetDistance, targetYaw, targetPitch);
+        if (pose == null) return;
 
-        if (currentType != alpaka$lastCameraType) {
-            alpaka$startOffset = alpaka$lastOffset;
-            alpaka$startYaw = alpaka$lastYaw;
-            alpaka$startPitch = alpaka$lastPitch;
-            alpaka$transitionStartTime = System.currentTimeMillis();
-            alpaka$lastCameraType = currentType;
-        }
-
-        if (alpaka$transitionStartTime == 0) {
-            alpaka$lastOffset = targetOffset;
-            alpaka$lastYaw = vanillaYaw;
-            alpaka$lastPitch = vanillaPitch;
-            return;
-        }
-
-        long duration = Math.max(50, AlpakaConfig.instance.smoothPerspectiveDurationMs);
-        long elapsed = System.currentTimeMillis() - alpaka$transitionStartTime;
-
-        if (elapsed >= duration) {
-            alpaka$transitionStartTime = 0;
-            alpaka$lastOffset = targetOffset;
-            alpaka$lastYaw = vanillaYaw;
-            alpaka$lastPitch = vanillaPitch;
-            return;
-        }
-
-        float progress = Math.min(1.0f, (float) elapsed / duration);
-        // Smooth step / cubic easing
-        float factor = progress * progress * (3.0f - 2.0f * progress);
-
-        Vec3 currentOffset = alpaka$lerpVec3(alpaka$startOffset, targetOffset, factor);
-        float currentYaw = alpaka$lerpAngle(alpaka$startYaw, vanillaYaw, factor);
-        float currentPitch = alpaka$lerpAngle(alpaka$startPitch, vanillaPitch, factor);
-
-        this.setPosition(eyePos.add(currentOffset));
-        this.setRotation(currentYaw, currentPitch);
-
-        alpaka$lastOffset = currentOffset;
-        alpaka$lastYaw = currentYaw;
-        alpaka$lastPitch = currentPitch;
-    }
-
-    @Unique
-    private Vec3 alpaka$lerpVec3(Vec3 start, Vec3 end, double t) {
-        return new Vec3(
-            start.x + (end.x - start.x) * t,
-            start.y + (end.y - start.y) * t,
-            start.z + (end.z - start.z) * t
-        );
-    }
-
-    @Unique
-    private float alpaka$lerpAngle(float start, float end, float t) {
-        float diff = (end - start) % 360.0f;
-        if (diff < -180.0f) {
-            diff += 360.0f;
-        }
-        if (diff > 180.0f) {
-            diff -= 360.0f;
-        }
-        return start + diff * t;
+        setPosition(eye);
+        setRotation(liveYaw + pose.yawOffset(), livePitch + pose.pitchOffset());
+        // Vanilla's own sweep, so the camera stops at a wall instead of passing into it.
+        if (pose.distance() > 0.0f) move(-getMaxZoom(pose.distance()), 0.0f, 0.0f);
+        this.detached = SmoothPerspectiveFeature.isDetachedTransition();
     }
 }

@@ -12,6 +12,7 @@ import net.alpaka.addons.utils.ModVersion
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.AbstractButton
+import net.minecraft.client.gui.components.AbstractWidget
 import net.minecraft.client.gui.narration.NarrationElementOutput
 import net.minecraft.client.gui.screens.ConnectScreen
 import net.minecraft.client.gui.screens.Screen
@@ -50,7 +51,6 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         private val ICON_FONT = FontDescription.Resource(Identifier.fromNamespaceAndPath("alpaka", "pause_icons"))
         private const val ICON_PLAY = ""
         private const val ICON_SERVER = ""
-        private const val ICON_BOX = ""
         private const val ICON_SLIDERS = ""
         private const val ICON_DOOR = ""
         private const val ICON_PUZZLE = ""
@@ -59,8 +59,6 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         /** Left edge of the column, and the logo in its corner. */
         private const val COLUMN_X = 28
         private const val LOGO_SIZE = 38
-        /** The column never sits higher than this, even on a short screen. */
-        private const val LOGO_Y = 20
         private const val LOGO_HOVER_GROWTH = 0.07f
 
         /**
@@ -90,6 +88,10 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         private const val TAB_PITCH = 34
         private const val TAB_HEIGHT_COMPACT = 26
         private const val TAB_PITCH_COMPACT = 30
+        private const val MIN_TAB_HEIGHT = 22
+        private const val MIN_TAB_PITCH = 24
+        /** Space kept free above the logo and below Quit when the column has to be fitted. */
+        private const val EDGE_MARGIN = 4
         private const val TAB_TEXT_X = 14
         /** How far a hovered tab pulls out of the edge. */
         private const val TAB_PULL = 16f
@@ -141,16 +143,38 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
     private var logoHover = 0.0f
 
 
-    private val compact get() = this.height < 380
-    private val heroHeight get() = if (compact) HERO_HEIGHT_COMPACT else HERO_HEIGHT
-    private val tabHeight get() = if (compact) TAB_HEIGHT_COMPACT else TAB_HEIGHT
-    private val tabPitch get() = if (compact) TAB_PITCH_COMPACT else TAB_PITCH
+    /** The column's spacing: gaps around the Hypixel tab, its height, and the six entries. */
+    private class Column(val logoGap: Int, val heroHeight: Int, val heroGap: Int, val tabHeight: Int, val tabPitch: Int) {
+        val height = LOGO_SIZE + logoGap + heroHeight + heroGap + 5 * tabPitch + tabHeight
+    }
+
+    /**
+     * The column, fitted to the screen's height.
+     *
+     * The compact layout used to be a single step below 380 px and was still 280 px tall, so at 1080p
+     * with Auto GUI scale (270 px) Quit sat off the bottom of the screen, and at 1440p (240 px) Options
+     * did too. Below the full layout the tabs now close up first, then shrink, then the gaps around
+     * the Hypixel tab, until the whole column fits.
+     */
+    private fun column(): Column {
+        if (this.height >= 380) return Column(14, HERO_HEIGHT, 12, TAB_HEIGHT, TAB_PITCH)
+        val available = this.height - EDGE_MARGIN * 2
+        var fitted = Column(14, HERO_HEIGHT_COMPACT, 12, TAB_HEIGHT_COMPACT, TAB_PITCH_COMPACT)
+        for (pitch in TAB_PITCH_COMPACT downTo MIN_TAB_PITCH) {
+            fitted = Column(14, HERO_HEIGHT_COMPACT, 12, minOf(TAB_HEIGHT_COMPACT, maxOf(MIN_TAB_HEIGHT, pitch - 2)), pitch)
+            if (fitted.height <= available) return fitted
+        }
+        return Column(8, HERO_HEIGHT_COMPACT - 4, 8, MIN_TAB_HEIGHT, MIN_TAB_PITCH)
+    }
+
+    private val heroHeight get() = column().heroHeight
+    private val tabHeight get() = column().tabHeight
+    private val tabPitch get() = column().tabPitch
 
     /** Logo, the Hypixel tab and the six entries: the whole column, centred on the screen's height. */
-    private fun columnHeight() = LOGO_SIZE + 14 + heroHeight + 12 + 5 * tabPitch + tabHeight
-    private fun logoY() = maxOf(LOGO_Y, (this.height - columnHeight()) / 2)
-    private fun heroY() = logoY() + LOGO_SIZE + 14
-    private fun tabsY() = heroY() + heroHeight + 12
+    private fun logoY() = maxOf(EDGE_MARGIN, (this.height - column().height) / 2)
+    private fun heroY() = logoY() + LOGO_SIZE + column().logoGap
+    private fun tabsY() = heroY() + heroHeight + column().heroGap
 
     private fun isOverLogo(mouseX: Double, mouseY: Double): Boolean =
         mouseX >= COLUMN_X && mouseX < COLUMN_X + LOGO_SIZE && mouseY >= logoY() && mouseY < logoY() + LOGO_SIZE
@@ -168,7 +192,6 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
 
     private fun joinServer(ip: String) {
         val mc = this.minecraft ?: return
-        CustomSoundFeature.playButtonClickSound()
         val address = ServerAddress.parseString(ip)
         val data = ServerData(if (ip.contains("alpha")) "Hypixel Alpha" else "Hypixel Network", ip, ServerData.Type.OTHER)
         ConnectScreen.startConnecting(this, mc, address, data, false, null)
@@ -294,7 +317,8 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
 
     override fun mouseClicked(event: MouseButtonEvent, doubleClick: Boolean): Boolean {
         if (event.button() == 0 && isOverLogo(event.x(), event.y())) {
-            CustomSoundFeature.playButtonClickSound()
+            // Vanilla's click, which the custom-sound swap replaces when the player opted in.
+            this.minecraft?.let { AbstractWidget.playButtonClickSound(it.soundManager) }
             this.minecraft?.gui?.setScreen(AlpakaConfigScreen(this))
             return true
         }
@@ -315,7 +339,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         private var hoverTime = 0.0f
 
         override fun onPress(input: InputWithModifiers) {
-            CustomSoundFeature.playButtonClickSound()
+            // No sound here: the widget already played vanilla's click on the press.
             onClickAction()
         }
 
@@ -387,7 +411,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         private var hoverTime = 0.0f
 
         override fun onPress(input: InputWithModifiers) {
-            CustomSoundFeature.playButtonClickSound()
+            // No sound here: the widget already played vanilla's click on the press.
             onClickAction()
         }
 

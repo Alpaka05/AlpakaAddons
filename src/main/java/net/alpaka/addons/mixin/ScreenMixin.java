@@ -21,7 +21,10 @@ public abstract class ScreenMixin {
 
     @Inject(method = "extractBackground", at = @At("TAIL"))
     private void onExtractBackground(GuiGraphicsExtractor graphicsExtractor, int mouseX, int mouseY, float partialTick, CallbackInfo info) {
-        if (AlpakaConfig.instance.inventorySnowEnabled) {
+        // Container screens only, as the option says; the main menu draws its own. It used to fall
+        // behind every screen, the command wheel and the config included.
+        if (AlpakaConfig.instance.inventorySnowEnabled
+                && (Object) this instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?>) {
             SnowOverlayRenderer.render(graphicsExtractor, this.width, this.height);
         }
     }

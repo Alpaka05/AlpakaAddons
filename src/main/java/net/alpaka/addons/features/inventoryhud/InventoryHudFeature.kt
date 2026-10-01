@@ -68,7 +68,9 @@ object InventoryHudFeature {
             KeyMapping(
                 "key.alpaka.inventory_hud",
                 InputConstants.Type.KEYSYM,
-                GLFW.GLFW_KEY_H,
+                // Unbound for fresh installs: H is Skyblocker's slot lock. A key set in options.txt
+                // stays as it is.
+                GLFW.GLFW_KEY_UNKNOWN,
                 AlpakaKeyCategory.CATEGORY
             )
         )

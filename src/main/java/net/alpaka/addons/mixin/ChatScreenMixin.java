@@ -54,7 +54,7 @@ public class ChatScreenMixin {
             cir.setReturnValue(true);
             return;
         }
-        if (ChatTabsFeature.onChatScreenKey(event.key(), event.hasShiftDown(),
+        if (ChatTabsFeature.onChatScreenKey(event.key(), event.hasShiftDown(), event.hasControlDown(),
                 this.commandSuggestions != null && this.commandSuggestions.isVisible(),
                 this.input == null ? "" : this.input.getValue())) {
             cir.setReturnValue(true);
@@ -74,6 +74,7 @@ public class ChatScreenMixin {
     @Inject(method = "removed", at = @At("HEAD"))
     private void alpaka$leaveSearchOnClose(CallbackInfo ci) {
         ChatSearchFeature.exit(this.input);
+        ChatTabsFeature.onChatClosed();
     }
 
     /** The input bar's background takes the accent while searching. */
@@ -86,9 +87,18 @@ public class ChatScreenMixin {
         return ChatSearchFeature.isSearching() ? ChatSearchFeature.barColor() : color;
     }
 
-    @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
+    /**
+     * The slayer HUD's click, once vanilla has offered the click to the chat's own links and found
+     * none: only then does it get handed to the screen, which is where this sits. At the head of the
+     * method, as it used to be, the HUD took clicks meant for links drawn under it.
+     */
+    @Inject(
+            method = "mouseClicked",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screens/Screen;mouseClicked(Lnet/minecraft/client/input/MouseButtonEvent;Z)Z"),
+            cancellable = true
+    )
     private void onMouseClicked(MouseButtonEvent event, boolean doubleClick, CallbackInfoReturnable<Boolean> cir) {
-        if (SlayerHudElement.INSTANCE.handleChatClick(event.x(), event.y())) {
+        if (SlayerHudElement.INSTANCE.handleChatClick(event.x(), event.y(), event.button())) {
             cir.setReturnValue(true);
         }
     }
@@ -145,9 +155,7 @@ public class ChatScreenMixin {
         if (addToRecent) {
             mc.gui.hud.getChat().addRecentChat(normalized);
         }
-        if (mc.player != null) {
-            mc.player.connection.sendCommand(command);
-        }
+        net.alpaka.addons.compliance.Outbound.command(command, net.alpaka.addons.compliance.Outbound.Cause.CHAT_INPUT);
         ci.cancel();
     }
 }

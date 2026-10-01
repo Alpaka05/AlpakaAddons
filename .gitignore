@@ -18,3 +18,13 @@ Thumbs.db
 
 # Compile-time helpers
 src/main/java/net/minecraft/
+
+# Logs and tool output
+logs/
+*.log
+build_out.txt
+.kotlin/
+
+# Stray audio exports at the root; the mod's sounds live under src/main/resources
+/*.wav
+/*.ogg

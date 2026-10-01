@@ -71,11 +71,10 @@ object InventoryHudElement : HudElement {
         cfg.inventoryHudAttachToHotbar = true
     }
 
-    override fun render(graphics: GuiGraphicsExtractor) {
+    override fun render(graphics: GuiGraphicsExtractor, x: Int, y: Int) {
         // Always drawn fully open in the editor: the slide is a runtime affordance, and a
-        // half-open box would be impossible to position against.
-        val box = bounds()
-        InventoryHudRenderer.drawPanel(graphics, box.x0, box.y0, AlpakaConfig.instance.inventoryHudScale, 1.0f)
+        // half-open box would be impossible to position against. The anchor is the box's corner.
+        InventoryHudRenderer.drawPanel(graphics, x, y, AlpakaConfig.instance.inventoryHudScale, 1.0f)
     }
 
     override fun scaleValue(): Float = AlpakaConfig.instance.inventoryHudScale

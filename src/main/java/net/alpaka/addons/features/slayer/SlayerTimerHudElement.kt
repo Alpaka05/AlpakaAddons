@@ -11,8 +11,8 @@ import kotlin.math.roundToInt
 /** Editor handle for the live boss timer. */
 object SlayerTimerHudElement : HudElement {
 
-    private const val DEFAULT_X = 10
-    private const val DEFAULT_Y = 120
+    private const val DEFAULT_X = net.alpaka.addons.client.hud.HudDefaults.SLAYER_TIMER_X
+    private const val DEFAULT_Y = net.alpaka.addons.client.hud.HudDefaults.SLAYER_TIMER_Y
     private const val DEFAULT_SCALE = 1.0f
 
     private const val MIN_SCALE = 0.5f
@@ -68,10 +68,10 @@ object SlayerTimerHudElement : HudElement {
         cfg.slayerTimerHudScale = DEFAULT_SCALE
     }
 
-    override fun render(graphics: GuiGraphicsExtractor) {
+    override fun render(graphics: GuiGraphicsExtractor, x: Int, y: Int) {
         val cfg = AlpakaConfig.instance
         SlayerTimerHudRenderer.renderHud(
-            graphics, cfg.slayerTimerHudX, cfg.slayerTimerHudY, cfg.slayerTimerHudScale,
+            graphics, x, y, cfg.slayerTimerHudScale,
             preview = SlayerTimer.displayMs() == null,
         )
     }

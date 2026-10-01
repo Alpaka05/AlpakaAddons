@@ -31,8 +31,8 @@ import kotlin.math.atan
 object PlayerModelRenderer {
 
     /** Default HUD placement, shared with the editor screen's Reset button. */
-    const val DEFAULT_X = 40
-    const val DEFAULT_Y = 85
+    const val DEFAULT_X = net.alpaka.addons.client.hud.HudDefaults.PLAYER_MODEL_X
+    const val DEFAULT_Y = net.alpaka.addons.client.hud.HudDefaults.PLAYER_MODEL_Y
     const val DEFAULT_SCALE = 30
 
     /** Fade/slide speed in alpha per second; 5.0 gives a ~200ms transition. */

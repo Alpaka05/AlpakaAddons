@@ -5,7 +5,6 @@
   "refmap": "alpaka.refmap.json",
   "client": [
     "GameRendererMixin",
-    "PlayerMixin",
     "MouseHandlerMixin",
     "AbstractClientPlayerMixin",
     "ScreenMixin",

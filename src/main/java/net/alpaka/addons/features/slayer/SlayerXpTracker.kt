@@ -50,7 +50,9 @@ object SlayerXpTracker {
         if (xp <= 0L) return
 
         val data = AlpakaStats.slayerBossMap().getOrPut(type) { AlpakaConfig.SlayerData() }
-        data.lastXpCreditedAtMs = System.currentTimeMillis()
+        val now = System.currentTimeMillis()
+        data.recentlyCreditedXp = if (now - data.lastXpCreditedAtMs < STALE_READING_WINDOW_MS) data.recentlyCreditedXp + xp else xp
+        data.lastXpCreditedAtMs = now
         // Nothing to advance until the menu has given a starting point; adding kills to "unknown"
         // would only invent a number.
         if (data.totalXp >= 0L) data.totalXp += xp
@@ -67,7 +69,9 @@ object SlayerXpTracker {
 
         if (known >= 0L && xp < known) {
             val sinceCredit = System.currentTimeMillis() - data.lastXpCreditedAtMs
-            if (sinceCredit < STALE_READING_WINDOW_MS) {
+            // Lag explains a gap of at most what was credited lately. A larger one means the total
+            // itself is off - as every Vampire total was, from a table ten times too generous.
+            if (sinceCredit < STALE_READING_WINDOW_MS && known - xp <= data.recentlyCreditedXp) {
                 AlpakaAddons.LOGGER.info(
                     "Ignored a stale {} slayer XP reading of {} from the Slayer menu (tracking {})",
                     type.display, xp, known

@@ -5,7 +5,6 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 public class ModernGuiUtils {
     // Theme Colors (Neutral Dark Charcoal/Gray with Gold accent & Green/Red states)
-    public static final int COLOR_BG_BACKDROP = 0xEE111111;
     public static final int COLOR_PANEL_BG = 0xFF191919;
     public static final int COLOR_SIDEBAR_BG = 0xFF131313;
     public static final int COLOR_CARD_BG = 0xFF222222;
@@ -40,8 +39,6 @@ public class ModernGuiUtils {
     public static final int COLOR_TOGGLE_ON_BORDER = 0xFF00E676;
     public static final int COLOR_TOGGLE_ON_TEXT = 0xFF00E676;
 
-    public static final int COLOR_TOGGLE_OFF_BG = 0xFF381418;
-    public static final int COLOR_TOGGLE_OFF_BORDER = 0xFFFF5252;
     public static final int COLOR_TOGGLE_OFF_TEXT = 0xFFFF5252;
 
     public static final int COLOR_TEXT_PRIMARY = 0xFFF0F0F0;

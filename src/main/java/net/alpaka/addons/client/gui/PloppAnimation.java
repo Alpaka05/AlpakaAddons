@@ -1,22 +1,7 @@
 package net.alpaka.addons.client.gui;
 
-public class PloppAnimation {
-    private final long startTime;
-    private final float durationMs;
-
-    public PloppAnimation(float durationMs) {
-        this.startTime = System.currentTimeMillis();
-        this.durationMs = durationMs;
-    }
-
-    public float getProgress() {
-        long elapsed = System.currentTimeMillis() - startTime;
-        return Math.min(1.0f, elapsed / durationMs);
-    }
-
-    public boolean isFinished() {
-        return getProgress() >= 1.0f;
-    }
+public final class PloppAnimation {
+    private PloppAnimation() {}
 
     /**
      * Elastic ease-out pop curve for menu opening.

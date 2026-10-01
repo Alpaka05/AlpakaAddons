@@ -11,8 +11,8 @@ import kotlin.math.roundToInt
 /** Editor handle for the world age ("Day: N") HUD. */
 object WorldAgeHudElement : HudElement {
 
-    private const val DEFAULT_X = 10
-    private const val DEFAULT_Y = 10
+    private const val DEFAULT_X = net.alpaka.addons.client.hud.HudDefaults.WORLD_AGE_X
+    private const val DEFAULT_Y = net.alpaka.addons.client.hud.HudDefaults.WORLD_AGE_Y
     private const val DEFAULT_SCALE = 1.0f
 
     private const val MIN_SCALE = 0.5f
@@ -67,9 +67,9 @@ object WorldAgeHudElement : HudElement {
         cfg.worldAgeHudScale = DEFAULT_SCALE
     }
 
-    override fun render(graphics: GuiGraphicsExtractor) {
+    override fun render(graphics: GuiGraphicsExtractor, x: Int, y: Int) {
         val cfg = AlpakaConfig.instance
-        WorldAgeHudRenderer.renderHud(graphics, cfg.worldAgeHudX, cfg.worldAgeHudY, cfg.worldAgeHudScale)
+        WorldAgeHudRenderer.renderHud(graphics, x, y, cfg.worldAgeHudScale)
     }
 
     override fun scaleValue(): Float = AlpakaConfig.instance.worldAgeHudScale

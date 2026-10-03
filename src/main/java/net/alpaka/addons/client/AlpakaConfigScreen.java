@@ -875,8 +875,9 @@ public class AlpakaConfigScreen extends Screen {
                         opt.toggleExpanded();
                         return true;
                     } else if (opt.getType() == ConfigOption.Type.ACTION) {
-                        // Only the button: a stray click on the card must not save over a preset.
-                        if (!isWidgetClicked) return true;
+                        // The whole card, like a toggle, unless the action overwrites settings outright:
+                        // a stray click on the card must not load or save over a preset.
+                        if (!isWidgetClicked && opt.isButtonOnly()) return true;
                         playPloppSound();
                         if (opt.isConfirmFirst() && !isArmed(opt)) {
                             armedOption = opt;

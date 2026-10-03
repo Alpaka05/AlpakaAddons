@@ -251,6 +251,21 @@ public class ConfigOption {
     }
 
     public boolean isConfirmFirst() { return confirmFirst; }
+
+    private boolean buttonOnly = false;
+
+    /**
+     * Makes this action answer only its button, not a click anywhere on its card, for actions that
+     * overwrite settings straight away with nothing to back out of: loading a preset. Every
+     * {@link #confirmFirst()} action is button-only as well. Everything else - a colour picker, an
+     * editor, a reset behind a confirmation screen - opens from the whole card, like a toggle.
+     */
+    public ConfigOption buttonOnly() {
+        this.buttonOnly = true;
+        return this;
+    }
+
+    public boolean isButtonOnly() { return buttonOnly || confirmFirst; }
     public void triggerAction(Screen parent) {
         if (actionHandler != null) {
             actionHandler.accept(parent);

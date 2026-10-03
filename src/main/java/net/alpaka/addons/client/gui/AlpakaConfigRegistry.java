@@ -761,7 +761,7 @@ public class AlpakaConfigRegistry {
                     AlpakaConfig.instance.loadPreset(0);
                     try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
                 },
-                "preset load 1 slot viewmodel hand size offset"));
+                "preset load 1 slot viewmodel hand size offset").buttonOnly());
 
         OPTIONS.add(new ConfigOption("save_preset_1", "Save to Preset 1",
                 "Saves your current viewmodel and swing settings to Preset 1.",
@@ -781,7 +781,7 @@ public class AlpakaConfigRegistry {
                     AlpakaConfig.instance.loadPreset(1);
                     try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
                 },
-                "preset load 2 slot viewmodel hand size offset"));
+                "preset load 2 slot viewmodel hand size offset").buttonOnly());
 
         OPTIONS.add(new ConfigOption("save_preset_2", "Save to Preset 2",
                 "Saves your current viewmodel and swing settings to Preset 2.",
@@ -801,7 +801,7 @@ public class AlpakaConfigRegistry {
                     AlpakaConfig.instance.loadPreset(2);
                     try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
                 },
-                "preset load 3 slot viewmodel hand size offset"));
+                "preset load 3 slot viewmodel hand size offset").buttonOnly());
 
         OPTIONS.add(new ConfigOption("save_preset_3", "Save to Preset 3",
                 "Saves your current viewmodel and swing settings to Preset 3.",

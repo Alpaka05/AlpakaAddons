@@ -347,6 +347,8 @@ public class AlpakaConfig {
     public boolean inventoryHudVanillaTexture = false;
     /** Flat style only: the panel shows the world behind it blurred, like the chat's background. */
     public boolean inventoryHudBlur = true;
+    /** Flat style only: the gradient frame around the panel. Off leaves the backdrop on its own. */
+    public boolean inventoryHudFrame = true;
     /** The two ends of the flat panel's frame gradient, top left to bottom right. */
     public int inventoryHudFrameStart = 0xFF29B6B2;
     public int inventoryHudFrameEnd = 0xFFB04FFF;
@@ -400,6 +402,11 @@ public class AlpakaConfig {
     public boolean chatTabsTabKey = true;
     /** Keep the chosen chat tab, and so the filtered HUD chat, after the chat closes. Off: back to All. */
     public boolean chatTabsKeepAfterClose = false;
+    /** Which channel tabs the row offers. All is always there; a hidden channel's lines stay on All. */
+    public boolean chatTabsShowParty = true;
+    public boolean chatTabsShowGuild = true;
+    public boolean chatTabsShowCoop = true;
+    public boolean chatTabsShowPrivate = true;
 
     // Interface options
     /** The mouse wheel scrolls a tooltip that is taller than the screen. */

@@ -5,6 +5,7 @@ import net.alpaka.addons.client.ColorPickerScreen;
 import net.alpaka.addons.features.viewmodel.ItemMotionBlurFeature;
 import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.features.chat.ChatTabsFeature;
 import net.alpaka.addons.features.etherwarp.EtherwarpOverlayFeature;
 import net.alpaka.addons.features.nametag.CustomNameTagFeature;
 import net.alpaka.addons.features.notification.AlpakaNotifications;
@@ -366,6 +367,25 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.chatTabsEnabled = v; AlpakaConfig.save(); },
                 "chat tabs party guild pm private messages filter channel switch"));
 
+        OPTIONS.add(new ConfigOption("chat_tabs_shown", "Shown Chat Tabs",
+                "Pick which channel tabs the row offers. All is always there.",
+                ConfigCategory.VISUALS,
+                java.util.List.of(
+                        new ConfigOption.ToggleEntry("Party",
+                                () -> AlpakaConfig.instance.chatTabsShowParty,
+                                v -> { AlpakaConfig.instance.chatTabsShowParty = v; AlpakaConfig.save(); ChatTabsFeature.onShownTabsChanged(); }),
+                        new ConfigOption.ToggleEntry("Guild",
+                                () -> AlpakaConfig.instance.chatTabsShowGuild,
+                                v -> { AlpakaConfig.instance.chatTabsShowGuild = v; AlpakaConfig.save(); ChatTabsFeature.onShownTabsChanged(); }),
+                        new ConfigOption.ToggleEntry("Co-op",
+                                () -> AlpakaConfig.instance.chatTabsShowCoop,
+                                v -> { AlpakaConfig.instance.chatTabsShowCoop = v; AlpakaConfig.save(); ChatTabsFeature.onShownTabsChanged(); }),
+                        new ConfigOption.ToggleEntry("PMs",
+                                () -> AlpakaConfig.instance.chatTabsShowPrivate,
+                                v -> { AlpakaConfig.instance.chatTabsShowPrivate = v; AlpakaConfig.save(); ChatTabsFeature.onShownTabsChanged(); })
+                ),
+                "chat tabs shown visible hide pick choose select party guild coop co-op pm private messages"));
+
         OPTIONS.add(new ConfigOption("chat_tabs_send_to_channel", "Send To Tab Channel",
                 "Messages typed on a channel tab go to that channel.",
                 ConfigCategory.VISUALS,
@@ -500,6 +520,13 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.inventoryHudBlur,
                 v -> { AlpakaConfig.instance.inventoryHudBlur = v; AlpakaConfig.save(); },
                 "inventory hud blur frosted glass background panel flat"));
+
+        OPTIONS.add(new ConfigOption("inventory_hud_frame", "Show Frame",
+                "Draws the gradient frame around the flat panel.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.inventoryHudFrame,
+                v -> { AlpakaConfig.instance.inventoryHudFrame = v; AlpakaConfig.save(); },
+                "inventory hud frame border outline gradient rahmen hide remove flat panel"));
 
         OPTIONS.add(new ConfigOption("inventory_hud_frame_start_color", "Frame Start Colour",
                 "First colour of the flat panel's frame gradient.",

@@ -28,6 +28,9 @@ import org.lwjgl.glfw.GLFW;
  *
  * Optionally a plain message typed on a channel tab is sent to that channel, with /pc, /gc or /r in
  * front. That is its own toggle and off by default, so a tab is only ever a view unless asked for.
+ *
+ * Each channel tab can be left out of the row, for a player with no use for, say, Co-op. A hidden
+ * channel's lines are not lost: they sort to it as before and so still show on All.
  */
 public final class ChatTabsFeature {
 
@@ -47,6 +50,26 @@ public final class ChatTabsFeature {
 
     public static boolean isEnabled() {
         return AlpakaConfig.instance.chatTabsEnabled;
+    }
+
+    /** Whether a tab is in the row. All always is, so there is always somewhere to go back to. */
+    public static boolean isShown(ChatTab tab) {
+        AlpakaConfig cfg = AlpakaConfig.instance;
+        return switch (tab) {
+            case ALL -> true;
+            case PARTY -> cfg.chatTabsShowParty;
+            case GUILD -> cfg.chatTabsShowGuild;
+            case COOP -> cfg.chatTabsShowCoop;
+            case PRIVATE -> cfg.chatTabsShowPrivate;
+        };
+    }
+
+    /** A tab was taken out of the row or put back: off a tab that is gone, back to All. */
+    public static void onShownTabsChanged() {
+        if (!isShown(active)) select(ChatTab.ALL);
+        for (ChatTab tab : ChatTab.values()) {
+            if (!isShown(tab)) unread[tab.ordinal()] = 0;
+        }
     }
 
     /**
@@ -75,7 +98,7 @@ public final class ChatTabsFeature {
     public static void onMessage(Component content) {
         if (!isEnabled()) return;
         ChatTab tab = ChatTab.classify(content);
-        if (tab != ChatTab.ALL && tab != active) {
+        if (tab != ChatTab.ALL && tab != active && isShown(tab)) {
             unread[tab.ordinal()]++;
         }
     }
@@ -88,11 +111,16 @@ public final class ChatTabsFeature {
         Minecraft.getInstance().gui.hud.getChat().rescaleChat();
     }
 
-    /** Moves to the next tab, or the previous one, wrapping around at either end. */
+    /** Moves to the next shown tab, or the previous one, wrapping around at either end. */
     public static void cycle(boolean backwards) {
         ChatTab[] tabs = ChatTab.values();
         int step = backwards ? tabs.length - 1 : 1;
-        select(tabs[(active.ordinal() + step) % tabs.length]);
+        ChatTab next = active;
+        // Ends at All at the latest, which is always shown.
+        do {
+            next = tabs[(next.ordinal() + step) % tabs.length];
+        } while (!isShown(next));
+        select(next);
     }
 
     /** Whether the tab row shows while peeking and Tab cycles the tabs. */
@@ -204,6 +232,7 @@ public final class ChatTabsFeature {
         int accent = ModernGuiUtils.getAccentColor();
         int x = LEFT;
         for (ChatTab tab : ChatTab.values()) {
+            if (!isShown(tab)) continue;
             Component label = labelOf(tab);
             int width = font.width(label) + TAB_PAD * 2;
             boolean selected = tab == active;
@@ -231,6 +260,7 @@ public final class ChatTabsFeature {
         if (mouseY < y0 || mouseY >= y1) return false;
         int x = LEFT;
         for (ChatTab tab : ChatTab.values()) {
+            if (!isShown(tab)) continue;
             int width = font.width(labelOf(tab)) + TAB_PAD * 2;
             if (mouseX >= x && mouseX < x + width) {
                 select(tab);

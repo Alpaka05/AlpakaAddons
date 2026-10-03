@@ -11,6 +11,12 @@ base {
     archivesName = project.property("mod_id")
 }
 
+// Jars are named for the Minecraft version they are built against, as the releases have been:
+// alpaka-1.2.22-mc26.2.jar. Only the file name - the mod's own version stays plain.
+tasks.withType(Jar).configureEach {
+    archiveVersion = "${project.version}-mc${project.property("minecraft_version")}"
+}
+
 repositories {
     mavenCentral()
     maven { url = "https://maven.fabricmc.net/" }
@@ -309,7 +315,8 @@ tasks.register("deployJar") {
     dependsOn(tasks.named("jar"))
     outputs.upToDateWhen { false }
     doLast {
-        deployToLauncher(tasks.named("jar").get().archiveFile.get().asFile, project.version.toString())
+        def jar = tasks.named("jar").get()
+        deployToLauncher(jar.archiveFile.get().asFile, jar.archiveVersion.get())
     }
 }
 

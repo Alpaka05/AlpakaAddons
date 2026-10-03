@@ -215,13 +215,37 @@ public abstract class ChatComponentMixin {
 
     @Inject(method = "addMessageToDisplayQueue", at = @At("RETURN"))
     private void alpaka$reportAddedLines(GuiMessage message, CallbackInfo ci) {
-        SmoothChatFeature.onLinesAdded(this.alpaka$liveLines);
+        int added = this.alpaka$liveLines;
         this.alpaka$liveLines = 0;
+        // A compacted repeat took its earlier copy out first. Taken out of the newest line, the new
+        // copy simply replaces it: only the difference in height slides, usually nothing.
+        int[] removed = CompactChatFeature.takeRemovedLines();
+        if (removed != null) {
+            SmoothChatFeature.onLinesRemoved(removed[0], removed[1]);
+            if (removed[0] == 0) added = Math.max(0, added - removed[1]);
+        }
+        SmoothChatFeature.onLinesAdded(added);
     }
+
+    /**
+     * Vanilla keeps a scrolled-up chat still when a message arrives only while the chat screen is
+     * open. Peeking counts too, so reading history while peeking is not pushed along by new lines.
+     */
+    @WrapOperation(
+        method = "addMessageToDisplayQueue",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/ChatComponent;isChatFocused()Z")
+    )
+    private boolean alpaka$peekCountsAsFocused(ChatComponent chat, Operation<Boolean> original) {
+        return original.call(chat) || ChatPeekFeature.isPeeking();
+    }
+
+    @org.spongepowered.asm.mixin.Unique
+    private long alpaka$replayStartNanos;
 
     /** A re-layout replays every stored message through the queue; none of that is a new arrival. */
     @Inject(method = "refreshTrimmedMessages", at = @At("HEAD"))
     private void alpaka$beginReplay(CallbackInfo ci) {
+        this.alpaka$replayStartNanos = net.alpaka.addons.utils.AlpakaPerf.begin(net.alpaka.addons.utils.AlpakaPerf.Section.CHAT_REPLAY);
         SmoothChatFeature.clear();
         SmoothChatFeature.beginReplay();
     }
@@ -229,28 +253,19 @@ public abstract class ChatComponentMixin {
     @Inject(method = "refreshTrimmedMessages", at = @At("RETURN"))
     private void alpaka$endReplay(CallbackInfo ci) {
         SmoothChatFeature.endReplay();
+        net.alpaka.addons.utils.AlpakaPerf.end(net.alpaka.addons.utils.AlpakaPerf.Section.CHAT_REPLAY, this.alpaka$replayStartNanos);
     }
 
     /**
-     * The slide: right after the chat applies its scale to the pose, the whole chat is moved down
-     * by the height the arriving lines have not yet claimed, so the older lines glide up into place
-     * as the new ones fade in. Not while scrolled up - the bottom of the list is off screen then.
+     * The arrival slide for this frame, in chat pixels: how far the lines are drawn below their
+     * resting place while new ones rise in. Taken once per layout in beginPass. Only at the bottom
+     * of the chat - scrolled up, the arriving lines are off screen anyway.
+     *
+     * Applied to the lines alone, with the scroll fraction, inside the chat's box. It used to move
+     * the whole chat, box and clip included, so the arriving lines drew over the hearts and the
+     * input, and the top line popped out instead of leaving through the top edge.
      */
-    @Inject(
-        method = EXTRACT_PRIVATE,
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/client/gui/components/ChatComponent$ChatGraphicsAccess;updatePose(Ljava/util/function/Consumer;)V",
-            shift = At.Shift.AFTER
-        )
-    )
-    private void alpaka$slideChat(ChatComponent.ChatGraphicsAccess access, int guiHeight, int ticks, ChatComponent.DisplayMode mode, CallbackInfo ci) {
-        if (this.chatScrollbarPos != 0 || !SmoothChatFeature.isEnabled()) return;
-        float slide = SmoothChatFeature.slideOffset(this.getLineHeight());
-        if (slide > 0.01f) {
-            access.updatePose(pose -> pose.translate(0.0f, slide));
-        }
-    }
+    @Unique private float alpaka$slide;
 
     // ------------------------------------------------------------------ smooth scrolling
 
@@ -341,10 +356,14 @@ public abstract class ChatComponentMixin {
         this.alpaka$targetScroll = 0.0;
     }
 
-    /** While the lines are shifted, one more line is laid out so the one entering at the top shows. */
+    /**
+     * While the lines are shifted down, enough older lines are laid out above the box's top to fill
+     * the gap, so lines leave through the top edge instead of vanishing.
+     */
     @ModifyVariable(method = "forEachLine", at = @At("STORE"), name = "perPage")
     private int alpaka$oneMoreLineWhileMoving(int perPage) {
-        return perPage + (this.alpaka$drawOffset() > 0.01f ? 1 : 0);
+        float shift = this.alpaka$drawOffset() + this.alpaka$slide;
+        return shift > 0.01f ? perPage + Mth.ceil(shift / this.getLineHeight()) : perPage;
     }
 
     /**
@@ -358,7 +377,7 @@ public abstract class ChatComponentMixin {
                                     @Local(argsOnly = true) ChatComponent.ChatGraphicsAccess access,
                                     @Local(argsOnly = true, ordinal = 0) int guiHeight) {
         int pass = this.alpaka$pass++;
-        float offset = this.alpaka$drawOffset();
+        float offset = this.alpaka$drawOffset() + this.alpaka$slide;
         float scale = (float) this.getScale();
         int lineHeight = this.getLineHeight();
         int chatBottom = Mth.floor((guiHeight - 40) / scale);
@@ -379,6 +398,7 @@ public abstract class ChatComponentMixin {
         }
         if (pass == 1) {
             ChatBlurFeature.setScrollOffset(offset);
+            ChatBlurFeature.limitPanel(shownLines);
             ChatBlurFeature.submitPanel(scale);
         }
         if (offset > 0.01f) {
@@ -411,6 +431,9 @@ public abstract class ChatComponentMixin {
     )
     private void alpaka$fadeArrivingLines(Args args) {
         if (this.chatScrollbarPos != 0 || !SmoothChatFeature.isEnabled()) return;
+        // With the glass panel on, the background pass only measures the panel: an arriving line's
+        // box counts in full there, or the panel's top edge would dip and rise with every message.
+        if (ChatBlurFeature.isEnabled() && this.alpaka$pass == 1) return;
         int index = args.get(1);
         float factor = SmoothChatFeature.lineAlpha(index);
         if (factor < 1.0f) {
@@ -443,6 +466,8 @@ public abstract class ChatComponentMixin {
     private void alpaka$beginPass(ChatComponent.ChatGraphicsAccess access, int guiHeight, int ticks, ChatComponent.DisplayMode mode, CallbackInfo ci) {
         this.alpaka$pass = 0;
         ChatBlurFeature.resetPanel(mode.foreground);
+        this.alpaka$slide = this.chatScrollbarPos == 0 && SmoothChatFeature.isEnabled()
+                ? SmoothChatFeature.slideOffset(this.getLineHeight()) : 0.0f;
 
         long now = System.nanoTime();
         float dt = this.alpaka$scrollNanos == 0 ? 0.0f : Math.min(0.1f, (now - this.alpaka$scrollNanos) / 1_000_000_000.0f);

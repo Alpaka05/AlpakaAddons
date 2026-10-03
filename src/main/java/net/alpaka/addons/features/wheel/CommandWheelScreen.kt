@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.wheel
 
+import net.alpaka.addons.compliance.Outbound
 import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.features.sound.CustomSoundFeature
@@ -123,12 +124,16 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)
     }
 
+    /**
+     * Sends the selected command, once, and closes the wheel. The only thing the wheel ever sends:
+     * one command per explicit release or click, nothing on hover, timers or events, and never a
+     * sequence of commands.
+     */
     private fun runSelectedAndClose() {
-        val player = (this.minecraft ?: Minecraft.getInstance()).player
-        if (player != null && selectedIndex in commands.indices) {
+        if (selectedIndex in commands.indices) {
             var command = commands[selectedIndex]
             if (command.startsWith("/")) command = command.substring(1)
-            if (command.isNotBlank()) player.connection.sendCommand(command)
+            Outbound.command(command, Outbound.Cause.WHEEL)
         }
         close()
     }

@@ -35,8 +35,9 @@ public class AlpakaStats {
      * - or a reinstall - started the player from zero, which is the opposite of what a lifetime kill
      * count is for.
      */
-    private static final File LEGACY_FILE =
-            FabricLoader.getInstance().getConfigDir().resolve("alpaka-stats.json").toFile();
+    private static File legacyFile() {
+        return FabricLoader.getInstance().getConfigDir().resolve("alpaka-stats.json").toFile();
+    }
 
     private static final String FILE_NAME = "alpaka-stats.json";
 
@@ -99,7 +100,7 @@ public class AlpakaStats {
      * Whatever ends up here is therefore folded into the next profile that is recognised, by
      * {@link #rescueStranded}; the bucket is a waiting room, never a destination.
      */
-    private static final String UNKNOWN_PROFILE = "unknown-profile";
+    static final String UNKNOWN_PROFILE = "unknown-profile";
 
     /** One Skyblock profile's record. */
     public static class ProfileStats {
@@ -453,11 +454,12 @@ public class AlpakaStats {
      * shared copy is lost, the original is still where that build would look for it.
      */
     private static void migrateLegacy(File target) {
-        if (target.exists() || !LEGACY_FILE.exists()) return;
+        File legacy = legacyFile();
+        if (target.exists() || !legacy.exists()) return;
         try {
             File dir = target.getParentFile();
             if (dir != null) dir.mkdirs();
-            java.nio.file.Files.copy(LEGACY_FILE.toPath(), target.toPath());
+            java.nio.file.Files.copy(legacy.toPath(), target.toPath());
             AlpakaAddons.LOGGER.info("Moved the slayer record to the shared store at {}", target.getAbsolutePath());
         } catch (Exception e) {
             AlpakaAddons.LOGGER.error("Failed to move the slayer record to the shared store", e);
@@ -626,79 +628,8 @@ public class AlpakaStats {
                 + "§f/alpakastats folder default §7or a valid folder fixes this without a restart.");
     }
 
-    /**
-     * Folds what is on disk into memory, slayer by slayer, for every account and profile.
-     *
-     * Each slayer keeps the higher kill count, the later position of each drop, the better best time
-     * and the newer XP reading. Kills only ever go up, so whichever side is behind simply catches up.
-     * This used to keep memory's copy of every account and profile other than the one in play, so two
-     * instances on different accounts each wrote back a stale copy of the other and erased its kills.
-     *
-     * The placeholder bucket of the account in play is this session's, whatever the disk says: only
-     * that account writes it, and it has usually just been folded into its profile by
-     * {@link #rescueStranded}; taking a stale copy back from disk would count that record twice.
-     */
+    /** Folds what is on disk into memory; see {@link StatsMerge#mergeFromDisk}. */
     private static void mergeFromDisk(AlpakaStats onDisk) {
-        if (onDisk == null || onDisk.accounts == null) return;
-
-        String playing = accountKey();
-        for (Map.Entry<String, Account> entry : onDisk.accounts.entrySet()) {
-            Account theirs = entry.getValue();
-            if (theirs == null || theirs.profiles == null) continue;
-            boolean isPlaying = entry.getKey().equals(playing);
-
-            Account ours = instance.accounts.computeIfAbsent(entry.getKey(), key -> new Account());
-            if (ours.profiles == null) ours.profiles = new HashMap<>();
-            // Which profile another account was last on is for that account's own session to say.
-            if (!isPlaying && theirs.lastProfile != null) ours.lastProfile = theirs.lastProfile;
-
-            for (Map.Entry<String, ProfileStats> profileEntry : theirs.profiles.entrySet()) {
-                String name = profileEntry.getKey();
-                ProfileStats disk = profileEntry.getValue();
-                if (disk == null || disk.slayerBossMap == null) continue;
-                if (isPlaying && UNKNOWN_PROFILE.equals(name)) continue;
-
-                ProfileStats mine = ours.profiles.get(name);
-                if (mine == null || mine.slayerBossMap == null) {
-                    ours.profiles.put(name, disk);
-                } else {
-                    mergeNewer(mine, disk, name);
-                }
-            }
-        }
-
-        if (onDisk.legacyImported) instance.legacyImported = true;
-    }
-
-    /** Merges one profile's record from disk into memory's; see {@link #mergeFromDisk}. */
-    private static void mergeNewer(ProfileStats mine, ProfileStats disk, String profile) {
-        for (Map.Entry<SlayerType, AlpakaConfig.SlayerData> e : disk.slayerBossMap.entrySet()) {
-            AlpakaConfig.SlayerData theirs = e.getValue();
-            if (theirs == null) continue;
-            AlpakaConfig.SlayerData ours = mine.slayerBossMap.get(e.getKey());
-            if (ours == null) {
-                mine.slayerBossMap.put(e.getKey(), theirs);
-                continue;
-            }
-
-            if (theirs.kills > ours.kills) {
-                AlpakaAddons.LOGGER.info("Took the {} {} kill count from disk ({} kills) over the one in memory ({} kills)",
-                        profile, e.getKey(), theirs.kills, ours.kills);
-                ours.kills = theirs.kills;
-            }
-            if (theirs.drops != null) {
-                if (ours.drops == null) ours.drops = new HashMap<>();
-                for (Map.Entry<String, Integer> drop : theirs.drops.entrySet()) {
-                    if (drop.getValue() == null) continue;
-                    Integer at = ours.drops.get(drop.getKey());
-                    if (at == null || drop.getValue() > at) ours.drops.put(drop.getKey(), drop.getValue());
-                }
-            }
-            if (theirs.bestBossMs > 0 && (ours.bestBossMs <= 0 || theirs.bestBossMs < ours.bestBossMs)) {
-                ours.bestBossMs = theirs.bestBossMs;
-            }
-            if (theirs.totalXp > ours.totalXp) ours.totalXp = theirs.totalXp;
-            if (theirs.lastXpCreditedAtMs > ours.lastXpCreditedAtMs) ours.lastXpCreditedAtMs = theirs.lastXpCreditedAtMs;
-        }
+        StatsMerge.mergeFromDisk(instance, onDisk, accountKey(), UNKNOWN_PROFILE);
     }
 }

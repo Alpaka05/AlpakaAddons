@@ -22,4 +22,18 @@ public class MultiPlayerGameModeMixin {
     private void onAttack(Player player, Entity target, CallbackInfo ci) {
         LocalAttackTracker.noteAttack(target.getId());
     }
+
+    /** A right-click with an item, noted the same read-only way. */
+    @Inject(method = "useItem", at = @At("HEAD"))
+    private void alpaka$onUseItem(Player player, net.minecraft.world.InteractionHand hand,
+                                  org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<net.minecraft.world.InteractionResult> cir) {
+        LocalAttackTracker.noteUse();
+    }
+
+    @Inject(method = "useItemOn", at = @At("HEAD"))
+    private void alpaka$onUseItemOn(net.minecraft.client.player.LocalPlayer player, net.minecraft.world.InteractionHand hand,
+                                    net.minecraft.world.phys.BlockHitResult hit,
+                                    org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<net.minecraft.world.InteractionResult> cir) {
+        LocalAttackTracker.noteUse();
+    }
 }

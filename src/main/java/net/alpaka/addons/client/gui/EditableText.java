@@ -57,11 +57,6 @@ public final class EditableText {
         return Math.max(caret, anchor);
     }
 
-    /** Puts the caret at the end with nothing selected, for when the field gains focus fresh. */
-    public void resetCaretToEnd() {
-        moveCaret(text.length(), false);
-    }
-
     /**
      * Handles one typed character. Returns true when the content changed.
      *

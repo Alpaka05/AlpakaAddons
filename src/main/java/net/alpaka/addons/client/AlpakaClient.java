@@ -10,6 +10,7 @@ import net.alpaka.addons.features.zoom.ZoomFeature;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.minecraft.client.Minecraft;
 
@@ -31,6 +32,7 @@ public class AlpakaClient implements ClientModInitializer {
         CustomSoundFeature.register();
         SessionLifecycle.register();
         StartupNotices.register();
+        DevScreenshotTour.register();
         SlayerDropTracker.registerEvents();
         net.alpaka.addons.features.slayer.SkyblockProfileTracker.INSTANCE.register();
         // The slayer record waits for its folder when a cloud drive comes up after the game did;
@@ -82,6 +84,28 @@ public class AlpakaClient implements ClientModInitializer {
                     Minecraft.getInstance().execute(AlpakaDiagnostics::print);
                     return 1;
                 })
+                // "/alpakadebug perf": the mod's own frame and tick time since the last reset, from
+                // the same sections that show in vanilla's profiler. "perf reset" starts over.
+                .then(ClientCommands.literal("perf")
+                    .executes(context -> {
+                        Minecraft.getInstance().execute(() -> {
+                            SlayerDropTracker.sendModMessage("§6--- Alpaka performance ---");
+                            for (String line : net.alpaka.addons.utils.AlpakaPerf.report()) {
+                                SlayerDropTracker.sendModMessage("§7" + line);
+                            }
+                        });
+                        return 1;
+                    })
+                    .then(ClientCommands.literal("reset")
+                        .executes(context -> {
+                            Minecraft.getInstance().execute(() -> {
+                                net.alpaka.addons.utils.AlpakaPerf.reset();
+                                SlayerDropTracker.sendModMessage("§7Performance counters reset.");
+                            });
+                            return 1;
+                        })
+                    )
+                )
             );
 
             dispatcher.register(ClientCommands.literal("alpakaslayer")
@@ -124,7 +148,11 @@ public class AlpakaClient implements ClientModInitializer {
                 )
                 // Clears the live session stats behind the slayer HUD. Lifetime kill and drop
                 // history is untouched - that is the persisted record, not part of a session.
+                // Only when typed: a command run on the player's behalf - a server's click event, a
+                // macro - cannot wipe anything. The same holds for every command below that deletes
+                // or moves data.
                 .then(ClientCommands.literal("reset")
+                    .requires(FabricClientCommandSource::attended)
                     .executes(context -> {
                         Minecraft.getInstance().execute(() -> {
                             net.alpaka.addons.features.slayer.SlayerType cleared =
@@ -181,6 +209,7 @@ public class AlpakaClient implements ClientModInitializer {
                     })
                 )
                 .then(ClientCommands.literal("save")
+                    .requires(FabricClientCommandSource::attended)
                     .then(ClientCommands.argument("number", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1, 3))
                         .executes(context -> {
                             int num = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "number");
@@ -216,6 +245,7 @@ public class AlpakaClient implements ClientModInitializer {
                     return 1;
                 })
                 .then(ClientCommands.literal("folder")
+                    .requires(FabricClientCommandSource::attended)
                     .then(ClientCommands.literal("default")
                         .executes(context -> {
                             Minecraft.getInstance().execute(() -> setStatsDirectory(""));

@@ -6,7 +6,8 @@ import java.io.File;
 import javax.imageio.ImageIO;
 
 /**
- * Draws the escape menu's button icons and writes them out as a sprite sheet.
+ * Draws the menu button icons - the escape menu's and the main menu's - and writes them out as a
+ * sprite sheet.
  *
  * The icons are the source of truth here, not the PNG: each one is a plain text matrix below, so
  * changing a pixel means editing a character rather than opening an image editor. Rerun this after
@@ -25,8 +26,10 @@ import javax.imageio.ImageIO;
  * The sheet is one row of {@link #CELL}x{@link #CELL} cells. Cell order is what maps them onto
  * codepoints: the first becomes U+E000, the second U+E001 and so on, matching the {@code chars}
  * string in {@code assets/alpaka/font/pause_icons.json} and the ICON_* constants in
- * {@code CustomPauseScreen}. Adding an icon means appending a matrix here, extending that string,
- * and adding the constant - in that same order.
+ * {@code CustomPauseScreen} and {@code CustomMainMenuScreen}. Adding an icon means appending a
+ * matrix here, extending that string, and adding the constant - in that same order. The tool
+ * refuses to write a sheet whose cell count the json does not list, which is how the puzzle and
+ * potion icons once went missing from here while the PNG already had them.
  *
  * Pixels are pure white on transparent on purpose. Minecraft tints font glyphs with the colour the
  * text is drawn in, so white is what lets the icons follow the label's hover and accent colours;
@@ -72,7 +75,10 @@ public class GenPauseIcons {
         "##..##..##",
         "##..##..##"};
 
-    /** Mods. A crate with a lid seam - a strap through the middle read as a window instead. */
+    /**
+     * A crate with a lid seam - a strap through the middle read as a window instead. Mods once used
+     * it; nothing draws it now, but it keeps its cell so the codepoints after it stay put.
+     */
     static final String[] BOX = {
         "..........",
         "##########",
@@ -124,12 +130,50 @@ public class GenPauseIcons {
         "..######..",
         ".........."};
 
+    /** Mods. A puzzle piece, the usual sign for add-ons. */
+    static final String[] PUZZLE = {
+        "..###.....",
+        "..#.#.....",
+        "###.###...",
+        "#.....#...",
+        "#.....###.",
+        "#.......#.",
+        "#.....###.",
+        "#.....#...",
+        "#######...",
+        ".........."};
+
+    /** Join Alpha. A flask, for the test server's experiments. */
+    static final String[] POTION = {
+        "...####...",
+        "....##....",
+        "....##....",
+        "...#..#...",
+        "..#....#..",
+        ".#......#.",
+        ".#..##..#.",
+        ".#.####.#.",
+        "..######..",
+        ".........."};
+
     /** Order matters: this is what fixes each icon's codepoint. */
-    static final String[][] ICONS = {PLAY, SERVER, BOX, SLIDERS, BOOK, DOOR};
-    static final String[] NAMES = {"play", "server", "box", "sliders", "book", "door"};
+    static final String[][] ICONS = {PLAY, SERVER, BOX, SLIDERS, BOOK, DOOR, PUZZLE, POTION};
+    static final String[] NAMES = {"play", "server", "box", "sliders", "book", "door", "puzzle", "potion"};
+
+    static final String FONT_JSON = "src/main/resources/assets/alpaka/font/pause_icons.json";
 
     public static void main(String[] args) throws Exception {
         String sheetPath = args.length > 0 && !args[0].isEmpty() ? args[0] : DEFAULT_SHEET;
+
+        // One codepoint per cell, or every glyph after a mismatch lands on the wrong character.
+        java.nio.file.Path json = java.nio.file.Path.of(FONT_JSON);
+        if (java.nio.file.Files.exists(json)) {
+            int listed = java.nio.file.Files.readString(json).split("\\\\u[eE]0", -1).length - 1;
+            if (listed != ICONS.length) {
+                throw new IllegalStateException(FONT_JSON + " lists " + listed + " codepoints, but there are "
+                        + ICONS.length + " icons here");
+            }
+        }
 
         BufferedImage sheet = new BufferedImage(CELL * ICONS.length, CELL, BufferedImage.TYPE_INT_ARGB);
         for (int i = 0; i < ICONS.length; i++) {

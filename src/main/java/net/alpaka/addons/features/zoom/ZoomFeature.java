@@ -18,6 +18,8 @@ public class ZoomFeature {
         ZOOM_KEY = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "key.alpaka.zoom",
                 InputConstants.Type.KEYSYM,
+                // C, as players know it from OptiFine. Vanilla also uses C, but only for saving a
+                // hotbar in creative mode.
                 GLFW.GLFW_KEY_C,
                 AlpakaKeyCategory.CATEGORY
         ));

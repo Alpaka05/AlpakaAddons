@@ -78,7 +78,6 @@ public class ConfigOption {
     private float hoverProgress = 0.0f;
     /** 0..1 knob position of a BOOLEAN option, easing toward its state; -1 until first drawn. */
     private float toggleProgress = -1.0f;
-    private boolean isDragging = false;
 
     // Header constructor
     public ConfigOption(String title, ConfigCategory category) {
@@ -238,7 +237,35 @@ public class ConfigOption {
     }
 
     // Action
-    public String getActionLabel() { return actionLabel != null ? actionLabel : "Öffnen..."; }
+    public String getActionLabel() { return actionLabel != null ? actionLabel : "Open..."; }
+
+    private boolean confirmFirst = false;
+
+    /**
+     * Makes this action ask for a second click before it runs, for actions that overwrite something
+     * the player set: saving over a preset, resetting a value.
+     */
+    public ConfigOption confirmFirst() {
+        this.confirmFirst = true;
+        return this;
+    }
+
+    public boolean isConfirmFirst() { return confirmFirst; }
+
+    private boolean buttonOnly = false;
+
+    /**
+     * Makes this action answer only its button, not a click anywhere on its card, for actions that
+     * overwrite settings straight away with nothing to back out of: loading a preset. Every
+     * {@link #confirmFirst()} action is button-only as well. Everything else - a colour picker, an
+     * editor, a reset behind a confirmation screen - opens from the whole card, like a toggle.
+     */
+    public ConfigOption buttonOnly() {
+        this.buttonOnly = true;
+        return this;
+    }
+
+    public boolean isButtonOnly() { return buttonOnly || confirmFirst; }
     public void triggerAction(Screen parent) {
         if (actionHandler != null) {
             actionHandler.accept(parent);
@@ -261,8 +288,6 @@ public class ConfigOption {
         toggleProgress = toggleProgress < 0.0f ? target : PloppAnimation.interpolate(toggleProgress, target, deltaSec, 12.0f);
     }
 
-    public boolean isDragging() { return isDragging; }
-    public void setDragging(boolean dragging) { isDragging = dragging; }
 
     /**
      * A free-text option, edited inline in the config list.

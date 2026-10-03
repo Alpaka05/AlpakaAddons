@@ -88,6 +88,8 @@ public final class ChatBlurFeature {
     private static int panelWidth;
     private static int panelLineHeight;
     private static float panelOpacity;
+    /** The panel never grows taller than this many lines: the chat's box, while lines slide inside it. */
+    private static int panelMaxLines = Integer.MAX_VALUE;
 
     /** The lift of the line under the mouse, over the panel's own tint. */
     private static final int HOVER_HIGHLIGHT = 0x22FFFFFF;
@@ -112,6 +114,7 @@ public final class ChatBlurFeature {
 
     /** A new layout pass starts; whether it draws the chat as open (mouse visible) or as the HUD. */
     public static void resetPanel(boolean foregroundMode) {
+        panelMaxLines = Integer.MAX_VALUE;
         panelHeight = 0.0f;
         panelAlpha = 0.0f;
         panelLines = 0;
@@ -126,6 +129,14 @@ public final class ChatBlurFeature {
      */
     public static void setScrollOffset(float offset) {
         scrollOffset = offset;
+    }
+
+    /**
+     * The box holds this many lines. While lines slide or scroll, one or two more are laid out than
+     * fit, and the panel must stay the box's size rather than grow past its top edge.
+     */
+    public static void limitPanel(int lines) {
+        panelMaxLines = Math.max(0, lines);
     }
 
     /**
@@ -165,7 +176,8 @@ public final class ChatBlurFeature {
         float toScreen = (float) Minecraft.getInstance().getWindow().getGuiScale() * chatScale;
         int x0 = -4 - PADDING;
         int x1 = panelWidth + 8 + PADDING;
-        int y0 = Math.round(panelBottom - panelHeight) - PADDING;
+        float height = Math.min(panelHeight, panelMaxLines * (float) panelLineHeight);
+        int y0 = Math.round(panelBottom - height) - PADDING;
         int y1 = panelBottom + PADDING;
         int alpha = Math.round(Mth.clamp(panelAlpha * panelOpacity, 0.0f, 1.0f) * 255.0f);
         if (alpha <= 0) return;
@@ -277,6 +289,15 @@ public final class ChatBlurFeature {
     /** Copies and blurs the frame as it is now, if a panel asked for it. */
     public static void captureFrame() {
         if (!requested) return;
+        long t = net.alpaka.addons.utils.AlpakaPerf.begin(net.alpaka.addons.utils.AlpakaPerf.Section.BLUR_CAPTURE);
+        try {
+            captureFrameNow();
+        } finally {
+            net.alpaka.addons.utils.AlpakaPerf.end(net.alpaka.addons.utils.AlpakaPerf.Section.BLUR_CAPTURE, t);
+        }
+    }
+
+    private static void captureFrameNow() {
         requested = false;
         ready = false;
 

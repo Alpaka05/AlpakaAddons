@@ -39,6 +39,18 @@ dependencies {
     // since the dependency check runs there as well.
     implementation "org.jetbrains.kotlin:kotlin-stdlib"
     localRuntime "net.fabricmc:fabric-language-kotlin:1.14.1+kotlin.2.4.20"
+
+    // Tests cover the pure logic - merges, queues, parsers - and a scan of the sources. They run
+    // without the game, so nothing they touch may start Minecraft or Fabric Loader.
+    testImplementation platform("org.junit:junit-bom:5.11.4")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+tasks.named("test") {
+    useJUnitPlatform()
+    // The source scan reads src/main; tests run from the project directory.
+    workingDir = projectDir
 }
 
 tasks.processResources {

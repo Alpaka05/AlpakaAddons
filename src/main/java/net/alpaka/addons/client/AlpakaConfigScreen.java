@@ -523,7 +523,7 @@ public class AlpakaConfigScreen extends Screen {
                             } else if (opt.getId().equals("disable_all_features")) {
                                 ModernGuiUtils.drawModernDestructiveButton(graphics, this.font, widgetX, widgetY, widgetW, widgetH, opt.getActionLabel(), isWidgetHovered);
                             } else {
-                                ModernGuiUtils.drawModernButton(graphics, this.font, widgetX, widgetY, widgetW, widgetH, opt.getActionLabel(), isWidgetHovered, false);
+                                ModernGuiUtils.drawModernButton(graphics, this.font, widgetX, widgetY, widgetW, widgetH, actionLabel(opt), isWidgetHovered, isArmed(opt));
                             }
                         }
 
@@ -593,7 +593,8 @@ public class AlpakaConfigScreen extends Screen {
             case BOOLEAN -> 32;
             case TEXT -> 120;
             case ACTION -> opt.getId().contains("color") ? 38
-                    : Math.max(80, GuiFont.width(this.font, opt.getActionLabel()) + 16);
+                    : Math.max(80, Math.max(GuiFont.width(this.font, opt.getActionLabel()),
+                            opt.isConfirmFirst() ? GuiFont.width(this.font, CONFIRM_LABEL) : 0) + 16);
             default -> 90;
         };
     }
@@ -693,8 +694,27 @@ public class AlpakaConfigScreen extends Screen {
         return setupMode ? sideWinX : centerWinX;
     }
 
+    /** An action that asked for a second click, and until when that click counts. */
+    private ConfigOption armedOption = null;
+    private long armedUntilMs = 0L;
+    private static final long CONFIRM_WINDOW_MS = 3000L;
+    private static final String CONFIRM_LABEL = "Click again";
+
+    private boolean isArmed(ConfigOption opt) {
+        return armedOption == opt && System.currentTimeMillis() < armedUntilMs;
+    }
+
+    /** The label on an action's button: its own, or the second-click prompt while armed. */
+    private String actionLabel(ConfigOption opt) {
+        return isArmed(opt) ? CONFIRM_LABEL : opt.getActionLabel();
+    }
+
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        // Only the left button does anything here. A right or middle click used to toggle options,
+        // fire actions and start slider drags.
+        if (event.button() != 0) return super.mouseClicked(event, doubleClick);
+
         // Released up front: any click that then lands on a text field re-focuses it below, and
         // every other click - sidebar, toggle, backdrop - should drop the caret.
         ConfigOption previouslyFocusedText = focusedTextOption;
@@ -809,7 +829,7 @@ public class AlpakaConfigScreen extends Screen {
                 }
 
                 int widgetW = widgetWidth(opt);
-                int widgetH = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 16 : 18;
+                int widgetH = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 15 : 18;
                 int widgetX = contentX + 14 + cardW - widgetW - 10;
                 int widgetY = startOptionY + (cardH - widgetH) / 2;
 
@@ -839,6 +859,9 @@ public class AlpakaConfigScreen extends Screen {
                         opt.toggleBool();
                         return true;
                     } else if (opt.getType() == ConfigOption.Type.SLIDER) {
+                        // Only the slider itself. A click on the card's title or description used to
+                        // read as the slider's far left and snap the value to its minimum.
+                        if (!isWidgetClicked) return true;
                         playPloppSound();
                         this.draggedOption = opt;
                         // Held back until the button comes up: every setter saves, and a drag fires
@@ -846,14 +869,22 @@ public class AlpakaConfigScreen extends Screen {
                         net.alpaka.addons.config.AlpakaConfig.beginDeferredSaves();
                         double norm = Math.max(0.0, Math.min(1.0, (mouseX - widgetX) / (double) widgetW));
                         opt.setSliderNormalizedValue(norm);
-                        opt.setDragging(true);
                         return true;
                     } else if (opt.getType() == ConfigOption.Type.DROPDOWN) {
                         playPloppSound();
                         opt.toggleExpanded();
                         return true;
                     } else if (opt.getType() == ConfigOption.Type.ACTION) {
+                        // The whole card, like a toggle, unless the action overwrites settings outright:
+                        // a stray click on the card must not load or save over a preset.
+                        if (!isWidgetClicked && opt.isButtonOnly()) return true;
                         playPloppSound();
+                        if (opt.isConfirmFirst() && !isArmed(opt)) {
+                            armedOption = opt;
+                            armedUntilMs = System.currentTimeMillis() + CONFIRM_WINDOW_MS;
+                            return true;
+                        }
+                        armedOption = null;
                         opt.triggerAction(this);
                         return true;
                     }
@@ -870,7 +901,6 @@ public class AlpakaConfigScreen extends Screen {
     public boolean mouseReleased(MouseButtonEvent event) {
         if (event.button() == 0) {
             if (draggedOption != null) {
-                draggedOption.setDragging(false);
                 draggedOption = null;
                 // One write for the whole drag, with the value the slider actually ended on.
                 net.alpaka.addons.config.AlpakaConfig.endDeferredSaves();
@@ -888,7 +918,7 @@ public class AlpakaConfigScreen extends Screen {
             int contentX = winX + sidebarWidth;
             int contentW = winW - sidebarWidth;
             int cardW = contentW - 28;
-            int widgetW = 90;
+            int widgetW = widgetWidth(draggedOption);
             int widgetX = contentX + 14 + cardW - widgetW - 10;
 
             double norm = Math.max(0.0, Math.min(1.0, (event.x() - widgetX) / (double) widgetW));
@@ -961,7 +991,7 @@ public class AlpakaConfigScreen extends Screen {
     @Override
     public boolean keyPressed(KeyEvent event) {
         // Cmd+F on Mac, Ctrl+F on Windows to focus search bar
-        if (event.hasControlDownWithQuirk() && (event.key() == 70 || event.key() == 102)) { // GLFW_KEY_F
+        if (event.hasControlDownWithQuirk() && event.key() == org.lwjgl.glfw.GLFW.GLFW_KEY_F) {
             this.searchFocused = true;
             this.cursorBlinkTimer = System.currentTimeMillis();
             // Ctrl+F on a bar that already has a term selects it, so the next keystroke replaces it.
@@ -1015,7 +1045,6 @@ public class AlpakaConfigScreen extends Screen {
     @Override
     public void removed() {
         if (draggedOption != null) {
-            draggedOption.setDragging(false);
             draggedOption = null;
         }
         net.alpaka.addons.config.AlpakaConfig.endDeferredSaves();

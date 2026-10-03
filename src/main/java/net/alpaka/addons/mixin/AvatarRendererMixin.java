@@ -106,7 +106,9 @@ public class AvatarRendererMixin {
     )
     private void alpaka$customOwnNameTag(AvatarRenderState state, PoseStack poseStack, SubmitNodeCollector collector, CameraRenderState camera, CallbackInfo ci) {
         if (CustomNameTagFeature.isEnabled() && CustomNameTagFeature.isLocalPlayerState(state)) {
+            long t = net.alpaka.addons.utils.AlpakaPerf.begin(net.alpaka.addons.utils.AlpakaPerf.Section.NAME_TAG);
             CustomNameTagFeature.submit(state, poseStack, collector, camera);
+            net.alpaka.addons.utils.AlpakaPerf.end(net.alpaka.addons.utils.AlpakaPerf.Section.NAME_TAG, t);
             ci.cancel();
         }
     }

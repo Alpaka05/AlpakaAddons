@@ -9,6 +9,7 @@ import net.alpaka.addons.features.playermodel.PlayerModelRenderer;
 import net.alpaka.addons.features.slayer.SlayerHudRenderer;
 import net.alpaka.addons.features.slayer.SlayerTimerHudRenderer;
 import net.alpaka.addons.features.worldage.WorldAgeHudRenderer;
+import net.alpaka.addons.utils.AlpakaPerf;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.Hud;
@@ -33,13 +34,25 @@ public class HudMixin {
 
     @Inject(method = "extractRenderState", at = @At("TAIL"))
     private void onExtractRenderState(GuiGraphicsExtractor graphicsExtractor, DeltaTracker deltaTracker, CallbackInfo ci) {
+        long t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_PLAYER_MODEL);
         PlayerModelRenderer.render(graphicsExtractor, deltaTracker);
+        AlpakaPerf.end(AlpakaPerf.Section.HUD_PLAYER_MODEL, t);
+        t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_WORLD_AGE);
         WorldAgeHudRenderer.render(graphicsExtractor, deltaTracker);
+        AlpakaPerf.end(AlpakaPerf.Section.HUD_WORLD_AGE, t);
+        t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_SLAYER);
         SlayerHudRenderer.render(graphicsExtractor, deltaTracker);
+        AlpakaPerf.end(AlpakaPerf.Section.HUD_SLAYER, t);
+        t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_SLAYER_TIMER);
         SlayerTimerHudRenderer.render(graphicsExtractor, deltaTracker);
+        AlpakaPerf.end(AlpakaPerf.Section.HUD_SLAYER_TIMER, t);
+        t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_INVENTORY);
         InventoryHudRenderer.render(graphicsExtractor, deltaTracker);
+        AlpakaPerf.end(AlpakaPerf.Section.HUD_INVENTORY, t);
         // Last, so a notice sits above every other overlay rather than under one.
+        t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_NOTIFICATIONS);
         AlpakaNotifications.render(graphicsExtractor, deltaTracker);
+        AlpakaPerf.end(AlpakaPerf.Section.HUD_NOTIFICATIONS, t);
     }
 
     /**
@@ -57,6 +70,7 @@ public class HudMixin {
     @Inject(method = "extractChat", at = @At("TAIL"))
     private void alpaka$chatTabsWhilePeeking(GuiGraphicsExtractor graphicsExtractor, DeltaTracker deltaTracker, CallbackInfo ci) {
         ChatTabsFeature.renderWhilePeeking(graphicsExtractor);
+        ChatTabsFeature.renderFilterChip(graphicsExtractor);
     }
 
     /**

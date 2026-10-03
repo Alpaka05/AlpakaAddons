@@ -55,17 +55,37 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
 
     // ----------------------------------------------------------------- layout
 
-    private class Frame(val winX: Int, val winY: Int, val listX: Int, val listY: Int, val listW: Int, val listH: Int, val bottomY: Int)
+    private class Frame(
+        val winX: Int, val winY: Int, val winW: Int, val winH: Int,
+        val listX: Int, val listY: Int, val listW: Int, val listH: Int,
+        /** The new-command field, and the page, add and reset buttons: one row, or two when narrow. */
+        val inputY: Int, val inputW: Int, val buttonsY: Int, val buttonsX: Int,
+    )
 
+    /**
+     * The window clamped to the screen, with the list taking whatever height is left.
+     *
+     * It used to be a fixed 470 by 372, which at 1080p with Auto GUI scale (480 by 270) put the header
+     * and the bottom row off screen and handed the renderer a scissor above the screen's top edge. Too
+     * narrow for the bottom row, the field gets a line of its own above the buttons.
+     */
     private fun frame(): Frame {
-        val winX = (this.width - WIN_W) / 2
-        val winY = (this.height - WIN_H) / 2
+        val winW = (this.width - MARGIN * 2).coerceIn(MIN_W, WIN_W)
+        val winH = (this.height - MARGIN * 2).coerceIn(MIN_H, WIN_H)
+        val winX = (this.width - winW) / 2
+        val winY = maxOf(MARGIN / 2, (this.height - winH) / 2)
         val listX = winX + 16
         val listY = winY + HEADER_H + 10
-        val listW = WIN_W - 32
-        val bottomY = winY + WIN_H - 16 - BOTTOM_H
-        val listH = bottomY - 10 - listY
-        return Frame(winX, winY, listX, listY, listW, listH, bottomY)
+        val listW = winW - 32
+
+        val buttonsW = PAGE_BTN_W + ADD_W + RESET_W + 12
+        val split = listW < INPUT_W + 6 + buttonsW
+        val bottom = winY + winH - 16 - BOTTOM_H
+        val inputY = if (split) bottom - BOTTOM_H - 6 else bottom
+        val inputW = if (split) listW else INPUT_W
+        val buttonsX = if (split) listX + listW - buttonsW else listX + INPUT_W + 6
+        val listH = inputY - 10 - listY
+        return Frame(winX, winY, winW, winH, listX, listY, listW, listH, inputY, inputW, bottom, buttonsX)
     }
 
     private enum class Kind { HEADER, ITEM, NEW_PAGE }
@@ -166,15 +186,15 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
         val pages = CommandWheelPages.pages()
         val accent = ModernGuiUtils.getAccentColor()
 
-        ModernGuiUtils.drawPanelShadow(graphics, f.winX, f.winY, WIN_W, WIN_H, ModernGuiUtils.PANEL_RADIUS, 1.0f)
-        ModernGuiUtils.drawRoundedPanel(graphics, f.winX, f.winY, WIN_W, WIN_H, ModernGuiUtils.PANEL_RADIUS,
+        ModernGuiUtils.drawPanelShadow(graphics, f.winX, f.winY, f.winW, f.winH, ModernGuiUtils.PANEL_RADIUS, 1.0f)
+        ModernGuiUtils.drawRoundedPanel(graphics, f.winX, f.winY, f.winW, f.winH, ModernGuiUtils.PANEL_RADIUS,
             ModernGuiUtils.COLOR_PANEL_BG, ModernGuiUtils.COLOR_CARD_BORDER)
 
         // Header band with the accent rule, as on the other menus.
         val r = ModernGuiUtils.PANEL_RADIUS
-        ModernGuiUtils.drawRoundedRect(graphics, f.winX + 1, f.winY + 1, WIN_W - 2, HEADER_H - 1, r - 1, ModernGuiUtils.COLOR_SIDEBAR_BG)
-        ModernGuiUtils.drawRect(graphics, f.winX + 1, f.winY + HEADER_H - r, WIN_W - 2, r, ModernGuiUtils.COLOR_SIDEBAR_BG)
-        ModernGuiUtils.drawRect(graphics, f.winX + 1, f.winY + HEADER_H - 1, WIN_W - 2, 1, accent)
+        ModernGuiUtils.drawRoundedRect(graphics, f.winX + 1, f.winY + 1, f.winW - 2, HEADER_H - 1, r - 1, ModernGuiUtils.COLOR_SIDEBAR_BG)
+        ModernGuiUtils.drawRect(graphics, f.winX + 1, f.winY + HEADER_H - r, f.winW - 2, r, ModernGuiUtils.COLOR_SIDEBAR_BG)
+        ModernGuiUtils.drawRect(graphics, f.winX + 1, f.winY + HEADER_H - 1, f.winW - 2, 1, accent)
         graphics.text(this.font, GuiFont.text("Quick Command Settings"), f.winX + 16, f.winY + 15, ModernGuiUtils.COLOR_TEXT_PRIMARY, false)
 
         val hoverClose = mouseX in doneX(f)..(doneX(f) + DONE_W) && mouseY in doneY(f)..(doneY(f) + DONE_H)
@@ -240,18 +260,19 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
         }
 
         // Bottom row: new command, target page, add, reset.
-        val hoverInput = mouseX in inputX(f)..(inputX(f) + INPUT_W) && mouseY in f.bottomY..(f.bottomY + BOTTOM_H)
-        ModernGuiUtils.drawModernTextField(graphics, this.font, inputX(f), f.bottomY, INPUT_W, BOTTOM_H,
+        val hoverInput = mouseX in inputX(f)..(inputX(f) + f.inputW) && mouseY in f.inputY..(f.inputY + BOTTOM_H)
+        ModernGuiUtils.drawModernTextField(graphics, this.font, inputX(f), f.inputY, f.inputW, BOTTOM_H,
             newCommandInput, "/command", inputFocused, hoverInput)
 
-        val hoverPage = mouseX in pageBtnX(f)..(pageBtnX(f) + PAGE_BTN_W) && mouseY in f.bottomY..(f.bottomY + BOTTOM_H)
-        ModernGuiUtils.drawModernButton(graphics, this.font, pageBtnX(f), f.bottomY, PAGE_BTN_W, BOTTOM_H, addTargetLabel(pages.size), hoverPage, false)
+        val buttonsY = f.buttonsY
+        val hoverPage = mouseX in pageBtnX(f)..(pageBtnX(f) + PAGE_BTN_W) && mouseY in buttonsY..(buttonsY + BOTTOM_H)
+        ModernGuiUtils.drawModernButton(graphics, this.font, pageBtnX(f), buttonsY, PAGE_BTN_W, BOTTOM_H, addTargetLabel(pages.size), hoverPage, false)
 
-        val hoverAdd = mouseX in addBtnX(f)..(addBtnX(f) + ADD_W) && mouseY in f.bottomY..(f.bottomY + BOTTOM_H)
-        ModernGuiUtils.drawModernButton(graphics, this.font, addBtnX(f), f.bottomY, ADD_W, BOTTOM_H, "+ Add", hoverAdd, true)
+        val hoverAdd = mouseX in addBtnX(f)..(addBtnX(f) + ADD_W) && mouseY in buttonsY..(buttonsY + BOTTOM_H)
+        ModernGuiUtils.drawModernButton(graphics, this.font, addBtnX(f), buttonsY, ADD_W, BOTTOM_H, "+ Add", hoverAdd, true)
 
-        val hoverReset = mouseX in resetBtnX(f)..(resetBtnX(f) + RESET_W) && mouseY in f.bottomY..(f.bottomY + BOTTOM_H)
-        ModernGuiUtils.drawModernButton(graphics, this.font, resetBtnX(f), f.bottomY, RESET_W, BOTTOM_H, "Reset", hoverReset, false)
+        val hoverReset = mouseX in resetBtnX(f)..(resetBtnX(f) + RESET_W) && mouseY in buttonsY..(buttonsY + BOTTOM_H)
+        ModernGuiUtils.drawModernButton(graphics, this.font, resetBtnX(f), buttonsY, RESET_W, BOTTOM_H, "Reset", hoverReset, false)
     }
 
     private fun drawItemRow(graphics: GuiGraphicsExtractor, f: Frame, row: Row, x: Int, y: Int, w: Int, mouseX: Int, mouseY: Int, hoverable: Boolean, pageCount: Int) {
@@ -298,10 +319,10 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
     }
 
     // Positions of the bottom row and header controls, shared by drawing and clicking.
-    private fun doneX(f: Frame) = f.winX + WIN_W - DONE_W - 12
+    private fun doneX(f: Frame) = f.winX + f.winW - DONE_W - 12
     private fun doneY(f: Frame) = f.winY + (HEADER_H - DONE_H) / 2
-    private fun inputX(f: Frame) = f.winX + 16
-    private fun pageBtnX(f: Frame) = inputX(f) + INPUT_W + 6
+    private fun inputX(f: Frame) = f.listX
+    private fun pageBtnX(f: Frame) = f.buttonsX
     private fun addBtnX(f: Frame) = pageBtnX(f) + PAGE_BTN_W + 6
     private fun resetBtnX(f: Frame) = addBtnX(f) + ADD_W + 6
     private fun delBtnX(rowX: Int, rowW: Int) = rowX + rowW - SMALL_BTN - 5
@@ -323,12 +344,12 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
             return true
         }
 
-        // Bottom row.
-        if (mouseY in f.bottomY..(f.bottomY + BOTTOM_H)) {
-            if (mouseX in inputX(f)..(inputX(f) + INPUT_W)) {
-                inputFocused = true
-                return true
-            }
+        // Bottom row: the field, and the buttons on the same line or the one below it.
+        if (mouseY in f.inputY..(f.inputY + BOTTOM_H) && mouseX in inputX(f)..(inputX(f) + f.inputW)) {
+            inputFocused = true
+            return true
+        }
+        if (mouseY in f.buttonsY..(f.buttonsY + BOTTOM_H)) {
             inputFocused = false
             if (mouseX in pageBtnX(f)..(pageBtnX(f) + PAGE_BTN_W)) {
                 playPloppSound()
@@ -485,6 +506,10 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
     companion object {
         private const val WIN_W = 470
         private const val WIN_H = 372
+        private const val MIN_W = 300
+        private const val MIN_H = 220
+        /** Space kept free around the window, as the config screen keeps. */
+        private const val MARGIN = 8
         private const val HEADER_H = 38
         private const val DONE_W = 60
         private const val DONE_H = 22

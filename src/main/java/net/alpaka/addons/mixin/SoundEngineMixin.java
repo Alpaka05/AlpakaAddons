@@ -1,5 +1,7 @@
 package net.alpaka.addons.mixin;
 
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import com.llamalad7.mixinextras.sugar.Local;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.etherwarp.EtherwarpOverlayFeature;
 import net.alpaka.addons.features.slayer.SlayerQuestDetector;
@@ -7,180 +9,186 @@ import net.alpaka.addons.features.slayer.SlayerType;
 import net.alpaka.addons.features.sound.CustomSoundFeature;
 import net.alpaka.addons.features.sound.LocalAttackTracker;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.resources.sounds.SoundInstance;
 import net.minecraft.client.sounds.SoundEngine;
 import net.minecraft.resources.Identifier;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.monster.Blaze;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.util.Set;
+
+/**
+ * Custom sounds and the Blaze slayer mute.
+ *
+ * Decided at the volume calculation inside {@link SoundEngine#play}, not at its head. By then the
+ * sound has been resolved, other mods' hooks have seen it - SkyHanni reads item cooldowns off
+ * sounds there - and the subtitle listeners have shown it. A sound the mod mutes or replaces gets a
+ * volume of zero, which vanilla answers by not starting it; a replacement is started once
+ * {@code play} has returned, so nothing re-enters it halfway through. Cancelling at the head, as
+ * this used to, hid those sounds from SkyHanni and broke its Hyperion cooldown.
+ */
 @Mixin(SoundEngine.class)
 public class SoundEngineMixin {
 
-    /** Namespace of every sound this mod registers; never silenced. */
+    /** Namespace of every sound this mod registers; never muted or replaced. */
+    @Unique
     private static final String ALPAKA_NAMESPACE = "alpaka";
-
-    /** Which custom sound, if any, stands in for the vanilla sound being played. */
-    private static final int REPLACE_NOTHING = 0;
-    private static final int REPLACE_BUTTON_CLICK = 1;
-    private static final int REPLACE_BLAZE_DEATH = 2;
-    private static final int REPLACE_INVENTORY_CLICK = 3;
-    private static final int REPLACE_ZOMBIE_REMEDY = 4;
-    private static final int REPLACE_HIT = 5;
-    private static final int REPLACE_PLAYER_HURT = 6;
+    @Unique
+    private static final String MINECRAFT_NAMESPACE = "minecraft";
 
     /** Squared distance within which a sound counts as coming from the local player. */
+    @Unique
     private static final double OWN_SOUND_RADIUS_SQR = 4.0d;
+    /** The same for the remedy sound, which a teleport can move a little further away. */
+    @Unique
+    private static final double OWN_REMEDY_RADIUS_SQR = 9.0d;
 
-    private static boolean IS_INTERNAL_PLAY = false;
+    /** One hit can reach the client twice; the second hurt sound within this window is dropped. */
+    @Unique
+    private static final long HURT_DEBOUNCE_MS = 100L;
 
-    @Inject(method = "play", at = @At("HEAD"), cancellable = true)
-    private void onPlaySound(SoundInstance sound, CallbackInfoReturnable<SoundEngine.PlayResult> cir) {
-        if (IS_INTERNAL_PLAY) return;
-        if (sound == null || sound.getIdentifier() == null) return;
+    /**
+     * Blaze slayer noise muted in the default mode: the blazes themselves, their fire, the lava and
+     * ghasts around the Crimson Isle, and its lightning.
+     */
+    @Unique
+    private static final Set<String> BLAZE_NOISE = Set.of(
+            "entity.blaze.ambient", "entity.blaze.burn", "entity.blaze.hurt", "entity.blaze.shoot",
+            "entity.blaze.death", "entity.ghast.shoot", "entity.ghast.warn", "block.fire.ambient",
+            "block.lava.pop", "block.lava.ambient", "entity.generic.burn",
+            "entity.lightning_bolt.thunder", "entity.lightning_bolt.impact");
 
+    /** Sources the "all world audio" mode mutes. UI, master, voice and music are never touched. */
+    @Unique
+    private static final Set<SoundSource> WORLD_SOURCES = Set.of(
+            SoundSource.BLOCKS, SoundSource.HOSTILE, SoundSource.NEUTRAL, SoundSource.PLAYERS,
+            SoundSource.AMBIENT, SoundSource.WEATHER);
+
+    /** The stand-in to start once the current {@code play} has returned, or null. */
+    @Unique
+    private static Runnable alpaka$pendingReplacement = null;
+    @Unique
+    private static long alpaka$lastHurtMs = 0L;
+
+    @ModifyExpressionValue(
+            method = "play",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/sounds/SoundEngine;calculateVolume(FLnet/minecraft/sounds/SoundSource;)F")
+    )
+    private float alpaka$muteOrReplace(float volume, @Local(argsOnly = true) SoundInstance sound) {
         Identifier id = sound.getIdentifier();
+        if (id == null || ALPAKA_NAMESPACE.equals(id.getNamespace())) return volume;
 
-        // The Etherwarp cue has its own toggle rather than living under Custom Sounds, so it is
-        // resolved ahead of tryReplace, which is gated on that master switch. The pitch comes from
-        // the raw field: getPitch() needs the resolved sound, which does not exist yet at HEAD.
+        // The Etherwarp cue has its own toggle rather than living under Custom Sounds.
         if (sound instanceof AbstractSoundInstanceAccessor raw
                 && EtherwarpOverlayFeature.isOwnWarpSound(id, raw.alpaka$rawPitch(), sound.getX(), sound.getY(), sound.getZ())) {
-            IS_INTERNAL_PLAY = true;
-            try {
-                EtherwarpOverlayFeature.playWarpSound();
-            } finally {
-                IS_INTERNAL_PLAY = false;
+            alpaka$pendingReplacement = EtherwarpOverlayFeature::playWarpSound;
+            return 0.0f;
+        }
+
+        // Replacements first: every custom sound is triggered by the vanilla sound it stands in for.
+        Runnable replacement = alpaka$replacementFor(sound, id);
+        if (replacement != null) {
+            alpaka$pendingReplacement = replacement;
+            return 0.0f;
+        }
+
+        return alpaka$shouldMute(sound, id) ? 0.0f : volume;
+    }
+
+    /** Starts the stand-in after the original has been dropped. */
+    @Inject(method = "play", at = @At("RETURN"))
+    private void alpaka$startReplacement(SoundInstance sound, CallbackInfoReturnable<SoundEngine.PlayResult> cir) {
+        Runnable replacement = alpaka$pendingReplacement;
+        if (replacement == null) return;
+        alpaka$pendingReplacement = null;
+        replacement.run();
+    }
+
+    /**
+     * The custom sound standing in for this one, or null. Only vanilla sounds are matched, by their
+     * exact id, and only the player's own: another player's crit, hurt or kill keeps its vanilla
+     * sound. Each rule returns null when its own toggle is off, so switching a custom sound off
+     * brings the vanilla one back.
+     */
+    @Unique
+    private static Runnable alpaka$replacementFor(SoundInstance sound, Identifier id) {
+        AlpakaConfig cfg = AlpakaConfig.instance;
+        if (!cfg.customSoundsEnabled || !MINECRAFT_NAMESPACE.equals(id.getNamespace())) return null;
+
+        String path = id.getPath();
+        switch (path) {
+            case "ui.button.click" -> {
+                // Hypixel's menu clicks arrive as this too, so inside a container it is the
+                // inventory click; everywhere else the button click.
+                if (cfg.customSoundInventoryClick && Minecraft.getInstance().gui.screen() instanceof AbstractContainerScreen<?>) {
+                    return CustomSoundFeature::playInventoryClickSound;
+                }
+                return cfg.customSoundButtonClick ? CustomSoundFeature::playButtonClickSound : null;
             }
-            cir.setReturnValue(SoundEngine.PlayResult.STARTED);
-            return;
-        }
-
-        // Replacements are resolved BEFORE any silencing. Every custom sound in this mod is
-        // triggered by the vanilla sound it stands in for, so silencing first threw away the
-        // trigger and took the custom hit, click and death sounds down with it.
-        if (tryReplace(sound, id, cir)) return;
-
-        if (shouldSilence(id)) {
-            cir.setReturnValue(SoundEngine.PlayResult.NOT_STARTED);
-        }
-    }
-
-    /**
-     * Blaze-slayer silence, applied only to sounds no custom replacement claimed.
-     *
-     * While this is on, the only audio that survives is this mod's own: anything in the "alpaka"
-     * namespace. That includes the replacements resolved before this runs, so a vanilla sound the
-     * mod stands in for is still heard - as the custom version. A replacement whose own toggle is
-     * off claims nothing, and so falls through to here and is silenced along with everything else;
-     * turning a custom sound off while this is on means silence rather than the vanilla sound,
-     * which is the point of the feature.
-     *
-     * Deliberately not gated behind customSoundsEnabled: this suppresses the game's own audio
-     * rather than adding to it, and it exists because Hypixel layers so much sound onto a blaze
-     * fight that the mod's own cues - the boss spawn chime especially - are drowned out.
-     *
-     * activeType is read straight from the field rather than through currentOrRecent(): the field is
-     * already refreshed once per client tick, so re-parsing the scoreboard from whatever thread is
-     * starting a sound would be needless work.
-     */
-    private boolean shouldSilence(Identifier id) {
-        if (!AlpakaConfig.instance.muteVanillaSoundsInBlazeSlayer) return false;
-        if (ALPAKA_NAMESPACE.equals(id.getNamespace())) return false;
-        return SlayerQuestDetector.INSTANCE.getActiveType() == SlayerType.BLAZE;
-    }
-
-    /** Plays our stand-in for a vanilla sound and cancels the original; false if nothing matched. */
-    private boolean tryReplace(SoundInstance sound, Identifier id, CallbackInfoReturnable<SoundEngine.PlayResult> cir) {
-        if (!AlpakaConfig.instance.customSoundsEnabled) return false;
-
-        int replacement = classify(sound, id.getPath());
-        if (replacement == REPLACE_NOTHING) return false;
-
-        // IS_INTERNAL_PLAY keeps the nested play() call from reaching this injector again.
-        IS_INTERNAL_PLAY = true;
-        try {
-            switch (replacement) {
-                case REPLACE_BUTTON_CLICK -> CustomSoundFeature.playButtonClickSound();
-                case REPLACE_BLAZE_DEATH -> CustomSoundFeature.playBlazeDeathSound();
-                case REPLACE_INVENTORY_CLICK -> CustomSoundFeature.playInventoryClickSound();
-                case REPLACE_ZOMBIE_REMEDY -> CustomSoundFeature.playZombieRemedySound();
-                case REPLACE_HIT -> CustomSoundFeature.playHitSound();
-                case REPLACE_PLAYER_HURT -> CustomSoundFeature.playDamageSound();
-                default -> { }
+            case "entity.blaze.death" -> {
+                // Emitted wherever the blaze died, which is just as often somebody else's blaze.
+                if (!cfg.customSoundBlazeDeath) return null;
+                return LocalAttackTracker.wasAttackedByUsNear(Blaze.class, sound.getX(), sound.getY(), sound.getZ())
+                        ? CustomSoundFeature::playBlazeDeathSound : null;
             }
-        } finally {
-            IS_INTERNAL_PLAY = false;
+            case "entity.zombie_villager.cure" -> {
+                if (!cfg.customSoundZombieRemedy) return null;
+                return alpaka$isNearLocalPlayer(sound, OWN_REMEDY_RADIUS_SQR) && LocalAttackTracker.usedItemRecently()
+                        ? CustomSoundFeature::playZombieRemedySound : null;
+            }
+            case "entity.arrow.hit_player" -> {
+                // Only ever played for arrows the local player shot.
+                return cfg.customSoundSuccessfulHit ? CustomSoundFeature::playHitSound : null;
+            }
+            case "entity.player.attack.crit" -> {
+                if (!cfg.customSoundSuccessfulHit) return null;
+                return alpaka$isNearLocalPlayer(sound, OWN_SOUND_RADIUS_SQR) ? CustomSoundFeature::playHitSound : null;
+            }
+            case "entity.player.hurt", "entity.player.hurt_drown", "entity.player.hurt_on_fire",
+                 "entity.player.hurt_freeze", "entity.player.hurt_sweet_berry_bush" -> {
+                if (!cfg.customSoundPlayerHurt || !alpaka$isNearLocalPlayer(sound, OWN_SOUND_RADIUS_SQR)) return null;
+                long now = System.currentTimeMillis();
+                if (now - alpaka$lastHurtMs < HURT_DEBOUNCE_MS) return () -> {};
+                alpaka$lastHurtMs = now;
+                return CustomSoundFeature::playDamageSound;
+            }
+            default -> {
+                return null;
+            }
         }
-
-        cir.setReturnValue(SoundEngine.PlayResult.STARTED);
-        return true;
     }
 
     /**
-     * Works out which custom sound replaces this one.
-     *
-     * Every branch returns REPLACE_NOTHING when its own toggle is off, rather than replacing with
-     * silence, so switching a custom sound off normally restores the vanilla one. The exception is
-     * while the blaze-slayer silence is running, which then swallows that unclaimed vanilla sound -
-     * see shouldSilence.
+     * The Blaze slayer mute, for sounds no replacement claimed, while a Blaze quest runs. By default
+     * only the blaze fight's own noise; optionally every world sound. Never the UI, master, voice or
+     * music channels, and never this mod's own sounds, so other mods' menu alerts still play.
      */
-    private int classify(SoundInstance sound, String path) {
-        if (path.contains("button.click") || "gui.button.press".equals(path) || "ui.button.click".equals(path)) {
-            return AlpakaConfig.instance.customSoundButtonClick ? REPLACE_BUTTON_CLICK : REPLACE_NOTHING;
-        }
-
-        if ("entity.blaze.death".equals(path) || path.contains("blaze/death")) {
-            if (!AlpakaConfig.instance.customSoundBlazeDeath) return REPLACE_NOTHING;
-            // Only our own kills; the sound is emitted wherever the blaze died, which is just as
-            // often somebody else's blaze a few blocks away.
-            return LocalAttackTracker.wasAttackedByUsNear(Blaze.class, sound.getX(), sound.getY(), sound.getZ())
-                    ? REPLACE_BLAZE_DEATH : REPLACE_NOTHING;
-        }
-
-        if ("item.pickup".equals(path) || "container.click".equals(path)) {
-            return AlpakaConfig.instance.customSoundInventoryClick ? REPLACE_INVENTORY_CLICK : REPLACE_NOTHING;
-        }
-
-        if ("entity.zombie_villager.cure".equals(path) || path.contains("remedy")) {
-            return AlpakaConfig.instance.customSoundZombieRemedy ? REPLACE_ZOMBIE_REMEDY : REPLACE_NOTHING;
-        }
-
-        if ("entity.arrow.hit_player".equals(path) || "entity.player.attack.crit".equals(path) || path.contains("successful_hit")) {
-            return AlpakaConfig.instance.customSoundSuccessfulHit ? REPLACE_HIT : REPLACE_NOTHING;
-        }
-
-        // Player hurt sounds the server plays directly. PlayerMixin already swaps the sound that
-        // Player.getHurtSound returns, which covers damage the client resolves itself, but Hypixel
-        // largely drives damage from the server - so the sound arrives as plain
-        // "minecraft:entity.player.hurt" and never passes through getHurtSound at all. Catching it
-        // here covers that case too. The two cannot double up: once getHurtSound has done its job
-        // the path reads "player_hurt", which no branch here matches.
-        if (path.startsWith("entity.player.hurt")) {
-            if (!AlpakaConfig.instance.customSoundPlayerHurt) return REPLACE_NOTHING;
-            return isFromLocalPlayer(sound) ? REPLACE_PLAYER_HURT : REPLACE_NOTHING;
-        }
-
-        return REPLACE_NOTHING;
+    @Unique
+    private static boolean alpaka$shouldMute(SoundInstance sound, Identifier id) {
+        AlpakaConfig cfg = AlpakaConfig.instance;
+        if (!cfg.muteVanillaSoundsInBlazeSlayer) return false;
+        if (SlayerQuestDetector.INSTANCE.getActiveType() != SlayerType.BLAZE) return false;
+        if (cfg.blazeMuteAllWorldAudio) return WORLD_SOURCES.contains(sound.getSource());
+        return MINECRAFT_NAMESPACE.equals(id.getNamespace()) && BLAZE_NOISE.contains(id.getPath());
     }
 
     /**
-     * Whether a sound was emitted at the local player's position.
-     *
-     * Hurt sounds are positioned on the player they belong to, so this keeps another player's hurt
-     * sound from being swapped for ours. The radius has to allow a little slack because a
-     * server-sent sound can be rounded to block coordinates, which does mean a player standing
-     * right on top of us is indistinguishable - harmless for a hurt sound.
+     * Whether a sound was emitted at the local player's position. A server-sent sound can be
+     * rounded to block coordinates, hence the slack.
      */
-    private boolean isFromLocalPlayer(SoundInstance sound) {
+    @Unique
+    private static boolean alpaka$isNearLocalPlayer(SoundInstance sound, double radiusSqr) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return false;
-
         double dx = mc.player.getX() - sound.getX();
         double dy = mc.player.getY() - sound.getY();
         double dz = mc.player.getZ() - sound.getZ();
-        return dx * dx + dy * dy + dz * dz <= OWN_SOUND_RADIUS_SQR;
+        return dx * dx + dy * dy + dz * dz <= radiusSqr;
     }
 }

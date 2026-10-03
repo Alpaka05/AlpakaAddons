@@ -55,7 +55,6 @@ public class CustomPauseScreen extends PauseScreen {
     /** Private-use codepoints, in the order the sprite sheet lays them out. */
     private static final String ICON_PLAY = "";
     private static final String ICON_SERVER = "";
-    private static final String ICON_BOX = "";
     private static final String ICON_SLIDERS = "";
     private static final String ICON_BOOK = "";
     private static final String ICON_DOOR = "";
@@ -390,7 +389,8 @@ public class CustomPauseScreen extends PauseScreen {
         }
 
         if (event.button() == 0 && isOverLogo(event.x(), event.y()) && this.minecraft != null) {
-            CustomSoundFeature.playButtonClickSound();
+            // Vanilla's click, which the custom-sound swap replaces when the player opted in.
+            net.minecraft.client.gui.components.AbstractWidget.playButtonClickSound(this.minecraft.getSoundManager());
             this.minecraft.gui.setScreen(new AlpakaConfigScreen(this));
             return true;
         }
@@ -435,7 +435,7 @@ public class CustomPauseScreen extends PauseScreen {
 
         @Override
         public void onPress(InputWithModifiers input) {
-            CustomSoundFeature.playButtonClickSound();
+            // No sound here: the widget already played vanilla's click on the press.
             if (this.action != null) {
                 this.action.onPress(this);
             }

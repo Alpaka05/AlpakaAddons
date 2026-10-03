@@ -130,6 +130,35 @@ object SlayerQuestDetector {
 
     private var pendingSpawn: SlayerType? = null
 
+    /** What the quest looked like at the last readable sample. */
+    private enum class Phase { NONE, GRINDING, FIGHT, SLAIN }
+
+    private var lastPhase = Phase.NONE
+
+    /**
+     * Whether the boss now up has already been handed out as a kill, by the sidebar or by chat. Both
+     * can report the same boss; this makes the second one a no-op. Cleared when the next boss spawns.
+     */
+    private var killCountedThisFight = false
+
+    /** Whether the held kill may be timed: false when the fight itself was never seen. */
+    private var pendingKillTimed = true
+
+    /** Whether the held spawn came straight from grinding, the only start a fight can be timed from. */
+    private var pendingSpawnVerified = false
+
+    /** Whether the kill [consumeKill] last handed out can be timed. */
+    var killTimed = true
+        private set
+
+    /**
+     * Whether the spawn [consumeSpawn] last handed out came from grinding in the same world. A boss
+     * that is already up when it is first seen - on joining, after a warp - was not, and a time
+     * measured from that moment would be too short to be a personal best.
+     */
+    var spawnVerified = false
+        private set
+
     /**
      * The level the last sidebar sample came from, held weakly so a left world can be collected.
      * A sample from another level starts over; see [resetForLevelChange].
@@ -269,30 +298,6 @@ object SlayerQuestDetector {
     }
 
     /**
-     * Notices that the boss just died, by watching the progress line leave "Slay the boss!".
-     *
-     * The sidebar is used rather than chat because Hypixel does not reliably announce the kill: a
-     * captured session shows four "SLAYER QUEST STARTED!" messages and not one "SLAYER QUEST
-     * COMPLETE!", since other Skyblock mods routinely swallow or rewrite that line. The sidebar
-     * cannot be hidden from us the same way.
-     *
-     * The quest clearing straight out of the boss fight counts too - at a 250ms poll the brief
-     * "Boss slain!" state is easy to miss entirely.
-     */
-    /**
-     * Hypixel says the quest was cancelled. Stops the disappearing quest being read as a kill.
-     *
-     * Cancelling looks exactly like a kill from the sidebar alone - the boss was up, then the quest
-     * lines are gone - so without this every cancelled quest counted as a boss killed. Comparing
-     * against SkyHanni over three sessions made it plain: identical counts in the two sessions with
-     * no cancellation, exactly one kill too many in the session with one.
-     *
-     * The running fight is dropped as well: there is no boss any more, so the timer has nothing left
-     * to time and its clock would otherwise keep running on the HUD.
-     */
-    fun onQuestCancelled() = onQuestVoided()
-
-    /**
      * The quest ended without the boss dying - cancelled at Maddox, or failed because the player
      * died. Stops the quest disappearing from the sidebar being read as a kill.
      *
@@ -310,7 +315,10 @@ object SlayerQuestDetector {
         // Takes back a kill that was only inferred from the quest disappearing and has not been
         // acted on yet - which is the whole point of holding it. A stated "Boss slain!" is left
         // alone: dying a moment after the boss died does not undo the kill.
-        if (pendingKillInferred) pendingKill = null
+        if (pendingKillInferred) {
+            pendingKill = null
+            killCountedThisFight = false
+        }
 
         SlayerTimer.clear()
     }
@@ -330,6 +338,24 @@ object SlayerQuestDetector {
         wasDead = dead
     }
 
+    private fun phaseOf(progress: String, type: SlayerType?): Phase = when {
+        type == null || progress.isEmpty() -> Phase.NONE
+        progress == STATE_BOSS_FIGHT -> Phase.FIGHT
+        progress == STATE_BOSS_SLAIN -> Phase.SLAIN
+        else -> Phase.GRINDING
+    }
+
+    /**
+     * Turns the sidebar's quest state into kills and spawns.
+     *
+     * The progress line moves between four phases: none, grinding ("1,200/3,000 Combat XP"), the
+     * fight ("Slay the boss!") and "Boss slain!". A kill is the fight ending: into "Boss slain!",
+     * stated outright, or straight into grinding (an auto-restarted quest) or nothing, inferred and
+     * held back so that dying or cancelling can still veto it. Grinding straight into "Boss slain!"
+     * is a boss that came and went between two samples: counted, but not timed. Only fight-to-slain
+     * and fight-to-nothing used to count, so every auto-restarted quest and every one-tick boss went
+     * missing.
+     */
     private fun detectKill(newProgress: String, newType: SlayerType?) {
         // Before the unchanged check: the first readable state in a new world is the baseline even
         // when it reads the same as the last one before the change, or the flag would stay set and
@@ -337,35 +363,88 @@ object SlayerQuestDetector {
         if (freshLevel) {
             freshLevel = false
             lastProgress = newProgress
+            lastPhase = phaseOf(newProgress, newType)
             return
         }
         if (newProgress == lastProgress) return
 
-        val wasFighting = lastProgress == STATE_BOSS_FIGHT
-
-        // "Boss slain!" is stated outright and can be trusted whatever else happened. The other two
-        // are only inferred from the quest going away, which is also what cancelling the quest and
-        // dying look like, so those are ignored for a moment after either of those.
-        val slain = newProgress == STATE_BOSS_SLAIN
-        val vanished = newProgress.isEmpty() || newType == null
-        val recentlyVoided = System.currentTimeMillis() - questVoidedAtMs < VOID_GRACE_MS
-
-        if (wasFighting && (slain || (vanished && !recentlyVoided))) {
-            pendingKill = lastSeenType
-            pendingKillAtMs = System.currentTimeMillis()
-            pendingKillInferred = !slain
-        }
-
-        // The reverse transition: the boss just spawned. There is no chat announcement to fall
-        // back on here either - SkyHanni's own pattern repository has a spawn message for every
-        // other Hypixel boss (the Ender Dragon, Arachne, Crimson Isle minibosses) but none for a
-        // regular slayer boss, confirming Hypixel simply never sends one. The sidebar entering
-        // "Slay the boss!" is the only signal there is.
-        if (newProgress == STATE_BOSS_FIGHT && newType != null) {
-            pendingSpawn = newType
-        }
-
+        val previous = lastPhase
+        val phase = phaseOf(newProgress, newType)
         lastProgress = newProgress
+        lastPhase = phase
+        if (phase == previous) return
+
+        val now = System.currentTimeMillis()
+        val recentlyVoided = now - questVoidedAtMs < VOID_GRACE_MS
+        when {
+            previous == Phase.FIGHT && phase == Phase.SLAIN -> emitKill(lastSeenType, now, inferred = false, timed = true)
+            previous == Phase.FIGHT && !recentlyVoided -> emitKill(lastSeenType, now, inferred = true, timed = true)
+            previous == Phase.GRINDING && phase == Phase.SLAIN -> emitKill(lastSeenType, now, inferred = false, timed = false)
+        }
+
+        // The boss just spawned. There is no chat announcement to fall back on here either -
+        // SkyHanni's own pattern repository has a spawn message for every other Hypixel boss (the
+        // Ender Dragon, Arachne, Crimson Isle minibosses) but none for a regular slayer boss,
+        // confirming Hypixel simply never sends one. The sidebar entering "Slay the boss!" is the
+        // only signal there is.
+        if (phase == Phase.FIGHT && newType != null) {
+            // The fight coming back while a kill inferred from it vanishing is still held: the
+            // sidebar flickered, the boss never died, and the fight simply goes on.
+            if (pendingKill == newType && pendingKillInferred) {
+                pendingKill = null
+                killCountedThisFight = false
+                return
+            }
+            killCountedThisFight = false
+            pendingSpawn = newType
+            pendingSpawnVerified = previous == Phase.GRINDING
+        }
+    }
+
+    /** For tests: one readable sidebar sample, as [refresh] would pass it on. */
+    internal fun sampleForTest(progress: String, type: SlayerType?) {
+        detectKill(progress, type)
+    }
+
+    /** For tests: back to the state of a fresh start, minus the world-change baseline. */
+    internal fun resetForTest() {
+        lastProgress = ""
+        lastPhase = Phase.NONE
+        pendingKill = null
+        pendingSpawn = null
+        killCountedThisFight = false
+        freshLevel = false
+        questVoidedAtMs = 0L
+        lastSeenType = null
+    }
+
+    /** For tests: the slayer most recently seen, which a kill is credited to. */
+    internal fun seeForTest(type: SlayerType) {
+        lastSeenType = type
+    }
+
+    /** Hands out one kill for the boss now up, whichever source reports it first. */
+    private fun emitKill(type: SlayerType?, atMs: Long, inferred: Boolean, timed: Boolean) {
+        if (type == null || killCountedThisFight) return
+        killCountedThisFight = true
+        pendingKill = type
+        pendingKillAtMs = atMs
+        pendingKillInferred = inferred
+        pendingKillTimed = timed
+    }
+
+    /**
+     * Hypixel's "SLAYER QUEST COMPLETE!" or "NICE! SLAYER BOSS SLAIN!" line. A kill source of its
+     * own, deduplicated against the sidebar's, so a kill the sidebar missed still reaches the
+     * session, the timer and the XP. It also confirms a kill the sidebar only inferred, which then no
+     * longer waits for a veto.
+     */
+    fun onChatKill(type: SlayerType?) {
+        if (pendingKill != null && pendingKillInferred) {
+            pendingKillInferred = false
+            return
+        }
+        emitKill(type, System.currentTimeMillis(), inferred = false, timed = lastPhase == Phase.FIGHT)
     }
 
     /**
@@ -380,6 +459,7 @@ object SlayerQuestDetector {
 
         pendingKill = null
         killDetectedAtMs = pendingKillAtMs
+        killTimed = pendingKillTimed
         return killed
     }
 
@@ -387,6 +467,7 @@ object SlayerQuestDetector {
     fun consumeSpawn(): SlayerType? {
         val spawned = pendingSpawn
         pendingSpawn = null
+        if (spawned != null) spawnVerified = pendingSpawnVerified
         return spawned
     }
 

@@ -1,7 +1,6 @@
 package net.alpaka.addons.features.blaze
 
 import net.alpaka.addons.config.AlpakaConfig
-import net.alpaka.addons.features.slayer.SlayerQuestDetector
 import net.alpaka.addons.features.slayer.SlayerSessionTracker
 import net.alpaka.addons.features.slayer.SlayerType
 import net.alpaka.addons.utils.SkyblockUtils
@@ -17,11 +16,15 @@ import net.minecraft.world.entity.projectile.hurtingprojectile.SmallFireball
  * the burning overlay and the fireballs they throw, each with its own toggle, and optionally their
  * name tags.
  *
- * Only on SkyBlock, in the Blaze slayer's zones or while a Blaze quest is active. It used to apply
+ * Only on SkyBlock, in the Blaze slayer's zones. It used to apply
  * everywhere: every flame and torch particle in every world, the fire on every entity including the
  * player, every small fireball, and any name containing "Blaze", which also hid the Dungeons blaze
  * puzzle's health. Name tags now stay visible unless the player asks otherwise, since grinders read
  * the health on them.
+ *
+ * Deliberately not tied to an active Blaze quest: the quest stays active wherever the player goes,
+ * so walking into the Magma Chamber with one running hid the Magma Boss's flame rings, which deal
+ * real damage and have to be seen to be dodged.
  *
  * SkyHanni's Blaze Slayer Clear View does much the same; running both is harmless but redundant.
  *
@@ -30,20 +33,19 @@ import net.minecraft.world.entity.projectile.hurtingprojectile.SmallFireball
  */
 object CleanBlazeFeature {
 
-    /** How often the zone and quest are re-checked; particles ask many times per frame. */
+    /** How often the zone is re-checked; particles ask many times per frame. */
     private const val SCOPE_REFRESH_MS = 250L
 
     private var scopeCheckedAtMs = 0L
     private var inScope = false
 
-    /** On SkyBlock, and in a Blaze zone or on a Blaze quest. Cached, since every particle asks. */
+    /** On SkyBlock and in a Blaze zone. Cached, since every particle asks. */
     private fun active(): Boolean {
         if (!AlpakaConfig.instance.cleanBlazeEnabled) return false
         val now = System.currentTimeMillis()
         if (now - scopeCheckedAtMs >= SCOPE_REFRESH_MS) {
             scopeCheckedAtMs = now
-            inScope = SkyblockUtils.isOnSkyblock() &&
-                (SlayerQuestDetector.activeType == SlayerType.BLAZE || SlayerSessionTracker.isInTrackerArea(SlayerType.BLAZE))
+            inScope = SkyblockUtils.isOnSkyblock() && SlayerSessionTracker.isInTrackerArea(SlayerType.BLAZE)
         }
         return inScope
     }

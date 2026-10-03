@@ -132,8 +132,8 @@ public class AlpakaConfig {
     public boolean containerBgFadeInEnabled = true;
     public int containerBgFadeInDurationMs = 250;
     /**
-     * Clean Blaze, only on SkyBlock in the Blaze slayer's zones or during a Blaze quest. The four
-     * fields after it pick what it hides.
+     * Clean Blaze, only on SkyBlock in the Blaze slayer's zones. The four fields after it pick what
+     * it hides.
      */
     public boolean cleanBlazeEnabled = true;
     public boolean cleanBlazeParticles = true;

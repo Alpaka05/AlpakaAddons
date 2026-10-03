@@ -123,7 +123,7 @@ public class AlpakaConfigRegistry {
                 "gamma brightness light fullbright vision"));
 
         OPTIONS.add(new ConfigOption("clean_blaze", "Clean Blaze",
-                "Clears blaze noise during Blaze slayer, on SkyBlock only. Pick what below.",
+                "Clears blaze noise in the Blaze slayer's zones, on SkyBlock only. Pick what below.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.cleanBlazeEnabled,
                 v -> { AlpakaConfig.instance.cleanBlazeEnabled = v; AlpakaConfig.save(); },

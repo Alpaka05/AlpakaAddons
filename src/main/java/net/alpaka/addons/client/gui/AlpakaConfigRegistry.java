@@ -130,14 +130,14 @@ public class AlpakaConfigRegistry {
                 "blaze smoke particles fire nametag clear view slayer inferno crimson"));
 
         OPTIONS.add(new ConfigOption("clean_blaze_particles", "Clean Blaze: Particles",
-                "Hides flame and smoke in the Blaze zones; every particle there while on a Blaze quest.",
+                "Hides flame, smoke and angry villager particles in the Blaze slayer's zones.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.cleanBlazeParticles,
                 v -> { AlpakaConfig.instance.cleanBlazeParticles = v; AlpakaConfig.save(); },
                 "blaze flame smoke particles clean"));
 
         OPTIONS.add(new ConfigOption("clean_blaze_fire", "Clean Blaze: Burning",
-                "Hides the burning overlay on blazes. Your own fire stays visible.",
+                "Hides the burning overlay on blazes, minibosses and demons. Your own fire stays visible.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.cleanBlazeFire,
                 v -> { AlpakaConfig.instance.cleanBlazeFire = v; AlpakaConfig.save(); },

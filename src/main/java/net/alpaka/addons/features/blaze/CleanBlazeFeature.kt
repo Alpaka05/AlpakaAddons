@@ -1,21 +1,22 @@
 package net.alpaka.addons.features.blaze
 
 import net.alpaka.addons.config.AlpakaConfig
-import net.alpaka.addons.features.slayer.SlayerQuestDetector
 import net.alpaka.addons.features.slayer.SlayerSessionTracker
 import net.alpaka.addons.features.slayer.SlayerType
 import net.alpaka.addons.utils.SkyblockUtils
+import net.minecraft.client.Minecraft
 import net.minecraft.client.renderer.entity.state.EntityRenderState
 import net.minecraft.core.particles.ParticleOptions
 import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.world.entity.Entity
-import net.minecraft.world.entity.player.Player
+import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.entity.monster.Blaze
 import net.minecraft.world.entity.projectile.hurtingprojectile.SmallFireball
 
 /**
- * Strips the visual noise off Hypixel's blazes while slaying them: their flame and smoke particles,
- * the burning overlay and the fireballs they throw, each with its own toggle, and optionally their
+ * Strips the visual noise off Hypixel's blazes while slaying them: their flame, smoke and angry
+ * villager particles, the burning overlay and the fireballs they throw, each with its own toggle, and optionally their
  * name tags.
  *
  * Only on SkyBlock, in the Blaze slayer's zones. It used to apply
@@ -24,14 +25,12 @@ import net.minecraft.world.entity.projectile.hurtingprojectile.SmallFireball
  * puzzle's health. Name tags now stay visible unless the player asks otherwise, since grinders read
  * the health on them.
  *
- * The zone is always required, the quest alone never enough: the quest stays active wherever the
- * player goes, so walking into the Magma Chamber with one running hid the Magma Boss's flame rings,
- * which deal real damage and have to be seen to be dodged.
+ * Deliberately not tied to an active Blaze quest: the quest stays active wherever the player goes,
+ * so walking into the Magma Chamber with one running hid the Magma Boss's flame rings, which deal
+ * real damage and have to be seen to be dodged.
  *
- * With a Blaze quest running as well, every particle goes, not just flame and smoke, for the whole
- * quest rather than only while a boss is up. The minibosses and the boss's attunement demons are
- * not all blazes and throw lava, dust and the like, and listing those types one by one would never
- * keep up.
+ * The burning overlay also comes off the slayer's minibosses and the boss's demons, which are not
+ * all blazes and so are recognised by the name tag Hypixel stacks above them instead.
  *
  * SkyHanni's Blaze Slayer Clear View does much the same; running both is harmless but redundant.
  *
@@ -46,8 +45,19 @@ object CleanBlazeFeature {
     private var scopeCheckedAtMs = 0L
     private var inScope = false
 
-    /** In a Blaze zone with a Blaze quest running. Refreshed with [inScope]. */
-    private var onQuest = false
+    /**
+     * Name tags of the Blaze slayer's mobs that are not blazes, or not always: the boss, the three
+     * minibosses, and the two demons the boss summons from tier III, written in circled letters.
+     * Names as SkyHanni lists them.
+     */
+    private val DEMON_NAMES = arrayOf(
+        "Inferno Demonlord",
+        "Flare Demon",
+        "Kindleheart Demon",
+        "Burningsoul Demon",
+        "ⓆⓊⒶⓏⒾⒾ",
+        "ⓉⓎⓅⒽⓄⒺⓊⓈ",
+    )
 
     /** On SkyBlock and in a Blaze zone. Cached, since every particle asks. */
     private fun active(): Boolean {
@@ -56,31 +66,43 @@ object CleanBlazeFeature {
         if (now - scopeCheckedAtMs >= SCOPE_REFRESH_MS) {
             scopeCheckedAtMs = now
             inScope = SkyblockUtils.isOnSkyblock() && SlayerSessionTracker.isInTrackerArea(SlayerType.BLAZE)
-            onQuest = inScope && SlayerQuestDetector.activeType == SlayerType.BLAZE
         }
         return inScope
     }
 
-    /** Flame and smoke anywhere in the Blaze zones; every particle there while on a Blaze quest. */
     @JvmStatic
     fun shouldCancelParticle(options: ParticleOptions): Boolean {
-        if (!AlpakaConfig.instance.cleanBlazeParticles || !active()) return false
-        if (onQuest) return true
         val type = options.type
-        return type === ParticleTypes.FLAME || type === ParticleTypes.SMALL_FLAME ||
-            type === ParticleTypes.SMOKE || type === ParticleTypes.LARGE_SMOKE
+        if (type !== ParticleTypes.FLAME && type !== ParticleTypes.SMALL_FLAME &&
+            type !== ParticleTypes.SMOKE && type !== ParticleTypes.LARGE_SMOKE &&
+            type !== ParticleTypes.ANGRY_VILLAGER
+        ) return false
+        return AlpakaConfig.instance.cleanBlazeParticles && active()
     }
 
     /**
-     * Blazes lose their fire, and while on a Blaze quest so does every mob in the zone, since the
-     * minibosses and demons are not all blazes. Players' burning, the player's own included, stays.
+     * Only the slayer's mobs lose their fire - blazes, minibosses and demons. The player's own
+     * burning, and every other mob's, stays.
      */
     @JvmStatic
     fun shouldHideEntityFire(entity: Entity, state: EntityRenderState) {
-        if (entity is Player) return
-        if ((entity is Blaze || onQuest) && AlpakaConfig.instance.cleanBlazeFire && active()) {
+        if (!state.displayFireAnimation || !AlpakaConfig.instance.cleanBlazeFire || !active()) return
+        if (entity is Blaze || isDemon(entity)) {
             state.displayFireAnimation = false
         }
+    }
+
+    /**
+     * Whether this mob's name tag names a Blaze slayer miniboss, demon or the boss.
+     *
+     * Hypixel gives a mob's name tag the entity id straight after the mob's own, the same
+     * assumption [net.alpaka.addons.features.slayer.SlayerBossEntityTracker] resolves the boss by.
+     */
+    private fun isDemon(entity: Entity): Boolean {
+        if (entity !is LivingEntity || entity is ArmorStand) return false
+        val tag = Minecraft.getInstance().level?.getEntity(entity.id + 1) as? ArmorStand ?: return false
+        val raw = tag.customName?.string ?: return false
+        return DEMON_NAMES.any { SkyblockUtils.containsIgnoringFormatting(raw, it) }
     }
 
     @JvmStatic

@@ -133,7 +133,7 @@ public class AlpakaConfigRegistry {
                 "Pick what Clean Blaze hides.",
                 ConfigCategory.VISUALS,
                 java.util.List.of(
-                        new ConfigOption.ToggleEntry("Flame, smoke and angry villager particles",
+                        new ConfigOption.ToggleEntry("Flame, smoke, angry villager and lava drip particles",
                                 () -> AlpakaConfig.instance.cleanBlazeParticles,
                                 v -> { AlpakaConfig.instance.cleanBlazeParticles = v; AlpakaConfig.save(); }),
                         new ConfigOption.ToggleEntry("Burning on blazes, minibosses and demons",
@@ -149,7 +149,7 @@ public class AlpakaConfigRegistry {
                                 () -> AlpakaConfig.instance.cleanBlazeNameTags,
                                 v -> { AlpakaConfig.instance.cleanBlazeNameTags = v; AlpakaConfig.save(); })
                 ),
-                "blaze flame smoke angry villager particles fire burning overlay fireball projectile lightning bolt flash thunder nametag name tag health smoldering miniboss demon clean hide"));
+                "blaze flame smoke angry villager lava drip particles fire burning overlay fireball projectile lightning bolt flash thunder nametag name tag health smoldering miniboss demon clean hide"));
 
         OPTIONS.add(new ConfigOption("stop_blaze_spinning", "Stop Blaze Spinning",
                 "Stops blaze rods from spinning around blaze mobs.",

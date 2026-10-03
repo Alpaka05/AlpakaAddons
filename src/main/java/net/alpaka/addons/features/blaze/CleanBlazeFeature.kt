@@ -16,9 +16,9 @@ import net.minecraft.world.entity.monster.Blaze
 import net.minecraft.world.entity.projectile.hurtingprojectile.SmallFireball
 
 /**
- * Strips the visual noise off Hypixel's blazes while slaying them: their flame, smoke and angry
- * villager particles, the burning overlay, the fireballs they throw and lightning, each with its own
- * toggle, and optionally their name tags.
+ * Strips the visual noise off Hypixel's blazes while slaying them: their flame, smoke, angry
+ * villager and lava drip particles, the burning overlay, the fireballs they throw and lightning,
+ * each with its own toggle, and optionally their name tags.
  *
  * Only on SkyBlock, in the Blaze slayer's zones. It used to apply
  * everywhere: every flame and torch particle in every world, the fire on every entity including the
@@ -76,7 +76,10 @@ object CleanBlazeFeature {
         val type = options.type
         if (type !== ParticleTypes.FLAME && type !== ParticleTypes.SMALL_FLAME &&
             type !== ParticleTypes.SMOKE && type !== ParticleTypes.LARGE_SMOKE &&
-            type !== ParticleTypes.ANGRY_VILLAGER
+            type !== ParticleTypes.ANGRY_VILLAGER &&
+            // Lava drips, which some of the minibosses shed: hanging, falling and the splash on landing.
+            type !== ParticleTypes.DRIPPING_LAVA && type !== ParticleTypes.FALLING_LAVA &&
+            type !== ParticleTypes.LANDING_LAVA
         ) return false
         return AlpakaConfig.instance.cleanBlazeParticles && active()
     }

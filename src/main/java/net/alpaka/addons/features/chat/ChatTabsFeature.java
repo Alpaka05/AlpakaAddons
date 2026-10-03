@@ -57,14 +57,13 @@ public final class ChatTabsFeature {
      */
     public static boolean accepts(GuiMessage message) {
         if (!isEnabled() || active == ChatTab.ALL) return true;
-        if (message.source() == net.minecraft.client.multiplayer.chat.GuiMessageSource.SYSTEM_CLIENT) return true;
+        // The mod's own lines, and every other client-side one, are not exempt: they belong to no
+        // channel, so they sort to All like any other unclaimed line rather than following the
+        // player onto every tab.
         String text = ChatTab.strip(message.content().getString());
-        if (text.startsWith(MOD_PREFIX) || ChatTab.isUrgent(text)) return true;
+        if (ChatTab.isUrgent(text)) return true;
         return ChatTab.classify(text) == active;
     }
-
-    /** The prefix of the mod's own chat lines, which show on every tab. */
-    private static final String MOD_PREFIX = "[AA] ";
 
     /** The chat screen closed: back to All, unless the player keeps the tab. */
     public static void onChatClosed() {

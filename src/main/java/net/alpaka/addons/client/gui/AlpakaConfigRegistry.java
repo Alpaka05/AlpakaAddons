@@ -123,39 +123,30 @@ public class AlpakaConfigRegistry {
                 "gamma brightness light fullbright vision"));
 
         OPTIONS.add(new ConfigOption("clean_blaze", "Clean Blaze",
-                "Clears blaze noise in the Blaze slayer's zones, on SkyBlock only. Pick what below.",
+                "Clears blaze noise in the Blaze slayer's zones, on SkyBlock only.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.cleanBlazeEnabled,
                 v -> { AlpakaConfig.instance.cleanBlazeEnabled = v; AlpakaConfig.save(); },
                 "blaze smoke particles fire nametag clear view slayer inferno crimson"));
 
-        OPTIONS.add(new ConfigOption("clean_blaze_particles", "Clean Blaze: Particles",
-                "Hides flame, smoke and angry villager particles in the Blaze slayer's zones.",
+        OPTIONS.add(new ConfigOption("clean_blaze_parts", "Clean Blaze Parts",
+                "Pick what Clean Blaze hides.",
                 ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.cleanBlazeParticles,
-                v -> { AlpakaConfig.instance.cleanBlazeParticles = v; AlpakaConfig.save(); },
-                "blaze flame smoke particles clean"));
-
-        OPTIONS.add(new ConfigOption("clean_blaze_fire", "Clean Blaze: Burning",
-                "Hides the burning overlay on blazes, minibosses and demons. Your own fire stays visible.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.cleanBlazeFire,
-                v -> { AlpakaConfig.instance.cleanBlazeFire = v; AlpakaConfig.save(); },
-                "blaze fire burning overlay clean"));
-
-        OPTIONS.add(new ConfigOption("clean_blaze_fireballs", "Clean Blaze: Fireballs",
-                "Hides the small fireballs blazes throw.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.cleanBlazeFireballs,
-                v -> { AlpakaConfig.instance.cleanBlazeFireballs = v; AlpakaConfig.save(); },
-                "blaze fireball projectile clean"));
-
-        OPTIONS.add(new ConfigOption("clean_blaze_name_tags", "Clean Blaze: Name Tags",
-                "Also hides blaze and Smoldering Blaze name tags, health included.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.cleanBlazeNameTags,
-                v -> { AlpakaConfig.instance.cleanBlazeNameTags = v; AlpakaConfig.save(); },
-                "blaze nametag name tag health smoldering clean hide"));
+                java.util.List.of(
+                        new ConfigOption.ToggleEntry("Flame, smoke and angry villager particles",
+                                () -> AlpakaConfig.instance.cleanBlazeParticles,
+                                v -> { AlpakaConfig.instance.cleanBlazeParticles = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Burning on blazes, minibosses and demons",
+                                () -> AlpakaConfig.instance.cleanBlazeFire,
+                                v -> { AlpakaConfig.instance.cleanBlazeFire = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Fireballs",
+                                () -> AlpakaConfig.instance.cleanBlazeFireballs,
+                                v -> { AlpakaConfig.instance.cleanBlazeFireballs = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Name tags (health included)",
+                                () -> AlpakaConfig.instance.cleanBlazeNameTags,
+                                v -> { AlpakaConfig.instance.cleanBlazeNameTags = v; AlpakaConfig.save(); })
+                ),
+                "blaze flame smoke angry villager particles fire burning overlay fireball projectile nametag name tag health smoldering miniboss demon clean hide"));
 
         OPTIONS.add(new ConfigOption("stop_blaze_spinning", "Stop Blaze Spinning",
                 "Stops blaze rods from spinning around blaze mobs.",

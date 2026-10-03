@@ -112,6 +112,18 @@ object PlayerModelRenderer {
      */
     private const val SLOW_SWING_QUEUE_GRACE_MS = 350L
 
+    /**
+     * How long the avatar lingers after the last action ends, in "Only Show On Action" mode.
+     *
+     * Each click is its own short swing, so without this the avatar vanished in the gap between
+     * two quick clicks and came straight back on the next one - visible as flicker. Holding it up
+     * a little past the last action bridges those gaps, so a burst of clicks reads as one stretch.
+     */
+    private const val ACTION_HIDE_DELAY_MS = 750L
+
+    /** Wall-clock time an action was last seen, for [ACTION_HIDE_DELAY_MS]. */
+    private var lastActionAtMs = 0L
+
     @JvmStatic
     fun render(graphics: GuiGraphicsExtractor, @Suppress("UNUSED_PARAMETER") deltaTracker: DeltaTracker) {
         val mc = Minecraft.getInstance()
@@ -165,6 +177,12 @@ object PlayerModelRenderer {
 
         if (!cfg.playerModelOnlyActions) return true
 
+        val now = System.currentTimeMillis()
+        if (isPerformingAction(player)) lastActionAtMs = now
+        return now - lastActionAtMs < ACTION_HIDE_DELAY_MS
+    }
+
+    private fun isPerformingAction(player: LocalPlayer): Boolean {
         // Cheapest predicates first - || short-circuits, so the common cases cost one read
         // instead of evaluating every one of them.
         if (!player.onGround() ||

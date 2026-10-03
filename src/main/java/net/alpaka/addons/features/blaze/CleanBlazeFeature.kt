@@ -9,6 +9,7 @@ import net.minecraft.client.renderer.entity.state.EntityRenderState
 import net.minecraft.core.particles.ParticleOptions
 import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.world.entity.Entity
+import net.minecraft.world.entity.LightningBolt
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.entity.monster.Blaze
@@ -16,8 +17,8 @@ import net.minecraft.world.entity.projectile.hurtingprojectile.SmallFireball
 
 /**
  * Strips the visual noise off Hypixel's blazes while slaying them: their flame, smoke and angry
- * villager particles, the burning overlay and the fireballs they throw, each with its own toggle, and optionally their
- * name tags.
+ * villager particles, the burning overlay, the fireballs they throw and lightning, each with its own
+ * toggle, and optionally their name tags.
  *
  * Only on SkyBlock, in the Blaze slayer's zones. It used to apply
  * everywhere: every flame and torch particle in every world, the fire on every entity including the
@@ -122,8 +123,13 @@ object CleanBlazeFeature {
     @JvmStatic
     fun shouldHideEntity(entity: Entity): Boolean {
         if (entity is SmallFireball) return AlpakaConfig.instance.cleanBlazeFireballs && active()
+        if (entity is LightningBolt) return hideLightning()
         if (!entity.hasCustomName() || !AlpakaConfig.instance.cleanBlazeNameTags || !active()) return false
         val customName = entity.customName ?: return false
         return SkyblockUtils.containsIgnoringFormatting(customName.string, "Smoldering Blaze")
     }
+
+    /** Lightning in the Blaze zones: the bolt itself and the sky flash it causes. The thunder stays. */
+    @JvmStatic
+    fun hideLightning(): Boolean = AlpakaConfig.instance.cleanBlazeLightning && active()
 }

@@ -142,11 +142,14 @@ public class AlpakaConfigRegistry {
                         new ConfigOption.ToggleEntry("Fireballs",
                                 () -> AlpakaConfig.instance.cleanBlazeFireballs,
                                 v -> { AlpakaConfig.instance.cleanBlazeFireballs = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Lightning (bolt and sky flash)",
+                                () -> AlpakaConfig.instance.cleanBlazeLightning,
+                                v -> { AlpakaConfig.instance.cleanBlazeLightning = v; AlpakaConfig.save(); }),
                         new ConfigOption.ToggleEntry("Name tags (health included)",
                                 () -> AlpakaConfig.instance.cleanBlazeNameTags,
                                 v -> { AlpakaConfig.instance.cleanBlazeNameTags = v; AlpakaConfig.save(); })
                 ),
-                "blaze flame smoke angry villager particles fire burning overlay fireball projectile nametag name tag health smoldering miniboss demon clean hide"));
+                "blaze flame smoke angry villager particles fire burning overlay fireball projectile lightning bolt flash thunder nametag name tag health smoldering miniboss demon clean hide"));
 
         OPTIONS.add(new ConfigOption("stop_blaze_spinning", "Stop Blaze Spinning",
                 "Stops blaze rods from spinning around blaze mobs.",

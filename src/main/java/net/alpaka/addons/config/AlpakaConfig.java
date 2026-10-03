@@ -139,6 +139,7 @@ public class AlpakaConfig {
     public boolean cleanBlazeParticles = true;
     public boolean cleanBlazeFire = true;
     public boolean cleanBlazeFireballs = true;
+    public boolean cleanBlazeLightning = true;
     /** Off by default: the health on blaze name tags is what a grinder watches. */
     public boolean cleanBlazeNameTags = false;
     /**

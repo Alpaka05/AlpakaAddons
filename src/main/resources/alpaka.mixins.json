@@ -24,6 +24,7 @@
     "ChatScreenMixin",
     "CameraTypeMixin",
     "BlazeModelMixin",
+    "LightningBoltMixin",
     "EntityRenderDispatcherMixin",
     "LivingEntityRendererAccessor",
     "AvatarRendererMixin",

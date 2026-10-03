@@ -109,10 +109,21 @@ object SlayerTimer {
     }
 
     /**
-     * Whether the running fight may set a personal best. Only when the boss was seen spawning out of
-     * grinding, in this world, and no late-found boss entity moved the start; see [ENTITY_START_EARLY_MS].
+     * Whether the sidebar showed the running fight rising out of grinding, in this world. One of the
+     * two ways a fight earns the right to set a personal best; see [entityStartSeen] for the other.
      */
     private var fightVerified = false
+
+    /**
+     * Whether the clock was started from the boss entity itself arriving within the start window.
+     *
+     * The other way a fight is verified, and the more direct one: the boss was watched reaching the
+     * world as the sidebar announced it, so the start is known. Needed because the sidebar can skip
+     * the grinding phase entirely - a quest whose kills finish between two samples, straight after a
+     * cocooned boss, went from "Boss slain!" to "Slay the boss!" and was marked unverified although
+     * its time matched SkyHanni's to the tenth.
+     */
+    private var entityStartSeen = false
 
     /**
      * How far the boss entity's own arrival may sit from the sidebar's "Slay the boss!" and still be
@@ -135,12 +146,14 @@ object SlayerTimer {
         runningType = type
         lastResultMs = null
         fightVerified = verified
+        entityStartSeen = false
 
         // Whatever the tracker already has stands, if it is close enough to the sidebar's moment:
         // it watches the whole quest, so a boss that reached the world before the scoreboard caught
         // up is already stamped. Otherwise this stays 0 until [tick] sees the boss arrive, or gives
         // up waiting for it.
         startMs = SlayerBossEntityTracker.spawnedAtMs?.takeIf { inStartWindow(it) } ?: 0L
+        entityStartSeen = startMs != 0L
     }
 
     private fun inStartWindow(entityStart: Long): Boolean {
@@ -196,7 +209,7 @@ object SlayerTimer {
 
         val data = AlpakaStats.slayerBossMap().getOrPut(type) { AlpakaConfig.SlayerData() }
         val previousBest = if (data.bestBossMs > 0L) data.bestBossMs else null
-        val verified = fightVerified
+        val verified = fightVerified || entityStartSeen
         val isBest = verified && (previousBest == null || elapsed < previousBest)
         if (isBest) {
             data.bestBossMs = elapsed
@@ -279,6 +292,7 @@ object SlayerTimer {
             // against a reported time that would otherwise be seconds too long. A boss found well
             // outside the window is not this fight's start, and the fallback stands.
             startMs = entityStart
+            entityStartSeen = true
         } else if (startMs == 0L && System.currentTimeMillis() - sidebarStartMs >= SIDEBAR_FALLBACK_MS) {
             startMs = sidebarStartMs
         }

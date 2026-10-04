@@ -300,7 +300,7 @@ object InventoryHudRenderer {
      * colours from the config. Drawn under the current pose, which already places and scales the panel.
      *
      * The frame stays at full strength whatever the opacity slider does - it is what keeps the HUD
-     * locatable when the backdrop is turned all the way down.
+     * locatable when the backdrop is turned all the way down - unless the player turns it off.
      */
     private fun drawFlatPanel(graphics: GuiGraphicsExtractor, scale: Float, backdropAlpha: Int) {
         val sink = graphics as? AlpakaGuiElementSink
@@ -309,7 +309,9 @@ object InventoryHudRenderer {
             if (backdropAlpha > 0) {
                 ModernGuiUtils.drawRect(graphics, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, withAlpha(PANEL_BG, backdropAlpha))
             }
-            ModernGuiUtils.drawOutline(graphics, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, AlpakaConfig.instance.inventoryHudFrameStart)
+            if (AlpakaConfig.instance.inventoryHudFrame) {
+                ModernGuiUtils.drawOutline(graphics, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, AlpakaConfig.instance.inventoryHudFrameStart)
+            }
             return
         }
 
@@ -335,6 +337,8 @@ object InventoryHudRenderer {
                 )
             )
         }
+
+        if (!AlpakaConfig.instance.inventoryHudFrame) return
 
         // Top-left carries the first colour, bottom-right the second; the other two corners hold
         // the midpoint so the ramp runs straight along the diagonal without a seam.

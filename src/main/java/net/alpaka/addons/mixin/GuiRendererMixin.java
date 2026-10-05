@@ -2,17 +2,21 @@ package net.alpaka.addons.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.sugar.Local;
 import com.mojang.blaze3d.systems.RenderPass;
+import net.alpaka.addons.client.gui.GuiItemFade;
 import net.alpaka.addons.features.chat.ChatBlurFeature;
 import net.minecraft.client.gui.render.GuiRenderer;
 import net.minecraft.client.renderer.GameRenderer;
+import net.minecraft.client.renderer.state.gui.GuiItemRenderState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Two things at the GUI renderer.
+ * Three things at the GUI renderer.
  *
  * The blurred chat background needs the one moment when the frame holds the finished world and
  * not yet a single GUI element, with every element of the frame already extracted; the copy of
@@ -24,6 +28,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * edges to the window; a rectangle whose left or top edge lies off screen goes to the render pass
  * as is, and the render pass throws on it. A screen laid out wider than a small window - the
  * config menu in a windowed game - therefore crashed the game as soon as it clipped anything.
+ *
+ * And items marked translucent at extraction are blitted from the item atlas at that strength;
+ * see {@link GuiItemFade}.
  */
 @Mixin(GuiRenderer.class)
 public class GuiRendererMixin {
@@ -72,5 +79,14 @@ public class GuiRendererMixin {
             height = 1;
         }
         original.call(pass, x, y, width, height);
+    }
+
+    @ModifyArg(
+        method = "submitBlitFromItemAtlas",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/state/gui/BlitRenderState;<init>(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/client/gui/render/TextureSetup;Lorg/joml/Matrix3x2fc;IIIIFFFFILnet/minecraft/client/gui/navigation/ScreenRectangle;Lnet/minecraft/client/gui/navigation/ScreenRectangle;)V"),
+        index = 11
+    )
+    private int alpaka$fadeAtlasItem(int color, @Local(argsOnly = true) GuiItemRenderState item) {
+        return GuiItemFade.atlasColor(item, color);
     }
 }

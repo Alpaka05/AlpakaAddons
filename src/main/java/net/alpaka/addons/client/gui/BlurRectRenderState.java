@@ -20,6 +20,7 @@ import org.joml.Matrix3x2fc;
  *
  * @param color    the tint over the blurred frame; its alpha is how strongly it covers the blur
  * @param radiusPx corner radius in screen pixels
+ * @param opacity  the whole panel's strength, 0..1, blur included; 1 unless it is fading
  */
 public record BlurRectRenderState(
         Matrix3x2fc pose,
@@ -27,6 +28,7 @@ public record BlurRectRenderState(
         int radiusPx,
         int color,
         float scaleToScreen,
+        float opacity,
         ScreenRectangle scissorArea,
         ScreenRectangle bounds
 ) implements GuiElementRenderState {
@@ -37,7 +39,13 @@ public record BlurRectRenderState(
      */
     public BlurRectRenderState(Matrix3x2fc pose, int x0, int y0, int x1, int y1,
                                int radiusPx, int color, float scaleToScreen, ScreenRectangle scissorArea) {
-        this(pose, x0, y0, x1, y1, radiusPx, color, scaleToScreen, scissorArea,
+        this(pose, x0, y0, x1, y1, radiusPx, color, scaleToScreen, 1.0f, scissorArea);
+    }
+
+    public BlurRectRenderState(Matrix3x2fc pose, int x0, int y0, int x1, int y1,
+                               int radiusPx, int color, float scaleToScreen, float opacity,
+                               ScreenRectangle scissorArea) {
+        this(pose, x0, y0, x1, y1, radiusPx, color, scaleToScreen, opacity, scissorArea,
                 boundsOf(x0, y0, x1, y1, pose, scissorArea));
     }
 
@@ -65,7 +73,8 @@ public record BlurRectRenderState(
                 .setUv(localX, localY)
                 .setUv1(widthPx, heightPx)
                 .setUv2(radiusPx, 0)
-                .setNormal(0.0f, 0.0f, 1.0f);
+                // The vertex shader reads the normal's z as the opacity.
+                .setNormal(0.0f, 0.0f, opacity);
     }
 
     @Override

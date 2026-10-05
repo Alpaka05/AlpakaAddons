@@ -72,8 +72,8 @@ object InventoryHudElement : HudElement {
     }
 
     override fun render(graphics: GuiGraphicsExtractor, x: Int, y: Int) {
-        // Always drawn fully open in the editor: the slide is a runtime affordance, and a
-        // half-open box would be impossible to position against. The anchor is the box's corner.
+        // Always drawn fully open in the editor: the fade is a runtime affordance, and a
+        // half-faded box would be impossible to position against. The anchor is the box's corner.
         InventoryHudRenderer.drawPanel(graphics, x, y, AlpakaConfig.instance.inventoryHudScale, 1.0f)
     }
 

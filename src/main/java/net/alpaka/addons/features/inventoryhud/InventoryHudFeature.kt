@@ -11,8 +11,8 @@ import net.minecraft.world.item.Item
 import org.lwjgl.glfw.GLFW
 
 /**
- * Decides when the inventory HUD is on screen, and animates it sliding up out of the hotbar when
- * it is attached there; a freely placed panel switches on and off without a slide.
+ * Decides when the inventory HUD is on screen, and animates it fading in above the hotbar when it
+ * is attached there; a freely placed panel switches on and off without a fade.
  *
  * Three inputs feed one number, [openAmount]:
  *  - the "always visible" setting,
@@ -31,15 +31,18 @@ object InventoryHudFeature {
     /** How long an item change keeps the HUD up, when that option is on. */
     private const val PEEK_DURATION_MS = 2_500L
 
-    /** Slide speed, in open-fraction per second. 6.0 is a brisk ~170ms sweep. */
-    private const val SLIDE_SPEED = 6.0f
+    /**
+     * Fade speed, in open-fraction per second: 4.0 is a 250ms fade. The renderer eases it, so it
+     * starts and ends gently rather than at full speed.
+     */
+    private const val FADE_SPEED = 4.0f
 
     /**
-     * Ceiling on how much time one frame may advance the slide.
+     * Ceiling on how much time one frame may advance the fade.
      *
      * The renderer stops calling in whenever the HUD is not being drawn - behind F1, behind a menu,
      * with the feature off - so the gap since the last call can be arbitrarily long. Without this
-     * the HUD would jump straight to fully open on reappearing instead of sliding.
+     * the HUD would jump straight to fully open on reappearing instead of fading in.
      */
     private const val MAX_FRAME_MS = 100L
 
@@ -122,8 +125,8 @@ object InventoryHudFeature {
         lastChangeMs != 0L && System.currentTimeMillis() - lastChangeMs < PEEK_DURATION_MS
 
     /**
-     * How far open the HUD is, 0..1, advanced from the wall clock so the slide runs at the same
-     * speed regardless of frame rate.
+     * How far open the HUD is, 0..1, advanced from the wall clock so the fade runs at the same
+     * speed regardless of frame rate. Linear; the renderer applies the easing.
      */
     @JvmStatic
     fun openAmount(): Float {
@@ -136,17 +139,17 @@ object InventoryHudFeature {
             (cfg.inventoryHudAlwaysVisible || (cfg.inventoryHudShowOnItemChange && peeking()))
         val target = if (base != inverted && cfg.inventoryHudEnabled) 1.0f else 0.0f
 
-        // The slide is the panel emerging from behind the hotbar. A freely placed panel has nothing
-        // to emerge from, so it simply appears and disappears.
+        // The fade belongs to the panel's place above the hotbar. A freely placed panel simply
+        // appears and disappears.
         if (!cfg.inventoryHudAttachToHotbar) {
             openAmount = target
             return openAmount
         }
 
         openAmount = if (openAmount < target) {
-            (openAmount + dt * SLIDE_SPEED).coerceAtMost(target)
+            (openAmount + dt * FADE_SPEED).coerceAtMost(target)
         } else {
-            (openAmount - dt * SLIDE_SPEED).coerceAtLeast(target)
+            (openAmount - dt * FADE_SPEED).coerceAtLeast(target)
         }
         return openAmount
     }

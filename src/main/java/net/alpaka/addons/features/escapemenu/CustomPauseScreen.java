@@ -53,12 +53,12 @@ public class CustomPauseScreen extends PauseScreen {
             new FontDescription.Resource(Identifier.fromNamespaceAndPath("alpaka", "pause_icons"));
 
     /** Private-use codepoints, in the order the sprite sheet lays them out. */
-    private static final String ICON_PLAY = "";
-    private static final String ICON_SERVER = "";
-    private static final String ICON_SLIDERS = "";
-    private static final String ICON_BOOK = "";
-    private static final String ICON_DOOR = "";
-    private static final String ICON_PUZZLE = "";
+    static final String ICON_PLAY = "";
+    static final String ICON_SERVER = "";
+    static final String ICON_SLIDERS = "";
+    static final String ICON_BOOK = "";
+    static final String ICON_DOOR = "";
+    static final String ICON_PUZZLE = "";
 
     /**
      * A button label: the icon glyph, then the text.
@@ -134,8 +134,8 @@ public class CustomPauseScreen extends PauseScreen {
     private static final int PROMPT_BG = 0xD0121419;
 
     /** How long the dim and each element take to appear, and the delay between successive rows. */
-    private static final float APPEAR_SECONDS = 0.16f;
-    private static final float STAGGER_SECONDS = 0.025f;
+    static final float APPEAR_SECONDS = 0.16f;
+    static final float STAGGER_SECONDS = 0.025f;
 
     private boolean showDisconnectPrompt = false;
     private long openTime = 0L;
@@ -186,8 +186,13 @@ public class CustomPauseScreen extends PauseScreen {
      * logo 1, the rows 2 to 5. Index -1 is always fully there (the prompt's buttons).
      */
     private float appear(int index) {
+        return appearAt((System.currentTimeMillis() - openTime) / 1000.0f, index);
+    }
+
+    /** {@link #appear} for a given time since the screen opened, in seconds. */
+    static float appearAt(float elapsedSeconds, int index) {
         if (index < 0) return 1.0f;
-        float t = ((System.currentTimeMillis() - openTime) / 1000.0f - index * STAGGER_SECONDS) / APPEAR_SECONDS;
+        float t = (elapsedSeconds - index * STAGGER_SECONDS) / APPEAR_SECONDS;
         if (t <= 0.0f) return 0.0f;
         if (t >= 1.0f) return 1.0f;
         float inv = 1.0f - t;
@@ -195,7 +200,7 @@ public class CustomPauseScreen extends PauseScreen {
     }
 
     /** The colour with its alpha scaled by the factor. */
-    private static int fade(int color, float factor) {
+    static int fade(int color, float factor) {
         int alpha = Math.round(((color >>> 24) & 0xFF) * Math.max(0.0f, Math.min(1.0f, factor)));
         return (alpha << 24) | (color & 0x00FFFFFF);
     }

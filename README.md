@@ -147,3 +147,14 @@ Found a bug or have an idea? Open an [issue](https://github.com/Alpaka05/AlpakaA
 ```
 
 The jar ends up in `build/libs`. `deploy_target` in `gradle.properties` can also copy it straight into a Modrinth App or OneClient profile.
+
+### Versions
+
+The version comes from the git tags, not from a file. A tagged commit builds as that version (`1.3.0`); any other commit builds as how far it is past the last release (`1.3.0+4.a1b2c3d`, plus `.dirty` with uncommitted changes). Releasing means tagging:
+
+```bash
+git tag 1.4.0 && git push origin 1.4.0
+./gradlew build
+```
+
+Raise the middle number for a release with new features (1.3.0 → 1.4.0), the last one for a release that only fixes bugs (1.3.0 → 1.3.1).

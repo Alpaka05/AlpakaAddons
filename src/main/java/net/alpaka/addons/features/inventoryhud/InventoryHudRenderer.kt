@@ -3,6 +3,7 @@ package net.alpaka.addons.features.inventoryhud
 import net.alpaka.addons.client.gui.AlpakaGuiElementSink
 import net.alpaka.addons.client.gui.BlurRectRenderState
 import net.alpaka.addons.client.gui.GradientRoundedRectRenderState
+import net.alpaka.addons.client.gui.GuiItemFade
 import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.client.hud.HudBounds
 import net.alpaka.addons.config.AlpakaConfig
@@ -18,6 +19,7 @@ import net.minecraft.client.gui.screens.ChatScreen
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.resources.Identifier
 import net.minecraft.tags.FluidTags
+import net.minecraft.world.entity.player.Inventory
 
 /**
  * Draws the player's main inventory on the HUD, so its 27 slots can be read without opening a
@@ -28,7 +30,7 @@ import net.minecraft.tags.FluidTags
  * container is opened, and the inventory itself is never touched - which is also what keeps it
  * inside Hypixel's rules.
  *
- * Visibility and the slide are driven from [InventoryHudFeature]; this file is only the picture.
+ * Visibility and the fade are driven from [InventoryHudFeature]; this file is only the picture.
  */
 object InventoryHudRenderer {
 
@@ -129,8 +131,28 @@ object InventoryHudRenderer {
     /** The texture is authored against a 256x256 sheet; a pack at higher resolution still maps. */
     private const val SHEET = 256
 
+    /**
+     * How far below its place the panel starts its fade in, and ends its fade out, in GUI pixels:
+     * enough to read as rising into place, not so much that it seems to come from the screen edge.
+     */
+    private const val FADE_DRIFT = 8.0f
+
     /** Replaces the alpha byte of an RGB colour. */
     private fun withAlpha(rgb: Int, alpha: Int): Int = (alpha shl 24) or (rgb and 0xFFFFFF)
+
+    /** An ARGB colour with its alpha scaled by [factor]. */
+    private fun fade(argb: Int, factor: Float): Int =
+        withAlpha(argb, Math.round(((argb ushr 24) and 0xFF) * factor))
+
+    /**
+     * The open amount, eased at both ends: the fade in starts and settles gently, and the fade out
+     * mirrors it. Smoothstep, so neither end has the abrupt start of a linear fade.
+     */
+    @JvmStatic
+    fun eased(open: Float): Float {
+        val t = open.coerceIn(0.0f, 1.0f)
+        return t * t * (3.0f - 2.0f * t)
+    }
 
     /** Called every frame from the HUD hook. */
     @JvmStatic
@@ -218,21 +240,21 @@ object InventoryHudRenderer {
         vanilla
     }
 
-    /** Draws the panel and its items. Shared with the HUD editor, which always passes a full [open]. */
+    /**
+     * Draws the panel and its items. Shared with the HUD editor, which always passes a full [open].
+     *
+     * While opening or closing, everything - backdrop, frame, items and their counts - fades as one,
+     * and the panel sits a few pixels lower the less open it is, so it rises into place as it
+     * appears and sinks a little as it goes.
+     */
     @JvmStatic
     fun drawPanel(graphics: GuiGraphicsExtractor, x: Int, y: Int, scale: Float, open: Float) {
         val mc = Minecraft.getInstance()
         val player = mc.player ?: return
-        val width = Math.round(panelWidth() * scale)
-        val height = Math.round(panelHeight() * scale)
 
-        // Clipped to its final box so the slide reads as the panel emerging from behind the hotbar
-        // rather than sweeping across it.
-        graphics.enableScissor(x, y, x + width, y + height)
-
-        val slideOffset = (1.0f - open) * height
+        val shown = eased(open)
         graphics.pose().pushMatrix()
-        graphics.pose().translate(x.toFloat(), y + slideOffset)
+        graphics.pose().translate(x.toFloat(), y + (1.0f - shown) * FADE_DRIFT)
         graphics.pose().scale(scale, scale)
 
         // One flat fill, no texture: a single constant colour whose strength the player sets, from
@@ -243,9 +265,10 @@ object InventoryHudRenderer {
 
         if (chestStyle()) {
             // Tinted white so the opacity slider still means something here: white leaves every
-            // colour as the pack drew it and only the alpha does any work.
-            if (backdropAlpha > 0) {
-                val tint = withAlpha(0xFFFFFF, backdropAlpha)
+            // colour as the pack drew it and only the alpha does any work. The fade scales it on top.
+            val chestAlpha = Math.round(backdropAlpha * shown)
+            if (chestAlpha > 0) {
+                val tint = withAlpha(0xFFFFFF, chestAlpha)
                 // The head of the GUI with its title band and the slots in one piece, then the
                 // frame from the foot of the GUI. The only seam is above the foot, between two rows
                 // of frame that are identical grey anyway.
@@ -262,16 +285,26 @@ object InventoryHudRenderer {
                 // The title fades with the panel it sits on; on its own it would float in mid-air.
                 graphics.text(
                     mc.font, CHEST_TITLE, CHEST_TITLE_X, CHEST_TITLE_Y,
-                    withAlpha(CHEST_TITLE_COLOR, backdropAlpha), false
+                    withAlpha(CHEST_TITLE_COLOR, chestAlpha), false
                 )
             }
             // No accent frame in this style. The whole point is that the panel passes for a real
             // container, and a coloured outline is the one thing that would give it away.
         } else {
-            drawFlatPanel(graphics, scale, backdropAlpha)
+            drawFlatPanel(graphics, scale, backdropAlpha, shown)
         }
 
-        val inventory = player.inventory
+        GuiItemFade.begin(shown)
+        try {
+            drawItems(graphics, mc, player.inventory)
+        } finally {
+            GuiItemFade.end()
+        }
+
+        graphics.pose().popMatrix()
+    }
+
+    private fun drawItems(graphics: GuiGraphicsExtractor, mc: Minecraft, inventory: Inventory) {
         for (row in 0 until ROWS) {
             for (col in 0 until COLS) {
                 val slot = FIRST_SLOT + row * COLS + col
@@ -289,9 +322,6 @@ object InventoryHudRenderer {
                 graphics.itemDecorations(mc.font, stack, slotX, slotY)
             }
         }
-
-        graphics.pose().popMatrix()
-        graphics.disableScissor()
     }
 
     /**
@@ -300,17 +330,18 @@ object InventoryHudRenderer {
      * colours from the config. Drawn under the current pose, which already places and scales the panel.
      *
      * The frame stays at full strength whatever the opacity slider does - it is what keeps the HUD
-     * locatable when the backdrop is turned all the way down - unless the player turns it off.
+     * locatable when the backdrop is turned all the way down - unless the player turns it off. Only
+     * the open fade, [shown], dims it, along with everything else.
      */
-    private fun drawFlatPanel(graphics: GuiGraphicsExtractor, scale: Float, backdropAlpha: Int) {
+    private fun drawFlatPanel(graphics: GuiGraphicsExtractor, scale: Float, backdropAlpha: Int, shown: Float) {
         val sink = graphics as? AlpakaGuiElementSink
         if (sink == null) {
             // Without the extractor mixin nothing rounded can be submitted; square is better than nothing.
             if (backdropAlpha > 0) {
-                ModernGuiUtils.drawRect(graphics, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, withAlpha(PANEL_BG, backdropAlpha))
+                ModernGuiUtils.drawRect(graphics, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, fade(withAlpha(PANEL_BG, backdropAlpha), shown))
             }
             if (AlpakaConfig.instance.inventoryHudFrame) {
-                ModernGuiUtils.drawOutline(graphics, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, AlpakaConfig.instance.inventoryHudFrameStart)
+                ModernGuiUtils.drawOutline(graphics, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, fade(AlpakaConfig.instance.inventoryHudFrameStart, shown))
             }
             return
         }
@@ -324,16 +355,17 @@ object InventoryHudRenderer {
         if (AlpakaConfig.instance.inventoryHudBlur) {
             // The slider is the tint's strength over the blur: 0 % is clear frosted glass, 100 % the
             // solid panel colour. The frame is captured and blurred once per frame for every panel
-            // that asks, so this shares the copy with the chat.
+            // that asks, so this shares the copy with the chat. The fade goes in as the panel's
+            // opacity rather than into the tint, so the blur fades with it.
             sink.`alpaka$submitElement`(
-                BlurRectRenderState(pose, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, radiusPx, tint, toScreen, scissor)
+                BlurRectRenderState(pose, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, radiusPx, tint, toScreen, shown, scissor)
             )
             ChatBlurFeature.request()
         } else if (backdropAlpha > 0) {
             sink.`alpaka$submitElement`(
                 GradientRoundedRectRenderState(
                     pose, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, radiusPx, 0,
-                    tint, tint, tint, tint, toScreen, scissor
+                    fade(tint, shown), fade(tint, shown), fade(tint, shown), fade(tint, shown), toScreen, scissor
                 )
             )
         }
@@ -342,8 +374,8 @@ object InventoryHudRenderer {
 
         // Top-left carries the first colour, bottom-right the second; the other two corners hold
         // the midpoint so the ramp runs straight along the diagonal without a seam.
-        val start = AlpakaConfig.instance.inventoryHudFrameStart
-        val end = AlpakaConfig.instance.inventoryHudFrameEnd
+        val start = fade(AlpakaConfig.instance.inventoryHudFrameStart, shown)
+        val end = fade(AlpakaConfig.instance.inventoryHudFrameEnd, shown)
         val mid = ModernGuiUtils.lerpColor(start, end, 0.5f)
         sink.`alpaka$submitElement`(
             GradientRoundedRectRenderState(

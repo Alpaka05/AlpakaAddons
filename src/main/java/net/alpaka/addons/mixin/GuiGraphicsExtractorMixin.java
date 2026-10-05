@@ -3,11 +3,13 @@ package net.alpaka.addons.mixin;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.alpaka.addons.client.gui.AlpakaGuiElementSink;
+import net.alpaka.addons.client.gui.GuiItemFade;
 import net.alpaka.addons.features.tooltip.ScrollableTooltipsFeature;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.navigation.ScreenRectangle;
 import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipPositioner;
 import net.minecraft.client.renderer.state.gui.GuiElementRenderState;
+import net.minecraft.client.renderer.state.gui.GuiItemRenderState;
 import net.minecraft.client.renderer.state.gui.GuiRenderState;
 import org.joml.Matrix3x2fStack;
 import org.joml.Vector2ic;
@@ -17,6 +19,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.ArrayDeque;
@@ -76,5 +79,35 @@ public abstract class GuiGraphicsExtractorMixin implements AlpakaGuiElementSink 
                                                int x, int y, int width, int height, Operation<Vector2ic> original) {
         Vector2ic vanilla = original.call(positioner, guiWidth, guiHeight, x, y, width, height);
         return ScrollableTooltipsFeature.position(vanilla, guiHeight, width, height);
+    }
+
+    /** Notes a faded item as it is extracted; its atlas blit is drawn later. See {@link GuiItemFade}. */
+    @WrapOperation(
+            method = "item(Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/level/Level;Lnet/minecraft/world/item/ItemStack;III)V",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/state/gui/GuiRenderState;addItem(Lnet/minecraft/client/renderer/state/gui/GuiItemRenderState;)V")
+    )
+    private void alpaka$noteFadedItem(GuiRenderState renderState, GuiItemRenderState item, Operation<Void> original) {
+        GuiItemFade.onItemExtracted(item);
+        original.call(renderState, item);
+    }
+
+    /** The durability and cooldown bars fade with their item. */
+    @ModifyArg(
+            method = {"itemBar", "itemCooldown"},
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;fill(Lcom/mojang/blaze3d/pipeline/RenderPipeline;IIIII)V"),
+            index = 5
+    )
+    private int alpaka$fadeItemBar(int color) {
+        return GuiItemFade.decorationColor(color);
+    }
+
+    /** And so does the stack count. */
+    @ModifyArg(
+            method = "itemCount",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;text(Lnet/minecraft/client/gui/Font;Ljava/lang/String;IIIZ)V"),
+            index = 4
+    )
+    private int alpaka$fadeItemCount(int color) {
+        return GuiItemFade.decorationColor(color);
     }
 }

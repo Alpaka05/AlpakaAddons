@@ -16,6 +16,7 @@ layout(std140) uniform Projection {
 //   UV0    - this vertex's position relative to the rectangle's centre, in screen pixels
 //   UV1    - the rectangle's full width and height, in screen pixels
 //   UV2    - corner radius and border thickness (0 = filled), in screen pixels
+//   Normal - z is the shape's overall opacity, 0..1; everything that does not fade sends 1
 in vec3 Position;
 in vec4 Color;
 in vec2 UV0;
@@ -27,6 +28,7 @@ out vec4 vertexColor;
 out vec2 localPos;
 flat out vec2 halfSize;
 flat out vec2 shape;
+flat out float opacity;
 
 void main() {
     gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);
@@ -35,4 +37,5 @@ void main() {
     localPos = UV0;
     halfSize = vec2(UV1) * 0.5;
     shape = vec2(UV2);
+    opacity = Normal.z;
 }

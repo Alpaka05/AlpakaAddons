@@ -14,6 +14,7 @@ in vec4 vertexColor;
 in vec2 localPos;
 flat in vec2 halfSize;
 flat in vec2 shape;
+flat in float opacity;
 
 out vec4 fragColor;
 
@@ -35,6 +36,8 @@ void main() {
         float d = roundedBoxDistance(localPos, halfSize, radius);
         coverage = 1.0 - smoothstep(-0.5, 0.5, d);
     }
+    // A panel fading in or out lets the unblurred world through as a whole.
+    coverage *= opacity;
     if (coverage <= 0.002) {
         discard;
     }

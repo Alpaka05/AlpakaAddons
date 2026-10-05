@@ -11,6 +11,7 @@ in vec4 vertexColor;
 in vec2 localPos;
 flat in vec2 halfSize;
 flat in vec2 shape;
+flat in float opacity;
 
 out vec4 fragColor;
 
@@ -35,7 +36,7 @@ void main() {
     }
 
     vec4 color = vertexColor * ColorModulator;
-    color.a *= coverage;
+    color.a *= coverage * opacity;
     if (color.a <= 0.002) {
         discard;
     }

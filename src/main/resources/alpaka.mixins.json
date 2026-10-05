@@ -41,7 +41,8 @@
     "FontTextureMixin",
     "GuiRendererMixin",
     "KeyboardInputMixin",
-    "ChatGraphicsAccessClipMixin"
+    "ChatGraphicsAccessClipMixin",
+    "ClientLevelMixin"
   ],
   "injectors": {
     "defaultRequire": 1

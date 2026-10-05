@@ -46,6 +46,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.chat.ChatPeekFeature.register();
         CommandWheelFeature.register();
         InventoryHudFeature.register();
+        net.alpaka.addons.features.blaze.FirePitFeature.register();
         net.alpaka.addons.features.notification.MentionNotifier.register();
         net.alpaka.addons.features.party.PartyInviteFeature.register();
         WorldAgeHudRenderer.registerEvents();
@@ -105,6 +106,19 @@ public class AlpakaClient implements ClientModInitializer {
                             return 1;
                         })
                     )
+                )
+                // "/alpakadebug firepits": runs the fire pit highlight without a Blaze boss, so a
+                // clay block placed in a test world (/setblock) shows how the column looks.
+                .then(ClientCommands.literal("firepits")
+                    .executes(context -> {
+                        Minecraft.getInstance().execute(() -> {
+                            boolean on = net.alpaka.addons.features.blaze.FirePitFeature.togglePreview();
+                            SlayerDropTracker.sendModMessage(on
+                                    ? "§7Fire pit preview §aon§7: blocks turned into clay or terracotta are marked."
+                                    : "§7Fire pit preview §coff§7.");
+                        });
+                        return 1;
+                    })
                 )
             );
 

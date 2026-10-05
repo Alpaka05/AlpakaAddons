@@ -152,6 +152,13 @@ public class AlpakaConfigRegistry {
                 ),
                 "blaze flame smoke angry villager lava drip particles fire burning overlay fireball projectile lightning bolt flash thunder nametag name tag health smoldering miniboss demon clean hide"));
 
+        OPTIONS.add(new ConfigOption("blaze_fire_pits", "Fire Pit Highlight",
+                "During your Blaze slayer boss, marks the fire pits on the floor with a glowing column.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.blazeFirePitsEnabled,
+                v -> { AlpakaConfig.instance.blazeFirePitsEnabled = v; AlpakaConfig.save(); },
+                "blaze slayer fire pit pits clay terracotta floor flames aura highlight inferno demonlord boss warning"));
+
         OPTIONS.add(new ConfigOption("stop_blaze_spinning", "Stop Blaze Spinning",
                 "Stops blaze rods from spinning around blaze mobs.",
                 ConfigCategory.VISUALS,

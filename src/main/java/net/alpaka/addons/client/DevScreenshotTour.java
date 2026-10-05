@@ -67,7 +67,10 @@ public final class DevScreenshotTour {
             // Survival with armour and an action bar: what the attached inventory HUD has to clear.
             new Stop(null, DevScreenshotTour::survival,
                     () -> Minecraft.getInstance().gameMode != null && Minecraft.getInstance().gameMode.canHurtPlayer(), 20),
-            new Stop("survival-hud", DevScreenshotTour::actionBar, () -> true, 10)
+            new Stop("survival-hud", DevScreenshotTour::actionBar, () -> true, 10),
+            // The fire pit preview has to be on a tick before the clay arrives, as in a real fight.
+            new Stop(null, DevScreenshotTour::firePitPreview, () -> true, 5),
+            new Stop("fire-pits", DevScreenshotTour::placeFirePits, () -> true, 30)
     );
 
     private static int ticks = 0;
@@ -86,7 +89,13 @@ public final class DevScreenshotTour {
         Minecraft mc = Minecraft.getInstance();
         ticks++;
         if (stop < 0) {
-            if (ticks >= 100) begin(mc, 0);
+            if (ticks >= 100) {
+                // The tour runs while someone works in another window; a game that pauses on losing
+                // focus opens the pause menu in the world, and the tour waits for it forever. Set
+                // here rather than at registration, when the options do not exist yet. In memory only.
+                mc.options.pauseOnLostFocus = false;
+                begin(mc, 0);
+            }
             return;
         }
         if (stop >= STOPS.size()) {
@@ -181,6 +190,46 @@ public final class DevScreenshotTour {
     private static void actionBar() {
         Minecraft.getInstance().gui.hud.setOverlayMessage(
                 Component.literal("§c100/100❤     §a50❈ Defense     §b100/100✎ Mana"), false);
+    }
+
+    /** The fire pit highlight without a Blaze boss, looking at the floor ahead. */
+    private static void firePitPreview() {
+        Minecraft mc = Minecraft.getInstance();
+        mc.options.setCameraType(CameraType.FIRST_PERSON);
+        AlpakaConfig.instance.blazeFirePitsEnabled = true;
+        if (!net.alpaka.addons.features.blaze.FirePitFeature.togglePreview()) {
+            net.alpaka.addons.features.blaze.FirePitFeature.togglePreview();
+        }
+        // A clear view: nothing over the floor ahead.
+        AlpakaConfig.instance.inventoryHudEnabled = false;
+        mc.gui.hud.getChat().clearMessages(false);
+        mc.player.setXRot(20.0f);
+    }
+
+    /**
+     * A three-by-three patch of clay in the floor ahead, and one lone block beside it, placed by the
+     * integrated server so they reach the client as block updates - the way Hypixel's arrive.
+     */
+    private static void placeFirePits() {
+        Minecraft mc = Minecraft.getInstance();
+        net.minecraft.client.server.IntegratedServer server = mc.getSingleplayerServer();
+        if (server == null || mc.player == null) return;
+        net.minecraft.core.BlockPos floor = mc.player.blockPosition().below();
+        net.minecraft.core.Direction ahead = mc.player.getDirection();
+        net.minecraft.core.Direction side = ahead.getClockWise();
+        java.util.List<net.minecraft.core.BlockPos> pits = new java.util.ArrayList<>();
+        for (int forward = 4; forward <= 6; forward++) {
+            for (int across = -1; across <= 1; across++) {
+                pits.add(floor.relative(ahead, forward).relative(side, across));
+            }
+        }
+        pits.add(floor.relative(ahead, 5).relative(side, 3));
+        server.execute(() -> {
+            net.minecraft.server.level.ServerLevel level = server.overworld();
+            for (net.minecraft.core.BlockPos pos : pits) {
+                level.setBlockAndUpdate(pos, net.minecraft.world.level.block.Blocks.CLAY.defaultBlockState());
+            }
+        });
     }
 
     /** Third person with the custom name tag, so the camera glide's end and the tag are visible. */

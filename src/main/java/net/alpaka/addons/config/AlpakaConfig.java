@@ -142,6 +142,8 @@ public class AlpakaConfig {
     public boolean cleanBlazeLightning = true;
     /** Off by default: the health on blaze name tags is what a grinder watches. */
     public boolean cleanBlazeNameTags = false;
+    /** During the player's own Blaze slayer boss, a glowing column over each fire pit block. */
+    public boolean blazeFirePitsEnabled = true;
     /**
      * Hides Hypixel's slayer chatter - quest started/complete, level-ups, the radio lines.
      *
@@ -804,6 +806,7 @@ public class AlpakaConfig {
         this.containerBgFadeInEnabled = false;
         this.cleanBlazeEnabled = false;
         this.cleanBlazeNameTags = false;
+        this.blazeFirePitsEnabled = false;
         this.hideSlayerChatMessages = false;
         this.stopBlazeSpinning = false;
         this.hideHurtOverlayEnabled = false;

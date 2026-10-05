@@ -2,6 +2,7 @@ package net.alpaka.addons.client;
 
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.config.AlpakaStats;
+import net.alpaka.addons.features.blaze.FirePitFeature;
 import net.alpaka.addons.features.critters.PangolinHighlightFeature;
 import net.alpaka.addons.features.inventoryhud.InventoryHudFeature;
 import net.alpaka.addons.features.party.PartyInviteFeature;
@@ -55,12 +56,14 @@ public final class SessionLifecycle {
         PartyInviteFeature.dismiss();
         InventoryHudFeature.reset();
         PangolinHighlightFeature.reset();
+        FirePitFeature.reset();
         AlpakaStats.flushNow();
     }
 
     private static void onLevelChange() {
         SlayerQuestDetector.INSTANCE.resetForLevelChange();
         PangolinHighlightFeature.reset();
+        FirePitFeature.reset();
     }
 
     /** Nothing waiting to be written is lost on exit. */

@@ -196,7 +196,6 @@ public class AlpakaConfig {
     /** The name tag above the HUD avatar. */
     public boolean playerModelShowNameTag = true;
     public boolean playerModelShowInGuis = false;
-    public boolean playerModelSlowSwing = false;
 
     // World Age HUD & Join Notification options
     public boolean worldAgeHudEnabled = false;
@@ -827,7 +826,6 @@ public class AlpakaConfig {
         this.playerModelDisableMovement = false;
         this.playerModelHideArmor = false;
         this.playerModelShowInGuis = false;
-        this.playerModelSlowSwing = false;
         this.worldAgeHudEnabled = false;
         this.slayerHudEnabled = false;
         this.slayerHudPauseOutsideArea = false;

@@ -138,7 +138,7 @@ object PlayerModelRenderer {
 
         val cfg = AlpakaConfig.instance
         // Ticked before the visibility check so an in-flight slow swing can keep the avatar up.
-        updateSlowSwing(player, cfg)
+        updateSlowSwing(player)
 
         // No fade or slide either way: the avatar is either there or not. The transitions read as
         // it swiping in and out every time the player started or stopped moving, which drew the
@@ -285,9 +285,10 @@ object PlayerModelRenderer {
             val cfg = AlpakaConfig.instance
             if (cfg.playerModelDisableMovement) freezeMovementPose(state, entity)
             if (cfg.playerModelHideArmor) hideArmor(state)
-            // Replaces the player's own attack progress with our stretched one. attackTime is
-            // the 0..1 value the humanoid model derives the whole arm arc from.
-            if (cfg.playerModelSlowSwing && state is ArmedEntityRenderState) {
+            // Replaces the player's own attack progress with our stretched one, always: at vanilla
+            // speed the arm snaps through its arc too fast to read on an avatar this small.
+            // attackTime is the 0..1 value the humanoid model derives the whole arm arc from.
+            if (state is ArmedEntityRenderState) {
                 state.attackTime = slowSwingProgress()
             }
 
@@ -319,18 +320,9 @@ object PlayerModelRenderer {
      * Called once per frame from [render]. Repeat calls within a frame are harmless: the player's
      * swing counter cannot change between them, so no second swing is detected.
      */
-    private fun updateSlowSwing(player: LocalPlayer, cfg: AlpakaConfig) {
+    private fun updateSlowSwing(player: LocalPlayer) {
         val swinging = player.swinging
         val swingTime = player.swingTime
-
-        if (!cfg.playerModelSlowSwing) {
-            slowSwingActive = false
-            slowSwingQueued = false
-            wasSwinging = swinging
-            lastSwingTime = swingTime
-            return
-        }
-
         val now = System.currentTimeMillis()
 
         // Either a swing starting from rest, or a re-swing that reset the counter mid-arc.

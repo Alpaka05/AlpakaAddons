@@ -463,13 +463,6 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.playerModelHideArmor = v; AlpakaConfig.save(); },
                 "player model hide armor helmet chestplate leggings boots overlay"));
 
-        OPTIONS.add(new ConfigOption("player_model_slow_swing", "Slow Swing",
-                "Plays the avatar's attack swing slower and smoother than the real player's.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.playerModelSlowSwing,
-                v -> { AlpakaConfig.instance.playerModelSlowSwing = v; AlpakaConfig.save(); },
-                "slow swing smooth attack animation arm hand punch hit speed player model"));
-
         OPTIONS.add(new ConfigOption("player_model_show_in_guis", "Show in GUIs / Menus",
                 "Renders player model HUD even when container or menu GUIs are open.",
                 ConfigCategory.VISUALS,

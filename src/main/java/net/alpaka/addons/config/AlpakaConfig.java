@@ -373,6 +373,12 @@ public class AlpakaConfig {
     public int smoothChatStrength = 5;
     /** One rounded, padded panel behind the chat that shows the world blurred through it. */
     public boolean chatBlurEnabled = true;
+    /**
+     * How strongly the world is blurred behind the chat, in percent of the full radius. 0 leaves
+     * the world sharp behind the tint. The inventory HUD and the command wheel share the chat's
+     * blurred copy of the frame, so they follow it; the main menu keeps its own full blur.
+     */
+    public float chatBlurStrength = 100.0f;
     /** Ctrl+F in the chat turns the input line into a search that filters the visible messages. */
     public boolean chatSearchEnabled = true;
     /** Scrolling the chat glides the lines into place instead of jumping a line per notch. */

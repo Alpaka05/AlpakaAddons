@@ -296,6 +296,14 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.chatBlurEnabled = v; AlpakaConfig.save(); },
                 "chat blur background rounded corners panel glass frosted clean padding smooth"));
 
+        OPTIONS.add(new ConfigOption("chat_blur_strength", "Blur Strength",
+                "How strongly the world behind the chat is blurred. Also applies to the Inventory HUD and the command wheel.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatBlurStrength,
+                v -> { AlpakaConfig.instance.chatBlurStrength = v; AlpakaConfig.save(); },
+                0.0f, 100.0f, val -> val == 0.0f ? "None (0%)" : String.format(Locale.ROOT, "%.0f%%", val),
+                "chat blur strength radius amount intensity frosted glass background lighter clearer sharp"));
+
         OPTIONS.add(new ConfigOption("chat_search", "Chat Search",
                 "Ctrl+F in the chat filters it to messages containing your text.",
                 ConfigCategory.VISUALS,

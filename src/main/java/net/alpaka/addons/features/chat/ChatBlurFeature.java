@@ -34,10 +34,11 @@ import org.slf4j.LoggerFactory;
  * been extracted, before any is drawn - the frame so far (the world, nothing of the HUD yet) is
  * copied into a render target of this class's own, and vanilla's separable box blur is run over
  * that copy three times. That is the same post effect the pause menu uses; the radius comes from
- * one of this mod's own post-effect definitions instead, picked by GUI scale so the blur is the
- * same width in GUI pixels whatever the window scale, and independent of the player's menu-blur
- * setting. The panel's fragment shader then samples the blurred copy at its own screen position,
- * tints it with the chat's background colour and fades the rounded edge over one pixel.
+ * one of this mod's own post-effect definitions instead, one per radius, picked from the GUI scale
+ * and the Blur Strength setting ({@link #blurRadius}) so the blur is the same width in GUI pixels
+ * whatever the window scale, and independent of the player's menu-blur setting. The panel's
+ * fragment shader then samples the blurred copy at its own screen position, tints it with the
+ * chat's background colour and fades the rounded edge over one pixel.
  *
  * The copy is only made in frames where a panel asked for it ({@link #request()}), so a hidden
  * chat costs nothing.
@@ -59,6 +60,11 @@ public final class ChatBlurFeature {
     public static final int PADDING = 3;
     /** The panel's corner radius in chat pixels. */
     public static final int RADIUS = 5;
+
+    /** Blur radius per GUI scale step at full strength: 3 screen pixels for each GUI pixel. */
+    private static final int RADIUS_PER_SCALE = 3;
+    /** The largest radius a post effect is shipped for: full strength at GUI scale 4. */
+    static final int MAX_BLUR_RADIUS = 4 * RADIUS_PER_SCALE;
 
     private static TextureTarget blurred;
     /** Targets replaced after a resize, closed at the start of the next frame. */
@@ -282,22 +288,38 @@ public final class ChatBlurFeature {
     public static boolean captureAtBlurPoint() {
         if (!deferred) return false;
         deferred = false;
-        captureFrame();
+        // Only a screen's background defers the copy - the main menu's glass - and a menu keeps
+        // the full blur; the strength setting is for the panels over the world.
+        captureFrame(100.0f);
         return true;
     }
 
     /** Copies and blurs the frame as it is now, if a panel asked for it. */
     public static void captureFrame() {
+        captureFrame(AlpakaConfig.instance.chatBlurStrength);
+    }
+
+    private static void captureFrame(float strengthPercent) {
         if (!requested) return;
         long t = net.alpaka.addons.utils.AlpakaPerf.begin(net.alpaka.addons.utils.AlpakaPerf.Section.BLUR_CAPTURE);
         try {
-            captureFrameNow();
+            captureFrameNow(strengthPercent);
         } finally {
             net.alpaka.addons.utils.AlpakaPerf.end(net.alpaka.addons.utils.AlpakaPerf.Section.BLUR_CAPTURE, t);
         }
     }
 
-    private static void captureFrameNow() {
+    /**
+     * The blur radius, in screen pixels, for this GUI scale and strength: 3 per GUI scale step at
+     * full strength, scaled down by the strength. 0 means no blur at all.
+     */
+    static int blurRadius(int guiScale, float strengthPercent) {
+        int scale = Math.max(1, Math.min(4, guiScale));
+        float strength = Mth.clamp(strengthPercent / 100.0f, 0.0f, 1.0f);
+        return Math.min(MAX_BLUR_RADIUS, Math.round(RADIUS_PER_SCALE * scale * strength));
+    }
+
+    private static void captureFrameNow(float strengthPercent) {
         requested = false;
         ready = false;
 
@@ -317,9 +339,15 @@ public final class ChatBlurFeature {
             CommandEncoder encoder = RenderSystem.getDevice().createCommandEncoder();
             encoder.copyTextureToTexture(source, blurred.getColorTexture(), 0, 0, 0, 0, 0, width, height);
 
-            int scale = Math.max(1, Math.min(4, (int) minecraft.getWindow().getGuiScale()));
+            int radius = blurRadius((int) minecraft.getWindow().getGuiScale(), strengthPercent);
+            if (radius <= 0) {
+                // Strength 0: the plain copy is the panel's backdrop, the world sharp behind the tint.
+                // No radius-0 effect exists, and box_blur would read 0 as the menu-blur setting.
+                ready = true;
+                return;
+            }
             PostChain chain = minecraft.getShaderManager().getPostChain(
-                    Identifier.fromNamespaceAndPath("alpaka", "chat_blur_s" + scale), LevelTargetBundle.MAIN_TARGETS);
+                    Identifier.fromNamespaceAndPath("alpaka", "chat_blur_r" + radius), LevelTargetBundle.MAIN_TARGETS);
             if (chain == null) {
                 if (!warned) {
                     warned = true;

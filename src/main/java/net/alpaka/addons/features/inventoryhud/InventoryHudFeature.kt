@@ -26,8 +26,8 @@ import org.lwjgl.glfw.GLFW
  *
  * The same comparison makes an incoming item pop in its slot, the way the hotbar does it. Vanilla
  * only starts that pop for the hotbar when it is playing on a server, so the HUD keeps its own pop
- * timer per slot. The pop waits until the panel is mostly open: with "show on item change" the
- * panel is still fading in when the item lands, and a pop played out during the fade is never seen.
+ * timer per slot. The pop waits until the panel is fully open: with "show on item change" the
+ * panel is still fading in when the item lands, and a pop played out during the fade is lost in it.
  *
  * Change detection compares snapshots the client already has. No inventory is read from the server,
  * nothing is opened, and no input is synthesised.
@@ -58,8 +58,11 @@ object InventoryHudFeature {
     /** Length of a pop, in ticks: what vanilla gives a stack picked up into the hotbar. */
     const val POP_TICKS = 5
 
-    /** How far open the panel has to be before a pending pop starts playing. */
-    private const val POP_OPEN_THRESHOLD = 0.6f
+    /**
+     * How far open the panel has to be before a pending pop starts playing: all the way. Even a
+     * panel most of the way in is still moving and brightening, and the pop drowns in that.
+     */
+    private const val POP_OPEN_THRESHOLD = 1.0f
 
     /**
      * Ticks after a new player entity appears in which inventory changes are not news. Joining a
@@ -90,7 +93,7 @@ object InventoryHudFeature {
 
     /**
      * Pop ticks left per main slot. A slot whose item just arrived starts at [POP_TICKS] and counts
-     * down only while the panel is open far enough to show it.
+     * down only once the panel is fully open.
      */
     private val popTicks = IntArray(MAIN_SLOTS)
 
@@ -165,7 +168,7 @@ object InventoryHudFeature {
     }
 
     /**
-     * Counts pending pops down once the panel is open enough to show them. A panel that is closed
+     * Counts pending pops down once the panel is fully open. A panel that is closed
      * and staying closed drops them, so they do not all go off the next time it is opened.
      */
     private fun advancePops() {

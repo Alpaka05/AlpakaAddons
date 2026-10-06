@@ -3,13 +3,28 @@ package net.alpaka.addons.features.mainmenu
 import net.alpaka.addons.client.AlpakaConfigScreen
 import net.alpaka.addons.client.gui.AlpakaGuiElementSink
 import net.alpaka.addons.client.gui.BlurRectRenderState
-import net.alpaka.addons.client.gui.GradientRoundedRectRenderState
 import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.features.chat.ChatBlurFeature
+import net.alpaka.addons.features.mainmenu.MenuStyle.HOVER_EASE
+import net.alpaka.addons.features.mainmenu.MenuStyle.ICON_FLASK
+import net.alpaka.addons.features.mainmenu.MenuStyle.ICON_PEOPLE
+import net.alpaka.addons.features.mainmenu.MenuStyle.ICON_PERSON
+import net.alpaka.addons.features.mainmenu.MenuStyle.ICON_PUZZLE
+import net.alpaka.addons.features.mainmenu.MenuStyle.ICON_SERVER
+import net.alpaka.addons.features.mainmenu.MenuStyle.ICON_SLIDERS
+import net.alpaka.addons.features.mainmenu.MenuStyle.MUTED
+import net.alpaka.addons.features.mainmenu.MenuStyle.ONLINE_DOT
+import net.alpaka.addons.features.mainmenu.MenuStyle.SEPARATOR
+import net.alpaka.addons.features.mainmenu.MenuStyle.TEXT
+import net.alpaka.addons.features.mainmenu.MenuStyle.TITLE_BASELINE_DROP
+import net.alpaka.addons.features.mainmenu.MenuStyle.TITLE_HEIGHT
+import net.alpaka.addons.features.mainmenu.MenuStyle.easeOutBack
+import net.alpaka.addons.features.mainmenu.MenuStyle.easeOutCubic
+import net.alpaka.addons.features.mainmenu.MenuStyle.fade
+import net.alpaka.addons.features.mainmenu.MenuStyle.guiScale
 import net.alpaka.addons.features.snow.SnowOverlayRenderer
-import net.alpaka.addons.features.wheel.WheelMesh
 import net.alpaka.addons.utils.ModVersion
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
@@ -25,14 +40,8 @@ import net.minecraft.client.input.InputWithModifiers
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.multiplayer.ServerData
 import net.minecraft.client.multiplayer.resolver.ServerAddress
-import net.minecraft.client.renderer.RenderPipelines
-import net.minecraft.client.renderer.texture.SimpleTexture
 import net.minecraft.network.chat.Component
-import net.minecraft.network.chat.FontDescription
-import net.minecraft.resources.Identifier
 import org.joml.Matrix3x2f
-import kotlin.math.PI
-import kotlin.math.sin
 
 /**
  * The main menu, laid out like a game's lobby: the player's own avatar standing in a scene, and a
@@ -62,24 +71,6 @@ import kotlin.math.sin
 class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
 
     companion object {
-        val MOD_ICON_ID: Identifier = Identifier.parse("alpaka:textures/gui/alpaka_icon.png")
-
-        /**
-         * The menu's line icons, a font of their own drawn by tools/GenMenuIcons.java: glyphs, so
-         * they sit on the text's baseline and take its colour (see CustomPauseScreen), but smooth
-         * where the pause menu's are pixel art. Written as escapes: the private-use characters
-         * themselves are invisible in most editors.
-         */
-        private val ICON_FONT = FontDescription.Resource(Identifier.fromNamespaceAndPath("alpaka", "menu_icons"))
-        private const val ICON_SERVER = "\ue000"
-        private const val ICON_PERSON = "\ue001"
-        private const val ICON_PEOPLE = "\ue002"
-        private const val ICON_FLASK = "\ue003"
-        private const val ICON_PUZZLE = "\ue004"
-        private const val ICON_SLIDERS = "\ue005"
-        private const val ICON_POWER = "\ue006"
-        private const val ICON_CHEVRON = "\ue007"
-
         /** Singleplayer, Multiplayer, Join Alpha, Mods and Options. */
         private const val ROWS = 5
 
@@ -90,57 +81,6 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
             hero = 36, gapHero = 8, row = 21, rowGap = 2, footer = 20, footerGap = 8)
         private val TIGHT = Sizes(margin = 6, pad = 10, width = 186, radius = 12, header = 26, gapHeader = 8,
             hero = 30, gapHero = 6, row = 18, rowGap = 1, footer = 18, footerGap = 6)
-
-        private const val LOGO_HOVER_GROWTH = 0.1f
-        private const val LOGO_BOB_PIXELS = 1.2f
-        private const val LOGO_WIGGLE_DEGREES = 7f
-
-        /**
-         * The titles - the mod's name and the player's - in the larger title font. Its glyphs hang
-         * from a baseline further down than the normal text's, so they are drawn this far below
-         * their box's top for the capitals to start there.
-         */
-        private const val TITLE_HEIGHT = 13
-        private const val TITLE_BASELINE_DROP = 4
-
-        /** The card's glass: its tint over the blurred panorama and how strongly that covers the blur. */
-        private const val CARD_TINT = 0xFF0D1117.toInt()
-        private const val CARD_STRENGTH = 0.72f
-        private const val CARD_EDGE = 0x1AFFFFFF
-        private const val CARD_SHADOW = 0.9f
-
-        /** Join Hypixel: a lighter panel washed with the accent from the left, in a circling gradient edge. */
-        private const val HERO_FILL = 0x10FFFFFF
-        private const val HERO_FILL_HOVER = 0x22FFFFFF
-        private const val HERO_WASH = 0.16f
-        private const val HERO_EDGE_REST = 0.6f
-        /** One turn of the gradient around the edge, and the time between glints. */
-        private const val HERO_EDGE_TURN_SECONDS = 4.0f
-        private const val HERO_GLINT_EVERY = 5.5f
-        private const val HERO_GLINT_SECONDS = 0.9f
-
-        /** The rows: bare at rest, a light band under the mouse; the icon tile and the chevron. */
-        private const val ROW_HOVER = 0x18FFFFFF
-        private const val ROW_SLIDE = 3f
-        private const val TILE = 0x14FFFFFF
-        private const val TILE_HOVER_ACCENT = 0.55f
-        private const val TILE_POP = 0.14f
-        private const val CHEVRON = 0x59FFFFFF
-        private const val CHEVRON_HOVER = 0xE6FFFFFF.toInt()
-        private const val CHEVRON_SLIDE = 3f
-
-        private const val SEPARATOR = 0x1AFFFFFF
-        private const val TEXT = 0xFFFFFFFF.toInt()
-        private const val TEXT_SOFT = 0xEBFFFFFF.toInt()
-        private const val MUTED = 0x9EFFFFFF.toInt()
-        private const val ONLINE_DOT = 0xFF4ADE80.toInt()
-
-        private const val QUIT_FILL = 0x29EF4444
-        private const val QUIT_FILL_HOVER = 0x4DEF4444
-        private const val QUIT_TEXT = 0xFFFCA5A5.toInt()
-        private const val QUIT_RING = 0xFFEF4444.toInt()
-        /** Room left and right of Quit's label inside its pill. */
-        private const val QUIT_PADDING = 10
 
         /**
          * The stage beside the card: the avatar's height as a share of the screen and its limits,
@@ -181,7 +121,6 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         private const val MOTE_COLOR = 0xFFFFC870.toInt()
         private const val MOTE_OPACITY = 1f
 
-        private const val HOVER_EASE = 0.25f
         private const val APPEAR_SECONDS = 0.32f
         private const val STAGGER_SECONDS = 0.045f
         private const val SLIDE_IN = 28f
@@ -190,46 +129,8 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         private const val STAGE_DELAY = 0.20f
         private const val LANDING_SECONDS = 0.55f
 
-        private var modIconRegistered = false
-
-        fun ensureModIconRegistered() {
-            if (!modIconRegistered) {
-                modIconRegistered = true
-                try {
-                    Minecraft.getInstance().textureManager.registerAndLoad(MOD_ICON_ID, SimpleTexture(MOD_ICON_ID))
-                } catch (e: Throwable) {
-                    System.err.println("[AlpakaAddons] Failed to register SimpleTexture for alpaka_icon.png:")
-                    e.printStackTrace()
-                }
-            }
-        }
-
-        private fun icon(icon: String): Component =
-            Component.literal(icon).withStyle { it.withFont(ICON_FONT) }
-
         /** Quit's label: the power icon, then the word. */
-        private fun quitLabel(): Component =
-            Component.empty().append(icon(ICON_POWER)).append(GuiFont.text("  Quit"))
-
-        private fun fade(color: Int, factor: Float): Int {
-            val alpha = Math.round(((color ushr 24) and 0xFF) * factor.coerceIn(0f, 1f))
-            return (alpha shl 24) or (color and 0x00FFFFFF)
-        }
-
-        private fun accent(): Int = ModernGuiUtils.getAccentColor() or 0xFF000000.toInt()
-
-        /** Eased out with a little overshoot, for things that spring into place. */
-        private fun easeOutBack(t: Float): Float {
-            val c1 = 1.70158f
-            val c3 = c1 + 1f
-            val u = t - 1f
-            return 1f + c3 * u * u * u + c1 * u * u
-        }
-
-        private fun easeOutCubic(t: Float): Float {
-            val inv = 1f - t.coerceIn(0f, 1f)
-            return 1f - inv * inv * inv
-        }
+        private fun quitLabel(): Component = MenuStyle.iconLabel(MenuStyle.ICON_POWER, "Quit")
     }
 
     /**
@@ -355,7 +256,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
             mc.gui.setScreen(OptionsScreen(this, mc.options, false))
         }
 
-        val quitWidth = this.font.width(quitLabel()) + QUIT_PADDING * 2
+        val quitWidth = this.font.width(quitLabel()) + MenuStyle.PILL_PADDING * 2
         this.addRenderableWidget(QuitButton(layout.innerX + layout.innerW - quitWidth, layout.footerY,
             quitWidth, sizes.footer) {
             this.minecraft?.stop()
@@ -493,16 +394,14 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
 
         graphics.pose().pushMatrix()
         graphics.pose().translate(slide, 0f)
-        ModernGuiUtils.drawPanelShadow(graphics, layout.cardX, layout.cardY, layout.cardW, layout.cardH,
-            sizes.radius, CARD_SHADOW * cardAlpha)
+        MenuStyle.cardShadow(graphics, layout.cardX, layout.cardY, layout.cardW, layout.cardH, sizes.radius, cardAlpha)
         glass(graphics, layout.cardX, layout.cardY, layout.cardW, layout.cardH, sizes.radius, cardAlpha)
-        ModernGuiUtils.drawRoundedOutline(graphics, layout.cardX, layout.cardY, layout.cardW, layout.cardH,
-            sizes.radius, fade(CARD_EDGE, cardAlpha))
+        MenuStyle.cardEdge(graphics, layout.cardX, layout.cardY, layout.cardW, layout.cardH, sizes.radius, cardAlpha)
 
         // One glint across the whole card as it lands.
         val glint = (elapsed() - CARD_GLINT_DELAY) / CARD_GLINT_SECONDS
         if (glint in 0f..1f) {
-            glint(graphics, layout.cardX, layout.cardY, layout.cardW, layout.cardH, easeOutCubic(glint), 0.10f)
+            MenuStyle.glint(graphics, layout.cardX, layout.cardY, layout.cardW, layout.cardH, easeOutCubic(glint), 0.10f)
         }
 
         // The logo, which is also the way into the Alpaka config. It floats gently; under the mouse
@@ -512,28 +411,9 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
             val headerAlpha = easeOutCubic(headerProgress)
             val hovered = isOverLogo(layout, mouseX.toDouble(), mouseY.toDouble())
             logoHover += ((if (hovered) 1.0f else 0.0f) - logoHover) * HOVER_EASE
-            val size = layout.logoSize * (1f + LOGO_HOVER_GROWTH * logoHover)
-            val bob = sin(t * 1.6f) * LOGO_BOB_PIXELS
-            val wiggle = sin(t * 11f) * LOGO_WIGGLE_DEGREES * logoHover
-
-            ensureModIconRegistered()
-            graphics.pose().pushMatrix()
-            graphics.pose().translate(layout.logoX + layout.logoSize / 2f, layout.logoY + layout.logoSize / 2f + bob)
-            graphics.pose().rotate((wiggle * PI / 180.0).toFloat())
-            val half = Math.round(size / 2f)
-            graphics.blit(RenderPipelines.GUI_TEXTURED, MOD_ICON_ID, -half, -half, 0.0f, 0.0f,
-                half * 2, half * 2, 128, 128, 128, 128, fade(0xFFFFFFFF.toInt(), headerAlpha))
-            graphics.pose().popMatrix()
-
-            val textX = layout.logoX + layout.logoSize + 8
-            val title = GuiFont.title("Alpaka Addons")
-            if (title != null) {
-                val titleTop = layout.logoY + (layout.logoSize - TITLE_HEIGHT) / 2
-                graphics.text(this.font, title, textX, titleTop + TITLE_BASELINE_DROP, fade(TEXT, headerAlpha), false)
-            } else {
-                graphics.text(this.font, Component.literal("Alpaka Addons"), textX, layout.logoY + (layout.logoSize - 8) / 2,
-                    fade(TEXT, headerAlpha), false)
-            }
+            MenuStyle.logo(graphics, layout.logoX, layout.logoY, layout.logoSize, logoHover, headerAlpha, t)
+            MenuStyle.title(graphics, this.font, "Alpaka Addons", layout.logoX + layout.logoSize + 8,
+                layout.logoY, layout.logoSize, headerAlpha)
         }
 
         // The footer: a hairline across the card, and the versions beside Quit. A build between
@@ -560,7 +440,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
      * Without the extractor mixin nothing rounded can be submitted, and a plain dark card stands in.
      */
     private fun glass(graphics: GuiGraphicsExtractor, x: Int, y: Int, width: Int, height: Int, radius: Int, opacity: Float) {
-        val tinted = (Math.round(CARD_STRENGTH * 255f) shl 24) or (CARD_TINT and 0x00FFFFFF)
+        val tinted = MenuStyle.cardTint()
         val sink = graphics as? AlpakaGuiElementSink
         if (sink == null) {
             ModernGuiUtils.drawRoundedRect(graphics, x, y, width, height, radius, fade(tinted, opacity))
@@ -572,44 +452,6 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
             Math.round(radius * toScreen), tinted, toScreen, opacity, sink.`alpaka$currentScissor`()))
         ChatBlurFeature.request()
     }
-
-    /**
-     * A rounded rectangle with a colour at each corner, filled when [thickness] is 0 or as an edge
-     * that many screen pixels wide; nothing without the extractor mixin.
-     */
-    private fun gradientRect(graphics: GuiGraphicsExtractor, x: Int, y: Int, width: Int, height: Int, radius: Int,
-                             thickness: Int, topLeft: Int, topRight: Int, bottomRight: Int, bottomLeft: Int) {
-        val sink = graphics as? AlpakaGuiElementSink ?: return
-        val toScreen = guiScale()
-        sink.`alpaka$submitElement`(GradientRoundedRectRenderState(
-            Matrix3x2f(graphics.pose()), x, y, x + width, y + height, Math.round(radius * toScreen), thickness,
-            topLeft, topRight, bottomRight, bottomLeft, toScreen, sink.`alpaka$currentScissor`()))
-    }
-
-    /**
-     * A slanted band of light crossing the box from left to right as [progress] runs 0 → 1, at
-     * [strength] at its brightest, clipped to the box.
-     */
-    private fun glint(graphics: GuiGraphicsExtractor, x: Int, y: Int, width: Int, height: Int,
-                      progress: Float, strength: Float) {
-        val band = 18f
-        val slant = height * 0.45f
-        val center = x - band - slant + (width + band * 2 + slant * 2) * progress
-        val bright = WheelMesh.scaleAlpha(0xFFFFFFFF.toInt(), strength)
-        val clear = 0x00FFFFFF
-        graphics.enableScissor(x, y, x + width, y + height)
-        val mesh = WheelMesh(1.15f / guiScale())
-        val top = y.toFloat()
-        val bottom = (y + height).toFloat()
-        mesh.quad(center - band + slant, top, clear, center - band, bottom, clear,
-            center, bottom, bright, center + slant, top, bright)
-        mesh.quad(center + slant, top, bright, center, bottom, bright,
-            center + band, bottom, clear, center + band + slant, top, clear)
-        mesh.submit(graphics)
-        graphics.disableScissor()
-    }
-
-    private fun guiScale(): Float = (this.minecraft ?: Minecraft.getInstance()).window.guiScale.toFloat()
 
     /**
      * The dot colour and the text of the online line, from whatever the last ping learned, or null
@@ -698,59 +540,18 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
 
         override fun draw(graphics: GuiGraphicsExtractor, appear: Float) {
             val mc = this@CustomMainMenuScreen.minecraft ?: return
-            val t = MenuAmbience.seconds()
-            val accent = accent()
-            val light = WheelMesh.lerpColor(accent, 0xFFFFFFFF.toInt(), 0.6f)
-            val radius = this.height / 4
+            val textX = MenuStyle.hero(graphics, mc.font, this.x, this.y, this.width, this.height,
+                ICON_SERVER, "Join Hypixel", this.y + this.height / 2 - 9, hover, appear)
 
-            ModernGuiUtils.drawRoundedRect(graphics, this.x, this.y, this.width, this.height, radius,
-                fade(ModernGuiUtils.lerpColor(HERO_FILL, HERO_FILL_HOVER, hover), appear))
-            val wash = fade(accent, HERO_WASH * appear * (1f + hover))
-            val clearWash = accent and 0x00FFFFFF
-            gradientRect(graphics, this.x, this.y, this.width, this.height, radius, 0, wash, clearWash, clearWash, wash)
-
-            // The edge: each corner's colour runs between the accent and its lighter self, a quarter
-            // turn apart, so the bright part travels around the tile.
-            val edgeStrength = appear * (HERO_EDGE_REST + (1f - HERO_EDGE_REST) * hover)
-            fun corner(k: Int): Int {
-                val phase = (t / HERO_EDGE_TURN_SECONDS + k * 0.25f) * 2f * PI.toFloat()
-                return fade(WheelMesh.lerpColor(accent, light, 0.5f + 0.5f * sin(phase)), edgeStrength)
-            }
-            gradientRect(graphics, this.x, this.y, this.width, this.height, radius,
-                maxOf(1, Math.round(guiScale())), corner(0), corner(1), corner(2), corner(3))
-
-            val glintPhase = (t % HERO_GLINT_EVERY) / HERO_GLINT_SECONDS
-            if (glintPhase in 0f..1f) glint(graphics, this.x, this.y, this.width, this.height, glintPhase, 0.12f * appear)
-
-            val serverIcon = icon(ICON_SERVER)
-            val iconX = this.x + 10
-            graphics.text(mc.font, serverIcon, iconX, this.y + (this.height - 8) / 2, fade(accent, appear), false)
-
-            // The name, and the online line under it, without the ping when it would not fit.
-            val textX = iconX + mc.font.width(serverIcon) + 8
-            graphics.text(mc.font, GuiFont.text("Join Hypixel"), textX, this.y + this.height / 2 - 9,
-                fade(TEXT, appear), false)
-
+            // The online line under the name, without the ping when it would not fit.
             val room = this.x + this.width - 10 - textX
             val status = onlineLine(withPing = true)?.let { line ->
                 if (GuiFont.width(mc.font, "● " + line.second) <= room) line else onlineLine(withPing = false)
             } ?: return
             val (dot, line) = status
-            val dotWidth = GuiFont.width(mc.font, "● ")
-            if (dotWidth + GuiFont.width(mc.font, line) > room) return
-            val lineY = this.y + this.height / 2 + 1
-            if (dot == ONLINE_DOT) {
-                // The pulse: a ring swelling out of the dot and fading, once a second and a half.
-                val p = (t % 1.5f) / 1.5f
-                val mesh = WheelMesh(1.15f / guiScale())
-                val dotCenterX = textX + mc.font.width(GuiFont.text("●")) / 2f
-                val dotCenterY = lineY + 3.5f
-                mesh.ring(dotCenterX, dotCenterY, 1.5f + p * 4f, 2.2f + p * 4f,
-                    WheelMesh.scaleAlpha(dot, (1f - p) * 0.8f * appear))
-                mesh.submit(graphics)
-            }
-            graphics.text(mc.font, GuiFont.text("●"), textX, lineY, fade(dot, appear), false)
-            graphics.text(mc.font, GuiFont.text(line), textX + dotWidth, lineY, fade(MUTED, appear), false)
+            if (GuiFont.width(mc.font, "● ") + GuiFont.width(mc.font, line) > room) return
+            MenuStyle.statusLine(graphics, mc.font, textX, this.y + this.height / 2 + 1, dot, line,
+                pulse = dot == ONLINE_DOT, appear = appear)
         }
     }
 
@@ -769,38 +570,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
 
         override fun draw(graphics: GuiGraphicsExtractor, appear: Float) {
             val mc = this@CustomMainMenuScreen.minecraft ?: return
-            if (hover > 0.02f) {
-                ModernGuiUtils.drawRoundedRect(graphics, this.x, this.y, this.width, this.height, 6,
-                    fade(ROW_HOVER, appear * hover))
-            }
-
-            val slide = ROW_SLIDE * hover
-            val tile = this.height - 4
-            val tileX = this.x + 4 + slide
-            val tileY = this.y + 2f
-            val tileColor = ModernGuiUtils.lerpColor(TILE, fade(accent(), TILE_HOVER_ACCENT), hover)
-            graphics.pose().pushMatrix()
-            graphics.pose().translate(tileX + tile / 2f, tileY + tile / 2f)
-            val pop = 1f + TILE_POP * hover
-            graphics.pose().scale(pop, pop)
-            ModernGuiUtils.drawRoundedRect(graphics, -tile / 2, -tile / 2, tile, tile, tile / 3, fade(tileColor, appear))
-            val glyphComponent = icon(glyph)
-            graphics.text(mc.font, glyphComponent, -mc.font.width(glyphComponent) / 2 + 1, -4, fade(TEXT, appear), false)
-            graphics.pose().popMatrix()
-
-            val textY = this.y + (this.height - 8) / 2
-            graphics.pose().pushMatrix()
-            graphics.pose().translate(slide, 0f)
-            graphics.text(mc.font, this.message, this.x + 4 + tile + 8, textY,
-                fade(ModernGuiUtils.lerpColor(TEXT_SOFT, TEXT, hover), appear), false)
-            graphics.pose().popMatrix()
-
-            val chevron = icon(ICON_CHEVRON)
-            graphics.pose().pushMatrix()
-            graphics.pose().translate(CHEVRON_SLIDE * hover, 0f)
-            graphics.text(mc.font, chevron, this.x + this.width - 6 - mc.font.width(chevron) - CHEVRON_SLIDE.toInt(), textY,
-                fade(ModernGuiUtils.lerpColor(CHEVRON, CHEVRON_HOVER, hover), appear), false)
-            graphics.pose().popMatrix()
+            MenuStyle.row(graphics, mc.font, this.x, this.y, this.width, this.height, glyph, this.message, hover, appear)
         }
     }
 
@@ -810,15 +580,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
 
         override fun draw(graphics: GuiGraphicsExtractor, appear: Float) {
             val mc = this@CustomMainMenuScreen.minecraft ?: return
-            val radius = this.height / 2
-            ModernGuiUtils.drawRoundedRect(graphics, this.x, this.y, this.width, this.height, radius,
-                fade(ModernGuiUtils.lerpColor(QUIT_FILL, QUIT_FILL_HOVER, hover), appear))
-            if (hover > 0.02f) {
-                ModernGuiUtils.drawRoundedOutline(graphics, this.x, this.y, this.width, this.height, radius,
-                    fade(QUIT_RING, appear * hover))
-            }
-            ModernGuiUtils.centeredText(graphics, mc.font, this.message, this.x + this.width / 2,
-                this.y + (this.height - 8) / 2, fade(QUIT_TEXT, appear))
+            MenuStyle.quitPill(graphics, mc.font, this.x, this.y, this.width, this.height, this.message, hover, appear)
         }
     }
 }

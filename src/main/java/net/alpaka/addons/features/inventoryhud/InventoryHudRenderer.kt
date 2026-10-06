@@ -20,6 +20,7 @@ import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.resources.Identifier
 import net.minecraft.tags.FluidTags
 import net.minecraft.world.entity.player.Inventory
+import net.minecraft.world.item.ItemStack
 
 /**
  * Draws the player's main inventory on the HUD, so its 27 slots can be read without opening a
@@ -305,6 +306,7 @@ object InventoryHudRenderer {
     }
 
     private fun drawItems(graphics: GuiGraphicsExtractor, mc: Minecraft, inventory: Inventory) {
+        val partialTick = mc.deltaTracker.getGameTimeDeltaPartialTick(false)
         for (row in 0 until ROWS) {
             for (col in 0 until COLS) {
                 val slot = FIRST_SLOT + row * COLS + col
@@ -317,11 +319,32 @@ object InventoryHudRenderer {
                 // on the slots the texture already has.
                 val slotX = (if (chestStyle()) CHEST_SLOT_X else FLAT_SLOT_X) + col * PITCH
                 val slotY = (if (chestStyle()) CHEST_SLOT_Y else FLAT_SLOT_Y) + row * PITCH
-                graphics.item(stack, slotX, slotY)
+                drawItem(graphics, stack, slotX, slotY,
+                    InventoryHudFeature.popTime(slot - FIRST_SLOT, partialTick))
                 // Stack counts and durability bars, so the readout matches the real inventory.
                 graphics.itemDecorations(mc.font, stack, slotX, slotY)
             }
         }
+    }
+
+    /**
+     * One item face, popping if it has just arrived: the hotbar's own pop, squashed wide and
+     * stretched tall around a point low in the slot and springing back over [popTime] ticks. The
+     * count is drawn outside it and stays still, as in the hotbar.
+     */
+    private fun drawItem(graphics: GuiGraphicsExtractor, stack: ItemStack, x: Int, y: Int, popTime: Float) {
+        if (popTime <= 0.0f) {
+            graphics.item(stack, x, y)
+            return
+        }
+        val stretch = 1.0f + popTime / InventoryHudFeature.POP_TICKS
+        val pose = graphics.pose()
+        pose.pushMatrix()
+        pose.translate((x + 8).toFloat(), (y + 12).toFloat())
+        pose.scale(1.0f / stretch, (stretch + 1.0f) / 2.0f)
+        pose.translate(-(x + 8).toFloat(), -(y + 12).toFloat())
+        graphics.item(stack, x, y)
+        pose.popMatrix()
     }
 
     /**

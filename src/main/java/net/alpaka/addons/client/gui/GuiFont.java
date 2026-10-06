@@ -123,12 +123,9 @@ public final class GuiFont {
      * Whether a glyph page belongs to one of these TrueType fonts and should be sampled linearly.
      *
      * Pages are labelled {@code <font id>/<page number>} - {@code alpaka:inter_s2/0}. Every font in
-     * this namespace is one of ours except the pause menu's icon font, which is a pixel sprite
-     * sheet and stays crisp.
+     * this namespace is one of ours, the menus' line icons included.
      */
     public static boolean usesSmoothSampling(String textureLabel) {
-        return textureLabel != null
-                && textureLabel.startsWith("alpaka:")
-                && !textureLabel.startsWith("alpaka:pause_icons");
+        return textureLabel != null && textureLabel.startsWith("alpaka:");
     }
 }

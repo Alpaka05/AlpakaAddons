@@ -19,10 +19,10 @@ import javax.imageio.ImageIO;
 /**
  * Draws the main menu's button icons and writes them out as a sprite sheet for a bitmap font.
  *
- * Unlike the pause menu's ten-pixel pixel art (GenPauseIcons), these are line icons drawn as
- * vectors - the same strokes as the main menu design - and rendered anti-aliased at four times the
- * glyph's size. The font is sampled linearly (GuiFont.usesSmoothSampling), so a ring such as the
- * power symbol stays round at every GUI scale instead of breaking into steps.
+ * These are line icons drawn as vectors - the same strokes as the menu design - and rendered
+ * anti-aliased at four times the glyph's size. The font is sampled linearly
+ * (GuiFont.usesSmoothSampling), so a ring such as the power symbol stays round at every GUI scale
+ * instead of breaking into steps.
  *
  * Run it from the repository root, no build needed:
  *
@@ -33,7 +33,7 @@ import javax.imageio.ImageIO;
  *
  * Each icon is drawn in a 24-unit box, as an SVG icon would be, and scaled into its cell. Cell order
  * fixes the codepoints: the first is U+E000, matching the {@code chars} string in
- * {@code assets/alpaka/font/menu_icons.json} and the ICON_* constants in CustomMainMenuScreen.
+ * {@code assets/alpaka/font/menu_icons.json} and the ICON_* constants in MenuStyle.
  *
  * Pixels are white on transparent: Minecraft tints glyphs with the text colour, so white is what
  * lets the icons take the label's colour.
@@ -132,9 +132,50 @@ public class GenMenuIcons {
         return new Icon("chevron", List.of(chevron), List.of());
     }
 
+    /** Resume Game, in the pause menu. A play triangle with softened corners. */
+    static Icon play() {
+        Path2D triangle = new Path2D.Double();
+        triangle.moveTo(7, 4);
+        triangle.lineTo(19, 12);
+        triangle.lineTo(7, 20);
+        triangle.closePath();
+        return new Icon("play", List.of(triangle), List.of());
+    }
+
+    /** Wiki, in the pause menu. An open book: two pages meeting at the spine. */
+    static Icon book() {
+        Path2D left = new Path2D.Double();
+        left.moveTo(12, 7);
+        left.curveTo(10, 5, 6, 4.5, 3, 5);
+        left.lineTo(3, 18.5);
+        left.curveTo(6, 18, 10, 18.5, 12, 20.5);
+        Path2D right = new Path2D.Double();
+        right.moveTo(12, 7);
+        right.curveTo(14, 5, 18, 4.5, 21, 5);
+        right.lineTo(21, 18.5);
+        right.curveTo(18, 18, 14, 18.5, 12, 20.5);
+        return new Icon("book", List.of(left, right, new Line2D.Double(12, 7, 12, 20.5)), List.of());
+    }
+
+    /** Disconnect, in the pause menu. A door frame open on the right, an arrow leaving through it. */
+    static Icon door() {
+        Path2D frame = new Path2D.Double();
+        frame.moveTo(10, 3.5);
+        frame.lineTo(6, 3.5);
+        frame.quadTo(4, 3.5, 4, 5.5);
+        frame.lineTo(4, 18.5);
+        frame.quadTo(4, 20.5, 6, 20.5);
+        frame.lineTo(10, 20.5);
+        Path2D head = new Path2D.Double();
+        head.moveTo(16, 7.5);
+        head.lineTo(20.5, 12);
+        head.lineTo(16, 16.5);
+        return new Icon("door", List.of(frame, head, new Line2D.Double(9.5, 12, 20.5, 12)), List.of());
+    }
+
     /** Order matters: this is what fixes each icon's codepoint. */
     static final List<Icon> ICONS = List.of(server(), person(), people(), flask(), puzzle(), sliders(), power(),
-            chevron());
+            chevron(), play(), book(), door());
 
     static Shape dot(double x, double y, double r) {
         return new Ellipse2D.Double(x - r, y - r, r * 2, r * 2);

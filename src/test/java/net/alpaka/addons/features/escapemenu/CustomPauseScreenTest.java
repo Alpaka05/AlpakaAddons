@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.escapemenu;
 
+import net.alpaka.addons.features.mainmenu.MenuStyle;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -96,32 +97,32 @@ class CustomPauseScreenTest {
 
     /**
      * Each icon constant is the codepoint of its cell in the sprite sheet. The order is set by
-     * tools/GenPauseIcons.java (play, server, box, sliders, book, door, puzzle, potion from U+E000),
-     * and a constant one cell off draws the neighbouring icon without any error.
+     * tools/GenMenuIcons.java, and a constant one cell off draws the neighbouring icon without any
+     * error. The pause menu's play, book and door come after the main menu's eight.
      */
     @Test
     void iconsPointAtTheirSpriteSheetCells() {
-        assertEquals("", CustomPauseScreen.ICON_PLAY);
-        assertEquals("", CustomPauseScreen.ICON_SERVER);
-        assertEquals("", CustomPauseScreen.ICON_SLIDERS);
-        assertEquals("", CustomPauseScreen.ICON_BOOK);
-        assertEquals("", CustomPauseScreen.ICON_DOOR);
-        assertEquals("", CustomPauseScreen.ICON_PUZZLE);
+        assertEquals("\ue000", MenuStyle.ICON_SERVER);
+        assertEquals("\ue004", MenuStyle.ICON_PUZZLE);
+        assertEquals("\ue005", MenuStyle.ICON_SLIDERS);
+        assertEquals("\ue007", MenuStyle.ICON_CHEVRON);
+        assertEquals("\ue008", MenuStyle.ICON_PLAY);
+        assertEquals("\ue009", MenuStyle.ICON_BOOK);
+        assertEquals("\ue00a", MenuStyle.ICON_DOOR);
     }
 
     /** A codepoint the font json does not list is a missing glyph, drawn as a box. */
     @Test
     void everyIconIsListedInTheFont() throws IOException {
-        String json = Files.readString(Path.of("src/main/resources/assets/alpaka/font/pause_icons.json"));
+        String json = Files.readString(Path.of("src/main/resources/assets/alpaka/font/menu_icons.json"));
         Matcher chars = Pattern.compile("\"chars\"\\s*:\\s*\\[\\s*\"([^\"]*)\"").matcher(json);
-        assertTrue(chars.find(), "pause_icons.json has no chars row");
+        assertTrue(chars.find(), "menu_icons.json has no chars row");
         String listed = unescape(chars.group(1));
 
-        for (String icon : List.of(CustomPauseScreen.ICON_PLAY, CustomPauseScreen.ICON_SERVER,
-                CustomPauseScreen.ICON_SLIDERS, CustomPauseScreen.ICON_BOOK,
-                CustomPauseScreen.ICON_DOOR, CustomPauseScreen.ICON_PUZZLE)) {
+        for (String icon : List.of(MenuStyle.ICON_SERVER, MenuStyle.ICON_PUZZLE, MenuStyle.ICON_SLIDERS,
+                MenuStyle.ICON_CHEVRON, MenuStyle.ICON_PLAY, MenuStyle.ICON_BOOK, MenuStyle.ICON_DOOR)) {
             assertTrue(listed.contains(icon),
-                    String.format("U+%04X is not in pause_icons.json", icon.codePointAt(0)));
+                    String.format("U+%04X is not in menu_icons.json", icon.codePointAt(0)));
         }
     }
 

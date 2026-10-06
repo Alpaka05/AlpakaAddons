@@ -4,6 +4,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.alpaka.addons.client.gui.AlpakaGuiElementSink;
 import net.alpaka.addons.client.gui.GuiItemFade;
+import net.alpaka.addons.client.gui.GuiSkinStyle;
 import net.alpaka.addons.features.tooltip.ScrollableTooltipsFeature;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.navigation.ScreenRectangle;
@@ -11,6 +12,7 @@ import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipPositione
 import net.minecraft.client.renderer.state.gui.GuiElementRenderState;
 import net.minecraft.client.renderer.state.gui.GuiItemRenderState;
 import net.minecraft.client.renderer.state.gui.GuiRenderState;
+import net.minecraft.client.renderer.state.gui.pip.PictureInPictureRenderState;
 import org.joml.Matrix3x2fStack;
 import org.joml.Vector2ic;
 import org.spongepowered.asm.mixin.Final;
@@ -89,6 +91,16 @@ public abstract class GuiGraphicsExtractorMixin implements AlpakaGuiElementSink 
     private void alpaka$noteFadedItem(GuiRenderState renderState, GuiItemRenderState item, Operation<Void> original) {
         GuiItemFade.onItemExtracted(item);
         original.call(renderState, item);
+    }
+
+    /** Notes a styled skin preview as it is extracted; its blit comes later. See {@link GuiSkinStyle}. */
+    @WrapOperation(
+            method = "skin",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/state/gui/GuiRenderState;addPicturesInPictureState(Lnet/minecraft/client/renderer/state/gui/pip/PictureInPictureRenderState;)V")
+    )
+    private void alpaka$noteStyledSkin(GuiRenderState renderState, PictureInPictureRenderState picture, Operation<Void> original) {
+        GuiSkinStyle.onPictureExtracted(picture);
+        original.call(renderState, picture);
     }
 
     /** The durability and cooldown bars fade with their item. */

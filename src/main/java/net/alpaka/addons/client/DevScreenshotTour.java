@@ -49,7 +49,16 @@ public final class DevScreenshotTour {
     }
 
     private static final List<Stop> STOPS = List.of(
-            screen("main-menu", CustomMainMenuScreen::new),
+            // With the mouse in the top-right corner, so the avatar visibly looks up and towards it.
+            new Stop("main-menu", () -> {
+                Minecraft.getInstance().gui.setScreen(new CustomMainMenuScreen());
+                placeMouse(0.95, 0.05);
+            }, () -> true, 30),
+            // The mouse moved down to the left, over the card: the avatar turns to look at it.
+            new Stop("main-menu-look-left", () -> placeMouse(0.2, 0.75), () -> true, 30),
+            new Stop("look-far-left", () -> placeMouse(0.0, 0.5), () -> true, 30),
+            // A moment into the entrance: the card springing in, the avatar half materialised.
+            new Stop("main-menu-opening", () -> Minecraft.getInstance().gui.setScreen(new CustomMainMenuScreen()), () -> true, 9),
             screen("config", () -> new AlpakaConfigScreen(null, "")),
             screen("color-picker", () -> new ColorPickerScreen(null, "Accent Colour", 0xFF29B6B2, color -> {})),
             screen("wheel-editor", () -> new CommandWheelConfigScreen(new CustomMainMenuScreen())),
@@ -148,6 +157,24 @@ public final class DevScreenshotTour {
                 new LevelSettings.DifficultySettings(Difficulty.PEACEFUL, false, false), true, WorldDataConfiguration.DEFAULT);
         mc.createWorldOpenFlows().createFreshLevel(WORLD, settings, new WorldOptions(0L, false, false),
                 WorldPresets::createTestWorldDimensions, new CustomMainMenuScreen());
+    }
+
+    /**
+     * Puts the mouse at this share of the window's width and height. The tour runs without anyone at
+     * the mouse, so the handler's private position is set directly; dev only.
+     */
+    private static void placeMouse(double x, double y) {
+        Minecraft mc = Minecraft.getInstance();
+        try {
+            java.lang.reflect.Field xpos = net.minecraft.client.MouseHandler.class.getDeclaredField("xpos");
+            java.lang.reflect.Field ypos = net.minecraft.client.MouseHandler.class.getDeclaredField("ypos");
+            xpos.setAccessible(true);
+            ypos.setAccessible(true);
+            xpos.setDouble(mc.mouseHandler, mc.getWindow().getScreenWidth() * x);
+            ypos.setDouble(mc.mouseHandler, mc.getWindow().getScreenHeight() * y);
+        } catch (ReflectiveOperationException e) {
+            AlpakaAddons.LOGGER.warn("Screenshot tour: could not place the mouse", e);
+        }
     }
 
     /** Every HUD back at its default place, and the inventory HUD on and attached to the hotbar. */

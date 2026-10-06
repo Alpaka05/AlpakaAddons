@@ -41,7 +41,8 @@ import java.util.Map;
  * Any other ratio resamples the glyph - at GUI scale 3 with 4x oversampling every third pixel
  * blends two texels - which is what made the letters look uneven. So every face exists three
  * times, {@code <id>_s2.json}, {@code _s3} and {@code _s4}, identical but for the oversample,
- * and {@link #style()} picks the one matching the current GUI scale. They share the TTF files.
+ * and {@link #style()} picks the one matching the current GUI scale. They share the TTF files, as
+ * do the larger {@code <id>_title_s<n>.json} behind {@link #title}.
  *
  * The glyph pages these fonts are baked into are sampled linearly rather than nearest-neighbour
  * (see {@code FontTextureMixin}); {@link #usesSmoothSampling} is how that mixin recognises them.
@@ -89,6 +90,23 @@ public final class GuiFont {
     /** {@code Component.literal}, in the configured font. Legacy § codes in the text still apply. */
     public static MutableComponent text(String text) {
         return Component.literal(text).withStyle(style());
+    }
+
+    /**
+     * One and a half times the size of {@link #text}, for a screen's title, or null in vanilla's font.
+     *
+     * Its own font definitions ({@code <id>_title_s<n>.json}, the same faces 1.5 times larger) rather
+     * than the normal text drawn under a scaled pose: a TrueType glyph is only crisp at the size it
+     * was rasterised for, and scaling one up blurred the main menu's name. Vanilla's pixel font has
+     * no such definition; callers draw the plain text when this returns null.
+     */
+    public static MutableComponent title(String text) {
+        String id = FONT_IDS[selectedIndex()];
+        if (id == null) return null;
+        String fullId = id + "_title" + scaleSuffix();
+        Style style = STYLE_CACHE.computeIfAbsent(fullId, key ->
+                Style.EMPTY.withFont(new FontDescription.Resource(Identifier.fromNamespaceAndPath("alpaka", key))));
+        return Component.literal(text).withStyle(style);
     }
 
     /** Width of the text in the configured font, for centring and caret placement. */

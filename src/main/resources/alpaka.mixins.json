@@ -42,7 +42,8 @@
     "GuiRendererMixin",
     "KeyboardInputMixin",
     "ChatGraphicsAccessClipMixin",
-    "ClientLevelMixin"
+    "ClientLevelMixin",
+    "PictureInPictureRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

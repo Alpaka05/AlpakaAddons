@@ -154,15 +154,20 @@ def deployToLauncher(File jarFile, String versionStr) {
 def runModrinthCleanup(String profileName) {
     def script = file("tools/ModrinthCleanup.py")
     if (!script.exists()) return
-    try {
-        def process = new ProcessBuilder("python", script.absolutePath, profileName)
-            .redirectErrorStream(true).start()
-        def output = process.inputStream.text.trim()
-        process.waitFor()
-        if (output) println output
-    } catch (Exception e) {
-        println "Modrinth cleanup skipped (python not available?): ${e.message}"
+    // macOS and most Linux installs only have python3; Windows usually only has python.
+    for (interpreter in ["python3", "python"]) {
+        try {
+            def process = new ProcessBuilder(interpreter, script.absolutePath, profileName)
+                .redirectErrorStream(true).start()
+            def output = process.inputStream.text.trim()
+            process.waitFor()
+            if (output) println output
+            return
+        } catch (IOException ignored) {
+            // Not on the PATH; try the next name.
+        }
     }
+    println "Modrinth cleanup skipped: neither python3 nor python is available."
 }
 
 /**

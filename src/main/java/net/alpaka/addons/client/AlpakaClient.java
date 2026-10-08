@@ -47,6 +47,7 @@ public class AlpakaClient implements ClientModInitializer {
         CommandWheelFeature.register();
         InventoryHudFeature.register();
         net.alpaka.addons.features.blaze.FirePitFeature.register();
+        net.alpaka.addons.features.damagetags.CustomDamageTagFeature.register();
         net.alpaka.addons.features.notification.MentionNotifier.register();
         net.alpaka.addons.features.party.PartyInviteFeature.register();
         WorldAgeHudRenderer.registerEvents();
@@ -106,6 +107,15 @@ public class AlpakaClient implements ClientModInitializer {
                             return 1;
                         })
                     )
+                )
+                // "/alpakadebug damagetags": a few sample splashes in front of the player, to see
+                // the custom damage tags without hitting anything on SkyBlock.
+                .then(ClientCommands.literal("damagetags")
+                    .executes(context -> {
+                        Minecraft.getInstance().execute(
+                                net.alpaka.addons.features.damagetags.CustomDamageTagFeature::spawnPreview);
+                        return 1;
+                    })
                 )
                 // "/alpakadebug firepits": runs the fire pit highlight without a Blaze boss, so a
                 // clay block placed in a test world (/setblock) shows how the column looks.

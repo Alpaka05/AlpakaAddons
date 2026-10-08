@@ -281,6 +281,27 @@ public class AlpakaConfig {
     public boolean worldAgeJoinMessageEnabled = true;
     public int worldAgeRecentThresholdSec = 60;
     public boolean onlyCritDamageEnabled = true;
+    /**
+     * The mod draws damage splashes itself, animated and in gradients, in place of Hypixel's.
+     * Off by default while it is being tried out.
+     */
+    public boolean customDamageTagsEnabled = false;
+    public float customDamageTagScale = 1.5f;
+    public int customDamageTagDurationMs = 1100;
+    /** 0..1: how far the tag overshoots its size when it pops up. */
+    public float customDamageTagPopStrength = 0.6f;
+    /** Blocks the tag drifts upwards over its lifetime. */
+    public float customDamageTagRise = 0.6f;
+    /** One of CustomDamageTagFeature.FORMAT_*. */
+    public int customDamageTagFormat = 0;
+    public boolean customDamageTagFlowingGradient = true;
+    public boolean customDamageTagOutline = true;
+    public boolean customDamageTagShadow = false;
+    public boolean customDamageTagThroughWalls = false;
+    public int customDamageTagNormalStart = 0xFFFFFFFF;
+    public int customDamageTagNormalEnd = 0xFF9FB4D0;
+    public int customDamageTagCritStart = 0xFFFFE15A;
+    public int customDamageTagCritEnd = 0xFFFF4A3A;
 
     // Pangolin highlight (Torrhus Canyon critters)
     public boolean pangolinHighlightEnabled = false;
@@ -845,6 +866,7 @@ public class AlpakaConfig {
         this.slayerTimerHudEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
+        this.customDamageTagsEnabled = false;
         this.blockOverlayEnabled = false;
         this.blockFadeInEnabled = false;
         this.blockOutlineEnabled = false;

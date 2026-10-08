@@ -6,6 +6,7 @@ import net.alpaka.addons.features.viewmodel.ItemMotionBlurFeature;
 import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
+import net.alpaka.addons.features.damagetags.CustomDamageTagFeature;
 import net.alpaka.addons.features.etherwarp.EtherwarpOverlayFeature;
 import net.alpaka.addons.features.nametag.CustomNameTagFeature;
 import net.alpaka.addons.features.notification.AlpakaNotifications;
@@ -1318,6 +1319,122 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.onlyCritDamageEnabled,
                 v -> { AlpakaConfig.instance.onlyCritDamageEnabled = v; AlpakaConfig.save(); },
                 "damage indicator tags numbers hide non-crit fire poison abilities crit skyblock"));
+
+        OPTIONS.add(new ConfigOption("custom_damage_tags", "Custom Damage Tags",
+                "Draws damage numbers itself: they pop up, float and fade, in gradients. Visual only.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.customDamageTagsEnabled,
+                v -> { AlpakaConfig.instance.customDamageTagsEnabled = v; AlpakaConfig.save(); },
+                "damage tags numbers splash custom animated pop fade gradient crit replace hypixel"));
+
+        OPTIONS.add(new ConfigOption("custom_damage_tag_scale", "Damage Tag Size",
+                "Size of the custom damage numbers. Crits are drawn a quarter larger.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.customDamageTagScale,
+                v -> { AlpakaConfig.instance.customDamageTagScale = v; AlpakaConfig.save(); },
+                0.5f, 3.0f, val -> String.format(Locale.ROOT, "%.2fx", val),
+                "damage tag size scale big small"));
+
+        OPTIONS.add(new ConfigOption("custom_damage_tag_duration", "Damage Tag Duration",
+                "How long a number stays before it has faded out.",
+                ConfigCategory.SKYBLOCK,
+                () -> (float) AlpakaConfig.instance.customDamageTagDurationMs,
+                v -> { AlpakaConfig.instance.customDamageTagDurationMs = Math.round(v / 50f) * 50; AlpakaConfig.save(); },
+                400.0f, 3000.0f, val -> String.format(Locale.ROOT, "%.2fs", Math.round(val / 50f) * 50 / 1000f),
+                "damage tag duration time lifetime fade long short"));
+
+        OPTIONS.add(new ConfigOption("custom_damage_tag_pop", "Pop Strength",
+                "How far a number overshoots its size when it appears. 0% just grows in.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.customDamageTagPopStrength * 100f,
+                v -> { AlpakaConfig.instance.customDamageTagPopStrength = v / 100f; AlpakaConfig.save(); },
+                0.0f, 100.0f, val -> String.format(Locale.ROOT, "%.0f%%", val),
+                "damage tag pop bounce overshoot animation"));
+
+        OPTIONS.add(new ConfigOption("custom_damage_tag_rise", "Float Height",
+                "How far a number drifts upwards while it fades.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.customDamageTagRise,
+                v -> { AlpakaConfig.instance.customDamageTagRise = v; AlpakaConfig.save(); },
+                0.0f, 2.0f, val -> String.format(Locale.ROOT, "%.2f blocks", val),
+                "damage tag float rise up drift height"));
+
+        OPTIONS.add(new ConfigOption("custom_damage_tag_format", "Number Format",
+                "As Hypixel writes it, shortened (1.2M), or in full with separators.",
+                ConfigCategory.SKYBLOCK,
+                () -> (float) AlpakaConfig.instance.customDamageTagFormat,
+                v -> { AlpakaConfig.instance.customDamageTagFormat = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (CustomDamageTagFeature.FORMAT_NAMES.length - 1),
+                val -> CustomDamageTagFeature.FORMAT_NAMES[Math.round(val)],
+                "damage tag number format compact short million k m b separator"));
+
+        OPTIONS.add(new ConfigOption("custom_damage_tag_flow", "Flowing Gradient",
+                "The gradient sways along the digits instead of standing still.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.customDamageTagFlowingGradient,
+                v -> { AlpakaConfig.instance.customDamageTagFlowingGradient = v; AlpakaConfig.save(); },
+                "damage tag gradient flow animated colour color shimmer"));
+
+        OPTIONS.add(new ConfigOption("custom_damage_tag_outline", "Damage Tag Outline",
+                "A dark outline around the digits, in a shade of the gradient.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.customDamageTagOutline,
+                v -> { AlpakaConfig.instance.customDamageTagOutline = v; AlpakaConfig.save(); },
+                "damage tag outline border readable"));
+
+        OPTIONS.add(new ConfigOption("custom_damage_tag_shadow", "Damage Tag Shadow",
+                "The usual drop shadow, when the outline is off.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.customDamageTagShadow,
+                v -> { AlpakaConfig.instance.customDamageTagShadow = v; AlpakaConfig.save(); },
+                "damage tag shadow drop text"));
+
+        OPTIONS.add(new ConfigOption("custom_damage_tag_walls", "Show Through Walls",
+                "Damage numbers stay visible behind blocks and mobs.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.customDamageTagThroughWalls,
+                v -> { AlpakaConfig.instance.customDamageTagThroughWalls = v; AlpakaConfig.save(); },
+                "damage tag through walls see through xray behind"));
+
+        OPTIONS.add(new ConfigOption("custom_damage_tag_normal_start", "Normal Hit Start Colour",
+                "First colour of a normal hit's gradient.",
+                ConfigCategory.SKYBLOCK,
+                "Choose Color",
+                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Normal Hit Start Colour", AlpakaConfig.instance.customDamageTagNormalStart, color -> {
+                    AlpakaConfig.instance.customDamageTagNormalStart = color;
+                    AlpakaConfig.save();
+                })),
+                "damage tag gradient colour color picker normal start"));
+
+        OPTIONS.add(new ConfigOption("custom_damage_tag_normal_end", "Normal Hit End Colour",
+                "Last colour of a normal hit's gradient.",
+                ConfigCategory.SKYBLOCK,
+                "Choose Color",
+                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Normal Hit End Colour", AlpakaConfig.instance.customDamageTagNormalEnd, color -> {
+                    AlpakaConfig.instance.customDamageTagNormalEnd = color;
+                    AlpakaConfig.save();
+                })),
+                "damage tag gradient colour color picker normal end"));
+
+        OPTIONS.add(new ConfigOption("custom_damage_tag_crit_start", "Crit Start Colour",
+                "First colour of a crit's gradient.",
+                ConfigCategory.SKYBLOCK,
+                "Choose Color",
+                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Crit Start Colour", AlpakaConfig.instance.customDamageTagCritStart, color -> {
+                    AlpakaConfig.instance.customDamageTagCritStart = color;
+                    AlpakaConfig.save();
+                })),
+                "damage tag gradient colour color picker crit start"));
+
+        OPTIONS.add(new ConfigOption("custom_damage_tag_crit_end", "Crit End Colour",
+                "Last colour of a crit's gradient.",
+                ConfigCategory.SKYBLOCK,
+                "Choose Color",
+                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Crit End Colour", AlpakaConfig.instance.customDamageTagCritEnd, color -> {
+                    AlpakaConfig.instance.customDamageTagCritEnd = color;
+                    AlpakaConfig.save();
+                })),
+                "damage tag gradient colour color picker crit end"));
 
 
         // --- 6. COSMETICS ---

@@ -137,6 +137,9 @@ public class AlpakaConfigRegistry {
                         new ConfigOption.ToggleEntry("Flame, smoke, angry villager and lava drip particles",
                                 () -> AlpakaConfig.instance.cleanBlazeParticles,
                                 v -> { AlpakaConfig.instance.cleanBlazeParticles = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Potion effect, enchanting and ender particles",
+                                () -> AlpakaConfig.instance.cleanBlazeEffectParticles,
+                                v -> { AlpakaConfig.instance.cleanBlazeEffectParticles = v; AlpakaConfig.save(); }),
                         new ConfigOption.ToggleEntry("Burning on blazes, minibosses and demons",
                                 () -> AlpakaConfig.instance.cleanBlazeFire,
                                 v -> { AlpakaConfig.instance.cleanBlazeFire = v; AlpakaConfig.save(); }),
@@ -150,7 +153,7 @@ public class AlpakaConfigRegistry {
                                 () -> AlpakaConfig.instance.cleanBlazeNameTags,
                                 v -> { AlpakaConfig.instance.cleanBlazeNameTags = v; AlpakaConfig.save(); })
                 ),
-                "blaze flame smoke angry villager lava drip particles fire burning overlay fireball projectile lightning bolt flash thunder nametag name tag health smoldering miniboss demon clean hide"));
+                "blaze flame smoke angry villager lava drip particles potion effect swirl enchant enchanting glyph ender portal witch spell fire burning overlay fireball projectile lightning bolt flash thunder nametag name tag health smoldering miniboss demon clean hide"));
 
         OPTIONS.add(new ConfigOption("blaze_fire_pits", "Fire Pit Highlight",
                 "During your Blaze slayer boss, marks the fire pits on the floor with a glowing column.",

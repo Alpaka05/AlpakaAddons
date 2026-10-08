@@ -17,8 +17,10 @@ import net.minecraft.world.entity.projectile.hurtingprojectile.SmallFireball
 
 /**
  * Strips the visual noise off Hypixel's blazes while slaying them: their flame, smoke, angry
- * villager and lava drip particles, the burning overlay, the fireballs they throw and lightning,
- * each with its own toggle, and optionally their name tags.
+ * villager and lava drip particles, the potion swirls, enchanting glyphs and ender particles
+ * around the boss and its demons (the ones SkyHanni's slayer spawn particle hider lists), the
+ * burning overlay, the fireballs they throw and lightning, each with its own toggle, and optionally
+ * their name tags.
  *
  * Only on SkyBlock, in the Blaze slayer's zones. It used to apply
  * everywhere: every flame and torch particle in every world, the fire on every entity including the
@@ -74,14 +76,18 @@ object CleanBlazeFeature {
     @JvmStatic
     fun shouldCancelParticle(options: ParticleOptions): Boolean {
         val type = options.type
-        if (type !== ParticleTypes.FLAME && type !== ParticleTypes.SMALL_FLAME &&
-            type !== ParticleTypes.SMOKE && type !== ParticleTypes.LARGE_SMOKE &&
-            type !== ParticleTypes.ANGRY_VILLAGER &&
+        if (type === ParticleTypes.FLAME || type === ParticleTypes.SMALL_FLAME ||
+            type === ParticleTypes.SMOKE || type === ParticleTypes.LARGE_SMOKE ||
+            type === ParticleTypes.ANGRY_VILLAGER ||
             // Lava drips, which some of the minibosses shed: hanging, falling and the splash on landing.
-            type !== ParticleTypes.DRIPPING_LAVA && type !== ParticleTypes.FALLING_LAVA &&
-            type !== ParticleTypes.LANDING_LAVA
-        ) return false
-        return AlpakaConfig.instance.cleanBlazeParticles && active()
+            type === ParticleTypes.DRIPPING_LAVA || type === ParticleTypes.FALLING_LAVA ||
+            type === ParticleTypes.LANDING_LAVA
+        ) return AlpakaConfig.instance.cleanBlazeParticles && active()
+        if (type === ParticleTypes.ENTITY_EFFECT || type === ParticleTypes.EFFECT ||
+            type === ParticleTypes.INSTANT_EFFECT || type === ParticleTypes.WITCH ||
+            type === ParticleTypes.ENCHANT || type === ParticleTypes.PORTAL
+        ) return AlpakaConfig.instance.cleanBlazeEffectParticles && active()
+        return false
     }
 
     /**

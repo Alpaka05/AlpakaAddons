@@ -76,8 +76,8 @@ public class ConfigOption {
 
     // Animation & Hover state tracking
     private float hoverProgress = 0.0f;
-    private float clickProgress = 0.0f;
-    private boolean isDragging = false;
+    /** 0..1 knob position of a BOOLEAN option, easing toward its state; -1 until first drawn. */
+    private float toggleProgress = -1.0f;
 
     // Header constructor
     public ConfigOption(String title, ConfigCategory category) {
@@ -203,7 +203,16 @@ public class ConfigOption {
     }
 
     // Slider getters/setters
-    public float getFloat() { return getterFloat != null ? getterFloat.get() : minVal; }
+    /**
+     * The value, clamped to the slider's range. A hand-edited or old config can hold an index past
+     * the end of a choice list, and the formatters index their name arrays with it every frame.
+     */
+    public float getFloat() {
+        if (getterFloat == null) return minVal;
+        float value = getterFloat.get();
+        if (maxVal <= minVal || Float.isNaN(value)) return Float.isNaN(value) ? minVal : value;
+        return Math.max(minVal, Math.min(maxVal, value));
+    }
     public void setFloat(float val) {
         if (setterFloat != null) {
             setterFloat.accept(Math.max(minVal, Math.min(maxVal, val)));
@@ -228,7 +237,35 @@ public class ConfigOption {
     }
 
     // Action
-    public String getActionLabel() { return actionLabel != null ? actionLabel : "Öffnen..."; }
+    public String getActionLabel() { return actionLabel != null ? actionLabel : "Open..."; }
+
+    private boolean confirmFirst = false;
+
+    /**
+     * Makes this action ask for a second click before it runs, for actions that overwrite something
+     * the player set: saving over a preset, resetting a value.
+     */
+    public ConfigOption confirmFirst() {
+        this.confirmFirst = true;
+        return this;
+    }
+
+    public boolean isConfirmFirst() { return confirmFirst; }
+
+    private boolean buttonOnly = false;
+
+    /**
+     * Makes this action answer only its button, not a click anywhere on its card, for actions that
+     * overwrite settings straight away with nothing to back out of: loading a preset. Every
+     * {@link #confirmFirst()} action is button-only as well. Everything else - a colour picker, an
+     * editor, a reset behind a confirmation screen - opens from the whole card, like a toggle.
+     */
+    public ConfigOption buttonOnly() {
+        this.buttonOnly = true;
+        return this;
+    }
+
+    public boolean isButtonOnly() { return buttonOnly || confirmFirst; }
     public void triggerAction(Screen parent) {
         if (actionHandler != null) {
             actionHandler.accept(parent);
@@ -241,16 +278,16 @@ public class ConfigOption {
         this.hoverProgress = PloppAnimation.interpolate(hoverProgress, isHovered ? 1.0f : 0.0f, deltaSec, 12.0f);
     }
 
-    public float getClickProgress() { return clickProgress; }
-    public void triggerClickAnimation() { this.clickProgress = 1.0f; }
-    public void updateClickProgress(float deltaSec) {
-        if (clickProgress > 0.0f) {
-            clickProgress = Math.max(0.0f, clickProgress - deltaSec * 8.0f);
-        }
+    /** Where the toggle knob is drawn, 0 (off) to 1 (on); the real state until first updated. */
+    public float getToggleProgress() {
+        return toggleProgress < 0.0f ? (getBool() ? 1.0f : 0.0f) : toggleProgress;
     }
 
-    public boolean isDragging() { return isDragging; }
-    public void setDragging(boolean dragging) { isDragging = dragging; }
+    public void updateToggleProgress(float deltaSec) {
+        float target = getBool() ? 1.0f : 0.0f;
+        toggleProgress = toggleProgress < 0.0f ? target : PloppAnimation.interpolate(toggleProgress, target, deltaSec, 12.0f);
+    }
+
 
     /**
      * A free-text option, edited inline in the config list.

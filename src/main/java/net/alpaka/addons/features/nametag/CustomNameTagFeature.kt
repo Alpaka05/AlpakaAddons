@@ -69,8 +69,11 @@ object CustomNameTagFeature {
     /** Vanilla lifts the tag half a block above the attachment point. */
     private const val ATTACHMENT_LIFT = 0.5
 
-    /** The faint colour vanilla uses for the see-through pass: white at alpha 0x20. */
-    private const val SEE_THROUGH_COLOR = 0x20FFFFFF
+    /** The faint colour 26.2's own name tags use for the see-through and sneaking passes: white at alpha 0x80. */
+    private const val SEE_THROUGH_COLOR = 0x80FFFFFF.toInt()
+
+    /** The frame's alpha where it shows through walls; at full strength it outshone the tag itself. */
+    private const val FRAME_SEE_THROUGH_ALPHA = 0x40
 
     /** Height of a text row in text pixels, which is also the backdrop height vanilla draws. */
     private const val ROW_HEIGHT = 9f
@@ -81,8 +84,8 @@ object CustomNameTagFeature {
     /** Thickness of the chroma frame around the backdrop, in text pixels. */
     private const val FRAME_THICKNESS = 0.6f
 
-    /** Depth vanilla's own text background sits at, so ours layers the same way against the text. */
-    private const val BACKDROP_Z = 0.01f
+    /** Depth 26.2's own text background sits at (behind the glyphs), so ours layers the same way. */
+    private const val BACKDROP_Z = -0.01f
 
     /**
      * True while `EntityRenderDispatcher.extractEntity` is running, i.e. while the state being
@@ -169,6 +172,8 @@ object CustomNameTagFeature {
 
         val x0 = -totalWidth / 2f
         val light = state.lightCoords
+        // As vanilla's full pass: never darker than a light level of 2, so the tag reads at night.
+        val fullLight = net.minecraft.util.LightCoordsUtil.lightCoordsWithEmission(light, 2)
 
         // Vanilla's pairing: a faint pass that is drawn through walls, then the full one that is
         // not. Sneaking ("discrete") keeps only the faint pass, and stops it seeing through walls.
@@ -176,6 +181,10 @@ object CustomNameTagFeature {
 
         submitBackdrop(poseStack, collector, cfg, x0, totalWidth.toFloat(), light, time, fullyVisible)
 
+        // The letters go into a later order bucket than the backdrop, the split vanilla's text
+        // displays use. Within one bucket the backdrop - custom geometry - is drawn after the text,
+        // and covered the letters, fully so at a high backdrop opacity.
+        val textOut = collector.order(1)
         val faintMode = if (fullyVisible) Font.DisplayMode.SEE_THROUGH else Font.DisplayMode.NORMAL
         val count = glyphs.size
         var x = x0
@@ -197,12 +206,12 @@ object CustomNameTagFeature {
             poseStack.pushPose()
             if (dx != 0f || dy != 0f) poseStack.translate(dx, dy, 0f)
 
-            collector.submitText(poseStack, x, 0f, sequence, false, faintMode, light, SEE_THROUGH_COLOR, 0, 0)
+            textOut.submitText(poseStack, x, 0f, sequence, false, faintMode, light, SEE_THROUGH_COLOR, 0, 0)
             if (fullyVisible) {
                 val outline = if (cfg.nameTagOutlineEnabled) outlineColor(effectRgb) else 0
                 // The outline pass has no shadow of its own, so the two are exclusive.
                 val shadow = cfg.nameTagShadowEnabled && outline == 0
-                collector.submitText(poseStack, x, 0f, sequence, shadow, Font.DisplayMode.NORMAL, light, -1, 0, outline)
+                textOut.submitText(poseStack, x, 0f, sequence, shadow, Font.DisplayMode.NORMAL, fullLight, -1, 0, outline)
             }
             poseStack.popPose()
 
@@ -306,13 +315,17 @@ object CustomNameTagFeature {
         val frame = cfg.nameTagChromaBorderEnabled
         if (backdropAlpha == 0 && !frame) return
 
+        // Vanilla's backdrop runs from a pixel before the text to the end of its advance, which
+        // already includes the trailing pixel.
         val left = x0 - BACKDROP_PAD
-        val right = x0 + width + BACKDROP_PAD
+        val right = x0 + width
         val top = -BACKDROP_PAD
         val bottom = ROW_HEIGHT
 
-        val renderType = if (seeThrough) RenderTypes.textBackgroundSeeThrough() else RenderTypes.textBackground()
-        collector.submitCustomGeometry(poseStack, renderType) { pose, consumer ->
+        // The backdrop goes in once: through walls unless sneaking, like vanilla's. The frame goes in
+        // twice, at full strength where the tag is in plain view and faintly through walls.
+        val backdropType = if (seeThrough) RenderTypes.textBackgroundSeeThrough() else RenderTypes.textBackground()
+        collector.submitCustomGeometry(poseStack, backdropType) { pose, consumer ->
             if (backdropAlpha > 0) {
                 val color = ARGB.color(backdropAlpha, 0)
                 consumer.addVertex(pose, left, top, BACKDROP_Z).setColor(color).setLight(light)
@@ -320,22 +333,30 @@ object CustomNameTagFeature {
                 consumer.addVertex(pose, right, bottom, BACKDROP_Z).setColor(color).setLight(light)
                 consumer.addVertex(pose, right, top, BACKDROP_Z).setColor(color).setLight(light)
             }
-            if (frame) {
-                val t = FRAME_THICKNESS
-                // Hue runs along x, so the four sides meet in matching colours at the corners.
-                val span = right - left
-                val leftColor = frameColor(time, 0f)
-                val rightColor = frameColor(time, 1f)
-                // Top and bottom bars.
-                frameQuad(pose, consumer, left - t, top - t, right + t, top, leftColor, rightColor, light)
-                frameQuad(pose, consumer, left - t, bottom, right + t, bottom + t, leftColor, rightColor, light)
-                // Left and right bars, each a single colour.
-                frameQuad(pose, consumer, left - t, top, left, bottom, leftColor, leftColor, light)
-                frameQuad(pose, consumer, right, top, right + t, bottom, rightColor, rightColor, light)
-                // span is only needed if the frame ever gains more segments; kept for that.
-                @Suppress("UNUSED_VARIABLE") val unused = span
+            if (frame && seeThrough) submitFrame(pose, consumer, left, right, top, bottom, time, light, FRAME_SEE_THROUGH_ALPHA)
+        }
+        if (frame) {
+            collector.submitCustomGeometry(poseStack, RenderTypes.textBackground()) { pose, consumer ->
+                submitFrame(pose, consumer, left, right, top, bottom, time, light, 255)
             }
         }
+    }
+
+    /** The chroma frame around the backdrop, at the given alpha. */
+    private fun submitFrame(
+        pose: PoseStack.Pose, consumer: com.mojang.blaze3d.vertex.VertexConsumer,
+        left: Float, right: Float, top: Float, bottom: Float, time: Double, light: Int, alpha: Int,
+    ) {
+        val t = FRAME_THICKNESS
+        // Hue runs along x, so the four sides meet in matching colours at the corners.
+        val leftColor = ARGB.color(alpha, frameColor(time, 0f))
+        val rightColor = ARGB.color(alpha, frameColor(time, 1f))
+        // Top and bottom bars.
+        frameQuad(pose, consumer, left - t, top - t, right + t, top, leftColor, rightColor, light)
+        frameQuad(pose, consumer, left - t, bottom, right + t, bottom + t, leftColor, rightColor, light)
+        // Left and right bars, each a single colour.
+        frameQuad(pose, consumer, left - t, top, left, bottom, leftColor, leftColor, light)
+        frameQuad(pose, consumer, right, top, right + t, bottom, rightColor, rightColor, light)
     }
 
     /** The frame's colour at a position along its width, 0 being the left end and 1 the right. */

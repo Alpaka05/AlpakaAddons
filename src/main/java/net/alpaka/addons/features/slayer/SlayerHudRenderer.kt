@@ -281,9 +281,19 @@ object SlayerHudRenderer {
         return rows
     }
 
+    /**
+     * The box the HUD was actually drawn in this frame, or null when it was not drawn. The chat's
+     * click on the HUD is tested against this alone, so a click where nothing is shown always goes
+     * to the chat.
+     */
+    @JvmStatic
+    var lastDrawnBounds: net.alpaka.addons.client.hud.HudBounds? = null
+        private set
+
     /** Called every frame from the HUD hook. */
     @JvmStatic
     fun render(graphics: GuiGraphicsExtractor, @Suppress("UNUSED_PARAMETER") deltaTracker: DeltaTracker) {
+        lastDrawnBounds = null
         val cfg = AlpakaConfig.instance
         if (!cfg.slayerHudEnabled) return
 
@@ -308,6 +318,7 @@ object SlayerHudRenderer {
             SlayerHudElement.visibleAnchorY(screenWidth, screenHeight),
             cfg.slayerHudScale, type, preview = false
         )
+        lastDrawnBounds = SlayerHudElement.visibleBounds(screenWidth, screenHeight)
     }
 
     /** Draws the HUD at an explicit position and size. Shared with the editor. */

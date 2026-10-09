@@ -4,7 +4,6 @@ import com.mojang.logging.LogUtils;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.Screenshot;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.ClickEvent;
@@ -26,8 +25,10 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.Locale;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Consumer;
 
 /**
@@ -40,11 +41,12 @@ import java.util.function.Consumer;
  * events in the mod's namespace; the chat screen hook hands those to {@link #handleClick} before
  * vanilla sees them, because vanilla's answer to a custom click event is to send it to the server.
  *
- * ### Why the payload is a file name and not a path
+ * ### Why the payload is a token and not a file
  *
  * A server can put any component it likes into chat, including a click event with this mod's
- * identifier. So the payload names a file, never a path, and is resolved inside the screenshots
- * folder only - nothing outside it can be read or deleted by a crafted message.
+ * identifier. So the payload is a random token the mod made for one of its own button lines this
+ * session, and only that maps to a file: a crafted message can name no file at all. Delete also
+ * takes a second click, since it cannot be undone.
  *
  * ### Copying
  *
@@ -82,7 +84,7 @@ public final class ScreenshotMessageFeature {
         if (file == null) return false;
 
         boolean buttons = AlpakaConfig.instance.betterScreenshotMessageEnabled;
-        if (AlpakaConfig.instance.autoCopyScreenshots) {
+        if (AlpakaConfig.instance.autoCopyScreenshots && canCopy()) {
             copy(file, error -> {
                 if (buttons) {
                     Component note = error == null
@@ -102,9 +104,40 @@ public final class ScreenshotMessageFeature {
         return false;
     }
 
+    /** Whether copying an image to the clipboard is possible here. Not on macOS; see copy(). */
+    public static boolean canCopy() {
+        return Util.getPlatform() != Util.OS.OSX;
+    }
+
+    /**
+     * The screenshots this session has posted buttons for, by a random token. A button carries only
+     * its token, so a click resolves to a file only if the mod itself put that button in chat; a
+     * server message carrying the mod's click event cannot point it at anything. The last few only.
+     */
+    private static final Map<String, File> TOKENS = new LinkedHashMap<>() {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, File> eldest) {
+            return size() > 32;
+        }
+    };
+
+    /** A Delete that asked for a second click, and until when that click counts. */
+    private static String armedDelete = null;
+    private static long armedUntilMs = 0L;
+    private static final long CONFIRM_WINDOW_MS = 5_000L;
+
+    private static String tokenFor(File file) {
+        String token = UUID.randomUUID().toString();
+        synchronized (TOKENS) {
+            TOKENS.put(token, file);
+        }
+        return token;
+    }
+
     /** "Saved screenshot [Open] [Copy] [Delete]", with an optional note between the text and the buttons. */
     private static Component buttonLine(File file, Component note) {
         String name = file.getName();
+        String token = tokenFor(file);
         MutableComponent line = Component.literal("Saved screenshot").withStyle(style -> style
                 .withColor(ChatFormatting.GRAY)
                 .withHoverEvent(new HoverEvent.ShowText(Component.literal(name).withStyle(ChatFormatting.WHITE))));
@@ -112,8 +145,11 @@ public final class ScreenshotMessageFeature {
             line.append(" ").append(note);
         }
         line.append(" ").append(button("[Open]", ChatFormatting.GREEN, new ClickEvent.OpenFile(file), "Open " + name));
-        line.append(" ").append(button("[Copy]", ChatFormatting.AQUA, custom(COPY, name), "Copy the image to the clipboard"));
-        line.append(" ").append(button("[Delete]", ChatFormatting.RED, custom(DELETE, name), "Delete " + name));
+        // Offered only where it can work: on macOS the copy always fails, see copy().
+        if (canCopy()) {
+            line.append(" ").append(button("[Copy]", ChatFormatting.AQUA, custom(COPY, token), "Copy the image to the clipboard"));
+        }
+        line.append(" ").append(button("[Delete]", ChatFormatting.RED, custom(DELETE, token), "Delete " + name));
         return line;
     }
 
@@ -128,8 +164,8 @@ public final class ScreenshotMessageFeature {
         return null;
     }
 
-    private static ClickEvent custom(Identifier id, String fileName) {
-        return new ClickEvent.Custom(id, Optional.of(StringTag.valueOf(fileName)));
+    private static ClickEvent custom(Identifier id, String token) {
+        return new ClickEvent.Custom(id, Optional.of(StringTag.valueOf(token)));
     }
 
     private static Component button(String text, ChatFormatting color, ClickEvent click, String hover) {
@@ -145,26 +181,30 @@ public final class ScreenshotMessageFeature {
      */
     public static boolean handleClick(ClickEvent.Custom event) {
         if (!NAMESPACE.equals(event.id().getNamespace())) return false;
-        File file = resolve(event.payload().flatMap(Tag::asString).orElse(null));
+        String token = event.payload().flatMap(Tag::asString).orElse(null);
+        File file;
+        synchronized (TOKENS) {
+            file = token == null ? null : TOKENS.get(token);
+        }
         if (file == null) {
-            feedback("§cThat screenshot link is not valid.");
+            feedback("§cThat screenshot link is not from this session.");
         } else if (COPY.equals(event.id())) {
             copy(file, error -> feedback(error == null
                     ? "§aScreenshot copied to the clipboard."
                     : "§cCouldn't copy the screenshot (" + error + ")."));
         } else if (DELETE.equals(event.id())) {
-            delete(file);
+            // Deleting is permanent, so the first click only asks.
+            long now = System.currentTimeMillis();
+            if (token.equals(armedDelete) && now < armedUntilMs) {
+                armedDelete = null;
+                delete(file);
+            } else {
+                armedDelete = token;
+                armedUntilMs = now + CONFIRM_WINDOW_MS;
+                feedback("§7Click §c[Delete]§7 again within 5 seconds to delete §f" + file.getName() + "§7.");
+            }
         }
         return true;
-    }
-
-    /** The named file inside the screenshots folder, or null for anything that is not just a .png name. */
-    private static File resolve(String name) {
-        if (name == null || name.isEmpty()) return null;
-        if (name.contains("/") || name.contains("\\") || name.contains("..")) return null;
-        if (!name.toLowerCase(Locale.ROOT).endsWith(".png")) return null;
-        File folder = new File(Minecraft.getInstance().gameDirectory, Screenshot.SCREENSHOT_DIR);
-        return new File(folder, name);
     }
 
     /**

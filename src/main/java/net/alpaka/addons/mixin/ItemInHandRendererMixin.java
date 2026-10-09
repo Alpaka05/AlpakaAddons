@@ -124,12 +124,17 @@ public class ItemInHandRendererMixin {
             float yOffset = AlpakaConfig.instance.itemYOffset;
             float zOffset = AlpakaConfig.instance.itemZOffset;
 
-            if (hand == InteractionHand.MAIN_HAND) {
-                matrices.translate(xOffset, yOffset, zOffset);
-            } else {
-                matrices.translate(-xOffset, yOffset, zOffset);
-            }
+            // Mirrored by the physical arm, like the rotation below, so a left-handed player's
+            // items move outward too. This one translate covers the bare arm as well: both places
+            // that draw it run inside this method after this point.
+            matrices.translate(alpaka$sideOf(player, hand) == HumanoidArm.RIGHT ? xOffset : -xOffset, yOffset, zOffset);
         }
+    }
+
+    /** Which physical arm holds this hand's item, as vanilla works it out. */
+    @org.spongepowered.asm.mixin.Unique
+    private static HumanoidArm alpaka$sideOf(AbstractClientPlayer player, InteractionHand hand) {
+        return hand == InteractionHand.MAIN_HAND ? player.getMainArm() : player.getMainArm().getOpposite();
     }
 
     @Inject(
@@ -147,32 +152,11 @@ public class ItemInHandRendererMixin {
             float scale = AlpakaConfig.instance.itemScale;
             matrices.mulPose(Axis.XP.rotationDegrees(AlpakaConfig.instance.itemRotationX));
             
-            boolean isLeftHand = (hand == InteractionHand.OFF_HAND && player.getMainArm() == HumanoidArm.RIGHT)
-                    || (hand == InteractionHand.MAIN_HAND && player.getMainArm() == HumanoidArm.LEFT);
+            boolean isLeftHand = alpaka$sideOf(player, hand) == HumanoidArm.LEFT;
             matrices.mulPose(Axis.YP.rotationDegrees(isLeftHand ? -AlpakaConfig.instance.itemRotationY : AlpakaConfig.instance.itemRotationY));
             matrices.mulPose(Axis.ZP.rotationDegrees(isLeftHand ? -AlpakaConfig.instance.itemRotationZ : AlpakaConfig.instance.itemRotationZ));
             
             matrices.scale(scale, scale, scale);
-        }
-    }
-
-    @Inject(method = "renderPlayerArm", at = @At("HEAD"))
-    private void onBeforeRenderHand(
-            PoseStack matrices, SubmitNodeCollector queue, int light, float equipProgress,
-            float swingProgress, HumanoidArm arm, CallbackInfo ci) {
-        if (AlpakaConfig.instance.itemSizeFeatureEnabled) {
-            if (AlpakaConfig.instance.itemIgnoreEmptyHandEnabled) {
-                return;
-            }
-            float xOffset = AlpakaConfig.instance.itemXOffset;
-            float yOffset = AlpakaConfig.instance.itemYOffset;
-            float zOffset = AlpakaConfig.instance.itemZOffset;
-
-            if (arm == HumanoidArm.RIGHT) {
-                matrices.translate(xOffset, yOffset, zOffset);
-            } else {
-                matrices.translate(-xOffset, yOffset, zOffset);
-            }
         }
     }
 
@@ -204,6 +188,9 @@ public class ItemInHandRendererMixin {
             if (AlpakaConfig.instance.itemIgnoreEmptyHandEnabled && item.isEmpty()) {
                 return swingProgress;
             }
+            // Only the hand that is swinging, as vanilla does; the other gets its 0 unchanged.
+            InteractionHand swinging = player.swingingArm != null ? player.swingingArm : InteractionHand.MAIN_HAND;
+            if (hand != swinging) return swingProgress;
             return getCustomSwingProgress(player, swingProgress);
         }
         return swingProgress;

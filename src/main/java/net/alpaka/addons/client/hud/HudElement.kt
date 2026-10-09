@@ -62,8 +62,12 @@ interface HudElement {
     /** Restores this element's default position and size. */
     fun reset()
 
-    /** Draws the element exactly as it appears in-game, at its configured position and size. */
-    fun render(graphics: GuiGraphicsExtractor)
+    /**
+     * Draws the element exactly as it appears in-game, with its anchor at ([x], [y]) - the editor
+     * passes [visibleAnchorX] and [visibleAnchorY], the position the game draws it at. Drawing at the
+     * stored position instead put the preview off screen while its outline sat clamped on screen.
+     */
+    fun render(graphics: GuiGraphicsExtractor, x: Int, y: Int)
 
     /** Current size. Used for change detection, so it must reflect what [adjustScale] writes. */
     fun scaleValue(): Float
@@ -108,7 +112,7 @@ interface HudElement {
  * An element larger than the screen cannot fit either way, so it is pinned to the near edge -
  * showing its start beats showing its middle with both ends cut off.
  */
-private fun clampShift(low: Int, high: Int, limit: Int): Int = when {
+internal fun clampShift(low: Int, high: Int, limit: Int): Int = when {
     high - low >= limit -> -low
     low < 0 -> -low
     high > limit -> limit - high

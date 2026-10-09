@@ -48,12 +48,12 @@ object PlayerModelHudElement : HudElement {
         cfg.playerModelScale = PlayerModelRenderer.DEFAULT_SCALE
     }
 
-    override fun render(graphics: GuiGraphicsExtractor) {
+    override fun render(graphics: GuiGraphicsExtractor, x: Int, y: Int) {
         // Null on the title screen, where the config screen - and so this editor - is reachable
         // without a world loaded. The box is still draggable; there is just nothing to draw in it.
         val player = Minecraft.getInstance().player ?: return
         val cfg = AlpakaConfig.instance
-        PlayerModelRenderer.renderPlayerModel(graphics, cfg.playerModelX, cfg.playerModelY, cfg.playerModelScale, player)
+        PlayerModelRenderer.renderPlayerModel(graphics, x, y, cfg.playerModelScale, player)
     }
 
     override fun scaleValue(): Float = AlpakaConfig.instance.playerModelScale.toFloat()

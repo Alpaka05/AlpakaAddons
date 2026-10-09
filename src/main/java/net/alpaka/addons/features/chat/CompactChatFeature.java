@@ -89,6 +89,8 @@ public final class CompactChatFeature {
      */
     public static Component compact(Component content, List<GuiMessage> allMessages, List<GuiMessage.Line> trimmedMessages) {
         pending = null;
+        removedIndex = -1;
+        removedCount = 0;
         if (!isEnabled()) {
             forget();
             return content;
@@ -165,6 +167,23 @@ public final class CompactChatFeature {
      * and there may be none if a chat tab was hiding it. Returns false when the message was already
      * gone, in which case there is nothing to fold into.
      */
+    /** Where the last fold took lines out of the display list, and how many; -1 when it took none. */
+    private static int removedIndex = -1;
+    private static int removedCount = 0;
+
+    /**
+     * How many display lines the last {@link #compact} took out, and from which index of the
+     * newest-first list, read once by the smooth chat so an in-place fold does not slide the chat.
+     * Returns {index, count}, or null when nothing was removed.
+     */
+    public static int[] takeRemovedLines() {
+        if (removedIndex < 0) return null;
+        int[] result = {removedIndex, removedCount};
+        removedIndex = -1;
+        removedCount = 0;
+        return result;
+    }
+
     private static boolean remove(GuiMessage message, List<GuiMessage> allMessages, List<GuiMessage.Line> trimmedMessages) {
         boolean removed = false;
         Iterator<GuiMessage> it = allMessages.iterator();
@@ -176,7 +195,19 @@ public final class CompactChatFeature {
             }
         }
         if (removed) {
+            int first = -1;
+            int count = 0;
+            for (int i = 0; i < trimmedMessages.size(); i++) {
+                if (trimmedMessages.get(i).parent() == message) {
+                    if (first < 0) first = i;
+                    count++;
+                }
+            }
             trimmedMessages.removeIf(line -> line.parent() == message);
+            if (count > 0) {
+                removedIndex = first;
+                removedCount = count;
+            }
         }
         return removed;
     }

@@ -47,6 +47,16 @@ object SkyblockProfileTracker {
     var current: String? = null
         private set
 
+    /**
+     * The account the profile was announced to, as a UUID string. A profile belongs to the account
+     * that was playing when Hypixel named it; after switching accounts it says nothing about the new
+     * one, whose kills would otherwise be filed under the old account's profile name.
+     */
+    private var announcedFor: String? = null
+
+    /** The profile announced to [account], or null when none was announced to that account. */
+    fun currentFor(account: String): String? = if (account == announcedFor) current else null
+
     fun register() {
         ClientReceiveMessageEvents.GAME.register { message, overlay ->
             if (!overlay) onChat(message.string)
@@ -73,10 +83,13 @@ object SkyblockProfileTracker {
             AlpakaAddons.LOGGER.info("Skyblock profile: {}", name)
         }
         current = name
+        announcedFor = net.minecraft.client.Minecraft.getInstance().user?.profileId?.toString()
     }
 
     /** Forgets the profile, for a disconnect. The next join announces it again. */
+    @JvmStatic
     fun clear() {
         current = null
+        announcedFor = null
     }
 }

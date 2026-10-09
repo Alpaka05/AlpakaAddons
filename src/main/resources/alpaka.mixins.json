@@ -5,7 +5,6 @@
   "refmap": "alpaka.refmap.json",
   "client": [
     "GameRendererMixin",
-    "PlayerMixin",
     "MouseHandlerMixin",
     "AbstractClientPlayerMixin",
     "ScreenMixin",
@@ -16,6 +15,7 @@
     "MinecraftMixin",
     "CameraMixin",
     "GuiMixin",
+    "HudOverlayAccessor",
     "WideHealthBarMixin",
     "ItemInHandRendererMixin",
     "LightmapMixin",
@@ -25,6 +25,7 @@
     "ChatScreenMixin",
     "CameraTypeMixin",
     "BlazeModelMixin",
+    "LightningBoltMixin",
     "EntityRenderDispatcherMixin",
     "LivingEntityRendererAccessor",
     "AvatarRendererMixin",
@@ -36,7 +37,15 @@
     "RenderTypeInvoker",
     "GuiGraphicsExtractorMixin",
     "KeyboardHandlerMixin",
-    "SkyHanniTabListRendererMixin"
+    "SkyHanniTabListRendererMixin",
+    "FontTextureMixin",
+    "GuiRendererMixin",
+    "KeyboardInputMixin",
+    "ChatGraphicsAccessClipMixin",
+    "ClientLevelMixin",
+    "PictureInPictureRendererMixin",
+    "UnattendedCommandMixin",
+    "DialogCommandMixin"
   ],
   "injectors": {
     "defaultRequire": 1

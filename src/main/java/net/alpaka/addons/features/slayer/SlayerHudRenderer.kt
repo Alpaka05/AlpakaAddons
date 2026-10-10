@@ -121,6 +121,7 @@ object SlayerHudRenderer {
         if (cfg.slayerHudShowBossesPerHour) mask = mask or (1 shl 6)
         if (cfg.slayerHudShowSessionTime) mask = mask or (1 shl 7)
         if (cfg.slayerHudShowSinceRngDrop) mask = mask or (1 shl 8)
+        if (cfg.slayerHudShowBear) mask = mask or (1 shl 9)
         return mask
     }
 
@@ -210,7 +211,7 @@ object SlayerHudRenderer {
      */
     private fun buildRows(type: SlayerType?, preview: Boolean): List<Line> {
         val cfg = AlpakaConfig.instance
-        val rows = ArrayList<Line>(9)
+        val rows = ArrayList<Line>(10)
 
         val shown = type ?: SlayerType.BLAZE
         val session = if (preview) null else SlayerSessionTracker.session(shown)
@@ -276,6 +277,13 @@ object SlayerHudRenderer {
                 val since = if (preview) 28 else SlayerRngDropTracker.bossesSince(shown)
                 rows.add(Line("Since ${shortItemName(item)}", since?.toString() ?: "-", COLOR_VALUE))
             }
+        }
+
+        // Smoldering Polarization, from the Re-heated Gummy Polar Bear. A Blaze slayer buff, so only
+        // on the Blaze HUD.
+        if (cfg.slayerHudShowBear && shown == SlayerType.BLAZE) {
+            val left = if (preview) 4_320_000L else SmolderingPolarization.remainingMs()
+            rows.add(if (left > 0) Line("Bear", formatDuration(left), COLOR_GOOD) else Line("Bear", "inactive", COLOR_PAUSED))
         }
 
         return rows

@@ -223,6 +223,13 @@ public class AlpakaConfig {
     public boolean slayerHudShowBossesPerHour = true;
     public boolean slayerHudShowSessionTime = true;
     public boolean slayerHudShowSinceRngDrop = true;
+    /** The "Bear" line: time left on Smoldering Polarization, on the Blaze HUD. */
+    public boolean slayerHudShowBear = true;
+    /**
+     * Time left on Smoldering Polarization (Re-heated Gummy Polar Bear), kept across restarts since
+     * the effect only runs down on SkyBlock. 0 when inactive. See SmolderingPolarization.
+     */
+    public long smolderingPolarizationRemainingMs = 0L;
     /** Seconds of standing still before the session clock stops. */
     public float slayerHudAfkPauseSeconds = 60.0f;
     /** Stop the clock the moment the sidebar says the player is no longer in the slayer's zone. */

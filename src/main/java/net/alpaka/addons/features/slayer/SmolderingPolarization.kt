@@ -43,6 +43,8 @@ object SmolderingPolarization {
     fun register() {
         ClientTickEvents.END_CLIENT_TICK.register { tick(it) }
         ClientReceiveMessageEvents.GAME.register { message, overlay -> if (!overlay) onChat(message) }
+        // The same line hidden from chat by another mod still counts.
+        ClientReceiveMessageEvents.GAME_CANCELED.register { message, overlay -> if (!overlay) onChat(message) }
     }
 
     /** Milliseconds left, or 0 when the effect is not active. */

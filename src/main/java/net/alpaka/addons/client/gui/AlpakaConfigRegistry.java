@@ -40,8 +40,9 @@ public class AlpakaConfigRegistry {
         OPTIONS.clear();
 
         // The General tab is what opens first, so it holds only what a new player needs before
-        // anything else: whether the mod may reach the network at all, the one place HUDs are
-        // arranged, and the way back out of everything.
+        // anything else: whether the mod may reach the network at all, how the mod's own menus look
+        // and whether they replace vanilla's, the one place HUDs are arranged, and the way back out
+        // of everything.
         OPTIONS.add(new ConfigOption("allow_api_calls", "Allow Network Features",
                 "Used for the mayor's XP buff, the main menu's player count and the update check.",
                 ConfigCategory.GENERAL,
@@ -90,6 +91,20 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.menuAccentColor,
                 v -> { AlpakaConfig.instance.menuAccentColor = v; AlpakaConfig.save(); },
                 "menu accent color theme custom picker border highlight gui teal gold cyan red green blue"));
+
+        OPTIONS.add(new ConfigOption("custom_escape_menu", "Custom Escape Menu",
+                "Enables custom styled Alpaka pause screen (ESC).",
+                ConfigCategory.GENERAL,
+                () -> AlpakaConfig.instance.customEscapeMenuEnabled,
+                v -> { AlpakaConfig.instance.customEscapeMenuEnabled = v; AlpakaConfig.save(); },
+                "custom escape menu pause screen esc button design visuals"));
+
+        OPTIONS.add(new ConfigOption("custom_main_menu", "Custom Main Menu",
+                "Enables Hypixel-themed custom title screen on launch.",
+                ConfigCategory.GENERAL,
+                () -> AlpakaConfig.instance.customMainMenuEnabled,
+                v -> { AlpakaConfig.instance.customMainMenuEnabled = v; AlpakaConfig.save(); },
+                "custom main menu title screen hypixel start launch background GUI"));
 
         OPTIONS.add(new ConfigOption("hud_editor", "HUD Editor",
                 "Move and resize every HUD - session, boss timer, world age, inventory, avatar.",
@@ -319,7 +334,7 @@ public class AlpakaConfigRegistry {
                 "chat blur strength radius amount intensity frosted glass background lighter clearer sharp"));
 
         OPTIONS.add(new ConfigOption("chat_search", "Chat Search",
-                "Ctrl+F in the chat filters it to messages containing your text.",
+                "Ctrl+F (Cmd+F on Mac) in the chat filters it to messages containing your text.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.chatSearchEnabled,
                 v -> { AlpakaConfig.instance.chatSearchEnabled = v; AlpakaConfig.save(); },
@@ -428,22 +443,6 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.chatTabsKeepAfterClose,
                 v -> { AlpakaConfig.instance.chatTabsKeepAfterClose = v; AlpakaConfig.save(); },
                 "chat tabs keep remember filter hud close stay"));
-
-        OPTIONS.add(new ConfigOption("Mod Menus", ConfigCategory.VISUALS));
-
-        OPTIONS.add(new ConfigOption("custom_escape_menu", "Custom Escape Menu",
-                "Enables custom styled Alpaka pause screen (ESC).",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.customEscapeMenuEnabled,
-                v -> { AlpakaConfig.instance.customEscapeMenuEnabled = v; AlpakaConfig.save(); },
-                "custom escape menu pause screen esc button design visuals"));
-
-        OPTIONS.add(new ConfigOption("custom_main_menu", "Custom Main Menu",
-                "Enables Hypixel-themed custom title screen on launch.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.customMainMenuEnabled,
-                v -> { AlpakaConfig.instance.customMainMenuEnabled = v; AlpakaConfig.save(); },
-                "custom main menu title screen hypixel start launch background GUI"));
 
         // Player model and inventory HUD lived on their own Custom HUD tab; they are overlays like
         // everything else here, and one tab fewer is one fewer place to look.

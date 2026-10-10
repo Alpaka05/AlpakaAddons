@@ -43,8 +43,9 @@ public class ChatScreenMixin {
      */
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
     private void alpaka$tabCyclesChatTabs(KeyEvent event, CallbackInfoReturnable<Boolean> cir) {
-        // Chat search: Ctrl+F toggles it, and Enter sends nothing while it is on.
-        if (ChatSearchFeature.isEnabled() && event.key() == InputConstants.KEY_F && event.hasControlDown()) {
+        // Chat search: Ctrl+F toggles it - Cmd+F on macOS, the platform's own find shortcut - and
+        // Enter sends nothing while it is on.
+        if (ChatSearchFeature.isEnabled() && event.key() == InputConstants.KEY_F && event.hasControlDownWithQuirk()) {
             ChatSearchFeature.toggle(this.input);
             cir.setReturnValue(true);
             return;

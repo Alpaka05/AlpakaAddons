@@ -223,6 +223,10 @@ public class AlpakaConfig {
     public boolean slayerHudShowBossesPerHour = true;
     public boolean slayerHudShowSessionTime = true;
     public boolean slayerHudShowSinceRngDrop = true;
+    /** The "Bear" line: time left on Smoldering Polarization, on every slayer's HUD. */
+    public boolean slayerHudShowBear = true;
+    /** Keeps the "Bear" line to the Blaze HUD, where the effect matters most. */
+    public boolean slayerHudBearBlazeOnly = false;
     /** Seconds of standing still before the session clock stops. */
     public float slayerHudAfkPauseSeconds = 60.0f;
     /** Stop the clock the moment the sidebar says the player is no longer in the slayer's zone. */

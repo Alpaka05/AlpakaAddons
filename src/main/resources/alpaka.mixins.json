@@ -16,6 +16,7 @@
     "GuiMixin",
     "HudMixin",
     "HudOverlayAccessor",
+    "PlayerTabOverlayAccessor",
     "WideHealthBarMixin",
     "ItemInHandRendererMixin",
     "LightmapMixin",

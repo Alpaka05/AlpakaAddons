@@ -283,8 +283,8 @@ object SlayerHudRenderer {
         // Smoldering Polarization, from the Re-heated Gummy Polar Bear. Best for Blaze, but the other
         // slayers profit too through Habanero Tactics, so it shows on every slayer unless asked not to.
         if (cfg.slayerHudShowBear && (!cfg.slayerHudBearBlazeOnly || shown == SlayerType.BLAZE)) {
-            val left = if (preview) 4_320_000L else SmolderingPolarization.remainingMs()
-            rows.add(if (left > 0) Line("Bear", formatDuration(left), COLOR_GOOD) else Line("Bear", "inactive", COLOR_PAUSED))
+            val time = if (preview) "1h 12m" else SmolderingPolarization.shownTime
+            rows.add(if (time != null) Line("Bear", time, COLOR_GOOD) else Line("Bear", "inactive", COLOR_PAUSED))
         }
 
         return rows

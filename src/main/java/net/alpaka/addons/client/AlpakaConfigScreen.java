@@ -579,7 +579,7 @@ public class AlpakaConfigScreen extends Screen {
         return switch (opt.getType()) {
             case BOOLEAN -> 32;
             case TEXT -> 120;
-            case ACTION -> opt.getId().contains("color") ? 38
+            case ACTION -> opt.isColor() ? 38
                     : Math.max(80, Math.max(GuiFont.width(this.font, opt.getActionLabel()),
                             opt.isConfirmFirst() ? GuiFont.width(this.font, CONFIRM_LABEL) : 0) + 16);
             default -> 90;

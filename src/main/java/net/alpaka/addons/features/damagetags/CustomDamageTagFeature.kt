@@ -2,6 +2,8 @@ package net.alpaka.addons.features.damagetags
 
 import com.mojang.blaze3d.vertex.PoseStack
 import net.alpaka.addons.config.AlpakaConfig
+import net.alpaka.addons.features.slayer.SlayerBossNameTag
+import net.alpaka.addons.features.slayer.SlayerType
 import net.alpaka.addons.utils.DungeonState
 import net.alpaka.addons.utils.SkyblockUtils
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
@@ -40,18 +42,15 @@ object CustomDamageTagFeature {
     @JvmField
     val DUNGEON_MODE_NAMES = arrayOf("Show", "Hide In Boss Room", "Hide In Whole Dungeon")
 
+    /** The slayer bosses' names, from every slayer. */
+    private val SLAYER_BOSS_NAMES: Array<String> =
+        SlayerType.values().flatMap { it.bossNames.asIterable() }.toTypedArray()
+
     /**
-     * The name tags of slayer bosses, and of the Blaze slayer's demons, which take damage as the
-     * boss does. Names as SkyHanni lists them.
+     * The Blaze boss's demons, which take damage as the boss does. Their names are circled letters
+     * no other mob uses, so the name alone settles it.
      */
-    private val SLAYER_BOSS_NAMES = arrayOf(
-        "Revenant Horror", "Atoned Horror",
-        "Tarantula Broodfather", "Conjoined Brood",
-        "Sven Packmaster",
-        "Voidgloom Seraph",
-        "Inferno Demonlord", "ⓆⓊⒶⓏⒾⒾ", "ⓉⓎⓅⒽⓄⒺⓊⓈ",
-        "Riftstalker Bloodfiend",
-    )
+    private val DEMON_NAMES = arrayOf("ⓆⓊⒶⓏⒾⒾ", "ⓉⓎⓅⒽⓄⒺⓊⓈ")
 
     /** How far from a splash a slayer boss's name tag may be for the splash to count as the boss's. */
     private const val BOSS_RADIUS_XZ = 4.5
@@ -170,15 +169,13 @@ object CustomDamageTagFeature {
     /**
      * Whether a slayer boss stands next to this splash, judged by the boss's name tag: what
      * SkyHanni's "Hide Damage Splashes Near Slayer Boss" checks, any player's boss included.
-     *
-     * The mobs farmed to summon a boss can share its name ("[Lv5] Revenant Horror" in the
-     * Graveyard), and only the boss's tag goes without the level prefix.
+     * [SlayerBossNameTag] keeps out the summoning mobs that share a boss's name.
      */
     private fun nearSlayerBoss(level: ClientLevel, splash: ArmorStand): Boolean {
         val box = splash.boundingBox.inflate(BOSS_RADIUS_XZ, BOSS_RADIUS_Y, BOSS_RADIUS_XZ)
         return level.getEntitiesOfClass(ArmorStand::class.java, box) { stand ->
-            val name = stand.customName?.string ?: return@getEntitiesOfClass false
-            !name.contains("[Lv") && SLAYER_BOSS_NAMES.any { SkyblockUtils.containsIgnoringFormatting(name, it) }
+            val name = SkyblockUtils.cleanColor(stand.customName?.string ?: return@getEntitiesOfClass false)
+            SlayerBossNameTag.isBoss(name, SLAYER_BOSS_NAMES) || DEMON_NAMES.any { name.contains(it) }
         }.isNotEmpty()
     }
 

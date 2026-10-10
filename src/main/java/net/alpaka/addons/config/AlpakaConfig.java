@@ -301,7 +301,6 @@ public class AlpakaConfig {
     public int customDamageTagFormat = 0;
     public boolean customDamageTagFlowingGradient = true;
     public boolean customDamageTagShadow = true;
-    public boolean customDamageTagThroughWalls = false;
     /** No custom tag for a splash next to a slayer boss, any player's, like SkyHanni's option. */
     public boolean customDamageTagHideNearSlayerBoss = false;
     /** One of CustomDamageTagFeature.DUNGEON_*. */

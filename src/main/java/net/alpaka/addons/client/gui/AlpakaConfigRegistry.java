@@ -1368,12 +1368,6 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customDamageTagShadow = v; AlpakaConfig.save(); },
                 "damage tag shadow drop text"));
 
-        OPTIONS.add(new ConfigOption("custom_damage_tag_walls", "Show Through Walls",
-                "Damage numbers stay visible behind blocks and mobs.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.customDamageTagThroughWalls,
-                v -> { AlpakaConfig.instance.customDamageTagThroughWalls = v; AlpakaConfig.save(); },
-                "damage tag through walls see through xray behind"));
 
         OPTIONS.add(new ConfigOption("custom_damage_tag_hide_slayer", "Hide Near Slayer Bosses",
                 "No custom damage numbers on or right next to a slayer boss, yours or anyone's.",

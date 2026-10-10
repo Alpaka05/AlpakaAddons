@@ -196,7 +196,6 @@ object CustomDamageTagFeature {
         val now = System.currentTimeMillis()
         val lifetime = cfg.customDamageTagDurationMs.toFloat()
         val time = (now % 3_600_000L) / 1000.0
-        val displayMode = if (cfg.customDamageTagThroughWalls) Font.DisplayMode.SEE_THROUGH else Font.DisplayMode.NORMAL
 
         for (tag in tags) {
             val ageMs = (now - tag.bornMs).toFloat()
@@ -229,7 +228,7 @@ object CustomDamageTagFeature {
             poseStack.scale(scale, -scale, scale)
 
             val color = ARGB.color(alpha, 0xFFFFFF)
-            out.submitText(poseStack, -width / 2f, -4f, sequence, cfg.customDamageTagShadow, displayMode, FULL_BRIGHT, color, 0, 0)
+            out.submitText(poseStack, -width / 2f, -4f, sequence, cfg.customDamageTagShadow, Font.DisplayMode.NORMAL, FULL_BRIGHT, color, 0, 0)
             poseStack.popPose()
         }
     }

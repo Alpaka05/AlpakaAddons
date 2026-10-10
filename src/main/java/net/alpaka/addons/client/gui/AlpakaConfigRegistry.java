@@ -1375,6 +1375,22 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customDamageTagThroughWalls = v; AlpakaConfig.save(); },
                 "damage tag through walls see through xray behind"));
 
+        OPTIONS.add(new ConfigOption("custom_damage_tag_hide_slayer", "Hide Near Slayer Bosses",
+                "No custom damage numbers on or right next to a slayer boss, yours or anyone's.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.customDamageTagHideNearSlayerBoss,
+                v -> { AlpakaConfig.instance.customDamageTagHideNearSlayerBoss = v; AlpakaConfig.save(); },
+                "damage tag hide slayer boss near revenant tarantula sven voidgloom inferno demonlord vampire skyhanni"));
+
+        OPTIONS.add(new ConfigOption("custom_damage_tag_dungeon_mode", "Damage Tags In Dungeons",
+                "Hides the custom damage numbers in the dungeon boss room, or in the whole run.",
+                ConfigCategory.SKYBLOCK,
+                () -> (float) AlpakaConfig.instance.customDamageTagDungeonMode,
+                v -> { AlpakaConfig.instance.customDamageTagDungeonMode = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (CustomDamageTagFeature.DUNGEON_MODE_NAMES.length - 1),
+                val -> CustomDamageTagFeature.DUNGEON_MODE_NAMES[Math.round(val)],
+                "damage tag dungeon catacombs boss room floor hide master mode"));
+
         OPTIONS.add(ConfigOption.color("custom_damage_tag_normal_start", "Normal Hit Start Colour",
                 "First colour of a normal hit's gradient.",
                 ConfigCategory.SKYBLOCK,

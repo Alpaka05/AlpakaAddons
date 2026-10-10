@@ -2,12 +2,14 @@ package net.alpaka.addons.features.damagetags
 
 import com.mojang.blaze3d.vertex.PoseStack
 import net.alpaka.addons.config.AlpakaConfig
+import net.alpaka.addons.utils.DungeonState
 import net.alpaka.addons.utils.SkyblockUtils
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
+import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.network.chat.Component
 import net.minecraft.util.ARGB
 import net.minecraft.util.Mth
@@ -29,6 +31,31 @@ import kotlin.math.sin
  * long Hypixel keeps the stand around.
  */
 object CustomDamageTagFeature {
+
+    const val DUNGEON_SHOW = 0
+    const val DUNGEON_HIDE_BOSS_ROOM = 1
+    const val DUNGEON_HIDE_EVERYWHERE = 2
+
+    /** Names for the config slider, indexed by the DUNGEON_* constants. */
+    @JvmField
+    val DUNGEON_MODE_NAMES = arrayOf("Show", "Hide In Boss Room", "Hide In Whole Dungeon")
+
+    /**
+     * The name tags of slayer bosses, and of the Blaze slayer's demons, which take damage as the
+     * boss does. Names as SkyHanni lists them.
+     */
+    private val SLAYER_BOSS_NAMES = arrayOf(
+        "Revenant Horror", "Atoned Horror",
+        "Tarantula Broodfather", "Conjoined Brood",
+        "Sven Packmaster",
+        "Voidgloom Seraph",
+        "Inferno Demonlord", "ⓆⓊⒶⓏⒾⒾ", "ⓉⓎⓅⒽⓄⒺⓊⓈ",
+        "Riftstalker Bloodfiend",
+    )
+
+    /** How far from a splash a slayer boss's name tag may be for the splash to count as the boss's. */
+    private const val BOSS_RADIUS_XZ = 4.5
+    private const val BOSS_RADIUS_Y = 5.0
 
     const val FORMAT_ORIGINAL = 0
     const val FORMAT_COMPACT = 1
@@ -120,6 +147,11 @@ object CustomDamageTagFeature {
 
         val level = mc.level
         if (!cfg.customDamageTagsEnabled || level == null || !SkyblockUtils.isOnSkyblock()) return
+        val hiddenInDungeon = when (cfg.customDamageTagDungeonMode) {
+            DUNGEON_HIDE_EVERYWHERE -> DungeonState.inDungeon()
+            DUNGEON_HIDE_BOSS_ROOM -> DungeonState.inBossRoom
+            else -> false
+        }
 
         for (entity in level.entitiesForRendering()) {
             if (entity !is ArmorStand || entity.tickCount > MAX_DETECT_AGE_TICKS) continue
@@ -128,8 +160,26 @@ object CustomDamageTagFeature {
             seen[entity.id] = now
             // Only Show Crit Damage still applies: a hidden non-crit gets no replacement either.
             if (!splash.crit && cfg.onlyCritDamageEnabled) continue
+            // Hypixel's own splash stays hidden either way; these only decide whether ours is drawn.
+            if (hiddenInDungeon) continue
+            if (cfg.customDamageTagHideNearSlayerBoss && nearSlayerBoss(level, entity)) continue
             add(Tag(entity.x, entity.y + entity.bbHeight + NAME_TAG_LIFT, entity.z, format(splash.number), splash.crit, now))
         }
+    }
+
+    /**
+     * Whether a slayer boss stands next to this splash, judged by the boss's name tag: what
+     * SkyHanni's "Hide Damage Splashes Near Slayer Boss" checks, any player's boss included.
+     *
+     * The mobs farmed to summon a boss can share its name ("[Lv5] Revenant Horror" in the
+     * Graveyard), and only the boss's tag goes without the level prefix.
+     */
+    private fun nearSlayerBoss(level: ClientLevel, splash: ArmorStand): Boolean {
+        val box = splash.boundingBox.inflate(BOSS_RADIUS_XZ, BOSS_RADIUS_Y, BOSS_RADIUS_XZ)
+        return level.getEntitiesOfClass(ArmorStand::class.java, box) { stand ->
+            val name = stand.customName?.string ?: return@getEntitiesOfClass false
+            !name.contains("[Lv") && SLAYER_BOSS_NAMES.any { SkyblockUtils.containsIgnoringFormatting(name, it) }
+        }.isNotEmpty()
     }
 
     private fun add(tag: Tag) {

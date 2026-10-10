@@ -49,6 +49,7 @@ public class AlpakaClient implements ClientModInitializer {
         InventoryHudFeature.register();
         net.alpaka.addons.features.blaze.FirePitFeature.register();
         net.alpaka.addons.features.damagetags.CustomDamageTagFeature.register();
+        net.alpaka.addons.utils.DungeonState.register();
         net.alpaka.addons.features.notification.MentionNotifier.register();
         net.alpaka.addons.features.party.PartyInviteFeature.register();
         WorldAgeHudRenderer.registerEvents();

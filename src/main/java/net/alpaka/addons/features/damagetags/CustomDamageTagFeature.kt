@@ -2,12 +2,16 @@ package net.alpaka.addons.features.damagetags
 
 import com.mojang.blaze3d.vertex.PoseStack
 import net.alpaka.addons.config.AlpakaConfig
+import net.alpaka.addons.features.slayer.SlayerBossNameTag
+import net.alpaka.addons.features.slayer.SlayerType
+import net.alpaka.addons.utils.DungeonState
 import net.alpaka.addons.utils.SkyblockUtils
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
+import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.network.chat.Component
 import net.minecraft.util.ARGB
 import net.minecraft.util.Mth
@@ -29,6 +33,28 @@ import kotlin.math.sin
  * long Hypixel keeps the stand around.
  */
 object CustomDamageTagFeature {
+
+    const val DUNGEON_SHOW = 0
+    const val DUNGEON_HIDE_BOSS_ROOM = 1
+    const val DUNGEON_HIDE_EVERYWHERE = 2
+
+    /** Names for the config slider, indexed by the DUNGEON_* constants. */
+    @JvmField
+    val DUNGEON_MODE_NAMES = arrayOf("Show", "Hide In Boss Room", "Hide In Whole Dungeon")
+
+    /** The slayer bosses' names, from every slayer. */
+    private val SLAYER_BOSS_NAMES: Array<String> =
+        SlayerType.values().flatMap { it.bossNames.asIterable() }.toTypedArray()
+
+    /**
+     * The Blaze boss's demons, which take damage as the boss does. Their names are circled letters
+     * no other mob uses, so the name alone settles it.
+     */
+    private val DEMON_NAMES = arrayOf("ⓆⓊⒶⓏⒾⒾ", "ⓉⓎⓅⒽⓄⒺⓊⓈ")
+
+    /** How far from a splash a slayer boss's name tag may be for the splash to count as the boss's. */
+    private const val BOSS_RADIUS_XZ = 4.5
+    private const val BOSS_RADIUS_Y = 5.0
 
     const val FORMAT_ORIGINAL = 0
     const val FORMAT_COMPACT = 1
@@ -120,6 +146,11 @@ object CustomDamageTagFeature {
 
         val level = mc.level
         if (!cfg.customDamageTagsEnabled || level == null || !SkyblockUtils.isOnSkyblock()) return
+        val hiddenInDungeon = when (cfg.customDamageTagDungeonMode) {
+            DUNGEON_HIDE_EVERYWHERE -> DungeonState.inDungeon()
+            DUNGEON_HIDE_BOSS_ROOM -> DungeonState.inBossRoom
+            else -> false
+        }
 
         for (entity in level.entitiesForRendering()) {
             if (entity !is ArmorStand || entity.tickCount > MAX_DETECT_AGE_TICKS) continue
@@ -128,8 +159,24 @@ object CustomDamageTagFeature {
             seen[entity.id] = now
             // Only Show Crit Damage still applies: a hidden non-crit gets no replacement either.
             if (!splash.crit && cfg.onlyCritDamageEnabled) continue
+            // Hypixel's own splash stays hidden either way; these only decide whether ours is drawn.
+            if (hiddenInDungeon) continue
+            if (cfg.customDamageTagHideNearSlayerBoss && nearSlayerBoss(level, entity)) continue
             add(Tag(entity.x, entity.y + entity.bbHeight + NAME_TAG_LIFT, entity.z, format(splash.number), splash.crit, now))
         }
+    }
+
+    /**
+     * Whether a slayer boss stands next to this splash, judged by the boss's name tag: what
+     * SkyHanni's "Hide Damage Splashes Near Slayer Boss" checks, any player's boss included.
+     * [SlayerBossNameTag] keeps out the summoning mobs that share a boss's name.
+     */
+    private fun nearSlayerBoss(level: ClientLevel, splash: ArmorStand): Boolean {
+        val box = splash.boundingBox.inflate(BOSS_RADIUS_XZ, BOSS_RADIUS_Y, BOSS_RADIUS_XZ)
+        return level.getEntitiesOfClass(ArmorStand::class.java, box) { stand ->
+            val name = SkyblockUtils.cleanColor(stand.customName?.string ?: return@getEntitiesOfClass false)
+            SlayerBossNameTag.isBoss(name, SLAYER_BOSS_NAMES) || DEMON_NAMES.any { name.contains(it) }
+        }.isNotEmpty()
     }
 
     private fun add(tag: Tag) {
@@ -149,7 +196,6 @@ object CustomDamageTagFeature {
         val now = System.currentTimeMillis()
         val lifetime = cfg.customDamageTagDurationMs.toFloat()
         val time = (now % 3_600_000L) / 1000.0
-        val displayMode = if (cfg.customDamageTagThroughWalls) Font.DisplayMode.SEE_THROUGH else Font.DisplayMode.NORMAL
 
         for (tag in tags) {
             val ageMs = (now - tag.bornMs).toFloat()
@@ -182,7 +228,7 @@ object CustomDamageTagFeature {
             poseStack.scale(scale, -scale, scale)
 
             val color = ARGB.color(alpha, 0xFFFFFF)
-            out.submitText(poseStack, -width / 2f, -4f, sequence, cfg.customDamageTagShadow, displayMode, FULL_BRIGHT, color, 0, 0)
+            out.submitText(poseStack, -width / 2f, -4f, sequence, cfg.customDamageTagShadow, Font.DisplayMode.NORMAL, FULL_BRIGHT, color, 0, 0)
             poseStack.popPose()
         }
     }

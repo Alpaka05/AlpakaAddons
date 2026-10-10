@@ -122,6 +122,7 @@ object SlayerHudRenderer {
         if (cfg.slayerHudShowSessionTime) mask = mask or (1 shl 7)
         if (cfg.slayerHudShowSinceRngDrop) mask = mask or (1 shl 8)
         if (cfg.slayerHudShowBear) mask = mask or (1 shl 9)
+        if (cfg.slayerHudBearBlazeOnly) mask = mask or (1 shl 10)
         return mask
     }
 
@@ -279,9 +280,9 @@ object SlayerHudRenderer {
             }
         }
 
-        // Smoldering Polarization, from the Re-heated Gummy Polar Bear. A Blaze slayer buff, so only
-        // on the Blaze HUD.
-        if (cfg.slayerHudShowBear && shown == SlayerType.BLAZE) {
+        // Smoldering Polarization, from the Re-heated Gummy Polar Bear. Best for Blaze, but the other
+        // slayers profit too through Habanero Tactics, so it shows on every slayer unless asked not to.
+        if (cfg.slayerHudShowBear && (!cfg.slayerHudBearBlazeOnly || shown == SlayerType.BLAZE)) {
             val left = if (preview) 4_320_000L else SmolderingPolarization.remainingMs()
             rows.add(if (left > 0) Line("Bear", formatDuration(left), COLOR_GOOD) else Line("Bear", "inactive", COLOR_PAUSED))
         }

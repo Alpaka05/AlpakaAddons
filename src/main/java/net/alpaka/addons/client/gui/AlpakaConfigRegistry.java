@@ -1173,9 +1173,12 @@ public class AlpakaConfigRegistry {
                         new ConfigOption.ToggleEntry("Bosses since RNG drop",
                                 () -> AlpakaConfig.instance.slayerHudShowSinceRngDrop,
                                 v -> { AlpakaConfig.instance.slayerHudShowSinceRngDrop = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Polar bear effect (Blaze)",
+                        new ConfigOption.ToggleEntry("Polar bear effect",
                                 () -> AlpakaConfig.instance.slayerHudShowBear,
-                                v -> { AlpakaConfig.instance.slayerHudShowBear = v; AlpakaConfig.save(); })
+                                v -> { AlpakaConfig.instance.slayerHudShowBear = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Polar bear: Blaze only",
+                                () -> AlpakaConfig.instance.slayerHudBearBlazeOnly,
+                                v -> { AlpakaConfig.instance.slayerHudBearBlazeOnly = v; AlpakaConfig.save(); })
                 ),
                 "slayer hud lines toggle show hide xp bosses per hour session time rng dry streak average bear gummy polar smoldering polarization effect"));
 

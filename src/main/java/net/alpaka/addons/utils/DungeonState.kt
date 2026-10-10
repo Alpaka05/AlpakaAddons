@@ -41,6 +41,9 @@ object DungeonState {
     fun register() {
         ClientTickEvents.END_CLIENT_TICK.register { tick() }
         ClientReceiveMessageEvents.GAME.register { message, overlay -> if (!overlay) onChat(message) }
+        // A boss line another mod hides (SkyHanni's "Dungeon Boss Messages") arrives here instead,
+        // and still marks the boss room.
+        ClientReceiveMessageEvents.GAME_CANCELED.register { message, overlay -> if (!overlay) onChat(message) }
     }
 
     @JvmStatic

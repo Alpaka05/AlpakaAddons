@@ -69,6 +69,8 @@ public class ConfigOption {
     // Action
     private Consumer<Screen> actionHandler;
     private String actionLabel;
+    /** Set for colour options only: the current colour, which the button shows as its swatch. */
+    private java.util.function.IntSupplier colorGetter;
 
     // Dropdown
     private List<ToggleEntry> entries;
@@ -130,6 +132,21 @@ public class ConfigOption {
         this.actionLabel = actionLabel;
         this.actionHandler = actionHandler;
         this.keywords = (title + " " + description + " " + keywords).toLowerCase();
+    }
+
+    /**
+     * A colour option: a button showing the current colour as a swatch, which opens the colour
+     * picker. Every colour setting is made this way, so the config screen needs no list of them.
+     */
+    public static ConfigOption color(String id, String title, String description, ConfigCategory category,
+                                     java.util.function.IntSupplier getter, java.util.function.IntConsumer setter,
+                                     String keywords) {
+        ConfigOption option = new ConfigOption(id, title, description, category, "Choose Color",
+                parent -> net.minecraft.client.Minecraft.getInstance().gui.setScreen(
+                        new net.alpaka.addons.client.ColorPickerScreen(parent, title, getter.getAsInt(), setter::accept)),
+                keywords);
+        option.colorGetter = getter;
+        return option;
     }
 
     // Dropdown constructor
@@ -238,6 +255,12 @@ public class ConfigOption {
 
     // Action
     public String getActionLabel() { return actionLabel != null ? actionLabel : "Open..."; }
+
+    /** Whether this is a colour option, made by {@link #color}. */
+    public boolean isColor() { return colorGetter != null; }
+
+    /** The colour a colour option currently holds. */
+    public int getColor() { return colorGetter.getAsInt(); }
 
     private boolean confirmFirst = false;
 

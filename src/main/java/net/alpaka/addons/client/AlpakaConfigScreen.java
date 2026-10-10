@@ -505,21 +505,8 @@ public class AlpakaConfigScreen extends Screen {
                         } else if (opt.getType() == ConfigOption.Type.ACTION) {
                             boolean isWidgetHovered = mouseX >= widgetX && mouseX <= widgetX + widgetW && mouseY >= widgetY && mouseY <= widgetY + widgetH && mouseY >= clipY && mouseY <= clipY + clipH;
 
-                            if (opt.getId().contains("color")) {
-                                int colorVal = switch (opt.getId()) {
-                                    case "menu_accent_color" -> net.alpaka.addons.config.AlpakaConfig.instance.menuAccentColor;
-                                    case "block_fill_color" -> net.alpaka.addons.config.AlpakaConfig.instance.blockFillColor;
-                                    case "pangolin_highlight_color" -> net.alpaka.addons.config.AlpakaConfig.instance.pangolinHighlightColor;
-                                    case "chroma_hat_color" -> net.alpaka.addons.config.AlpakaConfig.instance.chromaHatColor;
-                                    case "etherwarp_overlay_color" -> net.alpaka.addons.config.AlpakaConfig.instance.etherwarpOverlayColor;
-                                    case "etherwarp_fail_color" -> net.alpaka.addons.config.AlpakaConfig.instance.etherwarpOverlayFailColor;
-                                    case "name_tag_gradient_start_color" -> net.alpaka.addons.config.AlpakaConfig.instance.nameTagGradientStart;
-                                    case "name_tag_gradient_end_color" -> net.alpaka.addons.config.AlpakaConfig.instance.nameTagGradientEnd;
-                                    case "inventory_hud_frame_start_color" -> net.alpaka.addons.config.AlpakaConfig.instance.inventoryHudFrameStart;
-                                    case "inventory_hud_frame_end_color" -> net.alpaka.addons.config.AlpakaConfig.instance.inventoryHudFrameEnd;
-                                    default -> net.alpaka.addons.config.AlpakaConfig.instance.blockOutlineColor;
-                                };
-                                ModernGuiUtils.drawModernColorButton(graphics, this.font, widgetX, widgetY, widgetW, widgetH, colorVal, isWidgetHovered);
+                            if (opt.isColor()) {
+                                ModernGuiUtils.drawModernColorButton(graphics, this.font, widgetX, widgetY, widgetW, widgetH, opt.getColor(), isWidgetHovered);
                             } else if (opt.getId().equals("disable_all_features")) {
                                 ModernGuiUtils.drawModernDestructiveButton(graphics, this.font, widgetX, widgetY, widgetW, widgetH, opt.getActionLabel(), isWidgetHovered);
                             } else {
@@ -592,7 +579,7 @@ public class AlpakaConfigScreen extends Screen {
         return switch (opt.getType()) {
             case BOOLEAN -> 32;
             case TEXT -> 120;
-            case ACTION -> opt.getId().contains("color") ? 38
+            case ACTION -> opt.isColor() ? 38
                     : Math.max(80, Math.max(GuiFont.width(this.font, opt.getActionLabel()),
                             opt.isConfirmFirst() ? GuiFont.width(this.font, CONFIRM_LABEL) : 0) + 16);
             default -> 90;

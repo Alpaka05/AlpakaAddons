@@ -20,17 +20,42 @@ public class DamageTagFeature {
     private static final int MAX_TAG_AGE_TICKS = 300;
 
     public static boolean shouldHideEntity(Entity entity) {
-        if (!AlpakaConfig.instance.onlyCritDamageEnabled) return false;
+        return shouldHideNameTag(entity);
+    }
+
+    /**
+     * Hypixel's own splash goes either way when the custom tags are on, crit or not:
+     * {@link CustomDamageTagFeature} draws its replacement.
+     */
+    public static boolean shouldHideNameTag(Entity entity) {
+        AlpakaConfig cfg = AlpakaConfig.instance;
+        if (!cfg.onlyCritDamageEnabled && !cfg.customDamageTagsEnabled) return false;
         if (!SkyblockUtils.isOnSkyblock()) return false;
 
+        if (cfg.customDamageTagsEnabled) return parseSplash(entity) != null;
         return isNonCritSplash(entity);
     }
 
-    public static boolean shouldHideNameTag(Entity entity) {
-        if (!AlpakaConfig.instance.onlyCritDamageEnabled) return false;
-        if (!SkyblockUtils.isOnSkyblock()) return false;
+    /** A damage splash read off its armor stand: the number as Hypixel wrote it, and whether it crit. */
+    public record Splash(String number, boolean crit) {}
 
-        return isNonCritSplash(entity);
+    /** The splash this entity shows, or null when it is not a young armor stand named like one. */
+    public static Splash parseSplash(Entity entity) {
+        if (!(entity instanceof ArmorStand armorStand) || armorStand.tickCount > MAX_TAG_AGE_TICKS) return null;
+        return parseDamageTag(armorStand.getCustomName() != null ? armorStand.getCustomName().getString() : null);
+    }
+
+    /** Any damage tag, crit or not, under the same rules as {@link #isNonCritDamageTag}. */
+    public static Splash parseDamageTag(String customName) {
+        if (customName == null || customName.isEmpty() || !couldBeDamageTag(customName)) return null;
+        if (customName.contains("§l")) return null;
+
+        String clean = SkyblockUtils.cleanColor(customName).trim();
+        boolean crit = clean.indexOf('✧') >= 0 || clean.indexOf('✦') >= 0;
+        // Stars, the asterisks some splashes carry, and the spaces between them are decoration.
+        String number = clean.replaceAll("[✧✦*\\s]", "");
+        if (number.isEmpty() || !DAMAGE_NUMBER.matcher(number).matches()) return null;
+        return new Splash(number, crit);
     }
 
     /** A young armor stand whose name is a non-crit damage number. Other entities never are. */

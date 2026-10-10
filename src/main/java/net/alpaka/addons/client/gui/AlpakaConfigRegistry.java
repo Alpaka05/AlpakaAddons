@@ -1,7 +1,6 @@
 package net.alpaka.addons.client.gui;
 
 import java.util.Locale;
-import net.alpaka.addons.client.ColorPickerScreen;
 import net.alpaka.addons.features.viewmodel.ItemMotionBlurFeature;
 import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.config.AlpakaConfig;
@@ -78,14 +77,11 @@ public class AlpakaConfigRegistry {
                 val -> GuiFont.NAMES[Math.round(val)],
                 "menu font typeface text smooth modern inter poppins varela round outfit minecraft pixel gui bold"));
 
-        OPTIONS.add(new ConfigOption("menu_accent_color", "Menu Accent Color",
+        OPTIONS.add(ConfigOption.color("menu_accent_color", "Menu Accent Color",
                 "The highlight colour of every Alpaka menu.",
                 ConfigCategory.GENERAL,
-                "Choose Color",
-                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Menu Accent Color", AlpakaConfig.instance.menuAccentColor, color -> {
-                    AlpakaConfig.instance.menuAccentColor = color;
-                    AlpakaConfig.save();
-                })),
+                () -> AlpakaConfig.instance.menuAccentColor,
+                v -> { AlpakaConfig.instance.menuAccentColor = v; AlpakaConfig.save(); },
                 "menu accent color theme custom picker border highlight gui teal gold cyan red green blue"));
 
         OPTIONS.add(new ConfigOption("hud_editor", "HUD Editor",
@@ -537,24 +533,18 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.inventoryHudFrame = v; AlpakaConfig.save(); },
                 "inventory hud frame border outline gradient rahmen hide remove flat panel"));
 
-        OPTIONS.add(new ConfigOption("inventory_hud_frame_start_color", "Frame Start Colour",
+        OPTIONS.add(ConfigOption.color("inventory_hud_frame_start_color", "Frame Start Colour",
                 "First colour of the flat panel's frame gradient.",
                 ConfigCategory.VISUALS,
-                "Choose Color",
-                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Frame Start Colour", AlpakaConfig.instance.inventoryHudFrameStart, color -> {
-                    AlpakaConfig.instance.inventoryHudFrameStart = color;
-                    AlpakaConfig.save();
-                })),
+                () -> AlpakaConfig.instance.inventoryHudFrameStart,
+                v -> { AlpakaConfig.instance.inventoryHudFrameStart = v; AlpakaConfig.save(); },
                 "inventory hud frame border outline gradient colour color start first picker"));
 
-        OPTIONS.add(new ConfigOption("inventory_hud_frame_end_color", "Frame End Colour",
+        OPTIONS.add(ConfigOption.color("inventory_hud_frame_end_color", "Frame End Colour",
                 "Second colour of the flat panel's frame gradient.",
                 ConfigCategory.VISUALS,
-                "Choose Color",
-                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Frame End Colour", AlpakaConfig.instance.inventoryHudFrameEnd, color -> {
-                    AlpakaConfig.instance.inventoryHudFrameEnd = color;
-                    AlpakaConfig.save();
-                })),
+                () -> AlpakaConfig.instance.inventoryHudFrameEnd,
+                v -> { AlpakaConfig.instance.inventoryHudFrameEnd = v; AlpakaConfig.save(); },
                 "inventory hud frame border outline gradient colour color end second picker"));
 
         OPTIONS.add(new ConfigOption("inventory_hud_bg_opacity", "Background Opacity",
@@ -876,14 +866,11 @@ public class AlpakaConfigRegistry {
                 0.5f, 10.0f, val -> String.format(Locale.ROOT, "%.1fpx", val),
                 "outline thickness line width border size"));
 
-        OPTIONS.add(new ConfigOption("block_outline_color", "Outline Color",
+        OPTIONS.add(ConfigOption.color("block_outline_color", "Outline Color",
                 "Select color for the block outline.",
                 ConfigCategory.BLOCK_OVERLAY,
-                "Choose Color",
-                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Block Outline Color", AlpakaConfig.instance.blockOutlineColor, color -> {
-                    AlpakaConfig.instance.blockOutlineColor = color;
-                    AlpakaConfig.save();
-                })),
+                () -> AlpakaConfig.instance.blockOutlineColor,
+                v -> { AlpakaConfig.instance.blockOutlineColor = v; AlpakaConfig.save(); },
                 "block outline color picker rgb alpha cyan red blue"));
 
         OPTIONS.add(new ConfigOption("Fill", ConfigCategory.BLOCK_OVERLAY));
@@ -895,14 +882,11 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.blockFillEnabled = v; AlpakaConfig.save(); },
                 "block fill solid transparent face shading color"));
 
-        OPTIONS.add(new ConfigOption("block_fill_color", "Fill Color",
+        OPTIONS.add(ConfigOption.color("block_fill_color", "Fill Color",
                 "Select fill color and transparency for targeted blocks.",
                 ConfigCategory.BLOCK_OVERLAY,
-                "Choose Color",
-                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Block Fill Color", AlpakaConfig.instance.blockFillColor, color -> {
-                    AlpakaConfig.instance.blockFillColor = color;
-                    AlpakaConfig.save();
-                })),
+                () -> AlpakaConfig.instance.blockFillColor,
+                v -> { AlpakaConfig.instance.blockFillColor = v; AlpakaConfig.save(); },
                 "block fill color picker rgb alpha transparency tint"));
 
         OPTIONS.add(new ConfigOption("Animation", ConfigCategory.BLOCK_OVERLAY));
@@ -973,14 +957,11 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.etherwarpOverlayEnabled = v; AlpakaConfig.save(); },
                 "etherwarp ether transmission conduit aspect void teleport target block highlight overlay guess"));
 
-        OPTIONS.add(new ConfigOption("etherwarp_overlay_color", "Target Colour",
+        OPTIONS.add(ConfigOption.color("etherwarp_overlay_color", "Target Colour",
                 "Box colour when the warp will work.",
                 ConfigCategory.SKYBLOCK,
-                "Choose Color",
-                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Etherwarp Target Colour", AlpakaConfig.instance.etherwarpOverlayColor, color -> {
-                    AlpakaConfig.instance.etherwarpOverlayColor = color;
-                    AlpakaConfig.save();
-                })),
+                () -> AlpakaConfig.instance.etherwarpOverlayColor,
+                v -> { AlpakaConfig.instance.etherwarpOverlayColor = v; AlpakaConfig.save(); },
                 "etherwarp colour color target box gold"));
 
         OPTIONS.add(new ConfigOption("etherwarp_show_fail", "Show Blocked Targets",
@@ -990,14 +971,11 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.etherwarpOverlayShowFail = v; AlpakaConfig.save(); },
                 "etherwarp fail blocked invalid red no space"));
 
-        OPTIONS.add(new ConfigOption("etherwarp_fail_color", "Fail Colour",
+        OPTIONS.add(ConfigOption.color("etherwarp_fail_color", "Fail Colour",
                 "Box colour when the warp will be refused.",
                 ConfigCategory.SKYBLOCK,
-                "Choose Color",
-                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Etherwarp Fail Colour", AlpakaConfig.instance.etherwarpOverlayFailColor, color -> {
-                    AlpakaConfig.instance.etherwarpOverlayFailColor = color;
-                    AlpakaConfig.save();
-                })),
+                () -> AlpakaConfig.instance.etherwarpOverlayFailColor,
+                v -> { AlpakaConfig.instance.etherwarpOverlayFailColor = v; AlpakaConfig.save(); },
                 "etherwarp fail colour color red blocked"));
 
         OPTIONS.add(new ConfigOption("etherwarp_fill", "Fill Target Block",
@@ -1301,14 +1279,11 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.pangolinHighlightEnabled = v; AlpakaConfig.save(); },
                 "pangolin highlight glow outline critter torrhus torhus canyon hideaway armadillo skyblock"));
 
-        OPTIONS.add(new ConfigOption("pangolin_highlight_color", "Pangolin Outline Color",
+        OPTIONS.add(ConfigOption.color("pangolin_highlight_color", "Pangolin Outline Color",
                 "Select the glowing outline color used for highlighted Pangolins.",
                 ConfigCategory.SKYBLOCK,
-                "Choose Color",
-                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Pangolin Outline Color", AlpakaConfig.instance.pangolinHighlightColor, color -> {
-                    AlpakaConfig.instance.pangolinHighlightColor = color;
-                    AlpakaConfig.save();
-                })),
+                () -> AlpakaConfig.instance.pangolinHighlightColor,
+                v -> { AlpakaConfig.instance.pangolinHighlightColor = v; AlpakaConfig.save(); },
                 "pangolin outline color glow highlight picker critter torrhus canyon"));
 
         OPTIONS.add(new ConfigOption("Damage Display", ConfigCategory.SKYBLOCK));
@@ -1375,15 +1350,9 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customDamageTagFlowingGradient = v; AlpakaConfig.save(); },
                 "damage tag gradient flow animated colour color shimmer"));
 
-        OPTIONS.add(new ConfigOption("custom_damage_tag_outline", "Damage Tag Outline",
-                "A dark outline around the digits, in a shade of the gradient.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.customDamageTagOutline,
-                v -> { AlpakaConfig.instance.customDamageTagOutline = v; AlpakaConfig.save(); },
-                "damage tag outline border readable"));
 
         OPTIONS.add(new ConfigOption("custom_damage_tag_shadow", "Damage Tag Shadow",
-                "The usual drop shadow, when the outline is off.",
+                "A drop shadow behind the digits, so they read on bright backgrounds.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.customDamageTagShadow,
                 v -> { AlpakaConfig.instance.customDamageTagShadow = v; AlpakaConfig.save(); },
@@ -1396,44 +1365,32 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customDamageTagThroughWalls = v; AlpakaConfig.save(); },
                 "damage tag through walls see through xray behind"));
 
-        OPTIONS.add(new ConfigOption("custom_damage_tag_normal_start", "Normal Hit Start Colour",
+        OPTIONS.add(ConfigOption.color("custom_damage_tag_normal_start", "Normal Hit Start Colour",
                 "First colour of a normal hit's gradient.",
                 ConfigCategory.SKYBLOCK,
-                "Choose Color",
-                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Normal Hit Start Colour", AlpakaConfig.instance.customDamageTagNormalStart, color -> {
-                    AlpakaConfig.instance.customDamageTagNormalStart = color;
-                    AlpakaConfig.save();
-                })),
+                () -> AlpakaConfig.instance.customDamageTagNormalStart,
+                v -> { AlpakaConfig.instance.customDamageTagNormalStart = v; AlpakaConfig.save(); },
                 "damage tag gradient colour color picker normal start"));
 
-        OPTIONS.add(new ConfigOption("custom_damage_tag_normal_end", "Normal Hit End Colour",
+        OPTIONS.add(ConfigOption.color("custom_damage_tag_normal_end", "Normal Hit End Colour",
                 "Last colour of a normal hit's gradient.",
                 ConfigCategory.SKYBLOCK,
-                "Choose Color",
-                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Normal Hit End Colour", AlpakaConfig.instance.customDamageTagNormalEnd, color -> {
-                    AlpakaConfig.instance.customDamageTagNormalEnd = color;
-                    AlpakaConfig.save();
-                })),
+                () -> AlpakaConfig.instance.customDamageTagNormalEnd,
+                v -> { AlpakaConfig.instance.customDamageTagNormalEnd = v; AlpakaConfig.save(); },
                 "damage tag gradient colour color picker normal end"));
 
-        OPTIONS.add(new ConfigOption("custom_damage_tag_crit_start", "Crit Start Colour",
+        OPTIONS.add(ConfigOption.color("custom_damage_tag_crit_start", "Crit Start Colour",
                 "First colour of a crit's gradient.",
                 ConfigCategory.SKYBLOCK,
-                "Choose Color",
-                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Crit Start Colour", AlpakaConfig.instance.customDamageTagCritStart, color -> {
-                    AlpakaConfig.instance.customDamageTagCritStart = color;
-                    AlpakaConfig.save();
-                })),
+                () -> AlpakaConfig.instance.customDamageTagCritStart,
+                v -> { AlpakaConfig.instance.customDamageTagCritStart = v; AlpakaConfig.save(); },
                 "damage tag gradient colour color picker crit start"));
 
-        OPTIONS.add(new ConfigOption("custom_damage_tag_crit_end", "Crit End Colour",
+        OPTIONS.add(ConfigOption.color("custom_damage_tag_crit_end", "Crit End Colour",
                 "Last colour of a crit's gradient.",
                 ConfigCategory.SKYBLOCK,
-                "Choose Color",
-                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Crit End Colour", AlpakaConfig.instance.customDamageTagCritEnd, color -> {
-                    AlpakaConfig.instance.customDamageTagCritEnd = color;
-                    AlpakaConfig.save();
-                })),
+                () -> AlpakaConfig.instance.customDamageTagCritEnd,
+                v -> { AlpakaConfig.instance.customDamageTagCritEnd = v; AlpakaConfig.save(); },
                 "damage tag gradient colour color picker crit end"));
 
 
@@ -1533,24 +1490,18 @@ public class AlpakaConfigRegistry {
                 0.0f, 100.0f, val -> val == 0.0f ? "Off (0%)" : String.format(Locale.ROOT, "%.0f%%", val),
                 "name tag background backdrop opacity dark box"));
 
-        OPTIONS.add(new ConfigOption("name_tag_gradient_start_color", "Gradient Start Colour",
+        OPTIONS.add(ConfigOption.color("name_tag_gradient_start_color", "Gradient Start Colour",
                 "First colour of the Gradient effect.",
                 ConfigCategory.COSMETICS,
-                "Choose Color",
-                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Gradient Start Colour", AlpakaConfig.instance.nameTagGradientStart, color -> {
-                    AlpakaConfig.instance.nameTagGradientStart = color;
-                    AlpakaConfig.save();
-                })),
+                () -> AlpakaConfig.instance.nameTagGradientStart,
+                v -> { AlpakaConfig.instance.nameTagGradientStart = v; AlpakaConfig.save(); },
                 "name tag gradient colour color start first picker"));
 
-        OPTIONS.add(new ConfigOption("name_tag_gradient_end_color", "Gradient End Colour",
+        OPTIONS.add(ConfigOption.color("name_tag_gradient_end_color", "Gradient End Colour",
                 "Second colour of the Gradient effect.",
                 ConfigCategory.COSMETICS,
-                "Choose Color",
-                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Gradient End Colour", AlpakaConfig.instance.nameTagGradientEnd, color -> {
-                    AlpakaConfig.instance.nameTagGradientEnd = color;
-                    AlpakaConfig.save();
-                })),
+                () -> AlpakaConfig.instance.nameTagGradientEnd,
+                v -> { AlpakaConfig.instance.nameTagGradientEnd = v; AlpakaConfig.save(); },
                 "name tag gradient colour color end second picker"));
 
         OPTIONS.add(new ConfigOption("Sensei Hat", ConfigCategory.COSMETICS));
@@ -1569,14 +1520,11 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.chromaHatRainbow = v; AlpakaConfig.save(); },
                 "chroma hat rainbow colours glow emissive"));
 
-        OPTIONS.add(new ConfigOption("chroma_hat_color", "Hat Colour",
+        OPTIONS.add(ConfigOption.color("chroma_hat_color", "Hat Colour",
                 "Colour of the plain hat while Chroma Colours is off.",
                 ConfigCategory.COSMETICS,
-                "Choose Color",
-                parent -> Minecraft.getInstance().gui.setScreen(new ColorPickerScreen(parent, "Hat Colour", AlpakaConfig.instance.chromaHatColor, color -> {
-                    AlpakaConfig.instance.chromaHatColor = color;
-                    AlpakaConfig.save();
-                })),
+                () -> AlpakaConfig.instance.chromaHatColor,
+                v -> { AlpakaConfig.instance.chromaHatColor = v; AlpakaConfig.save(); },
                 "chroma hat colour color straw plain picker"));
 
         OPTIONS.add(new ConfigOption("chroma_hat_opacity", "Hat Opacity",

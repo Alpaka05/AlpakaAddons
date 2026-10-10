@@ -182,10 +182,7 @@ object CustomDamageTagFeature {
             poseStack.scale(scale, -scale, scale)
 
             val color = ARGB.color(alpha, 0xFFFFFF)
-            val outline = if (cfg.customDamageTagOutline) ARGB.color(alpha, darken(start, 0.2f)) else 0
-            // The outline pass draws no shadow of its own, so the two are exclusive.
-            val shadow = cfg.customDamageTagShadow && outline == 0
-            out.submitText(poseStack, -width / 2f, -4f, sequence, shadow, displayMode, FULL_BRIGHT, color, 0, outline)
+            out.submitText(poseStack, -width / 2f, -4f, sequence, cfg.customDamageTagShadow, displayMode, FULL_BRIGHT, color, 0, 0)
             poseStack.popPose()
         }
     }
@@ -261,10 +258,4 @@ object CustomDamageTagFeature {
         return ARGB.color(r, g, b) and 0xFFFFFF
     }
 
-    private fun darken(rgb: Int, factor: Float): Int {
-        val r = (ARGB.red(rgb) * factor).toInt()
-        val g = (ARGB.green(rgb) * factor).toInt()
-        val b = (ARGB.blue(rgb) * factor).toInt()
-        return ARGB.color(r, g, b) and 0xFFFFFF
-    }
 }

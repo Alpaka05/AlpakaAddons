@@ -295,8 +295,7 @@ public class AlpakaConfig {
     /** One of CustomDamageTagFeature.FORMAT_*. */
     public int customDamageTagFormat = 0;
     public boolean customDamageTagFlowingGradient = true;
-    public boolean customDamageTagOutline = true;
-    public boolean customDamageTagShadow = false;
+    public boolean customDamageTagShadow = true;
     public boolean customDamageTagThroughWalls = false;
     public int customDamageTagNormalStart = 0xFFFFFFFF;
     public int customDamageTagNormalEnd = 0xFF9FB4D0;

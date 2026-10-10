@@ -238,12 +238,15 @@ public class AlpakaConfig {
      * Whether the mod may contact anything over the network ("Allow Network Features").
      *
      * Everything else in this mod works from what the client already has. This is the one setting
-     * that lets it reach outside, for two things: a public endpoint describing the running election
-     * (no API key, no player named, the same answer for everybody), and the main menu's player
-     * count, an ordinary status ping to mc.hypixel.net like the server list sends. Off means no
+     * that lets it reach outside, for three things: a public endpoint describing the running election
+     * (no API key, no player named, the same answer for everybody), the main menu's player
+     * count, an ordinary status ping to mc.hypixel.net like the server list sends, and the update
+     * check against the mod's public GitHub releases. Off means no
      * request is made and nothing derived from one is used. The JSON key keeps its old name.
      */
     public boolean allowApiCalls = true;
+    /** A chat line on joining a world when a newer release is on GitHub. Needs allowApiCalls. */
+    public boolean updateNotificationsEnabled = true;
 
     /**
      * Folder holding the slayer record, or empty for this machine's shared default.

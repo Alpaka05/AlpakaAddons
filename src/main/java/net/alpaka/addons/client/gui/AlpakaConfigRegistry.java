@@ -43,11 +43,18 @@ public class AlpakaConfigRegistry {
         // anything else: whether the mod may reach the network at all, the one place HUDs are
         // arranged, and the way back out of everything.
         OPTIONS.add(new ConfigOption("allow_api_calls", "Allow Network Features",
-                "Used for the mayor's XP buff and the main menu's player count.",
+                "Used for the mayor's XP buff, the main menu's player count and the update check.",
                 ConfigCategory.GENERAL,
                 () -> AlpakaConfig.instance.allowApiCalls,
                 v -> { AlpakaConfig.instance.allowApiCalls = v; AlpakaConfig.save(); },
                 "api network internet hypixel request mayor election offline privacy"));
+
+        OPTIONS.add(new ConfigOption("update_notifications", "Update Notifications",
+                "Tells you in chat when a new release of the mod is out. Needs network features.",
+                ConfigCategory.GENERAL,
+                () -> AlpakaConfig.instance.updateNotificationsEnabled,
+                v -> { AlpakaConfig.instance.updateNotificationsEnabled = v; AlpakaConfig.save(); },
+                "update new version release github download notify check outdated"));
 
         OPTIONS.add(new ConfigOption("notification_hold", "Notification Duration",
                 "How long a notice stays in the corner before sliding away.",

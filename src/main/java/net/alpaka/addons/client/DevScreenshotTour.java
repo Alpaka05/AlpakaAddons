@@ -29,6 +29,8 @@ import java.util.function.BooleanSupplier;
  *
  *     ALPAKA_SCREENSHOT_TOUR=1 ./gradlew runClient
  *
+ * Any other value runs only the stops whose picture name starts with it, e.g. {@code config}.
+ *
  * The dev window opens at 854 by 480, which Auto GUI scale turns into 427 by 240 - tighter than the
  * most common real size (480 by 270), so a screen that fits here fits there. The world is a flat
  * creative one in {@code run/saves/alpaka-tour}, made anew on every tour.
@@ -60,6 +62,11 @@ public final class DevScreenshotTour {
             // A moment into the entrance: the card springing in, the avatar half materialised.
             new Stop("main-menu-opening", () -> Minecraft.getInstance().gui.setScreen(new CustomMainMenuScreen()), () -> true, 9),
             screen("config", () -> new AlpakaConfigScreen(null, "")),
+            screen("config-chat", () -> AlpakaConfigScreen.openOn("Chat", "Chat Tabs")),
+            screen("config-damage-tags", () -> AlpakaConfigScreen.openOn("Damage Tags", "Custom Damage Tags")),
+            screen("config-search", () -> new AlpakaConfigScreen(null, "blaze")),
+            screen("config-inventory-hud", () -> AlpakaConfigScreen.openOn("Inventory HUD", "Inventory HUD")),
+            screen("config-guild", () -> AlpakaConfigScreen.openOn("Guild Chat", "Custom Guild Tag")),
             screen("color-picker", () -> new ColorPickerScreen(null, "Accent Colour", 0xFF29B6B2, color -> {})),
             screen("wheel-editor", () -> new CommandWheelConfigScreen(new CustomMainMenuScreen())),
             screen("hud-editor", () -> new HudEditorScreen(null)),
@@ -134,6 +141,12 @@ public final class DevScreenshotTour {
     }
 
     private static void begin(Minecraft mc, int index) {
+        // Any value other than "1" picks the stops whose picture starts with it, so a change to one
+        // screen can be looked at without the whole tour: ALPAKA_SCREENSHOT_TOUR=config.
+        String only = System.getenv(ENV);
+        if (only != null && !only.equals("1")) {
+            while (index < STOPS.size() && (STOPS.get(index).shot() == null || !STOPS.get(index).shot().startsWith(only))) index++;
+        }
         stop = index;
         ticks = 0;
         if (index < STOPS.size()) STOPS.get(index).action().run();

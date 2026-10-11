@@ -374,6 +374,12 @@ loom {
             if (project.hasProperty("quickPlayWorld")) {
                 programArgs("--quickPlaySingleplayer", project.property("quickPlayWorld").toString())
             }
+            // -PwindowSize=1920x1080 opens the dev window at that size, so the screenshot tour can
+            // show a layout at a real screen's size rather than the default 854 by 480.
+            if (project.hasProperty("windowSize")) {
+                def (w, h) = project.property("windowSize").toString().tokenize("x")
+                programArgs("--width", w, "--height", h)
+            }
             // -PscrollRate=<per second> slows or speeds up the chat's smooth scrolling for tuning.
             if (project.hasProperty("scrollRate")) {
                 vmArg("-Dalpaka.scrollRate=" + project.property("scrollRate").toString())

@@ -31,7 +31,9 @@ import java.util.Map;
  * Every file under {@code assets/alpaka/font/} is a static cut. Variable-weight fonts
  * (Nunito[wght], Outfit[wght]) came up in their thinnest weight in the game: FreeType opens the
  * default instance and Minecraft never selects a named one, so the strokes were hairlines.
- * Poppins and Outfit ship only in SemiBold - their regular cuts looked frail at menu size.
+ * Poppins and Outfit ship only in SemiBold - their regular cuts looked frail at menu size. Nunito
+ * is published only as a variable font now; its file here is the weight-600 instance cut from it
+ * with fontTools ({@code fonttools varLib.instancer "Nunito[wght].ttf" wght=600 --static}).
  *
  * <h2>One definition per GUI scale</h2>
  *
@@ -49,10 +51,10 @@ import java.util.Map;
  */
 public final class GuiFont {
     /** Display names, indexed by {@link AlpakaConfig#menuFont}. */
-    public static final String[] NAMES = {"Minecraft", "Inter", "Poppins", "Varela Round", "Outfit"};
+    public static final String[] NAMES = {"Minecraft", "Inter", "Poppins", "Varela Round", "Outfit", "Nunito"};
 
     /** Font definition names under {@code assets/alpaka/font/}; null means vanilla's font. */
-    private static final String[] FONT_IDS = {null, "inter", "poppins_bold", "varela_round", "outfit_bold"};
+    private static final String[] FONT_IDS = {null, "inter", "poppins_bold", "varela_round", "outfit_bold", "nunito_semibold"};
 
     private static final Map<String, Style> STYLE_CACHE = new HashMap<>();
 

@@ -12,6 +12,7 @@ All four are under the SIL Open Font License 1.1. The licence texts ship with th
 | Font | Files | Licence |
 | --- | --- | --- |
 | Inter | `inter.ttf` | OFL 1.1, `inter-ofl.txt` |
+| Nunito SemiBold (weight-600 instance of the variable font) | `nunito_semibold.ttf` | OFL 1.1, `nunito-ofl.txt` |
 | Outfit Bold | `outfit_bold.ttf` | OFL 1.1, `outfit-ofl.txt` |
 | Poppins Bold | `poppins_bold.ttf` | OFL 1.1, `poppins-ofl.txt` |
 | Varela Round | `varela_round.ttf` | OFL 1.1, `varela_round-ofl.txt` |

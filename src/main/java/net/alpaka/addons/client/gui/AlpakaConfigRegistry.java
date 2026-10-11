@@ -83,7 +83,7 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.menuFont = Math.round(v); AlpakaConfig.save(); },
                 0.0f, (float) (GuiFont.NAMES.length - 1),
                 val -> GuiFont.NAMES[Math.round(val)],
-                "menu font typeface text smooth modern inter poppins varela round outfit minecraft pixel gui bold"));
+                "menu font typeface text smooth modern inter poppins varela round outfit nunito minecraft pixel gui bold"));
 
         OPTIONS.add(ConfigOption.color("menu_accent_color", "Menu Accent Color",
                 "The highlight colour of every Alpaka menu.",

@@ -184,9 +184,11 @@ public class AlpakaConfig {
     public int menuAccentColor = 0xFF29B6B2; // Default teal
     /**
      * Index into {@code GuiFont.NAMES}: the typeface the Alpaka menus are written in. 0 is the
-     * vanilla pixel font; the default is Inter.
+     * vanilla pixel font; the default is Nunito, the rounded face the redesigned menus are drawn for.
      */
-    public int menuFont = 1;
+    public int menuFont = 5;
+    /** Set once a config still on the old default font has been moved to Nunito. */
+    public boolean menuFontNunitoApplied = false;
     public boolean customEscapeMenuEnabled = true;
     public boolean customMainMenuEnabled = false;
     /** The small player model on the HUD. Off for fresh installs. */
@@ -756,6 +758,13 @@ public class AlpakaConfig {
         // default never chose gold, so it follows the new default; any other colour is a choice.
         if (instance.menuAccentColor == 0xFFE5B849) {
             instance.menuAccentColor = 0xFF29B6B2;
+        }
+
+        // The default font moved from Inter to Nunito with the redesign. Once only, so picking Inter
+        // again afterwards sticks.
+        if (!instance.menuFontNunitoApplied) {
+            if (instance.menuFont == 1) instance.menuFont = 5;
+            instance.menuFontNunitoApplied = true;
         }
 
         if (instance.slayerBossMap == null) {

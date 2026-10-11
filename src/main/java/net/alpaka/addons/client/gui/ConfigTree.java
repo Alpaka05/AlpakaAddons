@@ -28,13 +28,13 @@ public final class ConfigTree {
         public final String description;
         public final ConfigOption master;
         public final List<ConfigOption> settings = new ArrayList<>();
-        public final Section section;
+        /** The sidebar entry it is listed under; set when the layout places it. */
+        public Section section;
 
-        Feature(String title, String description, ConfigOption master, Section section) {
+        Feature(String title, String description, ConfigOption master) {
             this.title = title;
             this.description = description;
             this.master = master;
-            this.section = section;
         }
 
         /** Whether the feature has an on/off switch of its own, drawn in the feature list. */
@@ -67,26 +67,22 @@ public final class ConfigTree {
         }
     }
 
-    /** A sidebar entry: one header's worth of features. */
+    /** A sidebar entry: a handful of related features. */
     public static final class Section {
         public final String title;
-        public final ConfigCategory category;
         public final List<Feature> features = new ArrayList<>();
 
-        Section(String title, ConfigCategory category) {
+        Section(String title) {
             this.title = title;
-            this.category = category;
         }
     }
 
-    /** A sidebar group: one category's sections. */
+    /** A sidebar group: a label over its sections. */
     public static final class Group {
-        public final ConfigCategory category;
         public final String title;
         public final List<Section> sections = new ArrayList<>();
 
-        Group(ConfigCategory category, String title) {
-            this.category = category;
+        Group(String title) {
             this.title = title;
         }
     }
@@ -103,11 +99,10 @@ public final class ConfigTree {
             "smooth_chat", "chat_smooth_scroll", "chat_blur", "chat_search", "expand_chat_history", "compact_chat",
             "mention_notification", "chat_peek", "better_screenshot_message", "chat_tabs",
             "player_model_enabled", "inventory_hud_enabled",
-            // Item viewmodel
+            // Item viewmodel: the adjustments are the modifiers' own settings
             "item_size_feature", "item_motion_blur", "item_viewmodel_reset",
-            // Block overlay
-            "block_overlay_enabled", "block_outline_enabled", "block_fill_enabled", "block_fade_in",
-            "block_chroma_enabled", "block_ignore_depth", "block_ignore_plants", "block_hide_on_etherwarp",
+            // Block overlay: one feature, outline, fill, animation and filters its settings
+            "block_overlay_enabled",
             // SkyBlock
             "etherwarp_overlay", "etherwarp_sound",
             "slayer_drop_tracker", "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat", "slayer_since_reply_offer",
@@ -129,31 +124,49 @@ public final class ConfigTree {
             "smooth_perspective_duration", "smooth_perspective"
     );
 
-    /** Short names for the sidebar's group labels. */
-    private static String groupTitle(ConfigCategory category) {
-        return switch (category) {
-            case GENERAL -> "General";
-            case VISUALS -> "Visuals";
-            case VIEWMODEL -> "Viewmodel";
-            case BLOCK_OVERLAY -> "Block Overlay";
-            case COSMETICS -> "Cosmetics";
-            case SKYBLOCK -> "SkyBlock";
-            case SOUND_MISC -> "Sound & Utility";
-        };
-    }
+    /**
+     * Registry headers whose settings are a feature of their own rather than more settings of the
+     * feature before them, with the name that feature goes by.
+     */
+    private static final Map<String, String> HEADER_FEATURES = Map.of(
+            "Swing Customizations", "Swing",
+            "Viewmodel Presets", "Presets"
+    );
 
     /**
-     * Sidebar names for sections whose header repeats the group it sits in: under "Viewmodel",
-     * "Viewmodel Adjustments" is just "Adjustments".
+     * The sidebar: groups, their sections, and which features each section lists, in order. A
+     * feature is named by its master option's id, or by "#" and the header it was built from.
+     * Anything left out ends up under "Other", so a newly registered option is never lost.
      */
-    private static final Map<String, String> SECTION_TITLES = Map.of(
-            "Viewmodel Adjustments", "Adjustments",
-            "Swing Customizations", "Swing",
-            "Swing Motion Blur", "Motion Blur",
-            "Viewmodel Presets", "Presets",
-            "Slayer Session HUD", "Session HUD",
-            "Slayer Boss Timer", "Boss Timer"
-    );
+    private static final String[][][] LAYOUT = {
+            {{"General"},
+                    {"Main", "allow_api_calls", "update_notifications", "notification_hold", "hud_editor",
+                            "command_wheel_custom_commands", "always_sprint", "disable_all_features"},
+                    {"Menus", "menu_font", "menu_accent_color", "custom_main_menu", "custom_escape_menu"},
+                    {"Sounds", "custom_sounds", "custom_sound_button_click", "custom_sound_hotbar_scroll",
+                            "custom_sound_inventory_open_close", "custom_sound_inventory_click", "custom_sound_rare_drop",
+                            "custom_sound_notification", "custom_sound_player_hurt", "custom_sound_successful_hit",
+                            "custom_sound_zombie_remedy", "custom_sound_low_hp_heartbeat"}},
+            {{"Visuals"},
+                    {"World", "fullbright", "block_overlay_enabled", "hide_hurt_overlay", "hide_mob_deaths",
+                            "render_hand_third_person", "smooth_perspective", "disable_front_perspective"},
+                    {"Interface", "inventory_hud_enabled", "player_model_enabled", "container_bg_opacity",
+                            "scrollable_tooltips", "persistent_item_name", "wide_health_bar", "inventory_snow"},
+                    {"Chat", "chat_tabs", "chat_search", "chat_peek", "compact_chat", "smooth_chat", "chat_smooth_scroll",
+                            "chat_blur", "expand_chat_history", "mention_notification", "better_screenshot_message"},
+                    {"Viewmodel", "item_size_feature", "#Swing Customizations", "item_motion_blur",
+                            "#Viewmodel Presets", "item_viewmodel_reset"},
+                    {"Cosmetics", "custom_name_tag", "custom_damage_tags", "chroma_hat", "player_scale"}},
+            {{"SkyBlock"},
+                    {"Slayer", "slayer_hud_enabled", "slayer_timer", "boss_spawn_alert", "slayer_drop_tracker",
+                            "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat", "slayer_since_reply_offer",
+                            "hide_slayer_chat"},
+                    {"Blaze", "clean_blaze", "blaze_fire_pits", "stop_blaze_spinning",
+                            "mute_vanilla_sounds_blaze_slayer", "custom_sound_blaze_death"},
+                    {"Tools", "etherwarp_overlay", "etherwarp_sound", "only_crit_damage", "pangolin_highlight_enabled",
+                            "world_age_hud_enabled", "world_age_join_message_enabled"},
+                    {"Social", "party_invite_prompt", "guild_prefix", "bridge_bot_formatter"}},
+    };
 
     /** "Enable Inventory HUD" reads as "Inventory HUD" in a list of features that each switch on. */
     private static String featureTitle(String title) {
@@ -169,41 +182,62 @@ public final class ConfigTree {
     }
 
     private static List<Group> build() {
-        List<Group> groups = new ArrayList<>();
-        Map<String, Feature> byMasterId = new java.util.HashMap<>();
+        // Features first, in registry order: a master opens one, every other option joins the one
+        // before it, and a header in HEADER_FEATURES opens one of its own.
+        Map<String, Feature> byKey = new java.util.LinkedHashMap<>();
         for (ConfigCategory category : ConfigCategory.values()) {
-            Group group = new Group(category, groupTitle(category));
-            Section section = null;
             Feature feature = null;
+            String pendingHeader = null;
             for (ConfigOption option : AlpakaConfigRegistry.getOptions(category, "")) {
                 if (option.getType() == ConfigOption.Type.HEADER) {
-                    section = new Section(SECTION_TITLES.getOrDefault(option.getTitle(), option.getTitle()), category);
-                    group.sections.add(section);
-                    feature = null;
+                    pendingHeader = HEADER_FEATURES.containsKey(option.getTitle()) ? option.getTitle() : null;
                     continue;
                 }
-                if (section == null) {
-                    // Options before the first header: the category's own main settings.
-                    section = new Section("Main", category);
-                    group.sections.add(section);
-                }
                 String parentId = PARENTS.get(option.getId());
-                if (parentId != null && byMasterId.containsKey(parentId)) {
-                    byMasterId.get(parentId).settings.add(option);
+                if (parentId != null && byKey.containsKey(parentId)) {
+                    byKey.get(parentId).settings.add(option);
                 } else if (MASTERS.contains(option.getId())) {
-                    feature = new Feature(featureTitle(option.getTitle()), option.getDescription(), option, section);
-                    section.features.add(feature);
-                    byMasterId.put(option.getId(), feature);
+                    feature = new Feature(featureTitle(option.getTitle()), option.getDescription(), option);
+                    byKey.put(option.getId(), feature);
                 } else {
-                    if (feature == null) {
-                        feature = new Feature(section.title, "", null, section);
-                        section.features.add(feature);
+                    if (pendingHeader != null || feature == null) {
+                        String header = pendingHeader != null ? pendingHeader : category.getDisplayName();
+                        feature = new Feature(HEADER_FEATURES.getOrDefault(header, header), "", null);
+                        byKey.put("#" + header, feature);
                     }
                     feature.settings.add(option);
                 }
+                pendingHeader = null;
             }
-            group.sections.removeIf(s -> s.features.isEmpty());
+        }
+
+        // Then the sidebar, as LAYOUT has it.
+        List<Group> groups = new ArrayList<>();
+        Set<String> placed = new java.util.HashSet<>();
+        for (String[][] groupSpec : LAYOUT) {
+            Group group = new Group(groupSpec[0][0]);
+            for (int i = 1; i < groupSpec.length; i++) {
+                Section section = new Section(groupSpec[i][0]);
+                for (int j = 1; j < groupSpec[i].length; j++) {
+                    Feature feature = byKey.get(groupSpec[i][j]);
+                    if (feature == null || !placed.add(groupSpec[i][j])) continue;
+                    feature.section = section;
+                    section.features.add(feature);
+                }
+                if (!section.features.isEmpty()) group.sections.add(section);
+            }
             if (!group.sections.isEmpty()) groups.add(group);
+        }
+        Section other = new Section("Other");
+        for (Map.Entry<String, Feature> entry : byKey.entrySet()) {
+            if (placed.contains(entry.getKey())) continue;
+            entry.getValue().section = other;
+            other.features.add(entry.getValue());
+        }
+        if (!other.features.isEmpty()) {
+            Group last = groups.isEmpty() ? null : groups.get(groups.size() - 1);
+            if (last == null) groups.add(last = new Group("More"));
+            last.sections.add(other);
         }
         return groups;
     }

@@ -479,12 +479,12 @@ public class AlpakaConfigScreen extends Screen {
                 int background = selected ? COLOR_ROW_SELECTED : hover ? COLOR_ROW_HOVER : COLOR_ROW;
                 ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, FEATURE_ROW_H, 5, background);
 
+                // The dots keep their place whether drawn or not, so every switch lines up.
                 int right = rowX + rowW - 6;
-                boolean hasMore = !feature.panelOptions().isEmpty();
-                if (hasMore) {
+                if (!feature.panelOptions().isEmpty()) {
                     drawDots(graphics, right - 1, rowY + (FEATURE_ROW_H - 7) / 2, selected ? COLOR_TEXT_SOFT : COLOR_TEXT_MUTED);
-                    right -= 7;
                 }
+                right -= 7;
                 int toggleX = right - TOGGLE_W;
                 int toggleY = rowY + (FEATURE_ROW_H - TOGGLE_H) / 2;
                 // The row first, its switch after: the later hit is the one on top.

@@ -26,7 +26,11 @@ public enum ChatTab {
     PARTY("Party"),
     GUILD("Guild"),
     COOP("Co-op"),
-    PRIVATE("PMs");
+    PRIVATE("PMs"),
+    /** Everything the server sent that no player wrote: Hypixel's notices, warnings and the like. */
+    SERVER("Server"),
+    /** Everything made on this client: lines from mods, this one included. */
+    MODS("Mods");
 
     public final String label;
 
@@ -79,7 +83,11 @@ public enum ChatTab {
     /** A party invite waiting for the player: never filtered away, whatever tab is up. */
     private static final Pattern PARTY_INVITE = Pattern.compile(NAME + " has invited you to join their party");
 
-    /** The tab a message belongs on besides All. Never returns null; a line nobody claims is ALL. */
+    /**
+     * The channel tab a message belongs on besides All. Never returns null; a line nobody claims is
+     * ALL. Server and Mods are decided by where a message came from, not by its text - see
+     * {@link ChatOrigin}.
+     */
     public static ChatTab classify(Component message) {
         return classify(strip(message.getString()));
     }
@@ -95,6 +103,16 @@ public enum ChatTab {
         if (PARTY_NOTICE.matcher(text).find()) return PARTY;
         if (GUILD_NOTICE.matcher(text).find()) return GUILD;
         return ALL;
+    }
+
+    /**
+     * Whether a player wrote this line: chat in a channel, a private message, or public chat. The
+     * Server tab is what the server sent minus these.
+     */
+    public static boolean isPlayerWritten(String text) {
+        return PARTY_CHAT.matcher(text).find() || GUILD_CHAT.matcher(text).find()
+                || COOP_CHAT.matcher(text).find() || PRIVATE_CHAT.matcher(text).find()
+                || PLAYER_LINE.matcher(text).find();
     }
 
     /** Whether a line must stay visible on every tab: an invite the player has to answer. */

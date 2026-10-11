@@ -446,6 +446,8 @@ public class AlpakaConfig {
     public boolean chatTabsShowGuild = true;
     public boolean chatTabsShowCoop = true;
     public boolean chatTabsShowPrivate = true;
+    public boolean chatTabsShowServer = true;
+    public boolean chatTabsShowMods = true;
 
     // Interface options
     /** The mouse wheel scrolls a tooltip that is taller than the screen. */

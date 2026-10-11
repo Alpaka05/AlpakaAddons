@@ -398,14 +398,14 @@ public class AlpakaConfigRegistry {
                 "screenshot auto copy clipboard automatic f2 paste"));
 
         OPTIONS.add(new ConfigOption("chat_tabs", "Chat Tabs",
-                "All, Party, Guild, Co-op and PMs tabs above the chat input.",
+                "All, Party, Guild, Co-op, PMs, Server and Mods tabs above the chat input.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.chatTabsEnabled,
                 v -> { AlpakaConfig.instance.chatTabsEnabled = v; AlpakaConfig.save(); },
-                "chat tabs party guild pm private messages filter channel switch"));
+                "chat tabs party guild pm private messages server hypixel mods filter channel switch"));
 
         OPTIONS.add(new ConfigOption("chat_tabs_shown", "Shown Chat Tabs",
-                "Pick which channel tabs the row offers. All is always there.",
+                "Pick which tabs the row offers. All is always there.",
                 ConfigCategory.VISUALS,
                 java.util.List.of(
                         new ConfigOption.ToggleEntry("Party",
@@ -419,9 +419,15 @@ public class AlpakaConfigRegistry {
                                 v -> { AlpakaConfig.instance.chatTabsShowCoop = v; AlpakaConfig.save(); ChatTabsFeature.onShownTabsChanged(); }),
                         new ConfigOption.ToggleEntry("PMs",
                                 () -> AlpakaConfig.instance.chatTabsShowPrivate,
-                                v -> { AlpakaConfig.instance.chatTabsShowPrivate = v; AlpakaConfig.save(); ChatTabsFeature.onShownTabsChanged(); })
+                                v -> { AlpakaConfig.instance.chatTabsShowPrivate = v; AlpakaConfig.save(); ChatTabsFeature.onShownTabsChanged(); }),
+                        new ConfigOption.ToggleEntry("Server",
+                                () -> AlpakaConfig.instance.chatTabsShowServer,
+                                v -> { AlpakaConfig.instance.chatTabsShowServer = v; AlpakaConfig.save(); ChatTabsFeature.onShownTabsChanged(); }),
+                        new ConfigOption.ToggleEntry("Mods",
+                                () -> AlpakaConfig.instance.chatTabsShowMods,
+                                v -> { AlpakaConfig.instance.chatTabsShowMods = v; AlpakaConfig.save(); ChatTabsFeature.onShownTabsChanged(); })
                 ),
-                "chat tabs shown visible hide pick choose select party guild coop co-op pm private messages"));
+                "chat tabs shown visible hide pick choose select party guild coop co-op pm private messages server mods"));
 
         OPTIONS.add(new ConfigOption("chat_tabs_send_to_channel", "Send To Tab Channel",
                 "Messages typed on a channel tab go to that channel.",

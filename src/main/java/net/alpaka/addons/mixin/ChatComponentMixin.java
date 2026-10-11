@@ -10,6 +10,7 @@ import net.alpaka.addons.features.bridge.BridgeBotFormatter;
 import net.alpaka.addons.features.chat.ChatBlurFeature;
 import net.alpaka.addons.features.chat.ChatPeekFeature;
 import net.alpaka.addons.features.chat.ChatScrollAnimator;
+import net.alpaka.addons.features.chat.ChatOrigin;
 import net.alpaka.addons.features.chat.ChatSearchFeature;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
 import net.alpaka.addons.features.chat.CompactChatFeature;
@@ -148,7 +149,7 @@ public abstract class ChatComponentMixin {
             return;
         }
         // Only messages that actually reach the chat count towards a tab's unread number.
-        ChatTabsFeature.onMessage(component);
+        ChatTabsFeature.onMessage(component, ChatOrigin.isFromServer(source));
     }
 
     /**
@@ -163,6 +164,7 @@ public abstract class ChatComponentMixin {
     private GuiMessage alpaka$compactRepeats(int addedTime, Component content, MessageSignature signature, GuiMessageSource source, GuiMessageTag tag, Operation<GuiMessage> original) {
         Component stored = CompactChatFeature.compact(content, this.allMessages, this.trimmedMessages);
         GuiMessage message = original.call(addedTime, stored, signature, source, tag);
+        if (ChatOrigin.isFromServer(source)) ChatOrigin.markServer(message);
         CompactChatFeature.onAdded(message);
         return message;
     }

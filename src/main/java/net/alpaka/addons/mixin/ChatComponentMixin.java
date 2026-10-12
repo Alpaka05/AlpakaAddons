@@ -386,6 +386,13 @@ public abstract class ChatComponentMixin {
         int width = Mth.ceil(this.getWidth() / scale);
         int shownLines = Math.max(0, Math.min(this.trimmedMessages.size() - this.chatScrollbarPos, this.getLinesPerPage()));
 
+        // The panel goes in before the box's scissor is set: the panel is the box anyway, and its
+        // drop shadow reaches past it.
+        if (pass == 1) {
+            ChatBlurFeature.setScrollOffset(offset);
+            ChatBlurFeature.limitPanel(shownLines);
+            ChatBlurFeature.submitPanel(scale);
+        }
         AlpakaChatGraphicsClip clip = access instanceof AlpakaChatGraphicsClip c ? c : null;
         if (clip != null) {
             // At rest the box is allowed a little slack for underlines and accents; in motion it is exact.
@@ -399,9 +406,7 @@ public abstract class ChatComponentMixin {
             clip.alpaka$graphics().enableScissor(x0, y0, x1, y1);
         }
         if (pass == 1) {
-            ChatBlurFeature.setScrollOffset(offset);
-            ChatBlurFeature.limitPanel(shownLines);
-            ChatBlurFeature.submitPanel(scale);
+            ChatBlurFeature.submitHoverHighlight(scale);
         }
         if (offset > 0.01f) {
             access.updatePose(pose -> pose.translate(0.0f, offset));

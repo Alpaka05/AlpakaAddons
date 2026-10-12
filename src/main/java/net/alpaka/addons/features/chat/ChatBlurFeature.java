@@ -60,9 +60,11 @@ public final class ChatBlurFeature {
     public static final int PADDING = 3;
     /** The panel's corner radius in chat pixels. */
     public static final int RADIUS = 5;
+    /** How far the panel's drop shadow reaches, in chat pixels. */
+    public static final int SHADOW = 4;
 
-    /** Blur radius per GUI scale step at full strength: 3 screen pixels for each GUI pixel. */
-    private static final int RADIUS_PER_SCALE = 3;
+    /** Blur radius per GUI scale step at full strength: 5 screen pixels for each GUI pixel. */
+    private static final int RADIUS_PER_SCALE = 5;
     /** The largest radius a post effect is shipped for: full strength at GUI scale 4. */
     static final int MAX_BLUR_RADIUS = 4 * RADIUS_PER_SCALE;
 
@@ -168,7 +170,8 @@ public final class ChatBlurFeature {
 
     /**
      * Submits the panel for the lines measured so far, under the chat's current pose. Called right
-     * before the chat draws its text, so the text lands on top.
+     * before the chat draws its text, so the text lands on top, and before the chat box's scissor
+     * is set, so the panel's drop shadow is not cut off at the box.
      *
      * @param chatScale the chat's own scale setting, which the pose already applies; with the GUI
      *                  scale it says how many screen pixels one chat pixel covers
@@ -188,32 +191,40 @@ public final class ChatBlurFeature {
         int alpha = Math.round(Mth.clamp(panelAlpha * panelOpacity, 0.0f, 1.0f) * 255.0f);
         if (alpha <= 0) return;
 
-        // Submitted before the lines are shifted by the scroll, so the current pose is the box's;
-        // the lines will be drawn shifted down by the scroll offset, and the hover lift follows them.
-        Matrix3x2f boxPose = new Matrix3x2f(graphics.pose());
-        Matrix3x2f linePose = new Matrix3x2f(boxPose).translate(0.0f, scrollOffset);
-
+        // Submitted before the lines are shifted by the scroll, so the current pose is the box's.
         sink.alpaka$submitElement(new BlurRectRenderState(
-                boxPose, x0, y0, x1, y1,
-                Math.round(RADIUS * toScreen), alpha << 24, toScreen, sink.alpaka$currentScissor()));
+                new Matrix3x2f(graphics.pose()), x0, y0, x1, y1,
+                Math.round(RADIUS * toScreen), alpha << 24, toScreen, 1.0f,
+                Math.round(SHADOW * toScreen * panelAlpha), sink.alpaka$currentScissor()));
         request();
+    }
 
-        // With the chat open, the line under the mouse is lifted a little. The mouse is taken into
-        // the lines' own coordinates, so the lift follows the lines while they scroll.
-        if (foreground && panelLines > 0 && panelLineHeight > 0) {
-            Matrix3x2f inverse = new Matrix3x2f(linePose).invert();
-            Vector2f local = inverse.transformPosition(new Vector2f(mouseX, mouseY));
-            if (local.x >= x0 && local.x <= x1 && local.y <= panelBottom) {
-                int line = Mth.floor((panelBottom - local.y) / panelLineHeight);
-                if (line >= 0 && line < panelLines) {
-                    int top = panelBottom - (line + 1) * panelLineHeight;
-                    sink.alpaka$submitElement(new RoundedRectRenderState(
-                            linePose, x0 + 1, top, x1 - 1, top + panelLineHeight,
-                            Math.round(3 * toScreen), 0, HOVER_HIGHLIGHT,
-                            Math.max(1, Math.round(toScreen)), sink.alpaka$currentScissor()));
-                }
-            }
-        }
+    /**
+     * With the chat open, lifts the line under the mouse a little. Called after the panel, once the
+     * chat box's scissor is set, and still before the lines are shifted by the scroll: the mouse is
+     * taken into the lines' own coordinates, so the lift follows the lines while they scroll.
+     */
+    public static void submitHoverHighlight(float chatScale) {
+        GuiGraphicsExtractor graphics = currentGraphics;
+        if (graphics == null || !isEnabled() || !foreground) return;
+        if (panelHeight <= 0.01f || panelAlpha <= 0.002f) return;
+        if (panelLines <= 0 || panelLineHeight <= 0) return;
+        if (!(graphics instanceof AlpakaGuiElementSink sink)) return;
+
+        float toScreen = (float) Minecraft.getInstance().getWindow().getGuiScale() * chatScale;
+        int x0 = -4 - PADDING;
+        int x1 = panelWidth + 8 + PADDING;
+        Matrix3x2f linePose = new Matrix3x2f(graphics.pose()).translate(0.0f, scrollOffset);
+        Matrix3x2f inverse = new Matrix3x2f(linePose).invert();
+        Vector2f local = inverse.transformPosition(new Vector2f(mouseX, mouseY));
+        if (local.x < x0 || local.x > x1 || local.y > panelBottom) return;
+        int line = Mth.floor((panelBottom - local.y) / panelLineHeight);
+        if (line < 0 || line >= panelLines) return;
+        int top = panelBottom - (line + 1) * panelLineHeight;
+        sink.alpaka$submitElement(new RoundedRectRenderState(
+                linePose, x0 + 1, top, x1 - 1, top + panelLineHeight,
+                Math.round(3 * toScreen), 0, HOVER_HIGHLIGHT,
+                Math.max(1, Math.round(toScreen)), sink.alpaka$currentScissor()));
     }
 
     /** A panel was extracted this frame; the frame has to be captured and blurred before drawing. */
@@ -310,7 +321,7 @@ public final class ChatBlurFeature {
     }
 
     /**
-     * The blur radius, in screen pixels, for this GUI scale and strength: 3 per GUI scale step at
+     * The blur radius, in screen pixels, for this GUI scale and strength: 5 per GUI scale step at
      * full strength, scaled down by the strength. 0 means no blur at all.
      */
     static int blurRadius(int guiScale, float strengthPercent) {

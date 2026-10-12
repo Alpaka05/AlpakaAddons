@@ -88,7 +88,7 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(ConfigOption.color("menu_accent_color", "Menu Accent Color",
                 "The highlight colour of every Alpaka menu.",
                 ConfigCategory.GENERAL,
-                () -> AlpakaConfig.instance.menuAccentColor,
+                c -> c.menuAccentColor,
                 v -> { AlpakaConfig.instance.menuAccentColor = v; AlpakaConfig.save(); },
                 "menu accent color theme custom picker border highlight gui teal gold cyan red green blue"));
 
@@ -326,12 +326,19 @@ public class AlpakaConfigRegistry {
                 "chat blur background rounded corners panel glass frosted clean padding smooth"));
 
         OPTIONS.add(new ConfigOption("chat_blur_strength", "Blur Strength",
-                "How strongly the world behind the chat is blurred. Also applies to the Inventory HUD and the command wheel.",
+                "How strongly the world behind the chat is blurred. Also applies to the scoreboard, the Inventory HUD and the command wheel.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.chatBlurStrength,
                 v -> { AlpakaConfig.instance.chatBlurStrength = v; AlpakaConfig.save(); },
                 0.0f, 100.0f, val -> val == 0.0f ? "None (0%)" : String.format(Locale.ROOT, "%.0f%%", val),
                 "chat blur strength radius amount intensity frosted glass background lighter clearer sharp"));
+
+        OPTIONS.add(new ConfigOption("scoreboard_blur", "Blurred Scoreboard Background",
+                "One rounded, blurred panel with a soft shadow behind the scoreboard. Uses the chat's Blur Strength.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.scoreboardBlurEnabled,
+                v -> { AlpakaConfig.instance.scoreboardBlurEnabled = v; AlpakaConfig.save(); },
+                "scoreboard sidebar blur background rounded panel glass frosted shadow"));
 
         OPTIONS.add(new ConfigOption("chat_search", "Chat Search",
                 "Ctrl+F (Cmd+F on Mac) in the chat filters it to messages containing your text.",
@@ -551,14 +558,14 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(ConfigOption.color("inventory_hud_frame_start_color", "Frame Start Colour",
                 "First colour of the flat panel's frame gradient.",
                 ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.inventoryHudFrameStart,
+                c -> c.inventoryHudFrameStart,
                 v -> { AlpakaConfig.instance.inventoryHudFrameStart = v; AlpakaConfig.save(); },
                 "inventory hud frame border outline gradient colour color start first picker"));
 
         OPTIONS.add(ConfigOption.color("inventory_hud_frame_end_color", "Frame End Colour",
                 "Second colour of the flat panel's frame gradient.",
                 ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.inventoryHudFrameEnd,
+                c -> c.inventoryHudFrameEnd,
                 v -> { AlpakaConfig.instance.inventoryHudFrameEnd = v; AlpakaConfig.save(); },
                 "inventory hud frame border outline gradient colour color end second picker"));
 
@@ -738,6 +745,30 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.itemSwingAlwaysFinishEnabled = v; AlpakaConfig.save(); },
                 "always finish swing complete attack animation"));
 
+        OPTIONS.add(new ConfigOption("Starlight", ConfigCategory.VIEWMODEL));
+
+        OPTIONS.add(new ConfigOption("item_starlight", "Starlight",
+                "A drifting, twinkling galaxy over the held item.",
+                ConfigCategory.VIEWMODEL,
+                () -> AlpakaConfig.instance.itemStarlightEnabled,
+                v -> { AlpakaConfig.instance.itemStarlightEnabled = v; AlpakaConfig.save(); },
+                "starlight galaxy stars space nebula glint shimmer overlay effect held item cosmic"));
+
+        OPTIONS.add(ConfigOption.color("item_starlight_color", "Starlight Color",
+                "The colour of the nebula; the stars are tinged with it.",
+                ConfigCategory.VIEWMODEL,
+                c -> c.itemStarlightColor,
+                v -> { AlpakaConfig.instance.itemStarlightColor = v; AlpakaConfig.save(); },
+                "starlight galaxy color colour nebula tint purple"));
+
+        OPTIONS.add(new ConfigOption("item_starlight_strength", "Starlight Strength",
+                "How strongly the galaxy covers the item.",
+                ConfigCategory.VIEWMODEL,
+                () -> AlpakaConfig.instance.itemStarlightStrength,
+                v -> { AlpakaConfig.instance.itemStarlightStrength = Math.round(v * 100.0f) / 100.0f; AlpakaConfig.save(); },
+                0.1f, 1.0f, val -> String.format(Locale.ROOT, "%.0f%%", val * 100.0f),
+                "starlight galaxy strength opacity intensity"));
+
         OPTIONS.add(new ConfigOption("Swing Motion Blur", ConfigCategory.VIEWMODEL));
 
         OPTIONS.add(new ConfigOption("item_motion_blur", "Swing Motion Blur",
@@ -884,7 +915,7 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(ConfigOption.color("block_outline_color", "Outline Color",
                 "Select color for the block outline.",
                 ConfigCategory.BLOCK_OVERLAY,
-                () -> AlpakaConfig.instance.blockOutlineColor,
+                c -> c.blockOutlineColor,
                 v -> { AlpakaConfig.instance.blockOutlineColor = v; AlpakaConfig.save(); },
                 "block outline color picker rgb alpha cyan red blue"));
 
@@ -900,7 +931,7 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(ConfigOption.color("block_fill_color", "Fill Color",
                 "Select fill color and transparency for targeted blocks.",
                 ConfigCategory.BLOCK_OVERLAY,
-                () -> AlpakaConfig.instance.blockFillColor,
+                c -> c.blockFillColor,
                 v -> { AlpakaConfig.instance.blockFillColor = v; AlpakaConfig.save(); },
                 "block fill color picker rgb alpha transparency tint"));
 
@@ -975,7 +1006,7 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(ConfigOption.color("etherwarp_overlay_color", "Target Colour",
                 "Box colour when the warp will work.",
                 ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.etherwarpOverlayColor,
+                c -> c.etherwarpOverlayColor,
                 v -> { AlpakaConfig.instance.etherwarpOverlayColor = v; AlpakaConfig.save(); },
                 "etherwarp colour color target box gold"));
 
@@ -989,7 +1020,7 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(ConfigOption.color("etherwarp_fail_color", "Fail Colour",
                 "Box colour when the warp will be refused.",
                 ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.etherwarpOverlayFailColor,
+                c -> c.etherwarpOverlayFailColor,
                 v -> { AlpakaConfig.instance.etherwarpOverlayFailColor = v; AlpakaConfig.save(); },
                 "etherwarp fail colour color red blocked"));
 
@@ -1303,7 +1334,7 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(ConfigOption.color("pangolin_highlight_color", "Pangolin Outline Color",
                 "Select the glowing outline color used for highlighted Pangolins.",
                 ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.pangolinHighlightColor,
+                c -> c.pangolinHighlightColor,
                 v -> { AlpakaConfig.instance.pangolinHighlightColor = v; AlpakaConfig.save(); },
                 "pangolin outline color glow highlight picker critter torrhus canyon"));
 
@@ -1416,14 +1447,14 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(ConfigOption.color("name_tag_gradient_start_color", "Gradient Start Colour",
                 "First colour of the Gradient effect.",
                 ConfigCategory.COSMETICS,
-                () -> AlpakaConfig.instance.nameTagGradientStart,
+                c -> c.nameTagGradientStart,
                 v -> { AlpakaConfig.instance.nameTagGradientStart = v; AlpakaConfig.save(); },
                 "name tag gradient colour color start first picker"));
 
         OPTIONS.add(ConfigOption.color("name_tag_gradient_end_color", "Gradient End Colour",
                 "Second colour of the Gradient effect.",
                 ConfigCategory.COSMETICS,
-                () -> AlpakaConfig.instance.nameTagGradientEnd,
+                c -> c.nameTagGradientEnd,
                 v -> { AlpakaConfig.instance.nameTagGradientEnd = v; AlpakaConfig.save(); },
                 "name tag gradient colour color end second picker"));
 
@@ -1446,7 +1477,7 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(ConfigOption.color("chroma_hat_color", "Hat Colour",
                 "Colour of the plain hat while Chroma Colours is off.",
                 ConfigCategory.COSMETICS,
-                () -> AlpakaConfig.instance.chromaHatColor,
+                c -> c.chromaHatColor,
                 v -> { AlpakaConfig.instance.chromaHatColor = v; AlpakaConfig.save(); },
                 "chroma hat colour color straw plain picker"));
 
@@ -1619,28 +1650,28 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(ConfigOption.color("custom_damage_tag_normal_start", "Normal Hit Start Colour",
                 "First colour of a normal hit's gradient.",
                 ConfigCategory.COSMETICS,
-                () -> AlpakaConfig.instance.customDamageTagNormalStart,
+                c -> c.customDamageTagNormalStart,
                 v -> { AlpakaConfig.instance.customDamageTagNormalStart = v; AlpakaConfig.save(); },
                 "damage tag gradient colour color picker normal start"));
 
         OPTIONS.add(ConfigOption.color("custom_damage_tag_normal_end", "Normal Hit End Colour",
                 "Last colour of a normal hit's gradient.",
                 ConfigCategory.COSMETICS,
-                () -> AlpakaConfig.instance.customDamageTagNormalEnd,
+                c -> c.customDamageTagNormalEnd,
                 v -> { AlpakaConfig.instance.customDamageTagNormalEnd = v; AlpakaConfig.save(); },
                 "damage tag gradient colour color picker normal end"));
 
         OPTIONS.add(ConfigOption.color("custom_damage_tag_crit_start", "Crit Start Colour",
                 "First colour of a crit's gradient.",
                 ConfigCategory.COSMETICS,
-                () -> AlpakaConfig.instance.customDamageTagCritStart,
+                c -> c.customDamageTagCritStart,
                 v -> { AlpakaConfig.instance.customDamageTagCritStart = v; AlpakaConfig.save(); },
                 "damage tag gradient colour color picker crit start"));
 
         OPTIONS.add(ConfigOption.color("custom_damage_tag_crit_end", "Crit End Colour",
                 "Last colour of a crit's gradient.",
                 ConfigCategory.COSMETICS,
-                () -> AlpakaConfig.instance.customDamageTagCritEnd,
+                c -> c.customDamageTagCritEnd,
                 v -> { AlpakaConfig.instance.customDamageTagCritEnd = v; AlpakaConfig.save(); },
                 "damage tag gradient colour color picker crit end"));
 

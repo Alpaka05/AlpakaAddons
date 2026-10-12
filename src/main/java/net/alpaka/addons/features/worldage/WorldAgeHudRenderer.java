@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.worldage;
 
+import net.alpaka.addons.client.gui.HudPanel;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.slayer.SlayerDropTracker;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientEntityEvents;
@@ -257,12 +258,14 @@ public class WorldAgeHudRenderer {
         graphics.pose().pushMatrix();
         graphics.pose().translate((float) x, (float) y);
         graphics.pose().scale(scale, scale);
-        graphics.text(font, dayComponent(day), 0, 0, color);
+        Component text = HudPanel.text(dayComponent(day), AlpakaConfig.instance.worldAgeHudSmoothFont);
+        if (AlpakaConfig.instance.worldAgeHudBlur) HudPanel.aroundText(graphics, font.width(text), 9, scale);
+        graphics.text(font, text, 0, 0, color);
         graphics.pose().popMatrix();
     }
 
     public static int getWidth(Font font, long day, float scale) {
-        String text = "Day: " + day;
+        Component text = HudPanel.text(Component.literal("Day: " + day), AlpakaConfig.instance.worldAgeHudSmoothFont);
         return (int) Math.ceil(font.width(text) * scale);
     }
 

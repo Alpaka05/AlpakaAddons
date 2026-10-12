@@ -1,11 +1,12 @@
 package net.alpaka.addons.client;
 
-import net.alpaka.addons.client.gui.AlpakaConfigRegistry;
-import net.alpaka.addons.client.gui.ConfigCategory;
 import net.alpaka.addons.client.gui.ConfigOption;
+import net.alpaka.addons.client.gui.ConfigTree;
+import net.alpaka.addons.client.gui.EditableText;
 import net.alpaka.addons.client.gui.GuiFont;
 import net.alpaka.addons.client.gui.ModernGuiUtils;
 import net.alpaka.addons.client.gui.PloppAnimation;
+import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.sound.CustomSoundFeature;
 import net.alpaka.addons.utils.ModVersion;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -13,903 +14,835 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.locale.Language;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.FormattedText;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
+/**
+ * The config menu, redesigned for 2.0: three columns instead of one long list of cards.
+ *
+ * <ul>
+ *   <li>Left, the sections - the old headers - grouped under their categories.</li>
+ *   <li>In the middle, the features of the chosen section, one slim row each with its switch.</li>
+ *   <li>On the right, everything that belongs to the chosen feature: its description, folded
+ *       away on request, and its settings as plain rows without boxes.</li>
+ * </ul>
+ *
+ * What belongs to which feature comes from {@link ConfigTree}. Searching lists every feature with a
+ * match, from any section.
+ *
+ * Clickable areas are collected while drawing and tested against on the next click, so what is
+ * drawn and what reacts can never disagree about where a row is.
+ */
 public class AlpakaConfigScreen extends Screen {
-    private final Screen parent;
-    private ConfigCategory activeCategory = ConfigCategory.GENERAL;
 
-    // Search state
-    /** Longest search term the bar accepts. */
+    // ---- Colours --------------------------------------------------------------------------------
+
+    private static final int COLOR_BACKDROP = 0x80000000;
+    private static final int COLOR_PANEL = 0xFF131313;
+    private static final int COLOR_LINE = 0xFF262626;
+    private static final int COLOR_DIVIDER = 0xFF3A3A3A;
+    private static final int COLOR_ROW = 0xFF1E1E1E;
+    private static final int COLOR_ROW_HOVER = 0xFF242424;
+    private static final int COLOR_ROW_SELECTED = 0xFF2A2A2A;
+    private static final int COLOR_FIELD = 0xFF1F1F1F;
+    private static final int COLOR_TEXT = 0xFFEDEDED;
+    private static final int COLOR_TEXT_SOFT = 0xFFBDBDBD;
+    private static final int COLOR_TEXT_MUTED = 0xFF7C7C7C;
+    private static final int COLOR_TRACK = 0xFF3A3A3A;
+    private static final int COLOR_DANGER = 0xFFE5534B;
+
+    // ---- Layout, in GUI pixels ------------------------------------------------------------------
+
+    private static final int HEADER_H = 30;
+    private static final int PAD = 8;
+    private static final int LINE_H = 9;
+    private static final int GROUP_LABEL_H = 13;
+    private static final int SECTION_ROW_H = 13;
+    private static final int FEATURE_ROW_H = 20;
+    private static final int FEATURE_ROW_GAP = 3;
+    private static final int SETTING_ROW_H = 16;
+    private static final int SLIDER_ROW_H = 24;
+    private static final int ACTION_ROW_H = 18;
+    private static final int TOGGLE_W = 16;
+    private static final int TOGGLE_H = 9;
+    private static final int SWATCH_W = 16;
+    private static final int SWATCH_H = 9;
+    private static final int TEXT_FIELD_W = 76;
+    private static final int MAX_TEXT_OPTION_LENGTH = 32;
     private static final int MAX_SEARCH_LENGTH = 35;
+    private static final long TOOLTIP_DELAY_MS = 450L;
+    private static final long CONFIRM_WINDOW_MS = 3000L;
+    private static final String CONFIRM_LABEL = "Click again";
 
-    private final net.alpaka.addons.client.gui.EditableText search = new net.alpaka.addons.client.gui.EditableText(MAX_SEARCH_LENGTH);
+    // ---- State ----------------------------------------------------------------------------------
+
+    private final Screen parent;
+    private final EditableText search = new EditableText(MAX_SEARCH_LENGTH);
     private boolean searchFocused = false;
+    private long caretBlinkFrom = 0L;
 
-    /** The inline text option currently accepting keystrokes, or null. */
-    private ConfigOption focusedTextOption = null;
-    private long cursorBlinkTimer = 0L;
+    private ConfigTree.Section selectedSection;
+    private ConfigTree.Feature selectedFeature;
 
-    // Scrolling & Layout
-    private double scrollY = 0.0;
-    private double targetScrollY = 0.0;
-    private double maxScrollY = 0.0;
+    /** Whether the details panel shows the feature's description; one choice for every feature. */
+    private boolean descriptionOpen = true;
 
-    private double sidebarScrollY = 0.0;
-    private double targetSidebarScrollY = 0.0;
-    private double maxSidebarScrollY = 0.0;
+    /** Dropdowns folded shut in the details panel. Open by default, so nothing is hidden until asked. */
+    private final Set<ConfigOption> collapsed = new HashSet<>();
 
-    // Smooth panel horizontal shift animation for the viewmodel setup mode
-    private double currentWinX = -1.0;
+    private ConfigOption focusedText = null;
+    private ConfigOption armedOption = null;
+    private long armedUntilMs = 0L;
 
-    /**
-     * Setup mode, for the Item Viewmodel tab: the panel moves to the side and its sidebar folds
-     * away, so the held item is in view while its settings are changed. Toggled by the small
-     * handle on the panel's top edge, which is only there on that tab.
-     */
-    private boolean setupMode = false;
+    private final Scroll sidebarScroll = new Scroll();
+    private final Scroll featureScroll = new Scroll();
+    private final Scroll detailScroll = new Scroll();
 
-    /** 1 with the sidebar fully shown, 0 folded away; eased between the two. */
-    private float sidebarVisible = 1.0f;
-
-    /** Where the sidebar highlight is drawn; it glides toward the selected tab. -1 until the first frame. */
-    private double selectorY = -1.0;
-
-    /** Per tab, 0..1: how far its label has moved into the selected look (indent and accent colour). */
-    private final java.util.EnumMap<ConfigCategory, Float> tabSelectProgress = new java.util.EnumMap<>(ConfigCategory.class);
-
-    /** 0..1 progress of the content area's slide-and-fade after a tab switch; 1 while at rest. */
-    private float contentTransition = 1.0f;
+    /** A slider being dragged, and the track it is dragged along. */
+    private ConfigOption draggedSlider = null;
+    private int dragTrackX;
+    private int dragTrackW;
 
     private long openTimeMs = 0L;
-    private long lastFrameTime = System.currentTimeMillis();
+    private long lastFrameMs = System.currentTimeMillis();
 
-    // Currently dragged slider option
-    private ConfigOption draggedOption = null;
+    /** The setting under the mouse, and since when, for its tooltip. */
+    private ConfigOption hoveredSetting = null;
+    private long hoveredSince = 0L;
+
+    /** Clickable areas of the last frame, front-most last. */
+    private final List<Hit> hits = new ArrayList<>();
+
+    private interface ClickAction {
+        void run(double mouseX, double mouseY);
+    }
+
+    private record Hit(int x, int y, int w, int h, ClickAction action) {
+        boolean contains(double mx, double my) {
+            return mx >= x && mx < x + w && my >= y && my < y + h;
+        }
+    }
+
+    /** A column's scroll position, eased toward its target. */
+    private static final class Scroll {
+        double current;
+        double target;
+        double max;
+
+        void update(float deltaSec) {
+            target = Math.max(0, Math.min(max, target));
+            current += (target - current) * Math.min(1.0f, deltaSec * 14.0f);
+            if (Math.abs(target - current) < 0.05) current = target;
+        }
+
+        void by(double amount) {
+            target = Math.max(0, Math.min(max, target + amount));
+        }
+
+        void reset() {
+            current = 0;
+            target = 0;
+        }
+
+        int offset() {
+            return (int) Math.round(current);
+        }
+    }
 
     public AlpakaConfigScreen(Screen parent) {
         this(parent, "");
     }
 
-    /**
-     * Opens with the search box already filled, for {@code /aa <term>}.
-     *
-     * The General tab holds only a handful of settings, so a term typed at the command line would
-     * almost always come up empty there. ensureValidActiveCategory moves to the first tab that has
-     * a hit, which is what makes the term land on a result rather than on an empty General page.
-     */
+    /** Opens with the search box already filled, for {@code /aa <term>}. */
     public AlpakaConfigScreen(Screen parent, String initialSearch) {
         super(GuiFont.text("Alpaka Addons Config"));
         this.parent = parent;
         this.search.setText(initialSearch == null ? "" : initialSearch.trim());
-        if (!this.search.getText().isEmpty()) {
-            ensureValidActiveCategory();
+        List<ConfigTree.Group> groups = ConfigTree.groups();
+        if (!groups.isEmpty() && !groups.get(0).sections.isEmpty()) {
+            selectSection(groups.get(0).sections.get(0));
         }
+        if (searching()) selectFirstResult();
     }
 
-    /** The visible-category list, and the search term it was built for. */
-    private List<ConfigCategory> cachedVisibleCategories = null;
-    private String cachedVisibleCategoriesQuery = null;
-
-    /**
-     * The categories worth showing in the sidebar, cached against the search term.
-     *
-     * Rendering asks for this twice per frame and the click handler once more, and each pass used to
-     * walk and count every category's options - with the filtering underneath it re-running too.
-     * The answer only changes on a keystroke.
-     */
-    private List<ConfigCategory> getVisibleCategories() {
-        if (cachedVisibleCategories != null && search.getText().equals(cachedVisibleCategoriesQuery)) {
-            return cachedVisibleCategories;
-        }
-
-        List<ConfigCategory> list = new ArrayList<>();
-        for (ConfigCategory cat : ConfigCategory.values()) {
-            if (search.getText().isEmpty() || AlpakaConfigRegistry.countOptions(cat, search.getText()) > 0) {
-                list.add(cat);
+    /** For the screenshot tour: the screen opened on a section, and on a feature in it if given. */
+    static AlpakaConfigScreen openOn(String sectionTitle, String featureTitle) {
+        AlpakaConfigScreen screen = new AlpakaConfigScreen(null, "");
+        for (ConfigTree.Group group : ConfigTree.groups()) {
+            for (ConfigTree.Section section : group.sections) {
+                if (!section.title.equals(sectionTitle)) continue;
+                screen.selectSection(section);
+                for (ConfigTree.Feature feature : section.features) {
+                    if (feature.title.equals(featureTitle)) screen.selectFeature(feature);
+                }
+                screen.revealSelected = true;
             }
         }
-
-        cachedVisibleCategories = list;
-        cachedVisibleCategoriesQuery = search.getText();
-        return list;
-    }
-
-    private void ensureValidActiveCategory() {
-        List<ConfigCategory> visible = getVisibleCategories();
-        if (!visible.isEmpty() && !visible.contains(activeCategory)) {
-            setActiveCategory(visible.get(0));
-        }
-    }
-
-    /**
-     * Switches tabs: back to the top of the list, and the content slides and fades in.
-     *
-     * One place for every way a tab can change - a sidebar click, or the search moving to the first
-     * tab with a hit - so both get the same transition.
-     */
-    private void setActiveCategory(ConfigCategory category) {
-        if (category == activeCategory) return;
-        activeCategory = category;
-        if (category != ConfigCategory.VIEWMODEL) setupMode = false;
-        targetScrollY = 0;
-        scrollY = 0;
-        contentTransition = 0.0f;
-    }
-
-    /** Feature card height. Shared so every layout pass agrees on where each row starts. */
-    private static final int CARD_H = 44;
-
-    /** Height of one tickable line inside an expanded dropdown. */
-    private static final int DROPDOWN_ENTRY_H = 18;
-
-    /** Gap between a dropdown's card and its first line, and below its last. */
-    private static final int DROPDOWN_TOP_PAD = 2;
-    private static final int DROPDOWN_BOTTOM_PAD = 6;
-
-    private static final int CHECKBOX_SIZE = 11;
-
-    /** Corner radius of the sidebar's selected and hovered rows. */
-    private static final int TAB_CORNER_RADIUS = 5;
-
-    /** Cap on an inline text option's value, long enough for any account name. */
-    private static final int MAX_TEXT_OPTION_LENGTH = 32;
-
-    /**
-     * Vertical space one option occupies, expansion included.
-     *
-     * Every pass over the list - measuring total scroll height, drawing, and hit-testing clicks -
-     * goes through this. They previously each inlined the same arithmetic, which is exactly the kind
-     * of duplication that lets a dropdown draw in one place and be clickable in another.
-     */
-    /**
-     * Height of the heading above a category's options.
-     *
-     * Shared rather than written out at each site. Drawing skipped it for one category while
-     * hit-testing added it unconditionally, so on that tab every click landed on the option above
-     * the one under the cursor.
-     */
-    private static final int CATEGORY_HEADER_H = 30;
-
-    private static int optionItemHeight(ConfigOption opt) {
-        if (opt.getType() == ConfigOption.Type.HEADER) return 30;
-        int height = CARD_H + 6;
-        if (opt.getType() == ConfigOption.Type.DROPDOWN && opt.isExpanded()) {
-            height += DROPDOWN_TOP_PAD + opt.getEntryCount() * DROPDOWN_ENTRY_H + DROPDOWN_BOTTOM_PAD;
-        }
-        return height;
+        return screen;
     }
 
     @Override
     protected void init() {
-        this.openTimeMs = System.currentTimeMillis();
-        this.lastFrameTime = System.currentTimeMillis();
-        this.currentWinX = -1.0;
+        openTimeMs = System.currentTimeMillis();
+        lastFrameMs = openTimeMs;
     }
 
-    private void playPloppSound() {
-        try {
-            CustomSoundFeature.playButtonClickSound();
-        } catch (Throwable ignored) {}
+    // ---- Selection ------------------------------------------------------------------------------
+
+    private boolean searching() {
+        return !search.getText().isBlank();
     }
+
+    private String query() {
+        return ConfigOption.normalizeQuery(search.getText());
+    }
+
+    private void selectSection(ConfigTree.Section section) {
+        selectedSection = section;
+        selectedFeature = section.features.isEmpty() ? null : section.features.get(0);
+        featureScroll.reset();
+        detailScroll.reset();
+    }
+
+    private void selectFeature(ConfigTree.Feature feature) {
+        if (feature == selectedFeature) return;
+        selectedFeature = feature;
+        detailScroll.reset();
+    }
+
+    /** Set when a feature was chosen from outside the list, which then scrolls it into view. */
+    private boolean revealSelected = false;
+
+    /** The features the middle column lists: the section's, or every match while searching. */
+    private List<ConfigTree.Feature> listedFeatures() {
+        if (!searching()) return selectedSection == null ? List.of() : selectedSection.features;
+        String q = query();
+        List<ConfigTree.Feature> found = new ArrayList<>();
+        for (ConfigTree.Group group : ConfigTree.groups()) {
+            for (ConfigTree.Section section : group.sections) {
+                for (ConfigTree.Feature feature : section.features) {
+                    if (feature.matches(q)) found.add(feature);
+                }
+            }
+        }
+        return found;
+    }
+
+    private void selectFirstResult() {
+        List<ConfigTree.Feature> found = listedFeatures();
+        selectedFeature = found.isEmpty() ? null : found.get(0);
+        featureScroll.reset();
+        detailScroll.reset();
+    }
+
+    private void onSearchChanged() {
+        if (searching()) {
+            List<ConfigTree.Feature> found = listedFeatures();
+            if (!found.contains(selectedFeature)) selectFirstResult();
+        } else if (selectedFeature != null) {
+            selectedSection = selectedFeature.section;
+        }
+        featureScroll.reset();
+    }
+
+    // ---- Geometry -------------------------------------------------------------------------------
+
+    private int panelW() {
+        return Math.max(240, Math.min(Math.min(640, this.width - 16), this.width - 8));
+    }
+
+    private int panelH() {
+        return Math.max(160, Math.min(Math.min(380, this.height - 16), this.height - 8));
+    }
+
+    private int panelX() {
+        return (this.width - panelW()) / 2;
+    }
+
+    private int panelY() {
+        return (this.height - panelH()) / 2;
+    }
+
+    private int sidebarW() {
+        return Math.max(84, Math.min(120, (int) (panelW() * 0.21)));
+    }
+
+    private int featureColumnW() {
+        return (int) ((panelW() - sidebarW()) * 0.42);
+    }
+
+    // ---- Drawing --------------------------------------------------------------------------------
 
     @Override
     public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         long now = System.currentTimeMillis();
-        float deltaSec = Math.min(0.1f, (now - lastFrameTime) / 1000.0f);
-        lastFrameTime = now;
+        float deltaSec = Math.min(0.1f, (now - lastFrameMs) / 1000.0f);
+        lastFrameMs = now;
+        hits.clear();
 
-        // Smooth scroll interpolation for main content and sidebar
-        scrollY += (targetScrollY - scrollY) * Math.min(1.0f, deltaSec * 14.0f);
-        sidebarScrollY += (targetSidebarScrollY - sidebarScrollY) * Math.min(1.0f, deltaSec * 14.0f);
-        sidebarVisible = PloppAnimation.interpolate(sidebarVisible, setupMode ? 0.0f : 1.0f, deltaSec, 12.0f);
-        if (Math.abs(sidebarVisible - (setupMode ? 0.0f : 1.0f)) < 0.005f) sidebarVisible = setupMode ? 0.0f : 1.0f;
-
-        // Render translucent backdrop so game is visible behind and around the config panel.
-        // Drawn against an identity matrix rather than whatever is already on the pose stack -
-        // other installed GUI mods (SmoothGui and friends) apply their own open-transition
-        // transform around Screen's render calls, and without this the fill inherited that
-        // transform and slid along with it instead of staying still behind the panel.
+        // Against an identity matrix: other GUI mods transform Screen's render calls for their own
+        // open animations, and the backdrop must not slide along with them.
         graphics.pose().pushMatrix();
         graphics.pose().identity();
-        graphics.fill(0, 0, this.width, this.height, 0x70000000);
+        graphics.fill(0, 0, this.width, this.height, COLOR_BACKDROP);
         graphics.pose().popMatrix();
 
-        // Calculate Window Panel Dimensions (compact window leaving game visible around sides)
-        int winW = windowWidth();
-        int winH = panelHeight();
-
-        int centerWinX = (this.width - winW) / 2;
-        int sideWinX = Math.min(Math.max(12, (this.width - winW) / 10), Math.max(0, this.width - winW - 4));
-        int targetWinX = setupMode ? sideWinX : centerWinX;
-
-        if (currentWinX < 0) {
-            currentWinX = targetWinX;
-        } else {
-            currentWinX += (targetWinX - currentWinX) * Math.min(1.0f, deltaSec * 12.0f);
-        }
-
-        int winX = (int) Math.round(currentWinX);
-        int winY = (this.height - winH) / 2;
-
-        int headerHeight = 38;
-        int sidebarWidth = sidebarWidth();
-
-        int contentX = winX + sidebarWidth;
-        int contentY = winY + headerHeight;
-        int contentW = winW - sidebarWidth;
-        int contentH = winH - headerHeight;
-
-        // Apply open plopp scale animation
         float openScale = PloppAnimation.getOpenScale(openTimeMs);
-        boolean isAnimatingOpen = openScale < 0.999f;
-
-        if (isAnimatingOpen) {
+        boolean scaling = openScale < 0.999f;
+        if (scaling) {
             graphics.pose().pushMatrix();
             graphics.pose().scaleAround(openScale, openScale, this.width / 2.0f, this.height / 2.0f);
         }
 
-        // Multi-layered soft drop shadow around floating window panel for smooth edges & depth
-        for (int i = 1; i <= 6; i++) {
-            int shadowAlpha = (int) (0x24 * (1.0f - (float) i / 6.0f));
-            ModernGuiUtils.drawRect(graphics, winX - i, winY - i, winW + i * 2, winH + i * 2, (shadowAlpha << 24));
+        int x = panelX();
+        int y = panelY();
+        int w = panelW();
+        int h = panelH();
+        ModernGuiUtils.drawPanelShadow(graphics, x, y, w, h, ModernGuiUtils.PANEL_RADIUS, 1.0f);
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, ModernGuiUtils.PANEL_RADIUS, COLOR_PANEL);
+
+        int sideW = sidebarW();
+        int featW = featureColumnW();
+        int featX = x + sideW;
+        int detailX = featX + featW;
+        int detailW = x + w - detailX;
+        int bodyY = y + HEADER_H;
+        int bodyH = h - HEADER_H;
+
+        hoveredSettingThisFrame = null;
+
+        drawHeader(graphics, mouseX, mouseY, x, y, w, sideW, featX, featW, detailX, detailW);
+        ModernGuiUtils.drawRect(graphics, x + PAD, bodyY - 1, w - PAD * 2, 1, COLOR_LINE);
+        drawSidebar(graphics, mouseX, mouseY, x, bodyY, sideW, bodyH, deltaSec);
+        drawFeatures(graphics, mouseX, mouseY, featX, bodyY, featW, bodyH, deltaSec);
+        ModernGuiUtils.drawRect(graphics, detailX, bodyY + 4, 1, bodyH - 8, COLOR_DIVIDER);
+        drawDetails(graphics, mouseX, mouseY, detailX + 1, bodyY, detailW - 1, bodyH, deltaSec);
+
+        if (hoveredSettingThisFrame != hoveredSetting) {
+            hoveredSetting = hoveredSettingThisFrame;
+            hoveredSince = now;
         }
-        ModernGuiUtils.drawOutline(graphics, winX - 1, winY - 1, winW + 2, winH + 2, 0x60000000);
-
-        // 1. Outer Panel Base & Border
-        ModernGuiUtils.drawRect(graphics, winX, winY, winW, winH, ModernGuiUtils.COLOR_PANEL_BG);
-        ModernGuiUtils.drawOutline(graphics, winX, winY, winW, winH, ModernGuiUtils.COLOR_CARD_BORDER);
-
-        // 2. Left Sidebar Background (folded away in setup mode)
-        if (sidebarWidth > 0) {
-            ModernGuiUtils.drawRect(graphics, winX, winY + headerHeight, sidebarWidth, winH - headerHeight, ModernGuiUtils.COLOR_SIDEBAR_BG);
-            ModernGuiUtils.drawRect(graphics, winX + sidebarWidth - 1, winY + headerHeight, 1, winH - headerHeight, ModernGuiUtils.COLOR_CARD_BORDER);
+        if (hoveredSetting != null && now - hoveredSince >= TOOLTIP_DELAY_MS && draggedSlider == null) {
+            drawTooltip(graphics, mouseX, mouseY, hoveredSetting.getDescription());
         }
 
-        // Top Header Section & Title
-        ModernGuiUtils.drawRect(graphics, winX, winY, winW, headerHeight, ModernGuiUtils.COLOR_PANEL_BG);
-        ModernGuiUtils.drawRect(graphics, winX, winY + headerHeight - 1, winW, 1, ModernGuiUtils.getAccentColor());
+        if (scaling) graphics.pose().popMatrix();
+    }
 
-        String mainTitle = "ALPAKA ADDONS";
-        int titleWidth = GuiFont.width(this.font, mainTitle);
-        graphics.text(this.font, GuiFont.text(mainTitle), winX + 12, winY + 12, ModernGuiUtils.COLOR_TEXT_PRIMARY, false);
-        graphics.text(this.font, GuiFont.text("v" + ModVersion.mod()), winX + 12 + titleWidth + 6, winY + 12, ModernGuiUtils.COLOR_TEXT_MUTED, false);
+    private ConfigOption hoveredSettingThisFrame = null;
 
-        // Render Search Box
-        int searchX = winX + winW - 170;
-        int searchY = winY + 8;
-        int searchW = 158;
-        int searchH = 22;
+    private void drawHeader(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w,
+                            int sideW, int featX, int featW, int detailX, int detailW) {
+        // Logo: the name large, the version small beneath it.
+        Component title = GuiFont.title("ALPAKA");
+        if (title == null) title = GuiFont.text("ALPAKA");
+        graphics.text(this.font, title, x + PAD + 2, y + 5, COLOR_TEXT, false);
+        graphics.text(this.font, GuiFont.text("v" + ModVersion.mod().split("\\+")[0]), x + PAD + 2, y + 19, COLOR_TEXT_MUTED, false);
 
-        boolean isHoveringSearch = mouseX >= searchX && mouseX <= searchX + searchW && mouseY >= searchY && mouseY <= searchY + searchH;
-        int searchBg = ModernGuiUtils.COLOR_CARD_BG;
-        int searchBorder = searchFocused ? ModernGuiUtils.getAccentColor() : (isHoveringSearch ? ModernGuiUtils.getAccentDimColor() : ModernGuiUtils.COLOR_CARD_BORDER);
+        // Search: a pill over the feature column.
+        int sx = featX + 4;
+        int sw = featW - 8;
+        int sh = 18;
+        int sy = y + (HEADER_H - sh) / 2;
+        boolean hover = inside(mouseX, mouseY, sx, sy, sw, sh);
+        ModernGuiUtils.drawRoundedRect(graphics, sx, sy, sw, sh, sh / 2, COLOR_FIELD);
+        if (searchFocused) ModernGuiUtils.drawRoundedOutline(graphics, sx, sy, sw, sh, sh / 2, ModernGuiUtils.getAccentDimColor());
+        else if (hover) ModernGuiUtils.drawRoundedOutline(graphics, sx, sy, sw, sh, sh / 2, COLOR_LINE);
 
-        ModernGuiUtils.drawRoundedPanel(graphics, searchX, searchY, searchW, searchH, ModernGuiUtils.WIDGET_RADIUS, searchBg, searchBorder);
-
-        int searchTextX = searchX + 6;
-        int searchTextY = searchY + (searchH - 8) / 2;
-
+        int tx = sx + 9;
+        int ty = sy + (sh - 8) / 2;
+        int iconX = sx + sw - 16;
         if (search.isEmpty() && !searchFocused) {
-            graphics.text(this.font, GuiFont.text("🔍 Search..."), searchTextX, searchTextY, ModernGuiUtils.COLOR_TEXT_MUTED, false);
+            graphics.text(this.font, GuiFont.text("Search..."), tx, ty, COLOR_TEXT_MUTED, false);
         } else {
             String text = search.getText();
-
-            // Behind the glyphs, so the text stays readable on top of it.
             if (searchFocused && search.hasSelection()) {
-                int from = searchTextX + GuiFont.width(this.font, text.substring(0, search.getSelectionStart()));
-                int to = searchTextX + GuiFont.width(this.font, text.substring(0, search.getSelectionEnd()));
-                ModernGuiUtils.drawRect(graphics, from, searchTextY - 2, to - from, 12, ModernGuiUtils.getAccentDimColor());
+                int from = tx + GuiFont.width(this.font, text.substring(0, search.getSelectionStart()));
+                int to = tx + GuiFont.width(this.font, text.substring(0, search.getSelectionEnd()));
+                ModernGuiUtils.drawRect(graphics, from, ty - 1, to - from, 10, ModernGuiUtils.getAccentDimColor());
             }
-
-            graphics.text(this.font, GuiFont.text(text), searchTextX, searchTextY, ModernGuiUtils.COLOR_TEXT_PRIMARY, false);
-
-            // Drawn at the caret rather than appended to the string, so it sits where editing will
-            // happen instead of always at the end. The blink is restarted on every keystroke, which
-            // keeps the caret solid while typing rather than winking out mid-word.
-            if (searchFocused && (System.currentTimeMillis() - cursorBlinkTimer) / 500 % 2 == 0) {
-                int caretX = searchTextX + GuiFont.width(this.font, text.substring(0, search.getCaret()));
-                ModernGuiUtils.drawRect(graphics, caretX, searchTextY - 1, 1, 10, ModernGuiUtils.COLOR_TEXT_PRIMARY);
+            graphics.text(this.font, GuiFont.text(text), tx, ty, COLOR_TEXT, false);
+            if (searchFocused && (System.currentTimeMillis() - caretBlinkFrom) / 500 % 2 == 0) {
+                int caretX = tx + GuiFont.width(this.font, text.substring(0, search.getCaret()));
+                ModernGuiUtils.drawRect(graphics, caretX, ty - 1, 1, 10, COLOR_TEXT);
             }
         }
-
-        // Search clear button 'X'
-        if (!search.getText().isEmpty()) {
-            int clearX = searchX + searchW - 14;
-            boolean hoverClear = mouseX >= clearX && mouseX <= clearX + 10 && mouseY >= searchY && mouseY <= searchY + searchH;
-            graphics.text(this.font, GuiFont.text("✕"), clearX + 2, searchY + (searchH - 8) / 2, hoverClear ? ModernGuiUtils.getAccentColor() : ModernGuiUtils.COLOR_TEXT_MUTED, false);
-        }
-        // 4. Sidebar Categories with Scissor Clipping to keep categories strictly inside the panel
-        ensureValidActiveCategory();
-        List<ConfigCategory> categories = getVisibleCategories();
-        int catItemH = 32;
-        int catSpacing = 4;
-
-        int sideClipX = winX + 4;
-        int sideClipY = winY + headerHeight + 4;
-        int sideClipW = sidebarWidth - 8;
-        int sideClipH = winH - headerHeight - 8;
-
-        if (sideClipW >= 4) {
-        int totalSidebarH = categories.size() * (catItemH + catSpacing) + 8;
-        maxSidebarScrollY = Math.max(0, totalSidebarH - sideClipH);
-        targetSidebarScrollY = Math.max(0, Math.min(maxSidebarScrollY, targetSidebarScrollY));
-
-        graphics.enableScissor(sideClipX, sideClipY, sideClipX + sideClipW, sideClipY + sideClipH);
-
-        int itemY = sideClipY + 4 - (int) sidebarScrollY;
-        int tabX = winX + 8;
-        int tabW = sidebarWidth - 20;
-
-        // The highlight is a single rounded, tinted row that glides to the selected tab, rather than
-        // a box redrawn under the new one, so a tab change reads as movement. No outline and no
-        // accent bar: the tint and the accent-coloured label are enough to mark it.
-        int selectedTabY = itemY;
-        for (int i = 0; i < categories.size(); i++) {
-            if (categories.get(i) == activeCategory) selectedTabY = itemY + i * (catItemH + catSpacing);
-        }
-        if (selectorY < 0) {
-            selectorY = selectedTabY;
+        // The field first, the clear button after: the later hit is the one on top.
+        hits.add(new Hit(sx, sy, sw, sh, (mx, my) -> {
+            searchFocused = true;
+            caretBlinkFrom = System.currentTimeMillis();
+            search.setCaretFromX((int) mx - tx, s -> GuiFont.width(this.font, s));
+        }));
+        if (!search.isEmpty()) {
+            boolean hoverClear = inside(mouseX, mouseY, iconX - 2, sy, 14, sh);
+            graphics.text(this.font, GuiFont.text("✕"), iconX + 1, ty, hoverClear ? ModernGuiUtils.getAccentColor() : COLOR_TEXT_MUTED, false);
+            hits.add(new Hit(iconX - 2, sy, 14, sh, (mx, my) -> {
+                search.setText("");
+                onSearchChanged();
+            }));
         } else {
-            selectorY += (selectedTabY - selectorY) * Math.min(1.0f, deltaSec * 14.0f);
+            drawSearchIcon(graphics, iconX + 2, sy + 4, searchFocused ? ModernGuiUtils.getAccentColor() : COLOR_TEXT_MUTED);
         }
-        int highlightY = (int) Math.round(selectorY);
-        ModernGuiUtils.drawRoundedRect(graphics, tabX, highlightY, tabW, catItemH, TAB_CORNER_RADIUS, ModernGuiUtils.COLOR_CARD_BG);
 
-        for (ConfigCategory cat : categories) {
-            boolean isSelected = (activeCategory == cat);
-            boolean isHovered = mouseX >= tabX && mouseX <= tabX + tabW &&
-                                mouseY >= itemY && mouseY <= itemY + catItemH &&
-                                mouseY >= sideClipY && mouseY <= sideClipY + sideClipH;
+        // The chosen feature's name, over its settings.
+        if (selectedFeature != null) {
+            String name = ellipsize(selectedFeature.title, detailW - PAD * 2 - 4);
+            graphics.text(this.font, GuiFont.text(name), detailX + PAD + 2, y + (HEADER_H - 8) / 2, COLOR_TEXT, false);
+        }
+    }
 
-            // Indent and colour follow the highlight rather than snapping, at the same pace.
-            float select = tabSelectProgress.getOrDefault(cat, isSelected ? 1.0f : 0.0f);
-            select = PloppAnimation.interpolate(select, isSelected ? 1.0f : 0.0f, deltaSec, 14.0f);
-            tabSelectProgress.put(cat, select);
+    /** A magnifying glass: a ring of four short strokes and a handle, from plain fills. */
+    private static void drawSearchIcon(GuiGraphicsExtractor graphics, int x, int y, int color) {
+        ModernGuiUtils.drawRoundedOutline(graphics, x, y, 7, 7, 3, color);
+        ModernGuiUtils.drawRect(graphics, x + 6, y + 6, 1, 1, color);
+        ModernGuiUtils.drawRect(graphics, x + 7, y + 7, 1, 1, color);
+        ModernGuiUtils.drawRect(graphics, x + 8, y + 8, 1, 1, color);
+    }
 
-            if (isHovered && !isSelected) {
-                ModernGuiUtils.drawRoundedRect(graphics, tabX, itemY, tabW, catItemH, TAB_CORNER_RADIUS, ModernGuiUtils.COLOR_CARD_BG_HOVER);
+    private void drawSidebar(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w, int h, float deltaSec) {
+        int clipY = y + 4;
+        int clipH = h - 8;
+        int contentH = 4;
+        List<ConfigTree.Group> groups = ConfigTree.groups();
+        for (int i = 0; i < groups.size(); i++) {
+            contentH += GROUP_LABEL_H + groups.get(i).sections.size() * SECTION_ROW_H + (i < groups.size() - 1 ? 9 : 0);
+        }
+        sidebarScroll.max = Math.max(0, contentH - clipH);
+        sidebarScroll.update(deltaSec);
+
+        graphics.enableScissor(x, clipY, x + w, clipY + clipH);
+        int rowY = clipY + 2 - sidebarScroll.offset();
+        for (int i = 0; i < groups.size(); i++) {
+            ConfigTree.Group group = groups.get(i);
+            graphics.text(this.font, GuiFont.text(group.title), x + PAD, rowY + 2, COLOR_TEXT_MUTED, false);
+            rowY += GROUP_LABEL_H;
+            for (ConfigTree.Section section : group.sections) {
+                boolean selected = !searching() && section == selectedSection;
+                boolean hover = inside(mouseX, mouseY, x, rowY, w, SECTION_ROW_H) && inside(mouseX, mouseY, x, clipY, w, clipH);
+                int color = selected ? ModernGuiUtils.getAccentColor() : hover ? COLOR_TEXT : COLOR_TEXT_SOFT;
+                String label = ellipsize(section.title, w - PAD - 14);
+                ModernGuiUtils.drawRoundedRect(graphics, x + PAD + 1, rowY + 5, 2, 2, 1, color);
+                graphics.text(this.font, GuiFont.text(label), x + PAD + 7, rowY + 2, color, false);
+                if (visible(rowY, SECTION_ROW_H, clipY, clipH)) {
+                    hits.add(new Hit(x, Math.max(rowY, clipY), w, SECTION_ROW_H, (mx, my) -> {
+                        if (searching()) {
+                            search.setText("");
+                            searchFocused = false;
+                        }
+                        selectSection(section);
+                    }));
+                }
+                rowY += SECTION_ROW_H;
             }
-
-            int textX = winX + 14 + Math.round(8 * select);
-            int restingLabel = isHovered ? ModernGuiUtils.COLOR_TEXT_PRIMARY : ModernGuiUtils.COLOR_TEXT_MUTED;
-            int labelColor = ModernGuiUtils.lerpColor(restingLabel, ModernGuiUtils.getAccentColor(), select);
-            graphics.text(this.font, GuiFont.text(cat.getDisplayName()), textX, itemY + (catItemH - 8) / 2, labelColor, false);
-
-            // Category Settings Count Badge
-            String countText = String.valueOf(AlpakaConfigRegistry.countOptions(cat, search.getText()));
-            int countX = tabX + tabW - GuiFont.width(this.font, countText) - 10;
-            int restingCount = isHovered ? ModernGuiUtils.COLOR_TEXT_MUTED : ModernGuiUtils.COLOR_TEXT_DARK;
-            int countColor = ModernGuiUtils.lerpColor(restingCount, ModernGuiUtils.getAccentColor(), select);
-            graphics.text(this.font, GuiFont.text(countText), countX, itemY + (catItemH - 8) / 2, countColor, false);
-
-            itemY += catItemH + catSpacing;
+            if (i < groups.size() - 1) {
+                ModernGuiUtils.drawRect(graphics, x + PAD, rowY + 4, w - PAD * 2, 1, COLOR_LINE);
+                rowY += 9;
+            }
         }
-
         graphics.disableScissor();
+    }
+
+    private void drawFeatures(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w, int h, float deltaSec) {
+        List<ConfigTree.Feature> features = listedFeatures();
+        int clipY = y + 4;
+        int clipH = h - 8;
+        int rowX = x + 4;
+        int rowW = w - 8;
+        featureScroll.max = Math.max(0, features.size() * (FEATURE_ROW_H + FEATURE_ROW_GAP) + 4 - clipH);
+        if (revealSelected) {
+            revealSelected = false;
+            int index = features.indexOf(selectedFeature);
+            if (index >= 0) {
+                int top = index * (FEATURE_ROW_H + FEATURE_ROW_GAP);
+                featureScroll.target = Math.max(0, top - clipH / 2 + FEATURE_ROW_H);
+                featureScroll.current = Math.max(0, Math.min(featureScroll.max, featureScroll.target));
+            }
         }
+        featureScroll.update(deltaSec);
 
-        // 5. Render Options in Main Panel with Scissor Clipping to prevent scrolling overlap
-        List<ConfigOption> options = AlpakaConfigRegistry.getOptions(activeCategory, search.getText());
-
-        int totalContentHeight = 40 + 20;
-        for (ConfigOption opt : options) {
-            totalContentHeight += optionItemHeight(opt);
+        graphics.enableScissor(x, clipY, x + w, clipY + clipH);
+        if (features.isEmpty()) {
+            String empty = searching() ? "Nothing matches \"" + search.getText().trim() + "\"" : "Nothing here yet";
+            graphics.text(this.font, GuiFont.text(ellipsize(empty, rowW - 8)), rowX + 6, clipY + 6, COLOR_TEXT_MUTED, false);
         }
-        maxScrollY = Math.max(0, totalContentHeight - contentH);
-        targetScrollY = Math.max(0, Math.min(maxScrollY, targetScrollY));
+        int rowY = clipY + 2 - featureScroll.offset();
+        for (ConfigTree.Feature feature : features) {
+            if (visible(rowY, FEATURE_ROW_H, clipY, clipH)) {
+                boolean selected = feature == selectedFeature;
+                boolean hover = inside(mouseX, mouseY, rowX, rowY, rowW, FEATURE_ROW_H) && inside(mouseX, mouseY, x, clipY, w, clipH);
+                int background = selected ? COLOR_ROW_SELECTED : hover ? COLOR_ROW_HOVER : COLOR_ROW;
+                ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, FEATURE_ROW_H, 5, background);
 
-        int clipY = contentY + 6;
-        int clipH = contentH - 12;
-
-        graphics.enableScissor(contentX, clipY, contentX + contentW, clipY + clipH);
-
-        // Tab switch: the new list slides in from the right a little and fades up from the panel
-        // colour. Only the drawing is offset; hit-testing uses the resting positions, and the slide
-        // is over well before anyone can aim at a card.
-        contentTransition = Math.min(1.0f, contentTransition + deltaSec * 5.0f);
-        float eased = 1.0f - (1.0f - contentTransition) * (1.0f - contentTransition) * (1.0f - contentTransition);
-        graphics.pose().pushMatrix();
-        graphics.pose().translate((1.0f - eased) * 18.0f, 0.0f);
-
-        int startOptionY = contentY + 12 - (int) scrollY;
-
-        // Render Category Header inside Content Area
-        String catTitle = activeCategory.getHeading();
-        if (!search.getText().isEmpty()) {
-            catTitle = "Search results for: \"" + search.getText() + "\"";
-        }
-        graphics.text(this.font, GuiFont.text(catTitle), contentX + 16, startOptionY, ModernGuiUtils.COLOR_TEXT_PRIMARY, false);
-        graphics.text(this.font, GuiFont.text(activeCategory.getDescription()), contentX + 16, startOptionY + 13, ModernGuiUtils.COLOR_TEXT_MUTED, false);
-        startOptionY += CATEGORY_HEADER_H;
-
-        if (options.isEmpty()) {
-            String emptyMsg = "No settings found for \"" + search.getText() + "\".";
-            graphics.text(this.font, GuiFont.text(emptyMsg), contentX + 16, startOptionY + 12, ModernGuiUtils.COLOR_TOGGLE_OFF_TEXT, false);
-        } else {
-            int cardW = contentW - 28;
-            int cardH = CARD_H;
-
-            for (ConfigOption opt : options) {
-                int itemHeight = optionItemHeight(opt);
-
-                if (startOptionY + itemHeight >= clipY && startOptionY <= clipY + clipH) {
-                    if (opt.getType() == ConfigOption.Type.HEADER) {
-                        ModernGuiUtils.drawRect(graphics, contentX + 14, startOptionY + 8, cardW, 1, ModernGuiUtils.COLOR_CARD_BORDER);
-                        graphics.text(this.font, GuiFont.text("• " + opt.getTitle().toUpperCase()), contentX + 14, startOptionY + 14, ModernGuiUtils.getAccentColor(), false);
-                    } else {
-                        boolean isCardHovered = mouseX >= contentX + 14 && mouseX <= contentX + 14 + cardW &&
-                                               mouseY >= startOptionY && mouseY <= startOptionY + cardH &&
-                                               mouseY >= clipY && mouseY <= clipY + clipH;
-
-                        opt.updateHoverProgress(isCardHovered, deltaSec);
-
-                        // Hover lifts the card a touch. A click no longer squeezes it: the dip on
-                        // every toggle read as the card flinching.
-                        float popScale = 1.0f + 0.015f * opt.getHoverProgress();
-
-                        graphics.pose().pushMatrix();
-                        float cardCenterX = contentX + 14 + cardW / 2.0f;
-                        float cardCenterY = startOptionY + cardH / 2.0f;
-                        graphics.pose().scaleAround(popScale, popScale, cardCenterX, cardCenterY);
-
-                        ModernGuiUtils.drawModernCard(graphics, contentX + 14, startOptionY, cardW, cardH, isCardHovered, false);
-
-                        // Right Control Widgets (Compact sizing to fit smaller panel)
-                        int widgetW = widgetWidth(opt);
-                        int widgetH = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 15 : 18;
-                        int widgetX = contentX + 14 + cardW - widgetW - 10;
-                        int widgetY = startOptionY + (cardH - widgetH) / 2;
-
-                        // Title & Description (Wrapped to maxDescW to prevent overlap with control widgets)
-                        graphics.text(this.font, GuiFont.text(opt.getTitle()), contentX + 24, startOptionY + 8, ModernGuiUtils.COLOR_TEXT_PRIMARY, false);
-
-                        String desc = opt.getDescription();
-                        int maxDescW = widgetX - (contentX + 24) - 10;
-                        List<net.minecraft.network.chat.FormattedText> descLines = GuiFont.splitLines(this.font, desc, maxDescW);
-
-                        if (descLines.size() > 1) {
-                            for (int i = 0; i < Math.min(2, descLines.size()); i++) {
-                                // Drawn through the visual order rather than as a plain string: a
-                                // wrapped line carries the styles the splitter tracked across the
-                                // break, and getString() would flatten them away. That is what lets
-                                // a description colour a clause - a caveat, say - while the flat
-                                // colour below still applies to everything unstyled.
-                                graphics.text(this.font, net.minecraft.locale.Language.getInstance().getVisualOrder(descLines.get(i)),
-                                        contentX + 24, startOptionY + 20 + i * 9, ModernGuiUtils.COLOR_TEXT_MUTED, false);
-                            }
-                        } else {
-                            graphics.text(this.font, GuiFont.text(desc), contentX + 24, startOptionY + 22, ModernGuiUtils.COLOR_TEXT_MUTED, false);
-                        }
-
-                        if (opt.getType() == ConfigOption.Type.BOOLEAN) {
-                            boolean isWidgetHovered = mouseX >= widgetX && mouseX <= widgetX + widgetW && mouseY >= widgetY && mouseY <= widgetY + widgetH && mouseY >= clipY && mouseY <= clipY + clipH;
-                            opt.updateToggleProgress(deltaSec);
-                            ModernGuiUtils.drawModernToggle(graphics, this.font, widgetX, widgetY, widgetW, widgetH, opt.getToggleProgress(), isWidgetHovered);
-                        } else if (opt.getType() == ConfigOption.Type.SLIDER) {
-                            boolean isWidgetHovered = mouseX >= widgetX && mouseX <= widgetX + widgetW && mouseY >= widgetY && mouseY <= widgetY + widgetH && mouseY >= clipY && mouseY <= clipY + clipH;
-                            double normVal = opt.getSliderNormalizedValue();
-                            ModernGuiUtils.drawModernSlider(graphics, this.font, widgetX, widgetY, widgetW, widgetH, normVal, opt.getFormattedValue(), isWidgetHovered);
-                        } else if (opt.getType() == ConfigOption.Type.DROPDOWN) {
-                            boolean isWidgetHovered = mouseX >= widgetX && mouseX <= widgetX + widgetW && mouseY >= widgetY && mouseY <= widgetY + widgetH && mouseY >= clipY && mouseY <= clipY + clipH;
-                            // Summary doubles as the affordance: how many lines are on, and which way
-                            // the arrow points, so a collapsed dropdown still says what it contains.
-                            String summary = opt.getEnabledEntryCount() + "/" + opt.getEntryCount() + (opt.isExpanded() ? " ▲" : " ▼");
-                            ModernGuiUtils.drawModernButton(graphics, this.font, widgetX, widgetY, widgetW, widgetH, summary, isWidgetHovered, opt.isExpanded());
-                        } else if (opt.getType() == ConfigOption.Type.TEXT) {
-                            boolean isWidgetHovered = mouseX >= widgetX && mouseX <= widgetX + widgetW && mouseY >= widgetY && mouseY <= widgetY + widgetH && mouseY >= clipY && mouseY <= clipY + clipH;
-                            ModernGuiUtils.drawModernTextField(graphics, this.font, widgetX, widgetY, widgetW, widgetH,
-                                    opt.getText(), opt.getPlaceholder(), focusedTextOption == opt, isWidgetHovered);
-                        } else if (opt.getType() == ConfigOption.Type.ACTION) {
-                            boolean isWidgetHovered = mouseX >= widgetX && mouseX <= widgetX + widgetW && mouseY >= widgetY && mouseY <= widgetY + widgetH && mouseY >= clipY && mouseY <= clipY + clipH;
-
-                            if (opt.isColor()) {
-                                ModernGuiUtils.drawModernColorButton(graphics, this.font, widgetX, widgetY, widgetW, widgetH, opt.getColor(), isWidgetHovered);
-                            } else if (opt.getId().equals("disable_all_features")) {
-                                ModernGuiUtils.drawModernDestructiveButton(graphics, this.font, widgetX, widgetY, widgetW, widgetH, opt.getActionLabel(), isWidgetHovered);
-                            } else {
-                                ModernGuiUtils.drawModernButton(graphics, this.font, widgetX, widgetY, widgetW, widgetH, actionLabel(opt), isWidgetHovered, isArmed(opt));
-                            }
-                        }
-
-                        graphics.pose().popMatrix();
-
-                        // Drawn after popMatrix on purpose: the lines belong to the list, not to the
-                        // card, and must not inherit the card's hover pop-scale.
-                        if (opt.getType() == ConfigOption.Type.DROPDOWN && opt.isExpanded()) {
-                            int entryY = startOptionY + cardH + DROPDOWN_TOP_PAD;
-                            for (ConfigOption.ToggleEntry entry : opt.getEntries()) {
-                                boolean entryHovered = mouseX >= contentX + 14 && mouseX <= contentX + 14 + cardW
-                                        && mouseY >= entryY && mouseY < entryY + DROPDOWN_ENTRY_H
-                                        && mouseY >= clipY && mouseY <= clipY + clipH;
-
-                                if (entryHovered) {
-                                    ModernGuiUtils.drawRect(graphics, contentX + 14, entryY, cardW, DROPDOWN_ENTRY_H, ModernGuiUtils.COLOR_CARD_BG_HOVER);
-                                }
-
-                                int boxX = contentX + 14 + 22;
-                                int boxY = entryY + (DROPDOWN_ENTRY_H - CHECKBOX_SIZE) / 2;
-                                ModernGuiUtils.drawModernCheckbox(graphics, this.font, boxX, boxY, CHECKBOX_SIZE, entry.get(), entryHovered);
-
-                                int labelColor = entry.get() ? ModernGuiUtils.COLOR_TEXT_PRIMARY : ModernGuiUtils.COLOR_TEXT_MUTED;
-                                graphics.text(this.font, GuiFont.text(entry.getLabel()),
-                                        boxX + CHECKBOX_SIZE + 7, entryY + (DROPDOWN_ENTRY_H - 8) / 2, labelColor, false);
-
-                                entryY += DROPDOWN_ENTRY_H;
-                            }
-                        }
-                    }
+                // The dots keep their place whether drawn or not, so every switch lines up.
+                int right = rowX + rowW - 6;
+                if (!feature.panelOptions().isEmpty()) {
+                    drawDots(graphics, right - 1, rowY + (FEATURE_ROW_H - 7) / 2, selected ? COLOR_TEXT_SOFT : COLOR_TEXT_MUTED);
+                }
+                right -= 7;
+                int toggleX = right - TOGGLE_W;
+                int toggleY = rowY + (FEATURE_ROW_H - TOGGLE_H) / 2;
+                // The row first, its switch after: the later hit is the one on top.
+                hits.add(new Hit(rowX, Math.max(rowY, clipY), rowW, FEATURE_ROW_H, (mx, my) -> selectFeature(feature)));
+                if (feature.hasToggle()) {
+                    feature.master.updateToggleProgress(deltaSec);
+                    drawToggle(graphics, toggleX, toggleY, feature.master.getToggleProgress());
+                    ConfigOption master = feature.master;
+                    hits.add(new Hit(toggleX - 3, Math.max(rowY, clipY), TOGGLE_W + 6, FEATURE_ROW_H, (mx, my) -> {
+                        master.toggleBool();
+                        selectFeature(feature);
+                    }));
                 }
 
-                startOptionY += itemHeight;
+                int titleColor = selected ? ModernGuiUtils.getAccentColor() : COLOR_TEXT;
+                int titleW = (feature.hasToggle() ? toggleX : right) - (rowX + 8) - 6;
+                graphics.text(this.font, GuiFont.text(ellipsize(feature.title, titleW)), rowX + 8, rowY + (FEATURE_ROW_H - 8) / 2, titleColor, false);
+            }
+            rowY += FEATURE_ROW_H + FEATURE_ROW_GAP;
+        }
+        graphics.disableScissor();
+    }
+
+    /** The "more settings" mark: three dots stacked. */
+    private static void drawDots(GuiGraphicsExtractor graphics, int x, int y, int color) {
+        for (int i = 0; i < 3; i++) ModernGuiUtils.drawRect(graphics, x, y + i * 3, 1, 1, color);
+    }
+
+    private void drawDetails(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w, int h, float deltaSec) {
+        int clipY = y + 4;
+        int clipH = h - 8;
+        int rowX = x + PAD - 2;
+        int rowW = w - PAD * 2 + 2;
+        graphics.enableScissor(x, clipY, x + w, clipY + clipH);
+        ConfigTree.Feature feature = selectedFeature;
+        if (feature == null) {
+            graphics.disableScissor();
+            return;
+        }
+
+        int rowY = clipY + 2 - detailScroll.offset();
+        int startY = rowY;
+
+        // Description, folded away on request.
+        String description = feature.description == null ? "" : feature.description;
+        if (!description.isEmpty()) {
+            boolean hover = inside(mouseX, mouseY, rowX, rowY, rowW, SETTING_ROW_H) && inside(mouseX, mouseY, x, clipY, w, clipH);
+            if (hover) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, SETTING_ROW_H, 4, COLOR_ROW);
+            graphics.text(this.font, GuiFont.text("Description"), rowX + 4, rowY + 4, COLOR_TEXT, false);
+            drawChevron(graphics, rowX + rowW - 8, rowY + 8, descriptionOpen, COLOR_TEXT_SOFT);
+            if (visible(rowY, SETTING_ROW_H, clipY, clipH)) {
+                hits.add(new Hit(rowX, Math.max(rowY, clipY), rowW, SETTING_ROW_H, (mx, my) -> descriptionOpen = !descriptionOpen));
+            }
+            rowY += SETTING_ROW_H;
+            if (descriptionOpen) {
+                for (FormattedText line : GuiFont.splitLines(this.font, description, rowW - 8)) {
+                    graphics.text(this.font, Language.getInstance().getVisualOrder(line), rowX + 4, rowY + 1, COLOR_TEXT_MUTED, false);
+                    rowY += LINE_H + 1;
+                }
+                rowY += 5;
             }
         }
 
-        graphics.pose().popMatrix();
-        if (eased < 1.0f) {
-            int fadeAlpha = Math.min(255, Math.round((1.0f - eased) * 255.0f));
-            ModernGuiUtils.drawRect(graphics, contentX, clipY, contentW, clipH,
-                    (fadeAlpha << 24) | (ModernGuiUtils.COLOR_PANEL_BG & 0x00FFFFFF));
+        List<ConfigOption> options = feature.panelOptions();
+        if (options.isEmpty()) {
+            graphics.text(this.font, GuiFont.text("No further settings."), rowX + 4, rowY + 4, COLOR_TEXT_MUTED, false);
+            rowY += SETTING_ROW_H;
+        }
+        for (ConfigOption option : options) {
+            rowY = drawSetting(graphics, mouseX, mouseY, option, rowX, rowY, rowW, x, w, clipY, clipH, deltaSec);
         }
 
+        detailScroll.max = Math.max(0, (rowY + detailScroll.offset()) - startY + 6 - clipH);
+        detailScroll.update(deltaSec);
         graphics.disableScissor();
-
-        // The setup-mode handle on the panel's top edge, only on the Item Viewmodel tab: a small
-        // tab that folds the sidebar away and moves the panel aside, or brings both back.
-        if (showsHandle()) {
-            drawHandle(graphics, winX, winY, winW, headerHeight,
-                    isOverHandle(mouseX, mouseY, winX, winY, winW, headerHeight), deltaSec);
-        }
-
-        if (isAnimatingOpen) {
-            graphics.pose().popMatrix();
-        }
     }
 
-    /**
-     * Width of an option's control, shared by drawing and hit-testing.
-     *
-     * Buttons grow with their label. Labels are measured in the configured typeface, and most run
-     * wider there than in the pixel font the fixed 80 px was sized for - "Open HUD Editor" spilled
-     * past both ends of its button in Inter.
-     */
-    private int widgetWidth(ConfigOption opt) {
-        return switch (opt.getType()) {
-            case BOOLEAN -> 32;
-            case TEXT -> 120;
-            case ACTION -> opt.isColor() ? 38
-                    : Math.max(80, Math.max(GuiFont.width(this.font, opt.getActionLabel()),
-                            opt.isConfirmFirst() ? GuiFont.width(this.font, CONFIRM_LABEL) : 0) + 16);
-            default -> 90;
+    /** Draws one setting row and returns the y the next one starts at. */
+    private int drawSetting(GuiGraphicsExtractor graphics, int mouseX, int mouseY, ConfigOption option,
+                            int rowX, int rowY, int rowW, int colX, int colW, int clipY, int clipH, float deltaSec) {
+        int rowH = switch (option.getType()) {
+            case SLIDER -> SLIDER_ROW_H;
+            case ACTION -> option.isColor() ? SETTING_ROW_H : ACTION_ROW_H;
+            default -> SETTING_ROW_H;
         };
+        boolean shown = visible(rowY, rowH, clipY, clipH);
+        boolean hover = inside(mouseX, mouseY, rowX, rowY, rowW, rowH) && inside(mouseX, mouseY, colX, clipY, colW, clipH);
+        if (hover) hoveredSettingThisFrame = option;
+        int labelY = rowY + 4;
+        int right = rowX + rowW - 4;
+        int hitY = Math.max(rowY, clipY);
+
+        switch (option.getType()) {
+            case BOOLEAN -> {
+                if (hover) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, rowH, 4, COLOR_ROW);
+                option.updateToggleProgress(deltaSec);
+                drawLabel(graphics, option.getTitle(), rowX + 4, labelY, right - TOGGLE_W - 8 - (rowX + 4));
+                drawToggle(graphics, right - TOGGLE_W, rowY + (rowH - TOGGLE_H) / 2, option.getToggleProgress());
+                if (shown) hits.add(new Hit(rowX, hitY, rowW, rowH, (mx, my) -> option.toggleBool()));
+            }
+            case SLIDER -> {
+                String value = option.getFormattedValue();
+                int valueW = GuiFont.width(this.font, value);
+                drawLabel(graphics, option.getTitle(), rowX + 4, labelY, right - valueW - 8 - (rowX + 4));
+                graphics.text(this.font, GuiFont.text(value), right - valueW, labelY, COLOR_TEXT, false);
+                int trackX = rowX + 4;
+                int trackW = rowW - 8;
+                int trackY = rowY + 17;
+                int knobX = trackX + (int) Math.round(option.getSliderNormalizedValue() * trackW);
+                ModernGuiUtils.drawRect(graphics, trackX, trackY, trackW, 1, COLOR_TRACK);
+                ModernGuiUtils.drawRect(graphics, trackX, trackY, knobX - trackX, 1, ModernGuiUtils.getAccentColor());
+                boolean dragging = draggedSlider == option;
+                int knob = hover || dragging ? 7 : 6;
+                ModernGuiUtils.drawRoundedRect(graphics, knobX - knob / 2, trackY - knob / 2, knob, knob, knob / 2, ModernGuiUtils.getAccentColor());
+                if (shown) {
+                    hits.add(new Hit(rowX, hitY, rowW, rowH, (mx, my) -> {
+                        draggedSlider = option;
+                        dragTrackX = trackX;
+                        dragTrackW = trackW;
+                        // One write for the whole drag, not one per mouse move.
+                        AlpakaConfig.beginDeferredSaves();
+                        option.setSliderNormalizedValue(Math.max(0.0, Math.min(1.0, (mx - trackX) / (double) trackW)));
+                    }));
+                }
+            }
+            case ACTION -> {
+                if (option.isColor()) {
+                    if (hover) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, rowH, 4, COLOR_ROW);
+                    drawLabel(graphics, option.getTitle(), rowX + 4, labelY, right - SWATCH_W - 8 - (rowX + 4));
+                    int sy = rowY + (rowH - SWATCH_H) / 2;
+                    ModernGuiUtils.drawRoundedRect(graphics, right - SWATCH_W, sy, SWATCH_W, SWATCH_H, 2, 0xFF000000);
+                    ModernGuiUtils.drawRoundedRect(graphics, right - SWATCH_W + 1, sy + 1, SWATCH_W - 2, SWATCH_H - 2, 2, option.getColor());
+                    if (shown) hits.add(new Hit(rowX, hitY, rowW, rowH, (mx, my) -> option.triggerAction(this)));
+                } else {
+                    boolean armed = armedOption == option && System.currentTimeMillis() < armedUntilMs;
+                    boolean danger = option.getId().equals("disable_all_features");
+                    String label = armed ? CONFIRM_LABEL : option.getTitle();
+                    int color = hover || armed ? (danger ? COLOR_DANGER : ModernGuiUtils.getAccentColor()) : danger ? 0xFFC9726C : COLOR_TEXT;
+                    if (hover) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, rowH, 4, COLOR_ROW);
+                    String text = ellipsize(label, rowW - 8);
+                    graphics.text(this.font, GuiFont.text(text), rowX + (rowW - GuiFont.width(this.font, text)) / 2, rowY + (rowH - 8) / 2, color, false);
+                    if (shown) {
+                        hits.add(new Hit(rowX, hitY, rowW, rowH, (mx, my) -> {
+                            if (option.isConfirmFirst() && !(armedOption == option && System.currentTimeMillis() < armedUntilMs)) {
+                                armedOption = option;
+                                armedUntilMs = System.currentTimeMillis() + CONFIRM_WINDOW_MS;
+                                return;
+                            }
+                            armedOption = null;
+                            option.triggerAction(this);
+                        }));
+                    }
+                }
+            }
+            case DROPDOWN -> {
+                boolean open = !collapsed.contains(option);
+                if (hover) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, rowH, 4, COLOR_ROW);
+                String count = option.getEnabledEntryCount() + "/" + option.getEntryCount();
+                int countW = GuiFont.width(this.font, count);
+                drawLabel(graphics, option.getTitle(), rowX + 4, labelY, right - countW - 20 - (rowX + 4));
+                graphics.text(this.font, GuiFont.text(count), right - 12 - countW, labelY, COLOR_TEXT_MUTED, false);
+                drawChevron(graphics, right - 4, rowY + 8, open, COLOR_TEXT_SOFT);
+                if (shown) {
+                    hits.add(new Hit(rowX, hitY, rowW, rowH, (mx, my) -> {
+                        if (!collapsed.remove(option)) collapsed.add(option);
+                    }));
+                }
+                if (open) {
+                    int entryY = rowY + rowH;
+                    for (ConfigOption.ToggleEntry entry : option.getEntries()) {
+                        boolean entryHover = inside(mouseX, mouseY, rowX, entryY, rowW, SETTING_ROW_H) && inside(mouseX, mouseY, colX, clipY, colW, clipH);
+                        if (entryHover) ModernGuiUtils.drawRoundedRect(graphics, rowX, entryY, rowW, SETTING_ROW_H, 4, COLOR_ROW);
+                        ModernGuiUtils.drawRect(graphics, rowX + 6, entryY + 2, 1, SETTING_ROW_H - 4, COLOR_LINE);
+                        int entryLabelW = right - TOGGLE_W - 8 - (rowX + 14);
+                        graphics.text(this.font, GuiFont.text(ellipsize(entry.getLabel(), entryLabelW)), rowX + 14, entryY + 4,
+                                entry.get() ? COLOR_TEXT_SOFT : COLOR_TEXT_MUTED, false);
+                        drawToggle(graphics, right - TOGGLE_W, entryY + (SETTING_ROW_H - TOGGLE_H) / 2, entry.get() ? 1.0f : 0.0f);
+                        if (visible(entryY, SETTING_ROW_H, clipY, clipH)) {
+                            hits.add(new Hit(rowX, Math.max(entryY, clipY), rowW, SETTING_ROW_H, (mx, my) -> entry.toggle()));
+                        }
+                        entryY += SETTING_ROW_H;
+                    }
+                    return entryY + 2;
+                }
+            }
+            case TEXT -> {
+                if (hover) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, rowH, 4, COLOR_ROW);
+                int fieldW = Math.min(TEXT_FIELD_W, rowW / 2);
+                int fieldX = right - fieldW;
+                drawLabel(graphics, option.getTitle(), rowX + 4, labelY, fieldX - 8 - (rowX + 4));
+                boolean focused = focusedText == option;
+                ModernGuiUtils.drawRoundedRect(graphics, fieldX, rowY + 2, fieldW, rowH - 4, 3, COLOR_FIELD);
+                ModernGuiUtils.drawRect(graphics, fieldX + 3, rowY + rowH - 3, fieldW - 6, 1,
+                        focused ? ModernGuiUtils.getAccentColor() : COLOR_LINE);
+                String value = option.getText();
+                boolean empty = value.isEmpty();
+                String shownText = ellipsize(empty && !focused ? option.getPlaceholder() : value, fieldW - 8);
+                graphics.text(this.font, GuiFont.text(shownText), fieldX + 4, labelY, empty ? COLOR_TEXT_MUTED : COLOR_TEXT, false);
+                if (focused && (System.currentTimeMillis() - caretBlinkFrom) / 500 % 2 == 0) {
+                    int caretX = fieldX + 4 + Math.min(fieldW - 8, GuiFont.width(this.font, value));
+                    ModernGuiUtils.drawRect(graphics, caretX, labelY - 1, 1, 10, COLOR_TEXT);
+                }
+                if (shown) {
+                    hits.add(new Hit(rowX, hitY, rowW, rowH, (mx, my) -> {
+                        focusedText = option;
+                        searchFocused = false;
+                        caretBlinkFrom = System.currentTimeMillis();
+                    }));
+                }
+            }
+            default -> {
+            }
+        }
+        return rowY + rowH;
+    }
+
+    private void drawLabel(GuiGraphicsExtractor graphics, String label, int x, int y, int maxW) {
+        graphics.text(this.font, GuiFont.text(ellipsize(label, maxW)), x, y, COLOR_TEXT_SOFT, false);
     }
 
     /**
-     * The panel's size: compact, so the game stays visible around it, but never wider or taller
-     * than the screen itself. A windowed game can be smaller than the panel's preferred minimum,
-     * and a panel hanging off the screen used to clip its sidebar at a negative position, which the
-     * renderer rejects hard enough to crash the game.
+     * A slim switch: a rounded outline with a dot that slides across, grey when off and in the
+     * accent colour when on.
      */
-    private int panelWidth() {
-        int preferred = Math.min(660, Math.max(480, (int) (this.width * 0.70)));
-        return Math.max(240, Math.min(preferred, this.width - 8));
-    }
-
-    private int panelHeight() {
-        int preferred = Math.min(440, Math.max(340, (int) (this.height * 0.68)));
-        return Math.max(160, Math.min(preferred, this.height - 8));
-    }
-
-    private static final int SIDEBAR_FULL_WIDTH = 160;
-
-    /** The sidebar's current width: full, or folding away in setup mode. */
-    private int sidebarWidth() {
-        return Math.round(SIDEBAR_FULL_WIDTH * sidebarVisible);
-    }
-
-    /** The panel's width: the content keeps its width, so the panel loses what the sidebar gives up. */
-    private int windowWidth() {
-        return panelWidth() - (SIDEBAR_FULL_WIDTH - sidebarWidth());
+    private static void drawToggle(GuiGraphicsExtractor graphics, int x, int y, float progress) {
+        int accent = ModernGuiUtils.getAccentColor();
+        int outline = ModernGuiUtils.lerpColor(0xFF6E6E6E, accent, progress);
+        int knob = ModernGuiUtils.lerpColor(0xFF8A8A8A, accent, progress);
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, TOGGLE_W, TOGGLE_H, TOGGLE_H / 2,
+                ModernGuiUtils.lerpColor(0x00000000, (accent & 0x00FFFFFF) | 0x26000000, progress));
+        ModernGuiUtils.drawRoundedOutline(graphics, x, y, TOGGLE_W, TOGGLE_H, TOGGLE_H / 2, outline);
+        int size = TOGGLE_H - 4;
+        int travel = TOGGLE_W - 4 - size;
+        int kx = x + 2 + Math.round(travel * progress);
+        ModernGuiUtils.drawRoundedRect(graphics, kx, y + 2, size, size, size / 2, knob);
     }
 
     /**
-     * The setup-mode handle: a large chevron in the content area's top-right corner, level with the
-     * tab's heading. Pointing left while the panel is centred (it will move left), right in setup
-     * mode (it will come back).
+     * A small chevron, pointing down when open and right when closed: two smooth strokes as quads,
+     * so the diagonals stay clean at every GUI scale instead of stepping pixel by pixel.
      */
-    private static final int HANDLE_SIZE = 28;
-
-    private boolean showsHandle() {
-        return activeCategory == ConfigCategory.VIEWMODEL;
-    }
-
-    private int handleX(int winX, int winW) {
-        return winX + winW - HANDLE_SIZE - 16;
-    }
-
-    private int handleY(int winY, int headerHeight) {
-        return winY + headerHeight + 10;
-    }
-
-    private boolean isOverHandle(double mouseX, double mouseY, int winX, int winY, int winW, int headerHeight) {
-        if (!showsHandle()) return false;
-        int hx = handleX(winX, winW);
-        int hy = handleY(winY, headerHeight);
-        return mouseX >= hx && mouseX <= hx + HANDLE_SIZE && mouseY >= hy && mouseY <= hy + HANDLE_SIZE;
-    }
-
-    /** Eased hover of the handle, so its colour and size glide. */
-    private float handleHover = 0.0f;
-
-    /**
-     * Draws the chevron: two thick strokes meeting at the point, drawn as quads so the diagonals are
-     * smooth, in the muted text colour at rest and the accent when hovered or while setup mode is on.
-     */
-    private void drawHandle(GuiGraphicsExtractor graphics, int winX, int winY, int winW, int headerHeight, boolean hovered, float deltaSec) {
-        handleHover = PloppAnimation.interpolate(handleHover, hovered ? 1.0f : 0.0f, deltaSec, 14.0f);
-        int hx = handleX(winX, winW);
-        int hy = handleY(winY, headerHeight);
-        float cx = hx + HANDLE_SIZE / 2.0f;
-        float cy = hy + HANDLE_SIZE / 2.0f;
-        int resting = setupMode ? ModernGuiUtils.getAccentColor() : ModernGuiUtils.COLOR_TEXT_MUTED;
-        int color = ModernGuiUtils.lerpColor(resting, ModernGuiUtils.getAccentColor(), handleHover);
-        // Points left to go into setup mode, right to come back; grows a little under the mouse.
-        float direction = setupMode ? 1.0f : -1.0f;
-        float size = 7.0f + 1.0f * handleHover;
-        float thickness = 2.4f;
-        float tipX = cx + direction * size * 0.5f;
-        float backX = cx - direction * size * 0.5f;
-        int guiScale = (int) Math.max(1, this.minecraft == null ? 2 : this.minecraft.getWindow().getGuiScale());
-        net.alpaka.addons.features.wheel.WheelMesh mesh = new net.alpaka.addons.features.wheel.WheelMesh(1.15f / guiScale);
-        mesh.quad(
-                backX, cy - size, color, backX + direction * thickness, cy - size, color,
-                tipX + direction * thickness, cy, color, tipX, cy, color);
-        mesh.quad(
-                tipX, cy, color, tipX + direction * thickness, cy, color,
-                backX + direction * thickness, cy + size, color, backX, cy + size, color);
+    private void drawChevron(GuiGraphicsExtractor graphics, int cx, int cy, boolean open, int color) {
+        int guiScale = this.minecraft == null ? 2 : (int) Math.max(1, this.minecraft.getWindow().getGuiScale());
+        net.alpaka.addons.features.wheel.WheelMesh mesh = new net.alpaka.addons.features.wheel.WheelMesh(1.0f / guiScale);
+        float s = 2.5f;
+        float t = 1.1f;
+        if (open) {
+            stroke(mesh, cx - s, cy - s / 2, cx, cy + s / 2, t, color);
+            stroke(mesh, cx, cy + s / 2, cx + s, cy - s / 2, t, color);
+        } else {
+            stroke(mesh, cx - s / 2, cy - s, cx + s / 2, cy, t, color);
+            stroke(mesh, cx + s / 2, cy, cx - s / 2, cy + s, t, color);
+        }
         mesh.submit(graphics);
     }
 
-    private int getEffectiveWinX(int winW) {
-        if (currentWinX >= 0) {
-            return (int) Math.round(currentWinX);
+    /** A straight stroke of the given thickness, with square ends half a thickness past each point. */
+    private static void stroke(net.alpaka.addons.features.wheel.WheelMesh mesh, float x0, float y0, float x1, float y1, float thickness, int color) {
+        float dx = x1 - x0;
+        float dy = y1 - y0;
+        float len = (float) Math.sqrt(dx * dx + dy * dy);
+        if (len == 0) return;
+        float ux = dx / len * thickness / 2;
+        float uy = dy / len * thickness / 2;
+        float nx = -uy;
+        float ny = ux;
+        mesh.quad(x0 - ux + nx, y0 - uy + ny, color, x1 + ux + nx, y1 + uy + ny, color,
+                x1 + ux - nx, y1 + uy - ny, color, x0 - ux - nx, y0 - uy - ny, color);
+    }
+
+    private void drawTooltip(GuiGraphicsExtractor graphics, int mouseX, int mouseY, String text) {
+        if (text == null || text.isBlank()) return;
+        int maxW = 170;
+        List<FormattedText> lines = GuiFont.splitLines(this.font, text, maxW);
+        int w = 0;
+        for (FormattedText line : lines) w = Math.max(w, this.font.width(line));
+        int h = lines.size() * (LINE_H + 1) + 6;
+        w += 10;
+        int x = Math.min(mouseX + 10, this.width - w - 4);
+        int y = Math.min(mouseY + 10, this.height - h - 4);
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, 4, 0xF01A1A1A);
+        ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, h, 4, COLOR_DIVIDER);
+        int ly = y + 4;
+        for (FormattedText line : lines) {
+            graphics.text(this.font, Language.getInstance().getVisualOrder(line), x + 5, ly, COLOR_TEXT_SOFT, false);
+            ly += LINE_H + 1;
         }
-        int centerWinX = (this.width - winW) / 2;
-        int sideWinX = Math.min(Math.max(12, (this.width - winW) / 10), Math.max(0, this.width - winW - 4));
-        return setupMode ? sideWinX : centerWinX;
     }
 
-    /** An action that asked for a second click, and until when that click counts. */
-    private ConfigOption armedOption = null;
-    private long armedUntilMs = 0L;
-    private static final long CONFIRM_WINDOW_MS = 3000L;
-    private static final String CONFIRM_LABEL = "Click again";
+    // ---- Helpers --------------------------------------------------------------------------------
 
-    private boolean isArmed(ConfigOption opt) {
-        return armedOption == opt && System.currentTimeMillis() < armedUntilMs;
+    private static boolean inside(double mx, double my, int x, int y, int w, int h) {
+        return mx >= x && mx < x + w && my >= y && my < y + h;
     }
 
-    /** The label on an action's button: its own, or the second-click prompt while armed. */
-    private String actionLabel(ConfigOption opt) {
-        return isArmed(opt) ? CONFIRM_LABEL : opt.getActionLabel();
+    private static boolean visible(int y, int h, int clipY, int clipH) {
+        return y + h > clipY && y < clipY + clipH;
     }
+
+    /** The text cut to fit the width, with an ellipsis where it was cut. */
+    private String ellipsize(String text, int maxW) {
+        if (text == null) return "";
+        if (maxW <= 0) return "";
+        if (GuiFont.width(this.font, text) <= maxW) return text;
+        String dots = "…";
+        int end = text.length();
+        while (end > 0 && GuiFont.width(this.font, text.substring(0, end) + dots) > maxW) end--;
+        return text.substring(0, end).trim() + dots;
+    }
+
+    private void playClick() {
+        try {
+            CustomSoundFeature.playButtonClickSound();
+        } catch (Throwable ignored) {
+        }
+    }
+
+    // ---- Input ----------------------------------------------------------------------------------
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        // Only the left button does anything here. A right or middle click used to toggle options,
-        // fire actions and start slider drags.
         if (event.button() != 0) return super.mouseClicked(event, doubleClick);
+        double mx = event.x();
+        double my = event.y();
 
-        // Released up front: any click that then lands on a text field re-focuses it below, and
-        // every other click - sidebar, toggle, backdrop - should drop the caret.
-        ConfigOption previouslyFocusedText = focusedTextOption;
-        focusedTextOption = null;
-        if (previouslyFocusedText != null) net.alpaka.addons.config.AlpakaConfig.save();
-        double mouseX = event.x();
-        double mouseY = event.y();
+        ConfigOption previousText = focusedText;
+        focusedText = null;
+        if (previousText != null) AlpakaConfig.save();
+        boolean wasSearching = searchFocused;
+        searchFocused = false;
+        search.clearSelection();
 
-        int winW = windowWidth();
-        int winH = panelHeight();
-        int winX = getEffectiveWinX(winW);
-        int winY = (this.height - winH) / 2;
-
-        int headerHeight = 38;
-        int sidebarWidth = sidebarWidth();
-
-        int contentX = winX + sidebarWidth;
-        int contentY = winY + headerHeight;
-        int contentW = winW - sidebarWidth;
-        int contentH = winH - headerHeight;
-
-        // The setup-mode handle above the panel
-        if (event.button() == 0 && isOverHandle(mouseX, mouseY, winX, winY, winW, headerHeight)) {
-            playPloppSound();
-            setupMode = !setupMode;
-            return true;
-        }
-
-        // Search bar click
-        int searchW = 158;
-        int searchH = 22;
-        int searchX = winX + winW - 170;
-        int searchY = winY + 8;
-
-        if (!search.getText().isEmpty()) {
-            int clearX = searchX + searchW - 14;
-            if (mouseX >= clearX && mouseX <= clearX + 10 && mouseY >= searchY && mouseY <= searchY + searchH) {
-                playPloppSound();
-                this.search.setText("");
-                this.targetScrollY = 0.0;
-                this.scrollY = 0.0;
+        // Front-most first: later hits were drawn on top, a feature's switch over its row.
+        for (int i = hits.size() - 1; i >= 0; i--) {
+            Hit hit = hits.get(i);
+            if (hit.contains(mx, my)) {
+                playClick();
+                hit.action().run(mx, my);
                 return true;
             }
         }
-
-        if (mouseX >= searchX && mouseX <= searchX + searchW && mouseY >= searchY && mouseY <= searchY + searchH) {
-            this.searchFocused = true;
-            this.cursorBlinkTimer = System.currentTimeMillis();
-            // Caret where the click landed, not blindly at the end - clicking into the middle of a
-            // term to fix one letter is the reason to click a text field at all.
-            search.setCaretFromX((int) mouseX - (searchX + 6), s -> GuiFont.width(this.font, s));
-            return true;
-        } else if (this.searchFocused) {
-            this.searchFocused = false;
-            search.clearSelection();
-        }
-
-        // Category Sidebar click
-        int sideClipY = winY + headerHeight + 4;
-        int sideClipH = winH - headerHeight - 8;
-
-        if (sidebarWidth > 0 && mouseX >= winX && mouseX <= winX + sidebarWidth && mouseY >= sideClipY && mouseY <= sideClipY + sideClipH) {
-            List<ConfigCategory> categories = getVisibleCategories();
-            int catItemH = 32;
-            int catSpacing = 4;
-            int catW = sidebarWidth - 20;
-            int itemY = sideClipY + 4 - (int) sidebarScrollY;
-
-            for (ConfigCategory cat : categories) {
-                if (mouseX >= winX + 8 && mouseX <= winX + 8 + catW &&
-                    mouseY >= itemY && mouseY <= itemY + catItemH &&
-                    mouseY >= sideClipY && mouseY <= sideClipY + sideClipH) {
-                    playPloppSound();
-                    // The search term is kept on purpose, so it stays active across tabs.
-                    setActiveCategory(cat);
-                    return true;
-                }
-                itemY += catItemH + catSpacing;
-            }
-        }
-
-        // Options List click (bounded by scissor viewport)
-        int clipY = contentY + 6;
-        int clipH = contentH - 12;
-
-        if (mouseX >= contentX && mouseX <= contentX + contentW && mouseY >= clipY && mouseY <= clipY + clipH) {
-            List<ConfigOption> options = AlpakaConfigRegistry.getOptions(activeCategory, search.getText());
-            int startOptionY = contentY + 12 + CATEGORY_HEADER_H - (int) scrollY;
-            int cardW = contentW - 28;
-            int cardH = CARD_H;
-
-            for (ConfigOption opt : options) {
-                int itemHeight = optionItemHeight(opt);
-
-                if (opt.getType() == ConfigOption.Type.HEADER) {
-                    startOptionY += itemHeight;
-                    continue;
-                }
-
-                if (opt.getType() == ConfigOption.Type.TEXT) {
-                    int tw = 120;
-                    int th = 18;
-                    int tx = contentX + 14 + cardW - tw - 10;
-                    int ty = startOptionY + (cardH - th) / 2;
-                    if (mouseX >= tx && mouseX <= tx + tw && mouseY >= ty && mouseY <= ty + th) {
-                        playPloppSound();
-                        focusedTextOption = opt;
-                        searchFocused = false;
-                        cursorBlinkTimer = System.currentTimeMillis();
-                        return true;
-                    }
-                }
-
-                int widgetW = widgetWidth(opt);
-                int widgetH = (opt.getType() == ConfigOption.Type.BOOLEAN) ? 15 : 18;
-                int widgetX = contentX + 14 + cardW - widgetW - 10;
-                int widgetY = startOptionY + (cardH - widgetH) / 2;
-
-                // Expanded lines are hit-tested before the card. They sit below it so the two cannot
-                // overlap, but checking them first keeps that independent of the card's exact height.
-                if (opt.getType() == ConfigOption.Type.DROPDOWN && opt.isExpanded()) {
-                    int entryY = startOptionY + cardH + DROPDOWN_TOP_PAD;
-                    for (ConfigOption.ToggleEntry entry : opt.getEntries()) {
-                        boolean insideViewport = entryY + DROPDOWN_ENTRY_H >= clipY && entryY <= clipY + clipH;
-                        if (insideViewport
-                                && mouseX >= contentX + 14 && mouseX <= contentX + 14 + cardW
-                                && mouseY >= entryY && mouseY < entryY + DROPDOWN_ENTRY_H) {
-                            playPloppSound();
-                            entry.toggle();
-                            return true;
-                        }
-                        entryY += DROPDOWN_ENTRY_H;
-                    }
-                }
-
-                boolean isWidgetClicked = mouseX >= widgetX && mouseX <= widgetX + widgetW && mouseY >= widgetY && mouseY <= widgetY + widgetH;
-                boolean isCardClicked = mouseX >= contentX + 14 && mouseX <= contentX + 14 + cardW && mouseY >= startOptionY && mouseY <= startOptionY + cardH;
-
-                if ((isWidgetClicked || isCardClicked) && startOptionY + itemHeight >= clipY && startOptionY <= clipY + clipH) {
-                    if (opt.getType() == ConfigOption.Type.BOOLEAN) {
-                        playPloppSound();
-                        opt.toggleBool();
-                        return true;
-                    } else if (opt.getType() == ConfigOption.Type.SLIDER) {
-                        // Only the slider itself. A click on the card's title or description used to
-                        // read as the slider's far left and snap the value to its minimum.
-                        if (!isWidgetClicked) return true;
-                        playPloppSound();
-                        this.draggedOption = opt;
-                        // Held back until the button comes up: every setter saves, and a drag fires
-                        // one per mouse-move event - each a full serialise and file write.
-                        net.alpaka.addons.config.AlpakaConfig.beginDeferredSaves();
-                        double norm = Math.max(0.0, Math.min(1.0, (mouseX - widgetX) / (double) widgetW));
-                        opt.setSliderNormalizedValue(norm);
-                        return true;
-                    } else if (opt.getType() == ConfigOption.Type.DROPDOWN) {
-                        playPloppSound();
-                        opt.toggleExpanded();
-                        return true;
-                    } else if (opt.getType() == ConfigOption.Type.ACTION) {
-                        // The whole card, like a toggle, unless the action overwrites settings outright:
-                        // a stray click on the card must not load or save over a preset.
-                        if (!isWidgetClicked && opt.isButtonOnly()) return true;
-                        playPloppSound();
-                        if (opt.isConfirmFirst() && !isArmed(opt)) {
-                            armedOption = opt;
-                            armedUntilMs = System.currentTimeMillis() + CONFIRM_WINDOW_MS;
-                            return true;
-                        }
-                        armedOption = null;
-                        opt.triggerAction(this);
-                        return true;
-                    }
-                }
-
-                startOptionY += itemHeight;
-            }
-        }
-
+        if (wasSearching && !searchFocused) return true;
         return super.mouseClicked(event, doubleClick);
     }
 
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
-        if (event.button() == 0) {
-            if (draggedOption != null) {
-                draggedOption = null;
-                // One write for the whole drag, with the value the slider actually ended on.
-                net.alpaka.addons.config.AlpakaConfig.endDeferredSaves();
-            }
+        if (event.button() == 0 && draggedSlider != null) {
+            draggedSlider = null;
+            AlpakaConfig.endDeferredSaves();
         }
         return super.mouseReleased(event);
     }
 
     @Override
     public boolean mouseDragged(MouseButtonEvent event, double deltaX, double deltaY) {
-        if (draggedOption != null && draggedOption.getType() == ConfigOption.Type.SLIDER) {
-            int winW = windowWidth();
-            int winX = getEffectiveWinX(winW);
-            int sidebarWidth = sidebarWidth();
-            int contentX = winX + sidebarWidth;
-            int contentW = winW - sidebarWidth;
-            int cardW = contentW - 28;
-            int widgetW = widgetWidth(draggedOption);
-            int widgetX = contentX + 14 + cardW - widgetW - 10;
-
-            double norm = Math.max(0.0, Math.min(1.0, (event.x() - widgetX) / (double) widgetW));
-            draggedOption.setSliderNormalizedValue(norm);
+        if (draggedSlider != null) {
+            draggedSlider.setSliderNormalizedValue(Math.max(0.0, Math.min(1.0, (event.x() - dragTrackX) / (double) dragTrackW)));
             return true;
         }
         return super.mouseDragged(event, deltaX, deltaY);
@@ -917,59 +850,28 @@ public class AlpakaConfigScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        if (scrollY != 0) {
-            int winW = windowWidth();
-            int winH = panelHeight();
-            int winX = getEffectiveWinX(winW);
-            int winY = (this.height - winH) / 2;
-            int headerHeight = 38;
-            int sidebarWidth = sidebarWidth();
-
-            if (sidebarWidth > 0 && mouseX >= winX && mouseX <= winX + sidebarWidth && mouseY >= winY + headerHeight && mouseY <= winY + winH) {
-                // Independent scroll for category sidebar on left
-                this.targetSidebarScrollY = Math.max(0, Math.min(maxSidebarScrollY, targetSidebarScrollY - scrollY * 24.0));
-                return true;
-            } else {
-                // Independent scroll for feature list on right
-                this.targetScrollY = Math.max(0, Math.min(maxScrollY, targetScrollY - scrollY * 28.0));
-                return true;
-            }
-        }
-        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
-    }
-
-    /**
-     * The search term changed: re-pick a category that still has results and go back to the top.
-     *
-     * One place rather than repeated at every edit, which is what the search bar's growing set of
-     * editing keys would otherwise have needed - the old code only had to do it for typing and
-     * backspace, and every key added since would have been a chance to forget it.
-     */
-    private void onSearchChanged() {
-        ensureValidActiveCategory();
-        targetScrollY = 0;
-        scrollY = 0;
+        if (scrollY == 0) return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+        int featX = panelX() + sidebarW();
+        int detailX = featX + featureColumnW();
+        if (mouseX < featX) sidebarScroll.by(-scrollY * 20);
+        else if (mouseX < detailX) featureScroll.by(-scrollY * 24);
+        else detailScroll.by(-scrollY * 24);
+        return true;
     }
 
     @Override
     public boolean charTyped(CharacterEvent event) {
-        if (focusedTextOption != null) {
+        if (focusedText != null) {
             int codePoint = event.codepoint();
-            if (codePoint >= 32 && codePoint != 127) {
-                String current = focusedTextOption.getText();
-                if (current.length() < MAX_TEXT_OPTION_LENGTH) {
-                    focusedTextOption.setText(current + (char) codePoint);
-                }
+            if (codePoint >= 32 && codePoint != 127 && focusedText.getText().length() < MAX_TEXT_OPTION_LENGTH) {
+                focusedText.setText(focusedText.getText() + (char) codePoint);
             }
+            caretBlinkFrom = System.currentTimeMillis();
             return true;
         }
-
         if (searchFocused) {
-            if (search.insert((char) event.codepoint())) {
-                onSearchChanged();
-            }
-            // Swallowed either way: a full field must not let the character fall through to a
-            // keybind that happens to use the same letter.
+            if (search.insert((char) event.codepoint())) onSearchChanged();
+            caretBlinkFrom = System.currentTimeMillis();
             return true;
         }
         return super.charTyped(event);
@@ -977,40 +879,36 @@ public class AlpakaConfigScreen extends Screen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
-        // Cmd+F on Mac, Ctrl+F on Windows to focus search bar
-        if (event.hasControlDownWithQuirk() && event.key() == org.lwjgl.glfw.GLFW.GLFW_KEY_F) {
-            this.searchFocused = true;
-            this.cursorBlinkTimer = System.currentTimeMillis();
-            // Ctrl+F on a bar that already has a term selects it, so the next keystroke replaces it.
+        int key = event.key();
+        if (event.hasControlDownWithQuirk() && key == org.lwjgl.glfw.GLFW.GLFW_KEY_F) {
+            searchFocused = true;
+            caretBlinkFrom = System.currentTimeMillis();
             search.selectAll();
             return true;
         }
-
-        if (focusedTextOption != null) {
-            if (event.key() == 259) { // GLFW_KEY_BACKSPACE
-                String current = focusedTextOption.getText();
-                if (!current.isEmpty()) focusedTextOption.setText(current.substring(0, current.length() - 1));
+        if (focusedText != null) {
+            if (key == org.lwjgl.glfw.GLFW.GLFW_KEY_BACKSPACE) {
+                String current = focusedText.getText();
+                if (!current.isEmpty()) focusedText.setText(current.substring(0, current.length() - 1));
                 return true;
             }
-            // Escape and Enter both just commit and let go; the value is already written through.
-            if (event.key() == 256 || event.key() == 257 || event.key() == 335) {
-                focusedTextOption = null;
-                net.alpaka.addons.config.AlpakaConfig.save();
+            if (key == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE || key == org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER
+                    || key == org.lwjgl.glfw.GLFW.GLFW_KEY_KP_ENTER) {
+                focusedText = null;
+                AlpakaConfig.save();
                 return true;
             }
         }
-
         if (searchFocused) {
-            if (event.key() == 256) { // GLFW_KEY_ESCAPE
+            if (key == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE) {
                 searchFocused = false;
                 search.clearSelection();
                 return true;
             }
-
             String before = search.getText();
-            if (search.keyPressed(event.key(), event.hasControlDownWithQuirk(), event.hasShiftDown())) {
+            if (search.keyPressed(key, event.hasControlDownWithQuirk(), event.hasShiftDown())) {
                 if (!search.getText().equals(before)) onSearchChanged();
-                cursorBlinkTimer = System.currentTimeMillis();
+                caretBlinkFrom = System.currentTimeMillis();
                 return true;
             }
         }
@@ -1019,23 +917,14 @@ public class AlpakaConfigScreen extends Screen {
 
     @Override
     public void onClose() {
-        if (this.minecraft != null) {
-            this.minecraft.gui.setScreen(this.parent);
-        }
+        if (this.minecraft != null) this.minecraft.gui.setScreen(this.parent);
     }
 
-    /**
-     * Safety net for a drag the screen never sees end: Escape, a keybind, or another screen opening
-     * on top. Done here rather than in onClose, because replacing the screen calls removed() and not
-     * onClose(), and leaving saves deferred would swallow every later write for the session.
-     */
+    /** A drag the screen never saw end must not leave saves deferred for the rest of the session. */
     @Override
     public void removed() {
-        if (draggedOption != null) {
-            draggedOption = null;
-        }
-        net.alpaka.addons.config.AlpakaConfig.endDeferredSaves();
+        draggedSlider = null;
+        AlpakaConfig.endDeferredSaves();
         super.removed();
     }
 }
-

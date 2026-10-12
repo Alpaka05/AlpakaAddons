@@ -184,9 +184,27 @@ public class AlpakaConfig {
     public int menuAccentColor = 0xFF29B6B2; // Default teal
     /**
      * Index into {@code GuiFont.NAMES}: the typeface the Alpaka menus are written in. 0 is the
-     * vanilla pixel font; the default is Inter.
+     * vanilla pixel font; the default is Nunito, the rounded face the redesigned menus are drawn for.
      */
-    public int menuFont = 1;
+    public int menuFont = 5;
+    /** Set once a config still on the old default font has been moved to Nunito. */
+    public boolean menuFontNunitoApplied = false;
+    /** Chat messages in the menu font rather than the pixel font. */
+    public boolean menuFontInChat = false;
+    /** The scoreboard sidebar in the menu font rather than the pixel font. */
+    public boolean menuFontInScoreboard = false;
+    /**
+     * The mod's own HUDs: each on a blurred panel like the chat's, and each in the menu font, both
+     * per HUD. See HudPanel.
+     */
+    public boolean slayerHudBlur = true;
+    public boolean slayerTimerHudBlur = true;
+    public boolean worldAgeHudBlur = true;
+    public boolean notificationBlur = true;
+    public boolean slayerHudSmoothFont = true;
+    public boolean slayerTimerHudSmoothFont = true;
+    public boolean worldAgeHudSmoothFont = true;
+    public boolean notificationSmoothFont = true;
     public boolean customEscapeMenuEnabled = true;
     public boolean customMainMenuEnabled = false;
     /** The small player model on the HUD. Off for fresh installs. */
@@ -772,6 +790,13 @@ public class AlpakaConfig {
             instance.menuAccentColor = 0xFF29B6B2;
         }
 
+        // The default font moved from Inter to Nunito with the redesign. Once only, so picking Inter
+        // again afterwards sticks.
+        if (!instance.menuFontNunitoApplied) {
+            if (instance.menuFont == 1) instance.menuFont = 5;
+            instance.menuFontNunitoApplied = true;
+        }
+
         if (instance.slayerBossMap == null) {
             instance.slayerBossMap = new HashMap<>();
         }
@@ -875,6 +900,8 @@ public class AlpakaConfig {
         this.muteVanillaSoundsInBlazeSlayer = false;
         this.customEscapeMenuEnabled = false;
         this.menuFont = 0;
+        this.menuFontInChat = false;
+        this.menuFontInScoreboard = false;
         this.customMainMenuEnabled = false;
         this.playerModelEnabled = false;
         this.playerModelOnlyActions = false;
@@ -906,6 +933,8 @@ public class AlpakaConfig {
         this.smoothChatEnabled = false;
         this.chatBlurEnabled = false;
         this.scoreboardBlurEnabled = false;
+        this.notificationBlur = false;
+        this.notificationSmoothFont = false;
         this.chatSearchEnabled = false;
         this.chatSmoothScrollEnabled = false;
         this.alwaysSprintEnabled = false;

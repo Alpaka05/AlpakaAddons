@@ -29,6 +29,8 @@ import java.util.function.BooleanSupplier;
  *
  *     ALPAKA_SCREENSHOT_TOUR=1 ./gradlew runClient
  *
+ * Any other value runs only the stops whose picture name starts with it, e.g. {@code config}.
+ *
  * The dev window opens at 854 by 480, which Auto GUI scale turns into 427 by 240 - tighter than the
  * most common real size (480 by 270), so a screen that fits here fits there. The world is a flat
  * creative one in {@code run/saves/alpaka-tour}, made anew on every tour.
@@ -60,6 +62,13 @@ public final class DevScreenshotTour {
             // A moment into the entrance: the card springing in, the avatar half materialised.
             new Stop("main-menu-opening", () -> Minecraft.getInstance().gui.setScreen(new CustomMainMenuScreen()), () -> true, 9),
             screen("config", () -> new AlpakaConfigScreen(null, "")),
+            screen("config-chat", () -> AlpakaConfigScreen.openOn("Chat", "Chat Tabs")),
+            screen("config-damage-tags", () -> AlpakaConfigScreen.openOn("Cosmetics", "Custom Damage Tags")),
+            screen("config-search", () -> new AlpakaConfigScreen(null, "blaze")),
+            screen("config-inventory-hud", () -> AlpakaConfigScreen.openOn("Interface", "Inventory HUD")),
+            screen("config-hud-style", () -> AlpakaConfigScreen.openOn("Design", "HUD Style")),
+            screen("config-world", () -> AlpakaConfigScreen.openOn("World", "Block Overlay")),
+            screen("config-viewmodel", () -> AlpakaConfigScreen.openOn("Viewmodel", "Viewmodel Modifiers")),
             screen("color-picker", () -> new ColorPickerScreen(null, "Accent Colour", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
             screen("wheel-editor", () -> new CommandWheelConfigScreen(new CustomMainMenuScreen())),
             screen("hud-editor", () -> new HudEditorScreen(null)),
@@ -67,12 +76,15 @@ public final class DevScreenshotTour {
                     () -> Minecraft.getInstance().player != null && Minecraft.getInstance().gui.screen() == null, 100),
             new Stop("world-hud", DevScreenshotTour::showHuds, () -> true, 30),
             new Stop("hud-editor-world", () -> Minecraft.getInstance().gui.setScreen(new HudEditorScreen(null)), () -> true, 20),
+            // Every HUD on its blurred panel and in the menu font, a notice in the corner.
+            new Stop("hud-style", DevScreenshotTour::hudStyle, () -> true, 20),
             screen("pause-menu", net.alpaka.addons.features.escapemenu.CustomPauseScreen::new),
             new Stop(null, () -> Minecraft.getInstance().gui.setScreen(null), () -> true, 5),
             // Two ticks after a burst: the lines are mid-slide inside the chat's box.
             new Stop("chat-slide", DevScreenshotTour::chatBurst, () -> true, 2),
             new Stop("chat-rest", () -> {}, () -> true, 40),
             new Stop("chat-open", () -> Minecraft.getInstance().gui.setScreen(new ChatScreen("", false)), () -> true, 10),
+            new Stop("font-chat-scoreboard", DevScreenshotTour::fontInChatAndScoreboard, () -> true, 20),
             new Stop("third-person", DevScreenshotTour::thirdPerson, () -> true, 40),
             // Survival with armour and an action bar: what the attached inventory HUD has to clear.
             new Stop(null, DevScreenshotTour::survival,
@@ -149,9 +161,27 @@ public final class DevScreenshotTour {
     }
 
     private static void begin(Minecraft mc, int index) {
+        // Any value other than "1" picks the stops whose picture starts with it, so a change to one
+        // screen can be looked at without the whole tour: ALPAKA_SCREENSHOT_TOUR=config.
+        String only = System.getenv(ENV);
+        if (only != null && !only.equals("1")) {
+            // A stop without a picture sets up the ones after it, the world for instance, so it runs
+            // whenever a picked one follows.
+            while (index < STOPS.size() && !picked(index, only)) index++;
+        }
         stop = index;
         ticks = 0;
         if (index < STOPS.size()) STOPS.get(index).action().run();
+    }
+
+    private static boolean picked(int index, String only) {
+        String shot = STOPS.get(index).shot();
+        if (shot != null) return shot.startsWith(only);
+        for (int later = index + 1; later < STOPS.size(); later++) {
+            String laterShot = STOPS.get(later).shot();
+            if (laterShot != null && laterShot.startsWith(only)) return true;
+        }
+        return false;
     }
 
     /**
@@ -205,12 +235,56 @@ public final class DevScreenshotTour {
         cfg.worldAgeHudEnabled = true;
     }
 
+    /** The HUD editor's previews and a notice, all drawn in the shared HUD style. */
+    private static void hudStyle() {
+        net.alpaka.addons.features.notification.AlpakaNotifications.send("Boss Spawned!",
+                "Inferno Demonlord IV is up. Kill it before the timer runs out.");
+        Minecraft.getInstance().gui.setScreen(new HudEditorScreen(null));
+    }
+
     /** A burst of lines, as a busy chat delivers them. */
     private static void chatBurst() {
         Minecraft mc = Minecraft.getInstance();
         for (int i = 1; i <= 6; i++) {
             mc.gui.hud.getChat().addClientSystemMessage(Component.literal("§7Tour line " + i + " §8- a message arriving in a burst"));
         }
+    }
+
+    /** The menu font in the chat and on a sidebar laid out like SkyBlock's. */
+    private static void fontInChatAndScoreboard() {
+        Minecraft mc = Minecraft.getInstance();
+        mc.gui.setScreen(null);
+        mc.gui.toastManager().clear();
+        AlpakaConfig.instance.menuFontInChat = true;
+        AlpakaConfig.instance.menuFontInScoreboard = true;
+        net.alpaka.addons.client.gui.GuiFont.refreshChat();
+        mc.gui.hud.getChat().addClientSystemMessage(Component.literal("§9Party §8> §b[MVP§c+§b] Alpaka§f: ready for the boss?"));
+        mc.gui.hud.getChat().addClientSystemMessage(Component.literal("§2Guild > §a[VIP] Someone §e[MEMBER]§f: gg"));
+        mc.gui.hud.getChat().addClientSystemMessage(Component.literal("§6§lRARE DROP! §9Flawed Opal Gemstone §b(+212% ✯ Magic Find)"));
+
+        net.minecraft.client.server.IntegratedServer server = mc.getSingleplayerServer();
+        if (server == null) return;
+        server.execute(() -> {
+            net.minecraft.world.scores.Scoreboard board = server.getScoreboard();
+            net.minecraft.world.scores.Objective objective = board.getObjective("tour");
+            if (objective == null) {
+                objective = board.addObjective("tour", net.minecraft.world.scores.criteria.ObjectiveCriteria.DUMMY,
+                        Component.literal("§e§lSKYBLOCK"), net.minecraft.world.scores.criteria.ObjectiveCriteria.RenderType.INTEGER,
+                        false, null);
+            }
+            board.setDisplayObjective(net.minecraft.world.scores.DisplaySlot.SIDEBAR, objective);
+            String[] lines = {"§710/12/26 §8m12AB", " ", " Late Summer 12th", " §79:40pm ☀", " §7⏣ §cSmoldering Tomb", " ",
+                    "Purse: §638,429,113", "Bits: §b12,450", " ", "Slayer Quest", "§4Inferno Demonlord IV", " §7(§e412§7/§c1,500§7) Combat XP", " ", "§ewww.hypixel.net"};
+            for (int i = 0; i < lines.length; i++) {
+                // A colour code as the holder's name draws as nothing, as on Hypixel; the line is the prefix.
+                String owner = "§" + "0123456789abcdef".charAt(i);
+                board.getOrCreatePlayerScore(net.minecraft.world.scores.ScoreHolder.forNameOnly(owner), objective).set(lines.length - i);
+                net.minecraft.world.scores.PlayerTeam team = board.getPlayerTeam("tour" + i);
+                if (team == null) team = board.addPlayerTeam("tour" + i);
+                board.addPlayerToTeam(owner, team);
+                team.setPlayerPrefix(Component.literal(lines[i]));
+            }
+        });
     }
 
     /** Back in first person, in survival and wearing a chestplate, so hearts and armour show. */

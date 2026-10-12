@@ -499,7 +499,7 @@ public class AlpakaConfigScreen extends Screen {
                     }));
                 }
 
-                int titleColor = selected ? ModernGuiUtils.getAccentColor() : hover ? COLOR_TEXT : COLOR_TEXT_SOFT;
+                int titleColor = selected ? ModernGuiUtils.getAccentColor() : COLOR_TEXT;
                 int titleW = (feature.hasToggle() ? toggleX : right) - (rowX + 8) - 6;
                 graphics.text(this.font, GuiFont.text(ellipsize(feature.title, titleW)), rowX + 8, rowY + (FEATURE_ROW_H - 8) / 2, titleColor, false);
             }

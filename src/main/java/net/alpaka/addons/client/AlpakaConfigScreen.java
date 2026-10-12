@@ -119,6 +119,15 @@ public class AlpakaConfigScreen extends Screen {
     private long openTimeMs = 0L;
     private long lastFrameMs = System.currentTimeMillis();
 
+    /**
+     * Setup mode, for the Viewmodel section: the menu slides to the edge away from the main hand and folds down to the
+     * selected feature's settings, so the item in hand stays in view while it is adjusted. Toggled
+     * by the Setup button in the header, which only the Viewmodel section shows.
+     */
+    private boolean setupMode = false;
+    /** 0 for the full menu, 1 for setup mode, eased in between. */
+    private float setupProgress = 0.0f;
+
     /** The setting under the mouse, and since when, for its tooltip. */
     private ConfigOption hoveredSetting = null;
     private long hoveredSince = 0L;
@@ -194,6 +203,13 @@ public class AlpakaConfigScreen extends Screen {
         return screen;
     }
 
+    /** For the screenshot tour: starts in setup mode, already folded. */
+    AlpakaConfigScreen inSetupMode() {
+        setupMode = true;
+        setupProgress = 1.0f;
+        return this;
+    }
+
     /** For the screenshot tour: opens the list of the selected feature's choice setting. */
     AlpakaConfigScreen withChoiceOpen() {
         if (selectedFeature != null) {
@@ -222,6 +238,7 @@ public class AlpakaConfigScreen extends Screen {
 
     private void selectSection(ConfigTree.Section section) {
         selectedSection = section;
+        if (!isViewmodelSection()) setupMode = false;
         selectedFeature = section.features.isEmpty() ? null : section.features.get(0);
         featureScroll.reset();
         detailScroll.reset();
@@ -270,8 +287,27 @@ public class AlpakaConfigScreen extends Screen {
 
     // ---- Geometry -------------------------------------------------------------------------------
 
-    private int panelW() {
+    /** The full menu's width, before setup mode folds it. */
+    private int fullPanelW() {
         return Math.max(240, Math.min(Math.min(640, this.width - 16), this.width - 8));
+    }
+
+    private int fullSidebarW() {
+        return Math.max(84, Math.min(120, (int) (fullPanelW() * 0.21)));
+    }
+
+    private int fullFeatureColumnW() {
+        return (int) ((fullPanelW() - fullSidebarW()) * 0.42);
+    }
+
+    /** Setup mode's width: the settings column alone, a little wider than in the full menu. */
+    private int setupPanelW() {
+        int detail = fullPanelW() - fullSidebarW() - fullFeatureColumnW();
+        return Math.min(this.width - 16, Math.max(detail, 190));
+    }
+
+    private int panelW() {
+        return Math.round(lerp(fullPanelW(), setupPanelW(), setupProgress));
     }
 
     private int panelH() {
@@ -279,19 +315,35 @@ public class AlpakaConfigScreen extends Screen {
     }
 
     private int panelX() {
-        return (this.width - panelW()) / 2;
+        float centred = (this.width - fullPanelW()) / 2.0f;
+        // Away from the hand holding the item: the left edge for the right hand, and the other way.
+        boolean rightHanded = this.minecraft == null
+                || this.minecraft.options.mainHand().get() == net.minecraft.world.entity.HumanoidArm.RIGHT;
+        float side = rightHanded ? 8 : this.width - setupPanelW() - 8;
+        return Math.round(lerp(centred, side, setupProgress));
     }
+
+    private static float lerp(float a, float b, float t) {
+        return a + (b - a) * t;
+    }
+
+    private boolean isViewmodelSection() {
+        return selectedSection != null && "Viewmodel".equals(selectedSection.title) && !searching();
+    }
+
+    /** The Setup button, at the right end of the header. */
+    private static final int SETUP_BTN_W = 44;
 
     private int panelY() {
         return (this.height - panelH()) / 2;
     }
 
     private int sidebarW() {
-        return Math.max(84, Math.min(120, (int) (panelW() * 0.21)));
+        return Math.round(fullSidebarW() * (1.0f - setupProgress));
     }
 
     private int featureColumnW() {
-        return (int) ((panelW() - sidebarW()) * 0.42);
+        return Math.round(fullFeatureColumnW() * (1.0f - setupProgress));
     }
 
     // ---- Drawing --------------------------------------------------------------------------------
@@ -303,11 +355,18 @@ public class AlpakaConfigScreen extends Screen {
         lastFrameMs = now;
         hits.clear();
 
+        if (setupMode && !isViewmodelSection()) setupMode = false;
+        float setupTarget = setupMode ? 1.0f : 0.0f;
+        setupProgress = PloppAnimation.interpolate(setupProgress, setupTarget, deltaSec, 11.0f);
+        if (Math.abs(setupProgress - setupTarget) < 0.003f) setupProgress = setupTarget;
+
         // Against an identity matrix: other GUI mods transform Screen's render calls for their own
         // open animations, and the backdrop must not slide along with them.
         graphics.pose().pushMatrix();
         graphics.pose().identity();
-        graphics.fill(0, 0, this.width, this.height, COLOR_BACKDROP);
+        // In setup mode the world stays undimmed: it is what is being adjusted.
+        int backdropAlpha = Math.round(((COLOR_BACKDROP >>> 24) & 0xFF) * (1.0f - setupProgress));
+        if (backdropAlpha > 0) graphics.fill(0, 0, this.width, this.height, backdropAlpha << 24);
         graphics.pose().popMatrix();
 
         float openScale = PloppAnimation.getOpenScale(openTimeMs);
@@ -336,9 +395,14 @@ public class AlpakaConfigScreen extends Screen {
 
         drawHeader(graphics, mouseX, mouseY, x, y, w, sideW, featX, featW, detailX, detailW);
         ModernGuiUtils.drawRect(graphics, x + PAD, bodyY - 1, w - PAD * 2, 1, COLOR_LINE);
-        drawSidebar(graphics, mouseX, mouseY, x, bodyY, sideW, bodyH, deltaSec);
-        drawFeatures(graphics, mouseX, mouseY, featX, bodyY, featW, bodyH, deltaSec);
-        ModernGuiUtils.drawRect(graphics, detailX, bodyY + 4, 1, bodyH - 8, COLOR_DIVIDER);
+        // Folding away in setup mode: clipped to their shrinking widths, and gone once folded.
+        if (setupProgress < 0.999f) {
+            graphics.enableScissor(x, bodyY, detailX, y + h);
+            drawSidebar(graphics, mouseX, mouseY, x, bodyY, sideW, bodyH, deltaSec);
+            drawFeatures(graphics, mouseX, mouseY, featX, bodyY, featW, bodyH, deltaSec);
+            graphics.disableScissor();
+            ModernGuiUtils.drawRect(graphics, detailX, bodyY + 4, 1, bodyH - 8, COLOR_DIVIDER);
+        }
         drawDetails(graphics, mouseX, mouseY, detailX + 1, bodyY, detailW - 1, bodyH, deltaSec);
 
         if (hoveredSettingThisFrame != hoveredSetting) {
@@ -356,6 +420,34 @@ public class AlpakaConfigScreen extends Screen {
 
     private void drawHeader(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w,
                             int sideW, int featX, int featW, int detailX, int detailW) {
+        // The logo and the search fold away with their columns in setup mode.
+        if (setupProgress < 0.999f) {
+            graphics.enableScissor(x, y, detailX, y + HEADER_H);
+            drawLogoAndSearch(graphics, mouseX, mouseY, x, y, featX, featW);
+            graphics.disableScissor();
+        }
+
+        // The chosen feature's name, over its settings; the Setup button beside it on Viewmodel.
+        boolean setupButton = isViewmodelSection();
+        if (selectedFeature != null) {
+            int room = detailW - PAD * 2 - 4 - (setupButton ? SETUP_BTN_W + 6 : 0);
+            String name = ellipsize(selectedFeature.title, room);
+            graphics.text(this.font, GuiFont.text(name), detailX + PAD + 2, y + (HEADER_H - 8) / 2, COLOR_TEXT, false);
+        }
+        if (setupButton) {
+            int bx = detailX + detailW - PAD - SETUP_BTN_W;
+            int by = y + (HEADER_H - net.alpaka.addons.client.gui.AlpakaStyle.BUTTON_H) / 2;
+            boolean hover = inside(mouseX, mouseY, bx, by, SETUP_BTN_W, net.alpaka.addons.client.gui.AlpakaStyle.BUTTON_H);
+            net.alpaka.addons.client.gui.AlpakaStyle.button(graphics, this.font, bx, by, SETUP_BTN_W,
+                    net.alpaka.addons.client.gui.AlpakaStyle.BUTTON_H, setupMode ? "Back" : "Setup", hover,
+                    setupMode ? net.alpaka.addons.client.gui.AlpakaStyle.ButtonKind.PRIMARY
+                            : net.alpaka.addons.client.gui.AlpakaStyle.ButtonKind.PLAIN);
+            hits.add(new Hit(bx, by, SETUP_BTN_W, net.alpaka.addons.client.gui.AlpakaStyle.BUTTON_H,
+                    (mx, my) -> setupMode = !setupMode));
+        }
+    }
+
+    private void drawLogoAndSearch(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int featX, int featW) {
         // Logo: the name large, the version small beneath it.
         Component title = GuiFont.title("ALPAKA");
         if (title == null) title = GuiFont.text("ALPAKA");
@@ -405,12 +497,6 @@ public class AlpakaConfigScreen extends Screen {
             }));
         } else {
             drawSearchIcon(graphics, iconX + 2, sy + 4, searchFocused ? ModernGuiUtils.getAccentColor() : COLOR_TEXT_MUTED);
-        }
-
-        // The chosen feature's name, over its settings.
-        if (selectedFeature != null) {
-            String name = ellipsize(selectedFeature.title, detailW - PAD * 2 - 4);
-            graphics.text(this.font, GuiFont.text(name), detailX + PAD + 2, y + (HEADER_H - 8) / 2, COLOR_TEXT, false);
         }
     }
 

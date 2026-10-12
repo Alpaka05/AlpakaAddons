@@ -116,6 +116,8 @@ public final class DevScreenshotTour {
             new Stop(null, DevScreenshotTour::scoreboardAndStarlight, () -> true, 20),
             new Stop("scoreboard-starlight", () -> {}, () -> true, 5),
             new Stop("scoreboard-starlight-later", () -> {}, () -> true, 15),
+            screen("viewmodel-setup", () -> AlpakaConfigScreen.openOn("Viewmodel", "Viewmodel Modifiers").inSetupMode()),
+            new Stop(null, () -> Minecraft.getInstance().gui.setScreen(null), () -> true, 5),
             // Turned right a little: the galaxy hangs in the sky, so it slides left over the item.
             new Stop("starlight-still", () -> AlpakaConfig.instance.itemSwayDisabled = true, () -> true, 3),
             new Stop("starlight-turned", () -> Minecraft.getInstance().player.setYRot(

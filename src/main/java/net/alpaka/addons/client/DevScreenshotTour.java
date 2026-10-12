@@ -67,7 +67,7 @@ public final class DevScreenshotTour {
             screen("config-search", () -> new AlpakaConfigScreen(null, "blaze")),
             screen("config-inventory-hud", () -> AlpakaConfigScreen.openOn("Interface", "Inventory HUD")),
             screen("config-hud-style", () -> AlpakaConfigScreen.openOn("Design", "HUD Style")),
-            screen("config-screenshot", () -> AlpakaConfigScreen.openOn("Chat", "Better Screenshot Message")),
+            screen("config-screenshot", () -> AlpakaConfigScreen.openOn("Chat", "Better Screenshots")),
             screen("config-slayer", () -> AlpakaConfigScreen.openOn("Slayer", "Share Buttons On Top Drops")),
             screen("config-tooltips", () -> AlpakaConfigScreen.openOn("Interface", "Scrollable Tooltips")),
             screen("config-menu-font", () -> AlpakaConfigScreen.openOn("Design", "Menu Font").withChoiceOpen()),
@@ -88,6 +88,18 @@ public final class DevScreenshotTour {
             new Stop("chat-slide", DevScreenshotTour::chatBurst, () -> true, 2),
             new Stop("chat-rest", () -> {}, () -> true, 40),
             new Stop("chat-open", () -> Minecraft.getInstance().gui.setScreen(new ChatScreen("", false)), () -> true, 10),
+            // A screenshot's preview mid-shrink, then resting in the corner.
+            new Stop(null, () -> {
+                Minecraft mc = Minecraft.getInstance();
+                Screenshot.grab(mc.gameDirectory, "preview-source.png", mc.gameRenderer.mainRenderTarget(), 1,
+                        message -> mc.execute(() -> mc.gui.hud.getChat().addClientSystemMessage(message)));
+            }, () -> true, 3),
+            new Stop(null, () -> {}, () -> net.alpaka.addons.features.chat.ScreenshotPreview.isOnScreen(), 2),
+            new Stop("shot-preview-flash", () -> net.alpaka.addons.features.chat.ScreenshotPreview.devFreezeAt(60), () -> true, 40),
+            new Stop("shot-preview-shrink", () -> net.alpaka.addons.features.chat.ScreenshotPreview.devFreezeAt(200), () -> true, 40),
+            new Stop("shot-preview-settle", () -> net.alpaka.addons.features.chat.ScreenshotPreview.devFreezeAt(420), () -> true, 40),
+            new Stop("shot-preview-exit", () -> net.alpaka.addons.features.chat.ScreenshotPreview.devFreezeAt(650 + 3000 + 250), () -> true, 40),
+            new Stop("shot-preview-corner", () -> net.alpaka.addons.features.chat.ScreenshotPreview.devFreezeAt(-1), () -> true, 40),
             new Stop("chat-share", () -> net.alpaka.addons.features.slayer.SlayerDropTracker.devShareSample(), () -> true, 10),
             new Stop("font-chat-scoreboard", DevScreenshotTour::fontInChatAndScoreboard, () -> true, 20),
             new Stop("third-person", DevScreenshotTour::thirdPerson, () -> true, 40),

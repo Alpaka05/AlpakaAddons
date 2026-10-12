@@ -453,8 +453,16 @@ public class AlpakaConfig {
     public boolean chatPeekEnabled = true;
     /** Peek Chat also works with an inventory or another menu open, drawn on top of it. */
     public boolean chatPeekInMenus = true;
-    /** Open, Copy and Delete buttons on the screenshot notice instead of vanilla's line. */
+    /** Better Screenshots: everything below. The key keeps its old name so the setting carries over. */
     public boolean betterScreenshotMessageEnabled = true;
+    /** Open, Copy and Delete buttons on the screenshot notice instead of vanilla's line. */
+    public boolean screenshotChatButtons = true;
+    /** The screenshot shrinking into the corner for a moment after it is taken. */
+    public boolean screenshotPreviewEnabled = true;
+    /** How long the preview stays in the corner, in seconds. */
+    public float screenshotPreviewSeconds = 3.0f;
+    /** The preview's width, in percent of the screen's. */
+    public float screenshotPreviewSize = 20.0f;
     /** Which parts the screenshot line shows. */
     public boolean screenshotShowFileName = false;
     public boolean screenshotShowOpen = true;

@@ -87,6 +87,7 @@ public final class DevScreenshotTour {
             new Stop("chat-slide", DevScreenshotTour::chatBurst, () -> true, 2),
             new Stop("chat-rest", () -> {}, () -> true, 40),
             new Stop("chat-open", () -> Minecraft.getInstance().gui.setScreen(new ChatScreen("", false)), () -> true, 10),
+            new Stop("chat-share", () -> net.alpaka.addons.features.slayer.SlayerDropTracker.devShareSample(), () -> true, 10),
             new Stop("font-chat-scoreboard", DevScreenshotTour::fontInChatAndScoreboard, () -> true, 20),
             new Stop("third-person", DevScreenshotTour::thirdPerson, () -> true, 40),
             // Survival with armour and an action bar: what the attached inventory HUD has to clear.

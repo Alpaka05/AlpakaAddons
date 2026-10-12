@@ -32,7 +32,7 @@ public class AlpakaConfig {
      */
     public boolean hideHypixelDropMessage = true;
     /**
-     * Adds [Share: Guild] [Party] buttons to the tracker's line for a slayer's headline RNG drop -
+     * Adds "Share: [Guild] [Party]" buttons to the tracker's line for a slayer's headline RNG drop -
      * the one the slayer HUD counts a dry streak against, e.g. High Class Archfiend Dice for Inferno.
      *
      * A click only fills the chat box; the player sends it with Enter. This used to post to guild

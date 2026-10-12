@@ -471,8 +471,10 @@ public class SlayerDropTracker {
             }
             if (AlpakaConfig.instance.slayerRngDropGuildChatEnabled && isHeadlineDrop(pending.type(), pending.item())) {
                 String shared = cleanColor(feedback.getString()).trim();
-                feedback.append(" ").append(shareButton("[Share: Guild]", "gc", shared))
-                        .append(" ").append(shareButton("[Party]", "pc", shared));
+                sendModMessage(feedback);
+                // Its own line: the drop line alone already fills most of the chat's width.
+                sendModMessage(shareButtons(shared));
+                continue;
             }
             sendModMessage(feedback);
         }
@@ -499,11 +501,23 @@ public class SlayerDropTracker {
      * for the guild drop announcement and the "!since" reply, and both broke the rule that every
      * message needs a direct action from the player.
      */
+    /** "Share: [Guild] [Party]" - a grey label, then one button per channel in its chat's colour. */
+    private static MutableComponent shareButtons(String text) {
+        return Component.literal("Share: ").withStyle(ChatFormatting.GRAY)
+                .append(shareButton("[Guild]", ChatFormatting.GREEN, "gc", text))
+                .append(Component.literal(" "))
+                .append(shareButton("[Party]", ChatFormatting.BLUE, "pc", text));
+    }
+
     private static Component shareButton(String label, String channel, String text) {
+        return shareButton(label, ChatFormatting.AQUA, channel, text);
+    }
+
+    private static Component shareButton(String label, ChatFormatting color, String channel, String text) {
         String trimmed = text.length() > SHARE_MESSAGE_MAX_LENGTH ? text.substring(0, SHARE_MESSAGE_MAX_LENGTH) : text;
         String command = "/" + channel + " " + trimmed;
         return Component.literal(label).withStyle(style -> style
-                .withColor(ChatFormatting.AQUA)
+                .withColor(color)
                 .withClickEvent(new net.minecraft.network.chat.ClickEvent.SuggestCommand(command))
                 .withHoverEvent(new net.minecraft.network.chat.HoverEvent.ShowText(
                         Component.literal("Puts this in your chat box. Press Enter to send it.\n")
@@ -565,6 +579,17 @@ public class SlayerDropTracker {
                 .append(shareButton("[Reply in party]", "pc", answer.text())));
     }
 
+    /** Dev tour only: a headline drop line and a since line, to see the share buttons in the chat. */
+    public static void devShareSample() {
+        String drop = "Dropped High Class Archfiend Dice after 412 Bosses";
+        sendModMessage(Component.literal("Dropped ")
+                .append(Component.literal("High Class Archfiend Dice").withStyle(ChatFormatting.LIGHT_PURPLE))
+                .append(" after ").append(Component.literal("412").withStyle(ChatFormatting.GREEN))
+                .append(" Bosses"));
+        sendModMessage(shareButtons(drop));
+        sendModMessage(Component.literal("§fBosses since last Warden Heart: 87  ").append(shareButtons("Bosses since last Warden Heart: 87")));
+    }
+
     /** /alpakaslayer since &lt;item&gt;: the player's own count, with buttons to share it. */
     public static void printSince(String query) {
         SinceAnswer answer = findSince(query);
@@ -572,10 +597,7 @@ public class SlayerDropTracker {
             sendModMessage("§7No §f" + query.trim() + "§7 drop recorded yet. §8/alpakaslayer <slayer> lists every recorded drop.");
             return;
         }
-        sendModMessage(Component.literal("§f" + answer.text() + " ")
-                .append(shareButton("[Share: Party]", "pc", answer.text()))
-                .append(" ")
-                .append(shareButton("[Guild]", "gc", answer.text())));
+        sendModMessage(Component.literal("§f" + answer.text() + "  ").append(shareButtons(answer.text())));
     }
 
     public static void printKills(LocalPlayer player) {

@@ -80,10 +80,24 @@ public class AlpakaConfigRegistry {
                 "The typeface the Alpaka menus are written in.",
                 ConfigCategory.GENERAL,
                 () -> (float) GuiFont.selectedIndex(),
-                v -> { AlpakaConfig.instance.menuFont = Math.round(v); AlpakaConfig.save(); },
+                v -> { AlpakaConfig.instance.menuFont = Math.round(v); AlpakaConfig.save(); GuiFont.refreshChat(); },
                 0.0f, (float) (GuiFont.NAMES.length - 1),
                 val -> GuiFont.NAMES[Math.round(val)],
                 "menu font typeface text smooth modern inter poppins varela round outfit nunito minecraft pixel gui bold"));
+
+        OPTIONS.add(new ConfigOption("menu_font_in_chat", "Use In Chat",
+                "Writes chat messages in the menu font as well.",
+                ConfigCategory.GENERAL,
+                () -> AlpakaConfig.instance.menuFontInChat,
+                v -> { AlpakaConfig.instance.menuFontInChat = v; AlpakaConfig.save(); GuiFont.refreshChat(); },
+                "menu font chat messages smooth typeface nunito"));
+
+        OPTIONS.add(new ConfigOption("menu_font_in_scoreboard", "Use In Scoreboard",
+                "Writes the scoreboard on the right in the menu font as well.",
+                ConfigCategory.GENERAL,
+                () -> AlpakaConfig.instance.menuFontInScoreboard,
+                v -> { AlpakaConfig.instance.menuFontInScoreboard = v; AlpakaConfig.save(); },
+                "menu font scoreboard sidebar smooth typeface nunito"));
 
         OPTIONS.add(ConfigOption.color("menu_accent_color", "Menu Accent Color",
                 "The highlight colour of every Alpaka menu.",

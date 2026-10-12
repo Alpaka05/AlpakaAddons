@@ -189,6 +189,10 @@ public class AlpakaConfig {
     public int menuFont = 5;
     /** Set once a config still on the old default font has been moved to Nunito. */
     public boolean menuFontNunitoApplied = false;
+    /** Chat messages in the menu font rather than the pixel font. */
+    public boolean menuFontInChat = false;
+    /** The scoreboard sidebar in the menu font rather than the pixel font. */
+    public boolean menuFontInScoreboard = false;
     public boolean customEscapeMenuEnabled = true;
     public boolean customMainMenuEnabled = false;
     /** The small player model on the HUD. Off for fresh installs. */
@@ -872,6 +876,8 @@ public class AlpakaConfig {
         this.muteVanillaSoundsInBlazeSlayer = false;
         this.customEscapeMenuEnabled = false;
         this.menuFont = 0;
+        this.menuFontInChat = false;
+        this.menuFontInScoreboard = false;
         this.customMainMenuEnabled = false;
         this.playerModelEnabled = false;
         this.playerModelOnlyActions = false;

@@ -48,6 +48,10 @@ import java.util.Map;
  *
  * The glyph pages these fonts are baked into are sampled linearly rather than nearest-neighbour
  * (see {@code FontTextureMixin}); {@link #usesSmoothSampling} is how that mixin recognises them.
+ * Their glyphs are also loaded without FreeType's hinting, see {@link SmoothFontFaces}.
+ *
+ * Chat and the scoreboard can be written in the same font ({@link #restyle}); vanilla measures
+ * both from the styled text, so line breaks and the sidebar's width follow the font.
  */
 public final class GuiFont {
     /** Display names, indexed by {@link AlpakaConfig#menuFont}. */
@@ -109,6 +113,36 @@ public final class GuiFont {
         Style style = STYLE_CACHE.computeIfAbsent(fullId, key ->
                 Style.EMPTY.withFont(new FontDescription.Resource(Identifier.fromNamespaceAndPath("alpaka", key))));
         return Component.literal(text).withStyle(style);
+    }
+
+    /**
+     * The component in the configured font, for vanilla text outside the menus (chat, scoreboard).
+     *
+     * The font goes on a parent the component is appended to, so every part inherits it unless it
+     * names a font of its own - a resource pack's icon font stays what it is. A § reset inside the
+     * text falls back to the parent's style, so it keeps the font too. Measuring and drawing the
+     * result agree, as long as both are given the same component.
+     */
+    public static Component restyle(Component component) {
+        Style style = style();
+        if (style.isEmpty()) return component;
+        return Component.empty().withStyle(style).append(component);
+    }
+
+    /** Whether chat is to be written in the configured font. */
+    public static boolean inChat() {
+        return AlpakaConfig.instance.menuFontInChat && selectedIndex() != 0;
+    }
+
+    /** Whether the scoreboard sidebar is to be written in the configured font. */
+    public static boolean inScoreboard() {
+        return AlpakaConfig.instance.menuFontInScoreboard && selectedIndex() != 0;
+    }
+
+    /** Re-wraps the chat, whose lines were broken for the font they were added in. */
+    public static void refreshChat() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft != null && minecraft.gui != null && minecraft.gui.hud != null) minecraft.gui.hud.getChat().rescaleChat();
     }
 
     /** Width of the text in the configured font, for centring and caret placement. */

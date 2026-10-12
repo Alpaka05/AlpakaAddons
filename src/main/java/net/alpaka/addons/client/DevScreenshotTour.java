@@ -68,6 +68,7 @@ public final class DevScreenshotTour {
             screen("config-inventory-hud", () -> AlpakaConfigScreen.openOn("Interface", "Inventory HUD")),
             screen("config-hud-style", () -> AlpakaConfigScreen.openOn("Design", "HUD Style")),
             screen("config-screenshot", () -> AlpakaConfigScreen.openOn("Chat", "Better Screenshots")),
+            screen("config-slayer-hud", () -> AlpakaConfigScreen.openOn("Slayer", "Slayer Session HUD")),
             screen("config-slayer", () -> AlpakaConfigScreen.openOn("Slayer", "Share Buttons On Top Drops")),
             screen("config-tooltips", () -> AlpakaConfigScreen.openOn("Interface", "Scrollable Tooltips")),
             screen("config-menu-font", () -> AlpakaConfigScreen.openOn("Design", "Menu Font").withChoiceOpen()),

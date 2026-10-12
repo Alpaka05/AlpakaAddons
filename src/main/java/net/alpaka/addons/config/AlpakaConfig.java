@@ -40,6 +40,8 @@ public class AlpakaConfig {
      * name so the setting carries over for players who had turned the announcement on.
      */
     public boolean slayerRngDropGuildChatEnabled = false;
+    /** What those share buttons post: 0 the tracker's own line, 1 Hypixel's drop message as it came. */
+    public int slayerShareMessage = 0;
     /**
      * When a party member types "!since &lt;item&gt;", show the player their own count with a
      * [Reply in party] button. Nothing is sent unless the player clicks it and presses Enter.

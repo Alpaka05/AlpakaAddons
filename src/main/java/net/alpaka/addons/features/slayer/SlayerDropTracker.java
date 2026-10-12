@@ -470,7 +470,9 @@ public class SlayerDropTracker {
                         .append(Component.literal(" Boss" + (sinceLast != 1 ? "es" : "")));
             }
             if (AlpakaConfig.instance.slayerRngDropGuildChatEnabled && isHeadlineDrop(pending.type(), pending.item())) {
-                String shared = cleanColor(feedback.getString()).trim();
+                Component source = AlpakaConfig.instance.slayerShareMessage == SHARE_HYPIXEL_LINE
+                        ? pending.message() : feedback;
+                String shared = cleanColor(source.getString()).trim();
                 sendModMessage(feedback);
                 // Its own line: the drop line alone already fills most of the chat's width.
                 sendModMessage(shareButtons(shared));
@@ -489,6 +491,10 @@ public class SlayerDropTracker {
     private static boolean isHeadlineDrop(SlayerType type, String item) {
         return type.rngDropItem != null && type.rngDropItem.equalsIgnoreCase(item);
     }
+
+    /** The drop line the share buttons post, by {@link AlpakaConfig#slayerShareMessage}. */
+    public static final String[] SHARE_MESSAGE_NAMES = {"Tracker Line", "Hypixel's Line"};
+    private static final int SHARE_HYPIXEL_LINE = 1;
 
     /** Hypixel's chat limit is 256; the drop line is far shorter, this only guards against surprises. */
     private static final int SHARE_MESSAGE_MAX_LENGTH = 250;

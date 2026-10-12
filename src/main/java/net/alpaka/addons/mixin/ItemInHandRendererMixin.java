@@ -2,6 +2,7 @@ package net.alpaka.addons.mixin;
 
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.viewmodel.HandItemLightingFeature;
+import net.alpaka.addons.features.viewmodel.HandItemStarlightFeature;
 import net.alpaka.addons.features.viewmodel.ItemMotionBlurFeature;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Options;
@@ -258,6 +259,7 @@ public class ItemInHandRendererMixin {
         // 26.2 builds the item groups per render phase, so there is no single "all items drawn"
         // point to clean up at; the start of the next hand render is the frame boundary instead.
         HandItemLightingFeature.endFrame();
+        HandItemStarlightFeature.endFrame();
         ItemMotionBlurFeature.endFrame();
     }
 
@@ -265,6 +267,7 @@ public class ItemInHandRendererMixin {
     private void alpaka$beforeHandItemSubmit(LivingEntity entity, ItemStack stack, ItemDisplayContext context,
                                              PoseStack poseStack, SubmitNodeCollector collector, int light, CallbackInfo ci) {
         HandItemLightingFeature.beginHandItem(entity, context);
+        HandItemStarlightFeature.beginHandItem(entity, context);
         ItemMotionBlurFeature.beginHandItem(entity, context);
     }
 
@@ -272,7 +275,8 @@ public class ItemInHandRendererMixin {
     private void alpaka$afterHandItemSubmit(LivingEntity entity, ItemStack stack, ItemDisplayContext context,
                                             PoseStack poseStack, SubmitNodeCollector collector, int light, CallbackInfo ci) {
         // The ghosts are submitted while the lighting feature is still capturing, so they lose their
-        // shading along with the item they trail.
+        // shading along with the item they trail; starlight stops first, so they trail plain.
+        HandItemStarlightFeature.endHandItem();
         ItemMotionBlurFeature.endHandItem(collector);
         HandItemLightingFeature.endHandItem();
     }

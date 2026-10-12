@@ -413,6 +413,8 @@ public class AlpakaConfig {
      * blurred copy of the frame, so they follow it; the main menu keeps its own full blur.
      */
     public float chatBlurStrength = 100.0f;
+    /** One rounded, blurred panel with a soft shadow behind the scoreboard sidebar; see ScoreboardBlurFeature. */
+    public boolean scoreboardBlurEnabled = true;
     /** Ctrl+F in the chat turns the input line into a search that filters the visible messages. */
     public boolean chatSearchEnabled = true;
     /** Scrolling the chat glides the lines into place instead of jumping a line per notch. */
@@ -497,6 +499,13 @@ public class AlpakaConfig {
     public boolean itemNoEquipEnabled = false;
     public boolean itemSwingAlwaysFinishEnabled = false;
     public boolean itemIgnoreEmptyHandEnabled = false;
+
+    // Starlight: a drifting, twinkling galaxy over the held item; see HandItemStarlightFeature.
+    public boolean itemStarlightEnabled = false;
+    /** The nebula's colour; the stars are tinged with it. */
+    public int itemStarlightColor = 0xFF9B5CFF;
+    /** How strongly the galaxy covers the item, 0..1. */
+    public float itemStarlightStrength = 0.8f;
 
     // Swing motion blur: faded copies trail behind the held item while it swings; see ItemMotionBlurFeature.
     public boolean itemMotionBlurEnabled = false;
@@ -625,6 +634,9 @@ public class AlpakaConfig {
         this.itemNoEquipEnabled = false;
         this.itemSwingAlwaysFinishEnabled = false;
         this.itemIgnoreEmptyHandEnabled = false;
+        this.itemStarlightEnabled = false;
+        this.itemStarlightColor = 0xFF9B5CFF;
+        this.itemStarlightStrength = 0.8f;
         this.itemMotionBlurEnabled = false;
         this.itemMotionBlurLength = 80.0f;
         this.itemMotionBlurOpacity = 0.35f;
@@ -893,6 +905,7 @@ public class AlpakaConfig {
         this.etherwarpSoundEnabled = false;
         this.smoothChatEnabled = false;
         this.chatBlurEnabled = false;
+        this.scoreboardBlurEnabled = false;
         this.chatSearchEnabled = false;
         this.chatSmoothScrollEnabled = false;
         this.alwaysSprintEnabled = false;
@@ -910,6 +923,7 @@ public class AlpakaConfig {
         this.itemSizeFeatureEnabled = false;
         this.itemSwayDisabled = false;
         this.itemLightingDisabled = false;
+        this.itemStarlightEnabled = false;
         this.itemSwingTranslationDisabled = false;
         this.itemNoEquipEnabled = false;
         this.itemSwingAlwaysFinishEnabled = false;

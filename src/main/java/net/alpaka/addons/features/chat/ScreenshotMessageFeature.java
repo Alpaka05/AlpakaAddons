@@ -32,8 +32,8 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 /**
- * What happens to the "Saved screenshot as ..." notice: the line with Open, Copy and Delete buttons,
- * and the automatic copy to the clipboard.
+ * Better Screenshots - what happens to the "Saved screenshot as ..." notice: the line with Open,
+ * Copy and Delete buttons, the automatic copy to the clipboard, and the {@link ScreenshotPreview}.
  *
  * ### How the buttons work
  *
@@ -82,8 +82,10 @@ public final class ScreenshotMessageFeature {
         if (!"screenshot.success".equals(contents.getKey())) return false;
         File file = fileOf(contents);
         if (file == null) return false;
+        if (!AlpakaConfig.instance.betterScreenshotMessageEnabled) return false;
 
-        boolean buttons = AlpakaConfig.instance.betterScreenshotMessageEnabled;
+        ScreenshotPreview.show(file);
+        boolean buttons = AlpakaConfig.instance.screenshotChatButtons;
         if (AlpakaConfig.instance.autoCopyScreenshots && canCopy()) {
             copy(file, error -> {
                 if (buttons) {
@@ -162,24 +164,6 @@ public final class ScreenshotMessageFeature {
             line.append(" ").append(button("[Delete]", ChatFormatting.RED, custom(DELETE, token), "Delete " + name));
         }
         return line;
-    }
-
-    /**
-     * The line as it would look for a screenshot, for the config's preview: the newest one in the
-     * screenshots folder, or a made-up name when there is none. Its buttons work like real ones.
-     */
-    public static Component previewLine() {
-        File folder = new File(Minecraft.getInstance().gameDirectory, "screenshots");
-        File newest = null;
-        File[] files = folder.listFiles((dir, n) -> n.endsWith(".png"));
-        if (files != null) {
-            for (File f : files) {
-                if (newest == null || f.lastModified() > newest.lastModified()) newest = f;
-            }
-        }
-        if (newest == null) newest = new File(folder, "2026-10-12_18.30.00.png");
-        return buttonLine(newest, AlpakaConfig.instance.autoCopyScreenshots && canCopy()
-                ? Component.literal("copied").withStyle(ChatFormatting.DARK_GRAY) : null);
     }
 
     /** The file the vanilla notice links to: its one argument is the name, clickable to open the file. */

@@ -37,6 +37,7 @@
     "AbstractSoundInstanceAccessor",
     "LivingEntityRendererMixin",
     "LivingEntityMixin",
+    "MinecraftScreenshotMixin",
     "SubmitNodeCollectionMixin",
     "ItemFeatureRendererMixin",
     "GuiGraphicsExtractorMixin",

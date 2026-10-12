@@ -441,19 +441,44 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.chatPeekInMenus = v; AlpakaConfig.save(); },
                 "chat peek menu inventory gui screen container open hold key foreground"));
 
-        OPTIONS.add(new ConfigOption("better_screenshot_message", "Better Screenshot Message",
-                "Open, Copy and Delete buttons on the screenshot notice.",
+        OPTIONS.add(new ConfigOption("better_screenshot_message", "Better Screenshots",
+                "A preview in the corner and Open, Copy and Delete buttons for every screenshot.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.betterScreenshotMessageEnabled,
                 v -> { AlpakaConfig.instance.betterScreenshotMessageEnabled = v; AlpakaConfig.save(); },
-                "screenshot message notice open copy delete clipboard f2 buttons"));
+                "better screenshots screenshot message notice open copy delete clipboard f2 buttons preview"));
 
-        OPTIONS.add(new ConfigOption("auto_copy_screenshots", "Auto Copy Screenshots",
-                "Copies every screenshot to the clipboard right away. Not available on macOS.",
+        OPTIONS.add(new ConfigOption("screenshot_preview", "Screen Preview",
+                "The screenshot shrinks into the corner for a moment, like on a phone.",
                 ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.autoCopyScreenshots,
-                v -> { AlpakaConfig.instance.autoCopyScreenshots = v; AlpakaConfig.save(); },
-                "screenshot auto copy clipboard automatic f2 paste"));
+                () -> AlpakaConfig.instance.screenshotPreviewEnabled,
+                v -> { AlpakaConfig.instance.screenshotPreviewEnabled = v; AlpakaConfig.save(); },
+                "screenshot preview thumbnail corner flash animation ios phone"));
+
+        OPTIONS.add(new ConfigOption("screenshot_preview_seconds", "Preview Duration",
+                "How long the preview stays in the corner.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.screenshotPreviewSeconds,
+                v -> { AlpakaConfig.instance.screenshotPreviewSeconds = Math.round(v * 2.0f) / 2.0f; AlpakaConfig.save(); },
+                1.0f, 10.0f,
+                val -> String.format(java.util.Locale.ROOT, "%.1f s", val),
+                "screenshot preview duration time seconds"));
+
+        OPTIONS.add(new ConfigOption("screenshot_preview_size", "Preview Size",
+                "The preview's width, as a share of the screen's.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.screenshotPreviewSize,
+                v -> { AlpakaConfig.instance.screenshotPreviewSize = (float) Math.round(v); AlpakaConfig.save(); },
+                10.0f, 40.0f,
+                val -> Math.round(val) + "%",
+                "screenshot preview size width thumbnail"));
+
+        OPTIONS.add(new ConfigOption("screenshot_chat_buttons", "Chat Buttons",
+                "Open, Copy and Delete buttons on the screenshot notice in chat.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.screenshotChatButtons,
+                v -> { AlpakaConfig.instance.screenshotChatButtons = v; AlpakaConfig.save(); },
+                "screenshot message notice open copy delete buttons chat line"));
 
         OPTIONS.add(new ConfigOption("screenshot_line_parts", "Line Parts",
                 "Which parts the screenshot line shows.",
@@ -474,20 +499,12 @@ public class AlpakaConfigRegistry {
                 ),
                 "screenshot line parts file name open copy delete button show hide"));
 
-        OPTIONS.add(ConfigOption.preview("screenshot_preview", "Preview", ConfigCategory.VISUALS,
-                net.alpaka.addons.features.chat.ScreenshotMessageFeature::previewLine));
-
-        OPTIONS.add(new ConfigOption("screenshot_preview_chat", "Show In Chat",
-                "Posts the line for your newest screenshot into the chat, buttons and all.",
+        OPTIONS.add(new ConfigOption("auto_copy_screenshots", "Auto Copy Screenshots",
+                "Copies every screenshot to the clipboard right away. Not available on macOS.",
                 ConfigCategory.VISUALS,
-                "Show In Chat",
-                parent -> {
-                    Minecraft mc = Minecraft.getInstance();
-                    if (mc.gui.hud == null || mc.player == null) return;
-                    mc.gui.hud.getChat().addClientSystemMessage(net.alpaka.addons.features.chat.ScreenshotMessageFeature.previewLine());
-                    mc.gui.setScreen(new net.minecraft.client.gui.screens.ChatScreen("", false));
-                },
-                "screenshot preview chat test show example"));
+                () -> AlpakaConfig.instance.autoCopyScreenshots,
+                v -> { AlpakaConfig.instance.autoCopyScreenshots = v; AlpakaConfig.save(); },
+                "screenshot auto copy clipboard automatic f2 paste"));
 
         OPTIONS.add(new ConfigOption("chat_tabs", "Chat Tabs",
                 "All, Party, Guild, Co-op, PMs, Server and Mods tabs above the chat input.",

@@ -1322,12 +1322,16 @@ public class AlpakaConfigRegistry {
                                 v -> { AlpakaConfig.instance.slayerHudShowSinceRngDrop = v; AlpakaConfig.save(); }),
                         new ConfigOption.ToggleEntry("Polar bear effect",
                                 () -> AlpakaConfig.instance.slayerHudShowBear,
-                                v -> { AlpakaConfig.instance.slayerHudShowBear = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Polar bear: Blaze only",
-                                () -> AlpakaConfig.instance.slayerHudBearBlazeOnly,
-                                v -> { AlpakaConfig.instance.slayerHudBearBlazeOnly = v; AlpakaConfig.save(); })
+                                v -> { AlpakaConfig.instance.slayerHudShowBear = v; AlpakaConfig.save(); })
                 ),
                 "slayer hud lines toggle show hide xp bosses per hour session time rng dry streak average bear gummy polar smoldering polarization effect"));
+
+        OPTIONS.add(new ConfigOption("slayer_hud_bear_blaze_only", "Bear Line Only On Blaze",
+                "Shows the polar bear effect only on the Blaze HUD instead of on every slayer.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slayerHudBearBlazeOnly,
+                v -> { AlpakaConfig.instance.slayerHudBearBlazeOnly = v; AlpakaConfig.save(); },
+                "slayer hud bear polar gummy smoldering polarization blaze only inferno"));
 
 
         OPTIONS.add(new ConfigOption("slayer_hud_only_in_areas", "Slayer HUD Only In Slayer Areas",

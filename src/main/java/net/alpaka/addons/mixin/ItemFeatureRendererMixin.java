@@ -1,8 +1,15 @@
 package net.alpaka.addons.mixin;
 
+import com.mojang.blaze3d.vertex.QuadInstance;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.alpaka.addons.features.viewmodel.HandItemLightingFeature;
+import net.alpaka.addons.features.viewmodel.HandItemStarlightFeature;
 import net.alpaka.addons.features.viewmodel.ItemMotionBlurFeature;
 import net.minecraft.client.renderer.feature.ItemFeatureRenderer;
+import net.minecraft.client.renderer.feature.RenderTypeFeatureRenderer;
+import net.minecraft.client.resources.model.geometry.BakedQuad;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Shadow;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -11,7 +18,9 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ItemFeatureRenderer.class)
-public class ItemFeatureRendererMixin {
+public abstract class ItemFeatureRendererMixin extends RenderTypeFeatureRenderer<ItemFeatureRenderer.Submit> {
+
+    @Shadow @Final private QuadInstance quadInstance;
 
     @Inject(method = "prepareSubmit", at = @At("HEAD"))
     private void alpaka$beginItem(ItemFeatureRenderer.Submit submit, boolean outline, CallbackInfo ci) {
@@ -49,5 +58,17 @@ public class ItemFeatureRendererMixin {
     )
     private int alpaka$ghostQuadColor(int color) {
         return ItemMotionBlurFeature.applyGhostAlpha(color);
+    }
+
+    // The second pass over the submits draws the glint layers; the hand item's starlight goes in
+    // with them, over every item submit of the hand, glinted or not. See HandItemStarlightFeature.
+    @Inject(method = "prepareSubmit", at = @At("TAIL"))
+    private void alpaka$starlight(ItemFeatureRenderer.Submit submit, boolean foilPass, CallbackInfo ci) {
+        if (!foilPass || !HandItemStarlightFeature.isStarlit(submit)) return;
+        VertexConsumer buffer = HandItemStarlightFeature.starlightBuffer(
+                this.getVertexBuilder(HandItemStarlightFeature.renderType()));
+        for (BakedQuad quad : submit.quads()) {
+            buffer.putBakedQuad(submit.pose(), quad, this.quadInstance);
+        }
     }
 }

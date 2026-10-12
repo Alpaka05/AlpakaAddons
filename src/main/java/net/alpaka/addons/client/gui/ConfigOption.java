@@ -1,5 +1,7 @@
 package net.alpaka.addons.client.gui;
 
+import net.alpaka.addons.config.AlpakaConfig;
+
 import java.util.Locale;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
@@ -137,16 +139,32 @@ public class ConfigOption {
     /**
      * A colour option: a button showing the current colour as a swatch, which opens the colour
      * picker. Every colour setting is made this way, so the config screen needs no list of them.
+     *
+     * The option is given the config field rather than a getter, so its default can be read from a
+     * fresh config: the picker's reset button goes back to that without a second copy of it here.
      */
     public static ConfigOption color(String id, String title, String description, ConfigCategory category,
-                                     java.util.function.IntSupplier getter, java.util.function.IntConsumer setter,
-                                     String keywords) {
+                                     java.util.function.ToIntFunction<AlpakaConfig> field,
+                                     java.util.function.IntConsumer setter, String keywords) {
+        java.util.function.IntSupplier getter = () -> field.applyAsInt(AlpakaConfig.instance);
+        int defaultColor = field.applyAsInt(defaults());
         ConfigOption option = new ConfigOption(id, title, description, category, "Choose Color",
                 parent -> net.minecraft.client.Minecraft.getInstance().gui.setScreen(
-                        new net.alpaka.addons.client.ColorPickerScreen(parent, title, getter.getAsInt(), setter::accept)),
+                        new net.alpaka.addons.client.ColorPickerScreen(parent, title, getter.getAsInt(),
+                                defaultColor, setter::accept)),
                 keywords);
         option.colorGetter = getter;
         return option;
+    }
+
+    /** A config as freshly created, for reading defaults from; made once, never saved. */
+    private static AlpakaConfig defaults;
+
+    private static AlpakaConfig defaults() {
+        if (defaults == null) {
+            defaults = new AlpakaConfig();
+        }
+        return defaults;
     }
 
     // Dropdown constructor

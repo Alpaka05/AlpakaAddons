@@ -106,6 +106,8 @@ public class AlpakaConfig {
      * until the moment somebody actually addresses the player, which is a moment worth not missing.
      */
     public boolean mentionNotificationEnabled = true;
+    /** Only mentions from real players: lines from NPCs, bosses and the server itself are ignored. */
+    public boolean mentionIgnoreServer = true;
     /**
      * How long a notification stays on screen, in seconds, before it slides back out.
      *
@@ -158,6 +160,8 @@ public class AlpakaConfig {
     public boolean hideHurtOverlayEnabled = false;
     /** Stops drawing a mob the moment it dies, skipping vanilla's tip-over. Cosmetic only. */
     public boolean hideMobDeathsEnabled = false;
+    /** With Hide Mob Deaths: also no puff of smoke when the server removes the body. */
+    public boolean hideMobDeathSmoke = false;
     public boolean smoothPerspectiveEnabled = true;
     public boolean disableFrontPerspective = false;
     public int smoothPerspectiveDurationMs = 350;
@@ -441,12 +445,19 @@ public class AlpakaConfig {
     /** Off for fresh installs. Vanilla's own toggle-sprint option already does this for most players. */
     public boolean alwaysSprintEnabled = false;
     public boolean expandChatHistory = true;
+    /** How many chat lines Expand Chat History keeps; vanilla keeps 100. */
+    public int chatHistoryLimit = 5000;
     /** Hold the Peek Chat key to see the whole chat, scrollable, without opening it. */
     public boolean chatPeekEnabled = true;
     /** Peek Chat also works with an inventory or another menu open, drawn on top of it. */
     public boolean chatPeekInMenus = true;
     /** Open, Copy and Delete buttons on the screenshot notice instead of vanilla's line. */
     public boolean betterScreenshotMessageEnabled = true;
+    /** Which parts the screenshot line shows. */
+    public boolean screenshotShowFileName = false;
+    public boolean screenshotShowOpen = true;
+    public boolean screenshotShowCopy = true;
+    public boolean screenshotShowDelete = true;
     /** Every screenshot goes to the clipboard the moment it is taken. */
     public boolean autoCopyScreenshots = false;
     /** A message repeated right after itself becomes one line with (x2), (x3)... */
@@ -472,6 +483,14 @@ public class AlpakaConfig {
     // Interface options
     /** The mouse wheel scrolls a tooltip that is taller than the screen. */
     public boolean scrollableTooltipsEnabled = true;
+    /** The wheel moves every tooltip, not only one taller than the screen. */
+    public boolean scrollableTooltipsAlways = false;
+    /** GUI pixels one wheel notch moves a tooltip. */
+    public float scrollableTooltipsSpeed = 12.0f;
+    /** The tooltip glides to where the wheel sends it instead of jumping. */
+    public boolean scrollableTooltipsSmooth = true;
+    /** Wheel down moves the tooltip down instead of reading further down it. */
+    public boolean scrollableTooltipsInvert = false;
     /** The held item's name above the hotbar stays up instead of fading out. */
     public boolean persistentItemNameEnabled = false;
     /**

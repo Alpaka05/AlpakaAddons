@@ -51,6 +51,8 @@ public class AlpakaConfigScreen extends Screen {
     private static final int COLOR_ROW_HOVER = 0xFF242424;
     private static final int COLOR_ROW_SELECTED = 0xFF2A2A2A;
     private static final int COLOR_FIELD = 0xFF1F1F1F;
+    /** Behind a preview: the dark of the chat's own background. */
+    private static final int COLOR_PREVIEW = 0xFF0D0D0D;
     private static final int COLOR_TEXT = 0xFFEDEDED;
     private static final int COLOR_TEXT_SOFT = 0xFFBDBDBD;
     private static final int COLOR_TEXT_MUTED = 0xFF7C7C7C;
@@ -74,6 +76,9 @@ public class AlpakaConfigScreen extends Screen {
     private static final int SWATCH_W = 16;
     private static final int SWATCH_H = 9;
     private static final int TEXT_FIELD_W = 76;
+    private static final int CHOICE_FIELD_W = 84;
+    private static final int PREVIEW_LABEL_H = 12;
+    private static final int PREVIEW_PAD = 5;
     private static final int MAX_TEXT_OPTION_LENGTH = 32;
     private static final int MAX_SEARCH_LENGTH = 35;
     private static final long TOOLTIP_DELAY_MS = 450L;
@@ -97,6 +102,8 @@ public class AlpakaConfigScreen extends Screen {
     private final Set<ConfigOption> collapsed = new HashSet<>();
 
     private ConfigOption focusedText = null;
+    /** The choice setting whose list is open, if any; one at a time. */
+    private ConfigOption openChoice = null;
     private ConfigOption armedOption = null;
     private long armedUntilMs = 0L;
 
@@ -185,6 +192,16 @@ public class AlpakaConfigScreen extends Screen {
             }
         }
         return screen;
+    }
+
+    /** For the screenshot tour: opens the list of the selected feature's choice setting. */
+    AlpakaConfigScreen withChoiceOpen() {
+        if (selectedFeature != null) {
+            for (ConfigOption option : selectedFeature.panelOptions()) {
+                if (option.getChoices() != null) openChoice = option;
+            }
+        }
+        return this;
     }
 
     @Override
@@ -565,8 +582,11 @@ public class AlpakaConfigScreen extends Screen {
     /** Draws one setting row and returns the y the next one starts at. */
     private int drawSetting(GuiGraphicsExtractor graphics, int mouseX, int mouseY, ConfigOption option,
                             int rowX, int rowY, int rowW, int colX, int colW, int clipY, int clipH, float deltaSec) {
+        List<net.minecraft.util.FormattedCharSequence> previewLines = option.getType() == ConfigOption.Type.PREVIEW
+                ? this.font.split(option.getPreviewText(), rowW - 2 * PREVIEW_PAD) : List.of();
         int rowH = switch (option.getType()) {
-            case SLIDER -> SLIDER_ROW_H;
+            case SLIDER -> option.getChoices() != null ? SETTING_ROW_H : SLIDER_ROW_H;
+            case PREVIEW -> PREVIEW_LABEL_H + Math.max(1, previewLines.size()) * LINE_H + 2 * PREVIEW_PAD + 2;
             case ACTION -> option.isColor() ? SETTING_ROW_H : ACTION_ROW_H;
             default -> SETTING_ROW_H;
         };
@@ -586,6 +606,9 @@ public class AlpakaConfigScreen extends Screen {
                 if (shown) hits.add(new Hit(rowX, hitY, rowW, rowH, (mx, my) -> option.toggleBool()));
             }
             case SLIDER -> {
+                if (option.getChoices() != null) {
+                    return drawChoice(graphics, mouseX, mouseY, option, rowX, rowY, rowW, rowH, colX, colW, clipY, clipH, hover);
+                }
                 String value = option.getFormattedValue();
                 int valueW = GuiFont.width(this.font, value);
                 drawLabel(graphics, option.getTitle(), rowX + 4, labelY, right - valueW - 8 - (rowX + 4));
@@ -670,6 +693,18 @@ public class AlpakaConfigScreen extends Screen {
                     return entryY + 2;
                 }
             }
+            case PREVIEW -> {
+                // Drawn as chat draws it: vanilla's text with its shadow, on chat's dark backdrop.
+                graphics.text(this.font, GuiFont.text(option.getTitle()), rowX + 4, rowY + 2, COLOR_TEXT_MUTED, false);
+                int boxY = rowY + PREVIEW_LABEL_H;
+                int boxH = rowH - PREVIEW_LABEL_H - 2;
+                ModernGuiUtils.drawRoundedRect(graphics, rowX, boxY, rowW, boxH, 4, COLOR_PREVIEW);
+                int lineY = boxY + PREVIEW_PAD;
+                for (net.minecraft.util.FormattedCharSequence line : previewLines) {
+                    graphics.text(this.font, line, rowX + PREVIEW_PAD, lineY, 0xFFFFFFFF, true);
+                    lineY += LINE_H;
+                }
+            }
             case TEXT -> {
                 if (hover) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, rowH, 4, COLOR_ROW);
                 int fieldW = Math.min(TEXT_FIELD_W, rowW / 2);
@@ -699,6 +734,48 @@ public class AlpakaConfigScreen extends Screen {
             }
         }
         return rowY + rowH;
+    }
+
+    /**
+     * A slider over a list of names, drawn as a select field: the label, and the current name in a
+     * field with a chevron. A click opens the names underneath, a click on one picks it.
+     */
+    private int drawChoice(GuiGraphicsExtractor graphics, int mouseX, int mouseY, ConfigOption option,
+                           int rowX, int rowY, int rowW, int rowH, int colX, int colW, int clipY, int clipH, boolean hover) {
+        String[] names = option.getChoices();
+        boolean open = openChoice == option;
+        int right = rowX + rowW - 4;
+        int current = option.getChoiceIndex();
+        int fieldW = Math.min(CHOICE_FIELD_W, rowW / 2);
+        int fieldX = right - fieldW;
+        if (hover) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, rowH, 4, COLOR_ROW);
+        drawLabel(graphics, option.getTitle(), rowX + 4, rowY + 4, fieldX - 8 - (rowX + 4));
+        ModernGuiUtils.drawRoundedRect(graphics, fieldX, rowY + 2, fieldW, rowH - 4, 3, COLOR_FIELD);
+        String value = ellipsize(names[current], fieldW - 16);
+        graphics.text(this.font, GuiFont.text(value), fieldX + 4, rowY + 4, COLOR_TEXT, false);
+        drawChevron(graphics, fieldX + fieldW - 6, rowY + rowH / 2, open, COLOR_TEXT_SOFT);
+        if (visible(rowY, rowH, clipY, clipH)) {
+            hits.add(new Hit(rowX, Math.max(rowY, clipY), rowW, rowH, (mx, my) -> openChoice = open ? null : option));
+        }
+        int y = rowY + rowH;
+        if (!open) return y;
+
+        for (int i = 0; i < names.length; i++) {
+            int index = i;
+            boolean entryHover = inside(mouseX, mouseY, rowX, y, rowW, SETTING_ROW_H) && inside(mouseX, mouseY, colX, clipY, colW, clipH);
+            if (entryHover) ModernGuiUtils.drawRoundedRect(graphics, rowX, y, rowW, SETTING_ROW_H, 4, COLOR_ROW);
+            ModernGuiUtils.drawRect(graphics, rowX + 6, y + 2, 1, SETTING_ROW_H - 4, i == current ? ModernGuiUtils.getAccentColor() : COLOR_LINE);
+            int color = i == current ? ModernGuiUtils.getAccentColor() : entryHover ? COLOR_TEXT : COLOR_TEXT_SOFT;
+            graphics.text(this.font, GuiFont.text(ellipsize(names[i], rowW - 24)), rowX + 14, y + 4, color, false);
+            if (visible(y, SETTING_ROW_H, clipY, clipH)) {
+                hits.add(new Hit(rowX, Math.max(y, clipY), rowW, SETTING_ROW_H, (mx, my) -> {
+                    option.setFloat(index);
+                    openChoice = null;
+                }));
+            }
+            y += SETTING_ROW_H;
+        }
+        return y + 2;
     }
 
     private void drawLabel(GuiGraphicsExtractor graphics, String label, int x, int y, int maxW) {

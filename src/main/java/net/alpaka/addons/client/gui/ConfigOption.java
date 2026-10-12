@@ -18,7 +18,9 @@ public class ConfigOption {
         ACTION,
         HEADER,
         DROPDOWN,
-        TEXT
+        TEXT,
+        /** A sample of what the feature puts on screen, drawn in the settings; see {@link #preview}. */
+        PREVIEW
     }
 
     /**
@@ -90,6 +92,16 @@ public class ConfigOption {
         this.description = "";
         this.category = category;
         this.type = Type.HEADER;
+        this.keywords = title.toLowerCase();
+    }
+
+    // Preview constructor, see preview()
+    private ConfigOption(String title, ConfigCategory category, Type type, String id) {
+        this.id = id;
+        this.title = title;
+        this.description = "";
+        this.category = category;
+        this.type = type;
         this.keywords = title.toLowerCase();
     }
 
@@ -273,6 +285,44 @@ public class ConfigOption {
 
     // Action
     public String getActionLabel() { return actionLabel != null ? actionLabel : "Open..."; }
+
+    private String[] choices;
+
+    /**
+     * Makes this slider a pick from a list: the value is an index into {@code names}, and the
+     * settings show it as a select field that opens the list, not as a track to drag along.
+     */
+    public ConfigOption choices(String[] names) {
+        this.choices = names;
+        return this;
+    }
+
+    /** The names to pick from, or null for an ordinary slider. */
+    public String[] getChoices() { return choices; }
+
+    /** The index of the current choice, clamped to the list. */
+    public int getChoiceIndex() {
+        if (choices == null || choices.length == 0) return 0;
+        return Math.max(0, Math.min(choices.length - 1, Math.round(getFloat())));
+    }
+
+    private Supplier<net.minecraft.network.chat.Component> previewText;
+
+    /**
+     * A live sample of what a feature puts on screen - a chat line, say - drawn in its settings and
+     * rebuilt every frame, so ticking one of the feature's toggles shows its effect at once.
+     */
+    public static ConfigOption preview(String id, String title, ConfigCategory category,
+                                       Supplier<net.minecraft.network.chat.Component> text) {
+        ConfigOption option = new ConfigOption(title, category, Type.PREVIEW, id);
+        option.previewText = text;
+        return option;
+    }
+
+    /** The sample a preview shows. */
+    public net.minecraft.network.chat.Component getPreviewText() {
+        return previewText == null ? net.minecraft.network.chat.Component.empty() : previewText.get();
+    }
 
     /** Whether this is a colour option, made by {@link #color}. */
     public boolean isColor() { return colorGetter != null; }

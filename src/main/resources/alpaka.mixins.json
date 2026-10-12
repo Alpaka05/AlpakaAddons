@@ -36,6 +36,7 @@
     "AvatarRenderStateMixin",
     "AbstractSoundInstanceAccessor",
     "LivingEntityRendererMixin",
+    "LivingEntityMixin",
     "SubmitNodeCollectionMixin",
     "ItemFeatureRendererMixin",
     "GuiGraphicsExtractorMixin",

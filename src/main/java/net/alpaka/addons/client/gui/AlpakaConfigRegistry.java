@@ -1203,6 +1203,15 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.slayerRngDropGuildChatEnabled = v; AlpakaConfig.save(); },
                 "guild party chat gc pc announce share button rng drop rare dice judgement core warden heart flex"));
 
+        OPTIONS.add(new ConfigOption("slayer_share_message", "Shared Message",
+                "What the buttons post: the tracker's line with the boss count, or Hypixel's drop message.",
+                ConfigCategory.SKYBLOCK,
+                () -> (float) AlpakaConfig.instance.slayerShareMessage,
+                v -> { AlpakaConfig.instance.slayerShareMessage = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (net.alpaka.addons.features.slayer.SlayerDropTracker.SHARE_MESSAGE_NAMES.length - 1),
+                val -> net.alpaka.addons.features.slayer.SlayerDropTracker.SHARE_MESSAGE_NAMES[Math.round(val)],
+                "share message hypixel tracker line drop text guild party").choices(net.alpaka.addons.features.slayer.SlayerDropTracker.SHARE_MESSAGE_NAMES));
+
 
         OPTIONS.add(new ConfigOption("slayer_since_reply_offer", "Offer Replies To !since",
                 "Shows your count when your party asks !since, with a Reply button.",

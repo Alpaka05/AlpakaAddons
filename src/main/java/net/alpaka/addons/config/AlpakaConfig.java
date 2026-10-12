@@ -193,6 +193,18 @@ public class AlpakaConfig {
     public boolean menuFontInChat = false;
     /** The scoreboard sidebar in the menu font rather than the pixel font. */
     public boolean menuFontInScoreboard = false;
+    /**
+     * The mod's own HUDs: each on a blurred panel like the chat's, and each in the menu font, both
+     * per HUD. See HudPanel.
+     */
+    public boolean slayerHudBlur = true;
+    public boolean slayerTimerHudBlur = true;
+    public boolean worldAgeHudBlur = true;
+    public boolean notificationBlur = true;
+    public boolean slayerHudSmoothFont = true;
+    public boolean slayerTimerHudSmoothFont = true;
+    public boolean worldAgeHudSmoothFont = true;
+    public boolean notificationSmoothFont = true;
     public boolean customEscapeMenuEnabled = true;
     public boolean customMainMenuEnabled = false;
     /** The small player model on the HUD. Off for fresh installs. */
@@ -921,6 +933,8 @@ public class AlpakaConfig {
         this.smoothChatEnabled = false;
         this.chatBlurEnabled = false;
         this.scoreboardBlurEnabled = false;
+        this.notificationBlur = false;
+        this.notificationSmoothFont = false;
         this.chatSearchEnabled = false;
         this.chatSmoothScrollEnabled = false;
         this.alwaysSprintEnabled = false;

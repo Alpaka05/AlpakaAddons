@@ -96,7 +96,7 @@ public final class ConfigTree {
             "fullbright", "clean_blaze", "blaze_fire_pits", "stop_blaze_spinning", "hide_hurt_overlay", "hide_mob_deaths",
             "render_hand_third_person", "smooth_perspective", "disable_front_perspective",
             "container_bg_opacity", "inventory_snow", "scrollable_tooltips", "persistent_item_name", "wide_health_bar",
-            "smooth_chat", "chat_smooth_scroll", "chat_blur", "chat_search", "expand_chat_history", "compact_chat",
+            "smooth_chat", "chat_smooth_scroll", "chat_search", "expand_chat_history", "compact_chat",
             "mention_notification", "chat_peek", "better_screenshot_message", "chat_tabs",
             "player_model_enabled", "inventory_hud_enabled",
             // Item viewmodel: the adjustments are the modifiers' own settings
@@ -130,7 +130,8 @@ public final class ConfigTree {
      */
     private static final Map<String, String> HEADER_FEATURES = Map.of(
             "Swing Customizations", "Swing",
-            "Viewmodel Presets", "Presets"
+            "Viewmodel Presets", "Presets",
+            "HUD Style", "HUD Style"
     );
 
     /**
@@ -142,7 +143,7 @@ public final class ConfigTree {
             {{"General"},
                     {"Main", "allow_api_calls", "update_notifications", "notification_hold", "hud_editor",
                             "command_wheel_custom_commands", "always_sprint", "disable_all_features"},
-                    {"Menus", "menu_font", "menu_accent_color", "custom_main_menu", "custom_escape_menu"},
+                    {"Design", "menu_font", "#HUD Style", "menu_accent_color", "custom_main_menu", "custom_escape_menu"},
                     {"Sounds", "custom_sounds", "custom_sound_button_click", "custom_sound_hotbar_scroll",
                             "custom_sound_inventory_open_close", "custom_sound_inventory_click", "custom_sound_rare_drop",
                             "custom_sound_notification", "custom_sound_player_hurt", "custom_sound_successful_hit",
@@ -153,7 +154,7 @@ public final class ConfigTree {
                     {"Interface", "inventory_hud_enabled", "player_model_enabled", "container_bg_opacity",
                             "scrollable_tooltips", "persistent_item_name", "wide_health_bar", "inventory_snow"},
                     {"Chat", "chat_tabs", "chat_search", "chat_peek", "compact_chat", "smooth_chat", "chat_smooth_scroll",
-                            "chat_blur", "expand_chat_history", "mention_notification", "better_screenshot_message"},
+                            "expand_chat_history", "mention_notification", "better_screenshot_message"},
                     {"Viewmodel", "item_size_feature", "#Swing Customizations", "item_motion_blur",
                             "#Viewmodel Presets", "item_viewmodel_reset"},
                     {"Cosmetics", "custom_name_tag", "custom_damage_tags", "chroma_hat", "player_scale"}},

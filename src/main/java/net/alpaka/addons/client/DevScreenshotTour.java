@@ -66,6 +66,7 @@ public final class DevScreenshotTour {
             screen("config-damage-tags", () -> AlpakaConfigScreen.openOn("Cosmetics", "Custom Damage Tags")),
             screen("config-search", () -> new AlpakaConfigScreen(null, "blaze")),
             screen("config-inventory-hud", () -> AlpakaConfigScreen.openOn("Interface", "Inventory HUD")),
+            screen("config-hud-style", () -> AlpakaConfigScreen.openOn("Design", "HUD Style")),
             screen("config-world", () -> AlpakaConfigScreen.openOn("World", "Block Overlay")),
             screen("config-viewmodel", () -> AlpakaConfigScreen.openOn("Viewmodel", "Viewmodel Modifiers")),
             screen("color-picker", () -> new ColorPickerScreen(null, "Accent Colour", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
@@ -75,6 +76,8 @@ public final class DevScreenshotTour {
                     () -> Minecraft.getInstance().player != null && Minecraft.getInstance().gui.screen() == null, 100),
             new Stop("world-hud", DevScreenshotTour::showHuds, () -> true, 30),
             new Stop("hud-editor-world", () -> Minecraft.getInstance().gui.setScreen(new HudEditorScreen(null)), () -> true, 20),
+            // Every HUD on its blurred panel and in the menu font, a notice in the corner.
+            new Stop("hud-style", DevScreenshotTour::hudStyle, () -> true, 20),
             screen("pause-menu", net.alpaka.addons.features.escapemenu.CustomPauseScreen::new),
             new Stop(null, () -> Minecraft.getInstance().gui.setScreen(null), () -> true, 5),
             // Two ticks after a burst: the lines are mid-slide inside the chat's box.
@@ -230,6 +233,13 @@ public final class DevScreenshotTour {
         cfg.inventoryHudAttachToHotbar = true;
         cfg.inventoryHudAlwaysVisible = true;
         cfg.worldAgeHudEnabled = true;
+    }
+
+    /** The HUD editor's previews and a notice, all drawn in the shared HUD style. */
+    private static void hudStyle() {
+        net.alpaka.addons.features.notification.AlpakaNotifications.send("Boss Spawned!",
+                "Inferno Demonlord IV is up. Kill it before the timer runs out.");
+        Minecraft.getInstance().gui.setScreen(new HudEditorScreen(null));
     }
 
     /** A burst of lines, as a busy chat delivers them. */

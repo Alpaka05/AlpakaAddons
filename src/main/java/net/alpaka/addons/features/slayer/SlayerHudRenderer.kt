@@ -1,6 +1,8 @@
 package net.alpaka.addons.features.slayer
 
 import java.util.Locale
+import net.alpaka.addons.client.gui.GuiFont
+import net.alpaka.addons.client.gui.HudPanel
 import net.alpaka.addons.config.AlpakaConfig
 import net.minecraft.client.DeltaTracker
 import net.minecraft.client.Minecraft
@@ -8,6 +10,7 @@ import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.ChatScreen
 import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.Style
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
@@ -102,6 +105,8 @@ object SlayerHudRenderer {
     private var cachedPreview = false
     private var cachedToggles = 0
     private var cachedPauseReason: SlayerSessionTracker.PauseReason? = null
+    /** The font the cached rows were measured in; a different one means every width is off. */
+    private var cachedFont: Style? = null
 
     /**
      * Which lines are switched on, as a bitmask.
@@ -130,6 +135,7 @@ object SlayerHudRenderer {
     private fun layout(type: SlayerType?, preview: Boolean): Layout {
         val now = System.currentTimeMillis()
         val toggles = toggleMask()
+        val fontStyle = if (AlpakaConfig.instance.slayerHudSmoothFont) GuiFont.style() else Style.EMPTY
 
         // Pause state is part of the key rather than left to the timer, so clicking the HUD to hold
         // the clock reads back immediately instead of up to a quarter second later.
@@ -141,6 +147,7 @@ object SlayerHudRenderer {
             cachedPreview == preview &&
             cachedToggles == toggles &&
             cachedPauseReason == pauseReason &&
+            cachedFont == fontStyle &&
             now - cachedAtMs < REBUILD_INTERVAL_MS
         ) {
             return existing
@@ -168,26 +175,28 @@ object SlayerHudRenderer {
             // clear a name none of them line up with.
             // Measured without concatenating a spacer onto every label, which would allocate a
             // throwaway string per row per rebuild.
+            // Measured as the Components that are drawn, so a row in the menu font is measured in it.
+            labelTexts = Array(rows.size) { Component.literal(rows[it].label).withStyle(fontStyle) }
             var labelMax = 0
-            for (row in rows) {
-                if (row.spansColumns) continue
-                val measured = font.width(row.label)
+            for (index in rows.indices) {
+                if (rows[index].spansColumns) continue
+                val measured = font.width(labelTexts[index])
                 if (measured > labelMax) labelMax = measured
             }
             labelWidth = if (labelMax > 0) labelMax + LABEL_GAP else 0
 
             valueXs = IntArray(rows.size)
-            labelTexts = Array(rows.size) { Component.literal(rows[it].label) }
             valueTexts = arrayOfNulls(rows.size)
             var widest = 0
             for (index in rows.indices) {
                 val row = rows[index]
-                val labelEnd = font.width(row.label)
+                val labelEnd = font.width(labelTexts[index])
                 val valueX = if (row.spansColumns) labelEnd + TITLE_GAP else labelWidth
                 valueXs[index] = valueX
-                if (row.value.isNotEmpty()) valueTexts[index] = Component.literal(row.value)
+                val valueText = if (row.value.isNotEmpty()) Component.literal(row.value).withStyle(fontStyle) else null
+                valueTexts[index] = valueText
 
-                val rowWidth = if (row.value.isEmpty()) labelEnd else valueX + font.width(row.value)
+                val rowWidth = if (valueText == null) labelEnd else valueX + font.width(valueText)
                 if (rowWidth > widest) widest = rowWidth
             }
             width = widest
@@ -201,6 +210,7 @@ object SlayerHudRenderer {
         cachedPreview = preview
         cachedToggles = toggles
         cachedPauseReason = pauseReason
+        cachedFont = fontStyle
         return built
     }
 
@@ -346,6 +356,9 @@ object SlayerHudRenderer {
         graphics.pose().pushMatrix()
         graphics.pose().translate(x.toFloat(), y.toFloat())
         graphics.pose().scale(scale, scale)
+        if (AlpakaConfig.instance.slayerHudBlur) {
+            HudPanel.aroundText(graphics, laid.unscaledWidth, laid.unscaledHeight, scale)
+        }
 
         var top = 0
         for (index in laid.rows.indices) {

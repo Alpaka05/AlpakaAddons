@@ -182,18 +182,11 @@ public class AlpakaConfigRegistry {
                 "Disables every feature in the mod after confirmation.",
                 ConfigCategory.GENERAL,
                 "Disable All",
-                parent -> Minecraft.getInstance().gui.setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(
-                        confirmed -> {
-                            if (confirmed) {
-                                AlpakaConfig.instance.disableAllFeatures();
-                            }
-                            Minecraft.getInstance().gui.setScreen(parent);
-                        },
-                        Component.literal("§c§lDisable All Features"),
-                        Component.literal("Are you sure you want to disable all features of Alpaka Addons?"),
-                        Component.literal("§cDisable All"),
-                        Component.literal("Cancel")
-                )),
+                parent -> Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.client.AlpakaConfirmScreen(parent,
+                        "Disable All Features",
+                        "Turns off every feature of Alpaka Addons. Each one can be switched back on in the config.",
+                        "Disable All", true,
+                        () -> AlpakaConfig.instance.disableAllFeatures())),
                 "disable all features turn off reset everywhere confirm prompt"));
 
         // --- 1. VISUALS & RENDERING ---

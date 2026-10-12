@@ -1,5 +1,7 @@
 package net.alpaka.addons.client
 
+import net.alpaka.addons.client.gui.AlpakaStyle
+import net.alpaka.addons.client.gui.AlpakaStyle.ButtonKind
 import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.features.sound.CustomSoundFeature
@@ -24,8 +26,8 @@ import kotlin.math.min
  * page picked in the bottom row, or to the first page with room when that is left on "Auto"; a page
  * that is full hands the command on to the next one (see [CommandWheelPages]).
  *
- * Drawn with the same pieces as the config screen: rounded panels with hairline borders, the menu
- * font without shadows, the accent colour for whatever is selected or being dropped on.
+ * Drawn with [AlpakaStyle], the config menu's look: slim rows that light up on hover, their move
+ * and remove buttons only shown then, the accent for whatever is being dropped on.
  */
 class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.literal("Configure Quick Commands")) {
 
@@ -52,6 +54,8 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
     private var dropAllowed = false
 
     private var lastFrameMs = System.currentTimeMillis()
+    private var openTimeMs = 0L
+    private var caretFrom = 0L
 
     // ----------------------------------------------------------------- layout
 
@@ -74,17 +78,17 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
         val winH = (this.height - MARGIN * 2).coerceIn(MIN_H, WIN_H)
         val winX = (this.width - winW) / 2
         val winY = maxOf(MARGIN / 2, (this.height - winH) / 2)
-        val listX = winX + 16
-        val listY = winY + HEADER_H + 10
-        val listW = winW - 32
+        val listX = winX + AlpakaStyle.PAD + 4
+        val listY = winY + AlpakaStyle.HEADER_H + 6
+        val listW = winW - 2 * (AlpakaStyle.PAD + 4)
 
         val buttonsW = PAGE_BTN_W + ADD_W + RESET_W + 12
-        val split = listW < INPUT_W + 6 + buttonsW
-        val bottom = winY + winH - 16 - BOTTOM_H
-        val inputY = if (split) bottom - BOTTOM_H - 6 else bottom
-        val inputW = if (split) listW else INPUT_W
-        val buttonsX = if (split) listX + listW - buttonsW else listX + INPUT_W + 6
-        val listH = inputY - 10 - listY
+        val split = listW < MIN_INPUT_W + 6 + buttonsW
+        val bottom = winY + winH - AlpakaStyle.PAD - AlpakaStyle.BUTTON_H
+        val inputY = if (split) bottom - AlpakaStyle.BUTTON_H - 6 else bottom
+        val inputW = if (split) listW else listW - buttonsW - 6
+        val buttonsX = listX + listW - buttonsW
+        val listH = inputY - 16 - listY
         return Frame(winX, winY, winW, winH, listX, listY, listW, listH, inputY, inputW, bottom, buttonsX)
     }
 
@@ -170,39 +174,27 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
 
     // -------------------------------------------------------------- rendering
 
-    override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
-        super.extractBackground(graphics, mouseX, mouseY, partialTick)
+    override fun init() {
+        openTimeMs = System.currentTimeMillis()
+    }
 
+    override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
         val now = System.currentTimeMillis()
         val deltaSec = min(0.1f, (now - lastFrameMs) / 1000f)
         lastFrameMs = now
 
-        graphics.pose().pushMatrix()
-        graphics.pose().identity()
-        graphics.fill(0, 0, this.width, this.height, 0x70000000)
-        graphics.pose().popMatrix()
+        AlpakaStyle.backdrop(graphics, this.width, this.height)
+        val pushed = AlpakaStyle.beginOpen(graphics, openTimeMs, this.width, this.height)
 
         val f = frame()
         val pages = CommandWheelPages.pages()
         val accent = ModernGuiUtils.getAccentColor()
 
-        ModernGuiUtils.drawPanelShadow(graphics, f.winX, f.winY, f.winW, f.winH, ModernGuiUtils.PANEL_RADIUS, 1.0f)
-        ModernGuiUtils.drawRoundedPanel(graphics, f.winX, f.winY, f.winW, f.winH, ModernGuiUtils.PANEL_RADIUS,
-            ModernGuiUtils.COLOR_PANEL_BG, ModernGuiUtils.COLOR_CARD_BORDER)
+        AlpakaStyle.panel(graphics, f.winX, f.winY, f.winW, f.winH)
+        AlpakaStyle.header(graphics, this.font, "Quick Commands", f.winX, f.winY, f.winW)
 
-        // Header band with the accent rule, as on the other menus.
-        val r = ModernGuiUtils.PANEL_RADIUS
-        ModernGuiUtils.drawRoundedRect(graphics, f.winX + 1, f.winY + 1, f.winW - 2, HEADER_H - 1, r - 1, ModernGuiUtils.COLOR_SIDEBAR_BG)
-        ModernGuiUtils.drawRect(graphics, f.winX + 1, f.winY + HEADER_H - r, f.winW - 2, r, ModernGuiUtils.COLOR_SIDEBAR_BG)
-        ModernGuiUtils.drawRect(graphics, f.winX + 1, f.winY + HEADER_H - 1, f.winW - 2, 1, accent)
-        graphics.text(this.font, GuiFont.text("Quick Command Settings"), f.winX + 16, f.winY + 15, ModernGuiUtils.COLOR_TEXT_PRIMARY, false)
-
-        val hoverClose = mouseX in doneX(f)..(doneX(f) + DONE_W) && mouseY in doneY(f)..(doneY(f) + DONE_H)
-        ModernGuiUtils.drawModernButton(graphics, this.font, doneX(f), doneY(f), DONE_W, DONE_H, "Done", hoverClose, false)
-
-        // The list: pages as sections, each command a row.
-        ModernGuiUtils.drawRoundedPanel(graphics, f.listX, f.listY, f.listW, f.listH, ModernGuiUtils.WIDGET_RADIUS + 2,
-            ModernGuiUtils.COLOR_SIDEBAR_BG, ModernGuiUtils.COLOR_CARD_BORDER)
+        val hoverDone = inside(mouseX, mouseY, doneX(f), doneY(f), DONE_W, AlpakaStyle.BUTTON_H)
+        AlpakaStyle.button(graphics, this.font, doneX(f), doneY(f), DONE_W, AlpakaStyle.BUTTON_H, "Done", hoverDone, ButtonKind.PRIMARY)
 
         buildRows(pages)
         maxScrollY = max(0.0, (contentHeight - f.listH).toDouble())
@@ -211,30 +203,30 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
 
         if (dragging) updateDropTarget(f, pages, mouseY)
 
-        val inList = mouseX in f.listX..(f.listX + f.listW) && mouseY in f.listY..(f.listY + f.listH)
-        graphics.enableScissor(f.listX + 1, f.listY + 1, f.listX + f.listW - 1, f.listY + f.listH - 1)
+        val inList = inside(mouseX, mouseY, f.listX, f.listY, f.listW, f.listH)
+        graphics.enableScissor(f.listX, f.listY, f.listX + f.listW, f.listY + f.listH)
 
-        val rowX = f.listX + 8
-        val rowW = f.listW - 16
+        val rowX = f.listX
+        val rowW = f.listW - SCROLLBAR_ROOM
         for (row in rows) {
             val y = f.listY + row.y - scrollY.toInt()
             if (y + row.height < f.listY || y > f.listY + f.listH) continue
             when (row.kind) {
                 Kind.HEADER -> {
                     val count = pages[row.page].size
-                    graphics.text(this.font, GuiFont.text("Page ${row.page + 1}"), rowX + 2, y + 6, accent, false)
+                    AlpakaStyle.groupLabel(graphics, this.font, "Page ${row.page + 1}", rowX + 2, y + 5)
                     val countText = "$count / ${CommandWheelPages.MAX_PER_PAGE}"
                     val full = count >= CommandWheelPages.MAX_PER_PAGE
-                    graphics.text(this.font, GuiFont.text(countText), rowX + rowW - GuiFont.width(this.font, countText) - 2, y + 6,
-                        if (full) ModernGuiUtils.COLOR_TOGGLE_OFF_TEXT else ModernGuiUtils.COLOR_TEXT_DARK, false)
+                    graphics.text(this.font, GuiFont.text(countText), rowX + rowW - GuiFont.width(this.font, countText) - 4, y + 5,
+                        if (full) AlpakaStyle.DANGER else AlpakaStyle.TEXT_MUTED, false)
                 }
-                Kind.ITEM -> drawItemRow(graphics, f, row, rowX, y, rowW, mouseX, mouseY, inList && !dragging, pages.size)
+                Kind.ITEM -> drawItemRow(graphics, row, rowX, y, rowW, mouseX, mouseY, inList && !dragging)
                 Kind.NEW_PAGE -> {
                     val active = dropPage == row.page
-                    ModernGuiUtils.drawRoundedOutline(graphics, rowX, y, rowW, row.height, ModernGuiUtils.WIDGET_RADIUS + 1,
-                        if (active) accent else ModernGuiUtils.COLOR_CARD_BORDER)
+                    ModernGuiUtils.drawRoundedOutline(graphics, rowX, y, rowW, row.height, 5,
+                        if (active) accent else AlpakaStyle.DIVIDER)
                     ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("Drop here for a new page"), rowX + rowW / 2, y + (row.height - 8) / 2,
-                        if (active) accent else ModernGuiUtils.COLOR_TEXT_DARK)
+                        if (active) accent else AlpakaStyle.TEXT_MUTED)
                 }
             }
         }
@@ -244,73 +236,91 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
         if (dragging && dropPage >= 0) {
             val markerY = dropMarkerY()
             if (markerY >= 0) {
-                val color = if (dropAllowed) accent else ModernGuiUtils.COLOR_TOGGLE_OFF_TEXT
+                val color = if (dropAllowed) accent else AlpakaStyle.DANGER
                 ModernGuiUtils.drawRoundedRect(graphics, rowX + 4, f.listY + markerY - scrollY.toInt(), rowW - 8, 2, 1, color)
             }
         }
 
         graphics.disableScissor()
 
-        // The dragged command follows the mouse as a translucent copy of its row.
+        // A thin scrollbar when the pages do not fit.
+        if (maxScrollY > 0) {
+            val trackX = f.listX + f.listW - 2
+            val thumbH = max(16, (f.listH * f.listH / contentHeight.toDouble()).toInt())
+            val thumbY = f.listY + ((f.listH - thumbH) * (scrollY / maxScrollY)).toInt()
+            ModernGuiUtils.drawRoundedRect(graphics, trackX, thumbY, 2, thumbH, 1, AlpakaStyle.DIVIDER)
+        }
+
+        // The dragged command follows the mouse as a copy of its row.
         if (dragging && pressPage in pages.indices && pressIndex in pages[pressPage].indices) {
             val ghostY = mouseY - dragGrabOffsetY
-            ModernGuiUtils.drawRoundedPanel(graphics, rowX, ghostY, rowW, ITEM_H, ModernGuiUtils.WIDGET_RADIUS + 1,
-                0xE02D2D2D.toInt(), accent)
-            graphics.text(this.font, GuiFont.text(pages[pressPage][pressIndex]), rowX + 22, ghostY + (ITEM_H - 8) / 2, ModernGuiUtils.COLOR_TEXT_PRIMARY, false)
+            ModernGuiUtils.drawPanelShadow(graphics, rowX, ghostY, rowW, ITEM_H, 5, 0.8f)
+            ModernGuiUtils.drawRoundedRect(graphics, rowX, ghostY, rowW, ITEM_H, 5, AlpakaStyle.ROW_SELECTED)
+            ModernGuiUtils.drawRoundedOutline(graphics, rowX, ghostY, rowW, ITEM_H, 5, ModernGuiUtils.getAccentDimColor())
+            drawGrip(graphics, rowX, ghostY, accent)
+            graphics.text(this.font, GuiFont.text(pages[pressPage][pressIndex]), rowX + 20, ghostY + (ITEM_H - 8) / 2, AlpakaStyle.TEXT, false)
         }
 
-        // Bottom row: new command, target page, add, reset.
-        val hoverInput = mouseX in inputX(f)..(inputX(f) + f.inputW) && mouseY in f.inputY..(f.inputY + BOTTOM_H)
-        ModernGuiUtils.drawModernTextField(graphics, this.font, inputX(f), f.inputY, f.inputW, BOTTOM_H,
-            newCommandInput, "/command", inputFocused, hoverInput)
+        // Footer: new command, target page, add, reset.
+        ModernGuiUtils.drawRect(graphics, f.winX + AlpakaStyle.PAD, f.inputY - 8, f.winW - AlpakaStyle.PAD * 2, 1, AlpakaStyle.LINE)
+        val hoverInput = inside(mouseX, mouseY, inputX(f), f.inputY, f.inputW, AlpakaStyle.BUTTON_H)
+        AlpakaStyle.textField(graphics, this.font, inputX(f), f.inputY, f.inputW, AlpakaStyle.BUTTON_H,
+            newCommandInput, "/command", inputFocused, hoverInput, caretFrom)
 
         val buttonsY = f.buttonsY
-        val hoverPage = mouseX in pageBtnX(f)..(pageBtnX(f) + PAGE_BTN_W) && mouseY in buttonsY..(buttonsY + BOTTOM_H)
-        ModernGuiUtils.drawModernButton(graphics, this.font, pageBtnX(f), buttonsY, PAGE_BTN_W, BOTTOM_H, addTargetLabel(pages.size), hoverPage, false)
+        val hoverPage = inside(mouseX, mouseY, pageBtnX(f), buttonsY, PAGE_BTN_W, AlpakaStyle.BUTTON_H)
+        drawPagePicker(graphics, pageBtnX(f), buttonsY, addTargetLabel(pages.size), hoverPage)
 
-        val hoverAdd = mouseX in addBtnX(f)..(addBtnX(f) + ADD_W) && mouseY in buttonsY..(buttonsY + BOTTOM_H)
-        ModernGuiUtils.drawModernButton(graphics, this.font, addBtnX(f), buttonsY, ADD_W, BOTTOM_H, "+ Add", hoverAdd, true)
+        val hoverAdd = inside(mouseX, mouseY, addBtnX(f), buttonsY, ADD_W, AlpakaStyle.BUTTON_H)
+        AlpakaStyle.button(graphics, this.font, addBtnX(f), buttonsY, ADD_W, AlpakaStyle.BUTTON_H, "Add", hoverAdd, ButtonKind.PRIMARY)
 
-        val hoverReset = mouseX in resetBtnX(f)..(resetBtnX(f) + RESET_W) && mouseY in buttonsY..(buttonsY + BOTTOM_H)
-        ModernGuiUtils.drawModernButton(graphics, this.font, resetBtnX(f), buttonsY, RESET_W, BOTTOM_H, "Reset", hoverReset, false)
+        val hoverReset = inside(mouseX, mouseY, resetBtnX(f), buttonsY, RESET_W, AlpakaStyle.BUTTON_H)
+        AlpakaStyle.button(graphics, this.font, resetBtnX(f), buttonsY, RESET_W, AlpakaStyle.BUTTON_H,
+            if (resetArmed()) "Sure?" else "Reset", hoverReset, ButtonKind.DANGER)
+
+        AlpakaStyle.endOpen(graphics, pushed)
     }
 
-    private fun drawItemRow(graphics: GuiGraphicsExtractor, f: Frame, row: Row, x: Int, y: Int, w: Int, mouseX: Int, mouseY: Int, hoverable: Boolean, pageCount: Int) {
-        val hovered = hoverable && mouseX in x..(x + w) && mouseY in y..(y + row.height)
-        ModernGuiUtils.drawRoundedPanel(graphics, x, y, w, row.height, ModernGuiUtils.WIDGET_RADIUS + 1,
-            if (hovered) ModernGuiUtils.COLOR_CARD_BG_HOVER else ModernGuiUtils.COLOR_CARD_BG,
-            if (hovered) ModernGuiUtils.getAccentDimColor() else ModernGuiUtils.COLOR_CARD_BORDER)
+    /** The page a new command goes to, as the config's dropdowns show a choice: value and chevron. */
+    private fun drawPagePicker(graphics: GuiGraphicsExtractor, x: Int, y: Int, label: String, hover: Boolean) {
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, PAGE_BTN_W, AlpakaStyle.BUTTON_H, 3, if (hover) AlpakaStyle.ROW_HOVER else AlpakaStyle.FIELD)
+        graphics.text(this.font, GuiFont.text(label), x + 6, y + (AlpakaStyle.BUTTON_H - 8) / 2, AlpakaStyle.TEXT, false)
+        val glyph = "›"
+        graphics.text(this.font, GuiFont.text(glyph), x + PAGE_BTN_W - 6 - GuiFont.width(this.font, glyph), y + (AlpakaStyle.BUTTON_H - 8) / 2,
+            if (hover) ModernGuiUtils.getAccentColor() else AlpakaStyle.TEXT_MUTED, false)
+    }
 
-        // Grip marks: three short bars, the usual sign for "drag me".
-        val gripColor = if (hovered) ModernGuiUtils.COLOR_TEXT_MUTED else ModernGuiUtils.COLOR_TEXT_DARK
+    private fun drawGrip(graphics: GuiGraphicsExtractor, x: Int, y: Int, color: Int) {
         for (k in 0..2) {
-            ModernGuiUtils.drawRect(graphics, x + 8, y + row.height / 2 - 3 + k * 3, 7, 1, gripColor)
+            ModernGuiUtils.drawRect(graphics, x + 7, y + ITEM_H / 2 - 3 + k * 3, 6, 1, color)
         }
+    }
 
-        graphics.text(this.font, GuiFont.text(row.command ?: ""), x + 22, y + (row.height - 8) / 2, ModernGuiUtils.COLOR_TEXT_PRIMARY, false)
+    private fun drawItemRow(graphics: GuiGraphicsExtractor, row: Row, x: Int, y: Int, w: Int, mouseX: Int, mouseY: Int, hoverable: Boolean) {
+        val hovered = hoverable && inside(mouseX, mouseY, x, y, w, row.height)
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, row.height, 5, if (hovered) AlpakaStyle.ROW_HOVER else AlpakaStyle.ROW)
 
-        val textY = y + (row.height - 8) / 2
-        // Move to the previous page (dimmed on the first), move to the next page (a new one after the last).
+        drawGrip(graphics, x, y, if (hovered) AlpakaStyle.TEXT_MUTED else AlpakaStyle.DIVIDER)
+        graphics.text(this.font, GuiFont.text(row.command ?: ""), x + 20, y + (row.height - 8) / 2, AlpakaStyle.TEXT, false)
+
+        // Move to the previous page (dimmed on the first), move to the next page (a new one after
+        // the last), remove. Quiet until the row is hovered.
+        if (!hovered) return
         val prevX = prevBtnX(x, w)
         val nextX = nextBtnX(x, w)
         val delX = delBtnX(x, w)
         val btnY = y + (row.height - SMALL_BTN) / 2
         val canPrev = row.page > 0
-        drawSmallButton(graphics, prevX, btnY, "‹", hoverable && canPrev && mouseX in prevX..(prevX + SMALL_BTN) && mouseY in btnY..(btnY + SMALL_BTN),
-            if (canPrev) ModernGuiUtils.COLOR_TEXT_PRIMARY else ModernGuiUtils.COLOR_TEXT_DARK, false)
-        drawSmallButton(graphics, nextX, btnY, "›", hoverable && mouseX in nextX..(nextX + SMALL_BTN) && mouseY in btnY..(btnY + SMALL_BTN),
-            ModernGuiUtils.COLOR_TEXT_PRIMARY, false)
-        drawSmallButton(graphics, delX, btnY, "✕", hoverable && mouseX in delX..(delX + SMALL_BTN) && mouseY in btnY..(btnY + SMALL_BTN),
-            0xFFFCA5A5.toInt(), true)
+        AlpakaStyle.iconButton(graphics, this.font, prevX, btnY, SMALL_BTN, "‹", inside(mouseX, mouseY, prevX, btnY, SMALL_BTN, SMALL_BTN), canPrev, false)
+        AlpakaStyle.iconButton(graphics, this.font, nextX, btnY, SMALL_BTN, "›", inside(mouseX, mouseY, nextX, btnY, SMALL_BTN, SMALL_BTN), true, false)
+        AlpakaStyle.iconButton(graphics, this.font, delX, btnY, SMALL_BTN, "✕", inside(mouseX, mouseY, delX, btnY, SMALL_BTN, SMALL_BTN), true, true)
     }
 
-    private fun drawSmallButton(graphics: GuiGraphicsExtractor, x: Int, y: Int, glyph: String, hovered: Boolean, textColor: Int, destructive: Boolean) {
-        val bg = if (destructive) (if (hovered) 0xFFDC2626.toInt() else 0x33DC2626) else (if (hovered) ModernGuiUtils.COLOR_CARD_BG_HOVER else ModernGuiUtils.COLOR_SIDEBAR_BG)
-        val border = if (destructive) (if (hovered) 0xFFEF4444.toInt() else 0x88DC2626.toInt()) else (if (hovered) ModernGuiUtils.getAccentColor() else ModernGuiUtils.COLOR_CARD_BORDER)
-        ModernGuiUtils.drawRoundedPanel(graphics, x, y, SMALL_BTN, SMALL_BTN, ModernGuiUtils.WIDGET_RADIUS, bg, border)
-        val color = if (destructive && hovered) 0xFFFFFFFF.toInt() else textColor
-        ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text(glyph), x + SMALL_BTN / 2, y + (SMALL_BTN - 8) / 2, color)
-    }
+    private fun inside(mx: Int, my: Int, x: Int, y: Int, w: Int, h: Int) = AlpakaStyle.inside(mx.toDouble(), my.toDouble(), x, y, w, h)
+
+    /** Reset wipes every command, so it asks for a second click within a few seconds. */
+    private var resetArmedUntil = 0L
+    private fun resetArmed() = System.currentTimeMillis() < resetArmedUntil
 
     private fun addTargetLabel(pageCount: Int): String = when {
         addTargetPage < 0 -> "Auto"
@@ -319,15 +329,15 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
     }
 
     // Positions of the bottom row and header controls, shared by drawing and clicking.
-    private fun doneX(f: Frame) = f.winX + f.winW - DONE_W - 12
-    private fun doneY(f: Frame) = f.winY + (HEADER_H - DONE_H) / 2
+    private fun doneX(f: Frame) = f.winX + f.winW - DONE_W - AlpakaStyle.PAD
+    private fun doneY(f: Frame) = f.winY + (AlpakaStyle.HEADER_H - AlpakaStyle.BUTTON_H) / 2
     private fun inputX(f: Frame) = f.listX
     private fun pageBtnX(f: Frame) = f.buttonsX
     private fun addBtnX(f: Frame) = pageBtnX(f) + PAGE_BTN_W + 6
     private fun resetBtnX(f: Frame) = addBtnX(f) + ADD_W + 6
-    private fun delBtnX(rowX: Int, rowW: Int) = rowX + rowW - SMALL_BTN - 5
-    private fun nextBtnX(rowX: Int, rowW: Int) = delBtnX(rowX, rowW) - SMALL_BTN - 8
-    private fun prevBtnX(rowX: Int, rowW: Int) = nextBtnX(rowX, rowW) - SMALL_BTN - 3
+    private fun delBtnX(rowX: Int, rowW: Int) = rowX + rowW - SMALL_BTN - 3
+    private fun nextBtnX(rowX: Int, rowW: Int) = delBtnX(rowX, rowW) - SMALL_BTN - 4
+    private fun prevBtnX(rowX: Int, rowW: Int) = nextBtnX(rowX, rowW) - SMALL_BTN
 
     // ------------------------------------------------------------------ input
 
@@ -338,18 +348,19 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
         val f = frame()
         val pages = CommandWheelPages.pages()
 
-        if (mouseX in doneX(f)..(doneX(f) + DONE_W) && mouseY in doneY(f)..(doneY(f) + DONE_H)) {
+        if (inside(mouseX, mouseY, doneX(f), doneY(f), DONE_W, AlpakaStyle.BUTTON_H)) {
             playPloppSound()
             this.onClose()
             return true
         }
 
         // Bottom row: the field, and the buttons on the same line or the one below it.
-        if (mouseY in f.inputY..(f.inputY + BOTTOM_H) && mouseX in inputX(f)..(inputX(f) + f.inputW)) {
+        if (inside(mouseX, mouseY, inputX(f), f.inputY, f.inputW, AlpakaStyle.BUTTON_H)) {
             inputFocused = true
+            caretFrom = System.currentTimeMillis()
             return true
         }
-        if (mouseY in f.buttonsY..(f.buttonsY + BOTTOM_H)) {
+        if (mouseY in f.buttonsY until (f.buttonsY + AlpakaStyle.BUTTON_H)) {
             inputFocused = false
             if (mouseX in pageBtnX(f)..(pageBtnX(f) + PAGE_BTN_W)) {
                 playPloppSound()
@@ -363,8 +374,13 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
             }
             if (mouseX in resetBtnX(f)..(resetBtnX(f) + RESET_W)) {
                 playPloppSound()
-                CommandWheelPages.reset()
-                addTargetPage = -1
+                if (resetArmed()) {
+                    resetArmedUntil = 0L
+                    CommandWheelPages.reset()
+                    addTargetPage = -1
+                } else {
+                    resetArmedUntil = System.currentTimeMillis() + 3000L
+                }
                 return true
             }
         } else {
@@ -373,8 +389,8 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
 
         // List rows.
         if (mouseX in f.listX..(f.listX + f.listW) && mouseY in f.listY..(f.listY + f.listH)) {
-            val rowX = f.listX + 8
-            val rowW = f.listW - 16
+            val rowX = f.listX
+            val rowW = f.listW - SCROLLBAR_ROOM
             for (row in rows) {
                 if (row.kind != Kind.ITEM) continue
                 val y = f.listY + row.y - scrollY.toInt()
@@ -478,6 +494,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
             if (codePoint >= 32 && codePoint != 127 && newCommandInput.length < 35) {
                 newCommandInput += codePoint.toChar()
             }
+            caretFrom = System.currentTimeMillis()
             return true
         }
         return super.charTyped(event)
@@ -504,26 +521,24 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
     }
 
     companion object {
-        private const val WIN_W = 470
-        private const val WIN_H = 372
-        private const val MIN_W = 300
-        private const val MIN_H = 220
+        private const val WIN_W = 360
+        private const val WIN_H = 300
+        private const val MIN_W = 260
+        private const val MIN_H = 180
         /** Space kept free around the window, as the config screen keeps. */
         private const val MARGIN = 8
-        private const val HEADER_H = 38
-        private const val DONE_W = 60
-        private const val DONE_H = 22
-        private const val BOTTOM_H = 24
-        private const val INPUT_W = 200
-        private const val PAGE_BTN_W = 84
-        private const val ADD_W = 60
-        private const val RESET_W = 60
+        private const val DONE_W = 44
+        private const val MIN_INPUT_W = 110
+        private const val PAGE_BTN_W = 62
+        private const val ADD_W = 40
+        private const val RESET_W = 44
+        private const val SCROLLBAR_ROOM = 6
 
-        private const val PAGE_HEADER_H = 22
-        private const val ITEM_H = 26
-        private const val ITEM_GAP = 4
-        private const val PAGE_GAP = 10
-        private const val SMALL_BTN = 18
+        private const val PAGE_HEADER_H = 17
+        private const val ITEM_H = 20
+        private const val ITEM_GAP = 3
+        private const val PAGE_GAP = 6
+        private const val SMALL_BTN = 14
 
         /** How far the mouse has to travel after a press before a row starts to follow it. */
         private const val DRAG_THRESHOLD = 4.0

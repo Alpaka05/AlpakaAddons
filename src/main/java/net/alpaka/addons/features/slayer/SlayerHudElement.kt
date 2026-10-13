@@ -3,7 +3,6 @@ package net.alpaka.addons.features.slayer
 import java.util.Locale
 import net.alpaka.addons.client.hud.HudBounds
 import net.alpaka.addons.client.hud.HudElement
-import net.alpaka.addons.client.gui.HudPanel
 import net.alpaka.addons.config.AlpakaConfig
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
@@ -55,12 +54,11 @@ object SlayerHudElement : HudElement {
         val width = SlayerHudRenderer.width(font, type, preview, cfg.slayerHudScale)
         val height = SlayerHudRenderer.height(type, preview, cfg.slayerHudScale)
 
-        val margin = HudPanel.margin(cfg.slayerHudBlur, cfg.slayerHudScale, TEXT_MARGIN)
         return HudBounds(
-            cfg.slayerHudX - margin,
-            cfg.slayerHudY - margin,
-            cfg.slayerHudX + width + margin,
-            cfg.slayerHudY + height + margin
+            cfg.slayerHudX - TEXT_MARGIN,
+            cfg.slayerHudY - TEXT_MARGIN,
+            cfg.slayerHudX + width + TEXT_MARGIN,
+            cfg.slayerHudY + height + TEXT_MARGIN
         )
     }
 

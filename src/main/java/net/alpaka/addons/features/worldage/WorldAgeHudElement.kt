@@ -3,7 +3,6 @@ package net.alpaka.addons.features.worldage
 import java.util.Locale
 import net.alpaka.addons.client.hud.HudBounds
 import net.alpaka.addons.client.hud.HudElement
-import net.alpaka.addons.client.gui.HudPanel
 import net.alpaka.addons.config.AlpakaConfig
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
@@ -45,12 +44,11 @@ object WorldAgeHudElement : HudElement {
         val width = WorldAgeHudRenderer.getWidth(font, WorldAgeHudRenderer.getWorldDay(), scale)
         val height = WorldAgeHudRenderer.getHeight(font, scale)
 
-        val margin = HudPanel.margin(cfg.worldAgeHudBlur, scale, TEXT_MARGIN)
         return HudBounds(
-            cfg.worldAgeHudX - margin,
-            cfg.worldAgeHudY - margin,
-            cfg.worldAgeHudX + width + margin,
-            cfg.worldAgeHudY + height + margin
+            cfg.worldAgeHudX - TEXT_MARGIN,
+            cfg.worldAgeHudY - TEXT_MARGIN,
+            cfg.worldAgeHudX + width + TEXT_MARGIN,
+            cfg.worldAgeHudY + height + TEXT_MARGIN
         )
     }
 

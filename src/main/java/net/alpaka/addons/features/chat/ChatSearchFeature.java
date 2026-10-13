@@ -5,8 +5,11 @@ import net.alpaka.addons.config.AlpakaConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.multiplayer.chat.GuiMessage;
+import net.minecraft.locale.Language;
 
+import java.util.IdentityHashMap;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Chat search: Ctrl+F in the chat screen - Cmd+F on macOS - turns the input line into a search
@@ -24,6 +27,11 @@ public final class ChatSearchFeature {
 
     private static boolean searching;
     private static String query = "";
+    private static String queryLower = "";
+    /** Each message's text, lower-cased, for the current search only (see accepts). */
+    private static final Map<GuiMessage, String> LOWERED = new IdentityHashMap<>();
+    /** The language LOWERED was filled in; null until the search's first lookup. */
+    private static Language loweredIn;
     /** The message that was being typed when the search started, restored on leaving it. */
     private static String draft = "";
 
@@ -40,7 +48,18 @@ public final class ChatSearchFeature {
     /** Whether the chat should lay this message out; every message while not searching. */
     public static boolean accepts(GuiMessage message) {
         if (!searching || query.isEmpty()) return true;
-        return message.content().getString().toLowerCase(Locale.ROOT).contains(query.toLowerCase(Locale.ROOT));
+        // Every keystroke replays the whole history through here, and a stored message's text does
+        // not change, so it is flattened and lower-cased once per search instead of once per
+        // keystroke. Identity keys skip the record's deep equals. The memo is emptied when the search
+        // ends, and when a resource reload swaps the language, since translated parts then read
+        // differently.
+        Language language = Language.getInstance();
+        if (language != loweredIn) {
+            LOWERED.clear();
+            loweredIn = language;
+        }
+        String text = LOWERED.computeIfAbsent(message, m -> m.content().getString().toLowerCase(Locale.ROOT));
+        return text.contains(queryLower);
     }
 
     public static void toggle(EditBox input) {
@@ -51,6 +70,9 @@ public final class ChatSearchFeature {
     private static void enter(EditBox input) {
         searching = true;
         query = "";
+        queryLower = "";
+        LOWERED.clear();
+        loweredIn = null;
         if (input != null) {
             draft = input.getValue();
             input.setValue("");
@@ -64,6 +86,9 @@ public final class ChatSearchFeature {
         if (!searching) return;
         searching = false;
         query = "";
+        queryLower = "";
+        LOWERED.clear();
+        loweredIn = null;
         if (input != null) {
             input.setSuggestion(null);
             input.setValue(draft);
@@ -75,6 +100,7 @@ public final class ChatSearchFeature {
     /** The search text changed. */
     public static void onEdited(String text, EditBox input) {
         query = text == null ? "" : text;
+        queryLower = query.toLowerCase(Locale.ROOT);
         if (input != null) input.setSuggestion(query.isEmpty() ? HINT : null);
         refresh();
     }

@@ -182,6 +182,12 @@ public class AlpakaConfigScreen extends Screen {
         return height;
     }
 
+    /** In setup mode a singleplayer world keeps running, so a test swing actually plays out. */
+    @Override
+    public boolean isPauseScreen() {
+        return !setupMode;
+    }
+
     @Override
     protected void init() {
         this.openTimeMs = System.currentTimeMillis();

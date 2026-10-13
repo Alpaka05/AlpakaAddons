@@ -17,10 +17,13 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
+import net.minecraft.network.chat.Style;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -88,6 +91,8 @@ public class AlpakaConfigScreen extends Screen {
     // ---- State ----------------------------------------------------------------------------------
 
     private final Screen parent;
+    /** The version under the logo; it cannot change while the game runs. */
+    private final String versionLabel = "v" + ModVersion.mod().split("\\+")[0];
     private final EditableText search = new EditableText(MAX_SEARCH_LENGTH);
     private boolean searchFocused = false;
     private long caretBlinkFrom = 0L;
@@ -230,6 +235,7 @@ public class AlpakaConfigScreen extends Screen {
     protected void init() {
         openTimeMs = System.currentTimeMillis();
         lastFrameMs = openTimeMs;
+        ellipsized.clear();
     }
 
     // ---- Selection ------------------------------------------------------------------------------
@@ -506,7 +512,7 @@ public class AlpakaConfigScreen extends Screen {
         Component title = GuiFont.title("ALPAKA");
         if (title == null) title = GuiFont.text("ALPAKA");
         graphics.text(this.font, title, x + PAD + 2, y + 8, COLOR_TEXT, false);
-        graphics.text(this.font, GuiFont.text("v" + ModVersion.mod().split("\\+")[0]), x + PAD + 2, y + 22, COLOR_TEXT_MUTED, false);
+        graphics.text(this.font, GuiFont.text(versionLabel), x + PAD + 2, y + 22, COLOR_TEXT_MUTED, false);
 
         // Search: a pill over the feature column.
         int sx = featX + 4;
@@ -1031,15 +1037,44 @@ public class AlpakaConfigScreen extends Screen {
         return y + h > clipY && y < clipY + clipH;
     }
 
+    /** A label and the width it was cut to: the key for {@link #ellipsized}. */
+    private record Fit(String text, int maxW) {
+    }
+
+    /**
+     * ellipsize's answers. The same labels are cut to the same widths every frame, and cutting one
+     * that overflows measures it once per character removed. A width depends on the menu font, so the
+     * map is dropped when {@link GuiFont#style()} changes; it is also dropped in init(), which runs
+     * again after a resize and after a resource reload changed the glyphs.
+     */
+    private final Map<Fit, String> ellipsized = new HashMap<>();
+    private Style ellipsizedStyle;
+
     /** The text cut to fit the width, with an ellipsis where it was cut. */
     private String ellipsize(String text, int maxW) {
         if (text == null) return "";
         if (maxW <= 0) return "";
-        if (GuiFont.width(this.font, text) <= maxW) return text;
-        String dots = "…";
-        int end = text.length();
-        while (end > 0 && GuiFont.width(this.font, text.substring(0, end) + dots) > maxW) end--;
-        return text.substring(0, end).trim() + dots;
+        Style style = GuiFont.style();
+        if (style != ellipsizedStyle) {
+            ellipsized.clear();
+            ellipsizedStyle = style;
+        }
+        Fit key = new Fit(text, maxW);
+        String cached = ellipsized.get(key);
+        if (cached != null) return cached;
+        String result;
+        if (GuiFont.width(this.font, text) <= maxW) {
+            result = text;
+        } else {
+            String dots = "…";
+            int end = text.length();
+            while (end > 0 && GuiFont.width(this.font, text.substring(0, end) + dots) > maxW) end--;
+            result = text.substring(0, end).trim() + dots;
+        }
+        // A text field being typed into adds one entry per value.
+        if (ellipsized.size() >= 512) ellipsized.clear();
+        ellipsized.put(key, result);
+        return result;
     }
 
     private void playClick() {

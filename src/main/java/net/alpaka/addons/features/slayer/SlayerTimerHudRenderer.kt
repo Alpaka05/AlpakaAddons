@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.slayer
 
+import net.alpaka.addons.client.hud.clampShift
 import net.alpaka.addons.config.AlpakaConfig
 import net.minecraft.client.DeltaTracker
 import net.minecraft.client.Minecraft
@@ -30,6 +31,12 @@ object SlayerTimerHudRenderer {
     private const val LABEL = "Boss"
     private const val LABEL_GAP = 5
 
+    /**
+     * [LABEL] as drawn, kept between frames: a component built anew every frame also had its bidi
+     * order worked out anew every frame.
+     */
+    private val LABEL_TEXT: Component = Component.literal(LABEL)
+
     /** Called every frame from the HUD hook. */
     @JvmStatic
     fun render(graphics: GuiGraphicsExtractor, @Suppress("UNUSED_PARAMETER") deltaTracker: DeltaTracker) {
@@ -44,10 +51,12 @@ object SlayerTimerHudRenderer {
 
         val screenWidth = mc.window.guiScaledWidth
         val screenHeight = mc.window.guiScaledHeight
+        // The clamp is measured once, instead of re-measuring the line for each axis.
+        val box = SlayerTimerHudElement.bounds()
         renderHud(
             graphics,
-            SlayerTimerHudElement.visibleAnchorX(screenWidth, screenHeight),
-            SlayerTimerHudElement.visibleAnchorY(screenWidth, screenHeight),
+            cfg.slayerTimerHudX + clampShift(box.x0, box.x1, screenWidth),
+            cfg.slayerTimerHudY + clampShift(box.y0, box.y1, screenHeight),
             cfg.slayerTimerHudScale,
             preview = false,
         )
@@ -72,7 +81,7 @@ object SlayerTimerHudRenderer {
         graphics.pose().pushMatrix()
         graphics.pose().translate(x.toFloat(), y.toFloat())
         graphics.pose().scale(scale, scale)
-        graphics.text(font, Component.literal(LABEL), 0, 0, COLOR_LABEL)
+        graphics.text(font, LABEL_TEXT, 0, 0, COLOR_LABEL)
         graphics.text(font, Component.literal(SlayerTimer.format(elapsed)), font.width(LABEL) + LABEL_GAP, 0, color)
         graphics.pose().popMatrix()
     }

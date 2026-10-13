@@ -804,7 +804,7 @@ public class AlpakaConfigScreen extends Screen {
                     for (ConfigOption.ToggleEntry entry : option.getEntries()) {
                         boolean entryHover = inside(mouseX, mouseY, rowX, entryY, rowW, SETTING_ROW_H) && inside(mouseX, mouseY, colX, clipY, colW, clipH);
                         if (entryHover) ModernGuiUtils.drawRoundedRect(graphics, rowX, entryY, rowW, SETTING_ROW_H, 4, COLOR_ROW);
-                        ModernGuiUtils.drawRect(graphics, rowX + 6, entryY + 2, 1, SETTING_ROW_H - 4, COLOR_LINE);
+                        ModernGuiUtils.drawRect(graphics, rowX + 6, entryY, 1, SETTING_ROW_H, COLOR_LINE);
                         int entryLabelW = right - TOGGLE_W - 8 - (rowX + 14);
                         graphics.text(this.font, GuiFont.text(ellipsize(entry.getLabel(), entryLabelW)), rowX + 14, entryY + 4,
                                 entry.get() ? COLOR_TEXT_SOFT : COLOR_TEXT_MUTED, false);
@@ -888,7 +888,9 @@ public class AlpakaConfigScreen extends Screen {
             int index = i;
             boolean entryHover = inside(mouseX, mouseY, rowX, y, rowW, SETTING_ROW_H) && inside(mouseX, mouseY, colX, clipY, colW, clipH);
             if (entryHover) ModernGuiUtils.drawRoundedRect(graphics, rowX, y, rowW, SETTING_ROW_H, 4, COLOR_ROW);
-            ModernGuiUtils.drawRect(graphics, rowX + 6, y + 2, 1, SETTING_ROW_H - 4, i == current ? ModernGuiUtils.getAccentColor() : COLOR_LINE);
+            // One unbroken line down the list, the current choice marked on it in the accent.
+            ModernGuiUtils.drawRect(graphics, rowX + 6, y, 1, SETTING_ROW_H, COLOR_LINE);
+            if (i == current) ModernGuiUtils.drawRect(graphics, rowX + 6, y + 2, 1, SETTING_ROW_H - 4, ModernGuiUtils.getAccentColor());
             int color = i == current ? ModernGuiUtils.getAccentColor() : entryHover ? COLOR_TEXT : COLOR_TEXT_SOFT;
             graphics.text(this.font, GuiFont.text(ellipsize(names[i], rowW - 24)), rowX + 14, y + 4, color, false);
             if (visible(y, SETTING_ROW_H, clipY, clipH)) {

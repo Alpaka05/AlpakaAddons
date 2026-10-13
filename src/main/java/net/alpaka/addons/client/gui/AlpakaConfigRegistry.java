@@ -57,6 +57,17 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.updateNotificationsEnabled = v; AlpakaConfig.save(); },
                 "update new version release github download notify check outdated"));
 
+        // Duration, position and a test notice, together as one feature with the test on top.
+        OPTIONS.add(new ConfigOption("Notification Customization", ConfigCategory.GENERAL));
+
+        OPTIONS.add(new ConfigOption("notification_test", "Send Test Notification",
+                "Shows a sample notice with the duration and position set below.",
+                ConfigCategory.GENERAL,
+                "Send Test Notification",
+                parent -> AlpakaNotifications.send("Test Notification",
+                        "This is how notices look. It slides away after the duration you set."),
+                "notification test preview sample try show").buttonOnly());
+
         OPTIONS.add(new ConfigOption("notification_hold", "Notification Duration",
                 "How long a notice stays in the corner before sliding away.",
                 ConfigCategory.GENERAL,
@@ -74,13 +85,6 @@ public class AlpakaConfigRegistry {
                 val -> AlpakaNotifications.CORNER_NAMES[Math.round(val)],
                 "notification corner position bottom top left right popup toast side").choices(AlpakaNotifications.CORNER_NAMES));
 
-        OPTIONS.add(new ConfigOption("notification_test", "Send Test Notification",
-                "Shows a sample notice with the duration and position set above.",
-                ConfigCategory.GENERAL,
-                "Send Test Notification",
-                parent -> AlpakaNotifications.send("Test Notification",
-                        "This is how notices look. It slides away after the duration set above."),
-                "notification test preview sample try show").buttonOnly());
 
         // The menu's own typeface sits here rather than under Visuals: it changes the screen the
         // player is looking at right now, so it belongs on the tab that screen opens on.

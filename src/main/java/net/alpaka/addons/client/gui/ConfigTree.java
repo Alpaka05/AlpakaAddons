@@ -90,7 +90,7 @@ public final class ConfigTree {
     /** The options that are features of their own. Everything else is a setting of the one before. */
     private static final Set<String> MASTERS = Set.of(
             // General
-            "allow_api_calls", "update_notifications", "notification_hold", "menu_font", "menu_accent_color",
+            "allow_api_calls", "update_notifications", "menu_font", "menu_accent_color",
             "custom_escape_menu", "custom_main_menu", "hud_editor", "disable_all_features",
             // Visuals
             "fullbright", "clean_blaze", "blaze_fire_pits", "stop_blaze_spinning", "hide_hurt_overlay", "hide_mob_deaths",
@@ -131,7 +131,8 @@ public final class ConfigTree {
     private static final Map<String, String> HEADER_FEATURES = Map.of(
             "Swing Customizations", "Swing",
             "Viewmodel Presets", "Presets",
-            "HUD Style", "HUD Style"
+            "HUD Style", "HUD Style",
+            "Notification Customization", "Notification Customization"
     );
 
     /**
@@ -141,7 +142,7 @@ public final class ConfigTree {
      */
     private static final String[][][] LAYOUT = {
             {{"General"},
-                    {"Main", "allow_api_calls", "update_notifications", "notification_hold", "hud_editor",
+                    {"Main", "allow_api_calls", "update_notifications", "#Notification Customization", "hud_editor",
                             "command_wheel_custom_commands", "always_sprint", "disable_all_features"},
                     {"Design", "menu_font", "#HUD Style", "menu_accent_color", "custom_main_menu", "custom_escape_menu"},
                     {"Sounds", "custom_sounds", "custom_sound_button_click", "custom_sound_hotbar_scroll",

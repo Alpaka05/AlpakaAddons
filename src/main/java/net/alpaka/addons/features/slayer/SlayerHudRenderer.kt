@@ -2,7 +2,6 @@ package net.alpaka.addons.features.slayer
 
 import java.util.Locale
 import net.alpaka.addons.client.hud.HudBounds
-import net.alpaka.addons.client.hud.clampShift
 import net.alpaka.addons.config.AlpakaConfig
 import net.minecraft.client.DeltaTracker
 import net.minecraft.client.Minecraft
@@ -323,13 +322,12 @@ object SlayerHudRenderer {
         // untouched, so returning to the old scale restores it exactly.
         val screenWidth = mc.window.guiScaledWidth
         val screenHeight = mc.window.guiScaledHeight
-        // Measured once for the position and the click target alike, where visibleAnchorX,
-        // visibleAnchorY and visibleBounds would each measure the whole HUD again.
-        val box = SlayerHudElement.bounds()
-        val dx = clampShift(box.x0, box.x1, screenWidth)
-        val dy = clampShift(box.y0, box.y1, screenHeight)
-        renderHud(graphics, cfg.slayerHudX + dx, cfg.slayerHudY + dy, cfg.slayerHudScale, type, preview = false)
-        lastDrawnBounds = if (dx == 0 && dy == 0) box else HudBounds(box.x0 + dx, box.y0 + dy, box.x1 + dx, box.y1 + dy)
+        // Measured once through visiblePlacement for the position and the click target alike, where
+        // visibleAnchorX, visibleAnchorY and visibleBounds would each measure the whole HUD again.
+        // The editor places it through the same call, so its preview sits where the game draws it.
+        val placement = SlayerHudElement.visiblePlacement(screenWidth, screenHeight)
+        renderHud(graphics, placement.anchorX, placement.anchorY, cfg.slayerHudScale, type, preview = false)
+        lastDrawnBounds = placement.box
     }
 
     /** Draws the HUD at an explicit position and size. Shared with the editor. */

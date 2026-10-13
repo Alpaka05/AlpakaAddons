@@ -1,6 +1,5 @@
 package net.alpaka.addons.features.slayer
 
-import net.alpaka.addons.client.hud.clampShift
 import net.alpaka.addons.config.AlpakaConfig
 import net.minecraft.client.DeltaTracker
 import net.minecraft.client.Minecraft
@@ -51,12 +50,13 @@ object SlayerTimerHudRenderer {
 
         val screenWidth = mc.window.guiScaledWidth
         val screenHeight = mc.window.guiScaledHeight
-        // The clamp is measured once, instead of re-measuring the line for each axis.
-        val box = SlayerTimerHudElement.bounds()
+        // The clamp is measured once through visiblePlacement, the editor's own call, instead of
+        // re-measuring the line for each axis.
+        val placement = SlayerTimerHudElement.visiblePlacement(screenWidth, screenHeight)
         renderHud(
             graphics,
-            cfg.slayerTimerHudX + clampShift(box.x0, box.x1, screenWidth),
-            cfg.slayerTimerHudY + clampShift(box.y0, box.y1, screenHeight),
+            placement.anchorX,
+            placement.anchorY,
             cfg.slayerTimerHudScale,
             preview = false,
         )

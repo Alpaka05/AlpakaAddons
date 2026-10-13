@@ -178,9 +178,10 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
 
     private fun drawElement(graphics: GuiGraphicsExtractor, element: HudElement, isHovered: Boolean) {
         // Draw the HUD exactly as it appears in-game, then annotate it.
-        element.render(graphics, element.visibleAnchorX(this.width, this.height), element.visibleAnchorY(this.width, this.height))
+        val placement = element.visiblePlacement(this.width, this.height)
+        element.render(graphics, placement.anchorX, placement.anchorY)
 
-        val box = element.visibleBounds(this.width, this.height)
+        val box = placement.box
         val disabled = !element.isFeatureEnabled
 
         if (disabled) {
@@ -216,8 +217,9 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
     private fun statusLine(): String {
         val element = selected ?: return NO_SELECTION
 
-        val x = element.visibleAnchorX(this.width, this.height)
-        val y = element.visibleAnchorY(this.width, this.height)
+        val placement = element.visiblePlacement(this.width, this.height)
+        val x = placement.anchorX
+        val y = placement.anchorY
         val scale = element.scaleValue()
 
         var status = cachedStatus

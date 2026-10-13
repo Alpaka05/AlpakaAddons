@@ -1,6 +1,8 @@
 package net.alpaka.addons.features.slayer
 
+import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.client.gui.HudPanel
+import net.alpaka.addons.client.hud.clampShift
 import net.alpaka.addons.config.AlpakaConfig
 import net.minecraft.client.DeltaTracker
 import net.minecraft.client.Minecraft
@@ -8,6 +10,7 @@ import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.ChatScreen
 import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.Style
 import kotlin.math.ceil
 
 /**
@@ -31,6 +34,24 @@ object SlayerTimerHudRenderer {
     private const val LABEL = "Boss"
     private const val LABEL_GAP = 5
 
+    /**
+     * [LABEL] as drawn, kept between frames. The word never changes, so only the font can make it
+     * stale, and [labelStyle] is the font it was built in. Rebuilding it cost a wrapper and a bidi
+     * pass every frame.
+     */
+    private var labelStyle: Style? = null
+    private var labelText: Component? = null
+
+    private fun label(smooth: Boolean): Component {
+        val style = if (smooth) GuiFont.style() else Style.EMPTY
+        val cached = labelText
+        if (cached != null && style == labelStyle) return cached
+        val built = HudPanel.text(Component.literal(LABEL), smooth)
+        labelStyle = style
+        labelText = built
+        return built
+    }
+
     /** Called every frame from the HUD hook. */
     @JvmStatic
     fun render(graphics: GuiGraphicsExtractor, @Suppress("UNUSED_PARAMETER") deltaTracker: DeltaTracker) {
@@ -45,10 +66,12 @@ object SlayerTimerHudRenderer {
 
         val screenWidth = mc.window.guiScaledWidth
         val screenHeight = mc.window.guiScaledHeight
+        // The clamp is measured once, instead of re-measuring the line for each axis.
+        val box = SlayerTimerHudElement.bounds()
         renderHud(
             graphics,
-            SlayerTimerHudElement.visibleAnchorX(screenWidth, screenHeight),
-            SlayerTimerHudElement.visibleAnchorY(screenWidth, screenHeight),
+            cfg.slayerTimerHudX + clampShift(box.x0, box.x1, screenWidth),
+            cfg.slayerTimerHudY + clampShift(box.y0, box.y1, screenHeight),
             cfg.slayerTimerHudScale,
             preview = false,
         )
@@ -74,8 +97,9 @@ object SlayerTimerHudRenderer {
         graphics.pose().translate(x.toFloat(), y.toFloat())
         graphics.pose().scale(scale, scale)
         val cfg = AlpakaConfig.instance
-        val label = HudPanel.text(Component.literal(LABEL), cfg.smoothOn(cfg.slayerTimerHudSmoothFont))
-        val time = HudPanel.text(Component.literal(SlayerTimer.format(elapsed)), cfg.smoothOn(cfg.slayerTimerHudSmoothFont))
+        val smooth = cfg.smoothOn(cfg.slayerTimerHudSmoothFont)
+        val label = label(smooth)
+        val time = HudPanel.text(Component.literal(SlayerTimer.format(elapsed)), smooth)
         val timeX = font.width(label) + LABEL_GAP
         if (cfg.blurOn(cfg.slayerTimerHudBlur)) HudPanel.aroundText(graphics, timeX + font.width(time), GLYPH_HEIGHT, scale)
         graphics.text(font, label, 0, 0, COLOR_LABEL)
@@ -96,7 +120,7 @@ object SlayerTimerHudRenderer {
     fun width(font: Font, preview: Boolean): Int {
         val elapsed = if (preview) 42_300L else SlayerTimer.displayMs() ?: 0L
         val smooth = AlpakaConfig.instance.smoothOn(AlpakaConfig.instance.slayerTimerHudSmoothFont)
-        return font.width(HudPanel.text(Component.literal(LABEL), smooth)) + LABEL_GAP +
+        return font.width(label(smooth)) + LABEL_GAP +
             font.width(HudPanel.text(Component.literal(SlayerTimer.format(elapsed)), smooth))
     }
 

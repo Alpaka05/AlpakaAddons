@@ -120,6 +120,10 @@ public final class DevScreenshotTour {
             screen("viewmodel-setup-swing", () -> AlpakaConfigScreen.openOn("Viewmodel", "Swing").inSetupMode()),
             new Stop("viewmodel-setup-swinging", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 1),
             new Stop(null, () -> Minecraft.getInstance().gui.setScreen(null), () -> true, 5),
+            // Starlight in place of the glint: a plain sword without it, an enchanted one with it.
+            new Stop("starlight-glint-plain", () -> starlightGlint(false), () -> true, 30),
+            new Stop("starlight-glint-enchanted", () -> starlightGlint(true), () -> true, 30),
+            new Stop(null, () -> AlpakaConfig.instance.itemStarlightMode = 0, () -> true, 1),
             // Turned right a little: the galaxy hangs in the sky, so it slides left over the item.
             new Stop("starlight-still", () -> AlpakaConfig.instance.itemSwayDisabled = true, () -> true, 3),
             new Stop("starlight-turned", () -> Minecraft.getInstance().player.setYRot(
@@ -268,6 +272,21 @@ public final class DevScreenshotTour {
     }
 
     /** A burst of lines, as a busy chat delivers them. */
+    private static void starlightGlint(boolean glint) {
+        Minecraft mc = Minecraft.getInstance();
+        AlpakaConfig.instance.itemStarlightMode = 1;
+        java.util.UUID id = mc.player.getUUID();
+        net.minecraft.client.server.IntegratedServer server = mc.getSingleplayerServer();
+        if (server == null) return;
+        server.execute(() -> {
+            net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayer(id);
+            if (player == null) return;
+            net.minecraft.world.item.ItemStack sword = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_SWORD);
+            if (glint) sword.set(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
+            player.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, sword);
+        });
+    }
+
     private static void chatBurst() {
         Minecraft mc = Minecraft.getInstance();
         for (int i = 1; i <= 6; i++) {

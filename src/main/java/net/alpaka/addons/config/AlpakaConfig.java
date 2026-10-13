@@ -553,6 +553,8 @@ public class AlpakaConfig {
     public int itemStarlightColor = 0xFF9B5CFF;
     /** How strongly the galaxy covers the item, 0..1. */
     public float itemStarlightStrength = 0.8f;
+    /** 0: over every held item. 1: in place of the enchantment glint, so only on glinting items. */
+    public int itemStarlightMode = 0;
 
     // Swing motion blur: faded copies trail behind the held item while it swings; see ItemMotionBlurFeature.
     public boolean itemMotionBlurEnabled = false;
@@ -684,6 +686,7 @@ public class AlpakaConfig {
         this.itemStarlightEnabled = false;
         this.itemStarlightColor = 0xFF9B5CFF;
         this.itemStarlightStrength = 0.8f;
+        this.itemStarlightMode = 0;
         this.itemMotionBlurEnabled = false;
         this.itemMotionBlurLength = 80.0f;
         this.itemMotionBlurOpacity = 0.35f;

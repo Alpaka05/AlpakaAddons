@@ -30,6 +30,9 @@ import java.util.Set;
  * Starlight: a drifting, twinkling galaxy seen through the first-person held item, as if the item
  * were a window into space.
  *
+ * It covers every held item, or - with "Replace Enchant Glint" - takes the glint's place: only an
+ * item vanilla would make glint gets it, and its glint is left out.
+ *
  * The item's quads are drawn a second time on top of it, the way vanilla draws the enchantment
  * glint: same geometry, a depth test that only passes where the item itself is the nearest
  * surface, no depth writes. The starlight shader paints a nebula and three layers of stars there
@@ -58,6 +61,27 @@ public final class HandItemStarlightFeature {
     private static final Set<Object> STARLIT_SUBMITS = Collections.newSetFromMap(new IdentityHashMap<>());
 
     private static RenderType renderType;
+
+    /** The modes, by {@link AlpakaConfig#itemStarlightMode}. */
+    public static final String[] MODE_NAMES = {"Every Item", "Replace Enchant Glint"};
+    private static final int MODE_REPLACE_GLINT = 1;
+
+    private static boolean replacesGlint() {
+        return AlpakaConfig.instance.itemStarlightMode == MODE_REPLACE_GLINT;
+    }
+
+    /**
+     * Whether the starlight pass draws over this submit: every hand item, or with "Replace Enchant
+     * Glint" only those vanilla would give a glint.
+     */
+    public static boolean drawsOver(Object itemSubmit, boolean glinted) {
+        return isStarlit(itemSubmit) && (glinted || !replacesGlint());
+    }
+
+    /** Whether vanilla's glint is to be left out on this submit, the starlight standing in for it. */
+    public static boolean hidesGlint(Object itemSubmit) {
+        return replacesGlint() && isStarlit(itemSubmit);
+    }
 
     public static boolean isEnabled() {
         return AlpakaConfig.instance.itemSizeFeatureEnabled && AlpakaConfig.instance.itemStarlightEnabled;

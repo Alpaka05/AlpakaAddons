@@ -239,6 +239,15 @@ class WheelMesh @JvmOverloads constructor(private val feather: Float, private va
     }
 
     /**
+     * Drops anything collected but not submitted. A mesh kept from frame to frame calls this before
+     * it is filled, so a frame cut short by an exception halfway through filling cannot leak its
+     * shapes into the next.
+     */
+    fun reset() {
+        count = 0
+    }
+
+    /**
      * Hands everything collected so far to the GUI renderer as one element and starts afresh.
      *
      * Overlapping elements are placed on successive layers by the renderer, so a mesh submitted

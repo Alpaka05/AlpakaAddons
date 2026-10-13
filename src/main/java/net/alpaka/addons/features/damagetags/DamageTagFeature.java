@@ -16,6 +16,13 @@ public class DamageTagFeature {
      */
     private static final Pattern DAMAGE_NUMBER = Pattern.compile("^(?:\\d{1,3}(?:,\\d{3})*|\\d+(?:\\.\\d+)?[kKmMbB])$");
 
+    /**
+     * The decoration around a splash's number: crit stars, the asterisks some splashes carry, and the spaces
+     * between them. Compiled once because {@code String.replaceAll} compiles its pattern on every call, and this
+     * runs for every live splash on every frame through the shouldRender hook.
+     */
+    private static final Pattern SPLASH_DECORATION = Pattern.compile("[✧✦*\\s]");
+
     /** Damage splashes are short-lived; an armor stand older than this is a hologram, not a splash. */
     private static final int MAX_TAG_AGE_TICKS = 300;
 
@@ -53,7 +60,7 @@ public class DamageTagFeature {
         String clean = SkyblockUtils.cleanColor(customName).trim();
         boolean crit = clean.indexOf('✧') >= 0 || clean.indexOf('✦') >= 0;
         // Stars, the asterisks some splashes carry, and the spaces between them are decoration.
-        String number = clean.replaceAll("[✧✦*\\s]", "");
+        String number = SPLASH_DECORATION.matcher(clean).replaceAll("");
         if (number.isEmpty() || !DAMAGE_NUMBER.matcher(number).matches()) return null;
         return new Splash(number, crit);
     }

@@ -11,6 +11,7 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.Style
 import org.lwjgl.glfw.GLFW
 
 /**
@@ -49,10 +50,19 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
     private var cachedY = Int.MIN_VALUE
     private var cachedScale = Float.NaN
 
+    // The status line as drawn, shortened to fit: measured again only when its text, the room for it
+    // or the menu font changes, rather than measured (and on a narrow screen shortened a character at
+    // a time) every frame. init() clears it, so a resize or resource reload measures afresh.
+    private var fittedSource: String? = null
+    private var fittedMaxW = -1
+    private var fittedStyle: Style? = null
+    private var fitted = ""
+
     private var openTimeMs = 0L
 
     override fun init() {
         openTimeMs = System.currentTimeMillis()
+        fittedSource = null
     }
 
     /** The bar at the top and its buttons, shared by drawing and clicking. */
@@ -122,10 +132,21 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
         AlpakaStyle.button(graphics, this.font, bar.doneX, by, DONE_W, AlpakaStyle.BUTTON_H, "Done", hoverDone, ButtonKind.PRIMARY)
 
         // Below the bar: the selection and where it is, or how to start when nothing is selected.
-        val line = ellipsize(if (selected != null) statusLine() else HINTS, this.width - 16)
+        val line = fitted(if (selected != null) statusLine() else HINTS, this.width - 16)
         ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text(line), this.width / 2, bar.y + BAR_H + 5,
             if (selected != null) AlpakaStyle.TEXT_SOFT else AlpakaStyle.TEXT_MUTED)
         AlpakaStyle.endOpen(graphics, pushed)
+    }
+
+    private fun fitted(text: String, maxW: Int): String {
+        val style = GuiFont.style()
+        if (text == fittedSource && maxW == fittedMaxW && style === fittedStyle) return fitted
+        val line = ellipsize(text, maxW)
+        fittedSource = text
+        fittedMaxW = maxW
+        fittedStyle = style
+        fitted = line
+        return line
     }
 
     private fun ellipsize(text: String, maxW: Int): String {

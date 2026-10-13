@@ -259,19 +259,32 @@ public class AlpakaConfigScreen extends Screen {
     /** Set when a feature was chosen from outside the list, which then scrolls it into view. */
     private boolean revealSelected = false;
 
+    /**
+     * The search results for the text in {@link #listedFor}. The tree and every title and keyword in
+     * it are fixed once built, so the same text always finds the same features; callers only read the
+     * list.
+     */
+    private String listedFor = null;
+    private List<ConfigTree.Feature> listedCache = null;
+
     /** The features the middle column lists: the section's, or every match while searching. */
     private List<ConfigTree.Feature> listedFeatures() {
         if (!searching()) return selectedSection == null ? List.of() : selectedSection.features;
-        String q = query();
-        List<ConfigTree.Feature> found = new ArrayList<>();
-        for (ConfigTree.Group group : ConfigTree.groups()) {
-            for (ConfigTree.Section section : group.sections) {
-                for (ConfigTree.Feature feature : section.features) {
-                    if (feature.matches(q)) found.add(feature);
+        String raw = search.getText();
+        if (!raw.equals(listedFor)) {
+            String q = query();
+            List<ConfigTree.Feature> found = new ArrayList<>();
+            for (ConfigTree.Group group : ConfigTree.groups()) {
+                for (ConfigTree.Section section : group.sections) {
+                    for (ConfigTree.Feature feature : section.features) {
+                        if (feature.matches(q)) found.add(feature);
+                    }
                 }
             }
+            listedCache = found;
+            listedFor = raw;
         }
-        return found;
+        return listedCache;
     }
 
     private void selectFirstResult() {

@@ -7,6 +7,7 @@ import net.alpaka.addons.features.viewmodel.HandItemStarlightFeature;
 import net.alpaka.addons.features.viewmodel.ItemMotionBlurFeature;
 import net.minecraft.client.renderer.feature.ItemFeatureRenderer;
 import net.minecraft.client.renderer.feature.RenderTypeFeatureRenderer;
+import net.minecraft.client.renderer.item.ItemStackRenderState;
 import net.minecraft.client.resources.model.geometry.BakedQuad;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Shadow;
@@ -60,11 +61,18 @@ public abstract class ItemFeatureRendererMixin extends RenderTypeFeatureRenderer
         return ItemMotionBlurFeature.applyGhostAlpha(color);
     }
 
+    // With "Replace Enchant Glint" the starlight stands in for vanilla's glint on the hand item.
+    @Inject(method = "prepareFoilSubmit", at = @At("HEAD"), cancellable = true)
+    private void alpaka$starlightReplacesGlint(ItemFeatureRenderer.Submit submit, CallbackInfo ci) {
+        if (HandItemStarlightFeature.hidesGlint(submit)) ci.cancel();
+    }
+
     // The second pass over the submits draws the glint layers; the hand item's starlight goes in
     // with them, over every item submit of the hand, glinted or not. See HandItemStarlightFeature.
     @Inject(method = "prepareSubmit", at = @At("TAIL"))
     private void alpaka$starlight(ItemFeatureRenderer.Submit submit, boolean foilPass, CallbackInfo ci) {
-        if (!foilPass || !HandItemStarlightFeature.isStarlit(submit)) return;
+        boolean glinted = submit.foilType() != ItemStackRenderState.FoilType.NONE;
+        if (!foilPass || !HandItemStarlightFeature.drawsOver(submit, glinted)) return;
         VertexConsumer buffer = HandItemStarlightFeature.starlightBuffer(
                 this.getVertexBuilder(HandItemStarlightFeature.renderType()));
         for (BakedQuad quad : submit.quads()) {

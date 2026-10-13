@@ -856,12 +856,22 @@ public class AlpakaConfigRegistry {
 
         OPTIONS.add(new ConfigOption("Starlight", ConfigCategory.VIEWMODEL));
 
-        OPTIONS.add(new ConfigOption("item_starlight", "Starlight",
-                "A drifting, twinkling galaxy over the held item.",
+        OPTIONS.add(new ConfigOption("item_starlight", "Starlight Effect",
+                "A drifting, twinkling galaxy over the held item, on every item or in place of the enchantment glint.",
                 ConfigCategory.VIEWMODEL,
                 () -> AlpakaConfig.instance.itemStarlightEnabled,
                 v -> { AlpakaConfig.instance.itemStarlightEnabled = v; AlpakaConfig.save(); },
                 "starlight galaxy stars space nebula glint shimmer overlay effect held item cosmic"));
+
+        OPTIONS.add(new ConfigOption("item_starlight_mode", "Shown On",
+                "Every held item, or only items with an enchantment glint, in place of the glint.",
+                ConfigCategory.VIEWMODEL,
+                () -> (float) AlpakaConfig.instance.itemStarlightMode,
+                v -> { AlpakaConfig.instance.itemStarlightMode = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (net.alpaka.addons.features.viewmodel.HandItemStarlightFeature.MODE_NAMES.length - 1),
+                val -> net.alpaka.addons.features.viewmodel.HandItemStarlightFeature.MODE_NAMES[Math.round(val)],
+                "starlight mode glint enchant replace enchanted only every item")
+                .choices(net.alpaka.addons.features.viewmodel.HandItemStarlightFeature.MODE_NAMES));
 
         OPTIONS.add(ConfigOption.color("item_starlight_color", "Starlight Color",
                 "The colour of the nebula; the stars are tinged with it.",

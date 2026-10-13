@@ -206,6 +206,21 @@ public final class DevScreenshotTour {
     }
 
     /** A burst of lines, as a busy chat delivers them. */
+    private static void starlightGlint(boolean glint) {
+        Minecraft mc = Minecraft.getInstance();
+        AlpakaConfig.instance.itemStarlightMode = 1;
+        java.util.UUID id = mc.player.getUUID();
+        net.minecraft.client.server.IntegratedServer server = mc.getSingleplayerServer();
+        if (server == null) return;
+        server.execute(() -> {
+            net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayer(id);
+            if (player == null) return;
+            net.minecraft.world.item.ItemStack sword = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_SWORD);
+            if (glint) sword.set(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
+            player.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, sword);
+        });
+    }
+
     private static void chatBurst() {
         Minecraft mc = Minecraft.getInstance();
         for (int i = 1; i <= 6; i++) {

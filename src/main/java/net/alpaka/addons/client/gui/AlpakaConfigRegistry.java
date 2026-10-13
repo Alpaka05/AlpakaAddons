@@ -74,6 +74,14 @@ public class AlpakaConfigRegistry {
                 val -> AlpakaNotifications.CORNER_NAMES[Math.round(val)],
                 "notification corner position bottom top left right popup toast side").choices(AlpakaNotifications.CORNER_NAMES));
 
+        OPTIONS.add(new ConfigOption("notification_test", "Send Test Notification",
+                "Shows a sample notice with the duration and position set above.",
+                ConfigCategory.GENERAL,
+                "Send Test Notification",
+                parent -> AlpakaNotifications.send("Test Notification",
+                        "This is how notices look. It slides away after the duration set above."),
+                "notification test preview sample try show").buttonOnly());
+
         // The menu's own typeface sits here rather than under Visuals: it changes the screen the
         // player is looking at right now, so it belongs on the tab that screen opens on.
         OPTIONS.add(new ConfigOption("menu_font", "Menu Font",

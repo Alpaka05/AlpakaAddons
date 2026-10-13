@@ -222,7 +222,26 @@ object AlpakaNotifications {
         val now = System.currentTimeMillis()
         // Pruned before the early return, so expired notices leave even while nothing is drawn.
         synchronized(active) { active.removeAll { now >= it.retireAtMs } }
+        // The config menu draws them over itself instead, so its test notice can be seen.
+        if (mc.gui.screen() is net.alpaka.addons.client.AlpakaConfigScreen) return
         if (mc.gui.hud.isHidden() || mc.level == null) return
+        draw(graphics, now)
+    }
+
+    /**
+     * The notices over a screen rather than under it, for the config menu: there the HUD is hidden
+     * behind the menu, and Send Test Notification has to show something. Works without a world too.
+     */
+    @JvmStatic
+    fun renderOverScreen(graphics: GuiGraphicsExtractor) {
+        val now = System.currentTimeMillis()
+        synchronized(active) { active.removeAll { now >= it.retireAtMs } }
+        graphics.nextStratum()
+        draw(graphics, now)
+    }
+
+    private fun draw(graphics: GuiGraphicsExtractor, now: Long) {
+        val mc = Minecraft.getInstance()
 
         val font = mc.font ?: return
         val deltaMs = if (lastFrameMs == 0L) 16L else (now - lastFrameMs).coerceIn(0L, 250L)

@@ -420,6 +420,9 @@ public class AlpakaConfigScreen extends Screen {
         }
 
         if (scaling) graphics.pose().popMatrix();
+
+        // Notices over the menu, where the HUD would hide them behind it.
+        net.alpaka.addons.features.notification.AlpakaNotifications.renderOverScreen(graphics);
     }
 
     private ConfigOption hoveredSettingThisFrame = null;

@@ -61,7 +61,7 @@ public class AlpakaConfigScreen extends Screen {
 
     // ---- Layout, in GUI pixels ------------------------------------------------------------------
 
-    private static final int HEADER_H = 30;
+    private static final int HEADER_H = 33;
     private static final int PAD = 8;
     private static final int LINE_H = 9;
     private static final int GROUP_LABEL_H = 13;
@@ -489,8 +489,8 @@ public class AlpakaConfigScreen extends Screen {
         // Logo: the name large, the version small beneath it.
         Component title = GuiFont.title("ALPAKA");
         if (title == null) title = GuiFont.text("ALPAKA");
-        graphics.text(this.font, title, x + PAD + 2, y + 5, COLOR_TEXT, false);
-        graphics.text(this.font, GuiFont.text("v" + ModVersion.mod().split("\\+")[0]), x + PAD + 2, y + 19, COLOR_TEXT_MUTED, false);
+        graphics.text(this.font, title, x + PAD + 2, y + 8, COLOR_TEXT, false);
+        graphics.text(this.font, GuiFont.text("v" + ModVersion.mod().split("\\+")[0]), x + PAD + 2, y + 22, COLOR_TEXT_MUTED, false);
 
         // Search: a pill over the feature column.
         int sx = featX + 4;

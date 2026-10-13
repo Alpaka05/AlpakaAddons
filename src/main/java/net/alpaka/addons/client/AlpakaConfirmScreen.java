@@ -8,7 +8,9 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.locale.Language;
 import net.minecraft.network.chat.FormattedText;
+import net.minecraft.util.FormattedCharSequence;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
@@ -26,6 +28,12 @@ public class AlpakaConfirmScreen extends Screen {
     private final boolean dangerous;
     private final Runnable onConfirm;
     private long openTimeMs = 0L;
+    /**
+     * Laid out in init(), which also runs on every resize and after a resource reload; the message
+     * does not change while the dialog is up, so it is no longer wrapped and reordered anew every frame.
+     */
+    private Layout layout;
+    private final String titleText;
 
     private static final int W = 240;
     private static final int BTN_W = 70;
@@ -38,24 +46,27 @@ public class AlpakaConfirmScreen extends Screen {
         this.confirmLabel = confirmLabel;
         this.dangerous = dangerous;
         this.onConfirm = onConfirm;
+        this.titleText = this.title.getString();
     }
 
     @Override
     protected void init() {
         openTimeMs = System.currentTimeMillis();
+        layout = computeLayout();
     }
 
-    private record Layout(int x, int y, int w, int h, List<FormattedText> lines, int btnY, int confirmX, int cancelX) {}
+    private record Layout(int x, int y, int w, int h, List<FormattedCharSequence> lines, int btnY, int confirmX, int cancelX) {}
 
-    private Layout layout() {
+    private Layout computeLayout() {
         int w = Math.min(W, this.width - 16);
-        List<FormattedText> lines = GuiFont.splitLines(this.font, message, w - 2 * (AlpakaStyle.PAD + 2));
-        int h = AlpakaStyle.HEADER_H + 10 + lines.size() * 10 + 12 + AlpakaStyle.BUTTON_H + AlpakaStyle.PAD;
+        List<FormattedText> wrapped = GuiFont.splitLines(this.font, message, w - 2 * (AlpakaStyle.PAD + 2));
+        int h = AlpakaStyle.HEADER_H + 10 + wrapped.size() * 10 + 12 + AlpakaStyle.BUTTON_H + AlpakaStyle.PAD;
         int x = (this.width - w) / 2;
         int y = (this.height - h) / 2;
         int btnY = y + h - AlpakaStyle.PAD - AlpakaStyle.BUTTON_H;
         int confirmX = x + w - AlpakaStyle.PAD - BTN_W;
         int cancelX = confirmX - 6 - BTN_W;
+        List<FormattedCharSequence> lines = Language.getInstance().getVisualOrder(wrapped);
         return new Layout(x, y, w, h, lines, btnY, confirmX, cancelX);
     }
 
@@ -63,13 +74,12 @@ public class AlpakaConfirmScreen extends Screen {
     public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         AlpakaStyle.backdrop(graphics, this.width, this.height);
         boolean pushed = AlpakaStyle.beginOpen(graphics, openTimeMs, this.width, this.height);
-        Layout l = layout();
+        Layout l = layout;
         AlpakaStyle.panel(graphics, l.x(), l.y(), l.w(), l.h());
-        AlpakaStyle.header(graphics, this.font, this.title.getString(), l.x(), l.y(), l.w());
+        AlpakaStyle.header(graphics, this.font, titleText, l.x(), l.y(), l.w());
         int ty = l.y() + AlpakaStyle.HEADER_H + 10;
-        for (FormattedText line : l.lines()) {
-            graphics.text(this.font, net.minecraft.locale.Language.getInstance().getVisualOrder(line),
-                    l.x() + AlpakaStyle.PAD + 2, ty, AlpakaStyle.TEXT_SOFT, false);
+        for (FormattedCharSequence line : l.lines()) {
+            graphics.text(this.font, line, l.x() + AlpakaStyle.PAD + 2, ty, AlpakaStyle.TEXT_SOFT, false);
             ty += 10;
         }
         boolean hoverCancel = inside(mouseX, mouseY, l.cancelX(), l.btnY(), BTN_W, AlpakaStyle.BUTTON_H);
@@ -83,7 +93,7 @@ public class AlpakaConfirmScreen extends Screen {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         if (event.button() != 0) return super.mouseClicked(event, doubleClick);
-        Layout l = layout();
+        Layout l = layout;
         if (inside(event.x(), event.y(), l.confirmX(), l.btnY(), BTN_W, AlpakaStyle.BUTTON_H)) {
             click();
             onConfirm.run();

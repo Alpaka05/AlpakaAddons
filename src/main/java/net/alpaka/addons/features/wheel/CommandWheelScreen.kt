@@ -56,6 +56,15 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
     private var page = 0
     private var commands: List<String> = emptyList()
 
+    /**
+     * The current page's names in the configured font and their widths, built in showPage(): the
+     * dial lays them out and draws them every frame, and measuring every name twice a frame added
+     * up. The font only changes through a resize or a resource reload, and both run init() ->
+     * showPage() again.
+     */
+    private var labels: List<Component> = emptyList()
+    private var labelWidths = IntArray(0)
+
     /** Per segment, 0 = idle and 1 = fully highlighted; eased towards its target every frame. */
     private var highlight = FloatArray(0)
     private var selectedIndex = -1
@@ -105,6 +114,8 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
         page = if (pages.isEmpty()) 0 else index.coerceIn(0, pages.size - 1)
         lastPage = page
         commands = if (pages.isEmpty()) emptyList() else pages[page]
+        labels = commands.map { GuiFont.text(it) }
+        labelWidths = IntArray(labels.size) { this.font.width(labels[it]) }
         highlight = FloatArray(commands.size)
         selectedIndex = -1
         cachedLayout = null
@@ -218,7 +229,7 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
         val cx = this.width / 2f
         val cy = this.height / 2f
         val sweep = TAU / count
-        val widths = IntArray(count) { GuiFont.width(this.font, commands[it]) }
+        val widths = labelWidths
         val textHeight = (this.font.lineHeight - 1).toFloat()
 
         // Push the ring out until no two labels touch, with a little air between them and room for
@@ -467,7 +478,6 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
         // little towards white so it stays readable even with a dark accent.
         val labelSelected = lerpColor(accent, 0xFFFFFFFF.toInt(), 0.25f)
         for (i in 0 until count) {
-            val command = commands[i]
             val h = highlight[i]
             val angle = segmentAngle(layout, i)
             val cosA = cos(angle)
@@ -475,7 +485,7 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
             val radius = layout.labelRadius + SELECT_GROWTH * h
             val anchorX = layout.cx + cosA * radius
             val anchorY = layout.cy + sinA * radius
-            val textWidth = GuiFont.width(this.font, command)
+            val textWidth = labelWidths[i]
             val textHeight = this.font.lineHeight - 1
             val x = (anchorX + (cosA - 1f) * textWidth / 2f).roundToInt()
             val y = (anchorY + (sinA - 1f) * textHeight / 2f).roundToInt()
@@ -486,7 +496,7 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
             val scale = 1f + LABEL_GROWTH * h
             pose.pushMatrix()
             pose.scaleAround(scale, scale, anchorX, anchorY)
-            graphics.text(this.font, GuiFont.text(command), x, y, color, false)
+            graphics.text(this.font, labels[i], x, y, color, false)
             pose.popMatrix()
         }
 

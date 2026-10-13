@@ -466,6 +466,11 @@ public class AlpakaConfig {
     public boolean expandChatHistory = true;
     /** How many chat lines Expand Chat History keeps; vanilla keeps 100. */
     public int chatHistoryLimit = 5000;
+
+    /** How much history the chat keeps right now: the limit above while Expand Chat History is on, else vanilla's 100. */
+    public int chatHistoryLength() {
+        return expandChatHistory ? Math.max(100, chatHistoryLimit) : 100;
+    }
     /** Hold the Peek Chat key to see the whole chat, scrollable, without opening it. */
     public boolean chatPeekEnabled = true;
     /** Peek Chat also works with an inventory or another menu open, drawn on top of it. */

@@ -76,7 +76,7 @@ public abstract class ChatComponentMixin {
         constant = @Constant(intValue = 100)
     )
     private int modifyMaxChatHistory(int original) {
-        return AlpakaConfig.instance.expandChatHistory ? Math.max(100, AlpakaConfig.instance.chatHistoryLimit) : 100;
+        return AlpakaConfig.instance.chatHistoryLength();
     }
 
     /**

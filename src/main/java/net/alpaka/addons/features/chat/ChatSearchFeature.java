@@ -52,12 +52,16 @@ public final class ChatSearchFeature {
         // not change, so it is flattened and lower-cased once per search instead of once per
         // keystroke. Identity keys skip the record's deep equals. The memo is emptied when the search
         // ends, and when a resource reload swaps the language, since translated parts then read
-        // differently.
+        // differently. Messages arriving during a long search pass through here too, so the memo is
+        // also emptied once it outgrows twice the chat's history length; otherwise it would keep
+        // messages the chat has already trimmed away alive until the search ends. Emptying it only
+        // means each message is flattened again on the next keystroke.
         Language language = Language.getInstance();
         if (language != loweredIn) {
             LOWERED.clear();
             loweredIn = language;
         }
+        if (LOWERED.size() >= 2 * AlpakaConfig.instance.chatHistoryLength()) LOWERED.clear();
         String text = LOWERED.computeIfAbsent(message, m -> m.content().getString().toLowerCase(Locale.ROOT));
         return text.contains(queryLower);
     }

@@ -814,6 +814,13 @@ public class AlpakaConfigRegistry {
 
         OPTIONS.add(new ConfigOption("Swing Customizations", ConfigCategory.VIEWMODEL));
 
+        OPTIONS.add(new ConfigOption("swing_test", "Test Swing",
+                "Swings the item in your hand once, only on your screen: no hit, nothing sent to the server.",
+                ConfigCategory.VIEWMODEL,
+                "Test Swing",
+                parent -> net.alpaka.addons.features.viewmodel.SwingPreview.swing(),
+                "swing test preview try animation hand item").buttonOnly());
+
         OPTIONS.add(new ConfigOption("swing_drift_x", "Swing Drift X",
                 "Lateral swing drift displacement.",
                 ConfigCategory.VIEWMODEL,

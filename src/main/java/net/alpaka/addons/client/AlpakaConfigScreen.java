@@ -220,6 +220,12 @@ public class AlpakaConfigScreen extends Screen {
         return this;
     }
 
+    /** In setup mode a singleplayer world keeps running, so a test swing actually plays out. */
+    @Override
+    public boolean isPauseScreen() {
+        return !setupMode;
+    }
+
     @Override
     protected void init() {
         openTimeMs = System.currentTimeMillis();
@@ -429,7 +435,30 @@ public class AlpakaConfigScreen extends Screen {
 
         // The chosen feature's name, over its settings; the Setup button beside it on Viewmodel.
         boolean setupButton = isViewmodelSection();
-        if (selectedFeature != null) {
+        boolean stepper = setupButton && setupMode && setupProgress > 0.5f && selectedSection.features.size() > 1;
+        if (stepper) {
+            // In setup mode the feature list is folded away, so the header steps through the
+            // section's features instead: arrows either side of the name.
+            int arrow = 14;
+            int ay = y + (HEADER_H - arrow) / 2;
+            int leftX = detailX + PAD - 2;
+            int rightX = detailX + detailW - PAD - SETUP_BTN_W - 4 - arrow;
+            boolean hoverLeft = inside(mouseX, mouseY, leftX, ay, arrow, arrow);
+            boolean hoverRight = inside(mouseX, mouseY, rightX, ay, arrow, arrow);
+            if (hoverLeft) ModernGuiUtils.drawRoundedRect(graphics, leftX, ay, arrow, arrow, 3, COLOR_ROW_SELECTED);
+            if (hoverRight) ModernGuiUtils.drawRoundedRect(graphics, rightX, ay, arrow, arrow, 3, COLOR_ROW_SELECTED);
+            drawSideChevron(graphics, leftX + arrow / 2, ay + arrow / 2, true, hoverLeft ? ModernGuiUtils.getAccentColor() : COLOR_TEXT_SOFT);
+            drawSideChevron(graphics, rightX + arrow / 2, ay + arrow / 2, false, hoverRight ? ModernGuiUtils.getAccentColor() : COLOR_TEXT_SOFT);
+            hits.add(new Hit(leftX, ay, arrow, arrow, (mx, my) -> stepFeature(-1)));
+            hits.add(new Hit(rightX, ay, arrow, arrow, (mx, my) -> stepFeature(1)));
+            if (selectedFeature != null) {
+                int from = leftX + arrow + 2;
+                int room = rightX - 2 - from;
+                String name = ellipsize(selectedFeature.title, room);
+                int nameW = GuiFont.width(this.font, name);
+                graphics.text(this.font, GuiFont.text(name), from + (room - nameW) / 2, y + (HEADER_H - 8) / 2, COLOR_TEXT, false);
+            }
+        } else if (selectedFeature != null) {
             int room = detailW - PAD * 2 - 4 - (setupButton ? SETUP_BTN_W + 6 : 0);
             String name = ellipsize(selectedFeature.title, room);
             graphics.text(this.font, GuiFont.text(name), detailX + PAD + 2, y + (HEADER_H - 8) / 2, COLOR_TEXT, false);
@@ -445,6 +474,15 @@ public class AlpakaConfigScreen extends Screen {
             hits.add(new Hit(bx, by, SETUP_BTN_W, net.alpaka.addons.client.gui.AlpakaStyle.BUTTON_H,
                     (mx, my) -> setupMode = !setupMode));
         }
+    }
+
+    /** The previous or next feature of the selected section, wrapping round; for setup mode. */
+    private void stepFeature(int direction) {
+        List<ConfigTree.Feature> features = selectedSection.features;
+        if (features.isEmpty()) return;
+        int index = Math.max(0, features.indexOf(selectedFeature));
+        selectFeature(features.get(Math.floorMod(index + direction, features.size())));
+        revealSelected = true;
     }
 
     private void drawLogoAndSearch(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int featX, int featW) {
@@ -901,6 +939,18 @@ public class AlpakaConfigScreen extends Screen {
             stroke(mesh, cx - s / 2, cy - s, cx + s / 2, cy, t, color);
             stroke(mesh, cx + s / 2, cy, cx - s / 2, cy + s, t, color);
         }
+        mesh.submit(graphics);
+    }
+
+    /** A chevron pointing left or right, a little larger than the dropdowns' one, for stepping. */
+    private void drawSideChevron(GuiGraphicsExtractor graphics, int cx, int cy, boolean left, int color) {
+        int guiScale = this.minecraft == null ? 2 : (int) Math.max(1, this.minecraft.getWindow().getGuiScale());
+        net.alpaka.addons.features.wheel.WheelMesh mesh = new net.alpaka.addons.features.wheel.WheelMesh(1.0f / guiScale);
+        float s = 3.0f;
+        float t = 1.2f;
+        float d = left ? -1 : 1;
+        stroke(mesh, cx - d * s / 2, cy - s, cx + d * s / 2, cy, t, color);
+        stroke(mesh, cx + d * s / 2, cy, cx - d * s / 2, cy + s, t, color);
         mesh.submit(graphics);
     }
 

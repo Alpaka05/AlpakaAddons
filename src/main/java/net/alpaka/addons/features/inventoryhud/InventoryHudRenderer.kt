@@ -17,6 +17,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.ChatScreen
 import net.minecraft.client.renderer.RenderPipelines
+import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
 import net.minecraft.tags.FluidTags
 import net.minecraft.world.entity.player.Inventory
@@ -73,6 +74,13 @@ object InventoryHudRenderer {
     private const val CHEST_TITLE_X = 8
     private const val CHEST_TITLE_Y = 6
     private const val CHEST_TITLE_COLOR = 0x404040
+
+    /**
+     * The title as one Component kept for good: drawing the String re-ran the bidi reordering of
+     * the same word every frame, where a Component keeps its reordered text until the language
+     * changes.
+     */
+    private val CHEST_TITLE_TEXT: Component = Component.literal(CHEST_TITLE)
 
     /** Where the closing frame sits: the last rows of vanilla's 222-tall six-row chest GUI. */
     private const val CHEST_FOOT_V = 222 - CHEST_FRAME_HEIGHT
@@ -287,7 +295,7 @@ object InventoryHudRenderer {
                 )
                 // The title fades with the panel it sits on; on its own it would float in mid-air.
                 graphics.text(
-                    mc.font, CHEST_TITLE, CHEST_TITLE_X, CHEST_TITLE_Y,
+                    mc.font, CHEST_TITLE_TEXT, CHEST_TITLE_X, CHEST_TITLE_Y,
                     withAlpha(CHEST_TITLE_COLOR, chestAlpha), false
                 )
             }

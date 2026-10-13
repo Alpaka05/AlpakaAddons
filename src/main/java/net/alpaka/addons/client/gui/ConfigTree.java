@@ -135,6 +135,14 @@ public final class ConfigTree {
             "Notification Customization", "Notification Customization"
     );
 
+    /** What a feature built from a header is about; it has no master option to take it from. */
+    private static final Map<String, String> HEADER_DESCRIPTIONS = Map.of(
+            "Swing Customizations", "How the held item moves when you swing: drift, arc, and whether the swing always plays out.",
+            "Viewmodel Presets", "Save your viewmodel and swing settings to a slot and load them back later.",
+            "HUD Style", "The blurred background and the smooth font for each HUD, and how strongly the world is blurred.",
+            "Notification Customization", "How long notices stay on screen and where they appear. Send a test to see the result."
+    );
+
     /**
      * The sidebar: groups, their sections, and which features each section lists, in order. A
      * feature is named by its master option's id, or by "#" and the header it was built from.
@@ -204,7 +212,8 @@ public final class ConfigTree {
                 } else {
                     if (pendingHeader != null || feature == null) {
                         String header = pendingHeader != null ? pendingHeader : category.getDisplayName();
-                        feature = new Feature(HEADER_FEATURES.getOrDefault(header, header), "", null);
+                        feature = new Feature(HEADER_FEATURES.getOrDefault(header, header),
+                                HEADER_DESCRIPTIONS.getOrDefault(header, ""), null);
                         byKey.put("#" + header, feature);
                     }
                     feature.settings.add(option);

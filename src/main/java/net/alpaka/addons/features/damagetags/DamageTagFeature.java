@@ -2,9 +2,13 @@ package net.alpaka.addons.features.damagetags;
 
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.utils.SkyblockUtils;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.FormattedText;
+import net.minecraft.util.Unit;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.decoration.ArmorStand;
 
+import java.util.Optional;
 import java.util.regex.Pattern;
 
 public class DamageTagFeature {
@@ -49,7 +53,9 @@ public class DamageTagFeature {
     /** The splash this entity shows, or null when it is not a young armor stand named like one. */
     public static Splash parseSplash(Entity entity) {
         if (!(entity instanceof ArmorStand armorStand) || armorStand.tickCount > MAX_TAG_AGE_TICKS) return null;
-        return parseDamageTag(armorStand.getCustomName() != null ? armorStand.getCustomName().getString() : null);
+        Component name = armorStand.getCustomName();
+        if (name == null || !couldBeDamageTag(name)) return null;
+        return parseDamageTag(name.getString());
     }
 
     /** Any damage tag, crit or not, under the same rules as {@link #isNonCritDamageTag}. */
@@ -68,7 +74,9 @@ public class DamageTagFeature {
     /** A young armor stand whose name is a non-crit damage number. Other entities never are. */
     private static boolean isNonCritSplash(Entity entity) {
         if (!(entity instanceof ArmorStand armorStand) || armorStand.tickCount > MAX_TAG_AGE_TICKS) return false;
-        return isNonCritDamageTag(armorStand.getCustomName() != null ? armorStand.getCustomName().getString() : null);
+        Component name = armorStand.getCustomName();
+        if (name == null || !couldBeDamageTag(name)) return false;
+        return isNonCritDamageTag(name.getString());
     }
 
     public static boolean isNonCritDamageTag(String customName) {
@@ -106,12 +114,44 @@ public class DamageTagFeature {
                 i++; // The code's second character belongs to the code, whatever it is.
                 continue;
             }
-            boolean allowed = (c >= '0' && c <= '9')
-                    || c == ',' || c == '.' || c == '*' || Character.isWhitespace(c)
-                    || c == 'k' || c == 'K' || c == 'm' || c == 'M' || c == 'b' || c == 'B'
-                    || c == '✧' || c == '✦';
-            if (!allowed) return false;
+            if (!isTagChar(c)) return false;
         }
         return true;
+    }
+
+    /**
+     * {@link #couldBeDamageTag(String)} run over the name's text segments before it is flattened.
+     *
+     * {@code getString()} builds a StringBuilder and a String for every young named armor stand, twice per
+     * frame (shouldRender and shouldShowName), while walking the segments stops at the first character no
+     * damage tag can contain - the second or third for nearly every nametag and hologram. The skip flag
+     * crosses segment boundaries because {@code getString()} concatenates the segments, so a code split
+     * across two parts is skipped exactly as it would be in the flat string.
+     */
+    private static boolean couldBeDamageTag(Component name) {
+        boolean[] skipNext = {false};
+        return name.<Unit>visit(segment -> {
+            for (int i = 0; i < segment.length(); i++) {
+                if (skipNext[0]) {
+                    skipNext[0] = false;
+                    continue;
+                }
+                char c = segment.charAt(i);
+                if (c == '§') {
+                    skipNext[0] = true;
+                    continue;
+                }
+                if (!isTagChar(c)) return FormattedText.STOP_ITERATION;
+            }
+            return Optional.empty();
+        }).isEmpty();
+    }
+
+    /** A character a damage tag can contain, once its formatting codes are set aside. Both pre-filters share it. */
+    private static boolean isTagChar(char c) {
+        return (c >= '0' && c <= '9')
+                || c == ',' || c == '.' || c == '*' || Character.isWhitespace(c)
+                || c == 'k' || c == 'K' || c == 'm' || c == 'M' || c == 'b' || c == 'B'
+                || c == '✧' || c == '✦';
     }
 }

@@ -720,6 +720,22 @@ public class AlpakaConfigScreen extends Screen {
         boolean shown = visible(rowY, rowH, clipY, clipH);
         boolean hover = inside(mouseX, mouseY, rowX, rowY, rowW, rowH) && inside(mouseX, mouseY, colX, clipY, colW, clipH);
         if (hover) hoveredSettingThisFrame = option;
+        // A row wholly outside the column's clip would draw nothing: its text would be laid out only
+        // for the scissor to drop it. Skip it, keeping a switch's animation running so its knob is in
+        // the right place when the row scrolls back in. An open list counts as part of its row, and
+        // the y returned is exactly what drawing it would have returned.
+        if (!shown) {
+            int blockH = rowH;
+            if (option.getType() == ConfigOption.Type.DROPDOWN && !collapsed.contains(option)) {
+                blockH = rowH + option.getEntries().size() * SETTING_ROW_H + 2;
+            } else if (option.getType() == ConfigOption.Type.SLIDER && option.getChoices() != null && openChoice == option) {
+                blockH = rowH + option.getChoices().length * SETTING_ROW_H + 2;
+            }
+            if (!visible(rowY, blockH, clipY, clipH)) {
+                if (option.getType() == ConfigOption.Type.BOOLEAN) option.updateToggleProgress(deltaSec);
+                return rowY + blockH;
+            }
+        }
         int labelY = rowY + 4;
         int right = rowX + rowW - 4;
         int hitY = Math.max(rowY, clipY);

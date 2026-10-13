@@ -3,7 +3,6 @@ package net.alpaka.addons.features.slayer
 import java.util.Locale
 import net.alpaka.addons.client.hud.HudBounds
 import net.alpaka.addons.client.hud.HudElement
-import net.alpaka.addons.client.gui.HudPanel
 import net.alpaka.addons.config.AlpakaConfig
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
@@ -48,12 +47,11 @@ object SlayerTimerHudElement : HudElement {
         val width = kotlin.math.ceil(SlayerTimerHudRenderer.width(font, preview) * scale).toInt()
         val height = SlayerTimerHudRenderer.height(scale)
 
-        val margin = HudPanel.margin(cfg.slayerTimerHudBlur, scale, TEXT_MARGIN)
         return HudBounds(
-            cfg.slayerTimerHudX - margin,
-            cfg.slayerTimerHudY - margin,
-            cfg.slayerTimerHudX + width + margin,
-            cfg.slayerTimerHudY + height + margin,
+            cfg.slayerTimerHudX - TEXT_MARGIN,
+            cfg.slayerTimerHudY - TEXT_MARGIN,
+            cfg.slayerTimerHudX + width + TEXT_MARGIN,
+            cfg.slayerTimerHudY + height + TEXT_MARGIN,
         )
     }
 

@@ -1,6 +1,5 @@
 package net.alpaka.addons.features.notification
 
-import net.alpaka.addons.client.gui.HudPanel
 import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.config.AlpakaConfig
 import net.minecraft.client.DeltaTracker
@@ -8,6 +7,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.FormattedText
 import net.minecraft.util.FormattedCharSequence
 import kotlin.math.exp
 import kotlin.math.max
@@ -96,10 +96,6 @@ object AlpakaNotifications {
     private const val EDGE_TOP = 0x38FFFFFF
     private const val EDGE_LEFT = 0x14FFFFFF
     private const val BAR_TRACK = 0x1AFFFFFF
-    /** The blurred panel's tint: the flat pane's colour, thinner, since the blur does part of its job. */
-    private const val BLUR_TINT = 0x8C0F1216.toInt()
-    /** How far the time bar stays clear of the blurred panel's rounded corners. */
-    private const val BLUR_BAR_INSET = 4
     private const val BODY_TEXT = 0xFFD6DBE0.toInt()
 
     /** How many pieces the bar's fade towards its tip is drawn in; the game has no horizontal gradient. */
@@ -142,7 +138,7 @@ object AlpakaNotifications {
     @JvmStatic
     @JvmOverloads
     fun send(title: String, body: String = "", accent: Int = 0, holdMs: Long = 0L): Long {
-        val lines = if (body.isEmpty()) emptyList() else wrap(Component.literal(body))
+        val lines = if (body.isEmpty()) emptyList() else wrap(FormattedText.of(body))
         return enqueue(title, lines, accent, holdMs)
     }
 
@@ -171,10 +167,9 @@ object AlpakaNotifications {
         }
     }
 
-    /** Wrapped in the font the notice is drawn in, which is settled when it is queued. */
-    private fun wrap(text: Component): List<FormattedCharSequence> {
+    private fun wrap(text: FormattedText): List<FormattedCharSequence> {
         val font = Minecraft.getInstance().font ?: return emptyList()
-        return font.split(HudPanel.text(text, AlpakaConfig.instance.notificationSmoothFont), WIDTH - PAD * 2)
+        return font.split(text, WIDTH - PAD * 2)
     }
 
     private fun enqueue(title: String, lines: List<FormattedCharSequence>, accent: Int, holdMs: Long): Long {
@@ -313,30 +308,29 @@ object AlpakaNotifications {
     private fun draw(graphics: GuiGraphicsExtractor, font: Font, notice: Notice, x: Int, y: Int, shown: Float, now: Long) {
         val accent = if (notice.accent != 0) notice.accent else ModernGuiUtils.getAccentColor()
         val height = notice.height
-        val blurred = AlpakaConfig.instance.notificationBlur
+        val glass = faded(GLASS, shown)
 
-        if (blurred) {
-            // The panel fades as a whole, blur included, rather than through its tint alone.
-            HudPanel.submit(graphics, x, y, x + WIDTH, y + height, 1.0f, BLUR_TINT, shown)
-        } else {
-            drawGlass(graphics, x, y, height, shown)
-        }
+        // The pane, in three pieces so the four corner pixels stay empty: a soft corner, as far
+        // as a pixel grid allows one.
+        graphics.fill(x + 1, y, x + WIDTH - 1, y + height, glass)
+        graphics.fill(x, y + 1, x + 1, y + height - 1, glass)
+        graphics.fill(x + WIDTH - 1, y + 1, x + WIDTH, y + height - 1, glass)
+        // Light catches the top edge, and a little of the left one; that is the whole "glass".
+        graphics.fill(x + 1, y, x + WIDTH - 1, y + 1, faded(EDGE_TOP, shown))
+        graphics.fill(x, y + 1, x + 1, y + height - 1, faded(EDGE_LEFT, shown))
 
         val textX = x + PAD
-        val title = HudPanel.text(Component.literal(notice.title), AlpakaConfig.instance.notificationSmoothFont)
-        graphics.text(font, title, textX, y + PAD, faded(accent, shown))
+        graphics.text(font, Component.literal(notice.title), textX, y + PAD, faded(accent, shown))
         for (line in notice.body.indices) {
             graphics.text(font, notice.body[line], textX, y + PAD + LINE + line * LINE, faded(BODY_TEXT, shown))
         }
 
         // The time left, as a hairline along the bottom edge that runs down from full while the
-        // notice waits: full while sliding in, empty once the slide out begins. Inset on either side
-        // so it ends before the corners - the missing corner pixels, or the panel's rounded ones -
-        // and thinning towards its tip.
-        val inset = if (blurred) BLUR_BAR_INSET else 1
+        // notice waits: full while sliding in, empty once the slide out begins. Inset a pixel on
+        // either side so it ends before the missing corner pixels, and thinning towards its tip.
         val barY = y + height - BAR
-        val barLeft = x + inset
-        val barWidth = WIDTH - 2 * inset
+        val barLeft = x + 1
+        val barWidth = WIDTH - 2
         graphics.fill(barLeft, barY, barLeft + barWidth, y + height, faded(BAR_TRACK, shown))
         val remaining = ((notice.retireAtMs - SLIDE_MS - now).toFloat() / notice.holdMs.toFloat()).coerceIn(0.0f, 1.0f)
         val filled = (barWidth * remaining).roundToInt()
@@ -353,19 +347,5 @@ object AlpakaNotifications {
                 piece = min(piece + 1, BAR_STEPS - 1)
             }
         }
-    }
-
-    /** The flat pane, for when the blurred panel is off. */
-    private fun drawGlass(graphics: GuiGraphicsExtractor, x: Int, y: Int, height: Int, shown: Float) {
-        val glass = faded(GLASS, shown)
-
-        // The pane, in three pieces so the four corner pixels stay empty: a soft corner, as far
-        // as a pixel grid allows one.
-        graphics.fill(x + 1, y, x + WIDTH - 1, y + height, glass)
-        graphics.fill(x, y + 1, x + 1, y + height - 1, glass)
-        graphics.fill(x + WIDTH - 1, y + 1, x + WIDTH, y + height - 1, glass)
-        // Light catches the top edge, and a little of the left one; that is the whole "glass".
-        graphics.fill(x + 1, y, x + WIDTH - 1, y + 1, faded(EDGE_TOP, shown))
-        graphics.fill(x, y + 1, x + 1, y + height - 1, faded(EDGE_LEFT, shown))
     }
 }

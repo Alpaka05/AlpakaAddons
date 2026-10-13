@@ -22,7 +22,8 @@ import net.minecraft.world.entity.player.Player;
  * icons only took space.
  *
  * Centred, the row is one piece over the middle of the hotbar instead of two halves around the
- * level number, which then moves down onto the experience bar. Absorption can also go gold over the
+ * level number, which then moves down onto the experience bar; every row, absorption's included, is
+ * centred on its own length. Absorption can also go gold over the
  * first hearts - used up before the red ones, as it is in the game - or be left out.
  *
  * The hearts themselves are vanilla's: damage blink, regeneration bounce, low-health shake, the
@@ -41,8 +42,6 @@ public final class WideHealthBarFeature {
     public static final String[] ABSORPTION_NAMES = {"Own Row", "Gold Over Health", "Hidden"};
     private static final int ABSORPTION_MERGED = 1;
     private static final int ABSORPTION_HIDDEN = 2;
-    /** The whole row's width: twenty icons eight apart, the last one nine wide. */
-    private static final int ROW_WIDTH = (HEARTS_PER_ROW - 1) * HEART_STEP + HEART_SIZE;
 
     private WideHealthBarFeature() {
     }
@@ -62,9 +61,6 @@ public final class WideHealthBarFeature {
      * bar's slots, reading left to right so the row fills the way one bar would.
      */
     public static int columnX(int column, int xLeft, int xRight) {
-        if (centered()) {
-            return (xLeft + xRight) / 2 - ROW_WIDTH / 2 + column * HEART_STEP;
-        }
         if (column < HEARTS_PER_ROW / 2) {
             return xLeft + column * HEART_STEP;
         }
@@ -83,6 +79,11 @@ public final class WideHealthBarFeature {
 
     private static int rows(float maxHealth, int absorption) {
         int extra = absorptionOwnRow() ? absorption : 0;
+        if (centered() && extra > 0) {
+            // Centred, absorption starts a row of its own instead of filling up the last health row.
+            return Mth.ceil(Mth.ceil(maxHealth / 2.0F) / (float) HEARTS_PER_ROW)
+                    + Mth.ceil(Mth.ceil(extra / 2.0F) / (float) HEARTS_PER_ROW);
+        }
         return Mth.ceil((maxHealth + extra) / 2.0F / HEARTS_PER_ROW);
     }
 
@@ -111,9 +112,26 @@ public final class WideHealthBarFeature {
         int absorptionContainers = ownRow ? Mth.ceil(absorption / 2.0) : 0;
         int rowHeight = rowHeight(rows(maxHealth, absorption));
 
+        boolean centered = centered();
+        int healthRows = Mth.ceil(healthContainers / (float) HEARTS_PER_ROW);
+
         for (int index = healthContainers + absorptionContainers - 1; index >= 0; index--) {
-            int x = columnX(index % HEARTS_PER_ROW, xLeft, xRight);
-            int y = yLineBase - (index / HEARTS_PER_ROW) * rowHeight;
+            int x;
+            int row;
+            if (centered) {
+                // Health and absorption each in rows of their own, every row centred on its own length.
+                boolean health = index < healthContainers;
+                int i = health ? index : index - healthContainers;
+                int total = health ? healthContainers : absorptionContainers;
+                int inRow = Math.min(HEARTS_PER_ROW, total - (i / HEARTS_PER_ROW) * HEARTS_PER_ROW);
+                int width = (inRow - 1) * HEART_STEP + HEART_SIZE;
+                x = (xLeft + xRight) / 2 - width / 2 + (i % HEARTS_PER_ROW) * HEART_STEP;
+                row = (health ? 0 : healthRows) + i / HEARTS_PER_ROW;
+            } else {
+                x = columnX(index % HEARTS_PER_ROW, xLeft, xRight);
+                row = index / HEARTS_PER_ROW;
+            }
+            int y = yLineBase - row * rowHeight;
             if (currentHealth + absorption <= 4) {
                 y += random.nextInt(2);
             }

@@ -114,6 +114,7 @@ public final class DevScreenshotTour {
             // The wide health bar: centred, with absorption gold over the first hearts, then on its own row.
             new Stop("health-bar-centered", () -> healthBar(true, 1), () -> true, 20),
             new Stop("health-bar-own-row", () -> healthBar(false, 0), () -> true, 20),
+            new Stop("health-bar-centered-own-row", () -> healthBar(true, 0), () -> true, 20),
             new Stop("health-bar-hidden", () -> healthBar(true, 2), () -> true, 20),
             // A sidebar like Hypixel's over its blurred panel, and a sword under starlight; twice, to
             // see the galaxy drift and twinkle.

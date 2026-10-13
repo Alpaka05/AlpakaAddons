@@ -10,9 +10,7 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.Identifier;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * The typeface the mod's own screens are written in.
@@ -54,7 +52,17 @@ public final class GuiFont {
     /** Font definition names under {@code assets/alpaka/font/}; null means vanilla's font. */
     private static final String[] FONT_IDS = {null, "inter", "poppins_bold", "varela_round", "outfit_bold"};
 
-    private static final Map<String, Style> STYLE_CACHE = new HashMap<>();
+    /** The oversampling variants, in the order {@link #scaleSlot()} numbers them. */
+    private static final String[] SCALE_SUFFIXES = {"_s2", "_s3", "_s4"};
+
+    /**
+     * The styles handed out so far, by font index and scale slot, for text and for titles. Kept in
+     * arrays rather than looked up by name: style() runs for every string the menus, the HUDs and the
+     * scoreboard draw, every frame, and building the name to look it up allocated each time. A style
+     * is immutable, so two threads filling the same slot at once only store equal values.
+     */
+    private static final Style[][] TEXT_STYLES = new Style[FONT_IDS.length][SCALE_SUFFIXES.length];
+    private static final Style[][] TITLE_STYLES = new Style[FONT_IDS.length][SCALE_SUFFIXES.length];
 
     private GuiFont() {}
 
@@ -64,27 +72,39 @@ public final class GuiFont {
         return (index < 0 || index >= NAMES.length) ? 0 : index;
     }
 
-    /** The oversampling variant to use: 2 up to GUI scale 2, 3 at scale 3, 4 from scale 4 on. */
-    private static String scaleSuffix() {
+    /**
+     * The oversampling variant to use, as a slot into {@link #SCALE_SUFFIXES}: 2 up to GUI scale 2,
+     * 3 at scale 3, 4 from scale 4 on.
+     */
+    private static int scaleSlot() {
         int guiScale = 2;
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft != null && minecraft.getWindow() != null) {
             guiScale = minecraft.getWindow().getGuiScale();
         }
-        if (guiScale <= 2) return "_s2";
-        if (guiScale == 3) return "_s3";
-        return "_s4";
+        if (guiScale <= 2) return 0;
+        if (guiScale == 3) return 1;
+        return 2;
+    }
+
+    private static Style fontStyle(String path) {
+        return Style.EMPTY.withFont(new FontDescription.Resource(Identifier.fromNamespaceAndPath("alpaka", path)));
     }
 
     /** The style every string in the mod's screens should carry. */
     public static Style style() {
-        String id = FONT_IDS[selectedIndex()];
+        int index = selectedIndex();
+        String id = FONT_IDS[index];
         if (id == null) {
             return Style.EMPTY;
         }
-        String fullId = id + scaleSuffix();
-        return STYLE_CACHE.computeIfAbsent(fullId, key ->
-                Style.EMPTY.withFont(new FontDescription.Resource(Identifier.fromNamespaceAndPath("alpaka", key))));
+        int slot = scaleSlot();
+        Style style = TEXT_STYLES[index][slot];
+        if (style == null) {
+            style = fontStyle(id + SCALE_SUFFIXES[slot]);
+            TEXT_STYLES[index][slot] = style;
+        }
+        return style;
     }
 
     /** {@code Component.literal}, in the configured font. Legacy § codes in the text still apply. */
@@ -101,11 +121,15 @@ public final class GuiFont {
      * no such definition; callers draw the plain text when this returns null.
      */
     public static MutableComponent title(String text) {
-        String id = FONT_IDS[selectedIndex()];
+        int index = selectedIndex();
+        String id = FONT_IDS[index];
         if (id == null) return null;
-        String fullId = id + "_title" + scaleSuffix();
-        Style style = STYLE_CACHE.computeIfAbsent(fullId, key ->
-                Style.EMPTY.withFont(new FontDescription.Resource(Identifier.fromNamespaceAndPath("alpaka", key))));
+        int slot = scaleSlot();
+        Style style = TITLE_STYLES[index][slot];
+        if (style == null) {
+            style = fontStyle(id + "_title" + SCALE_SUFFIXES[slot]);
+            TITLE_STYLES[index][slot] = style;
+        }
         return Component.literal(text).withStyle(style);
     }
 

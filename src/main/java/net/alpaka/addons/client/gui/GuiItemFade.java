@@ -48,6 +48,10 @@ public final class GuiItemFade {
      * as a glow.
      */
     public static int atlasColor(GuiItemRenderState state, int color) {
+        // Runs for every item blitted from the atlas, every frame, while only the inventory HUD's open
+        // and close animation ever marks one. Most frames nothing is fading, and looking a fresh render
+        // state up in the map would still give it an identity hash for nothing.
+        if (FADED.isEmpty()) return color;
         Float alpha = FADED.remove(state);
         if (alpha == null) return color;
         int a = Math.round(alpha * 255.0f);

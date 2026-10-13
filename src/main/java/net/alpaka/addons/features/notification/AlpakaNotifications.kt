@@ -77,6 +77,21 @@ object AlpakaNotifications {
     private const val GAP = 4
     private const val MARGIN = 8
 
+    /**
+     * Where top-centre notices start: low enough to clear a MacBook's notch in fullscreen, and
+     * below any boss bars. Vanilla stacks those from y 12, nineteen pixels apart, name above bar.
+     */
+    private const val TOP_CENTER_CLEARANCE = 24
+    private const val BOSS_BAR_PITCH = 19
+
+    private fun topCenterTop(mc: Minecraft): Int {
+        val bars = (mc.gui.hud.bossOverlay as net.alpaka.addons.mixin.BossHealthOverlayAccessor).`alpaka$getEvents`().size
+        // The overlay stops adding bars a third of the way down the screen.
+        val shown = minOf(bars, maxOf(0, (mc.window.guiScaledHeight / 3 - 12) / BOSS_BAR_PITCH + 1))
+        val belowBars = if (shown > 0) BOSS_BAR_PITCH * shown + 4 else 0
+        return maxOf(TOP_CENTER_CLEARANCE, belowBars)
+    }
+
     /** Height of the time-left bar along the bottom edge, and the gap kept above it. */
     private const val BAR = 1
     private const val BAR_GAP = 3
@@ -265,7 +280,11 @@ object AlpakaNotifications {
         // Walked newest first, so the newest takes the slot at the edge and the older ones are
         // pushed further from it as more arrive: up the screen from a bottom corner, down from the
         // top otherwise.
-        var stackEdge = if (atBottom) (screenHeight - MARGIN).toFloat() else MARGIN.toFloat()
+        var stackEdge = when {
+            atBottom -> (screenHeight - MARGIN).toFloat()
+            topCenter -> topCenterTop(mc).toFloat()
+            else -> MARGIN.toFloat()
+        }
         for (index in snapshot.indices.reversed()) {
             val notice = snapshot[index]
             val targetY = if (atBottom) stackEdge - notice.height else stackEdge

@@ -117,6 +117,9 @@ public final class DevScreenshotTour {
                     () -> Minecraft.getInstance().gameMode != null && Minecraft.getInstance().gameMode.canHurtPlayer(), 20),
             new Stop("survival-hud", DevScreenshotTour::actionBar, () -> true, 10),
             // The wide health bar: centred, with absorption gold over the first hearts, then on its own row.
+            // Top-centre notices: below the notch area with no boss bar, below the bars with two.
+            new Stop("notice-top-center", () -> topCenterNotice(0), () -> true, 20),
+            new Stop("notice-top-center-bossbars", () -> topCenterNotice(2), () -> true, 20),
             new Stop("health-bar-centered", () -> healthBar(true, 1), () -> true, 20),
             new Stop("health-bar-own-row", () -> healthBar(false, 0), () -> true, 20),
             new Stop("health-bar-centered-own-row", () -> healthBar(true, 0), () -> true, 20),
@@ -391,6 +394,27 @@ public final class DevScreenshotTour {
     }
 
     /** An action bar line like Hypixel's, which is up the whole time on SkyBlock. */
+    private static void topCenterNotice(int bossBars) {
+        Minecraft mc = Minecraft.getInstance();
+        AlpakaConfig.instance.notificationCorner = net.alpaka.addons.features.notification.AlpakaNotifications.TOP_CENTER;
+        net.minecraft.client.server.IntegratedServer server = mc.getSingleplayerServer();
+        if (server != null) {
+            server.execute(() -> {
+                for (int i = 0; i < 2; i++) {
+                    String id = "tour:boss" + i;
+                    String command = i < bossBars
+                            ? "bossbar add " + id + " \"Boss " + (i + 1) + "\""
+                            : "bossbar remove " + id;
+                    server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), command);
+                    if (i < bossBars) {
+                        server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), "bossbar set " + id + " players @a");
+                    }
+                }
+            });
+        }
+        net.alpaka.addons.features.notification.AlpakaNotifications.send("Test Notification", "Where top-centre notices sit.");
+    }
+
     private static void healthBar(boolean centered, int absorptionMode) {
         Minecraft mc = Minecraft.getInstance();
         AlpakaConfig.instance.wideHealthBarEnabled = true;

@@ -9,6 +9,11 @@ import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import net.alpaka.addons.features.chat.ScreenshotPreview;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.toasts.ToastManager;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -68,5 +73,15 @@ public abstract class GuiMixin {
         } else if (!isOldInventory && isNewInventory) {
             net.alpaka.addons.features.sound.CustomSoundFeature.playInventoryOpenSound();
         }
+    }
+
+    /** The screenshot preview, over the screen and under the toasts; see ScreenshotPreview. */
+    @WrapOperation(
+            method = "extractRenderState",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/toasts/ToastManager;extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;)V")
+    )
+    private void alpaka$screenshotPreview(ToastManager toasts, GuiGraphicsExtractor graphics, Operation<Void> original) {
+        ScreenshotPreview.render(graphics);
+        original.call(toasts, graphics);
     }
 }

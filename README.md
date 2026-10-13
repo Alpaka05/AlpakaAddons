@@ -54,7 +54,7 @@ Alpaka Addons is most useful for **Slayers**, but a lot of it helps anywhere in 
 - **Expand Chat History:** keeps 5000 messages, even after leaving a server.
 - **Smooth Chat:** messages slide in, scrolling glides, and an optional blurred, rounded background.
 - **Chat Mentions**, **Custom Guild Tag** and a **Bridge Bot Formatter** that shows relayed Discord messages as `[Discord]`.
-- **Better Screenshot Message** with Open, Copy and Delete buttons.
+- **Better Screenshots**: a preview that shrinks into the corner, and Open, Copy and Delete buttons.
 
 </details>
 

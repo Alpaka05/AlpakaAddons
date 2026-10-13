@@ -32,8 +32,8 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 /**
- * What happens to the "Saved screenshot as ..." notice: the line with Open, Copy and Delete buttons,
- * and the automatic copy to the clipboard.
+ * Better Screenshots - what happens to the "Saved screenshot as ..." notice: the line with Open,
+ * Copy and Delete buttons, the automatic copy to the clipboard, and the {@link ScreenshotPreview}.
  *
  * ### How the buttons work
  *
@@ -82,8 +82,10 @@ public final class ScreenshotMessageFeature {
         if (!"screenshot.success".equals(contents.getKey())) return false;
         File file = fileOf(contents);
         if (file == null) return false;
+        if (!AlpakaConfig.instance.betterScreenshotMessageEnabled) return false;
 
-        boolean buttons = AlpakaConfig.instance.betterScreenshotMessageEnabled;
+        ScreenshotPreview.show(file);
+        boolean buttons = AlpakaConfig.instance.screenshotChatButtons;
         if (AlpakaConfig.instance.autoCopyScreenshots && canCopy()) {
             copy(file, error -> {
                 if (buttons) {
@@ -134,22 +136,33 @@ public final class ScreenshotMessageFeature {
         return token;
     }
 
-    /** "Saved screenshot [Open] [Copy] [Delete]", with an optional note between the text and the buttons. */
+    /**
+     * "Saved screenshot [Open] [Copy] [Delete]", with an optional note between the text and the
+     * buttons. Which parts appear is up to the config: the file name, and each button on its own.
+     */
     private static Component buttonLine(File file, Component note) {
+        AlpakaConfig cfg = AlpakaConfig.instance;
         String name = file.getName();
         String token = tokenFor(file);
         MutableComponent line = Component.literal("Saved screenshot").withStyle(style -> style
                 .withColor(ChatFormatting.GRAY)
                 .withHoverEvent(new HoverEvent.ShowText(Component.literal(name).withStyle(ChatFormatting.WHITE))));
+        if (cfg.screenshotShowFileName) {
+            line.append(" ").append(Component.literal(name).withStyle(ChatFormatting.WHITE));
+        }
         if (note != null) {
             line.append(" ").append(note);
         }
-        line.append(" ").append(button("[Open]", ChatFormatting.GREEN, new ClickEvent.OpenFile(file), "Open " + name));
+        if (cfg.screenshotShowOpen) {
+            line.append(" ").append(button("[Open]", ChatFormatting.GREEN, new ClickEvent.OpenFile(file), "Open " + name));
+        }
         // Offered only where it can work: on macOS the copy always fails, see copy().
-        if (canCopy()) {
+        if (cfg.screenshotShowCopy && canCopy()) {
             line.append(" ").append(button("[Copy]", ChatFormatting.AQUA, custom(COPY, token), "Copy the image to the clipboard"));
         }
-        line.append(" ").append(button("[Delete]", ChatFormatting.RED, custom(DELETE, token), "Delete " + name));
+        if (cfg.screenshotShowDelete) {
+            line.append(" ").append(button("[Delete]", ChatFormatting.RED, custom(DELETE, token), "Delete " + name));
+        }
         return line;
     }
 

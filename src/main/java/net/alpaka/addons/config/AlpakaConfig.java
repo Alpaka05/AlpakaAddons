@@ -32,7 +32,7 @@ public class AlpakaConfig {
      */
     public boolean hideHypixelDropMessage = true;
     /**
-     * Adds [Share: Guild] [Party] buttons to the tracker's line for a slayer's headline RNG drop -
+     * Adds "Share: [Guild] [Party]" buttons to the tracker's line for a slayer's headline RNG drop -
      * the one the slayer HUD counts a dry streak against, e.g. High Class Archfiend Dice for Inferno.
      *
      * A click only fills the chat box; the player sends it with Enter. This used to post to guild
@@ -40,6 +40,8 @@ public class AlpakaConfig {
      * name so the setting carries over for players who had turned the announcement on.
      */
     public boolean slayerRngDropGuildChatEnabled = false;
+    /** What those share buttons post: 0 the tracker's own line, 1 Hypixel's drop message as it came. */
+    public int slayerShareMessage = 0;
     /**
      * When a party member types "!since &lt;item&gt;", show the player their own count with a
      * [Reply in party] button. Nothing is sent unless the player clicks it and presses Enter.
@@ -106,6 +108,8 @@ public class AlpakaConfig {
      * until the moment somebody actually addresses the player, which is a moment worth not missing.
      */
     public boolean mentionNotificationEnabled = true;
+    /** Only mentions from real players: lines from NPCs, bosses and the server itself are ignored. */
+    public boolean mentionIgnoreServer = true;
     /**
      * How long a notification stays on screen, in seconds, before it slides back out.
      *
@@ -158,6 +162,8 @@ public class AlpakaConfig {
     public boolean hideHurtOverlayEnabled = false;
     /** Stops drawing a mob the moment it dies, skipping vanilla's tip-over. Cosmetic only. */
     public boolean hideMobDeathsEnabled = false;
+    /** With Hide Mob Deaths: also no puff of smoke when the server removes the body. */
+    public boolean hideMobDeathSmoke = false;
     public boolean smoothPerspectiveEnabled = true;
     public boolean disableFrontPerspective = false;
     public int smoothPerspectiveDurationMs = 350;
@@ -423,12 +429,27 @@ public class AlpakaConfig {
     /** Off for fresh installs. Vanilla's own toggle-sprint option already does this for most players. */
     public boolean alwaysSprintEnabled = false;
     public boolean expandChatHistory = true;
+    /** How many chat lines Expand Chat History keeps; vanilla keeps 100. */
+    public int chatHistoryLimit = 5000;
     /** Hold the Peek Chat key to see the whole chat, scrollable, without opening it. */
     public boolean chatPeekEnabled = true;
     /** Peek Chat also works with an inventory or another menu open, drawn on top of it. */
     public boolean chatPeekInMenus = true;
-    /** Open, Copy and Delete buttons on the screenshot notice instead of vanilla's line. */
+    /** Better Screenshots: everything below. The key keeps its old name so the setting carries over. */
     public boolean betterScreenshotMessageEnabled = true;
+    /** Open, Copy and Delete buttons on the screenshot notice instead of vanilla's line. */
+    public boolean screenshotChatButtons = true;
+    /** The screenshot shrinking into the corner for a moment after it is taken. */
+    public boolean screenshotPreviewEnabled = true;
+    /** How long the preview stays in the corner, in seconds. */
+    public float screenshotPreviewSeconds = 3.0f;
+    /** The preview's width, in percent of the screen's. */
+    public float screenshotPreviewSize = 20.0f;
+    /** Which parts the screenshot line shows. */
+    public boolean screenshotShowFileName = false;
+    public boolean screenshotShowOpen = true;
+    public boolean screenshotShowCopy = true;
+    public boolean screenshotShowDelete = true;
     /** Every screenshot goes to the clipboard the moment it is taken. */
     public boolean autoCopyScreenshots = false;
     /** A message repeated right after itself becomes one line with (x2), (x3)... */
@@ -454,6 +475,14 @@ public class AlpakaConfig {
     // Interface options
     /** The mouse wheel scrolls a tooltip that is taller than the screen. */
     public boolean scrollableTooltipsEnabled = true;
+    /** The wheel moves every tooltip, not only one taller than the screen. */
+    public boolean scrollableTooltipsAlways = false;
+    /** GUI pixels one wheel notch moves a tooltip. */
+    public float scrollableTooltipsSpeed = 12.0f;
+    /** The tooltip glides to where the wheel sends it instead of jumping. */
+    public boolean scrollableTooltipsSmooth = true;
+    /** Wheel down moves the tooltip down instead of reading further down it. */
+    public boolean scrollableTooltipsInvert = false;
     /** The held item's name above the hotbar stays up instead of fading out. */
     public boolean persistentItemNameEnabled = false;
     /**
@@ -506,6 +535,8 @@ public class AlpakaConfig {
     public int itemStarlightColor = 0xFF9B5CFF;
     /** How strongly the galaxy covers the item, 0..1. */
     public float itemStarlightStrength = 0.8f;
+    /** 0: over every held item. 1: in place of the enchantment glint, so only on glinting items. */
+    public int itemStarlightMode = 0;
 
     // Swing motion blur: faded copies trail behind the held item while it swings; see ItemMotionBlurFeature.
     public boolean itemMotionBlurEnabled = false;
@@ -637,6 +668,7 @@ public class AlpakaConfig {
         this.itemStarlightEnabled = false;
         this.itemStarlightColor = 0xFF9B5CFF;
         this.itemStarlightStrength = 0.8f;
+        this.itemStarlightMode = 0;
         this.itemMotionBlurEnabled = false;
         this.itemMotionBlurLength = 80.0f;
         this.itemMotionBlurOpacity = 0.35f;

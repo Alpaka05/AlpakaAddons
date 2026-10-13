@@ -14,6 +14,9 @@ data class HudBounds(val x0: Int, val y0: Int, val x1: Int, val y1: Int) {
         mouseX >= x0 && mouseX < x1 && mouseY >= y0 && mouseY < y1
 }
 
+/** Where the editor draws an element: its anchor and box, both nudged on screen as in [HudElement.visibleBounds]. */
+class VisiblePlacement(val anchorX: Int, val anchorY: Int, val box: HudBounds)
+
 /**
  * A HUD overlay that can be repositioned and resized in [HudEditorScreen].
  *
@@ -115,6 +118,19 @@ interface HudElement {
     fun visibleAnchorY(screenWidth: Int, screenHeight: Int): Int {
         val box = bounds()
         return anchorY + clampShift(box.y0, box.y1, screenHeight)
+    }
+
+    /**
+     * [visibleAnchorX], [visibleAnchorY] and [visibleBounds] from a single [bounds] call. The editor
+     * needs all three for every HUD every frame, and [bounds] measures the HUD's text, so asking
+     * three times measured the same text three times. Must agree with the three methods above.
+     */
+    fun visiblePlacement(screenWidth: Int, screenHeight: Int): VisiblePlacement {
+        val box = bounds()
+        val dx = clampShift(box.x0, box.x1, screenWidth)
+        val dy = clampShift(box.y0, box.y1, screenHeight)
+        val shown = if (dx == 0 && dy == 0) box else HudBounds(box.x0 + dx, box.y0 + dy, box.x1 + dx, box.y1 + dy)
+        return VisiblePlacement(anchorX + dx, anchorY + dy, shown)
     }
 }
 

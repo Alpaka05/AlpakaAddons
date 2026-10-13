@@ -169,9 +169,16 @@ public final class GuiFont {
         if (minecraft != null && minecraft.gui != null && minecraft.gui.hud != null) minecraft.gui.hud.getChat().rescaleChat();
     }
 
-    /** Width of the text in the configured font, for centring and caret placement. */
+    /**
+     * Width of the text in the configured font, for centring and caret placement.
+     *
+     * Measured as a bare run of text in the font's style rather than through {@link #text}: the
+     * width comes out the same, since both visit one (style, text) pair, without building a
+     * component that is thrown away straight after. This runs many times a frame, and once per
+     * character in the loops that trim a label to fit.
+     */
     public static int width(Font font, String text) {
-        return font.width(text(text));
+        return font.width(FormattedText.of(text, style()));
     }
 
     /** Word-wraps the text in the configured font; the lines keep the font in their styles. */

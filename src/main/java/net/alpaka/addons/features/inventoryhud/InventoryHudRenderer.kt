@@ -375,7 +375,7 @@ object InventoryHudRenderer {
         val radiusPx = Math.round(RADIUS * toScreen)
         val tint = withAlpha(PANEL_BG, backdropAlpha)
 
-        if (AlpakaConfig.instance.inventoryHudBlur) {
+        if (AlpakaConfig.instance.blurOn(AlpakaConfig.instance.inventoryHudBlur)) {
             // The slider is the tint's strength over the blur: 0 % is clear frosted glass, 100 % the
             // solid panel colour. The frame is captured and blurred once per frame for every panel
             // that asks, so this shares the copy with the chat. The fade goes in as the panel's

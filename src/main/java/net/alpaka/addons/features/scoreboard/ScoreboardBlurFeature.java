@@ -40,7 +40,7 @@ public final class ScoreboardBlurFeature {
     private ScoreboardBlurFeature() {}
 
     public static boolean isEnabled() {
-        return AlpakaConfig.instance.scoreboardBlurEnabled;
+        return AlpakaConfig.instance.blurOn(AlpakaConfig.instance.scoreboardBlurEnabled);
     }
 
     /** The sidebar is about to be extracted; moves it off the screen edge when it gets a panel. */

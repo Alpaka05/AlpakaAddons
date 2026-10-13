@@ -48,7 +48,7 @@ object SlayerTimerHudElement : HudElement {
         val width = kotlin.math.ceil(SlayerTimerHudRenderer.width(font, preview) * scale).toInt()
         val height = SlayerTimerHudRenderer.height(scale)
 
-        val margin = HudPanel.margin(cfg.slayerTimerHudBlur, scale, TEXT_MARGIN)
+        val margin = HudPanel.margin(cfg.blurOn(cfg.slayerTimerHudBlur), scale, TEXT_MARGIN)
         return HudBounds(
             cfg.slayerTimerHudX - margin,
             cfg.slayerTimerHudY - margin,

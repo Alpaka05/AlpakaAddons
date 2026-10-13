@@ -135,7 +135,7 @@ object SlayerHudRenderer {
     private fun layout(type: SlayerType?, preview: Boolean): Layout {
         val now = System.currentTimeMillis()
         val toggles = toggleMask()
-        val fontStyle = if (AlpakaConfig.instance.slayerHudSmoothFont) GuiFont.style() else Style.EMPTY
+        val fontStyle = if (AlpakaConfig.instance.smoothOn(AlpakaConfig.instance.slayerHudSmoothFont)) GuiFont.style() else Style.EMPTY
 
         // Pause state is part of the key rather than left to the timer, so clicking the HUD to hold
         // the clock reads back immediately instead of up to a quarter second later.
@@ -356,7 +356,7 @@ object SlayerHudRenderer {
         graphics.pose().pushMatrix()
         graphics.pose().translate(x.toFloat(), y.toFloat())
         graphics.pose().scale(scale, scale)
-        if (AlpakaConfig.instance.slayerHudBlur) {
+        if (AlpakaConfig.instance.blurOn(AlpakaConfig.instance.slayerHudBlur)) {
             HudPanel.aroundText(graphics, laid.unscaledWidth, laid.unscaledHeight, scale)
         }
 

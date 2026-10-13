@@ -120,8 +120,18 @@ public final class ConfigTree {
     );
 
     /** Settings registered away from their feature. */
-    private static final Map<String, String> PARENTS = Map.of(
-            "smooth_perspective_duration", "smooth_perspective"
+    private static final Map<String, String> PARENTS = Map.ofEntries(
+            Map.entry("smooth_perspective_duration", "smooth_perspective"),
+            // Each HUD's own style switches, registered at the end and placed in its feature.
+            Map.entry("slayer_hud_blur", "slayer_hud_enabled"),
+            Map.entry("slayer_hud_smooth_font", "slayer_hud_enabled"),
+            Map.entry("slayer_timer_blur", "slayer_timer"),
+            Map.entry("slayer_timer_smooth_font", "slayer_timer"),
+            Map.entry("world_age_blur", "world_age_hud_enabled"),
+            Map.entry("world_age_smooth_font", "world_age_hud_enabled"),
+            Map.entry("inventory_hud_blur", "inventory_hud_enabled"),
+            Map.entry("notification_blur", "#Notification Customization"),
+            Map.entry("notification_smooth_font", "#Notification Customization")
     );
 
     /**
@@ -132,14 +142,18 @@ public final class ConfigTree {
             "Swing Customizations", "Swing",
             "Viewmodel Presets", "Presets",
             "HUD Style", "HUD Style",
-            "Notification Customization", "Notification Customization"
+            "Notification Customization", "Notification Customization",
+            "Chat Style", "Chat Style",
+            "Scoreboard", "Scoreboard"
     );
 
     /** What a feature built from a header is about; it has no master option to take it from. */
     private static final Map<String, String> HEADER_DESCRIPTIONS = Map.of(
             "Swing Customizations", "How the held item moves when you swing: drift, arc, and whether the swing always plays out.",
             "Viewmodel Presets", "Save your viewmodel and swing settings to a slot and load them back later.",
-            "HUD Style", "The blurred background and the smooth font for each HUD, and how strongly the world is blurred.",
+            "HUD Style", "Main switches for the blurred backgrounds and the smooth font of every HUD, and how strongly the world is blurred.",
+            "Chat Style", "The chat's background and font.",
+            "Scoreboard", "The sidebar scoreboard's background and font.",
             "Notification Customization", "How long notices stay on screen and where they appear. Send a test to see the result."
     );
 
@@ -161,9 +175,9 @@ public final class ConfigTree {
                     {"World", "fullbright", "block_overlay_enabled", "hide_hurt_overlay", "hide_mob_deaths",
                             "render_hand_third_person", "smooth_perspective", "disable_front_perspective"},
                     {"Interface", "inventory_hud_enabled", "player_model_enabled", "container_bg_opacity",
-                            "scrollable_tooltips", "persistent_item_name", "wide_health_bar", "inventory_snow"},
+                            "scrollable_tooltips", "persistent_item_name", "wide_health_bar", "inventory_snow", "#Scoreboard"},
                     {"Chat", "chat_tabs", "chat_search", "chat_peek", "compact_chat", "smooth_chat", "chat_smooth_scroll",
-                            "expand_chat_history", "mention_notification", "better_screenshot_message"},
+                            "expand_chat_history", "mention_notification", "better_screenshot_message", "#Chat Style"},
                     {"Viewmodel", "item_size_feature", "#Swing Customizations", "item_starlight", "item_motion_blur",
                             "#Viewmodel Presets", "item_viewmodel_reset"},
                     {"Cosmetics", "custom_name_tag", "custom_damage_tags", "chroma_hat", "player_scale"}},

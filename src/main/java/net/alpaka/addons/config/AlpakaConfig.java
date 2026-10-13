@@ -429,6 +429,23 @@ public class AlpakaConfig {
     public boolean smoothChatEnabled = true;
     /** How long the slide takes, 1 (quick) to 10 (slow); each step is 60 ms. */
     public int smoothChatStrength = 5;
+    /**
+     * HUD Style's main switches: off, no HUD gets the blurred panel or the smooth font, whatever its
+     * own switch says. Each HUD's own switch sits in that feature's settings.
+     */
+    public boolean hudBlurAll = true;
+    public boolean hudSmoothFontAll = true;
+
+    /** A HUD's own blur switch, as far as the main switch lets it through. */
+    public boolean blurOn(boolean own) {
+        return hudBlurAll && own;
+    }
+
+    /** A HUD's own smooth font switch, as far as the main switch lets it through. */
+    public boolean smoothOn(boolean own) {
+        return hudSmoothFontAll && own;
+    }
+
     /** One rounded, padded panel behind the chat that shows the world blurred through it. */
     public boolean chatBlurEnabled = true;
     /**

@@ -105,7 +105,7 @@ public final class ChatBlurFeature {
     private ChatBlurFeature() {}
 
     public static boolean isEnabled() {
-        return AlpakaConfig.instance.chatBlurEnabled;
+        return AlpakaConfig.instance.blurOn(AlpakaConfig.instance.chatBlurEnabled);
     }
 
     /** The chat is about to be extracted into this graphics, with the mouse here. */

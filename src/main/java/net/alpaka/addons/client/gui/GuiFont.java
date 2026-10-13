@@ -131,12 +131,12 @@ public final class GuiFont {
 
     /** Whether chat is to be written in the configured font. */
     public static boolean inChat() {
-        return AlpakaConfig.instance.menuFontInChat && selectedIndex() != 0;
+        return AlpakaConfig.instance.smoothOn(AlpakaConfig.instance.menuFontInChat) && selectedIndex() != 0;
     }
 
     /** Whether the scoreboard sidebar is to be written in the configured font. */
     public static boolean inScoreboard() {
-        return AlpakaConfig.instance.menuFontInScoreboard && selectedIndex() != 0;
+        return AlpakaConfig.instance.smoothOn(AlpakaConfig.instance.menuFontInScoreboard) && selectedIndex() != 0;
     }
 
     /** Re-wraps the chat, whose lines were broken for the font they were added in. */

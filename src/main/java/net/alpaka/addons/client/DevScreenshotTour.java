@@ -67,6 +67,8 @@ public final class DevScreenshotTour {
             screen("config-search", () -> new AlpakaConfigScreen(null, "blaze")),
             screen("config-inventory-hud", () -> AlpakaConfigScreen.openOn("Interface", "Inventory HUD")),
             screen("config-hud-style", () -> AlpakaConfigScreen.openOn("Design", "HUD Style")),
+            screen("config-style-chat", () -> AlpakaConfigScreen.openOn("Chat", "Chat Style")),
+            screen("config-style-timer", () -> AlpakaConfigScreen.openOn("Slayer", "Slayer Boss Timer")),
             screen("config-screenshot", () -> AlpakaConfigScreen.openOn("Chat", "Better Screenshots")),
             screen("config-notification", () -> AlpakaConfigScreen.openOn("Main", "Notification Customization")),
             new Stop("config-notification-test", () -> net.alpaka.addons.features.notification.AlpakaNotifications.send("Test Notification",

@@ -55,7 +55,7 @@ object SlayerHudElement : HudElement {
         val width = SlayerHudRenderer.width(font, type, preview, cfg.slayerHudScale)
         val height = SlayerHudRenderer.height(type, preview, cfg.slayerHudScale)
 
-        val margin = HudPanel.margin(cfg.slayerHudBlur, cfg.slayerHudScale, TEXT_MARGIN)
+        val margin = HudPanel.margin(cfg.blurOn(cfg.slayerHudBlur), cfg.slayerHudScale, TEXT_MARGIN)
         return HudBounds(
             cfg.slayerHudX - margin,
             cfg.slayerHudY - margin,

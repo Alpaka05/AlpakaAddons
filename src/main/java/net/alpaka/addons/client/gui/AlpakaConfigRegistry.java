@@ -97,62 +97,24 @@ public class AlpakaConfigRegistry {
                 val -> GuiFont.NAMES[Math.round(val)],
                 "menu font typeface text smooth modern inter poppins varela round outfit nunito minecraft pixel gui bold").choices(GuiFont.NAMES));
 
-        // How the HUDs look, chat and scoreboard included, gathered in one place: each one picks
-        // the blurred panel and the menu font for itself, and they all share one blur strength.
+        // How the HUDs look, chat and scoreboard included: main switches for the blurred panel and
+        // the menu font, and the one blur strength they share. Each HUD's own switches sit in its
+        // settings; see registerHudStyleToggles.
         OPTIONS.add(new ConfigOption("HUD Style", ConfigCategory.GENERAL));
 
-        OPTIONS.add(new ConfigOption("hud_blur", "Blurred Background",
-                "A rounded panel behind each, with the world blurred through it.",
+        OPTIONS.add(new ConfigOption("hud_blur_all", "Blurred Backgrounds",
+                "Main switch for the blurred panels behind the HUDs. Which HUD has one is set in each one's own settings.",
                 ConfigCategory.GENERAL,
-                java.util.List.of(
-                        new ConfigOption.ToggleEntry("Chat",
-                                () -> AlpakaConfig.instance.chatBlurEnabled,
-                                v -> { AlpakaConfig.instance.chatBlurEnabled = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Scoreboard",
-                                () -> AlpakaConfig.instance.scoreboardBlurEnabled,
-                                v -> { AlpakaConfig.instance.scoreboardBlurEnabled = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Slayer HUD",
-                                () -> AlpakaConfig.instance.slayerHudBlur,
-                                v -> { AlpakaConfig.instance.slayerHudBlur = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Boss Timer",
-                                () -> AlpakaConfig.instance.slayerTimerHudBlur,
-                                v -> { AlpakaConfig.instance.slayerTimerHudBlur = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("World Age",
-                                () -> AlpakaConfig.instance.worldAgeHudBlur,
-                                v -> { AlpakaConfig.instance.worldAgeHudBlur = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Inventory HUD (flat style)",
-                                () -> AlpakaConfig.instance.inventoryHudBlur,
-                                v -> { AlpakaConfig.instance.inventoryHudBlur = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Notifications",
-                                () -> AlpakaConfig.instance.notificationBlur,
-                                v -> { AlpakaConfig.instance.notificationBlur = v; AlpakaConfig.save(); })
-                ),
-                "blur blurred background panel glass frosted rounded shadow hud chat scoreboard sidebar slayer timer world age inventory notification"));
+                () -> AlpakaConfig.instance.hudBlurAll,
+                v -> { AlpakaConfig.instance.hudBlurAll = v; AlpakaConfig.save(); },
+                "blur blurred background panel glass frosted rounded shadow hud all main"));
 
-        OPTIONS.add(new ConfigOption("hud_smooth_font", "Smooth Font",
-                "Writes each in the Menu Font instead of the pixel font.",
+        OPTIONS.add(new ConfigOption("hud_smooth_font_all", "Smooth Font",
+                "Main switch for writing the HUDs in the Menu Font. Which HUD uses it is set in each one's own settings.",
                 ConfigCategory.GENERAL,
-                java.util.List.of(
-                        new ConfigOption.ToggleEntry("Chat",
-                                () -> AlpakaConfig.instance.menuFontInChat,
-                                v -> { AlpakaConfig.instance.menuFontInChat = v; AlpakaConfig.save(); GuiFont.refreshChat(); }),
-                        new ConfigOption.ToggleEntry("Scoreboard",
-                                () -> AlpakaConfig.instance.menuFontInScoreboard,
-                                v -> { AlpakaConfig.instance.menuFontInScoreboard = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Slayer HUD",
-                                () -> AlpakaConfig.instance.slayerHudSmoothFont,
-                                v -> { AlpakaConfig.instance.slayerHudSmoothFont = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Boss Timer",
-                                () -> AlpakaConfig.instance.slayerTimerHudSmoothFont,
-                                v -> { AlpakaConfig.instance.slayerTimerHudSmoothFont = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("World Age",
-                                () -> AlpakaConfig.instance.worldAgeHudSmoothFont,
-                                v -> { AlpakaConfig.instance.worldAgeHudSmoothFont = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Notifications",
-                                () -> AlpakaConfig.instance.notificationSmoothFont,
-                                v -> { AlpakaConfig.instance.notificationSmoothFont = v; AlpakaConfig.save(); })
-                ),
-                "smooth font menu font typeface text nunito hud chat scoreboard sidebar slayer timer world age notification"));
+                () -> AlpakaConfig.instance.hudSmoothFontAll,
+                v -> { AlpakaConfig.instance.hudSmoothFontAll = v; AlpakaConfig.save(); GuiFont.refreshChat(); },
+                "smooth font menu font typeface text nunito hud all main"));
 
         OPTIONS.add(new ConfigOption("hud_blur_strength", "Blur Strength",
                 "How strongly the world is blurred behind every blurred panel, the command wheel's included.",
@@ -2007,7 +1969,60 @@ public class AlpakaConfigRegistry {
                 5.0f, 80.0f, val -> String.format(Locale.ROOT, "%.0f%%", val),
                 "heartbeat low hp health percentage threshold trigger sound volume"));
 
+        registerHudStyleToggles();
         buildCategoryCache();
+    }
+
+    /**
+     * Each HUD's own Blurred Background and Smooth Font switches. Registered last and placed in the
+     * HUD's feature by ConfigTree's PARENTS, so they come after its other settings. Chat and the
+     * scoreboard have no feature of their own to go into, so they get one each.
+     */
+    private static void registerHudStyleToggles() {
+        styleToggle("slayer_hud_blur", "Blurred Background", ConfigCategory.SKYBLOCK, true,
+                () -> AlpakaConfig.instance.slayerHudBlur, v -> AlpakaConfig.instance.slayerHudBlur = v);
+        styleToggle("slayer_hud_smooth_font", "Smooth Font", ConfigCategory.SKYBLOCK, false,
+                () -> AlpakaConfig.instance.slayerHudSmoothFont, v -> AlpakaConfig.instance.slayerHudSmoothFont = v);
+        styleToggle("slayer_timer_blur", "Blurred Background", ConfigCategory.SKYBLOCK, true,
+                () -> AlpakaConfig.instance.slayerTimerHudBlur, v -> AlpakaConfig.instance.slayerTimerHudBlur = v);
+        styleToggle("slayer_timer_smooth_font", "Smooth Font", ConfigCategory.SKYBLOCK, false,
+                () -> AlpakaConfig.instance.slayerTimerHudSmoothFont, v -> AlpakaConfig.instance.slayerTimerHudSmoothFont = v);
+        styleToggle("world_age_blur", "Blurred Background", ConfigCategory.SKYBLOCK, true,
+                () -> AlpakaConfig.instance.worldAgeHudBlur, v -> AlpakaConfig.instance.worldAgeHudBlur = v);
+        styleToggle("world_age_smooth_font", "Smooth Font", ConfigCategory.SKYBLOCK, false,
+                () -> AlpakaConfig.instance.worldAgeHudSmoothFont, v -> AlpakaConfig.instance.worldAgeHudSmoothFont = v);
+        OPTIONS.add(new ConfigOption("inventory_hud_blur", "Blurred Background",
+                "A blurred panel behind the HUD, in the flat style. Needs Blurred Backgrounds on under Design > HUD Style.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.inventoryHudBlur,
+                v -> { AlpakaConfig.instance.inventoryHudBlur = v; AlpakaConfig.save(); },
+                "blur blurred background panel inventory hud flat"));
+        styleToggle("notification_blur", "Blurred Background", ConfigCategory.GENERAL, true,
+                () -> AlpakaConfig.instance.notificationBlur, v -> AlpakaConfig.instance.notificationBlur = v);
+        styleToggle("notification_smooth_font", "Smooth Font", ConfigCategory.GENERAL, false,
+                () -> AlpakaConfig.instance.notificationSmoothFont, v -> AlpakaConfig.instance.notificationSmoothFont = v);
+
+        OPTIONS.add(new ConfigOption("Chat Style", ConfigCategory.VISUALS));
+        styleToggle("chat_blur", "Blurred Background", ConfigCategory.VISUALS, true,
+                () -> AlpakaConfig.instance.chatBlurEnabled, v -> AlpakaConfig.instance.chatBlurEnabled = v);
+        styleToggle("chat_smooth_font", "Smooth Font", ConfigCategory.VISUALS, false,
+                () -> AlpakaConfig.instance.menuFontInChat, v -> { AlpakaConfig.instance.menuFontInChat = v; GuiFont.refreshChat(); });
+
+        OPTIONS.add(new ConfigOption("Scoreboard", ConfigCategory.VISUALS));
+        styleToggle("scoreboard_blur", "Blurred Background", ConfigCategory.VISUALS, true,
+                () -> AlpakaConfig.instance.scoreboardBlurEnabled, v -> AlpakaConfig.instance.scoreboardBlurEnabled = v);
+        styleToggle("scoreboard_smooth_font", "Smooth Font", ConfigCategory.VISUALS, false,
+                () -> AlpakaConfig.instance.menuFontInScoreboard, v -> AlpakaConfig.instance.menuFontInScoreboard = v);
+    }
+
+    private static void styleToggle(String id, String title, ConfigCategory category, boolean blur,
+                                    java.util.function.Supplier<Boolean> getter, java.util.function.Consumer<Boolean> setter) {
+        String description = blur
+                ? "A rounded panel behind it, with the world blurred through. Needs Blurred Backgrounds on under Design > HUD Style."
+                : "Writes it in the Menu Font instead of the pixel font. Needs Smooth Font on under Design > HUD Style.";
+        String keywords = blur ? "blur blurred background panel glass frosted rounded" : "smooth font menu font typeface text nunito";
+        OPTIONS.add(new ConfigOption(id, title, description, category, getter,
+                v -> { setter.accept(v); AlpakaConfig.save(); }, keywords));
     }
 
     private static void buildCategoryCache() {

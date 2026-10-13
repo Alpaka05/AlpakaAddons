@@ -258,14 +258,14 @@ public class WorldAgeHudRenderer {
         graphics.pose().pushMatrix();
         graphics.pose().translate((float) x, (float) y);
         graphics.pose().scale(scale, scale);
-        Component text = HudPanel.text(dayComponent(day), AlpakaConfig.instance.worldAgeHudSmoothFont);
-        if (AlpakaConfig.instance.worldAgeHudBlur) HudPanel.aroundText(graphics, font.width(text), 9, scale);
+        Component text = HudPanel.text(dayComponent(day), AlpakaConfig.instance.smoothOn(AlpakaConfig.instance.worldAgeHudSmoothFont));
+        if (AlpakaConfig.instance.blurOn(AlpakaConfig.instance.worldAgeHudBlur)) HudPanel.aroundText(graphics, font.width(text), 9, scale);
         graphics.text(font, text, 0, 0, color);
         graphics.pose().popMatrix();
     }
 
     public static int getWidth(Font font, long day, float scale) {
-        Component text = HudPanel.text(Component.literal("Day: " + day), AlpakaConfig.instance.worldAgeHudSmoothFont);
+        Component text = HudPanel.text(Component.literal("Day: " + day), AlpakaConfig.instance.smoothOn(AlpakaConfig.instance.worldAgeHudSmoothFont));
         return (int) Math.ceil(font.width(text) * scale);
     }
 

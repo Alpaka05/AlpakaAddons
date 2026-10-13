@@ -174,7 +174,7 @@ object AlpakaNotifications {
     /** Wrapped in the font the notice is drawn in, which is settled when it is queued. */
     private fun wrap(text: Component): List<FormattedCharSequence> {
         val font = Minecraft.getInstance().font ?: return emptyList()
-        return font.split(HudPanel.text(text, AlpakaConfig.instance.notificationSmoothFont), WIDTH - PAD * 2)
+        return font.split(HudPanel.text(text, AlpakaConfig.instance.smoothOn(AlpakaConfig.instance.notificationSmoothFont)), WIDTH - PAD * 2)
     }
 
     private fun enqueue(title: String, lines: List<FormattedCharSequence>, accent: Int, holdMs: Long): Long {
@@ -332,7 +332,7 @@ object AlpakaNotifications {
     private fun draw(graphics: GuiGraphicsExtractor, font: Font, notice: Notice, x: Int, y: Int, shown: Float, now: Long) {
         val accent = if (notice.accent != 0) notice.accent else ModernGuiUtils.getAccentColor()
         val height = notice.height
-        val blurred = AlpakaConfig.instance.notificationBlur
+        val blurred = AlpakaConfig.instance.blurOn(AlpakaConfig.instance.notificationBlur)
 
         if (blurred) {
             // The panel fades as a whole, blur included, rather than through its tint alone.
@@ -342,7 +342,7 @@ object AlpakaNotifications {
         }
 
         val textX = x + PAD
-        val title = HudPanel.text(Component.literal(notice.title), AlpakaConfig.instance.notificationSmoothFont)
+        val title = HudPanel.text(Component.literal(notice.title), AlpakaConfig.instance.smoothOn(AlpakaConfig.instance.notificationSmoothFont))
         graphics.text(font, title, textX, y + PAD, faded(accent, shown))
         for (line in notice.body.indices) {
             graphics.text(font, notice.body[line], textX, y + PAD + LINE + line * LINE, faded(BODY_TEXT, shown))

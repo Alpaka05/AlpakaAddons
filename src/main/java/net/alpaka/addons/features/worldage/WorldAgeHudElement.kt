@@ -45,7 +45,7 @@ object WorldAgeHudElement : HudElement {
         val width = WorldAgeHudRenderer.getWidth(font, WorldAgeHudRenderer.getWorldDay(), scale)
         val height = WorldAgeHudRenderer.getHeight(font, scale)
 
-        val margin = HudPanel.margin(cfg.worldAgeHudBlur, scale, TEXT_MARGIN)
+        val margin = HudPanel.margin(cfg.blurOn(cfg.worldAgeHudBlur), scale, TEXT_MARGIN)
         return HudBounds(
             cfg.worldAgeHudX - margin,
             cfg.worldAgeHudY - margin,

@@ -97,7 +97,7 @@ object SlayerSessionTracker {
      * The last answer from each area test, together with the sidebar snapshot and slayer it was
      * worked out for.
      *
-     * The HUD asks every frame, and with "pause outside area" on its layout asks seven times a
+     * The HUD asks every frame, and with "pause outside area" on its layout asks three times a
      * frame, but the sidebar is only re-read every [AREA_REFRESH_MS]. Between reads the scan would
      * lowercase every line again just to reach the same answer. A snapshot is never modified once
      * built (a re-read hands back a new list), so the list's identity together with the slayer is a

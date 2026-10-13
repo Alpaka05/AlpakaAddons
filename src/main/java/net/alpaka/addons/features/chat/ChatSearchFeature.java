@@ -75,10 +75,14 @@ public final class ChatSearchFeature {
         loweredIn = null;
         if (input != null) {
             draft = input.getValue();
+            // setValue fires the input's responder, ChatScreen.onEdited, which ChatScreenMixin hands
+            // to onEdited("") now that searching is on - and that already re-lays the chat out.
+            // Refreshing again here would replay the whole history a second time for nothing.
             input.setValue("");
             input.setSuggestion(HINT);
+        } else {
+            refresh();
         }
-        refresh();
     }
 
     /** Leaves the search; the input gets its earlier text back when it is still around. */

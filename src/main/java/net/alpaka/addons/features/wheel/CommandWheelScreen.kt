@@ -63,6 +63,12 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
     /** Eased hover glow of the two page arrows, left then right. */
     private val arrowGlow = FloatArray(2)
 
+    // The dial's mesh, kept between frames: its buffers grow to fit the shadow ring, some 5,000
+    // vertices, and a fresh mesh every frame regrew and copied them each time. Rebuilt when the GUI
+    // scale changes, since its feather is about one screen pixel.
+    private var wheelMesh: WheelMesh? = null
+    private var wheelMeshScale = 0
+
     private val openedAtNanos = System.nanoTime()
     private var lastFrameNanos = openedAtNanos
 
@@ -231,7 +237,9 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
         graphics.fill(0, 0, this.width, this.height, scaleAlpha(0x38000000, open))
 
         val guiScale = (this.minecraft ?: Minecraft.getInstance()).window.guiScale.coerceAtLeast(1)
-        val mesh = WheelMesh(1.15f / guiScale)
+        val mesh = wheelMesh?.takeIf { wheelMeshScale == guiScale }
+            ?: WheelMesh(1.15f / guiScale).also { wheelMesh = it; wheelMeshScale = guiScale }
+        mesh.reset()
         val accent = ModernGuiUtils.getAccentColor()
         val hoveredArrow = arrowAt(mouseX.toDouble(), mouseY.toDouble())
 

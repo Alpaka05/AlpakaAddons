@@ -14,7 +14,10 @@ data class HudBounds(val x0: Int, val y0: Int, val x1: Int, val y1: Int) {
         mouseX >= x0 && mouseX < x1 && mouseY >= y0 && mouseY < y1
 }
 
-/** Where the editor draws an element: its anchor and box, both nudged on screen as in [HudElement.visibleBounds]. */
+/**
+ * Where an element is drawn, in the editor and in game alike: its anchor and box, both nudged on
+ * screen as in [HudElement.visibleBounds].
+ */
 class VisiblePlacement(val anchorX: Int, val anchorY: Int, val box: HudBounds)
 
 /**
@@ -110,8 +113,10 @@ interface HudElement {
 
     /**
      * [visibleAnchorX], [visibleAnchorY] and [visibleBounds] from a single [bounds] call. The editor
-     * needs all three for every HUD every frame, and [bounds] measures the HUD's text, so asking
-     * three times measured the same text three times. Must agree with the three methods above.
+     * and the game's own HUD renderers place a HUD every frame, and [bounds] measures the HUD's text,
+     * so asking for each value separately measured the same text once per value. Placing a HUD
+     * through this one call in both keeps the editor's preview exactly where the game draws it. Must
+     * agree with the three methods above.
      */
     fun visiblePlacement(screenWidth: Int, screenHeight: Int): VisiblePlacement {
         val box = bounds()

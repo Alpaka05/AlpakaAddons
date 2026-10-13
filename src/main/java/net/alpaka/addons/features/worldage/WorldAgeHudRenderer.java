@@ -2,8 +2,7 @@ package net.alpaka.addons.features.worldage;
 
 import net.alpaka.addons.client.gui.GuiFont;
 import net.alpaka.addons.client.gui.HudPanel;
-import net.alpaka.addons.client.hud.HudBounds;
-import net.alpaka.addons.client.hud.HudElementKt;
+import net.alpaka.addons.client.hud.VisiblePlacement;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.slayer.SlayerDropTracker;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientEntityEvents;
@@ -249,13 +248,11 @@ public class WorldAgeHudRenderer {
 
         // Clamped so a GUI-scale change cannot leave the HUD off screen; the stored position is
         // untouched, so returning to the old scale restores it exactly. The line is measured once
-        // here rather than once per axis.
+        // through visiblePlacement, the editor's own call, rather than once per axis.
         int screenWidth = mc.getWindow().getGuiScaledWidth();
         int screenHeight = mc.getWindow().getGuiScaledHeight();
-        HudBounds box = WorldAgeHudElement.INSTANCE.bounds();
-        int x = AlpakaConfig.instance.worldAgeHudX + HudElementKt.clampShift(box.getX0(), box.getX1(), screenWidth);
-        int y = AlpakaConfig.instance.worldAgeHudY + HudElementKt.clampShift(box.getY0(), box.getY1(), screenHeight);
-        renderHud(graphics, x, y, AlpakaConfig.instance.worldAgeHudScale);
+        VisiblePlacement placement = WorldAgeHudElement.INSTANCE.visiblePlacement(screenWidth, screenHeight);
+        renderHud(graphics, placement.getAnchorX(), placement.getAnchorY(), AlpakaConfig.instance.worldAgeHudScale);
     }
 
     public static void renderHud(GuiGraphicsExtractor graphics, int x, int y, float scale) {

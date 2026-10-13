@@ -821,6 +821,26 @@ public class AlpakaConfig {
         return existedAtStart;
     }
 
+    /**
+     * Every setting back to its default, after the player confirmed it in the config.
+     *
+     * What is not a setting stays: slayer kills and drops, the saved viewmodel presets, where the
+     * stats record is synced to (a fact about this machine - losing it would look like losing the
+     * stats), and the bookkeeping of which version last ran and which one-off migrations are done.
+     */
+    public static void resetToDefaults() {
+        AlpakaConfig old = instance;
+        AlpakaConfig fresh = new AlpakaConfig();
+        fresh.slayerBossMap = old.slayerBossMap;
+        fresh.itemPresets = old.itemPresets;
+        fresh.statsDirectory = old.statsDirectory;
+        fresh.statsDirectoryHadFile = old.statsDirectoryHadFile;
+        fresh.lastSeenVersion = old.lastSeenVersion;
+        fresh.menuFontNunitoApplied = true;
+        instance = fresh;
+        save();
+    }
+
     public static void load() {
         existedAtStart = FILE.exists();
         if (!FILE.exists()) {

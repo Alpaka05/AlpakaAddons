@@ -70,6 +70,11 @@ public final class DevScreenshotTour {
             screen("config-style-chat", () -> AlpakaConfigScreen.openOn("Chat", "Chat Style")),
             screen("config-style-timer", () -> AlpakaConfigScreen.openOn("Slayer", "Slayer Boss Timer")),
             screen("config-screenshot", () -> AlpakaConfigScreen.openOn("Chat", "Better Screenshots")),
+            screen("config-reset-all", () -> AlpakaConfigScreen.openOn("Main", "Reset All Settings")),
+            screen("config-reset-prompt", () -> new net.alpaka.addons.client.AlpakaConfirmScreen(null, "Reset All Settings",
+                    "Puts every setting of Alpaka Addons back to its default, HUD positions included. "
+                            + "Slayer stats and saved viewmodel presets are kept. This cannot be undone.",
+                    "Reset All", true, () -> {})),
             screen("config-notification", () -> AlpakaConfigScreen.openOn("Main", "Notification Customization")),
             new Stop("config-notification-test", () -> net.alpaka.addons.features.notification.AlpakaNotifications.send("Test Notification",
                     "This is how notices look. It slides away after the duration you set."), () -> true, 20),

@@ -163,6 +163,21 @@ public class AlpakaConfigRegistry {
                         () -> AlpakaConfig.instance.disableAllFeatures())),
                 "disable all features turn off reset everywhere confirm prompt"));
 
+        OPTIONS.add(new ConfigOption("reset_all_settings", "Reset All Settings",
+                "Puts every setting of the mod back to its default after confirmation.",
+                ConfigCategory.GENERAL,
+                "Reset All",
+                parent -> Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.client.AlpakaConfirmScreen(parent,
+                        "Reset All Settings",
+                        "Puts every setting of Alpaka Addons back to its default, HUD positions included. "
+                                + "Slayer stats and saved viewmodel presets are kept. This cannot be undone.",
+                        "Reset All", true,
+                        () -> {
+                            AlpakaConfig.resetToDefaults();
+                            GuiFont.refreshChat();
+                        })),
+                "reset all settings default defaults factory restore clear confirm prompt"));
+
         // --- 1. VISUALS & RENDERING ---
 
         OPTIONS.add(new ConfigOption("World & Mobs", ConfigCategory.VISUALS));

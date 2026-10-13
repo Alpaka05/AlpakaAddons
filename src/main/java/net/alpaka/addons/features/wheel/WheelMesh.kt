@@ -37,8 +37,12 @@ import kotlin.math.sqrt
  * open animation that scales the pose scales this geometry too.
  */
 class WheelMesh @JvmOverloads constructor(private val feather: Float, private val blur: Boolean = false, private val blurTint: Float = 0.55f) {
-    private var xy = FloatArray(2048)
-    private var colors = IntArray(1024)
+    // Sized for the small shapes that make up most meshes (a chevron is 8 vertices, a glint 8);
+    // vertex() doubles both for a ring or a wheel. Most meshes are built fresh every frame, and a
+    // large starting buffer was kilobytes of zeroed garbage per chevron. submit() copies out only
+    // what was used, so the capacity never shows.
+    private var xy = FloatArray(128)
+    private var colors = IntArray(64)
     private var count = 0
 
     private fun vertex(x: Float, y: Float, color: Int) {

@@ -111,6 +111,10 @@ public final class DevScreenshotTour {
             new Stop(null, DevScreenshotTour::survival,
                     () -> Minecraft.getInstance().gameMode != null && Minecraft.getInstance().gameMode.canHurtPlayer(), 20),
             new Stop("survival-hud", DevScreenshotTour::actionBar, () -> true, 10),
+            // The wide health bar: centred, with absorption gold over the first hearts, then on its own row.
+            new Stop("health-bar-centered", () -> healthBar(true, 1), () -> true, 20),
+            new Stop("health-bar-own-row", () -> healthBar(false, 0), () -> true, 20),
+            new Stop("health-bar-hidden", () -> healthBar(true, 2), () -> true, 20),
             // A sidebar like Hypixel's over its blurred panel, and a sword under starlight; twice, to
             // see the galaxy drift and twinkle.
             new Stop(null, DevScreenshotTour::scoreboardAndStarlight, () -> true, 20),
@@ -381,6 +385,27 @@ public final class DevScreenshotTour {
     }
 
     /** An action bar line like Hypixel's, which is up the whole time on SkyBlock. */
+    private static void healthBar(boolean centered, int absorptionMode) {
+        Minecraft mc = Minecraft.getInstance();
+        AlpakaConfig.instance.wideHealthBarEnabled = true;
+        AlpakaConfig.instance.wideHealthBarCentered = centered;
+        AlpakaConfig.instance.wideHealthBarAbsorption = absorptionMode;
+        AlpakaConfig.instance.inventoryHudEnabled = false;
+        mc.gui.hud.getChat().clearMessages(false);
+        java.util.UUID id = mc.player.getUUID();
+        net.minecraft.client.server.IntegratedServer server = mc.getSingleplayerServer();
+        if (server == null) return;
+        server.execute(() -> {
+            net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayer(id);
+            if (player == null) return;
+            player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(40.0);
+            player.setHealth(30.0f);
+            player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_ABSORPTION).setBaseValue(20.0);
+            player.setAbsorptionAmount(8.0f);
+            player.setExperienceLevels(37);
+        });
+    }
+
     private static void actionBar() {
         Minecraft.getInstance().gui.hud.setOverlayMessage(
                 Component.literal("§c100/100❤     §a50❈ Defense     §b100/100✎ Mana"), false);

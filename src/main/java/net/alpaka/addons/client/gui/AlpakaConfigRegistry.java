@@ -388,6 +388,23 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.wideHealthBarEnabled = v; AlpakaConfig.save(); },
                 "health hearts hunger food armor bar hide long wide single row absorption hotbar skyblock life"));
 
+        OPTIONS.add(new ConfigOption("wide_health_bar_centered", "Center Health Bar",
+                "One unbroken row over the middle of the hotbar; the level number moves onto the XP bar.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.wideHealthBarCentered,
+                v -> { AlpakaConfig.instance.wideHealthBarCentered = v; AlpakaConfig.save(); },
+                "center centre health bar hearts middle row unbroken level xp experience"));
+
+        OPTIONS.add(new ConfigOption("wide_health_bar_absorption", "Absorption Hearts",
+                "On a row of their own, gold over the first hearts (used up first), or hidden.",
+                ConfigCategory.VISUALS,
+                () -> (float) AlpakaConfig.instance.wideHealthBarAbsorption,
+                v -> { AlpakaConfig.instance.wideHealthBarAbsorption = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (net.alpaka.addons.features.healthbar.WideHealthBarFeature.ABSORPTION_NAMES.length - 1),
+                val -> net.alpaka.addons.features.healthbar.WideHealthBarFeature.ABSORPTION_NAMES[Math.round(val)],
+                "absorption hearts gold golden yellow hide merge health row")
+                .choices(net.alpaka.addons.features.healthbar.WideHealthBarFeature.ABSORPTION_NAMES));
+
         OPTIONS.add(new ConfigOption("Chat", ConfigCategory.VISUALS));
 
         OPTIONS.add(new ConfigOption("smooth_chat", "Smooth Chat",

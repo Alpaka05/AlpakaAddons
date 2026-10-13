@@ -508,6 +508,10 @@ public class AlpakaConfig {
      * neither of which SkyBlock needs; absorption hearts sit on the row above it.
      */
     public boolean wideHealthBarEnabled = false;
+    /** The row of twenty in one piece, centred over the hotbar; the level number moves onto the XP bar. */
+    public boolean wideHealthBarCentered = false;
+    /** Absorption hearts: 0 a row of their own, 1 gold over the first hearts, 2 hidden. */
+    public int wideHealthBarAbsorption = 0;
 
     /** A Hypixel party invite raises a notification: Y joins, N dismisses. */
     public boolean partyInvitePromptEnabled = true;

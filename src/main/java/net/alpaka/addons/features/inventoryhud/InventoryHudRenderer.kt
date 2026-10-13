@@ -220,7 +220,9 @@ object InventoryHudRenderer {
                 columnTop(VanillaHudElements.AIR_BAR, airShown))
         }
         if ((mc.gui.hud as HudOverlayAccessor).`alpaka$getOverlayMessageTime`() > 0) {
-            top = maxOf(top, registeredHeight(VanillaHudElements.OVERLAY_MESSAGE, ACTION_BAR_LINE) + ACTION_BAR_ABOVE_LINE)
+            // Vanilla's own line, not the registry's: Fabric has no height for the action bar (see
+            // above), so asking it threw an exception every frame only to land on this same number.
+            top = maxOf(top, ACTION_BAR_LINE + ACTION_BAR_ABOVE_LINE)
         }
         return top
     }

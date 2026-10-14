@@ -40,7 +40,7 @@ object CustomDamageTagFeature {
 
     /** Names for the config slider, indexed by the DUNGEON_* constants. */
     @JvmField
-    val DUNGEON_MODE_NAMES = arrayOf("Show", "Hide In Boss Room", "Hide In Whole Dungeon")
+    val DUNGEON_MODE_NAMES = arrayOf("Show", "Hide in Boss Room", "Hide in Whole Dungeon")
 
     /** The slayer bosses' names, from every slayer. */
     private val SLAYER_BOSS_NAMES: Array<String> =

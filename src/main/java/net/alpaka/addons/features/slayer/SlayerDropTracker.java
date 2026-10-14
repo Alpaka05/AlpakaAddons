@@ -460,14 +460,14 @@ public class SlayerDropTracker {
             Component dropComponent = getDropComponent(pending.message(), pending.item());
             MutableComponent feedback;
             if (lastDropped == null) {
-                feedback = Component.literal("First ").append(dropComponent)
+                feedback = Component.literal("First ").withStyle(ChatFormatting.GRAY).append(dropComponent)
                         .append(Component.literal(" - at " + currentKills + " " + pending.type().display + " kills"));
             } else {
                 int sinceLast = currentKills - lastDropped;
-                feedback = Component.literal("Dropped ").append(dropComponent)
+                feedback = Component.literal("Dropped ").withStyle(ChatFormatting.GRAY).append(dropComponent)
                         .append(Component.literal(" after "))
                         .append(Component.literal(String.valueOf(sinceLast)).withStyle(ChatFormatting.GREEN))
-                        .append(Component.literal(" Boss" + (sinceLast != 1 ? "es" : "")));
+                        .append(Component.literal(" boss" + (sinceLast != 1 ? "es" : "")));
             }
             if (AlpakaConfig.instance.slayerRngDropGuildChatEnabled && isHeadlineDrop(pending.type(), pending.item())) {
                 Component source = AlpakaConfig.instance.slayerShareMessage == SHARE_HYPIXEL_LINE
@@ -587,11 +587,11 @@ public class SlayerDropTracker {
 
     /** Dev tour only: a headline drop line and a since line, to see the share buttons in the chat. */
     public static void devShareSample() {
-        String drop = "Dropped High Class Archfiend Dice after 412 Bosses";
-        sendModMessage(Component.literal("Dropped ")
+        String drop = "Dropped High Class Archfiend Dice after 412 bosses";
+        sendModMessage(Component.literal("Dropped ").withStyle(ChatFormatting.GRAY)
                 .append(Component.literal("High Class Archfiend Dice").withStyle(ChatFormatting.LIGHT_PURPLE))
                 .append(" after ").append(Component.literal("412").withStyle(ChatFormatting.GREEN))
-                .append(" Bosses"));
+                .append(" bosses"));
         sendModMessage(shareButtons(drop));
         sendModMessage(Component.literal("§fBosses since last Warden Heart: 87  ").append(shareButtons("Bosses since last Warden Heart: 87")));
     }

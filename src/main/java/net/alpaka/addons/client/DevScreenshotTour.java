@@ -126,7 +126,8 @@ public final class DevScreenshotTour {
                     () -> true, 30),
             new Stop("confirm-quick-commands-after-cancel", () -> click(((AlpakaConfirmScreen) screen()).devCancelPoint()),
                     () -> true, 30),
-            new Stop(null, () -> click(((CommandWheelConfigScreen) screen()).devResetPoint()), () -> true, 10),
+            new Stop("confirm-dialog-quick-commands-again", () -> click(((CommandWheelConfigScreen) screen()).devResetPoint()),
+                    () -> true, 10),
             new Stop("confirm-quick-commands-after-reset", () -> click(((AlpakaConfirmScreen) screen()).devConfirmPoint()),
                     () -> true, 30),
             new Stop(null, DevScreenshotTour::enterWorld,
@@ -138,7 +139,7 @@ public final class DevScreenshotTour {
             screen("pause-menu", net.alpaka.addons.features.escapemenu.CustomPauseScreen::new),
             new Stop("pause-wiki-dialog", () -> click(((net.alpaka.addons.features.escapemenu.CustomPauseScreen) screen())
                     .devWikiPoint()), () -> true, 30),
-            new Stop(null, () -> click(((AlpakaConfirmScreen) screen()).devCancelPoint()), () -> true, 5),
+            new Stop("pause-after-wiki-cancel", () -> click(((AlpakaConfirmScreen) screen()).devCancelPoint()), () -> true, 5),
             // Leaving asks through the same dialog; Cancel brings the menu straight back, without
             // its entrance - three ticks would catch it mid-way if it replayed.
             new Stop("confirm-dialog-leave", () -> click(((net.alpaka.addons.features.escapemenu.CustomPauseScreen) screen())
@@ -159,7 +160,8 @@ public final class DevScreenshotTour {
             new Stop("confirm-dialog-hud-reset", () -> click(((HudEditorScreen) screen()).devResetAllPoint()), () -> true, 30),
             new Stop("confirm-hud-editor-after-cancel", () -> click(((AlpakaConfirmScreen) screen()).devCancelPoint()),
                     () -> true, 30),
-            new Stop(null, () -> click(((HudEditorScreen) screen()).devResetAllPoint()), () -> true, 10),
+            new Stop("confirm-dialog-hud-reset-again", () -> click(((HudEditorScreen) screen()).devResetAllPoint()),
+                    () -> true, 10),
             new Stop("confirm-hud-editor-after-reset", () -> click(((AlpakaConfirmScreen) screen()).devConfirmPoint()),
                     () -> true, 30),
             // A HUD under the mouse in the editor: its name on a pill, its outline lit.
@@ -235,9 +237,9 @@ public final class DevScreenshotTour {
             new Stop("fire-pits", DevScreenshotTour::placeFirePits, () -> true, 30),
             // Last, as it ends the world: confirming the leave dialog leaves for the title screen
             // rather than going back to the pause menu.
-            screen(null, net.alpaka.addons.features.escapemenu.CustomPauseScreen::new),
-            new Stop(null, () -> click(((net.alpaka.addons.features.escapemenu.CustomPauseScreen) screen()).devLeavePoint()),
-                    () -> true, 10),
+            screen("confirm-pause-before-leaving", net.alpaka.addons.features.escapemenu.CustomPauseScreen::new),
+            new Stop("confirm-dialog-leave-for-real", () -> click(((net.alpaka.addons.features.escapemenu.CustomPauseScreen) screen())
+                    .devLeavePoint()), () -> true, 10),
             new Stop("confirm-left-world", () -> click(((AlpakaConfirmScreen) screen()).devConfirmPoint()),
                     () -> Minecraft.getInstance().level == null, 40)
     );

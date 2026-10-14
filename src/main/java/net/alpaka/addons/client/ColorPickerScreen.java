@@ -187,18 +187,18 @@ public class ColorPickerScreen extends Screen {
         // The colour now, over a checkerboard where it is see-through.
         int px = l.leftX();
         int py = l.bodyY();
-        ModernGuiUtils.drawRoundedRect(graphics, px, py, LEFT_W, l.previewH(), 5, AlpakaStyle.FIELD);
+        ModernGuiUtils.drawRoundedRect(graphics, px, py, LEFT_W, l.previewH(), AlpakaStyle.CARD_RADIUS, AlpakaStyle.FIELD);
         if (a < 255) {
             graphics.enableScissor(px + 2, py + 2, px + LEFT_W - 2, py + l.previewH() - 2);
             for (int cy = 0; cy * 6 < l.previewH(); cy++) {
                 for (int cx = 0; cx * 6 < LEFT_W; cx++) {
-                    if ((cx + cy) % 2 == 0) ModernGuiUtils.drawRect(graphics, px + cx * 6, py + cy * 6, 6, 6, 0xFF3A3A3A);
+                    if ((cx + cy) % 2 == 0) ModernGuiUtils.drawRect(graphics, px + cx * 6, py + cy * 6, 6, 6, AlpakaStyle.TRACK);
                 }
             }
             graphics.disableScissor();
         }
-        ModernGuiUtils.drawRoundedRect(graphics, px, py, LEFT_W, l.previewH(), 5, currentColor());
-        ModernGuiUtils.drawRoundedOutline(graphics, px, py, LEFT_W, l.previewH(), 5, AlpakaStyle.LINE);
+        ModernGuiUtils.drawRoundedRect(graphics, px, py, LEFT_W, l.previewH(), AlpakaStyle.CARD_RADIUS, currentColor());
+        ModernGuiUtils.drawRoundedOutline(graphics, px, py, LEFT_W, l.previewH(), AlpakaStyle.CARD_RADIUS, AlpakaStyle.LINE);
 
         // The hex code, to type into.
         boolean hoverHex = inside(mouseX, mouseY, px, l.hexY(), LEFT_W, FIELD_H);
@@ -213,10 +213,10 @@ public class ColorPickerScreen extends Screen {
             boolean hover = inside(mouseX, mouseY, sx, sy, SWATCH, SWATCH);
             boolean current = PRESETS[i] == currentColor();
             if (current || hover) {
-                ModernGuiUtils.drawRoundedOutline(graphics, sx - 2, sy - 2, SWATCH + 4, SWATCH + 4, 6,
+                ModernGuiUtils.drawRoundedOutline(graphics, sx - 2, sy - 2, SWATCH + 4, SWATCH + 4, AlpakaStyle.ROW_RADIUS + 2,
                         current ? accent : AlpakaStyle.TEXT_MUTED);
             }
-            ModernGuiUtils.drawRoundedRect(graphics, sx, sy, SWATCH, SWATCH, 4, PRESETS[i]);
+            ModernGuiUtils.drawRoundedRect(graphics, sx, sy, SWATCH, SWATCH, AlpakaStyle.ROW_RADIUS, PRESETS[i]);
         }
 
         // One slider per channel; each track runs through its channel with the others as they are.
@@ -235,7 +235,7 @@ public class ColorPickerScreen extends Screen {
                 case 0 -> { from = rgb & 0x00FFFF; to = rgb | 0xFF0000; }
                 case 1 -> { from = rgb & 0xFF00FF; to = rgb | 0x00FF00; }
                 case 2 -> { from = rgb & 0xFFFF00; to = rgb | 0x0000FF; }
-                default -> { from = 0x2A2A2A; to = rgb; }
+                default -> { from = AlpakaStyle.ROW_SELECTED & 0x00FFFFFF; to = rgb; }
             }
             boolean hover = inside(mouseX, mouseY, l.rightX() - 4, labelY, l.rightW() + 8, SLIDER_ROW_H);
             AlpakaStyle.gradientTrack(graphics, l.rightX(), l.trackY(i), l.rightW(), 0xFF000000 | from, 0xFF000000 | to,
@@ -249,6 +249,8 @@ public class ColorPickerScreen extends Screen {
         AlpakaStyle.button(graphics, this.font, l.saveX(), l.btnY(), l.btnW(), AlpakaStyle.BUTTON_H, "Save", hoverSave, ButtonKind.PRIMARY);
 
         AlpakaStyle.endOpen(graphics, pushed);
+        // Notices over the window, as over the config menu.
+        net.alpaka.addons.features.notification.AlpakaNotifications.renderOverScreen(graphics);
     }
 
     // ---- Input ----------------------------------------------------------------------------------

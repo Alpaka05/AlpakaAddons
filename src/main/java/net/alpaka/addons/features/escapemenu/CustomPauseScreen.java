@@ -10,7 +10,6 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
-import net.minecraft.client.gui.screens.ConfirmLinkScreen;
 import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
@@ -68,6 +67,8 @@ public class CustomPauseScreen extends PauseScreen {
     static final float STAGGER_SECONDS = 0.03f;
     /** How far the logo and the rows rise as they spring in. */
     private static final float RISE = 8f;
+
+    private static final String WIKI_URL = "https://hypixelskyblock.minecraft.wiki/";
 
     private long openTime = 0L;
     /** Set while the leave dialog is up, so cancelling it brings the menu back without its entrance. */
@@ -196,7 +197,11 @@ public class CustomPauseScreen extends PauseScreen {
         this.wikiButton = new PauseButton(Kind.GLASS, 4, rightX, rowY + ROW_PITCH * 2, HALF_WIDTH, BUTTON_HEIGHT,
                 MenuStyle.ICON_BOOK, "Wiki", btn -> {
             if (this.minecraft != null) {
-                ConfirmLinkScreen.confirmLinkNow(this, "https://hypixelskyblock.minecraft.wiki/");
+                // A link out of the game asks first, in the dialog every such question in the mod uses.
+                this.returningFromDialog = true;
+                this.minecraft.gui.setScreen(new AlpakaConfirmScreen(this, "Open the Wiki",
+                        "Opens the Hypixel SkyBlock wiki in your browser: " + WIKI_URL, "Open", false,
+                        () -> net.minecraft.util.Util.getPlatform().openUri(WIKI_URL)));
             }
         });
         this.addRenderableWidget(this.wikiButton);
@@ -214,6 +219,12 @@ public class CustomPauseScreen extends PauseScreen {
                     leaveText, true, this::leave));
         });
         this.addRenderableWidget(this.disconnectButton);
+    }
+
+    /** For the screenshot tour: the middle of the Wiki button. */
+    public int[] devWikiPoint() {
+        return new int[] {this.wikiButton.getX() + this.wikiButton.getWidth() / 2,
+                this.wikiButton.getY() + this.wikiButton.getHeight() / 2};
     }
 
     /** For the screenshot tour: the middle of the leave button, to click it as a player would. */

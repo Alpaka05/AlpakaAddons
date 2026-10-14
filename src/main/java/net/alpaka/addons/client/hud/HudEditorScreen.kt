@@ -80,8 +80,8 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
     private fun inside(mx: Double, my: Double, x: Int, y: Int, w: Int, h: Int) = AlpakaStyle.inside(mx, my, x, y, w, h)
 
     override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
-        // Replace the standard game background with a darker backdrop.
-        graphics.fill(0, 0, this.width, this.height, BACKDROP_COLOR)
+        // The config menu's backdrop instead of the standard game background.
+        AlpakaStyle.backdrop(graphics, this.width, this.height)
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
@@ -116,30 +116,23 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
         val by = buttonY(bar)
         val canReset = selected != null
         val hoverReset = canReset && inside(mouseX, mouseY, bar.resetX, by, RESET_W, AlpakaStyle.BUTTON_H)
-        if (canReset) {
-            AlpakaStyle.button(graphics, this.font, bar.resetX, by, RESET_W, AlpakaStyle.BUTTON_H, "Reset", hoverReset, ButtonKind.PLAIN)
-        } else {
-            ModernGuiUtils.drawRoundedRect(graphics, bar.resetX, by, RESET_W, AlpakaStyle.BUTTON_H, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW)
-            ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("Reset"), bar.resetX + RESET_W / 2, by + (AlpakaStyle.BUTTON_H - 8) / 2, AlpakaStyle.DIVIDER)
-        }
+        AlpakaStyle.button(graphics, this.font, bar.resetX, by, RESET_W, AlpakaStyle.BUTTON_H, "Reset", hoverReset,
+            ButtonKind.PLAIN, canReset)
         val hoverAll = inside(mouseX, mouseY, bar.resetAllX, by, RESET_ALL_W, AlpakaStyle.BUTTON_H)
         AlpakaStyle.button(graphics, this.font, bar.resetAllX, by, RESET_ALL_W, AlpakaStyle.BUTTON_H,
             "Reset All", hoverAll, ButtonKind.DANGER)
         val hoverDone = inside(mouseX, mouseY, bar.doneX, by, DONE_W, AlpakaStyle.BUTTON_H)
         AlpakaStyle.button(graphics, this.font, bar.doneX, by, DONE_W, AlpakaStyle.BUTTON_H, "Done", hoverDone, ButtonKind.PRIMARY)
 
-        // Below the bar: the selection and where it is, or how to start when nothing is selected.
-        val line = ellipsize(if (selected != null) statusLine() else HINTS, this.width - 16)
-        ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text(line), this.width / 2, bar.y + BAR_H + 5,
+        // Below the bar, on a pill of its own so it reads over any world: the selection and where
+        // it is, or how to start when nothing is selected.
+        val line = AlpakaStyle.ellipsize(this.font, if (selected != null) statusLine() else HINTS, this.width - 32)
+        val lineW = GuiFont.width(this.font, line) + 16
+        val lineY = bar.y + BAR_H + 4
+        ModernGuiUtils.drawRoundedRect(graphics, (this.width - lineW) / 2, lineY, lineW, STATUS_H, STATUS_H / 2, PILL_COLOR)
+        ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text(line), this.width / 2, lineY + (STATUS_H - 8) / 2,
             if (selected != null) AlpakaStyle.TEXT_SOFT else AlpakaStyle.TEXT_MUTED)
         AlpakaStyle.endOpen(graphics, pushed)
-    }
-
-    private fun ellipsize(text: String, maxW: Int): String {
-        if (GuiFont.width(this.font, text) <= maxW) return text
-        var end = text.length
-        while (end > 0 && GuiFont.width(this.font, text.substring(0, end) + "...") > maxW) end--
-        return text.substring(0, end) + "..."
     }
 
     private fun playClick() {
@@ -195,25 +188,23 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
 
         val guideColor = when {
             element === selected -> ModernGuiUtils.getAccentColor()
-            isHovered -> GUIDE_HOVER_COLOR
-            disabled -> GUIDE_DISABLED_COLOR
+            isHovered -> AlpakaStyle.TEXT
+            disabled -> AlpakaStyle.DIVIDER
             else -> GUIDE_COLOR
         }
-        ModernGuiUtils.drawOutline(graphics, box.x0, box.y0, box.width, box.height, guideColor)
+        ModernGuiUtils.drawRoundedOutline(graphics, box.x0, box.y0, box.width, box.height, AlpakaStyle.ROW_RADIUS, guideColor)
 
+        // The name only for the HUD under the mouse and the selected one, on a pill like the status
+        // line's: names on every box ran into each other where HUDs sit close together.
+        if (element !== selected && !isHovered) return
         val label = if (disabled) "${element.name} (disabled)" else element.name
-        val labelWidth = GuiFont.width(this.font, label)
-        val labelX = box.x0 + (box.width - labelWidth) / 2
-        // Above the box by default, below it when that would collide with the header text.
-        val labelY = if (box.y0 - LABEL_GAP >= HEADER_BOTTOM) box.y0 - LABEL_GAP else box.y1 + 2
-
-        val labelColor = when {
-            element === selected -> ModernGuiUtils.getAccentColor()
-            isHovered -> GUIDE_HOVER_COLOR
-            disabled -> GUIDE_DISABLED_COLOR
-            else -> AlpakaStyle.TEXT_SOFT
-        }
-        graphics.text(this.font, GuiFont.text(label), labelX, labelY, labelColor, false)
+        val pillW = GuiFont.width(this.font, label) + 12
+        val pillX = (box.x0 + (box.width - pillW) / 2).coerceIn(2, maxOf(2, this.width - pillW - 2))
+        // Above the box by default, below it when that would run into the bar and its status line.
+        val pillY = if (box.y0 - LABEL_GAP - 4 >= HEADER_BOTTOM) box.y0 - LABEL_GAP - 4 else box.y1 + 3
+        ModernGuiUtils.drawRoundedRect(graphics, pillX, pillY, pillW, LABEL_H, LABEL_H / 2, PILL_COLOR)
+        graphics.text(this.font, GuiFont.text(label), pillX + 6, pillY + (LABEL_H - 8) / 2,
+            if (element === selected) ModernGuiUtils.getAccentColor() else AlpakaStyle.TEXT, false)
     }
 
     private fun statusLine(): String {
@@ -363,10 +354,12 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
     private companion object {
         /** Travel in GUI pixels before a press on an element starts moving it. */
         const val DRAG_THRESHOLD = 3.0
-        const val BACKDROP_COLOR = 0x88000000.toInt()
-        const val GUIDE_COLOR = 0x99FFFFFF.toInt()
-        const val GUIDE_HOVER_COLOR = 0xFFFFFFFF.toInt()
-        const val GUIDE_DISABLED_COLOR = 0xFF6A6A6A.toInt()
+        /** A box's outline at rest: the menu's soft text color, half see-through over the world. */
+        const val GUIDE_COLOR = (AlpakaStyle.TEXT_SOFT and 0x00FFFFFF) or (0x80 shl 24)
+        /** Behind the status line and the names: the window color, nearly opaque. */
+        const val PILL_COLOR = (AlpakaStyle.PANEL and 0x00FFFFFF) or (0xE6 shl 24)
+        const val STATUS_H = 14
+        const val LABEL_H = 13
 
         /** Dark wash over a HUD whose feature is switched off. */
         const val DISABLED_SCRIM_COLOR = 0xAA0A0A0A.toInt()
@@ -376,7 +369,7 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
         const val BAR_Y = 6
         /** The config menu's header height, so the bar matches every other window's header. */
         const val BAR_H = AlpakaStyle.HEADER_H
-        const val HEADER_BOTTOM = BAR_Y + BAR_H + 18
+        const val HEADER_BOTTOM = BAR_Y + BAR_H + 4 + STATUS_H + 2
         const val DONE_W = 44
         const val RESET_W = 40
         const val RESET_ALL_W = 52

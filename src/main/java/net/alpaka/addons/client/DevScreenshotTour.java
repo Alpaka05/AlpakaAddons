@@ -84,12 +84,22 @@ public final class DevScreenshotTour {
             screen("config-menu-font", () -> AlpakaConfigScreen.openOn("Design", "Menu Font").withChoiceOpen()),
             screen("config-world", () -> AlpakaConfigScreen.openOn("World", "Block Overlay")),
             screen("config-viewmodel", () -> AlpakaConfigScreen.openOn("Viewmodel", "Viewmodel Modifiers")),
-            screen("color-picker", () -> new ColorPickerScreen(null, "Accent Colour", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
+            screen("color-picker", () -> new ColorPickerScreen(null, "Accent Color", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
             screen("confirm", () -> new net.alpaka.addons.client.AlpakaConfirmScreen(null, "Disable All Features",
                     "Turns off every feature of Alpaka Addons. Each one can be switched back on in the config.",
                     "Disable All", true, () -> {})),
             screen("wheel-editor", () -> new CommandWheelConfigScreen(new CustomMainMenuScreen())),
             screen("hud-editor", () -> new HudEditorScreen(null)),
+            // A setting's description as a tooltip, after resting the mouse on it.
+            new Stop("config-tooltip", () -> {
+                Minecraft.getInstance().gui.setScreen(AlpakaConfigScreen.openOn("Interface", "Scrollable Tooltips"));
+                placeMouse(0.66, 0.40);
+            }, () -> true, 30),
+            new Stop(null, () -> placeMouse(0.5, 0.5), () -> true, 1),
+            // The quick commands' page list, open above its field.
+            screen("wheel-editor-page-picker-closed", () -> new CommandWheelConfigScreen(new CustomMainMenuScreen())),
+            new Stop("wheel-editor-page-picker", () -> click(((CommandWheelConfigScreen) screen()).devPagePickerPoint()),
+                    () -> true, 20),
             // Every action that asks first, through the one dialog: opened the way a player opens it,
             // from its row in the config or its button, and Cancel taking them back unchanged.
             screen("confirm-config-disable-all", () -> AlpakaConfigScreen.openOn("Main", "Disable All Features")),
@@ -126,6 +136,9 @@ public final class DevScreenshotTour {
             // Every HUD on its blurred panel and in the menu font, a notice in the corner.
             new Stop("hud-style", DevScreenshotTour::hudStyle, () -> true, 20),
             screen("pause-menu", net.alpaka.addons.features.escapemenu.CustomPauseScreen::new),
+            new Stop("pause-wiki-dialog", () -> click(((net.alpaka.addons.features.escapemenu.CustomPauseScreen) screen())
+                    .devWikiPoint()), () -> true, 30),
+            new Stop(null, () -> click(((AlpakaConfirmScreen) screen()).devCancelPoint()), () -> true, 5),
             // Leaving asks through the same dialog; Cancel brings the menu straight back, without
             // its entrance - three ticks would catch it mid-way if it replayed.
             new Stop("confirm-dialog-leave", () -> click(((net.alpaka.addons.features.escapemenu.CustomPauseScreen) screen())
@@ -149,6 +162,19 @@ public final class DevScreenshotTour {
             new Stop(null, () -> click(((HudEditorScreen) screen()).devResetAllPoint()), () -> true, 10),
             new Stop("confirm-hud-editor-after-reset", () -> click(((AlpakaConfirmScreen) screen()).devConfirmPoint()),
                     () -> true, 30),
+            // A HUD under the mouse in the editor: its name on a pill, its outline lit.
+            new Stop("hud-editor-hover", () -> placeMouse(0.13, 0.45), () -> true, 10),
+            new Stop(null, () -> placeMouse(0.5, 0.5), () -> true, 1),
+            // The quick command wheel in the world, a segment under the mouse.
+            new Stop("command-wheel", () -> {
+                Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.features.wheel.CommandWheelScreen());
+                placeMouse(0.56, 0.36);
+            }, () -> true, 20),
+            new Stop("command-wheel-opening", () -> {
+                Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.features.wheel.CommandWheelScreen());
+                placeMouse(0.5, 0.5);
+            }, () -> true, 2),
+            new Stop(null, () -> Minecraft.getInstance().gui.setScreen(null), () -> true, 5),
             new Stop(null, () -> Minecraft.getInstance().gui.setScreen(null), () -> true, 5),
             // Two ticks after a burst: the lines are mid-slide inside the chat's box.
             new Stop("chat-slide", DevScreenshotTour::chatBurst, () -> true, 2),
@@ -260,6 +286,8 @@ public final class DevScreenshotTour {
                 // focus opens the pause menu in the world, and the tour waits for it forever. Set
                 // here rather than at registration, when the options do not exist yet. In memory only.
                 mc.options.pauseOnLostFocus = false;
+                // Nor the tutorial's toasts, which would sit over the HUD editor's bar.
+                mc.options.tutorialStep = net.minecraft.client.tutorial.TutorialSteps.NONE;
                 begin(mc, 0);
             }
             return;

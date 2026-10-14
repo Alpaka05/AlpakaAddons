@@ -18,7 +18,7 @@ import static net.alpaka.addons.client.gui.AlpakaStyle.inside;
 /**
  * A yes-or-no question in the config menu's look, the one way the mod asks before anything that
  * cannot be undone with a click: resetting or disabling settings, saving over a preset, leaving the
- * game. Escape and Cancel go back without doing anything; only the confirm button acts.
+ * game. Escape and Cancel go back without doing anything; the confirm button and Enter act.
  */
 public class AlpakaConfirmScreen extends Screen {
     private final Screen parent;
@@ -79,6 +79,8 @@ public class AlpakaConfirmScreen extends Screen {
         AlpakaStyle.button(graphics, this.font, l.confirmX(), l.btnY(), BTN_W, AlpakaStyle.BUTTON_H, confirmLabel, hoverConfirm,
                 dangerous ? ButtonKind.DANGER : ButtonKind.PRIMARY);
         AlpakaStyle.endOpen(graphics, pushed);
+        // Notices over the dialog, as over the config menu.
+        net.alpaka.addons.features.notification.AlpakaNotifications.renderOverScreen(graphics);
     }
 
     /** For the screenshot tour: the middle of the Cancel button, to click it as a player would. */
@@ -98,10 +100,7 @@ public class AlpakaConfirmScreen extends Screen {
         if (event.button() != 0) return super.mouseClicked(event, doubleClick);
         Layout l = layout();
         if (inside(event.x(), event.y(), l.confirmX(), l.btnY(), BTN_W, AlpakaStyle.BUTTON_H)) {
-            click();
-            onConfirm.run();
-            // An action that moves on by itself - leaving the world, say - is not undone by going back.
-            if (this.minecraft != null && this.minecraft.gui.screen() == this) onClose();
+            confirm();
             return true;
         }
         if (inside(event.x(), event.y(), l.cancelX(), l.btnY(), BTN_W, AlpakaStyle.BUTTON_H)) {
@@ -118,7 +117,18 @@ public class AlpakaConfirmScreen extends Screen {
             onClose();
             return true;
         }
+        if (event.key() == GLFW.GLFW_KEY_ENTER || event.key() == GLFW.GLFW_KEY_KP_ENTER) {
+            confirm();
+            return true;
+        }
         return super.keyPressed(event);
+    }
+
+    private void confirm() {
+        click();
+        onConfirm.run();
+        // An action that moves on by itself - leaving the world, say - is not undone by going back.
+        if (this.minecraft != null && this.minecraft.gui.screen() == this) onClose();
     }
 
     private static void click() {

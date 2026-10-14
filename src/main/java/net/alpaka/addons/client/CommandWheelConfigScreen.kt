@@ -36,6 +36,8 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
 
     /** Where a new command goes: -1 for "Auto", a page index, or the page count for "New page". */
     private var addTargetPage: Int = -1
+    /** Whether the list of pages to add to is open above its field. */
+    private var pagePickerOpen = false
 
     private var scrollY: Double = 0.0
     private var targetScrollY: Double = 0.0
@@ -207,7 +209,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
         graphics.enableScissor(f.listX, f.listY, f.listX + f.listW, f.listY + f.listH)
 
         val rowX = f.listX
-        val rowW = f.listW - SCROLLBAR_ROOM
+        val rowW = f.listW
         for (row in rows) {
             val y = f.listY + row.y - scrollY.toInt()
             if (y + row.height < f.listY || y > f.listY + f.listH) continue
@@ -223,7 +225,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
                 Kind.ITEM -> drawItemRow(graphics, row, rowX, y, rowW, mouseX, mouseY, inList && !dragging)
                 Kind.NEW_PAGE -> {
                     val active = dropPage == row.page
-                    ModernGuiUtils.drawRoundedOutline(graphics, rowX, y, rowW, row.height, 5,
+                    ModernGuiUtils.drawRoundedOutline(graphics, rowX, y, rowW, row.height, AlpakaStyle.CARD_RADIUS,
                         if (active) accent else AlpakaStyle.DIVIDER)
                     ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("Drop here for a new page"), rowX + rowW / 2, y + (row.height - 8) / 2,
                         if (active) accent else AlpakaStyle.TEXT_MUTED)
@@ -243,20 +245,12 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
 
         graphics.disableScissor()
 
-        // A thin scrollbar when the pages do not fit.
-        if (maxScrollY > 0) {
-            val trackX = f.listX + f.listW - 2
-            val thumbH = max(16, (f.listH * f.listH / contentHeight.toDouble()).toInt())
-            val thumbY = f.listY + ((f.listH - thumbH) * (scrollY / maxScrollY)).toInt()
-            ModernGuiUtils.drawRoundedRect(graphics, trackX, thumbY, 2, thumbH, 1, AlpakaStyle.DIVIDER)
-        }
-
         // The dragged command follows the mouse as a copy of its row.
         if (dragging && pressPage in pages.indices && pressIndex in pages[pressPage].indices) {
             val ghostY = mouseY - dragGrabOffsetY
-            ModernGuiUtils.drawPanelShadow(graphics, rowX, ghostY, rowW, ITEM_H, 5, 0.8f)
-            ModernGuiUtils.drawRoundedRect(graphics, rowX, ghostY, rowW, ITEM_H, 5, AlpakaStyle.ROW_SELECTED)
-            ModernGuiUtils.drawRoundedOutline(graphics, rowX, ghostY, rowW, ITEM_H, 5, ModernGuiUtils.getAccentDimColor())
+            ModernGuiUtils.drawPanelShadow(graphics, rowX, ghostY, rowW, ITEM_H, AlpakaStyle.CARD_RADIUS, 0.8f)
+            ModernGuiUtils.drawRoundedRect(graphics, rowX, ghostY, rowW, ITEM_H, AlpakaStyle.CARD_RADIUS, AlpakaStyle.ROW_SELECTED)
+            ModernGuiUtils.drawRoundedOutline(graphics, rowX, ghostY, rowW, ITEM_H, AlpakaStyle.CARD_RADIUS, AlpakaStyle.accentDim())
             drawGrip(graphics, rowX, ghostY, accent)
             graphics.text(this.font, GuiFont.text(pages[pressPage][pressIndex]), rowX + 20, ghostY + (ITEM_H - 8) / 2, AlpakaStyle.TEXT, false)
         }
@@ -268,8 +262,8 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
             newCommandInput, "/command", inputFocused, hoverInput, caretFrom)
 
         val buttonsY = f.buttonsY
-        val hoverPage = inside(mouseX, mouseY, pageBtnX(f), buttonsY, PAGE_BTN_W, AlpakaStyle.BUTTON_H)
-        drawPagePicker(graphics, pageBtnX(f), buttonsY, addTargetLabel(pages.size), hoverPage)
+        AlpakaStyle.selectField(graphics, this.font, pageBtnX(f), buttonsY, PAGE_BTN_W, AlpakaStyle.BUTTON_H,
+            addTargetLabel(addTargetPage, pages.size), pagePickerOpen)
 
         val hoverAdd = inside(mouseX, mouseY, addBtnX(f), buttonsY, ADD_W, AlpakaStyle.BUTTON_H)
         AlpakaStyle.button(graphics, this.font, addBtnX(f), buttonsY, ADD_W, AlpakaStyle.BUTTON_H, "Add", hoverAdd, ButtonKind.PRIMARY)
@@ -278,16 +272,40 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
         AlpakaStyle.button(graphics, this.font, resetBtnX(f), buttonsY, RESET_W, AlpakaStyle.BUTTON_H,
             "Reset", hoverReset, ButtonKind.DANGER)
 
+        if (pagePickerOpen) drawPagePicker(graphics, f, pages.size, mouseX, mouseY)
+
         AlpakaStyle.endOpen(graphics, pushed)
+        // Notices over the window, as over the config menu.
+        net.alpaka.addons.features.notification.AlpakaNotifications.renderOverScreen(graphics)
     }
 
-    /** The page a new command goes to, as the config's dropdowns show a choice: value and chevron. */
-    private fun drawPagePicker(graphics: GuiGraphicsExtractor, x: Int, y: Int, label: String, hover: Boolean) {
-        ModernGuiUtils.drawRoundedRect(graphics, x, y, PAGE_BTN_W, AlpakaStyle.BUTTON_H, 3, if (hover) AlpakaStyle.ROW_HOVER else AlpakaStyle.FIELD)
-        graphics.text(this.font, GuiFont.text(label), x + 6, y + (AlpakaStyle.BUTTON_H - 8) / 2, AlpakaStyle.TEXT, false)
-        val glyph = "›"
-        graphics.text(this.font, GuiFont.text(glyph), x + PAGE_BTN_W - 6 - GuiFont.width(this.font, glyph), y + (AlpakaStyle.BUTTON_H - 8) / 2,
-            if (hover) ModernGuiUtils.getAccentColor() else AlpakaStyle.TEXT_MUTED, false)
+    /**
+     * The open list of pages to add to, above its field since the field sits at the window's foot:
+     * a small window of its own, its names as the config's choice lists show them.
+     */
+    private fun drawPagePicker(graphics: GuiGraphicsExtractor, f: Frame, pageCount: Int, mouseX: Int, mouseY: Int) {
+        graphics.nextStratum()
+        val box = pagePickerBox(f, pageCount)
+        ModernGuiUtils.drawPanelShadow(graphics, box[0], box[1], box[2], box[3], AlpakaStyle.ROW_RADIUS * 2, 0.8f)
+        ModernGuiUtils.drawRoundedRect(graphics, box[0], box[1], box[2], box[3], AlpakaStyle.ROW_RADIUS * 2, AlpakaStyle.PANEL)
+        ModernGuiUtils.drawRoundedOutline(graphics, box[0], box[1], box[2], box[3], AlpakaStyle.ROW_RADIUS * 2, AlpakaStyle.LINE)
+        for ((i, target) in pickerTargets(pageCount).withIndex()) {
+            val y = box[1] + PICKER_PAD + i * AlpakaStyle.ROW_H
+            val hover = inside(mouseX, mouseY, box[0] + PICKER_PAD, y, box[2] - 2 * PICKER_PAD, AlpakaStyle.ROW_H)
+            AlpakaStyle.choiceEntry(graphics, this.font, box[0] + PICKER_PAD, y, box[2] - 2 * PICKER_PAD, AlpakaStyle.ROW_H,
+                addTargetLabel(target, pageCount), target == addTargetPage, hover)
+        }
+    }
+
+    /** Auto, every page that has room or not, and a new page: what the picker lists. */
+    private fun pickerTargets(pageCount: Int): List<Int> = (-1..pageCount).toList()
+
+    /** The picker's box: x, y, width, height. */
+    private fun pagePickerBox(f: Frame, pageCount: Int): IntArray {
+        val h = pickerTargets(pageCount).size * AlpakaStyle.ROW_H + 2 * PICKER_PAD
+        val w = PAGE_BTN_W + 24
+        val x = pageBtnX(f)
+        return intArrayOf(x, maxOf(4, f.buttonsY - 4 - h), w, h)
     }
 
     private fun drawGrip(graphics: GuiGraphicsExtractor, x: Int, y: Int, color: Int) {
@@ -298,7 +316,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
 
     private fun drawItemRow(graphics: GuiGraphicsExtractor, row: Row, x: Int, y: Int, w: Int, mouseX: Int, mouseY: Int, hoverable: Boolean) {
         val hovered = hoverable && inside(mouseX, mouseY, x, y, w, row.height)
-        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, row.height, 5, if (hovered) AlpakaStyle.ROW_HOVER else AlpakaStyle.ROW)
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, row.height, AlpakaStyle.CARD_RADIUS, if (hovered) AlpakaStyle.ROW_HOVER else AlpakaStyle.ROW)
 
         drawGrip(graphics, x, y, if (hovered) AlpakaStyle.TEXT_MUTED else AlpakaStyle.DIVIDER)
         graphics.text(this.font, GuiFont.text(row.command ?: ""), x + 20, y + (row.height - 8) / 2, AlpakaStyle.TEXT, false)
@@ -311,17 +329,17 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
         val delX = delBtnX(x, w)
         val btnY = y + (row.height - SMALL_BTN) / 2
         val canPrev = row.page > 0
-        AlpakaStyle.iconButton(graphics, this.font, prevX, btnY, SMALL_BTN, "‹", inside(mouseX, mouseY, prevX, btnY, SMALL_BTN, SMALL_BTN), canPrev, false)
-        AlpakaStyle.iconButton(graphics, this.font, nextX, btnY, SMALL_BTN, "›", inside(mouseX, mouseY, nextX, btnY, SMALL_BTN, SMALL_BTN), true, false)
+        AlpakaStyle.chevronButton(graphics, prevX, btnY, SMALL_BTN, true, inside(mouseX, mouseY, prevX, btnY, SMALL_BTN, SMALL_BTN), canPrev)
+        AlpakaStyle.chevronButton(graphics, nextX, btnY, SMALL_BTN, false, inside(mouseX, mouseY, nextX, btnY, SMALL_BTN, SMALL_BTN), true)
         AlpakaStyle.iconButton(graphics, this.font, delX, btnY, SMALL_BTN, "✕", inside(mouseX, mouseY, delX, btnY, SMALL_BTN, SMALL_BTN), true, true)
     }
 
     private fun inside(mx: Int, my: Int, x: Int, y: Int, w: Int, h: Int) = AlpakaStyle.inside(mx.toDouble(), my.toDouble(), x, y, w, h)
 
-    private fun addTargetLabel(pageCount: Int): String = when {
-        addTargetPage < 0 -> "Auto"
-        addTargetPage >= pageCount -> "New page"
-        else -> "Page ${addTargetPage + 1}"
+    private fun addTargetLabel(target: Int, pageCount: Int): String = when {
+        target < 0 -> "Auto"
+        target >= pageCount -> "New Page"
+        else -> "Page ${target + 1}"
     }
 
     // Positions of the bottom row and header controls, shared by drawing and clicking.
@@ -331,6 +349,12 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
     private fun pageBtnX(f: Frame) = f.buttonsX
     private fun addBtnX(f: Frame) = pageBtnX(f) + PAGE_BTN_W + 6
     private fun resetBtnX(f: Frame) = addBtnX(f) + ADD_W + 6
+
+    /** For the screenshot tour: the middle of the page field, to open its list. */
+    fun devPagePickerPoint(): IntArray {
+        val f = frame()
+        return intArrayOf(pageBtnX(f) + PAGE_BTN_W / 2, f.buttonsY + AlpakaStyle.BUTTON_H / 2)
+    }
 
     /** For the screenshot tour: the middle of the Reset button, to click it as a player would. */
     fun devResetPoint(): IntArray {
@@ -350,6 +374,21 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
         val f = frame()
         val pages = CommandWheelPages.pages()
 
+        // An open page list takes the click: a name picks that page, anywhere else just closes it.
+        if (pagePickerOpen) {
+            pagePickerOpen = false
+            val box = pagePickerBox(f, pages.size)
+            if (inside(mouseX, mouseY, box[0], box[1], box[2], box[3])) {
+                val i = (mouseY - box[1] - PICKER_PAD) / AlpakaStyle.ROW_H
+                val targets = pickerTargets(pages.size)
+                if (i in targets.indices) {
+                    playPloppSound()
+                    addTargetPage = targets[i]
+                }
+            }
+            return true
+        }
+
         if (inside(mouseX, mouseY, doneX(f), doneY(f), DONE_W, AlpakaStyle.BUTTON_H)) {
             playPloppSound()
             this.onClose()
@@ -366,8 +405,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
             inputFocused = false
             if (mouseX in pageBtnX(f)..(pageBtnX(f) + PAGE_BTN_W)) {
                 playPloppSound()
-                // Auto -> Page 1 .. Page n -> New page -> Auto
-                addTargetPage = if (addTargetPage >= pages.size) -1 else addTargetPage + 1
+                pagePickerOpen = true
                 return true
             }
             if (mouseX in addBtnX(f)..(addBtnX(f) + ADD_W)) {
@@ -391,7 +429,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
         // List rows.
         if (mouseX in f.listX..(f.listX + f.listW) && mouseY in f.listY..(f.listY + f.listH)) {
             val rowX = f.listX
-            val rowW = f.listW - SCROLLBAR_ROOM
+            val rowW = f.listW
             for (row in rows) {
                 if (row.kind != Kind.ITEM) continue
                 val y = f.listY + row.y - scrollY.toInt()
@@ -502,6 +540,10 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
     }
 
     override fun keyPressed(event: KeyEvent): Boolean {
+        if (pagePickerOpen && event.key() == GLFW.GLFW_KEY_ESCAPE) {
+            pagePickerOpen = false
+            return true
+        }
         if (inputFocused) {
             when (event.key()) {
                 GLFW.GLFW_KEY_BACKSPACE -> {
@@ -533,7 +575,8 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
         private const val PAGE_BTN_W = 62
         private const val ADD_W = 40
         private const val RESET_W = 44
-        private const val SCROLLBAR_ROOM = 6
+        /** Inner margin of the page list. */
+        private const val PICKER_PAD = 4
 
         private const val PAGE_HEADER_H = 17
         private const val ITEM_H = 20

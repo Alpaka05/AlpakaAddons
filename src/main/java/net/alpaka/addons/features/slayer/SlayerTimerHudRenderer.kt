@@ -79,7 +79,7 @@ object SlayerTimerHudRenderer {
         val timeX = font.width(label) + LABEL_GAP
         val blurred = cfg.blurOn(cfg.slayerTimerHudBlur)
         if (blurred) HudPanel.aroundText(graphics, timeX + font.width(time), GLYPH_HEIGHT, scale)
-        val shadow = HudPanel.textShadow(graphics, blurred)
+        val shadow = HudPanel.textShadow(graphics, false)
         graphics.text(font, label, 0, 0, COLOR_LABEL, shadow)
         graphics.text(font, time, timeX, 0, color, shadow)
         graphics.pose().popMatrix()

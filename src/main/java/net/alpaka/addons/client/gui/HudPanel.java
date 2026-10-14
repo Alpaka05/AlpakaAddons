@@ -8,8 +8,8 @@ import org.joml.Matrix3x2f;
 
 /**
  * The look the mod's own HUDs share with the chat and the scoreboard: a rounded panel with a soft
- * shadow that shows the world blurred behind it, and text in the menu font, drawn flat on the panel
- * as the config menu draws its own ({@link #textShadow}).
+ * shadow that shows the world blurred behind it, and text in the menu font, with its shadow where
+ * the panel is light ({@link #textShadow}).
  *
  * Each HUD decides for itself whether it uses either; this is only how they are drawn, so the
  * slayer HUD, the boss timer, the world age and the notices all come out alike. The panel samples
@@ -71,16 +71,15 @@ public final class HudPanel {
     }
 
     /**
-     * Whether a HUD's text casts vanilla's drop shadow, given whether the HUD asked for its panel.
+     * Whether text casts vanilla's drop shadow, given whether it sits on a dense panel.
      *
-     * On the panel it does not: the config menu draws all of its text flat, and the tint under it
-     * already gives the contrast the shadow is there for. Without the panel the text sits straight
-     * on the world, where the shadow is what keeps it readable over snow or a bright sky - so the
-     * shadow stays there, and also where the extractor cannot take the panel and it is not drawn
-     * after all. Every HUD that can sit on a panel asks this rather than deciding for itself.
+     * The HUDs' panels are a light tint over the blurred world, as the chat's and the scoreboard's
+     * are, and over snow or a bright sky their gray labels need the shadow as much as the sidebar
+     * beside them does - so the HUDs keep it, like chat and scoreboard. Only text on a dense panel,
+     * a notice's, goes flat as the config menu's does; and only where that panel is drawn at all.
      */
-    public static boolean textShadow(GuiGraphicsExtractor graphics, boolean blurred) {
-        return !blurred || !(graphics instanceof AlpakaGuiElementSink);
+    public static boolean textShadow(GuiGraphicsExtractor graphics, boolean densePanel) {
+        return !densePanel || !(graphics instanceof AlpakaGuiElementSink);
     }
 
     /** The text in the menu font when the HUD asks for it, unchanged otherwise. */

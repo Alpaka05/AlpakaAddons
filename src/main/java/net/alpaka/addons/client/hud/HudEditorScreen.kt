@@ -1,5 +1,6 @@
 package net.alpaka.addons.client.hud
 
+import net.alpaka.addons.client.AlpakaConfirmScreen
 import net.alpaka.addons.client.gui.AlpakaStyle
 import net.alpaka.addons.client.gui.AlpakaStyle.ButtonKind
 import net.alpaka.addons.client.gui.GuiFont
@@ -70,6 +71,12 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
 
     private fun buttonY(bar: Bar) = bar.y + (BAR_H - AlpakaStyle.BUTTON_H) / 2
 
+    /** For the screenshot tour: the middle of the Reset All button, to click it as a player would. */
+    fun devResetAllPoint(): IntArray {
+        val bar = bar()
+        return intArrayOf(bar.resetAllX + RESET_ALL_W / 2, buttonY(bar) + AlpakaStyle.BUTTON_H / 2)
+    }
+
     private fun inside(mx: Double, my: Double, x: Int, y: Int, w: Int, h: Int) = AlpakaStyle.inside(mx, my, x, y, w, h)
 
     override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
@@ -117,7 +124,7 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
         }
         val hoverAll = inside(mouseX, mouseY, bar.resetAllX, by, RESET_ALL_W, AlpakaStyle.BUTTON_H)
         AlpakaStyle.button(graphics, this.font, bar.resetAllX, by, RESET_ALL_W, AlpakaStyle.BUTTON_H,
-            if (resetAllArmed()) "Sure?" else "Reset All", hoverAll, ButtonKind.DANGER)
+            "Reset All", hoverAll, ButtonKind.DANGER)
         val hoverDone = inside(mouseX, mouseY, bar.doneX, by, DONE_W, AlpakaStyle.BUTTON_H)
         AlpakaStyle.button(graphics, this.font, bar.doneX, by, DONE_W, AlpakaStyle.BUTTON_H, "Done", hoverDone, ButtonKind.PRIMARY)
 
@@ -134,10 +141,6 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
         while (end > 0 && GuiFont.width(this.font, text.substring(0, end) + "...") > maxW) end--
         return text.substring(0, end) + "..."
     }
-
-    /** Reset All puts every HUD back, so it asks for a second click within a few seconds. */
-    private var resetAllArmedUntil = 0L
-    private fun resetAllArmed() = System.currentTimeMillis() < resetAllArmedUntil
 
     private fun playClick() {
         try {
@@ -157,14 +160,14 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
             }
             inside(mx, my, bar.resetAllX, by, RESET_ALL_W, AlpakaStyle.BUTTON_H) -> {
                 playClick()
-                if (resetAllArmed()) {
-                    resetAllArmedUntil = 0L
+                // Reset All puts every HUD back, so it asks first, in the dialog every such action uses.
+                minecraft.gui.setScreen(AlpakaConfirmScreen(this, "Reset All HUDs",
+                    "Puts every HUD back to its default position and size.", "Reset All", true) {
                     HudRegistry.ELEMENTS.forEach { it.reset() }
+                    selected = null
                     dirty = true
                     flush()
-                } else {
-                    resetAllArmedUntil = System.currentTimeMillis() + 3000L
-                }
+                })
             }
             inside(mx, my, bar.resetX, by, RESET_W, AlpakaStyle.BUTTON_H) -> selected?.let {
                 playClick()
@@ -371,7 +374,8 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
         /** Vertical gap between a box and its label, and the y below which labels must not go. */
         const val LABEL_GAP = 10
         const val BAR_Y = 6
-        const val BAR_H = 26
+        /** The config menu's header height, so the bar matches every other window's header. */
+        const val BAR_H = AlpakaStyle.HEADER_H
         const val HEADER_BOTTOM = BAR_Y + BAR_H + 18
         const val DONE_W = 44
         const val RESET_W = 40

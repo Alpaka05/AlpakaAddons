@@ -1,5 +1,6 @@
 package net.alpaka.addons.client;
 
+import net.alpaka.addons.client.gui.AlpakaStyle;
 import net.alpaka.addons.client.gui.ConfigOption;
 import net.alpaka.addons.client.gui.ConfigTree;
 import net.alpaka.addons.client.gui.EditableText;
@@ -57,11 +58,12 @@ public class AlpakaConfigScreen extends Screen {
     private static final int COLOR_TEXT_SOFT = 0xFFBDBDBD;
     private static final int COLOR_TEXT_MUTED = 0xFF7C7C7C;
     private static final int COLOR_TRACK = 0xFF3A3A3A;
-    private static final int COLOR_DANGER = 0xFFE5534B;
+    private static final int COLOR_DANGER = AlpakaStyle.DANGER;
+    private static final int COLOR_DANGER_SOFT = AlpakaStyle.DANGER_SOFT;
 
     // ---- Layout, in GUI pixels ------------------------------------------------------------------
 
-    private static final int HEADER_H = 33;
+    private static final int HEADER_H = AlpakaStyle.HEADER_H;
     private static final int PAD = 8;
     private static final int LINE_H = 9;
     private static final int GROUP_LABEL_H = 13;
@@ -82,8 +84,6 @@ public class AlpakaConfigScreen extends Screen {
     private static final int MAX_TEXT_OPTION_LENGTH = 32;
     private static final int MAX_SEARCH_LENGTH = 35;
     private static final long TOOLTIP_DELAY_MS = 450L;
-    private static final long CONFIRM_WINDOW_MS = 3000L;
-    private static final String CONFIRM_LABEL = "Click again";
 
     // ---- State ----------------------------------------------------------------------------------
 
@@ -104,8 +104,6 @@ public class AlpakaConfigScreen extends Screen {
     private ConfigOption focusedText = null;
     /** The choice setting whose list is open, if any; one at a time. */
     private ConfigOption openChoice = null;
-    private ConfigOption armedOption = null;
-    private long armedUntilMs = 0L;
 
     private final Scroll sidebarScroll = new Scroll();
     private final Scroll featureScroll = new Scroll();
@@ -468,13 +466,13 @@ public class AlpakaConfigScreen extends Screen {
         }
         if (setupButton) {
             int bx = detailX + detailW - PAD - SETUP_BTN_W;
-            int by = y + (HEADER_H - net.alpaka.addons.client.gui.AlpakaStyle.BUTTON_H) / 2;
-            boolean hover = inside(mouseX, mouseY, bx, by, SETUP_BTN_W, net.alpaka.addons.client.gui.AlpakaStyle.BUTTON_H);
-            net.alpaka.addons.client.gui.AlpakaStyle.button(graphics, this.font, bx, by, SETUP_BTN_W,
-                    net.alpaka.addons.client.gui.AlpakaStyle.BUTTON_H, setupMode ? "Back" : "Setup", hover,
-                    setupMode ? net.alpaka.addons.client.gui.AlpakaStyle.ButtonKind.PRIMARY
-                            : net.alpaka.addons.client.gui.AlpakaStyle.ButtonKind.PLAIN);
-            hits.add(new Hit(bx, by, SETUP_BTN_W, net.alpaka.addons.client.gui.AlpakaStyle.BUTTON_H,
+            int by = y + (HEADER_H - AlpakaStyle.BUTTON_H) / 2;
+            boolean hover = inside(mouseX, mouseY, bx, by, SETUP_BTN_W, AlpakaStyle.BUTTON_H);
+            AlpakaStyle.button(graphics, this.font, bx, by, SETUP_BTN_W,
+                    AlpakaStyle.BUTTON_H, setupMode ? "Back" : "Setup", hover,
+                    setupMode ? AlpakaStyle.ButtonKind.PRIMARY
+                            : AlpakaStyle.ButtonKind.PLAIN);
+            hits.add(new Hit(bx, by, SETUP_BTN_W, AlpakaStyle.BUTTON_H,
                     (mx, my) -> setupMode = !setupMode));
         }
     }
@@ -769,24 +767,12 @@ public class AlpakaConfigScreen extends Screen {
                     ModernGuiUtils.drawRoundedRect(graphics, right - SWATCH_W + 1, sy + 1, SWATCH_W - 2, SWATCH_H - 2, 2, option.getColor());
                     if (shown) hits.add(new Hit(rowX, hitY, rowW, rowH, (mx, my) -> option.triggerAction(this)));
                 } else {
-                    boolean armed = armedOption == option && System.currentTimeMillis() < armedUntilMs;
-                    boolean danger = option.getId().equals("disable_all_features");
-                    String label = armed ? CONFIRM_LABEL : option.getTitle();
-                    int color = hover || armed ? (danger ? COLOR_DANGER : ModernGuiUtils.getAccentColor()) : danger ? 0xFFC9726C : COLOR_TEXT;
+                    boolean danger = option.isDangerous();
+                    int color = hover ? (danger ? COLOR_DANGER : ModernGuiUtils.getAccentColor()) : danger ? COLOR_DANGER_SOFT : COLOR_TEXT;
                     if (hover) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, rowH, 4, COLOR_ROW);
-                    String text = ellipsize(label, rowW - 8);
+                    String text = ellipsize(option.getTitle(), rowW - 8);
                     graphics.text(this.font, GuiFont.text(text), rowX + (rowW - GuiFont.width(this.font, text)) / 2, rowY + (rowH - 8) / 2, color, false);
-                    if (shown) {
-                        hits.add(new Hit(rowX, hitY, rowW, rowH, (mx, my) -> {
-                            if (option.isConfirmFirst() && !(armedOption == option && System.currentTimeMillis() < armedUntilMs)) {
-                                armedOption = option;
-                                armedUntilMs = System.currentTimeMillis() + CONFIRM_WINDOW_MS;
-                                return;
-                            }
-                            armedOption = null;
-                            option.triggerAction(this);
-                        }));
-                    }
+                    if (shown) hits.add(new Hit(rowX, hitY, rowW, rowH, (mx, my) -> option.triggerAction(this)));
                 }
             }
             case DROPDOWN -> {

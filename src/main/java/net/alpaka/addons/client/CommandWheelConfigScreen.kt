@@ -276,7 +276,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
 
         val hoverReset = inside(mouseX, mouseY, resetBtnX(f), buttonsY, RESET_W, AlpakaStyle.BUTTON_H)
         AlpakaStyle.button(graphics, this.font, resetBtnX(f), buttonsY, RESET_W, AlpakaStyle.BUTTON_H,
-            if (resetArmed()) "Sure?" else "Reset", hoverReset, ButtonKind.DANGER)
+            "Reset", hoverReset, ButtonKind.DANGER)
 
         AlpakaStyle.endOpen(graphics, pushed)
     }
@@ -318,10 +318,6 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
 
     private fun inside(mx: Int, my: Int, x: Int, y: Int, w: Int, h: Int) = AlpakaStyle.inside(mx.toDouble(), my.toDouble(), x, y, w, h)
 
-    /** Reset wipes every command, so it asks for a second click within a few seconds. */
-    private var resetArmedUntil = 0L
-    private fun resetArmed() = System.currentTimeMillis() < resetArmedUntil
-
     private fun addTargetLabel(pageCount: Int): String = when {
         addTargetPage < 0 -> "Auto"
         addTargetPage >= pageCount -> "New page"
@@ -335,6 +331,12 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
     private fun pageBtnX(f: Frame) = f.buttonsX
     private fun addBtnX(f: Frame) = pageBtnX(f) + PAGE_BTN_W + 6
     private fun resetBtnX(f: Frame) = addBtnX(f) + ADD_W + 6
+
+    /** For the screenshot tour: the middle of the Reset button, to click it as a player would. */
+    fun devResetPoint(): IntArray {
+        val f = frame()
+        return intArrayOf(resetBtnX(f) + RESET_W / 2, f.buttonsY + AlpakaStyle.BUTTON_H / 2)
+    }
     private fun delBtnX(rowX: Int, rowW: Int) = rowX + rowW - SMALL_BTN - 3
     private fun nextBtnX(rowX: Int, rowW: Int) = delBtnX(rowX, rowW) - SMALL_BTN - 4
     private fun prevBtnX(rowX: Int, rowW: Int) = nextBtnX(rowX, rowW) - SMALL_BTN
@@ -374,13 +376,12 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
             }
             if (mouseX in resetBtnX(f)..(resetBtnX(f) + RESET_W)) {
                 playPloppSound()
-                if (resetArmed()) {
-                    resetArmedUntil = 0L
+                // Reset wipes every command, so it asks first, in the dialog every such action uses.
+                this.minecraft?.gui?.setScreen(AlpakaConfirmScreen(this, "Reset Quick Commands",
+                    "Replaces every quick command on every page with the default set.", "Reset", true) {
                     CommandWheelPages.reset()
                     addTargetPage = -1
-                } else {
-                    resetArmedUntil = System.currentTimeMillis() + 3000L
-                }
+                })
                 return true
             }
         } else {

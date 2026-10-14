@@ -156,27 +156,25 @@ public class AlpakaConfigRegistry {
                 "Disables every feature in the mod after confirmation.",
                 ConfigCategory.GENERAL,
                 "Disable All",
-                parent -> Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.client.AlpakaConfirmScreen(parent,
-                        "Disable All Features",
+                parent -> AlpakaConfig.instance.disableAllFeatures(),
+                "disable all features turn off reset everywhere confirm prompt")
+                .confirm("Disable All Features",
                         "Turns off every feature of Alpaka Addons. Each one can be switched back on in the config.",
-                        "Disable All", true,
-                        () -> AlpakaConfig.instance.disableAllFeatures())),
-                "disable all features turn off reset everywhere confirm prompt"));
+                        "Disable All", true));
 
         OPTIONS.add(new ConfigOption("reset_all_settings", "Reset All Settings",
                 "Puts every setting of the mod back to its default after confirmation.",
                 ConfigCategory.GENERAL,
                 "Reset All",
-                parent -> Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.client.AlpakaConfirmScreen(parent,
-                        "Reset All Settings",
+                parent -> {
+                    AlpakaConfig.resetToDefaults();
+                    GuiFont.refreshChat();
+                },
+                "reset all settings default defaults factory restore clear confirm prompt")
+                .confirm("Reset All Settings",
                         "Puts every setting of Alpaka Addons back to its default, HUD positions included. "
                                 + "Slayer stats and saved viewmodel presets are kept. This cannot be undone.",
-                        "Reset All", true,
-                        () -> {
-                            AlpakaConfig.resetToDefaults();
-                            GuiFont.refreshChat();
-                        })),
-                "reset all settings default defaults factory restore clear confirm prompt"));
+                        "Reset All", true));
 
         // --- 1. VISUALS & RENDERING ---
 
@@ -962,20 +960,11 @@ public class AlpakaConfigRegistry {
                 "Resets every viewmodel and swing value. Presets are kept.",
                 ConfigCategory.VIEWMODEL,
                 "Reset",
-                parent -> Minecraft.getInstance().gui.setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(
-                        confirmed -> {
-                            if (confirmed) {
-                                AlpakaConfig.instance.resetItemViewmodel();
-                                try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
-                            }
-                            Minecraft.getInstance().gui.setScreen(parent);
-                        },
-                        Component.literal("§c§lReset Viewmodel Settings"),
-                        Component.literal("Are you sure you want to reset every viewmodel and swing value to its default? Saved presets are left untouched."),
-                        Component.literal("§cReset"),
-                        Component.literal("Cancel")
-                )),
-                "reset viewmodel default defaults revert restore clear hand item size offset rotation swing"));
+                parent -> AlpakaConfig.instance.resetItemViewmodel(),
+                "reset viewmodel default defaults revert restore clear hand item size offset rotation swing")
+                .confirm("Reset Viewmodel Settings",
+                        "Puts every viewmodel and swing value back to its default. Saved presets are kept.",
+                        "Reset", true));
 
         OPTIONS.add(new ConfigOption("Viewmodel Presets", ConfigCategory.VIEWMODEL));
 
@@ -993,11 +982,11 @@ public class AlpakaConfigRegistry {
                 "Saves your current viewmodel and swing settings to Preset 1.",
                 ConfigCategory.VIEWMODEL,
                 "Save P1",
-                parent -> {
-                    AlpakaConfig.instance.savePreset(0);
-                    try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
-                },
-                "preset save 1 slot viewmodel hand size offset").confirmFirst());
+                parent -> AlpakaConfig.instance.savePreset(0),
+                "preset save 1 slot viewmodel hand size offset")
+                .confirm("Save to Preset 1",
+                        "Saves your current viewmodel and swing settings to Preset 1, over what it holds now.",
+                        "Save", false));
 
         OPTIONS.add(new ConfigOption("load_preset_2", "Load Preset 2",
                 "Applies viewmodel and swing settings from Preset 2.",
@@ -1013,11 +1002,11 @@ public class AlpakaConfigRegistry {
                 "Saves your current viewmodel and swing settings to Preset 2.",
                 ConfigCategory.VIEWMODEL,
                 "Save P2",
-                parent -> {
-                    AlpakaConfig.instance.savePreset(1);
-                    try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
-                },
-                "preset save 2 slot viewmodel hand size offset").confirmFirst());
+                parent -> AlpakaConfig.instance.savePreset(1),
+                "preset save 2 slot viewmodel hand size offset")
+                .confirm("Save to Preset 2",
+                        "Saves your current viewmodel and swing settings to Preset 2, over what it holds now.",
+                        "Save", false));
 
         OPTIONS.add(new ConfigOption("load_preset_3", "Load Preset 3",
                 "Applies viewmodel and swing settings from Preset 3.",
@@ -1033,11 +1022,11 @@ public class AlpakaConfigRegistry {
                 "Saves your current viewmodel and swing settings to Preset 3.",
                 ConfigCategory.VIEWMODEL,
                 "Save P3",
-                parent -> {
-                    AlpakaConfig.instance.savePreset(2);
-                    try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
-                },
-                "preset save 3 slot viewmodel hand size offset").confirmFirst());
+                parent -> AlpakaConfig.instance.savePreset(2),
+                "preset save 3 slot viewmodel hand size offset")
+                .confirm("Save to Preset 3",
+                        "Saves your current viewmodel and swing settings to Preset 3, over what it holds now.",
+                        "Save", false));
 
 
         // --- 3. BLOCK OVERLAY ---
@@ -1730,7 +1719,10 @@ public class AlpakaConfigRegistry {
                     AlpakaConfig.instance.playerScaleZ = 1.0f;
                     AlpakaConfig.save();
                 },
-                "player scale reset default vanilla normal 1.0").confirmFirst());
+                "player scale reset default vanilla normal 1.0")
+                .confirm("Reset Scale",
+                        "Puts all three axes of your player scale back to 1.00x.",
+                        "Reset", true));
 
         OPTIONS.add(new ConfigOption("Damage Tags", ConfigCategory.COSMETICS));
 

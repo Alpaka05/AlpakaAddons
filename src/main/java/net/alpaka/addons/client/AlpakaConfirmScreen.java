@@ -16,8 +16,9 @@ import java.util.List;
 import static net.alpaka.addons.client.gui.AlpakaStyle.inside;
 
 /**
- * A yes-or-no question in the config menu's look, for the few settings that cannot be undone with
- * a click. Escape and Cancel go back without doing anything; only the confirm button acts.
+ * A yes-or-no question in the config menu's look, the one way the mod asks before anything that
+ * cannot be undone with a click: resetting or disabling settings, saving over a preset, leaving the
+ * game. Escape and Cancel go back without doing anything; only the confirm button acts.
  */
 public class AlpakaConfirmScreen extends Screen {
     private final Screen parent;
@@ -80,6 +81,18 @@ public class AlpakaConfirmScreen extends Screen {
         AlpakaStyle.endOpen(graphics, pushed);
     }
 
+    /** For the screenshot tour: the middle of the Cancel button, to click it as a player would. */
+    public int[] devCancelPoint() {
+        Layout l = layout();
+        return new int[] {l.cancelX() + BTN_W / 2, l.btnY() + AlpakaStyle.BUTTON_H / 2};
+    }
+
+    /** For the screenshot tour: the middle of the confirm button. */
+    public int[] devConfirmPoint() {
+        Layout l = layout();
+        return new int[] {l.confirmX() + BTN_W / 2, l.btnY() + AlpakaStyle.BUTTON_H / 2};
+    }
+
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         if (event.button() != 0) return super.mouseClicked(event, doubleClick);
@@ -87,7 +100,8 @@ public class AlpakaConfirmScreen extends Screen {
         if (inside(event.x(), event.y(), l.confirmX(), l.btnY(), BTN_W, AlpakaStyle.BUTTON_H)) {
             click();
             onConfirm.run();
-            onClose();
+            // An action that moves on by itself - leaving the world, say - is not undone by going back.
+            if (this.minecraft != null && this.minecraft.gui.screen() == this) onClose();
             return true;
         }
         if (inside(event.x(), event.y(), l.cancelX(), l.btnY(), BTN_W, AlpakaStyle.BUTTON_H)) {

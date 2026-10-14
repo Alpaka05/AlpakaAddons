@@ -28,10 +28,13 @@ public final class AlpakaStyle {
     public static final int TEXT_MUTED = 0xFF7C7C7C;
     public static final int TRACK = 0xFF3A3A3A;
     public static final int DANGER = 0xFFE5534B;
+    /** A dangerous action's text at rest; {@link #DANGER} once hovered. */
+    public static final int DANGER_SOFT = 0xFFC9726C;
 
     // ---- Metrics, in GUI pixels -----------------------------------------------------------------
 
-    public static final int HEADER_H = 30;
+    /** The header of every window, the config menu's included, and the height of the HUD editor's bar. */
+    public static final int HEADER_H = 33;
     public static final int PAD = 8;
     public static final int ROW_H = 16;
     public static final int BUTTON_H = 18;
@@ -101,7 +104,7 @@ public final class AlpakaStyle {
             }
             case DANGER -> {
                 background = hover ? (DANGER & 0x00FFFFFF) | 0x40000000 : ROW;
-                text = hover ? DANGER : 0xFFC9726C;
+                text = hover ? DANGER : DANGER_SOFT;
             }
             default -> {
                 background = hover ? ROW_SELECTED : ROW;

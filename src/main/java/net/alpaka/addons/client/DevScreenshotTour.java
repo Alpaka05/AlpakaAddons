@@ -90,6 +90,35 @@ public final class DevScreenshotTour {
                     "Disable All", true, () -> {})),
             screen("wheel-editor", () -> new CommandWheelConfigScreen(new CustomMainMenuScreen())),
             screen("hud-editor", () -> new HudEditorScreen(null)),
+            // Every action that asks first, through the one dialog: opened the way a player opens it,
+            // from its row in the config or its button, and Cancel taking them back unchanged.
+            screen("confirm-config-disable-all", () -> AlpakaConfigScreen.openOn("Main", "Disable All Features")),
+            new Stop("confirm-dialog-disable-all", () -> trigger("disable_all_features"), () -> true, 30),
+            new Stop("confirm-cancel-back-to-config", () -> click(((AlpakaConfirmScreen) screen()).devCancelPoint()),
+                    () -> true, 30),
+            screen("confirm-config-reset-all", () -> AlpakaConfigScreen.openOn("Main", "Reset All Settings")),
+            new Stop("confirm-dialog-reset-all", () -> trigger("reset_all_settings"), () -> true, 30),
+            screen("confirm-config-viewmodel-reset", () -> AlpakaConfigScreen.openOn("Viewmodel", "Reset Viewmodel Settings")),
+            new Stop("confirm-dialog-viewmodel-reset", () -> trigger("item_viewmodel_reset"), () -> true, 30),
+            screen("confirm-config-presets", () -> AlpakaConfigScreen.openOn("Viewmodel", "Presets")),
+            new Stop("confirm-dialog-save-preset", () -> trigger("save_preset_1"), () -> true, 30),
+            screen("confirm-config-player-scale", () -> AlpakaConfigScreen.openOn("Cosmetics", "Player Scale")),
+            new Stop("confirm-dialog-player-scale", () -> trigger("player_scale_reset"), () -> true, 30),
+            // Quick commands with one of the player's own: Reset asks, Cancel keeps it, Reset for
+            // real puts the default set back and returns to the editor.
+            new Stop("confirm-quick-commands", () -> {
+                java.util.List<java.util.List<String>> pages = new java.util.ArrayList<>();
+                pages.add(new java.util.ArrayList<>(java.util.List.of("/tour-own-command", "/hub")));
+                AlpakaConfig.instance.commandWheelPages = pages;
+                Minecraft.getInstance().gui.setScreen(new CommandWheelConfigScreen(new CustomMainMenuScreen()));
+            }, () -> true, 30),
+            new Stop("confirm-dialog-quick-commands", () -> click(((CommandWheelConfigScreen) screen()).devResetPoint()),
+                    () -> true, 30),
+            new Stop("confirm-quick-commands-after-cancel", () -> click(((AlpakaConfirmScreen) screen()).devCancelPoint()),
+                    () -> true, 30),
+            new Stop(null, () -> click(((CommandWheelConfigScreen) screen()).devResetPoint()), () -> true, 10),
+            new Stop("confirm-quick-commands-after-reset", () -> click(((AlpakaConfirmScreen) screen()).devConfirmPoint()),
+                    () -> true, 30),
             new Stop(null, DevScreenshotTour::enterWorld,
                     () -> Minecraft.getInstance().player != null && Minecraft.getInstance().gui.screen() == null, 100),
             new Stop("world-hud", DevScreenshotTour::showHuds, () -> true, 30),
@@ -97,6 +126,29 @@ public final class DevScreenshotTour {
             // Every HUD on its blurred panel and in the menu font, a notice in the corner.
             new Stop("hud-style", DevScreenshotTour::hudStyle, () -> true, 20),
             screen("pause-menu", net.alpaka.addons.features.escapemenu.CustomPauseScreen::new),
+            // Leaving asks through the same dialog; Cancel brings the menu straight back, without
+            // its entrance - three ticks would catch it mid-way if it replayed.
+            new Stop("confirm-dialog-leave", () -> click(((net.alpaka.addons.features.escapemenu.CustomPauseScreen) screen())
+                    .devLeavePoint()), () -> true, 30),
+            new Stop("confirm-pause-after-cancel", () -> click(((AlpakaConfirmScreen) screen()).devCancelPoint()),
+                    () -> true, 3),
+            // The HUD editor with the world age HUD dragged away: Reset All asks, Cancel leaves it
+            // where it is, and confirming puts every HUD back.
+            new Stop("confirm-hud-editor-moved", () -> {
+                for (net.alpaka.addons.client.hud.HudElement element : net.alpaka.addons.client.hud.HudRegistry.ELEMENTS) {
+                    if (element.getId().contains("world")) {
+                        element.setAnchorX(160);
+                        element.setAnchorY(140);
+                    }
+                }
+                Minecraft.getInstance().gui.setScreen(new HudEditorScreen(null));
+            }, () -> true, 30),
+            new Stop("confirm-dialog-hud-reset", () -> click(((HudEditorScreen) screen()).devResetAllPoint()), () -> true, 30),
+            new Stop("confirm-hud-editor-after-cancel", () -> click(((AlpakaConfirmScreen) screen()).devCancelPoint()),
+                    () -> true, 30),
+            new Stop(null, () -> click(((HudEditorScreen) screen()).devResetAllPoint()), () -> true, 10),
+            new Stop("confirm-hud-editor-after-reset", () -> click(((AlpakaConfirmScreen) screen()).devConfirmPoint()),
+                    () -> true, 30),
             new Stop(null, () -> Minecraft.getInstance().gui.setScreen(null), () -> true, 5),
             // Two ticks after a burst: the lines are mid-slide inside the chat's box.
             new Stop("chat-slide", DevScreenshotTour::chatBurst, () -> true, 2),
@@ -154,8 +206,38 @@ public final class DevScreenshotTour {
             new Stop(null, () -> AlpakaConfig.instance.itemLightingDisabled = false, () -> true, 1),
             // The fire pit preview has to be on a tick before the clay arrives, as in a real fight.
             new Stop(null, DevScreenshotTour::firePitPreview, () -> true, 5),
-            new Stop("fire-pits", DevScreenshotTour::placeFirePits, () -> true, 30)
+            new Stop("fire-pits", DevScreenshotTour::placeFirePits, () -> true, 30),
+            // Last, as it ends the world: confirming the leave dialog leaves for the title screen
+            // rather than going back to the pause menu.
+            screen(null, net.alpaka.addons.features.escapemenu.CustomPauseScreen::new),
+            new Stop(null, () -> click(((net.alpaka.addons.features.escapemenu.CustomPauseScreen) screen()).devLeavePoint()),
+                    () -> true, 10),
+            new Stop("confirm-left-world", () -> click(((AlpakaConfirmScreen) screen()).devConfirmPoint()),
+                    () -> Minecraft.getInstance().level == null, 40)
     );
+
+    private static net.minecraft.client.gui.screens.Screen screen() {
+        return Minecraft.getInstance().gui.screen();
+    }
+
+    /** A left click at this point of the open screen, as the player's mouse would deliver it. */
+    private static void click(int[] point) {
+        screen().mouseClicked(new net.minecraft.client.input.MouseButtonEvent(point[0], point[1],
+                new net.minecraft.client.input.MouseButtonInfo(0, 0)), false);
+    }
+
+    /** What clicking the config row of the action with this id does, on the config screen that is open. */
+    private static void trigger(String id) {
+        for (net.alpaka.addons.client.gui.ConfigCategory category : net.alpaka.addons.client.gui.ConfigCategory.values()) {
+            for (net.alpaka.addons.client.gui.ConfigOption option : net.alpaka.addons.client.gui.AlpakaConfigRegistry.getOptions(category, "")) {
+                if (id.equals(option.getId())) {
+                    option.triggerAction(screen());
+                    return;
+                }
+            }
+        }
+        AlpakaAddons.LOGGER.warn("Screenshot tour: no option {}", id);
+    }
 
     private static int ticks = 0;
     private static int stop = -1;

@@ -120,14 +120,20 @@ public class ColorPickerScreen extends Screen {
     // ---- Layout ---------------------------------------------------------------------------------
 
     private static final int PREF_W = 330;
-    private static final int PREF_H = 206;
+    private static final int PREF_H = 209;
     private static final int LEFT_W = 112;
     private static final int SWATCH = 16;
     private static final int SWATCH_GAP = 8;
     private static final int SLIDER_ROW_H = 28;
     private static final int FIELD_H = 16;
+    private static final int RESET_W = 40;
 
     /** Where everything goes, shared by drawing and input. */
+    /** The header's Reset button sits centred in the header, as every header button does. */
+    private static int headerButtonY(Layout l) {
+        return l.y() + (AlpakaStyle.HEADER_H - AlpakaStyle.BUTTON_H) / 2;
+    }
+
     private record Layout(int x, int y, int w, int h, int bodyY, int leftX, int previewH, int hexY,
                           int presetLabelY, int gridY, int rightX, int rightW, int btnY, int saveX, int cancelX,
                           int btnW, int resetX) {
@@ -149,7 +155,7 @@ public class ColorPickerScreen extends Screen {
             int btnW = 64;
             int saveX = x + w - AlpakaStyle.PAD - btnW;
             int cancelX = saveX - btnW - 6;
-            int resetX = x + w - AlpakaStyle.PAD - 40;
+            int resetX = x + w - AlpakaStyle.PAD - RESET_W;
             return new Layout(x, y, w, h, bodyY, leftX, previewH, hexY, presetLabelY, gridY, rightX, rightW,
                     btnY, saveX, cancelX, btnW, resetX);
         }
@@ -174,8 +180,8 @@ public class ColorPickerScreen extends Screen {
 
         // Reset, in the header: only while the colour differs from the default.
         if (defaultColor != null && currentColor() != defaultColor) {
-            boolean hover = inside(mouseX, mouseY, l.resetX(), l.y() + 6, 40, 18);
-            AlpakaStyle.button(graphics, this.font, l.resetX(), l.y() + 6, 40, 18, "Reset", hover, ButtonKind.PLAIN);
+            boolean hover = inside(mouseX, mouseY, l.resetX(), headerButtonY(l), RESET_W, AlpakaStyle.BUTTON_H);
+            AlpakaStyle.button(graphics, this.font, l.resetX(), headerButtonY(l), RESET_W, AlpakaStyle.BUTTON_H, "Reset", hover, ButtonKind.PLAIN);
         }
 
         // The colour now, over a checkerboard where it is see-through.
@@ -258,7 +264,7 @@ public class ColorPickerScreen extends Screen {
         hexFocused = false;
 
         if (defaultColor != null && currentColor() != defaultColor
-                && inside(mouseX, mouseY, l.resetX(), l.y() + 6, 40, 18)) {
+                && inside(mouseX, mouseY, l.resetX(), headerButtonY(l), RESET_W, AlpakaStyle.BUTTON_H)) {
             playSound();
             setColor(defaultColor);
             syncHexFromColor();

@@ -1,8 +1,9 @@
 package net.alpaka.addons.features.chat;
 
+import net.alpaka.addons.client.gui.AlpakaStyle;
+import net.alpaka.addons.client.gui.GuiFont;
 import net.alpaka.addons.client.gui.ModernGuiUtils;
 import net.alpaka.addons.config.AlpakaConfig;
-import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -10,6 +11,7 @@ import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.multiplayer.chat.GuiMessage;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
 import org.lwjgl.glfw.GLFW;
 
 /**
@@ -34,6 +36,10 @@ import org.lwjgl.glfw.GLFW;
  *
  * Each channel tab can be left out of the row, for a player with no use for, say, Co-op. A hidden
  * channel's lines are not lost: they sort to it as before and so still show on All.
+ *
+ * The row is drawn in the mod's menu look: rounded tabs, the config's text greys, the accent for the
+ * tab that is up and for unread counts, and the chat's own font - the menu font when the chat is
+ * written in it, then without the pixel font's shadow.
  */
 public final class ChatTabsFeature {
 
@@ -50,6 +56,13 @@ public final class ChatTabsFeature {
     private static final int TAB_GAP = 2;
     private static final int LEFT = 2;
     private static final int BOTTOM_GAP = 15;
+    /** Corner radius of a tab and of the filter chip, a step below the HUD panels' for the smaller box. */
+    private static final int TAB_RADIUS = 3;
+    /** How far the selected tab's underline stays clear of the rounded corners on either side. */
+    private static final int UNDERLINE_INSET = 2;
+    /** The tint behind the selected tab and the chip: the accent, faint. */
+    private static final int ACCENT_TINT_ALPHA = 0x30000000;
+    private static final int HOVER_TINT = 0x20FFFFFF;
 
     public static boolean isEnabled() {
         return AlpakaConfig.instance.chatTabsEnabled;
@@ -198,15 +211,40 @@ public final class ChatTabsFeature {
         Minecraft mc = Minecraft.getInstance();
         if (mc.gui.screen() instanceof ChatScreen) return;
         Font font = mc.font;
-        Component label = Component.literal(active.label + " only");
+        // The channel in full, the word after it quieter, so the chip reads as the channel's name.
+        Component label = inChatFont(Component.literal(active.label)
+                .append(Component.literal(" only").withStyle(Style.EMPTY.withColor(AlpakaStyle.TEXT_MUTED & 0xFFFFFF))));
         int y1 = graphics.guiHeight() - BOTTOM_GAP;
         int y0 = y1 - TAB_HEIGHT;
         int width = font.width(label) + TAB_PAD * 2;
-        int accent = ModernGuiUtils.getAccentColor();
-        graphics.fill(LEFT, y0, LEFT + width, y1, mc.options.getBackgroundColor(Integer.MIN_VALUE));
-        graphics.fill(LEFT, y0, LEFT + width, y1, (accent & 0xFFFFFF) | 0x30000000);
-        graphics.fill(LEFT, y1 - 1, LEFT + width, y1, accent);
-        graphics.text(font, label, LEFT + TAB_PAD, y0 + 2, 0xFFFFFFFF);
+        drawTab(graphics, LEFT, y0, width, mc.options.getBackgroundColor(Integer.MIN_VALUE), true, false);
+        graphics.text(font, label, LEFT + TAB_PAD, y0 + 2, AlpakaStyle.TEXT, !GuiFont.inChat());
+    }
+
+    /**
+     * One tab's box, or the chip's: rounded like the menus' rows, over the chat's own background so
+     * it follows the player's text background opacity. The tab that is up carries a faint accent
+     * tint and an accent underline that stops short of the rounded corners.
+     */
+    private static void drawTab(GuiGraphicsExtractor graphics, int x, int y0, int width, int background,
+                                boolean selected, boolean hovered) {
+        ModernGuiUtils.drawRoundedRect(graphics, x, y0, width, TAB_HEIGHT, TAB_RADIUS, background);
+        if (selected) {
+            int accent = ModernGuiUtils.getAccentColor();
+            ModernGuiUtils.drawRoundedRect(graphics, x, y0, width, TAB_HEIGHT, TAB_RADIUS, (accent & 0xFFFFFF) | ACCENT_TINT_ALPHA);
+            ModernGuiUtils.drawRoundedRect(graphics, x + UNDERLINE_INSET, y0 + TAB_HEIGHT - 1,
+                    width - UNDERLINE_INSET * 2, 1, 1, accent);
+        } else if (hovered) {
+            ModernGuiUtils.drawRoundedRect(graphics, x, y0, width, TAB_HEIGHT, TAB_RADIUS, HOVER_TINT);
+        }
+    }
+
+    /**
+     * A label in the font the chat is written in: the menu font when the chat uses it, vanilla's
+     * otherwise. Measured and drawn as the same component, so the click areas match the boxes.
+     */
+    private static Component inChatFont(Component label) {
+        return GuiFont.inChat() ? GuiFont.restyle(label) : label;
     }
 
     /** The tab row under the held-open chat, without hover since there is no cursor on it. */
@@ -232,13 +270,15 @@ public final class ChatTabsFeature {
         };
     }
 
+    /** A tab's name, with its unread count after it in the accent colour while there is one. */
     private static Component labelOf(ChatTab tab) {
         MutableComponent label = Component.literal(tab.label);
         int count = unread[tab.ordinal()];
         if (count > 0) {
-            label.append(Component.literal(" " + (count > 99 ? "99+" : String.valueOf(count))).withStyle(ChatFormatting.YELLOW));
+            label.append(Component.literal(" " + (count > 99 ? "99+" : String.valueOf(count)))
+                    .withStyle(Style.EMPTY.withColor(ModernGuiUtils.getAccentColor() & 0xFFFFFF)));
         }
-        return label;
+        return inChatFont(label);
     }
 
     /** Draws the row. Called from the chat screen before the command suggestions, so those stay on top. */
@@ -249,7 +289,9 @@ public final class ChatTabsFeature {
         int y1 = screenHeight - BOTTOM_GAP;
         int y0 = y1 - TAB_HEIGHT;
         int background = mc.options.getBackgroundColor(Integer.MIN_VALUE);
-        int accent = ModernGuiUtils.getAccentColor();
+        // The menu font is drawn flat, as in the menus; the pixel font keeps the shadow the chat's
+        // own lines have, so the row matches whichever the chat is written in.
+        boolean shadow = !GuiFont.inChat();
         int x = LEFT;
         for (ChatTab tab : ChatTab.values()) {
             if (!isShown(tab)) continue;
@@ -258,15 +300,10 @@ public final class ChatTabsFeature {
             boolean selected = tab == active;
             boolean hovered = mouseX >= x && mouseX < x + width && mouseY >= y0 && mouseY < y1;
 
-            graphics.fill(x, y0, x + width, y1, background);
-            if (selected) {
-                graphics.fill(x, y0, x + width, y1, (accent & 0xFFFFFF) | 0x30000000);
-                graphics.fill(x, y1 - 1, x + width, y1, accent);
-            } else if (hovered) {
-                graphics.fill(x, y0, x + width, y1, 0x20FFFFFF);
-            }
-            int color = selected ? 0xFFFFFFFF : hovered ? 0xFFDDDDDD : 0xFFA0A0A0;
-            graphics.text(font, label, x + TAB_PAD, y0 + 2, color);
+            drawTab(graphics, x, y0, width, background, selected, hovered);
+            // As the config's sidebar: the open one and the hovered one in full, the rest softer.
+            int color = selected || hovered ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
+            graphics.text(font, label, x + TAB_PAD, y0 + 2, color, shadow);
             x += width + TAB_GAP;
         }
     }

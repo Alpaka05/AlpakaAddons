@@ -8,7 +8,8 @@ import org.joml.Matrix3x2f;
 
 /**
  * The look the mod's own HUDs share with the chat and the scoreboard: a rounded panel with a soft
- * shadow that shows the world blurred behind it, and text in the menu font.
+ * shadow that shows the world blurred behind it, and text in the menu font, drawn flat on the panel
+ * as the config menu draws its own ({@link #textShadow}).
  *
  * Each HUD decides for itself whether it uses either; this is only how they are drawn, so the
  * slayer HUD, the boss timer, the world age and the notices all come out alike. The panel samples
@@ -18,9 +19,13 @@ public final class HudPanel {
     /** How far the panel reaches past the text it sits behind, in the HUD's own pixels. */
     public static final int PAD_X = 4;
     public static final int PAD_Y = 3;
-    /** Corner radius and shadow reach, in the HUD's own pixels; the scoreboard panel's. */
-    private static final int RADIUS = 4;
-    private static final int SHADOW = 4;
+    /**
+     * Corner radius and shadow reach, in the HUD's own pixels; the scoreboard panel's. Public so a
+     * HUD that submits a panel of its own shape - the inventory's, with its frame - keeps the same
+     * corners and shadow as the rest.
+     */
+    public static final int RADIUS = 4;
+    public static final int SHADOW = 4;
     /** The tint over the blur: vanilla's scoreboard body box, so the panels match the sidebar. */
     public static final int TINT = 0x4C000000;
 
@@ -63,6 +68,19 @@ public final class HudPanel {
     public static int margin(boolean blurred, float scale, int textMargin) {
         if (!blurred) return textMargin;
         return Math.max(textMargin, (int) Math.ceil(PAD_X * scale));
+    }
+
+    /**
+     * Whether a HUD's text casts vanilla's drop shadow, given whether the HUD asked for its panel.
+     *
+     * On the panel it does not: the config menu draws all of its text flat, and the tint under it
+     * already gives the contrast the shadow is there for. Without the panel the text sits straight
+     * on the world, where the shadow is what keeps it readable over snow or a bright sky - so the
+     * shadow stays there, and also where the extractor cannot take the panel and it is not drawn
+     * after all. Every HUD that can sit on a panel asks this rather than deciding for itself.
+     */
+    public static boolean textShadow(GuiGraphicsExtractor graphics, boolean blurred) {
+        return !blurred || !(graphics instanceof AlpakaGuiElementSink);
     }
 
     /** The text in the menu font when the HUD asks for it, unchanged otherwise. */

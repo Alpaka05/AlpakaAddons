@@ -2,6 +2,7 @@ package net.alpaka.addons.features.chat;
 
 import com.mojang.logging.LogUtils;
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.features.slayer.SlayerDropTracker;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.StringTag;
@@ -266,14 +267,12 @@ public final class ScreenshotMessageFeature {
         }
     }
 
-    /** A line in chat with the mod's prefix, from any thread. */
+    /**
+     * A line in chat with the mod's prefix, from any thread: handed to the client thread, then sent
+     * through the mod's one message entry point so the prefix lives in a single place.
+     */
     private static void feedback(String message) {
-        Minecraft mc = Minecraft.getInstance();
-        mc.execute(() -> {
-            if (mc.player != null) {
-                mc.player.sendSystemMessage(Component.literal("§6[AA] " + message));
-            }
-        });
+        Minecraft.getInstance().execute(() -> SlayerDropTracker.sendModMessage(message));
     }
 
     private record ImageTransferable(BufferedImage image) implements Transferable {

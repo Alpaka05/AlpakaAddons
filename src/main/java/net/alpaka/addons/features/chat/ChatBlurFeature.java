@@ -9,6 +9,7 @@ import com.mojang.blaze3d.textures.FilterMode;
 import com.mojang.blaze3d.textures.GpuTexture;
 import net.alpaka.addons.client.gui.AlpakaGuiElementSink;
 import net.alpaka.addons.client.gui.BlurRectRenderState;
+import net.alpaka.addons.client.gui.HudPanel;
 import net.alpaka.addons.client.gui.RoundedRectRenderState;
 import org.joml.Vector2f;
 import net.alpaka.addons.config.AlpakaConfig;
@@ -58,8 +59,8 @@ public final class ChatBlurFeature {
 
     /** How wide the panel grows past vanilla's own box, in chat pixels. */
     public static final int PADDING = 3;
-    /** The panel's corner radius in chat pixels. */
-    public static final int RADIUS = 5;
+    /** The panel's corner radius in chat pixels: the HUD panels' and the scoreboard's, so they match. */
+    public static final int RADIUS = HudPanel.RADIUS;
     /** How far the panel's drop shadow reaches, in chat pixels. */
     public static final int SHADOW = 4;
 

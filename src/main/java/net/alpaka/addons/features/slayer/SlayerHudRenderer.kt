@@ -135,7 +135,10 @@ object SlayerHudRenderer {
     private fun layout(type: SlayerType?, preview: Boolean): Layout {
         val now = System.currentTimeMillis()
         val toggles = toggleMask()
-        val fontStyle = if (AlpakaConfig.instance.smoothOn(AlpakaConfig.instance.slayerHudSmoothFont)) GuiFont.style() else Style.EMPTY
+        val smoothFont = AlpakaConfig.instance.smoothOn(AlpakaConfig.instance.slayerHudSmoothFont)
+        // Only the cache key: the rows themselves go through HudPanel.text like every other HUD's.
+        // The style still names the face and its GUI-scale variant, so switching either rebuilds.
+        val fontStyle = if (smoothFont) GuiFont.style() else Style.EMPTY
 
         // Pause state is part of the key rather than left to the timer, so clicking the HUD to hold
         // the clock reads back immediately instead of up to a quarter second later.
@@ -176,7 +179,7 @@ object SlayerHudRenderer {
             // Measured without concatenating a spacer onto every label, which would allocate a
             // throwaway string per row per rebuild.
             // Measured as the Components that are drawn, so a row in the menu font is measured in it.
-            labelTexts = Array(rows.size) { Component.literal(rows[it].label).withStyle(fontStyle) }
+            labelTexts = Array(rows.size) { HudPanel.text(Component.literal(rows[it].label), smoothFont) }
             var labelMax = 0
             for (index in rows.indices) {
                 if (rows[index].spansColumns) continue
@@ -193,7 +196,7 @@ object SlayerHudRenderer {
                 val labelEnd = font.width(labelTexts[index])
                 val valueX = if (row.spansColumns) labelEnd + TITLE_GAP else labelWidth
                 valueXs[index] = valueX
-                val valueText = if (row.value.isNotEmpty()) Component.literal(row.value).withStyle(fontStyle) else null
+                val valueText = if (row.value.isNotEmpty()) HudPanel.text(Component.literal(row.value), smoothFont) else null
                 valueTexts[index] = valueText
 
                 val rowWidth = if (valueText == null) labelEnd else valueX + font.width(valueText)
@@ -356,17 +359,19 @@ object SlayerHudRenderer {
         graphics.pose().pushMatrix()
         graphics.pose().translate(x.toFloat(), y.toFloat())
         graphics.pose().scale(scale, scale)
-        if (AlpakaConfig.instance.blurOn(AlpakaConfig.instance.slayerHudBlur)) {
+        val blurred = AlpakaConfig.instance.blurOn(AlpakaConfig.instance.slayerHudBlur)
+        if (blurred) {
             HudPanel.aroundText(graphics, laid.unscaledWidth, laid.unscaledHeight, scale)
         }
+        val shadow = HudPanel.textShadow(graphics, blurred)
 
         var top = 0
         for (index in laid.rows.indices) {
             val line = laid.rows[index]
-            graphics.text(font, laid.labelTexts[index], 0, top, COLOR_LABEL)
+            graphics.text(font, laid.labelTexts[index], 0, top, COLOR_LABEL, shadow)
             val valueText = laid.valueTexts[index]
             if (valueText != null) {
-                graphics.text(font, valueText, laid.valueXs[index], top, line.valueColor)
+                graphics.text(font, valueText, laid.valueXs[index], top, line.valueColor, shadow)
             }
             top += LINE_HEIGHT
         }

@@ -390,7 +390,7 @@ public class AlpakaConfig {
      */
     public boolean inventoryHudAlwaysVisible = false;
     public boolean inventoryHudShowOnItemChange = false;
-    /** Backdrop strength behind the slots, in percent. 0 leaves only the accent frame. */
+    /** Backdrop strength behind the slots, in percent. 0 leaves only the gradient frame. */
     public float inventoryHudBackgroundOpacity = 70.0f;
     /**
      * Whether the panel is drawn from Minecraft's own inventory texture instead of a flat backdrop.
@@ -399,7 +399,7 @@ public class AlpakaConfig {
      * textures/gui/container/inventory.png, the same file the inventory screen uses, so whatever
      * pack is loaded paints them.
      *
-     * Off restores the flat panel with the accent frame.
+     * Off restores the flat panel with the gradient frame.
      */
     public boolean inventoryHudVanillaTexture = false;
     /** Flat style only: the panel shows the world behind it blurred, like the chat's background. */

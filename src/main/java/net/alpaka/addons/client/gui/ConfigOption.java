@@ -284,7 +284,7 @@ public class ConfigOption {
     }
 
     // Action
-    public String getActionLabel() { return actionLabel != null ? actionLabel : "Open..."; }
+    public String getActionLabel() { return actionLabel != null ? actionLabel : "Open…"; }
 
     private String[] choices;
 

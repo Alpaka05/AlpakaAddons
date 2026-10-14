@@ -95,7 +95,7 @@ public class AlpakaClient implements ClientModInitializer {
                 .then(ClientCommands.literal("perf")
                     .executes(context -> {
                         Minecraft.getInstance().execute(() -> {
-                            SlayerDropTracker.sendModMessage("§6--- Alpaka performance ---");
+                            SlayerDropTracker.sendModMessage("§6--- Alpaka Performance ---");
                             for (String line : net.alpaka.addons.utils.AlpakaPerf.report()) {
                                 SlayerDropTracker.sendModMessage("§7" + line);
                             }

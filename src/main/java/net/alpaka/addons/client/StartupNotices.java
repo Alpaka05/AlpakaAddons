@@ -73,7 +73,7 @@ public final class StartupNotices {
         // version that could still post to party and guild chat by itself.
         if (previous.isEmpty()) {
             SlayerDropTracker.sendModMessage("§7The mod no longer sends chat by itself: the automatic §f!since§7 party reply "
-                    + "and the guild drop announcement are gone. §fOffer Replies To !since§7 and §fShare Buttons On Top Drops§7 "
+                    + "and the guild drop announcement are gone. §fOffer Replies to !since§7 and §fShare Buttons on Top Drops§7 "
                     + "in §f/aa§7 add buttons that fill your chat box instead.");
         }
     }

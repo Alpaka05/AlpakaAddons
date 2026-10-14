@@ -79,7 +79,7 @@ public final class DevScreenshotTour {
             new Stop("config-notification-test", () -> net.alpaka.addons.features.notification.AlpakaNotifications.send("Test Notification",
                     "This is how notices look. It slides away after the duration you set."), () -> true, 20),
             screen("config-slayer-hud", () -> AlpakaConfigScreen.openOn("Slayer", "Slayer Session HUD")),
-            screen("config-slayer", () -> AlpakaConfigScreen.openOn("Slayer", "Share Buttons On Top Drops")),
+            screen("config-slayer", () -> AlpakaConfigScreen.openOn("Slayer", "Share Buttons on Top Drops")),
             screen("config-tooltips", () -> AlpakaConfigScreen.openOn("Interface", "Scrollable Tooltips")),
             screen("config-menu-font", () -> AlpakaConfigScreen.openOn("Design", "Menu Font").withChoiceOpen()),
             screen("config-world", () -> AlpakaConfigScreen.openOn("World", "Block Overlay")),
@@ -527,7 +527,7 @@ public final class DevScreenshotTour {
                 }
             });
         }
-        net.alpaka.addons.features.notification.AlpakaNotifications.send("Test Notification", "Where top-centre notices sit.");
+        net.alpaka.addons.features.notification.AlpakaNotifications.send("Test Notification", "Where top-center notices sit.");
     }
 
     private static void healthBar(boolean centered, int absorptionMode) {

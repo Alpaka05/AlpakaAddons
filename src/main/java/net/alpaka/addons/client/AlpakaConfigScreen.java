@@ -293,12 +293,14 @@ public class AlpakaConfigScreen extends Screen {
         return Math.max(240, Math.min(Math.min(640, this.width - 16), this.width - 8));
     }
 
+    /** The sidebar: as wide as its longest section name needs, the rest going to the features. */
     private int fullSidebarW() {
-        return Math.max(84, Math.min(120, (int) (fullPanelW() * 0.21)));
+        return Math.max(84, Math.min(104, (int) (fullPanelW() * 0.19)));
     }
 
+    /** The features' column: wide enough that most names fit beside their switch uncut. */
     private int fullFeatureColumnW() {
-        return (int) ((fullPanelW() - fullSidebarW()) * 0.42);
+        return (int) ((fullPanelW() - fullSidebarW()) * 0.46);
     }
 
     /** Setup mode's width: the settings column alone, a little wider than in the full menu. */

@@ -28,7 +28,7 @@ import org.lwjgl.glfw.GLFW
  * or the hints while nothing is selected. HUDs show their name on a pill of their own while under
  * the mouse or selected.
  */
-class HudEditorScreen(private val parent: Screen?) : Screen(GuiFont.text("HUD Editor")) {
+class HudEditorScreen(private val parent: Screen?) : Screen(GuiFont.text("HUD Editor")), net.alpaka.addons.client.gui.NoticeHost {
 
     private var selected: HudElement? = null
 
@@ -104,6 +104,8 @@ class HudEditorScreen(private val parent: Screen?) : Screen(GuiFont.text("HUD Ed
         // Over the HUDs, so a HUD parked at the top never hides the controls.
         graphics.nextStratum()
         drawBar(graphics, mouseX.toDouble(), mouseY.toDouble())
+        // Notices over the editor, not dimmed under its backdrop with the HUD.
+        net.alpaka.addons.features.notification.AlpakaNotifications.renderOverScreen(graphics)
     }
 
     private fun drawBar(graphics: GuiGraphicsExtractor, mouseX: Double, mouseY: Double) {

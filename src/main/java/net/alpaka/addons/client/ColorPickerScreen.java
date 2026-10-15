@@ -23,7 +23,7 @@ import static net.alpaka.addons.client.gui.AlpakaStyle.inside;
  * themselves show where each one leads. Nothing is applied until Save; Escape or Cancel leave the
  * option as it was, and Reset in the header goes back to the option's default.
  */
-public class ColorPickerScreen extends Screen {
+public class ColorPickerScreen extends Screen implements net.alpaka.addons.client.gui.NoticeHost {
     private final Screen parent;
     private final Consumer<Integer> onSave;
     /** The option's default, which Reset in the header goes back to; null hides it. */

@@ -26,7 +26,7 @@ import static net.alpaka.addons.client.gui.AlpakaStyle.inside;
  * The window it was opened from stays in sight behind it, dimmed, so the question reads as part of
  * that window rather than a screen of its own - and nothing flashes away and back on Cancel.
  */
-public class AlpakaConfirmScreen extends Screen {
+public class AlpakaConfirmScreen extends Screen implements net.alpaka.addons.client.gui.NoticeHost {
     private final Screen parent;
     private final String message;
     private final String confirmLabel;

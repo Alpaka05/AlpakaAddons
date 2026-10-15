@@ -32,7 +32,7 @@ import net.minecraft.network.chat.Component;
  * Everything appears in a short stagger: the dim fades in, then the logo and the rows follow one
  * another, each springing up a few pixels into place as it fades in.
  */
-public class CustomPauseScreen extends PauseScreen {
+public class CustomPauseScreen extends PauseScreen implements net.alpaka.addons.client.gui.NoticeHost {
 
     // ------------------------------------------------------------------ layout
 
@@ -276,6 +276,13 @@ public class CustomPauseScreen extends PauseScreen {
             MenuStyle.logo(graphics, logoLeft(), logoTop(), LOGO_SIZE, this.logoHover, logoAppear, elapsed());
             graphics.pose().popMatrix();
         }
+    }
+
+    @Override
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+        // Notices crisp over the menu, not blurred away under it with the HUD.
+        net.alpaka.addons.features.notification.AlpakaNotifications.renderOverScreen(graphics);
     }
 
     @Override

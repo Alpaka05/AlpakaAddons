@@ -39,7 +39,7 @@ import java.util.Set;
  * Clickable areas are collected while drawing and tested against on the next click, so what is
  * drawn and what reacts can never disagree about where a row is.
  */
-public class AlpakaConfigScreen extends Screen {
+public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.client.gui.NoticeHost {
 
     // ---- Colors (the rest are AlpakaStyle's) --------------------------------------------------
 

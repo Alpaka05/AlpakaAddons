@@ -249,6 +249,15 @@ object AlpakaNotifications {
         draw(graphics, now)
     }
 
+    /** Set while a dialog draws the window behind it, whose notices would land under the dialog. */
+    private var overScreenSuppressed = false
+
+    /** Leaves [renderOverScreen] out while a dialog draws its parent window; the dialog draws them on top. */
+    @JvmStatic
+    fun suppressOverScreen(suppressed: Boolean) {
+        overScreenSuppressed = suppressed
+    }
+
     /**
      * The notices over a screen rather than under it, for a [NoticeHost] - the config menu and the
      * windows opened from it: there the HUD is hidden behind the screen, and Send Test Notification
@@ -256,6 +265,7 @@ object AlpakaNotifications {
      */
     @JvmStatic
     fun renderOverScreen(graphics: GuiGraphicsExtractor) {
+        if (overScreenSuppressed) return
         val now = System.currentTimeMillis()
         synchronized(active) { active.removeAll { now >= it.retireAtMs } }
         graphics.nextStratum()

@@ -72,7 +72,7 @@ public class AlpakaConfigRegistry {
                         "This is how a notification looks. It slides away after the duration you set."),
                 "notification test preview sample try show notice"));
 
-        OPTIONS.add(new ConfigOption("notification_hold", "Notification Duration",
+        OPTIONS.add(new ConfigOption("notification_hold", "Duration",
                 "How long a notification stays on screen before sliding away.",
                 ConfigCategory.GENERAL,
                 () -> AlpakaConfig.instance.notificationHoldSeconds,
@@ -80,7 +80,7 @@ public class AlpakaConfigRegistry {
                 1.0f, 15.0f, val -> String.format(Locale.ROOT, "%.1f s", val),
                 "notification duration hold seconds popup toast time linger notice corner"));
 
-        OPTIONS.add(new ConfigOption("notification_corner", "Notification Position",
+        OPTIONS.add(new ConfigOption("notification_corner", "Position",
                 "Where notifications appear: a corner or the top center.",
                 ConfigCategory.GENERAL,
                 () -> (float) AlpakaConfig.instance.notificationCorner,

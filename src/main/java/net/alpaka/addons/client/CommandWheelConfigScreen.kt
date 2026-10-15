@@ -307,14 +307,20 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
 
     /** How many names the picker shows at once: all of them, or as many as fit above the field. */
     private fun pickerRows(f: Frame, pageCount: Int): Int {
-        val room = (f.buttonsY - 4 - 4 - 2 * PICKER_PAD) / AlpakaStyle.ROW_H
+        // Between the field and the window's header line.
+        val room = (f.buttonsY - 4 - (f.winY + AlpakaStyle.HEADER_H + 4) - 2 * PICKER_PAD) / AlpakaStyle.ROW_H
         return pickerTargets(pageCount).size.coerceAtMost(maxOf(3, room))
     }
 
-    /** The picker's box: x, y, width, height; the field's width, ending just above it. */
+    /**
+     * The picker's box: x, y, width, height. It starts where the field starts and ends just above
+     * it, as wide as the field or as its longest name needs, whichever is more.
+     */
     private fun pagePickerBox(f: Frame, pageCount: Int): IntArray {
         val h = pickerRows(f, pageCount) * AlpakaStyle.ROW_H + 2 * PICKER_PAD
-        return intArrayOf(pageBtnX(f), f.buttonsY - 4 - h, PAGE_BTN_W, h)
+        val widest = pickerTargets(pageCount).maxOf { GuiFont.width(this.font, addTargetLabel(it, pageCount)) }
+        val w = maxOf(PAGE_BTN_W, widest + 2 * PICKER_PAD + 24)
+        return intArrayOf(pageBtnX(f), f.buttonsY - 4 - h, w, h)
     }
 
     /** Opens the picker scrolled so the page chosen now is in view. */

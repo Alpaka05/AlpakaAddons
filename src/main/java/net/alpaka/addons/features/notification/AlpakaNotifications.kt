@@ -78,6 +78,10 @@ object AlpakaNotifications {
     private const val LINE = 10
     private const val GAP = 4
     private const val MARGIN = 8
+    /** Half the hotbar's width, around the screen's centre. */
+    private const val HOTBAR_HALF_WIDTH = 91
+    /** Above the hotbar and the health and food rows: where vanilla's chat ends too. */
+    private const val ABOVE_HOTBAR = 40
 
     /**
      * Where top-centre notices start: low enough to clear a MacBook's notch in fullscreen, and
@@ -298,7 +302,7 @@ object AlpakaNotifications {
         // pushed further from it as more arrive: up the screen from a bottom corner, down from the
         // top otherwise.
         var stackEdge = when {
-            atBottom -> (screenHeight - MARGIN).toFloat()
+            atBottom -> (screenHeight - bottomClearance(mc, screenWidth, atRight)).toFloat()
             topCenter -> topCenterTop(mc).toFloat()
             else -> MARGIN.toFloat()
         }
@@ -329,6 +333,20 @@ object AlpakaNotifications {
 
             draw(graphics, font, notice, x, y, shown, now)
         }
+    }
+
+    /**
+     * How far above the screen's bottom a bottom corner's stack starts: the margin, or - in a world,
+     * where the stack would reach across the hotbar on a narrow screen - clear of the hotbar and the
+     * health and food rows above it, where the chat's lowest line sits too.
+     */
+    private fun bottomClearance(mc: Minecraft, screenWidth: Int, atRight: Boolean): Int {
+        if (mc.player == null) return MARGIN
+        val cardStart = if (atRight) screenWidth - MARGIN - WIDTH else MARGIN
+        val cardEnd = cardStart + WIDTH
+        val hotbarStart = screenWidth / 2 - HOTBAR_HALF_WIDTH
+        val hotbarEnd = screenWidth / 2 + HOTBAR_HALF_WIDTH
+        return if (cardStart < hotbarEnd && cardEnd > hotbarStart) ABOVE_HOTBAR else MARGIN
     }
 
     /**

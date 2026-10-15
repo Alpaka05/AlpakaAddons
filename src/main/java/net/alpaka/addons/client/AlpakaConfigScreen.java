@@ -113,8 +113,12 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     /** 0 for the full menu, 1 for setup mode, eased in between. */
     private float setupProgress = 0.0f;
 
-    /** The setting under the mouse, and since when, for its tooltip. */
-    private ConfigOption hoveredSetting = null;
+    /**
+     * What is under the mouse with a tooltip to show, and since when: a setting, with its
+     * description, or a feature whose name had to be cut, with the whole name.
+     */
+    private Object hoveredTip = null;
+    private String hoveredTipText = null;
     private long hoveredSince = 0L;
 
     /** Clickable areas of the last frame, front-most last. */
@@ -385,7 +389,8 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         int bodyY = y + HEADER_H;
         int bodyH = h - HEADER_H;
 
-        hoveredSettingThisFrame = null;
+        hoveredTipThisFrame = null;
+        hoveredTipTextThisFrame = null;
 
         drawHeader(graphics, mouseX, mouseY, x, y, w, sideW, featX, featW, detailX, detailW);
         AlpakaStyle.headerLine(graphics, x, y, w);
@@ -399,12 +404,13 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         }
         drawDetails(graphics, mouseX, mouseY, detailX + 1, bodyY, detailW - 1, bodyH, deltaSec);
 
-        if (hoveredSettingThisFrame != hoveredSetting) {
-            hoveredSetting = hoveredSettingThisFrame;
+        if (hoveredTipThisFrame != hoveredTip) {
+            hoveredTip = hoveredTipThisFrame;
+            hoveredTipText = hoveredTipTextThisFrame;
             hoveredSince = now;
         }
-        if (hoveredSetting != null && now - hoveredSince >= TOOLTIP_DELAY_MS && draggedSlider == null) {
-            AlpakaStyle.tooltip(graphics, this.font, this.width, this.height, mouseX, mouseY, hoveredSetting.getDescription());
+        if (hoveredTip != null && now - hoveredSince >= TOOLTIP_DELAY_MS && draggedSlider == null) {
+            AlpakaStyle.tooltip(graphics, this.font, this.width, this.height, mouseX, mouseY, hoveredTipText);
         }
 
         AlpakaStyle.endOpen(graphics, scaling);
@@ -413,7 +419,8 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         net.alpaka.addons.features.notification.AlpakaNotifications.renderOverScreen(graphics);
     }
 
-    private ConfigOption hoveredSettingThisFrame = null;
+    private Object hoveredTipThisFrame = null;
+    private String hoveredTipTextThisFrame = null;
 
     private void drawHeader(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w,
                             int sideW, int featX, int featW, int detailX, int detailW) {
@@ -612,7 +619,12 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         graphics.enableScissor(x, clipY, x + w, clipY + clipH);
         if (features.isEmpty()) {
             String empty = searching() ? "Nothing matches \"" + search.getText().trim() + "\"" : "Nothing here yet";
-            graphics.text(this.font, GuiFont.text(ellipsize(empty, rowW - 8)), rowX + 6, clipY + 6, AlpakaStyle.TEXT_MUTED, false);
+            // Wrapped rather than cut, so a long search still shows in full.
+            int lineY = clipY + 6;
+            for (FormattedText line : GuiFont.splitLines(this.font, empty, rowW - 12)) {
+                graphics.text(this.font, Language.getInstance().getVisualOrder(line), rowX + 6, lineY, AlpakaStyle.TEXT_MUTED, false);
+                lineY += LINE_H + 1;
+            }
         }
         int rowY = clipY + 2 - featureScroll.offset();
         for (ConfigTree.Feature feature : features) {
@@ -644,7 +656,13 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
 
                 int titleColor = selected ? ModernGuiUtils.getAccentColor() : AlpakaStyle.TEXT;
                 int titleW = (feature.hasToggle() ? toggleX : right) - (rowX + 8) - 6;
-                graphics.text(this.font, GuiFont.text(ellipsize(feature.title, titleW)), rowX + 8, rowY + (FEATURE_ROW_H - 8) / 2, titleColor, false);
+                String shownTitle = ellipsize(feature.title, titleW);
+                graphics.text(this.font, GuiFont.text(shownTitle), rowX + 8, rowY + (FEATURE_ROW_H - 8) / 2, titleColor, false);
+                // A name cut short shows in full as a tooltip.
+                if (hover && !shownTitle.equals(feature.title)) {
+                    hoveredTipThisFrame = feature;
+                    hoveredTipTextThisFrame = feature.title;
+                }
             }
             rowY += FEATURE_ROW_H + FEATURE_ROW_GAP;
         }
@@ -720,7 +738,10 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         };
         boolean shown = visible(rowY, rowH, clipY, clipH);
         boolean hover = inside(mouseX, mouseY, rowX, rowY, rowW, rowH) && inside(mouseX, mouseY, colX, clipY, colW, clipH);
-        if (hover) hoveredSettingThisFrame = option;
+        if (hover) {
+            hoveredTipThisFrame = option;
+            hoveredTipTextThisFrame = option.getDescription();
+        }
         int labelY = rowY + 4;
         int right = rowX + rowW - 4;
         int hitY = Math.max(rowY, clipY);
@@ -847,10 +868,12 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         boolean open = openChoice == option;
         int right = rowX + rowW - 4;
         int current = option.getChoiceIndex();
-        // As wide as its longest name needs, so neither the name nor the label is cut for nothing.
+        // As wide as its longest name needs, but never at the cost of the setting's own label: the
+        // field grows only into room the label leaves free, and keeps its usual width at least.
         int widest = 0;
         for (String name : names) widest = Math.max(widest, GuiFont.width(this.font, name));
-        int fieldW = Math.min(Math.max(CHOICE_FIELD_W, widest + 18), rowW / 2);
+        int labelRoom = rowW - 8 - GuiFont.width(this.font, option.getTitle()) - 12;
+        int fieldW = Math.min(rowW / 2, Math.max(CHOICE_FIELD_W, Math.min(widest + 18, labelRoom)));
         int fieldX = right - fieldW;
         if (hover) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, rowH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
         drawLabel(graphics, option.getTitle(), rowX + 4, rowY + 4, fieldX - 8 - (rowX + 4));

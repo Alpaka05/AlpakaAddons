@@ -61,7 +61,9 @@ class HudEditorScreen(private val parent: Screen?) : Screen(GuiFont.text("HUD Ed
     private class Bar(val x: Int, val y: Int, val w: Int, val doneX: Int, val resetAllX: Int, val resetX: Int)
 
     private fun bar(): Bar {
-        val w = minOf(this.width - 16, AlpakaStyle.PAD + 2 + GuiFont.width(this.font, "HUD Editor") + 16 + RESET_W + RESET_ALL_W + DONE_W + 12)
+        // At least as wide as the hints' pill under it, so the pill never sticks out past the bar.
+        val content = AlpakaStyle.PAD + 2 + GuiFont.width(this.font, "HUD Editor") + 16 + RESET_W + RESET_ALL_W + DONE_W + 12
+        val w = minOf(this.width - 16, maxOf(content, GuiFont.width(this.font, HINTS) + 16))
         val x = (this.width - w) / 2
         val y = BAR_Y
         val doneX = x + w - 4 - DONE_W

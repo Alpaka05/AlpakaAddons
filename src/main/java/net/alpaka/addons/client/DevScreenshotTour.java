@@ -82,11 +82,17 @@ public final class DevScreenshotTour {
             screen("config-viewmodel", () -> AlpakaConfigScreen.openOn("Viewmodel", "Viewmodel Modifiers")),
             screen("color-picker", () -> new ColorPickerScreen(null, "Accent Color", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
             screen("wheel-editor", () -> new CommandWheelConfigScreen(new CustomMainMenuScreen())),
-            screen("hud-editor", () -> new HudEditorScreen(null)),
+            screen("hud-editor", () -> {
+                // Every HUD at its default place, as a fresh config has them.
+                for (net.alpaka.addons.client.hud.HudElement element : net.alpaka.addons.client.hud.HudRegistry.ELEMENTS) {
+                    element.reset();
+                }
+                return new HudEditorScreen(null);
+            }),
             // A setting's description as a tooltip, after resting the mouse on it.
             new Stop("config-tooltip", () -> {
                 Minecraft.getInstance().gui.setScreen(AlpakaConfigScreen.openOn("Interface", "Scrollable Tooltips"));
-                placeMouse(0.66, 0.40);
+                placeMouse(0.66, 0.47);
             }, () -> true, 30),
             new Stop(null, () -> placeMouse(0.5, 0.5), () -> true, 1),
             // A search longer than its field: cut with an ellipsis while the field is not focused.

@@ -336,12 +336,14 @@ object AlpakaNotifications {
     }
 
     /**
-     * How far above the screen's bottom a bottom corner's stack starts: the margin, or - in a world,
-     * where the stack would reach across the hotbar on a narrow screen - clear of the hotbar and the
-     * health and food rows above it, where the chat's lowest line sits too.
+     * How far above the screen's bottom a bottom corner's stack starts: the margin, or - in a world
+     * with the hotbar in sight, where the stack would reach across it on a narrow screen - clear of
+     * the hotbar and the health and food rows above it, where the chat's lowest line sits too.
      */
     private fun bottomClearance(mc: Minecraft, screenWidth: Int, atRight: Boolean): Int {
-        if (mc.player == null) return MARGIN
+        // Only while the hotbar is in sight: not over a menu, which hides it and has its own buttons low down.
+        val screen = mc.gui.screen()
+        if (mc.player == null || (screen != null && screen !is net.minecraft.client.gui.screens.ChatScreen)) return MARGIN
         val cardStart = if (atRight) screenWidth - MARGIN - WIDTH else MARGIN
         val cardEnd = cardStart + WIDTH
         val hotbarStart = screenWidth / 2 - HOTBAR_HALF_WIDTH

@@ -15,20 +15,15 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.Util;
 import org.slf4j.Logger;
 
-import javax.imageio.ImageIO;
-import java.awt.Graphics2D;
-import java.awt.Toolkit;
-import java.awt.datatransfer.DataFlavor;
-import java.awt.datatransfer.Transferable;
-import java.awt.datatransfer.UnsupportedFlavorException;
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
@@ -50,10 +45,10 @@ import java.util.function.Consumer;
  *
  * ### Copying
  *
- * Minecraft starts with AWT in headless mode, which has no clipboard. The flag is only read when
- * the toolkit is first created, and nothing in the game creates one, so it is switched off right
- * before the first use; on a client where something else already brought AWT up headless the copy
- * fails and says so. macOS is left out entirely, since AWT and GLFW do not share its main thread.
+ * Not through AWT: Minecraft starts it headless, and the flag is fixed the first time anything
+ * touches AWT, so there is no clipboard to be had from it. GLFW's clipboard carries text only. The
+ * PNG goes to the system's own tool instead - PowerShell on Windows, osascript on macOS, wl-copy or
+ * xclip on Linux - with the path in an environment variable, so it is never part of a command line.
  *
  * ### Auto copy
  *
@@ -86,7 +81,7 @@ public final class ScreenshotMessageFeature {
 
         ScreenshotPreview.show(file);
         boolean buttons = AlpakaConfig.instance.screenshotChatButtons;
-        if (AlpakaConfig.instance.autoCopyScreenshots && canCopy()) {
+        if (AlpakaConfig.instance.autoCopyScreenshots) {
             copy(file, error -> {
                 if (buttons) {
                     Component note = error == null
@@ -104,11 +99,6 @@ public final class ScreenshotMessageFeature {
             return true;
         }
         return false;
-    }
-
-    /** Whether copying an image to the clipboard is possible here. Not on macOS; see copy(). */
-    public static boolean canCopy() {
-        return Util.getPlatform() != Util.OS.OSX;
     }
 
     /**
@@ -156,8 +146,7 @@ public final class ScreenshotMessageFeature {
         if (cfg.screenshotShowOpen) {
             line.append(" ").append(button("[Open]", ChatFormatting.GREEN, new ClickEvent.OpenFile(file), "Open " + name));
         }
-        // Offered only where it can work: on macOS the copy always fails, see copy().
-        if (cfg.screenshotShowCopy && canCopy()) {
+        if (cfg.screenshotShowCopy) {
             line.append(" ").append(button("[Copy]", ChatFormatting.AQUA, custom(COPY, token), "Copy the image to the clipboard"));
         }
         if (cfg.screenshotShowDelete) {
@@ -225,32 +214,69 @@ public final class ScreenshotMessageFeature {
      * short reason for the failure. The callback may run on any thread.
      */
     private static void copy(File file, Consumer<String> done) {
-        if (Util.getPlatform() == Util.OS.OSX) {
-            done.accept("not supported on macOS");
-            return;
-        }
-        // Off the render thread: decoding a full-size screenshot takes a noticeable moment.
+        // Off the render thread: the clipboard tool takes a moment to start.
         Util.ioPool().execute(() -> {
             try {
                 if (!file.isFile()) {
                     done.accept("file not found");
                     return;
                 }
-                System.setProperty("java.awt.headless", "false");
-                BufferedImage decoded = ImageIO.read(file);
-                if (decoded == null) throw new IOException("not a readable image");
-                // Opaque RGB: the clipboard on Windows carries a bitmap, which has no alpha to speak of.
-                BufferedImage image = new BufferedImage(decoded.getWidth(), decoded.getHeight(), BufferedImage.TYPE_INT_RGB);
-                Graphics2D g = image.createGraphics();
-                g.drawImage(decoded, 0, 0, null);
-                g.dispose();
-                Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new ImageTransferable(image), null);
-                done.accept(null);
+                done.accept(copyWithSystemTool(file));
             } catch (Throwable t) {
                 LOGGER.warn("Couldn't copy screenshot {} to the clipboard", file, t);
                 done.accept(t.getClass().getSimpleName());
             }
         });
+    }
+
+    private static final String PATH_VAR = "ALPAKA_SCREENSHOT";
+
+    /** Runs the platform's clipboard tool on the PNG; null on success, else a short reason. */
+    private static String copyWithSystemTool(File file) throws IOException, InterruptedException {
+        String path = file.getAbsolutePath();
+        switch (Util.getPlatform()) {
+            case WINDOWS -> {
+                return run(List.of("powershell.exe", "-NoProfile", "-NonInteractive", "-STA", "-Command",
+                        "Add-Type -AssemblyName System.Windows.Forms, System.Drawing; "
+                                + "$img = [System.Drawing.Image]::FromFile($env:" + PATH_VAR + "); "
+                                + "try { [System.Windows.Forms.Clipboard]::SetImage($img) } finally { $img.Dispose() }"),
+                        path, null);
+            }
+            case OSX -> {
+                return run(List.of("osascript", "-e",
+                        "set the clipboard to (read (POSIX file (system attribute \"" + PATH_VAR + "\")) as \u00abclass PNGf\u00bb)"),
+                        path, null);
+            }
+            default -> {
+                // wl-copy and xclip stay behind to serve the clipboard; only the launcher is waited for.
+                if (System.getenv("WAYLAND_DISPLAY") != null && run(List.of("wl-copy", "--type", "image/png"), path, file) == null) {
+                    return null;
+                }
+                String error = run(List.of("xclip", "-selection", "clipboard", "-t", "image/png", "-i"), path, file);
+                return error == null || !error.startsWith("xclip not found") ? error : "needs wl-copy or xclip";
+            }
+        }
+    }
+
+    private static String run(List<String> command, String path, File stdin) throws IOException, InterruptedException {
+        ProcessBuilder builder = new ProcessBuilder(command)
+                .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                .redirectError(ProcessBuilder.Redirect.DISCARD);
+        builder.environment().put(PATH_VAR, path);
+        if (stdin != null) builder.redirectInput(stdin);
+        Process process;
+        try {
+            process = builder.start();
+        } catch (IOException e) {
+            return command.get(0) + " not found";
+        }
+        if (!process.waitFor(15, TimeUnit.SECONDS)) {
+            process.destroyForcibly();
+            return command.get(0) + " timed out";
+        }
+        int exit = process.exitValue();
+        if (exit != 0) LOGGER.warn("Clipboard tool {} exited with {}", command.get(0), exit);
+        return exit == 0 ? null : command.get(0) + " failed";
     }
 
     private static void delete(File file) {
@@ -274,23 +300,5 @@ public final class ScreenshotMessageFeature {
                 mc.player.sendSystemMessage(Component.literal("§6[AA] " + message));
             }
         });
-    }
-
-    private record ImageTransferable(BufferedImage image) implements Transferable {
-        @Override
-        public DataFlavor[] getTransferDataFlavors() {
-            return new DataFlavor[]{DataFlavor.imageFlavor};
-        }
-
-        @Override
-        public boolean isDataFlavorSupported(DataFlavor flavor) {
-            return DataFlavor.imageFlavor.equals(flavor);
-        }
-
-        @Override
-        public Object getTransferData(DataFlavor flavor) throws UnsupportedFlavorException {
-            if (!isDataFlavorSupported(flavor)) throw new UnsupportedFlavorException(flavor);
-            return image;
-        }
     }
 }

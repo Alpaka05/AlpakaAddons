@@ -1,6 +1,7 @@
 package net.alpaka.addons.features.chat;
 
 import com.mojang.logging.LogUtils;
+import net.alpaka.addons.client.AlpakaConfirmScreen;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.slayer.SlayerDropTracker;
 import net.minecraft.ChatFormatting;
@@ -47,7 +48,7 @@ import java.util.function.Consumer;
  * A server can put any component it likes into chat, including a click event with this mod's
  * identifier. So the payload is a random token the mod made for one of its own button lines this
  * session, and only that maps to a file: a crafted message can name no file at all. Delete also
- * takes a second click, since it cannot be undone.
+ * asks first, in the mod's confirmation dialog, since it cannot be undone.
  *
  * ### Copying
  *
@@ -123,11 +124,6 @@ public final class ScreenshotMessageFeature {
             return size() > 32;
         }
     };
-
-    /** A Delete that asked for a second click, and until when that click counts. */
-    private static String armedDelete = null;
-    private static long armedUntilMs = 0L;
-    private static final long CONFIRM_WINDOW_MS = 5_000L;
 
     private static String tokenFor(File file) {
         String token = UUID.randomUUID().toString();
@@ -207,16 +203,13 @@ public final class ScreenshotMessageFeature {
                     ? "§aScreenshot copied to the clipboard."
                     : "§cCouldn't copy the screenshot (" + error + ")."));
         } else if (DELETE.equals(event.id())) {
-            // Deleting is permanent, so the first click only asks.
-            long now = System.currentTimeMillis();
-            if (token.equals(armedDelete) && now < armedUntilMs) {
-                armedDelete = null;
-                delete(file);
-            } else {
-                armedDelete = token;
-                armedUntilMs = now + CONFIRM_WINDOW_MS;
-                feedback("§7Click §c[Delete]§7 again within 5 seconds to delete §f" + file.getName() + "§7.");
-            }
+            // Deleting is permanent, so the click only asks, in the same dialog as everything else
+            // the mod asks about. The click arrives from the chat screen on the client thread; the
+            // dialog goes back to that screen, or to none when the chat was not open.
+            Minecraft mc = Minecraft.getInstance();
+            mc.gui.setScreen(new AlpakaConfirmScreen(mc.gui.screen(), "Delete Screenshot",
+                    "Deletes " + file.getName() + " from your screenshots folder. This cannot be undone.",
+                    "Delete", true, () -> delete(file)));
         }
         return true;
     }

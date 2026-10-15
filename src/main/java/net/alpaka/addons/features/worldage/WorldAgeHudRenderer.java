@@ -261,7 +261,7 @@ public class WorldAgeHudRenderer {
         Component text = HudPanel.text(dayComponent(day), AlpakaConfig.instance.smoothOn(AlpakaConfig.instance.worldAgeHudSmoothFont));
         boolean blurred = AlpakaConfig.instance.blurOn(AlpakaConfig.instance.worldAgeHudBlur);
         if (blurred) HudPanel.aroundText(graphics, font.width(text), 9, scale);
-        graphics.text(font, text, 0, 0, color, HudPanel.textShadow(graphics, false));
+        graphics.text(font, text, 0, 0, color, HudPanel.TEXT_SHADOW);
         graphics.pose().popMatrix();
     }
 

@@ -363,7 +363,7 @@ object SlayerHudRenderer {
         if (blurred) {
             HudPanel.aroundText(graphics, laid.unscaledWidth, laid.unscaledHeight, scale)
         }
-        val shadow = HudPanel.textShadow(graphics, false)
+        val shadow = HudPanel.TEXT_SHADOW
 
         var top = 0
         for (index in laid.rows.indices) {

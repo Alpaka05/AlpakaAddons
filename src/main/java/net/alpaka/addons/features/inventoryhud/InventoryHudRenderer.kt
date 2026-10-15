@@ -352,8 +352,9 @@ object InventoryHudRenderer {
 
     /**
      * The flat panel: a rounded box with the world blurred behind it and a soft shadow, or a plain
-     * tinted fill when the blur is off, inside a one-pixel frame whose colour runs diagonally between
-     * the two frame colours from the config - teal to purple unless changed, not the menu's accent.
+     * tinted fill with the same shadow when the blur is off, inside a one-pixel frame whose colour
+     * runs diagonally between the two frame colours from the config - teal to purple unless changed,
+     * not the menu's accent.
      * Drawn under the current pose, which already places and scales the panel.
      *
      * The frame stays at full strength whatever the opacity slider does - it is what keeps the HUD
@@ -388,6 +389,10 @@ object InventoryHudRenderer {
             // only the tint is the inventory's own.
             HudPanel.submit(graphics, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, scale, tint, shown)
         } else if (backdropAlpha > 0) {
+            // The same soft shadow the blurred panel and the notices' plain box have, fading with
+            // the HUD. Its radius is given in GUI pixels, so it is scaled here to meet the panel's
+            // corners, which follow the HUD's scale.
+            ModernGuiUtils.drawPanelShadow(graphics, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, Math.round(RADIUS * scale), shown)
             sink.`alpaka$submitElement`(
                 GradientRoundedRectRenderState(
                     pose, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, radiusPx, 0,

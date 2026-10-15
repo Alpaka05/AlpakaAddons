@@ -3,6 +3,7 @@ package net.alpaka.addons.features.notification
 import net.alpaka.addons.client.gui.AlpakaStyle
 import net.alpaka.addons.client.gui.HudPanel
 import net.alpaka.addons.client.gui.ModernGuiUtils
+import net.alpaka.addons.client.gui.NoticeHost
 import net.alpaka.addons.config.AlpakaConfig
 import net.minecraft.client.DeltaTracker
 import net.minecraft.client.Minecraft
@@ -93,9 +94,15 @@ object AlpakaNotifications {
         return maxOf(TOP_CENTER_CLEARANCE, belowBars)
     }
 
-    /** Height of the time-left bar along the bottom edge, and the gap kept above it. */
+    /** Height of the time-left bar, which lies along the bottom edge inside the lower padding. */
     private const val BAR = 1
-    private const val BAR_GAP = 3
+
+    /**
+     * How tall the last line's glyphs are, descenders included: the font's line height. A line is
+     * [LINE] apart from the next, but under the last one only the glyphs count, so the padding
+     * below the text is as deep as the padding above it.
+     */
+    private const val GLYPH_HEIGHT = 9
 
     /** At most this many wrapped lines of body text; the rest is dropped rather than shown cut. */
     private const val MAX_BODY_LINES = 2
@@ -135,7 +142,7 @@ object AlpakaNotifications {
         val bornAtMs: Long,
         val holdMs: Long,
     ) {
-        val height: Int = PAD * 2 + LINE + body.size * LINE + BAR_GAP + BAR
+        val height: Int = PAD + body.size * LINE + GLYPH_HEIGHT + PAD
         var settledY: Float = Float.NaN
         var retireAtMs: Long = bornAtMs + SLIDE_MS + holdMs + SLIDE_MS
         /** Already sent on its way out early; it no longer counts towards [MAX_VISIBLE]. */
@@ -236,15 +243,16 @@ object AlpakaNotifications {
         val now = System.currentTimeMillis()
         // Pruned before the early return, so expired notices leave even while nothing is drawn.
         synchronized(active) { active.removeAll { now >= it.retireAtMs } }
-        // The config menu draws them over itself instead, so its test notice can be seen.
-        if (mc.gui.screen() is net.alpaka.addons.client.AlpakaConfigScreen) return
+        // A screen that hosts notices draws them over itself instead, so they are seen above it.
+        if (mc.gui.screen() is NoticeHost) return
         if (mc.gui.hud.isHidden() || mc.level == null) return
         draw(graphics, now)
     }
 
     /**
-     * The notices over a screen rather than under it, for the config menu: there the HUD is hidden
-     * behind the menu, and Send Test Notification has to show something. Works without a world too.
+     * The notices over a screen rather than under it, for a [NoticeHost] - the config menu and the
+     * windows opened from it: there the HUD is hidden behind the screen, and Send Test Notification
+     * has to show something. Works without a world too.
      */
     @JvmStatic
     fun renderOverScreen(graphics: GuiGraphicsExtractor) {
@@ -359,10 +367,9 @@ object AlpakaNotifications {
             drawPanel(graphics, x, y, height, shown)
         }
 
-        // Flat, as the config menu writes: a notice always has a box under it, blurred or not, and
-        // the box gives the contrast a shadow would. Only where the extractor cannot take either
-        // box does the text keep its shadow over the bare world.
-        val shadow = HudPanel.textShadow(graphics, true)
+        // Flat, as the config menu writes: a notice always has a dense box under it, blurred or
+        // not, and the box gives the contrast a shadow would.
+        val shadow = HudPanel.DENSE_PANEL_TEXT_SHADOW
         val textX = x + PAD
         val title = HudPanel.text(Component.literal(notice.title), AlpakaConfig.instance.smoothOn(AlpakaConfig.instance.notificationSmoothFont))
         graphics.text(font, title, textX, y + PAD, faded(accent, shown), shadow)
@@ -372,8 +379,8 @@ object AlpakaNotifications {
 
         // The time left, as a hairline along the bottom edge that runs down from full while the
         // notice waits: full while sliding in, empty once the slide out begins. Inset on either side
-        // so it ends before the panel's rounded corners, and thinning towards its tip. The track is
-        // a rounded rod, so its ends are soft rather than cut off square.
+        // so it ends before the panel's rounded corners, and thinning towards its tip. Track and
+        // fill are both rounded rods, so neither has ends cut off square.
         val barY = y + height - BAR
         val barLeft = x + BAR_INSET
         val barWidth = WIDTH - 2 * BAR_INSET
@@ -381,6 +388,8 @@ object AlpakaNotifications {
         val remaining = ((notice.retireAtMs - SLIDE_MS - now).toFloat() / notice.holdMs.toFloat()).coerceIn(0.0f, 1.0f)
         val filled = (barWidth * remaining).roundToInt()
         if (filled > 0) {
+            // Each piece of the fade is the whole fill as one rounded rod, clipped to its own span:
+            // the pieces meet edge to edge, and only the root and the tip show the rod's round ends.
             val step = max(1, filled / BAR_STEPS)
             var from = barLeft
             var piece = 0
@@ -388,7 +397,9 @@ object AlpakaNotifications {
                 val to = min(from + step, barLeft + filled)
                 // From full strength at the root to a little over half at the tip.
                 val alpha = 0xFF - (0xFF - 0x8C) * piece / (BAR_STEPS - 1).coerceAtLeast(1)
-                graphics.fill(from, barY, to, y + height, faded(withAlpha(accent, alpha), shown))
+                graphics.enableScissor(from, barY, to, barY + BAR)
+                ModernGuiUtils.drawRoundedRect(graphics, barLeft, barY, filled, BAR, 1, faded(withAlpha(accent, alpha), shown))
+                graphics.disableScissor()
                 from = to
                 piece = min(piece + 1, BAR_STEPS - 1)
             }

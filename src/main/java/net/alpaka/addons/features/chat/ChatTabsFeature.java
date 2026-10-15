@@ -39,7 +39,7 @@ import org.lwjgl.glfw.GLFW;
  *
  * The row is drawn in the mod's menu look: rounded tabs, the config's text greys, the accent for the
  * tab that is up and for unread counts, and the chat's own font - the menu font when the chat is
- * written in it, then without the pixel font's shadow.
+ * written in it. The labels cast vanilla's drop shadow in either font, as the chat's own lines do.
  */
 public final class ChatTabsFeature {
 
@@ -58,6 +58,13 @@ public final class ChatTabsFeature {
     private static final int BOTTOM_GAP = 15;
     /** Corner radius of a tab and of the filter chip, a step below the HUD panels' for the smaller box. */
     private static final int TAB_RADIUS = 3;
+    /**
+     * Where a label starts below the box's top. Both fonts put their baseline 7 pixels below where
+     * the text is drawn, so the capitals sit on the same rows in either: 2 to 8 of the 12, with two
+     * rows above them and two below (the first holding their shadow) before the selected tab's
+     * underline on row 11.
+     */
+    private static final int LABEL_TOP = 2;
     /** How far the selected tab's underline stays clear of the rounded corners on either side. */
     private static final int UNDERLINE_INSET = 2;
     /** The tint behind the selected tab and the chip: the accent, faint. */
@@ -218,13 +225,15 @@ public final class ChatTabsFeature {
         int y0 = y1 - TAB_HEIGHT;
         int width = font.width(label) + TAB_PAD * 2;
         drawTab(graphics, LEFT, y0, width, mc.options.getBackgroundColor(Integer.MIN_VALUE), true, false);
-        graphics.text(font, label, LEFT + TAB_PAD, y0 + 2, AlpakaStyle.TEXT, !GuiFont.inChat());
+        graphics.text(font, label, LEFT + TAB_PAD, y0 + LABEL_TOP, AlpakaStyle.TEXT, true);
     }
 
     /**
-     * One tab's box, or the chip's: rounded like the menus' rows, over the chat's own background so
-     * it follows the player's text background opacity. The tab that is up carries a faint accent
-     * tint and an accent underline that stops short of the rounded corners.
+     * One tab's box, or the chip's: rounded like the menus' rows, in vanilla's text background
+     * colour. With vanilla's default, Background for Chat Only, that is a fixed half-transparent
+     * black whatever the chat's own background opacity is; only with that option off does it follow
+     * the Text Background Opacity slider. The tab that is up carries a faint accent tint and an
+     * accent underline that stops short of the rounded corners.
      */
     private static void drawTab(GuiGraphicsExtractor graphics, int x, int y0, int width, int background,
                                 boolean selected, boolean hovered) {
@@ -289,9 +298,9 @@ public final class ChatTabsFeature {
         int y1 = screenHeight - BOTTOM_GAP;
         int y0 = y1 - TAB_HEIGHT;
         int background = mc.options.getBackgroundColor(Integer.MIN_VALUE);
-        // The menu font is drawn flat, as in the menus; the pixel font keeps the shadow the chat's
-        // own lines have, so the row matches whichever the chat is written in.
-        boolean shadow = !GuiFont.inChat();
+        // Vanilla's chat lines always cast their shadow, in the pixel font and in the menu font
+        // alike, so the labels under them do too.
+        boolean shadow = true;
         int x = LEFT;
         for (ChatTab tab : ChatTab.values()) {
             if (!isShown(tab)) continue;
@@ -303,7 +312,7 @@ public final class ChatTabsFeature {
             drawTab(graphics, x, y0, width, background, selected, hovered);
             // As the config's sidebar: the open one and the hovered one in full, the rest softer.
             int color = selected || hovered ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
-            graphics.text(font, label, x + TAB_PAD, y0 + 2, color, shadow);
+            graphics.text(font, label, x + TAB_PAD, y0 + LABEL_TOP, color, shadow);
             x += width + TAB_GAP;
         }
     }

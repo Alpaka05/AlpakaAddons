@@ -8,12 +8,15 @@ import org.joml.Matrix3x2f;
 
 /**
  * The look the mod's own HUDs share with the chat and the scoreboard: a rounded panel with a soft
- * shadow that shows the world blurred behind it, and text in the menu font, with its shadow where
- * the panel is light ({@link #textShadow}).
+ * shadow that shows the world blurred behind it, and text in the menu font.
  *
  * Each HUD decides for itself whether it uses either; this is only how they are drawn, so the
  * slayer HUD, the boss timer, the world age and the notices all come out alike. The panel samples
  * the blurred copy of the frame {@link ChatBlurFeature} keeps, at the shared Blur Strength.
+ *
+ * Text on a HUD always casts vanilla's drop shadow ({@link #TEXT_SHADOW}), panel or not, as the
+ * chat's and the sidebar's lines do. Only text on a dense panel - a notice's - is drawn flat
+ * ({@link #DENSE_PANEL_TEXT_SHADOW}), as the config menu's is.
  */
 public final class HudPanel {
     /** How far the panel reaches past the text it sits behind, in the HUD's own pixels. */
@@ -26,8 +29,28 @@ public final class HudPanel {
      */
     public static final int RADIUS = 4;
     public static final int SHADOW = 4;
-    /** The tint over the blur: vanilla's scoreboard body box, so the panels match the sidebar. */
-    public static final int TINT = 0x4C000000;
+    /**
+     * The tint over the blur for the mod's own HUDs: 45% black.
+     *
+     * Vanilla's scoreboard body box (30%) was the first choice, to match the sidebar, but over a
+     * bright sky, sand or snow the blur behind the panel stays bright, and the HUDs' gray labels
+     * came out at about 1.5:1 against it. At 45% they reach about 2:1 there, with their drop shadow
+     * on top, and white values clear 4.5:1 over sky and sand. It stays lighter than vanilla's chat
+     * background (50% at the default opacity), so the panel still reads as the blurred world and
+     * not as a box. The sidebar itself keeps vanilla's colour, which follows the player's text
+     * background opacity; see {@code ScoreboardBlurFeature}.
+     */
+    public static final int TINT = 0x73000000;
+
+    /** Whether text on a HUD casts vanilla's drop shadow: always, on a panel or without one. */
+    public static final boolean TEXT_SHADOW = true;
+
+    /**
+     * Whether text on a dense panel casts the shadow: never. A notice's box covers what is behind
+     * it, blurred or not, and gives the contrast a shadow would; its text is flat as the config
+     * menu's.
+     */
+    public static final boolean DENSE_PANEL_TEXT_SHADOW = false;
 
     private HudPanel() {}
 
@@ -43,8 +66,9 @@ public final class HudPanel {
     }
 
     /**
-     * Submits a panel covering exactly this box under the current pose. Does nothing where the
-     * extractor cannot take the mod's own elements; the HUD is then drawn without a background.
+     * Submits a panel covering exactly this box under the current pose. Every extractor can take
+     * it: a mixin makes {@code GuiGraphicsExtractor} an {@link AlpakaGuiElementSink}, and the check
+     * here only guards against that mixin failing to apply.
      *
      * @param tint    the colour over the blur; its alpha is how strongly it covers it
      * @param opacity the whole panel's strength, blur and shadow included, for fading it in and out
@@ -68,18 +92,6 @@ public final class HudPanel {
     public static int margin(boolean blurred, float scale, int textMargin) {
         if (!blurred) return textMargin;
         return Math.max(textMargin, (int) Math.ceil(PAD_X * scale));
-    }
-
-    /**
-     * Whether text casts vanilla's drop shadow, given whether it sits on a dense panel.
-     *
-     * The HUDs' panels are a light tint over the blurred world, as the chat's and the scoreboard's
-     * are, and over snow or a bright sky their gray labels need the shadow as much as the sidebar
-     * beside them does - so the HUDs keep it, like chat and scoreboard. Only text on a dense panel,
-     * a notice's, goes flat as the config menu's does; and only where that panel is drawn at all.
-     */
-    public static boolean textShadow(GuiGraphicsExtractor graphics, boolean densePanel) {
-        return !densePanel || !(graphics instanceof AlpakaGuiElementSink);
     }
 
     /** The text in the menu font when the HUD asks for it, unchanged otherwise. */

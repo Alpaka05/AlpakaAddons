@@ -11,7 +11,6 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.PauseScreen;
-import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
 import net.minecraft.client.gui.screens.options.OptionsScreen;
 import net.minecraft.client.input.InputWithModifiers;
@@ -142,9 +141,9 @@ public class CustomPauseScreen extends PauseScreen {
 
     @Override
     protected void init() {
-        // Back from the leave dialog the menu is simply there again; otherwise it springs in.
-        // Its clock is set back past the entrance rather than to zero, so the logo's float carries on.
-        this.openTime = System.currentTimeMillis() - (this.returningFromDialog ? 10_000L : 0L);
+        // Back from a dialog the menu is simply there again, its clock and the logo's float running
+        // on; otherwise it springs in.
+        if (!this.returningFromDialog || this.openTime == 0L) this.openTime = System.currentTimeMillis();
         this.returningFromDialog = false;
 
         int centerX = this.width / 2;
@@ -199,7 +198,7 @@ public class CustomPauseScreen extends PauseScreen {
             if (this.minecraft != null) {
                 // A link out of the game asks first, in the dialog every such question in the mod uses.
                 this.returningFromDialog = true;
-                this.minecraft.gui.setScreen(new AlpakaConfirmScreen(this, "Open the Wiki",
+                this.minecraft.gui.setScreen(new AlpakaConfirmScreen(this, "Open Wiki",
                         "Opens the Hypixel SkyBlock wiki in your browser: " + WIKI_URL, "Open", false,
                         () -> net.minecraft.util.Util.getPlatform().openUri(WIKI_URL)));
             }
@@ -213,10 +212,8 @@ public class CustomPauseScreen extends PauseScreen {
             // Leaving asks first, in the dialog every such question in the mod uses.
             if (this.minecraft == null) return;
             this.returningFromDialog = true;
-            this.minecraft.gui.setScreen(new AlpakaConfirmScreen(this, leaveText,
-                    isSingleplayerWorld() ? "Saves the world and goes back to the title screen."
-                            : "Leaves the server and goes back to the title screen.",
-                    leaveText, true, this::leave));
+            this.minecraft.gui.setScreen(new AlpakaConfirmScreen(this, leaveText, leaveMessage(), leaveText, true,
+                    this::leave));
         });
         this.addRenderableWidget(this.disconnectButton);
     }
@@ -233,13 +230,23 @@ public class CustomPauseScreen extends PauseScreen {
                 this.disconnectButton.getY() + this.disconnectButton.getHeight() / 2};
     }
 
-    /** Leaves the world or the server for the title screen. */
+    /** What leaving does here, for the dialog that asks first. */
+    private String leaveMessage() {
+        if (isSingleplayerWorld()) return "Saves the world and returns to the main menu.";
+        if (this.minecraft != null && this.minecraft.hasSingleplayerServer()) {
+            return "Saves the world and closes it, for everyone you opened it to over LAN as well.";
+        }
+        return "Leaves the server.";
+    }
+
+    /**
+     * Leaves the world or the server the way vanilla's pause menu does: saving a local world, then
+     * on to the main menu, the server list or Realms, whichever the game came from - and asking
+     * first about an unsent chat report, as vanilla does.
+     */
     private void leave() {
         if (this.minecraft == null) return;
-        if (this.minecraft.level != null) {
-            this.minecraft.level.disconnect(Component.literal("Disconnected"));
-        }
-        this.minecraft.disconnect(new TitleScreen(), false);
+        this.minecraft.disconnectFromWorld(net.minecraft.client.multiplayer.ClientLevel.DEFAULT_QUIT_MESSAGE);
     }
 
     @Override

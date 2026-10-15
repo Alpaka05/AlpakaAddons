@@ -96,6 +96,18 @@ public final class DevScreenshotTour {
                 placeMouse(0.66, 0.40);
             }, () -> true, 30),
             new Stop(null, () -> placeMouse(0.5, 0.5), () -> true, 1),
+            // A search longer than its field: cut with an ellipsis while the field is not focused.
+            screen("config-search-long", () -> new AlpakaConfigScreen(null, "blaze slayer drop tracker share")),
+            // The page list with more pages than fit above its field: it scrolls, its edges fading.
+            new Stop("wheel-editor-page-picker-many", () -> {
+                java.util.List<java.util.List<String>> pages = new java.util.ArrayList<>();
+                for (int i = 1; i <= 14; i++) pages.add(new java.util.ArrayList<>(java.util.List.of("/page" + i)));
+                AlpakaConfig.instance.commandWheelPages = pages;
+                Minecraft.getInstance().gui.setScreen(new CommandWheelConfigScreen(new CustomMainMenuScreen()));
+            }, () -> true, 20),
+            new Stop("wheel-editor-page-picker-many-open", () -> click(((CommandWheelConfigScreen) screen()).devPagePickerPoint()),
+                    () -> true, 20),
+            new Stop(null, () -> AlpakaConfig.instance.commandWheelPages = null, () -> true, 1),
             // The quick commands' page list, open above its field.
             screen("wheel-editor-page-picker-closed", () -> new CommandWheelConfigScreen(new CustomMainMenuScreen())),
             new Stop("wheel-editor-page-picker", () -> click(((CommandWheelConfigScreen) screen()).devPagePickerPoint()),

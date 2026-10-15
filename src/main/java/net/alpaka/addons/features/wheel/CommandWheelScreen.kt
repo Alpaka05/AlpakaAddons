@@ -5,7 +5,6 @@ import net.alpaka.addons.client.gui.AlpakaStyle
 import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.client.gui.PloppAnimation
-import net.alpaka.addons.features.sound.CustomSoundFeature
 import net.alpaka.addons.features.wheel.WheelMesh.Companion.TAU
 import net.alpaka.addons.features.wheel.WheelMesh.Companion.lerpColor
 import net.alpaka.addons.features.wheel.WheelMesh.Companion.scaleAlpha
@@ -14,7 +13,6 @@ import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
-import net.minecraft.network.chat.Component
 import kotlin.math.asin
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -43,7 +41,7 @@ import kotlin.math.sqrt
  * Everything moves on eased curves driven by real frame time, so it looks the same at 60 and 240
  * frames per second, and everything rounded is drawn by [WheelMesh] rather than stacked rectangles.
  */
-class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
+class CommandWheelScreen : Screen(GuiFont.text("Command Wheel")) {
 
     private var pages: List<List<String>> = emptyList()
     private var page = 0
@@ -88,7 +86,7 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
     private fun stepPage(delta: Int) {
         if (pages.size <= 1) return
         showPage(((page + delta) % pages.size + pages.size) % pages.size)
-        try { CustomSoundFeature.playButtonClickSound() } catch (_: Throwable) {}
+        AlpakaStyle.click()
     }
 
     // ------------------------------------------------------------------ input
@@ -372,7 +370,8 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
             val scale = 1f + LABEL_GROWTH * h
             pose.pushMatrix()
             pose.scaleAround(scale, scale, anchorX, anchorY)
-            graphics.text(this.font, GuiFont.text(command), x, y, color, false)
+            // With its shadow: the labels sit beyond the ring, straight on the world.
+            graphics.text(this.font, GuiFont.text(command), x, y, color, true)
             pose.popMatrix()
         }
 
@@ -430,8 +429,8 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
         val primary = scaleAlpha(AlpakaStyle.TEXT, open)
         val muted = scaleAlpha(AlpakaStyle.TEXT_MUTED, open)
         if ((primary ushr 24) < 8) return
-        ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("No quick commands yet"), cx, cy - 10, primary)
-        ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("Add some under Alpaka Config → Quick Command Menu"), cx, cy + 4, muted)
+        ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("No commands yet"), cx, cy - 10, primary)
+        ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("Add some in /aa under Command Wheel"), cx, cy + 4, muted)
     }
 
     companion object {

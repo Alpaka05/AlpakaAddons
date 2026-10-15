@@ -4,7 +4,6 @@ import net.alpaka.addons.client.gui.AlpakaStyle;
 import net.alpaka.addons.client.gui.AlpakaStyle.ButtonKind;
 import net.alpaka.addons.client.gui.GuiFont;
 import net.alpaka.addons.client.gui.ModernGuiUtils;
-import net.alpaka.addons.features.sound.CustomSoundFeature;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.CharacterEvent;
@@ -68,7 +67,8 @@ public class ColorPickerScreen extends Screen {
 
     @Override
     protected void init() {
-        openTimeMs = System.currentTimeMillis();
+        // Once only: a resize is not a fresh opening.
+        if (openTimeMs == 0L) openTimeMs = System.currentTimeMillis();
     }
 
     private void setColor(int color) {
@@ -93,12 +93,6 @@ public class ColorPickerScreen extends Screen {
 
     private String hexOf() {
         return a == 255 ? String.format("#%02X%02X%02X", r, g, b) : String.format("#%02X%02X%02X%02X", a, r, g, b);
-    }
-
-    private void playSound() {
-        try {
-            CustomSoundFeature.playButtonClickSound();
-        } catch (Throwable ignored) {}
     }
 
     private void syncHexFromColor() {
@@ -128,12 +122,12 @@ public class ColorPickerScreen extends Screen {
     private static final int FIELD_H = 16;
     private static final int RESET_W = 40;
 
-    /** Where everything goes, shared by drawing and input. */
     /** The header's Reset button sits centred in the header, as every header button does. */
     private static int headerButtonY(Layout l) {
-        return l.y() + (AlpakaStyle.HEADER_H - AlpakaStyle.BUTTON_H) / 2;
+        return AlpakaStyle.headerButtonY(l.y());
     }
 
+    /** Where everything goes, shared by drawing and input. */
     private record Layout(int x, int y, int w, int h, int bodyY, int leftX, int previewH, int hexY,
                           int presetLabelY, int gridY, int rightX, int rightW, int btnY, int saveX, int cancelX,
                           int btnW, int resetX) {
@@ -267,7 +261,7 @@ public class ColorPickerScreen extends Screen {
 
         if (defaultColor != null && currentColor() != defaultColor
                 && inside(mouseX, mouseY, l.resetX(), headerButtonY(l), RESET_W, AlpakaStyle.BUTTON_H)) {
-            playSound();
+            AlpakaStyle.click();
             setColor(defaultColor);
             syncHexFromColor();
             return true;
@@ -275,7 +269,7 @@ public class ColorPickerScreen extends Screen {
 
         if (inside(mouseX, mouseY, l.leftX(), l.hexY(), LEFT_W, FIELD_H)) {
             if (!wasHex) {
-                playSound();
+                AlpakaStyle.click();
                 hexInput = hexOf();
             }
             hexFocused = true;
@@ -286,7 +280,7 @@ public class ColorPickerScreen extends Screen {
 
         for (int i = 0; i < PRESETS.length; i++) {
             if (inside(mouseX, mouseY, l.swatchX(i) - 2, l.swatchY(i) - 2, SWATCH + 4, SWATCH + 4)) {
-                playSound();
+                AlpakaStyle.click();
                 setColor(PRESETS[i]);
                 syncHexFromColor();
                 return true;
@@ -302,13 +296,11 @@ public class ColorPickerScreen extends Screen {
         }
 
         if (inside(mouseX, mouseY, l.saveX(), l.btnY(), l.btnW(), AlpakaStyle.BUTTON_H)) {
-            playSound();
-            onSave.accept(currentColor());
-            onClose();
+            save();
             return true;
         }
         if (inside(mouseX, mouseY, l.cancelX(), l.btnY(), l.btnW(), AlpakaStyle.BUTTON_H)) {
-            playSound();
+            AlpakaStyle.click();
             onClose();
             return true;
         }
@@ -374,7 +366,18 @@ public class ColorPickerScreen extends Screen {
                 return true;
             }
         }
+        // Enter saves, as Save does; Escape leaves without saving, as Cancel does.
+        if (event.key() == GLFW.GLFW_KEY_ENTER || event.key() == GLFW.GLFW_KEY_KP_ENTER) {
+            save();
+            return true;
+        }
         return super.keyPressed(event);
+    }
+
+    private void save() {
+        AlpakaStyle.click();
+        onSave.accept(currentColor());
+        onClose();
     }
 
     @Override

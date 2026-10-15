@@ -4,14 +4,12 @@ import net.alpaka.addons.client.gui.AlpakaStyle
 import net.alpaka.addons.client.gui.AlpakaStyle.ButtonKind
 import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.client.gui.ModernGuiUtils
-import net.alpaka.addons.features.sound.CustomSoundFeature
 import net.alpaka.addons.features.wheel.CommandWheelPages
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
-import net.minecraft.network.chat.Component
 import org.lwjgl.glfw.GLFW
 import kotlin.math.abs
 import kotlin.math.max
@@ -29,15 +27,16 @@ import kotlin.math.min
  * Drawn with [AlpakaStyle], the config menu's look: slim rows that light up on hover, their move
  * and remove buttons only shown then, the accent for whatever is being dropped on.
  */
-class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.literal("Configure Quick Commands")) {
+class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text("Command Wheel")) {
 
     private var newCommandInput: String = "/"
     private var inputFocused: Boolean = false
 
     /** Where a new command goes: -1 for "Auto", a page index, or the page count for "New page". */
     private var addTargetPage: Int = -1
-    /** Whether the list of pages to add to is open above its field. */
+    /** Whether the list of pages to add to is open above its field, and how far it is scrolled. */
     private var pagePickerOpen = false
+    private var pickerScroll = 0
 
     private var scrollY: Double = 0.0
     private var targetScrollY: Double = 0.0
@@ -164,11 +163,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
         return y
     }
 
-    private fun playPloppSound() {
-        try {
-            CustomSoundFeature.playButtonClickSound()
-        } catch (_: Throwable) {}
-    }
+    private fun playPloppSound() = AlpakaStyle.click()
 
     override fun onClose() {
         this.minecraft?.gui?.setScreen(this.parent)
@@ -177,7 +172,8 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
     // -------------------------------------------------------------- rendering
 
     override fun init() {
-        openTimeMs = System.currentTimeMillis()
+        // Once only: back from the Reset dialog the window is simply there again.
+        if (openTimeMs == 0L) openTimeMs = System.currentTimeMillis()
     }
 
     override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
@@ -193,7 +189,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
         val accent = ModernGuiUtils.getAccentColor()
 
         AlpakaStyle.panel(graphics, f.winX, f.winY, f.winW, f.winH)
-        AlpakaStyle.header(graphics, this.font, "Quick Commands", f.winX, f.winY, f.winW)
+        AlpakaStyle.header(graphics, this.font, "Command Wheel", f.winX, f.winY, f.winW)
 
         val hoverDone = inside(mouseX, mouseY, doneX(f), doneY(f), DONE_W, AlpakaStyle.BUTTON_H)
         AlpakaStyle.button(graphics, this.font, doneX(f), doneY(f), DONE_W, AlpakaStyle.BUTTON_H, "Done", hoverDone, ButtonKind.PRIMARY)
@@ -216,13 +212,13 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
             when (row.kind) {
                 Kind.HEADER -> {
                     val count = pages[row.page].size
-                    AlpakaStyle.groupLabel(graphics, this.font, "Page ${row.page + 1}", rowX + 2, y + 5)
+                    AlpakaStyle.groupLabel(graphics, this.font, "Page ${row.page + 1}", rowX + 4, y + 5)
                     val countText = "$count / ${CommandWheelPages.MAX_PER_PAGE}"
                     val full = count >= CommandWheelPages.MAX_PER_PAGE
                     graphics.text(this.font, GuiFont.text(countText), rowX + rowW - GuiFont.width(this.font, countText) - 4, y + 5,
                         if (full) AlpakaStyle.DANGER else AlpakaStyle.TEXT_MUTED, false)
                 }
-                Kind.ITEM -> drawItemRow(graphics, row, rowX, y, rowW, mouseX, mouseY, inList && !dragging)
+                Kind.ITEM -> drawItemRow(graphics, row, rowX, y, rowW, mouseX, mouseY, inList && !dragging && !pagePickerOpen)
                 Kind.NEW_PAGE -> {
                     val active = dropPage == row.page
                     ModernGuiUtils.drawRoundedOutline(graphics, rowX, y, rowW, row.height, AlpakaStyle.CARD_RADIUS,
@@ -243,6 +239,8 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
             }
         }
 
+        // Soft edges where the pages scroll on, in place of a scrollbar.
+        AlpakaStyle.scrollFades(graphics, f.listX, f.listY, f.listW, f.listH, scrollY > 0.5, scrollY < maxScrollY - 0.5)
         graphics.disableScissor()
 
         // The dragged command follows the mouse as a copy of its row.
@@ -252,7 +250,8 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
             ModernGuiUtils.drawRoundedRect(graphics, rowX, ghostY, rowW, ITEM_H, AlpakaStyle.CARD_RADIUS, AlpakaStyle.ROW_SELECTED)
             ModernGuiUtils.drawRoundedOutline(graphics, rowX, ghostY, rowW, ITEM_H, AlpakaStyle.CARD_RADIUS, AlpakaStyle.accentDim())
             drawGrip(graphics, rowX, ghostY, accent)
-            graphics.text(this.font, GuiFont.text(pages[pressPage][pressIndex]), rowX + 20, ghostY + (ITEM_H - 8) / 2, AlpakaStyle.TEXT, false)
+            graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, pages[pressPage][pressIndex], rowW - 28)),
+                rowX + 20, ghostY + (ITEM_H - 8) / 2, AlpakaStyle.TEXT, false)
         }
 
         // Footer: new command, target page, add, reset.
@@ -281,31 +280,49 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
 
     /**
      * The open list of pages to add to, above its field since the field sits at the window's foot:
-     * a small window of its own, its names as the config's choice lists show them.
+     * a small window of its own, as wide as the field, its names as the config's choice lists show
+     * them. With more pages than fit above the field it scrolls.
      */
     private fun drawPagePicker(graphics: GuiGraphicsExtractor, f: Frame, pageCount: Int, mouseX: Int, mouseY: Int) {
         graphics.nextStratum()
         val box = pagePickerBox(f, pageCount)
-        ModernGuiUtils.drawPanelShadow(graphics, box[0], box[1], box[2], box[3], AlpakaStyle.ROW_RADIUS * 2, 0.8f)
-        ModernGuiUtils.drawRoundedRect(graphics, box[0], box[1], box[2], box[3], AlpakaStyle.ROW_RADIUS * 2, AlpakaStyle.PANEL)
-        ModernGuiUtils.drawRoundedOutline(graphics, box[0], box[1], box[2], box[3], AlpakaStyle.ROW_RADIUS * 2, AlpakaStyle.LINE)
-        for ((i, target) in pickerTargets(pageCount).withIndex()) {
+        val targets = pickerTargets(pageCount)
+        val rows = pickerRows(f, pageCount)
+        AlpakaStyle.popover(graphics, box[0], box[1], box[2], box[3])
+        graphics.enableScissor(box[0], box[1] + PICKER_PAD, box[0] + box[2], box[1] + box[3] - PICKER_PAD)
+        for (i in 0 until rows) {
+            val target = targets.getOrNull(pickerScroll + i) ?: break
             val y = box[1] + PICKER_PAD + i * AlpakaStyle.ROW_H
             val hover = inside(mouseX, mouseY, box[0] + PICKER_PAD, y, box[2] - 2 * PICKER_PAD, AlpakaStyle.ROW_H)
             AlpakaStyle.choiceEntry(graphics, this.font, box[0] + PICKER_PAD, y, box[2] - 2 * PICKER_PAD, AlpakaStyle.ROW_H,
                 addTargetLabel(target, pageCount), target == addTargetPage, hover)
         }
+        AlpakaStyle.scrollFades(graphics, box[0] + 1, box[1] + PICKER_PAD, box[2] - 2, rows * AlpakaStyle.ROW_H,
+            pickerScroll > 0, pickerScroll + rows < targets.size)
+        graphics.disableScissor()
     }
 
-    /** Auto, every page that has room or not, and a new page: what the picker lists. */
+    /** Auto, every page, and a new page: what the picker lists. */
     private fun pickerTargets(pageCount: Int): List<Int> = (-1..pageCount).toList()
 
-    /** The picker's box: x, y, width, height. */
+    /** How many names the picker shows at once: all of them, or as many as fit above the field. */
+    private fun pickerRows(f: Frame, pageCount: Int): Int {
+        val room = (f.buttonsY - 4 - 4 - 2 * PICKER_PAD) / AlpakaStyle.ROW_H
+        return pickerTargets(pageCount).size.coerceAtMost(maxOf(3, room))
+    }
+
+    /** The picker's box: x, y, width, height; the field's width, ending just above it. */
     private fun pagePickerBox(f: Frame, pageCount: Int): IntArray {
-        val h = pickerTargets(pageCount).size * AlpakaStyle.ROW_H + 2 * PICKER_PAD
-        val w = PAGE_BTN_W + 24
-        val x = pageBtnX(f)
-        return intArrayOf(x, maxOf(4, f.buttonsY - 4 - h), w, h)
+        val h = pickerRows(f, pageCount) * AlpakaStyle.ROW_H + 2 * PICKER_PAD
+        return intArrayOf(pageBtnX(f), f.buttonsY - 4 - h, PAGE_BTN_W, h)
+    }
+
+    /** Opens the picker scrolled so the page chosen now is in view. */
+    private fun openPagePicker(f: Frame, pageCount: Int) {
+        pagePickerOpen = true
+        val rows = pickerRows(f, pageCount)
+        val index = pickerTargets(pageCount).indexOf(addTargetPage).coerceAtLeast(0)
+        pickerScroll = (index - rows + 1).coerceAtLeast(0).coerceAtMost(maxOf(0, pickerTargets(pageCount).size - rows))
     }
 
     private fun drawGrip(graphics: GuiGraphicsExtractor, x: Int, y: Int, color: Int) {
@@ -319,7 +336,10 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
         ModernGuiUtils.drawRoundedRect(graphics, x, y, w, row.height, AlpakaStyle.CARD_RADIUS, if (hovered) AlpakaStyle.ROW_HOVER else AlpakaStyle.ROW)
 
         drawGrip(graphics, x, y, if (hovered) AlpakaStyle.TEXT_MUTED else AlpakaStyle.DIVIDER)
-        graphics.text(this.font, GuiFont.text(row.command ?: ""), x + 20, y + (row.height - 8) / 2, AlpakaStyle.TEXT, false)
+        // Cut short of the row's buttons, which show while it is hovered.
+        val textRoom = (if (hovered) prevBtnX(x, w) - 6 else x + w - 8) - (x + 20)
+        graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, row.command ?: "", textRoom)),
+            x + 20, y + (row.height - 8) / 2, AlpakaStyle.TEXT, false)
 
         // Move to the previous page (dimmed on the first), move to the next page (a new one after
         // the last), remove. Quiet until the row is hovered.
@@ -378,12 +398,12 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
         if (pagePickerOpen) {
             pagePickerOpen = false
             val box = pagePickerBox(f, pages.size)
-            if (inside(mouseX, mouseY, box[0], box[1], box[2], box[3])) {
-                val i = (mouseY - box[1] - PICKER_PAD) / AlpakaStyle.ROW_H
-                val targets = pickerTargets(pages.size)
-                if (i in targets.indices) {
+            val listY = box[1] + PICKER_PAD
+            if (inside(mouseX, mouseY, box[0], listY, box[2], pickerRows(f, pages.size) * AlpakaStyle.ROW_H)) {
+                val target = pickerTargets(pages.size).getOrNull(pickerScroll + (mouseY - listY) / AlpakaStyle.ROW_H)
+                if (target != null) {
                     playPloppSound()
-                    addTargetPage = targets[i]
+                    addTargetPage = target
                 }
             }
             return true
@@ -405,7 +425,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
             inputFocused = false
             if (mouseX in pageBtnX(f)..(pageBtnX(f) + PAGE_BTN_W)) {
                 playPloppSound()
-                pagePickerOpen = true
+                openPagePicker(f, pages.size)
                 return true
             }
             if (mouseX in addBtnX(f)..(addBtnX(f) + ADD_W)) {
@@ -415,8 +435,8 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
             if (mouseX in resetBtnX(f)..(resetBtnX(f) + RESET_W)) {
                 playPloppSound()
                 // Reset wipes every command, so it asks first, in the dialog every such action uses.
-                this.minecraft?.gui?.setScreen(AlpakaConfirmScreen(this, "Reset Quick Commands",
-                    "Replaces every quick command on every page with the default set.", "Reset", true) {
+                this.minecraft?.gui?.setScreen(AlpakaConfirmScreen(this, "Reset Command Wheel",
+                    "Replaces every command on every page with the default set. This cannot be undone.", "Reset", true) {
                     CommandWheelPages.reset()
                     addTargetPage = -1
                 })
@@ -520,6 +540,13 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
     }
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
+        if (pagePickerOpen && scrollY != 0.0) {
+            val f = frame()
+            val count = CommandWheelPages.pages().size
+            val most = maxOf(0, pickerTargets(count).size - pickerRows(f, count))
+            pickerScroll = (pickerScroll - scrollY.toInt().coerceIn(-1, 1)).coerceIn(0, most)
+            return true
+        }
         if (scrollY != 0.0) {
             targetScrollY = (targetScrollY - scrollY * 24.0).coerceIn(0.0, maxScrollY)
             return true

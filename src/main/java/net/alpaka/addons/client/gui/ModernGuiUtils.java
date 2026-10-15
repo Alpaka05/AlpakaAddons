@@ -8,12 +8,14 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
  * anti-aliased rounded shapes, soft shadows and blended colors. What the controls look like is
  * {@link AlpakaStyle}'s business.
  */
-public class ModernGuiUtils {
+public final class ModernGuiUtils {
+    private ModernGuiUtils() {}
+
     public static int getAccentColor() {
         return net.alpaka.addons.config.AlpakaConfig.instance.menuAccentColor;
     }
 
-    /** The accent at two thirds of its brightness; see {@link AlpakaStyle#accentDim()}. */
+    /** The accent at 65 % of its brightness; see {@link AlpakaStyle#accentDim()}. */
     public static int getAccentDimColor() {
         int color = net.alpaka.addons.config.AlpakaConfig.instance.menuAccentColor;
         int a = (color >> 24) & 0xFF;
@@ -82,9 +84,6 @@ public class ModernGuiUtils {
         int scale = guiScale();
         submitRounded(graphics, x, y, width, height, Math.max(0, radius) * scale, hairline(scale), color);
     }
-
-    /** Corner radius of a free-standing panel such as the main and escape menus' boxes. */
-    public static final int PANEL_RADIUS = 8;
 
     /**
      * A panel's soft drop shadow: a few translucent, progressively larger and fainter copies of its

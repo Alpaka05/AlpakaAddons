@@ -6,12 +6,10 @@ import net.alpaka.addons.client.gui.AlpakaStyle.ButtonKind
 import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.config.AlpakaConfig
-import net.alpaka.addons.features.sound.CustomSoundFeature
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
-import net.minecraft.network.chat.Component
 import org.lwjgl.glfw.GLFW
 
 /**
@@ -25,10 +23,12 @@ import org.lwjgl.glfw.GLFW
  * Edits are applied to [AlpakaConfig.instance] immediately but only written to disk once an
  * interaction ends, so dragging does not serialize the whole config file every frame.
  *
- * The controls sit in one bar at the top, in the config menu's look: the selection and its
- * position on the left, Reset, Reset All and Done on the right, the hints below it.
+ * The controls sit in one bar at the top, in the config menu's look: the title on the left,
+ * Reset, Reset All and Done on the right, and a pill below it with the selection and where it is,
+ * or the hints while nothing is selected. HUDs show their name on a pill of their own while under
+ * the mouse or selected.
  */
-class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("HUD Editor")) {
+class HudEditorScreen(private val parent: Screen?) : Screen(GuiFont.text("HUD Editor")) {
 
     private var selected: HudElement? = null
 
@@ -53,7 +53,8 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
     private var openTimeMs = 0L
 
     override fun init() {
-        openTimeMs = System.currentTimeMillis()
+        // Once only: back from the Reset All dialog the bar is simply there again.
+        if (openTimeMs == 0L) openTimeMs = System.currentTimeMillis()
     }
 
     /** The bar at the top and its buttons, shared by drawing and clicking. */
@@ -126,33 +127,38 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
 
         // Below the bar, on a pill of its own so it reads over any world: the selection and where
         // it is, or how to start when nothing is selected.
-        val line = AlpakaStyle.ellipsize(this.font, if (selected != null) statusLine() else HINTS, this.width - 32)
-        val lineW = GuiFont.width(this.font, line) + 16
-        val lineY = bar.y + BAR_H + 4
-        ModernGuiUtils.drawRoundedRect(graphics, (this.width - lineW) / 2, lineY, lineW, STATUS_H, STATUS_H / 2, PILL_COLOR)
-        ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text(line), this.width / 2, lineY + (STATUS_H - 8) / 2,
+        val line = statusText()
+        val pill = statusPill(bar)
+        ModernGuiUtils.drawRoundedRect(graphics, pill[0], pill[1], pill[2], STATUS_H, STATUS_H / 2, PILL_COLOR)
+        ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text(line), this.width / 2, pill[1] + (STATUS_H - 8) / 2,
             if (selected != null) AlpakaStyle.TEXT_SOFT else AlpakaStyle.TEXT_MUTED)
         AlpakaStyle.endOpen(graphics, pushed)
     }
 
-    private fun playClick() {
-        try {
-            CustomSoundFeature.playButtonClickSound()
-        } catch (_: Throwable) {}
+    private fun statusText(): String =
+        AlpakaStyle.ellipsize(this.font, if (selected != null) statusLine() else HINTS, this.width - 32)
+
+    /** The status pill under the bar: x, y and width, shared by drawing and clicking. */
+    private fun statusPill(bar: Bar): IntArray {
+        val w = GuiFont.width(this.font, statusText()) + 16
+        return intArrayOf((this.width - w) / 2, bar.y + BAR_H + 4, w)
     }
 
     /** A click on the bar's buttons; true when the click landed on the bar at all. */
     private fun clickBar(mx: Double, my: Double): Boolean {
         val bar = bar()
+        // The status pill under the bar is part of it: a click there must not grab a HUD behind it.
+        val pill = statusPill(bar)
+        if (inside(mx, my, pill[0], pill[1], pill[2], STATUS_H)) return true
         if (!inside(mx, my, bar.x, bar.y, bar.w, BAR_H)) return false
         val by = buttonY(bar)
         when {
             inside(mx, my, bar.doneX, by, DONE_W, AlpakaStyle.BUTTON_H) -> {
-                playClick()
+                AlpakaStyle.click()
                 onClose()
             }
             inside(mx, my, bar.resetAllX, by, RESET_ALL_W, AlpakaStyle.BUTTON_H) -> {
-                playClick()
+                AlpakaStyle.click()
                 // Reset All puts every HUD back, so it asks first, in the dialog every such action uses.
                 minecraft.gui.setScreen(AlpakaConfirmScreen(this, "Reset All HUDs",
                     "Puts every HUD back to its default position and size.", "Reset All", true) {
@@ -163,7 +169,7 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
                 })
             }
             inside(mx, my, bar.resetX, by, RESET_W, AlpakaStyle.BUTTON_H) -> selected?.let {
-                playClick()
+                AlpakaStyle.click()
                 it.reset()
                 dirty = true
                 flush()
@@ -208,7 +214,7 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
     }
 
     private fun statusLine(): String {
-        val element = selected ?: return NO_SELECTION
+        val element = selected ?: return HINTS
 
         val x = element.visibleAnchorX(this.width, this.height)
         val y = element.visibleAnchorY(this.width, this.height)
@@ -302,7 +308,8 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
 
     override fun keyPressed(event: KeyEvent): Boolean {
         if (event.key() == GLFW.GLFW_KEY_ESCAPE) {
-            onClose()
+            // A selection first, the editor after.
+            if (selected != null) selected = null else onClose()
             return true
         }
 
@@ -374,7 +381,6 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
         const val RESET_W = 40
         const val RESET_ALL_W = 52
 
-        const val HINTS = "Click a HUD to select it  ·  Drag to move  ·  Scroll to resize"
-        const val NO_SELECTION = HINTS
+        const val HINTS = "Click to select  ·  Drag to move  ·  Scroll to resize"
     }
 }

@@ -24,7 +24,7 @@ object WorldAgeHudElement : HudElement {
     private const val TEXT_MARGIN = 2
 
     override val id: String = "world_age"
-    override val name: String = "World Age (Day)"
+    override val name: String = "World Age"
 
     override val isFeatureEnabled: Boolean
         get() = AlpakaConfig.instance.worldAgeHudEnabled

@@ -265,7 +265,7 @@ public class AlpakaConfig {
     // SkyHanni does - and remembers the fastest ever per slayer. The sidebar is only the fallback
     // for a fight where the boss entity could not be watched, so there is no setting for it.
     /**
-     * Whether the mod may contact anything over the network ("Allow Network Features").
+     * Whether the mod may contact anything over the network ("Network Features").
      *
      * Everything else in this mod works from what the client already has. This is the one setting
      * that lets it reach outside, for three things: a public endpoint describing the running election
@@ -466,9 +466,9 @@ public class AlpakaConfig {
     public boolean expandChatHistory = true;
     /** How many chat lines Expand Chat History keeps; vanilla keeps 100. */
     public int chatHistoryLimit = 5000;
-    /** Hold the Peek Chat key to see the whole chat, scrollable, without opening it. */
+    /** Hold the Chat Peek key to see the whole chat, scrollable, without opening it. */
     public boolean chatPeekEnabled = true;
-    /** Peek Chat also works with an inventory or another menu open, drawn on top of it. */
+    /** Chat Peek also works with an inventory or another menu open, drawn on top of it. */
     public boolean chatPeekInMenus = true;
     /** Better Screenshots: everything below. The key keeps its old name so the setting carries over. */
     public boolean betterScreenshotMessageEnabled = true;
@@ -533,7 +533,7 @@ public class AlpakaConfig {
     /** A Hypixel party invite raises a notification: Y joins, N dismisses. */
     public boolean partyInvitePromptEnabled = true;
 
-    // Quick Command Menu options
+    // Command Wheel options
     /**
      * The quick command wheel, one list per page. Null until CommandWheelPages first folds the
      * legacy flat list below into pages; from then on this is the record and the flat list is null.
@@ -1030,6 +1030,14 @@ public class AlpakaConfig {
         this.itemNoEquipEnabled = false;
         this.itemSwingAlwaysFinishEnabled = false;
         this.itemIgnoreEmptyHandEnabled = false;
+        // Features added after the list above was written; the dialog promises every feature.
+        this.updateNotificationsEnabled = false;
+        this.scrollableTooltipsEnabled = false;
+        this.persistentItemNameEnabled = false;
+        this.mentionNotificationEnabled = false;
+        this.itemMotionBlurEnabled = false;
+        this.bossSpawnAlertEnabled = false;
+        this.partyInvitePromptEnabled = false;
         save();
     }
 

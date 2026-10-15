@@ -622,7 +622,7 @@ public class AlpakaStats {
         lastSaveFailureNoticeMs = now;
 
         String reason = e.getMessage() == null || e.getMessage().isBlank() ? e.getClass().getSimpleName() : e.getMessage();
-        SlayerDropTracker.sendModMessage("§cSlayer stats could not be saved to §f" + file.getAbsolutePath());
+        SlayerDropTracker.sendModMessage("§cCouldn't save the slayer stats to §f" + file.getAbsolutePath());
         SlayerDropTracker.sendModMessage("§c" + reason);
         SlayerDropTracker.sendModMessage("§7Kills since the last successful save exist only in memory. "
                 + "§f/alpakastats folder default §7or a valid folder fixes this without a restart.");

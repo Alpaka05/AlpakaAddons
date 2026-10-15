@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * runs on its own thread, at most once a minute after a success and with a growing pause after a
  * failure, and the menu only asks for a refresh and reads the result.
  *
- * Nothing is pinged while "Allow Network Features" is off.
+ * Nothing is pinged while "Network Features" is off.
  */
 object HypixelStatus {
     enum class State { OFF, CONNECTING, ONLINE, OFFLINE }

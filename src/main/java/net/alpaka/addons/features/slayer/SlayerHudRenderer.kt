@@ -231,12 +231,12 @@ object SlayerHudRenderer {
         val session = if (preview) null else SlayerSessionTracker.session(shown)
 
         if (cfg.slayerHudShowTitle) {
-            // Naming the reason matters: "away" and "left area" are states the player can fix, and a
-            // bare "(paused)" would leave them guessing which one stopped the clock.
+            // Naming the reason matters: "idle" and "left area" are states the player can fix, and a
+            // bare "(paused)" for those would leave them guessing which one stopped the clock.
             // No leading space: the separation is TITLE_GAP now, so a space here would double it.
             val suffix = if (preview) "" else when (SlayerSessionTracker.pauseReason()) {
-                SlayerSessionTracker.PauseReason.MANUAL -> "(held)"
-                SlayerSessionTracker.PauseReason.IDLE -> "(away)"
+                SlayerSessionTracker.PauseReason.MANUAL -> "(paused)"
+                SlayerSessionTracker.PauseReason.IDLE -> "(idle)"
                 SlayerSessionTracker.PauseReason.OUTSIDE_AREA -> "(left area)"
                 null -> ""
             }
@@ -297,7 +297,7 @@ object SlayerHudRenderer {
         // slayers profit too through Habanero Tactics, so it shows on every slayer unless asked not to.
         if (cfg.slayerHudShowBear && (!cfg.slayerHudBearBlazeOnly || shown == SlayerType.BLAZE)) {
             val time = if (preview) "1h 12m" else SmolderingPolarization.shownTime
-            rows.add(if (time != null) Line("Bear", time, COLOR_GOOD) else Line("Bear", "inactive", COLOR_PAUSED))
+            rows.add(if (time != null) Line("Bear", time, COLOR_GOOD) else Line("Bear", "Inactive", COLOR_PAUSED))
         }
 
         return rows

@@ -6,8 +6,8 @@ public enum ConfigCategory {
     VIEWMODEL("Item Viewmodel", "Hand positioning, scaling, rotations & swing animations"),
     BLOCK_OVERLAY("Block Overlay", "Custom block outline, colors, chroma & fill effects"),
     COSMETICS("Cosmetics", "Your own animated name tag, the chroma sensei hat & player scale"),
-    SKYBLOCK("Skyblock", "Hypixel Skyblock utilities & slayer drop trackers"),
-    SOUND_MISC("Sound & Utility", "Custom sounds, volume & escape menu settings");
+    SKYBLOCK("SkyBlock", "Hypixel SkyBlock utilities & slayer drop trackers"),
+    SOUND_MISC("Sound & Utility", "Custom sounds, the Command Wheel & Always Sprint");
 
     private final String displayName;
     private final String description;

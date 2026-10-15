@@ -24,7 +24,7 @@ object SlayerTimerHudElement : HudElement {
     private const val TEXT_MARGIN = 2
 
     override val id: String = "slayer_timer"
-    override val name: String = "Slayer Boss Timer"
+    override val name: String = "Boss Timer"
 
     override val isFeatureEnabled: Boolean
         get() = AlpakaConfig.instance.slayerTimerEnabled && AlpakaConfig.instance.slayerTimerHudEnabled

@@ -44,7 +44,7 @@ public class WorldAgeHudRenderer {
     /**
      * The drawn line, kept between frames.
      *
-     * The text changes once per in-game day at most, so building {@code "Day: " + day} and wrapping
+     * The text changes once per in-game day at most, so building {@code "Day " + day} and wrapping
      * it in a Component every frame was two allocations for a string that is almost always the same
      * one as last frame.
      */
@@ -55,7 +55,7 @@ public class WorldAgeHudRenderer {
     private static Component dayComponent(long day) {
         if (day != cachedDay || cachedDayComponent == null) {
             cachedDay = day;
-            cachedDayComponent = Component.literal("Day: " + day);
+            cachedDayComponent = Component.literal("Day " + day);
         }
         return cachedDayComponent;
     }
@@ -185,9 +185,9 @@ public class WorldAgeHudRenderer {
         if (seconds >= 60) {
             long m = seconds / 60;
             long s = seconds % 60;
-            return s > 0 ? String.format("%dm %ds", m, s) : String.format("%dm", m);
+            return s > 0 ? m + " min " + s + " s" : m + " min";
         }
-        return seconds + "s";
+        return seconds + " s";
     }
 
     public static int getDayColor(long day) {
@@ -266,7 +266,7 @@ public class WorldAgeHudRenderer {
     }
 
     public static int getWidth(Font font, long day, float scale) {
-        Component text = HudPanel.text(Component.literal("Day: " + day), AlpakaConfig.instance.smoothOn(AlpakaConfig.instance.worldAgeHudSmoothFont));
+        Component text = HudPanel.text(Component.literal("Day " + day), AlpakaConfig.instance.smoothOn(AlpakaConfig.instance.worldAgeHudSmoothFont));
         return (int) Math.ceil(font.width(text) * scale);
     }
 

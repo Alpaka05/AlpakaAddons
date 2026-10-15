@@ -352,20 +352,6 @@ public class ConfigOption {
     /** Whether this action destroys settings, which its row shows in red. */
     public boolean isDangerous() { return dangerous; }
 
-    private boolean buttonOnly = false;
-
-    /**
-     * Makes this action answer only its button, not a click anywhere on its card, for actions that
-     * overwrite settings straight away with nothing to back out of: loading a preset. Everything
-     * else - a colour picker, an editor, an action behind a confirmation dialog - opens from the
-     * whole card, like a toggle.
-     */
-    public ConfigOption buttonOnly() {
-        this.buttonOnly = true;
-        return this;
-    }
-
-    public boolean isButtonOnly() { return buttonOnly; }
     public void triggerAction(Screen parent) {
         if (actionHandler != null) {
             actionHandler.accept(parent);

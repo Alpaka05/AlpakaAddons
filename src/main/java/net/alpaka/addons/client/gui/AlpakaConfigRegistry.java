@@ -10,7 +10,6 @@ import net.alpaka.addons.features.etherwarp.EtherwarpOverlayFeature;
 import net.alpaka.addons.features.nametag.CustomNameTagFeature;
 import net.alpaka.addons.features.notification.AlpakaNotifications;
 import net.alpaka.addons.features.playerscale.PlayerScaleFeature;
-import net.alpaka.addons.features.sound.CustomSoundFeature;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
@@ -71,7 +70,7 @@ public class AlpakaConfigRegistry {
                 "Send Test Notification",
                 parent -> AlpakaNotifications.send("Test Notification",
                         "This is how a notification looks. It slides away after the duration you set."),
-                "notification test preview sample try show notice").buttonOnly());
+                "notification test preview sample try show notice"));
 
         OPTIONS.add(new ConfigOption("notification_hold", "Notification Duration",
                 "How long a notification stays on screen before sliding away.",
@@ -829,7 +828,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VIEWMODEL,
                 "Test Swing",
                 parent -> net.alpaka.addons.features.viewmodel.SwingPreview.swing(),
-                "swing test preview try animation hand item").buttonOnly());
+                "swing test preview try animation hand item"));
 
         OPTIONS.add(new ConfigOption("swing_drift_x", "Swing Drift X",
                 "How far the item drifts sideways during a swing.",
@@ -979,11 +978,8 @@ public class AlpakaConfigRegistry {
                 "Replaces your current viewmodel and swing settings with Preset 1.",
                 ConfigCategory.VIEWMODEL,
                 "Load Preset 1",
-                parent -> {
-                    AlpakaConfig.instance.loadPreset(0);
-                    try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
-                },
-                "preset load 1 slot viewmodel hand size offset applies").buttonOnly());
+                parent -> AlpakaConfig.instance.loadPreset(0),
+                "preset load 1 slot viewmodel hand size offset applies"));
 
         OPTIONS.add(new ConfigOption("save_preset_1", "Save to Preset 1",
                 "Saves your current viewmodel and swing settings to Preset 1.",
@@ -999,11 +995,8 @@ public class AlpakaConfigRegistry {
                 "Replaces your current viewmodel and swing settings with Preset 2.",
                 ConfigCategory.VIEWMODEL,
                 "Load Preset 2",
-                parent -> {
-                    AlpakaConfig.instance.loadPreset(1);
-                    try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
-                },
-                "preset load 2 slot viewmodel hand size offset applies").buttonOnly());
+                parent -> AlpakaConfig.instance.loadPreset(1),
+                "preset load 2 slot viewmodel hand size offset applies"));
 
         OPTIONS.add(new ConfigOption("save_preset_2", "Save to Preset 2",
                 "Saves your current viewmodel and swing settings to Preset 2.",
@@ -1019,11 +1012,8 @@ public class AlpakaConfigRegistry {
                 "Replaces your current viewmodel and swing settings with Preset 3.",
                 ConfigCategory.VIEWMODEL,
                 "Load Preset 3",
-                parent -> {
-                    AlpakaConfig.instance.loadPreset(2);
-                    try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
-                },
-                "preset load 3 slot viewmodel hand size offset applies").buttonOnly());
+                parent -> AlpakaConfig.instance.loadPreset(2),
+                "preset load 3 slot viewmodel hand size offset applies"));
 
         OPTIONS.add(new ConfigOption("save_preset_3", "Save to Preset 3",
                 "Saves your current viewmodel and swing settings to Preset 3.",

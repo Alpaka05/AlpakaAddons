@@ -93,7 +93,7 @@ public final class ScreenshotMessageFeature {
                 if (buttons) {
                     Component note = error == null
                             ? Component.literal("copied").withStyle(ChatFormatting.DARK_GRAY)
-                            : Component.literal("copy failed").withStyle(ChatFormatting.RED);
+                            : Component.literal("Copy failed").withStyle(ChatFormatting.RED);
                     repost.accept(buttonLine(file, note));
                 } else if (error != null) {
                     feedback("§cCouldn't copy the screenshot (" + error + ").");

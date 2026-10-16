@@ -1,7 +1,6 @@
 package net.alpaka.addons.mixin;
 
 import net.alpaka.addons.config.AlpakaConfig;
-import net.alpaka.addons.features.chat.ChatBlurFeature;
 import net.alpaka.addons.features.chat.ChatPeekFeature;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
 import net.alpaka.addons.features.inventoryhud.InventoryHudRenderer;
@@ -15,15 +14,12 @@ import net.alpaka.addons.utils.AlpakaPerf;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.Hud;
-import net.minecraft.client.gui.components.ChatComponent;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.scores.Objective;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -37,19 +33,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(Hud.class)
 public class HudMixin {
-    @Shadow @Final private ChatComponent chat;
     @Shadow private int toolHighlightTimer;
     @Shadow private ItemStack lastToolHighlight;
-    @Shadow private void extractOverlayMessage(GuiGraphicsExtractor graphicsExtractor, DeltaTracker deltaTracker) {}
-
-    /** The action bar was held back this frame, to be drawn once the chat is. */
-    @Unique private boolean alpaka$actionBarPending;
-    @Unique private boolean alpaka$drawingActionBar;
 
     @Inject(method = "extractRenderState", at = @At("TAIL"))
     private void onExtractRenderState(GuiGraphicsExtractor graphicsExtractor, DeltaTracker deltaTracker, CallbackInfo ci) {
-        // The chat was not drawn this frame (chat peek over a menu): the action bar still is.
-        alpaka$drawHeldActionBar(graphicsExtractor, deltaTracker);
         long t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_PLAYER_MODEL);
         PlayerModelRenderer.render(graphicsExtractor, deltaTracker);
         AlpakaPerf.end(AlpakaPerf.Section.HUD_PLAYER_MODEL, t);
@@ -79,40 +67,6 @@ public class HudMixin {
     private void alpaka$hideChatBehindPeekedMenu(GuiGraphicsExtractor graphicsExtractor, DeltaTracker deltaTracker, CallbackInfo ci) {
         if (ChatPeekFeature.hidesHudChat()) {
             ci.cancel();
-        }
-    }
-
-    /**
-     * The action bar goes above the blurred chat panel instead of under it. The panel shows the
-     * world as it was before any HUD element, so whatever lies beneath it - the action bar's health
-     * and mana - is not dimmed as by vanilla's flat boxes but gone. Vanilla draws the action bar
-     * before the chat; it is held back here and drawn after the chat, in a stratum of its own.
-     *
-     * Only when vanilla's own call comes, so a mod that hides or replaces the action bar still
-     * does. While the chat is open the chat stays on top, as the thing being read.
-     */
-    @Inject(method = "extractOverlayMessage", at = @At("HEAD"), cancellable = true)
-    private void alpaka$holdActionBarForChat(GuiGraphicsExtractor graphicsExtractor, DeltaTracker deltaTracker, CallbackInfo ci) {
-        if (this.alpaka$drawingActionBar || !ChatBlurFeature.isEnabled()) return;
-        if (this.chat.isChatFocused() || ChatPeekFeature.isPeeking()) return;
-        this.alpaka$actionBarPending = true;
-        ci.cancel();
-    }
-
-    @Inject(method = "extractChat", at = @At("RETURN"))
-    private void alpaka$actionBarOverChat(GuiGraphicsExtractor graphicsExtractor, DeltaTracker deltaTracker, CallbackInfo ci) {
-        alpaka$drawHeldActionBar(graphicsExtractor, deltaTracker);
-    }
-
-    @Unique
-    private void alpaka$drawHeldActionBar(GuiGraphicsExtractor graphicsExtractor, DeltaTracker deltaTracker) {
-        if (!this.alpaka$actionBarPending) return;
-        this.alpaka$actionBarPending = false;
-        this.alpaka$drawingActionBar = true;
-        try {
-            extractOverlayMessage(graphicsExtractor, deltaTracker);
-        } finally {
-            this.alpaka$drawingActionBar = false;
         }
     }
 

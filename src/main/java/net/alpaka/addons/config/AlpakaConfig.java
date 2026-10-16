@@ -190,9 +190,9 @@ public class AlpakaConfig {
     public int menuAccentColor = 0xFF29B6B2; // Default teal
     /**
      * Index into {@code GuiFont.NAMES}: the typeface the Alpaka menus are written in. 0 is the
-     * vanilla pixel font; the default is Inter.
+     * vanilla pixel font; the default is Poppins.
      */
-    public int menuFont = 1;
+    public int menuFont = 2;
     public boolean customEscapeMenuEnabled = true;
     public boolean customMainMenuEnabled = false;
     /** The small player model on the HUD. Off for fresh installs. */
@@ -469,8 +469,8 @@ public class AlpakaConfig {
     public boolean chatTabsShowGuild = true;
     public boolean chatTabsShowCoop = true;
     public boolean chatTabsShowPrivate = true;
-    public boolean chatTabsShowServer = true;
-    public boolean chatTabsShowMods = true;
+    public boolean chatTabsShowServer = false;
+    public boolean chatTabsShowMods = false;
 
     // Interface options
     /** The mouse wheel scrolls a tooltip that is taller than the screen. */

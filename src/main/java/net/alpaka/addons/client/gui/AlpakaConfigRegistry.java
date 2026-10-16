@@ -1834,6 +1834,13 @@ public class AlpakaConfigRegistry {
                 parent -> Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.client.CommandWheelConfigScreen(parent)),
                 "quick command wheel commands add remove edit custom list menu keybind quick command menu editor entries unbound controls"));
 
+        OPTIONS.add(new ConfigOption("command_wheel_toggle_mode", "Toggle Command Wheel",
+                "Press the key once to open the wheel and click a command, instead of holding the key and releasing it.",
+                ConfigCategory.SOUND_MISC,
+                () -> AlpakaConfig.instance.commandWheelToggleMode,
+                v -> { AlpakaConfig.instance.commandWheelToggleMode = v; AlpakaConfig.save(); },
+                "quick command wheel toggle hold press release click open mode keybind"));
+
         OPTIONS.add(new ConfigOption("always_sprint", "Always Sprint",
                 "Sprints whenever you walk forward, no sprint key needed.",
                 ConfigCategory.SOUND_MISC,

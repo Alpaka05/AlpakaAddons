@@ -6,6 +6,8 @@
 
 ---
 
+[![Build](https://github.com/Alpaka05/AlpakaAddons/actions/workflows/build.yml/badge.svg?branch=mc-26.1.2)](https://github.com/Alpaka05/AlpakaAddons/actions/workflows/build.yml?query=branch%3Amc-26.1.2)
+
 ## 🌟 Main Features
 
 - **Custom Menus**: Redesigned Main Menu with a Hypixel Quick-Join Dashboard and an animated ESC Pause Screen with live player stats.

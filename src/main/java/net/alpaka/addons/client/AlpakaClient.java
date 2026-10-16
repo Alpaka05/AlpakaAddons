@@ -95,7 +95,7 @@ public class AlpakaClient implements ClientModInitializer {
                 .then(ClientCommands.literal("perf")
                     .executes(context -> {
                         Minecraft.getInstance().execute(() -> {
-                            SlayerDropTracker.sendModMessage("§6--- Alpaka performance ---");
+                            SlayerDropTracker.sendModMessage("§6--- Performance ---");
                             for (String line : net.alpaka.addons.utils.AlpakaPerf.report()) {
                                 SlayerDropTracker.sendModMessage("§7" + line);
                             }
@@ -230,7 +230,7 @@ public class AlpakaClient implements ClientModInitializer {
                         int num = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "number");
                         Minecraft.getInstance().execute(() -> {
                             net.alpaka.addons.config.AlpakaConfig.instance.loadPreset(num - 1);
-                            SlayerDropTracker.sendModMessage("§aSwitched to Viewmodel Preset " + num + ".");
+                            SlayerDropTracker.sendModMessage("§aSwitched to Preset " + num + ".");
                             try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
                         });
                         return 1;
@@ -243,7 +243,7 @@ public class AlpakaClient implements ClientModInitializer {
                             int num = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "number");
                             Minecraft.getInstance().execute(() -> {
                                 net.alpaka.addons.config.AlpakaConfig.instance.savePreset(num - 1);
-                                SlayerDropTracker.sendModMessage("§aSaved the current viewmodel settings to Preset " + num + ".");
+                                SlayerDropTracker.sendModMessage("§aSaved your viewmodel and swing settings to Preset " + num + ".");
                                 try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
                             });
                             return 1;
@@ -300,14 +300,14 @@ public class AlpakaClient implements ClientModInitializer {
 
         SlayerDropTracker.sendModMessage("§7Slayer stats: §f" + file.getAbsolutePath());
         SlayerDropTracker.sendModMessage(custom
-                ? "§8  custom folder - /alpakastats folder default to go back to the shared one"
-                : "§8  shared default - /alpakastats folder <path> to point it at a synced folder");
+                ? "§8  Custom folder. /alpakastats folder default goes back to the shared one."
+                : "§8  Shared default. /alpakastats folder <path> points it at a synced folder.");
         if (net.alpaka.addons.config.AlpakaStats.isAwaitingStore()) {
-            SlayerDropTracker.sendModMessage("§e  folder not available - drive not mounted? Kills wait in memory until it appears");
+            SlayerDropTracker.sendModMessage("§e  Folder not available. Is the drive mounted? Kills wait in memory until it appears.");
         } else {
             SlayerDropTracker.sendModMessage(file.exists()
-                    ? "§8  file present (" + file.length() + " bytes)"
-                    : "§8  no file yet; it is written on the next kill");
+                    ? "§8  File present (" + file.length() + " bytes)."
+                    : "§8  No file yet. It is written on the next kill.");
         }
     }
 
@@ -353,7 +353,7 @@ public class AlpakaClient implements ClientModInitializer {
         if (!dir.isDirectory() && !dir.mkdirs()) {
             AlpakaConfig.instance.statsDirectory = previous;
             AlpakaConfig.instance.statsDirectoryHadFile = previousHadFile;
-            SlayerDropTracker.sendModMessage("§cCould not create §f" + dir.getAbsolutePath());
+            SlayerDropTracker.sendModMessage("§cCouldn't create §f" + dir.getAbsolutePath());
             SlayerDropTracker.sendModMessage("§7The setting was not changed; check the path and try again.");
             return;
         }

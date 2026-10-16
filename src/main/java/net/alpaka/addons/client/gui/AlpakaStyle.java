@@ -4,16 +4,20 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /**
- * The look of the config menu, for every other window the mod opens from it - the colour picker,
- * the quick command editor, the HUD editor's bar and the confirmation dialog - so they read as
- * parts of one menu: a dark rounded panel with a soft shadow that pops open, a hairline under the
- * header, slim rows that only show a background on hover, the accent for whatever is active, and
- * the menu font without shadows.
+ * The mod's one design language, the config menu's, for every window it draws - the config menu
+ * itself, the color picker, the command wheel editor, the HUD editor's bar and the confirmation
+ * dialog - so they read as parts of one menu: a dark rounded panel with a soft shadow that pops
+ * open, a hairline under the header, slim rows that only show a background on hover, the accent
+ * for whatever is active, and the menu font without shadows.
+ *
+ * Hover goes one step lighter: a setting row from the panel to {@link #ROW}, a card from
+ * {@link #ROW} to {@link #ROW_HOVER}; buttons, which sit on rows themselves, go to
+ * {@link #ROW_SELECTED} so they stay apart from the row under them.
  */
 public final class AlpakaStyle {
     private AlpakaStyle() {}
 
-    // ---- Colours, the config screen's -----------------------------------------------------------
+    // ---- Colors ---------------------------------------------------------------------------------
 
     public static final int BACKDROP = 0x80000000;
     public static final int PANEL = 0xFF131313;
@@ -27,26 +31,71 @@ public final class AlpakaStyle {
     public static final int TEXT_SOFT = 0xFFBDBDBD;
     public static final int TEXT_MUTED = 0xFF7C7C7C;
     public static final int TRACK = 0xFF3A3A3A;
+    /** A switch that is off: its outline, and its knob. */
+    private static final int TOGGLE_OFF = 0xFF6E6E6E;
+    private static final int TOGGLE_KNOB_OFF = 0xFF8A8A8A;
+    /** Behind a tooltip: opaque, so nothing under it shows through its text. */
+    private static final int TOOLTIP = 0xFF1A1A1A;
+    /** Behind a preview of something the game draws itself: the dark of the chat's own background. */
+    public static final int PREVIEW = 0xFF0D0D0D;
     public static final int DANGER = 0xFFE5534B;
+    /** A dangerous action's text at rest; {@link #DANGER} once hovered. */
+    public static final int DANGER_SOFT = 0xFFC9726C;
 
     // ---- Metrics, in GUI pixels -----------------------------------------------------------------
 
-    public static final int HEADER_H = 30;
+    /** The header of every window, the config menu's included, and the height of the HUD editor's bar. */
+    public static final int HEADER_H = 33;
+    /** Corner radius of a window: the config menu, a dialog, a picker. */
+    public static final int PANEL_RADIUS = 8;
     public static final int PAD = 8;
     public static final int ROW_H = 16;
     public static final int BUTTON_H = 18;
     public static final int ROW_RADIUS = 4;
+    /** Rows that stand as cards of their own, like the config's features; a little rounder than a row. */
+    public static final int CARD_RADIUS = 5;
+    /** Corner radius of fields: text, choices, the hex code. */
+    public static final int FIELD_RADIUS = 3;
+    public static final int TOOLTIP_DELAY_MS = 450;
 
     /** The three kinds of button: plain, the one that confirms, and the one that destroys. */
     public enum ButtonKind { PLAIN, PRIMARY, DANGER }
+
+    /** The player's accent color: what is selected, focused or about to happen. */
+    public static int accent() {
+        return ModernGuiUtils.getAccentColor();
+    }
+
+    /**
+     * The click of a control: vanilla's button click, which the custom sounds swap for their chime
+     * when the player turned them on. Every window of the mod clicks this way, so a press sounds the
+     * same in the config, a dialog or the pause menu.
+     */
+    public static void click() {
+        net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+        if (mc == null) return;
+        net.minecraft.client.gui.components.AbstractWidget.playButtonClickSound(mc.getSoundManager());
+    }
+
+    /** The accent, dimmed: a focused outline, a text selection. */
+    public static int accentDim() {
+        return ModernGuiUtils.getAccentDimColor();
+    }
 
     // ---- The window -----------------------------------------------------------------------------
 
     /** The dimmed game behind the window, against an identity pose so it never slides along. */
     public static void backdrop(GuiGraphicsExtractor graphics, int width, int height) {
+        backdrop(graphics, width, height, 1.0f);
+    }
+
+    /** The backdrop at a share of its strength, for a window that lets the world through at times. */
+    public static void backdrop(GuiGraphicsExtractor graphics, int width, int height, float strength) {
+        int alpha = Math.round(((BACKDROP >>> 24) & 0xFF) * Math.max(0.0f, Math.min(1.0f, strength)));
+        if (alpha <= 0) return;
         graphics.pose().pushMatrix();
         graphics.pose().identity();
-        graphics.fill(0, 0, width, height, BACKDROP);
+        graphics.fill(0, 0, width, height, alpha << 24);
         graphics.pose().popMatrix();
     }
 
@@ -68,14 +117,39 @@ public final class AlpakaStyle {
 
     /** The window itself: a rounded dark panel with a soft shadow. */
     public static void panel(GuiGraphicsExtractor graphics, int x, int y, int w, int h) {
-        ModernGuiUtils.drawPanelShadow(graphics, x, y, w, h, ModernGuiUtils.PANEL_RADIUS, 1.0f);
-        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, ModernGuiUtils.PANEL_RADIUS, PANEL);
+        ModernGuiUtils.drawPanelShadow(graphics, x, y, w, h, PANEL_RADIUS, 1.0f);
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, PANEL_RADIUS, PANEL);
+    }
+
+    /**
+     * A small window that floats over another one, such as an open list: the panel with a lighter
+     * shadow and a hairline edge that keeps it apart from the window beneath.
+     */
+    public static void popover(GuiGraphicsExtractor graphics, int x, int y, int w, int h) {
+        ModernGuiUtils.drawPanelShadow(graphics, x, y, w, h, PANEL_RADIUS, 0.8f);
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, PANEL_RADIUS, PANEL);
+        ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, h, PANEL_RADIUS, LINE);
     }
 
     /** The header: a title on the left, and the hairline that closes it off below. */
     public static void header(GuiGraphicsExtractor graphics, Font font, String title, int x, int y, int w) {
-        graphics.text(font, GuiFont.text(title), x + PAD + 2, y + (HEADER_H - 8) / 2, TEXT, false);
+        title(graphics, font, title, x + PAD + 2, y);
+        headerLine(graphics, x, y, w);
+    }
+
+    /** A window's title, centred in the height of the header whose top is {@code headerY}. */
+    public static void title(GuiGraphicsExtractor graphics, Font font, String title, int x, int headerY) {
+        graphics.text(font, GuiFont.text(title), x, headerY + (HEADER_H - 8) / 2, TEXT, false);
+    }
+
+    /** The hairline that closes a header off, along the bottom of the header whose top is {@code y}. */
+    public static void headerLine(GuiGraphicsExtractor graphics, int x, int y, int w) {
         ModernGuiUtils.drawRect(graphics, x + PAD, y + HEADER_H - 1, w - PAD * 2, 1, LINE);
+    }
+
+    /** Where a button in a header sits: centred in its height. */
+    public static int headerButtonY(int headerY) {
+        return headerY + (HEADER_H - BUTTON_H) / 2;
     }
 
     /** A small label over a group of controls, as the config's sidebar labels its categories. */
@@ -91,6 +165,17 @@ public final class AlpakaStyle {
      */
     public static void button(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int h,
                               String label, boolean hover, ButtonKind kind) {
+        button(graphics, font, x, y, w, h, label, hover, kind, true);
+    }
+
+    /** A button that may be switched off: then it keeps its place, dimmed, and ignores the mouse. */
+    public static void button(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int h,
+                              String label, boolean hover, ButtonKind kind, boolean enabled) {
+        if (!enabled) {
+            ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, ROW_RADIUS, ROW);
+            ModernGuiUtils.centeredText(graphics, font, GuiFont.text(label), x + w / 2, y + (h - 8) / 2, TEXT_MUTED);
+            return;
+        }
         int accent = ModernGuiUtils.getAccentColor();
         int background;
         int text;
@@ -101,7 +186,7 @@ public final class AlpakaStyle {
             }
             case DANGER -> {
                 background = hover ? (DANGER & 0x00FFFFFF) | 0x40000000 : ROW;
-                text = hover ? DANGER : 0xFFC9726C;
+                text = hover ? DANGER : DANGER_SOFT;
             }
             default -> {
                 background = hover ? ROW_SELECTED : ROW;
@@ -116,7 +201,7 @@ public final class AlpakaStyle {
     public static void iconButton(GuiGraphicsExtractor graphics, Font font, int x, int y, int size, String glyph,
                                   boolean hover, boolean enabled, boolean danger) {
         if (hover && enabled) {
-            ModernGuiUtils.drawRoundedRect(graphics, x, y, size, size, 3,
+            ModernGuiUtils.drawRoundedRect(graphics, x, y, size, size, FIELD_RADIUS,
                     danger ? (DANGER & 0x00FFFFFF) | 0x33000000 : ROW_SELECTED);
         }
         int color = !enabled ? DIVIDER
@@ -126,23 +211,193 @@ public final class AlpakaStyle {
         graphics.text(font, GuiFont.text(glyph), x + (size - gw) / 2, y + (size - 8) / 2, color, false);
     }
 
+    /** An arrow that acts as a button, drawn with the menu's chevron rather than a glyph. */
+    public static void chevronButton(GuiGraphicsExtractor graphics, int x, int y, int size, boolean left,
+                                     boolean hover, boolean enabled) {
+        if (hover && enabled) ModernGuiUtils.drawRoundedRect(graphics, x, y, size, size, FIELD_RADIUS, ROW_SELECTED);
+        int color = !enabled ? DIVIDER : hover ? ModernGuiUtils.getAccentColor() : TEXT_MUTED;
+        sideChevron(graphics, x + size / 2, y + size / 2, left, color);
+    }
+
     /**
      * A text field: a rounded box with a line along its bottom that lights up in the accent colour
      * while it has the focus, and a blinking caret.
      */
     public static void textField(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int h,
                                  String text, String placeholder, boolean focused, boolean hover, long caretFrom) {
-        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, 3, hover && !focused ? ROW_HOVER : FIELD);
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, FIELD_RADIUS, hover && !focused ? ROW_HOVER : FIELD);
         ModernGuiUtils.drawRect(graphics, x + 3, y + h - 1, w - 6, 1, focused ? ModernGuiUtils.getAccentColor() : LINE);
         int ty = y + (h - 8) / 2;
         boolean empty = text.isEmpty();
         String shown = empty && !focused ? placeholder : text;
-        String clipped = clipLeft(font, shown, w - 10);
+        // While typing, the end stays in view; at rest the start does, cut with an ellipsis.
+        String clipped = focused ? clipLeft(font, shown, w - 10) : ellipsize(font, shown, w - 10);
         graphics.text(font, GuiFont.text(clipped), x + 5, ty, empty && !focused ? TEXT_MUTED : TEXT, false);
         if (focused && (System.currentTimeMillis() - caretFrom) / 500 % 2 == 0) {
             int caretX = x + 5 + GuiFont.width(font, clipped);
             ModernGuiUtils.drawRect(graphics, caretX, ty - 1, 1, 10, TEXT);
         }
+    }
+
+    /**
+     * A slim switch: a rounded outline with a dot that slides across, gray when off and in the
+     * accent color when on.
+     */
+    public static void toggle(GuiGraphicsExtractor graphics, int x, int y, int w, int h, float progress) {
+        int accent = ModernGuiUtils.getAccentColor();
+        int outline = ModernGuiUtils.lerpColor(TOGGLE_OFF, accent, progress);
+        int knob = ModernGuiUtils.lerpColor(TOGGLE_KNOB_OFF, accent, progress);
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, h / 2,
+                ModernGuiUtils.lerpColor(0x00000000, (accent & 0x00FFFFFF) | 0x26000000, progress));
+        ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, h, h / 2, outline);
+        int size = h - 4;
+        int travel = w - 4 - size;
+        int kx = x + 2 + Math.round(travel * progress);
+        ModernGuiUtils.drawRoundedRect(graphics, kx, y + 2, size, size, size / 2, knob);
+    }
+
+    /**
+     * A select field: the current value in a field, with a chevron that points down while its list
+     * is open. Its list is drawn with {@link #choiceEntry}.
+     */
+    public static void selectField(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int h,
+                                   String value, boolean open) {
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, FIELD_RADIUS, FIELD);
+        graphics.text(font, GuiFont.text(ellipsize(font, value, w - 16)), x + 4, y + (h - 8) / 2, TEXT, false);
+        chevron(graphics, x + w - 6, y + h / 2, open, TEXT_SOFT);
+    }
+
+    /**
+     * One name of an open choice list: on one unbroken line down the list, the current choice
+     * marked on it and named in the accent.
+     */
+    public static void choiceEntry(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int h,
+                                   String name, boolean current, boolean hover) {
+        if (hover) ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, ROW_RADIUS, ROW);
+        ModernGuiUtils.drawRect(graphics, x + 6, y, 1, h, LINE);
+        if (current) ModernGuiUtils.drawRect(graphics, x + 6, y + 2, 1, h - 4, ModernGuiUtils.getAccentColor());
+        int color = current ? ModernGuiUtils.getAccentColor() : hover ? TEXT : TEXT_SOFT;
+        graphics.text(font, GuiFont.text(ellipsize(font, name, w - 24)), x + 14, y + (h - 8) / 2, color, false);
+    }
+
+    /**
+     * A small chevron, pointing down when open and right when closed: two smooth strokes as quads,
+     * so the diagonals stay clean at every GUI scale instead of stepping pixel by pixel.
+     */
+    public static void chevron(GuiGraphicsExtractor graphics, int cx, int cy, boolean open, int color) {
+        net.alpaka.addons.features.wheel.WheelMesh mesh = new net.alpaka.addons.features.wheel.WheelMesh(1.0f / guiScale());
+        float s = 2.5f;
+        float t = 1.1f;
+        if (open) {
+            stroke(mesh, cx - s, cy - s / 2, cx, cy + s / 2, t, color);
+            stroke(mesh, cx, cy + s / 2, cx + s, cy - s / 2, t, color);
+        } else {
+            stroke(mesh, cx - s / 2, cy - s, cx + s / 2, cy, t, color);
+            stroke(mesh, cx + s / 2, cy, cx - s / 2, cy + s, t, color);
+        }
+        mesh.submit(graphics);
+    }
+
+    /** A chevron pointing left or right, a little larger than the dropdowns' one, for stepping. */
+    public static void sideChevron(GuiGraphicsExtractor graphics, int cx, int cy, boolean left, int color) {
+        net.alpaka.addons.features.wheel.WheelMesh mesh = new net.alpaka.addons.features.wheel.WheelMesh(1.0f / guiScale());
+        float s = 3.0f;
+        float t = 1.2f;
+        float d = left ? -1 : 1;
+        stroke(mesh, cx - d * s / 2, cy - s, cx + d * s / 2, cy, t, color);
+        stroke(mesh, cx + d * s / 2, cy, cx - d * s / 2, cy + s, t, color);
+        mesh.submit(graphics);
+    }
+
+    private static int guiScale() {
+        net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+        return mc == null ? 2 : (int) Math.max(1, mc.getWindow().getGuiScale());
+    }
+
+    /** A straight stroke of the given thickness, with square ends half a thickness past each point. */
+    private static void stroke(net.alpaka.addons.features.wheel.WheelMesh mesh, float x0, float y0, float x1, float y1,
+                               float thickness, int color) {
+        float dx = x1 - x0;
+        float dy = y1 - y0;
+        float len = (float) Math.sqrt(dx * dx + dy * dy);
+        if (len == 0) return;
+        float ux = dx / len * thickness / 2;
+        float uy = dy / len * thickness / 2;
+        float nx = -uy;
+        float ny = ux;
+        mesh.quad(x0 - ux + nx, y0 - uy + ny, color, x1 + ux + nx, y1 + uy + ny, color,
+                x1 + ux - nx, y1 + uy - ny, color, x0 - ux - nx, y0 - uy - ny, color);
+    }
+
+    /**
+     * A tooltip by the mouse: the text wrapped to a narrow box, kept on the screen; the config menu
+     * shows a setting's description this way after {@link #TOOLTIP_DELAY_MS} of hovering.
+     */
+    public static void tooltip(GuiGraphicsExtractor graphics, Font font, int screenW, int screenH,
+                               int mouseX, int mouseY, String text) {
+        if (text == null || text.isBlank()) return;
+        // Over everything drawn so far, its text included.
+        graphics.nextStratum();
+        int maxW = 170;
+        int lineH = 10;
+        java.util.List<net.minecraft.network.chat.FormattedText> lines = GuiFont.splitLines(font, text, maxW);
+        int w = 0;
+        for (net.minecraft.network.chat.FormattedText line : lines) w = Math.max(w, font.width(line));
+        int h = lines.size() * lineH + 6;
+        w += 10;
+        int x = Math.min(mouseX + 10, screenW - w - 4);
+        int y = Math.min(mouseY + 10, screenH - h - 4);
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, ROW_RADIUS, TOOLTIP);
+        ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, h, ROW_RADIUS, DIVIDER);
+        int ly = y + 4;
+        for (net.minecraft.network.chat.FormattedText line : lines) {
+            graphics.text(font, net.minecraft.locale.Language.getInstance().getVisualOrder(line), x + 5, ly, TEXT_SOFT, false);
+            ly += lineH;
+        }
+    }
+
+    /**
+     * A color swatch: the color over a checkerboard where it is see-through, in a hairline edge so a
+     * dark color still shows its shape on the dark window.
+     */
+    public static void swatch(GuiGraphicsExtractor graphics, int x, int y, int w, int h, int color) {
+        int radius = 2;
+        if ((color >>> 24) < 0xFF) {
+            ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, radius, FIELD);
+            int cell = Math.max(2, h / 3);
+            for (int cy = 0; cy * cell < h; cy++) {
+                for (int cx = 0; cx * cell < w; cx++) {
+                    if ((cx + cy) % 2 != 0) continue;
+                    ModernGuiUtils.drawRect(graphics, x + cx * cell, y + cy * cell,
+                            Math.min(cell, w - cx * cell), Math.min(cell, h - cy * cell), TRACK);
+                }
+            }
+        }
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, radius, color);
+        ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, h, radius, DIVIDER);
+    }
+
+    /**
+     * Soft edges for a scrolling area: the window's color fading out over a few pixels at the top
+     * and the bottom of the clip, so a row cut by the edge reads as scrolled away, not broken off.
+     * Drawn only on the side where something is hidden.
+     */
+    public static void scrollFades(GuiGraphicsExtractor graphics, int x, int y, int w, int h,
+                                   boolean above, boolean below) {
+        int fade = 6;
+        int clear = PANEL & 0x00FFFFFF;
+        if (above) graphics.fillGradient(x, y, x + w, y + fade, PANEL, clear);
+        if (below) graphics.fillGradient(x, y + h - fade, x + w, y + h, clear, PANEL);
+    }
+
+    /** The text cut to fit the width, with an ellipsis where it was cut. */
+    public static String ellipsize(Font font, String text, int maxW) {
+        if (text == null || maxW <= 0) return "";
+        if (GuiFont.width(font, text) <= maxW) return text;
+        String dots = "…";
+        int end = text.length();
+        while (end > 0 && GuiFont.width(font, text.substring(0, end) + dots) > maxW) end--;
+        return text.substring(0, end).trim() + dots;
     }
 
     /** The end of a text that fits the width - the part being typed stays in view. */

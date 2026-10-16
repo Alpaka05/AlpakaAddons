@@ -40,7 +40,7 @@ object CustomDamageTagFeature {
 
     /** Names for the config slider, indexed by the DUNGEON_* constants. */
     @JvmField
-    val DUNGEON_MODE_NAMES = arrayOf("Show", "Hide In Boss Room", "Hide In Whole Dungeon")
+    val DUNGEON_MODE_NAMES = arrayOf("Never", "Boss Room", "Whole Run")
 
     /** The slayer bosses' names, from every slayer. */
     private val SLAYER_BOSS_NAMES: Array<String> =
@@ -62,7 +62,7 @@ object CustomDamageTagFeature {
 
     /** Names for the config slider, indexed by the FORMAT_* constants. */
     @JvmField
-    val FORMAT_NAMES = arrayOf("As Hypixel", "Compact (1.2M)", "Full (1,234,567)")
+    val FORMAT_NAMES = arrayOf("Hypixel's", "1.2M", "1,234,567")
 
     /** Vanilla's `EntityRenderer.NAMETAG_SCALE`: world units per text pixel. */
     private const val TEXT_SCALE = 0.025f

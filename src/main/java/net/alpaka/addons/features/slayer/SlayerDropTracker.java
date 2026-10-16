@@ -460,14 +460,14 @@ public class SlayerDropTracker {
             Component dropComponent = getDropComponent(pending.message(), pending.item());
             MutableComponent feedback;
             if (lastDropped == null) {
-                feedback = Component.literal("First ").append(dropComponent)
-                        .append(Component.literal(" - at " + currentKills + " " + pending.type().display + " kills"));
+                feedback = Component.literal("First ").withStyle(ChatFormatting.GRAY).append(dropComponent)
+                        .append(Component.literal(" - at " + currentKills + " " + pending.type().display + (currentKills != 1 ? " kills" : " kill")));
             } else {
                 int sinceLast = currentKills - lastDropped;
-                feedback = Component.literal("Dropped ").append(dropComponent)
+                feedback = Component.literal("Dropped ").withStyle(ChatFormatting.GRAY).append(dropComponent)
                         .append(Component.literal(" after "))
                         .append(Component.literal(String.valueOf(sinceLast)).withStyle(ChatFormatting.GREEN))
-                        .append(Component.literal(" Boss" + (sinceLast != 1 ? "es" : "")));
+                        .append(Component.literal(" boss" + (sinceLast != 1 ? "es" : "")));
             }
             if (AlpakaConfig.instance.slayerRngDropGuildChatEnabled && isHeadlineDrop(pending.type(), pending.item())) {
                 Component source = AlpakaConfig.instance.slayerShareMessage == SHARE_HYPIXEL_LINE
@@ -582,16 +582,16 @@ public class SlayerDropTracker {
         lastSinceOfferMs = now;
 
         sendModMessage(Component.literal("§7" + matcher.group("name") + " asked: §f" + answer.text() + " ")
-                .append(shareButton("[Reply in party]", "pc", answer.text())));
+                .append(shareButton("[Reply in Party]", "pc", answer.text())));
     }
 
     /** Dev tour only: a headline drop line and a since line, to see the share buttons in the chat. */
     public static void devShareSample() {
-        String drop = "Dropped High Class Archfiend Dice after 412 Bosses";
-        sendModMessage(Component.literal("Dropped ")
+        String drop = "Dropped High Class Archfiend Dice after 412 bosses";
+        sendModMessage(Component.literal("Dropped ").withStyle(ChatFormatting.GRAY)
                 .append(Component.literal("High Class Archfiend Dice").withStyle(ChatFormatting.LIGHT_PURPLE))
                 .append(" after ").append(Component.literal("412").withStyle(ChatFormatting.GREEN))
-                .append(" Bosses"));
+                .append(" bosses"));
         sendModMessage(shareButtons(drop));
         sendModMessage(Component.literal("§fBosses since last Warden Heart: 87  ").append(shareButtons("Bosses since last Warden Heart: 87")));
     }
@@ -615,7 +615,7 @@ public class SlayerDropTracker {
                 continue;
             }
             int kills = data != null ? data.kills : 0;
-            sendModMessage("§e" + type.display + ": §a" + kills + " §7kills");
+            sendModMessage("§e" + type.display + ": §a" + kills + " §7kill" + (kills != 1 ? "s" : ""));
         }
 
         sendModMessage("§6--- Personal Bests ---");
@@ -627,7 +627,7 @@ public class SlayerDropTracker {
             sendModMessage("§e" + type.display + ": §a" + SlayerTimer.INSTANCE.format(best));
         }
         if (!anyBest) {
-            sendModMessage("§7  §8no boss timed yet");
+            sendModMessage("§7  §8No boss timed yet.");
         }
 
         // Only each slayer's headline RNG drop, the one worth counting a dry streak against - the
@@ -645,14 +645,14 @@ public class SlayerDropTracker {
 
             Integer since = SlayerRngDropTracker.INSTANCE.bossesSince(type);
             if (since == null) {
-                sendModMessage("§e" + type.display + "§7: " + item + " §8- §cnever §7in " + data.kills + " bosses");
+                sendModMessage("§e" + type.display + "§7: " + item + " §8- §cnever §7in " + data.kills + " boss" + (data.kills != 1 ? "es" : ""));
             } else {
                 sendModMessage("§e" + type.display + "§7: " + item + " §8- §a" + since + " §7boss"
                         + (since != 1 ? "es" : "") + " ago");
             }
         }
         if (!anyDrop) {
-            sendModMessage("§7  §8nothing recorded yet");
+            sendModMessage("§7  §8Nothing recorded yet.");
         }
         sendModMessage("§8Use /alpakaslayer <slayer> for every drop of one slayer.");
     }
@@ -679,7 +679,7 @@ public class SlayerDropTracker {
         }
 
         if (data == null || data.drops == null || data.drops.isEmpty()) {
-            sendModMessage("§7  §8nothing recorded yet");
+            sendModMessage("§7  §8Nothing recorded yet.");
             return;
         }
 

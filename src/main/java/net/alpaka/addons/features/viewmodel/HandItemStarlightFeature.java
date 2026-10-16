@@ -63,7 +63,7 @@ public final class HandItemStarlightFeature {
     private static RenderType renderType;
 
     /** The modes, by {@link AlpakaConfig#itemStarlightMode}. */
-    public static final String[] MODE_NAMES = {"Every Item", "Replace Enchant Glint"};
+    public static final String[] MODE_NAMES = {"Every Item", "Glinting Only"};
     private static final int MODE_REPLACE_GLINT = 1;
 
     private static boolean replacesGlint() {

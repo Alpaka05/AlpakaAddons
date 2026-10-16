@@ -142,19 +142,19 @@ public final class ConfigTree {
             "Swing Customizations", "Swing",
             "Viewmodel Presets", "Presets",
             "HUD Style", "HUD Style",
-            "Notification Customization", "Notification Customization",
+            "Notification Customization", "Notifications",
             "Chat Style", "Chat Style",
-            "Scoreboard", "Scoreboard"
+            "Scoreboard", "Scoreboard Style"
     );
 
     /** What a feature built from a header is about; it has no master option to take it from. */
     private static final Map<String, String> HEADER_DESCRIPTIONS = Map.of(
-            "Swing Customizations", "How the held item moves when you swing: drift, arc, and whether the swing always plays out.",
+            "Swing Customizations", "How the held item moves when you swing: drift, arc and whether the swing always plays out.",
             "Viewmodel Presets", "Save your viewmodel and swing settings to a slot and load them back later.",
-            "HUD Style", "Main switches for the blurred backgrounds and the smooth font of every HUD, and how strongly the world is blurred.",
+            "HUD Style", "Main switches for the blurred panels and the smooth font of every HUD, and how strongly the world is blurred.",
             "Chat Style", "The chat's background and font.",
             "Scoreboard", "The sidebar scoreboard's background and font.",
-            "Notification Customization", "How long notices stay on screen and where they appear. Send a test to see the result."
+            "Notification Customization", "How long notifications stay, where they appear and how they look. Send a test to see the result."
     );
 
     /**

@@ -284,7 +284,7 @@ public class ConfigOption {
     }
 
     // Action
-    public String getActionLabel() { return actionLabel != null ? actionLabel : "Open..."; }
+    public String getActionLabel() { return actionLabel != null ? actionLabel : "Open…"; }
 
     private String[] choices;
 
@@ -330,33 +330,28 @@ public class ConfigOption {
     /** The colour a colour option currently holds. */
     public int getColor() { return colorGetter.getAsInt(); }
 
-    private boolean confirmFirst = false;
+    private boolean dangerous = false;
 
     /**
-     * Makes this action ask for a second click before it runs, for actions that overwrite something
-     * the player set: saving over a preset, resetting a value.
+     * Makes this action ask first, in a dialog, for actions that overwrite or throw away something the
+     * player set: resetting settings, saving over a preset. The action runs only once the dialog's
+     * confirm button is clicked; Cancel and Escape go back to the menu without doing anything.
+     *
+     * @param dangerous whether the action destroys settings: its row and the dialog's confirm button
+     *                  are then red, otherwise the confirm button carries the accent
      */
-    public ConfigOption confirmFirst() {
-        this.confirmFirst = true;
+    public ConfigOption confirm(String title, String message, String confirmLabel, boolean dangerous) {
+        Consumer<Screen> action = this.actionHandler;
+        this.actionHandler = parent -> net.minecraft.client.Minecraft.getInstance().gui.setScreen(
+                new net.alpaka.addons.client.AlpakaConfirmScreen(parent, title, message, confirmLabel, dangerous,
+                        () -> action.accept(parent)));
+        this.dangerous = dangerous;
         return this;
     }
 
-    public boolean isConfirmFirst() { return confirmFirst; }
+    /** Whether this action destroys settings, which its row shows in red. */
+    public boolean isDangerous() { return dangerous; }
 
-    private boolean buttonOnly = false;
-
-    /**
-     * Makes this action answer only its button, not a click anywhere on its card, for actions that
-     * overwrite settings straight away with nothing to back out of: loading a preset. Every
-     * {@link #confirmFirst()} action is button-only as well. Everything else - a colour picker, an
-     * editor, a reset behind a confirmation screen - opens from the whole card, like a toggle.
-     */
-    public ConfigOption buttonOnly() {
-        this.buttonOnly = true;
-        return this;
-    }
-
-    public boolean isButtonOnly() { return buttonOnly || confirmFirst; }
     public void triggerAction(Screen parent) {
         if (actionHandler != null) {
             actionHandler.accept(parent);

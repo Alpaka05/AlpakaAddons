@@ -39,7 +39,7 @@ public final class WideHealthBarFeature {
     private static final int RIGHT_BAR_WIDTH = (HEARTS_PER_ROW / 2 - 1) * HEART_STEP + HEART_SIZE;
 
     /** The absorption modes, by {@link AlpakaConfig#wideHealthBarAbsorption}. */
-    public static final String[] ABSORPTION_NAMES = {"Own Row", "Gold Over Health", "Hidden"};
+    public static final String[] ABSORPTION_NAMES = {"Own Row", "On Hearts", "Hidden"};
     private static final int ABSORPTION_MERGED = 1;
     private static final int ABSORPTION_HIDDEN = 2;
 

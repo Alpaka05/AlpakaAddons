@@ -69,7 +69,7 @@ public final class AlpakaPerf {
     public static List<String> report() {
         double seconds = Math.max(1e-9, (System.nanoTime() - windowStartNanos) / 1e9);
         List<String> lines = new ArrayList<>();
-        lines.add(String.format(Locale.ROOT, "over %.0f s (ms per second · calls per second · µs per call):", seconds));
+        lines.add(String.format(Locale.ROOT, "Over %.0f s (ms per second · calls per second · µs per call):", seconds));
         for (Section section : SECTIONS) {
             long calls = CALLS[section.ordinal()];
             if (calls == 0) continue;
@@ -78,7 +78,7 @@ public final class AlpakaPerf {
                     section.id.substring("alpaka:".length()), totalMs / seconds, calls / seconds,
                     NANOS[section.ordinal()] / 1e3 / calls));
         }
-        if (lines.size() == 1) lines.add("nothing measured yet");
+        if (lines.size() == 1) lines.add("Nothing measured yet.");
         return lines;
     }
 }

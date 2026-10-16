@@ -77,9 +77,11 @@ object SlayerTimerHudRenderer {
         val label = HudPanel.text(Component.literal(LABEL), cfg.smoothOn(cfg.slayerTimerHudSmoothFont))
         val time = HudPanel.text(Component.literal(SlayerTimer.format(elapsed)), cfg.smoothOn(cfg.slayerTimerHudSmoothFont))
         val timeX = font.width(label) + LABEL_GAP
-        if (cfg.blurOn(cfg.slayerTimerHudBlur)) HudPanel.aroundText(graphics, timeX + font.width(time), GLYPH_HEIGHT, scale)
-        graphics.text(font, label, 0, 0, COLOR_LABEL)
-        graphics.text(font, time, timeX, 0, color)
+        val blurred = cfg.blurOn(cfg.slayerTimerHudBlur)
+        if (blurred) HudPanel.aroundText(graphics, timeX + font.width(time), GLYPH_HEIGHT, scale)
+        val shadow = HudPanel.TEXT_SHADOW
+        graphics.text(font, label, 0, 0, COLOR_LABEL, shadow)
+        graphics.text(font, time, timeX, 0, color, shadow)
         graphics.pose().popMatrix()
     }
 

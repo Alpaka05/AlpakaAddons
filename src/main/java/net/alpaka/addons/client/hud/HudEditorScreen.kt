@@ -1,16 +1,15 @@
 package net.alpaka.addons.client.hud
 
+import net.alpaka.addons.client.AlpakaConfirmScreen
 import net.alpaka.addons.client.gui.AlpakaStyle
 import net.alpaka.addons.client.gui.AlpakaStyle.ButtonKind
 import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.config.AlpakaConfig
-import net.alpaka.addons.features.sound.CustomSoundFeature
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
-import net.minecraft.network.chat.Component
 import org.lwjgl.glfw.GLFW
 
 /**
@@ -24,10 +23,12 @@ import org.lwjgl.glfw.GLFW
  * Edits are applied to [AlpakaConfig.instance] immediately but only written to disk once an
  * interaction ends, so dragging does not serialize the whole config file every frame.
  *
- * The controls sit in one bar at the top, in the config menu's look: the selection and its
- * position on the left, Reset, Reset All and Done on the right, the hints below it.
+ * The controls sit in one bar at the top, in the config menu's look: the title on the left,
+ * Reset, Reset All and Done on the right, and a pill below it with the selection and where it is,
+ * or the hints while nothing is selected. HUDs show their name on a pill of their own while under
+ * the mouse or selected.
  */
-class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("HUD Editor")) {
+class HudEditorScreen(private val parent: Screen?) : Screen(GuiFont.text("HUD Editor")), net.alpaka.addons.client.gui.NoticeHost {
 
     private var selected: HudElement? = null
 
@@ -52,14 +53,17 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
     private var openTimeMs = 0L
 
     override fun init() {
-        openTimeMs = System.currentTimeMillis()
+        // Once only: back from the Reset All dialog the bar is simply there again.
+        if (openTimeMs == 0L) openTimeMs = System.currentTimeMillis()
     }
 
     /** The bar at the top and its buttons, shared by drawing and clicking. */
     private class Bar(val x: Int, val y: Int, val w: Int, val doneX: Int, val resetAllX: Int, val resetX: Int)
 
     private fun bar(): Bar {
-        val w = minOf(this.width - 16, AlpakaStyle.PAD + 2 + GuiFont.width(this.font, "HUD Editor") + 16 + RESET_W + RESET_ALL_W + DONE_W + 12)
+        // At least as wide as the hints' pill under it, so the pill never sticks out past the bar.
+        val content = AlpakaStyle.PAD + 2 + GuiFont.width(this.font, "HUD Editor") + 16 + RESET_W + RESET_ALL_W + DONE_W + 12
+        val w = minOf(this.width - 16, maxOf(content, GuiFont.width(this.font, HINTS) + 16))
         val x = (this.width - w) / 2
         val y = BAR_Y
         val doneX = x + w - 4 - DONE_W
@@ -70,11 +74,17 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
 
     private fun buttonY(bar: Bar) = bar.y + (BAR_H - AlpakaStyle.BUTTON_H) / 2
 
+    /** For the screenshot tour: the middle of the Reset All button, to click it as a player would. */
+    fun devResetAllPoint(): IntArray {
+        val bar = bar()
+        return intArrayOf(bar.resetAllX + RESET_ALL_W / 2, buttonY(bar) + AlpakaStyle.BUTTON_H / 2)
+    }
+
     private fun inside(mx: Double, my: Double, x: Int, y: Int, w: Int, h: Int) = AlpakaStyle.inside(mx, my, x, y, w, h)
 
     override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
-        // Replace the standard game background with a darker backdrop.
-        graphics.fill(0, 0, this.width, this.height, BACKDROP_COLOR)
+        // The config menu's backdrop instead of the standard game background.
+        AlpakaStyle.backdrop(graphics, this.width, this.height)
     }
 
     override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
@@ -96,6 +106,8 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
         // Over the HUDs, so a HUD parked at the top never hides the controls.
         graphics.nextStratum()
         drawBar(graphics, mouseX.toDouble(), mouseY.toDouble())
+        // Notices over the editor, not dimmed under its backdrop with the HUD.
+        net.alpaka.addons.features.notification.AlpakaNotifications.renderOverScreen(graphics)
     }
 
     private fun drawBar(graphics: GuiGraphicsExtractor, mouseX: Double, mouseY: Double) {
@@ -109,65 +121,59 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
         val by = buttonY(bar)
         val canReset = selected != null
         val hoverReset = canReset && inside(mouseX, mouseY, bar.resetX, by, RESET_W, AlpakaStyle.BUTTON_H)
-        if (canReset) {
-            AlpakaStyle.button(graphics, this.font, bar.resetX, by, RESET_W, AlpakaStyle.BUTTON_H, "Reset", hoverReset, ButtonKind.PLAIN)
-        } else {
-            ModernGuiUtils.drawRoundedRect(graphics, bar.resetX, by, RESET_W, AlpakaStyle.BUTTON_H, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW)
-            ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("Reset"), bar.resetX + RESET_W / 2, by + (AlpakaStyle.BUTTON_H - 8) / 2, AlpakaStyle.DIVIDER)
-        }
+        AlpakaStyle.button(graphics, this.font, bar.resetX, by, RESET_W, AlpakaStyle.BUTTON_H, "Reset", hoverReset,
+            ButtonKind.PLAIN, canReset)
         val hoverAll = inside(mouseX, mouseY, bar.resetAllX, by, RESET_ALL_W, AlpakaStyle.BUTTON_H)
         AlpakaStyle.button(graphics, this.font, bar.resetAllX, by, RESET_ALL_W, AlpakaStyle.BUTTON_H,
-            if (resetAllArmed()) "Sure?" else "Reset All", hoverAll, ButtonKind.DANGER)
+            "Reset All", hoverAll, ButtonKind.DANGER)
         val hoverDone = inside(mouseX, mouseY, bar.doneX, by, DONE_W, AlpakaStyle.BUTTON_H)
         AlpakaStyle.button(graphics, this.font, bar.doneX, by, DONE_W, AlpakaStyle.BUTTON_H, "Done", hoverDone, ButtonKind.PRIMARY)
 
-        // Below the bar: the selection and where it is, or how to start when nothing is selected.
-        val line = ellipsize(if (selected != null) statusLine() else HINTS, this.width - 16)
-        ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text(line), this.width / 2, bar.y + BAR_H + 5,
+        // Below the bar, on a pill of its own so it reads over any world: the selection and where
+        // it is, or how to start when nothing is selected.
+        val line = statusText()
+        val pill = statusPill(bar)
+        ModernGuiUtils.drawRoundedRect(graphics, pill[0], pill[1], pill[2], STATUS_H, STATUS_H / 2, PILL_COLOR)
+        ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text(line), this.width / 2, pill[1] + (STATUS_H - 8) / 2,
             if (selected != null) AlpakaStyle.TEXT_SOFT else AlpakaStyle.TEXT_MUTED)
         AlpakaStyle.endOpen(graphics, pushed)
     }
 
-    private fun ellipsize(text: String, maxW: Int): String {
-        if (GuiFont.width(this.font, text) <= maxW) return text
-        var end = text.length
-        while (end > 0 && GuiFont.width(this.font, text.substring(0, end) + "...") > maxW) end--
-        return text.substring(0, end) + "..."
-    }
+    private fun statusText(): String =
+        AlpakaStyle.ellipsize(this.font, if (selected != null) statusLine() else HINTS, this.width - 32)
 
-    /** Reset All puts every HUD back, so it asks for a second click within a few seconds. */
-    private var resetAllArmedUntil = 0L
-    private fun resetAllArmed() = System.currentTimeMillis() < resetAllArmedUntil
-
-    private fun playClick() {
-        try {
-            CustomSoundFeature.playButtonClickSound()
-        } catch (_: Throwable) {}
+    /** The status pill under the bar: x, y and width, shared by drawing and clicking. */
+    private fun statusPill(bar: Bar): IntArray {
+        val w = GuiFont.width(this.font, statusText()) + 16
+        return intArrayOf((this.width - w) / 2, bar.y + BAR_H + 4, w)
     }
 
     /** A click on the bar's buttons; true when the click landed on the bar at all. */
     private fun clickBar(mx: Double, my: Double): Boolean {
         val bar = bar()
+        // The status pill under the bar is part of it: a click there must not grab a HUD behind it.
+        val pill = statusPill(bar)
+        if (inside(mx, my, pill[0], pill[1], pill[2], STATUS_H)) return true
         if (!inside(mx, my, bar.x, bar.y, bar.w, BAR_H)) return false
         val by = buttonY(bar)
         when {
             inside(mx, my, bar.doneX, by, DONE_W, AlpakaStyle.BUTTON_H) -> {
-                playClick()
+                AlpakaStyle.click()
                 onClose()
             }
             inside(mx, my, bar.resetAllX, by, RESET_ALL_W, AlpakaStyle.BUTTON_H) -> {
-                playClick()
-                if (resetAllArmed()) {
-                    resetAllArmedUntil = 0L
+                AlpakaStyle.click()
+                // Reset All puts every HUD back, so it asks first, in the dialog every such action uses.
+                minecraft.gui.setScreen(AlpakaConfirmScreen(this, "Reset All HUDs",
+                    "Puts every HUD back to its default position and size.", "Reset All", true) {
                     HudRegistry.ELEMENTS.forEach { it.reset() }
+                    selected = null
                     dirty = true
                     flush()
-                } else {
-                    resetAllArmedUntil = System.currentTimeMillis() + 3000L
-                }
+                })
             }
             inside(mx, my, bar.resetX, by, RESET_W, AlpakaStyle.BUTTON_H) -> selected?.let {
-                playClick()
+                AlpakaStyle.click()
                 it.reset()
                 dirty = true
                 flush()
@@ -192,29 +198,27 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
 
         val guideColor = when {
             element === selected -> ModernGuiUtils.getAccentColor()
-            isHovered -> GUIDE_HOVER_COLOR
-            disabled -> GUIDE_DISABLED_COLOR
+            isHovered -> AlpakaStyle.TEXT
+            disabled -> AlpakaStyle.DIVIDER
             else -> GUIDE_COLOR
         }
-        ModernGuiUtils.drawOutline(graphics, box.x0, box.y0, box.width, box.height, guideColor)
+        ModernGuiUtils.drawRoundedOutline(graphics, box.x0, box.y0, box.width, box.height, AlpakaStyle.ROW_RADIUS, guideColor)
 
+        // The name only for the HUD under the mouse and the selected one, on a pill like the status
+        // line's: names on every box ran into each other where HUDs sit close together.
+        if (element !== selected && !isHovered) return
         val label = if (disabled) "${element.name} (disabled)" else element.name
-        val labelWidth = GuiFont.width(this.font, label)
-        val labelX = box.x0 + (box.width - labelWidth) / 2
-        // Above the box by default, below it when that would collide with the header text.
-        val labelY = if (box.y0 - LABEL_GAP >= HEADER_BOTTOM) box.y0 - LABEL_GAP else box.y1 + 2
-
-        val labelColor = when {
-            element === selected -> ModernGuiUtils.getAccentColor()
-            isHovered -> GUIDE_HOVER_COLOR
-            disabled -> GUIDE_DISABLED_COLOR
-            else -> AlpakaStyle.TEXT_SOFT
-        }
-        graphics.text(this.font, GuiFont.text(label), labelX, labelY, labelColor, false)
+        val pillW = GuiFont.width(this.font, label) + 12
+        val pillX = (box.x0 + (box.width - pillW) / 2).coerceIn(2, maxOf(2, this.width - pillW - 2))
+        // Above the box by default, below it when that would run into the bar and its status line.
+        val pillY = if (box.y0 - LABEL_GAP - 4 >= HEADER_BOTTOM) box.y0 - LABEL_GAP - 4 else box.y1 + 3
+        ModernGuiUtils.drawRoundedRect(graphics, pillX, pillY, pillW, LABEL_H, LABEL_H / 2, PILL_COLOR)
+        graphics.text(this.font, GuiFont.text(label), pillX + 6, pillY + (LABEL_H - 8) / 2,
+            if (element === selected) ModernGuiUtils.getAccentColor() else AlpakaStyle.TEXT, false)
     }
 
     private fun statusLine(): String {
-        val element = selected ?: return NO_SELECTION
+        val element = selected ?: return HINTS
 
         val x = element.visibleAnchorX(this.width, this.height)
         val y = element.visibleAnchorY(this.width, this.height)
@@ -308,7 +312,8 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
 
     override fun keyPressed(event: KeyEvent): Boolean {
         if (event.key() == GLFW.GLFW_KEY_ESCAPE) {
-            onClose()
+            // A selection first, the editor after.
+            if (selected != null) selected = null else onClose()
             return true
         }
 
@@ -360,10 +365,12 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
     private companion object {
         /** Travel in GUI pixels before a press on an element starts moving it. */
         const val DRAG_THRESHOLD = 3.0
-        const val BACKDROP_COLOR = 0x88000000.toInt()
-        const val GUIDE_COLOR = 0x99FFFFFF.toInt()
-        const val GUIDE_HOVER_COLOR = 0xFFFFFFFF.toInt()
-        const val GUIDE_DISABLED_COLOR = 0xFF6A6A6A.toInt()
+        /** A box's outline at rest: the menu's soft text color, half see-through over the world. */
+        const val GUIDE_COLOR = (AlpakaStyle.TEXT_SOFT and 0x00FFFFFF) or (0x80 shl 24)
+        /** Behind the status line and the names: the window color, nearly opaque. */
+        const val PILL_COLOR = (AlpakaStyle.PANEL and 0x00FFFFFF) or (0xE6 shl 24)
+        const val STATUS_H = 14
+        const val LABEL_H = 13
 
         /** Dark wash over a HUD whose feature is switched off. */
         const val DISABLED_SCRIM_COLOR = 0xAA0A0A0A.toInt()
@@ -371,13 +378,13 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
         /** Vertical gap between a box and its label, and the y below which labels must not go. */
         const val LABEL_GAP = 10
         const val BAR_Y = 6
-        const val BAR_H = 26
-        const val HEADER_BOTTOM = BAR_Y + BAR_H + 18
+        /** The config menu's header height, so the bar matches every other window's header. */
+        const val BAR_H = AlpakaStyle.HEADER_H
+        const val HEADER_BOTTOM = BAR_Y + BAR_H + 4 + STATUS_H + 2
         const val DONE_W = 44
         const val RESET_W = 40
         const val RESET_ALL_W = 52
 
-        const val HINTS = "Click a HUD to select it  ·  Drag to move  ·  Scroll to resize"
-        const val NO_SELECTION = HINTS
+        const val HINTS = "Click to select  ·  Drag to move  ·  Scroll to resize"
     }
 }

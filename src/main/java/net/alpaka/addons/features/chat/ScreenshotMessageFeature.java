@@ -18,6 +18,7 @@ import org.slf4j.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.ArrayDeque;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,10 +51,16 @@ import java.util.function.Consumer;
  * PNG goes to the system's own tool instead - PowerShell on Windows, osascript on macOS, wl-copy or
  * xclip on Linux - with the path in an environment variable, so it is never part of a command line.
  *
+ * ### Where it starts
+ *
+ * At the moment the game writes the file ({@link #onSaved}), not at the chat notice: other mods may
+ * keep that notice out of the chat. The notice, when it does come, only makes way for the button
+ * line. A notice for a file the hook did not see is still acted on, as before.
+ *
  * ### Auto copy
  *
- * With the auto copy toggle on, the copy starts the moment the notice arrives. When the button line
- * is on as well, the notice is held back until the copy is done and then posted with "copied" - or
+ * With the auto copy toggle on, the copy starts the moment the screenshot is saved. When the button line
+ * is on as well, the line is held back until the copy is done and then posted with "copied" - or
  * the failure - at its end, so one line says everything and nothing is announced twice. With the
  * vanilla notice kept, the copy is silent unless it fails.
  */
@@ -68,6 +75,63 @@ public final class ScreenshotMessageFeature {
     public static final Identifier DELETE = Identifier.fromNamespaceAndPath(NAMESPACE, "screenshot/delete");
 
     /**
+     * The screenshots {@link #onSaved} has already acted on, so the vanilla notice that follows is
+     * not acted on a second time. The notice may never come - another mod can swallow it - so only
+     * the last few are kept.
+     */
+    private static final Map<String, Boolean> SAVED = new LinkedHashMap<>() {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, Boolean> eldest) {
+            return size() > 16;
+        }
+    };
+
+    /**
+     * When the screenshot key was pressed, oldest first: one entry per screenshot still to be
+     * written. Screenshots that other code takes (a mod, the dev tour) find none and are left alone.
+     */
+    private static final ArrayDeque<Long> KEY_PRESSES = new ArrayDeque<>();
+    private static final long KEY_PRESS_WINDOW_MS = 10_000L;
+
+    /** The screenshot key was pressed; the file it leads to is the player's own screenshot. */
+    public static void onKeyPressed() {
+        synchronized (KEY_PRESSES) {
+            KEY_PRESSES.addLast(System.currentTimeMillis());
+        }
+    }
+
+    private static boolean takeKeyPress() {
+        long now = System.currentTimeMillis();
+        synchronized (KEY_PRESSES) {
+            // A press whose capture never wrote a file must not claim a later, unrelated one.
+            while (!KEY_PRESSES.isEmpty() && now - KEY_PRESSES.peekFirst() > KEY_PRESS_WINDOW_MS) {
+                KEY_PRESSES.pollFirst();
+            }
+            return KEY_PRESSES.pollFirst() != null;
+        }
+    }
+
+    private static String keyOf(File file) {
+        return file.getAbsoluteFile().toPath().normalize().toString();
+    }
+
+    /**
+     * The game has just written a screenshot to disk; called on the thread that wrote it. This is
+     * where the feature starts, not at the chat notice, so it still works when another mod (Essential,
+     * for one) keeps "Saved screenshot as ..." out of the chat. Only files from the screenshot key.
+     */
+    public static void onSaved(File file) {
+        if (!takeKeyPress()) return;
+        if (!AlpakaConfig.instance.betterScreenshotMessageEnabled) return;
+        synchronized (SAVED) {
+            SAVED.put(keyOf(file), Boolean.TRUE);
+        }
+        // Queued before the game queues its own notice, so the notice finds the file marked.
+        Minecraft mc = Minecraft.getInstance();
+        mc.execute(() -> act(file, line -> mc.execute(() -> mc.gui.hud.getChat().addClientSystemMessage(line))));
+    }
+
+    /**
      * Takes a message that is about to enter the chat and, if it is vanilla's screenshot notice,
      * does what the toggles ask for. Returns true when the vanilla line must not be shown, because
      * a replacement is posted through {@code repost} - now, or once the automatic copy has finished.
@@ -79,6 +143,17 @@ public final class ScreenshotMessageFeature {
         if (file == null) return false;
         if (!AlpakaConfig.instance.betterScreenshotMessageEnabled) return false;
 
+        boolean handled;
+        synchronized (SAVED) {
+            handled = SAVED.remove(keyOf(file)) != null;
+        }
+        // Already posted (or about to be) by onSaved: the notice only has to make way for it.
+        if (handled) return AlpakaConfig.instance.screenshotChatButtons;
+        return act(file, repost);
+    }
+
+    /** Preview, button line and automatic copy for one screenshot. Returns whether a line is posted. */
+    private static boolean act(File file, Consumer<Component> post) {
         ScreenshotPreview.show(file);
         boolean buttons = AlpakaConfig.instance.screenshotChatButtons;
         if (AlpakaConfig.instance.autoCopyScreenshots) {
@@ -87,7 +162,7 @@ public final class ScreenshotMessageFeature {
                     Component note = error == null
                             ? Component.literal("copied").withStyle(ChatFormatting.DARK_GRAY)
                             : Component.literal("copy failed").withStyle(ChatFormatting.RED);
-                    repost.accept(buttonLine(file, note));
+                    post.accept(buttonLine(file, note));
                 } else if (error != null) {
                     feedback("§cCouldn't copy the screenshot (" + error + ").");
                 }
@@ -95,7 +170,7 @@ public final class ScreenshotMessageFeature {
             return buttons;
         }
         if (buttons) {
-            repost.accept(buttonLine(file, null));
+            post.accept(buttonLine(file, null));
             return true;
         }
         return false;

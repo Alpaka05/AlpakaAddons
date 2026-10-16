@@ -81,6 +81,15 @@ public record BlurRectRenderState(
 
     @Override
     public void buildVertices(VertexConsumer consumer) {
+        buildQuad(consumer, pose, x0, y0, x1, y1, radiusPx, color, scaleToScreen, opacity, shadowPx);
+    }
+
+    /**
+     * The rounded rectangle's quad in the layout the shape shaders read, grown by the shadow's reach;
+     * shared with {@link RoundedImageRenderState}.
+     */
+    static void buildQuad(VertexConsumer consumer, Matrix3x2fc pose, int x0, int y0, int x1, int y1,
+                          int radiusPx, int color, float scaleToScreen, float opacity, int shadowPx) {
         float halfW = (x1 - x0) * scaleToScreen / 2.0f;
         float halfH = (y1 - y0) * scaleToScreen / 2.0f;
         int widthPx = Math.round((x1 - x0) * scaleToScreen);
@@ -88,22 +97,31 @@ public record BlurRectRenderState(
         // With a shadow the quad reaches past the panel; UV1 stays the panel's own size.
         float grow = shadowPx / Math.max(scaleToScreen, 0.01f);
         float growPx = shadowPx;
+        // The vertex shader reads the normal's z as the opacity, x and y as the shadow's reach (in
+        // 64ths of MAX_SHADOW_PX) and strength.
+        float reach = shadowPx / (float) MAX_SHADOW_PX;
+        float strength = shadowPx > 0 ? SHADOW_ALPHA : 0.0f;
 
-        vertex(consumer, x0 - grow, y0 - grow, -halfW - growPx, -halfH - growPx, widthPx, heightPx);
-        vertex(consumer, x0 - grow, y1 + grow, -halfW - growPx, halfH + growPx, widthPx, heightPx);
-        vertex(consumer, x1 + grow, y1 + grow, halfW + growPx, halfH + growPx, widthPx, heightPx);
-        vertex(consumer, x1 + grow, y0 - grow, halfW + growPx, -halfH - growPx, widthPx, heightPx);
+        float[][] corners = {
+                {x0 - grow, y0 - grow, -halfW - growPx, -halfH - growPx},
+                {x0 - grow, y1 + grow, -halfW - growPx, halfH + growPx},
+                {x1 + grow, y1 + grow, halfW + growPx, halfH + growPx},
+                {x1 + grow, y0 - grow, halfW + growPx, -halfH - growPx},
+        };
+        for (float[] c : corners) {
+            consumer.addVertexWith2DPose(pose, c[0], c[1])
+                    .setColor(color)
+                    .setUv(c[2], c[3])
+                    .setUv1(widthPx, heightPx)
+                    .setUv2(radiusPx, 0)
+                    .setNormal(reach, strength, opacity);
+        }
     }
 
-    private void vertex(VertexConsumer consumer, float x, float y, float localX, float localY, int widthPx, int heightPx) {
-        consumer.addVertexWith2DPose(pose, x, y)
-                .setColor(color)
-                .setUv(localX, localY)
-                .setUv1(widthPx, heightPx)
-                .setUv2(radiusPx, 0)
-                // The vertex shader reads the normal's z as the opacity, x and y as the shadow's
-                // reach (in 64ths of MAX_SHADOW_PX) and strength.
-                .setNormal(shadowPx / (float) MAX_SHADOW_PX, shadowPx > 0 ? SHADOW_ALPHA : 0.0f, opacity);
+    /** The screen area an element in this layout covers, its shadow included. */
+    static ScreenRectangle shadowedBounds(int x0, int y0, int x1, int y1, int shadowPx, float scaleToScreen,
+                                          Matrix3x2fc pose, ScreenRectangle scissor) {
+        return boundsOf(x0, y0, x1, y1, margin(shadowPx, scaleToScreen), pose, scissor);
     }
 
     @Override

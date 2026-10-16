@@ -211,6 +211,27 @@ public final class AlpakaStyle {
         graphics.text(font, GuiFont.text(glyph), x + (size - gw) / 2, y + (size - 8) / 2, color, false);
     }
 
+    /**
+     * A delete button: a small bin, gray until hovered, then red on a soft red square. Drawn with
+     * rectangles rather than a glyph, since the menu fonts have no bin.
+     */
+    public static void trashButton(GuiGraphicsExtractor graphics, int x, int y, int size, boolean hover) {
+        if (hover) {
+            ModernGuiUtils.drawRoundedRect(graphics, x, y, size, size, FIELD_RADIUS, (DANGER & 0x00FFFFFF) | 0x33000000);
+        }
+        int color = hover ? DANGER : TEXT_MUTED;
+        int cx = x + size / 2;
+        int cy = y + size / 2;
+        // Lid with its handle, then the can with two ribs.
+        ModernGuiUtils.drawRect(graphics, cx - 1, cy - 5, 3, 1, color);
+        ModernGuiUtils.drawRect(graphics, cx - 4, cy - 4, 9, 1, color);
+        ModernGuiUtils.drawRect(graphics, cx - 3, cy - 2, 1, 6, color);
+        ModernGuiUtils.drawRect(graphics, cx + 3, cy - 2, 1, 6, color);
+        ModernGuiUtils.drawRect(graphics, cx - 2, cy + 4, 5, 1, color);
+        ModernGuiUtils.drawRect(graphics, cx - 1, cy - 1, 1, 4, color);
+        ModernGuiUtils.drawRect(graphics, cx + 1, cy - 1, 1, 4, color);
+    }
+
     /** An arrow that acts as a button, drawn with the menu's chevron rather than a glyph. */
     public static void chevronButton(GuiGraphicsExtractor graphics, int x, int y, int size, boolean left,
                                      boolean hover, boolean enabled) {

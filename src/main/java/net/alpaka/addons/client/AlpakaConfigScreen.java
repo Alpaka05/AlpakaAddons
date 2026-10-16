@@ -936,7 +936,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             int numberX = rowX + 9 - GuiFont.width(this.font, number) / 2;
             graphics.text(this.font, GuiFont.text(number), numberX, midY - 4, active ? accent : AlpakaStyle.TEXT_MUTED, false);
 
-            // From the right: delete, Save, Load, and the Active mark; the name field takes what is left.
+            // From the right: delete, Save, Load; the name field takes what is left.
             int right = rowX + rowW - 3;
             int deleteX = right - PRESET_ICON;
             int saveW = GuiFont.width(this.font, "Save") + 8;
@@ -945,15 +945,10 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             int loadX = saveX - 2 - loadW;
             int buttonY = midY - PRESET_BUTTON_H / 2;
             int fieldX = rowX + 17;
-            int fieldEnd = loadX - 4;
-            // The mark only where the name keeps a useful width; the stripe and number say it anyway.
-            int pillW = GuiFont.width(this.font, "Active") + 8;
-            if (active && fieldEnd - pillW - 4 - fieldX >= PRESET_MIN_FIELD_W) {
-                int pillX = loadX - 4 - pillW;
-                ModernGuiUtils.drawRoundedRect(graphics, pillX, midY - 5, pillW, 10, 5, (accent & 0x00FFFFFF) | 0x26000000);
-                graphics.text(this.font, GuiFont.text("Active"), pillX + 4, midY - 4, accent, false);
-                fieldEnd = pillX - 4;
-            }
+            // Every name field ends at the same place, a word's width short of Load, but never so
+            // early that a name has no room left.
+            int fieldGap = GuiFont.width(this.font, "Active") + 16;
+            int fieldEnd = Math.max(fieldX + PRESET_MIN_FIELD_W, loadX - fieldGap);
             int fieldW = Math.max(20, fieldEnd - fieldX);
             ConfigOption nameField = presetNameField(i);
             boolean fieldHover = inColumn && inside(mouseX, mouseY, fieldX, y + 4, fieldW, PRESET_CARD_H - 8);
@@ -969,11 +964,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                     saveHover ? PRESET_SAVE_HOVER : AlpakaStyle.ROW_SELECTED);
             ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("Save"), saveX + saveW / 2, midY - 4,
                     saveHover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
-            if (deleteHover) {
-                ModernGuiUtils.drawRoundedRect(graphics, deleteX, midY - PRESET_ICON / 2, PRESET_ICON, PRESET_ICON,
-                        AlpakaStyle.FIELD_RADIUS, (AlpakaStyle.DANGER & 0x00FFFFFF) | 0x33000000);
-            }
-            drawTrash(graphics, deleteX + PRESET_ICON / 2, midY, deleteHover ? AlpakaStyle.DANGER : AlpakaStyle.TEXT_MUTED);
+            AlpakaStyle.trashButton(graphics, deleteX, midY - PRESET_ICON / 2, PRESET_ICON, deleteHover);
 
             int hitY = Math.max(y, clipY);
             hits.add(Hit.quiet(fieldX, Math.max(y + 4, clipY), fieldW, PRESET_CARD_H - 8, (mx, my) -> {
@@ -1030,17 +1021,6 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
 
     private static String nullToEmpty(String text) {
         return text == null ? "" : text;
-    }
-
-    /** A small bin: lid with its handle, and the can below with two ribs. */
-    private static void drawTrash(GuiGraphicsExtractor graphics, int cx, int cy, int color) {
-        ModernGuiUtils.drawRect(graphics, cx - 1, cy - 5, 3, 1, color);
-        ModernGuiUtils.drawRect(graphics, cx - 4, cy - 4, 9, 1, color);
-        ModernGuiUtils.drawRect(graphics, cx - 3, cy - 2, 1, 6, color);
-        ModernGuiUtils.drawRect(graphics, cx + 3, cy - 2, 1, 6, color);
-        ModernGuiUtils.drawRect(graphics, cx - 2, cy + 4, 5, 1, color);
-        ModernGuiUtils.drawRect(graphics, cx - 1, cy - 1, 1, 4, color);
-        ModernGuiUtils.drawRect(graphics, cx + 1, cy - 1, 1, 4, color);
     }
 
     /**

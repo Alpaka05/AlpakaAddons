@@ -428,6 +428,8 @@ public class AlpakaConfig {
     /** Moving forward sprints on its own, without holding the sprint key. */
     /** Off for fresh installs. Vanilla's own toggle-sprint option already does this for most players. */
     public boolean alwaysSprintEnabled = false;
+    /** Always sprint stays off on the Garden, where farming wants walking speed. */
+    public boolean alwaysSprintIgnoreGarden = false;
     public boolean expandChatHistory = true;
     /** How many chat lines Expand Chat History keeps; vanilla keeps 100. */
     public int chatHistoryLimit = 5000;

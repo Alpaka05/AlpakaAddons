@@ -150,7 +150,7 @@ public final class ConfigTree {
     /** What a feature built from a header is about; it has no master option to take it from. */
     private static final Map<String, String> HEADER_DESCRIPTIONS = Map.of(
             "Swing Customizations", "How the held item moves when you swing: drift, arc and whether the swing always plays out.",
-            "Viewmodel Presets", "Save your viewmodel and swing settings to a slot and load them back later.",
+            "Viewmodel Presets", "Save your viewmodel and swing settings to a preset and load them back later.",
             "HUD Style", "Main switches for the blurred panels and the smooth font of every HUD, and how strongly the world is blurred.",
             "Chat Style", "The chat's background and font.",
             "Scoreboard", "The sidebar scoreboard's background and font.",

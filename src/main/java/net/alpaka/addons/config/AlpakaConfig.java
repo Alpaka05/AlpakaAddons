@@ -8,7 +8,9 @@ import net.fabricmc.loader.api.FabricLoader;
 import java.io.File;
 
 import net.alpaka.addons.features.slayer.SlayerType;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class AlpakaConfig {
@@ -631,6 +633,8 @@ public class AlpakaConfig {
         public float motionBlurLength = 80.0f;
         public float motionBlurOpacity = 0.35f;
         public float motionBlurSteps = 8.0f;
+        /** What the player called it; empty for none, and it shows as "Preset n" then. */
+        public String name = "";
 
         public ItemPreset() {}
 
@@ -656,17 +660,24 @@ public class AlpakaConfig {
         }
     }
 
-    public ItemPreset[] itemPresets = new ItemPreset[] {
-        new ItemPreset(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, false, false, false, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f),
-        new ItemPreset(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, false, false, false, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f),
-        new ItemPreset(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, false, false, false, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f)
-    };
+    /**
+     * The saved presets, in the order they were made. As many as the player wants; a config from
+     * before presets could be added and deleted had exactly three, and reads in unchanged.
+     */
+    public List<ItemPreset> itemPresets = new ArrayList<>(List.of(new ItemPreset(), new ItemPreset(), new ItemPreset()));
 
+    /** The preset last loaded or saved, which the menu marks; -1 for none. */
     public int activeItemPresetIndex = 0;
 
+    /** The name a preset goes by: its own, or "Preset n" when it has none. */
+    public String presetName(int index) {
+        String name = index >= 0 && index < itemPresets.size() ? itemPresets.get(index).name : null;
+        return name == null || name.isBlank() ? "Preset " + (index + 1) : name;
+    }
+
     public void loadPreset(int index) {
-        if (itemPresets != null && index >= 0 && index < itemPresets.length) {
-            ItemPreset preset = itemPresets[index];
+        if (index >= 0 && index < itemPresets.size()) {
+            ItemPreset preset = itemPresets.get(index);
             this.itemScale = preset.scale;
             this.itemXOffset = preset.xOffset;
             this.itemYOffset = preset.yOffset;
@@ -737,41 +748,57 @@ public class AlpakaConfig {
     }
 
     public void savePreset(int index) {
-        if (itemPresets == null || itemPresets.length < 3) {
-            itemPresets = new ItemPreset[] {
-                new ItemPreset(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, false, false, false, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f),
-                new ItemPreset(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, false, false, false, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f),
-                new ItemPreset(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, false, false, false, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f)
-            };
-        }
-        if (index >= 0 && index < itemPresets.length) {
-            itemPresets[index] = new ItemPreset(
-                    this.itemScale,
-                    this.itemXOffset,
-                    this.itemYOffset,
-                    this.itemZOffset,
-                    this.itemRotationX,
-                    this.itemRotationY,
-                    this.itemRotationZ,
-                    this.itemSwingSpeed,
-                    this.itemSwayDisabled,
-                    this.itemSwingTranslationDisabled,
-                    this.itemNoEquipEnabled,
-                    this.itemSwingAlwaysFinishEnabled,
-                    this.swingDriftX,
-                    this.swingDriftY,
-                    this.swingDriftZ,
-                    this.swingArcX,
-                    this.swingArcY,
-                    this.swingArcZ
-            );
-            itemPresets[index].motionBlurEnabled = this.itemMotionBlurEnabled;
-            itemPresets[index].motionBlurLength = this.itemMotionBlurLength;
-            itemPresets[index].motionBlurOpacity = this.itemMotionBlurOpacity;
-            itemPresets[index].motionBlurSteps = this.itemMotionBlurSteps;
+        if (index >= 0 && index < itemPresets.size()) {
+            ItemPreset preset = currentAsPreset();
+            preset.name = itemPresets.get(index).name;
+            itemPresets.set(index, preset);
             this.activeItemPresetIndex = index;
             save();
         }
+    }
+
+    /** Adds a preset holding the current settings at the end of the list, and makes it the active one. */
+    public void addPreset() {
+        itemPresets.add(currentAsPreset());
+        this.activeItemPresetIndex = itemPresets.size() - 1;
+        save();
+    }
+
+    /** Deletes a preset; the ones after it move up. The current settings stay as they are. */
+    public void deletePreset(int index) {
+        if (index < 0 || index >= itemPresets.size()) return;
+        itemPresets.remove(index);
+        if (activeItemPresetIndex == index) activeItemPresetIndex = -1;
+        else if (activeItemPresetIndex > index) activeItemPresetIndex--;
+        save();
+    }
+
+    private ItemPreset currentAsPreset() {
+        ItemPreset preset = new ItemPreset(
+                this.itemScale,
+                this.itemXOffset,
+                this.itemYOffset,
+                this.itemZOffset,
+                this.itemRotationX,
+                this.itemRotationY,
+                this.itemRotationZ,
+                this.itemSwingSpeed,
+                this.itemSwayDisabled,
+                this.itemSwingTranslationDisabled,
+                this.itemNoEquipEnabled,
+                this.itemSwingAlwaysFinishEnabled,
+                this.swingDriftX,
+                this.swingDriftY,
+                this.swingDriftZ,
+                this.swingArcX,
+                this.swingArcY,
+                this.swingArcZ
+        );
+        preset.motionBlurEnabled = this.itemMotionBlurEnabled;
+        preset.motionBlurLength = this.itemMotionBlurLength;
+        preset.motionBlurOpacity = this.itemMotionBlurOpacity;
+        preset.motionBlurSteps = this.itemMotionBlurSteps;
+        return preset;
     }
 
     public Map<SlayerType, SlayerData> slayerBossMap = new HashMap<>();
@@ -892,12 +919,16 @@ public class AlpakaConfig {
             }
         }
 
-        if (instance.itemPresets == null || instance.itemPresets.length < 3) {
-            instance.itemPresets = new ItemPreset[] {
-                new ItemPreset(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, false, false, false, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f),
-                new ItemPreset(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, false, false, false, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f),
-                new ItemPreset(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, false, false, false, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f)
-            };
+        // Deleting presets is allowed now, so fewer than three is a choice; only a missing list or a
+        // hand-edited null entry needs mending.
+        if (instance.itemPresets == null) {
+            instance.itemPresets = new ArrayList<>();
+        } else {
+            instance.itemPresets = new ArrayList<>(instance.itemPresets);
+            instance.itemPresets.removeIf(java.util.Objects::isNull);
+        }
+        if (instance.activeItemPresetIndex >= instance.itemPresets.size()) {
+            instance.activeItemPresetIndex = -1;
         }
     }
 

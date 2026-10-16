@@ -93,6 +93,23 @@ object SlayerSessionTracker {
     private var cachedSidebarLines: List<String> = emptyList()
     private var areaCheckedAtMs = 0L
 
+    /**
+     * The last answer from each area test, together with the sidebar snapshot and slayer it was
+     * worked out for.
+     *
+     * The HUD asks every frame, and with "pause outside area" on its layout asks three times a
+     * frame, but the sidebar is only re-read every [AREA_REFRESH_MS]. Between reads the scan would
+     * lowercase every line again just to reach the same answer. A snapshot is never modified once
+     * built (a re-read hands back a new list), so the list's identity together with the slayer is a
+     * complete key.
+     */
+    private var trackerVerdictLines: List<String>? = null
+    private var trackerVerdictType: SlayerType? = null
+    private var trackerVerdict = false
+    private var slayerVerdictLines: List<String>? = null
+    private var slayerVerdictType: SlayerType? = null
+    private var slayerVerdict = false
+
 
     /** Why the clock is currently stopped, or null while it is running. */
     enum class PauseReason { MANUAL, IDLE, OUTSIDE_AREA }
@@ -154,7 +171,12 @@ object SlayerSessionTracker {
         }
 
         if (cachedSidebarLines.isEmpty()) return false
-        return cachedSidebarLines.any { line -> type.isSlayerArea(line) }
+        if (cachedSidebarLines !== slayerVerdictLines || type != slayerVerdictType) {
+            slayerVerdictLines = cachedSidebarLines
+            slayerVerdictType = type
+            slayerVerdict = cachedSidebarLines.any { line -> type.isSlayerArea(line) }
+        }
+        return slayerVerdict
     }
 
     /**
@@ -186,7 +208,12 @@ object SlayerSessionTracker {
         }
 
         if (cachedSidebarLines.isEmpty()) return false
-        return cachedSidebarLines.any { line -> type.isTrackerArea(line) }
+        if (cachedSidebarLines !== trackerVerdictLines || type != trackerVerdictType) {
+            trackerVerdictLines = cachedSidebarLines
+            trackerVerdictType = type
+            trackerVerdict = cachedSidebarLines.any { line -> type.isTrackerArea(line) }
+        }
+        return trackerVerdict
     }
 
     /**
@@ -360,6 +387,8 @@ object SlayerSessionTracker {
         lastActivityMs = 0L
         manuallyPaused = false
         cachedSidebarLines = emptyList()
+        trackerVerdictLines = null
+        slayerVerdictLines = null
         areaCheckedAtMs = 0L
     }
 

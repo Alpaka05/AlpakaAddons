@@ -194,10 +194,12 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         ModernGuiUtils.drawRoundedRect(graphics, px, py, LEFT_W, l.previewH(), AlpakaStyle.CARD_RADIUS, currentColor());
         ModernGuiUtils.drawRoundedOutline(graphics, px, py, LEFT_W, l.previewH(), AlpakaStyle.CARD_RADIUS, AlpakaStyle.LINE);
 
-        // The hex code, to type into.
+        // The hex code, to type into. hexInput mirrors the colour whenever the field is not being typed
+        // in (syncHexFromColor runs after every change and on leaving the field), so it is drawn as it
+        // is rather than formatted anew every frame.
         boolean hoverHex = inside(mouseX, mouseY, px, l.hexY(), LEFT_W, FIELD_H);
         AlpakaStyle.textField(graphics, this.font, px, l.hexY(), LEFT_W, FIELD_H,
-                hexFocused ? hexInput : hexOf(), "#RRGGBB", hexFocused, hoverHex, caretFrom);
+                hexInput, "#RRGGBB", hexFocused, hoverHex, caretFrom);
 
         // Presets, the current one ringed.
         AlpakaStyle.groupLabel(graphics, this.font, "Presets", px, l.presetLabelY());

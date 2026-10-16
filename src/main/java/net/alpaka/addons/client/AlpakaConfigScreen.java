@@ -17,10 +17,13 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
+import net.minecraft.network.chat.Style;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -73,6 +76,8 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     // ---- State ----------------------------------------------------------------------------------
 
     private final Screen parent;
+    /** The version under the logo; it cannot change while the game runs. */
+    private final String versionLabel = "v" + ModVersion.mod().split("\\+")[0];
     private final EditableText search = new EditableText(MAX_SEARCH_LENGTH);
     /** How far the search text is scrolled left to keep the caret in view, this frame. */
     private int searchScrollPx = 0;
@@ -232,6 +237,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         // Once only: back from a dialog or a picker the menu is simply there again, not opening anew.
         if (openTimeMs == 0L) openTimeMs = System.currentTimeMillis();
         lastFrameMs = System.currentTimeMillis();
+        ellipsized.clear();
     }
 
     // ---- Selection ------------------------------------------------------------------------------
@@ -261,19 +267,32 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     /** Set when a feature was chosen from outside the list, which then scrolls it into view. */
     private boolean revealSelected = false;
 
+    /**
+     * The search results for the text in {@link #listedFor}. The tree and every title and keyword in
+     * it are fixed once built, so the same text always finds the same features; callers only read the
+     * list.
+     */
+    private String listedFor = null;
+    private List<ConfigTree.Feature> listedCache = null;
+
     /** The features the middle column lists: the section's, or every match while searching. */
     private List<ConfigTree.Feature> listedFeatures() {
         if (!searching()) return selectedSection == null ? List.of() : selectedSection.features;
-        String q = query();
-        List<ConfigTree.Feature> found = new ArrayList<>();
-        for (ConfigTree.Group group : ConfigTree.groups()) {
-            for (ConfigTree.Section section : group.sections) {
-                for (ConfigTree.Feature feature : section.features) {
-                    if (feature.matches(q)) found.add(feature);
+        String raw = search.getText();
+        if (!raw.equals(listedFor)) {
+            String q = query();
+            List<ConfigTree.Feature> found = new ArrayList<>();
+            for (ConfigTree.Group group : ConfigTree.groups()) {
+                for (ConfigTree.Section section : group.sections) {
+                    for (ConfigTree.Feature feature : section.features) {
+                        if (feature.matches(q)) found.add(feature);
+                    }
                 }
             }
+            listedCache = found;
+            listedFor = raw;
         }
-        return found;
+        return listedCache;
     }
 
     private void selectFirstResult() {
@@ -487,7 +506,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         if (title == null) title = GuiFont.text("ALPAKA");
         // In line with the sidebar's labels below it.
         graphics.text(this.font, title, x + PAD, y + 8, AlpakaStyle.TEXT, false);
-        graphics.text(this.font, GuiFont.text("v" + ModVersion.mod().split("\\+")[0]), x + PAD, y + 22, AlpakaStyle.TEXT_MUTED, false);
+        graphics.text(this.font, GuiFont.text(versionLabel), x + PAD, y + 22, AlpakaStyle.TEXT_MUTED, false);
 
         // Search: a pill over the feature column.
         int sx = featX + 4;
@@ -742,6 +761,22 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             hoveredTipThisFrame = option;
             hoveredTipTextThisFrame = option.getDescription();
         }
+        // A row wholly outside the column's clip would draw nothing: its text would be laid out only
+        // for the scissor to drop it. Skip it, keeping a switch's animation running so its knob is in
+        // the right place when the row scrolls back in. An open list counts as part of its row, and
+        // the y returned is exactly what drawing it would have returned.
+        if (!shown) {
+            int blockH = rowH;
+            if (option.getType() == ConfigOption.Type.DROPDOWN && !collapsed.contains(option)) {
+                blockH = rowH + option.getEntries().size() * SETTING_ROW_H + 2;
+            } else if (option.getType() == ConfigOption.Type.SLIDER && option.getChoices() != null && openChoice == option) {
+                blockH = rowH + option.getChoices().length * SETTING_ROW_H + 2;
+            }
+            if (!visible(rowY, blockH, clipY, clipH)) {
+                if (option.getType() == ConfigOption.Type.BOOLEAN) option.updateToggleProgress(deltaSec);
+                return rowY + blockH;
+            }
+        }
         int labelY = rowY + 4;
         int right = rowX + rowW - 4;
         int hitY = Math.max(rowY, clipY);
@@ -917,8 +952,36 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         return y + h > clipY && y < clipY + clipH;
     }
 
+    /** A label and the width it was cut to: the key for {@link #ellipsized}. */
+    private record Fit(String text, int maxW) {
+    }
+
+    /**
+     * ellipsize's answers. The same labels are cut to the same widths every frame, and cutting one
+     * that overflows measures it once per character removed. A width depends on the menu font, so the
+     * map is dropped when {@link GuiFont#style()} changes; it is also dropped in init(), which runs
+     * again after a resize and after a resource reload changed the glyphs.
+     */
+    private final Map<Fit, String> ellipsized = new HashMap<>();
+    private Style ellipsizedStyle;
+
+    /** The text cut to fit the width, with an ellipsis where it was cut. */
     private String ellipsize(String text, int maxW) {
-        return AlpakaStyle.ellipsize(this.font, text, maxW);
+        if (text == null) return "";
+        if (maxW <= 0) return "";
+        Style style = GuiFont.style();
+        if (style != ellipsizedStyle) {
+            ellipsized.clear();
+            ellipsizedStyle = style;
+        }
+        Fit key = new Fit(text, maxW);
+        String cached = ellipsized.get(key);
+        if (cached != null) return cached;
+        String result = AlpakaStyle.ellipsize(this.font, text, maxW);
+        // A text field being typed into adds one entry per value.
+        if (ellipsized.size() >= 512) ellipsized.clear();
+        ellipsized.put(key, result);
+        return result;
     }
 
     // ---- Input ----------------------------------------------------------------------------------

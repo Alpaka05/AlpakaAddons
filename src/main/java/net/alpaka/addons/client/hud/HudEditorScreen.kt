@@ -10,6 +10,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
+import net.minecraft.network.chat.Style
 import org.lwjgl.glfw.GLFW
 
 /**
@@ -50,11 +51,20 @@ class HudEditorScreen(private val parent: Screen?) : Screen(GuiFont.text("HUD Ed
     private var cachedY = Int.MIN_VALUE
     private var cachedScale = Float.NaN
 
+    // The status line as drawn, shortened to fit: measured again only when its text, the room for it
+    // or the menu font changes, rather than measured (and on a narrow screen shortened a character at
+    // a time) every frame. init() clears it, so a resize or resource reload measures afresh.
+    private var fittedSource: String? = null
+    private var fittedMaxW = -1
+    private var fittedStyle: Style? = null
+    private var fitted = ""
+
     private var openTimeMs = 0L
 
     override fun init() {
         // Once only: back from the Reset All dialog the bar is simply there again.
         if (openTimeMs == 0L) openTimeMs = System.currentTimeMillis()
+        fittedSource = null
     }
 
     /** The bar at the top and its buttons, shared by drawing and clicking. */
@@ -139,8 +149,18 @@ class HudEditorScreen(private val parent: Screen?) : Screen(GuiFont.text("HUD Ed
         AlpakaStyle.endOpen(graphics, pushed)
     }
 
-    private fun statusText(): String =
-        AlpakaStyle.ellipsize(this.font, if (selected != null) statusLine() else HINTS, this.width - 32)
+    private fun fitted(text: String, maxW: Int): String {
+        val style = GuiFont.style()
+        if (text == fittedSource && maxW == fittedMaxW && style === fittedStyle) return fitted
+        val line = AlpakaStyle.ellipsize(this.font, text, maxW)
+        fittedSource = text
+        fittedMaxW = maxW
+        fittedStyle = style
+        fitted = line
+        return line
+    }
+
+    private fun statusText(): String = fitted(if (selected != null) statusLine() else HINTS, this.width - 32)
 
     /** The status pill under the bar: x, y and width, shared by drawing and clicking. */
     private fun statusPill(bar: Bar): IntArray {
@@ -184,9 +204,10 @@ class HudEditorScreen(private val parent: Screen?) : Screen(GuiFont.text("HUD Ed
 
     private fun drawElement(graphics: GuiGraphicsExtractor, element: HudElement, isHovered: Boolean) {
         // Draw the HUD exactly as it appears in-game, then annotate it.
-        element.render(graphics, element.visibleAnchorX(this.width, this.height), element.visibleAnchorY(this.width, this.height))
+        val placement = element.visiblePlacement(this.width, this.height)
+        element.render(graphics, placement.anchorX, placement.anchorY)
 
-        val box = element.visibleBounds(this.width, this.height)
+        val box = placement.box
         val disabled = !element.isFeatureEnabled
 
         if (disabled) {
@@ -220,8 +241,9 @@ class HudEditorScreen(private val parent: Screen?) : Screen(GuiFont.text("HUD Ed
     private fun statusLine(): String {
         val element = selected ?: return HINTS
 
-        val x = element.visibleAnchorX(this.width, this.height)
-        val y = element.visibleAnchorY(this.width, this.height)
+        val placement = element.visiblePlacement(this.width, this.height)
+        val x = placement.anchorX
+        val y = placement.anchorY
         val scale = element.scaleValue()
 
         var status = cachedStatus

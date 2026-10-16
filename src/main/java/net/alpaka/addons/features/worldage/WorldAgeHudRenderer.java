@@ -1,6 +1,8 @@
 package net.alpaka.addons.features.worldage;
 
+import net.alpaka.addons.client.gui.GuiFont;
 import net.alpaka.addons.client.gui.HudPanel;
+import net.alpaka.addons.client.hud.VisiblePlacement;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.slayer.SlayerDropTracker;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientEntityEvents;
@@ -11,6 +13,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
 import net.minecraft.world.scores.DisplaySlot;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.PlayerScoreEntry;
@@ -42,22 +45,28 @@ public class WorldAgeHudRenderer {
     private static long lastPresenceStampMs = 0L;
 
     /**
-     * The drawn line, kept between frames.
+     * The drawn line, kept between frames in the font it is drawn in.
      *
      * The text changes once per in-game day at most, so building {@code "Day " + day} and wrapping
-     * it in a Component every frame was two allocations for a string that is almost always the same
-     * one as last frame.
+     * it in a Component every frame was wasted work for a line that is almost always the same one as
+     * last frame, and a fresh wrapper had its bidi order worked out again each time. Rebuilt only
+     * when the day or that font ({@link #cachedDayStyle}) changes. The box is measured from this same
+     * Component.
      */
     private static long cachedDay = Long.MIN_VALUE;
-    private static Component cachedDayComponent = null;
+    private static Style cachedDayStyle = null;
+    private static Component cachedDayText = null;
 
-    /** The rendered text for a day count, built at most once per change. */
-    private static Component dayComponent(long day) {
-        if (day != cachedDay || cachedDayComponent == null) {
+    /** The rendered text for a day count, built at most once per change of day or font. */
+    private static Component dayText(long day) {
+        boolean smooth = AlpakaConfig.instance.smoothOn(AlpakaConfig.instance.worldAgeHudSmoothFont);
+        Style style = smooth ? GuiFont.style() : Style.EMPTY;
+        if (cachedDayText == null || day != cachedDay || !style.equals(cachedDayStyle)) {
             cachedDay = day;
-            cachedDayComponent = Component.literal("Day " + day);
+            cachedDayStyle = style;
+            cachedDayText = HudPanel.text(Component.literal("Day " + day), smooth);
         }
-        return cachedDayComponent;
+        return cachedDayText;
     }
 
     public static void registerEvents() {
@@ -238,13 +247,12 @@ public class WorldAgeHudRenderer {
         }
 
         // Clamped so a GUI-scale change cannot leave the HUD off screen; the stored position is
-        // untouched, so returning to the old scale restores it exactly.
+        // untouched, so returning to the old scale restores it exactly. The line is measured once
+        // through visiblePlacement, the editor's own call, rather than once per axis.
         int screenWidth = mc.getWindow().getGuiScaledWidth();
         int screenHeight = mc.getWindow().getGuiScaledHeight();
-        renderHud(graphics,
-                WorldAgeHudElement.INSTANCE.visibleAnchorX(screenWidth, screenHeight),
-                WorldAgeHudElement.INSTANCE.visibleAnchorY(screenWidth, screenHeight),
-                AlpakaConfig.instance.worldAgeHudScale);
+        VisiblePlacement placement = WorldAgeHudElement.INSTANCE.visiblePlacement(screenWidth, screenHeight);
+        renderHud(graphics, placement.getAnchorX(), placement.getAnchorY(), AlpakaConfig.instance.worldAgeHudScale);
     }
 
     public static void renderHud(GuiGraphicsExtractor graphics, int x, int y, float scale) {
@@ -258,16 +266,14 @@ public class WorldAgeHudRenderer {
         graphics.pose().pushMatrix();
         graphics.pose().translate((float) x, (float) y);
         graphics.pose().scale(scale, scale);
-        Component text = HudPanel.text(dayComponent(day), AlpakaConfig.instance.smoothOn(AlpakaConfig.instance.worldAgeHudSmoothFont));
-        boolean blurred = AlpakaConfig.instance.blurOn(AlpakaConfig.instance.worldAgeHudBlur);
-        if (blurred) HudPanel.aroundText(graphics, font.width(text), 9, scale);
+        Component text = dayText(day);
+        if (AlpakaConfig.instance.blurOn(AlpakaConfig.instance.worldAgeHudBlur)) HudPanel.aroundText(graphics, font.width(text), 9, scale);
         graphics.text(font, text, 0, 0, color, HudPanel.TEXT_SHADOW);
         graphics.pose().popMatrix();
     }
 
     public static int getWidth(Font font, long day, float scale) {
-        Component text = HudPanel.text(Component.literal("Day " + day), AlpakaConfig.instance.smoothOn(AlpakaConfig.instance.worldAgeHudSmoothFont));
-        return (int) Math.ceil(font.width(text) * scale);
+        return (int) Math.ceil(font.width(dayText(day)) * scale);
     }
 
     public static int getHeight(Font font, float scale) {

@@ -13,6 +13,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import org.lwjgl.glfw.GLFW;
+import java.util.Arrays;
 
 /**
  * All / Party / Guild / Co-op / PMs / Server / Mods tabs in the chat screen.
@@ -48,6 +49,19 @@ public final class ChatTabsFeature {
 
     private static ChatTab active = ChatTab.ALL;
     private static final int[] unread = new int[ChatTab.values().length];
+    private static final ChatTab[] TABS = ChatTab.values();
+
+    // The row and the chip are drawn every frame. A label only changes with its unread count, and a
+    // reused component keeps the bidi-reordered text vanilla works out for it on first draw, so
+    // neither the components nor that reorder are redone per frame. The widths are still measured
+    // each frame, since a font change can alter them.
+    /** Each tab's label as last built and the unread count it shows; reused until the count changes. */
+    private static final Component[] LABELS = new Component[TABS.length];
+    private static final int[] LABEL_COUNTS = new int[TABS.length];
+    /** The filter chip's text for each tab, built on first draw. */
+    private static final Component[] CHIPS = new Component[TABS.length];
+    /** Whether the cached labels and chips are in the menu font; both are dropped when this changes. */
+    private static boolean cachedInChatFont;
 
     // Layout, in GUI pixels. The input box starts at height - 14; the tabs end a pixel above it. The
     // lowest chat line ends at height - 40, so the row never touches the messages either.
@@ -218,9 +232,7 @@ public final class ChatTabsFeature {
         Minecraft mc = Minecraft.getInstance();
         if (mc.gui.screen() instanceof ChatScreen) return;
         Font font = mc.font;
-        // The channel in full, the word after it quieter, so the chip reads as the channel's name.
-        Component label = inChatFont(Component.literal(active.label)
-                .append(Component.literal(" only").withStyle(Style.EMPTY.withColor(AlpakaStyle.TEXT_MUTED & 0xFFFFFF))));
+        Component label = chipOf(active);
         int y1 = graphics.guiHeight() - BOTTOM_GAP;
         int y0 = y1 - TAB_HEIGHT;
         int width = font.width(label) + TAB_PAD * 2;
@@ -279,15 +291,42 @@ public final class ChatTabsFeature {
         };
     }
 
+    /** Drops the cached labels and chips once the chat has switched font. */
+    private static void checkChatFont() {
+        boolean inChat = GuiFont.inChat();
+        if (inChat == cachedInChatFont) return;
+        cachedInChatFont = inChat;
+        Arrays.fill(LABELS, null);
+        Arrays.fill(CHIPS, null);
+    }
+
+    /** The filter chip's text: the channel in full, the word after it quieter, so it reads as the channel's name. */
+    private static Component chipOf(ChatTab tab) {
+        checkChatFont();
+        int i = tab.ordinal();
+        if (CHIPS[i] == null) {
+            CHIPS[i] = inChatFont(Component.literal(tab.label)
+                    .append(Component.literal(" only").withStyle(Style.EMPTY.withColor(AlpakaStyle.TEXT_MUTED & 0xFFFFFF))));
+        }
+        return CHIPS[i];
+    }
+
     /** A tab's name, with its unread count after it in the accent colour while there is one. */
     private static Component labelOf(ChatTab tab) {
+        checkChatFont();
+        int i = tab.ordinal();
+        int count = unread[i];
+        Component cached = LABELS[i];
+        if (cached != null && LABEL_COUNTS[i] == count) return cached;
         MutableComponent label = Component.literal(tab.label);
-        int count = unread[tab.ordinal()];
         if (count > 0) {
             label.append(Component.literal(" " + (count > 99 ? "99+" : String.valueOf(count)))
                     .withStyle(Style.EMPTY.withColor(ModernGuiUtils.getAccentColor() & 0xFFFFFF)));
         }
-        return inChatFont(label);
+        Component styled = inChatFont(label);
+        LABELS[i] = styled;
+        LABEL_COUNTS[i] = count;
+        return styled;
     }
 
     /** Draws the row. Called from the chat screen before the command suggestions, so those stay on top. */
@@ -302,7 +341,7 @@ public final class ChatTabsFeature {
         // alike, so the labels under them do too.
         boolean shadow = true;
         int x = LEFT;
-        for (ChatTab tab : ChatTab.values()) {
+        for (ChatTab tab : TABS) {
             if (!isShown(tab)) continue;
             Component label = labelOf(tab);
             int width = font.width(label) + TAB_PAD * 2;
@@ -325,7 +364,7 @@ public final class ChatTabsFeature {
         int y0 = y1 - TAB_HEIGHT;
         if (mouseY < y0 || mouseY >= y1) return false;
         int x = LEFT;
-        for (ChatTab tab : ChatTab.values()) {
+        for (ChatTab tab : TABS) {
             if (!isShown(tab)) continue;
             int width = font.width(labelOf(tab)) + TAB_PAD * 2;
             if (mouseX >= x && mouseX < x + width) {

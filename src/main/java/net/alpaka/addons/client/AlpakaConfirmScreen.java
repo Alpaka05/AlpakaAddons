@@ -8,9 +8,11 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.locale.Language;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
+import net.minecraft.util.FormattedCharSequence;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
@@ -38,6 +40,12 @@ public class AlpakaConfirmScreen extends Screen implements net.alpaka.addons.cli
      * the window behind - is still held: its key repeats would otherwise confirm at once.
      */
     private boolean enterArmed = false;
+    /**
+     * Laid out in init(), which also runs on every resize and after a resource reload; the message
+     * does not change while the dialog is up, so it is no longer wrapped and reordered anew every frame.
+     */
+    private Layout layout;
+    private final String titleText;
 
     private static final int W = 240;
     private static final int MIN_BTN_W = 70;
@@ -53,6 +61,7 @@ public class AlpakaConfirmScreen extends Screen implements net.alpaka.addons.cli
     public AlpakaConfirmScreen(Screen parent, String title, String message, String confirmLabel,
                                boolean dangerous, Runnable onConfirm) {
         super(GuiFont.text(title));
+        this.titleText = title;
         this.parent = parent;
         this.message = message;
         this.confirmLabel = confirmLabel;
@@ -69,6 +78,7 @@ public class AlpakaConfirmScreen extends Screen implements net.alpaka.addons.cli
                     || !(InputConstants.isKeyDown(this.minecraft.getWindow(), GLFW.GLFW_KEY_ENTER)
                     || InputConstants.isKeyDown(this.minecraft.getWindow(), GLFW.GLFW_KEY_KP_ENTER));
         }
+        layout = computeLayout();
     }
 
     @Override
@@ -83,13 +93,13 @@ public class AlpakaConfirmScreen extends Screen implements net.alpaka.addons.cli
         return CommonComponents.joinForNarration(this.title, Component.literal(message));
     }
 
-    private record Layout(int x, int y, int w, int h, List<FormattedText> lines, int btnY, int btnW,
+    private record Layout(int x, int y, int w, int h, List<FormattedCharSequence> lines, int btnY, int btnW,
                           int confirmX, int cancelX) {}
 
-    private Layout layout() {
+    private Layout computeLayout() {
         int w = Math.min(W, this.width - 16);
-        List<FormattedText> lines = GuiFont.splitLines(this.font, message, w - 2 * (AlpakaStyle.PAD + 2));
-        int h = AlpakaStyle.HEADER_H + GAP + lines.size() * LINE_H + GAP + AlpakaStyle.BUTTON_H + AlpakaStyle.PAD + 2;
+        List<FormattedText> wrapped = GuiFont.splitLines(this.font, message, w - 2 * (AlpakaStyle.PAD + 2));
+        int h = AlpakaStyle.HEADER_H + GAP + wrapped.size() * LINE_H + GAP + AlpakaStyle.BUTTON_H + AlpakaStyle.PAD + 2;
         int x = (this.width - w) / 2;
         int y = (this.height - h) / 2;
         int btnY = y + h - AlpakaStyle.PAD - 2 - AlpakaStyle.BUTTON_H;
@@ -98,6 +108,7 @@ public class AlpakaConfirmScreen extends Screen implements net.alpaka.addons.cli
         int btnW = Math.max(MIN_BTN_W, Math.max(GuiFont.width(this.font, confirmLabel), GuiFont.width(this.font, "Cancel")) + 20);
         int confirmX = x + w - AlpakaStyle.PAD - 2 - btnW;
         int cancelX = x + AlpakaStyle.PAD + 2;
+        List<FormattedCharSequence> lines = Language.getInstance().getVisualOrder(wrapped);
         return new Layout(x, y, w, h, lines, btnY, btnW, confirmX, cancelX);
     }
 
@@ -116,13 +127,12 @@ public class AlpakaConfirmScreen extends Screen implements net.alpaka.addons.cli
         }
         AlpakaStyle.backdrop(graphics, this.width, this.height);
         boolean pushed = AlpakaStyle.beginOpen(graphics, openTimeMs, this.width, this.height);
-        Layout l = layout();
+        Layout l = layout;
         AlpakaStyle.panel(graphics, l.x(), l.y(), l.w(), l.h());
-        AlpakaStyle.header(graphics, this.font, this.title.getString(), l.x(), l.y(), l.w());
+        AlpakaStyle.header(graphics, this.font, titleText, l.x(), l.y(), l.w());
         int ty = l.y() + AlpakaStyle.HEADER_H + GAP;
-        for (FormattedText line : l.lines()) {
-            graphics.text(this.font, net.minecraft.locale.Language.getInstance().getVisualOrder(line),
-                    l.x() + AlpakaStyle.PAD + 2, ty, AlpakaStyle.TEXT_SOFT, false);
+        for (FormattedCharSequence line : l.lines()) {
+            graphics.text(this.font, line, l.x() + AlpakaStyle.PAD + 2, ty, AlpakaStyle.TEXT_SOFT, false);
             ty += LINE_H;
         }
         boolean hoverCancel = inside(mouseX, mouseY, l.cancelX(), l.btnY(), l.btnW(), AlpakaStyle.BUTTON_H);
@@ -137,13 +147,13 @@ public class AlpakaConfirmScreen extends Screen implements net.alpaka.addons.cli
 
     /** For the screenshot tour: the middle of the Cancel button, to click it as a player would. */
     public int[] devCancelPoint() {
-        Layout l = layout();
+        Layout l = layout;
         return new int[] {l.cancelX() + l.btnW() / 2, l.btnY() + AlpakaStyle.BUTTON_H / 2};
     }
 
     /** For the screenshot tour: the middle of the confirm button. */
     public int[] devConfirmPoint() {
-        Layout l = layout();
+        Layout l = layout;
         return new int[] {l.confirmX() + l.btnW() / 2, l.btnY() + AlpakaStyle.BUTTON_H / 2};
     }
 
@@ -151,7 +161,7 @@ public class AlpakaConfirmScreen extends Screen implements net.alpaka.addons.cli
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         if (event.button() != 0) return super.mouseClicked(event, doubleClick);
         if (System.currentTimeMillis() - openTimeMs < CLICK_GUARD_MS) return true;
-        Layout l = layout();
+        Layout l = layout;
         if (inside(event.x(), event.y(), l.confirmX(), l.btnY(), l.btnW(), AlpakaStyle.BUTTON_H)) {
             confirm();
             return true;

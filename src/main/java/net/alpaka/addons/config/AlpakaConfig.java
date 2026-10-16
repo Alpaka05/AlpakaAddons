@@ -545,6 +545,12 @@ public class AlpakaConfig {
      */
     public java.util.List<java.util.List<String>> commandWheelPages = null;
 
+    /**
+     * Off: hold the wheel key to open the wheel, release it to run the aimed command. On: one press
+     * opens it, a click runs a command, and pressing the key again closes it.
+     */
+    public boolean commandWheelToggleMode = false;
+
     /** Legacy, pre-pages. Read once by CommandWheelPages and then cleared. */
     public java.util.List<String> commandWheelCommands = new java.util.ArrayList<>(java.util.List.of(
             "/hub",

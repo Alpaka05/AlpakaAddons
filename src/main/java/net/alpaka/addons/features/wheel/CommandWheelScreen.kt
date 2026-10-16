@@ -1,6 +1,7 @@
 package net.alpaka.addons.features.wheel
 
 import net.alpaka.addons.compliance.Outbound
+import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.client.gui.AlpakaStyle
 import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.client.gui.ModernGuiUtils
@@ -33,7 +34,9 @@ import kotlin.math.sqrt
  * enough - the point of the wheel is that it is faster than typing. A short, wide wedge on the rim
  * of the hub turns smoothly to the centre of the segment being aimed at; that segment fills with the
  * accent colour and swells outwards, and its label grows with it. Releasing the wheel key or
- * clicking runs the command; right-click or Escape closes without running anything.
+ * clicking runs the command; right-click or Escape closes without running anything. In toggle mode
+ * ([AlpakaConfig.commandWheelToggleMode]) the key only opens and closes the wheel, and only a click
+ * runs a command.
  *
  * The commands come in pages ([CommandWheelPages]), so a long list never crowds the dial. Arrows at
  * the left and right screen edges step through the pages, as does the mouse wheel; the arrows sit
@@ -112,10 +115,20 @@ class CommandWheelScreen : Screen(GuiFont.text("Command Wheel")) {
 
     // ------------------------------------------------------------------ input
 
+    override fun keyPressed(event: KeyEvent): Boolean {
+        val key = CommandWheelFeature.COMMAND_WHEEL_KEY
+        if (key != null && key.matches(event) && AlpakaConfig.instance.commandWheelToggleMode) {
+            close()
+            return true
+        }
+        return super.keyPressed(event)
+    }
+
     override fun keyReleased(event: KeyEvent): Boolean {
         val key = CommandWheelFeature.COMMAND_WHEEL_KEY
         if (key != null && key.matches(event)) {
-            runSelectedAndClose()
+            // In toggle mode this is just the press that opened the wheel letting go.
+            if (!AlpakaConfig.instance.commandWheelToggleMode) runSelectedAndClose()
             return true
         }
         return super.keyReleased(event)

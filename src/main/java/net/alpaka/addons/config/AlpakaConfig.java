@@ -190,10 +190,10 @@ public class AlpakaConfig {
     public int menuAccentColor = 0xFF29B6B2; // Default teal
     /**
      * Index into {@code GuiFont.NAMES}: the typeface the Alpaka menus are written in. 0 is the
-     * vanilla pixel font; the default is Nunito, the rounded face the redesigned menus are drawn for.
+     * vanilla pixel font; the default is Poppins.
      */
-    public int menuFont = 5;
-    /** Set once a config still on the old default font has been moved to Nunito. */
+    public int menuFont = 2;
+    /** Set once a config still on the old default font (Inter) has been moved to the new default. */
     public boolean menuFontNunitoApplied = false;
     /** Chat messages in the menu font rather than the pixel font. */
     public boolean menuFontInChat = false;
@@ -511,8 +511,8 @@ public class AlpakaConfig {
     public boolean chatTabsShowGuild = true;
     public boolean chatTabsShowCoop = true;
     public boolean chatTabsShowPrivate = true;
-    public boolean chatTabsShowServer = true;
-    public boolean chatTabsShowMods = true;
+    public boolean chatTabsShowServer = false;
+    public boolean chatTabsShowMods = false;
 
     // Interface options
     /** The mouse wheel scrolls a tooltip that is taller than the screen. */
@@ -876,10 +876,10 @@ public class AlpakaConfig {
             instance.menuAccentColor = 0xFF29B6B2;
         }
 
-        // The default font moved from Inter to Nunito with the redesign. Once only, so picking Inter
+        // The default font moved from Inter to Poppins with the redesign. Once only, so picking Inter
         // again afterwards sticks.
         if (!instance.menuFontNunitoApplied) {
-            if (instance.menuFont == 1) instance.menuFont = 5;
+            if (instance.menuFont == 1) instance.menuFont = 2;
             instance.menuFontNunitoApplied = true;
         }
 

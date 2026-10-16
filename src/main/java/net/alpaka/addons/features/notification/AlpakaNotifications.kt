@@ -1,7 +1,9 @@
 package net.alpaka.addons.features.notification
 
+import net.alpaka.addons.client.gui.AlpakaStyle
 import net.alpaka.addons.client.gui.HudPanel
 import net.alpaka.addons.client.gui.ModernGuiUtils
+import net.alpaka.addons.client.gui.NoticeHost
 import net.alpaka.addons.config.AlpakaConfig
 import net.minecraft.client.DeltaTracker
 import net.minecraft.client.Minecraft
@@ -76,6 +78,10 @@ object AlpakaNotifications {
     private const val LINE = 10
     private const val GAP = 4
     private const val MARGIN = 8
+    /** Half the hotbar's width, around the screen's centre. */
+    private const val HOTBAR_HALF_WIDTH = 91
+    /** Above the hotbar and the health and food rows: where vanilla's chat ends too. */
+    private const val ABOVE_HOTBAR = 40
 
     /**
      * Where top-centre notices start: low enough to clear a MacBook's notch in fullscreen, and
@@ -92,30 +98,34 @@ object AlpakaNotifications {
         return maxOf(TOP_CENTER_CLEARANCE, belowBars)
     }
 
-    /** Height of the time-left bar along the bottom edge, and the gap kept above it. */
+    /** Height of the time-left bar, which lies along the bottom edge inside the lower padding. */
     private const val BAR = 1
-    private const val BAR_GAP = 3
+
+    /**
+     * How tall the last line's glyphs are, descenders included: the font's line height. A line is
+     * [LINE] apart from the next, but under the last one only the glyphs count, so the padding
+     * below the text is as deep as the padding above it.
+     */
+    private const val GLYPH_HEIGHT = 9
 
     /** At most this many wrapped lines of body text; the rest is dropped rather than shown cut. */
     private const val MAX_BODY_LINES = 2
 
     /**
-     * The glass the box is made of: one flat, dark, translucent pane with its corner pixels left
-     * out, which the eye reads as a soft corner at the GUI scales the game runs at.
-     *
-     * What sells the glass is not a gradient but the edge: a light line along the top where light
-     * would catch a pane, a fainter one down the left, and nothing else. Solid enough to read over
-     * bright terrain, open enough to see the world through.
+     * The box when the blur is off: the config menu's panel colour, a little translucent so the
+     * world still shows through, with the HUD panel's corners and a soft shadow - the same box as
+     * the blurred one, only without the blur. Solid enough to read over bright terrain.
      */
-    private const val GLASS = 0xC70F1216.toInt()
-    private const val EDGE_TOP = 0x38FFFFFF
-    private const val EDGE_LEFT = 0x14FFFFFF
+    private const val PANEL = (0xE0 shl 24) or (AlpakaStyle.PANEL and 0xFFFFFF)
     private const val BAR_TRACK = 0x1AFFFFFF
-    /** The blurred panel's tint: the flat pane's colour, thinner, since the blur does part of its job. */
-    private const val BLUR_TINT = 0x8C0F1216.toInt()
-    /** How far the time bar stays clear of the blurred panel's rounded corners. */
-    private const val BLUR_BAR_INSET = 4
-    private const val BODY_TEXT = 0xFFD6DBE0.toInt()
+    /**
+     * The blurred panel's tint: neutral black like the other HUD panels, but stronger than their
+     * [HudPanel.TINT], since a notice is read at a glance over whatever is behind it.
+     */
+    private const val BLUR_TINT = 0x8C000000.toInt()
+    /** How far the time bar stays clear of the panel's rounded corners, either kind. */
+    private const val BAR_INSET = HudPanel.RADIUS
+    private const val BODY_TEXT = AlpakaStyle.TEXT_SOFT
 
     /** How many pieces the bar's fade towards its tip is drawn in; the game has no horizontal gradient. */
     private const val BAR_STEPS = 6
@@ -136,7 +146,7 @@ object AlpakaNotifications {
         val bornAtMs: Long,
         val holdMs: Long,
     ) {
-        val height: Int = PAD * 2 + LINE + body.size * LINE + BAR_GAP + BAR
+        val height: Int = PAD + body.size * LINE + GLYPH_HEIGHT + PAD
         var settledY: Float = Float.NaN
         var retireAtMs: Long = bornAtMs + SLIDE_MS + holdMs + SLIDE_MS
         /** Already sent on its way out early; it no longer counts towards [MAX_VISIBLE]. */
@@ -237,18 +247,29 @@ object AlpakaNotifications {
         val now = System.currentTimeMillis()
         // Pruned before the early return, so expired notices leave even while nothing is drawn.
         synchronized(active) { active.removeAll { now >= it.retireAtMs } }
-        // The config menu draws them over itself instead, so its test notice can be seen.
-        if (mc.gui.screen() is net.alpaka.addons.client.AlpakaConfigScreen) return
+        // A screen that hosts notices draws them over itself instead, so they are seen above it.
+        if (mc.gui.screen() is NoticeHost) return
         if (mc.gui.hud.isHidden() || mc.level == null) return
         draw(graphics, now)
     }
 
+    /** Set while a dialog draws the window behind it, whose notices would land under the dialog. */
+    private var overScreenSuppressed = false
+
+    /** Leaves [renderOverScreen] out while a dialog draws its parent window; the dialog draws them on top. */
+    @JvmStatic
+    fun suppressOverScreen(suppressed: Boolean) {
+        overScreenSuppressed = suppressed
+    }
+
     /**
-     * The notices over a screen rather than under it, for the config menu: there the HUD is hidden
-     * behind the menu, and Send Test Notification has to show something. Works without a world too.
+     * The notices over a screen rather than under it, for a [NoticeHost] - the config menu and the
+     * windows opened from it: there the HUD is hidden behind the screen, and Send Test Notification
+     * has to show something. Works without a world too.
      */
     @JvmStatic
     fun renderOverScreen(graphics: GuiGraphicsExtractor) {
+        if (overScreenSuppressed) return
         val now = System.currentTimeMillis()
         synchronized(active) { active.removeAll { now >= it.retireAtMs } }
         graphics.nextStratum()
@@ -281,7 +302,7 @@ object AlpakaNotifications {
         // pushed further from it as more arrive: up the screen from a bottom corner, down from the
         // top otherwise.
         var stackEdge = when {
-            atBottom -> (screenHeight - MARGIN).toFloat()
+            atBottom -> (screenHeight - bottomClearance(mc, screenWidth, atRight)).toFloat()
             topCenter -> topCenterTop(mc).toFloat()
             else -> MARGIN.toFloat()
         }
@@ -312,6 +333,22 @@ object AlpakaNotifications {
 
             draw(graphics, font, notice, x, y, shown, now)
         }
+    }
+
+    /**
+     * How far above the screen's bottom a bottom corner's stack starts: the margin, or - in a world
+     * with the hotbar in sight, where the stack would reach across it on a narrow screen - clear of
+     * the hotbar and the health and food rows above it, where the chat's lowest line sits too.
+     */
+    private fun bottomClearance(mc: Minecraft, screenWidth: Int, atRight: Boolean): Int {
+        // Only while the hotbar is in sight: not over a menu, which hides it and has its own buttons low down.
+        val screen = mc.gui.screen()
+        if (mc.player == null || (screen != null && screen !is net.minecraft.client.gui.screens.ChatScreen)) return MARGIN
+        val cardStart = if (atRight) screenWidth - MARGIN - WIDTH else MARGIN
+        val cardEnd = cardStart + WIDTH
+        val hotbarStart = screenWidth / 2 - HOTBAR_HALF_WIDTH
+        val hotbarEnd = screenWidth / 2 + HOTBAR_HALF_WIDTH
+        return if (cardStart < hotbarEnd && cardEnd > hotbarStart) ABOVE_HOTBAR else MARGIN
     }
 
     /**
@@ -357,28 +394,32 @@ object AlpakaNotifications {
             // The panel fades as a whole, blur included, rather than through its tint alone.
             HudPanel.submit(graphics, x, y, x + WIDTH, y + height, 1.0f, BLUR_TINT, shown)
         } else {
-            drawGlass(graphics, x, y, height, shown)
+            drawPanel(graphics, x, y, height, shown)
         }
 
+        // Flat, as the config menu writes: a notice always has a dense box under it, blurred or
+        // not, and the box gives the contrast a shadow would.
+        val shadow = HudPanel.DENSE_PANEL_TEXT_SHADOW
         val textX = x + PAD
         val title = HudPanel.text(Component.literal(notice.title), AlpakaConfig.instance.smoothOn(AlpakaConfig.instance.notificationSmoothFont))
-        graphics.text(font, title, textX, y + PAD, faded(accent, shown))
+        graphics.text(font, title, textX, y + PAD, faded(accent, shown), shadow)
         for (line in notice.body.indices) {
-            graphics.text(font, notice.body[line], textX, y + PAD + LINE + line * LINE, faded(BODY_TEXT, shown))
+            graphics.text(font, notice.body[line], textX, y + PAD + LINE + line * LINE, faded(BODY_TEXT, shown), shadow)
         }
 
         // The time left, as a hairline along the bottom edge that runs down from full while the
         // notice waits: full while sliding in, empty once the slide out begins. Inset on either side
-        // so it ends before the corners - the missing corner pixels, or the panel's rounded ones -
-        // and thinning towards its tip.
-        val inset = if (blurred) BLUR_BAR_INSET else 1
+        // so it ends before the panel's rounded corners, and thinning towards its tip. Track and
+        // fill are both rounded rods, so neither has ends cut off square.
         val barY = y + height - BAR
-        val barLeft = x + inset
-        val barWidth = WIDTH - 2 * inset
-        graphics.fill(barLeft, barY, barLeft + barWidth, y + height, faded(BAR_TRACK, shown))
+        val barLeft = x + BAR_INSET
+        val barWidth = WIDTH - 2 * BAR_INSET
+        ModernGuiUtils.drawRoundedRect(graphics, barLeft, barY, barWidth, BAR, 1, faded(BAR_TRACK, shown))
         val remaining = ((notice.retireAtMs - SLIDE_MS - now).toFloat() / notice.holdMs.toFloat()).coerceIn(0.0f, 1.0f)
         val filled = (barWidth * remaining).roundToInt()
         if (filled > 0) {
+            // Each piece of the fade is the whole fill as one rounded rod, clipped to its own span:
+            // the pieces meet edge to edge, and only the root and the tip show the rod's round ends.
             val step = max(1, filled / BAR_STEPS)
             var from = barLeft
             var piece = 0
@@ -386,24 +427,21 @@ object AlpakaNotifications {
                 val to = min(from + step, barLeft + filled)
                 // From full strength at the root to a little over half at the tip.
                 val alpha = 0xFF - (0xFF - 0x8C) * piece / (BAR_STEPS - 1).coerceAtLeast(1)
-                graphics.fill(from, barY, to, y + height, faded(withAlpha(accent, alpha), shown))
+                graphics.enableScissor(from, barY, to, barY + BAR)
+                ModernGuiUtils.drawRoundedRect(graphics, barLeft, barY, filled, BAR, 1, faded(withAlpha(accent, alpha), shown))
+                graphics.disableScissor()
                 from = to
                 piece = min(piece + 1, BAR_STEPS - 1)
             }
         }
     }
 
-    /** The flat pane, for when the blurred panel is off. */
-    private fun drawGlass(graphics: GuiGraphicsExtractor, x: Int, y: Int, height: Int, shown: Float) {
-        val glass = faded(GLASS, shown)
-
-        // The pane, in three pieces so the four corner pixels stay empty: a soft corner, as far
-        // as a pixel grid allows one.
-        graphics.fill(x + 1, y, x + WIDTH - 1, y + height, glass)
-        graphics.fill(x, y + 1, x + 1, y + height - 1, glass)
-        graphics.fill(x + WIDTH - 1, y + 1, x + WIDTH, y + height - 1, glass)
-        // Light catches the top edge, and a little of the left one; that is the whole "glass".
-        graphics.fill(x + 1, y, x + WIDTH - 1, y + 1, faded(EDGE_TOP, shown))
-        graphics.fill(x, y + 1, x + 1, y + height - 1, faded(EDGE_LEFT, shown))
+    /**
+     * The plain panel, for when the blurred one is off: a dark rounded box with a soft shadow, the
+     * same shape as the blurred panel. Both fade with the notice, so the box arrives with its text.
+     */
+    private fun drawPanel(graphics: GuiGraphicsExtractor, x: Int, y: Int, height: Int, shown: Float) {
+        ModernGuiUtils.drawPanelShadow(graphics, x, y, WIDTH, height, HudPanel.RADIUS, shown)
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, WIDTH, height, HudPanel.RADIUS, faded(PANEL, shown))
     }
 }

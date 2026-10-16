@@ -4,7 +4,6 @@ import net.alpaka.addons.client.gui.AlpakaStyle;
 import net.alpaka.addons.client.gui.AlpakaStyle.ButtonKind;
 import net.alpaka.addons.client.gui.GuiFont;
 import net.alpaka.addons.client.gui.ModernGuiUtils;
-import net.alpaka.addons.features.sound.CustomSoundFeature;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.CharacterEvent;
@@ -24,7 +23,7 @@ import static net.alpaka.addons.client.gui.AlpakaStyle.inside;
  * themselves show where each one leads. Nothing is applied until Save; Escape or Cancel leave the
  * option as it was, and Reset in the header goes back to the option's default.
  */
-public class ColorPickerScreen extends Screen {
+public class ColorPickerScreen extends Screen implements net.alpaka.addons.client.gui.NoticeHost {
     private final Screen parent;
     private final Consumer<Integer> onSave;
     /** The option's default, which Reset in the header goes back to; null hides it. */
@@ -68,7 +67,8 @@ public class ColorPickerScreen extends Screen {
 
     @Override
     protected void init() {
-        openTimeMs = System.currentTimeMillis();
+        // Once only: a resize is not a fresh opening.
+        if (openTimeMs == 0L) openTimeMs = System.currentTimeMillis();
     }
 
     private void setColor(int color) {
@@ -95,12 +95,6 @@ public class ColorPickerScreen extends Screen {
         return a == 255 ? String.format("#%02X%02X%02X", r, g, b) : String.format("#%02X%02X%02X%02X", a, r, g, b);
     }
 
-    private void playSound() {
-        try {
-            CustomSoundFeature.playButtonClickSound();
-        } catch (Throwable ignored) {}
-    }
-
     private void syncHexFromColor() {
         if (!hexFocused) this.hexInput = hexOf();
     }
@@ -120,12 +114,18 @@ public class ColorPickerScreen extends Screen {
     // ---- Layout ---------------------------------------------------------------------------------
 
     private static final int PREF_W = 330;
-    private static final int PREF_H = 206;
+    private static final int PREF_H = 209;
     private static final int LEFT_W = 112;
     private static final int SWATCH = 16;
     private static final int SWATCH_GAP = 8;
     private static final int SLIDER_ROW_H = 28;
     private static final int FIELD_H = 16;
+    private static final int RESET_W = 40;
+
+    /** The header's Reset button sits centred in the header, as every header button does. */
+    private static int headerButtonY(Layout l) {
+        return AlpakaStyle.headerButtonY(l.y());
+    }
 
     /** Where everything goes, shared by drawing and input. */
     private record Layout(int x, int y, int w, int h, int bodyY, int leftX, int previewH, int hexY,
@@ -149,7 +149,7 @@ public class ColorPickerScreen extends Screen {
             int btnW = 64;
             int saveX = x + w - AlpakaStyle.PAD - btnW;
             int cancelX = saveX - btnW - 6;
-            int resetX = x + w - AlpakaStyle.PAD - 40;
+            int resetX = x + w - AlpakaStyle.PAD - RESET_W;
             return new Layout(x, y, w, h, bodyY, leftX, previewH, hexY, presetLabelY, gridY, rightX, rightW,
                     btnY, saveX, cancelX, btnW, resetX);
         }
@@ -174,25 +174,25 @@ public class ColorPickerScreen extends Screen {
 
         // Reset, in the header: only while the colour differs from the default.
         if (defaultColor != null && currentColor() != defaultColor) {
-            boolean hover = inside(mouseX, mouseY, l.resetX(), l.y() + 6, 40, 18);
-            AlpakaStyle.button(graphics, this.font, l.resetX(), l.y() + 6, 40, 18, "Reset", hover, ButtonKind.PLAIN);
+            boolean hover = inside(mouseX, mouseY, l.resetX(), headerButtonY(l), RESET_W, AlpakaStyle.BUTTON_H);
+            AlpakaStyle.button(graphics, this.font, l.resetX(), headerButtonY(l), RESET_W, AlpakaStyle.BUTTON_H, "Reset", hover, ButtonKind.PLAIN);
         }
 
         // The colour now, over a checkerboard where it is see-through.
         int px = l.leftX();
         int py = l.bodyY();
-        ModernGuiUtils.drawRoundedRect(graphics, px, py, LEFT_W, l.previewH(), 5, AlpakaStyle.FIELD);
+        ModernGuiUtils.drawRoundedRect(graphics, px, py, LEFT_W, l.previewH(), AlpakaStyle.CARD_RADIUS, AlpakaStyle.FIELD);
         if (a < 255) {
             graphics.enableScissor(px + 2, py + 2, px + LEFT_W - 2, py + l.previewH() - 2);
             for (int cy = 0; cy * 6 < l.previewH(); cy++) {
                 for (int cx = 0; cx * 6 < LEFT_W; cx++) {
-                    if ((cx + cy) % 2 == 0) ModernGuiUtils.drawRect(graphics, px + cx * 6, py + cy * 6, 6, 6, 0xFF3A3A3A);
+                    if ((cx + cy) % 2 == 0) ModernGuiUtils.drawRect(graphics, px + cx * 6, py + cy * 6, 6, 6, AlpakaStyle.TRACK);
                 }
             }
             graphics.disableScissor();
         }
-        ModernGuiUtils.drawRoundedRect(graphics, px, py, LEFT_W, l.previewH(), 5, currentColor());
-        ModernGuiUtils.drawRoundedOutline(graphics, px, py, LEFT_W, l.previewH(), 5, AlpakaStyle.LINE);
+        ModernGuiUtils.drawRoundedRect(graphics, px, py, LEFT_W, l.previewH(), AlpakaStyle.CARD_RADIUS, currentColor());
+        ModernGuiUtils.drawRoundedOutline(graphics, px, py, LEFT_W, l.previewH(), AlpakaStyle.CARD_RADIUS, AlpakaStyle.LINE);
 
         // The hex code, to type into. hexInput mirrors the colour whenever the field is not being typed
         // in (syncHexFromColor runs after every change and on leaving the field), so it is drawn as it
@@ -209,10 +209,10 @@ public class ColorPickerScreen extends Screen {
             boolean hover = inside(mouseX, mouseY, sx, sy, SWATCH, SWATCH);
             boolean current = PRESETS[i] == currentColor();
             if (current || hover) {
-                ModernGuiUtils.drawRoundedOutline(graphics, sx - 2, sy - 2, SWATCH + 4, SWATCH + 4, 6,
+                ModernGuiUtils.drawRoundedOutline(graphics, sx - 2, sy - 2, SWATCH + 4, SWATCH + 4, AlpakaStyle.ROW_RADIUS + 2,
                         current ? accent : AlpakaStyle.TEXT_MUTED);
             }
-            ModernGuiUtils.drawRoundedRect(graphics, sx, sy, SWATCH, SWATCH, 4, PRESETS[i]);
+            ModernGuiUtils.drawRoundedRect(graphics, sx, sy, SWATCH, SWATCH, AlpakaStyle.ROW_RADIUS, PRESETS[i]);
         }
 
         // One slider per channel; each track runs through its channel with the others as they are.
@@ -231,7 +231,7 @@ public class ColorPickerScreen extends Screen {
                 case 0 -> { from = rgb & 0x00FFFF; to = rgb | 0xFF0000; }
                 case 1 -> { from = rgb & 0xFF00FF; to = rgb | 0x00FF00; }
                 case 2 -> { from = rgb & 0xFFFF00; to = rgb | 0x0000FF; }
-                default -> { from = 0x2A2A2A; to = rgb; }
+                default -> { from = AlpakaStyle.ROW_SELECTED & 0x00FFFFFF; to = rgb; }
             }
             boolean hover = inside(mouseX, mouseY, l.rightX() - 4, labelY, l.rightW() + 8, SLIDER_ROW_H);
             AlpakaStyle.gradientTrack(graphics, l.rightX(), l.trackY(i), l.rightW(), 0xFF000000 | from, 0xFF000000 | to,
@@ -245,6 +245,8 @@ public class ColorPickerScreen extends Screen {
         AlpakaStyle.button(graphics, this.font, l.saveX(), l.btnY(), l.btnW(), AlpakaStyle.BUTTON_H, "Save", hoverSave, ButtonKind.PRIMARY);
 
         AlpakaStyle.endOpen(graphics, pushed);
+        // Notices over the window, as over the config menu.
+        net.alpaka.addons.features.notification.AlpakaNotifications.renderOverScreen(graphics);
     }
 
     // ---- Input ----------------------------------------------------------------------------------
@@ -260,8 +262,8 @@ public class ColorPickerScreen extends Screen {
         hexFocused = false;
 
         if (defaultColor != null && currentColor() != defaultColor
-                && inside(mouseX, mouseY, l.resetX(), l.y() + 6, 40, 18)) {
-            playSound();
+                && inside(mouseX, mouseY, l.resetX(), headerButtonY(l), RESET_W, AlpakaStyle.BUTTON_H)) {
+            AlpakaStyle.click();
             setColor(defaultColor);
             syncHexFromColor();
             return true;
@@ -269,7 +271,7 @@ public class ColorPickerScreen extends Screen {
 
         if (inside(mouseX, mouseY, l.leftX(), l.hexY(), LEFT_W, FIELD_H)) {
             if (!wasHex) {
-                playSound();
+                AlpakaStyle.click();
                 hexInput = hexOf();
             }
             hexFocused = true;
@@ -280,7 +282,7 @@ public class ColorPickerScreen extends Screen {
 
         for (int i = 0; i < PRESETS.length; i++) {
             if (inside(mouseX, mouseY, l.swatchX(i) - 2, l.swatchY(i) - 2, SWATCH + 4, SWATCH + 4)) {
-                playSound();
+                AlpakaStyle.click();
                 setColor(PRESETS[i]);
                 syncHexFromColor();
                 return true;
@@ -296,13 +298,11 @@ public class ColorPickerScreen extends Screen {
         }
 
         if (inside(mouseX, mouseY, l.saveX(), l.btnY(), l.btnW(), AlpakaStyle.BUTTON_H)) {
-            playSound();
-            onSave.accept(currentColor());
-            onClose();
+            save();
             return true;
         }
         if (inside(mouseX, mouseY, l.cancelX(), l.btnY(), l.btnW(), AlpakaStyle.BUTTON_H)) {
-            playSound();
+            AlpakaStyle.click();
             onClose();
             return true;
         }
@@ -368,7 +368,18 @@ public class ColorPickerScreen extends Screen {
                 return true;
             }
         }
+        // Enter saves, as Save does; Escape leaves without saving, as Cancel does.
+        if (event.key() == GLFW.GLFW_KEY_ENTER || event.key() == GLFW.GLFW_KEY_KP_ENTER) {
+            save();
+            return true;
+        }
         return super.keyPressed(event);
+    }
+
+    private void save() {
+        AlpakaStyle.click();
+        onSave.accept(currentColor());
+        onClose();
     }
 
     @Override

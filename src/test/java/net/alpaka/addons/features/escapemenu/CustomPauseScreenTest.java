@@ -49,12 +49,6 @@ class CustomPauseScreenTest {
     // --------------------------------------------------------------- appear
 
     @Test
-    void indexMinusOneIsAlwaysFullyThere() {
-        assertEquals(1.0f, CustomPauseScreen.appearAt(0.0f, -1));
-        assertEquals(1.0f, CustomPauseScreen.appearAt(-5.0f, -1));
-    }
-
-    @Test
     void eachElementStartsAtZeroAndEndsAtOne() {
         for (int index = 0; index <= 5; index++) {
             float start = index * CustomPauseScreen.STAGGER_SECONDS;

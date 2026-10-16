@@ -3,6 +3,7 @@ package net.alpaka.addons.client;
 import net.alpaka.addons.AlpakaAddons;
 import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.features.chat.ScreenshotPreview;
 import net.alpaka.addons.features.mainmenu.CustomMainMenuScreen;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.CameraType;
@@ -71,32 +72,132 @@ public final class DevScreenshotTour {
             screen("config-style-timer", () -> AlpakaConfigScreen.openOn("Slayer", "Slayer Boss Timer")),
             screen("config-screenshot", () -> AlpakaConfigScreen.openOn("Chat", "Better Screenshots")),
             screen("config-reset-all", () -> AlpakaConfigScreen.openOn("Main", "Reset All Settings")),
-            screen("config-reset-prompt", () -> new net.alpaka.addons.client.AlpakaConfirmScreen(null, "Reset All Settings",
-                    "Puts every setting of Alpaka Addons back to its default, HUD positions included. "
-                            + "Slayer stats and saved viewmodel presets are kept. This cannot be undone.",
-                    "Reset All", true, () -> {})),
-            screen("config-notification", () -> AlpakaConfigScreen.openOn("Main", "Notification Customization")),
+            screen("config-notification", () -> AlpakaConfigScreen.openOn("Main", "Notifications")),
             new Stop("config-notification-test", () -> net.alpaka.addons.features.notification.AlpakaNotifications.send("Test Notification",
-                    "This is how notices look. It slides away after the duration you set."), () -> true, 20),
+                    "This is how a notification looks. It slides away after the duration you set."), () -> true, 20),
             screen("config-slayer-hud", () -> AlpakaConfigScreen.openOn("Slayer", "Slayer Session HUD")),
-            screen("config-slayer", () -> AlpakaConfigScreen.openOn("Slayer", "Share Buttons On Top Drops")),
+            screen("config-slayer", () -> AlpakaConfigScreen.openOn("Slayer", "Share Buttons on RNG Drops")),
             screen("config-tooltips", () -> AlpakaConfigScreen.openOn("Interface", "Scrollable Tooltips")),
             screen("config-menu-font", () -> AlpakaConfigScreen.openOn("Design", "Menu Font").withChoiceOpen()),
             screen("config-world", () -> AlpakaConfigScreen.openOn("World", "Block Overlay")),
             screen("config-viewmodel", () -> AlpakaConfigScreen.openOn("Viewmodel", "Viewmodel Modifiers")),
-            screen("color-picker", () -> new ColorPickerScreen(null, "Accent Colour", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
-            screen("confirm", () -> new net.alpaka.addons.client.AlpakaConfirmScreen(null, "Disable All Features",
-                    "Turns off every feature of Alpaka Addons. Each one can be switched back on in the config.",
-                    "Disable All", true, () -> {})),
+            screen("color-picker", () -> new ColorPickerScreen(null, "Accent Color", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
             screen("wheel-editor", () -> new CommandWheelConfigScreen(new CustomMainMenuScreen())),
-            screen("hud-editor", () -> new HudEditorScreen(null)),
+            screen("hud-editor", () -> {
+                // Every HUD at its default place, as a fresh config has them.
+                for (net.alpaka.addons.client.hud.HudElement element : net.alpaka.addons.client.hud.HudRegistry.ELEMENTS) {
+                    element.reset();
+                }
+                return new HudEditorScreen(null);
+            }),
+            // A setting's description as a tooltip, after resting the mouse on it.
+            new Stop("config-tooltip", () -> {
+                Minecraft.getInstance().gui.setScreen(AlpakaConfigScreen.openOn("Interface", "Scrollable Tooltips"));
+                placeMouse(0.66, 0.47);
+            }, () -> true, 30),
+            new Stop(null, () -> placeMouse(0.5, 0.5), () -> true, 1),
+            // A search longer than its field: cut with an ellipsis while the field is not focused.
+            screen("config-search-long", () -> new AlpakaConfigScreen(null, "blaze slayer drop tracker share")),
+            // The page list with more pages than fit above its field: it scrolls, its edges fading.
+            new Stop("wheel-editor-page-picker-many", () -> {
+                java.util.List<java.util.List<String>> pages = new java.util.ArrayList<>();
+                for (int i = 1; i <= 14; i++) pages.add(new java.util.ArrayList<>(java.util.List.of("/page" + i)));
+                AlpakaConfig.instance.commandWheelPages = pages;
+                Minecraft.getInstance().gui.setScreen(new CommandWheelConfigScreen(new CustomMainMenuScreen()));
+            }, () -> true, 20),
+            new Stop("wheel-editor-page-picker-many-open", () -> click(((CommandWheelConfigScreen) screen()).devPagePickerPoint()),
+                    () -> true, 20),
+            new Stop(null, () -> AlpakaConfig.instance.commandWheelPages = null, () -> true, 1),
+            // The quick commands' page list, open above its field.
+            screen("wheel-editor-page-picker-closed", () -> new CommandWheelConfigScreen(new CustomMainMenuScreen())),
+            new Stop("wheel-editor-page-picker", () -> click(((CommandWheelConfigScreen) screen()).devPagePickerPoint()),
+                    () -> true, 20),
+            // Every action that asks first, through the one dialog: opened the way a player opens it,
+            // from its row in the config or its button, and Cancel taking them back unchanged.
+            screen("confirm-config-disable-all", () -> AlpakaConfigScreen.openOn("Main", "Disable All Features")),
+            new Stop("confirm-dialog-disable-all", () -> trigger("disable_all_features"), () -> true, 30),
+            new Stop("confirm-cancel-back-to-config", () -> click(((AlpakaConfirmScreen) screen()).devCancelPoint()),
+                    () -> true, 30),
+            screen("confirm-config-reset-all", () -> AlpakaConfigScreen.openOn("Main", "Reset All Settings")),
+            new Stop("confirm-dialog-reset-all", () -> trigger("reset_all_settings"), () -> true, 30),
+            screen("confirm-config-viewmodel-reset", () -> AlpakaConfigScreen.openOn("Viewmodel", "Reset Viewmodel Settings")),
+            new Stop("confirm-dialog-viewmodel-reset", () -> trigger("item_viewmodel_reset"), () -> true, 30),
+            screen("confirm-config-presets", () -> AlpakaConfigScreen.openOn("Viewmodel", "Presets")),
+            new Stop("confirm-dialog-save-preset", () -> trigger("save_preset_1"), () -> true, 30),
+            screen("confirm-config-player-scale", () -> AlpakaConfigScreen.openOn("Cosmetics", "Player Scale")),
+            new Stop("confirm-dialog-player-scale", () -> trigger("player_scale_reset"), () -> true, 30),
+            // Quick commands with one of the player's own: Reset asks, Cancel keeps it, Reset for
+            // real puts the default set back and returns to the editor.
+            new Stop("confirm-quick-commands", () -> {
+                java.util.List<java.util.List<String>> pages = new java.util.ArrayList<>();
+                pages.add(new java.util.ArrayList<>(java.util.List.of("/tour-own-command", "/hub")));
+                AlpakaConfig.instance.commandWheelPages = pages;
+                Minecraft.getInstance().gui.setScreen(new CommandWheelConfigScreen(new CustomMainMenuScreen()));
+            }, () -> true, 30),
+            new Stop("confirm-dialog-quick-commands", () -> click(((CommandWheelConfigScreen) screen()).devResetPoint()),
+                    () -> true, 30),
+            new Stop("confirm-quick-commands-after-cancel", () -> click(((AlpakaConfirmScreen) screen()).devCancelPoint()),
+                    () -> true, 30),
+            new Stop("confirm-dialog-quick-commands-again", () -> click(((CommandWheelConfigScreen) screen()).devResetPoint()),
+                    () -> true, 10),
+            new Stop("confirm-quick-commands-after-reset", () -> click(((AlpakaConfirmScreen) screen()).devConfirmPoint()),
+                    () -> true, 30),
             new Stop(null, DevScreenshotTour::enterWorld,
                     () -> Minecraft.getInstance().player != null && Minecraft.getInstance().gui.screen() == null, 100),
             new Stop("world-hud", DevScreenshotTour::showHuds, () -> true, 30),
+            // The screenshot preview of the picture just taken: resting in the corner, then mid-shrink.
+            new Stop(null, () -> {}, () -> tourShot("world-hud").isFile(), 2),
+            new Stop(null, () -> {
+                ScreenshotPreview.devFreezeAt(1150.0f);
+                ScreenshotPreview.show(tourShot("world-hud"));
+            }, ScreenshotPreview::isOnScreen, 2),
+            new Stop("screenshot-preview", () -> {}, () -> true, 2),
+            new Stop("screenshot-preview-shrink", () -> ScreenshotPreview.devFreezeAt(120.0f), () -> true, 2),
+            new Stop(null, () -> ScreenshotPreview.devFreezeAt(-1.0f), () -> true, 5),
             new Stop("hud-editor-world", () -> Minecraft.getInstance().gui.setScreen(new HudEditorScreen(null)), () -> true, 20),
             // Every HUD on its blurred panel and in the menu font, a notice in the corner.
             new Stop("hud-style", DevScreenshotTour::hudStyle, () -> true, 20),
             screen("pause-menu", net.alpaka.addons.features.escapemenu.CustomPauseScreen::new),
+            new Stop("pause-wiki-dialog", () -> click(((net.alpaka.addons.features.escapemenu.CustomPauseScreen) screen())
+                    .devWikiPoint()), () -> true, 30),
+            new Stop("pause-after-wiki-cancel", () -> click(((AlpakaConfirmScreen) screen()).devCancelPoint()), () -> true, 5),
+            // Leaving asks through the same dialog; Cancel brings the menu straight back, without
+            // its entrance - three ticks would catch it mid-way if it replayed.
+            new Stop("confirm-dialog-leave", () -> click(((net.alpaka.addons.features.escapemenu.CustomPauseScreen) screen())
+                    .devLeavePoint()), () -> true, 30),
+            new Stop("confirm-pause-after-cancel", () -> click(((AlpakaConfirmScreen) screen()).devCancelPoint()),
+                    () -> true, 3),
+            // The HUD editor with the world age HUD dragged away: Reset All asks, Cancel leaves it
+            // where it is, and confirming puts every HUD back.
+            new Stop("confirm-hud-editor-moved", () -> {
+                for (net.alpaka.addons.client.hud.HudElement element : net.alpaka.addons.client.hud.HudRegistry.ELEMENTS) {
+                    if (element.getId().contains("world")) {
+                        element.setAnchorX(160);
+                        element.setAnchorY(140);
+                    }
+                }
+                Minecraft.getInstance().gui.setScreen(new HudEditorScreen(null));
+            }, () -> true, 30),
+            new Stop("confirm-dialog-hud-reset", () -> click(((HudEditorScreen) screen()).devResetAllPoint()), () -> true, 30),
+            new Stop("confirm-hud-editor-after-cancel", () -> click(((AlpakaConfirmScreen) screen()).devCancelPoint()),
+                    () -> true, 30),
+            new Stop("confirm-dialog-hud-reset-again", () -> click(((HudEditorScreen) screen()).devResetAllPoint()),
+                    () -> true, 10),
+            new Stop("confirm-hud-editor-after-reset", () -> click(((AlpakaConfirmScreen) screen()).devConfirmPoint()),
+                    () -> true, 30),
+            // A HUD under the mouse in the editor: its name on a pill, its outline lit.
+            new Stop("hud-editor-hover", () -> placeMouse(0.13, 0.45), () -> true, 10),
+            new Stop(null, () -> placeMouse(0.5, 0.5), () -> true, 1),
+            // The quick command wheel in the world, a segment under the mouse.
+            new Stop("command-wheel", () -> {
+                Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.features.wheel.CommandWheelScreen());
+                placeMouse(0.56, 0.36);
+            }, () -> true, 20),
+            new Stop("command-wheel-opening", () -> {
+                Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.features.wheel.CommandWheelScreen());
+                placeMouse(0.5, 0.5);
+            }, () -> true, 2),
+            new Stop(null, () -> Minecraft.getInstance().gui.setScreen(null), () -> true, 5),
             new Stop(null, () -> Minecraft.getInstance().gui.setScreen(null), () -> true, 5),
             // Two ticks after a burst: the lines are mid-slide inside the chat's box.
             new Stop("chat-slide", DevScreenshotTour::chatBurst, () -> true, 2),
@@ -154,8 +255,38 @@ public final class DevScreenshotTour {
             new Stop(null, () -> AlpakaConfig.instance.itemLightingDisabled = false, () -> true, 1),
             // The fire pit preview has to be on a tick before the clay arrives, as in a real fight.
             new Stop(null, DevScreenshotTour::firePitPreview, () -> true, 5),
-            new Stop("fire-pits", DevScreenshotTour::placeFirePits, () -> true, 30)
+            new Stop("fire-pits", DevScreenshotTour::placeFirePits, () -> true, 30),
+            // Last, as it ends the world: confirming the leave dialog leaves for the title screen
+            // rather than going back to the pause menu.
+            screen("confirm-pause-before-leaving", net.alpaka.addons.features.escapemenu.CustomPauseScreen::new),
+            new Stop("confirm-dialog-leave-for-real", () -> click(((net.alpaka.addons.features.escapemenu.CustomPauseScreen) screen())
+                    .devLeavePoint()), () -> true, 10),
+            new Stop("confirm-left-world", () -> click(((AlpakaConfirmScreen) screen()).devConfirmPoint()),
+                    () -> Minecraft.getInstance().level == null, 40)
     );
+
+    private static net.minecraft.client.gui.screens.Screen screen() {
+        return Minecraft.getInstance().gui.screen();
+    }
+
+    /** A left click at this point of the open screen, as the player's mouse would deliver it. */
+    private static void click(int[] point) {
+        screen().mouseClicked(new net.minecraft.client.input.MouseButtonEvent(point[0], point[1],
+                new net.minecraft.client.input.MouseButtonInfo(0, 0)), false);
+    }
+
+    /** What clicking the config row of the action with this id does, on the config screen that is open. */
+    private static void trigger(String id) {
+        for (net.alpaka.addons.client.gui.ConfigCategory category : net.alpaka.addons.client.gui.ConfigCategory.values()) {
+            for (net.alpaka.addons.client.gui.ConfigOption option : net.alpaka.addons.client.gui.AlpakaConfigRegistry.getOptions(category, "")) {
+                if (id.equals(option.getId())) {
+                    option.triggerAction(screen());
+                    return;
+                }
+            }
+        }
+        AlpakaAddons.LOGGER.warn("Screenshot tour: no option {}", id);
+    }
 
     private static int ticks = 0;
     private static int stop = -1;
@@ -178,6 +309,8 @@ public final class DevScreenshotTour {
                 // focus opens the pause menu in the world, and the tour waits for it forever. Set
                 // here rather than at registration, when the options do not exist yet. In memory only.
                 mc.options.pauseOnLostFocus = false;
+                // Nor the tutorial's toasts, which would sit over the HUD editor's bar.
+                mc.options.tutorialStep = net.minecraft.client.tutorial.TutorialSteps.NONE;
                 begin(mc, 0);
             }
             return;
@@ -205,6 +338,10 @@ public final class DevScreenshotTour {
                     message -> AlpakaAddons.LOGGER.info("Screenshot tour: {}", message.getString()));
         }
         begin(mc, stop + 1);
+    }
+
+    private static java.io.File tourShot(String name) {
+        return Minecraft.getInstance().gameDirectory.toPath().resolve("screenshots/tour-" + name + ".png").toFile();
     }
 
     private static void begin(Minecraft mc, int index) {
@@ -417,7 +554,7 @@ public final class DevScreenshotTour {
                 }
             });
         }
-        net.alpaka.addons.features.notification.AlpakaNotifications.send("Test Notification", "Where top-centre notices sit.");
+        net.alpaka.addons.features.notification.AlpakaNotifications.send("Test Notification", "Where top-center notices sit.");
     }
 
     private static void healthBar(boolean centered, int absorptionMode) {

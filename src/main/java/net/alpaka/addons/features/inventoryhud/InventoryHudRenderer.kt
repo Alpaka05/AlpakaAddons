@@ -1,13 +1,13 @@
 package net.alpaka.addons.features.inventoryhud
 
 import net.alpaka.addons.client.gui.AlpakaGuiElementSink
-import net.alpaka.addons.client.gui.BlurRectRenderState
+import net.alpaka.addons.client.gui.AlpakaStyle
 import net.alpaka.addons.client.gui.GradientRoundedRectRenderState
 import net.alpaka.addons.client.gui.GuiItemFade
+import net.alpaka.addons.client.gui.HudPanel
 import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.client.hud.HudBounds
 import net.alpaka.addons.config.AlpakaConfig
-import net.alpaka.addons.features.chat.ChatBlurFeature
 import net.alpaka.addons.mixin.HudOverlayAccessor
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudStatusBarHeightRegistry
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements
@@ -121,11 +121,14 @@ object InventoryHudRenderer {
     const val MIN_SCALE = 0.5f
     const val MAX_SCALE = 3.0f
 
-    /** Backdrop colour, matching the config menu's panel. Alpha comes from the player's slider. */
-    private const val PANEL_BG = 0x191919
+    /** Backdrop colour, the config menu's panel. Alpha comes from the player's slider. */
+    private const val PANEL_BG = AlpakaStyle.PANEL and 0xFFFFFF
 
-    /** Corner radius of the flat panel, in panel pixels. */
-    private const val RADIUS = 6
+    /**
+     * Corner radius of the flat panel, in panel pixels: the other HUD panels' and the scoreboard's,
+     * so the inventory sits among them as one of the set. The frame follows it.
+     */
+    private const val RADIUS = HudPanel.RADIUS
 
     /**
      * The texture a chest GUI is drawn from.
@@ -299,7 +302,7 @@ object InventoryHudRenderer {
                     withAlpha(CHEST_TITLE_COLOR, chestAlpha), false
                 )
             }
-            // No accent frame in this style. The whole point is that the panel passes for a real
+            // No gradient frame in this style. The whole point is that the panel passes for a real
             // container, and a coloured outline is the one thing that would give it away.
         } else {
             drawFlatPanel(graphics, scale, backdropAlpha, shown)
@@ -358,9 +361,11 @@ object InventoryHudRenderer {
     }
 
     /**
-     * The flat panel: a rounded box with the world blurred behind it, or a plain tinted fill when
-     * the blur is off, inside a one-pixel frame whose colour runs diagonally between the two frame
-     * colours from the config. Drawn under the current pose, which already places and scales the panel.
+     * The flat panel: a rounded box with the world blurred behind it and a soft shadow, or a plain
+     * tinted fill with the same shadow when the blur is off, inside a one-pixel frame whose colour
+     * runs diagonally between the two frame colours from the config - teal to purple unless changed,
+     * not the menu's accent.
+     * Drawn under the current pose, which already places and scales the panel.
      *
      * The frame stays at full strength whatever the opacity slider does - it is what keeps the HUD
      * locatable when the backdrop is turned all the way down - unless the player turns it off. Only
@@ -389,12 +394,15 @@ object InventoryHudRenderer {
             // The slider is the tint's strength over the blur: 0 % is clear frosted glass, 100 % the
             // solid panel colour. The frame is captured and blurred once per frame for every panel
             // that asks, so this shares the copy with the chat. The fade goes in as the panel's
-            // opacity rather than into the tint, so the blur fades with it.
-            sink.`alpaka$submitElement`(
-                BlurRectRenderState(pose, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, radiusPx, tint, toScreen, shown, scissor)
-            )
-            ChatBlurFeature.request()
+            // opacity rather than into the tint, so the blur and the shadow fade with it. Submitted
+            // through HudPanel, so it has the same corners and soft shadow as every other HUD panel;
+            // only the tint is the inventory's own.
+            HudPanel.submit(graphics, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, scale, tint, shown)
         } else if (backdropAlpha > 0) {
+            // The same soft shadow the blurred panel and the notices' plain box have, fading with
+            // the HUD. Its radius is given in GUI pixels, so it is scaled here to meet the panel's
+            // corners, which follow the HUD's scale.
+            ModernGuiUtils.drawPanelShadow(graphics, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, Math.round(RADIUS * scale), shown)
             sink.`alpaka$submitElement`(
                 GradientRoundedRectRenderState(
                     pose, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, radiusPx, 0,

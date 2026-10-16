@@ -21,7 +21,7 @@ object InventoryHudElement : HudElement {
     private const val SCALE_PER_NOTCH = 0.1
 
     override val id: String = "inventory_hud"
-    override val name: String = "Inventory HUD"
+    override val name: String = "Inventory"
 
     override val isFeatureEnabled: Boolean
         get() = AlpakaConfig.instance.inventoryHudEnabled

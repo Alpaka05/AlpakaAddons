@@ -24,12 +24,32 @@ import net.minecraft.resources.Identifier;
 public final class AlpakaGuiPipelines {
     private static RenderPipeline roundedRect;
     private static RenderPipeline blurRect;
+    private static RenderPipeline roundedImage;
 
     private AlpakaGuiPipelines() {}
 
     public static void init() {
         roundedRect();
         blurRect();
+        roundedImage();
+    }
+
+    /**
+     * A picture with rounded corners and an optional drop shadow, from the same vertices as
+     * {@link #roundedRect()}: the fragment shader samples the texture across the rectangle and
+     * cuts it to the rounded shape. See {@link RoundedImageRenderState}.
+     */
+    public static RenderPipeline roundedImage() {
+        if (roundedImage == null) {
+            roundedImage = RenderPipelinesAccessor.alpaka$register(
+                    RenderPipeline.builder(RenderPipelinesAccessor.alpaka$guiTexturedSnippet())
+                            .withLocation(Identifier.fromNamespaceAndPath("alpaka", "pipeline/gui_rounded_image"))
+                            .withVertexShader(Identifier.fromNamespaceAndPath("alpaka", "core/rounded_rect"))
+                            .withFragmentShader(Identifier.fromNamespaceAndPath("alpaka", "core/rounded_image"))
+                            .withVertexBinding(0, DefaultVertexFormat.ENTITY)
+                            .build());
+        }
+        return roundedImage;
     }
 
     /**

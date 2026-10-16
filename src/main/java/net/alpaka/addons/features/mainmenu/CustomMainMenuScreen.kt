@@ -465,8 +465,8 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
             val ping = if (withPing && HypixelStatus.pingMs > 0) " · ${HypixelStatus.pingMs} ms" else ""
             ONLINE_DOT to "$count online$ping"
         }
-        HypixelStatus.State.OFFLINE -> MUTED to "can't reach Hypixel"
-        HypixelStatus.State.CONNECTING -> MUTED to "connecting…"
+        HypixelStatus.State.OFFLINE -> MUTED to "Can't reach Hypixel"
+        HypixelStatus.State.CONNECTING -> MUTED to "Connecting…"
     }
 
     override fun mouseClicked(event: MouseButtonEvent, doubleClick: Boolean): Boolean {

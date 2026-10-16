@@ -47,7 +47,7 @@ public class WorldAgeHudRenderer {
     /**
      * The drawn line, kept between frames in the font it is drawn in.
      *
-     * The text changes once per in-game day at most, so building {@code "Day: " + day} and wrapping
+     * The text changes once per in-game day at most, so building {@code "Day " + day} and wrapping
      * it in a Component every frame was wasted work for a line that is almost always the same one as
      * last frame, and a fresh wrapper had its bidi order worked out again each time. Rebuilt only
      * when the day or that font ({@link #cachedDayStyle}) changes. The box is measured from this same
@@ -64,7 +64,7 @@ public class WorldAgeHudRenderer {
         if (cachedDayText == null || day != cachedDay || !style.equals(cachedDayStyle)) {
             cachedDay = day;
             cachedDayStyle = style;
-            cachedDayText = HudPanel.text(Component.literal("Day: " + day), smooth);
+            cachedDayText = HudPanel.text(Component.literal("Day " + day), smooth);
         }
         return cachedDayText;
     }
@@ -194,9 +194,9 @@ public class WorldAgeHudRenderer {
         if (seconds >= 60) {
             long m = seconds / 60;
             long s = seconds % 60;
-            return s > 0 ? String.format("%dm %ds", m, s) : String.format("%dm", m);
+            return s > 0 ? m + " min " + s + " s" : m + " min";
         }
-        return seconds + "s";
+        return seconds + " s";
     }
 
     public static int getDayColor(long day) {
@@ -268,7 +268,7 @@ public class WorldAgeHudRenderer {
         graphics.pose().scale(scale, scale);
         Component text = dayText(day);
         if (AlpakaConfig.instance.blurOn(AlpakaConfig.instance.worldAgeHudBlur)) HudPanel.aroundText(graphics, font.width(text), 9, scale);
-        graphics.text(font, text, 0, 0, color);
+        graphics.text(font, text, 0, 0, color, HudPanel.TEXT_SHADOW);
         graphics.pose().popMatrix();
     }
 

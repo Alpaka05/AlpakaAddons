@@ -25,12 +25,12 @@ object AlpakaDiagnostics {
         val cfg = AlpakaConfig.instance
         val mc = Minecraft.getInstance()
 
-        line("§6--- Alpaka Addons diagnostics ---")
-        line("§7Version: §f${ModVersion.mod()} §7on MC §f${ModVersion.minecraft()}")
+        line("§6--- Diagnostics ---")
+        line("§7Version: §f${ModVersion.mod()} §7on Minecraft §f${ModVersion.minecraft()}")
 
         val server = mc.currentServer?.ip ?: "singleplayer / none"
         line("§7Server: §f$server")
-        line("§7Detected as Skyblock: ${yesNo(SkyblockUtils.isOnSkyblock())}")
+        line("§7Detected as SkyBlock: ${yesNo(SkyblockUtils.isOnSkyblock())}")
 
         val lines = SkyblockUtils.getSidebarLines()
         val area = lines.firstOrNull { it.contains("⏣") } ?: "(none found)"
@@ -49,7 +49,7 @@ object AlpakaDiagnostics {
         // The record is keyed by account and profile, so a missing profile is the first thing to
         // check when the kill count looks wrong: everything is then filed under the placeholder.
         val profile = SkyblockProfileTracker.current
-        line("§7Skyblock profile: " + (if (profile != null) "§f$profile" else "§cnot announced yet §7- kills are filed under the placeholder"))
+        line("§7SkyBlock profile: " + (if (profile != null) "§f$profile" else "§cnot announced yet §7- kills are filed under the placeholder"))
         line("§7Stats file: §f${AlpakaStats.file().absolutePath}")
 
         printBossTimer(cfg)
@@ -86,7 +86,7 @@ object AlpakaDiagnostics {
 
         val fight = SlayerTimer.lastFight
         if (fight == null) {
-            line("§8  no fight measured yet this session")
+            line("§8  No fight measured yet this session.")
             return
         }
         line("§7Last fight:")

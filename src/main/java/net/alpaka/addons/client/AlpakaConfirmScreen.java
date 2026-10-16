@@ -103,10 +103,11 @@ public class AlpakaConfirmScreen extends Screen implements net.alpaka.addons.cli
         int x = (this.width - w) / 2;
         int y = (this.height - h) / 2;
         int btnY = y + h - AlpakaStyle.PAD - 2 - AlpakaStyle.BUTTON_H;
-        // Both buttons as wide as the wider label needs, so they stay a pair.
+        // Both buttons as wide as the wider label needs, so they stay a pair; Cancel at the left
+        // edge, the action at the right, so the one is not hit for the other.
         int btnW = Math.max(MIN_BTN_W, Math.max(GuiFont.width(this.font, confirmLabel), GuiFont.width(this.font, "Cancel")) + 20);
         int confirmX = x + w - AlpakaStyle.PAD - 2 - btnW;
-        int cancelX = confirmX - 6 - btnW;
+        int cancelX = x + AlpakaStyle.PAD + 2;
         List<FormattedCharSequence> lines = Language.getInstance().getVisualOrder(wrapped);
         return new Layout(x, y, w, h, lines, btnY, btnW, confirmX, cancelX);
     }

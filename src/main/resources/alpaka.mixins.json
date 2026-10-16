@@ -38,6 +38,7 @@
     "LivingEntityRendererMixin",
     "LivingEntityMixin",
     "MinecraftScreenshotMixin",
+    "ScreenshotMixin",
     "SubmitNodeCollectionMixin",
     "ItemFeatureRendererMixin",
     "GuiGraphicsExtractorMixin",

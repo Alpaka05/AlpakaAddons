@@ -5,10 +5,11 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.FilterMode;
 import com.mojang.logging.LogUtils;
 import net.alpaka.addons.client.gui.AlpakaGuiElementSink;
-import net.alpaka.addons.client.gui.BlurRectRenderState;
+import net.alpaka.addons.client.gui.RoundedImageRenderState;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.render.TextureSetup;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Util;
@@ -18,11 +19,13 @@ import org.slf4j.Logger;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * The screenshot, shown for a moment the way a phone does it: a white flash, the picture filling
  * the screen and shrinking into the bottom-right corner with a small overshoot, a few seconds
- * there in a white frame, then it slides out to the right.
+ * there with rounded corners and a soft shadow, then it slides out to the right.
  *
  * The file is read and scaled down off the render thread, then uploaded as a texture of its own,
  * which is released as soon as the preview is gone. It is drawn after everything else, toasts
@@ -30,7 +33,8 @@ import java.nio.file.Files;
  *
  * A screenshot taken while the preview is on screen would capture the preview itself, since the
  * game grabs the last finished frame. So that press is held back: the next frame is drawn without
- * the preview, and the screenshot is taken from that one.
+ * the preview, and the screenshot is taken from that one, in the next round of the game loop's
+ * tasks - not from inside the frame, where the target still holds the one with the preview.
  */
 public final class ScreenshotPreview {
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -42,16 +46,15 @@ public final class ScreenshotPreview {
     private static final long FLASH_MS = 260L;
     private static final long SHRINK_MS = 650L;
     private static final long EXIT_MS = 380L;
-    /** Thumbnail margin from the screen's edge, frame width and corner radius, in GUI pixels. */
+    /** Thumbnail margin from the screen's edge, corner radius and shadow reach, in GUI pixels. */
     private static final float MARGIN = 10.0f;
-    private static final float FRAME = 2.0f;
     private static final float RADIUS = 5.0f;
     private static final float SHADOW = 8.0f;
 
     private static DynamicTexture texture;
     private static long shownAtMs;
-    /** A screenshot press waiting for a frame without the preview; see the class comment. */
-    private static Runnable pendingCapture;
+    /** Screenshot presses waiting for a frame without the preview; see the class comment. */
+    private static final List<Runnable> pendingCaptures = new ArrayList<>();
 
     /** Dev tour only: a fixed point in the animation, in ms, or -1 to run it normally. */
     private static float frozenAtMs = -1.0f;
@@ -103,9 +106,9 @@ public final class ScreenshotPreview {
         }
     }
 
-    /** Whether a frame drawn now would contain the preview. */
+    /** Whether a frame drawn now would contain the preview, or a capture is already waiting for one without. */
     public static boolean isOnScreen() {
-        return texture != null;
+        return texture != null || !pendingCaptures.isEmpty();
     }
 
     /**
@@ -114,7 +117,7 @@ public final class ScreenshotPreview {
      */
     public static void captureWithoutPreview(Runnable capture) {
         release();
-        pendingCapture = capture;
+        pendingCaptures.add(capture);
     }
 
     private static float duration() {
@@ -123,11 +126,12 @@ public final class ScreenshotPreview {
 
     /** Draws the preview over everything but the toasts. Called once per frame. */
     public static void render(GuiGraphicsExtractor graphics) {
-        if (pendingCapture != null) {
-            // This frame goes out without the preview; the capture runs before the next one.
-            Runnable capture = pendingCapture;
-            pendingCapture = null;
-            Minecraft.getInstance().execute(capture);
+        if (!pendingCaptures.isEmpty()) {
+            // This frame goes out without the preview; the captures run before the next one. Not
+            // execute(): on the render thread that would run them now, inside this frame.
+            Minecraft mc = Minecraft.getInstance();
+            for (Runnable capture : pendingCaptures) mc.schedule(capture);
+            pendingCaptures.clear();
             return;
         }
         if (texture == null) return;
@@ -165,24 +169,23 @@ public final class ScreenshotPreview {
         // Above whatever the screen drew, its own blurred layers included.
         graphics.nextStratum();
 
-        // The frame: white, rounded, with a drop shadow; it grows in as the picture shrinks.
+        // The picture itself, its corners rounding off and its shadow growing in as it shrinks.
         float frameIn = Math.clamp(e, 0.0f, 1.0f);
+        Matrix3x2f pose = new Matrix3x2f(graphics.pose()).translate(x, y).scale(s, s);
+        TextureSetup textures = TextureSetup.singleTexture(texture.getTextureView(),
+                RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR));
         if (graphics instanceof AlpakaGuiElementSink sink) {
-            // In the picture's own coordinates, where one unit is s GUI pixels.
-            int frame = Math.round(FRAME * frameIn / s);
-            Matrix3x2f pose = new Matrix3x2f(graphics.pose()).translate(x, y).scale(s, s);
-            sink.alpaka$submitElement(new BlurRectRenderState(pose,
-                    -frame, -frame, Math.round(sw) + frame, Math.round(sh) + frame,
-                    Math.round(RADIUS * frameIn * guiScale), 0xFFFFFFFF, guiScale * s, 1.0f,
-                    Math.round(SHADOW * frameIn * guiScale), sink.alpaka$currentScissor()));
+            sink.alpaka$submitElement(new RoundedImageRenderState(pose, 0, 0, Math.round(sw), Math.round(sh),
+                    Math.round(RADIUS * frameIn * guiScale), guiScale * s,
+                    Math.round(SHADOW * frameIn * guiScale), textures, sink.alpaka$currentScissor()));
+        } else {
+            graphics.pose().pushMatrix();
+            graphics.pose().translate(x, y);
+            graphics.pose().scale(s, s);
+            graphics.blit(texture.getTextureView(), RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR),
+                    0, 0, Math.round(sw), Math.round(sh), 0.0f, 1.0f, 0.0f, 1.0f);
+            graphics.pose().popMatrix();
         }
-
-        graphics.pose().pushMatrix();
-        graphics.pose().translate(x, y);
-        graphics.pose().scale(s, s);
-        graphics.blit(texture.getTextureView(), RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR),
-                0, 0, Math.round(sw), Math.round(sh), 0.0f, 1.0f, 0.0f, 1.0f);
-        graphics.pose().popMatrix();
 
         // The flash, over the whole screen and the picture alike.
         if (elapsed < FLASH_MS) {

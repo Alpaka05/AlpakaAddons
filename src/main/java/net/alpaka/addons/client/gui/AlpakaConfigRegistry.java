@@ -490,7 +490,7 @@ public class AlpakaConfigRegistry {
                         new ConfigOption.ToggleEntry("Open button",
                                 () -> AlpakaConfig.instance.screenshotShowOpen,
                                 v -> { AlpakaConfig.instance.screenshotShowOpen = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Copy button (not on macOS)",
+                        new ConfigOption.ToggleEntry("Copy button",
                                 () -> AlpakaConfig.instance.screenshotShowCopy,
                                 v -> { AlpakaConfig.instance.screenshotShowCopy = v; AlpakaConfig.save(); }),
                         new ConfigOption.ToggleEntry("Delete button",
@@ -500,7 +500,7 @@ public class AlpakaConfigRegistry {
                 "screenshot line parts file name open copy delete button show hide"));
 
         OPTIONS.add(new ConfigOption("auto_copy_screenshots", "Auto Copy Screenshots",
-                "Copies every screenshot to the clipboard right away. Not available on macOS.",
+                "Copies every screenshot to the clipboard right away.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.autoCopyScreenshots,
                 v -> { AlpakaConfig.instance.autoCopyScreenshots = v; AlpakaConfig.save(); },

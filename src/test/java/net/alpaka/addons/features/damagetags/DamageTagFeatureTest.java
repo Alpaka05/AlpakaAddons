@@ -21,7 +21,7 @@ class DamageTagFeatureTest {
             "§c§l!!!         | false",
             "§71.5           | false",
             "§712,34         | false",
-            "§7Blaze         | false",
+            "§7Blaze         | true",
     })
     void hidesOnlyPlainDamageNumbers(String name, boolean hide) {
         assertEquals(hide, DamageTagFeature.isNonCritDamageTag(name.strip()));

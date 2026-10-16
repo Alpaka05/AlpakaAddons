@@ -3,6 +3,7 @@ package net.alpaka.addons.client;
 import net.alpaka.addons.AlpakaAddons;
 import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.features.chat.ScreenshotPreview;
 import net.alpaka.addons.features.mainmenu.CustomMainMenuScreen;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.CameraType;
@@ -144,6 +145,15 @@ public final class DevScreenshotTour {
             new Stop(null, DevScreenshotTour::enterWorld,
                     () -> Minecraft.getInstance().player != null && Minecraft.getInstance().gui.screen() == null, 100),
             new Stop("world-hud", DevScreenshotTour::showHuds, () -> true, 30),
+            // The screenshot preview of the picture just taken: resting in the corner, then mid-shrink.
+            new Stop(null, () -> {}, () -> tourShot("world-hud").isFile(), 2),
+            new Stop(null, () -> {
+                ScreenshotPreview.devFreezeAt(1150.0f);
+                ScreenshotPreview.show(tourShot("world-hud"));
+            }, ScreenshotPreview::isOnScreen, 2),
+            new Stop("screenshot-preview", () -> {}, () -> true, 2),
+            new Stop("screenshot-preview-shrink", () -> ScreenshotPreview.devFreezeAt(120.0f), () -> true, 2),
+            new Stop(null, () -> ScreenshotPreview.devFreezeAt(-1.0f), () -> true, 5),
             new Stop("hud-editor-world", () -> Minecraft.getInstance().gui.setScreen(new HudEditorScreen(null)), () -> true, 20),
             // Every HUD on its blurred panel and in the menu font, a notice in the corner.
             new Stop("hud-style", DevScreenshotTour::hudStyle, () -> true, 20),
@@ -328,6 +338,10 @@ public final class DevScreenshotTour {
                     message -> AlpakaAddons.LOGGER.info("Screenshot tour: {}", message.getString()));
         }
         begin(mc, stop + 1);
+    }
+
+    private static java.io.File tourShot(String name) {
+        return Minecraft.getInstance().gameDirectory.toPath().resolve("screenshots/tour-" + name + ".png").toFile();
     }
 
     private static void begin(Minecraft mc, int index) {

@@ -39,6 +39,7 @@
     "LivingEntityMixin",
     "MinecraftScreenshotMixin",
     "BossHealthOverlayAccessor",
+    "ScreenshotMixin",
     "SubmitNodeCollectionMixin",
     "ItemFeatureRendererMixin",
     "GuiGraphicsExtractorMixin",

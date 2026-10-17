@@ -11,7 +11,6 @@ import net.alpaka.addons.client.gui.AlpakaGuiElementSink;
 import net.alpaka.addons.client.gui.BlurRectRenderState;
 import net.alpaka.addons.client.gui.HudPanel;
 import net.alpaka.addons.client.gui.RoundedRectRenderState;
-import net.alpaka.addons.compat.GnetumCompat;
 import org.joml.Vector2f;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.minecraft.client.Minecraft;
@@ -54,15 +53,6 @@ import org.slf4j.LoggerFactory;
  * set aside and closed a frame later, and the frame that replaced it draws its panels without blur.
  * Destroying it at the blur point instead, as this once did, left the main menu's glass tabs holding
  * a closed texture, and resizing the window crashed the game.
- *
- * ### Other passes of the GUI renderer
- *
- * Only the frame's own GUI pass draws onto the world. A HUD-caching mod such as Gnetum runs the GUI
- * renderer a second time, during extraction, into a cleared framebuffer of its own; a copy taken
- * there is of that empty buffer, and the panels came out black. Such a pass neither takes the copy
- * nor samples it ({@link #isReady()}): its panels fall back to the plain tint, and the panels ask
- * Gnetum to leave their HUD out of its cache ({@link GnetumCompat}), so they are drawn in the
- * frame's pass and blur there.
  */
 public final class ChatBlurFeature {
     private static final Logger LOGGER = LoggerFactory.getLogger("AlpakaAddons/ChatBlur");
@@ -86,8 +76,6 @@ public final class ChatBlurFeature {
     private static boolean requested;
     private static boolean ready;
     private static boolean warned;
-    /** Whether the GUI renderer is drawing the frame's own GUI, onto the world, rather than another pass. */
-    private static boolean inFramePass;
 
     // A screen can ask for the copy to be taken after its background strata rather than before
     // any GUI element: asked during extraction, decided when the frame is drawn.
@@ -204,13 +192,12 @@ public final class ChatBlurFeature {
         int alpha = Math.round(Mth.clamp(panelAlpha * panelOpacity, 0.0f, 1.0f) * 255.0f);
         if (alpha <= 0) return;
 
-        // Before the submission, which Gnetum then hands to the frame's own pass; see request().
-        request();
         // Submitted before the lines are shifted by the scroll, so the current pose is the box's.
         sink.alpaka$submitElement(new BlurRectRenderState(
                 new Matrix3x2f(graphics.pose()), x0, y0, x1, y1,
                 Math.round(RADIUS * toScreen), alpha << 24, toScreen, 1.0f,
                 Math.round(SHADOW * toScreen * panelAlpha), sink.alpaka$currentScissor()));
+        request();
     }
 
     /**
@@ -242,27 +229,14 @@ public final class ChatBlurFeature {
                 Math.max(1, Math.round(toScreen)), sink.alpaka$currentScissor()));
     }
 
-    /**
-     * A panel is extracted this frame; the frame has to be captured and blurred before drawing.
-     * Called right before the panel is submitted: a HUD Gnetum is caching is taken out of its cache
-     * then, and Gnetum passes that very submission on to the frame's own GUI pass.
-     */
+    /** A panel was extracted this frame; the frame has to be captured and blurred before drawing. */
     public static void request() {
         requested = true;
-        GnetumCompat.keepOutOfCache();
     }
 
-    /**
-     * Whether a blurred copy exists for the panel to sample; false falls back to a plain panel.
-     * Never in a GUI pass other than the frame's own, whose target is not the frame the copy shows.
-     */
+    /** Whether a blurred copy exists for the panel to sample; false falls back to a plain panel. */
     public static boolean isReady() {
-        return ready && blurred != null && inFramePass;
-    }
-
-    /** The GameRenderer starts or ends drawing the frame's own GUI, onto the world. */
-    public static void setInFramePass(boolean value) {
-        inFramePass = value;
+        return ready && blurred != null;
     }
 
     /**
@@ -279,10 +253,6 @@ public final class ChatBlurFeature {
 
     /** Called before the GUI renderer prepares the frame's elements: the world is on the frame, nothing of the GUI yet. */
     public static void captureFrameBeforeGui() {
-        // Another pass of the GUI renderer, into a target of its own: nothing of the world to copy,
-        // and this frame's request stays for the frame's own pass.
-        if (!inFramePass) return;
-
         // Last frame's draws are done, so nothing can still sample the targets set aside then.
         for (TextureTarget old : PENDING_CLOSE) old.destroyBuffers();
         PENDING_CLOSE.clear();
@@ -329,7 +299,7 @@ public final class ChatBlurFeature {
      * Returns true when the copy was taken here, in which case vanilla's blur is to be skipped.
      */
     public static boolean captureAtBlurPoint() {
-        if (!deferred || !inFramePass) return false;
+        if (!deferred) return false;
         deferred = false;
         // Only a screen's background defers the copy - the main menu's glass - and a menu keeps
         // the full blur; the strength setting is for the panels over the world.

@@ -77,12 +77,11 @@ public final class HudPanel {
                               float scale, int tint, float opacity) {
         if (!(graphics instanceof AlpakaGuiElementSink sink) || opacity <= 0.0f) return;
         float toScreen = (float) Minecraft.getInstance().getWindow().getGuiScale() * scale;
-        // Before the submission, so a HUD cached by Gnetum hands this panel to the frame's own pass.
-        ChatBlurFeature.request();
         sink.alpaka$submitElement(new BlurRectRenderState(
                 new Matrix3x2f(graphics.pose()), x0, y0, x1, y1,
                 Math.round(RADIUS * toScreen), tint, toScreen, opacity,
                 Math.round(SHADOW * toScreen), sink.alpaka$currentScissor()));
+        ChatBlurFeature.request();
     }
 
     /**

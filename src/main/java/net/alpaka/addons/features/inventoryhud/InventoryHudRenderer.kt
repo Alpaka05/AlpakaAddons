@@ -382,11 +382,12 @@ object InventoryHudRenderer {
             // The slider is the tint's strength over the blur: 0 % is clear frosted glass, 100 % the
             // solid panel colour. The frame is captured and blurred once per frame for every panel
             // that asks, so this shares the copy with the chat. The fade goes in as the panel's
-            // opacity rather than into the tint, so the blur fades with it.
+            // opacity rather than into the tint, so the blur fades with it. Asked before the
+            // submission, so a HUD cached by Gnetum hands this panel to the frame's own pass.
+            ChatBlurFeature.request()
             sink.`alpaka$submitElement`(
                 BlurRectRenderState(pose, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, radiusPx, tint, toScreen, shown, scissor)
             )
-            ChatBlurFeature.request()
         } else if (backdropAlpha > 0) {
             sink.`alpaka$submitElement`(
                 GradientRoundedRectRenderState(

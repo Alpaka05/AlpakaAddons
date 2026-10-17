@@ -64,7 +64,7 @@ object SlayerHudRenderer {
     private const val COLOR_PAUSED = 0xFFFF5555.toInt()
 
     /**
-     * One rendered row: a label, a value, and the colour the value is drawn in.
+     * One rendered row: a label, a value, and the color the value is drawn in.
      *
      * [spansColumns] marks a row that is prose rather than a label/value pair - the title and its
      * pause note. Such a row is laid out from its own width instead of the shared value column.

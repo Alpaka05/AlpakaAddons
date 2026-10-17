@@ -43,7 +43,7 @@ public class SkyblockUtils {
      * Whether the player is on Hypixel Skyblock, cached for {@link #SKYBLOCK_CACHE_MS}.
      *
      * The cache is what makes this callable from a render hook at all. Working the answer out means
-     * a scoreboard lookup, a colour strip and possibly a walk over every sidebar line, and
+     * a scoreboard lookup, a color strip and possibly a walk over every sidebar line, and
      * {@code EntityRendererMixin} asks twice per entity per frame - so an uncached call was hundreds
      * of scoreboard walks a frame in a busy slayer lobby.
      */
@@ -150,7 +150,7 @@ public class SkyblockUtils {
     private static Object cachedSidebarLevel = null;
 
     /**
-     * The sidebar's lines with colour codes stripped, title first, at most one scoreboard walk per
+     * The sidebar's lines with color codes stripped, title first, at most one scoreboard walk per
      * client tick however many callers ask.
      *
      * Hypixel writes the player's current zone onto one of these lines, which makes this the
@@ -276,7 +276,7 @@ public class SkyblockUtils {
     }
 
     /**
-     * Every line the player list is currently showing, colour codes stripped.
+     * Every line the player list is currently showing, color codes stripped.
      *
      * Hypixel puts widgets into the tab list alongside the player rows, and the slayer quest is one
      * of them - which matters because the sidebar does not always carry the quest, while the tab

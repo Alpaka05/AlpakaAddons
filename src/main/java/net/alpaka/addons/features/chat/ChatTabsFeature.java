@@ -242,7 +242,7 @@ public final class ChatTabsFeature {
 
     /**
      * One tab's box, or the chip's: rounded like the menus' rows, in vanilla's text background
-     * colour. With vanilla's default, Background for Chat Only, that is a fixed half-transparent
+     * color. With vanilla's default, Background for Chat Only, that is a fixed half-transparent
      * black whatever the chat's own background opacity is; only with that option off does it follow
      * the Text Background Opacity slider. The tab that is up carries a faint accent tint and an
      * accent underline that stops short of the rounded corners.
@@ -311,7 +311,7 @@ public final class ChatTabsFeature {
         return CHIPS[i];
     }
 
-    /** A tab's name, with its unread count after it in the accent colour while there is one. */
+    /** A tab's name, with its unread count after it in the accent color while there is one. */
     private static Component labelOf(ChatTab tab) {
         checkChatFont();
         int i = tab.ordinal();

@@ -7,7 +7,7 @@ import java.util.regex.Pattern;
 /**
  * The channels the chat can be narrowed to, and how a Hypixel line is sorted into one.
  *
- * Sorting works on the line as Hypixel sent it, with the colour codes stripped, so it does not care
+ * Sorting works on the line as Hypixel sent it, with the color codes stripped, so it does not care
  * what the mod's own formatting later does to the copy that gets drawn - the custom guild tag
  * replaces "Guild >" on screen, but the stored message still starts with it and lands on the guild
  * tab all the same.
@@ -92,7 +92,7 @@ public enum ChatTab {
         return classify(strip(message.getString()));
     }
 
-    /** {@link #classify(Component)} for colour-stripped, trimmed text. */
+    /** {@link #classify(Component)} for color-stripped, trimmed text. */
     public static ChatTab classify(String text) {
         if (text.isEmpty()) return ALL;
         if (PARTY_CHAT.matcher(text).find()) return PARTY;

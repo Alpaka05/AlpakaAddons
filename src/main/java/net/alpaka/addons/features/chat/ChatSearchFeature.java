@@ -14,7 +14,7 @@ import java.util.Map;
 /**
  * Chat search: Ctrl+F in the chat screen - Cmd+F on macOS - turns the input line into a search
  * box. Whatever is typed there filters the chat down to the messages containing it, and the input
- * bar takes the accent colour so it is obvious that typing will not send anything. The same
+ * bar takes the accent color so it is obvious that typing will not send anything. The same
  * shortcut again, or closing the chat,
  * puts the message that was being typed back and shows the whole chat again.
  *

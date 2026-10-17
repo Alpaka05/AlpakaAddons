@@ -454,7 +454,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
     }
 
     /**
-     * The dot colour and the text of the online line, from whatever the last ping learned, or null
+     * The dot color and the text of the online line, from whatever the last ping learned, or null
      * when network features are off and nothing is pinged. [withPing] leaves the ping off when the
      * line has to be shorter.
      */

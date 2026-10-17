@@ -73,7 +73,7 @@ public class ConfigOption {
     // Action
     private Consumer<Screen> actionHandler;
     private String actionLabel;
-    /** Set for colour options only: the current colour, which the button shows as its swatch. */
+    /** Set for color options only: the current color, which the button shows as its swatch. */
     private java.util.function.IntSupplier colorGetter;
 
     // Dropdown
@@ -149,8 +149,8 @@ public class ConfigOption {
     }
 
     /**
-     * A colour option: a button showing the current colour as a swatch, which opens the colour
-     * picker. Every colour setting is made this way, so the config screen needs no list of them.
+     * A color option: a button showing the current color as a swatch, which opens the color
+     * picker. Every color setting is made this way, so the config screen needs no list of them.
      *
      * The option is given the config field rather than a getter, so its default can be read from a
      * fresh config: the picker's reset button goes back to that without a second copy of it here.
@@ -324,10 +324,10 @@ public class ConfigOption {
         return previewText == null ? net.minecraft.network.chat.Component.empty() : previewText.get();
     }
 
-    /** Whether this is a colour option, made by {@link #color}. */
+    /** Whether this is a color option, made by {@link #color}. */
     public boolean isColor() { return colorGetter != null; }
 
-    /** The colour a colour option currently holds. */
+    /** The color a color option currently holds. */
     public int getColor() { return colorGetter.getAsInt(); }
 
     private boolean dangerous = false;

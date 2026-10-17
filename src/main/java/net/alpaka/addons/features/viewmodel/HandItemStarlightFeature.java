@@ -141,7 +141,7 @@ public final class HandItemStarlightFeature {
         return renderType;
     }
 
-    /** The colour and strength the starlight vertices carry, from the settings. */
+    /** The color and strength the starlight vertices carry, from the settings. */
     private static int vertexColor() {
         float strength = Mth.clamp(AlpakaConfig.instance.itemStarlightStrength, 0.0f, 1.0f);
         return ARGB.color(Math.round(strength * 255.0f), AlpakaConfig.instance.itemStarlightColor);
@@ -159,7 +159,7 @@ public final class HandItemStarlightFeature {
 
     /**
      * Keeps the item's vertex positions as they are put into the buffer and gives every vertex the
-     * starlight's colour and the camera's angles; everything else the item carries (texture, light,
+     * starlight's color and the camera's angles; everything else the item carries (texture, light,
      * normal) is dropped.
      */
     private static final class StarlightBuffer implements VertexConsumer {

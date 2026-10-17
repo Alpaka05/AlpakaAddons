@@ -68,7 +68,7 @@ void main() {
     vec2 uv = gl_FragCoord.xy / vec2(textureSize(Sampler0, 0));
     vec3 blurred = texture(Sampler0, uv).rgb;
 
-    // Frosted glass rather than a dark sheet: what shows through keeps a little more of its colour
+    // Frosted glass rather than a dark sheet: what shows through keeps a little more of its color
     // and light than the world around it, so the panel reads as glass the world glows through.
     float luma = dot(blurred, vec3(0.2126, 0.7152, 0.0722));
     blurred = clamp(mix(vec3(luma), blurred, 1.25), 0.0, 1.0);

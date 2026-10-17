@@ -59,11 +59,11 @@ public class AlpakaConfig {
     public int nameTagColorMode = 1;
     /** Index into {@code CustomNameTagFeature.MOTION_MODE_NAMES}: none, wave, bounce, shake. */
     public int nameTagMotionMode = 1;
-    /** Apply the colour effect to the rank prefix as well, not only to the name itself. */
+    /** Apply the color effect to the rank prefix as well, not only to the name itself. */
     public boolean nameTagColorWholeTag = false;
     public boolean nameTagOutlineEnabled = false;
     public boolean nameTagShadowEnabled = false;
-    /** A thin frame around the backdrop whose colours sweep along it. */
+    /** A thin frame around the backdrop whose colors sweep along it. */
     public boolean nameTagChromaBorderEnabled = true;
     /** Whether the dark box behind the letters is drawn at all. */
     public boolean nameTagBackgroundEnabled = true;
@@ -73,15 +73,15 @@ public class AlpakaConfig {
     /** Extra height above vanilla's position, in blocks. Negative brings the tag down. */
     public float nameTagHeightOffset = 0.0f;
     public float nameTagAnimationSpeed = 1.0f;
-    /** The two ends of the gradient colour mode. */
+    /** The two ends of the gradient color mode. */
     public int nameTagGradientStart = 0xFF55FFFF;
     public int nameTagGradientEnd = 0xFFFF55FF;
 
     /** A translucent sensei hat on the player's own head. Plain straw by default; see chromaHatRainbow. */
     public boolean chromaHatEnabled = false;
-    /** Rainbow colours sweeping around the hat, self-lit, instead of the plain colour. */
+    /** Rainbow colors sweeping around the hat, self-lit, instead of the plain color. */
     public boolean chromaHatRainbow = false;
-    /** Colour of the plain hat. Default: straw. */
+    /** Color of the plain hat. Default: straw. */
     public int chromaHatColor = 0xFFC8A65A;
     /** Hat opacity in percent. */
     public float chromaHatOpacity = 55.0f;
@@ -342,9 +342,9 @@ public class AlpakaConfig {
     // Etherwarp overlay. Marks the block an Etherwarp teleport would land on while it is aimed.
     // Display only - the ray is worked out the way the server does it, nothing is sent.
     public boolean etherwarpOverlayEnabled = false;
-    /** Box colour when the warp will succeed. Default: translucent gold. */
+    /** Box color when the warp will succeed. Default: translucent gold. */
     public int etherwarpOverlayColor = 0xD9FFAA00;
-    /** Also mark a target the warp will refuse (no room to stand), in the fail colour. */
+    /** Also mark a target the warp will refuse (no room to stand), in the fail color. */
     public boolean etherwarpOverlayShowFail = true;
     public int etherwarpOverlayFailColor = 0xD9FF5555;
     public boolean etherwarpOverlayFill = false;
@@ -399,7 +399,7 @@ public class AlpakaConfig {
     /**
      * Replace Hypixel's "Guild >" marker with the guild's own tag.
      *
-     * The text may carry `&`-style colour codes, which are translated to section signs when the
+     * The text may carry `&`-style color codes, which are translated to section signs when the
      * line is drawn - `§` cannot be typed on a keyboard, so `&` is the convention every Hypixel mod
      * uses for this.
      */
@@ -536,7 +536,7 @@ public class AlpakaConfig {
 
     // Starlight: a drifting, twinkling galaxy over the held item; see HandItemStarlightFeature.
     public boolean itemStarlightEnabled = false;
-    /** The nebula's colour; the stars are tinged with it. */
+    /** The nebula's color; the stars are tinged with it. */
     public int itemStarlightColor = 0xFF9B5CFF;
     /** How strongly the galaxy covers the item, 0..1. */
     public float itemStarlightStrength = 0.8f;
@@ -804,7 +804,7 @@ public class AlpakaConfig {
         }
 
         // The menu's default accent moved from warm gold to teal. A config still on the exact old
-        // default never chose gold, so it follows the new default; any other colour is a choice.
+        // default never chose gold, so it follows the new default; any other color is a choice.
         if (instance.menuAccentColor == 0xFFE5B849) {
             instance.menuAccentColor = 0xFF29B6B2;
         }

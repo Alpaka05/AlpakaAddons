@@ -8,9 +8,9 @@ import net.minecraft.client.renderer.state.gui.GuiElementRenderState;
 import org.joml.Matrix3x2fc;
 
 /**
- * {@link RoundedRectRenderState} with a colour per corner: the shader interpolates the vertex
- * colour across the quad, so four corner colours give a smooth gradient over the fill or along a
- * border for free. Equal colours on both ends of one diagonal make a straight two-colour ramp along
+ * {@link RoundedRectRenderState} with a color per corner: the shader interpolates the vertex
+ * color across the quad, so four corner colors give a smooth gradient over the fill or along a
+ * border for free. Equal colors on both ends of one diagonal make a straight two-color ramp along
  * the other, with no seam where the quad's two triangles meet.
  *
  * Unlike the plain state, the scale from the given coordinates to screen pixels is a float, so it

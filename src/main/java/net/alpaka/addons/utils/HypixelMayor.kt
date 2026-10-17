@@ -84,9 +84,6 @@ object HypixelMayor {
         return if (slayerXpPerkActive == true) SLAYER_XP_MULTIPLIER else 1.0
     }
 
-    /** The mayor's name as Hypixel spells it, or null when it is not known. */
-    fun currentMayor(): String? = mayorName
-
     /**
      * Refreshes the answer if it has gone stale. Called once per client tick; nearly every call is
      * a timestamp comparison and returns immediately.

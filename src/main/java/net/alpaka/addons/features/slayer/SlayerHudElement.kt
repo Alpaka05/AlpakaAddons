@@ -11,8 +11,8 @@ import kotlin.math.roundToInt
 /** Editor handle for the slayer session HUD. */
 object SlayerHudElement : HudElement {
 
-    private const val DEFAULT_X = 10
-    private const val DEFAULT_Y = 60
+    private const val DEFAULT_X = net.alpaka.addons.client.hud.HudDefaults.SLAYER_SESSION_X
+    private const val DEFAULT_Y = net.alpaka.addons.client.hud.HudDefaults.SLAYER_SESSION_Y
     private const val DEFAULT_SCALE = 1.0f
 
     private const val MIN_SCALE = 0.5f
@@ -77,12 +77,12 @@ object SlayerHudElement : HudElement {
         cfg.slayerHudScale = DEFAULT_SCALE
     }
 
-    override fun render(graphics: GuiGraphicsExtractor) {
+    override fun render(graphics: GuiGraphicsExtractor, x: Int, y: Int) {
         val cfg = AlpakaConfig.instance
         SlayerHudRenderer.renderHud(
             graphics,
-            cfg.slayerHudX,
-            cfg.slayerHudY,
+            x,
+            y,
             cfg.slayerHudScale,
             SlayerQuestDetector.currentOrRecent(),
             usePreview()
@@ -98,10 +98,10 @@ object SlayerHudElement : HudElement {
      * editor uses is deliberately not accepted either: clicking where the HUD *would* be, when there
      * is no session to hold, would be a no-op that silently ate the click.
      */
-    fun handleChatClick(mouseX: Double, mouseY: Double): Boolean {
-        if (!AlpakaConfig.instance.slayerHudEnabled) return false
-        if (SlayerQuestDetector.currentOrRecent() == null) return false
-        if (!bounds().contains(mouseX, mouseY)) return false
+    fun handleChatClick(mouseX: Double, mouseY: Double, button: Int): Boolean {
+        if (button != 0) return false
+        val drawn = SlayerHudRenderer.lastDrawnBounds ?: return false
+        if (!drawn.contains(mouseX, mouseY)) return false
 
         SlayerSessionTracker.toggleManualPause()
         return true

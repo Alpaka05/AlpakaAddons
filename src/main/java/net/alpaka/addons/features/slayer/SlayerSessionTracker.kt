@@ -94,16 +94,6 @@ object SlayerSessionTracker {
     private var areaCheckedAtMs = 0L
 
 
-    /**
-     * Last "Stored XP" seen on the RNG meter, per slayer.
-     *
-     * Hypixel prints `RNG Meter - 69,300 Stored XP` on every boss kill, and the step between two of
-     * those is the slayer XP that kill awarded - 550 for an Inferno Demonlord IV in a captured
-     * session. This is the only place the client is told an actual XP figure, so it is preferred
-     * over guessing from the tier; [xpForTier] covers the case where no meter is set for the slayer
-     * and the message therefore never arrives.
-     */
-
     /** Why the clock is currently stopped, or null while it is running. */
     enum class PauseReason { MANUAL, IDLE, OUTSIDE_AREA }
 
@@ -225,13 +215,6 @@ object SlayerSessionTracker {
     /** This slayer's session, creating it on first use. */
     fun session(type: SlayerType): Session = sessions.getOrPut(type) { Session() }
 
-    /** The session for the slayer being run right now, or null when no quest is active. */
-    fun currentSession(): Session? = SlayerQuestDetector.currentOrRecent()?.let { session(it) }
-
-    /** How long the boss currently up has been alive, or null when no boss is up. */
-    fun currentBossElapsedMs(): Long? =
-        if (bossStartMs == 0L) null else System.currentTimeMillis() - bossStartMs
-
     /**
      * Advances the session clock. Called once per client tick.
      *
@@ -318,7 +301,7 @@ object SlayerSessionTracker {
             bossStartMs = 0L
         }
 
-        val awarded = xpForTier(SlayerQuestDetector.lastSeenTier)
+        val awarded = xpForTier(type, SlayerQuestDetector.lastSeenTier)
         session.xpGained += awarded
         // The persisted lifetime figure moves with it, so a disconnect cannot lose this kill's XP.
         // See SlayerXpTracker for why it is not derived from the session total.
@@ -339,7 +322,20 @@ object SlayerSessionTracker {
      * mayor's perks are drawn per election and he can serve a term without this one; see
      * [HypixelMayor].
      */
-    private fun xpForTier(tier: Int): Long {
+    private fun xpForTier(type: SlayerType, tier: Int): Long {
+        // The Rift's Vampire slayer has its own, much smaller table, and sits outside the mayor's
+        // perks. It used to get the main slayers' figures - 500 at tier 4 instead of 120 - and the
+        // overcount went straight into the saved lifetime total.
+        if (type == SlayerType.VAMPIRE) {
+            return when (tier) {
+                1 -> 10L
+                2 -> 25L
+                3 -> 60L
+                4 -> 120L
+                5 -> 150L
+                else -> 0L
+            }
+        }
         val base = when (tier) {
             1 -> 5L
             2 -> 25L

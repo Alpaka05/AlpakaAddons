@@ -121,6 +121,8 @@ object SlayerHudRenderer {
         if (cfg.slayerHudShowBossesPerHour) mask = mask or (1 shl 6)
         if (cfg.slayerHudShowSessionTime) mask = mask or (1 shl 7)
         if (cfg.slayerHudShowSinceRngDrop) mask = mask or (1 shl 8)
+        if (cfg.slayerHudShowBear) mask = mask or (1 shl 9)
+        if (cfg.slayerHudBearBlazeOnly) mask = mask or (1 shl 10)
         return mask
     }
 
@@ -210,7 +212,7 @@ object SlayerHudRenderer {
      */
     private fun buildRows(type: SlayerType?, preview: Boolean): List<Line> {
         val cfg = AlpakaConfig.instance
-        val rows = ArrayList<Line>(9)
+        val rows = ArrayList<Line>(10)
 
         val shown = type ?: SlayerType.BLAZE
         val session = if (preview) null else SlayerSessionTracker.session(shown)
@@ -278,12 +280,29 @@ object SlayerHudRenderer {
             }
         }
 
+        // Smoldering Polarization, from the Re-heated Gummy Polar Bear. Best for Blaze, but the other
+        // slayers profit too through Habanero Tactics, so it shows on every slayer unless asked not to.
+        if (cfg.slayerHudShowBear && (!cfg.slayerHudBearBlazeOnly || shown == SlayerType.BLAZE)) {
+            val time = if (preview) "1h 12m" else SmolderingPolarization.shownTime
+            rows.add(if (time != null) Line("Bear", time, COLOR_GOOD) else Line("Bear", "inactive", COLOR_PAUSED))
+        }
+
         return rows
     }
+
+    /**
+     * The box the HUD was actually drawn in this frame, or null when it was not drawn. The chat's
+     * click on the HUD is tested against this alone, so a click where nothing is shown always goes
+     * to the chat.
+     */
+    @JvmStatic
+    var lastDrawnBounds: net.alpaka.addons.client.hud.HudBounds? = null
+        private set
 
     /** Called every frame from the HUD hook. */
     @JvmStatic
     fun render(graphics: GuiGraphicsExtractor, @Suppress("UNUSED_PARAMETER") deltaTracker: DeltaTracker) {
+        lastDrawnBounds = null
         val cfg = AlpakaConfig.instance
         if (!cfg.slayerHudEnabled) return
 
@@ -308,6 +327,7 @@ object SlayerHudRenderer {
             SlayerHudElement.visibleAnchorY(screenWidth, screenHeight),
             cfg.slayerHudScale, type, preview = false
         )
+        lastDrawnBounds = SlayerHudElement.visibleBounds(screenWidth, screenHeight)
     }
 
     /** Draws the HUD at an explicit position and size. Shared with the editor. */

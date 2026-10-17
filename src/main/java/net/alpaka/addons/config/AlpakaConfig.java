@@ -6,8 +6,6 @@ import net.alpaka.addons.AlpakaAddons;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 
 import net.alpaka.addons.features.slayer.SlayerType;
 import java.util.HashMap;
@@ -15,11 +13,17 @@ import java.util.Map;
 
 public class AlpakaConfig {
     private static final File FILE = FabricLoader.getInstance().getConfigDir().resolve("alpaka.json").toFile();
+    /** The last file that loaded cleanly, copied aside at start-up. See {@link #load()}. */
+    private static final File BACKUP = FabricLoader.getInstance().getConfigDir().resolve("alpaka.json.bak").toFile();
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     public static AlpakaConfig instance = new AlpakaConfig();
 
-    public boolean renderHandInThirdPerson = true;
+    /**
+     * Draws the first-person hand over the third-person back view. Off for fresh installs: a
+     * floating arm in F5 surprised players who never asked for it.
+     */
+    public boolean renderHandInThirdPerson = false;
 
     public boolean slayerDropTrackerEnabled = true;
     /**
@@ -28,13 +32,23 @@ public class AlpakaConfig {
      */
     public boolean hideHypixelDropMessage = true;
     /**
-     * Post a slayer's headline RNG drop - the one the slayer HUD counts a dry streak against, e.g.
-     * High Class Archfiend Dice for Inferno - to the guild chat too, in the same words the tracker
-     * writes to the player's own chat.
+     * Adds "Share: [Guild] [Party]" buttons to the tracker's line for a slayer's headline RNG drop -
+     * the one the slayer HUD counts a dry streak against, e.g. High Class Archfiend Dice for Inferno.
      *
-     * Off by default: it sends a message on the player's behalf, which is something to opt into.
+     * A click only fills the chat box; the player sends it with Enter. This used to post to guild
+     * chat by itself, which sent a message without any action from the player. The key keeps its old
+     * name so the setting carries over for players who had turned the announcement on.
      */
     public boolean slayerRngDropGuildChatEnabled = false;
+    /** What those share buttons post: 0 the tracker's own line, 1 Hypixel's drop message as it came. */
+    public int slayerShareMessage = 0;
+    /**
+     * When a party member types "!since &lt;item&gt;", show the player their own count with a
+     * [Reply in party] button. Nothing is sent unless the player clicks it and presses Enter.
+     *
+     * Off by default. It replaces an automatic reply that answered in the player's name.
+     */
+    public boolean slayerSinceReplyOffer = false;
     public boolean fullbrightEnabled = false;
 
     // Cosmetics. Both are drawn by this client for this client only - nothing is sent, nobody else
@@ -94,6 +108,8 @@ public class AlpakaConfig {
      * until the moment somebody actually addresses the player, which is a moment worth not missing.
      */
     public boolean mentionNotificationEnabled = true;
+    /** Only mentions from real players: lines from NPCs, bosses and the server itself are ignored. */
+    public boolean mentionIgnoreServer = true;
     /**
      * How long a notification stays on screen, in seconds, before it slides back out.
      *
@@ -113,12 +129,27 @@ public class AlpakaConfig {
      * a nudge for somebody who was looking elsewhere while the quest finished spawning.
      */
     public boolean bossSpawnAlertEnabled = true;
-    public boolean inventorySnowEnabled = true;
+    /** Snow over container screens and the main menu. Off for fresh installs; it is seasonal decoration. */
+    public boolean inventorySnowEnabled = false;
     public float inventorySnowSpeed = 1.0f;
     public float containerBgOpacity = 0.75f;
     public boolean containerBgFadeInEnabled = true;
     public int containerBgFadeInDurationMs = 250;
+    /**
+     * Clean Blaze, only on SkyBlock in the Blaze slayer's zones. The fields after it pick what it
+     * hides.
+     */
     public boolean cleanBlazeEnabled = true;
+    public boolean cleanBlazeParticles = true;
+    /** The potion swirls, enchanting glyphs and ender particles around the boss and its demons. */
+    public boolean cleanBlazeEffectParticles = true;
+    public boolean cleanBlazeFire = true;
+    public boolean cleanBlazeFireballs = true;
+    public boolean cleanBlazeLightning = true;
+    /** Off by default: the health on blaze name tags is what a grinder watches. */
+    public boolean cleanBlazeNameTags = false;
+    /** During the player's own Blaze slayer boss, a glowing column over each fire pit block. */
+    public boolean blazeFirePitsEnabled = true;
     /**
      * Hides Hypixel's slayer chatter - quest started/complete, level-ups, the radio lines.
      *
@@ -131,6 +162,8 @@ public class AlpakaConfig {
     public boolean hideHurtOverlayEnabled = false;
     /** Stops drawing a mob the moment it dies, skipping vanilla's tip-over. Cosmetic only. */
     public boolean hideMobDeathsEnabled = false;
+    /** With Hide Mob Deaths: also no puff of smoke when the server removes the body. */
+    public boolean hideMobDeathSmoke = false;
     public boolean smoothPerspectiveEnabled = true;
     public boolean disableFrontPerspective = false;
     public int smoothPerspectiveDurationMs = 350;
@@ -148,31 +181,44 @@ public class AlpakaConfig {
     public boolean customSoundZombieRemedy = true;
     public boolean customSoundSuccessfulHit = true;
     public boolean muteVanillaSoundsInBlazeSlayer = false;
+    /**
+     * With the Blaze slayer mute on: every world sound instead of only the fight's own noise
+     * (blazes, fire, lava, ghasts, lightning). The UI, master, voice and music channels never are.
+     */
+    public boolean blazeMuteAllWorldAudio = false;
     public float lowHpHeartbeatThreshold = 0.30f;
-    public int menuAccentColor = 0xFFE5B849; // Default Warm Gold
+    public int menuAccentColor = 0xFF29B6B2; // Default teal
+    /**
+     * Index into {@code GuiFont.NAMES}: the typeface the Alpaka menus are written in. 0 is the
+     * vanilla pixel font; the default is Poppins.
+     */
+    public int menuFont = 2;
     public boolean customEscapeMenuEnabled = true;
     public boolean customMainMenuEnabled = false;
-    public boolean playerModelEnabled = true;
+    /** The small player model on the HUD. Off for fresh installs. */
+    public boolean playerModelEnabled = false;
     public boolean playerModelOnlyActions = true;
     public int playerModelScale = 30;
-    public int playerModelX = 40;
-    public int playerModelY = 85;
+    public int playerModelX = net.alpaka.addons.client.hud.HudDefaults.PLAYER_MODEL_X;
+    public int playerModelY = net.alpaka.addons.client.hud.HudDefaults.PLAYER_MODEL_Y;
     public boolean playerModelDisableMovement = false;
     public boolean playerModelHideArmor = false;
+    /** The name tag above the HUD avatar. */
+    public boolean playerModelShowNameTag = true;
     public boolean playerModelShowInGuis = false;
-    public boolean playerModelSlowSwing = false;
 
     // World Age HUD & Join Notification options
     public boolean worldAgeHudEnabled = false;
-    public int worldAgeHudX = 10;
-    public int worldAgeHudY = 10;
+    public int worldAgeHudX = net.alpaka.addons.client.hud.HudDefaults.WORLD_AGE_X;
+    public int worldAgeHudY = net.alpaka.addons.client.hud.HudDefaults.WORLD_AGE_Y;
     public float worldAgeHudScale = 1.0f;
 
     // Slayer session HUD. Each line has its own toggle so the HUD can be trimmed to just the
     // numbers being watched; the whole HUD hides unless a slayer quest is active.
-    public boolean slayerHudEnabled = false;
-    public int slayerHudX = 10;
-    public int slayerHudY = 60;
+    /** The slayer session HUD, the mod's flagship. On for fresh installs. */
+    public boolean slayerHudEnabled = true;
+    public int slayerHudX = net.alpaka.addons.client.hud.HudDefaults.SLAYER_SESSION_X;
+    public int slayerHudY = net.alpaka.addons.client.hud.HudDefaults.SLAYER_SESSION_Y;
     public float slayerHudScale = 1.0f;
     public boolean slayerHudShowTitle = true;
     public boolean slayerHudShowTotalXp = true;
@@ -183,6 +229,10 @@ public class AlpakaConfig {
     public boolean slayerHudShowBossesPerHour = true;
     public boolean slayerHudShowSessionTime = true;
     public boolean slayerHudShowSinceRngDrop = true;
+    /** The "Bear" line: time left on Smoldering Polarization, on every slayer's HUD. */
+    public boolean slayerHudShowBear = true;
+    /** Keeps the "Bear" line to the Blaze HUD, where the effect matters most. */
+    public boolean slayerHudBearBlazeOnly = false;
     /** Seconds of standing still before the session clock stops. */
     public float slayerHudAfkPauseSeconds = 60.0f;
     /** Stop the clock the moment the sidebar says the player is no longer in the slayer's zone. */
@@ -197,14 +247,18 @@ public class AlpakaConfig {
     // SkyHanni does - and remembers the fastest ever per slayer. The sidebar is only the fallback
     // for a fight where the boss entity could not be watched, so there is no setting for it.
     /**
-     * Whether the mod may read public Hypixel data over the network.
+     * Whether the mod may contact anything over the network ("Allow Network Features").
      *
      * Everything else in this mod works from what the client already has. This is the one setting
-     * that lets it reach outside, currently for a single endpoint describing the running election -
-     * no API key, no player named, the same answer for everybody. Off means no request is made and
-     * nothing derived from one is used.
+     * that lets it reach outside, for three things: a public endpoint describing the running election
+     * (no API key, no player named, the same answer for everybody), the main menu's player
+     * count, an ordinary status ping to mc.hypixel.net like the server list sends, and the update
+     * check against the mod's public GitHub releases. Off means no
+     * request is made and nothing derived from one is used. The JSON key keeps its old name.
      */
     public boolean allowApiCalls = true;
+    /** A chat line on joining a world when a newer release is on GitHub. Needs allowApiCalls. */
+    public boolean updateNotificationsEnabled = true;
 
     /**
      * Folder holding the slayer record, or empty for this machine's shared default.
@@ -218,17 +272,53 @@ public class AlpakaConfig {
      * fact about this machine, and the path to the same synced folder differs on the next one.
      */
     public String statsDirectory = "";
+    /**
+     * Whether the record has been read from or written to {@link #statsDirectory} before.
+     *
+     * A chosen folder that is there but no longer holds the file it once held is most likely a
+     * cloud folder still syncing, so the record waits for the file instead of starting from zero and
+     * then writing that over the real one. Reset whenever the folder setting changes.
+     */
+    public boolean statsDirectoryHadFile = false;
+    /**
+     * The mod version that last ran with this config, so an update can say once what changed.
+     * Empty in a config written before this field existed. See StartupNotices.
+     */
+    public String lastSeenVersion = "";
     public boolean slayerTimerEnabled = true;
     /** Announce each boss's time in chat once it dies. */
     public boolean slayerTimerChatEnabled = true;
     /** Show the running time on screen while the boss is up. */
     public boolean slayerTimerHudEnabled = true;
-    public int slayerTimerHudX = 10;
-    public int slayerTimerHudY = 120;
+    public int slayerTimerHudX = net.alpaka.addons.client.hud.HudDefaults.SLAYER_TIMER_X;
+    public int slayerTimerHudY = net.alpaka.addons.client.hud.HudDefaults.SLAYER_TIMER_Y;
     public float slayerTimerHudScale = 1.0f;
     public boolean worldAgeJoinMessageEnabled = true;
     public int worldAgeRecentThresholdSec = 60;
     public boolean onlyCritDamageEnabled = true;
+    /**
+     * The mod draws damage splashes itself, animated and in gradients, in place of Hypixel's.
+     * Off by default while it is being tried out.
+     */
+    public boolean customDamageTagsEnabled = false;
+    public float customDamageTagScale = 1.5f;
+    public int customDamageTagDurationMs = 1100;
+    /** 0..1: how far the tag overshoots its size when it pops up. */
+    public float customDamageTagPopStrength = 0.6f;
+    /** Blocks the tag drifts upwards over its lifetime. */
+    public float customDamageTagRise = 0.6f;
+    /** One of CustomDamageTagFeature.FORMAT_*. */
+    public int customDamageTagFormat = 0;
+    public boolean customDamageTagFlowingGradient = true;
+    public boolean customDamageTagShadow = true;
+    /** No custom tag for a splash next to a slayer boss, any player's, like SkyHanni's option. */
+    public boolean customDamageTagHideNearSlayerBoss = false;
+    /** One of CustomDamageTagFeature.DUNGEON_*. */
+    public int customDamageTagDungeonMode = 0;
+    public int customDamageTagNormalStart = 0xFFFFFFFF;
+    public int customDamageTagNormalEnd = 0xFF9FB4D0;
+    public int customDamageTagCritStart = 0xFFFFE15A;
+    public int customDamageTagCritEnd = 0xFFFF4A3A;
 
     // Pangolin highlight (Torrhus Canyon critters)
     public boolean pangolinHighlightEnabled = false;
@@ -272,11 +362,15 @@ public class AlpakaConfig {
     // Inventory HUD. Shows the 27 main-inventory slots on screen; position and scale are set in
     // the HUD editor, or it can ride directly above the hotbar.
     public boolean inventoryHudEnabled = false;
-    public int inventoryHudX = 10;
-    public int inventoryHudY = 10;
+    public int inventoryHudX = net.alpaka.addons.client.hud.HudDefaults.INVENTORY_X;
+    public int inventoryHudY = net.alpaka.addons.client.hud.HudDefaults.INVENTORY_Y;
     public float inventoryHudScale = 1.0f;
     public boolean inventoryHudAttachToHotbar = true;
-    public boolean inventoryHudAlwaysVisible = true;
+    /**
+     * Off for fresh installs: attached above the hotbar, an always-open panel sits where the player
+     * looks for health and the action bar. It still opens on an item change or the toggle key.
+     */
+    public boolean inventoryHudAlwaysVisible = false;
     public boolean inventoryHudShowOnItemChange = false;
     /** Backdrop strength behind the slots, in percent. 0 leaves only the accent frame. */
     public float inventoryHudBackgroundOpacity = 70.0f;
@@ -290,6 +384,13 @@ public class AlpakaConfig {
      * Off restores the flat panel with the accent frame.
      */
     public boolean inventoryHudVanillaTexture = false;
+    /** Flat style only: the panel shows the world behind it blurred, like the chat's background. */
+    public boolean inventoryHudBlur = true;
+    /** Flat style only: the gradient frame around the panel. Off leaves the backdrop on its own. */
+    public boolean inventoryHudFrame = true;
+    /** The two ends of the flat panel's frame gradient, top left to bottom right. */
+    public int inventoryHudFrameStart = 0xFF29B6B2;
+    public int inventoryHudFrameEnd = 0xFFB04FFF;
 
     // Guild bridge-bot chat formatting. The name is the in-game account that relays Discord.
     public boolean bridgeBotFormatterEnabled = false;
@@ -306,13 +407,49 @@ public class AlpakaConfig {
     public String guildPrefixText = "";
 
     // Chat options
+    /** A new message slides up into the chat and fades in instead of appearing at once. */
+    public boolean smoothChatEnabled = true;
+    /** How long the slide takes, 1 (quick) to 10 (slow); each step is 60 ms. */
+    public int smoothChatStrength = 5;
+    /** One rounded, padded panel behind the chat that shows the world blurred through it. */
+    public boolean chatBlurEnabled = true;
+    /**
+     * How strongly the world is blurred behind the chat, in percent of the full radius. 0 leaves
+     * the world sharp behind the tint. The inventory HUD and the command wheel share the chat's
+     * blurred copy of the frame, so they follow it; the main menu keeps its own full blur.
+     */
+    public float chatBlurStrength = 100.0f;
+    /** One rounded, blurred panel with a soft shadow behind the scoreboard sidebar; see ScoreboardBlurFeature. */
+    public boolean scoreboardBlurEnabled = true;
+    /** Ctrl+F in the chat turns the input line into a search that filters the visible messages. */
+    public boolean chatSearchEnabled = true;
+    /** Scrolling the chat glides the lines into place instead of jumping a line per notch. */
+    public boolean chatSmoothScrollEnabled = true;
+    /** Moving forward sprints on its own, without holding the sprint key. */
+    /** Off for fresh installs. Vanilla's own toggle-sprint option already does this for most players. */
+    public boolean alwaysSprintEnabled = false;
     public boolean expandChatHistory = true;
+    /** How many chat lines Expand Chat History keeps; vanilla keeps 100. */
+    public int chatHistoryLimit = 5000;
     /** Hold the Peek Chat key to see the whole chat, scrollable, without opening it. */
     public boolean chatPeekEnabled = true;
     /** Peek Chat also works with an inventory or another menu open, drawn on top of it. */
     public boolean chatPeekInMenus = true;
-    /** Open, Copy and Delete buttons on the screenshot notice instead of vanilla's line. */
+    /** Better Screenshots: everything below. The key keeps its old name so the setting carries over. */
     public boolean betterScreenshotMessageEnabled = true;
+    /** Open, Copy and Delete buttons on the screenshot notice instead of vanilla's line. */
+    public boolean screenshotChatButtons = true;
+    /** The screenshot shrinking into the corner for a moment after it is taken. */
+    public boolean screenshotPreviewEnabled = true;
+    /** How long the preview stays in the corner, in seconds. */
+    public float screenshotPreviewSeconds = 3.0f;
+    /** The preview's width, in percent of the screen's. */
+    public float screenshotPreviewSize = 20.0f;
+    /** Which parts the screenshot line shows. */
+    public boolean screenshotShowFileName = false;
+    public boolean screenshotShowOpen = true;
+    public boolean screenshotShowCopy = true;
+    public boolean screenshotShowDelete = true;
     /** Every screenshot goes to the clipboard the moment it is taken. */
     public boolean autoCopyScreenshots = false;
     /** A message repeated right after itself becomes one line with (x2), (x3)... */
@@ -325,10 +462,26 @@ public class AlpakaConfig {
     public boolean chatTabsSendToChannel = false;
     /** With chat tabs: the row also shows while peeking, and Tab cycles the tabs in chat and while peeking. */
     public boolean chatTabsTabKey = true;
+    /** Keep the chosen chat tab, and so the filtered HUD chat, after the chat closes. Off: back to All. */
+    public boolean chatTabsKeepAfterClose = false;
+    /** Which channel tabs the row offers. All is always there; a hidden channel's lines stay on All. */
+    public boolean chatTabsShowParty = true;
+    public boolean chatTabsShowGuild = true;
+    public boolean chatTabsShowCoop = true;
+    public boolean chatTabsShowPrivate = true;
+    public boolean chatTabsShowNpc = true;
 
     // Interface options
     /** The mouse wheel scrolls a tooltip that is taller than the screen. */
     public boolean scrollableTooltipsEnabled = true;
+    /** The wheel moves every tooltip, not only one taller than the screen. */
+    public boolean scrollableTooltipsAlways = false;
+    /** GUI pixels one wheel notch moves a tooltip. */
+    public float scrollableTooltipsSpeed = 12.0f;
+    /** The tooltip glides to where the wheel sends it instead of jumping. */
+    public boolean scrollableTooltipsSmooth = true;
+    /** Wheel down moves the tooltip down instead of reading further down it. */
+    public boolean scrollableTooltipsInvert = false;
     /** The held item's name above the hotbar stays up instead of fading out. */
     public boolean persistentItemNameEnabled = false;
     /**
@@ -341,6 +494,19 @@ public class AlpakaConfig {
     public boolean partyInvitePromptEnabled = true;
 
     // Quick Command Menu options
+    /**
+     * The quick command wheel, one list per page. Null until CommandWheelPages first folds the
+     * legacy flat list below into pages; from then on this is the record and the flat list is null.
+     */
+    public java.util.List<java.util.List<String>> commandWheelPages = null;
+
+    /**
+     * Off: hold the wheel key to open the wheel, release it to run the aimed command. On: one press
+     * opens it, a click runs a command, and pressing the key again closes it.
+     */
+    public boolean commandWheelToggleMode = false;
+
+    /** Legacy, pre-pages. Read once by CommandWheelPages and then cleared. */
     public java.util.List<String> commandWheelCommands = new java.util.ArrayList<>(java.util.List.of(
             "/hub",
             "/island",
@@ -367,6 +533,15 @@ public class AlpakaConfig {
     public boolean itemNoEquipEnabled = false;
     public boolean itemSwingAlwaysFinishEnabled = false;
     public boolean itemIgnoreEmptyHandEnabled = false;
+
+    // Starlight: a drifting, twinkling galaxy over the held item; see HandItemStarlightFeature.
+    public boolean itemStarlightEnabled = false;
+    /** The nebula's colour; the stars are tinged with it. */
+    public int itemStarlightColor = 0xFF9B5CFF;
+    /** How strongly the galaxy covers the item, 0..1. */
+    public float itemStarlightStrength = 0.8f;
+    /** 0: over every held item. 1: in place of the enchantment glint, so only on glinting items. */
+    public int itemStarlightMode = 0;
 
     // Swing motion blur: faded copies trail behind the held item while it swings; see ItemMotionBlurFeature.
     public boolean itemMotionBlurEnabled = false;
@@ -495,6 +670,10 @@ public class AlpakaConfig {
         this.itemNoEquipEnabled = false;
         this.itemSwingAlwaysFinishEnabled = false;
         this.itemIgnoreEmptyHandEnabled = false;
+        this.itemStarlightEnabled = false;
+        this.itemStarlightColor = 0xFF9B5CFF;
+        this.itemStarlightStrength = 0.8f;
+        this.itemStarlightMode = 0;
         this.itemMotionBlurEnabled = false;
         this.itemMotionBlurLength = 80.0f;
         this.itemMotionBlurOpacity = 0.35f;
@@ -581,6 +760,12 @@ public class AlpakaConfig {
          * too. See SlayerXpTracker.
          */
         public long lastXpCreditedAtMs = 0L;
+        /**
+         * XP credited since the run of credits that ended at lastXpCreditedAtMs began, so a lower
+         * menu reading can be told apart: lag of about this much is the leaderboard cache, a much
+         * larger gap is a total that drifted high and is corrected. See SlayerXpTracker.
+         */
+        public long recentlyCreditedXp = 0L;
     }
 
     public AlpakaConfig() {
@@ -589,15 +774,39 @@ public class AlpakaConfig {
         }
     }
 
+    /**
+     * What to tell the player once they are in game, when the file could not be read at start-up.
+     * Taken by {@link #takeLoadNotice()}.
+     */
+    private static String loadNotice = null;
+
+    /** Whether this start found an existing settings file, as opposed to a fresh install. */
+    private static boolean existedAtStart = false;
+
+    public static boolean existedAtStart() {
+        return existedAtStart;
+    }
+
     public static void load() {
-        if (FILE.exists()) {
-            try (FileReader reader = new FileReader(FILE)) {
-                instance = GSON.fromJson(reader, AlpakaConfig.class);
-            } catch (Exception e) {
-                AlpakaAddons.LOGGER.error("Failed to load config", e);
-            }
-        } else {
+        existedAtStart = FILE.exists();
+        if (!FILE.exists()) {
             save();
+        } else {
+            AlpakaConfig loaded = read(FILE);
+            if (loaded != null) {
+                instance = loaded;
+                // A copy of the last file that loaded, taken once per start rather than on every
+                // save: every write is atomic now, so this only has to cover damage from outside.
+                AtomicJsonFile.backup(FILE, BACKUP);
+            } else {
+                recoverUnreadable();
+            }
+        }
+
+        // The menu's default accent moved from warm gold to teal. A config still on the exact old
+        // default never chose gold, so it follows the new default; any other colour is a choice.
+        if (instance.menuAccentColor == 0xFFE5B849) {
+            instance.menuAccentColor = 0xFF29B6B2;
         }
 
         if (instance.slayerBossMap == null) {
@@ -618,11 +827,55 @@ public class AlpakaConfig {
         }
     }
 
+    /**
+     * The file is there but unusable: empty, cut short, or not valid JSON.
+     *
+     * It is moved aside rather than overwritten, the backup is tried next, and only then does the
+     * config fall back to defaults. Either way the player hears about it once in game, instead of
+     * finding their settings silently reset. An empty file used to crash every launch, because Gson
+     * reads it as null, and a malformed one was replaced with defaults without a word.
+     */
+    private static void recoverUnreadable() {
+        File aside = AtomicJsonFile.quarantine(FILE);
+        AlpakaConfig fromBackup = read(BACKUP);
+        String where = aside != null ? " The damaged file was kept as " + aside.getName() + "." : "";
+        if (fromBackup != null) {
+            instance = fromBackup;
+            loadNotice = "§eYour Alpaka Addons settings file was damaged, so the last good copy was restored." + where;
+            AlpakaAddons.LOGGER.warn("alpaka.json was unreadable; restored the backup.{}", where);
+        } else {
+            instance = new AlpakaConfig();
+            loadNotice = "§eYour Alpaka Addons settings file was damaged and there was no backup, so the settings were reset." + where;
+            AlpakaAddons.LOGGER.warn("alpaka.json was unreadable and no backup could be read; using defaults.{}", where);
+        }
+        save();
+    }
+
+    /** The config in {@code file}, or null when it is missing, empty or cannot be parsed. */
+    private static AlpakaConfig read(File file) {
+        try {
+            String json = AtomicJsonFile.read(file);
+            if (json == null || json.isBlank()) return null;
+            return GSON.fromJson(json, AlpakaConfig.class);
+        } catch (Exception e) {
+            AlpakaAddons.LOGGER.error("Failed to read {}", file.getAbsolutePath(), e);
+            return null;
+        }
+    }
+
+    /** The one-time message about a damaged settings file, or null. Cleared once taken. */
+    public static String takeLoadNotice() {
+        String notice = loadNotice;
+        loadNotice = null;
+        return notice;
+    }
+
     public void disableAllFeatures() {
         this.renderHandInThirdPerson = false;
         this.slayerDropTrackerEnabled = false;
         this.hideHypixelDropMessage = false;
         this.slayerRngDropGuildChatEnabled = false;
+        this.slayerSinceReplyOffer = false;
         this.customNameTagEnabled = false;
         this.nameTagOutlineEnabled = false;
         this.nameTagShadowEnabled = false;
@@ -635,6 +888,8 @@ public class AlpakaConfig {
         this.inventorySnowEnabled = false;
         this.containerBgFadeInEnabled = false;
         this.cleanBlazeEnabled = false;
+        this.cleanBlazeNameTags = false;
+        this.blazeFirePitsEnabled = false;
         this.hideSlayerChatMessages = false;
         this.stopBlazeSpinning = false;
         this.hideHurtOverlayEnabled = false;
@@ -656,13 +911,13 @@ public class AlpakaConfig {
         this.customSoundSuccessfulHit = false;
         this.muteVanillaSoundsInBlazeSlayer = false;
         this.customEscapeMenuEnabled = false;
+        this.menuFont = 0;
         this.customMainMenuEnabled = false;
         this.playerModelEnabled = false;
         this.playerModelOnlyActions = false;
         this.playerModelDisableMovement = false;
         this.playerModelHideArmor = false;
         this.playerModelShowInGuis = false;
-        this.playerModelSlowSwing = false;
         this.worldAgeHudEnabled = false;
         this.slayerHudEnabled = false;
         this.slayerHudPauseOutsideArea = false;
@@ -673,6 +928,7 @@ public class AlpakaConfig {
         this.slayerTimerHudEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
+        this.customDamageTagsEnabled = false;
         this.blockOverlayEnabled = false;
         this.blockFadeInEnabled = false;
         this.blockOutlineEnabled = false;
@@ -684,6 +940,12 @@ public class AlpakaConfig {
         this.etherwarpOverlayEnabled = false;
         this.etherwarpLineEnabled = false;
         this.etherwarpSoundEnabled = false;
+        this.smoothChatEnabled = false;
+        this.chatBlurEnabled = false;
+        this.scoreboardBlurEnabled = false;
+        this.chatSearchEnabled = false;
+        this.chatSmoothScrollEnabled = false;
+        this.alwaysSprintEnabled = false;
         this.expandChatHistory = false;
         this.chatPeekEnabled = false;
         this.chatPeekInMenus = false;
@@ -698,6 +960,7 @@ public class AlpakaConfig {
         this.itemSizeFeatureEnabled = false;
         this.itemSwayDisabled = false;
         this.itemLightingDisabled = false;
+        this.itemStarlightEnabled = false;
         this.itemSwingTranslationDisabled = false;
         this.itemNoEquipEnabled = false;
         this.itemSwingAlwaysFinishEnabled = false;
@@ -735,8 +998,8 @@ public class AlpakaConfig {
             saveDueAfterDefer = true;
             return;
         }
-        try (FileWriter writer = new FileWriter(FILE)) {
-            GSON.toJson(instance, writer);
+        try {
+            AtomicJsonFile.write(FILE, GSON.toJson(instance));
         } catch (Exception e) {
             AlpakaAddons.LOGGER.error("Failed to save config", e);
         }

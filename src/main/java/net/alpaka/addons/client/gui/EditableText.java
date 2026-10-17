@@ -57,11 +57,6 @@ public final class EditableText {
         return Math.max(caret, anchor);
     }
 
-    /** Puts the caret at the end with nothing selected, for when the field gains focus fresh. */
-    public void resetCaretToEnd() {
-        moveCaret(text.length(), false);
-    }
-
     /**
      * Handles one typed character. Returns true when the content changed.
      *
@@ -170,10 +165,15 @@ public final class EditableText {
      * what stops clicking the right half of a letter putting the caret before it.
      */
     public void setCaretFromX(int x, net.minecraft.client.gui.Font font) {
+        setCaretFromX(x, font::width);
+    }
+
+    /** As above, with the measure supplied - the config screen measures in its own typeface. */
+    public void setCaretFromX(int x, java.util.function.ToIntFunction<String> measure) {
         int best = 0;
         int bestDistance = Math.abs(x);
         for (int i = 1; i <= text.length(); i++) {
-            int distance = Math.abs(font.width(text.substring(0, i)) - x);
+            int distance = Math.abs(measure.applyAsInt(text.substring(0, i)) - x);
             if (distance < bestDistance) {
                 bestDistance = distance;
                 best = i;

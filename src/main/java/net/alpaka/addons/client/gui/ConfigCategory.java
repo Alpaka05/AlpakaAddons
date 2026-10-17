@@ -34,20 +34,12 @@ public enum ConfigCategory {
         return heading;
     }
 
-    public String getIcon() {
-        return "";
-    }
-
     public String getDisplayName() {
         return displayName;
     }
 
     public String getDescription() {
         return description;
-    }
-
-    public String getFullLabel() {
-        return displayName;
     }
 }
 

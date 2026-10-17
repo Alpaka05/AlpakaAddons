@@ -91,6 +91,12 @@ object SlayerBossEntityTracker {
     private const val HEALTH_MARKER = "❤"
 
     /**
+     * What a Voidgloom Seraph's tag shows instead of health during a shield phase: "N Hits". A fight
+     * that opened in one was not picked up until the shield broke, which shortened its time.
+     */
+    private const val HITS_MARKER = " Hit"
+
+    /**
      * How far below its name tag the boss itself may be, squared.
      *
      * Only a fallback distance: the mob is normally resolved by entity id, and this is used when
@@ -305,6 +311,7 @@ object SlayerBossEntityTracker {
         if (stands.isEmpty()) return null
 
         val owned = ArrayList<ArmorStand>(2)
+        val foreign = ArrayList<ArmorStand>(2)
         val candidates = ArrayList<ArmorStand>(2)
 
         for (stand in stands) {
@@ -319,8 +326,12 @@ object SlayerBossEntityTracker {
                 val ownerAt = name.indexOf(OWNER_MARKER)
                 if (ownerAt >= 0 && namesPlayer(name.substring(ownerAt + OWNER_MARKER.length), playerName)) {
                     owned.add(stand)
+                } else {
+                    foreign.add(stand)
                 }
-            } else if (SkyblockUtils.containsIgnoringFormatting(raw, HEALTH_MARKER)) {
+            } else if (SkyblockUtils.containsIgnoringFormatting(raw, HEALTH_MARKER)
+                || (type == SlayerType.ENDERMAN && SkyblockUtils.containsIgnoringFormatting(raw, HITS_MARKER))
+            ) {
                 if (isBossNameTag(SkyblockUtils.cleanColor(raw), type)) candidates.add(stand)
             }
         }
@@ -350,6 +361,8 @@ object SlayerBossEntityTracker {
         var nearest: ArmorStand? = null
         var nearestDistance = UNOWNED_RADIUS_SQ
         for (candidate in candidates) {
+            // A boss with somebody else's "Spawned by" line over it is theirs, however close.
+            if (foreign.any { it.distanceToSqr(candidate) <= OWNER_RADIUS_SQ }) continue
             val distance = player.distanceToSqr(candidate)
             if (distance <= nearestDistance) {
                 nearestDistance = distance
@@ -378,14 +391,9 @@ object SlayerBossEntityTracker {
      * Only reached for names the caller has already found a health figure in, which is what
      * separates a mob's name tag from the holograms Hypixel scatters around an area. What is left to
      * rule out is the mobs farmed to summon the boss, which in the Graveyard are named "Revenant
-     * Horror" as well: those carry a level where the boss carries a marker and a roman tier -
-     * `[Lv5] Revenant Horror 500❤` against `☠ Revenant Horror IV 1.5M❤`.
+     * Horror" as well. Bosses carry a level too since Hypixel's name tag change, so that is now
+     * left to [SlayerBossNameTag]: the skull and the roman tier.
      */
-    private fun isBossNameTag(name: String, type: SlayerType): Boolean {
-        if (name.startsWith("[")) return false
-        for (bossName in type.bossNames) {
-            if (name.contains(bossName)) return true
-        }
-        return false
-    }
+    private fun isBossNameTag(name: String, type: SlayerType): Boolean =
+        SlayerBossNameTag.isBoss(name, type.bossNames)
 }

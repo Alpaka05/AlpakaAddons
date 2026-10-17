@@ -1,114 +1,90 @@
 {
   "etherwarp": {
-    "category": "master",
     "sounds": [
       "alpaka:etherwarp"
     ]
   },
   "etherwarp_pling": {
-    "category": "master",
     "sounds": [
       "alpaka:etherwarp_pling"
     ]
   },
   "etherwarp_thud": {
-    "category": "master",
     "sounds": [
       "alpaka:etherwarp_thud"
     ]
   },
   "etherwarp_chime": {
-    "category": "master",
     "sounds": [
       "alpaka:etherwarp_chime"
     ]
   },
   "etherwarp_pop": {
-    "category": "master",
     "sounds": [
       "alpaka:etherwarp_pop"
     ]
   },
   "button_click": {
-    "category": "master",
     "sounds": [
       "alpaka:button_click"
     ]
   },
   "blaze_death": {
-    "category": "master",
     "sounds": [
       "alpaka:mob/blaze/death"
     ]
   },
   "inventory_click": {
-    "category": "master",
     "sounds": [
       "alpaka:inventory_click"
     ]
   },
-  "xp_orb": {
-    "category": "master",
-    "sounds": [
-      "alpaka:xp_orb"
-    ]
-  },
   "heartbeat": {
-    "category": "master",
     "sounds": [
       "alpaka:heartbeat"
     ]
   },
   "boss_spawn": {
-    "category": "master",
     "sounds": [
       "alpaka:boss_spawn"
     ]
   },
   "inventory_open": {
-    "category": "master",
     "sounds": [
       "alpaka:inventory_open"
     ]
   },
   "inventory_close": {
-    "category": "master",
     "sounds": [
       "alpaka:inventory_close"
     ]
   },
   "player_hurt": {
-    "category": "master",
     "sounds": [
       "alpaka:player_hurt"
     ]
   },
   "zombie_remedy": {
-    "category": "master",
     "sounds": [
       "alpaka:zombie/remedy"
     ]
   },
   "successful_hit": {
-    "category": "master",
     "sounds": [
       "alpaka:random/successful_hit"
     ]
   },
   "hotbar_equip": {
-    "category": "master",
     "sounds": [
       "alpaka:hotbar_equip"
     ]
   },
   "rare_drop": {
-    "category": "master",
     "sounds": [
       "alpaka:rare_drop"
     ]
   },
   "insane_drop": {
-    "category": "master",
     "sounds": [
       "alpaka:insane_drop"
     ]

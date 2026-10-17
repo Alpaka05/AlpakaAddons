@@ -35,12 +35,23 @@ public final class PartyInviteFeature {
     private PartyInviteFeature() {
     }
 
+    /**
+     * The command Hypixel attaches to a real invite. Players cannot put click events into chat, so
+     * an invite carrying this is genuine, and the name in it is the one the accept command needs -
+     * also for an invite a party member sent on the leader's behalf.
+     */
+    private static final Pattern ACCEPT_COMMAND = Pattern.compile("^/(?:party|p) accept (?<player>[A-Za-z0-9_]{1,16})$");
+
+    /**
+     * The invite's own line, matched as a whole line: a player typing the same words into chat has
+     * their name and a colon in front, and no longer matches.
+     */
     private static final Pattern INVITE = Pattern.compile(
-            "(?:\\[[^\\]]*\\] )?(?<player>[A-Za-z0-9_]{1,16}) has invited you to join their party!");
+            "^(?:\\[[^\\]]*\\] )?(?<player>[A-Za-z0-9_]{1,16}) has invited you to join (?:their|(?:\\[[^\\]]*\\] )?(?<leader>[A-Za-z0-9_]{1,16})'s) party!$");
     private static final Pattern EXPIRED = Pattern.compile(
-            "The party invite from (?:\\[[^\\]]*\\] )?(?<player>[A-Za-z0-9_]{1,16}) has expired");
+            "^The party invite from (?:\\[[^\\]]*\\] )?(?<player>[A-Za-z0-9_]{1,16}) has expired.*$");
     private static final Pattern JOINED = Pattern.compile(
-            "You have joined (?:\\[[^\\]]*\\] )?(?<player>[A-Za-z0-9_]{1,16})'s? party!");
+            "^You have joined (?:\\[[^\\]]*\\] )?(?<player>[A-Za-z0-9_]{1,16})'s? party!$");
 
     /** How long Hypixel keeps an invite open. */
     public static final long INVITE_TTL_MS = 60_000L;
@@ -63,27 +74,56 @@ public final class PartyInviteFeature {
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
             if (!overlay) onChat(message);
         });
+        // An invite another mod's chat filter hid is still an invite the player can answer.
+        ClientReceiveMessageEvents.GAME_CANCELED.register((message, overlay) -> {
+            if (!overlay) onChat(message);
+        });
     }
 
     static void onChat(Component message) {
         if (!isEnabled()) return;
-        String text = SkyblockUtils.cleanColor(message.getString());
 
-        Matcher invite = INVITE.matcher(text);
-        if (invite.find()) {
-            show(invite.group("player"));
+        String fromClick = acceptTarget(message);
+        if (fromClick != null) {
+            show(fromClick);
             return;
+        }
+
+        String[] lines = SkyblockUtils.cleanColor(message.getString()).split("\n");
+        for (String raw : lines) {
+            String line = raw.trim();
+            Matcher invite = INVITE.matcher(line);
+            if (invite.matches()) {
+                String leader = invite.group("leader");
+                show(leader != null ? leader : invite.group("player"));
+                return;
+            }
         }
         if (inviter == null) return;
 
-        Matcher expired = EXPIRED.matcher(text);
-        if (expired.find() && expired.group("player").equalsIgnoreCase(inviter)) {
-            dismiss();
-            return;
+        for (String raw : lines) {
+            String line = raw.trim();
+            Matcher expired = EXPIRED.matcher(line);
+            if (expired.matches() && expired.group("player").equalsIgnoreCase(inviter)) {
+                dismiss();
+                return;
+            }
+            if (JOINED.matcher(line).matches()) {
+                dismiss();
+                return;
+            }
         }
-        if (JOINED.matcher(text).find()) {
-            dismiss();
-        }
+    }
+
+    /** The name in a "/party accept" click event anywhere in the message, or null. */
+    private static String acceptTarget(Component message) {
+        return message.visit((style, text) -> {
+            if (style.getClickEvent() instanceof net.minecraft.network.chat.ClickEvent.RunCommand run) {
+                Matcher matcher = ACCEPT_COMMAND.matcher(run.command());
+                if (matcher.matches()) return java.util.Optional.of(matcher.group("player"));
+            }
+            return java.util.Optional.<String>empty();
+        }, net.minecraft.network.chat.Style.EMPTY).orElse(null);
     }
 
     private static void show(String name) {
@@ -132,7 +172,7 @@ public final class PartyInviteFeature {
         // A held key's repeats are taken as well, so nothing else sees them, but act only once.
         if (!repeat) {
             if (pressed == 'y') {
-                mc.player.connection.sendCommand("party accept " + inviter);
+                net.alpaka.addons.compliance.Outbound.command("party accept " + inviter, net.alpaka.addons.compliance.Outbound.Cause.KEY_PRESS);
             }
             dismiss();
         }

@@ -31,8 +31,8 @@ import kotlin.math.atan
 object PlayerModelRenderer {
 
     /** Default HUD placement, shared with the editor screen's Reset button. */
-    const val DEFAULT_X = 40
-    const val DEFAULT_Y = 85
+    const val DEFAULT_X = net.alpaka.addons.client.hud.HudDefaults.PLAYER_MODEL_X
+    const val DEFAULT_Y = net.alpaka.addons.client.hud.HudDefaults.PLAYER_MODEL_Y
     const val DEFAULT_SCALE = 30
 
     /** Fade/slide speed in alpha per second; 5.0 gives a ~200ms transition. */
@@ -112,6 +112,18 @@ object PlayerModelRenderer {
      */
     private const val SLOW_SWING_QUEUE_GRACE_MS = 350L
 
+    /**
+     * How long the avatar lingers after the last action ends, in "Only Show On Action" mode.
+     *
+     * Each click is its own short swing, so without this the avatar vanished in the gap between
+     * two quick clicks and came straight back on the next one - visible as flicker. Holding it up
+     * a little past the last action bridges those gaps, so a burst of clicks reads as one stretch.
+     */
+    private const val ACTION_HIDE_DELAY_MS = 750L
+
+    /** Wall-clock time an action was last seen, for [ACTION_HIDE_DELAY_MS]. */
+    private var lastActionAtMs = 0L
+
     @JvmStatic
     fun render(graphics: GuiGraphicsExtractor, @Suppress("UNUSED_PARAMETER") deltaTracker: DeltaTracker) {
         val mc = Minecraft.getInstance()
@@ -126,13 +138,12 @@ object PlayerModelRenderer {
 
         val cfg = AlpakaConfig.instance
         // Ticked before the visibility check so an in-flight slow swing can keep the avatar up.
-        updateSlowSwing(player, cfg)
+        updateSlowSwing(player)
 
-        alpha = if (shouldShowModel(mc, player, cfg)) {
-            (alpha + dt * FADE_SPEED).coerceAtMost(1.0f)
-        } else {
-            (alpha - dt * FADE_SPEED).coerceAtLeast(0.0f)
-        }
+        // No fade or slide either way: the avatar is either there or not. The transitions read as
+        // it swiping in and out every time the player started or stopped moving, which drew the
+        // eye exactly when nothing of interest was happening.
+        alpha = if (shouldShowModel(mc, player, cfg)) 1.0f else 0.0f
         if (alpha <= ALPHA_EPSILON) return
 
         // Clamped so a GUI-scale change cannot strand the avatar off screen. The stored position
@@ -166,6 +177,12 @@ object PlayerModelRenderer {
 
         if (!cfg.playerModelOnlyActions) return true
 
+        val now = System.currentTimeMillis()
+        if (isPerformingAction(player)) lastActionAtMs = now
+        return now - lastActionAtMs < ACTION_HIDE_DELAY_MS
+    }
+
+    private fun isPerformingAction(player: LocalPlayer): Boolean {
         // Cheapest predicates first - || short-circuits, so the common cases cost one read
         // instead of evaluating every one of them.
         if (!player.onGround() ||
@@ -261,14 +278,17 @@ object PlayerModelRenderer {
         state.outlineColor = EntityRenderState.NO_OUTLINE
         // The HUD avatar never burns, even while the real player is on fire.
         state.displayFireAnimation = false
+        // The name tag above the avatar is optional; without it only the model is drawn.
+        if (!AlpakaConfig.instance.playerModelShowNameTag) state.nameTag = null
 
         if (state is LivingEntityRenderState) {
             val cfg = AlpakaConfig.instance
             if (cfg.playerModelDisableMovement) freezeMovementPose(state, entity)
             if (cfg.playerModelHideArmor) hideArmor(state)
-            // Replaces the player's own attack progress with our stretched one. attackTime is
-            // the 0..1 value the humanoid model derives the whole arm arc from.
-            if (cfg.playerModelSlowSwing && state is ArmedEntityRenderState) {
+            // Replaces the player's own attack progress with our stretched one, always: at vanilla
+            // speed the arm snaps through its arc too fast to read on an avatar this small.
+            // attackTime is the 0..1 value the humanoid model derives the whole arm arc from.
+            if (state is ArmedEntityRenderState) {
                 state.attackTime = slowSwingProgress()
             }
 
@@ -300,18 +320,9 @@ object PlayerModelRenderer {
      * Called once per frame from [render]. Repeat calls within a frame are harmless: the player's
      * swing counter cannot change between them, so no second swing is detected.
      */
-    private fun updateSlowSwing(player: LocalPlayer, cfg: AlpakaConfig) {
+    private fun updateSlowSwing(player: LocalPlayer) {
         val swinging = player.swinging
         val swingTime = player.swingTime
-
-        if (!cfg.playerModelSlowSwing) {
-            slowSwingActive = false
-            slowSwingQueued = false
-            wasSwinging = swinging
-            lastSwingTime = swingTime
-            return
-        }
-
         val now = System.currentTimeMillis()
 
         // Either a swing starting from rest, or a re-swing that reset the counter mid-arc.

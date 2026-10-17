@@ -1,6 +1,5 @@
 package net.alpaka.addons.features.slayer
 
-import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.config.AlpakaStats
 
 /**

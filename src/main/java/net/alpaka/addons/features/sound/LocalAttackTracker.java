@@ -33,6 +33,25 @@ public final class LocalAttackTracker {
 
     private static final Map<Integer, Long> attackedAtMs = new HashMap<>();
 
+    /** How recently a right-click still makes an item sound count as the player's own. */
+    private static final long USE_MEMORY_MS = 300L;
+
+    private static long usedItemAtMs = 0L;
+
+    /** Records that the local player just right-clicked, with an item or on a block. */
+    public static void noteUse() {
+        usedItemAtMs = System.currentTimeMillis();
+    }
+
+    /**
+     * Whether the local player right-clicked within the last {@link #USE_MEMORY_MS}. An ability's
+     * sound plays where the player stands, but so does another player's standing next to them; the
+     * click is what tells the two apart.
+     */
+    public static boolean usedItemRecently() {
+        return System.currentTimeMillis() - usedItemAtMs <= USE_MEMORY_MS;
+    }
+
     private LocalAttackTracker() {}
 
     /** Records that the local player just attacked the entity with this id. */

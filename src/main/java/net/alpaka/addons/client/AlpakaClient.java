@@ -10,6 +10,7 @@ import net.alpaka.addons.features.zoom.ZoomFeature;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.minecraft.client.Minecraft;
 
@@ -18,17 +19,39 @@ import net.alpaka.addons.features.worldage.WorldAgeHudRenderer;
 public class AlpakaClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
+        // Before anything else reads them. The slayer record is loaded separately because it is keyed
+        // by account and Skyblock profile rather than by instance; see AlpakaStats.
+        AlpakaConfig.load();
+        net.alpaka.addons.config.AlpakaStats.load();
+        net.alpaka.addons.AlpakaAddons.LOGGER.info("Alpaka Addons {} loaded", net.alpaka.addons.utils.ModVersion.mod());
+
+        // Next, so the mod's own render pipelines are registered before the shader manager
+        // precompiles vanilla's; see AlpakaGuiPipelines.
+        net.alpaka.addons.client.gui.AlpakaGuiPipelines.init();
+        net.alpaka.addons.features.viewmodel.HandItemStarlightFeature.init();
         CustomSoundFeature.register();
+        SessionLifecycle.register();
+        StartupNotices.register();
+        net.alpaka.addons.utils.UpdateChecker.register();
+        net.alpaka.addons.features.slayer.SmolderingPolarization.register();
+        DevScreenshotTour.register();
         SlayerDropTracker.registerEvents();
         net.alpaka.addons.features.slayer.SkyblockProfileTracker.INSTANCE.register();
         // The slayer record waits for its folder when a cloud drive comes up after the game did;
         // polled from the tick so the wait ends even while nothing reads the record.
-        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(
-                client -> net.alpaka.addons.config.AlpakaStats.retryLoadIfAwaiting());
+        // The same tick writes the record once if anything changed it; see AlpakaStats.markDirty.
+        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            net.alpaka.addons.config.AlpakaStats.retryLoadIfAwaiting();
+            net.alpaka.addons.config.AlpakaStats.flushIfDirty();
+        });
         ZoomFeature.register();
         net.alpaka.addons.features.chat.ChatPeekFeature.register();
+        net.alpaka.addons.features.chat.ActionBarOverChat.register();
         CommandWheelFeature.register();
         InventoryHudFeature.register();
+        net.alpaka.addons.features.blaze.FirePitFeature.register();
+        net.alpaka.addons.features.damagetags.CustomDamageTagFeature.register();
+        net.alpaka.addons.utils.DungeonState.register();
         net.alpaka.addons.features.notification.MentionNotifier.register();
         net.alpaka.addons.features.party.PartyInviteFeature.register();
         WorldAgeHudRenderer.registerEvents();
@@ -67,6 +90,50 @@ public class AlpakaClient implements ClientModInitializer {
                     Minecraft.getInstance().execute(AlpakaDiagnostics::print);
                     return 1;
                 })
+                // "/alpakadebug perf": the mod's own frame and tick time since the last reset, from
+                // the same sections that show in vanilla's profiler. "perf reset" starts over.
+                .then(ClientCommands.literal("perf")
+                    .executes(context -> {
+                        Minecraft.getInstance().execute(() -> {
+                            SlayerDropTracker.sendModMessage("§6--- Alpaka performance ---");
+                            for (String line : net.alpaka.addons.utils.AlpakaPerf.report()) {
+                                SlayerDropTracker.sendModMessage("§7" + line);
+                            }
+                        });
+                        return 1;
+                    })
+                    .then(ClientCommands.literal("reset")
+                        .executes(context -> {
+                            Minecraft.getInstance().execute(() -> {
+                                net.alpaka.addons.utils.AlpakaPerf.reset();
+                                SlayerDropTracker.sendModMessage("§7Performance counters reset.");
+                            });
+                            return 1;
+                        })
+                    )
+                )
+                // "/alpakadebug damagetags": a few sample splashes in front of the player, to see
+                // the custom damage tags without hitting anything on SkyBlock.
+                .then(ClientCommands.literal("damagetags")
+                    .executes(context -> {
+                        Minecraft.getInstance().execute(
+                                net.alpaka.addons.features.damagetags.CustomDamageTagFeature::spawnPreview);
+                        return 1;
+                    })
+                )
+                // "/alpakadebug firepits": runs the fire pit highlight without a Blaze boss, so a
+                // clay block placed in a test world (/setblock) shows how the column looks.
+                .then(ClientCommands.literal("firepits")
+                    .executes(context -> {
+                        Minecraft.getInstance().execute(() -> {
+                            boolean on = net.alpaka.addons.features.blaze.FirePitFeature.togglePreview();
+                            SlayerDropTracker.sendModMessage(on
+                                    ? "§7Fire pit preview §aon§7: blocks turned into clay or terracotta are marked."
+                                    : "§7Fire pit preview §coff§7.");
+                        });
+                        return 1;
+                    })
+                )
             );
 
             dispatcher.register(ClientCommands.literal("alpakaslayer")
@@ -96,9 +163,24 @@ public class AlpakaClient implements ClientModInitializer {
                         return 1;
                     })
                 )
+                // "/alpakaslayer since <item>": how many bosses ago a drop last came, answered locally
+                // with buttons that put it in the chat box. The player asks, the player sends.
+                .then(ClientCommands.literal("since")
+                    .then(ClientCommands.argument("item", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
+                        .executes(context -> {
+                            String item = com.mojang.brigadier.arguments.StringArgumentType.getString(context, "item");
+                            Minecraft.getInstance().execute(() -> SlayerDropTracker.printSince(item));
+                            return 1;
+                        })
+                    )
+                )
                 // Clears the live session stats behind the slayer HUD. Lifetime kill and drop
                 // history is untouched - that is the persisted record, not part of a session.
+                // Only when typed: a command run on the player's behalf - a server's click event, a
+                // macro - cannot wipe anything. The same holds for every command below that deletes
+                // or moves data.
                 .then(ClientCommands.literal("reset")
+                    .requires(CommandAttendance::attended)
                     .executes(context -> {
                         Minecraft.getInstance().execute(() -> {
                             net.alpaka.addons.features.slayer.SlayerType cleared =
@@ -139,6 +221,9 @@ public class AlpakaClient implements ClientModInitializer {
             );
 
             // --- Viewmodel Preset Command ---
+            // "/alpakapreset <n>" switches to a slot, "/alpakapreset save <n>" writes the current
+            // viewmodel settings into one - the same thing the "Save Preset" buttons on the Item
+            // Size screen do, reachable without opening it.
             dispatcher.register(ClientCommands.literal("alpakapreset")
                 .then(ClientCommands.argument("number", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1, 3))
                     .executes(context -> {
@@ -151,9 +236,29 @@ public class AlpakaClient implements ClientModInitializer {
                         return 1;
                     })
                 )
+                .then(ClientCommands.literal("save")
+                    .requires(CommandAttendance::attended)
+                    .then(ClientCommands.argument("number", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1, 3))
+                        .executes(context -> {
+                            int num = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "number");
+                            Minecraft.getInstance().execute(() -> {
+                                net.alpaka.addons.config.AlpakaConfig.instance.savePreset(num - 1);
+                                SlayerDropTracker.sendModMessage("§aSaved the current viewmodel settings to Preset " + num + ".");
+                                try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
+                            });
+                            return 1;
+                        })
+                    )
+                    .executes(context -> {
+                        Minecraft.getInstance().execute(() ->
+                                SlayerDropTracker.sendModMessage("§7Usage: §6/alpakapreset save <1|2|3>"));
+                        return 1;
+                    })
+                )
                 .executes(context -> {
                     Minecraft.getInstance().execute(() -> {
-                        SlayerDropTracker.sendModMessage("§7Current preset: §ePreset " + (net.alpaka.addons.config.AlpakaConfig.instance.activeItemPresetIndex + 1) + "§7. Usage: §6/alpakapreset <1|2|3>");
+                        SlayerDropTracker.sendModMessage("§7Current preset: §ePreset " + (net.alpaka.addons.config.AlpakaConfig.instance.activeItemPresetIndex + 1)
+                                + "§7. Usage: §6/alpakapreset <1|2|3> §7to switch, §6/alpakapreset save <1|2|3> §7to save.");
                     });
                     return 1;
                 })
@@ -168,6 +273,7 @@ public class AlpakaClient implements ClientModInitializer {
                     return 1;
                 })
                 .then(ClientCommands.literal("folder")
+                    .requires(CommandAttendance::attended)
                     .then(ClientCommands.literal("default")
                         .executes(context -> {
                             Minecraft.getInstance().execute(() -> setStatsDirectory(""));
@@ -238,11 +344,15 @@ public class AlpakaClient implements ClientModInitializer {
         }
 
         String previous = AlpakaConfig.instance.statsDirectory;
+        boolean previousHadFile = AlpakaConfig.instance.statsDirectoryHadFile;
         AlpakaConfig.instance.statsDirectory = cleaned;
+        // A new folder has never held the record, so an empty one is not a folder still syncing.
+        AlpakaConfig.instance.statsDirectoryHadFile = false;
 
         java.io.File dir = net.alpaka.addons.config.AlpakaStats.directory();
         if (!dir.isDirectory() && !dir.mkdirs()) {
             AlpakaConfig.instance.statsDirectory = previous;
+            AlpakaConfig.instance.statsDirectoryHadFile = previousHadFile;
             SlayerDropTracker.sendModMessage("§cCould not create §f" + dir.getAbsolutePath());
             SlayerDropTracker.sendModMessage("§7The setting was not changed; check the path and try again.");
             return;

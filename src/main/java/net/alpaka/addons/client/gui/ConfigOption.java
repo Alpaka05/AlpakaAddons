@@ -1,5 +1,7 @@
 package net.alpaka.addons.client.gui;
 
+import net.alpaka.addons.config.AlpakaConfig;
+
 import java.util.Locale;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
@@ -16,7 +18,9 @@ public class ConfigOption {
         ACTION,
         HEADER,
         DROPDOWN,
-        TEXT
+        TEXT,
+        /** A sample of what the feature puts on screen, drawn in the settings; see {@link #preview}. */
+        PREVIEW
     }
 
     /**
@@ -69,6 +73,8 @@ public class ConfigOption {
     // Action
     private Consumer<Screen> actionHandler;
     private String actionLabel;
+    /** Set for colour options only: the current colour, which the button shows as its swatch. */
+    private java.util.function.IntSupplier colorGetter;
 
     // Dropdown
     private List<ToggleEntry> entries;
@@ -76,8 +82,8 @@ public class ConfigOption {
 
     // Animation & Hover state tracking
     private float hoverProgress = 0.0f;
-    private float clickProgress = 0.0f;
-    private boolean isDragging = false;
+    /** 0..1 knob position of a BOOLEAN option, easing toward its state; -1 until first drawn. */
+    private float toggleProgress = -1.0f;
 
     // Header constructor
     public ConfigOption(String title, ConfigCategory category) {
@@ -86,6 +92,16 @@ public class ConfigOption {
         this.description = "";
         this.category = category;
         this.type = Type.HEADER;
+        this.keywords = title.toLowerCase();
+    }
+
+    // Preview constructor, see preview()
+    private ConfigOption(String title, ConfigCategory category, Type type, String id) {
+        this.id = id;
+        this.title = title;
+        this.description = "";
+        this.category = category;
+        this.type = type;
         this.keywords = title.toLowerCase();
     }
 
@@ -130,6 +146,37 @@ public class ConfigOption {
         this.actionLabel = actionLabel;
         this.actionHandler = actionHandler;
         this.keywords = (title + " " + description + " " + keywords).toLowerCase();
+    }
+
+    /**
+     * A colour option: a button showing the current colour as a swatch, which opens the colour
+     * picker. Every colour setting is made this way, so the config screen needs no list of them.
+     *
+     * The option is given the config field rather than a getter, so its default can be read from a
+     * fresh config: the picker's reset button goes back to that without a second copy of it here.
+     */
+    public static ConfigOption color(String id, String title, String description, ConfigCategory category,
+                                     java.util.function.ToIntFunction<AlpakaConfig> field,
+                                     java.util.function.IntConsumer setter, String keywords) {
+        java.util.function.IntSupplier getter = () -> field.applyAsInt(AlpakaConfig.instance);
+        int defaultColor = field.applyAsInt(defaults());
+        ConfigOption option = new ConfigOption(id, title, description, category, "Choose Color",
+                parent -> net.minecraft.client.Minecraft.getInstance().setScreen(
+                        new net.alpaka.addons.client.ColorPickerScreen(parent, title, getter.getAsInt(),
+                                defaultColor, setter::accept)),
+                keywords);
+        option.colorGetter = getter;
+        return option;
+    }
+
+    /** A config as freshly created, for reading defaults from; made once, never saved. */
+    private static AlpakaConfig defaults;
+
+    private static AlpakaConfig defaults() {
+        if (defaults == null) {
+            defaults = new AlpakaConfig();
+        }
+        return defaults;
     }
 
     // Dropdown constructor
@@ -203,7 +250,16 @@ public class ConfigOption {
     }
 
     // Slider getters/setters
-    public float getFloat() { return getterFloat != null ? getterFloat.get() : minVal; }
+    /**
+     * The value, clamped to the slider's range. A hand-edited or old config can hold an index past
+     * the end of a choice list, and the formatters index their name arrays with it every frame.
+     */
+    public float getFloat() {
+        if (getterFloat == null) return minVal;
+        float value = getterFloat.get();
+        if (maxVal <= minVal || Float.isNaN(value)) return Float.isNaN(value) ? minVal : value;
+        return Math.max(minVal, Math.min(maxVal, value));
+    }
     public void setFloat(float val) {
         if (setterFloat != null) {
             setterFloat.accept(Math.max(minVal, Math.min(maxVal, val)));
@@ -228,7 +284,79 @@ public class ConfigOption {
     }
 
     // Action
-    public String getActionLabel() { return actionLabel != null ? actionLabel : "Öffnen..."; }
+    public String getActionLabel() { return actionLabel != null ? actionLabel : "Open..."; }
+
+    private String[] choices;
+
+    /**
+     * Makes this slider a pick from a list: the value is an index into {@code names}, and the
+     * settings show it as a select field that opens the list, not as a track to drag along.
+     */
+    public ConfigOption choices(String[] names) {
+        this.choices = names;
+        return this;
+    }
+
+    /** The names to pick from, or null for an ordinary slider. */
+    public String[] getChoices() { return choices; }
+
+    /** The index of the current choice, clamped to the list. */
+    public int getChoiceIndex() {
+        if (choices == null || choices.length == 0) return 0;
+        return Math.max(0, Math.min(choices.length - 1, Math.round(getFloat())));
+    }
+
+    private Supplier<net.minecraft.network.chat.Component> previewText;
+
+    /**
+     * A live sample of what a feature puts on screen - a chat line, say - drawn in its settings and
+     * rebuilt every frame, so ticking one of the feature's toggles shows its effect at once.
+     */
+    public static ConfigOption preview(String id, String title, ConfigCategory category,
+                                       Supplier<net.minecraft.network.chat.Component> text) {
+        ConfigOption option = new ConfigOption(title, category, Type.PREVIEW, id);
+        option.previewText = text;
+        return option;
+    }
+
+    /** The sample a preview shows. */
+    public net.minecraft.network.chat.Component getPreviewText() {
+        return previewText == null ? net.minecraft.network.chat.Component.empty() : previewText.get();
+    }
+
+    /** Whether this is a colour option, made by {@link #color}. */
+    public boolean isColor() { return colorGetter != null; }
+
+    /** The colour a colour option currently holds. */
+    public int getColor() { return colorGetter.getAsInt(); }
+
+    private boolean confirmFirst = false;
+
+    /**
+     * Makes this action ask for a second click before it runs, for actions that overwrite something
+     * the player set: saving over a preset, resetting a value.
+     */
+    public ConfigOption confirmFirst() {
+        this.confirmFirst = true;
+        return this;
+    }
+
+    public boolean isConfirmFirst() { return confirmFirst; }
+
+    private boolean buttonOnly = false;
+
+    /**
+     * Makes this action answer only its button, not a click anywhere on its card, for actions that
+     * overwrite settings straight away with nothing to back out of: loading a preset. Every
+     * {@link #confirmFirst()} action is button-only as well. Everything else - a colour picker, an
+     * editor, a reset behind a confirmation screen - opens from the whole card, like a toggle.
+     */
+    public ConfigOption buttonOnly() {
+        this.buttonOnly = true;
+        return this;
+    }
+
+    public boolean isButtonOnly() { return buttonOnly || confirmFirst; }
     public void triggerAction(Screen parent) {
         if (actionHandler != null) {
             actionHandler.accept(parent);
@@ -241,16 +369,16 @@ public class ConfigOption {
         this.hoverProgress = PloppAnimation.interpolate(hoverProgress, isHovered ? 1.0f : 0.0f, deltaSec, 12.0f);
     }
 
-    public float getClickProgress() { return clickProgress; }
-    public void triggerClickAnimation() { this.clickProgress = 1.0f; }
-    public void updateClickProgress(float deltaSec) {
-        if (clickProgress > 0.0f) {
-            clickProgress = Math.max(0.0f, clickProgress - deltaSec * 8.0f);
-        }
+    /** Where the toggle knob is drawn, 0 (off) to 1 (on); the real state until first updated. */
+    public float getToggleProgress() {
+        return toggleProgress < 0.0f ? (getBool() ? 1.0f : 0.0f) : toggleProgress;
     }
 
-    public boolean isDragging() { return isDragging; }
-    public void setDragging(boolean dragging) { isDragging = dragging; }
+    public void updateToggleProgress(float deltaSec) {
+        float target = getBool() ? 1.0f : 0.0f;
+        toggleProgress = toggleProgress < 0.0f ? target : PloppAnimation.interpolate(toggleProgress, target, deltaSec, 12.0f);
+    }
+
 
     /**
      * A free-text option, edited inline in the config list.

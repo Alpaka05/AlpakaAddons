@@ -13,7 +13,7 @@ import net.minecraft.network.chat.MutableComponent;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * All / Party / Guild / PMs tabs in the chat screen.
+ * All / Party / Guild / Co-op / PMs / NPCs tabs in the chat screen.
  *
  * The tabs sit in the gap between the lowest chat line and the input box, where vanilla draws
  * nothing. Picking one narrows the chat to that channel: the filter runs where messages are laid
@@ -21,11 +21,16 @@ import org.lwjgl.glfw.GLFW;
  * including what arrived while another tab was up. A channel tab that received messages while it
  * was not the active one shows how many, until it is opened.
  *
- * The choice persists while the game runs - closing the chat does not reset it, so the HUD too shows
- * only the chosen channel until All is picked again - and starts on All every launch.
+ * Closing the chat goes back to All, unless "Keep Tab After Closing Chat" is on; then the HUD chat
+ * stays filtered too, and a chip where the tab row sits says so. It used to stay filtered silently,
+ * hiding slayer and drop lines with nothing on screen to explain where they went. The mod's own
+ * lines and party invites show on every tab.
  *
  * Optionally a plain message typed on a channel tab is sent to that channel, with /pc, /gc or /r in
  * front. That is its own toggle and off by default, so a tab is only ever a view unless asked for.
+ *
+ * Each channel tab can be left out of the row, for a player with no use for, say, Co-op. A hidden
+ * channel's lines are not lost: they sort to it as before and so still show on All.
  */
 public final class ChatTabsFeature {
 
@@ -47,6 +52,27 @@ public final class ChatTabsFeature {
         return AlpakaConfig.instance.chatTabsEnabled;
     }
 
+    /** Whether a tab is in the row. All always is, so there is always somewhere to go back to. */
+    public static boolean isShown(ChatTab tab) {
+        AlpakaConfig cfg = AlpakaConfig.instance;
+        return switch (tab) {
+            case ALL -> true;
+            case PARTY -> cfg.chatTabsShowParty;
+            case GUILD -> cfg.chatTabsShowGuild;
+            case COOP -> cfg.chatTabsShowCoop;
+            case PRIVATE -> cfg.chatTabsShowPrivate;
+            case NPC -> cfg.chatTabsShowNpc;
+        };
+    }
+
+    /** A tab was taken out of the row or put back: off a tab that is gone, back to All. */
+    public static void onShownTabsChanged() {
+        if (!isShown(active)) select(ChatTab.ALL);
+        for (ChatTab tab : ChatTab.values()) {
+            if (!isShown(tab)) unread[tab.ordinal()] = 0;
+        }
+    }
+
     /**
      * Whether a message may be laid out into visible lines under the current tab.
      *
@@ -55,14 +81,25 @@ public final class ChatTabsFeature {
      */
     public static boolean accepts(GuiMessage message) {
         if (!isEnabled() || active == ChatTab.ALL) return true;
-        return ChatTab.classify(message.content()) == active;
+        // The mod's own lines, and every other client-side one, are not exempt: they belong to no
+        // channel, so they sort to All like any other unclaimed line rather than following the
+        // player onto every tab.
+        String text = ChatTab.strip(message.content().getString());
+        if (ChatTab.isUrgent(text)) return true;
+        return ChatTab.classify(text) == active;
+    }
+
+    /** The chat screen closed: back to All, unless the player keeps the tab. */
+    public static void onChatClosed() {
+        if (!isEnabled() || AlpakaConfig.instance.chatTabsKeepAfterClose) return;
+        if (active != ChatTab.ALL) select(ChatTab.ALL);
     }
 
     /** Counts a newly arrived message for the channel tab it belongs to, if that tab is not up. */
     public static void onMessage(Component content) {
         if (!isEnabled()) return;
         ChatTab tab = ChatTab.classify(content);
-        if (tab != ChatTab.ALL && tab != active) {
+        if (tab != ChatTab.ALL && tab != active && isShown(tab)) {
             unread[tab.ordinal()]++;
         }
     }
@@ -75,11 +112,16 @@ public final class ChatTabsFeature {
         Minecraft.getInstance().gui.getChat().rescaleChat();
     }
 
-    /** Moves to the next tab, or the previous one, wrapping around at either end. */
+    /** Moves to the next shown tab, or the previous one, wrapping around at either end. */
     public static void cycle(boolean backwards) {
         ChatTab[] tabs = ChatTab.values();
         int step = backwards ? tabs.length - 1 : 1;
-        select(tabs[(active.ordinal() + step) % tabs.length]);
+        ChatTab next = active;
+        // Ends at All at the latest, which is always shown.
+        do {
+            next = tabs[(next.ordinal() + step) % tabs.length];
+        } while (!isShown(next));
+        select(next);
     }
 
     /** Whether the tab row shows while peeking and Tab cycles the tabs. */
@@ -88,13 +130,13 @@ public final class ChatTabsFeature {
     }
 
     /**
-     * A key press in the chat screen. True when it was Tab cycling the tabs, which then goes no
-     * further. Tab keeps its vanilla job - completing - while a command is being typed or a
-     * suggestion popup is open.
+     * A key press in the chat screen. True when it cycled the tabs, which then goes no further.
+     * Ctrl+Tab always cycles, Ctrl+Shift+Tab backwards. Plain Tab only does on an empty line: with
+     * text typed it is vanilla's player-name completion, which it used to take over.
      */
-    public static boolean onChatScreenKey(int key, boolean shift, boolean suggestionsVisible, String input) {
+    public static boolean onChatScreenKey(int key, boolean shift, boolean control, boolean suggestionsVisible, String input) {
         if (!tabKeyEnabled() || key != GLFW.GLFW_KEY_TAB) return false;
-        if (suggestionsVisible || input.startsWith("/")) return false;
+        if (!control && (suggestionsVisible || !input.isBlank())) return false;
         cycle(shift);
         return true;
     }
@@ -128,6 +170,26 @@ public final class ChatTabsFeature {
         Minecraft.getInstance().options.keyPlayerList.setDown(false);
     }
 
+    /**
+     * With the tab kept after closing the chat, a chip where the tab row sits says which channel the
+     * HUD chat is showing, so a filtered chat never looks like an empty one.
+     */
+    public static void renderFilterChip(GuiGraphicsExtractor graphics) {
+        if (!isEnabled() || active == ChatTab.ALL || ChatPeekFeature.isPeeking()) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.screen instanceof ChatScreen) return;
+        Font font = mc.font;
+        Component label = Component.literal(active.label + " only");
+        int y1 = graphics.guiHeight() - BOTTOM_GAP;
+        int y0 = y1 - TAB_HEIGHT;
+        int width = font.width(label) + TAB_PAD * 2;
+        int accent = ModernGuiUtils.getAccentColor();
+        graphics.fill(LEFT, y0, LEFT + width, y1, mc.options.getBackgroundColor(Integer.MIN_VALUE));
+        graphics.fill(LEFT, y0, LEFT + width, y1, (accent & 0xFFFFFF) | 0x30000000);
+        graphics.fill(LEFT, y1 - 1, LEFT + width, y1, accent);
+        graphics.text(font, label, LEFT + TAB_PAD, y0 + 2, 0xFFFFFFFF);
+    }
+
     /** The tab row under the held-open chat, without hover since there is no cursor on it. */
     public static void renderWhilePeeking(GuiGraphicsExtractor graphics) {
         if (!tabKeyEnabled() || !ChatPeekFeature.isPeeking()) return;
@@ -145,6 +207,7 @@ public final class ChatTabsFeature {
         return switch (active) {
             case PARTY -> "pc " + normalizedMessage;
             case GUILD -> "gc " + normalizedMessage;
+            case COOP -> "cc " + normalizedMessage;
             case PRIVATE -> "r " + normalizedMessage;
             default -> null;
         };
@@ -170,6 +233,7 @@ public final class ChatTabsFeature {
         int accent = ModernGuiUtils.getAccentColor();
         int x = LEFT;
         for (ChatTab tab : ChatTab.values()) {
+            if (!isShown(tab)) continue;
             Component label = labelOf(tab);
             int width = font.width(label) + TAB_PAD * 2;
             boolean selected = tab == active;
@@ -197,6 +261,7 @@ public final class ChatTabsFeature {
         if (mouseY < y0 || mouseY >= y1) return false;
         int x = LEFT;
         for (ChatTab tab : ChatTab.values()) {
+            if (!isShown(tab)) continue;
             int width = font.width(labelOf(tab)) + TAB_PAD * 2;
             if (mouseX >= x && mouseX < x + width) {
                 select(tab);

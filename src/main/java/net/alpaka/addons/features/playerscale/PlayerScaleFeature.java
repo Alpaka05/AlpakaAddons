@@ -61,14 +61,17 @@ public final class PlayerScaleFeature {
      * Whether this avatar is drawn scaled: the feature is on, the world (not a GUI) is extracting it,
      * and it is either the local player or, with the option on, anybody else.
      *
-     * "Anybody else" is every avatar the player renderer draws, which on a server is the other
-     * players and the player-shaped NPCs, and in singleplayer includes mannequins.
+     * "Anybody else" means other real players on SkyBlock: a version-4 UUID, which Hypixel's
+     * player-shaped NPCs and mobs do not have, so their hitboxes and holograms are never left
+     * mismatched with a stretched model.
      */
     private static boolean appliesTo(Avatar entity) {
         if (!isEnabled()) return false;
         if (!CustomNameTagFeature.getExtractingWorldEntity()) return false;
         if (entity == Minecraft.getInstance().player) return true;
-        return AlpakaConfig.instance.playerScaleOthers;
+        return AlpakaConfig.instance.playerScaleOthers
+                && entity.getUUID().version() == 4
+                && net.alpaka.addons.utils.SkyblockUtils.isOnSkyblock();
     }
 
     /** Head of {@code AvatarRenderer.extractRenderState}: decide, and remember on the state. */
@@ -76,7 +79,17 @@ public final class PlayerScaleFeature {
         PlayerScaleRenderState scaled = (PlayerScaleRenderState) state;
         if (appliesTo(entity)) {
             AlpakaConfig cfg = AlpakaConfig.instance;
-            scaled.alpaka$setScale(clamp(cfg.playerScaleX), clamp(cfg.playerScaleY), clamp(cfg.playerScaleZ));
+            float x = clamp(cfg.playerScaleX);
+            float y = clamp(cfg.playerScaleY);
+            float z = clamp(cfg.playerScaleZ);
+            if (entity != Minecraft.getInstance().player) {
+                // Other players can only shrink. Scaled up, a player standing behind cover would
+                // poke out of it: shown where vanilla would not show them.
+                x = Math.min(x, 1.0f);
+                y = Math.min(y, 1.0f);
+                z = Math.min(z, 1.0f);
+            }
+            scaled.alpaka$setScale(x, y, z);
         } else {
             // Always written, never assumed: a state that is not scaled this time must not keep the
             // answer from an earlier extraction.

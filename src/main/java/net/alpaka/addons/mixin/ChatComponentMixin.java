@@ -1,49 +1,82 @@
 package net.alpaka.addons.mixin;
 
 import net.alpaka.addons.config.AlpakaConfig;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.sugar.Local;
+import net.alpaka.addons.features.chat.AlpakaChatGraphicsClip;
 import net.alpaka.addons.features.bridge.BridgeBotFormatter;
+import net.alpaka.addons.features.chat.ChatBlurFeature;
 import net.alpaka.addons.features.chat.ChatPeekFeature;
+import net.alpaka.addons.features.chat.ChatScrollAnimator;
+import net.alpaka.addons.features.chat.ChatSearchFeature;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
 import net.alpaka.addons.features.chat.CompactChatFeature;
 import net.alpaka.addons.features.chat.ScreenshotMessageFeature;
+import net.alpaka.addons.features.chat.SmoothChatFeature;
 import net.alpaka.addons.features.guild.GuildPrefixFormatter;
 import net.alpaka.addons.features.slayer.SlayerChatFilter;
 import net.alpaka.addons.features.slayer.SlayerDropTracker;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.ChatComponent;
 import net.minecraft.client.multiplayer.chat.GuiMessage;
 import net.minecraft.client.multiplayer.chat.GuiMessageSource;
 import net.minecraft.client.multiplayer.chat.GuiMessageTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MessageSignature;
+import net.minecraft.util.Mth;
 
 import java.util.List;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Coerce;
 import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArgs;
 import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
 @Mixin(ChatComponent.class)
-public class ChatComponentMixin {
+public abstract class ChatComponentMixin {
+    private static final String EXTRACT_PUBLIC =
+        "extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/client/gui/Font;IIILnet/minecraft/client/gui/components/ChatComponent$DisplayMode;Z)V";
+    private static final String EXTRACT_PRIVATE =
+        "extractRenderState(Lnet/minecraft/client/gui/components/ChatComponent$ChatGraphicsAccess;IILnet/minecraft/client/gui/components/ChatComponent$DisplayMode;)V";
+    private static final String FOR_EACH_LINE =
+        "Lnet/minecraft/client/gui/components/ChatComponent;forEachLine(Lnet/minecraft/client/gui/components/ChatComponent$AlphaCalculator;Lnet/minecraft/client/gui/components/ChatComponent$LineConsumer;)I";
+
     @Shadow @Final private Minecraft minecraft;
     @Shadow @Final private List<GuiMessage> allMessages;
     @Shadow @Final private List<GuiMessage.Line> trimmedMessages;
     @Shadow @Final private List<?> messageDeletionQueue;
+    @Shadow private int chatScrollbarPos;
+
+    @Shadow private int getLineHeight() { throw new AssertionError("replaced by mixin"); }
+    @Shadow private double getScale() { throw new AssertionError("replaced by mixin"); }
+    @Shadow private int getWidth() { throw new AssertionError("replaced by mixin"); }
+    @Shadow public abstract int getLinesPerPage();
+
+    /** Lines a live message has added at the front of the display list so far; see smooth chat below. */
+    @Unique private int alpaka$liveLines;
+
+    /** The graphics the chat is being extracted into, while it is; null during clickable-text capture. */
+    @Unique private GuiGraphicsExtractor alpaka$graphics;
 
     @ModifyConstant(
         method = {"<init>", "addMessageToDisplayQueue", "addMessageToQueue", "addRecentChat"},
         constant = @Constant(intValue = 100)
     )
     private int modifyMaxChatHistory(int original) {
-        return AlpakaConfig.instance.expandChatHistory ? 5000 : 100;
+        return AlpakaConfig.instance.expandChatHistory ? Math.max(100, AlpakaConfig.instance.chatHistoryLimit) : 100;
     }
 
     /**
@@ -154,6 +187,319 @@ public class ChatComponentMixin {
     @Inject(method = "clearMessages", at = @At("TAIL"))
     private void alpaka$forgetCompactedMessage(boolean history, CallbackInfo ci) {
         CompactChatFeature.forget();
+        SmoothChatFeature.clear();
+        this.alpaka$smoothScroll = 0.0;
+        this.alpaka$targetScroll = 0.0;
+    }
+
+    // ------------------------------------------------------------------ smooth chat
+
+    /**
+     * Smooth chat counts the lines a live message adds. A message is laid out into lines that go
+     * in at the front of the display list one by one; the count is reported once the message is in,
+     * so the slide covers the whole message at once.
+     */
+    @Inject(method = "addMessageToDisplayQueue", at = @At("HEAD"))
+    private void alpaka$beginCountingLines(GuiMessage message, CallbackInfo ci) {
+        this.alpaka$liveLines = 0;
+    }
+
+    @WrapOperation(
+        method = "addMessageToDisplayQueue",
+        at = @At(value = "INVOKE", target = "Ljava/util/List;addFirst(Ljava/lang/Object;)V")
+    )
+    private void alpaka$countAddedLine(List<GuiMessage.Line> lines, Object line, Operation<Void> original) {
+        original.call(lines, line);
+        this.alpaka$liveLines++;
+    }
+
+    @Inject(method = "addMessageToDisplayQueue", at = @At("RETURN"))
+    private void alpaka$reportAddedLines(GuiMessage message, CallbackInfo ci) {
+        int added = this.alpaka$liveLines;
+        this.alpaka$liveLines = 0;
+        // A compacted repeat took its earlier copy out first. Taken out of the newest line, the new
+        // copy simply replaces it: only the difference in height slides, usually nothing.
+        int[] removed = CompactChatFeature.takeRemovedLines();
+        if (removed != null) {
+            SmoothChatFeature.onLinesRemoved(removed[0], removed[1]);
+            if (removed[0] == 0) added = Math.max(0, added - removed[1]);
+        }
+        SmoothChatFeature.onLinesAdded(added);
+    }
+
+    /**
+     * Vanilla keeps a scrolled-up chat still when a message arrives only while the chat screen is
+     * open. Peeking counts too, so reading history while peeking is not pushed along by new lines.
+     */
+    @WrapOperation(
+        method = "addMessageToDisplayQueue",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/ChatComponent;isChatFocused()Z")
+    )
+    private boolean alpaka$peekCountsAsFocused(ChatComponent chat, Operation<Boolean> original) {
+        return original.call(chat) || ChatPeekFeature.isPeeking();
+    }
+
+    @org.spongepowered.asm.mixin.Unique
+    private long alpaka$replayStartNanos;
+
+    /** A re-layout replays every stored message through the queue; none of that is a new arrival. */
+    @Inject(method = "refreshTrimmedMessages", at = @At("HEAD"))
+    private void alpaka$beginReplay(CallbackInfo ci) {
+        this.alpaka$replayStartNanos = net.alpaka.addons.utils.AlpakaPerf.begin(net.alpaka.addons.utils.AlpakaPerf.Section.CHAT_REPLAY);
+        SmoothChatFeature.clear();
+        SmoothChatFeature.beginReplay();
+    }
+
+    @Inject(method = "refreshTrimmedMessages", at = @At("RETURN"))
+    private void alpaka$endReplay(CallbackInfo ci) {
+        SmoothChatFeature.endReplay();
+        net.alpaka.addons.utils.AlpakaPerf.end(net.alpaka.addons.utils.AlpakaPerf.Section.CHAT_REPLAY, this.alpaka$replayStartNanos);
+    }
+
+    /**
+     * The arrival slide for this frame, in chat pixels: how far the lines are drawn below their
+     * resting place while new ones rise in. Taken once per layout in beginPass. Only at the bottom
+     * of the chat - scrolled up, the arriving lines are off screen anyway.
+     *
+     * Applied to the lines alone, with the scroll fraction, inside the chat's box. It used to move
+     * the whole chat, box and clip included, so the arriving lines drew over the hearts and the
+     * input, and the top line popped out instead of leaving through the top edge.
+     */
+    @Unique private float alpaka$slide;
+
+    // ------------------------------------------------------------------ smooth scrolling
+
+    /**
+     * The smooth scroll owns the chat's scroll position while it is on. {@code alpaka$targetScroll}
+     * is where the wheel wants to be, {@code alpaka$smoothScroll} glides towards it; the whole part
+     * of the smooth position is what the chat lays out ({@code chatScrollbarPos}), the fraction
+     * shifts the lines. That way a notch is one continuous glide in which lines enter and leave
+     * the box one at a time, instead of a jump of seven lines that then slides.
+     */
+    @Unique private double alpaka$smoothScroll;
+    @Unique private double alpaka$targetScroll;
+    @Unique private long alpaka$scrollNanos;
+    /** Which of the two line passes of a layout is running: 0 backgrounds, 1 text. */
+    @Unique private int alpaka$pass;
+
+    /** The fraction of a line the drawn lines are shifted down by, in chat pixels. */
+    @Unique
+    private float alpaka$drawOffset() {
+        return (float) ((this.alpaka$smoothScroll - Math.floor(this.alpaka$smoothScroll)) * this.getLineHeight());
+    }
+
+    /**
+     * Sets the target, clamps both positions to the chat's range, and keeps the layout position in
+     * step. The range's top is taken from vanilla's own clamp, by asking it to clamp a position far
+     * beyond it; the smooth position is clamped to that same top, not to the target - a scroll
+     * towards newer lines has the target below the smooth position, and clamping to the target
+     * there snapped the glide straight to its end.
+     */
+    @Unique
+    private void alpaka$setScrollTarget(double target) {
+        this.chatScrollbarPos = Integer.MAX_VALUE / 2;
+        this.alpaka$vanillaScrollChat(0);
+        int max = this.chatScrollbarPos;
+        this.alpaka$targetScroll = Math.max(0.0, Math.min(max, target));
+        this.alpaka$smoothScroll = Math.max(0.0, Math.min(max, this.alpaka$smoothScroll));
+        this.chatScrollbarPos = (int) Math.floor(this.alpaka$smoothScroll);
+        if (this.alpaka$targetScroll <= 0.0 && this.alpaka$smoothScroll <= 0.0) {
+            // Vanilla clears the "new message" marker whenever the position reaches the bottom.
+            this.alpaka$vanillaScrollChat(0);
+        }
+    }
+
+    @Unique private boolean alpaka$inVanillaScroll;
+
+    /** Runs vanilla's scrollChat for its clamp only, without re-entering the smooth path. */
+    @Unique
+    private void alpaka$vanillaScrollChat(int delta) {
+        this.alpaka$inVanillaScroll = true;
+        try {
+            ((ChatComponent) (Object) this).scrollChat(delta);
+        } finally {
+            this.alpaka$inVanillaScroll = false;
+        }
+    }
+
+    /** Every scroll request - wheel, peek, other mods - becomes a change of the smooth target. */
+    @WrapMethod(method = "scrollChat")
+    private void alpaka$smoothScrollChat(int delta, Operation<Void> original) {
+        if (this.alpaka$inVanillaScroll || !ChatScrollAnimator.isEnabled()) {
+            original.call(delta);
+            if (!this.alpaka$inVanillaScroll) this.alpaka$smoothScroll = this.alpaka$targetScroll = this.chatScrollbarPos;
+            return;
+        }
+        this.alpaka$setScrollTarget(this.alpaka$targetScroll + delta);
+    }
+
+    /**
+     * A message arriving while scrolled up: vanilla bumps the position by a line so the view stays
+     * still. Both the smooth and the target position follow at once, so it does not read as a scroll.
+     */
+    @WrapOperation(
+        method = "addMessageToDisplayQueue",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/ChatComponent;scrollChat(I)V")
+    )
+    private void alpaka$followInsertScroll(ChatComponent chat, int delta, Operation<Void> original) {
+        if (!ChatScrollAnimator.isEnabled()) {
+            original.call(chat, delta);
+            return;
+        }
+        this.alpaka$smoothScroll += delta;
+        this.alpaka$setScrollTarget(this.alpaka$targetScroll + delta);
+    }
+
+    @Inject(method = "resetChatScroll", at = @At("TAIL"))
+    private void alpaka$resetSmoothScroll(CallbackInfo ci) {
+        this.alpaka$smoothScroll = 0.0;
+        this.alpaka$targetScroll = 0.0;
+    }
+
+    /**
+     * While the lines are shifted down, enough older lines are laid out above the box's top to fill
+     * the gap, so lines leave through the top edge instead of vanishing.
+     */
+    @ModifyVariable(method = "forEachLine", at = @At("STORE"), name = "perPage")
+    private int alpaka$oneMoreLineWhileMoving(int perPage) {
+        float shift = this.alpaka$drawOffset() + this.alpaka$slide;
+        return shift > 0.01f ? perPage + Mth.ceil(shift / this.getLineHeight()) : perPage;
+    }
+
+    /**
+     * Around each of the two line passes: the chat is clipped to its box - the graphics' scissor
+     * for the line fills, the text collector's own clip for the glyphs, which the scissor does not
+     * reach - and the lines are shifted by the fraction of a line the smooth scroll is at. Before
+     * the text pass the blurred panel goes in, unshifted, so it is the box the lines move inside.
+     */
+    @WrapOperation(method = EXTRACT_PRIVATE, at = @At(value = "INVOKE", target = FOR_EACH_LINE))
+    private int alpaka$wrapLinePass(ChatComponent chat, @Coerce Object alphaCalculator, @Coerce Object lineConsumer, Operation<Integer> original,
+                                    @Local(argsOnly = true) ChatComponent.ChatGraphicsAccess access,
+                                    @Local(argsOnly = true, ordinal = 0) int guiHeight) {
+        int pass = this.alpaka$pass++;
+        float offset = this.alpaka$drawOffset() + this.alpaka$slide;
+        float scale = (float) this.getScale();
+        int lineHeight = this.getLineHeight();
+        int chatBottom = Mth.floor((guiHeight - 40) / scale);
+        int width = Mth.ceil(this.getWidth() / scale);
+        int shownLines = Math.max(0, Math.min(this.trimmedMessages.size() - this.chatScrollbarPos, this.getLinesPerPage()));
+
+        // The panel goes in before the box's scissor is set: the panel is the box anyway, and its
+        // drop shadow reaches past it.
+        if (pass == 1) {
+            ChatBlurFeature.setScrollOffset(offset);
+            ChatBlurFeature.limitPanel(shownLines);
+            ChatBlurFeature.submitPanel(scale);
+        }
+        AlpakaChatGraphicsClip clip = access instanceof AlpakaChatGraphicsClip c ? c : null;
+        if (clip != null) {
+            // At rest the box is allowed a little slack for underlines and accents; in motion it is exact.
+            boolean moving = offset > 0.01f;
+            int pad = ChatBlurFeature.PADDING + 1 + (moving ? 0 : 2);
+            int x0 = -4 - pad;
+            int x1 = width + 8 + pad;
+            int y0 = chatBottom - shownLines * lineHeight - pad;
+            int y1 = chatBottom + pad;
+            clip.alpaka$setTextClip(x0, x1, y0, y1);
+            clip.alpaka$graphics().enableScissor(x0, y0, x1, y1);
+        }
+        if (pass == 1) {
+            ChatBlurFeature.submitHoverHighlight(scale);
+        }
+        if (offset > 0.01f) {
+            access.updatePose(pose -> pose.translate(0.0f, offset));
+        }
+
+        int result = original.call(chat, alphaCalculator, lineConsumer);
+
+        if (offset > 0.01f) {
+            access.updatePose(pose -> pose.translate(0.0f, -offset));
+        }
+        if (clip != null) {
+            clip.alpaka$graphics().disableScissor();
+            clip.alpaka$clearTextClip();
+        }
+        return result;
+    }
+
+    /**
+     * The fade: an arriving line is drawn with the slide's progress as its alpha, on top of the
+     * time fade vanilla already applies. The alpha stays just above zero rather than at it, so a
+     * line at the very start of its fade is invisible instead of undefined.
+     */
+    @ModifyArgs(
+        method = "forEachLine",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/client/gui/components/ChatComponent$LineConsumer;accept(Lnet/minecraft/client/multiplayer/chat/GuiMessage$Line;IF)V"
+        )
+    )
+    private void alpaka$fadeArrivingLines(Args args) {
+        if (this.chatScrollbarPos != 0 || !SmoothChatFeature.isEnabled()) return;
+        // With the glass panel on, the background pass only measures the panel: an arriving line's
+        // box counts in full there, or the panel's top edge would dip and rise with every message.
+        if (ChatBlurFeature.isEnabled() && this.alpaka$pass == 1) return;
+        int index = args.get(1);
+        float factor = SmoothChatFeature.lineAlpha(index);
+        if (factor < 1.0f) {
+            float alpha = args.get(2);
+            args.set(2, alpha * Math.max(factor, 0.001f));
+        }
+    }
+
+    // ------------------------------------------------------------------ blurred background
+
+    @Inject(method = EXTRACT_PUBLIC, at = @At("HEAD"))
+    private void alpaka$beginBlurExtraction(GuiGraphicsExtractor graphics, Font font, int ticks, int mouseX, int mouseY,
+                                            ChatComponent.DisplayMode mode, boolean focused, CallbackInfo ci) {
+        ChatBlurFeature.beginExtraction(graphics, mouseX, mouseY);
+        this.alpaka$graphics = graphics;
+    }
+
+    @Inject(method = EXTRACT_PUBLIC, at = @At("RETURN"))
+    private void alpaka$endBlurExtraction(GuiGraphicsExtractor graphics, Font font, int ticks, int mouseX, int mouseY,
+                                          ChatComponent.DisplayMode mode, boolean focused, CallbackInfo ci) {
+        ChatBlurFeature.endExtraction();
+        this.alpaka$graphics = null;
+    }
+
+    /**
+     * Start of a layout pass: the smooth scroll advances and decides the layout position, and the
+     * blurred panel's measurements start afresh.
+     */
+    @Inject(method = EXTRACT_PRIVATE, at = @At("HEAD"))
+    private void alpaka$beginPass(ChatComponent.ChatGraphicsAccess access, int guiHeight, int ticks, ChatComponent.DisplayMode mode, CallbackInfo ci) {
+        this.alpaka$pass = 0;
+        ChatBlurFeature.resetPanel(mode.foreground);
+        this.alpaka$slide = this.chatScrollbarPos == 0 && SmoothChatFeature.isEnabled()
+                ? SmoothChatFeature.slideOffset(this.getLineHeight()) : 0.0f;
+
+        long now = System.nanoTime();
+        float dt = this.alpaka$scrollNanos == 0 ? 0.0f : Math.min(0.1f, (now - this.alpaka$scrollNanos) / 1_000_000_000.0f);
+        this.alpaka$scrollNanos = now;
+        if (!ChatScrollAnimator.isEnabled()) {
+            this.alpaka$smoothScroll = this.alpaka$targetScroll = this.chatScrollbarPos;
+            return;
+        }
+        this.alpaka$smoothScroll += (this.alpaka$targetScroll - this.alpaka$smoothScroll) * (1.0 - Math.exp(-dt * ChatScrollAnimator.RATE));
+        if (Math.abs(this.alpaka$targetScroll - this.alpaka$smoothScroll) * this.getLineHeight() < 0.1) {
+            this.alpaka$smoothScroll = this.alpaka$targetScroll;
+        }
+        this.chatScrollbarPos = (int) Math.floor(this.alpaka$smoothScroll);
+    }
+
+    /**
+     * Vanilla's background pass draws one flat box per line through this lambda. With the blurred
+     * panel on, each box is measured instead and the fill is skipped; the panel goes in for all of
+     * them just before the text pass below. Clickable-text capture runs the same code without a
+     * graphics to draw into, and is left alone.
+     */
+    @Inject(method = "lambda$extractRenderState$1", at = @At("HEAD"), cancellable = true)
+    private static void alpaka$measureLineBox(int chatBottom, int lineHeight, ChatComponent.ChatGraphicsAccess access, int width,
+                                              float backgroundOpacity, GuiMessage.Line line, int index, float alpha, CallbackInfo ci) {
+        if (ChatBlurFeature.collectLine(chatBottom, lineHeight, width, backgroundOpacity, alpha)) {
+            ci.cancel();
+        }
     }
 
     /**
@@ -170,7 +516,7 @@ public class ChatComponentMixin {
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/ChatComponent;addMessageToDisplayQueue(Lnet/minecraft/client/multiplayer/chat/GuiMessage;)V")
     )
     private void alpaka$onlyActiveTab(ChatComponent chat, GuiMessage message, Operation<Void> original) {
-        if (ChatTabsFeature.accepts(message)) {
+        if (ChatTabsFeature.accepts(message) && ChatSearchFeature.accepts(message)) {
             original.call(chat, message);
         }
     }

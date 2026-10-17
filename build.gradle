@@ -4,11 +4,49 @@ plugins {
     id "org.jetbrains.kotlin.jvm" version "2.1.10"
 }
 
-version = project.property("mod_version")
+/**
+ * The mod's version comes from git, not from a file: a release is a tag, and nothing else.
+ *
+ * On a tagged commit with no local changes the version is the tag itself, `1.3.0`. Anything else is
+ * a build between releases and says how far past the last one it is: `1.3.0+4.a1b2c3d` is four
+ * commits after 1.3.0, at commit a1b2c3d, and `.dirty` is added while there are uncommitted
+ * changes. So release numbers only ever come from deliberately tagging one, and follow each other
+ * without gaps, while every test build still identifies exactly what it was built from.
+ *
+ * To release: `git tag 1.4.0 && git push origin 1.4.0`, then build. The middle number goes up for
+ * a release with new features, the last one for a release that only fixes bugs.
+ *
+ * Tags may carry a leading "v". Without git or any release tag - a source download, a shallow
+ * clone - the version falls back to 0.0.0+unknown rather than failing the build.
+ */
+def gitVersion() {
+    def describe = providers.exec {
+        commandLine "git", "describe", "--tags", "--long", "--dirty", "--match", "[0-9]*", "--match", "v[0-9]*"
+        ignoreExitValue = true
+    }
+    if (describe.result.get().exitValue != 0) return "0.0.0+unknown"
+
+    def match = describe.standardOutput.asText.get().trim() =~ /^v?(.+)-(\d+)-g([0-9a-f]+)(-dirty)?$/
+    if (!match.matches()) return "0.0.0+unknown"
+    def tag = match.group(1)
+    def commits = match.group(2) as int
+    def dirty = match.group(4) != null
+    if (commits == 0 && !dirty) return tag
+    return "${tag}+${commits}.${match.group(3)}" + (dirty ? ".dirty" : "")
+}
+
+version = gitVersion()
 group = project.property("maven_group")
 
 base {
     archivesName = project.property("mod_id")
+}
+
+// Jars are named for the Minecraft version they are built against, as the releases have been:
+// alpaka-1.3.0-mc26.2.jar, or alpaka-1.3.0+4.a1b2c3d-mc26.2.jar between releases. Only the file
+// name - the mod's own version stays plain.
+tasks.withType(Jar).configureEach {
+    archiveVersion = "${project.version}-mc${project.property("minecraft_version")}"
 }
 
 repositories {
@@ -35,8 +73,23 @@ dependencies {
     compileOnly "com.terraformersmc:modmenu:18.0.0"
     localRuntime "com.terraformersmc:modmenu:18.0.0"
 
-    // Kotlin
+    // Kotlin. Compiled against the stdlib of the Kotlin plugin above; at runtime players get it from
+    // Fabric Language Kotlin, which fabric.mod.json requires. The dev client needs that mod too,
+    // since the dependency check runs there as well.
     implementation "org.jetbrains.kotlin:kotlin-stdlib"
+    localRuntime "net.fabricmc:fabric-language-kotlin:1.14.1+kotlin.2.4.20"
+
+    // Tests cover the pure logic - merges, queues, parsers - and a scan of the sources. They run
+    // without the game, so nothing they touch may start Minecraft or Fabric Loader.
+    testImplementation platform("org.junit:junit-bom:5.11.4")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+tasks.named("test") {
+    useJUnitPlatform()
+    // The source scan reads src/main; tests run from the project directory.
+    workingDir = projectDir
 }
 
 tasks.processResources {
@@ -89,6 +142,33 @@ def deployToLauncher(File jarFile, String versionStr) {
 
     if (target in ["modrinth", "both"]) deployToModrinth(jarFile, versionStr)
     if (target in ["oneclient", "both"]) deployToOneClient(jarFile, versionStr)
+}
+
+/**
+ * Drops the Modrinth App's records of alpaka jars the deploy just removed.
+ *
+ * Since the app's blob-store update, deleting a jar it has launched with leaves a dangling record
+ * in its database, and the instance then refuses to start ("needs repair or re-import"). The
+ * Python helper in tools/ removes those records; without Python on the machine the deploy still
+ * works and only prints a hint.
+ */
+def runModrinthCleanup(String profileName) {
+    def script = file("tools/ModrinthCleanup.py")
+    if (!script.exists()) return
+    // macOS and most Linux installs only have python3; Windows usually only has python.
+    for (interpreter in ["python3", "python"]) {
+        try {
+            def process = new ProcessBuilder(interpreter, script.absolutePath, profileName)
+                .redirectErrorStream(true).start()
+            def output = process.inputStream.text.trim()
+            process.waitFor()
+            if (output) println output
+            return
+        } catch (IOException ignored) {
+            // Not on the PATH; try the next name.
+        }
+    }
+    println "Modrinth cleanup skipped: neither python3 nor python is available."
 }
 
 /**
@@ -145,7 +225,14 @@ def deployToModrinth(File jarFile, String versionStr) {
             it.setWritable(true)
             def disabled = new File(it.parentFile, it.name + ".disabled")
             if (disabled.exists()) disabled.delete()
-            if (it.renameTo(disabled)) println "Disabled old mod file: ${it.name} in Modrinth profile '${profileName}'"
+            // A game that has just closed can still hold its jar for a few seconds, so the rename is retried
+            // for a while before giving up.
+            def renamed = false
+            for (int attempt = 0; attempt < 20 && !renamed; attempt++) {
+                renamed = it.renameTo(disabled)
+                if (!renamed) Thread.sleep(500)
+            }
+            if (renamed) println "Disabled old mod file: ${it.name} in Modrinth profile '${profileName}'"
             else println "Warning: could not disable ${it.name} (game running?) - two active alpaka jars will break Fabric startup."
         }
 
@@ -155,6 +242,7 @@ def deployToModrinth(File jarFile, String versionStr) {
             java.nio.file.Files.copy(jarFile.toPath(), destFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
             println "Deployed ${targetName} to Modrinth profile: ${profileName}"
             deployed = true
+            runModrinthCleanup(profileName)
         } catch (Exception e) {
             println "Warning: Could not write ${destFile.absolutePath} (file may be in use by running game): ${e.message}"
         }
@@ -265,7 +353,8 @@ tasks.register("deployJar") {
     dependsOn(tasks.named("jar"))
     outputs.upToDateWhen { false }
     doLast {
-        deployToLauncher(tasks.named("jar").get().archiveFile.get().asFile, project.version.toString())
+        def jar = tasks.named("jar").get()
+        deployToLauncher(jar.archiveFile.get().asFile, jar.archiveVersion.get())
     }
 }
 
@@ -286,12 +375,10 @@ loom {
             if (project.hasProperty("quickPlayWorld")) {
                 programArgs("--quickPlaySingleplayer", project.property("quickPlayWorld").toString())
             }
+            // -PscrollRate=<per second> slows or speeds up the chat's smooth scrolling for tuning.
+            if (project.hasProperty("scrollRate")) {
+                vmArg("-Dalpaka.scrollRate=" + project.property("scrollRate").toString())
+            }
         }
     }
 }
-
-
-
-
-
-

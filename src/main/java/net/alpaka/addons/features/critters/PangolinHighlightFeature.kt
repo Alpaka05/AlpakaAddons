@@ -30,7 +30,7 @@ import net.minecraft.world.entity.animal.armadillo.Armadillo
  *  * Invisible mobs are skipped, and the search is capped at [MAX_DISTANCE] blocks.
  *
  * Nothing is scanned, tracked, or reported: no chunk or block sweeps, no entity list walking, no
- * state kept about mobs the player cannot see. The feature adds a colour to something already on
+ * state kept about mobs the player cannot see. The feature adds a color to something already on
  * screen and nothing else.
  */
 object PangolinHighlightFeature {
@@ -98,7 +98,7 @@ object PangolinHighlightFeature {
     }
 
     /**
-     * Called for every entity vanilla extracts a render state for. Sets the outline colour when the
+     * Called for every entity vanilla extracts a render state for. Sets the outline color when the
      * entity is a Pangolin the player can currently see, and otherwise leaves the state untouched.
      */
     @JvmStatic
@@ -116,8 +116,8 @@ object PangolinHighlightFeature {
         if (entity.distanceToSqr(player) > MAX_DISTANCE_SQ) return
         if (!isVisibleToPlayer(player, entity)) return
 
-        // The outline pass treats any non-zero colour as glowing, and expects it opaque - exactly
-        // how vanilla applies a team colour for the glowing effect.
+        // The outline pass treats any non-zero color as glowing, and expects it opaque - exactly
+        // how vanilla applies a team color for the glowing effect.
         state.outlineColor = ARGB.opaque(cfg.pangolinHighlightColor)
     }
 

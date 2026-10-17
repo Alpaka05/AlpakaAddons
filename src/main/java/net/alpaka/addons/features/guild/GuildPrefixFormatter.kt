@@ -28,11 +28,11 @@ import net.minecraft.network.chat.contents.PlainTextContents
  */
 object GuildPrefixFormatter {
 
-    /** Hypixel's own marker, as it appears once colour codes are stripped. */
+    /** Hypixel's own marker, as it appears once color codes are stripped. */
     private const val TARGET = "Guild >"
 
     /**
-     * Turns `&`-style colour codes into the section sign Minecraft renders.
+     * Turns `&`-style color codes into the section sign Minecraft renders.
      *
      * The config field is typed in game, where `§` is not on the keyboard - so the convention every
      * other Hypixel mod uses is followed here. Only real code characters are converted, leaving an
@@ -62,7 +62,7 @@ object GuildPrefixFormatter {
     private var translated: String = ""
 
     /**
-     * The configured tag with its colour codes translated, built once per value rather than per
+     * The configured tag with its color codes translated, built once per value rather than per
      * message. The setting changes when somebody types in the config; chat arrives all day.
      */
     private fun tag(raw: String): String {

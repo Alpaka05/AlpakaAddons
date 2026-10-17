@@ -1,7 +1,7 @@
 package net.alpaka.addons.features.slayer
 
 /**
- * Tells a slayer boss's name tag from every other mob's, colour codes already stripped.
+ * Tells a slayer boss's name tag from every other mob's, color codes already stripped.
  *
  * Since Hypixel's name tag change in October 2026 a boss carries a level like every mob does, so
  * the level no longer tells the two apart. Samples from SkyHanni's MobFilter, before and after:

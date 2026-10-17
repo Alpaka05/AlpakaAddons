@@ -67,7 +67,7 @@ object InventoryHudRenderer {
 
     /**
      * The title, where and how a container screen puts its own: eight pixels in, six down, dark
-     * grey without a shadow (AbstractContainerScreen's titleLabelX/Y and the vanilla label colour).
+     * grey without a shadow (AbstractContainerScreen's titleLabelX/Y and the vanilla label color).
      */
     private const val CHEST_TITLE = "Inventory"
     private const val CHEST_TITLE_X = 8
@@ -116,7 +116,7 @@ object InventoryHudRenderer {
     const val MIN_SCALE = 0.5f
     const val MAX_SCALE = 3.0f
 
-    /** Backdrop colour, matching the config menu's panel. Alpha comes from the player's slider. */
+    /** Backdrop color, matching the config menu's panel. Alpha comes from the player's slider. */
     private const val PANEL_BG = 0x191919
 
     /** Corner radius of the flat panel, in panel pixels. */
@@ -141,10 +141,10 @@ object InventoryHudRenderer {
      */
     private const val FADE_DRIFT = 8.0f
 
-    /** Replaces the alpha byte of an RGB colour. */
+    /** Replaces the alpha byte of an RGB color. */
     private fun withAlpha(rgb: Int, alpha: Int): Int = (alpha shl 24) or (rgb and 0xFFFFFF)
 
-    /** An ARGB colour with its alpha scaled by [factor]. */
+    /** An ARGB color with its alpha scaled by [factor]. */
     private fun fade(argb: Int, factor: Float): Int =
         withAlpha(argb, Math.round(((argb ushr 24) and 0xFF) * factor))
 
@@ -261,7 +261,7 @@ object InventoryHudRenderer {
         graphics.pose().translate(x.toFloat(), y + (1.0f - shown) * FADE_DRIFT)
         graphics.pose().scale(scale, scale)
 
-        // One flat fill, no texture: a single constant colour whose strength the player sets, from
+        // One flat fill, no texture: a single constant color whose strength the player sets, from
         // solid down to fully invisible. Anything patterned here reads as dirt behind the items.
         val backdropAlpha = Math.round(
             AlpakaConfig.instance.inventoryHudBackgroundOpacity / 100.0f * 255.0f
@@ -269,7 +269,7 @@ object InventoryHudRenderer {
 
         if (chestStyle()) {
             // Tinted white so the opacity slider still means something here: white leaves every
-            // colour as the pack drew it and only the alpha does any work. The fade scales it on top.
+            // color as the pack drew it and only the alpha does any work. The fade scales it on top.
             val chestAlpha = Math.round(backdropAlpha * shown)
             if (chestAlpha > 0) {
                 val tint = withAlpha(0xFFFFFF, chestAlpha)
@@ -293,7 +293,7 @@ object InventoryHudRenderer {
                 )
             }
             // No accent frame in this style. The whole point is that the panel passes for a real
-            // container, and a coloured outline is the one thing that would give it away.
+            // container, and a colored outline is the one thing that would give it away.
         } else {
             drawFlatPanel(graphics, scale, backdropAlpha, shown)
         }
@@ -352,8 +352,8 @@ object InventoryHudRenderer {
 
     /**
      * The flat panel: a rounded box with the world blurred behind it, or a plain tinted fill when
-     * the blur is off, inside a one-pixel frame whose colour runs diagonally between the two frame
-     * colours from the config. Drawn under the current pose, which already places and scales the panel.
+     * the blur is off, inside a one-pixel frame whose color runs diagonally between the two frame
+     * colors from the config. Drawn under the current pose, which already places and scales the panel.
      *
      * The frame stays at full strength whatever the opacity slider does - it is what keeps the HUD
      * locatable when the backdrop is turned all the way down - unless the player turns it off. Only
@@ -380,7 +380,7 @@ object InventoryHudRenderer {
 
         if (AlpakaConfig.instance.inventoryHudBlur) {
             // The slider is the tint's strength over the blur: 0 % is clear frosted glass, 100 % the
-            // solid panel colour. The frame is captured and blurred once per frame for every panel
+            // solid panel color. The frame is captured and blurred once per frame for every panel
             // that asks, so this shares the copy with the chat. The fade goes in as the panel's
             // opacity rather than into the tint, so the blur fades with it. Asked before the
             // submission, so a HUD cached by Gnetum hands this panel to the frame's own pass.
@@ -399,7 +399,7 @@ object InventoryHudRenderer {
 
         if (!AlpakaConfig.instance.inventoryHudFrame) return
 
-        // Top-left carries the first colour, bottom-right the second; the other two corners hold
+        // Top-left carries the first color, bottom-right the second; the other two corners hold
         // the midpoint so the ramp runs straight along the diagonal without a seam.
         val start = fade(AlpakaConfig.instance.inventoryHudFrameStart, shown)
         val end = fade(AlpakaConfig.instance.inventoryHudFrameEnd, shown)

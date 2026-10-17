@@ -37,7 +37,7 @@ public class SlayerDropTracker {
     /**
      * A rare drop. Hypixel's slayer drops put the item in parentheses and use <em>two</em> spaces
      * after "DROP!" - e.g. {@code "VERY RARE DROP!  (High Class Archfiend Dice) +305% ✯ Magic Find"}
-     * once colour codes are stripped. The previous pattern required exactly one space and no leading
+     * once color codes are stripped. The previous pattern required exactly one space and no leading
      * whitespace, so it never matched a single real drop.
      */
     private static final Pattern DROP_PATTERN = Pattern.compile(
@@ -48,7 +48,7 @@ public class SlayerDropTracker {
 
     /**
      * The RNG meter reading Hypixel prints after every slayer boss kill, e.g.
-     * {@code "RNG Meter - 69,300 Stored XP"} once colour codes are stripped.
+     * {@code "RNG Meter - 69,300 Stored XP"} once color codes are stripped.
      *
      * This is the only message that states a slayer XP figure, and the step between two consecutive
      * readings is the XP that kill awarded - two captured back to back read 69,300 then 69,850. It
@@ -81,7 +81,7 @@ public class SlayerDropTracker {
 
     /**
      * Hypixel's death announcement, e.g. {@code " ☠ You were killed by Inferno Demonlord."} once
-     * colour codes are stripped.
+     * color codes are stripped.
      *
      * A second net for the player dying, because the first one - watching the client's own player go
      * to zero health - was seen to miss it: a boss killed the player and the mod still counted a
@@ -146,7 +146,7 @@ public class SlayerDropTracker {
      */
     private static final long HIDE_WINDOW_MS = 2000L;
 
-    /** One drop line the tracker has taken over announcing, keyed by its colour-stripped text. */
+    /** One drop line the tracker has taken over announcing, keyed by its color-stripped text. */
     private record PendingHide(String text, long expiresAtMs) {}
 
     private static final java.util.List<PendingHide> PENDING_HIDES = new java.util.ArrayList<>();
@@ -507,7 +507,7 @@ public class SlayerDropTracker {
      * for the guild drop announcement and the "!since" reply, and both broke the rule that every
      * message needs a direct action from the player.
      */
-    /** "Share: [Guild] [Party]" - a grey label, then one button per channel in its chat's colour. */
+    /** "Share: [Guild] [Party]" - a grey label, then one button per channel in its chat's color. */
     private static MutableComponent shareButtons(String text) {
         return Component.literal("Share: ").withStyle(ChatFormatting.GRAY)
                 .append(shareButton("[Guild]", ChatFormatting.GREEN, "gc", text))

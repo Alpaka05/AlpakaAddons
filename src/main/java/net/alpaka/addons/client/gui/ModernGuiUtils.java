@@ -151,8 +151,8 @@ public class ModernGuiUtils {
     }
 
     /**
-     * Linearly blends two ARGB colours; {@code t} 0 gives {@code from}, 1 gives {@code to}.
-     * For controls whose colour follows an animation instead of flipping with the state.
+     * Linearly blends two ARGB colors; {@code t} 0 gives {@code from}, 1 gives {@code to}.
+     * For controls whose color follows an animation instead of flipping with the state.
      */
     public static int lerpColor(int from, int to, float t) {
         t = Math.max(0.0f, Math.min(1.0f, t));
@@ -169,7 +169,7 @@ public class ModernGuiUtils {
      * An ON/OFF pill whose knob sits at {@code progress} - 0 left and off, 1 right and on.
      *
      * The caller animates progress toward the real state, so a click slides the knob across and
-     * fades the track through the accent colour rather than jumping. Grey knob when off, accent
+     * fades the track through the accent color rather than jumping. Grey knob when off, accent
      * when on, blended in between. Track and knob are fully rounded: a pill and a disc.
      */
     public static void drawModernToggle(GuiGraphicsExtractor graphics, Font font, int x, int y, int width, int height, float progress, boolean isHovered) {
@@ -248,10 +248,10 @@ public class ModernGuiUtils {
     public static void drawModernColorButton(GuiGraphicsExtractor graphics, Font font, int x, int y, int width, int height, int color, boolean isHovered) {
         int border = isHovered ? getAccentColor() : COLOR_CARD_BORDER;
 
-        // Dark base behind the swatch, so a translucent colour reads against black
+        // Dark base behind the swatch, so a translucent color reads against black
         drawRoundedRect(graphics, x, y, width, height, WIDGET_RADIUS, 0xFF000000);
 
-        // Colour swatch, inset inside the border
+        // Color swatch, inset inside the border
         drawRoundedRect(graphics, x + 2, y + 2, width - 4, height - 4, WIDGET_RADIUS - 1, color);
 
         drawRoundedOutline(graphics, x, y, width, height, WIDGET_RADIUS, border);

@@ -30,7 +30,7 @@ import net.minecraft.world.level.block.state.BlockState
  *
  * ### What counts as a pit
  *
- * A block that *becomes* clay or terracotta (any colour) while the player's own Blaze boss is up,
+ * A block that *becomes* clay or terracotta (any color) while the player's own Blaze boss is up,
  * within [RADIUS] blocks of the player. The change is what matters: the Blaze slayer's zones are
  * built from terracotta, and only a block that was something else a moment ago is a pit. The column
  * stays exactly as long as the block does and goes the moment the server turns it back.
@@ -49,7 +49,7 @@ object FirePitFeature {
     /** Height of the column above the pit block, in blocks. */
     private const val AURA_HEIGHT = 2.0f
 
-    /** Colour of the column: a hot red-orange. Alpha at the floor; it fades to nothing at the top. */
+    /** Color of the column: a hot red-orange. Alpha at the floor; it fades to nothing at the top. */
     private const val RED = 1.0f
     private const val GREEN = 0.28f
     private const val BLUE = 0.08f

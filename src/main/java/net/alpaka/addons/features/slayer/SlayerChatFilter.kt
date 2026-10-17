@@ -23,7 +23,7 @@ import net.alpaka.addons.config.AlpakaConfig
 object SlayerChatFilter {
 
     /**
-     * Messages hidden by exact text, once colour codes are stripped and the line is trimmed.
+     * Messages hidden by exact text, once color codes are stripped and the line is trimmed.
      *
      * Stored as plain text on purpose. Hypixel sends these wrapped in formatting - the real quest
      * line is `"   §5§l» §7Slay §c33,600 Combat XP §7worth of Blazes§7."` - and comparing that raw

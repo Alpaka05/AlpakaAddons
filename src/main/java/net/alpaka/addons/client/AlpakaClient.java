@@ -47,6 +47,7 @@ public class AlpakaClient implements ClientModInitializer {
         });
         ZoomFeature.register();
         net.alpaka.addons.features.chat.ChatPeekFeature.register();
+        net.alpaka.addons.features.chat.ActionBarOverChat.register();
         CommandWheelFeature.register();
         InventoryHudFeature.register();
         net.alpaka.addons.features.blaze.FirePitFeature.register();

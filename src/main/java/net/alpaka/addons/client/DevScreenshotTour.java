@@ -230,6 +230,14 @@ public final class DevScreenshotTour {
             new Stop("health-bar-own-row", () -> healthBar(false, 0), () -> true, 20),
             new Stop("health-bar-centered-own-row", () -> healthBar(true, 0), () -> true, 20),
             new Stop("health-bar-hidden", () -> healthBar(true, 2), () -> true, 20),
+            // Chat lines reaching down over the action bar: the bar has to stay readable on the panel.
+            new Stop("actionbar-over-chat", () -> { chatBurst(); actionBar(); }, () -> true, 40),
+            // The open chat is what is being read, so there it stays on top of the bar.
+            new Stop("actionbar-chat-open", () -> {
+                actionBar();
+                Minecraft.getInstance().gui.setScreen(new ChatScreen("", false));
+            }, () -> true, 10),
+            new Stop(null, () -> Minecraft.getInstance().gui.setScreen(null), () -> true, 5),
             // A sidebar like Hypixel's over its blurred panel, and a sword under starlight; twice, to
             // see the galaxy drift and twinkle.
             new Stop(null, DevScreenshotTour::scoreboardAndStarlight, () -> true, 20),

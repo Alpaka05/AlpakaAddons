@@ -21,14 +21,16 @@ import java.time.Duration
  *
  * ### What counts as newer
  *
- * A full release - GitHub leaves drafts and pre-releases out of the list on its own account, and
- * those are skipped here as well - whose version is higher than the running one, and which carries
- * a jar for the Minecraft version the game is running. Releases are built per Minecraft version
+ * A release whose version is higher than the running one, and which carries a jar for the
+ * Minecraft version the game is running. Drafts are skipped. Pre-releases (`2.0.0-beta.1`) are
+ * offered only to a player already running one, so a tester of the next version hears of the next
+ * beta and of the release itself, while everyone else hears of full releases only. Releases are built per Minecraft version
  * (`alpaka-1.2.22-mc26.2.jar`), and a release with no jar for this game is one the player cannot
  * install, so it is not announced.
  *
  * A build between releases (`1.2.22+25.d4e2c70`) counts as its release, so a test build of the
- * latest release is not told to update to it.
+ * latest release is not told to update to it. A build ahead of the next one (`2.0.0-alpha+3.a1b2c3d`)
+ * sorts below that version's betas and the release, see [ReleaseVersion].
  *
  * ### What this sends
  *
@@ -74,8 +76,7 @@ object UpdateChecker {
     }
 
     private fun fetch() {
-        val current = ModVersion.mod().substringBefore('+')
-        val currentParts = parse(current) ?: return // A build without a version has nothing to compare.
+        val current = ReleaseVersion.parse(ModVersion.mod()) ?: return // A build without a version has nothing to compare.
         val jarSuffix = "-mc${ModVersion.minecraft()}.jar"
 
         val request = HttpRequest.newBuilder(URI.create(ENDPOINT))
@@ -95,7 +96,7 @@ object UpdateChecker {
                         )
                         return@whenComplete
                     }
-                    found = newest(response.body(), currentParts, jarSuffix)
+                    found = newest(response.body(), current, jarSuffix)
                 } catch (t: Throwable) {
                     AlpakaAddons.LOGGER.warn("Could not check for a newer release", t)
                 }
@@ -103,21 +104,23 @@ object UpdateChecker {
     }
 
     /** The highest release above [current] with a jar ending in [jarSuffix], or null if there is none. */
-    private fun newest(body: String, current: List<Int>, jarSuffix: String): Release? {
+    private fun newest(body: String, current: ReleaseVersion, jarSuffix: String): Release? {
         var best: Release? = null
-        var bestParts = current
+        var bestVersion = current
         for (element in JsonParser.parseString(body).asJsonArray) {
             val release = element.asJsonObject
-            if (release.get("draft")?.asBoolean == true || release.get("prerelease")?.asBoolean == true) continue
+            if (release.get("draft")?.asBoolean == true) continue
             val version = release.get("tag_name")?.asString?.removePrefix("v") ?: continue
-            val parts = parse(version) ?: continue
-            if (compare(parts, bestParts) <= 0) continue
+            val parsed = ReleaseVersion.parse(version) ?: continue
+            val preRelease = release.get("prerelease")?.asBoolean == true || parsed.isPreRelease
+            if (preRelease && !current.isPreRelease) continue
+            if (parsed <= bestVersion) continue
             val hasJar = release.getAsJsonArray("assets")?.any {
                 it.asJsonObject.get("name")?.asString?.endsWith(jarSuffix) == true
             } == true
             if (!hasJar) continue
             best = Release(version, release.get("html_url")?.asString ?: continue)
-            bestParts = parts
+            bestVersion = parsed
         }
         return best
     }
@@ -129,19 +132,5 @@ object UpdateChecker {
                     .withClickEvent(ClickEvent.OpenUrl(URI.create(release.url)))
                     .withHoverEvent(HoverEvent.ShowText(Component.literal(release.url)))
             }))
-    }
-
-    /** "1.2.22" as [1, 2, 22]; null for anything that is not dot-separated numbers. */
-    private fun parse(version: String): List<Int>? {
-        val parts = version.split('.').map { it.toIntOrNull() ?: return null }
-        return parts.ifEmpty { null }
-    }
-
-    private fun compare(a: List<Int>, b: List<Int>): Int {
-        for (i in 0 until maxOf(a.size, b.size)) {
-            val diff = a.getOrElse(i) { 0 } - b.getOrElse(i) { 0 }
-            if (diff != 0) return diff
-        }
-        return 0
     }
 }

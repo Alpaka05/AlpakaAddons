@@ -221,16 +221,21 @@ public class AlpakaClient implements ClientModInitializer {
             );
 
             // --- Viewmodel Preset Command ---
-            // "/alpakapreset <n>" switches to a slot, "/alpakapreset save <n>" writes the current
-            // viewmodel settings into one - the same thing the "Save Preset" buttons on the Item
-            // Size screen do, reachable without opening it.
+            // "/alpakapreset <n>" switches to a preset, "/alpakapreset save <n>" writes the current
+            // viewmodel settings into one - the same as the Load and Save buttons under Viewmodel >
+            // Presets, reachable without opening the menu. n counts in the order the menu lists them.
             dispatcher.register(ClientCommands.literal("alpakapreset")
-                .then(ClientCommands.argument("number", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1, 3))
+                .then(ClientCommands.argument("number", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1))
                     .executes(context -> {
                         int num = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "number");
                         Minecraft.getInstance().execute(() -> {
-                            net.alpaka.addons.config.AlpakaConfig.instance.loadPreset(num - 1);
-                            SlayerDropTracker.sendModMessage("§aSwitched to Preset " + num + ".");
+                            net.alpaka.addons.config.AlpakaConfig config = net.alpaka.addons.config.AlpakaConfig.instance;
+                            if (num > config.itemPresets.size()) {
+                                SlayerDropTracker.sendModMessage(noSuchPreset(num));
+                                return;
+                            }
+                            config.loadPreset(num - 1);
+                            SlayerDropTracker.sendModMessage("§aSwitched to " + config.presetName(num - 1) + ".");
                             try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
                         });
                         return 1;
@@ -238,12 +243,17 @@ public class AlpakaClient implements ClientModInitializer {
                 )
                 .then(ClientCommands.literal("save")
                     .requires(FabricClientCommandSource::attended)
-                    .then(ClientCommands.argument("number", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1, 3))
+                    .then(ClientCommands.argument("number", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1))
                         .executes(context -> {
                             int num = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "number");
                             Minecraft.getInstance().execute(() -> {
-                                net.alpaka.addons.config.AlpakaConfig.instance.savePreset(num - 1);
-                                SlayerDropTracker.sendModMessage("§aSaved your viewmodel and swing settings to Preset " + num + ".");
+                                net.alpaka.addons.config.AlpakaConfig config = net.alpaka.addons.config.AlpakaConfig.instance;
+                                if (num > config.itemPresets.size()) {
+                                    SlayerDropTracker.sendModMessage(noSuchPreset(num));
+                                    return;
+                                }
+                                config.savePreset(num - 1);
+                                SlayerDropTracker.sendModMessage("§aSaved your viewmodel and swing settings to " + config.presetName(num - 1) + ".");
                                 try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
                             });
                             return 1;
@@ -251,14 +261,17 @@ public class AlpakaClient implements ClientModInitializer {
                     )
                     .executes(context -> {
                         Minecraft.getInstance().execute(() ->
-                                SlayerDropTracker.sendModMessage("§7Usage: §6/alpakapreset save <1|2|3>"));
+                                SlayerDropTracker.sendModMessage("§7Usage: §6/alpakapreset save <number>"));
                         return 1;
                     })
                 )
                 .executes(context -> {
                     Minecraft.getInstance().execute(() -> {
-                        SlayerDropTracker.sendModMessage("§7Current preset: §ePreset " + (net.alpaka.addons.config.AlpakaConfig.instance.activeItemPresetIndex + 1)
-                                + "§7. Usage: §6/alpakapreset <1|2|3> §7to switch, §6/alpakapreset save <1|2|3> §7to save.");
+                        net.alpaka.addons.config.AlpakaConfig config = net.alpaka.addons.config.AlpakaConfig.instance;
+                        int active = config.activeItemPresetIndex;
+                        String current = active >= 0 && active < config.itemPresets.size() ? config.presetName(active) : "none";
+                        SlayerDropTracker.sendModMessage("§7Current preset: §e" + current
+                                + "§7. Usage: §6/alpakapreset <number> §7to switch, §6/alpakapreset save <number> §7to save.");
                     });
                     return 1;
                 })
@@ -380,5 +393,13 @@ public class AlpakaClient implements ClientModInitializer {
         Minecraft.getInstance().execute(() ->
                 Minecraft.getInstance().gui.setScreen(new AlpakaConfigScreen(null, search)));
         return 1;
+    }
+
+    /** The reply to a preset number past the end of the list. */
+    private static String noSuchPreset(int num) {
+        int count = net.alpaka.addons.config.AlpakaConfig.instance.itemPresets.size();
+        return count == 0
+                ? "§cThere are no presets yet. Make one under Viewmodel > Presets."
+                : "§cThere is no Preset " + num + ". You have " + count + (count == 1 ? " preset." : " presets.");
     }
 }

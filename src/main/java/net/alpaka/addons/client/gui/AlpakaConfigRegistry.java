@@ -974,56 +974,8 @@ public class AlpakaConfigRegistry {
 
         OPTIONS.add(new ConfigOption("Viewmodel Presets", ConfigCategory.VIEWMODEL));
 
-        OPTIONS.add(new ConfigOption("load_preset_1", "Load Preset 1",
-                "Replaces your current viewmodel and swing settings with Preset 1.",
-                ConfigCategory.VIEWMODEL,
-                "Load Preset 1",
-                parent -> AlpakaConfig.instance.loadPreset(0),
-                "preset load 1 slot viewmodel hand size offset applies"));
-
-        OPTIONS.add(new ConfigOption("save_preset_1", "Save to Preset 1",
-                "Saves your current viewmodel and swing settings to Preset 1.",
-                ConfigCategory.VIEWMODEL,
-                "Save to Preset 1",
-                parent -> AlpakaConfig.instance.savePreset(0),
-                "preset save 1 slot viewmodel hand size offset")
-                .confirm("Save to Preset 1",
-                        "Saves your current viewmodel and swing settings to Preset 1, replacing what is saved there now.",
-                        "Save", false));
-
-        OPTIONS.add(new ConfigOption("load_preset_2", "Load Preset 2",
-                "Replaces your current viewmodel and swing settings with Preset 2.",
-                ConfigCategory.VIEWMODEL,
-                "Load Preset 2",
-                parent -> AlpakaConfig.instance.loadPreset(1),
-                "preset load 2 slot viewmodel hand size offset applies"));
-
-        OPTIONS.add(new ConfigOption("save_preset_2", "Save to Preset 2",
-                "Saves your current viewmodel and swing settings to Preset 2.",
-                ConfigCategory.VIEWMODEL,
-                "Save to Preset 2",
-                parent -> AlpakaConfig.instance.savePreset(1),
-                "preset save 2 slot viewmodel hand size offset")
-                .confirm("Save to Preset 2",
-                        "Saves your current viewmodel and swing settings to Preset 2, replacing what is saved there now.",
-                        "Save", false));
-
-        OPTIONS.add(new ConfigOption("load_preset_3", "Load Preset 3",
-                "Replaces your current viewmodel and swing settings with Preset 3.",
-                ConfigCategory.VIEWMODEL,
-                "Load Preset 3",
-                parent -> AlpakaConfig.instance.loadPreset(2),
-                "preset load 3 slot viewmodel hand size offset applies"));
-
-        OPTIONS.add(new ConfigOption("save_preset_3", "Save to Preset 3",
-                "Saves your current viewmodel and swing settings to Preset 3.",
-                ConfigCategory.VIEWMODEL,
-                "Save to Preset 3",
-                parent -> AlpakaConfig.instance.savePreset(2),
-                "preset save 3 slot viewmodel hand size offset")
-                .confirm("Save to Preset 3",
-                        "Saves your current viewmodel and swing settings to Preset 3, replacing what is saved there now.",
-                        "Save", false));
+        OPTIONS.add(ConfigOption.presets("viewmodel_presets", "Presets", ConfigCategory.VIEWMODEL,
+                "preset presets load save delete name new slot viewmodel hand size offset swing"));
 
 
         // --- 3. BLOCK OVERLAY ---

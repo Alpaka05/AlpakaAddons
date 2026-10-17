@@ -13,9 +13,9 @@ import java.util.regex.Pattern;
  * tab all the same.
  *
  * In three steps. A channel's own prefix decides first: {@code Party > name: msg},
- * {@code Guild > name [Rank]: msg}, {@code Officer > ...}, {@code Co-op > name: msg}, and
+ * {@code Guild > name [Rank]: msg}, {@code Officer > ...}, {@code Co-op > name: msg},
  * {@code From name: msg} / {@code To name: msg} for private messages, with "From stash:" being the
- * one look-alike to keep out. Then anything a player said in public goes to All, whatever it is
+ * one look-alike to keep out, and {@code [NPC] name: msg} for what an NPC says. Then anything a player said in public goes to All, whatever it is
  * about. Only what is left - Hypixel's own notices - is matched against the shapes those notices
  * take: joins, leaves, invites, disbands, the party list, guild promotions and quests. Matching the
  * channel's name anywhere in the line, as this used to, put public chat that merely mentioned
@@ -27,10 +27,7 @@ public enum ChatTab {
     GUILD("Guild"),
     COOP("Co-op"),
     PRIVATE("PMs"),
-    /** Everything the server sent that no player wrote: Hypixel's notices, warnings and the like. */
-    SERVER("Server"),
-    /** Everything made on this client: lines from mods, this one included. */
-    MODS("Mods");
+    NPC("NPCs");
 
     public final String label;
 
@@ -44,6 +41,7 @@ public enum ChatTab {
     private static final Pattern GUILD_CHAT = Pattern.compile("^(?:Guild|Officer) > ");
     private static final Pattern COOP_CHAT = Pattern.compile("^Co-op > ");
     private static final Pattern PRIVATE_CHAT = Pattern.compile("^(?!From stash: )(?:From|To) (?:\\[[^\\]]+\\] )?[^:]{1,40}: ");
+    private static final Pattern NPC_CHAT = Pattern.compile("^\\[NPC\\] ");
 
     /**
      * A line a player wrote in public: an optional SkyBlock level, an optional emblem, an optional
@@ -83,11 +81,7 @@ public enum ChatTab {
     /** A party invite waiting for the player: never filtered away, whatever tab is up. */
     private static final Pattern PARTY_INVITE = Pattern.compile(NAME + " has invited you to join their party");
 
-    /**
-     * The channel tab a message belongs on besides All. Never returns null; a line nobody claims is
-     * ALL. Server and Mods are decided by where a message came from, not by its text - see
-     * {@link ChatOrigin}.
-     */
+    /** The tab a message belongs on besides All. Never returns null; a line nobody claims is ALL. */
     public static ChatTab classify(Component message) {
         return classify(strip(message.getString()));
     }
@@ -99,20 +93,12 @@ public enum ChatTab {
         if (GUILD_CHAT.matcher(text).find()) return GUILD;
         if (COOP_CHAT.matcher(text).find()) return COOP;
         if (PRIVATE_CHAT.matcher(text).find()) return PRIVATE;
+        // Before the player line, which "[NPC] name:" would pass for with [NPC] as the rank.
+        if (NPC_CHAT.matcher(text).find()) return NPC;
         if (PLAYER_LINE.matcher(text).find()) return ALL;
         if (PARTY_NOTICE.matcher(text).find()) return PARTY;
         if (GUILD_NOTICE.matcher(text).find()) return GUILD;
         return ALL;
-    }
-
-    /**
-     * Whether a player wrote this line: chat in a channel, a private message, or public chat. The
-     * Server tab is what the server sent minus these.
-     */
-    public static boolean isPlayerWritten(String text) {
-        return PARTY_CHAT.matcher(text).find() || GUILD_CHAT.matcher(text).find()
-                || COOP_CHAT.matcher(text).find() || PRIVATE_CHAT.matcher(text).find()
-                || PLAYER_LINE.matcher(text).find();
     }
 
     /** Whether a line must stay visible on every tab: an invite the player has to answer. */

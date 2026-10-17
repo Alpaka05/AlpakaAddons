@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.chat;
 
+import net.alpaka.addons.compat.GnetumCompat;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElement;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
@@ -20,6 +21,11 @@ import net.minecraft.resources.Identifier;
  * element moves as one: mods that hook into that method (SkyHanni posts an event at its start and
  * end) see both ends in the new place, and a mod that hides or replaces the element still does.
  * While the chat is open or peeked the chat stays on top, as the thing being read.
+ *
+ * Not while Gnetum caches the action bar: it draws each HUD element in a pass of its own and keeps
+ * reordering the passes, so the element after the chat at times ran before the action bar was held
+ * and the action bar flickered. There is nothing to move then anyway - Gnetum's cached HUD image,
+ * action bar included, is drawn over the elements it leaves uncached, the blurred chat among them.
  */
 public final class ActionBarOverChat {
     private static final Identifier AFTER_CHAT = Identifier.fromNamespaceAndPath("alpaka", "action_bar_over_chat");
@@ -43,7 +49,7 @@ public final class ActionBarOverChat {
     }
 
     private static boolean movesAboveChat() {
-        if (!ChatBlurFeature.isEnabled()) return false;
+        if (!ChatBlurFeature.isEnabled() || GnetumCompat.isCaching()) return false;
         Minecraft mc = Minecraft.getInstance();
         return !mc.gui.hud.getChat().isChatFocused() && !ChatPeekFeature.isPeeking();
     }

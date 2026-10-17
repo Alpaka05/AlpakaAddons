@@ -1,6 +1,7 @@
 package net.alpaka.addons.mixin;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import net.alpaka.addons.compat.MacOSInputFixesCompat;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
 import net.alpaka.addons.features.party.PartyInviteFeature;
 import net.minecraft.client.KeyboardHandler;
@@ -25,6 +26,8 @@ public class KeyboardHandlerMixin {
     @Inject(method = "keyPress", at = @At("HEAD"), cancellable = true)
     private void alpaka$interceptKeys(long window, int action, KeyEvent event, CallbackInfo ci) {
         if (action == InputConstants.RELEASE) return;
+        // On a Mac with MacOS Input Fixes, Tab comes in twice and the game keeps only the second.
+        if (MacOSInputFixesCompat.isDiscardedCopy(event.key())) return;
         // A held key repeats, and vanilla treats a repeat like a press: it would set the key
         // mapping down - the player list's, for Tab - even though the press itself was taken. So a
         // repeat of a taken key is swallowed too, without acting on it again.

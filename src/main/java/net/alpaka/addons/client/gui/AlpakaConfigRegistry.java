@@ -1848,7 +1848,7 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.alwaysSprintEnabled = v; AlpakaConfig.save(); },
                 "always sprint auto run toggle movement key hold forward walking"));
 
-        OPTIONS.add(new ConfigOption("always_sprint_ignore_garden", "Always Sprint: Ignore Garden",
+        OPTIONS.add(new ConfigOption("always_sprint_ignore_garden", "Ignore Garden",
                 "Always Sprint switches itself off while you are on the Garden.",
                 ConfigCategory.SOUND_MISC,
                 () -> AlpakaConfig.instance.alwaysSprintIgnoreGarden,

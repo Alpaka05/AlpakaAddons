@@ -111,9 +111,12 @@ object InventoryHudRenderer {
     private const val BAR_ROW = 10
     private const val FIRST_BAR = 39
 
-    /** The line vanilla draws the action bar on, and how far its text reaches above that line. */
+    /**
+     * The line vanilla draws the action bar on, and how far its text reaches above that line, plus
+     * a little air so the panel never touches the text.
+     */
     private const val ACTION_BAR_LINE = 68
-    private const val ACTION_BAR_ABOVE_LINE = 4
+    private const val ACTION_BAR_ABOVE_LINE = 4 + 3
 
     const val DEFAULT_X = net.alpaka.addons.client.hud.HudDefaults.INVENTORY_X
     const val DEFAULT_Y = net.alpaka.addons.client.hud.HudDefaults.INVENTORY_Y

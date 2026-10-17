@@ -2,6 +2,7 @@ package net.alpaka.addons.features.wheel
 
 import com.mojang.blaze3d.platform.InputConstants
 import net.alpaka.addons.client.AlpakaKeyCategory
+import net.alpaka.addons.config.AlpakaConfig
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper
 import net.minecraft.client.KeyMapping
@@ -26,7 +27,11 @@ object CommandWheelFeature {
 
         ClientTickEvents.END_CLIENT_TICK.register { client ->
             val key = COMMAND_WHEEL_KEY ?: return@register
-            if (key.isDown && client.screen == null && client.player != null) {
+            // Drained in both modes, so a press from hold mode can't open the wheel after a switch.
+            var pressed = false
+            while (key.consumeClick()) pressed = true
+            val open = if (AlpakaConfig.instance.commandWheelToggleMode) pressed else key.isDown
+            if (open && client.screen == null && client.player != null) {
                 client.setScreen(CommandWheelScreen())
             }
         }

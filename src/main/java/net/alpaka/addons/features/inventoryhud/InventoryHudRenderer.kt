@@ -103,9 +103,12 @@ object InventoryHudRenderer {
     private const val BAR_ROW = 10
     private const val FIRST_BAR = 39
 
-    /** The line vanilla draws the action bar on, and how far its text reaches above that line. */
+    /**
+     * The line vanilla draws the action bar on, and how far its text reaches above that line, plus
+     * a little air so the panel never touches the text.
+     */
     private const val ACTION_BAR_LINE = 68
-    private const val ACTION_BAR_ABOVE_LINE = 4
+    private const val ACTION_BAR_ABOVE_LINE = 4 + 3
 
     const val DEFAULT_X = net.alpaka.addons.client.hud.HudDefaults.INVENTORY_X
     const val DEFAULT_Y = net.alpaka.addons.client.hud.HudDefaults.INVENTORY_Y
@@ -379,11 +382,12 @@ object InventoryHudRenderer {
             // The slider is the tint's strength over the blur: 0 % is clear frosted glass, 100 % the
             // solid panel colour. The frame is captured and blurred once per frame for every panel
             // that asks, so this shares the copy with the chat. The fade goes in as the panel's
-            // opacity rather than into the tint, so the blur fades with it.
+            // opacity rather than into the tint, so the blur fades with it. Asked before the
+            // submission, so a HUD cached by Gnetum hands this panel to the frame's own pass.
+            ChatBlurFeature.request()
             sink.`alpaka$submitElement`(
                 BlurRectRenderState(pose, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, radiusPx, tint, toScreen, shown, scissor)
             )
-            ChatBlurFeature.request()
         } else if (backdropAlpha > 0) {
             sink.`alpaka$submitElement`(
                 GradientRoundedRectRenderState(

@@ -14,6 +14,8 @@ import java.util.function.Consumer;
 public class ColorPickerScreen extends Screen {
     private final Screen parent;
     private final Consumer<Integer> onSave;
+    /** The option's default, which the reset button in the header goes back to; null hides it. */
+    private final Integer defaultColor;
     private int r, g, b, a;
 
     private int activeSlider = -1; // 0: R, 1: G, 2: B, 3: A
@@ -38,14 +40,32 @@ public class ColorPickerScreen extends Screen {
     };
 
     public ColorPickerScreen(Screen parent, String title, int initialColor, Consumer<Integer> onSave) {
+        this(parent, title, initialColor, null, onSave);
+    }
+
+    public ColorPickerScreen(Screen parent, String title, int initialColor, Integer defaultColor, Consumer<Integer> onSave) {
         super(GuiFont.text(title));
         this.parent = parent;
         this.onSave = onSave;
-        this.a = (initialColor >> 24) & 0xFF;
-        this.r = (initialColor >> 16) & 0xFF;
-        this.g = (initialColor >> 8) & 0xFF;
-        this.b = initialColor & 0xFF;
+        this.defaultColor = defaultColor;
+        setColor(initialColor);
         this.hexInput = String.format("#%02X%02X%02X%02X", a, r, g, b);
+    }
+
+    private void setColor(int color) {
+        this.a = (color >> 24) & 0xFF;
+        this.r = (color >> 16) & 0xFF;
+        this.g = (color >> 8) & 0xFF;
+        this.b = color & 0xFF;
+    }
+
+    private int currentColor() {
+        return (a << 24) | (r << 16) | (g << 8) | b;
+    }
+
+    /** The reset button: a small square left of the close button, the same size. */
+    private static int resetX(Layout l) {
+        return l.closeX() - 20;
     }
 
     private void playSound() {
@@ -169,13 +189,24 @@ public class ColorPickerScreen extends Screen {
         boolean hoverClose = inside(mouseX, mouseY, l.closeX(), l.closeY(), 18, 18);
         graphics.text(this.font, GuiFont.text("✕"), l.closeX() + 4, l.closeY() + 3, hoverClose ? ModernGuiUtils.getAccentColor() : ModernGuiUtils.COLOR_TEXT_MUTED, false);
 
+        // Reset '↺' button beside it: back to the option's default colour, kept until Save like a
+        // preset. Dimmed while the colour already is the default.
+        if (defaultColor != null) {
+            boolean atDefault = currentColor() == defaultColor;
+            boolean hoverReset = !atDefault && inside(mouseX, mouseY, resetX(l), l.closeY(), 18, 18);
+            int resetColor = atDefault ? ModernGuiUtils.COLOR_CARD_BORDER
+                    : hoverReset ? ModernGuiUtils.getAccentColor() : ModernGuiUtils.COLOR_TEXT_MUTED;
+            String icon = "↺";
+            graphics.text(this.font, GuiFont.text(icon), resetX(l) + (18 - GuiFont.width(this.font, icon)) / 2,
+                    l.closeY() + 4, resetColor, false);
+        }
+
         // LEFT COLUMN: Color Preview, HEX Code, Presets
         int prevX = l.prevX(), prevY = l.prevY(), prevW = l.prevW(), prevH = l.prevH();
 
         // Preview box alpha pattern + solid fill
         ModernGuiUtils.drawRect(graphics, prevX, prevY, prevW, prevH, 0xFF000000);
-        int currentColor = (a << 24) | (r << 16) | (g << 8) | b;
-        ModernGuiUtils.drawRect(graphics, prevX + 2, prevY + 2, prevW - 4, prevH - 4, currentColor);
+        ModernGuiUtils.drawRect(graphics, prevX + 2, prevY + 2, prevW - 4, prevH - 4, currentColor());
         ModernGuiUtils.drawOutline(graphics, prevX, prevY, prevW, prevH, ModernGuiUtils.COLOR_CARD_BORDER);
 
         // HEX Input Field Box
@@ -249,6 +280,16 @@ public class ColorPickerScreen extends Screen {
             return true;
         }
 
+        // Reset '↺' button
+        if (defaultColor != null && currentColor() != defaultColor
+                && inside(mouseX, mouseY, resetX(l), l.closeY(), 18, 18)) {
+            playSound();
+            this.hexFocused = false;
+            setColor(defaultColor);
+            syncHexFromColor();
+            return true;
+        }
+
         // HEX Input Field click
         if (inside(mouseX, mouseY, l.prevX(), l.hexY(), l.prevW(), l.hexH())) {
             playSound();
@@ -267,11 +308,7 @@ public class ColorPickerScreen extends Screen {
         for (int i = 0; i < PRESETS.length; i++) {
             if (inside(mouseX, mouseY, l.swatchX(i), l.swatchY(i), l.swatch(), l.swatch())) {
                 playSound();
-                int color = PRESETS[i];
-                this.a = (color >> 24) & 0xFF;
-                this.r = (color >> 16) & 0xFF;
-                this.g = (color >> 8) & 0xFF;
-                this.b = color & 0xFF;
+                setColor(PRESETS[i]);
                 syncHexFromColor();
                 return true;
             }
@@ -290,8 +327,7 @@ public class ColorPickerScreen extends Screen {
         // Save & Cancel Buttons
         if (inside(mouseX, mouseY, l.saveX(), l.btnY(), l.saveW(), l.btnH())) {
             playSound();
-            int finalColor = (a << 24) | (r << 16) | (g << 8) | b;
-            onSave.accept(finalColor);
+            onSave.accept(currentColor());
             onClose();
             return true;
         }

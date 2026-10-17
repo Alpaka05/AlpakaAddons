@@ -21,6 +21,12 @@ import net.minecraft.network.chat.Component
  *  - the player's own messages carry their name on the left, and never notify;
  *  - a line without a sender at all - joins, deaths, the server talking - is not a mention;
  *  - being mentioned mid-sentence is, however the sentence is punctuated.
+ *
+ * ### Players only
+ *
+ * Hypixel's NPCs and bosses speak in the same `<sender>: <message>` form - `[NPC] Elle: ...`,
+ * `[BOSS] Maxor: ...` - and quest dialogue often names the player. With the setting on, a line only
+ * counts when a player could have written it ([fromPlayer]).
  */
 object MentionNotifier {
 
@@ -33,14 +39,15 @@ object MentionNotifier {
     @JvmStatic
     fun register() {
         ClientReceiveMessageEvents.GAME.register { message, overlay ->
-            if (!overlay) inspect(message)
+            if (!overlay) inspect(message, signedChat = false)
         }
+        // Chat the server relays from a player's own client; Hypixel sends everything as GAME lines.
         ClientReceiveMessageEvents.CHAT.register { message, _, _, _, _ ->
-            inspect(message)
+            inspect(message, signedChat = true)
         }
     }
 
-    private fun inspect(message: Component?) {
+    private fun inspect(message: Component?, signedChat: Boolean) {
         if (message == null) return
         if (!AlpakaConfig.instance.mentionNotificationEnabled) return
 
@@ -59,6 +66,7 @@ object MentionNotifier {
         // every message the player sends would notify them about themselves.
         if (sender.contains(name, ignoreCase = true)) return
         if (!body.contains(name, ignoreCase = true)) return
+        if (AlpakaConfig.instance.mentionIgnoreServer && !signedChat && !fromPlayer(sender)) return
 
         val now = System.currentTimeMillis()
         // Both chat events can carry the same line, and a mod that cancels one and re-sends it
@@ -88,8 +96,31 @@ object MentionNotifier {
         return word.substringBefore(REPLY_ARROW).ifBlank { "Someone" }
     }
 
+    /**
+     * Whether a sender block can be a player's.
+     *
+     * Hypixel marks most of what it says itself with a tag in front of the name - `[NPC]`, `[BOSS]`,
+     * the Abiphone's `✆`. What is left once rank and level brackets, emblems and a channel marker
+     * (`Guild >`, `From`) are taken off has to be a single Minecraft name, which also turns away
+     * untagged speakers like `The Watcher`.
+     */
+    @JvmStatic
+    fun fromPlayer(sender: String): Boolean {
+        if (SERVER_TAGS.any { sender.contains(it, ignoreCase = true) }) return false
+        val words = sender.replace(BRACKETED, " ").substringAfterLast('>')
+            .split(' ')
+            .filter { word -> word.any { it.isLetterOrDigit() } }
+            .let { if (it.firstOrNull() == "From") it.drop(1) else it }
+        if (words.size != 1) return false
+        return USERNAME.matches(words[0].substringBefore(REPLY_ARROW))
+    }
+
     /** What the bridge puts between an author and the person they replied to. */
     private const val REPLY_ARROW = '⇾'
 
     private val BRACKETED = Regex("\\[[^\\]]*\\]")
+
+    private val USERNAME = Regex("[A-Za-z0-9_]{1,16}")
+
+    private val SERVER_TAGS = listOf("[NPC]", "[BOSS]", "[STATUE]", "[SKULL]", "[CROWD]", "[SECRET]", "✆")
 }

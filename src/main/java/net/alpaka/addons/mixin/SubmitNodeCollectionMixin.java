@@ -1,6 +1,7 @@
 package net.alpaka.addons.mixin;
 
 import net.alpaka.addons.features.viewmodel.HandItemLightingFeature;
+import net.alpaka.addons.features.viewmodel.HandItemStarlightFeature;
 import net.alpaka.addons.features.viewmodel.ItemMotionBlurFeature;
 import net.minecraft.client.renderer.SubmitNodeCollection;
 import org.spongepowered.asm.mixin.Mixin;
@@ -20,6 +21,7 @@ public class SubmitNodeCollectionMixin {
     )
     private Object alpaka$rememberHandItemSubmit(Object itemSubmit) {
         HandItemLightingFeature.onItemSubmitted(itemSubmit);
+        HandItemStarlightFeature.onItemSubmitted(itemSubmit);
         ItemMotionBlurFeature.onItemSubmitted(itemSubmit);
         return itemSubmit;
     }

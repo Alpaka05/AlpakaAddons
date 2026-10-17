@@ -32,7 +32,7 @@ public class AlpakaConfig {
      */
     public boolean hideHypixelDropMessage = true;
     /**
-     * Adds [Share: Guild] [Party] buttons to the tracker's line for a slayer's headline RNG drop -
+     * Adds "Share: [Guild] [Party]" buttons to the tracker's line for a slayer's headline RNG drop -
      * the one the slayer HUD counts a dry streak against, e.g. High Class Archfiend Dice for Inferno.
      *
      * A click only fills the chat box; the player sends it with Enter. This used to post to guild
@@ -40,6 +40,8 @@ public class AlpakaConfig {
      * name so the setting carries over for players who had turned the announcement on.
      */
     public boolean slayerRngDropGuildChatEnabled = false;
+    /** What those share buttons post: 0 the tracker's own line, 1 Hypixel's drop message as it came. */
+    public int slayerShareMessage = 0;
     /**
      * When a party member types "!since &lt;item&gt;", show the player their own count with a
      * [Reply in party] button. Nothing is sent unless the player clicks it and presses Enter.
@@ -106,6 +108,8 @@ public class AlpakaConfig {
      * until the moment somebody actually addresses the player, which is a moment worth not missing.
      */
     public boolean mentionNotificationEnabled = true;
+    /** Only mentions from real players: lines from NPCs, bosses and the server itself are ignored. */
+    public boolean mentionIgnoreServer = true;
     /**
      * How long a notification stays on screen, in seconds, before it slides back out.
      *
@@ -132,11 +136,13 @@ public class AlpakaConfig {
     public boolean containerBgFadeInEnabled = true;
     public int containerBgFadeInDurationMs = 250;
     /**
-     * Clean Blaze, only on SkyBlock in the Blaze slayer's zones. The four fields after it pick what
-     * it hides.
+     * Clean Blaze, only on SkyBlock in the Blaze slayer's zones. The fields after it pick what it
+     * hides.
      */
     public boolean cleanBlazeEnabled = true;
     public boolean cleanBlazeParticles = true;
+    /** The potion swirls, enchanting glyphs and ender particles around the boss and its demons. */
+    public boolean cleanBlazeEffectParticles = true;
     public boolean cleanBlazeFire = true;
     public boolean cleanBlazeFireballs = true;
     public boolean cleanBlazeLightning = true;
@@ -156,6 +162,8 @@ public class AlpakaConfig {
     public boolean hideHurtOverlayEnabled = false;
     /** Stops drawing a mob the moment it dies, skipping vanilla's tip-over. Cosmetic only. */
     public boolean hideMobDeathsEnabled = false;
+    /** With Hide Mob Deaths: also no puff of smoke when the server removes the body. */
+    public boolean hideMobDeathSmoke = false;
     public boolean smoothPerspectiveEnabled = true;
     public boolean disableFrontPerspective = false;
     public int smoothPerspectiveDurationMs = 350;
@@ -182,9 +190,9 @@ public class AlpakaConfig {
     public int menuAccentColor = 0xFF29B6B2; // Default teal
     /**
      * Index into {@code GuiFont.NAMES}: the typeface the Alpaka menus are written in. 0 is the
-     * vanilla pixel font; the default is Inter.
+     * vanilla pixel font; the default is Poppins.
      */
-    public int menuFont = 1;
+    public int menuFont = 2;
     public boolean customEscapeMenuEnabled = true;
     public boolean customMainMenuEnabled = false;
     /** The small player model on the HUD. Off for fresh installs. */
@@ -221,6 +229,10 @@ public class AlpakaConfig {
     public boolean slayerHudShowBossesPerHour = true;
     public boolean slayerHudShowSessionTime = true;
     public boolean slayerHudShowSinceRngDrop = true;
+    /** The "Bear" line: time left on Smoldering Polarization, on every slayer's HUD. */
+    public boolean slayerHudShowBear = true;
+    /** Keeps the "Bear" line to the Blaze HUD, where the effect matters most. */
+    public boolean slayerHudBearBlazeOnly = false;
     /** Seconds of standing still before the session clock stops. */
     public float slayerHudAfkPauseSeconds = 60.0f;
     /** Stop the clock the moment the sidebar says the player is no longer in the slayer's zone. */
@@ -238,12 +250,15 @@ public class AlpakaConfig {
      * Whether the mod may contact anything over the network ("Allow Network Features").
      *
      * Everything else in this mod works from what the client already has. This is the one setting
-     * that lets it reach outside, for two things: a public endpoint describing the running election
-     * (no API key, no player named, the same answer for everybody), and the main menu's player
-     * count, an ordinary status ping to mc.hypixel.net like the server list sends. Off means no
+     * that lets it reach outside, for three things: a public endpoint describing the running election
+     * (no API key, no player named, the same answer for everybody), the main menu's player
+     * count, an ordinary status ping to mc.hypixel.net like the server list sends, and the update
+     * check against the mod's public GitHub releases. Off means no
      * request is made and nothing derived from one is used. The JSON key keeps its old name.
      */
     public boolean allowApiCalls = true;
+    /** A chat line on joining a world when a newer release is on GitHub. Needs allowApiCalls. */
+    public boolean updateNotificationsEnabled = true;
 
     /**
      * Folder holding the slayer record, or empty for this machine's shared default.
@@ -281,6 +296,29 @@ public class AlpakaConfig {
     public boolean worldAgeJoinMessageEnabled = true;
     public int worldAgeRecentThresholdSec = 60;
     public boolean onlyCritDamageEnabled = true;
+    /**
+     * The mod draws damage splashes itself, animated and in gradients, in place of Hypixel's.
+     * Off by default while it is being tried out.
+     */
+    public boolean customDamageTagsEnabled = false;
+    public float customDamageTagScale = 1.5f;
+    public int customDamageTagDurationMs = 1100;
+    /** 0..1: how far the tag overshoots its size when it pops up. */
+    public float customDamageTagPopStrength = 0.6f;
+    /** Blocks the tag drifts upwards over its lifetime. */
+    public float customDamageTagRise = 0.6f;
+    /** One of CustomDamageTagFeature.FORMAT_*. */
+    public int customDamageTagFormat = 0;
+    public boolean customDamageTagFlowingGradient = true;
+    public boolean customDamageTagShadow = true;
+    /** No custom tag for a splash next to a slayer boss, any player's, like SkyHanni's option. */
+    public boolean customDamageTagHideNearSlayerBoss = false;
+    /** One of CustomDamageTagFeature.DUNGEON_*. */
+    public int customDamageTagDungeonMode = 0;
+    public int customDamageTagNormalStart = 0xFFFFFFFF;
+    public int customDamageTagNormalEnd = 0xFF9FB4D0;
+    public int customDamageTagCritStart = 0xFFFFE15A;
+    public int customDamageTagCritEnd = 0xFFFF4A3A;
 
     // Pangolin highlight (Torrhus Canyon critters)
     public boolean pangolinHighlightEnabled = false;
@@ -381,6 +419,8 @@ public class AlpakaConfig {
      * blurred copy of the frame, so they follow it; the main menu keeps its own full blur.
      */
     public float chatBlurStrength = 100.0f;
+    /** One rounded, blurred panel with a soft shadow behind the scoreboard sidebar; see ScoreboardBlurFeature. */
+    public boolean scoreboardBlurEnabled = true;
     /** Ctrl+F in the chat turns the input line into a search that filters the visible messages. */
     public boolean chatSearchEnabled = true;
     /** Scrolling the chat glides the lines into place instead of jumping a line per notch. */
@@ -389,12 +429,27 @@ public class AlpakaConfig {
     /** Off for fresh installs. Vanilla's own toggle-sprint option already does this for most players. */
     public boolean alwaysSprintEnabled = false;
     public boolean expandChatHistory = true;
+    /** How many chat lines Expand Chat History keeps; vanilla keeps 100. */
+    public int chatHistoryLimit = 5000;
     /** Hold the Peek Chat key to see the whole chat, scrollable, without opening it. */
     public boolean chatPeekEnabled = true;
     /** Peek Chat also works with an inventory or another menu open, drawn on top of it. */
     public boolean chatPeekInMenus = true;
-    /** Open, Copy and Delete buttons on the screenshot notice instead of vanilla's line. */
+    /** Better Screenshots: everything below. The key keeps its old name so the setting carries over. */
     public boolean betterScreenshotMessageEnabled = true;
+    /** Open, Copy and Delete buttons on the screenshot notice instead of vanilla's line. */
+    public boolean screenshotChatButtons = true;
+    /** The screenshot shrinking into the corner for a moment after it is taken. */
+    public boolean screenshotPreviewEnabled = true;
+    /** How long the preview stays in the corner, in seconds. */
+    public float screenshotPreviewSeconds = 3.0f;
+    /** The preview's width, in percent of the screen's. */
+    public float screenshotPreviewSize = 20.0f;
+    /** Which parts the screenshot line shows. */
+    public boolean screenshotShowFileName = false;
+    public boolean screenshotShowOpen = true;
+    public boolean screenshotShowCopy = true;
+    public boolean screenshotShowDelete = true;
     /** Every screenshot goes to the clipboard the moment it is taken. */
     public boolean autoCopyScreenshots = false;
     /** A message repeated right after itself becomes one line with (x2), (x3)... */
@@ -414,10 +469,19 @@ public class AlpakaConfig {
     public boolean chatTabsShowGuild = true;
     public boolean chatTabsShowCoop = true;
     public boolean chatTabsShowPrivate = true;
+    public boolean chatTabsShowNpc = true;
 
     // Interface options
     /** The mouse wheel scrolls a tooltip that is taller than the screen. */
     public boolean scrollableTooltipsEnabled = true;
+    /** The wheel moves every tooltip, not only one taller than the screen. */
+    public boolean scrollableTooltipsAlways = false;
+    /** GUI pixels one wheel notch moves a tooltip. */
+    public float scrollableTooltipsSpeed = 12.0f;
+    /** The tooltip glides to where the wheel sends it instead of jumping. */
+    public boolean scrollableTooltipsSmooth = true;
+    /** Wheel down moves the tooltip down instead of reading further down it. */
+    public boolean scrollableTooltipsInvert = false;
     /** The held item's name above the hotbar stays up instead of fading out. */
     public boolean persistentItemNameEnabled = false;
     /**
@@ -435,6 +499,12 @@ public class AlpakaConfig {
      * legacy flat list below into pages; from then on this is the record and the flat list is null.
      */
     public java.util.List<java.util.List<String>> commandWheelPages = null;
+
+    /**
+     * Off: hold the wheel key to open the wheel, release it to run the aimed command. On: one press
+     * opens it, a click runs a command, and pressing the key again closes it.
+     */
+    public boolean commandWheelToggleMode = false;
 
     /** Legacy, pre-pages. Read once by CommandWheelPages and then cleared. */
     public java.util.List<String> commandWheelCommands = new java.util.ArrayList<>(java.util.List.of(
@@ -463,6 +533,15 @@ public class AlpakaConfig {
     public boolean itemNoEquipEnabled = false;
     public boolean itemSwingAlwaysFinishEnabled = false;
     public boolean itemIgnoreEmptyHandEnabled = false;
+
+    // Starlight: a drifting, twinkling galaxy over the held item; see HandItemStarlightFeature.
+    public boolean itemStarlightEnabled = false;
+    /** The nebula's colour; the stars are tinged with it. */
+    public int itemStarlightColor = 0xFF9B5CFF;
+    /** How strongly the galaxy covers the item, 0..1. */
+    public float itemStarlightStrength = 0.8f;
+    /** 0: over every held item. 1: in place of the enchantment glint, so only on glinting items. */
+    public int itemStarlightMode = 0;
 
     // Swing motion blur: faded copies trail behind the held item while it swings; see ItemMotionBlurFeature.
     public boolean itemMotionBlurEnabled = false;
@@ -591,6 +670,10 @@ public class AlpakaConfig {
         this.itemNoEquipEnabled = false;
         this.itemSwingAlwaysFinishEnabled = false;
         this.itemIgnoreEmptyHandEnabled = false;
+        this.itemStarlightEnabled = false;
+        this.itemStarlightColor = 0xFF9B5CFF;
+        this.itemStarlightStrength = 0.8f;
+        this.itemStarlightMode = 0;
         this.itemMotionBlurEnabled = false;
         this.itemMotionBlurLength = 80.0f;
         this.itemMotionBlurOpacity = 0.35f;
@@ -845,6 +928,7 @@ public class AlpakaConfig {
         this.slayerTimerHudEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
+        this.customDamageTagsEnabled = false;
         this.blockOverlayEnabled = false;
         this.blockFadeInEnabled = false;
         this.blockOutlineEnabled = false;
@@ -858,6 +942,7 @@ public class AlpakaConfig {
         this.etherwarpSoundEnabled = false;
         this.smoothChatEnabled = false;
         this.chatBlurEnabled = false;
+        this.scoreboardBlurEnabled = false;
         this.chatSearchEnabled = false;
         this.chatSmoothScrollEnabled = false;
         this.alwaysSprintEnabled = false;
@@ -875,6 +960,7 @@ public class AlpakaConfig {
         this.itemSizeFeatureEnabled = false;
         this.itemSwayDisabled = false;
         this.itemLightingDisabled = false;
+        this.itemStarlightEnabled = false;
         this.itemSwingTranslationDisabled = false;
         this.itemNoEquipEnabled = false;
         this.itemSwingAlwaysFinishEnabled = false;

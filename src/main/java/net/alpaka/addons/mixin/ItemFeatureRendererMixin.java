@@ -1,12 +1,23 @@
 package net.alpaka.addons.mixin;
 
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.QuadInstance;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.alpaka.addons.features.viewmodel.HandItemLightingFeature;
+import net.alpaka.addons.features.viewmodel.HandItemStarlightFeature;
 import net.alpaka.addons.features.viewmodel.ItemMotionBlurFeature;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.OutlineBufferSource;
 import net.minecraft.client.renderer.SubmitNodeCollection;
 import net.minecraft.client.renderer.SubmitNodeStorage;
 import net.minecraft.client.renderer.feature.ItemFeatureRenderer;
+import net.minecraft.client.renderer.item.ItemStackRenderState;
+import net.minecraft.client.resources.model.geometry.BakedQuad;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -15,13 +26,50 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ItemFeatureRenderer.class)
-public class ItemFeatureRendererMixin {
+public abstract class ItemFeatureRendererMixin {
+
+    @Shadow @Final private QuadInstance quadInstance;
 
     @Inject(method = "renderItem", at = @At("HEAD"))
     private void alpaka$beginItem(MultiBufferSource.BufferSource bufferSource, OutlineBufferSource outlineSource,
                                   SubmitNodeStorage.ItemSubmit submit, CallbackInfo ci) {
         HandItemLightingFeature.beginDrawing(submit);
         ItemMotionBlurFeature.beginDrawing(submit);
+        alpaka$submit = submit;
+    }
+
+    /** The submit renderItem is drawing, for the glint and starlight hooks below. */
+    @Unique
+    private SubmitNodeStorage.ItemSubmit alpaka$submit;
+
+    // With "Replace Enchant Glint" the starlight stands in for vanilla's glint on the hand item.
+    @WrapOperation(
+            method = "renderItem",
+            at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/VertexConsumer;putBakedQuad(Lcom/mojang/blaze3d/vertex/PoseStack$Pose;Lnet/minecraft/client/resources/model/geometry/BakedQuad;Lcom/mojang/blaze3d/vertex/QuadInstance;)V", ordinal = 0)
+    )
+    private void alpaka$starlightReplacesGlint(VertexConsumer buffer, PoseStack.Pose pose, BakedQuad quad,
+                                               QuadInstance instance, Operation<Void> original) {
+        if (!HandItemStarlightFeature.hidesGlint(alpaka$submit)) original.call(buffer, pose, quad, instance);
+    }
+
+    /**
+     * The hand item's starlight, over every quad of it, glinted or not. See HandItemStarlightFeature.
+     * The pass only draws where the item's own depth already is, so the item is flushed first: its
+     * render types may sit in fixed buffers that would otherwise only be drawn after this one.
+     */
+    @Inject(method = "renderItem", at = @At("TAIL"))
+    private void alpaka$starlight(MultiBufferSource.BufferSource bufferSource, OutlineBufferSource outlineSource,
+                                  SubmitNodeStorage.ItemSubmit submit, CallbackInfo ci) {
+        alpaka$submit = null;
+        boolean glinted = submit.foilType() != ItemStackRenderState.FoilType.NONE;
+        if (!HandItemStarlightFeature.drawsOver(submit, glinted)) return;
+        bufferSource.endBatch();
+        RenderType starlight = HandItemStarlightFeature.renderType();
+        VertexConsumer buffer = HandItemStarlightFeature.starlightBuffer(bufferSource.getBuffer(starlight));
+        for (BakedQuad quad : submit.quads()) {
+            buffer.putBakedQuad(submit.pose(), quad, this.quadInstance);
+        }
+        bufferSource.endBatch(starlight);
     }
 
     // Plain quads go through BufferSource.getBuffer, glinted ones through getFoilBuffer, which
@@ -61,6 +109,7 @@ public class ItemFeatureRendererMixin {
         // The solid pass runs before the translucent one, so by now every submit of this
         // collection has been drawn; drop whatever is left rather than let it accumulate.
         HandItemLightingFeature.endFrame();
+        HandItemStarlightFeature.endFrame();
         ItemMotionBlurFeature.endFrame();
     }
 }

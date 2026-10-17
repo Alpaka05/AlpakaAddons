@@ -10,6 +10,7 @@ import com.mojang.blaze3d.textures.GpuTexture;
 import net.alpaka.addons.client.gui.AlpakaGuiElementSink;
 import net.alpaka.addons.client.gui.BlurRectRenderState;
 import net.alpaka.addons.client.gui.RoundedRectRenderState;
+import net.alpaka.addons.compat.GnetumCompat;
 import org.joml.Vector2f;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.minecraft.client.Minecraft;
@@ -52,6 +53,15 @@ import org.slf4j.LoggerFactory;
  * set aside and closed a frame later, and the frame that replaced it draws its panels without blur.
  * Destroying it at the blur point instead, as this once did, left the main menu's glass tabs holding
  * a closed texture, and resizing the window crashed the game.
+ *
+ * ### Other passes of the GUI renderer
+ *
+ * Only the frame's own GUI pass draws onto the world. A HUD-caching mod such as Gnetum runs the GUI
+ * renderer a second time, during extraction, into a cleared framebuffer of its own; a copy taken
+ * there is of that empty buffer, and the panels came out black. Such a pass neither takes the copy
+ * nor samples it ({@link #isReady()}): its panels fall back to the plain tint, and the panels ask
+ * Gnetum to leave their HUD out of its cache ({@link GnetumCompat}), so they are drawn in the
+ * frame's pass and blur there.
  */
 public final class ChatBlurFeature {
     private static final Logger LOGGER = LoggerFactory.getLogger("AlpakaAddons/ChatBlur");
@@ -60,9 +70,11 @@ public final class ChatBlurFeature {
     public static final int PADDING = 3;
     /** The panel's corner radius in chat pixels. */
     public static final int RADIUS = 5;
+    /** How far the panel's drop shadow reaches, in chat pixels. */
+    public static final int SHADOW = 4;
 
-    /** Blur radius per GUI scale step at full strength: 3 screen pixels for each GUI pixel. */
-    private static final int RADIUS_PER_SCALE = 3;
+    /** Blur radius per GUI scale step at full strength: 5 screen pixels for each GUI pixel. */
+    private static final int RADIUS_PER_SCALE = 5;
     /** The largest radius a post effect is shipped for: full strength at GUI scale 4. */
     static final int MAX_BLUR_RADIUS = 4 * RADIUS_PER_SCALE;
 
@@ -73,6 +85,8 @@ public final class ChatBlurFeature {
     private static boolean requested;
     private static boolean ready;
     private static boolean warned;
+    /** Whether the GUI renderer is drawing the frame's own GUI, onto the world, rather than another pass. */
+    private static boolean inFramePass;
 
     // A screen can ask for the copy to be taken after its background strata rather than before
     // any GUI element: asked during extraction, decided when the frame is drawn.
@@ -168,7 +182,8 @@ public final class ChatBlurFeature {
 
     /**
      * Submits the panel for the lines measured so far, under the chat's current pose. Called right
-     * before the chat draws its text, so the text lands on top.
+     * before the chat draws its text, so the text lands on top, and before the chat box's scissor
+     * is set, so the panel's drop shadow is not cut off at the box.
      *
      * @param chatScale the chat's own scale setting, which the pose already applies; with the GUI
      *                  scale it says how many screen pixels one chat pixel covers
@@ -188,42 +203,64 @@ public final class ChatBlurFeature {
         int alpha = Math.round(Mth.clamp(panelAlpha * panelOpacity, 0.0f, 1.0f) * 255.0f);
         if (alpha <= 0) return;
 
-        // Submitted before the lines are shifted by the scroll, so the current pose is the box's;
-        // the lines will be drawn shifted down by the scroll offset, and the hover lift follows them.
-        Matrix3x2f boxPose = new Matrix3x2f(graphics.pose());
-        Matrix3x2f linePose = new Matrix3x2f(boxPose).translate(0.0f, scrollOffset);
-
-        sink.alpaka$submitElement(new BlurRectRenderState(
-                boxPose, x0, y0, x1, y1,
-                Math.round(RADIUS * toScreen), alpha << 24, toScreen, sink.alpaka$currentScissor()));
+        // Before the submission, which Gnetum then hands to the frame's own pass; see request().
         request();
-
-        // With the chat open, the line under the mouse is lifted a little. The mouse is taken into
-        // the lines' own coordinates, so the lift follows the lines while they scroll.
-        if (foreground && panelLines > 0 && panelLineHeight > 0) {
-            Matrix3x2f inverse = new Matrix3x2f(linePose).invert();
-            Vector2f local = inverse.transformPosition(new Vector2f(mouseX, mouseY));
-            if (local.x >= x0 && local.x <= x1 && local.y <= panelBottom) {
-                int line = Mth.floor((panelBottom - local.y) / panelLineHeight);
-                if (line >= 0 && line < panelLines) {
-                    int top = panelBottom - (line + 1) * panelLineHeight;
-                    sink.alpaka$submitElement(new RoundedRectRenderState(
-                            linePose, x0 + 1, top, x1 - 1, top + panelLineHeight,
-                            Math.round(3 * toScreen), 0, HOVER_HIGHLIGHT,
-                            Math.max(1, Math.round(toScreen)), sink.alpaka$currentScissor()));
-                }
-            }
-        }
+        // Submitted before the lines are shifted by the scroll, so the current pose is the box's.
+        sink.alpaka$submitElement(new BlurRectRenderState(
+                new Matrix3x2f(graphics.pose()), x0, y0, x1, y1,
+                Math.round(RADIUS * toScreen), alpha << 24, toScreen, 1.0f,
+                Math.round(SHADOW * toScreen * panelAlpha), sink.alpaka$currentScissor()));
     }
 
-    /** A panel was extracted this frame; the frame has to be captured and blurred before drawing. */
+    /**
+     * With the chat open, lifts the line under the mouse a little. Called after the panel, once the
+     * chat box's scissor is set, and still before the lines are shifted by the scroll: the mouse is
+     * taken into the lines' own coordinates, so the lift follows the lines while they scroll.
+     */
+    public static void submitHoverHighlight(float chatScale) {
+        GuiGraphicsExtractor graphics = currentGraphics;
+        if (graphics == null || !isEnabled() || !foreground) return;
+        if (panelHeight <= 0.01f || panelAlpha <= 0.002f) return;
+        if (panelLines <= 0 || panelLineHeight <= 0) return;
+        if (!(graphics instanceof AlpakaGuiElementSink sink)) return;
+
+        float toScreen = (float) Minecraft.getInstance().getWindow().getGuiScale() * chatScale;
+        int x0 = -4 - PADDING;
+        int x1 = panelWidth + 8 + PADDING;
+        Matrix3x2f linePose = new Matrix3x2f(graphics.pose()).translate(0.0f, scrollOffset);
+        Matrix3x2f inverse = new Matrix3x2f(linePose).invert();
+        Vector2f local = inverse.transformPosition(new Vector2f(mouseX, mouseY));
+        if (local.x < x0 || local.x > x1 || local.y > panelBottom) return;
+        int line = Mth.floor((panelBottom - local.y) / panelLineHeight);
+        if (line < 0 || line >= panelLines) return;
+        int top = panelBottom - (line + 1) * panelLineHeight;
+        sink.alpaka$submitElement(new RoundedRectRenderState(
+                linePose, x0 + 1, top, x1 - 1, top + panelLineHeight,
+                Math.round(3 * toScreen), 0, HOVER_HIGHLIGHT,
+                Math.max(1, Math.round(toScreen)), sink.alpaka$currentScissor()));
+    }
+
+    /**
+     * A panel is extracted this frame; the frame has to be captured and blurred before drawing.
+     * Called right before the panel is submitted: a HUD Gnetum is caching is taken out of its cache
+     * then, and Gnetum passes that very submission on to the frame's own GUI pass.
+     */
     public static void request() {
         requested = true;
+        GnetumCompat.keepOutOfCache();
     }
 
-    /** Whether a blurred copy exists for the panel to sample; false falls back to a plain panel. */
+    /**
+     * Whether a blurred copy exists for the panel to sample; false falls back to a plain panel.
+     * Never in a GUI pass other than the frame's own, whose target is not the frame the copy shows.
+     */
     public static boolean isReady() {
-        return ready && blurred != null;
+        return ready && blurred != null && inFramePass;
+    }
+
+    /** The GameRenderer starts or ends drawing the frame's own GUI, onto the world. */
+    public static void setInFramePass(boolean value) {
+        inFramePass = value;
     }
 
     /**
@@ -240,6 +277,10 @@ public final class ChatBlurFeature {
 
     /** Called before the GUI renderer prepares the frame's elements: the world is on the frame, nothing of the GUI yet. */
     public static void captureFrameBeforeGui() {
+        // Another pass of the GUI renderer, into a target of its own: nothing of the world to copy,
+        // and this frame's request stays for the frame's own pass.
+        if (!inFramePass) return;
+
         // Last frame's draws are done, so nothing can still sample the targets set aside then.
         for (TextureTarget old : PENDING_CLOSE) old.destroyBuffers();
         PENDING_CLOSE.clear();
@@ -286,7 +327,7 @@ public final class ChatBlurFeature {
      * Returns true when the copy was taken here, in which case vanilla's blur is to be skipped.
      */
     public static boolean captureAtBlurPoint() {
-        if (!deferred) return false;
+        if (!deferred || !inFramePass) return false;
         deferred = false;
         // Only a screen's background defers the copy - the main menu's glass - and a menu keeps
         // the full blur; the strength setting is for the panels over the world.
@@ -310,7 +351,7 @@ public final class ChatBlurFeature {
     }
 
     /**
-     * The blur radius, in screen pixels, for this GUI scale and strength: 3 per GUI scale step at
+     * The blur radius, in screen pixels, for this GUI scale and strength: 5 per GUI scale step at
      * full strength, scaled down by the strength. 0 means no blur at all.
      */
     static int blurRadius(int guiScale, float strengthPercent) {

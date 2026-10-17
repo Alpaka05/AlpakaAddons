@@ -391,14 +391,9 @@ object SlayerBossEntityTracker {
      * Only reached for names the caller has already found a health figure in, which is what
      * separates a mob's name tag from the holograms Hypixel scatters around an area. What is left to
      * rule out is the mobs farmed to summon the boss, which in the Graveyard are named "Revenant
-     * Horror" as well: those carry a level where the boss carries a marker and a roman tier -
-     * `[Lv5] Revenant Horror 500❤` against `☠ Revenant Horror IV 1.5M❤`.
+     * Horror" as well. Bosses carry a level too since Hypixel's name tag change, so that is now
+     * left to [SlayerBossNameTag]: the skull and the roman tier.
      */
-    private fun isBossNameTag(name: String, type: SlayerType): Boolean {
-        if (name.startsWith("[")) return false
-        for (bossName in type.bossNames) {
-            if (name.contains(bossName)) return true
-        }
-        return false
-    }
+    private fun isBossNameTag(name: String, type: SlayerType): Boolean =
+        SlayerBossNameTag.isBoss(name, type.bossNames)
 }

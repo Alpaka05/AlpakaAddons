@@ -13,9 +13,9 @@ import java.util.regex.Pattern;
  * tab all the same.
  *
  * In three steps. A channel's own prefix decides first: {@code Party > name: msg},
- * {@code Guild > name [Rank]: msg}, {@code Officer > ...}, {@code Co-op > name: msg}, and
+ * {@code Guild > name [Rank]: msg}, {@code Officer > ...}, {@code Co-op > name: msg},
  * {@code From name: msg} / {@code To name: msg} for private messages, with "From stash:" being the
- * one look-alike to keep out. Then anything a player said in public goes to All, whatever it is
+ * one look-alike to keep out, and {@code [NPC] name: msg} for what an NPC says. Then anything a player said in public goes to All, whatever it is
  * about. Only what is left - Hypixel's own notices - is matched against the shapes those notices
  * take: joins, leaves, invites, disbands, the party list, guild promotions and quests. Matching the
  * channel's name anywhere in the line, as this used to, put public chat that merely mentioned
@@ -26,7 +26,8 @@ public enum ChatTab {
     PARTY("Party"),
     GUILD("Guild"),
     COOP("Co-op"),
-    PRIVATE("PMs");
+    PRIVATE("PMs"),
+    NPC("NPCs");
 
     public final String label;
 
@@ -40,6 +41,7 @@ public enum ChatTab {
     private static final Pattern GUILD_CHAT = Pattern.compile("^(?:Guild|Officer) > ");
     private static final Pattern COOP_CHAT = Pattern.compile("^Co-op > ");
     private static final Pattern PRIVATE_CHAT = Pattern.compile("^(?!From stash: )(?:From|To) (?:\\[[^\\]]+\\] )?[^:]{1,40}: ");
+    private static final Pattern NPC_CHAT = Pattern.compile("^\\[NPC\\] ");
 
     /**
      * A line a player wrote in public: an optional SkyBlock level, an optional emblem, an optional
@@ -91,6 +93,8 @@ public enum ChatTab {
         if (GUILD_CHAT.matcher(text).find()) return GUILD;
         if (COOP_CHAT.matcher(text).find()) return COOP;
         if (PRIVATE_CHAT.matcher(text).find()) return PRIVATE;
+        // Before the player line, which "[NPC] name:" would pass for with [NPC] as the rank.
+        if (NPC_CHAT.matcher(text).find()) return NPC;
         if (PLAYER_LINE.matcher(text).find()) return ALL;
         if (PARTY_NOTICE.matcher(text).find()) return PARTY;
         if (GUILD_NOTICE.matcher(text).find()) return GUILD;

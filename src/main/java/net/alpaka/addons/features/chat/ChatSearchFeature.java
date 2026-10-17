@@ -9,9 +9,10 @@ import net.minecraft.client.multiplayer.chat.GuiMessage;
 import java.util.Locale;
 
 /**
- * Chat search: Ctrl+F in the chat screen turns the input line into a search box. Whatever is typed
- * there filters the chat down to the messages containing it, and the input bar takes the accent
- * colour so it is obvious that typing will not send anything. Ctrl+F again, or closing the chat,
+ * Chat search: Ctrl+F in the chat screen - Cmd+F on macOS - turns the input line into a search
+ * box. Whatever is typed there filters the chat down to the messages containing it, and the input
+ * bar takes the accent colour so it is obvious that typing will not send anything. The same
+ * shortcut again, or closing the chat,
  * puts the message that was being typed back and shows the whole chat again.
  *
  * The filter rides on the same hook as the chat tabs: the chat lays its stored messages out into

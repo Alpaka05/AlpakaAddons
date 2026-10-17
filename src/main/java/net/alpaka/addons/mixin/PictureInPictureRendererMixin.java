@@ -4,7 +4,7 @@ import com.llamalad7.mixinextras.sugar.Local;
 import net.alpaka.addons.client.gui.GuiSkinStyle;
 import net.minecraft.client.gui.render.pip.PictureInPictureRenderer;
 import net.minecraft.client.renderer.state.gui.pip.PictureInPictureRenderState;
-import org.joml.Matrix3x2fc;
+import org.joml.Matrix3x2f;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
@@ -17,11 +17,12 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 public class PictureInPictureRendererMixin {
 
     private static final String BLIT_STATE =
-            "Lnet/minecraft/client/renderer/state/gui/BlitRenderState;<init>(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/client/gui/render/TextureSetup;Lorg/joml/Matrix3x2fc;IIIIFFFFILnet/minecraft/client/gui/navigation/ScreenRectangle;Lnet/minecraft/client/gui/navigation/ScreenRectangle;)V";
+            "Lnet/minecraft/client/renderer/state/gui/BlitRenderState;<init>(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/client/gui/render/TextureSetup;Lorg/joml/Matrix3x2f;IIIIFFFFILnet/minecraft/client/gui/navigation/ScreenRectangle;Lnet/minecraft/client/gui/navigation/ScreenRectangle;)V";
 
     @ModifyArg(method = "blitTexture", at = @At(value = "INVOKE", target = BLIT_STATE), index = 2)
-    private Matrix3x2fc alpaka$placeStyledPreview(Matrix3x2fc pose, @Local(argsOnly = true) PictureInPictureRenderState state) {
-        return GuiSkinStyle.pose(state, pose);
+    private Matrix3x2f alpaka$placeStyledPreview(Matrix3x2f pose, @Local(argsOnly = true) PictureInPictureRenderState state) {
+        // 26.1.2: BlitRenderState takes a Matrix3x2f.
+        return new Matrix3x2f(GuiSkinStyle.pose(state, pose));
     }
 
     @ModifyArg(method = "blitTexture", at = @At(value = "INVOKE", target = BLIT_STATE), index = 11)

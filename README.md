@@ -7,6 +7,7 @@
 **A client-side Fabric mod for Hypixel SkyBlock: slayer tracking, a better chat and a cleaner look.**
 
 [![Latest release](https://img.shields.io/github/v/release/Alpaka05/AlpakaAddons?label=release&color=29B6B2)](https://github.com/Alpaka05/AlpakaAddons/releases/latest)
+[![Build](https://github.com/Alpaka05/AlpakaAddons/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/Alpaka05/AlpakaAddons/actions/workflows/build.yml)
 ![Minecraft 26.2](https://img.shields.io/badge/Minecraft-26.2-8A6FDF)
 ![Fabric](https://img.shields.io/badge/loader-Fabric-DBB47E)
 ![Client-side](https://img.shields.io/badge/client--side-only-4C9A2A)
@@ -54,7 +55,7 @@ Alpaka Addons is most useful for **Slayers**, but a lot of it helps anywhere in 
 - **Expand Chat History:** keeps 5000 messages, even after leaving a server.
 - **Smooth Chat:** messages slide in, scrolling glides, and an optional blurred, rounded background.
 - **Chat Mentions**, **Custom Guild Tag** and a **Bridge Bot Formatter** that shows relayed Discord messages as `[Discord]`.
-- **Better Screenshot Message** with Open, Copy and Delete buttons.
+- **Better Screenshots**: a preview that shrinks into the corner, and Open, Copy and Delete buttons.
 
 </details>
 

@@ -3,6 +3,7 @@ package net.alpaka.addons.client;
 import net.alpaka.addons.AlpakaAddons;
 import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.features.chat.ScreenshotPreview;
 import net.alpaka.addons.features.mainmenu.CustomMainMenuScreen;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.CameraType;
@@ -60,12 +61,23 @@ public final class DevScreenshotTour {
             // A moment into the entrance: the card springing in, the avatar half materialised.
             new Stop("main-menu-opening", () -> Minecraft.getInstance().setScreen(new CustomMainMenuScreen()), () -> true, 9),
             screen("config", () -> new AlpakaConfigScreen(null, "")),
-            screen("color-picker", () -> new ColorPickerScreen(null, "Accent Colour", 0xFF29B6B2, color -> {})),
+            screen("config-old-screenshot", () -> new AlpakaConfigScreen(null, "screenshot")),
+            screen("config-old-starlight", () -> new AlpakaConfigScreen(null, "starlight")),
+            screen("color-picker", () -> new ColorPickerScreen(null, "Accent Colour", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
             screen("wheel-editor", () -> new CommandWheelConfigScreen(new CustomMainMenuScreen())),
             screen("hud-editor", () -> new HudEditorScreen(null)),
             new Stop(null, DevScreenshotTour::enterWorld,
                     () -> Minecraft.getInstance().player != null && Minecraft.getInstance().screen == null, 100),
             new Stop("world-hud", DevScreenshotTour::showHuds, () -> true, 30),
+            // The screenshot preview of the picture just taken: resting in the corner, then mid-shrink.
+            new Stop(null, () -> {}, () -> tourShot("world-hud").isFile(), 2),
+            new Stop(null, () -> {
+                ScreenshotPreview.devFreezeAt(1150.0f);
+                ScreenshotPreview.show(tourShot("world-hud"));
+            }, ScreenshotPreview::isOnScreen, 2),
+            new Stop("screenshot-preview", () -> {}, () -> true, 2),
+            new Stop("screenshot-preview-shrink", () -> ScreenshotPreview.devFreezeAt(120.0f), () -> true, 2),
+            new Stop(null, () -> ScreenshotPreview.devFreezeAt(-1.0f), () -> true, 5),
             new Stop("hud-editor-world", () -> Minecraft.getInstance().setScreen(new HudEditorScreen(null)), () -> true, 20),
             screen("pause-menu", net.alpaka.addons.features.escapemenu.CustomPauseScreen::new),
             new Stop(null, () -> Minecraft.getInstance().setScreen(null), () -> true, 5),
@@ -78,6 +90,29 @@ public final class DevScreenshotTour {
             new Stop(null, DevScreenshotTour::survival,
                     () -> Minecraft.getInstance().gameMode != null && Minecraft.getInstance().gameMode.canHurtPlayer(), 20),
             new Stop("survival-hud", DevScreenshotTour::actionBar, () -> true, 10),
+            // Chat lines reaching down over the action bar: the bar has to stay readable on the panel.
+            new Stop("actionbar-over-chat", () -> { chatBurst(); actionBar(); }, () -> true, 40),
+            // With the chat open the bar and the item name stay above the wider panel too.
+            new Stop("actionbar-chat-open", () -> {
+                actionBar();
+                Minecraft.getInstance().setScreen(new ChatScreen("", false));
+            }, () -> true, 10),
+            new Stop(null, () -> Minecraft.getInstance().setScreen(null), () -> true, 5),
+            // A sidebar like Hypixel's over its blurred panel, and a sword under starlight; twice, to
+            // see the galaxy drift and twinkle.
+            new Stop(null, DevScreenshotTour::scoreboardAndStarlight, () -> true, 20),
+            new Stop("scoreboard-starlight", () -> {}, () -> true, 5),
+            new Stop("scoreboard-starlight-later", () -> {}, () -> true, 15),
+            // Turned right a little: the galaxy hangs in the sky, so it slides left over the item.
+            new Stop("starlight-still", () -> AlpakaConfig.instance.itemSwayDisabled = true, () -> true, 3),
+            new Stop("starlight-turned", () -> Minecraft.getInstance().player.setYRot(
+                    Minecraft.getInstance().player.getYRot() + 3.0f), () -> true, 3),
+            new Stop(null, () -> AlpakaConfig.instance.itemSwayDisabled = false, () -> true, 1),
+            // Starlight together with Disable Item Lighting, still and mid-swing.
+            new Stop("starlight-unlit", () -> AlpakaConfig.instance.itemLightingDisabled = true, () -> true, 5),
+            new Stop("starlight-unlit-swing", () -> Minecraft.getInstance().player.swing(
+                    net.minecraft.world.InteractionHand.MAIN_HAND), () -> true, 3),
+            new Stop(null, () -> AlpakaConfig.instance.itemLightingDisabled = false, () -> true, 1),
             // The fire pit preview has to be on a tick before the clay arrives, as in a real fight.
             new Stop(null, DevScreenshotTour::firePitPreview, () -> true, 5),
             new Stop("fire-pits", DevScreenshotTour::placeFirePits, () -> true, 30)
@@ -131,6 +166,10 @@ public final class DevScreenshotTour {
                     message -> AlpakaAddons.LOGGER.info("Screenshot tour: {}", message.getString()));
         }
         begin(mc, stop + 1);
+    }
+
+    private static java.io.File tourShot(String name) {
+        return Minecraft.getInstance().gameDirectory.toPath().resolve("screenshots/tour-" + name + ".png").toFile();
     }
 
     private static void begin(Minecraft mc, int index) {
@@ -191,6 +230,21 @@ public final class DevScreenshotTour {
     }
 
     /** A burst of lines, as a busy chat delivers them. */
+    private static void starlightGlint(boolean glint) {
+        Minecraft mc = Minecraft.getInstance();
+        AlpakaConfig.instance.itemStarlightMode = 1;
+        java.util.UUID id = mc.player.getUUID();
+        net.minecraft.client.server.IntegratedServer server = mc.getSingleplayerServer();
+        if (server == null) return;
+        server.execute(() -> {
+            net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayer(id);
+            if (player == null) return;
+            net.minecraft.world.item.ItemStack sword = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_SWORD);
+            if (glint) sword.set(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
+            player.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND, sword);
+        });
+    }
+
     private static void chatBurst() {
         Minecraft mc = Minecraft.getInstance();
         for (int i = 1; i <= 6; i++) {
@@ -211,6 +265,39 @@ public final class DevScreenshotTour {
             player.setGameMode(GameType.SURVIVAL);
             player.setItemSlot(net.minecraft.world.entity.EquipmentSlot.CHEST,
                     new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_CHESTPLATE));
+        });
+    }
+
+    /** A scoreboard sidebar with a few lines, and a diamond sword in hand with starlight on. */
+    private static void scoreboardAndStarlight() {
+        Minecraft mc = Minecraft.getInstance();
+        AlpakaConfig.instance.itemSizeFeatureEnabled = true;
+        AlpakaConfig.instance.itemStarlightEnabled = true;
+        AlpakaConfig.instance.scoreboardBlurEnabled = true;
+        mc.player.setXRot(0.0f);
+        java.util.UUID id = mc.player.getUUID();
+        net.minecraft.client.server.IntegratedServer server = mc.getSingleplayerServer();
+        if (server == null) return;
+        server.execute(() -> {
+            net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayer(id);
+            if (player != null) {
+                player.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND,
+                        new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_SWORD));
+            }
+            String[] commands = {
+                    "scoreboard objectives add tour dummy {text:\"SKYBLOCK\",color:\"yellow\",bold:true}",
+                    "scoreboard objectives setdisplay sidebar tour",
+                    // Score holder names cannot hold spaces; these stand in for Hypixel's lines.
+                    "scoreboard players set §710/06/26 tour 6",
+                    "scoreboard players set Spring_11th tour 5",
+                    "scoreboard players set §c⏣Catacombs§7(M7) tour 4",
+                    "scoreboard players set Cleared:§a100% tour 3",
+                    "scoreboard players set §bAshFall-Nonu tour 2",
+                    "scoreboard players set §ewww.hypixel.net tour 1",
+            };
+            for (String command : commands) {
+                server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), command);
+            }
         });
     }
 

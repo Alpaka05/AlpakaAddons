@@ -13,7 +13,7 @@ import net.minecraft.network.chat.MutableComponent;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * All / Party / Guild / Co-op / PMs tabs in the chat screen.
+ * All / Party / Guild / Co-op / PMs / NPCs tabs in the chat screen.
  *
  * The tabs sit in the gap between the lowest chat line and the input box, where vanilla draws
  * nothing. Picking one narrows the chat to that channel: the filter runs where messages are laid
@@ -61,6 +61,7 @@ public final class ChatTabsFeature {
             case GUILD -> cfg.chatTabsShowGuild;
             case COOP -> cfg.chatTabsShowCoop;
             case PRIVATE -> cfg.chatTabsShowPrivate;
+            case NPC -> cfg.chatTabsShowNpc;
         };
     }
 

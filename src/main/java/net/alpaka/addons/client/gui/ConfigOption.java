@@ -1,5 +1,7 @@
 package net.alpaka.addons.client.gui;
 
+import net.alpaka.addons.config.AlpakaConfig;
+
 import java.util.Locale;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
@@ -16,7 +18,9 @@ public class ConfigOption {
         ACTION,
         HEADER,
         DROPDOWN,
-        TEXT
+        TEXT,
+        /** A sample of what the feature puts on screen, drawn in the settings; see {@link #preview}. */
+        PREVIEW
     }
 
     /**
@@ -69,6 +73,8 @@ public class ConfigOption {
     // Action
     private Consumer<Screen> actionHandler;
     private String actionLabel;
+    /** Set for colour options only: the current colour, which the button shows as its swatch. */
+    private java.util.function.IntSupplier colorGetter;
 
     // Dropdown
     private List<ToggleEntry> entries;
@@ -86,6 +92,16 @@ public class ConfigOption {
         this.description = "";
         this.category = category;
         this.type = Type.HEADER;
+        this.keywords = title.toLowerCase();
+    }
+
+    // Preview constructor, see preview()
+    private ConfigOption(String title, ConfigCategory category, Type type, String id) {
+        this.id = id;
+        this.title = title;
+        this.description = "";
+        this.category = category;
+        this.type = type;
         this.keywords = title.toLowerCase();
     }
 
@@ -130,6 +146,37 @@ public class ConfigOption {
         this.actionLabel = actionLabel;
         this.actionHandler = actionHandler;
         this.keywords = (title + " " + description + " " + keywords).toLowerCase();
+    }
+
+    /**
+     * A colour option: a button showing the current colour as a swatch, which opens the colour
+     * picker. Every colour setting is made this way, so the config screen needs no list of them.
+     *
+     * The option is given the config field rather than a getter, so its default can be read from a
+     * fresh config: the picker's reset button goes back to that without a second copy of it here.
+     */
+    public static ConfigOption color(String id, String title, String description, ConfigCategory category,
+                                     java.util.function.ToIntFunction<AlpakaConfig> field,
+                                     java.util.function.IntConsumer setter, String keywords) {
+        java.util.function.IntSupplier getter = () -> field.applyAsInt(AlpakaConfig.instance);
+        int defaultColor = field.applyAsInt(defaults());
+        ConfigOption option = new ConfigOption(id, title, description, category, "Choose Color",
+                parent -> net.minecraft.client.Minecraft.getInstance().setScreen(
+                        new net.alpaka.addons.client.ColorPickerScreen(parent, title, getter.getAsInt(),
+                                defaultColor, setter::accept)),
+                keywords);
+        option.colorGetter = getter;
+        return option;
+    }
+
+    /** A config as freshly created, for reading defaults from; made once, never saved. */
+    private static AlpakaConfig defaults;
+
+    private static AlpakaConfig defaults() {
+        if (defaults == null) {
+            defaults = new AlpakaConfig();
+        }
+        return defaults;
     }
 
     // Dropdown constructor
@@ -238,6 +285,50 @@ public class ConfigOption {
 
     // Action
     public String getActionLabel() { return actionLabel != null ? actionLabel : "Open..."; }
+
+    private String[] choices;
+
+    /**
+     * Makes this slider a pick from a list: the value is an index into {@code names}, and the
+     * settings show it as a select field that opens the list, not as a track to drag along.
+     */
+    public ConfigOption choices(String[] names) {
+        this.choices = names;
+        return this;
+    }
+
+    /** The names to pick from, or null for an ordinary slider. */
+    public String[] getChoices() { return choices; }
+
+    /** The index of the current choice, clamped to the list. */
+    public int getChoiceIndex() {
+        if (choices == null || choices.length == 0) return 0;
+        return Math.max(0, Math.min(choices.length - 1, Math.round(getFloat())));
+    }
+
+    private Supplier<net.minecraft.network.chat.Component> previewText;
+
+    /**
+     * A live sample of what a feature puts on screen - a chat line, say - drawn in its settings and
+     * rebuilt every frame, so ticking one of the feature's toggles shows its effect at once.
+     */
+    public static ConfigOption preview(String id, String title, ConfigCategory category,
+                                       Supplier<net.minecraft.network.chat.Component> text) {
+        ConfigOption option = new ConfigOption(title, category, Type.PREVIEW, id);
+        option.previewText = text;
+        return option;
+    }
+
+    /** The sample a preview shows. */
+    public net.minecraft.network.chat.Component getPreviewText() {
+        return previewText == null ? net.minecraft.network.chat.Component.empty() : previewText.get();
+    }
+
+    /** Whether this is a colour option, made by {@link #color}. */
+    public boolean isColor() { return colorGetter != null; }
+
+    /** The colour a colour option currently holds. */
+    public int getColor() { return colorGetter.getAsInt(); }
 
     private boolean confirmFirst = false;
 

@@ -57,6 +57,8 @@ public final class SessionLifecycle {
         InventoryHudFeature.reset();
         PangolinHighlightFeature.reset();
         FirePitFeature.reset();
+        net.alpaka.addons.features.damagetags.CustomDamageTagFeature.reset();
+        net.alpaka.addons.utils.DungeonState.reset();
         AlpakaStats.flushNow();
     }
 
@@ -64,6 +66,8 @@ public final class SessionLifecycle {
         SlayerQuestDetector.INSTANCE.resetForLevelChange();
         PangolinHighlightFeature.reset();
         FirePitFeature.reset();
+        net.alpaka.addons.features.damagetags.CustomDamageTagFeature.reset();
+        net.alpaka.addons.utils.DungeonState.reset();
     }
 
     /** Nothing waiting to be written is lost on exit. */

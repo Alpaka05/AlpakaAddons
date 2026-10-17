@@ -28,9 +28,12 @@ public class AlpakaClient implements ClientModInitializer {
         // Next, so the mod's own render pipelines are registered before the shader manager
         // precompiles vanilla's; see AlpakaGuiPipelines.
         net.alpaka.addons.client.gui.AlpakaGuiPipelines.init();
+        net.alpaka.addons.features.viewmodel.HandItemStarlightFeature.init();
         CustomSoundFeature.register();
         SessionLifecycle.register();
         StartupNotices.register();
+        net.alpaka.addons.utils.UpdateChecker.register();
+        net.alpaka.addons.features.slayer.SmolderingPolarization.register();
         DevScreenshotTour.register();
         SlayerDropTracker.registerEvents();
         net.alpaka.addons.features.slayer.SkyblockProfileTracker.INSTANCE.register();
@@ -43,9 +46,12 @@ public class AlpakaClient implements ClientModInitializer {
         });
         ZoomFeature.register();
         net.alpaka.addons.features.chat.ChatPeekFeature.register();
+        net.alpaka.addons.features.chat.ActionBarOverChat.register();
         CommandWheelFeature.register();
         InventoryHudFeature.register();
         net.alpaka.addons.features.blaze.FirePitFeature.register();
+        net.alpaka.addons.features.damagetags.CustomDamageTagFeature.register();
+        net.alpaka.addons.utils.DungeonState.register();
         net.alpaka.addons.features.notification.MentionNotifier.register();
         net.alpaka.addons.features.party.PartyInviteFeature.register();
         WorldAgeHudRenderer.registerEvents();
@@ -105,6 +111,15 @@ public class AlpakaClient implements ClientModInitializer {
                             return 1;
                         })
                     )
+                )
+                // "/alpakadebug damagetags": a few sample splashes in front of the player, to see
+                // the custom damage tags without hitting anything on SkyBlock.
+                .then(ClientCommands.literal("damagetags")
+                    .executes(context -> {
+                        Minecraft.getInstance().execute(
+                                net.alpaka.addons.features.damagetags.CustomDamageTagFeature::spawnPreview);
+                        return 1;
+                    })
                 )
                 // "/alpakadebug firepits": runs the fire pit highlight without a Blaze boss, so a
                 // clay block placed in a test world (/setblock) shows how the column looks.

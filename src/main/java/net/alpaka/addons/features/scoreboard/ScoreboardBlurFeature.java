@@ -72,12 +72,13 @@ public final class ScoreboardBlurFeature {
         if (!active || !(graphics instanceof AlpakaGuiElementSink sink)) return false;
         int top = titleTop != Integer.MIN_VALUE ? Math.min(titleTop, y0) : y0;
         float toScreen = (float) Minecraft.getInstance().getWindow().getGuiScale();
+        // Before the submission, so a HUD cached by Gnetum hands this panel to the frame's own pass.
+        ChatBlurFeature.request();
         sink.alpaka$submitElement(new BlurRectRenderState(
                 new Matrix3x2f(graphics.pose()),
                 x0 - PADDING, top - PADDING, x1 + PADDING, y1 + PADDING,
                 Math.round(RADIUS * toScreen), color, toScreen, 1.0f,
                 Math.round(SHADOW * toScreen), sink.alpaka$currentScissor()));
-        ChatBlurFeature.request();
         return true;
     }
 }

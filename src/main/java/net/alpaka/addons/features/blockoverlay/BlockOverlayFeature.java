@@ -133,9 +133,12 @@ public class BlockOverlayFeature {
         poseStack.popPose();
     }
 
+    /** One full rainbow cycle every two seconds at 1x. */
+    private static final double CHROMA_CYCLES_PER_SECOND = 0.5;
+
     /** The current chroma colour as packed RGB. Returned packed so nothing has to be allocated. */
     private static int chromaRgb(float speed) {
-        double timeSec = (double) System.currentTimeMillis() / 1000.0 * speed;
+        double timeSec = (double) System.currentTimeMillis() / 1000.0 * CHROMA_CYCLES_PER_SECOND * speed;
         float hue = (float) (timeSec % 1.0);
         return java.awt.Color.HSBtoRGB(hue, 1.0f, 1.0f);
     }

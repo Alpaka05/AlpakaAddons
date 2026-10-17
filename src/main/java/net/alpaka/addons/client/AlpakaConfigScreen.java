@@ -78,6 +78,12 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     private final Screen parent;
     /** The version under the logo; it cannot change while the game runs. */
     private final String versionLabel = "v" + ModVersion.mod().split("\\+")[0];
+    /**
+     * The build part after it, {@code +133.bc91868}, so a test build says which commit it is. Empty
+     * on a release build.
+     */
+    private final String buildLabel = ModVersion.mod().contains("+")
+            ? ModVersion.mod().substring(ModVersion.mod().indexOf('+')) : "";
     private final EditableText search = new EditableText(MAX_SEARCH_LENGTH);
     /** How far the search text is scrolled left to keep the caret in view, this frame. */
     private int searchScrollPx = 0;
@@ -500,13 +506,33 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         revealSelected = true;
     }
 
+    /**
+     * The version under the logo. The build part follows it, shrunk as far as needed to end before
+     * {@code right}: in the smallest layout a full test build's version would run under the search.
+     */
+    private void drawVersion(GuiGraphicsExtractor graphics, int x, int y, int right) {
+        Component version = GuiFont.text(versionLabel);
+        graphics.text(this.font, version, x, y, AlpakaStyle.TEXT_MUTED, false);
+        if (buildLabel.isEmpty()) return;
+        Component build = GuiFont.text(buildLabel);
+        int bx = x + this.font.width(version);
+        int width = this.font.width(build);
+        float scale = Math.min(1f, Math.max(0.5f, (right - bx) / (float) width));
+        graphics.pose().pushMatrix();
+        // Bottom-aligned with the version, so the smaller text sits on the same line.
+        graphics.pose().translate(bx, y + 8 * (1 - scale));
+        graphics.pose().scale(scale, scale);
+        graphics.text(this.font, build, 0, 0, AlpakaStyle.TEXT_MUTED, false);
+        graphics.pose().popMatrix();
+    }
+
     private void drawLogoAndSearch(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int featX, int featW) {
         // Logo: the name large, the version small beneath it.
         Component title = GuiFont.title("ALPAKA");
         if (title == null) title = GuiFont.text("ALPAKA");
         // In line with the sidebar's labels below it.
         graphics.text(this.font, title, x + PAD, y + 8, AlpakaStyle.TEXT, false);
-        graphics.text(this.font, GuiFont.text(versionLabel), x + PAD, y + 22, AlpakaStyle.TEXT_MUTED, false);
+        drawVersion(graphics, x + PAD, y + 22, featX + 4 - 6);
 
         // Search: a pill over the feature column.
         int sx = featX + 4;

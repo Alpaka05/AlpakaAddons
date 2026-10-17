@@ -63,7 +63,7 @@ public final class DevScreenshotTour {
             screen("config", () -> new AlpakaConfigScreen(null, "")),
             screen("config-old-screenshot", () -> new AlpakaConfigScreen(null, "screenshot")),
             screen("config-old-starlight", () -> new AlpakaConfigScreen(null, "starlight")),
-            screen("color-picker", () -> new ColorPickerScreen(null, "Accent Colour", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
+            screen("color-picker", () -> new ColorPickerScreen(null, "Accent Color", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
             screen("wheel-editor", () -> new CommandWheelConfigScreen(new CustomMainMenuScreen())),
             screen("hud-editor", () -> new HudEditorScreen(null)),
             new Stop(null, DevScreenshotTour::enterWorld,

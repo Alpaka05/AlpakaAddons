@@ -26,7 +26,7 @@ class CustomPauseScreenTest {
 
     // ----------------------------------------------------------------- fade
 
-    /** Colour, factor, and the colour with its alpha scaled: RGB is never touched. */
+    /** Color, factor, and the color with its alpha scaled: RGB is never touched. */
     @ParameterizedTest(name = "fade({0}, {1}) = {2}")
     @CsvSource({
             "0xFFEF4444, 1.0,  0xFFEF4444",
@@ -34,7 +34,7 @@ class CustomPauseScreenTest {
             "0xFFFFFFFF, 0.5,  0x80FFFFFF",
             "0x52000000, 0.5,  0x29000000",
             "0x14FFFFFF, 1.0,  0x14FFFFFF",
-            // Out-of-range factors clamp rather than wrap into the colour channels.
+            // Out-of-range factors clamp rather than wrap into the color channels.
             "0xFFEF4444, 2.0,  0xFFEF4444",
             "0xFFEF4444, -1.0, 0x00EF4444",
     })

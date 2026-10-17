@@ -156,7 +156,7 @@ public class CustomPauseScreen extends PauseScreen {
         return MenuStyle.easeOutCubic((System.currentTimeMillis() - this.promptOpenTime) / 1000.0f / APPEAR_SECONDS);
     }
 
-    /** The colour with its alpha scaled by the factor. */
+    /** The color with its alpha scaled by the factor. */
     static int fade(int color, float factor) {
         return MenuStyle.fade(color, factor);
     }

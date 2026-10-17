@@ -20,7 +20,7 @@ import kotlin.math.sin
 /**
  * The look the main menu and the pause menu share: a card of dark glass with the logo and the mod's
  * name at its head, one accented hero tile, rows with an icon tile and a chevron, and a red pill to
- * leave by - together with the colours, easings and line icons they are drawn with.
+ * leave by - together with the colors, easings and line icons they are drawn with.
  *
  * Each piece draws at the position it is given and at an [appear] of 0 → 1; the screens decide
  * where things go and when they arrive.
@@ -30,7 +30,7 @@ object MenuStyle {
 
     /**
      * The menus' line icons, a font of their own drawn by tools/GenMenuIcons.java: glyphs, so they
-     * sit on the text's baseline and take its colour. Written as escapes: the private-use characters
+     * sit on the text's baseline and take its color. Written as escapes: the private-use characters
      * themselves are invisible in most editors.
      */
     private val ICON_FONT = FontDescription.Resource(Identifier.fromNamespaceAndPath("alpaka", "menu_icons"))
@@ -127,7 +127,7 @@ object MenuStyle {
     fun iconLabel(glyph: String, text: String): Component =
         Component.empty().append(icon(glyph)).append(GuiFont.text("  $text"))
 
-    /** The colour with its alpha scaled by the factor. */
+    /** The color with its alpha scaled by the factor. */
     @JvmStatic
     fun fade(color: Int, factor: Float): Int {
         val alpha = Math.round(((color ushr 24) and 0xFF) * factor.coerceIn(0f, 1f))
@@ -169,7 +169,7 @@ object MenuStyle {
         ModernGuiUtils.drawRoundedOutline(graphics, x, y, width, height, radius, fade(CARD_EDGE, appear))
     }
 
-    /** The card's tint as one colour, for glass that is a plain fill over an already blurred backdrop. */
+    /** The card's tint as one color, for glass that is a plain fill over an already blurred backdrop. */
     @JvmStatic
     fun cardTint(): Int = (Math.round(CARD_STRENGTH * 255f) shl 24) or (CARD_TINT and 0x00FFFFFF)
 
@@ -240,7 +240,7 @@ object MenuStyle {
         val clearWash = accent and 0x00FFFFFF
         gradientRect(graphics, x, y, width, height, radius, 0, wash, clearWash, clearWash, wash)
 
-        // The edge: each corner's colour runs between the accent and its lighter self, a quarter
+        // The edge: each corner's color runs between the accent and its lighter self, a quarter
         // turn apart, so the bright part travels around the tile.
         val edgeStrength = appear * (HERO_EDGE_REST + (1f - HERO_EDGE_REST) * hover)
         fun corner(k: Int): Int {
@@ -255,7 +255,7 @@ object MenuStyle {
     }
 
     /**
-     * A status line under the hero's name: a dot, and the text in the muted colour. A [pulse] dot
+     * A status line under the hero's name: a dot, and the text in the muted color. A [pulse] dot
      * sends out a ring once a second and a half, like a live signal.
      */
     @JvmStatic
@@ -353,7 +353,7 @@ object MenuStyle {
     }
 
     /**
-     * A rounded rectangle with a colour at each corner, filled when [thickness] is 0 or as an edge
+     * A rounded rectangle with a color at each corner, filled when [thickness] is 0 or as an edge
      * that many screen pixels wide; nothing without the extractor mixin.
      */
     @JvmStatic

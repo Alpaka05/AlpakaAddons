@@ -21,8 +21,8 @@ import kotlin.math.sin
 
 /**
  * Draws Hypixel's damage splashes itself: each number pops up with a little overshoot, drifts
- * upwards, and fades out, coloured with a gradient across its digits. Crits and normal hits each
- * get their own pair of colours.
+ * upwards, and fades out, colored with a gradient across its digits. Crits and normal hits each
+ * get their own pair of colors.
  *
  * Purely a picture. Hypixel's splash is an invisible armor stand with the number as its name; that
  * name tag is hidden (see [DamageTagFeature.shouldHideNameTag]) and a copy of the number is drawn
@@ -90,7 +90,7 @@ object CustomDamageTagFeature {
 
     private const val FULL_BRIGHT = 0xF000F0
 
-    /** Below this alpha the font treats the colour as opaque, so the tag is simply not drawn. */
+    /** Below this alpha the font treats the color as opaque, so the tag is simply not drawn. */
     private const val MIN_ALPHA = 8
 
     private class Tag(
@@ -234,7 +234,7 @@ object CustomDamageTagFeature {
     }
 
     /**
-     * The number with each character in its own colour, running from [start] to [end]. With a
+     * The number with each character in its own color, running from [start] to [end]. With a
      * [time], the gradient sways back and forth along the number.
      */
     private fun gradient(text: String, start: Int, end: Int, time: Double?): Component {

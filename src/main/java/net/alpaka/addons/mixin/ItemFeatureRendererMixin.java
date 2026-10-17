@@ -31,7 +31,7 @@ public abstract class ItemFeatureRendererMixin extends RenderTypeFeatureRenderer
 
     // Plain quads go through getVertexBuilder, glinted ones through getFoilBuffer, which wraps
     // the same base type together with the glint layer. Both get the swapped type. The outline
-    // pass is left alone: it draws the glow colour, not the item texture. The motion blur picks
+    // pass is left alone: it draws the glow color, not the item texture. The motion blur picks
     // first: a ghost gets its own translucent type, which the lighting swap then leaves alone; a
     // real item passes through to the lighting swap unchanged.
     @ModifyArg(
@@ -51,7 +51,7 @@ public abstract class ItemFeatureRendererMixin extends RenderTypeFeatureRenderer
         return HandItemLightingFeature.pickRenderType(ItemMotionBlurFeature.pickRenderType(renderType));
     }
 
-    // The quad colour is set once per quad from the tint layers; a motion blur ghost gets its
+    // The quad color is set once per quad from the tint layers; a motion blur ghost gets its
     // fade folded into the alpha here, which its translucent render type then blends with.
     @ModifyArg(
             method = "prepareMainSubmit",

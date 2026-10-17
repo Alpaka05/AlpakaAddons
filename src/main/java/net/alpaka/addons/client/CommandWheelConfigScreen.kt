@@ -25,7 +25,7 @@ import kotlin.math.min
  * that is full hands the command on to the next one (see [CommandWheelPages]).
  *
  * Drawn with the same pieces as the config screen: rounded panels with hairline borders, the menu
- * font without shadows, the accent colour for whatever is selected or being dropped on.
+ * font without shadows, the accent color for whatever is selected or being dropped on.
  */
 class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.literal("Configure Quick Commands")) {
 

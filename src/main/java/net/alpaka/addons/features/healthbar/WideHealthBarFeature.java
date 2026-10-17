@@ -22,7 +22,7 @@ import net.minecraft.world.entity.player.Player;
  *
  * The hearts themselves are vanilla's: damage blink, regeneration bounce, low-health shake, the
  * poison, wither and frozen tints and the hardcore variants all behave exactly as before, and a
- * resource pack that recolours the vanilla hearts recolours these too.
+ * resource pack that recolors the vanilla hearts recolors these too.
  */
 public final class WideHealthBarFeature {
     /** The ten hearts vanilla draws on the left plus the ten that take the hunger bar's place. */

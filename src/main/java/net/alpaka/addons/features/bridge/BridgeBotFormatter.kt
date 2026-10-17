@@ -59,7 +59,7 @@ object BridgeBotFormatter {
 
         // Hypixel formats with legacy section codes embedded in the text, so getString() hands back
         // "§2Guild > §a[VIP] ... §f: Author: message" - matching on it directly never fires.
-        // Detection happens on the stripped text; the body is sliced out of the coloured original.
+        // Detection happens on the stripped text; the body is sliced out of the colored original.
         val coded = original.string
         val raw = SlayerDropTracker.cleanColor(coded)
         val prefix = CHANNEL_PREFIXES.firstOrNull { raw.startsWith(it) } ?: return null
@@ -73,7 +73,7 @@ object BridgeBotFormatter {
         // merely mentions the bot's name in a message.
         if (!sender.contains(botName, ignoreCase = true)) return null
 
-        // The same colon again, this time located in the coloured string, so any formatting the bot
+        // The same colon again, this time located in the colored string, so any formatting the bot
         // put in its own message survives instead of being flattened away.
         val codedSplit = coded.indexOf(": ", coded.indexOf(prefix) + prefix.length)
         val body = if (codedSplit < 0) raw.substring(split + 2) else coded.substring(codedSplit + 2)
@@ -81,7 +81,7 @@ object BridgeBotFormatter {
 
         // Built as siblings of an empty root rather than by appending to one another, because a
         // sibling inherits its parent's style - hung off the marker, the whole line would come out
-        // dark green. The marker keeps the colour Hypixel gives it, so a relay sits among the other
+        // dark green. The marker keeps the color Hypixel gives it, so a relay sits among the other
         // guild lines rather than looking like a different kind of message.
         return Component.empty()
             .append(Component.literal(prefix).withStyle(ChatFormatting.DARK_GREEN))

@@ -35,7 +35,7 @@ public final class BlockOverlayRenderTypes {
         noDepthQuads();
     }
 
-    /** Position-colour quads with the depth test switched off - the overlay seen through walls. */
+    /** Position-color quads with the depth test switched off - the overlay seen through walls. */
     public static RenderType noDepthQuads() {
         if (noDepthQuads == null) {
             RenderPipeline pipeline = RenderPipelinesAccessor.alpaka$register(

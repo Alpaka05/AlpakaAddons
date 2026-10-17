@@ -12,6 +12,7 @@ import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.contents.PlainTextContents;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Util;
@@ -21,10 +22,13 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayDeque;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -58,6 +62,13 @@ import java.util.function.Consumer;
  * At the moment the game writes the file ({@link #onSaved}), not at the chat notice: other mods may
  * keep that notice out of the chat. The notice, when it does come, only makes way for the button
  * line. A notice for a file the hook did not see is still acted on, as before.
+ *
+ * ### Screenshot Message Enhancer
+ *
+ * That mod cancels vanilla's screenshot code, writes the file itself and posts its own lines as
+ * plain text: "Saving screenshot..." at the key press, then "Saved screenshot" with its buttons.
+ * The write still reaches the hook, so everything here starts as usual; its two lines are treated
+ * like the vanilla notice and make way for this feature's line.
  *
  * ### Auto copy
  *
@@ -95,6 +106,9 @@ public final class ScreenshotMessageFeature {
     private static final ArrayDeque<Long> KEY_PRESSES = new ArrayDeque<>();
     private static final long KEY_PRESS_WINDOW_MS = 10_000L;
 
+    /** The lines this feature posted itself, so the notice check lets them through. */
+    private static final Set<Component> OWN_LINES = Collections.newSetFromMap(new IdentityHashMap<>());
+
     /** The screenshot key was pressed; the file it leads to is the player's own screenshot. */
     public static void onKeyPressed() {
         synchronized (KEY_PRESSES) {
@@ -113,6 +127,12 @@ public final class ScreenshotMessageFeature {
         }
     }
 
+    private static boolean keyPressPending() {
+        synchronized (KEY_PRESSES) {
+            return !KEY_PRESSES.isEmpty();
+        }
+    }
+
     private static String keyOf(File file) {
         return file.getAbsoluteFile().toPath().normalize().toString();
     }
@@ -123,6 +143,9 @@ public final class ScreenshotMessageFeature {
      * for one) keeps "Saved screenshot as ..." out of the chat. Only files from the screenshot key.
      */
     public static void onSaved(File file) {
+        // Every PNG the game writes passes here; only one in a screenshots folder can be the key's.
+        File dir = file.getAbsoluteFile().getParentFile();
+        if (dir == null || !"screenshots".equals(dir.getName())) return;
         if (!takeKeyPress()) return;
         if (!AlpakaConfig.instance.betterScreenshotMessageEnabled) return;
         synchronized (SAVED) {
@@ -133,12 +156,29 @@ public final class ScreenshotMessageFeature {
         mc.execute(() -> act(file, line -> mc.execute(() -> mc.gui.hud.getChat().addClientSystemMessage(line))));
     }
 
+    /** The file onSaved marked last, taken off the list; null when there is none. */
+    private static File takeLastSaved() {
+        synchronized (SAVED) {
+            String last = null;
+            for (String key : SAVED.keySet()) last = key;
+            if (last == null) return null;
+            SAVED.remove(last);
+            return new File(last);
+        }
+    }
+
     /**
      * Takes a message that is about to enter the chat and, if it is vanilla's screenshot notice,
      * does what the toggles ask for. Returns true when the vanilla line must not be shown, because
      * a replacement is posted through {@code repost} - now, or once the automatic copy has finished.
      */
     public static boolean handleNotice(Component message, Consumer<Component> repost) {
+        synchronized (OWN_LINES) {
+            if (OWN_LINES.remove(message)) return false;
+        }
+        if (message.getContents() instanceof PlainTextContents.LiteralContents literal) {
+            return handleEnhancerLine(literal.text());
+        }
         if (!(message.getContents() instanceof TranslatableContents contents)) return false;
         if (!"screenshot.success".equals(contents.getKey())) return false;
         File file = fileOf(contents);
@@ -152,6 +192,20 @@ public final class ScreenshotMessageFeature {
         // Already posted (or about to be) by onSaved: the notice only has to make way for it.
         if (handled) return AlpakaConfig.instance.screenshotChatButtons;
         return act(file, repost);
+    }
+
+    /**
+     * Screenshot Message Enhancer's two lines, which stand in for the vanilla notice (see the class
+     * comment). Both go only when this feature posts a line of its own for the screenshot.
+     */
+    private static boolean handleEnhancerLine(String text) {
+        AlpakaConfig cfg = AlpakaConfig.instance;
+        if (!cfg.betterScreenshotMessageEnabled || !cfg.screenshotChatButtons) return false;
+        // Posted at the key press, before the file exists.
+        if (text.equals("Saving screenshot...")) return keyPressPending();
+        // Posted once the file is written, so onSaved has marked it by now.
+        if (text.startsWith("Saved screenshot")) return takeLastSaved() != null;
+        return false;
     }
 
     /** Preview, button line and automatic copy for one screenshot. Returns whether a line is posted. */
@@ -223,6 +277,9 @@ public final class ScreenshotMessageFeature {
         }
         if (cfg.screenshotShowDelete) {
             line.append(" ").append(button("[Delete]", ChatFormatting.RED, custom(DELETE, token), "Delete " + name));
+        }
+        synchronized (OWN_LINES) {
+            OWN_LINES.add(line);
         }
         return line;
     }

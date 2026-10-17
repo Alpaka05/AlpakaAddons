@@ -51,6 +51,21 @@ public final class GnetumCompat {
         }
     }
 
+    /**
+     * Whether Gnetum is drawing a cached HUD element right now, into its own framebuffer: what is
+     * submitted lands in its HUD image, which is drawn over the HUD elements it does not cache.
+     */
+    public static boolean isCaching() {
+        if (!resolve()) return false;
+        try {
+            return (boolean) rendering.invokeExact() && !(boolean) uncached.invokeExact();
+        } catch (Throwable e) {
+            LOGGER.warn("Could not ask Gnetum whether it caches the current HUD element", e);
+            rendering = null;
+            return false;
+        }
+    }
+
     private static boolean resolve() {
         if (resolved) return rendering != null;
         resolved = true;

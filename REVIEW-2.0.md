@@ -147,9 +147,9 @@ Prioritäten: **Blocker** = so nicht ausliefern (Datenverlust, sichtbar kaputtes
   `client/ColorPickerScreen.java:271` · D3-1
   <details><summary>Details</summary>
 
-  **Typing a hex code into the colour picker appends to the old one and can give a wrong, mostly transparent colour**
+  **Typing a hex code into the color picker appends to the old one and can give a wrong, mostly transparent color**
 
-  When the field gets focus it is filled with hexOf(). For an opaque colour that is now the 7-character "#RRGGBB"; main always showed 9 characters, so extra typing was simply refused. charTyped (line 341) appends and re-parses after every character, with a 9-character cap. Example: Menu Accent Color is 0xFF29B6B2. The player clicks the field and types FF0000. "#29B6B2F" has 7 digits and is ignored. "#29B6B2FF" has 8 digits and is parsed as AARRGGBB = 0x29B6B2FF, a light blue at about 16% opacity. The remaining "0000" is dropped by the cap. Typing "#FF0000" instead gives "#29B6B2#F" and then nothing happens. The only working path is to backspace seven times first, which nothing tells the player.
+  When the field gets focus it is filled with hexOf(). For an opaque color that is now the 7-character "#RRGGBB"; main always showed 9 characters, so extra typing was simply refused. charTyped (line 341) appends and re-parses after every character, with a 9-character cap. Example: Menu Accent Color is 0xFF29B6B2. The player clicks the field and types FF0000. "#29B6B2F" has 7 digits and is ignored. "#29B6B2FF" has 8 digits and is parsed as AARRGGBB = 0x29B6B2FF, a light blue at about 16% opacity. The remaining "0000" is dropped by the cap. Typing "#FF0000" instead gives "#29B6B2#F" and then nothing happens. The only working path is to backspace seven times first, which nothing tells the player.
 
   *Vorschlag:* Make the first keystroke after focusing replace the content. For example, set hexInput = "#" on focus and show the current code as the placeholder, or keep a select-all flag that the first charTyped/Backspace clears. Optionally also accept Ctrl+A.
 
@@ -171,9 +171,9 @@ Prioritäten: **Blocker** = so nicht ausliefern (Datenverlust, sichtbar kaputtes
   `client/gui/AlpakaConfigRegistry.java:166` · D2-3, D1-3, X1-6, D3-M2
   <details><summary>Details</summary>
 
-  **Reset All is not drawn as a DANGER action; the danger colour is hard-coded to one id**
+  **Reset All is not drawn as a DANGER action; the danger color is hard-coded to one id**
 
-  ConfigOption has no way to declare an action as dangerous, so AlpakaConfigScreen.java:773 decides it with option.getId().equals("disable_all_features"). The new reset_all_settings action is the most destructive one in the mod ('This cannot be undone'), yet its row in General > Main is drawn in the normal accent colour right next to a red Disable All. item_viewmodel_reset and player_scale_reset are not red either. This breaks the convention that destructive actions use ButtonKind.DANGER, and each new destructive action would need another hard-coded id in the screen.
+  ConfigOption has no way to declare an action as dangerous, so AlpakaConfigScreen.java:773 decides it with option.getId().equals("disable_all_features"). The new reset_all_settings action is the most destructive one in the mod ('This cannot be undone'), yet its row in General > Main is drawn in the normal accent color right next to a red Disable All. item_viewmodel_reset and player_scale_reset are not red either. This breaks the convention that destructive actions use ButtonKind.DANGER, and each new destructive action would need another hard-coded id in the screen.
 
   *Vorschlag:* Add a ConfigOption.danger() flag (like confirmFirst()/buttonOnly()). Set it in the registry on disable_all_features, reset_all_settings, item_viewmodel_reset and player_scale_reset, and have the screen read option.isDanger() instead of comparing ids.
 
@@ -538,7 +538,7 @@ Prioritäten: **Blocker** = so nicht ausliefern (Datenverlust, sichtbar kaputtes
 
   The mixin sets AbstractTexture.sampler on alpaka font pages. In 26.2, GUI text never reads that field. GuiRenderer.prepareText -> GuiTextRenderState.ensurePrepared().visit(new GuiRenderer$1) -> acceptRenderable creates a GlyphRenderState for every glyph and effect. GlyphRenderState.textureSetup() returns TextureSetup.singleTextureWithLightmap(renderable.textureView(), RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST)), and GuiRenderer's draw binds textureSetup.sampler0(). AbstractTexture.getSampler() is only consulted by RenderSetup (world render types), GuiGraphicsExtractor blits-by-id, and the sky, weather and world-border renderers. The mod draws no alpaka-font text in the world: no file that uses GuiFont submits world text. So the mixin is effectively dead. The GuiFont class doc (lines 49-50), the usesSmoothSampling Javadoc (158-166) and the mixin's own doc all describe linear sampling that never happens. Wherever glyphs are not mapped 1:1 they are nearest-resampled, which gives the uneven, 'pixelated in places' strokes the mixin was written to remove. That covers GUI scale 1 and >= 5 (see D4-12), HUDs with their own scale (for example 1.25), the chat-scale slider, the HUD editor's scaled previews, and the menu_icons font (40-texel glyphs drawn 10 GUI px tall, minified 2x at GUI scale 2 and 1.33x at scale 3, so the main-menu line icons are aliased).
 
-  *Vorschlag:* Decide deliberately. Either delete FontTextureMixin and correct the three docs (relying on the per-scale definitions and accepting nearest elsewhere), or make it effective. To make it effective, mix into GlyphRenderState.textureSetup() (or wrap the getClampToEdge(NEAREST) call there) and return getClampToEdge(FilterMode.LINEAR) when renderable.textureView() belongs to an alpaka page. FontTextureMixin can record those views in a Set<GpuTextureView>, limited to non-coloured TrueType pages plus the menu_icons pages, so the vanilla pixel fallbacks stay crisp (the concern D4-1 raised). If linear is enabled, the gutter-less atlas concern from D4-11 becomes real and needs a 1-texel border.
+  *Vorschlag:* Decide deliberately. Either delete FontTextureMixin and correct the three docs (relying on the per-scale definitions and accepting nearest elsewhere), or make it effective. To make it effective, mix into GlyphRenderState.textureSetup() (or wrap the getClampToEdge(NEAREST) call there) and return getClampToEdge(FilterMode.LINEAR) when renderable.textureView() belongs to an alpaka page. FontTextureMixin can record those views in a Set<GpuTextureView>, limited to non-colored TrueType pages plus the menu_icons pages, so the vanilla pixel fallbacks stay crisp (the concern D4-1 raised). If linear is enabled, the gutter-less atlas concern from D4-11 becomes real and needs a 1-texel border.
 
   </details>
 - **[low · S]** Etherwarp Overlay und „Ignore Plants“ beim Block Overlay prüfen auf BushBlock, das seit 26.x nur noch minecraft:bush ist, daher stoppt der Etherwarp-Strahl an Seerosen und angehängten Melonen- und Kürbisstielen (falsche goldene ‚gültig‘-Box), und Ignore Plants umrandet weiter tote Büsche, trockenes Gras, Seegras oder Beerensträucher.  
@@ -941,7 +941,7 @@ Prioritäten: **Blocker** = so nicht ausliefern (Datenverlust, sichtbar kaputtes
 
   **Three hand-rolled text fields have no caret, selection or paste although EditableText exists**
 
-  EditableText's own doc says it exists 'so the same behaviour can be given to the other hand-rolled fields'. It is still used only by the config search box. The quick-command input (CommandWheelConfigScreen 495), the colour picker's hex field (ColorPickerScreen 342) and the config's TEXT options such as Guild Tag and Bridge Bot Name (AlpakaConfigScreen 1085) are append/backspace-only Strings. They have no caret, no Ctrl+A/C/V and no selection, and `(char) codePoint` mangles code points outside the BMP. A player cannot paste a long /warp command, a hex colour or a bot name.
+  EditableText's own doc says it exists 'so the same behaviour can be given to the other hand-rolled fields'. It is still used only by the config search box. The quick-command input (CommandWheelConfigScreen 495), the color picker's hex field (ColorPickerScreen 342) and the config's TEXT options such as Guild Tag and Bridge Bot Name (AlpakaConfigScreen 1085) are append/backspace-only Strings. They have no caret, no Ctrl+A/C/V and no selection, and `(char) codePoint` mangles code points outside the BMP. A player cannot paste a long /warp command, a hex color or a bot name.
 
   *Vorschlag:* Back all three with EditableText and route keyPressed/charTyped through it, as AlpakaConfigScreen does for the search box.
 
@@ -965,7 +965,7 @@ Prioritäten: **Blocker** = so nicht ausliefern (Datenverlust, sichtbar kaputtes
 
   **"Sure?" second-click confirmation goes through on an ordinary double-click**
 
-  The wheel editor's Reset (wipes every quick command) and the HUD editor's Reset All (HudEditorScreen.kt:158-168, every HUD position and scale) confirm with a second click within 3 s. A fast or habitual double-click arms and fires within about 200 ms, and there is no undo. The armed state only changes the label to "Sure?", in the same colours. The config screen's own destructive actions (Disable All, Reset All Settings) use AlpakaConfirmScreen, so sub menus confirm differently from the menu they belong to.
+  The wheel editor's Reset (wipes every quick command) and the HUD editor's Reset All (HudEditorScreen.kt:158-168, every HUD position and scale) confirm with a second click within 3 s. A fast or habitual double-click arms and fires within about 200 ms, and there is no undo. The armed state only changes the label to "Sure?", in the same colors. The config screen's own destructive actions (Disable All, Reset All Settings) use AlpakaConfirmScreen, so sub menus confirm differently from the menu they belong to.
 
   *Vorschlag:* Open AlpakaConfirmScreen(this, ..., dangerous = true, ...) for both, as Reset All Settings does. If the inline arm is kept, ignore the confirming click for about 400 ms after arming and give the armed state a distinct DANGER fill.
 
@@ -999,9 +999,9 @@ Prioritäten: **Blocker** = so nicht ausliefern (Datenverlust, sichtbar kaputtes
   `client/AlpakaConfigScreen.java:46` · D1-15, X1-8, D3-6, D3-7
   <details><summary>Details</summary>
 
-  **Colours and controls duplicate AlpakaStyle**
+  **Colors and controls duplicate AlpakaStyle**
 
-  COLOR_BACKDROP through COLOR_DANGER repeat AlpakaStyle's constants value for value (AlpakaStyle even labels them 'Colours, the config screen's'). inside() duplicates AlpakaStyle.inside. The slider track (lines 743-751) is the same drawing as AlpakaStyle.sliderTrack, and the panel and shadow repeat AlpakaStyle.panel. ellipsize (line 1006) also exists in HudEditorScreen.kt:131 with '...' instead of '…'. Changing a colour or control in one place leaves the config menu and its sub menus out of step.
+  COLOR_BACKDROP through COLOR_DANGER repeat AlpakaStyle's constants value for value (AlpakaStyle even labels them 'Colors, the config screen's'). inside() duplicates AlpakaStyle.inside. The slider track (lines 743-751) is the same drawing as AlpakaStyle.sliderTrack, and the panel and shadow repeat AlpakaStyle.panel. ellipsize (line 1006) also exists in HudEditorScreen.kt:131 with '...' instead of '…'. Changing a color or control in one place leaves the config menu and its sub menus out of step.
 
   *Vorschlag:* Reference AlpakaStyle.* constants and helpers (sliderTrack, panel, inside). Move ellipsize into AlpakaStyle so both menus use the same ellipsis.
 
@@ -1026,9 +1026,9 @@ Prioritäten: **Blocker** = so nicht ausliefern (Datenverlust, sichtbar kaputtes
   `features/chat/ChatSearchFeature.java:43` · C1-3
   <details><summary>Details</summary>
 
-  **Chat search matches against raw text that still contains § colour codes**
+  **Chat search matches against raw text that still contains § color codes**
 
-  accepts() lower-cases message.content().getString(). For Hypixel lines that string still holds legacy codes such as '§2Guild > §6[MVP§c++§6] Name§f: hi' (BridgeBotFormatter and ChatTab.strip exist for exactly this reason). Searching '6', 'a' or 'f' matches nearly every line through §6, §a and §f. Any multi-word query that crosses a colour change ('[MVP++] Name', 'Name: hi') finds nothing. The search also runs on the stored, pre-formatting text, so typing the custom guild tag or '[Discord]' that is visible on screen finds no lines.
+  accepts() lower-cases message.content().getString(). For Hypixel lines that string still holds legacy codes such as '§2Guild > §6[MVP§c++§6] Name§f: hi' (BridgeBotFormatter and ChatTab.strip exist for exactly this reason). Searching '6', 'a' or 'f' matches nearly every line through §6, §a and §f. Any multi-word query that crosses a color change ('[MVP++] Name', 'Name: hi') finds nothing. The search also runs on the stored, pre-formatting text, so typing the custom guild tag or '[Discord]' that is visible on screen finds no lines.
 
   *Vorschlag:* Strip formatting codes before matching (one shared stripper, see C1-18), e.g. strip(getString()).toLowerCase(Locale.ROOT). Consider documenting that the search covers Hypixel's original wording rather than the reformatted display.
 
@@ -1122,11 +1122,11 @@ Prioritäten: **Blocker** = so nicht ausliefern (Datenverlust, sichtbar kaputtes
   `features/bridge/BridgeBotFormatter.kt:74` · C1-11
   <details><summary>Details</summary>
 
-  **Bot detection by substring, and Officer relays recoloured dark green**
+  **Bot detection by substring, and Officer relays recolored dark green**
 
-  sender.contains(botName, ignoreCase = true) also matches any guild member whose name contains the bot's name (bot 'Bridge', member 'BridgeFan'). That member's lines are rewritten to 'Guild > [Discord] <their message>', which drops their identity and lets them pose as a Discord user. Separately, line 87 styles every prefix DARK_GREEN, while Hypixel colours 'Officer > ' dark aqua (§3). The comment says 'the marker keeps the colour Hypixel gives it'.
+  sender.contains(botName, ignoreCase = true) also matches any guild member whose name contains the bot's name (bot 'Bridge', member 'BridgeFan'). That member's lines are rewritten to 'Guild > [Discord] <their message>', which drops their identity and lets them pose as a Discord user. Separately, line 87 styles every prefix DARK_GREEN, while Hypixel colors 'Officer > ' dark aqua (§3). The comment says 'the marker keeps the color Hypixel gives it'.
 
-  *Vorschlag:* Compare the sender block's name token exactly: strip ranks and brackets, then equalsIgnoreCase. Pick the prefix colour per channel (DARK_AQUA for Officer/O), or slice the coloured prefix out of the coded string.
+  *Vorschlag:* Compare the sender block's name token exactly: strip ranks and brackets, then equalsIgnoreCase. Pick the prefix color per channel (DARK_AQUA for Officer/O), or slice the colored prefix out of the coded string.
 
   </details>
 - **[low · S]** Custom Guild Tag ersetzt 'Guild >' an beliebiger Stelle einer Zeile, sodass etwa eine öffentliche Nachricht 'type Guild > to see it' als 'type LEMAN to see it' angezeigt wird.  
@@ -1138,7 +1138,7 @@ Prioritäten: **Blocker** = so nicht ausliefern (Datenverlust, sichtbar kaputtes
 
   containsTarget/replaceFirst look for the first text run that contains 'Guild >' anywhere. A public or party line such as '[MVP+] Someone: type Guild > to see it' is displayed as '[MVP+] Someone: type LEMAN to see it'. A non-guild player can also make their line carry the guild tag. The KDoc says only the channel marker is touched.
 
-  *Vorschlag:* Only rewrite when the colour-stripped line starts with 'Guild >': check the first non-empty plain run after skipping leading § codes, or test strip(getString()).startsWith("Guild >") before walking the tree.
+  *Vorschlag:* Only rewrite when the color-stripped line starts with 'Guild >': check the first non-empty plain run after skipping leading § codes, or test strip(getString()).startsWith("Guild >") before walking the tree.
 
   </details>
 - **[low · S]** Chatzeilen behalten die Smooth-Font-Variante der GUI-Skalierung, mit der sie umgebrochen wurden, und nach einem Skalierungswechsel oder Disable All Features (ohne GuiFont.refreshChat()) stehen alte Zeilen in Nunito bzw. unsauber skaliert neben neuen Zeilen in der richtigen Schrift.  
@@ -1370,7 +1370,7 @@ Prioritäten: **Blocker** = so nicht ausliefern (Datenverlust, sichtbar kaputtes
 
   **Accent migration runs on every launch, so the old gold can't be picked again**
 
-  The gold-to-teal accent migration has no done-flag. Unlike the new font migration, it runs on every load(). A player who wants the 1.x gold back and enters E5B849 in the colour picker sees it switch to teal on every restart.
+  The gold-to-teal accent migration has no done-flag. Unlike the new font migration, it runs on every load(). A player who wants the 1.x gold back and enters E5B849 in the color picker sees it switch to teal on every restart.
 
   *Vorschlag:* Guard it with a one-shot flag the way menuFontNunitoApplied does (for example accentTealApplied), or fold both into one configVersion int with ordered steps.
 
@@ -1846,7 +1846,7 @@ Prioritäten: **Blocker** = so nicht ausliefern (Datenverlust, sichtbar kaputtes
 - **[nit · S]** Eine geöffnete Auswahlliste im Config-Menü bleibt nach Klicks daneben und nach einem Featurewechsel offen, und Esc schließt bei offener Liste oder im Setup-Modus gleich das ganze Menü statt nur die Liste bzw. den Setup-Modus.  
   → openChoice in mouseClicked außerhalb der Liste und in selectFeature leeren und Esc in keyPressed erst die Liste, dann den Setup-Modus schließen lassen.  
   `client/AlpakaConfigScreen.java:885` · D1-19
-- **[nit · S]** Sichtbare Texte im Config-Menü sind uneinheitlich: Master Custom Sounds endet mit 'Currently work in progress.', Titel mischen 'Color' und 'Colour' sowie 'Center' und 'Centres', Notification Duration spricht von 'stays in the corner' trotz Top Center, und Disable All Features erscheint wegen des Keywords 'reset' neben Reset All Settings in der Suche.  
+- **[nit · S]** Sichtbare Texte im Config-Menü sind uneinheitlich: Master Custom Sounds endet mit 'Currently work in progress.', Titel mischen 'Color' und 'Color' sowie 'Center' und 'Centres', Notification Duration spricht von 'stays in the corner' trotz Top Center, und Disable All Features erscheint wegen des Keywords 'reset' neben Reset All Settings in der Suche.  
   → Eine Schreibweise für alle Titel festlegen, 'work in progress' streichen, 'in the corner' in 'on screen' ändern und 'reset' aus den Keywords von Disable All Features entfernen.  
   `client/gui/AlpakaConfigRegistry.java:1868` · D2-20
 
@@ -1931,29 +1931,29 @@ Alle auf Branch `t3/design-rework-code-review-perf`, je ein Commit. Jede Änderu
 - `5eebd79` perf(chat): chat search lower-cases each message once per search and the query once per edit, not both for every message on every keystroke
 - `41a6169` perf(chat): Ctrl+F lays the chat out once, through the cleared input's own edit, instead of twice
 - `e545954` perf(chat): the chat tab row and the filter chip reuse their label components until an unread count changes
-- `3f5454f` perf(bridge): the bridge formatter turns away lines without a '>' before stripping their colour codes
+- `3f5454f` perf(bridge): the bridge formatter turns away lines without a '>' before stripping their color codes
 - `1e0f051` perf(gui): the item fade hook lets atlas blits through untouched while nothing is fading
 - `37da4bd` perf(inventory-hud): the attached panel clears the action bar by vanilla's line instead of asking Fabric's registry for it every frame
 - `f1be87d` perf(inventory-hud): the chest-style title is one Component kept for good instead of a String decomposed every frame
 - `a75df8e` perf(damage-tags): a splash's decoration is stripped with one pattern compiled once instead of one per call
 - `91ad5e4` perf(damage-tags): a young armor stand's name is checked for impossible characters before it is flattened to a String
-- `926164b` perf(damage-tags): custom damage tags hand the font their coloured digits directly, and a still gradient is built once per tag
+- `926164b` perf(damage-tags): custom damage tags hand the font their colored digits directly, and a still gradient is built once per tag
 - `29a2919` perf(cosmetics): the sensei hat reads its wedge angles from tables built once and refills six scratch vectors instead of allocating per quad
 - `7f29d40` perf(slayer-hud): the session HUD measures its box once a frame for both its position and its click target
 - `04140cd` perf(slayer-timer): the boss timer keeps its "Boss" label between frames and measures its line once for both axes
 - `99151b0` perf(world-age): the "Day: N" line is kept in the font it is drawn in and measured once a frame for both axes
 - `d94870a` perf(hud-editor): the editor measures each HUD once a frame for its anchor and its box
 - `816b83d` perf(wheel): the main menu, its status pulse and glint, and the command wheel each keep one smooth-shape mesh per GUI scale instead of building new ones every frame
-- `2d91890` perf(wheel): ring sectors carry each step's far edge over as the next step's near edge and take each band's two colours once
+- `2d91890` perf(wheel): ring sectors carry each step's far edge over as the next step's near edge and take each band's two colors once
 - `fe51dd5` perf(wheel): the command wheel builds its labels and measures them once per page instead of twice every frame
-- `83d26e3` perf(color-picker): the hex field draws the code it already holds instead of formatting the colour anew every frame
+- `83d26e3` perf(color-picker): the hex field draws the code it already holds instead of formatting the color anew every frame
 - `8d1d641` perf(confirm): the confirm dialog wraps and orders its message once per layout instead of every frame
 - `cd3fd7b` perf(hud-editor): the editor's status line is measured and shortened only when its text, the room for it or the menu font changes
 - `dc260a1` perf(slayer): the area tests keep their answer per sidebar snapshot instead of lowercasing every line on every call
 
 <details><summary>27 Vorschläge vom Prüfer abgelehnt</summary>
 
-- **Every setting click writes the file to disk on the render thread** (`config/AlpakaConfig.java`): How often it runs: AlpakaConfig.save() only runs on separate user actions. Those are a click on a setting in AlpakaConfigRegistry, Enter/Escape or unfocusing a text field (AlpakaConfigScreen lines 1033 and 1116), the end of a slider drag (beginDeferredSaves/endDeferredSaves already turn the drag into one write), the Save button in the colour picker (ColorPickerScreen calls onSave only on Save, not while dragging), closing the HUD editor (HudEditorScreen.flush), command wheel edits, preset and reset buttons, and the stats-folder command. Nothing calls it per frame, per tick or per chat message. That makes it cold code. The saving per click is one write of about 10-20 KB (around 290 fields, pretty-printed) plus a rename. That is normally well under a millisecond to a few milliseconds, and the proposal keeps GSON.toJson, which costs about as much, on the render thread. This is not the 'large blocking IO / seconds of work' that would justify changing cold code. The antivirus case is speculative and only costs one frame per click.
+- **Every setting click writes the file to disk on the render thread** (`config/AlpakaConfig.java`): How often it runs: AlpakaConfig.save() only runs on separate user actions. Those are a click on a setting in AlpakaConfigRegistry, Enter/Escape or unfocusing a text field (AlpakaConfigScreen lines 1033 and 1116), the end of a slider drag (beginDeferredSaves/endDeferredSaves already turn the drag into one write), the Save button in the color picker (ColorPickerScreen calls onSave only on Save, not while dragging), closing the HUD editor (HudEditorScreen.flush), command wheel edits, preset and reset buttons, and the stats-folder command. Nothing calls it per frame, per tick or per chat message. That makes it cold code. The saving per click is one write of about 10-20 KB (around 290 fields, pretty-printed) plus a rename. That is normally well under a millisecond to a few milliseconds, and the proposal keeps GSON.toJson, which costs about as much, on the render thread. This is not the 'large blocking IO / seconds of work' that would justify changing cold code. The antivirus case is speculative and only costs one frame per click.
 
 It does not behave the same:
 (1) Durability changes. Today a setting is on disk as soon as save() returns. With a daemon writer, a crash or kill shortly after a click loses the change. CLIENT_STOPPING does not fire on the crash path (System.exit after the crash report), so the 'flush on stop' does not cover it. A setting whose toggle crashes the game on the next frame would or would not be persisted depending on timing.
@@ -2028,14 +2028,14 @@ Merge conflicts in design-rework files:
 - AlpakaConfigScreen: 1 hunk
 - ColorPickerScreen: 1 hunk
 - DevScreenshotTour: 2 hunks
-- AlpakaConfigRegistry: 11 hunks (Disable All, plus 10 colour options that come from main's swatch change)
+- AlpakaConfigRegistry: 11 hunks (Disable All, plus 10 color options that come from main's swatch change)
 - AlpakaNotifications.kt: 1 hunk
 
 The findings below say how each conflict should be resolved.
 
 Not in scope, but the same merge also hits these main-only problems (main's 47 commits since 12e0a6b):
 - **HandItemStarlightFeature:** PrimitiveTopology and BindGroupLayouts are missing on 26.1.2, `withVertexBinding`/`withPrimitiveTopology` need translating, and `gameRenderer.mainCamera()` becomes `getMainCamera()`. RenderPipelinesAccessor is also not registered in the 26.1.2 mixins json.
-- **ConfigOption.java:164:** `gui.setScreen` needs translating. It is reached by the resolved colour-option hunks in AlpakaConfigRegistry.
+- **ConfigOption.java:164:** `gui.setScreen` needs translating. It is reached by the resolved color-option hunks in AlpakaConfigRegistry.
 - **SmolderingPolarization.kt:42:** `mc.gui.hud.tabList` becomes `mc.gui.tabList`.
 - **HudMixin:** modify/delete conflict. Its scoreboard-blur hooks need moving into GuiMixin, otherwise design-rework's scoreboard Blur switch does nothing on 26.1.2.
 - **Other conflicts:** GuiMixin, ItemFeatureRendererMixin, ItemInHandRendererMixin and SubmitNodeCollectionMixin.
@@ -2051,7 +2051,7 @@ Not in scope, but the same merge also hits these main-only problems (main's 47 c
   `this.minecraft.gui.setScreen(parent)` in onClose(). On 26.1.2 Gui is the HUD and has no setScreen; screens are opened through Minecraft.  
   → 26.2 minecraft.gui.setScreen(x) -> 26.1.2 minecraft.setScreen(x) (0440626: 'screens through Minecraft.setScreen/screen instead of Gui')
 - **[high]** Disable All / Reset All open AlpakaConfirmScreen via gui.setScreen (lines 159, 170) — `/home/t3/.t3/worktrees/AlpakaAddons/t3-0ab2ba43/client/gui/AlpakaConfigRegistry.java:159`  
-  Both new options use `Minecraft.getInstance().gui.setScreen(new AlpakaConfirmScreen(...))`. The Disable All one also conflicts with 26.1.2's translated ConfirmScreen hunk. The file has 11 conflict hunks in total: Disable All, plus 10 colour options whose 26.1.2 side is the old 'Choose Color' button. Take design-rework's side in each, translated.  
+  Both new options use `Minecraft.getInstance().gui.setScreen(new AlpakaConfirmScreen(...))`. The Disable All one also conflicts with 26.1.2's translated ConfirmScreen hunk. The file has 11 conflict hunks in total: Disable All, plus 10 color options whose 26.1.2 side is the old 'Choose Color' button. Take design-rework's side in each, translated.  
   → 26.2 Minecraft.getInstance().gui.setScreen(...) -> 26.1.2 Minecraft.getInstance().setScreen(...) at lines 159 and 170
 - **[high]** onClose rewritten to one line with gui.setScreen; conflicts with 26.1.2's translation — `/home/t3/.t3/worktrees/AlpakaAddons/t3-0ab2ba43/client/AlpakaConfigScreen.java:1138`  
   design-rework collapsed the `if (this.minecraft != null) { this.minecraft.gui.setScreen(this.parent); }` block onto one line. mc-26.1.2 had translated the old block to minecraft.setScreen, so the merge conflicts. Taking design-rework's line does not compile.  
@@ -2094,7 +2094,7 @@ Checked and fine:
 - The SDF formula is correct.
 - Straight-alpha output with the TRANSLUCENT blend is correct, and so is the panel-over-shadow composite (rgb·coverage/alpha).
 - gl_FragCoord/textureSize sampling hits texel centres, with no half-pixel error. It stays consistent on both GL and Vulkan because the copy, the render and the sampling all use image-row coordinates.
-- The two-triangle gradient split (TL–BR diagonal) is planar for the colour patterns the code uses, so there is no seam.
+- The two-triangle gradient split (TL–BR diagonal) is planar for the color patterns the code uses, so there is no seam.
 - All mod shaders compile under shaderc for Vulkan 1.2.
 - On macOS GL 4.1 nothing is used beyond GLSL 330 core. copyTextureToTexture on GL is a glBlitFramebuffer, so it does not need GL 4.3.
 - The GUI pipelines sit on vanilla's own GUI snippets, so Iris/Sodium should not interfere. This was not run live.
@@ -2121,7 +2121,7 @@ The rest are low or nit polish items:
 The 26.1.2 line has no Vulkan backend and does not ship starlight yet, so the Vulkan items apply to 26.2 (main and design-rework) only.
 
 - **[high]** Chat glass panel overlaps the hearts/hunger row and paints over its top rows — `features/chat/ChatBlurFeature.java:190`  
-  Vanilla keeps the chat box bottom at guiHeight-40 (ChatComponent) and starts the health/food row at guiHeight-39 (Hud). That leaves a 1 px gap. submitPanel extends the panel PADDING = 3 chat px below panelBottom (y1 = panelBottom + PADDING), and the drop shadow (SHADOW = 4) reaches further down. The chat is extracted after the hotbar decorations, so the GUI renderer puts the panel on a higher layer. blur_rect.fsh writes alpha 1 inside the shape, using colour from the copy of the world taken before any GUI was drawn. The top 2 GUI rows of every heart, drumstick and armour icon under the chat's x-range are therefore replaced by blurred world and then darkened by the shadow. With the default 320 px chat width this happens at 16:9 with GUI scale ≥3 (1280x720 auto = 3; 1920x1080 auto = 4), whenever chat lines are visible. Vanilla's per-line backgrounds never cross that row.  
+  Vanilla keeps the chat box bottom at guiHeight-40 (ChatComponent) and starts the health/food row at guiHeight-39 (Hud). That leaves a 1 px gap. submitPanel extends the panel PADDING = 3 chat px below panelBottom (y1 = panelBottom + PADDING), and the drop shadow (SHADOW = 4) reaches further down. The chat is extracted after the hotbar decorations, so the GUI renderer puts the panel on a higher layer. blur_rect.fsh writes alpha 1 inside the shape, using color from the copy of the world taken before any GUI was drawn. The top 2 GUI rows of every heart, drumstick and armour icon under the chat's x-range are therefore replaced by blurred world and then darkened by the shadow. With the default 320 px chat width this happens at 16:9 with GUI scale ≥3 (1280x720 auto = 3; 1920x1080 auto = 4), whenever chat lines are visible. Vanilla's per-line backgrounds never cross that row.  
   → Do not pad or shadow the panel downward past the chat's own bottom. Keep y1 ≤ panelBottom (+1 GUI px at most), for example pad only up/left/right, or clamp y1 to (guiHeight - 39) / chatScale. Use an upward-only or no shadow along that edge. GS-2 covers the general fix.
 - **[high]** Full-resolution 6-pass box blur (up to 126 bilinear taps per pixel) runs every frame a panel is visible — `features/chat/ChatBlurFeature.java:360`  
   Every frame that has a chat, scoreboard, HUD, inventory or notification panel does the following: a full-frame copy, then chat_blur_rN, which is 3× (horizontal + vertical) of vanilla box_blur over the whole frame at full resolution. Each pass costs R+1 taps (the loop from -R+0.5 in steps of 2, plus one). R = 5 × min(guiScale, 4) × strength, so R = 20 at the defaults (chat and scoreboard blur on, strength 100). That is 6 × 21 = 126 taps per pixel plus 7 full-frame render-target round trips. Estimates: 1080p is about 261 M taps per frame, a 3024x1964 Retina about 748 M, 4K about 1.05 G. Vanilla's menu blur (R = 5) is 36 taps per pixel and only runs behind menus. On a server with a sidebar this cost is paid continuously. The passes cover the whole screen although the panels usually cover around 10-20% of it.  
@@ -2130,7 +2130,7 @@ The 26.1.2 line has no Vulkan backend and does not ship starlight yet, so the Vu
   The blurred copy is taken before GuiRenderer.prepare(), when no GUI element has been drawn yet. Inside its shape a panel writes coverage 1, so alpha 1, with that pre-GUI world. Wherever a panel overlaps GUI extracted earlier in the frame, that GUI vanishes inside the panel instead of showing through the glass. Vanilla's translucent chat background, by contrast, leaves the scoreboard readable. In the default layout at 1280x720/GUI 3 the 320 px chat panel overlaps the scoreboard sidebar and cuts its lines. HUDs placed in the HUD editor erase each other and the chat.  
   → Put every glass panel into one early stratum, before the rest of the HUD, so all text, icons, the hotbar and other panels' content draw on top of the glass. Alternatively, when a panel overlaps earlier elements, re-capture at that panel's layer using the existing blur-point mechanism. At minimum, keep panel rects out of vanilla HUD areas and let the HUD editor flag overlaps.
 - **[low]** Starlight's `flat out mat3 viewToWorld` aliases vertexColor at location 2 on 26.2's Vulkan backend — `res/assets/alpaka/shaders/core/starlight.vsh:22`  
-  In 26.2, players can select the Vulkan backend (Video Settings → Graphics API; DEFAULT tries GL first, then Vulkan). Mojang's Vulkan path rewrites each vertex output's Location to its index in the output list: IntermediaryShaderModule.createFromSpirv writes spirv[locationOffset] = i. It numbers fragment inputs with a per-name counter. A mat3 needs 3 locations but gets one index, so viewToWorld spans locations 1-3 while vertexColor is placed at 2, in both stages. That is invalid SPIR-V interface aliasing. Depending on the driver, the pipeline either fails to create or column 1 of the rotation and the tint/strength overwrite each other. Either way the galaxy is distorted or not world-locked, or the colour is wrong. GL links varyings by name and is unaffected.  
+  In 26.2, players can select the Vulkan backend (Video Settings → Graphics API; DEFAULT tries GL first, then Vulkan). Mojang's Vulkan path rewrites each vertex output's Location to its index in the output list: IntermediaryShaderModule.createFromSpirv writes spirv[locationOffset] = i. It numbers fragment inputs with a per-name counter. A mat3 needs 3 locations but gets one index, so viewToWorld spans locations 1-3 while vertexColor is placed at 2, in both stages. That is invalid SPIR-V interface aliasing. Depending on the driver, the pipeline either fails to create or column 1 of the rotation and the tint/strength overwrite each other. Either way the galaxy is distorted or not world-locked, or the color is wrong. GL links varyings by name and is unaffected.  
   → Do not pass a matrix varying. Pass `flat out vec2 angles` (yaw, pitch), or a vec4 of their cos/sin, and build rotY*rotX in the fragment shader. Alternatively pass three flat vec3 columns. Then test the Vulkan backend once.
 - **[low]** Blur width is capped at GUI scale 4, so it is weaker on 1440p, 4K and Retina despite the doc — `features/chat/ChatBlurFeature.java:328`  
   blurRadius clamps the GUI scale to 4, but panel radius and shadow keep scaling with the real GUI scale (HudPanel.java:53-54). Auto GUI scale is 6 at 2560x1440, 8 on a 3024x1964 MacBook Pro and 9 at 4K. There the blur is 2/3 down to under half as wide in GUI pixels as at 1080p, so panels look less frosted on the Mac this mod is tested on. The class doc says the radius is chosen "so the blur is the same width in GUI pixels whatever the window scale".  
@@ -2155,7 +2155,7 @@ The 26.1.2 line has no Vulkan backend and does not ship starlight yet, so the Vu
   → Add a comment that new outputs must go after the ones both fragment shaders read, or keep the in-lists of rounded_rect.fsh and blur_rect.fsh identical.
 - **[nit]** drawRoundedPanel blends the fill and the border over the same anti-aliased corner pixels — `client/gui/ModernGuiUtils.java:128`  
   The fill and the outline share the same outer SDF edge. At a corner fringe pixel with coverage c, the result is border·c + bg·c(1−c) + dst(1−c)² instead of border·c + dst(1−c). Example: c = 0.5 with bg 0x22 and border 0x3B over black gives 38 instead of 29.5. Corners look heavier and darker-haloed than the straight edges on every card, button, field and toggle.  
-  → Inset the fill by the border thickness (an SDF offset of thicknessPx), or draw fill and border in one quad with a second colour in the band.
+  → Inset the fill by the border thickness (an SDF offset of thicknessPx), or draw fill and border in one quad with a second color in the band.
 - **[nit]** drawPanelShadow is 5 stepped filled rects: contour rings and full-panel overdraw — `client/gui/ModernGuiUtils.java:141`  
   Alphas 28, 22, 17, 11 and 5 (out of 255), each 1 GUI px larger, give cumulative shadow alphas of about 0.29, 0.20, 0.12, 0.06 and 0.02 in steps of 1 GUI px (that is, guiScale screen px). At GUI scale ≥3 these show as rings. Each layer is a filled panel-sized quad drawn under an opaque panel.  
   → Move the smooth analytic shadow from blur_rect.fsh:49-57 into rounded_rect.fsh (normal.x/y already carry it) and draw one grown quad.
@@ -2164,7 +2164,7 @@ The 26.1.2 line has no Vulkan backend and does not ship starlight yet, so the Vu
   → Use interleaved gradient noise, fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715)))), or an integer hash on uvec2(gl_FragCoord.xy).
 - **[nit]** Chat hover highlight rounds the chat scale to an integer, so the SDF is not in screen pixels — `features/chat/ChatBlurFeature.java:227`  
   RoundedRectRenderState takes an integer guiScale, and submitHoverHighlight passes Math.max(1, Math.round(toScreen)) while the radius is Math.round(3 * toScreen). Example: at chat scale 0.5 and GUI 3, toScreen 1.5 rounds to 2, so one SDF unit is 1.33 screen px. The anti-aliasing then fades over 0.75 px and the radius comes out at 3.75 px instead of 4.5.  
-  → Use GradientRoundedRectRenderState with four equal colours; it takes a float scaleToScreen.
+  → Use GradientRoundedRectRenderState with four equal colors; it takes a float scaleToScreen.
 - **[nit]** hairline() gives 2 px at GUI scale 3, not the hairline its comment promises — `client/gui/ModernGuiUtils.java:94`  
   Math.round(3 * 0.5f) = Math.round(1.5f) = 2, so outlines are 2 screen px at GUI scale 3. The comment says 'a hairline at GUI scale 2 and 3'.  
   → Use scale / 2 (integer division) for 1 px at 2-3 and 2 px at 4-5, or fix the comment.
@@ -2173,7 +2173,7 @@ The 26.1.2 line has no Vulkan backend and does not ship starlight yet, so the Vu
 
 All three tours of design-rework (HEAD 3f58992) ran with exit 0 and saved 62 screenshots each: /tmp/alpaka-review/shots/qa-1280x720, qa-1920x1080 and qa-2560x1440. Auto GUI scale gives 1280x720 scale 3 (427x240 GUI), 1920x1080 scale 4 (480x270) and 2560x1440 scale 6 (427x240). So 720p and 1440p have exactly the layout of the 854x480 baseline, and only their pixel-level rendering differs. 1080p is the only size that gets more room.
 
-Fine at every size: no text overflows its box, columns line up, dialogs, colour picker, pause menu and main menu are centred correctly, health bar variants and top-centre/boss-bar placement work. 1280x720 is essentially as clean as the baseline. Problems by size:
+Fine at every size: no text overflows its box, columns line up, dialogs, color picker, pause menu and main menu are centred correctly, health bar variants and top-centre/boss-bar placement work. 1280x720 is essentially as clean as the baseline. Problems by size:
 
 - **2560x1440 (scale 6):** the smooth font is drawn from the 4x raster, so stems vary from 4 to 6 px and edges step. Blur is capped at the scale-4 radius, so it is weaker. Panel shadows show visible bands. Knobs, dots and the magnifier, built from GUI-pixel shapes, look square or stepped.
 - **Every 427-px-wide size (854, 1280, 2560):** the chat's blurred panel and the top-centre notices erase the left part of the scoreboard sidebar. The config menu also hides sidebar sections and list rows, with no scroll bar.
@@ -2242,7 +2242,7 @@ Animation timing was ignored, e.g. the empty chat panel in 2560 tour-scoreboard-
 - **[nit]** Main-menu row icons sit about 1 GUI px right of their tile's centre — `features/mainmenu/MenuStyle.kt:322`  
   iconTile draws the glyph at -font.width/2 + 1. Measured on the Singleplayer tile, the icon centre is 2 px right of the tile centre at 854 and 6 px right at 2560. At 1440p the person, flask and puzzle icons look pushed against the right of their tiles.  
   → Centre on the glyph's visible width (drop the +1 or subtract the bitmap font's trailing advance).
-- **[nit]** Colour-picker channel tracks: square gradient inside a rounded outline (the promised round caps are not drawn) — `client/gui/AlpakaStyle.java:174`  
+- **[nit]** Color-picker channel tracks: square gradient inside a rounded outline (the promised round caps are not drawn) — `client/gui/AlpakaStyle.java:174`  
   The comment says 'the rounded ends are drawn as caps', but only square slices are filled inside a radius-2 outline. At 2560 the square gradient ends sit inside the round frame with a dark gap, which looks unfinished compared with the round knobs.  
   → Draw the end slices with drawRoundedRect (radius h/2) or clip the gradient with the rounded pipeline.
 

@@ -13,7 +13,7 @@ layout(std140) uniform Projection {
 
 //   Position - the item's vertex, as the item itself was drawn
 //   UV0      - the camera's yaw and pitch, as Camera.setRotation hands them to rotationYXZ
-//   Color    - the starlight's colour, and in alpha its strength
+//   Color    - the starlight's color, and in alpha its strength
 in vec3 Position;
 in vec2 UV0;
 in vec4 Color;

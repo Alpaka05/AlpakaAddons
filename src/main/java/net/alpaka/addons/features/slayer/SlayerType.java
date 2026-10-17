@@ -136,7 +136,7 @@ public enum SlayerType {
     /**
      * The slayer whose boss name appears in the given sidebar line, or null.
      *
-     * The line is expected to be colour-stripped and trimmed, e.g. {@code "Inferno Demonlord IV"}.
+     * The line is expected to be color-stripped and trimmed, e.g. {@code "Inferno Demonlord IV"}.
      */
     public static SlayerType fromScoreboardLine(String line) {
         if (line == null || line.isEmpty()) return null;

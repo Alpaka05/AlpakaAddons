@@ -69,7 +69,7 @@ public final class ScoreboardBlurFeature {
         if (!active || !(graphics instanceof AlpakaGuiElementSink)) return false;
         int top = titleTop != Integer.MIN_VALUE ? Math.min(titleTop, y0) : y0;
         // The sidebar has no scale of its own: one panel pixel is one GUI pixel. Vanilla's body
-        // colour is the tint, so the player's text background opacity still sets its strength.
+        // color is the tint, so the player's text background opacity still sets its strength.
         HudPanel.submit(graphics, x0 - PADDING, top - PADDING, x1 + PADDING, y1 + PADDING, 1.0f, color, 1.0f);
         return true;
     }

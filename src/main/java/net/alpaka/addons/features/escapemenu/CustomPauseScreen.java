@@ -134,7 +134,7 @@ public class CustomPauseScreen extends PauseScreen implements net.alpaka.addons.
         return (1.0f - MenuStyle.easeOutBack(progress)) * RISE;
     }
 
-    /** The colour with its alpha scaled by the factor. */
+    /** The color with its alpha scaled by the factor. */
     static int fade(int color, float factor) {
         return MenuStyle.fade(color, factor);
     }

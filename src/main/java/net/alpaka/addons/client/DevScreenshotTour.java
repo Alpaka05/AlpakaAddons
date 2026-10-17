@@ -483,7 +483,7 @@ public final class DevScreenshotTour {
             String[] lines = {"§710/12/26 §8m12AB", " ", " Late Summer 12th", " §79:40pm ☀", " §7⏣ §cSmoldering Tomb", " ",
                     "Purse: §638,429,113", "Bits: §b12,450", " ", "Slayer Quest", "§4Inferno Demonlord IV", " §7(§e412§7/§c1,500§7) Combat XP", " ", "§ewww.hypixel.net"};
             for (int i = 0; i < lines.length; i++) {
-                // A colour code as the holder's name draws as nothing, as on Hypixel; the line is the prefix.
+                // A color code as the holder's name draws as nothing, as on Hypixel; the line is the prefix.
                 String owner = "§" + "0123456789abcdef".charAt(i);
                 board.getOrCreatePlayerScore(net.minecraft.world.scores.ScoreHolder.forNameOnly(owner), objective).set(lines.length - i);
                 net.minecraft.world.scores.PlayerTeam team = board.getPlayerTeam("tour" + i);

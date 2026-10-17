@@ -11,7 +11,7 @@ import org.joml.Matrix3x2fc;
  * One anti-aliased rounded rectangle in the GUI render state, drawn by
  * {@link AlpakaGuiPipelines#roundedRect()}.
  *
- * Positions are GUI coordinates under the given pose, like vanilla's own coloured rectangle. The
+ * Positions are GUI coordinates under the given pose, like vanilla's own colored rectangle. The
  * shape parameters travel in screen pixels, because the shader's one-pixel edge falloff has to be
  * one *screen* pixel wide whatever the GUI scale: each vertex carries its offset from the
  * rectangle's centre in UV0, the full size in UV1 and the corner radius and border thickness in

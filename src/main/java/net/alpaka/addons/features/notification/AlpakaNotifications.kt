@@ -112,7 +112,7 @@ object AlpakaNotifications {
     private const val MAX_BODY_LINES = 2
 
     /**
-     * The box when the blur is off: the config menu's panel colour, a little translucent so the
+     * The box when the blur is off: the config menu's panel color, a little translucent so the
      * world still shows through, with the HUD panel's corners and a soft shadow - the same box as
      * the blurred one, only without the blur. Solid enough to read over bright terrain.
      */
@@ -161,7 +161,7 @@ object AlpakaNotifications {
      * Queues a notice with a plain-text body, wrapped to the box. Safe to call from any thread the
      * game runs on; drawing happens on its own. Returns the notice's id.
      *
-     * [accent] of zero means the menu's own accent colour, which is what a caller with no reason to
+     * [accent] of zero means the menu's own accent color, which is what a caller with no reason to
      * pick something else should pass. [holdMs] of zero means the configured duration.
      */
     @JvmStatic
@@ -374,11 +374,11 @@ object AlpakaNotifications {
         return current + (target - current) * factor
     }
 
-    /** Replaces the alpha byte of a colour, keeping its rgb. */
+    /** Replaces the alpha byte of a color, keeping its rgb. */
     private fun withAlpha(color: Int, alpha: Int): Int = (alpha.coerceIn(0, 255) shl 24) or (color and 0xFFFFFF)
 
     /**
-     * A colour faded by how far in the notice is, so the box and its text arrive together instead
+     * A color faded by how far in the notice is, so the box and its text arrive together instead
      * of the text popping in over a still-transparent box. Never below the few units the font
      * renderer would otherwise read as "opaque".
      */

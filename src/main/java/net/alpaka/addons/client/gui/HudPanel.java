@@ -37,7 +37,7 @@ public final class HudPanel {
      * came out at about 1.5:1 against it. At 45% they reach about 2:1 there, with their drop shadow
      * on top, and white values clear 4.5:1 over sky and sand. It stays lighter than vanilla's chat
      * background (50% at the default opacity), so the panel still reads as the blurred world and
-     * not as a box. The sidebar itself keeps vanilla's colour, which follows the player's text
+     * not as a box. The sidebar itself keeps vanilla's color, which follows the player's text
      * background opacity; see {@code ScoreboardBlurFeature}.
      */
     public static final int TINT = 0x73000000;
@@ -70,7 +70,7 @@ public final class HudPanel {
      * it: a mixin makes {@code GuiGraphicsExtractor} an {@link AlpakaGuiElementSink}, and the check
      * here only guards against that mixin failing to apply.
      *
-     * @param tint    the colour over the blur; its alpha is how strongly it covers it
+     * @param tint    the color over the blur; its alpha is how strongly it covers it
      * @param opacity the whole panel's strength, blur and shadow included, for fading it in and out
      */
     public static void submit(GuiGraphicsExtractor graphics, int x0, int y0, int x1, int y1,

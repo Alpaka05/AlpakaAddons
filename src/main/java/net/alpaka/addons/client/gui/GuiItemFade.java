@@ -43,8 +43,8 @@ public final class GuiItemFade {
     }
 
     /**
-     * The colour the atlas blit is drawn in. The atlas holds premultiplied colour, so every channel
-     * is scaled, not just the alpha - scaling only the alpha would leave the item's colour behind
+     * The color the atlas blit is drawn in. The atlas holds premultiplied color, so every channel
+     * is scaled, not just the alpha - scaling only the alpha would leave the item's color behind
      * as a glow.
      */
     public static int atlasColor(GuiItemRenderState state, int color) {
@@ -58,7 +58,7 @@ public final class GuiItemFade {
         return (a << 24) | (a << 16) | (a << 8) | a;
     }
 
-    /** A decoration colour (count, durability bar, cooldown) with its alpha scaled. */
+    /** A decoration color (count, durability bar, cooldown) with its alpha scaled. */
     public static int decorationColor(int color) {
         if (current >= 1.0f) return color;
         int alpha = Math.round(((color >>> 24) & 0xFF) * current);

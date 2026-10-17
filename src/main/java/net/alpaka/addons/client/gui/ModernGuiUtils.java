@@ -103,8 +103,8 @@ public final class ModernGuiUtils {
     }
 
     /**
-     * Linearly blends two ARGB colours; {@code t} 0 gives {@code from}, 1 gives {@code to}.
-     * For controls whose colour follows an animation instead of flipping with the state.
+     * Linearly blends two ARGB colors; {@code t} 0 gives {@code from}, 1 gives {@code to}.
+     * For controls whose color follows an animation instead of flipping with the state.
      */
     public static int lerpColor(int from, int to, float t) {
         t = Math.max(0.0f, Math.min(1.0f, t));

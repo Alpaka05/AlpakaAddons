@@ -26,7 +26,7 @@ import java.util.regex.Pattern;
  * The notice also goes away on its own when Hypixel says the invite expired or the player joined a
  * party by other means, so a stale one can never send an accept for an invite that is gone.
  *
- * The chat patterns follow SkyHanni's AcceptLastPartyInvite: with the colour codes stripped, the
+ * The chat patterns follow SkyHanni's AcceptLastPartyInvite: with the color codes stripped, the
  * invite line reads {@code [RANK] Name has invited you to join their party!} and the expiry
  * {@code The party invite from [RANK] Name has expired.}
  */

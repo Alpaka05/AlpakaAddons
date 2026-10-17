@@ -16,9 +16,9 @@ import java.util.function.Consumer;
 import static net.alpaka.addons.client.gui.AlpakaStyle.inside;
 
 /**
- * Picks a colour for a config option, in the config menu's look.
+ * Picks a color for a config option, in the config menu's look.
  *
- * Left, the colour as it is now, its hex code to type into, and a row of presets. Right, one slider
+ * Left, the color as it is now, its hex code to type into, and a row of presets. Right, one slider
  * per channel whose track runs through that channel's range with the others held, so the sliders
  * themselves show where each one leads. Nothing is applied until Save; Escape or Cancel leave the
  * option as it was, and Reset in the header goes back to the option's default.
@@ -172,13 +172,13 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         AlpakaStyle.panel(graphics, l.x(), l.y(), l.w(), l.h());
         AlpakaStyle.header(graphics, this.font, this.title.getString(), l.x(), l.y(), l.w());
 
-        // Reset, in the header: only while the colour differs from the default.
+        // Reset, in the header: only while the color differs from the default.
         if (defaultColor != null && currentColor() != defaultColor) {
             boolean hover = inside(mouseX, mouseY, l.resetX(), headerButtonY(l), RESET_W, AlpakaStyle.BUTTON_H);
             AlpakaStyle.button(graphics, this.font, l.resetX(), headerButtonY(l), RESET_W, AlpakaStyle.BUTTON_H, "Reset", hover, ButtonKind.PLAIN);
         }
 
-        // The colour now, over a checkerboard where it is see-through.
+        // The color now, over a checkerboard where it is see-through.
         int px = l.leftX();
         int py = l.bodyY();
         ModernGuiUtils.drawRoundedRect(graphics, px, py, LEFT_W, l.previewH(), AlpakaStyle.CARD_RADIUS, AlpakaStyle.FIELD);
@@ -194,7 +194,7 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         ModernGuiUtils.drawRoundedRect(graphics, px, py, LEFT_W, l.previewH(), AlpakaStyle.CARD_RADIUS, currentColor());
         ModernGuiUtils.drawRoundedOutline(graphics, px, py, LEFT_W, l.previewH(), AlpakaStyle.CARD_RADIUS, AlpakaStyle.LINE);
 
-        // The hex code, to type into. hexInput mirrors the colour whenever the field is not being typed
+        // The hex code, to type into. hexInput mirrors the color whenever the field is not being typed
         // in (syncHexFromColor runs after every change and on leaving the field), so it is drawn as it
         // is rather than formatted anew every frame.
         boolean hoverHex = inside(mouseX, mouseY, px, l.hexY(), LEFT_W, FIELD_H);

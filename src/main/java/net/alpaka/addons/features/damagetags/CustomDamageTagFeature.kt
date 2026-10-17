@@ -22,8 +22,8 @@ import kotlin.math.sin
 
 /**
  * Draws Hypixel's damage splashes itself: each number pops up with a little overshoot, drifts
- * upwards, and fades out, coloured with a gradient across its digits. Crits and normal hits each
- * get their own pair of colours.
+ * upwards, and fades out, colored with a gradient across its digits. Crits and normal hits each
+ * get their own pair of colors.
  *
  * Purely a picture. Hypixel's splash is an invisible armor stand with the number as its name; that
  * name tag is hidden (see [DamageTagFeature.shouldHideNameTag]) and a copy of the number is drawn
@@ -91,7 +91,7 @@ object CustomDamageTagFeature {
 
     private const val FULL_BRIGHT = 0xF000F0
 
-    /** Below this alpha the font treats the colour as opaque, so the tag is simply not drawn. */
+    /** Below this alpha the font treats the color as opaque, so the tag is simply not drawn. */
     private const val MIN_ALPHA = 8
 
     private class Tag(
@@ -105,8 +105,8 @@ object CustomDamageTagFeature {
         val driftZ = (Math.random() - 0.5) * 0.35
 
         /**
-         * The still gradient last built for this tag, and the two colours it was built from. Only used while
-         * Flowing Gradient is off, when the gradient cannot change unless the colours do.
+         * The still gradient last built for this tag, and the two colors it was built from. Only used while
+         * Flowing Gradient is off, when the gradient cannot change unless the colors do.
          */
         var gradient: FormattedCharSequence? = null
         var gradientStart = 0
@@ -224,7 +224,7 @@ object CustomDamageTagFeature {
             val start = if (tag.crit) cfg.customDamageTagCritStart else cfg.customDamageTagNormalStart
             val end = if (tag.crit) cfg.customDamageTagCritEnd else cfg.customDamageTagNormalEnd
             // A still gradient is the same every frame, so it is built once per tag and again only when
-            // a colour changes. The width is still measured every frame: a resource reload can change
+            // a color changes. The width is still measured every frame: a resource reload can change
             // the glyphs.
             val sequence = if (cfg.customDamageTagFlowingGradient) {
                 gradient(text, start, end, time)
@@ -251,7 +251,7 @@ object CustomDamageTagFeature {
     }
 
     /**
-     * The number with each character in its own colour, running from [start] to [end]. With a
+     * The number with each character in its own color, running from [start] to [end]. With a
      * [time], the gradient sways back and forth along the number.
      *
      * Built straight as the sequence the font draws rather than as a Component read through

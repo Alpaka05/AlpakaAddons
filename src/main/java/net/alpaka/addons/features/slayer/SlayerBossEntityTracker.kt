@@ -35,7 +35,7 @@ import net.minecraft.world.entity.player.Player
  * ids straight after the boss's own. SkyHanni's `Mob` reads the same stack: the boss is id `N`, its
  * name tag `N + 1` (`MobUtils.getArmorStand`: "the corresponding ArmorStand for a mob has always the
  * ID + 1"), and the `Spawned by: <player>` line is `hologram2`, two further along again. Two real
- * samples, colour-stripped, from SkyHanni's own captured test data:
+ * samples, color-stripped, from SkyHanni's own captured test data:
  *
  * ```
  * ☠ Revenant Horror IV 1.5M❤
@@ -386,7 +386,7 @@ object SlayerBossEntityTracker {
     }
 
     /**
-     * Whether a colour-stripped mob name tag is this slayer's boss.
+     * Whether a color-stripped mob name tag is this slayer's boss.
      *
      * Only reached for names the caller has already found a health figure in, which is what
      * separates a mob's name tag from the holograms Hypixel scatters around an area. What is left to

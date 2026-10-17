@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.WeakHashMap;
 
 /**
- * A colour and a sub-pixel offset for a skin preview on the GUI, which vanilla has no parameters for.
+ * A color and a sub-pixel offset for a skin preview on the GUI, which vanilla has no parameters for.
  *
  * A skin preview is not drawn where it is extracted: the model is rendered into a texture of its
  * own, and that texture is blitted later, always in plain white and at the whole GUI pixel its box
@@ -49,7 +49,7 @@ public final class GuiSkinStyle {
         if (active) STYLED.put(state, new Style(color, offsetX, offsetY));
     }
 
-    /** The colour the preview is blitted in. The texture is premultiplied, which a tint of full alpha suits. */
+    /** The color the preview is blitted in. The texture is premultiplied, which a tint of full alpha suits. */
     public static int color(PictureInPictureRenderState state, int vanilla) {
         Style style = STYLED.get(state);
         return style == null ? vanilla : style.color();

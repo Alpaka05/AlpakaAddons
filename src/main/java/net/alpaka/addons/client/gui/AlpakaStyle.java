@@ -220,7 +220,7 @@ public final class AlpakaStyle {
     }
 
     /**
-     * A text field: a rounded box with a line along its bottom that lights up in the accent colour
+     * A text field: a rounded box with a line along its bottom that lights up in the accent color
      * while it has the focus, and a blinking caret.
      */
     public static void textField(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int h,
@@ -419,8 +419,8 @@ public final class AlpakaStyle {
     }
 
     /**
-     * A slider for one colour channel: the track shows the colour from the channel's 0 to its 255,
-     * and the knob is filled with the colour as it is now.
+     * A slider for one color channel: the track shows the color from the channel's 0 to its 255,
+     * and the knob is filled with the color as it is now.
      */
     public static void gradientTrack(GuiGraphicsExtractor graphics, int x, int y, int w, int from, int to,
                                      double norm, int knobColor, boolean hover, boolean dragging) {

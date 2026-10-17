@@ -46,7 +46,7 @@ object SnowOverlayRenderer {
     private val speedY = FloatArray(PARTICLE_COUNT)
     private val size = IntArray(PARTICLE_COUNT)
 
-    /** Packed ARGB. Alpha is fixed at spawn, so the colour is built there instead of every frame. */
+    /** Packed ARGB. Alpha is fixed at spawn, so the color is built there instead of every frame. */
     private val color = IntArray(PARTICLE_COUNT)
 
     private var initialized = false

@@ -57,7 +57,7 @@ public class AlpakaConfigScreen extends Screen {
     /** Where the sidebar highlight is drawn; it glides toward the selected tab. -1 until the first frame. */
     private double selectorY = -1.0;
 
-    /** Per tab, 0..1: how far its label has moved into the selected look (indent and accent colour). */
+    /** Per tab, 0..1: how far its label has moved into the selected look (indent and accent color). */
     private final java.util.EnumMap<ConfigCategory, Float> tabSelectProgress = new java.util.EnumMap<>(ConfigCategory.class);
 
     /** 0..1 progress of the content area's slide-and-fade after a tab switch; 1 while at rest. */
@@ -351,7 +351,7 @@ public class AlpakaConfigScreen extends Screen {
 
         // The highlight is a single rounded, tinted row that glides to the selected tab, rather than
         // a box redrawn under the new one, so a tab change reads as movement. No outline and no
-        // accent bar: the tint and the accent-coloured label are enough to mark it.
+        // accent bar: the tint and the accent-colored label are enough to mark it.
         int selectedTabY = itemY;
         for (int i = 0; i < categories.size(); i++) {
             if (categories.get(i) == activeCategory) selectedTabY = itemY + i * (catItemH + catSpacing);
@@ -370,7 +370,7 @@ public class AlpakaConfigScreen extends Screen {
                                 mouseY >= itemY && mouseY <= itemY + catItemH &&
                                 mouseY >= sideClipY && mouseY <= sideClipY + sideClipH;
 
-            // Indent and colour follow the highlight rather than snapping, at the same pace.
+            // Indent and color follow the highlight rather than snapping, at the same pace.
             float select = tabSelectProgress.getOrDefault(cat, isSelected ? 1.0f : 0.0f);
             select = PloppAnimation.interpolate(select, isSelected ? 1.0f : 0.0f, deltaSec, 14.0f);
             tabSelectProgress.put(cat, select);
@@ -413,7 +413,7 @@ public class AlpakaConfigScreen extends Screen {
         graphics.enableScissor(contentX, clipY, contentX + contentW, clipY + clipH);
 
         // Tab switch: the new list slides in from the right a little and fades up from the panel
-        // colour. Only the drawing is offset; hit-testing uses the resting positions, and the slide
+        // color. Only the drawing is offset; hit-testing uses the resting positions, and the slide
         // is over well before anyone can aim at a card.
         contentTransition = Math.min(1.0f, contentTransition + deltaSec * 5.0f);
         float eased = 1.0f - (1.0f - contentTransition) * (1.0f - contentTransition) * (1.0f - contentTransition);
@@ -481,8 +481,8 @@ public class AlpakaConfigScreen extends Screen {
                                 // Drawn through the visual order rather than as a plain string: a
                                 // wrapped line carries the styles the splitter tracked across the
                                 // break, and getString() would flatten them away. That is what lets
-                                // a description colour a clause - a caveat, say - while the flat
-                                // colour below still applies to everything unstyled.
+                                // a description color a clause - a caveat, say - while the flat
+                                // color below still applies to everything unstyled.
                                 graphics.text(this.font, net.minecraft.locale.Language.getInstance().getVisualOrder(descLines.get(i)),
                                         contentX + 24, startOptionY + 20 + i * 9, ModernGuiUtils.COLOR_TEXT_MUTED, false);
                             }
@@ -646,12 +646,12 @@ public class AlpakaConfigScreen extends Screen {
         return mouseX >= hx && mouseX <= hx + HANDLE_SIZE && mouseY >= hy && mouseY <= hy + HANDLE_SIZE;
     }
 
-    /** Eased hover of the handle, so its colour and size glide. */
+    /** Eased hover of the handle, so its color and size glide. */
     private float handleHover = 0.0f;
 
     /**
      * Draws the chevron: two thick strokes meeting at the point, drawn as quads so the diagonals are
-     * smooth, in the muted text colour at rest and the accent when hovered or while setup mode is on.
+     * smooth, in the muted text color at rest and the accent when hovered or while setup mode is on.
      */
     private void drawHandle(GuiGraphicsExtractor graphics, int winX, int winY, int winW, int headerHeight, boolean hovered, float deltaSec) {
         handleHover = PloppAnimation.interpolate(handleHover, hovered ? 1.0f : 0.0f, deltaSec, 14.0f);

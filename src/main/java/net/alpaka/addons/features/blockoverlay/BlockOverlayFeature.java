@@ -81,7 +81,7 @@ public class BlockOverlayFeature {
 
             // Resolved once and shared by both passes. It used to be worked out separately for the
             // outline and the fill, which ran the HSB conversion twice a frame and allocated a
-            // three-float array each time for the same colour.
+            // three-float array each time for the same color.
             boolean chromaEnabled = AlpakaConfig.instance.blockChromaEnabled;
             int chromaRgb = chromaEnabled ? chromaRgb(AlpakaConfig.instance.blockChromaSpeed) : 0;
 
@@ -137,7 +137,7 @@ public class BlockOverlayFeature {
     /** One full rainbow cycle every two seconds at 1x. */
     private static final double CHROMA_CYCLES_PER_SECOND = 0.5;
 
-    /** The current chroma colour as packed RGB. Returned packed so nothing has to be allocated. */
+    /** The current chroma color as packed RGB. Returned packed so nothing has to be allocated. */
     private static int chromaRgb(float speed) {
         double timeSec = (double) System.currentTimeMillis() / 1000.0 * CHROMA_CYCLES_PER_SECOND * speed;
         float hue = (float) (timeSec % 1.0);

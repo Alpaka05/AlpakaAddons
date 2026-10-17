@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
  * and the Blur Strength setting ({@link #blurRadius}) so the blur is the same width in GUI pixels
  * whatever the window scale, and independent of the player's menu-blur setting. The panel's
  * fragment shader then samples the blurred copy at its own screen position, tints it with the
- * chat's background colour and fades the rounded edge over one pixel.
+ * chat's background color and fades the rounded edge over one pixel.
  *
  * The copy is only made in frames where a panel asked for it ({@link #request()}), so a hidden
  * chat costs nothing.

@@ -46,7 +46,7 @@ import java.util.Map;
  * over the trail length and interpolated between the two recorded frames around each sample time,
  * so the spacing is the same at 60 and at 240 fps. The ghost submits are remembered by identity
  * together with their alpha; when the feature renderer draws one, its render type is swapped for a
- * translucent twin of the item type and its quad colour gets the alpha.
+ * translucent twin of the item type and its quad color gets the alpha.
  *
  * The twin is a clone of the vanilla item pipeline that blends but does not write depth. Without
  * that, overlapping ghosts would occlude each other where one is a hair nearer and the smear would
@@ -296,7 +296,7 @@ public final class ItemMotionBlurFeature {
         return original;
     }
 
-    /** The quad colour the feature renderer is about to use, with the ghost's alpha folded in. */
+    /** The quad color the feature renderer is about to use, with the ghost's alpha folded in. */
     public static int applyGhostAlpha(int color) {
         if (drawingAlpha < 0.0f) {
             return color;

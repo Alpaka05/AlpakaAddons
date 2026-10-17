@@ -93,7 +93,7 @@ public abstract class ItemFeatureRendererMixin {
         return HandItemLightingFeature.pickRenderType(ItemMotionBlurFeature.pickRenderType(renderType));
     }
 
-    // The quad colour is set once per quad from the tint layers; a motion blur ghost gets its
+    // The quad color is set once per quad from the tint layers; a motion blur ghost gets its
     // fade folded into the alpha here, which its translucent render type then blends with.
     @ModifyArg(
             method = "renderItem",

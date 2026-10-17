@@ -89,7 +89,7 @@ Alpaka Addons is most useful for **Slayers**, but a lot of it helps anywhere in 
 <summary><b>Cosmetics</b> (only you can see them)</summary>
 
 - **Custom Name Tag** in third person with rainbow, gradient and wave effects.
-- **Sensei Hat**, a straw hat with optional chroma colours.
+- **Sensei Hat**, a straw hat with optional chroma colors.
 - **Player Scale** per axis, for yourself and optionally other players.
 
 </details>

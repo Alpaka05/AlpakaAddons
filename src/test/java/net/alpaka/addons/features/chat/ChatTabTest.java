@@ -6,7 +6,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class ChatTabTest {
-    /** Colour-stripped Hypixel lines and the tab each belongs on. */
+    /** Color-stripped Hypixel lines and the tab each belongs on. */
     @ParameterizedTest(name = "{0} -> {1}")
     @CsvSource(delimiter = '|', value = {
             "Party > [MVP+] Alpakaa: hi                         | PARTY",

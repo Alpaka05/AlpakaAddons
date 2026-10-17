@@ -24,7 +24,7 @@ import kotlin.math.sin
  * - Fireflies drift up through it, each at a depth of its own, the nearer ones shifting further
  *   with the mouse.
  *
- * All the shapes are colour-only geometry through [WheelMesh], smooth at any GUI scale.
+ * All the shapes are color-only geometry through [WheelMesh], smooth at any GUI scale.
  */
 internal object MenuAmbience {
 

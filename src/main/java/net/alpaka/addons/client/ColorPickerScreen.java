@@ -189,8 +189,8 @@ public class ColorPickerScreen extends Screen {
         boolean hoverClose = inside(mouseX, mouseY, l.closeX(), l.closeY(), 18, 18);
         graphics.text(this.font, GuiFont.text("✕"), l.closeX() + 4, l.closeY() + 3, hoverClose ? ModernGuiUtils.getAccentColor() : ModernGuiUtils.COLOR_TEXT_MUTED, false);
 
-        // Reset '↺' button beside it: back to the option's default colour, kept until Save like a
-        // preset. Dimmed while the colour already is the default.
+        // Reset '↺' button beside it: back to the option's default color, kept until Save like a
+        // preset. Dimmed while the color already is the default.
         if (defaultColor != null) {
             boolean atDefault = currentColor() == defaultColor;
             boolean hoverReset = !atDefault && inside(mouseX, mouseY, resetX(l), l.closeY(), 18, 18);

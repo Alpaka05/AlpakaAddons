@@ -34,16 +34,16 @@ import kotlin.math.sqrt
  * two-part knob sits on the apex.
  *
  * Every wedge is shaded a little differently in three alternating steps, which reads as the woven
- * straw strips of the real thing. The texture only supplies alpha and a faint weave; every colour
+ * straw strips of the real thing. The texture only supplies alpha and a faint weave; every color
  * comes from the vertices.
  *
- * Two looks: plain (the configured colour, lit by world light like the rest of the model) and
+ * Two looks: plain (the configured color, lit by world light like the rest of the model) and
  * chroma (the hue runs once around the hat and rotates with time, drawn emissive so it glows in a
  * dark cave exactly as it does at noon).
  */
 object ChromaHatFeature {
 
-    /** Shipped in the mod's own assets; a plain white weave that the vertex colours tint. */
+    /** Shipped in the mod's own assets; a plain white weave that the vertex colors tint. */
     @JvmField
     val TEXTURE: Identifier = Identifier.fromNamespaceAndPath("alpaka", "textures/cosmetics/chroma_hat.png")
 
@@ -93,7 +93,7 @@ object ChromaHatFeature {
     /** The underside is drawn a little fainter than the top so the two do not stack into a solid. */
     private const val UNDERSIDE_ALPHA = 0.7f
 
-    /** Shade multipliers for the knob and the brim lip, relative to the hat colour. */
+    /** Shade multipliers for the knob and the brim lip, relative to the hat color. */
     private const val KNOB_SHADE = 0.45f
     private const val LIP_SHADE = 0.62f
 
@@ -119,8 +119,8 @@ object ChromaHatFeature {
      * Emits the hat's quads. The pose is the head part's own space (see [ChromaHatLayer]).
      *
      * @param wearingHelmet lifts the hat so it does not intersect a helmet's overlay cube.
-     * @param rainbow chroma colours sweeping around the hat, self-lit; false is the plain hat in the
-     *   configured colour, lit by [light] like the rest of the model.
+     * @param rainbow chroma colors sweeping around the hat, self-lit; false is the plain hat in the
+     *   configured color, lit by [light] like the rest of the model.
      */
     fun emit(pose: PoseStack.Pose, consumer: VertexConsumer, wearingHelmet: Boolean, rainbow: Boolean, light: Int) {
         val cfg = AlpakaConfig.instance
@@ -130,7 +130,7 @@ object ChromaHatFeature {
         val hueShift = time * HUE_TURNS_PER_SECOND
 
         val plainRgb = cfg.chromaHatColor and 0xFFFFFF
-        // Colour of a vertex: its position around the brim in turns, a shade multiplier, an alpha byte.
+        // Color of a vertex: its position around the brim in turns, a shade multiplier, an alpha byte.
         val colorAt: (Double, Float, Int) -> Int = if (rainbow) {
             { turns, shade, a -> ARGB.color(a, ARGB.scaleRGB(Mth.hsvToRgb(fract(turns + hueShift), 0.9f, 1.0f), shade)) }
         } else {

@@ -35,8 +35,8 @@ import javax.imageio.ImageIO;
  * fixes the codepoints: the first is U+E000, matching the {@code chars} string in
  * {@code assets/alpaka/font/menu_icons.json} and the ICON_* constants in MenuStyle.
  *
- * Pixels are white on transparent: Minecraft tints glyphs with the text colour, so white is what
- * lets the icons take the label's colour.
+ * Pixels are white on transparent: Minecraft tints glyphs with the text color, so white is what
+ * lets the icons take the label's color.
  */
 public class GenMenuIcons {
 

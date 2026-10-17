@@ -40,13 +40,18 @@ public final class GnetumCompat {
      * frame's own GUI pass.
      */
     public static void keepOutOfCache() {
+        keepOutOfCache(REASON);
+    }
+
+    /** As {@link #keepOutOfCache()}, for any HUD element that has to be drawn in the frame's own pass. */
+    public static void keepOutOfCache(String reason) {
         if (!resolve()) return;
         try {
             if (!(boolean) rendering.invokeExact()) return;
             if ((boolean) uncached.invokeExact() || (boolean) forceCached.invokeExact()) return;
-            disable.invokeExact(REASON);
+            disable.invokeExact(reason);
         } catch (Throwable e) {
-            LOGGER.warn("Could not take a blur panel out of Gnetum's HUD cache", e);
+            LOGGER.warn("Could not take a HUD element out of Gnetum's HUD cache", e);
             rendering = null;
         }
     }

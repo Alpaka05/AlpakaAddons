@@ -22,12 +22,14 @@ import net.minecraft.resources.Identifier;
  * end) see both ends in the new place, and a mod that hides or replaces the element still does.
  * While the chat is open or peeked the chat stays on top, as the thing being read.
  *
- * Not while Gnetum caches the action bar: it draws each HUD element in a pass of its own and keeps
- * reordering the passes, so the element after the chat at times ran before the action bar was held
- * and the action bar flickered. There is nothing to move then anyway - Gnetum's cached HUD image,
- * action bar included, is drawn over the elements it leaves uncached, the blurred chat among them.
+ * Under Gnetum, which caches HUD elements into an image of its own, the action bar and the element
+ * after the chat leave that cache while the chat blur is on. The blurred chat is drawn uncached,
+ * over Gnetum's image, so an action bar left in the image ended up under the panel again. Uncached,
+ * all three are drawn in the frame's own GUI pass, in this order. An element the player forced into
+ * Gnetum's cache stays there, and the action bar is then drawn where vanilla puts it.
  */
 public final class ActionBarOverChat {
+    private static final String GNETUM_REASON = "AlpakaAddons draws the action bar above the blurred chat";
     private static final Identifier AFTER_CHAT = Identifier.fromNamespaceAndPath("alpaka", "action_bar_over_chat");
 
     // The action bar element held back this frame, with what it was called with.
@@ -38,14 +40,23 @@ public final class ActionBarOverChat {
 
     public static void register() {
         HudElementRegistry.replaceElement(VanillaHudElements.OVERLAY_MESSAGE, actionBar -> (graphics, delta) -> {
-            if (movesAboveChat()) {
+            if (ChatBlurFeature.isEnabled()) GnetumCompat.keepOutOfCache(GNETUM_REASON);
+            // Still held from the last frame: the element after the chat didn't run in this pass
+            // (Gnetum keeps it cached), so the action bar is drawn in place rather than lost.
+            boolean unclaimed = held != null;
+            if (movesAboveChat() && !unclaimed) {
                 held = actionBar;
                 heldDelta = delta;
             } else {
+                held = null;
+                heldDelta = null;
                 actionBar.extractRenderState(graphics, delta);
             }
         });
-        HudElementRegistry.attachElementAfter(VanillaHudElements.CHAT, AFTER_CHAT, (graphics, delta) -> drawHeld(graphics));
+        HudElementRegistry.attachElementAfter(VanillaHudElements.CHAT, AFTER_CHAT, (graphics, delta) -> {
+            if (ChatBlurFeature.isEnabled()) GnetumCompat.keepOutOfCache(GNETUM_REASON);
+            drawHeld(graphics);
+        });
     }
 
     private static boolean movesAboveChat() {

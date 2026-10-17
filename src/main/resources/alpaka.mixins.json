@@ -44,7 +44,7 @@
     "ClientLevelMobDeathMixin",
     "ClientPacketListenerMobDeathMixin",
     "MinecraftScreenshotMixin",
-    "ScreenshotMixin",
+    "NativeImageScreenshotMixin",
     "SubmitNodeCollectionMixin",
     "ItemFeatureRendererMixin",
     "GuiGraphicsExtractorMixin",

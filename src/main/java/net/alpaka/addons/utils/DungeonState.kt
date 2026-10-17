@@ -70,7 +70,7 @@ object DungeonState {
         if (inBossRoom) return
         val name = BOSS_LINE.find(SkyblockUtils.cleanColor(message.string))?.groups?.get("name")?.value?.trim() ?: return
         val boss = bossOf(current) ?: return
-        // Livid speaks with a colour word in front of her name ("Hockey Livid"), hence endsWith.
+        // Livid speaks with a color word in front of her name ("Hockey Livid"), hence endsWith.
         if (name != "The Watcher" && name.endsWith(boss)) inBossRoom = true
     }
 

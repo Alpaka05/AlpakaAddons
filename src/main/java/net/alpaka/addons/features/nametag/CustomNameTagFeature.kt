@@ -20,7 +20,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * Draws the local player's own name tag, with animated colour and motion effects, in place of the
+ * Draws the local player's own name tag, with animated color and motion effects, in place of the
  * vanilla one.
  *
  * ### What vanilla does, and what this changes
@@ -28,7 +28,7 @@ import kotlin.math.sin
  * Vanilla never shows a player their own name tag: `LivingEntityRenderer.shouldShowName` rejects the
  * camera entity outright, so in third person the model above the camera is nameless. This feature
  * answers that check with "yes" for the local player (see [shouldForceShowName]), and then takes over
- * the drawing itself in `AvatarRenderer.submitNameDisplay` (see [submit]) so the text can be coloured
+ * the drawing itself in `AvatarRenderer.submitNameDisplay` (see [submit]) so the text can be colored
  * and moved letter by letter - something the single-string vanilla path cannot do.
  *
  * Only the *own* tag is touched. Other players' tags go through vanilla untouched, and nothing here
@@ -69,7 +69,7 @@ object CustomNameTagFeature {
     /** Vanilla lifts the tag half a block above the attachment point. */
     private const val ATTACHMENT_LIFT = 0.5
 
-    /** The faint colour 26.2's own name tags use for the see-through and sneaking passes: white at alpha 0x80. */
+    /** The faint color 26.2's own name tags use for the see-through and sneaking passes: white at alpha 0x80. */
     private const val SEE_THROUGH_COLOR = 0x80FFFFFF.toInt()
 
     /** The frame's alpha where it shows through walls; at full strength it outshone the tag itself. */
@@ -236,7 +236,7 @@ object CustomNameTagFeature {
      * Marks the glyphs that spell the player's own name.
      *
      * On Hypixel the tag is `[MVP+] Name`, rank prefix and all. Unless the whole tag is opted in,
-     * the effects are applied to the name only and the rank keeps the colour Hypixel gave it - a
+     * the effects are applied to the name only and the rank keeps the color Hypixel gave it - a
      * rainbow over "[MVP+]" reads as a fake rank rather than a decoration. When the name cannot be
      * found in the tag at all, everything counts as the name rather than nothing.
      */
@@ -258,10 +258,10 @@ object CustomNameTagFeature {
     }
 
     /**
-     * The effect colour for one glyph as RGB, or null to leave the glyph's own colour alone.
+     * The effect color for one glyph as RGB, or null to leave the glyph's own color alone.
      *
      * Returned as a plain RGB value because it goes into the glyph's [Style]; the alpha each pass
-     * needs comes from the colour argument of the text submission, as in vanilla.
+     * needs comes from the color argument of the text submission, as in vanilla.
      */
     private fun effectColor(cfg: AlpakaConfig, glyph: Glyph, index: Int, count: Int, time: Double): Int? {
         if (!glyph.ownName && !cfg.nameTagColorWholeTag) return null
@@ -273,7 +273,7 @@ object CustomNameTagFeature {
                 Mth.hsvToRgb(hue.toFloat(), 0.85f, 1.0f) and RGB_MASK
             }
             COLOR_GRADIENT -> {
-                // The two colours swap ends slowly, so the gradient appears to flow along the tag.
+                // The two colors swap ends slowly, so the gradient appears to flow along the tag.
                 val mix = 0.5f + 0.5f * sin(time * 1.5 + position * Math.PI).toFloat()
                 lerpRgb(cfg.nameTagGradientStart, cfg.nameTagGradientEnd, mix)
             }
@@ -286,7 +286,7 @@ object CustomNameTagFeature {
         }
     }
 
-    /** A darker shade of the glyph colour for the outline, or plain black for a vanilla glyph. */
+    /** A darker shade of the glyph color for the outline, or plain black for a vanilla glyph. */
     private fun outlineColor(effectRgb: Int?): Int {
         if (effectRgb == null) return 0xFF000000.toInt()
         return ARGB.color(255, scaleRgb(effectRgb, 0.22f))
@@ -295,10 +295,10 @@ object CustomNameTagFeature {
     /**
      * The backdrop behind the text, and the chroma frame around it.
      *
-     * Vanilla draws its backdrop through the font's background colour, one quad from a pixel before
+     * Vanilla draws its backdrop through the font's background color, one quad from a pixel before
      * the text to a pixel after it. Doing it here instead means the letters can be submitted one at a
      * time without each dragging its own little box along, and leaves room for the frame, whose
-     * colours sweep along its length.
+     * colors sweep along its length.
      */
     private fun submitBackdrop(
         poseStack: PoseStack,
@@ -348,22 +348,22 @@ object CustomNameTagFeature {
         left: Float, right: Float, top: Float, bottom: Float, time: Double, light: Int, alpha: Int,
     ) {
         val t = FRAME_THICKNESS
-        // Hue runs along x, so the four sides meet in matching colours at the corners.
+        // Hue runs along x, so the four sides meet in matching colors at the corners.
         val leftColor = ARGB.color(alpha, frameColor(time, 0f))
         val rightColor = ARGB.color(alpha, frameColor(time, 1f))
         // Top and bottom bars.
         frameQuad(pose, consumer, left - t, top - t, right + t, top, leftColor, rightColor, light)
         frameQuad(pose, consumer, left - t, bottom, right + t, bottom + t, leftColor, rightColor, light)
-        // Left and right bars, each a single colour.
+        // Left and right bars, each a single color.
         frameQuad(pose, consumer, left - t, top, left, bottom, leftColor, leftColor, light)
         frameQuad(pose, consumer, right, top, right + t, bottom, rightColor, rightColor, light)
     }
 
-    /** The frame's colour at a position along its width, 0 being the left end and 1 the right. */
+    /** The frame's color at a position along its width, 0 being the left end and 1 the right. */
     private fun frameColor(time: Double, position: Float): Int =
         ARGB.color(255, Mth.hsvToRgb(fract(time * 0.2 + position * 0.5).toFloat(), 0.9f, 1.0f))
 
-    /** One frame bar, coloured [leftColor] at its left edge and [rightColor] at its right. */
+    /** One frame bar, colored [leftColor] at its left edge and [rightColor] at its right. */
     private fun frameQuad(
         pose: PoseStack.Pose,
         consumer: VertexConsumer,
@@ -399,7 +399,7 @@ object CustomNameTagFeature {
 
     private fun fract(value: Double): Double = value - Math.floor(value)
 
-    /** Plain RGB, no alpha byte: these values go into text styles, which carry colour only. */
+    /** Plain RGB, no alpha byte: these values go into text styles, which carry color only. */
     private const val RGB_MASK = 0xFFFFFF
 
     private fun lerpRgb(from: Int, to: Int, mix: Float): Int {

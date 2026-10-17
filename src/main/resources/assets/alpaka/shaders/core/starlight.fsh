@@ -21,7 +21,7 @@ out vec4 fragColor;
 // world, that the pixel is seen in. Turning sweeps it past the item, moving the item moves the
 // window over it, and on its own it only drifts and twinkles slowly.
 // Everything is built from 3D noise over that direction, so the sky has no seams or poles.
-// Blended premultiplied: alpha darkens the item towards the void, the colour is light added on top.
+// Blended premultiplied: alpha darkens the item towards the void, the color is light added on top.
 
 float hash13(vec3 p) {
     p = fract(p * 0.1031);
@@ -100,7 +100,7 @@ void main() {
     // How far the view direction turns from one pixel to the next.
     float pixel = max(length(dFdx(dir)), length(dFdy(dir)));
 
-    // Slowly drifting gas in the starlight's colour, shading into blue where it is dense. Never
+    // Slowly drifting gas in the starlight's color, shading into blue where it is dense. Never
     // fully dark, so every part of the item keeps some of the galaxy.
     vec3 g = dir * 2.5 + vec3(t * 0.006, t * 0.004, -t * 0.005);
     float gas = fbm(g);

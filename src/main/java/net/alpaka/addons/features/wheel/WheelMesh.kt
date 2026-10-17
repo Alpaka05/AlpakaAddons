@@ -20,12 +20,12 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * Smooth, colour-only 2D geometry for the GUI renderer: discs, ring segments and small convex
+ * Smooth, color-only 2D geometry for the GUI renderer: discs, ring segments and small convex
  * shapes such as the wheel's needle.
  *
  * The GUI only hands out axis-aligned rectangles, so an earlier wheel drew its circle as a stack of
  * one-pixel scanlines and looked like a staircase. This builds real quads instead and submits them
- * as one [GuiElementRenderState] on the plain colour pipeline - the same pipeline `fill` uses, so
+ * as one [GuiElementRenderState] on the plain color pipeline - the same pipeline `fill` uses, so
  * they batch with everything else and cost nothing worth measuring.
  *
  * Every edge gets a feather strip about one real pixel wide whose alpha runs out to zero. That is
@@ -75,7 +75,7 @@ class WheelMesh @JvmOverloads constructor(private val feather: Float, private va
         ringSector(cx, cy, 0f, radius, 0f, TAU, 0f, TAU, color, color, fullCircle = true)
     }
 
-    /** A disc whose colour runs from [centerColor] in the middle to [edgeColor] at the rim. */
+    /** A disc whose color runs from [centerColor] in the middle to [edgeColor] at the rim. */
     fun radialGradient(cx: Float, cy: Float, radius: Float, centerColor: Int, edgeColor: Int) {
         ringSector(cx, cy, 0f, radius, 0f, TAU, 0f, TAU, centerColor, edgeColor, fullCircle = true)
     }
@@ -90,7 +90,7 @@ class WheelMesh @JvmOverloads constructor(private val feather: Float, private va
      * wants a constant pixel gap to its neighbour needs a wider angular gap at the inner radius than
      * at the outer one, and passing both ranges keeps that arithmetic with the caller.
      *
-     * The colour is interpolated radially from [colorIn] to [colorOut]. With [fullCircle] the two
+     * The color is interpolated radially from [colorIn] to [colorOut]. With [fullCircle] the two
      * radial edges are not feathered, since they coincide.
      */
     fun ringSector(
@@ -157,7 +157,7 @@ class WheelMesh @JvmOverloads constructor(private val feather: Float, private va
         if (fullCircle) return
 
         // The two radial edges: a strip just outside each edge fading out, one quad per radial band
-        // so it follows the body's colour gradient and its feathered ends.
+        // so it follows the body's color gradient and its feathered ends.
         fun radialEdge(t: Float, direction: Float) {
             fun edgeBand(r0: Float, alpha0: Float, r1: Float, alpha1: Float) {
                 if (r1 <= r0) return
@@ -282,8 +282,8 @@ class WheelMesh @JvmOverloads constructor(private val feather: Float, private va
     /**
      * The submitted geometry. In blur mode the same quads go through the blurred-glass pipeline
      * the chat background uses: the frame behind them is shown blurred and tinted with the vertex
-     * colour, and the vertex alpha - which carries the feathered edges - becomes the coverage. If
-     * no blurred copy of the frame could be made this frame, the quads fall back to plain colour.
+     * color, and the vertex alpha - which carries the feathered edges - becomes the coverage. If
+     * no blurred copy of the frame could be made this frame, the quads fall back to plain color.
      */
     private class Element(
         private val pose: Matrix3x2fc,
@@ -324,7 +324,7 @@ class WheelMesh @JvmOverloads constructor(private val feather: Float, private va
     companion object {
         const val TAU: Float = (Math.PI * 2.0).toFloat()
 
-        /** Linear blend of two ARGB colours, alpha included. */
+        /** Linear blend of two ARGB colors, alpha included. */
         @JvmStatic
         fun lerpColor(from: Int, to: Int, t: Float): Int {
             val k = t.coerceIn(0f, 1f)
@@ -335,7 +335,7 @@ class WheelMesh @JvmOverloads constructor(private val feather: Float, private va
             return (a shl 24) or (r shl 16) or (g shl 8) or b
         }
 
-        /** The colour with its alpha multiplied by [factor]. */
+        /** The color with its alpha multiplied by [factor]. */
         @JvmStatic
         fun scaleAlpha(color: Int, factor: Float): Int {
             val a = ((color ushr 24) * factor.coerceIn(0f, 1f)).toInt().coerceIn(0, 255)

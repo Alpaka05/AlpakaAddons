@@ -88,7 +88,7 @@ public final class ChatPeekFeature {
             // A letter typed into a search box or an anvil should not also pop the chat open.
             if (screen.getFocused() instanceof EditBox box && box.canConsumeInput()) return false;
             // The mod's own settings screens type into fields of their own, which the check above
-            // cannot see: Cmd+F to search the config, or an F in a hex colour, opened the chat.
+            // cannot see: Cmd+F to search the config, or an F in a hex color, opened the chat.
             if (screen instanceof net.alpaka.addons.client.AlpakaConfigScreen
                     || screen instanceof net.alpaka.addons.client.ColorPickerScreen
                     || screen instanceof net.alpaka.addons.client.CommandWheelConfigScreen) return false;

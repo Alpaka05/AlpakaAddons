@@ -32,7 +32,7 @@ import kotlin.math.sqrt
  * from the centre picks the segment, so a flick of a few pixels in roughly the right direction is
  * enough - the point of the wheel is that it is faster than typing. A short, wide wedge on the rim
  * of the hub turns smoothly to the centre of the segment being aimed at; that segment fills with the
- * accent colour and swells outwards, and its label grows with it. Releasing the wheel key or
+ * accent color and swells outwards, and its label grows with it. Releasing the wheel key or
  * clicking runs the command; right-click or Escape closes without running anything. In toggle mode
  * ([AlpakaConfig.commandWheelToggleMode]) the key only opens and closes the wheel, and only a click
  * runs a command.
@@ -298,7 +298,7 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
         mesh.submit(graphics)
 
         // The dial: one segment per command, with a constant pixel gap between neighbours. The
-        // selected one takes the accent colour and swells outwards.
+        // selected one takes the accent color and swells outwards.
         for (i in 0 until count) {
             val h = highlight[i]
             val center = segmentAngle(layout, i)
@@ -357,7 +357,7 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
 
         // Labels sit just outside their segment. Each is anchored by the edge nearest the ring, so a
         // long name on the left or right grows away from the wheel instead of into it, and the
-        // selected one scales up around that same anchor and takes the accent colour, lifted a
+        // selected one scales up around that same anchor and takes the accent color, lifted a
         // little towards white so it stays readable even with a dark accent.
         val labelSelected = lerpColor(accent, 0xFFFFFFFF.toInt(), 0.25f)
         for (i in 0 until count) {

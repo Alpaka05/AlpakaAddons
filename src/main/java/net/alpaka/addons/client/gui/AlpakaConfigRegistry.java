@@ -266,6 +266,8 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.hideMobDeathSmoke = v; AlpakaConfig.save(); },
                 "hide mob death smoke poof particles cloud puff"));
 
+        OPTIONS.add(new ConfigOption("Name Tags", ConfigCategory.VISUALS));
+
         OPTIONS.add(new ConfigOption("hide_name_tag_background", "Hide Name Tag Background",
                 "Removes the dark box behind every name tag, so only the text is left.",
                 ConfigCategory.VISUALS,

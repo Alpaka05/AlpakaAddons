@@ -146,7 +146,8 @@ public final class ConfigTree {
             "Viewmodel Presets", "Presets",
             "HUD Style", "HUD Style",
             "Notification Customization", "Notifications",
-            "Scoreboard", "Scoreboard Style"
+            "Scoreboard", "Scoreboard Style",
+            "Name Tags", "Name Tags"
     );
 
     /** What a feature built from a header is about; it has no master option to take it from. */
@@ -155,6 +156,7 @@ public final class ConfigTree {
             "Viewmodel Presets", "Save your viewmodel and swing settings to a slot and load them back later.",
             "HUD Style", "Main switches for the blurred panels and the smooth font of every HUD, and how strongly the world is blurred.",
             "Scoreboard", "The sidebar scoreboard's background and font.",
+            "Name Tags", "How the name tags above players and mobs look: their dark box and the text shadow.",
             "Notification Customization", "How long notifications stay, where they appear and how they look. Send a test to see the result."
     );
 
@@ -174,7 +176,7 @@ public final class ConfigTree {
                             "custom_sound_zombie_remedy", "custom_sound_low_hp_heartbeat"}},
             {{"Visuals"},
                     {"World", "fullbright", "block_overlay_enabled", "hide_hurt_overlay", "hide_mob_deaths",
-                            "render_hand_third_person", "smooth_perspective", "disable_front_perspective"},
+                            "#Name Tags", "render_hand_third_person", "smooth_perspective", "disable_front_perspective"},
                     {"Interface", "inventory_hud_enabled", "player_model_enabled", "container_bg_opacity",
                             "scrollable_tooltips", "persistent_item_name", "wide_health_bar", "inventory_snow", "#Scoreboard"},
                     {"Chat", "better_chat", "chat_tabs", "chat_search", "chat_peek", "compact_chat",

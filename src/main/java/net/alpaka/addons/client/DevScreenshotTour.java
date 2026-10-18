@@ -213,6 +213,8 @@ public final class DevScreenshotTour {
             // Two ticks after a burst: the lines are mid-slide inside the chat's box.
             new Stop("chat-slide", DevScreenshotTour::chatBurst, () -> true, 2),
             new Stop("chat-rest", () -> {}, () -> true, 40),
+            // Two ticks after opening: the chat is still unrolling and the input bar rising.
+            new Stop("chat-opening", () -> Minecraft.getInstance().gui.setScreen(new ChatScreen("", false)), () -> true, 2),
             new Stop("chat-open", () -> Minecraft.getInstance().gui.setScreen(new ChatScreen("", false)), () -> true, 10),
             // A screenshot's preview mid-shrink, then resting in the corner.
             new Stop(null, () -> {

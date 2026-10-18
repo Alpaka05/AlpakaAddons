@@ -454,7 +454,7 @@ public class AlpakaConfig {
     // Chat options
     /**
      * Better Chat: the main switch over everything that changes how the chat looks - Smooth Chat,
-     * the smooth scrolling, the blurred background and the smooth font. Each keeps its own switch
+     * the opening animation, the smooth scrolling, the blurred background and the smooth font. Each keeps its own switch
      * under it.
      */
     public boolean betterChatEnabled = true;
@@ -462,6 +462,8 @@ public class AlpakaConfig {
     public boolean smoothChatEnabled = true;
     /** How long the slide takes, 1 (quick) to 10 (slow); each step is 60 ms. */
     public int smoothChatStrength = 5;
+    /** Opening the chat unrolls it upwards and slides the input line in instead of showing it at once. */
+    public boolean chatOpenAnimationEnabled = true;
     /**
      * HUD Style's main switches: off, no HUD gets the blurred panel or the smooth font, whatever its
      * own switch says. Each HUD's own switch sits in that feature's settings.
@@ -1081,6 +1083,7 @@ public class AlpakaConfig {
         this.etherwarpSoundEnabled = false;
         this.betterChatEnabled = false;
         this.smoothChatEnabled = false;
+        this.chatOpenAnimationEnabled = false;
         this.chatBlurEnabled = false;
         this.scoreboardBlurEnabled = false;
         this.notificationBlur = false;

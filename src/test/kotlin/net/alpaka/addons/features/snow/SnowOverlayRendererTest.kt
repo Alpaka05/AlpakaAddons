@@ -29,7 +29,16 @@ class SnowOverlayRendererTest {
         assertEquals(105, SnowOverlayRenderer.particleCount(1.0f, SnowOverlayRenderer.TYPE_SNOW))
         assertEquals(32, SnowOverlayRenderer.particleCount(1.0f, SnowOverlayRenderer.TYPE_FIREFLIES))
         assertEquals(84, SnowOverlayRenderer.particleCount(1.0f, SnowOverlayRenderer.TYPE_ASH))
-        assertEquals(47, SnowOverlayRenderer.particleCount(1.0f, SnowOverlayRenderer.TYPE_SOULS))
+        assertEquals(63, SnowOverlayRenderer.particleCount(1.0f, SnowOverlayRenderer.TYPE_CHERRY_PETALS))
+        assertEquals(37, SnowOverlayRenderer.particleCount(1.0f, SnowOverlayRenderer.TYPE_LEAVES))
+        assertEquals(32, SnowOverlayRenderer.particleCount(1.0f, SnowOverlayRenderer.TYPE_GLYPHS))
+        assertEquals(126, SnowOverlayRenderer.particleCount(1.0f, SnowOverlayRenderer.TYPE_RAIN))
+    }
+
+    @Test
+    fun `every type has a name and a density`() {
+        assertEquals(7, SnowOverlayRenderer.TYPE_NAMES.size)
+        for (type in SnowOverlayRenderer.TYPE_NAMES.indices) SnowOverlayRenderer.particleCount(1.0f, type)
     }
 
     @Test

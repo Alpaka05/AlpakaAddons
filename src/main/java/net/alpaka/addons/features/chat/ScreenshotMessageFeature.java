@@ -74,6 +74,13 @@ public final class ScreenshotMessageFeature {
     public static final Identifier COPY = Identifier.fromNamespaceAndPath(NAMESPACE, "screenshot/copy");
     public static final Identifier DELETE = Identifier.fromNamespaceAndPath(NAMESPACE, "screenshot/delete");
 
+    /** What a click on the preview does, by the Preview Click setting's index. */
+    public static final String[] PREVIEW_CLICK_NAMES = {"Nothing", "Open", "Copy", "Open Folder"};
+    public static final int PREVIEW_CLICK_NOTHING = 0;
+    public static final int PREVIEW_CLICK_OPEN = 1;
+    public static final int PREVIEW_CLICK_COPY = 2;
+    public static final int PREVIEW_CLICK_FOLDER = 3;
+
     /**
      * The screenshots {@link #onSaved} has already acted on, so the vanilla notice that follows is
      * not acted on a second time. The notice may never come - another mod can swallow it - so only
@@ -202,7 +209,7 @@ public final class ScreenshotMessageFeature {
     }
 
     /**
-     * "Saved screenshot [Open] [Copy] [Delete]", with an optional note between the text and the
+     * "Saved screenshot [Open] [Folder] [Copy] [Delete]", with an optional note between the text and the
      * buttons. Which parts appear is up to the config: the file name, and each button on its own.
      */
     private static Component buttonLine(File file, Component note) {
@@ -220,6 +227,10 @@ public final class ScreenshotMessageFeature {
         }
         if (cfg.screenshotShowOpen) {
             line.append(" ").append(button("[Open]", ChatFormatting.GREEN, new ClickEvent.OpenFile(file), "Open " + name));
+        }
+        if (cfg.screenshotShowFolder && file.getParentFile() != null) {
+            line.append(" ").append(button("[Folder]", ChatFormatting.YELLOW, new ClickEvent.OpenFile(file.getParentFile()),
+                    "Open the screenshots folder"));
         }
         if (cfg.screenshotShowCopy) {
             line.append(" ").append(button("[Copy]", ChatFormatting.AQUA, custom(COPY, token), "Copy the image to the clipboard"));
@@ -282,6 +293,30 @@ public final class ScreenshotMessageFeature {
             }
         }
         return true;
+    }
+
+    /** The preview was clicked: whatever the Preview Click setting says. */
+    public static void previewClicked(File file) {
+        switch (AlpakaConfig.instance.screenshotPreviewClickAction) {
+            case PREVIEW_CLICK_OPEN -> open(file);
+            case PREVIEW_CLICK_COPY -> copy(file, error -> feedback(error == null
+                    ? "§aScreenshot copied to the clipboard."
+                    : "§cCouldn't copy the screenshot (" + error + ")."));
+            case PREVIEW_CLICK_FOLDER -> {
+                File folder = file.getParentFile();
+                if (folder != null) open(folder);
+            }
+            default -> {
+            }
+        }
+    }
+
+    private static void open(File file) {
+        if (!file.exists()) {
+            feedback("§cThat screenshot no longer exists.");
+            return;
+        }
+        Util.getPlatform().openFile(file);
     }
 
     /**

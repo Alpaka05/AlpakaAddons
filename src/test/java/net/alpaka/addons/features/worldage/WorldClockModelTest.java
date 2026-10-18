@@ -70,6 +70,21 @@ class WorldClockModelTest {
     }
 
     @Test
+    void frozenPrivateIslandClockReadsTheWorldAge() {
+        // Private Island, server mini105N: clock fixed at 0, rate 0, world age counting from its load.
+        WorldClockModel model = replay(
+                new Update(341L, 0L, 0.0f),
+                new Update(358L, 0L, 0.0f),
+                new Update(378L, 0L, 0.0f));
+        assertEquals(WorldClockModel.Mode.FROZEN, model.mode());
+        assertEquals(0L, model.day(0L));
+
+        // The same island three days later.
+        model.onTimeUpdate(3L * 24000L + 378L, 0L, 0.0f);
+        assertEquals(3L, model.day(0L));
+    }
+
+    @Test
     void runningClockGivesItsDay() {
         long start = 3L * 24000L + 5000L;
         WorldClockModel model = replay(

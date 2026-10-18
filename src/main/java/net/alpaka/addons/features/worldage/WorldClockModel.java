@@ -15,8 +15,11 @@ package net.alpaka.addons.features.worldage;
  *   as days, that was a counter going up once a second; dividing out the 20 ticks per update gives
  *   the real age. Two Crimson Isle servers worked out this way agree with their world age to within
  *   24 ticks, which is what confirms the reading.</li>
- *   <li><b>Frozen</b> (lobbies, the Hub during events): rate 0 and a fixed value. Nothing about the
- *   server's age can be read from it.</li>
+ *   <li><b>Frozen</b> (lobbies, the Hub during events, the Private Island): rate 0 and a fixed value,
+ *   so the clock says nothing about the server's age. The world age then is the only clue, and it is
+ *   only honest on worlds the server starts fresh: a Private Island begins at 0 when it is loaded,
+ *   while the Hub and lobbies read thousands of days carried over from their map. A frozen clock
+ *   therefore shows the world age only when it is plausible as an uptime.</li>
  * </ul>
  *
  * Kept free of Minecraft types so the tests can replay recorded packets through it.
@@ -41,6 +44,11 @@ final class WorldClockModel {
      * {@code /time set} in singleplayer.
      */
     private static final long PIN_TIMEOUT_TICKS = 100L;
+    /**
+     * The oldest world age taken as real under a frozen clock. Hypixel servers seen so far ran for about
+     * a month at most, while a world age carried over from a map was 1450 days or more.
+     */
+    private static final long MAX_PLAUSIBLE_AGE_TICKS = 100L * DAY_TICKS;
 
     enum Mode {
         /** No update yet, or only one: a single value cannot tell a pinned clock from a running one. */
@@ -93,7 +101,8 @@ final class WorldClockModel {
         return switch (mode) {
             case NORMAL -> Math.max(0L, liveClockTicks / DAY_TICKS);
             case PINNED -> Math.max(0L, lastClockTicks / DAY_TICKS * TICKS_PER_TIME_UPDATE / DAY_TICKS);
-            case WAITING, FROZEN -> UNKNOWN_DAY;
+            case FROZEN -> lastGameTime < MAX_PLAUSIBLE_AGE_TICKS ? lastGameTime / DAY_TICKS : UNKNOWN_DAY;
+            case WAITING -> UNKNOWN_DAY;
         };
     }
 

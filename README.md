@@ -52,7 +52,7 @@ Alpaka Addons is most useful for **Slayers**, but a lot of it helps anywhere in 
 - **Chat Search:** Ctrl+F filters the chat to messages containing your text.
 - **Chat Peek:** hold a key to read and scroll the full chat while playing, even with a menu open.
 - **Compact Chat:** repeated messages stack into one line with (x2), (x3)…
-- **Expand Chat History:** keeps 5000 messages, even after leaving a server.
+- **Expand Chat History:** keeps 1000 messages (up to 5000), even after leaving a server.
 - **Smooth Chat:** messages slide in, scrolling glides, and an optional blurred, rounded background.
 - **Chat Mentions**, **Custom Guild Tag** and a **Bridge Bot Formatter** that shows relayed Discord messages as `[Discord]`.
 - **Better Screenshots**: a preview that shrinks into the corner, and Open, Copy and Delete buttons.

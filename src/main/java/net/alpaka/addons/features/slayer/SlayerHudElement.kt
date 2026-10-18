@@ -29,6 +29,8 @@ object SlayerHudElement : HudElement {
     override val isFeatureEnabled: Boolean
         get() = AlpakaConfig.instance.slayerHudEnabled
 
+    override val settingsOptionId: String = "slayer_hud_enabled"
+
     override var anchorX: Int
         get() = AlpakaConfig.instance.slayerHudX
         set(value) { AlpakaConfig.instance.slayerHudX = value }

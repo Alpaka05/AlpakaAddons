@@ -129,7 +129,7 @@ public class AlpakaConfig {
      * a nudge for somebody who was looking elsewhere while the quest finished spawning.
      */
     public boolean bossSpawnAlertEnabled = true;
-    /** Inventory Particles over container screens and the main menu. Off for fresh installs; it is seasonal decoration. */
+    /** Snow over container screens and the main menu. Off for fresh installs; it is seasonal decoration. */
     public boolean inventorySnowEnabled = false;
     public float inventorySnowSpeed = 1.0f;
     /** Multiplier on the number of flakes; 1 is the original 105. */

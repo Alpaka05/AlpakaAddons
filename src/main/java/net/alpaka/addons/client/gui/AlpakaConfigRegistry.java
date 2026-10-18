@@ -2,7 +2,6 @@ package net.alpaka.addons.client.gui;
 
 import java.util.Locale;
 import net.alpaka.addons.features.viewmodel.ItemMotionBlurFeature;
-import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
 import net.alpaka.addons.features.damagetags.CustomDamageTagFeature;
@@ -113,13 +112,6 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.customMainMenuParallax,
                 v -> { AlpakaConfig.instance.customMainMenuParallax = v; AlpakaConfig.save(); },
                 "custom main menu parallax background mouse move motion depth effect title screen"));
-
-        OPTIONS.add(new ConfigOption("hud_editor", "HUD Editor",
-                "Move and resize every HUD - session, boss timer, world age, inventory, avatar.",
-                ConfigCategory.GENERAL,
-                "Open HUD Editor",
-                parent -> Minecraft.getInstance().gui.setScreen(new HudEditorScreen(parent)),
-                "hud editor position edit dragging screen drag move resize scale layout alpakahud"));
 
         OPTIONS.add(new ConfigOption("disable_all_features", "Disable All Features",
                 "Disables every feature in the mod after confirmation.",

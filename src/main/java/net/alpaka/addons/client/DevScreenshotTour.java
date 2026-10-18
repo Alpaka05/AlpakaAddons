@@ -92,7 +92,7 @@ public final class DevScreenshotTour {
             new Stop("survival-hud", DevScreenshotTour::actionBar, () -> true, 10),
             // Chat lines reaching down over the action bar: the bar has to stay readable on the panel.
             new Stop("actionbar-over-chat", () -> { chatBurst(); actionBar(); }, () -> true, 40),
-            // With the chat open the bar and the item name stay above the wider panel too.
+            // With the chat open the bar stays readable behind the wider panel too.
             new Stop("actionbar-chat-open", () -> {
                 actionBar();
                 Minecraft.getInstance().gui.setScreen(new ChatScreen("", false));

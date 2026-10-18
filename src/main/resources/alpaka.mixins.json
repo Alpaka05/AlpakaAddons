@@ -57,7 +57,8 @@
     "ChatGraphicsAccessClipMixin",
     "ClientLevelMixin",
     "PictureInPictureRendererMixin",
-    "NameTagFeatureRendererMixin"
+    "NameTagFeatureRendererMixin",
+    "ScreenEffectRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

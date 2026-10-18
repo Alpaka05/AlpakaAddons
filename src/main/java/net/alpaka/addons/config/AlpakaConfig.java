@@ -166,6 +166,12 @@ public class AlpakaConfig {
     public boolean hideMobDeathsEnabled = false;
     /** With Hide Mob Deaths: also no puff of smoke when the server removes the body. */
     public boolean hideMobDeathSmoke = false;
+    /** Hides the flames on burning mobs, players and yourself in third person. Cosmetic only. */
+    public boolean hideEntityFire = false;
+    /** Hides the fire covering the bottom of the screen while you burn in first person. */
+    public boolean hideFirstPersonFire = false;
+    /** Opacity of that first-person fire, 0..1; 1 is vanilla. */
+    public float firstPersonFireOpacity = 1.0f;
     /**
      * The box behind every nametag. The default is vanilla's own box, which then stays vanilla's,
      * accessibility opacity setting included; zero opacity drops the box and leaves only the text.
@@ -1012,6 +1018,8 @@ public class AlpakaConfig {
         this.stopBlazeSpinning = false;
         this.hideHurtOverlayEnabled = false;
         this.hideMobDeathsEnabled = false;
+        this.hideEntityFire = false;
+        this.hideFirstPersonFire = false;
         this.nameTagBackgroundColor = DEFAULT_NAME_TAG_BACKGROUND;
         this.showOwnNameTag = false;
         this.nameTagTextShadow = false;

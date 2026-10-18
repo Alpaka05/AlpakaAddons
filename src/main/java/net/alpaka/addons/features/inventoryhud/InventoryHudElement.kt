@@ -26,6 +26,8 @@ object InventoryHudElement : HudElement {
     override val isFeatureEnabled: Boolean
         get() = AlpakaConfig.instance.inventoryHudEnabled
 
+    override val settingsOptionId: String = "inventory_hud_enabled"
+
     override var anchorX: Int
         get() = bounds().x0
         set(value) {

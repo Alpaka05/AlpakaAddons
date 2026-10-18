@@ -108,7 +108,7 @@ public final class ConfigTree {
             "slayer_drop_tracker", "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat",
             "hide_slayer_chat", "boss_spawn_alert", "slayer_timer", "slayer_hud_enabled",
             "world_age_hud_enabled", "world_age_join_message_enabled", "party_invite_prompt",
-            "guild_prefix", "bridge_bot_formatter", "pangolin_highlight_enabled", "only_crit_damage",
+            "guild_prefix", "bridge_bot_formatter", "pangolin_highlight_enabled", "only_crit_damage", "cache_resource_pack",
             // Cosmetics
             "custom_name_tag", "chroma_hat", "player_scale", "custom_damage_tags",
             // Sound & utility
@@ -193,7 +193,7 @@ public final class ConfigTree {
                     {"Blaze", "clean_blaze", "blaze_fire_pits", "stop_blaze_spinning",
                             "mute_vanilla_sounds_blaze_slayer", "custom_sound_blaze_death"},
                     {"Tools", "etherwarp_overlay", "etherwarp_sound", "only_crit_damage", "pangolin_highlight_enabled",
-                            "world_age_hud_enabled", "world_age_join_message_enabled"},
+                            "world_age_hud_enabled", "world_age_join_message_enabled", "cache_resource_pack"},
                     {"Social", "party_invite_prompt", "guild_prefix", "bridge_bot_formatter"}},
     };
 

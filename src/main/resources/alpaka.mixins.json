@@ -58,7 +58,12 @@
     "ClientLevelMixin",
     "PictureInPictureRendererMixin",
     "NameTagFeatureRendererMixin",
-    "ScreenEffectRendererMixin"
+    "ScreenEffectRendererMixin",
+    "DownloadedPackSourceAccessor",
+    "DownloadedPackSourceMixin",
+    "MinecraftResourceLoadMixin",
+    "ConnectScreenPackCacheMixin",
+    "ClientPacketListenerPackCacheMixin"
   ],
   "injectors": {
     "defaultRequire": 1

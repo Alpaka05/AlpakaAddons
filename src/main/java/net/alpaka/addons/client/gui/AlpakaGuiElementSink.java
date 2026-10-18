@@ -15,6 +15,12 @@ public interface AlpakaGuiElementSink {
     /** Adds an element to the current layer, exactly as a vanilla fill would be added. */
     void alpaka$submitElement(GuiElementRenderState state);
 
+    /**
+     * Adds an element under every other element of the frame, HUD included; see
+     * {@link AlpakaGuiUnderlay}.
+     */
+    void alpaka$submitUnderlay(GuiElementRenderState state);
+
     /** The scissor rectangle in effect, in screen-space GUI coordinates, or null when none is. */
     ScreenRectangle alpaka$currentScissor();
 }

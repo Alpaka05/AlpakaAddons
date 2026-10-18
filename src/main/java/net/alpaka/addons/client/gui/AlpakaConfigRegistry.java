@@ -406,6 +406,15 @@ public class AlpakaConfigRegistry {
 
         OPTIONS.add(new ConfigOption("Chat", ConfigCategory.VISUALS));
 
+        // Better Chat: everything that changes how the chat looks, its parts as its settings. The
+        // background and font switches are registered with the other HUD style switches below.
+        OPTIONS.add(new ConfigOption("better_chat", "Better Chat",
+                "Makes the chat look better: messages slide in, scrolling glides, a blurred background and the smooth font.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.betterChatEnabled,
+                v -> { AlpakaConfig.instance.betterChatEnabled = v; AlpakaConfig.save(); GuiFont.refreshChat(); },
+                "better chat look design style smooth blur background font animation scroll main switch"));
+
         OPTIONS.add(new ConfigOption("smooth_chat", "Smooth Chat",
                 "Slides and fades new messages in instead of showing them at once.",
                 ConfigCategory.VISUALS,
@@ -2014,7 +2023,6 @@ public class AlpakaConfigRegistry {
         styleToggle("notification_smooth_font", "Smooth Font", ConfigCategory.GENERAL, false,
                 () -> AlpakaConfig.instance.notificationSmoothFont, v -> AlpakaConfig.instance.notificationSmoothFont = v);
 
-        OPTIONS.add(new ConfigOption("Chat Style", ConfigCategory.VISUALS));
         styleToggle("chat_blur", "Blur", ConfigCategory.VISUALS, true,
                 () -> AlpakaConfig.instance.chatBlurEnabled, v -> AlpakaConfig.instance.chatBlurEnabled = v);
         styleToggle("chat_smooth_font", "Smooth Font", ConfigCategory.VISUALS, false,

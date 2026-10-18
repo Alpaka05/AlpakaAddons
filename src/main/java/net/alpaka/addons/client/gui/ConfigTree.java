@@ -96,7 +96,7 @@ public final class ConfigTree {
             "fullbright", "clean_blaze", "blaze_fire_pits", "stop_blaze_spinning", "hide_hurt_overlay", "hide_mob_deaths",
             "render_hand_third_person", "smooth_perspective", "disable_front_perspective",
             "container_bg_opacity", "inventory_snow", "scrollable_tooltips", "persistent_item_name", "wide_health_bar",
-            "smooth_chat", "chat_smooth_scroll", "chat_search", "expand_chat_history", "compact_chat",
+            "better_chat", "chat_search", "expand_chat_history", "compact_chat",
             "mention_notification", "chat_peek", "better_screenshot_message", "chat_tabs",
             "player_model_enabled", "inventory_hud_enabled",
             // Item viewmodel: the adjustments are the modifiers' own settings
@@ -122,6 +122,9 @@ public final class ConfigTree {
     /** Settings registered away from their feature. */
     private static final Map<String, String> PARENTS = Map.ofEntries(
             Map.entry("smooth_perspective_duration", "smooth_perspective"),
+            // The chat's background and font are parts of Better Chat.
+            Map.entry("chat_blur", "better_chat"),
+            Map.entry("chat_smooth_font", "better_chat"),
             // Each HUD's own style switches, registered at the end and placed in its feature.
             Map.entry("slayer_hud_blur", "slayer_hud_enabled"),
             Map.entry("slayer_hud_smooth_font", "slayer_hud_enabled"),
@@ -143,7 +146,6 @@ public final class ConfigTree {
             "Viewmodel Presets", "Presets",
             "HUD Style", "HUD Style",
             "Notification Customization", "Notifications",
-            "Chat Style", "Chat Style",
             "Scoreboard", "Scoreboard Style"
     );
 
@@ -152,7 +154,6 @@ public final class ConfigTree {
             "Swing Customizations", "How the held item moves when you swing: drift, arc and whether the swing always plays out.",
             "Viewmodel Presets", "Save your viewmodel and swing settings to a slot and load them back later.",
             "HUD Style", "Main switches for the blurred panels and the smooth font of every HUD, and how strongly the world is blurred.",
-            "Chat Style", "The chat's background and font.",
             "Scoreboard", "The sidebar scoreboard's background and font.",
             "Notification Customization", "How long notifications stay, where they appear and how they look. Send a test to see the result."
     );
@@ -176,8 +177,8 @@ public final class ConfigTree {
                             "render_hand_third_person", "smooth_perspective", "disable_front_perspective"},
                     {"Interface", "inventory_hud_enabled", "player_model_enabled", "container_bg_opacity",
                             "scrollable_tooltips", "persistent_item_name", "wide_health_bar", "inventory_snow", "#Scoreboard"},
-                    {"Chat", "chat_tabs", "chat_search", "chat_peek", "compact_chat", "smooth_chat", "chat_smooth_scroll",
-                            "expand_chat_history", "mention_notification", "better_screenshot_message", "#Chat Style"},
+                    {"Chat", "better_chat", "chat_tabs", "chat_search", "chat_peek", "compact_chat",
+                            "expand_chat_history", "mention_notification", "better_screenshot_message"},
                     {"Viewmodel", "item_size_feature", "#Swing Customizations", "item_starlight", "item_motion_blur",
                             "#Viewmodel Presets", "item_viewmodel_reset"},
                     {"Cosmetics", "custom_name_tag", "custom_damage_tags", "chroma_hat", "player_scale"}},

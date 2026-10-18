@@ -68,7 +68,7 @@ public final class DevScreenshotTour {
             screen("config-search", () -> new AlpakaConfigScreen(null, "blaze")),
             screen("config-inventory-hud", () -> AlpakaConfigScreen.openOn("Interface", "Inventory HUD")),
             screen("config-hud-style", () -> AlpakaConfigScreen.openOn("Design", "HUD Style")),
-            screen("config-style-chat", () -> AlpakaConfigScreen.openOn("Chat", "Chat Style")),
+            screen("config-better-chat", () -> AlpakaConfigScreen.openOn("Chat", "Better Chat")),
             screen("config-style-timer", () -> AlpakaConfigScreen.openOn("Slayer", "Slayer Boss Timer")),
             screen("config-screenshot", () -> AlpakaConfigScreen.openOn("Chat", "Better Screenshots")),
             screen("config-reset-all", () -> AlpakaConfigScreen.openOn("Main", "Reset All Settings")),
@@ -243,7 +243,7 @@ public final class DevScreenshotTour {
             new Stop("health-bar-hidden", () -> healthBar(true, 2), () -> true, 20),
             // Chat lines reaching down over the action bar: the bar has to stay readable on the panel.
             new Stop("actionbar-over-chat", () -> { chatBurst(); actionBar(); }, () -> true, 40),
-            // With the chat open the bar and the item name stay above the wider panel too.
+            // With the chat open the bar stays readable behind the wider panel too.
             new Stop("actionbar-chat-open", () -> {
                 actionBar();
                 Minecraft.getInstance().gui.setScreen(new ChatScreen("", false));

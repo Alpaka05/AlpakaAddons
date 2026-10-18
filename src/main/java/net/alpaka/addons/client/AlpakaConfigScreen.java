@@ -581,7 +581,10 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         }));
         if (!search.isEmpty()) {
             boolean hoverClear = inside(mouseX, mouseY, iconX - 3, sy + 2, 14, 14);
-            AlpakaStyle.iconButton(graphics, this.font, iconX - 3, sy + 2, 14, "✕", hoverClear, true, false);
+            // Just the cross, lit in the accent on hover; a box around it crowds the slim field.
+            int gw = GuiFont.width(this.font, "✕");
+            graphics.text(this.font, GuiFont.text("✕"), iconX - 3 + (14 - gw) / 2, sy + 5,
+                    hoverClear ? ModernGuiUtils.getAccentColor() : AlpakaStyle.TEXT_MUTED, false);
             hits.add(new Hit(iconX - 3, sy + 2, 14, 14, (mx, my) -> {
                 search.setText("");
                 onSearchChanged();

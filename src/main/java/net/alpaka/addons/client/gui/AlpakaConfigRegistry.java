@@ -421,11 +421,11 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Better Chat", ConfigCategory.VISUALS));
 
         OPTIONS.add(new ConfigOption("better_chat", "Better Chat",
-                "Makes the chat look better: Smooth Chat, smooth scrolling and the blurred background. Each can be turned off below.",
+                "Makes the chat look better: Smooth Chat, the opening animation, smooth scrolling and the blurred background. Each can be turned off below.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.betterChatEnabled,
                 v -> { AlpakaConfig.instance.betterChatEnabled = v; AlpakaConfig.save(); },
-                "better chat look design style smooth blur background animation scroll main switch"));
+                "better chat look design style smooth blur background animation scroll opening main switch"));
 
         OPTIONS.add(new ConfigOption("smooth_chat", "Smooth Chat",
                 "New messages slide in and fade in instead of appearing at once.",
@@ -441,6 +441,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.smoothChatStrength = Math.round(v); AlpakaConfig.save(); },
                 1.0f, 10.0f, v -> Math.round(v) + " / 10",
                 "smooth chat strength speed duration animation slow fast slider"));
+
+        OPTIONS.add(new ConfigOption("chat_open_animation", "Opening Animation",
+                "Opening the chat unrolls it smoothly from the input line instead of showing it at once.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatOpenAnimationEnabled,
+                v -> { AlpakaConfig.instance.chatOpenAnimationEnabled = v; AlpakaConfig.save(); },
+                "chat opening open animation smooth slide unroll fade appear input"));
 
         OPTIONS.add(new ConfigOption("chat_smooth_scroll", "Smooth Chat Scrolling",
                 "Scrolling the chat glides instead of jumping line by line.",

@@ -438,13 +438,16 @@ public class AlpakaConfig {
     // Chat options
     /**
      * Better Chat: the main switch over everything that changes how the chat looks - Smooth Chat,
-     * the smooth scrolling and the blurred background. Each keeps its own switch under it.
+     * the opening animation, the smooth scrolling and the blurred background. Each keeps its own
+     * switch under it.
      */
     public boolean betterChatEnabled = true;
     /** A new message slides up into the chat and fades in instead of appearing at once. */
     public boolean smoothChatEnabled = true;
     /** How long the slide takes, 1 (quick) to 10 (slow); each step is 60 ms. */
     public int smoothChatStrength = 5;
+    /** Opening the chat unrolls it upwards and slides the input line in instead of showing it at once. */
+    public boolean chatOpenAnimationEnabled = true;
     /** One rounded, padded panel behind the chat that shows the world blurred through it. */
     public boolean chatBlurEnabled = true;
     /**
@@ -1016,6 +1019,7 @@ public class AlpakaConfig {
         this.etherwarpSoundEnabled = false;
         this.betterChatEnabled = false;
         this.smoothChatEnabled = false;
+        this.chatOpenAnimationEnabled = false;
         this.chatBlurEnabled = false;
         this.scoreboardBlurEnabled = false;
         this.chatSearchEnabled = false;

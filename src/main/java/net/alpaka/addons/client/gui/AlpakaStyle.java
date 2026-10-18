@@ -368,8 +368,20 @@ public final class AlpakaStyle {
             for (int cy = 0; cy * cell < h; cy++) {
                 for (int cx = 0; cx * cell < w; cx++) {
                     if ((cx + cy) % 2 != 0) continue;
-                    ModernGuiUtils.drawRect(graphics, x + cx * cell, y + cy * cell,
-                            Math.min(cell, w - cx * cell), Math.min(cell, h - cy * cell), TRACK);
+                    int cellX = x + cx * cell;
+                    int cellY = y + cy * cell;
+                    int cellW = Math.min(cell, w - cx * cell);
+                    int cellH = Math.min(cell, h - cy * cell);
+                    boolean corner = (cx == 0 || cellX + cellW == x + w) && (cy == 0 || cellY + cellH == y + h);
+                    if (corner) {
+                        // A square cell would poke out of the swatch's rounded corner, so draw the
+                        // whole rounded swatch shape clipped to the cell instead.
+                        graphics.enableScissor(cellX, cellY, cellX + cellW, cellY + cellH);
+                        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, radius, TRACK);
+                        graphics.disableScissor();
+                    } else {
+                        ModernGuiUtils.drawRect(graphics, cellX, cellY, cellW, cellH, TRACK);
+                    }
                 }
             }
         }

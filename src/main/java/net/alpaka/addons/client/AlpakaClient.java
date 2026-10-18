@@ -47,6 +47,7 @@ public class AlpakaClient implements ClientModInitializer {
         ZoomFeature.register();
         net.alpaka.addons.features.chat.ChatPeekFeature.register();
         net.alpaka.addons.features.chat.ActionBarOverChat.register();
+        net.alpaka.addons.features.chat.ScreenshotPreview.register();
         CommandWheelFeature.register();
         InventoryHudFeature.register();
         net.alpaka.addons.features.blaze.FirePitFeature.register();
@@ -287,6 +288,36 @@ public class AlpakaClient implements ClientModInitializer {
                             return 1;
                         })
                     )
+                )
+            );
+
+            // The update the chat notice offers, for when that line has scrolled away. "install"
+            // still asks on a screen before anything is downloaded; it and "cancel" change the mods
+            // folder at exit, so like the other commands that change files they only run typed.
+            dispatcher.register(ClientCommands.literal("alpakaupdate")
+                .executes(context -> {
+                    Minecraft.getInstance().execute(net.alpaka.addons.utils.UpdateChecker::status);
+                    return 1;
+                })
+                .then(ClientCommands.literal("check")
+                    .executes(context -> {
+                        Minecraft.getInstance().execute(net.alpaka.addons.utils.UpdateChecker::checkNow);
+                        return 1;
+                    })
+                )
+                .then(ClientCommands.literal("install")
+                    .requires(CommandAttendance::attended)
+                    .executes(context -> {
+                        Minecraft.getInstance().execute(net.alpaka.addons.utils.UpdateInstaller::confirm);
+                        return 1;
+                    })
+                )
+                .then(ClientCommands.literal("cancel")
+                    .requires(CommandAttendance::attended)
+                    .executes(context -> {
+                        Minecraft.getInstance().execute(net.alpaka.addons.utils.UpdateInstaller::cancel);
+                        return 1;
+                    })
                 )
             );
         });

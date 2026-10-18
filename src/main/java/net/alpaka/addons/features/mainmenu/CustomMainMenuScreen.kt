@@ -286,9 +286,14 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         val mc = this.minecraft ?: Minecraft.getInstance()
         val preciseX = (mc.mouseHandler.xpos() * this.width / mc.window.screenWidth).toFloat()
         val preciseY = (mc.mouseHandler.ypos() * this.height / mc.window.screenHeight).toFloat()
+        // With the parallax off the layers stay centred; easing towards the centre rather than
+        // snapping to it lets a toggle while the menu is open glide back.
+        val parallaxOn = AlpakaConfig.instance.customMainMenuParallax
+        val targetX = if (parallaxOn) ((preciseX - this.width / 2f) / (this.width / 2f)).coerceIn(-1f, 1f) else 0f
+        val targetY = if (parallaxOn) ((preciseY - this.height / 2f) / (this.height / 2f)).coerceIn(-1f, 1f) else 0f
         val ease = 1f - kotlin.math.exp(-dt * PARALLAX_EASE_RATE)
-        parallaxX += (((preciseX - this.width / 2f) / (this.width / 2f)).coerceIn(-1f, 1f) - parallaxX) * ease
-        parallaxY += (((preciseY - this.height / 2f) / (this.height / 2f)).coerceIn(-1f, 1f) - parallaxY) * ease
+        parallaxX += (targetX - parallaxX) * ease
+        parallaxY += (targetY - parallaxY) * ease
         val nx = parallaxX
         val ny = parallaxY
         val layout = Layout()

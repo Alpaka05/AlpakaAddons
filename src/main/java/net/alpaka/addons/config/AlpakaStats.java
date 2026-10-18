@@ -481,21 +481,60 @@ public class AlpakaStats {
     private static long nextFlushAttemptNanos = 0L;
 
     /**
-     * Records that the record changed; it is written at the end of the tick, once, however many
-     * changes the tick made. A boss kill used to write the whole file two or three times over - the
-     * kill, the XP and the best time each saved on their own - which hitched the game at the moment
-     * the boss died, and more so on a cloud drive.
+     * At least this long between two background saves. A drop, the kill and the XP that follows it
+     * arrive within a second or two; one write covers them all.
+     */
+    private static final long MIN_FLUSH_SPACING_NANOS = 1_000_000_000L;
+
+    /** A failed write is retried after this, rather than every tick. */
+    private static final long RETRY_PAUSE_NANOS = 2_000_000_000L;
+
+    /**
+     * Writes the record off the game thread.
+     *
+     * Saving re-reads the file, merges it, keeps a backup and writes it atomically - and may wait for
+     * another instance's lock. Done on the client thread after every kill, that showed as a hitch the
+     * moment the boss died, and a long one on a cloud drive. Daemon, so it never holds the game open;
+     * the exit path waits for it in {@link #flushNow()}.
+     */
+    private static final java.util.concurrent.ExecutorService WRITER =
+            java.util.concurrent.Executors.newSingleThreadExecutor(runnable -> {
+                Thread thread = new Thread(runnable, "AlpakaAddons stats writer");
+                thread.setDaemon(true);
+                return thread;
+            });
+
+    /**
+     * Keeps the background write and a direct {@link #save()} from touching the file at the same
+     * time; the file lock only guards against other processes.
+     */
+    private static final Object WRITE_LOCK = new Object();
+
+    /** The background save in progress, with what is needed to finish it on the game thread. */
+    private record PendingSave(java.util.concurrent.Future<AlpakaStats> result, File file, String account) {}
+
+    private static PendingSave pendingSave = null;
+
+    /**
+     * Records that the record changed; it is written from the tick, once, however many changes came
+     * in. A boss kill used to write the whole file two or three times over - the kill, the XP and the
+     * best time each saved on their own - which hitched the game at the moment the boss died, and
+     * more so on a cloud drive.
      */
     public static void markDirty() {
         dirty = true;
     }
 
     /**
-     * Writes the record if anything changed. Called every client tick, and on disconnect and exit.
-     * A failed write is retried every couple of seconds rather than every tick.
+     * Starts a background write if anything changed. Called every client tick.
+     *
+     * The game thread only takes a snapshot of the record; reading, merging and writing the file
+     * happen on {@link #WRITER}. What the file held is folded back into memory once the write is
+     * done, on the game thread, so the live record is never touched from two threads.
      */
     public static void flushIfDirty() {
-        if (!dirty) return;
+        collectPendingSave(false);
+        if (!dirty || pendingSave != null) return;
         if (awaitingStore) {
             // Rate-limited inside: says every few minutes that kills are waiting for the folder.
             warnStoreMissing();
@@ -503,15 +542,60 @@ public class AlpakaStats {
         }
         long now = System.nanoTime();
         if (now < nextFlushAttemptNanos) return;
-        dirty = false;
-        if (!save()) {
-            dirty = true;
-            nextFlushAttemptNanos = now + 2_000_000_000L;
+        if (!storeReady()) {
+            nextFlushAttemptNanos = now + RETRY_PAUSE_NANOS;
+            return;
         }
+
+        dirty = false;
+        nextFlushAttemptNanos = now + MIN_FLUSH_SPACING_NANOS;
+        File file = file();
+        String account = accountKey();
+        com.google.gson.JsonElement snapshot = GSON.toJsonTree(instance);
+        java.util.concurrent.Future<AlpakaStats> result = WRITER.submit(() -> {
+            synchronized (WRITE_LOCK) {
+                return writeMerged(file, GSON.fromJson(snapshot, AlpakaStats.class), account);
+            }
+        });
+        pendingSave = new PendingSave(result, file, account);
     }
 
-    /** Writes a pending change now, ignoring the retry pause. For disconnecting and quitting. */
+    /**
+     * Finishes a background save that is done - or, with {@code wait}, waits for it. Folds what the
+     * file held into memory; a failed write marks the record dirty again and pauses the retries.
+     */
+    private static void collectPendingSave(boolean wait) {
+        PendingSave pending = pendingSave;
+        if (pending == null || (!wait && !pending.result().isDone())) return;
+        pendingSave = null;
+
+        AlpakaStats onDisk;
+        try {
+            onDisk = pending.result().get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            dirty = true;
+            return;
+        } catch (java.util.concurrent.ExecutionException e) {
+            Throwable cause = e.getCause() == null ? e : e.getCause();
+            AlpakaAddons.LOGGER.error("Failed to save stats to {}", pending.file().getAbsolutePath(), cause);
+            warnSaveFailed(pending.file(), cause);
+            dirty = true;
+            nextFlushAttemptNanos = System.nanoTime() + RETRY_PAUSE_NANOS;
+            return;
+        }
+
+        StatsMerge.mergeFromDisk(instance, onDisk, pending.account(), UNKNOWN_PROFILE);
+        // Only for the folder that was written; the setting may have moved on meanwhile.
+        if (pending.file().equals(file())) markFolderHadFile();
+    }
+
+    /**
+     * Writes a pending change now, ignoring the retry pause, and waits for a background write still
+     * running. For disconnecting and quitting.
+     */
     public static void flushNow() {
+        collectPendingSave(true);
         if (!dirty || awaitingStore) return;
         dirty = false;
         if (!save()) dirty = true;
@@ -521,12 +605,13 @@ public class AlpakaStats {
     private static final String LOCK_NAME = "alpaka-stats.lock";
 
     /**
-     * Writes the record now, keeping what other sessions have put there. Returns whether it was
-     * written. Gameplay code calls {@link #markDirty()} instead and lets the tick write it.
+     * Writes the record now, on the calling thread, keeping what other sessions have put there.
+     * Returns whether it was written. Gameplay code calls {@link #markDirty()} instead and lets the
+     * tick write it in the background.
      *
      * The file may be shared - by a second instance on this machine, or through a sync folder with
      * another PC - so it can have moved on since this session read it. The file is re-read and merged
-     * slayer by slayer before writing (see {@link #mergeFromDisk}), under a lock that keeps two local
+     * slayer by slayer before writing (see {@link StatsMerge#mergeFromDisk}), under a lock that keeps two local
      * instances from interleaving the read and the write.
      *
      * Two machines playing the same profile at the same time can still lose the smaller of their two
@@ -534,32 +619,13 @@ public class AlpakaStats {
      * per machine fixes that.
      */
     public static boolean save() {
-        retryLoadIfAwaiting();
-        if (awaitingStore) {
-            warnStoreMissing();
-            return false;
-        }
-        // The folder or its file went away mid-session. Nothing is written until it is back, so an
-        // empty folder can never receive a fresh record in place of the real one; memory still holds
-        // everything, and the next save after it returns writes it.
-        if (storeMissing()) {
-            warnStoreMissing();
-            return false;
-        }
+        collectPendingSave(true);
+        if (!storeReady()) return false;
 
         File file = file();
-        File dir = file.getAbsoluteFile().getParentFile();
         try {
-            if (dir != null && !dir.isDirectory()) java.nio.file.Files.createDirectories(dir.toPath());
-
-            try (java.nio.channels.FileChannel channel = openLock(dir);
-                 java.nio.channels.FileLock lock = channel == null ? null : tryLock(channel)) {
-                AlpakaStats onDisk = read(file);
-                mergeFromDisk(onDisk);
-                // Only a copy that parsed becomes the backup, so a damaged file can never replace
-                // the last good one.
-                if (onDisk != null) AtomicJsonFile.backup(file, new File(dir, BACKUP_NAME));
-                AtomicJsonFile.write(file, GSON.toJson(instance));
+            synchronized (WRITE_LOCK) {
+                writeMerged(file, instance, accountKey());
             }
             markFolderHadFile();
             dirty = false;
@@ -568,6 +634,43 @@ public class AlpakaStats {
             AlpakaAddons.LOGGER.error("Failed to save stats to {}", file.getAbsolutePath(), e);
             warnSaveFailed(file, e);
             return false;
+        }
+    }
+
+    /**
+     * Whether the record may be written at all; says so in chat, rate-limited, when it may not.
+     *
+     * The folder or its file going away mid-session stops every write until it is back, so an empty
+     * folder can never receive a fresh record in place of the real one; memory still holds
+     * everything, and the next save after it returns writes it.
+     */
+    private static boolean storeReady() {
+        retryLoadIfAwaiting();
+        if (awaitingStore || storeMissing()) {
+            warnStoreMissing();
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Folds the file into {@code record} and writes the result back, under the file lock. Returns
+     * what the file held, or null if there was nothing readable. Touches nothing but its arguments
+     * and the file, so it can run off the game thread on a snapshot.
+     */
+    private static AlpakaStats writeMerged(File file, AlpakaStats record, String account) throws java.io.IOException {
+        File dir = file.getAbsoluteFile().getParentFile();
+        if (dir != null && !dir.isDirectory()) java.nio.file.Files.createDirectories(dir.toPath());
+
+        try (java.nio.channels.FileChannel channel = openLock(dir);
+             java.nio.channels.FileLock lock = channel == null ? null : tryLock(channel)) {
+            AlpakaStats onDisk = read(file);
+            StatsMerge.mergeFromDisk(record, onDisk, account, UNKNOWN_PROFILE);
+            // Only a copy that parsed becomes the backup, so a damaged file can never replace
+            // the last good one.
+            if (onDisk != null) AtomicJsonFile.backup(file, new File(dir, BACKUP_NAME));
+            AtomicJsonFile.write(file, GSON.toJson(record));
+            return onDisk;
         }
     }
 
@@ -616,7 +719,7 @@ public class AlpakaStats {
      * made every save fail for a whole night, and 99 boss kills went unrecorded with nothing on
      * screen to say so; the player found out the next day, when a restart came up empty.
      */
-    private static void warnSaveFailed(File file, Exception e) {
+    private static void warnSaveFailed(File file, Throwable e) {
         long now = System.currentTimeMillis();
         if (now - lastSaveFailureNoticeMs < SAVE_FAILURE_NOTICE_INTERVAL_MS) return;
         lastSaveFailureNoticeMs = now;
@@ -626,10 +729,5 @@ public class AlpakaStats {
         SlayerDropTracker.sendModMessage("§c" + reason);
         SlayerDropTracker.sendModMessage("§7Kills since the last successful save exist only in memory. "
                 + "§f/alpakastats folder default §7or a valid folder fixes this without a restart.");
-    }
-
-    /** Folds what is on disk into memory; see {@link StatsMerge#mergeFromDisk}. */
-    private static void mergeFromDisk(AlpakaStats onDisk) {
-        StatsMerge.mergeFromDisk(instance, onDisk, accountKey(), UNKNOWN_PROFILE);
     }
 }

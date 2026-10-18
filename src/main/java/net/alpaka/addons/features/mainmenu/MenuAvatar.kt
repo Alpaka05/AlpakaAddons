@@ -148,14 +148,26 @@ internal class MenuAvatar(private val mc: Minecraft) {
 
         val waveAge = now - waveStartMs
         if (waveStartMs != 0L && waveAge < WAVE_MS) {
-            // Up quickly, a few waves, and down again: a smooth envelope over the whole gesture.
-            val p = waveAge / WAVE_MS.toFloat()
-            val envelope = sin(p * Math.PI.toFloat()).let { it * it }.coerceIn(0f, 1f) * 1.15f
-            val raised = WAVE_RAISE + sin(t * WAVE_SPEED) * WAVE_SWING
-            model.rightArmZ += (raised - model.rightArmZ) * envelope.coerceAtMost(1f)
-            model.rightArmX *= 1f - envelope.coerceAtMost(1f)
+            // The arm goes up over the head, swings from side to side a few times - from the
+            // shoulder, as a Minecraft arm has no elbow - and comes down again. The swing is timed
+            // from the click, so every wave starts the same way.
+            val seconds = waveAge / 1000f
+            val raise = waveRaise(waveAge)
+            val swing = sin(seconds * WAVE_SPEED) * WAVE_SWING * waveRaise(waveAge, WAVE_SWING_FADE_MS)
+            model.rightArmZ += (WAVE_RAISE + swing - model.rightArmZ) * raise
+            model.rightArmX += (WAVE_FORWARD - model.rightArmX) * raise
         }
         model.applyPose()
+    }
+
+    /**
+     * How far the arm is up, 0 → 1: eased up over the first [rampMs] of the wave, held, and eased
+     * down over its last [rampMs].
+     */
+    private fun waveRaise(age: Long, rampMs: Long = WAVE_RAMP_MS): Float {
+        val edge = minOf(age, WAVE_MS - age).toFloat() / rampMs
+        val u = edge.coerceIn(0f, 1f)
+        return u * u * (3f - 2f * u)
     }
 
     fun mouseClicked(x: Double, y: Double): Boolean {
@@ -272,10 +284,20 @@ internal class MenuAvatar(private val mc: Minecraft) {
         const val ARM_BREATH = 0.035f
         const val ARM_SWAY = 0.05f
 
-        const val WAVE_MS = 1600L
-        const val WAVE_RAISE = 2.55f
-        const val WAVE_SWING = 0.28f
-        const val WAVE_SPEED = 13f
+        /**
+         * The wave: how long it takes in all and how long the arm takes to go up (and down), the
+         * arm's angle out from the side when up - a little short of straight up - and a little
+         * forward so the hand is seen from the front, and the swing either side of that, in
+         * radians and radians per second (about two swings a second). The swing fades in and
+         * out over a longer time than the arm takes to go up, so it starts and ends gently.
+         */
+        const val WAVE_MS = 2200L
+        const val WAVE_RAMP_MS = 260L
+        const val WAVE_SWING_FADE_MS = 420L
+        const val WAVE_RAISE = 2.6f
+        const val WAVE_FORWARD = -0.25f
+        const val WAVE_SWING = 0.42f
+        const val WAVE_SPEED = 12.5f
 
         /** Measured on screen: how far below the box's centre the preview puts the model, per height. */
         const val FEET_CORRECTION = 0.115f

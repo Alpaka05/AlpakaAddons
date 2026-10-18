@@ -51,11 +51,11 @@ public class AlpakaConfigRegistry {
                 "api network internet hypixel request mayor election offline privacy"));
 
         OPTIONS.add(new ConfigOption("update_notifications", "Update Notifications",
-                "Tells you in chat when a new release of the mod is out. Needs network features.",
+                "Tells you in chat when a new release of the mod is out, with a button to install it. Needs network features.",
                 ConfigCategory.GENERAL,
                 () -> AlpakaConfig.instance.updateNotificationsEnabled,
                 v -> { AlpakaConfig.instance.updateNotificationsEnabled = v; AlpakaConfig.save(); },
-                "update new version release github download notify check outdated"));
+                "update new version release github download install notify check outdated"));
 
         OPTIONS.add(new ConfigOption("notification_hold", "Notification Duration",
                 "How long a notice stays in the corner before sliding away.",
@@ -105,6 +105,13 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.customMainMenuEnabled,
                 v -> { AlpakaConfig.instance.customMainMenuEnabled = v; AlpakaConfig.save(); },
                 "custom main menu title screen hypixel start launch background GUI"));
+
+        OPTIONS.add(new ConfigOption("custom_main_menu_parallax", "Main Menu Parallax",
+                "The custom main menu's background moves with the mouse.",
+                ConfigCategory.GENERAL,
+                () -> AlpakaConfig.instance.customMainMenuParallax,
+                v -> { AlpakaConfig.instance.customMainMenuParallax = v; AlpakaConfig.save(); },
+                "custom main menu parallax background mouse move motion depth effect title screen"));
 
         OPTIONS.add(new ConfigOption("hud_editor", "HUD Editor",
                 "Move and resize every HUD - session, boss timer, world age, inventory, avatar.",
@@ -395,7 +402,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VISUALS,
                 () -> (float) AlpakaConfig.instance.chatHistoryLimit,
                 v -> { AlpakaConfig.instance.chatHistoryLimit = Math.round(v / 500.0f) * 500; AlpakaConfig.save(); },
-                500.0f, 20000.0f, val -> String.format(Locale.ROOT, "%,d lines", Math.round(val / 500.0f) * 500),
+                500.0f, 5000.0f, val -> String.format(Locale.ROOT, "%,d lines", Math.round(val / 500.0f) * 500),
                 "chat history length limit lines messages count slider"));
 
         OPTIONS.add(new ConfigOption("compact_chat", "Compact Chat",
@@ -473,6 +480,15 @@ public class AlpakaConfigRegistry {
                 val -> Math.round(val) + "%",
                 "screenshot preview size width thumbnail"));
 
+        OPTIONS.add(new ConfigOption("screenshot_preview_click", "Preview Click",
+                "What clicking the preview does while a menu or the chat is open.",
+                ConfigCategory.VISUALS,
+                () -> (float) AlpakaConfig.instance.screenshotPreviewClickAction,
+                v -> { AlpakaConfig.instance.screenshotPreviewClickAction = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (net.alpaka.addons.features.chat.ScreenshotMessageFeature.PREVIEW_CLICK_NAMES.length - 1),
+                val -> net.alpaka.addons.features.chat.ScreenshotMessageFeature.PREVIEW_CLICK_NAMES[Math.clamp(Math.round(val), 0, net.alpaka.addons.features.chat.ScreenshotMessageFeature.PREVIEW_CLICK_NAMES.length - 1)],
+                "screenshot preview click mouse open copy folder action thumbnail").choices(net.alpaka.addons.features.chat.ScreenshotMessageFeature.PREVIEW_CLICK_NAMES));
+
         OPTIONS.add(new ConfigOption("screenshot_chat_buttons", "Chat Buttons",
                 "Open, Copy and Delete buttons on the screenshot notice in chat.",
                 ConfigCategory.VISUALS,
@@ -490,6 +506,9 @@ public class AlpakaConfigRegistry {
                         new ConfigOption.ToggleEntry("Open button",
                                 () -> AlpakaConfig.instance.screenshotShowOpen,
                                 v -> { AlpakaConfig.instance.screenshotShowOpen = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Folder button",
+                                () -> AlpakaConfig.instance.screenshotShowFolder,
+                                v -> { AlpakaConfig.instance.screenshotShowFolder = v; AlpakaConfig.save(); }),
                         new ConfigOption.ToggleEntry("Copy button",
                                 () -> AlpakaConfig.instance.screenshotShowCopy,
                                 v -> { AlpakaConfig.instance.screenshotShowCopy = v; AlpakaConfig.save(); }),
@@ -497,7 +516,7 @@ public class AlpakaConfigRegistry {
                                 () -> AlpakaConfig.instance.screenshotShowDelete,
                                 v -> { AlpakaConfig.instance.screenshotShowDelete = v; AlpakaConfig.save(); })
                 ),
-                "screenshot line parts file name open copy delete button show hide"));
+                "screenshot line parts file name open folder copy delete button show hide"));
 
         OPTIONS.add(new ConfigOption("auto_copy_screenshots", "Auto Copy Screenshots",
                 "Copies every screenshot to the clipboard right away.",

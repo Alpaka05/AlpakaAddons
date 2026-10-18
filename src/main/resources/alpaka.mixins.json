@@ -56,7 +56,8 @@
     "KeyboardInputMixin",
     "ChatGraphicsAccessClipMixin",
     "ClientLevelMixin",
-    "PictureInPictureRendererMixin"
+    "PictureInPictureRendererMixin",
+    "NameTagFeatureRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

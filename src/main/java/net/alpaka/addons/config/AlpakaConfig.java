@@ -150,6 +150,8 @@ public class AlpakaConfig {
     public boolean cleanBlazeNameTags = false;
     /** During the player's own Blaze slayer boss, a glowing column over each fire pit block. */
     public boolean blazeFirePitsEnabled = true;
+    /** ARGB color of the fire pit column; its alpha scales the column's own fade. Default hot red-orange. */
+    public int blazeFirePitColor = 0xFFFF4714;
     /**
      * Hides Hypixel's slayer chatter - quest started/complete, level-ups, the radio lines.
      *

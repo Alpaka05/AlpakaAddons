@@ -31,7 +31,9 @@ class ChatTabTest {
             "[MVP+] Someone was promoted from Member to Officer  | GUILD",
             "The guild has completed Tier 3 of this week's Guild Quest! | GUILD",
             "RARE DROP! (Enchanted Book) +250% ✯ Magic Find      | ALL",
-            "[NPC] Maddox: Your quest is ready                   | ALL",
+            "[NPC] Maddox: Your quest is ready                   | NPC",
+            "[NPC] Kat: I'm currently taking care of your pet!   | NPC",
+            "[MVP+] Someone: [NPC] Maddox: fake                  | ALL",
     })
     void sortsLinesOntoTheirTab(String text, ChatTab tab) {
         assertEquals(tab, ChatTab.classify(text.strip()));

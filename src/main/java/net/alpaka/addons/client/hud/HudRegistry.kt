@@ -1,5 +1,6 @@
 package net.alpaka.addons.client.hud
 
+import net.alpaka.addons.features.chat.ChatHudElement
 import net.alpaka.addons.features.inventoryhud.InventoryHudElement
 import net.alpaka.addons.features.playermodel.PlayerModelHudElement
 import net.alpaka.addons.features.slayer.SlayerHudElement
@@ -16,6 +17,8 @@ object HudRegistry {
 
     @JvmField
     val ELEMENTS: List<HudElement> = listOf(
+        // First, so a HUD lying over the chat's large box is the one that gets grabbed.
+        ChatHudElement,
         WorldAgeHudElement,
         SlayerHudElement,
         SlayerTimerHudElement,

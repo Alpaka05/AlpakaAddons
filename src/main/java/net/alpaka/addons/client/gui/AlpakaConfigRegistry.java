@@ -415,6 +415,20 @@ public class AlpakaConfigRegistry {
                 0.0f, 100.0f, val -> val == 0.0f ? "None (0%)" : String.format(Locale.ROOT, "%.0f%%", val),
                 "chat blur strength radius amount intensity frosted glass background lighter clearer sharp"));
 
+        OPTIONS.add(new ConfigOption("chat_scrollbar", "Better Scrollbar",
+                "Gives the open chat a wider, rounded scrollbar that you can drag with the mouse.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatScrollbarEnabled,
+                v -> { AlpakaConfig.instance.chatScrollbarEnabled = v; AlpakaConfig.save(); },
+                "chat scrollbar scroll bar drag thumb wide rounded mouse grab"));
+
+        OPTIONS.add(new ConfigOption("chat_movable", "Movable Chat",
+                "Makes the chat a HUD element, so you can move and resize it in the HUD editor.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatMovable,
+                v -> { AlpakaConfig.instance.chatMovable = v; AlpakaConfig.save(); },
+                "chat move movable position hud editor drag place resize scale element"));
+
         OPTIONS.add(new ConfigOption("Chat", ConfigCategory.VISUALS));
 
         OPTIONS.add(new ConfigOption("scoreboard_blur", "Blurred Scoreboard Background",

@@ -827,6 +827,12 @@ public class AlpakaConfig {
             }
         }
 
+        // Hide Name Tag Background became a color; hiding is now zero opacity.
+        if (instance.hideNameTagBackground != null) {
+            if (instance.hideNameTagBackground) instance.nameTagBackgroundColor = 0;
+            instance.hideNameTagBackground = null;
+        }
+
         // The menu's default accent moved from warm gold to teal. A config still on the exact old
         // default never chose gold, so it follows the new default; any other color is a choice.
         if (instance.menuAccentColor == 0xFFE5B849) {
@@ -837,12 +843,6 @@ public class AlpakaConfig {
         // alive and made every re-layout slow, so it ends at 5000 now.
         if (instance.chatHistoryLimit > 5000) {
             instance.chatHistoryLimit = 5000;
-        }
-
-        // Hide Name Tag Background became a color; hiding is now zero opacity.
-        if (instance.hideNameTagBackground != null) {
-            if (instance.hideNameTagBackground) instance.nameTagBackgroundColor = 0;
-            instance.hideNameTagBackground = null;
         }
 
         if (instance.slayerBossMap == null) {

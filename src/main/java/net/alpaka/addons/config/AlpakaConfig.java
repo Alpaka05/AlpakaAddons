@@ -188,6 +188,8 @@ public class AlpakaConfig {
     public boolean blazeMuteAllWorldAudio = false;
     public float lowHpHeartbeatThreshold = 0.30f;
     public int menuAccentColor = 0xFF29B6B2; // Default teal
+    /** The player's own presets in the color picker, ARGB, oldest first; shared by every color option. */
+    public java.util.List<Integer> customColorPresets = new java.util.ArrayList<>();
     /**
      * Index into {@code GuiFont.NAMES}: the typeface the Alpaka menus are written in. 0 is the
      * vanilla pixel font; the default is Poppins.

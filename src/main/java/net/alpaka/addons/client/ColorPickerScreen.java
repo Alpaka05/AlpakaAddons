@@ -10,6 +10,7 @@ import net.alpaka.addons.client.gui.GuiFont;
 import net.alpaka.addons.client.gui.Hsv;
 import net.alpaka.addons.client.gui.ModernGuiUtils;
 import net.alpaka.addons.client.gui.RoundedImageRenderState;
+import net.alpaka.addons.config.AlpakaConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.render.TextureSetup;
@@ -31,7 +32,8 @@ import static net.alpaka.addons.client.gui.AlpakaStyle.inside;
  *
  * Left, a color wheel: the hue runs round it and the saturation out from its grey middle, and a
  * click or drag puts the point anywhere on it. Right, the color as it is now with its hex code to
- * type into, a brightness and an opacity slider, and a row of presets. Nothing is applied until
+ * type into, a brightness and an opacity slider, and the presets: the built-in ones, then the
+ * player's own, then a plus that saves the color now as one more. Nothing is applied until
  * Save; Escape or Cancel leave the option as it was, and Reset in the header goes back to the
  * option's default.
  */
@@ -70,6 +72,14 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
             0xFF00E676, // Green
             0xFFFFFFFF, // White
     };
+
+    /** Own presets beyond this push the oldest out; with the plus that fills the second row. */
+    private static final int MAX_CUSTOM = 9;
+    private static final int PRESETS_PER_ROW = 10;
+
+    /** The slot the mouse rests on, and since when, for the tooltip; -1 for none. */
+    private int hoveredSlot = -1;
+    private long hoverSince = 0L;
 
     public ColorPickerScreen(Screen parent, String title, int initialColor, Consumer<Integer> onSave) {
         this(parent, title, initialColor, null, onSave);
@@ -124,6 +134,47 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
                 setColor((int) Long.parseUnsignedLong(clean, 16));
             }
         } catch (NumberFormatException ignored) {}
+    }
+
+    // ---- Presets --------------------------------------------------------------------------------
+
+    private static java.util.List<Integer> customPresets() {
+        AlpakaConfig cfg = AlpakaConfig.instance;
+        if (cfg.customColorPresets == null) cfg.customColorPresets = new java.util.ArrayList<>();
+        return cfg.customColorPresets;
+    }
+
+    /** The built-in presets, then the player's own. */
+    private static int slotCount() {
+        return PRESETS.length + customPresets().size();
+    }
+
+    private static int slotColor(int i) {
+        return i < PRESETS.length ? PRESETS[i] : customPresets().get(i - PRESETS.length);
+    }
+
+    private boolean isPreset(int color) {
+        for (int i = 0; i < slotCount(); i++) {
+            if (slotColor(i) == color) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Saves the color now as a preset. It is kept at once, whether the picker is then saved or
+     * cancelled: the presets are a palette of their own, not part of the option being edited.
+     */
+    private void addCurrentAsPreset() {
+        if (isPreset(currentColor())) return;
+        java.util.List<Integer> custom = customPresets();
+        while (custom.size() >= MAX_CUSTOM) custom.remove(0);
+        custom.add(currentColor());
+        AlpakaConfig.save();
+    }
+
+    private static void removeCustomPreset(int slot) {
+        customPresets().remove(slot - PRESETS.length);
+        AlpakaConfig.save();
     }
 
     // ---- The wheel's picture --------------------------------------------------------------------
@@ -181,7 +232,7 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
     private static final int PREF_W = 360;
     private static final int PREF_H = 216;
     private static final int MAX_WHEEL = 148;
-    private static final int SWATCH = 12;
+    private static final int SWATCH = 13;
     private static final int SLIDER_ROW_H = 28;
     private static final int FIELD_H = 16;
     private static final int PREVIEW_W = 28;
@@ -232,8 +283,8 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         // The track's round ends reach 3 px past its ends, so it is inset to stay in the column.
         int trackX() { return rightX + 3; }
         int trackW() { return rightW - 6; }
-        int swatchX(int i) { return rightX + i * (rightW - SWATCH) / (PRESETS.length - 1); }
-        int swatchY() { return presetLabelY + 12; }
+        int swatchX(int i) { return rightX + (i % PRESETS_PER_ROW) * (rightW - SWATCH) / (PRESETS_PER_ROW - 1); }
+        int swatchY(int i) { return presetLabelY + 12 + (i / PRESETS_PER_ROW) * (SWATCH + 6); }
     }
 
     // ---- Drawing --------------------------------------------------------------------------------
@@ -284,18 +335,40 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         slider(graphics, l, 0, "Brightness", hsv.val(), 0xFF000000, full, mouseX, mouseY, drag == Drag.BRIGHTNESS);
         slider(graphics, l, 1, "Opacity", a / 255.0f, AlpakaStyle.ROW_SELECTED, 0xFF000000 | rgb, mouseX, mouseY, drag == Drag.OPACITY);
 
-        // Presets, the current one ringed.
+        // Presets, the current one ringed, and the plus after the last one.
         AlpakaStyle.groupLabel(graphics, this.font, "Presets", l.rightX(), l.presetLabelY());
-        for (int i = 0; i < PRESETS.length; i++) {
+        int slots = slotCount();
+        boolean alreadyPreset = isPreset(currentColor());
+        int hovered = -1;
+        for (int i = 0; i <= slots; i++) {
             int sx = l.swatchX(i);
-            int sy = l.swatchY();
-            boolean hover = inside(mouseX, mouseY, sx, sy, SWATCH, SWATCH);
-            boolean current = PRESETS[i] == currentColor();
+            int sy = l.swatchY(i);
+            boolean hover = inside(mouseX, mouseY, sx - 2, sy - 2, SWATCH + 4, SWATCH + 4);
+            if (hover) hovered = i;
+            int round = (SWATCH + 1) / 2;
+            if (i == slots) {
+                // The plus: an empty circle, muted while the color is a preset already.
+                int line = hover && !alreadyPreset ? accent : AlpakaStyle.TEXT_MUTED;
+                if (hover && !alreadyPreset) {
+                    ModernGuiUtils.drawRoundedRect(graphics, sx, sy, SWATCH, SWATCH, round, AlpakaStyle.ROW_HOVER);
+                }
+                ModernGuiUtils.drawRoundedOutline(graphics, sx, sy, SWATCH, SWATCH, round,
+                        alreadyPreset ? AlpakaStyle.DIVIDER : line);
+                int plus = alreadyPreset ? AlpakaStyle.DIVIDER : line;
+                ModernGuiUtils.drawRect(graphics, sx + 3, sy + SWATCH / 2, SWATCH - 6, 1, plus);
+                ModernGuiUtils.drawRect(graphics, sx + SWATCH / 2, sy + 3, 1, SWATCH - 6, plus);
+                continue;
+            }
+            boolean current = slotColor(i) == currentColor();
             if (current || hover) {
-                ModernGuiUtils.drawRoundedOutline(graphics, sx - 2, sy - 2, SWATCH + 4, SWATCH + 4, SWATCH / 2 + 2,
+                ModernGuiUtils.drawRoundedOutline(graphics, sx - 2, sy - 2, SWATCH + 4, SWATCH + 4, round + 2,
                         current ? accent : AlpakaStyle.TEXT_MUTED);
             }
-            ModernGuiUtils.drawRoundedRect(graphics, sx, sy, SWATCH, SWATCH, SWATCH / 2, PRESETS[i]);
+            ModernGuiUtils.drawRoundedRect(graphics, sx, sy, SWATCH, SWATCH, round, slotColor(i));
+        }
+        if (hovered != hoveredSlot) {
+            hoveredSlot = hovered;
+            hoverSince = System.currentTimeMillis();
         }
 
         // Cancel and Save.
@@ -305,6 +378,12 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         AlpakaStyle.button(graphics, this.font, l.saveX(), l.btnY(), l.btnW(), AlpakaStyle.BUTTON_H, "Save", hoverSave, ButtonKind.PRIMARY);
 
         AlpakaStyle.endOpen(graphics, pushed);
+        if (hoveredSlot >= PRESETS.length && System.currentTimeMillis() - hoverSince >= AlpakaStyle.TOOLTIP_DELAY_MS) {
+            String tip = hoveredSlot < slots ? "Right-click to remove this preset."
+                    : alreadyPreset ? "This color is a preset already."
+                    : "Save the current color as a preset.";
+            AlpakaStyle.tooltip(graphics, this.font, this.width, this.height, mouseX, mouseY, tip);
+        }
         // Notices over the window, as over the config menu.
         net.alpaka.addons.features.notification.AlpakaNotifications.renderOverScreen(graphics);
     }
@@ -334,9 +413,18 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         double mouseX = event.x();
         double mouseY = event.y();
+        Layout l = Layout.of(this.width, this.height);
+        if (event.button() == 1) {
+            for (int i = PRESETS.length; i < slotCount(); i++) {
+                if (inside(mouseX, mouseY, l.swatchX(i) - 2, l.swatchY(i) - 2, SWATCH + 4, SWATCH + 4)) {
+                    AlpakaStyle.click();
+                    removeCustomPreset(i);
+                    return true;
+                }
+            }
+        }
         if (event.button() != 0) return super.mouseClicked(event, doubleClick);
 
-        Layout l = Layout.of(this.width, this.height);
         boolean wasHex = hexFocused;
         hexFocused = false;
 
@@ -359,10 +447,16 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         }
         syncHexFromColor();
 
-        for (int i = 0; i < PRESETS.length; i++) {
-            if (inside(mouseX, mouseY, l.swatchX(i) - 2, l.swatchY() - 2, SWATCH + 4, SWATCH + 4)) {
+        for (int i = 0; i <= slotCount(); i++) {
+            if (inside(mouseX, mouseY, l.swatchX(i) - 2, l.swatchY(i) - 2, SWATCH + 4, SWATCH + 4)) {
+                if (i == slotCount()) {
+                    if (isPreset(currentColor())) return true;
+                    AlpakaStyle.click();
+                    addCurrentAsPreset();
+                    return true;
+                }
                 AlpakaStyle.click();
-                setColor(PRESETS[i]);
+                setColor(slotColor(i));
                 syncHexFromColor();
                 return true;
             }

@@ -395,7 +395,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VISUALS,
                 () -> (float) AlpakaConfig.instance.chatHistoryLimit,
                 v -> { AlpakaConfig.instance.chatHistoryLimit = Math.round(v / 500.0f) * 500; AlpakaConfig.save(); },
-                500.0f, 20000.0f, val -> String.format(Locale.ROOT, "%,d lines", Math.round(val / 500.0f) * 500),
+                500.0f, 5000.0f, val -> String.format(Locale.ROOT, "%,d lines", Math.round(val / 500.0f) * 500),
                 "chat history length limit lines messages count slider"));
 
         OPTIONS.add(new ConfigOption("compact_chat", "Compact Chat",

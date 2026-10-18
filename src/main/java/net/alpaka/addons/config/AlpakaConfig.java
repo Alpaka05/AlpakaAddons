@@ -430,7 +430,7 @@ public class AlpakaConfig {
     public boolean alwaysSprintEnabled = false;
     public boolean expandChatHistory = true;
     /** How many chat lines Expand Chat History keeps; vanilla keeps 100. */
-    public int chatHistoryLimit = 5000;
+    public int chatHistoryLimit = 1000;
     /** Hold the Peek Chat key to see the whole chat, scrollable, without opening it. */
     public boolean chatPeekEnabled = true;
     /** Peek Chat also works with an inventory or another menu open, drawn on top of it. */
@@ -810,6 +810,12 @@ public class AlpakaConfig {
         // default never chose gold, so it follows the new default; any other color is a choice.
         if (instance.menuAccentColor == 0xFFE5B849) {
             instance.menuAccentColor = 0xFF29B6B2;
+        }
+
+        // The history slider used to reach 20000; a longer history kept tens of megabytes of chat
+        // alive and made every re-layout slow, so it ends at 5000 now.
+        if (instance.chatHistoryLimit > 5000) {
+            instance.chatHistoryLimit = 5000;
         }
 
         if (instance.slayerBossMap == null) {

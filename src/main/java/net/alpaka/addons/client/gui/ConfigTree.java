@@ -95,7 +95,7 @@ public final class ConfigTree {
             // Visuals
             "fullbright", "clean_blaze", "blaze_fire_pits", "stop_blaze_spinning", "hide_hurt_overlay", "hide_mob_deaths",
             "render_hand_third_person", "smooth_perspective", "disable_front_perspective",
-            "container_bg_opacity", "inventory_snow", "scrollable_tooltips", "persistent_item_name", "wide_health_bar",
+            "container_bg_opacity", "inventory_snow", "scrollable_tooltips", "persistent_item_name", "old_master_stars", "wide_health_bar",
             "better_chat", "chat_search", "expand_chat_history", "compact_chat",
             "mention_notification", "chat_peek", "better_screenshot_message", "chat_tabs",
             "player_model_enabled", "inventory_hud_enabled",
@@ -178,7 +178,7 @@ public final class ConfigTree {
                     {"World", "fullbright", "block_overlay_enabled", "hide_hurt_overlay", "hide_mob_deaths",
                             "#Nametags", "render_hand_third_person", "smooth_perspective", "disable_front_perspective"},
                     {"Interface", "inventory_hud_enabled", "player_model_enabled", "container_bg_opacity",
-                            "scrollable_tooltips", "persistent_item_name", "wide_health_bar", "inventory_snow", "#Scoreboard"},
+                            "scrollable_tooltips", "persistent_item_name", "old_master_stars", "wide_health_bar", "inventory_snow", "#Scoreboard"},
                     {"Chat", "better_chat", "chat_tabs", "chat_search", "chat_peek", "compact_chat",
                             "expand_chat_history", "mention_notification", "better_screenshot_message"},
                     {"Viewmodel", "item_size_feature", "#Swing Customizations", "item_starlight", "item_motion_blur",

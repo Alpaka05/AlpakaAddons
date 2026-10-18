@@ -290,6 +290,36 @@ public class AlpakaClient implements ClientModInitializer {
                     )
                 )
             );
+
+            // The update the chat notice offers, for when that line has scrolled away. "install"
+            // still asks on a screen before anything is downloaded; it and "cancel" change the mods
+            // folder at exit, so like the other commands that change files they only run typed.
+            dispatcher.register(ClientCommands.literal("alpakaupdate")
+                .executes(context -> {
+                    Minecraft.getInstance().execute(net.alpaka.addons.utils.UpdateChecker::status);
+                    return 1;
+                })
+                .then(ClientCommands.literal("check")
+                    .executes(context -> {
+                        Minecraft.getInstance().execute(net.alpaka.addons.utils.UpdateChecker::checkNow);
+                        return 1;
+                    })
+                )
+                .then(ClientCommands.literal("install")
+                    .requires(FabricClientCommandSource::attended)
+                    .executes(context -> {
+                        Minecraft.getInstance().execute(net.alpaka.addons.utils.UpdateInstaller::confirm);
+                        return 1;
+                    })
+                )
+                .then(ClientCommands.literal("cancel")
+                    .requires(FabricClientCommandSource::attended)
+                    .executes(context -> {
+                        Minecraft.getInstance().execute(net.alpaka.addons.utils.UpdateInstaller::cancel);
+                        return 1;
+                    })
+                )
+            );
         });
     }
 

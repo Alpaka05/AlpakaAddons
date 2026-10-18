@@ -3,6 +3,10 @@ package net.alpaka.addons.compat;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.util.Collections;
+import java.util.Set;
+import java.util.WeakHashMap;
+import net.minecraft.client.renderer.state.gui.GuiElementRenderState;
 import net.fabricmc.loader.api.FabricLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +29,10 @@ import org.slf4j.LoggerFactory;
 public final class GnetumCompat {
     private static final Logger LOGGER = LoggerFactory.getLogger("AlpakaAddons/Gnetum");
     private static final String REASON = "AlpakaAddons blur panel samples the world behind it";
+
+    /** Weakly held: Gnetum drops its deferred elements when it has to catch up. */
+    private static final Set<GuiElementRenderState> DEFERRED_UNDERLAY =
+            Collections.newSetFromMap(new WeakHashMap<>());
 
     private static boolean resolved;
     private static MethodHandle rendering;
@@ -69,6 +77,38 @@ public final class GnetumCompat {
             rendering = null;
             return false;
         }
+    }
+
+    /**
+     * Whether Gnetum is drawing a HUD element it does not cache right now: it holds back what the
+     * element submits and adds it to the frame's own render state once its own pass is done.
+     */
+    public static boolean isDeferring() {
+        if (!resolve()) return false;
+        try {
+            return (boolean) rendering.invokeExact() && (boolean) uncached.invokeExact();
+        } catch (Throwable e) {
+            LOGGER.warn("Could not ask Gnetum whether it caches the current HUD element", e);
+            rendering = null;
+            return false;
+        }
+    }
+
+    /**
+     * Hands an element meant for the layer under the HUD through Gnetum's deferral. Gnetum only
+     * holds back what goes through {@code GuiRenderState.addGuiElement}; an element put straight
+     * into the layer would stay in Gnetum's own pass, drawn into its cleared framebuffer without
+     * the world to blur. So the element is submitted as a plain one and remembered here, and when
+     * Gnetum adds it to the frame's render state, the render state's mixin moves it into the layer
+     * ({@link #takeUnderlay}).
+     */
+    public static void deferUnderlay(GuiElementRenderState state) {
+        DEFERRED_UNDERLAY.add(state);
+    }
+
+    /** Whether this element, now added outside Gnetum's pass, was deferred for the layer under the HUD. */
+    public static boolean takeUnderlay(GuiElementRenderState state) {
+        return !DEFERRED_UNDERLAY.isEmpty() && !isDeferring() && DEFERRED_UNDERLAY.remove(state);
     }
 
     private static boolean resolve() {

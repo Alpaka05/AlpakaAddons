@@ -179,12 +179,12 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
 
     // ---- The wheel's picture --------------------------------------------------------------------
 
-    private static final int WHEEL_TEXTURE_SIZE = 256;
+    private static final int WHEEL_TEXTURE_SIZE = 512;
     private static final Identifier WHEEL_TEXTURE = Identifier.fromNamespaceAndPath("alpaka", "color_wheel");
     private static DynamicTexture wheelTexture;
 
     /**
-     * The wheel at full brightness, made once and kept: 256 KB is not worth making again for every
+     * The wheel at full brightness, made once and kept: 1 MB is not worth making again for every
      * picker. Red is to the right and the hues run counter-clockwise. The pixels outside the circle
      * carry the color of its rim, so the anti-aliased edge the rounded-image shader cuts stays that
      * color instead of fading through black; their alpha is 0 for the plain blit fallback.
@@ -273,8 +273,8 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
                     btnY, saveX, cancelX, btnW, resetX);
         }
 
-        int wheelCx() { return wheelX + wheelSize / 2; }
-        int wheelCy() { return wheelY + wheelSize / 2; }
+        double wheelCx() { return wheelX + wheelSize / 2.0; }
+        double wheelCy() { return wheelY + wheelSize / 2.0; }
         double wheelR() { return wheelSize / 2.0; }
         int hexX() { return rightX + PREVIEW_W + 6; }
         int hexW() { return rightX + rightW - hexX(); }
@@ -312,14 +312,10 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         if (shade > 0) ModernGuiUtils.drawRoundedRect(graphics, l.wheelX(), l.wheelY(), ws, ws, ws / 2, shade << 24);
         ModernGuiUtils.drawRoundedOutline(graphics, l.wheelX() - 1, l.wheelY() - 1, ws + 2, ws + 2, ws / 2 + 1, AlpakaStyle.LINE);
         double angle = hsv.hue() * 2.0 * Math.PI;
-        int knobX = (int) Math.round(l.wheelCx() + Math.cos(angle) * hsv.sat() * l.wheelR());
-        int knobY = (int) Math.round(l.wheelCy() - Math.sin(angle) * hsv.sat() * l.wheelR());
+        float knobX = (float) (l.wheelCx() + Math.cos(angle) * hsv.sat() * l.wheelR());
+        float knobY = (float) (l.wheelCy() - Math.sin(angle) * hsv.sat() * l.wheelR());
         boolean hoverWheel = overWheel(l, mouseX, mouseY);
-        int outer = hoverWheel || drag == Drag.WHEEL ? 12 : 11;
-        int inner = outer - 4;
-        ModernGuiUtils.drawRoundedRect(graphics, knobX - outer / 2 - 1, knobY - outer / 2 - 1, outer + 2, outer + 2, outer / 2 + 1, 0x60000000);
-        ModernGuiUtils.drawRoundedRect(graphics, knobX - outer / 2, knobY - outer / 2, outer, outer, outer / 2, AlpakaStyle.TEXT);
-        ModernGuiUtils.drawRoundedRect(graphics, knobX - inner / 2, knobY - inner / 2, inner, inner, inner / 2, 0xFF000000 | rgb);
+        AlpakaStyle.knob(graphics, knobX, knobY, hoverWheel || drag == Drag.WHEEL ? 12 : 11, rgb);
 
         // The color now, and its hex code to type into. hexInput mirrors the color whenever the field
         // is not being typed in (syncHexFromColor runs after every change and on leaving the field),

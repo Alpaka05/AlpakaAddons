@@ -2,7 +2,6 @@ package net.alpaka.addons.client.gui;
 
 import java.util.Locale;
 import net.alpaka.addons.features.viewmodel.ItemMotionBlurFeature;
-import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
 import net.alpaka.addons.features.damagetags.CustomDamageTagFeature;
@@ -149,13 +148,6 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.customMainMenuEnabled,
                 v -> { AlpakaConfig.instance.customMainMenuEnabled = v; AlpakaConfig.save(); },
                 "custom main menu title screen hypixel start launch background GUI hypixel-themed"));
-
-        OPTIONS.add(new ConfigOption("hud_editor", "HUD Editor",
-                "Moves and resizes every HUD: slayer session, boss timer, world age, inventory and player model. Also opens with /alpakahud.",
-                ConfigCategory.GENERAL,
-                "Open HUD Editor",
-                parent -> Minecraft.getInstance().gui.setScreen(new HudEditorScreen(parent)),
-                "hud editor position edit dragging screen drag move resize scale layout alpakahud avatar session"));
 
         OPTIONS.add(new ConfigOption("disable_all_features", "Disable All Features",
                 "Turns off every feature of the mod, after asking first.",

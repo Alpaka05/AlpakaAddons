@@ -474,11 +474,11 @@ public class AlpakaConfigRegistry {
         // Better Chat: everything that changes how the chat looks, its parts as its settings. The
         // background and font switches are registered with the other HUD style switches below.
         OPTIONS.add(new ConfigOption("better_chat", "Better Chat",
-                "Makes the chat look better: messages slide in, scrolling glides, a blurred background and the smooth font.",
+                "Makes the chat look better: it opens smoothly, messages slide in, scrolling glides, a blurred background and the smooth font.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.betterChatEnabled,
                 v -> { AlpakaConfig.instance.betterChatEnabled = v; AlpakaConfig.save(); GuiFont.refreshChat(); },
-                "better chat look design style smooth blur background font animation scroll main switch"));
+                "better chat look design style smooth blur background font animation scroll opening main switch"));
 
         OPTIONS.add(new ConfigOption("smooth_chat", "Smooth Chat",
                 "Slides and fades new messages in instead of showing them at once.",
@@ -494,6 +494,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.smoothChatStrength = Math.round(v); AlpakaConfig.save(); },
                 1.0f, 10.0f, v -> Math.round(v) + " / 10",
                 "smooth chat strength speed duration animation slow fast slider visible"));
+
+        OPTIONS.add(new ConfigOption("chat_open_animation", "Opening Animation",
+                "Opening the chat unrolls it smoothly from the input line instead of showing it at once.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatOpenAnimationEnabled,
+                v -> { AlpakaConfig.instance.chatOpenAnimationEnabled = v; AlpakaConfig.save(); },
+                "chat opening open animation smooth slide unroll fade appear input"));
 
         OPTIONS.add(new ConfigOption("chat_smooth_scroll", "Smooth Chat Scrolling",
                 "Makes scrolling the chat glide instead of jumping line by line.",

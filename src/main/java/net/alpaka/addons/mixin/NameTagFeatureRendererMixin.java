@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 
 /**
- * Every entity name tag - players, mobs, armor stands - is laid out here, so the two name tag
+ * Every entity name tag - players, mobs, armor stands - is laid out here, so the nametag
  * options for everyone sit on this one call. The own animated name tag draws itself and keeps its
  * own settings.
  */
@@ -17,8 +17,9 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 public class NameTagFeatureRendererMixin {
 
     /**
-     * Hide Name Tag Background: the dark box is nothing but the font's background color. A zero
-     * color makes the font skip the box, so the text is drawn as usual without it.
+     * Nametag Background Color: the dark box is nothing but the font's background color. Only a
+     * submit that has a box gets the chosen color - the see-through copy behind walls has none - and
+     * a zero opacity makes the font skip the box, so the text is drawn as usual without it.
      */
     @ModifyArg(
             method = "prepareText",
@@ -26,7 +27,9 @@ public class NameTagFeatureRendererMixin {
             index = 6
     )
     private static int alpaka$hideBackground(int backgroundColor) {
-        return AlpakaConfig.instance.hideNameTagBackground ? 0 : backgroundColor;
+        int color = AlpakaConfig.instance.nameTagBackgroundColor;
+        if (backgroundColor == 0 || color == AlpakaConfig.DEFAULT_NAME_TAG_BACKGROUND) return backgroundColor;
+        return (color >>> 24) == 0 ? 0 : color;
     }
 
     /**

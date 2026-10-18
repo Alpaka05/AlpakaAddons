@@ -166,8 +166,16 @@ public class AlpakaConfig {
     public boolean hideMobDeathsEnabled = false;
     /** With Hide Mob Deaths: also no puff of smoke when the server removes the body. */
     public boolean hideMobDeathSmoke = false;
-    /** Drops the dark box vanilla draws behind every name tag, so only the text is left. */
-    public boolean hideNameTagBackground = false;
+    /**
+     * The box behind every nametag. The default is vanilla's own box, which then stays vanilla's,
+     * accessibility opacity setting included; zero opacity drops the box and leaves only the text.
+     */
+    public int nameTagBackgroundColor = DEFAULT_NAME_TAG_BACKGROUND;
+    public static final int DEFAULT_NAME_TAG_BACKGROUND = 0x3F000000;
+    /** Legacy, before the background color. Read once on load and then cleared. */
+    public Boolean hideNameTagBackground = null;
+    /** Shows the player their own vanilla nametag in third person. */
+    public boolean showOwnNameTag = false;
     /** Gives the text of every name tag the usual drop shadow, which vanilla leaves off in the world. */
     public boolean nameTagTextShadow = false;
     public boolean smoothPerspectiveEnabled = true;
@@ -831,6 +839,12 @@ public class AlpakaConfig {
             instance.chatHistoryLimit = 5000;
         }
 
+        // Hide Name Tag Background became a color; hiding is now zero opacity.
+        if (instance.hideNameTagBackground != null) {
+            if (instance.hideNameTagBackground) instance.nameTagBackgroundColor = 0;
+            instance.hideNameTagBackground = null;
+        }
+
         if (instance.slayerBossMap == null) {
             instance.slayerBossMap = new HashMap<>();
         }
@@ -921,7 +935,8 @@ public class AlpakaConfig {
         this.stopBlazeSpinning = false;
         this.hideHurtOverlayEnabled = false;
         this.hideMobDeathsEnabled = false;
-        this.hideNameTagBackground = false;
+        this.nameTagBackgroundColor = DEFAULT_NAME_TAG_BACKGROUND;
+        this.showOwnNameTag = false;
         this.nameTagTextShadow = false;
         this.wideHealthBarEnabled = false;
         this.smoothPerspectiveEnabled = false;

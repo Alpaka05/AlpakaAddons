@@ -7,6 +7,7 @@ import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
 import net.alpaka.addons.features.damagetags.CustomDamageTagFeature;
 import net.alpaka.addons.features.etherwarp.EtherwarpOverlayFeature;
+import net.alpaka.addons.features.inventoryhud.InventoryHudVisibility;
 import net.alpaka.addons.features.nametag.CustomNameTagFeature;
 import net.alpaka.addons.features.notification.AlpakaNotifications;
 import net.alpaka.addons.features.playerscale.PlayerScaleFeature;
@@ -694,19 +695,15 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.inventoryHudAttachToHotbar = v; AlpakaConfig.save(); },
                 "inventory hud hotbar attach above merge dock position free center centre off: free position"));
 
-        OPTIONS.add(new ConfigOption("inventory_hud_always", "Always Visible",
-                "Keeps the inventory on screen. When off, only the Inventory HUD key shows it; the key is unbound by default, set it in Controls.",
+        OPTIONS.add(new ConfigOption("inventory_hud_visibility", "Visibility",
+                "When the inventory shows: always, briefly when an item is picked up or dropped, or only when you press the Inventory HUD key. The key is unbound by default; set it in Controls.",
                 ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.inventoryHudAlwaysVisible,
-                v -> { AlpakaConfig.instance.inventoryHudAlwaysVisible = v; AlpakaConfig.save(); },
-                "inventory hud always visible permanent keybind toggle hidden off: only unbound controls"));
-
-        OPTIONS.add(new ConfigOption("inventory_hud_on_change", "Show on Item Change",
-                "Slides the inventory up briefly when an item is picked up or dropped.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.inventoryHudShowOnItemChange,
-                v -> { AlpakaConfig.instance.inventoryHudShowOnItemChange = v; AlpakaConfig.save(); },
-                "inventory hud show on pickup drop item change peek temporary"));
+                () -> (float) AlpakaConfig.instance.inventoryHudVisibility,
+                v -> { AlpakaConfig.instance.inventoryHudVisibility = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (InventoryHudVisibility.NAMES.length - 1),
+                val -> InventoryHudVisibility.NAMES[Math.round(val)],
+                "inventory hud always visible permanent show on pickup drop item change peek temporary keybind key press toggle hidden unbound controls mode")
+                .choices(InventoryHudVisibility.NAMES));
 
         OPTIONS.add(new ConfigOption("inventory_hud_vanilla_texture", "Chest Style",
                 "Draws the panel as a three-row chest, using your resource pack.",

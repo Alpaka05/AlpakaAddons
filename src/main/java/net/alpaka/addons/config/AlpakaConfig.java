@@ -391,11 +391,14 @@ public class AlpakaConfig {
     public float inventoryHudScale = 1.0f;
     public boolean inventoryHudAttachToHotbar = true;
     /**
-     * Off for fresh installs: attached above the hotbar, an always-open panel sits where the player
-     * looks for health and the action bar. It still opens on an item change or the toggle key.
+     * When the panel shows: always, briefly on an item change, or only on the toggle key (see
+     * {@code InventoryHudVisibility}). Key press for fresh installs: attached above
+     * the hotbar, an always-open panel sits where the player looks for health and the action bar.
      */
-    public boolean inventoryHudAlwaysVisible = false;
-    public boolean inventoryHudShowOnItemChange = false;
+    public int inventoryHudVisibility = net.alpaka.addons.features.inventoryhud.InventoryHudVisibility.KEY_PRESS;
+    /** Legacy, before the visibility choice. Read once by {@link #migrateInventoryHudVisibility} and then cleared. */
+    public Boolean inventoryHudAlwaysVisible = null;
+    public Boolean inventoryHudShowOnItemChange = null;
     /** Backdrop strength behind the slots, in percent. 0 leaves only the gradient frame. */
     public float inventoryHudBackgroundOpacity = 70.0f;
     /**
@@ -894,6 +897,8 @@ public class AlpakaConfig {
             instance.menuFontNunitoApplied = true;
         }
 
+        instance.migrateInventoryHudVisibility();
+
         if (instance.slayerBossMap == null) {
             instance.slayerBossMap = new HashMap<>();
         }
@@ -934,6 +939,15 @@ public class AlpakaConfig {
             AlpakaAddons.LOGGER.warn("alpaka.json was unreadable and no backup could be read; using defaults.{}", where);
         }
         save();
+    }
+
+    /** The inventory HUD's two visibility switches became one choice. */
+    private void migrateInventoryHudVisibility() {
+        if (inventoryHudAlwaysVisible == null && inventoryHudShowOnItemChange == null) return;
+        inventoryHudVisibility = net.alpaka.addons.features.inventoryhud.InventoryHudVisibility.fromLegacy(
+                inventoryHudAlwaysVisible, inventoryHudShowOnItemChange);
+        inventoryHudAlwaysVisible = null;
+        inventoryHudShowOnItemChange = null;
     }
 
     /** The config in {@code file}, or null when it is missing, empty or cannot be parsed. */

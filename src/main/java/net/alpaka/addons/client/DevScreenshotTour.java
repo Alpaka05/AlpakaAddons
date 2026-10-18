@@ -434,7 +434,7 @@ public final class DevScreenshotTour {
         AlpakaConfig cfg = AlpakaConfig.instance;
         cfg.inventoryHudEnabled = true;
         cfg.inventoryHudAttachToHotbar = true;
-        cfg.inventoryHudAlwaysVisible = true;
+        cfg.inventoryHudVisibility = 0;
         cfg.worldAgeHudEnabled = true;
     }
 

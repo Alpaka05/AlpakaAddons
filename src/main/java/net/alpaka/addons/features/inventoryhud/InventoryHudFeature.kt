@@ -15,12 +15,12 @@ import org.lwjgl.glfw.GLFW
  * is attached there; a freely placed panel switches on and off without a fade.
  *
  * Three inputs feed one number, [openAmount]:
- *  - the "always visible" setting,
- *  - a brief auto-open when the inventory contents change, if that setting is on,
- *  - and the keybind, which flips the standing state that "always visible" sets.
+ *  - the visibility setting: always, on item change, or on key press,
+ *  - a brief auto-open when the inventory contents change, if "on item change" is chosen,
+ *  - and the keybind, which flips the standing state that "always" sets.
  *
- * The keybind flipping rather than forcing is what makes one key sensible in both configurations:
- * with "always visible" on it hides the HUD, with it off it reveals the HUD, and either way pressing
+ * The keybind flipping rather than forcing is what makes one key sensible in every mode: with
+ * "always" it hides the HUD, in the other two it reveals the HUD, and either way pressing
  * again returns to normal. While flipped, item changes leave the HUD alone: a manual hide survives
  * an item pickup, and a manual reveal is not hidden by one.
  *
@@ -232,10 +232,11 @@ object InventoryHudFeature {
         // The keybind flips the standing state only. Flipping the peek along with it would turn
         // "show on item change" inside out once the key had been pressed: up all the time, and
         // gone exactly when an item arrives.
+        val always = cfg.inventoryHudVisibility == InventoryHudVisibility.ALWAYS
         val shown = if (inverted) {
-            !cfg.inventoryHudAlwaysVisible
+            !always
         } else {
-            cfg.inventoryHudAlwaysVisible || (cfg.inventoryHudShowOnItemChange && peeking())
+            always || (cfg.inventoryHudVisibility == InventoryHudVisibility.ITEM_CHANGE && peeking())
         }
         return if (shown) 1.0f else 0.0f
     }

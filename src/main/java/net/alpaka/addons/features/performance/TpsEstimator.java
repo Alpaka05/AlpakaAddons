@@ -1,74 +1,90 @@
 package net.alpaka.addons.features.performance;
 
 /**
- * The server's ticks per second, worked out from the time updates it sends anyway.
+ * A server's ticks per second, from packets that arrive at a known number of ticks apart.
  *
- * A server sends its game time once every 20 ticks (Hypixel included), so the ticks between two
- * updates over the real time between them is its tick rate - the same signal Odin and other
- * SkyBlock mods read, and it costs no packet of our own. The game time in the update is used when it
- * moves sensibly; where a server pins or jumps it, the update counts as the usual 20 ticks.
+ * Fed with how many ticks each packet stands for and when it arrived, it reports the ticks over
+ * the real time they took across the last {@link #WINDOW_MS} ms - the average SkyHanni shows, over
+ * about 100 ticks. One late or bunched packet moves that by a fraction, so the reading stays put
+ * while the server runs steadily.
  *
- * The rate is taken over the last few updates rather than the last two, so one late packet does
- * not flash a dip. When updates stop coming, the silence counts against the rate, so a frozen
- * server reads as falling towards 0 instead of keeping its last value.
+ * When packets stop for longer than a stall (a second, or a few of the source's usual gaps when
+ * those are longer), the silence is added to the time, so a frozen server reads as falling instead
+ * of keeping its last value. Short gaps between packets never count against it.
  *
  * Pure arithmetic over timestamps passed in, so it can be tested without a game.
  */
 public final class TpsEstimator {
-    /** Updates kept: five intervals, about five seconds at the usual one update a second. */
-    static final int WINDOW = 6;
-    /** The ticks between two updates when the server's game time cannot be trusted. */
-    static final long TICKS_PER_UPDATE = 20L;
-    /** A game time step beyond this is a jump (a new server, a time set), not ticks that ran. */
-    static final long MAX_PLAUSIBLE_STEP = 1200L;
+    /** The span the rate is averaged over: about 100 ticks at full speed. */
+    static final long WINDOW_MS = 5_000L;
+    /** Packets kept; enough for one a tick over the whole window. */
+    static final int CAPACITY = 128;
+    /** Silence shorter than this is a normal gap, never a stall. */
+    static final long MIN_STALL_MS = 1_000L;
+    /** For slow sources, a stall is this many of their usual gaps. */
+    static final int STALL_GAPS = 3;
     /** A gap this long is a pause or a reconnect; the window starts over after it. */
     static final long RESET_GAP_MS = 30_000L;
     static final float MAX_TPS = 20.0f;
 
-    private final long[] times = new long[WINDOW];
-    private final long[] ticks = new long[WINDOW];
+    private final long[] times = new long[CAPACITY];
+    private final long[] ticks = new long[CAPACITY];
     private int count = 0;
     private int head = 0;
-    private long lastGameTime = Long.MIN_VALUE;
     private long tickTotal = 0L;
 
-    /** A time update arrived at {@code nowMs} carrying the server's {@code gameTime}. */
-    public synchronized void onTimeUpdate(long gameTime, long nowMs) {
+    /** A packet standing for {@code tickCount} ticks since the one before arrived at {@code nowMs}. */
+    public synchronized void onTicks(long tickCount, long nowMs) {
         if (count > 0 && nowMs - times[newest()] > RESET_GAP_MS) reset();
-        if (count > 0) {
-            long step = gameTime - lastGameTime;
-            tickTotal += step >= 1 && step <= MAX_PLAUSIBLE_STEP ? step : TICKS_PER_UPDATE;
-        }
-        lastGameTime = gameTime;
+        // The first packet only marks a start; the ticks it stands for ran before anything was timed.
+        if (count > 0) tickTotal += tickCount;
         times[head] = nowMs;
         ticks[head] = tickTotal;
-        head = (head + 1) % WINDOW;
-        if (count < WINDOW) count++;
+        head = (head + 1) % CAPACITY;
+        if (count < CAPACITY) count++;
     }
 
-    /** The tick rate at {@code nowMs}, or NaN until two updates have arrived. */
+    /** The tick rate at {@code nowMs}, or NaN until two packets have arrived. */
     public synchronized float tps(long nowMs) {
         if (count < 2) return Float.NaN;
         int newest = newest();
-        int oldest = (head - count + WINDOW) % WINDOW;
+        // The oldest packet still inside the window, but at least the one before the newest.
+        int oldest = (newest - 1 + CAPACITY) % CAPACITY;
+        int intervals = 1;
+        for (int i = 2; i < count; i++) {
+            int candidate = (newest - i + CAPACITY) % CAPACITY;
+            if (times[newest] - times[candidate] > WINDOW_MS) break;
+            oldest = candidate;
+            intervals = i;
+        }
         long span = times[newest] - times[oldest];
         long tickSpan = ticks[newest] - ticks[oldest];
         if (span <= 0) return MAX_TPS;
-        // Silence past the usual interval is time in which no tick was reported.
-        long usual = span / (count - 1);
-        long overdue = Math.max(0L, nowMs - times[newest] - usual);
-        float rate = tickSpan * 1000.0f / (span + overdue);
+
+        long silence = nowMs - times[newest];
+        long stall = Math.max(MIN_STALL_MS, STALL_GAPS * span / intervals);
+        if (silence > stall) span += silence;
+        float rate = tickSpan * 1000.0f / span;
         return Math.max(0.0f, Math.min(MAX_TPS, rate));
+    }
+
+    /** When the last packet arrived, or {@link Long#MIN_VALUE} before the first. */
+    public synchronized long lastPacketMs() {
+        return count == 0 ? Long.MIN_VALUE : times[newest()];
+    }
+
+    /** Packets counted since the last reset, up to {@link #CAPACITY}. */
+    public synchronized int packets() {
+        return count;
     }
 
     public synchronized void reset() {
         count = 0;
         head = 0;
         tickTotal = 0L;
-        lastGameTime = Long.MIN_VALUE;
     }
 
     private int newest() {
-        return (head - 1 + WINDOW) % WINDOW;
+        return (head - 1 + CAPACITY) % CAPACITY;
     }
 }

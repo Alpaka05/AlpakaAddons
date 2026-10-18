@@ -16,6 +16,7 @@
     "GuiMixin",
     "HudMixin",
     "ClientPacketListenerPerformanceMixin",
+    "ClientCommonPacketListenerPerformanceMixin",
     "HudOverlayAccessor",
     "PlayerTabOverlayAccessor",
     "WideHealthBarMixin",

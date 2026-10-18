@@ -13,8 +13,10 @@ import net.minecraft.util.Util;
  * <ul>
  *   <li>FPS is vanilla's own counter ({@link Minecraft#getFps()}), which the game updates once a
  *       second anyway; reading it costs nothing per frame.</li>
- *   <li>TPS comes from the time updates every server sends once a second; see
- *       {@link TpsEstimator}. No packet of our own.</li>
+ *   <li>TPS is counted as SkyHanni counts it: Hypixel sends a ping packet every server tick, so
+ *       the ticks over the time they took, averaged over about 100 of them, is the tick rate.
+ *       Where a server does not ping every tick (vanilla servers, singleplayer), the time updates
+ *       every server sends once a second, 20 ticks apart, stand in. No packet of our own.</li>
  *   <li>Ping is the round trip of a ping request, the one vanilla's F3 network chart sends every
  *       tick. Any answer counts, so while F3's chart or another mod already measures, nothing more
  *       goes out. Otherwise one request leaves every {@link #PROBE_INTERVAL_MS} ms, and only while
@@ -31,7 +33,17 @@ public final class PerformanceStats {
     /** The HUD counts as on screen this long after it was last drawn. */
     private static final long SHOWN_GRACE_MS = 1_500L;
 
-    private static final TpsEstimator TPS = new TpsEstimator();
+    /** Below this many pings a second the server is not pinging every tick, or barely ticking. */
+    private static final float MIN_TICK_PINGS_PER_SECOND = 4.0f;
+    /** A time update's game time step beyond this is a jump (a new server, a time set), not ticks that ran. */
+    private static final long MAX_PLAUSIBLE_STEP = 1_200L;
+    private static final long TICKS_PER_TIME_UPDATE = 20L;
+
+    /** One entry per server tick, from the pings Hypixel sends each tick. */
+    private static final TpsEstimator TICK_PINGS = new TpsEstimator();
+    /** One entry per time update, for servers without a ping every tick. */
+    private static final TpsEstimator TIME_UPDATES = new TpsEstimator();
+    private static long lastGameTime = Long.MIN_VALUE;
 
     /** Written on the network thread, where answers are handled; read on the render thread. */
     private static volatile int pingMs = -1;
@@ -39,10 +51,11 @@ public final class PerformanceStats {
     private static long lastProbeMs = Long.MIN_VALUE / 2;
     private static long lastShownMs = Long.MIN_VALUE / 2;
     /**
-     * The time update last counted. The packet is handled twice - first on the network thread, then
-     * again on the client thread it is handed to - and must only count once.
+     * The packets last counted. Each is handled twice - first on the network thread, then again on
+     * the client thread it is handed to - and must only count once.
      */
     private static volatile Object lastTimePacket = null;
+    private static volatile Object lastServerPing = null;
 
     private PerformanceStats() {}
 
@@ -53,17 +66,30 @@ public final class PerformanceStats {
     }
 
     private static void reset() {
-        TPS.reset();
+        TICK_PINGS.reset();
+        TIME_UPDATES.reset();
+        lastGameTime = Long.MIN_VALUE;
         pingMs = -1;
         lastAnswerMs = Long.MIN_VALUE / 2;
         lastTimePacket = null;
+        lastServerPing = null;
     }
 
     /** From the packet listener, for every time update the server sends. */
     public static void onTimeUpdate(Object packet, long gameTime) {
         if (packet == lastTimePacket) return;
         lastTimePacket = packet;
-        TPS.onTimeUpdate(gameTime, Util.getMillis());
+        long step = gameTime - lastGameTime;
+        lastGameTime = gameTime;
+        // Where a server pins or jumps its game time, the update counts as the usual 20 ticks.
+        TIME_UPDATES.onTicks(step >= 1 && step <= MAX_PLAUSIBLE_STEP ? step : TICKS_PER_TIME_UPDATE, Util.getMillis());
+    }
+
+    /** From the packet listener, for every ping the server sends; Hypixel sends one each tick. */
+    public static void onServerPing(Object packet) {
+        if (packet == lastServerPing) return;
+        lastServerPing = packet;
+        TICK_PINGS.onTicks(1L, Util.getMillis());
     }
 
     /** From the packet listener, for every answer to a ping request, ours or not. */
@@ -104,6 +130,12 @@ public final class PerformanceStats {
 
     /** The server's tick rate, or NaN until it is known. */
     public static float tps() {
-        return TPS.tps(Util.getMillis());
+        long now = Util.getMillis();
+        float fromPings = TICK_PINGS.tps(now);
+        // Pings a few times a second at most are a server that only pings now and then, not every
+        // tick; then, and while a server barely ticks at all, the time updates tell the rate.
+        if (!Float.isNaN(fromPings) && fromPings >= MIN_TICK_PINGS_PER_SECOND) return fromPings;
+        float fromTime = TIME_UPDATES.tps(now);
+        return Float.isNaN(fromTime) ? fromPings : fromTime;
     }
 }

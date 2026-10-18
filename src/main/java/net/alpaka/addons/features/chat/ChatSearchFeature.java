@@ -24,15 +24,6 @@ public final class ChatSearchFeature {
 
     private static boolean searching;
     private static String query = "";
-    /** {@link #query} in lower case, the form every message is compared in. */
-    private static String needle = "";
-    /**
-     * Each message's text in lower case, while a search is open. Every key typed re-lays the whole
-     * history out, and flattening and lower-casing thousands of messages each time showed as a hitch
-     * per key. Weak, identity keys, and emptied when the search closes.
-     */
-    private static final java.util.Map<GuiMessage, String> LOWER_TEXT =
-            new com.google.common.collect.MapMaker().weakKeys().makeMap();
     /** The message that was being typed when the search started, restored on leaving it. */
     private static String draft = "";
 
@@ -48,8 +39,8 @@ public final class ChatSearchFeature {
 
     /** Whether the chat should lay this message out; every message while not searching. */
     public static boolean accepts(GuiMessage message) {
-        if (!searching || needle.isEmpty()) return true;
-        return LOWER_TEXT.computeIfAbsent(message, m -> m.content().getString().toLowerCase(Locale.ROOT)).contains(needle);
+        if (!searching || query.isEmpty()) return true;
+        return message.content().getString().toLowerCase(Locale.ROOT).contains(query.toLowerCase(Locale.ROOT));
     }
 
     public static void toggle(EditBox input) {
@@ -60,7 +51,6 @@ public final class ChatSearchFeature {
     private static void enter(EditBox input) {
         searching = true;
         query = "";
-        needle = "";
         if (input != null) {
             draft = input.getValue();
             input.setValue("");
@@ -74,8 +64,6 @@ public final class ChatSearchFeature {
         if (!searching) return;
         searching = false;
         query = "";
-        needle = "";
-        LOWER_TEXT.clear();
         if (input != null) {
             input.setSuggestion(null);
             input.setValue(draft);
@@ -87,7 +75,6 @@ public final class ChatSearchFeature {
     /** The search text changed. */
     public static void onEdited(String text, EditBox input) {
         query = text == null ? "" : text;
-        needle = query.toLowerCase(Locale.ROOT);
         if (input != null) input.setSuggestion(query.isEmpty() ? HINT : null);
         refresh();
     }

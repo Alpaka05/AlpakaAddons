@@ -76,12 +76,6 @@ public abstract class ChatComponentMixin {
         constant = @Constant(intValue = 100)
     )
     private int modifyMaxChatHistory(int original) {
-        return alpaka$historyLimit();
-    }
-
-    /** How many messages, and how many wrapped lines, the chat keeps. */
-    @Unique
-    private static int alpaka$historyLimit() {
         return AlpakaConfig.instance.expandChatHistory ? Math.max(100, AlpakaConfig.instance.chatHistoryLimit) : 100;
     }
 
@@ -215,11 +209,7 @@ public abstract class ChatComponentMixin {
         at = @At(value = "INVOKE", target = "Ljava/util/List;addFirst(Ljava/lang/Object;)V")
     )
     private void alpaka$countAddedLine(List<GuiMessage.Line> lines, Object line, Operation<Void> original) {
-        if (this.alpaka$replayLines != null) {
-            this.alpaka$replayLines.add((GuiMessage.Line) line);
-        } else {
-            original.call(lines, line);
-        }
+        original.call(lines, line);
         this.alpaka$liveLines++;
     }
 
@@ -252,35 +242,16 @@ public abstract class ChatComponentMixin {
     @org.spongepowered.asm.mixin.Unique
     private long alpaka$replayStartNanos;
 
-    /**
-     * The lines a re-layout produces, oldest first, while it runs; null otherwise.
-     *
-     * Vanilla puts every line in at the front of the display list, which shifts the whole list each
-     * time: harmless for 100 lines, but quadratic for an expanded history, and a re-layout runs on
-     * every tab switch and every key typed into the chat search. Collected here instead and put in
-     * at once when the re-layout ends.
-     */
-    @Unique private java.util.ArrayList<GuiMessage.Line> alpaka$replayLines;
-
     /** A re-layout replays every stored message through the queue; none of that is a new arrival. */
     @Inject(method = "refreshTrimmedMessages", at = @At("HEAD"))
     private void alpaka$beginReplay(CallbackInfo ci) {
         this.alpaka$replayStartNanos = net.alpaka.addons.utils.AlpakaPerf.begin(net.alpaka.addons.utils.AlpakaPerf.Section.CHAT_REPLAY);
-        this.alpaka$replayLines = new java.util.ArrayList<>(Math.max(16, this.trimmedMessages.size()));
         SmoothChatFeature.clear();
         SmoothChatFeature.beginReplay();
     }
 
     @Inject(method = "refreshTrimmedMessages", at = @At("RETURN"))
     private void alpaka$endReplay(CallbackInfo ci) {
-        java.util.ArrayList<GuiMessage.Line> lines = this.alpaka$replayLines;
-        this.alpaka$replayLines = null;
-        if (lines != null) {
-            // Newest first, as vanilla keeps them, cut to the same limit it trims to line by line.
-            java.util.Collections.reverse(lines);
-            int limit = alpaka$historyLimit();
-            this.trimmedMessages.addAll(lines.size() > limit ? lines.subList(0, limit) : lines);
-        }
         SmoothChatFeature.endReplay();
         net.alpaka.addons.utils.AlpakaPerf.end(net.alpaka.addons.utils.AlpakaPerf.Section.CHAT_REPLAY, this.alpaka$replayStartNanos);
     }

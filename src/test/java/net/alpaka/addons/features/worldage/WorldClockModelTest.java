@@ -120,4 +120,22 @@ class WorldClockModelTest {
         assertEquals(WorldClockModel.Mode.NORMAL, model.mode());
         assertEquals(1L, model.day(42020L));
     }
+
+    @Test
+    void oneOffJumpOnlyPinsBriefly() {
+        // A /time set two days ahead on a normal world.
+        long start = 5L * 24000L;
+        WorldClockModel model = replay(
+                new Update(1000L, start, 1.0f),
+                new Update(1020L, start + 20L, 1.0f),
+                new Update(1040L, start + 2L * 24000L, 1.0f));
+        assertEquals(WorldClockModel.Mode.PINNED, model.mode());
+        long clock = start + 2L * 24000L;
+        for (long gameTime = 1060L; gameTime <= 1160L; gameTime += 20L) {
+            clock += 20L;
+            model.onTimeUpdate(gameTime, clock, 1.0f);
+        }
+        assertEquals(WorldClockModel.Mode.NORMAL, model.mode());
+        assertEquals(7L, model.day(clock));
+    }
 }

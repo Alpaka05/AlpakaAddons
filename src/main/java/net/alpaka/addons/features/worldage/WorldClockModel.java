@@ -35,6 +35,12 @@ final class WorldClockModel {
      * far above any lag or rounding, far below the full day a pinning jump adds.
      */
     private static final long JUMP_THRESHOLD_TICKS = DAY_TICKS / 2;
+    /**
+     * How long a clock stays pinned without another jump. A pinned clock jumps every 20 ticks, so five
+     * seconds without one means it runs on its own again - or the jump was a one-off, like a
+     * {@code /time set} in singleplayer.
+     */
+    private static final long PIN_TIMEOUT_TICKS = 100L;
 
     enum Mode {
         /** No update yet, or only one: a single value cannot tell a pinned clock from a running one. */
@@ -47,12 +53,14 @@ final class WorldClockModel {
     private Mode mode = Mode.WAITING;
     private long lastClockTicks = -1L;
     private long lastGameTime = 0L;
+    private long lastJumpGameTime = 0L;
 
     /** Forgets everything; called when the player changes world. */
     void reset() {
         mode = Mode.WAITING;
         lastClockTicks = -1L;
         lastGameTime = 0L;
+        lastJumpGameTime = 0L;
     }
 
     /** Takes one time update: the world's game time and the overworld clock's value and rate in it. */
@@ -63,9 +71,11 @@ final class WorldClockModel {
             long elapsed = Math.max(0L, gameTime - lastGameTime);
             long expected = (long) Math.ceil(elapsed * (double) rate);
             if (clockTicks - lastClockTicks > expected + JUMP_THRESHOLD_TICKS) {
-                // Sticky for this world: between the jumps the regular updates look normal.
                 mode = Mode.PINNED;
-            } else if (mode != Mode.PINNED) {
+                lastJumpGameTime = gameTime;
+            } else if (mode != Mode.PINNED || gameTime - lastJumpGameTime > PIN_TIMEOUT_TICKS) {
+                // A pinned clock's regular updates between the jumps look normal, so it only counts
+                // as running again once the jumps have stopped.
                 mode = Mode.NORMAL;
             }
         }

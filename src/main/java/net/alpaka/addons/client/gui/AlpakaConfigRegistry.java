@@ -472,6 +472,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.scoreboardBlurEnabled = v; AlpakaConfig.save(); },
                 "scoreboard sidebar blur background rounded panel glass frosted shadow"));
 
+        OPTIONS.add(new ConfigOption("scoreboard_alpaka_footer", "AlpakaAddons Scoreboard Footer",
+                "Replaces www.hypixel.net at the bottom of the scoreboard with AlpakaAddons in a gradient.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.scoreboardAlpakaFooter,
+                v -> { AlpakaConfig.instance.scoreboardAlpakaFooter = v; AlpakaConfig.save(); },
+                "scoreboard sidebar footer bottom line hypixel.net www address gradient alpakaaddons branding"));
+
         OPTIONS.add(new ConfigOption("chat_search", "Chat Search",
                 "Ctrl+F (Cmd+F on Mac) in the chat filters it to messages containing your text.",
                 ConfigCategory.VISUALS,

@@ -15,6 +15,7 @@
     "CameraMixin",
     "GuiMixin",
     "HudMixin",
+    "ScoreboardFooterMixin",
     "HudOverlayAccessor",
     "PlayerTabOverlayAccessor",
     "WideHealthBarMixin",

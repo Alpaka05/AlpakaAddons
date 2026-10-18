@@ -2094,6 +2094,12 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.scoreboardBlurEnabled, v -> AlpakaConfig.instance.scoreboardBlurEnabled = v);
         styleToggle("scoreboard_smooth_font", "Smooth Font", ConfigCategory.VISUALS, false,
                 () -> AlpakaConfig.instance.menuFontInScoreboard, v -> AlpakaConfig.instance.menuFontInScoreboard = v);
+        OPTIONS.add(new ConfigOption("scoreboard_alpaka_footer", "AlpakaAddons Footer",
+                "Replaces www.hypixel.net at the bottom of the scoreboard with AlpakaAddons in a gradient.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.scoreboardAlpakaFooter,
+                v -> { AlpakaConfig.instance.scoreboardAlpakaFooter = v; AlpakaConfig.save(); },
+                "scoreboard sidebar footer bottom line hypixel.net www address gradient alpakaaddons branding"));
     }
 
     private static void styleToggle(String id, String title, ConfigCategory category, boolean blur,

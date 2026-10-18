@@ -8,6 +8,7 @@ import net.alpaka.addons.features.notification.AlpakaNotifications;
 import net.alpaka.addons.features.playermodel.PlayerModelRenderer;
 import net.alpaka.addons.features.scoreboard.ScoreboardBlurFeature;
 import net.alpaka.addons.features.slayer.SlayerHudRenderer;
+import net.alpaka.addons.features.tooltip.OldMasterStarsFeature;
 import net.alpaka.addons.features.slayer.SlayerTimerHudRenderer;
 import net.alpaka.addons.features.worldage.WorldAgeHudRenderer;
 import net.alpaka.addons.utils.AlpakaPerf;
@@ -16,6 +17,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.Hud;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.scores.Objective;
+import net.minecraft.network.chat.Component;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import org.spongepowered.asm.mixin.Mixin;
@@ -99,6 +101,15 @@ public class HudMixin {
         if (AlpakaConfig.instance.persistentItemNameEnabled && !this.lastToolHighlight.isEmpty()) {
             this.toolHighlightTimer = Math.max(this.toolHighlightTimer, 20);
         }
+    }
+
+    /** Old Master Stars for the held item's name above the hotbar; the tooltip is done by its feature. */
+    @WrapOperation(
+            method = "extractSelectedItemName",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/world/item/ItemStack;getHoverName()Lnet/minecraft/network/chat/Component;")
+    )
+    private Component alpaka$oldMasterStars(ItemStack stack, Operation<Component> original) {
+        return OldMasterStarsFeature.apply(original.call(stack));
     }
 
     /** The scoreboard sidebar: its two flat boxes become one blurred panel; see ScoreboardBlurFeature. */

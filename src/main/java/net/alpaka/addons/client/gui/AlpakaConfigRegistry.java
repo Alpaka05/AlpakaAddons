@@ -361,6 +361,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.persistentItemNameEnabled = v; AlpakaConfig.save(); },
                 "item name hotbar held tool highlight fade permanent always show"));
 
+        OPTIONS.add(new ConfigOption("old_master_stars", "Old Master Stars",
+                "Master stars turn the stars red again, as they used to, instead of a number behind them. In tooltips and above the hotbar.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.oldMasterStarsEnabled,
+                v -> { AlpakaConfig.instance.oldMasterStarsEnabled = v; AlpakaConfig.save(); },
+                "master stars red dungeon star number revert old item name tooltip hotbar"));
+
         OPTIONS.add(new ConfigOption("wide_health_bar", "Wide Health Bar",
                 "Hides the hunger and armor bars and joins both heart rows into one long row.",
                 ConfigCategory.VISUALS,

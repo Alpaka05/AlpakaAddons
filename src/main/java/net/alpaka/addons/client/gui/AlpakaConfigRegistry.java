@@ -223,6 +223,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.hideNameTagBackground = v; AlpakaConfig.save(); },
                 "name tag nametag background backdrop box dark hide remove transparent player mob"));
 
+        OPTIONS.add(new ConfigOption("name_tag_text_shadow", "Name Tag Text Shadow",
+                "Draws the text of every name tag with the usual Minecraft drop shadow.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.nameTagTextShadow,
+                v -> { AlpakaConfig.instance.nameTagTextShadow = v; AlpakaConfig.save(); },
+                "name tag nametag text shadow drop readable player mob"));
+
         OPTIONS.add(new ConfigOption("Camera", ConfigCategory.VISUALS));
 
         OPTIONS.add(new ConfigOption("render_hand_third_person", "First-Person Hand in F5",

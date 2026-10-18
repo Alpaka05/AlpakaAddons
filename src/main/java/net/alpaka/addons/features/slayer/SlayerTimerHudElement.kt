@@ -28,6 +28,8 @@ object SlayerTimerHudElement : HudElement {
     override val isFeatureEnabled: Boolean
         get() = AlpakaConfig.instance.slayerTimerEnabled && AlpakaConfig.instance.slayerTimerHudEnabled
 
+    override val settingsOptionId: String = "slayer_timer_hud"
+
     override var anchorX: Int
         get() = AlpakaConfig.instance.slayerTimerHudX
         set(value) { AlpakaConfig.instance.slayerTimerHudX = value }

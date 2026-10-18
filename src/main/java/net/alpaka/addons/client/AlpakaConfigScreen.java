@@ -89,6 +89,30 @@ public class AlpakaConfigScreen extends Screen {
         }
     }
 
+    /**
+     * The screen opened on the tab holding the option with this id, scrolled to the heading above
+     * it, for the HUD editor's right click. Null when no tab holds it.
+     */
+    public static AlpakaConfigScreen openOnOption(Screen parent, String optionId) {
+        for (ConfigCategory category : ConfigCategory.values()) {
+            int y = CATEGORY_HEADER_H;
+            int headingY = 0;
+            for (ConfigOption opt : AlpakaConfigRegistry.getOptions(category, "")) {
+                if (opt.getType() == ConfigOption.Type.HEADER) headingY = y;
+                if (opt.getType() != ConfigOption.Type.HEADER && optionId.equals(opt.getId())) {
+                    AlpakaConfigScreen screen = new AlpakaConfigScreen(parent, "");
+                    screen.setActiveCategory(category);
+                    // Drawing clamps this to the list's end.
+                    screen.targetScrollY = headingY;
+                    screen.scrollY = headingY;
+                    return screen;
+                }
+                y += optionItemHeight(opt);
+            }
+        }
+        return null;
+    }
+
     /** The visible-category list, and the search term it was built for. */
     private List<ConfigCategory> cachedVisibleCategories = null;
     private String cachedVisibleCategoriesQuery = null;

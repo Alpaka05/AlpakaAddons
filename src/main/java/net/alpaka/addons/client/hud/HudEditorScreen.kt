@@ -1,5 +1,6 @@
 package net.alpaka.addons.client.hud
 
+import net.alpaka.addons.client.AlpakaConfigScreen
 import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.config.AlpakaConfig
 import net.minecraft.client.gui.GuiGraphicsExtractor
@@ -87,9 +88,8 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
         // instead of sitting still behind it.
         super.extractRenderState(graphics, mouseX, mouseY, partialTick)
 
-        graphics.centeredText(this.font, INSTRUCTIONS, this.width / 2, 12, TEXT_COLOR)
-        graphics.centeredText(this.font, HINTS, this.width / 2, 24, HINT_COLOR)
-        graphics.centeredText(this.font, statusLine(), this.width / 2, 36, STATUS_COLOR)
+        graphics.centeredText(this.font, TITLE, this.width / 2, 12, TEXT_COLOR)
+        selected?.let { graphics.centeredText(this.font, statusLine(it), this.width / 2, 24, STATUS_COLOR) }
 
         // Only the element actually being dragged should count as hovered, so the highlight does
         // not jump to a HUD that happens to slide under the cursor mid-drag.
@@ -137,9 +137,7 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
         graphics.text(this.font, Component.literal(label), labelX, labelY, labelColor)
     }
 
-    private fun statusLine(): Component {
-        val element = selected ?: return NO_SELECTION
-
+    private fun statusLine(element: HudElement): Component {
         val x = element.visibleAnchorX(this.width, this.height)
         val y = element.visibleAnchorY(this.width, this.height)
         val scale = element.scaleValue()
@@ -180,6 +178,16 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
         // Let the widgets have the click first - clearing the selection before they run would make
         // "Reset Selected" a no-op the moment it is pressed.
         if (super.mouseClicked(event, doubleClick)) return true
+
+        // A right click on a HUD opens its feature's settings; leaving them comes back here.
+        if (event.button() == 1) {
+            val hit = HudRegistry.topmostAt(event.x(), event.y(), this.width, this.height)
+            val screen = hit?.settingsOptionId?.let { AlpakaConfigScreen.openOnOption(this, it) }
+            if (screen != null) {
+                minecraft.gui.setScreen(screen)
+                return true
+            }
+        }
 
         if (event.button() == 0) select(null)
         return false
@@ -297,7 +305,6 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
         const val DRAG_THRESHOLD = 3.0
         const val BACKDROP_COLOR = 0x88000000.toInt()
         const val TEXT_COLOR = 0xFFFFFFFF.toInt()
-        const val HINT_COLOR = 0xFF8A8A8A.toInt()
         const val STATUS_COLOR = 0xFFA0A0A0.toInt()
         const val GUIDE_COLOR = 0xFFFFFFFF.toInt()
         const val GUIDE_HOVER_COLOR = 0xFF00FF00.toInt()
@@ -308,10 +315,8 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
 
         /** Vertical gap between a box and its label, and the y below which labels must not go. */
         const val LABEL_GAP = 10
-        const val HEADER_BOTTOM = 48
+        const val HEADER_BOTTOM = 36
 
-        val INSTRUCTIONS: Component = Component.literal("HUD Editor - Drag to position, Scroll to resize")
-        val HINTS: Component = Component.literal("Arrow keys nudge the selection - greyed out HUDs are disabled in the config")
-        val NO_SELECTION: Component = Component.literal("Click a HUD to select it")
+        val TITLE: Component = Component.literal("HUD Editor")
     }
 }

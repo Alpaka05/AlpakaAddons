@@ -21,6 +21,8 @@ object PlayerModelHudElement : HudElement {
     override val isFeatureEnabled: Boolean
         get() = AlpakaConfig.instance.playerModelEnabled
 
+    override val settingsOptionId: String = "player_model_enabled"
+
     override var anchorX: Int
         get() = AlpakaConfig.instance.playerModelX
         set(value) { AlpakaConfig.instance.playerModelX = value }

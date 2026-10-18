@@ -68,8 +68,9 @@ import java.util.zip.ZipFile;
  * nothing, and the next start clears what it left in the staging folder and offers the update again.
  *
  * Installing is left to the player wherever replacing the jar would go wrong: a development run, a
- * test build, a mod not loaded from one jar, a read-only mods folder, or an instance a launcher
- * manages - a launcher would undo or fight a jar replaced behind its back.
+ * test build, a mod not loaded from one jar, a jar only linked into the mods folder, a read-only
+ * mods folder, or an instance a launcher manages - a launcher would undo or fight a jar replaced
+ * behind its back.
  */
 public final class UpdateInstaller {
     /** The [Install] button's click event, caught in ChatScreenMixin before it can reach the server. */
@@ -412,17 +413,20 @@ public final class UpdateInstaller {
         if (jar == null) {
             return "The mod isn't loaded from a single jar, so install it by hand from the release page";
         }
+        if (launcherManaged(jar, loader.getGameDir())) {
+            return "Your launcher manages this instance's mods, so update it there";
+        }
+        if (!inModsFolder(jar)) {
+            return "The mod's jar isn't in the mods folder itself, so install it by hand from the release page";
+        }
         // The jar too: a read-only jar can be replaced but never deleted.
         if (!Files.isWritable(jar.getParent()) || !Files.isWritable(jar)) {
             return "The mods folder can't be written to, so install it by hand from the release page";
         }
-        if (launcherManaged(jar, loader.getGameDir())) {
-            return "Your launcher manages this instance's mods, so update it there";
-        }
         return null;
     }
 
-    /** The one regular .jar the mod runs from, or null. */
+    /** The one regular .jar the mod runs from, with links resolved to the file itself, or null. */
     private static Path runningJar() {
         ModOrigin origin = FabricLoader.getInstance().getModContainer(AlpakaAddons.MOD_ID)
                 .map(ModContainer::getOrigin).orElse(null);
@@ -431,7 +435,30 @@ public final class UpdateInstaller {
         if (jar.getParent() == null || !Files.isRegularFile(jar) || !jar.getFileName().toString().endsWith(".jar")) {
             return null;
         }
-        return jar;
+        try {
+            // Fabric already reports a link's target; resolved here as well, so the jar's folder is
+            // always where the file really is.
+            return jar.toRealPath();
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Whether the jar is a file in the mods folder itself. Some launchers (OneClient, for one) keep
+     * each mod once in a store of their own and only link it into the mods folder. Swapping there
+     * would put the new jar into the store and delete the store's copy, leaving the mods folder with
+     * a broken link - no copy of the mod at all, in every instance sharing that file.
+     */
+    private static boolean inModsFolder(Path jar) {
+        // Found the way Fabric finds it.
+        String override = System.getProperty("fabric.modsFolder");
+        try {
+            Path mods = override != null ? Path.of(override) : FabricLoader.getInstance().getGameDir().resolve("mods");
+            return jar.getParent().equals(mods.toRealPath());
+        } catch (IOException | RuntimeException e) {
+            return false;
+        }
     }
 
     /**
@@ -441,12 +468,19 @@ public final class UpdateInstaller {
     private static boolean launcherManaged(Path jar, Path gameDir) {
         // CurseForge writes minecraftinstance.json into the instance.
         if (Files.exists(gameDir.resolve("minecraftinstance.json"))) return true;
-        // The Modrinth App keeps instances in <app data>/ModrinthApp/profiles/<name> (older builds: its id).
+        // The Modrinth App keeps instances in <app data>/ModrinthApp/profiles/<name> (older builds: its
+        // id), OneClient in <app data>/Polyfrost/OneClient/clusters/<name> (or under its id).
         for (Path dir = gameDir.toAbsolutePath(); dir != null && dir.getParent() != null; dir = dir.getParent()) {
             Path parent = dir.getParent();
             Path app = parent.getParent() == null ? null : parent.getParent().getFileName();
-            if ("profiles".equals(String.valueOf(parent.getFileName()))
-                    && app != null && List.of("ModrinthApp", "com.modrinth.theseus").contains(app.toString())) {
+            if (app == null) continue;
+            String folder = String.valueOf(parent.getFileName());
+            String appName = app.toString();
+            if ("profiles".equals(folder) && List.of("ModrinthApp", "com.modrinth.theseus").contains(appName)) {
+                return true;
+            }
+            if ("clusters".equalsIgnoreCase(folder)
+                    && (appName.equalsIgnoreCase("OneClient") || appName.equalsIgnoreCase("org.polyfrost.oneclient"))) {
                 return true;
             }
         }

@@ -149,6 +149,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customMainMenuEnabled = v; AlpakaConfig.save(); },
                 "custom main menu title screen hypixel start launch background GUI hypixel-themed"));
 
+        OPTIONS.add(new ConfigOption("custom_main_menu_parallax", "Main Menu Parallax",
+                "The custom main menu's background moves with the mouse.",
+                ConfigCategory.GENERAL,
+                () -> AlpakaConfig.instance.customMainMenuParallax,
+                v -> { AlpakaConfig.instance.customMainMenuParallax = v; AlpakaConfig.save(); },
+                "custom main menu parallax background mouse move motion depth effect title screen"));
+
         OPTIONS.add(new ConfigOption("hud_editor", "HUD Editor",
                 "Moves and resizes every HUD: slayer session, boss timer, world age, inventory and player model. Also opens with /alpakahud.",
                 ConfigCategory.GENERAL,

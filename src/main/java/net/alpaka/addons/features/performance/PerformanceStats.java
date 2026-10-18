@@ -20,14 +20,13 @@ import net.minecraft.util.Util;
  *   <li>Ping is the round trip of a ping request, the one vanilla's F3 network chart sends every
  *       tick. Any answer counts, so while F3's chart or another mod already measures, nothing more
  *       goes out. Otherwise one request leaves every {@link #PROBE_INTERVAL_MS} ms, and only while
- *       the HUD is on screen with Ping shown - a hundredth of what the F3 chart sends.</li>
+ *       the HUD is on screen with Ping shown - a hundredth of what the F3 chart sends. What shows
+ *       is the average of the last few seconds, changed once a second; see {@link PingSmoother}.</li>
  * </ul>
  */
 public final class PerformanceStats {
     /** How often the HUD measures the ping itself when nothing else does. */
     static final long PROBE_INTERVAL_MS = Outbound.PROBE_FLOOR_MS;
-    /** A ping older than this is too old to show. */
-    private static final long PING_STALE_MS = 20_000L;
     /** Answers outside this are from a request timed on another clock, not a real round trip. */
     private static final long MAX_PLAUSIBLE_PING_MS = 30_000L;
     /** The HUD counts as on screen this long after it was last drawn. */
@@ -46,7 +45,7 @@ public final class PerformanceStats {
     private static long lastGameTime = Long.MIN_VALUE;
 
     /** Written on the network thread, where answers are handled; read on the render thread. */
-    private static volatile int pingMs = -1;
+    private static final PingSmoother PING = new PingSmoother();
     private static volatile long lastAnswerMs = Long.MIN_VALUE / 2;
     private static long lastProbeMs = Long.MIN_VALUE / 2;
     private static long lastShownMs = Long.MIN_VALUE / 2;
@@ -69,7 +68,7 @@ public final class PerformanceStats {
         TICK_PINGS.reset();
         TIME_UPDATES.reset();
         lastGameTime = Long.MIN_VALUE;
-        pingMs = -1;
+        PING.reset();
         lastAnswerMs = Long.MIN_VALUE / 2;
         lastTimePacket = null;
         lastServerPing = null;
@@ -97,7 +96,7 @@ public final class PerformanceStats {
         long now = Util.getMillis();
         long rtt = now - requestTimeMs;
         if (rtt < 0 || rtt > MAX_PLAUSIBLE_PING_MS) return;
-        pingMs = (int) rtt;
+        PING.add((int) rtt, now);
         lastAnswerMs = now;
     }
 
@@ -123,9 +122,9 @@ public final class PerformanceStats {
         return Minecraft.getInstance().getFps();
     }
 
-    /** The last round trip in milliseconds, or -1 when there is no recent one. */
+    /** The recent round trips averaged, in milliseconds, or -1 when there is no recent one. */
     public static int pingMs() {
-        return Util.getMillis() - lastAnswerMs > PING_STALE_MS ? -1 : pingMs;
+        return PING.value(Util.getMillis());
     }
 
     /** The server's tick rate, or NaN until it is known. */

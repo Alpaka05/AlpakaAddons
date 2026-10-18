@@ -14,6 +14,9 @@ class ScoreboardFooterFeatureTest {
         assertTrue(ScoreboardFooterFeature.isHypixelFooter("www.hypixel.net"));
         assertTrue(ScoreboardFooterFeature.isHypixelFooter("§ewww.hypixel.net§r "));
         assertTrue(ScoreboardFooterFeature.isHypixelFooter("alpha.hypixel.net"));
+        // Hypixel's invisible emoji that keep each line unique, also mid-word.
+        assertTrue(ScoreboardFooterFeature.isHypixelFooter("§ewww.hypixel.ne\uD83C\uDF82§et"));
+        assertTrue(ScoreboardFooterFeature.isHypixelFooter("\u26BD§ewww.hypixel.net"));
     }
 
     @Test

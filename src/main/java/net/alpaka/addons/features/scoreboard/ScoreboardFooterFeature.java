@@ -8,6 +8,7 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
 
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 /**
  * Writes "AlpakaAddons" in a gradient where Hypixel puts its address at the bottom of the
@@ -32,14 +33,18 @@ public final class ScoreboardFooterFeature {
 
     /**
      * Hypixel's last line reads "www.hypixel.net" (or "alpha.hypixel.net" on the test server).
-     * The line is built from team prefixes, so legacy colour codes can sit in the raw text.
+     * The line is built from team prefixes, so legacy colour codes can sit in the raw text, and
+     * Hypixel keeps every line unique with emoji the font draws as nothing, often in the middle
+     * ("www.hypixel.ne🎂t"). Only letters, digits and dots are compared.
      */
     static boolean isHypixelFooter(String line) {
         String plain = ChatFormatting.stripFormatting(line);
         if (plain == null) return false;
-        plain = plain.trim().toLowerCase(Locale.ROOT);
+        plain = NOT_ADDRESS.matcher(plain).replaceAll("").toLowerCase(Locale.ROOT);
         return plain.equals("www.hypixel.net") || plain.equals("alpha.hypixel.net");
     }
+
+    private static final Pattern NOT_ADDRESS = Pattern.compile("[^A-Za-z0-9.]");
 
     /** One component per letter, coloured along the stops evenly spread over the text. */
     static Component gradient(String text, int[] stops) {

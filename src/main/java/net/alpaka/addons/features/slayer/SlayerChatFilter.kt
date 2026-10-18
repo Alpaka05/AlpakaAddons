@@ -23,35 +23,60 @@ import net.alpaka.addons.config.AlpakaConfig
 object SlayerChatFilter {
 
     /**
-     * Messages hidden by exact text, once color codes are stripped and the line is trimmed.
+     * One group of lines the player can switch off as a whole, in the "Hide Slayer Chat Parts"
+     * dropdown. Grouped by what the lines are about rather than one switch per line: nobody wants
+     * to keep exactly one of the three radio messages.
      *
-     * Stored as plain text on purpose. Hypixel sends these wrapped in formatting - the real quest
-     * line is `"   §5§l» §7Slay §c33,600 Combat XP §7worth of Blazes§7."` - and comparing that raw
-     * form against plain entries never matched, which is why these lines kept appearing.
+     * Exact entries are plain text on purpose. Hypixel sends these wrapped in formatting - the real
+     * quest line is `"   §5§l» §7Slay §c33,600 Combat XP §7worth of Blazes§7."` - and comparing that
+     * raw form against plain entries never matched, which is why these lines kept appearing.
+     *
+     * Patterns are for the lines carrying a number or a name that varies. They were previously
+     * pinned to one exact wording - one specific XP amount, one slayer at one level - so they only
+     * ever matched a single tier of a single slayer, if at all.
      */
-    private val CANCELED_CHAT_MESSAGES = setOf(
-        "SLAYER QUEST COMPLETE!",
-        "SLAYER QUEST STARTED!",
-        "NICE! SLAYER BOSS SLAIN!",
-        "Your radio is weak. Find another enjoyer to boost it.",
-        "Your radio signal is strong!",
-        "Your radio lost signal. There's too many enjoyers on this channel."
-    )
+    private class Group(
+        val enabled: (AlpakaConfig) -> Boolean,
+        val messages: Set<String> = emptySet(),
+        val patterns: List<Regex> = emptyList()
+    ) {
+        fun matches(cleanText: String): Boolean =
+            cleanText in messages || patterns.any { it.matches(cleanText) }
+    }
 
-    /**
-     * Messages hidden by shape, for the ones carrying a number or a name that varies.
-     *
-     * These were previously pinned to one exact wording - one specific XP amount, one slayer at one
-     * level - so they only ever matched a single tier of a single slayer, if at all.
-     */
-    private val CANCELED_CHAT_PATTERNS = listOf(
-        // "» Slay 33,600 Combat XP worth of Blazes."
-        Regex("""^»\s*Slay\s+[\d,.]+k?\s+Combat XP\s+worth of\s+.+\.?$""", RegexOption.IGNORE_CASE),
-        // "Blaze Slayer LVL 9 - LVL MAXED OUT!" and the ordinary level-up form.
-        Regex("""^.*Slayer LVL\s+\d+\b.*$""", RegexOption.IGNORE_CASE),
-        // "Your Slayer Kill gave you 160 HP healing for 10 seconds!"
-        Regex("""^Your Slayer Kill gave you\s+[\d,]+\s+HP healing.*$""", RegexOption.IGNORE_CASE),
-        Regex("""^RARE DROP! Netherrack-Looking Sunshade.*$""", RegexOption.IGNORE_CASE)
+    private val GROUPS = listOf(
+        Group(
+            { it.hideSlayerChatQuest },
+            messages = setOf(
+                "SLAYER QUEST COMPLETE!",
+                "SLAYER QUEST STARTED!",
+                "NICE! SLAYER BOSS SLAIN!"
+            ),
+            // "» Slay 33,600 Combat XP worth of Blazes."
+            patterns = listOf(Regex("""^»\s*Slay\s+[\d,.]+k?\s+Combat XP\s+worth of\s+.+\.?$""", RegexOption.IGNORE_CASE))
+        ),
+        Group(
+            { it.hideSlayerChatRadio },
+            messages = setOf(
+                "Your radio is weak. Find another enjoyer to boost it.",
+                "Your radio signal is strong!",
+                "Your radio lost signal. There's too many enjoyers on this channel."
+            )
+        ),
+        Group(
+            { it.hideSlayerChatLevelUp },
+            // "Blaze Slayer LVL 9 - LVL MAXED OUT!" and the ordinary level-up form.
+            patterns = listOf(Regex("""^.*Slayer LVL\s+\d+\b.*$""", RegexOption.IGNORE_CASE))
+        ),
+        Group(
+            { it.hideSlayerChatHealing },
+            // "Your Slayer Kill gave you 160 HP healing for 10 seconds!"
+            patterns = listOf(Regex("""^Your Slayer Kill gave you\s+[\d,]+\s+HP healing.*$""", RegexOption.IGNORE_CASE))
+        ),
+        Group(
+            { it.hideSlayerChatSunshade },
+            patterns = listOf(Regex("""^RARE DROP! Netherrack-Looking Sunshade.*$""", RegexOption.IGNORE_CASE))
+        )
     )
 
     /**
@@ -62,12 +87,12 @@ object SlayerChatFilter {
      */
     @JvmStatic
     fun shouldCancelChatMessage(rawMessage: String): Boolean {
-        if (!AlpakaConfig.instance.hideSlayerChatMessages) return false
+        val config = AlpakaConfig.instance
+        if (!config.hideSlayerChatMessages) return false
 
         val cleanText = SlayerDropTracker.cleanColor(rawMessage).trim()
         if (cleanText.isEmpty()) return false
 
-        if (cleanText in CANCELED_CHAT_MESSAGES) return true
-        return CANCELED_CHAT_PATTERNS.any { it.matches(cleanText) }
+        return GROUPS.any { it.enabled(config) && it.matches(cleanText) }
     }
 }

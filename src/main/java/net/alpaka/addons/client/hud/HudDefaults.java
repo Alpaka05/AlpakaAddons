@@ -14,8 +14,8 @@ import net.alpaka.addons.client.gui.HudPanel;
  * and ten lines reach 90 pixels above that):
  *
  * <ul>
- *   <li>A top row: the boss timer in the corner, one line, the world age beside it and the
- *       Performance HUD beside that.</li>
+ *   <li>A top row of one-line HUDs: the Performance HUD in the corner, the world age beside it
+ *       and the boss timer beside that.</li>
  *   <li>Under that row, the slayer session HUD, which at its tallest - ten rows - still ends above
  *       a full ten-line chat on a screen 270 GUI pixels tall (1080p at GUI scale 4).</li>
  *   <li>The player model right of the session HUD's rows, and low enough that the HUD editor's
@@ -33,23 +33,28 @@ public final class HudDefaults {
     /** One line of text: the font's line height. */
     private static final int LINE = 9;
 
-    /** The top-left corner: one line, and shown only while a boss is up. */
-    public static final int SLAYER_TIMER_X = 10;
-    public static final int SLAYER_TIMER_Y = 10;
+    /** The top row's line. */
+    private static final int TOP_ROW_Y = 10;
 
-    /** Beside the boss timer, past its widest time ("Boss 12m 34s") with a gap. */
-    public static final int WORLD_AGE_X = 96;
-    public static final int WORLD_AGE_Y = SLAYER_TIMER_Y;
+    /** The top-left corner. */
+    public static final int PERFORMANCE_X = 10;
+    public static final int PERFORMANCE_Y = TOP_ROW_Y;
+    /** The Performance HUD's line at its widest, "FPS 1000  Ping 999ms  TPS 20.0", in the pixel font. */
+    private static final int PERFORMANCE_MAX_WIDTH = 158;
+
+    /** Beside the Performance HUD, past its widest line with a gap between the two panels. */
+    public static final int WORLD_AGE_X = PERFORMANCE_X + PERFORMANCE_MAX_WIDTH + HudPanel.PAD_X + PANEL_GAP + HudPanel.PAD_X;
+    public static final int WORLD_AGE_Y = TOP_ROW_Y;
     /** The world age's line at its widest, "Day 35", in the pixel font. */
     private static final int WORLD_AGE_MAX_WIDTH = 34;
 
-    /** Beside the world age, past its widest day with a gap between the two panels. */
-    public static final int PERFORMANCE_X = WORLD_AGE_X + WORLD_AGE_MAX_WIDTH + HudPanel.PAD_X + PANEL_GAP + HudPanel.PAD_X;
-    public static final int PERFORMANCE_Y = SLAYER_TIMER_Y;
+    /** Beside the world age, past its widest day with a gap; shown only while a boss is up. */
+    public static final int SLAYER_TIMER_X = WORLD_AGE_X + WORLD_AGE_MAX_WIDTH + HudPanel.PAD_X + PANEL_GAP + HudPanel.PAD_X;
+    public static final int SLAYER_TIMER_Y = TOP_ROW_Y;
 
     public static final int SLAYER_SESSION_X = 10;
     /** Under the top row: that row's panel bottom, the gap, then this panel's top padding. */
-    public static final int SLAYER_SESSION_Y = SLAYER_TIMER_Y + LINE + HudPanel.PAD_Y + PANEL_GAP + HudPanel.PAD_Y;
+    public static final int SLAYER_SESSION_Y = TOP_ROW_Y + LINE + HudPanel.PAD_Y + PANEL_GAP + HudPanel.PAD_Y;
 
     /**
      * The avatar's feet; at the default size it stands 72 pixels tall and 48 wide. Right of the

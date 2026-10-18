@@ -309,6 +309,40 @@ public final class AlpakaStyle {
         mesh.submit(graphics);
     }
 
+    /**
+     * A dashed circle of hairline strokes, for an empty slot waiting to be filled - the color
+     * picker's plus. Each dash is a few short straight strokes along the arc.
+     */
+    public static void dashedCircle(GuiGraphicsExtractor graphics, float cx, float cy, float radius, int dashes, int color) {
+        int scale = guiScale();
+        net.alpaka.addons.features.wheel.WheelMesh mesh = new net.alpaka.addons.features.wheel.WheelMesh(1.0f / scale);
+        float thickness = Math.max(1, Math.round(scale * 0.5f)) / (float) scale;
+        float r = radius - thickness / 2;
+        double step = 2.0 * Math.PI / dashes;
+        int parts = 3;
+        for (int d = 0; d < dashes; d++) {
+            double from = d * step - Math.PI / 2;
+            double span = step * 0.55;
+            for (int p = 0; p < parts; p++) {
+                double a0 = from + span * p / parts;
+                double a1 = from + span * (p + 1) / parts;
+                stroke(mesh, cx + (float) Math.cos(a0) * r, cy + (float) Math.sin(a0) * r,
+                        cx + (float) Math.cos(a1) * r, cy + (float) Math.sin(a1) * r, thickness, color);
+            }
+        }
+        mesh.submit(graphics);
+    }
+
+    /** A plus of hairline strokes, centred on the point. */
+    public static void plus(GuiGraphicsExtractor graphics, float cx, float cy, float half, int color) {
+        int scale = guiScale();
+        net.alpaka.addons.features.wheel.WheelMesh mesh = new net.alpaka.addons.features.wheel.WheelMesh(1.0f / scale);
+        float thickness = Math.max(1, Math.round(scale * 0.5f)) / (float) scale;
+        stroke(mesh, cx - half, cy, cx + half, cy, thickness, color);
+        stroke(mesh, cx, cy - half, cx, cy + half, thickness, color);
+        mesh.submit(graphics);
+    }
+
     private static int guiScale() {
         net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
         return mc == null ? 2 : (int) Math.max(1, mc.getWindow().getGuiScale());

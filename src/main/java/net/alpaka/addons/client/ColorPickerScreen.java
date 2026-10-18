@@ -347,16 +347,16 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
             if (hover) hovered = i;
             int round = (SWATCH + 1) / 2;
             if (i == slots) {
-                // The plus: an empty circle, muted while the color is a preset already.
-                int line = hover && !alreadyPreset ? accent : AlpakaStyle.TEXT_MUTED;
+                // The plus: a dashed circle, an empty slot to fill, muted while the color is a
+                // preset already.
+                int line = alreadyPreset ? AlpakaStyle.DIVIDER : hover ? accent : AlpakaStyle.TEXT_MUTED;
                 if (hover && !alreadyPreset) {
                     ModernGuiUtils.drawRoundedRect(graphics, sx, sy, SWATCH, SWATCH, round, AlpakaStyle.ROW_HOVER);
                 }
-                ModernGuiUtils.drawRoundedOutline(graphics, sx, sy, SWATCH, SWATCH, round,
-                        alreadyPreset ? AlpakaStyle.DIVIDER : line);
-                int plus = alreadyPreset ? AlpakaStyle.DIVIDER : line;
-                ModernGuiUtils.drawRect(graphics, sx + 3, sy + SWATCH / 2, SWATCH - 6, 1, plus);
-                ModernGuiUtils.drawRect(graphics, sx + SWATCH / 2, sy + 3, 1, SWATCH - 6, plus);
+                float cx = sx + SWATCH / 2.0f;
+                float cy = sy + SWATCH / 2.0f;
+                AlpakaStyle.dashedCircle(graphics, cx, cy, SWATCH / 2.0f, 10, line);
+                AlpakaStyle.plus(graphics, cx, cy, 3.0f, line);
                 continue;
             }
             boolean current = slotColor(i) == currentColor();

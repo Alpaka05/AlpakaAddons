@@ -511,6 +511,8 @@ public class AlpakaConfig {
     public boolean scrollableTooltipsInvert = false;
     /** The held item's name above the hotbar stays up instead of fading out. */
     public boolean persistentItemNameEnabled = false;
+    /** Master stars show as red stars, as they used to, instead of a number behind the gold ones. */
+    public boolean oldMasterStarsEnabled = false;
     /**
      * One long row of twenty hearts in place of the two short ones, the hunger bar and the armor bar,
      * neither of which SkyBlock needs; absorption hearts sit on the row above it.

@@ -84,6 +84,8 @@ public final class DevScreenshotTour {
             // Two ticks after a burst: the lines are mid-slide inside the chat's box.
             new Stop("chat-slide", DevScreenshotTour::chatBurst, () -> true, 2),
             new Stop("chat-rest", () -> {}, () -> true, 40),
+            // Two ticks after opening: the chat is still unrolling and the input bar rising.
+            new Stop("chat-opening", () -> Minecraft.getInstance().gui.setScreen(new ChatScreen("", false)), () -> true, 2),
             new Stop("chat-open", () -> Minecraft.getInstance().gui.setScreen(new ChatScreen("", false)), () -> true, 10),
             new Stop("third-person", DevScreenshotTour::thirdPerson, () -> true, 40),
             // Survival with armour and an action bar: what the attached inventory HUD has to clear.

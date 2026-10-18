@@ -9,6 +9,7 @@ import net.alpaka.addons.features.chat.AlpakaChatGraphicsClip;
 import net.alpaka.addons.features.bridge.BridgeBotFormatter;
 import net.alpaka.addons.features.chat.ChatBlurFeature;
 import net.alpaka.addons.features.chat.ChatPeekFeature;
+import net.alpaka.addons.features.chat.ChatOpenAnimation;
 import net.alpaka.addons.features.chat.ChatScrollAnimator;
 import net.alpaka.addons.features.chat.ChatSearchFeature;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
@@ -38,6 +39,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Coerce;
 import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.ModifyArgs;
 import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
@@ -296,6 +298,13 @@ public abstract class ChatComponentMixin {
      */
     @Unique private float alpaka$slide;
 
+    /**
+     * Opening Animation: how many lines of the open chat are unrolled in this layout, fractions
+     * included, or -1 when the chat is not opening. The box's top edge, and with it the panel's,
+     * sits that many lines above the input; the line at the edge fades in as it is uncovered.
+     */
+    @Unique private float alpaka$reveal = -1.0f;
+
     // ------------------------------------------------------------------ smooth scrolling
 
     /**
@@ -412,6 +421,8 @@ public abstract class ChatComponentMixin {
         int chatBottom = Mth.floor((guiHeight - 40) / scale);
         int width = Mth.ceil(this.getWidth() / scale);
         int shownLines = Math.max(0, Math.min(this.trimmedMessages.size() - this.chatScrollbarPos, this.getLinesPerPage()));
+        this.alpaka$reveal = this.alpaka$opening ? ChatOpenAnimation.revealedLines(shownLines, this.alpaka$openProgress) : -1.0f;
+        float boxLines = this.alpaka$reveal >= 0.0f ? this.alpaka$reveal : shownLines;
 
         // The panel goes in before the box's scissor is set: the panel is the box anyway, and its
         // drop shadow reaches past it.
@@ -427,7 +438,7 @@ public abstract class ChatComponentMixin {
             int pad = ChatBlurFeature.PADDING + 1 + (moving ? 0 : 2);
             int x0 = -4 - pad;
             int x1 = width + 8 + pad;
-            int y0 = chatBottom - shownLines * lineHeight - pad;
+            int y0 = Mth.floor(chatBottom - boxLines * lineHeight) - pad;
             int y1 = chatBottom + pad;
             clip.alpaka$setTextClip(x0, x1, y0, y1);
             clip.alpaka$graphics().enableScissor(x0, y0, x1, y1);
@@ -464,6 +475,16 @@ public abstract class ChatComponentMixin {
         )
     )
     private void alpaka$fadeArrivingLines(Args args) {
+        if (this.alpaka$reveal >= 0.0f) {
+            // In both passes: the panel's height is the sum of the line boxes' alphas, so it grows
+            // with the lines instead of standing at full height behind them.
+            int index = args.get(1);
+            float uncovered = Mth.clamp(this.alpaka$reveal - (index - this.chatScrollbarPos), 0.0f, 1.0f);
+            if (uncovered < 1.0f) {
+                float alpha = args.get(2);
+                args.set(2, alpha * Math.max(uncovered, 0.001f));
+            }
+        }
         if (this.chatScrollbarPos != 0 || !SmoothChatFeature.isEnabled()) return;
         // With the glass panel on, the background pass only measures the panel: an arriving line's
         // box counts in full there, or the panel's top edge would dip and rise with every message.
@@ -474,6 +495,51 @@ public abstract class ChatComponentMixin {
             float alpha = args.get(2);
             args.set(2, alpha * Math.max(factor, 0.001f));
         }
+    }
+
+    /** Whether this layout is of the chat while it opens. */
+    @Unique private boolean alpaka$opening;
+    @Unique private float alpaka$openProgress = 1.0f;
+
+    /**
+     * How many lines the HUD chat shows right now: the newest lines vanilla has not faded out yet
+     * (it fades a line out over its first 200 ticks), at most as many as the closed chat holds.
+     */
+    @Unique
+    private int alpaka$hudVisibleLines(int ticks) {
+        int perPage = ChatComponent.getHeight(this.minecraft.options.chatHeightUnfocused().get()) / this.getLineHeight();
+        int limit = Math.min(this.trimmedMessages.size() - this.chatScrollbarPos, perPage);
+        int count = 0;
+        while (count < limit && ticks - this.trimmedMessages.get(this.chatScrollbarPos + count).addedTime() < 200) {
+            count++;
+        }
+        return count;
+    }
+
+    /** The scrollbar, drawn at the full height, fades in while the chat unrolls instead of standing there at once. */
+    @ModifyArg(
+        method = EXTRACT_PRIVATE,
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/ChatComponent$ChatGraphicsAccess;fill(IIIII)V", ordinal = 2),
+        index = 4
+    )
+    private int alpaka$fadeScrollbar(int color) {
+        return this.alpaka$fadeWhileOpening(color);
+    }
+
+    @ModifyArg(
+        method = EXTRACT_PRIVATE,
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/ChatComponent$ChatGraphicsAccess;fill(IIIII)V", ordinal = 3),
+        index = 4
+    )
+    private int alpaka$fadeScrollbarHighlight(int color) {
+        return this.alpaka$fadeWhileOpening(color);
+    }
+
+    @Unique
+    private int alpaka$fadeWhileOpening(int color) {
+        if (!this.alpaka$opening) return color;
+        int alpha = Math.round((color >>> 24) * this.alpaka$openProgress);
+        return (alpha << 24) | (color & 0xFFFFFF);
     }
 
     // ------------------------------------------------------------------ blurred background
@@ -500,6 +566,13 @@ public abstract class ChatComponentMixin {
     private void alpaka$beginPass(ChatComponent.ChatGraphicsAccess access, int guiHeight, int ticks, ChatComponent.DisplayMode mode, CallbackInfo ci) {
         this.alpaka$pass = 0;
         ChatBlurFeature.resetPanel(mode.foreground);
+        // Taken once per layout, so both line passes and the scrollbar agree on the height.
+        this.alpaka$openProgress = mode.foreground && !ChatPeekFeature.isPeeking() ? ChatOpenAnimation.progress() : 1.0f;
+        this.alpaka$opening = this.alpaka$openProgress < 1.0f;
+        this.alpaka$reveal = -1.0f;
+        if (this.alpaka$opening && ChatOpenAnimation.needsStartLines()) {
+            ChatOpenAnimation.setStartLines(this.alpaka$hudVisibleLines(ticks));
+        }
         this.alpaka$slide = this.chatScrollbarPos == 0 && SmoothChatFeature.isEnabled()
                 ? SmoothChatFeature.slideOffset(this.getLineHeight()) : 0.0f;
 

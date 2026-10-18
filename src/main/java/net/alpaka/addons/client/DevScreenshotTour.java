@@ -90,6 +90,17 @@ public final class DevScreenshotTour {
                 }
                 return new HudEditorScreen(null);
             }),
+            // Where a right click on each HUD in the editor leads.
+            screen("hud-settings-world-age", () -> AlpakaConfigScreen.openOnOption(null,
+                    net.alpaka.addons.features.worldage.WorldAgeHudElement.INSTANCE.getSettingsOptionId())),
+            screen("hud-settings-slayer", () -> AlpakaConfigScreen.openOnOption(null,
+                    net.alpaka.addons.features.slayer.SlayerHudElement.INSTANCE.getSettingsOptionId())),
+            screen("hud-settings-boss-timer", () -> AlpakaConfigScreen.openOnOption(null,
+                    net.alpaka.addons.features.slayer.SlayerTimerHudElement.INSTANCE.getSettingsOptionId())),
+            screen("hud-settings-player-model", () -> AlpakaConfigScreen.openOnOption(null,
+                    net.alpaka.addons.features.playermodel.PlayerModelHudElement.INSTANCE.getSettingsOptionId())),
+            screen("hud-settings-inventory", () -> AlpakaConfigScreen.openOnOption(null,
+                    net.alpaka.addons.features.inventoryhud.InventoryHudElement.INSTANCE.getSettingsOptionId())),
             // A setting's description as a tooltip, after resting the mouse on it.
             new Stop("config-tooltip", () -> {
                 Minecraft.getInstance().gui.setScreen(AlpakaConfigScreen.openOn("Interface", "Scrollable Tooltips"));

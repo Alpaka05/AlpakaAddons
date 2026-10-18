@@ -215,6 +215,30 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         return screen;
     }
 
+    /**
+     * The screen opened on the feature that holds the option with this id, for the HUD editor's
+     * right click. Null when no feature holds it.
+     */
+    public static AlpakaConfigScreen openOnOption(Screen parent, String optionId) {
+        for (ConfigTree.Group group : ConfigTree.groups()) {
+            for (ConfigTree.Section section : group.sections) {
+                for (ConfigTree.Feature feature : section.features) {
+                    boolean holds = feature.master != null && feature.master.getId().equals(optionId);
+                    for (ConfigOption option : feature.settings) {
+                        if (optionId.equals(option.getId())) holds = true;
+                    }
+                    if (!holds) continue;
+                    AlpakaConfigScreen screen = new AlpakaConfigScreen(parent, "");
+                    screen.selectSection(section);
+                    screen.selectFeature(feature);
+                    screen.revealSelected = true;
+                    return screen;
+                }
+            }
+        }
+        return null;
+    }
+
     /** For the screenshot tour: starts in setup mode, already folded. */
     AlpakaConfigScreen inSetupMode() {
         setupMode = true;

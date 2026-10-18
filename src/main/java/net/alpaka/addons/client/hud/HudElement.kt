@@ -82,6 +82,12 @@ interface HudElement {
     fun scaleLabel(): String
 
     /**
+     * The id of a config option in this HUD's feature, so a right click in the editor can open the
+     * config menu on that feature's settings. Null leaves the right click doing nothing.
+     */
+    val settingsOptionId: String? get() = null
+
+    /**
      * The box this element actually occupies, nudged so it lies fully on screen.
      *
      * Positions are stored as absolute pixels, so raising Minecraft's GUI scale shrinks the screen

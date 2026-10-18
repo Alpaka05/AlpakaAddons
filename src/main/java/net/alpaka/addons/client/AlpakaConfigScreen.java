@@ -6,6 +6,7 @@ import net.alpaka.addons.client.gui.ConfigOption;
 import net.alpaka.addons.client.gui.GuiFont;
 import net.alpaka.addons.client.gui.ModernGuiUtils;
 import net.alpaka.addons.client.gui.PloppAnimation;
+import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.features.sound.CustomSoundFeature;
 import net.alpaka.addons.utils.ModVersion;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -360,7 +361,7 @@ public class AlpakaConfigScreen extends Screen {
         int sideClipX = winX + 4;
         int sideClipY = winY + headerHeight + 4;
         int sideClipW = sidebarWidth - 8;
-        int sideClipH = winH - headerHeight - 8;
+        int sideClipH = winH - headerHeight - 8 - HUD_EDITOR_FOOTER_H;
 
         if (sideClipW >= 4) {
         int totalSidebarH = categories.size() * (catItemH + catSpacing) + 8;
@@ -419,6 +420,20 @@ public class AlpakaConfigScreen extends Screen {
         }
 
         graphics.disableScissor();
+        }
+
+        // The HUD editor's button sits in the sidebar's bottom corner, below the tabs, so it is one
+        // click away whichever tab is open. Clipped to the sidebar while setup mode folds it.
+        if (sidebarWidth > 20) {
+            int buttonY = hudEditorButtonY(winY, winH);
+            int buttonW = sidebarWidth - 20;
+            boolean hoverButton = mouseX >= winX + 8 && mouseX <= winX + 8 + buttonW
+                    && mouseY >= buttonY && mouseY <= buttonY + HUD_EDITOR_BUTTON_H;
+            graphics.enableScissor(winX, buttonY - 8, winX + sidebarWidth - 1, buttonY + HUD_EDITOR_BUTTON_H + 1);
+            ModernGuiUtils.drawRect(graphics, winX + 8, buttonY - 7, buttonW, 1, ModernGuiUtils.COLOR_CARD_BORDER);
+            ModernGuiUtils.drawModernButton(graphics, this.font, winX + 8, buttonY, buttonW, HUD_EDITOR_BUTTON_H,
+                    "HUD Editor", hoverButton, false);
+            graphics.disableScissor();
         }
 
         // 5. Render Options in Main Panel with Scissor Clipping to prevent scrolling overlap
@@ -634,6 +649,14 @@ public class AlpakaConfigScreen extends Screen {
 
     private static final int SIDEBAR_FULL_WIDTH = 160;
 
+    private static final int HUD_EDITOR_BUTTON_H = 22;
+    /** What the HUD editor's button and the line above it take from the bottom of the sidebar. */
+    private static final int HUD_EDITOR_FOOTER_H = HUD_EDITOR_BUTTON_H + 12;
+
+    private static int hudEditorButtonY(int winY, int winH) {
+        return winY + winH - 8 - HUD_EDITOR_BUTTON_H;
+    }
+
     /** The sidebar's current width: full, or folding away in setup mode. */
     private int sidebarWidth() {
         return Math.round(SIDEBAR_FULL_WIDTH * sidebarVisible);
@@ -789,9 +812,20 @@ public class AlpakaConfigScreen extends Screen {
             search.clearSelection();
         }
 
+        // HUD editor button in the sidebar's bottom corner
+        if (sidebarWidth > 20) {
+            int buttonY = hudEditorButtonY(winY, winH);
+            if (mouseX >= winX + 8 && mouseX <= winX + sidebarWidth - 12
+                    && mouseY >= buttonY && mouseY <= buttonY + HUD_EDITOR_BUTTON_H) {
+                playPloppSound();
+                this.minecraft.gui.setScreen(new HudEditorScreen(this));
+                return true;
+            }
+        }
+
         // Category Sidebar click
         int sideClipY = winY + headerHeight + 4;
-        int sideClipH = winH - headerHeight - 8;
+        int sideClipH = winH - headerHeight - 8 - HUD_EDITOR_FOOTER_H;
 
         if (sidebarWidth > 0 && mouseX >= winX && mouseX <= winX + sidebarWidth && mouseY >= sideClipY && mouseY <= sideClipY + sideClipH) {
             List<ConfigCategory> categories = getVisibleCategories();

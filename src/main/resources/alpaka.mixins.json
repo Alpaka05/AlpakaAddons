@@ -44,6 +44,8 @@
     "SkyHanniTabListRendererMixin",
     "FontTextureMixin",
     "GuiRendererMixin",
+    "GuiRenderStateMixin",
+    "GuiRenderStateNodeMixin",
     "KeyboardInputMixin",
     "ChatGraphicsAccessClipMixin",
     "ClientLevelMixin",

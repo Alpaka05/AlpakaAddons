@@ -39,7 +39,7 @@ public final class SmoothChatFeature {
     private SmoothChatFeature() {}
 
     public static boolean isEnabled() {
-        return AlpakaConfig.instance.smoothChatEnabled;
+        return AlpakaConfig.instance.betterChatOn(AlpakaConfig.instance.smoothChatEnabled);
     }
 
     /**

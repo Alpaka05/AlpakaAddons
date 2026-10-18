@@ -337,7 +337,15 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.wideHealthBarEnabled = v; AlpakaConfig.save(); },
                 "health hearts hunger food armor bar hide long wide single row absorption hotbar skyblock life"));
 
-        OPTIONS.add(new ConfigOption("Chat", ConfigCategory.VISUALS));
+        // Everything that changes how the chat looks, under one main switch.
+        OPTIONS.add(new ConfigOption("Better Chat", ConfigCategory.VISUALS));
+
+        OPTIONS.add(new ConfigOption("better_chat", "Better Chat",
+                "Makes the chat look better: Smooth Chat, smooth scrolling and the blurred background. Each can be turned off below.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.betterChatEnabled,
+                v -> { AlpakaConfig.instance.betterChatEnabled = v; AlpakaConfig.save(); },
+                "better chat look design style smooth blur background animation scroll main switch"));
 
         OPTIONS.add(new ConfigOption("smooth_chat", "Smooth Chat",
                 "New messages slide in and fade in instead of appearing at once.",
@@ -362,7 +370,7 @@ public class AlpakaConfigRegistry {
                 "smooth chat scroll scrolling wheel glide peek animation"));
 
         OPTIONS.add(new ConfigOption("chat_blur", "Blurred Chat Background",
-                "One rounded, blurred panel behind the chat instead of flat line boxes.",
+                "One rounded, blurred panel behind the chat instead of flat line boxes. The action bar stays readable behind it.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.chatBlurEnabled,
                 v -> { AlpakaConfig.instance.chatBlurEnabled = v; AlpakaConfig.save(); },
@@ -375,6 +383,8 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.chatBlurStrength = v; AlpakaConfig.save(); },
                 0.0f, 100.0f, val -> val == 0.0f ? "None (0%)" : String.format(Locale.ROOT, "%.0f%%", val),
                 "chat blur strength radius amount intensity frosted glass background lighter clearer sharp"));
+
+        OPTIONS.add(new ConfigOption("Chat", ConfigCategory.VISUALS));
 
         OPTIONS.add(new ConfigOption("scoreboard_blur", "Blurred Scoreboard Background",
                 "One rounded, blurred panel with a soft shadow behind the scoreboard. Uses the chat's Blur Strength.",

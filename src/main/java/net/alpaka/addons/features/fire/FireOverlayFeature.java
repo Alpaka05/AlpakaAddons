@@ -25,10 +25,9 @@ public final class FireOverlayFeature {
         }
     }
 
-    /** Whether the first-person fire is drawn at all; zero opacity counts as hidden. */
+    /** Whether the first-person fire is drawn at all: at zero opacity it is skipped outright. */
     public static boolean showFirstPersonFire() {
-        AlpakaConfig cfg = AlpakaConfig.instance;
-        return !cfg.hideFirstPersonFire && cfg.firstPersonFireOpacity > 0.0f;
+        return AlpakaConfig.instance.firstPersonFireOpacity > 0.0f;
     }
 
     /** Scales the alpha of vanilla's first-person fire color by the opacity setting. */

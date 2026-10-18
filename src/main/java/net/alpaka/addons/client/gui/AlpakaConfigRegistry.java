@@ -1333,6 +1333,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.bossSpawnAlertEnabled = v; AlpakaConfig.save(); },
                 "boss spawn alert notification slayer popup toast warning notice"));
 
+        OPTIONS.add(new ConfigOption("boss_cocoon_alert", "Boss Cocoon Alert",
+                "Slides in a notice when your slayer boss spawns in a cocoon.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.bossCocoonAlertEnabled,
+                v -> { AlpakaConfig.instance.bossCocoonAlertEnabled = v; AlpakaConfig.save(); },
+                "boss cocoon cocooned alert notification slayer popup toast warning hatch"));
+
         OPTIONS.add(new ConfigOption("slayer_timer", "Slayer Boss Timer",
                 "Times each slayer boss fight, from the boss spawning until it dies.",
                 ConfigCategory.SKYBLOCK,

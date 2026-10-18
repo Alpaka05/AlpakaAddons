@@ -1556,6 +1556,15 @@ public class AlpakaConfigRegistry {
                 "e.g. VultureGround",
                 "bridge bot name account discord guild relay username set"));
 
+        OPTIONS.add(new ConfigOption("Abilities", ConfigCategory.SKYBLOCK));
+
+        OPTIONS.add(new ConfigOption("rag_axe_countdown", "Rag Axe Countdown",
+                "Shows the Ragnarock axe's cast countdown under your crosshair instead of in the action bar, then \"Rag Axe\" once it goes off.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.ragAxeCountdownEnabled,
+                v -> { AlpakaConfig.instance.ragAxeCountdownEnabled = v; AlpakaConfig.save(); },
+                "rag axe ragnarock ragnarok cast casting countdown timer crosshair action bar ability strength"));
+
         OPTIONS.add(new ConfigOption("Mob Highlights", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("pangolin_highlight_enabled", "Highlight Pangolins",

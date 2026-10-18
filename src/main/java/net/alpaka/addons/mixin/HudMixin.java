@@ -6,6 +6,7 @@ import net.alpaka.addons.features.chat.ChatTabsFeature;
 import net.alpaka.addons.features.inventoryhud.InventoryHudRenderer;
 import net.alpaka.addons.features.notification.AlpakaNotifications;
 import net.alpaka.addons.features.playermodel.PlayerModelRenderer;
+import net.alpaka.addons.features.ragaxe.RagAxeCountdownFeature;
 import net.alpaka.addons.features.scoreboard.ScoreboardBlurFeature;
 import net.alpaka.addons.features.slayer.SlayerHudRenderer;
 import net.alpaka.addons.features.tooltip.OldMasterStarsFeature;
@@ -52,6 +53,7 @@ public class HudMixin {
         t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_SLAYER_TIMER);
         SlayerTimerHudRenderer.render(graphicsExtractor, deltaTracker);
         AlpakaPerf.end(AlpakaPerf.Section.HUD_SLAYER_TIMER, t);
+        RagAxeCountdownFeature.render(graphicsExtractor);
         t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_INVENTORY);
         InventoryHudRenderer.render(graphicsExtractor, deltaTracker);
         AlpakaPerf.end(AlpakaPerf.Section.HUD_INVENTORY, t);

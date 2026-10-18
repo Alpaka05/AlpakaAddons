@@ -128,7 +128,7 @@ Alpaka Addons runs entirely on your client and follows the [Hypixel rules](https
 - the item data of your own items, for the Etherwarp overlay
 - the contents of menus, and only once you have opened them yourself
 
-**What it contacts.** With "Allow Network Features" on (it can be turned off in General), the mod fetches the current SkyBlock mayor from Hypixel's public API to get slayer XP right, and pings the Hypixel server from the main menu to show its player count. Neither one sends anything about you. With the setting off, the mod makes no network requests at all.
+**What it contacts.** With "Allow Network Features" on (it can be turned off in General), the mod fetches the current SkyBlock mayor from Hypixel's public API to get slayer XP right, and pings the Hypixel server from the main menu to show its player count. With "Update Notifications" also on, it asks GitHub once per start whether a newer release of the mod is out. Only after you click Install and confirm does it download that release's jar from GitHub, check it against GitHub's checksum and swap it in when you close the game. None of these sends anything about you. With the setting off, the mod makes no network requests at all.
 
 **Guardrails.**
 
@@ -136,6 +136,7 @@ Alpaka Addons runs entirely on your client and follows the [Hypixel rules](https
 - Highlights such as the pangolin outline appear only when you have a clear line of sight. Nothing is drawn through walls.
 - Commands that delete or move your data (`/alpakaslayer reset`, `/alpakastats folder`, `/alpakapreset save`) work only when you type them. A clickable chat message cannot run them.
 - Screenshot buttons only act on screenshots this session posted, and Delete needs a second click.
+- An update installs only after you confirm it on a screen. The chat button and `/alpakaupdate install` just open that screen, and the command works only when you type it.
 
 ## Feedback & Bugs
 

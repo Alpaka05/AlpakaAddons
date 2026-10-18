@@ -235,7 +235,7 @@ object UpdateChecker {
             return
         }
         val line = Component.literal("§7Version §f${release.version}§7 is out (you have §f${ModVersion.mod().substringBefore('+')}§7). ")
-            .append(Component.literal("[Download]").withStyle { style ->
+            .append(Component.literal("[Release Page]").withStyle { style ->
                 style.withColor(ChatFormatting.AQUA)
                     .withClickEvent(ClickEvent.OpenUrl(URI.create(release.url)))
                     .withHoverEvent(HoverEvent.ShowText(Component.literal(release.url)))

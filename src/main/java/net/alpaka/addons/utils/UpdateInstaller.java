@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.alpaka.addons.AlpakaAddons;
+import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.slayer.SlayerDropTracker;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
@@ -116,6 +117,11 @@ public final class UpdateInstaller {
 
     /** Why {@code release} cannot be installed from the game, or null when it can. */
     public static String blocker(UpdateChecker.Release release) {
+        // A release found while network features were on must not be downloaded once they are off:
+        // with the setting off the mod makes no requests at all. Checked again right before the download.
+        if (!AlpakaConfig.instance.allowApiCalls) {
+            return "Network features are off in /aa, so nothing is downloaded - turn them on or use the release page";
+        }
         if (release.getSha256() == null) {
             return "GitHub lists no checksum for this jar, so download it from the release page";
         }

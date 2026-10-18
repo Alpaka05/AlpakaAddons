@@ -419,14 +419,19 @@ public final class AlpakaStyle {
     }
 
     /**
-     * A slider for one color channel: the track shows the color from the channel's 0 to its 255,
-     * and the knob is filled with the color as it is now.
+     * A color slider: the track shows the color from the slider's 0 to its end, and the knob is
+     * filled with the color as it is now. The track is a pill whose round ends reach half its height
+     * past {@code x} and {@code x + w}, so the knob at either end still sits inside it.
      */
     public static void gradientTrack(GuiGraphicsExtractor graphics, int x, int y, int w, int from, int to,
                                      double norm, int knobColor, boolean hover, boolean dragging) {
-        int h = 4;
-        int top = y - h / 2;
-        // A horizontal gradient from narrow vertical slices; the rounded ends are drawn as caps.
+        int h = 6;
+        int r = h / 2;
+        int top = y - r;
+        // The round ends are caps in the end colors, which is what the gradient starts and stops at;
+        // between them the gradient is narrow vertical slices.
+        ModernGuiUtils.drawRoundedRect(graphics, x - r, top, 2 * r, h, r, from | 0xFF000000);
+        ModernGuiUtils.drawRoundedRect(graphics, x + w - r, top, 2 * r, h, r, to | 0xFF000000);
         int steps = Math.max(1, w / 2);
         for (int i = 0; i < steps; i++) {
             int sx = x + i * w / steps;
@@ -434,7 +439,7 @@ public final class AlpakaStyle {
             int color = ModernGuiUtils.lerpColor(from, to, (i + 0.5f) / steps) | 0xFF000000;
             ModernGuiUtils.drawRect(graphics, sx, top, ex - sx, h, color);
         }
-        ModernGuiUtils.drawRoundedOutline(graphics, x - 1, top - 1, w + 2, h + 2, 2, LINE);
+        ModernGuiUtils.drawRoundedOutline(graphics, x - r - 1, top - 1, w + h + 2, h + 2, r + 1, LINE);
         int knobX = x + (int) Math.round(Math.max(0.0, Math.min(1.0, norm)) * w);
         int outer = hover || dragging ? 10 : 9;
         int inner = outer - 4;

@@ -166,6 +166,8 @@ public class AlpakaConfig {
     public boolean hideMobDeathSmoke = false;
     /** Drops the dark box vanilla draws behind every name tag, so only the text is left. */
     public boolean hideNameTagBackground = false;
+    /** Gives the text of every name tag the usual drop shadow, which vanilla leaves off in the world. */
+    public boolean nameTagTextShadow = false;
     public boolean smoothPerspectiveEnabled = true;
     public boolean disableFrontPerspective = false;
     public int smoothPerspectiveDurationMs = 350;
@@ -970,6 +972,7 @@ public class AlpakaConfig {
         this.hideHurtOverlayEnabled = false;
         this.hideMobDeathsEnabled = false;
         this.hideNameTagBackground = false;
+        this.nameTagTextShadow = false;
         this.wideHealthBarEnabled = false;
         this.smoothPerspectiveEnabled = false;
         this.disableFrontPerspective = false;

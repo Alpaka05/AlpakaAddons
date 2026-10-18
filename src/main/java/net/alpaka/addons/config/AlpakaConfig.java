@@ -42,13 +42,6 @@ public class AlpakaConfig {
     public boolean slayerRngDropGuildChatEnabled = false;
     /** What those share buttons post: 0 the tracker's own line, 1 Hypixel's drop message as it came. */
     public int slayerShareMessage = 0;
-    /**
-     * When a party member types "!since &lt;item&gt;", show the player their own count with a
-     * [Reply in party] button. Nothing is sent unless the player clicks it and presses Enter.
-     *
-     * Off by default. It replaces an automatic reply that answered in the player's name.
-     */
-    public boolean slayerSinceReplyOffer = false;
     public boolean fullbrightEnabled = false;
 
     // Cosmetics. Both are drawn by this client for this client only - nothing is sent, nobody else
@@ -1005,7 +998,6 @@ public class AlpakaConfig {
         this.slayerDropTrackerEnabled = false;
         this.hideHypixelDropMessage = false;
         this.slayerRngDropGuildChatEnabled = false;
-        this.slayerSinceReplyOffer = false;
         this.customNameTagEnabled = false;
         this.nameTagOutlineEnabled = false;
         this.nameTagShadowEnabled = false;

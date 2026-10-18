@@ -105,7 +105,7 @@ public final class ConfigTree {
             "block_overlay_enabled",
             // SkyBlock
             "etherwarp_overlay", "etherwarp_sound",
-            "slayer_drop_tracker", "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat", "slayer_since_reply_offer",
+            "slayer_drop_tracker", "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat",
             "hide_slayer_chat", "boss_spawn_alert", "slayer_timer", "slayer_hud_enabled",
             "world_age_hud_enabled", "world_age_join_message_enabled", "party_invite_prompt",
             "guild_prefix", "bridge_bot_formatter", "pangolin_highlight_enabled", "only_crit_damage",
@@ -188,7 +188,7 @@ public final class ConfigTree {
                     {"Cosmetics", "custom_name_tag", "custom_damage_tags", "chroma_hat", "player_scale"}},
             {{"SkyBlock"},
                     {"Slayer", "slayer_hud_enabled", "slayer_timer", "boss_spawn_alert", "slayer_drop_tracker",
-                            "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat", "slayer_since_reply_offer",
+                            "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat",
                             "hide_slayer_chat"},
                     {"Blaze", "clean_blaze", "blaze_fire_pits", "stop_blaze_spinning",
                             "mute_vanilla_sounds_blaze_slayer", "custom_sound_blaze_death"},

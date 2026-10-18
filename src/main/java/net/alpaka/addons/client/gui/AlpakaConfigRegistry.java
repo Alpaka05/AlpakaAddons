@@ -231,6 +231,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.blazeFirePitsEnabled = v; AlpakaConfig.save(); },
                 "blaze slayer fire pit pits clay terracotta floor flames aura highlight inferno demonlord boss warning"));
 
+        OPTIONS.add(ConfigOption.color("blaze_fire_pit_color", "Fire Pit Color",
+                "Color of the fire pit column.",
+                ConfigCategory.VISUALS,
+                c -> c.blazeFirePitColor,
+                v -> { AlpakaConfig.instance.blazeFirePitColor = v; AlpakaConfig.save(); },
+                "blaze slayer fire pit pits highlight column aura color colour picker"));
+
         OPTIONS.add(new ConfigOption("stop_blaze_spinning", "Stop Blaze Spinning",
                 "Stops blaze rods from spinning around blaze mobs.",
                 ConfigCategory.VISUALS,

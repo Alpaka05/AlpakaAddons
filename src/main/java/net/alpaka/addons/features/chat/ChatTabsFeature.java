@@ -84,9 +84,28 @@ public final class ChatTabsFeature {
         // The mod's own lines, and every other client-side one, are not exempt: they belong to no
         // channel, so they sort to All like any other unclaimed line rather than following the
         // player onto every tab.
+        int tab = TAB_OF.computeIfAbsent(message, ChatTabsFeature::tabOf);
+        return tab == URGENT || tab == active.ordinal();
+    }
+
+    /**
+     * Which tab each stored message belongs on, worked out once per message.
+     *
+     * A tab switch, and every key typed into the chat search, re-lays the whole history out, and
+     * classifying meant flattening and matching every message against the channel patterns again -
+     * thousands of them with an expanded history. Weak, identity keys: an entry goes with its
+     * message, and two equal-looking messages never share one.
+     */
+    private static final java.util.Map<GuiMessage, Integer> TAB_OF =
+            new com.google.common.collect.MapMaker().weakKeys().makeMap();
+
+    /** Stands in for a tab in {@link #TAB_OF}: the line shows on every tab. */
+    private static final int URGENT = -1;
+
+    private static int tabOf(GuiMessage message) {
         String text = ChatTab.strip(message.content().getString());
-        if (ChatTab.isUrgent(text)) return true;
-        return ChatTab.classify(text) == active;
+        if (ChatTab.isUrgent(text)) return URGENT;
+        return ChatTab.classify(text).ordinal();
     }
 
     /** The chat screen closed: back to All, unless the player keeps the tab. */

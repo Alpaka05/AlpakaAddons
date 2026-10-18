@@ -239,6 +239,15 @@ public class AlpakaConfig {
     public int worldAgeHudY = net.alpaka.addons.client.hud.HudDefaults.WORLD_AGE_Y;
     public float worldAgeHudScale = 1.0f;
 
+    /** Performance HUD: FPS, ping and the server's TPS on one line; see PerformanceStats. */
+    public boolean performanceHudEnabled = false;
+    public boolean performanceHudShowFps = true;
+    public boolean performanceHudShowPing = true;
+    public boolean performanceHudShowTps = true;
+    public int performanceHudX = net.alpaka.addons.client.hud.HudDefaults.PERFORMANCE_X;
+    public int performanceHudY = net.alpaka.addons.client.hud.HudDefaults.PERFORMANCE_Y;
+    public float performanceHudScale = 1.0f;
+
     // Slayer session HUD. Each line has its own toggle so the HUD can be trimmed to just the
     // numbers being watched; the whole HUD hides unless a slayer quest is active.
     /** The slayer session HUD, the mod's flagship. On for fresh installs. */
@@ -993,6 +1002,7 @@ public class AlpakaConfig {
         this.playerModelHideArmor = false;
         this.playerModelShowInGuis = false;
         this.worldAgeHudEnabled = false;
+        this.performanceHudEnabled = false;
         this.slayerHudEnabled = false;
         this.slayerHudPauseOutsideArea = false;
         this.slayerHudOnlyInSlayerAreas = false;

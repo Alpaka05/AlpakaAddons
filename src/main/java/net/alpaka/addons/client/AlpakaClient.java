@@ -58,6 +58,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.party.PartyInviteFeature.register();
         net.alpaka.addons.features.tooltip.OldMasterStarsFeature.register();
         WorldAgeHudRenderer.registerEvents();
+        net.alpaka.addons.features.performance.PerformanceStats.register();
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             // Every alias takes an optional search term: "/aa" opens the config as before, and

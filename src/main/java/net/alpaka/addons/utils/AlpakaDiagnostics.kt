@@ -59,7 +59,7 @@ object AlpakaDiagnostics {
         line("§7Recorded: §f$totalKills §7kills, §f$trackedDrops §7distinct drops §8(/alpakaslayer for detail)")
 
         line("§7Pangolin highlight: ${yesNo(cfg.pangolinHighlightEnabled)}")
-        line("§7HUDs - player model: ${yesNo(cfg.playerModelEnabled)}§7, world age: ${yesNo(cfg.worldAgeHudEnabled)}")
+        line("§7HUDs - player model: ${yesNo(cfg.playerModelEnabled)}§7, world age: ${yesNo(cfg.worldAgeHudEnabled)}§7, performance: ${yesNo(cfg.performanceHudEnabled)}")
 
         line("§7Sidebar lines (§f${lines.size}§7):")
         if (lines.isEmpty()) {

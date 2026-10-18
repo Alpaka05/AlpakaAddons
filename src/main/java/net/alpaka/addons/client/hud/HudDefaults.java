@@ -14,6 +14,12 @@ public final class HudDefaults {
 
     public static final int WORLD_AGE_X = 10;
     public static final int WORLD_AGE_Y = 10;
+    /** The world age's line at its widest, "Day: 35", in the pixel font. */
+    private static final int WORLD_AGE_MAX_WIDTH = 38;
+
+    /** Beside the world age, past its widest day with a gap. */
+    public static final int PERFORMANCE_X = WORLD_AGE_X + WORLD_AGE_MAX_WIDTH + 10;
+    public static final int PERFORMANCE_Y = WORLD_AGE_Y;
 
     public static final int SLAYER_SESSION_X = 10;
     public static final int SLAYER_SESSION_Y = 60;

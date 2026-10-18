@@ -159,6 +159,12 @@ public class AlpakaConfig {
      * quiet chat. Defaults to true so that split changes nothing for anyone who had clean blaze on.
      */
     public boolean hideSlayerChatMessages = true;
+    /** Which groups of slayer chatter hideSlayerChatMessages hides. All on, as before the split. */
+    public boolean hideSlayerChatQuest = true;
+    public boolean hideSlayerChatRadio = true;
+    public boolean hideSlayerChatLevelUp = true;
+    public boolean hideSlayerChatHealing = true;
+    public boolean hideSlayerChatSunshade = true;
     public boolean stopBlazeSpinning = true;
     /** Hides the red hurt flash on mobs and players. Cosmetic only, the hit itself is untouched. */
     public boolean hideHurtOverlayEnabled = false;

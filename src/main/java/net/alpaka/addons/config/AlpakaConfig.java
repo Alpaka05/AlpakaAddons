@@ -230,10 +230,12 @@ public class AlpakaConfig {
     public boolean slayerHudBlur = true;
     public boolean slayerTimerHudBlur = true;
     public boolean worldAgeHudBlur = true;
+    public boolean performanceHudBlur = true;
     public boolean notificationBlur = true;
     public boolean slayerHudSmoothFont = true;
     public boolean slayerTimerHudSmoothFont = true;
     public boolean worldAgeHudSmoothFont = true;
+    public boolean performanceHudSmoothFont = true;
     public boolean notificationSmoothFont = true;
     public boolean customEscapeMenuEnabled = true;
     public boolean customMainMenuEnabled = false;
@@ -254,6 +256,15 @@ public class AlpakaConfig {
     public int worldAgeHudX = net.alpaka.addons.client.hud.HudDefaults.WORLD_AGE_X;
     public int worldAgeHudY = net.alpaka.addons.client.hud.HudDefaults.WORLD_AGE_Y;
     public float worldAgeHudScale = 1.0f;
+
+    /** Performance HUD: FPS, ping and the server's TPS on one line; see PerformanceStats. */
+    public boolean performanceHudEnabled = false;
+    public boolean performanceHudShowFps = true;
+    public boolean performanceHudShowPing = true;
+    public boolean performanceHudShowTps = true;
+    public int performanceHudX = net.alpaka.addons.client.hud.HudDefaults.PERFORMANCE_X;
+    public int performanceHudY = net.alpaka.addons.client.hud.HudDefaults.PERFORMANCE_Y;
+    public float performanceHudScale = 1.0f;
 
     // Slayer session HUD. Each line has its own toggle so the HUD can be trimmed to just the
     // numbers being watched; the whole HUD hides unless a slayer quest is active.
@@ -1058,6 +1069,7 @@ public class AlpakaConfig {
         this.playerModelHideArmor = false;
         this.playerModelShowInGuis = false;
         this.worldAgeHudEnabled = false;
+        this.performanceHudEnabled = false;
         this.slayerHudEnabled = false;
         this.slayerHudPauseOutsideArea = false;
         this.slayerHudOnlyInSlayerAreas = false;

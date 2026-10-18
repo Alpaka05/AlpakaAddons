@@ -729,6 +729,36 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.playerModelShowInGuis = v; AlpakaConfig.save(); },
                 "player model show in guis menus screen open container inventory HUD show in guis / menus"));
 
+        OPTIONS.add(new ConfigOption("Performance HUD", ConfigCategory.VISUALS));
+
+        OPTIONS.add(new ConfigOption("performance_hud_enabled", "Performance HUD",
+                "Shows your FPS, your ping and the server's TPS on the HUD.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.performanceHudEnabled,
+                v -> { AlpakaConfig.instance.performanceHudEnabled = v; AlpakaConfig.save(); },
+                "performance hud fps frames ping latency ms tps ticks server lag"));
+
+        OPTIONS.add(new ConfigOption("performance_hud_fps", "Show FPS",
+                "Your frames per second, from the game's own counter.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.performanceHudShowFps,
+                v -> { AlpakaConfig.instance.performanceHudShowFps = v; AlpakaConfig.save(); },
+                "performance hud fps frames per second framerate"));
+
+        OPTIONS.add(new ConfigOption("performance_hud_ping", "Show Ping",
+                "Your round trip to the server. Measured with one small ping every 5 seconds while shown, none while F3 or another mod already measures it.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.performanceHudShowPing,
+                v -> { AlpakaConfig.instance.performanceHudShowPing = v; AlpakaConfig.save(); },
+                "performance hud ping latency ms connection delay"));
+
+        OPTIONS.add(new ConfigOption("performance_hud_tps", "Show TPS",
+                "The server's ticks per second, from the time updates it sends anyway. 20 is full speed.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.performanceHudShowTps,
+                v -> { AlpakaConfig.instance.performanceHudShowTps = v; AlpakaConfig.save(); },
+                "performance hud tps ticks per second server lag"));
+
         OPTIONS.add(new ConfigOption("Inventory HUD", ConfigCategory.VISUALS));
 
         OPTIONS.add(new ConfigOption("inventory_hud_enabled", "Inventory HUD",
@@ -2073,6 +2103,10 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.worldAgeHudBlur, v -> AlpakaConfig.instance.worldAgeHudBlur = v);
         styleToggle("world_age_smooth_font", "Smooth Font", ConfigCategory.SKYBLOCK, false,
                 () -> AlpakaConfig.instance.worldAgeHudSmoothFont, v -> AlpakaConfig.instance.worldAgeHudSmoothFont = v);
+        styleToggle("performance_hud_blur", "Blur", ConfigCategory.VISUALS, true,
+                () -> AlpakaConfig.instance.performanceHudBlur, v -> AlpakaConfig.instance.performanceHudBlur = v);
+        styleToggle("performance_hud_smooth_font", "Smooth Font", ConfigCategory.VISUALS, false,
+                () -> AlpakaConfig.instance.performanceHudSmoothFont, v -> AlpakaConfig.instance.performanceHudSmoothFont = v);
         OPTIONS.add(new ConfigOption("inventory_hud_blur", "Blur",
                 "Puts a blurred panel behind it, in the flat style. Needs Blur on under Design → HUD Style.",
                 ConfigCategory.VISUALS,

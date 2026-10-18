@@ -93,6 +93,8 @@ public final class DevScreenshotTour {
             // Where a right click on each HUD in the editor leads.
             screen("hud-settings-world-age", () -> AlpakaConfigScreen.openOnOption(null,
                     net.alpaka.addons.features.worldage.WorldAgeHudElement.INSTANCE.getSettingsOptionId())),
+            screen("hud-settings-performance", () -> AlpakaConfigScreen.openOnOption(null,
+                    net.alpaka.addons.features.performance.PerformanceHudElement.INSTANCE.getSettingsOptionId())),
             screen("hud-settings-slayer", () -> AlpakaConfigScreen.openOnOption(null,
                     net.alpaka.addons.features.slayer.SlayerHudElement.INSTANCE.getSettingsOptionId())),
             screen("hud-settings-boss-timer", () -> AlpakaConfigScreen.openOnOption(null,
@@ -436,6 +438,7 @@ public final class DevScreenshotTour {
         cfg.inventoryHudAttachToHotbar = true;
         cfg.inventoryHudVisibility = 0;
         cfg.worldAgeHudEnabled = true;
+        cfg.performanceHudEnabled = true;
     }
 
     /** The HUD editor's previews and a notice, all drawn in the shared HUD style. */

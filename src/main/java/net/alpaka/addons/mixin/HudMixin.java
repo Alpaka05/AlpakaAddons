@@ -5,6 +5,7 @@ import net.alpaka.addons.features.chat.ChatPeekFeature;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
 import net.alpaka.addons.features.inventoryhud.InventoryHudRenderer;
 import net.alpaka.addons.features.notification.AlpakaNotifications;
+import net.alpaka.addons.features.performance.PerformanceHudRenderer;
 import net.alpaka.addons.features.playermodel.PlayerModelRenderer;
 import net.alpaka.addons.features.scoreboard.ScoreboardBlurFeature;
 import net.alpaka.addons.features.slayer.SlayerHudRenderer;
@@ -46,6 +47,9 @@ public class HudMixin {
         t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_WORLD_AGE);
         WorldAgeHudRenderer.render(graphicsExtractor, deltaTracker);
         AlpakaPerf.end(AlpakaPerf.Section.HUD_WORLD_AGE, t);
+        t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_PERFORMANCE);
+        PerformanceHudRenderer.render(graphicsExtractor, deltaTracker);
+        AlpakaPerf.end(AlpakaPerf.Section.HUD_PERFORMANCE, t);
         t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_SLAYER);
         SlayerHudRenderer.render(graphicsExtractor, deltaTracker);
         AlpakaPerf.end(AlpakaPerf.Section.HUD_SLAYER, t);

@@ -15,6 +15,7 @@
     "CameraMixin",
     "GuiMixin",
     "HudMixin",
+    "ClientPacketListenerPerformanceMixin",
     "HudOverlayAccessor",
     "PlayerTabOverlayAccessor",
     "WideHealthBarMixin",

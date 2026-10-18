@@ -225,6 +225,38 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.hideMobDeathSmoke = v; AlpakaConfig.save(); },
                 "hide mob death smoke poof particles cloud puff"));
 
+        OPTIONS.add(new ConfigOption("Hide Fire Overlay", ConfigCategory.VISUALS));
+
+        OPTIONS.add(new ConfigOption("hide_entity_fire", "Hide Mob Fire",
+                "Hides the flames on burning mobs and players, and on yourself in third person.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.hideEntityFire,
+                v -> { AlpakaConfig.instance.hideEntityFire = v; AlpakaConfig.save(); },
+                "hide fire flame flames burning burn mob entity player overlay on fire"));
+
+        OPTIONS.add(new ConfigOption("first_person_fire_opacity", "First-Person Fire Opacity",
+                "How strongly the fire on your screen shows while you burn. 100% is vanilla, 0% hides it.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.firstPersonFireOpacity * 100.0f,
+                v -> { AlpakaConfig.instance.firstPersonFireOpacity = Math.round(v) / 100.0f; AlpakaConfig.save(); },
+                0.0f, 100.0f, val -> val == 0.0f ? "Hidden (0%)" : String.format(Locale.ROOT, "%.0f%%", val),
+                "hide first person fire flame opacity transparency fade weaker screen overlay burning low fire"));
+
+        OPTIONS.add(new ConfigOption("first_person_fire_height", "First-Person Fire Height",
+                "How far the fire on your screen reaches up while you burn. 100% is vanilla.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.firstPersonFireHeight * 100.0f,
+                v -> { AlpakaConfig.instance.firstPersonFireHeight = Math.round(v) / 100.0f; AlpakaConfig.save(); },
+                10.0f, 100.0f, val -> String.format(Locale.ROOT, "%.0f%%", val),
+                "first person fire flame height low lower fire smaller screen overlay burning"));
+
+        OPTIONS.add(new ConfigOption("first_person_fire_static", "Disable Fire Animation",
+                "Shows the fire on your screen as a still image instead of flickering. Fire in the world keeps moving.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.firstPersonFireStatic,
+                v -> { AlpakaConfig.instance.firstPersonFireStatic = v; AlpakaConfig.save(); },
+                "first person fire flame animation animated flicker still static freeze screen overlay burning"));
+
         OPTIONS.add(new ConfigOption("Nametags", ConfigCategory.VISUALS));
 
         OPTIONS.add(ConfigOption.color("name_tag_background_color", "Background Color",

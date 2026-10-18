@@ -450,6 +450,9 @@ public class AlpakaConfig {
     public boolean screenshotShowOpen = true;
     public boolean screenshotShowCopy = true;
     public boolean screenshotShowDelete = true;
+    public boolean screenshotShowFolder = false;
+    /** What clicking the preview does; an index into ScreenshotMessageFeature.PREVIEW_CLICK_NAMES. */
+    public int screenshotPreviewClickAction = 1;
     /** Every screenshot goes to the clipboard the moment it is taken. */
     public boolean autoCopyScreenshots = false;
     /** A message repeated right after itself becomes one line with (x2), (x3)... */

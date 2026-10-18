@@ -158,7 +158,7 @@ public final class ConfigTree {
             "HUD Style", "Main switches for the blurred panels and the smooth font of every HUD, and how strongly the world is blurred.",
             "Scoreboard", "The sidebar scoreboard's background and font.",
             "Nametags", "How the nametags above players and mobs look, and whether you see your own.",
-            "Hide Fire Overlay", "Hides the flames on burning mobs and fades or hides the fire on your screen while you burn.",
+            "Hide Fire Overlay", "Hides the flames on burning mobs, and fades, lowers or stills the fire on your screen while you burn.",
             "Notification Customization", "How long notifications stay, where they appear and how they look. Send a test to see the result."
     );
 

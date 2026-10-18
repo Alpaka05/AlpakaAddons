@@ -2,6 +2,7 @@ package net.alpaka.addons.mixin;
 
 import net.alpaka.addons.client.gui.AlpakaGuiNode;
 import net.alpaka.addons.client.gui.AlpakaGuiUnderlay;
+import net.alpaka.addons.compat.GnetumCompat;
 import net.minecraft.client.gui.navigation.ScreenRectangle;
 import net.minecraft.client.renderer.state.gui.GuiElementRenderState;
 import net.minecraft.client.renderer.state.gui.GuiRenderState;
@@ -46,6 +47,15 @@ public abstract class GuiRenderStateMixin implements AlpakaGuiUnderlay {
             lastElementBounds = null;
         }
         ((AlpakaGuiNode) alpaka$underlay).alpaka$addElement(state);
+    }
+
+    /** An underlay element Gnetum held back during its pass arrives here; see {@link GnetumCompat#deferUnderlay}. */
+    @Inject(method = "addGuiElement", at = @At("HEAD"), cancellable = true)
+    private void alpaka$takeDeferredUnderlay(GuiElementRenderState state, CallbackInfo ci) {
+        if (GnetumCompat.takeUnderlay(state)) {
+            alpaka$addUnderlay(state);
+            ci.cancel();
+        }
     }
 
     @Inject(method = "reset", at = @At("HEAD"))

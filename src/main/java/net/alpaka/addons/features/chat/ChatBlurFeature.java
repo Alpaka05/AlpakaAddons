@@ -70,7 +70,8 @@ import org.slf4j.LoggerFactory;
  * there is of that empty buffer, and the panels came out black. Such a pass neither runs the blur
  * nor samples it ({@link #isReady()}): its panels fall back to the plain tint, and the panels ask
  * Gnetum to leave their HUD out of its cache ({@link GnetumCompat}), so they are drawn in the
- * frame's pass and blur there.
+ * frame's pass and blur there. The glass under the HUD is put into its layer outside Gnetum's pass,
+ * once Gnetum hands the chat's elements to the frame ({@link GnetumCompat#deferUnderlay}).
  */
 public final class ChatBlurFeature {
     private static final Logger LOGGER = LoggerFactory.getLogger("AlpakaAddons/ChatBlur");

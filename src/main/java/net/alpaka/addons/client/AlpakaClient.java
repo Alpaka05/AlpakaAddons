@@ -29,6 +29,7 @@ public class AlpakaClient implements ClientModInitializer {
         // precompiles vanilla's; see BlockOverlayRenderTypes.
         net.alpaka.addons.features.blockoverlay.BlockOverlayRenderTypes.init();
         net.alpaka.addons.client.gui.AlpakaGuiPipelines.init();
+        net.alpaka.addons.features.chat.ChatBlurFeature.init();
         net.alpaka.addons.features.viewmodel.HandItemStarlightFeature.init();
         CustomSoundFeature.register();
         SessionLifecycle.register();
@@ -47,7 +48,6 @@ public class AlpakaClient implements ClientModInitializer {
         });
         ZoomFeature.register();
         net.alpaka.addons.features.chat.ChatPeekFeature.register();
-        net.alpaka.addons.features.chat.ActionBarOverChat.register();
         CommandWheelFeature.register();
         InventoryHudFeature.register();
         net.alpaka.addons.features.blaze.FirePitFeature.register();

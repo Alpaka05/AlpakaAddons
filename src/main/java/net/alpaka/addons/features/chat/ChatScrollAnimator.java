@@ -19,6 +19,6 @@ public final class ChatScrollAnimator {
     private ChatScrollAnimator() {}
 
     public static boolean isEnabled() {
-        return AlpakaConfig.instance.chatSmoothScrollEnabled;
+        return AlpakaConfig.instance.betterChatOn(AlpakaConfig.instance.chatSmoothScrollEnabled);
     }
 }

@@ -425,6 +425,12 @@ public class AlpakaConfig {
     public String guildPrefixText = "";
 
     // Chat options
+    /**
+     * Better Chat: the main switch over everything that changes how the chat looks - Smooth Chat,
+     * the smooth scrolling, the blurred background and the smooth font. Each keeps its own switch
+     * under it.
+     */
+    public boolean betterChatEnabled = true;
     /** A new message slides up into the chat and fades in instead of appearing at once. */
     public boolean smoothChatEnabled = true;
     /** How long the slide takes, 1 (quick) to 10 (slow); each step is 60 ms. */
@@ -943,6 +949,11 @@ public class AlpakaConfig {
         return notice;
     }
 
+    /** Whether a Better Chat part is on: its own switch and Better Chat's both. */
+    public boolean betterChatOn(boolean part) {
+        return betterChatEnabled && part;
+    }
+
     public void disableAllFeatures() {
         this.renderHandInThirdPerson = false;
         this.slayerDropTrackerEnabled = false;
@@ -1015,6 +1026,7 @@ public class AlpakaConfig {
         this.etherwarpOverlayEnabled = false;
         this.etherwarpLineEnabled = false;
         this.etherwarpSoundEnabled = false;
+        this.betterChatEnabled = false;
         this.smoothChatEnabled = false;
         this.chatBlurEnabled = false;
         this.scoreboardBlurEnabled = false;

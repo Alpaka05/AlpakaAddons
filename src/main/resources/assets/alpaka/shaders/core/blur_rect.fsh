@@ -1,5 +1,7 @@
 #version 330
 
+#moj_import <minecraft:globals.glsl>
+
 layout(std140) uniform DynamicTransforms {
     mat4 ModelViewMat;
     vec4 ColorModulator;
@@ -7,7 +9,7 @@ layout(std140) uniform DynamicTransforms {
     mat4 TextureMat;
 };
 
-// The blurred copy of the frame, the same size as the frame itself.
+// The blurred frame, at half the frame's size (or the plain copy at full size, at strength 0).
 uniform sampler2D Sampler0;
 
 in vec4 vertexColor;
@@ -63,9 +65,9 @@ void main() {
         discard;
     }
 
-    // The copy is frame-sized and drawn in the frame's own coordinates, so this fragment's screen
-    // position, in texture space, is exactly where the blurred pixel behind it lives.
-    vec2 uv = gl_FragCoord.xy / vec2(textureSize(Sampler0, 0));
+    // The blurred frame covers the whole screen, so this fragment's screen position, as a share of
+    // the screen, is where the blurred pixel behind it lives - whatever size the texture is.
+    vec2 uv = gl_FragCoord.xy / ScreenSize;
     vec3 blurred = texture(Sampler0, uv).rgb;
 
     // Frosted glass rather than a dark sheet: what shows through keeps a little more of its color

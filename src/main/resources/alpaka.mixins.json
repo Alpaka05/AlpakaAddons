@@ -51,6 +51,8 @@
     "HudScoreboardFontMixin",
     "ScoreboardEntryFontMixin",
     "GuiRendererMixin",
+    "GuiRenderStateMixin",
+    "GuiRenderStateNodeMixin",
     "KeyboardInputMixin",
     "ChatGraphicsAccessClipMixin",
     "ClientLevelMixin",

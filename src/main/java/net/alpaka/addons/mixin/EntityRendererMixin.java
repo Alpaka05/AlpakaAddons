@@ -3,6 +3,7 @@ package net.alpaka.addons.mixin;
 import net.alpaka.addons.features.blaze.CleanBlazeFeature;
 import net.alpaka.addons.features.critters.PangolinHighlightFeature;
 import net.alpaka.addons.features.damagetags.DamageTagFeature;
+import net.alpaka.addons.features.fire.FireOverlayFeature;
 import net.alpaka.addons.features.mobdeath.HideMobDeathsFeature;
 import net.alpaka.addons.features.playerscale.PlayerScaleFeature;
 import net.minecraft.client.renderer.culling.Frustum;
@@ -35,6 +36,7 @@ public class EntityRendererMixin<T extends Entity, S extends EntityRenderState> 
     private void onExtractRenderState(T entity, S state, float partialTick, CallbackInfo ci) {
         long t = net.alpaka.addons.utils.AlpakaPerf.begin(net.alpaka.addons.utils.AlpakaPerf.Section.ENTITY_RULES);
         CleanBlazeFeature.shouldHideEntityFire(entity, state);
+        FireOverlayFeature.applyEntity(state);
         // TAIL, so this lands after vanilla has decided outlineColor from the glowing effect, and
         // still before LevelRenderer reads appearsGlowing() to build the outline pass.
         PangolinHighlightFeature.applyOutline(entity, state);

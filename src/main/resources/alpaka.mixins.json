@@ -23,6 +23,7 @@
     "LevelRendererMixin",
     "ChatComponentMixin",
     "ChatScreenMixin",
+    "ChatScreenScrollbarMixin",
     "CameraTypeMixin",
     "BlazeModelMixin",
     "LightningBoltMixin",

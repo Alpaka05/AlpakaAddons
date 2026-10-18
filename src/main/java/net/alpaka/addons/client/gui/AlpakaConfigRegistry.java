@@ -216,6 +216,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.hideMobDeathSmoke = v; AlpakaConfig.save(); },
                 "hide mob death smoke poof particles cloud puff"));
 
+        OPTIONS.add(new ConfigOption("hide_name_tag_background", "Hide Name Tag Background",
+                "Removes the dark box behind every name tag, so only the text is left.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.hideNameTagBackground,
+                v -> { AlpakaConfig.instance.hideNameTagBackground = v; AlpakaConfig.save(); },
+                "name tag nametag background backdrop box dark hide remove transparent player mob"));
+
         OPTIONS.add(new ConfigOption("Camera", ConfigCategory.VISUALS));
 
         OPTIONS.add(new ConfigOption("render_hand_third_person", "First-Person Hand in F5",

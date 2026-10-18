@@ -334,7 +334,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.inventorySnowEnabled,
                 v -> { AlpakaConfig.instance.inventorySnowEnabled = v; AlpakaConfig.save(); },
-                "snow winter effect gui inventory snowflakes particles fireflies ash souls"));
+                "snow winter effect gui inventory snowflakes particles fireflies ash cherry petals leaves autumn enchanting glyphs rain"));
 
         OPTIONS.add(new ConfigOption("inventory_particle_type", "Particle Type",
                 "Which particles drift over container screens.",
@@ -343,7 +343,7 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.inventoryParticleType = Math.round(v); AlpakaConfig.save(); },
                 0.0f, (float) (SnowOverlayRenderer.TYPE_NAMES.length - 1),
                 val -> SnowOverlayRenderer.TYPE_NAMES[SnowOverlayRenderer.clampType(Math.round(val))],
-                "inventory particle type kind snowflakes fireflies ash souls snow embers").choices(SnowOverlayRenderer.TYPE_NAMES));
+                "inventory particle type kind snowflakes fireflies ash snow embers cherry petals blossom falling leaves autumn fall enchanting glyphs runes enchant rain").choices(SnowOverlayRenderer.TYPE_NAMES));
 
         OPTIONS.add(new ConfigOption("inventory_snow_speed", "Particle Speed",
                 "How fast the particles move.",

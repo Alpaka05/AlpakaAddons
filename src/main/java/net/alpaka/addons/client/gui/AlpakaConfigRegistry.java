@@ -12,6 +12,7 @@ import net.alpaka.addons.features.nametag.CustomNameTagFeature;
 import net.alpaka.addons.features.notification.AlpakaNotifications;
 import net.alpaka.addons.features.playerscale.PlayerScaleFeature;
 import net.alpaka.addons.features.sound.CustomSoundFeature;
+import net.alpaka.addons.features.snow.SnowOverlayRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
@@ -317,6 +318,15 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.inventorySnowSpeed = v; AlpakaConfig.save(); },
                 0.1f, 5.0f, val -> String.format(Locale.ROOT, "%.1fx", val),
                 "snow speed animation winter velocity"));
+
+        OPTIONS.add(new ConfigOption("inventory_snow_amount", "Snowflake Amount",
+                "How many snowflakes fall at once.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.inventorySnowAmount,
+                v -> { AlpakaConfig.instance.inventorySnowAmount = v; AlpakaConfig.save(); },
+                SnowOverlayRenderer.MIN_AMOUNT, SnowOverlayRenderer.MAX_AMOUNT,
+                val -> String.format(Locale.ROOT, "%.1fx", val),
+                "snow amount count density number flakes winter more less"));
 
         OPTIONS.add(new ConfigOption("scrollable_tooltips", "Scrollable Tooltips",
                 "Scroll a tooltip taller than the screen with the mouse wheel.",

@@ -8,14 +8,21 @@ import java.util.Random
  * Drifting snowflakes drawn over inventory and menu screens.
  *
  * Flakes are held in parallel primitive arrays rather than as a list of objects. There are 105 of
- * them and every one is touched on every frame of every screen, so the object layout was 105
- * pointer chases through the heap per frame to read four fields each; the arrays walk contiguous
- * memory instead. It also means the whole system allocates exactly six arrays, once, for the
- * lifetime of the game.
+ * them at amount 1 and every one is touched on every frame of every screen, so the object layout
+ * was 105 pointer chases through the heap per frame to read four fields each; the arrays walk
+ * contiguous memory instead. The arrays are sized for the highest amount, so the whole system still
+ * allocates exactly six arrays, once, for the lifetime of the game; a lower amount only uses the
+ * front of them.
  */
 object SnowOverlayRenderer {
 
-    private const val PARTICLE_COUNT = 105
+    /** Flakes at amount multiplier 1. */
+    private const val BASE_PARTICLE_COUNT = 105
+
+    const val MIN_AMOUNT = 0.1f
+    const val MAX_AMOUNT = 5.0f
+
+    private val MAX_PARTICLE_COUNT = Math.round(BASE_PARTICLE_COUNT * MAX_AMOUNT)
 
     /** Pixels per second at speed multiplier 1. */
     private const val BASE_SPEED = 40.0f
@@ -40,16 +47,17 @@ object SnowOverlayRenderer {
 
     private val random = Random()
 
-    private val posX = FloatArray(PARTICLE_COUNT)
-    private val posY = FloatArray(PARTICLE_COUNT)
-    private val speedX = FloatArray(PARTICLE_COUNT)
-    private val speedY = FloatArray(PARTICLE_COUNT)
-    private val size = IntArray(PARTICLE_COUNT)
+    private val posX = FloatArray(MAX_PARTICLE_COUNT)
+    private val posY = FloatArray(MAX_PARTICLE_COUNT)
+    private val speedX = FloatArray(MAX_PARTICLE_COUNT)
+    private val speedY = FloatArray(MAX_PARTICLE_COUNT)
+    private val size = IntArray(MAX_PARTICLE_COUNT)
 
     /** Packed ARGB. Alpha is fixed at spawn, so the color is built there instead of every frame. */
-    private val color = IntArray(PARTICLE_COUNT)
+    private val color = IntArray(MAX_PARTICLE_COUNT)
 
-    private var initialized = false
+    /** Flakes that have been given a position so far; raising the amount spawns the rest. */
+    private var spawnedCount = 0
     private var lastScreenWidth = 0
     private var lastScreenHeight = 0
     private var lastTimeMs = System.currentTimeMillis()
@@ -58,9 +66,10 @@ object SnowOverlayRenderer {
     fun render(graphics: GuiGraphicsExtractor, width: Int, height: Int) {
         if (width <= 0 || height <= 0) return
 
-        if (!initialized) {
-            for (i in 0 until PARTICLE_COUNT) spawn(i, width, height, initial = true)
-            initialized = true
+        val count = particleCount(AlpakaConfig.instance.inventorySnowAmount)
+        if (count > spawnedCount) {
+            for (i in spawnedCount until count) spawn(i, width, height, initial = true)
+            spawnedCount = count
         }
 
         // Scale the field with the window, so going fullscreen does not leave a bare strip.
@@ -68,7 +77,7 @@ object SnowOverlayRenderer {
             if (lastScreenWidth > 0 && lastScreenHeight > 0) {
                 val scaleX = width.toFloat() / lastScreenWidth
                 val scaleY = height.toFloat() / lastScreenHeight
-                for (i in 0 until PARTICLE_COUNT) {
+                for (i in 0 until spawnedCount) {
                     posX[i] *= scaleX
                     posY[i] *= scaleY
                 }
@@ -87,7 +96,7 @@ object SnowOverlayRenderer {
         val yLimit = height + RESPAWN_MARGIN
         val xLimit = width + width * SPAWN_SPREAD
 
-        for (i in 0 until PARTICLE_COUNT) {
+        for (i in 0 until count) {
             var x = posX[i] + speedX[i] * step
             var y = posY[i] + speedY[i] * step
 
@@ -111,6 +120,13 @@ object SnowOverlayRenderer {
                 graphics.fill(drawX, drawY, drawX + extent, drawY + extent, color[i])
             }
         }
+    }
+
+    /** Number of flakes drawn for an amount multiplier, at least one and at most the arrays' size. */
+    @JvmStatic
+    fun particleCount(amount: Float): Int {
+        val clamped = if (amount.isNaN()) 1.0f else amount.coerceIn(MIN_AMOUNT, MAX_AMOUNT)
+        return Math.round(BASE_PARTICLE_COUNT * clamped).coerceIn(1, MAX_PARTICLE_COUNT)
     }
 
     /**

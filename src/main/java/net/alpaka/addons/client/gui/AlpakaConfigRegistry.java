@@ -266,21 +266,28 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.hideMobDeathSmoke = v; AlpakaConfig.save(); },
                 "hide mob death smoke poof particles cloud puff"));
 
-        OPTIONS.add(new ConfigOption("Name Tags", ConfigCategory.VISUALS));
+        OPTIONS.add(new ConfigOption("Nametags", ConfigCategory.VISUALS));
 
-        OPTIONS.add(new ConfigOption("hide_name_tag_background", "Hide Name Tag Background",
-                "Removes the dark box behind every name tag, so only the text is left.",
+        OPTIONS.add(ConfigOption.color("name_tag_background_color", "Background Color",
+                "The box behind every nametag. Set the opacity to 0 to remove it and leave only the text.",
                 ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.hideNameTagBackground,
-                v -> { AlpakaConfig.instance.hideNameTagBackground = v; AlpakaConfig.save(); },
-                "name tag nametag background backdrop box dark hide remove transparent player mob"));
+                c -> c.nameTagBackgroundColor,
+                v -> { AlpakaConfig.instance.nameTagBackgroundColor = v; AlpakaConfig.save(); },
+                "name tag nametag background backdrop box dark color colour opacity hide remove transparent player mob"));
 
-        OPTIONS.add(new ConfigOption("name_tag_text_shadow", "Name Tag Text Shadow",
-                "Draws the text of every name tag with the usual Minecraft drop shadow.",
+        OPTIONS.add(new ConfigOption("name_tag_text_shadow", "Text Shadow",
+                "Draws the text of every nametag with the usual Minecraft drop shadow.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.nameTagTextShadow,
                 v -> { AlpakaConfig.instance.nameTagTextShadow = v; AlpakaConfig.save(); },
                 "name tag nametag text shadow drop readable player mob"));
+
+        OPTIONS.add(new ConfigOption("show_own_name_tag", "Show Own Nametag",
+                "Shows your own nametag above you in third person. Custom Name Tag draws its animated one instead.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.showOwnNameTag,
+                v -> { AlpakaConfig.instance.showOwnNameTag = v; AlpakaConfig.save(); },
+                "own name tag nametag self third person f5 see my name show"));
 
         OPTIONS.add(new ConfigOption("Camera", ConfigCategory.VISUALS));
 

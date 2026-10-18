@@ -31,6 +31,8 @@ import kotlin.math.sin
  * the drawing itself in `AvatarRenderer.submitNameDisplay` (see [submit]) so the text can be colored
  * and moved letter by letter - something the single-string vanilla path cannot do.
  *
+ * Show Own Nametag uses the same check without the takeover, so the vanilla tag is drawn.
+ *
  * Only the *own* tag is touched. Other players' tags go through vanilla untouched, and nothing here
  * is sent anywhere: the effect exists purely in this client's frame buffer, which is what keeps it
  * on the right side of Hypixel's rules - it is a cosmetic, like a cape mod.
@@ -109,7 +111,7 @@ object CustomNameTagFeature {
      */
     @JvmStatic
     fun shouldForceShowName(entity: Entity): Boolean {
-        if (!isEnabled() || !extractingWorldEntity) return false
+        if (!(isEnabled() || AlpakaConfig.instance.showOwnNameTag) || !extractingWorldEntity) return false
         val mc = Minecraft.getInstance()
         val player = mc.player ?: return false
         if (entity !== player) return false

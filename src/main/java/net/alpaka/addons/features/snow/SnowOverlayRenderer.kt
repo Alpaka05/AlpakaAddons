@@ -2,6 +2,8 @@ package net.alpaka.addons.features.snow
 
 import net.alpaka.addons.config.AlpakaConfig
 import net.minecraft.client.gui.GuiGraphicsExtractor
+import net.minecraft.client.renderer.RenderPipelines
+import net.minecraft.resources.Identifier
 import java.util.Random
 import kotlin.math.cos
 import kotlin.math.sin
@@ -10,7 +12,8 @@ import kotlin.math.sin
  * Inventory Particles: snowflakes, fireflies, ash or souls drawn over inventory and menu screens.
  *
  * Each kind moves its own way: snow drifts down at a slant, fireflies wander on curving paths and
- * pulse, ash sways down slowly, souls rise and fade out at different heights.
+ * pulse, ash sways down slowly, souls rise with vanilla's soul
+ * particle animation and fade out at different heights.
  *
  * Particles are held in parallel primitive arrays rather than as a list of objects. There are 105 of
  * them at amount 1 and every one is touched on every frame of every screen, so the object layout
@@ -30,6 +33,10 @@ object SnowOverlayRenderer {
     @JvmField
     val TYPE_NAMES = arrayOf("Snowflakes", "Fireflies", "Ash", "Souls")
 
+    /** Vanilla's soul particle animation, from soul sand and soul soil, in playing order. */
+    private val SOUL_FRAMES = Array(11) { Identifier.withDefaultNamespace("textures/particle/soul_$it.png") }
+    private const val SOUL_TEXTURE_SIZE = 16
+
     /** Particles at amount multiplier 1. */
     private const val BASE_PARTICLE_COUNT = 105
 
@@ -39,8 +46,8 @@ object SnowOverlayRenderer {
     private val MAX_PARTICLE_COUNT = Math.round(BASE_PARTICLE_COUNT * MAX_AMOUNT)
 
     /**
-     * Share of [BASE_PARTICLE_COUNT] each type shows at amount 1. Fireflies glow and souls carry a
-     * trail, so the full snow count of them crowds the screen.
+     * Share of [BASE_PARTICLE_COUNT] each type shows at amount 1. Fireflies glow and souls are
+     * full sprites, so the full snow count of them crowds the screen.
      */
     private val TYPE_DENSITY = floatArrayOf(1.0f, 0.3f, 0.8f, 0.45f)
 
@@ -222,9 +229,12 @@ object SnowOverlayRenderer {
         }
     }
 
-    /** Rise from the bottom with a gentle sway, fading out on the way up. */
+    /**
+     * Rise from the bottom with a gentle sway, drawn with vanilla's soul particle frames: the brown
+     * face near the bottom turns into the cyan wisp on the way up, then fades out.
+     */
     private fun renderSouls(graphics: GuiGraphicsExtractor, count: Int, width: Int, height: Int, step: Float) {
-        val fadeSpan = height * 0.35f
+        val bottom = (height + RESPAWN_MARGIN).toFloat()
         for (i in 0 until count) {
             var y = posY[i] - speedY[i] * step
             val top = fadeTop[i] * height
@@ -236,22 +246,25 @@ object SnowOverlayRenderer {
                 posY[i] = y
             }
 
-            // Fade in just above the bottom edge, and out over the last stretch before the top.
-            val fadeIn = ((height + RESPAWN_MARGIN - y) / 20.0f).coerceIn(0.0f, 1.0f)
-            val fadeOut = ((y - top) / fadeSpan).coerceIn(0.0f, 1.0f)
+            val extent = size[i]
+            val drawX = Math.round(posX[i] + sin(elapsed * wobble[i] + phase[i]) * 5.0f)
+            val drawY = Math.round(y)
+            if (drawX + extent <= 0 || drawY + extent <= 0 || drawX >= width || drawY >= height) continue
+
+            // How far along its climb the soul is picks the animation frame, so each one plays
+            // vanilla's animation once between the bottom edge and the height it vanishes at.
+            val progress = ((bottom - y) / (bottom - top).coerceAtLeast(1.0f)).coerceIn(0.0f, 1.0f)
+            val frame = (progress * SOUL_FRAMES.size).toInt().coerceAtMost(SOUL_FRAMES.size - 1)
+
+            // Fade in just above the bottom edge, and out over the last fifth of the climb.
+            val fadeIn = ((bottom - y) / 20.0f).coerceIn(0.0f, 1.0f)
+            val fadeOut = ((1.0f - progress) / 0.2f).coerceIn(0.0f, 1.0f)
             val alpha = (color[i] ushr 24) * fadeIn * fadeOut
             if (alpha < 1.0f) continue
-            val rgb = color[i] and 0xFFFFFF
 
-            val sway = sin(elapsed * wobble[i] + phase[i]) * 5.0f
-            val drawX = Math.round(posX[i] + sway)
-            val drawY = Math.round(y)
-            val extent = size[i]
-
-            // A thin trail below the soul, since it moves upward.
-            val trailX = drawX + (extent - 1) / 2
-            drawRect(graphics, trailX, drawY + extent, 1, extent + 2, withAlpha(rgb, alpha * 0.35f), width, height)
-            drawSquare(graphics, drawX, drawY, extent, withAlpha(rgb, alpha), width, height)
+            graphics.blit(RenderPipelines.GUI_TEXTURED, SOUL_FRAMES[frame], drawX, drawY, 0.0f, 0.0f,
+                extent, extent, SOUL_TEXTURE_SIZE, SOUL_TEXTURE_SIZE, SOUL_TEXTURE_SIZE, SOUL_TEXTURE_SIZE,
+                withAlpha(0xFFFFFF, alpha))
         }
     }
 
@@ -362,11 +375,11 @@ object SnowOverlayRenderer {
             h + RESPAWN_MARGIN
         }
         speedY[index] = 0.35f + random.nextFloat() * 0.5f
-        size[index] = random.nextInt(2) + 2
+        // Half or full texture size only: anything in between smears the pixel art.
+        size[index] = if (random.nextInt(3) == 0) SOUL_TEXTURE_SIZE else SOUL_TEXTURE_SIZE / 2
         phase[index] = random.nextFloat() * 6.2832f
         wobble[index] = 0.7f + random.nextFloat() * 0.8f
-        // The pale cyan of soul fire.
-        val rgb = if (random.nextBoolean()) 0x7FE8F0 else 0xB8F4FF
-        color[index] = ((170 + random.nextInt(70)) shl 24) or rgb
+        // White, so the texture keeps its own colors; only the alpha varies.
+        color[index] = ((200 + random.nextInt(56)) shl 24) or 0xFFFFFF
     }
 }

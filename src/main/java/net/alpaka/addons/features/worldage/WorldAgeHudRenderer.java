@@ -199,20 +199,17 @@ public class WorldAgeHudRenderer {
         }
     }
 
+    /**
+     * Days since the server instance started, read from the world age ({@code gameTime}).
+     *
+     * Not the overworld clock: that is the time of day, which Hypixel drives on its own on some
+     * islands - on the Crimson Isle it runs so fast the day count went up about once a second. The
+     * world age only ever counts real ticks since the instance booted, which is the lobby's "Day".
+     */
     public static long getWorldDay() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return 0L;
-
-        long totalTicks = mc.level.getOverworldClockTime();
-        long totalDays = Math.max(0L, totalTicks / 24000L);
-
-        // Day count first: it is a comparison against a local, and short-circuiting on it keeps the
-        // scoreboard read out of the common case entirely. This runs once per frame from the HUD.
-        if (totalDays > 1000 || SkyblockUtils.isOnSkyblock()) {
-            // Hypixel mini-servers reboot on a 36-day (12-hour) cycle
-            return totalDays % 36;
-        }
-        return totalDays;
+        return Math.max(0L, mc.level.getGameTime() / 24000L);
     }
 
     public static void render(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {

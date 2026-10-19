@@ -156,7 +156,7 @@ public final class ConfigTree {
             "Swing Customizations", "How the held item moves when you swing: drift, arc and whether the swing always plays out.",
             "Viewmodel Presets", "Save your viewmodel and swing settings to a slot and load them back later.",
             "HUD Style", "Main switches for the blurred panels and the smooth font of every HUD, and how strongly the world is blurred.",
-            "Scoreboard", "The sidebar scoreboard's background and font.",
+            "Scoreboard", "The sidebar scoreboard's footer, background and font.",
             "Nametags", "How the nametags above players and mobs look, and whether you see your own.",
             "Hide Fire Overlay", "Hides the flames on burning mobs, and fades, lowers or stills the fire on your screen while you burn.",
             "Notification Customization", "How long notifications stay, where they appear and how they look. Send a test to see the result."

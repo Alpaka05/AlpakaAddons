@@ -31,6 +31,19 @@ public final class ScoreboardFooterFeature {
     }
 
     /**
+     * Whether vanilla is about to draw the footer, as {@link #replace} handed it back or wrapped in
+     * a parent that only sets the font.
+     */
+    public static boolean isFooter(Component line) {
+        return line == FOOTER || (line.getSiblings().size() == 1 && line.getSiblings().get(0) == FOOTER);
+    }
+
+    /** Where the footer starts so it sits in the middle of the sidebar, as vanilla does with the title. */
+    public static int centeredX(int left, int width, int textWidth) {
+        return left + width / 2 - textWidth / 2;
+    }
+
+    /**
      * Hypixel's last line reads "www.hypixel.net" (or "alpha.hypixel.net" on the test server).
      * The line is built from team prefixes, so legacy colour codes sit in the raw text, and
      * Hypixel keeps every line unique with a made-up code in the middle ("§ewww.hypixel.ne§g§et").

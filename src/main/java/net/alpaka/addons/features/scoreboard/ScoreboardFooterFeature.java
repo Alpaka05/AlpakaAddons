@@ -1,7 +1,6 @@
 package net.alpaka.addons.features.scoreboard;
 
 import net.alpaka.addons.config.AlpakaConfig;
-import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
@@ -33,17 +32,18 @@ public final class ScoreboardFooterFeature {
 
     /**
      * Hypixel's last line reads "www.hypixel.net" (or "alpha.hypixel.net" on the test server).
-     * The line is built from team prefixes, so legacy colour codes can sit in the raw text, and
-     * Hypixel keeps every line unique with emoji the font draws as nothing, often in the middle
-     * ("www.hypixel.ne🎂t"). Only letters, digits and dots are compared.
+     * The line is built from team prefixes, so legacy colour codes sit in the raw text, and
+     * Hypixel keeps every line unique with a made-up code in the middle ("§ewww.hypixel.ne§g§et").
+     * ChatFormatting.stripFormatting only knows the real codes, so every § goes with the character
+     * after it, and of the rest only letters, digits and dots are compared.
      */
     static boolean isHypixelFooter(String line) {
-        String plain = ChatFormatting.stripFormatting(line);
-        if (plain == null) return false;
+        String plain = ANY_CODE.matcher(line).replaceAll("");
         plain = NOT_ADDRESS.matcher(plain).replaceAll("").toLowerCase(Locale.ROOT);
         return plain.equals("www.hypixel.net") || plain.equals("alpha.hypixel.net");
     }
 
+    private static final Pattern ANY_CODE = Pattern.compile("§.?");
     private static final Pattern NOT_ADDRESS = Pattern.compile("[^A-Za-z0-9.]");
 
     /** One component per letter, coloured along the stops evenly spread over the text. */

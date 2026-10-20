@@ -431,7 +431,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VISUALS,
                 () -> (float) AlpakaConfig.instance.smoothChatStrength,
                 v -> { AlpakaConfig.instance.smoothChatStrength = Math.round(v); AlpakaConfig.save(); },
-                1.0f, 10.0f, v -> Math.round(v) + " / 10",
+                1.0f, 10.0f, v -> Math.round(v) * 60 + " ms",
                 "smooth chat strength speed duration animation slow fast slider"));
 
         OPTIONS.add(new ConfigOption("chat_open_animation", "Opening Animation",

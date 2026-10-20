@@ -133,6 +133,16 @@ object SlayerTimer {
     private const val ENTITY_START_EARLY_MS = 2_000L
     private const val ENTITY_START_LATE_MS = 3_000L
 
+    /**
+     * Hypixel says the boss spawned inside a cocoon. Only an alert: the fight starts when the cocoon
+     * hatches, which the sidebar reports as an ordinary spawn a few seconds later.
+     */
+    fun onBossCocooned(type: SlayerType?) {
+        if (!AlpakaConfig.instance.bossCocoonAlertEnabled) return
+        val who = type?.let { it.display + " slayer boss" } ?: "Slayer boss"
+        AlpakaNotifications.send("Boss Cocooned", "$who is hatching")
+    }
+
     /** The sidebar says the boss is up. [verified]: it rose out of grinding in this world. */
     fun onBossSpawned(type: SlayerType, verified: Boolean = true) {
         // Announced before the timer's own switch is consulted, because the alert is a separate

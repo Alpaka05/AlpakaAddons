@@ -35,6 +35,13 @@ public class SlayerDropTracker {
             Pattern.compile("^\\s*(?:SLAYER QUEST COMPLETE!|NICE! SLAYER BOSS SLAIN!)\\s*$");
 
     /**
+     * The slayer boss spawned inside a cocoon, {@code "  YOU COCOONED YOUR SLAYER BOSS"} once color
+     * codes are stripped. Taken from SkyHanni's SlayerApi pattern.
+     */
+    private static final Pattern BOSS_COCOONED_PATTERN =
+            Pattern.compile("^\\s*YOU COCOONED YOUR SLAYER BOSS\\s*$");
+
+    /**
      * A rare drop. Hypixel's slayer drops put the item in parentheses and use <em>two</em> spaces
      * after "DROP!" - e.g. {@code "VERY RARE DROP!  (High Class Archfiend Dice) +305% ✯ Magic Find"}
      * once color codes are stripped. The previous pattern required exactly one space and no leading
@@ -304,6 +311,12 @@ public class SlayerDropTracker {
         // and the boss timer is a separate feature that would otherwise count a phantom one. The
         // tracker being off used to disable these nets along with everything else in this method.
         if (handleQuestVoided(string)) return;
+
+        // Also ahead of the tracker's switch: the cocoon alert is its own feature.
+        if (BOSS_COCOONED_PATTERN.matcher(string).matches()) {
+            SlayerTimer.INSTANCE.onBossCocooned(SlayerQuestDetector.INSTANCE.currentOrRecent());
+            return;
+        }
 
         if (!AlpakaConfig.instance.slayerDropTrackerEnabled) return;
 

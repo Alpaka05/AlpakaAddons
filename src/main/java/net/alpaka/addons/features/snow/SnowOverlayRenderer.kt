@@ -14,8 +14,8 @@ import kotlin.math.sin
  *
  * Each kind moves its own way: snow drifts down at a slant, fireflies wander on curving paths and
  * pulse, ash sways down slowly, cherry petals tumble along on a breeze, leaves zigzag down tilting
- * with each swing, glyphs float up and fade, rain streaks down fast. Petals, leaves and glyphs use
- * vanilla's own particle textures.
+ * with each swing, glyphs float up and fade, rain pours down at a slant and splashes on the bottom
+ * edge. Petals, leaves and glyphs use vanilla's own particle textures.
  *
  * Particles are held in parallel primitive arrays rather than as a list of objects. There are 105 of
  * them at amount 1 and every one is touched on every frame of every screen, so the object layout
@@ -51,6 +51,31 @@ object SnowOverlayRenderer {
     private val LEAF_TINTS = intArrayOf(0xFFB04A, 0xFF7A3A, 0xF0503A, 0xFFD24A, 0xC8884A)
     private val GLYPH_TINTS = intArrayOf(0xFFFFFF, 0xE4DCFF, 0xCBB8FF)
 
+    /**
+     * Petal textures are a pale pink that washes out over the dark backdrop; multiplied with these
+     * they get the saturated pink the petals have in a lit cherry grove.
+     */
+    private val PETAL_TINTS = intArrayOf(0xFF9CC8, 0xFFB0D4, 0xFF86BC, 0xFFC4DE)
+
+    private const val RAIN_RGB = 0xA8C8E8
+
+    /** Rain's sideways drift as a share of its fall, the wind the downpour leans in. */
+    private const val RAIN_SLANT = 0.14f
+
+    /** How far up the farthest drops land, so the downpour seems to hit ground that recedes. */
+    private const val RAIN_GROUND_DEPTH = 14.0f
+
+    /** Rain darkens the backdrop a little, like an overcast sky. */
+    private const val RAIN_GLOOM = 0x24101824
+
+    /** Splash droplets flung up where rain lands, kept in a ring that overwrites the oldest. */
+    private const val MAX_SPLASH_DROPS = 768
+    private const val SPLASH_GRAVITY = 520.0f
+
+    /** Seconds a splash ring takes to spread out and fade. */
+    private const val RIPPLE_SECONDS = 0.35f
+    private const val MAX_RIPPLES = 256
+
     /** Particles at amount multiplier 1. */
     private const val BASE_PARTICLE_COUNT = 105
 
@@ -61,9 +86,10 @@ object SnowOverlayRenderer {
 
     /**
      * Share of [BASE_PARTICLE_COUNT] each type shows at amount 1. Fireflies, leaves and glyphs are
-     * bigger or brighter than a flake, so the full snow count of them crowds the screen.
+     * bigger or brighter than a flake, so the full snow count of them crowds the screen. Rain needs
+     * many more thin drops than snow has flakes to read as a downpour.
      */
-    private val TYPE_DENSITY = floatArrayOf(1.0f, 0.3f, 0.8f, 0.6f, 0.35f, 0.3f, 1.2f)
+    private val TYPE_DENSITY = floatArrayOf(1.0f, 0.3f, 0.8f, 0.6f, 0.35f, 0.3f, 3.0f)
 
     /** Pixels per second at speed multiplier 1. */
     private const val BASE_SPEED = 40.0f
@@ -105,7 +131,7 @@ object SnowOverlayRenderer {
     /** Frequency of a particle's sway, turn or pulse, in radians per second. */
     private val wobble = FloatArray(MAX_PARTICLE_COUNT)
 
-    /** Glyphs only: how far through its life the glyph is, 0 to 1. */
+    /** Glyphs: how far through its life the glyph is, 0 to 1. Rain: how near the drop is, 0 to 1. */
     private val life = FloatArray(MAX_PARTICLE_COUNT)
 
     /** Textured types: which of the type's textures this particle uses. */
@@ -117,6 +143,26 @@ object SnowOverlayRenderer {
 
     /** Packed ARGB; the alpha is the particle's full opacity, which fireflies and glyphs scale down. */
     private val color = IntArray(MAX_PARTICLE_COUNT)
+
+    private val splashX = FloatArray(MAX_SPLASH_DROPS)
+    private val splashY = FloatArray(MAX_SPLASH_DROPS)
+    private val splashSpeedX = FloatArray(MAX_SPLASH_DROPS)
+    private val splashSpeedY = FloatArray(MAX_SPLASH_DROPS)
+    private val splashGround = FloatArray(MAX_SPLASH_DROPS)
+
+    /** Seconds a splash droplet has left; 0 marks a free slot. */
+    private val splashLife = FloatArray(MAX_SPLASH_DROPS)
+    private val splashAlpha = FloatArray(MAX_SPLASH_DROPS)
+    private var nextSplash = 0
+
+    private val rippleX = FloatArray(MAX_RIPPLES)
+    private val rippleY = FloatArray(MAX_RIPPLES)
+    private val rippleWidth = FloatArray(MAX_RIPPLES)
+    private val rippleAlpha = FloatArray(MAX_RIPPLES)
+
+    /** Seconds a ripple has left; 0 marks a free slot. */
+    private val rippleLife = FloatArray(MAX_RIPPLES)
+    private var nextRipple = 0
 
     /** Particles that have been given a position so far; raising the amount spawns the rest. */
     private var spawnedCount = 0
@@ -138,6 +184,8 @@ object SnowOverlayRenderer {
         if (type != spawnedType) {
             spawnedCount = 0
             spawnedType = type
+            splashLife.fill(0.0f)
+            rippleLife.fill(0.0f)
         }
 
         val count = particleCount(config.inventorySnowAmount, type)
@@ -180,7 +228,7 @@ object SnowOverlayRenderer {
             TYPE_LEAVES -> renderFalling(graphics, count, width, height, step, dt * speed,
                 TYPE_LEAVES, LEAF_SPRITES, LEAF_TEXTURE_SIZE, sway = 12.0f, tilt = 0.8f)
             TYPE_GLYPHS -> renderGlyphs(graphics, count, width, height, step, dt * speed)
-            TYPE_RAIN -> renderRain(graphics, count, width, height, step)
+            TYPE_RAIN -> renderRain(graphics, count, width, height, step, dt * speed)
             else -> renderSnow(graphics, count, width, height, step)
         }
     }
@@ -307,13 +355,24 @@ object SnowOverlayRenderer {
         }
     }
 
-    /** Thin streaks falling fast at a slight slant. */
-    private fun renderRain(graphics: GuiGraphicsExtractor, count: Int, width: Int, height: Int, step: Float) {
+    /**
+     * A downpour: streaks at a slant, nearer drops longer, brighter and faster than far ones. Each
+     * drop splashes where it lands, near drops on the bottom edge and far ones a little higher, as if
+     * the ground went back into the distance.
+     */
+    private fun renderRain(graphics: GuiGraphicsExtractor, count: Int, width: Int, height: Int, step: Float,
+                           scaledDt: Float) {
+        graphics.fill(0, 0, width, height, RAIN_GLOOM)
+        // A haze of spray hanging over the ground.
+        graphics.fillGradient(0, height - 2 * RAIN_GROUND_DEPTH.toInt(), width, height, RAIN_RGB, (0x22 shl 24) or RAIN_RGB)
+
         for (i in 0 until count) {
             var x = posX[i] + speedX[i] * step
             var y = posY[i] + speedY[i] * step
+            val ground = height - (1.0f - life[i]) * RAIN_GROUND_DEPTH
 
-            if (y > height || x > width + RESPAWN_MARGIN) {
+            if (y >= ground) {
+                splash(posX[i] + (ground - posY[i]) * RAIN_SLANT, ground, life[i])
                 spawn(TYPE_RAIN, i, width, height, initial = false)
                 x = posX[i]
                 y = posY[i]
@@ -322,7 +381,82 @@ object SnowOverlayRenderer {
                 posY[i] = y
             }
 
-            drawRect(graphics, Math.round(x), Math.round(y), 1, size[i], color[i], width, height)
+            drawStreak(graphics, x, y, size[i], color[i], width, height)
+        }
+
+        renderSplashes(graphics, width, height, scaledDt)
+    }
+
+    /**
+     * A rain streak ending at its tip ([x], [y]), leaning against the wind. It is drawn in a few
+     * stepped pieces, faint at the tail and full at the tip, like a drop's motion blur.
+     */
+    private fun drawStreak(graphics: GuiGraphicsExtractor, x: Float, y: Float, length: Int, argb: Int,
+                           width: Int, height: Int) {
+        val tipX = Math.round(x)
+        val tipY = Math.round(y)
+        val pieces = Math.round(length * RAIN_SLANT) + 1
+        val alpha = (argb ushr 24).toFloat()
+        val rgb = argb and 0xFFFFFF
+        for (p in 0 until pieces) {
+            val top = tipY - length + length * p / pieces
+            val bottom = tipY - length + length * (p + 1) / pieces
+            drawRect(graphics, tipX - (pieces - 1 - p), top, 1, bottom - top,
+                withAlpha(rgb, alpha * (p + 1) / pieces), width, height)
+        }
+    }
+
+    /** Throws up droplets and a ring where a drop hit the ground; nearer drops splash bigger. */
+    private fun splash(x: Float, ground: Float, nearness: Float) {
+        val scale = 0.5f + nearness
+        val drops = 2 + random.nextInt(2) + Math.round(nearness * 2)
+        for (d in 0 until drops) {
+            val slot = nextSplash
+            nextSplash = (nextSplash + 1) % MAX_SPLASH_DROPS
+            splashX[slot] = x
+            splashY[slot] = ground - 1
+            splashGround[slot] = ground
+            splashSpeedX[slot] = (random.nextFloat() - 0.5f) * 90.0f * scale
+            splashSpeedY[slot] = -(50.0f + random.nextFloat() * 60.0f) * scale
+            splashLife[slot] = 0.25f + random.nextFloat() * 0.25f
+            splashAlpha[slot] = 110.0f + 120.0f * nearness
+        }
+
+        val slot = nextRipple
+        nextRipple = (nextRipple + 1) % MAX_RIPPLES
+        rippleX[slot] = x
+        rippleY[slot] = ground
+        rippleWidth[slot] = 4.0f + 8.0f * nearness
+        rippleAlpha[slot] = 70.0f + 110.0f * nearness
+        rippleLife[slot] = RIPPLE_SECONDS
+    }
+
+    private fun renderSplashes(graphics: GuiGraphicsExtractor, width: Int, height: Int, scaledDt: Float) {
+        for (i in 0 until MAX_RIPPLES) {
+            if (rippleLife[i] <= 0.0f) continue
+            rippleLife[i] -= scaledDt
+            if (rippleLife[i] <= 0.0f) continue
+            val left = rippleLife[i] / RIPPLE_SECONDS
+            val half = Math.round(rippleWidth[i] * (1.0f - left * left) / 2.0f) + 1
+            val x = Math.round(rippleX[i])
+            drawRect(graphics, x - half, Math.round(rippleY[i]) - 1, 2 * half, 1,
+                withAlpha(RAIN_RGB, rippleAlpha[i] * left), width, height)
+        }
+
+        for (i in 0 until MAX_SPLASH_DROPS) {
+            if (splashLife[i] <= 0.0f) continue
+            splashLife[i] -= scaledDt
+            splashSpeedY[i] += SPLASH_GRAVITY * scaledDt
+            splashX[i] += splashSpeedX[i] * scaledDt
+            splashY[i] += splashSpeedY[i] * scaledDt
+            // Back on the ground the droplet is done.
+            if (splashLife[i] <= 0.0f || splashY[i] > splashGround[i]) {
+                splashLife[i] = 0.0f
+                continue
+            }
+            drawRect(graphics, Math.round(splashX[i]), Math.round(splashY[i]), 1, 1,
+                withAlpha(0xD8E8F8, splashAlpha[i] * (splashLife[i] * 4.0f).coerceAtMost(1.0f)),
+                width, height)
         }
     }
 
@@ -459,12 +593,12 @@ object SnowOverlayRenderer {
         speedY[index] = 0.3f + random.nextFloat() * 0.3f
         sprite[index] = random.nextInt(CHERRY_SPRITES.size)
         // Whole multiples of the texture only: anything in between smears the pixel art.
-        size[index] = CHERRY_TEXTURE_SIZE * (1 + random.nextInt(2))
+        size[index] = CHERRY_TEXTURE_SIZE * (2 + random.nextInt(2))
         angle[index] = random.nextFloat() * 6.2832f
-        spin[index] = (random.nextFloat() - 0.5f) * 4.0f
+        spin[index] = (random.nextFloat() - 0.5f) * 3.0f
         phase[index] = random.nextFloat() * 6.2832f
         wobble[index] = 1.0f + random.nextFloat() * 1.0f
-        color[index] = ((200 + random.nextInt(56)) shl 24) or 0xFFFFFF
+        color[index] = ((235 + random.nextInt(21)) shl 24) or PETAL_TINTS[random.nextInt(PETAL_TINTS.size)]
     }
 
     private fun spawnLeaf(index: Int, w: Float, h: Float, initial: Boolean) {
@@ -496,11 +630,14 @@ object SnowOverlayRenderer {
     }
 
     private fun spawnRain(index: Int, w: Float, h: Float, initial: Boolean) {
-        size[index] = 4 + random.nextInt(5)
-        posX[index] = -w * 0.15f + random.nextFloat() * w * 1.15f
-        posY[index] = if (initial) random.nextFloat() * h else -size[index] - random.nextFloat() * 20.0f
-        speedY[index] = 6.0f + random.nextFloat() * 2.0f
-        speedX[index] = 0.8f
-        color[index] = ((70 + random.nextInt(80)) shl 24) or 0xA8C8E8
+        val near = random.nextFloat()
+        life[index] = near
+        size[index] = 5 + Math.round(near * near * 16.0f) + random.nextInt(4)
+        speedY[index] = 8.0f + near * 6.0f + random.nextFloat() * 1.5f
+        speedX[index] = speedY[index] * RAIN_SLANT
+        // Spawned partly left of the screen, since the wind carries the drops right on the way down.
+        posX[index] = -h * RAIN_SLANT + random.nextFloat() * (w + h * RAIN_SLANT)
+        posY[index] = if (initial) random.nextFloat() * h else -random.nextFloat() * 40.0f
+        color[index] = ((45 + Math.round(near * 140.0f) + random.nextInt(30)) shl 24) or RAIN_RGB
     }
 }

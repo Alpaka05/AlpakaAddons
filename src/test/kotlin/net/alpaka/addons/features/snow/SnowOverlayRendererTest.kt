@@ -32,7 +32,7 @@ class SnowOverlayRendererTest {
         assertEquals(63, SnowOverlayRenderer.particleCount(1.0f, SnowOverlayRenderer.TYPE_CHERRY_PETALS))
         assertEquals(37, SnowOverlayRenderer.particleCount(1.0f, SnowOverlayRenderer.TYPE_LEAVES))
         assertEquals(32, SnowOverlayRenderer.particleCount(1.0f, SnowOverlayRenderer.TYPE_GLYPHS))
-        assertEquals(126, SnowOverlayRenderer.particleCount(1.0f, SnowOverlayRenderer.TYPE_RAIN))
+        assertEquals(315, SnowOverlayRenderer.particleCount(1.0f, SnowOverlayRenderer.TYPE_RAIN))
     }
 
     @Test

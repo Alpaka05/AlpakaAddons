@@ -66,6 +66,10 @@ object ChatHudElement : HudElement {
         return HudBounds(x, y - height - TOP_EXTRA, x + width, y)
     }
 
+    /** Only the chat's own box: the room for the scrollbar and the panel's edge stays unmarked. */
+    override fun outlineBounds(box: HudBounds): HudBounds =
+        HudBounds(box.x0, box.y0 + TOP_EXTRA, box.x1 - RIGHT_EXTRA, box.y1)
+
     override fun adjustScale(notches: Double) {
         val mc = Minecraft.getInstance()
         val raw = (chatScale() + notches * SCALE_PER_NOTCH).coerceIn(0.0, 1.0)

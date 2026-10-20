@@ -90,6 +90,10 @@ branch's own code, every time:
   registered just before it. Each feature then has to be listed on its sidebar page in
   `ConfigTree.LAYOUT`, or it ends up under "Other". Settings registered away from their feature
   go into `PARENTS`.
+- **design-rework: Blur and Smooth Font come last.** In every feature that has them, the Blur and
+  Smooth Font switches are the last settings; nothing goes below them. A new setting for such a
+  feature is registered before them (the per-HUD ones are registered at the end in
+  `registerHudStyleToggles` for this reason). This rule is for design-rework only.
 - If it isn't clear which page or section an option belongs on, ask before you open the PR. Check
   in the menu (screenshot tour) that it shows up where intended.
 

@@ -69,14 +69,19 @@ object HypixelStatus {
         attemptStartedMs = now
         val mc = Minecraft.getInstance()
         val transport = EventLoopGroupHolder.remote(mc.options.useNativeTransport())
+        // The status handler only writes players when the answer has them; a count left over from
+        // the last ping must not pass for a fresh one.
+        data.players = null
         executor.execute {
             try {
-                // The first callback fires when the status with the player count has arrived, the
-                // second when the round trip is known. A failed attempt never calls back.
+                // Vanilla's first callback is not "status arrived": it only fires when the server
+                // icon changed, so after the first ping it stays silent and every refresh ran into
+                // the timeout. The pong comes after the status with the player count, on every
+                // successful ping, so that is the success signal. A failed attempt never calls back.
                 pinger.pingServer(
                     data,
+                    {},
                     { mc.execute { onStatus() } },
-                    { mc.execute { pingMs = data.ping } },
                     transport,
                 )
             } catch (_: Throwable) {
@@ -105,6 +110,7 @@ object HypixelStatus {
         inFlight.set(false)
         val players = data.players ?: return onFailure()
         online = players.online()
+        pingMs = data.ping
         lastSuccessMs = System.currentTimeMillis()
         failures = 0
         nextAttemptMs = 0L

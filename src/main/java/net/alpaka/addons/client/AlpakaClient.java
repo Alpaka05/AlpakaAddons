@@ -24,6 +24,9 @@ public class AlpakaClient implements ClientModInitializer {
         AlpakaConfig.load();
         net.alpaka.addons.config.AlpakaStats.load();
         net.alpaka.addons.AlpakaAddons.LOGGER.info("Alpaka Addons {} loaded", net.alpaka.addons.utils.ModVersion.mod());
+        // Has to run here, before the game first scans its resource packs, so the cached server
+        // pack joins that first load instead of costing a second one.
+        net.alpaka.addons.features.resourcepack.ServerPackCache.restoreAtStartup();
 
         // Next, so the overlay's own render pipeline is registered before the shader manager
         // precompiles vanilla's; see BlockOverlayRenderTypes.

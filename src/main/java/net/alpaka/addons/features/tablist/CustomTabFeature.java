@@ -3,7 +3,9 @@ package net.alpaka.addons.features.tablist;
 import net.alpaka.addons.client.gui.AlpakaGuiElementSink;
 import net.alpaka.addons.client.gui.BlurRectRenderState;
 import net.alpaka.addons.client.gui.GuiFont;
+import com.mojang.blaze3d.platform.InputConstants;
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.features.chat.ChatTabsFeature;
 import net.alpaka.addons.features.chat.ChatBlurFeature;
 import net.alpaka.addons.mixin.PlayerTabOverlayAccessor;
 import net.alpaka.addons.utils.SkyblockUtils;
@@ -14,10 +16,13 @@ import net.minecraft.client.gui.Hud;
 import net.minecraft.client.gui.components.PlayerFaceExtractor;
 import net.minecraft.client.gui.components.PlayerTabOverlay;
 import net.minecraft.client.gui.screens.ChatScreen;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.network.chat.Component;
+import org.lwjgl.glfw.GLFW;
 import net.minecraft.network.chat.Style;
 import org.joml.Matrix3x2f;
 
@@ -40,7 +45,8 @@ import java.util.List;
  * edge when it opens and back up into it when it closes.
  *
  * With Toggle Tab List, a press of the player list key shows the list until the next press,
- * rather than only while the key is held.
+ * rather than only while the key is held. With Show in Menus it stays up in the chat and in
+ * inventories and chests, drawn above the menu rather than under its dimming.
  */
 public final class CustomTabFeature {
 
@@ -105,11 +111,31 @@ public final class CustomTabFeature {
 
     /** Whether the player list is up: held down normally, or flipped open with the toggle. */
     public static boolean listShown(boolean keyDown) {
-        if (!toggles()) return keyDown;
+        if (!isEnabled()) return keyDown;
         Minecraft mc = Minecraft.getInstance();
-        // Toggled open stays out of the way of every screen but the chat.
-        if (mc.gui.screen() != null && !(mc.gui.screen() instanceof ChatScreen)) return false;
-        return toggledOpen;
+        Screen screen = mc.gui.screen();
+        if (screen == null) return toggles() ? toggledOpen : keyDown;
+        if (!showsOver(screen)) return false;
+        if (toggles()) return toggledOpen;
+        // Held: a menu keeps key mappings from updating, so the key itself is asked - but not in
+        // the chat, where Tab completes what is typed.
+        return !(screen instanceof ChatScreen) && playerListKeyHeld(mc);
+    }
+
+    /** The menus the list may stay up in: the chat, and inventories and chests. */
+    private static boolean showsOver(Screen screen) {
+        return AlpakaConfig.instance.customTabInMenus
+                && (screen instanceof ChatScreen || screen instanceof AbstractContainerScreen<?>);
+    }
+
+    /** Whether the player list key is physically down, whatever screen is open. */
+    private static boolean playerListKeyHeld(Minecraft mc) {
+        InputConstants.Key key = InputConstants.getKey(mc.options.keyPlayerList.saveString());
+        return switch (key.getType()) {
+            case KEYSYM -> key.getValue() != GLFW.GLFW_KEY_UNKNOWN && InputConstants.isKeyDown(mc.getWindow(), key.getValue());
+            case MOUSE -> GLFW.glfwGetMouseButton(mc.getWindow().handle(), key.getValue()) == GLFW.GLFW_PRESS;
+            case SCANCODE -> false;
+        };
     }
 
     /**
@@ -117,20 +143,43 @@ public final class CustomTabFeature {
      * instead: with the feature off, and off SkyBlock.
      */
     public static boolean render(GuiGraphicsExtractor graphics, Hud hud) {
-        if (!isEnabled() || (devSample == null && !SkyblockUtils.isOnSkyblock())) return false;
+        if (!takesOver()) return false;
+        // With a menu open the menu's own hook draws it instead, above the menu's dimming.
+        if (Minecraft.getInstance().gui.screen() == null) draw(graphics, hud.getTabList());
+        return true;
+    }
+
+    /**
+     * Draws the list over an open menu. Called from the Screen hook after the menu's content and
+     * before its tooltips, as the peeked chat is, so a hovered item's tooltip still covers it.
+     */
+    public static void renderOverMenu(GuiGraphicsExtractor graphics) {
         Minecraft mc = Minecraft.getInstance();
-        PlayerTabOverlay tabList = hud.getTabList();
+        if (mc.gui.screen() == null || !takesOver()) return;
+        // Tab cycling the chat tabs keeps the list away in the chat; vanilla's hook is not the one
+        // drawing here, so it is asked again.
+        if (ChatTabsFeature.suppressesTabList()) return;
+        draw(graphics, mc.gui.hud.getTabList());
+    }
+
+    /** Whether the mod draws the list rather than vanilla: switched on, and on SkyBlock. */
+    private static boolean takesOver() {
+        return isEnabled() && (devSample != null || SkyblockUtils.isOnSkyblock());
+    }
+
+    private static void draw(GuiGraphicsExtractor graphics, PlayerTabOverlay tabList) {
+        Minecraft mc = Minecraft.getInstance();
         boolean shown = mc.player != null && (devSample != null || listShown(mc.options.keyPlayerList.isDown()));
         tabList.setVisible(shown);
         if (!advanceSlide(shown, AlpakaConfig.instance.customTabAnimated, System.nanoTime())) {
             cached = null;
-            return true;
+            return;
         }
 
         int screenWidth = graphics.guiWidth();
         int screenHeight = graphics.guiHeight();
         CustomTabLayout layout = layout(tabList, screenWidth, screenHeight);
-        if (layout == null || layout.texts.isEmpty()) return true;
+        if (layout == null || layout.texts.isEmpty()) return;
         float scale = cachedScale;
         float guiScale = (float) mc.getWindow().getGuiScale();
 
@@ -170,7 +219,6 @@ public final class CustomTabFeature {
             graphics.text(font, text.text(), x, text.y(), 0xFFFFFFFF, true);
         }
         graphics.pose().popMatrix();
-        return true;
     }
 
     /**

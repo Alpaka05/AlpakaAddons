@@ -2,6 +2,7 @@ package net.alpaka.addons.mixin;
 
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.chat.ChatPeekFeature;
+import net.alpaka.addons.features.tablist.CustomTabFeature;
 import net.alpaka.addons.features.snow.SnowOverlayRenderer;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
@@ -67,5 +68,14 @@ public abstract class ScreenMixin {
     )
     private void alpaka$peekChatOverMenu(GuiGraphicsExtractor graphicsExtractor, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
         ChatPeekFeature.renderOverMenu(graphicsExtractor, mouseX, mouseY);
+    }
+
+    /** The Custom Tab over the chat or an inventory, in the same place as the peeked chat. */
+    @Inject(
+        method = "extractRenderStateWithTooltipAndSubtitles",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;extractDeferredElements(IIF)V")
+    )
+    private void alpaka$customTabOverMenu(GuiGraphicsExtractor graphicsExtractor, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
+        CustomTabFeature.renderOverMenu(graphicsExtractor);
     }
 }

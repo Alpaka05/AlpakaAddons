@@ -500,6 +500,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customTabToggle = v; AlpakaConfig.save(); },
                 "tab list toggle press hold key keep open player list switch"));
 
+        OPTIONS.add(new ConfigOption("custom_tab_in_menus", "Show in Menus",
+                "Keeps the tab list up while the chat, your inventory or a chest is open, drawn above it.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabInMenus,
+                v -> { AlpakaConfig.instance.customTabInMenus = v; AlpakaConfig.save(); },
+                "tab list menus chat inventory chest container open screen gui visible stay over"));
+
         OPTIONS.add(new ConfigOption("custom_tab_animated", "Slide Animation",
                 "The tab list slides down from the top of the screen when it opens and back up when it closes, instead of appearing at once.",
                 ConfigCategory.VISUALS,

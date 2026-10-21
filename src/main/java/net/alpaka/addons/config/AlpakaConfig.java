@@ -2,6 +2,7 @@ package net.alpaka.addons.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.annotations.SerializedName;
 import net.alpaka.addons.AlpakaAddons;
 import net.fabricmc.loader.api.FabricLoader;
 
@@ -334,7 +335,9 @@ public class AlpakaConfig {
     /** Show the running time on screen while the boss is up. */
     public boolean slayerTimerHudEnabled = true;
     /** The Ragnarock's cast countdown under the crosshair instead of in the action bar. */
-    public boolean ragAxeCountdownEnabled = true;
+    // Saved as ragAxeCountdownEnabled before the feature was renamed; read that too so the setting carries over.
+    @SerializedName(value = "ragnarockEnabled", alternate = "ragAxeCountdownEnabled")
+    public boolean ragnarockEnabled = true;
     public int slayerTimerHudX = net.alpaka.addons.client.hud.HudDefaults.SLAYER_TIMER_X;
     public int slayerTimerHudY = net.alpaka.addons.client.hud.HudDefaults.SLAYER_TIMER_Y;
     public float slayerTimerHudScale = 1.0f;
@@ -1087,7 +1090,7 @@ public class AlpakaConfig {
         this.slayerTimerEnabled = false;
         this.slayerTimerChatEnabled = false;
         this.slayerTimerHudEnabled = false;
-        this.ragAxeCountdownEnabled = false;
+        this.ragnarockEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
         this.customDamageTagsEnabled = false;

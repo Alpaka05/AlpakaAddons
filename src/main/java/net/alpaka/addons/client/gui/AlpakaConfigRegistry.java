@@ -1593,11 +1593,11 @@ public class AlpakaConfigRegistry {
 
         OPTIONS.add(new ConfigOption("Abilities", ConfigCategory.SKYBLOCK));
 
-        OPTIONS.add(new ConfigOption("rag_axe_countdown", "Ragnarock",
+        OPTIONS.add(new ConfigOption("ragnarock", "Ragnarock",
                 "Shows the Ragnarock's cast countdown under your crosshair instead of in the action bar, then \"Ragnarock\" or \"Cancelled\".",
                 ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.ragAxeCountdownEnabled,
-                v -> { AlpakaConfig.instance.ragAxeCountdownEnabled = v; AlpakaConfig.save(); },
+                () -> AlpakaConfig.instance.ragnarockEnabled,
+                v -> { AlpakaConfig.instance.ragnarockEnabled = v; AlpakaConfig.save(); },
                 "ragnarock ragnarok rag axe sword cast casting countdown timer crosshair action bar ability strength"));
 
         OPTIONS.add(new ConfigOption("Mob Highlights", ConfigCategory.SKYBLOCK));

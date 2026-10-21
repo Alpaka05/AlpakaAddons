@@ -1,4 +1,4 @@
-package net.alpaka.addons.features.ragaxe;
+package net.alpaka.addons.features.ragnarock;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -10,23 +10,23 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-class RagAxeCountdownFeatureTest {
+class RagnarockFeatureTest {
 
     private static String without(String text) {
-        RagAxeCountdownFeature.Match m = RagAxeCountdownFeature.find(text);
+        RagnarockFeature.Match m = RagnarockFeature.find(text);
         return text.substring(0, m.start()) + text.substring(m.end());
     }
 
     @Test
     void readsTheCountdown() {
-        assertEquals(3, RagAxeCountdownFeature.find("9,011/9,248❤     226❈     CASTING IN 3s").seconds());
-        assertEquals(1, RagAxeCountdownFeature.find("§c§lCASTING IN 1s").seconds());
-        assertEquals(0, RagAxeCountdownFeature.find("100❤     CASTING").seconds());
+        assertEquals(3, RagnarockFeature.find("9,011/9,248❤     226❈     CASTING IN 3s").seconds());
+        assertEquals(1, RagnarockFeature.find("§c§lCASTING IN 1s").seconds());
+        assertEquals(0, RagnarockFeature.find("100❤     CASTING").seconds());
     }
 
     @Test
     void ignoresActionBarsWithoutACast() {
-        assertNull(RagAxeCountdownFeature.find("§c9,011/9,248❤     §a226❈ Defense     §b500/500✎ Mana"));
+        assertNull(RagnarockFeature.find("§c9,011/9,248❤     §a226❈ Defense     §b500/500✎ Mana"));
     }
 
     @Test
@@ -43,13 +43,13 @@ class RagAxeCountdownFeatureTest {
     void keepsTheStylesOfTheRest() {
         Style red = Style.EMPTY.withColor(ChatFormatting.RED);
         Style green = Style.EMPTY.withColor(ChatFormatting.GREEN);
-        List<RagAxeCountdownFeature.Piece> pieces = List.of(
-                new RagAxeCountdownFeature.Piece(red, "9,011/9,248❤     "),
-                new RagAxeCountdownFeature.Piece(green, "226❈     CASTING IN "),
-                new RagAxeCountdownFeature.Piece(red, "3s"));
+        List<RagnarockFeature.Piece> pieces = List.of(
+                new RagnarockFeature.Piece(red, "9,011/9,248❤     "),
+                new RagnarockFeature.Piece(green, "226❈     CASTING IN "),
+                new RagnarockFeature.Piece(red, "3s"));
         String full = "9,011/9,248❤     226❈     CASTING IN 3s";
-        RagAxeCountdownFeature.Match m = RagAxeCountdownFeature.find(full);
-        Component out = RagAxeCountdownFeature.cut(pieces, m.start(), m.end());
+        RagnarockFeature.Match m = RagnarockFeature.find(full);
+        Component out = RagnarockFeature.cut(pieces, m.start(), m.end());
         assertEquals("9,011/9,248❤     226❈", out.getString());
         assertEquals(green, out.getSiblings().get(1).getStyle());
     }

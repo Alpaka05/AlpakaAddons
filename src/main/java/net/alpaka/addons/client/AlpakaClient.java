@@ -60,7 +60,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.notification.MentionNotifier.register();
         net.alpaka.addons.features.party.PartyInviteFeature.register();
         net.alpaka.addons.features.tooltip.OldMasterStarsFeature.register();
-        net.alpaka.addons.features.ragaxe.RagAxeCountdownFeature.register();
+        net.alpaka.addons.features.ragnarock.RagnarockFeature.register();
         WorldAgeHudRenderer.registerEvents();
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {

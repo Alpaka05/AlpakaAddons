@@ -1,4 +1,4 @@
-package net.alpaka.addons.features.ragaxe;
+package net.alpaka.addons.features.ragnarock;
 
 import net.alpaka.addons.config.AlpakaConfig;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -35,7 +35,7 @@ import java.util.regex.Pattern;
  * ends early on a hit, which Hypixel says in chat ("Ragnarock was cancelled due to ..."), or when
  * the Ragnarock leaves the hand; a countdown that just stops with no cast sound after it is cancelled too.
  */
-public final class RagAxeCountdownFeature {
+public final class RagnarockFeature {
 
     /**
      * The cast part of the action bar: "CASTING IN 3s", or a bare "CASTING" on the last beat, with any
@@ -47,7 +47,7 @@ public final class RagAxeCountdownFeature {
     private static final String CANCELLED = "Ragnarock was cancelled";
 
     /** Hypixel's id for the Ragnarock, in the item's custom data; it kept "axe" when the item became a sword. */
-    private static final String AXE_ID = "RAGNAROCK_AXE";
+    private static final String ITEM_ID = "RAGNAROCK_AXE";
 
     /** The pitch of the cast sound; Odin matches the same value. */
     private static final float CAST_PITCH = 1.4920635f;
@@ -87,7 +87,7 @@ public final class RagAxeCountdownFeature {
     private static Result result = Result.NONE;
     private static long resultAt;
 
-    private RagAxeCountdownFeature() {
+    private RagnarockFeature() {
     }
 
     public static void register() {
@@ -99,7 +99,7 @@ public final class RagAxeCountdownFeature {
         ClientReceiveMessageEvents.GAME_CANCELED.register((message, overlay) -> {
             if (!overlay) onChat(message);
         });
-        ClientTickEvents.END_CLIENT_TICK.register(RagAxeCountdownFeature::tick);
+        ClientTickEvents.END_CLIENT_TICK.register(RagnarockFeature::tick);
     }
 
     /** Where the cast part sits in an action bar text and the number it shows. */
@@ -125,7 +125,7 @@ public final class RagAxeCountdownFeature {
     }
 
     private static Component onActionBar(Component message) {
-        if (!AlpakaConfig.instance.ragAxeCountdownEnabled) {
+        if (!AlpakaConfig.instance.ragnarockEnabled) {
             seconds = -1;
             return message;
         }
@@ -160,11 +160,11 @@ public final class RagAxeCountdownFeature {
 
     /** Every sound the server plays, on the client thread; see ClientPacketListenerMixin. */
     public static void onSound(ClientboundSoundPacket packet) {
-        if (!AlpakaConfig.instance.ragAxeCountdownEnabled) return;
+        if (!AlpakaConfig.instance.ragnarockEnabled) return;
         if (Math.abs(packet.getPitch() - CAST_PITCH) > 0.0001f) return;
         String path = packet.getSound().value().location().getPath();
         if (!path.startsWith("entity.wolf") || !path.endsWith(".death")) return;
-        if (!holdingAxe()) return;
+        if (!holdingRagnarock()) return;
         finish(Result.CAST);
     }
 
@@ -175,7 +175,7 @@ public final class RagAxeCountdownFeature {
             // Left the world or the server stopped sending: nothing to report.
             seconds = -1;
             countdownEndedAt = 0;
-        } else if (!holdingAxe()) {
+        } else if (!holdingRagnarock()) {
             finish(Result.CANCELLED);
         } else if (countdownEndedAt != 0 && now - countdownEndedAt > SOUND_GRACE_MS) {
             finish(Result.CANCELLED);
@@ -189,11 +189,11 @@ public final class RagAxeCountdownFeature {
         resultAt = System.currentTimeMillis();
     }
 
-    private static boolean holdingAxe() {
+    private static boolean holdingRagnarock() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return false;
         CustomData data = mc.player.getMainHandItem().get(DataComponents.CUSTOM_DATA);
-        return data != null && AXE_ID.equals(data.copyTag().getStringOr("id", ""));
+        return data != null && ITEM_ID.equals(data.copyTag().getStringOr("id", ""));
     }
 
     /** The action bar rebuilt piece by piece with its styles, minus the characters in [start, end). */
@@ -217,7 +217,7 @@ public final class RagAxeCountdownFeature {
     }
 
     public static void render(GuiGraphicsExtractor graphics) {
-        if (!AlpakaConfig.instance.ragAxeCountdownEnabled) return;
+        if (!AlpakaConfig.instance.ragnarockEnabled) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.gui.hud.isHidden() || mc.level == null || mc.player == null) return;
         if (mc.gui.screen() != null && !(mc.gui.screen() instanceof ChatScreen)) return;

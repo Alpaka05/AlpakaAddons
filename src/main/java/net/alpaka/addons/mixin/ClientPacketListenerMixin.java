@@ -1,6 +1,6 @@
 package net.alpaka.addons.mixin;
 
-import net.alpaka.addons.features.ragaxe.RagAxeCountdownFeature;
+import net.alpaka.addons.features.ragnarock.RagnarockFeature;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.network.protocol.game.ClientboundSoundPacket;
 import org.spongepowered.asm.mixin.Mixin;
@@ -23,6 +23,6 @@ public class ClientPacketListenerMixin {
                     shift = At.Shift.AFTER)
     )
     private void alpaka$onSound(ClientboundSoundPacket packet, CallbackInfo ci) {
-        RagAxeCountdownFeature.onSound(packet);
+        RagnarockFeature.onSound(packet);
     }
 }

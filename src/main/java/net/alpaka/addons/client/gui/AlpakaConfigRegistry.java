@@ -620,6 +620,15 @@ public class AlpakaConfigRegistry {
                 val -> Math.round(val) + "%",
                 "screenshot preview size width thumbnail"));
 
+        OPTIONS.add(new ConfigOption("screenshot_preview_click", "Preview Click",
+                "What clicking the preview does while a menu or the chat is open.",
+                ConfigCategory.VISUALS,
+                () -> (float) AlpakaConfig.instance.screenshotPreviewClickAction,
+                v -> { AlpakaConfig.instance.screenshotPreviewClickAction = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (net.alpaka.addons.features.chat.ScreenshotMessageFeature.PREVIEW_CLICK_NAMES.length - 1),
+                val -> net.alpaka.addons.features.chat.ScreenshotMessageFeature.PREVIEW_CLICK_NAMES[Math.clamp(Math.round(val), 0, net.alpaka.addons.features.chat.ScreenshotMessageFeature.PREVIEW_CLICK_NAMES.length - 1)],
+                "screenshot preview click mouse open copy folder action thumbnail").choices(net.alpaka.addons.features.chat.ScreenshotMessageFeature.PREVIEW_CLICK_NAMES));
+
         OPTIONS.add(new ConfigOption("screenshot_chat_buttons", "Chat Buttons",
                 "Shows Open, Copy and Delete buttons on the screenshot message in chat.",
                 ConfigCategory.VISUALS,
@@ -637,6 +646,9 @@ public class AlpakaConfigRegistry {
                         new ConfigOption.ToggleEntry("Open Button",
                                 () -> AlpakaConfig.instance.screenshotShowOpen,
                                 v -> { AlpakaConfig.instance.screenshotShowOpen = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Folder Button",
+                                () -> AlpakaConfig.instance.screenshotShowFolder,
+                                v -> { AlpakaConfig.instance.screenshotShowFolder = v; AlpakaConfig.save(); }),
                         new ConfigOption.ToggleEntry("Copy Button",
                                 () -> AlpakaConfig.instance.screenshotShowCopy,
                                 v -> { AlpakaConfig.instance.screenshotShowCopy = v; AlpakaConfig.save(); }),
@@ -644,7 +656,7 @@ public class AlpakaConfigRegistry {
                                 () -> AlpakaConfig.instance.screenshotShowDelete,
                                 v -> { AlpakaConfig.instance.screenshotShowDelete = v; AlpakaConfig.save(); })
                 ),
-                "screenshot line parts file name open copy delete button show hide"));
+                "screenshot line parts file name open folder copy delete button show hide"));
 
         OPTIONS.add(new ConfigOption("auto_copy_screenshots", "Auto Copy Screenshots",
                 "Copies every screenshot to the clipboard right away.",

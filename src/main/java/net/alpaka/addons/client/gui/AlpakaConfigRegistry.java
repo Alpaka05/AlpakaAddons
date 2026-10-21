@@ -479,20 +479,6 @@ public class AlpakaConfigRegistry {
 
         OPTIONS.add(new ConfigOption("Chat", ConfigCategory.VISUALS));
 
-        OPTIONS.add(new ConfigOption("scoreboard_blur", "Blurred Scoreboard Background",
-                "One rounded, blurred panel with a soft shadow behind the scoreboard. Uses the chat's Blur Strength.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.scoreboardBlurEnabled,
-                v -> { AlpakaConfig.instance.scoreboardBlurEnabled = v; AlpakaConfig.save(); },
-                "scoreboard sidebar blur background rounded panel glass frosted shadow"));
-
-        OPTIONS.add(new ConfigOption("scoreboard_alpaka_footer", "AlpakaAddons Scoreboard Footer",
-                "Replaces www.hypixel.net at the bottom of the scoreboard with AlpakaAddons in a gradient.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.scoreboardAlpakaFooter,
-                v -> { AlpakaConfig.instance.scoreboardAlpakaFooter = v; AlpakaConfig.save(); },
-                "scoreboard sidebar footer bottom line hypixel.net www address gradient alpakaaddons branding"));
-
         OPTIONS.add(new ConfigOption("chat_search", "Chat Search",
                 "Ctrl+F (Cmd+F on Mac) in the chat filters it to messages containing your text.",
                 ConfigCategory.VISUALS,
@@ -557,6 +543,68 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.chatPeekInMenus,
                 v -> { AlpakaConfig.instance.chatPeekInMenus = v; AlpakaConfig.save(); },
                 "chat peek menu inventory gui screen container open hold key foreground"));
+
+        OPTIONS.add(new ConfigOption("chat_tabs", "Chat Tabs",
+                "All, Party, Guild, Co-op, PMs and NPCs tabs above the chat input.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatTabsEnabled,
+                v -> { AlpakaConfig.instance.chatTabsEnabled = v; AlpakaConfig.save(); },
+                "chat tabs party guild pm private messages npc npcs filter channel switch"));
+
+        OPTIONS.add(new ConfigOption("chat_tabs_shown", "Shown Chat Tabs",
+                "Pick which tabs the row offers. All is always there.",
+                ConfigCategory.VISUALS,
+                java.util.List.of(
+                        new ConfigOption.ToggleEntry("Party",
+                                () -> AlpakaConfig.instance.chatTabsShowParty,
+                                v -> { AlpakaConfig.instance.chatTabsShowParty = v; AlpakaConfig.save(); ChatTabsFeature.onShownTabsChanged(); }),
+                        new ConfigOption.ToggleEntry("Guild",
+                                () -> AlpakaConfig.instance.chatTabsShowGuild,
+                                v -> { AlpakaConfig.instance.chatTabsShowGuild = v; AlpakaConfig.save(); ChatTabsFeature.onShownTabsChanged(); }),
+                        new ConfigOption.ToggleEntry("Co-op",
+                                () -> AlpakaConfig.instance.chatTabsShowCoop,
+                                v -> { AlpakaConfig.instance.chatTabsShowCoop = v; AlpakaConfig.save(); ChatTabsFeature.onShownTabsChanged(); }),
+                        new ConfigOption.ToggleEntry("PMs",
+                                () -> AlpakaConfig.instance.chatTabsShowPrivate,
+                                v -> { AlpakaConfig.instance.chatTabsShowPrivate = v; AlpakaConfig.save(); ChatTabsFeature.onShownTabsChanged(); }),
+                        new ConfigOption.ToggleEntry("NPCs",
+                                () -> AlpakaConfig.instance.chatTabsShowNpc,
+                                v -> { AlpakaConfig.instance.chatTabsShowNpc = v; AlpakaConfig.save(); ChatTabsFeature.onShownTabsChanged(); })
+                ),
+                "chat tabs shown visible hide pick choose select party guild coop co-op pm private messages npc npcs"));
+
+        OPTIONS.add(new ConfigOption("chat_tabs_send_to_channel", "Send To Tab Channel",
+                "Messages typed on a channel tab go to that channel.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatTabsSendToChannel,
+                v -> { AlpakaConfig.instance.chatTabsSendToChannel = v; AlpakaConfig.save(); },
+                "chat tabs send channel prefix party guild coop reply pc gc cc r"));
+
+        OPTIONS.add(new ConfigOption("chat_tabs_tab_key", "Tabs While Peeking & Tab Key",
+                "Shows the tabs while peeking. Tab on an empty line, or Ctrl+Tab, cycles them.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatTabsTabKey,
+                v -> { AlpakaConfig.instance.chatTabsTabKey = v; AlpakaConfig.save(); },
+                "chat tabs tab key cycle switch next peek player list tablist"));
+
+        OPTIONS.add(new ConfigOption("chat_tabs_keep_after_close", "Keep Tab After Closing Chat",
+                "The in-game chat stays filtered to the chosen tab. Off: back to All.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatTabsKeepAfterClose,
+                v -> { AlpakaConfig.instance.chatTabsKeepAfterClose = v; AlpakaConfig.save(); },
+                "chat tabs keep remember filter hud close stay"));
+
+        OPTIONS.add(new ConfigOption("chat_tabs_guild_only", "Guild Chat Only In Guild Tab",
+                "Guild messages show on the Guild tab only, not on All.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatTabsGuildOnlyInGuildTab,
+                v -> { AlpakaConfig.instance.chatTabsGuildOnlyInGuildTab = v; AlpakaConfig.save(); ChatTabsFeature.onFilterChanged(); },
+                "chat tabs guild only separate hide all filter gc"));
+
+        // Player model and inventory HUD lived on their own Custom HUD tab; they are overlays like
+        // everything else here, and one tab fewer is one fewer place to look.
+
+        OPTIONS.add(new ConfigOption("Screenshots", ConfigCategory.VISUALS));
 
         OPTIONS.add(new ConfigOption("better_screenshot_message", "Better Screenshots",
                 "A preview in the corner and Open, Copy and Delete buttons for every screenshot.",
@@ -635,66 +683,6 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.autoCopyScreenshots = v; AlpakaConfig.save(); },
                 "screenshot auto copy clipboard automatic f2 paste"));
 
-        OPTIONS.add(new ConfigOption("chat_tabs", "Chat Tabs",
-                "All, Party, Guild, Co-op, PMs and NPCs tabs above the chat input.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.chatTabsEnabled,
-                v -> { AlpakaConfig.instance.chatTabsEnabled = v; AlpakaConfig.save(); },
-                "chat tabs party guild pm private messages npc npcs filter channel switch"));
-
-        OPTIONS.add(new ConfigOption("chat_tabs_shown", "Shown Chat Tabs",
-                "Pick which tabs the row offers. All is always there.",
-                ConfigCategory.VISUALS,
-                java.util.List.of(
-                        new ConfigOption.ToggleEntry("Party",
-                                () -> AlpakaConfig.instance.chatTabsShowParty,
-                                v -> { AlpakaConfig.instance.chatTabsShowParty = v; AlpakaConfig.save(); ChatTabsFeature.onShownTabsChanged(); }),
-                        new ConfigOption.ToggleEntry("Guild",
-                                () -> AlpakaConfig.instance.chatTabsShowGuild,
-                                v -> { AlpakaConfig.instance.chatTabsShowGuild = v; AlpakaConfig.save(); ChatTabsFeature.onShownTabsChanged(); }),
-                        new ConfigOption.ToggleEntry("Co-op",
-                                () -> AlpakaConfig.instance.chatTabsShowCoop,
-                                v -> { AlpakaConfig.instance.chatTabsShowCoop = v; AlpakaConfig.save(); ChatTabsFeature.onShownTabsChanged(); }),
-                        new ConfigOption.ToggleEntry("PMs",
-                                () -> AlpakaConfig.instance.chatTabsShowPrivate,
-                                v -> { AlpakaConfig.instance.chatTabsShowPrivate = v; AlpakaConfig.save(); ChatTabsFeature.onShownTabsChanged(); }),
-                        new ConfigOption.ToggleEntry("NPCs",
-                                () -> AlpakaConfig.instance.chatTabsShowNpc,
-                                v -> { AlpakaConfig.instance.chatTabsShowNpc = v; AlpakaConfig.save(); ChatTabsFeature.onShownTabsChanged(); })
-                ),
-                "chat tabs shown visible hide pick choose select party guild coop co-op pm private messages npc npcs"));
-
-        OPTIONS.add(new ConfigOption("chat_tabs_send_to_channel", "Send To Tab Channel",
-                "Messages typed on a channel tab go to that channel.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.chatTabsSendToChannel,
-                v -> { AlpakaConfig.instance.chatTabsSendToChannel = v; AlpakaConfig.save(); },
-                "chat tabs send channel prefix party guild coop reply pc gc cc r"));
-
-        OPTIONS.add(new ConfigOption("chat_tabs_tab_key", "Tabs While Peeking & Tab Key",
-                "Shows the tabs while peeking. Tab on an empty line, or Ctrl+Tab, cycles them.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.chatTabsTabKey,
-                v -> { AlpakaConfig.instance.chatTabsTabKey = v; AlpakaConfig.save(); },
-                "chat tabs tab key cycle switch next peek player list tablist"));
-
-        OPTIONS.add(new ConfigOption("chat_tabs_keep_after_close", "Keep Tab After Closing Chat",
-                "The in-game chat stays filtered to the chosen tab. Off: back to All.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.chatTabsKeepAfterClose,
-                v -> { AlpakaConfig.instance.chatTabsKeepAfterClose = v; AlpakaConfig.save(); },
-                "chat tabs keep remember filter hud close stay"));
-
-        OPTIONS.add(new ConfigOption("chat_tabs_guild_only", "Guild Chat Only In Guild Tab",
-                "Guild messages show on the Guild tab only, not on All.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.chatTabsGuildOnlyInGuildTab,
-                v -> { AlpakaConfig.instance.chatTabsGuildOnlyInGuildTab = v; AlpakaConfig.save(); ChatTabsFeature.onFilterChanged(); },
-                "chat tabs guild only separate hide all filter gc"));
-
-        // Player model and inventory HUD lived on their own Custom HUD tab; they are overlays like
-        // everything else here, and one tab fewer is one fewer place to look.
-
         OPTIONS.add(new ConfigOption("Player Model", ConfigCategory.VISUALS));
 
         OPTIONS.add(new ConfigOption("player_model_enabled", "Enable Player Model HUD",
@@ -738,6 +726,22 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.playerModelShowInGuis,
                 v -> { AlpakaConfig.instance.playerModelShowInGuis = v; AlpakaConfig.save(); },
                 "player model show in guis menus screen open container inventory HUD"));
+
+        OPTIONS.add(new ConfigOption("Scoreboard", ConfigCategory.VISUALS));
+
+        OPTIONS.add(new ConfigOption("scoreboard_blur", "Blurred Scoreboard Background",
+                "One rounded, blurred panel with a soft shadow behind the scoreboard. Uses the chat's Blur Strength.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.scoreboardBlurEnabled,
+                v -> { AlpakaConfig.instance.scoreboardBlurEnabled = v; AlpakaConfig.save(); },
+                "scoreboard sidebar blur background rounded panel glass frosted shadow"));
+
+        OPTIONS.add(new ConfigOption("scoreboard_alpaka_footer", "AlpakaAddons Scoreboard Footer",
+                "Replaces www.hypixel.net at the bottom of the scoreboard with AlpakaAddons in a gradient.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.scoreboardAlpakaFooter,
+                v -> { AlpakaConfig.instance.scoreboardAlpakaFooter = v; AlpakaConfig.save(); },
+                "scoreboard sidebar footer bottom line hypixel.net www address gradient alpakaaddons branding"));
 
         OPTIONS.add(new ConfigOption("Inventory HUD", ConfigCategory.VISUALS));
 

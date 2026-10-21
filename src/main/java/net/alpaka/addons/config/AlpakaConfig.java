@@ -583,6 +583,10 @@ public class AlpakaConfig {
     public int customTabLayout = 0;
     public boolean customTabHideAds = true;
     public boolean customTabToggle = false;
+    /** The panel behind the list; off leaves only the text. */
+    public boolean customTabBackground = true;
+    /** The list slides down out of the top edge and back up instead of appearing at once. */
+    public boolean customTabAnimated = true;
     public float customTabScale = 1.0f;
 
     /** A Hypixel party invite raises a notification: Y joins, N dismisses. */

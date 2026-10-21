@@ -31,6 +31,10 @@ import java.util.List;
  * Only on SkyBlock, where the list has that shape; anywhere else vanilla's list is drawn as it is,
  * but the toggle still applies to it.
  *
+ * The panel hangs from the top edge of the screen like a dock: its top corners sit above the
+ * screen, so only the bottom ones are rounded, and with Slide Animation it slides down out of the
+ * edge when it opens and back up into it when it closes.
+ *
  * With Toggle Tab List, a press of the player list key shows the list until the next press,
  * rather than only while the key is held.
  */
@@ -38,8 +42,15 @@ public final class CustomTabFeature {
 
     /** How often the list is read again while it is up; Hypixel updates it about once a second. */
     private static final long REBUILD_MS = 250L;
-    /** The panel's top edge, in GUI pixels; vanilla's list starts at the same height. */
-    private static final int TOP = 10;
+    /** The panel's top edge: the screen's own. */
+    private static final int TOP = 0;
+    /**
+     * How far the panel reaches above the screen, in the tab's pixels: its corner radius and its
+     * shadow, so the top corners are cut off by the edge and the panel reads as hanging from it.
+     */
+    private static final int DOCK_OVERLAP = HudPanel.RADIUS + HudPanel.SHADOW;
+    /** How long the slide takes, open or closed. */
+    private static final float SLIDE_SECONDS = 0.18f;
     private static final int SCREEN_MARGIN = 10;
     /** The panel without blur: vanilla's list background. */
     private static final int PLAIN_BACKGROUND = 0x80000000;
@@ -47,6 +58,10 @@ public final class CustomTabFeature {
     public static final String[] LAYOUT_NAMES = {"Side by Side", "Stacked"};
 
     private static boolean toggledOpen = false;
+
+    /** How far the list is out, 0 (hidden above the screen) to 1 (fully down), and when it last moved. */
+    private static float slide = 0.0f;
+    private static long slideAtNs = 0L;
 
     /** A made-up SkyBlock list the screenshot tour shows in place of a live one; null in play. */
     public record DevSample(List<Component> slots, Component header, Component footer) {}
@@ -99,7 +114,7 @@ public final class CustomTabFeature {
         PlayerTabOverlay tabList = hud.getTabList();
         boolean shown = mc.player != null && (devSample != null || listShown(mc.options.keyPlayerList.isDown()));
         tabList.setVisible(shown);
-        if (!shown) {
+        if (!advanceSlide(shown)) {
             cached = null;
             return true;
         }
@@ -110,14 +125,20 @@ public final class CustomTabFeature {
         if (layout == null || layout.texts.isEmpty()) return true;
         float scale = cachedScale;
 
+        // Closed, the whole panel - shadow included - sits just above the screen.
+        float hidden = 1.0f - easeOut(slide);
+        float offset = -hidden * (layout.height + DOCK_OVERLAP) * scale;
+
         graphics.nextStratum();
         graphics.pose().pushMatrix();
-        graphics.pose().translate(screenWidth / 2.0f, TOP);
+        graphics.pose().translate(screenWidth / 2.0f, TOP + offset);
         graphics.pose().scale(scale, scale);
         graphics.pose().translate(-layout.width / 2.0f, 0.0f);
 
-        if (AlpakaConfig.instance.blurOn(AlpakaConfig.instance.customTabBlur)) {
-            HudPanel.submit(graphics, 0, 0, layout.width, layout.height, scale, HudPanel.TINT, 1.0f);
+        if (!AlpakaConfig.instance.customTabBackground) {
+            // Text only: its drop shadow keeps it readable over the world.
+        } else if (AlpakaConfig.instance.blurOn(AlpakaConfig.instance.customTabBlur)) {
+            HudPanel.submit(graphics, 0, -DOCK_OVERLAP, layout.width, layout.height, scale, HudPanel.TINT, 1.0f);
         } else {
             graphics.fill(0, 0, layout.width, layout.height, PLAIN_BACKGROUND);
         }
@@ -135,6 +156,30 @@ public final class CustomTabFeature {
         }
         graphics.pose().popMatrix();
         return true;
+    }
+
+    /**
+     * Moves the slide toward open or closed by the time since the last frame. Without the
+     * animation it jumps straight there. Returns whether anything of the list is to be drawn.
+     */
+    private static boolean advanceSlide(boolean shown) {
+        long now = System.nanoTime();
+        // A long gap - the list closed, the game paused - starts the slide afresh, not halfway.
+        float seconds = slideAtNs == 0L ? 0.0f : Math.min(0.1f, (now - slideAtNs) / 1.0e9f);
+        slideAtNs = now;
+        if (!AlpakaConfig.instance.customTabAnimated) {
+            slide = shown ? 1.0f : 0.0f;
+        } else {
+            float step = seconds / SLIDE_SECONDS;
+            slide = Math.max(0.0f, Math.min(1.0f, slide + (shown ? step : -step)));
+        }
+        if (slide <= 0.0f) slideAtNs = 0L;
+        return slide > 0.0f;
+    }
+
+    private static float easeOut(float t) {
+        float inverse = 1.0f - t;
+        return 1.0f - inverse * inverse * inverse;
     }
 
     /**

@@ -1,10 +1,8 @@
 package net.alpaka.addons.features.scoreboard;
 
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.utils.AlpakaGradient;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.Style;
-import net.minecraft.network.chat.TextColor;
 
 import java.util.Locale;
 import java.util.regex.Pattern;
@@ -16,11 +14,8 @@ import java.util.regex.Pattern;
  */
 public final class ScoreboardFooterFeature {
 
-    private static final String TEXT = "AlpakaAddons";
-    /** Warm gold through pink to violet, left to right. */
-    private static final int[] STOPS = {0xFFC24B, 0xFF6FA8, 0x9B7BFF};
     /** Built once; the line is drawn every frame and never changes. */
-    private static final Component FOOTER = gradient(TEXT, STOPS);
+    private static final Component FOOTER = AlpakaGradient.of("AlpakaAddons");
 
     private ScoreboardFooterFeature() {}
 
@@ -58,27 +53,4 @@ public final class ScoreboardFooterFeature {
 
     private static final Pattern ANY_CODE = Pattern.compile("§.?");
     private static final Pattern NOT_ADDRESS = Pattern.compile("[^A-Za-z0-9.]");
-
-    /** One component per letter, coloured along the stops evenly spread over the text. */
-    static Component gradient(String text, int[] stops) {
-        MutableComponent out = Component.empty();
-        int n = text.length();
-        for (int i = 0; i < n; i++) {
-            float t = n == 1 ? 0f : (float) i / (n - 1);
-            out.append(Component.literal(String.valueOf(text.charAt(i)))
-                    .withStyle(Style.EMPTY.withColor(TextColor.fromRgb(sample(stops, t)))));
-        }
-        return out;
-    }
-
-    private static int sample(int[] stops, float t) {
-        float pos = t * (stops.length - 1);
-        int i = Math.min((int) pos, stops.length - 2);
-        float f = pos - i;
-        int a = stops[i], b = stops[i + 1];
-        int r = Math.round(((a >> 16) & 0xFF) * (1 - f) + ((b >> 16) & 0xFF) * f);
-        int g = Math.round(((a >> 8) & 0xFF) * (1 - f) + ((b >> 8) & 0xFF) * f);
-        int bl = Math.round((a & 0xFF) * (1 - f) + (b & 0xFF) * f);
-        return (r << 16) | (g << 8) | bl;
-    }
 }

@@ -1,9 +1,7 @@
 package net.alpaka.addons.features.scoreboard;
 
-import net.minecraft.network.chat.Component;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -28,13 +26,5 @@ class ScoreboardFooterFeatureTest {
         assertFalse(ScoreboardFooterFeature.isHypixelFooter(""));
         // Hypixel's other address line, the one pointing at a store page.
         assertFalse(ScoreboardFooterFeature.isHypixelFooter("§f§ehypixel.net/§p§eptl"));
-    }
-
-    @Test
-    void gradientKeepsTextAndRunsFromFirstToLastStop() {
-        Component c = ScoreboardFooterFeature.gradient("AlpakaAddons", new int[]{0xFF0000, 0x00FF00, 0x0000FF});
-        assertEquals("AlpakaAddons", c.getString());
-        assertEquals(0xFF0000, c.getSiblings().get(0).getStyle().getColor().getValue());
-        assertEquals(0x0000FF, c.getSiblings().get(11).getStyle().getColor().getValue());
     }
 }

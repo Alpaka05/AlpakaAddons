@@ -1,0 +1,247 @@
+package net.alpaka.addons.features.tablist;
+
+import net.alpaka.addons.client.gui.AlpakaGuiElementSink;
+import net.alpaka.addons.client.gui.BlurRectRenderState;
+import net.alpaka.addons.client.gui.GuiFont;
+import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.features.chat.ChatBlurFeature;
+import net.alpaka.addons.mixin.PlayerTabOverlayAccessor;
+import net.alpaka.addons.utils.SkyblockUtils;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.Hud;
+import net.minecraft.client.gui.components.PlayerFaceExtractor;
+import net.minecraft.client.gui.components.PlayerTabOverlay;
+import net.minecraft.client.gui.screens.ChatScreen;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.client.multiplayer.PlayerInfo;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
+import org.joml.Matrix3x2f;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Custom Tab: Hypixel SkyBlock's player list redrawn as one clean panel.
+ *
+ * Vanilla draws the list as four fixed columns of 20 slots, every slot its own gray box, empty
+ * ones included, with Hypixel's ads above and below. Here the slots are read into categories and
+ * sections ({@link TabListParser}), laid out without the empty slots ({@link CustomTabLayout}) and
+ * drawn on a single panel - blurred like the scoreboard's, in the menu font if asked.
+ *
+ * Only on SkyBlock, where the list has that shape; anywhere else vanilla's list is drawn as it is,
+ * but the toggle still applies to it.
+ *
+ * With Toggle Tab List, a press of the player list key shows the list until the next press,
+ * rather than only while the key is held.
+ */
+public final class CustomTabFeature {
+
+    /** How often the list is read again while it is up; Hypixel updates it about once a second. */
+    private static final long REBUILD_MS = 250L;
+    /** The panel's top edge, in GUI pixels; vanilla's list starts at the same height. */
+    private static final int TOP = 10;
+    private static final int SCREEN_MARGIN = 10;
+    /** The panel without blur: vanilla's list background. */
+    private static final int PLAIN_BACKGROUND = 0x80000000;
+    /** The tint over the blur, and the panel's corners and shadow; the scoreboard panel's. */
+    private static final int TINT = 0x73000000;
+    private static final int RADIUS = 4;
+    private static final int SHADOW = 4;
+
+    public static final String[] LAYOUT_NAMES = {"Side by Side", "Stacked"};
+
+    private static boolean toggledOpen = false;
+
+    /** A made-up SkyBlock list the screenshot tour shows in place of a live one; null in play. */
+    public record DevSample(List<Component> slots, Component header, Component footer) {}
+
+    private static DevSample devSample = null;
+
+    private static CustomTabLayout cached = null;
+    /** The scale the cached layout is drawn at: the chosen one, or smaller where it would not fit. */
+    private static float cachedScale = 1.0f;
+    private static long cachedAtMs = 0L;
+    private static String cachedKey = "";
+
+    private CustomTabFeature() {}
+
+    public static boolean isEnabled() {
+        return AlpakaConfig.instance.customTabEnabled;
+    }
+
+    private static boolean toggles() {
+        return isEnabled() && AlpakaConfig.instance.customTabToggle;
+    }
+
+    /**
+     * A key press in the world: with the toggle on, the player list key flips the list. The press
+     * is not taken, so vanilla still sees its key mapping go down; {@link #listShown} decides.
+     */
+    public static void onKey(KeyEvent event, boolean repeat) {
+        if (repeat || !toggles()) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.gui.screen() != null) return;
+        if (mc.options.keyPlayerList.matches(event)) toggledOpen = !toggledOpen;
+    }
+
+    /** Whether the player list is up: held down normally, or flipped open with the toggle. */
+    public static boolean listShown(boolean keyDown) {
+        if (!toggles()) return keyDown;
+        Minecraft mc = Minecraft.getInstance();
+        // Toggled open stays out of the way of every screen but the chat.
+        if (mc.gui.screen() != null && !(mc.gui.screen() instanceof ChatScreen)) return false;
+        return toggledOpen;
+    }
+
+    /**
+     * Draws the list in place of vanilla's. Returns false where vanilla's list is to be drawn
+     * instead: with the feature off, and off SkyBlock.
+     */
+    public static boolean render(GuiGraphicsExtractor graphics, Hud hud) {
+        if (!isEnabled() || (devSample == null && !SkyblockUtils.isOnSkyblock())) return false;
+        Minecraft mc = Minecraft.getInstance();
+        PlayerTabOverlay tabList = hud.getTabList();
+        boolean shown = mc.player != null && (devSample != null || listShown(mc.options.keyPlayerList.isDown()));
+        tabList.setVisible(shown);
+        if (!shown) {
+            cached = null;
+            return true;
+        }
+
+        int screenWidth = graphics.guiWidth();
+        int screenHeight = graphics.guiHeight();
+        CustomTabLayout layout = layout(tabList, screenWidth, screenHeight);
+        if (layout == null || layout.texts.isEmpty()) return true;
+        float scale = cachedScale;
+
+        graphics.nextStratum();
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(screenWidth / 2.0f, TOP);
+        graphics.pose().scale(scale, scale);
+        graphics.pose().translate(-layout.width / 2.0f, 0.0f);
+
+        if (AlpakaConfig.instance.customTabBlur && graphics instanceof AlpakaGuiElementSink sink) {
+            float toScreen = (float) mc.getWindow().getGuiScale() * scale;
+            // Before the submission, so a HUD cached by Gnetum hands this panel to the frame's own pass.
+            ChatBlurFeature.request();
+            sink.alpaka$submitElement(new BlurRectRenderState(new Matrix3x2f(graphics.pose()),
+                    0, 0, layout.width, layout.height, Math.round(RADIUS * toScreen), TINT, toScreen, 1.0f,
+                    Math.round(SHADOW * toScreen), sink.alpaka$currentScissor()));
+        } else {
+            graphics.fill(0, 0, layout.width, layout.height, PLAIN_BACKGROUND);
+        }
+
+        Font font = mc.font;
+        ClientPacketListener connection = mc.getConnection();
+        for (CustomTabLayout.Text text : layout.texts) {
+            int x = text.x();
+            if (text.face() != null) {
+                PlayerInfo info = connection != null ? connection.getPlayerInfo(text.face()) : null;
+                if (info != null) PlayerFaceExtractor.extractRenderState(graphics, info.getSkin(), x, text.y(), CustomTabLayout.FACE);
+                x += CustomTabLayout.FACE + CustomTabLayout.FACE_GAP;
+            }
+            graphics.text(font, text.text(), x, text.y(), 0xFFFFFFFF, true);
+        }
+        graphics.pose().popMatrix();
+        return true;
+    }
+
+    /**
+     * The layout, read again at most every {@link #REBUILD_MS} or when anything it depends on
+     * changes. Reading the list builds a component for each of the 80 slots, and the smooth font
+     * restyles each, which is work not worth doing every frame for text that changes once a second.
+     */
+    private static CustomTabLayout layout(PlayerTabOverlay tabList, int screenWidth, int screenHeight) {
+        float scale = AlpakaConfig.instance.customTabScale;
+        boolean smooth = AlpakaConfig.instance.customTabSmoothFont && GuiFont.selectedIndex() != 0;
+        boolean stacked = AlpakaConfig.instance.customTabLayout == 1;
+        boolean hideAdverts = AlpakaConfig.instance.customTabHideAds;
+        String key = screenWidth + "x" + screenHeight + "@" + scale + "/" + smooth + GuiFont.selectedIndex()
+                + "/" + stacked + "/" + hideAdverts;
+        long now = System.currentTimeMillis();
+        if (cached != null && key.equals(cachedKey) && now - cachedAtMs < REBUILD_MS) return cached;
+
+        PlayerTabOverlayAccessor accessor = (PlayerTabOverlayAccessor) tabList;
+        List<Component> slots = new ArrayList<>();
+        Component headerText = accessor.alpaka$getHeader();
+        Component footerText = accessor.alpaka$getFooter();
+        if (devSample != null) {
+            slots.addAll(devSample.slots());
+            headerText = devSample.header();
+            footerText = devSample.footer();
+        } else {
+            for (PlayerInfo info : accessor.alpaka$getPlayerInfos()) {
+                slots.add(tabList.getNameForDisplay(info));
+            }
+        }
+        List<TabListParser.Category> categories = TabListParser.parse(slots);
+        List<Component> header = TabListParser.headerFooterLines(headerText, hideAdverts);
+        List<Component> footer = TabListParser.headerFooterLines(footerText, hideAdverts);
+
+        if (smooth) {
+            header = restyled(header);
+            footer = restyled(footer);
+            List<TabListParser.Category> styled = new ArrayList<>(categories.size());
+            for (TabListParser.Category category : categories) {
+                List<List<TabListParser.Line>> sections = new ArrayList<>();
+                for (List<TabListParser.Line> section : category.sections()) {
+                    List<TabListParser.Line> lines = new ArrayList<>(section.size());
+                    for (TabListParser.Line line : section) {
+                        lines.add(new TabListParser.Line(restyle(line.text()), line.indented(), line.player()));
+                    }
+                    sections.add(lines);
+                }
+                styled.add(new TabListParser.Category(restyle(category.title()), sections));
+            }
+            categories = styled;
+        }
+
+        // Laid out at the chosen scale first. A list taller than the screen - a big GUI scale, a
+        // small window - is laid out once more at the scale that makes it fit, which can wrap it
+        // differently, and then shrunk the rest of the way if it still does not.
+        float available = screenHeight - TOP - SCREEN_MARGIN;
+        CustomTabLayout layout = build(header, categories, footer, stacked, screenWidth, screenHeight, scale);
+        if (layout.height * scale > available) {
+            scale = available / layout.height;
+            layout = build(header, categories, footer, stacked, screenWidth, screenHeight, scale);
+            scale = Math.min(scale, available / layout.height);
+        }
+        cached = layout;
+        cachedScale = scale;
+        cachedAtMs = now;
+        cachedKey = key;
+        return cached;
+    }
+
+    private static CustomTabLayout build(List<Component> header, List<TabListParser.Category> categories,
+                                         List<Component> footer, boolean stacked, int screenWidth, int screenHeight,
+                                         float scale) {
+        int maxWidth = (int) ((screenWidth - SCREEN_MARGIN * 2) / scale) - CustomTabLayout.PAD_X * 2;
+        int maxHeight = (int) ((screenHeight - TOP - SCREEN_MARGIN) / scale) - CustomTabLayout.PAD_Y * 2
+                - (header.size() + footer.size()) * CustomTabLayout.LINE_H - CustomTabLayout.ROW_GAP * 2;
+        Font font = Minecraft.getInstance().font;
+        return CustomTabLayout.build(header, categories, footer, stacked, maxWidth, maxHeight, true, font::width);
+    }
+
+    /** Shows the sample, or the live list again with null; for the screenshot tour only. */
+    public static void devShow(DevSample sample) {
+        devSample = sample;
+        cached = null;
+    }
+
+    private static List<Component> restyled(List<Component> lines) {
+        List<Component> out = new ArrayList<>(lines.size());
+        for (Component line : lines) out.add(restyle(line));
+        return out;
+    }
+
+    /** The text in the menu font: on a parent, so a font the text names itself is kept. */
+    private static Component restyle(Component text) {
+        Style style = GuiFont.style();
+        return style.isEmpty() ? text : Component.empty().withStyle(style).append(text);
+    }
+}

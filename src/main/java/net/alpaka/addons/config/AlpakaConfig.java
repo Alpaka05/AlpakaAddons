@@ -42,13 +42,6 @@ public class AlpakaConfig {
     public boolean slayerRngDropGuildChatEnabled = false;
     /** What those share buttons post: 0 the tracker's own line, 1 Hypixel's drop message as it came. */
     public int slayerShareMessage = 0;
-    /**
-     * When a party member types "!since &lt;item&gt;", show the player their own count with a
-     * [Reply in party] button. Nothing is sent unless the player clicks it and presses Enter.
-     *
-     * Off by default. It replaces an automatic reply that answered in the player's name.
-     */
-    public boolean slayerSinceReplyOffer = false;
     public boolean fullbrightEnabled = false;
 
     // Cosmetics. Both are drawn by this client for this client only - nothing is sent, nobody else
@@ -161,6 +154,12 @@ public class AlpakaConfig {
      * quiet chat. Defaults to true so that split changes nothing for anyone who had clean blaze on.
      */
     public boolean hideSlayerChatMessages = true;
+    /** Which groups of slayer chatter hideSlayerChatMessages hides. All on, as before the split. */
+    public boolean hideSlayerChatQuest = true;
+    public boolean hideSlayerChatRadio = true;
+    public boolean hideSlayerChatLevelUp = true;
+    public boolean hideSlayerChatHealing = true;
+    public boolean hideSlayerChatSunshade = true;
     public boolean stopBlazeSpinning = true;
     /** Hides the red hurt flash on mobs and players. Cosmetic only, the hit itself is untouched. */
     public boolean hideHurtOverlayEnabled = false;
@@ -456,7 +455,7 @@ public class AlpakaConfig {
     // Chat options
     /**
      * Better Chat: the main switch over everything that changes how the chat looks - Smooth Chat,
-     * the smooth scrolling, the blurred background and the smooth font. Each keeps its own switch
+     * the opening animation, the smooth scrolling, the blurred background and the smooth font. Each keeps its own switch
      * under it.
      */
     public boolean betterChatEnabled = true;
@@ -464,6 +463,8 @@ public class AlpakaConfig {
     public boolean smoothChatEnabled = true;
     /** How long the slide takes, 1 (quick) to 10 (slow); each step is 60 ms. */
     public int smoothChatStrength = 5;
+    /** Opening the chat unrolls it upwards and slides the input line in instead of showing it at once. */
+    public boolean chatOpenAnimationEnabled = true;
     /**
      * HUD Style's main switches: off, no HUD gets the blurred panel or the smooth font, whatever its
      * own switch says. Each HUD's own switch sits in that feature's settings.
@@ -541,6 +542,8 @@ public class AlpakaConfig {
     public boolean chatTabsTabKey = true;
     /** Keep the chosen chat tab, and so the filtered HUD chat, after the chat closes. Off: back to All. */
     public boolean chatTabsKeepAfterClose = false;
+    /** With chat tabs: guild messages show only on the Guild tab, not on All. Ignored while that tab is hidden. */
+    public boolean chatTabsGuildOnlyInGuildTab = false;
     /** Which channel tabs the row offers. All is always there; a hidden channel's lines stay on All. */
     public boolean chatTabsShowParty = true;
     public boolean chatTabsShowGuild = true;
@@ -575,6 +578,9 @@ public class AlpakaConfig {
 
     /** A Hypixel party invite raises a notification: Y joins, N dismisses. */
     public boolean partyInvitePromptEnabled = true;
+
+    /** Keeps Hypixel's server resource pack loaded between joins; see ServerPackCache. */
+    public boolean cacheResourcePackEnabled = false;
 
     // Command Wheel options
     /**
@@ -1007,7 +1013,6 @@ public class AlpakaConfig {
         this.slayerDropTrackerEnabled = false;
         this.hideHypixelDropMessage = false;
         this.slayerRngDropGuildChatEnabled = false;
-        this.slayerSinceReplyOffer = false;
         this.customNameTagEnabled = false;
         this.nameTagOutlineEnabled = false;
         this.nameTagShadowEnabled = false;
@@ -1084,6 +1089,7 @@ public class AlpakaConfig {
         this.etherwarpSoundEnabled = false;
         this.betterChatEnabled = false;
         this.smoothChatEnabled = false;
+        this.chatOpenAnimationEnabled = false;
         this.chatBlurEnabled = false;
         this.scoreboardBlurEnabled = false;
         this.notificationBlur = false;

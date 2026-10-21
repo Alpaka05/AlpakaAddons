@@ -20,20 +20,20 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * The Ragnarock axe's cast countdown under the crosshair instead of in the action bar.
+ * The Ragnarock's cast countdown under the crosshair instead of in the action bar.
  *
- * Right-clicking the axe starts a three second cast, and Hypixel counts it down in the action bar
+ * Right-clicking the Ragnarock starts a three second cast, and Hypixel counts it down in the action bar
  * ("CASTING IN 3s"), squeezed between health, defence and mana where it is easy to miss. Here that
  * part is cut out of the action bar - the rest of it stays - and the same count is drawn just under
- * the crosshair, where the eyes already are. Then "Rag Axe" shows there if the cast went through,
+ * the crosshair, where the eyes already are. Then "Ragnarock" shows there if the cast went through,
  * or "Cancelled" if it did not.
  *
  * The count is Hypixel's own: each action bar carries the current number, so it ticks exactly like
  * the original. Whether the cast went through is not read off the count running out, since a cast
  * broken on its last beat looks the same there. Like Odin, it is the sound Hypixel plays when the
- * axe goes off - a wolf's death sound at one particular pitch - while the axe is in hand. A cast
+ * cast goes off - a wolf's death sound at one particular pitch - while the Ragnarock is in hand. A cast
  * ends early on a hit, which Hypixel says in chat ("Ragnarock was cancelled due to ..."), or when
- * the axe leaves the hand; a countdown that just stops with no cast sound after it is cancelled too.
+ * the Ragnarock leaves the hand; a countdown that just stops with no cast sound after it is cancelled too.
  */
 public final class RagAxeCountdownFeature {
 
@@ -46,13 +46,13 @@ public final class RagAxeCountdownFeature {
 
     private static final String CANCELLED = "Ragnarock was cancelled";
 
-    /** Hypixel's id for the axe, in the item's custom data. */
+    /** Hypixel's id for the Ragnarock, in the item's custom data; it kept "axe" when the item became a sword. */
     private static final String AXE_ID = "RAGNAROCK_AXE";
 
     /** The pitch of the cast sound; Odin matches the same value. */
     private static final float CAST_PITCH = 1.4920635f;
 
-    /** How long "Rag Axe" or "Cancelled" stays up. */
+    /** How long "Ragnarock" or "Cancelled" stays up. */
     private static final long RESULT_SHOWN_MS = 2000L;
 
     /** After the countdown stops, how long the cast sound may take before the cast counts as cancelled. */
@@ -229,7 +229,7 @@ public final class RagAxeCountdownFeature {
             text = seconds + "s";
             color = COUNTDOWN_COLOR;
         } else if (result != Result.NONE && now - resultAt <= RESULT_SHOWN_MS) {
-            text = result == Result.CAST ? "Rag Axe" : "Cancelled";
+            text = result == Result.CAST ? "Ragnarock" : "Cancelled";
             color = result == Result.CAST ? CAST_COLOR : CANCELLED_COLOR;
         } else {
             return;

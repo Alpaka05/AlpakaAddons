@@ -464,6 +464,8 @@ public class AlpakaConfig {
     public float chatBlurStrength = 100.0f;
     /** One rounded, blurred panel with a soft shadow behind the scoreboard sidebar; see ScoreboardBlurFeature. */
     public boolean scoreboardBlurEnabled = true;
+    /** Writes "AlpakaAddons" in a gradient over Hypixel's www.hypixel.net line; see ScoreboardFooterFeature. */
+    public boolean scoreboardAlpakaFooter = true;
     /** Ctrl+F in the chat turns the input line into a search that filters the visible messages. */
     public boolean chatSearchEnabled = true;
     /** Scrolling the chat glides the lines into place instead of jumping a line per notch. */
@@ -1032,6 +1034,7 @@ public class AlpakaConfig {
         this.chatOpenAnimationEnabled = false;
         this.chatBlurEnabled = false;
         this.scoreboardBlurEnabled = false;
+        this.scoreboardAlpakaFooter = false;
         this.chatSearchEnabled = false;
         this.chatSmoothScrollEnabled = false;
         this.alwaysSprintEnabled = false;

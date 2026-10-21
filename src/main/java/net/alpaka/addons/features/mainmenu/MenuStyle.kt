@@ -74,12 +74,11 @@ object MenuStyle {
     private const val HERO_GLINT_EVERY = 5.5f
     private const val HERO_GLINT_SECONDS = 0.9f
 
-    /** The rows: bare at rest, a light band under the mouse; the icon tile and the chevron. */
+    /** The rows: bare at rest, a light band under the mouse; the icon tile, and the chevron shown under the mouse. */
     private const val ROW_HOVER = 0x18FFFFFF
     private const val ROW_SLIDE = 3f
     private const val TILE = 0x14FFFFFF
     private const val TILE_POP = 0.14f
-    private const val CHEVRON = 0x59FFFFFF
     private const val CHEVRON_HOVER = 0xE6FFFFFF.toInt()
     private const val CHEVRON_SLIDE = 3f
 
@@ -280,9 +279,9 @@ object MenuStyle {
     }
 
     /**
-     * A row of a menu: the icon on a small tile, the name, and a chevron at the end. Bare at rest;
-     * under the mouse a light band lies behind it, the row slides out a little, the icon pops and
-     * takes the accent and the chevron moves along.
+     * A row of a menu: the icon on a small tile and the name. Bare at rest; under the mouse one light
+     * band lies behind the whole row and the icon's tile fades into it, the row slides out a little,
+     * the icon pops and takes the accent, and a chevron fades in at the end and moves along.
      */
     @JvmStatic
     fun row(graphics: GuiGraphicsExtractor, font: Font, x: Int, y: Int, width: Int, height: Int,
@@ -302,17 +301,20 @@ object MenuStyle {
             fade(ModernGuiUtils.lerpColor(TEXT_SOFT, TEXT, hover), appear), false)
         graphics.pose().popMatrix()
 
-        val chevron = icon(ICON_CHEVRON)
-        graphics.pose().pushMatrix()
-        graphics.pose().translate(CHEVRON_SLIDE * hover, 0f)
-        graphics.text(font, chevron, x + width - 6 - font.width(chevron) - CHEVRON_SLIDE.toInt(), textY,
-            fade(ModernGuiUtils.lerpColor(CHEVRON, CHEVRON_HOVER, hover), appear), false)
-        graphics.pose().popMatrix()
+        if (hover > 0.02f) {
+            val chevron = icon(ICON_CHEVRON)
+            graphics.pose().pushMatrix()
+            graphics.pose().translate(CHEVRON_SLIDE * hover, 0f)
+            graphics.text(font, chevron, x + width - 6 - font.width(chevron) - CHEVRON_SLIDE.toInt(), textY,
+                fade(CHEVRON_HOVER, appear * hover), false)
+            graphics.pose().popMatrix()
+        }
     }
 
     /**
      * An icon on a small square tile [size] wide with its corner at [x], [y]; under the mouse the
-     * tile pops and the icon itself takes the accent, the tile staying neutral.
+     * icon pops and takes the accent while the tile fades out, leaving the row's band as the one
+     * background.
      */
     @JvmStatic
     fun iconTile(graphics: GuiGraphicsExtractor, font: Font, x: Float, y: Float, size: Int, glyph: String,
@@ -321,7 +323,10 @@ object MenuStyle {
         graphics.pose().translate(x + size / 2f, y + size / 2f)
         val pop = 1f + TILE_POP * hover
         graphics.pose().scale(pop, pop)
-        ModernGuiUtils.drawRoundedRect(graphics, -size / 2, -size / 2, size, size, size / 3, fade(TILE, appear))
+        if (hover < 0.98f) {
+            ModernGuiUtils.drawRoundedRect(graphics, -size / 2, -size / 2, size, size, size / 3,
+                fade(TILE, appear * (1f - hover)))
+        }
         val glyphComponent = icon(glyph)
         graphics.text(font, glyphComponent, -font.width(glyphComponent) / 2 + 1, -4,
             fade(ModernGuiUtils.lerpColor(TEXT, accent(), hover), appear), false)

@@ -62,8 +62,8 @@ import org.joml.Matrix3x2f
  *
  * Opening plays in order: the card springs in from the left with a glint sweeping across it, the
  * rows follow one by one, and the avatar lands on its spot.
- * Under the mouse a row slides out a little, its icon pops and takes the accent and its chevron
- * moves along.
+ * Under the mouse a row slides out a little, its icon pops and takes the accent and a chevron
+ * fades in and moves along.
  *
  * The card is only as tall as what it holds. Most players see this at Auto GUI scale, 240 to 270
  * pixels tall, so its sizes come in three steps and the roomiest that fits is used.
@@ -564,9 +564,9 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
     }
 
     /**
-     * A row of the menu: the icon on a small tile, the name, and a chevron at the end. Bare at rest;
-     * under the mouse a light band lies behind it, the row slides out a little, the tile pops in the
-     * accent and the chevron moves along.
+     * A row of the menu: the icon on a small tile and the name. Bare at rest; under the mouse one
+     * light band lies behind it and takes the tile's place, the row slides out a little, the icon
+     * pops in the accent and a chevron fades in at the end.
      */
     private inner class RowButton(
         appearIndex: Int,

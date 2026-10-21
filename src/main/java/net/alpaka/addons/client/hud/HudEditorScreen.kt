@@ -211,7 +211,7 @@ class HudEditorScreen(private val parent: Screen?) : Screen(GuiFont.text("HUD Ed
         val placement = element.visiblePlacement(this.width, this.height)
         element.render(graphics, placement.anchorX, placement.anchorY)
 
-        val box = placement.box
+        val box = element.outlineBounds(placement.box)
         val disabled = !element.isFeatureEnabled
 
         if (disabled) {

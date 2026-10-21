@@ -91,7 +91,7 @@ public final class ConfigTree {
     private static final Set<String> MASTERS = Set.of(
             // General
             "allow_api_calls", "update_notifications", "menu_font", "menu_accent_color",
-            "custom_escape_menu", "custom_main_menu", "hud_editor", "disable_all_features", "reset_all_settings",
+            "custom_escape_menu", "custom_main_menu", "disable_all_features", "reset_all_settings",
             // Visuals
             "fullbright", "clean_blaze", "blaze_fire_pits", "stop_blaze_spinning", "hide_hurt_overlay", "hide_mob_deaths",
             "render_hand_third_person", "smooth_perspective", "disable_front_perspective",
@@ -105,10 +105,10 @@ public final class ConfigTree {
             "block_overlay_enabled",
             // SkyBlock
             "etherwarp_overlay", "etherwarp_sound",
-            "slayer_drop_tracker", "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat", "slayer_since_reply_offer",
+            "slayer_drop_tracker", "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat",
             "hide_slayer_chat", "boss_spawn_alert", "boss_cocoon_alert", "slayer_timer", "slayer_hud_enabled",
             "world_age_hud_enabled", "world_age_join_message_enabled", "party_invite_prompt",
-            "guild_prefix", "bridge_bot_formatter", "pangolin_highlight_enabled", "only_crit_damage",
+            "guild_prefix", "bridge_bot_formatter", "pangolin_highlight_enabled", "only_crit_damage", "rag_axe_countdown", "cache_resource_pack",
             // Cosmetics
             "custom_name_tag", "chroma_hat", "player_scale", "custom_damage_tags",
             // Sound & utility
@@ -147,7 +147,8 @@ public final class ConfigTree {
             "HUD Style", "HUD Style",
             "Notification Customization", "Notifications",
             "Scoreboard", "Scoreboard Style",
-            "Nametags", "Nametags"
+            "Nametags", "Nametags",
+            "Hide Fire Overlay", "Hide Fire Overlay"
     );
 
     /** What a feature built from a header is about; it has no master option to take it from. */
@@ -155,8 +156,9 @@ public final class ConfigTree {
             "Swing Customizations", "How the held item moves when you swing: drift, arc and whether the swing always plays out.",
             "Viewmodel Presets", "Save your viewmodel and swing settings to a slot and load them back later.",
             "HUD Style", "Main switches for the blurred panels and the smooth font of every HUD, and how strongly the world is blurred.",
-            "Scoreboard", "The sidebar scoreboard's background and font.",
+            "Scoreboard", "The sidebar scoreboard's footer, background and font.",
             "Nametags", "How the nametags above players and mobs look, and whether you see your own.",
+            "Hide Fire Overlay", "Hides the flames on burning mobs, and fades, lowers or stills the fire on your screen while you burn.",
             "Notification Customization", "How long notifications stay, where they appear and how they look. Send a test to see the result."
     );
 
@@ -167,7 +169,7 @@ public final class ConfigTree {
      */
     private static final String[][][] LAYOUT = {
             {{"General"},
-                    {"Main", "allow_api_calls", "update_notifications", "#Notification Customization", "hud_editor",
+                    {"Main", "allow_api_calls", "update_notifications", "#Notification Customization",
                             "command_wheel_custom_commands", "always_sprint", "disable_all_features", "reset_all_settings"},
                     {"Design", "menu_font", "#HUD Style", "menu_accent_color", "custom_main_menu", "custom_escape_menu"},
                     {"Sounds", "custom_sounds", "custom_sound_button_click", "custom_sound_hotbar_scroll",
@@ -176,7 +178,7 @@ public final class ConfigTree {
                             "custom_sound_zombie_remedy", "custom_sound_low_hp_heartbeat"}},
             {{"Visuals"},
                     {"World", "fullbright", "block_overlay_enabled", "hide_hurt_overlay", "hide_mob_deaths",
-                            "#Nametags", "render_hand_third_person", "smooth_perspective", "disable_front_perspective"},
+                            "#Hide Fire Overlay", "#Nametags", "render_hand_third_person", "smooth_perspective", "disable_front_perspective"},
                     {"Interface", "inventory_hud_enabled", "player_model_enabled", "container_bg_opacity",
                             "scrollable_tooltips", "persistent_item_name", "old_master_stars", "wide_health_bar", "inventory_snow", "#Scoreboard"},
                     {"Chat", "better_chat", "chat_tabs", "chat_search", "chat_peek", "compact_chat",
@@ -186,12 +188,12 @@ public final class ConfigTree {
                     {"Cosmetics", "custom_name_tag", "custom_damage_tags", "chroma_hat", "player_scale"}},
             {{"SkyBlock"},
                     {"Slayer", "slayer_hud_enabled", "slayer_timer", "boss_spawn_alert", "boss_cocoon_alert", "slayer_drop_tracker",
-                            "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat", "slayer_since_reply_offer",
+                            "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat",
                             "hide_slayer_chat"},
                     {"Blaze", "clean_blaze", "blaze_fire_pits", "stop_blaze_spinning",
                             "mute_vanilla_sounds_blaze_slayer", "custom_sound_blaze_death"},
                     {"Tools", "etherwarp_overlay", "etherwarp_sound", "only_crit_damage", "pangolin_highlight_enabled",
-                            "world_age_hud_enabled", "world_age_join_message_enabled"},
+                            "world_age_hud_enabled", "world_age_join_message_enabled", "rag_axe_countdown", "cache_resource_pack"},
                     {"Social", "party_invite_prompt", "guild_prefix", "bridge_bot_formatter"}},
     };
 

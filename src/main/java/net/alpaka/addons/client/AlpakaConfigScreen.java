@@ -7,6 +7,7 @@ import net.alpaka.addons.client.gui.EditableText;
 import net.alpaka.addons.client.gui.GuiFont;
 import net.alpaka.addons.client.gui.ModernGuiUtils;
 import net.alpaka.addons.client.gui.PloppAnimation;
+import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.utils.ModVersion;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -624,8 +625,13 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     }
 
     private void drawSidebar(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w, int h, float deltaSec) {
+        // The HUD editor's button sits in the bottom corner, below the sections, so it is one
+        // click away whichever section is open.
+        int footerH = AlpakaStyle.BUTTON_H + PAD + 9;
+        drawHudEditorButton(graphics, mouseX, mouseY, x, y + h - AlpakaStyle.BUTTON_H - PAD, w);
+
         int clipY = y + 4;
-        int clipH = h - 8;
+        int clipH = h - 8 - footerH;
         int contentH = 4;
         List<ConfigTree.Group> groups = ConfigTree.groups();
         for (int i = 0; i < groups.size(); i++) {
@@ -665,6 +671,17 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         }
         AlpakaStyle.scrollFades(graphics, x, clipY, w, clipH, sidebarScroll.offset() > 0, sidebarScroll.offset() + 1 < sidebarScroll.max);
         graphics.disableScissor();
+    }
+
+    private void drawHudEditorButton(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w) {
+        int bx = x + PAD;
+        int bw = w - PAD * 2;
+        ModernGuiUtils.drawRect(graphics, bx, y - 9, bw, 1, AlpakaStyle.LINE);
+        boolean hover = inside(mouseX, mouseY, bx, y, bw, AlpakaStyle.BUTTON_H);
+        AlpakaStyle.button(graphics, this.font, bx, y, bw, AlpakaStyle.BUTTON_H,
+                ellipsize("HUD Editor", bw - 8), hover, AlpakaStyle.ButtonKind.PLAIN);
+        hits.add(new Hit(bx, y, bw, AlpakaStyle.BUTTON_H,
+                (mx, my) -> this.minecraft.gui.setScreen(new HudEditorScreen(this))));
     }
 
     private void drawFeatures(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w, int h, float deltaSec) {
@@ -869,6 +886,10 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                     drawLabel(graphics, option.getTitle(), rowX + 4, labelY, right - SWATCH_W - 8 - (rowX + 4));
                     int sy = rowY + (rowH - SWATCH_H) / 2;
                     AlpakaStyle.swatch(graphics, right - SWATCH_W, sy, SWATCH_W, SWATCH_H, option.getColor());
+                    // A white ring while the mouse is on the swatch itself, the spot that opens the picker.
+                    if (hover && inside(mouseX, mouseY, right - SWATCH_W - 2, sy - 2, SWATCH_W + 4, SWATCH_H + 4)) {
+                        ModernGuiUtils.drawRoundedOutline(graphics, right - SWATCH_W - 1, sy - 1, SWATCH_W + 2, SWATCH_H + 2, 3, AlpakaStyle.TEXT);
+                    }
                     if (shown) hits.add(new Hit(rowX, hitY, rowW, rowH, (mx, my) -> option.triggerAction(this)));
                 } else {
                     // A button the width of the column, named for what it does; red for what destroys.

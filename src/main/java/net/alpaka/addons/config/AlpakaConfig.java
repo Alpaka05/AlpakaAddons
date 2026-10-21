@@ -42,13 +42,6 @@ public class AlpakaConfig {
     public boolean slayerRngDropGuildChatEnabled = false;
     /** What those share buttons post: 0 the tracker's own line, 1 Hypixel's drop message as it came. */
     public int slayerShareMessage = 0;
-    /**
-     * When a party member types "!since &lt;item&gt;", show the player their own count with a
-     * [Reply in party] button. Nothing is sent unless the player clicks it and presses Enter.
-     *
-     * Off by default. It replaces an automatic reply that answered in the player's name.
-     */
-    public boolean slayerSinceReplyOffer = false;
     public boolean fullbrightEnabled = false;
 
     // Cosmetics. Both are drawn by this client for this client only - nothing is sent, nobody else
@@ -139,6 +132,8 @@ public class AlpakaConfig {
     /** Snow over container screens and the main menu. Off for fresh installs; it is seasonal decoration. */
     public boolean inventorySnowEnabled = false;
     public float inventorySnowSpeed = 1.0f;
+    /** Multiplier on the number of flakes; 1 is the original 105. */
+    public float inventorySnowAmount = 1.0f;
     public float containerBgOpacity = 0.75f;
     public boolean containerBgFadeInEnabled = true;
     public int containerBgFadeInDurationMs = 250;
@@ -166,6 +161,12 @@ public class AlpakaConfig {
      * quiet chat. Defaults to true so that split changes nothing for anyone who had clean blaze on.
      */
     public boolean hideSlayerChatMessages = true;
+    /** Which groups of slayer chatter hideSlayerChatMessages hides. All on, as before the split. */
+    public boolean hideSlayerChatQuest = true;
+    public boolean hideSlayerChatRadio = true;
+    public boolean hideSlayerChatLevelUp = true;
+    public boolean hideSlayerChatHealing = true;
+    public boolean hideSlayerChatSunshade = true;
     public boolean stopBlazeSpinning = true;
     /** Hides the red hurt flash on mobs and players. Cosmetic only, the hit itself is untouched. */
     public boolean hideHurtOverlayEnabled = false;
@@ -173,6 +174,14 @@ public class AlpakaConfig {
     public boolean hideMobDeathsEnabled = false;
     /** With Hide Mob Deaths: also no puff of smoke when the server removes the body. */
     public boolean hideMobDeathSmoke = false;
+    /** Hides the flames on burning mobs, players and yourself in third person. Cosmetic only. */
+    public boolean hideEntityFire = false;
+    /** Opacity of the fire covering the screen while you burn in first person, 0..1; 1 is vanilla, 0 hides it. */
+    public float firstPersonFireOpacity = 1.0f;
+    /** How high that fire reaches up the screen, 0..1 of vanilla's height; 1 is vanilla. */
+    public float firstPersonFireHeight = 1.0f;
+    /** Draws that fire as one still frame instead of the flickering animation. */
+    public boolean firstPersonFireStatic = false;
     /**
      * The box behind every nametag. The default is vanilla's own box, which then stays vanilla's,
      * accessibility opacity setting included; zero opacity drops the box and leaves only the text.
@@ -209,6 +218,8 @@ public class AlpakaConfig {
     public boolean blazeMuteAllWorldAudio = false;
     public float lowHpHeartbeatThreshold = 0.30f;
     public int menuAccentColor = 0xFF29B6B2; // Default teal
+    /** The player's own presets in the color picker, ARGB, oldest first; shared by every color option. */
+    public java.util.List<Integer> customColorPresets = new java.util.ArrayList<>();
     /**
      * Index into {@code GuiFont.NAMES}: the typeface the Alpaka menus are written in. 0 is the
      * vanilla pixel font; the default is Poppins.
@@ -329,6 +340,8 @@ public class AlpakaConfig {
     public boolean slayerTimerChatEnabled = true;
     /** Show the running time on screen while the boss is up. */
     public boolean slayerTimerHudEnabled = true;
+    /** The Ragnarock's cast countdown under the crosshair instead of in the action bar. */
+    public boolean ragAxeCountdownEnabled = true;
     public int slayerTimerHudX = net.alpaka.addons.client.hud.HudDefaults.SLAYER_TIMER_X;
     public int slayerTimerHudY = net.alpaka.addons.client.hud.HudDefaults.SLAYER_TIMER_Y;
     public float slayerTimerHudScale = 1.0f;
@@ -451,7 +464,7 @@ public class AlpakaConfig {
     // Chat options
     /**
      * Better Chat: the main switch over everything that changes how the chat looks - Smooth Chat,
-     * the smooth scrolling, the blurred background and the smooth font. Each keeps its own switch
+     * the opening animation, the smooth scrolling, the blurred background and the smooth font. Each keeps its own switch
      * under it.
      */
     public boolean betterChatEnabled = true;
@@ -459,6 +472,8 @@ public class AlpakaConfig {
     public boolean smoothChatEnabled = true;
     /** How long the slide takes, 1 (quick) to 10 (slow); each step is 60 ms. */
     public int smoothChatStrength = 5;
+    /** Opening the chat unrolls it upwards and slides the input line in instead of showing it at once. */
+    public boolean chatOpenAnimationEnabled = true;
     /**
      * HUD Style's main switches: off, no HUD gets the blurred panel or the smooth font, whatever its
      * own switch says. Each HUD's own switch sits in that feature's settings.
@@ -486,10 +501,23 @@ public class AlpakaConfig {
     public float chatBlurStrength = 100.0f;
     /** One rounded, blurred panel with a soft shadow behind the scoreboard sidebar; see ScoreboardBlurFeature. */
     public boolean scoreboardBlurEnabled = true;
+    /** Writes "AlpakaAddons" in a gradient over Hypixel's www.hypixel.net line; see ScoreboardFooterFeature. */
+    public boolean scoreboardAlpakaFooter = true;
     /** Ctrl+F in the chat turns the input line into a search that filters the visible messages. */
     public boolean chatSearchEnabled = true;
     /** Scrolling the chat glides the lines into place instead of jumping a line per notch. */
     public boolean chatSmoothScrollEnabled = true;
+    /** The open chat's scrollbar is a wider, rounded bar that can be dragged with the mouse. */
+    public boolean chatScrollbarEnabled = true;
+    /** The chat is a HUD element: the HUD editor can move it and resize it. */
+    public boolean chatMovable = false;
+    /**
+     * Where the moved chat sits, as an offset from vanilla's place (its bottom-left corner, 40 GUI
+     * pixels above the screen's bottom), so it stays put relative to the bottom when the window or
+     * the GUI scale changes.
+     */
+    public int chatOffsetX = 0;
+    public int chatOffsetY = 0;
     /** Moving forward sprints on its own, without holding the sprint key. */
     /** Off for fresh installs. Vanilla's own toggle-sprint option already does this for most players. */
     public boolean alwaysSprintEnabled = false;
@@ -536,6 +564,8 @@ public class AlpakaConfig {
     public boolean chatTabsTabKey = true;
     /** Keep the chosen chat tab, and so the filtered HUD chat, after the chat closes. Off: back to All. */
     public boolean chatTabsKeepAfterClose = false;
+    /** With chat tabs: guild messages show only on the Guild tab, not on All. Ignored while that tab is hidden. */
+    public boolean chatTabsGuildOnlyInGuildTab = false;
     /** Which channel tabs the row offers. All is always there; a hidden channel's lines stay on All. */
     public boolean chatTabsShowParty = true;
     public boolean chatTabsShowGuild = true;
@@ -570,6 +600,9 @@ public class AlpakaConfig {
 
     /** A Hypixel party invite raises a notification: Y joins, N dismisses. */
     public boolean partyInvitePromptEnabled = true;
+
+    /** Keeps Hypixel's server resource pack loaded between joins; see ServerPackCache. */
+    public boolean cacheResourcePackEnabled = false;
 
     // Command Wheel options
     /**
@@ -1002,7 +1035,6 @@ public class AlpakaConfig {
         this.slayerDropTrackerEnabled = false;
         this.hideHypixelDropMessage = false;
         this.slayerRngDropGuildChatEnabled = false;
-        this.slayerSinceReplyOffer = false;
         this.customNameTagEnabled = false;
         this.nameTagOutlineEnabled = false;
         this.nameTagShadowEnabled = false;
@@ -1021,6 +1053,10 @@ public class AlpakaConfig {
         this.stopBlazeSpinning = false;
         this.hideHurtOverlayEnabled = false;
         this.hideMobDeathsEnabled = false;
+        this.hideEntityFire = false;
+        this.firstPersonFireOpacity = 1.0f;
+        this.firstPersonFireHeight = 1.0f;
+        this.firstPersonFireStatic = false;
         this.nameTagBackgroundColor = DEFAULT_NAME_TAG_BACKGROUND;
         this.showOwnNameTag = false;
         this.nameTagTextShadow = false;
@@ -1058,6 +1094,7 @@ public class AlpakaConfig {
         this.slayerTimerEnabled = false;
         this.slayerTimerChatEnabled = false;
         this.slayerTimerHudEnabled = false;
+        this.ragAxeCountdownEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
         this.customDamageTagsEnabled = false;
@@ -1074,12 +1111,16 @@ public class AlpakaConfig {
         this.etherwarpSoundEnabled = false;
         this.betterChatEnabled = false;
         this.smoothChatEnabled = false;
+        this.chatOpenAnimationEnabled = false;
         this.chatBlurEnabled = false;
         this.scoreboardBlurEnabled = false;
+        this.scoreboardAlpakaFooter = false;
         this.notificationBlur = false;
         this.notificationSmoothFont = false;
         this.chatSearchEnabled = false;
         this.chatSmoothScrollEnabled = false;
+        this.chatScrollbarEnabled = false;
+        this.chatMovable = false;
         this.alwaysSprintEnabled = false;
         this.expandChatHistory = false;
         this.chatPeekEnabled = false;

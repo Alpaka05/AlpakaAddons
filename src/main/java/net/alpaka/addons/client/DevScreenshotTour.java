@@ -49,6 +49,9 @@ public final class DevScreenshotTour {
         return new Stop(shot, () -> Minecraft.getInstance().gui.setScreen(screen.get()), () -> true, 30);
     }
 
+    /** The dev config's own wheel pages, put back after the wheel stops. */
+    private static java.util.List<java.util.List<String>> savedWheelPages;
+
     private static final List<Stop> STOPS = List.of(
             // With the mouse in the top-right corner, so the avatar visibly looks up and towards it.
             new Stop("main-menu", () -> {
@@ -66,6 +69,24 @@ public final class DevScreenshotTour {
             screen("color-picker", () -> new ColorPickerScreen(null, "Accent Color", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
             screen("wheel-editor", () -> new CommandWheelConfigScreen(new CustomMainMenuScreen())),
             screen("hud-editor", () -> new HudEditorScreen(null)),
+            // The wheel itself, on a full page of long names: they must not run into each other,
+            // and the page arrows sit at the edges.
+            new Stop("wheel-long", () -> {
+                savedWheelPages = AlpakaConfig.instance.commandWheelPages;
+                AlpakaConfig.instance.commandWheelPages = new java.util.ArrayList<>(List.of(
+                        new java.util.ArrayList<>(List.of("/warp dungeon_hub", "/party transfer someone",
+                                "/visit portalhub", "/warp crimson_isle", "/wardrobe", "/pets",
+                                "/call kat", "/warp garden", "/storage", "/viewrecipe hyperion",
+                                "/equipment", "/hotm")),
+                        new java.util.ArrayList<>(List.of("/hub", "/island"))));
+                Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.features.wheel.CommandWheelScreen());
+                placeMouse(0.56, 0.3);
+            }, () -> true, 30),
+            new Stop("wheel-arrow", () -> placeMouse(0.97, 0.5), () -> true, 20),
+            new Stop(null, () -> {
+                AlpakaConfig.instance.commandWheelPages = savedWheelPages;
+                Minecraft.getInstance().gui.setScreen(null);
+            }, () -> true, 2),
             new Stop(null, DevScreenshotTour::enterWorld,
                     () -> Minecraft.getInstance().player != null && Minecraft.getInstance().gui.screen() == null, 100),
             new Stop("world-hud", DevScreenshotTour::showHuds, () -> true, 30),

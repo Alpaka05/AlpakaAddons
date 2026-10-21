@@ -7,6 +7,8 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Util;
 
+import java.util.Arrays;
+
 /**
  * The numbers the Performance HUD shows, collected as cheaply as the game allows.
  *
@@ -37,6 +39,8 @@ public final class PerformanceStats {
     /** A time update's game time step beyond this is a jump (a new server, a time set), not ticks that ran. */
     private static final long MAX_PLAUSIBLE_STEP = 1_200L;
     private static final long TICKS_PER_TIME_UPDATE = 20L;
+    /** More packets than the client thread leaves queued even through a long hitch. */
+    private static final int SEEN_CAPACITY = 128;
 
     /** One entry per server tick, from the pings Hypixel sends each tick. */
     private static final TpsEstimator TICK_PINGS = new TpsEstimator();
@@ -50,11 +54,12 @@ public final class PerformanceStats {
     private static long lastProbeMs = Long.MIN_VALUE / 2;
     private static long lastShownMs = Long.MIN_VALUE / 2;
     /**
-     * The packets last counted. Each is handled twice - first on the network thread, then again on
-     * the client thread it is handed to - and must only count once.
+     * The packets counted lately. Each is handled twice - first on the network thread, then again
+     * on the client thread it is queued for - and must only count once. Several can arrive before
+     * the client thread works through its queue, so the last one alone is not enough to tell.
      */
-    private static volatile Object lastTimePacket = null;
-    private static volatile Object lastServerPing = null;
+    private static final Object[] SEEN = new Object[SEEN_CAPACITY];
+    private static int seenHead = 0;
 
     private PerformanceStats() {}
 
@@ -70,14 +75,26 @@ public final class PerformanceStats {
         lastGameTime = Long.MIN_VALUE;
         PING.reset();
         lastAnswerMs = Long.MIN_VALUE / 2;
-        lastTimePacket = null;
-        lastServerPing = null;
+        synchronized (SEEN) {
+            Arrays.fill(SEEN, null);
+        }
+    }
+
+    /** Whether this packet is new here; the second call for the same packet returns false. */
+    private static boolean firstSighting(Object packet) {
+        synchronized (SEEN) {
+            for (Object seen : SEEN) {
+                if (seen == packet) return false;
+            }
+            SEEN[seenHead] = packet;
+            seenHead = (seenHead + 1) % SEEN_CAPACITY;
+            return true;
+        }
     }
 
     /** From the packet listener, for every time update the server sends. */
     public static void onTimeUpdate(Object packet, long gameTime) {
-        if (packet == lastTimePacket) return;
-        lastTimePacket = packet;
+        if (!firstSighting(packet)) return;
         long step = gameTime - lastGameTime;
         lastGameTime = gameTime;
         // Where a server pins or jumps its game time, the update counts as the usual 20 ticks.
@@ -86,8 +103,7 @@ public final class PerformanceStats {
 
     /** From the packet listener, for every ping the server sends; Hypixel sends one each tick. */
     public static void onServerPing(Object packet) {
-        if (packet == lastServerPing) return;
-        lastServerPing = packet;
+        if (!firstSighting(packet)) return;
         TICK_PINGS.onTicks(1L, Util.getMillis());
     }
 

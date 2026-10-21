@@ -17,7 +17,8 @@ public final class PingSmoother {
     static final long REFRESH_MS = 1_000L;
     /** With no round trip for this long, there is no ping to show. */
     static final long STALE_MS = 20_000L;
-    static final int CAPACITY = 64;
+    /** Enough for one answer a tick, as F3's network chart gets them, over the whole window. */
+    static final int CAPACITY = 256;
 
     private final long[] times = new long[CAPACITY];
     private final int[] values = new int[CAPACITY];

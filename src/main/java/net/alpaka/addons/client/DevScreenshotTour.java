@@ -133,8 +133,16 @@ public final class DevScreenshotTour {
             new Stop("confirm-dialog-reset-all", () -> trigger("reset_all_settings"), () -> true, 30),
             screen("confirm-config-viewmodel-reset", () -> AlpakaConfigScreen.openOn("Viewmodel", "Reset Viewmodel Settings")),
             new Stop("confirm-dialog-viewmodel-reset", () -> trigger("item_viewmodel_reset"), () -> true, 30),
-            screen("confirm-config-presets", () -> AlpakaConfigScreen.openOn("Viewmodel", "Presets")),
-            new Stop("confirm-dialog-save-preset", () -> trigger("save_preset_1"), () -> true, 30),
+            // The presets as cards: one named and active, one named, one left unnamed.
+            new Stop("config-presets", () -> {
+                AlpakaConfig config = AlpakaConfig.instance;
+                while (config.itemPresets.size() < 3) config.itemPresets.add(new AlpakaConfig.ItemPreset());
+                config.itemPresets.get(0).name = "Dungeons Sword";
+                config.itemPresets.get(1).name = "Farming - low hand";
+                config.itemPresets.get(2).name = "";
+                config.activeItemPresetIndex = 0;
+                Minecraft.getInstance().gui.setScreen(AlpakaConfigScreen.openOn("Viewmodel", "Presets"));
+            }, () -> true, 30),
             screen("confirm-config-player-scale", () -> AlpakaConfigScreen.openOn("Cosmetics", "Player Scale")),
             new Stop("confirm-dialog-player-scale", () -> trigger("player_scale_reset"), () -> true, 30),
             // Quick commands with one of the player's own: Reset asks, Cancel keeps it, Reset for

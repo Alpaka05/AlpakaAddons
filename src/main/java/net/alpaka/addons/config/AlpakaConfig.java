@@ -573,6 +573,17 @@ public class AlpakaConfig {
     public boolean wideHealthBarCentered = false;
     /** Absorption hearts: 0 a row of their own, 1 gold over the first hearts, 2 hidden. */
     public int wideHealthBarAbsorption = 0;
+    /**
+     * Custom Tab: SkyBlock's player list on one panel, sorted into its categories. Layout 0 puts the
+     * categories next to each other, 1 under each other. See CustomTabFeature.
+     */
+    public boolean customTabEnabled = false;
+    public boolean customTabBlur = true;
+    public boolean customTabSmoothFont = true;
+    public int customTabLayout = 0;
+    public boolean customTabHideAds = true;
+    public boolean customTabToggle = false;
+    public float customTabScale = 1.0f;
 
     /** A Hypixel party invite raises a notification: Y joins, N dismisses. */
     public boolean partyInvitePromptEnabled = true;
@@ -1063,6 +1074,7 @@ public class AlpakaConfig {
         this.playerModelHideArmor = false;
         this.playerModelShowInGuis = false;
         this.worldAgeHudEnabled = false;
+        this.customTabEnabled = false;
         this.slayerHudEnabled = false;
         this.slayerHudPauseOutsideArea = false;
         this.slayerHudOnlyInSlayerAreas = false;

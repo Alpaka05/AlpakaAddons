@@ -9,11 +9,13 @@ import net.alpaka.addons.features.notification.AlpakaNotifications;
 import net.alpaka.addons.features.playermodel.PlayerModelRenderer;
 import net.alpaka.addons.features.scoreboard.ScoreboardBlurFeature;
 import net.alpaka.addons.features.slayer.SlayerHudRenderer;
+import net.alpaka.addons.features.tablist.CustomTabFeature;
 import net.alpaka.addons.features.tooltip.OldMasterStarsFeature;
 import net.alpaka.addons.features.slayer.SlayerTimerHudRenderer;
 import net.alpaka.addons.features.worldage.WorldAgeHudRenderer;
 import net.alpaka.addons.utils.AlpakaPerf;
 import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.Hud;
@@ -114,6 +116,23 @@ public class HudMixin implements ChatOverHud.Late {
             ChatTabsFeature.releasePlayerListKey();
             ci.cancel();
         }
+    }
+
+    /** Custom Tab: on SkyBlock the player list is drawn by the mod instead; see CustomTabFeature. */
+    @Inject(method = "extractTabList", at = @At("HEAD"), cancellable = true)
+    private void alpaka$customTab(GuiGraphicsExtractor graphicsExtractor, DeltaTracker deltaTracker, CallbackInfo ci) {
+        if (CustomTabFeature.render(graphicsExtractor, (Hud) (Object) this)) {
+            ci.cancel();
+        }
+    }
+
+    /** Toggle Tab List for vanilla's list too, where the Custom Tab leaves it in place. */
+    @WrapOperation(
+            method = "extractTabList",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/KeyMapping;isDown()Z")
+    )
+    private boolean alpaka$toggleTabList(KeyMapping key, Operation<Boolean> original) {
+        return CustomTabFeature.listShown(original.call(key));
     }
 
     /**

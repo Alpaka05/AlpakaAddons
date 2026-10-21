@@ -469,6 +469,45 @@ public class AlpakaConfigRegistry {
                 "absorption hearts gold golden yellow hide merge health row gold over health on hearts own row")
                 .choices(net.alpaka.addons.features.healthbar.WideHealthBarFeature.ABSORPTION_NAMES));
 
+        OPTIONS.add(new ConfigOption("custom_tab", "Custom Tab",
+                "Redraws the SkyBlock tab list as one clean panel, sorted into its categories, without the empty slots.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabEnabled,
+                v -> { AlpakaConfig.instance.customTabEnabled = v; AlpakaConfig.save(); },
+                "custom tab list tablist player list compact clean panel sorted widgets columns skyblock"));
+
+        OPTIONS.add(new ConfigOption("custom_tab_layout", "Layout",
+                "Side by Side puts the categories next to each other, Stacked puts them under each other.",
+                ConfigCategory.VISUALS,
+                () -> (float) AlpakaConfig.instance.customTabLayout,
+                v -> { AlpakaConfig.instance.customTabLayout = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (net.alpaka.addons.features.tablist.CustomTabFeature.LAYOUT_NAMES.length - 1),
+                val -> net.alpaka.addons.features.tablist.CustomTabFeature.LAYOUT_NAMES[Math.round(val)],
+                "tab list layout side by side stacked columns rows horizontal vertical next to under each other")
+                .choices(net.alpaka.addons.features.tablist.CustomTabFeature.LAYOUT_NAMES));
+
+        OPTIONS.add(new ConfigOption("custom_tab_hide_ads", "Hide Hypixel Ads",
+                "Hides the server address and the store link Hypixel puts above and below the tab list.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabHideAds,
+                v -> { AlpakaConfig.instance.customTabHideAds = v; AlpakaConfig.save(); },
+                "tab list hide ads advertising advert store hypixel.net header footer ranks boosters"));
+
+        OPTIONS.add(new ConfigOption("custom_tab_toggle", "Toggle Tab List",
+                "One press of the player list key opens the tab list and the next closes it, instead of holding the key.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabToggle,
+                v -> { AlpakaConfig.instance.customTabToggle = v; AlpakaConfig.save(); },
+                "tab list toggle press hold key keep open player list switch"));
+
+        OPTIONS.add(new ConfigOption("custom_tab_scale", "Scale",
+                "How big the tab list is drawn.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabScale,
+                v -> { AlpakaConfig.instance.customTabScale = Math.round(v * 20.0f) / 20.0f; AlpakaConfig.save(); },
+                0.5f, 1.5f, val -> String.format(Locale.ROOT, "%.2fx", val),
+                "tab list scale size bigger smaller zoom"));
+
         OPTIONS.add(new ConfigOption("Chat", ConfigCategory.VISUALS));
 
         // Better Chat: everything that changes how the chat looks, its parts as its settings. The
@@ -2121,6 +2160,11 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.notificationBlur, v -> AlpakaConfig.instance.notificationBlur = v);
         styleToggle("notification_smooth_font", "Smooth Font", ConfigCategory.GENERAL, false,
                 () -> AlpakaConfig.instance.notificationSmoothFont, v -> AlpakaConfig.instance.notificationSmoothFont = v);
+
+        styleToggle("custom_tab_blur", "Blur", ConfigCategory.VISUALS, true,
+                () -> AlpakaConfig.instance.customTabBlur, v -> AlpakaConfig.instance.customTabBlur = v);
+        styleToggle("custom_tab_smooth_font", "Smooth Font", ConfigCategory.VISUALS, false,
+                () -> AlpakaConfig.instance.customTabSmoothFont, v -> AlpakaConfig.instance.customTabSmoothFont = v);
 
         styleToggle("chat_blur", "Blur", ConfigCategory.VISUALS, true,
                 () -> AlpakaConfig.instance.chatBlurEnabled, v -> AlpakaConfig.instance.chatBlurEnabled = v);

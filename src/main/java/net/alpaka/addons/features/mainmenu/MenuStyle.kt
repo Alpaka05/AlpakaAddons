@@ -1,10 +1,11 @@
 package net.alpaka.addons.features.mainmenu
 
-import net.alpaka.addons.client.gui.AlpakaGuiElementSink
-import net.alpaka.addons.client.gui.GradientRoundedRectRenderState
+import net.alpaka.addons.client.gui.AlpakaStyle
 import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.client.gui.ModernGuiUtils
+import net.alpaka.addons.client.gui.PloppAnimation
 import net.alpaka.addons.features.wheel.WheelMesh
+import net.alpaka.addons.utils.ModVersion
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphicsExtractor
@@ -13,17 +14,17 @@ import net.minecraft.client.renderer.texture.SimpleTexture
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.FontDescription
 import net.minecraft.resources.Identifier
-import org.joml.Matrix3x2f
 import kotlin.math.PI
 import kotlin.math.sin
 
 /**
- * The look the main menu and the pause menu share: a card of dark glass with the logo and the mod's
- * name at its head, one accented hero tile, rows with an icon tile and a chevron, and a red pill to
- * leave by - together with the colors, easings and line icons they are drawn with.
+ * The pieces the main menu and the pause menu are built from, in the config menu's design language
+ * ([AlpakaStyle]) so the two read as windows of the same mod: a dark panel that pops open, a header
+ * with the mod's name and version over a hairline, cards and buttons that go one step lighter on
+ * hover, the accent for what is about to happen and red for leaving - and the menus' line icons.
  *
- * Each piece draws at the position it is given and at an [appear] of 0 → 1; the screens decide
- * where things go and when they arrive.
+ * Each piece draws at the position it is given and at an [appear] of 0 → 1, which fades it in; the
+ * screens decide where things go and when they arrive.
  */
 object MenuStyle {
     @JvmField val MOD_ICON_ID: Identifier = Identifier.parse("alpaka:textures/gui/alpaka_icon.png")
@@ -47,58 +48,27 @@ object MenuStyle {
     const val ICON_DOOR = ""
 
     /**
-     * The titles - the mod's name and the player's - in the larger title font. Its glyphs hang from
-     * a baseline further down than the normal text's, so they are drawn this far below their box's
-     * top for the capitals to start there.
+     * The logo in the header, and how much it grows and wiggles under the mouse. The picture fills
+     * only about the middle of its square (29 to 99 of 128 across), so the square is drawn larger
+     * than the header's text and pulled left by its empty margin, to line up with the padding.
      */
-    const val TITLE_HEIGHT = 13
-    const val TITLE_BASELINE_DROP = 4
+    const val LOGO_SIZE = 32
+    private const val LOGO_INSET = LOGO_SIZE * 29 / 128
+    private const val LOGO_VISIBLE_RIGHT = LOGO_SIZE * 99 / 128
+    private const val LOGO_HOVER_GROWTH = 0.12f
+    private const val LOGO_WIGGLE_DEGREES = 6f
 
-    const val LOGO_HOVER_GROWTH = 0.1f
-    private const val LOGO_BOB_PIXELS = 1.2f
-    private const val LOGO_WIGGLE_DEGREES = 7f
-
-    /** The card's glass: its tint over the blurred backdrop and how strongly that covers the blur. */
-    const val CARD_TINT = 0xFF0D1117.toInt()
-    const val CARD_STRENGTH = 0.72f
-    const val CARD_EDGE = 0x1AFFFFFF
-    const val CARD_SHADOW = 0.9f
-
-    /** The hero tile: a lighter panel washed with the accent from the left, in a circling gradient edge. */
-    private const val HERO_FILL = 0x10FFFFFF
-    private const val HERO_FILL_HOVER = 0x22FFFFFF
-    private const val HERO_WASH = 0.16f
-    private const val HERO_EDGE_REST = 0.6f
-    /** One turn of the gradient around the edge, and the time between glints. */
-    private const val HERO_EDGE_TURN_SECONDS = 4.0f
-    private const val HERO_GLINT_EVERY = 5.5f
-    private const val HERO_GLINT_SECONDS = 0.9f
-
-    /** The rows: bare at rest, a light band under the mouse; the icon tile and the chevron. */
-    private const val ROW_HOVER = 0x18FFFFFF
-    private const val ROW_SLIDE = 3f
-    private const val TILE = 0x14FFFFFF
-    private const val TILE_HOVER_ACCENT = 0.55f
-    private const val TILE_POP = 0.14f
-    private const val CHEVRON = 0x59FFFFFF
-    private const val CHEVRON_HOVER = 0xE6FFFFFF.toInt()
-    private const val CHEVRON_SLIDE = 3f
-
-    const val SEPARATOR = 0x1AFFFFFF
-    const val TEXT = 0xFFFFFFFF.toInt()
-    const val TEXT_SOFT = 0xEBFFFFFF.toInt()
-    const val MUTED = 0x9EFFFFFF.toInt()
+    /** The live dot beside Hypixel's player count. */
     const val ONLINE_DOT = 0xFF4ADE80.toInt()
 
-    /** The red pill to leave by, at a card's foot. */
-    private const val QUIT_FILL = 0x29EF4444
-    private const val QUIT_FILL_HOVER = 0x4DEF4444
-    private const val QUIT_TEXT = 0xFFFCA5A5.toInt()
-    private const val QUIT_RING = 0xFFEF4444.toInt()
-    /** Room left and right of a pill's label. */
-    const val PILL_PADDING = 10
+    /** How far a card's chevron moves along under the mouse. */
+    private const val CHEVRON_SLIDE = 2f
 
     const val HOVER_EASE = 0.25f
+
+    /** The version as the config menu's header shows it, without the build part. */
+    @JvmStatic
+    fun versionLabel(): String = "v" + ModVersion.mod().substringBefore('+')
 
     private var modIconRegistered = false
 
@@ -119,14 +89,6 @@ object MenuStyle {
     fun icon(icon: String): Component =
         Component.literal(icon).withStyle { it.withFont(ICON_FONT) }
 
-    /**
-     * A label: the icon, then the text. Built on an empty root so the text inherits the default font
-     * rather than the icon's, in which every ordinary letter is a missing glyph.
-     */
-    @JvmStatic
-    fun iconLabel(glyph: String, text: String): Component =
-        Component.empty().append(icon(glyph)).append(GuiFont.text("  $text"))
-
     /** The color with its alpha scaled by the factor. */
     @JvmStatic
     fun fade(color: Int, factor: Float): Int {
@@ -135,16 +97,11 @@ object MenuStyle {
     }
 
     @JvmStatic
-    fun accent(): Int = ModernGuiUtils.getAccentColor() or 0xFF000000.toInt()
+    fun accent(): Int = AlpakaStyle.accent() or 0xFF000000.toInt()
 
-    /** Eased out with a little overshoot, for things that spring into place. */
+    /** The color [a] blended towards [b] by [t], alpha included. */
     @JvmStatic
-    fun easeOutBack(t: Float): Float {
-        val c1 = 1.70158f
-        val c3 = c1 + 1f
-        val u = t - 1f
-        return 1f + c3 * u * u * u + c1 * u * u
-    }
+    fun mix(a: Int, b: Int, t: Float): Int = ModernGuiUtils.lerpColor(a, b, t.coerceIn(0f, 1f))
 
     @JvmStatic
     fun easeOutCubic(t: Float): Float {
@@ -155,10 +112,16 @@ object MenuStyle {
     @JvmStatic
     fun guiScale(): Float = Minecraft.getInstance().window.guiScale.toFloat()
 
-    // The status pulse and the glint draw with one mesh kept between frames instead of building a
-    // new one every time they draw. Sharing it is safe because each fills and submits it before the
-    // other can take it, and submit() copies out what it hands on. The feather is about one screen
-    // pixel, so a new GUI scale needs a new mesh.
+    /**
+     * Whether a widget shows as hovered: under the mouse, or focused while the player steps through
+     * the menu with Tab or the arrow keys - otherwise nothing would show which one Enter presses.
+     */
+    @JvmStatic
+    fun highlighted(mouseOver: Boolean, focused: Boolean): Boolean =
+        mouseOver || (focused && Minecraft.getInstance().lastInputType.isKeyboard)
+
+    // The status pulse draws with one mesh kept between frames instead of building a new one every
+    // time. The feather is about one screen pixel, so a new GUI scale needs a new mesh.
     private var sharedMesh: WheelMesh? = null
     private var sharedMeshScale = 0
 
@@ -174,238 +137,202 @@ object MenuStyle {
         return mesh
     }
 
+    // ---- The window ----------------------------------------------------------------------------
+
     /**
-     * The card's frame over whatever glass is behind it: the soft shadow, and the hairline edge. The
-     * glass itself differs - the main menu blurs its picture, the pause menu sits on vanilla's blur.
+     * Starts the config menu's opening pop around the point ([cx], [cy]), the window's own centre.
+     * Returns whether a pose was pushed, which [endOpen] needs to know.
      */
     @JvmStatic
-    fun cardShadow(graphics: GuiGraphicsExtractor, x: Int, y: Int, width: Int, height: Int, radius: Int, appear: Float) {
-        ModernGuiUtils.drawPanelShadow(graphics, x, y, width, height, radius, CARD_SHADOW * appear)
+    fun beginOpen(graphics: GuiGraphicsExtractor, openTimeMs: Long, cx: Float, cy: Float): Boolean {
+        val scale = PloppAnimation.getOpenScale(openTimeMs)
+        if (scale >= 0.999f) return false
+        graphics.pose().pushMatrix()
+        graphics.pose().scaleAround(scale, scale, cx, cy)
+        return true
     }
 
     @JvmStatic
-    fun cardEdge(graphics: GuiGraphicsExtractor, x: Int, y: Int, width: Int, height: Int, radius: Int, appear: Float) {
-        ModernGuiUtils.drawRoundedOutline(graphics, x, y, width, height, radius, fade(CARD_EDGE, appear))
+    fun endOpen(graphics: GuiGraphicsExtractor, pushed: Boolean) {
+        if (pushed) graphics.pose().popMatrix()
     }
 
-    /** The card's tint as one color, for glass that is a plain fill over an already blurred backdrop. */
-    @JvmStatic
-    fun cardTint(): Int = (Math.round(CARD_STRENGTH * 255f) shl 24) or (CARD_TINT and 0x00FFFFFF)
-
     /**
-     * The logo, centred in its box, floating gently; [hover] grows it and gives it a little wiggle.
-     * [t] is the ambient clock the float runs on.
+     * The window's head, as the config menu has it: the logo, then "ALPAKA" large with the version
+     * small beneath - and the hairline along the header's foot. The logo and name are the way into
+     * the config; under the mouse ([hover]) the logo grows and wiggles, the name takes the accent
+     * and the version line turns into "Open Config". [t] is the clock the wiggle runs on.
      */
     @JvmStatic
-    fun logo(graphics: GuiGraphicsExtractor, x: Int, y: Int, size: Int, hover: Float, appear: Float, t: Float) {
+    fun header(graphics: GuiGraphicsExtractor, font: Font, x: Int, y: Int, width: Int, hover: Float, t: Float) {
+        val logoX = x + AlpakaStyle.PAD - LOGO_INSET
+        val logoY = y + (AlpakaStyle.HEADER_H - LOGO_SIZE) / 2
+        logo(graphics, logoX, logoY, LOGO_SIZE, hover, t)
+
+        val textX = logoX + LOGO_VISIBLE_RIGHT + 7
+        val title = GuiFont.title("ALPAKA")
+        val titleColor = mix(AlpakaStyle.TEXT, accent(), hover)
+        // Where the config menu's header has them.
+        graphics.text(font, title ?: Component.literal("ALPAKA"), textX, y + 8, titleColor, false)
+
+        // The version at rest, "Open Config" under the mouse: crossfaded, on the same line.
+        val subY = y + 22
+        if (hover < 0.98f) {
+            graphics.text(font, GuiFont.text(versionLabel()), textX, subY, fade(AlpakaStyle.TEXT_MUTED, 1f - hover), false)
+        }
+        if (hover > 0.02f) {
+            graphics.text(font, GuiFont.text("Open Config"), textX, subY, fade(accent(), hover), false)
+        }
+        AlpakaStyle.headerLine(graphics, x, y, width)
+    }
+
+    /**
+     * The clickable part of the header - the logo and the name - as x, y, width and height, for the
+     * window whose top-left corner is ([x], [y]).
+     */
+    @JvmStatic
+    fun brandBox(font: Font, x: Int, y: Int): IntArray {
+        val nameW = maxOf(
+            GuiFont.title("ALPAKA")?.let { font.width(it) } ?: GuiFont.width(font, "ALPAKA"),
+            GuiFont.width(font, "Open Config"), GuiFont.width(font, versionLabel()))
+        val left = x + AlpakaStyle.PAD - 2
+        return intArrayOf(left, y + 3, LOGO_VISIBLE_RIGHT - LOGO_INSET + 7 + nameW + 4, AlpakaStyle.HEADER_H - 6)
+    }
+
+    /** The logo, centred in its box; [hover] grows it and gives it a little wiggle. */
+    @JvmStatic
+    fun logo(graphics: GuiGraphicsExtractor, x: Int, y: Int, size: Int, hover: Float, t: Float) {
         val grown = size * (1f + LOGO_HOVER_GROWTH * hover)
-        val bob = sin(t * 1.6f) * LOGO_BOB_PIXELS
         val wiggle = sin(t * 11f) * LOGO_WIGGLE_DEGREES * hover
 
         ensureModIconRegistered()
         graphics.pose().pushMatrix()
-        graphics.pose().translate(x + size / 2f, y + size / 2f + bob)
+        graphics.pose().translate(x + size / 2f, y + size / 2f)
         graphics.pose().rotate((wiggle * PI / 180.0).toFloat())
         val half = Math.round(grown / 2f)
         graphics.blit(RenderPipelines.GUI_TEXTURED, MOD_ICON_ID, -half, -half, 0.0f, 0.0f,
-            half * 2, half * 2, 128, 128, 128, 128, fade(0xFFFFFFFF.toInt(), appear))
+            half * 2, half * 2, 128, 128, 128, 128, -1)
         graphics.pose().popMatrix()
     }
 
-    /** A title in the title font, centred on the height of the box from [top] that is [height] tall. */
-    @JvmStatic
-    fun title(graphics: GuiGraphicsExtractor, font: Font, text: String, x: Int, top: Int, height: Int, appear: Float) {
-        val title = GuiFont.title(text)
-        if (title != null) {
-            graphics.text(font, title, x, top + (height - TITLE_HEIGHT) / 2 + TITLE_BASELINE_DROP, fade(TEXT, appear), false)
-        } else {
-            graphics.text(font, Component.literal(text), x, top + (height - 8) / 2, fade(TEXT, appear), false)
-        }
+    // ---- Controls ------------------------------------------------------------------------------
+
+    /** What a control is: an ordinary one, the one that goes ahead (accent), or the one that leaves (red). */
+    enum class Kind { PLAIN, PRIMARY, DANGER }
+
+    /** The fill of a control of [kind] at [hover]; [card] controls sit a step lighter at rest, like the config's features. */
+    private fun fill(kind: Kind, hover: Float): Int = when (kind) {
+        Kind.PRIMARY -> mix((accent() and 0x00FFFFFF) or 0x2E000000, (accent() and 0x00FFFFFF) or 0x52000000, hover)
+        Kind.DANGER -> mix(AlpakaStyle.ROW, (AlpakaStyle.DANGER and 0x00FFFFFF) or 0x40000000, hover)
+        Kind.PLAIN -> mix(AlpakaStyle.ROW, AlpakaStyle.ROW_SELECTED, hover)
+    }
+
+    /** The label color of a control of [kind] at [hover]. */
+    private fun label(kind: Kind, hover: Float): Int = when (kind) {
+        Kind.PRIMARY -> AlpakaStyle.TEXT
+        Kind.DANGER -> mix(AlpakaStyle.DANGER_SOFT, AlpakaStyle.DANGER, hover)
+        Kind.PLAIN -> mix(AlpakaStyle.TEXT_SOFT, AlpakaStyle.TEXT, hover)
+    }
+
+    /** The icon color of a control of [kind] at [hover]: muted at rest, the accent once hovered. */
+    private fun glyph(kind: Kind, hover: Float): Int = when (kind) {
+        Kind.PRIMARY -> accent()
+        Kind.DANGER -> mix(AlpakaStyle.DANGER_SOFT, AlpakaStyle.DANGER, hover)
+        Kind.PLAIN -> mix(AlpakaStyle.TEXT_MUTED, accent(), hover)
     }
 
     /**
-     * The hero tile's panel: a lighter fill washed with the accent from the left, inside an edge
-     * whose gradient slowly circles it, with a glint crossing it every few seconds; then its icon in
-     * the accent and its name. Returns where the name starts, for a line under it.
+     * A button, as the config's: a slim rounded box, its icon and label centred together. Plain ones
+     * go a step lighter on hover with the icon taking the accent; the primary one is washed in the
+     * accent, the dangerous one turns red.
      */
     @JvmStatic
-    fun hero(graphics: GuiGraphicsExtractor, font: Font, x: Int, y: Int, width: Int, height: Int,
-             glyph: String, name: String, nameY: Int, hover: Float, appear: Float): Int {
-        heroPanel(graphics, x, y, width, height, height / 4, hover, appear)
+    fun button(graphics: GuiGraphicsExtractor, font: Font, x: Int, y: Int, width: Int, height: Int,
+               glyph: String?, text: String, kind: Kind, hover: Float, appear: Float) {
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, width, height, AlpakaStyle.ROW_RADIUS, fade(fill(kind, hover), appear))
+        if (kind == Kind.PRIMARY) {
+            ModernGuiUtils.drawRoundedOutline(graphics, x, y, width, height, AlpakaStyle.ROW_RADIUS,
+                fade(accent(), (0.35f + 0.45f * hover) * appear))
+        }
+        val label = GuiFont.text(text)
+        val labelW = font.width(label)
+        val textY = y + (height - 8) / 2
+        if (glyph == null) {
+            graphics.text(font, label, x + (width - labelW) / 2, textY, fade(label(kind, hover), appear), false)
+            return
+        }
+        val iconC = icon(glyph)
+        val iconW = font.width(iconC)
+        val left = x + (width - iconW - 6 - labelW) / 2
+        graphics.text(font, iconC, left, textY, fade(glyph(kind, hover), appear), false)
+        graphics.text(font, label, left + iconW + 6, textY, fade(label(kind, hover), appear), false)
+    }
 
-        val iconComponent = icon(glyph)
-        val iconX = x + 10
-        graphics.text(font, iconComponent, iconX, y + (height - 8) / 2, fade(accent(), appear), false)
+    /**
+     * A card of a menu, as the config lists its features: the icon, the name, and a chevron at the
+     * end. On hover it goes a step lighter, the icon takes the accent and the chevron moves along.
+     */
+    @JvmStatic
+    fun card(graphics: GuiGraphicsExtractor, font: Font, x: Int, y: Int, width: Int, height: Int,
+             glyph: String, text: String, hover: Float, appear: Float) {
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, width, height, AlpakaStyle.CARD_RADIUS,
+            fade(mix(AlpakaStyle.ROW, AlpakaStyle.ROW_SELECTED, hover), appear))
+        val textY = y + (height - 8) / 2
+        val iconC = icon(glyph)
+        val iconW = font.width(iconC)
+        graphics.text(font, iconC, x + 8 + (9 - iconW) / 2, textY, fade(glyph(Kind.PLAIN, hover), appear), false)
+        graphics.text(font, GuiFont.text(text), x + 24, textY, fade(label(Kind.PLAIN, hover), appear), false)
+        chevron(graphics, x + width - 9, y + height / 2, hover, appear, mix(AlpakaStyle.TEXT_MUTED, accent(), hover))
+    }
 
-        val textX = iconX + font.width(iconComponent) + 8
-        graphics.text(font, GuiFont.text(name), textX, nameY, fade(TEXT, appear), false)
+    /** The config's side chevron, moving along under the mouse. */
+    private fun chevron(graphics: GuiGraphicsExtractor, cx: Int, cy: Int, hover: Float, appear: Float, color: Int) {
+        if (appear <= 0.01f) return
+        graphics.pose().pushMatrix()
+        graphics.pose().translate(CHEVRON_SLIDE * hover - CHEVRON_SLIDE, 0f)
+        AlpakaStyle.sideChevron(graphics, cx, cy, false, fade(color, appear))
+        graphics.pose().popMatrix()
+    }
+
+    /**
+     * The card that stands out: the primary action, washed in the accent with an accent edge, its
+     * icon in the accent, the name and a status line under it. Returns where the name starts, for
+     * that line.
+     */
+    @JvmStatic
+    fun heroCard(graphics: GuiGraphicsExtractor, font: Font, x: Int, y: Int, width: Int, height: Int,
+                 glyph: String, text: String, hover: Float, appear: Float): Int {
+        val r = AlpakaStyle.CARD_RADIUS
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, width, height, r, fade(fill(Kind.PRIMARY, hover), appear))
+        ModernGuiUtils.drawRoundedOutline(graphics, x, y, width, height, r,
+            fade(accent(), (0.35f + 0.45f * hover) * appear))
+        val iconC = icon(glyph)
+        val iconW = font.width(iconC)
+        graphics.text(font, iconC, x + 8 + (9 - iconW) / 2, y + (height - 8) / 2, fade(accent(), appear), false)
+        val textX = x + 24
+        graphics.text(font, GuiFont.text(text), textX, y + height / 2 - 9, fade(AlpakaStyle.TEXT, appear), false)
+        chevron(graphics, x + width - 9, y + height / 2, hover, appear, mix(accent(), AlpakaStyle.TEXT, hover))
         return textX
     }
 
     /**
-     * The hero tile without its content: the washed panel with corners of [radius], the circling
-     * edge and the glint.
-     */
-    @JvmStatic
-    fun heroPanel(graphics: GuiGraphicsExtractor, x: Int, y: Int, width: Int, height: Int, radius: Int,
-                  hover: Float, appear: Float) {
-        val t = MenuAmbience.seconds()
-        val accent = accent()
-        val light = WheelMesh.lerpColor(accent, 0xFFFFFFFF.toInt(), 0.6f)
-
-        ModernGuiUtils.drawRoundedRect(graphics, x, y, width, height, radius,
-            fade(ModernGuiUtils.lerpColor(HERO_FILL, HERO_FILL_HOVER, hover), appear))
-        val wash = fade(accent, HERO_WASH * appear * (1f + hover))
-        val clearWash = accent and 0x00FFFFFF
-        gradientRect(graphics, x, y, width, height, radius, 0, wash, clearWash, clearWash, wash)
-
-        // The edge: each corner's color runs between the accent and its lighter self, a quarter
-        // turn apart, so the bright part travels around the tile.
-        val edgeStrength = appear * (HERO_EDGE_REST + (1f - HERO_EDGE_REST) * hover)
-        fun corner(k: Int): Int {
-            val phase = (t / HERO_EDGE_TURN_SECONDS + k * 0.25f) * 2f * PI.toFloat()
-            return fade(WheelMesh.lerpColor(accent, light, 0.5f + 0.5f * sin(phase)), edgeStrength)
-        }
-        gradientRect(graphics, x, y, width, height, radius,
-            maxOf(1, Math.round(guiScale())), corner(0), corner(1), corner(2), corner(3))
-
-        val glintPhase = (t % HERO_GLINT_EVERY) / HERO_GLINT_SECONDS
-        if (glintPhase in 0f..1f) glint(graphics, x, y, width, height, glintPhase, 0.12f * appear)
-    }
-
-    /**
-     * A status line under the hero's name: a dot, and the text in the muted color. A [pulse] dot
-     * sends out a ring once a second and a half, like a live signal.
+     * A status line: a dot, and the text muted. A [pulse] dot sends out a ring once a second and a
+     * half, like a live signal.
      */
     @JvmStatic
     fun statusLine(graphics: GuiGraphicsExtractor, font: Font, x: Int, y: Int, dot: Int, text: String,
                    pulse: Boolean, appear: Float) {
+        val dotSize = 4
+        val dotX = x
+        val dotY = y + 2
         if (pulse) {
             val p = (MenuAmbience.seconds() % 1.5f) / 1.5f
             val mesh = mesh()
-            val dotCenterX = x + font.width(GuiFont.text("●")) / 2f
-            val dotCenterY = y + 3.5f
-            mesh.ring(dotCenterX, dotCenterY, 1.5f + p * 4f, 2.2f + p * 4f,
+            mesh.ring(dotX + dotSize / 2f, dotY + dotSize / 2f, 1.5f + p * 4f, 2.2f + p * 4f,
                 WheelMesh.scaleAlpha(dot, (1f - p) * 0.8f * appear))
             mesh.submit(graphics)
         }
-        graphics.text(font, GuiFont.text("●"), x, y, fade(dot, appear), false)
-        graphics.text(font, GuiFont.text(text), x + GuiFont.width(font, "● "), y, fade(MUTED, appear), false)
-    }
-
-    /**
-     * A row of a menu: the icon on a small tile, the name, and a chevron at the end. Bare at rest;
-     * under the mouse a light band lies behind it, the row slides out a little, the tile pops in the
-     * accent and the chevron moves along.
-     */
-    @JvmStatic
-    fun row(graphics: GuiGraphicsExtractor, font: Font, x: Int, y: Int, width: Int, height: Int,
-            glyph: String, label: Component, hover: Float, appear: Float) {
-        if (hover > 0.02f) {
-            ModernGuiUtils.drawRoundedRect(graphics, x, y, width, height, 6, fade(ROW_HOVER, appear * hover))
-        }
-
-        val slide = ROW_SLIDE * hover
-        val tile = height - 4
-        iconTile(graphics, font, x + 4 + slide, y + 2f, tile, glyph, hover, appear)
-
-        val textY = y + (height - 8) / 2
-        graphics.pose().pushMatrix()
-        graphics.pose().translate(slide, 0f)
-        graphics.text(font, label, x + 4 + tile + 8, textY,
-            fade(ModernGuiUtils.lerpColor(TEXT_SOFT, TEXT, hover), appear), false)
-        graphics.pose().popMatrix()
-
-        val chevron = icon(ICON_CHEVRON)
-        graphics.pose().pushMatrix()
-        graphics.pose().translate(CHEVRON_SLIDE * hover, 0f)
-        graphics.text(font, chevron, x + width - 6 - font.width(chevron) - CHEVRON_SLIDE.toInt(), textY,
-            fade(ModernGuiUtils.lerpColor(CHEVRON, CHEVRON_HOVER, hover), appear), false)
-        graphics.pose().popMatrix()
-    }
-
-    /**
-     * An icon on a small square tile [size] wide with its corner at [x], [y]; under the mouse the
-     * tile pops and takes the accent.
-     */
-    @JvmStatic
-    fun iconTile(graphics: GuiGraphicsExtractor, font: Font, x: Float, y: Float, size: Int, glyph: String,
-                 hover: Float, appear: Float) {
-        val tileColor = ModernGuiUtils.lerpColor(TILE, fade(accent(), TILE_HOVER_ACCENT), hover)
-        graphics.pose().pushMatrix()
-        graphics.pose().translate(x + size / 2f, y + size / 2f)
-        val pop = 1f + TILE_POP * hover
-        graphics.pose().scale(pop, pop)
-        ModernGuiUtils.drawRoundedRect(graphics, -size / 2, -size / 2, size, size, size / 3, fade(tileColor, appear))
-        val glyphComponent = icon(glyph)
-        graphics.text(font, glyphComponent, -font.width(glyphComponent) / 2 + 1, -4, fade(TEXT, appear), false)
-        graphics.pose().popMatrix()
-    }
-
-    /** The red pill to leave by, ringed in red under the mouse. */
-    @JvmStatic
-    fun quitPill(graphics: GuiGraphicsExtractor, font: Font, x: Int, y: Int, width: Int, height: Int,
-                 label: Component, hover: Float, appear: Float) {
-        pill(graphics, font, x, y, width, height, label, hover, appear, QUIT_FILL, QUIT_FILL_HOVER, QUIT_RING, QUIT_TEXT)
-    }
-
-    /** The red pill's look on a box with corners of [radius] rather than round ends. */
-    @JvmStatic
-    fun quitBox(graphics: GuiGraphicsExtractor, font: Font, x: Int, y: Int, width: Int, height: Int, radius: Int,
-                label: Component, hover: Float, appear: Float) {
-        box(graphics, font, x, y, width, height, radius, label, hover, appear, QUIT_FILL, QUIT_FILL_HOVER, QUIT_RING, QUIT_TEXT)
-    }
-
-    private fun pill(graphics: GuiGraphicsExtractor, font: Font, x: Int, y: Int, width: Int, height: Int,
-                     label: Component, hover: Float, appear: Float, fill: Int, fillHover: Int, ring: Int, text: Int) {
-        box(graphics, font, x, y, width, height, height / 2, label, hover, appear, fill, fillHover, ring, text)
-    }
-
-    private fun box(graphics: GuiGraphicsExtractor, font: Font, x: Int, y: Int, width: Int, height: Int, radius: Int,
-                    label: Component, hover: Float, appear: Float, fill: Int, fillHover: Int, ring: Int, text: Int) {
-        ModernGuiUtils.drawRoundedRect(graphics, x, y, width, height, radius,
-            fade(ModernGuiUtils.lerpColor(fill, fillHover, hover), appear))
-        if (hover > 0.02f) {
-            ModernGuiUtils.drawRoundedOutline(graphics, x, y, width, height, radius, fade(ring, appear * hover))
-        }
-        ModernGuiUtils.centeredText(graphics, font, label, x + width / 2, y + (height - 8) / 2, fade(text, appear))
-    }
-
-    /**
-     * A rounded rectangle with a color at each corner, filled when [thickness] is 0 or as an edge
-     * that many screen pixels wide; nothing without the extractor mixin.
-     */
-    @JvmStatic
-    fun gradientRect(graphics: GuiGraphicsExtractor, x: Int, y: Int, width: Int, height: Int, radius: Int,
-                     thickness: Int, topLeft: Int, topRight: Int, bottomRight: Int, bottomLeft: Int) {
-        val sink = graphics as? AlpakaGuiElementSink ?: return
-        val toScreen = guiScale()
-        sink.`alpaka$submitElement`(GradientRoundedRectRenderState(
-            Matrix3x2f(graphics.pose()), x, y, x + width, y + height, Math.round(radius * toScreen), thickness,
-            topLeft, topRight, bottomRight, bottomLeft, toScreen, sink.`alpaka$currentScissor`()))
-    }
-
-    /**
-     * A slanted band of light crossing the box from left to right as [progress] runs 0 → 1, at
-     * [strength] at its brightest, clipped to the box.
-     */
-    @JvmStatic
-    fun glint(graphics: GuiGraphicsExtractor, x: Int, y: Int, width: Int, height: Int,
-              progress: Float, strength: Float) {
-        val band = 18f
-        val slant = height * 0.45f
-        val center = x - band - slant + (width + band * 2 + slant * 2) * progress
-        val bright = WheelMesh.scaleAlpha(0xFFFFFFFF.toInt(), strength)
-        val clear = 0x00FFFFFF
-        graphics.enableScissor(x, y, x + width, y + height)
-        val mesh = mesh()
-        val top = y.toFloat()
-        val bottom = (y + height).toFloat()
-        mesh.quad(center - band + slant, top, clear, center - band, bottom, clear,
-            center, bottom, bright, center + slant, top, bright)
-        mesh.quad(center + slant, top, bright, center, bottom, bright,
-            center + band, bottom, clear, center + band + slant, top, clear)
-        mesh.submit(graphics)
-        graphics.disableScissor()
+        ModernGuiUtils.drawRoundedRect(graphics, dotX, dotY, dotSize, dotSize, dotSize / 2, fade(dot, appear))
+        graphics.text(font, GuiFont.text(text), x + dotSize + 5, y, fade(AlpakaStyle.TEXT_MUTED, appear), false)
     }
 }

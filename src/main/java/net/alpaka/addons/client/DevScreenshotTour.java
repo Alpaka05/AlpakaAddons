@@ -60,6 +60,8 @@ public final class DevScreenshotTour {
             // The mouse moved down to the left, over the card: the avatar turns to look at it.
             new Stop("main-menu-look-left", () -> placeMouse(0.2, 0.75), () -> true, 30),
             new Stop("look-far-left", () -> placeMouse(0.0, 0.5), () -> true, 30),
+            // The mouse on the window's header, the way into the config: "Open Config" shows.
+            new Stop("main-menu-header-hover", () -> placeMouse(0.09, 0.1), () -> true, 20),
             // A moment into the entrance: the card springing in, the avatar half materialised.
             new Stop("main-menu-opening", () -> Minecraft.getInstance().gui.setScreen(new CustomMainMenuScreen()), () -> true, 9),
             screen("config", () -> new AlpakaConfigScreen(null, "")),
@@ -157,7 +159,7 @@ public final class DevScreenshotTour {
                     () -> Minecraft.getInstance().player != null && Minecraft.getInstance().gui.screen() == null, 100),
             new Stop("world-hud", DevScreenshotTour::showHuds, () -> true, 30),
             // The screenshot preview of the picture just taken: resting in the corner, then mid-shrink.
-            new Stop(null, () -> {}, () -> tourShot("world-hud").isFile(), 2),
+            new Stop(null, () -> {}, () -> written(tourShot("world-hud")), 2),
             new Stop(null, () -> {
                 ScreenshotPreview.devFreezeAt(1150.0f);
                 ScreenshotPreview.show(tourShot("world-hud"));
@@ -361,13 +363,31 @@ public final class DevScreenshotTour {
         begin(mc, stop + 1);
     }
 
+    /**
+     * Whether the PNG is there in full: it ends in its IEND chunk. The file exists as soon as the
+     * writing starts, and a large window's picture read before it is done fails to load.
+     */
+    private static boolean written(java.io.File file) {
+        long length = file.length();
+        if (length < 12) return false;
+        try (java.io.RandomAccessFile in = new java.io.RandomAccessFile(file, "r")) {
+            byte[] type = new byte[4];
+            in.seek(length - 8);
+            in.readFully(type);
+            return new String(type, java.nio.charset.StandardCharsets.US_ASCII).equals("IEND");
+        } catch (java.io.IOException e) {
+            return false;
+        }
+    }
+
     private static java.io.File tourShot(String name) {
         return Minecraft.getInstance().gameDirectory.toPath().resolve("screenshots/tour-" + name + ".png").toFile();
     }
 
     private static void begin(Minecraft mc, int index) {
         // Any value other than "1" picks the stops whose picture starts with it, so a change to one
-        // screen can be looked at without the whole tour: ALPAKA_SCREENSHOT_TOUR=config.
+        // screen can be looked at without the whole tour: ALPAKA_SCREENSHOT_TOUR=config, or several
+        // at once: ALPAKA_SCREENSHOT_TOUR=main-menu,pause.
         String only = System.getenv(ENV);
         if (only != null && !only.equals("1")) {
             // A stop without a picture sets up the ones after it, the world for instance, so it runs
@@ -381,10 +401,18 @@ public final class DevScreenshotTour {
 
     private static boolean picked(int index, String only) {
         String shot = STOPS.get(index).shot();
-        if (shot != null) return shot.startsWith(only);
+        if (shot != null) return matches(shot, only);
         for (int later = index + 1; later < STOPS.size(); later++) {
             String laterShot = STOPS.get(later).shot();
-            if (laterShot != null && laterShot.startsWith(only)) return true;
+            if (laterShot != null && matches(laterShot, only)) return true;
+        }
+        return false;
+    }
+
+    /** Whether the picture starts with one of the comma-separated prefixes: main-menu,pause. */
+    private static boolean matches(String shot, String only) {
+        for (String prefix : only.split(",")) {
+            if (!prefix.isEmpty() && shot.startsWith(prefix)) return true;
         }
         return false;
     }

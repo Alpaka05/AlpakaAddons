@@ -2128,6 +2128,12 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.menuFontInChat, v -> { AlpakaConfig.instance.menuFontInChat = v; GuiFont.refreshChat(); });
 
         OPTIONS.add(new ConfigOption("Scoreboard", ConfigCategory.VISUALS));
+        OPTIONS.add(new ConfigOption("scoreboard_alpaka_footer", "AlpakaAddons Footer",
+                "Replaces www.hypixel.net at the bottom of the scoreboard with AlpakaAddons in a gradient.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.scoreboardAlpakaFooter,
+                v -> { AlpakaConfig.instance.scoreboardAlpakaFooter = v; AlpakaConfig.save(); },
+                "scoreboard sidebar footer bottom line hypixel.net www address gradient alpakaaddons branding"));
         styleToggle("scoreboard_blur", "Blur", ConfigCategory.VISUALS, true,
                 () -> AlpakaConfig.instance.scoreboardBlurEnabled, v -> AlpakaConfig.instance.scoreboardBlurEnabled = v);
         styleToggle("scoreboard_smooth_font", "Smooth Font", ConfigCategory.VISUALS, false,

@@ -543,6 +543,9 @@ public class AlpakaConfig {
     /** A Hypixel party invite raises a notification: Y joins, N dismisses. */
     public boolean partyInvitePromptEnabled = true;
 
+    /** Keeps Hypixel's server resource pack loaded between joins; see ServerPackCache. */
+    public boolean cacheResourcePackEnabled = false;
+
     // Quick Command Menu options
     /**
      * The quick command wheel, one list per page. Null until CommandWheelPages first folds the

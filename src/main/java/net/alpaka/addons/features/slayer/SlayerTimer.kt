@@ -164,28 +164,11 @@ object SlayerTimer {
     private const val ENTITY_START_LATE_MS = 3_000L
 
     /**
-     * How long after Hypixel's cocoon line a boss reported by the sidebar is taken to be the one
-     * hatching from it. A cocoon bursts after five seconds; SkyHanni allows six for the sidebar to
-     * catch up, and this gives a little more again.
-     */
-    private const val COCOON_HATCH_WINDOW_MS = 8_000L
-
-    /** When Hypixel last said the slayer boss was cocooned, or 0. */
-    private var cocoonedAtMs = 0L
-
-    /**
-     * Whether the running fight is a boss hatching from a cocoon. Timed and shown like any other,
-     * but never a personal best: a hatched boss did not rise out of a fresh quest, so its time is not
-     * the spawn-to-kill figure every other best is, and it came out short enough to stand as one.
-     */
-    private var fromCocoon = false
-
-    /**
-     * Hypixel says the slayer boss was cocooned. Alerts, and marks the boss that hatches from it a
-     * few seconds later - which the sidebar reports as an ordinary spawn - so it cannot set a best.
+     * Hypixel says the slayer boss was cocooned. Only an alert: what hatches is a boss of its own,
+     * a whole new fight that the sidebar reports as an ordinary spawn a few seconds later, and its
+     * entity is new, so it is timed and can set a best like any other.
      */
     fun onBossCocooned(type: SlayerType?) {
-        cocoonedAtMs = System.currentTimeMillis()
         if (!AlpakaConfig.instance.bossCocoonAlertEnabled) return
         val who = type?.let { it.display + " slayer boss" } ?: "Slayer boss"
         AlpakaNotifications.send("Boss Cocooned", "$who is hatching")
@@ -210,7 +193,6 @@ object SlayerTimer {
         lastResultWasBest = false
         fightVerified = verified
         entityStartSeen = false
-        fromCocoon = cocoonedAtMs != 0L && sidebarStartMs - cocoonedAtMs <= COCOON_HATCH_WINDOW_MS
 
         // Whatever the tracker already has stands, if it is close enough to the sidebar's moment:
         // it watches the whole quest, so a boss that reached the world before the scoreboard caught
@@ -308,7 +290,6 @@ object SlayerTimer {
      */
     private fun whyNotABest(tier: Int, deathSeen: Boolean, stated: Boolean): String? = when {
         tier !in 1..5 -> "tier unknown"
-        fromCocoon -> "hatched from a cocoon"
         !fightVerified && !entityStartSeen -> "start not seen"
         !deathSeen && !stated -> "end not confirmed"
         else -> null
@@ -361,7 +342,6 @@ object SlayerTimer {
             clear()
             // The session's own boss clock cannot survive the switch either; see clearBossClock.
             SlayerSessionTracker.clearBossClock()
-            cocoonedAtMs = 0L
         }
 
         // Driven off the quest rather than off a running fight. Hypixel does not promise to update

@@ -79,7 +79,6 @@ Alpaka Addons is most useful for **Slayers**, but a lot of it helps anywhere in 
 - **Block Overlay:** custom outline and fill for the targeted block, with chroma and fade-in.
 - **Etherwarp Overlay:** shows where you will land, with a line to the target and optional custom warp sounds.
 - **Hide Mob Deaths**, **Hide Damage Flash**, **Clean Blaze** and **Only Show Crit Damage**.
-- **Pangolin Highlight** in Torrhus Canyon.
 - **Fullbright**, **Zoom**, **Smooth Perspective** and an option to skip the front view.
 
 </details>
@@ -132,7 +131,6 @@ Alpaka Addons runs entirely on your client and follows the [Hypixel rules](https
 **Guardrails.**
 
 - Smooth perspective only eases between the vanilla camera views. There is no free look, and every transition ends exactly where vanilla's camera is.
-- Highlights such as the pangolin outline appear only when you have a clear line of sight. Nothing is drawn through walls.
 - Commands that delete or move your data (`/alpakaslayer reset`, `/alpakastats folder`, `/alpakapreset save`) work only when you type them. A clickable chat message cannot run them.
 - Screenshot buttons only act on screenshots this session posted, and Delete needs a second click.
 

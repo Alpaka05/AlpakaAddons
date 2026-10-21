@@ -16,7 +16,6 @@ import net.minecraft.client.gui.screens.options.OptionsScreen;
 import net.minecraft.client.input.InputWithModifiers;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.network.chat.Component;
 
 /**
  * The pause menu, as a window of the config menu's kind (see {@link MenuStyle}), so the game's own
@@ -255,15 +254,14 @@ public class CustomPauseScreen extends PauseScreen implements net.alpaka.addons.
         this.headerHover += ((isOverHeader(mouseX, mouseY) ? 1.0f : 0.0f) - this.headerHover) * MenuStyle.HOVER_EASE;
         MenuStyle.header(graphics, this.font, x, y, PANEL_W, this.headerHover, elapsed());
         int[] brand = MenuStyle.brandBox(this.font, x, y);
+        // Just the name, no icon: the server icon is Server List's, and twice in one window it read
+        // as the same thing.
         int placeRight = x + PANEL_W - PAD - 2;
-        Component placeIcon = MenuStyle.icon(isSingleplayerWorld() ? MenuStyle.ICON_PERSON : MenuStyle.ICON_SERVER);
-        int iconW = this.font.width(placeIcon);
-        int room = placeRight - (brand[0] + brand[2] + 8) - iconW - 5;
+        int room = placeRight - (brand[0] + brand[2] + 8);
         String place = AlpakaStyle.ellipsize(this.font, placeLabel(), room);
         if (!place.isEmpty()) {
             int placeX = placeRight - GuiFont.width(this.font, place);
             int textY = y + (AlpakaStyle.HEADER_H - 8) / 2;
-            graphics.text(this.font, placeIcon, placeX - 5 - iconW, textY, AlpakaStyle.TEXT_MUTED, false);
             graphics.text(this.font, GuiFont.text(place), placeX, textY, AlpakaStyle.TEXT_MUTED, false);
         }
         MenuStyle.endOpen(graphics, pushed);

@@ -62,8 +62,8 @@ object SnowOverlayRenderer {
     /** Rain's sideways drift as a share of its fall, the wind the downpour leans in. */
     private const val RAIN_SLANT = 0.14f
 
-    /** How far up the farthest drops land, so the downpour seems to hit ground that recedes. */
-    private const val RAIN_GROUND_DEPTH = 14.0f
+    /** Height of the spray haze hanging over the bottom edge, where the rain lands. */
+    private const val RAIN_HAZE_HEIGHT = 20
 
     /** Rain darkens the backdrop a little, like an overcast sky. */
     private const val RAIN_GLOOM = 0x24101824
@@ -72,8 +72,11 @@ object SnowOverlayRenderer {
     private const val MAX_SPLASH_DROPS = 768
     private const val SPLASH_GRAVITY = 520.0f
 
-    /** Seconds a splash ring takes to spread out and fade. */
-    private const val RIPPLE_SECONDS = 0.35f
+    /** Seconds a puddle ring takes to spread out and fade. */
+    private const val RIPPLE_SECONDS = 0.4f
+
+    /** A ring seen from the side is a flat ellipse: its height as a share of its width. */
+    private const val RIPPLE_FLATNESS = 0.25f
     private const val MAX_RIPPLES = 256
 
     /** Particles at amount multiplier 1. */
@@ -356,20 +359,20 @@ object SnowOverlayRenderer {
     }
 
     /**
-     * A downpour: streaks at a slant, nearer drops longer, brighter and faster than far ones. Each
-     * drop splashes where it lands, near drops on the bottom edge and far ones a little higher, as if
-     * the ground went back into the distance.
+     * A downpour: streaks at a slant, nearer drops longer, brighter and faster than far ones. The
+     * bottom edge is the ground: every drop lands there and splashes like into a puddle.
      */
     private fun renderRain(graphics: GuiGraphicsExtractor, count: Int, width: Int, height: Int, step: Float,
                            scaledDt: Float) {
         graphics.fill(0, 0, width, height, RAIN_GLOOM)
         // A haze of spray hanging over the ground.
-        graphics.fillGradient(0, height - 2 * RAIN_GROUND_DEPTH.toInt(), width, height, RAIN_RGB, (0x22 shl 24) or RAIN_RGB)
+        graphics.fillGradient(0, height - RAIN_HAZE_HEIGHT, width, height, RAIN_RGB, (0x22 shl 24) or RAIN_RGB)
 
+        // The splash sits on the last rows of the screen, so its whole ring still fits above the edge.
+        val ground = height - 3.0f
         for (i in 0 until count) {
             var x = posX[i] + speedX[i] * step
             var y = posY[i] + speedY[i] * step
-            val ground = height - (1.0f - life[i]) * RAIN_GROUND_DEPTH
 
             if (y >= ground) {
                 splash(posX[i] + (ground - posY[i]) * RAIN_SLANT, ground, life[i])
@@ -406,29 +409,54 @@ object SnowOverlayRenderer {
         }
     }
 
-    /** Throws up droplets and a ring where a drop hit the ground; nearer drops splash bigger. */
+    /**
+     * A drop hitting a puddle: a crown of droplets thrown up and outward in a V, a rebound droplet
+     * shooting straight up from the middle, and a ring spreading over the water. Nearer drops splash
+     * bigger; far ones only flick up a droplet or two, since hundreds of rings a second along one edge
+     * would run together into a solid band.
+     */
     private fun splash(x: Float, ground: Float, nearness: Float) {
         val scale = 0.5f + nearness
-        val drops = 2 + random.nextInt(2) + Math.round(nearness * 2)
-        for (d in 0 until drops) {
-            val slot = nextSplash
-            nextSplash = (nextSplash + 1) % MAX_SPLASH_DROPS
-            splashX[slot] = x
-            splashY[slot] = ground - 1
-            splashGround[slot] = ground
-            splashSpeedX[slot] = (random.nextFloat() - 0.5f) * 90.0f * scale
-            splashSpeedY[slot] = -(50.0f + random.nextFloat() * 60.0f) * scale
-            splashLife[slot] = 0.25f + random.nextFloat() * 0.25f
-            splashAlpha[slot] = 110.0f + 120.0f * nearness
+        val alpha = 70.0f + 160.0f * nearness
+
+        // The crown, in pairs, one to each side, so it opens up evenly.
+        val pairs = if (nearness < 0.5f) 1 else 2 + random.nextInt(2)
+        for (pair in 0 until pairs) {
+            // Between 20 and 55 degrees off vertical.
+            val tilt = 0.35f + random.nextFloat() * 0.6f
+            val pace = (60.0f + random.nextFloat() * 45.0f) * scale
+            for (side in intArrayOf(-1, 1)) {
+                addSplashDrop(x, ground, side * sin(tilt) * pace, -cos(tilt) * pace,
+                    0.3f + random.nextFloat() * 0.2f, alpha)
+            }
+        }
+        if (nearness < 0.5f) return
+        if (random.nextBoolean()) {
+            addSplashDrop(x, ground, (random.nextFloat() - 0.5f) * 8.0f, -(85.0f + random.nextFloat() * 40.0f) * scale,
+                0.45f, alpha)
         }
 
+        // Only every other near drop leaves a ring, again so the rings stay apart.
+        if (random.nextBoolean()) return
         val slot = nextRipple
         nextRipple = (nextRipple + 1) % MAX_RIPPLES
         rippleX[slot] = x
         rippleY[slot] = ground
         rippleWidth[slot] = 4.0f + 8.0f * nearness
-        rippleAlpha[slot] = 70.0f + 110.0f * nearness
+        rippleAlpha[slot] = 60.0f + 120.0f * nearness
         rippleLife[slot] = RIPPLE_SECONDS
+    }
+
+    private fun addSplashDrop(x: Float, y: Float, speedX: Float, speedY: Float, life: Float, alpha: Float) {
+        val slot = nextSplash
+        nextSplash = (nextSplash + 1) % MAX_SPLASH_DROPS
+        splashX[slot] = x
+        splashY[slot] = y - 1
+        splashGround[slot] = y
+        splashSpeedX[slot] = speedX
+        splashSpeedY[slot] = speedY
+        splashLife[slot] = life
+        splashAlpha[slot] = alpha
     }
 
     private fun renderSplashes(graphics: GuiGraphicsExtractor, width: Int, height: Int, scaledDt: Float) {
@@ -437,10 +465,10 @@ object SnowOverlayRenderer {
             rippleLife[i] -= scaledDt
             if (rippleLife[i] <= 0.0f) continue
             val left = rippleLife[i] / RIPPLE_SECONDS
-            val half = Math.round(rippleWidth[i] * (1.0f - left * left) / 2.0f) + 1
-            val x = Math.round(rippleX[i])
-            drawRect(graphics, x - half, Math.round(rippleY[i]) - 1, 2 * half, 1,
-                withAlpha(RAIN_RGB, rippleAlpha[i] * left), width, height)
+            // Spreads fast at first and slows down, like a real ring on water.
+            val spread = 1.0f - left * left * left
+            drawRing(graphics, Math.round(rippleX[i]), Math.round(rippleY[i]), 1.0f + rippleWidth[i] * spread,
+                rippleAlpha[i] * left, width, height)
         }
 
         for (i in 0 until MAX_SPLASH_DROPS) {
@@ -449,7 +477,7 @@ object SnowOverlayRenderer {
             splashSpeedY[i] += SPLASH_GRAVITY * scaledDt
             splashX[i] += splashSpeedX[i] * scaledDt
             splashY[i] += splashSpeedY[i] * scaledDt
-            // Back on the ground the droplet is done.
+            // Back in the puddle the droplet is done.
             if (splashLife[i] <= 0.0f || splashY[i] > splashGround[i]) {
                 splashLife[i] = 0.0f
                 continue
@@ -458,6 +486,36 @@ object SnowOverlayRenderer {
                 withAlpha(0xD8E8F8, splashAlpha[i] * (splashLife[i] * 4.0f).coerceAtMost(1.0f)),
                 width, height)
         }
+    }
+
+    /**
+     * The outline of a flat ellipse around ([cx], [cy]), a ring on the water seen from the side. It
+     * is drawn row by row, each row only the stretch of outline it holds, so a ring costs a handful
+     * of quads however wide it gets. The far half is fainter than the near half, which catches the
+     * light.
+     */
+    private fun drawRing(graphics: GuiGraphicsExtractor, cx: Int, cy: Int, radius: Float, alpha: Float,
+                         width: Int, height: Int) {
+        val rows = Math.round(radius * RIPPLE_FLATNESS).coerceAtLeast(1)
+        // Half a row more than the outermost row, so the top and bottom rows are not cut to a dot.
+        val reach = rows + 0.5f
+        for (row in -rows..rows) {
+            val outer = halfWidth(radius, row, reach)
+            val argb = withAlpha(RAIN_RGB, if (row < 0) alpha * 0.6f else alpha)
+            if (row == -rows || row == rows) {
+                drawRect(graphics, cx - outer, cy + row, 2 * outer + 1, 1, argb, width, height)
+            } else {
+                val inner = halfWidth(radius, Math.abs(row) + 1, reach)
+                val span = (outer - inner).coerceAtLeast(1)
+                drawRect(graphics, cx - outer, cy + row, span, 1, argb, width, height)
+                drawRect(graphics, cx + outer - span + 1, cy + row, span, 1, argb, width, height)
+            }
+        }
+    }
+
+    private fun halfWidth(radius: Float, row: Int, reach: Float): Int {
+        val share = row / reach
+        return Math.round(radius * Math.sqrt((1.0f - share * share).toDouble()).toFloat())
     }
 
     /** One of vanilla's particle textures, scaled to [extent] and turned by [rotation] around its middle. */

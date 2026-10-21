@@ -35,6 +35,13 @@ public class SlayerDropTracker {
             Pattern.compile("^\\s*(?:SLAYER QUEST COMPLETE!|NICE! SLAYER BOSS SLAIN!)\\s*$");
 
     /**
+     * The slayer boss spawned inside a cocoon, {@code "  YOU COCOONED YOUR SLAYER BOSS"} once color
+     * codes are stripped. Taken from SkyHanni's SlayerApi pattern.
+     */
+    private static final Pattern BOSS_COCOONED_PATTERN =
+            Pattern.compile("^\\s*YOU COCOONED YOUR SLAYER BOSS\\s*$");
+
+    /**
      * A rare drop. Hypixel's slayer drops put the item in parentheses and use <em>two</em> spaces
      * after "DROP!" - e.g. {@code "VERY RARE DROP!  (High Class Archfiend Dice) +305% ✯ Magic Find"}
      * once color codes are stripped. The previous pattern required exactly one space and no leading
@@ -99,22 +106,6 @@ public class SlayerDropTracker {
 
     private static final Pattern SERVER_DROP_PATTERN = Pattern.compile("^\\s*(?:UNCOMMON|RARE|VERY RARE|CRAZY RARE|INSANE|PRAY TO RNGESUS|PET) DROP!.*");
 
-    /**
-     * A party member asking "!since &lt;item&gt;", the convention party bots answer.
-     *
-     * This client never answers on its own: another player's message must not make it send anything.
-     * With the option on it only shows the player their own count, with a button that puts the reply
-     * in their chat box. See {@link #offerSinceReply}.
-     */
-    private static final Pattern SINCE_REQUEST_PATTERN =
-            Pattern.compile("^Party > (?:\\[[A-Z+]+] )?(?<name>\\w+): !since (?<item>.+)$");
-
-    /** A request for the same item this soon after the last one gets no second offer. */
-    private static final long SINCE_REPEAT_MS = 30_000L;
-    /** Minimum gap between two offers of any item, so a party spamming the trigger cannot flood chat. */
-    private static final long SINCE_MIN_GAP_MS = 3_000L;
-    private static final Map<String, Long> SINCE_OFFERED_AT = new java.util.HashMap<>();
-    private static long lastSinceOfferMs = 0L;
     /**
      * Every legacy formatting code, not just the standard set - Hypixel uses codes outside it as
      * padding. See {@link net.alpaka.addons.utils.SkyblockUtils#cleanColor}.
@@ -321,6 +312,12 @@ public class SlayerDropTracker {
         // tracker being off used to disable these nets along with everything else in this method.
         if (handleQuestVoided(string)) return;
 
+        // Also ahead of the tracker's switch: the cocoon alert is its own feature.
+        if (BOSS_COCOONED_PATTERN.matcher(string).matches()) {
+            SlayerTimer.INSTANCE.onBossCocooned(SlayerQuestDetector.INSTANCE.currentOrRecent());
+            return;
+        }
+
         if (!AlpakaConfig.instance.slayerDropTrackerEnabled) return;
 
         if (AlpakaConfig.instance.customSoundsEnabled && SERVER_DROP_PATTERN.matcher(string).matches()) {
@@ -370,8 +367,6 @@ public class SlayerDropTracker {
             }
             return;
         }
-
-        offerSinceReply(string);
     }
 
     /**
@@ -504,7 +499,7 @@ public class SlayerDropTracker {
      *
      * Suggest rather than run: the click only fills the input, and nothing reaches the server until
      * the player reads it and presses Enter. The mod never posts to a channel by itself - it used to,
-     * for the guild drop announcement and the "!since" reply, and both broke the rule that every
+     * for the guild drop announcement and a "!since" party reply, and both broke the rule that every
      * message needs a direct action from the player.
      */
     /** "Share: [Guild] [Party]" - a grey label, then one button per channel in its chat's color. */
@@ -513,10 +508,6 @@ public class SlayerDropTracker {
                 .append(shareButton("[Guild]", ChatFormatting.GREEN, "gc", text))
                 .append(Component.literal(" "))
                 .append(shareButton("[Party]", ChatFormatting.BLUE, "pc", text));
-    }
-
-    private static Component shareButton(String label, String channel, String text) {
-        return shareButton(label, ChatFormatting.AQUA, channel, text);
     }
 
     private static Component shareButton(String label, ChatFormatting color, String channel, String text) {
@@ -530,7 +521,7 @@ public class SlayerDropTracker {
                                 .append(Component.literal(command).withStyle(ChatFormatting.GRAY)))));
     }
 
-    /** One recorded drop and how many bosses ago it came, for "!since" and /alpakaslayer since. */
+    /** One recorded drop and how many bosses ago it came, for /alpakaslayer since. */
     private record SinceAnswer(String item, int bossesSince) {
         String text() {
             return "Bosses since last " + item + ": " + bossesSince;
@@ -554,35 +545,6 @@ public class SlayerDropTracker {
             }
         }
         return null;
-    }
-
-    /**
-     * Shows the player their own count when a party member asks "!since &lt;item&gt;", with a button
-     * that puts the reply in their chat box.
-     *
-     * Off by default, and never an answer in the player's name: the offer is local, and the reply only
-     * goes out if the player clicks it and presses Enter. Repeats are dropped (see
-     * {@link #SINCE_REPEAT_MS} and {@link #SINCE_MIN_GAP_MS}) so a party cannot flood the chat with it.
-     */
-    private static void offerSinceReply(String message) {
-        if (!AlpakaConfig.instance.slayerSinceReplyOffer) return;
-
-        Matcher matcher = SINCE_REQUEST_PATTERN.matcher(message);
-        if (!matcher.matches()) return;
-
-        SinceAnswer answer = findSince(matcher.group("item"));
-        if (answer == null) return;
-
-        long now = System.currentTimeMillis();
-        String key = answer.item().toLowerCase(java.util.Locale.ROOT);
-        Long offeredAt = SINCE_OFFERED_AT.get(key);
-        if (offeredAt != null && now - offeredAt < SINCE_REPEAT_MS) return;
-        if (now - lastSinceOfferMs < SINCE_MIN_GAP_MS) return;
-        SINCE_OFFERED_AT.put(key, now);
-        lastSinceOfferMs = now;
-
-        sendModMessage(Component.literal("§7" + matcher.group("name") + " asked: §f" + answer.text() + " ")
-                .append(shareButton("[Reply in party]", "pc", answer.text())));
     }
 
     /** Dev tour only: a headline drop line and a since line, to see the share buttons in the chat. */

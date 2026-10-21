@@ -31,6 +31,9 @@ import org.lwjgl.glfw.GLFW;
  *
  * Each channel tab can be left out of the row, for a player with no use for, say, Co-op. A hidden
  * channel's lines are not lost: they sort to it as before and so still show on All.
+ *
+ * Guild chat can also be kept off All, for a busy guild drowning out everything else; it then shows
+ * only on the Guild tab, which counts it as unread as usual.
  */
 public final class ChatTabsFeature {
 
@@ -71,6 +74,15 @@ public final class ChatTabsFeature {
         for (ChatTab tab : ChatTab.values()) {
             if (!isShown(tab)) unread[tab.ordinal()] = 0;
         }
+        // Hiding the Guild tab brings guild lines kept off All back there, and showing it again
+        // takes them away.
+        if (AlpakaConfig.instance.chatTabsGuildOnlyInGuildTab) onFilterChanged();
+    }
+
+    /** A setting changed what a tab lets through: re-lays the history out under it. */
+    public static void onFilterChanged() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.gui != null) minecraft.gui.hud.getChat().rescaleChat();
     }
 
     /**
@@ -80,7 +92,13 @@ public final class ChatTabsFeature {
      * what keeps the guild tab working alongside the custom guild tag.
      */
     public static boolean accepts(GuiMessage message) {
-        if (!isEnabled() || active == ChatTab.ALL) return true;
+        if (!isEnabled()) return true;
+        if (active == ChatTab.ALL) {
+            // Guild lines can be kept to the Guild tab, but only while that tab is in the row;
+            // otherwise they would be nowhere at all.
+            if (!AlpakaConfig.instance.chatTabsGuildOnlyInGuildTab || !isShown(ChatTab.GUILD)) return true;
+            return TAB_OF.computeIfAbsent(message, ChatTabsFeature::tabOf) != ChatTab.GUILD.ordinal();
+        }
         // The mod's own lines, and every other client-side one, are not exempt: they belong to no
         // channel, so they sort to All like any other unclaimed line rather than following the
         // player onto every tab.

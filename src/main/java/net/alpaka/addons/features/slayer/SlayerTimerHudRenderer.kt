@@ -65,7 +65,7 @@ object SlayerTimerHudRenderer {
 
         val color = when {
             !finished -> COLOR_RUNNING
-            beatTheRecord(elapsed) -> COLOR_BEST
+            SlayerTimer.lastResultWasBest -> COLOR_BEST
             else -> COLOR_DONE
         }
 
@@ -75,15 +75,6 @@ object SlayerTimerHudRenderer {
         graphics.text(font, Component.literal(LABEL), 0, 0, COLOR_LABEL)
         graphics.text(font, Component.literal(SlayerTimer.format(elapsed)), font.width(LABEL) + LABEL_GAP, 0, color)
         graphics.pose().popMatrix()
-    }
-
-    /**
-     * Whether the finished time on screen is the record. Compared against the stored best, which the
-     * kill has already written, so an equal value means this fight set it.
-     */
-    private fun beatTheRecord(elapsed: Long): Boolean {
-        val type = SlayerTimer.currentType() ?: return false
-        return SlayerTimer.personalBest(type)?.let { elapsed <= it } ?: false
     }
 
     /** Unscaled width of the line, for the editor's bounding box. */

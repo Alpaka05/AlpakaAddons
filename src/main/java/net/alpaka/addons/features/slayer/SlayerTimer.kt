@@ -66,6 +66,13 @@ object SlayerTimer {
     /** Which slayer the running fight belongs to, for the announcement. */
     private var runningType: SlayerType? = null
 
+    /** The running fight's quest tier, 1-5, or 0 when the sidebar did not say. */
+    private var runningTier = 0
+
+    /** Whether the fight just finished set a new personal best, for the HUD's color. */
+    var lastResultWasBest = false
+        private set
+
     /**
      * The last completed fight, kept briefly so the HUD can show the final time rather than blanking
      * the instant the boss dies.
@@ -102,10 +109,33 @@ object SlayerTimer {
     /** The boss the running - or just finished - fight belongs to. */
     fun currentType(): SlayerType? = runningType
 
-    /** The fastest kill ever recorded for a slayer, or null if it has none yet. */
-    fun personalBest(type: SlayerType): Long? {
-        val data = AlpakaStats.slayerBossMap()[type] ?: return null
-        return if (data.bestBossMs > 0L) data.bestBossMs else null
+    /** The fastest kill ever recorded for one tier of a slayer, or null if it has none yet. */
+    fun personalBest(type: SlayerType, tier: Int): Long? {
+        val best = AlpakaStats.slayerBossMap()[type]?.bestBossMsByTier?.get(tier) ?: return null
+        return if (best > 0L) best else null
+    }
+
+    /** Every recorded best of a slayer, by tier, lowest tier first. Empty when it has none. */
+    fun personalBests(type: SlayerType): List<Pair<Int, Long>> {
+        val bests = AlpakaStats.slayerBossMap()[type]?.bestBossMsByTier ?: return emptyList()
+        return bests.entries
+            .filter { it.key != null && it.value != null && it.value > 0L }
+            .map { it.key to it.value }
+            .sortedBy { it.first }
+    }
+
+    /** A slayer and tier as Hypixel writes them, e.g. "Revenant Horror IV"; no numeral for tier 0. */
+    @JvmStatic
+    fun bossLabel(type: SlayerType, tier: Int): String {
+        val numeral = when (tier) {
+            1 -> "I"
+            2 -> "II"
+            3 -> "III"
+            4 -> "IV"
+            5 -> "V"
+            else -> return type.display
+        }
+        return type.display + " " + numeral
     }
 
     /**
@@ -134,8 +164,9 @@ object SlayerTimer {
     private const val ENTITY_START_LATE_MS = 3_000L
 
     /**
-     * Hypixel says the boss spawned inside a cocoon. Only an alert: the fight starts when the cocoon
-     * hatches, which the sidebar reports as an ordinary spawn a few seconds later.
+     * Hypixel says the slayer boss was cocooned. Only an alert: what hatches is a boss of its own,
+     * a whole new fight that the sidebar reports as an ordinary spawn a few seconds later, and its
+     * entity is new, so it is timed and can set a best like any other.
      */
     fun onBossCocooned(type: SlayerType?) {
         if (!AlpakaConfig.instance.bossCocoonAlertEnabled) return
@@ -143,8 +174,11 @@ object SlayerTimer {
         AlpakaNotifications.send("Boss Cocooned", "$who is hatching")
     }
 
-    /** The sidebar says the boss is up. [verified]: it rose out of grinding in this world. */
-    fun onBossSpawned(type: SlayerType, verified: Boolean = true) {
+    /**
+     * The sidebar says the boss is up. [tier]: the quest's tier off the sidebar, 0 when unknown.
+     * [verified]: it rose out of grinding in this world.
+     */
+    fun onBossSpawned(type: SlayerType, tier: Int, verified: Boolean = true) {
         // Announced before the timer's own switch is consulted, because the alert is a separate
         // feature that happens to hang off the same moment.
         if (AlpakaConfig.instance.bossSpawnAlertEnabled) {
@@ -154,7 +188,9 @@ object SlayerTimer {
         if (!AlpakaConfig.instance.slayerTimerEnabled) return
         sidebarStartMs = System.currentTimeMillis()
         runningType = type
+        runningTier = tier
         lastResultMs = null
+        lastResultWasBest = false
         fightVerified = verified
         entityStartSeen = false
 
@@ -177,8 +213,17 @@ object SlayerTimer {
      * Does nothing when no fight was running: a kill can be reported without a spawn ever having
      * been seen - joining mid-fight, or the sidebar skipping straight past "Slay the boss!" - and
      * timing that from nothing would invent a number.
+     *
+     * [stated]: Hypixel said the boss died, rather than the fight only vanishing off the sidebar.
      */
-    fun onBossKilled(type: SlayerType, killedAtMs: Long = System.currentTimeMillis(), timed: Boolean = true) {
+    fun onBossKilled(
+        type: SlayerType,
+        killedAtMs: Long = System.currentTimeMillis(),
+        timed: Boolean = true,
+        stated: Boolean = true,
+    ) {
+        // Read before the reset below clears it.
+        val diedByHealth = SlayerBossEntityTracker.diedByHealth
         // Reset whatever the toggles say, so the next boss is never mistaken for this one.
         SlayerBossEntityTracker.reset()
         if (!AlpakaConfig.instance.slayerTimerEnabled) return
@@ -217,36 +262,55 @@ object SlayerTimer {
         // on the HUD, which should be counted from when it went up.
         lastResultAtMs = System.currentTimeMillis()
 
+        val tier = runningTier
         val data = AlpakaStats.slayerBossMap().getOrPut(type) { AlpakaConfig.SlayerData() }
-        val previousBest = if (data.bestBossMs > 0L) data.bestBossMs else null
-        val verified = fightVerified || entityStartSeen
-        val isBest = verified && (previousBest == null || elapsed < previousBest)
+        if (data.bestBossMsByTier == null) data.bestBossMsByTier = HashMap()
+        val previousBest = personalBest(type, tier)
+        val notCounted = whyNotABest(tier, death != null && diedByHealth, stated)
+        val isBest = notCounted == null && (previousBest == null || elapsed < previousBest)
         if (isBest) {
-            data.bestBossMs = elapsed
+            data.bestBossMsByTier[tier] = elapsed
             AlpakaStats.markDirty()
         }
+        lastResultWasBest = isBest
 
         if (AlpakaConfig.instance.slayerTimerChatEnabled) {
-            announce(type, elapsed, previousBest, isBest, verified)
+            announce(bossLabel(type, tier), elapsed, previousBest, isBest, notCounted)
         }
     }
 
-    private fun announce(type: SlayerType, elapsed: Long, previousBest: Long?, isBest: Boolean, verified: Boolean) {
+    /**
+     * Why the fight just ended cannot stand as a personal best, or null when it can.
+     *
+     * A best is all-time, so one wrong figure stays on screen for good. It therefore needs the fight
+     * watched at both ends: the start seen as the boss rising out of grinding or arriving in the
+     * world, the end seen as the boss's health running out or stated by Hypixel. The quest lines
+     * dropping off the sidebar for a moment mid-fight used to pass for a kill, and the boss picked up
+     * again afterwards for a fresh arrival, which turned one fight into two short ones.
+     */
+    private fun whyNotABest(tier: Int, deathSeen: Boolean, stated: Boolean): String? = when {
+        tier !in 1..5 -> "tier unknown"
+        !fightVerified && !entityStartSeen -> "start not seen"
+        !deathSeen && !stated -> "end not confirmed"
+        else -> null
+    }
+
+    private fun announce(boss: String, elapsed: Long, previousBest: Long?, isBest: Boolean, notCounted: String?) {
         val time = format(elapsed)
-        if (!verified) {
-            // The fight's start was not seen properly; the time is shown, but it cannot be a best.
-            SlayerDropTracker.sendModMessage("§7${type.display} boss killed in §e$time §8(unverified, not counted as a best)")
+        if (notCounted != null) {
+            // The time is shown, but the fight was not watched well enough to be a best.
+            SlayerDropTracker.sendModMessage("§7$boss boss killed in §e$time §8($notCounted, not counted as a best)")
             return
         }
         if (previousBest == null && !isBest) return
         if (isBest) {
             val suffix = if (previousBest == null) "" else " §7(was §e${format(previousBest)}§7)"
             SlayerDropTracker.sendModMessage(
-                "§7${type.display} boss killed in §a$time §7- §6new personal best!$suffix",
+                "§7$boss boss killed in §a$time §7- §6new personal best!$suffix",
             )
         } else {
             SlayerDropTracker.sendModMessage(
-                "§7${type.display} boss killed in §e$time §7(best §a${format(previousBest!!)}§7)",
+                "§7$boss boss killed in §e$time §7(best §a${format(previousBest!!)}§7)",
             )
         }
     }
@@ -276,6 +340,8 @@ object SlayerTimer {
         if (level !== trackedLevel) {
             trackedLevel = level
             clear()
+            // The session's own boss clock cannot survive the switch either; see clearBossClock.
+            SlayerSessionTracker.clearBossClock()
         }
 
         // Driven off the quest rather than off a running fight. Hypixel does not promise to update
@@ -349,7 +415,7 @@ object SlayerTimer {
     private var trackedLevel: Any? = null
 
     /**
-     * Forgets the recorded best for one slayer, or for all of them when [type] is null.
+     * Forgets the recorded bests of one slayer, every tier, or of all of them when [type] is null.
      *
      * Returns how many were actually cleared, so the command can say so rather than claim to have
      * reset something that was never set. Exists because a best is all-time and nothing else can
@@ -360,8 +426,9 @@ object SlayerTimer {
         var cleared = 0
         for ((slayer, data) in AlpakaStats.slayerBossMap()) {
             if (type != null && slayer != type) continue
-            if (data.bestBossMs > 0L) {
-                data.bestBossMs = -1L
+            val bests = data.bestBossMsByTier
+            if (bests != null && bests.values.any { it != null && it > 0L }) {
+                bests.clear()
                 cleared++
             }
         }
@@ -374,7 +441,9 @@ object SlayerTimer {
         sidebarStartMs = 0L
         startMs = 0L
         runningType = null
+        runningTier = 0
         lastResultMs = null
+        lastResultWasBest = false
         SlayerBossEntityTracker.reset()
     }
 }

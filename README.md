@@ -38,7 +38,7 @@ Alpaka Addons is most useful for **Slayers**, but a lot of it helps anywhere in 
 <summary><b>Slayer</b></summary>
 
 - **Slayer Drop Tracker:** counts kills and rare drops per slayer, with a sound on rare drops and optional share buttons for the rarest one. `/alpakaslayer since <item>` tells you how many bosses ago a drop last came.
-- **Boss Timer:** times every fight from spawn to death, calls out personal bests and shows the running time on screen.
+- **Boss Timer:** times every fight from spawn to death, calls out personal bests per slayer tier and shows the running time on screen.
 - **Session HUD:** live stats while a quest is active, with a choice of lines. It can be limited to slayer areas and pauses when you are idle.
 - **Boss Spawn Alert** and an option to hide Hypixel's slayer chat spam.
 - `/alpakastats` stores your stats in a folder you choose, for example a cloud-synced one, so they follow you across PCs.

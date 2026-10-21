@@ -50,23 +50,24 @@ class WorldClockModelTest {
     }
 
     @Test
-    void frozenHubClockIsUnknown() {
-        // Hub, server mini62CP, during the Spooky Festival: fixed at 42000, rate 0.
+    void frozenHubClockShowsTheClocksDay() {
+        // Hub, server mini62CP: fixed at 42000, rate 0. The world age is the map's, so the clock's
+        // day is shown, as NoFrills and Skytils do.
         WorldClockModel model = replay(
                 new Update(1330211943L, 42000L, 0.0f),
                 new Update(1330211944L, 42000L, 0.0f),
                 new Update(1330211963L, 42000L, 0.0f));
         assertEquals(WorldClockModel.Mode.FROZEN, model.mode());
-        assertEquals(WorldClockModel.UNKNOWN_DAY, model.day(42000L));
+        assertEquals(1L, model.day(42000L));
     }
 
     @Test
-    void frozenLobbyClockIsUnknown() {
+    void frozenLobbyClockShowsTheClocksDay() {
         // Lobby dynamiclobby5G: fixed at 18000, rate 0.
         WorldClockModel model = replay(
                 new Update(34781616L, 18000L, 0.0f),
                 new Update(34781636L, 18000L, 0.0f));
-        assertEquals(WorldClockModel.UNKNOWN_DAY, model.day(18000L));
+        assertEquals(0L, model.day(18000L));
     }
 
     @Test

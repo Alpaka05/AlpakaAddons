@@ -41,7 +41,7 @@ class DamageTagFeatureTest {
             "§f✧§e1§6,§c2§43§f4✧§d❤ | 1,234 | true  | true",
             "§f✧1,234✧♥          | 1,234 | true  | true",
     })
-    void readsWingOfLoveSplashes(String name, String number, boolean crit, boolean love) {
+    void readsRingOfLoveSplashes(String name, String number, boolean crit, boolean love) {
         assertEquals(new DamageTagFeature.Splash(number, crit, love), DamageTagFeature.parseDamageTag(name.strip()));
     }
 

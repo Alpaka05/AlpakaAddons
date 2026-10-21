@@ -4,6 +4,7 @@
   "compatibilityLevel": "JAVA_21",
   "refmap": "alpaka.refmap.json",
   "client": [
+    "ClientPacketListenerTimeMixin",
     "GameRendererMixin",
     "MouseHandlerMixin",
     "AbstractClientPlayerMixin",

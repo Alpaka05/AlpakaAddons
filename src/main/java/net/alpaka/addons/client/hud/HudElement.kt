@@ -82,6 +82,12 @@ interface HudElement {
     fun scaleLabel(): String
 
     /**
+     * The id of a config option in this HUD's feature, so a right click in the editor can open the
+     * config menu on that feature's settings. Null leaves the right click doing nothing.
+     */
+    val settingsOptionId: String? get() = null
+
+    /**
      * The box this element actually occupies, nudged so it lies fully on screen.
      *
      * Positions are stored as absolute pixels, so raising Minecraft's GUI scale shrinks the screen
@@ -98,6 +104,12 @@ interface HudElement {
         if (dx == 0 && dy == 0) return box
         return HudBounds(box.x0 + dx, box.y0 + dy, box.x1 + dx, box.y1 + dy)
     }
+
+    /**
+     * The part of [box] the editor outlines, for an element whose box holds room around what it
+     * draws. The box itself stays the one kept on screen and hit-tested.
+     */
+    fun outlineBounds(box: HudBounds): HudBounds = box
 
     /** Anchor X shifted by the same amount as [visibleBounds]. Never written back to the config. */
     fun visibleAnchorX(screenWidth: Int, screenHeight: Int): Int {

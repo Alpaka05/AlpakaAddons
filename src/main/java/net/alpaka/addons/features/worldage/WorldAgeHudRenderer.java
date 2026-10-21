@@ -64,9 +64,14 @@ public class WorldAgeHudRenderer {
         if (cachedDayText == null || day != cachedDay || !style.equals(cachedDayStyle)) {
             cachedDay = day;
             cachedDayStyle = style;
-            cachedDayText = HudPanel.text(Component.literal("Day " + day), smooth);
+            cachedDayText = HudPanel.text(Component.literal(dayLabel(day)), smooth);
         }
         return cachedDayText;
+    }
+
+    /** "Day N", or "Day ?" while the server's age cannot be read. */
+    private static String dayLabel(long day) {
+        return day == WorldClockTracker.UNKNOWN_DAY ? "Day ?" : "Day " + day;
     }
 
     public static void registerEvents() {
@@ -179,8 +184,9 @@ public class WorldAgeHudRenderer {
         if (!AlpakaConfig.instance.worldAgeJoinMessageEnabled) return;
 
         long day = getWorldDay();
-        String dayColorStr = day > 30 ? "§c" : (day >= 25 ? "§6" : "§a");
-        String dayText = dayColorStr + "Day " + day;
+        String dayText = day == WorldClockTracker.UNKNOWN_DAY
+                ? "§7day unknown"
+                : (day > 30 ? "§c" : (day >= 25 ? "§6" : "§a")) + "Day " + day;
 
         if (recentlyVisited) {
             String timeAgoStr = formatTimeAgo(timeAgoSec);
@@ -200,7 +206,9 @@ public class WorldAgeHudRenderer {
     }
 
     public static int getDayColor(long day) {
-        if (day > 30) {
+        if (day == WorldClockTracker.UNKNOWN_DAY) {
+            return 0xFFAAAAAA; // Gray (unknown)
+        } else if (day > 30) {
             return 0xFFFF5555; // Red (>30)
         } else if (day >= 25) {
             return 0xFFFFAA00; // Orange (25-30)
@@ -209,20 +217,11 @@ public class WorldAgeHudRenderer {
         }
     }
 
+    /** The server's day, or {@link WorldClockTracker#UNKNOWN_DAY}; see {@link WorldClockTracker}. */
     public static long getWorldDay() {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null) return 0L;
-
-        long totalTicks = mc.level.getOverworldClockTime();
-        long totalDays = Math.max(0L, totalTicks / 24000L);
-
-        // Day count first: it is a comparison against a local, and short-circuiting on it keeps the
-        // scoreboard read out of the common case entirely. This runs once per frame from the HUD.
-        if (totalDays > 1000 || SkyblockUtils.isOnSkyblock()) {
-            // Hypixel mini-servers reboot on a 36-day (12-hour) cycle
-            return totalDays % 36;
-        }
-        return totalDays;
+        if (mc.level == null) return WorldClockTracker.UNKNOWN_DAY;
+        return WorldClockTracker.getDay(mc.level);
     }
 
     public static void render(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {

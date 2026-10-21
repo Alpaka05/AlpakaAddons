@@ -16,7 +16,7 @@ import org.lwjgl.glfw.GLFW;
 import java.util.Arrays;
 
 /**
- * All / Party / Guild / Co-op / PMs / Server / Mods tabs in the chat screen.
+ * All / Party / Guild / Co-op / PMs / NPCs tabs in the chat screen.
  *
  * The tabs sit in the gap between the lowest chat line and the input box, where vanilla draws
  * nothing. Picking one narrows the chat to that channel: the filter runs where messages are laid
@@ -32,15 +32,15 @@ import java.util.Arrays;
  * Optionally a plain message typed on a channel tab is sent to that channel, with /pc, /gc or /r in
  * front. That is its own toggle and off by default, so a tab is only ever a view unless asked for.
  *
- * Server shows what the server sent that no player wrote, and Mods what was made on this client; a
- * line can be on one of those and on a channel tab at the same time. See {@link ChatOrigin}.
- *
  * Each channel tab can be left out of the row, for a player with no use for, say, Co-op. A hidden
  * channel's lines are not lost: they sort to it as before and so still show on All.
  *
  * The row is drawn in the mod's menu look: rounded tabs, the config's text greys, the accent for the
  * tab that is up and for unread counts, and the chat's own font - the menu font when the chat is
  * written in it. The labels cast vanilla's drop shadow in either font, as the chat's own lines do.
+ *
+ * Guild chat can also be kept off All, for a busy guild drowning out everything else; it then shows
+ * only on the Guild tab, which counts it as unread as usual.
  */
 public final class ChatTabsFeature {
 
@@ -98,8 +98,7 @@ public final class ChatTabsFeature {
             case GUILD -> cfg.chatTabsShowGuild;
             case COOP -> cfg.chatTabsShowCoop;
             case PRIVATE -> cfg.chatTabsShowPrivate;
-            case SERVER -> cfg.chatTabsShowServer;
-            case MODS -> cfg.chatTabsShowMods;
+            case NPC -> cfg.chatTabsShowNpc;
         };
     }
 
@@ -109,6 +108,15 @@ public final class ChatTabsFeature {
         for (ChatTab tab : ChatTab.values()) {
             if (!isShown(tab)) unread[tab.ordinal()] = 0;
         }
+        // Hiding the Guild tab brings guild lines kept off All back there, and showing it again
+        // takes them away.
+        if (AlpakaConfig.instance.chatTabsGuildOnlyInGuildTab) onFilterChanged();
+    }
+
+    /** A setting changed what a tab lets through: re-lays the history out under it. */
+    public static void onFilterChanged() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.gui != null) minecraft.gui.hud.getChat().rescaleChat();
     }
 
     /**
@@ -118,26 +126,20 @@ public final class ChatTabsFeature {
      * what keeps the guild tab working alongside the custom guild tag.
      */
     public static boolean accepts(GuiMessage message) {
-        if (!isEnabled() || active == ChatTab.ALL) return true;
+        if (!isEnabled()) return true;
+        if (active == ChatTab.ALL) {
+            // Guild lines can be kept to the Guild tab, but only while that tab is in the row;
+            // otherwise they would be nowhere at all.
+            if (!AlpakaConfig.instance.chatTabsGuildOnlyInGuildTab || !isShown(ChatTab.GUILD)) return true;
+            String text = ChatTab.strip(message.content().getString());
+            return ChatTab.isUrgent(text) || ChatTab.classify(text) != ChatTab.GUILD;
+        }
         // The mod's own lines, and every other client-side one, are not exempt: they belong to no
         // channel, so they sort to All like any other unclaimed line rather than following the
         // player onto every tab.
         String text = ChatTab.strip(message.content().getString());
         if (ChatTab.isUrgent(text)) return true;
-        return belongsTo(active, text, ChatOrigin.isServer(message));
-    }
-
-    /**
-     * Whether a line belongs on a tab. A channel tab goes by the text; Server and Mods by where the
-     * line came from, so a party notice from Hypixel shows under Party and Server alike.
-     */
-    private static boolean belongsTo(ChatTab tab, String text, boolean fromServer) {
-        return switch (tab) {
-            case ALL -> true;
-            case SERVER -> fromServer && !ChatTab.isPlayerWritten(text);
-            case MODS -> !fromServer;
-            default -> ChatTab.classify(text) == tab;
-        };
+        return ChatTab.classify(text) == active;
     }
 
     /** The chat screen closed: back to All, unless the player keeps the tab. */
@@ -146,14 +148,12 @@ public final class ChatTabsFeature {
         if (active != ChatTab.ALL) select(ChatTab.ALL);
     }
 
-    /** Counts a newly arrived message for every tab it belongs to that is not up. */
-    public static void onMessage(Component content, boolean fromServer) {
+    /** Counts a newly arrived message for the channel tab it belongs to, if that tab is not up. */
+    public static void onMessage(Component content) {
         if (!isEnabled()) return;
-        String text = ChatTab.strip(content.getString());
-        for (ChatTab tab : ChatTab.values()) {
-            if (tab != ChatTab.ALL && tab != active && isShown(tab) && belongsTo(tab, text, fromServer)) {
-                unread[tab.ordinal()]++;
-            }
+        ChatTab tab = ChatTab.classify(content);
+        if (tab != ChatTab.ALL && tab != active && isShown(tab)) {
+            unread[tab.ordinal()]++;
         }
     }
 

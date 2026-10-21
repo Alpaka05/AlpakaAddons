@@ -24,11 +24,15 @@ public class AlpakaClient implements ClientModInitializer {
         AlpakaConfig.load();
         net.alpaka.addons.config.AlpakaStats.load();
         net.alpaka.addons.AlpakaAddons.LOGGER.info("Alpaka Addons {} loaded", net.alpaka.addons.utils.ModVersion.mod());
+        // Has to run here, before the game first scans its resource packs, so the cached server
+        // pack joins that first load instead of costing a second one.
+        net.alpaka.addons.features.resourcepack.ServerPackCache.restoreAtStartup();
 
         // Next, so the overlay's own render pipeline is registered before the shader manager
         // precompiles vanilla's; see BlockOverlayRenderTypes.
         net.alpaka.addons.features.blockoverlay.BlockOverlayRenderTypes.init();
         net.alpaka.addons.client.gui.AlpakaGuiPipelines.init();
+        net.alpaka.addons.features.chat.ChatBlurFeature.init();
         net.alpaka.addons.features.viewmodel.HandItemStarlightFeature.init();
         CustomSoundFeature.register();
         SessionLifecycle.register();
@@ -47,7 +51,6 @@ public class AlpakaClient implements ClientModInitializer {
         });
         ZoomFeature.register();
         net.alpaka.addons.features.chat.ChatPeekFeature.register();
-        net.alpaka.addons.features.chat.ActionBarOverChat.register();
         net.alpaka.addons.features.chat.ScreenshotPreview.register();
         CommandWheelFeature.register();
         InventoryHudFeature.register();
@@ -56,6 +59,8 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.utils.DungeonState.register();
         net.alpaka.addons.features.notification.MentionNotifier.register();
         net.alpaka.addons.features.party.PartyInviteFeature.register();
+        net.alpaka.addons.features.tooltip.OldMasterStarsFeature.register();
+        net.alpaka.addons.features.ragnarock.RagnarockFeature.register();
         WorldAgeHudRenderer.registerEvents();
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {

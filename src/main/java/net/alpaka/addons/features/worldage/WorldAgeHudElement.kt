@@ -29,6 +29,8 @@ object WorldAgeHudElement : HudElement {
     override val isFeatureEnabled: Boolean
         get() = AlpakaConfig.instance.worldAgeHudEnabled
 
+    override val settingsOptionId: String = "world_age_hud_enabled"
+
     override var anchorX: Int
         get() = AlpakaConfig.instance.worldAgeHudX
         set(value) { AlpakaConfig.instance.worldAgeHudX = value }

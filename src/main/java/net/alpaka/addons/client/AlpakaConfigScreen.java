@@ -7,6 +7,7 @@ import net.alpaka.addons.client.gui.EditableText;
 import net.alpaka.addons.client.gui.GuiFont;
 import net.alpaka.addons.client.gui.ModernGuiUtils;
 import net.alpaka.addons.client.gui.PloppAnimation;
+import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.utils.ModVersion;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -213,6 +214,30 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             }
         }
         return screen;
+    }
+
+    /**
+     * The screen opened on the feature that holds the option with this id, for the HUD editor's
+     * right click. Null when no feature holds it.
+     */
+    public static AlpakaConfigScreen openOnOption(Screen parent, String optionId) {
+        for (ConfigTree.Group group : ConfigTree.groups()) {
+            for (ConfigTree.Section section : group.sections) {
+                for (ConfigTree.Feature feature : section.features) {
+                    boolean holds = feature.master != null && feature.master.getId().equals(optionId);
+                    for (ConfigOption option : feature.settings) {
+                        if (optionId.equals(option.getId())) holds = true;
+                    }
+                    if (!holds) continue;
+                    AlpakaConfigScreen screen = new AlpakaConfigScreen(parent, "");
+                    screen.selectSection(section);
+                    screen.selectFeature(feature);
+                    screen.revealSelected = true;
+                    return screen;
+                }
+            }
+        }
+        return null;
     }
 
     /** For the screenshot tour: starts in setup mode, already folded. */
@@ -581,7 +606,10 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         }));
         if (!search.isEmpty()) {
             boolean hoverClear = inside(mouseX, mouseY, iconX - 3, sy + 2, 14, 14);
-            AlpakaStyle.iconButton(graphics, this.font, iconX - 3, sy + 2, 14, "✕", hoverClear, true, false);
+            // Just the cross, lit in the accent on hover; a box around it crowds the slim field.
+            int gw = GuiFont.width(this.font, "✕");
+            graphics.text(this.font, GuiFont.text("✕"), iconX - 3 + (14 - gw) / 2, sy + 5,
+                    hoverClear ? ModernGuiUtils.getAccentColor() : AlpakaStyle.TEXT_MUTED, false);
             hits.add(new Hit(iconX - 3, sy + 2, 14, 14, (mx, my) -> {
                 search.setText("");
                 onSearchChanged();
@@ -600,8 +628,13 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     }
 
     private void drawSidebar(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w, int h, float deltaSec) {
+        // The HUD editor's button sits in the bottom corner, below the sections, so it is one
+        // click away whichever section is open.
+        int footerH = AlpakaStyle.BUTTON_H + PAD + 9;
+        drawHudEditorButton(graphics, mouseX, mouseY, x, y + h - AlpakaStyle.BUTTON_H - PAD, w);
+
         int clipY = y + 4;
-        int clipH = h - 8;
+        int clipH = h - 8 - footerH;
         int contentH = 4;
         List<ConfigTree.Group> groups = ConfigTree.groups();
         for (int i = 0; i < groups.size(); i++) {
@@ -641,6 +674,17 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         }
         AlpakaStyle.scrollFades(graphics, x, clipY, w, clipH, sidebarScroll.offset() > 0, sidebarScroll.offset() + 1 < sidebarScroll.max);
         graphics.disableScissor();
+    }
+
+    private void drawHudEditorButton(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w) {
+        int bx = x + PAD;
+        int bw = w - PAD * 2;
+        ModernGuiUtils.drawRect(graphics, bx, y - 9, bw, 1, AlpakaStyle.LINE);
+        boolean hover = inside(mouseX, mouseY, bx, y, bw, AlpakaStyle.BUTTON_H);
+        AlpakaStyle.button(graphics, this.font, bx, y, bw, AlpakaStyle.BUTTON_H,
+                ellipsize("HUD Editor", bw - 8), hover, AlpakaStyle.ButtonKind.PLAIN);
+        hits.add(new Hit(bx, y, bw, AlpakaStyle.BUTTON_H,
+                (mx, my) -> this.minecraft.gui.setScreen(new HudEditorScreen(this))));
     }
 
     private void drawFeatures(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w, int h, float deltaSec) {
@@ -845,6 +889,10 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                     drawLabel(graphics, option.getTitle(), rowX + 4, labelY, right - SWATCH_W - 8 - (rowX + 4));
                     int sy = rowY + (rowH - SWATCH_H) / 2;
                     AlpakaStyle.swatch(graphics, right - SWATCH_W, sy, SWATCH_W, SWATCH_H, option.getColor());
+                    // A white ring while the mouse is on the swatch itself, the spot that opens the picker.
+                    if (hover && inside(mouseX, mouseY, right - SWATCH_W - 2, sy - 2, SWATCH_W + 4, SWATCH_H + 4)) {
+                        ModernGuiUtils.drawRoundedOutline(graphics, right - SWATCH_W - 1, sy - 1, SWATCH_W + 2, SWATCH_H + 2, 3, AlpakaStyle.TEXT);
+                    }
                     if (shown) hits.add(new Hit(rowX, hitY, rowW, rowH, (mx, my) -> option.triggerAction(this)));
                 } else {
                     // A button the width of the column, named for what it does; red for what destroys.

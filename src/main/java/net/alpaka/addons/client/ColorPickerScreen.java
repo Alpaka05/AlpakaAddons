@@ -1,14 +1,26 @@
 package net.alpaka.addons.client;
 
+import com.mojang.blaze3d.platform.NativeImage;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.textures.FilterMode;
+import net.alpaka.addons.client.gui.AlpakaGuiElementSink;
 import net.alpaka.addons.client.gui.AlpakaStyle;
 import net.alpaka.addons.client.gui.AlpakaStyle.ButtonKind;
 import net.alpaka.addons.client.gui.GuiFont;
+import net.alpaka.addons.client.gui.Hsv;
 import net.alpaka.addons.client.gui.ModernGuiUtils;
+import net.alpaka.addons.client.gui.RoundedImageRenderState;
+import net.alpaka.addons.config.AlpakaConfig;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.render.TextureSetup;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.resources.Identifier;
+import org.joml.Matrix3x2f;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.function.Consumer;
@@ -18,19 +30,30 @@ import static net.alpaka.addons.client.gui.AlpakaStyle.inside;
 /**
  * Picks a color for a config option, in the config menu's look.
  *
- * Left, the color as it is now, its hex code to type into, and a row of presets. Right, one slider
- * per channel whose track runs through that channel's range with the others held, so the sliders
- * themselves show where each one leads. Nothing is applied until Save; Escape or Cancel leave the
- * option as it was, and Reset in the header goes back to the option's default.
+ * Left, a color wheel: the hue runs round it and the saturation out from its grey middle, and a
+ * click or drag puts the point anywhere on it. Right, the color as it is now with its hex code to
+ * type into, a brightness and an opacity slider, and the presets: the built-in ones, then the
+ * player's own, then a plus that saves the color now as one more. Nothing is applied until
+ * Save; Escape or Cancel leave the option as it was, and Reset in the header goes back to the
+ * option's default.
  */
 public class ColorPickerScreen extends Screen implements net.alpaka.addons.client.gui.NoticeHost {
     private final Screen parent;
     private final Consumer<Integer> onSave;
     /** The option's default, which Reset in the header goes back to; null hides it. */
     private final Integer defaultColor;
-    private int r, g, b, a;
+    /**
+     * The color twice: as RGB, which the hex field, the presets and Save use, and as wheel
+     * coordinates, which the wheel and the brightness slider move. Whichever side is changed updates
+     * the other, so a preset or a typed hex code comes back out exactly as it went in.
+     */
+    private int rgb, a;
+    private Hsv hsv = new Hsv(0.0f, 0.0f, 1.0f);
 
-    private int activeSlider = -1; // 0: R, 1: G, 2: B, 3: A
+    /** What the mouse is dragging: the wheel, one of the sliders, or nothing. */
+    private Drag drag = Drag.NONE;
+
+    private enum Drag { NONE, WHEEL, BRIGHTNESS, OPACITY }
 
     private String hexInput = "";
     private boolean hexFocused = false;
@@ -50,7 +73,13 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
             0xFFFFFFFF, // White
     };
 
-    private static final String[] CHANNELS = {"Red", "Green", "Blue", "Opacity"};
+    /** Own presets beyond this push the oldest out; with the plus that fills the second row. */
+    private static final int MAX_CUSTOM = 9;
+    private static final int PRESETS_PER_ROW = 10;
+
+    /** The slot the mouse rests on, and since when, for the tooltip; -1 for none. */
+    private int hoveredSlot = -1;
+    private long hoverSince = 0L;
 
     public ColorPickerScreen(Screen parent, String title, int initialColor, Consumer<Integer> onSave) {
         this(parent, title, initialColor, null, onSave);
@@ -72,27 +101,23 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
     }
 
     private void setColor(int color) {
-        this.a = (color >> 24) & 0xFF;
-        this.r = (color >> 16) & 0xFF;
-        this.g = (color >> 8) & 0xFF;
-        this.b = color & 0xFF;
+        this.a = (color >>> 24) & 0xFF;
+        this.rgb = color & 0x00FFFFFF;
+        this.hsv = Hsv.of(rgb, hsv);
+    }
+
+    private void setHsv(Hsv next) {
+        this.hsv = next;
+        this.rgb = next.rgb() & 0x00FFFFFF;
+        syncHexFromColor();
     }
 
     private int currentColor() {
-        return (a << 24) | (r << 16) | (g << 8) | b;
-    }
-
-    private int channel(int i) {
-        return switch (i) {
-            case 0 -> r;
-            case 1 -> g;
-            case 2 -> b;
-            default -> a;
-        };
+        return (a << 24) | rgb;
     }
 
     private String hexOf() {
-        return a == 255 ? String.format("#%02X%02X%02X", r, g, b) : String.format("#%02X%02X%02X%02X", a, r, g, b);
+        return a == 255 ? String.format("#%06X", rgb) : String.format("#%08X", currentColor());
     }
 
     private void syncHexFromColor() {
@@ -111,15 +136,106 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         } catch (NumberFormatException ignored) {}
     }
 
+    // ---- Presets --------------------------------------------------------------------------------
+
+    private static java.util.List<Integer> customPresets() {
+        AlpakaConfig cfg = AlpakaConfig.instance;
+        if (cfg.customColorPresets == null) cfg.customColorPresets = new java.util.ArrayList<>();
+        return cfg.customColorPresets;
+    }
+
+    /** The built-in presets, then the player's own. */
+    private static int slotCount() {
+        return PRESETS.length + customPresets().size();
+    }
+
+    private static int slotColor(int i) {
+        return i < PRESETS.length ? PRESETS[i] : customPresets().get(i - PRESETS.length);
+    }
+
+    private boolean isPreset(int color) {
+        for (int i = 0; i < slotCount(); i++) {
+            if (slotColor(i) == color) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Saves the color now as a preset. It is kept at once, whether the picker is then saved or
+     * cancelled: the presets are a palette of their own, not part of the option being edited.
+     */
+    private void addCurrentAsPreset() {
+        if (isPreset(currentColor())) return;
+        java.util.List<Integer> custom = customPresets();
+        while (custom.size() >= MAX_CUSTOM) custom.remove(0);
+        custom.add(currentColor());
+        AlpakaConfig.save();
+    }
+
+    private static void removeCustomPreset(int slot) {
+        customPresets().remove(slot - PRESETS.length);
+        AlpakaConfig.save();
+    }
+
+    // ---- The wheel's picture --------------------------------------------------------------------
+
+    private static final int WHEEL_TEXTURE_SIZE = 512;
+    private static final Identifier WHEEL_TEXTURE = Identifier.fromNamespaceAndPath("alpaka", "color_wheel");
+    private static DynamicTexture wheelTexture;
+
+    /**
+     * The wheel at full brightness, made once and kept: 1 MB is not worth making again for every
+     * picker. Red is to the right and the hues run counter-clockwise. The pixels outside the circle
+     * carry the color of its rim, so the anti-aliased edge the rounded-image shader cuts stays that
+     * color instead of fading through black; their alpha is 0 for the plain blit fallback.
+     */
+    private static DynamicTexture wheelTexture() {
+        if (wheelTexture == null) {
+            int n = WHEEL_TEXTURE_SIZE;
+            NativeImage image = new NativeImage(n, n, false);
+            for (int py = 0; py < n; py++) {
+                for (int px = 0; px < n; px++) {
+                    double dx = (px + 0.5) / n * 2.0 - 1.0;
+                    double dy = (py + 0.5) / n * 2.0 - 1.0;
+                    double dist = Math.hypot(dx, dy);
+                    float hue = (float) (Math.atan2(-dy, dx) / (2.0 * Math.PI));
+                    if (hue < 0.0f) hue += 1.0f;
+                    int color = new Hsv(hue, (float) Math.min(1.0, dist), 1.0f).rgb();
+                    double edge = (1.0 - dist) * n / 2.0 + 0.5;
+                    int alpha = (int) Math.round(Math.max(0.0, Math.min(1.0, edge)) * 255.0);
+                    image.setPixel(px, py, (alpha << 24) | (color & 0x00FFFFFF));
+                }
+            }
+            wheelTexture = new DynamicTexture(() -> "Alpaka color wheel", image);
+            Minecraft.getInstance().getTextureManager().register(WHEEL_TEXTURE, wheelTexture);
+        }
+        return wheelTexture;
+    }
+
+    /** The wheel's picture as a circle, its edge anti-aliased by the mod's rounded-image shader. */
+    private static void drawWheel(GuiGraphicsExtractor graphics, int x, int y, int size) {
+        DynamicTexture texture = wheelTexture();
+        if (graphics instanceof AlpakaGuiElementSink sink) {
+            int scale = Math.max(1, Minecraft.getInstance().getWindow().getGuiScale());
+            TextureSetup textures = TextureSetup.singleTexture(texture.getTextureView(),
+                    RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR));
+            sink.alpaka$submitElement(new RoundedImageRenderState(new Matrix3x2f(graphics.pose()),
+                    x, y, x + size, y + size, size * scale / 2, scale, 0, textures, sink.alpaka$currentScissor()));
+        } else {
+            graphics.blit(texture.getTextureView(), RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR),
+                    x, y, x + size, y + size, 0.0f, 1.0f, 0.0f, 1.0f);
+        }
+    }
+
     // ---- Layout ---------------------------------------------------------------------------------
 
-    private static final int PREF_W = 330;
-    private static final int PREF_H = 209;
-    private static final int LEFT_W = 112;
-    private static final int SWATCH = 16;
-    private static final int SWATCH_GAP = 8;
+    private static final int PREF_W = 360;
+    private static final int PREF_H = 216;
+    private static final int MAX_WHEEL = 148;
+    private static final int SWATCH = 13;
     private static final int SLIDER_ROW_H = 28;
     private static final int FIELD_H = 16;
+    private static final int PREVIEW_W = 28;
     private static final int RESET_W = 40;
 
     /** The header's Reset button sits centred in the header, as every header button does. */
@@ -127,37 +243,48 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         return AlpakaStyle.headerButtonY(l.y());
     }
 
-    /** Where everything goes, shared by drawing and input. */
-    private record Layout(int x, int y, int w, int h, int bodyY, int leftX, int previewH, int hexY,
-                          int presetLabelY, int gridY, int rightX, int rightW, int btnY, int saveX, int cancelX,
+    /**
+     * Where everything goes, shared by drawing and input. The wheel takes the left side down to the
+     * window's bottom edge, beside the Cancel and Save buttons, which sit to the right of it.
+     */
+    private record Layout(int x, int y, int w, int h, int bodyY, int wheelX, int wheelY, int wheelSize,
+                          int rightX, int rightW, int presetLabelY, int btnY, int saveX, int cancelX,
                           int btnW, int resetX) {
 
         static Layout of(int width, int height) {
-            int w = Math.max(260, Math.min(PREF_W, width - 16));
-            int h = Math.max(170, Math.min(PREF_H, height - 16));
+            int w = Math.max(280, Math.min(PREF_W, width - 16));
+            int h = Math.max(180, Math.min(PREF_H, height - 16));
             int x = (width - w) / 2;
             int y = (height - h) / 2;
-            int bodyY = y + AlpakaStyle.HEADER_H + 8;
-            int leftX = x + AlpakaStyle.PAD + 4;
+            int bodyY = y + AlpakaStyle.HEADER_H + 10;
+            int bottom = y + h - AlpakaStyle.PAD - 4;
+            int wheelSize = Math.max(64, Math.min(MAX_WHEEL, Math.min(bottom - bodyY, w * 2 / 5)));
+            int wheelX = x + AlpakaStyle.PAD + 6;
+            int wheelY = bodyY + (bottom - bodyY - wheelSize) / 2;
+            int rightX = wheelX + wheelSize + 18;
+            int rightW = x + w - AlpakaStyle.PAD - 6 - rightX;
+            int presetLabelY = bodyY + FIELD_H + 8 + 2 * SLIDER_ROW_H + 6;
             int btnY = y + h - AlpakaStyle.BUTTON_H - AlpakaStyle.PAD;
-            int previewH = Math.max(28, Math.min(52, btnY - bodyY - 6 - FIELD_H - 8 - 12 - 2 * SWATCH - SWATCH_GAP - 8));
-            int hexY = bodyY + previewH + 6;
-            int presetLabelY = hexY + FIELD_H + 8;
-            int gridY = presetLabelY + 12;
-            int rightX = leftX + LEFT_W + 16;
-            int rightW = x + w - AlpakaStyle.PAD - 4 - rightX;
             int btnW = 64;
             int saveX = x + w - AlpakaStyle.PAD - btnW;
             int cancelX = saveX - btnW - 6;
             int resetX = x + w - AlpakaStyle.PAD - RESET_W;
-            return new Layout(x, y, w, h, bodyY, leftX, previewH, hexY, presetLabelY, gridY, rightX, rightW,
+            return new Layout(x, y, w, h, bodyY, wheelX, wheelY, wheelSize, rightX, rightW, presetLabelY,
                     btnY, saveX, cancelX, btnW, resetX);
         }
 
-        int swatchX(int i) { return leftX + (i % 5) * (SWATCH + (LEFT_W - 5 * SWATCH) / 4); }
-        int swatchY(int i) { return gridY + (i / 5) * (SWATCH + SWATCH_GAP); }
-        int sliderLabelY(int i) { return bodyY + i * SLIDER_ROW_H; }
+        double wheelCx() { return wheelX + wheelSize / 2.0; }
+        double wheelCy() { return wheelY + wheelSize / 2.0; }
+        double wheelR() { return wheelSize / 2.0; }
+        int hexX() { return rightX + PREVIEW_W + 6; }
+        int hexW() { return rightX + rightW - hexX(); }
+        int sliderLabelY(int i) { return bodyY + FIELD_H + 8 + i * SLIDER_ROW_H; }
         int trackY(int i) { return sliderLabelY(i) + 17; }
+        // The track's round ends reach 3 px past its ends, so it is inset to stay in the column.
+        int trackX() { return rightX + 3; }
+        int trackW() { return rightW - 6; }
+        int swatchX(int i) { return rightX + (i % PRESETS_PER_ROW) * (rightW - SWATCH) / (PRESETS_PER_ROW - 1); }
+        int swatchY(int i) { return presetLabelY + 12 + (i / PRESETS_PER_ROW) * (SWATCH + 6); }
     }
 
     // ---- Drawing --------------------------------------------------------------------------------
@@ -178,64 +305,66 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
             AlpakaStyle.button(graphics, this.font, l.resetX(), headerButtonY(l), RESET_W, AlpakaStyle.BUTTON_H, "Reset", hover, ButtonKind.PLAIN);
         }
 
-        // The color now, over a checkerboard where it is see-through.
-        int px = l.leftX();
-        int py = l.bodyY();
-        ModernGuiUtils.drawRoundedRect(graphics, px, py, LEFT_W, l.previewH(), AlpakaStyle.CARD_RADIUS, AlpakaStyle.FIELD);
-        if (a < 255) {
-            graphics.enableScissor(px + 2, py + 2, px + LEFT_W - 2, py + l.previewH() - 2);
-            for (int cy = 0; cy * 6 < l.previewH(); cy++) {
-                for (int cx = 0; cx * 6 < LEFT_W; cx++) {
-                    if ((cx + cy) % 2 == 0) ModernGuiUtils.drawRect(graphics, px + cx * 6, py + cy * 6, 6, 6, AlpakaStyle.TRACK);
-                }
-            }
-            graphics.disableScissor();
-        }
-        ModernGuiUtils.drawRoundedRect(graphics, px, py, LEFT_W, l.previewH(), AlpakaStyle.CARD_RADIUS, currentColor());
-        ModernGuiUtils.drawRoundedOutline(graphics, px, py, LEFT_W, l.previewH(), AlpakaStyle.CARD_RADIUS, AlpakaStyle.LINE);
+        // The wheel, darkened as far as the brightness is down, and a ring where the color sits on it.
+        int ws = l.wheelSize();
+        drawWheel(graphics, l.wheelX(), l.wheelY(), ws);
+        int shade = Math.round((1.0f - hsv.val()) * 255.0f);
+        if (shade > 0) ModernGuiUtils.drawRoundedRect(graphics, l.wheelX(), l.wheelY(), ws, ws, ws / 2, shade << 24);
+        ModernGuiUtils.drawRoundedOutline(graphics, l.wheelX() - 1, l.wheelY() - 1, ws + 2, ws + 2, ws / 2 + 1, AlpakaStyle.LINE);
+        double angle = hsv.hue() * 2.0 * Math.PI;
+        float knobX = (float) (l.wheelCx() + Math.cos(angle) * hsv.sat() * l.wheelR());
+        float knobY = (float) (l.wheelCy() - Math.sin(angle) * hsv.sat() * l.wheelR());
+        boolean hoverWheel = overWheel(l, mouseX, mouseY);
+        AlpakaStyle.knob(graphics, knobX, knobY, hoverWheel || drag == Drag.WHEEL ? 12 : 11, rgb);
 
-        // The hex code, to type into. hexInput mirrors the color whenever the field is not being typed
-        // in (syncHexFromColor runs after every change and on leaving the field), so it is drawn as it
-        // is rather than formatted anew every frame.
-        boolean hoverHex = inside(mouseX, mouseY, px, l.hexY(), LEFT_W, FIELD_H);
-        AlpakaStyle.textField(graphics, this.font, px, l.hexY(), LEFT_W, FIELD_H,
+        // The color now, and its hex code to type into. hexInput mirrors the color whenever the field
+        // is not being typed in (syncHexFromColor runs after every change and on leaving the field),
+        // so it is drawn as it is rather than formatted anew every frame.
+        AlpakaStyle.swatch(graphics, l.rightX(), l.bodyY(), PREVIEW_W, FIELD_H, currentColor());
+        boolean hoverHex = inside(mouseX, mouseY, l.hexX(), l.bodyY(), l.hexW(), FIELD_H);
+        AlpakaStyle.textField(graphics, this.font, l.hexX(), l.bodyY(), l.hexW(), FIELD_H,
                 hexInput, "#RRGGBB", hexFocused, hoverHex, caretFrom);
 
-        // Presets, the current one ringed.
-        AlpakaStyle.groupLabel(graphics, this.font, "Presets", px, l.presetLabelY());
-        for (int i = 0; i < PRESETS.length; i++) {
+        // Brightness runs from black to the color at full brightness; opacity from the window's own
+        // color, which is what a see-through color shows over, to the color itself.
+        int full = new Hsv(hsv.hue(), hsv.sat(), 1.0f).rgb();
+        slider(graphics, l, 0, "Brightness", hsv.val(), 0xFF000000, full, mouseX, mouseY, drag == Drag.BRIGHTNESS);
+        slider(graphics, l, 1, "Opacity", a / 255.0f, AlpakaStyle.ROW_SELECTED, 0xFF000000 | rgb, mouseX, mouseY, drag == Drag.OPACITY);
+
+        // Presets, the current one ringed, and the plus after the last one.
+        AlpakaStyle.groupLabel(graphics, this.font, "Presets", l.rightX(), l.presetLabelY());
+        int slots = slotCount();
+        boolean alreadyPreset = isPreset(currentColor());
+        int hovered = -1;
+        for (int i = 0; i <= slots; i++) {
             int sx = l.swatchX(i);
             int sy = l.swatchY(i);
-            boolean hover = inside(mouseX, mouseY, sx, sy, SWATCH, SWATCH);
-            boolean current = PRESETS[i] == currentColor();
+            boolean hover = inside(mouseX, mouseY, sx - 2, sy - 2, SWATCH + 4, SWATCH + 4);
+            if (hover) hovered = i;
+            int round = (SWATCH + 1) / 2;
+            if (i == slots) {
+                // The plus: a dashed circle, an empty slot to fill, muted while the color is a
+                // preset already.
+                int line = alreadyPreset ? AlpakaStyle.DIVIDER : hover ? accent : AlpakaStyle.TEXT_MUTED;
+                if (hover && !alreadyPreset) {
+                    ModernGuiUtils.drawRoundedRect(graphics, sx, sy, SWATCH, SWATCH, round, AlpakaStyle.ROW_HOVER);
+                }
+                float cx = sx + SWATCH / 2.0f;
+                float cy = sy + SWATCH / 2.0f;
+                AlpakaStyle.dashedCircle(graphics, cx, cy, SWATCH / 2.0f, 10, line);
+                AlpakaStyle.plus(graphics, cx, cy, 3.0f, line);
+                continue;
+            }
+            boolean current = slotColor(i) == currentColor();
             if (current || hover) {
-                ModernGuiUtils.drawRoundedOutline(graphics, sx - 2, sy - 2, SWATCH + 4, SWATCH + 4, AlpakaStyle.ROW_RADIUS + 2,
+                ModernGuiUtils.drawRoundedOutline(graphics, sx - 2, sy - 2, SWATCH + 4, SWATCH + 4, round + 2,
                         current ? accent : AlpakaStyle.TEXT_MUTED);
             }
-            ModernGuiUtils.drawRoundedRect(graphics, sx, sy, SWATCH, SWATCH, AlpakaStyle.ROW_RADIUS, PRESETS[i]);
+            ModernGuiUtils.drawRoundedRect(graphics, sx, sy, SWATCH, SWATCH, round, slotColor(i));
         }
-
-        // One slider per channel; each track runs through its channel with the others as they are.
-        for (int i = 0; i < 4; i++) {
-            int labelY = l.sliderLabelY(i);
-            int value = channel(i);
-            String shown = i == 3 ? Math.round(value / 2.55f) + "%" : String.valueOf(value);
-            graphics.text(this.font, GuiFont.text(CHANNELS[i]), l.rightX(), labelY + 4, AlpakaStyle.TEXT_SOFT, false);
-            int valueW = GuiFont.width(this.font, shown);
-            graphics.text(this.font, GuiFont.text(shown), l.rightX() + l.rightW() - valueW, labelY + 4, AlpakaStyle.TEXT, false);
-
-            int rgb = currentColor() & 0x00FFFFFF;
-            int from;
-            int to;
-            switch (i) {
-                case 0 -> { from = rgb & 0x00FFFF; to = rgb | 0xFF0000; }
-                case 1 -> { from = rgb & 0xFF00FF; to = rgb | 0x00FF00; }
-                case 2 -> { from = rgb & 0xFFFF00; to = rgb | 0x0000FF; }
-                default -> { from = AlpakaStyle.ROW_SELECTED & 0x00FFFFFF; to = rgb; }
-            }
-            boolean hover = inside(mouseX, mouseY, l.rightX() - 4, labelY, l.rightW() + 8, SLIDER_ROW_H);
-            AlpakaStyle.gradientTrack(graphics, l.rightX(), l.trackY(i), l.rightW(), 0xFF000000 | from, 0xFF000000 | to,
-                    value / 255.0, rgb, hover, activeSlider == i);
+        if (hovered != hoveredSlot) {
+            hoveredSlot = hovered;
+            hoverSince = System.currentTimeMillis();
         }
 
         // Cancel and Save.
@@ -245,19 +374,53 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         AlpakaStyle.button(graphics, this.font, l.saveX(), l.btnY(), l.btnW(), AlpakaStyle.BUTTON_H, "Save", hoverSave, ButtonKind.PRIMARY);
 
         AlpakaStyle.endOpen(graphics, pushed);
+        if (hoveredSlot >= PRESETS.length && System.currentTimeMillis() - hoverSince >= AlpakaStyle.TOOLTIP_DELAY_MS) {
+            String tip = hoveredSlot < slots ? "Right-click to remove this preset."
+                    : alreadyPreset ? "This color is a preset already."
+                    : "Save the current color as a preset.";
+            AlpakaStyle.tooltip(graphics, this.font, this.width, this.height, mouseX, mouseY, tip);
+        }
         // Notices over the window, as over the config menu.
         net.alpaka.addons.features.notification.AlpakaNotifications.renderOverScreen(graphics);
     }
 
+    private void slider(GuiGraphicsExtractor graphics, Layout l, int row, String label, float value,
+                        int from, int to, int mouseX, int mouseY, boolean dragging) {
+        int labelY = l.sliderLabelY(row);
+        String shown = Math.round(value * 100.0f) + "%";
+        graphics.text(this.font, GuiFont.text(label), l.rightX(), labelY + 4, AlpakaStyle.TEXT_SOFT, false);
+        int valueW = GuiFont.width(this.font, shown);
+        graphics.text(this.font, GuiFont.text(shown), l.rightX() + l.rightW() - valueW, labelY + 4, AlpakaStyle.TEXT, false);
+        boolean hover = overSlider(l, row, mouseX, mouseY);
+        AlpakaStyle.gradientTrack(graphics, l.trackX(), l.trackY(row), l.trackW(), from, to, value, rgb, hover, dragging);
+    }
+
     // ---- Input ----------------------------------------------------------------------------------
+
+    private static boolean overWheel(Layout l, double mouseX, double mouseY) {
+        return Math.hypot(mouseX - l.wheelCx(), mouseY - l.wheelCy()) <= l.wheelR() + 3;
+    }
+
+    private static boolean overSlider(Layout l, int row, double mouseX, double mouseY) {
+        return inside(mouseX, mouseY, l.rightX() - 4, l.sliderLabelY(row), l.rightW() + 8, SLIDER_ROW_H);
+    }
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         double mouseX = event.x();
         double mouseY = event.y();
+        Layout l = Layout.of(this.width, this.height);
+        if (event.button() == 1) {
+            for (int i = PRESETS.length; i < slotCount(); i++) {
+                if (inside(mouseX, mouseY, l.swatchX(i) - 2, l.swatchY(i) - 2, SWATCH + 4, SWATCH + 4)) {
+                    AlpakaStyle.click();
+                    removeCustomPreset(i);
+                    return true;
+                }
+            }
+        }
         if (event.button() != 0) return super.mouseClicked(event, doubleClick);
 
-        Layout l = Layout.of(this.width, this.height);
         boolean wasHex = hexFocused;
         hexFocused = false;
 
@@ -269,7 +432,7 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
             return true;
         }
 
-        if (inside(mouseX, mouseY, l.leftX(), l.hexY(), LEFT_W, FIELD_H)) {
+        if (inside(mouseX, mouseY, l.hexX(), l.bodyY(), l.hexW(), FIELD_H)) {
             if (!wasHex) {
                 AlpakaStyle.click();
                 hexInput = hexOf();
@@ -280,21 +443,31 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         }
         syncHexFromColor();
 
-        for (int i = 0; i < PRESETS.length; i++) {
+        for (int i = 0; i <= slotCount(); i++) {
             if (inside(mouseX, mouseY, l.swatchX(i) - 2, l.swatchY(i) - 2, SWATCH + 4, SWATCH + 4)) {
+                if (i == slotCount()) {
+                    if (isPreset(currentColor())) return true;
+                    AlpakaStyle.click();
+                    addCurrentAsPreset();
+                    return true;
+                }
                 AlpakaStyle.click();
-                setColor(PRESETS[i]);
+                setColor(slotColor(i));
                 syncHexFromColor();
                 return true;
             }
         }
 
-        for (int i = 0; i < 4; i++) {
-            if (inside(mouseX, mouseY, l.rightX() - 4, l.sliderLabelY(i), l.rightW() + 8, SLIDER_ROW_H)) {
-                activeSlider = i;
-                updateSliderVal(i, mouseX, l);
-                return true;
-            }
+        if (overWheel(l, mouseX, mouseY)) {
+            drag = Drag.WHEEL;
+        } else if (overSlider(l, 0, mouseX, mouseY)) {
+            drag = Drag.BRIGHTNESS;
+        } else if (overSlider(l, 1, mouseX, mouseY)) {
+            drag = Drag.OPACITY;
+        }
+        if (drag != Drag.NONE) {
+            dragTo(l, mouseX, mouseY);
+            return true;
         }
 
         if (inside(mouseX, mouseY, l.saveX(), l.btnY(), l.btnW(), AlpakaStyle.BUTTON_H)) {
@@ -311,8 +484,8 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
 
     @Override
     public boolean mouseDragged(MouseButtonEvent event, double deltaX, double deltaY) {
-        if (activeSlider >= 0) {
-            updateSliderVal(activeSlider, event.x(), Layout.of(this.width, this.height));
+        if (drag != Drag.NONE) {
+            dragTo(Layout.of(this.width, this.height), event.x(), event.y());
             return true;
         }
         return super.mouseDragged(event, deltaX, deltaY);
@@ -320,20 +493,39 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
 
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
-        if (event.button() == 0) this.activeSlider = -1;
+        if (event.button() == 0) this.drag = Drag.NONE;
         return super.mouseReleased(event);
     }
 
-    private void updateSliderVal(int i, double mouseX, Layout l) {
-        double norm = Math.max(0.0, Math.min(1.0, (mouseX - l.rightX()) / (double) l.rightW()));
-        int val = (int) Math.round(norm * 255.0);
-        switch (i) {
-            case 0 -> this.r = val;
-            case 1 -> this.g = val;
-            case 2 -> this.b = val;
-            default -> this.a = val;
+    /**
+     * Moves whatever is being dragged to the mouse. On the wheel the point follows the mouse's
+     * direction from the middle and stops at the rim when the mouse goes past it, so a drag can run
+     * round the edge without slipping off.
+     */
+    private void dragTo(Layout l, double mouseX, double mouseY) {
+        switch (drag) {
+            case WHEEL -> {
+                double dx = mouseX - l.wheelCx();
+                double dy = l.wheelCy() - mouseY;
+                float sat = (float) Math.min(1.0, Math.hypot(dx, dy) / l.wheelR());
+                float hue = sat > 0.0f ? (float) (Math.atan2(dy, dx) / (2.0 * Math.PI)) : hsv.hue();
+                if (hue < 0.0f) hue += 1.0f;
+                // A point on a fully dark wheel would show nothing, so picking a color brings the
+                // brightness back up.
+                float val = hsv.val() < 0.05f ? 1.0f : hsv.val();
+                setHsv(new Hsv(hue, sat, val));
+            }
+            case BRIGHTNESS -> setHsv(new Hsv(hsv.hue(), hsv.sat(), (float) sliderNorm(l, mouseX)));
+            case OPACITY -> {
+                a = (int) Math.round(sliderNorm(l, mouseX) * 255.0);
+                syncHexFromColor();
+            }
+            default -> {}
         }
-        syncHexFromColor();
+    }
+
+    private static double sliderNorm(Layout l, double mouseX) {
+        return Math.max(0.0, Math.min(1.0, (mouseX - l.trackX()) / (double) l.trackW()));
     }
 
     @Override

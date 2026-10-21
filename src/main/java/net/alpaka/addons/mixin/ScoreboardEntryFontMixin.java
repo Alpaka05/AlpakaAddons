@@ -2,6 +2,7 @@ package net.alpaka.addons.mixin;
 
 import com.llamalad7.mixinextras.sugar.Local;
 import net.alpaka.addons.client.gui.GuiFont;
+import net.alpaka.addons.features.scoreboard.ScoreboardFooterFeature;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
@@ -18,6 +19,8 @@ public abstract class ScoreboardEntryFontMixin {
 
     @ModifyVariable(method = "<init>", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private static Component alpaka$nameInMenuFont(Component name) {
+        // Hypixel's address line becomes the AlpakaAddons footer first, so it gets the font too.
+        name = ScoreboardFooterFeature.replace(name);
         return GuiFont.inScoreboard() ? GuiFont.restyle(name) : name;
     }
 

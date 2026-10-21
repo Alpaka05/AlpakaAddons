@@ -1,10 +1,14 @@
 package net.alpaka.addons.features.ragaxe;
 
 import net.alpaka.addons.config.AlpakaConfig;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.ChatScreen;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.protocol.game.ClientboundSoundPacket;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
@@ -20,14 +24,16 @@ import java.util.regex.Pattern;
  *
  * Right-clicking the axe starts a three second cast, and Hypixel counts it down in the action bar
  * ("CASTING IN 3s"), squeezed between health, defence and mana where it is easy to miss. Here that
- * part is cut out of the action bar - the rest of it stays - and the same count is drawn as plain
- * text just under the crosshair, where the eyes already are. Once the count runs out and the cast
- * goes through, "Rag Axe" shows there for a moment.
+ * part is cut out of the action bar - the rest of it stays - and the same count is drawn just under
+ * the crosshair, where the eyes already are. Then "Rag Axe" shows there if the cast went through,
+ * or "Cancelled" if it did not.
  *
  * The count is Hypixel's own: each action bar carries the current number, so it ticks exactly like
- * the original. A cast that ends early - damage, a weapon swap - must not read as a success: it
- * only counts as cast when the last number seen was 1 and the next action bar comes without one, and
- * Hypixel's "Ragnarock was cancelled" chat line takes everything down again.
+ * the original. Whether the cast went through is not read off the count running out, since a cast
+ * broken on its last beat looks the same there. Like Odin, it is the sound Hypixel plays when the
+ * axe goes off - a wolf's death sound at one particular pitch - while the axe is in hand. A cast
+ * ends early on a hit, which Hypixel says in chat ("Ragnarock was cancelled due to ..."), or when
+ * the axe leaves the hand; a countdown that just stops with no cast sound after it is cancelled too.
  */
 public final class RagAxeCountdownFeature {
 
@@ -40,8 +46,23 @@ public final class RagAxeCountdownFeature {
 
     private static final String CANCELLED = "Ragnarock was cancelled";
 
-    /** How long "Rag Axe" stays up after the cast went through. */
-    private static final long CAST_SHOWN_MS = 2000L;
+    /** Hypixel's id for the axe, in the item's custom data. */
+    private static final String AXE_ID = "RAGNAROCK_AXE";
+
+    /** The pitch of the cast sound; Odin matches the same value. */
+    private static final float CAST_PITCH = 1.4920635f;
+
+    /** How long "Rag Axe" or "Cancelled" stays up. */
+    private static final long RESULT_SHOWN_MS = 2000L;
+
+    /** After the countdown stops, how long the cast sound may take before the cast counts as cancelled. */
+    private static final long SOUND_GRACE_MS = 1500L;
+
+    /**
+     * Right after a cast or a cancel, countdown numbers that still arrive are the old cast's tail,
+     * not a new cast: the sound or chat line and the last action bar can come in either order.
+     */
+    private static final long AFTER_RESULT_MS = 1000L;
 
     /** A countdown with no action bar for this long is dropped; Hypixel sends one several times a second. */
     private static final long STALE_MS = 2500L;
@@ -49,14 +70,22 @@ public final class RagAxeCountdownFeature {
     /** Gap below the screen's middle, clear of the crosshair's lower arm. */
     private static final int BELOW_CROSSHAIR = 10;
 
+    /** Twice the normal text size, so the count can be read at a glance. */
+    private static final float SCALE = 2.0f;
+
     private static final int COUNTDOWN_COLOR = 0xFFFFAA00;
     private static final int CAST_COLOR = 0xFF55FF55;
+    private static final int CANCELLED_COLOR = 0xFFFF5555;
 
-    /** Seconds left in the running cast, 0 for the bare "CASTING", or -1 when none is running. */
+    private enum Result { NONE, CAST, CANCELLED }
+
+    /** Seconds left in the running cast, or -1 when none is running. */
     private static int seconds = -1;
     private static long lastCountdownAt;
-    /** When the cast went through, or 0; "Rag Axe" is shown for a while after it. */
-    private static long castAt;
+    /** When the countdown stopped without the cast sound yet, or 0. */
+    private static long countdownEndedAt;
+    private static Result result = Result.NONE;
+    private static long resultAt;
 
     private RagAxeCountdownFeature() {
     }
@@ -70,6 +99,7 @@ public final class RagAxeCountdownFeature {
         ClientReceiveMessageEvents.GAME_CANCELED.register((message, overlay) -> {
             if (!overlay) onChat(message);
         });
+        ClientTickEvents.END_CLIENT_TICK.register(RagAxeCountdownFeature::tick);
     }
 
     /** Where the cast part sits in an action bar text and the number it shows. */
@@ -110,30 +140,60 @@ public final class RagAxeCountdownFeature {
         long now = System.currentTimeMillis();
         Match match = find(full.toString());
         if (match == null) {
-            // The countdown is over. Only a count that reached its last beat means the axe went off.
-            if (seconds >= 0 && seconds <= 1 && now - lastCountdownAt <= STALE_MS) {
-                castAt = now;
-            }
+            if (seconds > 0) countdownEndedAt = now;
             seconds = -1;
             return message;
         }
-
-        if (match.seconds() == 0 && seconds >= 0 && seconds <= 1) {
-            castAt = now;
-            seconds = -1;
-        } else if (match.seconds() > 0) {
+        boolean tail = result != Result.NONE && now - resultAt <= AFTER_RESULT_MS;
+        if (match.seconds() > 0 && !tail) {
+            if (seconds < 0) result = Result.NONE;
             seconds = match.seconds();
             lastCountdownAt = now;
-            castAt = 0;
+            countdownEndedAt = 0;
         }
         return cut(pieces, match.start(), match.end());
     }
 
     private static void onChat(Component message) {
-        if (message.getString().contains(CANCELLED)) {
+        if (message.getString().contains(CANCELLED)) finish(Result.CANCELLED);
+    }
+
+    /** Every sound the server plays, on the client thread; see ClientPacketListenerMixin. */
+    public static void onSound(ClientboundSoundPacket packet) {
+        if (!AlpakaConfig.instance.ragAxeCountdownEnabled) return;
+        if (Math.abs(packet.getPitch() - CAST_PITCH) > 0.0001f) return;
+        String path = packet.getSound().value().location().getPath();
+        if (!path.startsWith("entity.wolf") || !path.endsWith(".death")) return;
+        if (!holdingAxe()) return;
+        finish(Result.CAST);
+    }
+
+    private static void tick(Minecraft mc) {
+        if (seconds < 0 && countdownEndedAt == 0) return;
+        long now = System.currentTimeMillis();
+        if (mc.player == null || (seconds > 0 && now - lastCountdownAt > STALE_MS)) {
+            // Left the world or the server stopped sending: nothing to report.
             seconds = -1;
-            castAt = 0;
+            countdownEndedAt = 0;
+        } else if (!holdingAxe()) {
+            finish(Result.CANCELLED);
+        } else if (countdownEndedAt != 0 && now - countdownEndedAt > SOUND_GRACE_MS) {
+            finish(Result.CANCELLED);
         }
+    }
+
+    private static void finish(Result how) {
+        seconds = -1;
+        countdownEndedAt = 0;
+        result = how;
+        resultAt = System.currentTimeMillis();
+    }
+
+    private static boolean holdingAxe() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) return false;
+        CustomData data = mc.player.getMainHandItem().get(DataComponents.CUSTOM_DATA);
+        return data != null && AXE_ID.equals(data.copyTag().getStringOr("id", ""));
     }
 
     /** The action bar rebuilt piece by piece with its styles, minus the characters in [start, end). */
@@ -165,17 +225,19 @@ public final class RagAxeCountdownFeature {
         long now = System.currentTimeMillis();
         String text;
         int color;
-        if (seconds > 0 && now - lastCountdownAt <= STALE_MS) {
+        if (seconds > 0) {
             text = seconds + "s";
             color = COUNTDOWN_COLOR;
-        } else if (castAt != 0 && now - castAt <= CAST_SHOWN_MS) {
-            text = "Rag Axe";
-            color = CAST_COLOR;
+        } else if (result != Result.NONE && now - resultAt <= RESULT_SHOWN_MS) {
+            text = result == Result.CAST ? "Rag Axe" : "Cancelled";
+            color = result == Result.CAST ? CAST_COLOR : CANCELLED_COLOR;
         } else {
             return;
         }
-        int x = graphics.guiWidth() / 2;
-        int y = graphics.guiHeight() / 2 + BELOW_CROSSHAIR;
-        graphics.centeredText(mc.font, text, x, y, color);
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(graphics.guiWidth() / 2.0f, graphics.guiHeight() / 2.0f + BELOW_CROSSHAIR);
+        graphics.pose().scale(SCALE, SCALE);
+        graphics.centeredText(mc.font, text, 0, 0, color);
+        graphics.pose().popMatrix();
     }
 }

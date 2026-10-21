@@ -51,7 +51,8 @@
     "ClientLevelMixin",
     "PictureInPictureRendererMixin",
     "NameTagFeatureRendererMixin",
-    "ScreenEffectRendererMixin"
+    "ScreenEffectRendererMixin",
+    "ClientPacketListenerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

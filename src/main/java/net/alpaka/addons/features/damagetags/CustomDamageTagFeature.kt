@@ -142,7 +142,7 @@ object CustomDamageTagFeature {
         val baseY = player.eyeY - 0.6
         val baseZ = player.z + look.z * 3.0
         val now = System.currentTimeMillis()
-        // Number, crit, Wing of Love.
+        // Number, crit, Ring of Love.
         val samples = listOf(
             Triple("1,234", false, false), Triple("48,920", true, false), Triple("139k", false, false),
             Triple("2,417,880", true, true), Triple("873", false, true),
@@ -178,7 +178,7 @@ object CustomDamageTagFeature {
             // Hypixel's own splash stays hidden either way; these only decide whether ours is drawn.
             if (hiddenInDungeon) continue
             if (cfg.customDamageTagHideNearSlayerBoss && nearSlayerBoss(level, entity)) continue
-            // Wing of Love's heart stays on the copy: it is what tells a doubled hit apart.
+            // Ring of Love's heart stays on the copy: it is what tells a doubled hit apart.
             val text = format(splash.number) + if (splash.love) LOVE_HEART else ""
             add(Tag(entity.x, entity.y + entity.bbHeight + NAME_TAG_LIFT, entity.z, text, splash.crit, now))
         }
@@ -265,7 +265,7 @@ object CustomDamageTagFeature {
      *
      * Built straight as the sequence the font draws rather than as a Component read through
      * visualOrderText. A tag only ever holds ASCII digits, ',', '.', a k/M/B suffix (the damage
-     * number pattern or [format]) and possibly Wing of Love's heart at the very end, a neutral
+     * number pattern or [format]) and possibly Ring of Love's heart at the very end, a neutral
      * character that stays after the digits; all of it reads left to right in every language, so a component tree
      * and an ICU bidi pass per tag per frame could never change the order. Should a tag ever hold
      * other characters, it has to go back through visualOrderText. The styles are worked out up

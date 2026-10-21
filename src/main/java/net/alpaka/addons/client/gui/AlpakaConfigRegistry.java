@@ -509,6 +509,20 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.chatSmoothScrollEnabled = v; AlpakaConfig.save(); },
                 "smooth chat scroll scrolling wheel glide peek animation"));
 
+        OPTIONS.add(new ConfigOption("chat_scrollbar", "Better Scrollbar",
+                "Gives the open chat a wider, rounded scrollbar that you can drag with the mouse.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatScrollbarEnabled,
+                v -> { AlpakaConfig.instance.chatScrollbarEnabled = v; AlpakaConfig.save(); },
+                "chat scrollbar scroll bar drag thumb wide rounded mouse grab"));
+
+        OPTIONS.add(new ConfigOption("chat_movable", "Movable Chat",
+                "Makes the chat a HUD element, so you can move and resize it in the HUD editor.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatMovable,
+                v -> { AlpakaConfig.instance.chatMovable = v; AlpakaConfig.save(); },
+                "chat move movable position hud editor drag place resize scale element"));
+
         OPTIONS.add(new ConfigOption("chat_search", "Chat Search",
                 "Filters the chat to messages containing your text. Press Ctrl+F (Cmd+F on macOS) in the chat.",
                 ConfigCategory.VISUALS,

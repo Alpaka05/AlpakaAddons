@@ -7,7 +7,11 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 import net.alpaka.addons.features.chat.AlpakaChatGraphicsClip;
 import net.alpaka.addons.features.bridge.BridgeBotFormatter;
+import net.alpaka.addons.features.chat.AlpakaChatScroll;
 import net.alpaka.addons.features.chat.ChatBlurFeature;
+import net.alpaka.addons.features.chat.ChatHudElement;
+import net.alpaka.addons.features.chat.ChatScrollbar;
+import net.alpaka.addons.client.hud.VisiblePlacement;
 import net.alpaka.addons.features.chat.ChatPeekFeature;
 import net.alpaka.addons.features.chat.ChatOpenAnimation;
 import net.alpaka.addons.features.chat.ChatScrollAnimator;
@@ -46,7 +50,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(ChatComponent.class)
-public abstract class ChatComponentMixin {
+public abstract class ChatComponentMixin implements AlpakaChatScroll {
     private static final String EXTRACT_PUBLIC =
         "extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/client/gui/Font;IIILnet/minecraft/client/gui/components/ChatComponent$DisplayMode;Z)V";
     private static final String EXTRACT_PRIVATE =
@@ -59,6 +63,7 @@ public abstract class ChatComponentMixin {
     @Shadow @Final private List<GuiMessage.Line> trimmedMessages;
     @Shadow @Final private List<?> messageDeletionQueue;
     @Shadow private int chatScrollbarPos;
+    @Shadow private boolean newMessageSinceScroll;
 
     @Shadow private int getLineHeight() { throw new AssertionError("replaced by mixin"); }
     @Shadow private double getScale() { throw new AssertionError("replaced by mixin"); }
@@ -357,6 +362,24 @@ public abstract class ChatComponentMixin {
         this.alpaka$setScrollTarget(this.alpaka$targetScroll + delta);
     }
 
+    @Override
+    public double alpaka$scrollPosition() {
+        return ChatScrollAnimator.isEnabled() ? this.alpaka$smoothScroll : this.chatScrollbarPos;
+    }
+
+    /** The scrollbar's drag: the chat follows the mouse at once, to the fraction of a line. */
+    @Override
+    public void alpaka$scrollTo(double lines) {
+        if (ChatScrollAnimator.isEnabled()) {
+            this.alpaka$setScrollTarget(lines);
+            this.alpaka$smoothScroll = this.alpaka$targetScroll;
+            this.chatScrollbarPos = (int) Math.floor(this.alpaka$smoothScroll);
+            return;
+        }
+        this.chatScrollbarPos = (int) Math.round(lines);
+        this.alpaka$vanillaScrollChat(0);
+    }
+
     @Inject(method = "resetChatScroll", at = @At("TAIL"))
     private void alpaka$resetSmoothScroll(CallbackInfo ci) {
         this.alpaka$smoothScroll = 0.0;
@@ -513,6 +536,63 @@ public abstract class ChatComponentMixin {
                                             ChatComponent.DisplayMode mode, boolean focused, CallbackInfo ci) {
         ChatBlurFeature.beginExtraction(graphics, mouseX, mouseY);
         this.alpaka$graphics = graphics;
+        this.alpaka$mouseX = mouseX;
+        this.alpaka$mouseY = mouseY;
+    }
+
+    @Unique private int alpaka$mouseX;
+    @Unique private int alpaka$mouseY;
+
+    // ------------------------------------------------------------------ movable chat and scrollbar
+
+    /**
+     * Movable Chat: the whole layout is shifted from vanilla's place to the player's, before vanilla
+     * scales it. Every pass goes through here - drawing, and the capture that finds the clicked or
+     * hovered text - and everything the mod adds to the chat is drawn under this pose, so the
+     * lines, their clicks, the blurred panel and the scrollbar all move together.
+     */
+    @Inject(method = EXTRACT_PRIVATE, at = @At("HEAD"))
+    private void alpaka$moveChat(ChatComponent.ChatGraphicsAccess access, int guiHeight, int ticks, ChatComponent.DisplayMode mode, CallbackInfo ci) {
+        if (access instanceof AlpakaChatGraphicsClip) ChatScrollbar.beginLayout();
+        if (!ChatHudElement.INSTANCE.isFeatureEnabled()) return;
+        int screenWidth = this.minecraft.getWindow().getGuiScaledWidth();
+        VisiblePlacement placement = ChatHudElement.INSTANCE.visiblePlacement(screenWidth, guiHeight);
+        float dx = placement.getAnchorX();
+        float dy = placement.getAnchorY() - (guiHeight - 40);
+        if (dx != 0.0f || dy != 0.0f) access.updatePose(pose -> pose.translate(dx, dy));
+    }
+
+    /**
+     * Better Chat's scrollbar, after the lines, in the chat's own coordinates. Only while the chat
+     * is drawn in the foreground, where vanilla draws its own, which the hook below then leaves out.
+     */
+    @Inject(method = EXTRACT_PRIVATE, at = @At("RETURN"))
+    private void alpaka$drawScrollbar(ChatComponent.ChatGraphicsAccess access, int guiHeight, int ticks, ChatComponent.DisplayMode mode, CallbackInfo ci) {
+        if (!mode.foreground || !ChatScrollbar.isEnabled()) return;
+        if (!(access instanceof AlpakaChatGraphicsClip clip)) return;
+        float scale = (float) this.getScale();
+        int chatBottom = Mth.floor((guiHeight - 40) / scale);
+        int boxRight = Mth.ceil(this.getWidth() / scale) + 8;
+        ChatScrollbar.draw(clip.alpaka$graphics(), scale, boxRight, chatBottom, this.getLineHeight(),
+                this.trimmedMessages.size(), this.getLinesPerPage(), this.alpaka$scrollPosition(),
+                this.newMessageSinceScroll, this.alpaka$mouseX, this.alpaka$mouseY);
+    }
+
+    /** Vanilla's scrollbar - its bar and its lighter edge, the method's last two fills - left out for ours. */
+    @WrapOperation(
+        method = EXTRACT_PRIVATE,
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/ChatComponent$ChatGraphicsAccess;fill(IIIII)V", ordinal = 2)
+    )
+    private void alpaka$skipVanillaScrollbar(ChatComponent.ChatGraphicsAccess access, int x0, int y0, int x1, int y1, int color, Operation<Void> original) {
+        if (!ChatScrollbar.isEnabled()) original.call(access, x0, y0, x1, y1, color);
+    }
+
+    @WrapOperation(
+        method = EXTRACT_PRIVATE,
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/ChatComponent$ChatGraphicsAccess;fill(IIIII)V", ordinal = 3)
+    )
+    private void alpaka$skipVanillaScrollbarEdge(ChatComponent.ChatGraphicsAccess access, int x0, int y0, int x1, int y1, int color, Operation<Void> original) {
+        if (!ChatScrollbar.isEnabled()) original.call(access, x0, y0, x1, y1, color);
     }
 
     @Inject(method = EXTRACT_PUBLIC, at = @At("RETURN"))

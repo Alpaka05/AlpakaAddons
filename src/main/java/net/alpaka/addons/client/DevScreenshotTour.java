@@ -159,7 +159,7 @@ public final class DevScreenshotTour {
                     () -> Minecraft.getInstance().player != null && Minecraft.getInstance().gui.screen() == null, 100),
             new Stop("world-hud", DevScreenshotTour::showHuds, () -> true, 30),
             // The screenshot preview of the picture just taken: resting in the corner, then mid-shrink.
-            new Stop(null, () -> {}, () -> written(tourShot("world-hud")), 2),
+            new Stop(null, () -> {}, () -> tourShot("world-hud").isFile(), 2),
             new Stop(null, () -> {
                 ScreenshotPreview.devFreezeAt(1150.0f);
                 ScreenshotPreview.show(tourShot("world-hud"));
@@ -361,23 +361,6 @@ public final class DevScreenshotTour {
                     message -> AlpakaAddons.LOGGER.info("Screenshot tour: {}", message.getString()));
         }
         begin(mc, stop + 1);
-    }
-
-    /**
-     * Whether the PNG is there in full: it ends in its IEND chunk. The file exists as soon as the
-     * writing starts, and a large window's picture read before it is done fails to load.
-     */
-    private static boolean written(java.io.File file) {
-        long length = file.length();
-        if (length < 12) return false;
-        try (java.io.RandomAccessFile in = new java.io.RandomAccessFile(file, "r")) {
-            byte[] type = new byte[4];
-            in.seek(length - 8);
-            in.readFully(type);
-            return new String(type, java.nio.charset.StandardCharsets.US_ASCII).equals("IEND");
-        } catch (java.io.IOException e) {
-            return false;
-        }
     }
 
     private static java.io.File tourShot(String name) {

@@ -268,10 +268,12 @@ public final class ChatBlurFeature {
      * With the chat open, lifts the line under the mouse a little. Called after the panel, once the
      * chat box's scissor is set, and still before the lines are shifted by the scroll: the mouse is
      * taken into the lines' own coordinates, so the lift follows the lines while they scroll.
+     * Never while peeking: the chat is only held open there, and in the world the mouse position
+     * is the hidden cursor that moves with the camera.
      */
     public static void submitHoverHighlight(float chatScale) {
         GuiGraphicsExtractor graphics = currentGraphics;
-        if (graphics == null || !isEnabled() || !foreground) return;
+        if (graphics == null || !isEnabled() || !foreground || ChatPeekFeature.isPeeking()) return;
         if (panelHeight <= 0.01f || panelAlpha <= 0.002f) return;
         if (panelLines <= 0 || panelLineHeight <= 0) return;
         if (!(graphics instanceof AlpakaGuiElementSink sink)) return;

@@ -689,6 +689,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.chatTabsKeepAfterClose = v; AlpakaConfig.save(); },
                 "chat tabs keep remember filter hud close stay"));
 
+        OPTIONS.add(new ConfigOption("chat_tabs_guild_only", "Guild Chat Only In Guild Tab",
+                "Guild messages show on the Guild tab only, not on All.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatTabsGuildOnlyInGuildTab,
+                v -> { AlpakaConfig.instance.chatTabsGuildOnlyInGuildTab = v; AlpakaConfig.save(); ChatTabsFeature.onFilterChanged(); },
+                "chat tabs guild only separate hide all filter gc"));
+
         // Player model and inventory HUD lived on their own Custom HUD tab; they are overlays like
         // everything else here, and one tab fewer is one fewer place to look.
 

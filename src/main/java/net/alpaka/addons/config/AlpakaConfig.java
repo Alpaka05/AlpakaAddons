@@ -357,10 +357,6 @@ public class AlpakaConfig {
     public int customDamageTagCritStart = 0xFFFFE15A;
     public int customDamageTagCritEnd = 0xFFFF4A3A;
 
-    // Pangolin highlight (Torrhus Canyon critters)
-    public boolean pangolinHighlightEnabled = false;
-    public int pangolinHighlightColor = 0xFFFFAA00; // Default orange/gold
-
     // Block Overlay options
     public boolean blockOverlayEnabled = false;
     public boolean blockFadeInEnabled = true;
@@ -981,7 +977,6 @@ public class AlpakaConfig {
         this.chromaHatEnabled = false;
         this.playerScaleEnabled = false;
         this.playerScaleOthers = false;
-        this.pangolinHighlightEnabled = false;
         this.fullbrightEnabled = false;
         this.inventorySnowEnabled = false;
         this.containerBgFadeInEnabled = false;

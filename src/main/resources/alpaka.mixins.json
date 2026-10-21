@@ -65,7 +65,8 @@
     "MinecraftResourceLoadMixin",
     "ConnectScreenPackCacheMixin",
     "ClientPacketListenerPackCacheMixin",
-    "ClientCommonPacketListenerPackCacheMixin"
+    "ClientCommonPacketListenerPackCacheMixin",
+    "ClientPacketListenerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

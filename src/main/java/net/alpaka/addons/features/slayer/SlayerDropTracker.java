@@ -231,8 +231,9 @@ public class SlayerDropTracker {
         if (killed != null) {
             long killedAtMs = SlayerQuestDetector.INSTANCE.getKillDetectedAtMs();
             countKill(killed);
-            SlayerSessionTracker.INSTANCE.onBossKilled(killed, killedAtMs);
-            SlayerTimer.INSTANCE.onBossKilled(killed, killedAtMs, SlayerQuestDetector.INSTANCE.getKillTimed());
+            boolean timed = SlayerQuestDetector.INSTANCE.getKillTimed();
+            SlayerSessionTracker.INSTANCE.onBossKilled(killed, killedAtMs, timed);
+            SlayerTimer.INSTANCE.onBossKilled(killed, killedAtMs, timed, SlayerQuestDetector.INSTANCE.getKillStated());
         }
 
         // Only signal for a boss spawning: Hypixel never sends a chat announcement for a
@@ -240,8 +241,9 @@ public class SlayerDropTracker {
         // SkyHanni's own pattern list, which has no such entry for slayer bosses.
         SlayerType spawned = SlayerQuestDetector.INSTANCE.consumeSpawn();
         if (spawned != null) {
-            SlayerSessionTracker.INSTANCE.onBossSpawned(spawned);
-            SlayerTimer.INSTANCE.onBossSpawned(spawned, SlayerQuestDetector.INSTANCE.getSpawnVerified());
+            boolean verified = SlayerQuestDetector.INSTANCE.getSpawnVerified();
+            SlayerSessionTracker.INSTANCE.onBossSpawned(spawned, verified);
+            SlayerTimer.INSTANCE.onBossSpawned(spawned, SlayerQuestDetector.INSTANCE.getTier(), verified);
         }
         if (spawned != null && AlpakaConfig.instance.customSoundsEnabled) {
             CustomSoundFeature.playBossSpawnSound();
@@ -319,6 +321,13 @@ public class SlayerDropTracker {
             return;
         }
 
+        // Also ahead of the tracker's switch: the boss timer and the session read kills from the
+        // detector too, and this line is what lets a kill count as stated rather than inferred.
+        if (QUEST_COMPLETE_PATTERN.matcher(string).matches()) {
+            SlayerQuestDetector.INSTANCE.onChatKill(SlayerQuestDetector.INSTANCE.currentOrRecent());
+            return;
+        }
+
         if (!AlpakaConfig.instance.slayerDropTrackerEnabled) return;
 
         if (AlpakaConfig.instance.customSoundsEnabled && SERVER_DROP_PATTERN.matcher(string).matches()) {
@@ -335,15 +344,6 @@ public class SlayerDropTracker {
         // step between two readings; that step is the meter's gain, which an unlockable 10% boost
         // inflates, so it only ever matched players who had the boost. See xpForTier.
         if (RNG_METER_PATTERN.matcher(string).matches()) return;
-
-        // Secondary kill signal. Hypixel does not always send this, and other Skyblock mods often
-        // swallow it, so the sidebar transition in the tick handler is the one that usually fires.
-        // Goes through the detector, which hands it out once per boss whether the sidebar or this
-        // line reports it first - so session, timer and XP see it too, not only the lifetime count.
-        if (QUEST_COMPLETE_PATTERN.matcher(string).matches()) {
-            SlayerQuestDetector.INSTANCE.onChatKill(SlayerQuestDetector.INSTANCE.currentOrRecent());
-            return;
-        }
 
         // Check drop message
         Matcher dropMatcher = DROP_PATTERN.matcher(string);
@@ -584,10 +584,11 @@ public class SlayerDropTracker {
         sendModMessage("§6--- Personal Bests ---");
         boolean anyBest = false;
         for (SlayerType type : SlayerType.values()) {
-            Long best = SlayerTimer.INSTANCE.personalBest(type);
-            if (best == null) continue;
-            anyBest = true;
-            sendModMessage("§e" + type.display + ": §a" + SlayerTimer.INSTANCE.format(best));
+            for (kotlin.Pair<Integer, Long> best : SlayerTimer.INSTANCE.personalBests(type)) {
+                anyBest = true;
+                sendModMessage("§e" + SlayerTimer.bossLabel(type, best.getFirst()) + ": §a"
+                        + SlayerTimer.INSTANCE.format(best.getSecond()));
+            }
         }
         if (!anyBest) {
             sendModMessage("§7  §8no boss timed yet");
@@ -636,9 +637,9 @@ public class SlayerDropTracker {
         int kills = data != null ? data.kills : 0;
         sendModMessage("§7" + kills + " §7boss" + (kills != 1 ? "es" : "") + " killed");
 
-        Long best = SlayerTimer.INSTANCE.personalBest(type);
-        if (best != null) {
-            sendModMessage("§7Personal best: §a" + SlayerTimer.INSTANCE.format(best));
+        for (kotlin.Pair<Integer, Long> best : SlayerTimer.INSTANCE.personalBests(type)) {
+            sendModMessage("§7Personal best, " + SlayerTimer.bossLabel(type, best.getFirst()) + ": §a"
+                    + SlayerTimer.INSTANCE.format(best.getSecond()));
         }
 
         if (data == null || data.drops == null || data.drops.isEmpty()) {

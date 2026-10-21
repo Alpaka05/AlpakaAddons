@@ -123,6 +123,13 @@ public class AlpakaConfig {
      * a nudge for somebody who was looking elsewhere while the quest finished spawning.
      */
     public boolean bossSpawnAlertEnabled = true;
+    /**
+     * Whether a notice slides in when the slayer boss spawns inside a cocoon.
+     *
+     * The cocoon takes a few seconds to hatch, so this comes first and the spawn alert follows once
+     * the boss is actually up.
+     */
+    public boolean bossCocoonAlertEnabled = true;
     /** Snow over container screens and the main menu. Off for fresh installs; it is seasonal decoration. */
     public boolean inventorySnowEnabled = false;
     public float inventorySnowSpeed = 1.0f;
@@ -1147,6 +1154,7 @@ public class AlpakaConfig {
         this.mentionNotificationEnabled = false;
         this.itemMotionBlurEnabled = false;
         this.bossSpawnAlertEnabled = false;
+        this.bossCocoonAlertEnabled = false;
         this.partyInvitePromptEnabled = false;
         save();
     }

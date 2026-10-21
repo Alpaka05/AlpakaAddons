@@ -78,7 +78,6 @@ object MenuStyle {
     private const val ROW_HOVER = 0x18FFFFFF
     private const val ROW_SLIDE = 3f
     private const val TILE = 0x14FFFFFF
-    private const val TILE_HOVER_ACCENT = 0.55f
     private const val TILE_POP = 0.14f
     private const val CHEVRON = 0x59FFFFFF
     private const val CHEVRON_HOVER = 0xE6FFFFFF.toInt()
@@ -89,6 +88,9 @@ object MenuStyle {
     const val TEXT_SOFT = 0xEBFFFFFF.toInt()
     const val MUTED = 0x9EFFFFFF.toInt()
     const val ONLINE_DOT = 0xFF4ADE80.toInt()
+    /** The status dot's size, and its centre below the top of the line, level with the digits' middle. */
+    private const val STATUS_DOT_RADIUS = 1.6f
+    private const val STATUS_DOT_CENTER_Y = 3.5f
 
     /** The red pill to leave by, at a card's foot. */
     private const val QUIT_FILL = 0x29EF4444
@@ -257,27 +259,30 @@ object MenuStyle {
     /**
      * A status line under the hero's name: a dot, and the text in the muted color. A [pulse] dot
      * sends out a ring once a second and a half, like a live signal.
+     *
+     * The dot is a drawn disc rather than the "●" glyph: the glyph's ink does not sit in the middle
+     * of its advance, so the ring around it looked off-centre. The text still leaves the glyph's room.
      */
     @JvmStatic
     fun statusLine(graphics: GuiGraphicsExtractor, font: Font, x: Int, y: Int, dot: Int, text: String,
                    pulse: Boolean, appear: Float) {
+        val mesh = WheelMesh(1.15f / guiScale())
+        val dotCenterX = x + GuiFont.width(font, "●") / 2f
+        val dotCenterY = y + STATUS_DOT_CENTER_Y
         if (pulse) {
             val p = (MenuAmbience.seconds() % 1.5f) / 1.5f
-            val mesh = WheelMesh(1.15f / guiScale())
-            val dotCenterX = x + font.width(GuiFont.text("●")) / 2f
-            val dotCenterY = y + 3.5f
-            mesh.ring(dotCenterX, dotCenterY, 1.5f + p * 4f, 2.2f + p * 4f,
+            mesh.ring(dotCenterX, dotCenterY, STATUS_DOT_RADIUS + p * 4f, STATUS_DOT_RADIUS + 0.7f + p * 4f,
                 WheelMesh.scaleAlpha(dot, (1f - p) * 0.8f * appear))
-            mesh.submit(graphics)
         }
-        graphics.text(font, GuiFont.text("●"), x, y, fade(dot, appear), false)
+        mesh.disc(dotCenterX, dotCenterY, STATUS_DOT_RADIUS, fade(dot, appear))
+        mesh.submit(graphics)
         graphics.text(font, GuiFont.text(text), x + GuiFont.width(font, "● "), y, fade(MUTED, appear), false)
     }
 
     /**
      * A row of a menu: the icon on a small tile, the name, and a chevron at the end. Bare at rest;
-     * under the mouse a light band lies behind it, the row slides out a little, the tile pops in the
-     * accent and the chevron moves along.
+     * under the mouse a light band lies behind it, the row slides out a little, the icon pops and
+     * takes the accent and the chevron moves along.
      */
     @JvmStatic
     fun row(graphics: GuiGraphicsExtractor, font: Font, x: Int, y: Int, width: Int, height: Int,
@@ -307,19 +312,19 @@ object MenuStyle {
 
     /**
      * An icon on a small square tile [size] wide with its corner at [x], [y]; under the mouse the
-     * tile pops and takes the accent.
+     * tile pops and the icon itself takes the accent, the tile staying neutral.
      */
     @JvmStatic
     fun iconTile(graphics: GuiGraphicsExtractor, font: Font, x: Float, y: Float, size: Int, glyph: String,
                  hover: Float, appear: Float) {
-        val tileColor = ModernGuiUtils.lerpColor(TILE, fade(accent(), TILE_HOVER_ACCENT), hover)
         graphics.pose().pushMatrix()
         graphics.pose().translate(x + size / 2f, y + size / 2f)
         val pop = 1f + TILE_POP * hover
         graphics.pose().scale(pop, pop)
-        ModernGuiUtils.drawRoundedRect(graphics, -size / 2, -size / 2, size, size, size / 3, fade(tileColor, appear))
+        ModernGuiUtils.drawRoundedRect(graphics, -size / 2, -size / 2, size, size, size / 3, fade(TILE, appear))
         val glyphComponent = icon(glyph)
-        graphics.text(font, glyphComponent, -font.width(glyphComponent) / 2 + 1, -4, fade(TEXT, appear), false)
+        graphics.text(font, glyphComponent, -font.width(glyphComponent) / 2 + 1, -4,
+            fade(ModernGuiUtils.lerpColor(TEXT, accent(), hover), appear), false)
         graphics.pose().popMatrix()
     }
 

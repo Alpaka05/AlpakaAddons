@@ -47,7 +47,7 @@ public class AlpakaConfig {
     public int slayerShareMessage = 0;
     public boolean fullbrightEnabled = false;
 
-    // Cosmetics. Both are drawn by this client for this client only - nothing is sent, nobody else
+    // Cosmetics. All are drawn by this client for this client only - nothing is sent, nobody else
     // sees them - and both apply to the player's own model in third person.
     /** Draw the player's own name tag with effects instead of vanilla's (which never shows it). */
     public boolean customNameTagEnabled = false;
@@ -85,6 +85,21 @@ public class AlpakaConfig {
     public float chromaHatSpeed = 1.0f;
     /** Raises (positive) or lowers the hat from where it rests on the head, in blocks. */
     public float chromaHatHeightOffset = 0.0f;
+
+    /** An animated aura of light around the player's own model in third person. */
+    public boolean auraEnabled = false;
+    /** Index into {@code AuraFeature.EFFECT_NAMES}: spirit orbs, helix, sigil, inferno, galaxy, fireflies, storm. */
+    public int auraEffect = 0;
+    /** Index into {@code AuraFeature.COLOR_MODE_NAMES}: the effect's own colors, rainbow, or the two below. */
+    public int auraColorMode = 0;
+    /** The two ends of the aura's gradient in the Custom color mode. */
+    public int auraPrimaryColor = 0xFF55FFFF;
+    public int auraSecondaryColor = 0xFFFF55FF;
+    /** How far the aura reaches out from the player, as a factor. */
+    public float auraSize = 1.0f;
+    public float auraSpeed = 1.0f;
+    /** How strongly the aura glows, in percent. */
+    public float auraBrightness = 80.0f;
 
     // Player scale. The model is drawn stretched or shrunk per axis, in the world only; the hitbox,
     // eye height, camera and reach are untouched, and nothing is sent, so nobody else sees it.
@@ -1084,6 +1099,7 @@ public class AlpakaConfig {
         this.nameTagShadowEnabled = false;
         this.nameTagChromaBorderEnabled = false;
         this.chromaHatEnabled = false;
+        this.auraEnabled = false;
         this.playerScaleEnabled = false;
         this.playerScaleOthers = false;
         this.fullbrightEnabled = false;

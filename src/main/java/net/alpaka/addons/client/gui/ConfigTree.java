@@ -110,7 +110,7 @@ public final class ConfigTree {
             "world_age_hud_enabled", "world_age_join_message_enabled", "party_invite_prompt",
             "guild_prefix", "bridge_bot_formatter", "only_crit_damage", "ragnarock", "cache_resource_pack",
             // Cosmetics
-            "custom_name_tag", "chroma_hat", "player_scale", "custom_damage_tags",
+            "custom_name_tag", "chroma_hat", "aura", "player_scale", "custom_damage_tags",
             // Sound & utility
             "command_wheel_custom_commands", "always_sprint", "custom_sounds",
             "custom_sound_button_click", "custom_sound_hotbar_scroll", "custom_sound_inventory_open_close",
@@ -185,7 +185,7 @@ public final class ConfigTree {
                             "expand_chat_history", "mention_notification", "better_screenshot_message"},
                     {"Viewmodel", "item_size_feature", "#Swing Customizations", "item_starlight", "item_motion_blur",
                             "#Viewmodel Presets", "item_viewmodel_reset"},
-                    {"Cosmetics", "custom_name_tag", "custom_damage_tags", "chroma_hat", "player_scale"}},
+                    {"Cosmetics", "custom_name_tag", "custom_damage_tags", "chroma_hat", "aura", "player_scale"}},
             {{"SkyBlock"},
                     {"Slayer", "slayer_hud_enabled", "slayer_timer", "boss_spawn_alert", "boss_cocoon_alert", "slayer_drop_tracker",
                             "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat",

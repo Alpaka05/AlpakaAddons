@@ -7,6 +7,7 @@ import net.alpaka.addons.features.chat.ChatTabsFeature;
 import net.alpaka.addons.features.damagetags.CustomDamageTagFeature;
 import net.alpaka.addons.features.etherwarp.EtherwarpOverlayFeature;
 import net.alpaka.addons.features.inventoryhud.InventoryHudVisibility;
+import net.alpaka.addons.features.cosmetics.AuraFeature;
 import net.alpaka.addons.features.nametag.CustomNameTagFeature;
 import net.alpaka.addons.features.notification.AlpakaNotifications;
 import net.alpaka.addons.features.playerscale.PlayerScaleFeature;
@@ -1745,6 +1746,71 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.chromaHatSpeed = v; AlpakaConfig.save(); },
                 0.2f, 3.0f, val -> String.format(Locale.ROOT, "%.2fx", val),
                 "chroma hat color speed rainbow spin fast slow hat color speed"));
+
+        OPTIONS.add(new ConfigOption("Aura", ConfigCategory.COSMETICS));
+
+        OPTIONS.add(new ConfigOption("aura", "Aura",
+                "Surrounds you with an animated aura of light in third person. Only you can see it.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.auraEnabled,
+                v -> { AlpakaConfig.instance.auraEnabled = v; AlpakaConfig.save(); },
+                "aura effect glow particles orbs helix sigil magic circle fire flames galaxy stars fireflies storm lightning cosmetic third person f5"));
+
+        OPTIONS.add(new ConfigOption("aura_effect", "Effect",
+                "Which aura you wear: orbiting spirits, a helix, a magic circle, flames, a galaxy, fireflies or lightning.",
+                ConfigCategory.COSMETICS,
+                () -> (float) AlpakaConfig.instance.auraEffect,
+                v -> { AlpakaConfig.instance.auraEffect = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (AuraFeature.EFFECT_NAMES.length - 1),
+                val -> AuraFeature.EFFECT_NAMES[Math.round(val)],
+                "aura effect type style spirit orbs twin helix arcane sigil inferno galaxy fireflies storm").choices(AuraFeature.EFFECT_NAMES));
+
+        OPTIONS.add(new ConfigOption("aura_color_mode", "Colors",
+                "Effect Colors keeps each effect's own colors. Custom blends between the two colors below.",
+                ConfigCategory.COSMETICS,
+                () -> (float) AlpakaConfig.instance.auraColorMode,
+                v -> { AlpakaConfig.instance.auraColorMode = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (AuraFeature.COLOR_MODE_NAMES.length - 1),
+                val -> AuraFeature.COLOR_MODE_NAMES[Math.round(val)],
+                "aura color colors rainbow chroma custom effect palette").choices(AuraFeature.COLOR_MODE_NAMES));
+
+        OPTIONS.add(ConfigOption.color("aura_primary_color", "Primary Color",
+                "The first color of the aura in the Custom color mode.",
+                ConfigCategory.COSMETICS,
+                c -> c.auraPrimaryColor,
+                v -> { AlpakaConfig.instance.auraPrimaryColor = v; AlpakaConfig.save(); },
+                "aura color primary first custom picker"));
+
+        OPTIONS.add(ConfigOption.color("aura_secondary_color", "Secondary Color",
+                "The second color of the aura in the Custom color mode.",
+                ConfigCategory.COSMETICS,
+                c -> c.auraSecondaryColor,
+                v -> { AlpakaConfig.instance.auraSecondaryColor = v; AlpakaConfig.save(); },
+                "aura color secondary second custom picker"));
+
+        OPTIONS.add(new ConfigOption("aura_size", "Aura Size",
+                "How far the aura reaches out from you.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.auraSize,
+                v -> { AlpakaConfig.instance.auraSize = v; AlpakaConfig.save(); },
+                0.5f, 2.0f, val -> String.format(Locale.ROOT, "%.2fx", val),
+                "aura size scale big small radius wide"));
+
+        OPTIONS.add(new ConfigOption("aura_speed", "Animation Speed",
+                "How fast the aura moves.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.auraSpeed,
+                v -> { AlpakaConfig.instance.auraSpeed = v; AlpakaConfig.save(); },
+                0.2f, 3.0f, val -> String.format(Locale.ROOT, "%.2fx", val),
+                "aura animation speed fast slow"));
+
+        OPTIONS.add(new ConfigOption("aura_brightness", "Brightness",
+                "How strongly the aura glows.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.auraBrightness,
+                v -> { AlpakaConfig.instance.auraBrightness = v; AlpakaConfig.save(); },
+                10.0f, 100.0f, val -> String.format(Locale.ROOT, "%.0f%%", val),
+                "aura brightness glow strength intensity opacity"));
 
         OPTIONS.add(new ConfigOption("Player Scale", ConfigCategory.COSMETICS));
 

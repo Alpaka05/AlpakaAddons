@@ -114,6 +114,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customMainMenuParallax = v; AlpakaConfig.save(); },
                 "custom main menu parallax background mouse move motion depth effect title screen"));
 
+        OPTIONS.add(new ConfigOption("custom_main_menu_particles", "Inventory Particles in Main Menu",
+                "Shows your Inventory Particles behind the custom main menu too.",
+                ConfigCategory.GENERAL,
+                () -> AlpakaConfig.instance.customMainMenuParticles,
+                v -> { AlpakaConfig.instance.customMainMenuParticles = v; AlpakaConfig.save(); },
+                "custom main menu inventory particles snow rain fireflies cherry petals leaves glyphs ash title screen hide"));
+
         OPTIONS.add(new ConfigOption("disable_all_features", "Disable All Features",
                 "Disables every feature in the mod after confirmation.",
                 ConfigCategory.GENERAL,

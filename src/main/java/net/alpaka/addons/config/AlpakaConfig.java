@@ -223,6 +223,8 @@ public class AlpakaConfig {
     public boolean customMainMenuEnabled = false;
     /** The custom main menu's background, avatar and fireflies shift with the mouse. */
     public boolean customMainMenuParallax = true;
+    /** Inventory Particles behind the custom main menu as well; off keeps them to container screens. */
+    public boolean customMainMenuParticles = false;
     /** The small player model on the HUD. Off for fresh installs. */
     public boolean playerModelEnabled = false;
     public boolean playerModelOnlyActions = true;

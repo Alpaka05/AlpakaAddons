@@ -62,7 +62,7 @@ import org.joml.Matrix3x2f
  *
  * Opening plays in order: the card springs in from the left with a glint sweeping across it, the
  * rows follow one by one, and the avatar lands on its spot.
- * Under the mouse a row slides out a little, its icon tile pops in the accent and its chevron
+ * Under the mouse a row slides out a little, its icon pops and takes the accent and its chevron
  * moves along.
  *
  * The card is only as tall as what it holds. Most players see this at Auto GUI scale, 240 to 270

@@ -122,7 +122,7 @@ public final class CustomTabFeature {
         PlayerTabOverlay tabList = hud.getTabList();
         boolean shown = mc.player != null && (devSample != null || listShown(mc.options.keyPlayerList.isDown()));
         tabList.setVisible(shown);
-        if (!advanceSlide(shown)) {
+        if (!advanceSlide(shown, AlpakaConfig.instance.customTabAnimated, System.nanoTime())) {
             cached = null;
             return true;
         }
@@ -177,18 +177,19 @@ public final class CustomTabFeature {
      * Moves the slide toward open or closed by the time since the last frame. Without the
      * animation it jumps straight there. Returns whether anything of the list is to be drawn.
      */
-    private static boolean advanceSlide(boolean shown) {
-        long now = System.nanoTime();
+    static boolean advanceSlide(boolean shown, boolean animated, long now) {
         // A long gap - the list closed, the game paused - starts the slide afresh, not halfway.
         float seconds = slideAtNs == 0L ? 0.0f : Math.min(0.1f, (now - slideAtNs) / 1.0e9f);
         slideAtNs = now;
-        if (!AlpakaConfig.instance.customTabAnimated) {
+        if (!animated) {
             slide = shown ? 1.0f : 0.0f;
         } else {
             float step = seconds / SLIDE_SECONDS;
             slide = Math.max(0.0f, Math.min(1.0f, slide + (shown ? step : -step)));
         }
-        if (slide <= 0.0f) slideAtNs = 0L;
+        // Only once it is fully closed and staying closed: reset on the first frame of opening, the
+        // clock would start over every frame and the list would never come out.
+        if (slide <= 0.0f && !shown) slideAtNs = 0L;
         return slide > 0.0f;
     }
 

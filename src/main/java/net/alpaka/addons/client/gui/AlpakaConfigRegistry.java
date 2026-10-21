@@ -443,6 +443,20 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customTabToggle = v; AlpakaConfig.save(); },
                 "tab list toggle press hold key keep open player list switch"));
 
+        OPTIONS.add(new ConfigOption("custom_tab_animated", "Slide Animation",
+                "The tab list slides down from the top of the screen when it opens and back up when it closes, instead of appearing at once.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabAnimated,
+                v -> { AlpakaConfig.instance.customTabAnimated = v; AlpakaConfig.save(); },
+                "tab list slide animation animated open close smooth dock drop down appear instantly"));
+
+        OPTIONS.add(new ConfigOption("custom_tab_background", "Background",
+                "Draws the panel behind the tab list. Off leaves only the text.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabBackground,
+                v -> { AlpakaConfig.instance.customTabBackground = v; AlpakaConfig.save(); },
+                "tab list background panel box transparent none hide disable off text only"));
+
         OPTIONS.add(new ConfigOption("custom_tab_scale", "Scale",
                 "How big the tab list is drawn.",
                 ConfigCategory.VISUALS,

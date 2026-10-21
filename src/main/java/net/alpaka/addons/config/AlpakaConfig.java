@@ -1030,10 +1030,10 @@ public class AlpakaConfig {
         this.playerModelHideArmor = false;
         this.playerModelShowInGuis = false;
         this.worldAgeHudEnabled = false;
-        this.customTabEnabled = false;
         this.slayerHudEnabled = false;
         this.slayerHudPauseOutsideArea = false;
         this.slayerHudOnlyInSlayerAreas = false;
+        this.customTabEnabled = false;
         this.allowApiCalls = false;
         this.slayerTimerEnabled = false;
         this.slayerTimerChatEnabled = false;

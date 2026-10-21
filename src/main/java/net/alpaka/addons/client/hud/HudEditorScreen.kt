@@ -104,7 +104,7 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
         // Draw the HUD exactly as it appears in-game, then annotate it.
         element.render(graphics, element.visibleAnchorX(this.width, this.height), element.visibleAnchorY(this.width, this.height))
 
-        val box = element.visibleBounds(this.width, this.height)
+        val box = element.outlineBounds(element.visibleBounds(this.width, this.height))
         val disabled = !element.isFeatureEnabled
 
         if (disabled) {

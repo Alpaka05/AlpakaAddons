@@ -470,6 +470,17 @@ public class AlpakaConfig {
     public boolean chatSearchEnabled = true;
     /** Scrolling the chat glides the lines into place instead of jumping a line per notch. */
     public boolean chatSmoothScrollEnabled = true;
+    /** The open chat's scrollbar is a wider, rounded bar that can be dragged with the mouse. */
+    public boolean chatScrollbarEnabled = true;
+    /** The chat is a HUD element: the HUD editor can move it and resize it. */
+    public boolean chatMovable = false;
+    /**
+     * Where the moved chat sits, as an offset from vanilla's place (its bottom-left corner, 40 GUI
+     * pixels above the screen's bottom), so it stays put relative to the bottom when the window or
+     * the GUI scale changes.
+     */
+    public int chatOffsetX = 0;
+    public int chatOffsetY = 0;
     /** Moving forward sprints on its own, without holding the sprint key. */
     /** Off for fresh installs. Vanilla's own toggle-sprint option already does this for most players. */
     public boolean alwaysSprintEnabled = false;
@@ -1037,6 +1048,8 @@ public class AlpakaConfig {
         this.scoreboardAlpakaFooter = false;
         this.chatSearchEnabled = false;
         this.chatSmoothScrollEnabled = false;
+        this.chatScrollbarEnabled = false;
+        this.chatMovable = false;
         this.alwaysSprintEnabled = false;
         this.expandChatHistory = false;
         this.chatPeekEnabled = false;

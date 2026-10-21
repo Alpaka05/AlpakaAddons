@@ -14,6 +14,7 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
+import kotlin.math.abs
 import kotlin.math.asin
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -39,7 +40,12 @@ import kotlin.math.sqrt
  *
  * The commands come in pages ([CommandWheelPages]), so a long list never crowds the dial. Arrows at
  * the left and right screen edges step through the pages, as does the mouse wheel; the arrows sit
- * far enough out that aiming at them never counts as aiming at a segment.
+ * far enough out that aiming at them never counts as aiming at a segment. Usually the player wants
+ * the next page, not the one after it, so each arrow turns once per visit and both arrows and the
+ * mouse wheel turn one page per gesture (see [tryStepPage]).
+ *
+ * The dial grows until no two labels overlap; if that no longer fits between the arrows, the whole
+ * wheel is scaled down instead of letting the names run into each other.
  *
  * Everything moves on eased curves driven by real frame time, so it looks the same at 60 and 240
  * frames per second, and everything rounded is drawn by [WheelMesh] rather than stacked rectangles.
@@ -54,8 +60,21 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
     private var highlight = FloatArray(0)
     private var selectedIndex = -1
 
-    /** False from the moment a hovered arrow turned the page until the mouse leaves the arrows. */
+    /**
+     * False from the moment a hovered arrow turned the page until the mouse has clearly moved away
+     * from the arrows again, [ARROW_REARM] pixels past their hit area, so wobbling on the edge of an
+     * arrow cannot turn a second page.
+     */
     private var arrowHoverArmed = true
+
+    /** When the page last turned, by arrow or scroll; nothing turns again within [PAGE_COOLDOWN_NANOS]. */
+    private var lastPageTurnNanos = 0L
+
+    /** When the last scroll event came in; a scroll only turns the page if it starts a new gesture. */
+    private var lastScrollNanos = 0L
+
+    /** The current page's layout for the current screen size; rebuilt by showPage() and init(). */
+    private var cachedLayout: Layout? = null
 
     /** 0 while nothing is aimed at, 1 while a segment is selected; fades the wedge and hub rim. */
     private var aim = 0f
@@ -82,6 +101,19 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
         commands = if (pages.isEmpty()) emptyList() else pages[page]
         highlight = FloatArray(commands.size)
         selectedIndex = -1
+        cachedLayout = null
+    }
+
+    /**
+     * Turns the page unless it turned a moment ago. Arrows and scrolling share the cooldown, so
+     * hovering an arrow while a trackpad flick is still running out turns one page, not two.
+     */
+    private fun tryStepPage(delta: Int): Boolean {
+        val now = System.nanoTime()
+        if (lastPageTurnNanos != 0L && now - lastPageTurnNanos < PAGE_COOLDOWN_NANOS) return false
+        lastPageTurnNanos = now
+        stepPage(delta)
+        return true
     }
 
     private fun stepPage(delta: Int) {
@@ -131,7 +163,12 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
         if (scrollY != 0.0 && pages.size > 1) {
-            stepPage(if (scrollY < 0) 1 else -1)
+            // One page per scroll gesture: a trackpad swipe or a fast spin of the wheel sends a
+            // burst of events, and only the first one after a pause turns the page.
+            val now = System.nanoTime()
+            val newGesture = lastScrollNanos == 0L || now - lastScrollNanos > SCROLL_GESTURE_GAP_NANOS
+            lastScrollNanos = now
+            if (newGesture) tryStepPage(if (scrollY < 0) 1 else -1)
             return true
         }
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)
@@ -162,30 +199,83 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
         val hubRadius: Float,
         val ringInner: Float, val ringOuter: Float,
         val labelRadius: Float,
-        val sweep: Float
+        val sweep: Float,
+        /** The whole dial is drawn at this scale around its centre; below 1 only if it would not fit. */
+        val scale: Float
     )
 
-    private fun layout(count: Int): Layout {
+    private fun layout(count: Int): Layout =
+        cachedLayout?.takeIf { it.cx == this.width / 2f && it.cy == this.height / 2f }
+            ?: buildLayout(count).also { cachedLayout = it }
+
+    private fun buildLayout(count: Int): Layout {
         val cx = this.width / 2f
         val cy = this.height / 2f
         val sweep = TAU / count
+        val widths = IntArray(count) { GuiFont.width(this.font, commands[it]) }
+        val textHeight = (this.font.lineHeight - 1).toFloat()
 
-        var maxLabelWidth = 0
-        for (command in commands) maxLabelWidth = max(maxLabelWidth, GuiFont.width(this.font, command))
-
-        // Neighbouring labels near the top and bottom of the wheel sit almost side by side, so the
-        // label circle has to be wide enough for the longest name to clear its neighbour there.
+        // Push the ring out until no two labels touch, with a little air between them and room for
+        // the selected one to swell. Long names on a full page can need a much larger dial.
         var ringInner = 30f + max(0, count - 6) * 1.5f
-        if (count >= 3) {
-            val neededLabelRadius = (maxLabelWidth + 10f) / (2f * sin(sweep))
-            ringInner = max(ringInner, neededLabelRadius - RING_WIDTH - LABEL_GAP)
+        if (count >= 2) {
+            var steps = 0
+            while (labelsOverlap(ringInner + RING_WIDTH + LABEL_GAP, sweep, widths, textHeight) && steps < 600) {
+                ringInner += 2f
+                steps++
+            }
         }
-        // And it all has to fit on screen, label text included.
-        val roomInner = this.height / 2f - RING_WIDTH - LABEL_GAP - this.font.lineHeight * 1.3f - 10f
-        ringInner = min(ringInner, roomInner).coerceAtLeast(22f)
-
         val ringOuter = ringInner + RING_WIDTH
-        return Layout(cx, cy, HUB_RADIUS, ringInner, ringOuter, ringOuter + LABEL_GAP, sweep)
+        val labelRadius = ringOuter + LABEL_GAP
+
+        // How far the dial reaches from its centre, labels included, at their selected size.
+        var reachX = ringOuter + SELECT_GROWTH
+        var reachY = ringOuter + SELECT_GROWTH
+        for (i in 0 until count) {
+            val angle = -TAU / 4f + i * sweep
+            val r = labelRadius + SELECT_GROWTH
+            val ax = cos(angle) * r
+            val ay = sin(angle) * r
+            val w = widths[i] * (1f + LABEL_GROWTH)
+            val h = textHeight * (1f + LABEL_GROWTH)
+            reachX = max(reachX, max(-(ax + (cos(angle) - 1f) * w / 2f), ax + (cos(angle) + 1f) * w / 2f))
+            reachY = max(reachY, max(-(ay + (sin(angle) - 1f) * h / 2f), ay + (sin(angle) + 1f) * h / 2f))
+        }
+        // It has to fit between the page arrows and above the page counter; if it does not, the
+        // whole dial shrinks rather than the labels moving back into each other.
+        val roomX = this.width / 2f - (if (pages.size > 1) ARROW_ZONE_WIDTH else 0f) - 6f
+        val roomY = this.height / 2f - (if (pages.size > 1) 30f else 8f)
+        val scale = min(1f, min(roomX / reachX, roomY / reachY)).coerceAtLeast(0.3f)
+
+        return Layout(cx, cy, HUB_RADIUS, ringInner, ringOuter, labelRadius, sweep, scale)
+    }
+
+    /** Whether any two labels' boxes, padded a little, overlap with the label circle at [radius]. */
+    private fun labelsOverlap(radius: Float, sweep: Float, widths: IntArray, textHeight: Float): Boolean {
+        val count = widths.size
+        val left = FloatArray(count)
+        val top = FloatArray(count)
+        val right = FloatArray(count)
+        val bottom = FloatArray(count)
+        for (i in 0 until count) {
+            val angle = -TAU / 4f + i * sweep
+            val cosA = cos(angle)
+            val sinA = sin(angle)
+            val ax = cosA * radius
+            val ay = sinA * radius
+            val x = ax + (cosA - 1f) * widths[i] / 2f
+            val y = ay + (sinA - 1f) * textHeight / 2f
+            left[i] = x - LABEL_PAD_X
+            right[i] = x + widths[i] + LABEL_PAD_X
+            top[i] = y - LABEL_PAD_Y
+            bottom[i] = y + textHeight + LABEL_PAD_Y
+        }
+        for (i in 0 until count) {
+            for (j in i + 1 until count) {
+                if (left[i] < right[j] && left[j] < right[i] && top[i] < bottom[j] && top[j] < bottom[i]) return true
+            }
+        }
+        return false
     }
 
     private fun segmentAngle(layout: Layout, index: Int): Float = -TAU / 4f + index * layout.sweep
@@ -194,7 +284,7 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
     private fun pick(layout: Layout, mouseX: Int, mouseY: Int, count: Int): Int {
         val dx = mouseX - layout.cx
         val dy = mouseY - layout.cy
-        if (sqrt(dx * dx + dy * dy) < DEAD_ZONE) return -1
+        if (sqrt(dx * dx + dy * dy) < DEAD_ZONE * layout.scale) return -1
         var bearing = atan2(dy, dx) + TAU / 4f + layout.sweep / 2f
         bearing = ((bearing % TAU) + TAU) % TAU
         return (bearing / layout.sweep).toInt().coerceIn(0, count - 1)
@@ -203,17 +293,27 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
     /** Centre x of the page arrow: 0 is the left one, 1 the right one. */
     private fun arrowCenterX(arrow: Int): Float = if (arrow == 0) ARROW_MARGIN else this.width - ARROW_MARGIN
 
+    /**
+     * How far the mouse is outside an arrow's hit area, 0 or less while inside. The hit area is a
+     * tall strip along the screen edge, much larger than the drawn arrow, so a quick flick sideways
+     * finds it without aiming.
+     */
+    private fun arrowDistance(arrow: Int, mouseX: Double, mouseY: Double): Double {
+        val dx = if (arrow == 0) mouseX - ARROW_ZONE_WIDTH else (this.width - ARROW_ZONE_WIDTH) - mouseX
+        val dy = abs(mouseY - this.height / 2.0) - ARROW_ZONE_HALF_HEIGHT
+        return max(dx, dy)
+    }
+
     /** Which page arrow the mouse is over, 0 left, 1 right, or -1. Only with more than one page. */
     private fun arrowAt(mouseX: Double, mouseY: Double): Int {
         if (pages.size <= 1) return -1
-        val ay = this.height / 2f
-        for (arrow in 0..1) {
-            val dx = mouseX - arrowCenterX(arrow)
-            val dy = mouseY - ay
-            if (dx * dx + dy * dy <= ARROW_HIT * ARROW_HIT) return arrow
-        }
+        for (arrow in 0..1) if (arrowDistance(arrow, mouseX, mouseY) <= 0.0) return arrow
         return -1
     }
+
+    /** Whether the mouse is well clear of both arrows, far enough to let them turn the page again. */
+    private fun clearOfArrows(mouseX: Double, mouseY: Double): Boolean =
+        pages.size <= 1 || (0..1).all { arrowDistance(it, mouseX, mouseY) > ARROW_REARM }
 
     // -------------------------------------------------------------- animation
 
@@ -249,13 +349,11 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
         val hoveredArrow = arrowAt(mouseX.toDouble(), mouseY.toDouble())
 
         // Pointing at an arrow turns the page, no click needed. It turns once per visit: the mouse
-        // has to leave the arrow before it can turn again, so resting on it does not keep flipping.
+        // has to move well away from the arrows before they can turn again, so resting on one, or
+        // jittering across the edge of its hit area, does not keep flipping.
         if (hoveredArrow >= 0) {
-            if (arrowHoverArmed) {
-                arrowHoverArmed = false
-                stepPage(if (hoveredArrow == 0) -1 else 1)
-            }
-        } else {
+            if (arrowHoverArmed && tryStepPage(if (hoveredArrow == 0) -1 else 1)) arrowHoverArmed = false
+        } else if (clearOfArrows(mouseX.toDouble(), mouseY.toDouble())) {
             arrowHoverArmed = true
         }
 
@@ -285,7 +383,7 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
         val pose = graphics.pose()
         pose.pushMatrix()
         val openScale = 0.86f + 0.14f * open
-        pose.scaleAround(openScale, openScale, layout.cx, layout.cy)
+        pose.scaleAround(openScale * layout.scale, openScale * layout.scale, layout.cx, layout.cy)
 
         // A soft pool of shadow behind the whole wheel, so it reads as sitting above the world
         // rather than being stamped onto it.
@@ -406,23 +504,24 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
 
             mesh.disc(ax, ay, ARROW_RADIUS * lift, scaleAlpha(COLOR_HUB, open))
             mesh.ring(
-                ax, ay, ARROW_RADIUS * lift - 1f, ARROW_RADIUS * lift,
+                ax, ay, ARROW_RADIUS * lift - 1.5f, ARROW_RADIUS * lift,
                 scaleAlpha(lerpColor(ModernGuiUtils.COLOR_CARD_BORDER, accent, glow), open)
             )
             mesh.submit(graphics)
 
             // A chevron: two slanted bars meeting at the point, drawn as thin quads.
             val color = scaleAlpha(lerpColor(COLOR_LABEL, accent, glow), open)
-            val tipX = ax + direction * 3.5f
-            val backX = ax - direction * 2.5f
-            val t = 1.6f
+            val tipX = ax + direction * 5f * lift
+            val backX = ax - direction * 4f * lift
+            val arm = 9.5f * lift
+            val t = 2.6f
             mesh.quad(
-                backX, ay - 6f, color, backX + direction * t, ay - 6f, color,
+                backX, ay - arm, color, backX + direction * t, ay - arm, color,
                 tipX + direction * t, ay, color, tipX, ay, color
             )
             mesh.quad(
                 tipX, ay, color, tipX + direction * t, ay, color,
-                backX + direction * t, ay + 6f, color, backX, ay + 6f, color
+                backX + direction * t, ay + arm, color, backX, ay + arm, color
             )
             mesh.submit(graphics)
         }
@@ -457,10 +556,23 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
         private const val WEDGE_HALF_WIDTH = 4.5f
         private const val LABEL_GROWTH = 0.22f
 
-        /** Distance of the page arrows' centres from the screen edge, and their size and hit radius. */
-        private const val ARROW_MARGIN = 30f
-        private const val ARROW_RADIUS = 13f
-        private const val ARROW_HIT = 20f
+        /** Padding around each label when checking that neighbours do not overlap. */
+        private const val LABEL_PAD_X = 5f
+        private const val LABEL_PAD_Y = 2f
+
+        /** Distance of the page arrows' centres from the screen edge, and their drawn radius. */
+        private const val ARROW_MARGIN = 40f
+        private const val ARROW_RADIUS = 21f
+        /** The arrows' hit area: a strip this wide along each screen edge, this far above and below the centre. */
+        private const val ARROW_ZONE_WIDTH = 76f
+        private const val ARROW_ZONE_HALF_HEIGHT = 60f
+        /** How far the mouse has to move away from an arrow's hit area before it can turn the page again. */
+        private const val ARROW_REARM = 28.0
+
+        /** No second page turn within this long of the first, from either arrows or scrolling. */
+        private const val PAGE_COOLDOWN_NANOS = 350_000_000L
+        /** A pause this long between scroll events ends one scroll gesture and lets the next turn a page. */
+        private const val SCROLL_GESTURE_GAP_NANOS = 250_000_000L
 
         private const val COLOR_SEGMENT = 0xE8262626.toInt()
         private const val COLOR_SEGMENT_OUTER = 0xE82C2C2C.toInt()

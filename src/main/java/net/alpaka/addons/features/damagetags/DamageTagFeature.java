@@ -17,7 +17,7 @@ public class DamageTagFeature {
     private static final Pattern DAMAGE_NUMBER = Pattern.compile("^(?:\\d{1,3}(?:,\\d{3})*|\\d+(?:\\.\\d+)?[kKmMbB])$");
 
     /**
-     * The heart Hypixel puts after a hit the Wing of Love accessory doubled. Matched in both forms
+     * The heart Hypixel puts after a hit the Ring of Love accessory doubled. Matched in both forms
      * so a resource pack or font swap between the two does not lose the tag.
      */
     private static final char LOVE_HEART = '❤';
@@ -45,7 +45,7 @@ public class DamageTagFeature {
 
     /**
      * A damage splash read off its armor stand: the number as Hypixel wrote it, whether it crit, and
-     * whether Wing of Love doubled it (the heart after the number).
+     * whether Ring of Love doubled it (the heart after the number).
      */
     public record Splash(String number, boolean crit, boolean love) {}
 
@@ -92,7 +92,7 @@ public class DamageTagFeature {
         // A crit carries its star (✧ or ✦) and always stays visible.
         if (clean.indexOf('✧') >= 0 || clean.indexOf('✦') >= 0) return false;
 
-        // A Wing of Love hit is still a normal hit; its heart is not part of the number.
+        // A Ring of Love hit is still a normal hit; its heart is not part of the number.
         if (clean.indexOf(LOVE_HEART) >= 0 || clean.indexOf(LOVE_HEART_ALT) >= 0) {
             clean = clean.replaceAll("[❤♥\\s]", "");
         }

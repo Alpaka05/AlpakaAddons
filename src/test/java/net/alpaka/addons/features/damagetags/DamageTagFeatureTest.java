@@ -32,7 +32,7 @@ class DamageTagFeatureTest {
         assertEquals(hide, DamageTagFeature.isNonCritDamageTag(name.strip()));
     }
 
-    /** Wing of Love's doubled hits end in a heart; the custom tags read them like any other splash. */
+    /** Ring of Love's doubled hits end in a heart; the custom tags read them like any other splash. */
     @ParameterizedTest(name = "{0} -> {1} crit {2} love {3}")
     @CsvSource(delimiter = '|', value = {
             "§71,234             | 1,234 | false | false",

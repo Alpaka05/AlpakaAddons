@@ -23,8 +23,7 @@ public class SkyblockUtils {
      * How long an {@link #isOnSkyblock()} verdict is reused.
      *
      * The answer changes only when the player changes server, which no amount of polling will catch
-     * sooner than the next sidebar packet anyway. Half a second is the same interval
-     * {@code PangolinHighlightFeature} caches its own sidebar read at.
+     * sooner than the next sidebar packet anyway, so half a second is plenty.
      */
     private static final long SKYBLOCK_CACHE_MS = 500L;
 

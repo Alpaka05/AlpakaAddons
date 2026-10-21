@@ -1571,22 +1571,6 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.ragnarockEnabled = v; AlpakaConfig.save(); },
                 "ragnarock ragnarok rag axe sword cast casting countdown timer crosshair action bar ability strength"));
 
-        OPTIONS.add(new ConfigOption("Mob Highlights", ConfigCategory.SKYBLOCK));
-
-        OPTIONS.add(new ConfigOption("pangolin_highlight_enabled", "Highlight Pangolins",
-                "Outlines Pangolins in Torrhus Canyon while they are clearly in view.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.pangolinHighlightEnabled,
-                v -> { AlpakaConfig.instance.pangolinHighlightEnabled = v; AlpakaConfig.save(); },
-                "pangolin highlight glow outline critter torrhus torhus canyon hideaway armadillo skyblock"));
-
-        OPTIONS.add(ConfigOption.color("pangolin_highlight_color", "Outline Color",
-                "The glowing outline's color.",
-                ConfigCategory.SKYBLOCK,
-                c -> c.pangolinHighlightColor,
-                v -> { AlpakaConfig.instance.pangolinHighlightColor = v; AlpakaConfig.save(); },
-                "pangolin outline color glow highlight picker critter torrhus canyon pangolin outline color highlighted"));
-
         OPTIONS.add(new ConfigOption("Damage Display", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("only_crit_damage", "Only Show Crit Damage",

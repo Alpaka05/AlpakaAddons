@@ -210,6 +210,20 @@ public final class DevScreenshotTour {
                 Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.features.wheel.CommandWheelScreen());
                 placeMouse(0.5, 0.5);
             }, () -> true, 2),
+            // The wheel on a full page of long names: they must not run into each other, and the
+            // page arrows sit at the edges.
+            new Stop("command-wheel-long", () -> {
+                AlpakaConfig.instance.commandWheelPages = new java.util.ArrayList<>(List.of(
+                        new java.util.ArrayList<>(List.of("/warp dungeon_hub", "/party transfer someone",
+                                "/visit portalhub", "/warp crimson_isle", "/wardrobe", "/pets",
+                                "/call kat", "/warp garden", "/storage", "/viewrecipe hyperion",
+                                "/equipment", "/hotm")),
+                        new java.util.ArrayList<>(List.of("/hub", "/island"))));
+                Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.features.wheel.CommandWheelScreen());
+                placeMouse(0.56, 0.3);
+            }, () -> true, 30),
+            new Stop("command-wheel-arrow", () -> placeMouse(0.97, 0.5), () -> true, 20),
+            new Stop(null, () -> AlpakaConfig.instance.commandWheelPages = null, () -> true, 1),
             new Stop(null, () -> Minecraft.getInstance().gui.setScreen(null), () -> true, 5),
             new Stop(null, () -> Minecraft.getInstance().gui.setScreen(null), () -> true, 5),
             // Two ticks after a burst: the lines are mid-slide inside the chat's box.

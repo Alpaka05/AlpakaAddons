@@ -132,16 +132,18 @@ public final class CustomTabFeature {
         CustomTabLayout layout = layout(tabList, screenWidth, screenHeight);
         if (layout == null || layout.texts.isEmpty()) return true;
         float scale = cachedScale;
+        float guiScale = (float) mc.getWindow().getGuiScale();
 
         // Closed, the whole panel - shadow included - sits just above the screen.
         float hidden = 1.0f - easeOut(slide);
         float offset = -hidden * (layout.height + DOCK_OVERLAP) * scale;
+        // The left edge on a whole screen pixel, as the scale is, so every glyph pixel lands on one.
+        float left = Math.round((screenWidth - layout.width * scale) / 2.0f * guiScale) / guiScale;
 
         graphics.nextStratum();
         graphics.pose().pushMatrix();
-        graphics.pose().translate(screenWidth / 2.0f, TOP + offset);
+        graphics.pose().translate(left, TOP + offset);
         graphics.pose().scale(scale, scale);
-        graphics.pose().translate(-layout.width / 2.0f, 0.0f);
 
         if (!AlpakaConfig.instance.customTabBackground) {
             // Text only: its drop shadow keeps it readable over the world.
@@ -201,11 +203,12 @@ public final class CustomTabFeature {
      * restyles each, which is work not worth doing every frame for text that changes once a second.
      */
     private static CustomTabLayout layout(PlayerTabOverlay tabList, int screenWidth, int screenHeight) {
-        float scale = AlpakaConfig.instance.customTabScale;
+        float guiScale = (float) Minecraft.getInstance().getWindow().getGuiScale();
+        float scale = crisp(AlpakaConfig.instance.customTabScale, guiScale, false);
         boolean smooth = AlpakaConfig.instance.customTabSmoothFont && GuiFont.selectedIndex() != 0;
         boolean stacked = AlpakaConfig.instance.customTabLayout == 1;
         boolean hideAdverts = AlpakaConfig.instance.customTabHideAds;
-        String key = screenWidth + "x" + screenHeight + "@" + scale + "/" + smooth + GuiFont.selectedIndex()
+        String key = screenWidth + "x" + screenHeight + "@" + scale + "x" + guiScale + "/" + smooth + GuiFont.selectedIndex()
                 + "/" + stacked + "/" + hideAdverts;
         long now = System.currentTimeMillis();
         if (cached != null && key.equals(cachedKey) && now - cachedAtMs < REBUILD_MS) return cached;
@@ -247,19 +250,33 @@ public final class CustomTabFeature {
 
         // Laid out at the chosen scale first. A list taller than the screen - a big GUI scale, a
         // small window - is laid out once more at the scale that makes it fit, which can wrap it
-        // differently, and then shrunk the rest of the way if it still does not.
+        // differently, and then shrunk the rest of the way if it still does not. Every scale is
+        // rounded to whole screen pixels per text pixel (see crisp), down when it has to fit.
         float available = screenHeight - TOP - SCREEN_MARGIN;
         CustomTabLayout layout = build(header, categories, footer, stacked, screenWidth, screenHeight, scale);
         if (layout.height * scale > available) {
-            scale = available / layout.height;
+            scale = crisp(available / layout.height, guiScale, true);
             layout = build(header, categories, footer, stacked, screenWidth, screenHeight, scale);
-            scale = Math.min(scale, available / layout.height);
+            if (layout.height * scale > available) scale = crisp(available / layout.height, guiScale, true);
         }
         cached = layout;
         cachedScale = scale;
         cachedAtMs = now;
         cachedKey = key;
         return cached;
+    }
+
+    /**
+     * The scale rounded so one pixel of the text covers a whole number of screen pixels. At 0.87
+     * of GUI scale 4, say, a glyph pixel spans 3.48 screen pixels, so some columns come out three
+     * pixels wide and some four, and the text looks soft and uneven; 0.75 makes every one three.
+     * Rounded down where the list has to fit, to the nearest otherwise. Below one screen pixel per
+     * text pixel there is nothing whole to round to, and the scale is left as it is.
+     */
+    static float crisp(float scale, float guiScale, boolean down) {
+        float pixels = scale * guiScale;
+        float whole = down ? (float) Math.floor(pixels + 1.0e-4f) : Math.round(pixels);
+        return whole < 1.0f ? scale : whole / guiScale;
     }
 
     private static CustomTabLayout build(List<Component> header, List<TabListParser.Category> categories,

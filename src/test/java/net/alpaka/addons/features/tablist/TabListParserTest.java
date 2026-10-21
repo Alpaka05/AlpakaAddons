@@ -77,6 +77,16 @@ class TabListParserTest {
     }
 
     @Test
+    void scaleIsRoundedToWholeScreenPixels() {
+        assertEquals(0.75f, CustomTabFeature.crisp(0.87f, 4.0f, true));
+        assertEquals(1.0f, CustomTabFeature.crisp(1.0f, 3.0f, true));
+        assertEquals(1.0f, CustomTabFeature.crisp(1.1f, 2.0f, false));
+        assertEquals(1.5f, CustomTabFeature.crisp(1.3f, 2.0f, false));
+        // Under one screen pixel per text pixel nothing whole is left to round to.
+        assertEquals(0.8f, CustomTabFeature.crisp(0.8f, 1.0f, true));
+    }
+
+    @Test
     void layoutStacksOrSpreadsCategories() {
         List<Component> slots = new ArrayList<>();
         slots.addAll(column("Players (2)", "[1] A", "[2] B"));

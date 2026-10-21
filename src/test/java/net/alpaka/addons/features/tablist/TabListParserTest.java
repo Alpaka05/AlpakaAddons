@@ -77,6 +77,21 @@ class TabListParserTest {
     }
 
     @Test
+    void slideComesOutAfterTheFirstFrame() {
+        long frame = 16_000_000L;
+        long now = 1_000_000_000L;
+        while (CustomTabFeature.advanceSlide(false, true, now)) now += frame;
+        now += 5_000_000_000L;
+        // The first frame of opening has no time behind it yet; the next one must move the list out.
+        assertFalse(CustomTabFeature.advanceSlide(true, true, now));
+        assertTrue(CustomTabFeature.advanceSlide(true, true, now + frame));
+        // Closed again, it goes away within the slide's length.
+        now += frame;
+        for (int i = 0; i < 20; i++) CustomTabFeature.advanceSlide(false, true, now += frame);
+        assertFalse(CustomTabFeature.advanceSlide(false, true, now + frame));
+    }
+
+    @Test
     void scaleIsRoundedToWholeScreenPixels() {
         assertEquals(0.75f, CustomTabFeature.crisp(0.87f, 4.0f, true));
         assertEquals(1.0f, CustomTabFeature.crisp(1.0f, 3.0f, true));

@@ -333,7 +333,7 @@ public class AlpakaConfig {
     public boolean slayerTimerChatEnabled = true;
     /** Show the running time on screen while the boss is up. */
     public boolean slayerTimerHudEnabled = true;
-    /** The Ragnarock axe's cast countdown under the crosshair instead of in the action bar. */
+    /** The Ragnarock's cast countdown under the crosshair instead of in the action bar. */
     public boolean ragAxeCountdownEnabled = true;
     public int slayerTimerHudX = net.alpaka.addons.client.hud.HudDefaults.SLAYER_TIMER_X;
     public int slayerTimerHudY = net.alpaka.addons.client.hud.HudDefaults.SLAYER_TIMER_Y;

@@ -492,8 +492,8 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VISUALS,
                 () -> (float) AlpakaConfig.instance.smoothChatStrength,
                 v -> { AlpakaConfig.instance.smoothChatStrength = Math.round(v); AlpakaConfig.save(); },
-                1.0f, 10.0f, v -> Math.round(v) + " / 10",
-                "smooth chat strength speed duration animation slow fast slider visible"));
+                1.0f, 10.0f, v -> Math.round(v) * 60 + " ms",
+                "smooth chat strength speed duration animation slow fast slider visible time ms"));
 
         OPTIONS.add(new ConfigOption("chat_open_animation", "Opening Animation",
                 "Opening the chat unrolls it smoothly from the input line instead of showing it at once.",

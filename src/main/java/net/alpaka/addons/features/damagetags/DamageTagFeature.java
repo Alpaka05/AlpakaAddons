@@ -21,11 +21,18 @@ public class DamageTagFeature {
     private static final Pattern DAMAGE_NUMBER = Pattern.compile("^(?:\\d{1,3}(?:,\\d{3})*|\\d+(?:\\.\\d+)?[kKmMbB])$");
 
     /**
-     * The decoration around a splash's number: crit stars, the asterisks some splashes carry, and the spaces
-     * between them. Compiled once because {@code String.replaceAll} compiles its pattern on every call, and this
-     * runs for every live splash on every frame through the shouldRender hook.
+     * The decoration around a splash's number: crit stars, Ring of Love's heart, the asterisks some splashes
+     * carry, and the spaces between them. Compiled once because {@code String.replaceAll} compiles its pattern on
+     * every call, and this runs for every live splash on every frame through the shouldRender hook.
      */
-    private static final Pattern SPLASH_DECORATION = Pattern.compile("[✧✦*\\s]");
+    private static final Pattern SPLASH_DECORATION = Pattern.compile("[✧✦❤♥*\\s]");
+
+    /**
+     * The heart Hypixel puts after a hit the Ring of Love accessory doubled. Matched in both forms
+     * so a resource pack or font swap between the two does not lose the tag.
+     */
+    private static final char LOVE_HEART = '❤';
+    private static final char LOVE_HEART_ALT = '♥';
 
     /** Damage splashes are short-lived; an armor stand older than this is a hologram, not a splash. */
     private static final int MAX_TAG_AGE_TICKS = 300;
@@ -47,8 +54,11 @@ public class DamageTagFeature {
         return isNonCritSplash(entity);
     }
 
-    /** A damage splash read off its armor stand: the number as Hypixel wrote it, and whether it crit. */
-    public record Splash(String number, boolean crit) {}
+    /**
+     * A damage splash read off its armor stand: the number as Hypixel wrote it, whether it crit, and
+     * whether Ring of Love doubled it (the heart after the number).
+     */
+    public record Splash(String number, boolean crit, boolean love) {}
 
     /** The splash this entity shows, or null when it is not a young armor stand named like one. */
     public static Splash parseSplash(Entity entity) {
@@ -65,10 +75,11 @@ public class DamageTagFeature {
 
         String clean = SkyblockUtils.cleanColor(customName).trim();
         boolean crit = clean.indexOf('✧') >= 0 || clean.indexOf('✦') >= 0;
-        // Stars, the asterisks some splashes carry, and the spaces between them are decoration.
+        boolean love = clean.indexOf(LOVE_HEART) >= 0 || clean.indexOf(LOVE_HEART_ALT) >= 0;
+        // Stars, hearts, the asterisks some splashes carry, and the spaces between them are decoration.
         String number = SPLASH_DECORATION.matcher(clean).replaceAll("");
         if (number.isEmpty() || !DAMAGE_NUMBER.matcher(number).matches()) return null;
-        return new Splash(number, crit);
+        return new Splash(number, crit, love);
     }
 
     /** A young armor stand whose name is a non-crit damage number. Other entities never are. */
@@ -96,6 +107,10 @@ public class DamageTagFeature {
         // A crit carries its star (✧ or ✦) and always stays visible.
         if (clean.indexOf('✧') >= 0 || clean.indexOf('✦') >= 0) return false;
 
+        // A Ring of Love hit is still a normal hit; its heart is not part of the number.
+        if (clean.indexOf(LOVE_HEART) >= 0 || clean.indexOf(LOVE_HEART_ALT) >= 0) {
+            clean = clean.replaceAll("[❤♥\\s]", "");
+        }
         return DAMAGE_NUMBER.matcher(clean).matches();
     }
 
@@ -152,6 +167,6 @@ public class DamageTagFeature {
         return (c >= '0' && c <= '9')
                 || c == ',' || c == '.' || c == '*' || Character.isWhitespace(c)
                 || c == 'k' || c == 'K' || c == 'm' || c == 'M' || c == 'b' || c == 'B'
-                || c == '✧' || c == '✦';
+                || c == '✧' || c == '✦' || c == LOVE_HEART || c == LOVE_HEART_ALT;
     }
 }

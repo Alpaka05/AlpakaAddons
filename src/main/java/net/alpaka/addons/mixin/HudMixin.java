@@ -1,6 +1,7 @@
 package net.alpaka.addons.mixin;
 
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.features.chat.ChatOverHud;
 import net.alpaka.addons.features.chat.ChatPeekFeature;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
 import net.alpaka.addons.features.inventoryhud.InventoryHudRenderer;
@@ -13,13 +14,16 @@ import net.alpaka.addons.features.slayer.SlayerTimerHudRenderer;
 import net.alpaka.addons.features.worldage.WorldAgeHudRenderer;
 import net.alpaka.addons.utils.AlpakaPerf;
 import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.Hud;
+import net.minecraft.client.gui.screens.LevelLoadingScreen;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.network.chat.Component;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -34,9 +38,30 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * whether or not a screen is open, which is what lets the overlays stay visible behind the chat.
  */
 @Mixin(Hud.class)
-public class HudMixin {
+public class HudMixin implements ChatOverHud.Late {
+    @Shadow @Final private Minecraft minecraft;
+    @Shadow private boolean isHidden;
     @Shadow private int toolHighlightTimer;
     @Shadow private ItemStack lastToolHighlight;
+
+    @Shadow private void extractChat(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) { throw new AssertionError("replaced by mixin"); }
+    @Shadow private void extractTabList(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) { throw new AssertionError("replaced by mixin"); }
+
+    /** Better Chat: the chat and the player list after the whole HUD, under the same conditions as in it. */
+    @Override
+    public void alpaka$extractChatLate(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+        if (this.isHidden || this.minecraft.gui.screen() instanceof LevelLoadingScreen) return;
+        this.extractChat(graphics, deltaTracker);
+        this.extractTabList(graphics, deltaTracker);
+    }
+
+    /** Better Chat draws the chat and the player list after the HUD instead; see ChatOverHud. */
+    @Inject(method = {"extractChat", "extractTabList"}, at = @At("HEAD"), cancellable = true)
+    private void alpaka$chatAfterHud(GuiGraphicsExtractor graphicsExtractor, DeltaTracker deltaTracker, CallbackInfo ci) {
+        if (ChatOverHud.defersHudCall()) {
+            ci.cancel();
+        }
+    }
 
     @Inject(method = "extractRenderState", at = @At("TAIL"))
     private void onExtractRenderState(GuiGraphicsExtractor graphicsExtractor, DeltaTracker deltaTracker, CallbackInfo ci) {

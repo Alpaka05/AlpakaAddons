@@ -4,7 +4,6 @@ import net.alpaka.addons.client.AlpakaConfigScreen;
 import net.alpaka.addons.client.AlpakaConfirmScreen;
 import net.alpaka.addons.client.gui.AlpakaStyle;
 import net.alpaka.addons.client.gui.GuiFont;
-import net.alpaka.addons.client.gui.ModernGuiUtils;
 import net.alpaka.addons.features.mainmenu.MenuStyle;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -26,8 +25,8 @@ import net.minecraft.network.chat.Component;
  * The world stays in sight behind it, blurred and dimmed as behind the config menu. The window has
  * the config's header - the logo, "ALPAKA" and the version, which is also the way into the config -
  * with the world or server the player is in on its right. Under it the buttons in the shape
- * vanilla uses: Resume Game across the top, washed in the accent; two rows of two; and, set apart
- * under a hairline, the red one to leave by.
+ * vanilla uses: Resume Game across the top, washed in the accent; two rows of two; and, a little
+ * apart, the red one to leave by.
  *
  * Opening plays as the config menu's does: the dim fades in, the window pops open, and the buttons
  * fade in one after another. Back from one of its dialogs the menu is simply there again.
@@ -45,12 +44,12 @@ public class CustomPauseScreen extends PauseScreen implements net.alpaka.addons.
     private static final int RESUME_HEIGHT = 22;
     private static final int BUTTON_HEIGHT = 20;
     private static final int ROW_GAP = 4;
-    /** The room either side of the hairline over the leave button. */
-    private static final int SEPARATOR_GAP = 6;
+    /** The room over the leave button, a little more than between the others to set it apart. */
+    private static final int LEAVE_GAP = 8;
 
-    /** Header, the four rows with the hairline between the third and the leave button, and the padding. */
+    /** Header, the four rows with the leave button set apart, and the padding. */
     private static final int PANEL_H = AlpakaStyle.HEADER_H + PAD + RESUME_HEIGHT + ROW_GAP
-            + 2 * (BUTTON_HEIGHT + ROW_GAP) - ROW_GAP + SEPARATOR_GAP * 2 + 1 + BUTTON_HEIGHT + PAD;
+            + 2 * (BUTTON_HEIGHT + ROW_GAP) - ROW_GAP + LEAVE_GAP + BUTTON_HEIGHT + PAD;
 
     // --------------------------------------------------------------- appearance
 
@@ -140,7 +139,7 @@ public class CustomPauseScreen extends PauseScreen implements net.alpaka.addons.
         int rowY = panelY() + AlpakaStyle.HEADER_H + PAD;
         int row2 = rowY + RESUME_HEIGHT + ROW_GAP;
         int row3 = row2 + BUTTON_HEIGHT + ROW_GAP;
-        int row4 = row3 + BUTTON_HEIGHT + SEPARATOR_GAP * 2 + 1;
+        int row4 = row3 + BUTTON_HEIGHT + LEAVE_GAP;
 
         // Row 1: back to the game, full width.
         this.resumeButton = new PauseButton(MenuStyle.Kind.PRIMARY, 2, fullX, rowY, INNER_W, RESUME_HEIGHT,
@@ -195,7 +194,7 @@ public class CustomPauseScreen extends PauseScreen implements net.alpaka.addons.
         });
         this.addRenderableWidget(this.wikiButton);
 
-        // Row 4: leaving, full width, red, set apart under a hairline.
+        // Row 4: leaving, full width, red, a little apart.
         String leaveText = isSingleplayerWorld() ? "Save & Quit" : "Disconnect";
         this.disconnectButton = new PauseButton(MenuStyle.Kind.DANGER, 5, fullX, row4, INNER_W, BUTTON_HEIGHT,
                 MenuStyle.ICON_DOOR, leaveText, btn -> {
@@ -267,11 +266,6 @@ public class CustomPauseScreen extends PauseScreen implements net.alpaka.addons.
             graphics.text(this.font, placeIcon, placeX - 5 - iconW, textY, AlpakaStyle.TEXT_MUTED, false);
             graphics.text(this.font, GuiFont.text(place), placeX, textY, AlpakaStyle.TEXT_MUTED, false);
         }
-
-        // The hairline that sets the leave button apart.
-        float leaveAppear = appearAt(elapsed(), 5);
-        int lineY = this.disconnectButton.getY() - SEPARATOR_GAP - 1;
-        ModernGuiUtils.drawRect(graphics, x + PAD, lineY, INNER_W, 1, fade(AlpakaStyle.LINE, leaveAppear));
         MenuStyle.endOpen(graphics, pushed);
     }
 

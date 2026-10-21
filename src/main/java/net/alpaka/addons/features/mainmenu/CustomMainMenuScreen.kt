@@ -40,7 +40,7 @@ import net.minecraft.network.chat.Component
  * The scene is what makes it more than a list of buttons (see [MenuAmbience]): a picture of a place,
  * softly out of focus and drifting like an idle camera, with fireflies rising through it. In front
  * of it, on the ground to the right, the player's skin stands as a live 3D model (see [MenuAvatar])
- * under a small name plate, with a shadow at its feet. It looks at the mouse, can be turned by
+ * under its name and a greeting, with a shadow at its feet. It looks at the mouse, can be turned by
  * dragging and waves when clicked. The mouse moves the picture, the avatar and the fireflies by
  * different amounts, which is what gives the flat picture its depth. Without the picture, the
  * panorama stands in.
@@ -129,9 +129,16 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         private const val STAGE_DELAY = 0.20f
         private const val LANDING_SECONDS = 0.55f
 
-        /** The name plate over the avatar: the panel's dark, a little see-through. */
-        private const val PLATE = 0xE6131313.toInt()
-        private const val PLATE_H = 16
+        /**
+         * The player's name over the avatar is in the larger title font. Its glyphs hang from a
+         * baseline further down than the normal text's, so they are drawn this far below their
+         * box's top for the capitals to start there.
+         */
+        private const val NAME_HEIGHT = 13
+        private const val NAME_BASELINE_DROP = 4
+        /** White over the picture, not the window's greys: those sink into the stone behind. */
+        private const val NAME = 0xFFFFFFFF.toInt()
+        private const val GREETING = 0x9EFFFFFF.toInt()
     }
 
     private var openTime = 0L
@@ -303,7 +310,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
     }
 
     /**
-     * The avatar on its spot in the scene, its shadow, and the name plate above it.
+     * The avatar on its spot in the scene, its shadow, and the greeting above it.
      *
      * In the background picture the spot is a place in it ([SPOT_X], [SPOT_FEET]): the avatar is
      * pinned there and moves exactly as the picture does, drift and parallax alike, so its feet stay
@@ -339,38 +346,27 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         avatar?.draw(graphics, cx, feet, modelHeight, mouseX, mouseY,
             this.width, this.height, arrive, if (placement != null) SCENE_TINT else 0xFFFFFFFF.toInt())
 
+        // The player's name over the avatar's head, and a greeting above it.
         val nameAppear = easeOutCubic((since - 0.35f) / 0.5f)
         if (nameAppear <= 0.01f) return
-        val plateTop = maxOf(4f, feet - MenuAmbience.snapToScreen(height + 10f + PLATE_H))
-        namePlate(graphics, cx, plateTop + (1f - nameAppear) * 6f, nameAppear)
+        val mc = this.minecraft ?: return
+        val rise = (1f - nameAppear) * 6f
+        val name = GuiFont.title(mc.user.name) ?: Component.literal(mc.user.name)
+        val greeting = GuiFont.text("Welcome back,")
+        // Placed by offsets from the avatar's feet and centre, each snapped once: the feet and
+        // centre are on the screen-pixel grid the picture and the avatar step on, so the labels
+        // step with them. Rounded to whole GUI pixels instead, they jumped at other moments than
+        // the avatar, several screen pixels at a time, and wobbled over its head.
+        val nameTop = maxOf(4f, feet - MenuAmbience.snapToScreen(height + 8f + NAME_HEIGHT))
+        label(graphics, name, cx, nameTop + NAME_BASELINE_DROP + rise, fade(NAME, nameAppear))
+        label(graphics, greeting, cx, nameTop - 10f + rise, fade(GREETING, nameAppear))
     }
 
-    /**
-     * The greeting over the avatar's head, on a small plate of the window's dark so it reads on any
-     * part of the picture: "Welcome back," muted, then the player's name.
-     *
-     * Placed by offsets from the avatar's feet and centre, each snapped once: the feet and centre
-     * are on the screen-pixel grid the picture and the avatar step on, so the plate steps with them.
-     * Rounded to whole GUI pixels instead, it jumped at other moments than the avatar, several
-     * screen pixels at a time, and wobbled over its head.
-     */
-    private fun namePlate(graphics: GuiGraphicsExtractor, centerX: Float, top: Float, appear: Float) {
-        val mc = this.minecraft ?: return
-        val greeting = GuiFont.text("Welcome back, ")
-        val name = GuiFont.text(mc.user.name)
-        val textW = this.font.width(greeting) + this.font.width(name)
-        val plateW = textW + 14
-        // Kept on the screen and clear of the window when the avatar stands near an edge.
-        val left = (centerX - MenuAmbience.snapToScreen(plateW / 2f))
-            .coerceAtMost(this.width - 4f - plateW).coerceAtLeast(Layout().let { it.panelX + it.panelW + 4f })
+    /** Text centred on [centerX] with its top at [top], placed to the fraction of a GUI pixel. */
+    private fun label(graphics: GuiGraphicsExtractor, text: Component, centerX: Float, top: Float, color: Int) {
         graphics.pose().pushMatrix()
-        graphics.pose().translate(left, top)
-        ModernGuiUtils.drawRoundedRect(graphics, 0, 0, plateW, PLATE_H, AlpakaStyle.CARD_RADIUS, fade(PLATE, appear))
-        // The accent's thin line along the plate's foot, like the config's focused field.
-        ModernGuiUtils.drawRect(graphics, 5, PLATE_H - 1, plateW - 10, 1, fade(MenuStyle.accent(), 0.7f * appear))
-        val textY = (PLATE_H - 8) / 2
-        graphics.text(this.font, greeting, 7, textY, fade(AlpakaStyle.TEXT_MUTED, appear), false)
-        graphics.text(this.font, name, 7 + this.font.width(greeting), textY, fade(AlpakaStyle.TEXT, appear), false)
+        graphics.pose().translate(centerX - MenuAmbience.snapToScreen(this.font.width(text) / 2f), top)
+        graphics.text(this.font, text, 0, 0, color, false)
         graphics.pose().popMatrix()
     }
 

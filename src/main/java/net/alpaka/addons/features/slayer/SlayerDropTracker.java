@@ -4,6 +4,7 @@ import net.alpaka.addons.AlpakaAddons;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.config.AlpakaStats;
 import net.alpaka.addons.features.sound.CustomSoundFeature;
+import net.alpaka.addons.utils.AlpakaPrefix;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.minecraft.client.Minecraft;
@@ -284,7 +285,7 @@ public class SlayerDropTracker {
     public static void sendModMessage(Component message) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null) {
-            MutableComponent prefix = Component.literal("§6[AA] ").append(message);
+            MutableComponent prefix = AlpakaPrefix.prefix().append(message);
             mc.player.sendSystemMessage(prefix);
         }
     }

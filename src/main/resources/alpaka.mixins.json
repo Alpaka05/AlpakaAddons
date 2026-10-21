@@ -54,6 +54,7 @@
     "ClientLevelMixin",
     "PictureInPictureRendererMixin",
     "NameTagFeatureRendererMixin",
+    "NameTagSubmitMixin",
     "ScreenEffectRendererMixin",
     "DownloadedPackSourceAccessor",
     "DownloadedPackSourceMixin",

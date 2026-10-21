@@ -727,22 +727,6 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.playerModelShowInGuis = v; AlpakaConfig.save(); },
                 "player model show in guis menus screen open container inventory HUD"));
 
-        OPTIONS.add(new ConfigOption("Scoreboard", ConfigCategory.VISUALS));
-
-        OPTIONS.add(new ConfigOption("scoreboard_blur", "Blurred Scoreboard Background",
-                "One rounded, blurred panel with a soft shadow behind the scoreboard. Uses the chat's Blur Strength.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.scoreboardBlurEnabled,
-                v -> { AlpakaConfig.instance.scoreboardBlurEnabled = v; AlpakaConfig.save(); },
-                "scoreboard sidebar blur background rounded panel glass frosted shadow"));
-
-        OPTIONS.add(new ConfigOption("scoreboard_alpaka_footer", "AlpakaAddons Scoreboard Footer",
-                "Replaces www.hypixel.net at the bottom of the scoreboard with AlpakaAddons in a gradient.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.scoreboardAlpakaFooter,
-                v -> { AlpakaConfig.instance.scoreboardAlpakaFooter = v; AlpakaConfig.save(); },
-                "scoreboard sidebar footer bottom line hypixel.net www address gradient alpakaaddons branding"));
-
         OPTIONS.add(new ConfigOption("Inventory HUD", ConfigCategory.VISUALS));
 
         OPTIONS.add(new ConfigOption("inventory_hud_enabled", "Enable Inventory HUD",
@@ -812,6 +796,22 @@ public class AlpakaConfigRegistry {
                 0.0f, 100.0f, val -> val == 0.0f ? "Off (0%)" : String.format(Locale.ROOT, "%.0f%%", val),
                 "inventory hud background opacity transparent blur tint backdrop strength"));
 
+
+        OPTIONS.add(new ConfigOption("Scoreboard", ConfigCategory.VISUALS));
+
+        OPTIONS.add(new ConfigOption("scoreboard_blur", "Blurred Scoreboard Background",
+                "One rounded, blurred panel with a soft shadow behind the scoreboard. Uses the chat's Blur Strength.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.scoreboardBlurEnabled,
+                v -> { AlpakaConfig.instance.scoreboardBlurEnabled = v; AlpakaConfig.save(); },
+                "scoreboard sidebar blur background rounded panel glass frosted shadow"));
+
+        OPTIONS.add(new ConfigOption("scoreboard_alpaka_footer", "AlpakaAddons Scoreboard Footer",
+                "Replaces www.hypixel.net at the bottom of the scoreboard with AlpakaAddons in a gradient.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.scoreboardAlpakaFooter,
+                v -> { AlpakaConfig.instance.scoreboardAlpakaFooter = v; AlpakaConfig.save(); },
+                "scoreboard sidebar footer bottom line hypixel.net www address gradient alpakaaddons branding"));
 
         // --- 2. ITEM VIEWMODEL ---
 

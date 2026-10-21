@@ -298,10 +298,23 @@ object SlayerSessionTracker {
         abs(yaw - lastYaw) > LOOK_EPSILON ||
         abs(pitch - lastPitch) > LOOK_EPSILON
 
-    /** The sidebar reports the boss is up. Starts the boss timer. */
-    fun onBossSpawned(@Suppress("UNUSED_PARAMETER") type: SlayerType) {
-        bossStartMs = System.currentTimeMillis()
+    /**
+     * The sidebar reports the boss is up. Starts the boss timer, but only for a boss seen rising out
+     * of grinding: one already up when first seen - after a warp, or once the quest reappears - has
+     * been fighting for an unknown time, and timing it from here would pull the average down.
+     */
+    fun onBossSpawned(@Suppress("UNUSED_PARAMETER") type: SlayerType, verified: Boolean) {
+        bossStartMs = if (verified) System.currentTimeMillis() else 0L
         lastActivityMs = System.currentTimeMillis()
+    }
+
+    /**
+     * Drops the running boss clock without a kill: the quest failed or was cancelled, or the world
+     * changed. Left running, it was closed by whichever kill came next - minutes later, with a
+     * whole re-grind inside it - and that one figure skewed the session's average boss time.
+     */
+    fun clearBossClock() {
+        bossStartMs = 0L
     }
 
     /**
@@ -310,7 +323,7 @@ object SlayerSessionTracker {
      * Killing a boss counts as activity in its own right, so a fight that ends after a long
      * stationary ranged phase does not leave the session looking idle.
      */
-    fun onBossKilled(type: SlayerType, killedAtMs: Long = System.currentTimeMillis()) {
+    fun onBossKilled(type: SlayerType, killedAtMs: Long = System.currentTimeMillis(), timed: Boolean = true) {
         // The moment the kill was noticed rather than the moment it is acted on, for the same reason
         // SlayerTimer takes it as a parameter: an inferred kill is held back for a second so dying
         // can veto it, and that hold must not land in the session's boss times.
@@ -322,11 +335,13 @@ object SlayerSessionTracker {
         session.started = true
         session.bossCount++
 
-        if (bossStartMs != 0L) {
+        // An untimed kill - a boss that came and went between two sidebar samples - has no fight of
+        // its own to add, and must not close whatever clock is left running onto its time.
+        if (timed && bossStartMs != 0L) {
             session.totalBossMs += now - bossStartMs
             session.timedBossCount++
-            bossStartMs = 0L
         }
+        bossStartMs = 0L
 
         val awarded = xpForTier(type, SlayerQuestDetector.lastSeenTier)
         session.xpGained += awarded

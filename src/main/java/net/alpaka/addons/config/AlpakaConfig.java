@@ -878,13 +878,24 @@ public class AlpakaConfig {
         public Map<String, Integer> drops = new HashMap<>();
 
         /**
-         * Fastest boss kill ever recorded for this slayer, in milliseconds, or -1 when none is.
+         * The old single best time per slayer, no longer read.
          *
-         * All-time rather than per session: a personal best that resets when the game restarts is
-         * not a personal best. Lives here with the kill and drop history because this is the part of
-         * the slayer data that is meant to persist.
+         * It was kept across every tier, so one quick tier 2 boss stood as the best for tier 5 as
+         * well, and it was written by fights the timer had not followed from start to end. Neither
+         * can be told apart afterwards, so these figures are dropped rather than carried over; the
+         * field stays only so that files which still hold one load without complaint.
          */
+        @Deprecated
         public long bestBossMs = -1L;
+
+        /**
+         * Fastest boss kill ever recorded for this slayer, in milliseconds, keyed by quest tier 1-5.
+         *
+         * Per tier because that is what a boss time means: a tier 5 and a tier 3 boss are different
+         * fights. All-time rather than per session, since a personal best that resets when the game
+         * restarts is not one.
+         */
+        public Map<Integer, Long> bestBossMsByTier = new HashMap<>();
 
         /**
          * Last known lifetime slayer XP for this slayer, or -1 when it has never been observed.

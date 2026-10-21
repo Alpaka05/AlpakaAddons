@@ -584,7 +584,7 @@ public class AlpakaConfig {
     public boolean customTabHideAds = true;
     public boolean customTabToggle = false;
     /** The list stays up in the chat and in inventories and chests, drawn above them. */
-    public boolean customTabInMenus = true;
+    public boolean customTabInMenus = false;
     /** The panel behind the list; off leaves only the text. */
     public boolean customTabBackground = true;
     /** The list slides down out of the top edge and back up instead of appearing at once. */

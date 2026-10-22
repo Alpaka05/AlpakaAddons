@@ -1448,9 +1448,12 @@ public class AlpakaConfigRegistry {
                                 v -> { AlpakaConfig.instance.slayerHudShowSinceRngDrop = v; AlpakaConfig.save(); }),
                         new ConfigOption.ToggleEntry("Polar Bear Effect",
                                 () -> AlpakaConfig.instance.slayerHudShowBear,
-                                v -> { AlpakaConfig.instance.slayerHudShowBear = v; AlpakaConfig.save(); })
+                                v -> { AlpakaConfig.instance.slayerHudShowBear = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Ham Radio (Blaze)",
+                                () -> AlpakaConfig.instance.slayerHudShowRadio,
+                                v -> { AlpakaConfig.instance.slayerHudShowRadio = v; AlpakaConfig.save(); })
                 ),
-                "slayer hud lines toggle show hide xp bosses per hour session time rng dry streak average bear gummy polar smoldering polarization effect slayer hud lines name total count session time"));
+                "slayer hud lines toggle show hide xp bosses per hour session time rng dry streak average bear gummy polar smoldering polarization effect slayer hud lines name total count session time ham radio blazetekk channel enjoyers"));
 
         OPTIONS.add(new ConfigOption("slayer_hud_bear_blaze_only", "Bear Line Only on Blaze",
                 "Shows the polar bear effect only on the Blaze HUD instead of on every slayer.",

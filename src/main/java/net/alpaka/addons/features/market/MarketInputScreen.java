@@ -456,7 +456,7 @@ public class MarketInputScreen extends SignEditScreen {
 
         int iconSize = 10;
         MarketIcons.draw(graphics, glyph(), x + 8, y + (FIELD_H - iconSize) / 2f, iconSize,
-                prompt.type() == SignPrompt.Type.PRICE ? COIN : accent);
+                prompt.type() == SignPrompt.Type.PRICE ? MarketInk.ink(COIN) : accent);
         int tx = x + 24;
         int ty = y + (FIELD_H - 8) / 2;
         int room = w - 24 - 8;
@@ -501,8 +501,8 @@ public class MarketInputScreen extends SignEditScreen {
         boolean coins = prompt.type() == SignPrompt.Type.PRICE;
         String reading = "= " + Coins.full(value) + (coins ? " coins" : "");
         int rw = GuiFont.width(this.font, reading);
-        graphics.text(this.font, GuiFont.text(reading), right - rw, y, coins ? COIN : AlpakaStyle.TEXT_SOFT, false);
-        if (coins) MarketIcons.draw(graphics, MarketIcons.Glyph.COIN, right - rw - 11, y, 8, COIN);
+        graphics.text(this.font, GuiFont.text(reading), right - rw, y, coins ? MarketInk.ink(COIN) : AlpakaStyle.TEXT_SOFT, false);
+        if (coins) MarketIcons.draw(graphics, MarketIcons.Glyph.COIN, right - rw - 11, y, 8, MarketInk.ink(COIN));
     }
 
     private void drawChips(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w) {

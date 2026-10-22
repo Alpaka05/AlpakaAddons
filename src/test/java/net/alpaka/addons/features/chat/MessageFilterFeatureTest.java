@@ -38,6 +38,11 @@ class MessageFilterFeatureTest {
             "♨ And 3 more!                                                          | FIRE_SALE",
             "♨ Selling multiple items for a limited time!                           | FIRE_SALE",
             "[WATCHDOG ANNOUNCEMENT]                                                | WATCHDOG",
+            "You have 2 items stashed away!                                         | STASH",
+            "You have 1,000 materials stashed away!                                 | STASH",
+            "(This totals 3 types of materials stashed!)                            | STASH",
+            ">>> CLICK HERE to pick them up! <<<                                    | STASH",
+            ">>> CLICK HERE to pick it up! <<<                                      | STASH",
     })
     void recognizesSpam(String text, Kind kind) {
         assertEquals(kind, MessageFilterFeature.classify(text.strip()));
@@ -52,6 +57,7 @@ class MessageFilterFeatureTest {
             "Party > [MVP+] Alpakaa: hi",
             "[MVP+] Someone: Autopet equipped your [Lvl 100] Mosquito! VIEW RULE",
             "Guild > Someone: ♨ And 3 more!",
+            "Someone: You have 2 items stashed away!",
     })
     void leavesOtherLinesAlone(String text) {
         assertNull(MessageFilterFeature.classify(text));
@@ -107,5 +113,12 @@ class MessageFilterFeatureTest {
         MessageFilterFeature.resetWatchdog();
         assertEquals(Kind.WATCHDOG, MessageFilterFeature.next("[WATCHDOG ANNOUNCEMENT]\nWatchdog has banned 5,123 players in the last 7 days."));
         assertNull(MessageFilterFeature.next("Party > [MVP+] Alpakaa: hi"));
+    }
+
+    @Test
+    void stashReminderInOneMessage() {
+        assertEquals(Kind.STASH, MessageFilterFeature.classify(
+                "You have 2 items stashed away!\n                >>> CLICK HERE to pick them up! <<<"));
+        assertNull(MessageFilterFeature.classify("You have 2 items stashed away!\nSomeone: hi"));
     }
 }

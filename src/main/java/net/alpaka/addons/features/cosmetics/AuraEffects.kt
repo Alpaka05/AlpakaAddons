@@ -283,7 +283,7 @@ internal object AuraEffects {
 
     /**
      * A small spiral galaxy around the waist: stars on two arms in a slowly wobbling, tilted disk,
-     * twinkling, with a haze of dust along each arm and a bright band near the center.
+     * twinkling, with a haze of dust along each arm.
      */
     fun galaxy(c: AuraCanvas, f: AuraFrame) {
         val t = f.time
@@ -294,7 +294,7 @@ internal object AuraEffects {
         val tilt = 0.18f + 0.07f * sin(t * 0.31f)
         val node = t * 0.18f
         val spin = t * 0.5f
-        val inner = 0.32f * s
+        val inner = 0.42f * s
         val reach = 1.0f * s
         val p = FloatArray(3)
 
@@ -309,13 +309,6 @@ internal object AuraEffects {
             }
             c.endRibbon()
         }
-
-        c.beginRibbon()
-        for (i in 0 until 40) {
-            disk(inner, i * TAU / 40 + spin, 0f, tilt, node, centerY, p)
-            c.point(p[0], p[1], p[2], 0.09f * s, f.color(0f), 0.45f)
-        }
-        c.endRibbon(closed = true)
 
         val stars = 120
         for (st in 0 until stars) {
@@ -388,8 +381,7 @@ internal object AuraEffects {
 
     /**
      * Crackling electricity: jagged arcs leap across the body and re-strike many times a second,
-     * each with a forked branch and a wide glow; balls of plasma race around waist and ankles, and a
-     * charged ring flickers on the ground.
+     * each with a forked branch and a wide glow, while balls of plasma race around waist and ankles.
      */
     fun storm(c: AuraCanvas, f: AuraFrame) {
         val t = f.time
@@ -398,8 +390,6 @@ internal object AuraEffects {
         val strikes = 12f
         val strike = floor(t * strikes).toInt()
         val flash = 1f - 0.6f * fract(t * strikes)
-
-        c.flatArc(0.03f, 0.75f * s, 0.06f * s, f.color(0.4f), 0.35f + 0.25f * hash(strike * 3 + 7), segments = 56)
 
         val xs = FloatArray(17)
         val ys = FloatArray(17)

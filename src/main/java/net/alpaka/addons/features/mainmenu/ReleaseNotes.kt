@@ -19,7 +19,8 @@ import java.util.Locale
  * One GET to GitHub's public "latest release" of this repository - drafts and pre-releases are
  * never the latest - the first time the menu opens in a game session, with no key and nothing
  * about the player; a failed request is tried again on a later open, but not more than once every
- * few minutes. Nothing is asked while "Allow Network Features" is off, and the card stays away.
+ * few minutes. Nothing is asked while "Allow Network Features" or the card itself is off, and the
+ * card stays away.
  *
  * The notes are written as the release notes always are: a bold line per section (**New**,
  * **Changed**, **Fixed**) and a bullet per item ([parse]).
@@ -49,7 +50,8 @@ object ReleaseNotes {
 
     /** Asks GitHub for the notes unless they are here, on their way, or the last try was too recent. */
     fun request() {
-        if (!AlpakaConfig.instance.allowApiCalls || notes != null || inFlight) return
+        val cfg = AlpakaConfig.instance
+        if (!cfg.allowApiCalls || !cfg.customMainMenuWhatsNew || notes != null || inFlight) return
         val now = System.currentTimeMillis()
         if (now < nextAttemptMs) return
         inFlight = true
@@ -79,8 +81,11 @@ object ReleaseNotes {
         }
     }
 
-    /** The notes to show: none while network features are off, even if they arrived before. */
-    fun shown(): Notes? = if (AlpakaConfig.instance.allowApiCalls) notes else null
+    /** The notes to show: none while network features or the card are off, even if they arrived before. */
+    fun shown(): Notes? {
+        val cfg = AlpakaConfig.instance
+        return if (cfg.allowApiCalls && cfg.customMainMenuWhatsNew) notes else null
+    }
 
     /** Whether the player has not opened these notes yet. */
     fun unread(notes: Notes): Boolean = AlpakaConfig.instance.releaseNotesSeen != notes.version

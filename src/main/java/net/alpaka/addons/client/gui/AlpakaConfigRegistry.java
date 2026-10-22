@@ -175,6 +175,15 @@ public class AlpakaConfigRegistry {
                                 + "Slayer stats and saved viewmodel presets are kept. This cannot be undone.",
                         "Reset All", true));
 
+        // A setting of Custom Main Menu (ConfigTree.PARENTS), registered here rather than right
+        // under it so it does not collide with the other main menu settings added there.
+        OPTIONS.add(new ConfigOption("custom_main_menu_whats_new", "What's New Card",
+                "Shows the newest release's changes at the top right of the custom main menu. Needs Network Features.",
+                ConfigCategory.GENERAL,
+                () -> AlpakaConfig.instance.customMainMenuWhatsNew,
+                v -> { AlpakaConfig.instance.customMainMenuWhatsNew = v; AlpakaConfig.save(); },
+                "custom main menu what's new whats new release notes changelog changes update card news"));
+
         // --- 1. VISUALS & RENDERING ---
 
         OPTIONS.add(new ConfigOption("World & Mobs", ConfigCategory.VISUALS));

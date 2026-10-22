@@ -533,7 +533,7 @@ public class MarketScreen extends ContainerScreen {
             for (MarketMenu.Category category : m.categories) {
                 if (category.selected()) {
                     targetY = at;
-                    targetColor = category.icon().color;
+                    targetColor = category.kind().color;
                 }
                 at += rowH + 1;
             }
@@ -551,17 +551,12 @@ public class MarketScreen extends ContainerScreen {
                 if (hover && !category.selected()) {
                     ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, rowH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
                 }
-                int color = category.icon().color;
-                int chip = rowH - 4;
-                int chipX = rowX + 6;
-                int chipY = rowY + 2;
-                ModernGuiUtils.drawRoundedRect(graphics, chipX, chipY, chip, chip, 4, MarketIcons.fade(color, category.selected() ? 0.28f : 0.14f));
-                MarketIcons.draw(graphics, MarketIcons.of(category.icon()), chipX + 2, chipY + 2, chip - 4,
-                        category.selected() || hover ? color : MarketIcons.shade(color, 0.8f));
-                int text = category.selected() || hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
-                graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, category.name(), rowW - chip - 14)),
-                        chipX + chip + 5, rowY + (rowH - 8) / 2, text, false);
+                // Hypixel's own item for the category, as the other buttons show theirs.
                 int slot = category.slot();
+                sideItem(graphics, stack(slot), rowX, rowY, rowH);
+                int text = category.selected() || hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
+                graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, category.name(), rowW - 26)),
+                        rowX + 21, rowY + (rowH - 8) / 2, text, false);
                 if (visible(rowY, rowH, clipY, clipH)) {
                     hits.add(new Hit(rowX, Math.max(rowY, clipY), rowW, rowH, (b, s) -> click(slot, b, s), false));
                 }
@@ -669,11 +664,7 @@ public class MarketScreen extends ContainerScreen {
         if (glyph != null) {
             MarketIcons.draw(graphics, glyph, rowX + 7, rowY + (rowH - 9) / 2f, 9, hover ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
         } else if (item != null) {
-            graphics.pose().pushMatrix();
-            graphics.pose().translate(rowX + 5, rowY + (rowH - 12) / 2f);
-            graphics.pose().scale(0.75f, 0.75f);
-            graphics.item(item, 0, 0);
-            graphics.pose().popMatrix();
+            sideItem(graphics, item, rowX, rowY, rowH);
         }
         graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, label, rowW - 26)), rowX + 21, rowY + (rowH - 8) / 2,
                 hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT, false);
@@ -682,6 +673,15 @@ public class MarketScreen extends ContainerScreen {
         }
         if (hover) hoveredStack = stack(slot);
         return rowY + rowH + 1;
+    }
+
+    /** An item at the start of a sidebar row, a little smaller than in a slot to sit with the text. */
+    private static void sideItem(GuiGraphicsExtractor graphics, ItemStack item, int rowX, int rowY, int rowH) {
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(rowX + 5, rowY + (rowH - 12) / 2f);
+        graphics.pose().scale(0.75f, 0.75f);
+        graphics.item(item, 0, 0);
+        graphics.pose().popMatrix();
     }
 
     // ---- Content --------------------------------------------------------------------------------

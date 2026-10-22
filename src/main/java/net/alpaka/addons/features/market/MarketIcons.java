@@ -5,8 +5,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /**
- * The market screens' own icons: the categories, the two markets and the small symbols beside
- * prices and controls.
+ * The market screens' own icons: the two markets and the small symbols beside prices and controls.
+ * The categories show Hypixel's own items instead.
  *
  * Drawn as smooth shapes rather than textures, like the config menu's chevrons, so they stay sharp
  * at every GUI scale and take any color. Each icon is laid out on a 16 by 16 grid and scaled to the
@@ -16,29 +16,10 @@ public final class MarketIcons {
     private MarketIcons() {}
 
     public enum Glyph {
-        // Categories
-        WEAPONS, ARMOR, ACCESSORIES, CONSUMABLES, BLOCKS, TOOLS, FARMING, MINING, COMBAT, WOODS_FISHES, ODDITIES,
         // The markets
         AUCTION_HOUSE, BAZAAR,
         // Small symbols
         COIN, CLOCK, SEARCH, SORT, TIER, BIN, ORDERS, SELL, SACK, INVENTORY, CLASSIC, PERSON, BACK, CLOSE, BOX
-    }
-
-    /** The icon for a category of the left column. */
-    public static Glyph of(MarketMenu.CategoryIcon icon) {
-        return switch (icon) {
-            case WEAPONS -> Glyph.WEAPONS;
-            case ARMOR -> Glyph.ARMOR;
-            case ACCESSORIES -> Glyph.ACCESSORIES;
-            case CONSUMABLES -> Glyph.CONSUMABLES;
-            case BLOCKS -> Glyph.BLOCKS;
-            case TOOLS -> Glyph.TOOLS;
-            case FARMING -> Glyph.FARMING;
-            case MINING -> Glyph.MINING;
-            case COMBAT -> Glyph.COMBAT;
-            case WOODS_FISHES -> Glyph.WOODS_FISHES;
-            case ODDITIES -> Glyph.ODDITIES;
-        };
     }
 
     /** The icon of a market, for the header. */
@@ -52,20 +33,6 @@ public final class MarketIcons {
         WheelMesh mesh = new WheelMesh(1.0f / scale);
         Pen pen = new Pen(mesh, x, y, size / 16f, 0f);
         switch (glyph) {
-            case WEAPONS -> sword(pen, color, false);
-            case COMBAT -> {
-                sword(pen, color, false);
-                sword(pen, shade(color, 0.8f), true);
-            }
-            case ARMOR -> chestplate(pen, color);
-            case ACCESSORIES -> ring(pen, color);
-            case CONSUMABLES -> potion(pen, color);
-            case BLOCKS -> cube(pen, color);
-            case TOOLS -> wrench(pen, color);
-            case FARMING -> wheat(pen, color);
-            case MINING -> pickaxe(new Pen(mesh, x, y, size / 16f, (float) Math.toRadians(45)), color);
-            case WOODS_FISHES -> fish(pen, color);
-            case ODDITIES -> sparkle(pen, color);
             case AUCTION_HOUSE -> gavel(pen, color);
             case BAZAAR -> stall(pen, color);
             case COIN -> coin(pen, color);
@@ -85,114 +52,6 @@ public final class MarketIcons {
             case BOX -> box(pen, color);
         }
         mesh.submit(graphics);
-    }
-
-    // ---- Categories -----------------------------------------------------------------------------
-
-    private static void sword(Pen p, int color, boolean mirrored) {
-        // Base and tip of the blade along the diagonal; mirrored for the second of crossed swords.
-        float bx = mirrored ? 10.5f : 5.5f;
-        float tx = mirrored ? 2.5f : 13.5f;
-        float by = 10.5f;
-        float ty = 2.5f;
-        float dx = tx - bx;
-        float dy = ty - by;
-        float len = (float) Math.sqrt(dx * dx + dy * dy);
-        float ux = dx / len;
-        float uy = dy / len;
-        float nx = -uy;
-        float ny = ux;
-        float hw = 1.25f;
-        float neckX = tx - ux * 2.0f;
-        float neckY = ty - uy * 2.0f;
-        p.poly(color, bx + nx * hw, by + ny * hw, neckX + nx * hw, neckY + ny * hw, tx, ty,
-                neckX - nx * hw, neckY - ny * hw, bx - nx * hw, by - ny * hw);
-        // The guard across the base, the grip below it and the pommel at its end.
-        p.line(bx + nx * 3.0f, by + ny * 3.0f, bx - nx * 3.0f, by - ny * 3.0f, 1.5f, color);
-        p.line(bx, by, bx - ux * 3.0f, by - uy * 3.0f, 1.3f, shade(color, 0.85f));
-        p.disc(bx - ux * 3.6f, by - uy * 3.6f, 1.15f, color);
-    }
-
-    private static void chestplate(Pen p, int color) {
-        p.poly(color, 4.2f, 6.5f, 11.8f, 6.5f, 11.8f, 13.6f, 11f, 14.4f, 5f, 14.4f, 4.2f, 13.6f);
-        // The shoulders, leaving the neck open between them.
-        p.poly(color, 2f, 7.2f, 3.2f, 3.0f, 6.3f, 2.2f, 7.2f, 5.2f, 4.4f, 7.8f);
-        p.poly(color, 14f, 7.2f, 12.8f, 3.0f, 9.7f, 2.2f, 8.8f, 5.2f, 11.6f, 7.8f);
-        p.poly(shade(color, 0.7f), 7.4f, 7.2f, 8.6f, 7.2f, 8.6f, 13f, 7.4f, 13f);
-    }
-
-    private static void ring(Pen p, int color) {
-        p.ring(8f, 10.4f, 3.0f, 4.6f, color);
-        p.poly(shade(color, 1.25f), 8f, 1.6f, 10.6f, 4.2f, 8f, 6.8f, 5.4f, 4.2f);
-    }
-
-    private static void potion(Pen p, int color) {
-        p.disc(8f, 10.6f, 4.4f, color);
-        p.poly(color, 6.5f, 3.8f, 9.5f, 3.8f, 9.5f, 7.6f, 6.5f, 7.6f);
-        p.poly(shade(color, 0.7f), 5.8f, 1.8f, 10.2f, 1.8f, 10.2f, 3.8f, 5.8f, 3.8f);
-        // A glint on the glass.
-        p.disc(6.4f, 9.6f, 1.0f, 0x66FFFFFF);
-    }
-
-    private static void cube(Pen p, int color) {
-        p.poly(shade(color, 1.15f), 8f, 1.8f, 14.2f, 5f, 8f, 8.2f, 1.8f, 5f);
-        p.poly(shade(color, 0.8f), 1.8f, 5f, 8f, 8.2f, 8f, 15f, 1.8f, 11.8f);
-        p.poly(shade(color, 0.6f), 8f, 8.2f, 14.2f, 5f, 14.2f, 11.8f, 8f, 15f);
-    }
-
-    private static void wrench(Pen p, int color) {
-        p.line(3.2f, 13.0f, 9.0f, 7.2f, 2.4f, color);
-        p.disc(3.2f, 13.0f, 1.2f, color);
-        // The jaw: a ring open towards the top right.
-        float open = (float) Math.toRadians(-45);
-        p.sector(10.8f, 5.4f, 1.6f, 3.9f, open + 0.75f, open + (float) (2 * Math.PI) - 0.75f, color);
-    }
-
-    private static void wheat(Pen p, int color) {
-        p.line(8f, 15f, 8f, 4.5f, 1.1f, shade(color, 0.8f));
-        for (int i = 0; i < 3; i++) {
-            float y = 5.6f + i * 2.7f;
-            grain(p, 8f, y, -1, color);
-            grain(p, 8f, y, 1, color);
-        }
-        p.poly(color, 8f, 1.2f, 9.1f, 3.2f, 8f, 5.4f, 6.9f, 3.2f);
-    }
-
-    /** One grain of the wheat: a small leaf leaning out from the stem. */
-    private static void grain(Pen p, float x, float y, int side, int color) {
-        float cx = x + side * 1.8f;
-        float cy = y - 0.6f;
-        float ux = side * 0.8f;
-        float uy = -0.6f;
-        float lx = ux * 2.0f;
-        float ly = uy * 2.0f;
-        float nx = -uy * 1.0f;
-        float ny = ux * 1.0f;
-        p.poly(color, cx - lx, cy - ly, cx + nx, cy + ny, cx + lx, cy + ly, cx - nx, cy - ny);
-    }
-
-    private static void pickaxe(Pen p, int color) {
-        p.line(8f, 4.2f, 8f, 15.2f, 1.6f, shade(color, 0.8f));
-        p.sector(8f, 11.5f, 7.0f, 8.8f, (float) (-Math.PI + 0.5), -0.5f, color);
-    }
-
-    private static void fish(Pen p, int color) {
-        float[] body = new float[24];
-        for (int i = 0; i < 12; i++) {
-            double a = i * Math.PI * 2 / 12;
-            body[2 * i] = 6.8f + (float) Math.cos(a) * 5.0f;
-            body[2 * i + 1] = 8f + (float) Math.sin(a) * 3.2f;
-        }
-        p.poly(color, body);
-        p.poly(shade(color, 0.85f), 10.8f, 8f, 15f, 4.4f, 15f, 11.6f);
-        p.disc(4.2f, 7.2f, 0.75f, 0xFF131313);
-    }
-
-    private static void sparkle(Pen p, int color) {
-        p.poly(color, 7f, 1.5f, 8.4f, 7.6f, 7f, 14.5f, 5.6f, 7.6f);
-        p.poly(color, 0.8f, 8f, 7f, 6.6f, 13.2f, 8f, 7f, 9.4f);
-        p.poly(shade(color, 1.2f), 12.5f, 1.4f, 13.1f, 3.4f, 12.5f, 5.4f, 11.9f, 3.4f);
-        p.poly(shade(color, 1.2f), 10.5f, 3.4f, 12.5f, 2.8f, 14.5f, 3.4f, 12.5f, 4f);
     }
 
     // ---- The markets ----------------------------------------------------------------------------

@@ -188,6 +188,15 @@ class MarketParsingTest {
     }
 
     @Test
+    void cosmeticsIsACategory() {
+        List<MarketMenu.Slot> slots = browser();
+        slots.set(45, slot(45, "orange_dye", "Cosmetics", "Category", "", "Click to view items!"));
+        MarketMenu menu = MarketMenu.parse(MarketKind.AUCTION_HOUSE, "Auctions Browser", 6, slots);
+        assertEquals(MarketMenu.CategoryKind.COSMETICS, menu.categories.get(2).kind());
+        assertFalse(menu.extras.contains(45));
+    }
+
+    @Test
     void aFewActionsBecomeTilesWithTheAuctionAsHero() {
         List<MarketMenu.Slot> slots = new ArrayList<>();
         for (int i = 0; i < 54; i++) slots.add(slot(i, "black_stained_glass_pane", " "));

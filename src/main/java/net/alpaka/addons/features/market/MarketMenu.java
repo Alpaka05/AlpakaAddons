@@ -163,6 +163,7 @@ public final class MarketMenu {
             menu.categories.addAll(fixed);
         }
 
+        menu.readProductPage(slots);
         menu.chooseLayout();
         if (menu.pages < 0 && title != null) {
             Matcher m = PAGE_OF.matcher(title);
@@ -273,6 +274,43 @@ public final class MarketMenu {
             default -> {
             }
         }
+    }
+
+    /** The actions on a Bazaar product's page, by Hypixel's names in lower case. */
+    private static final List<String> PRODUCT_ACTIONS = List.of("buy instantly", "sell instantly", "create buy order", "create sell offer");
+
+    /**
+     * A Bazaar product's own page. Its product item only says what the item is ("Collection Item"),
+     * not what it costs, so the page is known by its Buy Instantly button, the way SkyHanni knows it,
+     * and the product takes the prices the two instant buttons quote. That makes it the page's hero,
+     * which gets the price history.
+     */
+    private void readProductPage(List<Slot> slots) {
+        if (kind != MarketKind.BAZAAR) return;
+        Integer buy = null;
+        Integer sell = null;
+        List<Integer> others = new ArrayList<>();
+        for (int index : content) {
+            String name = nameAt(slots, index).toLowerCase(Locale.ROOT);
+            if (name.equals("buy instantly")) buy = index;
+            else if (name.equals("sell instantly")) sell = index;
+            else if (!PRODUCT_ACTIONS.contains(name)) others.add(index);
+        }
+        if (buy == null) return;
+        // Hypixel puts the product in the middle of the second row; should it move, it is the one
+        // item that is not an action.
+        Integer product = others.contains(13) ? Integer.valueOf(13) : others.size() == 1 ? others.get(0) : null;
+        if (product == null) return;
+        LoreInfo productInfo = info.get(product);
+        if (productInfo.type != LoreInfo.Type.GENERIC && productInfo.type != LoreInfo.Type.PRODUCT) return;
+        productInfo.type = LoreInfo.Type.PRODUCT;
+        if (productInfo.buyPrice == null) productInfo.buyPrice = info.get(buy).unitPrice;
+        if (productInfo.sellPrice == null && sell != null) productInfo.sellPrice = info.get(sell).unitPrice;
+    }
+
+    private static String nameAt(List<Slot> slots, int index) {
+        for (Slot s : slots) if (s.index() == index) return s.name() == null ? "" : s.name().trim();
+        return "";
     }
 
     /**

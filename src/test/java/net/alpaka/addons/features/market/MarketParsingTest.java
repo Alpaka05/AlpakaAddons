@@ -200,6 +200,40 @@ class MarketParsingTest {
         assertEquals(List.of(13, 31), menu.content);
     }
 
+    /** A Bazaar product's page as Hypixel sends it: the product itself names no price. */
+    private static List<MarketMenu.Slot> productPage() {
+        List<MarketMenu.Slot> slots = new ArrayList<>();
+        for (int i = 0; i < 36; i++) slots.add(slot(i, "black_stained_glass_pane", " "));
+        slots.set(10, slot(10, "golden_horse_armor", "Buy Instantly", "End Stone", "", "Price per unit: 3.2 coins",
+                "Stack price: 204.8 coins", "", "Click to pick amount!"));
+        slots.set(11, slot(11, "hopper", "Sell Instantly", "End Stone", "", "Price per unit: 0.1 coins", "", "Click to pick amount!"));
+        slots.set(13, slot(13, "end_stone", "End Stone", "Collection Item", "", "COMMON BLOCK"));
+        slots.set(15, slot(15, "filled_map", "Create Buy Order", "End Stone", "", "Only Order:", "- 3.1 coins each | 4,950x"));
+        slots.set(16, slot(16, "map", "Create Sell Offer", "End Stone", "", "Top Offers:", "- 3.2 coins each | 62,208x"));
+        slots.set(30, slot(30, "arrow", "Go Back", "To Mining"));
+        slots.set(31, slot(31, "paper", "View Graphs", "Click to view!"));
+        slots.set(32, slot(32, "book", "Manage Orders", "Click to manage!"));
+        return slots;
+    }
+
+    @Test
+    void aBazaarProductPageMakesTheProductItsHero() {
+        MarketMenu menu = MarketMenu.parse(MarketKind.BAZAAR, "Mining ➜ End Stone", 4, productPage());
+        assertEquals(MarketMenu.Layout.TILES, menu.layout);
+        assertEquals(13, menu.hero);
+        LoreInfo product = menu.info.get(13);
+        assertEquals(LoreInfo.Type.PRODUCT, product.type);
+        assertEquals(3.2, product.buyPrice, 1e-9);
+        assertEquals(0.1, product.sellPrice, 1e-9);
+    }
+
+    @Test
+    void theProductPageIsOnlyTheBazaars() {
+        MarketMenu menu = MarketMenu.parse(MarketKind.AUCTION_HOUSE, "Mining ➜ End Stone", 4, productPage());
+        assertNull(menu.hero);
+        assertEquals(LoreInfo.Type.GENERIC, menu.info.get(13).type);
+    }
+
     @Test
     void anEmptyChestIsStillLoading() {
         List<MarketMenu.Slot> slots = new ArrayList<>();

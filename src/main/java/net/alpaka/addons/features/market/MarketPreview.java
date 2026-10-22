@@ -265,11 +265,12 @@ public final class MarketPreview {
 
     public static MarketScreen bazaarProduct() {
         SimpleContainer c = filled(4, Items.STAINED_GLASS_PANE.black());
-        c.setItem(13, product(FARMING[2]));
+        // As on Hypixel: the product itself names no price, the instant buttons do.
+        c.setItem(13, glint(item(Items.HAY_BLOCK, "§aEnchanted Hay Bale", "§8Collection Item", "", "§a§lUNCOMMON")));
         c.setItem(10, item(Items.GOLDEN_HORSE_ARMOR, "§aBuy Instantly", "§8Enchanted Hay Bale", "", "§7Price per unit: §6153,420.2 coins",
                 "§7Stack price: §69,818,892.8 coins", "", "§eClick to pick amount!"));
         c.setItem(11, item(Items.HOPPER, "§6Sell Instantly", "§8Enchanted Hay Bale", "", "§7Inventory: §a12 items", "",
-                "§7Amount: §a12§7x", "§7Total: §61,764,030 coins", "", "§eClick to sell!"));
+                "§7Amount: §a12§7x", "§7Price per unit: §6147,002.5 coins", "§7Total: §61,764,030 coins", "", "§eClick to sell!"));
         c.setItem(15, item(Items.FILLED_MAP, "§aCreate Buy Order", "§8Enchanted Hay Bale", "", "§7Top Orders:",
                 "§8- §6147,002.5 coins §7each | §a1,640§7x", "§8- §6147,000 coins §7each | §a320§7x", "", "§eClick to setup Buy Order!"));
         c.setItem(16, item(Items.MAP, "§6Create Sell Offer", "§8Enchanted Hay Bale", "", "§7Top Offers:",

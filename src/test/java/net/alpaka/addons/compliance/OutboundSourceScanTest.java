@@ -13,20 +13,23 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Every place in the mod that can send a chat message or command to the server.
+ * Every place in the mod that can send a chat message, command or menu click to the server.
  *
  * The mod may only send something as the direct result of the player pressing a key, clicking or
  * pressing Enter. Two features once broke that - a party-chat auto-reply and a guild announcement
  * fired from a timer - so a new call site has to be added to this list on purpose, after checking
- * that it only runs on such an action.
+ * that it only runs on such an action. Menu clicks count too: a mod that clicks slots on its own is
+ * exactly what Hypixel bans for.
  */
 class OutboundSourceScanTest {
     private static final Pattern SEND = Pattern.compile(
-            "\\.(?:sendCommand|sendChat|sendUnattendedCommand|sendSignedCommand)\\s*\\(|connection\\.send\\s*\\(");
+            "\\.(?:sendCommand|sendChat|sendUnattendedCommand|sendSignedCommand|handleContainerInput)\\s*\\("
+                    + "|connection\\.send\\s*\\(|ServerboundContainerClickPacket|ServerboundSignUpdatePacket");
 
     /**
      * Only the outbound gate itself. Everything that sends goes through it with the player's action
-     * as its cause: Enter on a chat tab, the Y key on a party invite, a command wheel release.
+     * as its cause: Enter on a chat tab, the Y key on a party invite, a command wheel release, a
+     * click on a card in the Auction House.
      */
     private static final Set<String> ALLOWED = Set.of("compliance/Outbound.java");
 

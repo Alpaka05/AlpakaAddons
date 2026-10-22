@@ -295,6 +295,8 @@ public class AlpakaConfig {
     public boolean updateNotificationsEnabled = true;
     /** The release whose notes the player last opened from the main menu; its What's New card shows a dot until then. */
     public String releaseNotesSeen = "";
+    /** The What's New card on the custom main menu, with the newest release's notes. */
+    public boolean customMainMenuWhatsNew = true;
 
     /**
      * Folder holding the slayer record, or empty for this machine's shared default.

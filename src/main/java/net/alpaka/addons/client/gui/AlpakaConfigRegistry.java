@@ -107,6 +107,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customMainMenuEnabled = v; AlpakaConfig.save(); },
                 "custom main menu title screen hypixel start launch background GUI"));
 
+        OPTIONS.add(new ConfigOption("custom_main_menu_whats_new", "What's New Card",
+                "Shows the newest release's changes at the top right of the custom main menu. Needs Network Features.",
+                ConfigCategory.GENERAL,
+                () -> AlpakaConfig.instance.customMainMenuWhatsNew,
+                v -> { AlpakaConfig.instance.customMainMenuWhatsNew = v; AlpakaConfig.save(); },
+                "custom main menu what's new whats new release notes changelog changes update card news"));
+
         OPTIONS.add(new ConfigOption("custom_main_menu_parallax", "Main Menu Parallax",
                 "The custom main menu's background drifts and moves with the mouse. Off keeps it still.",
                 ConfigCategory.GENERAL,

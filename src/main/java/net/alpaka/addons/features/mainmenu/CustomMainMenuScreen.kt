@@ -58,7 +58,7 @@ import org.joml.Matrix3x2f
  * different amounts, which is what gives the flat picture its depth. Without the picture, the
  * panorama stands in.
  *
- * Over it on the left, one column holds the whole menu under the logo - also the way into the
+ * Over it on the left, one column holds the whole menu, centred on the screen's height, under the logo - also the way into the
  * Alpaka config - with the mod's name and versions: Join Hypixel as the hero, with a slowly
  * circling gradient edge, a glint that crosses it now and then and a pulsing live dot beside
  * Hypixel's player count and ping; then Singleplayer, Multiplayer and Join Alpha; after a hairline
@@ -78,11 +78,11 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
 
     companion object {
         /** The sizes, roomiest first, and the least screen height each one is used from; see [Sizes]. */
-        private val ROOMY = Sizes(minHeight = 330, margin = 20, logo = 36, column = 220, hero = 46, row = 24,
+        private val ROOMY = Sizes(minHeight = 330, margin = 20, logo = 36, column = 184, hero = 46, row = 24,
             gap = 4, divider = 7, radius = 8, card = 176)
-        private val NORMAL = Sizes(minHeight = 250, margin = 14, logo = 32, column = 196, hero = 40, row = 22,
+        private val NORMAL = Sizes(minHeight = 250, margin = 14, logo = 32, column = 164, hero = 40, row = 22,
             gap = 4, divider = 6, radius = 7, card = 160)
-        private val TIGHT = Sizes(minHeight = 0, margin = 10, logo = 28, column = 180, hero = 34, row = 20,
+        private val TIGHT = Sizes(minHeight = 0, margin = 10, logo = 28, column = 152, hero = 34, row = 20,
             gap = 3, divider = 5, radius = 6, card = 150)
 
         /** Room left of a row's icon, and between the logo and the hero. */
@@ -206,10 +206,14 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         val logoX = margin
         val logoY = margin
 
-        /** The column under the logo: the hero, three rows, the hairline, Mods and Options, Quit. */
+        /**
+         * The column under the logo: the hero, three rows, the hairline, Mods and Options, Quit.
+         * Centred on the screen's height, but never higher than just under the logo.
+         */
         val columnX = margin
         val columnW = sizes.column
-        val heroY = logoY + logoSize + BRAND_GAP
+        val columnH = sizes.hero + 3 * (sizes.row + sizes.gap) + sizes.divider * 2 + 1 + sizes.row * 2 + sizes.gap
+        val heroY = maxOf(logoY + logoSize + BRAND_GAP, (this@CustomMainMenuScreen.height - columnH) / 2)
         val rowsY = heroY + sizes.hero + sizes.gap
         val dividerY = rowsY + 3 * (sizes.row + sizes.gap) - sizes.gap + sizes.divider
         val pairY = dividerY + 1 + sizes.divider

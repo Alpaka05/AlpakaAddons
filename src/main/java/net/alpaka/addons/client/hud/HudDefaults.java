@@ -43,9 +43,12 @@ public final class HudDefaults {
     public static final int SLAYER_SESSION_X = 10;
     public static final int SLAYER_SESSION_Y = 60;
 
-    /** To the right of the text column rather than inside it. */
+    /**
+     * The avatar's feet; at the default size it stands 78 pixels tall and 48 wide. To the right of
+     * the text column rather than inside it, and with its head below the top row and the boss timer.
+     */
     public static final int PLAYER_MODEL_X = 190;
-    public static final int PLAYER_MODEL_Y = 85;
+    public static final int PLAYER_MODEL_Y = 110;
 
     /** Only used once the inventory HUD is detached from the hotbar. */
     public static final int INVENTORY_X = 10;

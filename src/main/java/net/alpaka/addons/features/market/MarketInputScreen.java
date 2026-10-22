@@ -5,7 +5,6 @@ import net.alpaka.addons.client.gui.EditableText;
 import net.alpaka.addons.client.gui.GuiFont;
 import net.alpaka.addons.client.gui.ModernGuiUtils;
 import net.alpaka.addons.config.AlpakaConfig;
-import net.alpaka.addons.features.wheel.WheelMesh;
 import net.alpaka.addons.mixin.AbstractSignEditScreenAccessor;
 import net.alpaka.addons.utils.SkyblockUtils;
 import net.minecraft.client.Minecraft;
@@ -14,6 +13,7 @@ import net.minecraft.client.gui.screens.inventory.SignEditScreen;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.HangingSignBlockEntity;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
 
@@ -62,7 +62,7 @@ public class MarketInputScreen extends SignEditScreen {
     // ---- Suggestions, for a search ---------------------------------------------------------------
 
     private static final int SUGGESTION_ROWS = 6;
-    private static final int SUGGESTION_H = 16;
+    private static final int SUGGESTION_H = 19;
     private static final int SUGGESTION_FOOTER_H = 14;
 
     /** One name offered under the field, with the stretches of it that matched. */
@@ -218,25 +218,15 @@ public class MarketInputScreen extends SignEditScreen {
         int fx = x + PAD + 2;
         int fw = w - PAD * 2 - 4;
         int fy = y + HEADER_H + 10;
-        int[] list = dropdownOpen() ? dropdownRect(fx, fy + FIELD_H + 3, fw) : null;
+        int[] list = dropdownOpen() ? dropdownRect(fx, fy + FIELD_H, fw) : null;
         boolean overList = list != null && AlpakaStyle.inside(realMouseX, realMouseY, list[0], list[1], list[2], list[3]);
         int mouseX = overList ? -10000 : realMouseX;
         int mouseY = overList ? -10000 : realMouseY;
 
         AlpakaStyle.panel(graphics, x, y, w, h);
 
-        int accent = AlpakaStyle.accent();
-        WheelMesh glow = new WheelMesh(1.0f / guiScale());
-        glow.radialGradient(x + PAD + 10, y + HEADER_H / 2.0f, 18f, MarketIcons.fade(accent, 0.30f), accent & 0x00FFFFFF);
-        glow.submit(graphics);
-
-        // Header: what is asked, with the market's icon, and a close button.
-        int chip = 20;
-        int chipX = x + PAD;
-        int chipY = y + (HEADER_H - chip) / 2;
-        ModernGuiUtils.drawRoundedRect(graphics, chipX, chipY, chip, chip, 6, MarketIcons.fade(accent, 0.18f));
-        MarketIcons.draw(graphics, glyph(), chipX + 3, chipY + 3, 14, glyph() == MarketIcons.Glyph.COIN ? COIN : accent);
-        AlpakaStyle.title(graphics, this.font, AlpakaStyle.ellipsize(this.font, prompt.heading(context), w - 70), chipX + chip + 7, y);
+        // Header: what is asked, and a close button.
+        AlpakaStyle.title(graphics, this.font, AlpakaStyle.ellipsize(this.font, prompt.heading(context), w - 50), x + PAD + 2, y);
         int closeX = x + w - PAD - 16;
         int closeY = y + (HEADER_H - 16) / 2;
         boolean hoverClose = AlpakaStyle.inside(mouseX, mouseY, closeX, closeY, 16, 16);
@@ -245,8 +235,8 @@ public class MarketInputScreen extends SignEditScreen {
         hits.add(new Hit(closeX, closeY, 16, 16, mx -> cancel(), true));
         AlpakaStyle.headerLine(graphics, x, y, w);
 
-        // The field.
-        drawField(graphics, mouseX, mouseY, fx, fy, fw);
+        // The field; with suggestions open it is drawn last, as the top of one box with the list.
+        if (list == null) drawField(graphics, mouseX, mouseY, fx, fy, fw, 0);
 
         // Under it: Hypixel's own question on the left, the amount written out on the right.
         int hy = fy + FIELD_H + 6;
@@ -276,7 +266,13 @@ public class MarketInputScreen extends SignEditScreen {
         graphics.text(this.font, GuiFont.text("Enter to confirm · Esc to cancel"), x + PAD + 2, cy + (bh - 8) / 2,
                 AlpakaStyle.DIVIDER, false);
 
-        if (list != null) drawDropdown(graphics, realMouseX, realMouseY, list);
+        if (list != null) {
+            // Over everything drawn so far, the buttons' text included.
+            graphics.nextStratum();
+            ModernGuiUtils.drawPanelShadow(graphics, fx, fy, fw, FIELD_H + list[3], 6, 0.8f);
+            drawField(graphics, realMouseX, realMouseY, fx, fy, fw, list[3]);
+            drawDropdown(graphics, realMouseX, realMouseY, list);
+        }
         lastMouseX = realMouseX;
         lastMouseY = realMouseY;
 
@@ -327,29 +323,27 @@ public class MarketInputScreen extends SignEditScreen {
         return !suggestions.isEmpty() || namesPending;
     }
 
-    /** The list's place: under the field, as many rows as fit on the screen. */
+    /** The list's place: straight under the field, as many rows as fit on the screen. */
     private int[] dropdownRect(int x, int y, int w) {
         int rows = Math.max(1, suggestions.size());
         int room = (this.height - 6 - y - SUGGESTION_FOOTER_H - 8) / SUGGESTION_H;
         rows = Math.max(1, Math.min(rows, room));
-        return new int[] {x, y, w, 4 + rows * SUGGESTION_H + SUGGESTION_FOOTER_H + 2};
+        return new int[] {x, y, w, 3 + rows * SUGGESTION_H + SUGGESTION_FOOTER_H + 2};
     }
 
+    /** The suggestions, inside the box the field opened into: each with its item, its name and the match lit. */
     private void drawDropdown(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int[] rect) {
         int x = rect[0];
         int y = rect[1];
         int w = rect[2];
         int h = rect[3];
-        // Over everything drawn so far, the buttons' text included.
-        graphics.nextStratum();
-        AlpakaStyle.popover(graphics, x, y, w, h);
         hits.add(new Hit(x, y, w, h, mx -> { }, false));
-        int rows = (h - 4 - SUGGESTION_FOOTER_H - 2) / SUGGESTION_H;
+        int rows = (h - 3 - SUGGESTION_FOOTER_H - 2) / SUGGESTION_H;
         boolean moved = mouseX != lastMouseX || mouseY != lastMouseY;
         int accent = AlpakaStyle.accent();
 
         if (suggestions.isEmpty()) {
-            graphics.text(this.font, GuiFont.text("Loading item names…"), x + 22, y + 2 + (SUGGESTION_H - 8) / 2,
+            graphics.text(this.font, GuiFont.text("Loading item names…"), x + 28, y + 2 + (SUGGESTION_H - 8) / 2,
                     AlpakaStyle.TEXT_MUTED, false);
         }
         for (int i = 0; i < Math.min(rows, suggestions.size()); i++) {
@@ -362,20 +356,25 @@ public class MarketInputScreen extends SignEditScreen {
             boolean lit = i == highlight;
             if (lit) {
                 ModernGuiUtils.drawRoundedRect(graphics, rx, ry, rw, SUGGESTION_H, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW_SELECTED);
-                ModernGuiUtils.drawRoundedRect(graphics, rx, ry + 4, 2, SUGGESTION_H - 8, 1, accent);
+                ModernGuiUtils.drawRoundedRect(graphics, rx, ry + 5, 2, SUGGESTION_H - 10, 1, accent);
             }
-            MarketIcons.Glyph glyph = s.recent() ? MarketIcons.Glyph.CLOCK
-                    : context == null ? MarketIcons.Glyph.SEARCH : MarketIcons.of(context);
-            MarketIcons.draw(graphics, glyph, rx + 7, ry + (SUGGESTION_H - 8) / 2f, 8, lit ? accent : AlpakaStyle.TEXT_MUTED);
+            // The item itself where Hypixel's list knows it; a recent search it does not know keeps a clock.
+            ItemStack icon = ItemIcons.forName(s.name());
+            if (!icon.isEmpty()) {
+                graphics.item(icon, rx + 6, ry + (SUGGESTION_H - 16) / 2);
+            } else {
+                MarketIcons.Glyph glyph = s.recent() ? MarketIcons.Glyph.CLOCK : MarketIcons.Glyph.BOX;
+                MarketIcons.draw(graphics, glyph, rx + 9, ry + (SUGGESTION_H - 10) / 2f, 10, lit ? accent : AlpakaStyle.TEXT_MUTED);
+            }
 
-            int tx = rx + 20;
-            String hint = lit ? "Enter ↵" : "";
+            int tx = rx + 27;
+            String hint = lit ? "Enter ↵" : s.recent() ? "Recent" : "";
             int hintW = hint.isEmpty() ? 0 : GuiFont.width(this.font, hint) + 8;
             int room = rx + rw - 6 - hintW - tx;
             drawMatch(graphics, s, tx, ry + (SUGGESTION_H - 8) / 2, room, lit);
             if (!hint.isEmpty()) {
                 graphics.text(this.font, GuiFont.text(hint), rx + rw - 6 - GuiFont.width(this.font, hint), ry + (SUGGESTION_H - 8) / 2,
-                        AlpakaStyle.TEXT_MUTED, false);
+                        lit ? AlpakaStyle.TEXT_MUTED : AlpakaStyle.DIVIDER, false);
             }
             int index = i;
             hits.add(new Hit(rx, ry, rw, SUGGESTION_H, mx -> choose(index), true));
@@ -437,14 +436,20 @@ public class MarketInputScreen extends SignEditScreen {
         };
     }
 
-    private void drawField(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w) {
+    /**
+     * The field. With {@code below} more than zero the suggestion list hangs from it, and the two
+     * are one box: one outline round both, the field's focus line dividing them.
+     */
+    private void drawField(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w, int below) {
         long now = System.currentTimeMillis();
         boolean full = now - fullAtMs < 400;
         int accent = AlpakaStyle.accent();
-        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, FIELD_H, 6, AlpakaStyle.FIELD);
-        ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, FIELD_H, 6, full ? MarketIcons.fade(AlpakaStyle.DANGER, 0.8f) : AlpakaStyle.accentDim());
-        // The focus line along the bottom, brightest in the middle.
-        ModernGuiUtils.drawRect(graphics, x + 6, y + FIELD_H - 1, w - 12, 1, full ? AlpakaStyle.DANGER : accent);
+        int h = FIELD_H + below;
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, 6, AlpakaStyle.FIELD);
+        ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, h, 6, full ? MarketIcons.fade(AlpakaStyle.DANGER, 0.8f) : AlpakaStyle.accentDim());
+        // The focus line along the field's bottom, which with the list open is where the list begins.
+        int lineInset = below > 0 ? 1 : 6;
+        ModernGuiUtils.drawRect(graphics, x + lineInset, y + FIELD_H - 1, w - 2 * lineInset, 1, full ? AlpakaStyle.DANGER : accent);
 
         int iconSize = 10;
         MarketIcons.draw(graphics, glyph(), x + 8, y + (FIELD_H - iconSize) / 2f, iconSize,
@@ -634,11 +639,6 @@ public class MarketInputScreen extends SignEditScreen {
     @Override
     public void onClose() {
         cancel();
-    }
-
-    private static int guiScale() {
-        Minecraft mc = Minecraft.getInstance();
-        return mc == null ? 2 : (int) Math.max(1, mc.getWindow().getGuiScale());
     }
 
     // ---- For the screenshot tour ----------------------------------------------------------------

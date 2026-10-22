@@ -80,6 +80,32 @@ public class MarketScreen extends ContainerScreen {
     private static final int AQUA = 0xFF55FFFF;
     private static final int RED = 0xFFFF5555;
 
+    // ---- The markets' faces ----------------------------------------------------------------------
+
+    /** The skin of the Auction Master, the Hub's auctioneer, as Hypixel's NPC wears it. */
+    private static final String AUCTION_MASTER_SKIN = "ewogICJ0aW1lc3RhbXAiIDogMTU5NzMwNTI3MzM5MiwKICAicHJvZmlsZUlkIiA6ICI0MWQzYWJjMmQ3NDk0MDBjOTA5MGQ1"
+            + "NDM0ZDAzODMxYiIsCiAgInByb2ZpbGVOYW1lIiA6ICJNZWdha2xvb24iLAogICJzaWduYXR1cmVSZXF1aXJlZCIgOiB0cnVl"
+            + "LAogICJ0ZXh0dXJlcyIgOiB7CiAgICAiU0tJTiIgOiB7CiAgICAgICJ1cmwiIDogImh0dHA6Ly90ZXh0dXJlcy5taW5lY3Jh"
+            + "ZnQubmV0L3RleHR1cmUvMzE5NzFkNzk2ZGM0ZGM5YWYzOGNjOTcwNjc5NjNkZTRlZDJiZjk5OTIyNDI1NzQxNmRmYjg0MTQ4"
+            + "OGZkOWUwZCIKICAgIH0KICB9Cn0=";
+    /** The skin of the Hub's Bazaar NPC. */
+    private static final String BAZAAR_SKIN = "eyJ0aW1lc3RhbXAiOjE1NzMyMjM2NDc4NDcsInByb2ZpbGVJZCI6IjQxZDNhYmMyZDc0OTQwMGM5MDkwZDU0MzRkMDM4MzFi"
+            + "IiwicHJvZmlsZU5hbWUiOiJNZWdha2xvb24iLCJzaWduYXR1cmVSZXF1aXJlZCI6dHJ1ZSwidGV4dHVyZXMiOnsiU0tJTiI6"
+            + "eyJ1cmwiOiJodHRwOi8vdGV4dHVyZXMubWluZWNyYWZ0Lm5ldC90ZXh0dXJlL2MyMzJlMzgyMDg5NzQyOTE1NzYxOWIwZWUw"
+            + "OTlmZWMwNjI4ZjYwMmZmZjEyYjY5NWRlNTRhZWYxMWQ5MjNhZDcifX19";
+    private static net.minecraft.world.item.component.ResolvableProfile auctionMaster;
+    private static net.minecraft.world.item.component.ResolvableProfile bazaarNpc;
+
+    /** The NPC who runs this market, whose face the header shows in place of an icon. */
+    private static net.minecraft.world.item.component.ResolvableProfile npc(MarketKind kind) {
+        if (kind == MarketKind.BAZAAR) {
+            if (bazaarNpc == null) bazaarNpc = ItemIcons.profile(BAZAAR_SKIN);
+            return bazaarNpc;
+        }
+        if (auctionMaster == null) auctionMaster = ItemIcons.profile(AUCTION_MASTER_SKIN);
+        return auctionMaster;
+    }
+
     // ---- State that outlives one menu -----------------------------------------------------------
 
     /** Markets switched back to the vanilla chest by the player, for the rest of the session. */
@@ -114,6 +140,14 @@ public class MarketScreen extends ContainerScreen {
 
     private int pressedSlot = -1;
     private long pressedAtMs = 0L;
+    /**
+     * What the clicked slot held. Hypixel answers a click on a menu item by putting the item on the
+     * cursor for a moment; the slot is empty until the next page arrives or the item goes back. The
+     * card stays as it was meanwhile, rather than leaving a gap in the grid.
+     */
+    private ItemStack pressedStack = ItemStack.EMPTY;
+    private static final long KEEP_PRESSED_MS = 1500L;
+    private static final long PRESS_MS = 240L;
 
     /** The item under the mouse this frame, whose vanilla tooltip is shown. */
     private ItemStack hoveredStack = ItemStack.EMPTY;
@@ -225,7 +259,7 @@ public class MarketScreen extends ContainerScreen {
     private MarketMenu model() {
         long signature = 17;
         for (int i = 0; i < rows * 9; i++) {
-            ItemStack stack = menu.getSlot(i).getItem();
+            ItemStack stack = stack(i);
             signature = signature * 31 + System.identityHashCode(stack);
             signature = signature * 31 + stack.getCount();
         }
@@ -233,7 +267,7 @@ public class MarketScreen extends ContainerScreen {
 
         boolean wasEmpty = model == null || model.empty;
         List<MarketMenu.Slot> parsed = new ArrayList<>(rows * 9);
-        for (int i = 0; i < rows * 9; i++) parsed.add(slotOf(i, menu.getSlot(i).getItem()));
+        for (int i = 0; i < rows * 9; i++) parsed.add(slotOf(i, stack(i)));
         slots = parsed;
         model = MarketMenu.parse(kind, plainTitle, rows, parsed);
         modelSignature = signature;
@@ -255,7 +289,13 @@ public class MarketScreen extends ContainerScreen {
     }
 
     private ItemStack stack(int slot) {
-        return slot >= 0 && slot < menu.slots.size() ? menu.getSlot(slot).getItem() : ItemStack.EMPTY;
+        if (slot < 0 || slot >= menu.slots.size()) return ItemStack.EMPTY;
+        ItemStack stack = menu.getSlot(slot).getItem();
+        if (stack.isEmpty() && slot == pressedSlot && slot < rows * 9 && !pressedStack.isEmpty()
+                && System.currentTimeMillis() - pressedAtMs < KEEP_PRESSED_MS) {
+            return pressedStack;
+        }
+        return stack;
     }
 
     private MarketMenu.Slot plain(int slot) {
@@ -265,9 +305,11 @@ public class MarketScreen extends ContainerScreen {
     /** One click on a slot, as vanilla sends it for the same press: a shift click is a quick move there too. */
     private void click(int slot, int button, boolean shift) {
         ContainerInput input = shift ? ContainerInput.QUICK_MOVE : ContainerInput.PICKUP;
+        ItemStack before = stack(slot).copy();
         if (Outbound.menuClick(menu, slot, button, input, Outbound.Cause.MENU_CLICK)) {
             pressedSlot = slot;
             pressedAtMs = System.currentTimeMillis();
+            pressedStack = before;
         }
     }
 
@@ -334,7 +376,6 @@ public class MarketScreen extends ContainerScreen {
         boolean scaling = !continued && AlpakaStyle.beginOpen(graphics, openTimeMs, this.width, this.height);
 
         AlpakaStyle.panel(graphics, x, y, w, h);
-        drawGlow(graphics, x, y, w, h);
 
         sideW = m.hasSidebar() ? Math.max(90, Math.min(122, (int) (w * 0.21))) : 0;
         sideX = x;
@@ -370,24 +411,14 @@ public class MarketScreen extends ContainerScreen {
         }
     }
 
-    /**
-     * A soft halo of the accent around the market's icon, so the window greets in the player's
-     * color. Small enough to fade out before the panel's edge.
-     */
-    private void drawGlow(GuiGraphicsExtractor graphics, int x, int y, int w, int h) {
-        WheelMesh mesh = new WheelMesh(1.0f / guiScale());
-        mesh.radialGradient(x + PAD + 10, y + HEADER_H / 2.0f, 18f, MarketIcons.fade(AlpakaStyle.accent(), 0.30f),
-                AlpakaStyle.accent() & 0x00FFFFFF);
-        mesh.submit(graphics);
-    }
-
     private void drawHeader(GuiGraphicsExtractor graphics, MarketMenu m, int mx, int my, int x, int y, int w) {
         int accent = AlpakaStyle.accent();
+        // The NPC who runs the market, his face where a window has its icon: flat, as the tab list
+        // shows players, which reads better this small than a head turned away.
         int chip = 20;
         int chipX = x + PAD;
         int chipY = y + (HEADER_H - chip) / 2;
-        ModernGuiUtils.drawRoundedRect(graphics, chipX, chipY, chip, chip, 6, MarketIcons.fade(accent, 0.18f));
-        MarketIcons.draw(graphics, MarketIcons.of(kind), chipX + 3, chipY + 3, 14, accent);
+        net.minecraft.client.gui.components.PlayerFaceExtractor.extractRenderState(graphics, npc(kind), chipX, chipY, chip);
 
         // From the right: close, back, then the search, which leaves the rest to the title.
         int right = x + w - PAD;
@@ -742,6 +773,34 @@ public class MarketScreen extends ContainerScreen {
 
     private void drawCard(GuiGraphicsExtractor graphics, int slot, LoreInfo info, int px, int py, int w, int h,
                           int mx, int my, boolean inClip, float alpha, int clipY, int clipH) {
+        boolean pressing = beginPress(graphics, slot, px, py, w, h);
+        try {
+            drawCardBody(graphics, slot, info, px, py, w, h, mx, my, inClip, alpha, clipY, clipH);
+        } finally {
+            if (pressing) graphics.pose().popMatrix();
+        }
+    }
+
+    /**
+     * A clicked card or tile gives a little under the click: it dips to 96.5 % and springs back over
+     * {@link #PRESS_MS}, with the accent flashing round it. Returns whether a pose was pushed.
+     */
+    private boolean beginPress(GuiGraphicsExtractor graphics, int slot, int x, int y, int w, int h) {
+        if (slot != pressedSlot) return false;
+        long since = System.currentTimeMillis() - pressedAtMs;
+        if (since >= PRESS_MS) return false;
+        float scale = 1f - 0.035f * (float) Math.sin(Math.PI * since / (double) PRESS_MS);
+        float cx = x + w / 2f;
+        float cy = y + h / 2f;
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(cx, cy);
+        graphics.pose().scale(scale, scale);
+        graphics.pose().translate(-cx, -cy);
+        return true;
+    }
+
+    private void drawCardBody(GuiGraphicsExtractor graphics, int slot, LoreInfo info, int px, int py, int w, int h,
+                              int mx, int my, boolean inClip, float alpha, int clipY, int clipH) {
         ItemStack stack = stack(slot);
         boolean hover = inClip && AlpakaStyle.inside(mx, my, px, py, w, h);
         if (hover) hoverTarget(slot);
@@ -1045,14 +1104,18 @@ public class MarketScreen extends ContainerScreen {
 
     private int drawActionCards(GuiGraphicsExtractor graphics, MarketMenu m, List<Integer> slots, int mx, int my, boolean inClip,
                                 int ax, int ay, int aw, int ah, int cy, int ch, int index, long now, int minW, int cardH) {
-        int cols = Math.max(1, (aw + GAP) / (minW + GAP));
-        int cardW = (aw - (cols - 1) * GAP) / cols;
+        // No more columns than cards, none wider than reads well, the row centred: a lone action
+        // card is not stretched across the whole width.
+        int cols = Math.max(1, Math.min(slots.size(), (aw + GAP) / (minW + GAP)));
+        int cardW = Math.min(240, (aw - (cols - 1) * GAP) / cols);
+        int rowW = cols * cardW + (cols - 1) * GAP;
+        int left = ax + (aw - rowW) / 2;
         int cardRows = (slots.size() + cols - 1) / cols;
         int total = cardRows * (cardH + GAP) - GAP;
         int top = ay + Math.max(0, (ah - total) / 2) - contentScroll.offset();
         for (int i = 0; i < slots.size(); i++) {
             int slot = slots.get(i);
-            int px = ax + (i % cols) * (cardW + GAP);
+            int px = left + (i % cols) * (cardW + GAP);
             int py = top + (i / cols) * (cardH + GAP);
             float in = entrance(index + i, now);
             drawCard(graphics, slot, m.info.get(slot), px, py + Math.round((1 - in) * 6), cardW, cardH, mx, my, inClip, in, cy, ch);
@@ -1124,6 +1187,16 @@ public class MarketScreen extends ContainerScreen {
 
     private void drawTile(GuiGraphicsExtractor graphics, int slot, LoreInfo info, int px, int py, int w, int h,
                           int mx, int my, boolean inClip, float alpha) {
+        boolean pressing = beginPress(graphics, slot, px, py, w, h);
+        try {
+            drawTileBody(graphics, slot, info, px, py, w, h, mx, my, inClip, alpha);
+        } finally {
+            if (pressing) graphics.pose().popMatrix();
+        }
+    }
+
+    private void drawTileBody(GuiGraphicsExtractor graphics, int slot, LoreInfo info, int px, int py, int w, int h,
+                              int mx, int my, boolean inClip, float alpha) {
         ItemStack stack = stack(slot);
         boolean hover = inClip && AlpakaStyle.inside(mx, my, px, py, w, h);
         if (hover) hoverTarget(slot);
@@ -1631,6 +1704,17 @@ public class MarketScreen extends ContainerScreen {
     }
 
     // ---- For the screenshot tour ----------------------------------------------------------------
+
+    /**
+     * For the screenshot tour: a click on a slot as Hypixel answers it - the item leaves the slot
+     * for the cursor - without anything being sent.
+     */
+    void devPressLikeHypixel(int slot) {
+        pressedStack = stack(slot).copy();
+        pressedSlot = slot;
+        pressedAtMs = System.currentTimeMillis();
+        menu.getSlot(slot).set(ItemStack.EMPTY);
+    }
 
     static void devInventory(boolean open) {
         inventoryOpen = open;

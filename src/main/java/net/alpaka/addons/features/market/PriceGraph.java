@@ -227,8 +227,10 @@ public final class PriceGraph {
                 "Prices provided by SkyCofl. Click to open " + page.replace("https://", "") + ".");
 
         WheelMesh mesh = new WheelMesh(1.0f / guiScale());
-        series(mesh, points, false, secondColor, t0, t1, min, max, px, py, pw, ph);
-        series(mesh, points, true, firstColor, t0, t1, min, max, px, py, pw, ph);
+        // The fill first, under both lines; then the second line, then the first on top.
+        series(mesh, points, true, firstColor, true, t0, t1, min, max, px, py, pw, ph);
+        series(mesh, points, false, secondColor, false, t0, t1, min, max, px, py, pw, ph);
+        series(mesh, points, true, firstColor, false, t0, t1, min, max, px, py, pw, ph);
         mesh.submit(graphics);
 
         // Under the mouse: the moment nearest it, its figures in a small box.
@@ -256,14 +258,16 @@ public final class PriceGraph {
         return vx + GuiFont.width(font, v);
     }
 
-    /** One line: a soft area under it fading to nothing, and the line itself on top. */
-    private static void series(WheelMesh mesh, List<PriceHistory.Point> points, boolean first, int color,
+    /**
+     * One line, or with {@code area} the even fill under it, in its color down to the bottom of the
+     * plot: one flat color reads as the area it is, where a fade looked like a shadow.
+     */
+    private static void series(WheelMesh mesh, List<PriceHistory.Point> points, boolean first, int color, boolean area,
                                long t0, long t1, double min, double max, int px, int py, int pw, int ph) {
         float bottom = py + ph;
         float prevX = Float.NaN;
         float prevY = Float.NaN;
-        int top = MarketIcons.fade(color, first ? 0.22f : 0.12f);
-        int clear = color & 0x00FFFFFF;
+        int fill = MarketIcons.fade(color, 0.18f);
         for (PriceHistory.Point p : points) {
             double v = first ? p.first() : p.second();
             if (Double.isNaN(v)) {
@@ -273,8 +277,8 @@ public final class PriceGraph {
             float x = px + (float) ((p.timeMs() - t0) / (double) (t1 - t0) * pw);
             float y = yOf(v, min, max, py, ph);
             if (!Float.isNaN(prevX)) {
-                mesh.quad(prevX, prevY, top, prevX, bottom, clear, x, bottom, clear, x, y, top);
-                line(mesh, prevX, prevY, x, y, first ? 1.4f : 1.1f, color);
+                if (area) mesh.quad(prevX, prevY, fill, prevX, bottom, fill, x, bottom, fill, x, y, fill);
+                else line(mesh, prevX, prevY, x, y, first ? 1.4f : 1.1f, color);
             }
             prevX = x;
             prevY = y;

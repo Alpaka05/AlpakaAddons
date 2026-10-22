@@ -179,6 +179,10 @@ public final class DevScreenshotTour {
             screen("market-ah-main", net.alpaka.addons.features.market.MarketPreview::auctionHouse),
             screen("market-ah-browser", net.alpaka.addons.features.market.MarketPreview::auctionBrowser),
             new Stop("market-ah-browser-hover", () -> placeMouse(0.42, 0.3), () -> true, 15),
+            // A card a moment after its click: Hypixel has taken the item onto the cursor, the card
+            // stays and gives under the click.
+            new Stop("market-ah-press", () -> net.alpaka.addons.features.market.MarketPreview.pressLikeHypixel(12),
+                    () -> true, 2),
             new Stop("market-ah-browser-filter", () -> placeMouse(0.14, 0.72), () -> true, 15),
             new Stop(null, () -> placeMouse(0.5, 0.97), () -> true, 1),
             new Stop("market-ah-inventory", () -> {

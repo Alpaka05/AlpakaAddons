@@ -327,6 +327,11 @@ public final class MarketPreview {
         }
     }
 
+    /** A click on a card of the open market screen, answered the way Hypixel answers it. */
+    public static void pressLikeHypixel(int slot) {
+        if (Minecraft.getInstance().gui.screen() instanceof MarketScreen screen) screen.devPressLikeHypixel(slot);
+    }
+
     /** The inventory drawer open or shut, for the screenshot tour. */
     public static void inventory(boolean open) {
         MarketScreen.devInventory(open);

@@ -15,6 +15,10 @@ public final class HudDefaults {
     public static final int WORLD_AGE_X = 10;
     public static final int WORLD_AGE_Y = 10;
 
+    /** Under the world age, and 16 pixels tall, so it ends well above the slayer session HUD. */
+    public static final int DEPLOYABLE_TIMER_X = WORLD_AGE_X;
+    public static final int DEPLOYABLE_TIMER_Y = WORLD_AGE_Y + 16;
+
     public static final int SLAYER_SESSION_X = 10;
     public static final int SLAYER_SESSION_Y = 60;
     /** The session HUD's tallest layout, nine rows of ten pixels, at scale 1. */

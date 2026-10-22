@@ -246,6 +246,12 @@ public class AlpakaConfig {
     public int worldAgeHudY = net.alpaka.addons.client.hud.HudDefaults.WORLD_AGE_Y;
     public float worldAgeHudScale = 1.0f;
 
+    // Deployable timer: the strongest power orb or flare in range, with its time left.
+    public boolean deployableTimerEnabled = false;
+    public int deployableTimerHudX = net.alpaka.addons.client.hud.HudDefaults.DEPLOYABLE_TIMER_X;
+    public int deployableTimerHudY = net.alpaka.addons.client.hud.HudDefaults.DEPLOYABLE_TIMER_Y;
+    public float deployableTimerHudScale = 1.0f;
+
     // Slayer session HUD. Each line has its own toggle so the HUD can be trimmed to just the
     // numbers being watched; the whole HUD hides unless a slayer quest is active.
     /** The slayer session HUD, the mod's flagship. On for fresh installs. */
@@ -1038,6 +1044,7 @@ public class AlpakaConfig {
         this.slayerTimerChatEnabled = false;
         this.slayerTimerHudEnabled = false;
         this.ragnarockEnabled = false;
+        this.deployableTimerEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
         this.customDamageTagsEnabled = false;

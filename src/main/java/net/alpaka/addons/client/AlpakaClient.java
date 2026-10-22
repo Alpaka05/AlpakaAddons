@@ -15,6 +15,7 @@ import net.alpaka.addons.config.AlpakaConfig;
 import net.minecraft.client.Minecraft;
 
 import net.alpaka.addons.features.worldage.WorldAgeHudRenderer;
+import net.alpaka.addons.features.deployable.DeployableTracker;
 
 public class AlpakaClient implements ClientModInitializer {
     @Override
@@ -62,6 +63,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.tooltip.OldMasterStarsFeature.register();
         net.alpaka.addons.features.ragnarock.RagnarockFeature.register();
         WorldAgeHudRenderer.registerEvents();
+        DeployableTracker.registerEvents();
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             // Every alias takes an optional search term: "/aa" opens the config as before, and

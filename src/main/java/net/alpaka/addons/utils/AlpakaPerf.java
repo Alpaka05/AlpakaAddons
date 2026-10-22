@@ -21,6 +21,7 @@ public final class AlpakaPerf {
         HUD_WORLD_AGE("alpaka:hud_world_age"),
         HUD_SLAYER("alpaka:hud_slayer"),
         HUD_SLAYER_TIMER("alpaka:hud_slayer_timer"),
+        HUD_DEPLOYABLE_TIMER("alpaka:hud_deployable_timer"),
         HUD_INVENTORY("alpaka:hud_inventory"),
         HUD_NOTIFICATIONS("alpaka:hud_notifications"),
         BLUR_CAPTURE("alpaka:blur_capture"),

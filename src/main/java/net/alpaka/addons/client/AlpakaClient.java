@@ -42,6 +42,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.slayer.SmolderingPolarization.register();
         DevScreenshotTour.register();
         SlayerDropTracker.registerEvents();
+        DeployableTracker.registerEvents();
         net.alpaka.addons.features.slayer.SkyblockProfileTracker.INSTANCE.register();
         // The slayer record waits for its folder when a cloud drive comes up after the game did;
         // polled from the tick so the wait ends even while nothing reads the record.
@@ -63,7 +64,6 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.tooltip.OldMasterStarsFeature.register();
         net.alpaka.addons.features.ragnarock.RagnarockFeature.register();
         WorldAgeHudRenderer.registerEvents();
-        DeployableTracker.registerEvents();
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             // Every alias takes an optional search term: "/aa" opens the config as before, and

@@ -102,6 +102,23 @@ class TabListParserTest {
     }
 
     @Test
+    void eachWidgetGetsABoxOfItsOwn() {
+        List<Component> slots = new ArrayList<>();
+        slots.addAll(column("Info", "Area: Hub", " Server: x", "", "Profile: Peach", " Bank: 1B", "", "Pet:", " Wisp"));
+        List<TabListParser.Category> categories = TabListParser.parse(slots);
+
+        CustomTabLayout plain = CustomTabLayout.build(List.of(), categories, List.of(), false, 1000, 300, false, c -> 50);
+        assertTrue(plain.boxes.isEmpty());
+
+        CustomTabLayout boxed = CustomTabLayout.build(List.of(), categories, List.of(), false, 1000, 300, false, true, c -> 50);
+        assertEquals(3, boxed.boxes.size());
+        for (int i = 1; i < boxed.boxes.size(); i++) {
+            assertTrue(boxed.boxes.get(i).y0() > boxed.boxes.get(i - 1).y1(), "boxes overlap");
+        }
+        assertTrue(boxed.height > plain.height);
+    }
+
+    @Test
     void layoutStacksOrSpreadsCategories() {
         List<Component> slots = new ArrayList<>();
         slots.addAll(column("Players (2)", "[1] A", "[2] B"));

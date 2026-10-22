@@ -21,6 +21,14 @@ public final class CustomTabLayout {
     public static final int LINE_H = 9;
     public static final int SECTION_GAP = 4;
     public static final int TITLE_GAP = 3;
+    /**
+     * With Section Boxes: how far a box reaches past its rows, and the wider gaps that leave room
+     * for it - between two boxes in a column, and between a category's title and its first box.
+     */
+    public static final int BOX_PAD_X = 3;
+    public static final int BOX_PAD_Y = 2;
+    public static final int BOX_SECTION_GAP = 7;
+    public static final int BOX_TITLE_GAP = 5;
     public static final int COLUMN_GAP = 10;
     public static final int GROUP_GAP = 16;
     public static final int ROW_GAP = 8;
@@ -45,7 +53,11 @@ public final class CustomTabLayout {
      */
     public record Text(Component text, int x, int y, String face, TabListParser.Line line) {}
 
+    /** A box around one widget's rows, in the tab's pixels; Section Boxes draws them. */
+    public record Box(int x0, int y0, int x1, int y1) {}
+
     public final List<Text> texts = new ArrayList<>();
+    public final List<Box> boxes = new ArrayList<>();
     public int width;
     public int height;
 
@@ -64,9 +76,18 @@ public final class CustomTabLayout {
     public static CustomTabLayout build(List<Component> header, List<TabListParser.Category> categories,
                                         List<Component> footer, boolean stacked, int maxWidth, int maxHeight,
                                         boolean withFaces, ToIntFunction<Component> widthOf) {
+        return build(header, categories, footer, stacked, maxWidth, maxHeight, withFaces, false, widthOf);
+    }
+
+    /** @param boxes whether each widget gets a box of its own, which spaces the widgets further apart */
+    public static CustomTabLayout build(List<Component> header, List<TabListParser.Category> categories,
+                                        List<Component> footer, boolean stacked, int maxWidth, int maxHeight,
+                                        boolean withFaces, boolean boxes, ToIntFunction<Component> widthOf) {
         CustomTabLayout layout = new CustomTabLayout();
+        int sectionGap = boxes ? BOX_SECTION_GAP : SECTION_GAP;
+        int titleGap = boxes ? BOX_TITLE_GAP : TITLE_GAP;
         int maxRows = stacked ? STACKED_ROWS
-                : Math.max(6, Math.min(SIDE_BY_SIDE_ROWS, (maxHeight - LINE_H - TITLE_GAP) / LINE_H));
+                : Math.max(6, Math.min(SIDE_BY_SIDE_ROWS, (maxHeight - LINE_H - titleGap) / LINE_H));
 
         List<Group> groups = new ArrayList<>();
         for (TabListParser.Category category : categories) {
@@ -116,25 +137,30 @@ public final class CustomTabLayout {
                 int top = y;
                 if (group.title() != null) {
                     layout.texts.add(new Text(group.title(), x + (w - group.titleWidth()) / 2, top, null, null));
-                    top += LINE_H + TITLE_GAP;
+                    top += LINE_H + titleGap;
                 }
                 int columnsWidth = columnsWidth(group.columns());
                 int cx = x + (w - columnsWidth) / 2;
                 int deepest = 0;
                 for (Column column : group.columns()) {
                     int cy = top;
+                    int boxTop = -1;
                     for (Object entry : column.rows()) {
                         if (entry == GAP) {
-                            cy += SECTION_GAP;
+                            if (boxes && boxTop >= 0) layout.box(cx, boxTop, column.width(), cy);
+                            boxTop = -1;
+                            cy += sectionGap;
                             continue;
                         }
+                        if (boxTop < 0) boxTop = cy;
                         TabListParser.Line line = (TabListParser.Line) entry;
                         int lx = cx + (line.indented() ? INDENT : 0);
                         String face = withFaces ? line.player() : null;
                         layout.texts.add(new Text(line.text(), lx, cy, face, line));
                         cy += LINE_H;
                     }
-                    deepest = Math.max(deepest, cy - top);
+                    if (boxes && boxTop >= 0) layout.box(cx, boxTop, column.width(), cy);
+                    deepest = Math.max(deepest, cy - top + (boxes ? BOX_PAD_Y : 0));
                     cx += column.width() + COLUMN_GAP;
                 }
                 tallest = Math.max(tallest, top - y + deepest);
@@ -152,6 +178,12 @@ public final class CustomTabLayout {
         }
         layout.height = y + PAD_Y;
         return layout;
+    }
+
+    /** A box around a column's rows from {@code top} down to {@code bottom}, the next row's top. */
+    private void box(int x, int top, int width, int bottom) {
+        // The last row's glyphs and shadow end a pixel above the next row's top.
+        boxes.add(new Box(x - BOX_PAD_X, top - BOX_PAD_Y, x + width + BOX_PAD_X, bottom - 1 + BOX_PAD_Y));
     }
 
     private void centered(Component line, int y, ToIntFunction<Component> widthOf) {

@@ -589,6 +589,8 @@ public class AlpakaConfig {
     public boolean customTabProgressBars = true;
     /** A row lights up for a moment when its value changes. */
     public boolean customTabHighlightChanges = true;
+    /** Each widget (Area, Profile, Pet, ...) in a faint box of its own. */
+    public boolean customTabSectionBoxes = true;
     /** The panel behind the list; off leaves only the text. */
     public boolean customTabBackground = true;
     /** The list slides down out of the top edge and back up instead of appearing at once. */

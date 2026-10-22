@@ -521,6 +521,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customTabHighlightChanges = v; AlpakaConfig.save(); },
                 "tab list highlight changes flash glow new value changed update blink"));
 
+        OPTIONS.add(new ConfigOption("custom_tab_section_boxes", "Section Boxes",
+                "Puts each part of the tab list, like Area, Profile or Pet, in a faint box of its own so the parts are easy to tell apart.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabSectionBoxes,
+                v -> { AlpakaConfig.instance.customTabSectionBoxes = v; AlpakaConfig.save(); },
+                "tab list section boxes box border outline frame card widget group block separate"));
+
         OPTIONS.add(new ConfigOption("custom_tab_animated", "Slide Animation",
                 "The tab list slides down from the top of the screen when it opens and back up when it closes, instead of appearing at once.",
                 ConfigCategory.VISUALS,

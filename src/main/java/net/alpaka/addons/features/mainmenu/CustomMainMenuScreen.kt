@@ -313,6 +313,21 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         HypixelStatus.requestRefresh()
     }
 
+    /**
+     * Draws the whole menu as the backdrop of a screen opened over it - the config - so the menu
+     * stays visible behind that screen instead of a black void: there is no world behind a title
+     * screen for the screen's dim to darken. Drawn without the mouse, so nothing on it is hovered,
+     * and finished with a new stratum, so the screen on top stays in front of all of it. A resize
+     * while the other screen is open is caught up on here.
+     */
+    fun extractAsBackdrop(graphics: GuiGraphicsExtractor, width: Int, height: Int, partialTick: Float) {
+        if (this.width != width || this.height != height) this.init(width, height)
+        extractBackground(graphics, -1, -1, partialTick)
+        graphics.nextStratum()
+        extractRenderState(graphics, -1, -1, partialTick)
+        graphics.nextStratum()
+    }
+
     override fun tick() {
         super.tick()
         HypixelStatus.tick()

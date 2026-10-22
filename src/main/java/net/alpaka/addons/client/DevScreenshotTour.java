@@ -175,6 +175,38 @@ public final class DevScreenshotTour {
             new Stop("screenshot-preview", () -> {}, () -> true, 2),
             new Stop("screenshot-preview-shrink", () -> ScreenshotPreview.devFreezeAt(120.0f), () -> true, 2),
             new Stop(null, () -> ScreenshotPreview.devFreezeAt(-1.0f), () -> true, 5),
+            // The Auction House and the Bazaar in the market screens, on chests filled locally.
+            screen("market-ah-main", net.alpaka.addons.features.market.MarketPreview::auctionHouse),
+            screen("market-ah-browser", net.alpaka.addons.features.market.MarketPreview::auctionBrowser),
+            new Stop("market-ah-browser-hover", () -> placeMouse(0.42, 0.3), () -> true, 15),
+            new Stop("market-ah-browser-filter", () -> placeMouse(0.14, 0.72), () -> true, 15),
+            new Stop(null, () -> placeMouse(0.5, 0.97), () -> true, 1),
+            new Stop("market-ah-inventory", () -> {
+                net.alpaka.addons.features.market.MarketPreview.inventory(true);
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.auctionBrowser());
+            }, () -> true, 30),
+            new Stop(null, () -> net.alpaka.addons.features.market.MarketPreview.inventory(false), () -> true, 1),
+            screen("market-ah-view", net.alpaka.addons.features.market.MarketPreview::auctionView),
+            screen("market-ah-confirm", net.alpaka.addons.features.market.MarketPreview::auctionConfirm),
+            screen("market-bazaar", net.alpaka.addons.features.market.MarketPreview::bazaar),
+            new Stop("market-bazaar-hover", () -> placeMouse(0.62, 0.42), () -> true, 15),
+            new Stop(null, () -> placeMouse(0.5, 0.97), () -> true, 1),
+            screen("market-bazaar-product", net.alpaka.addons.features.market.MarketPreview::bazaarProduct),
+            screen("market-bazaar-orders", net.alpaka.addons.features.market.MarketPreview::bazaarOrders),
+            screen("market-input-search", () -> net.alpaka.addons.features.market.MarketPreview.input("Enter query", "",
+                    net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, "hyper")),
+            screen("market-input-price", () -> net.alpaka.addons.features.market.MarketPreview.input("Your bid", "",
+                    net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, "1.5m")),
+            screen("market-input-amount", () -> net.alpaka.addons.features.market.MarketPreview.input("Enter amount", "to order",
+                    net.alpaka.addons.features.market.MarketKind.BAZAAR, null)),
+            new Stop("market-classic", () -> {
+                net.alpaka.addons.features.market.MarketPreview.classic(net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, true);
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.auctionBrowser());
+            }, () -> true, 30),
+            new Stop(null, () -> net.alpaka.addons.features.market.MarketPreview.classic(
+                    net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, false), () -> true, 1),
+            screen("market-config", () -> AlpakaConfigScreen.openOn("Markets", "Custom Auction House")),
+            new Stop(null, () -> Minecraft.getInstance().gui.setScreen(null), () -> true, 5),
             new Stop("hud-editor-world", () -> Minecraft.getInstance().gui.setScreen(new HudEditorScreen(null)), () -> true, 20),
             // Every HUD on its blurred panel and in the menu font, a notice in the corner.
             new Stop("hud-style", DevScreenshotTour::hudStyle, () -> true, 20),

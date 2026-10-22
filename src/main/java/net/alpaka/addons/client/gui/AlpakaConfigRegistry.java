@@ -1529,6 +1529,29 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.cacheResourcePackEnabled = v; AlpakaConfig.save(); },
                 "cache resource pack server pack texture loading screen reload join hypixel skyblock fast"));
 
+        OPTIONS.add(new ConfigOption("Markets", ConfigCategory.SKYBLOCK));
+
+        OPTIONS.add(new ConfigOption("custom_auction_house", "Custom Auction House",
+                "Shows the Auction House in Alpaka's design: categories with icons, auctions as cards with price, time and seller. Each click is the same click on Hypixel's menu.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.customAuctionHouseEnabled,
+                v -> { AlpakaConfig.instance.customAuctionHouseEnabled = v; AlpakaConfig.save(); },
+                "auction house ah auctions browser bin bid custom menu gui redesign cards market"));
+
+        OPTIONS.add(new ConfigOption("custom_bazaar", "Custom Bazaar",
+                "Shows the Bazaar in Alpaka's design, with buy and sell prices on every product. Each click is the same click on Hypixel's menu.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.customBazaarEnabled,
+                v -> { AlpakaConfig.instance.customBazaarEnabled = v; AlpakaConfig.save(); },
+                "bazaar bz buy sell order offer instant custom menu gui redesign prices market"));
+
+        OPTIONS.add(new ConfigOption("custom_sign_input", "Custom Sign Input",
+                "Replaces Hypixel's sign for searches, prices and amounts with an input bar that shows what an amount like 1.5m means.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.customSignInputEnabled,
+                v -> { AlpakaConfig.instance.customSignInputEnabled = v; AlpakaConfig.save(); },
+                "sign input search price amount bid query text field bar auction bazaar"));
+
         OPTIONS.add(new ConfigOption("Guild Chat", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("guild_prefix", "Custom Guild Tag",

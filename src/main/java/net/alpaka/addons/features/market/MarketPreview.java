@@ -80,10 +80,14 @@ public final class MarketPreview {
 
     // ---- The Auction House ----------------------------------------------------------------------
 
-    private record Auction(Item item, String name, String tier, String price, boolean bin, String ends, String seller) {}
+    private record Auction(Item item, String name, String tier, String price, boolean bin, String ends, String seller, String tag) {
+        Auction(Item item, String name, String tier, String price, boolean bin, String ends, String seller) {
+            this(item, name, tier, price, bin, ends, seller, null);
+        }
+    }
 
     private static final Auction[] AUCTIONS = {
-            new Auction(Items.IRON_SWORD, "§6Hyperion §6✪✪✪✪✪", "§6§lLEGENDARY DUNGEON SWORD", "1,140,000,000", true, "13h 22m 5s", "§b[MVP§c+§b] Technosmith"),
+            new Auction(Items.IRON_SWORD, "§6Hyperion §6✪✪✪✪✪", "§6§lLEGENDARY DUNGEON SWORD", "1,140,000,000", true, "13h 22m 5s", "§b[MVP§c+§b] Technosmith", "HYPERION"),
             new Auction(Items.DIAMOND_SHOVEL, "§5Aspect of the Void", "§5§lEPIC SWORD", "1,250,000", true, "2d 4h", "§a[VIP] Llamaqueen"),
             new Auction(Items.BOW, "§6Terminator", "§6§lLEGENDARY BOW", "1,630,000,000", false, "4h 11m", "§6[MVP§0++§6] Bowspam"),
             new Auction(Items.IRON_SWORD, "§6Livid Dagger", "§6§lLEGENDARY DUNGEON SWORD", "6,900,000", true, "21h 5m", "§7Kaleido"),
@@ -141,6 +145,11 @@ public final class MarketPreview {
         lore.add("§eClick to inspect!");
         ItemStack stack = item(a.item(), a.name(), lore.toArray(new String[0]));
         if (a.name().contains("✪") || a.name().contains("✦")) glint(stack);
+        if (a.tag() != null) {
+            net.minecraft.nbt.CompoundTag data = new net.minecraft.nbt.CompoundTag();
+            data.putString("id", a.tag());
+            stack.set(DataComponents.CUSTOM_DATA, net.minecraft.world.item.component.CustomData.of(data));
+        }
         return stack;
     }
 

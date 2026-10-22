@@ -260,4 +260,84 @@ class MarketParsingTest {
         assertArrayEquals(new String[] {"1.5m"}, price.split("1.5m", MarketParsingTest::width, 90));
         assertNull(price.split("1000000000000000", MarketParsingTest::width, 90));
     }
+
+    // ---- Price history --------------------------------------------------------------------------
+
+    @Test
+    void readsSkyCoflsBazaarHistoryOldestFirst() {
+        List<PriceHistory.Point> points = PriceHistory.parseBazaar("""
+                [{"buy":153227.1,"sell":149916.5,"timestamp":"2026-10-22T17:35:22.805"},
+                 {"buy":0,"sell":149000.0,"timestamp":"2026-10-22T17:30:22.799"},
+                 {"buy":0,"sell":0,"timestamp":"2026-10-22T17:25:22.799"}]""");
+        assertEquals(2, points.size());
+        assertTrue(points.get(0).timeMs() < points.get(1).timeMs());
+        // No orders means no price, not a price of zero.
+        assertTrue(Double.isNaN(points.get(0).first()));
+        assertEquals(153227.1, points.get(1).first());
+        assertEquals(1792690522805L, points.get(1).timeMs());
+    }
+
+    @Test
+    void readsSkyCoflsAuctionHistory() {
+        List<PriceHistory.Point> points = PriceHistory.parseAuction("""
+                [{"min":750000000.0,"max":1.0222222E+09,"avg":920407407.3,"volume":3,"time":"2026-10-15T19:00:00"},
+                 {"min":990000000.0,"max":1.5E+09,"avg":1085416666.3,"volume":6,"time":"2026-10-15T20:00:00"}]""");
+        assertEquals(2, points.size());
+        assertEquals(920407407.3, points.get(0).first());
+        assertEquals(750000000.0, points.get(0).second());
+    }
+
+    @Test
+    void asksSkyCoflForTheRightRange() {
+        long now = 1792690522805L;
+        assertEquals("https://sky.coflnet.com/api/bazaar/ENCHANTED_HAY_BALE/history/week",
+                PriceHistory.url(MarketKind.BAZAAR, "ENCHANTED_HAY_BALE", PriceHistory.Range.WEEK, now));
+        assertEquals("https://sky.coflnet.com/api/bazaar/COAL/history?start=2026-09-22T17:00:00&end=2026-10-22T17:00:00",
+                PriceHistory.url(MarketKind.BAZAAR, "COAL", PriceHistory.Range.MONTH, now));
+        assertEquals("https://sky.coflnet.com/api/item/price/HYPERION/history/full",
+                PriceHistory.url(MarketKind.AUCTION_HOUSE, "HYPERION", PriceHistory.Range.ALL, now));
+    }
+
+    @Test
+    void averagesALongHistoryDown() {
+        List<PriceHistory.Point> points = new ArrayList<>();
+        for (int i = 0; i < 1000; i++) points.add(new PriceHistory.Point(i, i, Double.NaN));
+        List<PriceHistory.Point> small = PriceGraph.downsample(points, 100);
+        assertEquals(100, small.size());
+        assertEquals(4.5, small.get(0).first());
+        assertTrue(Double.isNaN(small.get(0).second()));
+    }
+
+    @Test
+    void findsSkyCoflsTagForAnItem() {
+        assertEquals("PET_LION", ItemTags.petTag("{\"type\":\"LION\",\"tier\":\"LEGENDARY\"}"));
+        assertEquals("HYPERION", ItemTags.expand("HYPERION", ""));
+        assertNull(ItemTags.expand("RUNE", ""));
+        ItemTags.index("""
+                [{"name":"Enchanted Hay Bale","tag":"ENCHANTED_HAY_BALE","flags":"BAZAAR, GLOWING"},
+                 {"name":"null","tag":"LOG_2:2","flags":"AUCTION"},
+                 {"name":"Hyperion","tag":"HYPERION","flags":"AUCTION"}]""");
+        assertEquals("ENCHANTED_HAY_BALE", ItemTags.lookup("Enchanted Hay Bale", MarketKind.BAZAAR));
+        assertEquals("HYPERION", ItemTags.lookup("hyperion", MarketKind.AUCTION_HOUSE));
+        assertNull(ItemTags.lookup("null", MarketKind.AUCTION_HOUSE));
+    }
+
+    @Test
+    void oneWildSaleDoesNotSetTheScale() {
+        List<PriceHistory.Point> points = new ArrayList<>();
+        for (int i = 0; i < 100; i++) points.add(new PriceHistory.Point(i, 500 + i % 10, 450));
+        points.set(50, new PriceHistory.Point(50, 2_000_000, 1));
+        double[] scale = PriceGraph.scale(points);
+        assertTrue(scale[1] < 1_000, "max " + scale[1]);
+        assertTrue(scale[0] > 100, "min " + scale[0]);
+    }
+
+    @Test
+    void theChangeComparesTheEndsOfTheRange() {
+        List<PriceHistory.Point> points = new ArrayList<>();
+        for (int i = 0; i < 20; i++) points.add(new PriceHistory.Point(i, i < 10 ? 100 : 110, Double.NaN));
+        double[] ends = PriceGraph.trend(points);
+        assertEquals(100.0, ends[0]);
+        assertEquals(110.0, ends[1]);
+    }
 }

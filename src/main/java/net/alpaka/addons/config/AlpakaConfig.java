@@ -616,6 +616,10 @@ public class AlpakaConfig {
     public boolean customBazaarEnabled = true;
     /** Hypixel's sign prompts - a search, a price, an amount - as an input bar; see MarketInputScreen. */
     public boolean customSignInputEnabled = true;
+    /** SkyCofl's price history on a product's or an auction's page; see PriceGraph. Needs allowApiCalls. */
+    public boolean marketPriceHistoryEnabled = true;
+    /** How far back it goes, an index into PriceHistory.Range: day, week, month, all time. */
+    public int marketPriceHistoryRange = 1;
 
     // Command Wheel options
     /**
@@ -1150,6 +1154,7 @@ public class AlpakaConfig {
         this.customAuctionHouseEnabled = false;
         this.customBazaarEnabled = false;
         this.customSignInputEnabled = false;
+        this.marketPriceHistoryEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
         this.customDamageTagsEnabled = false;

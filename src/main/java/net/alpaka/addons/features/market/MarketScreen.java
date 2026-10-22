@@ -6,6 +6,7 @@ import net.alpaka.addons.client.gui.GuiItemFade;
 import net.alpaka.addons.client.gui.ModernGuiUtils;
 import net.alpaka.addons.client.gui.PloppAnimation;
 import net.alpaka.addons.compliance.Outbound;
+import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.wheel.WheelMesh;
 import net.alpaka.addons.utils.SkyblockUtils;
 import net.minecraft.ChatFormatting;
@@ -756,13 +757,15 @@ public class MarketScreen extends ContainerScreen {
         drawPressFlash(graphics, slot, px, py, w, h);
         ModernGuiUtils.drawRoundedRect(graphics, px + 3, py + 8, 2, h - 16, 1, MarketIcons.fade(rarity, (0.55f + 0.45f * hv) * alpha));
 
-        int well = 22;
+        boolean compact = h < CARD_H;
+        int well = compact ? 18 : 22;
         int wx = px + 8;
         int wy = py + (h - well) / 2;
         ModernGuiUtils.drawRoundedRect(graphics, wx, wy, well, well, 5, MarketIcons.fade(rarity, (0.10f + 0.08f * hv) * alpha));
         GuiItemFade.begin(alpha);
-        graphics.item(stack, wx + 3, wy + 3);
-        graphics.itemDecorations(this.font, stack, wx + 3, wy + 3);
+        int inset = (well - 16) / 2;
+        graphics.item(stack, wx + inset, wy + inset);
+        graphics.itemDecorations(this.font, stack, wx + inset, wy + inset);
         GuiItemFade.end();
 
         int tx = wx + well + 6;
@@ -785,7 +788,7 @@ public class MarketScreen extends ContainerScreen {
             case AUCTION -> auctionLines(graphics, info, tx, py, tw, alpha);
             case PRODUCT -> productLines(graphics, info, tx, py, tw, alpha);
             case ORDER -> orderLines(graphics, info, tx, py, tw, alpha);
-            default -> genericLines(graphics, stack, info, tx, py, tw, alpha);
+            default -> genericLines(graphics, stack, info, tx, py, tw, alpha, compact ? 1 : 2);
         }
 
         if (py + h > clipY && py < clipY + clipH) {
@@ -903,10 +906,11 @@ public class MarketScreen extends ContainerScreen {
      * A card with no auction, product or order in it: a coin line if the lore has one ("Price per
      * unit ● 5.3"), else the lore's first lines in their own colors.
      */
-    private void genericLines(GuiGraphicsExtractor graphics, ItemStack stack, LoreInfo info, int tx, int py, int tw, float alpha) {
+    private void genericLines(GuiGraphicsExtractor graphics, ItemStack stack, LoreInfo info, int tx, int py, int tw, float alpha,
+                              int lines) {
         if (info != null && !info.coinLines.isEmpty()) {
             int y = py + 16;
-            for (int i = 0; i < Math.min(2, info.coinLines.size()); i++) {
+            for (int i = 0; i < Math.min(lines, info.coinLines.size()); i++) {
                 LoreInfo.CoinLine line = info.coinLines.get(i);
                 String value = Coins.compact(line.coins());
                 int valueW = 10 + GuiFont.width(this.font, value);
@@ -917,10 +921,11 @@ public class MarketScreen extends ContainerScreen {
                 graphics.text(this.font, GuiFont.text(value), vx + 10, y, MarketIcons.fade(COIN, alpha), false);
                 y += 11;
             }
-            if (info.coinLines.size() == 1) loreLines(graphics, stack, tx, py + 27, tw, 1, alpha);
+            // Below a single coin line, the lore's first line that is not one: "Price: …" again would only repeat it.
+            if (info.coinLines.size() == 1 && lines > 1) loreLines(graphics, stack, tx, py + 27, tw, 1, alpha, true);
             return;
         }
-        loreLines(graphics, stack, tx, py + 16, tw, 2, alpha);
+        loreLines(graphics, stack, tx, py + 16, tw, lines, alpha);
     }
 
     /** A faint line of light along a card's top edge, as if lit from above. */
@@ -956,12 +961,18 @@ public class MarketScreen extends ContainerScreen {
 
     /** The item's first lore lines that say something, in their own colors. */
     private void loreLines(GuiGraphicsExtractor graphics, ItemStack stack, int x, int y, int maxW, int lines, float alpha) {
+        loreLines(graphics, stack, x, y, maxW, lines, alpha, false);
+    }
+
+    private void loreLines(GuiGraphicsExtractor graphics, ItemStack stack, int x, int y, int maxW, int lines, float alpha,
+                           boolean skipCoins) {
         ItemLore lore = stack.get(DataComponents.LORE);
         if (lore == null) return;
         int drawn = 0;
         for (Component line : lore.styledLines()) {
             String plain = SkyblockUtils.cleanColor(line.getString()).trim();
             if (plain.isEmpty() || plain.chars().allMatch(c -> c == '-' || c == '▬' || c == ' ')) continue;
+            if (skipCoins && plain.toLowerCase(java.util.Locale.ROOT).matches(".*\\d coins?$")) continue;
             styled(graphics, line, x, y + drawn * 11, maxW, AlpakaStyle.TEXT_MUTED & 0x00FFFFFF | (Math.round(alpha * 255) << 24));
             if (++drawn >= lines) break;
         }
@@ -994,6 +1005,9 @@ public class MarketScreen extends ContainerScreen {
         }
         List<Integer> tiles = new ArrayList<>(m.content);
         if (m.hero != null) tiles.remove(m.hero);
+        if (m.hero != null && PriceGraph.enabled() && hasHistory(m.info.get(m.hero))) {
+            return drawWithGraph(graphics, m, tiles, mx, my, inClip, ax, ay, aw, ah, cy, ch, index, now);
+        }
         if (tiles.isEmpty()) return ch;
 
         int cols = Math.max(1, Math.min(tiles.size(), (aw + GAP) / (TILE_MIN_W + GAP)));
@@ -1026,19 +1040,70 @@ public class MarketScreen extends ContainerScreen {
 
     private int drawActionCards(GuiGraphicsExtractor graphics, MarketMenu m, List<Integer> slots, int mx, int my, boolean inClip,
                                 int ax, int ay, int aw, int ah, int cy, int ch, int index, long now) {
-        int cols = Math.max(1, (aw + GAP) / (CARD_MIN_W + GAP));
+        return drawActionCards(graphics, m, slots, mx, my, inClip, ax, ay, aw, ah, cy, ch, index, now, CARD_MIN_W, CARD_H);
+    }
+
+    private int drawActionCards(GuiGraphicsExtractor graphics, MarketMenu m, List<Integer> slots, int mx, int my, boolean inClip,
+                                int ax, int ay, int aw, int ah, int cy, int ch, int index, long now, int minW, int cardH) {
+        int cols = Math.max(1, (aw + GAP) / (minW + GAP));
         int cardW = (aw - (cols - 1) * GAP) / cols;
         int cardRows = (slots.size() + cols - 1) / cols;
-        int total = cardRows * (CARD_H + GAP) - GAP;
+        int total = cardRows * (cardH + GAP) - GAP;
         int top = ay + Math.max(0, (ah - total) / 2) - contentScroll.offset();
         for (int i = 0; i < slots.size(); i++) {
             int slot = slots.get(i);
             int px = ax + (i % cols) * (cardW + GAP);
-            int py = top + (i / cols) * (CARD_H + GAP);
+            int py = top + (i / cols) * (cardH + GAP);
             float in = entrance(index + i, now);
-            drawCard(graphics, slot, m.info.get(slot), px, py + Math.round((1 - in) * 6), cardW, CARD_H, mx, my, inClip, in, cy, ch);
+            drawCard(graphics, slot, m.info.get(slot), px, py + Math.round((1 - in) * 6), cardW, cardH, mx, my, inClip, in, cy, ch);
         }
         return total + 16;
+    }
+
+    /** Whether a hero is something SkyCofl keeps a price history for: a product or an auction. */
+    private static boolean hasHistory(LoreInfo info) {
+        return info != null && (info.type == LoreInfo.Type.PRODUCT || info.type == LoreInfo.Type.AUCTION);
+    }
+
+    /** Slim action cards: a name and one line. Used under the price history where height is short. */
+    private static final int COMPACT_CARD_H = 30;
+    private static final int COMPACT_CARD_MIN_W = 96;
+
+    /**
+     * A product's or an auction's page with its price history: the graph over the actions, which
+     * become cards - slim ones when the window is short - so the graph gets the room.
+     */
+    private int drawWithGraph(GuiGraphicsExtractor graphics, MarketMenu m, List<Integer> actions, int mx, int my, boolean inClip,
+                              int ax, int ay, int aw, int ah, int cy, int ch, int index, long now) {
+        int actionsH = 0;
+        int cardH = CARD_H;
+        int minW = CARD_MIN_W;
+        if (!actions.isEmpty()) {
+            // Full cards if the graph keeps a useful height beside them, slim ones otherwise.
+            int cols = Math.max(1, Math.min(actions.size(), (aw + GAP) / (CARD_MIN_W + GAP)));
+            int rows = (actions.size() + cols - 1) / cols;
+            actionsH = rows * (CARD_H + GAP) - GAP;
+            if (ah - actionsH - 8 < 96) {
+                cardH = COMPACT_CARD_H;
+                minW = COMPACT_CARD_MIN_W;
+                cols = Math.max(1, Math.min(actions.size(), (aw + GAP) / (minW + GAP)));
+                rows = (actions.size() + cols - 1) / cols;
+                actionsH = rows * (cardH + GAP) - GAP;
+            }
+        }
+        int graphH = Math.max(64, ah - (actions.isEmpty() ? 0 : actionsH + 8));
+        MarketMenu.Slot hero = plain(m.hero);
+        ItemTags.Tag tag = AlpakaConfig.instance.allowApiCalls
+                ? ItemTags.of(stack(m.hero), hero.name(), kind)
+                : new ItemTags.Tag(ItemTags.Lookup.UNKNOWN, null);
+        PriceGraph.draw(graphics, this.font, kind, tag, ax, ay, aw, graphH, mx, my, (x, y, w, h, action, tipText) -> {
+            hits.add(new Hit(x, y, w, h, (b, s) -> action.run(), true));
+            if (tipText != null && AlpakaStyle.inside(mx, my, x, y, w, h)) tip("graph:" + x + ":" + y, tipText);
+        });
+        if (actions.isEmpty()) return ch;
+        int areaY = ay + graphH + 8;
+        drawActionCards(graphics, m, actions, mx, my, inClip, ax, areaY, aw, ah - graphH - 8, cy, ch, index, now, minW, cardH);
+        return ch;
     }
 
     private TileKind tileKind(int slot) {

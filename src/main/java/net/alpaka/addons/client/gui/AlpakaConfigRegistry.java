@@ -247,7 +247,7 @@ public class AlpakaConfigRegistry {
                 "hurt damage red flash tint overlay hit mob entity hide"));
 
         OPTIONS.add(new ConfigOption("hide_mob_deaths", "Hide Mob Deaths",
-                "Makes mobs vanish the moment they die instead of tipping over first.",
+                "Makes mobs and their name tags vanish the moment they die instead of tipping over first.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.hideMobDeathsEnabled,
                 v -> { AlpakaConfig.instance.hideMobDeathsEnabled = v; AlpakaConfig.save(); },

@@ -147,6 +147,55 @@ class SlayerKillLogTest {
         assertEquals("kills-2026-10-mac-2.csv", file.name)
     }
 
+    private fun row(line: String) = SlayerKillLog.Row(SlayerKillLog.Kind.KILLS, "2026-10", line)
+
+    private fun lines(file: File) = file.readText(StandardCharsets.UTF_8).trimEnd().split("\r\n")
+
+    @Test
+    fun switchingFolderCopiesTheLogOver(@TempDir root: File) {
+        val old = File(root, "old")
+        val new = File(root, "new")
+        SlayerKillLog.LogFiles.append(old, "mac", listOf(row("a"), row("b")))
+
+        assertEquals(1, SlayerKillLog.LogFiles.adopt(old, new))
+        assertEquals(lines(File(old, "kills-2026-10-mac.csv")), lines(File(new, "kills-2026-10-mac.csv")))
+        assertTrue(File(old, "kills-2026-10-mac.csv").exists())
+    }
+
+    @Test
+    fun switchingBackAddsOnlyTheMissingLines(@TempDir root: File) {
+        val a = File(root, "a")
+        val b = File(root, "b")
+        SlayerKillLog.LogFiles.append(a, "mac", listOf(row("1")))
+        SlayerKillLog.LogFiles.adopt(a, b)
+        SlayerKillLog.LogFiles.append(b, "mac", listOf(row("2")))
+
+        assertEquals(1, SlayerKillLog.LogFiles.adopt(b, a))
+        assertEquals(listOf("1", "2"), lines(File(a, "kills-2026-10-mac.csv")).drop(1))
+        assertEquals(0, SlayerKillLog.LogFiles.adopt(b, a))
+        assertEquals(0, SlayerKillLog.LogFiles.adopt(a, b))
+        assertEquals(listOf("1", "2"), lines(File(b, "kills-2026-10-mac.csv")).drop(1))
+    }
+
+    @Test
+    fun fileWithAnotherHeaderIsCopiedBesideIt(@TempDir root: File) {
+        val old = File(root, "old").apply { mkdirs() }
+        val new = File(root, "new")
+        File(old, "kills-2026-10-mac.csv").writeText("\uFEFFTime;Slayer\r\n1;2\r\n", StandardCharsets.UTF_8)
+        SlayerKillLog.LogFiles.append(new, "mac", listOf(row("x")))
+
+        assertEquals(1, SlayerKillLog.LogFiles.adopt(old, new))
+        assertEquals(listOf("x"), lines(File(new, "kills-2026-10-mac.csv")).drop(1))
+        assertTrue(File(new, "kills-2026-10-mac-from.csv").exists())
+    }
+
+    @Test
+    fun otherFilesInTheFolderAreNotTouched(@TempDir root: File) {
+        val old = File(root, "old").apply { mkdirs() }
+        File(old, "notes.csv").writeText("hi")
+        assertEquals(0, SlayerKillLog.LogFiles.adopt(old, File(root, "new")))
+    }
+
     @Test
     fun machineNameIsSafeForAFileName() {
         assertEquals("Colins-MacBook-Pro", SlayerKillLog.LogFiles.sanitize("Colin's MacBook Pro"))

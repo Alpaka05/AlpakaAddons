@@ -25,6 +25,19 @@ class TabProgressBarsTest {
     }
 
     @Test
+    void electionBarsEndWhereTheirColorDoes() {
+        // The election's empty pipes are white, not gray.
+        TabListParser.Line cole = TabProgressBars.withBar(line("§cCole: §c||||||§f||||| §r(52%)"), false);
+        assertEquals(0.52f, cole.bar().fraction(), 1.0e-6);
+        assertEquals(0xFFFF5555, cole.bar().color());
+        assertEquals("Cole:", TabListParser.plain(cole.text()));
+
+        TabListParser.Line plain = TabProgressBars.withBar(line("§a|||||§f|||||"), false);
+        assertEquals(0.5f, plain.bar().fraction(), 1.0e-6);
+        assertEquals(0.0f, TabProgressBars.withBar(line("§7||||||||"), false).bar().fraction(), 1.0e-6);
+    }
+
+    @Test
     void countsTowardAGoalGetABarAfterTheRow() {
         TabListParser.Line souls = TabProgressBars.withBar(line("Fairy Souls: §d29/29"), false);
         assertEquals(1.0f, souls.bar().fraction(), 1.0e-6);

@@ -40,6 +40,13 @@ public final class HudDefaults {
     public static final int WORLD_AGE_X = 96;
     public static final int WORLD_AGE_Y = SLAYER_TIMER_Y;
 
+    /**
+     * Past the world age at the end of the top row. The icon is taller than a line, so it starts
+     * a little higher and its text lines up with the row.
+     */
+    public static final int DEPLOYABLE_TIMER_X = 150;
+    public static final int DEPLOYABLE_TIMER_Y = SLAYER_TIMER_Y - 4;
+
     public static final int SLAYER_SESSION_X = 10;
     /** Under the top row: that row's panel bottom, the gap, then this panel's top padding. */
     public static final int SLAYER_SESSION_Y = SLAYER_TIMER_Y + LINE + HudPanel.PAD_Y + PANEL_GAP + HudPanel.PAD_Y;

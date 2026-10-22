@@ -108,7 +108,7 @@ public final class ConfigTree {
             "slayer_drop_tracker", "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat",
             "hide_slayer_chat", "boss_spawn_alert", "boss_cocoon_alert", "slayer_timer", "slayer_hud_enabled",
             "world_age_hud_enabled", "world_age_join_message_enabled", "party_invite_prompt",
-            "guild_prefix", "bridge_bot_formatter", "only_crit_damage", "ragnarock", "cache_resource_pack",
+            "guild_prefix", "bridge_bot_formatter", "only_crit_damage", "ragnarock", "deployable_timer", "cache_resource_pack",
             "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input",
             // Cosmetics
             "custom_name_tag", "chroma_hat", "player_scale", "custom_damage_tags",
@@ -133,6 +133,8 @@ public final class ConfigTree {
             Map.entry("slayer_timer_smooth_font", "slayer_timer"),
             Map.entry("world_age_blur", "world_age_hud_enabled"),
             Map.entry("world_age_smooth_font", "world_age_hud_enabled"),
+            Map.entry("deployable_timer_blur", "deployable_timer"),
+            Map.entry("deployable_timer_smooth_font", "deployable_timer"),
             Map.entry("inventory_hud_blur", "inventory_hud_enabled"),
             Map.entry("notification_blur", "#Notification Customization"),
             Map.entry("notification_smooth_font", "#Notification Customization")
@@ -194,7 +196,7 @@ public final class ConfigTree {
                     {"Blaze", "clean_blaze", "blaze_fire_pits", "stop_blaze_spinning",
                             "mute_vanilla_sounds_blaze_slayer", "custom_sound_blaze_death"},
                     {"Tools", "etherwarp_overlay", "etherwarp_sound", "only_crit_damage",
-                            "world_age_hud_enabled", "world_age_join_message_enabled", "ragnarock", "cache_resource_pack"},
+                            "world_age_hud_enabled", "world_age_join_message_enabled", "ragnarock", "deployable_timer", "cache_resource_pack"},
                     {"Markets", "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input"},
                     {"Social", "party_invite_prompt", "guild_prefix", "bridge_bot_formatter"}},
     };

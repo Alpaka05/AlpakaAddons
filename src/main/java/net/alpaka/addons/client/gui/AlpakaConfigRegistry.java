@@ -102,6 +102,15 @@ public class AlpakaConfigRegistry {
                 val -> GuiFont.NAMES[Math.round(val)],
                 "menu font typeface text smooth modern inter poppins varela round outfit nunito minecraft pixel gui bold").choices(GuiFont.NAMES));
 
+        OPTIONS.add(new ConfigOption("menu_theme", "Menu Theme",
+                "How the Alpaka menus look: dark, light, or pure black for OLED screens.",
+                ConfigCategory.GENERAL,
+                () -> (float) AlpakaStyle.Theme.of(AlpakaConfig.instance.menuTheme).ordinal(),
+                v -> { AlpakaConfig.instance.menuTheme = Math.round(v); AlpakaConfig.save(); AlpakaConfig.applyMenuTheme(); },
+                0.0f, (float) (AlpakaStyle.THEME_NAMES.length - 1),
+                val -> AlpakaStyle.THEME_NAMES[Math.round(val)],
+                "menu theme look mode dark light white bright oled black amoled night day appearance gui colors").choices(AlpakaStyle.THEME_NAMES));
+
         // How the HUDs look, chat and scoreboard included: main switches for the blurred panel and
         // the menu font, and the one blur strength they share. Each HUD's own switches sit in its
         // settings; see registerHudStyleToggles.

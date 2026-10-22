@@ -350,7 +350,7 @@ public final class ChatTabsFeature {
 
             drawTab(graphics, x, y0, width, background, selected, hovered);
             // As the config's sidebar: the open one and the hovered one in full, the rest softer.
-            int color = selected || hovered ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
+            int color = selected || hovered ? AlpakaStyle.HUD_TEXT : AlpakaStyle.HUD_TEXT_SOFT;
             graphics.text(font, label, x + TAB_PAD, y0 + LABEL_TOP, color, shadow);
             x += width + TAB_GAP;
         }

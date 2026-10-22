@@ -116,7 +116,7 @@ object AlpakaNotifications {
      * world still shows through, with the HUD panel's corners and a soft shadow - the same box as
      * the blurred one, only without the blur. Solid enough to read over bright terrain.
      */
-    private const val PANEL = (0xE0 shl 24) or (AlpakaStyle.PANEL and 0xFFFFFF)
+    private const val PANEL = (0xE0 shl 24) or (AlpakaStyle.HUD_PANEL and 0xFFFFFF)
     private const val BAR_TRACK = 0x1AFFFFFF
     /**
      * The blurred panel's tint: neutral black like the other HUD panels, but stronger than their
@@ -125,7 +125,7 @@ object AlpakaNotifications {
     private const val BLUR_TINT = 0x8C000000.toInt()
     /** How far the time bar stays clear of the panel's rounded corners, either kind. */
     private const val BAR_INSET = HudPanel.RADIUS
-    private const val BODY_TEXT = AlpakaStyle.TEXT_SOFT
+    private const val BODY_TEXT = AlpakaStyle.HUD_TEXT_SOFT
 
     /** How many pieces the bar's fade towards its tip is drawn in; the game has no horizontal gradient. */
     private const val BAR_STEPS = 6

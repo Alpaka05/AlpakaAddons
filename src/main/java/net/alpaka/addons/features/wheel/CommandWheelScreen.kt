@@ -598,9 +598,9 @@ class CommandWheelScreen : Screen(GuiFont.text("Command Wheel")) {
         private const val SCROLL_GESTURE_GAP_NANOS = 250_000_000L
 
         /** The menu's row colors, a touch see-through so the world shows behind the ring. */
-        private const val COLOR_SEGMENT = (AlpakaStyle.ROW_HOVER and 0x00FFFFFF) or (0xE8 shl 24)
-        private const val COLOR_SEGMENT_OUTER = (AlpakaStyle.ROW_SELECTED and 0x00FFFFFF) or (0xE8 shl 24)
-        private const val COLOR_HUB = (AlpakaStyle.PANEL and 0x00FFFFFF) or (0xF6 shl 24)
-        private const val COLOR_LABEL = AlpakaStyle.TEXT_SOFT
+        private val COLOR_SEGMENT get() = (AlpakaStyle.ROW_HOVER and 0x00FFFFFF) or (0xE8 shl 24)
+        private val COLOR_SEGMENT_OUTER get() = (AlpakaStyle.ROW_SELECTED and 0x00FFFFFF) or (0xE8 shl 24)
+        private val COLOR_HUB get() = (AlpakaStyle.PANEL and 0x00FFFFFF) or (0xF6 shl 24)
+        private val COLOR_LABEL get() = AlpakaStyle.TEXT_SOFT
     }
 }

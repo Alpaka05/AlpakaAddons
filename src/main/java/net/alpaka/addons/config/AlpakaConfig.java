@@ -1,9 +1,11 @@
 package net.alpaka.addons.config;
 
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.annotations.SerializedName;
 import net.alpaka.addons.AlpakaAddons;
+import net.alpaka.addons.client.gui.AlpakaStyle;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.File;
@@ -221,6 +223,8 @@ public class AlpakaConfig {
     public boolean blazeMuteAllWorldAudio = false;
     public float lowHpHeartbeatThreshold = 0.30f;
     public int menuAccentColor = 0xFF29B6B2; // Default teal
+    /** Index into {@code AlpakaStyle.THEME_NAMES}: how the Alpaka menus look. 0 is the dark default. */
+    public int menuTheme = 0;
     /** The player's own presets in the color picker, ARGB, oldest first; shared by every color option. */
     public java.util.List<Integer> customColorPresets = new java.util.ArrayList<>();
     /**
@@ -955,6 +959,7 @@ public class AlpakaConfig {
         fresh.lastSeenVersion = old.lastSeenVersion;
         fresh.menuFontNunitoApplied = true;
         instance = fresh;
+        applyMenuTheme();
         save();
     }
 
@@ -1015,6 +1020,13 @@ public class AlpakaConfig {
         if (instance.activeItemPresetIndex >= instance.itemPresets.size()) {
             instance.activeItemPresetIndex = -1;
         }
+
+        applyMenuTheme();
+    }
+
+    /** Puts the saved Menu Theme on every menu. */
+    public static void applyMenuTheme() {
+        AlpakaStyle.applyTheme(AlpakaStyle.Theme.of(instance.menuTheme));
     }
 
     /**

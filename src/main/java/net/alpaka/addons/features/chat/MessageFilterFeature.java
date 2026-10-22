@@ -41,7 +41,9 @@ public final class MessageFilterFeature {
         AUTOPET,
         FIRE_SALE,
         /** The weekly "[WATCHDOG ANNOUNCEMENT]" ban count, and the lines that come with it. */
-        WATCHDOG
+        WATCHDOG,
+        /** "You have 2 items stashed away!" with its "CLICK HERE to pick them up!" line. */
+        STASH
     }
 
     private static final Pattern WELCOME = Pattern.compile("^Welcome to Hypixel SkyBlock!$");
@@ -70,6 +72,14 @@ public final class MessageFilterFeature {
                     + "|^♨ Visit the Community Shop in the next .+ to grab yours!(?: \\[WARP\\])?$"
                     + "|^♨ And \\d+ more!$"
                     + "|^♨ Selling multiple items for a limited time!$");
+    /**
+     * The lines of the stash reminder Hypixel repeats every few minutes. They may come one by one or
+     * as one message, centered with spaces, so each line is trimmed and checked on its own.
+     */
+    private static final Pattern STASH_LINE = Pattern.compile(
+            "^You have [\\d,]+ (?:item|material)s? stashed away!$"
+                    + "|^\\(This totals [\\d,]+ types? of (?:item|material)s? stashed!\\)$"
+                    + "|^>>> CLICK HERE to pick (?:them|it) up! <<<$");
     private static final String WATCHDOG_HEADER = "[WATCHDOG ANNOUNCEMENT]";
     /**
      * Hypixel sends the announcement line by line and closes it with a blank line. The lines after
@@ -126,7 +136,16 @@ public final class MessageFilterFeature {
         if (AUTOPET.matcher(text).matches()) return Kind.AUTOPET;
         if (FIRE_SALE.matcher(text).matches()) return Kind.FIRE_SALE;
         if (text.startsWith(WATCHDOG_HEADER)) return Kind.WATCHDOG;
+        if (isStashReminder(text)) return Kind.STASH;
         return null;
+    }
+
+    private static boolean isStashReminder(String text) {
+        for (String line : text.split("\n")) {
+            String trimmed = line.strip();
+            if (!trimmed.isEmpty() && !STASH_LINE.matcher(trimmed).matches()) return false;
+        }
+        return true;
     }
 
     /** Whether a line of this kind is hidden, given its switch and the time since the last reward reminder. */
@@ -147,6 +166,7 @@ public final class MessageFilterFeature {
             case AUTOPET -> config.messageFilterAutopet;
             case FIRE_SALE -> config.messageFilterFireSale;
             case WATCHDOG -> config.messageFilterWatchdog;
+            case STASH -> config.messageFilterStash;
         };
     }
 }

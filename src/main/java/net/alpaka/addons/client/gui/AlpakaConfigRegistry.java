@@ -553,9 +553,12 @@ public class AlpakaConfigRegistry {
                                 v -> { AlpakaConfig.instance.messageFilterFireSale = v; AlpakaConfig.save(); }),
                         new ConfigOption.ToggleEntry("Watchdog",
                                 () -> AlpakaConfig.instance.messageFilterWatchdog,
-                                v -> { AlpakaConfig.instance.messageFilterWatchdog = v; AlpakaConfig.save(); })
+                                v -> { AlpakaConfig.instance.messageFilterWatchdog = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Stash Reminders",
+                                () -> AlpakaConfig.instance.messageFilterStash,
+                                v -> { AlpakaConfig.instance.messageFilterStash = v; AlpakaConfig.save(); })
                 ),
-                "message filter hidden empty blank lines welcome guild gexp event exp kill combo grandma wolf profile id join reward bundle seasonal autopet pet rule fire sale community shop watchdog ban announcement"));
+                "message filter hidden empty blank lines welcome guild gexp event exp kill combo grandma wolf profile id join reward bundle seasonal autopet pet rule fire sale community shop watchdog ban announcement stash stashed items materials pick up reminder"));
 
         OPTIONS.add(new ConfigOption("mention_notification", "Chat Mentions",
                 "Slides in a notice when somebody says your name in chat.",

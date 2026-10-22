@@ -527,6 +527,7 @@ public class AlpakaConfig {
     public boolean messageFilterAutopet = true;
     public boolean messageFilterFireSale = true;
     public boolean messageFilterWatchdog = true;
+    public boolean messageFilterStash = true;
     /** All / Party / Guild / PMs tabs above the chat input. */
     public boolean chatTabsEnabled = true;
     /** With chat tabs: a plain message typed on a channel tab goes to that channel (/pc, /gc, /r). */

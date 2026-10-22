@@ -405,6 +405,40 @@ class MarketParsingTest {
     }
 
     @Test
+    void theAuctionHousesSuggestionsLeaveOutPlainMinecraftItems() {
+        ItemIcons.Catalog catalog = ItemIcons.index(com.google.gson.JsonParser.parseString("""
+                {"items":[
+                 {"id":"DIAMOND_SWORD","material":"DIAMOND_SWORD","name":"Diamond Sword"},
+                 {"id":"WOOL:6","material":"WOOL","durability":6,"name":"Pink Wool"},
+                 {"id":"HYPERION","material":"IRON_SWORD","name":"Hyperion"},
+                 {"id":"DRAGON_EGG","material":"PAPER","name":"Dragon Egg"},
+                 {"id":"NETHER_STAR","material":"NETHER_STAR","name":"Nether Star","museum":true},
+                 {"id":"ENCHANTED_BOOK","material":"ENCHANTED_BOOK","name":"Enchanted Book"},
+                 {"id":"CACTUS","material":"CACTUS","name":"Cactus"},
+                 {"id":"BUILDER_CACTUS","material":"SKULL_ITEM","durability":3,"name":"Cactus"}]}"""));
+        assertTrue(catalog.vanilla("DIAMOND_SWORD"));
+        assertTrue(catalog.vanilla("WOOL:6"));
+        // Not in Hypixel's list, but a damage value: a plain item.
+        assertTrue(catalog.vanilla("WOOL:0"));
+        assertFalse(catalog.vanilla("HYPERION"));
+        // Named like a block, made of paper: SkyBlock's own.
+        assertFalse(catalog.vanilla("DRAGON_EGG"));
+        assertFalse(catalog.vanilla("NETHER_STAR"));
+        assertFalse(catalog.vanilla("ENCHANTED_BOOK"));
+        // SkyCofl's own tags, which Hypixel's list does not have.
+        assertFalse(catalog.vanilla("PET_LION"));
+
+        ItemTags.index("""
+                [{"name":"Diamond Sword","tag":"DIAMOND_SWORD","flags":"AUCTION"},
+                 {"name":"Wool","tag":"WOOL:0","flags":"AUCTION"},
+                 {"name":"Hyperion","tag":"HYPERION","flags":"AUCTION"},
+                 {"name":"Cactus","tag":"CACTUS","flags":"AUCTION"},
+                 {"name":"Cactus","tag":"BUILDER_CACTUS","flags":"AUCTION"}]""");
+        // The cactus head is SkyBlock's, so the name stays.
+        assertEquals(List.of("Hyperion", "Cactus"), ItemTags.withoutVanilla(ItemTags.auctionTags(), catalog::vanilla));
+    }
+
+    @Test
     void oneWildSaleDoesNotSetTheScale() {
         List<PriceHistory.Point> points = new ArrayList<>();
         for (int i = 0; i < 100; i++) points.add(new PriceHistory.Point(i, 500 + i % 10, 450));

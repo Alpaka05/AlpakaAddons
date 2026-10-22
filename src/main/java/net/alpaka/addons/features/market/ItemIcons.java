@@ -29,8 +29,10 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.zip.GZIPInputStream;
 
@@ -38,6 +40,9 @@ import java.util.zip.GZIPInputStream;
  * What a SkyBlock item looks like, by its name, for the search suggestions: built from Hypixel's
  * public list of SkyBlock items (material, head texture, glint, leather color), fetched once a
  * session while Network Features is on. The request names nothing about the player.
+ *
+ * The same list says which items are plain Minecraft ones, which the Auction House's suggestions
+ * leave out (see {@link Catalog#vanilla}).
  */
 public final class ItemIcons {
     private ItemIcons() {}
@@ -46,7 +51,22 @@ public final class ItemIcons {
 
     record Info(String material, int damage, String skin, boolean glowing, String color) {}
 
-    private static volatile Map<String, Info> byName = null;
+    /**
+     * Hypixel's list as far as it is used: how items look by name, every item id, and the ids of
+     * plain Minecraft items.
+     */
+    record Catalog(Map<String, Info> byName, Set<String> ids, Set<String> vanillaIds) {
+        /**
+         * Whether the item with SkyCofl's tag is a plain Minecraft item - Diamond Sword, Oak Planks -
+         * rather than one of SkyBlock's own. Those cannot be auctioned. A tag Hypixel does not list
+         * is one when it has a damage value, "WOOL:0": the way plain items were told apart in 1.8.
+         */
+        boolean vanilla(String tag) {
+            return vanillaIds.contains(tag) || (tag.indexOf(':') >= 0 && !ids.contains(tag));
+        }
+    }
+
+    private static volatile Catalog catalog = null;
     private static volatile boolean fetching = false;
     private static volatile long retryAt = 0L;
     /** Built stacks by name; only touched on the render thread. */
@@ -55,11 +75,12 @@ public final class ItemIcons {
     /** The item for a name, or an empty stack while the list loads or if the name is not in it. */
     public static ItemStack forName(String name) {
         if (!AlpakaConfig.instance.allowApiCalls || name == null) return ItemStack.EMPTY;
-        Map<String, Info> map = byName;
-        if (map == null) {
+        Catalog loaded = catalog;
+        if (loaded == null) {
             load();
             return ItemStack.EMPTY;
         }
+        Map<String, Info> map = loaded.byName();
         String key = name.toLowerCase(Locale.ROOT).trim();
         ItemStack cached = STACKS.get(key);
         if (cached != null) return cached;
@@ -67,6 +88,19 @@ public final class ItemIcons {
         ItemStack stack = info == null ? ItemStack.EMPTY : build(info);
         STACKS.put(key, stack);
         return stack;
+    }
+
+    /** Hypixel's list, or null while it loads or Network Features is off; asking starts loading it. */
+    static Catalog catalog() {
+        if (!AlpakaConfig.instance.allowApiCalls) return null;
+        Catalog loaded = catalog;
+        if (loaded == null) load();
+        return loaded;
+    }
+
+    /** Whether Hypixel's list is on its way. */
+    static boolean loading() {
+        return fetching;
     }
 
     /** A player head wearing the skin with this texture value, as Hypixel's heads carry it. */
@@ -104,7 +138,7 @@ public final class ItemIcons {
     }
 
     private static synchronized void load() {
-        if (fetching || byName != null || System.currentTimeMillis() < retryAt) return;
+        if (fetching || catalog != null || System.currentTimeMillis() < retryAt) return;
         fetching = true;
         HttpRequest request = HttpRequest.newBuilder(URI.create(ITEMS))
                 .timeout(Duration.ofSeconds(30))
@@ -127,7 +161,7 @@ public final class ItemIcons {
                         try (InputStream raw = response.body();
                              InputStream body = gzip ? new GZIPInputStream(raw) : raw;
                              InputStreamReader reader = new InputStreamReader(body, StandardCharsets.UTF_8)) {
-                            byName = index(JsonParser.parseReader(reader));
+                            catalog = index(JsonParser.parseReader(reader));
                         }
                     } catch (IOException | RuntimeException e) {
                         AlpakaAddons.LOGGER.warn("Could not read Hypixel's item list", e);
@@ -138,17 +172,24 @@ public final class ItemIcons {
                 });
     }
 
-    /** What each item looks like, by its name in lower case, from Hypixel's answer. */
-    static Map<String, Info> index(JsonElement root) {
+    /** What each item looks like, by its name in lower case, and which are plain ones, from Hypixel's answer. */
+    static Catalog index(JsonElement root) {
         Map<String, Info> map = new HashMap<>();
-        if (!root.isJsonObject() || !root.getAsJsonObject().has("items")) return map;
+        Set<String> ids = new HashSet<>();
+        Set<String> vanilla = new HashSet<>();
+        if (!root.isJsonObject() || !root.getAsJsonObject().has("items")) return new Catalog(map, ids, vanilla);
         for (JsonElement element : root.getAsJsonObject().getAsJsonArray("items")) {
             if (!element.isJsonObject()) continue;
             JsonObject o = element.getAsJsonObject();
+            String id = string(o, "id");
             String name = string(o, "name").replaceAll("§.", "").trim();
             String material = string(o, "material");
-            if (name.isEmpty() || material.isEmpty()) continue;
             int damage = o.has("durability") ? o.get("durability").getAsInt() : 0;
+            if (!id.isEmpty()) {
+                ids.add(id);
+                if (isVanilla(id, material, damage, o.has("museum") && o.get("museum").getAsBoolean())) vanilla.add(id);
+            }
+            if (name.isEmpty() || material.isEmpty()) continue;
             String skin = null;
             if (o.has("skin") && o.get("skin").isJsonObject()) {
                 String value = string(o.getAsJsonObject("skin"), "value");
@@ -158,7 +199,18 @@ public final class ItemIcons {
             String color = o.has("color") ? string(o, "color") : null;
             map.putIfAbsent(name.toLowerCase(Locale.ROOT), new Info(material, damage, skin, glowing, color));
         }
-        return map;
+        return new Catalog(map, ids, vanilla);
+    }
+
+    /**
+     * Whether Hypixel lists a plain Minecraft item: one named after its material, DIAMOND_SWORD or
+     * WOOL:6, where SkyBlock's own items have names of their own (HYPERION is an iron sword).
+     * Museum pieces such as the Nether Star are traded all the same, and every enchanted book on
+     * the Auction House is an ENCHANTED_BOOK.
+     */
+    private static boolean isVanilla(String id, String material, int damage, boolean museum) {
+        if (museum || id.equals("ENCHANTED_BOOK")) return false;
+        return id.equals(material) || id.equals(material + ":" + damage);
     }
 
     private static String string(JsonObject o, String key) {

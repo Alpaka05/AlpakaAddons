@@ -229,6 +229,11 @@ public final class DevScreenshotTour {
             new Stop("market-input-suggest-bazaar", () -> Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.input(
                     new String[] {"", "", "^^^^^^^^^^^^^^^", "Enter query"},
                     net.alpaka.addons.features.market.MarketKind.BAZAAR, "ench hay")), () -> true, 20),
+            // Many matches, and no plain Minecraft swords among them: the list scrolls.
+            new Stop(null, () -> Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.input(
+                    new String[] {"", "", "^^^^^^^^^^^^^^^", "Enter query"},
+                    net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, "sword")), () -> true, 20),
+            new Stop("market-input-suggest-scroll", () -> screen().mouseScrolled(0, 0, 0, -3), () -> true, 15),
             screen("market-input-price", () -> net.alpaka.addons.features.market.MarketPreview.binPrice("4m")),
             screen("market-input-amount", () -> net.alpaka.addons.features.market.MarketPreview.input(
                     new String[] {"", "^^^^^^^^^^^^^^^", "Enter amount", "to order"},

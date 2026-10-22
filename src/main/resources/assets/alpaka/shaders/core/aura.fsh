@@ -11,10 +11,21 @@ out vec4 fragColor;
 //   u in 0..1 - a round glow: a hot core inside a wide halo. Ribbons and rings hold u at 0.5, which
 //               leaves only the falloff across their width.
 //   u in 2..3 - a four-pointed sparkle, the same glow with two thin rays crossing it.
+//   u in 4..5 - a puff of cloud: not light but matter, soft-edged and as opaque as its alpha.
 //
 // Blended premultiplied: the color is light added to the scene, and a little alpha darkens what is
 // behind the glow, so it keeps its contrast against a bright sky instead of washing out.
 void main() {
+    if (texCoord.x > 3.5) {
+        vec2 q = vec2(texCoord.x - 4.0, texCoord.y) * 2.0 - 1.0;
+        float r2 = dot(q, q);
+        if (r2 >= 1.0) {
+            discard;
+        }
+        float density = (1.0 - r2) * sqrt(1.0 - r2) * vertexColor.a;
+        fragColor = vec4(vertexColor.rgb * density, density);
+        return;
+    }
     bool sparkle = texCoord.x > 1.5;
     vec2 p = vec2(sparkle ? texCoord.x - 2.0 : texCoord.x, texCoord.y) * 2.0 - 1.0;
     float d2 = dot(p, p);

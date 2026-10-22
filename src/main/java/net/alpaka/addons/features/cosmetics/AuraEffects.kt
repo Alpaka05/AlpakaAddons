@@ -380,8 +380,10 @@ internal object AuraEffects {
     }
 
     /**
-     * Crackling electricity: jagged arcs leap across the body and re-strike many times a second,
-     * each with a forked branch and a wide glow, while balls of plasma race around waist and ankles.
+     * A thundercloud over the head, slowly churning, with lightning shooting out of its belly many
+     * times a second: jagged bolts with a forked branch and a wide glow, some striking the ground
+     * with a flash. Every strike lights the cloud up from inside, and it flickers between strikes
+     * too. Balls of plasma race around waist and ankles.
      */
     fun storm(c: AuraCanvas, f: AuraFrame) {
         val t = f.time
@@ -391,38 +393,75 @@ internal object AuraEffects {
         val strike = floor(t * strikes).toInt()
         val flash = 1f - 0.6f * fract(t * strikes)
 
+        // The cloud: puffs heaped in a flat lens above the head, each drifting slowly round the
+        // middle and swelling a little, so the cloud boils without changing its outline much.
+        // High enough to clear the name tag, which floats half a block above the head.
+        val cloudY = f.height + 0.65f + 0.35f * s
+        val cloudBelly = cloudY - 0.14f * s
+        val tint = f.color(0.5f)
+        val puffs = 18
+        for (i in 0 until puffs) {
+            val h = i * 13 + 3
+            val a = hash(h) * TAU + t * (0.12f + 0.1f * hash(h + 1)) * (if (i % 2 == 0) 1f else -1f)
+            val rr = sqrt(hash(h + 2)) * 0.6f * s
+            val upper = hash(h + 3)
+            val y = cloudY + (upper - 0.45f) * 0.26f * s * (1f - rr / (0.8f * s)) + sin(t * 0.9f + i) * 0.025f * s
+            val size = (0.42f + 0.3f * hash(h + 4)) * s * (1f + 0.06f * sin(t * 1.3f + i * 2.1f))
+            // Lighter on top, dark underneath, with a trace of the effect's color in it.
+            val top = mix(0x8C93A6, tint, 0.12f)
+            val bottom = mix(0x2C303C, tint, 0.08f)
+            c.puff(cos(a) * rr, y, sin(a) * rr, size, mix(bottom, top, 0.4f + 0.6f * upper), bottom, 0.85f)
+        }
+
+        // Sheet lightning: the cloud glowing from inside now and then, between the strikes.
+        if (hash(strike * 5 + 1) > 0.55f) {
+            val a = hash(strike * 5 + 2) * TAU
+            val rr = hash(strike * 5 + 3) * 0.45f * s
+            c.sprite(cos(a) * rr, cloudY, sin(a) * rr, 0.9f * s, f.color(0.3f), 0.45f * flash)
+        }
+
         val xs = FloatArray(17)
         val ys = FloatArray(17)
         val zs = FloatArray(17)
-        for (arc in 0 until 4) {
+        for (arc in 0 until 3) {
             val seed = strike * 17 + arc * 5
             if (hash(seed) < 0.3f) continue
+            // Out of the belly of the cloud, down past the body to the side or into the ground.
             val a0 = hash(seed + 1) * TAU
-            val a1 = a0 + (0.7f + 1.3f * hash(seed + 2)) * (if (hash(seed + 3) < 0.5f) -1f else 1f)
-            val y0 = hash(seed + 4) * f.height
-            val y1 = hash(seed + 5) * f.height
+            val r0 = sqrt(hash(seed + 2)) * 0.4f * s
+            val a1 = a0 + (hash(seed + 3) - 0.5f) * 1.4f
+            val r1 = radius * (1.05f + 0.45f * hash(seed + 4))
+            val grounded = hash(seed + 5) < 0.4f
+            val y1 = if (grounded) 0.02f else (0.15f + 0.5f * hash(seed + 8)) * f.height
+            val x0 = cos(a0) * r0; val z0 = sin(a0) * r0
+            val x1 = cos(a1) * r1; val z1 = sin(a1) * r1
             for (k in 0 until 17) {
                 val m = k / 16f
-                val a = a0 + (a1 - a0) * m
-                val env = sin(m * Math.PI.toFloat())
-                val jitter = 0.16f * s * env
-                val rr = radius * (1f + 0.25f * env)
-                xs[k] = cos(a) * rr + (hash(seed * 31 + k * 3) - 0.5f) * jitter
-                ys[k] = y0 + (y1 - y0) * m + (hash(seed * 31 + k * 3 + 1) - 0.5f) * jitter
-                zs[k] = sin(a) * rr + (hash(seed * 31 + k * 3 + 2) - 0.5f) * jitter
+                val jitter = 0.2f * s * sin(m * Math.PI.toFloat()).pow(0.8f)
+                xs[k] = x0 + (x1 - x0) * m + (hash(seed * 31 + k * 3) - 0.5f) * jitter
+                ys[k] = cloudBelly + (y1 - cloudBelly) * m + (hash(seed * 31 + k * 3 + 1) - 0.5f) * jitter * 0.6f
+                zs[k] = z0 + (z1 - z0) * m + (hash(seed * 31 + k * 3 + 2) - 0.5f) * jitter
             }
             val tone = 0.15f + 0.5f * hash(seed + 6)
             bolt(c, xs, ys, zs, 0, 17, 0.22f * s, f.color(tone), 0.28f * flash)
             bolt(c, xs, ys, zs, 0, 17, 0.05f * s, mix(f.color(tone), 0xFFFFFF, 0.6f), flash)
 
-            // A fork off the middle of the arc, reaching outwards.
+            // The cloud lit up where the bolt leaves it, and a flash where it lands.
+            c.sprite(x0, cloudBelly + 0.08f * s, z0, 1.0f * s, f.color(tone), 0.55f * flash)
+            c.sprite(xs[16], ys[16], zs[16], (if (grounded) 0.55f else 0.35f) * s, f.color(tone), 0.75f * flash)
+            if (grounded) {
+                c.sprite(xs[16], ys[16] + 0.03f, zs[16], 0.6f * s, mix(f.color(tone), 0xFFFFFF, 0.5f), 0.6f * flash,
+                    sparkle = true, spin = hash(seed + 9) * TAU)
+            }
+
+            // A fork off the middle of the bolt, reaching outwards and down.
             val from = 5 + (hash(seed + 7) * 6).toInt()
             val bx = FloatArray(6); val by = FloatArray(6); val bz = FloatArray(6)
             bx[0] = xs[from]; by[0] = ys[from]; bz[0] = zs[from]
             val out = 1f / max(0.001f, sqrt(xs[from] * xs[from] + zs[from] * zs[from]))
             for (k in 1 until 6) {
                 bx[k] = bx[k - 1] + xs[from] * out * 0.07f * s + (hash(seed * 7 + k) - 0.5f) * 0.12f * s
-                by[k] = by[k - 1] + (hash(seed * 7 + k + 20) - 0.6f) * 0.14f * s
+                by[k] = by[k - 1] - (0.04f + 0.1f * hash(seed * 7 + k + 20)) * s
                 bz[k] = bz[k - 1] + zs[from] * out * 0.07f * s + (hash(seed * 7 + k + 40) - 0.5f) * 0.12f * s
             }
             bolt(c, bx, by, bz, 0, 6, 0.03f * s, mix(f.color(tone), 0xFFFFFF, 0.4f), 0.8f * flash)

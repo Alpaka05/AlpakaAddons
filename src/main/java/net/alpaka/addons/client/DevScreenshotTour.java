@@ -350,6 +350,7 @@ public final class DevScreenshotTour {
             }, () -> true, 30),
             new Stop("aura-night-galaxy", () -> AlpakaConfig.instance.auraEffect = 4, () -> true, 20),
             new Stop("aura-night-inferno", () -> AlpakaConfig.instance.auraEffect = 3, () -> true, 20),
+            new Stop("aura-night-storm", () -> AlpakaConfig.instance.auraEffect = 6, () -> true, 20),
             new Stop(null, () -> {
                 AlpakaConfig.instance.auraEnabled = false;
                 AlpakaConfig.instance.auraColorMode = 0;

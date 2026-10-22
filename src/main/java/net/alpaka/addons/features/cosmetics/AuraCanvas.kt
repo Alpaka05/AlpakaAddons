@@ -63,6 +63,28 @@ internal class AuraCanvas(
         vertex(px - ax + bx, py - ay + by, pz - az + bz, u0, 1f, color)
     }
 
+    /**
+     * A camera-facing puff of cloud at (x, y, z), [size] blocks across: unlike every other shape it
+     * covers what is behind it instead of lighting it. Shaded from [top] at its upper edge to
+     * [bottom] at its lower one, which is what gives a heap of puffs its lit top and dark belly.
+     */
+    fun puff(x: Float, y: Float, z: Float, size: Float, top: Int, bottom: Int, alpha: Float) {
+        val a = alphaByte(alpha)
+        if (a == 0 || size <= 0f) return
+        val half = size * 0.5f
+        val ax = rightX * half; val ay = rightY * half; val az = rightZ * half
+        val bx = upX * half; val by = upY * half; val bz = upZ * half
+        val px = ox + x
+        val py = oy + y
+        val pz = oz + z
+        val low = ARGB.color(a, bottom)
+        val high = ARGB.color(a, top)
+        vertex(px - ax - bx, py - ay - by, pz - az - bz, 4f, 0f, low)
+        vertex(px + ax - bx, py + ay - by, pz + az - bz, 5f, 0f, low)
+        vertex(px + ax + bx, py + ay + by, pz + az + bz, 5f, 1f, high)
+        vertex(px - ax + bx, py - ay + by, pz - az + bz, 4f, 1f, high)
+    }
+
     // A ribbon's points, collected between beginRibbon and endRibbon. Kept and regrown rather than
     // allocated per ribbon: an effect draws dozens of them every frame.
     private var count = 0

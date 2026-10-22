@@ -94,6 +94,7 @@ public final class ConfigTree {
             "custom_escape_menu", "custom_main_menu", "disable_all_features", "reset_all_settings",
             // Visuals
             "fullbright", "clean_blaze", "blaze_fire_pits", "stop_blaze_spinning", "hide_hurt_overlay", "hide_mob_deaths",
+            "hide_explosions",
             "render_hand_third_person", "smooth_perspective", "disable_front_perspective",
             "container_bg_opacity", "inventory_snow", "scrollable_tooltips", "persistent_item_name", "old_master_stars", "wide_health_bar",
             "better_chat", "chat_search", "expand_chat_history", "compact_chat",
@@ -177,7 +178,7 @@ public final class ConfigTree {
                             "custom_sound_notification", "custom_sound_player_hurt", "custom_sound_successful_hit",
                             "custom_sound_zombie_remedy", "custom_sound_low_hp_heartbeat"}},
             {{"Visuals"},
-                    {"World", "fullbright", "block_overlay_enabled", "hide_hurt_overlay", "hide_mob_deaths",
+                    {"World", "fullbright", "block_overlay_enabled", "hide_hurt_overlay", "hide_mob_deaths", "hide_explosions",
                             "#Hide Fire Overlay", "#Nametags", "render_hand_third_person", "smooth_perspective", "disable_front_perspective"},
                     {"Interface", "inventory_hud_enabled", "player_model_enabled", "container_bg_opacity",
                             "scrollable_tooltips", "persistent_item_name", "old_master_stars", "wide_health_bar", "inventory_snow", "#Scoreboard"},

@@ -393,24 +393,34 @@ internal object AuraEffects {
         val strike = floor(t * strikes).toInt()
         val flash = 1f - 0.6f * fract(t * strikes)
 
-        // The cloud: puffs heaped in a flat lens above the head, each drifting slowly round the
-        // middle and swelling a little, so the cloud boils without changing its outline much.
+        // The cloud, built like a real thundercloud: a flat, dark base, and on top of it billowing
+        // heaps that get smaller and lighter the higher they sit. Every puff drifts slowly round
+        // the middle and swells a little, so the cloud boils while keeping its shape.
         // High enough to clear the name tag, which floats half a block above the head.
         val cloudY = f.height + 0.65f + 0.35f * s
-        val cloudBelly = cloudY - 0.14f * s
+        val cloudBelly = cloudY - 0.16f * s
         val tint = f.color(0.5f)
-        val puffs = 18
-        for (i in 0 until puffs) {
+        val baseTop = mix(0x5A6072, tint, 0.1f)
+        val baseBottom = mix(0x1E2129, tint, 0.06f)
+        for (i in 0 until 8) {
             val h = i * 13 + 3
-            val a = hash(h) * TAU + t * (0.12f + 0.1f * hash(h + 1)) * (if (i % 2 == 0) 1f else -1f)
-            val rr = sqrt(hash(h + 2)) * 0.6f * s
-            val upper = hash(h + 3)
-            val y = cloudY + (upper - 0.45f) * 0.26f * s * (1f - rr / (0.8f * s)) + sin(t * 0.9f + i) * 0.025f * s
-            val size = (0.42f + 0.3f * hash(h + 4)) * s * (1f + 0.06f * sin(t * 1.3f + i * 2.1f))
-            // Lighter on top, dark underneath, with a trace of the effect's color in it.
-            val top = mix(0x8C93A6, tint, 0.12f)
-            val bottom = mix(0x2C303C, tint, 0.08f)
-            c.puff(cos(a) * rr, y, sin(a) * rr, size, mix(bottom, top, 0.4f + 0.6f * upper), bottom, 0.85f)
+            val a = i * TAU / 7 + t * 0.08f + hash(h) * 0.5f
+            val rr = if (i == 7) 0f else (0.3f + 0.12f * hash(h + 1)) * s
+            val swell = 1f + 0.05f * sin(t * 1.1f + i * 2.3f)
+            c.puff(cos(a) * rr, cloudY - 0.07f * s + sin(t * 0.7f + i) * 0.015f * s, sin(a) * rr,
+                (0.72f + 0.2f * hash(h + 2)) * s * swell, (0.34f + 0.08f * hash(h + 3)) * s * swell,
+                baseTop, baseBottom, 0.92f, i)
+        }
+        for (i in 0 until 14) {
+            val h = i * 17 + 101
+            val level = hash(h)
+            val a = hash(h + 1) * TAU + t * (0.1f + 0.08f * hash(h + 2)) * (if (i % 2 == 0) 1f else -1f)
+            val rr = sqrt(hash(h + 3)) * (0.42f - 0.22f * level) * s
+            val y = cloudY + (0.04f + 0.24f * level) * s + sin(t * 0.9f + i) * 0.02f * s
+            val size = (0.5f - 0.2f * level + 0.12f * hash(h + 4)) * s * (1f + 0.07f * sin(t * 1.3f + i * 2.1f))
+            val top = mix(mix(0x8F96A8, 0xC9CED8, level), tint, 0.1f)
+            val bottom = mix(0x343846, tint, 0.06f)
+            c.puff(cos(a) * rr, y, sin(a) * rr, size, size * 0.9f, top, mix(bottom, top, 0.3f * level), 0.95f, 20 + i)
         }
 
         // Sheet lightning: the cloud glowing from inside now and then, between the strikes.

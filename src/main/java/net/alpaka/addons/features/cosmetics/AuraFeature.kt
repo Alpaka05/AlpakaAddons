@@ -108,6 +108,7 @@ object AuraFeature {
                 .withLocation(Identifier.fromNamespaceAndPath("alpaka", "pipeline/aura"))
                 .withVertexShader(Identifier.fromNamespaceAndPath("alpaka", "core/aura"))
                 .withFragmentShader(Identifier.fromNamespaceAndPath("alpaka", "core/aura"))
+                .withBindGroupLayout(BindGroupLayouts.GLOBALS)
                 .withBindGroupLayout(BindGroupLayouts.MATRICES_PROJECTION)
                 .withCull(false)
                 .withColorTargetState(ColorTargetState(BlendFunction.TRANSLUCENT_PREMULTIPLIED_ALPHA))

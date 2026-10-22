@@ -64,25 +64,28 @@ internal class AuraCanvas(
     }
 
     /**
-     * A camera-facing puff of cloud at (x, y, z), [size] blocks across: unlike every other shape it
-     * covers what is behind it instead of lighting it. Shaded from [top] at its upper edge to
-     * [bottom] at its lower one, which is what gives a heap of puffs its lit top and dark belly.
+     * A camera-facing puff of cloud at (x, y, z), [width] by [height] blocks: unlike every other
+     * shape it covers what is behind it instead of lighting it. Tinted from [top] at its upper edge to
+     * [bottom] at its lower one; the shader adds the billowing outline and the lighting, in a pattern
+     * of the puff's own picked by [seed].
      */
-    fun puff(x: Float, y: Float, z: Float, size: Float, top: Int, bottom: Int, alpha: Float) {
+    fun puff(x: Float, y: Float, z: Float, width: Float, height: Float, top: Int, bottom: Int, alpha: Float, seed: Int) {
         val a = alphaByte(alpha)
-        if (a == 0 || size <= 0f) return
-        val half = size * 0.5f
-        val ax = rightX * half; val ay = rightY * half; val az = rightZ * half
-        val bx = upX * half; val by = upY * half; val bz = upZ * half
+        if (a == 0 || width <= 0f || height <= 0f) return
+        val hw = width * 0.5f
+        val hh = height * 0.5f
+        val ax = rightX * hw; val ay = rightY * hw; val az = rightZ * hw
+        val bx = upX * hh; val by = upY * hh; val bz = upZ * hh
         val px = ox + x
         val py = oy + y
         val pz = oz + z
         val low = ARGB.color(a, bottom)
         val high = ARGB.color(a, top)
-        vertex(px - ax - bx, py - ay - by, pz - az - bz, 4f, 0f, low)
-        vertex(px + ax - bx, py + ay - by, pz + az - bz, 5f, 0f, low)
-        vertex(px + ax + bx, py + ay + by, pz + az + bz, 5f, 1f, high)
-        vertex(px - ax + bx, py - ay + by, pz - az + bz, 4f, 1f, high)
+        val u0 = 4f + 2f * (seed and 63)
+        vertex(px - ax - bx, py - ay - by, pz - az - bz, u0, 0f, low)
+        vertex(px + ax - bx, py + ay - by, pz + az - bz, u0 + 1f, 0f, low)
+        vertex(px + ax + bx, py + ay + by, pz + az + bz, u0 + 1f, 1f, high)
+        vertex(px - ax + bx, py - ay + by, pz - az + bz, u0, 1f, high)
     }
 
     // A ribbon's points, collected between beginRibbon and endRibbon. Kept and regrown rather than

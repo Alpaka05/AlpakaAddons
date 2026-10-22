@@ -82,6 +82,9 @@ public final class CustomTabFeature {
     /** "Players (19)" is still the same category at 20 players. */
     private static final java.util.regex.Pattern TITLE_COUNT = java.util.regex.Pattern.compile("\\s*\\(.*\\)\\s*$");
     private static final int BAR_TRACK = 0x40FFFFFF;
+    /** A widget's box: a faint fill, and an edge a little brighter so the box reads as one. */
+    private static final int BOX_FILL = 0x14FFFFFF;
+    private static final int BOX_EDGE = 0x26FFFFFF;
     /** The light behind a changed row at its brightest. */
     private static final int FLASH_ALPHA = 0x50;
 
@@ -219,6 +222,10 @@ public final class CustomTabFeature {
             graphics.fill(0, 0, layout.width, layout.height, PLAIN_BACKGROUND);
         }
 
+        if (AlpakaConfig.instance.customTabSectionBoxes) {
+            for (CustomTabLayout.Box box : layout.boxes) drawBox(graphics, box);
+        }
+
         Font font = mc.font;
         ClientPacketListener connection = mc.getConnection();
         boolean highlight = AlpakaConfig.instance.customTabHighlightChanges;
@@ -282,7 +289,7 @@ public final class CustomTabFeature {
         boolean stacked = AlpakaConfig.instance.customTabLayout == 1;
         boolean hideAdverts = AlpakaConfig.instance.customTabHideAds;
         String key = screenWidth + "x" + screenHeight + "@" + scale + "x" + guiScale + "/" + smooth + GuiFont.selectedIndex()
-                + "/" + stacked + "/" + hideAdverts;
+                + "/" + stacked + "/" + hideAdverts + "/" + AlpakaConfig.instance.customTabSectionBoxes;
         long now = System.currentTimeMillis();
         if (cached != null && key.equals(cachedKey) && now - cachedAtMs < REBUILD_MS) return cached;
 
@@ -362,13 +369,24 @@ public final class CustomTabFeature {
         int maxHeight = (int) ((screenHeight - TOP - SCREEN_MARGIN) / scale) - CustomTabLayout.PAD_Y * 2
                 - (header.size() + footer.size()) * CustomTabLayout.LINE_H - CustomTabLayout.ROW_GAP * 2;
         Font font = Minecraft.getInstance().font;
-        return CustomTabLayout.build(header, categories, footer, stacked, maxWidth, maxHeight, true, font::width);
+        return CustomTabLayout.build(header, categories, footer, stacked, maxWidth, maxHeight, true,
+                AlpakaConfig.instance.customTabSectionBoxes, font::width);
     }
 
     /** Shows the sample, or the live list again with null; for the screenshot tour only. */
     public static void devShow(DevSample sample) {
         devSample = sample;
         cached = null;
+    }
+
+    /** A widget's box, its corner pixels left out so it reads as rounded at the tab's own scale. */
+    private static void drawBox(GuiGraphicsExtractor graphics, CustomTabLayout.Box box) {
+        int x0 = box.x0(), y0 = box.y0(), x1 = box.x1(), y1 = box.y1();
+        graphics.fill(x0 + 1, y0 + 1, x1 - 1, y1 - 1, BOX_FILL);
+        graphics.fill(x0 + 1, y0, x1 - 1, y0 + 1, BOX_EDGE);
+        graphics.fill(x0 + 1, y1 - 1, x1 - 1, y1, BOX_EDGE);
+        graphics.fill(x0, y0 + 1, x0 + 1, y1 - 1, BOX_EDGE);
+        graphics.fill(x1 - 1, y0 + 1, x1, y1 - 1, BOX_EDGE);
     }
 
     /** A bar after a row's text, and the text that follows it. */

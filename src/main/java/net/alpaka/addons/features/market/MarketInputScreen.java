@@ -28,12 +28,12 @@ import java.util.List;
  * This is vanilla's sign editor with its drawing replaced, and the answer reaches Hypixel the way
  * it always does: vanilla sends the sign's four lines when the editor closes. Nothing here sends
  * anything. Confirming writes the answer into the sign's answer lines and closes the editor, as the
- * sign's Done button does. Each line stays within the sign's width as vanilla's own editor measures
- * it, and an answer longer than one line is broken at a space (see {@link SignPrompt#split}) - so the
- * lines are always ones a player could have typed into the vanilla sign. A price or an amount goes
- * in plain digits, "4000000" for "4m" (see {@link SignPrompt#answer}). Cancel and Escape empty
- * the answer first, which Hypixel takes as no answer. The chips only fill the field; the player
- * still confirms.
+ * sign's Done button does (see {@link #close} for why not through Done itself). Each line stays
+ * within the sign's width as vanilla's own editor measures it, and an answer longer than one line is
+ * broken at a space (see {@link SignPrompt#split}) - so the lines are always ones a player could
+ * have typed into the vanilla sign. A price or an amount goes in plain digits, "4000000" for "4m"
+ * (see {@link SignPrompt#answer}). Cancel and Escape empty the answer first, which Hypixel takes as
+ * no answer. The chips only fill the field; the player still confirms.
  */
 public class MarketInputScreen extends SignEditScreen {
     private static final int HEADER_H = AlpakaStyle.HEADER_H;
@@ -623,8 +623,8 @@ public class MarketInputScreen extends SignEditScreen {
 
     /**
      * Writes the answer into the sign's answer lines and closes the editor: vanilla sends the lines,
-     * as the sign's Done button does. A number goes in plain digits unless those would not fit the
-     * sign, which only an absurd number does; then it goes as typed.
+     * as it does after the sign's Done button. A number goes in plain digits unless those would not
+     * fit the sign, which only an absurd number does; then it goes as typed.
      */
     private void confirm() {
         if (closing) return;
@@ -635,19 +635,40 @@ public class MarketInputScreen extends SignEditScreen {
             return;
         }
         closing = true;
-        String[] lines = lines();
-        System.arraycopy(answer, 0, lines, 0, answer.length);
         if (prompt.type() == SignPrompt.Type.SEARCH) Markets.rememberSearch(context, text());
-        super.onClose();
+        close(answer);
     }
 
     /** Empties the answer lines and closes: Hypixel takes an empty answer as none. */
     private void cancel() {
         if (closing) return;
         closing = true;
-        String[] lines = lines();
-        for (int i = 0; i < prompt.inputLines(); i++) lines[i] = "";
-        super.onClose();
+        String[] empty = new String[prompt.inputLines()];
+        java.util.Arrays.fill(empty, "");
+        close(empty);
+    }
+
+    /** The answer lines the editor closes with; null while it is open. */
+    private String[] answerLines = null;
+
+    /**
+     * Closes the editor with these answer lines. Vanilla's Done only clears the screen, and the lines
+     * go out as the editor is removed; this does the same, without going through Done. Other mods
+     * hook Done to put what their own helper made of vanilla's editor into the first line - Skyblocker's
+     * sign calculator writes its last result there, which for a bar it never saw is "0.0", and Hypixel
+     * answered every price with "Your starting bid must be at least 10 coins!".
+     */
+    private void close(String[] answer) {
+        answerLines = answer;
+        System.arraycopy(answer, 0, lines(), 0, answer.length);
+        this.minecraft.gui.setScreen(null);
+    }
+
+    /** Puts the answer in place once more right before vanilla sends the lines, whatever changed them since. */
+    @Override
+    public void removed() {
+        if (answerLines != null) System.arraycopy(answerLines, 0, lines(), 0, answerLines.length);
+        super.removed();
     }
 
     // ---- Input ----------------------------------------------------------------------------------

@@ -560,6 +560,14 @@ public class AlpakaConfig {
     public boolean compactChatEnabled = true;
     /** Seconds since the last identical message within which a repeat still stacks; 0 = back-to-back only. */
     public int compactChatWindowSeconds = 30;
+    /** Hides Hypixel chat spam; which kinds is up to the switches below. */
+    public boolean messageFilterEnabled = false;
+    public boolean messageFilterEmpty = true;
+    public boolean messageFilterWelcome = true;
+    public boolean messageFilterGuildExp = true;
+    public boolean messageFilterKillCombo = true;
+    public boolean messageFilterProfileJoin = true;
+    public boolean messageFilterRewardBundles = true;
     /** All / Party / Guild / PMs tabs above the chat input. */
     public boolean chatTabsEnabled = true;
     /** With chat tabs: a plain message typed on a channel tab goes to that channel (/pc, /gc, /r). */
@@ -1171,6 +1179,7 @@ public class AlpakaConfig {
         this.betterScreenshotMessageEnabled = false;
         this.autoCopyScreenshots = false;
         this.compactChatEnabled = false;
+        this.messageFilterEnabled = false;
         this.chatTabsEnabled = false;
         this.chatTabsSendToChannel = false;
         this.inventoryHudEnabled = false;

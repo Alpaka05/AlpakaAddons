@@ -14,8 +14,10 @@ import net.alpaka.addons.client.gui.HudPanel;
  * and ten lines reach 90 pixels above that):
  *
  * <ul>
- *   <li>A top row of one-line HUDs: the Performance HUD in the corner, the world age beside it
- *       and the boss timer beside that.</li>
+ *   <li>A top row of one-line HUDs: the world age in the corner and the Performance HUD beside
+ *       it.</li>
+ *   <li>The boss timer centered along the top, under the HUD editor's bar; see
+ *       {@link #CENTERED_X}.</li>
  *   <li>Under that row, the slayer session HUD, which at its tallest - ten rows - still ends above
  *       a full ten-line chat on a screen 270 GUI pixels tall (1080p at GUI scale 4).</li>
  *   <li>The player model right of the session HUD's rows, and low enough that the HUD editor's
@@ -37,20 +39,29 @@ public final class HudDefaults {
     private static final int TOP_ROW_Y = 10;
 
     /** The top-left corner. */
-    public static final int PERFORMANCE_X = 10;
-    public static final int PERFORMANCE_Y = TOP_ROW_Y;
-    /** The Performance HUD's line at its widest, "FPS 1000  Ping 999ms  TPS 20.0", in the pixel font. */
-    private static final int PERFORMANCE_MAX_WIDTH = 158;
-
-    /** Beside the Performance HUD, past its widest line with a gap between the two panels. */
-    public static final int WORLD_AGE_X = PERFORMANCE_X + PERFORMANCE_MAX_WIDTH + HudPanel.PAD_X + PANEL_GAP + HudPanel.PAD_X;
+    public static final int WORLD_AGE_X = 10;
     public static final int WORLD_AGE_Y = TOP_ROW_Y;
     /** The world age's line at its widest, "Day 35", in the pixel font. */
     private static final int WORLD_AGE_MAX_WIDTH = 34;
 
-    /** Beside the world age, past its widest day with a gap; shown only while a boss is up. */
-    public static final int SLAYER_TIMER_X = WORLD_AGE_X + WORLD_AGE_MAX_WIDTH + HudPanel.PAD_X + PANEL_GAP + HudPanel.PAD_X;
-    public static final int SLAYER_TIMER_Y = TOP_ROW_Y;
+    /** Beside the world age, past its widest day with a gap between the two panels. */
+    public static final int PERFORMANCE_X = WORLD_AGE_X + WORLD_AGE_MAX_WIDTH + HudPanel.PAD_X + PANEL_GAP + HudPanel.PAD_X;
+    public static final int PERFORMANCE_Y = TOP_ROW_Y;
+
+    /**
+     * An x that stands for "centered on the screen" rather than a pixel. Positions are absolute, so a
+     * center depends on the screen's width; the HUD works it out each frame while its x is this.
+     * Dragging it in the editor stores a real x again.
+     */
+    public static final int CENTERED_X = Integer.MIN_VALUE;
+
+    /**
+     * Centered along the top, where a running boss is easy to keep an eye on; shown only while a boss
+     * is up. Its panel starts just below the HUD editor's bar and status line (to 59), which sit
+     * centered at the top too and would otherwise cover it in the editor.
+     */
+    public static final int SLAYER_TIMER_X = CENTERED_X;
+    public static final int SLAYER_TIMER_Y = 60 + HudPanel.PAD_Y;
 
     public static final int SLAYER_SESSION_X = 10;
     /** Under the top row: that row's panel bottom, the gap, then this panel's top padding. */

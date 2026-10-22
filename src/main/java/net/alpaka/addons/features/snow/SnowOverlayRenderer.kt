@@ -40,8 +40,8 @@ object SnowOverlayRenderer {
     val TYPE_NAMES = arrayOf("Snowflakes", "Fireflies", "Ash", "Cherry Petals", "Falling Leaves", "Enchanting Glyphs", "Rain")
 
     // Each texture set is a choice of shapes picked at random per particle, not an animation.
-    private val PETAL_SPRITES = Array(6) { Identifier.fromNamespaceAndPath("alpaka", "textures/particle/sakura_$it.png") }
-    private const val PETAL_TEXTURE_SIZE = 16
+    private val PETAL_SPRITES = Array(5) { Identifier.fromNamespaceAndPath("alpaka", "textures/particle/sakura_$it.png") }
+    private const val PETAL_TEXTURE_SIZE = 8
     private val LEAF_SPRITES = Array(12) { Identifier.withDefaultNamespace("textures/particle/leaf_$it.png") }
     private const val LEAF_TEXTURE_SIZE = 5
     private val GLYPH_SPRITES = Array(26) { Identifier.withDefaultNamespace("textures/particle/sga_${'a' + it}.png") }
@@ -688,7 +688,8 @@ object SnowOverlayRenderer {
     }
 
     private fun spawnPetal(index: Int, w: Float, h: Float, initial: Boolean) {
-        // Nearer petals are bigger, quicker and more opaque, which gives the drift some depth.
+        // Nearer petals are quicker and more opaque, and the nearest drawn at twice the size, which
+        // gives the drift some depth.
         val near = random.nextFloat()
         // Spawned partly left of the screen, since the breeze carries them right.
         posX[index] = -w * 0.3f + random.nextFloat() * w * 1.3f
@@ -696,7 +697,8 @@ object SnowOverlayRenderer {
         speedX[index] = 0.5f + near * 0.5f + random.nextFloat() * 0.3f
         speedY[index] = 0.35f + near * 0.35f + random.nextFloat() * 0.15f
         sprite[index] = random.nextInt(PETAL_SPRITES.size)
-        size[index] = 8 + Math.round(near * 4.0f)
+        // Whole multiples of the texture only: anything in between smears the pixel art.
+        size[index] = PETAL_TEXTURE_SIZE * (if (near > 0.75f) 2 else 1)
         angle[index] = random.nextFloat() * 6.2832f
         spin[index] = (random.nextFloat() - 0.5f) * 1.6f
         phase[index] = random.nextFloat() * 6.2832f

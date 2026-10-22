@@ -228,8 +228,6 @@ public class AlpakaConfig {
     public boolean customMainMenuEnabled = false;
     /** The custom main menu's background, avatar and fireflies shift with the mouse. */
     public boolean customMainMenuParallax = true;
-    /** The release whose notes the player last opened from the main menu; its What's New card shows a dot until then. */
-    public String releaseNotesSeen = "";
     /** The small player model on the HUD. Off for fresh installs. */
     public boolean playerModelEnabled = false;
     public boolean playerModelOnlyActions = true;
@@ -295,6 +293,8 @@ public class AlpakaConfig {
     public boolean allowApiCalls = true;
     /** A chat line on joining a world when a newer release is on GitHub. Needs allowApiCalls. */
     public boolean updateNotificationsEnabled = true;
+    /** The release whose notes the player last opened from the main menu; its What's New card shows a dot until then. */
+    public String releaseNotesSeen = "";
 
     /**
      * Folder holding the slayer record, or empty for this machine's shared default.

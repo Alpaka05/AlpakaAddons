@@ -15,6 +15,7 @@ import net.alpaka.addons.features.mainmenu.MenuStyle.ICON_PUZZLE
 import net.alpaka.addons.features.mainmenu.MenuStyle.ICON_SERVER
 import net.alpaka.addons.features.mainmenu.MenuStyle.ICON_SLIDERS
 import net.alpaka.addons.features.mainmenu.MenuStyle.MUTED
+import net.alpaka.addons.features.mainmenu.MenuStyle.SEPARATOR
 import net.alpaka.addons.features.mainmenu.MenuStyle.ONLINE_DOT
 import net.alpaka.addons.features.mainmenu.MenuStyle.TEXT
 import net.alpaka.addons.features.mainmenu.MenuStyle.TITLE_BASELINE_DROP
@@ -35,7 +36,9 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen
 import net.minecraft.client.gui.screens.options.OptionsScreen
 import net.minecraft.client.gui.screens.worldselection.SelectWorldScreen
+import net.minecraft.client.gui.screens.ConfirmLinkScreen
 import net.minecraft.client.input.InputWithModifiers
+import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.multiplayer.ServerData
 import net.minecraft.client.multiplayer.resolver.ServerAddress
@@ -55,17 +58,18 @@ import org.joml.Matrix3x2f
  * different amounts, which is what gives the flat picture its depth. Without the picture, the
  * panorama stands in.
  *
- * Over it, the top left corner holds the logo - also the way into the Alpaka config - with the
- * mod's name and versions, and the bottom left corner the whole menu as one column: Join Hypixel
- * as a large hero tile, with a slowly circling gradient edge, a glint that crosses it now and then
- * and a pulsing live dot beside Hypixel's player count and ping; under it three glass tiles,
- * Singleplayer, Multiplayer and Join Alpha, each its icon over its name; and at the foot a slim
- * row of Mods, Options and Quit as a red power button. Everything to press is in that one place.
+ * Over it on the left, one column holds the whole menu under the logo - also the way into the
+ * Alpaka config - with the mod's name and versions: Join Hypixel as the hero, with a slowly
+ * circling gradient edge, a glint that crosses it now and then and a pulsing live dot beside
+ * Hypixel's player count and ping; then Singleplayer, Multiplayer and Join Alpha; after a hairline
+ * Mods and Options side by side, and Quit in red. All of them are the same width and share one
+ * row height, so the column reads as one menu; only the hero stands out. At the top right, level
+ * with the logo, the What's New card shows the first changes of the newest release, and opens all
+ * of them ([ReleaseNotesPanel]).
  *
- * Opening plays in order: the logo drops in, the column's pieces rise into place one after
- * another from the hero down, and the avatar lands on its spot. Under the mouse a button's glass brightens
- * and its edge takes the accent; a tile also lifts a little and its icon pops in the accent, and
- * the hero's arrow moves along.
+ * Opening plays in order: the logo and the card drop in, the column's buttons rise into place one
+ * after another, and the avatar lands on its spot. Under the mouse a button's glass brightens and
+ * its edge takes the accent, its icon takes the accent too, and a chevron fades in at its end.
  *
  * Most players see this at Auto GUI scale, 240 to 270 pixels tall, so the sizes come in three steps
  * by the screen's height.
@@ -74,12 +78,27 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
 
     companion object {
         /** The sizes, roomiest first, and the least screen height each one is used from; see [Sizes]. */
-        private val ROOMY = Sizes(minHeight = 330, margin = 20, logo = 36, bar = 24, column = 264,
-            hero = 54, gap = 6, tile = 46, radius = 8)
-        private val NORMAL = Sizes(minHeight = 250, margin = 14, logo = 32, bar = 22, column = 240,
-            hero = 48, gap = 5, tile = 42, radius = 7)
-        private val TIGHT = Sizes(minHeight = 0, margin = 10, logo = 28, bar = 20, column = 222,
-            hero = 42, gap = 4, tile = 36, radius = 6)
+        private val ROOMY = Sizes(minHeight = 330, margin = 20, logo = 36, column = 220, hero = 46, row = 24,
+            gap = 4, divider = 7, radius = 8, card = 176)
+        private val NORMAL = Sizes(minHeight = 250, margin = 14, logo = 32, column = 196, hero = 40, row = 22,
+            gap = 4, divider = 6, radius = 7, card = 160)
+        private val TIGHT = Sizes(minHeight = 0, margin = 10, logo = 28, column = 180, hero = 34, row = 20,
+            gap = 3, divider = 5, radius = 6, card = 150)
+
+        /** Room left of a row's icon, and between the logo and the hero. */
+        private const val ROW_PADDING = 9
+        private const val BRAND_GAP = 12
+        /** The What's New card: its padding, how many changes it lists, and their line height. */
+        private const val CARD_PAD = 8
+        private const val CARD_ITEMS = 3
+        private const val CARD_LINE = 10
+        /** The least room between the column and the card; with less, the card is left out. */
+        private const val CARD_MIN_GAP = 24
+        private const val PANEL_SECONDS = 0.22f
+        /** The card's glass is a little darker than the buttons', for the text on it. */
+        private const val CARD_FILL = 0x330D1117
+        /** Quit's icon and name: the red pill's text color. */
+        private const val QUIT_TEXT = 0xFFFCA5A5.toInt()
 
         /**
          * The stage beside the play column: the avatar's height as a share of the screen and its
@@ -135,28 +154,27 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         private const val HERO_GLINT_SECONDS = 0.85f
         private const val STAGE_DELAY = 0.20f
         private const val LANDING_SECONDS = 0.55f
-        /** How far a tile lifts under the mouse, and how much its icon grows. */
-        private const val TILE_LIFT = 2f
+        /** How much the hero's icon grows under the mouse, and how far a row's chevron moves along. */
         private const val ICON_POP = 0.2f
+        private const val CHEVRON_SLIDE = 3f
         /** The hero's icon, drawn larger than the text, and how far its arrow moves along under the mouse. */
         private const val HERO_ICON_SCALE = 2f
         private const val HERO_ARROW_SLIDE = 4f
 
-        /** The stagger indices: the logo first, then the column from the top: hero, tiles, the foot row. */
+        /** The stagger indices: the logo and the card first, then the column's buttons from the top. */
         private const val APPEAR_BRAND = 0
+        private const val APPEAR_CARD = 1
         private const val APPEAR_HERO = 1
-        private const val APPEAR_TILES = 2
-        private const val APPEAR_FOOT = 5
     }
 
     /**
      * One step of the sizes: the least screen height it is for, the distance from the screen's
-     * edges, the logo, the column's foot row, the column's width, the hero, the gap between the
-     * column's pieces, the tiles, and the buttons' corner radius.
+     * edges, the logo, the column's width, the hero and the rows, the gap between buttons, the room
+     * above and below the hairline, the buttons' corner radius, and the What's New card's width.
      */
     private class Sizes(
-        val minHeight: Int, val margin: Int, val logo: Int, val bar: Int, val column: Int,
-        val hero: Int, val gap: Int, val tile: Int, val radius: Int,
+        val minHeight: Int, val margin: Int, val logo: Int, val column: Int, val hero: Int, val row: Int,
+        val gap: Int, val divider: Int, val radius: Int, val card: Int,
     )
 
     private var openTime = 0L
@@ -171,6 +189,11 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
     private var parallaxY = 0f
     private var lastFrameMs = 0L
 
+    /** The release notes window while it is open, and when it opened. */
+    private var panel: ReleaseNotesPanel? = null
+    private var panelOpenTime = 0L
+    private var card: CardButton? = null
+
     /** Where everything sits on the current screen. */
     private inner class Layout {
         val sizes = listOf(ROOMY, NORMAL).firstOrNull { this@CustomMainMenuScreen.height >= it.minHeight } ?: TIGHT
@@ -181,13 +204,22 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         val logoX = margin
         val logoY = margin
 
-        /** Bottom left: the column, the hero over a row of three tiles over the foot row. */
+        /** The column under the logo: the hero, three rows, the hairline, Mods and Options, Quit. */
         val columnX = margin
         val columnW = sizes.column
-        val footY = this@CustomMainMenuScreen.height - margin - sizes.bar
-        val tileY = footY - sizes.gap - sizes.tile
-        val heroY = tileY - sizes.gap - sizes.hero
-        val tileW = (columnW - 2 * sizes.gap) / 3
+        val heroY = logoY + logoSize + BRAND_GAP
+        val rowsY = heroY + sizes.hero + sizes.gap
+        val dividerY = rowsY + 3 * (sizes.row + sizes.gap) - sizes.gap + sizes.divider
+        val pairY = dividerY + 1 + sizes.divider
+        val quitY = pairY + sizes.row + sizes.gap
+        val halfW = (columnW - sizes.gap) / 2
+
+        /** The What's New card at the top right, level with the logo; left out when it would crowd the column. */
+        val cardW = sizes.card
+        val cardH = CARD_PAD * 2 + 12 + CARD_ITEMS * CARD_LINE + 3 + 9
+        val cardX = this@CustomMainMenuScreen.width - margin - cardW
+        val cardY = margin
+        val hasCard = cardX >= columnX + columnW + CARD_MIN_GAP
 
         /** The stage to the column's right, and the avatar's size and place on it; null when too narrow. */
         val stageX0 = columnX + columnW + STAGE_GAP
@@ -229,31 +261,28 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         val sizes = layout.sizes
         buttonRadius = sizes.radius
 
-        // The column: the hero, and the tiles under it.
+        // The column: the hero, the rows, and after the hairline Mods and Options, then Quit.
         this.addRenderableWidget(HeroButton(layout.columnX, layout.heroY, layout.columnW, sizes.hero) {
             joinServer("mc.hypixel.net")
         })
-        var tileX = layout.columnX
-        var index = APPEAR_TILES
-        fun tile(glyph: String, label: String, action: () -> Unit) {
-            this.addRenderableWidget(TileButton(index++, tileX, layout.tileY, layout.tileW, sizes.tile, glyph, label, action))
-            tileX += layout.tileW + sizes.gap
+        var index = APPEAR_HERO + 1
+        fun row(x: Int, y: Int, width: Int, glyph: String, label: String, quit: Boolean = false, action: () -> Unit) {
+            this.addRenderableWidget(RowButton(index++, x, y, width, sizes.row, glyph, label, quit, action))
         }
-        tile(ICON_PERSON, "Singleplayer") {
+        var rowY = layout.rowsY
+        row(layout.columnX, rowY, layout.columnW, ICON_PERSON, "Singleplayer") {
             this.minecraft?.gui?.setScreen(SelectWorldScreen(this))
         }
-        tile(ICON_PEOPLE, "Multiplayer") {
+        rowY += sizes.row + sizes.gap
+        row(layout.columnX, rowY, layout.columnW, ICON_PEOPLE, "Multiplayer") {
             this.minecraft?.gui?.setScreen(JoinMultiplayerScreen(this))
         }
-        tile(ICON_FLASK, "Join Alpha") {
+        rowY += sizes.row + sizes.gap
+        row(layout.columnX, rowY, layout.columnW, ICON_FLASK, "Join Alpha") {
             joinServer("alpha.hypixel.net")
         }
-
-        // The foot row: Mods and Options sharing the width, Quit as a square at the end.
-        val quitX = layout.columnX + layout.columnW - sizes.bar
-        val footW = (quitX - sizes.gap - layout.columnX - sizes.gap) / 2
-        this.addRenderableWidget(FootButton(APPEAR_FOOT, layout.columnX, layout.footY, footW, sizes.bar, ICON_PUZZLE, "Mods") {
-            val mc = this.minecraft ?: return@FootButton
+        row(layout.columnX, layout.pairY, layout.halfW, ICON_PUZZLE, "Mods") {
+            val mc = this.minecraft ?: return@row
             // Falls back to the options screen without Mod Menu; see ModMenuCompat for why the
             // Mod Menu class must not be named here.
             if (net.alpaka.addons.compat.ModMenuCompat.isLoaded()) {
@@ -261,16 +290,22 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
             } else {
                 mc.gui.setScreen(OptionsScreen(this, mc.options, false))
             }
-        })
-        this.addRenderableWidget(FootButton(APPEAR_FOOT + 1, layout.columnX + footW + sizes.gap, layout.footY, footW, sizes.bar,
-            ICON_SLIDERS, "Options") {
-            val mc = this.minecraft ?: return@FootButton
+        }
+        row(layout.columnX + layout.columnW - layout.halfW, layout.pairY, layout.halfW, ICON_SLIDERS, "Options") {
+            val mc = this.minecraft ?: return@row
             mc.gui.setScreen(OptionsScreen(this, mc.options, false))
-        })
-        this.addRenderableWidget(QuitButton(quitX, layout.footY, sizes.bar, sizes.bar) {
+        }
+        row(layout.columnX, layout.quitY, layout.columnW, MenuStyle.ICON_POWER, "Quit", quit = true) {
             this.minecraft?.stop()
-        })
+        }
 
+        card = if (layout.hasCard) {
+            this.addRenderableWidget(CardButton(layout.cardX, layout.cardY, layout.cardW, layout.cardH) { openNotes() })
+        } else null
+        panel?.layout(this.width, this.height)
+        updateWidgetStates()
+
+        ReleaseNotes.request()
         HypixelStatus.requestRefresh()
     }
 
@@ -406,7 +441,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
 
         graphics.pose().pushMatrix()
         graphics.pose().translate(0f, (1f - easeOutBack(progress)) * -DROP_IN)
-        val hovered = isOverLogo(layout, mouseX.toDouble(), mouseY.toDouble())
+        val hovered = panel == null && isOverLogo(layout, mouseX.toDouble(), mouseY.toDouble())
         logoHover += ((if (hovered) 1.0f else 0.0f) - logoHover) * HOVER_EASE
         MenuStyle.logo(graphics, layout.logoX, layout.logoY, layout.logoSize, logoHover, appear, t)
 
@@ -423,6 +458,13 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         graphics.text(this.font, GuiFont.text("$shown · Minecraft ${ModVersion.minecraft()}"), textX,
             blockTop + TITLE_HEIGHT + 3, fade(MUTED, appear), false)
         graphics.pose().popMatrix()
+
+        // The hairline between the ways into a game and the rest, arriving with the rows around it.
+        val lineAppear = easeOutCubic(progress(APPEAR_HERO + 4))
+        if (lineAppear > 0f) {
+            graphics.fill(layout.columnX + 4, layout.dividerY, layout.columnX + layout.columnW - 4, layout.dividerY + 1,
+                fade(SEPARATOR, lineAppear))
+        }
     }
 
     /**
@@ -460,7 +502,56 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         HypixelStatus.State.CONNECTING -> MUTED to "Connecting…"
     }
 
+    /** 0 → 1 how far in the release notes window is, eased out; 0 while it is closed. */
+    private fun panelShown(): Float {
+        if (panel == null) return 0f
+        return easeOutCubic((System.currentTimeMillis() - panelOpenTime) / 1000f / PANEL_SECONDS)
+    }
+
+    private fun openNotes() {
+        val notes = ReleaseNotes.shown() ?: return
+        panel = ReleaseNotesPanel(notes).also { it.layout(this.width, this.height) }
+        panelOpenTime = System.currentTimeMillis()
+        ReleaseNotes.markRead(notes)
+        updateWidgetStates()
+    }
+
+    private fun closeNotes() {
+        panel = null
+        updateWidgetStates()
+    }
+
+    /** The menu's buttons answer only while the notes window is closed. */
+    private fun updateWidgetStates() {
+        for (child in this.children()) {
+            if (child is AbstractWidget) child.active = panel == null
+        }
+    }
+
+    override fun extractRenderState(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
+        // The card shows only once the notes have arrived, and not while network features are off.
+        card?.visible = ReleaseNotes.shown() != null
+        super.extractRenderState(graphics, mouseX, mouseY, partialTick)
+        panel?.draw(graphics, this.font, this.width, this.height, mouseX, mouseY, panelShown())
+    }
+
     override fun mouseClicked(event: MouseButtonEvent, doubleClick: Boolean): Boolean {
+        val open = panel
+        if (open != null) {
+            val mc = this.minecraft
+            when {
+                event.button() != 0 -> {}
+                open.isOverClose(event.x(), event.y()) || !open.isOver(event.x(), event.y()) -> {
+                    mc?.let { AbstractWidget.playButtonClickSound(it.soundManager) }
+                    closeNotes()
+                }
+                open.isOverLink(this.font, event.x(), event.y()) -> {
+                    mc?.let { AbstractWidget.playButtonClickSound(it.soundManager) }
+                    ReleaseNotes.shown()?.let { ConfirmLinkScreen.confirmLinkNow(this, it.url) }
+                }
+            }
+            return true
+        }
         if (event.button() == 0 && isOverLogo(Layout(), event.x(), event.y())) {
             // Vanilla's click, which the custom-sound swap replaces when the player opted in.
             this.minecraft?.let { AbstractWidget.playButtonClickSound(it.soundManager) }
@@ -471,8 +562,22 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         return event.button() == 0 && avatar?.mouseClicked(event.x(), event.y()) == true
     }
 
+    override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
+        val open = panel ?: return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)
+        open.scrollBy(scrollY)
+        return true
+    }
+
+    override fun keyPressed(event: KeyEvent): Boolean {
+        if (event.key() == 256 && panel != null) { // GLFW_KEY_ESCAPE
+            closeNotes()
+            return true
+        }
+        return super.keyPressed(event)
+    }
+
     override fun mouseDragged(event: MouseButtonEvent, dx: Double, dy: Double): Boolean {
-        if (avatar?.mouseDragged(dx) == true) return true
+        if (panel == null && avatar?.mouseDragged(dx) == true) return true
         return super.mouseDragged(event, dx, dy)
     }
 
@@ -483,11 +588,12 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
 
     /**
      * The shared base: the click action, hover easing, and the entrance - each button springs into
-     * place at its own moment of the stagger, rising from below.
+     * place at its own moment of the stagger, rising from below or, at the top, dropping in.
      */
     private abstract inner class MenuButton(
         private val appearIndex: Int,
         x: Int, y: Int, width: Int, height: Int,
+        private val fromAbove: Boolean = false,
         message: Component,
         private val onClickAction: () -> Unit,
     ) : AbstractButton(x, y, width, height, message) {
@@ -511,7 +617,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
 
             val travel = 1f - easeOutBack(progress)
             graphics.pose().pushMatrix()
-            graphics.pose().translate(0f, travel * RISE_IN)
+            graphics.pose().translate(0f, if (fromAbove) travel * -DROP_IN else travel * RISE_IN)
             draw(graphics, appear)
             graphics.pose().popMatrix()
         }
@@ -530,7 +636,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
      * the mouse. One glint crosses it as it lands.
      */
     private inner class HeroButton(x: Int, y: Int, width: Int, height: Int, action: () -> Unit) :
-        MenuButton(APPEAR_HERO, x, y, width, height, Component.literal("Join Hypixel"), action) {
+        MenuButton(APPEAR_HERO, x, y, width, height, message = Component.literal("Join Hypixel"), onClickAction = action) {
 
         override fun draw(graphics: GuiGraphicsExtractor, appear: Float) {
             val mc = this@CustomMainMenuScreen.minecraft ?: return
@@ -586,74 +692,111 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
     }
 
     /**
-     * A tile of the play column: its icon over its name, on glass. Under the mouse the glass
-     * brightens and its edge takes the accent, the tile lifts a little, and the icon pops in the
-     * accent.
+     * A row of the column: its icon and its name on glass. Under the mouse the glass brightens and
+     * its edge takes the accent, the icon takes the accent too, the name slides along a little and
+     * a chevron fades in at the end. Quit is the same row on the red pill's glass.
      */
-    private inner class TileButton(
+    private inner class RowButton(
         appearIndex: Int,
         x: Int, y: Int, width: Int, height: Int,
         private val glyph: String,
         label: String,
+        private val quit: Boolean,
         action: () -> Unit,
-    ) : MenuButton(appearIndex, x, y, width, height, GuiFont.text(label), action) {
-
-        override fun draw(graphics: GuiGraphicsExtractor, appear: Float) {
-            val mc = this@CustomMainMenuScreen.minecraft ?: return
-            val font = mc.font
-            graphics.pose().pushMatrix()
-            graphics.pose().translate(0f, -TILE_LIFT * hover)
-            glass(graphics, this.x, this.y, this.width, this.height, buttonRadius, appear)
-            MenuStyle.glassBox(graphics, this.x, this.y, this.width, this.height, buttonRadius, hover, appear)
-
-            // The icon over the name, the two centred on the tile.
-            val contentTop = this.y + (this.height - (8 + 6 + 8)) / 2
-            val icon = MenuStyle.icon(glyph)
-            val pop = 1f + ICON_POP * hover
-            graphics.pose().pushMatrix()
-            graphics.pose().translate(this.x + this.width / 2f, contentTop + 4f)
-            graphics.pose().scale(pop, pop)
-            graphics.text(font, icon, -font.width(icon) / 2 + 1, -4,
-                fade(ModernGuiUtils.lerpColor(TEXT, MenuStyle.accent(), hover), appear), false)
-            graphics.pose().popMatrix()
-            ModernGuiUtils.centeredText(graphics, font, this.message, this.x + this.width / 2, contentTop + 14,
-                fade(ModernGuiUtils.lerpColor(MenuStyle.TEXT_SOFT, TEXT, hover), appear))
-            graphics.pose().popMatrix()
-        }
-    }
-
-    /** A button of the column's foot row: its icon and name side by side, centred, on glass. */
-    private inner class FootButton(
-        appearIndex: Int,
-        x: Int, y: Int, width: Int, height: Int,
-        private val glyph: String,
-        label: String,
-        action: () -> Unit,
-    ) : MenuButton(appearIndex, x, y, width, height, GuiFont.text(label), action) {
+    ) : MenuButton(appearIndex, x, y, width, height, message = GuiFont.text(label), onClickAction = action) {
 
         override fun draw(graphics: GuiGraphicsExtractor, appear: Float) {
             val mc = this@CustomMainMenuScreen.minecraft ?: return
             val font = mc.font
             glass(graphics, this.x, this.y, this.width, this.height, buttonRadius, appear)
-            MenuStyle.glassBox(graphics, this.x, this.y, this.width, this.height, buttonRadius, hover, appear)
+            val iconColor: Int
+            val textColor: Int
+            if (quit) {
+                MenuStyle.quitBox(graphics, font, this.x, this.y, this.width, this.height, buttonRadius,
+                    Component.empty(), hover, appear)
+                iconColor = QUIT_TEXT
+                textColor = QUIT_TEXT
+            } else {
+                MenuStyle.glassBox(graphics, this.x, this.y, this.width, this.height, buttonRadius, hover, appear)
+                iconColor = ModernGuiUtils.lerpColor(MenuStyle.TEXT_SOFT, MenuStyle.accent(), hover)
+                textColor = ModernGuiUtils.lerpColor(MenuStyle.TEXT_SOFT, TEXT, hover)
+            }
+
             val icon = MenuStyle.icon(glyph)
             val textY = this.y + (this.height - 8) / 2
-            val left = this.x + (this.width - font.width(icon) - 6 - font.width(this.message)) / 2
-            graphics.text(font, icon, left, textY,
-                fade(ModernGuiUtils.lerpColor(MenuStyle.TEXT_SOFT, MenuStyle.accent(), hover), appear), false)
-            graphics.text(font, this.message, left + font.width(icon) + 6, textY,
-                fade(ModernGuiUtils.lerpColor(MenuStyle.TEXT_SOFT, TEXT, hover), appear), false)
+            val left = this.x + ROW_PADDING
+            graphics.text(font, icon, left, textY, fade(iconColor, appear), false)
+            graphics.pose().pushMatrix()
+            graphics.pose().translate(2f * hover, 0f)
+            graphics.text(font, this.message, left + font.width(icon) + 7, textY, fade(textColor, appear), false)
+            graphics.pose().popMatrix()
+
+            if (!quit && hover > 0.02f) {
+                val chevron = MenuStyle.icon(MenuStyle.ICON_CHEVRON)
+                graphics.pose().pushMatrix()
+                graphics.pose().translate(CHEVRON_SLIDE * hover, 0f)
+                graphics.text(font, chevron, this.x + this.width - ROW_PADDING - font.width(chevron) - CHEVRON_SLIDE.toInt(),
+                    textY, fade(TEXT, appear * hover), false)
+                graphics.pose().popMatrix()
+            }
         }
     }
 
-    /** Quit, at the end of the foot row: a square red power button on glass, ringed in red under the mouse. */
-    private inner class QuitButton(x: Int, y: Int, width: Int, height: Int, action: () -> Unit) :
-        MenuButton(APPEAR_FOOT + 2, x, y, width, height, MenuStyle.icon(MenuStyle.ICON_POWER), action) {
+    /**
+     * The What's New card: the newest release's version, its first changes, and how many there are
+     * in all; a dot in the accent until the player has opened them. Clicking it opens the release
+     * notes window.
+     */
+    private inner class CardButton(x: Int, y: Int, width: Int, height: Int, action: () -> Unit) :
+        MenuButton(APPEAR_CARD, x, y, width, height, fromAbove = true, message = GuiFont.text("What's New"),
+            onClickAction = action) {
 
         override fun draw(graphics: GuiGraphicsExtractor, appear: Float) {
             val mc = this@CustomMainMenuScreen.minecraft ?: return
-            glass(graphics, this.x, this.y, this.width, this.height, buttonRadius, appear)
-            MenuStyle.quitBox(graphics, mc.font, this.x, this.y, this.width, this.height, buttonRadius, this.message, hover, appear)
+            val notes = ReleaseNotes.shown() ?: return
+            val font = mc.font
+            glass(graphics, this.x, this.y, this.width, this.height, buttonRadius + 2, appear)
+            ModernGuiUtils.drawRoundedRect(graphics, this.x, this.y, this.width, this.height, buttonRadius + 2,
+                fade(CARD_FILL, appear))
+            MenuStyle.glassBox(graphics, this.x, this.y, this.width, this.height, buttonRadius + 2, hover, appear)
+
+            // The head: the unread dot, the name, and the version at the right in the accent.
+            val left = this.x + CARD_PAD
+            val right = this.x + this.width - CARD_PAD
+            var headX = left
+            if (ReleaseNotes.unread(notes)) {
+                MenuStyle.statusLine(graphics, font, left, this.y + CARD_PAD, MenuStyle.accent(), "", pulse = true, appear = appear)
+                headX += GuiFont.width(font, "● ")
+            }
+            graphics.text(font, this.message, headX, this.y + CARD_PAD, fade(TEXT, appear), false)
+            val version = GuiFont.text(notes.version)
+            graphics.text(font, version, right - font.width(version), this.y + CARD_PAD, fade(MenuStyle.accent(), appear), false)
+
+            // The first changes, each on one line, cut with an ellipsis where it would not fit.
+            val items = notes.sections.flatMap { it.items }.take(CARD_ITEMS)
+            var lineY = this.y + CARD_PAD + 12
+            val bullet = GuiFont.text("• ")
+            val textX = left + font.width(bullet)
+            for (item in items) {
+                graphics.text(font, bullet, left, lineY, fade(MUTED, appear), false)
+                graphics.text(font, GuiFont.text(fit(font, item, right - textX)), textX, lineY, fade(MenuStyle.TEXT_SOFT, appear), false)
+                lineY += CARD_LINE
+            }
+
+            // The way to all of them, moving along under the mouse.
+            val more = GuiFont.text("All ${notes.itemCount} changes")
+            val moreY = this.y + this.height - CARD_PAD - 8
+            graphics.text(font, more, left, moreY, fade(MenuStyle.accent(), appear), false)
+            graphics.text(font, MenuStyle.icon(MenuStyle.ICON_CHEVRON), left + font.width(more) + 4 + Math.round(2 * hover),
+                moreY, fade(MenuStyle.accent(), appear), false)
+        }
+
+        /** The text, shortened with an ellipsis to fit [width]. */
+        private fun fit(font: net.minecraft.client.gui.Font, text: String, width: Int): String {
+            if (GuiFont.width(font, text) <= width) return text
+            var end = text.length
+            while (end > 0 && GuiFont.width(font, text.substring(0, end).trimEnd() + "…") > width) end--
+            return text.substring(0, end).trimEnd() + "…"
         }
     }
 }

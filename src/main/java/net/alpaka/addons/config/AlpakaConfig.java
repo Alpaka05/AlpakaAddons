@@ -248,6 +248,8 @@ public class AlpakaConfig {
     public boolean notificationSmoothFont = true;
     public boolean customEscapeMenuEnabled = true;
     public boolean customMainMenuEnabled = false;
+    /** The release whose notes the player last opened from the main menu; its What's New card shows a dot until then. */
+    public String releaseNotesSeen = "";
     /** The small player model on the HUD. Off for fresh installs. */
     public boolean playerModelEnabled = false;
     public boolean playerModelOnlyActions = true;
@@ -303,10 +305,11 @@ public class AlpakaConfig {
      * Whether the mod may contact anything over the network ("Network Features").
      *
      * Everything else in this mod works from what the client already has. This is the one setting
-     * that lets it reach outside, for three things: a public endpoint describing the running election
+     * that lets it reach outside, for four things: a public endpoint describing the running election
      * (no API key, no player named, the same answer for everybody), the main menu's player
-     * count, an ordinary status ping to mc.hypixel.net like the server list sends, and the update
-     * check against the mod's public GitHub releases. Off means no
+     * count, an ordinary status ping to mc.hypixel.net like the server list sends, the update
+     * check against the mod's public GitHub releases, and the main menu's What's New card, which
+     * reads the newest of those releases' notes. Off means no
      * request is made and nothing derived from one is used. The JSON key keeps its old name.
      */
     public boolean allowApiCalls = true;

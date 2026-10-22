@@ -408,12 +408,30 @@ public final class CustomTabFeature {
         int x0 = x + CustomTabLayout.barX(font.width(line.text()));
         int y0 = y + CustomTabLayout.BAR_TOP;
         int x1 = x0 + CustomTabLayout.BAR_W;
-        int y1 = y0 + CustomTabLayout.BAR_H;
-        graphics.fill(x0, y0, x1, y1, BAR_TRACK);
-        int filled = Math.round(CustomTabLayout.BAR_W * Math.max(0.0f, Math.min(1.0f, bar.fraction())));
-        if (filled > 0) graphics.fill(x0, y0, x0 + filled, y1, bar.color());
+        // Drawn in half pixels, which a GUI scale of 2 or more still shows whole, so the ends round
+        // off more finely than the bar's 4 pixels of height would allow.
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(x0, y0);
+        graphics.pose().scale(0.5f, 0.5f);
+        int width = CustomTabLayout.BAR_W * 2;
+        roundedBar(graphics, width, width, BAR_TRACK);
+        int filled = Math.round(width * Math.max(0.0f, Math.min(1.0f, bar.fraction())));
+        if (filled > 0) roundedBar(graphics, width, filled, bar.color());
+        graphics.pose().popMatrix();
         if (font.width(line.after()) > 0) {
             graphics.text(font, line.after(), x1 + CustomTabLayout.BAR_GAP, y, 0xFFFFFFFF, HudPanel.TEXT_SHADOW);
+        }
+    }
+
+    /** How far each half-pixel row of a bar starts in from its ends: a round cap of the bar's height. */
+    private static final int[] BAR_CAP = {2, 1, 0, 0, 0, 0, 1, 2};
+
+    /** A bar {@code width} half pixels long with round ends, filled up to {@code upTo} of it. */
+    private static void roundedBar(GuiGraphicsExtractor graphics, int width, int upTo, int color) {
+        for (int row = 0; row < BAR_CAP.length; row++) {
+            int start = BAR_CAP[row];
+            int end = Math.min(upTo, width - BAR_CAP[row]);
+            if (end > start) graphics.fill(start, row, end, row + 1, color);
         }
     }
 

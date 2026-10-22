@@ -109,6 +109,23 @@ public final class DevScreenshotTour {
             new Stop(null, () -> placeMouse(0.5, 0.5), () -> true, 1),
             // A search longer than its field: cut with an ellipsis while the field is not focused.
             screen("config-search-long", () -> new AlpakaConfigScreen(null, "blaze slayer drop tracker share")),
+            // The Menu Theme: the config, its choice list, the color picker, a dialog and the wheel
+            // editor in the light and the OLED look, then back to dark for whatever comes after.
+            new Stop(null, () -> net.alpaka.addons.client.gui.AlpakaStyle.applyTheme(
+                    net.alpaka.addons.client.gui.AlpakaStyle.Theme.LIGHT), () -> true, 1),
+            screen("theme-light-config", () -> AlpakaConfigScreen.openOn("Design", "Menu Theme").withChoiceOpen()),
+            screen("theme-light-config-chat", () -> AlpakaConfigScreen.openOn("Chat", "Chat Tabs")),
+            screen("theme-light-color-picker", () -> new ColorPickerScreen(null, "Accent Color", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
+            screen("theme-light-wheel-editor", () -> new CommandWheelConfigScreen(new CustomMainMenuScreen())),
+            screen("theme-light-confirm-config", () -> AlpakaConfigScreen.openOn("Main", "Reset All Settings")),
+            new Stop("theme-light-confirm-dialog", () -> trigger("reset_all_settings"), () -> true, 30),
+            new Stop(null, () -> net.alpaka.addons.client.gui.AlpakaStyle.applyTheme(
+                    net.alpaka.addons.client.gui.AlpakaStyle.Theme.OLED), () -> true, 1),
+            screen("theme-oled-config", () -> AlpakaConfigScreen.openOn("Design", "Menu Theme").withChoiceOpen()),
+            screen("theme-oled-config-chat", () -> AlpakaConfigScreen.openOn("Chat", "Chat Tabs")),
+            screen("theme-oled-color-picker", () -> new ColorPickerScreen(null, "Accent Color", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
+            new Stop(null, () -> net.alpaka.addons.client.gui.AlpakaStyle.applyTheme(
+                    net.alpaka.addons.client.gui.AlpakaStyle.Theme.DARK), () -> true, 1),
             // The page list with more pages than fit above its field: it scrolls, its edges fading.
             new Stop("wheel-editor-page-picker-many", () -> {
                 java.util.List<java.util.List<String>> pages = new java.util.ArrayList<>();
@@ -329,23 +346,6 @@ public final class DevScreenshotTour {
             // The fire pit preview has to be on a tick before the clay arrives, as in a real fight.
             new Stop(null, DevScreenshotTour::firePitPreview, () -> true, 5),
             new Stop("fire-pits", DevScreenshotTour::placeFirePits, () -> true, 30),
-            // The Menu Theme: the config, its choice list, the color picker, a dialog and the wheel
-            // editor in the light and the OLED look, then back to dark for whatever comes after.
-            new Stop(null, () -> net.alpaka.addons.client.gui.AlpakaStyle.applyTheme(
-                    net.alpaka.addons.client.gui.AlpakaStyle.Theme.LIGHT), () -> true, 1),
-            screen("theme-light-config", () -> AlpakaConfigScreen.openOn("Design", "Menu Theme").withChoiceOpen()),
-            screen("theme-light-config-chat", () -> AlpakaConfigScreen.openOn("Chat", "Chat Tabs")),
-            screen("theme-light-color-picker", () -> new ColorPickerScreen(null, "Accent Color", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
-            screen("theme-light-wheel-editor", () -> new CommandWheelConfigScreen(new CustomMainMenuScreen())),
-            screen("theme-light-confirm-config", () -> AlpakaConfigScreen.openOn("Main", "Reset All Settings")),
-            new Stop("theme-light-confirm-dialog", () -> trigger("reset_all_settings"), () -> true, 30),
-            new Stop(null, () -> net.alpaka.addons.client.gui.AlpakaStyle.applyTheme(
-                    net.alpaka.addons.client.gui.AlpakaStyle.Theme.OLED), () -> true, 1),
-            screen("theme-oled-config", () -> AlpakaConfigScreen.openOn("Design", "Menu Theme").withChoiceOpen()),
-            screen("theme-oled-config-chat", () -> AlpakaConfigScreen.openOn("Chat", "Chat Tabs")),
-            screen("theme-oled-color-picker", () -> new ColorPickerScreen(null, "Accent Color", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
-            new Stop(null, () -> net.alpaka.addons.client.gui.AlpakaStyle.applyTheme(
-                    net.alpaka.addons.client.gui.AlpakaStyle.Theme.DARK), () -> true, 1),
             // Last, as it ends the world: confirming the leave dialog leaves for the title screen
             // rather than going back to the pause menu.
             screen("confirm-pause-before-leaving", net.alpaka.addons.features.escapemenu.CustomPauseScreen::new),

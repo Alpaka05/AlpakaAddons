@@ -34,6 +34,10 @@ public class KeyboardHandlerMixin {
         // mapping down - the player list's, for Tab - even though the press itself was taken. So a
         // repeat of a taken key is swallowed too, without acting on it again.
         boolean repeat = action == InputConstants.REPEAT;
+        if (CustomTabFeature.takesRepeat(event, repeat)) {
+            ci.cancel();
+            return;
+        }
         if (PartyInviteFeature.onKey(event.key(), event.scancode(), repeat)) {
             ci.cancel();
             return;

@@ -16,8 +16,9 @@ import java.util.regex.Pattern;
  *
  * Three shapes are read:
  * <ul>
- *   <li>Hypixel's own text bar, a run of pipes colored up to the progress and gray after it
- *       ("Mage Reputation: |||||||||||| (100%)"). The pipes are replaced by the bar.</li>
+ *   <li>Hypixel's own text bar, a run of pipes colored up to the progress and gray or white after
+ *       it ("Mage Reputation: |||||||||||| (100%)", "Cole: ||||||||||| (52%)"). The pipes are
+ *       replaced by the bar; a percentage after them is taken as the exact value.</li>
  *   <li>A count against its goal at the end of a row ("Fairy Souls: 29/29", "52/100 XP", the RNG
  *       meter's "25,850/188,040"), written without spaces around the slash. The bar goes after
  *       the row. "Bank: 1B / 7.5B" is the co-op and the personal bank side by side, not progress,
@@ -39,6 +40,7 @@ public final class TabProgressBars {
     private static final Pattern COUNT = Pattern.compile(
             "([\\d,]+(?:\\.\\d+)?[kKmMbB]?)/([\\d,]+(?:\\.\\d+)?[kKmMbB]?)(?:\\s*XP)?\\s*$");
     private static final Pattern PERCENT = Pattern.compile("(\\d+(?:\\.\\d+)?)%\\s*$");
+    private static final Pattern PERCENT_ANYWHERE = Pattern.compile("(\\d+(?:\\.\\d+)?)%");
     private static final int DEFAULT_FILL = 0xFF55FF55;
     private static final int GRAY = 0xAAAAAA;
     private static final int DARK_GRAY = 0x555555;
@@ -102,21 +104,20 @@ public final class TabProgressBars {
             i = j;
         }
         if (runEnd - runStart >= MIN_PIPES) {
+            // The filled part is the pipes in the first pipe's color. What follows is the empty
+            // part, gray on most widgets but white on the election's, so any other color ends it.
+            int first = rgb(glyphs.get(runStart).style());
+            boolean empty = first == GRAY || first == DARK_GRAY;
             int filled = 0;
-            int fill = DEFAULT_FILL;
-            boolean fillFound = false;
-            for (int i = runStart; i < runEnd; i++) {
-                int rgb = rgb(glyphs.get(i).style());
-                if (rgb == GRAY || rgb == DARK_GRAY) continue;
-                filled++;
-                if (!fillFound) {
-                    fill = 0xFF000000 | rgb;
-                    fillFound = true;
-                }
-            }
+            while (!empty && runStart + filled < runEnd && rgb(glyphs.get(runStart + filled).style()) == first) filled++;
+            int fill = empty || first < 0 ? DEFAULT_FILL : 0xFF000000 | first;
+            float fraction = (float) filled / (runEnd - runStart);
             Component before = TabListParser.trim(component(glyphs.subList(0, runStart)));
             Component after = TabListParser.trim(component(glyphs.subList(runEnd, glyphs.size())));
-            return line.withBar(before, new TabListParser.Bar((float) filled / (runEnd - runStart), fill), after);
+            // "(52%)" after the pipes is exact, where the pipes are rounded.
+            Matcher percent = PERCENT_ANYWHERE.matcher(TabListParser.plain(after));
+            if (percent.find()) fraction = Math.min(1.0f, Float.parseFloat(percent.group(1)) / 100.0f);
+            return line.withBar(before, new TabListParser.Bar(fraction, fill), after);
         }
 
         String plain = TabListParser.plain(line.text());

@@ -5,7 +5,6 @@ import net.alpaka.addons.client.gui.BlurRectRenderState;
 import net.alpaka.addons.client.gui.GuiFont;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.alpaka.addons.config.AlpakaConfig;
-import net.alpaka.addons.features.chat.ChatTabsFeature;
 import net.alpaka.addons.features.chat.ChatBlurFeature;
 import net.alpaka.addons.mixin.PlayerTabOverlayAccessor;
 import net.alpaka.addons.utils.SkyblockUtils;
@@ -75,6 +74,10 @@ public final class CustomTabFeature {
     public static final String[] LAYOUT_NAMES = {"Side by Side", "Stacked"};
 
     private static boolean toggledOpen = false;
+    /** The menu the list was last decided for, and whether the list was up as that menu opened. */
+    private static Screen menu = null;
+    private static boolean carriedIntoMenu = false;
+    private static boolean lastShown = false;
 
     /** The rows' last values and lights; forgotten on a new server, where everything is new. */
     private static final TabChangeFlash FLASH = new TabChangeFlash();
@@ -120,8 +123,21 @@ public final class CustomTabFeature {
     public static void onKey(KeyEvent event, boolean repeat) {
         if (repeat || !toggles()) return;
         Minecraft mc = Minecraft.getInstance();
-        if (mc.gui.screen() != null) return;
+        Screen screen = mc.gui.screen();
+        // In an inventory the key flips the list too, where the list may stay up; in the chat Tab
+        // completes what is typed.
+        if (screen != null && !(screen instanceof AbstractContainerScreen<?> && showsOver(screen))) return;
         if (mc.options.keyPlayerList.matches(event)) toggledOpen = !toggledOpen;
+    }
+
+    /**
+     * Whether a key press is to be swallowed: the player list key held down from the world into
+     * the chat repeats, and each repeat would complete the typed text or cycle the chat tabs.
+     */
+    public static boolean takesRepeat(KeyEvent event, boolean repeat) {
+        Minecraft mc = Minecraft.getInstance();
+        return repeat && carriedIntoMenu && mc.gui.screen() instanceof ChatScreen
+                && mc.options.keyPlayerList.matches(event);
     }
 
     /** Whether the player list is up: held down normally, or flipped open with the toggle. */
@@ -129,12 +145,23 @@ public final class CustomTabFeature {
         if (!isEnabled()) return keyDown;
         Minecraft mc = Minecraft.getInstance();
         Screen screen = mc.gui.screen();
-        if (screen == null) return toggles() ? toggledOpen : keyDown;
-        if (!showsOver(screen)) return false;
-        if (toggles()) return toggledOpen;
-        // Held: a menu keeps key mappings from updating, so the key itself is asked - but not in
-        // the chat, where Tab completes what is typed.
-        return !(screen instanceof ChatScreen) && playerListKeyHeld(mc);
+        if (screen == null) {
+            menu = null;
+            carriedIntoMenu = false;
+            return lastShown = toggles() ? toggledOpen : keyDown;
+        }
+        if (screen != menu) {
+            menu = screen;
+            carriedIntoMenu = lastShown;
+        }
+        if (!showsOver(screen)) return lastShown = false;
+        // Held: a menu keeps key mappings from updating, so the key itself is asked.
+        boolean up = toggles() ? toggledOpen : playerListKeyHeld(mc);
+        if (!up) carriedIntoMenu = false;
+        // In the chat Tab completes what is typed and cycles the chat tabs, so there the list only
+        // stays up when it already was as the chat opened - not when Tab is pressed in it.
+        if (screen instanceof ChatScreen) up = up && carriedIntoMenu;
+        return lastShown = up;
     }
 
     /** The menus the list may stay up in: the chat, and inventories and chests. */
@@ -171,9 +198,8 @@ public final class CustomTabFeature {
     public static void renderOverMenu(GuiGraphicsExtractor graphics) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.gui.screen() == null || !takesOver()) return;
-        // Tab cycling the chat tabs keeps the list away in the chat; vanilla's hook is not the one
-        // drawing here, so it is asked again.
-        if (ChatTabsFeature.suppressesTabList()) return;
+        // No Chat Tabs check here: listShown only keeps the list in the chat when it came in with
+        // it, so Tab cycling the chat tabs never brings it up.
         draw(graphics, mc.gui.hud.getTabList());
     }
 

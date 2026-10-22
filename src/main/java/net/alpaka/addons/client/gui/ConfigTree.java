@@ -131,10 +131,10 @@ public final class ConfigTree {
             Map.entry("slayer_hud_smooth_font", "slayer_hud_enabled"),
             Map.entry("slayer_timer_blur", "slayer_timer"),
             Map.entry("slayer_timer_smooth_font", "slayer_timer"),
-            Map.entry("world_age_blur", "world_age_hud_enabled"),
-            Map.entry("world_age_smooth_font", "world_age_hud_enabled"),
             Map.entry("deployable_timer_blur", "deployable_timer"),
             Map.entry("deployable_timer_smooth_font", "deployable_timer"),
+            Map.entry("world_age_blur", "world_age_hud_enabled"),
+            Map.entry("world_age_smooth_font", "world_age_hud_enabled"),
             Map.entry("inventory_hud_blur", "inventory_hud_enabled"),
             Map.entry("notification_blur", "#Notification Customization"),
             Map.entry("notification_smooth_font", "#Notification Customization")

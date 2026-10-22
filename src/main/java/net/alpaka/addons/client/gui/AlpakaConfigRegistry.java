@@ -2131,14 +2131,14 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.slayerTimerHudBlur, v -> AlpakaConfig.instance.slayerTimerHudBlur = v);
         styleToggle("slayer_timer_smooth_font", "Smooth Font", ConfigCategory.SKYBLOCK, false,
                 () -> AlpakaConfig.instance.slayerTimerHudSmoothFont, v -> AlpakaConfig.instance.slayerTimerHudSmoothFont = v);
-        styleToggle("world_age_blur", "Blur", ConfigCategory.SKYBLOCK, true,
-                () -> AlpakaConfig.instance.worldAgeHudBlur, v -> AlpakaConfig.instance.worldAgeHudBlur = v);
-        styleToggle("world_age_smooth_font", "Smooth Font", ConfigCategory.SKYBLOCK, false,
-                () -> AlpakaConfig.instance.worldAgeHudSmoothFont, v -> AlpakaConfig.instance.worldAgeHudSmoothFont = v);
         styleToggle("deployable_timer_blur", "Blur", ConfigCategory.SKYBLOCK, true,
                 () -> AlpakaConfig.instance.deployableTimerHudBlur, v -> AlpakaConfig.instance.deployableTimerHudBlur = v);
         styleToggle("deployable_timer_smooth_font", "Smooth Font", ConfigCategory.SKYBLOCK, false,
                 () -> AlpakaConfig.instance.deployableTimerHudSmoothFont, v -> AlpakaConfig.instance.deployableTimerHudSmoothFont = v);
+        styleToggle("world_age_blur", "Blur", ConfigCategory.SKYBLOCK, true,
+                () -> AlpakaConfig.instance.worldAgeHudBlur, v -> AlpakaConfig.instance.worldAgeHudBlur = v);
+        styleToggle("world_age_smooth_font", "Smooth Font", ConfigCategory.SKYBLOCK, false,
+                () -> AlpakaConfig.instance.worldAgeHudSmoothFont, v -> AlpakaConfig.instance.worldAgeHudSmoothFont = v);
         OPTIONS.add(new ConfigOption("inventory_hud_blur", "Blur",
                 "Puts a blurred panel behind it, in the flat style. Needs Blur on under Design → HUD Style.",
                 ConfigCategory.VISUALS,

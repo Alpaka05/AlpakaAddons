@@ -346,6 +346,13 @@ public class AlpakaClient implements ClientModInitializer {
                     ? "§8  file present (" + file.length() + " bytes)"
                     : "§8  no file yet; it is written on the next kill");
         }
+
+        java.io.File logDir = net.alpaka.addons.features.slayer.SlayerKillLog.INSTANCE.folderIn(file.getParentFile());
+        int logFiles = net.alpaka.addons.features.slayer.SlayerKillLog.INSTANCE.fileCount(file.getParentFile());
+        SlayerDropTracker.sendModMessage("§7Slayer log: §f" + logDir.getAbsolutePath());
+        SlayerDropTracker.sendModMessage(logFiles > 0
+                ? "§8  " + logFiles + " CSV file" + (logFiles != 1 ? "s" : "") + ", one line per boss and per drop"
+                : "§8  no files yet; the first boss starts them");
     }
 
     /**
@@ -381,6 +388,7 @@ public class AlpakaClient implements ClientModInitializer {
         }
 
         String previous = AlpakaConfig.instance.statsDirectory;
+        java.io.File previousDir = net.alpaka.addons.config.AlpakaStats.directory();
         boolean previousHadFile = AlpakaConfig.instance.statsDirectoryHadFile;
         AlpakaConfig.instance.statsDirectory = cleaned;
         // A new folder has never held the record, so an empty one is not a folder still syncing.
@@ -399,6 +407,7 @@ public class AlpakaClient implements ClientModInitializer {
         // Merges with whatever is already there rather than replacing it, so pointing a second PC
         // at a folder that already holds a record adds to it instead of flattening it.
         net.alpaka.addons.config.AlpakaStats.save();
+        net.alpaka.addons.features.slayer.SlayerKillLog.INSTANCE.onFolderChanged(previousDir, dir);
         printStatsLocation();
     }
 

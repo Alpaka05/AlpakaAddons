@@ -232,8 +232,10 @@ public class SlayerDropTracker {
             long killedAtMs = SlayerQuestDetector.INSTANCE.getKillDetectedAtMs();
             countKill(killed);
             boolean timed = SlayerQuestDetector.INSTANCE.getKillTimed();
-            SlayerSessionTracker.INSTANCE.onBossKilled(killed, killedAtMs, timed);
+            long xp = SlayerSessionTracker.INSTANCE.onBossKilled(killed, killedAtMs, timed);
             SlayerTimer.INSTANCE.onBossKilled(killed, killedAtMs, timed, SlayerQuestDetector.INSTANCE.getKillStated());
+            // Last, so the timer's fight time and the session's XP for this boss are settled.
+            SlayerKillLog.INSTANCE.onBossKilled(killed, killedAtMs, xp);
         }
 
         // Only signal for a boss spawning: Hypixel never sends a chat announcement for a
@@ -250,6 +252,7 @@ public class SlayerDropTracker {
         }
 
         flushPendingDrops();
+        SlayerKillLog.INSTANCE.tick();
     }
 
     public static boolean isOnSkyblock() {
@@ -326,6 +329,16 @@ public class SlayerDropTracker {
         if (QUEST_COMPLETE_PATTERN.matcher(string).matches()) {
             SlayerQuestDetector.INSTANCE.onChatKill(SlayerQuestDetector.INSTANCE.currentOrRecent());
             return;
+        }
+
+        // Also ahead of the tracker's switch: the slayer log has no switch of its own.
+        Matcher loggedDrop = DROP_PATTERN.matcher(string);
+        if (loggedDrop.matches()) {
+            // Only with a quest up, unlike the tracker below, which files any Rift drop under the
+            // Vampire: a log line claiming a boss drop has to come from a slayer being run.
+            SlayerType boss = SlayerQuestDetector.INSTANCE.currentOrRecent();
+            if (boss != null && isInRift()) boss = SlayerType.VAMPIRE;
+            if (boss != null) SlayerKillLog.INSTANCE.onDrop(boss, loggedDrop.group("item"), string);
         }
 
         if (!AlpakaConfig.instance.slayerDropTrackerEnabled) return;

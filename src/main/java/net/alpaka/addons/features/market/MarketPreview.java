@@ -313,6 +313,12 @@ public final class MarketPreview {
         return typed == null ? screen : screen.typed(typed);
     }
 
+    /** The price sign of "Create BIN Auction", as Hypixel writes it, with this typed. */
+    public static MarketInputScreen binPrice(String typed) {
+        Markets.menuOpened("Create BIN Auction");
+        return input(new String[] {"", "^^^^^^^^^^^^^^^", "Your auction", "starting bid"}, MarketKind.AUCTION_HOUSE, typed);
+    }
+
     /**
      * Opens a sign with these lines the way the game opens one Hypixel sends - through the player's
      * sign opening, where the input bar hooks in - so the tour sees whether it is recognised.

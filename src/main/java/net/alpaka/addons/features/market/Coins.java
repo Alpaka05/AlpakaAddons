@@ -27,8 +27,7 @@ public final class Coins {
 
     /**
      * A number as the player types it into one of Hypixel's inputs: digits with commas or a point,
-     * optionally followed by k, m or b ("1.5m", "250k"). Null for anything else, which Hypixel
-     * would not take either.
+     * optionally followed by k, m or b ("1.5m", "250k"). Null for anything else.
      */
     public static Double parseInput(String text) {
         if (text == null) return null;
@@ -46,6 +45,15 @@ public final class Coins {
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    /**
+     * A number in plain digits, as it goes on one of Hypixel's signs: "4000000", "3.5". With
+     * decimals, at most two; without, rounded to a whole number.
+     */
+    public static String plain(double value, boolean decimals) {
+        if (!decimals) return Long.toString(Math.round(value));
+        return java.math.BigDecimal.valueOf(Math.round(value * 100) / 100.0).stripTrailingZeros().toPlainString();
     }
 
     /** "950", "12.5k", "1.25M", "3.1B": short enough for a card. Below 1,000 one decimal at most. */

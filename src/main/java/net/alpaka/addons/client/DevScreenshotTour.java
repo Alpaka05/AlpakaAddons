@@ -229,9 +229,7 @@ public final class DevScreenshotTour {
             new Stop("market-input-suggest-bazaar", () -> Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.input(
                     new String[] {"", "", "^^^^^^^^^^^^^^^", "Enter query"},
                     net.alpaka.addons.features.market.MarketKind.BAZAAR, "ench hay")), () -> true, 20),
-            screen("market-input-price", () -> net.alpaka.addons.features.market.MarketPreview.input(
-                    new String[] {"", "^^^^^^^^^^^^^^^", "Your bid", ""},
-                    net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, "1.5m")),
+            screen("market-input-price", () -> net.alpaka.addons.features.market.MarketPreview.binPrice("4m")),
             screen("market-input-amount", () -> net.alpaka.addons.features.market.MarketPreview.input(
                     new String[] {"", "^^^^^^^^^^^^^^^", "Enter amount", "to order"},
                     net.alpaka.addons.features.market.MarketKind.BAZAAR, null)),

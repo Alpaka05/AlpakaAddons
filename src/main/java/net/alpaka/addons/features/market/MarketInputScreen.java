@@ -30,7 +30,8 @@ import java.util.List;
  * anything. Confirming writes the answer into the sign's answer lines and closes the editor, as the
  * sign's Done button does. Each line stays within the sign's width as vanilla's own editor measures
  * it, and an answer longer than one line is broken at a space (see {@link SignPrompt#split}) - so the
- * lines are always ones a player could have typed into the vanilla sign. Cancel and Escape empty
+ * lines are always ones a player could have typed into the vanilla sign. A price or an amount goes
+ * in plain digits, "4000000" for "4m" (see {@link SignPrompt#answer}). Cancel and Escape empty
  * the answer first, which Hypixel takes as no answer. The chips only fill the field; the player
  * still confirms.
  */
@@ -43,6 +44,8 @@ public class MarketInputScreen extends SignEditScreen {
 
     private final SignPrompt prompt;
     private final MarketKind context;
+    /** The market menu the sign was opened from, for the heading. */
+    private final String menuTitle = Markets.lastMenuTitle();
     private long openTimeMs = 0L;
     private long caretFrom = System.currentTimeMillis();
     /** When typing last ran into what the sign can hold, to flash the field. */
@@ -226,7 +229,7 @@ public class MarketInputScreen extends SignEditScreen {
         AlpakaStyle.panel(graphics, x, y, w, h);
 
         // Header: what is asked, and a close button.
-        AlpakaStyle.title(graphics, this.font, AlpakaStyle.ellipsize(this.font, prompt.heading(context), w - 50), x + PAD + 2, y);
+        AlpakaStyle.title(graphics, this.font, AlpakaStyle.ellipsize(this.font, prompt.heading(context, menuTitle), w - 50), x + PAD + 2, y);
         int closeX = x + w - PAD - 16;
         int closeY = y + (HEADER_H - 16) / 2;
         boolean hoverClose = AlpakaStyle.inside(mouseX, mouseY, closeX, closeY, 16, 16);
@@ -240,7 +243,7 @@ public class MarketInputScreen extends SignEditScreen {
 
         // Under it: Hypixel's own question on the left, the amount written out on the right.
         int hy = fy + FIELD_H + 6;
-        String question = prompt.question().isEmpty() ? "" : prompt.question();
+        String question = prompt.subtitle(menuTitle);
         graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, question, fw / 2)), fx + 2, hy, AlpakaStyle.TEXT_MUTED, false);
         drawReading(graphics, fx + fw - 2, hy);
 
@@ -549,11 +552,13 @@ public class MarketInputScreen extends SignEditScreen {
 
     /**
      * Writes the answer into the sign's answer lines and closes the editor: vanilla sends the lines,
-     * as the sign's Done button does.
+     * as the sign's Done button does. A number goes in plain digits unless those would not fit the
+     * sign, which only an absurd number does; then it goes as typed.
      */
     private void confirm() {
         if (closing) return;
-        String[] answer = split(text());
+        String[] answer = split(prompt.answer(text()));
+        if (answer == null) answer = split(text());
         if (answer == null) {
             fullAtMs = System.currentTimeMillis();
             return;

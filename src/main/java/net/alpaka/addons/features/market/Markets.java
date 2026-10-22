@@ -73,6 +73,18 @@ public final class Markets {
         return System.currentTimeMillis() - lastLeftAtMs < NAVIGATION_MS ? lastKind : null;
     }
 
+    /** The title of the market menu opened last, skinned or not. */
+    private static String lastMenuTitle = null;
+
+    /** Notes a market menu opening, for a sign it asks next: "Create BIN Auction" says what its price is for. */
+    static void menuOpened(String title) {
+        lastMenuTitle = title;
+    }
+
+    static String lastMenuTitle() {
+        return lastMenuTitle;
+    }
+
     // ---- Recent searches ------------------------------------------------------------------------
 
     private static final int MAX_RECENT = 6;

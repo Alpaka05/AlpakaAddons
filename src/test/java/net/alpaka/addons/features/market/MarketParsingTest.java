@@ -260,7 +260,7 @@ class MarketParsingTest {
         assertEquals(SignPrompt.Type.SEARCH, search.type());
         assertEquals(2, search.inputLines());
         assertEquals("Enter query", search.question());
-        assertEquals("Search the Bazaar", search.heading(MarketKind.BAZAAR));
+        assertEquals("Search the Bazaar", search.heading(MarketKind.BAZAAR, null));
 
         SignPrompt oneLine = SignPrompt.of(new String[] {"", "^^^^^^^^^^^^^^^", "Enter query", ""});
         assertEquals(SignPrompt.Type.SEARCH, oneLine.type());
@@ -293,6 +293,54 @@ class MarketParsingTest {
         SignPrompt price = SignPrompt.of(new String[] {"", "^^^^^^^^^^^^^^^", "Your bid", ""});
         assertArrayEquals(new String[] {"1.5m"}, price.split("1.5m", MarketParsingTest::width, 90));
         assertNull(price.split("1000000000000000", MarketParsingTest::width, 90));
+    }
+
+    /** The Auction House's price sign, the same for a Buy It Now auction and one taking bids. */
+    private static final String[] AUCTION_PRICE = {"", "^^^^^^^^^^^^^^^", "Your auction", "starting bid"};
+
+    @Test
+    void theAuctionPriceIsHeadedByTheMenuItCameFrom() {
+        SignPrompt price = SignPrompt.of(AUCTION_PRICE);
+        assertEquals(SignPrompt.Type.PRICE, price.type());
+        assertEquals(1, price.inputLines());
+        assertEquals("Buy It Now Price", price.heading(MarketKind.AUCTION_HOUSE, "Create BIN Auction"));
+        assertEquals("Starting Bid", price.heading(MarketKind.AUCTION_HOUSE, "Create Auction"));
+        assertEquals("Set Your Price", price.heading(null, null));
+        assertEquals("Confirm", price.confirmLabel());
+        assertEquals("Your auction starting bid", price.subtitle("Create Auction"));
+        assertEquals("Buyers pay this at once", price.subtitle("Create BIN Auction"));
+
+        SignPrompt bid = SignPrompt.of(new String[] {"", "^^^^^^^^^^^^^^^", "Your bid", ""});
+        assertEquals("Place Your Bid", bid.heading(MarketKind.AUCTION_HOUSE, "BIN Auction View"));
+        assertEquals("Bid", bid.confirmLabel());
+    }
+
+    @Test
+    void numbersGoOnTheSignInPlainDigits() {
+        SignPrompt price = SignPrompt.of(AUCTION_PRICE);
+        assertEquals("4000000", price.answer("4m"));
+        assertEquals("1500000", price.answer("1.5M"));
+        assertEquals("1100000", price.answer("1.1m"));
+        assertEquals("12000", price.answer("12,000"));
+        assertEquals("3.25", price.answer("3.25"));
+        assertEquals("2000000000", price.answer("2b"));
+        // Not a number: as typed, for Hypixel to answer.
+        assertEquals("abc", price.answer("abc"));
+
+        SignPrompt amount = SignPrompt.of(new String[] {"", "^^^^^^^^^^^^^^^", "Enter amount", "to order"});
+        assertEquals("1500", amount.answer("1.5k"));
+        assertEquals("64", amount.answer("64"));
+
+        SignPrompt search = SignPrompt.of(new String[] {"", "", "^^^^^^^^^^^^^^^", "Enter query"});
+        assertEquals("4m", search.answer("4m"));
+    }
+
+    @Test
+    void writesPlainDigits() {
+        assertEquals("4000000", Coins.plain(4_000_000, true));
+        assertEquals("0.1", Coins.plain(0.1, true));
+        assertEquals("153420.2", Coins.plain(153_420.2, true));
+        assertEquals("1500", Coins.plain(1499.6, false));
     }
 
     // ---- Price history --------------------------------------------------------------------------

@@ -13,6 +13,10 @@ import java.util.function.ToIntFunction;
  * and amounts leave one line and ask on the last two ({@code "", "^^^^^^^^^^^^^^^", "Enter amount",
  * "to order"}). Some carets frame a word, as in {@code "^^Flipping^^"}.
  *
+ * The Auction House asks the same for a Buy It Now auction as for one taking bids: {@code "",
+ * "^^^^^^^^^^^^^^^", "Your auction", "starting bid"}. Only the menu the sign came from tells them
+ * apart.
+ *
  * Only such signs are given the input bar. A sign the player placed and writes on stays vanilla.
  *
  * @param inputLines how many lines, from the top, take the answer: 1 or 2
@@ -94,17 +98,49 @@ public record SignPrompt(Type type, String question, int inputLines) {
         return false;
     }
 
-    /** The bar's heading: what is being asked, in the market it is asked for if known. */
-    public String heading(MarketKind context) {
+    /**
+     * What goes on the sign for what was typed. A price or an amount goes as plain digits, "4000000"
+     * for "4m", which every one of Hypixel's prompts reads; not every one takes the short forms.
+     * Skyblocker's and NoammAddons' price inputs send it the same way. Anything that is not a number
+     * goes as typed.
+     */
+    public String answer(String typed) {
+        if (!type.numeric() || typed == null) return typed;
+        Double value = Coins.parseInput(typed);
+        return value == null ? typed : Coins.plain(value, type == Type.PRICE);
+    }
+
+    /** Whether this is the price of an auction being created, rather than a bid on one. */
+    private boolean auctionPrice() {
+        return question.toLowerCase(Locale.ROOT).contains("starting bid");
+    }
+
+    /**
+     * The bar's heading: what is being asked, in the market it is asked for if known.
+     *
+     * @param menuTitle the market menu the sign was opened from, such as "Create BIN Auction"; null if not known
+     */
+    public String heading(MarketKind context, String menuTitle) {
         String q = question.toLowerCase(Locale.ROOT);
         return switch (type) {
             case SEARCH -> context == MarketKind.AUCTION_HOUSE ? "Search the Auction House"
                     : context == MarketKind.BAZAAR ? "Search the Bazaar" : "Search";
-            case PRICE -> q.contains("bid") ? "Place Your Bid" : "Set a Price";
+            case PRICE -> auctionPrice()
+                    ? menuTitle == null ? "Set Your Price" : menuTitle.contains("BIN") ? "Buy It Now Price" : "Starting Bid"
+                    : q.contains("bid") ? "Place Your Bid" : "Set a Price";
             case AMOUNT -> "Choose an Amount";
             case DURATION -> "Auction Duration";
             case TEXT -> question.isEmpty() ? "Enter Text" : capitalize(question);
         };
+    }
+
+    /**
+     * The line under the field: Hypixel's question, except where it says the wrong thing - "starting
+     * bid" for a Buy It Now auction, which takes no bids.
+     */
+    public String subtitle(String menuTitle) {
+        if (auctionPrice() && menuTitle != null && menuTitle.contains("BIN")) return "Buyers pay this at once";
+        return question;
     }
 
     /** The text in the empty field. */
@@ -122,7 +158,7 @@ public record SignPrompt(Type type, String question, int inputLines) {
     public String confirmLabel() {
         return switch (type) {
             case SEARCH -> "Search";
-            case PRICE -> question.toLowerCase(Locale.ROOT).contains("bid") ? "Bid" : "Confirm";
+            case PRICE -> question.toLowerCase(Locale.ROOT).contains("bid") && !auctionPrice() ? "Bid" : "Confirm";
             default -> "Confirm";
         };
     }

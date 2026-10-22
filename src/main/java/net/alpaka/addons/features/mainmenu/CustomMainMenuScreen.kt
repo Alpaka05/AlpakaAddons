@@ -37,6 +37,7 @@ import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen
 import net.minecraft.client.gui.screens.options.OptionsScreen
 import net.minecraft.client.gui.screens.worldselection.SelectWorldScreen
 import net.minecraft.client.gui.screens.ConfirmLinkScreen
+import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.client.input.InputWithModifiers
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
@@ -159,6 +160,8 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         private const val CHEVRON_SLIDE = 3f
         /** The hero's icon, drawn larger than the text, and how far its arrow moves along under the mouse. */
         private const val HERO_ICON_SCALE = 2f
+        /** The room around the hero's icon, which fills the rest of its height. */
+        private const val HERO_ICON_INSET = 7
         private const val HERO_ARROW_SLIDE = 4f
 
         /** The stagger indices: the logo and the card first, then the column's buttons from the top. */
@@ -658,9 +661,10 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
     /**
      * Join Hypixel, the menu's largest button: the hero panel - washed with the accent from the
      * left inside an edge whose gradient slowly circles it, with a glint crossing it every few
-     * seconds - on the button glass. Its icon is drawn large in the accent, its name in the title
-     * font over the live dot and Hypixel's player count, and an arrow at its end moves along under
-     * the mouse. One glint crosses it as it lands.
+     * seconds - on the button glass. Hypixel's "H" fills its height (the icon its server sends,
+     * see [HypixelStatus.icon]), its name stands in the title font over the live dot and Hypixel's
+     * player count, and an arrow at its end moves along under the mouse. One glint crosses it as it
+     * lands.
      */
     private inner class HeroButton(x: Int, y: Int, width: Int, height: Int, action: () -> Unit) :
         MenuButton(APPEAR_HERO, x, y, width, height, message = Component.literal("Join Hypixel"), onClickAction = action) {
@@ -675,20 +679,29 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
                 MenuStyle.glint(graphics, this.x, this.y, this.width, this.height, easeOutCubic(glint), 0.14f)
             }
 
-            // The icon, large, in the accent; it pops a little under the mouse.
-            val icon = MenuStyle.icon(ICON_SERVER)
-            val iconScale = HERO_ICON_SCALE * (1f + ICON_POP * 0.5f * hover)
-            val iconBox = Math.round(8 * HERO_ICON_SCALE)
-            val iconCenterX = this.x + 12 + iconBox / 2f
+            // Hypixel's own icon, as its server sends it, filling the button's height; until a ping
+            // has brought it, the server glyph in the accent. Either pops a little under the mouse.
+            val iconBox = this.height - HERO_ICON_INSET * 2
+            val iconCenterX = this.x + HERO_ICON_INSET + iconBox / 2f
             val iconCenterY = this.y + this.height / 2f
+            val pop = 1f + ICON_POP * 0.5f * hover
             graphics.pose().pushMatrix()
             graphics.pose().translate(iconCenterX, iconCenterY)
-            graphics.pose().scale(iconScale, iconScale)
-            graphics.text(font, icon, -font.width(icon) / 2, -4, fade(MenuStyle.accent(), appear), false)
+            val serverIcon = HypixelStatus.icon
+            if (serverIcon != null) {
+                graphics.pose().scale(pop, pop)
+                val half = iconBox / 2
+                graphics.blit(RenderPipelines.GUI_TEXTURED, serverIcon, -half, -half, 0f, 0f,
+                    half * 2, half * 2, 64, 64, 64, 64, fade(0xFFFFFFFF.toInt(), appear))
+            } else {
+                val glyph = MenuStyle.icon(ICON_SERVER)
+                graphics.pose().scale(HERO_ICON_SCALE * pop, HERO_ICON_SCALE * pop)
+                graphics.text(font, glyph, -font.width(glyph) / 2, -4, fade(MenuStyle.accent(), appear), false)
+            }
             graphics.pose().popMatrix()
 
             // The name in the title font over the status line, the two centred on the height.
-            val textX = this.x + 12 + iconBox + 10
+            val textX = this.x + HERO_ICON_INSET + iconBox + 8
             val blockTop = this.y + (this.height - (TITLE_HEIGHT + 4 + 8)) / 2
             val title = GuiFont.title("Join Hypixel")
             if (title != null) {
@@ -699,7 +712,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
 
             // The arrow at the end, half there at rest, moving along and brightening under the mouse.
             val arrow = MenuStyle.icon(MenuStyle.ICON_PLAY)
-            val arrowX = this.x + this.width - 14 - font.width(arrow) - HERO_ARROW_SLIDE
+            val arrowX = this.x + this.width - 10 - font.width(arrow) - HERO_ARROW_SLIDE
             graphics.pose().pushMatrix()
             graphics.pose().translate(HERO_ARROW_SLIDE * hover, 0f)
             graphics.text(font, arrow, arrowX.toInt(), this.y + (this.height - 8) / 2,

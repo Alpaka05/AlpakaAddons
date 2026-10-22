@@ -43,6 +43,9 @@ import java.util.List;
  * With Toggle Tab List, a press of the player list key shows the list until the next press,
  * rather than only while the key is held. With Show in Menus it stays up in the chat and in
  * inventories and chests, drawn above the menu rather than under its dimming.
+ *
+ * Progress Bars draws Hypixel's progress as bars ({@link TabProgressBars}), and Highlight Changes
+ * lights a row up for a moment when its value changes ({@link TabChangeFlash}).
  */
 public final class CustomTabFeature {
 
@@ -64,6 +67,15 @@ public final class CustomTabFeature {
     public static final String[] LAYOUT_NAMES = {"Side by Side", "Stacked"};
 
     private static boolean toggledOpen = false;
+
+    /** The rows' last values and lights; forgotten on a new server, where everything is new. */
+    private static final TabChangeFlash FLASH = new TabChangeFlash();
+    private static Object flashLevel = null;
+    /** "Players (19)" is still the same category at 20 players. */
+    private static final java.util.regex.Pattern TITLE_COUNT = java.util.regex.Pattern.compile("\\s*\\(.*\\)\\s*$");
+    private static final int BAR_TRACK = 0x40FFFFFF;
+    /** The light behind a changed row at its brightest. */
+    private static final int FLASH_ALPHA = 0x50;
 
     /** How far the list is out, 0 (hidden above the screen) to 1 (fully down), and when it last moved. */
     private static float slide = 0.0f;
@@ -196,6 +208,8 @@ public final class CustomTabFeature {
 
         Font font = mc.font;
         ClientPacketListener connection = mc.getConnection();
+        boolean highlight = AlpakaConfig.instance.customTabHighlightChanges;
+        long nowMs = System.currentTimeMillis();
         for (CustomTabLayout.Text text : layout.texts) {
             int x = text.x();
             if (text.face() != null) {
@@ -203,7 +217,17 @@ public final class CustomTabFeature {
                 if (info != null) PlayerFaceExtractor.extractRenderState(graphics, info.getSkin(), x, text.y(), CustomTabLayout.FACE);
                 x += CustomTabLayout.FACE + CustomTabLayout.FACE_GAP;
             }
+            TabListParser.Line line = text.line();
+            if (highlight && line != null && line.key() != null) {
+                float flash = FLASH.strength(line.key(), nowMs);
+                if (flash > 0.0f) {
+                    int width = CustomTabLayout.lineWidth(line, font::width);
+                    graphics.fill(x - 2, text.y() - 1, x + width + 2, text.y() + CustomTabLayout.LINE_H,
+                            Math.round(flash * FLASH_ALPHA) << 24 | 0xFFFFFF);
+                }
+            }
             graphics.text(font, text.text(), x, text.y(), 0xFFFFFFFF, HudPanel.TEXT_SHADOW);
+            if (line != null && line.bar() != null) drawBar(graphics, font, line, x, text.y());
         }
         graphics.pose().popMatrix();
     }
@@ -263,6 +287,9 @@ public final class CustomTabFeature {
             }
         }
         List<TabListParser.Category> categories = TabListParser.parse(slots);
+        if (AlpakaConfig.instance.customTabProgressBars) categories = TabProgressBars.apply(categories);
+        categories = keyed(categories);
+        if (AlpakaConfig.instance.customTabHighlightChanges) observe(categories, now);
         List<Component> header = TabListParser.headerFooterLines(headerText, hideAdverts);
         List<Component> footer = TabListParser.headerFooterLines(footerText, hideAdverts);
 
@@ -275,7 +302,7 @@ public final class CustomTabFeature {
                 for (List<TabListParser.Line> section : category.sections()) {
                     List<TabListParser.Line> lines = new ArrayList<>(section.size());
                     for (TabListParser.Line line : section) {
-                        lines.add(new TabListParser.Line(GuiFont.restyle(line.text()), line.indented(), line.player()));
+                        lines.add(line.withText(GuiFont.restyle(line.text()), GuiFont.restyle(line.after())));
                     }
                     sections.add(lines);
                 }
@@ -329,6 +356,62 @@ public final class CustomTabFeature {
     public static void devShow(DevSample sample) {
         devSample = sample;
         cached = null;
+    }
+
+    /** A bar after a row's text, and the text that follows it. */
+    private static void drawBar(GuiGraphicsExtractor graphics, Font font, TabListParser.Line line, int x, int y) {
+        TabListParser.Bar bar = line.bar();
+        int x0 = x + CustomTabLayout.barX(font.width(line.text()));
+        int y0 = y + CustomTabLayout.BAR_TOP;
+        int x1 = x0 + CustomTabLayout.BAR_W;
+        int y1 = y0 + CustomTabLayout.BAR_H;
+        graphics.fill(x0, y0, x1, y1, BAR_TRACK);
+        int filled = Math.round(CustomTabLayout.BAR_W * Math.max(0.0f, Math.min(1.0f, bar.fraction())));
+        if (filled > 0) graphics.fill(x0, y0, x0 + filled, y1, bar.color());
+        if (font.width(line.after()) > 0) {
+            graphics.text(font, line.after(), x1 + CustomTabLayout.BAR_GAP, y, 0xFFFFFFFF, HudPanel.TEXT_SHADOW);
+        }
+    }
+
+    /** Every widget row with the key it is known by from one read to the next. */
+    private static List<TabListParser.Category> keyed(List<TabListParser.Category> categories) {
+        List<TabListParser.Category> out = new ArrayList<>(categories.size());
+        for (TabListParser.Category category : categories) {
+            String categoryKey = TITLE_COUNT.matcher(TabListParser.plain(category.title()).trim()).replaceAll("");
+            List<List<TabListParser.Line>> sections = new ArrayList<>(category.sections().size());
+            for (List<TabListParser.Line> section : category.sections()) {
+                String widget = TabChangeFlash.label(TabListParser.plain(section.get(0).text()));
+                List<TabListParser.Line> lines = new ArrayList<>(section.size());
+                for (int i = 0; i < section.size(); i++) {
+                    TabListParser.Line line = section.get(i);
+                    // Players come and go; that is not a value changing.
+                    lines.add(line.player() != null ? line
+                            : line.withKey(TabChangeFlash.key(categoryKey, widget, TabListParser.plain(line.text()), i)));
+                }
+                sections.add(lines);
+            }
+            out.add(new TabListParser.Category(category.title(), sections));
+        }
+        return out;
+    }
+
+    /** Hands every keyed row's current value to the light, a new server starting it afresh. */
+    private static void observe(List<TabListParser.Category> categories, long nowMs) {
+        Object level = Minecraft.getInstance().level;
+        if (level != flashLevel) {
+            FLASH.reset();
+            flashLevel = level;
+        }
+        for (TabListParser.Category category : categories) {
+            for (List<TabListParser.Line> section : category.sections()) {
+                for (TabListParser.Line line : section) {
+                    if (line.key() == null) continue;
+                    String value = TabListParser.plain(line.text()) + " " + TabListParser.plain(line.after())
+                            + (line.bar() != null ? " " + Math.round(line.bar().fraction() * 1000) : "");
+                    FLASH.observe(line.key(), value, nowMs);
+                }
+            }
+        }
     }
 
     private static List<Component> restyled(List<Component> lines) {

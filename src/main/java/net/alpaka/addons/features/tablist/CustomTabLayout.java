@@ -33,9 +33,17 @@ public final class CustomTabLayout {
     public static final int STACKED_ROWS = 10;
     /** Rows per column in Side by Side at most; vanilla's own column height. */
     public static final int SIDE_BY_SIDE_ROWS = 20;
+    /** A progress bar: its length, its thickness, its offset from the row's top and its gap to the text. */
+    public static final int BAR_W = 40;
+    public static final int BAR_H = 4;
+    public static final int BAR_TOP = 2;
+    public static final int BAR_GAP = 4;
 
-    /** A piece of text to draw at (x, y); {@code face} names the player whose head goes before it. */
-    public record Text(Component text, int x, int y, String face) {}
+    /**
+     * A piece of text to draw at (x, y); {@code face} names the player whose head goes before it,
+     * and {@code line} is the tab row it shows - with its bar and key - or null for a title.
+     */
+    public record Text(Component text, int x, int y, String face, TabListParser.Line line) {}
 
     public final List<Text> texts = new ArrayList<>();
     public int width;
@@ -107,7 +115,7 @@ public final class CustomTabLayout {
                 int w = groupWidth(group);
                 int top = y;
                 if (group.title() != null) {
-                    layout.texts.add(new Text(group.title(), x + (w - group.titleWidth()) / 2, top, null));
+                    layout.texts.add(new Text(group.title(), x + (w - group.titleWidth()) / 2, top, null, null));
                     top += LINE_H + TITLE_GAP;
                 }
                 int columnsWidth = columnsWidth(group.columns());
@@ -123,7 +131,7 @@ public final class CustomTabLayout {
                         TabListParser.Line line = (TabListParser.Line) entry;
                         int lx = cx + (line.indented() ? INDENT : 0);
                         String face = withFaces ? line.player() : null;
-                        layout.texts.add(new Text(line.text(), lx, cy, face));
+                        layout.texts.add(new Text(line.text(), lx, cy, face, line));
                         cy += LINE_H;
                     }
                     deepest = Math.max(deepest, cy - top);
@@ -147,7 +155,7 @@ public final class CustomTabLayout {
     }
 
     private void centered(Component line, int y, ToIntFunction<Component> widthOf) {
-        texts.add(new Text(line, (width - widthOf.applyAsInt(line)) / 2, y, null));
+        texts.add(new Text(line, (width - widthOf.applyAsInt(line)) / 2, y, null, null));
     }
 
     /** A category's sections in columns of at most {@code maxRows} rows; one section each if asked. */
@@ -187,12 +195,26 @@ public final class CustomTabLayout {
                 continue;
             }
             TabListParser.Line line = (TabListParser.Line) entry;
-            int w = widthOf.applyAsInt(line.text()) + (line.indented() ? INDENT : 0);
+            int w = lineWidth(line, widthOf) + (line.indented() ? INDENT : 0);
             if (withFaces && line.player() != null) w += FACE + FACE_GAP;
             width = Math.max(width, w);
             height += LINE_H;
         }
         return new Column(rows, width, height);
+    }
+
+    /** A row's width: its text, and its bar and the text after it when it has one. */
+    public static int lineWidth(TabListParser.Line line, ToIntFunction<Component> widthOf) {
+        int width = widthOf.applyAsInt(line.text());
+        if (line.bar() == null) return width;
+        width = barX(width) + BAR_W;
+        int after = widthOf.applyAsInt(line.after());
+        return after > 0 ? width + BAR_GAP + after : width;
+    }
+
+    /** Where a row's bar starts, after text this wide: right at the start when there is none. */
+    public static int barX(int textWidth) {
+        return textWidth > 0 ? textWidth + BAR_GAP : 0;
     }
 
     /** The group cut between its columns so no piece is wider than {@code maxWidth}; only the first keeps the title. */

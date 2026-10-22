@@ -507,6 +507,20 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customTabInMenus = v; AlpakaConfig.save(); },
                 "tab list menus chat inventory chest container open screen gui visible stay over"));
 
+        OPTIONS.add(new ConfigOption("custom_tab_progress_bars", "Progress Bars",
+                "Draws progress as bars: Hypixel's bars of lines, counts toward a goal like Fairy Souls and the RNG Meter, and skill percentages.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabProgressBars,
+                v -> { AlpakaConfig.instance.customTabProgressBars = v; AlpakaConfig.save(); },
+                "tab list progress bar bars meter skill percent rng reputation fairy souls level xp"));
+
+        OPTIONS.add(new ConfigOption("custom_tab_highlight_changes", "Highlight Changes",
+                "Lights a row up for a moment when its value changes, so you see at a glance what is new. Timers are left out.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabHighlightChanges,
+                v -> { AlpakaConfig.instance.customTabHighlightChanges = v; AlpakaConfig.save(); },
+                "tab list highlight changes flash glow new value changed update blink"));
+
         OPTIONS.add(new ConfigOption("custom_tab_animated", "Slide Animation",
                 "The tab list slides down from the top of the screen when it opens and back up when it closes, instead of appearing at once.",
                 ConfigCategory.VISUALS,

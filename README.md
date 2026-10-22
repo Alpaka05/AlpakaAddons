@@ -38,7 +38,7 @@ Alpaka Addons is most useful for **Slayers**, but a lot of it helps anywhere in 
 <summary><b>Slayer</b></summary>
 
 - **Slayer Drop Tracker:** counts kills and rare drops per slayer, with a sound on rare drops and optional share buttons for the rarest one. `/alpakaslayer since <item>` tells you how many bosses ago a drop last came.
-- **Boss Timer:** times every fight from spawn to death, calls out personal bests and shows the running time on screen.
+- **Boss Timer:** times every fight from spawn to death, calls out personal bests per slayer tier and shows the running time on screen.
 - **Session HUD:** live stats while a quest is active, with a choice of lines. It can be limited to slayer areas and pauses when you are idle.
 - **Boss Spawn Alert** and an option to hide Hypixel's slayer chat spam.
 - `/alpakastats` stores your stats in a folder you choose, for example a cloud-synced one, so they follow you across PCs.
@@ -80,7 +80,6 @@ Alpaka Addons is most useful for **Slayers**, but a lot of it helps anywhere in 
 - **Block Overlay:** custom outline and fill for the targeted block, with chroma and fade-in.
 - **Etherwarp Overlay:** shows where you will land, with a line to the target and optional custom warp sounds.
 - **Hide Mob Deaths**, **Hide Damage Flash**, **Clean Blaze** and **Only Show Crit Damage**.
-- **Pangolin Highlight** in Torrhus Canyon.
 - **Fullbright**, **Zoom**, **Smooth Perspective** and an option to skip the front view.
 
 </details>
@@ -133,7 +132,6 @@ Alpaka Addons runs entirely on your client and follows the [Hypixel rules](https
 **Guardrails.**
 
 - Smooth perspective only eases between the vanilla camera views. There is no free look, and every transition ends exactly where vanilla's camera is.
-- Highlights such as the pangolin outline appear only when you have a clear line of sight. Nothing is drawn through walls.
 - Commands that delete or move your data (`/alpakaslayer reset`, `/alpakastats folder`, `/alpakapreset save`) work only when you type them. A clickable chat message cannot run them.
 - Screenshot buttons only act on screenshots this session posted, and Delete needs a second click.
 - An update installs only after you confirm it on a screen. The chat button and `/alpakaupdate install` just open that screen, and the command works only when you type it.

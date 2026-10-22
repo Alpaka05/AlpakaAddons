@@ -2,6 +2,7 @@ package net.alpaka.addons.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.annotations.SerializedName;
 import net.alpaka.addons.AlpakaAddons;
 import net.fabricmc.loader.api.FabricLoader;
 
@@ -42,13 +43,6 @@ public class AlpakaConfig {
     public boolean slayerRngDropGuildChatEnabled = false;
     /** What those share buttons post: 0 the tracker's own line, 1 Hypixel's drop message as it came. */
     public int slayerShareMessage = 0;
-    /**
-     * When a party member types "!since &lt;item&gt;", show the player their own count with a
-     * [Reply in party] button. Nothing is sent unless the player clicks it and presses Enter.
-     *
-     * Off by default. It replaces an automatic reply that answered in the player's name.
-     */
-    public boolean slayerSinceReplyOffer = false;
     public boolean fullbrightEnabled = false;
 
     // Cosmetics. Both are drawn by this client for this client only - nothing is sent, nobody else
@@ -129,6 +123,13 @@ public class AlpakaConfig {
      * a nudge for somebody who was looking elsewhere while the quest finished spawning.
      */
     public boolean bossSpawnAlertEnabled = true;
+    /**
+     * Whether a notice slides in when the slayer boss spawns inside a cocoon.
+     *
+     * The cocoon takes a few seconds to hatch, so this comes first and the spawn alert follows once
+     * the boss is actually up.
+     */
+    public boolean bossCocoonAlertEnabled = true;
     /** Snow over container screens and the main menu. Off for fresh installs; it is seasonal decoration. */
     public boolean inventorySnowEnabled = false;
     public float inventorySnowSpeed = 1.0f;
@@ -161,6 +162,12 @@ public class AlpakaConfig {
      * quiet chat. Defaults to true so that split changes nothing for anyone who had clean blaze on.
      */
     public boolean hideSlayerChatMessages = true;
+    /** Which groups of slayer chatter hideSlayerChatMessages hides. All on, as before the split. */
+    public boolean hideSlayerChatQuest = true;
+    public boolean hideSlayerChatRadio = true;
+    public boolean hideSlayerChatLevelUp = true;
+    public boolean hideSlayerChatHealing = true;
+    public boolean hideSlayerChatSunshade = true;
     public boolean stopBlazeSpinning = true;
     /** Hides the red hurt flash on mobs and players. Cosmetic only, the hit itself is untouched. */
     public boolean hideHurtOverlayEnabled = false;
@@ -325,6 +332,10 @@ public class AlpakaConfig {
     public boolean slayerTimerChatEnabled = true;
     /** Show the running time on screen while the boss is up. */
     public boolean slayerTimerHudEnabled = true;
+    /** The Ragnarock's cast countdown under the crosshair instead of in the action bar. */
+    // Saved as ragAxeCountdownEnabled before the feature was renamed; read that too so the setting carries over.
+    @SerializedName(value = "ragnarockEnabled", alternate = "ragAxeCountdownEnabled")
+    public boolean ragnarockEnabled = true;
     public int slayerTimerHudX = net.alpaka.addons.client.hud.HudDefaults.SLAYER_TIMER_X;
     public int slayerTimerHudY = net.alpaka.addons.client.hud.HudDefaults.SLAYER_TIMER_Y;
     public float slayerTimerHudScale = 1.0f;
@@ -354,10 +365,6 @@ public class AlpakaConfig {
     public int customDamageTagNormalEnd = 0xFF9FB4D0;
     public int customDamageTagCritStart = 0xFFFFE15A;
     public int customDamageTagCritEnd = 0xFFFF4A3A;
-
-    // Pangolin highlight (Torrhus Canyon critters)
-    public boolean pangolinHighlightEnabled = false;
-    public int pangolinHighlightColor = 0xFFFFAA00; // Default orange/gold
 
     // Block Overlay options
     public boolean blockOverlayEnabled = false;
@@ -447,13 +454,16 @@ public class AlpakaConfig {
     // Chat options
     /**
      * Better Chat: the main switch over everything that changes how the chat looks - Smooth Chat,
-     * the smooth scrolling and the blurred background. Each keeps its own switch under it.
+     * the opening animation, the smooth scrolling and the blurred background. Each keeps its own
+     * switch under it.
      */
     public boolean betterChatEnabled = true;
     /** A new message slides up into the chat and fades in instead of appearing at once. */
     public boolean smoothChatEnabled = true;
     /** How long the slide takes, 1 (quick) to 10 (slow); each step is 60 ms. */
     public int smoothChatStrength = 5;
+    /** Opening the chat unrolls it upwards and slides the input line in instead of showing it at once. */
+    public boolean chatOpenAnimationEnabled = true;
     /** One rounded, padded panel behind the chat that shows the world blurred through it. */
     public boolean chatBlurEnabled = true;
     /**
@@ -464,10 +474,23 @@ public class AlpakaConfig {
     public float chatBlurStrength = 100.0f;
     /** One rounded, blurred panel with a soft shadow behind the scoreboard sidebar; see ScoreboardBlurFeature. */
     public boolean scoreboardBlurEnabled = true;
+    /** Writes "AlpakaAddons" in a gradient over Hypixel's www.hypixel.net line; see ScoreboardFooterFeature. */
+    public boolean scoreboardAlpakaFooter = true;
     /** Ctrl+F in the chat turns the input line into a search that filters the visible messages. */
     public boolean chatSearchEnabled = true;
     /** Scrolling the chat glides the lines into place instead of jumping a line per notch. */
     public boolean chatSmoothScrollEnabled = true;
+    /** The open chat's scrollbar is a wider, rounded bar that can be dragged with the mouse. */
+    public boolean chatScrollbarEnabled = true;
+    /** The chat is a HUD element: the HUD editor can move it and resize it. */
+    public boolean chatMovable = false;
+    /**
+     * Where the moved chat sits, as an offset from vanilla's place (its bottom-left corner, 40 GUI
+     * pixels above the screen's bottom), so it stays put relative to the bottom when the window or
+     * the GUI scale changes.
+     */
+    public int chatOffsetX = 0;
+    public int chatOffsetY = 0;
     /** Moving forward sprints on its own, without holding the sprint key. */
     /** Off for fresh installs. Vanilla's own toggle-sprint option already does this for most players. */
     public boolean alwaysSprintEnabled = false;
@@ -510,6 +533,8 @@ public class AlpakaConfig {
     public boolean chatTabsTabKey = true;
     /** Keep the chosen chat tab, and so the filtered HUD chat, after the chat closes. Off: back to All. */
     public boolean chatTabsKeepAfterClose = false;
+    /** With chat tabs: guild messages show only on the Guild tab, not on All. Ignored while that tab is hidden. */
+    public boolean chatTabsGuildOnlyInGuildTab = false;
     /** Which channel tabs the row offers. All is always there; a hidden channel's lines stay on All. */
     public boolean chatTabsShowParty = true;
     public boolean chatTabsShowGuild = true;
@@ -540,6 +565,9 @@ public class AlpakaConfig {
 
     /** A Hypixel party invite raises a notification: Y joins, N dismisses. */
     public boolean partyInvitePromptEnabled = true;
+
+    /** Keeps Hypixel's server resource pack loaded between joins; see ServerPackCache. */
+    public boolean cacheResourcePackEnabled = false;
 
     // Quick Command Menu options
     /**
@@ -782,13 +810,24 @@ public class AlpakaConfig {
         public Map<String, Integer> drops = new HashMap<>();
 
         /**
-         * Fastest boss kill ever recorded for this slayer, in milliseconds, or -1 when none is.
+         * The old single best time per slayer, no longer read.
          *
-         * All-time rather than per session: a personal best that resets when the game restarts is
-         * not a personal best. Lives here with the kill and drop history because this is the part of
-         * the slayer data that is meant to persist.
+         * It was kept across every tier, so one quick tier 2 boss stood as the best for tier 5 as
+         * well, and it was written by fights the timer had not followed from start to end. Neither
+         * can be told apart afterwards, so these figures are dropped rather than carried over; the
+         * field stays only so that files which still hold one load without complaint.
          */
+        @Deprecated
         public long bestBossMs = -1L;
+
+        /**
+         * Fastest boss kill ever recorded for this slayer, in milliseconds, keyed by quest tier 1-5.
+         *
+         * Per tier because that is what a boss time means: a tier 5 and a tier 3 boss are different
+         * fights. All-time rather than per session, since a personal best that resets when the game
+         * restarts is not one.
+         */
+        public Map<Integer, Long> bestBossMsByTier = new HashMap<>();
 
         /**
          * Last known lifetime slayer XP for this slayer, or -1 when it has never been observed.
@@ -951,7 +990,6 @@ public class AlpakaConfig {
         this.slayerDropTrackerEnabled = false;
         this.hideHypixelDropMessage = false;
         this.slayerRngDropGuildChatEnabled = false;
-        this.slayerSinceReplyOffer = false;
         this.customNameTagEnabled = false;
         this.nameTagOutlineEnabled = false;
         this.nameTagShadowEnabled = false;
@@ -959,7 +997,6 @@ public class AlpakaConfig {
         this.chromaHatEnabled = false;
         this.playerScaleEnabled = false;
         this.playerScaleOthers = false;
-        this.pangolinHighlightEnabled = false;
         this.fullbrightEnabled = false;
         this.inventorySnowEnabled = false;
         this.containerBgFadeInEnabled = false;
@@ -1010,6 +1047,7 @@ public class AlpakaConfig {
         this.slayerTimerEnabled = false;
         this.slayerTimerChatEnabled = false;
         this.slayerTimerHudEnabled = false;
+        this.ragnarockEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
         this.customDamageTagsEnabled = false;
@@ -1026,10 +1064,14 @@ public class AlpakaConfig {
         this.etherwarpSoundEnabled = false;
         this.betterChatEnabled = false;
         this.smoothChatEnabled = false;
+        this.chatOpenAnimationEnabled = false;
         this.chatBlurEnabled = false;
         this.scoreboardBlurEnabled = false;
+        this.scoreboardAlpakaFooter = false;
         this.chatSearchEnabled = false;
         this.chatSmoothScrollEnabled = false;
+        this.chatScrollbarEnabled = false;
+        this.chatMovable = false;
         this.alwaysSprintEnabled = false;
         this.expandChatHistory = false;
         this.chatPeekEnabled = false;

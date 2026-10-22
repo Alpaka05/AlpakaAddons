@@ -2,6 +2,7 @@ package net.alpaka.addons.features.chat;
 
 import com.mojang.logging.LogUtils;
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.utils.AlpakaPrefix;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.StringTag;
@@ -407,7 +408,7 @@ public final class ScreenshotMessageFeature {
         Minecraft mc = Minecraft.getInstance();
         mc.execute(() -> {
             if (mc.player != null) {
-                mc.player.sendSystemMessage(Component.literal("§6[AA] " + message));
+                mc.player.sendSystemMessage(AlpakaPrefix.prefix().append(Component.literal(message)));
             }
         });
     }

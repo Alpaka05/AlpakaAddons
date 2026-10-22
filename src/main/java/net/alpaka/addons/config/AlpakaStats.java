@@ -231,9 +231,7 @@ public class AlpakaStats {
             }
         }
 
-        if (from.bestBossMs > 0 && (into.bestBossMs <= 0 || from.bestBossMs < into.bestBossMs)) {
-            into.bestBossMs = from.bestBossMs;
-        }
+        StatsMerge.mergeBestTimes(into, from);
 
         // Lifetime XP is read off the Slayer menu as an absolute figure, so the larger reading is the
         // newer one - and both were taken on the same profile.

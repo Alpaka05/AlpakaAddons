@@ -4,6 +4,7 @@
   "compatibilityLevel": "JAVA_21",
   "refmap": "alpaka.refmap.json",
   "client": [
+    "ClientPacketListenerTimeMixin",
     "GameRendererMixin",
     "MouseHandlerMixin",
     "AbstractClientPlayerMixin",
@@ -20,11 +21,13 @@
     "HudOverlayAccessor",
     "PlayerTabOverlayAccessor",
     "WideHealthBarMixin",
+    "ScoreboardFooterMixin",
     "ItemInHandRendererMixin",
     "LightmapMixin",
     "LevelRendererMixin",
     "ChatComponentMixin",
     "ChatScreenMixin",
+    "ChatScreenScrollbarMixin",
     "CameraTypeMixin",
     "BlazeModelMixin",
     "LightningBoltMixin",
@@ -53,7 +56,15 @@
     "ClientLevelMixin",
     "PictureInPictureRendererMixin",
     "NameTagFeatureRendererMixin",
-    "ScreenEffectRendererMixin"
+    "NameTagSubmitMixin",
+    "ScreenEffectRendererMixin",
+    "DownloadedPackSourceAccessor",
+    "DownloadedPackSourceMixin",
+    "MinecraftResourceLoadMixin",
+    "ConnectScreenPackCacheMixin",
+    "ClientPacketListenerPackCacheMixin",
+    "ClientCommonPacketListenerPackCacheMixin",
+    "ClientPacketListenerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

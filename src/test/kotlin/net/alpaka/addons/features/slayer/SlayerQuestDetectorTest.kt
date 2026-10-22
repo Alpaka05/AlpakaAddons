@@ -43,6 +43,40 @@ class SlayerQuestDetectorTest {
     }
 
     @Test
+    fun slainIsAStatedKill() {
+        sample(grinding)
+        sample(fight)
+        d.consumeSpawn()
+        sample(slain)
+        assertEquals(type, d.consumeKill())
+        assertTrue(d.killStated)
+    }
+
+    @Test
+    fun fightVanishingIsOnlyAnInferredKill() {
+        // The quest lines going missing mid-fight looks exactly like this, so the kill is counted
+        // but must not vouch for the fight's end.
+        sample(grinding)
+        sample(fight)
+        d.consumeSpawn()
+        sample("")
+        Thread.sleep(1_100)
+        assertEquals(type, d.consumeKill())
+        assertFalse(d.killStated)
+    }
+
+    @Test
+    fun chatConfirmsAnInferredKill() {
+        sample(grinding)
+        sample(fight)
+        d.consumeSpawn()
+        sample("0/3,000 Combat XP")
+        d.onChatKill(type)
+        assertEquals(type, d.consumeKill())
+        assertTrue(d.killStated)
+    }
+
+    @Test
     fun autoRestartedQuestCountsTheKill() {
         sample(grinding)
         sample(fight)

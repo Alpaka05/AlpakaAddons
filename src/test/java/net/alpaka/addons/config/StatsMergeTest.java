@@ -90,7 +90,8 @@ class StatsMergeTest {
         ours.kills = 40;
         ours.drops.put("Archfiend Dice", 12);
         ours.drops.put("Wisp's Ice-Flavored Water I", 39);
-        ours.bestBossMs = 31_000L;
+        ours.bestBossMsByTier.put(4, 31_000L);
+        ours.bestBossMsByTier.put(5, 52_000L);
         ours.totalXp = 1_000L;
 
         AlpakaConfig.SlayerData theirs = new AlpakaConfig.SlayerData();
@@ -98,7 +99,9 @@ class StatsMergeTest {
         theirs.drops.put("Archfiend Dice", 44);
         theirs.drops.put("Wisp's Ice-Flavored Water I", 20);
         theirs.drops.put("Flawed Opal Gemstone", 3);
-        theirs.bestBossMs = 29_500L;
+        theirs.bestBossMsByTier.put(4, 29_500L);
+        theirs.bestBossMsByTier.put(5, 60_000L);
+        theirs.bestBossMsByTier.put(3, 9_000L);
         theirs.totalXp = 1_200L;
 
         StatsMerge.mergeSlayer(ours, theirs);
@@ -107,16 +110,18 @@ class StatsMergeTest {
         assertEquals(44, ours.drops.get("Archfiend Dice"));
         assertEquals(39, ours.drops.get("Wisp's Ice-Flavored Water I"));
         assertEquals(3, ours.drops.get("Flawed Opal Gemstone"));
-        assertEquals(29_500L, ours.bestBossMs);
+        assertEquals(29_500L, ours.bestBossMsByTier.get(4));
+        assertEquals(52_000L, ours.bestBossMsByTier.get(5));
+        assertEquals(9_000L, ours.bestBossMsByTier.get(3));
         assertEquals(1_200L, ours.totalXp);
     }
 
     @Test
     void unsetBestTimeOnDiskDoesNotReplaceARealOne() {
         AlpakaConfig.SlayerData ours = new AlpakaConfig.SlayerData();
-        ours.bestBossMs = 31_000L;
+        ours.bestBossMsByTier.put(4, 31_000L);
         StatsMerge.mergeSlayer(ours, new AlpakaConfig.SlayerData());
-        assertEquals(31_000L, ours.bestBossMs);
+        assertEquals(31_000L, ours.bestBossMsByTier.get(4));
     }
 
     @Test

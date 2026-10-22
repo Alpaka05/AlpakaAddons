@@ -13,9 +13,10 @@ import kotlin.math.sin
  * or rain drawn over inventory and menu screens.
  *
  * Each kind moves its own way: snow drifts down at a slant, fireflies wander on curving paths and
- * pulse, ash sways down slowly, cherry petals tumble along on a breeze, leaves zigzag down tilting
+ * pulse, ash sways down slowly, cherry petals flutter along on a breeze, leaves zigzag down tilting
  * with each swing, glyphs float up and fade, rain pours down at a slant and splashes on the bottom
- * edge. Petals, leaves and glyphs use vanilla's own particle textures.
+ * edge. Leaves and glyphs use vanilla's own particle textures; the petals are drawn by
+ * tools/GenSakuraPetals.java, since vanilla's are three pixels wide.
  *
  * Particles are held in parallel primitive arrays rather than as a list of objects. There are 105 of
  * them at amount 1 and every one is touched on every frame of every screen, so the object layout
@@ -38,10 +39,9 @@ object SnowOverlayRenderer {
     @JvmField
     val TYPE_NAMES = arrayOf("Snowflakes", "Fireflies", "Ash", "Cherry Petals", "Falling Leaves", "Enchanting Glyphs", "Rain")
 
-    // Vanilla's particle textures. Each is a set of shapes picked at random per particle, not an
-    // animation.
-    private val CHERRY_SPRITES = Array(12) { Identifier.withDefaultNamespace("textures/particle/cherry_$it.png") }
-    private const val CHERRY_TEXTURE_SIZE = 3
+    // Each texture set is a choice of shapes picked at random per particle, not an animation.
+    private val PETAL_SPRITES = Array(6) { Identifier.fromNamespaceAndPath("alpaka", "textures/particle/sakura_$it.png") }
+    private const val PETAL_TEXTURE_SIZE = 16
     private val LEAF_SPRITES = Array(12) { Identifier.withDefaultNamespace("textures/particle/leaf_$it.png") }
     private const val LEAF_TEXTURE_SIZE = 5
     private val GLYPH_SPRITES = Array(26) { Identifier.withDefaultNamespace("textures/particle/sga_${'a' + it}.png") }
@@ -51,11 +51,8 @@ object SnowOverlayRenderer {
     private val LEAF_TINTS = intArrayOf(0xFFB04A, 0xFF7A3A, 0xF0503A, 0xFFD24A, 0xC8884A)
     private val GLYPH_TINTS = intArrayOf(0xFFFFFF, 0xE4DCFF, 0xCBB8FF)
 
-    /**
-     * Petal textures are a pale pink that washes out over the dark backdrop; multiplied with these
-     * they get the saturated pink the petals have in a lit cherry grove.
-     */
-    private val PETAL_TINTS = intArrayOf(0xFF9CC8, 0xFFB0D4, 0xFF86BC, 0xFFC4DE)
+    /** A petal's underside, seen when it flips over, is a touch paler than its face. */
+    private const val PETAL_BACK_TINT = 0xFFE6EF
 
     private const val RAIN_RGB = 0xA8C8E8
 
@@ -134,7 +131,10 @@ object SnowOverlayRenderer {
     /** Frequency of a particle's sway, turn or pulse, in radians per second. */
     private val wobble = FloatArray(MAX_PARTICLE_COUNT)
 
-    /** Glyphs: how far through its life the glyph is, 0 to 1. Rain: how near the drop is, 0 to 1. */
+    /**
+     * Glyphs: how far through its life the glyph is, 0 to 1. Rain: how near the drop is, 0 to 1.
+     * Petals: how fast the petal flips over, in radians per second.
+     */
     private val life = FloatArray(MAX_PARTICLE_COUNT)
 
     /** Textured types: which of the type's textures this particle uses. */
@@ -226,8 +226,7 @@ object SnowOverlayRenderer {
         when (type) {
             TYPE_FIREFLIES -> renderFireflies(graphics, count, width, height, step, dt * speed)
             TYPE_ASH -> renderAsh(graphics, count, width, height, step)
-            TYPE_CHERRY_PETALS -> renderFalling(graphics, count, width, height, step, dt * speed,
-                TYPE_CHERRY_PETALS, CHERRY_SPRITES, CHERRY_TEXTURE_SIZE, sway = 4.0f, tilt = 0.35f)
+            TYPE_CHERRY_PETALS -> renderPetals(graphics, count, width, height, step, dt * speed)
             TYPE_LEAVES -> renderFalling(graphics, count, width, height, step, dt * speed,
                 TYPE_LEAVES, LEAF_SPRITES, LEAF_TEXTURE_SIZE, sway = 12.0f, tilt = 0.8f)
             TYPE_GLYPHS -> renderGlyphs(graphics, count, width, height, step, dt * speed)
@@ -310,8 +309,7 @@ object SnowOverlayRenderer {
     }
 
     /**
-     * Petals and leaves: fall while swaying side to side and tilting with each swing; petals also
-     * spin on their own and ride a breeze to the right, leaves zigzag straight down.
+     * Leaves: fall while swaying side to side and tilting with each swing.
      */
     private fun renderFalling(graphics: GuiGraphicsExtractor, count: Int, width: Int, height: Int, step: Float,
                               scaledDt: Float, type: Int, sprites: Array<Identifier>, textureSize: Int,
@@ -336,6 +334,52 @@ object SnowOverlayRenderer {
             val wave = elapsed * wobble[i] + phase[i]
             drawSprite(graphics, sprites[sprite[i]], textureSize, x + sin(wave) * sway, y, size[i],
                 angle[i] + cos(wave) * tilt, color[i], width, height)
+        }
+    }
+
+    /**
+     * Cherry petals: carried along on a breeze in long, lazy swings, turning slowly and fluttering,
+     * flipping over and over so that each one shows its face, its edge, then its paler underside.
+     */
+    private fun renderPetals(graphics: GuiGraphicsExtractor, count: Int, width: Int, height: Int, step: Float,
+                             scaledDt: Float) {
+        val yLimit = height + RESPAWN_MARGIN
+        val margin = RESPAWN_MARGIN.toFloat()
+        val pose = graphics.pose()
+        for (i in 0 until count) {
+            var x = posX[i] + speedX[i] * step
+            var y = posY[i] + speedY[i] * step
+
+            if (y > yLimit) {
+                spawn(TYPE_CHERRY_PETALS, i, width, height, initial = false)
+                x = posX[i]
+                y = posY[i]
+            } else {
+                if (x > width + 2 * margin) x -= width + 4 * margin
+                posX[i] = x
+                posY[i] = y
+            }
+
+            angle[i] += spin[i] * scaledDt
+            val wave = elapsed * wobble[i] + phase[i]
+            val extent = size[i]
+            val drawX = x + sin(wave) * 10.0f
+            if (drawX + extent < 0 || y + extent < 0 || drawX - extent > width || y - extent > height) continue
+
+            // The flip: squeezing the petal across makes it look turned edge-on. Never quite to
+            // nothing, or it would blink out.
+            val flip = cos(elapsed * life[i] + phase[i] * 1.7f)
+            val squeeze = if (flip < 0) -maxOf(-flip, 0.15f) else maxOf(flip, 0.15f)
+            val argb = if (flip < 0) (color[i] and 0xFF000000.toInt()) or PETAL_BACK_TINT else color[i]
+
+            val half = extent / 2.0f
+            pose.pushMatrix()
+            pose.translate(drawX + half, y + half)
+            pose.rotate(angle[i] + cos(wave) * 0.5f)
+            pose.scale(squeeze, 1.0f)
+            graphics.blit(RenderPipelines.GUI_TEXTURED, PETAL_SPRITES[sprite[i]], -extent / 2, -extent / 2, 0.0f, 0.0f,
+                extent, extent, PETAL_TEXTURE_SIZE, PETAL_TEXTURE_SIZE, PETAL_TEXTURE_SIZE, PETAL_TEXTURE_SIZE, argb)
+            pose.popMatrix()
         }
     }
 
@@ -644,19 +688,21 @@ object SnowOverlayRenderer {
     }
 
     private fun spawnPetal(index: Int, w: Float, h: Float, initial: Boolean) {
+        // Nearer petals are bigger, quicker and more opaque, which gives the drift some depth.
+        val near = random.nextFloat()
         // Spawned partly left of the screen, since the breeze carries them right.
-        posX[index] = -w * 0.2f + random.nextFloat() * w * 1.2f
-        posY[index] = if (initial) random.nextFloat() * h else RESPAWN_Y
-        speedX[index] = 0.3f + random.nextFloat() * 0.4f
-        speedY[index] = 0.3f + random.nextFloat() * 0.3f
-        sprite[index] = random.nextInt(CHERRY_SPRITES.size)
-        // Whole multiples of the texture only: anything in between smears the pixel art.
-        size[index] = CHERRY_TEXTURE_SIZE * (2 + random.nextInt(2))
+        posX[index] = -w * 0.3f + random.nextFloat() * w * 1.3f
+        posY[index] = if (initial) random.nextFloat() * h else RESPAWN_Y - random.nextFloat() * 20.0f
+        speedX[index] = 0.5f + near * 0.5f + random.nextFloat() * 0.3f
+        speedY[index] = 0.35f + near * 0.35f + random.nextFloat() * 0.15f
+        sprite[index] = random.nextInt(PETAL_SPRITES.size)
+        size[index] = 8 + Math.round(near * 4.0f)
         angle[index] = random.nextFloat() * 6.2832f
-        spin[index] = (random.nextFloat() - 0.5f) * 3.0f
+        spin[index] = (random.nextFloat() - 0.5f) * 1.6f
         phase[index] = random.nextFloat() * 6.2832f
-        wobble[index] = 1.0f + random.nextFloat() * 1.0f
-        color[index] = ((235 + random.nextInt(21)) shl 24) or PETAL_TINTS[random.nextInt(PETAL_TINTS.size)]
+        wobble[index] = 0.8f + random.nextFloat() * 0.8f
+        life[index] = 1.5f + random.nextFloat() * 2.5f
+        color[index] = ((170 + Math.round(near * 85.0f)) shl 24) or 0xFFFFFF
     }
 
     private fun spawnLeaf(index: Int, w: Float, h: Float, initial: Boolean) {

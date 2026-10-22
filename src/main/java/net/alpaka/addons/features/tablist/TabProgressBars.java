@@ -19,11 +19,17 @@ import java.util.regex.Pattern;
  *   <li>Hypixel's own text bar, a run of pipes colored up to the progress and gray after it
  *       ("Mage Reputation: |||||||||||| (100%)"). The pipes are replaced by the bar.</li>
  *   <li>A count against its goal at the end of a row ("Fairy Souls: 29/29", "52/100 XP", the RNG
- *       meter's "25,850/188,040"). The bar goes after the row.</li>
+ *       meter's "25,850/188,040"), written without spaces around the slash. The bar goes after
+ *       the row. "Bank: 1B / 7.5B" is the co-op and the personal bank side by side, not progress,
+ *       and is left alone.</li>
  *   <li>A percentage at the end of a row in the Skills widget ("Farming 50: 42.1%"). Only there:
  *       elsewhere a percentage is a stat ("Crit Chance: 10%"), not progress.</li>
  * </ul>
  * The bar takes the color of the text it stands for, so a pink reputation bar stays pink.
+ *
+ * Hypixel puts its pipe bars on a row of their own. Such a row joins the one above it, and when
+ * that one is the widget's bare title it joins that too, so "Mage Reputation:", "29,110" and the
+ * bar become one row: "Mage Reputation: 29,110", the bar, "(100%)".
  */
 public final class TabProgressBars {
 
@@ -31,7 +37,7 @@ public final class TabProgressBars {
     static final int MIN_PIPES = 5;
 
     private static final Pattern COUNT = Pattern.compile(
-            "([\\d,]+(?:\\.\\d+)?[kKmMbB]?)\\s*/\\s*([\\d,]+(?:\\.\\d+)?[kKmMbB]?)(?:\\s*XP)?\\s*$");
+            "([\\d,]+(?:\\.\\d+)?[kKmMbB]?)/([\\d,]+(?:\\.\\d+)?[kKmMbB]?)(?:\\s*XP)?\\s*$");
     private static final Pattern PERCENT = Pattern.compile("(\\d+(?:\\.\\d+)?)%\\s*$");
     private static final int DEFAULT_FILL = 0xFF55FF55;
     private static final int GRAY = 0xAAAAAA;
@@ -52,9 +58,37 @@ public final class TabProgressBars {
                         && TabListParser.plain(section.get(0).text()).trim().startsWith("Skills");
                 List<TabListParser.Line> lines = new ArrayList<>(section.size());
                 for (TabListParser.Line line : section) lines.add(line.player() != null ? line : withBar(line, skills));
-                sections.add(lines);
+                sections.add(joinBarRows(lines));
             }
             out.add(new TabListParser.Category(category.title(), sections));
+        }
+        return out;
+    }
+
+    /**
+     * Rows that are nothing but a bar joined to the row above, and that one to the widget's title
+     * when the title is all the row above it holds.
+     */
+    static List<TabListParser.Line> joinBarRows(List<TabListParser.Line> lines) {
+        List<TabListParser.Line> out = new ArrayList<>(lines.size());
+        for (TabListParser.Line line : lines) {
+            int last = out.size() - 1;
+            boolean barOnly = line.bar() != null && TabListParser.plain(line.text()).isBlank();
+            if (!barOnly || last < 0 || out.get(last).bar() != null || out.get(last).player() != null) {
+                out.add(line);
+                continue;
+            }
+            TabListParser.Line above = out.remove(last);
+            Component text = above.text();
+            boolean indented = above.indented();
+            int title = out.size() - 1;
+            if (title >= 0 && out.get(title).bar() == null
+                    && TabListParser.plain(out.get(title).text()).trim().endsWith(":")) {
+                TabListParser.Line head = out.remove(title);
+                text = Component.empty().append(head.text()).append(" ").append(TabListParser.trim(text));
+                indented = head.indented();
+            }
+            out.add(new TabListParser.Line(text, indented, null, line.bar(), line.after(), null));
         }
         return out;
     }

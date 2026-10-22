@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -220,13 +221,43 @@ class MarketParsingTest {
 
     @Test
     void recognisesHypixelsSignPrompts() {
-        SignPrompt search = SignPrompt.of(new String[] {"", "^^^^^^^^^^^^^^^", "Enter query", ""});
+        // The Auction House's and the Bazaar's search: two lines for the answer.
+        SignPrompt search = SignPrompt.of(new String[] {"", "", "^^^^^^^^^^^^^^^", "Enter query"});
         assertEquals(SignPrompt.Type.SEARCH, search.type());
+        assertEquals(2, search.inputLines());
+        assertEquals("Enter query", search.question());
         assertEquals("Search the Bazaar", search.heading(MarketKind.BAZAAR));
+
+        SignPrompt oneLine = SignPrompt.of(new String[] {"", "^^^^^^^^^^^^^^^", "Enter query", ""});
+        assertEquals(SignPrompt.Type.SEARCH, oneLine.type());
+        assertEquals(1, oneLine.inputLines());
 
         assertEquals(SignPrompt.Type.PRICE, SignPrompt.of(new String[] {"", "^^^^^^^^^^^^^^^", "Your bid", ""}).type());
         assertEquals(SignPrompt.Type.AMOUNT, SignPrompt.of(new String[] {"", "^^^^^^^^^^^^^^^", "Enter amount", "to order"}).type());
         assertEquals(SignPrompt.Type.PRICE, SignPrompt.of(new String[] {"", "^^Flipping^^", "Enter price", "per unit"}).type());
         assertNull(SignPrompt.of(new String[] {"Welcome", "to my", "island", ""}));
+    }
+
+    /** Six pixels a character and fifteen to a line, roughly the vanilla font on a sign. */
+    private static int width(String text) {
+        return text.length() * 6;
+    }
+
+    @Test
+    void splitsALongSearchAtASpace() {
+        SignPrompt search = SignPrompt.of(new String[] {"", "", "^^^^^^^^^^^^^^^", "Enter query"});
+        assertArrayEquals(new String[] {"hyperion", ""}, search.split("hyperion", MarketParsingTest::width, 90));
+        assertArrayEquals(new String[] {"withered dark", "claymore"},
+                search.split("withered dark claymore", MarketParsingTest::width, 90));
+        // A word longer than a line would come back as two words, so it does not fit.
+        assertNull(search.split("abcdefghijklmnopq", MarketParsingTest::width, 90));
+        assertNull(search.split("one two three four five six seven", MarketParsingTest::width, 90));
+    }
+
+    @Test
+    void aPriceHasOneLine() {
+        SignPrompt price = SignPrompt.of(new String[] {"", "^^^^^^^^^^^^^^^", "Your bid", ""});
+        assertArrayEquals(new String[] {"1.5m"}, price.split("1.5m", MarketParsingTest::width, 90));
+        assertNull(price.split("1000000000000000", MarketParsingTest::width, 90));
     }
 }

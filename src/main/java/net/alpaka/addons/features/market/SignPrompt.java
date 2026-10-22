@@ -1,14 +1,23 @@
 package net.alpaka.addons.features.market;
 
+import java.util.Arrays;
 import java.util.Locale;
+import java.util.function.ToIntFunction;
 
 /**
- * One of Hypixel's sign prompts: a sign whose first line is left for the answer, with a row of
- * carets under it pointing up at that line and the question below ("Enter query", "Your bid").
+ * One of Hypixel's sign prompts: the lines left for the answer, a row of carets under them pointing
+ * up, and the question below.
+ *
+ * Hypixel uses two layouts. Searches leave two lines for the answer and ask on the last one
+ * ({@code "", "", "^^^^^^^^^^^^^^^", "Enter query"}), and join the two lines with a space. Prices
+ * and amounts leave one line and ask on the last two ({@code "", "^^^^^^^^^^^^^^^", "Enter amount",
+ * "to order"}). Some carets frame a word, as in {@code "^^Flipping^^"}.
  *
  * Only such signs are given the input bar. A sign the player placed and writes on stays vanilla.
+ *
+ * @param inputLines how many lines, from the top, take the answer: 1 or 2
  */
-public record SignPrompt(Type type, String question) {
+public record SignPrompt(Type type, String question, int inputLines) {
 
     public enum Type {
         SEARCH, PRICE, AMOUNT, DURATION, TEXT;
@@ -22,11 +31,28 @@ public record SignPrompt(Type type, String question) {
     /** The prompt on a sign with these four lines, or null if it is not one of Hypixel's prompts. */
     public static SignPrompt of(String[] lines) {
         if (lines == null || lines.length < 4) return null;
-        // A row of carets, or carets around a word as in "^^Flipping^^".
-        String arrows = lines[1] == null ? "" : lines[1].trim();
-        if (arrows.length() < 3 || !arrows.startsWith("^^") || !arrows.endsWith("^^")) return null;
-        String question = ((lines[2] == null ? "" : lines[2].trim()) + " " + (lines[3] == null ? "" : lines[3].trim())).trim();
-        return new SignPrompt(typeOf(question), question);
+        int arrows = -1;
+        for (int i = 1; i <= 2; i++) {
+            if (isArrows(lines[i])) {
+                arrows = i;
+                break;
+            }
+        }
+        if (arrows < 0) return null;
+        StringBuilder question = new StringBuilder();
+        for (int i = arrows + 1; i < 4; i++) {
+            String line = lines[i] == null ? "" : lines[i].trim();
+            if (line.isEmpty()) continue;
+            if (!question.isEmpty()) question.append(' ');
+            question.append(line);
+        }
+        return new SignPrompt(typeOf(question.toString()), question.toString(), arrows);
+    }
+
+    /** A row of carets, or carets around a word. */
+    private static boolean isArrows(String line) {
+        String l = line == null ? "" : line.trim();
+        return l.length() >= 3 && l.startsWith("^^") && l.endsWith("^^");
     }
 
     static Type typeOf(String question) {
@@ -36,6 +62,36 @@ public record SignPrompt(Type type, String question) {
         if (q.contains("price") || q.contains("bid") || q.contains("coins")) return Type.PRICE;
         if (q.contains("amount") || q.contains("quantity") || q.contains("how many")) return Type.AMOUNT;
         return Type.TEXT;
+    }
+
+    /**
+     * The answer as the sign's input lines, each within the sign's width as vanilla's own editor
+     * measures it, or null if it does not fit. An answer longer than one line is broken at a space,
+     * which Hypixel puts back when it joins the lines, so the lines are exactly what a player could
+     * have typed into the vanilla sign. A word too long for a line is not broken: Hypixel would read
+     * it as two words.
+     */
+    public String[] split(String text, ToIntFunction<String> width, int maxWidth) {
+        String[] out = new String[inputLines];
+        Arrays.fill(out, "");
+        return fill(text == null ? "" : text, 0, out, width, maxWidth) ? out : null;
+    }
+
+    private static boolean fill(String rest, int line, String[] out, ToIntFunction<String> width, int maxWidth) {
+        if (width.applyAsInt(rest) <= maxWidth) {
+            out[line] = rest;
+            return true;
+        }
+        if (line == out.length - 1) return false;
+        // The longest start of the text that fits, ending before a space.
+        for (int space = rest.lastIndexOf(' '); space > 0; space = rest.lastIndexOf(' ', space - 1)) {
+            String head = rest.substring(0, space);
+            if (width.applyAsInt(head) <= maxWidth) {
+                out[line] = head;
+                return fill(rest.substring(space + 1), line + 1, out, width, maxWidth);
+            }
+        }
+        return false;
     }
 
     /** The bar's heading: what is being asked, in the market it is asked for if known. */

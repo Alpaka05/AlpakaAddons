@@ -193,11 +193,19 @@ public final class DevScreenshotTour {
             new Stop(null, () -> placeMouse(0.5, 0.97), () -> true, 1),
             screen("market-bazaar-product", net.alpaka.addons.features.market.MarketPreview::bazaarProduct),
             screen("market-bazaar-orders", net.alpaka.addons.features.market.MarketPreview::bazaarOrders),
-            screen("market-input-search", () -> net.alpaka.addons.features.market.MarketPreview.input("Enter query", "",
-                    net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, "hyper")),
-            screen("market-input-price", () -> net.alpaka.addons.features.market.MarketPreview.input("Your bid", "",
+            // The search sign as Hypixel writes it: two lines for the answer, the question last.
+            screen("market-input-search", () -> net.alpaka.addons.features.market.MarketPreview.input(
+                    new String[] {"", "", "^^^^^^^^^^^^^^^", "Enter query"},
+                    net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, "withered dark claymore")),
+            // The same search sign opened the way the game opens Hypixel's, through the player's
+            // sign opening: the input bar has to take over there, not vanilla's sign.
+            new Stop("market-input-hypixel", () -> net.alpaka.addons.features.market.MarketPreview.openLikeHypixel(
+                    new String[] {"", "", "^^^^^^^^^^^^^^^", "Enter query"}), () -> true, 30),
+            screen("market-input-price", () -> net.alpaka.addons.features.market.MarketPreview.input(
+                    new String[] {"", "^^^^^^^^^^^^^^^", "Your bid", ""},
                     net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, "1.5m")),
-            screen("market-input-amount", () -> net.alpaka.addons.features.market.MarketPreview.input("Enter amount", "to order",
+            screen("market-input-amount", () -> net.alpaka.addons.features.market.MarketPreview.input(
+                    new String[] {"", "^^^^^^^^^^^^^^^", "Enter amount", "to order"},
                     net.alpaka.addons.features.market.MarketKind.BAZAAR, null)),
             new Stop("market-classic", () -> {
                 net.alpaka.addons.features.market.MarketPreview.classic(net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, true);

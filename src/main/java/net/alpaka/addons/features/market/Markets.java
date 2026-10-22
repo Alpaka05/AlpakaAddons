@@ -17,8 +17,14 @@ public final class Markets {
 
     /** Whether Hypixel's sign prompts get the input bar. */
     public static boolean signInput() {
-        return AlpakaConfig.instance.customSignInputEnabled && SkyblockUtils.isOnSkyblock();
+        return AlpakaConfig.instance.customSignInputEnabled && (SkyblockUtils.isOnSkyblock() || devAnywhere);
     }
+
+    /**
+     * For the screenshot tour only: lets a sign opened in its singleplayer world take the same way
+     * in as one of Hypixel's, through the game's own sign opening.
+     */
+    static boolean devAnywhere = false;
 
     /**
      * The market the player is in, judged by the screen that is open: a market menu, or the input

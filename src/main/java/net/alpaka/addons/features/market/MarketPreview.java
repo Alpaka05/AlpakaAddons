@@ -286,24 +286,36 @@ public final class MarketPreview {
 
     // ---- The input bar --------------------------------------------------------------------------
 
-    /** The input bar on a sign written like Hypixel's prompt with this question. */
-    public static MarketInputScreen input(String line3, String line4, MarketKind context, String typed) {
+    /** The input bar on a sign with these four lines, written like one of Hypixel's prompts. */
+    public static MarketInputScreen input(String[] lines, MarketKind context, String typed) {
         Minecraft mc = Minecraft.getInstance();
         BlockPos pos = mc.player.blockPosition().above(2);
         SignBlockEntity sign = new SignBlockEntity(pos, Blocks.OAK_SIGN.defaultBlockState());
         sign.setLevel(mc.level);
-        sign.setText(new SignText()
-                .setMessage(0, Component.empty())
-                .setMessage(1, Component.literal("^^^^^^^^^^^^^^^"))
-                .setMessage(2, Component.literal(line3))
-                .setMessage(3, Component.literal(line4)), true);
+        SignText text = new SignText();
+        for (int i = 0; i < 4; i++) text = text.setMessage(i, Component.literal(lines[i]));
+        sign.setText(text, true);
         sign.setAllowedPlayerEditor(mc.player.getUUID());
         if (context == MarketKind.AUCTION_HOUSE && Markets.recentSearches(context).isEmpty()) {
             for (String q : List.of("juju shortbow", "terminator", "aotv", "hyperion")) Markets.rememberSearch(context, q);
         }
-        SignPrompt prompt = SignPrompt.of(new String[] {"", "^^^^^^^^^^^^^^^", line3, line4});
-        MarketInputScreen screen = new MarketInputScreen(sign, true, false, prompt, context);
+        MarketInputScreen screen = new MarketInputScreen(sign, true, false, SignPrompt.of(lines), context);
         return typed == null ? screen : screen.typed(typed);
+    }
+
+    /**
+     * Opens a sign with these lines the way the game opens one Hypixel sends - through the player's
+     * sign opening, where the input bar hooks in - so the tour sees whether it is recognised.
+     */
+    public static void openLikeHypixel(String[] lines) {
+        Minecraft mc = Minecraft.getInstance();
+        MarketInputScreen made = input(lines, null, null);
+        Markets.devAnywhere = true;
+        try {
+            mc.player.openTextEdit(made.sign(), true);
+        } finally {
+            Markets.devAnywhere = false;
+        }
     }
 
     /** The inventory drawer open or shut, for the screenshot tour. */

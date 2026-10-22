@@ -1,6 +1,7 @@
 package net.alpaka.addons.features.market;
 
 import net.alpaka.addons.client.gui.AlpakaStyle;
+import net.alpaka.addons.client.gui.EditableText;
 import net.alpaka.addons.client.gui.GuiFont;
 import net.alpaka.addons.client.gui.ModernGuiUtils;
 import net.alpaka.addons.features.wheel.WheelMesh;
@@ -8,7 +9,6 @@ import net.alpaka.addons.mixin.AbstractSignEditScreenAccessor;
 import net.alpaka.addons.utils.SkyblockUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.font.TextFieldHelper;
 import net.minecraft.client.gui.screens.inventory.SignEditScreen;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
@@ -24,12 +24,14 @@ import java.util.List;
  *
  * <h2>Only the look changes</h2>
  *
- * This is vanilla's sign editor with its drawing replaced. Typing goes into the sign's first line
- * through vanilla's own text field, with vanilla's limit on its length, and the answer reaches
- * Hypixel the way it always does: vanilla sends the sign's four lines when the editor closes.
- * Nothing here sends anything. Search confirms by closing the editor, as the sign's Done button
- * does; Cancel and Escape empty the line first, which Hypixel takes as no answer. The chips only
- * fill the field - the player still confirms.
+ * This is vanilla's sign editor with its drawing replaced, and the answer reaches Hypixel the way
+ * it always does: vanilla sends the sign's four lines when the editor closes. Nothing here sends
+ * anything. Confirming writes the answer into the sign's answer lines and closes the editor, as the
+ * sign's Done button does. Each line stays within the sign's width as vanilla's own editor measures
+ * it, and an answer longer than one line is broken at a space (see {@link SignPrompt#split}) - so the
+ * lines are always ones a player could have typed into the vanilla sign. Cancel and Escape empty
+ * the answer first, which Hypixel takes as no answer. The chips only fill the field; the player
+ * still confirms.
  */
 public class MarketInputScreen extends SignEditScreen {
     private static final int HEADER_H = AlpakaStyle.HEADER_H;
@@ -42,9 +44,15 @@ public class MarketInputScreen extends SignEditScreen {
     private final MarketKind context;
     private long openTimeMs = 0L;
     private long caretFrom = System.currentTimeMillis();
-    /** When typing last ran into the sign's line limit, to flash the field. */
+    /** When typing last ran into what the sign can hold, to flash the field. */
     private long fullAtMs = 0L;
     private boolean closing = false;
+    /**
+     * The answer as one line, however many sign lines it takes. Kept to what fits the sign: an edit
+     * that would not is refused.
+     */
+    private final EditableText input = new EditableText(64);
+    private boolean loaded = false;
     /** Text for the field before it exists, for the screenshot tour. */
     private String pendingText = null;
 
@@ -90,23 +98,54 @@ public class MarketInputScreen extends SignEditScreen {
         // Vanilla's Done button: the bar has its own buttons.
         clearWidgets();
         if (openTimeMs == 0L) openTimeMs = System.currentTimeMillis();
+        if (!loaded) {
+            loaded = true;
+            input.setText(initialAnswer());
+        }
         if (pendingText != null) {
             replace(pendingText);
             pendingText = null;
         }
     }
 
-    private AbstractSignEditScreenAccessor sign() {
-        return (AbstractSignEditScreenAccessor) this;
+    /** The sign's four lines, which vanilla sends when the editor closes. */
+    private String[] lines() {
+        return ((AbstractSignEditScreenAccessor) this).alpaka$messages();
+    }
+
+    /** What the answer lines already hold, a previous search say, joined as Hypixel joins them. */
+    private String initialAnswer() {
+        String[] lines = lines();
+        StringBuilder answer = new StringBuilder();
+        for (int i = 0; i < prompt.inputLines(); i++) {
+            String line = lines[i] == null ? "" : lines[i].trim();
+            if (line.isEmpty()) continue;
+            if (!answer.isEmpty()) answer.append(' ');
+            answer.append(line);
+        }
+        return answer.toString();
     }
 
     private String text() {
-        String[] messages = sign().alpaka$messages();
-        return messages[0] == null ? "" : messages[0];
+        return input.getText();
     }
 
-    private TextFieldHelper field() {
-        return sign().alpaka$signField();
+    /** The answer as the sign's lines, measured as vanilla's sign editor measures them; null if it does not fit. */
+    private String[] split(String text) {
+        return prompt.split(text, this.font::width, this.sign.getMaxTextLineWidth());
+    }
+
+    /** Runs an edit, and takes it back if the answer no longer fits the sign. */
+    private void edit(Runnable change) {
+        String before = input.getText();
+        int caret = input.getCaret();
+        change.run();
+        if (!input.getText().equals(before) && split(input.getText()) == null) {
+            input.setText(before);
+            input.setCaret(caret);
+            fullAtMs = System.currentTimeMillis();
+        }
+        caretFrom = System.currentTimeMillis();
     }
 
     // ---- Geometry -------------------------------------------------------------------------------
@@ -236,27 +275,25 @@ public class MarketInputScreen extends SignEditScreen {
         int ty = y + (FIELD_H - 8) / 2;
         int room = w - 24 - 8;
         String text = text();
-        TextFieldHelper field = field();
         if (text.isEmpty()) {
             // A little after the caret, which blinks at the very start.
             graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, prompt.placeholder(), room - 3)), tx + 3, ty, AlpakaStyle.TEXT_MUTED, false);
         }
-        int cursor = field == null ? text.length() : Math.max(0, Math.min(text.length(), field.getCursorPos()));
-        int selection = field == null ? cursor : Math.max(0, Math.min(text.length(), field.getSelectionPos()));
+        int cursor = input.getCaret();
         int caretPx = GuiFont.width(this.font, text.substring(0, cursor));
         int scroll = Math.max(0, caretPx - room + 2);
         graphics.enableScissor(tx - 1, y + 2, tx + room + 1, y + FIELD_H - 2);
         int ox = tx - scroll;
-        if (selection != cursor) {
-            int from = ox + GuiFont.width(this.font, text.substring(0, Math.min(cursor, selection)));
-            int to = ox + GuiFont.width(this.font, text.substring(0, Math.max(cursor, selection)));
+        if (input.hasSelection()) {
+            int from = ox + GuiFont.width(this.font, text.substring(0, input.getSelectionStart()));
+            int to = ox + GuiFont.width(this.font, text.substring(0, input.getSelectionEnd()));
             ModernGuiUtils.drawRect(graphics, from, ty - 1, to - from, 10, AlpakaStyle.accentDim());
         }
         graphics.text(this.font, GuiFont.text(text), ox, ty, AlpakaStyle.TEXT, false);
         if ((now - caretFrom) / 500 % 2 == 0) ModernGuiUtils.drawRect(graphics, ox + caretPx, ty - 1, 1, 10, AlpakaStyle.TEXT);
         graphics.disableScissor();
 
-        hits.add(new Hit(x, y, w, FIELD_H, mx -> placeCaret((int) Math.round(mx) - ox, text), false));
+        hits.add(new Hit(x, y, w, FIELD_H, mx -> placeCaret((int) Math.round(mx) - ox), false));
     }
 
     /** For a price or an amount, what Hypixel will read the text as, so "1.5m" is seen to mean 1,500,000. */
@@ -264,7 +301,7 @@ public class MarketInputScreen extends SignEditScreen {
         String text = text().trim();
         if (!prompt.type().numeric() || text.isEmpty()) {
             if (System.currentTimeMillis() - fullAtMs < 1200) {
-                String full = "Line is full";
+                String full = "Too long for the sign";
                 graphics.text(this.font, GuiFont.text(full), right - GuiFont.width(this.font, full), y, AlpakaStyle.DANGER_SOFT, false);
             }
             return;
@@ -308,54 +345,49 @@ public class MarketInputScreen extends SignEditScreen {
 
     // ---- Editing --------------------------------------------------------------------------------
 
-    /** Fills the field, through vanilla's field so its length limit holds. */
+    /** Fills the field, as long as what is put in fits the sign. */
     private void replace(String value) {
-        TextFieldHelper field = field();
-        if (field == null) return;
-        field.selectAll();
-        field.insertText(value);
-        caretFrom = System.currentTimeMillis();
+        edit(() -> input.setText(value));
     }
 
     /** Puts a suffix at the end of the amount, replacing one that is already there. */
     private void append(String suffix) {
-        TextFieldHelper field = field();
-        if (field == null) return;
         String text = text().trim();
         if (!text.isEmpty() && Character.isLetter(text.charAt(text.length() - 1))) text = text.substring(0, text.length() - 1);
         if (text.isEmpty()) return;
-        field.selectAll();
-        field.insertText(text + suffix);
+        String value = text + suffix;
+        edit(() -> input.setText(value));
+    }
+
+    private void placeCaret(int x) {
+        input.setCaretFromX(x, s -> GuiFont.width(this.font, s));
         caretFrom = System.currentTimeMillis();
     }
 
-    private void placeCaret(int x, String text) {
-        TextFieldHelper field = field();
-        if (field == null) return;
-        int index = text.length();
-        for (int i = 0; i <= text.length(); i++) {
-            if (GuiFont.width(this.font, text.substring(0, i)) >= x) {
-                index = i;
-                break;
-            }
-        }
-        field.setCursorPos(index, false);
-        caretFrom = System.currentTimeMillis();
-    }
-
-    /** Closes the editor with the line as typed: vanilla sends it, as the sign's Done button does. */
+    /**
+     * Writes the answer into the sign's answer lines and closes the editor: vanilla sends the lines,
+     * as the sign's Done button does.
+     */
     private void confirm() {
         if (closing) return;
+        String[] answer = split(text());
+        if (answer == null) {
+            fullAtMs = System.currentTimeMillis();
+            return;
+        }
         closing = true;
+        String[] lines = lines();
+        System.arraycopy(answer, 0, lines, 0, answer.length);
         if (prompt.type() == SignPrompt.Type.SEARCH) Markets.rememberSearch(context, text());
         super.onClose();
     }
 
-    /** Empties the line and closes: Hypixel takes an empty answer as none. */
+    /** Empties the answer lines and closes: Hypixel takes an empty answer as none. */
     private void cancel() {
         if (closing) return;
         closing = true;
-        sign().alpaka$setMessage("");
+        String[] lines = lines();
+        for (int i = 0; i < prompt.inputLines(); i++) lines[i] = "";
         super.onClose();
     }
 
@@ -378,11 +410,9 @@ public class MarketInputScreen extends SignEditScreen {
 
     @Override
     public boolean charTyped(CharacterEvent event) {
-        String before = text();
-        boolean handled = super.charTyped(event);
-        if (event.isAllowedChatCharacter() && before.equals(text())) fullAtMs = System.currentTimeMillis();
-        caretFrom = System.currentTimeMillis();
-        return handled;
+        if (!event.isAllowedChatCharacter()) return false;
+        for (char c : Character.toChars(event.codepoint())) edit(() -> input.insert(c));
+        return true;
     }
 
     @Override
@@ -395,10 +425,11 @@ public class MarketInputScreen extends SignEditScreen {
             confirm();
             return true;
         }
-        // Only the first line is the answer: the arrows up and down would move to Hypixel's lines.
+        // The answer is one field: the arrows up and down would move to Hypixel's own lines.
         if (event.isUp() || event.isDown()) return true;
-        caretFrom = System.currentTimeMillis();
-        return super.keyPressed(event);
+        boolean[] handled = {false};
+        edit(() -> handled[0] = input.keyPressed(event.key(), event.hasControlDownWithQuirk(), event.hasShiftDown()));
+        return handled[0];
     }
 
     /** Any other way of closing the bar counts as Cancel. */
@@ -414,9 +445,13 @@ public class MarketInputScreen extends SignEditScreen {
 
     // ---- For the screenshot tour ----------------------------------------------------------------
 
+    SignBlockEntity sign() {
+        return this.sign;
+    }
+
     /** Types into the field as the player would, for the screenshot tour. */
     public MarketInputScreen typed(String text) {
-        if (field() == null) pendingText = text;
+        if (!loaded) pendingText = text;
         else replace(text);
         return this;
     }

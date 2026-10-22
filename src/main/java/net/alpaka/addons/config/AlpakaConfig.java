@@ -564,6 +564,10 @@ public class AlpakaConfig {
     public boolean customTabToggle = false;
     /** The list stays up in the chat and in inventories and chests, drawn above them. */
     public boolean customTabInMenus = false;
+    /** Hypixel's progress drawn as bars: its pipe bars, counts toward a goal, skill percentages. */
+    public boolean customTabProgressBars = true;
+    /** A row lights up for a moment when its value changes. */
+    public boolean customTabHighlightChanges = true;
     /** The panel behind the list; off leaves only the text. */
     public boolean customTabBackground = true;
     /** The list slides down out of the top edge and back up instead of appearing at once. */

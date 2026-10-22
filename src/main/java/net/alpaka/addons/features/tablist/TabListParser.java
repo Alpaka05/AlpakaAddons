@@ -34,8 +34,32 @@ public final class TabListParser {
 
     private TabListParser() {}
 
-    /** One row: its text without the leading spaces Hypixel indents with, and the player it names. */
-    public record Line(Component text, boolean indented, String player) {}
+    /**
+     * One row: its text without the leading spaces Hypixel indents with, and the player it names.
+     * A row that shows progress also has a bar, drawn after {@code text} and followed by
+     * {@code after} ({@link TabProgressBars}); {@code key} is what the row is known by from one
+     * read to the next ({@link TabChangeFlash}).
+     */
+    public record Line(Component text, boolean indented, String player, Bar bar, Component after, String key) {
+        public Line(Component text, boolean indented, String player) {
+            this(text, indented, player, null, Component.empty(), null);
+        }
+
+        public Line withBar(Component text, Bar bar, Component after) {
+            return new Line(text, indented, player, bar, after, key);
+        }
+
+        public Line withText(Component text, Component after) {
+            return new Line(text, indented, player, bar, after, key);
+        }
+
+        public Line withKey(String key) {
+            return new Line(text, indented, player, bar, after, key);
+        }
+    }
+
+    /** A progress bar: how far along, 0 to 1, and the color of the filled part. */
+    public record Bar(float fraction, int color) {}
 
     /** One category: the column title, and its widgets in order. */
     public record Category(Component title, List<List<Line>> sections) {

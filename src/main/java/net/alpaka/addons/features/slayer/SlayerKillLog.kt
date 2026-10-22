@@ -294,6 +294,40 @@ object SlayerKillLog {
         collect(true)
     }
 
+    /** The log's own folder inside a stats folder. */
+    fun folderIn(statsDirectory: File): File = File(statsDirectory, "slayer-log")
+
+    /** The log files in [statsDirectory], for /alpakastats; 0 when there are none yet. */
+    fun fileCount(statsDirectory: File): Int = LogFiles.logFiles(folderIn(statsDirectory)).size
+
+    /**
+     * The stats folder was switched with /alpakastats folder: brings the log files along, so the
+     * history does not end up split across two folders. Copied rather than moved, like the record;
+     * see [LogFiles.adopt]. Runs on the writer, behind any write still aimed at the old folder.
+     */
+    fun onFolderChanged(from: File, to: File) {
+        val source = folderIn(from)
+        val target = folderIn(to)
+        if (source.absoluteFile.normalize() == target.absoluteFile.normalize()) return
+        WRITER.submit {
+            try {
+                val copied = LogFiles.adopt(source, target)
+                if (copied > 0) {
+                    Minecraft.getInstance().execute {
+                        SlayerDropTracker.sendModMessage("§7Brought §f$copied§7 slayer log file"
+                                + (if (copied != 1) "s" else "") + " over from §f" + source.absolutePath)
+                    }
+                }
+            } catch (e: Exception) {
+                AlpakaAddons.LOGGER.warn("Could not bring the slayer log over from {}", source.absolutePath, e)
+                Minecraft.getInstance().execute {
+                    SlayerDropTracker.sendModMessage("§eThe slayer log files stayed in §f" + source.absolutePath
+                            + "§e; copy them over by hand")
+                }
+            }
+        }
+    }
+
     private fun startWrite() {
         if (pending != null || unwritten.isEmpty()) return
         if (System.currentTimeMillis() < nextAttemptMs) return
@@ -302,7 +336,7 @@ object SlayerKillLog {
         if (!AlpakaStats.storeAvailable()) return
 
         val rows = ArrayList(unwritten)
-        val folder = File(AlpakaStats.directory(), "slayer-log")
+        val folder = folderIn(AlpakaStats.directory())
         pendingCount = rows.size
         pending = WRITER.submit { LogFiles.append(folder, LogFiles.machine(), rows) }
     }
@@ -347,6 +381,77 @@ object SlayerKillLog {
 
         internal fun sanitize(name: String): String =
             name.replace(Regex("['’]"), "").replace(Regex("[^A-Za-z0-9_-]+"), "-").trim('-').take(40)
+
+        /** The log's CSV files in [folder], by name. */
+        fun logFiles(folder: File): List<File> =
+            folder.listFiles { f -> f.isFile && f.name.endsWith(".csv") && Kind.entries.any { f.name.startsWith(it.prefix + "-") } }
+                ?.sortedBy { it.name } ?: emptyList()
+
+        /**
+         * Copies the log files of [from] into [to]; returns how many files it changed in [to].
+         *
+         * A file [to] does not have is copied as it is. One it has under the same name - the same
+         * PC and month, after switching back and forth - gets the lines it is missing appended, so
+         * nothing is overwritten and nothing is counted twice: every line carries its own time, so a
+         * line already there is the same boss or drop. With a different header the lines would land
+         * in the wrong columns, so such a file is copied beside it under a numbered name instead.
+         */
+        fun adopt(from: File, to: File): Int {
+            val files = logFiles(from)
+            if (files.isEmpty()) return 0
+            if (!to.isDirectory) java.nio.file.Files.createDirectories(to.toPath())
+
+            var changed = 0
+            for (file in files) {
+                val target = File(to, file.name)
+                if (!target.exists() || target.length() == 0L) {
+                    java.nio.file.Files.copy(file.toPath(), target.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+                    changed++
+                    continue
+                }
+
+                val theirs = readLines(file)
+                val ours = readLines(target)
+                if (theirs.firstOrNull() != ours.firstOrNull()) {
+                    val aside = freeName(to, file.name)
+                    java.nio.file.Files.copy(file.toPath(), aside.toPath())
+                    changed++
+                    continue
+                }
+
+                val known = ours.toHashSet()
+                val missing = theirs.drop(1).filter { it.isNotEmpty() && it !in known }
+                if (missing.isEmpty()) continue
+                FileChannel.open(target.toPath(), StandardOpenOption.WRITE, StandardOpenOption.APPEND).use { channel ->
+                    val lock = runCatching { channel.lock() }.getOrNull()
+                    try {
+                        val buffer = ByteBuffer.wrap(missing.joinToString("") { it + "\r\n" }.toByteArray(StandardCharsets.UTF_8))
+                        while (buffer.hasRemaining()) channel.write(buffer)
+                    } finally {
+                        runCatching { lock?.release() }
+                    }
+                }
+                changed++
+            }
+            return changed
+        }
+
+        /** A file's lines without the byte order mark, header first. */
+        private fun readLines(file: File): List<String> {
+            val lines = file.readText(StandardCharsets.UTF_8).removePrefix(BOM).split("\r\n", "\n")
+            return if (lines.lastOrNull()?.isEmpty() == true) lines.dropLast(1) else lines
+        }
+
+        /** "kills-2026-10-mac-from-2.csv" and so on, the first name not taken in [folder]. */
+        private fun freeName(folder: File, name: String): File {
+            val base = name.removeSuffix(".csv")
+            var n = 1
+            while (true) {
+                val file = File(folder, "$base-from${if (n == 1) "" else "-$n"}.csv")
+                if (!file.exists()) return file
+                n++
+            }
+        }
 
         /** Appends the rows to their month's file of their kind, one write per file. */
         fun append(folder: File, machine: String, rows: List<Row>) {

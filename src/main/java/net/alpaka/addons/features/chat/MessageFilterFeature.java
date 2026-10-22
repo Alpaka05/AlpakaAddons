@@ -15,8 +15,9 @@ import java.util.regex.Pattern;
  * one of these lines (the profile name for the slayer record) listen to both, so hiding the profile
  * lines does not cost them anything.
  *
- * The patterns follow SkyHanni's ChatFilter, matched against the color-stripped line and anchored at
- * both ends: a player typing the same words has their name and a colon in front and is never hidden.
+ * The patterns follow SkyHanni (ChatFilter, PetStoragePatterns, WatchdogHider), matched against the
+ * color-stripped line and anchored at both ends: a player typing the same words has their name and a
+ * colon in front and is never hidden.
  * Action bar text is left alone.
  */
 public final class MessageFilterFeature {
@@ -36,7 +37,11 @@ public final class MessageFilterFeature {
          * "Talk to the Summer Sloth in the Hub!" - only hidden right after a {@link #REWARD_BUNDLE}
          * line, since quests and NPCs use the same wording for things worth reading.
          */
-        REWARD_BUNDLE_HINT
+        REWARD_BUNDLE_HINT,
+        AUTOPET,
+        FIRE_SALE,
+        /** The weekly "[WATCHDOG ANNOUNCEMENT]" ban count, and the lines that come with it. */
+        WATCHDOG
     }
 
     private static final Pattern WELCOME = Pattern.compile("^Welcome to Hypixel SkyBlock!$");
@@ -51,10 +56,33 @@ public final class MessageFilterFeature {
     private static final Pattern REWARD_BUNDLE = Pattern.compile("^You haven't claimed your [A-Za-z ]+ Rewards yet!$");
     private static final Pattern REWARD_BUNDLE_HINT = Pattern.compile("^Talk to the .+ in the .+!$");
 
+    /** "Autopet equipped your [Lvl 100] Mosquito! VIEW RULE", sometimes with a "(2)" count. */
+    private static final Pattern AUTOPET = Pattern.compile("^Autopet equipped your \\[Lvl \\d+\\] .+! VIEW RULE(?: \\(\\d+\\))?$");
+    /**
+     * The Community Shop's fire sale lines, all starting with the hot springs sign: the announcement
+     * (which can arrive as one message with the items below it), the items and the reminders.
+     */
+    private static final Pattern FIRE_SALE = Pattern.compile(
+            "^A FIRE SALE A(?:\\n.*)*$"
+                    + "|^♨ (?:A )?Fire Sales? for .+ (?:are|is) starting soon!$"
+                    + "|^♨ Fire Sales? for .+ ended!$"
+                    + "|^♨ .+ (?:Skin|Rune|Dye) (?:for a limited time )?\\(.+ left\\)!?$"
+                    + "|^♨ Visit the Community Shop in the next .+ to grab yours!(?: \\[WARP\\])?$"
+                    + "|^♨ And \\d+ more!$"
+                    + "|^♨ Selling multiple items for a limited time!$");
+    private static final String WATCHDOG_HEADER = "[WATCHDOG ANNOUNCEMENT]";
+    /**
+     * Hypixel sends the announcement line by line and closes it with a blank line. The lines after
+     * the header count as part of it up to that blank line, but never more than this many, so a
+     * missing blank line cannot swallow the chat.
+     */
+    static final int WATCHDOG_MAX_LINES = 10;
+
     /** How long after a reward reminder its "Talk to the..." line still counts as part of it. */
     static final long HINT_WINDOW_MS = 3_000L;
 
     private static long lastRewardReminderMs = Long.MIN_VALUE / 2;
+    private static int watchdogLinesLeft = 0;
 
     public static void register() {
         ClientReceiveMessageEvents.ALLOW_GAME.register((message, overlay) -> overlay || !shouldHide(message));
@@ -63,12 +91,27 @@ public final class MessageFilterFeature {
     private static boolean shouldHide(Component message) {
         AlpakaConfig config = AlpakaConfig.instance;
         if (!config.messageFilterEnabled) return false;
-        Kind kind = classify(SkyblockUtils.cleanColor(message.getString()));
+        Kind kind = next(SkyblockUtils.cleanColor(message.getString()));
         if (kind == null) return false;
 
         long now = System.currentTimeMillis();
         if (kind == Kind.REWARD_BUNDLE) lastRewardReminderMs = now;
         return isHidden(kind, switchFor(kind, config), now - lastRewardReminderMs);
+    }
+
+    /** Like {@link #classify}, but also counts the lines that follow a Watchdog header as part of it. */
+    static Kind next(String text) {
+        if (watchdogLinesLeft > 0) {
+            watchdogLinesLeft = text.isBlank() ? 0 : watchdogLinesLeft - 1;
+            return Kind.WATCHDOG;
+        }
+        // A header with the rest of the announcement in the same message needs no follow-up lines.
+        if (text.equals(WATCHDOG_HEADER)) watchdogLinesLeft = WATCHDOG_MAX_LINES;
+        return classify(text);
+    }
+
+    static void resetWatchdog() {
+        watchdogLinesLeft = 0;
     }
 
     /** Which kind of spam a color-stripped line is, or null for anything else. */
@@ -80,6 +123,9 @@ public final class MessageFilterFeature {
         if (PROFILE_JOIN.matcher(text).matches()) return Kind.PROFILE_JOIN;
         if (REWARD_BUNDLE.matcher(text).matches()) return Kind.REWARD_BUNDLE;
         if (REWARD_BUNDLE_HINT.matcher(text).matches()) return Kind.REWARD_BUNDLE_HINT;
+        if (AUTOPET.matcher(text).matches()) return Kind.AUTOPET;
+        if (FIRE_SALE.matcher(text).matches()) return Kind.FIRE_SALE;
+        if (text.startsWith(WATCHDOG_HEADER)) return Kind.WATCHDOG;
         return null;
     }
 
@@ -98,6 +144,9 @@ public final class MessageFilterFeature {
             case KILL_COMBO -> config.messageFilterKillCombo;
             case PROFILE_JOIN -> config.messageFilterProfileJoin;
             case REWARD_BUNDLE, REWARD_BUNDLE_HINT -> config.messageFilterRewardBundles;
+            case AUTOPET -> config.messageFilterAutopet;
+            case FIRE_SALE -> config.messageFilterFireSale;
+            case WATCHDOG -> config.messageFilterWatchdog;
         };
     }
 }

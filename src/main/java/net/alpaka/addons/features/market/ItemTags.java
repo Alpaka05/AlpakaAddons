@@ -14,9 +14,13 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * The tag SkyCofl knows an item by - Hypixel's own item id, such as {@code ENCHANTED_HAY_BALE}.
@@ -37,6 +41,10 @@ public final class ItemTags {
 
     private static volatile Map<String, String> bazaarByName = null;
     private static volatile Map<String, String> auctionByName = null;
+    /** Display names for the search suggestions: Bazaar products, what is sold on the Auction House, both. */
+    private static volatile List<String> bazaarNames = null;
+    private static volatile List<String> auctionNames = null;
+    private static volatile List<String> allNames = null;
     private static volatile boolean fetching = false;
     private static volatile long retryAt = 0L;
 
@@ -91,6 +99,23 @@ public final class ItemTags {
         return tag == null ? new Tag(Lookup.UNKNOWN, null) : new Tag(Lookup.FOUND, tag);
     }
 
+    /**
+     * The names to suggest while searching this market, or every market's for none. Null while
+     * SkyCofl's list is not loaded yet; asking starts loading it.
+     */
+    public static List<String> names(MarketKind kind) {
+        if (allNames == null) {
+            load();
+            return null;
+        }
+        return kind == MarketKind.BAZAAR ? bazaarNames : kind == MarketKind.AUCTION_HOUSE ? auctionNames : allNames;
+    }
+
+    /** Whether SkyCofl's list is on its way. */
+    public static boolean loading() {
+        return fetching;
+    }
+
     private static synchronized void load() {
         if (fetching || bazaarByName != null || System.currentTimeMillis() < retryAt) return;
         fetching = true;
@@ -123,21 +148,36 @@ public final class ItemTags {
     static void index(String json) {
         Map<String, String> bazaar = new HashMap<>();
         Map<String, String> auction = new HashMap<>();
+        Set<String> bazaarList = new LinkedHashSet<>();
+        Set<String> auctionList = new LinkedHashSet<>();
         JsonElement root = JsonParser.parseString(json);
         if (root.isJsonArray()) {
             for (JsonElement element : root.getAsJsonArray()) {
                 if (!element.isJsonObject()) continue;
                 JsonObject o = element.getAsJsonObject();
-                String name = string(o, "name");
+                // A few names carry formatting codes, which neither a search nor a lookup wants.
+                String name = string(o, "name").replaceAll("§.", "").trim();
                 String tag = string(o, "tag");
                 if (name.isEmpty() || tag.isEmpty() || name.equals("null")) continue;
                 String key = name.toLowerCase(Locale.ROOT);
-                if (string(o, "flags").contains("BAZAAR")) bazaar.putIfAbsent(key, tag);
-                else auction.putIfAbsent(key, tag);
+                String flags = string(o, "flags");
+                if (flags.contains("BAZAAR")) {
+                    bazaar.putIfAbsent(key, tag);
+                    bazaarList.add(name);
+                } else {
+                    auction.putIfAbsent(key, tag);
+                    // Only what is actually sold there: items that never are would crowd the suggestions.
+                    if (flags.contains("AUCTION") || flags.contains("MUSEUM")) auctionList.add(name);
+                }
             }
         }
         auctionByName = auction;
         bazaarByName = bazaar;
+        bazaarNames = List.copyOf(bazaarList);
+        auctionNames = List.copyOf(auctionList);
+        List<String> all = new ArrayList<>(auctionList);
+        all.addAll(bazaarList);
+        allNames = List.copyOf(all);
     }
 
     private static String string(JsonObject o, String key) {

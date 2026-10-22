@@ -340,4 +340,37 @@ class MarketParsingTest {
         assertEquals(100.0, ends[0]);
         assertEquals(110.0, ends[1]);
     }
+
+    // ---- Search suggestions ---------------------------------------------------------------------
+
+    private static final List<String> NAMES = List.of("Aspect of the Void", "Aspect of the Dragons", "Aspect of the End",
+            "Dark Claymore", "Hyperion", "Enchanted Hay Bale", "Hay Bale", "Mithril Hay", "Giant's Sword");
+
+    private static List<String> suggest(String query) {
+        return SearchSuggestions.rank(query, NAMES, 5).stream().map(SearchSuggestions.Match::name).toList();
+    }
+
+    @Test
+    void suggestsNamesStartingWithTheSearchFirst() {
+        // Equally good matches: the shorter name first.
+        assertEquals(List.of("Hay Bale", "Mithril Hay", "Enchanted Hay Bale"), suggest("hay"));
+        assertEquals(List.of("Aspect of the End", "Aspect of the Void", "Aspect of the Dragons"), suggest("aspect"));
+    }
+
+    @Test
+    void suggestsByWordStartsAndInitials() {
+        assertEquals(List.of("Dark Claymore"), suggest("dark clay"));
+        assertEquals(List.of("Enchanted Hay Bale"), suggest("ench hay"));
+        assertEquals(List.of("Aspect of the Dragons"), suggest("aotd"));
+        assertEquals(List.of("Giant's Sword"), suggest("giant"));
+        assertTrue(suggest("zzz").isEmpty());
+    }
+
+    @Test
+    void marksWhatMatched() {
+        SearchSuggestions.Match match = SearchSuggestions.rank("ench hay", List.of("Enchanted Hay Bale"), 1).get(0);
+        assertArrayEquals(new int[] {0, 4, 10, 13}, match.ranges());
+        SearchSuggestions.Match initials = SearchSuggestions.rank("aotd", List.of("Aspect of the Dragons"), 1).get(0);
+        assertArrayEquals(new int[] {0, 1, 7, 8, 10, 11, 14, 15}, initials.ranges());
+    }
 }

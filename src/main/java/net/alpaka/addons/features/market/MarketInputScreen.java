@@ -4,6 +4,7 @@ import net.alpaka.addons.client.gui.AlpakaStyle;
 import net.alpaka.addons.client.gui.EditableText;
 import net.alpaka.addons.client.gui.GuiFont;
 import net.alpaka.addons.client.gui.ModernGuiUtils;
+import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.wheel.WheelMesh;
 import net.alpaka.addons.mixin.AbstractSignEditScreenAccessor;
 import net.alpaka.addons.utils.SkyblockUtils;
@@ -57,6 +58,27 @@ public class MarketInputScreen extends SignEditScreen {
     private String pendingText = null;
 
     private final List<Hit> hits = new ArrayList<>();
+
+    // ---- Suggestions, for a search ---------------------------------------------------------------
+
+    private static final int SUGGESTION_ROWS = 6;
+    private static final int SUGGESTION_H = 16;
+    private static final int SUGGESTION_FOOTER_H = 14;
+
+    /** One name offered under the field, with the stretches of it that matched. */
+    private record Suggestion(String name, int[] ranges, boolean recent) {}
+
+    private List<Suggestion> suggestions = List.of();
+    /** What the suggestions were worked out for: the text and how many names there were to search. */
+    private String suggestedFor = null;
+    /** SkyCofl's item names are still on their way. */
+    private boolean namesPending = false;
+    /** The suggestion picked with the arrow keys or the mouse, -1 for none. */
+    private int highlight = -1;
+    /** The text the list was closed for with Escape; it opens again once the text changes. */
+    private String dismissedFor = null;
+    private int lastMouseX = Integer.MIN_VALUE;
+    private int lastMouseY = Integer.MIN_VALUE;
 
     private record Hit(int x, int y, int w, int h, java.util.function.DoubleConsumer action, boolean sound) {
         boolean contains(double mx, double my) {
@@ -182,7 +204,7 @@ public class MarketInputScreen extends SignEditScreen {
     }
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor graphics, int realMouseX, int realMouseY, float partialTick) {
         hits.clear();
         boolean scaling = AlpakaStyle.beginOpen(graphics, openTimeMs, this.width, this.height);
         int w = panelW();
@@ -190,6 +212,17 @@ public class MarketInputScreen extends SignEditScreen {
         int x = (this.width - w) / 2;
         // A little above the middle, where the eye already is after clicking a menu's search.
         int y = Math.max(8, (this.height - h) / 2 - 20);
+
+        // The suggestion list hangs under the field, over whatever is below it, which then takes no mouse.
+        updateSuggestions();
+        int fx = x + PAD + 2;
+        int fw = w - PAD * 2 - 4;
+        int fy = y + HEADER_H + 10;
+        int[] list = dropdownOpen() ? dropdownRect(fx, fy + FIELD_H + 3, fw) : null;
+        boolean overList = list != null && AlpakaStyle.inside(realMouseX, realMouseY, list[0], list[1], list[2], list[3]);
+        int mouseX = overList ? -10000 : realMouseX;
+        int mouseY = overList ? -10000 : realMouseY;
+
         AlpakaStyle.panel(graphics, x, y, w, h);
 
         int accent = AlpakaStyle.accent();
@@ -213,9 +246,6 @@ public class MarketInputScreen extends SignEditScreen {
         AlpakaStyle.headerLine(graphics, x, y, w);
 
         // The field.
-        int fx = x + PAD + 2;
-        int fw = w - PAD * 2 - 4;
-        int fy = y + HEADER_H + 10;
         drawField(graphics, mouseX, mouseY, fx, fy, fw);
 
         // Under it: Hypixel's own question on the left, the amount written out on the right.
@@ -246,7 +276,155 @@ public class MarketInputScreen extends SignEditScreen {
         graphics.text(this.font, GuiFont.text("Enter to confirm · Esc to cancel"), x + PAD + 2, cy + (bh - 8) / 2,
                 AlpakaStyle.DIVIDER, false);
 
+        if (list != null) drawDropdown(graphics, realMouseX, realMouseY, list);
+        lastMouseX = realMouseX;
+        lastMouseY = realMouseY;
+
         AlpakaStyle.endOpen(graphics, scaling);
+    }
+
+    // ---- Suggestions ----------------------------------------------------------------------------
+
+    /**
+     * Works the suggestions out again when the text, or the names to search, changed: matching
+     * recent searches first, then item names from SkyCofl's list for this market. Only names that
+     * fit the sign are offered, so picking one always goes through.
+     */
+    private void updateSuggestions() {
+        if (prompt.type() != SignPrompt.Type.SEARCH) return;
+        String text = text();
+        boolean online = AlpakaConfig.instance.allowApiCalls;
+        List<String> names = online ? ItemTags.names(context) : null;
+        namesPending = online && names == null && ItemTags.loading();
+        String key = text + "|" + (names == null ? -1 : names.size());
+        if (key.equals(suggestedFor)) return;
+        suggestedFor = key;
+        highlight = -1;
+        List<Suggestion> out = new ArrayList<>();
+        if (!text.isBlank()) {
+            java.util.Set<String> taken = new java.util.HashSet<>();
+            for (SearchSuggestions.Match m : SearchSuggestions.rank(text, Markets.recentSearches(context), 3)) {
+                if (split(m.name()) == null) continue;
+                out.add(new Suggestion(m.name(), m.ranges(), true));
+                taken.add(m.name().toLowerCase(java.util.Locale.ROOT));
+            }
+            if (names != null) {
+                for (SearchSuggestions.Match m : SearchSuggestions.rank(text, names, SUGGESTION_ROWS * 3)) {
+                    if (out.size() >= SUGGESTION_ROWS) break;
+                    if (taken.contains(m.name().toLowerCase(java.util.Locale.ROOT)) || split(m.name()) == null) continue;
+                    out.add(new Suggestion(m.name(), m.ranges(), false));
+                }
+            }
+        }
+        suggestions = out;
+    }
+
+    /** Whether the list shows: a search being typed, not closed with Escape, with something to offer. */
+    private boolean dropdownOpen() {
+        if (prompt.type() != SignPrompt.Type.SEARCH) return false;
+        String text = text();
+        if (text.isBlank() || text.equals(dismissedFor)) return false;
+        return !suggestions.isEmpty() || namesPending;
+    }
+
+    /** The list's place: under the field, as many rows as fit on the screen. */
+    private int[] dropdownRect(int x, int y, int w) {
+        int rows = Math.max(1, suggestions.size());
+        int room = (this.height - 6 - y - SUGGESTION_FOOTER_H - 8) / SUGGESTION_H;
+        rows = Math.max(1, Math.min(rows, room));
+        return new int[] {x, y, w, 4 + rows * SUGGESTION_H + SUGGESTION_FOOTER_H + 2};
+    }
+
+    private void drawDropdown(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int[] rect) {
+        int x = rect[0];
+        int y = rect[1];
+        int w = rect[2];
+        int h = rect[3];
+        // Over everything drawn so far, the buttons' text included.
+        graphics.nextStratum();
+        AlpakaStyle.popover(graphics, x, y, w, h);
+        hits.add(new Hit(x, y, w, h, mx -> { }, false));
+        int rows = (h - 4 - SUGGESTION_FOOTER_H - 2) / SUGGESTION_H;
+        boolean moved = mouseX != lastMouseX || mouseY != lastMouseY;
+        int accent = AlpakaStyle.accent();
+
+        if (suggestions.isEmpty()) {
+            graphics.text(this.font, GuiFont.text("Loading item names…"), x + 22, y + 2 + (SUGGESTION_H - 8) / 2,
+                    AlpakaStyle.TEXT_MUTED, false);
+        }
+        for (int i = 0; i < Math.min(rows, suggestions.size()); i++) {
+            Suggestion s = suggestions.get(i);
+            int ry = y + 2 + i * SUGGESTION_H;
+            int rx = x + 3;
+            int rw = w - 6;
+            boolean hover = AlpakaStyle.inside(mouseX, mouseY, rx, ry, rw, SUGGESTION_H);
+            if (hover && moved) highlight = i;
+            boolean lit = i == highlight;
+            if (lit) {
+                ModernGuiUtils.drawRoundedRect(graphics, rx, ry, rw, SUGGESTION_H, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW_SELECTED);
+                ModernGuiUtils.drawRoundedRect(graphics, rx, ry + 4, 2, SUGGESTION_H - 8, 1, accent);
+            }
+            MarketIcons.Glyph glyph = s.recent() ? MarketIcons.Glyph.CLOCK
+                    : context == null ? MarketIcons.Glyph.SEARCH : MarketIcons.of(context);
+            MarketIcons.draw(graphics, glyph, rx + 7, ry + (SUGGESTION_H - 8) / 2f, 8, lit ? accent : AlpakaStyle.TEXT_MUTED);
+
+            int tx = rx + 20;
+            String hint = lit ? "Enter ↵" : "";
+            int hintW = hint.isEmpty() ? 0 : GuiFont.width(this.font, hint) + 8;
+            int room = rx + rw - 6 - hintW - tx;
+            drawMatch(graphics, s, tx, ry + (SUGGESTION_H - 8) / 2, room, lit);
+            if (!hint.isEmpty()) {
+                graphics.text(this.font, GuiFont.text(hint), rx + rw - 6 - GuiFont.width(this.font, hint), ry + (SUGGESTION_H - 8) / 2,
+                        AlpakaStyle.TEXT_MUTED, false);
+            }
+            int index = i;
+            hits.add(new Hit(rx, ry, rw, SUGGESTION_H, mx -> choose(index), true));
+        }
+
+        String footer = AlpakaConfig.instance.allowApiCalls
+                ? "↑↓ choose · Tab fill in · click to search"
+                : "Turn on Network Features for item suggestions";
+        ModernGuiUtils.drawRect(graphics, x + 8, y + h - SUGGESTION_FOOTER_H - 1, w - 16, 1, AlpakaStyle.LINE);
+        graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, footer, w - 16)), x + 8,
+                y + h - SUGGESTION_FOOTER_H + 3, AlpakaStyle.DIVIDER, false);
+    }
+
+    /** A suggestion's name with the parts that matched lit in the accent. */
+    private void drawMatch(GuiGraphicsExtractor graphics, Suggestion s, int x, int y, int room, boolean lit) {
+        String name = s.name();
+        int base = lit ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
+        if (GuiFont.width(this.font, name) > room) {
+            graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, name, room)), x, y, base, false);
+            return;
+        }
+        // One text with colored stretches, so the font lays it out as a whole: drawn in parts, each
+        // part's width is rounded up to a whole pixel and small gaps open between them.
+        net.minecraft.network.chat.MutableComponent text = net.minecraft.network.chat.Component.empty();
+        int at = 0;
+        int[] r = s.ranges();
+        for (int i = 0; i + 1 < r.length; i += 2) {
+            int from = Math.max(at, Math.min(name.length(), r[i]));
+            int to = Math.max(from, Math.min(name.length(), r[i + 1]));
+            if (from > at) text.append(GuiFont.text(name.substring(at, from)).withColor(base));
+            if (to > from) text.append(GuiFont.text(name.substring(from, to)).withColor(AlpakaStyle.accent()));
+            at = to;
+        }
+        if (at < name.length()) text.append(GuiFont.text(name.substring(at)).withColor(base));
+        graphics.text(this.font, text, x, y, base, false);
+    }
+
+    /** Searches for a suggestion: into the field, then confirmed as if typed and Enter pressed. */
+    private void choose(int index) {
+        if (index < 0 || index >= suggestions.size()) return;
+        String name = suggestions.get(index).name();
+        replace(name);
+        if (text().equals(name)) confirm();
+    }
+
+    /** Puts a suggestion into the field without searching yet, for Tab. */
+    private void fillIn(int index) {
+        if (index < 0 || index >= suggestions.size()) return;
+        replace(suggestions.get(index).name());
     }
 
     private MarketIcons.Glyph glyph() {
@@ -417,16 +595,36 @@ public class MarketInputScreen extends SignEditScreen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
+        boolean open = dropdownOpen() && !suggestions.isEmpty();
         if (event.isEscape()) {
-            cancel();
+            // The first Escape closes the list, the next one the bar.
+            if (dropdownOpen()) {
+                dismissedFor = text();
+                highlight = -1;
+            } else {
+                cancel();
+            }
             return true;
         }
         if (event.isConfirmation()) {
-            confirm();
+            if (open && highlight >= 0) choose(highlight);
+            else confirm();
             return true;
         }
-        // The answer is one field: the arrows up and down would move to Hypixel's own lines.
-        if (event.isUp() || event.isDown()) return true;
+        if (open && event.isCycleFocus()) {
+            fillIn(Math.max(0, highlight));
+            return true;
+        }
+        // Up and down walk the suggestions. Without them they would move to Hypixel's own lines,
+        // which are not the answer, so they do nothing.
+        if (event.isDown()) {
+            if (open) highlight = Math.min(suggestions.size() - 1, highlight + 1);
+            return true;
+        }
+        if (event.isUp()) {
+            if (open) highlight = Math.max(-1, highlight - 1);
+            return true;
+        }
         boolean[] handled = {false};
         edit(() -> handled[0] = input.keyPressed(event.key(), event.hasControlDownWithQuirk(), event.hasShiftDown()));
         return handled[0];

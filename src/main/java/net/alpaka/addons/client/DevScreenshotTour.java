@@ -213,6 +213,18 @@ public final class DevScreenshotTour {
             // sign opening: the input bar has to take over there, not vanilla's sign.
             new Stop("market-input-hypixel", () -> net.alpaka.addons.features.market.MarketPreview.openLikeHypixel(
                     new String[] {"", "", "^^^^^^^^^^^^^^^", "Enter query"}), () -> true, 30),
+            // Suggestions while a search is typed: names from SkyCofl's list, which loads from the network.
+            new Stop("market-input-suggest", () -> Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.input(
+                    new String[] {"", "", "^^^^^^^^^^^^^^^", "Enter query"},
+                    net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, "aspect")), () -> true, 80),
+            new Stop(null, () -> Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.input(
+                    new String[] {"", "", "^^^^^^^^^^^^^^^", "Enter query"},
+                    net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, "aotd")), () -> true, 10),
+            new Stop("market-input-suggest-initials", () -> screen().keyPressed(
+                    new net.minecraft.client.input.KeyEvent(org.lwjgl.glfw.GLFW.GLFW_KEY_DOWN, 0, 0)), () -> true, 5),
+            new Stop("market-input-suggest-bazaar", () -> Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.input(
+                    new String[] {"", "", "^^^^^^^^^^^^^^^", "Enter query"},
+                    net.alpaka.addons.features.market.MarketKind.BAZAAR, "ench hay")), () -> true, 20),
             screen("market-input-price", () -> net.alpaka.addons.features.market.MarketPreview.input(
                     new String[] {"", "^^^^^^^^^^^^^^^", "Your bid", ""},
                     net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, "1.5m")),

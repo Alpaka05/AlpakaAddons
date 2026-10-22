@@ -217,6 +217,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.hideMobDeathSmoke = v; AlpakaConfig.save(); },
                 "hide mob death smoke poof particles cloud puff"));
 
+        OPTIONS.add(new ConfigOption("hide_explosions", "Hide Explosions",
+                "Hides the flash, cloud and debris of explosions.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.hideExplosions,
+                v -> { AlpakaConfig.instance.hideExplosions = v; AlpakaConfig.save(); },
+                "hide explosion explosions explode tnt creeper hyperion wither impact implosion bonzo particles flash cloud smoke"));
+
         OPTIONS.add(new ConfigOption("Hide Fire Overlay", ConfigCategory.VISUALS));
 
         OPTIONS.add(new ConfigOption("hide_entity_fire", "Hide Mob Fire",

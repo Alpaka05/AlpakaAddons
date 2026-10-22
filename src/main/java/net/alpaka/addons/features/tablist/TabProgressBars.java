@@ -27,9 +27,9 @@ import java.util.regex.Pattern;
  * </ul>
  * The bar takes the color of the text it stands for, so a pink reputation bar stays pink.
  *
- * Hypixel puts its pipe bars on a row of their own. Such a row joins the one above it, and when
- * that one is the widget's bare title it joins that too, so "Mage Reputation:", "29,110" and the
- * bar become one row: "Mage Reputation: 29,110", the bar, "(100%)".
+ * Hypixel puts its pipe bars on a row of their own. Such a row joins the value above it, so
+ * "29,110" and the bar become one row: "29,110", the bar, "(100%)". A widget's title
+ * ("Mage Reputation:") always keeps its row to itself.
  */
 public final class TabProgressBars {
 
@@ -65,30 +65,19 @@ public final class TabProgressBars {
         return out;
     }
 
-    /**
-     * Rows that are nothing but a bar joined to the row above, and that one to the widget's title
-     * when the title is all the row above it holds.
-     */
+    /** Rows that are nothing but a bar joined to the value above them; never to a title. */
     static List<TabListParser.Line> joinBarRows(List<TabListParser.Line> lines) {
         List<TabListParser.Line> out = new ArrayList<>(lines.size());
         for (TabListParser.Line line : lines) {
             int last = out.size() - 1;
             boolean barOnly = line.bar() != null && TabListParser.plain(line.text()).isBlank();
-            if (!barOnly || last < 0 || out.get(last).bar() != null || out.get(last).player() != null) {
+            if (!barOnly || last < 0 || out.get(last).bar() != null || out.get(last).player() != null
+                    || TabListParser.plain(out.get(last).text()).trim().endsWith(":")) {
                 out.add(line);
                 continue;
             }
             TabListParser.Line above = out.remove(last);
-            Component text = above.text();
-            boolean indented = above.indented();
-            int title = out.size() - 1;
-            if (title >= 0 && out.get(title).bar() == null
-                    && TabListParser.plain(out.get(title).text()).trim().endsWith(":")) {
-                TabListParser.Line head = out.remove(title);
-                text = Component.empty().append(head.text()).append(" ").append(TabListParser.trim(text));
-                indented = head.indented();
-            }
-            out.add(new TabListParser.Line(text, indented, null, line.bar(), line.after(), null));
+            out.add(new TabListParser.Line(above.text(), above.indented(), null, line.bar(), line.after(), null));
         }
         return out;
     }

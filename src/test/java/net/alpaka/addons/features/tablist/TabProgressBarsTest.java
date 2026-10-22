@@ -41,17 +41,24 @@ class TabProgressBarsTest {
     }
 
     @Test
-    void aBarOnItsOwnRowJoinsTheValueAndTitleAbove() {
+    void aBarOnItsOwnRowJoinsTheValueButNeverTheTitle() {
         java.util.List<TabListParser.Line> rows = new java.util.ArrayList<>();
         for (String row : new String[]{"§5§lMage Reputation:", " §d29,110", " §d||||||||||||||| §r(100%)", " Max Reputation"}) {
             rows.add(TabProgressBars.withBar(line(row), false));
         }
         java.util.List<TabListParser.Line> joined = TabProgressBars.joinBarRows(rows);
-        assertEquals(2, joined.size());
-        assertEquals("Mage Reputation: 29,110", TabListParser.plain(joined.get(0).text()).trim());
-        assertEquals(1.0f, joined.get(0).bar().fraction(), 1.0e-6);
-        assertEquals("(100%)", TabListParser.plain(joined.get(0).after()));
-        assertEquals("Max Reputation", TabListParser.plain(joined.get(1).text()).trim());
+        assertEquals(3, joined.size());
+        assertEquals("Mage Reputation:", TabListParser.plain(joined.get(0).text()).trim());
+        assertNull(joined.get(0).bar());
+        assertEquals("29,110", TabListParser.plain(joined.get(1).text()).trim());
+        assertEquals(1.0f, joined.get(1).bar().fraction(), 1.0e-6);
+        assertEquals("(100%)", TabListParser.plain(joined.get(1).after()));
+        assertEquals("Max Reputation", TabListParser.plain(joined.get(2).text()).trim());
+
+        // A bar right under a title stays on its own row rather than joining the title.
+        java.util.List<TabListParser.Line> titled = TabProgressBars.joinBarRows(java.util.List.of(
+                rows.get(0), rows.get(2)));
+        assertEquals(2, titled.size());
     }
 
     @Test

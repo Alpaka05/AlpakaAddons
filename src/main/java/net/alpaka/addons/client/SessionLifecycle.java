@@ -58,6 +58,7 @@ public final class SessionLifecycle {
         net.alpaka.addons.features.damagetags.CustomDamageTagFeature.reset();
         net.alpaka.addons.utils.DungeonState.reset();
         AlpakaStats.flushNow();
+        net.alpaka.addons.features.slayer.SlayerKillLog.INSTANCE.flushNow();
     }
 
     private static void onLevelChange() {
@@ -71,5 +72,6 @@ public final class SessionLifecycle {
     private static void onStopping() {
         AlpakaConfig.endDeferredSaves();
         AlpakaStats.flushNow();
+        net.alpaka.addons.features.slayer.SlayerKillLog.INSTANCE.flushNow();
     }
 }

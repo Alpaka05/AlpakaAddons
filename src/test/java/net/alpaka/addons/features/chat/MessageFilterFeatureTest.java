@@ -27,6 +27,17 @@ class MessageFilterFeatureTest {
             "Profile ID: 691d6a3b-23ea-4541-80b5-771facc73b16                       | PROFILE_JOIN",
             "You haven't claimed your Summer Rewards yet!                           | REWARD_BUNDLE",
             "Talk to the Summer Sloth in the Hub!                                   | REWARD_BUNDLE_HINT",
+            "Autopet equipped your [Lvl 100] Mosquito! VIEW RULE                    | AUTOPET",
+            "Autopet equipped your [Lvl 200] [122✦] Golden Dragon! VIEW RULE (2)    | AUTOPET",
+            "A FIRE SALE A                                                          | FIRE_SALE",
+            "♨ Fire Sales for Dark Lord Skin are starting soon!                     | FIRE_SALE",
+            "♨ A Fire Sale for Dark Lord Skin is starting soon!                     | FIRE_SALE",
+            "♨ Fire Sale for Dark Lord Skin ended!                                  | FIRE_SALE",
+            "♨ Dark Lord Skin for a limited time (2,500 left)!                      | FIRE_SALE",
+            "♨ Visit the Community Shop in the next 2 days to grab yours! [WARP]    | FIRE_SALE",
+            "♨ And 3 more!                                                          | FIRE_SALE",
+            "♨ Selling multiple items for a limited time!                           | FIRE_SALE",
+            "[WATCHDOG ANNOUNCEMENT]                                                | WATCHDOG",
     })
     void recognizesSpam(String text, Kind kind) {
         assertEquals(kind, MessageFilterFeature.classify(text.strip()));
@@ -39,6 +50,8 @@ class MessageFilterFeatureTest {
             "Someone: You are playing on profile: Kiwi",
             "RARE DROP! (Enchanted Book) +250% ✯ Magic Find",
             "Party > [MVP+] Alpakaa: hi",
+            "[MVP+] Someone: Autopet equipped your [Lvl 100] Mosquito! VIEW RULE",
+            "Guild > Someone: ♨ And 3 more!",
     })
     void leavesOtherLinesAlone(String text) {
         assertNull(MessageFilterFeature.classify(text));
@@ -61,5 +74,38 @@ class MessageFilterFeatureTest {
         assertTrue(MessageFilterFeature.isHidden(Kind.REWARD_BUNDLE_HINT, true, 50));
         assertFalse(MessageFilterFeature.isHidden(Kind.REWARD_BUNDLE_HINT, true, MessageFilterFeature.HINT_WINDOW_MS + 1));
         assertFalse(MessageFilterFeature.isHidden(Kind.REWARD_BUNDLE_HINT, false, 50));
+    }
+
+    @Test
+    void fireSaleAnnouncementInOneMessage() {
+        assertEquals(Kind.FIRE_SALE, MessageFilterFeature.classify("A FIRE SALE A\n♨ Selling multiple items for a limited time!"));
+    }
+
+    @Test
+    void watchdogTakesItsLinesUpToTheBlankOne() {
+        MessageFilterFeature.resetWatchdog();
+        assertEquals(Kind.WATCHDOG, MessageFilterFeature.next("[WATCHDOG ANNOUNCEMENT]"));
+        assertEquals(Kind.WATCHDOG, MessageFilterFeature.next("Watchdog has banned 5,123 players in the last 7 days."));
+        assertEquals(Kind.WATCHDOG, MessageFilterFeature.next("Staff have banned an additional 1,234 in the last 7 days."));
+        assertEquals(Kind.WATCHDOG, MessageFilterFeature.next("Blacklisted modifications are a bannable offense!"));
+        assertEquals(Kind.WATCHDOG, MessageFilterFeature.next(""));
+        assertNull(MessageFilterFeature.next("Party > [MVP+] Alpakaa: hi"));
+    }
+
+    @Test
+    void watchdogNeverSwallowsMoreThanItsLimit() {
+        MessageFilterFeature.resetWatchdog();
+        MessageFilterFeature.next("[WATCHDOG ANNOUNCEMENT]");
+        for (int i = 0; i < MessageFilterFeature.WATCHDOG_MAX_LINES; i++) {
+            assertEquals(Kind.WATCHDOG, MessageFilterFeature.next("line " + i));
+        }
+        assertNull(MessageFilterFeature.next("Party > [MVP+] Alpakaa: hi"));
+    }
+
+    @Test
+    void watchdogInOneMessage() {
+        MessageFilterFeature.resetWatchdog();
+        assertEquals(Kind.WATCHDOG, MessageFilterFeature.next("[WATCHDOG ANNOUNCEMENT]\nWatchdog has banned 5,123 players in the last 7 days."));
+        assertNull(MessageFilterFeature.next("Party > [MVP+] Alpakaa: hi"));
     }
 }

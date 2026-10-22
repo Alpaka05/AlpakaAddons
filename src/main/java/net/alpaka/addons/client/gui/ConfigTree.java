@@ -105,10 +105,10 @@ public final class ConfigTree {
             "block_overlay_enabled",
             // SkyBlock
             "etherwarp_overlay", "etherwarp_sound",
-            "slayer_drop_tracker", "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat", "slayer_since_reply_offer",
-            "hide_slayer_chat", "boss_spawn_alert", "slayer_timer", "slayer_hud_enabled",
+            "slayer_drop_tracker", "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat",
+            "hide_slayer_chat", "boss_spawn_alert", "boss_cocoon_alert", "slayer_timer", "slayer_hud_enabled",
             "world_age_hud_enabled", "world_age_join_message_enabled", "party_invite_prompt",
-            "guild_prefix", "bridge_bot_formatter", "pangolin_highlight_enabled", "only_crit_damage",
+            "guild_prefix", "bridge_bot_formatter", "only_crit_damage", "ragnarock", "cache_resource_pack",
             // Cosmetics
             "custom_name_tag", "chroma_hat", "player_scale", "custom_damage_tags",
             // Sound & utility
@@ -156,9 +156,9 @@ public final class ConfigTree {
     /** What a feature built from a header is about; it has no master option to take it from. */
     private static final Map<String, String> HEADER_DESCRIPTIONS = Map.of(
             "Swing Customizations", "How the held item moves when you swing: drift, arc and whether the swing always plays out.",
-            "Viewmodel Presets", "Save your viewmodel and swing settings to a slot and load them back later.",
+            "Viewmodel Presets", "Save your viewmodel and swing settings to a preset and load them back later.",
             "HUD Style", "Main switches for the blurred panels and the smooth font of every HUD, and how strongly the world is blurred.",
-            "Scoreboard", "The sidebar scoreboard's background and font.",
+            "Scoreboard", "The sidebar scoreboard's footer, background and font.",
             "Nametags", "How the nametags above players and mobs look, and whether you see your own.",
             "Hide Fire Overlay", "Hides the flames on burning mobs, and fades, lowers or stills the fire on your screen while you burn.",
             "Notification Customization", "How long notifications stay, where they appear and how they look. Send a test to see the result."
@@ -189,13 +189,13 @@ public final class ConfigTree {
                             "#Viewmodel Presets", "item_viewmodel_reset"},
                     {"Cosmetics", "custom_name_tag", "custom_damage_tags", "chroma_hat", "player_scale"}},
             {{"SkyBlock"},
-                    {"Slayer", "slayer_hud_enabled", "slayer_timer", "boss_spawn_alert", "slayer_drop_tracker",
-                            "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat", "slayer_since_reply_offer",
+                    {"Slayer", "slayer_hud_enabled", "slayer_timer", "boss_spawn_alert", "boss_cocoon_alert", "slayer_drop_tracker",
+                            "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat",
                             "hide_slayer_chat"},
                     {"Blaze", "clean_blaze", "blaze_fire_pits", "stop_blaze_spinning",
                             "mute_vanilla_sounds_blaze_slayer", "custom_sound_blaze_death"},
-                    {"Tools", "etherwarp_overlay", "etherwarp_sound", "only_crit_damage", "pangolin_highlight_enabled",
-                            "world_age_hud_enabled", "world_age_join_message_enabled"},
+                    {"Tools", "etherwarp_overlay", "etherwarp_sound", "only_crit_damage",
+                            "world_age_hud_enabled", "world_age_join_message_enabled", "ragnarock", "cache_resource_pack"},
                     {"Social", "party_invite_prompt", "guild_prefix", "bridge_bot_formatter"}},
     };
 

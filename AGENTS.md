@@ -75,6 +75,28 @@ skill). In short:
 - Ask before anything hard to undo that this file doesn't already allow: force-pushing, deleting
   branches or releases, adding or upgrading a dependency, changing CI.
 
+## Where a new config option goes
+
+main and design-rework have two different config menus, and an option placed right in one can
+land in the wrong spot in the other. Work out where it goes in each menu separately, from that
+branch's own code, every time:
+
+- **main (old menu):** one flat list per tab (`ConfigCategory`), split by header options. The
+  option appears exactly where it is registered in `AlpakaConfigRegistry`, under the header before
+  it. Register it in the section it belongs to, not just at the end of the tab.
+- **design-rework (new menu):** `ConfigTree` builds sidebar page → feature → settings from the
+  registry. An option is a feature of its own (its own row in the middle column) only if its id is
+  in `ConfigTree.MASTERS`; otherwise it silently becomes a setting of whatever feature was
+  registered just before it. Each feature then has to be listed on its sidebar page in
+  `ConfigTree.LAYOUT`, or it ends up under "Other". Settings registered away from their feature
+  go into `PARENTS`.
+- **design-rework: Blur and Smooth Font come last.** In every feature that has them, the Blur and
+  Smooth Font switches are the last settings; nothing goes below them. A new setting for such a
+  feature is registered before them (the per-HUD ones are registered at the end in
+  `registerHudStyleToggles` for this reason). This rule is for design-rework only.
+- If it isn't clear which page or section an option belongs on, ask before you open the PR. Check
+  in the menu (screenshot tour) that it shows up where intended.
+
 ## Conventions
 
 - User-visible text: English, American spelling ("Color"), Title Case for titles.

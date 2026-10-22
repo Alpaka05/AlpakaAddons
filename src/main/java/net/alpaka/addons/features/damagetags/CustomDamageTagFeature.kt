@@ -89,6 +89,8 @@ object CustomDamageTagFeature {
     /** How long a stand's id is remembered after its tag was taken, so it is never taken twice. */
     private const val SEEN_MEMORY_MS = 30_000L
 
+    private const val LOVE_HEART = "❤"
+
     private const val FULL_BRIGHT = 0xF000F0
 
     /** Below this alpha the font treats the color as opaque, so the tag is simply not drawn. */
@@ -140,9 +142,14 @@ object CustomDamageTagFeature {
         val baseY = player.eyeY - 0.6
         val baseZ = player.z + look.z * 3.0
         val now = System.currentTimeMillis()
-        val samples = listOf("1,234" to false, "48,920" to true, "139k" to false, "2,417,880" to true, "873" to false)
+        // Number, crit, Ring of Love.
+        val samples = listOf(
+            Triple("1,234", false, false), Triple("48,920", true, false), Triple("139k", false, false),
+            Triple("2,417,880", true, true), Triple("873", false, true),
+        )
         for ((i, sample) in samples.withIndex()) {
-            add(Tag(baseX + (i - 2) * 0.5, baseY, baseZ, format(sample.first), sample.second, now + i * 150L))
+            val text = format(sample.first) + if (sample.third) LOVE_HEART else ""
+            add(Tag(baseX + (i - 2) * 0.5, baseY, baseZ, text, sample.second, now + i * 150L))
         }
     }
 
@@ -171,7 +178,9 @@ object CustomDamageTagFeature {
             // Hypixel's own splash stays hidden either way; these only decide whether ours is drawn.
             if (hiddenInDungeon) continue
             if (cfg.customDamageTagHideNearSlayerBoss && nearSlayerBoss(level, entity)) continue
-            add(Tag(entity.x, entity.y + entity.bbHeight + NAME_TAG_LIFT, entity.z, format(splash.number), splash.crit, now))
+            // Ring of Love's heart stays on the copy: it is what tells a doubled hit apart.
+            val text = format(splash.number) + if (splash.love) LOVE_HEART else ""
+            add(Tag(entity.x, entity.y + entity.bbHeight + NAME_TAG_LIFT, entity.z, text, splash.crit, now))
         }
     }
 
@@ -255,8 +264,9 @@ object CustomDamageTagFeature {
      * [time], the gradient sways back and forth along the number.
      *
      * Built straight as the sequence the font draws rather than as a Component read through
-     * visualOrderText. A tag only ever holds ASCII digits, ',', '.' and a k/M/B suffix (the damage
-     * number pattern or [format]), which read left to right in every language, so a component tree
+     * visualOrderText. A tag only ever holds ASCII digits, ',', '.', a k/M/B suffix (the damage
+     * number pattern or [format]) and possibly Ring of Love's heart at the very end, a neutral
+     * character that stays after the digits; all of it reads left to right in every language, so a component tree
      * and an ICU bidi pass per tag per frame could never change the order. Should a tag ever hold
      * other characters, it has to go back through visualOrderText. The styles are worked out up
      * front, so the width pass and the later draw see the same ones.

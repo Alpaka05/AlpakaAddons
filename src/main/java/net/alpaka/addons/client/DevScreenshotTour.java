@@ -135,8 +135,16 @@ public final class DevScreenshotTour {
             new Stop("confirm-dialog-reset-all", () -> trigger("reset_all_settings"), () -> true, 30),
             screen("confirm-config-viewmodel-reset", () -> AlpakaConfigScreen.openOn("Viewmodel", "Reset Viewmodel Settings")),
             new Stop("confirm-dialog-viewmodel-reset", () -> trigger("item_viewmodel_reset"), () -> true, 30),
-            screen("confirm-config-presets", () -> AlpakaConfigScreen.openOn("Viewmodel", "Presets")),
-            new Stop("confirm-dialog-save-preset", () -> trigger("save_preset_1"), () -> true, 30),
+            // The presets as cards: one named and active, one named, one left unnamed.
+            new Stop("config-presets", () -> {
+                AlpakaConfig config = AlpakaConfig.instance;
+                while (config.itemPresets.size() < 3) config.itemPresets.add(new AlpakaConfig.ItemPreset());
+                config.itemPresets.get(0).name = "Dungeons Sword";
+                config.itemPresets.get(1).name = "Farming - low hand";
+                config.itemPresets.get(2).name = "";
+                config.activeItemPresetIndex = 0;
+                Minecraft.getInstance().gui.setScreen(AlpakaConfigScreen.openOn("Viewmodel", "Presets"));
+            }, () -> true, 30),
             screen("confirm-config-player-scale", () -> AlpakaConfigScreen.openOn("Cosmetics", "Player Scale")),
             new Stop("confirm-dialog-player-scale", () -> trigger("player_scale_reset"), () -> true, 30),
             // Quick commands with one of the player's own: Reset asks, Cancel keeps it, Reset for
@@ -159,11 +167,13 @@ public final class DevScreenshotTour {
                     () -> Minecraft.getInstance().player != null && Minecraft.getInstance().gui.screen() == null, 100),
             new Stop("world-hud", DevScreenshotTour::showHuds, () -> true, 30),
             // The screenshot preview of the picture just taken: resting in the corner, then mid-shrink.
-            new Stop(null, () -> {}, () -> tourShot("world-hud").isFile(), 2),
+            // A run that leaves out world-hud never gets its picture, so these two pass then.
+            new Stop(null, () -> {}, () -> !shoots("world-hud") || tourShot("world-hud").isFile(), 2),
             new Stop(null, () -> {
+                if (!shoots("world-hud")) return;
                 ScreenshotPreview.devFreezeAt(1150.0f);
                 ScreenshotPreview.show(tourShot("world-hud"));
-            }, ScreenshotPreview::isOnScreen, 2),
+            }, () -> !shoots("world-hud") || ScreenshotPreview.isOnScreen(), 2),
             new Stop("screenshot-preview", () -> {}, () -> true, 2),
             new Stop("screenshot-preview-shrink", () -> ScreenshotPreview.devFreezeAt(120.0f), () -> true, 2),
             new Stop(null, () -> ScreenshotPreview.devFreezeAt(-1.0f), () -> true, 5),
@@ -210,12 +220,56 @@ public final class DevScreenshotTour {
                 Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.features.wheel.CommandWheelScreen());
                 placeMouse(0.5, 0.5);
             }, () -> true, 2),
+            // The wheel on a full page of long names: they must not run into each other, and the
+            // page arrows sit at the edges.
+            new Stop("command-wheel-long", () -> {
+                AlpakaConfig.instance.commandWheelPages = new java.util.ArrayList<>(List.of(
+                        new java.util.ArrayList<>(List.of("/warp dungeon_hub", "/party transfer someone",
+                                "/visit portalhub", "/warp crimson_isle", "/wardrobe", "/pets",
+                                "/call kat", "/warp garden", "/storage", "/viewrecipe hyperion",
+                                "/equipment", "/hotm")),
+                        new java.util.ArrayList<>(List.of("/hub", "/island"))));
+                Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.features.wheel.CommandWheelScreen());
+                placeMouse(0.56, 0.3);
+            }, () -> true, 30),
+            new Stop("command-wheel-arrow", () -> placeMouse(0.97, 0.5), () -> true, 20),
+            new Stop(null, () -> AlpakaConfig.instance.commandWheelPages = null, () -> true, 1),
             new Stop(null, () -> Minecraft.getInstance().gui.setScreen(null), () -> true, 5),
             new Stop(null, () -> Minecraft.getInstance().gui.setScreen(null), () -> true, 5),
             // Two ticks after a burst: the lines are mid-slide inside the chat's box.
             new Stop("chat-slide", DevScreenshotTour::chatBurst, () -> true, 2),
             new Stop("chat-rest", () -> {}, () -> true, 40),
+            // Two ticks after opening: the chat is still unrolling and the input bar rising.
+            new Stop("chat-opening", () -> Minecraft.getInstance().gui.setScreen(new ChatScreen("", false)), () -> true, 2),
             new Stop("chat-open", () -> Minecraft.getInstance().gui.setScreen(new ChatScreen("", false)), () -> true, 10),
+            // Better Chat's scrollbar: a chat longer than the box, at the bottom and then dragged up.
+            new Stop("chat-scrollbar", () -> {
+                Minecraft mc = Minecraft.getInstance();
+                for (int i = 1; i <= 30; i++) {
+                    mc.gui.hud.getChat().addClientSystemMessage(Component.literal("§7Scroll line " + i + " §8- enough lines to scroll"));
+                }
+                mc.gui.setScreen(new ChatScreen("", false));
+            }, () -> true, 40),
+            new Stop("chat-scrollbar-dragged", () -> {
+                if (Minecraft.getInstance().gui.hud.getChat() instanceof net.alpaka.addons.features.chat.AlpakaChatScroll chat) {
+                    chat.alpaka$scrollTo(12.5);
+                }
+            }, () -> true, 10),
+            // Movable Chat: the open chat moved up and right, then its handle in the HUD editor.
+            new Stop("chat-moved", () -> {
+                AlpakaConfig.instance.chatMovable = true;
+                AlpakaConfig.instance.chatOffsetX = 120;
+                AlpakaConfig.instance.chatOffsetY = -40;
+                Minecraft.getInstance().gui.setScreen(new ChatScreen("", false));
+            }, () -> true, 10),
+            new Stop("chat-moved-hud-editor", () -> Minecraft.getInstance().gui.setScreen(new HudEditorScreen(null)), () -> true, 20),
+            new Stop("chat-moved-reset", () -> {
+                AlpakaConfig.instance.chatMovable = false;
+                AlpakaConfig.instance.chatOffsetX = 0;
+                AlpakaConfig.instance.chatOffsetY = 0;
+                Minecraft.getInstance().gui.hud.getChat().resetChatScroll();
+                Minecraft.getInstance().gui.setScreen(null);
+            }, () -> true, 5),
             // A screenshot's preview mid-shrink, then resting in the corner.
             new Stop(null, () -> {
                 Minecraft mc = Minecraft.getInstance();
@@ -377,6 +431,12 @@ public final class DevScreenshotTour {
         stop = index;
         ticks = 0;
         if (index < STOPS.size()) STOPS.get(index).action().run();
+    }
+
+    /** Whether this run takes the named picture: every picture, or those the filter picks. */
+    private static boolean shoots(String shot) {
+        String only = System.getenv(ENV);
+        return only == null || only.equals("1") || shot.startsWith(only);
     }
 
     private static boolean picked(int index, String only) {

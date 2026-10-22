@@ -1,6 +1,7 @@
 package net.alpaka.addons.client;
 
 import net.alpaka.addons.client.gui.AlpakaStyle;
+import net.alpaka.addons.client.gui.ConfigCategory;
 import net.alpaka.addons.client.gui.ConfigOption;
 import net.alpaka.addons.client.gui.ConfigTree;
 import net.alpaka.addons.client.gui.EditableText;
@@ -72,6 +73,12 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     private static final int PREVIEW_PAD = 5;
     private static final int MAX_TEXT_OPTION_LENGTH = 32;
     private static final int MAX_SEARCH_LENGTH = 35;
+    private static final int PRESET_CARD_H = 20;
+    private static final int PRESET_GAP = 4;
+    private static final int PRESET_BUTTON_H = 14;
+    private static final int PRESET_ICON = 14;
+    private static final int PRESET_MIN_FIELD_W = 60;
+    private static final int PRESET_SAVE_HOVER = 0xFF333333;
     private static final long TOOLTIP_DELAY_MS = AlpakaStyle.TOOLTIP_DELAY_MS;
 
     // ---- State ----------------------------------------------------------------------------------
@@ -101,6 +108,11 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     private final Set<ConfigOption> collapsed = new HashSet<>();
 
     private ConfigOption focusedText = null;
+    /**
+     * The name fields of the preset cards, one per preset by position, so typing into one goes
+     * through the same path as every other text setting. Grown as presets are added.
+     */
+    private final List<ConfigOption> presetNameFields = new ArrayList<>();
     /** The choice setting whose list is open, if any; one at a time. */
     private ConfigOption openChoice = null;
 
@@ -606,7 +618,10 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         }));
         if (!search.isEmpty()) {
             boolean hoverClear = inside(mouseX, mouseY, iconX - 3, sy + 2, 14, 14);
-            AlpakaStyle.iconButton(graphics, this.font, iconX - 3, sy + 2, 14, "✕", hoverClear, true, false);
+            // Just the cross, lit in the accent on hover; a box around it crowds the slim field.
+            int gw = GuiFont.width(this.font, "✕");
+            graphics.text(this.font, GuiFont.text("✕"), iconX - 3 + (14 - gw) / 2, sy + 5,
+                    hoverClear ? ModernGuiUtils.getAccentColor() : AlpakaStyle.TEXT_MUTED, false);
             hits.add(new Hit(iconX - 3, sy + 2, 14, 14, (mx, my) -> {
                 search.setText("");
                 onSearchChanged();
@@ -814,6 +829,9 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     /** Draws one setting row and returns the y the next one starts at. */
     private int drawSetting(GuiGraphicsExtractor graphics, int mouseX, int mouseY, ConfigOption option,
                             int rowX, int rowY, int rowW, int colX, int colW, int clipY, int clipH, float deltaSec) {
+        if (option.getType() == ConfigOption.Type.PRESETS) {
+            return drawPresets(graphics, mouseX, mouseY, rowX, rowY, rowW, colX, colW, clipY, clipH);
+        }
         List<net.minecraft.util.FormattedCharSequence> previewLines = option.getType() == ConfigOption.Type.PREVIEW
                 ? this.font.split(option.getPreviewText(), rowW - 2 * PREVIEW_PAD) : List.of();
         int rowH = switch (option.getType()) {
@@ -886,6 +904,10 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                     drawLabel(graphics, option.getTitle(), rowX + 4, labelY, right - SWATCH_W - 8 - (rowX + 4));
                     int sy = rowY + (rowH - SWATCH_H) / 2;
                     AlpakaStyle.swatch(graphics, right - SWATCH_W, sy, SWATCH_W, SWATCH_H, option.getColor());
+                    // A white ring while the mouse is on the swatch itself, the spot that opens the picker.
+                    if (hover && inside(mouseX, mouseY, right - SWATCH_W - 2, sy - 2, SWATCH_W + 4, SWATCH_H + 4)) {
+                        ModernGuiUtils.drawRoundedOutline(graphics, right - SWATCH_W - 1, sy - 1, SWATCH_W + 2, SWATCH_H + 2, 3, AlpakaStyle.TEXT);
+                    }
                     if (shown) hits.add(new Hit(rowX, hitY, rowW, rowH, (mx, my) -> option.triggerAction(this)));
                 } else {
                     // A button the width of the column, named for what it does; red for what destroys.
@@ -958,6 +980,121 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             }
         }
         return rowY + rowH;
+    }
+
+    /**
+     * The viewmodel presets: a card each, in the order they were made, with the name as a text field
+     * (empty shows "Preset n"), Load, Save and Delete; the active one carries the accent. Below them
+     * a button that adds a preset holding the current settings.
+     */
+    private int drawPresets(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int rowX, int rowY, int rowW,
+                            int colX, int colW, int clipY, int clipH) {
+        AlpakaConfig config = AlpakaConfig.instance;
+        List<AlpakaConfig.ItemPreset> presets = config.itemPresets;
+        int accent = ModernGuiUtils.getAccentColor();
+        boolean inColumn = inside(mouseX, mouseY, colX, clipY, colW, clipH);
+        int y = rowY;
+        for (int i = 0; i < presets.size(); i++) {
+            int index = i;
+            boolean active = config.activeItemPresetIndex == i;
+            if (!visible(y, PRESET_CARD_H, clipY, clipH)) {
+                y += PRESET_CARD_H + PRESET_GAP;
+                continue;
+            }
+            int midY = y + PRESET_CARD_H / 2;
+            ModernGuiUtils.drawRoundedRect(graphics, rowX, y, rowW, PRESET_CARD_H, AlpakaStyle.ROW_RADIUS,
+                    active ? ModernGuiUtils.lerpColor(AlpakaStyle.ROW, accent, 0.12f) | 0xFF000000 : AlpakaStyle.ROW);
+            if (active) ModernGuiUtils.drawRoundedRect(graphics, rowX, y + 4, 2, PRESET_CARD_H - 8, 1, accent);
+
+            String number = String.valueOf(i + 1);
+            int numberX = rowX + 9 - GuiFont.width(this.font, number) / 2;
+            graphics.text(this.font, GuiFont.text(number), numberX, midY - 4, active ? accent : AlpakaStyle.TEXT_MUTED, false);
+
+            // From the right: delete, Save, Load; the name field takes what is left.
+            int right = rowX + rowW - 3;
+            int deleteX = right - PRESET_ICON;
+            int saveW = GuiFont.width(this.font, "Save") + 8;
+            int saveX = deleteX - 2 - saveW;
+            int loadW = GuiFont.width(this.font, "Load") + 8;
+            int loadX = saveX - 2 - loadW;
+            int buttonY = midY - PRESET_BUTTON_H / 2;
+            int fieldX = rowX + 17;
+            // Every name field ends at the same place, a word's width short of Load, but never so
+            // early that a name has no room left.
+            int fieldGap = GuiFont.width(this.font, "Active") + 16;
+            int fieldEnd = Math.max(fieldX + PRESET_MIN_FIELD_W, loadX - fieldGap);
+            int fieldW = Math.max(20, fieldEnd - fieldX);
+            ConfigOption nameField = presetNameField(i);
+            boolean fieldHover = inColumn && inside(mouseX, mouseY, fieldX, y + 4, fieldW, PRESET_CARD_H - 8);
+            AlpakaStyle.textField(graphics, this.font, fieldX, y + 4, fieldW, PRESET_CARD_H - 8, nameField.getText(),
+                    nameField.getPlaceholder(), focusedText == nameField, fieldHover, caretBlinkFrom);
+
+            boolean loadHover = inColumn && inside(mouseX, mouseY, loadX, buttonY, loadW, PRESET_BUTTON_H);
+            boolean saveHover = inColumn && inside(mouseX, mouseY, saveX, buttonY, saveW, PRESET_BUTTON_H);
+            boolean deleteHover = inColumn && inside(mouseX, mouseY, deleteX, midY - PRESET_ICON / 2, PRESET_ICON, PRESET_ICON);
+            AlpakaStyle.button(graphics, this.font, loadX, buttonY, loadW, PRESET_BUTTON_H, "Load", loadHover, AlpakaStyle.ButtonKind.PRIMARY);
+            // A plain button would vanish on the card, which has the same gray; this one sits a step lighter.
+            ModernGuiUtils.drawRoundedRect(graphics, saveX, buttonY, saveW, PRESET_BUTTON_H, AlpakaStyle.ROW_RADIUS,
+                    saveHover ? PRESET_SAVE_HOVER : AlpakaStyle.ROW_SELECTED);
+            ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("Save"), saveX + saveW / 2, midY - 4,
+                    saveHover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
+            AlpakaStyle.trashButton(graphics, deleteX, midY - PRESET_ICON / 2, PRESET_ICON, deleteHover);
+
+            int hitY = Math.max(y, clipY);
+            hits.add(Hit.quiet(fieldX, Math.max(y + 4, clipY), fieldW, PRESET_CARD_H - 8, (mx, my) -> {
+                focusedText = nameField;
+                searchFocused = false;
+                caretBlinkFrom = System.currentTimeMillis();
+            }));
+            hits.add(new Hit(loadX, hitY, loadW, PRESET_CARD_H, (mx, my) -> config.loadPreset(index)));
+            hits.add(new Hit(saveX, hitY, saveW, PRESET_CARD_H, (mx, my) -> this.minecraft.gui.setScreen(
+                    new AlpakaConfirmScreen(this, "Save to " + config.presetName(index),
+                            "Saves your current viewmodel and swing settings to " + config.presetName(index)
+                                    + ", replacing what is saved there now.",
+                            "Save", false, () -> config.savePreset(index)))));
+            hits.add(new Hit(deleteX, hitY, PRESET_ICON, PRESET_CARD_H, (mx, my) -> this.minecraft.gui.setScreen(
+                    new AlpakaConfirmScreen(this, "Delete Preset",
+                            "Deletes " + config.presetName(index) + ". Your current settings stay as they are. "
+                                    + "This cannot be undone.",
+                            "Delete", true, () -> config.deletePreset(index)))));
+            y += PRESET_CARD_H + PRESET_GAP;
+        }
+
+        // Adds a preset holding the current settings, with its name field ready to type into.
+        boolean addHover = inColumn && inside(mouseX, mouseY, rowX, y, rowW, ACTION_ROW_H);
+        AlpakaStyle.button(graphics, this.font, rowX, y, rowW, ACTION_ROW_H, "+ New Preset", addHover, AlpakaStyle.ButtonKind.PLAIN);
+        if (visible(y, ACTION_ROW_H, clipY, clipH)) {
+            hits.add(new Hit(rowX, Math.max(y, clipY), rowW, ACTION_ROW_H, (mx, my) -> {
+                config.addPreset();
+                focusedText = presetNameField(config.itemPresets.size() - 1);
+                searchFocused = false;
+                caretBlinkFrom = System.currentTimeMillis();
+            }));
+        }
+        y += ACTION_ROW_H + 4;
+        for (FormattedText line : GuiFont.splitLines(this.font, "A new preset starts with your current settings.", rowW - 8)) {
+            graphics.text(this.font, Language.getInstance().getVisualOrder(line), rowX + 4, y, AlpakaStyle.TEXT_MUTED, false);
+            y += LINE_H + 1;
+        }
+        return y + 4;
+    }
+
+    /** The name field of the preset at this position, made on first use. */
+    private ConfigOption presetNameField(int index) {
+        while (presetNameFields.size() <= index) {
+            int i = presetNameFields.size();
+            presetNameFields.add(new ConfigOption("preset_name_" + i, "Name", "", ConfigCategory.VIEWMODEL,
+                    () -> i < AlpakaConfig.instance.itemPresets.size() ? nullToEmpty(AlpakaConfig.instance.itemPresets.get(i).name) : "",
+                    value -> {
+                        if (i < AlpakaConfig.instance.itemPresets.size()) AlpakaConfig.instance.itemPresets.get(i).name = value;
+                    },
+                    "Preset " + (i + 1), ""));
+        }
+        return presetNameFields.get(index);
+    }
+
+    private static String nullToEmpty(String text) {
+        return text == null ? "" : text;
     }
 
     /**

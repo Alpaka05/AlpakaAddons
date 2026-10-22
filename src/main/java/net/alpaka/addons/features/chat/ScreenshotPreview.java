@@ -1,16 +1,20 @@
 package net.alpaka.addons.features.chat;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import com.mojang.blaze3d.platform.cursor.CursorTypes;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.FilterMode;
 import com.mojang.logging.LogUtils;
 import net.alpaka.addons.client.gui.AlpakaGuiElementSink;
 import net.alpaka.addons.client.gui.RoundedImageRenderState;
 import net.alpaka.addons.config.AlpakaConfig;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.render.TextureSetup;
 import net.minecraft.client.gui.screens.ChatScreen;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Util;
@@ -39,6 +43,9 @@ import java.util.List;
  * game grabs the last finished frame. So that press is held back: the next frame is drawn without
  * the preview, and the screenshot is taken from that one, in the next round of the game loop's
  * tasks - not from inside the frame, where the target still holds the one with the preview.
+ *
+ * With a screen open, so the cursor is free, the thumbnail can be clicked: what that does is the
+ * Preview Click setting. While the cursor rests on it, it grows a little and its time stands still.
  */
 public final class ScreenshotPreview {
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -62,7 +69,18 @@ public final class ScreenshotPreview {
     /** How quickly the thumbnail follows the chat opening or closing, as a time constant in ms. */
     private static final float LIFT_TAU = 60.0f;
 
+    /** How much the thumbnail grows while the cursor is on it, and how fast it gets there. */
+    private static final float HOVER_GROW = 0.04f;
+    private static final float HOVER_MS = 120.0f;
+
     private static DynamicTexture texture;
+    /** The screenshot on screen; what a click on the thumbnail acts on. */
+    private static File file;
+    private static long lastHoverMs;
+    private static float hover;
+    /** Where the thumbnail was last drawn, in GUI pixels; clickable only while it rests in the corner. */
+    private static boolean clickable;
+    private static float hitX, hitY, hitW, hitH;
     private static long shownAtMs;
     /** How far the thumbnail is lifted right now, easing towards {@link #liftTarget}. */
     private static float lift;
@@ -79,6 +97,12 @@ public final class ScreenshotPreview {
         frozenAtMs = ms;
     }
 
+    /** Clicks on the thumbnail, in every screen. */
+    public static void register() {
+        ScreenEvents.AFTER_INIT.register((client, screen, width, height) ->
+                ScreenMouseEvents.allowMouseClick(screen).register((s, event) -> !mouseClicked(event)));
+    }
+
     public static boolean isEnabled() {
         AlpakaConfig cfg = AlpakaConfig.instance;
         return cfg.betterScreenshotMessageEnabled && cfg.screenshotPreviewEnabled;
@@ -88,7 +112,7 @@ public final class ScreenshotPreview {
     public static void show(File file) {
         if (!isEnabled()) return;
         Util.ioPool().execute(() -> {
-            NativeImage small;
+            NativeImage small = null;
             try (InputStream in = Files.newInputStream(file.toPath()); NativeImage full = NativeImage.read(in)) {
                 int w = full.getWidth();
                 int h = full.getHeight();
@@ -98,19 +122,25 @@ public final class ScreenshotPreview {
                 small = new NativeImage(tw, th, false);
                 full.resizeSubRectTo(0, 0, w, h, small);
             } catch (Throwable t) {
+                if (small != null) small.close();
                 LOGGER.warn("Couldn't load screenshot {} for the preview", file, t);
                 return;
             }
-            Minecraft.getInstance().execute(() -> install(small));
+            NativeImage image = small;
+            Minecraft.getInstance().execute(() -> install(file, image));
         });
     }
 
-    private static void install(NativeImage image) {
+    private static void install(File shown, NativeImage image) {
         Minecraft mc = Minecraft.getInstance();
         release();
         texture = new DynamicTexture(() -> "Alpaka screenshot preview", image);
         mc.getTextureManager().register(TEXTURE, texture);
+        file = shown;
         shownAtMs = Util.getMillis();
+        lastHoverMs = shownAtMs;
+        hover = 0.0f;
+        hitW = 0.0f;
         // Starts where it belongs: the shrink already lands it above an open chat's input bar.
         lift = liftTarget();
         lastFrameMs = shownAtMs;
@@ -136,6 +166,37 @@ public final class ScreenshotPreview {
             Minecraft.getInstance().getTextureManager().release(TEXTURE);
             texture = null;
         }
+        file = null;
+        clickable = false;
+    }
+
+    /**
+     * A click in an open screen. True when it hit the thumbnail and was used, so the screen under it
+     * does not get it as well.
+     */
+    public static boolean mouseClicked(MouseButtonEvent event) {
+        if (!clickable || file == null || event.button() != 0) return false;
+        if (!contains(event.x(), event.y())) return false;
+        if (AlpakaConfig.instance.screenshotPreviewClickAction == ScreenshotMessageFeature.PREVIEW_CLICK_NOTHING) {
+            return false;
+        }
+        ScreenshotMessageFeature.previewClicked(file);
+        return true;
+    }
+
+    private static boolean contains(double mx, double my) {
+        return mx >= hitX && mx < hitX + hitW && my >= hitY && my < hitY + hitH;
+    }
+
+    /** The cursor's position in GUI pixels, or null when no screen is open and the cursor is captured. */
+    private static double[] cursor(GuiGraphicsExtractor graphics) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.gui.screen() == null) return null;
+        var window = mc.getWindow();
+        return new double[] {
+                mc.mouseHandler.xpos() * graphics.guiWidth() / window.getScreenWidth(),
+                mc.mouseHandler.ypos() * graphics.guiHeight() / window.getScreenHeight()
+        };
     }
 
     /** Whether a frame drawn now would contain the preview, or a capture is already waiting for one without. */
@@ -172,9 +233,25 @@ public final class ScreenshotPreview {
             return;
         }
 
-        float elapsed = frozenAtMs >= 0.0f ? frozenAtMs : Util.getMillis() - shownAtMs;
+        long now = Util.getMillis();
+        long frameMs = now - lastHoverMs;
+        lastHoverMs = now;
+        clickable = false;
+
+        // The cursor resting on the resting thumbnail holds the clock, so the picture stays put.
+        double[] mouse = cursor(graphics);
+        boolean hovered = mouse != null && hitW > 0.0f && contains(mouse[0], mouse[1])
+                && AlpakaConfig.instance.screenshotPreviewClickAction != ScreenshotMessageFeature.PREVIEW_CLICK_NOTHING;
+        float elapsed = frozenAtMs >= 0.0f ? frozenAtMs : now - shownAtMs;
+        boolean resting = elapsed >= SHRINK_MS && elapsed < duration() - EXIT_MS;
+        if (hovered && resting && frozenAtMs < 0.0f) {
+            shownAtMs += frameMs;
+            elapsed = now - shownAtMs;
+        }
+        hover = Math.clamp(hover + (hovered && resting ? 1 : -1) * frameMs / HOVER_MS, 0.0f, 1.0f);
         if (elapsed >= duration()) {
             release();
+            hitW = 0.0f;
             return;
         }
 
@@ -192,12 +269,25 @@ public final class ScreenshotPreview {
         float x = lerp(0.0f, thumbX, e);
         float y = lerp(0.0f, thumbY, e);
 
+        // Hovered: a little larger, growing out of the corner it sits in.
+        float grow = 1.0f + HOVER_GROW * easeOut(hover);
+        x -= sw * s * (grow - 1.0f);
+        y -= sh * s * (grow - 1.0f);
+        s *= grow;
+
         // Exit: out to the right, picking up speed.
         float exitStart = duration() - EXIT_MS;
         if (elapsed > exitStart) {
             float t = (elapsed - exitStart) / EXIT_MS;
             x += (sw - thumbX + SHADOW) * t * t * t;
         }
+
+        hitX = x;
+        hitY = y;
+        hitW = sw * s;
+        hitH = sh * s;
+        clickable = resting;
+        if (hovered && resting) graphics.requestCursor(CursorTypes.POINTING_HAND);
 
         // Above whatever the screen drew, its own blurred layers included.
         graphics.nextStratum();
@@ -231,6 +321,11 @@ public final class ScreenshotPreview {
 
     private static float lerp(float a, float b, float t) {
         return a + (b - a) * t;
+    }
+
+    private static float easeOut(float t) {
+        float u = 1.0f - t;
+        return 1.0f - u * u;
     }
 
     /** Overshoots its end a little and settles back, like a spring with some damping. */

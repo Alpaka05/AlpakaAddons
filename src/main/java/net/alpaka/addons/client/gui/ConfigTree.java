@@ -96,7 +96,7 @@ public final class ConfigTree {
             "fullbright", "clean_blaze", "blaze_fire_pits", "stop_blaze_spinning", "hide_hurt_overlay", "hide_mob_deaths",
             "render_hand_third_person", "smooth_perspective", "disable_front_perspective",
             "container_bg_opacity", "inventory_snow", "scrollable_tooltips", "persistent_item_name", "old_master_stars", "wide_health_bar",
-            "better_chat", "chat_search", "expand_chat_history", "compact_chat",
+            "better_chat", "chat_search", "expand_chat_history", "compact_chat", "message_filter",
             "mention_notification", "chat_peek", "better_screenshot_message", "chat_tabs",
             "player_model_enabled", "inventory_hud_enabled",
             // Item viewmodel: the adjustments are the modifiers' own settings
@@ -181,7 +181,7 @@ public final class ConfigTree {
                             "#Hide Fire Overlay", "#Nametags", "render_hand_third_person", "smooth_perspective", "disable_front_perspective"},
                     {"Interface", "inventory_hud_enabled", "player_model_enabled", "container_bg_opacity",
                             "scrollable_tooltips", "persistent_item_name", "old_master_stars", "wide_health_bar", "inventory_snow", "#Scoreboard"},
-                    {"Chat", "better_chat", "chat_tabs", "chat_search", "chat_peek", "compact_chat",
+                    {"Chat", "better_chat", "chat_tabs", "chat_search", "chat_peek", "compact_chat", "message_filter",
                             "expand_chat_history", "mention_notification", "better_screenshot_message"},
                     {"Viewmodel", "item_size_feature", "#Swing Customizations", "item_starlight", "item_motion_blur",
                             "#Viewmodel Presets", "item_viewmodel_reset"},

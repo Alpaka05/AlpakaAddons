@@ -1,6 +1,7 @@
 package net.alpaka.addons.mixin;
 
 import net.alpaka.addons.features.blaze.CleanBlazeFeature;
+import net.alpaka.addons.features.explosion.HideExplosionsFeature;
 import net.minecraft.client.particle.Particle;
 import net.minecraft.client.particle.ParticleEngine;
 import net.minecraft.core.particles.ParticleOptions;
@@ -14,7 +15,7 @@ public class ParticleEngineMixin {
 
     @Inject(method = "createParticle", at = @At("HEAD"), cancellable = true)
     private void filterBlazeParticles(ParticleOptions options, double x, double y, double z, double xSpeed, double ySpeed, double zSpeed, CallbackInfoReturnable<Particle> info) {
-        if (CleanBlazeFeature.shouldCancelParticle(options)) {
+        if (CleanBlazeFeature.shouldCancelParticle(options) || HideExplosionsFeature.shouldCancelParticle(options)) {
             info.setReturnValue(null);
         }
     }

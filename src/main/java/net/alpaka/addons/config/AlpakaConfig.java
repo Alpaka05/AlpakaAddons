@@ -177,6 +177,8 @@ public class AlpakaConfig {
     public boolean hideMobDeathsEnabled = false;
     /** With Hide Mob Deaths: also no puff of smoke when the server removes the body. */
     public boolean hideMobDeathSmoke = false;
+    /** Hides explosion particles and the block debris of explosions. Cosmetic only. */
+    public boolean hideExplosions = false;
     /** Hides the flames on burning mobs, players and yourself in third person. Cosmetic only. */
     public boolean hideEntityFire = false;
     /** Opacity of the fire covering the screen while you burn in first person, 0..1; 1 is vanilla, 0 hides it. */
@@ -1096,6 +1098,7 @@ public class AlpakaConfig {
         this.stopBlazeSpinning = false;
         this.hideHurtOverlayEnabled = false;
         this.hideMobDeathsEnabled = false;
+        this.hideExplosions = false;
         this.hideEntityFire = false;
         this.firstPersonFireOpacity = 1.0f;
         this.firstPersonFireHeight = 1.0f;

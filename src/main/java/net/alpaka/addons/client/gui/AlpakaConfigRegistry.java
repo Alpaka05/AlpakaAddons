@@ -793,7 +793,7 @@ public class AlpakaConfigRegistry {
                 "performance hud ping latency ms connection delay"));
 
         OPTIONS.add(new ConfigOption("performance_hud_tps", "Show TPS",
-                "The server's ticks per second, from the time updates it sends anyway. 20 is full speed.",
+                "The server's ticks per second, counted from packets it sends anyway. 20 is full speed.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.performanceHudShowTps,
                 v -> { AlpakaConfig.instance.performanceHudShowTps = v; AlpakaConfig.save(); },

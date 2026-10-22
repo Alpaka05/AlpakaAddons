@@ -4,6 +4,7 @@ import com.mojang.blaze3d.vertex.PoseStack
 import com.mojang.blaze3d.vertex.VertexConsumer
 import net.minecraft.util.ARGB
 import kotlin.math.cos
+import kotlin.math.max
 import kotlin.math.sin
 import kotlin.math.sqrt
 
@@ -35,12 +36,25 @@ internal class AuraCanvas(
 ) {
 
     /**
+     * Fades lights out as they come within a couple of blocks of the camera. The storm reaches far
+     * enough that in a tunnel, where walls pull the third person camera in, it would otherwise fill
+     * the screen.
+     */
+    var nearFade = false
+
+    /**
      * A camera-facing glow at (x, y, z), [size] blocks across.
      *
      * @param sparkle adds the two crossing rays of a star; [spin] turns them, in radians.
+     * @param mode one of the MODE_* shapes instead of the glow; [sparkle] is the same as [MODE_SPARKLE].
      */
-    fun sprite(x: Float, y: Float, z: Float, size: Float, rgb: Int, alpha: Float, sparkle: Boolean = false, spin: Float = 0f) {
-        val a = alphaByte(alpha)
+    fun sprite(
+        x: Float, y: Float, z: Float, size: Float, rgb: Int, alpha: Float,
+        sparkle: Boolean = false, spin: Float = 0f, mode: Int = MODE_GLOW,
+    ) {
+        val shape = if (sparkle) MODE_SPARKLE else mode
+        val near = fade(x, y, z, 0.5f * size)
+        val a = if (shape == MODE_SHARD) matterByte(alpha * near) else alphaByte(alpha * near)
         if (a == 0 || size <= 0f) return
         val half = size * 0.5f
         val c = cos(spin) * half
@@ -55,7 +69,12 @@ internal class AuraCanvas(
         val px = ox + x
         val py = oy + y
         val pz = oz + z
-        val u0 = if (sparkle) 2f else 0f
+        val u0 = when (shape) {
+            MODE_SPARKLE -> 2f
+            MODE_SHARD -> -8f
+            MODE_PLASMA -> -10f
+            else -> 0f
+        }
         val color = ARGB.color(a, rgb)
         vertex(px - ax - bx, py - ay - by, pz - az - bz, u0, 0f, color)
         vertex(px + ax - bx, py + ay - by, pz + az - bz, u0 + 1f, 0f, color)
@@ -64,13 +83,37 @@ internal class AuraCanvas(
     }
 
     /**
+     * A square lying flat at height [y], [size] blocks across and turned by [spin]: with [u0] 0 an
+     * edgeless pool of light on the ground, with [u0] -6 and [v0] 2 * seed a scorch mark.
+     */
+    fun flatSprite(x: Float, y: Float, z: Float, size: Float, rgb: Int, alpha: Float, u0: Float = 0f, v0: Float = 0f, spin: Float = 0f) {
+        val a = alphaByte(alpha * fade(x, y, z, 0.25f * size))
+        if (a == 0 || size <= 0f) return
+        val half = size * 0.5f
+        val ax = cos(spin) * half
+        val az = sin(spin) * half
+        val px = ox + x
+        val py = oy + y
+        val pz = oz + z
+        val color = ARGB.color(a, rgb)
+        // Corners: center +- (cos, sin) +- (-sin, cos), each scaled by half the size.
+        vertex(px - ax + az, py, pz - az - ax, u0, v0, color)
+        vertex(px + ax + az, py, pz + az - ax, u0 + 1f, v0, color)
+        vertex(px + ax - az, py, pz + az + ax, u0 + 1f, v0 + 1f, color)
+        vertex(px - ax - az, py, pz - az + ax, u0, v0 + 1f, color)
+    }
+
+    /**
      * A camera-facing puff of cloud at (x, y, z), [width] by [height] blocks: unlike every other
      * shape it covers what is behind it instead of lighting it. Tinted from [top] at its upper edge to
      * [bottom] at its lower one; the shader adds the billowing outline and the lighting, in a pattern
-     * of the puff's own picked by [seed].
+     * of the puff's own picked by [seed]. [glow] 0..1 lights it from inside, as lightning does.
      */
-    fun puff(x: Float, y: Float, z: Float, width: Float, height: Float, top: Int, bottom: Int, alpha: Float, seed: Int) {
-        val a = alphaByte(alpha)
+    fun puff(
+        x: Float, y: Float, z: Float, width: Float, height: Float, top: Int, bottom: Int, alpha: Float, seed: Int,
+        glow: Float = 0f,
+    ) {
+        val a = matterByte(alpha)
         if (a == 0 || width <= 0f || height <= 0f) return
         val hw = width * 0.5f
         val hh = height * 0.5f
@@ -82,23 +125,34 @@ internal class AuraCanvas(
         val low = ARGB.color(a, bottom)
         val high = ARGB.color(a, top)
         val u0 = 4f + 2f * (seed and 63)
-        vertex(px - ax - bx, py - ay - by, pz - az - bz, u0, 0f, low)
-        vertex(px + ax - bx, py + ay - by, pz + az - bz, u0 + 1f, 0f, low)
-        vertex(px + ax + bx, py + ay + by, pz + az + bz, u0 + 1f, 1f, high)
-        vertex(px - ax + bx, py - ay + by, pz - az + bz, u0, 1f, high)
+        val v0 = 2f * Math.round(glow.coerceIn(0f, 1f) * 31f)
+        vertex(px - ax - bx, py - ay - by, pz - az - bz, u0, v0, low)
+        vertex(px + ax - bx, py + ay - by, pz + az - bz, u0 + 1f, v0, low)
+        vertex(px + ax + bx, py + ay + by, pz + az + bz, u0 + 1f, v0 + 1f, high)
+        vertex(px - ax + bx, py - ay + by, pz - az + bz, u0, v0 + 1f, high)
     }
 
-    // A ribbon's points, collected between beginRibbon and endRibbon. Kept and regrown rather than
-    // allocated per ribbon: an effect draws dozens of them every frame.
+    // A ribbon's points, collected between beginRibbon and endRibbon, in buffers shared by every
+    // canvas (see the companion): an effect draws dozens of ribbons every frame, and a canvas is
+    // made anew each frame.
     private var count = 0
-    private var xs = FloatArray(64)
-    private var ys = FloatArray(64)
-    private var zs = FloatArray(64)
-    private var widths = FloatArray(64)
-    private var colors = IntArray(64)
+    private var ribbonU = 0.5f
+    private var boltSeed = -1
 
-    fun beginRibbon() {
+    /** Starts a ribbon; [u] picks its shape across the width: 0.5 a glow, [STREAK_U] rain or wind. */
+    fun beginRibbon(u: Float = 0.5f) {
         count = 0
+        ribbonU = u
+        boltSeed = -1
+    }
+
+    /**
+     * Starts a lightning channel: a ribbon drawn by the shader's bolt shape, whose core wavers in a
+     * pattern of its own picked by [seed].
+     */
+    fun beginBolt(seed: Int) {
+        count = 0
+        boltSeed = seed and 31
     }
 
     /** The next point along the ribbon, its full width there, and its color and strength. */
@@ -112,25 +166,33 @@ internal class AuraCanvas(
         ys[count] = oy + y
         zs[count] = oz + z
         widths[count] = width
-        colors[count] = ARGB.color(alphaByte(alpha), rgb)
+        colors[count] = ARGB.color(alphaByte(alpha * fade(x, y, z, 0.5f * width)), rgb)
         count++
     }
 
     /**
-     * Draws the points collected since [beginRibbon] as one strip.
+     * Draws the points collected since [beginRibbon] or [beginBolt] as one strip.
      *
      * At each point the strip spreads sideways along the cross product of its direction and the line
-     * to the camera, which is the one sideways direction that faces the viewer. The light falls off
-     * across the width only (u is held at the glow's middle), so the strip reads as a beam.
+     * to the camera, which is the one sideways direction that faces the viewer. A glow ribbon's light
+     * falls off across the width only (u is held at the glow's middle), so it reads as a beam.
      *
      * @param closed joins the last point back to the first, for rings.
      */
     fun endRibbon(closed: Boolean = false) {
         val n = count
+        count = 0
         if (n < 2) return
+        // A ribbon that has faded out entirely costs nothing.
+        var visible = false
+        for (i in 0 until n) if ((colors[i] ushr 24) != 0) { visible = true; break }
+        if (!visible) return
+        val bolt = boltSeed >= 0
+        val vLeft = if (bolt) 2f * boltSeed else 0f
         var prevLx = 0f; var prevLy = 0f; var prevLz = 0f
         var prevRx = 0f; var prevRy = 0f; var prevRz = 0f
         var prevColor = 0
+        var prevU = 0f
         val last = if (closed) n else n - 1
         for (k in 0..last) {
             val i = if (k == n) 0 else k
@@ -166,17 +228,19 @@ internal class AuraCanvas(
             val lx = vx - sx; val ly = vy - sy; val lz = vz - sz
             val rx = vx + sx; val ry = vy + sy; val rz = vz + sz
             val color = colors[i]
-            if (k > 0) {
-                vertex(prevLx, prevLy, prevLz, 0.5f, 0f, prevColor)
-                vertex(prevRx, prevRy, prevRz, 0.5f, 1f, prevColor)
-                vertex(rx, ry, rz, 0.5f, 1f, color)
-                vertex(lx, ly, lz, 0.5f, 0f, color)
+            // A bolt carries its position along the channel in u, for the waver of its core.
+            val u = if (bolt) -2f + 0.998f * k / last else ribbonU
+            if (k > 0 && ((prevColor ushr 24) != 0 || (color ushr 24) != 0)) {
+                vertex(prevLx, prevLy, prevLz, prevU, vLeft, prevColor)
+                vertex(prevRx, prevRy, prevRz, prevU, vLeft + 1f, prevColor)
+                vertex(rx, ry, rz, u, vLeft + 1f, color)
+                vertex(lx, ly, lz, u, vLeft, color)
             }
             prevLx = lx; prevLy = ly; prevLz = lz
             prevRx = rx; prevRy = ry; prevRz = rz
             prevColor = color
+            prevU = u
         }
-        count = 0
     }
 
     /** A camera-facing circle of light at height [y]: [segments] points of a closed ribbon. */
@@ -231,7 +295,27 @@ internal class AuraCanvas(
         vertex(ox + x1 - nx, oy + y, oz + z1 - nz, 0.5f, 0f, color)
     }
 
+    /**
+     * 0..1 by how close a shape reaching [r] blocks out from (x, y, z) comes to the camera, while
+     * [nearFade] is on; 1 otherwise. Measured to its edge, so a large glow fades before it engulfs it.
+     */
+    private fun fade(x: Float, y: Float, z: Float, r: Float): Float {
+        if (!nearFade) return 1f
+        val dx = ox + x
+        val dy = oy + y
+        val dz = oz + z
+        val d = sqrt(dx * dx + dy * dy + dz * dz)
+        val k = ((d - r - 0.6f) / 1.2f).coerceIn(0f, 1f)
+        return k * k * (3f - 2f * k)
+    }
+
     private fun alphaByte(alpha: Float): Int = (alpha * strength * 255f).toInt().coerceIn(0, 255)
+
+    /**
+     * Alpha for matter - cloud, debris - rather than light. Brightness is about how strongly the aura
+     * glows; at the default 80% a cloud would turn see-through, so matter never drops below 90%.
+     */
+    private fun matterByte(alpha: Float): Int = (alpha * max(strength, 0.9f) * 255f).toInt().coerceIn(0, 255)
 
     private fun vertex(x: Float, y: Float, z: Float, u: Float, v: Float, color: Int) {
         buffer.addVertex(pose, x, y, z).setUv(u, v).setColor(color)
@@ -239,5 +323,24 @@ internal class AuraCanvas(
 
     companion object {
         const val TAU = (Math.PI * 2).toFloat()
+
+        // The shared ribbon buffers. Aura geometry is only ever built on the render thread, one
+        // canvas at a time, so one set is enough; it grows to the longest ribbon once and stays.
+        private var xs = FloatArray(128)
+        private var ys = FloatArray(128)
+        private var zs = FloatArray(128)
+        private var widths = FloatArray(128)
+        private var colors = IntArray(128)
+
+        const val MODE_GLOW = 0
+        const val MODE_SPARKLE = 1
+        const val MODE_SHARD = 2
+        const val MODE_PLASMA = 3
+
+        /** The u of a rain or wind streak ribbon. */
+        const val STREAK_U = -3.5f
+
+        /** The u of a scorch mark, for [flatSprite]. */
+        const val SCORCH_U = -6f
     }
 }

@@ -1797,7 +1797,7 @@ public class AlpakaConfigRegistry {
                 "aura size scale big small radius wide"));
 
         OPTIONS.add(new ConfigOption("aura_speed", "Animation Speed",
-                "How fast the aura moves.",
+                "How fast the aura moves. The Storm never goes faster than 1.50x, so its flashes cannot strobe.",
                 ConfigCategory.COSMETICS,
                 () -> AlpakaConfig.instance.auraSpeed,
                 v -> { AlpakaConfig.instance.auraSpeed = v; AlpakaConfig.save(); },

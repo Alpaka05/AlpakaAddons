@@ -1,6 +1,7 @@
 package net.alpaka.addons.mixin;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import net.alpaka.addons.features.cosmetics.AuraPoseLayer;
 import net.alpaka.addons.features.cosmetics.ChromaHatLayer;
 import net.alpaka.addons.features.nametag.CustomNameTagFeature;
 import net.alpaka.addons.features.playerscale.PlayerScaleFeature;
@@ -19,7 +20,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Hooks the player renderer for the cosmetics: the chroma hat rides along as an extra render layer,
+ * Hooks the player renderer for the cosmetics: the chroma hat rides along as an extra render layer
+ * (and so does the storm aura's note of where the eyes and hands are),
  * the local player's own name tag is drawn by the mod instead of by vanilla, and the player scale
  * stretches or shrinks the model per axis.
  */
@@ -76,6 +78,7 @@ public class AvatarRendererMixin {
         @SuppressWarnings("unchecked")
         RenderLayerParent<AvatarRenderState, PlayerModel> parent = (RenderLayerParent<AvatarRenderState, PlayerModel>) (Object) this;
         ((LivingEntityRendererAccessor) (Object) this).alpaka$addLayer(new ChromaHatLayer(parent));
+        ((LivingEntityRendererAccessor) (Object) this).alpaka$addLayer(new AuraPoseLayer(parent));
     }
 
     /**

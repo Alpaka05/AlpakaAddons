@@ -36,8 +36,22 @@ class TabProgressBarsTest {
         TabListParser.Line level = TabProgressBars.withBar(line("SB Level: [621] 52/100 XP"), false);
         assertEquals(0.52f, level.bar().fraction(), 1.0e-6);
 
-        TabListParser.Line bank = TabProgressBars.withBar(line("Bank: 1B / 7.5B"), false);
-        assertEquals(1 / 7.5f, bank.bar().fraction(), 1.0e-6);
+        // Co-op bank and personal bank, not progress.
+        assertNull(TabProgressBars.withBar(line("Bank: 1B / 7.5B"), false).bar());
+    }
+
+    @Test
+    void aBarOnItsOwnRowJoinsTheValueAndTitleAbove() {
+        java.util.List<TabListParser.Line> rows = new java.util.ArrayList<>();
+        for (String row : new String[]{"§5§lMage Reputation:", " §d29,110", " §d||||||||||||||| §r(100%)", " Max Reputation"}) {
+            rows.add(TabProgressBars.withBar(line(row), false));
+        }
+        java.util.List<TabListParser.Line> joined = TabProgressBars.joinBarRows(rows);
+        assertEquals(2, joined.size());
+        assertEquals("Mage Reputation: 29,110", TabListParser.plain(joined.get(0).text()).trim());
+        assertEquals(1.0f, joined.get(0).bar().fraction(), 1.0e-6);
+        assertEquals("(100%)", TabListParser.plain(joined.get(0).after()));
+        assertEquals("Max Reputation", TabListParser.plain(joined.get(1).text()).trim());
     }
 
     @Test

@@ -72,15 +72,56 @@ final class StatsMerge {
         }
     }
 
-    /** Keeps the faster of the two best times for every tier either side has one for. */
+    /**
+     * Keeps the faster of the two best times for every tier either side has one for - except bests
+     * set before the later of the two sides' clears. A best is all-time, so the faster one wins;
+     * but {@code /alpakaslayer reset pb} takes them back, and the copy of an old best on the other
+     * side must not bring it back. Bests from before the set times existed count as set at 0, so
+     * any clear removes them.
+     */
     static void mergeBestTimes(AlpakaConfig.SlayerData into, AlpakaConfig.SlayerData from) {
-        if (from.bestBossMsByTier == null) return;
+        long cleared = Math.max(into.bestsClearedAtMs, from.bestsClearedAtMs);
+        into.bestsClearedAtMs = cleared;
         if (into.bestBossMsByTier == null) into.bestBossMsByTier = new HashMap<>();
+        if (into.bestBossAtMsByTier == null) into.bestBossAtMsByTier = new HashMap<>();
+        // This side first: a clear on the other side takes back a best this side still holds.
+        if (cleared > 0) {
+            into.bestBossMsByTier.keySet().removeIf(tier -> setAt(into, tier) <= cleared);
+            into.bestBossAtMsByTier.keySet().retainAll(into.bestBossMsByTier.keySet());
+        }
+        if (from.bestBossMsByTier == null) return;
         for (Map.Entry<Integer, Long> best : from.bestBossMsByTier.entrySet()) {
+            Integer tier = best.getKey();
             Long theirs = best.getValue();
-            if (best.getKey() == null || theirs == null || theirs <= 0) continue;
-            Long ours = into.bestBossMsByTier.get(best.getKey());
-            if (ours == null || ours <= 0 || theirs < ours) into.bestBossMsByTier.put(best.getKey(), theirs);
+            if (tier == null || theirs == null || theirs <= 0) continue;
+            long theirsAt = setAt(from, tier);
+            if (cleared > 0 && theirsAt <= cleared) continue;
+            Long ours = into.bestBossMsByTier.get(tier);
+            if (ours == null || ours <= 0 || theirs < ours) {
+                into.bestBossMsByTier.put(tier, theirs);
+                if (theirsAt > 0) into.bestBossAtMsByTier.put(tier, theirsAt);
+                else into.bestBossAtMsByTier.remove(tier);
+            }
+        }
+    }
+
+    /** When a tier's best was set, or 0 when that is not known. */
+    private static long setAt(AlpakaConfig.SlayerData data, Integer tier) {
+        Long at = data.bestBossAtMsByTier == null ? null : data.bestBossAtMsByTier.get(tier);
+        return at == null ? 0L : at;
+    }
+
+    /**
+     * The newer lifetime XP: the later Slayer menu reading wins, so a total corrected down is not
+     * taken back by the higher, older one on the other side. Between two copies of the same
+     * reading, the higher figure, since only kills credited on top of it can make them differ.
+     */
+    static void mergeTotalXp(AlpakaConfig.SlayerData into, AlpakaConfig.SlayerData from) {
+        if (from.totalXpObservedAtMs > into.totalXpObservedAtMs) {
+            into.totalXp = from.totalXp;
+            into.totalXpObservedAtMs = from.totalXpObservedAtMs;
+        } else if (from.totalXpObservedAtMs == into.totalXpObservedAtMs && from.totalXp > into.totalXp) {
+            into.totalXp = from.totalXp;
         }
     }
 
@@ -96,7 +137,7 @@ final class StatsMerge {
             }
         }
         mergeBestTimes(ours, theirs);
-        if (theirs.totalXp > ours.totalXp) ours.totalXp = theirs.totalXp;
+        mergeTotalXp(ours, theirs);
         if (theirs.lastXpCreditedAtMs > ours.lastXpCreditedAtMs) {
             ours.lastXpCreditedAtMs = theirs.lastXpCreditedAtMs;
             ours.recentlyCreditedXp = theirs.recentlyCreditedXp;

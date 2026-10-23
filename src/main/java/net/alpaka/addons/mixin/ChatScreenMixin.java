@@ -1,6 +1,7 @@
 package net.alpaka.addons.mixin;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import net.alpaka.addons.features.chat.ChatCopyFeature;
 import net.alpaka.addons.features.chat.ChatOpenAnimation;
 import net.alpaka.addons.features.chat.ChatSearchFeature;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
@@ -26,8 +27,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * The mod's additions to the chat screen: the slayer HUD click, the chat tabs, the screenshot
- * buttons and the send-to-channel redirect.
+ * The mod's additions to the chat screen: the slayer HUD click, Copy Chat, the chat tabs, the
+ * screenshot buttons and the send-to-channel redirect.
  *
  * The chat screen is the one place the HUD is drawn while a cursor exists, which is what makes the
  * HUD click possible at all - the rest of the time the mouse is captured for looking around. Every
@@ -141,9 +142,10 @@ public class ChatScreenMixin {
     }
 
     /**
-     * The slayer HUD's click, once vanilla has offered the click to the chat's own links and found
-     * none: only then does it get handed to the screen, which is where this sits. At the head of the
-     * method, as it used to be, the HUD took clicks meant for links drawn under it.
+     * The slayer HUD's click and Copy Chat's right-click, once vanilla has offered the click to the
+     * chat's own links and found none: only then does it get handed to the screen, which is where
+     * this sits. At the head of the method, as it used to be, the HUD took clicks meant for links
+     * drawn under it.
      */
     @Inject(
             method = "mouseClicked",
@@ -151,7 +153,8 @@ public class ChatScreenMixin {
             cancellable = true
     )
     private void onMouseClicked(MouseButtonEvent event, boolean doubleClick, CallbackInfoReturnable<Boolean> cir) {
-        if (SlayerHudElement.INSTANCE.handleChatClick(event.x(), event.y(), event.button())) {
+        if (SlayerHudElement.INSTANCE.handleChatClick(event.x(), event.y(), event.button())
+                || ChatCopyFeature.handleClick(event.button())) {
             cir.setReturnValue(true);
         }
     }

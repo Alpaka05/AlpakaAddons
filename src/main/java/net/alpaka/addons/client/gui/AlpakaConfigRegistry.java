@@ -549,6 +549,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.chatSearchEnabled = v; AlpakaConfig.save(); },
                 "chat search find filter ctrl f messages history lookup"));
 
+        OPTIONS.add(new ConfigOption("chat_copy", "Copy Chat",
+                "Right-click a message in the open chat to copy its text.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatCopyEnabled,
+                v -> { AlpakaConfig.instance.chatCopyEnabled = v; AlpakaConfig.save(); },
+                "chat copy clipboard message right click text paste"));
+
         OPTIONS.add(new ConfigOption("expand_chat_history", "Expand Chat History",
                 "Keeps far more chat than vanilla's 100 lines, even after leaving a server.",
                 ConfigCategory.VISUALS,

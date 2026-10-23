@@ -1,9 +1,16 @@
 package net.alpaka.addons.features.snow
 
+import com.mojang.blaze3d.pipeline.RenderPipeline
+import com.mojang.blaze3d.vertex.VertexConsumer
 import net.alpaka.addons.config.AlpakaConfig
+import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
+import net.minecraft.client.gui.navigation.ScreenRectangle
+import net.minecraft.client.gui.render.TextureSetup
 import net.minecraft.client.renderer.RenderPipelines
+import net.minecraft.client.renderer.state.gui.GuiElementRenderState
 import net.minecraft.resources.Identifier
+import org.joml.Matrix3x2f
 import java.util.Random
 import kotlin.math.cos
 import kotlin.math.sin
@@ -24,6 +31,11 @@ import kotlin.math.sin
  * contiguous memory instead. The arrays are sized for the highest amount, so the whole system still
  * allocates its arrays once, for the lifetime of the game; a lower amount only uses the front of
  * them.
+ *
+ * A frame's particles go to the GUI as one element of plain quads plus one per texture in use
+ * ([ParticleBatch]), not as a fill or blit each. The GUI state places every new element above the
+ * highest one it overlaps by walking what is already there, so rain at a high amount - thousands of
+ * streaks, droplets and ring rows - cost a walk over all the others for every one of them.
  */
 object SnowOverlayRenderer {
 
@@ -223,6 +235,7 @@ object SnowOverlayRenderer {
         // Hoisted out of the loops: the same value for every particle.
         val step = BASE_SPEED * speed * dt
 
+        batch.clear()
         when (type) {
             TYPE_FIREFLIES -> renderFireflies(graphics, count, width, height, step, dt * speed)
             TYPE_ASH -> renderAsh(graphics, count, width, height, step)
@@ -233,7 +246,10 @@ object SnowOverlayRenderer {
             TYPE_RAIN -> renderRain(graphics, count, width, height, step, dt * speed)
             else -> renderSnow(graphics, count, width, height, step)
         }
+        batch.submit(graphics, width, height)
     }
+
+    private val batch = ParticleBatch()
 
     private fun renderSnow(graphics: GuiGraphicsExtractor, count: Int, width: Int, height: Int, step: Float) {
         val yLimit = height + RESPAWN_MARGIN
@@ -345,7 +361,6 @@ object SnowOverlayRenderer {
                              scaledDt: Float) {
         val yLimit = height + RESPAWN_MARGIN
         val margin = RESPAWN_MARGIN.toFloat()
-        val pose = graphics.pose()
         for (i in 0 until count) {
             var x = posX[i] + speedX[i] * step
             var y = posY[i] + speedY[i] * step
@@ -373,13 +388,9 @@ object SnowOverlayRenderer {
             val argb = if (flip < 0) (color[i] and 0xFF000000.toInt()) or PETAL_BACK_TINT else color[i]
 
             val half = extent / 2.0f
-            pose.pushMatrix()
-            pose.translate(drawX + half, y + half)
-            pose.rotate(angle[i] + cos(wave) * 0.5f)
-            pose.scale(squeeze, 1.0f)
-            graphics.blit(RenderPipelines.GUI_TEXTURED, PETAL_SPRITES[sprite[i]], -extent / 2, -extent / 2, 0.0f, 0.0f,
-                extent, extent, PETAL_TEXTURE_SIZE, PETAL_TEXTURE_SIZE, PETAL_TEXTURE_SIZE, PETAL_TEXTURE_SIZE, argb)
-            pose.popMatrix()
+            val from = (-(extent / 2)).toFloat()
+            batch.sprite(PETAL_SPRITES[sprite[i]], drawX + half, y + half, angle[i] + cos(wave) * 0.5f, squeeze,
+                from, from, from + extent, from + extent, argb)
         }
     }
 
@@ -571,19 +582,15 @@ object SnowOverlayRenderer {
         if (drawX + 2 * extent <= 0 || drawY + 2 * extent <= 0 || drawX - extent >= width || drawY - extent >= height) return
         if ((argb ushr 24) == 0) return
 
+        // Every texture here is drawn whole, so textureSize only matters for the old blit's UVs.
         if (rotation == 0.0f) {
-            graphics.blit(RenderPipelines.GUI_TEXTURED, texture, drawX, drawY, 0.0f, 0.0f,
-                extent, extent, textureSize, textureSize, textureSize, textureSize, argb)
+            batch.sprite(texture, drawX.toFloat(), drawY.toFloat(), 0.0f, 1.0f,
+                0.0f, 0.0f, extent.toFloat(), extent.toFloat(), argb)
             return
         }
         val half = extent / 2
-        val pose = graphics.pose()
-        pose.pushMatrix()
-        pose.translate((drawX + half).toFloat(), (drawY + half).toFloat())
-        pose.rotate(rotation)
-        graphics.blit(RenderPipelines.GUI_TEXTURED, texture, -half, -half, 0.0f, 0.0f,
-            extent, extent, textureSize, textureSize, textureSize, textureSize, argb)
-        pose.popMatrix()
+        batch.sprite(texture, (drawX + half).toFloat(), (drawY + half).toFloat(), rotation, 1.0f,
+            (-half).toFloat(), (-half).toFloat(), (extent - half).toFloat(), (extent - half).toFloat(), argb)
     }
 
     private fun drawSquare(graphics: GuiGraphicsExtractor, x: Int, y: Int, extent: Int, argb: Int, width: Int, height: Int) {
@@ -594,7 +601,7 @@ object SnowOverlayRenderer {
         // A good share of particles are off screen at any moment. Those are invisible either way;
         // skipping them keeps their quads out of the draw queue entirely.
         if (x + w > 0 && y + h > 0 && x < width && y < height && (argb ushr 24) != 0) {
-            graphics.fill(x, y, x + w, y + h, argb)
+            batch.rect(x.toFloat(), y.toFloat(), (x + w).toFloat(), (y + h).toFloat(), argb)
         }
     }
 
@@ -745,5 +752,137 @@ object SnowOverlayRenderer {
         posX[index] = -h * RAIN_SLANT + random.nextFloat() * (w + h * RAIN_SLANT)
         posY[index] = if (initial) random.nextFloat() * h else -random.nextFloat() * 40.0f
         color[index] = ((45 + Math.round(near * 140.0f) + random.nextInt(30)) shl 24) or RAIN_RGB
+    }
+
+    /**
+     * One frame's particles as quads, handed to the GUI at the end of the frame as one element of
+     * plain quads plus one per texture in use. Sprites are turned and squeezed here rather than
+     * through the pose, so a whole frame shares one pose: the one the screen drew with.
+     *
+     * The buffers live as long as the overlay and only grow; each element gets its own copy, since
+     * the GUI builds its vertices after this frame's drawing has returned.
+     */
+    private class ParticleBatch {
+        private var xy = FloatArray(8 * 256)
+        private var uv = FloatArray(8 * 256)
+        private var colors = IntArray(256)
+        private var textures = arrayOfNulls<Identifier>(256)
+        private var quads = 0
+
+        fun clear() {
+            quads = 0
+        }
+
+        /** A plain quad from ([x0], [y0]) to ([x1], [y1]). */
+        fun rect(x0: Float, y0: Float, x1: Float, y1: Float, argb: Int) {
+            val q = next(null, argb)
+            corner(q, 0, x0, y0, 0.0f, 0.0f)
+            corner(q, 1, x0, y1, 0.0f, 0.0f)
+            corner(q, 2, x1, y1, 0.0f, 0.0f)
+            corner(q, 3, x1, y0, 0.0f, 0.0f)
+        }
+
+        /**
+         * The whole [texture] over ([x0], [y0])-([x1], [y1]) around an origin at ([cx], [cy]): first
+         * stretched across by [scaleX], then turned by [rotation], as the pose used to do it.
+         */
+        fun sprite(texture: Identifier, cx: Float, cy: Float, rotation: Float, scaleX: Float,
+                   x0: Float, y0: Float, x1: Float, y1: Float, argb: Int) {
+            val q = next(texture, argb)
+            val cos = if (rotation == 0.0f) 1.0f else cos(rotation)
+            val sin = if (rotation == 0.0f) 0.0f else sin(rotation)
+            fun put(c: Int, lx: Float, ly: Float, u: Float, v: Float) {
+                val sx = lx * scaleX
+                corner(q, c, cx + sx * cos - ly * sin, cy + sx * sin + ly * cos, u, v)
+            }
+            put(0, x0, y0, 0.0f, 0.0f)
+            put(1, x0, y1, 0.0f, 1.0f)
+            put(2, x1, y1, 1.0f, 1.0f)
+            put(3, x1, y0, 1.0f, 0.0f)
+        }
+
+        private fun next(texture: Identifier?, argb: Int): Int {
+            if (quads == colors.size) {
+                val size = quads * 2
+                xy = xy.copyOf(8 * size)
+                uv = uv.copyOf(8 * size)
+                colors = colors.copyOf(size)
+                textures = textures.copyOf(size)
+            }
+            colors[quads] = argb
+            textures[quads] = texture
+            return quads++
+        }
+
+        private fun corner(q: Int, c: Int, x: Float, y: Float, u: Float, v: Float) {
+            val at = 8 * q + 2 * c
+            xy[at] = x
+            xy[at + 1] = y
+            uv[at] = u
+            uv[at + 1] = v
+        }
+
+        /** Adds the frame's quads to the GUI: plain ones first, then each texture's. */
+        fun submit(graphics: GuiGraphicsExtractor, width: Int, height: Int) {
+            if (quads == 0) return
+            val pose = Matrix3x2f(graphics.pose())
+            val scissor = graphics.scissorStack.peek()
+            var bounds: ScreenRectangle? = ScreenRectangle(0, 0, width, height).transformMaxBounds(pose)
+            if (scissor != null && bounds != null) bounds = bounds.intersection(scissor)
+            if (bounds == null) return
+
+            val groups = LinkedHashMap<Identifier?, MutableList<Int>>()
+            groups[null] = ArrayList()
+            for (q in 0 until quads) groups.getOrPut(textures[q]) { ArrayList() }.add(q)
+
+            for ((texture, members) in groups) {
+                if (members.isEmpty()) continue
+                val ownXy = FloatArray(8 * members.size)
+                val ownUv = if (texture == null) null else FloatArray(8 * members.size)
+                val ownColors = IntArray(members.size)
+                for ((n, q) in members.withIndex()) {
+                    System.arraycopy(xy, 8 * q, ownXy, 8 * n, 8)
+                    if (ownUv != null) System.arraycopy(uv, 8 * q, ownUv, 8 * n, 8)
+                    ownColors[n] = colors[q]
+                }
+                val setup = if (texture == null) {
+                    TextureSetup.noTexture()
+                } else {
+                    val loaded = Minecraft.getInstance().textureManager.getTexture(texture)
+                    TextureSetup.singleTexture(loaded.textureView, loaded.sampler)
+                }
+                val pipeline = if (texture == null) RenderPipelines.GUI else RenderPipelines.GUI_TEXTURED
+                graphics.guiRenderState.addGuiElement(
+                    QuadsElement(pose, pipeline, setup, ownXy, ownUv, ownColors, scissor, bounds))
+            }
+        }
+    }
+
+    /** A batch of quads in one pose, with one pipeline and texture; UVs only for the textured kind. */
+    private class QuadsElement(
+        private val pose: Matrix3x2f,
+        private val pipeline: RenderPipeline,
+        private val textures: TextureSetup,
+        private val xy: FloatArray,
+        private val uv: FloatArray?,
+        private val colors: IntArray,
+        private val scissor: ScreenRectangle?,
+        private val bounds: ScreenRectangle,
+    ) : GuiElementRenderState {
+        override fun buildVertices(consumer: VertexConsumer) {
+            for (q in colors.indices) {
+                for (c in 0 until 4) {
+                    val at = 8 * q + 2 * c
+                    val vertex = consumer.addVertexWith2DPose(pose, xy[at], xy[at + 1])
+                    if (uv != null) vertex.setUv(uv[at], uv[at + 1])
+                    vertex.setColor(colors[q])
+                }
+            }
+        }
+
+        override fun pipeline(): RenderPipeline = pipeline
+        override fun textureSetup(): TextureSetup = textures
+        override fun scissorArea(): ScreenRectangle? = scissor
+        override fun bounds(): ScreenRectangle = bounds
     }
 }

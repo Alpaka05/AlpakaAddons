@@ -80,6 +80,7 @@ public final class DevScreenshotTour {
             screen("config-tooltips", () -> AlpakaConfigScreen.openOn("Interface", "Scrollable Tooltips")),
             screen("config-menu-font", () -> AlpakaConfigScreen.openOn("Design", "Menu Font").withChoiceOpen()),
             screen("config-world", () -> AlpakaConfigScreen.openOn("World", "Block Overlay")),
+            screen("config-world-sky", () -> AlpakaConfigScreen.openOn("World", "Sky Effects")),
             screen("config-viewmodel", () -> AlpakaConfigScreen.openOn("Viewmodel", "Viewmodel Modifiers")),
             screen("color-picker", () -> new ColorPickerScreen(null, "Accent Color", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
             screen("wheel-editor", () -> new CommandWheelConfigScreen(new CustomMainMenuScreen())),
@@ -401,6 +402,23 @@ public final class DevScreenshotTour {
             // The fire pit preview has to be on a tick before the clay arrives, as in a real fight.
             new Stop(null, DevScreenshotTour::firePitPreview, () -> true, 5),
             new Stop("fire-pits", DevScreenshotTour::placeFirePits, () -> true, 30),
+            // Sky Effects, without the HUD: the Overworld at night looking north at the aurora and
+            // in the morning towards the sun, the Nether's firestorm above its roof and the End's
+            // nebula; most twice, to see them move.
+            new Stop(null, () -> skyAt("overworld", 0.5, 120.0, 18000L, 180.0f, -20.0f), () -> true, 40),
+            new Stop("sky-overworld-night", () -> {}, () -> true, 5),
+            new Stop("sky-overworld-night-later", () -> {}, () -> true, 40),
+            new Stop("sky-overworld-day", () -> skyAt("overworld", 0.5, 120.0, 2000L, -90.0f, -30.0f), () -> true, 40),
+            new Stop(null, () -> skyAt("the_nether", 0.5, 140.0, -1L, 30.0f, -15.0f), () -> inDimension(net.minecraft.world.level.Level.NETHER), 60),
+            new Stop("sky-nether", () -> {}, () -> true, 5),
+            new Stop("sky-nether-later", () -> {}, () -> true, 40),
+            new Stop("sky-nether-up", () -> Minecraft.getInstance().player.setXRot(-65.0f), () -> true, 10),
+            // Far out from the main island: within reach of the dragon its boss bar fogs the sky
+            // away, and vanilla draws none.
+            new Stop(null, () -> skyAt("the_end", 1000.5, 100.0, -1L, 0.0f, -10.0f), () -> inDimension(net.minecraft.world.level.Level.END), 60),
+            new Stop("sky-end", () -> {}, () -> true, 5),
+            new Stop("sky-end-up", () -> Minecraft.getInstance().player.setXRot(-60.0f), () -> true, 10),
+            new Stop(null, DevScreenshotTour::skyDone, () -> inDimension(net.minecraft.world.level.Level.OVERWORLD), 20),
             // Last, as it ends the world: confirming the leave dialog leaves for the title screen
             // rather than going back to the pause menu.
             screen("confirm-pause-before-leaving", net.alpaka.addons.features.escapemenu.CustomPauseScreen::new),
@@ -651,6 +669,47 @@ public final class DevScreenshotTour {
             player.setItemSlot(net.minecraft.world.entity.EquipmentSlot.CHEST,
                     new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_CHESTPLATE));
         });
+    }
+
+    /**
+     * Sky Effects on and the HUD off, and the player flying high in this dimension, looking this
+     * way, at this time of day (-1 leaves the time alone).
+     */
+    private static void skyAt(String dimension, double x, double y, long dayTime, float yaw, float pitch) {
+        Minecraft mc = Minecraft.getInstance();
+        AlpakaConfig.instance.skyEffectsEnabled = true;
+        if (!mc.gui.hud.isHidden()) mc.gui.hud.toggle();
+        java.util.UUID id = mc.player.getUUID();
+        net.minecraft.client.server.IntegratedServer server = mc.getSingleplayerServer();
+        if (server == null) return;
+        server.execute(() -> {
+            net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayer(id);
+            if (player == null) return;
+            player.setGameMode(GameType.CREATIVE);
+            player.getAbilities().flying = true;
+            player.onUpdateAbilities();
+            net.minecraft.commands.CommandSourceStack source = server.createCommandSourceStack();
+            if (dayTime >= 0) server.getCommands().performPrefixedCommand(source, "time set " + dayTime);
+            server.getCommands().performPrefixedCommand(source, "weather clear");
+            server.getCommands().performPrefixedCommand(source, String.format(java.util.Locale.ROOT,
+                    "execute in minecraft:%s run tp @a %.1f %.1f 0.5 %.1f %.1f", dimension, x, y, yaw, pitch));
+        });
+    }
+
+    /** In this dimension, with the terrain screen gone. */
+    private static boolean inDimension(net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension) {
+        Minecraft mc = Minecraft.getInstance();
+        return mc.level != null && mc.player != null && mc.level.dimension() == dimension && mc.gui.screen() == null;
+    }
+
+    /** Back to the Overworld with the HUD, Sky Effects off again. */
+    private static void skyDone() {
+        AlpakaConfig.instance.skyEffectsEnabled = false;
+        if (Minecraft.getInstance().gui.hud.isHidden()) Minecraft.getInstance().gui.hud.toggle();
+        net.minecraft.client.server.IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+        if (server == null) return;
+        server.execute(() -> server.getCommands().performPrefixedCommand(server.createCommandSourceStack(),
+                "execute in minecraft:overworld run tp @a 0.5 -60 0.5 0 0"));
     }
 
     /** A scoreboard sidebar with a few lines, and a diamond sword in hand with starlight on. */

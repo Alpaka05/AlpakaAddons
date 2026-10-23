@@ -47,6 +47,16 @@ public class AlpakaConfig {
     public int slayerShareMessage = 0;
     public boolean fullbrightEnabled = false;
 
+    /** Sky Effects: animated skies, drawn by this client only. Each sky has its own switch. */
+    public boolean skyEffectsEnabled = false;
+    public boolean skyEffectsNether = true;
+    public boolean skyEffectsOverworld = true;
+    public boolean skyEffectsEnd = true;
+    /** How strongly the effects show, 0.1..1; at 1 the skies are drawn in full. */
+    public float skyEffectsIntensity = 1.0f;
+    /** How fast they move, 0.25..3; 1 is the designed pace. */
+    public float skyEffectsSpeed = 1.0f;
+
     // Cosmetics. Both are drawn by this client for this client only - nothing is sent, nobody else
     // sees them - and both apply to the player's own model in third person.
     /** Draw the player's own name tag with effects instead of vanilla's (which never shows it). */
@@ -1210,6 +1220,7 @@ public class AlpakaConfig {
         this.bossSpawnAlertEnabled = false;
         this.bossCocoonAlertEnabled = false;
         this.partyInvitePromptEnabled = false;
+        this.skyEffectsEnabled = false;
         save();
     }
 

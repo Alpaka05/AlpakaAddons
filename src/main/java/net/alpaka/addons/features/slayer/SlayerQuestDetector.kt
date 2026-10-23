@@ -45,6 +45,10 @@ object SlayerQuestDetector {
     private var tabCheckedAtMs = 0L
     private var cachedTabLines: List<String> = emptyList()
 
+    /** Where the last scan found the quest; see [linesToScan]. */
+    private enum class Source { NONE, SIDEBAR, TAB }
+    private var lastSource = Source.NONE
+
     /**
      * How long a boss type stays usable after it has vanished from the sidebar.
      *
@@ -220,7 +224,7 @@ object SlayerQuestDetector {
         var foundTier = 0
         var foundProgress = ""
 
-        val lines = linesToScan(now)
+        val lines = linesToScan(now, SkyblockUtils.getSidebarLines(), SkyblockUtils::getTabListLines)
 
         // Scanned rather than indexed relative to a header line: the scoreboard API hands back rows
         // in no guaranteed order, so "the line after the boss name" is not a safe assumption.
@@ -266,6 +270,10 @@ object SlayerQuestDetector {
         if (pendingKillInferred) pendingKill = null
         pendingSpawn = null
         freshLevel = true
+        // The tab list read in the old world is the old world's quest.
+        cachedTabLines = emptyList()
+        tabCheckedAtMs = 0L
+        lastSource = Source.NONE
     }
 
     /** As [resetForLevelChange], and forgets the recent slayer too: the next server says it anew. */
@@ -293,19 +301,31 @@ object SlayerQuestDetector {
      * it is frequently missing while the tab list still carries it, which is what made the HUD come
      * and go. SkyHanni reads the same two sources in the same order.
      */
-    private fun linesToScan(now: Long): List<String> {
-        val sidebar = SkyblockUtils.getSidebarLines()
-        if (sidebar.any { SlayerType.fromScoreboardLine(it) != null }) return sidebar
-
-        if (now - tabCheckedAtMs >= TAB_FALLBACK_MS) {
-            tabCheckedAtMs = now
-            // Trimmed, as SkyHanni does, because the tab list indents its widget lines while the
-            // progress states are matched exactly. An indented " Slay the boss!" reads as no fight
-            // at all, so a quest falling back to the tab list mid-fight looked like a dead boss.
-            cachedTabLines = SkyblockUtils.getTabListLines().map { it.trim() }
+    internal fun linesToScan(now: Long, sidebar: List<String>, readTab: () -> List<String>): List<String> {
+        if (sidebar.any { SlayerType.fromScoreboardLine(it) != null }) {
+            lastSource = Source.SIDEBAR
+            return sidebar
         }
-        if (cachedTabLines.any { SlayerType.fromScoreboardLine(it) != null }) return cachedTabLines
+        // No sidebar at all - between servers, or before the new one has sent its scoreboard - says
+        // nothing about the quest, and the tab list may still be the last server's then. Read as the
+        // new world's first state, its quest gave a phantom spawn or kill a moment later.
+        if (sidebar.isEmpty()) {
+            lastSource = Source.NONE
+            return sidebar
+        }
 
+        // Fresh when the quest has just left the sidebar: a snapshot from before is a second old.
+        // The lines need no trimming here; the tab list's reader strips them already.
+        if (lastSource == Source.SIDEBAR || now - tabCheckedAtMs >= TAB_FALLBACK_MS) {
+            tabCheckedAtMs = now
+            cachedTabLines = readTab()
+        }
+        if (cachedTabLines.any { SlayerType.fromScoreboardLine(it) != null }) {
+            lastSource = Source.TAB
+            return cachedTabLines
+        }
+
+        lastSource = Source.NONE
         return sidebar
     }
 
@@ -421,6 +441,9 @@ object SlayerQuestDetector {
 
     /** For tests: back to the state of a fresh start, minus the world-change baseline. */
     internal fun resetForTest() {
+        cachedTabLines = emptyList()
+        tabCheckedAtMs = 0L
+        lastSource = Source.NONE
         lastProgress = ""
         lastPhase = Phase.NONE
         pendingKill = null

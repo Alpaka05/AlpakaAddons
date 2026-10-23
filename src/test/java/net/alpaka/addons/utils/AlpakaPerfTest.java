@@ -57,4 +57,38 @@ class AlpakaPerfTest {
         AlpakaPerf.end(AlpakaPerf.Section.CHAT_EXTRACT, t);
         assertEquals(null, line(AlpakaPerf.report(), "chat_extract"));
     }
+
+    @Test
+    void aSlowFrameIsKeptWithItsPhases() {
+        AlpakaPerf.start();
+        AlpakaPerf.finishFrame(2_000_000L);
+        AlpakaPerf.phaseEnd(AlpakaPerf.Phase.PRESENT, System.nanoTime() - 150_000_000L);
+        AlpakaPerf.finishFrame(180_000_000L);
+
+        List<String> report = AlpakaPerf.report();
+        String all = String.join("\n", report);
+        assertTrue(all.contains("Frames 2,"), all);
+        assertTrue(all.contains("50 ms+: 1, 100 ms+: 1, 250 ms+: 0"), all);
+        String spike = report.get(report.indexOf("Worst frames (ms):") + 1);
+        assertTrue(spike.matches("\\d\\d:\\d\\d:\\d\\d  180 ms.*· present 1\\d\\d · other \\d+.*"), spike);
+        assertTrue(report.get(report.size() - 1).contains("GC:"), all);
+    }
+
+    @Test
+    void theLimitersSleepIsNoSpike() {
+        AlpakaPerf.start();
+        AlpakaPerf.phaseEnd(AlpakaPerf.Phase.LIMITER, System.nanoTime() - 95_000_000L);
+        AlpakaPerf.finishFrame(100_000_000L);
+        String all = String.join("\n", AlpakaPerf.report());
+        assertTrue(all.contains("50 ms+: 0"), all);
+        assertTrue(!all.contains("Worst frames"), all);
+    }
+
+    @Test
+    void zgcPausesAreToldFromItsCycles() {
+        assertTrue(AlpakaPerf.isPause("ZGC Minor Pauses"));
+        assertTrue(!AlpakaPerf.isPause("ZGC Major Cycles"));
+        assertTrue(AlpakaPerf.isPause("G1 Young Generation"));
+        assertTrue(!AlpakaPerf.isPause("G1 Concurrent GC"));
+    }
 }

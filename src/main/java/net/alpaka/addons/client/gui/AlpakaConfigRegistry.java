@@ -157,8 +157,8 @@ public class AlpakaConfigRegistry {
                 parent -> AlpakaConfig.instance.disableAllFeatures(),
                 "disable all features turn off reset everywhere confirm prompt disables confirmation")
                 .confirm("Disable All Features",
-                        "Turns off every feature of Alpaka Addons, and some of their settings with them. "
-                                + "Which ones were on is not remembered. This cannot be undone.",
+                        "Turns off every feature of Alpaka Addons. Their settings stay, but which features "
+                                + "were on is not remembered. This cannot be undone.",
                         "Disable All", true));
 
         OPTIONS.add(new ConfigOption("reset_all_settings", "Reset All Settings",

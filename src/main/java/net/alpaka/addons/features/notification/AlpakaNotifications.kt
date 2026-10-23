@@ -2,6 +2,7 @@ package net.alpaka.addons.features.notification
 
 import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.config.AlpakaConfig
+import net.alpaka.addons.features.chat.ChatOverHud
 import net.minecraft.client.DeltaTracker
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
@@ -213,6 +214,19 @@ object AlpakaNotifications {
     /** Called every frame from the HUD hook. */
     @JvmStatic
     fun render(graphics: GuiGraphicsExtractor, @Suppress("UNUSED_PARAMETER") deltaTracker: DeltaTracker) {
+        // With Better Chat the chat is drawn after the HUD, so a notice drawn here sat under it in
+        // its corner; ChatOverHud draws the notices after the chat instead (renderAfterChat).
+        if (ChatOverHud.isEnabled()) return
+        draw(graphics)
+    }
+
+    /** The notices after Better Chat's chat, last of all, so the chat does not cover one. */
+    @JvmStatic
+    fun renderAfterChat(graphics: GuiGraphicsExtractor) {
+        if (ChatOverHud.isEnabled()) draw(graphics)
+    }
+
+    private fun draw(graphics: GuiGraphicsExtractor) {
         val mc = Minecraft.getInstance()
         val now = System.currentTimeMillis()
         // Pruned before the early return, so expired notices leave even while nothing is drawn.

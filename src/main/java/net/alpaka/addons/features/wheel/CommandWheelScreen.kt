@@ -50,11 +50,27 @@ import kotlin.math.sqrt
  * Everything moves on eased curves driven by real frame time, so it looks the same at 60 and 240
  * frames per second, and everything rounded is drawn by [WheelMesh] rather than stacked rectangles.
  */
-class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
+class CommandWheelScreen(
+    /**
+     * Whether the wheel key is still held from the press that opened the wheel. Held down, the key
+     * repeats, and in toggle mode a repeat closed the wheel again at once; it only closes it once it
+     * has been let go and pressed anew.
+     */
+    private var keyHeld: Boolean = false,
+) : Screen(Component.literal("Quick Command Menu")) {
 
     private var pages: List<List<String>> = emptyList()
     private var page = 0
     private var commands: List<String> = emptyList()
+
+    /**
+     * The current page's names in the configured font and their widths, built in showPage(): the
+     * dial lays them out and draws them every frame, and measuring every name twice a frame added
+     * up. The font only changes through a resize or a resource reload, and both run init() ->
+     * showPage() again.
+     */
+    private var labels: List<Component> = emptyList()
+    private var labelWidths = IntArray(0)
 
     /** Per segment, 0 = idle and 1 = fully highlighted; eased towards its target every frame. */
     private var highlight = FloatArray(0)
@@ -85,6 +101,12 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
     /** Eased hover glow of the two page arrows, left then right. */
     private val arrowGlow = FloatArray(2)
 
+    // The dial's mesh, kept between frames: its buffers grow to fit the shadow ring, some 5,000
+    // vertices, and a fresh mesh every frame regrew and copied them each time. Rebuilt when the GUI
+    // scale changes, since its feather is about one screen pixel.
+    private var wheelMesh: WheelMesh? = null
+    private var wheelMeshScale = 0
+
     private val openedAtNanos = System.nanoTime()
     private var lastFrameNanos = openedAtNanos
 
@@ -99,6 +121,8 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
         page = if (pages.isEmpty()) 0 else index.coerceIn(0, pages.size - 1)
         lastPage = page
         commands = if (pages.isEmpty()) emptyList() else pages[page]
+        labels = commands.map { GuiFont.text(it) }
+        labelWidths = IntArray(labels.size) { this.font.width(labels[it]) }
         highlight = FloatArray(commands.size)
         selectedIndex = -1
         cachedLayout = null
@@ -127,7 +151,7 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
     override fun keyPressed(event: KeyEvent): Boolean {
         val key = CommandWheelFeature.COMMAND_WHEEL_KEY
         if (key != null && key.matches(event) && AlpakaConfig.instance.commandWheelToggleMode) {
-            close()
+            if (!keyHeld) close()
             return true
         }
         return super.keyPressed(event)
@@ -136,6 +160,7 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
     override fun keyReleased(event: KeyEvent): Boolean {
         val key = CommandWheelFeature.COMMAND_WHEEL_KEY
         if (key != null && key.matches(event)) {
+            keyHeld = false
             // In toggle mode this is just the press that opened the wheel letting go.
             if (!AlpakaConfig.instance.commandWheelToggleMode) runSelectedAndClose()
             return true
@@ -212,7 +237,7 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
         val cx = this.width / 2f
         val cy = this.height / 2f
         val sweep = TAU / count
-        val widths = IntArray(count) { GuiFont.width(this.font, commands[it]) }
+        val widths = labelWidths
         val textHeight = (this.font.lineHeight - 1).toFloat()
 
         // Push the ring out until no two labels touch, with a little air between them and room for
@@ -344,7 +369,9 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
         graphics.fill(0, 0, this.width, this.height, scaleAlpha(0x38000000, open))
 
         val guiScale = (this.minecraft ?: Minecraft.getInstance()).window.guiScale.coerceAtLeast(1)
-        val mesh = WheelMesh(1.15f / guiScale)
+        val mesh = wheelMesh?.takeIf { wheelMeshScale == guiScale }
+            ?: WheelMesh(1.15f / guiScale).also { wheelMesh = it; wheelMeshScale = guiScale }
+        mesh.reset()
         val accent = ModernGuiUtils.getAccentColor()
         val hoveredArrow = arrowAt(mouseX.toDouble(), mouseY.toDouble())
 
@@ -459,7 +486,6 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
         // little towards white so it stays readable even with a dark accent.
         val labelSelected = lerpColor(accent, 0xFFFFFFFF.toInt(), 0.25f)
         for (i in 0 until count) {
-            val command = commands[i]
             val h = highlight[i]
             val angle = segmentAngle(layout, i)
             val cosA = cos(angle)
@@ -467,7 +493,7 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
             val radius = layout.labelRadius + SELECT_GROWTH * h
             val anchorX = layout.cx + cosA * radius
             val anchorY = layout.cy + sinA * radius
-            val textWidth = GuiFont.width(this.font, command)
+            val textWidth = labelWidths[i]
             val textHeight = this.font.lineHeight - 1
             val x = (anchorX + (cosA - 1f) * textWidth / 2f).roundToInt()
             val y = (anchorY + (sinA - 1f) * textHeight / 2f).roundToInt()
@@ -478,7 +504,7 @@ class CommandWheelScreen : Screen(Component.literal("Quick Command Menu")) {
             val scale = 1f + LABEL_GROWTH * h
             pose.pushMatrix()
             pose.scaleAround(scale, scale, anchorX, anchorY)
-            graphics.text(this.font, GuiFont.text(command), x, y, color, false)
+            graphics.text(this.font, labels[i], x, y, color, false)
             pose.popMatrix()
         }
 

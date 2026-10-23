@@ -1,7 +1,12 @@
 package net.alpaka.addons.features.mainmenu
 
+import com.mojang.blaze3d.platform.NativeImage
+import com.mojang.blaze3d.systems.RenderSystem
+import com.mojang.blaze3d.textures.FilterMode
 import net.alpaka.addons.config.AlpakaConfig
 import net.minecraft.client.Minecraft
+import net.minecraft.client.renderer.texture.DynamicTexture
+import net.minecraft.resources.Identifier
 import net.minecraft.client.multiplayer.ServerData
 import net.minecraft.client.multiplayer.ServerStatusPinger
 import net.minecraft.server.network.EventLoopGroupHolder
@@ -17,6 +22,9 @@ import java.util.concurrent.atomic.AtomicBoolean
  * every open, every return from a sub-screen, every resize event and once a minute. Now the ping
  * runs on its own thread, at most once a minute after a success and with a growing pause after a
  * failure, and the menu only asks for a refresh and reads the result.
+ *
+ * The same answer carries the server's icon, Hypixel's "H", which the server list shows as well;
+ * it is kept as a texture for the Join Hypixel button ([icon]). The mod ships no copy of it.
  *
  * Nothing is pinged while "Network Features" is off.
  */
@@ -46,6 +54,14 @@ object HypixelStatus {
     /** The last player count that arrived, kept while a refresh runs so the line does not flicker. */
     var online: Int? = null
         private set
+    private val ICON_ID: Identifier = Identifier.fromNamespaceAndPath("alpaka", "hypixel_server_icon")
+    private var iconBytes: ByteArray? = null
+    private var iconLoaded = false
+
+    /** The server's icon as a texture, once a ping has brought it, and not while network features are off. */
+    val icon: Identifier?
+        get() = if (iconLoaded && AlpakaConfig.instance.allowApiCalls) ICON_ID else null
+
     /** Round trip of the last ping in milliseconds, or 0 when not known. */
     var pingMs: Long = 0L
         private set
@@ -114,6 +130,30 @@ object HypixelStatus {
         lastSuccessMs = System.currentTimeMillis()
         failures = 0
         nextAttemptMs = 0L
+        updateIcon()
+    }
+
+    /** Turns the icon the server sent into the texture, when it is new or changed. */
+    private fun updateIcon() {
+        val bytes = data.iconBytes ?: return
+        if (bytes.contentEquals(iconBytes)) return
+        iconBytes = bytes
+        try {
+            Minecraft.getInstance().textureManager.register(ICON_ID, SmoothTexture(NativeImage.read(bytes)))
+            iconLoaded = true
+        } catch (t: Throwable) {
+            net.alpaka.addons.AlpakaAddons.LOGGER.warn("Could not read Hypixel's server icon", t)
+        }
+    }
+
+    /**
+     * A texture sampled linearly: the 64 pixel icon is drawn smaller than that on most screens, and
+     * the nearest texel made its edges ragged.
+     */
+    private class SmoothTexture(image: NativeImage) : DynamicTexture({ "Alpaka Hypixel server icon" }, image) {
+        init {
+            sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR)
+        }
     }
 
     private fun onFailure() {

@@ -54,10 +54,10 @@ public final class FireOverlayFeature {
      */
     private static final float VANILLA_FIRE_REACH = 0.35f;
 
-    /** Moves the fire quads down so they reach the set share of vanilla's height. */
-    public static float firstPersonFireY(float vanillaY) {
+    /** How far the fire quads move down, so they reach the set share of vanilla's height; 0 or less. */
+    public static float firstPersonFireDrop() {
         float height = Math.clamp(AlpakaConfig.instance.firstPersonFireHeight, 0.0f, 1.0f);
-        return vanillaY - (1.0f - height) * VANILLA_FIRE_REACH;
+        return -(1.0f - height) * VANILLA_FIRE_REACH;
     }
 
     public static boolean staticFirstPersonFire() {

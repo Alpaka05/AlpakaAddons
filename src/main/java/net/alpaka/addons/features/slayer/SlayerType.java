@@ -1,5 +1,7 @@
 package net.alpaka.addons.features.slayer;
 
+import java.util.Locale;
+
 /**
  * The Skyblock slayers.
  *
@@ -93,7 +95,7 @@ public enum SlayerType {
         this.trackerAreas = trackerAreas;
         this.trackerAreasLower = new String[trackerAreas.length];
         for (int i = 0; i < trackerAreas.length; i++) {
-            this.trackerAreasLower[i] = trackerAreas[i].toLowerCase();
+            this.trackerAreasLower[i] = trackerAreas[i].toLowerCase(Locale.ROOT);
         }
         this.display = display;
         this.colorCode = colorCode;
@@ -101,7 +103,7 @@ public enum SlayerType {
         this.slayerAreas = slayerAreas;
         this.slayerAreasLower = new String[slayerAreas.length];
         for (int i = 0; i < slayerAreas.length; i++) {
-            this.slayerAreasLower[i] = slayerAreas[i].toLowerCase();
+            this.slayerAreasLower[i] = slayerAreas[i].toLowerCase(Locale.ROOT);
         }
         this.bossNames = bossNames;
     }
@@ -115,7 +117,7 @@ public enum SlayerType {
     public boolean isSlayerArea(String area) {
         if (area == null || area.isEmpty() || slayerAreas.length == 0) return false;
         // Lowercased once for the whole loop; the zone names are pre-lowercased at construction.
-        String lowerArea = area.toLowerCase();
+        String lowerArea = area.toLowerCase(Locale.ROOT);
         for (int i = 0; i < slayerAreas.length; i++) {
             String knownLower = slayerAreasLower[i];
             if (lowerArea.equals(knownLower)
@@ -169,10 +171,10 @@ public enum SlayerType {
         }
 
         if (needle.length() < 3) return null;
-        String lower = needle.toLowerCase();
+        String lower = needle.toLowerCase(Locale.ROOT);
         for (SlayerType type : VALUES) {
             for (String bossName : type.bossNames) {
-                if (bossName.toLowerCase().contains(lower)) return type;
+                if (bossName.toLowerCase(Locale.ROOT).contains(lower)) return type;
             }
         }
         return null;
@@ -184,7 +186,7 @@ public enum SlayerType {
         for (SlayerType type : VALUES) {
             if (type == GUARDIAN) continue;
             if (out.length() > 0) out.append(", ");
-            out.append(type.display.toLowerCase());
+            out.append(type.display.toLowerCase(Locale.ROOT));
         }
         return out.toString();
     }
@@ -198,7 +200,7 @@ public enum SlayerType {
      */
     public boolean isTrackerArea(String line) {
         if (line == null || line.isEmpty() || trackerAreasLower.length == 0) return false;
-        String lower = line.toLowerCase();
+        String lower = line.toLowerCase(Locale.ROOT);
         for (String known : trackerAreasLower) {
             if (lower.contains(known)) return true;
         }

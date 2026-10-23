@@ -76,7 +76,7 @@ public final class ItemIcons {
      * Hypixel's list as far as it is used: how items look by name, every item id, the ids of plain
      * Minecraft items, every item's name by its id, and the upgrades of those that have any.
      */
-    record Catalog(Map<String, Info> byName, Set<String> ids, Set<String> vanillaIds,
+    record Catalog(Map<String, Info> byName, Map<String, Info> byId, Set<String> ids, Set<String> vanillaIds,
                    Map<String, String> names, Map<String, Upgrades> upgrades) {
         /**
          * Whether the item with SkyCofl's tag is a plain Minecraft item - Diamond Sword, Oak Planks -
@@ -93,6 +93,58 @@ public final class ItemIcons {
     private static volatile long retryAt = 0L;
     /** Built stacks by name; only touched on the render thread. */
     private static final Map<String, ItemStack> STACKS = new HashMap<>();
+    /** Built stacks by SkyCofl's tag; only touched on the render thread. */
+    private static final Map<String, ItemStack> BY_TAG = new HashMap<>();
+
+    /**
+     * The item with SkyCofl's tag, which the suggestions know each name by: by its id in Hypixel's
+     * list, else what the tag says plainly (an enchanted book, a potion, a 1.8 block such as
+     * WOOL:6), else the NotEnoughUpdates repository's file for it ({@link NeuItems}). Going by the
+     * tag rather than the name finds pets, runes and shards, which Hypixel's list leaves out, and
+     * the right one of items that share a name. Without a tag, or for one nobody knows, by name.
+     */
+    public static ItemStack forItem(String tag, String name) {
+        if (!AlpakaConfig.instance.allowApiCalls) return ItemStack.EMPTY;
+        if (tag == null || tag.isEmpty()) return forName(name);
+        ItemStack cached = BY_TAG.get(tag);
+        if (cached != null) return cached;
+        Catalog loaded = catalog();
+        if (loaded == null) return ItemStack.EMPTY;
+        Info info = loaded.byId().get(tag);
+        if (info == null) info = plain(tag, name);
+        if (info == null) {
+            info = NeuItems.look(tag);
+            // Not known yet: asked again on the next frame. Known to be missing: the name may still find it.
+            if (info == null) return NeuItems.missing(tag) ? remember(tag, forName(name)) : ItemStack.EMPTY;
+        }
+        return remember(tag, build(info));
+    }
+
+    private static ItemStack remember(String tag, ItemStack stack) {
+        BY_TAG.put(tag, stack);
+        return stack;
+    }
+
+    /**
+     * How an item looks that its tag already says: an enchantment on the Bazaar is a book, a potion
+     * a potion bottle, and a plain item's tag is its 1.8 material and damage value.
+     */
+    static Info plain(String tag, String name) {
+        if (tag.startsWith("ENCHANTMENT_")) return new Info("enchanted_book", 0, null, false, null);
+        if (tag.startsWith("POTION")) {
+            boolean splash = name != null && name.toLowerCase(Locale.ROOT).contains("splash");
+            return new Info(splash ? "splash_potion" : "potion", 0, null, false, null);
+        }
+        int colon = tag.indexOf(':');
+        if (colon > 0) {
+            try {
+                return new Info(tag.substring(0, colon), Integer.parseInt(tag.substring(colon + 1)), null, false, null);
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        return null;
+    }
 
     /** The item for a name, or an empty stack while the list loads or if the name is not in it. */
     public static ItemStack forName(String name) {
@@ -217,11 +269,12 @@ public final class ItemIcons {
      */
     static Catalog index(JsonElement root) {
         Map<String, Info> map = new HashMap<>();
+        Map<String, Info> byId = new HashMap<>();
         Set<String> ids = new HashSet<>();
         Set<String> vanilla = new HashSet<>();
         Map<String, String> names = new HashMap<>();
         Map<String, Upgrades> upgrades = new HashMap<>();
-        if (!root.isJsonObject() || !root.getAsJsonObject().has("items")) return new Catalog(map, ids, vanilla, names, upgrades);
+        if (!root.isJsonObject() || !root.getAsJsonObject().has("items")) return new Catalog(map, byId, ids, vanilla, names, upgrades);
         for (JsonElement element : root.getAsJsonObject().getAsJsonArray("items")) {
             if (!element.isJsonObject()) continue;
             JsonObject o = element.getAsJsonObject();
@@ -244,9 +297,11 @@ public final class ItemIcons {
             }
             boolean glowing = o.has("glowing") && o.get("glowing").getAsBoolean();
             String color = o.has("color") ? string(o, "color") : null;
-            map.putIfAbsent(name.toLowerCase(Locale.ROOT), new Info(material, damage, skin, glowing, color));
+            Info info = new Info(material, damage, skin, glowing, color);
+            map.putIfAbsent(name.toLowerCase(Locale.ROOT), info);
+            if (!id.isEmpty()) byId.put(id, info);
         }
-        return new Catalog(map, ids, vanilla, names, upgrades);
+        return new Catalog(map, byId, ids, vanilla, names, upgrades);
     }
 
     /** An item's star, dungeon conversion and gemstone slot costs and its own enchantments; null without any. */

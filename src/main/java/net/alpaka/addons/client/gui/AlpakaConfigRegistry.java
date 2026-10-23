@@ -1597,6 +1597,22 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customSignInputEnabled = v; AlpakaConfig.save(); },
                 "sign input search price amount bid query text field bar auction bazaar"));
 
+        OPTIONS.add(new ConfigOption("item_value", "Item Value",
+                "Press the Item Value key over an item to see what it is worth, broken down into its enchantments, stars, gemstones and upgrades at current prices. The key is unbound by default; set it in Controls. Needs Network Features.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.itemValueEnabled,
+                v -> { AlpakaConfig.instance.itemValueEnabled = v; AlpakaConfig.save(); },
+                "item value worth price networth net worth estimate breakdown enchantments stars gemstones upgrades hotkey key popup lowest bin bazaar graph unbound controls"));
+
+        OPTIONS.add(new ConfigOption("item_value_bazaar_price", "Bazaar Prices",
+                "Whether parts sold on the Bazaar count at what they cost to buy now or at what they would sell for now.",
+                ConfigCategory.SKYBLOCK,
+                () -> (float) AlpakaConfig.instance.itemValueBazaarPrice,
+                v -> { AlpakaConfig.instance.itemValueBazaarPrice = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (net.alpaka.addons.features.itemvalue.ItemPrices.SIDES.length - 1),
+                val -> net.alpaka.addons.features.itemvalue.ItemPrices.SIDES[Math.round(val)],
+                "item value bazaar price instant buy sell side order offer").choices(net.alpaka.addons.features.itemvalue.ItemPrices.SIDES));
+
         OPTIONS.add(new ConfigOption("Guild Chat", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("guild_prefix", "Custom Guild Tag",

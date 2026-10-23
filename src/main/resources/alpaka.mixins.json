@@ -16,6 +16,8 @@
     "MenuScreensMixin",
     "LocalPlayerSignMixin",
     "AbstractSignEditScreenAccessor",
+    "AbstractContainerScreenAccessor",
+    "AbstractContainerScreenMixin",
     "CameraMixin",
     "GuiMixin",
     "HudMixin",

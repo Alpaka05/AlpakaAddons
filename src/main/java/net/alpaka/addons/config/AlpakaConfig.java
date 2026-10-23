@@ -635,6 +635,10 @@ public class AlpakaConfig {
     public boolean marketPriceHistoryEnabled = true;
     /** How far back it goes, an index into PriceHistory.Range: day, week, month, all time. */
     public int marketPriceHistoryRange = 1;
+    /** The Item Value key shows what the hovered item is worth, part by part; see ItemValuePopup. Needs allowApiCalls. */
+    public boolean itemValueEnabled = true;
+    /** Which Bazaar price the parts count at: 0 what they cost to buy now, 1 what they sell for now. */
+    public int itemValueBazaarPrice = 0;
 
     // Command Wheel options
     /**
@@ -1201,6 +1205,7 @@ public class AlpakaConfig {
         this.customBazaarEnabled = false;
         this.customSignInputEnabled = false;
         this.marketPriceHistoryEnabled = false;
+        this.itemValueEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
         this.customDamageTagsEnabled = false;

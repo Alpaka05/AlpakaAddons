@@ -3,6 +3,7 @@ package net.alpaka.addons.mixin;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.alpaka.addons.compat.MacOSInputFixesCompat;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
+import net.alpaka.addons.features.itemvalue.ItemValueFeature;
 import net.alpaka.addons.features.party.PartyInviteFeature;
 import net.minecraft.client.KeyboardHandler;
 import net.minecraft.client.input.KeyEvent;
@@ -12,8 +13,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Key presses the mod answers before the game sees them: the party prompt's Y and N, and Tab
- * cycling the chat tabs while the chat is held open with Peek Chat.
+ * Key presses the mod answers before the game sees them: the party prompt's Y and N, Tab cycling
+ * the chat tabs while the chat is held open with Peek Chat, and the repeats of a held Item Value key.
  *
  * Taken at the very front of the keyboard handler, so a consumed press never reaches a key mapping
  * or the open screen - which is what keeps Tab from also bringing up the player list, and Y or N
@@ -32,6 +33,11 @@ public class KeyboardHandlerMixin {
         // mapping down - the player list's, for Tab - even though the press itself was taken. So a
         // repeat of a taken key is swallowed too, without acting on it again.
         boolean repeat = action == InputConstants.REPEAT;
+        // The Item Value key acts once per press; held down, it would open and close the popup in turn.
+        if (repeat && ItemValueFeature.swallowsRepeat(event)) {
+            ci.cancel();
+            return;
+        }
         if (PartyInviteFeature.onKey(event.key(), event.scancode(), repeat)) {
             ci.cancel();
             return;

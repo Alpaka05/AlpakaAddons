@@ -246,6 +246,49 @@ public final class DevScreenshotTour {
                     net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, false), () -> true, 1),
             screen("market-config", () -> AlpakaConfigScreen.openOn("Markets", "Custom Auction House")),
             screen("market-config-price-history", () -> AlpakaConfigScreen.openOn("Markets", "Price History")),
+            // The Item Value popup over a chest of SkyBlock items, opened the way the key opens it, over
+            // the item under the mouse. Its prices come from the network, so it waits for them.
+            new Stop(null, () -> Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.itemvalue.ItemValuePreview.chest()),
+                    () -> true, 5),
+            new Stop(null, () -> placeMouseAt(net.alpaka.addons.features.itemvalue.ItemValuePreview.slotCenter(10)), () -> true, 3),
+            new Stop("item-value", net.alpaka.addons.features.itemvalue.ItemValueFeature::devPress,
+                    net.alpaka.addons.features.itemvalue.ItemValuePreview::settled, 60),
+            // A group's line under the mouse: lit, and after a moment its tooltip.
+            new Stop("item-value-hover", () -> placeMouseAt(net.alpaka.addons.features.itemvalue.ItemValuePopup.devRowPoint("Upgrades")),
+                    () -> true, 15),
+            new Stop("item-value-groups-open", () -> net.alpaka.addons.features.itemvalue.ItemValuePopup.devFold(false), () -> true, 10),
+            new Stop(null, () -> net.alpaka.addons.features.itemvalue.ItemValuePopup.devFold(true), () -> true, 1),
+            // A click on a group opens it; a click on one of its parts shows that part's price history.
+            new Stop("item-value-enchantments", () -> net.alpaka.addons.features.itemvalue.ItemValuePopup.devClick(
+                    net.alpaka.addons.features.itemvalue.ItemValuePopup.devRowPoint("Enchantments")), () -> true, 10),
+            new Stop("item-value-graph-part", () -> net.alpaka.addons.features.itemvalue.ItemValuePopup.devClick(
+                    net.alpaka.addons.features.itemvalue.ItemValuePopup.devRowPoint("Sharpness VII")), () -> true, 80),
+            // The item's own price history.
+            new Stop("item-value-graph", () -> net.alpaka.addons.features.itemvalue.ItemValuePopup.devGraph(), () -> true, 80),
+            new Stop(null, net.alpaka.addons.features.itemvalue.ItemValuePopup::close, () -> true, 1),
+            new Stop(null, () -> placeMouseAt(net.alpaka.addons.features.itemvalue.ItemValuePreview.slotCenter(12)), () -> true, 3),
+            new Stop("item-value-pet", net.alpaka.addons.features.itemvalue.ItemValueFeature::devPress, () -> true, 20),
+            new Stop(null, net.alpaka.addons.features.itemvalue.ItemValuePopup::close, () -> true, 1),
+            new Stop(null, () -> placeMouseAt(net.alpaka.addons.features.itemvalue.ItemValuePreview.slotCenter(13)), () -> true, 3),
+            new Stop("item-value-drill", net.alpaka.addons.features.itemvalue.ItemValueFeature::devPress, () -> true, 20),
+            new Stop(null, net.alpaka.addons.features.itemvalue.ItemValuePopup::close, () -> true, 1),
+            new Stop(null, () -> placeMouseAt(net.alpaka.addons.features.itemvalue.ItemValuePreview.slotCenter(14)), () -> true, 3),
+            new Stop("item-value-stack", net.alpaka.addons.features.itemvalue.ItemValueFeature::devPress, () -> true, 20),
+            new Stop(null, net.alpaka.addons.features.itemvalue.ItemValuePopup::close, () -> true, 1),
+            new Stop(null, () -> placeMouseAt(net.alpaka.addons.features.itemvalue.ItemValuePreview.slotCenter(16)), () -> true, 3),
+            new Stop("item-value-no-id", net.alpaka.addons.features.itemvalue.ItemValueFeature::devPress, () -> true, 20),
+            new Stop(null, net.alpaka.addons.features.itemvalue.ItemValuePopup::close, () -> true, 1),
+            // Over a card of the Auction House: the item the market screen draws under the mouse.
+            new Stop(null, () -> {
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.auctionBrowser());
+                placeMouse(0.42, 0.3);
+            }, () -> true, 15),
+            new Stop("item-value-market", net.alpaka.addons.features.itemvalue.ItemValueFeature::devPress, () -> true, 40),
+            new Stop(null, () -> {
+                net.alpaka.addons.features.itemvalue.ItemValuePopup.close();
+                placeMouse(0.5, 0.97);
+            }, () -> true, 1),
+            screen("item-value-config", () -> AlpakaConfigScreen.openOn("Markets", "Item Value")),
             new Stop(null, () -> Minecraft.getInstance().gui.setScreen(null), () -> true, 5),
             new Stop("hud-editor-world", () -> Minecraft.getInstance().gui.setScreen(new HudEditorScreen(null)), () -> true, 20),
             // Every HUD on its blurred panel and in the menu font, a notice in the corner.
@@ -538,6 +581,12 @@ public final class DevScreenshotTour {
                 new LevelSettings.DifficultySettings(Difficulty.PEACEFUL, false, false), true, WorldDataConfiguration.DEFAULT);
         mc.createWorldOpenFlows().createFreshLevel(WORLD, settings, new WorldOptions(0L, false, false),
                 WorldPresets::createTestWorldDimensions, new CustomMainMenuScreen());
+    }
+
+    /** Puts the mouse on this point of the screen, in GUI pixels. */
+    private static void placeMouseAt(int[] point) {
+        Minecraft mc = Minecraft.getInstance();
+        placeMouse((point[0] + 0.5) / mc.getWindow().getGuiScaledWidth(), (point[1] + 0.5) / mc.getWindow().getGuiScaledHeight());
     }
 
     /**

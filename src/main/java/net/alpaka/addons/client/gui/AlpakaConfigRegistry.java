@@ -49,7 +49,7 @@ public class AlpakaConfigRegistry {
         // and whether they replace vanilla's, the one place HUDs are arranged, and the way back out
         // of everything.
         OPTIONS.add(new ConfigOption("allow_api_calls", "Network Features",
-                "Lets the mod go online for the mayor's slayer XP buff, the main menu's player count and the update check.",
+                "Lets the mod go online for the mayor's slayer XP buff, the main menu's player count, the update check and SkyCofl's price history.",
                 ConfigCategory.GENERAL,
                 () -> AlpakaConfig.instance.allowApiCalls,
                 v -> { AlpakaConfig.instance.allowApiCalls = v; AlpakaConfig.save(); },
@@ -1558,6 +1558,45 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.cacheResourcePackEnabled,
                 v -> { AlpakaConfig.instance.cacheResourcePackEnabled = v; AlpakaConfig.save(); },
                 "cache resource pack server pack texture loading screen reload join hypixel skyblock fast"));
+
+        OPTIONS.add(new ConfigOption("Markets", ConfigCategory.SKYBLOCK));
+
+        OPTIONS.add(new ConfigOption("custom_auction_house", "Custom Auction House",
+                "Shows the Auction House in Alpaka's design: categories with icons, auctions as cards with price, time and seller. Each click is the same click on Hypixel's menu.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.customAuctionHouseEnabled,
+                v -> { AlpakaConfig.instance.customAuctionHouseEnabled = v; AlpakaConfig.save(); },
+                "auction house ah auctions browser bin bid custom menu gui redesign cards market"));
+
+        OPTIONS.add(new ConfigOption("custom_bazaar", "Custom Bazaar",
+                "Shows the Bazaar in Alpaka's design, with buy and sell prices on every product. Each click is the same click on Hypixel's menu.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.customBazaarEnabled,
+                v -> { AlpakaConfig.instance.customBazaarEnabled = v; AlpakaConfig.save(); },
+                "bazaar bz buy sell order offer instant custom menu gui redesign prices market"));
+
+        OPTIONS.add(new ConfigOption("market_price_history", "Price History",
+                "Shows the price history from SkyCofl on a product's or an auction's page. Needs Network Features.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.marketPriceHistoryEnabled,
+                v -> { AlpakaConfig.instance.marketPriceHistoryEnabled = v; AlpakaConfig.save(); },
+                "price history graph chart coflnet skycofl bazaar auction trend range day week month"));
+
+        OPTIONS.add(new ConfigOption("market_price_history_range", "Default Range",
+                "How far back the graph goes when a page opens. The range picked on the graph is remembered here.",
+                ConfigCategory.SKYBLOCK,
+                () -> (float) AlpakaConfig.instance.marketPriceHistoryRange,
+                v -> { AlpakaConfig.instance.marketPriceHistoryRange = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (net.alpaka.addons.features.market.PriceHistory.Range.LABELS.length - 1),
+                val -> net.alpaka.addons.features.market.PriceHistory.Range.LABELS[Math.round(val)],
+                "price history range time span day week month all").choices(net.alpaka.addons.features.market.PriceHistory.Range.LABELS));
+
+        OPTIONS.add(new ConfigOption("custom_sign_input", "Custom Sign Input",
+                "Replaces Hypixel's sign for searches, prices and amounts with an input bar that shows what an amount like 1.5m means.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.customSignInputEnabled,
+                v -> { AlpakaConfig.instance.customSignInputEnabled = v; AlpakaConfig.save(); },
+                "sign input search price amount bid query text field bar auction bazaar"));
 
         OPTIONS.add(new ConfigOption("Guild Chat", ConfigCategory.SKYBLOCK));
 

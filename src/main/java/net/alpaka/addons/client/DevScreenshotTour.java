@@ -177,6 +177,78 @@ public final class DevScreenshotTour {
             new Stop("screenshot-preview", () -> {}, () -> true, 2),
             new Stop("screenshot-preview-shrink", () -> ScreenshotPreview.devFreezeAt(120.0f), () -> true, 2),
             new Stop(null, () -> ScreenshotPreview.devFreezeAt(-1.0f), () -> true, 5),
+            // The Auction House and the Bazaar in the market screens, on chests filled locally.
+            screen("market-ah-main", net.alpaka.addons.features.market.MarketPreview::auctionHouse),
+            screen("market-ah-browser", net.alpaka.addons.features.market.MarketPreview::auctionBrowser),
+            new Stop("market-ah-browser-hover", () -> placeMouse(0.42, 0.3), () -> true, 15),
+            // A card a moment after its click: Hypixel has taken the item onto the cursor, the card
+            // stays and gives under the click.
+            new Stop("market-ah-press", () -> net.alpaka.addons.features.market.MarketPreview.pressLikeHypixel(12),
+                    () -> true, 2),
+            new Stop("market-ah-browser-filter", () -> placeMouse(0.14, 0.72), () -> true, 15),
+            new Stop(null, () -> placeMouse(0.5, 0.97), () -> true, 1),
+            new Stop("market-ah-inventory", () -> {
+                net.alpaka.addons.features.market.MarketPreview.inventory(true);
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.auctionBrowser());
+            }, () -> true, 30),
+            new Stop(null, () -> net.alpaka.addons.features.market.MarketPreview.inventory(false), () -> true, 1),
+            new Stop("market-ah-view", () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.market.MarketPreview.auctionView()), () -> true, 80),
+            screen("market-ah-confirm", net.alpaka.addons.features.market.MarketPreview::auctionConfirm),
+            screen("market-bazaar", net.alpaka.addons.features.market.MarketPreview::bazaar),
+            new Stop("market-bazaar-hover", () -> placeMouse(0.62, 0.42), () -> true, 15),
+            new Stop(null, () -> placeMouse(0.5, 0.97), () -> true, 1),
+            // With SkyCofl's price history beside the product; it loads from the network, so it gets time.
+            new Stop("market-bazaar-product", () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.market.MarketPreview.bazaarProduct()), () -> true, 100),
+            new Stop("market-graph-hover", () -> placeMouse(0.72, 0.3), () -> true, 10),
+            new Stop("market-graph-month", () -> {
+                AlpakaConfig.instance.marketPriceHistoryRange = 2;
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.bazaarProduct());
+            }, () -> true, 80),
+            new Stop(null, () -> {
+                AlpakaConfig.instance.marketPriceHistoryRange = 1;
+                placeMouse(0.5, 0.97);
+            }, () -> true, 1),
+            screen("market-bazaar-orders", net.alpaka.addons.features.market.MarketPreview::bazaarOrders),
+            // The search sign as Hypixel writes it: two lines for the answer, the question last.
+            screen("market-input-search", () -> net.alpaka.addons.features.market.MarketPreview.input(
+                    new String[] {"", "", "^^^^^^^^^^^^^^^", "Enter query"},
+                    net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, "withered dark claymore")),
+            // The same search sign opened the way the game opens Hypixel's, through the player's
+            // sign opening: the input bar has to take over there, not vanilla's sign.
+            new Stop("market-input-hypixel", () -> net.alpaka.addons.features.market.MarketPreview.openLikeHypixel(
+                    new String[] {"", "", "^^^^^^^^^^^^^^^", "Enter query"}), () -> true, 30),
+            // Suggestions while a search is typed: names from SkyCofl's list, which loads from the network.
+            new Stop("market-input-suggest", () -> Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.input(
+                    new String[] {"", "", "^^^^^^^^^^^^^^^", "Enter query"},
+                    net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, "aspect")), () -> true, 80),
+            new Stop(null, () -> Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.input(
+                    new String[] {"", "", "^^^^^^^^^^^^^^^", "Enter query"},
+                    net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, "aotd")), () -> true, 10),
+            new Stop("market-input-suggest-initials", () -> screen().keyPressed(
+                    new net.minecraft.client.input.KeyEvent(org.lwjgl.glfw.GLFW.GLFW_KEY_DOWN, 0, 0)), () -> true, 5),
+            new Stop("market-input-suggest-bazaar", () -> Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.input(
+                    new String[] {"", "", "^^^^^^^^^^^^^^^", "Enter query"},
+                    net.alpaka.addons.features.market.MarketKind.BAZAAR, "ench hay")), () -> true, 20),
+            // Many matches, and no plain Minecraft swords among them: the list scrolls.
+            new Stop(null, () -> Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.input(
+                    new String[] {"", "", "^^^^^^^^^^^^^^^", "Enter query"},
+                    net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, "sword")), () -> true, 20),
+            new Stop("market-input-suggest-scroll", () -> screen().mouseScrolled(0, 0, 0, -3), () -> true, 15),
+            screen("market-input-price", () -> net.alpaka.addons.features.market.MarketPreview.binPrice("4m")),
+            screen("market-input-amount", () -> net.alpaka.addons.features.market.MarketPreview.input(
+                    new String[] {"", "^^^^^^^^^^^^^^^", "Enter amount", "to order"},
+                    net.alpaka.addons.features.market.MarketKind.BAZAAR, null)),
+            new Stop("market-classic", () -> {
+                net.alpaka.addons.features.market.MarketPreview.classic(net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, true);
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.auctionBrowser());
+            }, () -> true, 30),
+            new Stop(null, () -> net.alpaka.addons.features.market.MarketPreview.classic(
+                    net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, false), () -> true, 1),
+            screen("market-config", () -> AlpakaConfigScreen.openOn("Markets", "Custom Auction House")),
+            screen("market-config-price-history", () -> AlpakaConfigScreen.openOn("Markets", "Price History")),
+            new Stop(null, () -> Minecraft.getInstance().gui.setScreen(null), () -> true, 5),
             new Stop("hud-editor-world", () -> Minecraft.getInstance().gui.setScreen(new HudEditorScreen(null)), () -> true, 20),
             // Every HUD on its blurred panel and in the menu font, a notice in the corner.
             new Stop("hud-style", DevScreenshotTour::hudStyle, () -> true, 20),

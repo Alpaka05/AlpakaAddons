@@ -619,6 +619,19 @@ public class AlpakaConfig {
     /** Keeps Hypixel's server resource pack loaded between joins; see ServerPackCache. */
     public boolean cacheResourcePackEnabled = false;
 
+    /**
+     * The Auction House and the Bazaar in the mod's own screen. It only redraws Hypixel's menus:
+     * every click on it is one click on the slot it stands for, see MarketScreen.
+     */
+    public boolean customAuctionHouseEnabled = true;
+    public boolean customBazaarEnabled = true;
+    /** Hypixel's sign prompts - a search, a price, an amount - as an input bar; see MarketInputScreen. */
+    public boolean customSignInputEnabled = true;
+    /** SkyCofl's price history on a product's or an auction's page; see PriceGraph. Needs allowApiCalls. */
+    public boolean marketPriceHistoryEnabled = true;
+    /** How far back it goes, an index into PriceHistory.Range: day, week, month, all time. */
+    public int marketPriceHistoryRange = 1;
+
     // Command Wheel options
     /**
      * The quick command wheel, one list per page. Null until CommandWheelPages first folds the
@@ -1150,6 +1163,10 @@ public class AlpakaConfig {
         this.slayerTimerChatEnabled = false;
         this.slayerTimerHudEnabled = false;
         this.ragnarockEnabled = false;
+        this.customAuctionHouseEnabled = false;
+        this.customBazaarEnabled = false;
+        this.customSignInputEnabled = false;
+        this.marketPriceHistoryEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
         this.customDamageTagsEnabled = false;

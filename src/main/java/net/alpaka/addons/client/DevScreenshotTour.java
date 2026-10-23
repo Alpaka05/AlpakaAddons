@@ -249,7 +249,7 @@ public final class DevScreenshotTour {
         cfg.inventoryHudEnabled = true;
         cfg.inventoryHudAttachToHotbar = true;
         cfg.inventoryHudVisibility = 0;
-        cfg.worldAgeHudEnabled = true;
+        cfg.performanceHudEnabled = true;
     }
 
     /** A burst of lines, as a busy chat delivers them. */

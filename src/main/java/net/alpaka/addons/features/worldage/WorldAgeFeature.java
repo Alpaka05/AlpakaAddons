@@ -4,12 +4,7 @@ import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.slayer.SlayerDropTracker;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientEntityEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.screens.ChatScreen;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.scores.DisplaySlot;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.PlayerScoreEntry;
@@ -23,7 +18,11 @@ import java.util.regex.Pattern;
 
 import net.alpaka.addons.utils.SkyblockUtils;
 
-public class WorldAgeHudRenderer {
+/**
+ * The server's world age: the day the Performance HUD shows, and the chat notice on joining a
+ * SkyBlock server with its age and when it was last visited.
+ */
+public class WorldAgeFeature {
 
     private static String currentServerKey = "";
     private static long currentServerJoinTime = 0L;
@@ -40,30 +39,6 @@ public class WorldAgeHudRenderer {
     private static final long PRESENCE_STAMP_INTERVAL_MS = 1000L;
     private static long lastPresenceStampMs = 0L;
 
-    /**
-     * The drawn line, kept between frames.
-     *
-     * The text changes once per in-game day at most, so building {@code "Day: " + day} and wrapping
-     * it in a Component every frame was two allocations for a string that is almost always the same
-     * one as last frame.
-     */
-    private static long cachedDay = Long.MIN_VALUE;
-    private static Component cachedDayComponent = null;
-
-    /** The rendered text for a day count, built at most once per change. */
-    private static Component dayComponent(long day) {
-        if (day != cachedDay || cachedDayComponent == null) {
-            cachedDay = day;
-            cachedDayComponent = Component.literal(dayText(day));
-        }
-        return cachedDayComponent;
-    }
-
-    /** "Day: N", or "Day: ?" while the server's age cannot be read. */
-    private static String dayText(long day) {
-        return day == WorldClockTracker.UNKNOWN_DAY ? "Day: ?" : "Day: " + day;
-    }
-
     public static void registerEvents() {
         ClientEntityEvents.ENTITY_LOAD.register((entity, world) -> {
             if (entity == Minecraft.getInstance().player) {
@@ -72,6 +47,7 @@ public class WorldAgeHudRenderer {
         });
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            stampPresence();
             if (joinCountdownTicks <= 0) return;
             if (--joinCountdownTicks == 0) {
                 processServerJoin();
@@ -214,58 +190,15 @@ public class WorldAgeHudRenderer {
         return WorldClockTracker.getDay(mc.level);
     }
 
-    public static void render(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
-        // Keeps SERVER_LEAVE_MAP holding when the player was LAST active on the current server.
-        // Throttled to once a second: this runs before the enabled check, so an untouched second of
-        // map writes is work the feature does even while switched off, and the value it stores is
-        // only ever read at second resolution anyway.
+    /**
+     * Keeps SERVER_LEAVE_MAP holding when the player was LAST active on the current server.
+     * Throttled to once a second: the value it stores is only ever read at second resolution.
+     */
+    private static void stampPresence() {
         long nowMs = System.currentTimeMillis();
         if (!currentServerKey.isEmpty() && nowMs - lastPresenceStampMs >= PRESENCE_STAMP_INTERVAL_MS) {
             lastPresenceStampMs = nowMs;
             SERVER_LEAVE_MAP.put(currentServerKey, nowMs);
         }
-
-        if (!AlpakaConfig.instance.worldAgeHudEnabled) return;
-
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.gui.hud.isHidden() || mc.level == null || mc.player == null) return;
-
-        // Hide in menu screens (always allow in ChatScreen)
-        if (mc.gui.screen() != null && !(mc.gui.screen() instanceof ChatScreen)) {
-            return;
-        }
-
-        // Clamped so a GUI-scale change cannot leave the HUD off screen; the stored position is
-        // untouched, so returning to the old scale restores it exactly.
-        int screenWidth = mc.getWindow().getGuiScaledWidth();
-        int screenHeight = mc.getWindow().getGuiScaledHeight();
-        renderHud(graphics,
-                WorldAgeHudElement.INSTANCE.visibleAnchorX(screenWidth, screenHeight),
-                WorldAgeHudElement.INSTANCE.visibleAnchorY(screenWidth, screenHeight),
-                AlpakaConfig.instance.worldAgeHudScale);
-    }
-
-    public static void renderHud(GuiGraphicsExtractor graphics, int x, int y, float scale) {
-        Minecraft mc = Minecraft.getInstance();
-        Font font = mc.font;
-        if (font == null) return;
-
-        long day = getWorldDay();
-        int color = getDayColor(day);
-
-        graphics.pose().pushMatrix();
-        graphics.pose().translate((float) x, (float) y);
-        graphics.pose().scale(scale, scale);
-        graphics.text(font, dayComponent(day), 0, 0, color);
-        graphics.pose().popMatrix();
-    }
-
-    public static int getWidth(Font font, long day, float scale) {
-        String text = dayText(day);
-        return (int) Math.ceil(font.width(text) * scale);
-    }
-
-    public static int getHeight(Font font, float scale) {
-        return (int) Math.ceil(9 * scale);
     }
 }

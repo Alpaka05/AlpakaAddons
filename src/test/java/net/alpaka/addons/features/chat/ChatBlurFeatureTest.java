@@ -4,6 +4,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
+import java.util.Set;
+import java.util.function.IntPredicate;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -69,5 +72,19 @@ class ChatBlurFeatureTest {
         float veil = tint * ChatBlurFeature.VEIL_SHARE;
         float glass = ChatBlurFeature.glassTint(tint, veil);
         assertEquals(tint, 1.0f - (1.0f - glass) * (1.0f - veil), 1e-5);
+    }
+
+    @Test
+    void hoverHighlightCoversTheWholeMessage() {
+        // Rows 0-1 are one message, 2 stands alone, 3-5 wrap into a third; the predicate says
+        // which rows continue in the row below.
+        Set<Integer> continued = Set.of(1, 4, 5);
+        IntPredicate continuesBelow = continued::contains;
+        assertEquals(0, ChatBlurFeature.messageBottom(1, continuesBelow));
+        assertEquals(1, ChatBlurFeature.messageTop(0, continuesBelow));
+        assertEquals(2, ChatBlurFeature.messageBottom(2, continuesBelow));
+        assertEquals(2, ChatBlurFeature.messageTop(2, continuesBelow));
+        assertEquals(3, ChatBlurFeature.messageBottom(5, continuesBelow));
+        assertEquals(5, ChatBlurFeature.messageTop(4, continuesBelow));
     }
 }

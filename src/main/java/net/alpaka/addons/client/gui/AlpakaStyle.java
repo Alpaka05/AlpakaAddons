@@ -57,11 +57,12 @@ public final class AlpakaStyle {
      * The Menu Theme's choices as the list shows them, light to dark. The config saves a theme's
      * place in {@link Theme} instead, so reordering the list never changes a saved choice.
      */
-    public static final String[] THEME_NAMES = {"Light", "Dark", "OLED"};
+    public static final String[] THEME_NAMES = {"Light", "Dark", "OLED", "Cappuccino"};
 
     /**
-     * The looks a menu can have: the dark one it always had, a light one, and one of pure black
-     * for OLED screens, whose black pixels are off. Accent and danger colors stay the player's.
+     * The looks a menu can have: the dark one it always had, a light one, one of pure black for
+     * OLED screens, whose black pixels are off, and a coffee brown one. New ones go at the end, as
+     * the config saves a theme's place here. Accent and danger colors stay the player's.
      */
     public enum Theme {
         //     backdrop     panel        line         divider      row          row hover    row selected field
@@ -75,7 +76,11 @@ public final class AlpakaStyle {
                 0xFF2B2B2B, 0xFFD23B32, 0xFFC0564F),
         OLED(0xB0000000, 0xFF000000, 0xFF1A1A1A, 0xFF2C2C2C, 0xFF0D0D0D, 0xFF141414, 0xFF1B1B1B, 0xFF0F0F0F,
                 0xFFEDEDED, 0xFFBDBDBD, 0xFF7C7C7C, 0xFF2E2E2E, 0xFF6E6E6E, 0xFF8A8A8A, 0xFF0A0A0A, 0xFFEDEDED,
-                0xFF000000, 0xFFE5534B, 0xFFC9726C);
+                0xFF000000, 0xFFE5534B, 0xFFC9726C),
+        // Espresso browns with cream text, like the coffee themes of code editors.
+        CAPPUCCINO(0x80000000, 0xFF2B211C, 0xFF3D3029, 0xFF54443A, 0xFF362A24, 0xFF3E3129, 0xFF47392F, 0xFF382C25,
+                0xFFF3E6D8, 0xFFD2BFAB, 0xFF9C8676, 0xFF54443A, 0xFF8A7464, 0xFFA48D7C, 0xFF32271F, 0xFFF3E6D8,
+                0xFF1A1411, 0xFFE5674F, 0xFFC98370);
 
         private final int[] c;
 
@@ -84,7 +89,7 @@ public final class AlpakaStyle {
         }
 
         /** The themes in the order of {@link #THEME_NAMES}. */
-        public static final Theme[] MENU_ORDER = {LIGHT, DARK, OLED};
+        public static final Theme[] MENU_ORDER = {LIGHT, DARK, OLED, CAPPUCCINO};
 
         /** The theme saved under this index, the dark one for anything unknown. */
         public static Theme of(int index) {

@@ -127,6 +127,11 @@ public final class DevScreenshotTour {
             screen("theme-oled-config-chat", () -> AlpakaConfigScreen.openOn("Chat", "Chat Tabs")),
             screen("theme-oled-color-picker", () -> new ColorPickerScreen(null, "Accent Color", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
             new Stop(null, () -> net.alpaka.addons.client.gui.AlpakaStyle.applyTheme(
+                    net.alpaka.addons.client.gui.AlpakaStyle.Theme.CAPPUCCINO), () -> true, 1),
+            screen("theme-cappuccino-config", () -> AlpakaConfigScreen.openOn("Design", "Menu Theme").withChoiceOpen()),
+            screen("theme-cappuccino-config-chat", () -> AlpakaConfigScreen.openOn("Chat", "Chat Tabs")),
+            screen("theme-cappuccino-color-picker", () -> new ColorPickerScreen(null, "Accent Color", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
+            new Stop(null, () -> net.alpaka.addons.client.gui.AlpakaStyle.applyTheme(
                     net.alpaka.addons.client.gui.AlpakaStyle.Theme.DARK), () -> true, 1),
             // The page list with more pages than fit above its field: it scrolls, its edges fading.
             new Stop("wheel-editor-page-picker-many", () -> {

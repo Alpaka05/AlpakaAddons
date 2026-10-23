@@ -5,6 +5,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.features.slayer.SlayerQuestDetector
 import net.alpaka.addons.features.slayer.SlayerType
+import net.alpaka.addons.utils.AlpakaPerf
 import net.alpaka.addons.utils.SkyblockUtils
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext
@@ -89,7 +90,14 @@ object FirePitFeature {
     @JvmStatic
     fun register() {
         ClientTickEvents.END_CLIENT_TICK.register { tick(it) }
-        LevelRenderEvents.COLLECT_SUBMITS.register { submit(it) }
+        LevelRenderEvents.COLLECT_SUBMITS.register { context ->
+            val t = AlpakaPerf.begin(AlpakaPerf.Section.LEVEL_OVERLAYS)
+            try {
+                submit(context)
+            } finally {
+                AlpakaPerf.end(AlpakaPerf.Section.LEVEL_OVERLAYS, t)
+            }
+        }
     }
 
     @JvmStatic

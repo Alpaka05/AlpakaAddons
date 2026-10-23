@@ -98,18 +98,33 @@ public class AlpakaClient implements ClientModInitializer {
                     Minecraft.getInstance().execute(AlpakaDiagnostics::print);
                     return 1;
                 })
-                // "/alpakadebug perf": the mod's own frame and tick time since the last reset, from
-                // the same sections that show in vanilla's profiler. "perf reset" starts over.
+                // "/alpakadebug perf": the mod's own frame and tick time, from the same sections that
+                // show in vanilla's profiler. Off until "perf start", which starts from zero; "perf
+                // stop" ends it and prints the totals, "perf reset" starts over.
                 .then(ClientCommands.literal("perf")
                     .executes(context -> {
-                        Minecraft.getInstance().execute(() -> {
-                            SlayerDropTracker.sendModMessage("§6--- Alpaka performance ---");
-                            for (String line : net.alpaka.addons.utils.AlpakaPerf.report()) {
-                                SlayerDropTracker.sendModMessage("§7" + line);
-                            }
-                        });
+                        Minecraft.getInstance().execute(AlpakaClient::printPerf);
                         return 1;
                     })
+                    .then(ClientCommands.literal("start")
+                        .executes(context -> {
+                            Minecraft.getInstance().execute(() -> {
+                                net.alpaka.addons.utils.AlpakaPerf.start();
+                                SlayerDropTracker.sendModMessage("§7Measuring. §f/alpakadebug perf§7 shows the numbers, "
+                                        + "§f/alpakadebug perf stop§7 ends.");
+                            });
+                            return 1;
+                        })
+                    )
+                    .then(ClientCommands.literal("stop")
+                        .executes(context -> {
+                            Minecraft.getInstance().execute(() -> {
+                                net.alpaka.addons.utils.AlpakaPerf.stop();
+                                printPerf();
+                            });
+                            return 1;
+                        })
+                    )
                     .then(ClientCommands.literal("reset")
                         .executes(context -> {
                             Minecraft.getInstance().execute(() -> {
@@ -328,6 +343,14 @@ public class AlpakaClient implements ClientModInitializer {
                 )
             );
         });
+    }
+
+    /** "/alpakadebug perf": what was measured, or how to start measuring. */
+    private static void printPerf() {
+        SlayerDropTracker.sendModMessage("§6--- Alpaka performance ---");
+        for (String line : net.alpaka.addons.utils.AlpakaPerf.report()) {
+            SlayerDropTracker.sendModMessage("§7" + line);
+        }
     }
 
     /** Reports where the slayer record lives and whether it is actually there. */

@@ -701,6 +701,12 @@ public class AlpakaConfig {
      */
     public boolean customAuctionHouseEnabled = true;
     public boolean customBazaarEnabled = true;
+    /**
+     * Number keys, arrows and the like press the market screen's buttons, one click per press; see
+     * MarketScreen.keyPressed. One switch for each market.
+     */
+    public boolean auctionHouseHotkeysEnabled = true;
+    public boolean bazaarHotkeysEnabled = true;
     /** Hypixel's sign prompts - a search, a price, an amount - as an input bar; see MarketInputScreen. */
     public boolean customSignInputEnabled = true;
     /** SkyCofl's price history on a product's or an auction's page; see PriceGraph. Needs allowApiCalls. */

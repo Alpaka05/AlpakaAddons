@@ -210,7 +210,15 @@ public final class DevScreenshotTour {
                 AlpakaConfig.instance.marketPriceHistoryRange = 1;
                 placeMouse(0.5, 0.97);
             }, () -> true, 1),
+            // The product with the inventory open: the actions in the hero stay free, the drawer covers the order book.
+            new Stop("market-bazaar-product-inventory", () -> {
+                net.alpaka.addons.features.market.MarketPreview.inventory(true);
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.bazaarProduct());
+            }, () -> true, 80),
+            new Stop(null, () -> net.alpaka.addons.features.market.MarketPreview.inventory(false), () -> true, 1),
             screen("market-bazaar-orders", net.alpaka.addons.features.market.MarketPreview::bazaarOrders),
+            screen("market-bazaar-sell-confirm", net.alpaka.addons.features.market.MarketPreview::bazaarSellConfirm),
+            screen("market-ah-manage", net.alpaka.addons.features.market.MarketPreview::manageAuctions),
             // The search sign as Hypixel writes it: two lines for the answer, the question last.
             screen("market-input-search", () -> net.alpaka.addons.features.market.MarketPreview.input(
                     new String[] {"", "", "^^^^^^^^^^^^^^^", "Enter query"},
@@ -248,6 +256,7 @@ public final class DevScreenshotTour {
                     net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, false), () -> true, 1),
             screen("market-config", () -> AlpakaConfigScreen.openOn("Markets", "Custom Auction House")),
             screen("market-config-price-history", () -> AlpakaConfigScreen.openOn("Markets", "Price History")),
+            screen("market-config-bazaar", () -> AlpakaConfigScreen.openOn("Markets", "Custom Bazaar")),
             // The Item Value popup over a chest of SkyBlock items, opened the way the key opens it, over
             // the item under the mouse. Its prices come from the network, so it waits for them.
             new Stop(null, () -> Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.itemvalue.ItemValuePreview.chest()),

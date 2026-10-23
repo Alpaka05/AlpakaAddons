@@ -1643,12 +1643,26 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customAuctionHouseEnabled = v; AlpakaConfig.save(); },
                 "auction house ah auctions browser bin bid custom menu gui redesign cards market"));
 
+        OPTIONS.add(new ConfigOption("auction_house_hotkeys", "Enable Hotkeys",
+                "Number keys open the first nine auctions or press the numbered buttons, Shift and a number picks a category, the arrow keys turn the page, / or Ctrl+F searches and Backspace goes back. One click per key press.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.auctionHouseHotkeysEnabled,
+                v -> { AlpakaConfig.instance.auctionHouseHotkeysEnabled = v; AlpakaConfig.save(); },
+                "auction house ah hotkeys keys keyboard shortcuts number keys quick buy category page search"));
+
         OPTIONS.add(new ConfigOption("custom_bazaar", "Custom Bazaar",
                 "Shows the Bazaar in Alpaka's design, with buy and sell prices on every product. Each click is the same click on Hypixel's menu.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.customBazaarEnabled,
                 v -> { AlpakaConfig.instance.customBazaarEnabled = v; AlpakaConfig.save(); },
                 "bazaar bz buy sell order offer instant custom menu gui redesign prices market"));
+
+        OPTIONS.add(new ConfigOption("bazaar_hotkeys", "Enable Hotkeys",
+                "Number keys open the first nine products or press the numbered buttons, Shift and a number picks a category, the arrow keys turn the page, / or Ctrl+F searches and Backspace goes back. One click per key press.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.bazaarHotkeysEnabled,
+                v -> { AlpakaConfig.instance.bazaarHotkeysEnabled = v; AlpakaConfig.save(); },
+                "bazaar bz hotkeys keys keyboard shortcuts number keys instant buy sell category page search"));
 
         OPTIONS.add(new ConfigOption("market_price_history", "Price History",
                 "Shows the price history from SkyCofl on a product's or an auction's page. Needs Network Features.",

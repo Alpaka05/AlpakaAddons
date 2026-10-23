@@ -290,7 +290,7 @@ object SlayerHudRenderer {
         }
 
         // Blazetekk Ham Radio: only a Blaze item, and only shown while one is in the inventory.
-        // Two players on the channel is the full buff, alone is half, three or more is none.
+        // Two players on the channel is the full buff, alone is half, three or more (red) is none.
         if (cfg.slayerHudShowRadio && shown == SlayerType.BLAZE && (preview || HamRadio.inInventory)) {
             val nearby = if (preview) 2 else HamRadio.nearby
             rows.add(
@@ -298,7 +298,7 @@ object SlayerHudRenderer {
                     nearby == null -> Line("Radio", "?", COLOR_VALUE)
                     nearby <= 1 -> Line("Radio", "alone", COLOR_WARN)
                     nearby == 2 -> Line("Radio", "2 enjoyers", COLOR_GOOD)
-                    else -> Line("Radio", "$nearby enjoyers (too many)", COLOR_PAUSED)
+                    else -> Line("Radio", "$nearby enjoyers", COLOR_PAUSED)
                 }
             )
         }

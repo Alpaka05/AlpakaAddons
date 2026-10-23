@@ -142,19 +142,15 @@ public class HudMixin implements ChatOverHud.Late {
         return OldMasterStarsFeature.apply(original.call(stack));
     }
 
-    /**
-     * The scoreboard sidebar: its two flat boxes become one blurred panel; see ScoreboardBlurFeature.
-     * Around the whole method, with the pose pushed by begin popped in a finally: as two hooks at its
-     * head and tail, an early return or an exception in between left the pose stack unbalanced.
-     */
-    @com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod(method = "displayScoreboardSidebar")
-    private void alpaka$wrapScoreboard(GuiGraphicsExtractor graphicsExtractor, Objective objective, Operation<Void> original) {
+    /** The scoreboard sidebar: its two flat boxes become one blurred panel; see ScoreboardBlurFeature. */
+    @Inject(method = "displayScoreboardSidebar", at = @At("HEAD"))
+    private void alpaka$beginScoreboard(GuiGraphicsExtractor graphicsExtractor, Objective objective, CallbackInfo ci) {
         ScoreboardBlurFeature.begin(graphicsExtractor);
-        try {
-            original.call(graphicsExtractor, objective);
-        } finally {
-            ScoreboardBlurFeature.end(graphicsExtractor);
-        }
+    }
+
+    @Inject(method = "displayScoreboardSidebar", at = @At("TAIL"))
+    private void alpaka$endScoreboard(GuiGraphicsExtractor graphicsExtractor, Objective objective, CallbackInfo ci) {
+        ScoreboardBlurFeature.end(graphicsExtractor);
     }
 
     @WrapOperation(

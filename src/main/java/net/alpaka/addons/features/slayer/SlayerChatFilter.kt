@@ -36,6 +36,7 @@ object SlayerChatFilter {
      * ever matched a single tier of a single slayer, if at all.
      */
     private class Group(
+        val name: String,
         val enabled: (AlpakaConfig) -> Boolean,
         val messages: Set<String> = emptySet(),
         val patterns: List<Regex> = emptyList()
@@ -46,6 +47,7 @@ object SlayerChatFilter {
 
     private val GROUPS = listOf(
         Group(
+            "quest",
             { it.hideSlayerChatQuest },
             messages = setOf(
                 "SLAYER QUEST COMPLETE!",
@@ -56,6 +58,7 @@ object SlayerChatFilter {
             patterns = listOf(Regex("""^»\s*Slay\s+[\d,.]+k?\s+Combat XP\s+worth of\s+.+\.?$""", RegexOption.IGNORE_CASE))
         ),
         Group(
+            "radio",
             { it.hideSlayerChatRadio },
             messages = setOf(
                 "Your radio is weak. Find another enjoyer to boost it.",
@@ -64,20 +67,35 @@ object SlayerChatFilter {
             )
         ),
         Group(
+            "level up",
             { it.hideSlayerChatLevelUp },
-            // "Blaze Slayer LVL 9 - LVL MAXED OUT!" and the ordinary level-up form.
-            patterns = listOf(Regex("""^.*Slayer LVL\s+\d+\b.*$""", RegexOption.IGNORE_CASE))
+            // Hypixel's two forms, "Blaze Slayer LVL 9 - LVL MAXED OUT!" (as SkyHanni matches it) and
+            // "Wolf Slayer LVL 7 - Next LVL in 50,000 XP!". Anchored at the slayer's name: matched
+            // anywhere, "Slayer LVL" also hid players writing about their levels.
+            patterns = listOf(Regex(
+                """^[A-Za-z]+(?: [A-Za-z]+)? Slayer LVL \d+ - (?:LVL MAXED OUT!|Next LVL in [\d,.]+[kKmM]? XP!)$""",
+                RegexOption.IGNORE_CASE,
+            ))
         ),
         Group(
+            "healing",
             { it.hideSlayerChatHealing },
             // "Your Slayer Kill gave you 160 HP healing for 10 seconds!"
             patterns = listOf(Regex("""^Your Slayer Kill gave you\s+[\d,]+\s+HP healing.*$""", RegexOption.IGNORE_CASE))
         ),
         Group(
+            "sunshade",
             { it.hideSlayerChatSunshade },
             patterns = listOf(Regex("""^RARE DROP! Netherrack-Looking Sunshade.*$""", RegexOption.IGNORE_CASE))
         )
     )
+
+    /**
+     * A line somebody wrote rather than one Hypixel sent: a channel, a private message, an NPC, or a
+     * name and a colon at its start (ranks and SkyBlock levels in front of the name included). Never
+     * hidden, whatever it says: "need slayer lvl 9?" in party chat is a question, not a level-up.
+     */
+    private val SENDER = Regex("""^(?:(?:Guild|Party|Co-op|Officer) > |(?:From|To) |\[NPC] |[^:]{0,48}?\w{1,16}: )""")
 
     /**
      * Whether a chat message should be kept out of the visible chat log.
@@ -91,8 +109,12 @@ object SlayerChatFilter {
         if (!config.hideSlayerChatMessages) return false
 
         val cleanText = SlayerDropTracker.cleanColor(rawMessage).trim()
-        if (cleanText.isEmpty()) return false
+        if (cleanText.isEmpty() || SENDER.containsMatchIn(cleanText)) return false
 
         return GROUPS.any { it.enabled(config) && it.matches(cleanText) }
     }
+
+    /** For tests: the groups that would hide this color-stripped line, switches aside. */
+    internal fun groupsForTest(cleanText: String): List<String> =
+        if (SENDER.containsMatchIn(cleanText)) emptyList() else GROUPS.filter { it.matches(cleanText) }.map { it.name }
 }

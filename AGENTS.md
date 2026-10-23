@@ -32,7 +32,11 @@ session always win over this file.
   - `mixin/`: mixins, listed in `src/main/resources/alpaka.mixins.json`.
   - `compliance/Outbound.java`: the only place that may send chat messages or commands to the
     server, and only as the direct result of a key press, click or Enter.
-    `OutboundSourceScanTest` fails the build if anything else calls the network.
+    `OutboundBytecodeScanTest` scans the compiled classes and fails the build if anything else
+    sends to the server (packets, chat, commands, gameplay actions, method references included).
+    The documented exceptions: `Outbound.latencyProbe()`, the Performance HUD's ping (at most every
+    5 s), and the resource pack answers of the pack cache in `mixin/DownloadedPackSourceMixin` and
+    `mixin/ClientCommonPacketListenerPackCacheMixin`.
 - `src/test/`: JUnit 5 tests (Java and Kotlin).
 - `tools/`: helper scripts (Modrinth cleanup, menu icons, ...).
 

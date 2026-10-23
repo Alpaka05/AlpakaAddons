@@ -177,7 +177,7 @@ public class AlpakaConfig {
     public boolean hideMobDeathsEnabled = false;
     /** With Hide Mob Deaths: also no puff of smoke when the server removes the body. */
     public boolean hideMobDeathSmoke = false;
-    /** Hides explosion particles and the block debris of explosions. Cosmetic only. */
+    /** Hides explosion particles, server smoke puffs and explosion debris. Cosmetic only. */
     public boolean hideExplosions = false;
     /** Hides the flames on burning mobs, players and yourself in third person. Cosmetic only. */
     public boolean hideEntityFire = false;

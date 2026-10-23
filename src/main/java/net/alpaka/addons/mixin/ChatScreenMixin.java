@@ -107,6 +107,7 @@ public class ChatScreenMixin {
             return;
         }
         if (ChatTabsFeature.onChatScreenKey(event.key(), event.hasShiftDown(), event.hasControlDown(),
+                net.alpaka.addons.client.KeyRepeat.isRepeat(),
                 this.commandSuggestions != null && this.commandSuggestions.isVisible(),
                 this.input == null ? "" : this.input.getValue())) {
             cir.setReturnValue(true);

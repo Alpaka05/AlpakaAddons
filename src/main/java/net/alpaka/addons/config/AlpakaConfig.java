@@ -834,6 +834,21 @@ public class AlpakaConfig {
         public Map<Integer, Long> bestBossMsByTier = new HashMap<>();
 
         /**
+         * When each tier's best in {@link #bestBossMsByTier} was set, wall clock, by tier; missing
+         * for bests older than this field. Read by the merge with the file, together with
+         * {@link #bestsClearedAtMs}.
+         */
+        public Map<Integer, Long> bestBossAtMsByTier = new HashMap<>();
+
+        /**
+         * When this slayer's bests were last cleared ({@code /alpakaslayer reset pb}), wall clock,
+         * or 0 when never. The merge with the file drops every best set before it, wherever it is
+         * kept: the file, or another instance's memory, would otherwise hand the cleared best back
+         * within a second.
+         */
+        public long bestsClearedAtMs = 0L;
+
+        /**
          * Last known lifetime slayer XP for this slayer, or -1 when it has never been observed.
          *
          * Hypixel does not tell the client this figure during play - the only place it appears is
@@ -857,6 +872,31 @@ public class AlpakaConfig {
          * larger gap is a total that drifted high and is corrected. See SlayerXpTracker.
          */
         public long recentlyCreditedXp = 0L;
+
+        /**
+         * When {@link #totalXp} was last read from the Slayer menu, wall clock, or 0 when never.
+         * The merge with the file keeps the newer reading rather than the larger number, so a total
+         * corrected down is not taken back by the old one still on the other side.
+         */
+        public long totalXpObservedAtMs = 0L;
+
+        /** Records a new best time for a tier, and when it was set. */
+        public void recordBest(int tier, long ms) {
+            if (bestBossMsByTier == null) bestBossMsByTier = new HashMap<>();
+            if (bestBossAtMsByTier == null) bestBossAtMsByTier = new HashMap<>();
+            bestBossMsByTier.put(tier, ms);
+            bestBossAtMsByTier.put(tier, System.currentTimeMillis());
+        }
+
+        /** Forgets every best time of this slayer, for good; returns whether there was one. */
+        public boolean clearBests() {
+            boolean had = bestBossMsByTier != null
+                    && bestBossMsByTier.values().stream().anyMatch(best -> best != null && best > 0L);
+            if (bestBossMsByTier != null) bestBossMsByTier.clear();
+            if (bestBossAtMsByTier != null) bestBossAtMsByTier.clear();
+            bestsClearedAtMs = System.currentTimeMillis();
+            return had;
+        }
     }
 
     public AlpakaConfig() {
@@ -1015,112 +1055,82 @@ public class AlpakaConfig {
         return betterChatEnabled && part;
     }
 
+    /**
+     * Switches every feature off: each feature's own switch, and the lone switches that belong to no
+     * feature (Hide Mob Fire, the scoreboard's blur and footer, ...). Nothing else is touched. A
+     * feature's settings, and every font, color, slider and choice, stay as they are, so a feature
+     * switched back on comes back the way it was. This used to switch the settings off and reset
+     * values too, and the backup made that stick after the next start: Block Overlay came back with
+     * no outline at all, Custom Sounds came back silent.
+     *
+     * DisableAllFeaturesTest lists the switches this has to cover and the settings it must leave.
+     */
     public void disableAllFeatures() {
         this.renderHandInThirdPerson = false;
         this.slayerDropTrackerEnabled = false;
         this.hideHypixelDropMessage = false;
         this.slayerRngDropGuildChatEnabled = false;
         this.customNameTagEnabled = false;
-        this.nameTagOutlineEnabled = false;
-        this.nameTagShadowEnabled = false;
-        this.nameTagChromaBorderEnabled = false;
         this.chromaHatEnabled = false;
         this.playerScaleEnabled = false;
-        this.playerScaleOthers = false;
         this.fullbrightEnabled = false;
         this.inventorySnowEnabled = false;
         this.containerBgFadeInEnabled = false;
         this.cleanBlazeEnabled = false;
-        this.cleanBlazeNameTags = false;
         this.blazeFirePitsEnabled = false;
         this.hideSlayerChatMessages = false;
         this.stopBlazeSpinning = false;
         this.hideHurtOverlayEnabled = false;
         this.hideMobDeathsEnabled = false;
         this.hideEntityFire = false;
-        this.firstPersonFireOpacity = 1.0f;
-        this.firstPersonFireHeight = 1.0f;
         this.firstPersonFireStatic = false;
-        this.nameTagBackgroundColor = DEFAULT_NAME_TAG_BACKGROUND;
         this.showOwnNameTag = false;
         this.nameTagTextShadow = false;
         this.wideHealthBarEnabled = false;
         this.smoothPerspectiveEnabled = false;
         this.disableFrontPerspective = false;
         this.customSoundsEnabled = false;
-        this.customSoundButtonClick = false;
-        this.customSoundHotbarScroll = false;
-        this.customSoundRareDrop = false;
-        this.customSoundNotification = false;
-        this.customSoundPlayerHurt = false;
-        this.customSoundInventoryOpenClose = false;
-        this.customSoundLowHpHeartbeat = false;
-        this.customSoundBlazeDeath = false;
-        this.customSoundInventoryClick = false;
-        this.customSoundZombieRemedy = false;
-        this.customSoundSuccessfulHit = false;
         this.muteVanillaSoundsInBlazeSlayer = false;
         this.customEscapeMenuEnabled = false;
-        this.menuFont = 0;
         this.customMainMenuEnabled = false;
         this.playerModelEnabled = false;
-        this.playerModelOnlyActions = false;
-        this.playerModelDisableMovement = false;
-        this.playerModelHideArmor = false;
-        this.playerModelShowInGuis = false;
         this.performanceHudEnabled = false;
         this.slayerHudEnabled = false;
-        this.slayerHudPauseOutsideArea = false;
-        this.slayerHudOnlyInSlayerAreas = false;
         this.allowApiCalls = false;
         this.slayerTimerEnabled = false;
-        this.slayerTimerChatEnabled = false;
-        this.slayerTimerHudEnabled = false;
         this.ragnarockEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
         this.customDamageTagsEnabled = false;
         this.blockOverlayEnabled = false;
-        this.blockFadeInEnabled = false;
-        this.blockOutlineEnabled = false;
-        this.blockChromaEnabled = false;
-        this.blockIgnoreDepth = false;
-        this.blockIgnorePlants = false;
-        this.blockFillEnabled = false;
-        this.blockHideOnEtherwarp = false;
         this.etherwarpOverlayEnabled = false;
-        this.etherwarpLineEnabled = false;
         this.etherwarpSoundEnabled = false;
         this.betterChatEnabled = false;
-        this.smoothChatEnabled = false;
-        this.chatOpenAnimationEnabled = false;
-        this.chatBlurEnabled = false;
         this.scoreboardBlurEnabled = false;
         this.scoreboardAlpakaFooter = false;
         this.chatSearchEnabled = false;
-        this.chatSmoothScrollEnabled = false;
-        this.chatScrollbarEnabled = false;
-        this.chatMovable = false;
         this.alwaysSprintEnabled = false;
         this.expandChatHistory = false;
         this.chatPeekEnabled = false;
-        this.chatPeekInMenus = false;
         this.betterScreenshotMessageEnabled = false;
-        this.autoCopyScreenshots = false;
         this.compactChatEnabled = false;
         this.chatTabsEnabled = false;
-        this.chatTabsSendToChannel = false;
         this.inventoryHudEnabled = false;
         this.bridgeBotFormatterEnabled = false;
         this.guildPrefixEnabled = false;
         this.itemSizeFeatureEnabled = false;
-        this.itemSwayDisabled = false;
-        this.itemLightingDisabled = false;
         this.itemStarlightEnabled = false;
-        this.itemSwingTranslationDisabled = false;
-        this.itemNoEquipEnabled = false;
-        this.itemSwingAlwaysFinishEnabled = false;
-        this.itemIgnoreEmptyHandEnabled = false;
+        // Switches that came after the list above.
+        this.updateNotificationsEnabled = false;
+        this.scrollableTooltipsEnabled = false;
+        this.persistentItemNameEnabled = false;
+        this.oldMasterStarsEnabled = false;
+        this.mentionNotificationEnabled = false;
+        this.itemMotionBlurEnabled = false;
+        this.bossSpawnAlertEnabled = false;
+        this.bossCocoonAlertEnabled = false;
+        this.partyInvitePromptEnabled = false;
+        this.cacheResourcePackEnabled = false;
         save();
     }
 

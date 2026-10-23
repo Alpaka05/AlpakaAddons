@@ -54,6 +54,17 @@ object ChromaHatFeature {
     private const val SEGMENTS = 48
 
     /**
+     * Cosine and sine of each wedge's edge angles (RING, index 0..SEGMENTS) and of its middle angle
+     * (MID), which the lathe would otherwise recompute for every quad of every run on every frame. They
+     * depend on nothing but the wedge index, and each is built with exactly the expression the lathe
+     * used, so the geometry comes out bit for bit the same.
+     */
+    private val RING_COS = DoubleArray(SEGMENTS + 1) { cos(it.toDouble() / SEGMENTS * Math.PI * 2) }
+    private val RING_SIN = DoubleArray(SEGMENTS + 1) { sin(it.toDouble() / SEGMENTS * Math.PI * 2) }
+    private val MID_COS = DoubleArray(SEGMENTS) { cos((it.toDouble() / SEGMENTS * Math.PI * 2 + (it + 1).toDouble() / SEGMENTS * Math.PI * 2) / 2) }
+    private val MID_SIN = DoubleArray(SEGMENTS) { sin((it.toDouble() / SEGMENTS * Math.PI * 2 + (it + 1).toDouble() / SEGMENTS * Math.PI * 2) / 2) }
+
+    /**
      * The head the hat rests on, in head-part space, where +y points *down* the body.
      *
      * Measured on the skin's outer "hat" layer rather than the bare head cube, since that is what
@@ -130,12 +141,6 @@ object ChromaHatFeature {
         val hueShift = time * HUE_TURNS_PER_SECOND
 
         val plainRgb = cfg.chromaHatColor and 0xFFFFFF
-        // Color of a vertex: its position around the brim in turns, a shade multiplier, an alpha byte.
-        val colorAt: (Double, Float, Int) -> Int = if (rainbow) {
-            { turns, shade, a -> ARGB.color(a, ARGB.scaleRGB(Mth.hsvToRgb(fract(turns + hueShift), 0.9f, 1.0f), shade)) }
-        } else {
-            { _, shade, a -> ARGB.color(a, ARGB.scaleRGB(plainRgb, shade)) }
-        }
         val vertexLight = if (rainbow) FULL_BRIGHT else light
 
         val height = CROWN_HEIGHT * size
@@ -183,8 +188,16 @@ object ChromaHatFeature {
             profile += ProfilePoint(r, apexY + height * t + lip, 0.9f, alpha * UNDERSIDE_ALPHA)
         }
 
-        emitLathe(pose, consumer, profile, colorAt, vertexLight)
+        emitLathe(pose, consumer, profile, rainbow, plainRgb, hueShift, vertexLight)
     }
+
+    /**
+     * Color of a vertex: its position around the brim in turns, a shade multiplier, an alpha byte. A
+     * plain function rather than a lambda, so the four calls per quad box none of their arguments.
+     */
+    private fun colorAt(rainbow: Boolean, plainRgb: Int, hueShift: Double, turns: Double, shade: Float, a: Int): Int =
+        if (rainbow) ARGB.color(a, ARGB.scaleRGB(Mth.hsvToRgb(fract(turns + hueShift), 0.9f, 1.0f), shade))
+        else ARGB.color(a, ARGB.scaleRGB(plainRgb, shade))
 
     /**
      * Sweeps the profile around the y axis and stitches consecutive rings into quads.
@@ -202,9 +215,19 @@ object ChromaHatFeature {
         pose: PoseStack.Pose,
         consumer: VertexConsumer,
         profile: List<ProfilePoint>,
-        colorAt: (Double, Float, Int) -> Int,
+        rainbow: Boolean,
+        plainRgb: Int,
+        hueShift: Double,
         light: Int,
     ) {
+        // Scratch corners and edges, refilled for every quad instead of six new vectors each time;
+        // vertex() copies the coordinates out straight away, so nothing holds on to them.
+        val p00 = Vector3f()
+        val p01 = Vector3f()
+        val p10 = Vector3f()
+        val p11 = Vector3f()
+        val edge1 = Vector3f()
+        val edge2 = Vector3f()
         for (p in 0 until profile.size - 1) {
             val a = profile[p]
             val b = profile[p + 1]
@@ -220,26 +243,23 @@ object ChromaHatFeature {
             val alphaB = (b.alpha * 255f).toInt().coerceIn(0, 255)
 
             for (i in 0 until SEGMENTS) {
-                val a0 = i.toDouble() / SEGMENTS * Math.PI * 2
-                val a1 = (i + 1).toDouble() / SEGMENTS * Math.PI * 2
-                val aMid = (a0 + a1) / 2
                 val strip = STRIP_SHADES[i % STRIP_SHADES.size]
 
-                val p00 = Vector3f((cos(a0) * a.r).toFloat(), a.y, (sin(a0) * a.r).toFloat())
-                val p01 = Vector3f((cos(a1) * a.r).toFloat(), a.y, (sin(a1) * a.r).toFloat())
-                val p10 = Vector3f((cos(a0) * b.r).toFloat(), b.y, (sin(a0) * b.r).toFloat())
-                val p11 = Vector3f((cos(a1) * b.r).toFloat(), b.y, (sin(a1) * b.r).toFloat())
+                p00.set((RING_COS[i] * a.r).toFloat(), a.y, (RING_SIN[i] * a.r).toFloat())
+                p01.set((RING_COS[i + 1] * a.r).toFloat(), a.y, (RING_SIN[i + 1] * a.r).toFloat())
+                p10.set((RING_COS[i] * b.r).toFloat(), b.y, (RING_SIN[i] * b.r).toFloat())
+                p11.set((RING_COS[i + 1] * b.r).toFloat(), b.y, (RING_SIN[i + 1] * b.r).toFloat())
 
-                val nx = (cos(aMid) * nRadial).toFloat()
+                val nx = (MID_COS[i] * nRadial).toFloat()
                 val ny = nAxial
-                val nz = (sin(aMid) * nRadial).toFloat()
+                val nz = (MID_SIN[i] * nRadial).toFloat()
 
                 val turns0 = i.toDouble() / SEGMENTS
                 val turns1 = (i + 1).toDouble() / SEGMENTS
-                val c00 = colorAt(turns0, a.shade * strip, alphaA)
-                val c01 = colorAt(turns1, a.shade * strip, alphaA)
-                val c10 = colorAt(turns0, b.shade * strip, alphaB)
-                val c11 = colorAt(turns1, b.shade * strip, alphaB)
+                val c00 = colorAt(rainbow, plainRgb, hueShift, turns0, a.shade * strip, alphaA)
+                val c01 = colorAt(rainbow, plainRgb, hueShift, turns1, a.shade * strip, alphaA)
+                val c10 = colorAt(rainbow, plainRgb, hueShift, turns0, b.shade * strip, alphaB)
+                val c11 = colorAt(rainbow, plainRgb, hueShift, turns1, b.shade * strip, alphaB)
 
                 val u0 = i.toFloat() / SEGMENTS
                 val u1 = (i + 1).toFloat() / SEGMENTS
@@ -248,7 +268,7 @@ object ChromaHatFeature {
 
                 // Winding: p00 -> p01 -> p11 -> p10 is anticlockwise about the normal when the cross
                 // product of its first two edges points along it; otherwise walk the other way.
-                val cross = Vector3f(p01).sub(p00).cross(Vector3f(p11).sub(p00))
+                val cross = edge1.set(p01).sub(p00).cross(edge2.set(p11).sub(p00))
                 val flip = cross.dot(nx, ny, nz) < 0
                 if (!flip) {
                     vertex(pose, consumer, p00, c00, u0, v0, nx, ny, nz, light)

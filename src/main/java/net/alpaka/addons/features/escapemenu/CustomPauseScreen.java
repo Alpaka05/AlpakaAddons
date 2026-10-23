@@ -56,11 +56,6 @@ public class CustomPauseScreen extends PauseScreen implements net.alpaka.addons.
     /** The dim over the blurred world; light, so the world stays part of the picture. */
     private static final int COLOR_DIM = 0x52000000;
 
-    /** A button's glass: a faint white fill and hairline that brighten under the mouse. */
-    private static final int GLASS_FILL = 0x14FFFFFF;
-    private static final int GLASS_FILL_HOVER = 0x2EFFFFFF;
-    private static final int GLASS_BORDER = 0x30FFFFFF;
-
     /** How long the dim and each element take to appear, and the delay between successive rows. */
     static final float APPEAR_SECONDS = 0.22f;
     static final float STAGGER_SECONDS = 0.03f;
@@ -178,7 +173,7 @@ public class CustomPauseScreen extends PauseScreen implements net.alpaka.addons.
                 if (net.alpaka.addons.compat.ModMenuCompat.isLoaded()) {
                     net.alpaka.addons.compat.ModMenuCompat.openModsScreen(this);
                 } else {
-                    this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options, false));
+                    this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options, true));
                 }
             }
         });
@@ -188,7 +183,9 @@ public class CustomPauseScreen extends PauseScreen implements net.alpaka.addons.
         this.optionsButton = new PauseButton(Kind.GLASS, 4, fullX, rowY + ROW_PITCH * 2, HALF_WIDTH, BUTTON_HEIGHT,
                 MenuStyle.ICON_SLIDERS, "Options", btn -> {
             if (this.minecraft != null) {
-                this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options, false));
+                // In a world, as vanilla's pause menu opens it: without that the singleplayer
+                // difficulty and the world's own options are missing.
+                this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options, true));
             }
         });
         this.addRenderableWidget(this.optionsButton);
@@ -246,14 +243,29 @@ public class CustomPauseScreen extends PauseScreen implements net.alpaka.addons.
      */
     private void leave() {
         if (this.minecraft == null) return;
-        this.minecraft.disconnectFromWorld(net.minecraft.client.multiplayer.ClientLevel.DEFAULT_QUIT_MESSAGE);
+        // As vanilla's pause menu does: a player report still being written is offered back first,
+        // and leaving only goes ahead once it is sent or dropped.
+        this.minecraft.getReportingContext().draftReportHandled(this.minecraft, this,
+                () -> this.minecraft.disconnectFromWorld(net.minecraft.client.multiplayer.ClientLevel.DEFAULT_QUIT_MESSAGE), true);
     }
 
     @Override
     public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         // Vanilla's menu blur, but not vanilla's heavy in-world darkening: the dim here is lighter
         // and fades in, so the world stays visible behind the menu.
-        this.extractBlurredBackground(graphics);
+        //
+        // Only while this menu is the screen on top, as vanilla's pause menu does it, or while our
+        // own dialog shows it as its backdrop (the dialog leaves the blur to the window behind it).
+        // The Friends overlay (the Friends key, O) opens over any pause menu, draws it as its
+        // backdrop and then blurs on its own; a second blur in the same frame throws and crashes the
+        // game. The catch covers another mod's screen that does the same without being the one on top.
+        if (blursWorld()) {
+            try {
+                this.extractBlurredBackground(graphics);
+            } catch (IllegalStateException ignored) {
+                // Something blurred this frame already; the menu stays on that blur.
+            }
+        }
 
         // Drawn against an identity matrix rather than whatever is already on the pose stack -
         // other installed GUI mods (SmoothGui and friends) apply their own open-transition
@@ -365,10 +377,7 @@ public class CustomPauseScreen extends PauseScreen implements net.alpaka.addons.
                     textColor = 0xFFFCA5A5;
                 }
                 default -> {
-                    int fill = ModernGuiUtils.lerpColor(GLASS_FILL, GLASS_FILL_HOVER, this.hover);
-                    int edge = ModernGuiUtils.lerpColor(GLASS_BORDER, MenuStyle.accent(), this.hover);
-                    ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, BUTTON_RADIUS, fade(fill, appear));
-                    ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, h, BUTTON_RADIUS, fade(edge, appear));
+                    MenuStyle.glassBox(graphics, x, y, w, h, BUTTON_RADIUS, this.hover, appear);
                     textColor = ModernGuiUtils.lerpColor(MenuStyle.TEXT_SOFT, MenuStyle.TEXT, this.hover);
                 }
             }
@@ -395,6 +404,16 @@ public class CustomPauseScreen extends PauseScreen implements net.alpaka.addons.
     @FunctionalInterface
     private interface ButtonAction {
         void onPress(PauseButton button);
+    }
+
+    /**
+     * Whether this menu blurs the world: as the screen on top (vanilla's PauseScreen.isTopmostScreen(),
+     * which is private), or as the backdrop of our own dialog, which does not blur by itself.
+     */
+    private boolean blursWorld() {
+        if (this.minecraft == null) return false;
+        net.minecraft.client.gui.screens.Screen top = this.minecraft.gui.screen();
+        return top == this || top instanceof AlpakaConfirmScreen;
     }
 
     /**

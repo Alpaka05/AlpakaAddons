@@ -10,6 +10,7 @@ import net.minecraft.world.scores.Scoreboard;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class SkyblockUtils {
 
@@ -103,6 +104,57 @@ public class SkyblockUtils {
         return false;
     }
 
+    /** The End island's zones, as the sidebar's zone line names them. */
+    private static final String[] END_ISLAND_ZONES = {"The End", "Dragon's Nest", "Void Sepulture", "Zealot Bruiser Hideout"};
+
+    private static long endIslandCheckedAtMs = 0L;
+    private static boolean cachedOnEndIsland = false;
+    private static java.lang.ref.WeakReference<Object> endIslandCachedForLevel = null;
+
+    /**
+     * Whether the player is on SkyBlock's End island, cached like {@link #isOnGarden()}. Asked every
+     * frame by Sky Effects: Hypixel sends the island as an Overworld-like dimension, so nothing in
+     * the world itself tells it apart.
+     *
+     * The sidebar's zone line names the part of the island ("The End", "Void Sepulture", ...); the
+     * tab list's "Area: The End" widget is the fallback.
+     */
+    public static boolean isOnEndIsland() {
+        Object level = Minecraft.getInstance().level;
+        long now = System.currentTimeMillis();
+        Object cachedLevel = endIslandCachedForLevel == null ? null : endIslandCachedForLevel.get();
+        if (level == cachedLevel && now - endIslandCheckedAtMs < GARDEN_CACHE_MS) {
+            return cachedOnEndIsland;
+        }
+
+        endIslandCheckedAtMs = now;
+        endIslandCachedForLevel = level == null ? null : new java.lang.ref.WeakReference<>(level);
+        cachedOnEndIsland = computeOnEndIsland();
+        return cachedOnEndIsland;
+    }
+
+    private static boolean computeOnEndIsland() {
+        if (!isOnSkyblock()) return false;
+        for (String line : getSidebarLines()) {
+            if (isEndIslandZoneLine(line)) return true;
+        }
+        for (String line : getTabListLines()) {
+            if (line.startsWith("Area: The End")) return true;
+        }
+        return false;
+    }
+
+    /** Whether a sidebar line, color codes stripped, is the zone line of one of the End island's zones. */
+    static boolean isEndIslandZoneLine(String line) {
+        int marker = line.indexOf(AREA_MARKER);
+        if (marker < 0) return false;
+        String zone = line.substring(marker + AREA_MARKER.length()).trim();
+        for (String endZone : END_ISLAND_ZONES) {
+            if (zone.startsWith(endZone)) return true;
+        }
+        return false;
+    }
+
     /**
      * Detection is deliberately not based on the sidebar title alone. Hypixel renames that title
      * during events - it reads "BLAZE SIMULATOR" during one - which used to make this return false in
@@ -115,7 +167,7 @@ public class SkyblockUtils {
 
         var serverData = mc.getCurrentServer();
         if (serverData != null && serverData.ip != null) {
-            String ip = serverData.ip.toLowerCase();
+            String ip = serverData.ip.toLowerCase(Locale.ROOT);
             if (!ip.contains("hypixel.net") && !ip.contains("localhost")) {
                 return false;
             }
@@ -125,7 +177,7 @@ public class SkyblockUtils {
         Objective objective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR);
         if (objective == null) return false;
 
-        String title = cleanColor(objective.getDisplayName().getString()).toLowerCase();
+        String title = cleanColor(objective.getDisplayName().getString()).toLowerCase(Locale.ROOT);
         if (title.contains("skyblock") || title.contains("rift")) return true;
 
         for (String line : getSidebarLines()) {
@@ -283,13 +335,30 @@ public class SkyblockUtils {
      * list as the fallback.
      *
      * Purely a read of a list the client is already displaying; nothing is requested from the
-     * server. Expensive enough to need caching by the caller: it walks every entry and builds a
-     * String for each.
+     * server. It walks every entry and builds a String for each, so - like the sidebar - one
+     * snapshot per client tick is shared by everyone who asks.
      */
     public static List<String> getTabListLines() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.player.connection == null) return List.of();
 
+        Object connection = mc.player.connection;
+        long now = System.currentTimeMillis();
+        if (connection == cachedTabConnection && now - tabReadAtMs < SIDEBAR_CACHE_MS) {
+            return cachedTabLines;
+        }
+        tabReadAtMs = now;
+        cachedTabConnection = connection;
+        cachedTabLines = readTabListLines(mc);
+        return cachedTabLines;
+    }
+
+    private static long tabReadAtMs = 0L;
+    private static List<String> cachedTabLines = List.of();
+    private static Object cachedTabConnection = null;
+
+    /** Builds the snapshot. Callers want {@link #getTabListLines()}, which shares one per tick. */
+    private static List<String> readTabListLines(Minecraft mc) {
         try {
             List<String> lines = new ArrayList<>();
             for (var info : mc.player.connection.getListedOnlinePlayers()) {
@@ -297,7 +366,7 @@ public class SkyblockUtils {
                 if (name == null) continue;
                 lines.add(cleanColor(name.getString()));
             }
-            return lines;
+            return List.copyOf(lines);
         } catch (Exception ignored) {
             return List.of();
         }

@@ -15,8 +15,9 @@ import net.minecraft.world.inventory.ContainerInput;
  * Every message, command or menu click the mod sends is the direct result of the player pressing a
  * key, clicking, or pressing Enter, and says which through its {@link Cause}. Nothing reacts to
  * other players' chat, timers or game events by sending; two features once did - a party-chat
- * auto-reply and a guild announcement fired from a timer - and were removed. A source scan in the
- * tests fails the build if anything outside this class calls the network directly.
+ * auto-reply and a guild announcement fired from a timer - and were removed. A scan of the compiled
+ * classes in the tests (OutboundBytecodeScanTest) fails the build if anything outside this class
+ * sends to the server, apart from the resource pack answers of the pack cache.
  *
  * The one exception is {@link #latencyProbe()}: not a message or command but vanilla's own ping
  * request, which nobody else sees and which the server answers without acting on it. It goes out on

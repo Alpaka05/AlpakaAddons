@@ -1,6 +1,7 @@
 package net.alpaka.addons.client.hud
 
 import net.alpaka.addons.features.chat.ChatHudElement
+import net.alpaka.addons.features.deployable.DeployableTimerHudElement
 import net.alpaka.addons.features.inventoryhud.InventoryHudElement
 import net.alpaka.addons.features.performance.PerformanceHudElement
 import net.alpaka.addons.features.playermodel.PlayerModelHudElement
@@ -22,6 +23,7 @@ object HudRegistry {
         PerformanceHudElement,
         SlayerHudElement,
         SlayerTimerHudElement,
+        DeployableTimerHudElement,
         PlayerModelHudElement,
         InventoryHudElement
     )

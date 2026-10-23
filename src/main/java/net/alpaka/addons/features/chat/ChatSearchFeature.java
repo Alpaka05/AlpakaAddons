@@ -2,6 +2,7 @@ package net.alpaka.addons.features.chat;
 
 import net.alpaka.addons.client.gui.ModernGuiUtils;
 import net.alpaka.addons.config.AlpakaConfig;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.multiplayer.chat.GuiMessage;
@@ -21,13 +22,25 @@ import java.util.Map;
  * The filter rides on the same hook as the chat tabs: the chat lays its stored messages out into
  * visible lines through one method, and a message this filter rejects is simply not laid out. The
  * stored history is untouched, so leaving the search brings every message back.
+ *
+ * Laying the chat out replays the whole history, which takes a while with an expanded one, so the
+ * search lays it out a moment after the last key rather than on every key, and only when the query
+ * actually changed.
  */
 public final class ChatSearchFeature {
     private static final String HINT = "Search chat…";
 
+    /** How long after the last key the chat is laid out for the new query. */
+    private static final long LAYOUT_DELAY_MS = 120L;
+
     private static boolean searching;
     private static String query = "";
+    /** The query the chat is laid out for, which trails {@link #query} while typing. */
+    private static String laidOutQuery = "";
+    /** {@link #laidOutQuery} in lower case, the form every message is compared in. */
     private static String queryLower = "";
+    /** When the chat is due to be laid out for {@link #query}, or 0 when nothing is pending. */
+    private static long layoutDueAtMs = 0L;
     /** Each message's text, lower-cased, for the current search only (see accepts). */
     private static final Map<GuiMessage, String> LOWERED = new IdentityHashMap<>();
     /** The language LOWERED was filled in; null until the search's first lookup. */
@@ -45,9 +58,17 @@ public final class ChatSearchFeature {
         return searching;
     }
 
-    /** Whether the chat should lay this message out; every message while not searching. */
+    public static void register() {
+        ClientTickEvents.END_CLIENT_TICK.register(client -> tick());
+    }
+
+    /**
+     * Whether the chat should lay this message out; every message while not searching. Compared
+     * without formatting codes, which some messages carry in their text: searching for "a" used to
+     * find every line with a green "§a" in it.
+     */
     public static boolean accepts(GuiMessage message) {
-        if (!searching || query.isEmpty()) return true;
+        if (!searching || queryLower.isEmpty()) return true;
         // Every keystroke replays the whole history through here, and a stored message's text does
         // not change, so it is flattened and lower-cased once per search instead of once per
         // keystroke. Identity keys skip the record's deep equals. The memo is emptied when the search
@@ -62,7 +83,7 @@ public final class ChatSearchFeature {
             loweredIn = language;
         }
         if (LOWERED.size() >= 2 * AlpakaConfig.instance.chatHistoryLength()) LOWERED.clear();
-        String text = LOWERED.computeIfAbsent(message, m -> m.content().getString().toLowerCase(Locale.ROOT));
+        String text = LOWERED.computeIfAbsent(message, m -> ChatTab.strip(m.content().getString()).toLowerCase(Locale.ROOT));
         return text.contains(queryLower);
     }
 
@@ -74,18 +95,16 @@ public final class ChatSearchFeature {
     private static void enter(EditBox input) {
         searching = true;
         query = "";
+        laidOutQuery = "";
         queryLower = "";
+        layoutDueAtMs = 0L;
         LOWERED.clear();
         loweredIn = null;
+        // No layout: an empty search shows every message, which is what the chat shows already.
         if (input != null) {
             draft = input.getValue();
-            // setValue fires the input's responder, ChatScreen.onEdited, which ChatScreenMixin hands
-            // to onEdited("") now that searching is on - and that already re-lays the chat out.
-            // Refreshing again here would replay the whole history a second time for nothing.
             input.setValue("");
             input.setSuggestion(HINT);
-        } else {
-            refresh();
         }
     }
 
@@ -93,8 +112,11 @@ public final class ChatSearchFeature {
     public static void exit(EditBox input) {
         if (!searching) return;
         searching = false;
+        boolean filtered = !laidOutQuery.isEmpty();
         query = "";
+        laidOutQuery = "";
         queryLower = "";
+        layoutDueAtMs = 0L;
         LOWERED.clear();
         loweredIn = null;
         if (input != null) {
@@ -102,14 +124,24 @@ public final class ChatSearchFeature {
             input.setValue(draft);
         }
         draft = "";
-        refresh();
+        // Only a chat that was filtered needs laying out again to show everything.
+        if (filtered) refresh();
     }
 
-    /** The search text changed. */
+    /** The search text changed; the chat follows once typing pauses (see {@link #tick()}). */
     public static void onEdited(String text, EditBox input) {
         query = text == null ? "" : text;
-        queryLower = query.toLowerCase(Locale.ROOT);
         if (input != null) input.setSuggestion(query.isEmpty() ? HINT : null);
+        layoutDueAtMs = System.currentTimeMillis() + LAYOUT_DELAY_MS;
+    }
+
+    /** Lays the chat out for the query once no key has come for {@link #LAYOUT_DELAY_MS}. */
+    private static void tick() {
+        if (layoutDueAtMs == 0L || System.currentTimeMillis() < layoutDueAtMs) return;
+        layoutDueAtMs = 0L;
+        if (!searching || query.equals(laidOutQuery)) return;
+        laidOutQuery = query;
+        queryLower = query.toLowerCase(Locale.ROOT);
         refresh();
     }
 

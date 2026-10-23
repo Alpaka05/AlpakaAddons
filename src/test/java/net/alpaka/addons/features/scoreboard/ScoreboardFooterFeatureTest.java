@@ -26,5 +26,9 @@ class ScoreboardFooterFeatureTest {
         assertFalse(ScoreboardFooterFeature.isHypixelFooter(""));
         // Hypixel's other address line, the one pointing at a store page.
         assertFalse(ScoreboardFooterFeature.isHypixelFooter("§f§ehypixel.net/§p§eptl"));
+        // The address with more after it, and half of it.
+        assertFalse(ScoreboardFooterFeature.isHypixelFooter("www.hypixel.network"));
+        assertFalse(ScoreboardFooterFeature.isHypixelFooter("www.hypixel"));
+        assertFalse(ScoreboardFooterFeature.isHypixelFooter("§"));
     }
 }

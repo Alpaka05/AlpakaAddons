@@ -43,12 +43,10 @@ import org.spongepowered.asm.mixin.injection.Coerce;
 import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
-import org.spongepowered.asm.mixin.injection.ModifyArgs;
 import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
 @Mixin(ChatComponent.class)
 public abstract class ChatComponentMixin implements AlpakaChatScroll {
@@ -493,36 +491,31 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
     /**
      * The fade: an arriving line is drawn with the slide's progress as its alpha, on top of the
      * time fade vanilla already applies. The alpha stays just above zero rather than at it, so a
-     * line at the very start of its fade is invisible instead of undefined.
+     * line at the very start of its fade is invisible instead of undefined. Only the alpha changes,
+     * so only that argument is hooked: @ModifyArgs boxed all three into an Args object for every
+     * drawn line, every frame, even with smooth chat off.
      */
-    @ModifyArgs(
+    @ModifyArg(
         method = "forEachLine",
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/client/gui/components/ChatComponent$LineConsumer;accept(Lnet/minecraft/client/multiplayer/chat/GuiMessage$Line;IF)V"
-        )
+        ),
+        index = 2
     )
-    private void alpaka$fadeArrivingLines(Args args) {
+    private float alpaka$fadeArrivingLines(GuiMessage.Line line, int index, float alpha) {
         if (this.alpaka$reveal >= 0.0f) {
             // In both passes: the panel's height is the sum of the line boxes' alphas, so it grows
             // with the lines instead of standing at full height behind them.
-            int index = args.get(1);
             float uncovered = Mth.clamp(this.alpaka$reveal - (index - this.chatScrollbarPos), 0.0f, 1.0f);
-            if (uncovered < 1.0f) {
-                float alpha = args.get(2);
-                args.set(2, alpha * Math.max(uncovered, 0.001f));
-            }
+            if (uncovered < 1.0f) alpha *= Math.max(uncovered, 0.001f);
         }
-        if (this.chatScrollbarPos != 0 || !SmoothChatFeature.isEnabled()) return;
+        if (this.chatScrollbarPos != 0 || !SmoothChatFeature.isEnabled()) return alpha;
         // With the glass panel on, the background pass only measures the panel: an arriving line's
         // box counts in full there, or the panel's top edge would dip and rise with every message.
-        if (ChatBlurFeature.isEnabled() && this.alpaka$pass == 1) return;
-        int index = args.get(1);
+        if (ChatBlurFeature.isEnabled() && this.alpaka$pass == 1) return alpha;
         float factor = SmoothChatFeature.lineAlpha(index);
-        if (factor < 1.0f) {
-            float alpha = args.get(2);
-            args.set(2, alpha * Math.max(factor, 0.001f));
-        }
+        return factor < 1.0f ? alpha * Math.max(factor, 0.001f) : alpha;
     }
 
     /** Whether this layout is of the chat while it opens. */

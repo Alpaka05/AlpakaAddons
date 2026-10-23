@@ -297,6 +297,7 @@ class HudEditorScreen(private val parent: Screen?) : Screen(Component.literal("H
         if (dirty) {
             dirty = false
             AlpakaConfig.save()
+            for (element in HudRegistry.ELEMENTS) element.flushEdits()
         }
     }
 

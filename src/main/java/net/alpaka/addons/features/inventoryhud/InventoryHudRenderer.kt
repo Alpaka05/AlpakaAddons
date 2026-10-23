@@ -223,7 +223,9 @@ object InventoryHudRenderer {
                 columnTop(VanillaHudElements.AIR_BAR, airShown))
         }
         if ((mc.gui.hud as HudOverlayAccessor).`alpaka$getOverlayMessageTime`() > 0) {
-            top = maxOf(top, registeredHeight(VanillaHudElements.OVERLAY_MESSAGE, ACTION_BAR_LINE) + ACTION_BAR_ABOVE_LINE)
+            // Vanilla's own line, not the registry's: Fabric has no height for the action bar (see
+            // above), so asking it threw an exception every frame only to land on this same number.
+            top = maxOf(top, ACTION_BAR_LINE + ACTION_BAR_ABOVE_LINE)
         }
         return top
     }
@@ -237,10 +239,16 @@ object InventoryHudRenderer {
         return if (shown) start else start - BAR_ROW
     }
 
-    /** Fabric's height for a HUD element, or vanilla's when the registry has none for it. */
+    /**
+     * Fabric's height for a HUD element, or vanilla's when the registry has none for it: an element
+     * it does not know (IllegalArgumentException), or no heights yet or no camera player
+     * (IllegalStateException). Anything else is a real failure and is not swallowed here.
+     */
     private fun registeredHeight(element: Identifier, vanilla: Int): Int = try {
         HudStatusBarHeightRegistry.getHeight(element)
-    } catch (_: RuntimeException) {
+    } catch (_: IllegalArgumentException) {
+        vanilla
+    } catch (_: IllegalStateException) {
         vanilla
     }
 

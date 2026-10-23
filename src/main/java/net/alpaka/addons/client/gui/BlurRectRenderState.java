@@ -15,8 +15,9 @@ import org.joml.Matrix3x2fc;
  * reads it; only the fragment shader differs, sampling the blurred copy of the frame that
  * {@link ChatBlurFeature} keeps. Both the pipeline and the texture are looked up when the GUI
  * renderer prepares the frame, not when the element is extracted: by then the copy of this very
- * frame exists, and if it could not be made the element falls back to the plain rounded pipeline,
- * whose shader reads the same vertices, so the chat keeps a background either way.
+ * frame exists, and if it could not be made - or the panel was not given the blur (see
+ * {@link ChatBlurFeature#request}) - the element falls back to the plain rounded pipeline, whose
+ * shader reads the same vertices, so the chat keeps a background either way.
  *
  * A panel can also cast a soft drop shadow: the quad is then grown by the shadow's reach on every
  * side, and the fragment shader shades the band outside the rounded edge with a falloff instead of
@@ -126,11 +127,11 @@ public record BlurRectRenderState(
 
     @Override
     public RenderPipeline pipeline() {
-        return ChatBlurFeature.isReady() ? AlpakaGuiPipelines.blurRect() : AlpakaGuiPipelines.roundedRect();
+        return ChatBlurFeature.samples(bounds) ? AlpakaGuiPipelines.blurRect() : AlpakaGuiPipelines.roundedRect();
     }
 
     @Override
     public TextureSetup textureSetup() {
-        return ChatBlurFeature.textureSetup();
+        return ChatBlurFeature.samples(bounds) ? ChatBlurFeature.textureSetup() : TextureSetup.noTexture();
     }
 }

@@ -218,7 +218,10 @@ public class ColorPickerScreen extends Screen {
         ModernGuiUtils.drawRect(graphics, prevX, hexY, prevW, hexH, ModernGuiUtils.COLOR_CARD_BG);
         ModernGuiUtils.drawOutline(graphics, prevX, hexY, prevW, hexH, hexBorder);
 
-        String displayText = hexFocused ? hexInput : String.format(Locale.ROOT, "#%02X%02X%02X%02X", a, r, g, b);
+        // hexInput mirrors the color whenever the field is not being typed in (syncHexFromColor runs
+        // after every change and on leaving the field), so it is drawn as it is rather than
+        // formatted anew every frame.
+        String displayText = hexInput;
         if (hexFocused && (System.currentTimeMillis() / 500) % 2 == 0) {
             displayText += "|";
         }

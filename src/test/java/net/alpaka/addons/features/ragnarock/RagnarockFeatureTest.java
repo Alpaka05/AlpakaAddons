@@ -8,7 +8,9 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RagnarockFeatureTest {
 
@@ -52,5 +54,27 @@ class RagnarockFeatureTest {
         Component out = RagnarockFeature.cut(pieces, m.start(), m.end());
         assertEquals("9,011/9,248❤     226❈", out.getString());
         assertEquals(green, out.getSiblings().get(1).getStyle());
+    }
+
+    private static final float CAST_PITCH = 1.4920635f;
+
+    @Test
+    void ownCastSoundCountsWhileTheCastRuns() {
+        assertTrue(RagnarockFeature.isOwnCast(true, CAST_PITCH, "entity.wolf.death", 0.25));
+        assertTrue(RagnarockFeature.isOwnCast(true, CAST_PITCH, "entity.wolf_angry.death", 9.0));
+    }
+
+    @Test
+    void anotherPlayersCastDoesNotCount() {
+        // No cast of our own running: a teammate's cast must not announce one.
+        assertFalse(RagnarockFeature.isOwnCast(false, CAST_PITCH, "entity.wolf.death", 0.0));
+        // Our cast running, but the sound comes from a teammate a few blocks away.
+        assertFalse(RagnarockFeature.isOwnCast(true, CAST_PITCH, "entity.wolf.death", 7.0 * 7.0));
+    }
+
+    @Test
+    void otherSoundsDoNotCount() {
+        assertFalse(RagnarockFeature.isOwnCast(true, 1.0f, "entity.wolf.death", 0.0));
+        assertFalse(RagnarockFeature.isOwnCast(true, CAST_PITCH, "entity.wolf.hurt", 0.0));
     }
 }

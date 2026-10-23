@@ -55,6 +55,15 @@ public abstract class GuiGraphicsExtractorMixin implements AlpakaGuiElementSink 
         alpaka$scissors.addLast(area);
     }
 
+    /**
+     * A screen asks for vanilla's menu blur, which goes over the whole HUD: the HUD's own blurred
+     * panels can skip theirs while it is open (ChatBlurFeature#requestForHud).
+     */
+    @Inject(method = "blurBeforeThisStratum", at = @At("HEAD"))
+    private void alpaka$noteMenuBlur(CallbackInfo ci) {
+        net.alpaka.addons.features.chat.ChatBlurFeature.onMenuBlur();
+    }
+
     @Inject(method = "disableScissor", at = @At("TAIL"))
     private void alpaka$trackDisableScissor(CallbackInfo ci) {
         alpaka$scissors.pollLast();

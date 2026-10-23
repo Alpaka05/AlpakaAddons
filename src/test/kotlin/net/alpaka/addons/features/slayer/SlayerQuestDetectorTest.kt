@@ -124,4 +124,40 @@ class SlayerQuestDetectorTest {
         assertEquals(type, d.consumeSpawn())
         assertFalse(d.spawnVerified)
     }
+
+    private val questLine = "Inferno Demonlord IV"
+    private val sidebarWithoutQuest = listOf("SKYBLOCK", "Smoldering Tomb", "Purse: 1,000")
+
+    @Test
+    fun anEmptySidebarDoesNotFallBackToTheTabList() {
+        // Between servers the sidebar is gone while the tab list may still be the old server's.
+        var reads = 0
+        val lines = d.linesToScan(10_000L, emptyList()) { reads++; listOf(questLine, fight) }
+        assertTrue(lines.isEmpty())
+        assertEquals(0, reads)
+    }
+
+    @Test
+    fun aWorldChangeForgetsTheTabList() {
+        d.linesToScan(10_000L, sidebarWithoutQuest) { listOf(questLine, fight) }
+        d.resetForLevelChange()
+        // Within the second the snapshot would otherwise be kept: the new world's tab list is read.
+        val lines = d.linesToScan(10_100L, sidebarWithoutQuest) { listOf("Alpaka05") }
+        assertEquals(sidebarWithoutQuest, lines)
+    }
+
+    @Test
+    fun theTabListIsReadAfreshWhenTheQuestLeavesTheSidebar() {
+        // No quest anywhere: the tab list is read, and then left alone for a second.
+        var reads = 0
+        d.linesToScan(10_000L, sidebarWithoutQuest) { reads++; emptyList() }
+        d.linesToScan(10_250L, sidebarWithoutQuest) { reads++; emptyList() }
+        assertEquals(1, reads)
+
+        // The quest on the sidebar, then gone from it: the tab list is read right away.
+        d.linesToScan(10_500L, listOf(questLine, grinding)) { reads++; emptyList() }
+        val lines = d.linesToScan(10_750L, sidebarWithoutQuest) { reads++; listOf(questLine, fight) }
+        assertEquals(2, reads)
+        assertEquals(listOf(questLine, fight), lines)
+    }
 }

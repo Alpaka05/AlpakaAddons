@@ -1,17 +1,17 @@
 package net.alpaka.addons.client
 
+import net.alpaka.addons.client.gui.AlpakaStyle
+import net.alpaka.addons.client.gui.AlpakaStyle.ButtonKind
 import net.alpaka.addons.client.gui.EditableText
 import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.features.chat.CustomMessageFilter
-import net.alpaka.addons.features.sound.CustomSoundFeature
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
-import net.minecraft.network.chat.Component
 import org.lwjgl.glfw.GLFW
 import kotlin.math.max
 import kotlin.math.min
@@ -20,14 +20,14 @@ import kotlin.math.min
  * Where the Message Filter's own filters are made: paste a message copied from the chat, pick how
  * it is compared, add it.
  *
- * Each row has its on/off box, the text, the comparison (cycled by clicking it), "Aa" for matching
- * regardless of case, and a delete button. Clicking a row's text loads it into the field below to
- * be edited; the add button then saves it back instead.
+ * Each row has its switch, the text, the comparison (cycled by clicking it), "Aa" for matching
+ * regardless of case, and a delete button that shows while the row is hovered. Clicking a row's
+ * text loads it into the field below to be edited; the add button then saves it back instead.
  *
- * Drawn like the quick command editor: rounded panels with hairline borders, the menu font without
- * shadows, the accent color for whatever is selected.
+ * Drawn with [AlpakaStyle], the config menu's look, like the command wheel editor.
  */
-class MessageFilterScreen(private val parent: Screen) : Screen(Component.literal("Custom Message Filters")) {
+class MessageFilterScreen(private val parent: Screen) : Screen(GuiFont.text("Custom Message Filters")),
+    net.alpaka.addons.client.gui.NoticeHost {
 
     private val input = EditableText(MAX_TEXT)
     private var inputFocused = true
@@ -39,6 +39,8 @@ class MessageFilterScreen(private val parent: Screen) : Screen(Component.literal
     private var targetScrollY = 0.0
     private var maxScrollY = 0.0
     private var lastFrameMs = System.currentTimeMillis()
+    private var openTimeMs = 0L
+    private var caretFrom = 0L
     /** What the control under the mouse does, shown in the hint line; null when it is self-explanatory. */
     private var hoverHint: String? = null
 
@@ -53,26 +55,26 @@ class MessageFilterScreen(private val parent: Screen) : Screen(Component.literal
         val hintY: Int, val inputY: Int, val inputW: Int,
     )
 
-    /** The window clamped to the screen; the list takes whatever height the bottom rows leave. */
+    /** The window clamped to the screen; the list takes whatever height the footer leaves. */
     private fun frame(): Frame {
         val winW = (this.width - MARGIN * 2).coerceIn(MIN_W, WIN_W)
         val winH = (this.height - MARGIN * 2).coerceIn(MIN_H, WIN_H)
         val winX = (this.width - winW) / 2
         val winY = maxOf(MARGIN / 2, (this.height - winH) / 2)
-        val listX = winX + 16
-        val listY = winY + HEADER_H + 10
-        val listW = winW - 32
-        val inputY = winY + winH - 16 - BOTTOM_H
-        val hintY = inputY - 14
-        val listH = hintY - 8 - listY
+        val listX = winX + AlpakaStyle.PAD + 4
+        val listY = winY + AlpakaStyle.HEADER_H + 6
+        val listW = winW - 2 * (AlpakaStyle.PAD + 4)
+        val inputY = winY + winH - AlpakaStyle.PAD - AlpakaStyle.BUTTON_H
+        val hintY = inputY - 8 - 14
+        val listH = hintY - 6 - listY
         val inputW = listW - MODE_W - ADD_W - 12
         return Frame(winX, winY, winW, winH, listX, listY, listW, listH, hintY, inputY, inputW)
     }
 
-    private fun playPloppSound() {
-        try {
-            CustomSoundFeature.playButtonClickSound()
-        } catch (_: Throwable) {}
+    private fun playPloppSound() = AlpakaStyle.click()
+
+    override fun init() {
+        if (openTimeMs == 0L) openTimeMs = System.currentTimeMillis()
     }
 
     override fun onClose() {
@@ -83,160 +85,149 @@ class MessageFilterScreen(private val parent: Screen) : Screen(Component.literal
     // -------------------------------------------------------------- rendering
 
     override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
-        super.extractBackground(graphics, mouseX, mouseY, partialTick)
-
         val now = System.currentTimeMillis()
         val deltaSec = min(0.1f, (now - lastFrameMs) / 1000f)
         lastFrameMs = now
 
-        graphics.pose().pushMatrix()
-        graphics.pose().identity()
-        graphics.fill(0, 0, this.width, this.height, 0x70000000)
-        graphics.pose().popMatrix()
+        AlpakaStyle.backdrop(graphics, this.width, this.height)
+        val pushed = AlpakaStyle.beginOpen(graphics, openTimeMs, this.width, this.height)
 
         val f = frame()
-        val accent = ModernGuiUtils.getAccentColor()
+        AlpakaStyle.panel(graphics, f.winX, f.winY, f.winW, f.winH)
+        AlpakaStyle.header(graphics, this.font, "Custom Message Filters", f.winX, f.winY, f.winW)
 
-        ModernGuiUtils.drawPanelShadow(graphics, f.winX, f.winY, f.winW, f.winH, ModernGuiUtils.PANEL_RADIUS, 1.0f)
-        ModernGuiUtils.drawRoundedPanel(graphics, f.winX, f.winY, f.winW, f.winH, ModernGuiUtils.PANEL_RADIUS,
-            ModernGuiUtils.COLOR_PANEL_BG, ModernGuiUtils.COLOR_CARD_BORDER)
+        val hoverDone = inside(mouseX, mouseY, doneX(f), doneY(f), DONE_W, AlpakaStyle.BUTTON_H)
+        AlpakaStyle.button(graphics, this.font, doneX(f), doneY(f), DONE_W, AlpakaStyle.BUTTON_H, "Done", hoverDone, ButtonKind.PRIMARY)
 
-        // Header band with the accent rule, as on the other menus.
-        val r = ModernGuiUtils.PANEL_RADIUS
-        ModernGuiUtils.drawRoundedRect(graphics, f.winX + 1, f.winY + 1, f.winW - 2, HEADER_H - 1, r - 1, ModernGuiUtils.COLOR_SIDEBAR_BG)
-        ModernGuiUtils.drawRect(graphics, f.winX + 1, f.winY + HEADER_H - r, f.winW - 2, r, ModernGuiUtils.COLOR_SIDEBAR_BG)
-        ModernGuiUtils.drawRect(graphics, f.winX + 1, f.winY + HEADER_H - 1, f.winW - 2, 1, accent)
-        graphics.text(this.font, GuiFont.text("Custom Message Filters"), f.winX + 16, f.winY + 15, ModernGuiUtils.COLOR_TEXT_PRIMARY, false)
-
-        val hoverDone = inside(mouseX, mouseY, doneX(f), doneY(f), DONE_W, DONE_H)
-        ModernGuiUtils.drawModernButton(graphics, this.font, doneX(f), doneY(f), DONE_W, DONE_H, "Done", hoverDone, false)
-
-        ModernGuiUtils.drawRoundedPanel(graphics, f.listX, f.listY, f.listW, f.listH, ModernGuiUtils.WIDGET_RADIUS + 2,
-            ModernGuiUtils.COLOR_SIDEBAR_BG, ModernGuiUtils.COLOR_CARD_BORDER)
-
-        val contentHeight = 6 + filters.size * (ITEM_H + ITEM_GAP)
-        maxScrollY = max(0.0, (contentHeight - f.listH + 6).toDouble())
+        val contentHeight = filters.size * (ITEM_H + ITEM_GAP)
+        maxScrollY = max(0.0, (contentHeight - f.listH).toDouble())
         targetScrollY = targetScrollY.coerceIn(0.0, maxScrollY)
         scrollY += (targetScrollY - scrollY) * min(1.0, deltaSec * 14.0)
 
         if (filters.isEmpty()) {
             ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("No filters yet."),
-                f.listX + f.listW / 2, f.listY + f.listH / 2 - 10, ModernGuiUtils.COLOR_TEXT_MUTED)
+                f.listX + f.listW / 2, f.listY + f.listH / 2 - 10, AlpakaStyle.TEXT_SOFT)
             ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("Paste a copied message below and press Add."),
-                f.listX + f.listW / 2, f.listY + f.listH / 2 + 2, ModernGuiUtils.COLOR_TEXT_DARK)
+                f.listX + f.listW / 2, f.listY + f.listH / 2 + 2, AlpakaStyle.TEXT_MUTED)
         }
 
         val inList = inside(mouseX, mouseY, f.listX, f.listY, f.listW, f.listH)
         hoverHint = null
-        graphics.enableScissor(f.listX + 1, f.listY + 1, f.listX + f.listW - 1, f.listY + f.listH - 1)
-        val rowX = f.listX + 8
-        val rowW = f.listW - 16
+        graphics.enableScissor(f.listX, f.listY, f.listX + f.listW, f.listY + f.listH)
         for (i in filters.indices) {
             val y = rowY(f, i)
             if (y + ITEM_H < f.listY || y > f.listY + f.listH) continue
-            drawRow(graphics, filters[i], i, rowX, y, rowW, mouseX, mouseY, inList)
+            drawRow(graphics, filters[i], i, f.listX, y, f.listW, mouseX, mouseY, inList)
         }
+        AlpakaStyle.scrollFades(graphics, f.listX, f.listY, f.listW, f.listH, scrollY > 0.5, scrollY < maxScrollY - 0.5)
         graphics.disableScissor()
 
-        // What the comparison picked for the field does, so the choice needs no guessing.
+        // Footer: what the chosen comparison does, then the field, the comparison and add.
+        ModernGuiUtils.drawRect(graphics, f.winX + AlpakaStyle.PAD, f.hintY - 6, f.winW - AlpakaStyle.PAD * 2, 1, AlpakaStyle.LINE)
         val hint = hoverHint ?: if (editing >= 0) "Editing a filter: Enter saves, Esc cancels. ${newMode.hint}" else newMode.hint
-        graphics.text(this.font, GuiFont.text(fit(hint, f.listW)), f.listX + 2, f.hintY, ModernGuiUtils.COLOR_TEXT_MUTED, false)
+        graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, hint, f.listW)), f.listX, f.hintY + 3, AlpakaStyle.TEXT_MUTED, false)
 
         drawField(graphics, f, mouseX, mouseY)
-        val hoverMode = inside(mouseX, mouseY, modeBtnX(f), f.inputY, MODE_W, BOTTOM_H)
-        ModernGuiUtils.drawModernButton(graphics, this.font, modeBtnX(f), f.inputY, MODE_W, BOTTOM_H, newMode.label, hoverMode, false)
-        val hoverAdd = inside(mouseX, mouseY, addBtnX(f), f.inputY, ADD_W, BOTTOM_H)
-        ModernGuiUtils.drawModernButton(graphics, this.font, addBtnX(f), f.inputY, ADD_W, BOTTOM_H,
-            if (editing >= 0) "Save" else "+ Add", hoverAdd, true)
+        val hoverMode = inside(mouseX, mouseY, modeBtnX(f), f.inputY, MODE_W, AlpakaStyle.BUTTON_H)
+        AlpakaStyle.button(graphics, this.font, modeBtnX(f), f.inputY, MODE_W, AlpakaStyle.BUTTON_H, newMode.label, hoverMode, ButtonKind.PLAIN)
+        if (hoverMode) hoverHint = "Click to change how the text is compared."
+        val hoverAdd = inside(mouseX, mouseY, addBtnX(f), f.inputY, ADD_W, AlpakaStyle.BUTTON_H)
+        AlpakaStyle.button(graphics, this.font, addBtnX(f), f.inputY, ADD_W, AlpakaStyle.BUTTON_H,
+            if (editing >= 0) "Save" else "Add", hoverAdd, ButtonKind.PRIMARY)
+
+        AlpakaStyle.endOpen(graphics, pushed)
+        net.alpaka.addons.features.notification.AlpakaNotifications.renderOverScreen(graphics)
     }
 
     private fun drawRow(graphics: GuiGraphicsExtractor, filter: CustomMessageFilter, index: Int, x: Int, y: Int, w: Int,
                         mouseX: Int, mouseY: Int, inList: Boolean) {
         val hovered = inList && inside(mouseX, mouseY, x, y, w, ITEM_H)
         val selected = index == editing
-        ModernGuiUtils.drawRoundedPanel(graphics, x, y, w, ITEM_H, ModernGuiUtils.WIDGET_RADIUS + 1,
-            if (hovered) ModernGuiUtils.COLOR_CARD_BG_HOVER else ModernGuiUtils.COLOR_CARD_BG,
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, ITEM_H, AlpakaStyle.CARD_RADIUS,
             when {
-                selected -> ModernGuiUtils.getAccentColor()
-                hovered -> ModernGuiUtils.getAccentDimColor()
-                else -> ModernGuiUtils.COLOR_CARD_BORDER
+                selected -> AlpakaStyle.ROW_SELECTED
+                hovered -> AlpakaStyle.ROW_HOVER
+                else -> AlpakaStyle.ROW
             })
+        if (selected) ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, ITEM_H, AlpakaStyle.CARD_RADIUS, AlpakaStyle.accentDim())
+
+        val switchY = y + (ITEM_H - SWITCH_H) / 2
+        AlpakaStyle.toggle(graphics, x + 6, switchY, SWITCH_W, SWITCH_H, if (filter.enabled) 1f else 0f)
+        if (inList && inside(mouseX, mouseY, x + 6, switchY, SWITCH_W, SWITCH_H)) {
+            hoverHint = if (filter.enabled) "Switch this filter off without deleting it." else "Switch this filter back on."
+        }
 
         val btnY = y + (ITEM_H - SMALL_BTN) / 2
-        val boxY = y + (ITEM_H - CHECK) / 2
-        ModernGuiUtils.drawModernCheckbox(graphics, this.font, x + 6, boxY, CHECK, filter.enabled,
-            inList && inside(mouseX, mouseY, x + 6, boxY, CHECK, CHECK))
-        if (hovered && hoverHint == null) hoverHint = "Click the text to edit it, the box to switch the filter off."
-
-        val textX = x + 6 + CHECK + 8
+        val textX = x + 6 + SWITCH_W + 8
         val textW = rowModeX(x, w) - 6 - textX
         val valid = filter.isValid()
         val label = if (valid) filter.text else "${filter.text}  (invalid regex)"
         val color = when {
-            !valid -> ModernGuiUtils.COLOR_TOGGLE_OFF_TEXT
-            filter.enabled -> ModernGuiUtils.COLOR_TEXT_PRIMARY
-            else -> ModernGuiUtils.COLOR_TEXT_DARK
+            !valid -> AlpakaStyle.DANGER
+            filter.enabled -> AlpakaStyle.TEXT
+            else -> AlpakaStyle.TEXT_MUTED
         }
-        graphics.text(this.font, GuiFont.text(fit(label, textW)), textX, y + (ITEM_H - 8) / 2, color, false)
+        graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, label, textW)), textX, y + (ITEM_H - 8) / 2, color, false)
+        if (hovered && hoverHint == null && mouseX in textX..(textX + textW)) hoverHint = "Click to edit this filter in the field below."
 
         val modeX = rowModeX(x, w)
         val modeHover = inList && inside(mouseX, mouseY, modeX, btnY, ROW_MODE_W, SMALL_BTN)
-        ModernGuiUtils.drawModernButton(graphics, this.font, modeX, btnY, ROW_MODE_W, SMALL_BTN, filter.mode.label, modeHover, false)
+        AlpakaStyle.button(graphics, this.font, modeX, btnY, ROW_MODE_W, SMALL_BTN, filter.mode.label, modeHover, ButtonKind.PLAIN)
         if (modeHover) hoverHint = "Click to change. ${filter.mode.hint}"
 
         val caseX = rowCaseX(x, w)
-        val caseHover = inList && inside(mouseX, mouseY, caseX, btnY, CASE_W, SMALL_BTN)
-        if (caseHover) hoverHint = if (filter.ignoreCase) "Ignores upper and lower case. Click to match case exactly."
-            else "Matches case exactly. Click to ignore upper and lower case."
-        drawSmallButton(graphics, caseX, btnY, CASE_W, "Aa", caseHover,
-            if (filter.ignoreCase) ModernGuiUtils.getAccentColor() else ModernGuiUtils.COLOR_TEXT_DARK, false)
+        val caseHover = inList && inside(mouseX, mouseY, caseX, btnY, SMALL_BTN, SMALL_BTN)
+        if (caseHover) {
+            hoverHint = if (filter.ignoreCase) "Ignores upper and lower case. Click to match case exactly."
+                else "Matches case exactly. Click to ignore upper and lower case."
+        }
+        if (filter.ignoreCase && !caseHover) {
+            val gw = GuiFont.width(this.font, "Aa")
+            graphics.text(this.font, GuiFont.text("Aa"), caseX + (SMALL_BTN - gw) / 2, btnY + (SMALL_BTN - 8) / 2, AlpakaStyle.accent(), false)
+        } else {
+            AlpakaStyle.iconButton(graphics, this.font, caseX, btnY, SMALL_BTN, "Aa", caseHover, true, false)
+        }
 
-        val delX = rowDelX(x, w)
-        drawSmallButton(graphics, delX, btnY, SMALL_BTN, "✕", inList && inside(mouseX, mouseY, delX, btnY, SMALL_BTN, SMALL_BTN),
-            0xFFFCA5A5.toInt(), true)
-    }
-
-    private fun drawSmallButton(graphics: GuiGraphicsExtractor, x: Int, y: Int, w: Int, glyph: String, hovered: Boolean, textColor: Int, destructive: Boolean) {
-        val bg = if (destructive) (if (hovered) 0xFFDC2626.toInt() else 0x33DC2626) else (if (hovered) ModernGuiUtils.COLOR_CARD_BG_HOVER else ModernGuiUtils.COLOR_SIDEBAR_BG)
-        val border = if (destructive) (if (hovered) 0xFFEF4444.toInt() else 0x88DC2626.toInt()) else (if (hovered) ModernGuiUtils.getAccentColor() else ModernGuiUtils.COLOR_CARD_BORDER)
-        ModernGuiUtils.drawRoundedPanel(graphics, x, y, w, SMALL_BTN, ModernGuiUtils.WIDGET_RADIUS, bg, border)
-        val color = if (destructive && hovered) 0xFFFFFFFF.toInt() else textColor
-        ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text(glyph), x + w / 2, y + (SMALL_BTN - 8) / 2, color)
+        // The bin stays out of the way until the row is hovered, as in the command wheel editor.
+        if (hovered) {
+            val delX = rowDelX(x, w)
+            val delHover = inside(mouseX, mouseY, delX, btnY, SMALL_BTN, SMALL_BTN)
+            AlpakaStyle.trashButton(graphics, delX, btnY, SMALL_BTN, delHover)
+            if (delHover) hoverHint = "Delete this filter."
+        }
     }
 
     /**
-     * The text field, drawn here rather than with the shared one because it has a caret that can
-     * move and a selection: a pasted message often needs a number cut out of it before it is useful.
+     * The text field, drawn here rather than with [AlpakaStyle.textField] because it has a caret
+     * that can move and a selection: a pasted message often needs a number cut out of it first.
      */
     private fun drawField(graphics: GuiGraphicsExtractor, f: Frame, mouseX: Int, mouseY: Int) {
         val x = f.listX
         val y = f.inputY
         val w = f.inputW
-        val hovered = inside(mouseX, mouseY, x, y, w, BOTTOM_H)
-        val border = if (inputFocused) ModernGuiUtils.getAccentColor() else if (hovered) ModernGuiUtils.getAccentDimColor() else ModernGuiUtils.COLOR_CARD_BORDER
-        ModernGuiUtils.drawRoundedPanel(graphics, x, y, w, BOTTOM_H, ModernGuiUtils.WIDGET_RADIUS, ModernGuiUtils.COLOR_CARD_BG, border)
+        val h = AlpakaStyle.BUTTON_H
+        val hovered = inside(mouseX, mouseY, x, y, w, h)
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, AlpakaStyle.FIELD_RADIUS, if (hovered && !inputFocused) AlpakaStyle.ROW_HOVER else AlpakaStyle.FIELD)
+        ModernGuiUtils.drawRect(graphics, x + 3, y + h - 1, w - 6, 1, if (inputFocused) AlpakaStyle.accent() else AlpakaStyle.LINE)
 
-        val textY = y + (BOTTOM_H - 8) / 2
+        val textY = y + (h - 8) / 2
         val text = input.text
-        if (text.isEmpty()) {
+        if (text.isEmpty() && !inputFocused) {
             graphics.text(this.font, GuiFont.text(if (newMode == CustomMessageFilter.Mode.REGEX) "Regex" else "Message to hide"),
-                x + 4, textY, ModernGuiUtils.COLOR_TEXT_DARK, false)
+                x + 5, textY, AlpakaStyle.TEXT_MUTED, false)
         }
 
-        val start = visibleStart(text, w - 8)
-        val shown = text.substring(start)
-        graphics.enableScissor(x + 2, y + 1, x + w - 2, y + BOTTOM_H - 1)
+        val start = visibleStart(text, w - 10)
+        graphics.enableScissor(x + 2, y, x + w - 2, y + h)
         if (inputFocused && input.hasSelection()) {
-            val selFrom = max(input.selectionStart, start)
-            val selTo = max(input.selectionEnd, start)
-            val sx = x + 4 + GuiFont.width(this.font, text.substring(start, selFrom))
-            val ex = x + 4 + GuiFont.width(this.font, text.substring(start, selTo))
-            ModernGuiUtils.drawRect(graphics, sx, textY - 1, ex - sx, 10, ModernGuiUtils.getAccentDimColor())
+            val sx = x + 5 + GuiFont.width(this.font, text.substring(start, max(input.selectionStart, start)))
+            val ex = x + 5 + GuiFont.width(this.font, text.substring(start, max(input.selectionEnd, start)))
+            ModernGuiUtils.drawRect(graphics, sx, textY - 1, ex - sx, 10, AlpakaStyle.accentDim())
         }
-        graphics.text(this.font, GuiFont.text(shown), x + 4, textY, ModernGuiUtils.COLOR_TEXT_PRIMARY, false)
-        if (inputFocused && (System.currentTimeMillis() / 500) % 2 == 0L) {
-            val caretX = x + 4 + GuiFont.width(this.font, text.substring(start, max(start, input.caret)))
-            ModernGuiUtils.drawRect(graphics, caretX, textY - 1, 1, 10, ModernGuiUtils.getAccentColor())
+        graphics.text(this.font, GuiFont.text(text.substring(start)), x + 5, textY, AlpakaStyle.TEXT, false)
+        if (inputFocused && (System.currentTimeMillis() - caretFrom) / 500 % 2 == 0L) {
+            val caretX = x + 5 + GuiFont.width(this.font, text.substring(start, max(start, input.caret)))
+            ModernGuiUtils.drawRect(graphics, caretX, textY - 1, 1, 10, AlpakaStyle.TEXT)
         }
         graphics.disableScissor()
     }
@@ -249,23 +240,16 @@ class MessageFilterScreen(private val parent: Screen) : Screen(Component.literal
         return start
     }
 
-    private fun fit(text: String, width: Int): String {
-        if (GuiFont.width(this.font, text) <= width) return text
-        var cut = text
-        while (cut.isNotEmpty() && GuiFont.width(this.font, "$cut…") > width) cut = cut.substring(0, cut.length - 1)
-        return "$cut…"
-    }
-
-    private fun inside(mx: Int, my: Int, x: Int, y: Int, w: Int, h: Int) = mx in x..(x + w) && my in y..(y + h)
+    private fun inside(mx: Int, my: Int, x: Int, y: Int, w: Int, h: Int) = AlpakaStyle.inside(mx.toDouble(), my.toDouble(), x, y, w, h)
 
     // Positions shared by drawing and clicking.
-    private fun rowY(f: Frame, index: Int) = f.listY + 6 + index * (ITEM_H + ITEM_GAP) - scrollY.toInt()
-    private fun doneX(f: Frame) = f.winX + f.winW - DONE_W - 12
-    private fun doneY(f: Frame) = f.winY + (HEADER_H - DONE_H) / 2
+    private fun rowY(f: Frame, index: Int) = f.listY + index * (ITEM_H + ITEM_GAP) - scrollY.toInt()
+    private fun doneX(f: Frame) = f.winX + f.winW - DONE_W - AlpakaStyle.PAD
+    private fun doneY(f: Frame) = f.winY + (AlpakaStyle.HEADER_H - AlpakaStyle.BUTTON_H) / 2
     private fun modeBtnX(f: Frame) = f.listX + f.inputW + 6
     private fun addBtnX(f: Frame) = modeBtnX(f) + MODE_W + 6
-    private fun rowDelX(x: Int, w: Int) = x + w - SMALL_BTN - 5
-    private fun rowCaseX(x: Int, w: Int) = rowDelX(x, w) - CASE_W - 4
+    private fun rowDelX(x: Int, w: Int) = x + w - SMALL_BTN - 3
+    private fun rowCaseX(x: Int, w: Int) = rowDelX(x, w) - SMALL_BTN - 4
     private fun rowModeX(x: Int, w: Int) = rowCaseX(x, w) - ROW_MODE_W - 4
 
     // ------------------------------------------------------------------ input
@@ -276,45 +260,45 @@ class MessageFilterScreen(private val parent: Screen) : Screen(Component.literal
         val mouseY = event.y().toInt()
         val f = frame()
 
-        if (inside(mouseX, mouseY, doneX(f), doneY(f), DONE_W, DONE_H)) {
+        if (inside(mouseX, mouseY, doneX(f), doneY(f), DONE_W, AlpakaStyle.BUTTON_H)) {
             playPloppSound()
             onClose()
             return true
         }
 
-        if (inside(mouseX, mouseY, f.listX, f.inputY, f.inputW, BOTTOM_H)) {
+        if (inside(mouseX, mouseY, f.listX, f.inputY, f.inputW, AlpakaStyle.BUTTON_H)) {
             inputFocused = true
-            input.setCaretFromX(mouseX - f.listX - 4 + GuiFont.width(this.font, input.text.substring(0, visibleStart(input.text, f.inputW - 8)))) {
-                GuiFont.width(this.font, it)
-            }
+            caretFrom = System.currentTimeMillis()
+            val offset = GuiFont.width(this.font, input.text.substring(0, visibleStart(input.text, f.inputW - 10)))
+            input.setCaretFromX(mouseX - f.listX - 5 + offset) { GuiFont.width(this.font, it) }
             return true
         }
-        if (inside(mouseX, mouseY, modeBtnX(f), f.inputY, MODE_W, BOTTOM_H)) {
+        if (inside(mouseX, mouseY, modeBtnX(f), f.inputY, MODE_W, AlpakaStyle.BUTTON_H)) {
             playPloppSound()
             newMode = newMode.next()
             return true
         }
-        if (inside(mouseX, mouseY, addBtnX(f), f.inputY, ADD_W, BOTTOM_H)) {
+        if (inside(mouseX, mouseY, addBtnX(f), f.inputY, ADD_W, AlpakaStyle.BUTTON_H)) {
             submit()
             return true
         }
 
         if (inside(mouseX, mouseY, f.listX, f.listY, f.listW, f.listH)) {
-            val rowX = f.listX + 8
-            val rowW = f.listW - 16
+            val x = f.listX
+            val w = f.listW
             for (i in filters.indices) {
                 val y = rowY(f, i)
-                if (!inside(mouseX, mouseY, rowX, y, rowW, ITEM_H)) continue
+                if (!inside(mouseX, mouseY, x, y, w, ITEM_H)) continue
                 val filter = filters[i]
                 val btnY = y + (ITEM_H - SMALL_BTN) / 2
                 when {
-                    inside(mouseX, mouseY, rowDelX(rowX, rowW), btnY, SMALL_BTN, SMALL_BTN) -> {
+                    inside(mouseX, mouseY, rowDelX(x, w), btnY, SMALL_BTN, SMALL_BTN) -> {
                         filters.removeAt(i)
                         if (editing == i) stopEditing() else if (editing > i) editing--
                     }
-                    inside(mouseX, mouseY, rowCaseX(rowX, rowW), btnY, CASE_W, SMALL_BTN) -> filter.ignoreCase = !filter.ignoreCase
-                    inside(mouseX, mouseY, rowModeX(rowX, rowW), btnY, ROW_MODE_W, SMALL_BTN) -> filter.mode = filter.mode.next()
-                    mouseX <= rowX + 6 + CHECK + 4 -> filter.enabled = !filter.enabled
+                    inside(mouseX, mouseY, rowCaseX(x, w), btnY, SMALL_BTN, SMALL_BTN) -> filter.ignoreCase = !filter.ignoreCase
+                    inside(mouseX, mouseY, rowModeX(x, w), btnY, ROW_MODE_W, SMALL_BTN) -> filter.mode = filter.mode.next()
+                    mouseX <= x + 6 + SWITCH_W + 4 -> filter.enabled = !filter.enabled
                     // The row itself: edit it in the field, or stop editing when it is already there.
                     editing == i -> stopEditing()
                     else -> {
@@ -322,6 +306,7 @@ class MessageFilterScreen(private val parent: Screen) : Screen(Component.literal
                         input.setText(filter.text)
                         newMode = filter.mode
                         inputFocused = true
+                        caretFrom = System.currentTimeMillis()
                     }
                 }
                 playPloppSound()
@@ -367,6 +352,7 @@ class MessageFilterScreen(private val parent: Screen) : Screen(Component.literal
         if (inputFocused) {
             val codePoint = event.codepoint()
             if (Character.isBmpCodePoint(codePoint)) input.insert(codePoint.toChar())
+            caretFrom = System.currentTimeMillis()
             return true
         }
         return super.charTyped(event)
@@ -385,31 +371,31 @@ class MessageFilterScreen(private val parent: Screen) : Screen(Component.literal
                     return true
                 }
             }
-            if (input.keyPressed(event.key(), event.hasControlDownWithQuirk(), event.hasShiftDown())) return true
+            if (input.keyPressed(event.key(), event.hasControlDownWithQuirk(), event.hasShiftDown())) {
+                caretFrom = System.currentTimeMillis()
+                return true
+            }
         }
         return super.keyPressed(event)
     }
 
     companion object {
         private const val WIN_W = 520
-        private const val WIN_H = 340
+        private const val WIN_H = 320
         private const val MIN_W = 320
         private const val MIN_H = 200
         /** Space kept free around the window, as the config screen keeps. */
         private const val MARGIN = 8
-        private const val HEADER_H = 38
-        private const val DONE_W = 60
-        private const val DONE_H = 22
-        private const val BOTTOM_H = 24
-        private const val MODE_W = 80
-        private const val ADD_W = 60
+        private const val DONE_W = 56
+        private const val MODE_W = 76
+        private const val ADD_W = 50
 
-        private const val ITEM_H = 26
-        private const val ITEM_GAP = 4
-        private const val SMALL_BTN = 18
-        private const val ROW_MODE_W = 74
-        private const val CASE_W = 24
-        private const val CHECK = 12
+        private const val ITEM_H = 24
+        private const val ITEM_GAP = 3
+        private const val SMALL_BTN = 16
+        private const val ROW_MODE_W = 70
+        private const val SWITCH_W = 20
+        private const val SWITCH_H = 11
 
         /** Long enough for any chat line Hypixel sends, and for a regex written around one. */
         private const val MAX_TEXT = 512

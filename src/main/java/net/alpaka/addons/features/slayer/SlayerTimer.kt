@@ -269,7 +269,7 @@ object SlayerTimer {
         val notCounted = whyNotABest(tier, death != null && diedByHealth, stated)
         val isBest = notCounted == null && (previousBest == null || elapsed < previousBest)
         if (isBest) {
-            data.bestBossMsByTier[tier] = elapsed
+            data.recordBest(tier, elapsed)
             AlpakaStats.markDirty()
         }
         lastResultWasBest = isBest
@@ -426,11 +426,9 @@ object SlayerTimer {
         var cleared = 0
         for ((slayer, data) in AlpakaStats.slayerBossMap()) {
             if (type != null && slayer != type) continue
-            val bests = data.bestBossMsByTier
-            if (bests != null && bests.values.any { it != null && it > 0L }) {
-                bests.clear()
-                cleared++
-            }
+            // Cleared with the moment it happened, so the merge with the file does not bring the
+            // bests straight back from the copy still on disk.
+            if (data.clearBests()) cleared++
         }
         if (cleared > 0) AlpakaStats.markDirty()
         return cleared

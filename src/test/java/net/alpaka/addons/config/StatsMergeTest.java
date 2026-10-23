@@ -134,4 +134,113 @@ class StatsMergeTest {
 
         assertNull(session.accounts.get("main").profiles.get(PLACEHOLDER));
     }
+
+    /** One profile's Blaze record on disk, with a tier 4 best of 30 s set at {@code setAtMs} (0: not known). */
+    private static AlpakaStats diskWithBest(long setAtMs) {
+        AlpakaStats disk = record("main", "kiwi", SlayerType.BLAZE, 100);
+        AlpakaConfig.SlayerData data = slayer(disk, "main", "kiwi", SlayerType.BLAZE);
+        data.bestBossMsByTier.put(4, 30_000L);
+        if (setAtMs > 0) data.bestBossAtMsByTier.put(4, setAtMs);
+        return disk;
+    }
+
+    /** This session cleared its bests at {@code atMs}, as /alpakaslayer reset pb does. */
+    private static void clearBests(AlpakaStats stats, long atMs) {
+        AlpakaConfig.SlayerData data = slayer(stats, "main", "kiwi", SlayerType.BLAZE);
+        data.bestBossMsByTier.clear();
+        data.bestBossAtMsByTier.clear();
+        data.bestsClearedAtMs = atMs;
+    }
+
+    @Test
+    void aClearedBestStaysClearedThroughTheSave() {
+        AlpakaStats disk = diskWithBest(1_000L);
+        AlpakaStats session = copy(disk);
+        clearBests(session, 2_000L);
+
+        // The background write folds the file into a snapshot, writes that, and the file's copy is
+        // folded back into memory afterwards. Neither may bring the best back.
+        AlpakaStats written = save(session, disk, "main");
+        assertNull(slayer(written, "main", "kiwi", SlayerType.BLAZE).bestBossMsByTier.get(4));
+        StatsMerge.mergeFromDisk(session, copy(disk), "main", PLACEHOLDER);
+        assertNull(slayer(session, "main", "kiwi", SlayerType.BLAZE).bestBossMsByTier.get(4));
+    }
+
+    @Test
+    void aClearAlsoTakesBackBestsFromBeforeTheirTimeWasKept() {
+        AlpakaStats disk = diskWithBest(0L);
+        AlpakaStats session = copy(disk);
+        clearBests(session, 2_000L);
+        assertNull(slayer(save(session, disk, "main"), "main", "kiwi", SlayerType.BLAZE).bestBossMsByTier.get(4));
+    }
+
+    @Test
+    void aBestSetAfterTheClearStands() {
+        AlpakaStats disk = diskWithBest(1_000L);
+        AlpakaStats session = copy(disk);
+        clearBests(session, 2_000L);
+        AlpakaConfig.SlayerData mine = slayer(session, "main", "kiwi", SlayerType.BLAZE);
+        mine.bestBossMsByTier.put(4, 40_000L);
+        mine.bestBossAtMsByTier.put(4, 3_000L);
+
+        AlpakaStats written = save(session, disk, "main");
+        assertEquals(40_000L, slayer(written, "main", "kiwi", SlayerType.BLAZE).bestBossMsByTier.get(4));
+    }
+
+    @Test
+    void aClearByAnotherInstanceTakesBackTheBestHeldHere() {
+        AlpakaStats session = diskWithBest(1_000L);
+        AlpakaStats disk = copy(session);
+        clearBests(disk, 2_000L);
+
+        StatsMerge.mergeFromDisk(session, copy(disk), "main", PLACEHOLDER);
+        AlpakaConfig.SlayerData mine = slayer(session, "main", "kiwi", SlayerType.BLAZE);
+        assertNull(mine.bestBossMsByTier.get(4));
+        assertEquals(2_000L, mine.bestsClearedAtMs);
+    }
+
+    @Test
+    void aCorrectedXpTotalSurvivesTheSave() {
+        AlpakaStats disk = record("main", "kiwi", SlayerType.VAMPIRE, 10);
+        AlpakaConfig.SlayerData onDisk = slayer(disk, "main", "kiwi", SlayerType.VAMPIRE);
+        onDisk.totalXp = 10_500L;
+        onDisk.totalXpObservedAtMs = 1_000L;
+
+        // The Slayer menu said less, long after the last credit: the total had drifted high.
+        AlpakaStats session = copy(disk);
+        AlpakaConfig.SlayerData mine = slayer(session, "main", "kiwi", SlayerType.VAMPIRE);
+        mine.totalXp = 1_050L;
+        mine.totalXpObservedAtMs = 2_000L;
+
+        assertEquals(1_050L, slayer(save(session, disk, "main"), "main", "kiwi", SlayerType.VAMPIRE).totalXp);
+        StatsMerge.mergeFromDisk(session, copy(disk), "main", PLACEHOLDER);
+        assertEquals(1_050L, mine.totalXp);
+    }
+
+    @Test
+    void aNewerXpReadingOnDiskWinsOverAHigherOldOne() {
+        AlpakaConfig.SlayerData ours = new AlpakaConfig.SlayerData();
+        ours.totalXp = 1_300L;
+        ours.totalXpObservedAtMs = 1_000L;
+        AlpakaConfig.SlayerData theirs = new AlpakaConfig.SlayerData();
+        theirs.totalXp = 1_200L;
+        theirs.totalXpObservedAtMs = 2_000L;
+
+        StatsMerge.mergeSlayer(ours, theirs);
+        assertEquals(1_200L, ours.totalXp);
+        assertEquals(2_000L, ours.totalXpObservedAtMs);
+    }
+
+    @Test
+    void killsCreditedOnTheSameReadingKeepTheHigherTotal() {
+        AlpakaConfig.SlayerData ours = new AlpakaConfig.SlayerData();
+        ours.totalXp = 1_050L;
+        ours.totalXpObservedAtMs = 1_000L;
+        AlpakaConfig.SlayerData theirs = new AlpakaConfig.SlayerData();
+        theirs.totalXp = 1_100L;
+        theirs.totalXpObservedAtMs = 1_000L;
+
+        StatsMerge.mergeSlayer(ours, theirs);
+        assertEquals(1_100L, ours.totalXp);
+    }
 }

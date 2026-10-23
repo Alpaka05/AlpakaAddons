@@ -44,6 +44,7 @@
     "ClientLevelMobDeathMixin",
     "ClientPacketListenerMobDeathMixin",
     "MinecraftScreenshotMixin",
+    "BossHealthOverlayAccessor",
     "NativeImageScreenshotMixin",
     "SubmitNodeCollectionMixin",
     "ItemFeatureRendererMixin",

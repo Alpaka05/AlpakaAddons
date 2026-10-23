@@ -11,7 +11,9 @@ layout(std140) uniform Globals {
 };
 
 in vec3 viewPos;
-flat in mat3 viewToWorld;
+flat in vec3 viewToWorld0;
+flat in vec3 viewToWorld1;
+flat in vec3 viewToWorld2;
 in vec4 vertexColor;
 
 out vec4 fragColor;
@@ -96,7 +98,7 @@ void main() {
     vec3 tint = vertexColor.rgb;
     float strength = vertexColor.a;
 
-    vec3 dir = normalize(viewToWorld * viewPos);
+    vec3 dir = normalize(mat3(viewToWorld0, viewToWorld1, viewToWorld2) * viewPos);
     // How far the view direction turns from one pixel to the next.
     float pixel = max(length(dFdx(dir)), length(dFdy(dir)));
 

@@ -1,8 +1,5 @@
 package net.alpaka.addons.utils;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import net.alpaka.addons.AlpakaAddons;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.slayer.SlayerDropTracker;
@@ -20,9 +17,7 @@ import net.minecraft.util.Util;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.Reader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.http.HttpClient;
@@ -46,8 +41,6 @@ import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
 
 /**
  * Installs the release {@link UpdateChecker} found, once the player has confirmed it.
@@ -59,10 +52,11 @@ import java.util.zip.ZipFile;
  * that screen for the release this client found itself.
  *
  * The jar is downloaded into {@code .alpaka_update/staged/} in the game folder, which Fabric never
- * scans, and kept only if its size and SHA-256 match what GitHub lists for it and its
- * fabric.mod.json is this mod at that version. Nothing is written into the mods folder while the
- * game runs: the running jar is locked on Windows, so a shutdown hook starts {@link UpdateHelper}
- * in its own JVM, which swaps the jars once the game has exited.
+ * scans, and kept only if its size and SHA-256 match what GitHub lists for it, its fabric.mod.json
+ * is this mod at that version, and this game has what that file depends on ({@link ReleaseJarCheck}).
+ * Nothing is written into the mods folder while the game runs: the running jar is locked on
+ * Windows, so a shutdown hook starts {@link UpdateHelper} in its own JVM, which swaps the jars once
+ * the game has exited.
  *
  * The confirmed update lives only in memory. A game that is killed rather than closed installs
  * nothing, and the next start clears what it left in the staging folder and offers the update again.
@@ -248,7 +242,8 @@ public final class UpdateInstaller {
             if (!MessageDigest.isEqual(hex.parseHex(sha256), hex.parseHex(release.getSha256()))) {
                 return "the download does not match its checksum";
             }
-            String jarProblem = jarProblem(part, release.getVersion());
+            String jarProblem = ReleaseJarCheck.problem(part, AlpakaAddons.MOD_ID, release.getVersion(),
+                    UpdateInstaller::installedVersion);
             if (jarProblem != null) return jarProblem;
             // On disk before the rename: the helper may move it into the mods folder seconds later.
             try (FileChannel channel = FileChannel.open(part, StandardOpenOption.WRITE)) {
@@ -373,31 +368,11 @@ public final class UpdateInstaller {
                 || host.endsWith(".githubusercontent.com") && host.length() > ".githubusercontent.com".length();
     }
 
-    /**
-     * Why the downloaded jar is not this mod at {@code version}, or null. A build between releases
-     * names itself after its release ({@code 1.4.0+2.abc1234}), as the update check does.
-     */
-    private static String jarProblem(Path jar, String version) {
-        try (ZipFile zip = new ZipFile(jar.toFile())) {
-            ZipEntry entry = zip.getEntry("fabric.mod.json");
-            if (entry == null) return "the download is not a Fabric mod";
-            JsonObject json;
-            try (Reader reader = new InputStreamReader(zip.getInputStream(entry), StandardCharsets.UTF_8)) {
-                json = JsonParser.parseReader(reader).getAsJsonObject();
-            }
-            if (!AlpakaAddons.MOD_ID.equals(text(json.get("id")))) return "the download is not Alpaka Addons";
-            String declared = text(json.get("version"));
-            if (declared == null || !version.equals(declared.split("\\+", 2)[0])) {
-                return "the download says it is version " + declared + ", not " + version;
-            }
-            return null;
-        } catch (IOException | RuntimeException e) {
-            return "the download is not a valid jar";
-        }
-    }
-
-    private static String text(JsonElement element) {
-        return element != null && element.isJsonPrimitive() ? element.getAsString() : null;
+    /** The version of an installed mod, or null; Fabric lists Minecraft, Java and itself as mods too. */
+    private static net.fabricmc.loader.api.Version installedVersion(String id) {
+        return FabricLoader.getInstance().getModContainer(id)
+                .map(container -> container.getMetadata().getVersion())
+                .orElse(null);
     }
 
     /** Why the game may not replace its own jar, or null when it may. */

@@ -45,6 +45,10 @@ object SlayerQuestDetector {
     private var tabCheckedAtMs = 0L
     private var cachedTabLines: List<String> = emptyList()
 
+    /** Where the last scan found the quest; see [linesToScan]. */
+    private enum class Source { NONE, SIDEBAR, TAB }
+    private var lastSource = Source.NONE
+
     /**
      * How long a boss type stays usable after it has vanished from the sidebar.
      *
@@ -53,10 +57,22 @@ object SlayerQuestDetector {
      */
     private const val MEMORY_MS = 60_000L
 
+    /**
+     * How close together the sidebar and chat may report a kill and still mean the same boss, in
+     * milliseconds.
+     *
+     * Hypixel sends its kill lines within a moment of the sidebar changing, in either order. A second
+     * boss cannot die this soon after the first: the next quest has to be ground out in between.
+     */
+    private const val SAME_BOSS_MS = 3_000L
+
     private const val STATE_BOSS_FIGHT = "Slay the boss!"
     private const val STATE_BOSS_SLAIN = "Boss slain!"
 
     private var checkedAtMs = 0L
+
+    /** The wall clock every time here is read from; tests swap in their own. */
+    internal var clock: () -> Long = { System.currentTimeMillis() }
 
     /** The slayer named on the sidebar right now, or null when no quest is shown. */
     var activeType: SlayerType? = null
@@ -136,10 +152,20 @@ object SlayerQuestDetector {
     private var lastPhase = Phase.NONE
 
     /**
-     * Whether the boss now up has already been handed out as a kill, by the sidebar or by chat. Both
-     * can report the same boss; this makes the second one a no-op. Cleared when the next boss spawns.
+     * Whether the current boss has already been handed out as a kill, by the sidebar or by chat. Both
+     * can report the same boss; this makes the second one a no-op. Cleared when the next boss begins:
+     * the sidebar entering "Slay the boss!", or a boss that came and went between two samples.
      */
     private var killCountedThisFight = false
+
+    /** When the last kill was handed out, by either source. See [SAME_BOSS_MS]. */
+    private var lastKillAtMs = 0L
+
+    /**
+     * When chat reported a boss whose fight the sidebar never showed, or 0. The sidebar's own report
+     * of that boss, grinding straight to "Boss slain!", follows within [SAME_BOSS_MS].
+     */
+    private var chatKillAheadAtMs = 0L
 
     /** Whether the held kill may be timed: false when the fight itself was never seen. */
     private var pendingKillTimed = true
@@ -190,7 +216,7 @@ object SlayerQuestDetector {
     fun currentOrRecent(): SlayerType? {
         refresh()
         activeType?.let { return it }
-        if (lastSeenType != null && System.currentTimeMillis() - lastSeenAtMs <= MEMORY_MS) {
+        if (lastSeenType != null && clock() - lastSeenAtMs <= MEMORY_MS) {
             return lastSeenType
         }
         return null
@@ -202,7 +228,7 @@ object SlayerQuestDetector {
         // sidebar happened to have been re-read a few milliseconds earlier.
         checkDeath()
 
-        val now = System.currentTimeMillis()
+        val now = clock()
         // Fast only while there is a quest to watch, which is the only time the resolution matters.
         // Without a quest up this is reached per frame through currentOrRecent(), and re-scanning
         // the sidebar at frame rate to keep learning there is still no slayer is pure waste.
@@ -220,7 +246,7 @@ object SlayerQuestDetector {
         var foundTier = 0
         var foundProgress = ""
 
-        val lines = linesToScan(now)
+        val lines = linesToScan(now, SkyblockUtils.getSidebarLines(), SkyblockUtils::getTabListLines)
 
         // Scanned rather than indexed relative to a header line: the scoreboard API hands back rows
         // in no guaranteed order, so "the line after the boss name" is not a safe assumption.
@@ -266,6 +292,10 @@ object SlayerQuestDetector {
         if (pendingKillInferred) pendingKill = null
         pendingSpawn = null
         freshLevel = true
+        // The tab list read in the old world is the old world's quest.
+        cachedTabLines = emptyList()
+        tabCheckedAtMs = 0L
+        lastSource = Source.NONE
     }
 
     /** As [resetForLevelChange], and forgets the recent slayer too: the next server says it anew. */
@@ -293,19 +323,31 @@ object SlayerQuestDetector {
      * it is frequently missing while the tab list still carries it, which is what made the HUD come
      * and go. SkyHanni reads the same two sources in the same order.
      */
-    private fun linesToScan(now: Long): List<String> {
-        val sidebar = SkyblockUtils.getSidebarLines()
-        if (sidebar.any { SlayerType.fromScoreboardLine(it) != null }) return sidebar
-
-        if (now - tabCheckedAtMs >= TAB_FALLBACK_MS) {
-            tabCheckedAtMs = now
-            // Trimmed, as SkyHanni does, because the tab list indents its widget lines while the
-            // progress states are matched exactly. An indented " Slay the boss!" reads as no fight
-            // at all, so a quest falling back to the tab list mid-fight looked like a dead boss.
-            cachedTabLines = SkyblockUtils.getTabListLines().map { it.trim() }
+    internal fun linesToScan(now: Long, sidebar: List<String>, readTab: () -> List<String>): List<String> {
+        if (sidebar.any { SlayerType.fromScoreboardLine(it) != null }) {
+            lastSource = Source.SIDEBAR
+            return sidebar
         }
-        if (cachedTabLines.any { SlayerType.fromScoreboardLine(it) != null }) return cachedTabLines
+        // No sidebar at all - between servers, or before the new one has sent its scoreboard - says
+        // nothing about the quest, and the tab list may still be the last server's then. Read as the
+        // new world's first state, its quest gave a phantom spawn or kill a moment later.
+        if (sidebar.isEmpty()) {
+            lastSource = Source.NONE
+            return sidebar
+        }
 
+        // Fresh when the quest has just left the sidebar: a snapshot from before is a second old.
+        // The lines need no trimming here; the tab list's reader strips them already.
+        if (lastSource == Source.SIDEBAR || now - tabCheckedAtMs >= TAB_FALLBACK_MS) {
+            tabCheckedAtMs = now
+            cachedTabLines = readTab()
+        }
+        if (cachedTabLines.any { SlayerType.fromScoreboardLine(it) != null }) {
+            lastSource = Source.TAB
+            return cachedTabLines
+        }
+
+        lastSource = Source.NONE
         return sidebar
     }
 
@@ -322,15 +364,12 @@ object SlayerQuestDetector {
      * to time and its clock would otherwise keep running on the HUD.
      */
     fun onQuestVoided() {
-        questVoidedAtMs = System.currentTimeMillis()
+        questVoidedAtMs = clock()
 
         // Takes back a kill that was only inferred from the quest disappearing and has not been
         // acted on yet - which is the whole point of holding it. A stated "Boss slain!" is left
         // alone: dying a moment after the boss died does not undo the kill.
-        if (pendingKillInferred) {
-            pendingKill = null
-            killCountedThisFight = false
-        }
+        if (pendingKillInferred) takeBackInferredKill()
 
         SlayerTimer.clear()
         SlayerSessionTracker.clearBossClock()
@@ -387,12 +426,12 @@ object SlayerQuestDetector {
         lastPhase = phase
         if (phase == previous) return
 
-        val now = System.currentTimeMillis()
+        val now = clock()
         val recentlyVoided = now - questVoidedAtMs < VOID_GRACE_MS
         when {
             previous == Phase.FIGHT && phase == Phase.SLAIN -> emitKill(lastSeenType, now, inferred = false, timed = true)
             previous == Phase.FIGHT && !recentlyVoided -> emitKill(lastSeenType, now, inferred = true, timed = true)
-            previous == Phase.GRINDING && phase == Phase.SLAIN -> emitKill(lastSeenType, now, inferred = false, timed = false)
+            previous == Phase.GRINDING && phase == Phase.SLAIN -> onBossBetweenSamples(now)
         }
 
         // The boss just spawned. There is no chat announcement to fall back on here either -
@@ -404,8 +443,7 @@ object SlayerQuestDetector {
             // The fight coming back while a kill inferred from it vanishing is still held: the
             // sidebar flickered, the boss never died, and the fight simply goes on.
             if (pendingKill == newType && pendingKillInferred) {
-                pendingKill = null
-                killCountedThisFight = false
+                takeBackInferredKill()
                 return
             }
             killCountedThisFight = false
@@ -421,11 +459,17 @@ object SlayerQuestDetector {
 
     /** For tests: back to the state of a fresh start, minus the world-change baseline. */
     internal fun resetForTest() {
+        cachedTabLines = emptyList()
+        tabCheckedAtMs = 0L
+        lastSource = Source.NONE
         lastProgress = ""
         lastPhase = Phase.NONE
         pendingKill = null
+        pendingKillInferred = false
         pendingSpawn = null
         killCountedThisFight = false
+        lastKillAtMs = 0L
+        chatKillAheadAtMs = 0L
         freshLevel = false
         questVoidedAtMs = 0L
         lastSeenType = null
@@ -436,10 +480,41 @@ object SlayerQuestDetector {
         lastSeenType = type
     }
 
-    /** Hands out one kill for the boss now up, whichever source reports it first. */
+    /**
+     * Grinding straight to "Boss slain!": a boss that spawned and died between two samples. A boss of
+     * its own, so the kill of the boss before it must not swallow this one - unless chat reported it a
+     * moment ago. Counted, but not timed; its fight was never seen.
+     */
+    private fun onBossBetweenSamples(now: Long) {
+        if (now - chatKillAheadAtMs < SAME_BOSS_MS) {
+            chatKillAheadAtMs = 0L
+            return
+        }
+        beginBoss()
+        emitKill(lastSeenType, now, inferred = false, timed = false)
+    }
+
+    /**
+     * A boss that the sidebar never showed fighting begins (and, by the time anyone hears of it,
+     * ends). Whatever the entity tracker still holds belongs to the boss before.
+     */
+    private fun beginBoss() {
+        killCountedThisFight = false
+        SlayerBossEntityTracker.reset()
+    }
+
+    /** Takes back a kill only inferred from the quest vanishing, before it was acted on. */
+    private fun takeBackInferredKill() {
+        pendingKill = null
+        killCountedThisFight = false
+        lastKillAtMs = 0L
+    }
+
+    /** Hands out one kill for the current boss, whichever source reports it first. */
     private fun emitKill(type: SlayerType?, atMs: Long, inferred: Boolean, timed: Boolean) {
         if (type == null || killCountedThisFight) return
         killCountedThisFight = true
+        lastKillAtMs = atMs
         pendingKill = type
         pendingKillAtMs = atMs
         pendingKillInferred = inferred
@@ -457,7 +532,21 @@ object SlayerQuestDetector {
             pendingKillInferred = false
             return
         }
-        emitKill(type, System.currentTimeMillis(), inferred = false, timed = lastPhase == Phase.FIGHT)
+        val now = clock()
+        when (lastPhase) {
+            // The boss of the fight on the sidebar, or of the "Boss slain!" it ended in. Once per
+            // boss, so the sidebar's report of it and Hypixel's second kill line are no-ops.
+            Phase.FIGHT, Phase.SLAIN -> emitKill(type, now, inferred = false, timed = lastPhase == Phase.FIGHT)
+            // No fight on the sidebar. Within a moment of a kill this is that boss once more: Hypixel's
+            // second kill line, or the line for the fight the sidebar just saw end. Otherwise it is a
+            // boss the sidebar never showed, one that came and went between two samples.
+            else -> {
+                if (type == null || now - lastKillAtMs < SAME_BOSS_MS) return
+                beginBoss()
+                emitKill(type, now, inferred = false, timed = false)
+                chatKillAheadAtMs = now
+            }
+        }
     }
 
     /**
@@ -468,7 +557,7 @@ object SlayerQuestDetector {
      */
     fun consumeKill(): SlayerType? {
         val killed = pendingKill ?: return null
-        if (pendingKillInferred && System.currentTimeMillis() - pendingKillAtMs < KILL_CONFIRM_MS) return null
+        if (pendingKillInferred && clock() - pendingKillAtMs < KILL_CONFIRM_MS) return null
 
         pendingKill = null
         killDetectedAtMs = pendingKillAtMs

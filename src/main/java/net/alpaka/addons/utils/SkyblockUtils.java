@@ -10,6 +10,7 @@ import net.minecraft.world.scores.Scoreboard;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class SkyblockUtils {
 
@@ -128,7 +129,7 @@ public class SkyblockUtils {
 
         var serverData = mc.getCurrentServer();
         if (serverData != null && serverData.ip != null) {
-            String ip = serverData.ip.toLowerCase();
+            String ip = serverData.ip.toLowerCase(Locale.ROOT);
             if (!ip.contains("hypixel.net") && !ip.contains("localhost")) {
                 return false;
             }
@@ -138,7 +139,7 @@ public class SkyblockUtils {
         Objective objective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR);
         if (objective == null) return false;
 
-        String title = cleanColor(objective.getDisplayName().getString()).toLowerCase();
+        String title = cleanColor(objective.getDisplayName().getString()).toLowerCase(Locale.ROOT);
         if (title.contains("skyblock") || title.contains("rift")) return true;
 
         for (String line : getSidebarLines()) {
@@ -296,13 +297,30 @@ public class SkyblockUtils {
      * list as the fallback.
      *
      * Purely a read of a list the client is already displaying; nothing is requested from the
-     * server. Expensive enough to need caching by the caller: it walks every entry and builds a
-     * String for each.
+     * server. It walks every entry and builds a String for each, so - like the sidebar - one
+     * snapshot per client tick is shared by everyone who asks.
      */
     public static List<String> getTabListLines() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.player.connection == null) return List.of();
 
+        Object connection = mc.player.connection;
+        long now = System.currentTimeMillis();
+        if (connection == cachedTabConnection && now - tabReadAtMs < SIDEBAR_CACHE_MS) {
+            return cachedTabLines;
+        }
+        tabReadAtMs = now;
+        cachedTabConnection = connection;
+        cachedTabLines = readTabListLines(mc);
+        return cachedTabLines;
+    }
+
+    private static long tabReadAtMs = 0L;
+    private static List<String> cachedTabLines = List.of();
+    private static Object cachedTabConnection = null;
+
+    /** Builds the snapshot. Callers want {@link #getTabListLines()}, which shares one per tick. */
+    private static List<String> readTabListLines(Minecraft mc) {
         try {
             List<String> lines = new ArrayList<>();
             for (var info : mc.player.connection.getListedOnlinePlayers()) {
@@ -310,7 +328,7 @@ public class SkyblockUtils {
                 if (name == null) continue;
                 lines.add(cleanColor(name.getString()));
             }
-            return lines;
+            return List.copyOf(lines);
         } catch (Exception ignored) {
             return List.of();
         }

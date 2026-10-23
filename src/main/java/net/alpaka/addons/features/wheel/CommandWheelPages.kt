@@ -29,9 +29,10 @@ object CommandWheelPages {
             val source = if (legacy != null && legacy.isNotEmpty()) legacy else DEFAULTS
             pages = ArrayList()
             source.chunked(MAX_PER_PAGE).forEach { pages.add(ArrayList(it)) }
+            // Only in memory: a getter that wrote the settings file ran from the wheel's own drawing.
+            // The next change to the wheel saves it, and until then a start folds the same list again.
             cfg.commandWheelPages = pages
             cfg.commandWheelCommands = null
-            AlpakaConfig.save()
         }
         return pages
     }

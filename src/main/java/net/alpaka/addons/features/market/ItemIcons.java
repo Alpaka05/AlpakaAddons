@@ -28,9 +28,13 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.zip.GZIPInputStream;
 
@@ -38,6 +42,10 @@ import java.util.zip.GZIPInputStream;
  * What a SkyBlock item looks like, by its name, for the search suggestions: built from Hypixel's
  * public list of SkyBlock items (material, head texture, glint, leather color), fetched once a
  * session while Network Features is on. The request names nothing about the player.
+ *
+ * The same list says which items are plain Minecraft ones, which the Auction House's suggestions
+ * leave out (see {@link Catalog#vanilla}), what every item is called, and what upgrading one costs,
+ * which the Item Value breakdown prices.
  */
 public final class ItemIcons {
     private ItemIcons() {}
@@ -46,7 +54,41 @@ public final class ItemIcons {
 
     record Info(String material, int damage, String skin, boolean glowing, String color) {}
 
-    private static volatile Map<String, Info> byName = null;
+    /** An amount of an item - essence is one too, ESSENCE_WITHER - or of coins, where the item is null. */
+    public record Cost(String item, long amount) {
+        public boolean coins() {
+            return item == null;
+        }
+    }
+
+    /** A gemstone slot, of a type such as SAPPHIRE or COMBAT, and what opening it costs; nothing for one that comes open. */
+    public record GemSlot(String type, List<Cost> unlock) {}
+
+    /**
+     * What Hypixel's list says about upgrading an item: the cost of each star in order, of turning
+     * it into a dungeon item first where that is needed, and of opening each gemstone slot; and the
+     * enchantments it comes with.
+     */
+    public record Upgrades(List<List<Cost>> stars, List<Cost> conversion, List<GemSlot> gemSlots,
+                           Map<String, Integer> enchantments) {}
+
+    /**
+     * Hypixel's list as far as it is used: how items look by name, every item id, the ids of plain
+     * Minecraft items, every item's name by its id, and the upgrades of those that have any.
+     */
+    record Catalog(Map<String, Info> byName, Set<String> ids, Set<String> vanillaIds,
+                   Map<String, String> names, Map<String, Upgrades> upgrades) {
+        /**
+         * Whether the item with SkyCofl's tag is a plain Minecraft item - Diamond Sword, Oak Planks -
+         * rather than one of SkyBlock's own. Those cannot be auctioned. A tag Hypixel does not list
+         * is one when it has a damage value, "WOOL:0": the way plain items were told apart in 1.8.
+         */
+        boolean vanilla(String tag) {
+            return vanillaIds.contains(tag) || (tag.indexOf(':') >= 0 && !ids.contains(tag));
+        }
+    }
+
+    private static volatile Catalog catalog = null;
     private static volatile boolean fetching = false;
     private static volatile long retryAt = 0L;
     /** Built stacks by name; only touched on the render thread. */
@@ -55,11 +97,12 @@ public final class ItemIcons {
     /** The item for a name, or an empty stack while the list loads or if the name is not in it. */
     public static ItemStack forName(String name) {
         if (!AlpakaConfig.instance.allowApiCalls || name == null) return ItemStack.EMPTY;
-        Map<String, Info> map = byName;
-        if (map == null) {
+        Catalog loaded = catalog;
+        if (loaded == null) {
             load();
             return ItemStack.EMPTY;
         }
+        Map<String, Info> map = loaded.byName();
         String key = name.toLowerCase(Locale.ROOT).trim();
         ItemStack cached = STACKS.get(key);
         if (cached != null) return cached;
@@ -67,6 +110,36 @@ public final class ItemIcons {
         ItemStack stack = info == null ? ItemStack.EMPTY : build(info);
         STACKS.put(key, stack);
         return stack;
+    }
+
+    /** Hypixel's list, or null while it loads or Network Features is off; asking starts loading it. */
+    static Catalog catalog() {
+        if (!AlpakaConfig.instance.allowApiCalls) return null;
+        Catalog loaded = catalog;
+        if (loaded == null) load();
+        return loaded;
+    }
+
+    /** Whether Hypixel's list is on its way. */
+    public static boolean loading() {
+        return fetching;
+    }
+
+    /** Whether Hypixel's list is there to answer {@link #name} and {@link #upgrades}; asking starts loading it. */
+    public static boolean ready() {
+        return catalog() != null;
+    }
+
+    /** The item's name in Hypixel's list, such as "Wither Blood"; null while the list loads or for an id it does not know. */
+    public static String name(String id) {
+        Catalog loaded = catalog();
+        return loaded == null || id == null ? null : loaded.names().get(id);
+    }
+
+    /** What upgrading the item costs; null while the list loads, or for an item that has no upgrades. */
+    public static Upgrades upgrades(String id) {
+        Catalog loaded = catalog();
+        return loaded == null || id == null ? null : loaded.upgrades().get(id);
     }
 
     /** A player head wearing the skin with this texture value, as Hypixel's heads carry it. */
@@ -104,7 +177,7 @@ public final class ItemIcons {
     }
 
     private static synchronized void load() {
-        if (fetching || byName != null || System.currentTimeMillis() < retryAt) return;
+        if (fetching || catalog != null || System.currentTimeMillis() < retryAt) return;
         fetching = true;
         HttpRequest request = HttpRequest.newBuilder(URI.create(ITEMS))
                 .timeout(Duration.ofSeconds(30))
@@ -127,7 +200,7 @@ public final class ItemIcons {
                         try (InputStream raw = response.body();
                              InputStream body = gzip ? new GZIPInputStream(raw) : raw;
                              InputStreamReader reader = new InputStreamReader(body, StandardCharsets.UTF_8)) {
-                            byName = index(JsonParser.parseReader(reader));
+                            catalog = index(JsonParser.parseReader(reader));
                         }
                     } catch (IOException | RuntimeException e) {
                         AlpakaAddons.LOGGER.warn("Could not read Hypixel's item list", e);
@@ -138,17 +211,32 @@ public final class ItemIcons {
                 });
     }
 
-    /** What each item looks like, by its name in lower case, from Hypixel's answer. */
-    static Map<String, Info> index(JsonElement root) {
+    /**
+     * What each item looks like, by its name in lower case, which are plain ones, what each is called
+     * and what upgrading it costs, from Hypixel's answer.
+     */
+    static Catalog index(JsonElement root) {
         Map<String, Info> map = new HashMap<>();
-        if (!root.isJsonObject() || !root.getAsJsonObject().has("items")) return map;
+        Set<String> ids = new HashSet<>();
+        Set<String> vanilla = new HashSet<>();
+        Map<String, String> names = new HashMap<>();
+        Map<String, Upgrades> upgrades = new HashMap<>();
+        if (!root.isJsonObject() || !root.getAsJsonObject().has("items")) return new Catalog(map, ids, vanilla, names, upgrades);
         for (JsonElement element : root.getAsJsonObject().getAsJsonArray("items")) {
             if (!element.isJsonObject()) continue;
             JsonObject o = element.getAsJsonObject();
+            String id = string(o, "id");
             String name = string(o, "name").replaceAll("§.", "").trim();
             String material = string(o, "material");
-            if (name.isEmpty() || material.isEmpty()) continue;
             int damage = o.has("durability") ? o.get("durability").getAsInt() : 0;
+            if (!id.isEmpty()) {
+                ids.add(id);
+                if (isVanilla(id, material, damage, o.has("museum") && o.get("museum").getAsBoolean())) vanilla.add(id);
+                if (!name.isEmpty()) names.put(id, name);
+                Upgrades up = upgrades(o);
+                if (up != null) upgrades.put(id, up);
+            }
+            if (name.isEmpty() || material.isEmpty()) continue;
             String skin = null;
             if (o.has("skin") && o.get("skin").isJsonObject()) {
                 String value = string(o.getAsJsonObject("skin"), "value");
@@ -158,7 +246,81 @@ public final class ItemIcons {
             String color = o.has("color") ? string(o, "color") : null;
             map.putIfAbsent(name.toLowerCase(Locale.ROOT), new Info(material, damage, skin, glowing, color));
         }
-        return map;
+        return new Catalog(map, ids, vanilla, names, upgrades);
+    }
+
+    /** An item's star, dungeon conversion and gemstone slot costs and its own enchantments; null without any. */
+    static Upgrades upgrades(JsonObject o) {
+        List<List<Cost>> stars = new ArrayList<>();
+        if (o.has("upgrade_costs") && o.get("upgrade_costs").isJsonArray()) {
+            for (JsonElement star : o.getAsJsonArray("upgrade_costs")) {
+                stars.add(star.isJsonArray() ? costs(star.getAsJsonArray()) : List.of());
+            }
+        }
+        List<Cost> conversion = List.of();
+        if (o.has("dungeon_item_conversion_cost") && o.get("dungeon_item_conversion_cost").isJsonObject()) {
+            // Written without a type: it is always essence.
+            Cost essence = cost(o.getAsJsonObject("dungeon_item_conversion_cost"), "ESSENCE");
+            if (essence != null) conversion = List.of(essence);
+        }
+        List<GemSlot> slots = new ArrayList<>();
+        if (o.has("gemstone_slots") && o.get("gemstone_slots").isJsonArray()) {
+            for (JsonElement slot : o.getAsJsonArray("gemstone_slots")) {
+                if (!slot.isJsonObject()) continue;
+                JsonObject s = slot.getAsJsonObject();
+                String type = string(s, "slot_type");
+                if (type.isEmpty()) continue;
+                List<Cost> unlock = s.has("costs") && s.get("costs").isJsonArray() ? costs(s.getAsJsonArray("costs")) : List.of();
+                slots.add(new GemSlot(type, unlock));
+            }
+        }
+        Map<String, Integer> enchantments = new HashMap<>();
+        if (o.has("enchantments") && o.get("enchantments").isJsonObject()) {
+            for (Map.Entry<String, JsonElement> e : o.getAsJsonObject("enchantments").entrySet()) {
+                if (e.getValue().isJsonPrimitive() && e.getValue().getAsJsonPrimitive().isNumber()) {
+                    enchantments.put(e.getKey().toLowerCase(Locale.ROOT), e.getValue().getAsInt());
+                }
+            }
+        }
+        if (stars.isEmpty() && conversion.isEmpty() && slots.isEmpty() && enchantments.isEmpty()) return null;
+        return new Upgrades(List.copyOf(stars), conversion, List.copyOf(slots), Map.copyOf(enchantments));
+    }
+
+    private static List<Cost> costs(com.google.gson.JsonArray array) {
+        List<Cost> out = new ArrayList<>();
+        for (JsonElement e : array) {
+            if (!e.isJsonObject()) continue;
+            Cost cost = cost(e.getAsJsonObject(), string(e.getAsJsonObject(), "type"));
+            if (cost != null) out.add(cost);
+        }
+        return List.copyOf(out);
+    }
+
+    /** One cost as Hypixel writes it: essence by its type, an item by its id, or coins. */
+    private static Cost cost(JsonObject o, String type) {
+        try {
+            return switch (type) {
+                case "ESSENCE" -> string(o, "essence_type").isEmpty() ? null
+                        : new Cost("ESSENCE_" + string(o, "essence_type"), o.get("amount").getAsLong());
+                case "ITEM" -> string(o, "item_id").isEmpty() ? null : new Cost(string(o, "item_id"), o.get("amount").getAsLong());
+                case "COINS" -> new Cost(null, o.get("coins").getAsLong());
+                default -> null;
+            };
+        } catch (RuntimeException e) {
+            // An amount missing or not a number: the cost is left out rather than the whole list.
+            return null;
+        }
+    }
+
+    /**
+     * Whether Hypixel lists a plain Minecraft item: one named after its material, DIAMOND_SWORD or
+     * WOOL:6, where SkyBlock's own items have names of their own (HYPERION is an iron sword).
+     * Museum pieces such as the Nether Star are traded all the same, and every enchanted book on
+     * the Auction House is an ENCHANTED_BOOK.
+     */
+    private static boolean isVanilla(String id, String material, int damage, boolean museum) {
+        if (museum || id.equals("ENCHANTED_BOOK")) return false;
+        return id.equals(material) || id.equals(material + ":" + damage);
     }
 
     private static String string(JsonObject o, String key) {

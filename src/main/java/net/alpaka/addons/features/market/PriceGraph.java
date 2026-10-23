@@ -57,12 +57,20 @@ public final class PriceGraph {
 
     public static void draw(GuiGraphicsExtractor graphics, Font font, MarketKind kind, ItemTags.Tag tag,
                             int x, int y, int w, int h, int mx, int my, Clicks clicks) {
+        draw(graphics, font, kind, tag, "Price History", x, y, w, h, mx, my, clicks);
+    }
+
+    /** The panel under another title, such as the name of the part of an item whose history it shows. */
+    public static void draw(GuiGraphicsExtractor graphics, Font font, MarketKind kind, ItemTags.Tag tag, String title,
+                            int x, int y, int w, int h, int mx, int my, Clicks clicks) {
         ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, AlpakaStyle.CARD_RADIUS + 1, AlpakaStyle.ROW);
         ModernGuiUtils.drawRect(graphics, x + AlpakaStyle.CARD_RADIUS + 1, y, w - 2 * (AlpakaStyle.CARD_RADIUS + 1), 1, 0x14FFFFFF);
 
         // Header: the title, the source, and the range to choose.
         PriceHistory.Range range = PriceHistory.Range.of(AlpakaConfig.instance.marketPriceHistoryRange);
-        graphics.text(font, GuiFont.text("Price History"), x + 8, y + 7, AlpakaStyle.TEXT, false);
+        int chipsW = 0;
+        for (PriceHistory.Range r : PriceHistory.Range.values()) chipsW += GuiFont.width(font, r.chip) + 12;
+        graphics.text(font, GuiFont.text(AlpakaStyle.ellipsize(font, title, w - 16 - chipsW)), x + 8, y + 7, AlpakaStyle.TEXT, false);
         int chipsRight = x + w - 6;
         PriceHistory.Range[] ranges = PriceHistory.Range.values();
         for (int i = ranges.length - 1; i >= 0; i--) {

@@ -28,12 +28,12 @@ import java.util.List;
  * This is vanilla's sign editor with its drawing replaced, and the answer reaches Hypixel the way
  * it always does: vanilla sends the sign's four lines when the editor closes. Nothing here sends
  * anything. Confirming writes the answer into the sign's answer lines and closes the editor, as the
- * sign's Done button does. Each line stays within the sign's width as vanilla's own editor measures
- * it, and an answer longer than one line is broken at a space (see {@link SignPrompt#split}) - so the
- * lines are always ones a player could have typed into the vanilla sign. A price or an amount goes
- * in plain digits, "4000000" for "4m" (see {@link SignPrompt#answer}). Cancel and Escape empty
- * the answer first, which Hypixel takes as no answer. The chips only fill the field; the player
- * still confirms.
+ * sign's Done button does (see {@link #close} for why not through Done itself). Each line stays
+ * within the sign's width as vanilla's own editor measures it, and an answer longer than one line is
+ * broken at a space (see {@link SignPrompt#split}) - so the lines are always ones a player could
+ * have typed into the vanilla sign. A price or an amount goes in plain digits, "4000000" for "4m"
+ * (see {@link SignPrompt#answer}). Cancel and Escape empty the answer first, which Hypixel takes as
+ * no answer. The chips only fill the field; the player still confirms.
  */
 public class MarketInputScreen extends SignEditScreen {
     private static final int HEADER_H = AlpakaStyle.HEADER_H;
@@ -61,10 +61,15 @@ public class MarketInputScreen extends SignEditScreen {
     private String pendingText = null;
 
     private final List<Hit> hits = new ArrayList<>();
+    /** The item being put up for auction, for a price sign that asks what it sells for; else null. */
+    private final LowestBin.Item selling;
 
     // ---- Suggestions, for a search ---------------------------------------------------------------
 
+    /** Rows the list shows at once; the rest are a scroll away. */
     private static final int SUGGESTION_ROWS = 6;
+    /** At most this many suggestions: beyond that, typing on finds an item sooner than scrolling. */
+    private static final int MAX_SUGGESTIONS = 60;
     private static final int SUGGESTION_H = 19;
     private static final int SUGGESTION_FOOTER_H = 14;
 
@@ -72,6 +77,16 @@ public class MarketInputScreen extends SignEditScreen {
     private record Suggestion(String name, int[] ranges, boolean recent) {}
 
     private List<Suggestion> suggestions = List.of();
+    /** Whether more names matched than {@link #MAX_SUGGESTIONS}. */
+    private boolean moreMatches = false;
+    /** How far the list is scrolled, in pixels: where it is and where it glides to. */
+    private double listScroll = 0;
+    private double listScrollTarget = 0;
+    private int listScrollMax = 0;
+    /** The rows the list showed last frame, for the arrow keys to keep the chosen one in view. */
+    private int visibleRows = SUGGESTION_ROWS;
+    private int lastListOffset = 0;
+    private long lastFrameMs = 0L;
     /** What the suggestions were worked out for: the text and how many names there were to search. */
     private String suggestedFor = null;
     /** SkyCofl's item names are still on their way. */
@@ -93,6 +108,7 @@ public class MarketInputScreen extends SignEditScreen {
         super(sign, isFrontText, filtered);
         this.prompt = prompt;
         this.context = context;
+        this.selling = prompt.type() == SignPrompt.Type.PRICE && prompt.auctionPrice() ? LowestBin.selling() : null;
     }
 
     /**
@@ -180,7 +196,7 @@ public class MarketInputScreen extends SignEditScreen {
     }
 
     private int panelH() {
-        return HEADER_H + 10 + FIELD_H + 6 + 10 + (hasChips() ? CHIP_H + 8 : 0) + 8 + AlpakaStyle.BUTTON_H + 10;
+        return HEADER_H + 10 + FIELD_H + 6 + 10 + (selling != null ? CHIP_H + 8 : 0) + (hasChips() ? CHIP_H + 8 : 0) + 8 + AlpakaStyle.BUTTON_H + 10;
     }
 
     private boolean hasChips() {
@@ -248,6 +264,10 @@ public class MarketInputScreen extends SignEditScreen {
         drawReading(graphics, fx + fw - 2, hy);
 
         int cy = hy + 10 + 8;
+        if (selling != null) {
+            drawLowestBin(graphics, mouseX, mouseY, fx, cy, fw);
+            cy += CHIP_H + 8;
+        }
         if (hasChips()) {
             drawChips(graphics, mouseX, mouseY, fx, cy, fw);
             cy += CHIP_H + 8;
@@ -299,6 +319,8 @@ public class MarketInputScreen extends SignEditScreen {
         if (key.equals(suggestedFor)) return;
         suggestedFor = key;
         highlight = -1;
+        listScroll = listScrollTarget = 0;
+        moreMatches = false;
         List<Suggestion> out = new ArrayList<>();
         if (!text.isBlank()) {
             java.util.Set<String> taken = new java.util.HashSet<>();
@@ -308,9 +330,12 @@ public class MarketInputScreen extends SignEditScreen {
                 taken.add(m.name().toLowerCase(java.util.Locale.ROOT));
             }
             if (names != null) {
-                for (SearchSuggestions.Match m : SearchSuggestions.rank(text, names, SUGGESTION_ROWS * 3)) {
-                    if (out.size() >= SUGGESTION_ROWS) break;
+                for (SearchSuggestions.Match m : SearchSuggestions.rank(text, names, MAX_SUGGESTIONS * 2)) {
                     if (taken.contains(m.name().toLowerCase(java.util.Locale.ROOT)) || split(m.name()) == null) continue;
+                    if (out.size() >= MAX_SUGGESTIONS) {
+                        moreMatches = true;
+                        break;
+                    }
                     out.add(new Suggestion(m.name(), m.ranges(), false));
                 }
             }
@@ -326,15 +351,18 @@ public class MarketInputScreen extends SignEditScreen {
         return !suggestions.isEmpty() || namesPending;
     }
 
-    /** The list's place: straight under the field, as many rows as fit on the screen. */
+    /** The list's place: straight under the field, up to six rows, as many as fit on the screen. */
     private int[] dropdownRect(int x, int y, int w) {
-        int rows = Math.max(1, suggestions.size());
+        int rows = Math.max(1, Math.min(SUGGESTION_ROWS, suggestions.size()));
         int room = (this.height - 6 - y - SUGGESTION_FOOTER_H - 8) / SUGGESTION_H;
         rows = Math.max(1, Math.min(rows, room));
         return new int[] {x, y, w, 3 + rows * SUGGESTION_H + SUGGESTION_FOOTER_H + 2};
     }
 
-    /** The suggestions, inside the box the field opened into: each with its item, its name and the match lit. */
+    /**
+     * The suggestions, inside the box the field opened into: each with its item, its name and the
+     * match lit. More than fit scroll, with a bar at the side.
+     */
     private void drawDropdown(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int[] rect) {
         int x = rect[0];
         int y = rect[1];
@@ -342,19 +370,37 @@ public class MarketInputScreen extends SignEditScreen {
         int h = rect[3];
         hits.add(new Hit(x, y, w, h, mx -> { }, false));
         int rows = (h - 3 - SUGGESTION_FOOTER_H - 2) / SUGGESTION_H;
-        boolean moved = mouseX != lastMouseX || mouseY != lastMouseY;
+        visibleRows = Math.max(1, rows);
         int accent = AlpakaStyle.accent();
+
+        int listY = y + 2;
+        int listH = rows * SUGGESTION_H;
+        listScrollMax = Math.max(0, suggestions.size() * SUGGESTION_H - listH);
+        long now = System.currentTimeMillis();
+        float deltaSec = lastFrameMs == 0L ? 0f : Math.min(0.1f, (now - lastFrameMs) / 1000f);
+        lastFrameMs = now;
+        listScrollTarget = Math.max(0, Math.min(listScrollMax, listScrollTarget));
+        listScroll += (listScrollTarget - listScroll) * Math.min(1.0f, deltaSec * 14.0f);
+        if (Math.abs(listScrollTarget - listScroll) < 0.05) listScroll = listScrollTarget;
+        int offset = (int) Math.round(listScroll);
+        // The row under a still mouse changes as the list scrolls; it takes the highlight then too.
+        boolean moved = mouseX != lastMouseX || mouseY != lastMouseY || offset != lastListOffset;
+        lastListOffset = offset;
+        boolean inList = AlpakaStyle.inside(mouseX, mouseY, x, listY, w, listH);
 
         if (suggestions.isEmpty()) {
             graphics.text(this.font, GuiFont.text("Loading item names…"), x + 28, y + 2 + (SUGGESTION_H - 8) / 2,
                     AlpakaStyle.TEXT_MUTED, false);
         }
-        for (int i = 0; i < Math.min(rows, suggestions.size()); i++) {
+        graphics.enableScissor(x + 1, listY, x + w - 1, listY + listH);
+        int first = offset / SUGGESTION_H;
+        int last = Math.min(suggestions.size() - 1, (offset + listH - 1) / SUGGESTION_H);
+        for (int i = first; i <= last; i++) {
             Suggestion s = suggestions.get(i);
-            int ry = y + 2 + i * SUGGESTION_H;
+            int ry = listY + i * SUGGESTION_H - offset;
             int rx = x + 3;
-            int rw = w - 6;
-            boolean hover = AlpakaStyle.inside(mouseX, mouseY, rx, ry, rw, SUGGESTION_H);
+            int rw = w - (listScrollMax > 0 ? 10 : 6);
+            boolean hover = inList && AlpakaStyle.inside(mouseX, mouseY, rx, ry, rw, SUGGESTION_H);
             if (hover && moved) highlight = i;
             boolean lit = i == highlight;
             if (lit) {
@@ -379,16 +425,48 @@ public class MarketInputScreen extends SignEditScreen {
                 graphics.text(this.font, GuiFont.text(hint), rx + rw - 6 - GuiFont.width(this.font, hint), ry + (SUGGESTION_H - 8) / 2,
                         lit ? AlpakaStyle.TEXT_MUTED : AlpakaStyle.DIVIDER, false);
             }
+            // Only the part of a row that shows takes a click.
+            int top = Math.max(ry, listY);
+            int bottom = Math.min(ry + SUGGESTION_H, listY + listH);
             int index = i;
-            hits.add(new Hit(rx, ry, rw, SUGGESTION_H, mx -> choose(index), true));
+            if (bottom > top) hits.add(new Hit(rx, top, rw, bottom - top, mx -> choose(index), true));
+        }
+        graphics.disableScissor();
+
+        if (listScrollMax > 0) {
+            // Soft edges where rows go on, and the bar.
+            int clear = AlpakaStyle.FIELD & 0x00FFFFFF;
+            if (offset > 0) graphics.fillGradient(x + 1, listY, x + w - 1, listY + 6, AlpakaStyle.FIELD, clear);
+            if (offset < listScrollMax) graphics.fillGradient(x + 1, listY + listH - 6, x + w - 1, listY + listH, clear, AlpakaStyle.FIELD);
+            int trackY = listY + 2;
+            int trackH = listH - 4;
+            int thumbH = Math.max(12, trackH * listH / (suggestions.size() * SUGGESTION_H));
+            int thumbY = trackY + Math.round((trackH - thumbH) * (offset / (float) listScrollMax));
+            ModernGuiUtils.drawRoundedRect(graphics, x + w - 6, trackY, 3, trackH, 1, AlpakaStyle.ROW);
+            ModernGuiUtils.drawRoundedRect(graphics, x + w - 6, thumbY, 3, thumbH, 1, inList ? accent : AlpakaStyle.accentDim());
         }
 
         String footer = AlpakaConfig.instance.allowApiCalls
                 ? "↑↓ choose · Tab fill in · click to search"
                 : "Turn on Network Features for item suggestions";
+        int footerY = y + h - SUGGESTION_FOOTER_H + 3;
         ModernGuiUtils.drawRect(graphics, x + 8, y + h - SUGGESTION_FOOTER_H - 1, w - 16, 1, AlpakaStyle.LINE);
-        graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, footer, w - 16)), x + 8,
-                y + h - SUGGESTION_FOOTER_H + 3, AlpakaStyle.DIVIDER, false);
+        // How many there are, where not all show at once.
+        String count = suggestions.size() > rows ? (moreMatches ? suggestions.size() + "+" : String.valueOf(suggestions.size())) + " items" : "";
+        int countW = count.isEmpty() ? 0 : GuiFont.width(this.font, count) + 10;
+        graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, footer, w - 16 - countW)), x + 8, footerY, AlpakaStyle.DIVIDER, false);
+        if (!count.isEmpty()) {
+            graphics.text(this.font, GuiFont.text(count), x + w - 8 - GuiFont.width(this.font, count), footerY, AlpakaStyle.TEXT_MUTED, false);
+        }
+    }
+
+    /** Scrolls the list just far enough that this row shows whole. */
+    private void scrollTo(int index) {
+        if (index < 0) return;
+        int top = index * SUGGESTION_H;
+        int view = visibleRows * SUGGESTION_H;
+        if (top < listScrollTarget) listScrollTarget = top;
+        else if (top + SUGGESTION_H > listScrollTarget + view) listScrollTarget = top + SUGGESTION_H - view;
     }
 
     /** A suggestion's name with the parts that matched lit in the accent. */
@@ -429,10 +507,11 @@ public class MarketInputScreen extends SignEditScreen {
         replace(suggestions.get(index).name());
     }
 
+    /** The field's icon; none for a price, whose "= … coins" under the field already says what it is. */
     private MarketIcons.Glyph glyph() {
         return switch (prompt.type()) {
             case SEARCH -> MarketIcons.Glyph.SEARCH;
-            case PRICE -> MarketIcons.Glyph.COIN;
+            case PRICE -> null;
             case AMOUNT -> MarketIcons.Glyph.BOX;
             case DURATION -> MarketIcons.Glyph.CLOCK;
             default -> context == null ? MarketIcons.Glyph.ORDERS : MarketIcons.of(context);
@@ -455,11 +534,12 @@ public class MarketInputScreen extends SignEditScreen {
         ModernGuiUtils.drawRect(graphics, x + lineInset, y + FIELD_H - 1, w - 2 * lineInset, 1, full ? AlpakaStyle.DANGER : accent);
 
         int iconSize = 10;
-        MarketIcons.draw(graphics, glyph(), x + 8, y + (FIELD_H - iconSize) / 2f, iconSize,
-                prompt.type() == SignPrompt.Type.PRICE ? MarketInk.ink(COIN) : accent);
-        int tx = x + 24;
+        MarketIcons.Glyph glyph = glyph();
+        if (glyph != null) MarketIcons.draw(graphics, glyph, x + 8, y + (FIELD_H - iconSize) / 2f, iconSize, accent);
+        int textX = glyph != null ? 24 : 8;
+        int tx = x + textX;
         int ty = y + (FIELD_H - 8) / 2;
-        int room = w - 24 - 8;
+        int room = w - textX - 8;
         String text = text();
         if (text.isEmpty()) {
             // A little after the caret, which blinks at the very start.
@@ -502,7 +582,6 @@ public class MarketInputScreen extends SignEditScreen {
         String reading = "= " + Coins.full(value) + (coins ? " coins" : "");
         int rw = GuiFont.width(this.font, reading);
         graphics.text(this.font, GuiFont.text(reading), right - rw, y, coins ? MarketInk.ink(COIN) : AlpakaStyle.TEXT_SOFT, false);
-        if (coins) MarketIcons.draw(graphics, MarketIcons.Glyph.COIN, right - rw - 11, y, 8, MarketInk.ink(COIN));
     }
 
     private void drawChips(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w) {
@@ -529,6 +608,45 @@ public class MarketInputScreen extends SignEditScreen {
         }
     }
 
+    /**
+     * The row of prices taken from the item's lowest BIN: that price and a little under it, each
+     * one click into the field. Says why instead where there is no price to offer.
+     */
+    private void drawLowestBin(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w) {
+        String label = "Lowest BIN";
+        graphics.text(this.font, GuiFont.text(label), x + 2, y + 3, AlpakaStyle.TEXT_MUTED, false);
+        int cx = x + GuiFont.width(this.font, label) + 10;
+        String source = "SkyCofl";
+        int sourceW = GuiFont.width(this.font, source);
+        String note = null;
+        if (!AlpakaConfig.instance.allowApiCalls) {
+            note = "Turn on Network Features";
+        } else {
+            LowestBin.Result result = LowestBin.get(selling, LowestBin.ownUuid());
+            switch (result.state()) {
+                case LOADING -> note = "Looking it up…";
+                case NONE -> note = "None listed right now";
+                case FAILED -> note = "Could not load";
+                case READY -> {
+                    for (LowestBin.Suggestion chip : LowestBin.suggestions(result.each() * selling.count())) {
+                        int cw = GuiFont.width(this.font, chip.label()) + 12;
+                        if (cx + cw > x + w - sourceW - 6) break;
+                        boolean hover = AlpakaStyle.inside(mouseX, mouseY, cx, y, cw, CHIP_H);
+                        ModernGuiUtils.drawRoundedRect(graphics, cx, y, cw, CHIP_H, CHIP_H / 2, hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW);
+                        graphics.text(this.font, GuiFont.text(chip.label()), cx + 6, y + 3, hover ? MarketInk.ink(COIN) : AlpakaStyle.TEXT_SOFT, false);
+                        hits.add(new Hit(cx, y, cw, CHIP_H, mx -> replace(Coins.full(chip.coins())), true));
+                        cx += cw + 4;
+                    }
+                }
+            }
+        }
+        if (note != null) graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, note, x + w - sourceW - 6 - cx)), cx, y + 3, AlpakaStyle.TEXT_MUTED, false);
+        // SkyCofl asks to be named where its prices show.
+        if (AlpakaConfig.instance.allowApiCalls) {
+            graphics.text(this.font, GuiFont.text(source), x + w - 2 - sourceW, y + 3, AlpakaStyle.DIVIDER, false);
+        }
+    }
+
     // ---- Editing --------------------------------------------------------------------------------
 
     /** Fills the field, as long as what is put in fits the sign. */
@@ -552,8 +670,8 @@ public class MarketInputScreen extends SignEditScreen {
 
     /**
      * Writes the answer into the sign's answer lines and closes the editor: vanilla sends the lines,
-     * as the sign's Done button does. A number goes in plain digits unless those would not fit the
-     * sign, which only an absurd number does; then it goes as typed.
+     * as it does after the sign's Done button. A number goes in plain digits unless those would not
+     * fit the sign, which only an absurd number does; then it goes as typed.
      */
     private void confirm() {
         if (closing) return;
@@ -564,19 +682,40 @@ public class MarketInputScreen extends SignEditScreen {
             return;
         }
         closing = true;
-        String[] lines = lines();
-        System.arraycopy(answer, 0, lines, 0, answer.length);
         if (prompt.type() == SignPrompt.Type.SEARCH) Markets.rememberSearch(context, text());
-        super.onClose();
+        close(answer);
     }
 
     /** Empties the answer lines and closes: Hypixel takes an empty answer as none. */
     private void cancel() {
         if (closing) return;
         closing = true;
-        String[] lines = lines();
-        for (int i = 0; i < prompt.inputLines(); i++) lines[i] = "";
-        super.onClose();
+        String[] empty = new String[prompt.inputLines()];
+        java.util.Arrays.fill(empty, "");
+        close(empty);
+    }
+
+    /** The answer lines the editor closes with; null while it is open. */
+    private String[] answerLines = null;
+
+    /**
+     * Closes the editor with these answer lines. Vanilla's Done only clears the screen, and the lines
+     * go out as the editor is removed; this does the same, without going through Done. Other mods
+     * hook Done to put what their own helper made of vanilla's editor into the first line - Skyblocker's
+     * sign calculator writes its last result there, which for a bar it never saw is "0.0", and Hypixel
+     * answered every price with "Your starting bid must be at least 10 coins!".
+     */
+    private void close(String[] answer) {
+        answerLines = answer;
+        System.arraycopy(answer, 0, lines(), 0, answer.length);
+        this.minecraft.gui.setScreen(null);
+    }
+
+    /** Puts the answer in place once more right before vanilla sends the lines, whatever changed them since. */
+    @Override
+    public void removed() {
+        if (answerLines != null) System.arraycopy(answerLines, 0, lines(), 0, answerLines.length);
+        super.removed();
     }
 
     // ---- Input ----------------------------------------------------------------------------------
@@ -628,16 +767,32 @@ public class MarketInputScreen extends SignEditScreen {
         // Up and down walk the suggestions. Without them they would move to Hypixel's own lines,
         // which are not the answer, so they do nothing.
         if (event.isDown()) {
-            if (open) highlight = Math.min(suggestions.size() - 1, highlight + 1);
+            if (open) {
+                highlight = Math.min(suggestions.size() - 1, highlight + 1);
+                scrollTo(highlight);
+            }
             return true;
         }
         if (event.isUp()) {
-            if (open) highlight = Math.max(-1, highlight - 1);
+            if (open) {
+                highlight = Math.max(-1, highlight - 1);
+                if (highlight < 0) listScrollTarget = 0;
+                else scrollTo(highlight);
+            }
             return true;
         }
         boolean[] handled = {false};
         edit(() -> handled[0] = input.keyPressed(event.key(), event.hasControlDownWithQuirk(), event.hasShiftDown()));
         return handled[0];
+    }
+
+    /** The wheel scrolls the suggestions, wherever the mouse is: the list is all there is to scroll. */
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (dropdownOpen() && listScrollMax > 0 && scrollY != 0) {
+            listScrollTarget = Math.max(0, Math.min(listScrollMax, listScrollTarget - scrollY * SUGGESTION_H));
+        }
+        return true;
     }
 
     /** Any other way of closing the bar counts as Cancel. */

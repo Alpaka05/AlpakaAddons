@@ -2,6 +2,7 @@ package net.alpaka.addons.features.cosmetics
 
 import com.mojang.blaze3d.vertex.PoseStack
 import net.alpaka.addons.config.AlpakaConfig
+import net.alpaka.addons.utils.AlpakaPerf
 import net.minecraft.client.model.player.PlayerModel
 import net.minecraft.client.renderer.SubmitNodeCollector
 import net.minecraft.client.renderer.entity.RenderLayerParent
@@ -32,7 +33,15 @@ class ChromaHatLayer(parent: RenderLayerParent<AvatarRenderState, PlayerModel>) 
         xRot: Float,
     ) {
         if (!ChromaHatFeature.shouldRender(state)) return
+        val t = AlpakaPerf.begin(AlpakaPerf.Section.CHROMA_HAT)
+        try {
+            submitHat(poseStack, collector, packedLight, state)
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.CHROMA_HAT, t)
+        }
+    }
 
+    private fun submitHat(poseStack: PoseStack, collector: SubmitNodeCollector, packedLight: Int, state: AvatarRenderState) {
         val wearingHelmet = !state.headEquipment.isEmpty
         // Chroma glows on its own and ignores world light; the plain hat is lit like the rest of the
         // model, so a dark cave darkens it too.

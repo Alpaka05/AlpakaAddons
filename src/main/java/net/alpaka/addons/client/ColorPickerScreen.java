@@ -24,6 +24,7 @@ import org.joml.Matrix3x2f;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.function.Consumer;
+import java.util.Locale;
 
 import static net.alpaka.addons.client.gui.AlpakaStyle.inside;
 
@@ -117,7 +118,7 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
     }
 
     private String hexOf() {
-        return a == 255 ? String.format("#%06X", rgb) : String.format("#%08X", currentColor());
+        return a == 255 ? String.format(Locale.ROOT, "#%06X", rgb) : String.format(Locale.ROOT, "#%08X", currentColor());
     }
 
     private void syncHexFromColor() {

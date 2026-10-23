@@ -174,8 +174,8 @@ public final class MarketPreview {
         c.setItem(9, item(Items.DIAMOND_CHESTPLATE, "§bArmor", "§8Category", "", "§eClick to view items!"));
         c.setItem(18, item(Items.EMERALD, "§2Accessories", "§8Category", "", "§eClick to view items!"));
         c.setItem(27, item(Items.APPLE, "§cConsumables", "§8Category", "", "§eClick to view items!"));
-        c.setItem(36, item(Items.COBBLESTONE, "§eBlocks", "§8Category", "", "§eClick to view items!"));
-        c.setItem(45, item(Items.STICK, "§dTools & Misc", "§8Category", "", "§eClick to view items!"));
+        c.setItem(36, item(Items.STICK, "§dTools & Misc", "§8Category", "", "§eClick to view items!"));
+        c.setItem(45, item(Items.DYE.orange(), "§dCosmetics", "§8Category", "", "§eClick to view items!"));
         for (int i = 0; i < GRID.length; i++) c.setItem(GRID[i], auction(AUCTIONS[i], false));
         c.setItem(46, item(Items.ARROW, "§aPrevious Page", "§ePage 1"));
         c.setItem(47, item(Items.OAK_SIGN, "§aSearch", "§7Find items by name, type, lore", "§7or enchantments.", "", "§eClick to search!"));
@@ -316,6 +316,7 @@ public final class MarketPreview {
     /** The price sign of "Create BIN Auction", as Hypixel writes it, with this typed. */
     public static MarketInputScreen binPrice(String typed) {
         Markets.menuOpened("Create BIN Auction");
+        LowestBin.devSelling(new LowestBin.Item("HYPERION", null, 1, "Hyperion"), 444_000_000);
         return input(new String[] {"", "^^^^^^^^^^^^^^^", "Your auction", "starting bid"}, MarketKind.AUCTION_HOUSE, typed);
     }
 

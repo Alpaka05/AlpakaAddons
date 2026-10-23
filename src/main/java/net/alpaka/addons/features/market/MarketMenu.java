@@ -35,14 +35,15 @@ public final class MarketMenu {
         SEARCH, SORT, TIER, BIN_FILTER, MANAGE_ORDERS, SELL_INVENTORY, SELL_SACKS, BACK, CLOSE, NEXT, PREVIOUS
     }
 
-    /** A category of the left column, with the icon the screen draws for it. */
-    public enum CategoryIcon {
+    /** A category of the left column, with its color. Its icon is Hypixel's own item for it. */
+    public enum CategoryKind {
         WEAPONS("Weapons", 0xFFFFB347),
         ARMOR("Armor", 0xFF5B9DFF),
         ACCESSORIES("Accessories", 0xFF4FD38A),
         CONSUMABLES("Consumables", 0xFFFF6B6B),
         BLOCKS("Blocks", 0xFFC9935A),
         TOOLS("Tools & Misc", 0xFFB487FF),
+        COSMETICS("Cosmetics", 0xFFFF7EB6),
         FARMING("Farming", 0xFFF2C94C),
         MINING("Mining", 0xFF56CCF2),
         COMBAT("Combat", 0xFFFF6B6B),
@@ -53,22 +54,22 @@ public final class MarketMenu {
         /** The category's own color: Hypixel tints each category's border, this follows it. */
         public final int color;
 
-        CategoryIcon(String hypixelName, int color) {
+        CategoryKind(String hypixelName, int color) {
             this.hypixelName = hypixelName;
             this.color = color;
         }
 
-        static CategoryIcon byName(String name) {
+        static CategoryKind byName(String name) {
             String n = name.trim();
             if (n.endsWith(".")) n = n.substring(0, n.length() - 1);
-            for (CategoryIcon icon : values()) {
-                if (icon.hypixelName.equalsIgnoreCase(n)) return icon;
+            for (CategoryKind kind : values()) {
+                if (kind.hypixelName.equalsIgnoreCase(n)) return kind;
             }
             return null;
         }
     }
 
-    public record Category(int slot, String name, CategoryIcon icon, boolean selected) {}
+    public record Category(int slot, String name, CategoryKind kind, boolean selected) {}
 
     /** How the content is best shown: many similar things as a grid, a few actions as large tiles. */
     public enum Layout { GRID, TILES }
@@ -125,11 +126,11 @@ public final class MarketMenu {
                 continue;
             }
 
-            CategoryIcon icon = slot.index() % 9 == 0 ? CategoryIcon.byName(name) : null;
-            if (icon != null) {
+            CategoryKind categoryKind = slot.index() % 9 == 0 ? CategoryKind.byName(name) : null;
+            if (categoryKind != null) {
                 boolean selected = slot.foil() || mentionsCurrent(slot.lore())
-                        || (titleCategory != null && titleCategory.equalsIgnoreCase(icon.hypixelName));
-                menu.categories.add(new Category(slot.index(), name, icon, selected));
+                        || (titleCategory != null && titleCategory.equalsIgnoreCase(categoryKind.hypixelName));
+                menu.categories.add(new Category(slot.index(), name, categoryKind, selected));
                 continue;
             }
 
@@ -149,14 +150,14 @@ public final class MarketMenu {
             for (Category c : menu.categories) {
                 boolean keep = !taken && c.selected() && slotFoil(slots, c.slot());
                 taken |= keep;
-                fixed.add(new Category(c.slot(), c.name(), c.icon(), keep));
+                fixed.add(new Category(c.slot(), c.name(), c.kind(), keep));
             }
             if (!taken) {
                 fixed.clear();
                 for (Category c : menu.categories) {
                     boolean keep = !taken && c.selected();
                     taken |= keep;
-                    fixed.add(new Category(c.slot(), c.name(), c.icon(), keep));
+                    fixed.add(new Category(c.slot(), c.name(), c.kind(), keep));
                 }
             }
             menu.categories.clear();

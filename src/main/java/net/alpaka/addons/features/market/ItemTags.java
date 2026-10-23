@@ -41,10 +41,15 @@ public final class ItemTags {
 
     private static volatile Map<String, String> bazaarByName = null;
     private static volatile Map<String, String> auctionByName = null;
-    /** Display names for the search suggestions: Bazaar products, what is sold on the Auction House, both. */
+    /** Display names for the search suggestions: Bazaar products, and what is sold on the Auction House. */
     private static volatile List<String> bazaarNames = null;
     private static volatile List<String> auctionNames = null;
-    private static volatile List<String> allNames = null;
+    /** SkyCofl's tags for each Auction House name; some names are shared, "Cactus" being a block and a head. */
+    private static volatile Map<String, List<String>> auctionTags = null;
+    /** The Auction House's names without plain Minecraft items, and what they were worked out from. Render thread only. */
+    private static List<String> auctionSuggestions = null;
+    private static List<String> allSuggestions = null;
+    private static Object suggestionsFrom = null;
     private static volatile boolean fetching = false;
     private static volatile long retryAt = 0L;
 
@@ -102,18 +107,55 @@ public final class ItemTags {
     /**
      * The names to suggest while searching this market, or every market's for none. Null while
      * SkyCofl's list is not loaded yet; asking starts loading it.
+     *
+     * The Auction House's leave out plain Minecraft items, which cannot be auctioned, so a
+     * suggestion never leads to an empty page. Which those are, Hypixel's item list says; while it
+     * loads, null too, and should it not come, every name is offered. The Bazaar's are its products,
+     * plain Wheat and Coal among them, which it does sell.
      */
     public static List<String> names(MarketKind kind) {
-        if (allNames == null) {
+        List<String> bazaar = bazaarNames;
+        if (bazaar == null) {
             load();
             return null;
         }
-        return kind == MarketKind.BAZAAR ? bazaarNames : kind == MarketKind.AUCTION_HOUSE ? auctionNames : allNames;
+        if (kind == MarketKind.BAZAAR) return bazaar;
+        ItemIcons.Catalog catalog = ItemIcons.catalog();
+        if (catalog == null) {
+            if (ItemIcons.loading()) return null;
+            return kind == MarketKind.AUCTION_HOUSE ? auctionNames : joined(auctionNames, bazaar);
+        }
+        if (suggestionsFrom != catalog) {
+            auctionSuggestions = withoutVanilla(auctionTags, catalog::vanilla);
+            allSuggestions = joined(auctionSuggestions, bazaar);
+            suggestionsFrom = catalog;
+        }
+        return kind == MarketKind.AUCTION_HOUSE ? auctionSuggestions : allSuggestions;
     }
 
-    /** Whether SkyCofl's list is on its way. */
+    /** The names with at least one tag that is not a plain Minecraft item's. */
+    static List<String> withoutVanilla(Map<String, List<String>> tagsByName, java.util.function.Predicate<String> vanilla) {
+        List<String> out = new ArrayList<>();
+        for (Map.Entry<String, List<String>> e : tagsByName.entrySet()) {
+            for (String tag : e.getValue()) {
+                if (!vanilla.test(tag)) {
+                    out.add(e.getKey());
+                    break;
+                }
+            }
+        }
+        return List.copyOf(out);
+    }
+
+    private static List<String> joined(List<String> a, List<String> b) {
+        List<String> all = new ArrayList<>(a);
+        all.addAll(b);
+        return List.copyOf(all);
+    }
+
+    /** Whether a list the suggestions need is on its way: SkyCofl's names, or Hypixel's word on which are plain items. */
     public static boolean loading() {
-        return fetching;
+        return fetching || ItemIcons.loading();
     }
 
     private static synchronized void load() {
@@ -149,7 +191,7 @@ public final class ItemTags {
         Map<String, String> bazaar = new HashMap<>();
         Map<String, String> auction = new HashMap<>();
         Set<String> bazaarList = new LinkedHashSet<>();
-        Set<String> auctionList = new LinkedHashSet<>();
+        Map<String, List<String>> auctionList = new java.util.LinkedHashMap<>();
         JsonElement root = JsonParser.parseString(json);
         if (root.isJsonArray()) {
             for (JsonElement element : root.getAsJsonArray()) {
@@ -167,17 +209,23 @@ public final class ItemTags {
                 } else {
                     auction.putIfAbsent(key, tag);
                     // Only what is actually sold there: items that never are would crowd the suggestions.
-                    if (flags.contains("AUCTION") || flags.contains("MUSEUM")) auctionList.add(name);
+                    if (flags.contains("AUCTION") || flags.contains("MUSEUM")) {
+                        auctionList.computeIfAbsent(name, n -> new ArrayList<>()).add(tag);
+                    }
                 }
             }
         }
         auctionByName = auction;
+        auctionTags = auctionList;
+        auctionNames = List.copyOf(auctionList.keySet());
+        // Last: it is what tells the lists are there.
         bazaarByName = bazaar;
         bazaarNames = List.copyOf(bazaarList);
-        auctionNames = List.copyOf(auctionList);
-        List<String> all = new ArrayList<>(auctionList);
-        all.addAll(bazaarList);
-        allNames = List.copyOf(all);
+    }
+
+    /** The Auction House's names with their tags after {@link #index}, for the tests. */
+    static Map<String, List<String>> auctionTags() {
+        return auctionTags;
     }
 
     private static String string(JsonObject o, String key) {

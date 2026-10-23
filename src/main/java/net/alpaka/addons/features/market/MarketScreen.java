@@ -35,6 +35,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Locale;
 
 /**
  * The Auction House and the Bazaar, redrawn in the config menu's design: categories with their own
@@ -408,7 +409,8 @@ public class MarketScreen extends ContainerScreen {
 
         // The item on the cursor, and the hovered item's own tooltip, as vanilla draws them.
         extractCarriedItem(graphics, mouseX, mouseY);
-        if (!hoveredStack.isEmpty() && menu.getCarried().isEmpty()) {
+        if (!hoveredStack.isEmpty() && menu.getCarried().isEmpty()
+                && !net.alpaka.addons.features.itemvalue.ItemValuePopup.hidesTooltipOf(this, hoveredStack)) {
             graphics.setTooltipForNextFrame(this.font, hoveredStack, mouseX, mouseY);
         }
     }
@@ -533,7 +535,7 @@ public class MarketScreen extends ContainerScreen {
             for (MarketMenu.Category category : m.categories) {
                 if (category.selected()) {
                     targetY = at;
-                    targetColor = category.icon().color;
+                    targetColor = category.kind().color;
                 }
                 at += rowH + 1;
             }
@@ -551,17 +553,12 @@ public class MarketScreen extends ContainerScreen {
                 if (hover && !category.selected()) {
                     ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, rowH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
                 }
-                int color = category.icon().color;
-                int chip = rowH - 4;
-                int chipX = rowX + 6;
-                int chipY = rowY + 2;
-                ModernGuiUtils.drawRoundedRect(graphics, chipX, chipY, chip, chip, 4, MarketIcons.fade(color, category.selected() ? 0.28f : 0.14f));
-                MarketIcons.draw(graphics, MarketIcons.of(category.icon()), chipX + 2, chipY + 2, chip - 4,
-                        category.selected() || hover ? color : MarketIcons.shade(color, 0.8f));
-                int text = category.selected() || hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
-                graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, category.name(), rowW - chip - 14)),
-                        chipX + chip + 5, rowY + (rowH - 8) / 2, text, false);
+                // Hypixel's own item for the category, as the other buttons show theirs.
                 int slot = category.slot();
+                sideItem(graphics, stack(slot), rowX, rowY, rowH);
+                int text = category.selected() || hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
+                graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, category.name(), rowW - 26)),
+                        rowX + 21, rowY + (rowH - 8) / 2, text, false);
                 if (visible(rowY, rowH, clipY, clipH)) {
                     hits.add(new Hit(rowX, Math.max(rowY, clipY), rowW, rowH, (b, s) -> click(slot, b, s), false));
                 }
@@ -669,11 +666,7 @@ public class MarketScreen extends ContainerScreen {
         if (glyph != null) {
             MarketIcons.draw(graphics, glyph, rowX + 7, rowY + (rowH - 9) / 2f, 9, hover ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
         } else if (item != null) {
-            graphics.pose().pushMatrix();
-            graphics.pose().translate(rowX + 5, rowY + (rowH - 12) / 2f);
-            graphics.pose().scale(0.75f, 0.75f);
-            graphics.item(item, 0, 0);
-            graphics.pose().popMatrix();
+            sideItem(graphics, item, rowX, rowY, rowH);
         }
         graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, label, rowW - 26)), rowX + 21, rowY + (rowH - 8) / 2,
                 hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT, false);
@@ -682,6 +675,15 @@ public class MarketScreen extends ContainerScreen {
         }
         if (hover) hoveredStack = stack(slot);
         return rowY + rowH + 1;
+    }
+
+    /** An item at the start of a sidebar row, a little smaller than in a slot to sit with the text. */
+    private static void sideItem(GuiGraphicsExtractor graphics, ItemStack item, int rowX, int rowY, int rowH) {
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(rowX + 5, rowY + (rowH - 12) / 2f);
+        graphics.pose().scale(0.75f, 0.75f);
+        graphics.item(item, 0, 0);
+        graphics.pose().popMatrix();
     }
 
     // ---- Content --------------------------------------------------------------------------------
@@ -864,15 +866,13 @@ public class MarketScreen extends ContainerScreen {
         int ly = py + 16;
         int lx = tx;
         if (info.isOver()) {
-            boolean sold = info.status.toLowerCase().contains("sold");
+            boolean sold = info.status.toLowerCase(Locale.ROOT).contains("sold");
             lx += pill(graphics, lx, ly, info.status.replace("!", ""), sold ? MarketInk.ink(GREEN) : MarketInk.ink(RED), alpha) + 4;
         } else {
             lx += pill(graphics, lx, ly, info.isBin() ? "BIN" : "BID", info.isBin() ? MarketInk.ink(GREEN) : MarketInk.ink(AQUA), alpha) + 4;
         }
         Double price = info.auctionPrice();
         if (price != null) {
-            MarketIcons.draw(graphics, MarketIcons.Glyph.COIN, lx, ly, 8, MarketIcons.fade(MarketInk.ink(COIN), alpha));
-            lx += 10;
             String text = Coins.compact(price);
             graphics.text(this.font, GuiFont.text(text), lx, ly, MarketIcons.fade(MarketInk.ink(COIN), alpha), false);
             lx += GuiFont.width(this.font, text);
@@ -932,10 +932,9 @@ public class MarketScreen extends ContainerScreen {
             graphics.text(this.font, GuiFont.text("—"), lx, y, MarketIcons.fade(AlpakaStyle.TEXT_MUTED, alpha), false);
             return lx + 8;
         }
-        MarketIcons.draw(graphics, MarketIcons.Glyph.COIN, lx, y, 8, MarketIcons.fade(MarketInk.ink(COIN), alpha));
         String text = Coins.compact(coins);
-        graphics.text(this.font, GuiFont.text(text), lx + 10, y, MarketIcons.fade(MarketInk.ink(COIN), alpha), false);
-        return lx + 10 + GuiFont.width(this.font, text);
+        graphics.text(this.font, GuiFont.text(text), lx, y, MarketIcons.fade(MarketInk.ink(COIN), alpha), false);
+        return lx + GuiFont.width(this.font, text);
     }
 
     private void orderLines(GuiGraphicsExtractor graphics, LoreInfo info, int tx, int py, int tw, float alpha) {
@@ -947,8 +946,7 @@ public class MarketScreen extends ContainerScreen {
             lx += GuiFont.width(this.font, amount) + 6;
         }
         if (info.unitPrice != null) {
-            MarketIcons.draw(graphics, MarketIcons.Glyph.COIN, lx, ly, 8, MarketIcons.fade(MarketInk.ink(COIN), alpha));
-            graphics.text(this.font, GuiFont.text(Coins.compact(info.unitPrice) + " each"), lx + 10, ly, MarketIcons.fade(MarketInk.ink(COIN), alpha), false);
+            graphics.text(this.font, GuiFont.text(Coins.compact(info.unitPrice) + " each"), lx, ly, MarketIcons.fade(MarketInk.ink(COIN), alpha), false);
         }
         float ratio = info.fillRatio();
         if (ratio >= 0) {
@@ -974,12 +972,11 @@ public class MarketScreen extends ContainerScreen {
             for (int i = 0; i < Math.min(lines, info.coinLines.size()); i++) {
                 LoreInfo.CoinLine line = info.coinLines.get(i);
                 String value = Coins.compact(line.coins());
-                int valueW = 10 + GuiFont.width(this.font, value);
+                int valueW = GuiFont.width(this.font, value);
                 String label = AlpakaStyle.ellipsize(this.font, line.label(), Math.max(0, tw - valueW - 6));
                 graphics.text(this.font, GuiFont.text(label), tx, y, MarketIcons.fade(AlpakaStyle.TEXT_MUTED, alpha), false);
                 int vx = tx + tw - valueW;
-                MarketIcons.draw(graphics, MarketIcons.Glyph.COIN, vx, y, 8, MarketIcons.fade(MarketInk.ink(COIN), alpha));
-                graphics.text(this.font, GuiFont.text(value), vx + 10, y, MarketIcons.fade(MarketInk.ink(COIN), alpha), false);
+                graphics.text(this.font, GuiFont.text(value), vx, y, MarketIcons.fade(MarketInk.ink(COIN), alpha), false);
                 y += 11;
             }
             // Below a single coin line, the lore's first line that is not one: "Price: …" again would only repeat it.
@@ -1173,7 +1170,7 @@ public class MarketScreen extends ContainerScreen {
 
     private TileKind tileKind(int slot) {
         MarketMenu.Slot s = plain(slot);
-        String name = s.name().toLowerCase();
+        String name = s.name().toLowerCase(Locale.ROOT);
         String id = s.itemId();
         if (name.startsWith("cancel") || id.equals("red_terracotta") || id.equals("barrier")) return TileKind.DANGER;
         // The step that completes what the player came for: confirming, buying the item or bidding
@@ -1261,15 +1258,14 @@ public class MarketScreen extends ContainerScreen {
     /** "Price per unit ● 5.3", centred. */
     private void coinLineCentered(GuiGraphicsExtractor graphics, LoreInfo.CoinLine line, int cx, int y, int maxW, float alpha) {
         String value = Coins.compact(line.coins());
-        int valueW = 10 + GuiFont.width(this.font, value);
+        int valueW = GuiFont.width(this.font, value);
         String label = AlpakaStyle.ellipsize(this.font, line.label(), Math.max(0, maxW - valueW - 6));
         int labelW = GuiFont.width(this.font, label);
         int total = labelW + 5 + valueW;
         int x = cx - total / 2;
         graphics.text(this.font, GuiFont.text(label), x, y, MarketIcons.fade(AlpakaStyle.TEXT_MUTED, alpha), false);
         x += labelW + 5;
-        MarketIcons.draw(graphics, MarketIcons.Glyph.COIN, x, y, 8, MarketIcons.fade(MarketInk.ink(COIN), alpha));
-        graphics.text(this.font, GuiFont.text(value), x + 10, y, MarketIcons.fade(MarketInk.ink(COIN), alpha), false);
+        graphics.text(this.font, GuiFont.text(value), x, y, MarketIcons.fade(MarketInk.ink(COIN), alpha), false);
     }
 
     /** The one auction or product a page is about, large, with what its lore says laid out in rows. */
@@ -1349,7 +1345,7 @@ public class MarketScreen extends ContainerScreen {
         ModernGuiUtils.drawRoundedRect(graphics, x - 2, y - 3, w + 4, 14, 3, MarketIcons.fade(AlpakaStyle.PANEL, 0.55f * alpha));
         graphics.text(this.font, GuiFont.text(label), x + 2, y, MarketIcons.fade(AlpakaStyle.TEXT_MUTED, alpha), false);
         int labelW = GuiFont.width(this.font, label);
-        int room = w - labelW - 16 - (coin ? 10 : 0);
+        int room = w - labelW - 16;
         // A full amount that does not fit is written short rather than cut: "1.14B", not "1,140,0…".
         if (coin && GuiFont.width(this.font, value) > room) {
             Double amount = Coins.parseLore(value);
@@ -1359,7 +1355,6 @@ public class MarketScreen extends ContainerScreen {
         int vw = GuiFont.width(this.font, shown);
         int vx = x + w - 2 - vw;
         graphics.text(this.font, GuiFont.text(shown), vx, y, MarketIcons.fade(color, alpha), false);
-        if (coin) MarketIcons.draw(graphics, MarketIcons.Glyph.COIN, vx - 10, y, 8, MarketIcons.fade(MarketInk.ink(COIN), alpha));
         return y + 15;
     }
 
@@ -1590,7 +1585,7 @@ public class MarketScreen extends ContainerScreen {
         return color;
     }
 
-    static int nameColor(Component name) {
+    public static int nameColor(Component name) {
         int[] found = {0xFFFFFF};
         name.visit((style, text) -> {
             if (text.isBlank()) return Optional.empty();
@@ -1609,7 +1604,7 @@ public class MarketScreen extends ContainerScreen {
         return found[0];
     }
 
-    static int vivid(int rgb) {
+    public static int vivid(int rgb) {
         return MarketInk.ink(vividOnDark(rgb));
     }
 
@@ -1707,6 +1702,14 @@ public class MarketScreen extends ContainerScreen {
             return true;
         }
         return false;
+    }
+
+    /**
+     * The item under the mouse in the last frame, as this screen draws it, for the Item Value key.
+     * Empty in classic view, where the slots under the mouse are vanilla's own.
+     */
+    public ItemStack hoveredItem() {
+        return classic() ? ItemStack.EMPTY : hoveredStack;
     }
 
     // ---- For the screenshot tour ----------------------------------------------------------------

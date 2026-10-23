@@ -188,6 +188,15 @@ class MarketParsingTest {
     }
 
     @Test
+    void cosmeticsIsACategory() {
+        List<MarketMenu.Slot> slots = browser();
+        slots.set(45, slot(45, "orange_dye", "Cosmetics", "Category", "", "Click to view items!"));
+        MarketMenu menu = MarketMenu.parse(MarketKind.AUCTION_HOUSE, "Auctions Browser", 6, slots);
+        assertEquals(MarketMenu.CategoryKind.COSMETICS, menu.categories.get(2).kind());
+        assertFalse(menu.extras.contains(45));
+    }
+
+    @Test
     void aFewActionsBecomeTilesWithTheAuctionAsHero() {
         List<MarketMenu.Slot> slots = new ArrayList<>();
         for (int i = 0; i < 54; i++) slots.add(slot(i, "black_stained_glass_pane", " "));
@@ -402,6 +411,40 @@ class MarketParsingTest {
         assertEquals("ENCHANTED_HAY_BALE", ItemTags.lookup("Enchanted Hay Bale", MarketKind.BAZAAR));
         assertEquals("HYPERION", ItemTags.lookup("hyperion", MarketKind.AUCTION_HOUSE));
         assertNull(ItemTags.lookup("null", MarketKind.AUCTION_HOUSE));
+    }
+
+    @Test
+    void theAuctionHousesSuggestionsLeaveOutPlainMinecraftItems() {
+        ItemIcons.Catalog catalog = ItemIcons.index(com.google.gson.JsonParser.parseString("""
+                {"items":[
+                 {"id":"DIAMOND_SWORD","material":"DIAMOND_SWORD","name":"Diamond Sword"},
+                 {"id":"WOOL:6","material":"WOOL","durability":6,"name":"Pink Wool"},
+                 {"id":"HYPERION","material":"IRON_SWORD","name":"Hyperion"},
+                 {"id":"DRAGON_EGG","material":"PAPER","name":"Dragon Egg"},
+                 {"id":"NETHER_STAR","material":"NETHER_STAR","name":"Nether Star","museum":true},
+                 {"id":"ENCHANTED_BOOK","material":"ENCHANTED_BOOK","name":"Enchanted Book"},
+                 {"id":"CACTUS","material":"CACTUS","name":"Cactus"},
+                 {"id":"BUILDER_CACTUS","material":"SKULL_ITEM","durability":3,"name":"Cactus"}]}"""));
+        assertTrue(catalog.vanilla("DIAMOND_SWORD"));
+        assertTrue(catalog.vanilla("WOOL:6"));
+        // Not in Hypixel's list, but a damage value: a plain item.
+        assertTrue(catalog.vanilla("WOOL:0"));
+        assertFalse(catalog.vanilla("HYPERION"));
+        // Named like a block, made of paper: SkyBlock's own.
+        assertFalse(catalog.vanilla("DRAGON_EGG"));
+        assertFalse(catalog.vanilla("NETHER_STAR"));
+        assertFalse(catalog.vanilla("ENCHANTED_BOOK"));
+        // SkyCofl's own tags, which Hypixel's list does not have.
+        assertFalse(catalog.vanilla("PET_LION"));
+
+        ItemTags.index("""
+                [{"name":"Diamond Sword","tag":"DIAMOND_SWORD","flags":"AUCTION"},
+                 {"name":"Wool","tag":"WOOL:0","flags":"AUCTION"},
+                 {"name":"Hyperion","tag":"HYPERION","flags":"AUCTION"},
+                 {"name":"Cactus","tag":"CACTUS","flags":"AUCTION"},
+                 {"name":"Cactus","tag":"BUILDER_CACTUS","flags":"AUCTION"}]""");
+        // The cactus head is SkyBlock's, so the name stays.
+        assertEquals(List.of("Hyperion", "Cactus"), ItemTags.withoutVanilla(ItemTags.auctionTags(), catalog::vanilla));
     }
 
     @Test

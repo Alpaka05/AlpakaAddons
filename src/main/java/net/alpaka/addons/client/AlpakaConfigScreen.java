@@ -431,6 +431,11 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         setupProgress = PloppAnimation.interpolate(setupProgress, setupTarget, deltaSec, 11.0f);
         if (Math.abs(setupProgress - setupTarget) < 0.003f) setupProgress = setupTarget;
 
+        // Opened from the custom main menu, the menu itself is what shows behind the window.
+        if (this.parent instanceof net.alpaka.addons.features.mainmenu.CustomMainMenuScreen menu) {
+            menu.extractAsBackdrop(graphics, this.width, this.height, partialTick);
+        }
+
         // In setup mode the world stays undimmed: it is what is being adjusted.
         AlpakaStyle.backdrop(graphics, this.width, this.height, 1.0f - setupProgress);
 

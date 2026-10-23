@@ -396,6 +396,7 @@ class HudEditorScreen(private val parent: Screen?) : Screen(GuiFont.text("HUD Ed
         if (dirty) {
             dirty = false
             AlpakaConfig.save()
+            for (element in HudRegistry.ELEMENTS) element.flushEdits()
         }
     }
 

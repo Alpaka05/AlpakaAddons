@@ -65,6 +65,7 @@ public final class DevScreenshotTour {
             screen("config", () -> new AlpakaConfigScreen(null, "")),
             screen("config-chat", () -> AlpakaConfigScreen.openOn("Chat", "Chat Tabs")),
             screen("config-damage-tags", () -> AlpakaConfigScreen.openOn("Cosmetics", "Custom Damage Tags")),
+            screen("config-aura", () -> AlpakaConfigScreen.openOn("Cosmetics", "Aura")),
             screen("config-search", () -> new AlpakaConfigScreen(null, "blaze")),
             screen("config-inventory-hud", () -> AlpakaConfigScreen.openOn("Interface", "Inventory HUD")),
             screen("config-hud-style", () -> AlpakaConfigScreen.openOn("Design", "HUD Style")),
@@ -80,6 +81,7 @@ public final class DevScreenshotTour {
             screen("config-tooltips", () -> AlpakaConfigScreen.openOn("Interface", "Scrollable Tooltips")),
             screen("config-menu-font", () -> AlpakaConfigScreen.openOn("Design", "Menu Font").withChoiceOpen()),
             screen("config-world", () -> AlpakaConfigScreen.openOn("World", "Block Overlay")),
+            screen("config-world-sky", () -> AlpakaConfigScreen.openOn("World", "Sky Effects")),
             screen("config-viewmodel", () -> AlpakaConfigScreen.openOn("Viewmodel", "Viewmodel Modifiers")),
             screen("color-picker", () -> new ColorPickerScreen(null, "Accent Color", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
             screen("wheel-editor", () -> new CommandWheelConfigScreen(new CustomMainMenuScreen())),
@@ -91,8 +93,8 @@ public final class DevScreenshotTour {
                 return new HudEditorScreen(null);
             }),
             // Where a right click on each HUD in the editor leads.
-            screen("hud-settings-world-age", () -> AlpakaConfigScreen.openOnOption(null,
-                    net.alpaka.addons.features.worldage.WorldAgeHudElement.INSTANCE.getSettingsOptionId())),
+            screen("hud-settings-performance", () -> AlpakaConfigScreen.openOnOption(null,
+                    net.alpaka.addons.features.performance.PerformanceHudElement.INSTANCE.getSettingsOptionId())),
             screen("hud-settings-slayer", () -> AlpakaConfigScreen.openOnOption(null,
                     net.alpaka.addons.features.slayer.SlayerHudElement.INSTANCE.getSettingsOptionId())),
             screen("hud-settings-boss-timer", () -> AlpakaConfigScreen.openOnOption(null,
@@ -192,6 +194,121 @@ public final class DevScreenshotTour {
             new Stop("screenshot-preview", () -> {}, () -> true, 2),
             new Stop("screenshot-preview-shrink", () -> ScreenshotPreview.devFreezeAt(120.0f), () -> true, 2),
             new Stop(null, () -> ScreenshotPreview.devFreezeAt(-1.0f), () -> true, 5),
+            // The Auction House and the Bazaar in the market screens, on chests filled locally.
+            screen("market-ah-main", net.alpaka.addons.features.market.MarketPreview::auctionHouse),
+            screen("market-ah-browser", net.alpaka.addons.features.market.MarketPreview::auctionBrowser),
+            new Stop("market-ah-browser-hover", () -> placeMouse(0.42, 0.3), () -> true, 15),
+            // A card a moment after its click: Hypixel has taken the item onto the cursor, the card
+            // stays and gives under the click.
+            new Stop("market-ah-press", () -> net.alpaka.addons.features.market.MarketPreview.pressLikeHypixel(12),
+                    () -> true, 2),
+            new Stop("market-ah-browser-filter", () -> placeMouse(0.14, 0.72), () -> true, 15),
+            new Stop(null, () -> placeMouse(0.5, 0.97), () -> true, 1),
+            new Stop("market-ah-inventory", () -> {
+                net.alpaka.addons.features.market.MarketPreview.inventory(true);
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.auctionBrowser());
+            }, () -> true, 30),
+            new Stop(null, () -> net.alpaka.addons.features.market.MarketPreview.inventory(false), () -> true, 1),
+            new Stop("market-ah-view", () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.market.MarketPreview.auctionView()), () -> true, 80),
+            screen("market-ah-confirm", net.alpaka.addons.features.market.MarketPreview::auctionConfirm),
+            screen("market-bazaar", net.alpaka.addons.features.market.MarketPreview::bazaar),
+            new Stop("market-bazaar-hover", () -> placeMouse(0.62, 0.42), () -> true, 15),
+            new Stop(null, () -> placeMouse(0.5, 0.97), () -> true, 1),
+            // With SkyCofl's price history beside the product; it loads from the network, so it gets time.
+            new Stop("market-bazaar-product", () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.market.MarketPreview.bazaarProduct()), () -> true, 100),
+            new Stop("market-graph-hover", () -> placeMouse(0.72, 0.3), () -> true, 10),
+            new Stop("market-graph-month", () -> {
+                AlpakaConfig.instance.marketPriceHistoryRange = 2;
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.bazaarProduct());
+            }, () -> true, 80),
+            new Stop(null, () -> {
+                AlpakaConfig.instance.marketPriceHistoryRange = 1;
+                placeMouse(0.5, 0.97);
+            }, () -> true, 1),
+            screen("market-bazaar-orders", net.alpaka.addons.features.market.MarketPreview::bazaarOrders),
+            // The search sign as Hypixel writes it: two lines for the answer, the question last.
+            screen("market-input-search", () -> net.alpaka.addons.features.market.MarketPreview.input(
+                    new String[] {"", "", "^^^^^^^^^^^^^^^", "Enter query"},
+                    net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, "withered dark claymore")),
+            // The same search sign opened the way the game opens Hypixel's, through the player's
+            // sign opening: the input bar has to take over there, not vanilla's sign.
+            new Stop("market-input-hypixel", () -> net.alpaka.addons.features.market.MarketPreview.openLikeHypixel(
+                    new String[] {"", "", "^^^^^^^^^^^^^^^", "Enter query"}), () -> true, 30),
+            // Suggestions while a search is typed: names from SkyCofl's list, which loads from the network.
+            new Stop("market-input-suggest", () -> Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.input(
+                    new String[] {"", "", "^^^^^^^^^^^^^^^", "Enter query"},
+                    net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, "aspect")), () -> true, 80),
+            new Stop(null, () -> Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.input(
+                    new String[] {"", "", "^^^^^^^^^^^^^^^", "Enter query"},
+                    net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, "aotd")), () -> true, 10),
+            new Stop("market-input-suggest-initials", () -> screen().keyPressed(
+                    new net.minecraft.client.input.KeyEvent(org.lwjgl.glfw.GLFW.GLFW_KEY_DOWN, 0, 0)), () -> true, 5),
+            new Stop("market-input-suggest-bazaar", () -> Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.input(
+                    new String[] {"", "", "^^^^^^^^^^^^^^^", "Enter query"},
+                    net.alpaka.addons.features.market.MarketKind.BAZAAR, "ench hay")), () -> true, 20),
+            // Many matches, and no plain Minecraft swords among them: the list scrolls.
+            new Stop(null, () -> Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.input(
+                    new String[] {"", "", "^^^^^^^^^^^^^^^", "Enter query"},
+                    net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, "sword")), () -> true, 20),
+            new Stop("market-input-suggest-scroll", () -> screen().mouseScrolled(0, 0, 0, -3), () -> true, 15),
+            screen("market-input-price", () -> net.alpaka.addons.features.market.MarketPreview.binPrice("4m")),
+            screen("market-input-amount", () -> net.alpaka.addons.features.market.MarketPreview.input(
+                    new String[] {"", "^^^^^^^^^^^^^^^", "Enter amount", "to order"},
+                    net.alpaka.addons.features.market.MarketKind.BAZAAR, null)),
+            new Stop("market-classic", () -> {
+                net.alpaka.addons.features.market.MarketPreview.classic(net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, true);
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.auctionBrowser());
+            }, () -> true, 30),
+            new Stop(null, () -> net.alpaka.addons.features.market.MarketPreview.classic(
+                    net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, false), () -> true, 1),
+            screen("market-config", () -> AlpakaConfigScreen.openOn("Markets", "Custom Auction House")),
+            screen("market-config-price-history", () -> AlpakaConfigScreen.openOn("Markets", "Price History")),
+            // The Item Value popup over a chest of SkyBlock items, opened the way the key opens it, over
+            // the item under the mouse. Its prices come from the network, so it waits for them.
+            new Stop(null, () -> Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.itemvalue.ItemValuePreview.chest()),
+                    () -> true, 5),
+            new Stop(null, () -> placeMouseAt(net.alpaka.addons.features.itemvalue.ItemValuePreview.slotCenter(10)), () -> true, 3),
+            new Stop("item-value", net.alpaka.addons.features.itemvalue.ItemValueFeature::devPress,
+                    net.alpaka.addons.features.itemvalue.ItemValuePreview::settled, 60),
+            // A group's line under the mouse: lit, and after a moment its tooltip.
+            new Stop("item-value-hover", () -> placeMouseAt(net.alpaka.addons.features.itemvalue.ItemValuePopup.devRowPoint("Upgrades")),
+                    () -> true, 15),
+            new Stop("item-value-groups-open", () -> net.alpaka.addons.features.itemvalue.ItemValuePopup.devFold(false), () -> true, 10),
+            new Stop(null, () -> net.alpaka.addons.features.itemvalue.ItemValuePopup.devFold(true), () -> true, 1),
+            // A click on a group opens it; a click on one of its parts shows that part's price history.
+            new Stop("item-value-enchantments", () -> net.alpaka.addons.features.itemvalue.ItemValuePopup.devClick(
+                    net.alpaka.addons.features.itemvalue.ItemValuePopup.devRowPoint("Enchantments")), () -> true, 10),
+            new Stop("item-value-graph-part", () -> net.alpaka.addons.features.itemvalue.ItemValuePopup.devClick(
+                    net.alpaka.addons.features.itemvalue.ItemValuePopup.devRowPoint("Sharpness VII")), () -> true, 80),
+            // The item's own price history.
+            new Stop("item-value-graph", () -> net.alpaka.addons.features.itemvalue.ItemValuePopup.devGraph(), () -> true, 80),
+            new Stop(null, net.alpaka.addons.features.itemvalue.ItemValuePopup::close, () -> true, 1),
+            new Stop(null, () -> placeMouseAt(net.alpaka.addons.features.itemvalue.ItemValuePreview.slotCenter(12)), () -> true, 3),
+            new Stop("item-value-pet", net.alpaka.addons.features.itemvalue.ItemValueFeature::devPress, () -> true, 20),
+            new Stop(null, net.alpaka.addons.features.itemvalue.ItemValuePopup::close, () -> true, 1),
+            new Stop(null, () -> placeMouseAt(net.alpaka.addons.features.itemvalue.ItemValuePreview.slotCenter(13)), () -> true, 3),
+            new Stop("item-value-drill", net.alpaka.addons.features.itemvalue.ItemValueFeature::devPress, () -> true, 20),
+            new Stop(null, net.alpaka.addons.features.itemvalue.ItemValuePopup::close, () -> true, 1),
+            new Stop(null, () -> placeMouseAt(net.alpaka.addons.features.itemvalue.ItemValuePreview.slotCenter(14)), () -> true, 3),
+            new Stop("item-value-stack", net.alpaka.addons.features.itemvalue.ItemValueFeature::devPress, () -> true, 20),
+            new Stop(null, net.alpaka.addons.features.itemvalue.ItemValuePopup::close, () -> true, 1),
+            new Stop(null, () -> placeMouseAt(net.alpaka.addons.features.itemvalue.ItemValuePreview.slotCenter(16)), () -> true, 3),
+            new Stop("item-value-no-id", net.alpaka.addons.features.itemvalue.ItemValueFeature::devPress, () -> true, 20),
+            new Stop(null, net.alpaka.addons.features.itemvalue.ItemValuePopup::close, () -> true, 1),
+            // Over a card of the Auction House: the item the market screen draws under the mouse.
+            new Stop(null, () -> {
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.auctionBrowser());
+                placeMouse(0.42, 0.3);
+            }, () -> true, 15),
+            new Stop("item-value-market", net.alpaka.addons.features.itemvalue.ItemValueFeature::devPress, () -> true, 40),
+            new Stop(null, () -> {
+                net.alpaka.addons.features.itemvalue.ItemValuePopup.close();
+                placeMouse(0.5, 0.97);
+            }, () -> true, 1),
+            screen("item-value-config", () -> AlpakaConfigScreen.openOn("Markets", "Item Value")),
+            new Stop(null, () -> Minecraft.getInstance().gui.setScreen(null), () -> true, 5),
             new Stop("hud-editor-world", () -> Minecraft.getInstance().gui.setScreen(new HudEditorScreen(null)), () -> true, 20),
             // Every HUD on its blurred panel and in the menu font, a notice in the corner.
             new Stop("hud-style", DevScreenshotTour::hudStyle, () -> true, 20),
@@ -205,6 +322,12 @@ public final class DevScreenshotTour {
                     .devLeavePoint()), () -> true, 30),
             new Stop("confirm-pause-after-cancel", () -> click(((AlpakaConfirmScreen) screen()).devCancelPoint()),
                     () -> true, 3),
+            // The Friends overlay over the pause menu, opened as the Friends key (O) opens it: it
+            // draws the menu as its backdrop and then blurs itself, so the menu must not blur too.
+            new Stop("pause-menu-friends", () -> {
+                Minecraft mc = Minecraft.getInstance();
+                mc.gui.setScreen(new net.minecraft.client.gui.screens.friends.FriendsOverlayScreen(mc.gui.screen()));
+            }, () -> true, 30),
             // The HUD editor with the world age HUD dragged away: Reset All asks, Cancel leaves it
             // where it is, and confirming puts every HUD back.
             new Stop("confirm-hud-editor-moved", () -> {
@@ -340,12 +463,63 @@ public final class DevScreenshotTour {
             new Stop(null, () -> AlpakaConfig.instance.itemSwayDisabled = false, () -> true, 1),
             // Starlight together with Disable Item Lighting, still and mid-swing.
             new Stop("starlight-unlit", () -> AlpakaConfig.instance.itemLightingDisabled = true, () -> true, 5),
-            new Stop("starlight-unlit-swing", () -> Minecraft.getInstance().player.swing(
-                    net.minecraft.world.InteractionHand.MAIN_HAND), () -> true, 3),
+            // The swing animation only, as the config's swing preview plays it: the one-argument
+            // swing also tells the server, which only Outbound may.
+            new Stop("starlight-unlit-swing", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
             new Stop(null, () -> AlpakaConfig.instance.itemLightingDisabled = false, () -> true, 1),
+            // Sky Effects, without the HUD: the Overworld at night looking north at the aurora and
+            // in the morning towards the sun, the Nether's firestorm above its roof and the End's
+            // nebula; most twice, to see them move. Then back where the player stood, as they were.
+            new Stop(null, () -> skyAt("overworld", 0.5, 120.0, 18000L, 180.0f, -20.0f), () -> true, 40),
+            new Stop("sky-overworld-night", () -> {}, () -> true, 5),
+            new Stop("sky-overworld-night-later", () -> {}, () -> true, 40),
+            new Stop("sky-overworld-day", () -> skyAt("overworld", 0.5, 120.0, 2000L, -90.0f, -30.0f), () -> true, 40),
+            new Stop(null, () -> skyAt("the_nether", 0.5, 140.0, -1L, 30.0f, -15.0f), () -> inDimension(net.minecraft.world.level.Level.NETHER), 60),
+            new Stop("sky-nether", () -> {}, () -> true, 5),
+            new Stop("sky-nether-later", () -> {}, () -> true, 40),
+            new Stop("sky-nether-up", () -> Minecraft.getInstance().player.setXRot(-65.0f), () -> true, 10),
+            // Far out from the main island: within reach of the dragon its boss bar fogs the sky
+            // away, and vanilla draws none.
+            new Stop(null, () -> skyAt("the_end", 1000.5, 100.0, -1L, 0.0f, -10.0f), () -> inDimension(net.minecraft.world.level.Level.END), 60),
+            new Stop("sky-end", () -> {}, () -> true, 5),
+            new Stop("sky-end-up", () -> Minecraft.getInstance().player.setXRot(-60.0f), () -> true, 10),
+            // SkyBlock's End island, which Hypixel sends as an Overworld: the End's sky comes from the
+            // sidebar's zone line alone. At noon, where the Overworld's clouds and blue fog would show.
+            new Stop(null, () -> {
+                skyAt("overworld", 0.5, 120.0, 6000L, 0.0f, -10.0f);
+                endIslandSidebar(true);
+            }, () -> inDimension(net.minecraft.world.level.Level.OVERWORLD), 40),
+            new Stop("sky-end-island", () -> {}, () -> true, 5),
+            new Stop(null, DevScreenshotTour::skyDone, () -> inDimension(net.minecraft.world.level.Level.OVERWORLD), 20),
             // The fire pit preview has to be on a tick before the clay arrives, as in a real fight.
             new Stop(null, DevScreenshotTour::firePitPreview, () -> true, 5),
             new Stop("fire-pits", DevScreenshotTour::placeFirePits, () -> true, 30),
+            // Every aura effect in third person, each after a moment to get going.
+            new Stop(null, DevScreenshotTour::auraPreview, () -> true, 5),
+            new Stop("aura-spirit-orbs", () -> AlpakaConfig.instance.auraEffect = 0, () -> true, 20),
+            new Stop("aura-twin-helix", () -> AlpakaConfig.instance.auraEffect = 1, () -> true, 20),
+            new Stop("aura-arcane-sigil", () -> AlpakaConfig.instance.auraEffect = 2, () -> true, 20),
+            new Stop("aura-inferno", () -> AlpakaConfig.instance.auraEffect = 3, () -> true, 20),
+            new Stop("aura-galaxy", () -> AlpakaConfig.instance.auraEffect = 4, () -> true, 20),
+            new Stop("aura-fireflies", () -> AlpakaConfig.instance.auraEffect = 5, () -> true, 20),
+            new Stop("aura-storm", () -> AlpakaConfig.instance.auraEffect = 6, () -> true, 20),
+            new Stop("aura-rainbow", () -> AlpakaConfig.instance.auraColorMode = 1, () -> true, 20),
+            // At night, where a glow is meant to be seen.
+            new Stop("aura-night-orbs", () -> {
+                AlpakaConfig.instance.auraColorMode = 0;
+                AlpakaConfig.instance.auraEffect = 0;
+                net.minecraft.client.server.IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+                if (server != null) server.execute(() -> server.getCommands().performPrefixedCommand(
+                        server.createCommandSourceStack(), "time set midnight"));
+            }, () -> true, 30),
+            new Stop("aura-night-galaxy", () -> AlpakaConfig.instance.auraEffect = 4, () -> true, 20),
+            new Stop("aura-night-inferno", () -> AlpakaConfig.instance.auraEffect = 3, () -> true, 20),
+            new Stop("aura-night-storm", () -> AlpakaConfig.instance.auraEffect = 6, () -> true, 20),
+            new Stop(null, () -> {
+                AlpakaConfig.instance.auraEnabled = false;
+                AlpakaConfig.instance.auraColorMode = 0;
+                Minecraft.getInstance().options.setCameraType(CameraType.FIRST_PERSON);
+            }, () -> true, 1),
             // Last, as it ends the world: confirming the leave dialog leaves for the title screen
             // rather than going back to the pause menu.
             screen("confirm-pause-before-leaving", net.alpaka.addons.features.escapemenu.CustomPauseScreen::new),
@@ -485,6 +659,12 @@ public final class DevScreenshotTour {
                 WorldPresets::createTestWorldDimensions, new CustomMainMenuScreen());
     }
 
+    /** Puts the mouse on this point of the screen, in GUI pixels. */
+    private static void placeMouseAt(int[] point) {
+        Minecraft mc = Minecraft.getInstance();
+        placeMouse((point[0] + 0.5) / mc.getWindow().getGuiScaledWidth(), (point[1] + 0.5) / mc.getWindow().getGuiScaledHeight());
+    }
+
     /**
      * Puts the mouse at this share of the window's width and height. The tour runs without anyone at
      * the mouse, so the handler's private position is set directly; dev only.
@@ -512,7 +692,7 @@ public final class DevScreenshotTour {
         cfg.inventoryHudEnabled = true;
         cfg.inventoryHudAttachToHotbar = true;
         cfg.inventoryHudVisibility = 0;
-        cfg.worldAgeHudEnabled = true;
+        cfg.performanceHudEnabled = true;
     }
 
     /** The HUD editor's previews and a notice, all drawn in the shared HUD style. */
@@ -550,6 +730,7 @@ public final class DevScreenshotTour {
         Minecraft mc = Minecraft.getInstance();
         mc.gui.setScreen(null);
         mc.gui.toastManager().clear();
+        endIslandSidebar(false);
         AlpakaConfig.instance.menuFontInChat = true;
         AlpakaConfig.instance.menuFontInScoreboard = true;
         net.alpaka.addons.client.gui.GuiFont.refreshChat();
@@ -595,6 +776,99 @@ public final class DevScreenshotTour {
             player.setGameMode(GameType.SURVIVAL);
             player.setItemSlot(net.minecraft.world.entity.EquipmentSlot.CHEST,
                     new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_CHESTPLATE));
+        });
+    }
+
+    /**
+     * Sky Effects on and the HUD off, and the player flying high in this dimension, looking this
+     * way, at this time of day (-1 leaves the time alone).
+     */
+    private static void skyAt(String dimension, double x, double y, long dayTime, float yaw, float pitch) {
+        Minecraft mc = Minecraft.getInstance();
+        AlpakaConfig.instance.skyEffectsEnabled = true;
+        if (!mc.gui.hud.isHidden()) mc.gui.hud.toggle();
+        java.util.UUID id = mc.player.getUUID();
+        net.minecraft.client.server.IntegratedServer server = mc.getSingleplayerServer();
+        if (server == null) return;
+        server.execute(() -> {
+            net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayer(id);
+            if (player == null) return;
+            if (beforeSky == null) {
+                beforeSky = new SkyReturn(player.gameMode(), player.getX(), player.getY(), player.getZ(),
+                        player.getYRot(), player.getXRot(), player.level().getOverworldClockTime());
+            }
+            player.setGameMode(GameType.CREATIVE);
+            player.getAbilities().flying = true;
+            player.onUpdateAbilities();
+            net.minecraft.commands.CommandSourceStack source = server.createCommandSourceStack();
+            if (dayTime >= 0) server.getCommands().performPrefixedCommand(source, "time set " + dayTime);
+            server.getCommands().performPrefixedCommand(source, "weather clear");
+            server.getCommands().performPrefixedCommand(source, String.format(java.util.Locale.ROOT,
+                    "execute in minecraft:%s run tp @a %.1f %.1f 0.5 %.1f %.1f", dimension, x, y, yaw, pitch));
+        });
+    }
+
+    /** In this dimension, with the terrain screen gone. */
+    private static boolean inDimension(net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension) {
+        Minecraft mc = Minecraft.getInstance();
+        return mc.level != null && mc.player != null && mc.level.dimension() == dimension && mc.gui.screen() == null;
+    }
+
+    /**
+     * The tour's sidebar zone line reads "⏣ The End", as on SkyBlock's End island, or its dungeon
+     * again. The space needs a team prefix: score holder names cannot hold one.
+     */
+    private static void endIslandSidebar(boolean endIsland) {
+        net.minecraft.client.server.IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+        if (server == null) return;
+        String[] commands = endIsland ? new String[]{
+                "scoreboard players reset §c⏣Catacombs§7(M7) tour",
+                "team add tourzone",
+                "team modify tourzone prefix {text:\"⏣ The End\",color:\"light_purple\"}",
+                "team join tourzone §5",
+                "scoreboard players set §5 tour 4",
+        } : new String[]{
+                "scoreboard players reset §5 tour",
+                "team remove tourzone",
+                "scoreboard players set §c⏣Catacombs§7(M7) tour 4",
+        };
+        server.execute(() -> {
+            for (String command : commands) {
+                server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), command);
+            }
+        });
+    }
+
+    /** Where the player stood, in which game mode and at what time, before the sky stops. */
+    private record SkyReturn(GameType mode, double x, double y, double z, float yRot, float xRot, long time) {}
+
+    private static SkyReturn beforeSky = null;
+
+    /**
+     * Back in the Overworld where the player was, as they were and at the time it was, with the HUD
+     * on and Sky Effects off - and without the advancement toasts the trip brought.
+     */
+    private static void skyDone() {
+        Minecraft mc = Minecraft.getInstance();
+        AlpakaConfig.instance.skyEffectsEnabled = false;
+        if (mc.gui.hud.isHidden()) mc.gui.hud.toggle();
+        mc.gui.toastManager().clear();
+        java.util.UUID id = mc.player.getUUID();
+        net.minecraft.client.server.IntegratedServer server = mc.getSingleplayerServer();
+        if (server == null) return;
+        server.execute(() -> {
+            net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayer(id);
+            SkyReturn back = beforeSky;
+            beforeSky = null;
+            if (player == null || back == null) return;
+            player.setGameMode(back.mode());
+            player.getAbilities().flying = false;
+            player.onUpdateAbilities();
+            net.minecraft.commands.CommandSourceStack source = server.createCommandSourceStack();
+            server.getCommands().performPrefixedCommand(source, "time set " + back.time() % 24000L);
+            server.getCommands().performPrefixedCommand(source, String.format(java.util.Locale.ROOT,
+                    "execute in minecraft:overworld run tp @a %.3f %.3f %.3f %.1f %.1f",
+                    back.x(), back.y(), back.z(), back.yRot(), back.xRot()));
         });
     }
 
@@ -717,6 +991,18 @@ public final class DevScreenshotTour {
                 level.setBlockAndUpdate(pos, net.minecraft.world.level.block.Blocks.CLAY.defaultBlockState());
             }
         });
+    }
+
+    /** The aura in third person, facing away from the fire pits, nothing else on screen. */
+    private static void auraPreview() {
+        Minecraft mc = Minecraft.getInstance();
+        mc.gui.setScreen(null);
+        mc.gui.hud.getChat().clearMessages(false);
+        AlpakaConfig.instance.inventoryHudEnabled = false;
+        AlpakaConfig.instance.auraEnabled = true;
+        mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+        mc.player.setYRot(mc.player.getYRot() + 180.0f);
+        mc.player.setXRot(18.0f);
     }
 
     /** Third person with the custom name tag, so the camera glide's end and the tag are visible. */

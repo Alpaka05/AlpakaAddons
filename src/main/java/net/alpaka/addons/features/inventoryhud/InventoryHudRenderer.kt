@@ -180,7 +180,7 @@ object InventoryHudRenderer {
         // Behind a real menu the inventory is on screen anyway; chat is not a menu.
         if (mc.gui.screen() != null && mc.gui.screen() !is ChatScreen) return
 
-        val open = InventoryHudFeature.openAmount()
+        val open = InventoryHudFeature.advanceOpenAmount()
         if (open <= 0.001f) return
 
         val scale = cfg.inventoryHudScale
@@ -250,10 +250,16 @@ object InventoryHudRenderer {
         return if (shown) start else start - BAR_ROW
     }
 
-    /** Fabric's height for a HUD element, or vanilla's when the registry has none for it. */
+    /**
+     * Fabric's height for a HUD element, or vanilla's when the registry has none for it: an element
+     * it does not know (IllegalArgumentException), or no heights yet or no camera player
+     * (IllegalStateException). Anything else is a real failure and is not swallowed here.
+     */
     private fun registeredHeight(element: Identifier, vanilla: Int): Int = try {
         HudStatusBarHeightRegistry.getHeight(element)
-    } catch (_: RuntimeException) {
+    } catch (_: IllegalArgumentException) {
+        vanilla
+    } catch (_: IllegalStateException) {
         vanilla
     }
 

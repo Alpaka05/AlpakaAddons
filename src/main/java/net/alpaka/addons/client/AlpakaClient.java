@@ -45,10 +45,8 @@ public class AlpakaClient implements ClientModInitializer {
         // The slayer record waits for its folder when a cloud drive comes up after the game did;
         // polled from the tick so the wait ends even while nothing reads the record.
         // The same tick writes the record once if anything changed it; see AlpakaStats.markDirty.
-        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            net.alpaka.addons.config.AlpakaStats.retryLoadIfAwaiting();
-            net.alpaka.addons.config.AlpakaStats.flushIfDirty();
-        });
+        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(
+                client -> net.alpaka.addons.config.AlpakaStats.tick());
         ZoomFeature.register();
         net.alpaka.addons.features.chat.ChatPeekFeature.register();
         net.alpaka.addons.features.chat.ScreenshotPreview.register();

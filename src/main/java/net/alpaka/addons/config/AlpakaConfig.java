@@ -593,6 +593,8 @@ public class AlpakaConfig {
     public boolean scoreboardAlpakaFooter = true;
     /** Ctrl+F in the chat turns the input line into a search that filters the visible messages. */
     public boolean chatSearchEnabled = true;
+    /** Right-clicking a message in the open chat copies its text; see ChatCopyFeature. */
+    public boolean chatCopyEnabled = true;
     /** Scrolling the chat glides the lines into place instead of jumping a line per notch. */
     public boolean chatSmoothScrollEnabled = true;
     /** The open chat's scrollbar is a wider, rounded bar that can be dragged with the mouse. */
@@ -1362,6 +1364,7 @@ public class AlpakaConfig {
         this.scoreboardBlurEnabled = false;
         this.scoreboardAlpakaFooter = false;
         this.chatSearchEnabled = false;
+        this.chatCopyEnabled = false;
         this.alwaysSprintEnabled = false;
         this.expandChatHistory = false;
         this.chatPeekEnabled = false;

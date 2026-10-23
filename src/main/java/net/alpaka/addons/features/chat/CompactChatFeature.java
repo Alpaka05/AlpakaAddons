@@ -212,6 +212,16 @@ public final class CompactChatFeature {
         return removed;
     }
 
+    /** The content without the counter {@link #withCounter} added, or the content itself when it has none. */
+    public static Component withoutCounter(Component content) {
+        List<Component> parts = content.getSiblings();
+        if (parts.size() == 2 && content.getContents() == net.minecraft.network.chat.contents.PlainTextContents.EMPTY
+                && COUNTER_STYLE.equals(parts.get(1).getStyle())) {
+            return parts.get(0);
+        }
+        return content;
+    }
+
     private static Component withCounter(Component content, int count) {
         MutableComponent line = Component.empty();
         line.append(content);

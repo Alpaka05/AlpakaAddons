@@ -351,42 +351,6 @@ public final class DevScreenshotTour {
             new Stop("aura-night-galaxy", () -> AlpakaConfig.instance.auraEffect = 4, () -> true, 20),
             new Stop("aura-night-inferno", () -> AlpakaConfig.instance.auraEffect = 3, () -> true, 20),
             new Stop("aura-night-storm", () -> AlpakaConfig.instance.auraEffect = 6, () -> true, 20),
-            // The storm frozen at its big moments, at night and then by day.
-            new Stop("aura-night-storm-hammerfall", () -> stormAt(0, 0.03f), () -> true, 5),
-            new Stop("aura-night-storm-thor-strike", () -> stormAt(2, 0.03f), () -> true, 5),
-            new Stop("aura-night-storm-thor-fan", () -> stormAt(2, 0.24f), () -> true, 5),
-            new Stop(null, () -> {
-                net.minecraft.client.server.IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
-                if (server != null) server.execute(() -> server.getCommands().performPrefixedCommand(
-                        server.createCommandSourceStack(), "time set noon"));
-                Minecraft.getInstance().gui.hud.getChat().clearMessages(false);
-            }, () -> true, 10),
-            new Stop("aura-storm-calm", () -> stormAt(0, -2.0f), () -> true, 5),
-            new Stop("aura-storm-build", () -> stormAt(0, -0.45f), () -> true, 5),
-            new Stop("aura-storm-leader", () -> stormAt(0, -0.06f), () -> true, 5),
-            new Stop("aura-storm-hammerfall", () -> stormAt(0, 0.03f), () -> true, 5),
-            new Stop("aura-storm-hammerfall-after", () -> stormAt(0, 0.3f), () -> true, 5),
-            new Stop("aura-storm-volley", () -> stormAt(1, 0.21f), () -> true, 5),
-            new Stop("aura-storm-thor-build", () -> stormAt(2, -0.9f), () -> true, 5),
-            new Stop("aura-storm-thor-strike", () -> stormAt(2, 0.03f), () -> true, 5),
-            new Stop("aura-storm-thor-fan", () -> stormAt(2, 0.24f), () -> true, 5),
-            new Stop("aura-storm-thor-after", () -> stormAt(2, 0.8f), () -> true, 5),
-            new Stop("aura-storm-front", () -> {
-                Minecraft.getInstance().options.setCameraType(CameraType.THIRD_PERSON_FRONT);
-                stormAt(2, -0.9f);
-            }, () -> true, 5),
-            // Running on through the storm: the cloud keeps up, what struck the ground stays behind.
-            new Stop("aura-storm-running", () -> {
-                Minecraft mc = Minecraft.getInstance();
-                mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
-                net.alpaka.addons.features.cosmetics.AuraFeature.setDevFrozenTime(-1.0);
-                mc.options.keyUp.setDown(true);
-                mc.player.setSprinting(true);
-            }, () -> true, 37),
-            new Stop(null, () -> {
-                Minecraft.getInstance().options.keyUp.setDown(false);
-                net.alpaka.addons.features.cosmetics.AuraFeature.setDevFrozenTime(-1.0);
-            }, () -> true, 1),
             new Stop(null, () -> {
                 AlpakaConfig.instance.auraEnabled = false;
                 AlpakaConfig.instance.auraColorMode = 0;
@@ -763,14 +727,6 @@ public final class DevScreenshotTour {
                 level.setBlockAndUpdate(pos, net.minecraft.world.level.block.Blocks.CLAY.defaultBlockState());
             }
         });
-    }
-
-    /** The storm aura held at a moment of cycle [n]: [sinceStrike] seconds after its strike lands. */
-    private static void stormAt(int n, float sinceStrike) {
-        AlpakaConfig.instance.auraEffect = net.alpaka.addons.features.cosmetics.AuraFeature.EFFECT_STORM;
-        AlpakaConfig.instance.auraColorMode = 0;
-        net.alpaka.addons.features.cosmetics.AuraFeature.setDevFrozenTime(
-                net.alpaka.addons.features.cosmetics.StormAura.momentOf(n, sinceStrike));
     }
 
     /** The aura in third person, facing away from the fire pits, nothing else on screen. */

@@ -16,45 +16,13 @@ import kotlin.math.sqrt
  *   Scale - so the effects wrap the body they belong to.
  * @param size the Size setting; scales how far the aura reaches out from the player.
  * @param color the color at a point 0..1 of the effect's own gradient (see [AuraFeature.colorAt]).
- * @param camX where the camera is, in the same frame as the effect (feet at the origin), so an
- *   effect can keep out of the line of sight to the player.
- * @param timeD [time] at full precision, for clocks that must not drift after hours of play.
- * @param speed the Speed setting, so flashes can run on real time whatever the animation speed.
- * @param bodyYaw where the body faces, in radians of Minecraft yaw.
- * @param hideFlash vanilla's Hide Lightning Flashes accessibility setting.
- * @param groundDrop how far the ground is below the feet: 0 standing, more while jumping or flying.
- * @param ceiling how much room there is above the feet before a roof, in blocks.
- * @param history where the player stood over the last seconds, for marks left on the ground.
- * @param ambient how light it is round the player, 0 (pitch dark) to 1 (daylight): sky and block light.
- * @param groundMissing nothing was found below the feet at all - the void, or high flight.
  */
 internal class AuraFrame(
     val time: Float,
     val height: Float,
     val size: Float,
-    val color: AuraColor,
-    val camX: Float = 0f,
-    val camY: Float = 0f,
-    val camZ: Float = 0f,
-    val timeD: Double = time.toDouble(),
-    val speed: Float = 1f,
-    val bodyYaw: Float = 0f,
-    val hideFlash: Boolean = false,
-    val groundDrop: Float = 0f,
-    val ceiling: Float = Float.POSITIVE_INFINITY,
-    val history: AuraHistory? = null,
-    val ambient: Float = 1f,
-    val groundMissing: Boolean = false,
+    val color: (Float) -> Int,
 )
-
-/**
- * An effect's gradient: the color at a point 0..1 along it. A fun interface rather than a
- * (Float) -> Int, which would box the argument and the result on every one of the thousands of calls
- * a frame makes.
- */
-internal fun interface AuraColor {
-    operator fun invoke(k: Float): Int
-}
 
 /**
  * The aura effects. Each one is a pure function of the frame: nothing is simulated or remembered
@@ -409,6 +377,146 @@ internal object AuraEffects {
         out[0] = cos(angle) * radius
         out[1] = f.height * (0.08f + 0.95f * rise)
         out[2] = sin(angle) * radius
+    }
+
+    /**
+     * A thundercloud over the head, slowly churning, with lightning shooting out of its belly many
+     * times a second: jagged bolts with a forked branch and a wide glow, some striking the ground
+     * with a flash. Every strike lights the cloud up from inside, and it flickers between strikes
+     * too. Balls of plasma race around waist and ankles.
+     */
+    fun storm(c: AuraCanvas, f: AuraFrame) {
+        val t = f.time
+        val s = f.size
+        val radius = 0.62f * s
+        val strikes = 12f
+        val strike = floor(t * strikes).toInt()
+        val flash = 1f - 0.6f * fract(t * strikes)
+
+        // The cloud, built like a real thundercloud: a flat, dark base, and on top of it billowing
+        // heaps that get smaller and lighter the higher they sit. Every puff drifts slowly round
+        // the middle and swells a little, so the cloud boils while keeping its shape.
+        // High enough to clear the name tag, which floats half a block above the head.
+        val cloudY = f.height + 0.65f + 0.35f * s
+        val cloudBelly = cloudY - 0.16f * s
+        val tint = f.color(0.5f)
+        val baseTop = mix(0x5A6072, tint, 0.1f)
+        val baseBottom = mix(0x1E2129, tint, 0.06f)
+        for (i in 0 until 8) {
+            val h = i * 13 + 3
+            val a = i * TAU / 7 + t * 0.08f + hash(h) * 0.5f
+            val rr = if (i == 7) 0f else (0.3f + 0.12f * hash(h + 1)) * s
+            val swell = 1f + 0.05f * sin(t * 1.1f + i * 2.3f)
+            c.puff(cos(a) * rr, cloudY - 0.07f * s + sin(t * 0.7f + i) * 0.015f * s, sin(a) * rr,
+                (0.72f + 0.2f * hash(h + 2)) * s * swell, (0.34f + 0.08f * hash(h + 3)) * s * swell,
+                baseTop, baseBottom, 0.92f, i)
+        }
+        for (i in 0 until 14) {
+            val h = i * 17 + 101
+            val level = hash(h)
+            val a = hash(h + 1) * TAU + t * (0.1f + 0.08f * hash(h + 2)) * (if (i % 2 == 0) 1f else -1f)
+            val rr = sqrt(hash(h + 3)) * (0.42f - 0.22f * level) * s
+            val y = cloudY + (0.04f + 0.24f * level) * s + sin(t * 0.9f + i) * 0.02f * s
+            val size = (0.5f - 0.2f * level + 0.12f * hash(h + 4)) * s * (1f + 0.07f * sin(t * 1.3f + i * 2.1f))
+            val top = mix(mix(0x8F96A8, 0xC9CED8, level), tint, 0.1f)
+            val bottom = mix(0x343846, tint, 0.06f)
+            c.puff(cos(a) * rr, y, sin(a) * rr, size, size * 0.9f, top, mix(bottom, top, 0.3f * level), 0.95f, 20 + i)
+        }
+
+        // Sheet lightning: the cloud glowing from inside now and then, between the strikes.
+        if (hash(strike * 5 + 1) > 0.55f) {
+            val a = hash(strike * 5 + 2) * TAU
+            val rr = hash(strike * 5 + 3) * 0.45f * s
+            c.sprite(cos(a) * rr, cloudY, sin(a) * rr, 0.9f * s, f.color(0.3f), 0.45f * flash)
+        }
+
+        val xs = FloatArray(17)
+        val ys = FloatArray(17)
+        val zs = FloatArray(17)
+        for (arc in 0 until 3) {
+            val seed = strike * 17 + arc * 5
+            if (hash(seed) < 0.3f) continue
+            // Out of the belly of the cloud, down past the body to the side or into the ground.
+            val a0 = hash(seed + 1) * TAU
+            val r0 = sqrt(hash(seed + 2)) * 0.4f * s
+            val a1 = a0 + (hash(seed + 3) - 0.5f) * 1.4f
+            val r1 = radius * (1.05f + 0.45f * hash(seed + 4))
+            val grounded = hash(seed + 5) < 0.4f
+            val y1 = if (grounded) 0.02f else (0.15f + 0.5f * hash(seed + 8)) * f.height
+            val x0 = cos(a0) * r0; val z0 = sin(a0) * r0
+            val x1 = cos(a1) * r1; val z1 = sin(a1) * r1
+            for (k in 0 until 17) {
+                val m = k / 16f
+                val jitter = 0.2f * s * sin(m * Math.PI.toFloat()).pow(0.8f)
+                xs[k] = x0 + (x1 - x0) * m + (hash(seed * 31 + k * 3) - 0.5f) * jitter
+                ys[k] = cloudBelly + (y1 - cloudBelly) * m + (hash(seed * 31 + k * 3 + 1) - 0.5f) * jitter * 0.6f
+                zs[k] = z0 + (z1 - z0) * m + (hash(seed * 31 + k * 3 + 2) - 0.5f) * jitter
+            }
+            val tone = 0.15f + 0.5f * hash(seed + 6)
+            bolt(c, xs, ys, zs, 0, 17, 0.22f * s, f.color(tone), 0.28f * flash)
+            bolt(c, xs, ys, zs, 0, 17, 0.05f * s, mix(f.color(tone), 0xFFFFFF, 0.6f), flash)
+
+            // The cloud lit up where the bolt leaves it, and a flash where it lands.
+            c.sprite(x0, cloudBelly + 0.08f * s, z0, 1.0f * s, f.color(tone), 0.55f * flash)
+            c.sprite(xs[16], ys[16], zs[16], (if (grounded) 0.55f else 0.35f) * s, f.color(tone), 0.75f * flash)
+            if (grounded) {
+                c.sprite(xs[16], ys[16] + 0.03f, zs[16], 0.6f * s, mix(f.color(tone), 0xFFFFFF, 0.5f), 0.6f * flash,
+                    sparkle = true, spin = hash(seed + 9) * TAU)
+            }
+
+            // A fork off the middle of the bolt, reaching outwards and down.
+            val from = 5 + (hash(seed + 7) * 6).toInt()
+            val bx = FloatArray(6); val by = FloatArray(6); val bz = FloatArray(6)
+            bx[0] = xs[from]; by[0] = ys[from]; bz[0] = zs[from]
+            val out = 1f / max(0.001f, sqrt(xs[from] * xs[from] + zs[from] * zs[from]))
+            for (k in 1 until 6) {
+                bx[k] = bx[k - 1] + xs[from] * out * 0.07f * s + (hash(seed * 7 + k) - 0.5f) * 0.12f * s
+                by[k] = by[k - 1] - (0.04f + 0.1f * hash(seed * 7 + k + 20)) * s
+                bz[k] = bz[k - 1] + zs[from] * out * 0.07f * s + (hash(seed * 7 + k + 40) - 0.5f) * 0.12f * s
+            }
+            bolt(c, bx, by, bz, 0, 6, 0.03f * s, mix(f.color(tone), 0xFFFFFF, 0.4f), 0.8f * flash)
+        }
+
+        // Plasma racing round the waist and the ankles in opposite directions.
+        val p = FloatArray(3)
+        for (band in 0 until 2) {
+            val y = if (band == 0) f.height * 0.55f else 0.2f
+            val dir = if (band == 0) 1f else -1f
+            for (j in 0 until 2) {
+                val a = dir * t * 4.5f + j * Math.PI.toFloat() + band
+                c.beginRibbon()
+                for (k in 0..12) {
+                    val back = k / 12f
+                    val aa = a - dir * back * 1.4f
+                    p[0] = cos(aa) * radius * 1.15f
+                    p[2] = sin(aa) * radius * 1.15f
+                    c.point(p[0], y + sin(aa * 3f) * 0.05f, p[2], 0.1f * s * (1f - back), f.color(0.6f), 0.7f * (1f - back))
+                }
+                c.endRibbon()
+                c.sprite(cos(a) * radius * 1.15f, y + sin(a * 3f) * 0.05f, sin(a) * radius * 1.15f, 0.3f * s,
+                    f.color(0.6f), 0.8f, sparkle = true, spin = t * 6f)
+            }
+        }
+
+        // Static: tiny sparks that snap in and out around the body.
+        for (m in 0 until 10) {
+            val seed = strike * 23 + m * 3
+            if (hash(seed) < 0.45f) continue
+            val a = hash(seed + 1) * TAU
+            val rr = radius * (0.9f + 0.5f * hash(seed + 2))
+            c.sprite(cos(a) * rr, hash(seed + 3) * f.height, sin(a) * rr, 0.12f * s, mix(f.color(0.3f), 0xFFFFFF, 0.5f),
+                flash, sparkle = true, spin = hash(seed + 4) * TAU)
+        }
+    }
+
+    private fun bolt(c: AuraCanvas, xs: FloatArray, ys: FloatArray, zs: FloatArray, from: Int, to: Int,
+                     width: Float, rgb: Int, alpha: Float) {
+        c.beginRibbon()
+        for (k in from until to) {
+            val m = (k - from).toFloat() / (to - from - 1)
+            c.point(xs[k], ys[k], zs[k], width * (0.6f + 0.4f * sin(m * Math.PI.toFloat())), rgb, alpha)
+        }
+        c.endRibbon()
     }
 
     /** A well-mixed pseudo-random number in 0..1 for an integer, the same every frame. */

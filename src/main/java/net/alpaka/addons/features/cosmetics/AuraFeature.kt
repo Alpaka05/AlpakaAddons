@@ -17,13 +17,9 @@ import net.minecraft.client.renderer.BindGroupLayouts
 import net.minecraft.client.renderer.rendertype.RenderSetup
 import net.minecraft.client.renderer.rendertype.RenderType
 import net.minecraft.resources.Identifier
-import net.minecraft.core.BlockPos
 import net.minecraft.util.Mth
-import net.minecraft.world.level.ClipContext
-import net.minecraft.world.phys.HitResult
 import org.joml.Vector3f
 import kotlin.math.exp
-import kotlin.math.min
 
 /**
  * An animated aura of light around the local player, in third person.
@@ -90,23 +86,9 @@ object AuraFeature {
     /** Aura time, in seconds at speed 1. Advanced each frame by the frame's length times the speed. */
     private var time = 0.0
     private var lastFrameNanos = 0L
-
-    /**
-     * Holds the aura at this time instead of running it, for the screenshot tour: the only way to
-     * photograph one exact moment of an effect, such as the instant a strike lands. Negative runs it.
-     */
-    @JvmStatic
-    var devFrozenTime = -1.0
     private var shownHeight = -1f
-    private var shownAmbient = -1f
-
-    /** The storm's speed limit; see [submit]. */
-    const val STORM_MAX_SPEED = 1.5f
 
     private var renderType: RenderType? = null
-
-    /** The storm's memory of where the player stood; see [AuraHistory]. */
-    private val history = AuraHistory()
 
     @JvmStatic
     fun register() {
@@ -150,7 +132,6 @@ object AuraFeature {
         lastFrameNanos = now
         if (!cfg.auraEnabled) {
             shownHeight = -1f
-            shownAmbient = -1f
             return
         }
         val mc = Minecraft.getInstance()
@@ -160,15 +141,7 @@ object AuraFeature {
         if (mc.options.cameraType.isFirstPerson && mc.cameraEntity === player) return
         if (player.isSpectator || player.isInvisible) return
 
-        val effect = cfg.auraEffect.coerceIn(0, EFFECT_NAMES.size - 1)
-        // The storm's flashes are timed in real seconds; above 1.5x its return strokes and ambient
-        // bolts would come fast enough to strobe, so it never runs faster than that.
-        val speed = cfg.auraSpeed.coerceIn(0.05f, 5f).let { if (effect == EFFECT_STORM) min(it, STORM_MAX_SPEED) else it }
-        time += dt * speed
-        if (devFrozenTime >= 0.0) time = devFrozenTime
-        // The effects animate with float time, which is kept within an hour so it stays exact; the
-        // wiggles it drives twitch once an hour. The storm's clock and its memory run on the double,
-        // which stays exact for years and never wraps.
+        time += dt * cfg.auraSpeed.coerceIn(0.05f, 5f)
 
         val scaleY = if (cfg.playerScaleEnabled) cfg.playerScaleY else 1f
         val targetHeight = player.bbHeight * scaleY
@@ -184,53 +157,12 @@ object AuraFeature {
         val right = camera.orientation.transform(Vector3f(1f, 0f, 0f))
         val up = camera.orientation.transform(Vector3f(0f, 1f, 0f))
 
-        val bodyYaw = Math.toRadians(player.getPreciseBodyRotation(partialTick).toDouble()).toFloat()
-        var groundDrop = 0f
-        var groundMissing = false
-        var ceiling = Float.POSITIVE_INFINITY
-        if (effect == EFFECT_STORM) {
-            // The storm reaches the ground and the sky, so it needs to know where both are: how far
-            // the ground is below a jump or a flight, and whether a roof is in the way of the cloud.
-            val level = player.level()
-            if (!player.onGround()) {
-                val hit = level.clip(ClipContext(feet, feet.add(0.0, -6.0, 0.0), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player))
-                if (hit.type == HitResult.Type.MISS) {
-                    groundDrop = 6f
-                    groundMissing = true
-                } else {
-                    groundDrop = (feet.y - hit.location.y).toFloat().coerceAtLeast(0f)
-                }
-            }
-            val head = feet.add(0.0, shownHeight.toDouble(), 0.0)
-            val up3 = level.clip(ClipContext(head, head.add(0.0, 3.5, 0.0), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player))
-            if (up3.type != HitResult.Type.MISS) ceiling = (up3.location.y - feet.y).toFloat()
-            // How light it is where the player stands, sky and block light alike, so the cloud is
-            // dark at night and in the Mines instead of glowing grey. Eased, so a torch does not pop.
-            val raw = level.getMaxLocalRawBrightness(BlockPos.containing(head)) / 15f
-            shownAmbient = if (shownAmbient < 0f) raw else (shownAmbient + (raw - shownAmbient) * (1.0 - exp(-dt * 2.0))).toFloat()
-            // The same reading of the camera's direction the storm uses, for the strikes it latches.
-            val camHoriz = kotlin.math.hypot(ox, oz)
-            val camYaw = if (camHoriz < 0.4f) kotlin.math.atan2(-kotlin.math.cos(bodyYaw), kotlin.math.sin(bodyYaw))
-            else kotlin.math.atan2(-oz, -ox)
-            if (devFrozenTime >= 0.0) history.clear()
-            history.record(time, feet.x, feet.y, feet.z, if (groundMissing) Float.NaN else groundDrop, camYaw, camHoriz, level)
-        }
+        val effect = cfg.auraEffect.coerceIn(0, EFFECT_NAMES.size - 1)
         val frame = AuraFrame(
-            (time % 3600.0).toFloat(), shownHeight, cfg.auraSize.coerceIn(0.3f, 3f),
-            colorFunction(effect, cfg, (time % 3600.0).toFloat()),
-            -ox, -oy, -oz,
-            timeD = time,
-            speed = speed,
-            bodyYaw = bodyYaw,
-            hideFlash = mc.options.hideLightningFlash().get(),
-            groundDrop = groundDrop,
-            ceiling = ceiling,
-            history = if (effect == EFFECT_STORM) history else null,
-            ambient = if (effect == EFFECT_STORM) shownAmbient.coerceIn(0f, 1f) else 1f,
-            groundMissing = groundMissing,
+            (time % 100_000.0).toFloat(), shownHeight, cfg.auraSize.coerceIn(0.3f, 3f),
+            colorFunction(effect, cfg, (time % 100_000.0).toFloat()),
         )
         val strength = (cfg.auraBrightness / 100f).coerceIn(0.05f, 1f)
-        val height = shownHeight
 
         context.submitNodeCollector().submitCustomGeometry(context.poseStack(), renderType()) { pose, buffer ->
             val canvas = AuraCanvas(pose, buffer, ox, oy, oz, right.x, right.y, right.z, up.x, up.y, up.z, strength)
@@ -241,21 +173,21 @@ object AuraFeature {
                 EFFECT_INFERNO -> AuraEffects.inferno(canvas, frame)
                 EFFECT_GALAXY -> AuraEffects.galaxy(canvas, frame)
                 EFFECT_FIREFLIES -> AuraEffects.fireflies(canvas, frame)
-                else -> StormAura.draw(canvas, frame, AuraAnchors.resolve(pose.pose(), ox, oy, oz, height))
+                else -> AuraEffects.storm(canvas, frame)
             }
         }
     }
 
     /** The gradient an effect is colored by this frame, from the Colors setting. */
-    private fun colorFunction(effect: Int, cfg: AlpakaConfig, time: Float): AuraColor {
+    private fun colorFunction(effect: Int, cfg: AlpakaConfig, time: Float): (Float) -> Int {
         val palette = PALETTES[effect]
         val primary = cfg.auraPrimaryColor and 0xFFFFFF
         val secondary = cfg.auraSecondaryColor and 0xFFFFFF
         return when (cfg.auraColorMode) {
             // The hue runs along the effect and drifts with time, so every part cycles the rainbow.
-            COLORS_RAINBOW -> AuraColor { k -> Mth.hsvToRgb(fract(k * 0.75f + time * 0.08f), 0.75f, 1f) }
-            COLORS_CUSTOM -> AuraColor { k -> AuraEffects.mix(primary, secondary, k.coerceIn(0f, 1f)) }
-            else -> AuraColor { k -> colorAt(palette, k) }
+            COLORS_RAINBOW -> { k -> Mth.hsvToRgb(fract(k * 0.75f + time * 0.08f), 0.75f, 1f) }
+            COLORS_CUSTOM -> { k -> AuraEffects.mix(primary, secondary, k.coerceIn(0f, 1f)) }
+            else -> { k -> colorAt(palette, k) }
         }
     }
 

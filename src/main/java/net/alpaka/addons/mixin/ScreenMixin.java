@@ -2,7 +2,6 @@ package net.alpaka.addons.mixin;
 
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.chat.ChatPeekFeature;
-import net.alpaka.addons.features.itemvalue.ItemValuePopup;
 import net.alpaka.addons.features.snow.SnowOverlayRenderer;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
@@ -11,7 +10,6 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import net.alpaka.addons.features.guifade.GuiFadeTracker;
@@ -69,31 +67,5 @@ public abstract class ScreenMixin {
     )
     private void alpaka$peekChatOverMenu(GuiGraphicsExtractor graphicsExtractor, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
         ChatPeekFeature.renderOverMenu(graphicsExtractor, mouseX, mouseY);
-    }
-
-    /**
-     * The Item Value popup goes in at the same point, after the peeked chat: over the menu, under the
-     * tooltip of a slot beside it.
-     */
-    @Inject(
-        method = "extractRenderStateWithTooltipAndSubtitles",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;extractDeferredElements(IIF)V")
-    )
-    private void alpaka$itemValueOverMenu(GuiGraphicsExtractor graphicsExtractor, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
-        ItemValuePopup.render(graphicsExtractor);
-    }
-
-    /**
-     * With the mouse on the Item Value popup, the menu is told the mouse is nowhere, so the slot under
-     * the popup neither lights up nor shows its tooltip through it.
-     */
-    @ModifyVariable(method = "extractRenderStateWithTooltipAndSubtitles", at = @At("HEAD"), argsOnly = true, ordinal = 0)
-    private int alpaka$mouseXUnderItemValue(int mouseX) {
-        return ItemValuePopup.coversMouse((Screen) (Object) this) ? -10000 : mouseX;
-    }
-
-    @ModifyVariable(method = "extractRenderStateWithTooltipAndSubtitles", at = @At("HEAD"), argsOnly = true, ordinal = 1)
-    private int alpaka$mouseYUnderItemValue(int mouseY) {
-        return ItemValuePopup.coversMouse((Screen) (Object) this) ? -10000 : mouseY;
     }
 }

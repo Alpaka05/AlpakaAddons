@@ -18,6 +18,8 @@
     "AbstractSignEditScreenAccessor",
     "AbstractContainerScreenAccessor",
     "AbstractContainerScreenMixin",
+    "ScreenItemValueMixin",
+    "KeyboardHandlerItemValueMixin",
     "CameraMixin",
     "GuiMixin",
     "HudMixin",

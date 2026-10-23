@@ -4,6 +4,7 @@ import com.mojang.blaze3d.vertex.PoseStack
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.features.slayer.SlayerBossNameTag
 import net.alpaka.addons.features.slayer.SlayerType
+import net.alpaka.addons.utils.AlpakaPerf
 import net.alpaka.addons.utils.DungeonState
 import net.alpaka.addons.utils.SkyblockUtils
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
@@ -120,8 +121,22 @@ object CustomDamageTagFeature {
 
     @JvmStatic
     fun register() {
-        ClientTickEvents.END_CLIENT_TICK.register { tick(it) }
-        LevelRenderEvents.COLLECT_SUBMITS.register { submit(it) }
+        ClientTickEvents.END_CLIENT_TICK.register { mc ->
+            val t = AlpakaPerf.begin(AlpakaPerf.Section.DAMAGE_TAGS_TICK)
+            try {
+                tick(mc)
+            } finally {
+                AlpakaPerf.end(AlpakaPerf.Section.DAMAGE_TAGS_TICK, t)
+            }
+        }
+        LevelRenderEvents.COLLECT_SUBMITS.register { context ->
+            val t = AlpakaPerf.begin(AlpakaPerf.Section.DAMAGE_TAGS)
+            try {
+                submit(context)
+            } finally {
+                AlpakaPerf.end(AlpakaPerf.Section.DAMAGE_TAGS, t)
+            }
+        }
     }
 
     @JvmStatic

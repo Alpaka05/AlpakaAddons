@@ -52,7 +52,10 @@ final class WorldClockModel {
     private static final long MAX_PLAUSIBLE_AGE_TICKS = 100L * DAY_TICKS;
 
     enum Mode {
-        /** No update yet, or only one: a single value cannot tell a pinned clock from a running one. */
+        /**
+         * Not enough updates yet to tell a pinned clock from a running one: until the first jump,
+         * or two updates in a row without one.
+         */
         WAITING,
         NORMAL,
         PINNED,
@@ -63,6 +66,8 @@ final class WorldClockModel {
     private long lastClockTicks = -1L;
     private long lastGameTime = 0L;
     private long lastJumpGameTime = 0L;
+    /** Updates in a row without a jump while {@link Mode#WAITING}. */
+    private int steadyUpdates = 0;
 
     /** Forgets everything; called when the player changes world. */
     void reset() {
@@ -70,6 +75,7 @@ final class WorldClockModel {
         lastClockTicks = -1L;
         lastGameTime = 0L;
         lastJumpGameTime = 0L;
+        steadyUpdates = 0;
     }
 
     /** Takes one time update: the world's game time and the overworld clock's value and rate in it. */
@@ -82,6 +88,12 @@ final class WorldClockModel {
             if (clockTicks - lastClockTicks > expected + JUMP_THRESHOLD_TICKS) {
                 mode = Mode.PINNED;
                 lastJumpGameTime = gameTime;
+            } else if (mode == Mode.WAITING) {
+                // The update after joining can come before a pinned clock's first jump, and between
+                // its jumps a pinned clock runs like any other: taken as running, the Crimson Isle
+                // showed the clock's raw count - "Day 28399" - for a second. Two steady updates in a
+                // row first; a pinned clock jumps before the second.
+                if (++steadyUpdates >= 2) mode = Mode.NORMAL;
             } else if (mode != Mode.PINNED || gameTime - lastJumpGameTime > PIN_TIMEOUT_TICKS) {
                 // A pinned clock's regular updates between the jumps look normal, so it only counts
                 // as running again once the jumps have stopped.

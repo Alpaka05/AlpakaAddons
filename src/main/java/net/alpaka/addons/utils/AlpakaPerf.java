@@ -5,7 +5,10 @@ import net.minecraft.util.profiling.Profiler;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
@@ -23,6 +26,13 @@ import java.util.Locale;
  * the entity phase they add to is timed once per frame as a whole ({@link Section#ENTITY_PHASE}).
  * Next to the sections the report gives how fast the client thread allocates and how often the
  * garbage collector ran, which is where much of a mod's cost shows rather than in its own time.
+ *
+ * Averages hide a freeze: one frame of 300 ms in a minute of 500 fps barely moves them. So while
+ * measuring, every frame is also split into the client loop's own phases ({@link Phase}), and a
+ * frame that takes {@link #SPIKE_MS} or more is kept with what it spent its time on: the phases,
+ * the client thread's CPU time (far below the frame's time means it waited, for the GPU, a lock or
+ * the garbage collector, rather than computed), what it allocated, the collector's pauses and our
+ * own sections. Each one also goes into latest.log, to line up with chat and warps there.
  *
  * Only call from the render or client thread, which is where every timed hook runs.
  */
@@ -67,12 +77,55 @@ public final class AlpakaPerf {
         }
     }
 
+    /** The steps of one pass of the client loop, timed around vanilla's calls. */
+    public enum Phase {
+        PACKETS("packets"),
+        TASKS("tasks"),
+        TICK("tick"),
+        EXTRACT("extract"),
+        GPU_TASKS("gpu tasks"),
+        RENDER("render"),
+        ACQUIRE("acquire"),
+        SUBMIT("submit"),
+        PRESENT("present"),
+        /** The frame rate limit's sleep; left out of a frame's time, as it is waiting by choice. */
+        LIMITER("limiter");
+
+        final String label;
+
+        Phase(String label) {
+            this.label = label;
+        }
+    }
+
+    /** A frame whose time, the limiter's sleep left out, reaches this is a spike. */
+    static final long SPIKE_MS = 50L;
+    private static final long[] SPIKE_STEPS_MS = {50L, 100L, 250L, 1000L};
+    private static final int WORST_KEPT = 5;
+    /** Enough for a long session; past it the report still counts them. */
+    private static final int MAX_LOGGED = 300;
+    private static final DateTimeFormatter CLOCK = DateTimeFormatter.ofPattern("HH:mm:ss");
+
     /** What {@link #begin} hands out while measuring is off; {@link #end} then does nothing. */
     private static final long OFF = Long.MIN_VALUE;
 
     private static final Section[] SECTIONS = Section.values();
     private static final long[] NANOS = new long[SECTIONS.length];
     private static final long[] CALLS = new long[SECTIONS.length];
+    private static final Phase[] PHASES = Phase.values();
+    private static final long[] PHASE_NANOS = new long[PHASES.length];
+
+    /** The running frame: its phases and sections, and where its counters stood at its start. */
+    private static final long[] FRAME_PHASES = new long[PHASES.length];
+    private static final long[] FRAME_SECTIONS = new long[SECTIONS.length];
+    private static long frameStartNanos = 0L;
+    private static long frameCpuStart, frameAllocStart;
+    private static final long[] frameGcStart = new long[4];
+
+    private static long frames, workNanos, worstWorkNanos;
+    private static final long[] SPIKES = new long[SPIKE_STEPS_MS.length];
+    private static final List<Spike> WORST = new ArrayList<>();
+    private static int spikesLogged;
 
     private static boolean enabled = false;
     private static long windowStartNanos = System.nanoTime();
@@ -83,6 +136,8 @@ public final class AlpakaPerf {
     private static long threadId = -1L;
     private static long allocatedAtStart, allocatedAtEnd;
     private static long gcRunsAtStart, gcRunsAtEnd, gcMillisAtStart, gcMillisAtEnd;
+    private static final long[] gcAtStart = new long[4];
+    private static final long[] gcAtEnd = new long[4];
 
     private AlpakaPerf() {}
 
@@ -104,6 +159,8 @@ public final class AlpakaPerf {
         allocatedAtEnd = allocatedBytes();
         gcRunsAtEnd = gcRuns();
         gcMillisAtEnd = gcMillis();
+        gcSnapshot(gcAtEnd);
+        frameStartNanos = 0L;
     }
 
     /** Starts timing a section; pass the result to {@link #end}, in a finally. */
@@ -116,7 +173,9 @@ public final class AlpakaPerf {
     public static void end(Section section, long startNanos) {
         // Begun while off, so nothing was pushed - even if measuring started since.
         if (startNanos == OFF) return;
-        NANOS[section.ordinal()] += System.nanoTime() - startNanos;
+        long took = System.nanoTime() - startNanos;
+        NANOS[section.ordinal()] += took;
+        FRAME_SECTIONS[section.ordinal()] += took;
         CALLS[section.ordinal()]++;
         Profiler.get().pop();
     }
@@ -126,16 +185,129 @@ public final class AlpakaPerf {
         if (enabled) CALLS[section.ordinal()]++;
     }
 
+    /** Starts timing a phase of the client loop; pass the result to {@link #phaseEnd}. */
+    public static long phaseBegin() {
+        return enabled ? System.nanoTime() : OFF;
+    }
+
+    public static void phaseEnd(Phase phase, long startNanos) {
+        if (startNanos == OFF) return;
+        long took = System.nanoTime() - startNanos;
+        PHASE_NANOS[phase.ordinal()] += took;
+        FRAME_PHASES[phase.ordinal()] += took;
+    }
+
+    /** Called as each pass of the client loop begins: closes the frame before it. */
+    public static void frameStart() {
+        if (!enabled) {
+            frameStartNanos = 0L;
+            return;
+        }
+        long now = System.nanoTime();
+        if (frameStartNanos != 0L) finishFrame(now - frameStartNanos);
+        Arrays.fill(FRAME_PHASES, 0L);
+        Arrays.fill(FRAME_SECTIONS, 0L);
+        frameCpuStart = cpuNanos();
+        frameAllocStart = allocatedBytes();
+        gcSnapshot(frameGcStart);
+        frameStartNanos = System.nanoTime();
+    }
+
+    /** Books the frame that just ended, {@code wallNanos} long; package-private for the tests. */
+    static void finishFrame(long wallNanos) {
+        long work = Math.max(0L, wallNanos - FRAME_PHASES[Phase.LIMITER.ordinal()]);
+        frames++;
+        workNanos += work;
+        worstWorkNanos = Math.max(worstWorkNanos, work);
+        long workMs = work / 1_000_000L;
+        if (workMs < SPIKE_MS) return;
+        for (int i = 0; i < SPIKE_STEPS_MS.length; i++) {
+            if (workMs >= SPIKE_STEPS_MS[i]) SPIKES[i]++;
+        }
+
+        long cpuNow = cpuNanos();
+        long allocNow = allocatedBytes();
+        long[] gc = new long[4];
+        gcSnapshot(gc);
+        Spike spike = new Spike(LocalTime.now(), work,
+                frameCpuStart < 0 || cpuNow < 0 ? -1L : cpuNow - frameCpuStart,
+                frameAllocStart < 0 || allocNow < 0 ? -1L : allocNow - frameAllocStart,
+                gc[0] - frameGcStart[0], gc[1] - frameGcStart[1], gc[2] - frameGcStart[2],
+                FRAME_PHASES.clone(), FRAME_SECTIONS.clone());
+        if (spikesLogged < MAX_LOGGED) {
+            spikesLogged++;
+            net.alpaka.addons.AlpakaAddons.LOGGER.info("[AlpakaPerf] spike {}", spike.describe());
+        }
+        WORST.add(spike);
+        WORST.sort((a, b) -> Long.compare(b.workNanos, a.workNanos));
+        if (WORST.size() > WORST_KEPT) WORST.remove(WORST.size() - 1);
+    }
+
+    /** One slow frame, with where its time went. */
+    record Spike(LocalTime at, long workNanos, long cpuNanos, long allocatedBytes,
+                 long gcPauses, long gcPauseMillis, long gcCycles, long[] phases, long[] sections) {
+
+        String describe() {
+            StringBuilder out = new StringBuilder(String.format(Locale.ROOT, "%s  %d ms", CLOCK.format(at), workNanos / 1_000_000L));
+            List<String> details = new ArrayList<>();
+            if (cpuNanos >= 0) details.add(String.format(Locale.ROOT, "cpu %d ms", cpuNanos / 1_000_000L));
+            if (allocatedBytes >= 0) details.add(String.format(Locale.ROOT, "%.1f MB", allocatedBytes / 1e6));
+            if (!details.isEmpty()) out.append(" (").append(String.join(", ", details)).append(")");
+
+            // Biggest phase first; what no phase covers is the rest of the loop.
+            long covered = 0L;
+            List<Integer> order = new ArrayList<>();
+            for (Phase phase : PHASES) {
+                if (phase == Phase.LIMITER) continue;
+                covered += phases[phase.ordinal()];
+                order.add(phase.ordinal());
+            }
+            order.sort((a, b) -> Long.compare(phases[b], phases[a]));
+            for (int i : order) {
+                if (phases[i] >= 1_000_000L) {
+                    out.append(String.format(Locale.ROOT, " · %s %d", PHASES[i].label, phases[i] / 1_000_000L));
+                }
+            }
+            long rest = workNanos - covered;
+            if (rest >= 1_000_000L) out.append(String.format(Locale.ROOT, " · other %d", rest / 1_000_000L));
+
+            if (gcPauses > 0) out.append(String.format(Locale.ROOT, " · GC pause %d× %d ms", gcPauses, gcPauseMillis));
+            if (gcCycles > 0) out.append(String.format(Locale.ROOT, " · GC cycle %d", gcCycles));
+
+            List<Integer> ours = new ArrayList<>();
+            for (Section section : SECTIONS) {
+                if (sections[section.ordinal()] >= 100_000L) ours.add(section.ordinal());
+            }
+            ours.sort((a, b) -> Long.compare(sections[b], sections[a]));
+            if (!ours.isEmpty()) {
+                List<String> named = new ArrayList<>();
+                for (int i : ours.subList(0, Math.min(3, ours.size()))) {
+                    named.add(String.format(Locale.ROOT, "%s %.1f", SECTIONS[i].id.substring("alpaka:".length()), sections[i] / 1e6));
+                }
+                out.append(" · alpaka: ").append(String.join(", ", named));
+            }
+            return out.toString();
+        }
+    }
+
     /** Back to zero; measuring stays on or off as it was. */
     public static void reset() {
-        java.util.Arrays.fill(NANOS, 0L);
-        java.util.Arrays.fill(CALLS, 0L);
+        Arrays.fill(NANOS, 0L);
+        Arrays.fill(CALLS, 0L);
+        Arrays.fill(PHASE_NANOS, 0L);
+        Arrays.fill(SPIKES, 0L);
+        WORST.clear();
+        frames = workNanos = worstWorkNanos = 0L;
+        spikesLogged = 0;
+        frameStartNanos = 0L;
         windowStartNanos = System.nanoTime();
         windowEndNanos = 0L;
         threadId = Thread.currentThread().threadId();
         allocatedAtStart = allocatedAtEnd = allocatedBytes();
         gcRunsAtStart = gcRunsAtEnd = gcRuns();
         gcMillisAtStart = gcMillisAtEnd = gcMillis();
+        gcSnapshot(gcAtStart);
+        System.arraycopy(gcAtStart, 0, gcAtEnd, 0, 4);
     }
 
     /**
@@ -167,13 +339,71 @@ public final class AlpakaPerf {
         }
         if (lines.size() == 1) lines.add("nothing measured yet");
 
+        if (frames > 0) {
+            lines.add(String.format(Locale.ROOT, "frames %d, %.2f ms on average, worst %d ms · %s",
+                    frames, workNanos / 1e6 / frames, worstWorkNanos / 1_000_000L, spikeCounts()));
+            List<String> phases = new ArrayList<>();
+            for (Phase phase : PHASES) {
+                if (PHASE_NANOS[phase.ordinal()] == 0L) continue;
+                phases.add(String.format(Locale.ROOT, "%s %.1f", phase.label, PHASE_NANOS[phase.ordinal()] / 1e6 / seconds));
+            }
+            if (!phases.isEmpty()) lines.add("frame phases, ms per second: " + String.join(" · ", phases));
+            if (!WORST.isEmpty()) {
+                lines.add("worst frames (ms):");
+                for (Spike spike : WORST) lines.add(spike.describe());
+                lines.add("every frame of " + SPIKE_MS + " ms or more is in latest.log as \"[AlpakaPerf] spike\"");
+            }
+        }
+
         long allocated = (enabled ? allocatedBytes() : allocatedAtEnd) - allocatedAtStart;
         long runs = (enabled ? gcRuns() : gcRunsAtEnd) - gcRunsAtStart;
         long millis = (enabled ? gcMillis() : gcMillisAtEnd) - gcMillisAtStart;
         String allocation = allocatedAtStart < 0 ? "client thread allocations: not available on this Java"
                 : String.format(Locale.ROOT, "client thread allocates %.1f MB/s", allocated / 1e6 / seconds);
-        lines.add(String.format(Locale.ROOT, "%s · GC: %d runs, %d ms", allocation, runs, millis));
+        long[] gcNow = new long[4];
+        if (enabled) gcSnapshot(gcNow); else System.arraycopy(gcAtEnd, 0, gcNow, 0, 4);
+        lines.add(String.format(Locale.ROOT, "%s · GC: %d runs, %d ms (pauses %d, %d ms; concurrent cycles %d)",
+                allocation, runs, millis, gcNow[0] - gcAtStart[0], gcNow[1] - gcAtStart[1], gcNow[2] - gcAtStart[2]));
         return lines;
+    }
+
+    private static String spikeCounts() {
+        List<String> counts = new ArrayList<>();
+        for (int i = 0; i < SPIKE_STEPS_MS.length; i++) {
+            counts.add(String.format(Locale.ROOT, "%d ms+: %d", SPIKE_STEPS_MS[i], SPIKES[i]));
+        }
+        return String.join(", ", counts);
+    }
+
+    /** CPU time the calling thread has used so far, or -1 where the JVM cannot tell. */
+    private static long cpuNanos() {
+        ThreadMXBean bean = ManagementFactory.getThreadMXBean();
+        return bean.isCurrentThreadCpuTimeSupported() ? bean.getCurrentThreadCpuTime() : -1L;
+    }
+
+    private static List<GarbageCollectorMXBean> collectors;
+
+    /**
+     * Collector pauses (count, ms) and concurrent cycles (count) so far, into {@code into}. ZGC
+     * and Shenandoah report their pauses and their cycles as separate beans; the cycles run beside
+     * the game and only stop it when it allocates faster than they free.
+     */
+    private static void gcSnapshot(long[] into) {
+        if (collectors == null) collectors = ManagementFactory.getGarbageCollectorMXBeans();
+        Arrays.fill(into, 0L);
+        for (GarbageCollectorMXBean gc : collectors) {
+            long count = Math.max(0L, gc.getCollectionCount());
+            if (isPause(gc.getName())) {
+                into[0] += count;
+                into[1] += Math.max(0L, gc.getCollectionTime());
+            } else {
+                into[2] += count;
+            }
+        }
+    }
+
+    static boolean isPause(String collector) {
+        return collector.contains("Pauses") || !(collector.contains("Cycles") || collector.contains("Concurrent"));
     }
 
     /** Bytes the measured thread has allocated so far, or -1 where the JVM cannot tell. */

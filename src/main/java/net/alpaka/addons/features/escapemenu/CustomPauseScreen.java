@@ -197,7 +197,7 @@ public class CustomPauseScreen extends PauseScreen {
                 if (net.alpaka.addons.compat.ModMenuCompat.isLoaded()) {
                     net.alpaka.addons.compat.ModMenuCompat.openModsScreen(this);
                 } else {
-                    this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options, false));
+                    this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options, true));
                 }
             }
         });
@@ -207,7 +207,9 @@ public class CustomPauseScreen extends PauseScreen {
         this.optionsButton = new PauseButton(Kind.GLASS, 4, fullX, rowY + ROW_PITCH * 2, HALF_WIDTH, BUTTON_HEIGHT,
                 MenuStyle.ICON_SLIDERS, "Options", btn -> {
             if (this.minecraft != null) {
-                this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options, false));
+                // In a world, as vanilla's pause menu opens it: without that the singleplayer
+                // difficulty and the world's own options are missing.
+                this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options, true));
             }
         });
         this.addRenderableWidget(this.optionsButton);
@@ -244,14 +246,22 @@ public class CustomPauseScreen extends PauseScreen {
         this.promptConfirmButton = new PauseButton(Kind.QUIT, -1, promptX + PROMPT_WIDTH - 16 - PROMPT_BUTTON_WIDTH, pBtnY,
                 PROMPT_BUTTON_WIDTH, PROMPT_BUTTON_HEIGHT, MenuStyle.ICON_DOOR, leaveText, btn -> {
             if (this.minecraft != null) {
-                if (this.minecraft.level != null) {
-                    this.minecraft.level.disconnect(Component.literal("Disconnected"));
-                }
-                this.minecraft.disconnect(new TitleScreen(), false);
+                // As vanilla's pause menu does: a player report still being written is offered
+                // back first, and leaving only goes ahead once it is sent or dropped.
+                btn.active = false;
+                this.minecraft.getReportingContext().draftReportHandled(this.minecraft, this, this::leaveWorld, true);
             }
         });
 
         this.updateWidgetStates();
+    }
+
+    private void leaveWorld() {
+        if (this.minecraft == null) return;
+        if (this.minecraft.level != null) {
+            this.minecraft.level.disconnect(Component.literal("Disconnected"));
+        }
+        this.minecraft.disconnect(new TitleScreen(), false);
     }
 
     private void updateWidgetStates() {

@@ -271,7 +271,18 @@ public class CustomPauseScreen extends PauseScreen {
     public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         // Vanilla's menu blur, but not vanilla's heavy in-world darkening: the dim here is lighter
         // and fades in, so the world stays visible behind the menu.
-        this.extractBlurredBackground(graphics);
+        //
+        // Only while this menu is the screen on top, as vanilla's pause menu does it. The Friends
+        // overlay (the Friends key, O) opens over any pause menu, draws it as its backdrop and then
+        // blurs on its own; a second blur in the same frame throws and crashes the game. The catch
+        // covers another mod's screen that does the same without being the one on top.
+        if (isTopmostScreen()) {
+            try {
+                this.extractBlurredBackground(graphics);
+            } catch (IllegalStateException ignored) {
+                // Something blurred this frame already; the menu stays on that blur.
+            }
+        }
 
         // Drawn against an identity matrix rather than whatever is already on the pose stack -
         // other installed GUI mods (SmoothGui and friends) apply their own open-transition
@@ -463,6 +474,11 @@ public class CustomPauseScreen extends PauseScreen {
     @FunctionalInterface
     private interface ButtonAction {
         void onPress(PauseButton button);
+    }
+
+    /** Whether this menu is the screen on top; vanilla's PauseScreen.isTopmostScreen(), which is private. */
+    private boolean isTopmostScreen() {
+        return this.minecraft != null && this.minecraft.gui.screen() == this;
     }
 
     /**

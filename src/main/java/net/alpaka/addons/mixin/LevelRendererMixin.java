@@ -5,6 +5,7 @@ import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.blockoverlay.BlockOverlayFeature;
 import net.alpaka.addons.features.etherwarp.EtherwarpDetector;
 import net.alpaka.addons.features.etherwarp.EtherwarpOverlayFeature;
+import net.alpaka.addons.utils.AlpakaPerf;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -30,7 +31,12 @@ public class LevelRendererMixin {
     @Inject(method = "collectPerFrameRenderThreadGizmos", at = @At("RETURN"))
     private void alpaka$collectEtherwarpGizmos(CallbackInfoReturnable<Gizmos.TemporaryCollection> cir) {
         if (!EtherwarpOverlayFeature.isEnabled()) return;
-        EtherwarpOverlayFeature.collectGizmos();
+        long t = AlpakaPerf.begin(AlpakaPerf.Section.LEVEL_OVERLAYS);
+        try {
+            EtherwarpOverlayFeature.collectGizmos();
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.LEVEL_OVERLAYS, t);
+        }
     }
 
     /**
@@ -63,6 +69,11 @@ public class LevelRendererMixin {
         }
 
         ci.cancel();
-        BlockOverlayFeature.submit(poseStack, collector, levelState.cameraRenderState, state);
+        long t = AlpakaPerf.begin(AlpakaPerf.Section.LEVEL_OVERLAYS);
+        try {
+            BlockOverlayFeature.submit(poseStack, collector, levelState.cameraRenderState, state);
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.LEVEL_OVERLAYS, t);
+        }
     }
 }

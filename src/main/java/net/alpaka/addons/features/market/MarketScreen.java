@@ -35,6 +35,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Locale;
 
 /**
  * The Auction House and the Bazaar, redrawn in the config menu's design: categories with their own
@@ -864,7 +865,7 @@ public class MarketScreen extends ContainerScreen {
         int ly = py + 16;
         int lx = tx;
         if (info.isOver()) {
-            boolean sold = info.status.toLowerCase().contains("sold");
+            boolean sold = info.status.toLowerCase(Locale.ROOT).contains("sold");
             lx += pill(graphics, lx, ly, info.status.replace("!", ""), sold ? GREEN : RED, alpha) + 4;
         } else {
             lx += pill(graphics, lx, ly, info.isBin() ? "BIN" : "BID", info.isBin() ? GREEN : AQUA, alpha) + 4;
@@ -1173,7 +1174,7 @@ public class MarketScreen extends ContainerScreen {
 
     private TileKind tileKind(int slot) {
         MarketMenu.Slot s = plain(slot);
-        String name = s.name().toLowerCase();
+        String name = s.name().toLowerCase(Locale.ROOT);
         String id = s.itemId();
         if (name.startsWith("cancel") || id.equals("red_terracotta") || id.equals("barrier")) return TileKind.DANGER;
         // The step that completes what the player came for: confirming, buying the item or bidding

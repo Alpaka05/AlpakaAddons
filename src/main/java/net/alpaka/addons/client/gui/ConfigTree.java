@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Locale;
 
 /**
  * The config options arranged the way the redesigned screen shows them: category, then section,
@@ -58,7 +59,7 @@ public final class ConfigTree {
 
         public boolean matches(String normalizedQuery) {
             if (normalizedQuery.isEmpty()) return true;
-            if (title.toLowerCase().contains(normalizedQuery)) return true;
+            if (title.toLowerCase(Locale.ROOT).contains(normalizedQuery)) return true;
             if (master != null && master.matchesNormalized(normalizedQuery)) return true;
             for (ConfigOption option : settings) {
                 if (option.matchesNormalized(normalizedQuery)) return true;
@@ -123,6 +124,7 @@ public final class ConfigTree {
     /** Settings registered away from their feature. */
     private static final Map<String, String> PARENTS = Map.ofEntries(
             Map.entry("smooth_perspective_duration", "smooth_perspective"),
+            Map.entry("custom_main_menu_whats_new", "custom_main_menu"),
             // The chat's background and font are parts of Better Chat.
             Map.entry("chat_blur", "better_chat"),
             Map.entry("chat_smooth_font", "better_chat"),

@@ -150,6 +150,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customMainMenuEnabled = v; AlpakaConfig.save(); },
                 "custom main menu title screen hypixel start launch background GUI hypixel-themed"));
 
+        OPTIONS.add(new ConfigOption("custom_main_menu_particles", "Inventory Particles in Main Menu",
+                "Shows your Inventory Particles behind the custom main menu too.",
+                ConfigCategory.GENERAL,
+                () -> AlpakaConfig.instance.customMainMenuParticles,
+                v -> { AlpakaConfig.instance.customMainMenuParticles = v; AlpakaConfig.save(); },
+                "custom main menu inventory particles snow rain fireflies cherry petals leaves glyphs ash title screen hide"));
+
         OPTIONS.add(new ConfigOption("disable_all_features", "Disable All Features",
                 "Turns off every feature of the mod, after asking first.",
                 ConfigCategory.GENERAL,
@@ -157,8 +164,8 @@ public class AlpakaConfigRegistry {
                 parent -> AlpakaConfig.instance.disableAllFeatures(),
                 "disable all features turn off reset everywhere confirm prompt disables confirmation")
                 .confirm("Disable All Features",
-                        "Turns off every feature of Alpaka Addons, and some of their settings with them. "
-                                + "Which ones were on is not remembered. This cannot be undone.",
+                        "Turns off every feature of Alpaka Addons. Their settings stay, but which features "
+                                + "were on is not remembered. This cannot be undone.",
                         "Disable All", true));
 
         OPTIONS.add(new ConfigOption("reset_all_settings", "Reset All Settings",
@@ -174,6 +181,15 @@ public class AlpakaConfigRegistry {
                         "Puts every setting of Alpaka Addons back to its default, HUD positions and Command Wheel commands included. "
                                 + "Slayer stats and saved viewmodel presets are kept. This cannot be undone.",
                         "Reset All", true));
+
+        // A setting of Custom Main Menu (ConfigTree.PARENTS), registered here rather than right
+        // under it so it does not collide with the other main menu settings added there.
+        OPTIONS.add(new ConfigOption("custom_main_menu_whats_new", "What's New Card",
+                "Shows the newest release's changes at the top right of the custom main menu. Needs Network Features.",
+                ConfigCategory.GENERAL,
+                () -> AlpakaConfig.instance.customMainMenuWhatsNew,
+                v -> { AlpakaConfig.instance.customMainMenuWhatsNew = v; AlpakaConfig.save(); },
+                "custom main menu what's new whats new release notes changelog changes update card news"));
 
         // --- 1. VISUALS & RENDERING ---
 
@@ -371,29 +387,39 @@ public class AlpakaConfigRegistry {
                 50.0f, 1000.0f, val -> String.format(Locale.ROOT, "%d ms", Math.round(val)),
                 "container background fade speed duration time ms transition container fade speed"));
 
-        OPTIONS.add(new ConfigOption("inventory_snow", "Inventory Snowflakes",
-                "Lets snowflakes fall over container screens, like chests and your inventory.",
+        // The id keeps its old name so existing configs and search links still find the option.
+        OPTIONS.add(new ConfigOption("inventory_snow", "Inventory Particles",
+                "Lets particles drift over container screens, like chests and your inventory.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.inventorySnowEnabled,
                 v -> { AlpakaConfig.instance.inventorySnowEnabled = v; AlpakaConfig.save(); },
-                "snow winter effect gui inventory snowflakes"));
+                "snow winter effect gui inventory snowflakes particles fireflies ash cherry petals leaves autumn enchanting glyphs rain"));
 
-        OPTIONS.add(new ConfigOption("inventory_snow_speed", "Snowfall Speed",
-                "How fast the snowflakes fall.",
+        OPTIONS.add(new ConfigOption("inventory_particle_type", "Particle Type",
+                "Which particles drift over container screens.",
+                ConfigCategory.VISUALS,
+                () -> (float) SnowOverlayRenderer.clampType(AlpakaConfig.instance.inventoryParticleType),
+                v -> { AlpakaConfig.instance.inventoryParticleType = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (SnowOverlayRenderer.TYPE_NAMES.length - 1),
+                val -> SnowOverlayRenderer.TYPE_NAMES[SnowOverlayRenderer.clampType(Math.round(val))],
+                "inventory particle type kind snowflakes fireflies ash snow embers cherry petals blossom falling leaves autumn fall enchanting glyphs runes enchant rain").choices(SnowOverlayRenderer.TYPE_NAMES));
+
+        OPTIONS.add(new ConfigOption("inventory_snow_speed", "Particle Speed",
+                "How fast the particles move.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.inventorySnowSpeed,
                 v -> { AlpakaConfig.instance.inventorySnowSpeed = v; AlpakaConfig.save(); },
                 0.1f, 5.0f, val -> String.format(Locale.ROOT, "%.2fx", val),
-                "snow speed animation winter velocity snow fall speed"));
+                "snow speed animation winter velocity particles snow fall speed"));
 
-        OPTIONS.add(new ConfigOption("inventory_snow_amount", "Snowflake Amount",
-                "How many snowflakes fall at once.",
+        OPTIONS.add(new ConfigOption("inventory_snow_amount", "Particle Amount",
+                "How many particles are on screen at once.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.inventorySnowAmount,
                 v -> { AlpakaConfig.instance.inventorySnowAmount = v; AlpakaConfig.save(); },
                 SnowOverlayRenderer.MIN_AMOUNT, SnowOverlayRenderer.MAX_AMOUNT,
                 val -> String.format(Locale.ROOT, "%.2fx", val),
-                "snow amount count density number flakes winter more less"));
+                "snow amount count density number flakes winter more less particles snowflake amount"));
 
         OPTIONS.add(new ConfigOption("scrollable_tooltips", "Scrollable Tooltips",
                 "Lets the mouse wheel scroll a tooltip that is taller than the screen.",
@@ -2250,6 +2276,30 @@ public class AlpakaConfigRegistry {
         List<ConfigOption> result = java.util.Collections.unmodifiableList(filtered);
         SEARCH_CACHE.put(category, result);
         return result;
+    }
+
+    /**
+     * Brings every slider's stored value back into the slider's range, with one save for all of
+     * them. A hand edit or an old file can hold a value the slider never offers - an index past the
+     * end of a choice list, a negative size - and the features read the field, not the slider.
+     *
+     * Run once the game has started rather than while the settings load: a setter may act on the
+     * game as well, and Warp Sound plays its preview. Returns how many values changed.
+     */
+    public static int clampStoredValues() {
+        int changed = 0;
+        AlpakaConfig.beginDeferredSaves();
+        try {
+            for (ConfigOption option : OPTIONS) {
+                if (option.clampStoredValue()) changed++;
+            }
+        } finally {
+            AlpakaConfig.endDeferredSaves();
+        }
+        if (changed > 0) {
+            net.alpaka.addons.AlpakaAddons.LOGGER.warn("Brought {} setting(s) back into their slider's range", changed);
+        }
+        return changed;
     }
 
     /** How many non-header options a category holds for the current search term. */

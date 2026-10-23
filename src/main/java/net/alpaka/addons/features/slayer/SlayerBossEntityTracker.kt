@@ -170,8 +170,7 @@ object SlayerBossEntityTracker {
      * cleared again if a matching boss turns up afterwards - both for the Tarantula split above and
      * because the other way to lose a boss is to have walked out of range of it.
      */
-    var diedAtMs: Long? = null
-        private set
+    private var diedAtMs: Long? = null
 
     /**
      * Whether [diedAtMs] comes from the boss's health reaching [DEAD_HEALTH], rather than from the
@@ -181,14 +180,35 @@ object SlayerBossEntityTracker {
      * teleported out of range or was never resolved properly, so it can end a fight on the clock
      * but cannot vouch for that fight as a personal best.
      */
-    var diedByHealth = false
-        private set
+    private var diedByHealth = false
+
+    /** The boss's death as this tracker saw it: when, and whether its health said so. */
+    class Death(val atMs: Long, val byHealth: Boolean)
 
     /** Whether a boss is being followed right now, for the diagnostics command. */
     val isTracking: Boolean get() = trackedId != -1
 
     /** Whether the boss behind the name tag was resolved, for the diagnostics command. */
     val hasMob: Boolean get() = trackedMobId != -1
+
+    /**
+     * The boss's death, or null when none was seen, and forgets the boss for the next one.
+     *
+     * One call for both on purpose: the death has to be read before [reset] clears it. Reading it
+     * after the reset is how every fight lost its death, ended on the sidebar's kill instead and
+     * could not be vouched for by the boss's health.
+     */
+    fun takeDeath(): Death? {
+        val death = diedAtMs?.let { Death(it, diedByHealth) }
+        reset()
+        return death
+    }
+
+    /** For tests: a death as [tick] would record it. */
+    internal fun dieForTest(atMs: Long, byHealth: Boolean) {
+        diedAtMs = atMs
+        diedByHealth = byHealth
+    }
 
     /**
      * Forgets the current boss, for a kill, a cancelled quest or a world change.
@@ -227,7 +247,9 @@ object SlayerBossEntityTracker {
             val tag = level.getEntity(trackedId)
             val mob = if (trackedMobId == -1) null else level.getEntity(trackedMobId) as? LivingEntity
 
-            if (mob != null && mob.isAlive) {
+            // Not mob.isAlive, which is also false at a health of 0: a sync straight to 0 would
+            // read as the entity going missing rather than as the boss dying.
+            if (mob != null && !mob.isRemoved) {
                 if (mob.health > DEAD_HEALTH) {
                     // The only place a recorded death is taken back. Seeing the boss standing there
                     // above the threshold is proof it is not dead; nothing else is, and an earlier

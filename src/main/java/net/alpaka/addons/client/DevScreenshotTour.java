@@ -395,8 +395,9 @@ public final class DevScreenshotTour {
             new Stop(null, () -> AlpakaConfig.instance.itemSwayDisabled = false, () -> true, 1),
             // Starlight together with Disable Item Lighting, still and mid-swing.
             new Stop("starlight-unlit", () -> AlpakaConfig.instance.itemLightingDisabled = true, () -> true, 5),
-            new Stop("starlight-unlit-swing", () -> Minecraft.getInstance().player.swing(
-                    net.minecraft.world.InteractionHand.MAIN_HAND), () -> true, 3),
+            // The swing animation only, as the config's swing preview plays it: the one-argument
+            // swing also tells the server, which only Outbound may.
+            new Stop("starlight-unlit-swing", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
             new Stop(null, () -> AlpakaConfig.instance.itemLightingDisabled = false, () -> true, 1),
             // The fire pit preview has to be on a tick before the clay arrives, as in a real fight.
             new Stop(null, DevScreenshotTour::firePitPreview, () -> true, 5),

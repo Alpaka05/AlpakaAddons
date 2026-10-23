@@ -1,17 +1,24 @@
 package net.alpaka.addons.mixin;
 
+import com.mojang.blaze3d.buffers.GpuBufferSlice;
+import com.mojang.blaze3d.framegraph.FrameGraphBuilder;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.blockoverlay.BlockOverlayFeature;
 import net.alpaka.addons.features.etherwarp.EtherwarpDetector;
 import net.alpaka.addons.features.etherwarp.EtherwarpOverlayFeature;
+import net.alpaka.addons.features.sky.SkyEffectsFeature;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
+import net.minecraft.client.renderer.LevelTargetBundle;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.state.level.BlockOutlineRenderState;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.state.level.LevelRenderState;
 import net.minecraft.gizmos.Gizmos;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -19,6 +26,24 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(LevelRenderer.class)
 public class LevelRendererMixin {
+
+    @Shadow
+    @Final
+    private LevelTargetBundle targets;
+
+    @Shadow
+    @Final
+    private LevelRenderState levelRenderState;
+
+    /**
+     * Gives the Nether a sky. Vanilla adds no sky pass at all where the dimension has no skybox,
+     * so the frame keeps the fog color it was cleared with; Sky Effects adds its own pass here,
+     * before the main pass draws the world over it.
+     */
+    @Inject(method = "addSkyPass", at = @At("HEAD"))
+    private void alpaka$addNetherSky(FrameGraphBuilder frame, CameraRenderState camera, GpuBufferSlice fog, CallbackInfo ci) {
+        SkyEffectsFeature.addNetherPass(frame, targets, levelRenderState.skyRenderState, camera, fog);
+    }
 
     /**
      * Adds the Etherwarp target to the frame's gizmos. RETURN of collectPerFrameRenderThreadGizmos

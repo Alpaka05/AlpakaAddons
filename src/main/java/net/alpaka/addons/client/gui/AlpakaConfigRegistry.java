@@ -143,6 +143,45 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.fullbrightEnabled = v; AlpakaConfig.save(); },
                 "gamma brightness light fullbright vision"));
 
+        OPTIONS.add(new ConfigOption("sky_effects", "Sky Effects",
+                "Animates the sky: a firestorm over the Nether, auroras and shooting stars over the Overworld at night and a glowing sun by day, a swirling nebula in the End.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.skyEffectsEnabled,
+                v -> { AlpakaConfig.instance.skyEffectsEnabled = v; AlpakaConfig.save(); },
+                "sky skies animated fancy firestorm fire storm nether crimson isle aurora northern lights borealis shooting stars meteor milky way galaxy nebula end space sun rays glow embers"));
+
+        OPTIONS.add(new ConfigOption("sky_effects_skies", "Animated Skies",
+                "Pick which skies are animated.",
+                ConfigCategory.VISUALS,
+                java.util.List.of(
+                        new ConfigOption.ToggleEntry("Nether Firestorm",
+                                () -> AlpakaConfig.instance.skyEffectsNether,
+                                v -> { AlpakaConfig.instance.skyEffectsNether = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Overworld Aurora",
+                                () -> AlpakaConfig.instance.skyEffectsOverworld,
+                                v -> { AlpakaConfig.instance.skyEffectsOverworld = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("End Nebula",
+                                () -> AlpakaConfig.instance.skyEffectsEnd,
+                                v -> { AlpakaConfig.instance.skyEffectsEnd = v; AlpakaConfig.save(); })
+                ),
+                "sky skies nether firestorm overworld aurora sun rays end nebula dimension pick which"));
+
+        OPTIONS.add(new ConfigOption("sky_effects_intensity", "Sky Intensity",
+                "How strongly the effects show over the plain sky.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.skyEffectsIntensity,
+                v -> { AlpakaConfig.instance.skyEffectsIntensity = Math.round(v * 100.0f) / 100.0f; AlpakaConfig.save(); },
+                0.1f, 1.0f, val -> String.format(Locale.ROOT, "%.0f%%", val * 100.0f),
+                "sky intensity strength opacity brightness subtle strong effects"));
+
+        OPTIONS.add(new ConfigOption("sky_effects_speed", "Sky Animation Speed",
+                "How fast the clouds, lights and stars move.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.skyEffectsSpeed,
+                v -> { AlpakaConfig.instance.skyEffectsSpeed = Math.round(v * 20.0f) / 20.0f; AlpakaConfig.save(); },
+                0.25f, 3.0f, val -> String.format(Locale.ROOT, "%.2fx", val),
+                "sky animation speed fast slow motion clouds drift"));
+
         OPTIONS.add(new ConfigOption("clean_blaze", "Clean Blaze",
                 "Clears blaze noise in the Blaze slayer's zones, on SkyBlock only.",
                 ConfigCategory.VISUALS,

@@ -25,6 +25,7 @@
     "ItemInHandRendererMixin",
     "LightmapMixin",
     "LevelRendererMixin",
+    "SkyRendererMixin",
     "ChatComponentMixin",
     "ChatScreenMixin",
     "ChatScreenScrollbarMixin",

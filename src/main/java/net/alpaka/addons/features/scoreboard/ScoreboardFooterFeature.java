@@ -4,8 +4,6 @@ import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.utils.AlpakaGradient;
 import net.minecraft.network.chat.Component;
 
-import java.util.Locale;
-import java.util.regex.Pattern;
 
 /**
  * Writes "AlpakaAddons" in a gradient where Hypixel puts its address at the bottom of the
@@ -46,11 +44,34 @@ public final class ScoreboardFooterFeature {
      * after it, and of the rest only letters, digits and dots are compared.
      */
     static boolean isHypixelFooter(String line) {
-        String plain = ANY_CODE.matcher(line).replaceAll("");
-        plain = NOT_ADDRESS.matcher(plain).replaceAll("").toLowerCase(Locale.ROOT);
-        return plain.equals("www.hypixel.net") || plain.equals("alpha.hypixel.net");
+        // Asked for every sidebar line every frame, and nearly all of them are something else: a
+        // long line or one without a dot is not the address, whatever else is in it.
+        if (line.length() > MAX_FOOTER_LENGTH || line.indexOf('.') < 0) return false;
+        // One walk against both addresses at once, in place of two regex passes and the strings
+        // they built.
+        int www = 0;
+        int alpha = 0;
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+            if (c == '§') {
+                i++;
+                continue;
+            }
+            if (!isAddressChar(c)) continue;
+            c = Character.toLowerCase(c);
+            www = www >= 0 && www < WWW.length() && WWW.charAt(www) == c ? www + 1 : -1;
+            alpha = alpha >= 0 && alpha < ALPHA.length() && ALPHA.charAt(alpha) == c ? alpha + 1 : -1;
+            if (www < 0 && alpha < 0) return false;
+        }
+        return www == WWW.length() || alpha == ALPHA.length();
     }
 
-    private static final Pattern ANY_CODE = Pattern.compile("§.?");
-    private static final Pattern NOT_ADDRESS = Pattern.compile("[^A-Za-z0-9.]");
+    private static final String WWW = "www.hypixel.net";
+    private static final String ALPHA = "alpha.hypixel.net";
+    /** Longer than the address with any codes and markers Hypixel puts into it. */
+    private static final int MAX_FOOTER_LENGTH = 40;
+
+    private static boolean isAddressChar(char c) {
+        return c == '.' || (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+    }
 }

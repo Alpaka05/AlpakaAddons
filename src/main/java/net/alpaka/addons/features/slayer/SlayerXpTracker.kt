@@ -65,7 +65,12 @@ object SlayerXpTracker {
 
         val data = AlpakaStats.slayerBossMap().getOrPut(type) { AlpakaConfig.SlayerData() }
         val known = data.totalXp
-        if (xp == known) return
+        if (xp == known) {
+            // Still a newer reading: it wins the merge against an older one elsewhere.
+            data.totalXpObservedAtMs = System.currentTimeMillis()
+            AlpakaStats.markDirty()
+            return
+        }
 
         if (known >= 0L && xp < known) {
             val sinceCredit = System.currentTimeMillis() - data.lastXpCreditedAtMs
@@ -81,6 +86,7 @@ object SlayerXpTracker {
         }
 
         data.totalXp = xp
+        data.totalXpObservedAtMs = System.currentTimeMillis()
         AlpakaStats.markDirty()
     }
 

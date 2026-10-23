@@ -70,6 +70,6 @@ public final class SessionLifecycle {
     /** Nothing waiting to be written is lost on exit. */
     private static void onStopping() {
         AlpakaConfig.endDeferredSaves();
-        AlpakaStats.flushNow();
+        AlpakaStats.flushOnExit();
     }
 }

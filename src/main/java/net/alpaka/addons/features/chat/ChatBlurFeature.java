@@ -357,6 +357,18 @@ public final class ChatBlurFeature {
     }
 
     /**
+     * A panel wants the blur behind it without saying where, so the whole frame is blurred this
+     * frame. For a panel that does not hand over its bounds (the Custom Tab, #166, until it does);
+     * {@link #request(ScreenRectangle)} costs less.
+     */
+    public static void request() {
+        if (!captureAfterBackground && blurRadius(guiScale(), AlpakaConfig.instance.chatBlurStrength) == 0) return;
+        requested = true;
+        pendingWholeFrame = true;
+        GnetumCompat.keepOutOfCache();
+    }
+
+    /**
      * As {@link #request}, for a panel of the HUD - under any open screen. Left out while that
      * screen blurs the world itself, as the pause menu and the options do: their blur goes over the
      * whole HUD, panel included, and blurring behind the panel first was work nobody saw.
@@ -456,7 +468,7 @@ public final class ChatBlurFeature {
         // Only a screen's background defers the blur - the main menu's glass - and a menu keeps
         // the full blur; the strength setting is for the panels over the world.
         framePlan = DualKawaseBlur.plan(blurRadius(guiScale(), deferred ? 100.0f : AlpakaConfig.instance.chatBlurStrength));
-        boolean wanted = requested && !frameAreas.isEmpty() && framePlan.levels() > 0;
+        boolean wanted = requested && (frameWholeFrame || !frameAreas.isEmpty()) && framePlan.levels() > 0;
         long now = System.nanoTime();
         if (wanted) {
             lastWantedNanos = now;

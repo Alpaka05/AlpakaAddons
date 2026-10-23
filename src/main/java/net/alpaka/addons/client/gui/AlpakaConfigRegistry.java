@@ -157,8 +157,8 @@ public class AlpakaConfigRegistry {
                 parent -> AlpakaConfig.instance.disableAllFeatures(),
                 "disable all features turn off reset everywhere confirm prompt disables confirmation")
                 .confirm("Disable All Features",
-                        "Turns off every feature of Alpaka Addons, and some of their settings with them. "
-                                + "Which ones were on is not remembered. This cannot be undone.",
+                        "Turns off every feature of Alpaka Addons. Their settings stay, but which features "
+                                + "were on is not remembered. This cannot be undone.",
                         "Disable All", true));
 
         OPTIONS.add(new ConfigOption("reset_all_settings", "Reset All Settings",
@@ -2239,6 +2239,30 @@ public class AlpakaConfigRegistry {
         List<ConfigOption> result = java.util.Collections.unmodifiableList(filtered);
         SEARCH_CACHE.put(category, result);
         return result;
+    }
+
+    /**
+     * Brings every slider's stored value back into the slider's range, with one save for all of
+     * them. A hand edit or an old file can hold a value the slider never offers - an index past the
+     * end of a choice list, a negative size - and the features read the field, not the slider.
+     *
+     * Run once the game has started rather than while the settings load: a setter may act on the
+     * game as well, and Warp Sound plays its preview. Returns how many values changed.
+     */
+    public static int clampStoredValues() {
+        int changed = 0;
+        AlpakaConfig.beginDeferredSaves();
+        try {
+            for (ConfigOption option : OPTIONS) {
+                if (option.clampStoredValue()) changed++;
+            }
+        } finally {
+            AlpakaConfig.endDeferredSaves();
+        }
+        if (changed > 0) {
+            net.alpaka.addons.AlpakaAddons.LOGGER.warn("Brought {} setting(s) back into their slider's range", changed);
+        }
+        return changed;
     }
 
     /** How many non-header options a category holds for the current search term. */

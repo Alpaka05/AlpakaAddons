@@ -260,6 +260,12 @@ public final class DevScreenshotTour {
                     .devLeavePoint()), () -> true, 30),
             new Stop("confirm-pause-after-cancel", () -> click(((AlpakaConfirmScreen) screen()).devCancelPoint()),
                     () -> true, 3),
+            // The Friends overlay over the pause menu, opened as the Friends key (O) opens it: it
+            // draws the menu as its backdrop and then blurs itself, so the menu must not blur too.
+            new Stop("pause-menu-friends", () -> {
+                Minecraft mc = Minecraft.getInstance();
+                mc.gui.setScreen(new net.minecraft.client.gui.screens.friends.FriendsOverlayScreen(mc.gui.screen()));
+            }, () -> true, 30),
             // The HUD editor with the world age HUD dragged away: Reset All asks, Cancel leaves it
             // where it is, and confirming puts every HUD back.
             new Stop("confirm-hud-editor-moved", () -> {

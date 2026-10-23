@@ -26,7 +26,7 @@ import java.time.Duration
  * offered only to a player already running one, so a tester of the next version hears of the next
  * beta and of the release itself, while everyone else hears of full releases only. Releases are built per Minecraft version
  * (`alpaka-1.2.22-mc26.2.jar`), and a release with no jar for this game is one the player cannot
- * install, so it is not announced.
+ * install, so it is not announced. A jar built for 26.2 is for every 26.2.x (see [jarSuffixes]).
  *
  * A build between releases (`1.2.22+25.d4e2c70`) counts as its release, so a test build of the
  * latest release is not told to update to it. A build ahead of the next one (`2.0.0-alpha+3.a1b2c3d`)
@@ -43,7 +43,7 @@ object UpdateChecker {
     private const val ENDPOINT = "https://api.github.com/repos/Alpaka05/AlpakaAddons/releases?per_page=20"
 
     /** A release found to be newer, waiting for the player to be in a world to hear about it. */
-    private class Release(val version: String, val url: String)
+    internal class Release(val version: String, val url: String)
 
     private val client: HttpClient by lazy {
         HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()
@@ -77,7 +77,7 @@ object UpdateChecker {
 
     private fun fetch() {
         val current = ReleaseVersion.parse(ModVersion.mod()) ?: return // A build without a version has nothing to compare.
-        val jarSuffix = "-mc${ModVersion.minecraft()}.jar"
+        val jarSuffixes = jarSuffixes(ModVersion.minecraft())
 
         val request = HttpRequest.newBuilder(URI.create(ENDPOINT))
             .timeout(Duration.ofSeconds(10))
@@ -96,15 +96,29 @@ object UpdateChecker {
                         )
                         return@whenComplete
                     }
-                    found = newest(response.body(), current, jarSuffix)
+                    found = newest(response.body(), current, jarSuffixes)
                 } catch (t: Throwable) {
                     AlpakaAddons.LOGGER.warn("Could not check for a newer release", t)
                 }
             }
     }
 
-    /** The highest release above [current] with a jar ending in [jarSuffix], or null if there is none. */
-    private fun newest(body: String, current: ReleaseVersion, jarSuffix: String): Release? {
+    /**
+     * The endings a release jar for this game can have, the best match first: the exact Minecraft
+     * version, then its major.minor.
+     *
+     * Release jars are named after the major.minor they were built against (`-mc26.2.jar`, see
+     * archiveVersion in build.gradle), while fabric.mod.json accepts every 26.2.x. Looking for the
+     * exact version only, a game on a hotfix such as 26.2.1 found no jar in any release and never
+     * heard of an update again.
+     */
+    internal fun jarSuffixes(minecraft: String): List<String> {
+        val majorMinor = minecraft.substringBefore('-').split('.').take(2).joinToString(".")
+        return listOf("-mc$minecraft.jar", "-mc$majorMinor.jar").distinct()
+    }
+
+    /** The highest release above [current] with a jar ending in one of [jarSuffixes], or null if there is none. */
+    internal fun newest(body: String, current: ReleaseVersion, jarSuffixes: List<String>): Release? {
         var best: Release? = null
         var bestVersion = current
         for (element in JsonParser.parseString(body).asJsonArray) {
@@ -115,8 +129,9 @@ object UpdateChecker {
             val preRelease = release.get("prerelease")?.asBoolean == true || parsed.isPreRelease
             if (preRelease && !current.isPreRelease) continue
             if (parsed <= bestVersion) continue
-            val hasJar = release.getAsJsonArray("assets")?.any {
-                it.asJsonObject.get("name")?.asString?.endsWith(jarSuffix) == true
+            val hasJar = release.getAsJsonArray("assets")?.any { asset ->
+                val name = asset.asJsonObject.get("name")?.asString ?: return@any false
+                jarSuffixes.any { name.endsWith(it) }
             } == true
             if (!hasJar) continue
             best = Release(version, release.get("html_url")?.asString ?: continue)

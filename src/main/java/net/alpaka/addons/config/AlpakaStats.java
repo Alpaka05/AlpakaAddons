@@ -412,6 +412,7 @@ public class AlpakaStats {
 
     /** Takes over what {@link #readStore} found; on the game thread. */
     private static void apply(Loaded result) {
+        lastPresence = result.presence();
         if (result.presence() != Presence.READY) {
             // Google Drive's mount, and every other cloud drive, comes up some seconds after login;
             // a game launched from the desktop straight after booting beats it. Reading nothing and
@@ -452,6 +453,18 @@ public class AlpakaStats {
 
     /** What the last look for the folder found, while {@link #awaitingStore}. */
     private static Presence awaitingPresence = Presence.NO_FOLDER;
+
+    /** What the last read or write found, so the folder can be asked about without touching the drive. */
+    private static Presence lastPresence = Presence.READY;
+
+    /**
+     * Whether the chosen folder or its file was missing at the last read or write - as the writer
+     * found it, so asking cannot hang the game on a drive that stopped answering. For whatever else
+     * keeps files in the same folder (the slayer log, #184) and has to wait for it just as well.
+     */
+    private static boolean storeMissing() {
+        return lastPresence != Presence.READY;
+    }
 
     private static long nextStoreCheckNanos = 0L;
 
@@ -501,6 +514,7 @@ public class AlpakaStats {
         pendingLoad = null;
         if (result.presence() != Presence.READY) {
             awaitingPresence = result.presence();
+            lastPresence = result.presence();
             return;
         }
 
@@ -862,6 +876,7 @@ public class AlpakaStats {
         }
         pendingSave = null;
 
+        lastPresence = written.presence();
         if (written.presence() != Presence.READY) {
             // Memory still holds everything; the next save after the folder is back writes it.
             dirty = true;

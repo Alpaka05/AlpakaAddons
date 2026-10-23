@@ -115,7 +115,7 @@ public class AlpakaConfigRegistry {
                 "custom main menu parallax background mouse move motion depth effect title screen"));
 
         OPTIONS.add(new ConfigOption("disable_all_features", "Disable All Features",
-                "Disables every feature in the mod after confirmation.",
+                "Switches every feature off after confirmation. Their settings stay, so a feature switched back on is as it was.",
                 ConfigCategory.GENERAL,
                 "Disable All",
                 parent -> Minecraft.getInstance().gui.setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(

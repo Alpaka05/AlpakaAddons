@@ -1015,112 +1015,82 @@ public class AlpakaConfig {
         return betterChatEnabled && part;
     }
 
+    /**
+     * Switches every feature off: each feature's own switch, and the lone switches that belong to no
+     * feature (Hide Mob Fire, the scoreboard's blur and footer, ...). Nothing else is touched. A
+     * feature's settings, and every font, color, slider and choice, stay as they are, so a feature
+     * switched back on comes back the way it was. This used to switch the settings off and reset
+     * values too, and the backup made that stick after the next start: Block Overlay came back with
+     * no outline at all, Custom Sounds came back silent.
+     *
+     * DisableAllFeaturesTest lists the switches this has to cover and the settings it must leave.
+     */
     public void disableAllFeatures() {
         this.renderHandInThirdPerson = false;
         this.slayerDropTrackerEnabled = false;
         this.hideHypixelDropMessage = false;
         this.slayerRngDropGuildChatEnabled = false;
         this.customNameTagEnabled = false;
-        this.nameTagOutlineEnabled = false;
-        this.nameTagShadowEnabled = false;
-        this.nameTagChromaBorderEnabled = false;
         this.chromaHatEnabled = false;
         this.playerScaleEnabled = false;
-        this.playerScaleOthers = false;
         this.fullbrightEnabled = false;
         this.inventorySnowEnabled = false;
         this.containerBgFadeInEnabled = false;
         this.cleanBlazeEnabled = false;
-        this.cleanBlazeNameTags = false;
         this.blazeFirePitsEnabled = false;
         this.hideSlayerChatMessages = false;
         this.stopBlazeSpinning = false;
         this.hideHurtOverlayEnabled = false;
         this.hideMobDeathsEnabled = false;
         this.hideEntityFire = false;
-        this.firstPersonFireOpacity = 1.0f;
-        this.firstPersonFireHeight = 1.0f;
         this.firstPersonFireStatic = false;
-        this.nameTagBackgroundColor = DEFAULT_NAME_TAG_BACKGROUND;
         this.showOwnNameTag = false;
         this.nameTagTextShadow = false;
         this.wideHealthBarEnabled = false;
         this.smoothPerspectiveEnabled = false;
         this.disableFrontPerspective = false;
         this.customSoundsEnabled = false;
-        this.customSoundButtonClick = false;
-        this.customSoundHotbarScroll = false;
-        this.customSoundRareDrop = false;
-        this.customSoundNotification = false;
-        this.customSoundPlayerHurt = false;
-        this.customSoundInventoryOpenClose = false;
-        this.customSoundLowHpHeartbeat = false;
-        this.customSoundBlazeDeath = false;
-        this.customSoundInventoryClick = false;
-        this.customSoundZombieRemedy = false;
-        this.customSoundSuccessfulHit = false;
         this.muteVanillaSoundsInBlazeSlayer = false;
         this.customEscapeMenuEnabled = false;
-        this.menuFont = 0;
         this.customMainMenuEnabled = false;
         this.playerModelEnabled = false;
-        this.playerModelOnlyActions = false;
-        this.playerModelDisableMovement = false;
-        this.playerModelHideArmor = false;
-        this.playerModelShowInGuis = false;
         this.performanceHudEnabled = false;
         this.slayerHudEnabled = false;
-        this.slayerHudPauseOutsideArea = false;
-        this.slayerHudOnlyInSlayerAreas = false;
         this.allowApiCalls = false;
         this.slayerTimerEnabled = false;
-        this.slayerTimerChatEnabled = false;
-        this.slayerTimerHudEnabled = false;
         this.ragnarockEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
         this.customDamageTagsEnabled = false;
         this.blockOverlayEnabled = false;
-        this.blockFadeInEnabled = false;
-        this.blockOutlineEnabled = false;
-        this.blockChromaEnabled = false;
-        this.blockIgnoreDepth = false;
-        this.blockIgnorePlants = false;
-        this.blockFillEnabled = false;
-        this.blockHideOnEtherwarp = false;
         this.etherwarpOverlayEnabled = false;
-        this.etherwarpLineEnabled = false;
         this.etherwarpSoundEnabled = false;
         this.betterChatEnabled = false;
-        this.smoothChatEnabled = false;
-        this.chatOpenAnimationEnabled = false;
-        this.chatBlurEnabled = false;
         this.scoreboardBlurEnabled = false;
         this.scoreboardAlpakaFooter = false;
         this.chatSearchEnabled = false;
-        this.chatSmoothScrollEnabled = false;
-        this.chatScrollbarEnabled = false;
-        this.chatMovable = false;
         this.alwaysSprintEnabled = false;
         this.expandChatHistory = false;
         this.chatPeekEnabled = false;
-        this.chatPeekInMenus = false;
         this.betterScreenshotMessageEnabled = false;
-        this.autoCopyScreenshots = false;
         this.compactChatEnabled = false;
         this.chatTabsEnabled = false;
-        this.chatTabsSendToChannel = false;
         this.inventoryHudEnabled = false;
         this.bridgeBotFormatterEnabled = false;
         this.guildPrefixEnabled = false;
         this.itemSizeFeatureEnabled = false;
-        this.itemSwayDisabled = false;
-        this.itemLightingDisabled = false;
         this.itemStarlightEnabled = false;
-        this.itemSwingTranslationDisabled = false;
-        this.itemNoEquipEnabled = false;
-        this.itemSwingAlwaysFinishEnabled = false;
-        this.itemIgnoreEmptyHandEnabled = false;
+        // Switches that came after the list above.
+        this.updateNotificationsEnabled = false;
+        this.scrollableTooltipsEnabled = false;
+        this.persistentItemNameEnabled = false;
+        this.oldMasterStarsEnabled = false;
+        this.mentionNotificationEnabled = false;
+        this.itemMotionBlurEnabled = false;
+        this.bossSpawnAlertEnabled = false;
+        this.bossCocoonAlertEnabled = false;
+        this.partyInvitePromptEnabled = false;
+        this.cacheResourcePackEnabled = false;
         save();
     }
 

@@ -54,7 +54,7 @@ class DisableAllFeaturesTest {
             "hideSlayerChatMessages", "bossSpawnAlertEnabled", "bossCocoonAlertEnabled", "slayerTimerEnabled",
             "slayerHudEnabled", "worldAgeJoinMessageEnabled", "partyInvitePromptEnabled",
             "cacheResourcePackEnabled", "guildPrefixEnabled", "bridgeBotFormatterEnabled", "ragnarockEnabled",
-            "onlyCritDamageEnabled", "customAuctionHouseEnabled", "customBazaarEnabled",
+            "onlyCritDamageEnabled", "deployableTimerEnabled", "customAuctionHouseEnabled", "customBazaarEnabled",
             "marketPriceHistoryEnabled", "customSignInputEnabled",
             // Cosmetics
             "customNameTagEnabled", "chromaHatEnabled", "playerScaleEnabled", "customDamageTagsEnabled",

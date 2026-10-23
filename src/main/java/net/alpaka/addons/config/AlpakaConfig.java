@@ -398,6 +398,14 @@ public class AlpakaConfig {
     // Saved as ragAxeCountdownEnabled before the feature was renamed; read that too so the setting carries over.
     @SerializedName(value = "ragnarockEnabled", alternate = "ragAxeCountdownEnabled")
     public boolean ragnarockEnabled = true;
+
+    // Deployable timer: the strongest power orb or flare in range, with its time left.
+    public boolean deployableTimerEnabled = false;
+    public int deployableTimerHudX = net.alpaka.addons.client.hud.HudDefaults.DEPLOYABLE_TIMER_X;
+    public int deployableTimerHudY = net.alpaka.addons.client.hud.HudDefaults.DEPLOYABLE_TIMER_Y;
+    public float deployableTimerHudScale = 1.0f;
+    public boolean deployableTimerHudBlur = true;
+    public boolean deployableTimerHudSmoothFont = true;
     public int slayerTimerHudX = net.alpaka.addons.client.hud.HudDefaults.SLAYER_TIMER_X;
     public int slayerTimerHudY = net.alpaka.addons.client.hud.HudDefaults.SLAYER_TIMER_Y;
     public float slayerTimerHudScale = 1.0f;
@@ -1303,6 +1311,7 @@ public class AlpakaConfig {
         this.allowApiCalls = false;
         this.slayerTimerEnabled = false;
         this.ragnarockEnabled = false;
+        this.deployableTimerEnabled = false;
         this.customAuctionHouseEnabled = false;
         this.customBazaarEnabled = false;
         this.customSignInputEnabled = false;

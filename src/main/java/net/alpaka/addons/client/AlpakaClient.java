@@ -14,6 +14,7 @@ import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.minecraft.client.Minecraft;
 
+import net.alpaka.addons.features.deployable.DeployableTracker;
 import net.alpaka.addons.features.worldage.WorldAgeFeature;
 
 public class AlpakaClient implements ClientModInitializer {
@@ -45,6 +46,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.slayer.SmolderingPolarization.register();
         DevScreenshotTour.register();
         SlayerDropTracker.registerEvents();
+        DeployableTracker.registerEvents();
         net.alpaka.addons.features.slayer.SkyblockProfileTracker.INSTANCE.register();
         // The slayer record waits for its folder when a cloud drive comes up after the game did;
         // polled from the tick so the wait ends even while nothing reads the record.

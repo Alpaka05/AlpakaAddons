@@ -13,7 +13,6 @@ import net.alpaka.addons.features.scoreboard.ScoreboardFooterFeature;
 import net.alpaka.addons.features.slayer.SlayerHudRenderer;
 import net.alpaka.addons.features.tooltip.OldMasterStarsFeature;
 import net.alpaka.addons.features.slayer.SlayerTimerHudRenderer;
-import net.alpaka.addons.features.worldage.WorldAgeHudRenderer;
 import net.alpaka.addons.features.performance.PerformanceHudRenderer;
 import net.alpaka.addons.utils.AlpakaPerf;
 import net.minecraft.client.DeltaTracker;
@@ -73,9 +72,6 @@ public class HudMixin implements ChatOverHud.Late {
         long t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_PLAYER_MODEL);
         PlayerModelRenderer.render(graphicsExtractor, deltaTracker);
         AlpakaPerf.end(AlpakaPerf.Section.HUD_PLAYER_MODEL, t);
-        t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_WORLD_AGE);
-        WorldAgeHudRenderer.render(graphicsExtractor, deltaTracker);
-        AlpakaPerf.end(AlpakaPerf.Section.HUD_WORLD_AGE, t);
         t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_PERFORMANCE);
         PerformanceHudRenderer.render(graphicsExtractor, deltaTracker);
         AlpakaPerf.end(AlpakaPerf.Section.HUD_PERFORMANCE, t);

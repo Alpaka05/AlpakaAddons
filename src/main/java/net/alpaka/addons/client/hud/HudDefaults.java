@@ -13,17 +13,9 @@ package net.alpaka.addons.client.hud;
 public final class HudDefaults {
     private HudDefaults() {}
 
-    /** The top row's line: the world age in the corner, then the Performance HUD. */
-    private static final int TOP_ROW_Y = 10;
-
-    public static final int WORLD_AGE_X = 10;
-    public static final int WORLD_AGE_Y = TOP_ROW_Y;
-    /** The world age's line at its widest, "Day: 35", in the pixel font. */
-    private static final int WORLD_AGE_MAX_WIDTH = 38;
-
-    /** Beside the world age, past its widest day with a gap. */
-    public static final int PERFORMANCE_X = WORLD_AGE_X + WORLD_AGE_MAX_WIDTH + 10;
-    public static final int PERFORMANCE_Y = TOP_ROW_Y;
+    /** The top-left corner: the Performance HUD's line, with the day first. */
+    public static final int PERFORMANCE_X = 10;
+    public static final int PERFORMANCE_Y = 10;
 
     /**
      * An x that stands for "centered on the screen" rather than a pixel. Positions are absolute, so a

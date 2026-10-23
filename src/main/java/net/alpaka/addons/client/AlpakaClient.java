@@ -14,7 +14,7 @@ import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.minecraft.client.Minecraft;
 
-import net.alpaka.addons.features.worldage.WorldAgeHudRenderer;
+import net.alpaka.addons.features.worldage.WorldAgeFeature;
 
 public class AlpakaClient implements ClientModInitializer {
     @Override
@@ -61,7 +61,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.party.PartyInviteFeature.register();
         net.alpaka.addons.features.tooltip.OldMasterStarsFeature.register();
         net.alpaka.addons.features.ragnarock.RagnarockFeature.register();
-        WorldAgeHudRenderer.registerEvents();
+        WorldAgeFeature.registerEvents();
         net.alpaka.addons.features.performance.PerformanceStats.register();
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {

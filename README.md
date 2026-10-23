@@ -20,7 +20,7 @@ Alpaka Addons adds quality-of-life features, HUDs and visual tweaks for Hypixel 
 
 - **Slayer Tracking:** boss timers, drops and XP for every slayer, with a live session HUD.
 - **A Better Chat:** tabs for Party, Guild and PMs, search, compact repeats, smooth scrolling and a peek key.
-- **Useful HUDs:** your inventory, a small player model, world age and a wide health bar, all movable.
+- **Useful HUDs:** your inventory, a small player model, a performance line with the server's day, and a wide health bar, all movable.
 - **Visual Tweaks:** item viewmodel, block overlay, Etherwarp target, fullbright and less clutter on mobs.
 - **Fresh Menus:** a new main menu, pause menu and config, all in one consistent glass style.
 
@@ -65,7 +65,8 @@ Alpaka Addons is most useful for **Slayers**, but a lot of it helps anywhere in 
 - **Inventory HUD:** your 27 inventory slots on screen, as a frosted panel or a chest.
 - **Player Model HUD:** a small 3D version of yourself on screen.
 - **Wide Health Bar:** both heart rows in one line, since SkyBlock has no hunger.
-- **World Age HUD** and a join message with the server's age.
+- **Performance HUD:** the server's day, FPS, ping and TPS on one line, each part optional.
+- **Server Age Join Message** with the server's age and when you last visited.
 - **Notifications** for mentions, boss spawns and party invites, in any corner or at the top centre.
 - **Party Invite Prompt:** accept with Y or dismiss with N.
 - **Scrollable Tooltips**, **Keep Item Name Visible** and adjustable container background opacity.

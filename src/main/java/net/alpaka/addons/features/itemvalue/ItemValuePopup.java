@@ -43,8 +43,8 @@ import java.util.Set;
 /**
  * The Item Value popup: a small window beside the item it was opened on, over the menu, with what
  * the item is worth and what that is made of - a bar split by share, then the parts grouped as the
- * bar is - and, opened from its footer, the price history of the item or of whichever part is
- * clicked.
+ * bar is - and, opened under the Price History row at the bottom, the price history of the item or
+ * of whichever part is clicked.
  *
  * It belongs to the menu it was opened in and goes with it. While it is open it takes the clicks
  * meant for it and every click beside it, which closes it, so nothing reaches a slot of the menu
@@ -62,7 +62,8 @@ public final class ItemValuePopup {
     private static final int GROUP_H = 15;
     private static final int PART_H = 12;
     private static final int BAR_H = 4;
-    private static final int FOOTER_H = 22;
+    /** The price history's row: its switch, and where the prices come from. */
+    private static final int HISTORY_ROW_H = 22;
     private static final int GRAPH_H = 112;
     private static final int GRAPH_MIN_H = 76;
     private static final int MESSAGE_H = 44;
@@ -333,7 +334,7 @@ public final class ItemValuePopup {
         scroll += (scrollTarget - scroll) * Math.min(1.0, deltaSec * 16.0);
         if (Math.abs(scrollTarget - scroll) < 0.05) scroll = scrollTarget;
 
-        // Height: the header, the bar, the list, the graph and the footer; the list gives way first.
+        // Height: the header, the bar, the list, the price history's row and its graph; the list gives way first.
         int w = Math.min(WIDTH, screenW - 2 * EDGE);
         // Until the prices and Hypixel's item list are there, a line saying so rather than a list of dashes.
         boolean waiting = ItemPrices.loading() || ItemIcons.loading();
@@ -341,12 +342,12 @@ public final class ItemValuePopup {
         boolean showBar = hasList && groupsWithValue() >= 2;
         int barArea = showBar ? BAR_H + 12 : 4;
         // Without anything priced there is nothing to show the history of, nor a source to name.
-        int footer = hasList ? FOOTER_H : 0;
+        int historyRow = hasList ? HISTORY_ROW_H : 0;
         int maxH = screenH - 2 * EDGE;
-        int fixed = HEADER_H + barArea + footer;
-        int graphFull = Math.max(GRAPH_MIN_H, Math.min(GRAPH_H, maxH - fixed - 3 * PART_H - 6));
-        int graphArea = hasList ? Math.round((graphFull + 6) * graphEase) : 0;
-        if (hasList && !folded) foldToFit(maxH - fixed - (graphOpen ? graphFull + 6 : 0));
+        int fixed = HEADER_H + barArea + historyRow;
+        int graphFull = Math.max(GRAPH_MIN_H, Math.min(GRAPH_H, maxH - fixed - 3 * PART_H - PAD));
+        int graphArea = hasList ? Math.round((graphFull + PAD) * graphEase) : 0;
+        if (hasList && !folded) foldToFit(maxH - fixed - (graphOpen ? graphFull + PAD : 0));
         List<Row> shown = hasList ? visibleRows() : List.of();
         int content = hasList ? contentHeight(shown) : MESSAGE_H;
         int listArea = Math.max(Math.min(content, 3 * PART_H), Math.min(content, maxH - fixed - graphArea));
@@ -388,16 +389,17 @@ public final class ItemValuePopup {
         }
         cy += listArea;
 
+        // The switch heads the graph, as a group's line heads its parts: the graph opens below it.
+        if (hasList) {
+            String rowTip = drawHistoryRow(graphics, font, x, cy, w, mx, my);
+            if (rowTip != null) tip = rowTip;
+            cy += HISTORY_ROW_H;
+        }
         if (graphArea > 0) {
             graphics.enableScissor(x, cy, x + w, cy + graphArea);
-            String graphTip = drawGraph(graphics, font, x + PAD, cy + 3, w - 2 * PAD, graphFull, mx, my, graphShown >= 0.999f);
+            String graphTip = drawGraph(graphics, font, x + PAD, cy, w - 2 * PAD, graphFull, mx, my, graphShown >= 0.999f);
             graphics.disableScissor();
             if (graphTip != null) tip = graphTip;
-            cy += graphArea;
-        }
-        if (hasList) {
-            String footerTip = drawFooter(graphics, font, x, cy, w, mx, my);
-            if (footerTip != null) tip = footerTip;
         }
         if (scaling) graphics.pose().popMatrix();
 
@@ -726,15 +728,15 @@ public final class ItemValuePopup {
         return null;
     }
 
-    /** The graph's switch on the left, where the prices come from on the right. */
-    private static String drawFooter(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int mx, int my) {
+    /** The price history's row: its switch on the left, where the prices come from on the right. */
+    private static String drawHistoryRow(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int mx, int my) {
         ModernGuiUtils.drawRect(graphics, x + PAD, y, w - 2 * PAD, 1, AlpakaStyle.LINE);
         String tip = null;
         String label = "Price History";
         int bw = GuiFont.width(font, label) + 20;
         int bh = 14;
         int bx = x + PAD - 2;
-        int by = y + (FOOTER_H - bh) / 2 + 1;
+        int by = y + (HISTORY_ROW_H - bh) / 2 + 1;
         boolean hover = AlpakaStyle.inside(mx, my, bx, by, bw, bh);
         if (hover) ModernGuiUtils.drawRoundedRect(graphics, bx, by, bw, bh, AlpakaStyle.FIELD_RADIUS, AlpakaStyle.ROW_SELECTED);
         int color = graphOpen ? AlpakaStyle.accent() : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
@@ -880,7 +882,7 @@ public final class ItemValuePopup {
 
     // ---- For the screenshot tour ----------------------------------------------------------------
 
-    /** Shows the item's own price history, as the footer's switch does, for the screenshot tour. */
+    /** Shows the item's own price history, as the Price History switch does, for the screenshot tour. */
     public static void devGraph() {
         graphOpen = true;
         graphShown = 1f;

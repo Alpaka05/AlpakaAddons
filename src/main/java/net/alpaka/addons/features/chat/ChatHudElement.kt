@@ -71,11 +71,20 @@ object ChatHudElement : HudElement {
         HudBounds(box.x0, box.y0 + TOP_EXTRA, box.x1 - RIGHT_EXTRA, box.y1)
 
     override fun adjustScale(notches: Double) {
-        val mc = Minecraft.getInstance()
         val raw = (chatScale() + notches * SCALE_PER_NOTCH).coerceIn(0.0, 1.0)
-        mc.options.chatScale().set((raw * 100.0).roundToInt() / 100.0)
-        mc.options.save()
-        mc.gui.hud.chat.rescaleChat()
+        // The option lays the chat out again itself when its value changes; laying it out here as
+        // well did it twice per notch. options.txt is written once, when the editor closes.
+        Minecraft.getInstance().options.chatScale().set((raw * 100.0).roundToInt() / 100.0)
+        optionsChanged = true
+    }
+
+    /** Whether the editor changed the chat scale, a vanilla option, since options.txt was written. */
+    private var optionsChanged = false
+
+    override fun flushEdits() {
+        if (!optionsChanged) return
+        optionsChanged = false
+        Minecraft.getInstance().options.save()
     }
 
     override fun reset() {

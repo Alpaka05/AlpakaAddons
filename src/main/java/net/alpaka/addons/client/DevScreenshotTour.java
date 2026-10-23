@@ -210,6 +210,12 @@ public final class DevScreenshotTour {
                 AlpakaConfig.instance.marketPriceHistoryRange = 1;
                 placeMouse(0.5, 0.97);
             }, () -> true, 1),
+            // The product with the inventory open: the actions in the hero stay free, the graph ends above it.
+            new Stop("market-bazaar-product-inventory", () -> {
+                net.alpaka.addons.features.market.MarketPreview.inventory(true);
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.bazaarProduct());
+            }, () -> true, 80),
+            new Stop(null, () -> net.alpaka.addons.features.market.MarketPreview.inventory(false), () -> true, 1),
             screen("market-bazaar-orders", net.alpaka.addons.features.market.MarketPreview::bazaarOrders),
             // The search sign as Hypixel writes it: two lines for the answer, the question last.
             screen("market-input-search", () -> net.alpaka.addons.features.market.MarketPreview.input(

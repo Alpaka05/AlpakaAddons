@@ -65,6 +65,7 @@ public final class DevScreenshotTour {
             screen("config", () -> new AlpakaConfigScreen(null, "")),
             screen("config-chat", () -> AlpakaConfigScreen.openOn("Chat", "Chat Tabs")),
             screen("config-damage-tags", () -> AlpakaConfigScreen.openOn("Cosmetics", "Custom Damage Tags")),
+            screen("config-aura", () -> AlpakaConfigScreen.openOn("Cosmetics", "Aura")),
             screen("config-search", () -> new AlpakaConfigScreen(null, "blaze")),
             screen("config-inventory-hud", () -> AlpakaConfigScreen.openOn("Interface", "Inventory HUD")),
             screen("config-hud-style", () -> AlpakaConfigScreen.openOn("Design", "HUD Style")),
@@ -476,6 +477,32 @@ public final class DevScreenshotTour {
             // The fire pit preview has to be on a tick before the clay arrives, as in a real fight.
             new Stop(null, DevScreenshotTour::firePitPreview, () -> true, 5),
             new Stop("fire-pits", DevScreenshotTour::placeFirePits, () -> true, 30),
+            // Every aura effect in third person, each after a moment to get going.
+            new Stop(null, DevScreenshotTour::auraPreview, () -> true, 5),
+            new Stop("aura-spirit-orbs", () -> AlpakaConfig.instance.auraEffect = 0, () -> true, 20),
+            new Stop("aura-twin-helix", () -> AlpakaConfig.instance.auraEffect = 1, () -> true, 20),
+            new Stop("aura-arcane-sigil", () -> AlpakaConfig.instance.auraEffect = 2, () -> true, 20),
+            new Stop("aura-inferno", () -> AlpakaConfig.instance.auraEffect = 3, () -> true, 20),
+            new Stop("aura-galaxy", () -> AlpakaConfig.instance.auraEffect = 4, () -> true, 20),
+            new Stop("aura-fireflies", () -> AlpakaConfig.instance.auraEffect = 5, () -> true, 20),
+            new Stop("aura-storm", () -> AlpakaConfig.instance.auraEffect = 6, () -> true, 20),
+            new Stop("aura-rainbow", () -> AlpakaConfig.instance.auraColorMode = 1, () -> true, 20),
+            // At night, where a glow is meant to be seen.
+            new Stop("aura-night-orbs", () -> {
+                AlpakaConfig.instance.auraColorMode = 0;
+                AlpakaConfig.instance.auraEffect = 0;
+                net.minecraft.client.server.IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+                if (server != null) server.execute(() -> server.getCommands().performPrefixedCommand(
+                        server.createCommandSourceStack(), "time set midnight"));
+            }, () -> true, 30),
+            new Stop("aura-night-galaxy", () -> AlpakaConfig.instance.auraEffect = 4, () -> true, 20),
+            new Stop("aura-night-inferno", () -> AlpakaConfig.instance.auraEffect = 3, () -> true, 20),
+            new Stop("aura-night-storm", () -> AlpakaConfig.instance.auraEffect = 6, () -> true, 20),
+            new Stop(null, () -> {
+                AlpakaConfig.instance.auraEnabled = false;
+                AlpakaConfig.instance.auraColorMode = 0;
+                Minecraft.getInstance().options.setCameraType(CameraType.FIRST_PERSON);
+            }, () -> true, 1),
             // Last, as it ends the world: confirming the leave dialog leaves for the title screen
             // rather than going back to the pause menu.
             screen("confirm-pause-before-leaving", net.alpaka.addons.features.escapemenu.CustomPauseScreen::new),
@@ -947,6 +974,18 @@ public final class DevScreenshotTour {
                 level.setBlockAndUpdate(pos, net.minecraft.world.level.block.Blocks.CLAY.defaultBlockState());
             }
         });
+    }
+
+    /** The aura in third person, facing away from the fire pits, nothing else on screen. */
+    private static void auraPreview() {
+        Minecraft mc = Minecraft.getInstance();
+        mc.gui.setScreen(null);
+        mc.gui.hud.getChat().clearMessages(false);
+        AlpakaConfig.instance.inventoryHudEnabled = false;
+        AlpakaConfig.instance.auraEnabled = true;
+        mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+        mc.player.setYRot(mc.player.getYRot() + 180.0f);
+        mc.player.setXRot(18.0f);
     }
 
     /** Third person with the custom name tag, so the camera glide's end and the tag are visible. */

@@ -40,6 +40,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.sky.SkyEffectsFeature.init();
         net.alpaka.addons.features.chat.ChatBlurFeature.init();
         net.alpaka.addons.features.viewmodel.HandItemStarlightFeature.init();
+        net.alpaka.addons.features.cosmetics.AuraFeature.init();
         CustomSoundFeature.register();
         SessionLifecycle.register();
         StartupNotices.register();
@@ -64,6 +65,7 @@ public class AlpakaClient implements ClientModInitializer {
         CommandWheelFeature.register();
         InventoryHudFeature.register();
         net.alpaka.addons.features.blaze.FirePitFeature.register();
+        net.alpaka.addons.features.cosmetics.AuraFeature.register();
         net.alpaka.addons.features.damagetags.CustomDamageTagFeature.register();
         net.alpaka.addons.utils.DungeonState.register();
         net.alpaka.addons.features.notification.MentionNotifier.register();

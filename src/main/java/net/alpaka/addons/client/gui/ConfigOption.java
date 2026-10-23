@@ -267,6 +267,17 @@ public class ConfigOption {
             setterFloat.accept(Math.max(minVal, Math.min(maxVal, val)));
         }
     }
+    /**
+     * Puts a slider's stored value back inside the range when it lies outside it. A value inside is
+     * never written, so a setter's rounding cannot touch it. Returns whether the value changed.
+     */
+    public boolean clampStoredValue() {
+        if (type != Type.SLIDER || getterFloat == null || setterFloat == null || maxVal <= minVal) return false;
+        float stored = getterFloat.get();
+        if (stored >= minVal && stored <= maxVal) return false;
+        setFloat(getFloat());
+        return true;
+    }
     public float getMinVal() { return minVal; }
     public float getMaxVal() { return maxVal; }
 

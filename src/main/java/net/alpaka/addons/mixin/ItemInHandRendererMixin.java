@@ -4,6 +4,9 @@ import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.viewmodel.HandItemLightingFeature;
 import net.alpaka.addons.features.viewmodel.HandItemStarlightFeature;
 import net.alpaka.addons.features.viewmodel.ItemMotionBlurFeature;
+import net.alpaka.addons.utils.AlpakaPerf;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Options;
 import net.minecraft.world.entity.LivingEntity;
@@ -247,6 +250,21 @@ public class ItemInHandRendererMixin {
             SubmitNodeCollector queue, int light, CallbackInfo ci) {
         if (player == Minecraft.getInstance().player) {
             ItemMotionBlurFeature.noteArmItem(hand, swingProgress);
+        }
+    }
+
+    /**
+     * Times the first-person hands, with everything the viewmodel features add to them. Only a
+     * measurement, so the game starts without it if it cannot apply.
+     */
+    @WrapMethod(method = "submitHandsWithItems", require = 0)
+    private void alpaka$timeHands(float frameInterp, PoseStack poseStack, SubmitNodeCollector collector, LocalPlayer player,
+                                  int packedLight, Operation<Void> original) {
+        long t = AlpakaPerf.begin(AlpakaPerf.Section.HAND_ITEMS);
+        try {
+            original.call(frameInterp, poseStack, collector, player, packedLight);
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.HAND_ITEMS, t);
         }
     }
 

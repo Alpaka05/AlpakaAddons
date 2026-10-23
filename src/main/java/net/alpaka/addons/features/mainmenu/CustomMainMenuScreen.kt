@@ -447,10 +447,11 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
             return
         }
         val toScreen = guiScale()
-        sink.`alpaka$submitElement`(BlurRectRenderState(
+        val panel = BlurRectRenderState(
             Matrix3x2f(graphics.pose()), x, y, x + width, y + height,
-            Math.round(radius * toScreen), tinted, toScreen, opacity, sink.`alpaka$currentScissor`()))
-        ChatBlurFeature.request()
+            Math.round(radius * toScreen), tinted, toScreen, opacity, sink.`alpaka$currentScissor`())
+        ChatBlurFeature.request(panel.bounds())
+        sink.`alpaka$submitElement`(panel)
     }
 
     /**

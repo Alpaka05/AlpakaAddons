@@ -36,13 +36,14 @@ public class LevelRendererMixin {
     private LevelRenderState levelRenderState;
 
     /**
-     * Gives the Nether a sky. Vanilla adds no sky pass at all where the dimension has no skybox,
-     * so the frame keeps the fog color it was cleared with; Sky Effects adds its own pass here,
-     * before the main pass draws the world over it.
+     * Sky Effects, before vanilla looks at the sky. Vanilla adds no sky pass at all where the
+     * dimension has no skybox, so the frame keeps the fog color it was cleared with; the Nether's
+     * own pass is added here, before the main pass draws the world over it. SkyBlock's End island
+     * is switched to the End's sky here too.
      */
     @Inject(method = "addSkyPass", at = @At("HEAD"))
-    private void alpaka$addNetherSky(FrameGraphBuilder frame, CameraRenderState camera, GpuBufferSlice fog, CallbackInfo ci) {
-        SkyEffectsFeature.addNetherPass(frame, targets, levelRenderState.skyRenderState, camera, fog);
+    private void alpaka$skyEffects(FrameGraphBuilder frame, CameraRenderState camera, GpuBufferSlice fog, CallbackInfo ci) {
+        SkyEffectsFeature.beforeSkyPass(frame, targets, levelRenderState, camera, fog);
     }
 
     /**

@@ -103,6 +103,57 @@ public class SkyblockUtils {
         return false;
     }
 
+    /** The End island's zones, as the sidebar's zone line names them. */
+    private static final String[] END_ISLAND_ZONES = {"The End", "Dragon's Nest", "Void Sepulture", "Zealot Bruiser Hideout"};
+
+    private static long endIslandCheckedAtMs = 0L;
+    private static boolean cachedOnEndIsland = false;
+    private static java.lang.ref.WeakReference<Object> endIslandCachedForLevel = null;
+
+    /**
+     * Whether the player is on SkyBlock's End island, cached like {@link #isOnGarden()}. Asked every
+     * frame by Sky Effects: Hypixel sends the island as an Overworld-like dimension, so nothing in
+     * the world itself tells it apart.
+     *
+     * The sidebar's zone line names the part of the island ("The End", "Void Sepulture", ...); the
+     * tab list's "Area: The End" widget is the fallback.
+     */
+    public static boolean isOnEndIsland() {
+        Object level = Minecraft.getInstance().level;
+        long now = System.currentTimeMillis();
+        Object cachedLevel = endIslandCachedForLevel == null ? null : endIslandCachedForLevel.get();
+        if (level == cachedLevel && now - endIslandCheckedAtMs < GARDEN_CACHE_MS) {
+            return cachedOnEndIsland;
+        }
+
+        endIslandCheckedAtMs = now;
+        endIslandCachedForLevel = level == null ? null : new java.lang.ref.WeakReference<>(level);
+        cachedOnEndIsland = computeOnEndIsland();
+        return cachedOnEndIsland;
+    }
+
+    private static boolean computeOnEndIsland() {
+        if (!isOnSkyblock()) return false;
+        for (String line : getSidebarLines()) {
+            if (isEndIslandZoneLine(line)) return true;
+        }
+        for (String line : getTabListLines()) {
+            if (line.startsWith("Area: The End")) return true;
+        }
+        return false;
+    }
+
+    /** Whether a sidebar line, color codes stripped, is the zone line of one of the End island's zones. */
+    static boolean isEndIslandZoneLine(String line) {
+        int marker = line.indexOf(AREA_MARKER);
+        if (marker < 0) return false;
+        String zone = line.substring(marker + AREA_MARKER.length()).trim();
+        for (String endZone : END_ISLAND_ZONES) {
+            if (zone.startsWith(endZone)) return true;
+        }
+        return false;
+    }
+
     /**
      * Detection is deliberately not based on the sidebar title alone. Hypixel renames that title
      * during events - it reads "BLAZE SIMULATOR" during one - which used to make this return false in

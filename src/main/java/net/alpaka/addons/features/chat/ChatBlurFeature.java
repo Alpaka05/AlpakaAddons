@@ -5,7 +5,6 @@ import com.mojang.blaze3d.pipeline.TextureTarget;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.FilterMode;
 import com.mojang.blaze3d.textures.GpuTexture;
-import com.mojang.blaze3d.textures.GpuTextureView;
 import net.alpaka.addons.client.gui.AlpakaGuiElementSink;
 import net.alpaka.addons.client.gui.BlurRectRenderState;
 import net.alpaka.addons.client.gui.HudPanel;
@@ -42,8 +41,12 @@ import org.slf4j.LoggerFactory;
  * own screen position, tints it with the chat's background color and fades the rounded edge over
  * one pixel.
  *
- * The blur only runs in frames where a panel asked for it ({@link #request()}), so a hidden chat
- * costs nothing.
+ * The blur only runs in frames where a panel asked for it ({@link #request}), and only over the
+ * parts of the frame behind the panels that asked, so a hidden chat costs nothing and a small one
+ * little. A panel does not ask when the blur would be 0 pixels wide - a plain tint looks nearly the
+ * same, and the whole frame used to be copied for it every frame - nor, over the world, while a menu that
+ * blurs the world itself is open ({@link #requestForHud}). After a few seconds without any panel
+ * asking, the targets are let go.
  *
  * ### The HUD under the chat
  *
@@ -96,12 +99,24 @@ public final class ChatBlurFeature {
     static final float VEIL_SHARE = 0.6f;
 
     private static final DualKawaseBlur BLUR = new DualKawaseBlur();
-    /** At strength 0: a plain copy of the frame, the world sharp behind the tint. */
-    private static TextureTarget sharp;
-    /** Targets replaced after a resize, closed at the start of the next frame. */
+    /** Targets replaced after a resize or let go, closed at the start of the next frame. */
     private static final java.util.List<TextureTarget> PENDING_CLOSE = new java.util.ArrayList<>();
-    /** This frame's blur, decided before the GUI is prepared; NONE samples the sharp copy. */
+    /** This frame's blur, decided before the GUI is prepared. */
     private static DualKawaseBlur.Plan framePlan = DualKawaseBlur.Plan.NONE;
+    /** The areas, in GUI pixels, the panels of the frame being extracted want blurred behind them. */
+    private static java.util.List<ScreenRectangle> pendingAreas = new java.util.ArrayList<>();
+    /** The same for the frame being drawn: the blur covers these, and only panels inside one sample it. */
+    private static java.util.List<ScreenRectangle> frameAreas = new java.util.ArrayList<>();
+    /** More areas than this in one frame, and the whole frame is blurred instead. */
+    private static final int MAX_AREAS = 64;
+    private static boolean pendingWholeFrame;
+    private static boolean frameWholeFrame;
+    /** When a panel last asked for the blur. */
+    private static long lastWantedNanos;
+    /** Without a panel asking for this long, the targets are let go. */
+    private static final long RELEASE_AFTER_NANOS = 5_000_000_000L;
+    /** The screen that last asked for vanilla's menu blur, which goes over the whole HUD. */
+    private static java.lang.ref.WeakReference<Screen> blurringScreen = new java.lang.ref.WeakReference<>(null);
     private static boolean requested;
     private static boolean ready;
     private static boolean warned;
@@ -223,24 +238,27 @@ public final class ChatBlurFeature {
         int alpha = Math.round(Mth.clamp(panelAlpha * panelOpacity, 0.0f, 1.0f) * 255.0f);
         if (alpha <= 0) return;
 
-        // Before the submission, which Gnetum then hands to the frame's own pass; see request().
-        request();
         // Submitted before the lines are shifted by the scroll, so the current pose is the box's.
         Matrix3x2f pose = new Matrix3x2f(graphics.pose());
         int radius = Math.round(RADIUS * toScreen);
         int shadow = Math.round(SHADOW * toScreen * panelAlpha);
         ScreenRectangle scissor = sink.alpaka$currentScissor();
         if (!underHud()) {
-            sink.alpaka$submitElement(new BlurRectRenderState(
-                    pose, x0, y0, x1, y1, radius, alpha << 24, toScreen, 1.0f, shadow, scissor));
+            BlurRectRenderState panel = new BlurRectRenderState(
+                    pose, x0, y0, x1, y1, radius, alpha << 24, toScreen, 1.0f, shadow, scissor);
+            // Before the submission, which Gnetum then hands to the frame's own pass; see request().
+            requestForChat(panel.bounds());
+            sink.alpaka$submitElement(panel);
             return;
         }
         float tint = alpha / 255.0f;
         float veil = tint * VEIL_SHARE;
         int glassAlpha = Math.round(glassTint(tint, veil) * 255.0f);
         int veilAlpha = Math.round(veil * 255.0f);
-        sink.alpaka$submitUnderlay(new BlurRectRenderState(
-                pose, x0, y0, x1, y1, radius, glassAlpha << 24, toScreen, 1.0f, shadow, scissor));
+        BlurRectRenderState glass = new BlurRectRenderState(
+                pose, x0, y0, x1, y1, radius, glassAlpha << 24, toScreen, 1.0f, shadow, scissor);
+        requestForChat(glass.bounds());
+        sink.alpaka$submitUnderlay(glass);
         if (veilAlpha > 0) {
             sink.alpaka$submitElement(new RoundedRectRenderState(
                     pose, x0, y0, x1, y1, radius, 0, veilAlpha << 24, Math.max(1, Math.round(toScreen)), scissor));
@@ -315,21 +333,83 @@ public final class ChatBlurFeature {
     }
 
     /**
-     * A panel is extracted this frame; the frame has to be captured and blurred before drawing.
+     * A panel wants the frame blurred behind {@code area}, its bounds in GUI pixels, this frame.
+     * Returns whether it gets that; when not, it is drawn as a plain tint ({@link #samples}).
+     *
+     * It does not when the blur would be 0 pixels wide - Blur Strength at or near 0 - where a plain
+     * tint looks nearly the same: the whole frame used to be copied for it every frame. A screen's own glass
+     * that is blurred after its background ({@link #captureAfterBackground()}) is never left out.
+     *
      * Called right before the panel is submitted: a HUD Gnetum is caching is taken out of its cache
      * then, and Gnetum passes that very submission on to the frame's own GUI pass.
      */
-    public static void request() {
+    public static boolean request(ScreenRectangle area) {
+        if (area == null || area.width() <= 0 || area.height() <= 0) return false;
+        if (!captureAfterBackground && blurRadius(guiScale(), AlpakaConfig.instance.chatBlurStrength) == 0) return false;
         requested = true;
+        if (pendingAreas.size() < MAX_AREAS) {
+            pendingAreas.add(area);
+        } else {
+            pendingWholeFrame = true;
+        }
         GnetumCompat.keepOutOfCache();
+        return true;
     }
 
     /**
-     * Whether a blurred copy exists for the panel to sample; false falls back to a plain panel.
+     * As {@link #request}, for a panel of the HUD - under any open screen. Left out while that
+     * screen blurs the world itself, as the pause menu and the options do: their blur goes over the
+     * whole HUD, panel included, and blurring behind the panel first was work nobody saw.
+     */
+    public static boolean requestForHud(ScreenRectangle area) {
+        return !screenBlursWorld() && request(area);
+    }
+
+    /** The chat panel: part of the HUD, unless Chat Peek draws it on top of a menu. */
+    private static boolean requestForChat(ScreenRectangle area) {
+        return ChatPeekFeature.isPeekingInMenu() ? request(area) : requestForHud(area);
+    }
+
+    /** Vanilla's menu blur is being asked for while extracting: the open screen blurs the world behind it. */
+    public static void onMenuBlur() {
+        Screen screen = Minecraft.getInstance().gui.screen();
+        if (screen != null && screen != blurringScreen.get()) blurringScreen = new java.lang.ref.WeakReference<>(screen);
+    }
+
+    /**
+     * Whether the open screen blurs the world, HUD and all: it asked for the menu blur while it was
+     * open, and the Menu Background Blurriness setting makes that blur visible.
+     */
+    private static boolean screenBlursWorld() {
+        Minecraft mc = Minecraft.getInstance();
+        Screen screen = mc.gui.screen();
+        return screen != null && screen == blurringScreen.get() && mc.options.getMenuBackgroundBlurriness() >= 1;
+    }
+
+    private static int guiScale() {
+        return (int) Minecraft.getInstance().getWindow().getGuiScale();
+    }
+
+    /**
+     * Whether a blurred copy exists for the panels to sample; false falls back to plain panels.
      * Never in a GUI pass other than the frame's own, whose target is not the frame the copy shows.
      */
     public static boolean isReady() {
-        return ready && inFramePass && (framePlan.levels() > 0 ? BLUR.exists() : sharp != null);
+        return ready && inFramePass && BLUR.exists();
+    }
+
+    /**
+     * Whether a panel with these bounds samples the blur this frame: the blur exists and covers it.
+     * A panel that did not ask for it - or was told no - is drawn as a plain tint instead: the blur
+     * only covers the areas that were asked for, and anywhere else the blurred image is stale.
+     */
+    public static boolean samples(ScreenRectangle bounds) {
+        if (bounds == null || !isReady()) return false;
+        if (frameWholeFrame) return true;
+        for (ScreenRectangle area : frameAreas) {
+            if (area.encompasses(bounds)) return true;
+        }
+        return false;
     }
 
     /** The GameRenderer starts or ends drawing the frame's own GUI, onto the world. */
@@ -363,42 +443,47 @@ public final class ChatBlurFeature {
         // frame's panels without blur rather than sample it.
         if (deferred) ready = false;
 
-        boolean wanted = requested || captureAfterBackground;
+        // What this frame's panels asked for; the next frame's extraction starts a list of its own.
+        java.util.List<ScreenRectangle> drawn = frameAreas;
+        frameAreas = pendingAreas;
+        pendingAreas = drawn;
+        pendingAreas.clear();
+        frameWholeFrame = pendingWholeFrame;
+        pendingWholeFrame = false;
+
         deferred = captureAfterBackground;
         captureAfterBackground = false;
         // Only a screen's background defers the blur - the main menu's glass - and a menu keeps
         // the full blur; the strength setting is for the panels over the world.
-        DualKawaseBlur.Plan plan = DualKawaseBlur.plan(blurRadius(
-                (int) Minecraft.getInstance().getWindow().getGuiScale(),
-                deferred ? 100.0f : AlpakaConfig.instance.chatBlurStrength));
-        if (!plan.equals(framePlan)) {
-            // The panels sample another target than last frame's, which holds nothing yet.
-            if ((plan.levels() == 0) != (framePlan.levels() == 0)) ready = false;
-            framePlan = plan;
+        framePlan = DualKawaseBlur.plan(blurRadius(guiScale(), deferred ? 100.0f : AlpakaConfig.instance.chatBlurStrength));
+        boolean wanted = requested && !frameAreas.isEmpty() && framePlan.levels() > 0;
+        long now = System.nanoTime();
+        if (wanted) {
+            lastWantedNanos = now;
+            ensureTargets();
+        } else {
+            requested = false;
+            if (BLUR.exists() && now - lastWantedNanos > RELEASE_AFTER_NANOS) {
+                // The chat hidden, the panels off: the targets - two thirds of a frame's worth of
+                // memory - are let go until a panel asks again.
+                BLUR.release(PENDING_CLOSE);
+                ready = false;
+            }
         }
-        if (wanted) ensureTargets();
         if (!deferred) captureFrame();
     }
 
     /**
-     * Creates the targets this frame's plan samples, or replaces them when the window size
-     * changed. Only called before the GUI prepares its elements, so no element of this frame can
-     * hold a view of a replaced texture.
+     * Creates the targets, or replaces them when the window size changed. Only called before the
+     * GUI prepares its elements, so no element of this frame can hold a view of a replaced texture.
      */
     private static void ensureTargets() {
         RenderTarget main = Minecraft.getInstance().gameRenderer.mainRenderTarget();
         GpuTexture source = main.getColorTexture();
         if (source == null || main.width <= 0 || main.height <= 0) return;
         try {
-            if (framePlan.levels() > 0) {
-                if (BLUR.fits(main.width, main.height)) return;
-                BLUR.resize(main.width, main.height, source.getFormat(), PENDING_CLOSE);
-            } else {
-                if (sharp != null && sharp.width == main.width && sharp.height == main.height) return;
-                if (sharp != null) PENDING_CLOSE.add(sharp);
-                sharp = null;
-                sharp = new TextureTarget("Alpaka chat backdrop", main.width, main.height, false, source.getFormat());
-            }
+            if (BLUR.fits(main.width, main.height)) return;
+            BLUR.resize(main.width, main.height, source.getFormat(), PENDING_CLOSE);
             // The new targets hold nothing yet: this frame's panels are prepared without blur.
             ready = false;
         } catch (RuntimeException e) {
@@ -450,17 +535,11 @@ public final class ChatBlurFeature {
         if (source == null || main.width <= 0 || main.height <= 0) return;
 
         try {
-            if (framePlan.levels() == 0) {
-                // Strength 0: the plain copy is the panel's backdrop, the world sharp behind the tint.
-                // Sized before the GUI was prepared (see ensureTargets); never replaced here, where
-                // this frame's elements may already hold its view. A mismatch only skips the copy.
-                if (sharp == null || sharp.width != main.width || sharp.height != main.height) return;
-                RenderSystem.getDevice().createCommandEncoder().copyTextureToTexture(
-                        source, sharp.getColorTexture(), 0, 0, 0, 0, 0, main.width, main.height);
-            } else {
-                if (!BLUR.fits(main.width, main.height)) return;
-                BLUR.run(main.getColorTextureView(), framePlan);
-            }
+            // Sized before the GUI was prepared (see ensureTargets); never replaced here, where this
+            // frame's elements may already hold their view. A mismatch only skips the blur.
+            if (framePlan.levels() == 0 || !BLUR.fits(main.width, main.height)) return;
+            BLUR.run(main.getColorTextureView(), framePlan, frameWholeFrame ? java.util.List.of()
+                    : blurAreas(frameAreas, guiScale(), DualKawaseBlur.reach(framePlan), main.width, main.height));
             ready = true;
         } catch (RuntimeException e) {
             if (!warned) {
@@ -468,6 +547,42 @@ public final class ChatBlurFeature {
                 LOGGER.warn("Chat blur failed; drawing the chat background without blur", e);
             }
         }
+    }
+
+    /**
+     * The parts of the frame the blur has to cover, as {x0, y0, x1, y1} in screen pixels: every
+     * panel's area grown by {@code reach}, cut to the frame, overlapping ones merged into one. Empty -
+     * the whole frame - once they take up most of it anyway, where one pass beats several.
+     */
+    static java.util.List<int[]> blurAreas(java.util.List<ScreenRectangle> areas, int guiScale, int reach,
+                                           int width, int height) {
+        java.util.List<int[]> rects = new java.util.ArrayList<>();
+        for (ScreenRectangle area : areas) {
+            int[] rect = {
+                    Math.max(0, area.left() * guiScale - reach), Math.max(0, area.top() * guiScale - reach),
+                    Math.min(width, area.right() * guiScale + reach), Math.min(height, area.bottom() * guiScale + reach)};
+            if (rect[2] > rect[0] && rect[3] > rect[1]) rects.add(rect);
+        }
+        boolean merged = true;
+        while (merged) {
+            merged = false;
+            for (int i = 0; i < rects.size() && !merged; i++) {
+                for (int j = i + 1; j < rects.size() && !merged; j++) {
+                    int[] a = rects.get(i);
+                    int[] b = rects.get(j);
+                    if (a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3]) {
+                        rects.set(i, new int[]{
+                                Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])});
+                        rects.remove(j);
+                        merged = true;
+                    }
+                }
+            }
+        }
+        long covered = 0;
+        for (int[] rect : rects) covered += (long) (rect[2] - rect[0]) * (rect[3] - rect[1]);
+        if (covered * 4 >= (long) width * height * 3) rects.clear();
+        return rects;
     }
 
     /** The pipelines of the blur, registered with vanilla's at client start. */
@@ -478,8 +593,7 @@ public final class ChatBlurFeature {
     /** The blurred frame for the panel's shader to sample, valid only while {@link #isReady()}. */
     public static TextureSetup textureSetup() {
         if (!isReady()) return TextureSetup.noTexture();
-        GpuTextureView view = framePlan.levels() > 0 ? BLUR.output() : sharp.getColorTextureView();
-        return TextureSetup.singleTexture(view,
+        return TextureSetup.singleTexture(BLUR.output(),
                 RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR));
     }
 }

@@ -498,4 +498,73 @@ class MarketParsingTest {
         SearchSuggestions.Match initials = SearchSuggestions.rank("aotd", List.of("Aspect of the Dragons"), 1).get(0);
         assertArrayEquals(new int[] {0, 1, 7, 8, 10, 11, 14, 15}, initials.ranges());
     }
+
+    // ---- Market stats ---------------------------------------------------------------------------
+
+    @Test
+    void readsTheOrderBookFromTheButtonsLore() {
+        List<MarketStats.Level> orders = MarketStats.levels(List.of("Enchanted Hay Bale", "", "Top Orders:",
+                "- 147,002.5 coins each | 1,640x from 3 orders", "- 147,000 coins each | 320x from 1 order",
+                "- 5.3 coins each | 64x", "", "Click to setup Buy Order!"));
+        assertEquals(3, orders.size());
+        assertEquals(new MarketStats.Level(147_002.5, 1_640, 3), orders.get(0));
+        assertEquals(new MarketStats.Level(147_000, 320, 1), orders.get(1));
+        assertEquals(new MarketStats.Level(5.3, 64, 0), orders.get(2));
+        List<MarketStats.Level> offers = MarketStats.levels(List.of("Top Offers:", "- 153,420.2 coins each | 960x in 2 offers"));
+        assertEquals(new MarketStats.Level(153_420.2, 960, 2), offers.get(0));
+        assertTrue(MarketStats.levels(List.of("Top Orders:", "No buy orders yet!")).isEmpty());
+        assertEquals(10.0, MarketStats.spread(List.of(new MarketStats.Level(90, 1, 1)), List.of(new MarketStats.Level(100, 1, 1))), 1e-9);
+        assertTrue(Double.isNaN(MarketStats.spread(List.of(), offers)));
+    }
+
+    @Test
+    void readsSkyCoflsAuctionHistoryWithVolume() {
+        List<PriceHistory.Point> points = PriceHistory.parseAuction("""
+                [{"min":505911000.0,"max":998000000.0,"avg":879382200.0,"volume":5,"time":"2026-10-16T20:00:00"},
+                 {"min":465000000.0,"max":1.45E+09,"avg":880412000.0,"volume":0,"time":"2026-10-16T21:00:00"}]""");
+        assertEquals(2, points.size());
+        assertEquals(998_000_000.0, points.get(0).high());
+        assertEquals(5.0, points.get(0).volume());
+        assertEquals(0.0, points.get(1).volume());
+    }
+
+    @Test
+    void sumsUpARangeOfSales() {
+        List<PriceHistory.Point> points = List.of(
+                new PriceHistory.Point(0, 100, 90, 110, 3),
+                new PriceHistory.Point(3_600_000, 200, 180, 220, 1));
+        MarketStats.RangeStats stats = MarketStats.rangeStats(points, PriceHistory.Range.DAY);
+        assertEquals(4.0, stats.salesPerDay());
+        assertEquals(4.0, stats.sales());
+        assertEquals(125.0, stats.average());
+        assertEquals(4.0 / 7, MarketStats.rangeStats(points, PriceHistory.Range.WEEK).salesPerDay(), 1e-9);
+        assertTrue(Double.isNaN(MarketStats.rangeStats(List.of(), PriceHistory.Range.DAY).salesPerDay()));
+    }
+
+    @Test
+    void findsTheHourThatSellsMost() {
+        List<PriceHistory.Point> week = new ArrayList<>();
+        for (int i = 0; i < 72; i++) week.add(new PriceHistory.Point(i * 3_600_000L, 100, 90, 110, i % 24 == 18 ? 9 : 1));
+        assertEquals(18, MarketStats.busiestHour(week, java.time.ZoneOffset.UTC));
+        assertEquals(20, MarketStats.busiestHour(week, java.time.ZoneOffset.ofHours(2)));
+        List<PriceHistory.Point> daily = new ArrayList<>();
+        for (int i = 0; i < 72; i++) daily.add(new PriceHistory.Point(i * 86_400_000L, 100, 90, 110, 5));
+        assertEquals(-1, MarketStats.busiestHour(daily, java.time.ZoneOffset.UTC));
+        assertEquals(-1, MarketStats.busiestHour(week.subList(0, 10), java.time.ZoneOffset.UTC));
+    }
+
+    @Test
+    void readsSkyCoflsSummaryAndJudgesAPrice() {
+        PriceHistory.Summary summary = PriceHistory.summaryOf(PriceHistory.State.READY,
+                com.google.gson.JsonParser.parseString("{\"min\":430000000,\"median\":938000000,\"mean\":809360992.45,\"mode\":535000000,\"volume\":92.5,\"max\":1515151515}").getAsJsonObject(),
+                com.google.gson.JsonParser.parseString("{\"sell\":432180000.0,\"buy\":441000000.0,\"available\":1,\"isAh\":true}").getAsJsonObject());
+        assertEquals(938_000_000.0, summary.median());
+        assertEquals(535_000_000.0, summary.mode());
+        assertEquals(92.5, summary.salesPerDay());
+        assertEquals(441_000_000.0, summary.lowestBin());
+        assertTrue(Double.isNaN(PriceHistory.summaryOf(PriceHistory.State.FAILED, null, null).lowestBin()));
+        assertEquals("Below Market", MarketStats.verdict(80, 100));
+        assertEquals("Fair Price", MarketStats.verdict(105, 100));
+        assertEquals("Above Market", MarketStats.verdict(1_140, 938));
+    }
 }

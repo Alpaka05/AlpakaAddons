@@ -1193,20 +1193,56 @@ public class MarketScreen extends ContainerScreen {
             }
         }
         int graphH = Math.max(64, ah - (actions.isEmpty() ? 0 : actionsH + 8));
-        // With nothing under it, the graph ends above the open inventory drawer rather than behind it,
-        // as long as that leaves it tall enough to draw; else the drawer just covers part of it.
-        if (actions.isEmpty() && inventoryOpen && drawerX < ax + aw && drawerX + drawerW > ax
-                && drawerY < ay + graphH && drawerY - 6 - ay >= 72) {
-            graphH = drawerY - 6 - ay;
-        }
         MarketMenu.Slot hero = plain(m.hero);
         ItemTags.Tag tag = AlpakaConfig.instance.allowApiCalls
                 ? ItemTags.of(stack(m.hero), hero.name(), kind)
                 : new ItemTags.Tag(ItemTags.Lookup.UNKNOWN, null);
+
+        // With the actions in the hero, the graph keeps a wide shape and the room under it holds the
+        // product's order book or the auctioned item's market stats.
+        List<MarketStats.Level> orders = null;
+        List<MarketStats.Level> offers = null;
+        if (kind == MarketKind.BAZAAR) {
+            for (int slot : m.content) {
+                String name = plain(slot).name().toLowerCase(Locale.ROOT);
+                if (name.equals("create buy order")) orders = MarketStats.levels(plain(slot).lore());
+                else if (name.equals("create sell offer")) offers = MarketStats.levels(plain(slot).lore());
+            }
+        }
+        boolean book = orders != null || offers != null;
+        boolean stats = !book && kind == MarketKind.AUCTION_HOUSE && tag.tag() != null;
+        int panelH = 0;
+        if (actions.isEmpty() && (book || stats)) {
+            int panelMin = book ? MarketStats.bookMinHeight() : MarketStats.statsMinHeight();
+            int panelMax = book ? MarketStats.bookMaxHeight() : MarketStats.statsMaxHeight();
+            int wide = Math.max(96, Math.max(Math.round(aw * 0.5f), ah - 8 - panelMax));
+            int g = Math.min(wide, ah - 8 - panelMin);
+            if (g >= 72) {
+                graphH = g;
+                panelH = ah - 8 - graphH;
+            }
+        }
+        // With nothing under it, the graph ends above the open inventory drawer rather than behind it,
+        // as long as that leaves it tall enough to draw; else the drawer just covers part of it.
+        if (panelH == 0 && actions.isEmpty() && inventoryOpen && drawerX < ax + aw && drawerX + drawerW > ax
+                && drawerY < ay + graphH && drawerY - 6 - ay >= 72) {
+            graphH = drawerY - 6 - ay;
+        }
         PriceGraph.draw(graphics, this.font, kind, tag, ax, ay, aw, graphH, mx, my, (x, y, w, h, action, tipText) -> {
             hits.add(new Hit(x, y, w, h, (b, s) -> action.run(), true));
             if (tipText != null && AlpakaStyle.inside(mx, my, x, y, w, h)) tip("graph:" + x + ":" + y, tipText);
         });
+        if (panelH > 0) {
+            int py = ay + graphH + 8;
+            if (book) {
+                MarketStats.drawOrderBook(graphics, this.font, orders == null ? List.of() : orders,
+                        offers == null ? List.of() : offers, ax, py, aw, panelH);
+            } else {
+                LoreInfo info = m.info.get(m.hero);
+                MarketStats.drawAuctionStats(graphics, this.font, tag.tag(), info == null ? null : info.auctionPrice(),
+                        PriceHistory.Range.of(AlpakaConfig.instance.marketPriceHistoryRange), ax, py, aw, panelH);
+            }
+        }
         if (actions.isEmpty()) return ch;
         int areaY = ay + graphH + 8;
         drawActionCards(graphics, m, actions, mx, my, inClip, ax, areaY, aw, ah - graphH - 8, cy, ch, index, now, minW, cardH);

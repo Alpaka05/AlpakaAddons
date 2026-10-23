@@ -272,9 +272,14 @@ public final class MarketPreview {
         c.setItem(11, item(Items.HOPPER, "§6Sell Instantly", "§8Enchanted Hay Bale", "", "§7Inventory: §a12 items", "",
                 "§7Amount: §a12§7x", "§7Price per unit: §6147,002.5 coins", "§7Total: §61,764,030 coins", "", "§eClick to sell!"));
         c.setItem(15, item(Items.FILLED_MAP, "§aCreate Buy Order", "§8Enchanted Hay Bale", "", "§7Top Orders:",
-                "§8- §6147,002.5 coins §7each | §a1,640§7x", "§8- §6147,000 coins §7each | §a320§7x", "", "§eClick to setup Buy Order!"));
+                "§8- §6147,002.5 coins §7each | §a1,640§7x §7from §f3 §7orders", "§8- §6147,000 coins §7each | §a320§7x §7from §f1 §7order",
+                "§8- §6146,950.1 coins §7each | §a2,048§7x §7from §f5 §7orders", "§8- §6146,900 coins §7each | §a64§7x §7from §f1 §7order",
+                "§8- §6146,500 coins §7each | §a700§7x §7from §f2 §7orders", "§8- §6146,000 coins §7each | §a3,200§7x §7from §f4 §7orders",
+                "§8- §6145,000 coins §7each | §a160§7x §7from §f1 §7order", "", "§eClick to setup Buy Order!"));
         c.setItem(16, item(Items.MAP, "§6Create Sell Offer", "§8Enchanted Hay Bale", "", "§7Top Offers:",
-                "§8- §6153,420.2 coins §7each | §a960§7x", "§8- §6153,500 coins §7each | §a64§7x", "", "§eClick to setup Sell Offer!"));
+                "§8- §6153,420.2 coins §7each | §a960§7x §7in §f2 §7offers", "§8- §6153,500 coins §7each | §a64§7x §7in §f1 §7offer",
+                "§8- §6153,999.9 coins §7each | §a1,280§7x §7in §f3 §7offers", "§8- §6154,000 coins §7each | §a128§7x §7in §f1 §7offer",
+                "§8- §6155,000 coins §7each | §a2,560§7x §7in §f6 §7offers", "", "§eClick to setup Sell Offer!"));
         c.setItem(30, item(Items.ARROW, "§aGo Back", "§7To Farming"));
         c.setItem(31, item(Items.PAPER, "§aView Graphs", "§7See the price history.", "", "§eClick to view!"));
         return screen(4, c, "Farming ➜ Enchanted Hay Bale", MarketKind.BAZAAR);

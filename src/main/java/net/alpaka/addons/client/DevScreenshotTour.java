@@ -210,7 +210,7 @@ public final class DevScreenshotTour {
                 AlpakaConfig.instance.marketPriceHistoryRange = 1;
                 placeMouse(0.5, 0.97);
             }, () -> true, 1),
-            // The product with the inventory open: the actions in the hero stay free, the graph ends above it.
+            // The product with the inventory open: the actions in the hero stay free, the drawer covers the order book.
             new Stop("market-bazaar-product-inventory", () -> {
                 net.alpaka.addons.features.market.MarketPreview.inventory(true);
                 Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.bazaarProduct());

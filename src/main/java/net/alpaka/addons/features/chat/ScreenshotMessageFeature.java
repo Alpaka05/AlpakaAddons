@@ -6,6 +6,7 @@ import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.slayer.SlayerDropTracker;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.ChatComponent;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.ClickEvent;
@@ -15,6 +16,7 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.contents.PlainTextContents;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.Mth;
 import net.minecraft.util.Util;
 import org.slf4j.Logger;
 
@@ -86,6 +88,13 @@ public final class ScreenshotMessageFeature {
     private static final String NAMESPACE = "alpaka";
     public static final Identifier COPY = Identifier.fromNamespaceAndPath(NAMESPACE, "screenshot/copy");
     public static final Identifier DELETE = Identifier.fromNamespaceAndPath(NAMESPACE, "screenshot/delete");
+
+    /** What a click on the preview does, by the Preview Click setting's index. */
+    public static final String[] PREVIEW_CLICK_NAMES = {"Nothing", "Open", "Copy", "Open Folder"};
+    public static final int PREVIEW_CLICK_NOTHING = 0;
+    public static final int PREVIEW_CLICK_OPEN = 1;
+    public static final int PREVIEW_CLICK_COPY = 2;
+    public static final int PREVIEW_CLICK_FOLDER = 3;
 
     /**
      * The screenshots {@link #onSaved} has already acted on, so the vanilla notice that follows is
@@ -253,8 +262,10 @@ public final class ScreenshotMessageFeature {
     }
 
     /**
-     * "Saved screenshot [Open] [Copy] [Delete]", with an optional note between the text and the
+     * "Saved screenshot [Open] [Folder] [Copy] [Delete]", with an optional note between the text and the
      * buttons. Which parts appear is up to the config: the file name, and each button on its own.
+     * When the whole line is wider than the chat, the buttons go onto a line of their own instead of
+     * being split where the chat happens to wrap.
      */
     private static Component buttonLine(File file, Component note) {
         AlpakaConfig cfg = AlpakaConfig.instance;
@@ -269,19 +280,40 @@ public final class ScreenshotMessageFeature {
         if (note != null) {
             line.append(" ").append(note);
         }
+        MutableComponent buttons = Component.empty();
         if (cfg.screenshotShowOpen) {
-            line.append(" ").append(button("[Open]", ChatFormatting.GREEN, new ClickEvent.OpenFile(file), "Open " + name));
+            addButton(buttons, button("[Open]", ChatFormatting.GREEN, new ClickEvent.OpenFile(file), "Open " + name));
+        }
+        if (cfg.screenshotShowFolder && file.getParentFile() != null) {
+            addButton(buttons, button("[Folder]", ChatFormatting.YELLOW, new ClickEvent.OpenFile(file.getParentFile()),
+                    "Open the screenshots folder"));
         }
         if (cfg.screenshotShowCopy) {
-            line.append(" ").append(button("[Copy]", ChatFormatting.AQUA, custom(COPY, token), "Copy the image to the clipboard"));
+            addButton(buttons, button("[Copy]", ChatFormatting.AQUA, custom(COPY, token), "Copy the image to the clipboard"));
         }
         if (cfg.screenshotShowDelete) {
-            line.append(" ").append(button("[Delete]", ChatFormatting.RED, custom(DELETE, token), "Delete " + name));
+            addButton(buttons, button("[Delete]", ChatFormatting.RED, custom(DELETE, token), "Delete " + name));
+        }
+        if (!buttons.getSiblings().isEmpty()) {
+            Minecraft mc = Minecraft.getInstance();
+            int lineWidth = mc.font.width(line) + mc.font.width(" ") + mc.font.width(buttons);
+            line.append(lineWidth <= chatWidth(mc) ? " " : "\n").append(buttons);
         }
         synchronized (OWN_LINES) {
             OWN_LINES.add(line);
         }
         return line;
+    }
+
+    private static void addButton(MutableComponent buttons, Component button) {
+        if (!buttons.getSiblings().isEmpty()) buttons.append(" ");
+        buttons.append(button);
+    }
+
+    /** How wide a chat line can be before it wraps, in unscaled pixels, the same sum vanilla uses. */
+    private static int chatWidth(Minecraft mc) {
+        int width = ChatComponent.getWidth(mc.options.chatWidth().get());
+        return Mth.floor(width / mc.options.chatScale().get());
     }
 
     /** The file the vanilla notice links to: its one argument is the name, clickable to open the file. */
@@ -302,6 +334,7 @@ public final class ScreenshotMessageFeature {
     private static Component button(String text, ChatFormatting color, ClickEvent click, String hover) {
         return Component.literal(text).withStyle(style -> style
                 .withColor(color)
+                .withBold(true)
                 .withClickEvent(click)
                 .withHoverEvent(new HoverEvent.ShowText(Component.literal(hover))));
     }
@@ -333,6 +366,30 @@ public final class ScreenshotMessageFeature {
                     "Delete", true, () -> delete(file)));
         }
         return true;
+    }
+
+    /** The preview was clicked: whatever the Preview Click setting says. */
+    public static void previewClicked(File file) {
+        switch (AlpakaConfig.instance.screenshotPreviewClickAction) {
+            case PREVIEW_CLICK_OPEN -> open(file);
+            case PREVIEW_CLICK_COPY -> copy(file, error -> feedback(error == null
+                    ? "§aScreenshot copied to the clipboard."
+                    : "§cCouldn't copy the screenshot (" + error + ")."));
+            case PREVIEW_CLICK_FOLDER -> {
+                File folder = file.getParentFile();
+                if (folder != null) open(folder);
+            }
+            default -> {
+            }
+        }
+    }
+
+    private static void open(File file) {
+        if (!file.exists()) {
+            feedback("§cThat screenshot no longer exists.");
+            return;
+        }
+        Util.getPlatform().openFile(file);
     }
 
     /**

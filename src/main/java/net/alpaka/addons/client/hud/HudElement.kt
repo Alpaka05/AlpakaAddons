@@ -105,6 +105,12 @@ interface HudElement {
         return HudBounds(box.x0 + dx, box.y0 + dy, box.x1 + dx, box.y1 + dy)
     }
 
+    /**
+     * The part of [box] the editor outlines, for an element whose box holds room around what it
+     * draws. The box itself stays the one kept on screen and hit-tested.
+     */
+    fun outlineBounds(box: HudBounds): HudBounds = box
+
     /** Anchor X shifted by the same amount as [visibleBounds]. Never written back to the config. */
     fun visibleAnchorX(screenWidth: Int, screenHeight: Int): Int {
         val box = bounds()

@@ -122,6 +122,9 @@ object SlayerBossEntityTracker {
      */
     private const val REACQUIRE_COOLDOWN_MS = 3_000L
 
+    /** One client tick, for turning an entity's age into a time. */
+    private const val MS_PER_TICK = 50L
+
     /** The slayer whose boss is being watched, or null while no quest is running. */
     private var watching: SlayerType? = null
 
@@ -143,7 +146,13 @@ object SlayerBossEntityTracker {
     private var acceptFromMs = 0L
 
     /**
-     * When the boss entity was first seen, or null while it has not been.
+     * When the boss entity reached this client, or null while it has not been seen.
+     *
+     * Worked out from the entity's age rather than from the moment the search found it. The
+     * difference matters after [reset]: a boss that was already up - the fight carried on after the
+     * sidebar briefly dropped the quest, say - is picked up again seconds into its life, and stamping
+     * that moment as its arrival made the rest of the fight look like a whole one, short enough to
+     * stand as a personal best. Its age says it was there all along.
      *
      * Set once per boss and never moved afterwards. That is deliberate: Tarantula Broodfather V
      * splits into a "Conjoined Brood" partway through, which is a different entity with a different
@@ -162,6 +171,17 @@ object SlayerBossEntityTracker {
      * because the other way to lose a boss is to have walked out of range of it.
      */
     var diedAtMs: Long? = null
+        private set
+
+    /**
+     * Whether [diedAtMs] comes from the boss's health reaching [DEAD_HEALTH], rather than from the
+     * entity merely going missing.
+     *
+     * Only a health death proves the boss died. A missing entity is just as often a boss that
+     * teleported out of range or was never resolved properly, so it can end a fight on the clock
+     * but cannot vouch for that fight as a personal best.
+     */
+    var diedByHealth = false
         private set
 
     /** Whether a boss is being followed right now, for the diagnostics command. */
@@ -183,6 +203,7 @@ object SlayerBossEntityTracker {
         sawAlive = false
         spawnedAtMs = null
         diedAtMs = null
+        diedByHealth = false
         acceptFromMs = System.currentTimeMillis() + REACQUIRE_COOLDOWN_MS
     }
 
@@ -213,12 +234,16 @@ object SlayerBossEntityTracker {
                     // version clearing it on a merely missing entity is what swallowed every death.
                     sawAlive = true
                     diedAtMs = null
+                    diedByHealth = false
                     return
                 }
                 // At or below the threshold. Only a kill once the boss has been seen alive; before
                 // that it is the entity's health simply not having synced yet.
                 if (!sawAlive) return
-                if (diedAtMs == null) diedAtMs = System.currentTimeMillis()
+                if (diedAtMs == null || !diedByHealth) {
+                    diedAtMs = System.currentTimeMillis()
+                    diedByHealth = true
+                }
                 return
             }
 
@@ -250,10 +275,25 @@ object SlayerBossEntityTracker {
         if (System.currentTimeMillis() < acceptFromMs) return
 
         trackedId = found.id
-        trackedMobId = resolveMob(found)?.id ?: -1
+        val mob = resolveMob(found)
+        trackedMobId = mob?.id ?: -1
         sawAlive = false
         diedAtMs = null
-        if (spawnedAtMs == null) spawnedAtMs = System.currentTimeMillis()
+        diedByHealth = false
+        if (spawnedAtMs == null) spawnedAtMs = arrivedAtMs(found, mob)
+    }
+
+    /**
+     * When the boss reached this client, from how many client ticks its entities have existed.
+     *
+     * The older of the name tag and the mob counts, so that a tag Hypixel replaced mid-fight does
+     * not make the boss look newer than it is. Client ticks rather than server ticks, so a lagging
+     * client counts too few and places the arrival a little late - but never later than the moment
+     * the boss was found, which is what this used to stamp.
+     */
+    private fun arrivedAtMs(tag: ArmorStand, mob: LivingEntity?): Long {
+        val ticks = maxOf(tag.tickCount, mob?.tickCount ?: 0)
+        return System.currentTimeMillis() - ticks * MS_PER_TICK
     }
 
     /** Tries once more to put a mob behind the tracked name tag. True when one was found. */

@@ -152,6 +152,15 @@ object SlayerQuestDetector {
         private set
 
     /**
+     * Whether the kill [consumeKill] last handed out was stated by Hypixel - "Boss slain!" on the
+     * sidebar or the kill line in chat - rather than only inferred from the fight vanishing off the
+     * sidebar. An inferred kill is still counted, but the quest lines also go missing for a moment
+     * mid-fight, so it cannot vouch for a fight's end on its own.
+     */
+    var killStated = true
+        private set
+
+    /**
      * Whether the spawn [consumeSpawn] last handed out came from grinding in the same world. A boss
      * that is already up when it is first seen - on joining, after a warp - was not, and a time
      * measured from that moment would be too short to be a personal best.
@@ -290,7 +299,10 @@ object SlayerQuestDetector {
 
         if (now - tabCheckedAtMs >= TAB_FALLBACK_MS) {
             tabCheckedAtMs = now
-            cachedTabLines = SkyblockUtils.getTabListLines()
+            // Trimmed, as SkyHanni does, because the tab list indents its widget lines while the
+            // progress states are matched exactly. An indented " Slay the boss!" reads as no fight
+            // at all, so a quest falling back to the tab list mid-fight looked like a dead boss.
+            cachedTabLines = SkyblockUtils.getTabListLines().map { it.trim() }
         }
         if (cachedTabLines.any { SlayerType.fromScoreboardLine(it) != null }) return cachedTabLines
 
@@ -321,6 +333,7 @@ object SlayerQuestDetector {
         }
 
         SlayerTimer.clear()
+        SlayerSessionTracker.clearBossClock()
     }
 
     /**
@@ -460,6 +473,7 @@ object SlayerQuestDetector {
         pendingKill = null
         killDetectedAtMs = pendingKillAtMs
         killTimed = pendingKillTimed
+        killStated = !pendingKillInferred
         return killed
     }
 

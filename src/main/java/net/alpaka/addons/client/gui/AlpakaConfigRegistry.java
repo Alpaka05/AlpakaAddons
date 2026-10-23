@@ -49,7 +49,7 @@ public class AlpakaConfigRegistry {
         // and whether they replace vanilla's, the one place HUDs are arranged, and the way back out
         // of everything.
         OPTIONS.add(new ConfigOption("allow_api_calls", "Network Features",
-                "Lets the mod go online for the mayor's slayer XP buff, the main menu's player count and the update check.",
+                "Lets the mod go online for the mayor's slayer XP buff, the main menu's player count, the update check and SkyCofl's price history.",
                 ConfigCategory.GENERAL,
                 () -> AlpakaConfig.instance.allowApiCalls,
                 v -> { AlpakaConfig.instance.allowApiCalls = v; AlpakaConfig.save(); },
@@ -247,7 +247,7 @@ public class AlpakaConfigRegistry {
                 "hurt damage red flash tint overlay hit mob entity hide"));
 
         OPTIONS.add(new ConfigOption("hide_mob_deaths", "Hide Mob Deaths",
-                "Makes mobs vanish the moment they die instead of tipping over first.",
+                "Makes mobs and their name tags vanish the moment they die instead of tipping over first.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.hideMobDeathsEnabled,
                 v -> { AlpakaConfig.instance.hideMobDeathsEnabled = v; AlpakaConfig.save(); },
@@ -573,8 +573,8 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VISUALS,
                 () -> (float) AlpakaConfig.instance.smoothChatStrength,
                 v -> { AlpakaConfig.instance.smoothChatStrength = Math.round(v); AlpakaConfig.save(); },
-                1.0f, 10.0f, v -> Math.round(v) + " / 10",
-                "smooth chat strength speed duration animation slow fast slider visible"));
+                1.0f, 10.0f, v -> Math.round(v) * 60 + " ms",
+                "smooth chat strength speed duration animation slow fast slider visible time ms"));
 
         OPTIONS.add(new ConfigOption("chat_open_animation", "Opening Animation",
                 "Opening the chat unrolls it smoothly from the input line instead of showing it at once.",
@@ -589,6 +589,20 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.chatSmoothScrollEnabled,
                 v -> { AlpakaConfig.instance.chatSmoothScrollEnabled = v; AlpakaConfig.save(); },
                 "smooth chat scroll scrolling wheel glide peek animation"));
+
+        OPTIONS.add(new ConfigOption("chat_scrollbar", "Better Scrollbar",
+                "Gives the open chat a wider, rounded scrollbar that you can drag with the mouse.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatScrollbarEnabled,
+                v -> { AlpakaConfig.instance.chatScrollbarEnabled = v; AlpakaConfig.save(); },
+                "chat scrollbar scroll bar drag thumb wide rounded mouse grab"));
+
+        OPTIONS.add(new ConfigOption("chat_movable", "Movable Chat",
+                "Makes the chat a HUD element, so you can move and resize it in the HUD editor.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatMovable,
+                v -> { AlpakaConfig.instance.chatMovable = v; AlpakaConfig.save(); },
+                "chat move movable position hud editor drag place resize scale element"));
 
         OPTIONS.add(new ConfigOption("chat_search", "Chat Search",
                 "Filters the chat to messages containing your text. Press Ctrl+F (Cmd+F on macOS) in the chat.",
@@ -687,6 +701,15 @@ public class AlpakaConfigRegistry {
                 val -> Math.round(val) + "%",
                 "screenshot preview size width thumbnail"));
 
+        OPTIONS.add(new ConfigOption("screenshot_preview_click", "Preview Click",
+                "What clicking the preview does while a menu or the chat is open.",
+                ConfigCategory.VISUALS,
+                () -> (float) AlpakaConfig.instance.screenshotPreviewClickAction,
+                v -> { AlpakaConfig.instance.screenshotPreviewClickAction = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (net.alpaka.addons.features.chat.ScreenshotMessageFeature.PREVIEW_CLICK_NAMES.length - 1),
+                val -> net.alpaka.addons.features.chat.ScreenshotMessageFeature.PREVIEW_CLICK_NAMES[Math.clamp(Math.round(val), 0, net.alpaka.addons.features.chat.ScreenshotMessageFeature.PREVIEW_CLICK_NAMES.length - 1)],
+                "screenshot preview click mouse open copy folder action thumbnail").choices(net.alpaka.addons.features.chat.ScreenshotMessageFeature.PREVIEW_CLICK_NAMES));
+
         OPTIONS.add(new ConfigOption("screenshot_chat_buttons", "Chat Buttons",
                 "Shows Open, Copy and Delete buttons on the screenshot message in chat.",
                 ConfigCategory.VISUALS,
@@ -704,6 +727,9 @@ public class AlpakaConfigRegistry {
                         new ConfigOption.ToggleEntry("Open Button",
                                 () -> AlpakaConfig.instance.screenshotShowOpen,
                                 v -> { AlpakaConfig.instance.screenshotShowOpen = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Folder Button",
+                                () -> AlpakaConfig.instance.screenshotShowFolder,
+                                v -> { AlpakaConfig.instance.screenshotShowFolder = v; AlpakaConfig.save(); }),
                         new ConfigOption.ToggleEntry("Copy Button",
                                 () -> AlpakaConfig.instance.screenshotShowCopy,
                                 v -> { AlpakaConfig.instance.screenshotShowCopy = v; AlpakaConfig.save(); }),
@@ -711,7 +737,7 @@ public class AlpakaConfigRegistry {
                                 () -> AlpakaConfig.instance.screenshotShowDelete,
                                 v -> { AlpakaConfig.instance.screenshotShowDelete = v; AlpakaConfig.save(); })
                 ),
-                "screenshot line parts file name open copy delete button show hide"));
+                "screenshot line parts file name open folder copy delete button show hide"));
 
         OPTIONS.add(new ConfigOption("auto_copy_screenshots", "Auto Copy Screenshots",
                 "Copies every screenshot to the clipboard right away.",
@@ -823,6 +849,43 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.playerModelShowInGuis,
                 v -> { AlpakaConfig.instance.playerModelShowInGuis = v; AlpakaConfig.save(); },
                 "player model show in guis menus screen open container inventory HUD show in guis / menus"));
+
+        OPTIONS.add(new ConfigOption("Performance HUD", ConfigCategory.VISUALS));
+
+        OPTIONS.add(new ConfigOption("performance_hud_enabled", "Performance HUD",
+                "Shows the server's day, your FPS, your ping and the server's TPS on the HUD.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.performanceHudEnabled,
+                v -> { AlpakaConfig.instance.performanceHudEnabled = v; AlpakaConfig.save(); },
+                "performance hud fps frames ping latency ms tps ticks server lag day world age"));
+
+        OPTIONS.add(new ConfigOption("performance_hud_day", "Show Day",
+                "The server's world age in days: green below 25, orange to 30, red above.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.performanceHudShowDay,
+                v -> { AlpakaConfig.instance.performanceHudShowDay = v; AlpakaConfig.save(); },
+                "performance hud day world age server days time skyblock"));
+
+        OPTIONS.add(new ConfigOption("performance_hud_fps", "Show FPS",
+                "Your frames per second, from the game's own counter.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.performanceHudShowFps,
+                v -> { AlpakaConfig.instance.performanceHudShowFps = v; AlpakaConfig.save(); },
+                "performance hud fps frames per second framerate"));
+
+        OPTIONS.add(new ConfigOption("performance_hud_ping", "Show Ping",
+                "Your round trip to the server. Measured with one small ping every 5 seconds while shown, none while F3 or another mod already measures it.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.performanceHudShowPing,
+                v -> { AlpakaConfig.instance.performanceHudShowPing = v; AlpakaConfig.save(); },
+                "performance hud ping latency ms connection delay"));
+
+        OPTIONS.add(new ConfigOption("performance_hud_tps", "Show TPS",
+                "The server's ticks per second, counted from packets it sends anyway. 20 is full speed.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.performanceHudShowTps,
+                v -> { AlpakaConfig.instance.performanceHudShowTps = v; AlpakaConfig.save(); },
+                "performance hud tps ticks per second server lag"));
 
         OPTIONS.add(new ConfigOption("Inventory HUD", ConfigCategory.VISUALS));
 
@@ -1143,56 +1206,8 @@ public class AlpakaConfigRegistry {
 
         OPTIONS.add(new ConfigOption("Viewmodel Presets", ConfigCategory.VIEWMODEL));
 
-        OPTIONS.add(new ConfigOption("load_preset_1", "Load Preset 1",
-                "Replaces your current viewmodel and swing settings with Preset 1.",
-                ConfigCategory.VIEWMODEL,
-                "Load Preset 1",
-                parent -> AlpakaConfig.instance.loadPreset(0),
-                "preset load 1 slot viewmodel hand size offset applies"));
-
-        OPTIONS.add(new ConfigOption("save_preset_1", "Save to Preset 1",
-                "Saves your current viewmodel and swing settings to Preset 1.",
-                ConfigCategory.VIEWMODEL,
-                "Save to Preset 1",
-                parent -> AlpakaConfig.instance.savePreset(0),
-                "preset save 1 slot viewmodel hand size offset")
-                .confirm("Save to Preset 1",
-                        "Saves your current viewmodel and swing settings to Preset 1, replacing what is saved there now.",
-                        "Save", false));
-
-        OPTIONS.add(new ConfigOption("load_preset_2", "Load Preset 2",
-                "Replaces your current viewmodel and swing settings with Preset 2.",
-                ConfigCategory.VIEWMODEL,
-                "Load Preset 2",
-                parent -> AlpakaConfig.instance.loadPreset(1),
-                "preset load 2 slot viewmodel hand size offset applies"));
-
-        OPTIONS.add(new ConfigOption("save_preset_2", "Save to Preset 2",
-                "Saves your current viewmodel and swing settings to Preset 2.",
-                ConfigCategory.VIEWMODEL,
-                "Save to Preset 2",
-                parent -> AlpakaConfig.instance.savePreset(1),
-                "preset save 2 slot viewmodel hand size offset")
-                .confirm("Save to Preset 2",
-                        "Saves your current viewmodel and swing settings to Preset 2, replacing what is saved there now.",
-                        "Save", false));
-
-        OPTIONS.add(new ConfigOption("load_preset_3", "Load Preset 3",
-                "Replaces your current viewmodel and swing settings with Preset 3.",
-                ConfigCategory.VIEWMODEL,
-                "Load Preset 3",
-                parent -> AlpakaConfig.instance.loadPreset(2),
-                "preset load 3 slot viewmodel hand size offset applies"));
-
-        OPTIONS.add(new ConfigOption("save_preset_3", "Save to Preset 3",
-                "Saves your current viewmodel and swing settings to Preset 3.",
-                ConfigCategory.VIEWMODEL,
-                "Save to Preset 3",
-                parent -> AlpakaConfig.instance.savePreset(2),
-                "preset save 3 slot viewmodel hand size offset")
-                .confirm("Save to Preset 3",
-                        "Saves your current viewmodel and swing settings to Preset 3, replacing what is saved there now.",
-                        "Save", false));
+        OPTIONS.add(ConfigOption.presets("viewmodel_presets", "Presets", ConfigCategory.VIEWMODEL,
+                "preset presets load save delete name new slot viewmodel hand size offset swing"));
 
 
         // --- 3. BLOCK OVERLAY ---
@@ -1477,6 +1492,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.bossSpawnAlertEnabled = v; AlpakaConfig.save(); },
                 "boss spawn alert notification slayer popup toast warning notice"));
 
+        OPTIONS.add(new ConfigOption("boss_cocoon_alert", "Boss Cocoon Alert",
+                "Slides in a notice when your slayer boss spawns in a cocoon.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.bossCocoonAlertEnabled,
+                v -> { AlpakaConfig.instance.bossCocoonAlertEnabled = v; AlpakaConfig.save(); },
+                "boss cocoon cocooned alert notification slayer popup toast warning hatch"));
+
         OPTIONS.add(new ConfigOption("slayer_timer", "Slayer Boss Timer",
                 "Times each slayer boss fight, from the boss spawning until it dies.",
                 ConfigCategory.SKYBLOCK,
@@ -1583,14 +1605,6 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("World Age", ConfigCategory.SKYBLOCK));
 
 
-        OPTIONS.add(new ConfigOption("world_age_hud_enabled", "World Age HUD",
-                "Shows the current server's world age in days.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.worldAgeHudEnabled,
-                v -> { AlpakaConfig.instance.worldAgeHudEnabled = v; AlpakaConfig.save(); },
-                "world age day hud server days time skyblock color red orange green world age (day) hud displays"));
-
-
         OPTIONS.add(new ConfigOption("world_age_join_message_enabled", "World Age on Join",
                 "Shows the world's age in your chat when you join a server, and whether you were there recently.",
                 ConfigCategory.SKYBLOCK,
@@ -1625,6 +1639,45 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.cacheResourcePackEnabled = v; AlpakaConfig.save(); },
                 "cache resource pack server pack texture loading screen reload join hypixel skyblock fast"));
 
+        OPTIONS.add(new ConfigOption("Markets", ConfigCategory.SKYBLOCK));
+
+        OPTIONS.add(new ConfigOption("custom_auction_house", "Custom Auction House",
+                "Shows the Auction House in Alpaka's design: categories with icons, auctions as cards with price, time and seller. Each click is the same click on Hypixel's menu.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.customAuctionHouseEnabled,
+                v -> { AlpakaConfig.instance.customAuctionHouseEnabled = v; AlpakaConfig.save(); },
+                "auction house ah auctions browser bin bid custom menu gui redesign cards market"));
+
+        OPTIONS.add(new ConfigOption("custom_bazaar", "Custom Bazaar",
+                "Shows the Bazaar in Alpaka's design, with buy and sell prices on every product. Each click is the same click on Hypixel's menu.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.customBazaarEnabled,
+                v -> { AlpakaConfig.instance.customBazaarEnabled = v; AlpakaConfig.save(); },
+                "bazaar bz buy sell order offer instant custom menu gui redesign prices market"));
+
+        OPTIONS.add(new ConfigOption("market_price_history", "Price History",
+                "Shows the price history from SkyCofl on a product's or an auction's page. Needs Network Features.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.marketPriceHistoryEnabled,
+                v -> { AlpakaConfig.instance.marketPriceHistoryEnabled = v; AlpakaConfig.save(); },
+                "price history graph chart coflnet skycofl bazaar auction trend range day week month"));
+
+        OPTIONS.add(new ConfigOption("market_price_history_range", "Default Range",
+                "How far back the graph goes when a page opens. The range picked on the graph is remembered here.",
+                ConfigCategory.SKYBLOCK,
+                () -> (float) AlpakaConfig.instance.marketPriceHistoryRange,
+                v -> { AlpakaConfig.instance.marketPriceHistoryRange = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (net.alpaka.addons.features.market.PriceHistory.Range.LABELS.length - 1),
+                val -> net.alpaka.addons.features.market.PriceHistory.Range.LABELS[Math.round(val)],
+                "price history range time span day week month all").choices(net.alpaka.addons.features.market.PriceHistory.Range.LABELS));
+
+        OPTIONS.add(new ConfigOption("custom_sign_input", "Custom Sign Input",
+                "Replaces Hypixel's sign for searches, prices and amounts with an input bar that shows what an amount like 1.5m means.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.customSignInputEnabled,
+                v -> { AlpakaConfig.instance.customSignInputEnabled = v; AlpakaConfig.save(); },
+                "sign input search price amount bid query text field bar auction bazaar"));
+
         OPTIONS.add(new ConfigOption("Guild Chat", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("guild_prefix", "Custom Guild Tag",
@@ -1658,21 +1711,14 @@ public class AlpakaConfigRegistry {
                 "e.g. VultureGround",
                 "bridge bot name account discord guild relay username set"));
 
-        OPTIONS.add(new ConfigOption("Mob Highlights", ConfigCategory.SKYBLOCK));
+        OPTIONS.add(new ConfigOption("Abilities", ConfigCategory.SKYBLOCK));
 
-        OPTIONS.add(new ConfigOption("pangolin_highlight_enabled", "Highlight Pangolins",
-                "Outlines Pangolins in Torrhus Canyon while they are clearly in view.",
+        OPTIONS.add(new ConfigOption("ragnarock", "Ragnarock",
+                "Shows the Ragnarock's cast countdown under your crosshair instead of in the action bar, then \"Ragnarock\" or \"Cancelled\".",
                 ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.pangolinHighlightEnabled,
-                v -> { AlpakaConfig.instance.pangolinHighlightEnabled = v; AlpakaConfig.save(); },
-                "pangolin highlight glow outline critter torrhus torhus canyon hideaway armadillo skyblock"));
-
-        OPTIONS.add(ConfigOption.color("pangolin_highlight_color", "Outline Color",
-                "The glowing outline's color.",
-                ConfigCategory.SKYBLOCK,
-                c -> c.pangolinHighlightColor,
-                v -> { AlpakaConfig.instance.pangolinHighlightColor = v; AlpakaConfig.save(); },
-                "pangolin outline color glow highlight picker critter torrhus canyon pangolin outline color highlighted"));
+                () -> AlpakaConfig.instance.ragnarockEnabled,
+                v -> { AlpakaConfig.instance.ragnarockEnabled = v; AlpakaConfig.save(); },
+                "ragnarock ragnarok rag axe sword cast casting countdown timer crosshair action bar ability strength"));
 
         OPTIONS.add(new ConfigOption("Damage Display", ConfigCategory.SKYBLOCK));
 
@@ -2188,10 +2234,10 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.slayerTimerHudBlur, v -> AlpakaConfig.instance.slayerTimerHudBlur = v);
         styleToggle("slayer_timer_smooth_font", "Smooth Font", ConfigCategory.SKYBLOCK, false,
                 () -> AlpakaConfig.instance.slayerTimerHudSmoothFont, v -> AlpakaConfig.instance.slayerTimerHudSmoothFont = v);
-        styleToggle("world_age_blur", "Blur", ConfigCategory.SKYBLOCK, true,
-                () -> AlpakaConfig.instance.worldAgeHudBlur, v -> AlpakaConfig.instance.worldAgeHudBlur = v);
-        styleToggle("world_age_smooth_font", "Smooth Font", ConfigCategory.SKYBLOCK, false,
-                () -> AlpakaConfig.instance.worldAgeHudSmoothFont, v -> AlpakaConfig.instance.worldAgeHudSmoothFont = v);
+        styleToggle("performance_hud_blur", "Blur", ConfigCategory.VISUALS, true,
+                () -> AlpakaConfig.instance.performanceHudBlur, v -> AlpakaConfig.instance.performanceHudBlur = v);
+        styleToggle("performance_hud_smooth_font", "Smooth Font", ConfigCategory.VISUALS, false,
+                () -> AlpakaConfig.instance.performanceHudSmoothFont, v -> AlpakaConfig.instance.performanceHudSmoothFont = v);
         OPTIONS.add(new ConfigOption("inventory_hud_blur", "Blur",
                 "Puts a blurred panel behind it, in the flat style. Needs Blur on under Design → HUD Style.",
                 ConfigCategory.VISUALS,
@@ -2214,6 +2260,12 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.menuFontInChat, v -> { AlpakaConfig.instance.menuFontInChat = v; GuiFont.refreshChat(); });
 
         OPTIONS.add(new ConfigOption("Scoreboard", ConfigCategory.VISUALS));
+        OPTIONS.add(new ConfigOption("scoreboard_alpaka_footer", "AlpakaAddons Footer",
+                "Replaces www.hypixel.net at the bottom of the scoreboard with AlpakaAddons in a gradient.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.scoreboardAlpakaFooter,
+                v -> { AlpakaConfig.instance.scoreboardAlpakaFooter = v; AlpakaConfig.save(); },
+                "scoreboard sidebar footer bottom line hypixel.net www address gradient alpakaaddons branding"));
         styleToggle("scoreboard_blur", "Blur", ConfigCategory.VISUALS, true,
                 () -> AlpakaConfig.instance.scoreboardBlurEnabled, v -> AlpakaConfig.instance.scoreboardBlurEnabled = v);
         styleToggle("scoreboard_smooth_font", "Smooth Font", ConfigCategory.VISUALS, false,

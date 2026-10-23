@@ -72,6 +72,18 @@ final class StatsMerge {
         }
     }
 
+    /** Keeps the faster of the two best times for every tier either side has one for. */
+    static void mergeBestTimes(AlpakaConfig.SlayerData into, AlpakaConfig.SlayerData from) {
+        if (from.bestBossMsByTier == null) return;
+        if (into.bestBossMsByTier == null) into.bestBossMsByTier = new HashMap<>();
+        for (Map.Entry<Integer, Long> best : from.bestBossMsByTier.entrySet()) {
+            Long theirs = best.getValue();
+            if (best.getKey() == null || theirs == null || theirs <= 0) continue;
+            Long ours = into.bestBossMsByTier.get(best.getKey());
+            if (ours == null || ours <= 0 || theirs < ours) into.bestBossMsByTier.put(best.getKey(), theirs);
+        }
+    }
+
     /** One slayer: the higher kills, the later drop, the better best time, the newer XP. */
     static void mergeSlayer(AlpakaConfig.SlayerData ours, AlpakaConfig.SlayerData theirs) {
         if (theirs.kills > ours.kills) ours.kills = theirs.kills;
@@ -83,9 +95,7 @@ final class StatsMerge {
                 if (at == null || drop.getValue() > at) ours.drops.put(drop.getKey(), drop.getValue());
             }
         }
-        if (theirs.bestBossMs > 0 && (ours.bestBossMs <= 0 || theirs.bestBossMs < ours.bestBossMs)) {
-            ours.bestBossMs = theirs.bestBossMs;
-        }
+        mergeBestTimes(ours, theirs);
         if (theirs.totalXp > ours.totalXp) ours.totalXp = theirs.totalXp;
         if (theirs.lastXpCreditedAtMs > ours.lastXpCreditedAtMs) {
             ours.lastXpCreditedAtMs = theirs.lastXpCreditedAtMs;

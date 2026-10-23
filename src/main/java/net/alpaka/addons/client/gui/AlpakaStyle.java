@@ -211,6 +211,27 @@ public final class AlpakaStyle {
         graphics.text(font, GuiFont.text(glyph), x + (size - gw) / 2, y + (size - 8) / 2, color, false);
     }
 
+    /**
+     * A delete button: a small bin, gray until hovered, then red on a soft red square. Drawn with
+     * rectangles rather than a glyph, since the menu fonts have no bin.
+     */
+    public static void trashButton(GuiGraphicsExtractor graphics, int x, int y, int size, boolean hover) {
+        if (hover) {
+            ModernGuiUtils.drawRoundedRect(graphics, x, y, size, size, FIELD_RADIUS, (DANGER & 0x00FFFFFF) | 0x33000000);
+        }
+        int color = hover ? DANGER : TEXT_MUTED;
+        int cx = x + size / 2;
+        int cy = y + size / 2;
+        // Lid with its handle, then the can with two ribs.
+        ModernGuiUtils.drawRect(graphics, cx - 1, cy - 5, 3, 1, color);
+        ModernGuiUtils.drawRect(graphics, cx - 4, cy - 4, 9, 1, color);
+        ModernGuiUtils.drawRect(graphics, cx - 3, cy - 2, 1, 6, color);
+        ModernGuiUtils.drawRect(graphics, cx + 3, cy - 2, 1, 6, color);
+        ModernGuiUtils.drawRect(graphics, cx - 2, cy + 4, 5, 1, color);
+        ModernGuiUtils.drawRect(graphics, cx - 1, cy - 1, 1, 4, color);
+        ModernGuiUtils.drawRect(graphics, cx + 1, cy - 1, 1, 4, color);
+    }
+
     /** An arrow that acts as a button, drawn with the menu's chevron rather than a glyph. */
     public static void chevronButton(GuiGraphicsExtractor graphics, int x, int y, int size, boolean left,
                                      boolean hover, boolean enabled) {
@@ -307,6 +328,58 @@ public final class AlpakaStyle {
         stroke(mesh, cx - d * s / 2, cy - s, cx + d * s / 2, cy, t, color);
         stroke(mesh, cx + d * s / 2, cy, cx - d * s / 2, cy + s, t, color);
         mesh.submit(graphics);
+    }
+
+    /** Line width for the mesh-drawn hairlines below: a little over a screen pixel, in GUI units. */
+    private static float meshLine(int scale) {
+        return Math.max(1.5f, scale * 0.6f) / scale;
+    }
+
+    /**
+     * A dashed circle, for an empty slot waiting to be filled - the color picker's plus. Each dash
+     * is a ring segment with feathered edges, so it stays smooth at any GUI scale and position.
+     */
+    public static void dashedCircle(GuiGraphicsExtractor graphics, float cx, float cy, float radius, int dashes, int color) {
+        int scale = guiScale();
+        net.alpaka.addons.features.wheel.WheelMesh mesh = new net.alpaka.addons.features.wheel.WheelMesh(1.0f / scale);
+        float line = meshLine(scale);
+        float step = (float) (2.0 * Math.PI / dashes);
+        float span = step * 0.55f;
+        for (int d = 0; d < dashes; d++) {
+            float from = d * step - (float) Math.PI / 2 - span / 2;
+            mesh.ringSector(cx, cy, radius - line, radius, from, from + span, from, from + span, color, color, false);
+        }
+        mesh.submit(graphics);
+    }
+
+    /** A plus centred on the point, its arms feathered like the dashed circle. */
+    public static void plus(GuiGraphicsExtractor graphics, float cx, float cy, float half, int color) {
+        int scale = guiScale();
+        net.alpaka.addons.features.wheel.WheelMesh mesh = new net.alpaka.addons.features.wheel.WheelMesh(1.0f / scale);
+        float t = meshLine(scale) / 2;
+        mesh.convexPolygon(new float[] {cx - half, cy - t, cx + half, cy - t, cx + half, cy + t, cx - half, cy + t}, color);
+        mesh.convexPolygon(new float[] {cx - t, cy - half, cx + t, cy - half, cx + t, cy - t, cx - t, cy - t}, color);
+        mesh.convexPolygon(new float[] {cx - t, cy + t, cx + t, cy + t, cx + t, cy + half, cx - t, cy + half}, color);
+        mesh.submit(graphics);
+    }
+
+    /**
+     * A round knob: a soft shadow, a light ring and the color inside. Drawn at a fractional
+     * position, so it glides with the mouse instead of hopping from one GUI pixel to the next,
+     * which on a high GUI scale is several screen pixels at a time.
+     */
+    public static void knob(GuiGraphicsExtractor graphics, float cx, float cy, int diameter, int color) {
+        // The circles are the shader's own, which are round at any size; the fraction of a pixel
+        // the integer rectangles cannot express goes into the pose instead.
+        int x = (int) Math.floor(cx - diameter / 2.0f);
+        int y = (int) Math.floor(cy - diameter / 2.0f);
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(cx - diameter / 2.0f - x, cy - diameter / 2.0f - y);
+        int round = (diameter + 3) / 2;
+        ModernGuiUtils.drawRoundedRect(graphics, x - 1, y, diameter + 2, diameter + 2, round, 0x50000000);
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, diameter, diameter, round, TEXT);
+        ModernGuiUtils.drawRoundedRect(graphics, x + 2, y + 2, diameter - 4, diameter - 4, round, color | 0xFF000000);
+        graphics.pose().popMatrix();
     }
 
     private static int guiScale() {
@@ -431,27 +504,28 @@ public final class AlpakaStyle {
     }
 
     /**
-     * A slider for one color channel: the track shows the color from the channel's 0 to its 255,
-     * and the knob is filled with the color as it is now.
+     * A color slider: the track shows the color from the slider's 0 to its end, and the knob is
+     * filled with the color as it is now. The track is a pill whose round ends reach half its height
+     * past {@code x} and {@code x + w}, so the knob at either end still sits inside it.
      */
     public static void gradientTrack(GuiGraphicsExtractor graphics, int x, int y, int w, int from, int to,
                                      double norm, int knobColor, boolean hover, boolean dragging) {
-        int h = 4;
-        int top = y - h / 2;
-        // A horizontal gradient from narrow vertical slices; the rounded ends are drawn as caps.
-        int steps = Math.max(1, w / 2);
-        for (int i = 0; i < steps; i++) {
-            int sx = x + i * w / steps;
-            int ex = x + (i + 1) * w / steps;
-            int color = ModernGuiUtils.lerpColor(from, to, (i + 0.5f) / steps) | 0xFF000000;
-            ModernGuiUtils.drawRect(graphics, sx, top, ex - sx, h, color);
-        }
-        ModernGuiUtils.drawRoundedOutline(graphics, x - 1, top - 1, w + 2, h + 2, 2, LINE);
-        int knobX = x + (int) Math.round(Math.max(0.0, Math.min(1.0, norm)) * w);
-        int outer = hover || dragging ? 10 : 9;
-        int inner = outer - 4;
-        ModernGuiUtils.drawRoundedRect(graphics, knobX - outer / 2, y - outer / 2, outer, outer, outer / 2, TEXT);
-        ModernGuiUtils.drawRoundedRect(graphics, knobX - inner / 2, y - inner / 2, inner, inner, inner / 2, knobColor | 0xFF000000);
+        int h = 6;
+        int r = h / 2;
+        int top = y - r;
+        // The round ends are caps in the end colors, which is what the gradient starts and stops at.
+        // Between them one quad whose left corners carry the start color and right corners the end
+        // color, so the GPU blends it smoothly however wide the slider is drawn.
+        int c0 = from | 0xFF000000;
+        int c1 = to | 0xFF000000;
+        ModernGuiUtils.drawRoundedRect(graphics, x - r, top, h, h, r, c0);
+        ModernGuiUtils.drawRoundedRect(graphics, x + w - r, top, h, h, r, c1);
+        net.alpaka.addons.features.wheel.WheelMesh mesh = new net.alpaka.addons.features.wheel.WheelMesh(1.0f / guiScale());
+        mesh.quad(x, top, c0, x, top + h, c0, x + w, top + h, c1, x + w, top, c1);
+        mesh.submit(graphics);
+        ModernGuiUtils.drawRoundedOutline(graphics, x - r - 1, top - 1, w + h + 2, h + 2, r + 1, LINE);
+        float knobX = x + (float) (Math.max(0.0, Math.min(1.0, norm)) * w);
+        knob(graphics, knobX, y, hover || dragging ? 10 : 9, knobColor);
     }
 
     public static boolean inside(double mx, double my, int x, int y, int w, int h) {

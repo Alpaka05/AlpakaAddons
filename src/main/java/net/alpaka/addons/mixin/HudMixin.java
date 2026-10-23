@@ -6,13 +6,15 @@ import net.alpaka.addons.features.chat.ChatPeekFeature;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
 import net.alpaka.addons.features.inventoryhud.InventoryHudRenderer;
 import net.alpaka.addons.features.notification.AlpakaNotifications;
+import net.alpaka.addons.features.performance.PerformanceHudRenderer;
 import net.alpaka.addons.features.playermodel.PlayerModelRenderer;
+import net.alpaka.addons.features.ragnarock.RagnarockFeature;
 import net.alpaka.addons.features.scoreboard.ScoreboardBlurFeature;
+import net.alpaka.addons.features.scoreboard.ScoreboardFooterFeature;
 import net.alpaka.addons.features.slayer.SlayerHudRenderer;
 import net.alpaka.addons.features.tablist.CustomTabFeature;
 import net.alpaka.addons.features.tooltip.OldMasterStarsFeature;
 import net.alpaka.addons.features.slayer.SlayerTimerHudRenderer;
-import net.alpaka.addons.features.worldage.WorldAgeHudRenderer;
 import net.alpaka.addons.utils.AlpakaPerf;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.KeyMapping;
@@ -24,6 +26,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.network.chat.Component;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.sugar.Local;
+import net.minecraft.client.gui.Font;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -70,15 +74,16 @@ public class HudMixin implements ChatOverHud.Late {
         long t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_PLAYER_MODEL);
         PlayerModelRenderer.render(graphicsExtractor, deltaTracker);
         AlpakaPerf.end(AlpakaPerf.Section.HUD_PLAYER_MODEL, t);
-        t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_WORLD_AGE);
-        WorldAgeHudRenderer.render(graphicsExtractor, deltaTracker);
-        AlpakaPerf.end(AlpakaPerf.Section.HUD_WORLD_AGE, t);
+        t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_PERFORMANCE);
+        PerformanceHudRenderer.render(graphicsExtractor, deltaTracker);
+        AlpakaPerf.end(AlpakaPerf.Section.HUD_PERFORMANCE, t);
         t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_SLAYER);
         SlayerHudRenderer.render(graphicsExtractor, deltaTracker);
         AlpakaPerf.end(AlpakaPerf.Section.HUD_SLAYER, t);
         t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_SLAYER_TIMER);
         SlayerTimerHudRenderer.render(graphicsExtractor, deltaTracker);
         AlpakaPerf.end(AlpakaPerf.Section.HUD_SLAYER_TIMER, t);
+        RagnarockFeature.render(graphicsExtractor);
         t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_INVENTORY);
         InventoryHudRenderer.render(graphicsExtractor, deltaTracker);
         AlpakaPerf.end(AlpakaPerf.Section.HUD_INVENTORY, t);
@@ -181,5 +186,16 @@ public class HudMixin implements ChatOverHud.Late {
     )
     private void alpaka$scoreboardBodyBox(GuiGraphicsExtractor graphics, int x0, int y0, int x1, int y1, int color, Operation<Void> original) {
         if (!ScoreboardBlurFeature.bodyBox(graphics, x0, y0, x1, y1, color)) original.call(graphics, x0, y0, x1, y1, color);
+    }
+
+    /** The AlpakaAddons footer is centred like the title instead of starting at the left edge. */
+    @WrapOperation(
+            method = "displayScoreboardSidebar",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;text(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;IIIZ)V", ordinal = 1)
+    )
+    private void alpaka$centerScoreboardFooter(GuiGraphicsExtractor graphics, Font font, Component line, int x, int y, int color, boolean shadow,
+                                               Operation<Void> original, @Local(name = "width") int width) {
+        if (ScoreboardFooterFeature.isFooter(line)) x = ScoreboardFooterFeature.centeredX(x, width, font.width(line));
+        original.call(graphics, font, line, x, y, color, shadow);
     }
 }

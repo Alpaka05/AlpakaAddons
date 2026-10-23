@@ -1,10 +1,11 @@
 package net.alpaka.addons.client.hud
 
+import net.alpaka.addons.features.chat.ChatHudElement
 import net.alpaka.addons.features.inventoryhud.InventoryHudElement
+import net.alpaka.addons.features.performance.PerformanceHudElement
 import net.alpaka.addons.features.playermodel.PlayerModelHudElement
 import net.alpaka.addons.features.slayer.SlayerHudElement
 import net.alpaka.addons.features.slayer.SlayerTimerHudElement
-import net.alpaka.addons.features.worldage.WorldAgeHudElement
 
 /**
  * The single list of HUDs that [HudEditorScreen] can position.
@@ -16,7 +17,9 @@ object HudRegistry {
 
     @JvmField
     val ELEMENTS: List<HudElement> = listOf(
-        WorldAgeHudElement,
+        // First, so a HUD lying over the chat's large box is the one that gets grabbed.
+        ChatHudElement,
+        PerformanceHudElement,
         SlayerHudElement,
         SlayerTimerHudElement,
         PlayerModelHudElement,

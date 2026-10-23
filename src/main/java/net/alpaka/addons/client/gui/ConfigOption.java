@@ -20,7 +20,9 @@ public class ConfigOption {
         DROPDOWN,
         TEXT,
         /** A sample of what the feature puts on screen, drawn in the settings; see {@link #preview}. */
-        PREVIEW
+        PREVIEW,
+        /** The viewmodel presets, one card each, which the config screen draws itself; see {@link #presets}. */
+        PRESETS
     }
 
     /**
@@ -57,7 +59,7 @@ public class ConfigOption {
     private final String description;
     private final ConfigCategory category;
     private final Type type;
-    private final String keywords;
+    private String keywords;
 
     // Boolean
     private Supplier<Boolean> getterBool;
@@ -316,6 +318,17 @@ public class ConfigOption {
                                        Supplier<net.minecraft.network.chat.Component> text) {
         ConfigOption option = new ConfigOption(title, category, Type.PREVIEW, id);
         option.previewText = text;
+        return option;
+    }
+
+    /**
+     * The list of saved viewmodel presets: a card per preset with its name, Load, Save and Delete,
+     * and a button that adds one. A single option, because how many presets there are changes while
+     * the menu is open and the option list is built once.
+     */
+    public static ConfigOption presets(String id, String title, ConfigCategory category, String keywords) {
+        ConfigOption option = new ConfigOption(title, category, Type.PRESETS, id);
+        option.keywords = (title + " " + keywords).toLowerCase();
         return option;
     }
 

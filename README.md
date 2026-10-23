@@ -19,7 +19,7 @@ Alpaka Addons adds quality-of-life features, HUDs and visual tweaks for Hypixel 
 
 - **Slayer Tracking:** boss timers, drops and XP for every slayer, with a live session HUD.
 - **A Better Chat:** tabs for Party, Guild and PMs, search, compact repeats, smooth scrolling and a peek key.
-- **Useful HUDs:** your inventory, a small player model, world age and a wide health bar, all movable.
+- **Useful HUDs:** your inventory, a small player model, a performance line with the server's day, and a wide health bar, all movable.
 - **Visual Tweaks:** item viewmodel, block overlay, Etherwarp target, fullbright and less clutter on mobs.
 - **Fresh Menus:** a new main menu, pause menu and config, all in one consistent glass style.
 
@@ -37,7 +37,7 @@ Alpaka Addons is most useful for **Slayers**, but a lot of it helps anywhere in 
 <summary><b>Slayer</b></summary>
 
 - **Slayer Drop Tracker:** counts kills and rare drops per slayer, with a sound on rare drops and optional share buttons for the rarest one. `/alpakaslayer since <item>` tells you how many bosses ago a drop last came.
-- **Boss Timer:** times every fight from spawn to death, calls out personal bests and shows the running time on screen.
+- **Boss Timer:** times every fight from spawn to death, calls out personal bests per slayer tier and shows the running time on screen.
 - **Session HUD:** live stats while a quest is active, with a choice of lines. It can be limited to slayer areas and pauses when you are idle.
 - **Boss Spawn Alert** and an option to hide Hypixel's slayer chat spam.
 - `/alpakastats` stores your stats in a folder you choose, for example a cloud-synced one, so they follow you across PCs.
@@ -64,7 +64,8 @@ Alpaka Addons is most useful for **Slayers**, but a lot of it helps anywhere in 
 - **Inventory HUD:** your 27 inventory slots on screen, as a frosted panel or a chest.
 - **Player Model HUD:** a small 3D version of yourself on screen.
 - **Wide Health Bar:** both heart rows in one line, since SkyBlock has no hunger.
-- **World Age HUD** and a join message with the server's age.
+- **Performance HUD:** the server's day, FPS, ping and TPS on one line, each part optional.
+- **World Age on Join:** a chat message with the server's age and when you last visited.
 - **Notifications** for mentions, boss spawns and party invites, in any corner or at the top centre.
 - **Party Invite Prompt:** accept with Y or dismiss with N.
 - **Scrollable Tooltips**, **Keep Item Name Visible** and adjustable container background opacity.
@@ -79,7 +80,6 @@ Alpaka Addons is most useful for **Slayers**, but a lot of it helps anywhere in 
 - **Block Overlay:** custom outline and fill for the targeted block, with chroma and fade-in.
 - **Etherwarp Overlay:** shows where you will land, with a line to the target and optional custom warp sounds.
 - **Hide Mob Deaths**, **Hide Damage Flash**, **Clean Blaze** and **Only Show Crit Damage**.
-- **Pangolin Highlight** in Torrhus Canyon.
 - **Fullbright**, **Zoom**, **Smooth Perspective** and an option to skip the front view.
 
 </details>
@@ -132,7 +132,6 @@ Alpaka Addons runs entirely on your client and follows the [Hypixel rules](https
 **Guardrails.**
 
 - Smooth perspective only eases between the vanilla camera views. There is no free look, and every transition ends exactly where vanilla's camera is.
-- Highlights such as the pangolin outline appear only when you have a clear line of sight. Nothing is drawn through walls.
 - Commands that delete or move your data (`/alpakaslayer reset`, `/alpakastats folder`, `/alpakapreset save`) work only when you type them. A clickable chat message cannot run them.
 - Screenshot buttons only act on screenshots this session posted, and Delete needs a second click.
 

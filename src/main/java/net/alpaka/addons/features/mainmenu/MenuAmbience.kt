@@ -99,7 +99,25 @@ internal object MenuAmbience {
         return Math.round(value * scale) / scale.toFloat()
     }
 
-    private fun mesh(): WheelMesh = WheelMesh(1.15f / Minecraft.getInstance().window.guiScale.coerceAtLeast(1))
+    // One mesh for every shape drawn here, kept between frames: a fresh one starts small and the
+    // motes alone grew its buffers several times a frame, so the grown buffers carry over instead.
+    // Sharing it is safe because each shape is filled and submitted before the next takes the mesh,
+    // and submit() copies out what it hands on. The feather is about one screen pixel, so a new GUI
+    // scale needs a new mesh.
+    private var sharedMesh: WheelMesh? = null
+    private var sharedMeshScale = 0
+
+    private fun mesh(): WheelMesh {
+        val scale = Minecraft.getInstance().window.guiScale.coerceAtLeast(1)
+        var mesh = sharedMesh
+        if (mesh == null || scale != sharedMeshScale) {
+            mesh = WheelMesh(1.15f / scale)
+            sharedMesh = mesh
+            sharedMeshScale = scale
+        }
+        mesh.reset()
+        return mesh
+    }
 
     /**
      * Darker over all, towards the top and bottom, and along the left where the card sits, out to
@@ -128,6 +146,7 @@ internal object MenuAmbience {
         graphics.pose().pushMatrix()
         graphics.pose().translate(centerX, feetY)
         graphics.pose().scale(1f, FOOTING_ASPECT)
+        // mesh, cast and contact are the one shared mesh, each taken after the one before submitted.
         val mesh = mesh()
         mesh.radialGradient(0f, 0f, modelHeight * 0.75f, WheelMesh.scaleAlpha(0xFFFFF2DC.toInt(), 0.08f * opacity), 0x00FFF2DC)
         mesh.submit(graphics)

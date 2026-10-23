@@ -15,6 +15,12 @@ data class HudBounds(val x0: Int, val y0: Int, val x1: Int, val y1: Int) {
 }
 
 /**
+ * Where an element is drawn, in the editor and in game alike: its anchor and box, both nudged on
+ * screen as in [HudElement.visibleBounds].
+ */
+class VisiblePlacement(val anchorX: Int, val anchorY: Int, val box: HudBounds)
+
+/**
  * A HUD overlay that can be repositioned and resized in [HudEditorScreen].
  *
  * Implementations are the bridge between one feature's config fields and the editor, which knows
@@ -115,6 +121,21 @@ interface HudElement {
     fun visibleAnchorY(screenWidth: Int, screenHeight: Int): Int {
         val box = bounds()
         return anchorY + clampShift(box.y0, box.y1, screenHeight)
+    }
+
+    /**
+     * [visibleAnchorX], [visibleAnchorY] and [visibleBounds] from a single [bounds] call. The editor
+     * and the game's own HUD renderers place a HUD every frame, and [bounds] measures the HUD's text,
+     * so asking for each value separately measured the same text once per value. Placing a HUD
+     * through this one call in both keeps the editor's preview exactly where the game draws it. Must
+     * agree with the three methods above.
+     */
+    fun visiblePlacement(screenWidth: Int, screenHeight: Int): VisiblePlacement {
+        val box = bounds()
+        val dx = clampShift(box.x0, box.x1, screenWidth)
+        val dy = clampShift(box.y0, box.y1, screenHeight)
+        val shown = if (dx == 0 && dy == 0) box else HudBounds(box.x0 + dx, box.y0 + dy, box.x1 + dx, box.y1 + dy)
+        return VisiblePlacement(anchorX + dx, anchorY + dy, shown)
     }
 }
 

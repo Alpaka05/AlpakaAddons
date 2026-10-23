@@ -42,6 +42,21 @@ public final class ChatTabsFeature {
 
     private static ChatTab active = ChatTab.ALL;
     private static final int[] unread = new int[ChatTab.values().length];
+    private static final ChatTab[] TABS = ChatTab.values();
+
+    // The row and the chip are drawn every frame. A label only changes with its unread count, and a
+    // reused component keeps the bidi-reordered text vanilla works out for it on first draw, so
+    // neither the components nor that reorder are redone per frame. The widths are still measured
+    // each frame, since a font change can alter them.
+    /** Each tab's label as last built and the unread count it shows; reused until the count changes. */
+    private static final Component[] LABELS = new Component[TABS.length];
+    private static final int[] LABEL_COUNTS = new int[TABS.length];
+    /** The filter chip's text for each tab. */
+    private static final Component[] CHIPS = new Component[TABS.length];
+
+    static {
+        for (ChatTab tab : TABS) CHIPS[tab.ordinal()] = Component.literal(tab.label + " only");
+    }
 
     // Layout, in GUI pixels. The input box starts at height - 14; the tabs end a pixel above it. The
     // lowest chat line ends at height - 40, so the row never touches the messages either.
@@ -216,7 +231,7 @@ public final class ChatTabsFeature {
         Minecraft mc = Minecraft.getInstance();
         if (mc.gui.screen() instanceof ChatScreen) return;
         Font font = mc.font;
-        Component label = Component.literal(active.label + " only");
+        Component label = CHIPS[active.ordinal()];
         int y1 = graphics.guiHeight() - BOTTOM_GAP;
         int y0 = y1 - TAB_HEIGHT;
         int width = font.width(label) + TAB_PAD * 2;
@@ -251,11 +266,16 @@ public final class ChatTabsFeature {
     }
 
     private static Component labelOf(ChatTab tab) {
+        int i = tab.ordinal();
+        int count = unread[i];
+        Component cached = LABELS[i];
+        if (cached != null && LABEL_COUNTS[i] == count) return cached;
         MutableComponent label = Component.literal(tab.label);
-        int count = unread[tab.ordinal()];
         if (count > 0) {
             label.append(Component.literal(" " + (count > 99 ? "99+" : String.valueOf(count))).withStyle(ChatFormatting.YELLOW));
         }
+        LABELS[i] = label;
+        LABEL_COUNTS[i] = count;
         return label;
     }
 
@@ -269,7 +289,7 @@ public final class ChatTabsFeature {
         int background = mc.options.getBackgroundColor(Integer.MIN_VALUE);
         int accent = ModernGuiUtils.getAccentColor();
         int x = LEFT;
-        for (ChatTab tab : ChatTab.values()) {
+        for (ChatTab tab : TABS) {
             if (!isShown(tab)) continue;
             Component label = labelOf(tab);
             int width = font.width(label) + TAB_PAD * 2;
@@ -297,7 +317,7 @@ public final class ChatTabsFeature {
         int y0 = y1 - TAB_HEIGHT;
         if (mouseY < y0 || mouseY >= y1) return false;
         int x = LEFT;
-        for (ChatTab tab : ChatTab.values()) {
+        for (ChatTab tab : TABS) {
             if (!isShown(tab)) continue;
             int width = font.width(labelOf(tab)) + TAB_PAD * 2;
             if (mouseX >= x && mouseX < x + width) {

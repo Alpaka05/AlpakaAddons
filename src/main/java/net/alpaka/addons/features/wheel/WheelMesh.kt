@@ -37,8 +37,12 @@ import kotlin.math.sqrt
  * open animation that scales the pose scales this geometry too.
  */
 class WheelMesh @JvmOverloads constructor(private val feather: Float, private val blur: Boolean = false, private val blurTint: Float = 0.55f) {
-    private var xy = FloatArray(2048)
-    private var colors = IntArray(1024)
+    // Sized for the small shapes that make up most meshes (a chevron is 8 vertices, a glint 8);
+    // vertex() doubles both for a ring or a wheel. Most meshes are built fresh every frame, and a
+    // large starting buffer was kilobytes of zeroed garbage per chevron. submit() copies out only
+    // what was used, so the capacity never shows.
+    private var xy = FloatArray(128)
+    private var colors = IntArray(64)
     private var count = 0
 
     private fun vertex(x: Float, y: Float, color: Int) {
@@ -134,19 +138,24 @@ class WheelMesh @JvmOverloads constructor(private val feather: Float, private va
 
         fun band(r0: Float, alpha0: Float, r1: Float, alpha1: Float) {
             if (r1 <= r0) return
+            // Each step's far edge is the next step's near edge - the same t, so the same angles and
+            // points - and the colours depend only on the band's two radii. Carrying the edge over and
+            // taking the colours once halves the sines and cosines, which are most of what a mesh
+            // costs to build.
+            val c0 = colorAt(r0, alpha0)
+            val c1 = colorAt(r1, alpha1)
+            val start0 = angleAt(r0, 0f)
+            val start1 = angleAt(r1, 0f)
+            var x0 = cx + r0 * cos(start0); var y0 = cy + r0 * sin(start0)
+            var x1 = cx + r1 * cos(start1); var y1 = cy + r1 * sin(start1)
             for (i in 0 until steps) {
-                val t0 = i / steps.toFloat()
-                val t1 = (i + 1) / steps.toFloat()
-                val a00 = angleAt(r0, t0); val a01 = angleAt(r0, t1)
-                val a10 = angleAt(r1, t0); val a11 = angleAt(r1, t1)
-                val c0 = colorAt(r0, alpha0)
-                val c1 = colorAt(r1, alpha1)
-                quad(
-                    cx + r0 * cos(a00), cy + r0 * sin(a00), c0,
-                    cx + r0 * cos(a01), cy + r0 * sin(a01), c0,
-                    cx + r1 * cos(a11), cy + r1 * sin(a11), c1,
-                    cx + r1 * cos(a10), cy + r1 * sin(a10), c1
-                )
+                val t = (i + 1) / steps.toFloat()
+                val a0 = angleAt(r0, t)
+                val a1 = angleAt(r1, t)
+                val nextX0 = cx + r0 * cos(a0); val nextY0 = cy + r0 * sin(a0)
+                val nextX1 = cx + r1 * cos(a1); val nextY1 = cy + r1 * sin(a1)
+                quad(x0, y0, c0, nextX0, nextY0, c0, nextX1, nextY1, c1, x1, y1, c1)
+                x0 = nextX0; y0 = nextY0; x1 = nextX1; y1 = nextY1
             }
         }
 
@@ -232,6 +241,15 @@ class WheelMesh @JvmOverloads constructor(private val feather: Float, private va
                 x0 + nx * feather, y0 + ny * feather, transparent
             )
         }
+    }
+
+    /**
+     * Drops anything collected but not submitted. A mesh kept from frame to frame calls this before
+     * it is filled, so a frame cut short by an exception halfway through filling cannot leak its
+     * shapes into the next.
+     */
+    fun reset() {
+        count = 0
     }
 
     /**

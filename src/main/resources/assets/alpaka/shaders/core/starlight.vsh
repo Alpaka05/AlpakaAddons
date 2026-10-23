@@ -19,7 +19,11 @@ in vec2 UV0;
 in vec4 Color;
 
 out vec3 viewPos;
-flat out mat3 viewToWorld;
+// The view-to-world rotation by its columns, not as one mat3: on the Vulkan backend every output
+// gets one location, and a mat3 takes three, so the next output would land on one of them.
+flat out vec3 viewToWorld0;
+flat out vec3 viewToWorld1;
+flat out vec3 viewToWorld2;
 out vec4 vertexColor;
 
 void main() {
@@ -33,6 +37,9 @@ void main() {
     // rotationYXZ(yaw, pitch, 0) = rotY(yaw) * rotX(pitch); GLSL matrices are given by columns.
     mat3 rotY = mat3(cy, 0.0, -sy, 0.0, 1.0, 0.0, sy, 0.0, cy);
     mat3 rotX = mat3(1.0, 0.0, 0.0, 0.0, cx, sx, 0.0, -sx, cx);
-    viewToWorld = rotY * rotX;
+    mat3 viewToWorld = rotY * rotX;
+    viewToWorld0 = viewToWorld[0];
+    viewToWorld1 = viewToWorld[1];
+    viewToWorld2 = viewToWorld[2];
     vertexColor = Color;
 }

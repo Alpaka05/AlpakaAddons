@@ -13,7 +13,6 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.gizmos.GizmoProperties;
 import net.minecraft.gizmos.GizmoStyle;
 import net.minecraft.gizmos.Gizmos;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.ARGB;
 import net.minecraft.util.Mth;
@@ -138,6 +137,15 @@ public final class EtherwarpOverlayFeature {
     /** Passability per block, filled on first sight; the block set is fixed for the session. */
     private static final Map<Block, Integer> FLAGS = new IdentityHashMap<>();
 
+    /**
+     * The custom data {@link #tunedTransmission} last read, and the level it held. CustomData never
+     * changes once built (copyTag hands out copies, update() returns a new instance), so the same
+     * instance always yields the same level; reading it costs a deep copy of Hypixel's whole tag, too
+     * much to repeat every frame while aiming. Render thread only.
+     */
+    private static CustomData cachedTunedData;
+    private static int cachedTuned;
+
     /** The block the ray stopped on, its outline, and whether there is room to stand on it. */
     public record Target(BlockPos pos, VoxelShape shape, boolean valid) {
     }
@@ -214,8 +222,11 @@ public final class EtherwarpOverlayFeature {
         if (stack.isEmpty()) return 0;
         CustomData data = stack.get(DataComponents.CUSTOM_DATA);
         if (data == null) return 0;
-        CompoundTag tag = data.copyTag();
-        return tag.getInt(TUNED_TRANSMISSION_KEY).orElse(0);
+        if (data != cachedTunedData) {
+            cachedTuned = data.copyTag().getInt(TUNED_TRANSMISSION_KEY).orElse(0);
+            cachedTunedData = data;
+        }
+        return cachedTuned;
     }
 
     /**

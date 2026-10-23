@@ -91,6 +91,11 @@ object MenuStyle {
     private const val STATUS_DOT_RADIUS = 1.6f
     private const val STATUS_DOT_CENTER_Y = 3.5f
 
+    /** A glass button: a faint white fill and hairline that brighten under the mouse. */
+    private const val GLASS_FILL = 0x14FFFFFF
+    private const val GLASS_FILL_HOVER = 0x2EFFFFFF
+    private const val GLASS_BORDER = 0x30FFFFFF
+
     /** The red pill to leave by, at a card's foot. */
     private const val QUIT_FILL = 0x29EF4444
     private const val QUIT_FILL_HOVER = 0x4DEF4444
@@ -155,6 +160,25 @@ object MenuStyle {
 
     @JvmStatic
     fun guiScale(): Float = Minecraft.getInstance().window.guiScale.toFloat()
+
+    // The status dot with its pulse, and the glint, draw with one mesh kept between frames instead
+    // of building a new one every time they draw. Sharing it is safe because each fills and submits
+    // it before the other can take it, and submit() copies out what it hands on. The feather is
+    // about one screen pixel, so a new GUI scale needs a new mesh.
+    private var sharedMesh: WheelMesh? = null
+    private var sharedMeshScale = 0
+
+    private fun mesh(): WheelMesh {
+        val scale = Minecraft.getInstance().window.guiScale
+        var mesh = sharedMesh
+        if (mesh == null || scale != sharedMeshScale) {
+            mesh = WheelMesh(1.15f / scale.toFloat())
+            sharedMesh = mesh
+            sharedMeshScale = scale
+        }
+        mesh.reset()
+        return mesh
+    }
 
     /**
      * The card's frame over whatever glass is behind it: the soft shadow, and the hairline edge. The
@@ -265,7 +289,7 @@ object MenuStyle {
     @JvmStatic
     fun statusLine(graphics: GuiGraphicsExtractor, font: Font, x: Int, y: Int, dot: Int, text: String,
                    pulse: Boolean, appear: Float) {
-        val mesh = WheelMesh(1.15f / guiScale())
+        val mesh = mesh()
         val dotCenterX = x + GuiFont.width(font, "●") / 2f
         val dotCenterY = y + STATUS_DOT_CENTER_Y
         if (pulse) {
@@ -333,6 +357,19 @@ object MenuStyle {
         graphics.pose().popMatrix()
     }
 
+    /**
+     * A glass button's face, without its content: the faint fill and the hairline, both brighter
+     * under the mouse, where the edge also takes the accent.
+     */
+    @JvmStatic
+    fun glassBox(graphics: GuiGraphicsExtractor, x: Int, y: Int, width: Int, height: Int, radius: Int,
+                 hover: Float, appear: Float) {
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, width, height, radius,
+            fade(ModernGuiUtils.lerpColor(GLASS_FILL, GLASS_FILL_HOVER, hover), appear))
+        ModernGuiUtils.drawRoundedOutline(graphics, x, y, width, height, radius,
+            fade(ModernGuiUtils.lerpColor(GLASS_BORDER, accent(), hover), appear))
+    }
+
     /** The red pill to leave by, ringed in red under the mouse. */
     @JvmStatic
     fun quitPill(graphics: GuiGraphicsExtractor, font: Font, x: Int, y: Int, width: Int, height: Int,
@@ -389,7 +426,7 @@ object MenuStyle {
         val bright = WheelMesh.scaleAlpha(0xFFFFFFFF.toInt(), strength)
         val clear = 0x00FFFFFF
         graphics.enableScissor(x, y, x + width, y + height)
-        val mesh = WheelMesh(1.15f / guiScale())
+        val mesh = mesh()
         val top = y.toFloat()
         val bottom = (y + height).toFloat()
         mesh.quad(center - band + slant, top, clear, center - band, bottom, clear,

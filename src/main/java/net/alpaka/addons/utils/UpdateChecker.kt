@@ -28,7 +28,7 @@ import java.util.Optional
  * those are skipped here as well - whose version is higher than the running one, and which carries
  * a jar for the Minecraft version the game is running. Releases are built per Minecraft version
  * (`alpaka-1.2.22-mc26.2.jar`), and a release with no jar for this game is one the player cannot
- * install, so it is not announced.
+ * install, so it is not announced. A jar built for 26.2 is for every 26.2.x (see [jarSuffixes]).
  *
  * A build between releases (`1.2.22+25.d4e2c70`) counts as its release, so a test build of the
  * latest release is not told to update to it.
@@ -157,7 +157,7 @@ object UpdateChecker {
             done(null, "this build has no version to compare")
             return
         }
-        val jarSuffix = "-mc${ModVersion.minecraft()}.jar"
+        val jarSuffixes = jarSuffixes(ModVersion.minecraft())
 
         val request = HttpRequest.newBuilder(URI.create(ENDPOINT))
             .timeout(Duration.ofSeconds(10))
@@ -185,7 +185,7 @@ object UpdateChecker {
                         done(null, problem)
                         return@whenComplete
                     }
-                    val release = newest(response!!.body(), currentParts, jarSuffix)
+                    val release = newest(response!!.body(), currentParts, jarSuffixes)
                     if (release != null) latest = release
                     done(release, null)
                 } catch (t: Throwable) {
@@ -195,8 +195,25 @@ object UpdateChecker {
             }
     }
 
-    /** The highest release above [current] with a jar ending in [jarSuffix], or null if there is none. */
-    private fun newest(body: String, current: List<Int>, jarSuffix: String): Release? {
+    /**
+     * The endings a release jar for this game can have, the best match first: the exact Minecraft
+     * version, then its major.minor.
+     *
+     * Release jars are named after the major.minor they were built against (`-mc26.2.jar`, see
+     * archiveVersion in build.gradle), while fabric.mod.json accepts every 26.2.x. Looking for the
+     * exact version only, a game on a hotfix such as 26.2.1 found no jar in any release, was told it
+     * had the newest one, and never heard of an update again.
+     */
+    internal fun jarSuffixes(minecraft: String): List<String> {
+        val majorMinor = minecraft.substringBefore('-').split('.').take(2).joinToString(".")
+        return listOf("-mc$minecraft.jar", "-mc$majorMinor.jar").distinct()
+    }
+
+    /**
+     * The highest release above [current] with a jar ending in one of [jarSuffixes], or null if there
+     * is none. Where a release has several, the first ending in [jarSuffixes] wins.
+     */
+    internal fun newest(body: String, current: List<Int>, jarSuffixes: List<String>): Release? {
         var best: Release? = null
         var bestParts = current
         for (element in JsonParser.parseString(body).asJsonArray) {
@@ -205,8 +222,9 @@ object UpdateChecker {
             val version = release.get("tag_name")?.asString?.removePrefix("v") ?: continue
             val parts = parse(version) ?: continue
             if (compare(parts, bestParts) <= 0) continue
-            val jar = release.getAsJsonArray("assets")?.map { it.asJsonObject }?.firstOrNull {
-                it.get("name")?.asString?.endsWith(jarSuffix) == true
+            val assets = release.getAsJsonArray("assets")?.map { it.asJsonObject } ?: continue
+            val jar = jarSuffixes.firstNotNullOfOrNull { suffix ->
+                assets.firstOrNull { it.get("name")?.asString?.endsWith(suffix) == true }
             } ?: continue
             best = Release(
                 version,
@@ -254,7 +272,7 @@ object UpdateChecker {
     }
 
     /** "1.2.22" as [1, 2, 22]; null for anything that is not dot-separated numbers. */
-    private fun parse(version: String): List<Int>? {
+    internal fun parse(version: String): List<Int>? {
         val parts = version.split('.').map { it.toIntOrNull() ?: return null }
         return parts.ifEmpty { null }
     }

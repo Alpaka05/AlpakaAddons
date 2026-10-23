@@ -198,11 +198,12 @@ object InventoryHudFeature {
         lastChangeMs != 0L && System.currentTimeMillis() - lastChangeMs < PEEK_DURATION_MS
 
     /**
-     * How far open the HUD is, 0..1, advanced from the wall clock so the fade runs at the same
-     * speed regardless of frame rate. Linear; the renderer applies the easing.
+     * Moves the fade on to now and returns how far open the HUD is, 0..1. Advanced from the wall
+     * clock, so the fade runs at the same speed regardless of frame rate; called once per frame by
+     * the renderer. Linear; the renderer applies the easing.
      */
     @JvmStatic
-    fun openAmount(): Float {
+    fun advanceOpenAmount(): Float {
         val now = System.currentTimeMillis()
         val dt = (now - lastFrameMs).coerceAtMost(MAX_FRAME_MS) / 1000.0f
         lastFrameMs = now

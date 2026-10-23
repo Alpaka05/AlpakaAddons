@@ -17,6 +17,7 @@ import net.minecraft.client.input.MouseButtonEvent;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class AlpakaConfigScreen extends Screen {
     private final Screen parent;
@@ -483,7 +484,7 @@ public class AlpakaConfigScreen extends Screen {
                 if (startOptionY + itemHeight >= clipY && startOptionY <= clipY + clipH) {
                     if (opt.getType() == ConfigOption.Type.HEADER) {
                         ModernGuiUtils.drawRect(graphics, contentX + 14, startOptionY + 8, cardW, 1, ModernGuiUtils.COLOR_CARD_BORDER);
-                        graphics.text(this.font, GuiFont.text("• " + opt.getTitle().toUpperCase()), contentX + 14, startOptionY + 14, ModernGuiUtils.getAccentColor(), false);
+                        graphics.text(this.font, GuiFont.text("• " + opt.getTitle().toUpperCase(Locale.ROOT)), contentX + 14, startOptionY + 14, ModernGuiUtils.getAccentColor(), false);
                     } else {
                         boolean isCardHovered = mouseX >= contentX + 14 && mouseX <= contentX + 14 + cardW &&
                                                mouseY >= startOptionY && mouseY <= startOptionY + cardH &&

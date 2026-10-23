@@ -300,7 +300,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VISUALS,
                 () -> (float) AlpakaConfig.instance.smoothPerspectiveDurationMs,
                 v -> { AlpakaConfig.instance.smoothPerspectiveDurationMs = Math.round(v); AlpakaConfig.save(); },
-                100.0f, 1000.0f, val -> String.format("%d ms", Math.round(val)),
+                100.0f, 1000.0f, val -> String.format(Locale.ROOT, "%d ms", Math.round(val)),
                 "smooth perspective camera speed duration transition time ms"));
 
         OPTIONS.add(new ConfigOption("Interfaces", ConfigCategory.VISUALS));
@@ -325,7 +325,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VISUALS,
                 () -> (float) AlpakaConfig.instance.containerBgFadeInDurationMs,
                 v -> { AlpakaConfig.instance.containerBgFadeInDurationMs = Math.round(v); AlpakaConfig.save(); },
-                50.0f, 1000.0f, val -> String.format("%d ms", Math.round(val)),
+                50.0f, 1000.0f, val -> String.format(Locale.ROOT, "%d ms", Math.round(val)),
                 "container background fade speed duration time ms transition"));
 
         OPTIONS.add(new ConfigOption("inventory_snow", "Inventory Snowflakes",
@@ -1238,7 +1238,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.BLOCK_OVERLAY,
                 () -> (float) AlpakaConfig.instance.blockFadeInDurationMs,
                 v -> { AlpakaConfig.instance.blockFadeInDurationMs = Math.round(v); AlpakaConfig.save(); },
-                50.0f, 1000.0f, val -> String.format("%d ms", Math.round(val)),
+                50.0f, 1000.0f, val -> String.format(Locale.ROOT, "%d ms", Math.round(val)),
                 "block fade in duration speed time ms transition overlay"));
 
         OPTIONS.add(new ConfigOption("block_chroma_enabled", "Chroma RGB Effect",
@@ -1556,8 +1556,8 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.slayerHudAfkPauseSeconds,
                 v -> { AlpakaConfig.instance.slayerHudAfkPauseSeconds = v; AlpakaConfig.save(); },
                 5.0f, 300.0f, val -> val >= 60.0f
-                        ? String.format("%dm %02ds", (int) (val / 60), (int) (val % 60))
-                        : String.format("%ds", val.intValue()),
+                        ? String.format(Locale.ROOT, "%dm %02ds", (int) (val / 60), (int) (val % 60))
+                        : String.format(Locale.ROOT, "%ds", val.intValue()),
                 "slayer session timer pause afk idle stand still seconds duration threshold"));
 
 
@@ -1589,9 +1589,9 @@ public class AlpakaConfigRegistry {
                     if (sec >= 60) {
                         int m = sec / 60;
                         int s = sec % 60;
-                        return s > 0 ? String.format("%dm %ds", m, s) : String.format("%dm", m);
+                        return s > 0 ? String.format(Locale.ROOT, "%dm %ds", m, s) : String.format(Locale.ROOT, "%dm", m);
                     }
-                    return String.format("%ds", sec);
+                    return String.format(Locale.ROOT, "%ds", sec);
                 },
                 "world age recent visit threshold window seconds time minutes slider"));
 
@@ -2033,7 +2033,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.SOUND_MISC,
                 () -> AlpakaConfig.instance.customSoundsVolume,
                 v -> { AlpakaConfig.instance.customSoundsVolume = v; AlpakaConfig.save(); },
-                0.0f, 1.0f, val -> String.format("%d%%", Math.round(val * 100)),
+                0.0f, 1.0f, val -> String.format(Locale.ROOT, "%d%%", Math.round(val * 100)),
                 "custom sounds volume loudness audio gain percent"));
 
         OPTIONS.add(new ConfigOption("Interface Sounds", ConfigCategory.SOUND_MISC));

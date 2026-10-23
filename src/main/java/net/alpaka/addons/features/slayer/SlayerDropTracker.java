@@ -21,6 +21,7 @@ import net.minecraft.ChatFormatting;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.Locale;
 
 public class SlayerDropTracker {
 
@@ -252,17 +253,13 @@ public class SlayerDropTracker {
         flushPendingDrops();
     }
 
-    public static boolean isOnSkyblock() {
-        return net.alpaka.addons.utils.SkyblockUtils.isOnSkyblock();
-    }
-
     public static boolean isInRift() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return false;
         Scoreboard scoreboard = mc.level.getScoreboard();
         Objective objective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR);
         if (objective != null) {
-            String displayName = cleanColor(objective.getDisplayName().getString()).toLowerCase();
+            String displayName = cleanColor(objective.getDisplayName().getString()).toLowerCase(Locale.ROOT);
             return displayName.contains("rift");
         }
         return false;
@@ -331,7 +328,7 @@ public class SlayerDropTracker {
         if (!AlpakaConfig.instance.slayerDropTrackerEnabled) return;
 
         if (AlpakaConfig.instance.customSoundsEnabled && SERVER_DROP_PATTERN.matcher(string).matches()) {
-            String lower = string.toLowerCase();
+            String lower = string.toLowerCase(Locale.ROOT);
             if (lower.contains("insane drop!") || lower.contains("crazy rare drop!") || lower.contains("judgement core") || lower.contains("warden heart") || lower.contains("archfiend dice")) {
                 CustomSoundFeature.playInsaneDropSound();
             } else if (lower.contains("rare drop!") || lower.contains("very rare drop!")) {
@@ -546,17 +543,6 @@ public class SlayerDropTracker {
             }
         }
         return null;
-    }
-
-    /** Dev tour only: a headline drop line and a since line, to see the share buttons in the chat. */
-    public static void devShareSample() {
-        String drop = "Dropped High Class Archfiend Dice after 412 Bosses";
-        sendModMessage(Component.literal("Dropped ")
-                .append(Component.literal("High Class Archfiend Dice").withStyle(ChatFormatting.LIGHT_PURPLE))
-                .append(" after ").append(Component.literal("412").withStyle(ChatFormatting.GREEN))
-                .append(" Bosses"));
-        sendModMessage(shareButtons(drop));
-        sendModMessage(Component.literal("§fBosses since last Warden Heart: 87  ").append(shareButtons("Bosses since last Warden Heart: 87")));
     }
 
     /** /alpakaslayer since &lt;item&gt;: the player's own count, with buttons to share it. */

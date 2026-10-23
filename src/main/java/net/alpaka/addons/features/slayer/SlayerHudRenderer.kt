@@ -394,7 +394,7 @@ object SlayerHudRenderer {
         val hours = totalSeconds / 3600
         val minutes = (totalSeconds % 3600) / 60
         val seconds = totalSeconds % 60
-        return if (hours > 0) String.format("%dh %02dm", hours, minutes)
-        else String.format("%dm %02ds", minutes, seconds)
+        return if (hours > 0) String.format(java.util.Locale.ROOT, "%dh %02dm", hours, minutes)
+        else String.format(java.util.Locale.ROOT, "%dm %02ds", minutes, seconds)
     }
 }

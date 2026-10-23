@@ -87,12 +87,12 @@ public class ConfigOption {
 
     // Header constructor
     public ConfigOption(String title, ConfigCategory category) {
-        this.id = title.toLowerCase().replace(" ", "_");
+        this.id = title.toLowerCase(Locale.ROOT).replace(" ", "_");
         this.title = title;
         this.description = "";
         this.category = category;
         this.type = Type.HEADER;
-        this.keywords = title.toLowerCase();
+        this.keywords = title.toLowerCase(Locale.ROOT);
     }
 
     // Preview constructor, see preview()
@@ -102,7 +102,7 @@ public class ConfigOption {
         this.description = "";
         this.category = category;
         this.type = type;
-        this.keywords = title.toLowerCase();
+        this.keywords = title.toLowerCase(Locale.ROOT);
     }
 
     // Boolean option constructor
@@ -115,7 +115,7 @@ public class ConfigOption {
         this.type = Type.BOOLEAN;
         this.getterBool = getterBool;
         this.setterBool = setterBool;
-        this.keywords = (title + " " + description + " " + keywords).toLowerCase();
+        this.keywords = (title + " " + description + " " + keywords).toLowerCase(Locale.ROOT);
     }
 
     // Float Slider option constructor
@@ -132,7 +132,7 @@ public class ConfigOption {
         this.minVal = minVal;
         this.maxVal = maxVal;
         this.formatter = formatter;
-        this.keywords = (title + " " + description + " " + keywords).toLowerCase();
+        this.keywords = (title + " " + description + " " + keywords).toLowerCase(Locale.ROOT);
     }
 
     // Action button constructor
@@ -145,7 +145,7 @@ public class ConfigOption {
         this.type = Type.ACTION;
         this.actionLabel = actionLabel;
         this.actionHandler = actionHandler;
-        this.keywords = (title + " " + description + " " + keywords).toLowerCase();
+        this.keywords = (title + " " + description + " " + keywords).toLowerCase(Locale.ROOT);
     }
 
     /**
@@ -194,7 +194,7 @@ public class ConfigOption {
         if (entries != null) {
             for (ToggleEntry entry : entries) entryText.append(' ').append(entry.getLabel());
         }
-        this.keywords = (title + " " + description + " " + keywords + entryText).toLowerCase();
+        this.keywords = (title + " " + description + " " + keywords + entryText).toLowerCase(Locale.ROOT);
     }
 
     public String getId() { return id; }
@@ -210,7 +210,7 @@ public class ConfigOption {
      * option - the config screen does this several times a frame while a search is active.
      */
     public static String normalizeQuery(String query) {
-        return query == null ? "" : query.trim().toLowerCase();
+        return query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
     }
 
     /** Whether this option matches an already-normalised query. Allocation-free. */
@@ -409,7 +409,7 @@ public class ConfigOption {
         this.textGetter = getter;
         this.textSetter = setter;
         this.placeholder = placeholder;
-        this.keywords = (title + " " + description + " " + keywords).toLowerCase();
+        this.keywords = (title + " " + description + " " + keywords).toLowerCase(Locale.ROOT);
     }
 
     public String getText() {

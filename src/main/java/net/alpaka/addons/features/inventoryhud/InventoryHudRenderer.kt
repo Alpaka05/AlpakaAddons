@@ -177,7 +177,7 @@ object InventoryHudRenderer {
         // Behind a real menu the inventory is on screen anyway; chat is not a menu.
         if (mc.gui.screen() != null && mc.gui.screen() !is ChatScreen) return
 
-        val open = InventoryHudFeature.openAmount()
+        val open = InventoryHudFeature.advanceOpenAmount()
         if (open <= 0.001f) return
 
         val scale = cfg.inventoryHudScale

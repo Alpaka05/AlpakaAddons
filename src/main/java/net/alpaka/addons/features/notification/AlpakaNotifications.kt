@@ -287,8 +287,16 @@ object AlpakaNotifications {
         val now = System.currentTimeMillis()
         synchronized(active) { active.removeAll { now >= it.retireAtMs } }
         graphics.nextStratum()
-        draw(graphics, now)
+        drawingOverScreen = true
+        try {
+            draw(graphics, now)
+        } finally {
+            drawingOverScreen = false
+        }
     }
+
+    /** Set while the notices are drawn on top of a screen, whose own blur does not cover them. */
+    private var drawingOverScreen = false
 
     private fun draw(graphics: GuiGraphicsExtractor, now: Long) {
         val mc = Minecraft.getInstance()
@@ -406,7 +414,8 @@ object AlpakaNotifications {
 
         if (blurred) {
             // The panel fades as a whole, blur included, rather than through its tint alone.
-            HudPanel.submit(graphics, x, y, x + WIDTH, y + height, 1.0f, BLUR_TINT, shown)
+            HudPanel.submit(graphics, x, y, x + WIDTH, y + height, 1.0f, BLUR_TINT, shown,
+                if (drawingOverScreen) HudPanel.Glass.OVER_SCREEN else HudPanel.Glass.HUD)
         } else {
             drawPanel(graphics, x, y, height, shown)
         }

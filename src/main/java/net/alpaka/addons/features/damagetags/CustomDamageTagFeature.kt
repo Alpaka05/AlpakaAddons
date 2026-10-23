@@ -13,8 +13,9 @@ import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
 import net.minecraft.client.multiplayer.ClientLevel
-import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.Style
 import net.minecraft.util.ARGB
+import net.minecraft.util.FormattedCharSequence
 import net.minecraft.util.Mth
 import net.minecraft.world.entity.decoration.ArmorStand
 import java.util.Locale
@@ -105,6 +106,14 @@ object CustomDamageTagFeature {
         /** Fixed per tag so a stack of hits on one spot fans out instead of piling up. */
         val driftX = (Math.random() - 0.5) * 0.35
         val driftZ = (Math.random() - 0.5) * 0.35
+
+        /**
+         * The still gradient last built for this tag, and the two colours it was built from. Only used while
+         * Flowing Gradient is off, when the gradient cannot change unless the colours do.
+         */
+        var gradient: FormattedCharSequence? = null
+        var gradientStart = 0
+        var gradientEnd = 0
     }
 
     private val tags = ArrayDeque<Tag>()
@@ -238,8 +247,16 @@ object CustomDamageTagFeature {
             val text = tag.text
             val start = if (tag.crit) cfg.customDamageTagCritStart else cfg.customDamageTagNormalStart
             val end = if (tag.crit) cfg.customDamageTagCritEnd else cfg.customDamageTagNormalEnd
-            val component = gradient(text, start, end, if (cfg.customDamageTagFlowingGradient) time else null)
-            val sequence = component.visualOrderText
+            // A still gradient is the same every frame, so it is built once per tag and again only when
+            // a colour changes. The width is still measured every frame: a resource reload can change
+            // the glyphs.
+            val sequence = if (cfg.customDamageTagFlowingGradient) {
+                gradient(text, start, end, time)
+            } else {
+                val built = tag.gradient
+                if (built != null && tag.gradientStart == start && tag.gradientEnd == end) built
+                else gradient(text, start, end, null).also { tag.gradient = it; tag.gradientStart = start; tag.gradientEnd = end }
+            }
             val width = font.width(sequence)
 
             poseStack.pushPose()
@@ -260,16 +277,27 @@ object CustomDamageTagFeature {
     /**
      * The number with each character in its own color, running from [start] to [end]. With a
      * [time], the gradient sways back and forth along the number.
+     *
+     * Built straight as the sequence the font draws rather than as a Component read through
+     * visualOrderText. A tag only ever holds ASCII digits, ',', '.' and a k/M/B suffix (the damage
+     * number pattern or [format]), which read left to right in every language, so a component tree
+     * and an ICU bidi pass per tag per frame could never change the order. Should a tag ever hold
+     * other characters, it has to go back through visualOrderText. The styles are worked out up
+     * front, so the width pass and the later draw see the same ones.
      */
-    private fun gradient(text: String, start: Int, end: Int, time: Double?): Component {
-        val out = Component.empty()
+    private fun gradient(text: String, start: Int, end: Int, time: Double?): FormattedCharSequence {
         val count = text.length
-        for ((index, ch) in text.withIndex()) {
+        val styles = Array(count) { index ->
             var position = if (count > 1) index.toFloat() / (count - 1) else 0f
             if (time != null) position = (position + 0.35f * sin(time * 3.0 + index * 0.6).toFloat()).coerceIn(0f, 1f)
-            out.append(Component.literal(ch.toString()).withColor(lerpRgb(start, end, position)))
+            Style.EMPTY.withColor(lerpRgb(start, end, position))
         }
-        return out
+        return FormattedCharSequence { sink ->
+            for (i in 0 until count) {
+                if (!sink.accept(i, styles[i], text[i].code)) return@FormattedCharSequence false
+            }
+            true
+        }
     }
 
     /**

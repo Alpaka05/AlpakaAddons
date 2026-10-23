@@ -316,6 +316,7 @@ public final class MarketPreview {
     /** The price sign of "Create BIN Auction", as Hypixel writes it, with this typed. */
     public static MarketInputScreen binPrice(String typed) {
         Markets.menuOpened("Create BIN Auction");
+        LowestBin.devSelling(new LowestBin.Item("HYPERION", null, 1, "Hyperion"), 444_000_000);
         return input(new String[] {"", "^^^^^^^^^^^^^^^", "Your auction", "starting bid"}, MarketKind.AUCTION_HOUSE, typed);
     }
 

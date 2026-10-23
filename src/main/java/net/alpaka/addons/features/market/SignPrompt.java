@@ -111,7 +111,7 @@ public record SignPrompt(Type type, String question, int inputLines) {
     }
 
     /** Whether this is the price of an auction being created, rather than a bid on one. */
-    private boolean auctionPrice() {
+    public boolean auctionPrice() {
         return question.toLowerCase(Locale.ROOT).contains("starting bid");
     }
 

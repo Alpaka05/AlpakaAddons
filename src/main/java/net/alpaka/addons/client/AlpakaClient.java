@@ -63,6 +63,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.ragnarock.RagnarockFeature.register();
         WorldAgeFeature.registerEvents();
         net.alpaka.addons.features.performance.PerformanceStats.register();
+        net.alpaka.addons.features.market.LowestBin.register();
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             // Every alias takes an optional search term: "/aa" opens the config as before, and

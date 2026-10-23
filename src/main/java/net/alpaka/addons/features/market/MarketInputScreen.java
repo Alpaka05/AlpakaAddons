@@ -61,6 +61,8 @@ public class MarketInputScreen extends SignEditScreen {
     private String pendingText = null;
 
     private final List<Hit> hits = new ArrayList<>();
+    /** The item being put up for auction, for a price sign that asks what it sells for; else null. */
+    private final LowestBin.Item selling;
 
     // ---- Suggestions, for a search ---------------------------------------------------------------
 
@@ -106,6 +108,7 @@ public class MarketInputScreen extends SignEditScreen {
         super(sign, isFrontText, filtered);
         this.prompt = prompt;
         this.context = context;
+        this.selling = prompt.type() == SignPrompt.Type.PRICE && prompt.auctionPrice() ? LowestBin.selling() : null;
     }
 
     /**
@@ -193,7 +196,7 @@ public class MarketInputScreen extends SignEditScreen {
     }
 
     private int panelH() {
-        return HEADER_H + 10 + FIELD_H + 6 + 10 + (hasChips() ? CHIP_H + 8 : 0) + 8 + AlpakaStyle.BUTTON_H + 10;
+        return HEADER_H + 10 + FIELD_H + 6 + 10 + (selling != null ? CHIP_H + 8 : 0) + (hasChips() ? CHIP_H + 8 : 0) + 8 + AlpakaStyle.BUTTON_H + 10;
     }
 
     private boolean hasChips() {
@@ -261,6 +264,10 @@ public class MarketInputScreen extends SignEditScreen {
         drawReading(graphics, fx + fw - 2, hy);
 
         int cy = hy + 10 + 8;
+        if (selling != null) {
+            drawLowestBin(graphics, mouseX, mouseY, fx, cy, fw);
+            cy += CHIP_H + 8;
+        }
         if (hasChips()) {
             drawChips(graphics, mouseX, mouseY, fx, cy, fw);
             cy += CHIP_H + 8;
@@ -597,6 +604,45 @@ public class MarketInputScreen extends SignEditScreen {
                 else replace(chip);
             }, true));
             cx += cw + 4;
+        }
+    }
+
+    /**
+     * The row of prices taken from the item's lowest BIN: that price and a little under it, each
+     * one click into the field. Says why instead where there is no price to offer.
+     */
+    private void drawLowestBin(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w) {
+        String label = "Lowest BIN";
+        graphics.text(this.font, GuiFont.text(label), x + 2, y + 3, AlpakaStyle.TEXT_MUTED, false);
+        int cx = x + GuiFont.width(this.font, label) + 10;
+        String source = "SkyCofl";
+        int sourceW = GuiFont.width(this.font, source);
+        String note = null;
+        if (!AlpakaConfig.instance.allowApiCalls) {
+            note = "Turn on Network Features";
+        } else {
+            LowestBin.Result result = LowestBin.get(selling, LowestBin.ownUuid());
+            switch (result.state()) {
+                case LOADING -> note = "Looking it up…";
+                case NONE -> note = "None listed right now";
+                case FAILED -> note = "Could not load";
+                case READY -> {
+                    for (LowestBin.Suggestion chip : LowestBin.suggestions(result.each() * selling.count())) {
+                        int cw = GuiFont.width(this.font, chip.label()) + 12;
+                        if (cx + cw > x + w - sourceW - 6) break;
+                        boolean hover = AlpakaStyle.inside(mouseX, mouseY, cx, y, cw, CHIP_H);
+                        ModernGuiUtils.drawRoundedRect(graphics, cx, y, cw, CHIP_H, CHIP_H / 2, hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW);
+                        graphics.text(this.font, GuiFont.text(chip.label()), cx + 6, y + 3, hover ? COIN : AlpakaStyle.TEXT_SOFT, false);
+                        hits.add(new Hit(cx, y, cw, CHIP_H, mx -> replace(Coins.full(chip.coins())), true));
+                        cx += cw + 4;
+                    }
+                }
+            }
+        }
+        if (note != null) graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, note, x + w - sourceW - 6 - cx)), cx, y + 3, AlpakaStyle.TEXT_MUTED, false);
+        // SkyCofl asks to be named where its prices show.
+        if (AlpakaConfig.instance.allowApiCalls) {
+            graphics.text(this.font, GuiFont.text(source), x + w - 2 - sourceW, y + 3, AlpakaStyle.DIVIDER, false);
         }
     }
 

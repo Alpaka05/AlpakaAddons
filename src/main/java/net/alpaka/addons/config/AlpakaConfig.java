@@ -320,6 +320,8 @@ public class AlpakaConfig {
     public boolean slayerHudShowBear = true;
     /** Keeps the "Bear" line to the Blaze HUD, where the effect matters most. */
     public boolean slayerHudBearBlazeOnly = false;
+    /** The "Radio" line on the Blaze HUD: players on the Blazetekk Ham Radio's channel. */
+    public boolean slayerHudShowRadio = true;
     /** Seconds of standing still before the session clock stops. */
     public float slayerHudAfkPauseSeconds = 60.0f;
     /** Stop the clock the moment the sidebar says the player is no longer in the slayer's zone. */

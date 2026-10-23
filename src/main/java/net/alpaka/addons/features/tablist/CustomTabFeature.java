@@ -181,10 +181,6 @@ public final class CustomTabFeature {
     }
 
     /**
-     * Draws the list in place of vanilla's. Returns false where vanilla's list is to be drawn
-     * instead: with the feature off, and off SkyBlock.
-     */
-    /**
      * Takes the player list's place in Fabric's HUD registry: on SkyBlock the mod draws the list,
      * elsewhere the element as the registry has it - vanilla's, or another mod's replacement.
      *
@@ -205,6 +201,10 @@ public final class CustomTabFeature {
                 });
     }
 
+    /**
+     * Draws the list in place of vanilla's. Returns false where vanilla's list is to be drawn
+     * instead: with the feature off, and off SkyBlock.
+     */
     public static boolean render(GuiGraphicsExtractor graphics, Hud hud) {
         if (!takesOver()) return false;
         // With a menu open the menu's own hook draws it instead, above the menu's dimming.

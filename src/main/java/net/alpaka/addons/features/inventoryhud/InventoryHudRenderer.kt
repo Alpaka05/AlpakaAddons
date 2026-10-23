@@ -400,10 +400,9 @@ object InventoryHudRenderer {
             // that asks, so this shares the copy with the chat. The fade goes in as the panel's
             // opacity rather than into the tint, so the blur fades with it. Asked before the
             // submission, so a HUD cached by Gnetum hands this panel to the frame's own pass.
-            ChatBlurFeature.request()
-            sink.`alpaka$submitElement`(
-                BlurRectRenderState(pose, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, radiusPx, tint, toScreen, shown, scissor)
-            )
+            val panel = BlurRectRenderState(pose, 0, 0, FLAT_WIDTH, FLAT_HEIGHT, radiusPx, tint, toScreen, shown, scissor)
+            ChatBlurFeature.requestForHud(panel.bounds())
+            sink.`alpaka$submitElement`(panel)
         } else if (backdropAlpha > 0) {
             sink.`alpaka$submitElement`(
                 GradientRoundedRectRenderState(

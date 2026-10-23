@@ -15,9 +15,6 @@ import net.minecraft.network.chat.Component;
  * look it up. Only the clipboard is touched; nothing goes to the server.
  */
 public final class ChatCopyFeature {
-    /** The copy notice is a quick confirmation, shorter than the configured hold for news. */
-    private static final long NOTICE_HOLD_MS = 2500L;
-
     /** The message under the mouse in the open chat as of the last frame, or null. */
     private static GuiMessage hovered;
     /** The last copy's notice, replaced by the next one so a few copies in a row don't stack up. */
@@ -40,7 +37,7 @@ public final class ChatCopyFeature {
         if (text.isEmpty()) return false;
         Minecraft.getInstance().keyboardHandler.setClipboard(text);
         AlpakaNotifications.dismiss(noticeId);
-        noticeId = AlpakaNotifications.send("Message Copied", text.replace('\n', ' '), 0, NOTICE_HOLD_MS);
+        noticeId = AlpakaNotifications.send("Message Copied", text.replace('\n', ' '));
         return true;
     }
 

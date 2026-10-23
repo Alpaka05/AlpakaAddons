@@ -727,6 +727,43 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.playerModelShowInGuis = v; AlpakaConfig.save(); },
                 "player model show in guis menus screen open container inventory HUD"));
 
+        OPTIONS.add(new ConfigOption("Performance HUD", ConfigCategory.VISUALS));
+
+        OPTIONS.add(new ConfigOption("performance_hud_enabled", "Performance HUD",
+                "Shows the server's day, your FPS, your ping and the server's TPS on the HUD.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.performanceHudEnabled,
+                v -> { AlpakaConfig.instance.performanceHudEnabled = v; AlpakaConfig.save(); },
+                "performance hud fps frames ping latency ms tps ticks server lag day world age"));
+
+        OPTIONS.add(new ConfigOption("performance_hud_day", "Show Day",
+                "The server's world age in days: green below 25, orange to 30, red above.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.performanceHudShowDay,
+                v -> { AlpakaConfig.instance.performanceHudShowDay = v; AlpakaConfig.save(); },
+                "performance hud day world age server days time skyblock"));
+
+        OPTIONS.add(new ConfigOption("performance_hud_fps", "Show FPS",
+                "Your frames per second, from the game's own counter.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.performanceHudShowFps,
+                v -> { AlpakaConfig.instance.performanceHudShowFps = v; AlpakaConfig.save(); },
+                "performance hud fps frames per second framerate"));
+
+        OPTIONS.add(new ConfigOption("performance_hud_ping", "Show Ping",
+                "Your round trip to the server. Measured with one small ping every 5 seconds while shown, none while F3 or another mod already measures it.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.performanceHudShowPing,
+                v -> { AlpakaConfig.instance.performanceHudShowPing = v; AlpakaConfig.save(); },
+                "performance hud ping latency ms connection delay"));
+
+        OPTIONS.add(new ConfigOption("performance_hud_tps", "Show TPS",
+                "The server's ticks per second, counted from packets it sends anyway. 20 is full speed.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.performanceHudShowTps,
+                v -> { AlpakaConfig.instance.performanceHudShowTps = v; AlpakaConfig.save(); },
+                "performance hud tps ticks per second server lag"));
+
         OPTIONS.add(new ConfigOption("Inventory HUD", ConfigCategory.VISUALS));
 
         OPTIONS.add(new ConfigOption("inventory_hud_enabled", "Enable Inventory HUD",
@@ -1532,14 +1569,6 @@ public class AlpakaConfigRegistry {
                 "slayer session pause outside area zone leave region timer stop"));
 
         OPTIONS.add(new ConfigOption("World Age", ConfigCategory.SKYBLOCK));
-
-
-        OPTIONS.add(new ConfigOption("world_age_hud_enabled", "Enable World Age (Day) HUD",
-                "Displays the current server's world age in days.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.worldAgeHudEnabled,
-                v -> { AlpakaConfig.instance.worldAgeHudEnabled = v; AlpakaConfig.save(); },
-                "world age day hud server days time skyblock color red orange green"));
 
 
         OPTIONS.add(new ConfigOption("world_age_join_message_enabled", "Server Age Join Message",

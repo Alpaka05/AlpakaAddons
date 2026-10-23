@@ -4,6 +4,7 @@ import net.alpaka.addons.AlpakaAddons;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.config.AlpakaStats;
 import net.alpaka.addons.features.sound.CustomSoundFeature;
+import net.alpaka.addons.utils.AlpakaPrefix;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.minecraft.client.Minecraft;
@@ -230,8 +231,9 @@ public class SlayerDropTracker {
         if (killed != null) {
             long killedAtMs = SlayerQuestDetector.INSTANCE.getKillDetectedAtMs();
             countKill(killed);
-            SlayerSessionTracker.INSTANCE.onBossKilled(killed, killedAtMs);
-            SlayerTimer.INSTANCE.onBossKilled(killed, killedAtMs, SlayerQuestDetector.INSTANCE.getKillTimed());
+            boolean timed = SlayerQuestDetector.INSTANCE.getKillTimed();
+            SlayerSessionTracker.INSTANCE.onBossKilled(killed, killedAtMs, timed);
+            SlayerTimer.INSTANCE.onBossKilled(killed, killedAtMs, timed, SlayerQuestDetector.INSTANCE.getKillStated());
         }
 
         // Only signal for a boss spawning: Hypixel never sends a chat announcement for a
@@ -239,8 +241,9 @@ public class SlayerDropTracker {
         // SkyHanni's own pattern list, which has no such entry for slayer bosses.
         SlayerType spawned = SlayerQuestDetector.INSTANCE.consumeSpawn();
         if (spawned != null) {
-            SlayerSessionTracker.INSTANCE.onBossSpawned(spawned);
-            SlayerTimer.INSTANCE.onBossSpawned(spawned, SlayerQuestDetector.INSTANCE.getSpawnVerified());
+            boolean verified = SlayerQuestDetector.INSTANCE.getSpawnVerified();
+            SlayerSessionTracker.INSTANCE.onBossSpawned(spawned, verified);
+            SlayerTimer.INSTANCE.onBossSpawned(spawned, SlayerQuestDetector.INSTANCE.getTier(), verified);
         }
         if (spawned != null && AlpakaConfig.instance.customSoundsEnabled) {
             CustomSoundFeature.playBossSpawnSound();
@@ -291,7 +294,7 @@ public class SlayerDropTracker {
     public static void sendModMessage(Component message) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null) {
-            MutableComponent prefix = Component.literal("§6[AA] ").append(message);
+            MutableComponent prefix = AlpakaPrefix.prefix().append(message);
             mc.player.sendSystemMessage(prefix);
         }
     }
@@ -318,6 +321,13 @@ public class SlayerDropTracker {
             return;
         }
 
+        // Also ahead of the tracker's switch: the boss timer and the session read kills from the
+        // detector too, and this line is what lets a kill count as stated rather than inferred.
+        if (QUEST_COMPLETE_PATTERN.matcher(string).matches()) {
+            SlayerQuestDetector.INSTANCE.onChatKill(SlayerQuestDetector.INSTANCE.currentOrRecent());
+            return;
+        }
+
         if (!AlpakaConfig.instance.slayerDropTrackerEnabled) return;
 
         if (AlpakaConfig.instance.customSoundsEnabled && SERVER_DROP_PATTERN.matcher(string).matches()) {
@@ -334,15 +344,6 @@ public class SlayerDropTracker {
         // step between two readings; that step is the meter's gain, which an unlockable 10% boost
         // inflates, so it only ever matched players who had the boost. See xpForTier.
         if (RNG_METER_PATTERN.matcher(string).matches()) return;
-
-        // Secondary kill signal. Hypixel does not always send this, and other Skyblock mods often
-        // swallow it, so the sidebar transition in the tick handler is the one that usually fires.
-        // Goes through the detector, which hands it out once per boss whether the sidebar or this
-        // line reports it first - so session, timer and XP see it too, not only the lifetime count.
-        if (QUEST_COMPLETE_PATTERN.matcher(string).matches()) {
-            SlayerQuestDetector.INSTANCE.onChatKill(SlayerQuestDetector.INSTANCE.currentOrRecent());
-            return;
-        }
 
         // Check drop message
         Matcher dropMatcher = DROP_PATTERN.matcher(string);
@@ -568,34 +569,50 @@ public class SlayerDropTracker {
         sendModMessage(Component.literal("§f" + answer.text() + "  ").append(shareButtons(answer.text())));
     }
 
+    /**
+     * Sends a multi-line overview as one chat message: "[Alpaka]" and the title on the first line,
+     * the rest below it without a prefix. A prefix on every line drowned out the content, and one
+     * message keeps the block together in the chat history.
+     */
+    private static void sendModBlock(String title, java.util.List<String> lines) {
+        MutableComponent block = Component.literal(title);
+        for (String line : lines) {
+            block.append("\n").append(Component.literal(line));
+        }
+        sendModMessage(block);
+    }
+
     public static void printKills(LocalPlayer player) {
         if (player == null) return;
-        sendModMessage("§6--- Slayer Kills ---");
+        java.util.List<String> lines = new java.util.ArrayList<>();
+
+        lines.add("§6Kills");
         for (SlayerType type : SlayerType.values()) {
             AlpakaConfig.SlayerData data = AlpakaStats.slayerBossMap().get(type);
             if (type == SlayerType.GUARDIAN && (data == null || data.kills == 0)) {
                 continue;
             }
             int kills = data != null ? data.kills : 0;
-            sendModMessage("§e" + type.display + ": §a" + kills + " §7kills");
+            lines.add("  §e" + type.display + ": §a" + kills + " §7kills");
         }
 
-        sendModMessage("§6--- Personal Bests ---");
+        lines.add("§6Personal Bests");
         boolean anyBest = false;
         for (SlayerType type : SlayerType.values()) {
-            Long best = SlayerTimer.INSTANCE.personalBest(type);
-            if (best == null) continue;
-            anyBest = true;
-            sendModMessage("§e" + type.display + ": §a" + SlayerTimer.INSTANCE.format(best));
+            for (kotlin.Pair<Integer, Long> best : SlayerTimer.INSTANCE.personalBests(type)) {
+                anyBest = true;
+                lines.add("  §e" + SlayerTimer.bossLabel(type, best.getFirst()) + ": §a"
+                        + SlayerTimer.INSTANCE.format(best.getSecond()));
+            }
         }
         if (!anyBest) {
-            sendModMessage("§7  §8no boss timed yet");
+            lines.add("  §8no boss timed yet");
         }
 
         // Only each slayer's headline RNG drop, the one worth counting a dry streak against - the
         // same line the slayer HUD shows. The full history is a lot of lines for something that is
         // usually read to answer "how dry am I", so it moved behind /alpakaslayer <slayer>.
-        sendModMessage("§6--- RNG Drops ---");
+        lines.add("§6RNG Drops");
         boolean anyDrop = false;
         for (SlayerType type : SlayerType.values()) {
             String item = type.rngDropItem;
@@ -607,16 +624,17 @@ public class SlayerDropTracker {
 
             Integer since = SlayerRngDropTracker.INSTANCE.bossesSince(type);
             if (since == null) {
-                sendModMessage("§e" + type.display + "§7: " + item + " §8- §cnever §7in " + data.kills + " bosses");
+                lines.add("  §e" + type.display + "§7: " + item + " §8- §cnever §7in " + data.kills + " bosses");
             } else {
-                sendModMessage("§e" + type.display + "§7: " + item + " §8- §a" + since + " §7boss"
+                lines.add("  §e" + type.display + "§7: " + item + " §8- §a" + since + " §7boss"
                         + (since != 1 ? "es" : "") + " ago");
             }
         }
         if (!anyDrop) {
-            sendModMessage("§7  §8nothing recorded yet");
+            lines.add("  §8nothing recorded yet");
         }
-        sendModMessage("§8Use /alpakaslayer <slayer> for every drop of one slayer.");
+        lines.add("§8Use /alpakaslayer <slayer> for every drop of one slayer.");
+        sendModBlock("§6§lSlayer Stats", lines);
     }
 
     /**
@@ -628,29 +646,28 @@ public class SlayerDropTracker {
      */
     public static void printDropsFor(LocalPlayer player, SlayerType type) {
         if (player == null) return;
+        java.util.List<String> lines = new java.util.ArrayList<>();
 
         AlpakaConfig.SlayerData data = AlpakaStats.slayerBossMap().get(type);
-        sendModMessage("§6--- " + type.display + " Drops ---");
-
         int kills = data != null ? data.kills : 0;
-        sendModMessage("§7" + kills + " §7boss" + (kills != 1 ? "es" : "") + " killed");
+        lines.add("  §7" + kills + " boss" + (kills != 1 ? "es" : "") + " killed");
 
-        Long best = SlayerTimer.INSTANCE.personalBest(type);
-        if (best != null) {
-            sendModMessage("§7Personal best: §a" + SlayerTimer.INSTANCE.format(best));
+        for (kotlin.Pair<Integer, Long> best : SlayerTimer.INSTANCE.personalBests(type)) {
+            lines.add("  §7Personal best, " + SlayerTimer.bossLabel(type, best.getFirst()) + ": §a"
+                    + SlayerTimer.INSTANCE.format(best.getSecond()));
         }
 
         if (data == null || data.drops == null || data.drops.isEmpty()) {
-            sendModMessage("§7  §8nothing recorded yet");
-            return;
+            lines.add("  §8nothing recorded yet");
+        } else {
+            data.drops.entrySet().stream()
+                    .sorted(java.util.Map.Entry.comparingByValue(java.util.Comparator.reverseOrder()))
+                    .forEach(entry -> {
+                        int sinceLast = data.kills - entry.getValue();
+                        lines.add("  §f" + entry.getKey() + " §8- §a" + sinceLast + " §7boss"
+                                + (sinceLast != 1 ? "es" : "") + " ago");
+                    });
         }
-
-        data.drops.entrySet().stream()
-                .sorted(java.util.Map.Entry.comparingByValue(java.util.Comparator.reverseOrder()))
-                .forEach(entry -> {
-                    int sinceLast = data.kills - entry.getValue();
-                    sendModMessage("§7  " + entry.getKey() + " §8- §a" + sinceLast + " §7boss"
-                            + (sinceLast != 1 ? "es" : "") + " ago");
-                });
+        sendModBlock("§6§l" + type.display + " Drops", lines);
     }
 }

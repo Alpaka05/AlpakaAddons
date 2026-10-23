@@ -204,7 +204,7 @@ public class AlpakaConfigRegistry {
                 "hurt damage red flash tint overlay hit mob entity hide"));
 
         OPTIONS.add(new ConfigOption("hide_mob_deaths", "Hide Mob Deaths",
-                "Mobs vanish the moment they die instead of tipping over first.",
+                "Mobs and their name tags vanish the moment they die instead of tipping over first.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.hideMobDeathsEnabled,
                 v -> { AlpakaConfig.instance.hideMobDeathsEnabled = v; AlpakaConfig.save(); },
@@ -577,20 +577,6 @@ public class AlpakaConfigRegistry {
 
         OPTIONS.add(new ConfigOption("Chat", ConfigCategory.VISUALS));
 
-        OPTIONS.add(new ConfigOption("scoreboard_blur", "Blurred Scoreboard Background",
-                "One rounded, blurred panel with a soft shadow behind the scoreboard. Uses the chat's Blur Strength.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.scoreboardBlurEnabled,
-                v -> { AlpakaConfig.instance.scoreboardBlurEnabled = v; AlpakaConfig.save(); },
-                "scoreboard sidebar blur background rounded panel glass frosted shadow"));
-
-        OPTIONS.add(new ConfigOption("scoreboard_alpaka_footer", "AlpakaAddons Scoreboard Footer",
-                "Replaces www.hypixel.net at the bottom of the scoreboard with AlpakaAddons in a gradient.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.scoreboardAlpakaFooter,
-                v -> { AlpakaConfig.instance.scoreboardAlpakaFooter = v; AlpakaConfig.save(); },
-                "scoreboard sidebar footer bottom line hypixel.net www address gradient alpakaaddons branding"));
-
         OPTIONS.add(new ConfigOption("chat_search", "Chat Search",
                 "Ctrl+F (Cmd+F on Mac) in the chat filters it to messages containing your text.",
                 ConfigCategory.VISUALS,
@@ -655,6 +641,68 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.chatPeekInMenus,
                 v -> { AlpakaConfig.instance.chatPeekInMenus = v; AlpakaConfig.save(); },
                 "chat peek menu inventory gui screen container open hold key foreground"));
+
+        OPTIONS.add(new ConfigOption("chat_tabs", "Chat Tabs",
+                "All, Party, Guild, Co-op, PMs and NPCs tabs above the chat input.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatTabsEnabled,
+                v -> { AlpakaConfig.instance.chatTabsEnabled = v; AlpakaConfig.save(); },
+                "chat tabs party guild pm private messages npc npcs filter channel switch"));
+
+        OPTIONS.add(new ConfigOption("chat_tabs_shown", "Shown Chat Tabs",
+                "Pick which tabs the row offers. All is always there.",
+                ConfigCategory.VISUALS,
+                java.util.List.of(
+                        new ConfigOption.ToggleEntry("Party",
+                                () -> AlpakaConfig.instance.chatTabsShowParty,
+                                v -> { AlpakaConfig.instance.chatTabsShowParty = v; AlpakaConfig.save(); ChatTabsFeature.onShownTabsChanged(); }),
+                        new ConfigOption.ToggleEntry("Guild",
+                                () -> AlpakaConfig.instance.chatTabsShowGuild,
+                                v -> { AlpakaConfig.instance.chatTabsShowGuild = v; AlpakaConfig.save(); ChatTabsFeature.onShownTabsChanged(); }),
+                        new ConfigOption.ToggleEntry("Co-op",
+                                () -> AlpakaConfig.instance.chatTabsShowCoop,
+                                v -> { AlpakaConfig.instance.chatTabsShowCoop = v; AlpakaConfig.save(); ChatTabsFeature.onShownTabsChanged(); }),
+                        new ConfigOption.ToggleEntry("PMs",
+                                () -> AlpakaConfig.instance.chatTabsShowPrivate,
+                                v -> { AlpakaConfig.instance.chatTabsShowPrivate = v; AlpakaConfig.save(); ChatTabsFeature.onShownTabsChanged(); }),
+                        new ConfigOption.ToggleEntry("NPCs",
+                                () -> AlpakaConfig.instance.chatTabsShowNpc,
+                                v -> { AlpakaConfig.instance.chatTabsShowNpc = v; AlpakaConfig.save(); ChatTabsFeature.onShownTabsChanged(); })
+                ),
+                "chat tabs shown visible hide pick choose select party guild coop co-op pm private messages npc npcs"));
+
+        OPTIONS.add(new ConfigOption("chat_tabs_send_to_channel", "Send To Tab Channel",
+                "Messages typed on a channel tab go to that channel.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatTabsSendToChannel,
+                v -> { AlpakaConfig.instance.chatTabsSendToChannel = v; AlpakaConfig.save(); },
+                "chat tabs send channel prefix party guild coop reply pc gc cc r"));
+
+        OPTIONS.add(new ConfigOption("chat_tabs_tab_key", "Tabs While Peeking & Tab Key",
+                "Shows the tabs while peeking. Tab on an empty line, or Ctrl+Tab, cycles them.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatTabsTabKey,
+                v -> { AlpakaConfig.instance.chatTabsTabKey = v; AlpakaConfig.save(); },
+                "chat tabs tab key cycle switch next peek player list tablist"));
+
+        OPTIONS.add(new ConfigOption("chat_tabs_keep_after_close", "Keep Tab After Closing Chat",
+                "The in-game chat stays filtered to the chosen tab. Off: back to All.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatTabsKeepAfterClose,
+                v -> { AlpakaConfig.instance.chatTabsKeepAfterClose = v; AlpakaConfig.save(); },
+                "chat tabs keep remember filter hud close stay"));
+
+        OPTIONS.add(new ConfigOption("chat_tabs_guild_only", "Guild Chat Only In Guild Tab",
+                "Guild messages show on the Guild tab only, not on All.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatTabsGuildOnlyInGuildTab,
+                v -> { AlpakaConfig.instance.chatTabsGuildOnlyInGuildTab = v; AlpakaConfig.save(); ChatTabsFeature.onFilterChanged(); },
+                "chat tabs guild only separate hide all filter gc"));
+
+        // Player model and inventory HUD lived on their own Custom HUD tab; they are overlays like
+        // everything else here, and one tab fewer is one fewer place to look.
+
+        OPTIONS.add(new ConfigOption("Screenshots", ConfigCategory.VISUALS));
 
         OPTIONS.add(new ConfigOption("better_screenshot_message", "Better Screenshots",
                 "A preview in the corner and Open, Copy and Delete buttons for every screenshot.",
@@ -733,66 +781,6 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.autoCopyScreenshots = v; AlpakaConfig.save(); },
                 "screenshot auto copy clipboard automatic f2 paste"));
 
-        OPTIONS.add(new ConfigOption("chat_tabs", "Chat Tabs",
-                "All, Party, Guild, Co-op, PMs and NPCs tabs above the chat input.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.chatTabsEnabled,
-                v -> { AlpakaConfig.instance.chatTabsEnabled = v; AlpakaConfig.save(); },
-                "chat tabs party guild pm private messages npc npcs filter channel switch"));
-
-        OPTIONS.add(new ConfigOption("chat_tabs_shown", "Shown Chat Tabs",
-                "Pick which tabs the row offers. All is always there.",
-                ConfigCategory.VISUALS,
-                java.util.List.of(
-                        new ConfigOption.ToggleEntry("Party",
-                                () -> AlpakaConfig.instance.chatTabsShowParty,
-                                v -> { AlpakaConfig.instance.chatTabsShowParty = v; AlpakaConfig.save(); ChatTabsFeature.onShownTabsChanged(); }),
-                        new ConfigOption.ToggleEntry("Guild",
-                                () -> AlpakaConfig.instance.chatTabsShowGuild,
-                                v -> { AlpakaConfig.instance.chatTabsShowGuild = v; AlpakaConfig.save(); ChatTabsFeature.onShownTabsChanged(); }),
-                        new ConfigOption.ToggleEntry("Co-op",
-                                () -> AlpakaConfig.instance.chatTabsShowCoop,
-                                v -> { AlpakaConfig.instance.chatTabsShowCoop = v; AlpakaConfig.save(); ChatTabsFeature.onShownTabsChanged(); }),
-                        new ConfigOption.ToggleEntry("PMs",
-                                () -> AlpakaConfig.instance.chatTabsShowPrivate,
-                                v -> { AlpakaConfig.instance.chatTabsShowPrivate = v; AlpakaConfig.save(); ChatTabsFeature.onShownTabsChanged(); }),
-                        new ConfigOption.ToggleEntry("NPCs",
-                                () -> AlpakaConfig.instance.chatTabsShowNpc,
-                                v -> { AlpakaConfig.instance.chatTabsShowNpc = v; AlpakaConfig.save(); ChatTabsFeature.onShownTabsChanged(); })
-                ),
-                "chat tabs shown visible hide pick choose select party guild coop co-op pm private messages npc npcs"));
-
-        OPTIONS.add(new ConfigOption("chat_tabs_send_to_channel", "Send To Tab Channel",
-                "Messages typed on a channel tab go to that channel.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.chatTabsSendToChannel,
-                v -> { AlpakaConfig.instance.chatTabsSendToChannel = v; AlpakaConfig.save(); },
-                "chat tabs send channel prefix party guild coop reply pc gc cc r"));
-
-        OPTIONS.add(new ConfigOption("chat_tabs_tab_key", "Tabs While Peeking & Tab Key",
-                "Shows the tabs while peeking. Tab on an empty line, or Ctrl+Tab, cycles them.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.chatTabsTabKey,
-                v -> { AlpakaConfig.instance.chatTabsTabKey = v; AlpakaConfig.save(); },
-                "chat tabs tab key cycle switch next peek player list tablist"));
-
-        OPTIONS.add(new ConfigOption("chat_tabs_keep_after_close", "Keep Tab After Closing Chat",
-                "The in-game chat stays filtered to the chosen tab. Off: back to All.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.chatTabsKeepAfterClose,
-                v -> { AlpakaConfig.instance.chatTabsKeepAfterClose = v; AlpakaConfig.save(); },
-                "chat tabs keep remember filter hud close stay"));
-
-        OPTIONS.add(new ConfigOption("chat_tabs_guild_only", "Guild Chat Only In Guild Tab",
-                "Guild messages show on the Guild tab only, not on All.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.chatTabsGuildOnlyInGuildTab,
-                v -> { AlpakaConfig.instance.chatTabsGuildOnlyInGuildTab = v; AlpakaConfig.save(); ChatTabsFeature.onFilterChanged(); },
-                "chat tabs guild only separate hide all filter gc"));
-
-        // Player model and inventory HUD lived on their own Custom HUD tab; they are overlays like
-        // everything else here, and one tab fewer is one fewer place to look.
-
         OPTIONS.add(new ConfigOption("Player Model", ConfigCategory.VISUALS));
 
         OPTIONS.add(new ConfigOption("player_model_enabled", "Enable Player Model HUD",
@@ -836,6 +824,43 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.playerModelShowInGuis,
                 v -> { AlpakaConfig.instance.playerModelShowInGuis = v; AlpakaConfig.save(); },
                 "player model show in guis menus screen open container inventory HUD"));
+
+        OPTIONS.add(new ConfigOption("Performance HUD", ConfigCategory.VISUALS));
+
+        OPTIONS.add(new ConfigOption("performance_hud_enabled", "Performance HUD",
+                "Shows the server's day, your FPS, your ping and the server's TPS on the HUD.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.performanceHudEnabled,
+                v -> { AlpakaConfig.instance.performanceHudEnabled = v; AlpakaConfig.save(); },
+                "performance hud fps frames ping latency ms tps ticks server lag day world age"));
+
+        OPTIONS.add(new ConfigOption("performance_hud_day", "Show Day",
+                "The server's world age in days: green below 25, orange to 30, red above.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.performanceHudShowDay,
+                v -> { AlpakaConfig.instance.performanceHudShowDay = v; AlpakaConfig.save(); },
+                "performance hud day world age server days time skyblock"));
+
+        OPTIONS.add(new ConfigOption("performance_hud_fps", "Show FPS",
+                "Your frames per second, from the game's own counter.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.performanceHudShowFps,
+                v -> { AlpakaConfig.instance.performanceHudShowFps = v; AlpakaConfig.save(); },
+                "performance hud fps frames per second framerate"));
+
+        OPTIONS.add(new ConfigOption("performance_hud_ping", "Show Ping",
+                "Your round trip to the server. Measured with one small ping every 5 seconds while shown, none while F3 or another mod already measures it.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.performanceHudShowPing,
+                v -> { AlpakaConfig.instance.performanceHudShowPing = v; AlpakaConfig.save(); },
+                "performance hud ping latency ms connection delay"));
+
+        OPTIONS.add(new ConfigOption("performance_hud_tps", "Show TPS",
+                "The server's ticks per second, counted from packets it sends anyway. 20 is full speed.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.performanceHudShowTps,
+                v -> { AlpakaConfig.instance.performanceHudShowTps = v; AlpakaConfig.save(); },
+                "performance hud tps ticks per second server lag"));
 
         OPTIONS.add(new ConfigOption("Inventory HUD", ConfigCategory.VISUALS));
 
@@ -906,6 +931,22 @@ public class AlpakaConfigRegistry {
                 0.0f, 100.0f, val -> val == 0.0f ? "Off (0%)" : String.format(Locale.ROOT, "%.0f%%", val),
                 "inventory hud background opacity transparent blur tint backdrop strength"));
 
+
+        OPTIONS.add(new ConfigOption("Scoreboard", ConfigCategory.VISUALS));
+
+        OPTIONS.add(new ConfigOption("scoreboard_blur", "Blurred Scoreboard Background",
+                "One rounded, blurred panel with a soft shadow behind the scoreboard. Uses the chat's Blur Strength.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.scoreboardBlurEnabled,
+                v -> { AlpakaConfig.instance.scoreboardBlurEnabled = v; AlpakaConfig.save(); },
+                "scoreboard sidebar blur background rounded panel glass frosted shadow"));
+
+        OPTIONS.add(new ConfigOption("scoreboard_alpaka_footer", "AlpakaAddons Scoreboard Footer",
+                "Replaces www.hypixel.net at the bottom of the scoreboard with AlpakaAddons in a gradient.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.scoreboardAlpakaFooter,
+                v -> { AlpakaConfig.instance.scoreboardAlpakaFooter = v; AlpakaConfig.save(); },
+                "scoreboard sidebar footer bottom line hypixel.net www address gradient alpakaaddons branding"));
 
         // --- 2. ITEM VIEWMODEL ---
 
@@ -1628,14 +1669,6 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("World Age", ConfigCategory.SKYBLOCK));
 
 
-        OPTIONS.add(new ConfigOption("world_age_hud_enabled", "Enable World Age (Day) HUD",
-                "Displays the current server's world age in days.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.worldAgeHudEnabled,
-                v -> { AlpakaConfig.instance.worldAgeHudEnabled = v; AlpakaConfig.save(); },
-                "world age day hud server days time skyblock color red orange green"));
-
-
         OPTIONS.add(new ConfigOption("world_age_join_message_enabled", "Server Age Join Message",
                 "Chat notice with the server age and recent visit status on join.",
                 ConfigCategory.SKYBLOCK,
@@ -1711,21 +1744,14 @@ public class AlpakaConfigRegistry {
                 "e.g. VultureGround",
                 "bridge bot name account discord guild relay username set"));
 
-        OPTIONS.add(new ConfigOption("Mob Highlights", ConfigCategory.SKYBLOCK));
+        OPTIONS.add(new ConfigOption("Abilities", ConfigCategory.SKYBLOCK));
 
-        OPTIONS.add(new ConfigOption("pangolin_highlight_enabled", "Highlight Pangolins",
-                "Outlines Pangolins in Torrhus Canyon while they are clearly in view.",
+        OPTIONS.add(new ConfigOption("ragnarock", "Ragnarock",
+                "Shows the Ragnarock's cast countdown under your crosshair instead of in the action bar, then \"Ragnarock\" or \"Cancelled\".",
                 ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.pangolinHighlightEnabled,
-                v -> { AlpakaConfig.instance.pangolinHighlightEnabled = v; AlpakaConfig.save(); },
-                "pangolin highlight glow outline critter torrhus torhus canyon hideaway armadillo skyblock"));
-
-        OPTIONS.add(ConfigOption.color("pangolin_highlight_color", "Pangolin Outline Color",
-                "Select the glowing outline color used for highlighted Pangolins.",
-                ConfigCategory.SKYBLOCK,
-                c -> c.pangolinHighlightColor,
-                v -> { AlpakaConfig.instance.pangolinHighlightColor = v; AlpakaConfig.save(); },
-                "pangolin outline color glow highlight picker critter torrhus canyon"));
+                () -> AlpakaConfig.instance.ragnarockEnabled,
+                v -> { AlpakaConfig.instance.ragnarockEnabled = v; AlpakaConfig.save(); },
+                "ragnarock ragnarok rag axe sword cast casting countdown timer crosshair action bar ability strength"));
 
         OPTIONS.add(new ConfigOption("Damage Display", ConfigCategory.SKYBLOCK));
 

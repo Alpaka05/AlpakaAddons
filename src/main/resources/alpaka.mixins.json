@@ -16,6 +16,8 @@
     "CameraMixin",
     "GuiMixin",
     "HudMixin",
+    "ClientPacketListenerPerformanceMixin",
+    "ClientCommonPacketListenerPerformanceMixin",
     "HudOverlayAccessor",
     "PlayerTabOverlayAccessor",
     "WideHealthBarMixin",
@@ -38,6 +40,9 @@
     "AbstractSoundInstanceAccessor",
     "LivingEntityRendererMixin",
     "LivingEntityMixin",
+    "LivingEntityDeadAccessor",
+    "ClientLevelMobDeathMixin",
+    "ClientPacketListenerMobDeathMixin",
     "MinecraftScreenshotMixin",
     "ScreenshotMixin",
     "SubmitNodeCollectionMixin",
@@ -54,13 +59,15 @@
     "ClientLevelMixin",
     "PictureInPictureRendererMixin",
     "NameTagFeatureRendererMixin",
+    "NameTagSubmitMixin",
     "ScreenEffectRendererMixin",
     "DownloadedPackSourceAccessor",
     "DownloadedPackSourceMixin",
     "MinecraftResourceLoadMixin",
     "ConnectScreenPackCacheMixin",
     "ClientPacketListenerPackCacheMixin",
-    "ClientCommonPacketListenerPackCacheMixin"
+    "ClientCommonPacketListenerPackCacheMixin",
+    "ClientPacketListenerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

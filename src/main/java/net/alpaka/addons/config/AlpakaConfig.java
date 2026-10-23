@@ -2,6 +2,7 @@ package net.alpaka.addons.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.annotations.SerializedName;
 import net.alpaka.addons.AlpakaAddons;
 import net.fabricmc.loader.api.FabricLoader;
 
@@ -239,11 +240,24 @@ public class AlpakaConfig {
     public boolean playerModelShowNameTag = true;
     public boolean playerModelShowInGuis = false;
 
-    // World Age HUD & Join Notification options
-    public boolean worldAgeHudEnabled = false;
-    public int worldAgeHudX = net.alpaka.addons.client.hud.HudDefaults.WORLD_AGE_X;
-    public int worldAgeHudY = net.alpaka.addons.client.hud.HudDefaults.WORLD_AGE_Y;
-    public float worldAgeHudScale = 1.0f;
+    /**
+     * Legacy, from the World Age HUD, which became the Performance HUD's Show Day. Read once by
+     * {@link #migrateWorldAgeHud} and then cleared.
+     */
+    public Boolean worldAgeHudEnabled = null;
+    public Integer worldAgeHudX = null;
+    public Integer worldAgeHudY = null;
+    public Float worldAgeHudScale = null;
+
+    /** Performance HUD: the day, FPS, ping and the server's TPS on one line; see PerformanceStats. */
+    public boolean performanceHudEnabled = false;
+    public boolean performanceHudShowDay = true;
+    public boolean performanceHudShowFps = true;
+    public boolean performanceHudShowPing = true;
+    public boolean performanceHudShowTps = true;
+    public int performanceHudX = net.alpaka.addons.client.hud.HudDefaults.PERFORMANCE_X;
+    public int performanceHudY = net.alpaka.addons.client.hud.HudDefaults.PERFORMANCE_Y;
+    public float performanceHudScale = 1.0f;
 
     // Slayer session HUD. Each line has its own toggle so the HUD can be trimmed to just the
     // numbers being watched; the whole HUD hides unless a slayer quest is active.
@@ -322,6 +336,10 @@ public class AlpakaConfig {
     public boolean slayerTimerChatEnabled = true;
     /** Show the running time on screen while the boss is up. */
     public boolean slayerTimerHudEnabled = true;
+    /** The Ragnarock's cast countdown under the crosshair instead of in the action bar. */
+    // Saved as ragAxeCountdownEnabled before the feature was renamed; read that too so the setting carries over.
+    @SerializedName(value = "ragnarockEnabled", alternate = "ragAxeCountdownEnabled")
+    public boolean ragnarockEnabled = true;
     public int slayerTimerHudX = net.alpaka.addons.client.hud.HudDefaults.SLAYER_TIMER_X;
     public int slayerTimerHudY = net.alpaka.addons.client.hud.HudDefaults.SLAYER_TIMER_Y;
     public float slayerTimerHudScale = 1.0f;
@@ -351,10 +369,6 @@ public class AlpakaConfig {
     public int customDamageTagNormalEnd = 0xFF9FB4D0;
     public int customDamageTagCritStart = 0xFFFFE15A;
     public int customDamageTagCritEnd = 0xFFFF4A3A;
-
-    // Pangolin highlight (Torrhus Canyon critters)
-    public boolean pangolinHighlightEnabled = false;
-    public int pangolinHighlightColor = 0xFFFFAA00; // Default orange/gold
 
     // Block Overlay options
     public boolean blockOverlayEnabled = false;
@@ -823,13 +837,24 @@ public class AlpakaConfig {
         public Map<String, Integer> drops = new HashMap<>();
 
         /**
-         * Fastest boss kill ever recorded for this slayer, in milliseconds, or -1 when none is.
+         * The old single best time per slayer, no longer read.
          *
-         * All-time rather than per session: a personal best that resets when the game restarts is
-         * not a personal best. Lives here with the kill and drop history because this is the part of
-         * the slayer data that is meant to persist.
+         * It was kept across every tier, so one quick tier 2 boss stood as the best for tier 5 as
+         * well, and it was written by fights the timer had not followed from start to end. Neither
+         * can be told apart afterwards, so these figures are dropped rather than carried over; the
+         * field stays only so that files which still hold one load without complaint.
          */
+        @Deprecated
         public long bestBossMs = -1L;
+
+        /**
+         * Fastest boss kill ever recorded for this slayer, in milliseconds, keyed by quest tier 1-5.
+         *
+         * Per tier because that is what a boss time means: a tier 5 and a tier 3 boss are different
+         * fights. All-time rather than per session, since a personal best that resets when the game
+         * restarts is not one.
+         */
+        public Map<Integer, Long> bestBossMsByTier = new HashMap<>();
 
         /**
          * Last known lifetime slayer XP for this slayer, or -1 when it has never been observed.
@@ -911,6 +936,7 @@ public class AlpakaConfig {
         }
 
         instance.migrateInventoryHudVisibility();
+        instance.migrateWorldAgeHud();
 
         if (instance.slayerBossMap == null) {
             instance.slayerBossMap = new HashMap<>();
@@ -963,6 +989,31 @@ public class AlpakaConfig {
         inventoryHudShowOnItemChange = null;
     }
 
+    /**
+     * The World Age HUD became the Performance HUD's Show Day. Whoever had it on keeps seeing the
+     * day where it was; if the Performance HUD was off, it comes on with only the day shown, so
+     * nothing appears that was not there before.
+     */
+    private void migrateWorldAgeHud() {
+        if (worldAgeHudEnabled == null && worldAgeHudX == null && worldAgeHudY == null && worldAgeHudScale == null) return;
+        if (Boolean.TRUE.equals(worldAgeHudEnabled)) {
+            performanceHudShowDay = true;
+            if (!performanceHudEnabled) {
+                performanceHudEnabled = true;
+                performanceHudShowFps = false;
+                performanceHudShowPing = false;
+                performanceHudShowTps = false;
+                if (worldAgeHudX != null) performanceHudX = worldAgeHudX;
+                if (worldAgeHudY != null) performanceHudY = worldAgeHudY;
+                if (worldAgeHudScale != null) performanceHudScale = worldAgeHudScale;
+            }
+        }
+        worldAgeHudEnabled = null;
+        worldAgeHudX = null;
+        worldAgeHudY = null;
+        worldAgeHudScale = null;
+    }
+
     /** The config in {@code file}, or null when it is missing, empty or cannot be parsed. */
     private static AlpakaConfig read(File file) {
         try {
@@ -999,7 +1050,6 @@ public class AlpakaConfig {
         this.chromaHatEnabled = false;
         this.playerScaleEnabled = false;
         this.playerScaleOthers = false;
-        this.pangolinHighlightEnabled = false;
         this.fullbrightEnabled = false;
         this.inventorySnowEnabled = false;
         this.containerBgFadeInEnabled = false;
@@ -1041,7 +1091,7 @@ public class AlpakaConfig {
         this.playerModelDisableMovement = false;
         this.playerModelHideArmor = false;
         this.playerModelShowInGuis = false;
-        this.worldAgeHudEnabled = false;
+        this.performanceHudEnabled = false;
         this.slayerHudEnabled = false;
         this.slayerHudPauseOutsideArea = false;
         this.slayerHudOnlyInSlayerAreas = false;
@@ -1050,6 +1100,7 @@ public class AlpakaConfig {
         this.slayerTimerEnabled = false;
         this.slayerTimerChatEnabled = false;
         this.slayerTimerHudEnabled = false;
+        this.ragnarockEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
         this.customDamageTagsEnabled = false;

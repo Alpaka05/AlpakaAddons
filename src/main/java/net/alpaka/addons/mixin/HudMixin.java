@@ -7,13 +7,14 @@ import net.alpaka.addons.features.chat.ChatTabsFeature;
 import net.alpaka.addons.features.inventoryhud.InventoryHudRenderer;
 import net.alpaka.addons.features.notification.AlpakaNotifications;
 import net.alpaka.addons.features.playermodel.PlayerModelRenderer;
+import net.alpaka.addons.features.ragnarock.RagnarockFeature;
 import net.alpaka.addons.features.scoreboard.ScoreboardBlurFeature;
 import net.alpaka.addons.features.scoreboard.ScoreboardFooterFeature;
 import net.alpaka.addons.features.slayer.SlayerHudRenderer;
 import net.alpaka.addons.features.tablist.CustomTabFeature;
 import net.alpaka.addons.features.tooltip.OldMasterStarsFeature;
 import net.alpaka.addons.features.slayer.SlayerTimerHudRenderer;
-import net.alpaka.addons.features.worldage.WorldAgeHudRenderer;
+import net.alpaka.addons.features.performance.PerformanceHudRenderer;
 import net.alpaka.addons.utils.AlpakaPerf;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.KeyMapping;
@@ -49,23 +50,15 @@ public class HudMixin implements ChatOverHud.Late {
     @Shadow private int toolHighlightTimer;
     @Shadow private ItemStack lastToolHighlight;
 
-    @Shadow private void extractChat(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) { throw new AssertionError("replaced by mixin"); }
-    @Shadow private void extractTabList(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) { throw new AssertionError("replaced by mixin"); }
-
-    /** Better Chat: the chat and the player list after the whole HUD, under the same conditions as in it. */
+    /**
+     * Better Chat: the chat and the player list after the whole HUD, under the same conditions as
+     * in it, and the notices after them.
+     */
     @Override
     public void alpaka$extractChatLate(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
         if (this.isHidden || this.minecraft.gui.screen() instanceof LevelLoadingScreen) return;
-        this.extractChat(graphics, deltaTracker);
-        this.extractTabList(graphics, deltaTracker);
-    }
-
-    /** Better Chat draws the chat and the player list after the HUD instead; see ChatOverHud. */
-    @Inject(method = {"extractChat", "extractTabList"}, at = @At("HEAD"), cancellable = true)
-    private void alpaka$chatAfterHud(GuiGraphicsExtractor graphicsExtractor, DeltaTracker deltaTracker, CallbackInfo ci) {
-        if (ChatOverHud.defersHudCall()) {
-            ci.cancel();
-        }
+        ChatOverHud.extractElements(graphics, deltaTracker);
+        AlpakaNotifications.renderAfterChat(graphics);
     }
 
     @Inject(method = "extractRenderState", at = @At("TAIL"))
@@ -73,15 +66,16 @@ public class HudMixin implements ChatOverHud.Late {
         long t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_PLAYER_MODEL);
         PlayerModelRenderer.render(graphicsExtractor, deltaTracker);
         AlpakaPerf.end(AlpakaPerf.Section.HUD_PLAYER_MODEL, t);
-        t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_WORLD_AGE);
-        WorldAgeHudRenderer.render(graphicsExtractor, deltaTracker);
-        AlpakaPerf.end(AlpakaPerf.Section.HUD_WORLD_AGE, t);
+        t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_PERFORMANCE);
+        PerformanceHudRenderer.render(graphicsExtractor, deltaTracker);
+        AlpakaPerf.end(AlpakaPerf.Section.HUD_PERFORMANCE, t);
         t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_SLAYER);
         SlayerHudRenderer.render(graphicsExtractor, deltaTracker);
         AlpakaPerf.end(AlpakaPerf.Section.HUD_SLAYER, t);
         t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_SLAYER_TIMER);
         SlayerTimerHudRenderer.render(graphicsExtractor, deltaTracker);
         AlpakaPerf.end(AlpakaPerf.Section.HUD_SLAYER_TIMER, t);
+        RagnarockFeature.render(graphicsExtractor);
         t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_INVENTORY);
         InventoryHudRenderer.render(graphicsExtractor, deltaTracker);
         AlpakaPerf.end(AlpakaPerf.Section.HUD_INVENTORY, t);

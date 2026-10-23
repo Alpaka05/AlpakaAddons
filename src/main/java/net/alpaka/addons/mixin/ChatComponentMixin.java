@@ -436,7 +436,13 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
             clip.alpaka$graphics().enableScissor(x0, y0, x1, y1);
         }
         if (pass == 1) {
-            ChatBlurFeature.submitHoverHighlight(scale);
+            // Vanilla keeps the newest line first and marks the last line of each message.
+            int first = this.chatScrollbarPos;
+            ChatBlurFeature.submitHoverHighlight(scale, row -> {
+                int index = first + row;
+                return index > 0 && index < this.trimmedMessages.size()
+                        && !this.trimmedMessages.get(index).endOfEntry();
+            });
         }
         if (offset > 0.01f) {
             access.updatePose(pose -> pose.translate(0.0f, offset));

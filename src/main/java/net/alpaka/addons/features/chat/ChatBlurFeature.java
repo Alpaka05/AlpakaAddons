@@ -18,6 +18,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.render.TextureSetup;
 import net.minecraft.util.Mth;
 import org.joml.Matrix3x2f;
+import java.util.function.IntPredicate;
 import net.minecraft.client.gui.navigation.ScreenRectangle;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.gui.screens.Screen;
@@ -130,7 +131,7 @@ public final class ChatBlurFeature {
     /** The panel never grows taller than this many lines: the chat's box, while lines slide inside it. */
     private static int panelMaxLines = Integer.MAX_VALUE;
 
-    /** The lift of the line under the mouse, over the panel's own tint. */
+    /** The lift of the message under the mouse, over the panel's own tint. */
     private static final int HOVER_HIGHLIGHT = 0x22FFFFFF;
 
     private ChatBlurFeature() {}
@@ -266,13 +267,17 @@ public final class ChatBlurFeature {
     }
 
     /**
-     * With the chat open, lifts the line under the mouse a little. Called after the panel, once the
-     * chat box's scissor is set, and still before the lines are shifted by the scroll: the mouse is
-     * taken into the lines' own coordinates, so the lift follows the lines while they scroll.
-     * Never while peeking: the chat is only held open there, and in the world the mouse position
-     * is the hidden cursor that moves with the camera.
+     * With the chat open, lifts the message under the mouse a little - all of its lines, when it
+     * wraps. Called after the panel, once the chat box's scissor is set, and still before the lines
+     * are shifted by the scroll: the mouse is taken into the lines' own coordinates, so the lift
+     * follows the lines while they scroll. A message reaching past the box is cut off by the
+     * scissor. Never while peeking: the chat is only held open there, and in the world the mouse
+     * position is the hidden cursor that moves with the camera.
+     *
+     * @param continuesBelow whether the line at a row, counted up from the box's bottom, is not
+     *                       the last of its message, so the message goes on in the row below
      */
-    public static void submitHoverHighlight(float chatScale) {
+    public static void submitHoverHighlight(float chatScale, IntPredicate continuesBelow) {
         GuiGraphicsExtractor graphics = currentGraphics;
         if (graphics == null || !isEnabled() || !foreground || ChatPeekFeature.isPeeking()) return;
         if (panelHeight <= 0.01f || panelAlpha <= 0.002f) return;
@@ -288,12 +293,25 @@ public final class ChatBlurFeature {
         if (local.x < x0 || local.x > x1 || local.y > panelBottom) return;
         int line = Mth.floor((panelBottom - local.y) / panelLineHeight);
         if (line < 0 || line >= panelLines) return;
-        int top = panelBottom - (line + 1) * panelLineHeight;
+        int top = panelBottom - (messageTop(line, continuesBelow) + 1) * panelLineHeight;
+        int bottom = panelBottom - messageBottom(line, continuesBelow) * panelLineHeight;
         // A pixel in from the panel's sides, so its corners are a pixel tighter than the panel's.
         sink.alpaka$submitElement(new RoundedRectRenderState(
-                linePose, x0 + 1, top, x1 - 1, top + panelLineHeight,
+                linePose, x0 + 1, top, x1 - 1, bottom,
                 Math.round((RADIUS - 1) * toScreen), 0, HOVER_HIGHLIGHT,
                 Math.max(1, Math.round(toScreen)), sink.alpaka$currentScissor()));
+    }
+
+    /** The bottom row of the message the given row belongs to; rows count up from the box's bottom. */
+    static int messageBottom(int row, IntPredicate continuesBelow) {
+        while (continuesBelow.test(row)) row--;
+        return row;
+    }
+
+    /** The top row of the message the given row belongs to; rows count up from the box's bottom. */
+    static int messageTop(int row, IntPredicate continuesBelow) {
+        while (continuesBelow.test(row + 1)) row++;
+        return row;
     }
 
     /**

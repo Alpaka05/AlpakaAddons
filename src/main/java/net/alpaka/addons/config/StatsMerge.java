@@ -1,9 +1,16 @@
 package net.alpaka.addons.config;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.annotations.SerializedName;
 import net.alpaka.addons.features.slayer.SlayerType;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Folding the slayer record on disk into the one in memory before a save.
@@ -142,5 +149,132 @@ final class StatsMerge {
             ours.lastXpCreditedAtMs = theirs.lastXpCreditedAtMs;
             ours.recentlyCreditedXp = theirs.recentlyCreditedXp;
         }
+    }
+
+    /**
+     * Puts back into {@code written} - the record as this version writes it - what {@code disk}
+     * holds that this version does not know: fields a newer version added to the record, an
+     * account's, a profile's or a slayer's, and slayers it does not know. Without this, an older
+     * copy of the mod writing the shared file (a second launcher, the backport line) threw away
+     * whatever the newer one had added; the per-tier bests went that way once.
+     *
+     * Only unknown fields and unknown slayers come back. Entries of the maps this version does know
+     * (accounts, profiles, drops, bests) are what the typed merge decided, and bringing a missing
+     * one back from the file would undo a cleared best. The schema version never goes down.
+     */
+    static void keepUnknown(JsonObject disk, JsonObject written) {
+        copyUnknownFields(disk, written, AlpakaStats.class);
+        int theirs = schemaOf(disk);
+        if (theirs > schemaOf(written)) written.addProperty("schemaVersion", theirs);
+        JsonObject diskAccounts = object(disk, "accounts");
+        JsonObject ourAccounts = object(written, "accounts");
+        if (diskAccounts == null || ourAccounts == null) return;
+        for (Map.Entry<String, JsonElement> account : diskAccounts.entrySet()) {
+            JsonObject diskAccount = asObject(account.getValue());
+            JsonObject ourAccount = object(ourAccounts, account.getKey());
+            if (diskAccount == null || ourAccount == null) continue;
+            copyUnknownFields(diskAccount, ourAccount, AlpakaStats.Account.class);
+
+            JsonObject diskProfiles = object(diskAccount, "profiles");
+            JsonObject ourProfiles = object(ourAccount, "profiles");
+            if (diskProfiles == null || ourProfiles == null) continue;
+            for (Map.Entry<String, JsonElement> profile : diskProfiles.entrySet()) {
+                JsonObject diskProfile = asObject(profile.getValue());
+                JsonObject ourProfile = object(ourProfiles, profile.getKey());
+                if (diskProfile == null || ourProfile == null) continue;
+                copyUnknownFields(diskProfile, ourProfile, AlpakaStats.ProfileStats.class);
+
+                JsonObject diskSlayers = object(diskProfile, "slayerBossMap");
+                JsonObject ourSlayers = object(ourProfile, "slayerBossMap");
+                if (diskSlayers == null || ourSlayers == null) continue;
+                for (Map.Entry<String, JsonElement> slayer : diskSlayers.entrySet()) {
+                    if (!isSlayer(slayer.getKey())) {
+                        // A slayer only a newer version knows: kept whole.
+                        if (!ourSlayers.has(slayer.getKey())) ourSlayers.add(slayer.getKey(), slayer.getValue());
+                        continue;
+                    }
+                    JsonObject diskSlayer = asObject(slayer.getValue());
+                    JsonObject ourSlayer = object(ourSlayers, slayer.getKey());
+                    if (diskSlayer != null && ourSlayer != null) {
+                        copyUnknownFields(diskSlayer, ourSlayer, AlpakaConfig.SlayerData.class);
+                    }
+                }
+            }
+        }
+    }
+
+    /** The layout a record says it is in; files from before the field count as 1. */
+    static int schemaOf(JsonObject json) {
+        JsonElement version = json.get("schemaVersion");
+        if (version == null || !version.isJsonPrimitive() || !version.getAsJsonPrimitive().isNumber()) return 1;
+        return version.getAsInt();
+    }
+
+    /**
+     * A copy of {@code json} without the slayers this version does not know, for reading it into the
+     * typed record. Gson reads an unknown enum key as null: one such slayer turned into a "null"
+     * entry that was written back as such, and two made the whole file unreadable ("duplicate key").
+     * {@link #keepUnknown} puts them back on the next write.
+     */
+    static JsonObject knownOnly(JsonObject json) {
+        JsonObject copy = json.deepCopy();
+        JsonObject accounts = object(copy, "accounts");
+        if (accounts == null) return copy;
+        for (Map.Entry<String, JsonElement> account : accounts.entrySet()) {
+            JsonObject profiles = object(asObject(account.getValue()), "profiles");
+            if (profiles == null) continue;
+            for (Map.Entry<String, JsonElement> profile : profiles.entrySet()) {
+                JsonObject slayers = object(asObject(profile.getValue()), "slayerBossMap");
+                if (slayers == null) continue;
+                for (String key : new java.util.ArrayList<>(slayers.keySet())) {
+                    if (!isSlayer(key)) slayers.remove(key);
+                }
+            }
+        }
+        return copy;
+    }
+
+    private static final Map<Class<?>, Set<String>> KNOWN_FIELDS = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** Copies the members of {@code from} that are no field of {@code type} into {@code into}. */
+    private static void copyUnknownFields(JsonObject from, JsonObject into, Class<?> type) {
+        Set<String> known = KNOWN_FIELDS.computeIfAbsent(type, StatsMerge::serializedFields);
+        for (Map.Entry<String, JsonElement> member : from.entrySet()) {
+            if (!known.contains(member.getKey()) && !into.has(member.getKey())) {
+                into.add(member.getKey(), member.getValue());
+            }
+        }
+    }
+
+    /** The names Gson reads and writes for {@code type}'s fields, alternates included. */
+    private static Set<String> serializedFields(Class<?> type) {
+        Set<String> names = new HashSet<>();
+        for (Field field : type.getDeclaredFields()) {
+            int modifiers = field.getModifiers();
+            if (Modifier.isStatic(modifiers) || Modifier.isTransient(modifiers)) continue;
+            SerializedName serialized = field.getAnnotation(SerializedName.class);
+            if (serialized == null) {
+                names.add(field.getName());
+            } else {
+                names.add(serialized.value());
+                names.addAll(java.util.List.of(serialized.alternate()));
+            }
+        }
+        return names;
+    }
+
+    private static boolean isSlayer(String name) {
+        for (SlayerType type : SlayerType.values()) {
+            if (type.name().equals(name)) return true;
+        }
+        return false;
+    }
+
+    private static JsonObject object(JsonObject parent, String key) {
+        return parent != null && parent.has(key) ? asObject(parent.get(key)) : null;
+    }
+
+    private static JsonObject asObject(JsonElement element) {
+        return element != null && element.isJsonObject() ? element.getAsJsonObject() : null;
     }
 }

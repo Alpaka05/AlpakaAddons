@@ -1,6 +1,7 @@
 package net.alpaka.addons.features.slayer
 
 import java.util.Locale
+import net.alpaka.addons.client.hud.HudBounds
 import net.alpaka.addons.config.AlpakaConfig
 import net.minecraft.client.DeltaTracker
 import net.minecraft.client.Minecraft
@@ -58,6 +59,7 @@ object SlayerHudRenderer {
     private const val COLOR_VALUE = 0xFFFFFFFF.toInt()
     private const val COLOR_GOOD = 0xFF55FF55.toInt()
     private const val COLOR_PAUSED = 0xFFFF5555.toInt()
+    private const val COLOR_WARN = 0xFFFFFF55.toInt()
 
     /**
      * One rendered row: a label, a value, and the color the value is drawn in.
@@ -123,6 +125,7 @@ object SlayerHudRenderer {
         if (cfg.slayerHudShowSinceRngDrop) mask = mask or (1 shl 8)
         if (cfg.slayerHudShowBear) mask = mask or (1 shl 9)
         if (cfg.slayerHudBearBlazeOnly) mask = mask or (1 shl 10)
+        if (cfg.slayerHudShowRadio) mask = mask or (1 shl 11)
         return mask
     }
 
@@ -287,6 +290,20 @@ object SlayerHudRenderer {
             rows.add(if (time != null) Line("Bear", time, COLOR_GOOD) else Line("Bear", "inactive", COLOR_PAUSED))
         }
 
+        // Blazetekk Ham Radio: only a Blaze item, and only shown while one is in the inventory.
+        // Two players on the channel is the full buff, alone is half, three or more (red) is none.
+        if (cfg.slayerHudShowRadio && shown == SlayerType.BLAZE && (preview || HamRadio.inInventory)) {
+            val nearby = if (preview) 2 else HamRadio.nearby
+            rows.add(
+                when {
+                    nearby == null -> Line("Radio", "?", COLOR_VALUE)
+                    nearby <= 1 -> Line("Radio", "alone", COLOR_WARN)
+                    nearby == 2 -> Line("Radio", "2 enjoyers", COLOR_GOOD)
+                    else -> Line("Radio", "$nearby enjoyers", COLOR_PAUSED)
+                }
+            )
+        }
+
         return rows
     }
 
@@ -296,7 +313,7 @@ object SlayerHudRenderer {
      * to the chat.
      */
     @JvmStatic
-    var lastDrawnBounds: net.alpaka.addons.client.hud.HudBounds? = null
+    var lastDrawnBounds: HudBounds? = null
         private set
 
     /** Called every frame from the HUD hook. */
@@ -321,13 +338,12 @@ object SlayerHudRenderer {
         // untouched, so returning to the old scale restores it exactly.
         val screenWidth = mc.window.guiScaledWidth
         val screenHeight = mc.window.guiScaledHeight
-        renderHud(
-            graphics,
-            SlayerHudElement.visibleAnchorX(screenWidth, screenHeight),
-            SlayerHudElement.visibleAnchorY(screenWidth, screenHeight),
-            cfg.slayerHudScale, type, preview = false
-        )
-        lastDrawnBounds = SlayerHudElement.visibleBounds(screenWidth, screenHeight)
+        // Measured once through visiblePlacement for the position and the click target alike, where
+        // visibleAnchorX, visibleAnchorY and visibleBounds would each measure the whole HUD again.
+        // The editor places it through the same call, so its preview sits where the game draws it.
+        val placement = SlayerHudElement.visiblePlacement(screenWidth, screenHeight)
+        renderHud(graphics, placement.anchorX, placement.anchorY, cfg.slayerHudScale, type, preview = false)
+        lastDrawnBounds = placement.box
     }
 
     /** Draws the HUD at an explicit position and size. Shared with the editor. */
@@ -394,7 +410,7 @@ object SlayerHudRenderer {
         val hours = totalSeconds / 3600
         val minutes = (totalSeconds % 3600) / 60
         val seconds = totalSeconds % 60
-        return if (hours > 0) String.format("%dh %02dm", hours, minutes)
-        else String.format("%dm %02ds", minutes, seconds)
+        return if (hours > 0) String.format(java.util.Locale.ROOT, "%dh %02dm", hours, minutes)
+        else String.format(java.util.Locale.ROOT, "%dm %02ds", minutes, seconds)
     }
 }

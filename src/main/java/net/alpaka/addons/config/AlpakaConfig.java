@@ -13,12 +13,39 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class AlpakaConfig {
-    private static final File FILE = FabricLoader.getInstance().getConfigDir().resolve("alpaka.json").toFile();
-    /** The last file that loaded cleanly, copied aside at start-up. See {@link #load()}. */
-    private static final File BACKUP = FabricLoader.getInstance().getConfigDir().resolve("alpaka.json.bak").toFile();
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    /**
+     * Where the settings are kept: the file, and the last file that loaded cleanly, copied aside at
+     * start-up (see {@link #load()}).
+     */
+    record ConfigStore(File file, File backup) {
+        /** alpaka.json in Fabric's config folder. */
+        static ConfigStore inConfigDir() {
+            java.nio.file.Path dir = FabricLoader.getInstance().getConfigDir();
+            return new ConfigStore(dir.resolve("alpaka.json").toFile(), dir.resolve("alpaka.json.bak").toFile());
+        }
+    }
+
+    /**
+     * Looked up on first use rather than when the class loads: asking Fabric for its config folder
+     * then kept the class - and loading and migrating with it - from being used outside the game.
+     */
+    private static ConfigStore store;
+
+    private static ConfigStore store() {
+        if (store == null) store = ConfigStore.inConfigDir();
+        return store;
+    }
+
+    // NaN and infinite floats are written as such rather than refused. One in the file loaded
+    // without complaint, and every save after it threw - quietly, so no setting was written again.
+    // sanitize() puts such a value back to its default on load; this keeps one that slips in later
+    // from blocking the file.
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().serializeSpecialFloatingPointValues().create();
 
     public static AlpakaConfig instance = new AlpakaConfig();
+
+    /** The settings layout the file was written in; 0 for files from before the field. See {@link #migrate()}. */
+    public int configVersion = 0;
 
     /**
      * Draws the first-person hand over the third-person back view. Off for fresh installs: a
@@ -44,6 +71,16 @@ public class AlpakaConfig {
     /** What those share buttons post: 0 the tracker's own line, 1 Hypixel's drop message as it came. */
     public int slayerShareMessage = 0;
     public boolean fullbrightEnabled = false;
+
+    /** Sky Effects: animated skies, drawn by this client only. Each sky has its own switch. */
+    public boolean skyEffectsEnabled = false;
+    public boolean skyEffectsNether = true;
+    public boolean skyEffectsOverworld = true;
+    public boolean skyEffectsEnd = true;
+    /** How strongly the effects show, 0.1..1; at 1 the skies are drawn in full. */
+    public float skyEffectsIntensity = 1.0f;
+    /** How fast they move, 0.25..3; 1 is the designed pace. */
+    public float skyEffectsSpeed = 1.0f;
 
     // Cosmetics. Both are drawn by this client for this client only - nothing is sent, nobody else
     // sees them - and both apply to the player's own model in third person.
@@ -135,6 +172,8 @@ public class AlpakaConfig {
     public float inventorySnowSpeed = 1.0f;
     /** Multiplier on the number of flakes; 1 is the original 105. */
     public float inventorySnowAmount = 1.0f;
+    /** Which Inventory Particles are shown, an index into SnowOverlayRenderer.TYPE_NAMES; 0 is snow. */
+    public int inventoryParticleType = 0;
     public float containerBgOpacity = 0.75f;
     public boolean containerBgFadeInEnabled = true;
     public int containerBgFadeInDurationMs = 250;
@@ -228,6 +267,8 @@ public class AlpakaConfig {
     public boolean customMainMenuEnabled = false;
     /** The custom main menu's background, avatar and fireflies shift with the mouse. */
     public boolean customMainMenuParallax = true;
+    /** Inventory Particles behind the custom main menu as well; off keeps them to container screens. */
+    public boolean customMainMenuParticles = false;
     /** The small player model on the HUD. Off for fresh installs. */
     public boolean playerModelEnabled = false;
     public boolean playerModelOnlyActions = true;
@@ -240,11 +281,24 @@ public class AlpakaConfig {
     public boolean playerModelShowNameTag = true;
     public boolean playerModelShowInGuis = false;
 
-    // World Age HUD & Join Notification options
-    public boolean worldAgeHudEnabled = false;
-    public int worldAgeHudX = net.alpaka.addons.client.hud.HudDefaults.WORLD_AGE_X;
-    public int worldAgeHudY = net.alpaka.addons.client.hud.HudDefaults.WORLD_AGE_Y;
-    public float worldAgeHudScale = 1.0f;
+    /**
+     * Legacy, from the World Age HUD, which became the Performance HUD's Show Day. Read once by
+     * {@link #migrateWorldAgeHud} and then cleared.
+     */
+    public Boolean worldAgeHudEnabled = null;
+    public Integer worldAgeHudX = null;
+    public Integer worldAgeHudY = null;
+    public Float worldAgeHudScale = null;
+
+    /** Performance HUD: the day, FPS, ping and the server's TPS on one line; see PerformanceStats. */
+    public boolean performanceHudEnabled = false;
+    public boolean performanceHudShowDay = true;
+    public boolean performanceHudShowFps = true;
+    public boolean performanceHudShowPing = true;
+    public boolean performanceHudShowTps = true;
+    public int performanceHudX = net.alpaka.addons.client.hud.HudDefaults.PERFORMANCE_X;
+    public int performanceHudY = net.alpaka.addons.client.hud.HudDefaults.PERFORMANCE_Y;
+    public float performanceHudScale = 1.0f;
 
     // Slayer session HUD. Each line has its own toggle so the HUD can be trimmed to just the
     // numbers being watched; the whole HUD hides unless a slayer quest is active.
@@ -266,6 +320,8 @@ public class AlpakaConfig {
     public boolean slayerHudShowBear = true;
     /** Keeps the "Bear" line to the Blaze HUD, where the effect matters most. */
     public boolean slayerHudBearBlazeOnly = false;
+    /** The "Radio" line on the Blaze HUD: players on the Blazetekk Ham Radio's channel. */
+    public boolean slayerHudShowRadio = true;
     /** Seconds of standing still before the session clock stops. */
     public float slayerHudAfkPauseSeconds = 60.0f;
     /** Stop the clock the moment the sidebar says the player is no longer in the slayer's zone. */
@@ -283,15 +339,20 @@ public class AlpakaConfig {
      * Whether the mod may contact anything over the network ("Allow Network Features").
      *
      * Everything else in this mod works from what the client already has. This is the one setting
-     * that lets it reach outside, for three things: a public endpoint describing the running election
+     * that lets it reach outside, for four things: a public endpoint describing the running election
      * (no API key, no player named, the same answer for everybody), the main menu's player
-     * count, an ordinary status ping to mc.hypixel.net like the server list sends, and the update
-     * check against the mod's public GitHub releases. Off means no
+     * count, an ordinary status ping to mc.hypixel.net like the server list sends, the update
+     * check against the mod's public GitHub releases, and the main menu's What's New card, which
+     * reads the newest of those releases' notes. Off means no
      * request is made and nothing derived from one is used. The JSON key keeps its old name.
      */
     public boolean allowApiCalls = true;
     /** A chat line on joining a world when a newer release is on GitHub. Needs allowApiCalls. */
     public boolean updateNotificationsEnabled = true;
+    /** The release whose notes the player last opened from the main menu; its What's New card shows a dot until then. */
+    public String releaseNotesSeen = "";
+    /** The What's New card on the custom main menu, with the newest release's notes. */
+    public boolean customMainMenuWhatsNew = true;
 
     /**
      * Folder holding the slayer record, or empty for this machine's shared default.
@@ -327,6 +388,12 @@ public class AlpakaConfig {
     // Saved as ragAxeCountdownEnabled before the feature was renamed; read that too so the setting carries over.
     @SerializedName(value = "ragnarockEnabled", alternate = "ragAxeCountdownEnabled")
     public boolean ragnarockEnabled = true;
+
+    // Deployable timer: the strongest power orb or flare in range, with its time left.
+    public boolean deployableTimerEnabled = false;
+    public int deployableTimerHudX = net.alpaka.addons.client.hud.HudDefaults.DEPLOYABLE_TIMER_X;
+    public int deployableTimerHudY = net.alpaka.addons.client.hud.HudDefaults.DEPLOYABLE_TIMER_Y;
+    public float deployableTimerHudScale = 1.0f;
     public int slayerTimerHudX = net.alpaka.addons.client.hud.HudDefaults.SLAYER_TIMER_X;
     public int slayerTimerHudY = net.alpaka.addons.client.hud.HudDefaults.SLAYER_TIMER_Y;
     public float slayerTimerHudScale = 1.0f;
@@ -835,6 +902,21 @@ public class AlpakaConfig {
         public Map<Integer, Long> bestBossMsByTier = new HashMap<>();
 
         /**
+         * When each tier's best in {@link #bestBossMsByTier} was set, wall clock, by tier; missing
+         * for bests older than this field. Read by the merge with the file, together with
+         * {@link #bestsClearedAtMs}.
+         */
+        public Map<Integer, Long> bestBossAtMsByTier = new HashMap<>();
+
+        /**
+         * When this slayer's bests were last cleared ({@code /alpakaslayer reset pb}), wall clock,
+         * or 0 when never. The merge with the file drops every best set before it, wherever it is
+         * kept: the file, or another instance's memory, would otherwise hand the cleared best back
+         * within a second.
+         */
+        public long bestsClearedAtMs = 0L;
+
+        /**
          * Last known lifetime slayer XP for this slayer, or -1 when it has never been observed.
          *
          * Hypixel does not tell the client this figure during play - the only place it appears is
@@ -858,6 +940,31 @@ public class AlpakaConfig {
          * larger gap is a total that drifted high and is corrected. See SlayerXpTracker.
          */
         public long recentlyCreditedXp = 0L;
+
+        /**
+         * When {@link #totalXp} was last read from the Slayer menu, wall clock, or 0 when never.
+         * The merge with the file keeps the newer reading rather than the larger number, so a total
+         * corrected down is not taken back by the old one still on the other side.
+         */
+        public long totalXpObservedAtMs = 0L;
+
+        /** Records a new best time for a tier, and when it was set. */
+        public void recordBest(int tier, long ms) {
+            if (bestBossMsByTier == null) bestBossMsByTier = new HashMap<>();
+            if (bestBossAtMsByTier == null) bestBossAtMsByTier = new HashMap<>();
+            bestBossMsByTier.put(tier, ms);
+            bestBossAtMsByTier.put(tier, System.currentTimeMillis());
+        }
+
+        /** Forgets every best time of this slayer, for good; returns whether there was one. */
+        public boolean clearBests() {
+            boolean had = bestBossMsByTier != null
+                    && bestBossMsByTier.values().stream().anyMatch(best -> best != null && best > 0L);
+            if (bestBossMsByTier != null) bestBossMsByTier.clear();
+            if (bestBossAtMsByTier != null) bestBossAtMsByTier.clear();
+            bestsClearedAtMs = System.currentTimeMillis();
+            return had;
+        }
     }
 
     public AlpakaConfig() {
@@ -880,59 +987,102 @@ public class AlpakaConfig {
     }
 
     public static void load() {
-        existedAtStart = FILE.exists();
-        if (!FILE.exists()) {
-            save();
+        load(store());
+    }
+
+    /** Loads the settings from {@code from}, which later saves go to as well. Used directly by tests. */
+    static void load(ConfigStore from) {
+        store = from;
+        existedAtStart = from.file().exists();
+        if (!existedAtStart) {
+            instance = new AlpakaConfig();
         } else {
-            AlpakaConfig loaded = read(FILE);
+            AlpakaConfig loaded = read(from.file());
             if (loaded != null) {
                 instance = loaded;
                 // A copy of the last file that loaded, taken once per start rather than on every
                 // save: every write is atomic now, so this only has to cover damage from outside.
-                AtomicJsonFile.backup(FILE, BACKUP);
+                AtomicJsonFile.backup(from.file(), from.backup());
             } else {
                 recoverUnreadable();
             }
         }
 
-        // Hide Name Tag Background became a color; hiding is now zero opacity.
-        if (instance.hideNameTagBackground != null) {
-            if (instance.hideNameTagBackground) instance.nameTagBackgroundColor = 0;
-            instance.hideNameTagBackground = null;
+        int sanitized = ConfigSanitizer.sanitize(instance, new AlpakaConfig());
+        if (sanitized > 0) {
+            AlpakaAddons.LOGGER.warn("Put {} unusable value(s) in alpaka.json back to their defaults", sanitized);
         }
+        boolean migrated = instance.migrate();
 
-        // The menu's default accent moved from warm gold to teal. A config still on the exact old
-        // default never chose gold, so it follows the new default; any other color is a choice.
-        if (instance.menuAccentColor == 0xFFE5B849) {
-            instance.menuAccentColor = 0xFF29B6B2;
-        }
-
-        // The history slider used to reach 20000; a longer history kept tens of megabytes of chat
-        // alive and made every re-layout slow, so it ends at 5000 now.
-        if (instance.chatHistoryLimit > 5000) {
-            instance.chatHistoryLimit = 5000;
-        }
-
+        // Settings that were replaced keep the other pattern: a legacy field, read once and then
+        // cleared, so it needs no number.
+        instance.migrateNameTagBackground();
         instance.migrateInventoryHudVisibility();
+        instance.migrateWorldAgeHud();
 
-        if (instance.slayerBossMap == null) {
-            instance.slayerBossMap = new HashMap<>();
-        }
         for (SlayerType type : SlayerType.values()) {
             if (!instance.slayerBossMap.containsKey(type)) {
                 instance.slayerBossMap.put(type, new SlayerData());
             }
         }
 
-        if (instance.itemPresets == null || instance.itemPresets.length < 3) {
+        if (instance.itemPresets.length < 3) {
             instance.itemPresets = new ItemPreset[] {
                 new ItemPreset(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, false, false, false, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f),
                 new ItemPreset(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, false, false, false, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f),
                 new ItemPreset(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, false, false, false, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f)
             };
         }
-        if (instance.messageFilterCustom == null) instance.messageFilterCustom = new java.util.ArrayList<>();
-        instance.messageFilterCustom.removeIf(java.util.Objects::isNull);
+
+        if (!existedAtStart || sanitized > 0 || migrated) save();
+    }
+
+    /**
+     * One-time changes to the settings, in order: the step at index i brings a file from layout i to
+     * i + 1. Each runs once per file, the first time a version that has it loads that file, so a
+     * value the player picks afterwards is never changed back. They used to run on every start: an
+     * accent color set to exactly the old gold turned back into teal each time.
+     */
+    private static final java.util.List<java.util.function.Consumer<AlpakaConfig>> MIGRATIONS = java.util.List.of(
+            AlpakaConfig::migrateTo1
+    );
+
+    /** The settings layout this version writes. A file with a lower number gets the steps it has not had. */
+    static final int CONFIG_VERSION = MIGRATIONS.size();
+
+    /** Layout 0 to 1: the changes that ran on every start before there was a layout number. */
+    private void migrateTo1() {
+        // The menu's default accent moved from warm gold to teal. A config still on the exact old
+        // default never chose gold, so it follows the new default; any other color is a choice.
+        if (menuAccentColor == 0xFFE5B849) {
+            menuAccentColor = 0xFF29B6B2;
+        }
+
+        // The history slider used to reach 20000; a longer history kept tens of megabytes of chat
+        // alive and made every re-layout slow, so it ends at 5000 now.
+        if (chatHistoryLimit > 5000) {
+            chatHistoryLimit = 5000;
+        }
+    }
+
+    /**
+     * Runs the steps of {@link #MIGRATIONS} this file has not had. Returns whether the layout number
+     * moved. A file from a newer version keeps its higher number and gets no steps.
+     */
+    boolean migrate() {
+        if (configVersion >= CONFIG_VERSION) return false;
+        for (int step = Math.max(0, configVersion); step < MIGRATIONS.size(); step++) {
+            MIGRATIONS.get(step).accept(this);
+        }
+        configVersion = CONFIG_VERSION;
+        return true;
+    }
+
+    /** Hide Name Tag Background became a color; hiding is now zero opacity. */
+    private void migrateNameTagBackground() {
+        if (hideNameTagBackground == null) return;
+        if (hideNameTagBackground) nameTagBackgroundColor = 0;
+        hideNameTagBackground = null;
     }
 
     /**
@@ -944,8 +1094,8 @@ public class AlpakaConfig {
      * reads it as null, and a malformed one was replaced with defaults without a word.
      */
     private static void recoverUnreadable() {
-        File aside = AtomicJsonFile.quarantine(FILE);
-        AlpakaConfig fromBackup = read(BACKUP);
+        File aside = AtomicJsonFile.quarantine(store().file());
+        AlpakaConfig fromBackup = read(store().backup());
         String where = aside != null ? " The damaged file was kept as " + aside.getName() + "." : "";
         if (fromBackup != null) {
             instance = fromBackup;
@@ -966,6 +1116,31 @@ public class AlpakaConfig {
                 inventoryHudAlwaysVisible, inventoryHudShowOnItemChange);
         inventoryHudAlwaysVisible = null;
         inventoryHudShowOnItemChange = null;
+    }
+
+    /**
+     * The World Age HUD became the Performance HUD's Show Day. Whoever had it on keeps seeing the
+     * day where it was; if the Performance HUD was off, it comes on with only the day shown, so
+     * nothing appears that was not there before.
+     */
+    private void migrateWorldAgeHud() {
+        if (worldAgeHudEnabled == null && worldAgeHudX == null && worldAgeHudY == null && worldAgeHudScale == null) return;
+        if (Boolean.TRUE.equals(worldAgeHudEnabled)) {
+            performanceHudShowDay = true;
+            if (!performanceHudEnabled) {
+                performanceHudEnabled = true;
+                performanceHudShowFps = false;
+                performanceHudShowPing = false;
+                performanceHudShowTps = false;
+                if (worldAgeHudX != null) performanceHudX = worldAgeHudX;
+                if (worldAgeHudY != null) performanceHudY = worldAgeHudY;
+                if (worldAgeHudScale != null) performanceHudScale = worldAgeHudScale;
+            }
+        }
+        worldAgeHudEnabled = null;
+        worldAgeHudX = null;
+        worldAgeHudY = null;
+        worldAgeHudScale = null;
     }
 
     /** The config in {@code file}, or null when it is missing, empty or cannot be parsed. */
@@ -992,113 +1167,85 @@ public class AlpakaConfig {
         return betterChatEnabled && part;
     }
 
+    /**
+     * Switches every feature off: each feature's own switch, and the lone switches that belong to no
+     * feature (Hide Mob Fire, the scoreboard's blur and footer, ...). Nothing else is touched. A
+     * feature's settings, and every font, color, slider and choice, stay as they are, so a feature
+     * switched back on comes back the way it was. This used to switch the settings off and reset
+     * values too, and the backup made that stick after the next start: Block Overlay came back with
+     * no outline at all, Custom Sounds came back silent.
+     *
+     * DisableAllFeaturesTest lists the switches this has to cover and the settings it must leave.
+     */
     public void disableAllFeatures() {
         this.renderHandInThirdPerson = false;
         this.slayerDropTrackerEnabled = false;
         this.hideHypixelDropMessage = false;
         this.slayerRngDropGuildChatEnabled = false;
         this.customNameTagEnabled = false;
-        this.nameTagOutlineEnabled = false;
-        this.nameTagShadowEnabled = false;
-        this.nameTagChromaBorderEnabled = false;
         this.chromaHatEnabled = false;
         this.playerScaleEnabled = false;
-        this.playerScaleOthers = false;
         this.fullbrightEnabled = false;
         this.inventorySnowEnabled = false;
         this.containerBgFadeInEnabled = false;
         this.cleanBlazeEnabled = false;
-        this.cleanBlazeNameTags = false;
         this.blazeFirePitsEnabled = false;
         this.hideSlayerChatMessages = false;
         this.stopBlazeSpinning = false;
         this.hideHurtOverlayEnabled = false;
         this.hideMobDeathsEnabled = false;
         this.hideEntityFire = false;
-        this.firstPersonFireOpacity = 1.0f;
-        this.firstPersonFireHeight = 1.0f;
         this.firstPersonFireStatic = false;
-        this.nameTagBackgroundColor = DEFAULT_NAME_TAG_BACKGROUND;
         this.showOwnNameTag = false;
         this.nameTagTextShadow = false;
         this.wideHealthBarEnabled = false;
         this.smoothPerspectiveEnabled = false;
         this.disableFrontPerspective = false;
         this.customSoundsEnabled = false;
-        this.customSoundButtonClick = false;
-        this.customSoundHotbarScroll = false;
-        this.customSoundRareDrop = false;
-        this.customSoundNotification = false;
-        this.customSoundPlayerHurt = false;
-        this.customSoundInventoryOpenClose = false;
-        this.customSoundLowHpHeartbeat = false;
-        this.customSoundBlazeDeath = false;
-        this.customSoundInventoryClick = false;
-        this.customSoundZombieRemedy = false;
-        this.customSoundSuccessfulHit = false;
         this.muteVanillaSoundsInBlazeSlayer = false;
         this.customEscapeMenuEnabled = false;
-        this.menuFont = 0;
         this.customMainMenuEnabled = false;
         this.playerModelEnabled = false;
-        this.playerModelOnlyActions = false;
-        this.playerModelDisableMovement = false;
-        this.playerModelHideArmor = false;
-        this.playerModelShowInGuis = false;
-        this.worldAgeHudEnabled = false;
+        this.performanceHudEnabled = false;
         this.slayerHudEnabled = false;
-        this.slayerHudPauseOutsideArea = false;
-        this.slayerHudOnlyInSlayerAreas = false;
         this.allowApiCalls = false;
         this.slayerTimerEnabled = false;
-        this.slayerTimerChatEnabled = false;
-        this.slayerTimerHudEnabled = false;
         this.ragnarockEnabled = false;
+        this.deployableTimerEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
         this.customDamageTagsEnabled = false;
         this.blockOverlayEnabled = false;
-        this.blockFadeInEnabled = false;
-        this.blockOutlineEnabled = false;
-        this.blockChromaEnabled = false;
-        this.blockIgnoreDepth = false;
-        this.blockIgnorePlants = false;
-        this.blockFillEnabled = false;
-        this.blockHideOnEtherwarp = false;
         this.etherwarpOverlayEnabled = false;
-        this.etherwarpLineEnabled = false;
         this.etherwarpSoundEnabled = false;
         this.betterChatEnabled = false;
-        this.smoothChatEnabled = false;
-        this.chatOpenAnimationEnabled = false;
-        this.chatBlurEnabled = false;
         this.scoreboardBlurEnabled = false;
         this.scoreboardAlpakaFooter = false;
         this.chatSearchEnabled = false;
-        this.chatSmoothScrollEnabled = false;
-        this.chatScrollbarEnabled = false;
-        this.chatMovable = false;
         this.alwaysSprintEnabled = false;
         this.expandChatHistory = false;
         this.chatPeekEnabled = false;
-        this.chatPeekInMenus = false;
         this.betterScreenshotMessageEnabled = false;
-        this.autoCopyScreenshots = false;
         this.compactChatEnabled = false;
         this.messageFilterEnabled = false;
         this.chatTabsEnabled = false;
-        this.chatTabsSendToChannel = false;
         this.inventoryHudEnabled = false;
         this.bridgeBotFormatterEnabled = false;
         this.guildPrefixEnabled = false;
         this.itemSizeFeatureEnabled = false;
-        this.itemSwayDisabled = false;
-        this.itemLightingDisabled = false;
         this.itemStarlightEnabled = false;
-        this.itemSwingTranslationDisabled = false;
-        this.itemNoEquipEnabled = false;
-        this.itemSwingAlwaysFinishEnabled = false;
-        this.itemIgnoreEmptyHandEnabled = false;
+        // Switches that came after the list above.
+        this.updateNotificationsEnabled = false;
+        this.scrollableTooltipsEnabled = false;
+        this.persistentItemNameEnabled = false;
+        this.oldMasterStarsEnabled = false;
+        this.mentionNotificationEnabled = false;
+        this.itemMotionBlurEnabled = false;
+        this.bossSpawnAlertEnabled = false;
+        this.bossCocoonAlertEnabled = false;
+        this.partyInvitePromptEnabled = false;
+        this.cacheResourcePackEnabled = false;
+        this.skyEffectsEnabled = false;
         save();
     }
 
@@ -1133,7 +1280,7 @@ public class AlpakaConfig {
             return;
         }
         try {
-            AtomicJsonFile.write(FILE, GSON.toJson(instance));
+            AtomicJsonFile.write(store().file(), GSON.toJson(instance));
         } catch (Exception e) {
             AlpakaAddons.LOGGER.error("Failed to save config", e);
         }

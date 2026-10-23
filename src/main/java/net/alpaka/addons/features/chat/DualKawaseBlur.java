@@ -36,6 +36,10 @@ import java.util.Optional;
  *
  * How wide it gets is the number of steps ({@link Plan#levels}) and how far apart each pass
  * samples ({@link Plan#offset}), which rides in a small uniform buffer, one per offset.
+ *
+ * Only the parts of the frame behind a panel are blurred ({@link #run}): every pass is cut to those
+ * areas, grown by how far the blur reaches ({@link #reach}), so a chat panel costs what its corner
+ * of the screen costs rather than the whole frame.
  */
 final class DualKawaseBlur {
     /** The most halvings: a sixteenth of the screen, wide enough for full strength at GUI scale 4. */
@@ -96,6 +100,17 @@ final class DualKawaseBlur {
         return new Plan(levels, Math.round(offset * 16.0f) / 16.0f);
     }
 
+    /**
+     * How far a pixel of the result reaches into the frame, in screen pixels. Each down pass reads
+     * up to Offset + 1 texels of its input around the pixel (bilinear included), each up pass
+     * Offset / 2 + 1, and the panels one texel of the result; summed over the levels that is
+     * (Offset + 2) * (2^(levels + 1) - 3) + 2. Rounded up, with a little to spare.
+     */
+    static int reach(Plan plan) {
+        int n = Math.clamp(plan.levels(), 1, MAX_LEVELS);
+        return (int) Math.ceil((plan.offset() + 2.0f) * (1 << (n + 1))) + 2;
+    }
+
     /** Whether the targets exist at all. */
     boolean exists() {
         return !levels.isEmpty();
@@ -122,13 +137,31 @@ final class DualKawaseBlur {
         }
     }
 
+    /**
+     * Lets the targets go. They move to {@code retired}, for the caller to close once nothing can
+     * sample them any more; {@link #resize} makes new ones when a panel asks again.
+     */
+    void release(List<TextureTarget> retired) {
+        retired.addAll(levels);
+        levels.clear();
+        width = 0;
+        height = 0;
+    }
+
     /** The result: the first level, which {@link #run} leaves holding the blurred frame. */
     GpuTextureView output() {
         return levels.getFirst().getColorTextureView();
     }
 
-    /** Blurs the source, which must be the size given to {@link #resize}, into {@link #output()}. */
-    void run(GpuTextureView source, Plan plan) {
+    /**
+     * Blurs the source, which must be the size given to {@link #resize}, into {@link #output()}.
+     *
+     * {@code areas} limits the work to those parts of the frame, each {x0, y0, x1, y1} in screen
+     * pixels from the top left and already grown by {@link #reach}; empty means the whole frame.
+     * Outside them the levels keep what an earlier frame left there, which no panel samples: every
+     * pixel a panel reads depends only on pixels within the reach of it, and those are all redrawn.
+     */
+    void run(GpuTextureView source, Plan plan, List<int[]> areas) {
         int n = Math.clamp(plan.levels(), 1, MAX_LEVELS);
         GpuBuffer config = config(plan.offset());
         GpuSampler sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR);
@@ -136,25 +169,40 @@ final class DualKawaseBlur {
 
         GpuTextureView input = source;
         for (int i = 0; i < n; i++) {
-            GpuTextureView target = levels.get(i).getColorTextureView();
-            pass(encoder, down(), input, target, sampler, config);
-            input = target;
+            pass(encoder, down(), input, i, sampler, config, areas);
+            input = levels.get(i).getColorTextureView();
         }
         for (int i = n - 2; i >= 0; i--) {
-            GpuTextureView target = levels.get(i).getColorTextureView();
-            pass(encoder, up(), input, target, sampler, config);
-            input = target;
+            pass(encoder, up(), input, i, sampler, config, areas);
+            input = levels.get(i).getColorTextureView();
         }
     }
 
-    private static void pass(CommandEncoder encoder, RenderPipeline pipeline, GpuTextureView input,
-                             GpuTextureView target, GpuSampler sampler, GpuBuffer config) {
-        try (RenderPass pass = encoder.createRenderPass(() -> "Alpaka blur", target, Optional.empty())) {
+    private void pass(CommandEncoder encoder, RenderPipeline pipeline, GpuTextureView input, int level,
+                      GpuSampler sampler, GpuBuffer config, List<int[]> areas) {
+        TextureTarget target = levels.get(level);
+        try (RenderPass pass = encoder.createRenderPass(() -> "Alpaka blur", target.getColorTextureView(), Optional.empty())) {
             pass.setPipeline(pipeline);
             RenderSystem.bindDefaultUniforms(pass);
             pass.setUniform("BlurConfig", config);
             pass.bindTexture("InSampler", input, sampler);
-            pass.draw(3, 1, 0, 0);
+            if (areas.isEmpty()) {
+                pass.draw(3, 1, 0, 0);
+                return;
+            }
+            // Level i is the frame at 1/2^(i+1): an area's edges are divided down, outward.
+            int step = 1 << (level + 1);
+            for (int[] area : areas) {
+                int x0 = Math.max(0, area[0] / step);
+                int y0 = Math.max(0, area[1] / step);
+                int x1 = Math.min(target.width, Math.ceilDiv(area[2], step));
+                int y1 = Math.min(target.height, Math.ceilDiv(area[3], step));
+                if (x1 <= x0 || y1 <= y0) continue;
+                // Counted from the bottom, as vanilla's own GUI scissor is (GuiRenderer#enableScissor).
+                pass.enableScissor(x0, target.height - y1, x1 - x0, y1 - y0);
+                pass.draw(3, 1, 0, 0);
+            }
+            pass.disableScissor();
         }
     }
 

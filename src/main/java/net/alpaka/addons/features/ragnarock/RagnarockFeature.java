@@ -6,6 +6,7 @@ import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.ChatScreen;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.protocol.game.ClientboundSoundPacket;
 import net.minecraft.world.item.component.CustomData;
@@ -31,7 +32,8 @@ import java.util.regex.Pattern;
  * The count is Hypixel's own: each action bar carries the current number, so it ticks exactly like
  * the original. Whether the cast went through is not read off the count running out, since a cast
  * broken on its last beat looks the same there. Like Odin, it is the sound Hypixel plays when the
- * cast goes off - a wolf's death sound at one particular pitch - while the Ragnarock is in hand. A cast
+ * cast goes off - a wolf's death sound at one particular pitch - while the Ragnarock is in hand,
+ * our own cast is running and the sound comes from where we stand (see {@link #isOwnCast}). A cast
  * ends early on a hit, which Hypixel says in chat ("Ragnarock was cancelled due to ..."), or when
  * the Ragnarock leaves the hand; a countdown that just stops with no cast sound after it is cancelled too.
  */
@@ -51,6 +53,9 @@ public final class RagnarockFeature {
 
     /** The pitch of the cast sound; Odin matches the same value. */
     private static final float CAST_PITCH = 1.4920635f;
+
+    /** How close to the player, squared, the cast sound has to be to be our own: Hypixel plays it at the caster. */
+    private static final double OWN_SOUND_RADIUS_SQR = 16.0;
 
     /** How long "Ragnarock" or "Cancelled" stays up. */
     private static final long RESULT_SHOWN_MS = 2000L;
@@ -155,17 +160,44 @@ public final class RagnarockFeature {
     }
 
     private static void onChat(Component message) {
+        if (!AlpakaConfig.instance.ragnarockEnabled) return;
         if (message.getString().contains(CANCELLED)) finish(Result.CANCELLED);
     }
 
     /** Every sound the server plays, on the client thread; see ClientPacketListenerMixin. */
     public static void onSound(ClientboundSoundPacket packet) {
         if (!AlpakaConfig.instance.ragnarockEnabled) return;
-        if (Math.abs(packet.getPitch() - CAST_PITCH) > 0.0001f) return;
+        boolean castRunning = seconds >= 0 || countdownEndedAt != 0;
+        if (!castRunning) return;
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null) return;
+        double dx = player.getX() - packet.getX();
+        double dy = player.getY() - packet.getY();
+        double dz = player.getZ() - packet.getZ();
         String path = packet.getSound().value().location().getPath();
-        if (!path.startsWith("entity.wolf") || !path.endsWith(".death")) return;
+        if (!isOwnCast(castRunning, packet.getPitch(), path, dx * dx + dy * dy + dz * dz)) return;
         if (!holdingRagnarock()) return;
         finish(Result.CAST);
+    }
+
+    /**
+     * Whether a sound is our own Ragnarock going off: the cast sound - a wolf's death at one
+     * particular pitch - while our own cast runs or has just stopped counting, and from close by.
+     * Another player's cast plays the same sound; in a dungeon it used to end our countdown early,
+     * or announce a cast we never started.
+     */
+    static boolean isOwnCast(boolean castRunning, float pitch, String path, double distanceSqr) {
+        if (!castRunning) return false;
+        if (Math.abs(pitch - CAST_PITCH) > 0.0001f) return false;
+        if (!path.startsWith("entity.wolf") || !path.endsWith(".death")) return false;
+        return distanceSqr <= OWN_SOUND_RADIUS_SQR;
+    }
+
+    /** Forgets a cast in progress and its result; a new world or server starts with none. */
+    public static void reset() {
+        seconds = -1;
+        countdownEndedAt = 0;
+        result = Result.NONE;
     }
 
     private static void tick(Minecraft mc) {

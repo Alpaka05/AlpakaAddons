@@ -107,6 +107,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customMainMenuEnabled = v; AlpakaConfig.save(); },
                 "custom main menu title screen hypixel start launch background GUI"));
 
+        OPTIONS.add(new ConfigOption("custom_main_menu_whats_new", "What's New Card",
+                "Shows the newest release's changes at the top right of the custom main menu. Needs Network Features.",
+                ConfigCategory.GENERAL,
+                () -> AlpakaConfig.instance.customMainMenuWhatsNew,
+                v -> { AlpakaConfig.instance.customMainMenuWhatsNew = v; AlpakaConfig.save(); },
+                "custom main menu what's new whats new release notes changelog changes update card news"));
+
         OPTIONS.add(new ConfigOption("custom_main_menu_parallax", "Main Menu Parallax",
                 "The custom main menu's background drifts and moves with the mouse. Off keeps it still.",
                 ConfigCategory.GENERAL,
@@ -114,8 +121,15 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customMainMenuParallax = v; AlpakaConfig.save(); },
                 "custom main menu parallax background mouse move motion depth effect title screen"));
 
+        OPTIONS.add(new ConfigOption("custom_main_menu_particles", "Inventory Particles in Main Menu",
+                "Shows your Inventory Particles behind the custom main menu too.",
+                ConfigCategory.GENERAL,
+                () -> AlpakaConfig.instance.customMainMenuParticles,
+                v -> { AlpakaConfig.instance.customMainMenuParticles = v; AlpakaConfig.save(); },
+                "custom main menu inventory particles snow rain fireflies cherry petals leaves glyphs ash title screen hide"));
+
         OPTIONS.add(new ConfigOption("disable_all_features", "Disable All Features",
-                "Disables every feature in the mod after confirmation.",
+                "Switches every feature off after confirmation. Their settings stay, so a feature switched back on is as it was.",
                 ConfigCategory.GENERAL,
                 "Disable All",
                 parent -> Minecraft.getInstance().gui.setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(
@@ -142,6 +156,45 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.fullbrightEnabled,
                 v -> { AlpakaConfig.instance.fullbrightEnabled = v; AlpakaConfig.save(); },
                 "gamma brightness light fullbright vision"));
+
+        OPTIONS.add(new ConfigOption("sky_effects", "Sky Effects",
+                "Animates the sky: a firestorm over the Nether, auroras and shooting stars over the Overworld at night and a glowing sun by day, a swirling nebula in the End.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.skyEffectsEnabled,
+                v -> { AlpakaConfig.instance.skyEffectsEnabled = v; AlpakaConfig.save(); },
+                "sky skies animated fancy firestorm fire storm nether crimson isle aurora northern lights borealis shooting stars meteor milky way galaxy nebula end space sun rays glow embers"));
+
+        OPTIONS.add(new ConfigOption("sky_effects_skies", "Animated Skies",
+                "Pick which skies are animated.",
+                ConfigCategory.VISUALS,
+                java.util.List.of(
+                        new ConfigOption.ToggleEntry("Nether Firestorm",
+                                () -> AlpakaConfig.instance.skyEffectsNether,
+                                v -> { AlpakaConfig.instance.skyEffectsNether = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Overworld Aurora",
+                                () -> AlpakaConfig.instance.skyEffectsOverworld,
+                                v -> { AlpakaConfig.instance.skyEffectsOverworld = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("End Nebula",
+                                () -> AlpakaConfig.instance.skyEffectsEnd,
+                                v -> { AlpakaConfig.instance.skyEffectsEnd = v; AlpakaConfig.save(); })
+                ),
+                "sky skies nether firestorm overworld aurora sun rays end nebula dimension pick which"));
+
+        OPTIONS.add(new ConfigOption("sky_effects_intensity", "Sky Intensity",
+                "How strongly the effects show over the plain sky.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.skyEffectsIntensity,
+                v -> { AlpakaConfig.instance.skyEffectsIntensity = Math.round(v * 100.0f) / 100.0f; AlpakaConfig.save(); },
+                0.1f, 1.0f, val -> String.format(Locale.ROOT, "%.0f%%", val * 100.0f),
+                "sky intensity strength opacity brightness subtle strong effects"));
+
+        OPTIONS.add(new ConfigOption("sky_effects_speed", "Sky Animation Speed",
+                "How fast the clouds, lights and stars move.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.skyEffectsSpeed,
+                v -> { AlpakaConfig.instance.skyEffectsSpeed = Math.round(v * 20.0f) / 20.0f; AlpakaConfig.save(); },
+                0.25f, 3.0f, val -> String.format(Locale.ROOT, "%.2fx", val),
+                "sky animation speed fast slow motion clouds drift"));
 
         OPTIONS.add(new ConfigOption("clean_blaze", "Clean Blaze",
                 "Clears blaze noise in the Blaze slayer's zones, on SkyBlock only.",
@@ -204,7 +257,7 @@ public class AlpakaConfigRegistry {
                 "hurt damage red flash tint overlay hit mob entity hide"));
 
         OPTIONS.add(new ConfigOption("hide_mob_deaths", "Hide Mob Deaths",
-                "Mobs vanish the moment they die instead of tipping over first.",
+                "Mobs and their name tags vanish the moment they die instead of tipping over first.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.hideMobDeathsEnabled,
                 v -> { AlpakaConfig.instance.hideMobDeathsEnabled = v; AlpakaConfig.save(); },
@@ -300,7 +353,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VISUALS,
                 () -> (float) AlpakaConfig.instance.smoothPerspectiveDurationMs,
                 v -> { AlpakaConfig.instance.smoothPerspectiveDurationMs = Math.round(v); AlpakaConfig.save(); },
-                100.0f, 1000.0f, val -> String.format("%d ms", Math.round(val)),
+                100.0f, 1000.0f, val -> String.format(Locale.ROOT, "%d ms", Math.round(val)),
                 "smooth perspective camera speed duration transition time ms"));
 
         OPTIONS.add(new ConfigOption("Interfaces", ConfigCategory.VISUALS));
@@ -325,32 +378,42 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VISUALS,
                 () -> (float) AlpakaConfig.instance.containerBgFadeInDurationMs,
                 v -> { AlpakaConfig.instance.containerBgFadeInDurationMs = Math.round(v); AlpakaConfig.save(); },
-                50.0f, 1000.0f, val -> String.format("%d ms", Math.round(val)),
+                50.0f, 1000.0f, val -> String.format(Locale.ROOT, "%d ms", Math.round(val)),
                 "container background fade speed duration time ms transition"));
 
-        OPTIONS.add(new ConfigOption("inventory_snow", "Inventory Snowflakes",
-                "Snowflakes fall over container screens, like chests and your inventory.",
+        // The id keeps its old name so existing configs and search links still find the option.
+        OPTIONS.add(new ConfigOption("inventory_snow", "Inventory Particles",
+                "Particles drift over container screens, like chests and your inventory.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.inventorySnowEnabled,
                 v -> { AlpakaConfig.instance.inventorySnowEnabled = v; AlpakaConfig.save(); },
-                "snow winter effect gui inventory snowflakes"));
+                "snow winter effect gui inventory snowflakes particles fireflies ash cherry petals leaves autumn enchanting glyphs rain"));
 
-        OPTIONS.add(new ConfigOption("inventory_snow_speed", "Snow Fall Speed",
-                "Speed of falling snow particles in inventory.",
+        OPTIONS.add(new ConfigOption("inventory_particle_type", "Particle Type",
+                "Which particles drift over container screens.",
+                ConfigCategory.VISUALS,
+                () -> (float) SnowOverlayRenderer.clampType(AlpakaConfig.instance.inventoryParticleType),
+                v -> { AlpakaConfig.instance.inventoryParticleType = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (SnowOverlayRenderer.TYPE_NAMES.length - 1),
+                val -> SnowOverlayRenderer.TYPE_NAMES[SnowOverlayRenderer.clampType(Math.round(val))],
+                "inventory particle type kind snowflakes fireflies ash snow embers cherry petals blossom falling leaves autumn fall enchanting glyphs runes enchant rain").choices(SnowOverlayRenderer.TYPE_NAMES));
+
+        OPTIONS.add(new ConfigOption("inventory_snow_speed", "Particle Speed",
+                "How fast the particles move.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.inventorySnowSpeed,
                 v -> { AlpakaConfig.instance.inventorySnowSpeed = v; AlpakaConfig.save(); },
                 0.1f, 5.0f, val -> String.format(Locale.ROOT, "%.1fx", val),
-                "snow speed animation winter velocity"));
+                "snow speed animation winter velocity particles snow fall speed"));
 
-        OPTIONS.add(new ConfigOption("inventory_snow_amount", "Snowflake Amount",
-                "How many snowflakes fall at once.",
+        OPTIONS.add(new ConfigOption("inventory_snow_amount", "Particle Amount",
+                "How many particles are on screen at once.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.inventorySnowAmount,
                 v -> { AlpakaConfig.instance.inventorySnowAmount = v; AlpakaConfig.save(); },
                 SnowOverlayRenderer.MIN_AMOUNT, SnowOverlayRenderer.MAX_AMOUNT,
                 val -> String.format(Locale.ROOT, "%.1fx", val),
-                "snow amount count density number flakes winter more less"));
+                "snow amount count density number flakes winter more less particles snowflake amount"));
 
         OPTIONS.add(new ConfigOption("scrollable_tooltips", "Scrollable Tooltips",
                 "Scroll a tooltip taller than the screen with the mouse wheel.",
@@ -777,6 +840,43 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.playerModelShowInGuis,
                 v -> { AlpakaConfig.instance.playerModelShowInGuis = v; AlpakaConfig.save(); },
                 "player model show in guis menus screen open container inventory HUD"));
+
+        OPTIONS.add(new ConfigOption("Performance HUD", ConfigCategory.VISUALS));
+
+        OPTIONS.add(new ConfigOption("performance_hud_enabled", "Performance HUD",
+                "Shows the server's day, your FPS, your ping and the server's TPS on the HUD.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.performanceHudEnabled,
+                v -> { AlpakaConfig.instance.performanceHudEnabled = v; AlpakaConfig.save(); },
+                "performance hud fps frames ping latency ms tps ticks server lag day world age"));
+
+        OPTIONS.add(new ConfigOption("performance_hud_day", "Show Day",
+                "The server's world age in days: green below 25, orange to 30, red above.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.performanceHudShowDay,
+                v -> { AlpakaConfig.instance.performanceHudShowDay = v; AlpakaConfig.save(); },
+                "performance hud day world age server days time skyblock"));
+
+        OPTIONS.add(new ConfigOption("performance_hud_fps", "Show FPS",
+                "Your frames per second, from the game's own counter.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.performanceHudShowFps,
+                v -> { AlpakaConfig.instance.performanceHudShowFps = v; AlpakaConfig.save(); },
+                "performance hud fps frames per second framerate"));
+
+        OPTIONS.add(new ConfigOption("performance_hud_ping", "Show Ping",
+                "Your round trip to the server. Measured with one small ping every 5 seconds while shown, none while F3 or another mod already measures it.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.performanceHudShowPing,
+                v -> { AlpakaConfig.instance.performanceHudShowPing = v; AlpakaConfig.save(); },
+                "performance hud ping latency ms connection delay"));
+
+        OPTIONS.add(new ConfigOption("performance_hud_tps", "Show TPS",
+                "The server's ticks per second, counted from packets it sends anyway. 20 is full speed.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.performanceHudShowTps,
+                v -> { AlpakaConfig.instance.performanceHudShowTps = v; AlpakaConfig.save(); },
+                "performance hud tps ticks per second server lag"));
 
         OPTIONS.add(new ConfigOption("Inventory HUD", ConfigCategory.VISUALS));
 
@@ -1252,7 +1352,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.BLOCK_OVERLAY,
                 () -> (float) AlpakaConfig.instance.blockFadeInDurationMs,
                 v -> { AlpakaConfig.instance.blockFadeInDurationMs = Math.round(v); AlpakaConfig.save(); },
-                50.0f, 1000.0f, val -> String.format("%d ms", Math.round(val)),
+                50.0f, 1000.0f, val -> String.format(Locale.ROOT, "%d ms", Math.round(val)),
                 "block fade in duration speed time ms transition overlay"));
 
         OPTIONS.add(new ConfigOption("block_chroma_enabled", "Chroma RGB Effect",
@@ -1544,9 +1644,12 @@ public class AlpakaConfigRegistry {
                                 v -> { AlpakaConfig.instance.slayerHudShowSinceRngDrop = v; AlpakaConfig.save(); }),
                         new ConfigOption.ToggleEntry("Polar bear effect",
                                 () -> AlpakaConfig.instance.slayerHudShowBear,
-                                v -> { AlpakaConfig.instance.slayerHudShowBear = v; AlpakaConfig.save(); })
+                                v -> { AlpakaConfig.instance.slayerHudShowBear = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Ham radio (Blaze)",
+                                () -> AlpakaConfig.instance.slayerHudShowRadio,
+                                v -> { AlpakaConfig.instance.slayerHudShowRadio = v; AlpakaConfig.save(); })
                 ),
-                "slayer hud lines toggle show hide xp bosses per hour session time rng dry streak average bear gummy polar smoldering polarization effect"));
+                "slayer hud lines toggle show hide xp bosses per hour session time rng dry streak average bear gummy polar smoldering polarization effect ham radio blazetekk channel enjoyers"));
 
         OPTIONS.add(new ConfigOption("slayer_hud_bear_blaze_only", "Bear Line Only On Blaze",
                 "Shows the polar bear effect only on the Blaze HUD instead of on every slayer.",
@@ -1570,8 +1673,8 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.slayerHudAfkPauseSeconds,
                 v -> { AlpakaConfig.instance.slayerHudAfkPauseSeconds = v; AlpakaConfig.save(); },
                 5.0f, 300.0f, val -> val >= 60.0f
-                        ? String.format("%dm %02ds", (int) (val / 60), (int) (val % 60))
-                        : String.format("%ds", val.intValue()),
+                        ? String.format(Locale.ROOT, "%dm %02ds", (int) (val / 60), (int) (val % 60))
+                        : String.format(Locale.ROOT, "%ds", val.intValue()),
                 "slayer session timer pause afk idle stand still seconds duration threshold"));
 
 
@@ -1583,14 +1686,6 @@ public class AlpakaConfigRegistry {
                 "slayer session pause outside area zone leave region timer stop"));
 
         OPTIONS.add(new ConfigOption("World Age", ConfigCategory.SKYBLOCK));
-
-
-        OPTIONS.add(new ConfigOption("world_age_hud_enabled", "Enable World Age (Day) HUD",
-                "Displays the current server's world age in days.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.worldAgeHudEnabled,
-                v -> { AlpakaConfig.instance.worldAgeHudEnabled = v; AlpakaConfig.save(); },
-                "world age day hud server days time skyblock color red orange green"));
 
 
         OPTIONS.add(new ConfigOption("world_age_join_message_enabled", "Server Age Join Message",
@@ -1611,9 +1706,9 @@ public class AlpakaConfigRegistry {
                     if (sec >= 60) {
                         int m = sec / 60;
                         int s = sec % 60;
-                        return s > 0 ? String.format("%dm %ds", m, s) : String.format("%dm", m);
+                        return s > 0 ? String.format(Locale.ROOT, "%dm %ds", m, s) : String.format(Locale.ROOT, "%dm", m);
                     }
-                    return String.format("%ds", sec);
+                    return String.format(Locale.ROOT, "%ds", sec);
                 },
                 "world age recent visit threshold window seconds time minutes slider"));
 
@@ -1676,6 +1771,13 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.ragnarockEnabled,
                 v -> { AlpakaConfig.instance.ragnarockEnabled = v; AlpakaConfig.save(); },
                 "ragnarock ragnarok rag axe sword cast casting countdown timer crosshair action bar ability strength"));
+
+        OPTIONS.add(new ConfigOption("deployable_timer", "Deployable Timer",
+                "Shows the strongest power orb or flare in range with the time it has left. Move it in the HUD editor.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.deployableTimerEnabled,
+                v -> { AlpakaConfig.instance.deployableTimerEnabled = v; AlpakaConfig.save(); },
+                "deployable timer power orb flare radiant mana flux overflux plasmaflux warning alert sos hud icon time left range buff"));
 
         OPTIONS.add(new ConfigOption("Damage Display", ConfigCategory.SKYBLOCK));
 
@@ -2055,7 +2157,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.SOUND_MISC,
                 () -> AlpakaConfig.instance.customSoundsVolume,
                 v -> { AlpakaConfig.instance.customSoundsVolume = v; AlpakaConfig.save(); },
-                0.0f, 1.0f, val -> String.format("%d%%", Math.round(val * 100)),
+                0.0f, 1.0f, val -> String.format(Locale.ROOT, "%d%%", Math.round(val * 100)),
                 "custom sounds volume loudness audio gain percent"));
 
         OPTIONS.add(new ConfigOption("Interface Sounds", ConfigCategory.SOUND_MISC));
@@ -2209,6 +2311,30 @@ public class AlpakaConfigRegistry {
         List<ConfigOption> result = java.util.Collections.unmodifiableList(filtered);
         SEARCH_CACHE.put(category, result);
         return result;
+    }
+
+    /**
+     * Brings every slider's stored value back into the slider's range, with one save for all of
+     * them. A hand edit or an old file can hold a value the slider never offers - an index past the
+     * end of a choice list, a negative size - and the features read the field, not the slider.
+     *
+     * Run once the game has started rather than while the settings load: a setter may act on the
+     * game as well, and Warp Sound plays its preview. Returns how many values changed.
+     */
+    public static int clampStoredValues() {
+        int changed = 0;
+        AlpakaConfig.beginDeferredSaves();
+        try {
+            for (ConfigOption option : OPTIONS) {
+                if (option.clampStoredValue()) changed++;
+            }
+        } finally {
+            AlpakaConfig.endDeferredSaves();
+        }
+        if (changed > 0) {
+            net.alpaka.addons.AlpakaAddons.LOGGER.warn("Brought {} setting(s) back into their slider's range", changed);
+        }
+        return changed;
     }
 
     /** How many non-header options a category holds for the current search term. */

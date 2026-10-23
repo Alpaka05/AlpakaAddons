@@ -64,6 +64,7 @@ public final class DevScreenshotTour {
             // A moment into the entrance: the card springing in, the avatar half materialised.
             new Stop("main-menu-opening", () -> Minecraft.getInstance().gui.setScreen(new CustomMainMenuScreen()), () -> true, 9),
             screen("config", () -> new AlpakaConfigScreen(null, "")),
+            screen("config-old-sky", () -> AlpakaConfigScreen.openOnOption(null, "sky_effects")),
             screen("config-old-screenshot", () -> new AlpakaConfigScreen(null, "screenshot")),
             screen("config-old-starlight", () -> new AlpakaConfigScreen(null, "starlight")),
             screen("color-picker", () -> new ColorPickerScreen(null, "Accent Color", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
@@ -101,6 +102,12 @@ public final class DevScreenshotTour {
             new Stop(null, () -> ScreenshotPreview.devFreezeAt(-1.0f), () -> true, 5),
             new Stop("hud-editor-world", () -> Minecraft.getInstance().gui.setScreen(new HudEditorScreen(null)), () -> true, 20),
             screen("pause-menu", net.alpaka.addons.features.escapemenu.CustomPauseScreen::new),
+            // The Friends overlay over the pause menu, opened as the Friends key (O) opens it: it
+            // draws the menu as its backdrop and then blurs itself, so the menu must not blur too.
+            new Stop("pause-menu-friends", () -> {
+                Minecraft mc = Minecraft.getInstance();
+                mc.gui.setScreen(new net.minecraft.client.gui.screens.friends.FriendsOverlayScreen(mc.gui.screen()));
+            }, () -> true, 30),
             new Stop(null, () -> Minecraft.getInstance().gui.setScreen(null), () -> true, 5),
             // Two ticks after a burst: the lines are mid-slide inside the chat's box.
             new Stop("chat-slide", DevScreenshotTour::chatBurst, () -> true, 2),
@@ -133,12 +140,37 @@ public final class DevScreenshotTour {
             new Stop(null, () -> AlpakaConfig.instance.itemSwayDisabled = false, () -> true, 1),
             // Starlight together with Disable Item Lighting, still and mid-swing.
             new Stop("starlight-unlit", () -> AlpakaConfig.instance.itemLightingDisabled = true, () -> true, 5),
-            new Stop("starlight-unlit-swing", () -> Minecraft.getInstance().player.swing(
-                    net.minecraft.world.InteractionHand.MAIN_HAND), () -> true, 3),
+            // The swing animation only, as the config's swing preview plays it: the one-argument
+            // swing also tells the server, which only Outbound may.
+            new Stop("starlight-unlit-swing", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
             new Stop(null, () -> AlpakaConfig.instance.itemLightingDisabled = false, () -> true, 1),
             // The fire pit preview has to be on a tick before the clay arrives, as in a real fight.
             new Stop(null, DevScreenshotTour::firePitPreview, () -> true, 5),
-            new Stop("fire-pits", DevScreenshotTour::placeFirePits, () -> true, 30)
+            new Stop("fire-pits", DevScreenshotTour::placeFirePits, () -> true, 30),
+            // Sky Effects, without the HUD: the Overworld at night looking north at the aurora and
+            // in the morning towards the sun, the Nether's firestorm above its roof and the End's
+            // nebula; most twice, to see them move.
+            new Stop(null, () -> skyAt("overworld", 0.5, 120.0, 18000L, 180.0f, -20.0f), () -> true, 40),
+            new Stop("sky-overworld-night", () -> {}, () -> true, 5),
+            new Stop("sky-overworld-night-later", () -> {}, () -> true, 40),
+            new Stop("sky-overworld-day", () -> skyAt("overworld", 0.5, 120.0, 2000L, -90.0f, -30.0f), () -> true, 40),
+            new Stop(null, () -> skyAt("the_nether", 0.5, 140.0, -1L, 30.0f, -15.0f), () -> inDimension(net.minecraft.world.level.Level.NETHER), 60),
+            new Stop("sky-nether", () -> {}, () -> true, 5),
+            new Stop("sky-nether-later", () -> {}, () -> true, 40),
+            new Stop("sky-nether-up", () -> Minecraft.getInstance().player.setXRot(-65.0f), () -> true, 10),
+            // Far out from the main island: within reach of the dragon its boss bar fogs the sky
+            // away, and vanilla draws none.
+            new Stop(null, () -> skyAt("the_end", 1000.5, 100.0, -1L, 0.0f, -10.0f), () -> inDimension(net.minecraft.world.level.Level.END), 60),
+            new Stop("sky-end", () -> {}, () -> true, 5),
+            new Stop("sky-end-up", () -> Minecraft.getInstance().player.setXRot(-60.0f), () -> true, 10),
+            // SkyBlock's End island, which Hypixel sends as an Overworld: the End's sky comes from the
+            // sidebar's zone line alone. At noon, where the Overworld's clouds and blue fog would show.
+            new Stop(null, () -> {
+                skyAt("overworld", 0.5, 120.0, 6000L, 0.0f, -10.0f);
+                endIslandSidebar(true);
+            }, () -> inDimension(net.minecraft.world.level.Level.OVERWORLD), 40),
+            new Stop("sky-end-island", () -> {}, () -> true, 5),
+            new Stop(null, DevScreenshotTour::skyDone, () -> inDimension(net.minecraft.world.level.Level.OVERWORLD), 20)
     );
 
     private static int ticks = 0;
@@ -249,7 +281,7 @@ public final class DevScreenshotTour {
         cfg.inventoryHudEnabled = true;
         cfg.inventoryHudAttachToHotbar = true;
         cfg.inventoryHudVisibility = 0;
-        cfg.worldAgeHudEnabled = true;
+        cfg.performanceHudEnabled = true;
     }
 
     /** A burst of lines, as a busy chat delivers them. */
@@ -289,6 +321,73 @@ public final class DevScreenshotTour {
             player.setItemSlot(net.minecraft.world.entity.EquipmentSlot.CHEST,
                     new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_CHESTPLATE));
         });
+    }
+
+    /**
+     * Sky Effects on and the HUD off, and the player flying high in this dimension, looking this
+     * way, at this time of day (-1 leaves the time alone).
+     */
+    private static void skyAt(String dimension, double x, double y, long dayTime, float yaw, float pitch) {
+        Minecraft mc = Minecraft.getInstance();
+        AlpakaConfig.instance.skyEffectsEnabled = true;
+        if (!mc.gui.hud.isHidden()) mc.gui.hud.toggle();
+        java.util.UUID id = mc.player.getUUID();
+        net.minecraft.client.server.IntegratedServer server = mc.getSingleplayerServer();
+        if (server == null) return;
+        server.execute(() -> {
+            net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayer(id);
+            if (player == null) return;
+            player.setGameMode(GameType.CREATIVE);
+            player.getAbilities().flying = true;
+            player.onUpdateAbilities();
+            net.minecraft.commands.CommandSourceStack source = server.createCommandSourceStack();
+            if (dayTime >= 0) server.getCommands().performPrefixedCommand(source, "time set " + dayTime);
+            server.getCommands().performPrefixedCommand(source, "weather clear");
+            server.getCommands().performPrefixedCommand(source, String.format(java.util.Locale.ROOT,
+                    "execute in minecraft:%s run tp @a %.1f %.1f 0.5 %.1f %.1f", dimension, x, y, yaw, pitch));
+        });
+    }
+
+    /** In this dimension, with the terrain screen gone. */
+    private static boolean inDimension(net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension) {
+        Minecraft mc = Minecraft.getInstance();
+        return mc.level != null && mc.player != null && mc.level.dimension() == dimension && mc.gui.screen() == null;
+    }
+
+    /**
+     * The tour's sidebar zone line reads "⏣ The End", as on SkyBlock's End island, or its dungeon
+     * again. The space needs a team prefix: score holder names cannot hold one.
+     */
+    private static void endIslandSidebar(boolean endIsland) {
+        net.minecraft.client.server.IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+        if (server == null) return;
+        String[] commands = endIsland ? new String[]{
+                "scoreboard players reset §c⏣Catacombs§7(M7) tour",
+                "team add tourzone",
+                "team modify tourzone prefix {text:\"⏣ The End\",color:\"light_purple\"}",
+                "team join tourzone §5",
+                "scoreboard players set §5 tour 4",
+        } : new String[]{
+                "scoreboard players reset §5 tour",
+                "team remove tourzone",
+                "scoreboard players set §c⏣Catacombs§7(M7) tour 4",
+        };
+        server.execute(() -> {
+            for (String command : commands) {
+                server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), command);
+            }
+        });
+    }
+
+    /** Back to the Overworld with the HUD, Sky Effects off again, and the sidebar's dungeon line back. */
+    private static void skyDone() {
+        AlpakaConfig.instance.skyEffectsEnabled = false;
+        if (Minecraft.getInstance().gui.hud.isHidden()) Minecraft.getInstance().gui.hud.toggle();
+        endIslandSidebar(false);
+        net.minecraft.client.server.IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+        if (server == null) return;
+        server.execute(() -> server.getCommands().performPrefixedCommand(server.createCommandSourceStack(),
+                "execute in minecraft:overworld run tp @a 0.5 -60 0.5 0 0"));
     }
 
     /** A scoreboard sidebar with a few lines, and a diamond sword in hand with starlight on. */

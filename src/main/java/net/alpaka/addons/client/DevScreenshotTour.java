@@ -101,6 +101,12 @@ public final class DevScreenshotTour {
             new Stop(null, () -> ScreenshotPreview.devFreezeAt(-1.0f), () -> true, 5),
             new Stop("hud-editor-world", () -> Minecraft.getInstance().gui.setScreen(new HudEditorScreen(null)), () -> true, 20),
             screen("pause-menu", net.alpaka.addons.features.escapemenu.CustomPauseScreen::new),
+            // The Friends overlay over the pause menu, opened as the Friends key (O) opens it: it
+            // draws the menu as its backdrop and then blurs itself, so the menu must not blur too.
+            new Stop("pause-menu-friends", () -> {
+                Minecraft mc = Minecraft.getInstance();
+                mc.gui.setScreen(new net.minecraft.client.gui.screens.friends.FriendsOverlayScreen(mc.gui.screen()));
+            }, () -> true, 30),
             new Stop(null, () -> Minecraft.getInstance().gui.setScreen(null), () -> true, 5),
             // Two ticks after a burst: the lines are mid-slide inside the chat's box.
             new Stop("chat-slide", DevScreenshotTour::chatBurst, () -> true, 2),
@@ -133,8 +139,9 @@ public final class DevScreenshotTour {
             new Stop(null, () -> AlpakaConfig.instance.itemSwayDisabled = false, () -> true, 1),
             // Starlight together with Disable Item Lighting, still and mid-swing.
             new Stop("starlight-unlit", () -> AlpakaConfig.instance.itemLightingDisabled = true, () -> true, 5),
-            new Stop("starlight-unlit-swing", () -> Minecraft.getInstance().player.swing(
-                    net.minecraft.world.InteractionHand.MAIN_HAND), () -> true, 3),
+            // The swing animation only, as the config's swing preview plays it: the one-argument
+            // swing also tells the server, which only Outbound may.
+            new Stop("starlight-unlit-swing", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
             new Stop(null, () -> AlpakaConfig.instance.itemLightingDisabled = false, () -> true, 1),
             // The fire pit preview has to be on a tick before the clay arrives, as in a real fight.
             new Stop(null, DevScreenshotTour::firePitPreview, () -> true, 5),

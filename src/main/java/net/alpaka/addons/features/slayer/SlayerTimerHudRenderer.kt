@@ -30,6 +30,12 @@ object SlayerTimerHudRenderer {
     private const val LABEL = "Boss"
     private const val LABEL_GAP = 5
 
+    /**
+     * [LABEL] as drawn, kept between frames: a component built anew every frame also had its bidi
+     * order worked out anew every frame.
+     */
+    private val LABEL_TEXT: Component = Component.literal(LABEL)
+
     /** Called every frame from the HUD hook. */
     @JvmStatic
     fun render(graphics: GuiGraphicsExtractor, @Suppress("UNUSED_PARAMETER") deltaTracker: DeltaTracker) {
@@ -44,10 +50,13 @@ object SlayerTimerHudRenderer {
 
         val screenWidth = mc.window.guiScaledWidth
         val screenHeight = mc.window.guiScaledHeight
+        // The clamp is measured once through visiblePlacement, the editor's own call, instead of
+        // re-measuring the line for each axis.
+        val placement = SlayerTimerHudElement.visiblePlacement(screenWidth, screenHeight)
         renderHud(
             graphics,
-            SlayerTimerHudElement.visibleAnchorX(screenWidth, screenHeight),
-            SlayerTimerHudElement.visibleAnchorY(screenWidth, screenHeight),
+            placement.anchorX,
+            placement.anchorY,
             cfg.slayerTimerHudScale,
             preview = false,
         )
@@ -72,7 +81,7 @@ object SlayerTimerHudRenderer {
         graphics.pose().pushMatrix()
         graphics.pose().translate(x.toFloat(), y.toFloat())
         graphics.pose().scale(scale, scale)
-        graphics.text(font, Component.literal(LABEL), 0, 0, COLOR_LABEL)
+        graphics.text(font, LABEL_TEXT, 0, 0, COLOR_LABEL)
         graphics.text(font, Component.literal(SlayerTimer.format(elapsed)), font.width(LABEL) + LABEL_GAP, 0, color)
         graphics.pose().popMatrix()
     }

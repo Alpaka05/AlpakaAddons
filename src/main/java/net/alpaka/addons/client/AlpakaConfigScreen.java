@@ -17,6 +17,7 @@ import net.minecraft.client.input.MouseButtonEvent;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class AlpakaConfigScreen extends Screen {
     private final Screen parent;
@@ -237,6 +238,11 @@ public class AlpakaConfigScreen extends Screen {
         sidebarScrollY += (targetSidebarScrollY - sidebarScrollY) * Math.min(1.0f, deltaSec * 14.0f);
         sidebarVisible = PloppAnimation.interpolate(sidebarVisible, setupMode ? 0.0f : 1.0f, deltaSec, 12.0f);
         if (Math.abs(sidebarVisible - (setupMode ? 0.0f : 1.0f)) < 0.005f) sidebarVisible = setupMode ? 0.0f : 1.0f;
+
+        // Opened from the custom main menu, the menu itself is what shows behind the panel.
+        if (this.parent instanceof net.alpaka.addons.features.mainmenu.CustomMainMenuScreen menu) {
+            menu.extractAsBackdrop(graphics, this.width, this.height, partialTick);
+        }
 
         // Render translucent backdrop so game is visible behind and around the config panel.
         // Drawn against an identity matrix rather than whatever is already on the pose stack -
@@ -483,7 +489,7 @@ public class AlpakaConfigScreen extends Screen {
                 if (startOptionY + itemHeight >= clipY && startOptionY <= clipY + clipH) {
                     if (opt.getType() == ConfigOption.Type.HEADER) {
                         ModernGuiUtils.drawRect(graphics, contentX + 14, startOptionY + 8, cardW, 1, ModernGuiUtils.COLOR_CARD_BORDER);
-                        graphics.text(this.font, GuiFont.text("• " + opt.getTitle().toUpperCase()), contentX + 14, startOptionY + 14, ModernGuiUtils.getAccentColor(), false);
+                        graphics.text(this.font, GuiFont.text("• " + opt.getTitle().toUpperCase(Locale.ROOT)), contentX + 14, startOptionY + 14, ModernGuiUtils.getAccentColor(), false);
                     } else {
                         boolean isCardHovered = mouseX >= contentX + 14 && mouseX <= contentX + 14 + cardW &&
                                                mouseY >= startOptionY && mouseY <= startOptionY + cardH &&

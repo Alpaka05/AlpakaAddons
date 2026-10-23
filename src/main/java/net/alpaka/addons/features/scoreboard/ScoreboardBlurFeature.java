@@ -2,6 +2,7 @@ package net.alpaka.addons.features.scoreboard;
 
 import net.alpaka.addons.client.gui.AlpakaGuiElementSink;
 import net.alpaka.addons.client.gui.BlurRectRenderState;
+import net.alpaka.addons.compat.GnetumCompat;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.chat.ChatBlurFeature;
 import net.minecraft.client.Minecraft;
@@ -72,13 +73,16 @@ public final class ScoreboardBlurFeature {
         if (!active || !(graphics instanceof AlpakaGuiElementSink sink)) return false;
         int top = titleTop != Integer.MIN_VALUE ? Math.min(titleTop, y0) : y0;
         float toScreen = (float) Minecraft.getInstance().getWindow().getGuiScale();
-        // Before the submission, so a HUD cached by Gnetum hands this panel to the frame's own pass.
-        ChatBlurFeature.request();
-        sink.alpaka$submitElement(new BlurRectRenderState(
+        BlurRectRenderState panel = new BlurRectRenderState(
                 new Matrix3x2f(graphics.pose()),
                 x0 - PADDING, top - PADDING, x1 + PADDING, y1 + PADDING,
                 Math.round(RADIUS * toScreen), color, toScreen, 1.0f,
-                Math.round(SHADOW * toScreen), sink.alpaka$currentScissor()));
+                Math.round(SHADOW * toScreen), sink.alpaka$currentScissor());
+        // While Gnetum caches the sidebar the panel stays a plain tint: asking for the blur would take
+        // the sidebar out of the cache and redraw it every frame. Otherwise asked before the
+        // submission, so a HUD cached by Gnetum hands this panel to the frame's own pass.
+        if (!GnetumCompat.isCaching()) ChatBlurFeature.requestForHud(panel.bounds());
+        sink.alpaka$submitElement(panel);
         return true;
     }
 }

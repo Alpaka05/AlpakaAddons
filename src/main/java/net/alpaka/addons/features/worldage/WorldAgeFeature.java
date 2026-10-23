@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.Locale;
 
 import net.alpaka.addons.utils.SkyblockUtils;
 
@@ -166,7 +167,7 @@ public class WorldAgeFeature {
         if (seconds >= 60) {
             long m = seconds / 60;
             long s = seconds % 60;
-            return s > 0 ? String.format("%dm %ds", m, s) : String.format("%dm", m);
+            return s > 0 ? String.format(Locale.ROOT, "%dm %ds", m, s) : String.format(Locale.ROOT, "%dm", m);
         }
         return seconds + "s";
     }

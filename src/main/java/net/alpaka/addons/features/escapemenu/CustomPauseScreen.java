@@ -67,10 +67,6 @@ public class CustomPauseScreen extends PauseScreen {
     /** The further dim while the disconnect prompt is up. */
     private static final int COLOR_PROMPT_DIM = 0x66000000;
 
-    /** A button's glass: a faint white fill and hairline that brighten under the mouse. */
-    private static final int GLASS_FILL = 0x14FFFFFF;
-    private static final int GLASS_FILL_HOVER = 0x2EFFFFFF;
-    private static final int GLASS_BORDER = 0x30FFFFFF;
     /** The prompt's glass, nearly opaque: it stands over the menu rather than beside it. */
     private static final int PROMPT_FILL = 0xF00D1117;
 
@@ -197,7 +193,7 @@ public class CustomPauseScreen extends PauseScreen {
                 if (net.alpaka.addons.compat.ModMenuCompat.isLoaded()) {
                     net.alpaka.addons.compat.ModMenuCompat.openModsScreen(this);
                 } else {
-                    this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options, false));
+                    this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options, true));
                 }
             }
         });
@@ -207,7 +203,9 @@ public class CustomPauseScreen extends PauseScreen {
         this.optionsButton = new PauseButton(Kind.GLASS, 4, fullX, rowY + ROW_PITCH * 2, HALF_WIDTH, BUTTON_HEIGHT,
                 MenuStyle.ICON_SLIDERS, "Options", btn -> {
             if (this.minecraft != null) {
-                this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options, false));
+                // In a world, as vanilla's pause menu opens it: without that the singleplayer
+                // difficulty and the world's own options are missing.
+                this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options, true));
             }
         });
         this.addRenderableWidget(this.optionsButton);
@@ -244,14 +242,22 @@ public class CustomPauseScreen extends PauseScreen {
         this.promptConfirmButton = new PauseButton(Kind.QUIT, -1, promptX + PROMPT_WIDTH - 16 - PROMPT_BUTTON_WIDTH, pBtnY,
                 PROMPT_BUTTON_WIDTH, PROMPT_BUTTON_HEIGHT, MenuStyle.ICON_DOOR, leaveText, btn -> {
             if (this.minecraft != null) {
-                if (this.minecraft.level != null) {
-                    this.minecraft.level.disconnect(Component.literal("Disconnected"));
-                }
-                this.minecraft.disconnect(new TitleScreen(), false);
+                // As vanilla's pause menu does: a player report still being written is offered
+                // back first, and leaving only goes ahead once it is sent or dropped.
+                btn.active = false;
+                this.minecraft.getReportingContext().draftReportHandled(this.minecraft, this, this::leaveWorld, true);
             }
         });
 
         this.updateWidgetStates();
+    }
+
+    private void leaveWorld() {
+        if (this.minecraft == null) return;
+        if (this.minecraft.level != null) {
+            this.minecraft.level.disconnect(Component.literal("Disconnected"));
+        }
+        this.minecraft.disconnect(new TitleScreen(), false);
     }
 
     private void updateWidgetStates() {
@@ -271,7 +277,18 @@ public class CustomPauseScreen extends PauseScreen {
     public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         // Vanilla's menu blur, but not vanilla's heavy in-world darkening: the dim here is lighter
         // and fades in, so the world stays visible behind the menu.
-        this.extractBlurredBackground(graphics);
+        //
+        // Only while this menu is the screen on top, as vanilla's pause menu does it. The Friends
+        // overlay (the Friends key, O) opens over any pause menu, draws it as its backdrop and then
+        // blurs on its own; a second blur in the same frame throws and crashes the game. The catch
+        // covers another mod's screen that does the same without being the one on top.
+        if (isTopmostScreen()) {
+            try {
+                this.extractBlurredBackground(graphics);
+            } catch (IllegalStateException ignored) {
+                // Something blurred this frame already; the menu stays on that blur.
+            }
+        }
 
         // Drawn against an identity matrix rather than whatever is already on the pose stack -
         // other installed GUI mods (SmoothGui and friends) apply their own open-transition
@@ -433,10 +450,7 @@ public class CustomPauseScreen extends PauseScreen {
                     textColor = 0xFFFCA5A5;
                 }
                 default -> {
-                    int fill = ModernGuiUtils.lerpColor(GLASS_FILL, GLASS_FILL_HOVER, this.hover);
-                    int edge = ModernGuiUtils.lerpColor(GLASS_BORDER, MenuStyle.accent(), this.hover);
-                    ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, BUTTON_RADIUS, fade(fill, appear));
-                    ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, h, BUTTON_RADIUS, fade(edge, appear));
+                    MenuStyle.glassBox(graphics, x, y, w, h, BUTTON_RADIUS, this.hover, appear);
                     textColor = ModernGuiUtils.lerpColor(MenuStyle.TEXT_SOFT, MenuStyle.TEXT, this.hover);
                 }
             }
@@ -463,6 +477,11 @@ public class CustomPauseScreen extends PauseScreen {
     @FunctionalInterface
     private interface ButtonAction {
         void onPress(PauseButton button);
+    }
+
+    /** Whether this menu is the screen on top; vanilla's PauseScreen.isTopmostScreen(), which is private. */
+    private boolean isTopmostScreen() {
+        return this.minecraft != null && this.minecraft.gui.screen() == this;
     }
 
     /**

@@ -173,6 +173,27 @@ public final class CustomTabFeature {
     }
 
     /**
+     * Takes the player list's place in Fabric's HUD registry: on SkyBlock the mod draws the list,
+     * elsewhere the element as the registry has it - vanilla's, or another mod's replacement.
+     *
+     * Through the registry rather than a hook inside vanilla's list, so the rest of the HUD sees what
+     * is drawn there: Better Chat (ChatOverHud) hands this element over to draw it after the HUD,
+     * which is why this has to be registered first, and a HUD cache wraps it like any other.
+     * While Tab cycles the chat tabs the list stays away; that is up to the element underneath,
+     * whose hook in HudMixin keeps it away and lets go of the key.
+     */
+    public static void register() {
+        net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry.replaceElement(
+                net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements.PLAYER_LIST,
+                previous -> (graphics, deltaTracker) -> {
+                    if (net.alpaka.addons.features.chat.ChatTabsFeature.suppressesTabList()
+                            || !render(graphics, Minecraft.getInstance().gui.hud)) {
+                        previous.extractRenderState(graphics, deltaTracker);
+                    }
+                });
+    }
+
+    /**
      * Draws the list in place of vanilla's. Returns false where vanilla's list is to be drawn
      * instead: with the feature off, and off SkyBlock.
      */

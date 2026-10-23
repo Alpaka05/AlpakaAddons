@@ -115,14 +115,6 @@ public class HudMixin implements ChatOverHud.Late {
         }
     }
 
-    /** Custom Tab: on SkyBlock the player list is drawn by the mod instead; see CustomTabFeature. */
-    @Inject(method = "extractTabList", at = @At("HEAD"), cancellable = true)
-    private void alpaka$customTab(GuiGraphicsExtractor graphicsExtractor, DeltaTracker deltaTracker, CallbackInfo ci) {
-        if (CustomTabFeature.render(graphicsExtractor, (Hud) (Object) this)) {
-            ci.cancel();
-        }
-    }
-
     /** Toggle Tab List for vanilla's list too, where the Custom Tab leaves it in place. */
     @WrapOperation(
             method = "extractTabList",

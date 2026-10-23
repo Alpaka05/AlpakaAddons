@@ -67,10 +67,6 @@ public class CustomPauseScreen extends PauseScreen {
     /** The further dim while the disconnect prompt is up. */
     private static final int COLOR_PROMPT_DIM = 0x66000000;
 
-    /** A button's glass: a faint white fill and hairline that brighten under the mouse. */
-    private static final int GLASS_FILL = 0x14FFFFFF;
-    private static final int GLASS_FILL_HOVER = 0x2EFFFFFF;
-    private static final int GLASS_BORDER = 0x30FFFFFF;
     /** The prompt's glass, nearly opaque: it stands over the menu rather than beside it. */
     private static final int PROMPT_FILL = 0xF00D1117;
 
@@ -454,10 +450,7 @@ public class CustomPauseScreen extends PauseScreen {
                     textColor = 0xFFFCA5A5;
                 }
                 default -> {
-                    int fill = ModernGuiUtils.lerpColor(GLASS_FILL, GLASS_FILL_HOVER, this.hover);
-                    int edge = ModernGuiUtils.lerpColor(GLASS_BORDER, MenuStyle.accent(), this.hover);
-                    ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, BUTTON_RADIUS, fade(fill, appear));
-                    ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, h, BUTTON_RADIUS, fade(edge, appear));
+                    MenuStyle.glassBox(graphics, x, y, w, h, BUTTON_RADIUS, this.hover, appear);
                     textColor = ModernGuiUtils.lerpColor(MenuStyle.TEXT_SOFT, MenuStyle.TEXT, this.hover);
                 }
             }

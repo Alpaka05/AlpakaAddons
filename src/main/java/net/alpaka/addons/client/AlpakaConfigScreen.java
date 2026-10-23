@@ -239,6 +239,11 @@ public class AlpakaConfigScreen extends Screen {
         sidebarVisible = PloppAnimation.interpolate(sidebarVisible, setupMode ? 0.0f : 1.0f, deltaSec, 12.0f);
         if (Math.abs(sidebarVisible - (setupMode ? 0.0f : 1.0f)) < 0.005f) sidebarVisible = setupMode ? 0.0f : 1.0f;
 
+        // Opened from the custom main menu, the menu itself is what shows behind the panel.
+        if (this.parent instanceof net.alpaka.addons.features.mainmenu.CustomMainMenuScreen menu) {
+            menu.extractAsBackdrop(graphics, this.width, this.height, partialTick);
+        }
+
         // Render translucent backdrop so game is visible behind and around the config panel.
         // Drawn against an identity matrix rather than whatever is already on the pose stack -
         // other installed GUI mods (SmoothGui and friends) apply their own open-transition

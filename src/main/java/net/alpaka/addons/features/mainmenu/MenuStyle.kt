@@ -91,6 +91,11 @@ object MenuStyle {
     private const val STATUS_DOT_RADIUS = 1.6f
     private const val STATUS_DOT_CENTER_Y = 3.5f
 
+    /** A glass button: a faint white fill and hairline that brighten under the mouse. */
+    private const val GLASS_FILL = 0x14FFFFFF
+    private const val GLASS_FILL_HOVER = 0x2EFFFFFF
+    private const val GLASS_BORDER = 0x30FFFFFF
+
     /** The red pill to leave by, at a card's foot. */
     private const val QUIT_FILL = 0x29EF4444
     private const val QUIT_FILL_HOVER = 0x4DEF4444
@@ -350,6 +355,19 @@ object MenuStyle {
         graphics.text(font, glyphComponent, -font.width(glyphComponent) / 2 + 1, -4,
             fade(ModernGuiUtils.lerpColor(TEXT, accent(), hover), appear), false)
         graphics.pose().popMatrix()
+    }
+
+    /**
+     * A glass button's face, without its content: the faint fill and the hairline, both brighter
+     * under the mouse, where the edge also takes the accent.
+     */
+    @JvmStatic
+    fun glassBox(graphics: GuiGraphicsExtractor, x: Int, y: Int, width: Int, height: Int, radius: Int,
+                 hover: Float, appear: Float) {
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, width, height, radius,
+            fade(ModernGuiUtils.lerpColor(GLASS_FILL, GLASS_FILL_HOVER, hover), appear))
+        ModernGuiUtils.drawRoundedOutline(graphics, x, y, width, height, radius,
+            fade(ModernGuiUtils.lerpColor(GLASS_BORDER, accent(), hover), appear))
     }
 
     /** The red pill to leave by, ringed in red under the mouse. */

@@ -178,7 +178,7 @@ public class CustomPauseScreen extends PauseScreen implements net.alpaka.addons.
                 if (net.alpaka.addons.compat.ModMenuCompat.isLoaded()) {
                     net.alpaka.addons.compat.ModMenuCompat.openModsScreen(this);
                 } else {
-                    this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options, false));
+                    this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options, true));
                 }
             }
         });
@@ -188,7 +188,9 @@ public class CustomPauseScreen extends PauseScreen implements net.alpaka.addons.
         this.optionsButton = new PauseButton(Kind.GLASS, 4, fullX, rowY + ROW_PITCH * 2, HALF_WIDTH, BUTTON_HEIGHT,
                 MenuStyle.ICON_SLIDERS, "Options", btn -> {
             if (this.minecraft != null) {
-                this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options, false));
+                // In a world, as vanilla's pause menu opens it: without that the singleplayer
+                // difficulty and the world's own options are missing.
+                this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options, true));
             }
         });
         this.addRenderableWidget(this.optionsButton);
@@ -246,7 +248,10 @@ public class CustomPauseScreen extends PauseScreen implements net.alpaka.addons.
      */
     private void leave() {
         if (this.minecraft == null) return;
-        this.minecraft.disconnectFromWorld(net.minecraft.client.multiplayer.ClientLevel.DEFAULT_QUIT_MESSAGE);
+        // As vanilla's pause menu does: a player report still being written is offered back first,
+        // and leaving only goes ahead once it is sent or dropped.
+        this.minecraft.getReportingContext().draftReportHandled(this.minecraft, this,
+                () -> this.minecraft.disconnectFromWorld(net.minecraft.client.multiplayer.ClientLevel.DEFAULT_QUIT_MESSAGE), true);
     }
 
     @Override

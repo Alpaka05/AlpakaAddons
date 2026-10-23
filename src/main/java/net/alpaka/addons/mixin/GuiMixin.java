@@ -37,7 +37,10 @@ public abstract class GuiMixin {
 
     @Inject(method = "setScreen", at = @At("HEAD"), cancellable = true)
     private void replacePauseScreen(Screen screen, CallbackInfo ci) {
-        if (screen != null && screen.getClass() == PauseScreen.class && AlpakaConfig.instance.customEscapeMenuEnabled) {
+        // Not the pause without a menu that F3+Esc opens (showsPauseMenu false): that one is meant
+        // to show nothing but the game.
+        if (screen != null && screen.getClass() == PauseScreen.class && ((PauseScreen) screen).showsPauseMenu()
+                && AlpakaConfig.instance.customEscapeMenuEnabled) {
             ci.cancel();
             this.setScreen(new CustomPauseScreen());
         }

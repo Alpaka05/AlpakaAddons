@@ -500,10 +500,11 @@ public class MarketInputScreen extends SignEditScreen {
         replace(suggestions.get(index).name());
     }
 
+    /** The field's icon; none for a price, whose "= … coins" under the field already says what it is. */
     private MarketIcons.Glyph glyph() {
         return switch (prompt.type()) {
             case SEARCH -> MarketIcons.Glyph.SEARCH;
-            case PRICE -> MarketIcons.Glyph.COIN;
+            case PRICE -> null;
             case AMOUNT -> MarketIcons.Glyph.BOX;
             case DURATION -> MarketIcons.Glyph.CLOCK;
             default -> context == null ? MarketIcons.Glyph.ORDERS : MarketIcons.of(context);
@@ -526,11 +527,12 @@ public class MarketInputScreen extends SignEditScreen {
         ModernGuiUtils.drawRect(graphics, x + lineInset, y + FIELD_H - 1, w - 2 * lineInset, 1, full ? AlpakaStyle.DANGER : accent);
 
         int iconSize = 10;
-        MarketIcons.draw(graphics, glyph(), x + 8, y + (FIELD_H - iconSize) / 2f, iconSize,
-                prompt.type() == SignPrompt.Type.PRICE ? COIN : accent);
-        int tx = x + 24;
+        MarketIcons.Glyph glyph = glyph();
+        if (glyph != null) MarketIcons.draw(graphics, glyph, x + 8, y + (FIELD_H - iconSize) / 2f, iconSize, accent);
+        int textX = glyph != null ? 24 : 8;
+        int tx = x + textX;
         int ty = y + (FIELD_H - 8) / 2;
-        int room = w - 24 - 8;
+        int room = w - textX - 8;
         String text = text();
         if (text.isEmpty()) {
             // A little after the caret, which blinks at the very start.
@@ -573,7 +575,6 @@ public class MarketInputScreen extends SignEditScreen {
         String reading = "= " + Coins.full(value) + (coins ? " coins" : "");
         int rw = GuiFont.width(this.font, reading);
         graphics.text(this.font, GuiFont.text(reading), right - rw, y, coins ? COIN : AlpakaStyle.TEXT_SOFT, false);
-        if (coins) MarketIcons.draw(graphics, MarketIcons.Glyph.COIN, right - rw - 11, y, 8, COIN);
     }
 
     private void drawChips(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w) {

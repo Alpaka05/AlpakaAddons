@@ -253,7 +253,19 @@ public class CustomPauseScreen extends PauseScreen implements net.alpaka.addons.
     public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         // Vanilla's menu blur, but not vanilla's heavy in-world darkening: the dim here is lighter
         // and fades in, so the world stays visible behind the menu.
-        this.extractBlurredBackground(graphics);
+        //
+        // Only while this menu is the screen on top, as vanilla's pause menu does it, or while our
+        // own dialog shows it as its backdrop (the dialog leaves the blur to the window behind it).
+        // The Friends overlay (the Friends key, O) opens over any pause menu, draws it as its
+        // backdrop and then blurs on its own; a second blur in the same frame throws and crashes the
+        // game. The catch covers another mod's screen that does the same without being the one on top.
+        if (blursWorld()) {
+            try {
+                this.extractBlurredBackground(graphics);
+            } catch (IllegalStateException ignored) {
+                // Something blurred this frame already; the menu stays on that blur.
+            }
+        }
 
         // Drawn against an identity matrix rather than whatever is already on the pose stack -
         // other installed GUI mods (SmoothGui and friends) apply their own open-transition
@@ -395,6 +407,16 @@ public class CustomPauseScreen extends PauseScreen implements net.alpaka.addons.
     @FunctionalInterface
     private interface ButtonAction {
         void onPress(PauseButton button);
+    }
+
+    /**
+     * Whether this menu blurs the world: as the screen on top (vanilla's PauseScreen.isTopmostScreen(),
+     * which is private), or as the backdrop of our own dialog, which does not blur by itself.
+     */
+    private boolean blursWorld() {
+        if (this.minecraft == null) return false;
+        net.minecraft.client.gui.screens.Screen top = this.minecraft.gui.screen();
+        return top == this || top instanceof AlpakaConfirmScreen;
     }
 
     /**

@@ -46,7 +46,6 @@ public class AlpakaConfig {
     /** What those share buttons post: 0 the tracker's own line, 1 Hypixel's drop message as it came. */
     public int slayerShareMessage = 0;
     public boolean fullbrightEnabled = false;
-
     /** Sky Effects: animated skies, drawn by this client only. Each sky has its own switch. */
     public boolean skyEffectsEnabled = false;
     public boolean skyEffectsNether = true;
@@ -1110,6 +1109,7 @@ public class AlpakaConfig {
         this.playerScaleEnabled = false;
         this.playerScaleOthers = false;
         this.fullbrightEnabled = false;
+        this.skyEffectsEnabled = false;
         this.inventorySnowEnabled = false;
         this.containerBgFadeInEnabled = false;
         this.cleanBlazeEnabled = false;
@@ -1220,7 +1220,6 @@ public class AlpakaConfig {
         this.bossSpawnAlertEnabled = false;
         this.bossCocoonAlertEnabled = false;
         this.partyInvitePromptEnabled = false;
-        this.skyEffectsEnabled = false;
         save();
     }
 

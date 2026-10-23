@@ -93,8 +93,9 @@ public final class ConfigTree {
             "allow_api_calls", "update_notifications", "menu_font", "menu_accent_color",
             "custom_escape_menu", "custom_main_menu", "disable_all_features", "reset_all_settings",
             // Visuals
-            "fullbright", "sky_effects", "clean_blaze", "blaze_fire_pits", "stop_blaze_spinning", "hide_hurt_overlay", "hide_mob_deaths",
+            "fullbright", "clean_blaze", "blaze_fire_pits", "stop_blaze_spinning", "hide_hurt_overlay", "hide_mob_deaths",
             "render_hand_third_person", "smooth_perspective", "disable_front_perspective",
+            "sky_effects",
             "container_bg_opacity", "inventory_snow", "scrollable_tooltips", "persistent_item_name", "old_master_stars", "wide_health_bar",
             "better_chat", "chat_search", "expand_chat_history", "compact_chat",
             "mention_notification", "chat_peek", "better_screenshot_message", "chat_tabs",

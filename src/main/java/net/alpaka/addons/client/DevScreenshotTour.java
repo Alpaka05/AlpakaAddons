@@ -399,12 +399,9 @@ public final class DevScreenshotTour {
             new Stop("starlight-unlit-swing", () -> Minecraft.getInstance().player.swing(
                     net.minecraft.world.InteractionHand.MAIN_HAND), () -> true, 3),
             new Stop(null, () -> AlpakaConfig.instance.itemLightingDisabled = false, () -> true, 1),
-            // The fire pit preview has to be on a tick before the clay arrives, as in a real fight.
-            new Stop(null, DevScreenshotTour::firePitPreview, () -> true, 5),
-            new Stop("fire-pits", DevScreenshotTour::placeFirePits, () -> true, 30),
             // Sky Effects, without the HUD: the Overworld at night looking north at the aurora and
             // in the morning towards the sun, the Nether's firestorm above its roof and the End's
-            // nebula; most twice, to see them move.
+            // nebula; most twice, to see them move. Then back where the player stood, as they were.
             new Stop(null, () -> skyAt("overworld", 0.5, 120.0, 18000L, 180.0f, -20.0f), () -> true, 40),
             new Stop("sky-overworld-night", () -> {}, () -> true, 5),
             new Stop("sky-overworld-night-later", () -> {}, () -> true, 40),
@@ -419,6 +416,9 @@ public final class DevScreenshotTour {
             new Stop("sky-end", () -> {}, () -> true, 5),
             new Stop("sky-end-up", () -> Minecraft.getInstance().player.setXRot(-60.0f), () -> true, 10),
             new Stop(null, DevScreenshotTour::skyDone, () -> inDimension(net.minecraft.world.level.Level.OVERWORLD), 20),
+            // The fire pit preview has to be on a tick before the clay arrives, as in a real fight.
+            new Stop(null, DevScreenshotTour::firePitPreview, () -> true, 5),
+            new Stop("fire-pits", DevScreenshotTour::placeFirePits, () -> true, 30),
             // Last, as it ends the world: confirming the leave dialog leaves for the title screen
             // rather than going back to the pause menu.
             screen("confirm-pause-before-leaving", net.alpaka.addons.features.escapemenu.CustomPauseScreen::new),
@@ -685,6 +685,10 @@ public final class DevScreenshotTour {
         server.execute(() -> {
             net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayer(id);
             if (player == null) return;
+            if (beforeSky == null) {
+                beforeSky = new SkyReturn(player.gameMode(), player.getX(), player.getY(), player.getZ(),
+                        player.getYRot(), player.getXRot(), player.level().getOverworldClockTime());
+            }
             player.setGameMode(GameType.CREATIVE);
             player.getAbilities().flying = true;
             player.onUpdateAbilities();
@@ -702,14 +706,37 @@ public final class DevScreenshotTour {
         return mc.level != null && mc.player != null && mc.level.dimension() == dimension && mc.gui.screen() == null;
     }
 
-    /** Back to the Overworld with the HUD, Sky Effects off again. */
+    /** Where the player stood, in which game mode and at what time, before the sky stops. */
+    private record SkyReturn(GameType mode, double x, double y, double z, float yRot, float xRot, long time) {}
+
+    private static SkyReturn beforeSky = null;
+
+    /**
+     * Back in the Overworld where the player was, as they were and at the time it was, with the HUD
+     * on and Sky Effects off - and without the advancement toasts the trip brought.
+     */
     private static void skyDone() {
+        Minecraft mc = Minecraft.getInstance();
         AlpakaConfig.instance.skyEffectsEnabled = false;
-        if (Minecraft.getInstance().gui.hud.isHidden()) Minecraft.getInstance().gui.hud.toggle();
-        net.minecraft.client.server.IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+        if (mc.gui.hud.isHidden()) mc.gui.hud.toggle();
+        mc.gui.toastManager().clear();
+        java.util.UUID id = mc.player.getUUID();
+        net.minecraft.client.server.IntegratedServer server = mc.getSingleplayerServer();
         if (server == null) return;
-        server.execute(() -> server.getCommands().performPrefixedCommand(server.createCommandSourceStack(),
-                "execute in minecraft:overworld run tp @a 0.5 -60 0.5 0 0"));
+        server.execute(() -> {
+            net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayer(id);
+            SkyReturn back = beforeSky;
+            beforeSky = null;
+            if (player == null || back == null) return;
+            player.setGameMode(back.mode());
+            player.getAbilities().flying = false;
+            player.onUpdateAbilities();
+            net.minecraft.commands.CommandSourceStack source = server.createCommandSourceStack();
+            server.getCommands().performPrefixedCommand(source, "time set " + back.time() % 24000L);
+            server.getCommands().performPrefixedCommand(source, String.format(java.util.Locale.ROOT,
+                    "execute in minecraft:overworld run tp @a %.3f %.3f %.3f %.1f %.1f",
+                    back.x(), back.y(), back.z(), back.yRot(), back.xRot()));
+        });
     }
 
     /** A scoreboard sidebar with a few lines, and a diamond sword in hand with starlight on. */

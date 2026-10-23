@@ -313,7 +313,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         } catch (_: IllegalStateException) {
         }
 
-        if (AlpakaConfig.instance.inventorySnowEnabled) {
+        if (AlpakaConfig.instance.inventorySnowEnabled && AlpakaConfig.instance.customMainMenuParticles) {
             SnowOverlayRenderer.render(graphics, this.width, this.height)
         }
         MenuAmbience.motes(graphics, this.width, this.height, t, nx, ny, MOTE_PARALLAX, MOTE_COLOR,

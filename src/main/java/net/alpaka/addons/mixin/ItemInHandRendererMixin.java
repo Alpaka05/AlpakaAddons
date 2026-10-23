@@ -24,7 +24,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
-import org.spongepowered.asm.mixin.injection.Redirect;
+import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
@@ -55,15 +55,13 @@ public class ItemInHandRendererMixin {
     private void applyItemArmAttackTransform(PoseStack poseStack, HumanoidArm arm, float swingProgress) {
     }
 
-    @Redirect(
+    /** No sway: the camera-lag rotations are left out. A condition rather than a redirect, so a viewmodel mod's hook on the same call still runs. */
+    @WrapWithCondition(
             method = "submitHandsWithItems",
             at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;mulPose(Lorg/joml/Quaternionfc;)V")
     )
-    private void redirectMulPose(PoseStack poseStack, org.joml.Quaternionfc quaternion) {
-        if (AlpakaConfig.instance.itemSizeFeatureEnabled && AlpakaConfig.instance.itemSwayDisabled) {
-            return;
-        }
-        poseStack.mulPose(quaternion);
+    private boolean alpaka$keepSway(PoseStack poseStack, org.joml.Quaternionfc quaternion) {
+        return !(AlpakaConfig.instance.itemSizeFeatureEnabled && AlpakaConfig.instance.itemSwayDisabled);
     }
 
     @Inject(method = "swingArm", at = @At("HEAD"), cancellable = true)

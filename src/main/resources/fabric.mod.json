@@ -24,7 +24,8 @@
     ]
   },
   "mixins": [
-    "alpaka.mixins.json"
+    "alpaka.mixins.json",
+    "alpaka.cosmetic.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.16.0",

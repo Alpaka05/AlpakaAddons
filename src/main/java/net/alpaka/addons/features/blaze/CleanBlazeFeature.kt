@@ -120,15 +120,6 @@ object CleanBlazeFeature {
         return AlpakaConfig.instance.stopBlazeSpinning && SkyblockUtils.isOnSkyblock()
     }
 
-    /** Off unless asked for: the health on these tags is what a grinder watches. */
-    @JvmStatic
-    fun shouldHideNameTag(entity: Entity): Boolean {
-        if (!AlpakaConfig.instance.cleanBlazeNameTags || !active()) return false
-        if (entity is Blaze) return true
-        val customName = entity.customName ?: return false
-        return SkyblockUtils.containsIgnoringFormatting(customName.string, "Smoldering Blaze")
-    }
-
     @JvmStatic
     fun shouldHideEntity(entity: Entity): Boolean {
         if (entity is SmallFireball) return AlpakaConfig.instance.cleanBlazeFireballs && active()

@@ -834,6 +834,21 @@ public class AlpakaConfig {
         public Map<Integer, Long> bestBossMsByTier = new HashMap<>();
 
         /**
+         * When each tier's best in {@link #bestBossMsByTier} was set, wall clock, by tier; missing
+         * for bests older than this field. Read by the merge with the file, together with
+         * {@link #bestsClearedAtMs}.
+         */
+        public Map<Integer, Long> bestBossAtMsByTier = new HashMap<>();
+
+        /**
+         * When this slayer's bests were last cleared ({@code /alpakaslayer reset pb}), wall clock,
+         * or 0 when never. The merge with the file drops every best set before it, wherever it is
+         * kept: the file, or another instance's memory, would otherwise hand the cleared best back
+         * within a second.
+         */
+        public long bestsClearedAtMs = 0L;
+
+        /**
          * Last known lifetime slayer XP for this slayer, or -1 when it has never been observed.
          *
          * Hypixel does not tell the client this figure during play - the only place it appears is
@@ -857,6 +872,31 @@ public class AlpakaConfig {
          * larger gap is a total that drifted high and is corrected. See SlayerXpTracker.
          */
         public long recentlyCreditedXp = 0L;
+
+        /**
+         * When {@link #totalXp} was last read from the Slayer menu, wall clock, or 0 when never.
+         * The merge with the file keeps the newer reading rather than the larger number, so a total
+         * corrected down is not taken back by the old one still on the other side.
+         */
+        public long totalXpObservedAtMs = 0L;
+
+        /** Records a new best time for a tier, and when it was set. */
+        public void recordBest(int tier, long ms) {
+            if (bestBossMsByTier == null) bestBossMsByTier = new HashMap<>();
+            if (bestBossAtMsByTier == null) bestBossAtMsByTier = new HashMap<>();
+            bestBossMsByTier.put(tier, ms);
+            bestBossAtMsByTier.put(tier, System.currentTimeMillis());
+        }
+
+        /** Forgets every best time of this slayer, for good; returns whether there was one. */
+        public boolean clearBests() {
+            boolean had = bestBossMsByTier != null
+                    && bestBossMsByTier.values().stream().anyMatch(best -> best != null && best > 0L);
+            if (bestBossMsByTier != null) bestBossMsByTier.clear();
+            if (bestBossAtMsByTier != null) bestBossAtMsByTier.clear();
+            bestsClearedAtMs = System.currentTimeMillis();
+            return had;
+        }
     }
 
     public AlpakaConfig() {

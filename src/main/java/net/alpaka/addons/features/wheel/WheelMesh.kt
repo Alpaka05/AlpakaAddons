@@ -272,7 +272,7 @@ class WheelMesh @JvmOverloads constructor(private val feather: Float, private va
             return
         }
 
-        if (blur) ChatBlurFeature.request()
+        if (blur) ChatBlurFeature.request(bounds)
         graphics.guiRenderState.addGuiElement(
             Element(pose, xy.copyOf(2 * count), colors.copyOf(count), count, scissor, bounds, blur, blurTint)
         )
@@ -295,7 +295,7 @@ class WheelMesh @JvmOverloads constructor(private val feather: Float, private va
         private val blur: Boolean,
         private val blurTint: Float
     ) : GuiElementRenderState {
-        private fun blurActive() = blur && ChatBlurFeature.isReady()
+        private fun blurActive() = blur && ChatBlurFeature.samples(bounds)
 
         override fun buildVertices(consumer: VertexConsumer) {
             if (blurActive()) {

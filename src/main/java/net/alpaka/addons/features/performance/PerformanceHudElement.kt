@@ -10,7 +10,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import kotlin.math.roundToInt
 
-/** Editor handle for the Performance HUD (FPS, ping, TPS). */
+/** Editor handle for the Performance HUD (day, FPS, ping, TPS). */
 object PerformanceHudElement : HudElement {
 
     private const val DEFAULT_SCALE = 1.0f

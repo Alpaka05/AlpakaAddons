@@ -4,6 +4,8 @@ import net.alpaka.addons.client.gui.GuiFont;
 import net.alpaka.addons.client.gui.HudPanel;
 import net.alpaka.addons.client.hud.VisiblePlacement;
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.features.worldage.WorldAgeFeature;
+import net.alpaka.addons.features.worldage.WorldClockTracker;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -15,7 +17,7 @@ import net.minecraft.network.chat.Style;
 
 import java.util.Locale;
 
-/** One line on the HUD with the frame rate, the ping and the server's tick rate. */
+/** One line on the HUD with the server's day, the frame rate, the ping and the server's tick rate. */
 public final class PerformanceHudRenderer {
     private static final int LABEL = 0xFFAAAAAA;
     private static final int GOOD = 0xFF55FF55;
@@ -27,6 +29,7 @@ public final class PerformanceHudRenderer {
      * The drawn line, kept between frames. Its numbers change about once a second at most, so it is
      * rebuilt only when one of them, the parts shown or the font does; the box is measured from it.
      */
+    private static long cachedDay = Long.MIN_VALUE;
     private static int cachedFps = Integer.MIN_VALUE;
     private static int cachedPing = Integer.MIN_VALUE;
     private static int cachedTenthTps = Integer.MIN_VALUE;
@@ -38,7 +41,9 @@ public final class PerformanceHudRenderer {
 
     static Component text() {
         AlpakaConfig cfg = AlpakaConfig.instance;
-        int parts = (cfg.performanceHudShowFps ? 1 : 0) | (cfg.performanceHudShowPing ? 2 : 0) | (cfg.performanceHudShowTps ? 4 : 0);
+        int parts = (cfg.performanceHudShowFps ? 1 : 0) | (cfg.performanceHudShowPing ? 2 : 0) | (cfg.performanceHudShowTps ? 4 : 0)
+                | (cfg.performanceHudShowDay ? 8 : 0);
+        long day = cfg.performanceHudShowDay ? WorldAgeFeature.getWorldDay() : 0L;
         int fps = cfg.performanceHudShowFps ? PerformanceStats.fps() : 0;
         int ping = cfg.performanceHudShowPing ? PerformanceStats.pingMs() : 0;
         float tps = cfg.performanceHudShowTps ? PerformanceStats.tps() : 0.0f;
@@ -46,20 +51,25 @@ public final class PerformanceHudRenderer {
         boolean smooth = cfg.smoothOn(cfg.performanceHudSmoothFont);
         Style style = smooth ? GuiFont.style() : Style.EMPTY;
 
-        if (cachedText == null || parts != cachedParts || fps != cachedFps || ping != cachedPing
+        if (cachedText == null || parts != cachedParts || day != cachedDay || fps != cachedFps || ping != cachedPing
                 || tenthTps != cachedTenthTps || !style.equals(cachedStyle)) {
             cachedParts = parts;
+            cachedDay = day;
             cachedFps = fps;
             cachedPing = ping;
             cachedTenthTps = tenthTps;
             cachedStyle = style;
-            cachedText = HudPanel.text(build(parts, fps, ping, tenthTps), smooth);
+            cachedText = HudPanel.text(build(parts, day, fps, ping, tenthTps), smooth);
         }
         return cachedText;
     }
 
-    private static Component build(int parts, int fps, int ping, int tenthTps) {
+    private static Component build(int parts, long day, int fps, int ping, int tenthTps) {
         MutableComponent line = Component.empty();
+        if ((parts & 8) != 0) {
+            if (day == WorldClockTracker.UNKNOWN_DAY) part(line, "Day ", "--", UNKNOWN);
+            else part(line, "Day ", Long.toString(day), WorldAgeFeature.getDayColor(day));
+        }
         if ((parts & 1) != 0) {
             part(line, "FPS ", Integer.toString(fps), fps >= 60 ? GOOD : fps >= 30 ? FAIR : POOR);
         }
@@ -83,7 +93,7 @@ public final class PerformanceHudRenderer {
 
     private static boolean anyPartShown() {
         AlpakaConfig cfg = AlpakaConfig.instance;
-        return cfg.performanceHudShowFps || cfg.performanceHudShowPing || cfg.performanceHudShowTps;
+        return cfg.performanceHudShowDay || cfg.performanceHudShowFps || cfg.performanceHudShowPing || cfg.performanceHudShowTps;
     }
 
     public static void render(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {

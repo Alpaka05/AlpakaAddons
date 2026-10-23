@@ -240,12 +240,10 @@ public class AlpakaConfig {
      */
     public boolean slayerHudBlur = true;
     public boolean slayerTimerHudBlur = true;
-    public boolean worldAgeHudBlur = true;
     public boolean performanceHudBlur = true;
     public boolean notificationBlur = true;
     public boolean slayerHudSmoothFont = true;
     public boolean slayerTimerHudSmoothFont = true;
-    public boolean worldAgeHudSmoothFont = true;
     public boolean performanceHudSmoothFont = true;
     public boolean notificationSmoothFont = true;
     public boolean customEscapeMenuEnabled = true;
@@ -262,14 +260,20 @@ public class AlpakaConfig {
     public boolean playerModelShowNameTag = true;
     public boolean playerModelShowInGuis = false;
 
-    // World Age HUD & Join Notification options
-    public boolean worldAgeHudEnabled = false;
-    public int worldAgeHudX = net.alpaka.addons.client.hud.HudDefaults.WORLD_AGE_X;
-    public int worldAgeHudY = net.alpaka.addons.client.hud.HudDefaults.WORLD_AGE_Y;
-    public float worldAgeHudScale = 1.0f;
+    /**
+     * Legacy, from the World Age HUD, which became the Performance HUD's Show Day. Read once by
+     * {@link #migrateWorldAgeHud} and then cleared.
+     */
+    public Boolean worldAgeHudEnabled = null;
+    public Integer worldAgeHudX = null;
+    public Integer worldAgeHudY = null;
+    public Float worldAgeHudScale = null;
+    public Boolean worldAgeHudBlur = null;
+    public Boolean worldAgeHudSmoothFont = null;
 
-    /** Performance HUD: FPS, ping and the server's TPS on one line; see PerformanceStats. */
+    /** Performance HUD: the day, FPS, ping and the server's TPS on one line; see PerformanceStats. */
     public boolean performanceHudEnabled = false;
+    public boolean performanceHudShowDay = true;
     public boolean performanceHudShowFps = true;
     public boolean performanceHudShowPing = true;
     public boolean performanceHudShowTps = true;
@@ -1018,6 +1022,7 @@ public class AlpakaConfig {
         }
 
         instance.migrateInventoryHudVisibility();
+        instance.migrateWorldAgeHud();
 
         if (instance.slayerBossMap == null) {
             instance.slayerBossMap = new HashMap<>();
@@ -1072,6 +1077,36 @@ public class AlpakaConfig {
                 inventoryHudAlwaysVisible, inventoryHudShowOnItemChange);
         inventoryHudAlwaysVisible = null;
         inventoryHudShowOnItemChange = null;
+    }
+
+    /**
+     * The World Age HUD became the Performance HUD's Show Day. Whoever had it on keeps seeing the
+     * day where and how it was; if the Performance HUD was off, it comes on with only the day shown,
+     * so nothing appears that was not there before.
+     */
+    private void migrateWorldAgeHud() {
+        if (worldAgeHudEnabled == null && worldAgeHudX == null && worldAgeHudY == null && worldAgeHudScale == null
+                && worldAgeHudBlur == null && worldAgeHudSmoothFont == null) return;
+        if (Boolean.TRUE.equals(worldAgeHudEnabled)) {
+            performanceHudShowDay = true;
+            if (!performanceHudEnabled) {
+                performanceHudEnabled = true;
+                performanceHudShowFps = false;
+                performanceHudShowPing = false;
+                performanceHudShowTps = false;
+                if (worldAgeHudX != null) performanceHudX = worldAgeHudX;
+                if (worldAgeHudY != null) performanceHudY = worldAgeHudY;
+                if (worldAgeHudScale != null) performanceHudScale = worldAgeHudScale;
+                if (worldAgeHudBlur != null) performanceHudBlur = worldAgeHudBlur;
+                if (worldAgeHudSmoothFont != null) performanceHudSmoothFont = worldAgeHudSmoothFont;
+            }
+        }
+        worldAgeHudEnabled = null;
+        worldAgeHudX = null;
+        worldAgeHudY = null;
+        worldAgeHudScale = null;
+        worldAgeHudBlur = null;
+        worldAgeHudSmoothFont = null;
     }
 
     /** The config in {@code file}, or null when it is missing, empty or cannot be parsed. */
@@ -1153,7 +1188,6 @@ public class AlpakaConfig {
         this.playerModelDisableMovement = false;
         this.playerModelHideArmor = false;
         this.playerModelShowInGuis = false;
-        this.worldAgeHudEnabled = false;
         this.performanceHudEnabled = false;
         this.slayerHudEnabled = false;
         this.slayerHudPauseOutsideArea = false;

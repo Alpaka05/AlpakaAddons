@@ -14,8 +14,7 @@ import net.alpaka.addons.client.gui.HudPanel;
  * and ten lines reach 90 pixels above that):
  *
  * <ul>
- *   <li>A top row of one-line HUDs: the world age in the corner and the Performance HUD beside
- *       it.</li>
+ *   <li>A top row: the Performance HUD's one line, with the day first, in the corner.</li>
  *   <li>The boss timer centered along the top, under the HUD editor's bar; see
  *       {@link #CENTERED_X}.</li>
  *   <li>Under that row, the slayer session HUD, which at its tallest - ten rows - still ends above
@@ -39,13 +38,7 @@ public final class HudDefaults {
     private static final int TOP_ROW_Y = 10;
 
     /** The top-left corner. */
-    public static final int WORLD_AGE_X = 10;
-    public static final int WORLD_AGE_Y = TOP_ROW_Y;
-    /** The world age's line at its widest, "Day 35", in the pixel font. */
-    private static final int WORLD_AGE_MAX_WIDTH = 34;
-
-    /** Beside the world age, past its widest day with a gap between the two panels. */
-    public static final int PERFORMANCE_X = WORLD_AGE_X + WORLD_AGE_MAX_WIDTH + HudPanel.PAD_X + PANEL_GAP + HudPanel.PAD_X;
+    public static final int PERFORMANCE_X = 10;
     public static final int PERFORMANCE_Y = TOP_ROW_Y;
 
     /**

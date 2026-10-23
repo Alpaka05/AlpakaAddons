@@ -18,7 +18,6 @@ import java.util.Locale;
 public final class AlpakaPerf {
     public enum Section {
         HUD_PLAYER_MODEL("alpaka:hud_player_model"),
-        HUD_WORLD_AGE("alpaka:hud_world_age"),
         HUD_PERFORMANCE("alpaka:hud_performance"),
         HUD_SLAYER("alpaka:hud_slayer"),
         HUD_SLAYER_TIMER("alpaka:hud_slayer_timer"),

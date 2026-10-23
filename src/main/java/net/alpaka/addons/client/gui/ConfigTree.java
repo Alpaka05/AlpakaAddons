@@ -107,7 +107,7 @@ public final class ConfigTree {
             "etherwarp_overlay", "etherwarp_sound",
             "slayer_drop_tracker", "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat",
             "hide_slayer_chat", "boss_spawn_alert", "boss_cocoon_alert", "slayer_timer", "slayer_hud_enabled",
-            "world_age_hud_enabled", "world_age_join_message_enabled", "party_invite_prompt",
+            "world_age_join_message_enabled", "party_invite_prompt",
             "guild_prefix", "bridge_bot_formatter", "only_crit_damage", "ragnarock", "cache_resource_pack",
             "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input",
             // Cosmetics
@@ -131,8 +131,6 @@ public final class ConfigTree {
             Map.entry("slayer_hud_smooth_font", "slayer_hud_enabled"),
             Map.entry("slayer_timer_blur", "slayer_timer"),
             Map.entry("slayer_timer_smooth_font", "slayer_timer"),
-            Map.entry("world_age_blur", "world_age_hud_enabled"),
-            Map.entry("world_age_smooth_font", "world_age_hud_enabled"),
             Map.entry("performance_hud_blur", "performance_hud_enabled"),
             Map.entry("performance_hud_smooth_font", "performance_hud_enabled"),
             Map.entry("inventory_hud_blur", "inventory_hud_enabled"),
@@ -196,7 +194,7 @@ public final class ConfigTree {
                     {"Blaze", "clean_blaze", "blaze_fire_pits", "stop_blaze_spinning",
                             "mute_vanilla_sounds_blaze_slayer", "custom_sound_blaze_death"},
                     {"Tools", "etherwarp_overlay", "etherwarp_sound", "only_crit_damage",
-                            "world_age_hud_enabled", "world_age_join_message_enabled", "ragnarock", "cache_resource_pack"},
+                            "world_age_join_message_enabled", "ragnarock", "cache_resource_pack"},
                     {"Markets", "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input"},
                     {"Social", "party_invite_prompt", "guild_prefix", "bridge_bot_formatter"}},
     };

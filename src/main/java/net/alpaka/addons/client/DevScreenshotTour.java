@@ -91,8 +91,6 @@ public final class DevScreenshotTour {
                 return new HudEditorScreen(null);
             }),
             // Where a right click on each HUD in the editor leads.
-            screen("hud-settings-world-age", () -> AlpakaConfigScreen.openOnOption(null,
-                    net.alpaka.addons.features.worldage.WorldAgeHudElement.INSTANCE.getSettingsOptionId())),
             screen("hud-settings-performance", () -> AlpakaConfigScreen.openOnOption(null,
                     net.alpaka.addons.features.performance.PerformanceHudElement.INSTANCE.getSettingsOptionId())),
             screen("hud-settings-slayer", () -> AlpakaConfigScreen.openOnOption(null,
@@ -569,7 +567,6 @@ public final class DevScreenshotTour {
         cfg.inventoryHudEnabled = true;
         cfg.inventoryHudAttachToHotbar = true;
         cfg.inventoryHudVisibility = 0;
-        cfg.worldAgeHudEnabled = true;
         cfg.performanceHudEnabled = true;
     }
 

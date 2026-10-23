@@ -26,6 +26,7 @@
     "LightmapMixin",
     "LevelRendererMixin",
     "SkyRendererMixin",
+    "AtmosphericFogEnvironmentMixin",
     "ChatComponentMixin",
     "ChatScreenMixin",
     "ChatScreenScrollbarMixin",

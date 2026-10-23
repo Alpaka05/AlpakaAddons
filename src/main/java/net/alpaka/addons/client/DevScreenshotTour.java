@@ -156,6 +156,13 @@ public final class DevScreenshotTour {
             new Stop(null, () -> skyAt("the_end", 1000.5, 100.0, -1L, 0.0f, -10.0f), () -> inDimension(net.minecraft.world.level.Level.END), 60),
             new Stop("sky-end", () -> {}, () -> true, 5),
             new Stop("sky-end-up", () -> Minecraft.getInstance().player.setXRot(-60.0f), () -> true, 10),
+            // SkyBlock's End island, which Hypixel sends as an Overworld: the End's sky comes from the
+            // sidebar's zone line alone. At noon, where the Overworld's clouds and blue fog would show.
+            new Stop(null, () -> {
+                skyAt("overworld", 0.5, 120.0, 6000L, 0.0f, -10.0f);
+                endIslandSidebar(true);
+            }, () -> inDimension(net.minecraft.world.level.Level.OVERWORLD), 40),
+            new Stop("sky-end-island", () -> {}, () -> true, 5),
             new Stop(null, DevScreenshotTour::skyDone, () -> inDimension(net.minecraft.world.level.Level.OVERWORLD), 20)
     );
 
@@ -340,10 +347,36 @@ public final class DevScreenshotTour {
         return mc.level != null && mc.player != null && mc.level.dimension() == dimension && mc.gui.screen() == null;
     }
 
-    /** Back to the Overworld with the HUD, Sky Effects off again. */
+    /**
+     * The tour's sidebar zone line reads "⏣ The End", as on SkyBlock's End island, or its dungeon
+     * again. The space needs a team prefix: score holder names cannot hold one.
+     */
+    private static void endIslandSidebar(boolean endIsland) {
+        net.minecraft.client.server.IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+        if (server == null) return;
+        String[] commands = endIsland ? new String[]{
+                "scoreboard players reset §c⏣Catacombs§7(M7) tour",
+                "team add tourzone",
+                "team modify tourzone prefix {text:\"⏣ The End\",color:\"light_purple\"}",
+                "team join tourzone §5",
+                "scoreboard players set §5 tour 4",
+        } : new String[]{
+                "scoreboard players reset §5 tour",
+                "team remove tourzone",
+                "scoreboard players set §c⏣Catacombs§7(M7) tour 4",
+        };
+        server.execute(() -> {
+            for (String command : commands) {
+                server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), command);
+            }
+        });
+    }
+
+    /** Back to the Overworld with the HUD, Sky Effects off again, and the sidebar's dungeon line back. */
     private static void skyDone() {
         AlpakaConfig.instance.skyEffectsEnabled = false;
         if (Minecraft.getInstance().gui.hud.isHidden()) Minecraft.getInstance().gui.hud.toggle();
+        endIslandSidebar(false);
         net.minecraft.client.server.IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
         if (server == null) return;
         server.execute(() -> server.getCommands().performPrefixedCommand(server.createCommandSourceStack(),

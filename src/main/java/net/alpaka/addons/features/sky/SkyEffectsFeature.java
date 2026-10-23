@@ -19,9 +19,13 @@ import com.mojang.blaze3d.vertex.MeshData;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.mixin.RenderPipelinesAccessor;
+import net.alpaka.addons.utils.SkyblockUtils;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.BindGroupLayouts;
 import net.minecraft.client.renderer.LevelTargetBundle;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.renderer.state.level.LevelRenderState;
 import net.minecraft.client.renderer.state.level.SkyRenderState;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
@@ -48,12 +52,15 @@ import java.util.OptionalDouble;
  *
  * Where each goes in vanilla's frame:
  * - Nether: where a dimension has no skybox, vanilla adds no sky pass and the frame keeps the fog
- *   color it was cleared with. {@link #addNetherPass} adds a pass there, before the world is drawn
+ *   color it was cleared with. {@link #beforeSkyPass} adds a pass there, before the world is drawn
  *   over it. The storm is built from the fog's color, so it matches each biome.
  * - Overworld: inside vanilla's sky pass, right after the sun, moon and stars, as light added over
  *   them ({@link #renderOverworld}).
  * - End: inside vanilla's sky pass, in place of the textured sky ({@link #renderEnd}); the End's
- *   flashes are still drawn over it.
+ *   flashes are still drawn over it. SkyBlock's End island gets it too, though Hypixel sends that
+ *   island as an Overworld-like dimension: there the sky is switched to the End's before vanilla
+ *   draws it, without the Overworld's clouds, and the air fogs into the End's color
+ *   ({@link #endSkyOnEndIsland}).
  *
  * Where vanilla shows no sky - under lava, in powder snow, blinded, or in the fog a boss bar like
  * the Ender Dragon's brings - none of them show either: the Overworld's and the End's ride inside
@@ -65,6 +72,9 @@ public final class SkyEffectsFeature {
 
     /** The corners of a face of the box, in order around it, on the face's two other axes. */
     private static final float[][] FACE_CORNERS = {{-1.0f, -1.0f}, {1.0f, -1.0f}, {1.0f, 1.0f}, {-1.0f, 1.0f}};
+
+    /** The End's own fog color, its dimension's {@code visual/fog_color}. */
+    public static final int END_FOG_COLOR = 0xFF181318;
 
     private static final SkyClock CLOCK = new SkyClock();
 
@@ -88,11 +98,39 @@ public final class SkyEffectsFeature {
     }
 
     /**
-     * Adds the Nether's sky pass. Called where vanilla adds its own sky pass, which it leaves out
-     * when the dimension has no skybox.
+     * Whether the End's sky stands in for the Overworld's here: on SkyBlock's End island, which
+     * Hypixel sends as an Overworld-like dimension, so vanilla would draw a blue sky with a sun and
+     * clouds over it.
      */
-    public static void addNetherPass(FrameGraphBuilder frame, LevelTargetBundle targets, SkyRenderState sky,
+    public static boolean endSkyOnEndIsland(ClientLevel level) {
+        return shows(AlpakaConfig.instance.skyEffectsEnd) && level != null
+                && level.dimensionType().skybox() == DimensionType.Skybox.OVERWORLD
+                && SkyblockUtils.isOnEndIsland();
+    }
+
+    /**
+     * Called where vanilla adds its sky pass, before it looks at the sky: switches SkyBlock's End
+     * island to the End's sky, and adds the Nether's pass.
+     */
+    public static void beforeSkyPass(FrameGraphBuilder frame, LevelTargetBundle targets, LevelRenderState level,
                                      CameraRenderState camera, GpuBufferSlice fog) {
+        SkyRenderState sky = level.skyRenderState;
+        if (sky.skybox == DimensionType.Skybox.OVERWORLD && endSkyOnEndIsland(Minecraft.getInstance().level)) {
+            // From here on vanilla draws the End's sky, so no sun, moon or stars. A clear cloud
+            // color is how vanilla itself leaves out the clouds of a dimension without any, and an
+            // End flash belongs to a real End only.
+            sky.skybox = DimensionType.Skybox.END;
+            sky.endFlashIntensity = 0.0f;
+            level.cloudColor = 0;
+        }
+        addNetherPass(frame, targets, sky, camera, fog);
+    }
+
+    /**
+     * Adds the Nether's sky pass, where vanilla adds none because the dimension has no skybox.
+     */
+    private static void addNetherPass(FrameGraphBuilder frame, LevelTargetBundle targets, SkyRenderState sky,
+                                      CameraRenderState camera, GpuBufferSlice fog) {
         if (sky.skybox != DimensionType.Skybox.NONE || !shows(AlpakaConfig.instance.skyEffectsNether)) return;
         // Where vanilla would show no sky either.
         if (camera.fogType == FogType.LAVA || camera.fogType == FogType.POWDER_SNOW

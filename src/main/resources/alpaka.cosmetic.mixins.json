@@ -5,6 +5,7 @@
   "plugin": "net.alpaka.addons.compat.OptionalHooksPlugin",
   "client": [
     "AbstractClientPlayerMixin",
+    "AtmosphericFogEnvironmentMixin",
     "AvatarRendererMixin",
     "BlazeModelMixin",
     "CameraMixin",
@@ -29,6 +30,7 @@
     "PictureInPictureRendererMixin",
     "ScoreboardFooterMixin",
     "ScreenEffectRendererMixin",
+    "SkyRendererMixin",
     "SoundEngineMixin",
     "SubmitNodeCollectionMixin",
     "WideHealthBarMixin"

@@ -1,18 +1,25 @@
 package net.alpaka.addons.mixin;
 
+import com.mojang.blaze3d.buffers.GpuBufferSlice;
+import com.mojang.blaze3d.framegraph.FrameGraphBuilder;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.blockoverlay.BlockOverlayFeature;
 import net.alpaka.addons.features.etherwarp.EtherwarpDetector;
 import net.alpaka.addons.features.etherwarp.EtherwarpOverlayFeature;
+import net.alpaka.addons.features.sky.SkyEffectsFeature;
 import net.alpaka.addons.utils.AlpakaPerf;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
+import net.minecraft.client.renderer.LevelTargetBundle;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.state.level.BlockOutlineRenderState;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.state.level.LevelRenderState;
 import net.minecraft.gizmos.Gizmos;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -20,6 +27,25 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(LevelRenderer.class)
 public class LevelRendererMixin {
+
+    @Shadow
+    @Final
+    private LevelTargetBundle targets;
+
+    @Shadow
+    @Final
+    private LevelRenderState levelRenderState;
+
+    /**
+     * Sky Effects, before vanilla looks at the sky. Vanilla adds no sky pass at all where the
+     * dimension has no skybox, so the frame keeps the fog color it was cleared with; the Nether's
+     * own pass is added here, before the main pass draws the world over it. SkyBlock's End island
+     * is switched to the End's sky here too.
+     */
+    @Inject(method = "addSkyPass", at = @At("HEAD"))
+    private void alpaka$skyEffects(FrameGraphBuilder frame, CameraRenderState camera, GpuBufferSlice fog, CallbackInfo ci) {
+        SkyEffectsFeature.beforeSkyPass(frame, targets, levelRenderState, camera, fog);
+    }
 
     /**
      * Adds the Etherwarp target to the frame's gizmos. RETURN of collectPerFrameRenderThreadGizmos

@@ -75,14 +75,35 @@ public final class HudPanel {
      */
     public static void submit(GuiGraphicsExtractor graphics, int x0, int y0, int x1, int y1,
                               float scale, int tint, float opacity) {
+        submit(graphics, x0, y0, x1, y1, scale, tint, opacity, Glass.HUD);
+    }
+
+    /** How a panel asks for the blur behind it. */
+    public enum Glass {
+        /** A panel of the HUD, under any open screen; see {@link ChatBlurFeature#requestForHud}. */
+        HUD,
+        /** A panel drawn on top of a screen - a notice over the config menu. */
+        OVER_SCREEN,
+        /** No blur: the panel is the plain tint. */
+        PLAIN
+    }
+
+    /** As {@link #submit(GuiGraphicsExtractor, int, int, int, int, float, int, float)}, asking for the blur as {@code glass} says. */
+    public static void submit(GuiGraphicsExtractor graphics, int x0, int y0, int x1, int y1,
+                              float scale, int tint, float opacity, Glass glass) {
         if (!(graphics instanceof AlpakaGuiElementSink sink) || opacity <= 0.0f) return;
         float toScreen = (float) Minecraft.getInstance().getWindow().getGuiScale() * scale;
-        // Before the submission, so a HUD cached by Gnetum hands this panel to the frame's own pass.
-        ChatBlurFeature.request();
-        sink.alpaka$submitElement(new BlurRectRenderState(
+        BlurRectRenderState panel = new BlurRectRenderState(
                 new Matrix3x2f(graphics.pose()), x0, y0, x1, y1,
                 Math.round(RADIUS * toScreen), tint, toScreen, opacity,
-                Math.round(SHADOW * toScreen), sink.alpaka$currentScissor()));
+                Math.round(SHADOW * toScreen), sink.alpaka$currentScissor());
+        // Before the submission, so a HUD cached by Gnetum hands this panel to the frame's own pass.
+        switch (glass) {
+            case HUD -> ChatBlurFeature.requestForHud(panel.bounds());
+            case OVER_SCREEN -> ChatBlurFeature.request(panel.bounds());
+            case PLAIN -> { }
+        }
+        sink.alpaka$submitElement(panel);
     }
 
     /**

@@ -9,7 +9,7 @@ layout(std140) uniform DynamicTransforms {
     mat4 TextureMat;
 };
 
-// The blurred frame, at half the frame's size (or the plain copy at full size, at strength 0).
+// The blurred frame, at half the frame's size.
 uniform sampler2D Sampler0;
 
 in vec4 vertexColor;

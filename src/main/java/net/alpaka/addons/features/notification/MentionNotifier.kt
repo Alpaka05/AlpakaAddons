@@ -22,6 +22,9 @@ import net.minecraft.network.chat.Component
  *  - a line without a sender at all - joins, deaths, the server talking - is not a mention;
  *  - being mentioned mid-sentence is, however the sentence is punctuated.
  *
+ * The name counts only as a word of its own, and the speaker only when it is exactly the player:
+ * found anywhere, a player called "Sky" was notified about every "skyblock", and never by "Skyler".
+ *
  * ### Players only
  *
  * Hypixel's NPCs and bosses speak in the same `<sender>: <message>` form - `[NPC] Elle: ...`,
@@ -55,17 +58,9 @@ object MentionNotifier {
         if (name.isEmpty()) return
 
         val raw = SlayerDropTracker.cleanColor(message.string)
-        val split = raw.indexOf(": ")
-        if (split < 0) return
-
-        val sender = raw.substring(0, split)
-        val body = raw.substring(split + 2).trim()
-        if (body.isEmpty()) return
-
-        // Our own line. The name sits in the sender block of everything we say, so without this
-        // every message the player sends would notify them about themselves.
-        if (sender.contains(name, ignoreCase = true)) return
-        if (!body.contains(name, ignoreCase = true)) return
+        if (!mentions(raw, name)) return
+        val sender = raw.substringBefore(": ")
+        val body = raw.substringAfter(": ").trim()
         if (AlpakaConfig.instance.mentionIgnoreServer && !signedChat && !fromPlayer(sender)) return
 
         val now = System.currentTimeMillis()
@@ -76,6 +71,36 @@ object MentionNotifier {
         lastAtMs = now
 
         AlpakaNotifications.send("Chat Mention", speakerOf(sender) + " mentioned you")
+    }
+
+    /**
+     * Whether a color-stripped chat line mentions [name]: somebody else said it, as a word of its
+     * own. The server filter and the repeat check come on top of this in [inspect].
+     */
+    @JvmStatic
+    fun mentions(raw: String, name: String): Boolean {
+        val split = raw.indexOf(": ")
+        if (split < 0) return false
+        val sender = raw.substring(0, split)
+        val body = raw.substring(split + 2).trim()
+        if (body.isEmpty()) return false
+
+        // Our own line: the name sits in the sender block of everything we say, so without this
+        // every message the player sends would notify them about themselves.
+        if (speakerOf(sender).equals(name, ignoreCase = true)) return false
+        return namePattern(name).containsMatchIn(body)
+    }
+
+    private var namePatternFor = ""
+    private var namePattern = Regex("(?!)")
+
+    /** The name as a word of its own: no letter, digit or underscore of a longer name next to it. */
+    private fun namePattern(name: String): Regex {
+        if (name != namePatternFor) {
+            namePattern = Regex("(?<![A-Za-z0-9_])" + Regex.escape(name) + "(?![A-Za-z0-9_])", RegexOption.IGNORE_CASE)
+            namePatternFor = name
+        }
+        return namePattern
     }
 
     /**

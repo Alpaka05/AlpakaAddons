@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Locale;
 
 /**
  * The config options arranged the way the redesigned screen shows them: category, then section,
@@ -58,7 +59,7 @@ public final class ConfigTree {
 
         public boolean matches(String normalizedQuery) {
             if (normalizedQuery.isEmpty()) return true;
-            if (title.toLowerCase().contains(normalizedQuery)) return true;
+            if (title.toLowerCase(Locale.ROOT).contains(normalizedQuery)) return true;
             if (master != null && master.matchesNormalized(normalizedQuery)) return true;
             for (ConfigOption option : settings) {
                 if (option.matchesNormalized(normalizedQuery)) return true;
@@ -108,7 +109,7 @@ public final class ConfigTree {
             "slayer_drop_tracker", "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat",
             "hide_slayer_chat", "boss_spawn_alert", "boss_cocoon_alert", "slayer_timer", "slayer_hud_enabled",
             "world_age_join_message_enabled", "party_invite_prompt",
-            "guild_prefix", "bridge_bot_formatter", "only_crit_damage", "ragnarock", "cache_resource_pack",
+            "guild_prefix", "bridge_bot_formatter", "only_crit_damage", "ragnarock", "deployable_timer", "cache_resource_pack",
             "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input",
             // Cosmetics
             "custom_name_tag", "chroma_hat", "player_scale", "custom_damage_tags",
@@ -123,6 +124,7 @@ public final class ConfigTree {
     /** Settings registered away from their feature. */
     private static final Map<String, String> PARENTS = Map.ofEntries(
             Map.entry("smooth_perspective_duration", "smooth_perspective"),
+            Map.entry("custom_main_menu_whats_new", "custom_main_menu"),
             // The chat's background and font are parts of Better Chat.
             Map.entry("chat_blur", "better_chat"),
             Map.entry("chat_smooth_font", "better_chat"),
@@ -131,6 +133,8 @@ public final class ConfigTree {
             Map.entry("slayer_hud_smooth_font", "slayer_hud_enabled"),
             Map.entry("slayer_timer_blur", "slayer_timer"),
             Map.entry("slayer_timer_smooth_font", "slayer_timer"),
+            Map.entry("deployable_timer_blur", "deployable_timer"),
+            Map.entry("deployable_timer_smooth_font", "deployable_timer"),
             Map.entry("performance_hud_blur", "performance_hud_enabled"),
             Map.entry("performance_hud_smooth_font", "performance_hud_enabled"),
             Map.entry("inventory_hud_blur", "inventory_hud_enabled"),
@@ -194,7 +198,7 @@ public final class ConfigTree {
                     {"Blaze", "clean_blaze", "blaze_fire_pits", "stop_blaze_spinning",
                             "mute_vanilla_sounds_blaze_slayer", "custom_sound_blaze_death"},
                     {"Tools", "etherwarp_overlay", "etherwarp_sound", "only_crit_damage",
-                            "world_age_join_message_enabled", "ragnarock", "cache_resource_pack"},
+                            "world_age_join_message_enabled", "ragnarock", "deployable_timer", "cache_resource_pack"},
                     {"Markets", "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input"},
                     {"Social", "party_invite_prompt", "guild_prefix", "bridge_bot_formatter"}},
     };

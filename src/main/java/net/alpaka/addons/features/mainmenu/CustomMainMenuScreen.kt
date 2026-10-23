@@ -42,6 +42,7 @@ import net.minecraft.client.input.InputWithModifiers
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.multiplayer.ServerData
+import net.minecraft.client.multiplayer.ServerList
 import net.minecraft.client.multiplayer.resolver.ServerAddress
 import net.minecraft.network.chat.Component
 import org.joml.Matrix3x2f
@@ -252,9 +253,31 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
     private fun joinServer(ip: String) {
         val mc = this.minecraft ?: return
         val address = ServerAddress.parseString(ip)
-        val data = ServerData(if (ip.contains("alpha")) "Hypixel Alpha" else "Hypixel Network", ip, ServerData.Type.OTHER)
+        // The player's own server-list entry when there is one, as the server list itself would
+        // join: its resource pack choice stands. A fresh entry is always set to prompt, so Hypixel's
+        // pack was asked about again on every join from here.
+        val data = savedEntryFor(mc, ip)
+            ?: ServerData(if (ip.contains("alpha")) "Hypixel Alpha" else "Hypixel Network", ip, ServerData.Type.OTHER)
         ConnectScreen.startConnecting(this, mc, address, data, false, null)
     }
+
+    /** The first server-list entry for the same Hypixel network as [ip], or null; alpha only matches alpha. */
+    private fun savedEntryFor(mc: Minecraft, ip: String): ServerData? {
+        val wanted = hostOf(ip)
+        val alpha = wanted.startsWith("alpha.")
+        val list = ServerList(mc)
+        list.load()
+        for (i in 0 until list.size()) {
+            val entry = list.get(i)
+            val host = hostOf(entry.ip)
+            val same = if (alpha) host == wanted
+                else (host == "hypixel.net" || host.endsWith(".hypixel.net")) && !host.startsWith("alpha.")
+            if (same) return entry
+        }
+        return null
+    }
+
+    private fun hostOf(ip: String): String = ip.trim().lowercase().substringBefore(':').trimEnd('.')
 
     override fun init() {
         this.clearWidgets()

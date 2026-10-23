@@ -43,10 +43,8 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Coerce;
-import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
-import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
@@ -78,9 +76,11 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
     /** The graphics the chat is being extracted into, while it is; null during clickable-text capture. */
     @Unique private GuiGraphicsExtractor alpaka$graphics;
 
-    @ModifyConstant(
+    // The constant's value rather than the constant itself, so a mod that changes the same limit is
+    // chained with this one instead of finding its hook gone.
+    @com.llamalad7.mixinextras.injector.ModifyExpressionValue(
         method = {"<init>", "addMessageToDisplayQueue", "addMessageToQueue", "addRecentChat"},
-        constant = @Constant(intValue = 100)
+        at = @At(value = "CONSTANT", args = "intValue=100")
     )
     private int modifyMaxChatHistory(int original) {
         return AlpakaConfig.instance.chatHistoryLength();
@@ -688,18 +688,42 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
         this.chatScrollbarPos = (int) Math.floor(this.alpaka$smoothScroll);
     }
 
+    /** The background pass's line box, as vanilla hands it to its box drawing; see alpaka$measureLineBox. */
+    @Unique private int alpaka$boxBottom;
+    @Unique private int alpaka$boxLineHeight;
+    @Unique private int alpaka$boxWidth;
+    @Unique private float alpaka$boxOpacity;
+
+    /** Takes the line box's measures right before the background pass runs. */
+    @Inject(method = EXTRACT_PRIVATE, at = @At(value = "INVOKE", target = FOR_EACH_LINE, ordinal = 0))
+    private void alpaka$takeLineBox(ChatComponent.ChatGraphicsAccess access, int screenHeight, int ticks, ChatComponent.DisplayMode mode,
+                                    CallbackInfo ci,
+                                    @Local(name = "chatBottom") int chatBottom, @Local(name = "entryHeight") int entryHeight,
+                                    @Local(name = "maxWidth") int maxWidth, @Local(name = "backgroundOpacity") float backgroundOpacity) {
+        this.alpaka$boxBottom = chatBottom;
+        this.alpaka$boxLineHeight = entryHeight;
+        this.alpaka$boxWidth = maxWidth;
+        this.alpaka$boxOpacity = backgroundOpacity;
+    }
+
     /**
-     * Vanilla's background pass draws one flat box per line through this lambda. With the blurred
-     * panel on, each box is measured instead and the fill is skipped; the panel goes in for all of
-     * them just before the text pass below. Clickable-text capture runs the same code without a
-     * graphics to draw into, and is left alone.
+     * Vanilla's background pass draws one flat box per line. With the blurred panel on, each box is
+     * measured instead and the fill is skipped; the panel goes in for all of them just before the
+     * text pass. Clickable-text capture runs the same code without a graphics to draw into, and is
+     * left alone.
+     *
+     * Hooked where forEachLine hands each line on rather than inside vanilla's box lambda: the
+     * lambda's generated name changes with Minecraft versions, and the hook with it.
      */
-    @Inject(method = "lambda$extractRenderState$1", at = @At("HEAD"), cancellable = true)
-    private static void alpaka$measureLineBox(int chatBottom, int lineHeight, ChatComponent.ChatGraphicsAccess access, int width,
-                                              float backgroundOpacity, GuiMessage.Line line, int index, float alpha, CallbackInfo ci) {
-        if (ChatBlurFeature.collectLine(chatBottom, lineHeight, width, backgroundOpacity, alpha)) {
-            ci.cancel();
+    @WrapOperation(method = "forEachLine", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/gui/components/ChatComponent$LineConsumer;accept(Lnet/minecraft/client/multiplayer/chat/GuiMessage$Line;IF)V"))
+    private void alpaka$measureLineBox(@Coerce Object consumer, GuiMessage.Line line, int index, float alpha, Operation<Void> original) {
+        // The background pass is the first of the two, while alpaka$pass reads 1.
+        if (this.alpaka$pass == 1 && ChatBlurFeature.collectLine(
+                this.alpaka$boxBottom, this.alpaka$boxLineHeight, this.alpaka$boxWidth, this.alpaka$boxOpacity, alpha)) {
+            return;
         }
+        original.call(consumer, line, index, alpha);
     }
 
     /**

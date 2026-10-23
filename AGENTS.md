@@ -29,7 +29,12 @@ session always win over this file.
   - `client/AlpakaClient.java`: entry point. `client/gui/AlpakaConfigRegistry.java` registers every
     config option (`ConfigOption`), `config/AlpakaConfig.java` holds the values.
   - `features/<feature>/`: one package per feature (chat, slayer, blockoverlay, wheel, ...).
-  - `mixin/`: mixins, listed in `src/main/resources/alpaka.mixins.json`.
+  - `mixin/`: mixins. One that only changes how something looks or sounds goes into
+    `alpaka.cosmetic.mixins.json`, where no injection is required: a hook that finds no target
+    is logged once (`OptionalHooksPlugin`) and the effect stays off. Anything correctness or
+    compliance depends on goes into `alpaka.mixins.json`, where every injection is required.
+    Prefer `@WrapOperation`, `@WrapWithCondition` and `@ModifyExpressionValue` over `@Redirect` and
+    `@ModifyConstant`, and never target a generated `lambda$...` method.
   - `compliance/Outbound.java`: the only place that may send chat messages or commands to the
     server, and only as the direct result of a key press, click or Enter.
     `OutboundBytecodeScanTest` scans the compiled classes and fails the build if anything else

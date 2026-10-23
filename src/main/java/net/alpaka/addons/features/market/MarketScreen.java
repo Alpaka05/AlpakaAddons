@@ -13,6 +13,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
+import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.core.component.DataComponents;
@@ -53,8 +54,9 @@ import java.util.Locale;
  * - the same click, with the same button, that clicking the slot in the vanilla chest sends. There
  * are no extra clicks, no clicks of the mod's own, no drags, number-key swaps or drops: mouse
  * events that are not a plain click on a drawn control are swallowed, so nothing reaches the
- * invisible vanilla slots underneath. Keys close the menu, and 1 to 9 press the numbered actions:
- * the tiles of a page of choices, the buttons on a product's or an auction's page.
+ * invisible vanilla slots underneath. Keys close the menu, and with Enable Hotkeys on press its
+ * buttons: 1 to 9 the numbered auctions, products and actions, Shift with a number a category,
+ * the arrows the page, / or Ctrl+F the search, Backspace the way back.
  *
  * "Classic View" in the footer switches back to the vanilla chest for that market until the game
  * restarts, in case Hypixel shows something this screen does not lay out well.
@@ -170,6 +172,8 @@ public class MarketScreen extends ContainerScreen {
     private int drawerX, drawerY, drawerW, drawerH;
     /** The slots the number keys press in the last frame: key 1 is the first. */
     private final List<Integer> keyActions = new ArrayList<>();
+    /** The categories Shift and a number key pick in the last frame, top to bottom. */
+    private final List<Integer> keyCategories = new ArrayList<>();
     /**
      * Number keys held down, so holding one presses its button once and not again with every
      * repeat. Shared by all market screens: the press may open the next page before the release.
@@ -364,6 +368,7 @@ public class MarketScreen extends ContainerScreen {
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         hits.clear();
         keyActions.clear();
+        keyCategories.clear();
         if (classic()) {
             super.extractRenderState(graphics, mouseX, mouseY, partialTick);
             drawClassicToggle(graphics, mouseX, mouseY);
@@ -573,7 +578,13 @@ public class MarketScreen extends ContainerScreen {
                 int slot = category.slot();
                 sideItem(graphics, stack(slot), rowX, rowY, rowH);
                 int text = category.selected() || hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
-                graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, category.name(), rowW - 26)),
+                int nameW = rowW - 26;
+                int categoryKey = nextCategoryKey(slot);
+                // The keys show while Shift is held, the one that picks a category with a number.
+                if (categoryKey > 0 && this.minecraft != null && this.minecraft.hasShiftDown()) {
+                    nameW = keyChip(graphics, categoryKey, rowX + rowW - 4, rowY + (rowH - 8) / 2, 1f) - 4 - (rowX + 21);
+                }
+                graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, category.name(), nameW)),
                         rowX + 21, rowY + (rowH - 8) / 2, text, false);
                 if (visible(rowY, rowH, clipY, clipH)) {
                     hits.add(new Hit(rowX, Math.max(rowY, clipY), rowW, rowH, (b, s) -> click(slot, b, s), false));
@@ -784,9 +795,12 @@ public class MarketScreen extends ContainerScreen {
             int slot = m.content.get(i);
             int px = innerX + (i % cols) * (cardW + GAP);
             int py = top + (i / cols) * (CARD_H + GAP);
+            // The first nine take the number keys, also while scrolled out of sight.
+            int key = i < 9 ? nextKey(slot) : 0;
             if (py + CARD_H < cy || py > cy + ch) continue;
             float in = entrance(i, now);
-            drawCard(graphics, slot, m.info.get(slot), px, py + Math.round((1 - in) * 6), cardW, CARD_H, mx, my, inClip, in, cy, ch);
+            drawCard(graphics, slot, m.info.get(slot), px, py + Math.round((1 - in) * 6), cardW, CARD_H, mx, my, inClip, in, cy, ch,
+                    key, true);
         }
         return gridRows * (CARD_H + GAP) - GAP + 12;
     }
@@ -796,12 +810,25 @@ public class MarketScreen extends ContainerScreen {
         drawCard(graphics, slot, info, px, py, w, h, mx, my, inClip, alpha, clipY, clipH, 0);
     }
 
-    /** A card; with a key from 1 to 9, that number in its corner, as the key that presses it. */
     private void drawCard(GuiGraphicsExtractor graphics, int slot, LoreInfo info, int px, int py, int w, int h,
                           int mx, int my, boolean inClip, float alpha, int clipY, int clipH, int key) {
+        drawCard(graphics, slot, info, px, py, w, h, mx, my, inClip, alpha, clipY, clipH, key, false);
+    }
+
+    /**
+     * A card; with a key from 1 to 9, that number as the key that presses it: in the top corner, or
+     * in a list of auctions, where the name needs the room, on the corner of the item.
+     */
+    private void drawCard(GuiGraphicsExtractor graphics, int slot, LoreInfo info, int px, int py, int w, int h,
+                          int mx, int my, boolean inClip, float alpha, int clipY, int clipH, int key, boolean keyOnItem) {
         boolean pressing = beginPress(graphics, slot, px, py, w, h);
         try {
-            drawCardBody(graphics, slot, info, px, py, w, h, mx, my, inClip, alpha, clipY, clipH, key);
+            drawCardBody(graphics, slot, info, px, py, w, h, mx, my, inClip, alpha, clipY, clipH, keyOnItem ? 0 : key);
+            if (keyOnItem && key > 0) {
+                int well = h < CARD_H ? 18 : 22;
+                int wy = py + (h - well) / 2;
+                keyChip(graphics, key, px + 8 + 12, wy + well - 7, alpha);
+            }
         } finally {
             if (pressing) graphics.pose().popMatrix();
         }
@@ -1464,9 +1491,16 @@ public class MarketScreen extends ContainerScreen {
      * 0 once all nine are taken.
      */
     private int nextKey(int slot) {
-        if (keyActions.size() >= 9) return 0;
+        if (keyActions.size() >= 9 || !Markets.hotkeys(kind)) return 0;
         keyActions.add(slot);
         return keyActions.size();
+    }
+
+    /** The next key, 1 to 9, that picks a category with Shift; 0 once all nine are taken. */
+    private int nextCategoryKey(int slot) {
+        if (keyCategories.size() >= 9 || !Markets.hotkeys(kind)) return 0;
+        keyCategories.add(slot);
+        return keyCategories.size();
     }
 
     /** The key's number in a small chip ending at right, its text at y. Returns where the chip starts. */
@@ -1874,21 +1908,63 @@ public class MarketScreen extends ContainerScreen {
     @Override
     public boolean keyPressed(KeyEvent event) {
         if (classic()) return super.keyPressed(event);
-        // Keys close the menu or press a numbered action. Vanilla's number keys and drop key would
+        // Keys close the menu or press a button. Vanilla's number keys and drop key would
         // click the slot under the mouse, which here is not the one drawn there, so they never reach
         // it. Any other key is left to the game, so a screenshot or fullscreen still works.
         if (event.isEscape() || (this.minecraft != null && this.minecraft.options.keyInventory.matches(event))) {
             onClose();
             return true;
         }
-        // The number keys press the numbered actions: one plain click per press, as the mouse would.
-        int action = numberKey(event);
-        if (action >= 0 && action < keyActions.size()) {
+        Integer target = Markets.hotkeys(kind) ? hotkeyTarget(event) : null;
+        if (target != null) {
+            // One plain click per press, as the mouse would; holding the key does not repeat it.
             if (HELD_KEYS.add(event.key())) {
                 AlpakaStyle.click();
-                click(keyActions.get(action), 0, false, Outbound.Cause.KEY_PRESS);
+                click(target, 0, false, Outbound.Cause.KEY_PRESS);
             }
             return true;
+        }
+        return false;
+    }
+
+    /**
+     * The slot a key presses: 1 to 9 the numbered actions or auctions, Shift with 1 to 9 the
+     * categories, the arrows the page, Ctrl or Cmd with F the search, Backspace the way back.
+     */
+    private Integer hotkeyTarget(KeyEvent event) {
+        if (model == null) return null;
+        int mods = event.modifiers();
+        boolean command = (mods & (GLFW.GLFW_MOD_CONTROL | GLFW.GLFW_MOD_SUPER)) != 0;
+        boolean alt = (mods & GLFW.GLFW_MOD_ALT) != 0;
+        boolean shift = (mods & GLFW.GLFW_MOD_SHIFT) != 0;
+        int key = event.key();
+        if (command && !alt && !shift) return key == GLFW.GLFW_KEY_F ? model.controls.get(MarketMenu.Control.SEARCH) : null;
+        if (command || alt) return null;
+        int digit = digit(key);
+        if (digit >= 0) {
+            List<Integer> targets = shift ? keyCategories : keyActions;
+            return digit < targets.size() ? targets.get(digit) : null;
+        }
+        if (shift) return null;
+        return switch (key) {
+            case GLFW.GLFW_KEY_LEFT -> model.controls.get(MarketMenu.Control.PREVIOUS);
+            case GLFW.GLFW_KEY_RIGHT -> model.controls.get(MarketMenu.Control.NEXT);
+            case GLFW.GLFW_KEY_BACKSPACE -> model.controls.get(MarketMenu.Control.BACK);
+            default -> null;
+        };
+    }
+
+    /** "/" opens the search; read as a character, so it works wherever the keyboard has it. */
+    @Override
+    public boolean charTyped(CharacterEvent event) {
+        if (classic()) return super.charTyped(event);
+        if (event.codepoint() == '/' && model != null && Markets.hotkeys(kind)) {
+            Integer search = model.controls.get(MarketMenu.Control.SEARCH);
+            if (search != null) {
+                AlpakaStyle.click();
+                click(search, 0, false, Outbound.Cause.KEY_PRESS);
+                return true;
+            }
         }
         return false;
     }
@@ -1899,10 +1975,8 @@ public class MarketScreen extends ContainerScreen {
         return super.keyReleased(event);
     }
 
-    /** 0 for the key 1 (on the number row or the keypad) up to 8 for 9; -1 for any other key or with Ctrl, Alt or Cmd. */
-    private static int numberKey(KeyEvent event) {
-        if ((event.modifiers() & (GLFW.GLFW_MOD_CONTROL | GLFW.GLFW_MOD_ALT | GLFW.GLFW_MOD_SUPER)) != 0) return -1;
-        int key = event.key();
+    /** 0 for the key 1 (on the number row or the keypad) up to 8 for 9; -1 for any other key. */
+    private static int digit(int key) {
         if (key >= GLFW.GLFW_KEY_1 && key <= GLFW.GLFW_KEY_9) return key - GLFW.GLFW_KEY_1;
         if (key >= GLFW.GLFW_KEY_KP_1 && key <= GLFW.GLFW_KEY_KP_9) return key - GLFW.GLFW_KEY_KP_1;
         return -1;

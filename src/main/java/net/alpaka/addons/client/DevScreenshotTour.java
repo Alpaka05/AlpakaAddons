@@ -254,6 +254,7 @@ public final class DevScreenshotTour {
                     net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, false), () -> true, 1),
             screen("market-config", () -> AlpakaConfigScreen.openOn("Markets", "Custom Auction House")),
             screen("market-config-price-history", () -> AlpakaConfigScreen.openOn("Markets", "Price History")),
+            screen("market-config-bazaar", () -> AlpakaConfigScreen.openOn("Markets", "Custom Bazaar")),
             // The Item Value popup over a chest of SkyBlock items, opened the way the key opens it, over
             // the item under the mouse. Its prices come from the network, so it waits for them.
             new Stop(null, () -> Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.itemvalue.ItemValuePreview.chest()),

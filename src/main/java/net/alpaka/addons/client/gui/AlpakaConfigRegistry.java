@@ -604,6 +604,13 @@ public class AlpakaConfigRegistry {
                 ),
                 "message filter hidden empty blank lines welcome guild gexp event exp kill combo grandma wolf profile id join reward bundle seasonal autopet pet rule fire sale community shop watchdog ban announcement stash stashed items materials pick up reminder"));
 
+        OPTIONS.add(new ConfigOption("message_filter_custom", "Custom Filters",
+                "Your own filters: paste a copied message and pick whether it must match exactly, at the start, anywhere, or as a regex.",
+                ConfigCategory.VISUALS,
+                "Edit Filters",
+                parent -> Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.client.MessageFilterScreen(parent)),
+                "message filter custom own add copied message regex starts with contains equals exact hide block list"));
+
         OPTIONS.add(new ConfigOption("mention_notification", "Chat Mentions",
                 "Slides in a notification when somebody says your name in chat.",
                 ConfigCategory.VISUALS,

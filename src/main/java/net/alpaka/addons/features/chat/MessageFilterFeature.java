@@ -96,17 +96,32 @@ public final class MessageFilterFeature {
 
     public static void register() {
         ClientReceiveMessageEvents.ALLOW_GAME.register((message, overlay) -> overlay || !shouldHide(message));
+        // Signed player chat, which Hypixel doesn't use but other servers do; only the player's own
+        // filters can be about such a message.
+        ClientReceiveMessageEvents.ALLOW_CHAT.register((message, signedMessage, sender, params, receptionTimestamp) ->
+                !AlpakaConfig.instance.messageFilterEnabled
+                        || !matchesCustom(SkyblockUtils.cleanColor(message.getString()), AlpakaConfig.instance.messageFilterCustom));
     }
 
     private static boolean shouldHide(Component message) {
         AlpakaConfig config = AlpakaConfig.instance;
         if (!config.messageFilterEnabled) return false;
-        Kind kind = next(SkyblockUtils.cleanColor(message.getString()));
-        if (kind == null) return false;
+        String text = SkyblockUtils.cleanColor(message.getString());
+        Kind kind = next(text);
+        if (kind == null) return matchesCustom(text, config.messageFilterCustom);
 
         long now = System.currentTimeMillis();
         if (kind == Kind.REWARD_BUNDLE) lastRewardReminderMs = now;
-        return isHidden(kind, switchFor(kind, config), now - lastRewardReminderMs);
+        return isHidden(kind, switchFor(kind, config), now - lastRewardReminderMs)
+                || matchesCustom(text, config.messageFilterCustom);
+    }
+
+    static boolean matchesCustom(String text, java.util.List<CustomMessageFilter> filters) {
+        if (filters == null) return false;
+        for (CustomMessageFilter filter : filters) {
+            if (filter != null && filter.matches(text)) return true;
+        }
+        return false;
     }
 
     /** Like {@link #classify}, but also counts the lines that follow a Watchdog header as part of it. */

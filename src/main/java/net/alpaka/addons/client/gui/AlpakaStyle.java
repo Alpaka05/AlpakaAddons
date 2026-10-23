@@ -53,8 +53,11 @@ public final class AlpakaStyle {
     public static final int HUD_TEXT = 0xFFEDEDED;
     public static final int HUD_TEXT_SOFT = 0xFFBDBDBD;
 
-    /** The Menu Theme's choices, in the order of {@link Theme}. */
-    public static final String[] THEME_NAMES = {"Dark", "Light", "OLED"};
+    /**
+     * The Menu Theme's choices as the list shows them, light to dark. The config saves a theme's
+     * place in {@link Theme} instead, so reordering the list never changes a saved choice.
+     */
+    public static final String[] THEME_NAMES = {"Light", "Dark", "OLED"};
 
     /**
      * The looks a menu can have: the dark one it always had, a light one, and one of pure black
@@ -79,6 +82,9 @@ public final class AlpakaStyle {
         Theme(int... colors) {
             this.c = colors;
         }
+
+        /** The themes in the order of {@link #THEME_NAMES}. */
+        public static final Theme[] MENU_ORDER = {LIGHT, DARK, OLED};
 
         /** The theme saved under this index, the dark one for anything unknown. */
         public static Theme of(int index) {

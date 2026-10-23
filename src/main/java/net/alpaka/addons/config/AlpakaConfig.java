@@ -223,7 +223,7 @@ public class AlpakaConfig {
     public boolean blazeMuteAllWorldAudio = false;
     public float lowHpHeartbeatThreshold = 0.30f;
     public int menuAccentColor = 0xFF29B6B2; // Default teal
-    /** Index into {@code AlpakaStyle.THEME_NAMES}: how the Alpaka menus look. 0 is the dark default. */
+    /** Index into {@code AlpakaStyle.Theme}: how the Alpaka menus look. 0 is the dark default. */
     public int menuTheme = 0;
     /** The player's own presets in the color picker, ARGB, oldest first; shared by every color option. */
     public java.util.List<Integer> customColorPresets = new java.util.ArrayList<>();

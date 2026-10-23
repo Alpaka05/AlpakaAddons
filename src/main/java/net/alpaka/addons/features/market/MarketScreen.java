@@ -817,18 +817,13 @@ public class MarketScreen extends ContainerScreen {
 
     /**
      * A card; with a key from 1 to 9, that number as the key that presses it: in the top corner, or
-     * in a list of auctions, where the name needs the room, on the corner of the item.
+     * in a list of auctions, where the name needs the room, at the end of the price line.
      */
     private void drawCard(GuiGraphicsExtractor graphics, int slot, LoreInfo info, int px, int py, int w, int h,
                           int mx, int my, boolean inClip, float alpha, int clipY, int clipH, int key, boolean keyOnItem) {
         boolean pressing = beginPress(graphics, slot, px, py, w, h);
         try {
-            drawCardBody(graphics, slot, info, px, py, w, h, mx, my, inClip, alpha, clipY, clipH, keyOnItem ? 0 : key);
-            if (keyOnItem && key > 0) {
-                int well = h < CARD_H ? 18 : 22;
-                int wy = py + (h - well) / 2;
-                keyChip(graphics, key, px + 8 + 12, wy + well - 7, alpha);
-            }
+            drawCardBody(graphics, slot, info, px, py, w, h, mx, my, inClip, alpha, clipY, clipH, key, keyOnItem);
         } finally {
             if (pressing) graphics.pose().popMatrix();
         }
@@ -853,7 +848,7 @@ public class MarketScreen extends ContainerScreen {
     }
 
     private void drawCardBody(GuiGraphicsExtractor graphics, int slot, LoreInfo info, int px, int py, int w, int h,
-                              int mx, int my, boolean inClip, float alpha, int clipY, int clipH, int key) {
+                              int mx, int my, boolean inClip, float alpha, int clipY, int clipH, int key, boolean keyOnPriceLine) {
         ItemStack stack = stack(slot);
         boolean hover = inClip && AlpakaStyle.inside(mx, my, px, py, w, h);
         if (hover) hoverTarget(slot);
@@ -886,7 +881,10 @@ public class MarketScreen extends ContainerScreen {
         Component name = stack.getHoverName();
         int nameX = tx;
         int nameEnd = tx + tw;
-        if (key > 0) nameEnd = keyChip(graphics, key, px + w - 6, py + 5, alpha) - 4;
+        // The room the key takes at the end of the second line, which the lines leave free.
+        int reserve = 0;
+        if (key > 0 && keyOnPriceLine) reserve = tx + tw + 4 - keyChip(graphics, key, tx + tw, py + 16, alpha);
+        else if (key > 0) nameEnd = keyChip(graphics, key, px + w - 6, py + 5, alpha) - 4;
         // An order's name starts with BUY or SELL; that becomes a label, so the product's name fits.
         if (info != null && info.type == LoreInfo.Type.ORDER) {
             String plainName = SkyblockUtils.cleanColor(name.getString());
@@ -899,10 +897,10 @@ public class MarketScreen extends ContainerScreen {
         }
         styled(graphics, name, nameX, py + 5, nameEnd - nameX, 0x00FFFFFF | textAlpha);
         switch (info == null ? LoreInfo.Type.GENERIC : info.type) {
-            case AUCTION -> auctionLines(graphics, info, tx, py, tw, alpha);
+            case AUCTION -> auctionLines(graphics, info, tx, py, tw, alpha, reserve);
             case PRODUCT -> productLines(graphics, info, tx, py, tw, alpha);
             case ORDER -> orderLines(graphics, info, tx, py, tw, alpha);
-            default -> genericLines(graphics, stack, info, tx, py, tw, alpha, compact ? 1 : 2);
+            default -> genericLines(graphics, stack, info, tx, py, tw, alpha, compact ? 1 : 2, reserve);
         }
 
         if (py + h > clipY && py < clipY + clipH) {
@@ -913,7 +911,7 @@ public class MarketScreen extends ContainerScreen {
         if (hover) hoveredStack = stack;
     }
 
-    private void auctionLines(GuiGraphicsExtractor graphics, LoreInfo info, int tx, int py, int tw, float alpha) {
+    private void auctionLines(GuiGraphicsExtractor graphics, LoreInfo info, int tx, int py, int tw, float alpha, int reserve) {
         int ly = py + 16;
         int lx = tx;
         if (info.isOver()) {
@@ -929,7 +927,7 @@ public class MarketScreen extends ContainerScreen {
             lx += GuiFont.width(this.font, text);
             if (!info.isBin() && info.bids != null && info.bids > 0) {
                 String bids = "  " + info.bids + (info.bids == 1 ? " bid" : " bids");
-                if (lx + GuiFont.width(this.font, bids) <= tx + tw) {
+                if (lx + GuiFont.width(this.font, bids) <= tx + tw - reserve) {
                     graphics.text(this.font, GuiFont.text(bids), lx, ly, MarketIcons.fade(AlpakaStyle.TEXT_MUTED, alpha), false);
                 }
             }
@@ -1017,16 +1015,17 @@ public class MarketScreen extends ContainerScreen {
      * unit ● 5.3"), else the lore's first lines in their own colors.
      */
     private void genericLines(GuiGraphicsExtractor graphics, ItemStack stack, LoreInfo info, int tx, int py, int tw, float alpha,
-                              int lines) {
+                              int lines, int reserve) {
         if (info != null && !info.coinLines.isEmpty()) {
             int y = py + 16;
             for (int i = 0; i < Math.min(lines, info.coinLines.size()); i++) {
                 LoreInfo.CoinLine line = info.coinLines.get(i);
                 String value = Coins.compact(line.coins());
                 int valueW = GuiFont.width(this.font, value);
-                String label = AlpakaStyle.ellipsize(this.font, line.label(), Math.max(0, tw - valueW - 6));
+                int lineW = i == 0 ? tw - reserve : tw;
+                String label = AlpakaStyle.ellipsize(this.font, line.label(), Math.max(0, lineW - valueW - 6));
                 graphics.text(this.font, GuiFont.text(label), tx, y, MarketIcons.fade(AlpakaStyle.TEXT_MUTED, alpha), false);
-                int vx = tx + tw - valueW;
+                int vx = tx + lineW - valueW;
                 graphics.text(this.font, GuiFont.text(value), vx, y, MarketIcons.fade(COIN, alpha), false);
                 y += 11;
             }
@@ -1034,7 +1033,7 @@ public class MarketScreen extends ContainerScreen {
             if (info.coinLines.size() == 1 && lines > 1) loreLines(graphics, stack, tx, py + 27, tw, 1, alpha, true);
             return;
         }
-        loreLines(graphics, stack, tx, py + 16, tw, lines, alpha);
+        loreLines(graphics, stack, tx, py + 16, tw - reserve, lines, alpha);
     }
 
     /** A faint line of light along a card's top edge, as if lit from above. */

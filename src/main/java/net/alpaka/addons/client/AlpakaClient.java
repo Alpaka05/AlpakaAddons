@@ -22,6 +22,10 @@ public class AlpakaClient implements ClientModInitializer {
         // Before anything else reads them. The slayer record is loaded separately because it is keyed
         // by account and Skyblock profile rather than by instance; see AlpakaStats.
         AlpakaConfig.load();
+        // Once the game is up, settings outside their slider's range are brought back inside it;
+        // see AlpakaConfigRegistry.clampStoredValues for why not here.
+        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.CLIENT_STARTED.register(
+                client -> net.alpaka.addons.client.gui.AlpakaConfigRegistry.clampStoredValues());
         net.alpaka.addons.config.AlpakaStats.load();
         net.alpaka.addons.AlpakaAddons.LOGGER.info("Alpaka Addons {} loaded", net.alpaka.addons.utils.ModVersion.mod());
         // Has to run here, before the game first scans its resource packs, so the cached server

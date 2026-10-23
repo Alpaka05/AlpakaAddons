@@ -15,12 +15,39 @@ import java.util.List;
 import java.util.Map;
 
 public class AlpakaConfig {
-    private static final File FILE = FabricLoader.getInstance().getConfigDir().resolve("alpaka.json").toFile();
-    /** The last file that loaded cleanly, copied aside at start-up. See {@link #load()}. */
-    private static final File BACKUP = FabricLoader.getInstance().getConfigDir().resolve("alpaka.json.bak").toFile();
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    /**
+     * Where the settings are kept: the file, and the last file that loaded cleanly, copied aside at
+     * start-up (see {@link #load()}).
+     */
+    record ConfigStore(File file, File backup) {
+        /** alpaka.json in Fabric's config folder. */
+        static ConfigStore inConfigDir() {
+            java.nio.file.Path dir = FabricLoader.getInstance().getConfigDir();
+            return new ConfigStore(dir.resolve("alpaka.json").toFile(), dir.resolve("alpaka.json.bak").toFile());
+        }
+    }
+
+    /**
+     * Looked up on first use rather than when the class loads: asking Fabric for its config folder
+     * then kept the class - and loading and migrating with it - from being used outside the game.
+     */
+    private static ConfigStore store;
+
+    private static ConfigStore store() {
+        if (store == null) store = ConfigStore.inConfigDir();
+        return store;
+    }
+
+    // NaN and infinite floats are written as such rather than refused. One in the file loaded
+    // without complaint, and every save after it threw - quietly, so no setting was written again.
+    // sanitize() puts such a value back to its default on load; this keeps one that slips in later
+    // from blocking the file.
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().serializeSpecialFloatingPointValues().create();
 
     public static AlpakaConfig instance = new AlpakaConfig();
+
+    /** The settings layout the file was written in; 0 for files from before the field. See {@link #migrate()}. */
+    public int configVersion = 0;
 
     /**
      * Draws the first-person hand over the third-person back view. Off for fresh installs: a
@@ -981,38 +1008,39 @@ public class AlpakaConfig {
         fresh.statsDirectory = old.statsDirectory;
         fresh.statsDirectoryHadFile = old.statsDirectoryHadFile;
         fresh.lastSeenVersion = old.lastSeenVersion;
+        fresh.configVersion = old.configVersion;
         fresh.menuFontNunitoApplied = true;
         instance = fresh;
         save();
     }
 
     public static void load() {
-        existedAtStart = FILE.exists();
-        if (!FILE.exists()) {
-            save();
+        load(store());
+    }
+
+    /** Loads the settings from {@code from}, which later saves go to as well. Used directly by tests. */
+    static void load(ConfigStore from) {
+        store = from;
+        existedAtStart = from.file().exists();
+        if (!existedAtStart) {
+            instance = new AlpakaConfig();
         } else {
-            AlpakaConfig loaded = read(FILE);
+            AlpakaConfig loaded = read(from.file());
             if (loaded != null) {
                 instance = loaded;
                 // A copy of the last file that loaded, taken once per start rather than on every
                 // save: every write is atomic now, so this only has to cover damage from outside.
-                AtomicJsonFile.backup(FILE, BACKUP);
+                AtomicJsonFile.backup(from.file(), from.backup());
             } else {
                 recoverUnreadable();
             }
         }
 
-        // Hide Name Tag Background became a color; hiding is now zero opacity.
-        if (instance.hideNameTagBackground != null) {
-            if (instance.hideNameTagBackground) instance.nameTagBackgroundColor = 0;
-            instance.hideNameTagBackground = null;
+        int sanitized = ConfigSanitizer.sanitize(instance, new AlpakaConfig());
+        if (sanitized > 0) {
+            AlpakaAddons.LOGGER.warn("Put {} unusable value(s) in alpaka.json back to their defaults", sanitized);
         }
-
-        // The menu's default accent moved from warm gold to teal. A config still on the exact old
-        // default never chose gold, so it follows the new default; any other color is a choice.
-        if (instance.menuAccentColor == 0xFFE5B849) {
-            instance.menuAccentColor = 0xFF29B6B2;
-        }
+        boolean migrated = instance.migrate();
 
         // The default font moved from Inter to Poppins with the redesign. Once only, so picking Inter
         // again afterwards sticks.
@@ -1021,29 +1049,67 @@ public class AlpakaConfig {
             instance.menuFontNunitoApplied = true;
         }
 
+        // Settings that were replaced keep the other pattern: a legacy field, read once and then
+        // cleared, so it needs no number.
+        instance.migrateNameTagBackground();
         instance.migrateInventoryHudVisibility();
         instance.migrateWorldAgeHud();
 
-        if (instance.slayerBossMap == null) {
-            instance.slayerBossMap = new HashMap<>();
-        }
         for (SlayerType type : SlayerType.values()) {
             if (!instance.slayerBossMap.containsKey(type)) {
                 instance.slayerBossMap.put(type, new SlayerData());
             }
         }
 
-        // Deleting presets is allowed now, so fewer than three is a choice; only a missing list or a
-        // hand-edited null entry needs mending.
-        if (instance.itemPresets == null) {
-            instance.itemPresets = new ArrayList<>();
-        } else {
-            instance.itemPresets = new ArrayList<>(instance.itemPresets);
-            instance.itemPresets.removeIf(java.util.Objects::isNull);
-        }
+        // Deleting presets is allowed now, so fewer than three is a choice; a hand-edited null entry
+        // has already been dropped by the sanitizer.
         if (instance.activeItemPresetIndex >= instance.itemPresets.size()) {
             instance.activeItemPresetIndex = -1;
         }
+
+        if (!existedAtStart || sanitized > 0 || migrated) save();
+    }
+
+    /**
+     * One-time changes to the settings, in order: the step at index i brings a file from layout i to
+     * i + 1. Each runs once per file, the first time a version that has it loads that file, so a
+     * value the player picks afterwards is never changed back. They used to run on every start: an
+     * accent color set to exactly the old gold turned back into teal each time.
+     */
+    private static final java.util.List<java.util.function.Consumer<AlpakaConfig>> MIGRATIONS = java.util.List.of(
+            AlpakaConfig::migrateTo1
+    );
+
+    /** The settings layout this version writes. A file with a lower number gets the steps it has not had. */
+    static final int CONFIG_VERSION = MIGRATIONS.size();
+
+    /** Layout 0 to 1: the changes that ran on every start before there was a layout number. */
+    private void migrateTo1() {
+        // The menu's default accent moved from warm gold to teal. A config still on the exact old
+        // default never chose gold, so it follows the new default; any other color is a choice.
+        if (menuAccentColor == 0xFFE5B849) {
+            menuAccentColor = 0xFF29B6B2;
+        }
+    }
+
+    /**
+     * Runs the steps of {@link #MIGRATIONS} this file has not had. Returns whether the layout number
+     * moved. A file from a newer version keeps its higher number and gets no steps.
+     */
+    boolean migrate() {
+        if (configVersion >= CONFIG_VERSION) return false;
+        for (int step = Math.max(0, configVersion); step < MIGRATIONS.size(); step++) {
+            MIGRATIONS.get(step).accept(this);
+        }
+        configVersion = CONFIG_VERSION;
+        return true;
+    }
+
+    /** Hide Name Tag Background became a color; hiding is now zero opacity. */
+    private void migrateNameTagBackground() {
+        if (hideNameTagBackground == null) return;
+        if (hideNameTagBackground) nameTagBackgroundColor = 0;
+        hideNameTagBackground = null;
     }
 
     /**
@@ -1055,8 +1121,8 @@ public class AlpakaConfig {
      * reads it as null, and a malformed one was replaced with defaults without a word.
      */
     private static void recoverUnreadable() {
-        File aside = AtomicJsonFile.quarantine(FILE);
-        AlpakaConfig fromBackup = read(BACKUP);
+        File aside = AtomicJsonFile.quarantine(store().file());
+        AlpakaConfig fromBackup = read(store().backup());
         String where = aside != null ? " The damaged file was kept as " + aside.getName() + "." : "";
         if (fromBackup != null) {
             instance = fromBackup;
@@ -1290,7 +1356,7 @@ public class AlpakaConfig {
             return;
         }
         try {
-            AtomicJsonFile.write(FILE, GSON.toJson(instance));
+            AtomicJsonFile.write(store().file(), GSON.toJson(instance));
         } catch (Exception e) {
             AlpakaAddons.LOGGER.error("Failed to save config", e);
         }

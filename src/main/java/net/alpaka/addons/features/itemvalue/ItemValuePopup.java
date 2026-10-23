@@ -477,10 +477,9 @@ public final class ItemValuePopup {
             return null;
         }
         double total = each * count;
-        MarketIcons.draw(graphics, MarketIcons.Glyph.COIN, tx, ly, 8, COIN);
         String compact = Coins.compact(total);
-        graphics.text(font, GuiFont.text(compact), tx + 10, ly, COIN, false);
-        int after = tx + 10 + GuiFont.width(font, compact) + 6;
+        graphics.text(font, GuiFont.text(compact), tx, ly, COIN, false);
+        int after = tx + GuiFont.width(font, compact) + 6;
         String detail = count > 1 ? count + " × " + Coins.compact(each) : whole(total) + " coins";
         if (breakdown.incomplete()) detail = "at least " + detail;
         graphics.text(font, GuiFont.text(AlpakaStyle.ellipsize(font, detail, closeX - 4 - after)), after, ly, AlpakaStyle.TEXT_MUTED, false);

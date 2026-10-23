@@ -873,8 +873,6 @@ public class MarketScreen extends ContainerScreen {
         }
         Double price = info.auctionPrice();
         if (price != null) {
-            MarketIcons.draw(graphics, MarketIcons.Glyph.COIN, lx, ly, 8, MarketIcons.fade(COIN, alpha));
-            lx += 10;
             String text = Coins.compact(price);
             graphics.text(this.font, GuiFont.text(text), lx, ly, MarketIcons.fade(COIN, alpha), false);
             lx += GuiFont.width(this.font, text);
@@ -934,10 +932,9 @@ public class MarketScreen extends ContainerScreen {
             graphics.text(this.font, GuiFont.text("—"), lx, y, MarketIcons.fade(AlpakaStyle.TEXT_MUTED, alpha), false);
             return lx + 8;
         }
-        MarketIcons.draw(graphics, MarketIcons.Glyph.COIN, lx, y, 8, MarketIcons.fade(COIN, alpha));
         String text = Coins.compact(coins);
-        graphics.text(this.font, GuiFont.text(text), lx + 10, y, MarketIcons.fade(COIN, alpha), false);
-        return lx + 10 + GuiFont.width(this.font, text);
+        graphics.text(this.font, GuiFont.text(text), lx, y, MarketIcons.fade(COIN, alpha), false);
+        return lx + GuiFont.width(this.font, text);
     }
 
     private void orderLines(GuiGraphicsExtractor graphics, LoreInfo info, int tx, int py, int tw, float alpha) {
@@ -949,8 +946,7 @@ public class MarketScreen extends ContainerScreen {
             lx += GuiFont.width(this.font, amount) + 6;
         }
         if (info.unitPrice != null) {
-            MarketIcons.draw(graphics, MarketIcons.Glyph.COIN, lx, ly, 8, MarketIcons.fade(COIN, alpha));
-            graphics.text(this.font, GuiFont.text(Coins.compact(info.unitPrice) + " each"), lx + 10, ly, MarketIcons.fade(COIN, alpha), false);
+            graphics.text(this.font, GuiFont.text(Coins.compact(info.unitPrice) + " each"), lx, ly, MarketIcons.fade(COIN, alpha), false);
         }
         float ratio = info.fillRatio();
         if (ratio >= 0) {
@@ -976,12 +972,11 @@ public class MarketScreen extends ContainerScreen {
             for (int i = 0; i < Math.min(lines, info.coinLines.size()); i++) {
                 LoreInfo.CoinLine line = info.coinLines.get(i);
                 String value = Coins.compact(line.coins());
-                int valueW = 10 + GuiFont.width(this.font, value);
+                int valueW = GuiFont.width(this.font, value);
                 String label = AlpakaStyle.ellipsize(this.font, line.label(), Math.max(0, tw - valueW - 6));
                 graphics.text(this.font, GuiFont.text(label), tx, y, MarketIcons.fade(AlpakaStyle.TEXT_MUTED, alpha), false);
                 int vx = tx + tw - valueW;
-                MarketIcons.draw(graphics, MarketIcons.Glyph.COIN, vx, y, 8, MarketIcons.fade(COIN, alpha));
-                graphics.text(this.font, GuiFont.text(value), vx + 10, y, MarketIcons.fade(COIN, alpha), false);
+                graphics.text(this.font, GuiFont.text(value), vx, y, MarketIcons.fade(COIN, alpha), false);
                 y += 11;
             }
             // Below a single coin line, the lore's first line that is not one: "Price: …" again would only repeat it.
@@ -1263,15 +1258,14 @@ public class MarketScreen extends ContainerScreen {
     /** "Price per unit ● 5.3", centred. */
     private void coinLineCentered(GuiGraphicsExtractor graphics, LoreInfo.CoinLine line, int cx, int y, int maxW, float alpha) {
         String value = Coins.compact(line.coins());
-        int valueW = 10 + GuiFont.width(this.font, value);
+        int valueW = GuiFont.width(this.font, value);
         String label = AlpakaStyle.ellipsize(this.font, line.label(), Math.max(0, maxW - valueW - 6));
         int labelW = GuiFont.width(this.font, label);
         int total = labelW + 5 + valueW;
         int x = cx - total / 2;
         graphics.text(this.font, GuiFont.text(label), x, y, MarketIcons.fade(AlpakaStyle.TEXT_MUTED, alpha), false);
         x += labelW + 5;
-        MarketIcons.draw(graphics, MarketIcons.Glyph.COIN, x, y, 8, MarketIcons.fade(COIN, alpha));
-        graphics.text(this.font, GuiFont.text(value), x + 10, y, MarketIcons.fade(COIN, alpha), false);
+        graphics.text(this.font, GuiFont.text(value), x, y, MarketIcons.fade(COIN, alpha), false);
     }
 
     /** The one auction or product a page is about, large, with what its lore says laid out in rows. */
@@ -1351,7 +1345,7 @@ public class MarketScreen extends ContainerScreen {
         ModernGuiUtils.drawRoundedRect(graphics, x - 2, y - 3, w + 4, 14, 3, MarketIcons.fade(AlpakaStyle.PANEL, 0.55f * alpha));
         graphics.text(this.font, GuiFont.text(label), x + 2, y, MarketIcons.fade(AlpakaStyle.TEXT_MUTED, alpha), false);
         int labelW = GuiFont.width(this.font, label);
-        int room = w - labelW - 16 - (coin ? 10 : 0);
+        int room = w - labelW - 16;
         // A full amount that does not fit is written short rather than cut: "1.14B", not "1,140,0…".
         if (coin && GuiFont.width(this.font, value) > room) {
             Double amount = Coins.parseLore(value);
@@ -1361,7 +1355,6 @@ public class MarketScreen extends ContainerScreen {
         int vw = GuiFont.width(this.font, shown);
         int vx = x + w - 2 - vw;
         graphics.text(this.font, GuiFont.text(shown), vx, y, MarketIcons.fade(color, alpha), false);
-        if (coin) MarketIcons.draw(graphics, MarketIcons.Glyph.COIN, vx - 10, y, 8, MarketIcons.fade(COIN, alpha));
         return y + 15;
     }
 

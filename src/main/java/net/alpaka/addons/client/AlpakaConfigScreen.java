@@ -78,7 +78,6 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     private static final int PRESET_BUTTON_H = 14;
     private static final int PRESET_ICON = 14;
     private static final int PRESET_MIN_FIELD_W = 60;
-    private static final int PRESET_SAVE_HOVER = 0xFF333333;
     private static final long TOOLTIP_DELAY_MS = AlpakaStyle.TOOLTIP_DELAY_MS;
 
     // ---- State ----------------------------------------------------------------------------------
@@ -1040,7 +1039,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             AlpakaStyle.button(graphics, this.font, loadX, buttonY, loadW, PRESET_BUTTON_H, "Load", loadHover, AlpakaStyle.ButtonKind.PRIMARY);
             // A plain button would vanish on the card, which has the same gray; this one sits a step lighter.
             ModernGuiUtils.drawRoundedRect(graphics, saveX, buttonY, saveW, PRESET_BUTTON_H, AlpakaStyle.ROW_RADIUS,
-                    saveHover ? PRESET_SAVE_HOVER : AlpakaStyle.ROW_SELECTED);
+                    saveHover ? ModernGuiUtils.lerpColor(AlpakaStyle.ROW_SELECTED, AlpakaStyle.TEXT, 0.06f) : AlpakaStyle.ROW_SELECTED);
             ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("Save"), saveX + saveW / 2, midY - 4,
                     saveHover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
             AlpakaStyle.trashButton(graphics, deleteX, midY - PRESET_ICON / 2, PRESET_ICON, deleteHover);

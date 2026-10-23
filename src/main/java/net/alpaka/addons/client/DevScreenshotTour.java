@@ -64,9 +64,9 @@ public final class DevScreenshotTour {
             // A moment into the entrance: the card springing in, the avatar half materialised.
             new Stop("main-menu-opening", () -> Minecraft.getInstance().gui.setScreen(new CustomMainMenuScreen()), () -> true, 9),
             screen("config", () -> new AlpakaConfigScreen(null, "")),
+            screen("config-old-sky", () -> AlpakaConfigScreen.openOnOption(null, "sky_effects")),
             screen("config-old-screenshot", () -> new AlpakaConfigScreen(null, "screenshot")),
             screen("config-old-starlight", () -> new AlpakaConfigScreen(null, "starlight")),
-            screen("config-old-sky", () -> AlpakaConfigScreen.openOnOption(null, "sky_effects")),
             screen("color-picker", () -> new ColorPickerScreen(null, "Accent Color", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
             screen("wheel-editor", () -> new CommandWheelConfigScreen(new CustomMainMenuScreen())),
             screen("hud-editor", () -> new HudEditorScreen(null)),

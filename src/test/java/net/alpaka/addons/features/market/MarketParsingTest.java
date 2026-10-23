@@ -4,10 +4,12 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -445,6 +447,74 @@ class MarketParsingTest {
                  {"name":"Cactus","tag":"BUILDER_CACTUS","flags":"AUCTION"}]""");
         // The cactus head is SkyBlock's, so the name stays.
         assertEquals(List.of("Hyperion", "Cactus"), ItemTags.withoutVanilla(ItemTags.auctionTags(), catalog::vanilla));
+    }
+
+    @Test
+    void suggestionIconsGoByTagNotByName() {
+        ItemIcons.Catalog catalog = ItemIcons.index(com.google.gson.JsonParser.parseString("""
+                {"items":[
+                 {"id":"STARRED_BONZO_MASK","material":"SKULL_ITEM","durability":3,"name":"Bonzo's Mask","glowing":true},
+                 {"id":"BONZO_MASK","material":"SKULL_ITEM","durability":3,"name":"Bonzo's Mask"},
+                 {"id":"PET_SKIN_SHEEP_LIGHT_GREEN","material":"SKULL_ITEM","durability":3,"name":"Light Green Sheep Skin"},
+                 {"id":"LUMBERJACK_RING","material":"PAPER","name":"Lumberjack Ring",
+                  "item_model":"hypixel_skyblock:item/accessories/lumberjack/lumberjack_ring"}]}"""));
+        assertEquals("hypixel_skyblock:item/accessories/lumberjack/lumberjack_ring", catalog.byId().get("LUMBERJACK_RING").model());
+        assertNull(catalog.byId().get("BONZO_MASK").model());
+        // Two items of one name: by name the first wins, by tag each is itself.
+        assertTrue(catalog.byName().get("bonzo's mask").glowing());
+        assertFalse(catalog.byId().get("BONZO_MASK").glowing());
+        assertNotNull(catalog.byId().get("PET_SKIN_SHEEP_LIGHT_GREEN"));
+
+        assertEquals("enchanted_book", ItemIcons.plain("ENCHANTMENT_SMOLDERING_5", "Smoldering V").material());
+        assertEquals("splash_potion", ItemIcons.plain("POTION_damage", "Damage IV Splash Potion").material());
+        assertEquals("potion", ItemIcons.plain("POTION_burning", "Burning I Potion").material());
+        ItemIcons.Info wool = ItemIcons.plain("WOOL:6", "Pink Wool");
+        assertEquals("WOOL", wool.material());
+        assertEquals(6, wool.damage());
+        assertNull(ItemIcons.plain("PET_GRIFFIN", "Griffin"));
+    }
+
+    @Test
+    void findsPetsRunesAndShardsInTheNeuRepository() {
+        List<String> pet = NeuItems.candidates("PET_GRIFFIN", null);
+        assertEquals("GRIFFIN;4", pet.get(0));
+        assertTrue(pet.contains("GRIFFIN;0"));
+        assertEquals("PET_GRIFFIN", pet.get(pet.size() - 1));
+        assertEquals(List.of("PET_SKIN_TIGER_TWILIGHT"), NeuItems.candidates("PET_SKIN_TIGER_TWILIGHT", null));
+        assertEquals(List.of("PET_ITEM_BIG_TEETH_COMMON"), NeuItems.candidates("PET_ITEM_BIG_TEETH_COMMON", null));
+        assertEquals(List.of("TIDAL_RUNE;1", "TIDAL_RUNE;2", "TIDAL_RUNE;3", "RUNE_TIDAL"), NeuItems.candidates("RUNE_TIDAL", null));
+        assertEquals("SMITTEN_RUNE;3", NeuItems.candidates("UNIQUE_RUNE_SMITTEN", null).get(0));
+
+        Map<String, String> shards = NeuItems.shardIds("""
+                [{"stock":"SHARD_CRETAN_BULL","id":"ATTRIBUTE_SHARD_MYTHOLOGICAL_RESISTANCE;1"},
+                 {"stock":"ENCHANTMENT_SHARPNESS_5","id":"SHARPNESS;5"}]""");
+        assertEquals(Map.of("SHARD_CRETAN_BULL", "ATTRIBUTE_SHARD_MYTHOLOGICAL_RESISTANCE;1"), shards);
+        assertEquals("ATTRIBUTE_SHARD_MYTHOLOGICAL_RESISTANCE;1", NeuItems.candidates("SHARD_CRETAN_BULL", shards).get(0));
+
+        ItemIcons.Info head = NeuItems.parse("""
+                {"itemid":"minecraft:skull","damage":3,
+                 "nbttag":"{ExtraAttributes:{id:\\"REKINDLED_EMBER_BURNING\\"},ItemModel:\\"minecraft:player_head\\",SkullOwner:{Properties:{textures:[0:{Name:\\"textures\\",Value:\\"ewogIA==\\"}]}}}"}""");
+        assertEquals("player_head", head.material());
+        assertEquals("ewogIA==", head.skin());
+        assertFalse(head.glowing());
+
+        ItemIcons.Info boots = NeuItems.parse("""
+                {"itemid":"minecraft:leather_boots","damage":0,"nbttag":"{display:{color:16711680},ench:[]}"}""");
+        assertEquals("leather_boots", boots.material());
+        assertEquals("255,0,0", boots.color());
+        assertTrue(boots.glowing());
+
+        // A model from Hypixel's resource pack stays apart from the paper underneath.
+        ItemIcons.Info ring = NeuItems.parse("""
+                {"itemid":"minecraft:paper","damage":0,
+                 "nbttag":"{ExtraAttributes:{id:\\"LUMBERJACK_RING\\"},ItemModel:\\"hypixel_skyblock:item/accessories/lumberjack/lumberjack_ring\\"}"}""");
+        assertEquals("paper", ring.material());
+        assertEquals("hypixel_skyblock:item/accessories/lumberjack/lumberjack_ring", ring.model());
+
+        // Without today's model the 1.8 skull stays a skull, turned into a player head by its damage.
+        ItemIcons.Info old = NeuItems.parse("""
+                {"itemid":"minecraft:skull","damage":3,"nbttag":"{}"}""");
+        assertEquals("player_head", LegacyItems.modernId(old.material(), old.damage()));
     }
 
     @Test

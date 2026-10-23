@@ -32,6 +32,7 @@ public final class AlpakaPerf {
         HUD_PERFORMANCE("alpaka:hud_performance"),
         HUD_SLAYER("alpaka:hud_slayer"),
         HUD_SLAYER_TIMER("alpaka:hud_slayer_timer"),
+        HUD_DEPLOYABLE_TIMER("alpaka:hud_deployable_timer"),
         HUD_INVENTORY("alpaka:hud_inventory"),
         HUD_NOTIFICATIONS("alpaka:hud_notifications"),
         HUD_SCOREBOARD("alpaka:hud_scoreboard"),

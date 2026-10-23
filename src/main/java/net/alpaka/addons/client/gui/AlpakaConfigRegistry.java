@@ -1679,6 +1679,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.ragnarockEnabled = v; AlpakaConfig.save(); },
                 "ragnarock ragnarok rag axe sword cast casting countdown timer crosshair action bar ability strength"));
 
+        OPTIONS.add(new ConfigOption("deployable_timer", "Deployable Timer",
+                "Shows the strongest power orb or flare in range with the time it has left. Move it in the HUD editor.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.deployableTimerEnabled,
+                v -> { AlpakaConfig.instance.deployableTimerEnabled = v; AlpakaConfig.save(); },
+                "deployable timer power orb flare radiant mana flux overflux plasmaflux warning alert sos hud icon time left range buff"));
+
         OPTIONS.add(new ConfigOption("Damage Display", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("only_crit_damage", "Only Show Crit Damage",

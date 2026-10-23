@@ -4,6 +4,7 @@ import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.chat.ChatOverHud;
 import net.alpaka.addons.features.chat.ChatPeekFeature;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
+import net.alpaka.addons.features.deployable.DeployableTimerHudRenderer;
 import net.alpaka.addons.features.inventoryhud.InventoryHudRenderer;
 import net.alpaka.addons.features.notification.AlpakaNotifications;
 import net.alpaka.addons.features.playermodel.PlayerModelRenderer;
@@ -86,6 +87,12 @@ public class HudMixin implements ChatOverHud.Late {
             SlayerTimerHudRenderer.render(graphicsExtractor, deltaTracker);
         } finally {
             AlpakaPerf.end(AlpakaPerf.Section.HUD_SLAYER_TIMER, t);
+        }
+        t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_DEPLOYABLE_TIMER);
+        try {
+            DeployableTimerHudRenderer.render(graphicsExtractor, deltaTracker);
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.HUD_DEPLOYABLE_TIMER, t);
         }
         RagnarockFeature.render(graphicsExtractor);
         t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_INVENTORY);

@@ -162,6 +162,8 @@ public class AlpakaConfig {
     public float inventorySnowSpeed = 1.0f;
     /** Multiplier on the number of flakes; 1 is the original 105. */
     public float inventorySnowAmount = 1.0f;
+    /** Which Inventory Particles are shown, an index into SnowOverlayRenderer.TYPE_NAMES; 0 is snow. */
+    public int inventoryParticleType = 0;
     public float containerBgOpacity = 0.75f;
     public boolean containerBgFadeInEnabled = true;
     public int containerBgFadeInDurationMs = 250;
@@ -255,6 +257,8 @@ public class AlpakaConfig {
     public boolean customMainMenuEnabled = false;
     /** The custom main menu's background, avatar and fireflies shift with the mouse. */
     public boolean customMainMenuParallax = true;
+    /** Inventory Particles behind the custom main menu as well; off keeps them to container screens. */
+    public boolean customMainMenuParticles = false;
     /** The small player model on the HUD. Off for fresh installs. */
     public boolean playerModelEnabled = false;
     public boolean playerModelOnlyActions = true;

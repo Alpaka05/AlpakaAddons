@@ -114,6 +114,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customMainMenuParallax = v; AlpakaConfig.save(); },
                 "custom main menu parallax background mouse move motion depth effect title screen"));
 
+        OPTIONS.add(new ConfigOption("custom_main_menu_particles", "Inventory Particles in Main Menu",
+                "Shows your Inventory Particles behind the custom main menu too.",
+                ConfigCategory.GENERAL,
+                () -> AlpakaConfig.instance.customMainMenuParticles,
+                v -> { AlpakaConfig.instance.customMainMenuParticles = v; AlpakaConfig.save(); },
+                "custom main menu inventory particles snow rain fireflies cherry petals leaves glyphs ash title screen hide"));
+
         OPTIONS.add(new ConfigOption("disable_all_features", "Disable All Features",
                 "Switches every feature off after confirmation. Their settings stay, so a feature switched back on is as it was.",
                 ConfigCategory.GENERAL,
@@ -328,29 +335,39 @@ public class AlpakaConfigRegistry {
                 50.0f, 1000.0f, val -> String.format(Locale.ROOT, "%d ms", Math.round(val)),
                 "container background fade speed duration time ms transition"));
 
-        OPTIONS.add(new ConfigOption("inventory_snow", "Inventory Snowflakes",
-                "Snowflakes fall over container screens, like chests and your inventory.",
+        // The id keeps its old name so existing configs and search links still find the option.
+        OPTIONS.add(new ConfigOption("inventory_snow", "Inventory Particles",
+                "Particles drift over container screens, like chests and your inventory.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.inventorySnowEnabled,
                 v -> { AlpakaConfig.instance.inventorySnowEnabled = v; AlpakaConfig.save(); },
-                "snow winter effect gui inventory snowflakes"));
+                "snow winter effect gui inventory snowflakes particles fireflies ash cherry petals leaves autumn enchanting glyphs rain"));
 
-        OPTIONS.add(new ConfigOption("inventory_snow_speed", "Snow Fall Speed",
-                "Speed of falling snow particles in inventory.",
+        OPTIONS.add(new ConfigOption("inventory_particle_type", "Particle Type",
+                "Which particles drift over container screens.",
+                ConfigCategory.VISUALS,
+                () -> (float) SnowOverlayRenderer.clampType(AlpakaConfig.instance.inventoryParticleType),
+                v -> { AlpakaConfig.instance.inventoryParticleType = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (SnowOverlayRenderer.TYPE_NAMES.length - 1),
+                val -> SnowOverlayRenderer.TYPE_NAMES[SnowOverlayRenderer.clampType(Math.round(val))],
+                "inventory particle type kind snowflakes fireflies ash snow embers cherry petals blossom falling leaves autumn fall enchanting glyphs runes enchant rain").choices(SnowOverlayRenderer.TYPE_NAMES));
+
+        OPTIONS.add(new ConfigOption("inventory_snow_speed", "Particle Speed",
+                "How fast the particles move.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.inventorySnowSpeed,
                 v -> { AlpakaConfig.instance.inventorySnowSpeed = v; AlpakaConfig.save(); },
                 0.1f, 5.0f, val -> String.format(Locale.ROOT, "%.1fx", val),
-                "snow speed animation winter velocity"));
+                "snow speed animation winter velocity particles snow fall speed"));
 
-        OPTIONS.add(new ConfigOption("inventory_snow_amount", "Snowflake Amount",
-                "How many snowflakes fall at once.",
+        OPTIONS.add(new ConfigOption("inventory_snow_amount", "Particle Amount",
+                "How many particles are on screen at once.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.inventorySnowAmount,
                 v -> { AlpakaConfig.instance.inventorySnowAmount = v; AlpakaConfig.save(); },
                 SnowOverlayRenderer.MIN_AMOUNT, SnowOverlayRenderer.MAX_AMOUNT,
                 val -> String.format(Locale.ROOT, "%.1fx", val),
-                "snow amount count density number flakes winter more less"));
+                "snow amount count density number flakes winter more less particles snowflake amount"));
 
         OPTIONS.add(new ConfigOption("scrollable_tooltips", "Scrollable Tooltips",
                 "Scroll a tooltip taller than the screen with the mouse wheel.",

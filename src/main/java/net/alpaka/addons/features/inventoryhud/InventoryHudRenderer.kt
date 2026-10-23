@@ -239,10 +239,16 @@ object InventoryHudRenderer {
         return if (shown) start else start - BAR_ROW
     }
 
-    /** Fabric's height for a HUD element, or vanilla's when the registry has none for it. */
+    /**
+     * Fabric's height for a HUD element, or vanilla's when the registry has none for it: an element
+     * it does not know (IllegalArgumentException), or no heights yet or no camera player
+     * (IllegalStateException). Anything else is a real failure and is not swallowed here.
+     */
     private fun registeredHeight(element: Identifier, vanilla: Int): Int = try {
         HudStatusBarHeightRegistry.getHeight(element)
-    } catch (_: RuntimeException) {
+    } catch (_: IllegalArgumentException) {
+        vanilla
+    } catch (_: IllegalStateException) {
         vanilla
     }
 

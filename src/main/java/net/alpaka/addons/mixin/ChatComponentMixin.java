@@ -32,6 +32,7 @@ import net.minecraft.client.multiplayer.chat.GuiMessageSource;
 import net.minecraft.client.multiplayer.chat.GuiMessageTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MessageSignature;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 
 import java.util.List;
@@ -91,7 +92,7 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
     }
 
     /**
-     * Applies our guild-chat formatting to the copy of the message that gets drawn.
+     * Applies our guild-chat formatting to the lines of the message that get drawn.
      *
      * ### Why the display queue and not addMessage
      *
@@ -108,16 +109,29 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
      * history, the written chat log and every filter keep Hypixel's original wording, while only
      * the wrapped lines that reach the screen carry our formatting.
      *
-     * Rebuilding the record rather than mutating it matters: the very same GuiMessage instance is
-     * handed to addMessageToQueue straight afterwards, and that one has to stay untouched.
+     * Only the wrapping sees the formatted copy: the lines are cut from it, while each line keeps
+     * the stored message as its parent, and the message itself goes on to addMessageToQueue
+     * untouched. Anything that finds a message's lines by their parent depends on that. With the
+     * copy as the parent, Compact Chat could not find the lines of an earlier guild or bridge message
+     * and left it on screen next to the folded one.
      *
      * The cost of living here is that the work repeats whenever the chat is re-wrapped, since
      * refreshTrimmedMessages replays the stored messages through this method. That is a window
      * resize, not a per-frame path, and each replay starts from the original text, so it cannot
      * compound.
      */
-    @ModifyVariable(method = "addMessageToDisplayQueue", at = @At("HEAD"), argsOnly = true, ordinal = 0)
-    private GuiMessage formatGuildMessage(GuiMessage message) {
+    @WrapOperation(
+        method = "addMessageToDisplayQueue",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/chat/GuiMessage;splitLines(Lnet/minecraft/client/gui/Font;I)Ljava/util/List;")
+    )
+    private List<FormattedCharSequence> alpaka$wrapFormattedGuildMessage(GuiMessage message, Font font, int width,
+                                                                      Operation<List<FormattedCharSequence>> original) {
+        return original.call(alpaka$formatGuildMessage(message), font, width);
+    }
+
+    /** The message with our guild and bridge formatting, or the message itself when neither applies. */
+    @Unique
+    private static GuiMessage alpaka$formatGuildMessage(GuiMessage message) {
         Component original = message.content();
         Component component = original;
 

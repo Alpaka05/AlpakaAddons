@@ -12,10 +12,12 @@ import net.alpaka.addons.features.ragnarock.RagnarockFeature;
 import net.alpaka.addons.features.scoreboard.ScoreboardBlurFeature;
 import net.alpaka.addons.features.scoreboard.ScoreboardFooterFeature;
 import net.alpaka.addons.features.slayer.SlayerHudRenderer;
+import net.alpaka.addons.features.tablist.CustomTabFeature;
 import net.alpaka.addons.features.tooltip.OldMasterStarsFeature;
 import net.alpaka.addons.features.slayer.SlayerTimerHudRenderer;
 import net.alpaka.addons.utils.AlpakaPerf;
 import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.Hud;
@@ -48,23 +50,15 @@ public class HudMixin implements ChatOverHud.Late {
     @Shadow private int toolHighlightTimer;
     @Shadow private ItemStack lastToolHighlight;
 
-    @Shadow private void extractChat(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) { throw new AssertionError("replaced by mixin"); }
-    @Shadow private void extractTabList(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) { throw new AssertionError("replaced by mixin"); }
-
-    /** Better Chat: the chat and the player list after the whole HUD, under the same conditions as in it. */
+    /**
+     * Better Chat: the chat and the player list after the whole HUD, under the same conditions as
+     * in it, and the notices after them.
+     */
     @Override
     public void alpaka$extractChatLate(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
         if (this.isHidden || this.minecraft.gui.screen() instanceof LevelLoadingScreen) return;
-        this.extractChat(graphics, deltaTracker);
-        this.extractTabList(graphics, deltaTracker);
-    }
-
-    /** Better Chat draws the chat and the player list after the HUD instead; see ChatOverHud. */
-    @Inject(method = {"extractChat", "extractTabList"}, at = @At("HEAD"), cancellable = true)
-    private void alpaka$chatAfterHud(GuiGraphicsExtractor graphicsExtractor, DeltaTracker deltaTracker, CallbackInfo ci) {
-        if (ChatOverHud.defersHudCall()) {
-            ci.cancel();
-        }
+        ChatOverHud.extractElements(graphics, deltaTracker);
+        AlpakaNotifications.renderAfterChat(graphics);
     }
 
     @Inject(method = "extractRenderState", at = @At("TAIL"))
@@ -119,6 +113,15 @@ public class HudMixin implements ChatOverHud.Late {
             ChatTabsFeature.releasePlayerListKey();
             ci.cancel();
         }
+    }
+
+    /** Toggle Tab List for vanilla's list too, where the Custom Tab leaves it in place. */
+    @WrapOperation(
+            method = "extractTabList",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/KeyMapping;isDown()Z")
+    )
+    private boolean alpaka$toggleTabList(KeyMapping key, Operation<Boolean> original) {
+        return CustomTabFeature.listShown(original.call(key));
     }
 
     /**

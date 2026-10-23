@@ -469,6 +469,87 @@ public class AlpakaConfigRegistry {
                 "absorption hearts gold golden yellow hide merge health row gold over health on hearts own row")
                 .choices(net.alpaka.addons.features.healthbar.WideHealthBarFeature.ABSORPTION_NAMES));
 
+        OPTIONS.add(new ConfigOption("custom_tab", "Custom Tab",
+                "Redraws the SkyBlock tab list as one clean panel, sorted into its categories, without the empty slots.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabEnabled,
+                v -> { AlpakaConfig.instance.customTabEnabled = v; AlpakaConfig.save(); },
+                "custom tab list tablist player list compact clean panel sorted widgets columns skyblock"));
+
+        OPTIONS.add(new ConfigOption("custom_tab_layout", "Layout",
+                "Side by Side puts the categories next to each other, Stacked puts them under each other.",
+                ConfigCategory.VISUALS,
+                () -> (float) AlpakaConfig.instance.customTabLayout,
+                v -> { AlpakaConfig.instance.customTabLayout = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (net.alpaka.addons.features.tablist.CustomTabFeature.LAYOUT_NAMES.length - 1),
+                val -> net.alpaka.addons.features.tablist.CustomTabFeature.LAYOUT_NAMES[Math.round(val)],
+                "tab list layout side by side stacked columns rows horizontal vertical next to under each other")
+                .choices(net.alpaka.addons.features.tablist.CustomTabFeature.LAYOUT_NAMES));
+
+        OPTIONS.add(new ConfigOption("custom_tab_hide_ads", "Hide Hypixel Ads",
+                "Hides the server address and the store link Hypixel puts above and below the tab list.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabHideAds,
+                v -> { AlpakaConfig.instance.customTabHideAds = v; AlpakaConfig.save(); },
+                "tab list hide ads advertising advert store hypixel.net header footer ranks boosters"));
+
+        OPTIONS.add(new ConfigOption("custom_tab_toggle", "Toggle Tab List",
+                "One press of the player list key opens the tab list and the next closes it, instead of holding the key.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabToggle,
+                v -> { AlpakaConfig.instance.customTabToggle = v; AlpakaConfig.save(); },
+                "tab list toggle press hold key keep open player list switch"));
+
+        OPTIONS.add(new ConfigOption("custom_tab_in_menus", "Show in Menus",
+                "Keeps the tab list up while the chat, your inventory or a chest is open, drawn above it.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabInMenus,
+                v -> { AlpakaConfig.instance.customTabInMenus = v; AlpakaConfig.save(); },
+                "tab list menus chat inventory chest container open screen gui visible stay over"));
+
+        OPTIONS.add(new ConfigOption("custom_tab_progress_bars", "Progress Bars",
+                "Draws progress as bars: Hypixel's bars of lines, counts toward a goal like Fairy Souls and the RNG Meter, and skill percentages.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabProgressBars,
+                v -> { AlpakaConfig.instance.customTabProgressBars = v; AlpakaConfig.save(); },
+                "tab list progress bar bars meter skill percent rng reputation fairy souls level xp"));
+
+        OPTIONS.add(new ConfigOption("custom_tab_highlight_changes", "Highlight Changes",
+                "Lights a row up for a moment when its value changes, so you see at a glance what is new. Timers are left out.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabHighlightChanges,
+                v -> { AlpakaConfig.instance.customTabHighlightChanges = v; AlpakaConfig.save(); },
+                "tab list highlight changes flash glow new value changed update blink"));
+
+        OPTIONS.add(new ConfigOption("custom_tab_section_boxes", "Section Boxes",
+                "Puts each part of the tab list, like Area, Profile or Pet, in a faint box of its own so the parts are easy to tell apart.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabSectionBoxes,
+                v -> { AlpakaConfig.instance.customTabSectionBoxes = v; AlpakaConfig.save(); },
+                "tab list section boxes box border outline frame card widget group block separate"));
+
+        OPTIONS.add(new ConfigOption("custom_tab_animated", "Slide Animation",
+                "The tab list slides down from the top of the screen when it opens and back up when it closes, instead of appearing at once.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabAnimated,
+                v -> { AlpakaConfig.instance.customTabAnimated = v; AlpakaConfig.save(); },
+                "tab list slide animation animated open close smooth dock drop down appear instantly"));
+
+        OPTIONS.add(new ConfigOption("custom_tab_background", "Background",
+                "Draws the panel behind the tab list. Off leaves only the text.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabBackground,
+                v -> { AlpakaConfig.instance.customTabBackground = v; AlpakaConfig.save(); },
+                "tab list background panel box transparent none hide disable off text only"));
+
+        OPTIONS.add(new ConfigOption("custom_tab_scale", "Scale",
+                "How big the tab list is drawn.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabScale,
+                v -> { AlpakaConfig.instance.customTabScale = Math.round(v * 20.0f) / 20.0f; AlpakaConfig.save(); },
+                0.5f, 1.5f, val -> String.format(Locale.ROOT, "%.2fx", val),
+                "tab list scale size bigger smaller zoom"));
+
         OPTIONS.add(new ConfigOption("Chat", ConfigCategory.VISUALS));
 
         // Better Chat: everything that changes how the chat looks, its parts as its settings. The
@@ -2167,6 +2248,11 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.notificationBlur, v -> AlpakaConfig.instance.notificationBlur = v);
         styleToggle("notification_smooth_font", "Smooth Font", ConfigCategory.GENERAL, false,
                 () -> AlpakaConfig.instance.notificationSmoothFont, v -> AlpakaConfig.instance.notificationSmoothFont = v);
+
+        styleToggle("custom_tab_blur", "Blur", ConfigCategory.VISUALS, true,
+                () -> AlpakaConfig.instance.customTabBlur, v -> AlpakaConfig.instance.customTabBlur = v);
+        styleToggle("custom_tab_smooth_font", "Smooth Font", ConfigCategory.VISUALS, false,
+                () -> AlpakaConfig.instance.customTabSmoothFont, v -> AlpakaConfig.instance.customTabSmoothFont = v);
 
         styleToggle("chat_blur", "Blur", ConfigCategory.VISUALS, true,
                 () -> AlpakaConfig.instance.chatBlurEnabled, v -> AlpakaConfig.instance.chatBlurEnabled = v);

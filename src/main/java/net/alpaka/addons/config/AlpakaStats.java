@@ -13,6 +13,7 @@ import net.minecraft.client.User;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Locale;
 
 /**
  * Per-account, per-profile record of what a player has actually done.
@@ -65,7 +66,7 @@ public class AlpakaStats {
 
     /** The per-user application-data folder for this OS, which is shared across instances. */
     private static File defaultDirectory() {
-        String os = System.getProperty("os.name", "").toLowerCase();
+        String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
         String home = System.getProperty("user.home", ".");
 
         if (os.contains("win")) {

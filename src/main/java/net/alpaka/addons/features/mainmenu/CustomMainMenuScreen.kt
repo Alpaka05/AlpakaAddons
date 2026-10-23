@@ -461,7 +461,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
     private fun onlineLine(withPing: Boolean): Pair<Int, String>? = when (HypixelStatus.state) {
         HypixelStatus.State.OFF -> null
         HypixelStatus.State.ONLINE -> {
-            val count = HypixelStatus.online?.let { String.format("%,d", it).replace(',', '.') } ?: "?"
+            val count = HypixelStatus.online?.let { String.format(java.util.Locale.ROOT, "%,d", it).replace(',', '.') } ?: "?"
             val ping = if (withPing && HypixelStatus.pingMs > 0) " · ${HypixelStatus.pingMs} ms" else ""
             ONLINE_DOT to "$count online$ping"
         }

@@ -1,0 +1,39 @@
+{
+  "required": true,
+  "package": "net.alpaka.addons.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "plugin": "net.alpaka.addons.compat.OptionalHooksPlugin",
+  "client": [
+    "AbstractClientPlayerMixin",
+    "AvatarRendererMixin",
+    "BlazeModelMixin",
+    "CameraMixin",
+    "CameraTypeMixin",
+    "ChatScreenScrollbarMixin",
+    "ClientLevelMobDeathMixin",
+    "ClientPacketListenerMobDeathMixin",
+    "EntityRenderDispatcherMixin",
+    "EntityRendererMixin",
+    "FontTextureMixin",
+    "GameRendererMixin",
+    "ItemFeatureRendererMixin",
+    "ItemInHandRendererMixin",
+    "LevelRendererMixin",
+    "LightmapMixin",
+    "LightningBoltMixin",
+    "LivingEntityMixin",
+    "LivingEntityRendererMixin",
+    "NameTagFeatureRendererMixin",
+    "NameTagSubmitMixin",
+    "ParticleEngineMixin",
+    "PictureInPictureRendererMixin",
+    "ScoreboardFooterMixin",
+    "ScreenEffectRendererMixin",
+    "SoundEngineMixin",
+    "SubmitNodeCollectionMixin",
+    "WideHealthBarMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}

@@ -15,7 +15,6 @@ import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.ModifyArg;
 
 /** The first-person fire overlay: see {@link FireOverlayFeature}. */
 @Mixin(ScreenEffectRenderer.class)
@@ -40,28 +39,28 @@ public class ScreenEffectRendererMixin {
         return original.call(FireOverlayFeature.staticFirstPersonFire() ? FireOverlayFeature.spriteTexture(sprite) : atlas);
     }
 
-    /** Both fire quads are moved by the same translate before they are built; this lowers them. */
-    @ModifyArg(method = "lambda$submitFire$0", at = @At(value = "INVOKE",
-            target = "Lorg/joml/Matrix4f;translate(FFF)Lorg/joml/Matrix4f;"), index = 1)
-    private static float alpaka$lowerFirstPersonFire(float y) {
-        return FireOverlayFeature.firstPersonFireY(y);
-    }
-
     /**
-     * Builds each fire quad with the fade applied and, for the still fire, the texture file's first
-     * frame in place of the atlas sprite's coordinates. The atlas sprite is drawn mirrored (U1 to
-     * U0, V1 to V0), and so is the frame.
+     * Builds each fire quad lowered, with the fade applied and, for the still fire, the texture
+     * file's first frame in place of the atlas sprite's coordinates. The atlas sprite is drawn
+     * mirrored (U1 to U0, V1 to V0), and so is the frame.
+     *
+     * The drop goes onto the quad's pose here rather than into the translate vanilla places each
+     * quad with: that sits in a lambda, whose generated name changes between Minecraft versions.
+     * The pose is only turned about its vertical axis after that translate, and a move along the
+     * vertical axis gives the same result before or after such a turn.
      */
     @WrapOperation(method = "buildFireQuad", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/ScreenEffectRenderer;buildSpriteQuad(Lcom/mojang/blaze3d/vertex/VertexConsumer;Lorg/joml/Matrix4f;Lnet/minecraft/client/renderer/texture/TextureAtlasSprite;FFFFFI)V"))
     private static void alpaka$buildFireQuad(VertexConsumer builder, Matrix4f pose, TextureAtlasSprite sprite,
                                              float x0, float y0, float x1, float y1, float z, int color,
                                              Operation<Void> original) {
+        float drop = FireOverlayFeature.firstPersonFireDrop();
+        Matrix4f placed = drop != 0.0f ? new Matrix4f(pose).translate(0.0f, drop, 0.0f) : pose;
         int faded = FireOverlayFeature.firstPersonFireColor(color);
         if (FireOverlayFeature.staticFirstPersonFire()) {
-            buildQuad(builder, pose, x0, y0, x1, y1, z, 1.0f, FireOverlayFeature.firstFrameV(sprite), 0.0f, 0.0f, faded);
+            buildQuad(builder, placed, x0, y0, x1, y1, z, 1.0f, FireOverlayFeature.firstFrameV(sprite), 0.0f, 0.0f, faded);
         } else {
-            original.call(builder, pose, sprite, x0, y0, x1, y1, z, faded);
+            original.call(builder, placed, sprite, x0, y0, x1, y1, z, faded);
         }
     }
 }

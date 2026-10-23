@@ -3,5 +3,6 @@
   "category.alpaka.addons": "Alpaka Addons",
   "key.alpaka.zoom": "Zoom",
   "key.alpaka.command_wheel": "Befehlsrad",
-  "key.alpaka.inventory_hud": "Inventar-HUD"
+  "key.alpaka.inventory_hud": "Inventar-HUD",
+  "key.alpaka.item_value": "Item-Wert"
 }

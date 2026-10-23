@@ -92,8 +92,8 @@ public final class DevScreenshotTour {
                 return new HudEditorScreen(null);
             }),
             // Where a right click on each HUD in the editor leads.
-            screen("hud-settings-world-age", () -> AlpakaConfigScreen.openOnOption(null,
-                    net.alpaka.addons.features.worldage.WorldAgeHudElement.INSTANCE.getSettingsOptionId())),
+            screen("hud-settings-performance", () -> AlpakaConfigScreen.openOnOption(null,
+                    net.alpaka.addons.features.performance.PerformanceHudElement.INSTANCE.getSettingsOptionId())),
             screen("hud-settings-slayer", () -> AlpakaConfigScreen.openOnOption(null,
                     net.alpaka.addons.features.slayer.SlayerHudElement.INSTANCE.getSettingsOptionId())),
             screen("hud-settings-boss-timer", () -> AlpakaConfigScreen.openOnOption(null,
@@ -261,6 +261,12 @@ public final class DevScreenshotTour {
                     .devLeavePoint()), () -> true, 30),
             new Stop("confirm-pause-after-cancel", () -> click(((AlpakaConfirmScreen) screen()).devCancelPoint()),
                     () -> true, 3),
+            // The Friends overlay over the pause menu, opened as the Friends key (O) opens it: it
+            // draws the menu as its backdrop and then blurs itself, so the menu must not blur too.
+            new Stop("pause-menu-friends", () -> {
+                Minecraft mc = Minecraft.getInstance();
+                mc.gui.setScreen(new net.minecraft.client.gui.screens.friends.FriendsOverlayScreen(mc.gui.screen()));
+            }, () -> true, 30),
             // The HUD editor with the world age HUD dragged away: Reset All asks, Cancel leaves it
             // where it is, and confirming puts every HUD back.
             new Stop("confirm-hud-editor-moved", () -> {
@@ -396,8 +402,9 @@ public final class DevScreenshotTour {
             new Stop(null, () -> AlpakaConfig.instance.itemSwayDisabled = false, () -> true, 1),
             // Starlight together with Disable Item Lighting, still and mid-swing.
             new Stop("starlight-unlit", () -> AlpakaConfig.instance.itemLightingDisabled = true, () -> true, 5),
-            new Stop("starlight-unlit-swing", () -> Minecraft.getInstance().player.swing(
-                    net.minecraft.world.InteractionHand.MAIN_HAND), () -> true, 3),
+            // The swing animation only, as the config's swing preview plays it: the one-argument
+            // swing also tells the server, which only Outbound may.
+            new Stop("starlight-unlit-swing", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
             new Stop(null, () -> AlpakaConfig.instance.itemLightingDisabled = false, () -> true, 1),
             // Sky Effects, without the HUD: the Overworld at night looking north at the aurora and
             // in the morning towards the sun, the Nether's firestorm above its roof and the End's
@@ -592,7 +599,7 @@ public final class DevScreenshotTour {
         cfg.inventoryHudEnabled = true;
         cfg.inventoryHudAttachToHotbar = true;
         cfg.inventoryHudVisibility = 0;
-        cfg.worldAgeHudEnabled = true;
+        cfg.performanceHudEnabled = true;
     }
 
     /** The HUD editor's previews and a notice, all drawn in the shared HUD style. */

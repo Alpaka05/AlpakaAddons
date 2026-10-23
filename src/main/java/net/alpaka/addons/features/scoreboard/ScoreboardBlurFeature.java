@@ -2,6 +2,7 @@ package net.alpaka.addons.features.scoreboard;
 
 import net.alpaka.addons.client.gui.AlpakaGuiElementSink;
 import net.alpaka.addons.client.gui.HudPanel;
+import net.alpaka.addons.compat.GnetumCompat;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.chat.ChatBlurFeature;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -70,7 +71,10 @@ public final class ScoreboardBlurFeature {
         int top = titleTop != Integer.MIN_VALUE ? Math.min(titleTop, y0) : y0;
         // The sidebar has no scale of its own: one panel pixel is one GUI pixel. Vanilla's body
         // color is the tint, so the player's text background opacity still sets its strength.
-        HudPanel.submit(graphics, x0 - PADDING, top - PADDING, x1 + PADDING, y1 + PADDING, 1.0f, color, 1.0f);
+        // While Gnetum caches the sidebar the panel stays a plain tint: asking for the blur would
+        // take the sidebar out of the cache and redraw it every frame.
+        HudPanel.submit(graphics, x0 - PADDING, top - PADDING, x1 + PADDING, y1 + PADDING, 1.0f, color, 1.0f,
+                GnetumCompat.isCaching() ? HudPanel.Glass.PLAIN : HudPanel.Glass.HUD);
         return true;
     }
 }

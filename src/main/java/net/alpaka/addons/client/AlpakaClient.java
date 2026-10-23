@@ -330,12 +330,7 @@ public class AlpakaClient implements ClientModInitializer {
                     : "§8  No file yet. It is written on the next kill.");
         }
 
-        java.io.File logDir = net.alpaka.addons.features.slayer.SlayerKillLog.INSTANCE.folderIn(file.getParentFile());
-        int logFiles = net.alpaka.addons.features.slayer.SlayerKillLog.INSTANCE.fileCount(file.getParentFile());
-        SlayerDropTracker.sendModMessage("§7Slayer log: §f" + logDir.getAbsolutePath());
-        SlayerDropTracker.sendModMessage(logFiles > 0
-                ? "§8  " + logFiles + " CSV file" + (logFiles != 1 ? "s" : "") + ", one line per boss and per drop"
-                : "§8  no files yet; the first boss starts them");
+        net.alpaka.addons.features.slayer.SlayerKillLog.INSTANCE.reportLocation(file.getParentFile());
     }
 
     /**

@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.slayer
 
+import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.utils.SkyblockUtils
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.Minecraft
@@ -42,7 +43,11 @@ object HamRadio {
     private fun tick(mc: Minecraft) {
         if (++ticks % READ_INTERVAL_TICKS != 0) return
         val player = mc.player
-        if (player == null || !SkyblockUtils.isOnSkyblock()) {
+        val cfg = AlpakaConfig.instance
+        // Only while the Radio line can show: the Blaze slayer on the HUD, with the line switched on.
+        // Copying every item's data once a second anywhere on SkyBlock bought nothing elsewhere.
+        if (player == null || !cfg.slayerHudEnabled || !cfg.slayerHudShowRadio
+                || SlayerQuestDetector.currentOrRecent() != SlayerType.BLAZE || !SkyblockUtils.isOnSkyblock()) {
             inInventory = false
             nearby = null
             return

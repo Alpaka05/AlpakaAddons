@@ -218,7 +218,7 @@ public class AlpakaConfigRegistry {
                 "hide mob death smoke poof particles cloud puff"));
 
         OPTIONS.add(new ConfigOption("hide_explosions", "Hide Explosions",
-                "Hides the flash, cloud and debris of explosions.",
+                "Hides the flash, smoke and debris of explosions.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.hideExplosions,
                 v -> { AlpakaConfig.instance.hideExplosions = v; AlpakaConfig.save(); },

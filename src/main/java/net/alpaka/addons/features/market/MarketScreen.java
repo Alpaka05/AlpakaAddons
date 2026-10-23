@@ -409,7 +409,8 @@ public class MarketScreen extends ContainerScreen {
 
         // The item on the cursor, and the hovered item's own tooltip, as vanilla draws them.
         extractCarriedItem(graphics, mouseX, mouseY);
-        if (!hoveredStack.isEmpty() && menu.getCarried().isEmpty()) {
+        if (!hoveredStack.isEmpty() && menu.getCarried().isEmpty()
+                && !net.alpaka.addons.features.itemvalue.ItemValuePopup.hidesTooltipOf(this, hoveredStack)) {
             graphics.setTooltipForNextFrame(this.font, hoveredStack, mouseX, mouseY);
         }
     }
@@ -1591,7 +1592,7 @@ public class MarketScreen extends ContainerScreen {
         return color;
     }
 
-    static int nameColor(Component name) {
+    public static int nameColor(Component name) {
         int[] found = {0xFFFFFF};
         name.visit((style, text) -> {
             if (text.isBlank()) return Optional.empty();
@@ -1610,7 +1611,7 @@ public class MarketScreen extends ContainerScreen {
         return found[0];
     }
 
-    static int vivid(int rgb) {
+    public static int vivid(int rgb) {
         return switch (rgb & 0xFFFFFF) {
             case 0xFFFFFF -> 0xFFD8D8D8;
             case 0x55FF55 -> 0xFF5BE38A;
@@ -1704,6 +1705,14 @@ public class MarketScreen extends ContainerScreen {
             return true;
         }
         return false;
+    }
+
+    /**
+     * The item under the mouse in the last frame, as this screen draws it, for the Item Value key.
+     * Empty in classic view, where the slots under the mouse are vanilla's own.
+     */
+    public ItemStack hoveredItem() {
+        return classic() ? ItemStack.EMPTY : hoveredStack;
     }
 
     // ---- For the screenshot tour ----------------------------------------------------------------

@@ -101,6 +101,12 @@ public final class DevScreenshotTour {
             new Stop(null, () -> ScreenshotPreview.devFreezeAt(-1.0f), () -> true, 5),
             new Stop("hud-editor-world", () -> Minecraft.getInstance().gui.setScreen(new HudEditorScreen(null)), () -> true, 20),
             screen("pause-menu", net.alpaka.addons.features.escapemenu.CustomPauseScreen::new),
+            // The Friends overlay over the pause menu, opened as the Friends key (O) opens it: it
+            // draws the menu as its backdrop and then blurs itself, so the menu must not blur too.
+            new Stop("pause-menu-friends", () -> {
+                Minecraft mc = Minecraft.getInstance();
+                mc.gui.setScreen(new net.minecraft.client.gui.screens.friends.FriendsOverlayScreen(mc.gui.screen()));
+            }, () -> true, 30),
             new Stop(null, () -> Minecraft.getInstance().gui.setScreen(null), () -> true, 5),
             // Two ticks after a burst: the lines are mid-slide inside the chat's box.
             new Stop("chat-slide", DevScreenshotTour::chatBurst, () -> true, 2),

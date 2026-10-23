@@ -115,7 +115,7 @@ public class AlpakaConfigRegistry {
                 "custom main menu parallax background mouse move motion depth effect title screen"));
 
         OPTIONS.add(new ConfigOption("disable_all_features", "Disable All Features",
-                "Disables every feature in the mod after confirmation.",
+                "Switches every feature off after confirmation. Their settings stay, so a feature switched back on is as it was.",
                 ConfigCategory.GENERAL,
                 "Disable All",
                 parent -> Minecraft.getInstance().gui.setScreen(new net.minecraft.client.gui.screens.ConfirmScreen(
@@ -2187,6 +2187,30 @@ public class AlpakaConfigRegistry {
         List<ConfigOption> result = java.util.Collections.unmodifiableList(filtered);
         SEARCH_CACHE.put(category, result);
         return result;
+    }
+
+    /**
+     * Brings every slider's stored value back into the slider's range, with one save for all of
+     * them. A hand edit or an old file can hold a value the slider never offers - an index past the
+     * end of a choice list, a negative size - and the features read the field, not the slider.
+     *
+     * Run once the game has started rather than while the settings load: a setter may act on the
+     * game as well, and Warp Sound plays its preview. Returns how many values changed.
+     */
+    public static int clampStoredValues() {
+        int changed = 0;
+        AlpakaConfig.beginDeferredSaves();
+        try {
+            for (ConfigOption option : OPTIONS) {
+                if (option.clampStoredValue()) changed++;
+            }
+        } finally {
+            AlpakaConfig.endDeferredSaves();
+        }
+        if (changed > 0) {
+            net.alpaka.addons.AlpakaAddons.LOGGER.warn("Brought {} setting(s) back into their slider's range", changed);
+        }
+        return changed;
     }
 
     /** How many non-header options a category holds for the current search term. */

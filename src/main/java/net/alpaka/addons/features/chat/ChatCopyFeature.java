@@ -1,8 +1,8 @@
 package net.alpaka.addons.features.chat;
 
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.features.notification.AlpakaNotifications;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.components.toasts.SystemToast;
 import net.minecraft.client.multiplayer.chat.GuiMessage;
 import net.minecraft.network.chat.Component;
 
@@ -15,10 +15,13 @@ import net.minecraft.network.chat.Component;
  * look it up. Only the clipboard is touched; nothing goes to the server.
  */
 public final class ChatCopyFeature {
-    private static final SystemToast.SystemToastId TOAST = new SystemToast.SystemToastId(1500L);
+    /** The copy notice is a quick confirmation, shorter than the configured hold for news. */
+    private static final long NOTICE_HOLD_MS = 2500L;
 
     /** The message under the mouse in the open chat as of the last frame, or null. */
     private static GuiMessage hovered;
+    /** The last copy's notice, replaced by the next one so a few copies in a row don't stack up. */
+    private static long noticeId;
 
     private ChatCopyFeature() {}
 
@@ -35,10 +38,9 @@ public final class ChatCopyFeature {
         if (button != 1 || !isEnabled() || hovered == null) return false;
         String text = plainText(hovered.content());
         if (text.isEmpty()) return false;
-        Minecraft minecraft = Minecraft.getInstance();
-        minecraft.keyboardHandler.setClipboard(text);
-        SystemToast.addOrUpdate(minecraft.gui.toastManager(), TOAST,
-                Component.literal("Message Copied"), Component.literal(shorten(text)));
+        Minecraft.getInstance().keyboardHandler.setClipboard(text);
+        AlpakaNotifications.dismiss(noticeId);
+        noticeId = AlpakaNotifications.send("Message Copied", text.replace('\n', ' '), 0, NOTICE_HOLD_MS);
         return true;
     }
 
@@ -48,10 +50,5 @@ public final class ChatCopyFeature {
      */
     static String plainText(Component content) {
         return ChatTab.strip(CompactChatFeature.withoutCounter(content).getString());
-    }
-
-    private static String shorten(String text) {
-        String oneLine = text.replace('\n', ' ');
-        return oneLine.length() > 40 ? oneLine.substring(0, 39) + "…" : oneLine;
     }
 }

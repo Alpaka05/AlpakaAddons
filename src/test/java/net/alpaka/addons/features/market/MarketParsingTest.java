@@ -455,7 +455,11 @@ class MarketParsingTest {
                 {"items":[
                  {"id":"STARRED_BONZO_MASK","material":"SKULL_ITEM","durability":3,"name":"Bonzo's Mask","glowing":true},
                  {"id":"BONZO_MASK","material":"SKULL_ITEM","durability":3,"name":"Bonzo's Mask"},
-                 {"id":"PET_SKIN_SHEEP_LIGHT_GREEN","material":"SKULL_ITEM","durability":3,"name":"Light Green Sheep Skin"}]}"""));
+                 {"id":"PET_SKIN_SHEEP_LIGHT_GREEN","material":"SKULL_ITEM","durability":3,"name":"Light Green Sheep Skin"},
+                 {"id":"LUMBERJACK_RING","material":"PAPER","name":"Lumberjack Ring",
+                  "item_model":"hypixel_skyblock:item/accessories/lumberjack/lumberjack_ring"}]}"""));
+        assertEquals("hypixel_skyblock:item/accessories/lumberjack/lumberjack_ring", catalog.byId().get("LUMBERJACK_RING").model());
+        assertNull(catalog.byId().get("BONZO_MASK").model());
         // Two items of one name: by name the first wins, by tag each is itself.
         assertTrue(catalog.byName().get("bonzo's mask").glowing());
         assertFalse(catalog.byId().get("BONZO_MASK").glowing());
@@ -499,6 +503,13 @@ class MarketParsingTest {
         assertEquals("leather_boots", boots.material());
         assertEquals("255,0,0", boots.color());
         assertTrue(boots.glowing());
+
+        // A model from Hypixel's resource pack stays apart from the paper underneath.
+        ItemIcons.Info ring = NeuItems.parse("""
+                {"itemid":"minecraft:paper","damage":0,
+                 "nbttag":"{ExtraAttributes:{id:\\"LUMBERJACK_RING\\"},ItemModel:\\"hypixel_skyblock:item/accessories/lumberjack/lumberjack_ring\\"}"}""");
+        assertEquals("paper", ring.material());
+        assertEquals("hypixel_skyblock:item/accessories/lumberjack/lumberjack_ring", ring.model());
 
         // Without today's model the 1.8 skull stays a skull, turned into a player head by its damage.
         ItemIcons.Info old = NeuItems.parse("""

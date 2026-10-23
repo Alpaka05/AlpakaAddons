@@ -33,12 +33,12 @@ final class NeuItems {
     private NeuItems() {}
 
     private static final String REPO = "https://raw.githubusercontent.com/NotEnoughUpdates/NotEnoughUpdates-REPO/master/";
-    /** How many files may be on their way at once: a search that lights up ten new pets should not fire ten requests in one frame. */
-    private static final int MAX_IN_FLIGHT = 4;
+    /** How many files may be on their way at once: about the rows the list shows, not all its matches in one frame. */
+    private static final int MAX_IN_FLIGHT = 6;
     private static final long RETRY_MS = 60_000L;
 
     private static final Pattern TEXTURE = Pattern.compile("Value:\\\\?\"([A-Za-z0-9+/=]+)\\\\?\"");
-    private static final Pattern MODEL = Pattern.compile("ItemModel:\\\\?\"minecraft:([a-z0-9_]+)\\\\?\"");
+    private static final Pattern MODEL = Pattern.compile("ItemModel:\\\\?\"([a-z0-9_.-]+):([a-z0-9_./-]+)\\\\?\"");
     private static final Pattern COLOR = Pattern.compile("\\bcolor:(\\d+)");
 
     /** What each tag looks like; an empty answer for a tag the repository does not know. */
@@ -173,7 +173,8 @@ final class NeuItems {
 
     /**
      * How a repository file says the item looks. Its item id is mostly the 1.8 one with a damage
-     * value, as in Hypixel's list; where it also names today's model, that is taken instead.
+     * value, as in Hypixel's list; where it also names today's model, that is taken instead, and a
+     * model from Hypixel's resource pack is kept apart, as the pack may not be loaded.
      */
     static ItemIcons.Info parse(String json) {
         JsonElement root = JsonParser.parseString(json);
@@ -186,10 +187,15 @@ final class NeuItems {
 
         String material = itemId.startsWith("minecraft:") ? itemId.substring(10) : itemId;
         if (material.equals("skull")) material = "skull_item";
+        String packModel = null;
         Matcher model = MODEL.matcher(nbt);
         if (model.find()) {
-            material = model.group(1);
-            damage = 0;
+            if (model.group(1).equals("minecraft")) {
+                material = model.group(2);
+                damage = 0;
+            } else {
+                packModel = model.group(1) + ":" + model.group(2);
+            }
         }
         Matcher texture = TEXTURE.matcher(nbt);
         String skin = texture.find() ? texture.group(1) : null;
@@ -204,7 +210,7 @@ final class NeuItems {
                 // Left undyed.
             }
         }
-        return new ItemIcons.Info(material, damage, skin, glowing, color);
+        return new ItemIcons.Info(material, damage, skin, glowing, color, packModel);
     }
 
     private static HttpRequest request(String url) {

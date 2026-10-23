@@ -513,6 +513,7 @@ class MarketParsingTest {
         List<MarketStats.Level> offers = MarketStats.levels(List.of("Top Offers:", "- 153,420.2 coins each | 960x in 2 offers"));
         assertEquals(new MarketStats.Level(153_420.2, 960, 2), offers.get(0));
         assertTrue(MarketStats.levels(List.of("Top Orders:", "No buy orders yet!")).isEmpty());
+        assertEquals(List.of(new MarketStats.Level(3.1, 4_950, 0)), MarketStats.levels(List.of("Only Order:", "- 3.1 coins each | 4,950x")));
         assertEquals(10.0, MarketStats.spread(List.of(new MarketStats.Level(90, 1, 1)), List.of(new MarketStats.Level(100, 1, 1))), 1e-9);
         assertTrue(Double.isNaN(MarketStats.spread(List.of(), offers)));
     }

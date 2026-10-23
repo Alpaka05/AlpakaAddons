@@ -64,7 +64,7 @@ public final class MarketStats {
             Pattern.CASE_INSENSITIVE);
 
     /**
-     * The levels under "Top Orders:" or "Top Offers:" in a Create Buy Order or Create Sell Offer
+     * The levels under "Top Orders:" or "Top Offers:" ("Only Order:" for one) in a Create Buy Order or Create Sell Offer
      * button's lore, best first; empty when there are none.
      */
     public static List<Level> levels(List<String> lore) {
@@ -72,7 +72,9 @@ public final class MarketStats {
         boolean in = false;
         for (String raw : lore) {
             String line = raw.trim();
-            if (line.equalsIgnoreCase("Top Orders:") || line.equalsIgnoreCase("Top Offers:")) {
+            // With a single order Hypixel writes "Only Order:" instead.
+            if (line.equalsIgnoreCase("Top Orders:") || line.equalsIgnoreCase("Top Offers:")
+                    || line.equalsIgnoreCase("Only Order:") || line.equalsIgnoreCase("Only Offer:")) {
                 in = true;
                 continue;
             }

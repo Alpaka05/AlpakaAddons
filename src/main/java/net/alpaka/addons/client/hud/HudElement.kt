@@ -65,6 +65,12 @@ interface HudElement {
      */
     fun adjustScale(notches: Double)
 
+    /**
+     * Writes what the editor changed outside the mod's config, which the editor saves itself. Called
+     * once the editor closes or resets, so a stored change is not written on every scroll notch.
+     */
+    fun flushEdits() {}
+
     /** Restores this element's default position and size. */
     fun reset()
 

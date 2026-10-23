@@ -15,6 +15,8 @@ import java.time.format.DateTimeFormatter
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 
 /**
  * One line per slayer boss and one per drop, appended to CSV files beside the slayer record.
@@ -152,6 +154,8 @@ object SlayerKillLog {
          * on its own later, after every boss that could have claimed it is finished.
          */
         fun take(nowMs: Long, all: Boolean = false): List<Row> {
+            // Nearly every tick: nothing held, nothing to allocate.
+            if (isEmpty()) return emptyList()
             val rows = ArrayList<Row>()
 
             val due = kills.filter { all || nowMs - it.atMs >= DROP_WINDOW_MS }
@@ -278,27 +282,60 @@ object SlayerKillLog {
         parseDrop(type, rawItem, line, System.currentTimeMillis())?.let(book::drop)
     }
 
-    /** Every client tick: finishes what is due and starts a background write. */
+    /**
+     * The longest disconnecting or quitting waits for the log to be written. A cloud drive that
+     * stopped answering can hold the writer for good, and the game must not hang on it.
+     */
+    private const val FLUSH_WAIT_MS = 2_000L
+
+    /**
+     * Every client tick: finishes what is due and starts a background write. Nothing here touches
+     * the disk; the files are only opened on [WRITER].
+     */
     fun tick() {
-        unwritten.addAll(book.take(System.currentTimeMillis()))
-        collect(false)
+        if (!book.isEmpty()) unwritten.addAll(book.take(System.currentTimeMillis()))
+        if (pending == null && unwritten.isEmpty()) return
+        collect(0L)
         startWrite()
     }
 
-    /** For disconnecting and quitting: writes everything held, waiting for it. */
+    /** For disconnecting and quitting: writes everything held, waiting for it a short while. */
     fun flushNow() {
         unwritten.addAll(book.take(System.currentTimeMillis(), all = true))
-        collect(true)
-        nextAttemptMs = 0L
-        startWrite()
-        collect(true)
+        val deadline = System.currentTimeMillis() + FLUSH_WAIT_MS
+        collect(FLUSH_WAIT_MS)
+        if (pending == null) {
+            nextAttemptMs = 0L
+            startWrite()
+            collect((deadline - System.currentTimeMillis()).coerceAtLeast(0L))
+        }
+        if (pending != null) {
+            AlpakaAddons.LOGGER.warn("The slayer log folder did not answer within {} ms; {} lines are still waiting",
+                FLUSH_WAIT_MS, unwritten.size)
+        }
     }
 
     /** The log's own folder inside a stats folder. */
     fun folderIn(statsDirectory: File): File = File(statsDirectory, "slayer-log")
 
-    /** The log files in [statsDirectory], for /alpakastats; 0 when there are none yet. */
-    fun fileCount(statsDirectory: File): Int = LogFiles.logFiles(folderIn(statsDirectory)).size
+    /**
+     * Tells the player, for /alpakastats, where the log is and how many files it has. Looked up on
+     * [WRITER]: listing a cloud folder can take long, and the game must not wait for it.
+     */
+    fun reportLocation(statsDirectory: File) {
+        val folder = folderIn(statsDirectory)
+        WRITER.submit {
+            val count = runCatching { LogFiles.logFiles(folder).size }.getOrDefault(0)
+            Minecraft.getInstance().execute {
+                SlayerDropTracker.sendModMessage("§7Slayer log: §f" + folder.absolutePath)
+                SlayerDropTracker.sendModMessage(if (count > 0) {
+                    "§8  $count CSV file" + (if (count != 1) "s" else "") + ", one line per boss and per drop"
+                } else {
+                    "§8  no files yet; the first boss starts them"
+                })
+            }
+        }
+    }
 
     /**
      * The stats folder was switched with /alpakastats folder: brings the log files along, so the
@@ -341,16 +378,22 @@ object SlayerKillLog {
         pending = WRITER.submit { LogFiles.append(folder, LogFiles.machine(), rows) }
     }
 
-    private fun collect(wait: Boolean) {
+    /** Finishes the background write if it is done, waiting up to [waitMs] for it. */
+    private fun collect(waitMs: Long) {
         val job = pending ?: return
-        if (!wait && !job.isDone) return
-        pending = null
+        if (waitMs <= 0L && !job.isDone) return
         try {
-            job.get()
+            job.get(waitMs, TimeUnit.MILLISECONDS)
+            pending = null
             repeat(pendingCount) { unwritten.removeAt(0) }
+        } catch (e: TimeoutException) {
+            // Still running; left pending, so its lines are neither dropped nor written twice.
+            return
         } catch (e: InterruptedException) {
             Thread.currentThread().interrupt()
+            return
         } catch (e: Exception) {
+            pending = null
             AlpakaAddons.LOGGER.warn("Could not write the slayer log; {} lines are kept for the next try",
                 unwritten.size, e.cause ?: e)
             nextAttemptMs = System.currentTimeMillis() + RETRY_PAUSE_MS

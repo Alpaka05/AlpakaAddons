@@ -23,6 +23,7 @@ import net.alpaka.addons.features.chat.SmoothChatFeature;
 import net.alpaka.addons.features.guild.GuildPrefixFormatter;
 import net.alpaka.addons.features.slayer.SlayerChatFilter;
 import net.alpaka.addons.features.slayer.SlayerDropTracker;
+import net.alpaka.addons.utils.AlpakaPerf;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -127,6 +128,18 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
 
         if (component == original) return message;
         return new GuiMessage(message.addedTime(), component, message.signature(), message.source(), message.tag());
+    }
+
+    /** Times one message's way into the chat, every hook of the mod on it included. */
+    @WrapMethod(method = "addMessage(Lnet/minecraft/network/chat/Component;Lnet/minecraft/network/chat/MessageSignature;Lnet/minecraft/client/multiplayer/chat/GuiMessageSource;Lnet/minecraft/client/multiplayer/chat/GuiMessageTag;)V", require = 0)
+    private void alpaka$timeMessage(Component component, MessageSignature signature, GuiMessageSource source, GuiMessageTag tag,
+                                    Operation<Void> original) {
+        long t = AlpakaPerf.begin(AlpakaPerf.Section.CHAT_MESSAGE);
+        try {
+            original.call(component, signature, source, tag);
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.CHAT_MESSAGE, t);
+        }
     }
 
     @Inject(
@@ -244,13 +257,23 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
         return original.call(chat) || ChatPeekFeature.isPeeking();
     }
 
-    @org.spongepowered.asm.mixin.Unique
-    private long alpaka$replayStartNanos;
+    /**
+     * Times the whole re-layout, the replay hooks below included, with its end in a finally. Only a
+     * measurement, like the two other timers here, so the game starts without it if it cannot apply.
+     */
+    @WrapMethod(method = "refreshTrimmedMessages", require = 0)
+    private void alpaka$timeReplay(Operation<Void> original) {
+        long t = AlpakaPerf.begin(AlpakaPerf.Section.CHAT_REPLAY);
+        try {
+            original.call();
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.CHAT_REPLAY, t);
+        }
+    }
 
     /** A re-layout replays every stored message through the queue; none of that is a new arrival. */
     @Inject(method = "refreshTrimmedMessages", at = @At("HEAD"))
     private void alpaka$beginReplay(CallbackInfo ci) {
-        this.alpaka$replayStartNanos = net.alpaka.addons.utils.AlpakaPerf.begin(net.alpaka.addons.utils.AlpakaPerf.Section.CHAT_REPLAY);
         SmoothChatFeature.clear();
         SmoothChatFeature.beginReplay();
     }
@@ -258,7 +281,6 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
     @Inject(method = "refreshTrimmedMessages", at = @At("RETURN"))
     private void alpaka$endReplay(CallbackInfo ci) {
         SmoothChatFeature.endReplay();
-        net.alpaka.addons.utils.AlpakaPerf.end(net.alpaka.addons.utils.AlpakaPerf.Section.CHAT_REPLAY, this.alpaka$replayStartNanos);
     }
 
     /**
@@ -536,6 +558,18 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
     }
 
     // ------------------------------------------------------------------ blurred background
+
+    /** Times the chat's extraction for the frame, every hook of the mod in it included. */
+    @WrapMethod(method = EXTRACT_PUBLIC, require = 0)
+    private void alpaka$timeExtraction(GuiGraphicsExtractor graphics, Font font, int ticks, int mouseX, int mouseY,
+                                       ChatComponent.DisplayMode mode, boolean focused, Operation<Void> original) {
+        long t = AlpakaPerf.begin(AlpakaPerf.Section.CHAT_EXTRACT);
+        try {
+            original.call(graphics, font, ticks, mouseX, mouseY, mode, focused);
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.CHAT_EXTRACT, t);
+        }
+    }
 
     @Inject(method = EXTRACT_PUBLIC, at = @At("HEAD"))
     private void alpaka$beginBlurExtraction(GuiGraphicsExtractor graphics, Font font, int ticks, int mouseX, int mouseY,

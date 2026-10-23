@@ -53,8 +53,8 @@ import java.util.Locale;
  * - the same click, with the same button, that clicking the slot in the vanilla chest sends. There
  * are no extra clicks, no clicks of the mod's own, no drags, number-key swaps or drops: mouse
  * events that are not a plain click on a drawn control are swallowed, so nothing reaches the
- * invisible vanilla slots underneath. Keys close the menu, and 1 to 9 press the actions numbered
- * on a product's or an auction's page.
+ * invisible vanilla slots underneath. Keys close the menu, and 1 to 9 press the numbered actions:
+ * the tiles of a page of choices, the buttons on a product's or an auction's page.
  *
  * "Classic View" in the footer switches back to the vanilla chest for that market until the game
  * restarts, in case Hypixel shows something this screen does not lay out well.
@@ -859,14 +859,7 @@ public class MarketScreen extends ContainerScreen {
         Component name = stack.getHoverName();
         int nameX = tx;
         int nameEnd = tx + tw;
-        if (key > 0) {
-            String label = String.valueOf(key);
-            int kw = GuiFont.width(this.font, label) + 6;
-            int kx = px + w - 6 - kw;
-            ModernGuiUtils.drawRoundedRect(graphics, kx, py + 3, kw, 11, 3, MarketIcons.fade(AlpakaStyle.ROW_SELECTED, alpha));
-            graphics.text(this.font, GuiFont.text(label), kx + 3, py + 5, MarketIcons.fade(AlpakaStyle.TEXT_SOFT, alpha), false);
-            nameEnd = kx - 4;
-        }
+        if (key > 0) nameEnd = keyChip(graphics, key, px + w - 6, py + 5, alpha) - 4;
         // An order's name starts with BUY or SELL; that becomes a label, so the product's name fits.
         if (info != null && info.type == LoreInfo.Type.ORDER) {
             String plainName = SkyblockUtils.cleanColor(name.getString());
@@ -1129,7 +1122,7 @@ public class MarketScreen extends ContainerScreen {
                 int px = left + c * (tileW + GAP);
                 int py = top + r * (tileH + GAP);
                 float in = entrance(index++, now);
-                drawTile(graphics, slot, m.info.get(slot), px, py + Math.round((1 - in) * 6), tileW, tileH, mx, my, inClip, in);
+                drawTile(graphics, slot, m.info.get(slot), px, py + Math.round((1 - in) * 6), tileW, tileH, mx, my, inClip, in, nextKey(slot));
             }
         }
         return total + 16;
@@ -1156,7 +1149,8 @@ public class MarketScreen extends ContainerScreen {
             int px = left + (i % cols) * (cardW + GAP);
             int py = top + (i / cols) * (cardH + GAP);
             float in = entrance(index + i, now);
-            drawCard(graphics, slot, m.info.get(slot), px, py + Math.round((1 - in) * 6), cardW, cardH, mx, my, inClip, in, cy, ch);
+            drawCard(graphics, slot, m.info.get(slot), px, py + Math.round((1 - in) * 6), cardW, cardH, mx, my, inClip, in, cy, ch,
+                    nextKey(slot));
         }
         return total + 16;
     }
@@ -1266,10 +1260,11 @@ public class MarketScreen extends ContainerScreen {
     }
 
     private void drawTile(GuiGraphicsExtractor graphics, int slot, LoreInfo info, int px, int py, int w, int h,
-                          int mx, int my, boolean inClip, float alpha) {
+                          int mx, int my, boolean inClip, float alpha, int key) {
         boolean pressing = beginPress(graphics, slot, px, py, w, h);
         try {
             drawTileBody(graphics, slot, info, px, py, w, h, mx, my, inClip, alpha);
+            if (key > 0) keyChip(graphics, key, px + w - 5, py + 5, alpha);
         } finally {
             if (pressing) graphics.pose().popMatrix();
         }
@@ -1450,11 +1445,7 @@ public class MarketScreen extends ContainerScreen {
         int y0 = bottom - (rows * (itemH + gap) - gap);
         for (int i = 0; i < n; i++) {
             int action = actions.get(i);
-            int key = 0;
-            if (keyActions.size() < 9) {
-                keyActions.add(action);
-                key = keyActions.size();
-            }
+            int key = nextKey(action);
             int ax = x + (i % cols) * (itemW + gap);
             int ay = y0 + (i / cols) * (itemH + gap);
             float in = entrance(index + i, now);
@@ -1466,6 +1457,26 @@ public class MarketScreen extends ContainerScreen {
             }
         }
         return true;
+    }
+
+    /**
+     * The next number key, 1 to 9, for an action drawn this frame, in the order they are drawn;
+     * 0 once all nine are taken.
+     */
+    private int nextKey(int slot) {
+        if (keyActions.size() >= 9) return 0;
+        keyActions.add(slot);
+        return keyActions.size();
+    }
+
+    /** The key's number in a small chip ending at right, its text at y. Returns where the chip starts. */
+    private int keyChip(GuiGraphicsExtractor graphics, int key, int right, int y, float alpha) {
+        String label = String.valueOf(key);
+        int kw = GuiFont.width(this.font, label) + 6;
+        int kx = right - kw;
+        ModernGuiUtils.drawRoundedRect(graphics, kx, y - 2, kw, 11, 3, MarketIcons.fade(AlpakaStyle.ROW_SELECTED, alpha));
+        graphics.text(this.font, GuiFont.text(label), kx + 3, y, MarketIcons.fade(AlpakaStyle.TEXT_SOFT, alpha), false);
+        return kx;
     }
 
     /** How many rows of prices, seller and time the hero shows for this item. */
@@ -1504,14 +1515,7 @@ public class MarketScreen extends ContainerScreen {
             GuiItemFade.end();
             int textY = y + (h - 8) / 2;
             int end = x + w - 5;
-            if (key > 0) {
-                String label = String.valueOf(key);
-                int kw = GuiFont.width(this.font, label) + 6;
-                int kx = end - kw;
-                ModernGuiUtils.drawRoundedRect(graphics, kx, textY - 2, kw, 11, 3, MarketIcons.fade(AlpakaStyle.ROW_SELECTED, alpha));
-                graphics.text(this.font, GuiFont.text(label), kx + 3, textY, MarketIcons.fade(AlpakaStyle.TEXT_SOFT, alpha), false);
-                end = kx - 4;
-            }
+            if (key > 0) end = keyChip(graphics, key, end, textY, alpha) - 4;
             styled(graphics, stack.getHoverName(), x + 22, textY, end - x - 22, 0x00FFFFFF | (Math.round(alpha * 255) << 24));
             hits.add(new Hit(x, y, w, h, (b, s) -> click(slot, b, s), false));
             if (hover) hoveredStack = stack;

@@ -56,11 +56,6 @@ public class CustomPauseScreen extends PauseScreen implements net.alpaka.addons.
     /** The dim over the blurred world; light, so the world stays part of the picture. */
     private static final int COLOR_DIM = 0x52000000;
 
-    /** A button's glass: a faint white fill and hairline that brighten under the mouse. */
-    private static final int GLASS_FILL = 0x14FFFFFF;
-    private static final int GLASS_FILL_HOVER = 0x2EFFFFFF;
-    private static final int GLASS_BORDER = 0x30FFFFFF;
-
     /** How long the dim and each element take to appear, and the delay between successive rows. */
     static final float APPEAR_SECONDS = 0.22f;
     static final float STAGGER_SECONDS = 0.03f;
@@ -382,10 +377,7 @@ public class CustomPauseScreen extends PauseScreen implements net.alpaka.addons.
                     textColor = 0xFFFCA5A5;
                 }
                 default -> {
-                    int fill = ModernGuiUtils.lerpColor(GLASS_FILL, GLASS_FILL_HOVER, this.hover);
-                    int edge = ModernGuiUtils.lerpColor(GLASS_BORDER, MenuStyle.accent(), this.hover);
-                    ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, BUTTON_RADIUS, fade(fill, appear));
-                    ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, h, BUTTON_RADIUS, fade(edge, appear));
+                    MenuStyle.glassBox(graphics, x, y, w, h, BUTTON_RADIUS, this.hover, appear);
                     textColor = ModernGuiUtils.lerpColor(MenuStyle.TEXT_SOFT, MenuStyle.TEXT, this.hover);
                 }
             }

@@ -124,6 +124,7 @@ public final class ConfigTree {
     /** Settings registered away from their feature. */
     private static final Map<String, String> PARENTS = Map.ofEntries(
             Map.entry("smooth_perspective_duration", "smooth_perspective"),
+            Map.entry("custom_main_menu_whats_new", "custom_main_menu"),
             // The chat's background and font are parts of Better Chat.
             Map.entry("chat_blur", "better_chat"),
             Map.entry("chat_smooth_font", "better_chat"),

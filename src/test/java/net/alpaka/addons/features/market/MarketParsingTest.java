@@ -22,6 +22,9 @@ class MarketParsingTest {
         assertEquals(MarketKind.AUCTION_HOUSE, MarketTitles.classify("BIN Auction View", null));
         assertEquals(MarketKind.BAZAAR, MarketTitles.classify("Bazaar ➜ Farming", null));
         assertEquals(MarketKind.BAZAAR, MarketTitles.classify("How many do you want?", null));
+        assertEquals(MarketKind.BAZAAR, MarketTitles.classify("Are you sure?", MarketKind.BAZAAR));
+        assertNull(MarketTitles.classify("Are you sure?", null));
+        assertNull(MarketTitles.classify("Are you sure?", MarketKind.AUCTION_HOUSE));
     }
 
     @Test

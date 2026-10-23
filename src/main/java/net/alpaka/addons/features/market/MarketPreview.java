@@ -285,6 +285,26 @@ public final class MarketPreview {
         return screen(4, c, "Farming ➜ Enchanted Hay Bale", MarketKind.BAZAAR);
     }
 
+    /** The player's own auctions, with Create Auction beside them. */
+    public static MarketScreen manageAuctions() {
+        SimpleContainer c = filled(6, Items.STAINED_GLASS_PANE.black());
+        c.setItem(10, auction(AUCTIONS[0], true));
+        c.setItem(11, auction(AUCTIONS[1], false));
+        c.setItem(48, item(Items.GOLDEN_HORSE_ARMOR, "§aCreate Auction", "§7Set your own items on auction", "§7for other players to purchase.", "", "§eClick to become rich!"));
+        c.setItem(49, item(Items.ARROW, "§aGo Back", "§7To Auction House"));
+        c.setItem(50, item(Items.HOPPER, "§aSort", "§8 Recently Updated", "§b▶ Highest Price", "§8 Lowest Price", "", "§eClick to switch sort!"));
+        return screen(6, c, "Manage Auctions", MarketKind.AUCTION_HOUSE);
+    }
+
+    /** The question before the whole inventory is sold, as Hypixel asks it. */
+    public static MarketScreen bazaarSellConfirm() {
+        SimpleContainer c = filled(3, Items.STAINED_GLASS_PANE.black());
+        c.setItem(11, item(Items.HOPPER, "§aSell Inventory", "§7Instantly sells the items in", "§7your inventory to the Bazaar:", "",
+                "§a12§7x §fEnchanted Hay Bale", "§a1§7x §5Purple Jerry Box", "", "§7You earn: §61,840,410 coins", "", "§eClick to confirm!"));
+        c.setItem(15, item(Items.DYED_TERRACOTTA.red(), "§cCancel", "§7Keep your items."));
+        return screen(3, c, "Are you sure?", MarketKind.BAZAAR);
+    }
+
     public static MarketScreen bazaarOrders() {
         SimpleContainer c = filled(6, Items.STAINED_GLASS_PANE.black());
         c.setItem(10, glint(item(Items.HAY_BLOCK, "§a§lBUY §aEnchanted Hay Bale", "§8Worth 245.5M coins", "", "§7Order amount: §a1,600§7x",

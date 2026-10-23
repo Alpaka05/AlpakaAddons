@@ -174,6 +174,8 @@ public class MarketScreen extends ContainerScreen {
     private final List<Integer> keyActions = new ArrayList<>();
     /** The categories Shift and a number key pick in the last frame, top to bottom. */
     private final List<Integer> keyCategories = new ArrayList<>();
+    /** Create Auction in the sidebar in the last frame, which C presses; null without one. */
+    private Integer keyCreateAuction;
     /**
      * Number keys held down, so holding one presses its button once and not again with every
      * repeat. Shared by all market screens: the press may open the next page before the release.
@@ -369,6 +371,7 @@ public class MarketScreen extends ContainerScreen {
         hits.clear();
         keyActions.clear();
         keyCategories.clear();
+        keyCreateAuction = null;
         if (classic()) {
             super.extractRenderState(graphics, mouseX, mouseY, partialTick);
             drawClassicToggle(graphics, mouseX, mouseY);
@@ -659,7 +662,8 @@ public class MarketScreen extends ContainerScreen {
         if (extras > 0) {
             rowY = groupStart(graphics, "More", x, rowY, w, compact, first);
             for (int slot : m.extras) {
-                rowY = sideRow(graphics, mx, my, inClip, rowX, rowY, rowW, rowH, clipY, clipH, slot, plain(slot).name(), null, stack(slot));
+                rowY = sideRow(graphics, mx, my, inClip, rowX, rowY, rowW, rowH, clipY, clipH, slot, plain(slot).name(), null, stack(slot),
+                        takesCreateKey(slot) ? "C" : null);
             }
         }
 
@@ -688,6 +692,12 @@ public class MarketScreen extends ContainerScreen {
     /** A sidebar button for a slot: a glyph of ours or the item itself, and a name. */
     private int sideRow(GuiGraphicsExtractor graphics, int mx, int my, boolean inClip, int rowX, int rowY, int rowW, int rowH,
                         int clipY, int clipH, int slot, String label, MarketIcons.Glyph glyph, ItemStack item) {
+        return sideRow(graphics, mx, my, inClip, rowX, rowY, rowW, rowH, clipY, clipH, slot, label, glyph, item, null);
+    }
+
+    /** A sidebar row; with a key, that key in a chip at its end and the label short of it. */
+    private int sideRow(GuiGraphicsExtractor graphics, int mx, int my, boolean inClip, int rowX, int rowY, int rowW, int rowH,
+                        int clipY, int clipH, int slot, String label, MarketIcons.Glyph glyph, ItemStack item, String key) {
         boolean hover = inClip && AlpakaStyle.inside(mx, my, rowX, rowY, rowW, rowH);
         if (hover) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, rowH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
         if (glyph != null) {
@@ -695,7 +705,9 @@ public class MarketScreen extends ContainerScreen {
         } else if (item != null) {
             sideItem(graphics, item, rowX, rowY, rowH);
         }
-        graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, label, rowW - 26)), rowX + 21, rowY + (rowH - 8) / 2,
+        int labelW = rowW - 26;
+        if (key != null) labelW = keyChip(graphics, key, rowX + rowW - 4, rowY + (rowH - 8) / 2, 1f) - 4 - (rowX + 21);
+        graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, label, labelW)), rowX + 21, rowY + (rowH - 8) / 2,
                 hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT, false);
         if (visible(rowY, rowH, clipY, clipH)) {
             hits.add(new Hit(rowX, Math.max(rowY, clipY), rowW, rowH, (b, s) -> click(slot, b, s), false));
@@ -1274,6 +1286,8 @@ public class MarketScreen extends ContainerScreen {
         String name = s.name().toLowerCase(Locale.ROOT);
         String id = s.itemId();
         if (name.startsWith("cancel") || id.equals("red_terracotta") || id.equals("barrier")) return TileKind.DANGER;
+        // Selling the inventory or the sacks asks "Are you sure?": the other button is the yes.
+        if (plainTitle.equals("Are you sure?")) return TileKind.PRIMARY;
         // The step that completes what the player came for: confirming, buying the item or bidding
         // when it can be afforded (Hypixel shows a gold nugget then, a poisonous potato if not),
         // collecting what was won or sold.
@@ -1495,6 +1509,17 @@ public class MarketScreen extends ContainerScreen {
         return keyActions.size();
     }
 
+    /**
+     * Whether this is the Auction House's Create Auction button, the one thing done from Manage
+     * Auctions besides looking; it takes the key C. Remembers it for the key when it is.
+     */
+    private boolean takesCreateKey(int slot) {
+        if (kind != MarketKind.AUCTION_HOUSE || keyCreateAuction != null || !Markets.hotkeys(kind)) return false;
+        if (!plain(slot).name().trim().equalsIgnoreCase("Create Auction")) return false;
+        keyCreateAuction = slot;
+        return true;
+    }
+
     /** The next key, 1 to 9, that picks a category with Shift; 0 once all nine are taken. */
     private int nextCategoryKey(int slot) {
         if (keyCategories.size() >= 9 || !Markets.hotkeys(kind)) return 0;
@@ -1504,7 +1529,10 @@ public class MarketScreen extends ContainerScreen {
 
     /** The key's number in a small chip ending at right, its text at y. Returns where the chip starts. */
     private int keyChip(GuiGraphicsExtractor graphics, int key, int right, int y, float alpha) {
-        String label = String.valueOf(key);
+        return keyChip(graphics, String.valueOf(key), right, y, alpha);
+    }
+
+    private int keyChip(GuiGraphicsExtractor graphics, String label, int right, int y, float alpha) {
         int kw = GuiFont.width(this.font, label) + 6;
         int kx = right - kw;
         ModernGuiUtils.drawRoundedRect(graphics, kx, y - 2, kw, 11, 3, MarketIcons.fade(AlpakaStyle.ROW_SELECTED, alpha));
@@ -1625,7 +1653,8 @@ public class MarketScreen extends ContainerScreen {
             int ex = ix - 8;
             for (int slot : m.extras) {
                 String label = AlpakaStyle.ellipsize(this.font, plain(slot).name(), 90);
-                int ew = GuiFont.width(this.font, label) + 26;
+                boolean createKey = takesCreateKey(slot);
+                int ew = GuiFont.width(this.font, label) + 26 + (createKey ? 14 : 0);
                 ex -= ew;
                 if (ex < lx + 4) break;
                 boolean hover = AlpakaStyle.inside(mx, my, ex, by, ew, 16);
@@ -1636,6 +1665,7 @@ public class MarketScreen extends ContainerScreen {
                 graphics.item(stack(slot), 0, 0);
                 graphics.pose().popMatrix();
                 graphics.text(this.font, GuiFont.text(label), ex + 18, by + 4, hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT, false);
+                if (createKey) keyChip(graphics, "C", ex + ew - 4, by + 4, 1f);
                 hits.add(new Hit(ex, by, ew, 16, (b, s) -> click(slot, b, s), false));
                 if (hover) hoveredStack = stack(slot);
                 ex -= 4;
@@ -1928,7 +1958,8 @@ public class MarketScreen extends ContainerScreen {
 
     /**
      * The slot a key presses: 1 to 9 the numbered actions or auctions, Shift with 1 to 9 the
-     * categories, the arrows the page, Ctrl or Cmd with F the search, Backspace the way back.
+     * categories, the arrows the page, Ctrl or Cmd with F the search, Backspace the way back, C
+     * Create Auction.
      */
     private Integer hotkeyTarget(KeyEvent event) {
         if (model == null) return null;
@@ -1946,6 +1977,7 @@ public class MarketScreen extends ContainerScreen {
         }
         if (shift) return null;
         return switch (key) {
+            case GLFW.GLFW_KEY_C -> keyCreateAuction;
             case GLFW.GLFW_KEY_LEFT -> model.controls.get(MarketMenu.Control.PREVIOUS);
             case GLFW.GLFW_KEY_RIGHT -> model.controls.get(MarketMenu.Control.NEXT);
             case GLFW.GLFW_KEY_BACKSPACE -> model.controls.get(MarketMenu.Control.BACK);

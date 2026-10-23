@@ -217,6 +217,8 @@ public final class DevScreenshotTour {
             }, () -> true, 80),
             new Stop(null, () -> net.alpaka.addons.features.market.MarketPreview.inventory(false), () -> true, 1),
             screen("market-bazaar-orders", net.alpaka.addons.features.market.MarketPreview::bazaarOrders),
+            screen("market-bazaar-sell-confirm", net.alpaka.addons.features.market.MarketPreview::bazaarSellConfirm),
+            screen("market-ah-manage", net.alpaka.addons.features.market.MarketPreview::manageAuctions),
             // The search sign as Hypixel writes it: two lines for the answer, the question last.
             screen("market-input-search", () -> net.alpaka.addons.features.market.MarketPreview.input(
                     new String[] {"", "", "^^^^^^^^^^^^^^^", "Enter query"},

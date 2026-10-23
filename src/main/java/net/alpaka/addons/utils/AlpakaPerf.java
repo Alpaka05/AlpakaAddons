@@ -34,6 +34,11 @@ import java.util.Locale;
  * the garbage collector, rather than computed), what it allocated, the collector's pauses and our
  * own sections. Each one also goes into latest.log, to line up with chat and warps there.
  *
+ * A frame can also stand still without any of that showing: the thread waits somewhere no phase
+ * covers, in another mod's hook or the window system. So a watchdog thread looks at the render
+ * thread's stack once a frame has run {@link #SAMPLE_AFTER_MS}, and again later if it still runs;
+ * a spike then says where the thread was. A stack is only taken from a frame already that slow.
+ *
  * Only call from the render or client thread, which is where every timed hook runs.
  */
 public final class AlpakaPerf {
@@ -104,6 +109,9 @@ public final class AlpakaPerf {
     private static final int WORST_KEPT = 5;
     /** Enough for a long session; past it the report still counts them. */
     private static final int MAX_LOGGED = 300;
+    static final long SAMPLE_AFTER_MS = 40L;
+    private static final long SECOND_SAMPLE_AFTER_MS = 150L;
+    private static final int STACK_LOGGED = 30;
     private static final DateTimeFormatter CLOCK = DateTimeFormatter.ofPattern("HH:mm:ss");
 
     /** What {@link #begin} hands out while measuring is off; {@link #end} then does nothing. */
@@ -118,7 +126,8 @@ public final class AlpakaPerf {
     /** The running frame: its phases and sections, and where its counters stood at its start. */
     private static final long[] FRAME_PHASES = new long[PHASES.length];
     private static final long[] FRAME_SECTIONS = new long[SECTIONS.length];
-    private static long frameStartNanos = 0L;
+    /** Read by the watchdog as well, hence volatile. */
+    private static volatile long frameStartNanos = 0L;
     private static long frameCpuStart, frameAllocStart;
     private static final long[] frameGcStart = new long[4];
 
@@ -149,6 +158,7 @@ public final class AlpakaPerf {
     public static void start() {
         reset();
         enabled = true;
+        startWatchdog(Thread.currentThread());
     }
 
     /** Stops measuring; what was measured stays for {@link #report()}. */
@@ -161,6 +171,7 @@ public final class AlpakaPerf {
         gcMillisAtEnd = gcMillis();
         gcSnapshot(gcAtEnd);
         frameStartNanos = 0L;
+        stopWatchdog();
     }
 
     /** Starts timing a section; pass the result to {@link #end}, in a finally. */
@@ -233,10 +244,16 @@ public final class AlpakaPerf {
                 frameCpuStart < 0 || cpuNow < 0 ? -1L : cpuNow - frameCpuStart,
                 frameAllocStart < 0 || allocNow < 0 ? -1L : allocNow - frameAllocStart,
                 gc[0] - frameGcStart[0], gc[1] - frameGcStart[1], gc[2] - frameGcStart[2],
-                FRAME_PHASES.clone(), FRAME_SECTIONS.clone());
+                FRAME_PHASES.clone(), FRAME_SECTIONS.clone(), samplesOf(frameStartNanos));
         if (spikesLogged < MAX_LOGGED) {
             spikesLogged++;
-            net.alpaka.addons.AlpakaAddons.LOGGER.info("[AlpakaPerf] spike {}", spike.describe());
+            StringBuilder log = new StringBuilder(spike.describe());
+            for (int n = 0; n < spike.stacks().size(); n++) {
+                StackTraceElement[] stack = spike.stacks().get(n);
+                log.append("\n    render thread after ").append(n == 0 ? SAMPLE_AFTER_MS : SECOND_SAMPLE_AFTER_MS).append(" ms:");
+                for (int i = 0; i < Math.min(STACK_LOGGED, stack.length); i++) log.append("\n      at ").append(stack[i]);
+            }
+            net.alpaka.addons.AlpakaAddons.LOGGER.info("[AlpakaPerf] spike {}", log);
         }
         WORST.add(spike);
         WORST.sort((a, b) -> Long.compare(b.workNanos, a.workNanos));
@@ -245,7 +262,8 @@ public final class AlpakaPerf {
 
     /** One slow frame, with where its time went. */
     record Spike(LocalTime at, long workNanos, long cpuNanos, long allocatedBytes,
-                 long gcPauses, long gcPauseMillis, long gcCycles, long[] phases, long[] sections) {
+                 long gcPauses, long gcPauseMillis, long gcCycles, long[] phases, long[] sections,
+                 List<StackTraceElement[]> stacks) {
 
         String describe() {
             StringBuilder out = new StringBuilder(String.format(Locale.ROOT, "%s  %d ms", CLOCK.format(at), workNanos / 1_000_000L));
@@ -286,7 +304,77 @@ public final class AlpakaPerf {
                 }
                 out.append(" · alpaka: ").append(String.join(", ", named));
             }
+            if (!stacks.isEmpty()) out.append(" · in ").append(where(stacks.get(stacks.size() - 1)));
             return out.toString();
+        }
+    }
+
+    /**
+     * Where a stack stood, short enough for chat: the method it was in, and the first two calls
+     * from outside the JDK on the way there - a mod's handler shows as {@code handler$...$modid$...}.
+     */
+    static String where(StackTraceElement[] stack) {
+        if (stack.length == 0) return "?";
+        List<String> parts = new ArrayList<>();
+        parts.add(shortName(stack[0]));
+        for (int i = 1; i < stack.length && parts.size() < 3; i++) {
+            String cls = stack[i].getClassName();
+            if (cls.startsWith("java.") || cls.startsWith("jdk.") || cls.startsWith("sun.")) continue;
+            parts.add(shortName(stack[i]));
+        }
+        return String.join(" ← ", parts);
+    }
+
+    private static String shortName(StackTraceElement frame) {
+        String cls = frame.getClassName();
+        return cls.substring(cls.lastIndexOf('.') + 1) + "." + frame.getMethodName();
+    }
+
+    /** The render thread's stacks taken during one frame, from the watchdog. */
+    private record Samples(long frameStart, List<StackTraceElement[]> stacks) {}
+
+    private static volatile Samples samples = new Samples(0L, List.of());
+    private static Thread watchdog;
+
+    private static List<StackTraceElement[]> samplesOf(long frameStart) {
+        Samples taken = samples;
+        return taken.frameStart() == frameStart ? taken.stacks() : List.of();
+    }
+
+    private static void startWatchdog(Thread renderThread) {
+        stopWatchdog();
+        samples = new Samples(0L, List.of());
+        Thread thread = new Thread(() -> watch(renderThread), "Alpaka perf watchdog");
+        thread.setDaemon(true);
+        thread.start();
+        watchdog = thread;
+    }
+
+    private static void stopWatchdog() {
+        if (watchdog != null) watchdog.interrupt();
+        watchdog = null;
+    }
+
+    private static void watch(Thread renderThread) {
+        while (!Thread.currentThread().isInterrupted()) {
+            try {
+                Thread.sleep(5L);
+            } catch (InterruptedException e) {
+                return;
+            }
+            long frame = frameStartNanos;
+            if (frame == 0L) continue;
+            long ageMs = (System.nanoTime() - frame) / 1_000_000L;
+            Samples taken = samples;
+            int have = taken.frameStart() == frame ? taken.stacks().size() : 0;
+            boolean due = have == 0 ? ageMs >= SAMPLE_AFTER_MS : have == 1 && ageMs >= SECOND_SAMPLE_AFTER_MS;
+            if (!due) continue;
+            StackTraceElement[] stack = renderThread.getStackTrace();
+            // The frame may have ended while the stack was taken; then it belongs to no frame.
+            if (frameStartNanos != frame) continue;
+            List<StackTraceElement[]> stacks = new ArrayList<>(have == 0 ? List.of() : taken.stacks());
+            stacks.add(stack);
+            samples = new Samples(frame, List.copyOf(stacks));
         }
     }
 

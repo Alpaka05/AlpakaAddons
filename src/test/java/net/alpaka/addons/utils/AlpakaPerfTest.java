@@ -91,4 +91,26 @@ class AlpakaPerfTest {
         assertTrue(AlpakaPerf.isPause("G1 Young Generation"));
         assertTrue(!AlpakaPerf.isPause("G1 Concurrent GC"));
     }
+
+    @Test
+    void whereNamesTheMethodAndTheCallsOutsideTheJdk() {
+        StackTraceElement[] stack = {
+                new StackTraceElement("jdk.internal.misc.Unsafe", "park", null, -1),
+                new StackTraceElement("java.util.concurrent.CompletableFuture", "join", null, -1),
+                new StackTraceElement("net.minecraft.client.Minecraft", "handler$zza000$othermod$onFrame", null, -1),
+                new StackTraceElement("net.minecraft.client.Minecraft", "runTick", null, -1),
+                new StackTraceElement("net.minecraft.client.Minecraft", "run", null, -1)};
+        assertEquals("Unsafe.park ← Minecraft.handler$zza000$othermod$onFrame ← Minecraft.runTick", AlpakaPerf.where(stack));
+    }
+
+    @Test
+    void theWatchdogCatchesWhereASlowFrameWaits() throws InterruptedException {
+        AlpakaPerf.start();
+        AlpakaPerf.frameStart();
+        Thread.sleep(AlpakaPerf.SAMPLE_AFTER_MS + 60L);
+        AlpakaPerf.frameStart();
+        List<String> report = AlpakaPerf.report();
+        String spike = report.get(report.indexOf("Worst frames (ms):") + 1);
+        assertTrue(spike.contains(" · in ") && spike.contains("theWatchdogCatchesWhereASlowFrameWaits"), spike);
+    }
 }

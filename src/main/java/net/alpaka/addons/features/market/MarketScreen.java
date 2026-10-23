@@ -842,7 +842,7 @@ public class MarketScreen extends ContainerScreen {
             for (String side : new String[] {"BUY ", "SELL "}) {
                 if (plainName.startsWith(side)) {
                     name = withoutPrefix(name, side.length());
-                    nameX += pill(graphics, tx, py + 5, side.trim(), side.startsWith("B") ? GREEN : COIN, alpha) + 4;
+                    nameX += pill(graphics, tx, py + 5, side.trim(), side.startsWith("B") ? MarketInk.ink(GREEN) : MarketInk.ink(COIN), alpha) + 4;
                 }
             }
         }
@@ -867,14 +867,14 @@ public class MarketScreen extends ContainerScreen {
         int lx = tx;
         if (info.isOver()) {
             boolean sold = info.status.toLowerCase(Locale.ROOT).contains("sold");
-            lx += pill(graphics, lx, ly, info.status.replace("!", ""), sold ? GREEN : RED, alpha) + 4;
+            lx += pill(graphics, lx, ly, info.status.replace("!", ""), sold ? MarketInk.ink(GREEN) : MarketInk.ink(RED), alpha) + 4;
         } else {
-            lx += pill(graphics, lx, ly, info.isBin() ? "BIN" : "BID", info.isBin() ? GREEN : AQUA, alpha) + 4;
+            lx += pill(graphics, lx, ly, info.isBin() ? "BIN" : "BID", info.isBin() ? MarketInk.ink(GREEN) : MarketInk.ink(AQUA), alpha) + 4;
         }
         Double price = info.auctionPrice();
         if (price != null) {
             String text = Coins.compact(price);
-            graphics.text(this.font, GuiFont.text(text), lx, ly, MarketIcons.fade(COIN, alpha), false);
+            graphics.text(this.font, GuiFont.text(text), lx, ly, MarketIcons.fade(MarketInk.ink(COIN), alpha), false);
             lx += GuiFont.width(this.font, text);
             if (!info.isBin() && info.bids != null && info.bids > 0) {
                 String bids = "  " + info.bids + (info.bids == 1 ? " bid" : " bids");
@@ -888,7 +888,7 @@ public class MarketScreen extends ContainerScreen {
         int rx = tx;
         if (info.endsIn != null && !info.isOver()) {
             long seconds = Coins.seconds(info.endsIn);
-            int color = seconds >= 0 && seconds < 300 ? RED : AlpakaStyle.TEXT_MUTED;
+            int color = seconds >= 0 && seconds < 300 ? MarketInk.ink(RED) : AlpakaStyle.TEXT_MUTED;
             MarketIcons.draw(graphics, MarketIcons.Glyph.CLOCK, rx, ly3, 8, MarketIcons.fade(color, alpha));
             rx += 10;
             String time = shortTime(info.endsIn);
@@ -933,7 +933,7 @@ public class MarketScreen extends ContainerScreen {
             return lx + 8;
         }
         String text = Coins.compact(coins);
-        graphics.text(this.font, GuiFont.text(text), lx, y, MarketIcons.fade(COIN, alpha), false);
+        graphics.text(this.font, GuiFont.text(text), lx, y, MarketIcons.fade(MarketInk.ink(COIN), alpha), false);
         return lx + GuiFont.width(this.font, text);
     }
 
@@ -946,7 +946,7 @@ public class MarketScreen extends ContainerScreen {
             lx += GuiFont.width(this.font, amount) + 6;
         }
         if (info.unitPrice != null) {
-            graphics.text(this.font, GuiFont.text(Coins.compact(info.unitPrice) + " each"), lx, ly, MarketIcons.fade(COIN, alpha), false);
+            graphics.text(this.font, GuiFont.text(Coins.compact(info.unitPrice) + " each"), lx, ly, MarketIcons.fade(MarketInk.ink(COIN), alpha), false);
         }
         float ratio = info.fillRatio();
         if (ratio >= 0) {
@@ -956,8 +956,8 @@ public class MarketScreen extends ContainerScreen {
             int by = py + 30;
             ModernGuiUtils.drawRoundedRect(graphics, tx, by, barW, 3, 1, MarketIcons.fade(AlpakaStyle.TRACK, alpha));
             int fill = Math.round(barW * ratio);
-            if (fill > 0) ModernGuiUtils.drawRoundedRect(graphics, tx, by, fill, 3, 1, MarketIcons.fade(ratio >= 1f ? GREEN : AlpakaStyle.accent(), alpha));
-            graphics.text(this.font, GuiFont.text(pct), tx + tw - pw, py + 27, MarketIcons.fade(ratio >= 1f ? GREEN : AlpakaStyle.TEXT_MUTED, alpha), false);
+            if (fill > 0) ModernGuiUtils.drawRoundedRect(graphics, tx, by, fill, 3, 1, MarketIcons.fade(ratio >= 1f ? MarketInk.ink(GREEN) : AlpakaStyle.accent(), alpha));
+            graphics.text(this.font, GuiFont.text(pct), tx + tw - pw, py + 27, MarketIcons.fade(ratio >= 1f ? MarketInk.ink(GREEN) : AlpakaStyle.TEXT_MUTED, alpha), false);
         }
     }
 
@@ -976,7 +976,7 @@ public class MarketScreen extends ContainerScreen {
                 String label = AlpakaStyle.ellipsize(this.font, line.label(), Math.max(0, tw - valueW - 6));
                 graphics.text(this.font, GuiFont.text(label), tx, y, MarketIcons.fade(AlpakaStyle.TEXT_MUTED, alpha), false);
                 int vx = tx + tw - valueW;
-                graphics.text(this.font, GuiFont.text(value), vx, y, MarketIcons.fade(COIN, alpha), false);
+                graphics.text(this.font, GuiFont.text(value), vx, y, MarketIcons.fade(MarketInk.ink(COIN), alpha), false);
                 y += 11;
             }
             // Below a single coin line, the lore's first line that is not one: "Price: …" again would only repeat it.
@@ -1265,7 +1265,7 @@ public class MarketScreen extends ContainerScreen {
         int x = cx - total / 2;
         graphics.text(this.font, GuiFont.text(label), x, y, MarketIcons.fade(AlpakaStyle.TEXT_MUTED, alpha), false);
         x += labelW + 5;
-        graphics.text(this.font, GuiFont.text(value), x, y, MarketIcons.fade(COIN, alpha), false);
+        graphics.text(this.font, GuiFont.text(value), x, y, MarketIcons.fade(MarketInk.ink(COIN), alpha), false);
     }
 
     /** The one auction or product a page is about, large, with what its lore says laid out in rows. */
@@ -1296,18 +1296,18 @@ public class MarketScreen extends ContainerScreen {
             Double price = info.auctionPrice();
             if (price != null) {
                 ry = heroRow(graphics, info.isBin() ? "Buy It Now" : info.topBid != null ? "Top Bid" : "Starting Bid",
-                        Coins.full(price), COIN, true, rowX, ry, rowW, alpha);
+                        Coins.full(price), MarketInk.ink(COIN), true, rowX, ry, rowW, alpha);
             }
             if (info.seller != null) ry = heroRow(graphics, "Seller", withoutRank(info.seller), AlpakaStyle.TEXT, false, rowX, ry, rowW, alpha);
             if (info.bids != null) ry = heroRow(graphics, "Bids", String.valueOf(info.bids), AlpakaStyle.TEXT, false, rowX, ry, rowW, alpha);
             if (info.endsIn != null) {
                 long seconds = Coins.seconds(info.endsIn);
-                ry = heroRow(graphics, "Ends In", info.endsIn, seconds >= 0 && seconds < 300 ? RED : AlpakaStyle.TEXT, false, rowX, ry, rowW, alpha);
+                ry = heroRow(graphics, "Ends In", info.endsIn, seconds >= 0 && seconds < 300 ? MarketInk.ink(RED) : AlpakaStyle.TEXT, false, rowX, ry, rowW, alpha);
             }
-            if (info.status != null) ry = heroRow(graphics, "Status", info.status, info.isOver() ? RED : GREEN, false, rowX, ry, rowW, alpha);
+            if (info.status != null) ry = heroRow(graphics, "Status", info.status, info.isOver() ? MarketInk.ink(RED) : MarketInk.ink(GREEN), false, rowX, ry, rowW, alpha);
         } else if (info != null && info.type == LoreInfo.Type.PRODUCT) {
-            if (info.buyPrice != null) ry = heroRow(graphics, "Buy Price", Coins.full(info.buyPrice), COIN, true, rowX, ry, rowW, alpha);
-            if (info.sellPrice != null) ry = heroRow(graphics, "Sell Price", Coins.full(info.sellPrice), COIN, true, rowX, ry, rowW, alpha);
+            if (info.buyPrice != null) ry = heroRow(graphics, "Buy Price", Coins.full(info.buyPrice), MarketInk.ink(COIN), true, rowX, ry, rowW, alpha);
+            if (info.sellPrice != null) ry = heroRow(graphics, "Sell Price", Coins.full(info.sellPrice), MarketInk.ink(COIN), true, rowX, ry, rowW, alpha);
         }
         // Then the item's own lore, as far as it fits; the whole of it is the tooltip.
         ry += 4;
@@ -1605,8 +1605,12 @@ public class MarketScreen extends ContainerScreen {
     }
 
     public static int vivid(int rgb) {
+        return MarketInk.ink(vividOnDark(rgb));
+    }
+
+    private static int vividOnDark(int rgb) {
         return switch (rgb & 0xFFFFFF) {
-            case 0xFFFFFF -> 0xFFD8D8D8;
+            case 0xFFFFFF -> MarketInk.light() ? AlpakaStyle.TEXT : 0xFFD8D8D8;
             case 0x55FF55 -> 0xFF5BE38A;
             case 0x5555FF -> 0xFF6E8BFF;
             case 0xAA00AA -> 0xFFC264F2;

@@ -167,14 +167,17 @@ public final class ChatTabsFeature {
     }
 
     /**
-     * A key press in the chat screen. True when it cycled the tabs, which then goes no further.
+     * A key press in the chat screen. True when it was Tab for the tabs, which then goes no further.
      * Ctrl+Tab always cycles, Ctrl+Shift+Tab backwards. Plain Tab only does on an empty line: with
-     * text typed it is vanilla's player-name completion, which it used to take over.
+     * text typed it is vanilla's player-name completion, which it used to take over. A held Tab
+     * repeats, and the chat screen hears every repeat as another press, so it raced through the
+     * tabs; a repeat is swallowed without cycling, as on the peek.
      */
-    public static boolean onChatScreenKey(int key, boolean shift, boolean control, boolean suggestionsVisible, String input) {
+    public static boolean onChatScreenKey(int key, boolean shift, boolean control, boolean repeat,
+                                          boolean suggestionsVisible, String input) {
         if (!tabKeyEnabled() || key != GLFW.GLFW_KEY_TAB) return false;
         if (!control && (suggestionsVisible || !input.isBlank())) return false;
-        cycle(shift);
+        if (!repeat) cycle(shift);
         return true;
     }
 

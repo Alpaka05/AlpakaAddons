@@ -39,15 +39,6 @@ public class EntityRendererMixin<T extends Entity, S extends EntityRenderState> 
         net.alpaka.addons.utils.AlpakaPerf.end(net.alpaka.addons.utils.AlpakaPerf.Section.ENTITY_RULES, t);
     }
 
-    @Inject(method = "shouldShowName", at = @At("HEAD"), cancellable = true)
-    private void hideBlazeNameTags(T entity, double distance, CallbackInfoReturnable<Boolean> info) {
-        long t = net.alpaka.addons.utils.AlpakaPerf.begin(net.alpaka.addons.utils.AlpakaPerf.Section.ENTITY_RULES);
-        if (CleanBlazeFeature.shouldHideNameTag(entity) || DamageTagFeature.shouldHideNameTag(entity)) {
-            info.setReturnValue(false);
-        }
-        net.alpaka.addons.utils.AlpakaPerf.end(net.alpaka.addons.utils.AlpakaPerf.Section.ENTITY_RULES, t);
-    }
-
     @Inject(method = "shouldRender", at = @At("HEAD"), cancellable = true)
     private void filterBlazeEntities(T entity, Frustum frustum, double x, double y, double z, CallbackInfoReturnable<Boolean> info) {
         long t = net.alpaka.addons.utils.AlpakaPerf.begin(net.alpaka.addons.utils.AlpakaPerf.Section.ENTITY_RULES);

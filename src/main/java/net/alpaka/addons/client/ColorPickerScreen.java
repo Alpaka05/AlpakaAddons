@@ -10,6 +10,7 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 
 import java.util.function.Consumer;
+import java.util.Locale;
 
 public class ColorPickerScreen extends Screen {
     private final Screen parent;
@@ -49,7 +50,7 @@ public class ColorPickerScreen extends Screen {
         this.onSave = onSave;
         this.defaultColor = defaultColor;
         setColor(initialColor);
-        this.hexInput = String.format("#%02X%02X%02X%02X", a, r, g, b);
+        this.hexInput = String.format(Locale.ROOT, "#%02X%02X%02X%02X", a, r, g, b);
     }
 
     private void setColor(int color) {
@@ -76,7 +77,7 @@ public class ColorPickerScreen extends Screen {
 
     private void syncHexFromColor() {
         if (!hexFocused) {
-            this.hexInput = String.format("#%02X%02X%02X%02X", a, r, g, b);
+            this.hexInput = String.format(Locale.ROOT, "#%02X%02X%02X%02X", a, r, g, b);
         }
     }
 
@@ -217,7 +218,7 @@ public class ColorPickerScreen extends Screen {
         ModernGuiUtils.drawRect(graphics, prevX, hexY, prevW, hexH, ModernGuiUtils.COLOR_CARD_BG);
         ModernGuiUtils.drawOutline(graphics, prevX, hexY, prevW, hexH, hexBorder);
 
-        String displayText = hexFocused ? hexInput : String.format("#%02X%02X%02X%02X", a, r, g, b);
+        String displayText = hexFocused ? hexInput : String.format(Locale.ROOT, "#%02X%02X%02X%02X", a, r, g, b);
         if (hexFocused && (System.currentTimeMillis() / 500) % 2 == 0) {
             displayText += "|";
         }
@@ -296,7 +297,7 @@ public class ColorPickerScreen extends Screen {
             this.hexFocused = true;
             this.cursorBlinkTimer = System.currentTimeMillis();
             if (this.hexInput.isEmpty()) {
-                this.hexInput = String.format("#%02X%02X%02X%02X", a, r, g, b);
+                this.hexInput = String.format(Locale.ROOT, "#%02X%02X%02X%02X", a, r, g, b);
             }
             return true;
         } else {

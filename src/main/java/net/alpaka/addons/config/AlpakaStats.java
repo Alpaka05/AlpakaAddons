@@ -232,10 +232,7 @@ public class AlpakaStats {
         }
 
         StatsMerge.mergeBestTimes(into, from);
-
-        // Lifetime XP is read off the Slayer menu as an absolute figure, so the larger reading is the
-        // newer one - and both were taken on the same profile.
-        if (from.totalXp > into.totalXp) into.totalXp = from.totalXp;
+        StatsMerge.mergeTotalXp(into, from);
         if (from.lastXpCreditedAtMs > into.lastXpCreditedAtMs) into.lastXpCreditedAtMs = from.lastXpCreditedAtMs;
     }
 

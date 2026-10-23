@@ -19,14 +19,18 @@ public final class WorldClockTracker {
     public static final long UNKNOWN_DAY = WorldClockModel.UNKNOWN_DAY;
 
     private static final WorldClockModel MODEL = new WorldClockModel();
-    private static ClientLevel trackedLevel = null;
+    /**
+     * The world the model reads, held weakly: a strong hold kept the last world - its chunks and
+     * entities - alive in the menus after leaving it, until the next world sent its time.
+     */
+    private static java.lang.ref.WeakReference<ClientLevel> trackedLevel = new java.lang.ref.WeakReference<>(null);
 
     private WorldClockTracker() {}
 
     /** Called on the client thread once a time packet has been applied. */
     public static void onTimePacket(ClientLevel level, ClientboundSetTimePacket packet) {
-        if (level != trackedLevel) {
-            trackedLevel = level;
+        if (level != trackedLevel.get()) {
+            trackedLevel = new java.lang.ref.WeakReference<>(level);
             MODEL.reset();
         }
         ClockNetworkState overworld = overworldClock(packet.clockUpdates());
@@ -51,10 +55,16 @@ public final class WorldClockTracker {
 
     /** The server's day, or {@link #UNKNOWN_DAY} when it cannot be read (yet). */
     public static long getDay(ClientLevel level) {
-        if (level != trackedLevel) {
+        if (level == null || level != trackedLevel.get()) {
             // No time packet for this world yet.
             return UNKNOWN_DAY;
         }
         return MODEL.day(level.getOverworldClockTime());
+    }
+
+    /** Forgets the world and what was read from it; called on disconnect. */
+    public static void reset() {
+        trackedLevel = new java.lang.ref.WeakReference<>(null);
+        MODEL.reset();
     }
 }

@@ -528,6 +528,8 @@ public class AlpakaConfig {
     public boolean messageFilterFireSale = true;
     public boolean messageFilterWatchdog = true;
     public boolean messageFilterStash = true;
+    /** The player's own filters, made in the Message Filter's sub menu. */
+    public java.util.List<net.alpaka.addons.features.chat.CustomMessageFilter> messageFilterCustom = new java.util.ArrayList<>();
     /** All / Party / Guild / PMs tabs above the chat input. */
     public boolean chatTabsEnabled = true;
     /** With chat tabs: a plain message typed on a channel tab goes to that channel (/pc, /gc, /r). */
@@ -929,6 +931,8 @@ public class AlpakaConfig {
                 new ItemPreset(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, false, false, false, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f)
             };
         }
+        if (instance.messageFilterCustom == null) instance.messageFilterCustom = new java.util.ArrayList<>();
+        instance.messageFilterCustom.removeIf(java.util.Objects::isNull);
     }
 
     /**

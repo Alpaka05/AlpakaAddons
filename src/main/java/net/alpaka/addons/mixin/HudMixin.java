@@ -50,23 +50,15 @@ public class HudMixin implements ChatOverHud.Late {
     @Shadow private int toolHighlightTimer;
     @Shadow private ItemStack lastToolHighlight;
 
-    @Shadow private void extractChat(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) { throw new AssertionError("replaced by mixin"); }
-    @Shadow private void extractTabList(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) { throw new AssertionError("replaced by mixin"); }
-
-    /** Better Chat: the chat and the player list after the whole HUD, under the same conditions as in it. */
+    /**
+     * Better Chat: the chat and the player list after the whole HUD, under the same conditions as
+     * in it, and the notices after them.
+     */
     @Override
     public void alpaka$extractChatLate(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
         if (this.isHidden || this.minecraft.gui.screen() instanceof LevelLoadingScreen) return;
-        this.extractChat(graphics, deltaTracker);
-        this.extractTabList(graphics, deltaTracker);
-    }
-
-    /** Better Chat draws the chat and the player list after the HUD instead; see ChatOverHud. */
-    @Inject(method = {"extractChat", "extractTabList"}, at = @At("HEAD"), cancellable = true)
-    private void alpaka$chatAfterHud(GuiGraphicsExtractor graphicsExtractor, DeltaTracker deltaTracker, CallbackInfo ci) {
-        if (ChatOverHud.defersHudCall()) {
-            ci.cancel();
-        }
+        ChatOverHud.extractElements(graphics, deltaTracker);
+        AlpakaNotifications.renderAfterChat(graphics);
     }
 
     @Inject(method = "extractRenderState", at = @At("TAIL"))

@@ -54,7 +54,7 @@ public final class PerformanceHudRenderer {
         int fps = cfg.performanceHudShowFps ? PerformanceStats.fps() : 0;
         int ping = cfg.performanceHudShowPing ? PerformanceStats.pingMs() : 0;
         float tps = cfg.performanceHudShowTps ? PerformanceStats.tps() : 0.0f;
-        int tenthTps = Float.isNaN(tps) ? -1 : Math.round(tps * 10.0f);
+        int tenthTps = TpsEstimator.shownTenths(tps);
         boolean smooth = cfg.smoothOn(cfg.performanceHudSmoothFont);
         Style style = smooth ? GuiFont.style() : Style.EMPTY;
 

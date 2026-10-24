@@ -19,6 +19,10 @@ class UpdateCheckerTest {
         UpdateChecker.newest("[" + releases.joinToString(",") + "]", UpdateChecker.parse(running)!!,
             UpdateChecker.jarSuffixes(minecraft))
 
+    private fun newestPre(running: String, vararg releases: String) =
+        UpdateChecker.newest("[" + releases.joinToString(",") + "]", UpdateChecker.parse(running, allowPreRelease = true)!!,
+            UpdateChecker.jarSuffixes("26.2"), preReleases = true)
+
     @Test
     fun aHotfixGameLooksForItsOwnVersionThenTheMajorMinor() {
         assertEquals(listOf("-mc26.2.jar"), UpdateChecker.jarSuffixes("26.2"))
@@ -59,5 +63,35 @@ class UpdateCheckerTest {
             release("1.5.0", "alpaka-1.5.0-mc26.2.jar", draft = true),
             release("1.6.0", "alpaka-1.6.0-mc26.2.jar", prerelease = true),
             release("2.0.0-alpha", "alpaka-2.0.0-alpha-mc26.2.jar")))
+    }
+
+    @Test
+    fun thePreReleaseStreamOffersPreReleases() {
+        assertEquals("1.6.0", newestPre("1.4.0",
+            release("1.5.0", "alpaka-1.5.0-mc26.2.jar"),
+            release("1.6.0", "alpaka-1.6.0-mc26.2.jar", prerelease = true))?.version)
+        assertEquals("2.0.0-alpha.1", newestPre("1.4.0",
+            release("2.0.0-alpha.1", "alpaka-2.0.0-alpha.1-mc26.2.jar", prerelease = true))?.version)
+        assertNull(newestPre("1.4.0", release("1.5.0", "alpaka-1.5.0-mc26.2.jar", draft = true)))
+    }
+
+    @Test
+    fun preReleasesOrderLikeSemver() {
+        assertEquals("2.0.0-alpha.10", newestPre("2.0.0-alpha.1",
+            release("2.0.0-alpha.2", "alpaka-2.0.0-alpha.2-mc26.2.jar", prerelease = true),
+            release("2.0.0-alpha.10", "alpaka-2.0.0-alpha.10-mc26.2.jar", prerelease = true))?.version)
+        assertEquals("2.0.0-beta", newestPre("2.0.0-alpha.3",
+            release("2.0.0-beta", "alpaka-2.0.0-beta-mc26.2.jar", prerelease = true))?.version)
+        assertEquals("2.0.0", newestPre("2.0.0-beta",
+            release("2.0.0", "alpaka-2.0.0-mc26.2.jar"))?.version)
+        assertNull(newestPre("2.0.0", release("2.0.0-rc.1", "alpaka-2.0.0-rc.1-mc26.2.jar", prerelease = true)))
+    }
+
+    @Test
+    fun aPreReleaseBuildOnTheReleaseStreamHearsOfTheFullRelease() {
+        val running = UpdateChecker.parse("2.0.0-alpha.1", allowPreRelease = true)!!
+        val body = "[" + release("2.0.0", "alpaka-2.0.0-mc26.2.jar") + "," +
+            release("2.0.0-alpha.2", "alpaka-2.0.0-alpha.2-mc26.2.jar", prerelease = true) + "]"
+        assertEquals("2.0.0", UpdateChecker.newest(body, running, UpdateChecker.jarSuffixes("26.2"))?.version)
     }
 }

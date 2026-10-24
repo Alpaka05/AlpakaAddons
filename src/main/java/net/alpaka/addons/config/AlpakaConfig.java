@@ -725,6 +725,18 @@ public class AlpakaConfig {
      */
     public boolean commandWheelToggleMode = false;
 
+    /**
+     * The mod's keys, by key mapping name ("key.alpaka.zoom") to the bound key's name
+     * ("key.keyboard.c"). A key left out is on its default. They are set in the config menu and kept
+     * here rather than in options.txt; see AlpakaKeyBinds.
+     */
+    public Map<String, String> keyBinds = new HashMap<>();
+    /** Whether keys bound in vanilla's Controls before have been taken over from options.txt. */
+    public boolean keyBindsImported = false;
+
+    /** Holding the Zoom key zooms in; scrolling while holding it zooms further. */
+    public boolean zoomEnabled = true;
+
     /** Legacy, pre-pages. Read once by CommandWheelPages and then cleared. */
     public java.util.List<String> commandWheelCommands = new java.util.ArrayList<>(java.util.List.of(
             "/hub",
@@ -1099,6 +1111,8 @@ public class AlpakaConfig {
         fresh.lastSeenVersion = old.lastSeenVersion;
         fresh.configVersion = old.configVersion;
         fresh.menuFontNunitoApplied = true;
+        // The keys go back to their defaults too; options.txt is not read again for the old ones.
+        fresh.keyBindsImported = true;
         instance = fresh;
         save();
     }
@@ -1384,6 +1398,7 @@ public class AlpakaConfig {
         this.partyInvitePromptEnabled = false;
         this.oldMasterStarsEnabled = false;
         this.cacheResourcePackEnabled = false;
+        this.zoomEnabled = false;
         save();
     }
 

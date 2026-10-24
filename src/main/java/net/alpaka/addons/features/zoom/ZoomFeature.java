@@ -2,7 +2,8 @@ package net.alpaka.addons.features.zoom;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import net.alpaka.addons.client.AlpakaKeyCategory;
-import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
+import net.alpaka.addons.client.AlpakaKeyBinds;
+import net.alpaka.addons.config.AlpakaConfig;
 import net.minecraft.client.KeyMapping;
 import org.lwjgl.glfw.GLFW;
 
@@ -15,7 +16,7 @@ public class ZoomFeature {
     private static final double DEFAULT_ZOOM = 4.0;
 
     public static void register() {
-        ZOOM_KEY = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+        ZOOM_KEY = AlpakaKeyBinds.register(new KeyMapping(
                 "key.alpaka.zoom",
                 InputConstants.Type.KEYSYM,
                 // C, as players know it from OptiFine. Vanilla also uses C, but only for saving a
@@ -26,7 +27,7 @@ public class ZoomFeature {
     }
 
     public static boolean isZooming() {
-        if (ZOOM_KEY != null && ZOOM_KEY.isDown()) {
+        if (ZOOM_KEY != null && AlpakaConfig.instance.zoomEnabled && ZOOM_KEY.isDown()) {
             if (!isZooming) {
                 isZooming = true;
                 if (zoomFactor == 1.0) {

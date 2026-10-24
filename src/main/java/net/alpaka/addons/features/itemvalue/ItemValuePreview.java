@@ -49,6 +49,24 @@ public final class ItemValuePreview {
 
     /** A chest with a fully upgraded Hyperion, a Terminator, a pet, a drill, a stack, a book and a menu button. */
     public static ContainerScreen chest() {
+        SimpleContainer c = items();
+        ChestMenu menu = new ChestMenu(MenuType.GENERIC_9x3, 9_001, Minecraft.getInstance().player.getInventory(), c, 3);
+        return new ContainerScreen(menu, Minecraft.getInstance().player.getInventory(), Component.literal("Chest"));
+    }
+
+    /**
+     * The same items in the player's own inventory, a few stacks more, for the Chest Value panel in
+     * the inventory. Only on this client: the tour's world never hears of them.
+     */
+    public static void fillInventory() {
+        SimpleContainer c = items();
+        net.minecraft.world.entity.player.Inventory inventory = Minecraft.getInstance().player.getInventory();
+        for (int i = 10; i <= 15; i++) inventory.setItem(i - 1, c.getItem(i).copy());
+        for (int i = 0; i < 4; i++) inventory.setItem(18 + i, c.getItem(14).copy());
+        inventory.setItem(27, item(Items.WHEAT, 64, "§fWheat", "{id:\"WHEAT\"}", "", "§f§lCOMMON"));
+    }
+
+    private static SimpleContainer items() {
         SimpleContainer c = new SimpleContainer(27);
         c.setItem(10, glint(item(Items.IRON_SWORD, 1, "§dWithered Hyperion §6✪✪✪✪✪§c➎", """
                 {id:"HYPERION",modifier:"withered",upgrade_level:10,rarity_upgrades:1,hot_potato_count:15,art_of_war_count:1,
@@ -78,8 +96,12 @@ public final class ItemValuePreview {
         c.setItem(15, item(Items.ENCHANTED_BOOK, 1, "§fEnchanted Book", "{id:\"ENCHANTED_BOOK\",enchantments:{ultimate_chimera:5}}",
                 "§d§lChimera V", "", "§f§lCOMMON"));
         c.setItem(16, item(Items.BARRIER, 1, "§cClose", null));
-        ChestMenu menu = new ChestMenu(MenuType.GENERIC_9x3, 9_001, Minecraft.getInstance().player.getInventory(), c, 3);
-        return new ContainerScreen(menu, Minecraft.getInstance().player.getInventory(), Component.literal("Chest"));
+        // Two more stacks of the same diamonds, which Chest Value adds into one line.
+        c.setItem(19, glint(item(Items.DIAMOND, 64, "§aEnchanted Diamond", "{id:\"ENCHANTED_DIAMOND\"}", "", "§a§lUNCOMMON")));
+        c.setItem(20, glint(item(Items.DIAMOND, 23, "§aEnchanted Diamond", "{id:\"ENCHANTED_DIAMOND\"}", "", "§a§lUNCOMMON")));
+        c.setItem(22, item(Items.ROTTEN_FLESH, 12, "§fRevenant Flesh", "{id:\"REVENANT_FLESH\"}", "", "§f§lCOMMON"));
+        c.setItem(24, item(Items.PAPER, 1, "§9Mystery Note", "{id:\"ALPAKA_MYSTERY_NOTE\"}", "", "§9§lRARE"));
+        return c;
     }
 
     /** The middle of a slot of the chest from {@link #chest}, in GUI pixels. */

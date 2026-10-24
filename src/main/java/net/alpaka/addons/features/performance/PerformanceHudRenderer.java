@@ -10,6 +10,8 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
+import net.minecraft.util.Util;
 
 import java.util.Locale;
 
@@ -31,6 +33,12 @@ public final class PerformanceHudRenderer {
     private static int cachedTenthTps = Integer.MIN_VALUE;
     private static int cachedParts = -1;
     private static Component cachedText = null;
+
+    /** The values of the four parts, in the order they are drawn, each rolling when it changes. */
+    private static final RollingValue DAY = new RollingValue();
+    private static final RollingValue FPS = new RollingValue();
+    private static final RollingValue PING = new RollingValue();
+    private static final RollingValue TPS = new RollingValue();
 
     private PerformanceHudRenderer() {}
 
@@ -57,30 +65,61 @@ public final class PerformanceHudRenderer {
     }
 
     private static Component build(int parts, long day, int fps, int ping, int tenthTps) {
+        long now = Util.getMillis();
         MutableComponent line = Component.empty();
         if ((parts & 8) != 0) {
-            if (day == WorldClockTracker.UNKNOWN_DAY) part(line, "Day ", "--", UNKNOWN);
-            else part(line, "Day ", Long.toString(day), WorldAgeFeature.getDayColor(day));
+            if (day == WorldClockTracker.UNKNOWN_DAY) part(line, "Day ", DAY, "--", UNKNOWN, Double.NaN, now);
+            else part(line, "Day ", DAY, Long.toString(day), WorldAgeFeature.getDayColor(day), day, now);
         }
         if ((parts & 1) != 0) {
-            part(line, "FPS ", Integer.toString(fps), fps >= 60 ? GOOD : fps >= 30 ? FAIR : POOR);
+            part(line, "FPS ", FPS, Integer.toString(fps), fps >= 60 ? GOOD : fps >= 30 ? FAIR : POOR, fps, now);
         }
         if ((parts & 2) != 0) {
-            if (ping < 0) part(line, "Ping ", "--", UNKNOWN);
-            else part(line, "Ping ", ping + "ms", ping <= 150 ? GOOD : ping <= 250 ? FAIR : POOR);
+            if (ping < 0) part(line, "Ping ", PING, "--", UNKNOWN, Double.NaN, now);
+            else part(line, "Ping ", PING, ping + "ms", ping <= 150 ? GOOD : ping <= 250 ? FAIR : POOR, ping, now);
         }
         if ((parts & 4) != 0) {
-            if (tenthTps < 0) part(line, "TPS ", "--", UNKNOWN);
-            else part(line, "TPS ", String.format(Locale.ROOT, "%.1f", tenthTps / 10.0f),
-                    tenthTps >= 180 ? GOOD : tenthTps >= 150 ? FAIR : POOR);
+            if (tenthTps < 0) part(line, "TPS ", TPS, "--", UNKNOWN, Double.NaN, now);
+            else part(line, "TPS ", TPS, String.format(Locale.ROOT, "%.1f", tenthTps / 10.0f),
+                    tenthTps >= 180 ? GOOD : tenthTps >= 150 ? FAIR : POOR, tenthTps, now);
         }
         return line;
     }
 
-    private static void part(MutableComponent line, String label, String value, int color) {
+    private static void part(MutableComponent line, String label, RollingValue rolling, String value, int color,
+                             double number, long now) {
+        rolling.set(value, color, number, now);
         if (!line.getSiblings().isEmpty()) line.append(Component.literal("  "));
         line.append(Component.literal(label).withColor(LABEL));
         line.append(Component.literal(value).withColor(color));
+    }
+
+    /**
+     * Draws the line part by part while a value is still rolling. Outside a roll the cached line is
+     * drawn in one go, so the HUD costs nothing extra between changes.
+     */
+    private static boolean drawRolling(GuiGraphicsExtractor graphics, Font font, Style style, boolean shadow) {
+        AlpakaConfig cfg = AlpakaConfig.instance;
+        long now = Util.getMillis();
+        if (!(cfg.performanceHudShowDay && DAY.animating(now) || cfg.performanceHudShowFps && FPS.animating(now)
+                || cfg.performanceHudShowPing && PING.animating(now) || cfg.performanceHudShowTps && TPS.animating(now))) {
+            return false;
+        }
+        int x = 0;
+        boolean first = true;
+        if (cfg.performanceHudShowDay) { x = drawPart(graphics, font, style, shadow, x, first, "Day ", DAY, now); first = false; }
+        if (cfg.performanceHudShowFps) { x = drawPart(graphics, font, style, shadow, x, first, "FPS ", FPS, now); first = false; }
+        if (cfg.performanceHudShowPing) { x = drawPart(graphics, font, style, shadow, x, first, "Ping ", PING, now); first = false; }
+        if (cfg.performanceHudShowTps) drawPart(graphics, font, style, shadow, x, first, "TPS ", TPS, now);
+        return true;
+    }
+
+    private static int drawPart(GuiGraphicsExtractor graphics, Font font, Style style, boolean shadow, int x,
+                                boolean first, String label, RollingValue rolling, long now) {
+        Component text = Component.literal(first ? label : "  " + label).withStyle(style).withColor(LABEL);
+        graphics.text(font, text, x, 0, 0xFFFFFFFF, shadow);
+        x += font.width(text);
+        return x + rolling.draw(graphics, font, style, x, now, shadow);
     }
 
     private static boolean anyPartShown() {
@@ -114,7 +153,7 @@ public final class PerformanceHudRenderer {
         graphics.pose().pushMatrix();
         graphics.pose().translate((float) x, (float) y);
         graphics.pose().scale(scale, scale);
-        graphics.text(font, text, 0, 0, 0xFFFFFFFF);
+        if (!drawRolling(graphics, font, Style.EMPTY, true)) graphics.text(font, text, 0, 0, 0xFFFFFFFF);
         graphics.pose().popMatrix();
     }
 

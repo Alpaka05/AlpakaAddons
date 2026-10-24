@@ -4,7 +4,7 @@ import com.mojang.blaze3d.platform.InputConstants
 import net.alpaka.addons.client.AlpakaKeyCategory
 import net.alpaka.addons.config.AlpakaConfig
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
-import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper
+import net.alpaka.addons.client.AlpakaKeyBinds
 import net.minecraft.client.KeyMapping
 import net.minecraft.client.Minecraft
 import net.minecraft.world.item.Item
@@ -99,11 +99,11 @@ object InventoryHudFeature {
 
     @JvmStatic
     fun register() {
-        TOGGLE_KEY = KeyMappingHelper.registerKeyMapping(
+        TOGGLE_KEY = AlpakaKeyBinds.register(
             KeyMapping(
                 "key.alpaka.inventory_hud",
                 InputConstants.Type.KEYSYM,
-                // Unbound for fresh installs: H is Skyblocker's slot lock. A key set in options.txt
+                // Unbound for fresh installs: H is Skyblocker's slot lock. A key the player bound
                 // stays as it is.
                 GLFW.GLFW_KEY_UNKNOWN,
                 AlpakaKeyCategory.CATEGORY

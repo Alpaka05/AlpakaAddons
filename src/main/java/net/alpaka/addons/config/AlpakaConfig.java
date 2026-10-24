@@ -725,6 +725,32 @@ public class AlpakaConfig {
      */
     public boolean commandWheelToggleMode = false;
 
+    /**
+     * The mod's keys, by key mapping name ("key.alpaka.zoom") to the bound key's name
+     * ("key.keyboard.c"). A key left out is on its default. They are set in the config menu and kept
+     * here rather than in options.txt; see AlpakaKeyBinds.
+     */
+    public Map<String, String> keyBinds = new HashMap<>();
+    /** Whether keys bound in vanilla's Controls before have been taken over from options.txt. */
+    public boolean keyBindsImported = false;
+
+    /** Holding the Zoom key zooms in; scrolling while holding it zooms further. */
+    public boolean zoomEnabled = true;
+    /** Off: zoom while the key is held. On: one press zooms in, the next zooms back out. */
+    public boolean zoomToggleMode = false;
+    /** How far the zoom goes in, as a factor of the normal view. */
+    public float zoomAmount = 4.0f;
+    /** Scrolling while zoomed changes the zoom instead of the hotbar slot. */
+    public boolean zoomScrollEnabled = true;
+    /** How the zoom moves in and out: an index into ZoomFeature.ANIMATIONS. */
+    public int zoomAnimation = 1;
+    /** How long the zoom animation takes, in milliseconds. */
+    public int zoomAnimationMs = 250;
+    /** Turns on vanilla's cinematic camera while zoomed. */
+    public boolean zoomCinematicCamera = false;
+    /** Turns the mouse down by the zoom factor, so aiming feels the same zoomed in. */
+    public boolean zoomReduceSensitivity = true;
+
     /** Legacy, pre-pages. Read once by CommandWheelPages and then cleared. */
     public java.util.List<String> commandWheelCommands = new java.util.ArrayList<>(java.util.List.of(
             "/hub",
@@ -1099,6 +1125,8 @@ public class AlpakaConfig {
         fresh.lastSeenVersion = old.lastSeenVersion;
         fresh.configVersion = old.configVersion;
         fresh.menuFontNunitoApplied = true;
+        // The keys go back to their defaults too; options.txt is not read again for the old ones.
+        fresh.keyBindsImported = true;
         instance = fresh;
         save();
     }
@@ -1384,6 +1412,7 @@ public class AlpakaConfig {
         this.partyInvitePromptEnabled = false;
         this.oldMasterStarsEnabled = false;
         this.cacheResourcePackEnabled = false;
+        this.zoomEnabled = false;
         save();
     }
 

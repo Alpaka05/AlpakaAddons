@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 
 public class AlpakaConfigRegistry {
     private static final List<ConfigOption> OPTIONS = new ArrayList<>();
+    private static final String[] CHEST_VALUE_SIDES = {"Left", "Right"};
     private static final java.util.Map<ConfigCategory, List<ConfigOption>> CATEGORY_CACHE = new java.util.EnumMap<>(ConfigCategory.class);
 
     static {
@@ -1688,6 +1689,22 @@ public class AlpakaConfigRegistry {
                 0.0f, (float) (net.alpaka.addons.features.itemvalue.ItemPrices.SIDES.length - 1),
                 val -> net.alpaka.addons.features.itemvalue.ItemPrices.SIDES[Math.round(val)],
                 "item value bazaar price instant buy sell side order offer").choices(net.alpaka.addons.features.itemvalue.ItemPrices.SIDES));
+
+        OPTIONS.add(new ConfigOption("chest_value", "Chest Value",
+                "Press the Chest Value key in a chest, backpack, Ender Chest or your inventory to show what everything in it is worth: every item with its price and share of the total. It stays shown in every menu until you press the key again. The key is unbound by default; set it in Controls. Needs Network Features.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.chestValueEnabled,
+                v -> { AlpakaConfig.instance.chestValueEnabled = v; AlpakaConfig.save(); },
+                "chest value worth price networth net worth total inventory backpack ender chest storage container hotkey key panel overlay share lowest bin bazaar unbound controls"));
+
+        OPTIONS.add(new ConfigOption("chest_value_side", "Panel Side",
+                "Which side of the menu the panel sits on. Left keeps it clear of item list mods such as NEU, REI and Skyblocker, which use the right.",
+                ConfigCategory.SKYBLOCK,
+                () -> (float) AlpakaConfig.instance.chestValueSide,
+                v -> { AlpakaConfig.instance.chestValueSide = Math.round(v); AlpakaConfig.save(); },
+                0.0f, 1.0f,
+                val -> CHEST_VALUE_SIDES[Math.round(val)],
+                "chest value side left right position place").choices(CHEST_VALUE_SIDES));
 
         OPTIONS.add(new ConfigOption("Guild Chat", ConfigCategory.SKYBLOCK));
 

@@ -879,6 +879,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.performanceHudShowTps = v; AlpakaConfig.save(); },
                 "performance hud tps ticks per second server lag"));
 
+        OPTIONS.add(new ConfigOption("performance_hud_animate", "Animate Changes",
+                "When a number changes, its digits roll out and fade while the new ones roll in, like a flip clock.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.performanceHudAnimate,
+                v -> { AlpakaConfig.instance.performanceHudAnimate = v; AlpakaConfig.save(); },
+                "performance hud animate animation roll flip clock slide fade numbers digits"));
+
         OPTIONS.add(new ConfigOption("Inventory HUD", ConfigCategory.VISUALS));
 
         OPTIONS.add(new ConfigOption("inventory_hud_enabled", "Inventory HUD",

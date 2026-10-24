@@ -997,14 +997,16 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                 int fieldX = right - fieldW;
                 int fieldY = rowY + 2;
                 int fieldH = rowH - 4;
-                // Reset, left of the field, only while the key is not its default.
-                int resetW = GuiFont.width(this.font, "Reset") + 8;
+                // Reset, a circular arrow left of the field, only while the key is not its default.
+                int resetW = fieldH;
                 int resetX = fieldX - 3 - resetW;
                 boolean showReset = !mapping.isDefault() && !listening;
                 drawLabel(graphics, option.getTitle(), rowX + 4, labelY, (showReset ? resetX : fieldX) - 8 - (rowX + 4));
+                boolean resetHover = showReset && hover && inside(mouseX, mouseY, resetX, fieldY, resetW, fieldH);
                 if (showReset) {
-                    boolean resetHover = hover && inside(mouseX, mouseY, resetX, fieldY, resetW, fieldH);
-                    AlpakaStyle.button(graphics, this.font, resetX, fieldY, resetW, fieldH, "Reset", resetHover, AlpakaStyle.ButtonKind.PLAIN);
+                    AlpakaStyle.resetButton(graphics, resetX, fieldY, resetW, resetHover);
+                    if (resetHover) hoveredTipTextThisFrame = "Back to the default key: "
+                            + mapping.getDefaultKey().getDisplayName().getString() + ".";
                 }
                 boolean fieldHover = hover && inside(mouseX, mouseY, fieldX, fieldY, fieldW, fieldH);
                 ModernGuiUtils.drawRoundedRect(graphics, fieldX, fieldY, fieldW, fieldH, AlpakaStyle.FIELD_RADIUS,
@@ -1025,7 +1027,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                     // and the tooltip says which.
                     KeyMapping other = AlpakaKeyBinds.conflict(mapping);
                     color = other != null ? AlpakaStyle.DANGER_SOFT : AlpakaStyle.TEXT;
-                    if (other != null && hover) {
+                    if (other != null && hover && !resetHover) {
                         hoveredTipTextThisFrame = option.getDescription() + " " + value + " is also bound to "
                                 + Component.translatable(other.getName()).getString() + ".";
                     }

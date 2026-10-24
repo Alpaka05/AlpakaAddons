@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /** How the mouse turns the camera while zoomed: slower with the zoom, and cinematic if chosen. */
 @Mixin(MouseHandler.class)
-public class MouseHandlerZoomMixin {
+public class ZoomMouseHandlerMixin {
     @Shadow private double accumulatedDX;
     @Shadow private double accumulatedDY;
 

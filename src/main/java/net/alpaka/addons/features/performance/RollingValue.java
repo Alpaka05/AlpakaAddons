@@ -3,7 +3,6 @@ package net.alpaka.addons.features.performance;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.ARGB;
 
@@ -53,47 +52,61 @@ final class RollingValue {
         return previous != null && now - changedAt < DURATION_MS;
     }
 
-    /** Draws the value with its left edge at {@code x}; returns how wide the new value is. */
-    int draw(GuiGraphicsExtractor graphics, Font font, Style style, int x, long now, boolean shadow) {
-        int width = font.width(styled(value, style));
+    /**
+     * Draws the value with its left edge at {@code x}; returns how wide the new value is. Positions
+     * are kept in fractions of a pixel: a smooth font's glyphs are not whole pixels wide, and
+     * rounding each piece would push everything after it to the right.
+     */
+    float draw(GuiGraphicsExtractor graphics, Font font, Style style, float x, long now, boolean shadow) {
+        float width = width(font, value, style);
         if (!animating(now)) {
             previous = null;
-            graphics.text(font, styled(value, style).withColor(color), x, 0, 0xFFFFFFFF, shadow);
+            text(graphics, font, value, style, color, 1.0f, x, 0.0f, shadow);
             return width;
         }
 
         float t = (now - changedAt) / (float) DURATION_MS;
         float eased = 1.0f - (1.0f - t) * (1.0f - t) * (1.0f - t);
-        int outOffset = Math.round(direction * LINE_HEIGHT * eased);
-        int inOffset = Math.round(-direction * LINE_HEIGHT * (1.0f - eased));
-        int outColor = ARGB.multiplyAlpha(previousColor, 1.0f - eased);
-        int inColor = ARGB.multiplyAlpha(color, eased);
+        float outOffset = direction * LINE_HEIGHT * eased;
+        float inOffset = -direction * LINE_HEIGHT * (1.0f - eased);
 
         // Characters only roll one by one when both numbers have the same length; otherwise the
         // digits don't line up and the whole number rolls.
         boolean perChar = previous.length() == value.length();
-        int oldWidth = font.width(styled(previous, style));
-        graphics.enableScissor(x, 0, x + Math.max(width, oldWidth) + 1, LINE_HEIGHT);
+        float oldWidth = width(font, previous, style);
+        graphics.enableScissor((int) Math.floor(x), 0, (int) Math.ceil(x + Math.max(width, oldWidth)) + 1, LINE_HEIGHT);
         for (int i = 0; i < value.length(); i++) {
-            int cx = x + font.width(styled(value.substring(0, i), style));
-            Component c = styled(value.substring(i, i + 1), style);
+            float cx = x + width(font, value.substring(0, i), style);
+            String c = value.substring(i, i + 1);
             if (perChar && previous.charAt(i) == value.charAt(i)) {
-                graphics.text(font, c.copy().withColor(color), cx, 0, 0xFFFFFFFF, shadow);
+                text(graphics, font, c, style, color, 1.0f, cx, 0.0f, shadow);
             } else {
-                graphics.text(font, c.copy().withColor(inColor), cx, inOffset, 0xFFFFFFFF, shadow);
+                text(graphics, font, c, style, color, eased, cx, inOffset, shadow);
             }
         }
         for (int i = 0; i < previous.length(); i++) {
             if (perChar && previous.charAt(i) == value.charAt(i)) continue;
-            int cx = x + font.width(styled(previous.substring(0, i), style));
-            graphics.text(font, styled(previous.substring(i, i + 1), style).withColor(outColor), cx, outOffset,
-                    0xFFFFFFFF, shadow);
+            float cx = x + width(font, previous.substring(0, i), style);
+            text(graphics, font, previous.substring(i, i + 1), style, previousColor, 1.0f - eased, cx, outOffset, shadow);
         }
         graphics.disableScissor();
         return width;
     }
 
-    private static MutableComponent styled(String text, Style style) {
-        return Component.literal(text).withStyle(style);
+    static float width(Font font, String text, Style style) {
+        return font.getSplitter().stringWidth(Component.literal(text).withStyle(style));
+    }
+
+    /**
+     * Draws text at a position in fractions of a pixel. The fade goes through the colour passed to
+     * the draw call, since a style's colour carries no alpha.
+     */
+    static void text(GuiGraphicsExtractor graphics, Font font, String text, Style style, int color, float alpha,
+                     float x, float y, boolean shadow) {
+        if (alpha <= 0.0f) return;
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(x, y);
+        graphics.text(font, Component.literal(text).withStyle(style), 0, 0, ARGB.multiplyAlpha(color, alpha), shadow);
+        graphics.pose().popMatrix();
     }
 }

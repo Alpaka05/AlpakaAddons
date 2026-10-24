@@ -95,17 +95,18 @@ public final class PerformanceHudRenderer {
     }
 
     /**
-     * Draws the line part by part while a value is still rolling. Outside a roll the cached line is
+     * Draws the line part by part while a value is still rolling, if Animate Changes is on. Outside a roll the cached line is
      * drawn in one go, so the HUD costs nothing extra between changes.
      */
     private static boolean drawRolling(GuiGraphicsExtractor graphics, Font font, Style style, boolean shadow) {
         AlpakaConfig cfg = AlpakaConfig.instance;
         long now = Util.getMillis();
+        if (!cfg.performanceHudAnimate) return false;
         if (!(cfg.performanceHudShowDay && DAY.animating(now) || cfg.performanceHudShowFps && FPS.animating(now)
                 || cfg.performanceHudShowPing && PING.animating(now) || cfg.performanceHudShowTps && TPS.animating(now))) {
             return false;
         }
-        int x = 0;
+        float x = 0.0f;
         boolean first = true;
         if (cfg.performanceHudShowDay) { x = drawPart(graphics, font, style, shadow, x, first, "Day ", DAY, now); first = false; }
         if (cfg.performanceHudShowFps) { x = drawPart(graphics, font, style, shadow, x, first, "FPS ", FPS, now); first = false; }
@@ -114,11 +115,11 @@ public final class PerformanceHudRenderer {
         return true;
     }
 
-    private static int drawPart(GuiGraphicsExtractor graphics, Font font, Style style, boolean shadow, int x,
-                                boolean first, String label, RollingValue rolling, long now) {
-        Component text = Component.literal(first ? label : "  " + label).withStyle(style).withColor(LABEL);
-        graphics.text(font, text, x, 0, 0xFFFFFFFF, shadow);
-        x += font.width(text);
+    private static float drawPart(GuiGraphicsExtractor graphics, Font font, Style style, boolean shadow, float x,
+                                  boolean first, String label, RollingValue rolling, long now) {
+        String text = first ? label : "  " + label;
+        RollingValue.text(graphics, font, text, style, LABEL, 1.0f, x, 0.0f, shadow);
+        x += RollingValue.width(font, text, style);
         return x + rolling.draw(graphics, font, style, x, now, shadow);
     }
 

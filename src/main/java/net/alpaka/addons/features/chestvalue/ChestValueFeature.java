@@ -1,10 +1,10 @@
 package net.alpaka.addons.features.chestvalue;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import net.alpaka.addons.client.AlpakaKeyBinds;
 import net.alpaka.addons.client.AlpakaKeyCategory;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
@@ -23,7 +23,7 @@ import org.lwjgl.glfw.GLFW;
  * panel comes back with every menu opened after, and after a restart, until the key is pressed again.
  * Pressed outside a menu it switches the same way and says so above the hotbar.
  *
- * Like the Item Value key it is unbound until the player picks one under Options > Controls, and is
+ * Like the Item Value key it is unbound until the player picks one in the feature's settings, and is
  * read from the menu's own key presses, so a mouse button works too and typing into a search never
  * switches it. Nothing here sends anything to the server: the panel only reads the menu's slots.
  */
@@ -33,7 +33,7 @@ public final class ChestValueFeature {
     public static KeyMapping KEY;
 
     public static void register() {
-        KEY = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.alpaka.chest_value", InputConstants.Type.KEYSYM,
+        KEY = AlpakaKeyBinds.register(new KeyMapping("key.alpaka.chest_value", InputConstants.Type.KEYSYM,
                 GLFW.GLFW_KEY_UNKNOWN, AlpakaKeyCategory.CATEGORY));
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
             if (!(screen instanceof AbstractContainerScreen<?>)) return;

@@ -387,6 +387,8 @@ public class AlpakaConfig {
     public boolean allowApiCalls = true;
     /** A chat line on joining a world when a newer release is on GitHub. Needs allowApiCalls. */
     public boolean updateNotificationsEnabled = true;
+    /** Which releases the update check offers: 0 full releases only, 1 pre-releases as well (UpdateChecker.STREAM_NAMES). */
+    public int updateStream = 0;
     /** The release whose notes the player last opened from the main menu; its What's New card shows a dot until then. */
     public String releaseNotesSeen = "";
     /** The What's New card on the custom main menu, with the newest release's notes. */

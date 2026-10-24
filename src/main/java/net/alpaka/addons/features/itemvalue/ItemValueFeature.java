@@ -5,7 +5,7 @@ import net.alpaka.addons.client.AlpakaKeyCategory;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.market.MarketScreen;
 import net.alpaka.addons.mixin.AbstractContainerScreenAccessor;
-import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
+import net.alpaka.addons.client.AlpakaKeyBinds;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
@@ -23,7 +23,7 @@ import org.lwjgl.glfw.GLFW;
  * it opens {@link ItemValuePopup} on that item. Pressed again over the same item, or over nothing,
  * it closes it; over another item it moves to that one.
  *
- * The key is unbound until the player picks one under Options > Controls, in the mod's own section.
+ * The key is unbound until the player picks one in the feature's settings in the config menu.
  * It is read from the menu's own key presses, since a key mapping hears nothing while a screen is
  * open, so a key bound to a mouse button works through the menu's clicks the same way. Typing into a
  * menu's text field, a search or an anvil, never opens the popup.
@@ -36,7 +36,7 @@ public final class ItemValueFeature {
     public static KeyMapping KEY;
 
     public static void register() {
-        KEY = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.alpaka.item_value", InputConstants.Type.KEYSYM,
+        KEY = AlpakaKeyBinds.register(new KeyMapping("key.alpaka.item_value", InputConstants.Type.KEYSYM,
                 GLFW.GLFW_KEY_UNKNOWN, AlpakaKeyCategory.CATEGORY));
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
             if (!(screen instanceof AbstractContainerScreen<?>)) return;

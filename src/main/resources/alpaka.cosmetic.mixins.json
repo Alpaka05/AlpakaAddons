@@ -4,7 +4,6 @@
   "compatibilityLevel": "JAVA_21",
   "plugin": "net.alpaka.addons.compat.OptionalHooksPlugin",
   "client": [
-    "AbstractClientPlayerMixin",
     "AtmosphericFogEnvironmentMixin",
     "AvatarRendererMixin",
     "BlazeModelMixin",
@@ -24,6 +23,7 @@
     "LightningBoltMixin",
     "LivingEntityMixin",
     "LivingEntityRendererMixin",
+    "MouseHandlerZoomMixin",
     "NameTagFeatureRendererMixin",
     "NameTagSubmitMixin",
     "ParticleEngineMixin",

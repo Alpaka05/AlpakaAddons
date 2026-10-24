@@ -736,6 +736,20 @@ public class AlpakaConfig {
 
     /** Holding the Zoom key zooms in; scrolling while holding it zooms further. */
     public boolean zoomEnabled = true;
+    /** Off: zoom while the key is held. On: one press zooms in, the next zooms back out. */
+    public boolean zoomToggleMode = false;
+    /** How far the zoom goes in, as a factor of the normal view. */
+    public float zoomAmount = 4.0f;
+    /** Scrolling while zoomed changes the zoom instead of the hotbar slot. */
+    public boolean zoomScrollEnabled = true;
+    /** How the zoom moves in and out: an index into ZoomFeature.ANIMATIONS. */
+    public int zoomAnimation = 1;
+    /** How long the zoom animation takes, in milliseconds. */
+    public int zoomAnimationMs = 250;
+    /** Turns on vanilla's cinematic camera while zoomed. */
+    public boolean zoomCinematicCamera = false;
+    /** Turns the mouse down by the zoom factor, so aiming feels the same zoomed in. */
+    public boolean zoomReduceSensitivity = true;
 
     /** Legacy, pre-pages. Read once by CommandWheelPages and then cleared. */
     public java.util.List<String> commandWheelCommands = new java.util.ArrayList<>(java.util.List.of(

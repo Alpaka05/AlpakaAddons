@@ -411,7 +411,7 @@ public class AlpakaConfigRegistry {
                 "smooth perspective camera speed duration transition time ms"));
 
         OPTIONS.add(new ConfigOption("zoom", "Zoom",
-                "Zooms in while you hold the Zoom key. Scroll while holding it to zoom further in or out.",
+                "Zooms in while you hold the Zoom key, or from one press to the next with Toggle Zoom.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.zoomEnabled,
                 v -> { AlpakaConfig.instance.zoomEnabled = v; AlpakaConfig.save(); },
@@ -422,6 +422,60 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.VISUALS,
                 () -> net.alpaka.addons.features.zoom.ZoomFeature.ZOOM_KEY,
                 "zoom optifine"));
+
+        OPTIONS.add(new ConfigOption("zoom_toggle", "Toggle Zoom",
+                "Press the key once to zoom in and again to zoom out, instead of holding it.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.zoomToggleMode,
+                v -> { AlpakaConfig.instance.zoomToggleMode = v; AlpakaConfig.save(); },
+                "zoom toggle hold press mode sticky"));
+
+        OPTIONS.add(new ConfigOption("zoom_amount", "Zoom Amount",
+                "How far the zoom goes in at first.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.zoomAmount,
+                v -> { AlpakaConfig.instance.zoomAmount = Math.round(v * 2.0f) / 2.0f; AlpakaConfig.save(); },
+                1.5f, 20.0f, val -> String.format(Locale.ROOT, "%.1fx", val),
+                "zoom amount factor strength level how far magnification fov"));
+
+        OPTIONS.add(new ConfigOption("zoom_scroll", "Scroll to Zoom",
+                "Scrolling while zoomed zooms further in or out instead of changing the hotbar slot.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.zoomScrollEnabled,
+                v -> { AlpakaConfig.instance.zoomScrollEnabled = v; AlpakaConfig.save(); },
+                "zoom scroll wheel mouse adjust further in out hotbar"));
+
+        OPTIONS.add(new ConfigOption("zoom_animation", "Animation",
+                "How the view moves in and out: at once, easing smoothly, or with a little bounce.",
+                ConfigCategory.VISUALS,
+                () -> (float) AlpakaConfig.instance.zoomAnimation,
+                v -> { AlpakaConfig.instance.zoomAnimation = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (net.alpaka.addons.features.zoom.ZoomFeature.ANIMATIONS.length - 1),
+                val -> net.alpaka.addons.features.zoom.ZoomFeature.ANIMATIONS[Math.round(val)],
+                "zoom animation effect smooth instant bouncy spring ease transition")
+                .choices(net.alpaka.addons.features.zoom.ZoomFeature.ANIMATIONS));
+
+        OPTIONS.add(new ConfigOption("zoom_animation_duration", "Animation Duration",
+                "How long zooming in or out takes. Has no effect with the Instant animation.",
+                ConfigCategory.VISUALS,
+                () -> (float) AlpakaConfig.instance.zoomAnimationMs,
+                v -> { AlpakaConfig.instance.zoomAnimationMs = Math.round(v / 10.0f) * 10; AlpakaConfig.save(); },
+                50.0f, 1000.0f, val -> String.format(Locale.ROOT, "%d ms", Math.round(val)),
+                "zoom animation duration speed smoothness time ms slow fast"));
+
+        OPTIONS.add(new ConfigOption("zoom_cinematic_camera", "Cinematic Camera",
+                "Smooths the mouse while zoomed, like vanilla's cinematic camera.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.zoomCinematicCamera,
+                v -> { AlpakaConfig.instance.zoomCinematicCamera = v; AlpakaConfig.save(); },
+                "zoom cinematic camera smooth mouse f8 optifine"));
+
+        OPTIONS.add(new ConfigOption("zoom_reduce_sensitivity", "Lower Sensitivity",
+                "Slows the mouse down with the zoom, so aiming feels the same zoomed in.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.zoomReduceSensitivity,
+                v -> { AlpakaConfig.instance.zoomReduceSensitivity = v; AlpakaConfig.save(); },
+                "zoom mouse sensitivity slow aim precise reduce"));
 
         OPTIONS.add(new ConfigOption("Interfaces", ConfigCategory.VISUALS));
 

@@ -78,6 +78,7 @@ public class AlpakaClient implements ClientModInitializer {
         WorldAgeFeature.registerEvents();
         net.alpaka.addons.features.performance.PerformanceStats.register();
         net.alpaka.addons.features.market.LowestBin.register();
+        net.alpaka.addons.features.profile.ProfileTracker.register();
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             // Every alias takes an optional search term: "/aa" opens the config as before, and
@@ -106,6 +107,16 @@ public class AlpakaClient implements ClientModInitializer {
                     return 1;
                 })
             );
+
+            // The Profile Dashboard: the player's own profile, or another player's by name.
+            for (String alias : new String[]{"alpakaprofile", "aprofile"}) {
+                dispatcher.register(ClientCommands.literal(alias)
+                    .executes(context -> openProfile(null))
+                    .then(ClientCommands.argument("player", com.mojang.brigadier.arguments.StringArgumentType.word())
+                        .executes(context -> openProfile(
+                                com.mojang.brigadier.arguments.StringArgumentType.getString(context, "player"))))
+                );
+            }
 
             /** Prints what the mod currently detects - Skyblock, island, sidebar - into chat. */
             dispatcher.register(ClientCommands.literal("alpakadebug")
@@ -341,6 +352,17 @@ public class AlpakaClient implements ClientModInitializer {
                 )
             );
         });
+    }
+
+    private static int openProfile(String player) {
+        Minecraft.getInstance().execute(() -> {
+            if (!AlpakaConfig.instance.profileDashboardEnabled) {
+                SlayerDropTracker.sendModMessage("§7The Profile Dashboard is off. Turn it on in §f/aa profile§7.");
+                return;
+            }
+            net.alpaka.addons.features.profile.ProfileDashboardScreen.open(player);
+        });
+        return 1;
     }
 
     /** "/alpakadebug perf": what was measured, or how to start measuring. */

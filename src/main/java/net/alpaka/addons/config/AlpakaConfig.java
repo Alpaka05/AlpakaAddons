@@ -739,6 +739,12 @@ public class AlpakaConfig {
     /** Where the panel was moved to, as a share of the screen's width and height; -1 beside the menu. */
     public float chestValueX = -1f;
     public float chestValueY = -1f;
+    /** /alpakaprofile opens the Profile Dashboard; see ProfileDashboardScreen. Needs allowApiCalls. */
+    public boolean profileDashboardEnabled = true;
+    /** Snapshots of the player's own profile while playing, for the dashboard's graphs; see ProfileTracker. */
+    public boolean profileDashboardTracking = true;
+    /** Minutes between two of those snapshots. */
+    public int profileDashboardTrackingMinutes = 60;
 
     // Command Wheel options
     /**
@@ -1416,6 +1422,7 @@ public class AlpakaConfig {
         this.marketPriceHistoryEnabled = false;
         this.itemValueEnabled = false;
         this.chestValueEnabled = false;
+        this.profileDashboardEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
         this.customDamageTagsEnabled = false;

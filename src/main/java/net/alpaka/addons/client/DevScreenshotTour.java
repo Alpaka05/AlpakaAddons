@@ -51,6 +51,15 @@ public final class DevScreenshotTour {
         return new Stop(shot, () -> Minecraft.getInstance().gui.setScreen(screen.get()), () -> true, 30);
     }
 
+    /** The Profile Dashboard on a player and page, once what the page loads has arrived. */
+    private static Stop profile(String shot, String player, String page) {
+        net.alpaka.addons.features.profile.ProfileDashboardScreen[] open = new net.alpaka.addons.features.profile.ProfileDashboardScreen[1];
+        return new Stop(shot, () -> {
+            open[0] = net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpen(player, page);
+            Minecraft.getInstance().gui.setScreen(open[0]);
+        }, () -> open[0] != null && open[0].devReady(), 30);
+    }
+
     private static final List<Stop> STOPS = List.of(
             // With the mouse in the top-right corner, so the avatar visibly looks up and towards it.
             new Stop("main-menu", () -> {
@@ -188,6 +197,23 @@ public final class DevScreenshotTour {
                     () -> true, 10),
             new Stop("confirm-quick-commands-after-reset", () -> click(((AlpakaConfirmScreen) screen()).devConfirmPoint()),
                     () -> true, 30),
+            // The Profile Dashboard on real profiles from Elite, every page, a mid-game one and a name that does not exist.
+            profile("profile-overview", "Refraction", "OVERVIEW"),
+            profile("profile-skills", "Refraction", "SKILLS"),
+            profile("profile-dungeons", "Refraction", "DUNGEONS"),
+            profile("profile-slayers", "Refraction", "SLAYERS"),
+            profile("profile-networth", "Refraction", "NETWORTH"),
+            profile("profile-pets", "Refraction", "PETS"),
+            profile("profile-collections", "Refraction", "COLLECTIONS"),
+            profile("profile-more", "Refraction", "MORE"),
+            profile("profile-midgame", "TimeDeo", "OVERVIEW"),
+            new Stop("profile-midgame-lower", () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenScrolled("TimeDeo", "OVERVIEW")), () -> true, 30),
+            new Stop("profile-skills-lower", () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenScrolled("TimeDeo", "SKILLS")), () -> true, 30),
+            // The value under the mouse on the graph.
+            new Stop("profile-graph-hover", () -> placeMouse(0.7, 0.75), () -> true, 10),
+            profile("profile-unknown-player", "zzqqxxnotaname123", "OVERVIEW"),
             new Stop(null, DevScreenshotTour::enterWorld,
                     () -> Minecraft.getInstance().player != null && Minecraft.getInstance().gui.screen() == null, 100),
             new Stop("world-hud", DevScreenshotTour::showHuds, () -> true, 30),

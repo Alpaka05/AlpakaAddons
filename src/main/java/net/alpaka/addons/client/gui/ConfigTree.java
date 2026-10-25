@@ -113,6 +113,7 @@ public final class ConfigTree {
             "world_age_join_message_enabled", "party_invite_prompt",
             "guild_prefix", "bridge_bot_formatter", "only_crit_damage", "ragnarock", "deployable_timer", "cache_resource_pack",
             "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value", "chest_value",
+            "profile_dashboard",
             // Cosmetics
             "custom_name_tag", "chroma_hat", "aura", "player_scale", "custom_damage_tags",
             // Sound & utility
@@ -200,7 +201,8 @@ public final class ConfigTree {
                     {"Blaze", "clean_blaze", "blaze_fire_pits", "stop_blaze_spinning",
                             "mute_vanilla_sounds_blaze_slayer", "custom_sound_blaze_death"},
                     {"Tools", "etherwarp_overlay", "etherwarp_sound", "only_crit_damage",
-                            "world_age_join_message_enabled", "ragnarock", "deployable_timer", "cache_resource_pack"},
+                            "world_age_join_message_enabled", "ragnarock", "deployable_timer", "cache_resource_pack",
+                            "profile_dashboard"},
                     {"Markets", "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value",
                             "chest_value"},
                     {"Social", "party_invite_prompt", "guild_prefix", "bridge_bot_formatter"}},

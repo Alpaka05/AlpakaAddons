@@ -115,8 +115,10 @@ class TerminalDataTest {
         state.lockRubixTarget(2);
         assertEquals(2, state.rubixTarget());
         assertTrue(state.version() > version);
-        // The stub solver returns nothing marked; the real one replaces it.
-        assertEquals(TerminalKind.PANES, TerminalSolver.solve(TerminalKind.PANES, "Correct all the panes!",
-                java.util.List.of(), state).kind());
+        // An empty chest solves to nothing, for any state.
+        TerminalSolution nothing = TerminalSolver.solve(TerminalKind.PANES, "Correct all the panes!", java.util.List.of(), state);
+        assertEquals(TerminalKind.PANES, nothing.kind());
+        assertFalse(nothing.loaded());
+        assertEquals(TerminalSolution.Mark.OTHER, nothing.mark(11));
     }
 }

@@ -4,6 +4,8 @@ import net.alpaka.addons.utils.SkyblockUtils;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.ItemStack;
 
+import java.util.Set;
+
 /**
  * What one chest slot of a terminal holds, reduced to what the solvers read, so they can be tested
  * without a game.
@@ -26,6 +28,16 @@ public record TerminalItem(int slot, String itemId, String name, int count, bool
     private static final String[] COLORS = {
             "light_blue", "light_gray", "magenta", "orange", "yellow", "purple", "brown", "white", "green",
             "black", "lime", "pink", "gray", "cyan", "blue", "red"};
+
+    /**
+     * Items that glint by default in 26.2 (their default components set the glint override; javap
+     * of Items), so a glint says nothing about whether Hypixel marked them clicked. Odin counts the
+     * golden apple among them too, which costs nothing: for these the solver goes by the player's
+     * own answered clicks instead.
+     */
+    private static final Set<String> ALWAYS_GLINT = Set.of(
+            "enchanted_golden_apple", "golden_apple", "experience_bottle", "written_book", "nether_star",
+            "enchanted_book", "end_crystal", "debug_stick");
 
     /** The item families whose ids are "<color>_<family>". */
     private static final String[] FAMILIES = {
@@ -56,6 +68,11 @@ public record TerminalItem(int slot, String itemId, String name, int count, bool
     /** The black pane with a blank name Hypixel fills the rest of the chest with. */
     public boolean filler() {
         return "black_stained_glass_pane".equals(itemId) && name.isBlank();
+    }
+
+    /** Whether this item glints whatever Hypixel does to it, so its glint cannot mark it as clicked. */
+    public boolean alwaysGlints() {
+        return ALWAYS_GLINT.contains(itemId);
     }
 
     /** The color a registry path stands for, or null; see the record's description. */

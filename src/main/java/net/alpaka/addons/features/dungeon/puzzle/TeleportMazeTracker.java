@@ -1,12 +1,15 @@
 package net.alpaka.addons.features.dungeon.puzzle;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -24,6 +27,12 @@ import java.util.Set;
  * height the pads put the player, and the player stood on a different pad just before. That leaves
  * out Aspect of the End, Etherwarp and the server pulling the player back. Should two lines not
  * share a pad (lag, or the player turned before the rotation arrived), the latest line wins.
+ *
+ * The pad to the end is usually in another walled cell, out of sight. So the tracker also suggests
+ * a pad in the cell the player landed in ({@link #suggested}): one already seen to lead into the
+ * end pad's cell, else the unused pad nearest the way the server turned the player (Odin's
+ * heuristic). Pad links differ from run to run, so that is a guess, and it is kept apart from the
+ * candidates.
  *
  * Pure: positions in, pads out. Unit-tested in TeleportMazeTrackerTest.
  */
@@ -49,6 +58,8 @@ public final class TeleportMazeTracker {
      * not known where the player came from: no other teleport puts a player exactly there.
      */
     public static final double EXACT = 0.01;
+    /** The cell pads come cell by cell, this many each. */
+    public static final int PADS_PER_CELL = 4;
     /** Half a player's width: standing on a pad means the player's box overlaps the pad block. */
     private static final double PLAYER_HALF_WIDTH = 0.3;
     /** Feet this far above a pad block's bottom count as on it: on its top (13/16) or a little above. */
@@ -71,9 +82,17 @@ public final class TeleportMazeTracker {
     private final Set<BlockPos> used = new LinkedHashSet<>();
     /** The pads that may lead to the end; null until the first teleport onto a cell pad. */
     private Set<BlockPos> candidates = null;
+    /** The cell pad the last pad teleport put the player on; null before one and after a landing in the middle. */
+    private BlockPos landed = null;
+    /** Where that teleport put the player, and the yaw the server set. */
+    private Vec3 landedAt = null;
+    private float landedYaw = 0.0f;
+    /** Per cell pad stepped on: the cell its teleport led into, or -1 for the middle. */
+    private final Map<BlockPos, Integer> leadsTo = new HashMap<>();
 
     /**
-     * @param cellPads   the 28 pads in the cells, in world coordinates
+     * @param cellPads   the 28 pads in the cells, in world coordinates, cell by cell as
+     *                   {@link TeleportMazePads#CELL_PADS} lists them ({@link #PADS_PER_CELL} each)
      * @param centrePads the start and end pads in the middle
      */
     public TeleportMazeTracker(Collection<BlockPos> cellPads, Collection<BlockPos> centrePads) {
@@ -150,8 +169,16 @@ public final class TeleportMazeTracker {
         if (from == null && !exact(to, landing)) return Outcome.IGNORED;
         if (from != null) used.add(from);
         used.add(to);
+        if (from != null && cellOf(from) >= 0) leadsTo.put(from, cellOf(to));
         if (candidates != null) candidates.removeAll(used);
-        if (centrePads.contains(to)) return Outcome.CENTRE;
+        if (centrePads.contains(to)) {
+            landed = null;
+            return Outcome.CENTRE;
+        }
+        // Before the line: a landing whose line hits no open pad still gets a suggestion.
+        landed = to;
+        landedAt = landing;
+        landedYaw = yaw;
 
         List<BlockPos> open = new ArrayList<>(cellPads);
         open.removeAll(used);
@@ -165,6 +192,56 @@ public final class TeleportMazeTracker {
             if (candidates.isEmpty()) candidates = hits;
         }
         return Outcome.AIMED;
+    }
+
+    /**
+     * A pad in the cell the player last landed in that is worth trying next, or null: none while
+     * a possible pad to the end lies in that cell (it is marked already), after a landing in the
+     * middle, or when every other pad there is used. A pad of the cell already seen to lead into the
+     * cell of the pad to the end comes first, used or not; else the unused pad nearest the way the
+     * server turned the player. Only a guess while the links are unknown.
+     */
+    public BlockPos suggested() {
+        if (landed == null) return null;
+        int cell = cellOf(landed);
+        if (cell < 0) return null;
+        List<BlockPos> here = cellPads.subList(cell * PADS_PER_CELL, (cell + 1) * PADS_PER_CELL);
+        if (candidates != null) {
+            for (BlockPos pad : here) {
+                if (candidates.contains(pad)) return null;
+            }
+        }
+        BlockPos end = finalPad();
+        if (end != null) {
+            int endCell = cellOf(end);
+            for (BlockPos pad : here) {
+                if (!pad.equals(landed) && leadsTo.getOrDefault(pad, -2) == endCell) return pad;
+            }
+        }
+        BlockPos best = null;
+        float bestDiff = Float.MAX_VALUE;
+        for (BlockPos pad : here) {
+            if (used.contains(pad)) continue;
+            float diff = Mth.degreesDifferenceAbs(yawTo(landedAt, pad), landedYaw);
+            if (diff < bestDiff) {
+                bestDiff = diff;
+                best = pad;
+            }
+        }
+        return best;
+    }
+
+    /** The cell of a cell pad, counted in {@link TeleportMazePads#CELL_PADS} order; -1 for any other pad. */
+    private int cellOf(BlockPos pad) {
+        int i = cellPads.indexOf(pad);
+        return i < 0 || cellPads.size() % PADS_PER_CELL != 0 ? -1 : i / PADS_PER_CELL;
+    }
+
+    /** The yaw that faces the centre of {@code pad} from {@code from}, in Minecraft's convention (0 towards +Z). */
+    static float yawTo(Vec3 from, BlockPos pad) {
+        double vx = pad.getX() + 0.5 - from.x;
+        double vz = pad.getZ() + 0.5 - from.z;
+        return (float) Math.toDegrees(Math.atan2(-vx, vz));
     }
 
     /**

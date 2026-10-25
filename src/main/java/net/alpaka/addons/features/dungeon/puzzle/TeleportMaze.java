@@ -21,7 +21,9 @@ import java.util.Set;
  * Teleport Maze: marks the pads the player has used in the Wrong color (stepped on or landed on;
  * the start pad in the middle stays unmarked, it is the way back in), and the pad that leads to the
  * end in the Solution color once only one is left - while several still may, each of them in the
- * Next color.
+ * Next color. That pad is mostly in another walled cell, so a pad to try in the player's own cell
+ * gets an outline in the Next color and a "Try" label ({@link TeleportMazeTracker#suggested}): a
+ * guess, drawn so that it does not look like the candidates.
  *
  * After each teleport the server turns the player to face the pad that leads to the end; the
  * teleports arrive through {@link #onServerTeleport} with the position and rotation the server set,
@@ -43,6 +45,9 @@ public final class TeleportMaze extends PuzzleSolver {
     private static final int RECENT_TICKS = 10;
     /** A pad block is 13/16 of a block high. */
     private static final double PAD_HEIGHT = 13.0 / 16.0;
+    private static final double SUGGESTED_INFLATE = 0.04;
+    /** The suggested pad's label floats this far above it. */
+    private static final double LABEL_HEIGHT = 0.6;
 
     private TeleportMazeTracker tracker = null;
     private long trackerCell = Long.MIN_VALUE;
@@ -108,6 +113,13 @@ public final class TeleportMaze extends PuzzleSolver {
         Set<BlockPos> candidates = tracker.candidates();
         int color = candidates.size() == 1 ? SolverColors.solution() : SolverColors.next();
         for (BlockPos pad : candidates) draw.box(padBox(pad), color);
+        BlockPos suggested = tracker.suggested();
+        if (suggested != null && !candidates.contains(suggested)) {
+            // A little larger than a pad's box, so it shows around a used pad's red one.
+            draw.outline(padBox(suggested).inflate(SUGGESTED_INFLATE), SolverColors.next());
+            draw.label(new Vec3(suggested.getX() + 0.5, suggested.getY() + PAD_HEIGHT + LABEL_HEIGHT, suggested.getZ() + 0.5),
+                    "Try", SolverColors.next(), 1.0f);
+        }
     }
 
     @Override

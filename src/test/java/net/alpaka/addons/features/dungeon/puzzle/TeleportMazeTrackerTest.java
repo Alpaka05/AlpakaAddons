@@ -149,6 +149,56 @@ class TeleportMazeTrackerTest {
     }
 
     @Test
+    void aPadInTheLandingCellIsSuggested() {
+        TeleportMazeTracker maze = unturned();
+        assertNull(maze.suggested(), "nothing before the first teleport");
+        // Landed on (4, 6), turned towards (26, 22) in another cell: of the three other pads of this
+        // cell, (10, 12) lies nearest that way.
+        maze.onTeleport(null, onto(pad(4, 6)), facing(pad(4, 6), pad(26, 22)));
+        assertEquals(pads(26, 22), maze.candidates());
+        assertEquals(pad(10, 12), maze.suggested());
+        // Back in the middle: no cell, no suggestion.
+        assertEquals(Outcome.CENTRE, maze.onTeleport(pad(10, 12), onto(TeleportMazePads.START), 0.0f));
+        assertNull(maze.suggested());
+    }
+
+    @Test
+    void noSuggestionBesideACandidateInTheSameCell() {
+        TeleportMazeTracker maze = unturned();
+        // From (20, 12) the line runs to (4, 28) and (10, 22); landing in (10, 22)'s cell next.
+        maze.onTeleport(null, onto(pad(20, 12)), facing(pad(20, 12), pad(4, 28)));
+        maze.onTeleport(null, onto(pad(10, 28)), facing(pad(10, 28), pad(4, 28)));
+        assertTrue(maze.candidates().contains(pad(4, 28)));
+        assertNull(maze.suggested(), "the candidate in this cell is marked already");
+    }
+
+    @Test
+    void theSuggestionSkipsUsedPadsAndWrapsAroundTheYawSeam() {
+        // Came from (10, 6) onto (10, 12), turned to face -Z, where only the used (10, 6) lies:
+        // the line hits no open pad, and a pad of the cell is still suggested.
+        for (float yaw : new float[]{179.9f, -179.9f}) {
+            TeleportMazeTracker maze = unturned();
+            assertEquals(Outcome.AIMED, maze.onTeleport(pad(10, 6), onto(pad(10, 12)), yaw));
+            assertTrue(maze.candidates().isEmpty());
+            // (4, 6) lies 45 degrees off; 179.9 and -179.9 are 0.2 degrees apart, not 359.8.
+            assertEquals(pad(4, 6), maze.suggested(), "yaw " + yaw);
+        }
+    }
+
+    @Test
+    void aPadSeenToLeadIntoTheEndPadsCellComesFirst() {
+        TeleportMazeTracker maze = unturned();
+        BlockPos end = pad(26, 22);
+        maze.onTeleport(null, onto(pad(4, 6)), facing(pad(4, 6), end));
+        assertEquals(end, maze.finalPad());
+        // (10, 12) leads into the end pad's cell; from there (20, 28) leads back into the first cell.
+        maze.onTeleport(pad(10, 12), onto(pad(20, 22)), facing(pad(20, 22), end));
+        maze.onTeleport(pad(20, 28), onto(pad(4, 12)), facing(pad(4, 12), end));
+        assertEquals(end, maze.finalPad());
+        assertEquals(pad(10, 12), maze.suggested(), "used, but known to lead the right way");
+    }
+
+    @Test
     void aTurnedRoomGivesTheSameAnswer() {
         // Clay in the north-east corner of cell (3, 1): the room is turned clockwise, and so is the view.
         int cx = RoomFrame.centre(3);

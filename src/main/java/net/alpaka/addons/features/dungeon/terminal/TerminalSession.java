@@ -44,11 +44,12 @@ import java.util.Set;
  * Telling the server's update from vanilla's own change: every update from the server puts a new
  * ItemStack into the slot, while vanilla's handling of a click leaves its own stack behind. So
  * right after vanilla handled a click, the stack the slot holds is noted, and the next different
- * one is the server's answer. "Right after" is exact for the custom window, which reports a click
- * once it went out ({@link #onClickSent}). The vanilla chest decides before vanilla handles the
- * click, so there the note is taken by {@link #afterVanillaClick} when that hook exists and
- * otherwise first thing in the next frame, ahead of any packet that came in after the click.
- * Several answers for one slot within one frame read as one; the rest then expire.
+ * one is the server's answer. "Right after" is exact for both windows: the custom window reports a
+ * click once it went out ({@link #onClickSent}); the vanilla chest decides at slotClicked's head
+ * ({@link #vanillaClickAllowed}, which reads the slot as it is before the click) and reports the
+ * click right after vanilla handed it to the server ({@link #onVanillaClickSent}). A click another
+ * mod cancels in between is never recorded, so it neither counts for the rate guard nor leaves a
+ * pending mark. Several answers for one slot within one frame read as one; the rest then expire.
  *
  * Client thread only.
  */
@@ -73,6 +74,12 @@ public final class TerminalSession {
     private AbstractContainerMenu menu;
     private final long openedAtMs;
     private final long openedAtTick;
+    /**
+     * Whether the server's pings were arriving when the terminal opened. Decided once: a server
+     * that freezes after the terminal opened stops its pings too, and its first-click check pauses
+     * with it, so the tick half of the first-click guard must not fall away then.
+     */
+    private final boolean pingsLiveAtOpen;
     private final boolean continued;
     private final State state;
 
@@ -93,12 +100,13 @@ public final class TerminalSession {
     private final boolean[] noted = new boolean[TerminalSolution.MAX_SLOTS];
 
     private TerminalSession(TerminalKind kind, String title, AbstractContainerMenu menu, long openedAtMs,
-                            long openedAtTick, boolean continued, State state) {
+                            long openedAtTick, boolean pingsLiveAtOpen, boolean continued, State state) {
         this.kind = kind;
         this.title = title;
         this.menu = menu;
         this.openedAtMs = openedAtMs;
         this.openedAtTick = openedAtTick;
+        this.pingsLiveAtOpen = pingsLiveAtOpen;
         this.continued = continued;
         this.state = state;
         this.solution = TerminalSolution.empty(kind);
@@ -130,7 +138,7 @@ public final class TerminalSession {
         if (previous != null && previous == replaced && previous.kind == kind && previous.title.equals(plainTitle)
                 && now - previous.lastClickMs <= REOPEN_WINDOW_MS) {
             TerminalSession next = new TerminalSession(kind, plainTitle, menu, previous.openedAtMs,
-                    previous.openedAtTick, true, previous.state);
+                    previous.openedAtTick, previous.pingsLiveAtOpen, true, previous.state);
             next.lastClickMs = previous.lastClickMs;
             next.clickCount = previous.clickCount;
             // The new window's slots are new stacks; the clicks made in the old one are answered by it.
@@ -138,7 +146,8 @@ public final class TerminalSession {
             current = next;
             return next;
         }
-        current = new TerminalSession(kind, plainTitle, menu, now, ServerTicks.count(), false, new State());
+        current = new TerminalSession(kind, plainTitle, menu, now, ServerTicks.count(), ServerTicks.live(now), false,
+                new State());
         return current;
     }
 
@@ -170,12 +179,17 @@ public final class TerminalSession {
     public static void close() {
         current = null;
         replacing = null;
+        TerminalOverlay.reset();
     }
 
-    /** World change or disconnect. */
+    /**
+     * World change or disconnect. The vanilla chest's overlay lets go of the session too: through
+     * its menu's inventory slots it reaches the player and with it the whole world just left.
+     */
     public static void reset() {
         current = null;
         replacing = null;
+        TerminalOverlay.reset();
     }
 
     /** Every client tick: ends the session once its chest is no longer the open menu. */
@@ -184,6 +198,7 @@ public final class TerminalSession {
         if (session == null) return;
         if (mc.player == null || mc.player.containerMenu != session.menu || !AlpakaConfig.instance.terminalSolversEnabled) {
             current = null;
+            TerminalOverlay.reset();
         }
     }
 
@@ -232,6 +247,11 @@ public final class TerminalSession {
         return openedAtTick;
     }
 
+    /** Whether the server's pings were arriving when the terminal opened. Kept across a carried-on reopen. */
+    public boolean pingsLiveAtOpen() {
+        return pingsLiveAtOpen;
+    }
+
     /** Whether this session carries on one Hypixel replaced right after a click. */
     public boolean continued() {
         return continued;
@@ -261,28 +281,27 @@ public final class TerminalSession {
      * A slot outside the chest part only counts for the rate guard.
      */
     public void onClickSent(int slot, int button, long nowMs) {
-        record(slot, button, nowMs);
+        record(slot, button, nowMs, inChest(slot) ? slotStack(slot) : null, before(slot));
         if (inChest(slot)) note(slot);
     }
 
     /**
-     * The vanilla chest's version of {@link #onClickSent}: called when a terminal click is let
-     * through at slotClicked's head, before vanilla handles it. What the slot holds afterwards is
-     * noted by {@link #afterVanillaClick}, or failing that first thing in the next frame.
+     * A terminal click on {@code slot} the vanilla chest let through at slotClicked's head, before
+     * vanilla handled it: the slot as it reads now, for {@link #onVanillaClickSent} to record once
+     * the click really went out. Records nothing by itself.
      */
-    void onVanillaClickAllowed(int slot, int button, long nowMs) {
-        record(slot, button, nowMs);
-        if (!inChest(slot)) return;
-        TerminalSession self = this;
-        // Queued now, before the click goes out, so it runs before any packet answering it.
-        Minecraft.getInstance().schedule(() -> {
-            if (current == self && !noted[slot]) note(slot);
-        });
+    VanillaClick vanillaClickAllowed(int slot, int button, long nowMs) {
+        if (!inChest(slot)) return new VanillaClick(slot, button, nowMs, null, null);
+        return new VanillaClick(slot, button, nowMs, slotStack(slot), before(slot));
     }
 
-    /** From the vanilla chest, at slotClicked's return: vanilla has handled the click now. */
-    void afterVanillaClick(int slot) {
-        if (inChest(slot) && !noted[slot] && state.isPending(slot)) note(slot);
+    /**
+     * The vanilla chest's version of {@link #onClickSent}: the click {@link #vanillaClickAllowed}
+     * let through has just been handed to the server, and vanilla has handled it on the client.
+     */
+    void onVanillaClickSent(VanillaClick click) {
+        record(click.slot(), click.button(), click.atMs(), click.stackBefore(), click.before());
+        if (inChest(click.slot())) note(click.slot());
     }
 
     /** Another kind of click went out (a number key, the drop key, a drag): only the rate guard needs it. */
@@ -366,15 +385,22 @@ public final class TerminalSession {
         return slot >= 0 && slot < chestSize();
     }
 
-    private void record(int slot, int button, long nowMs) {
+    private void record(int slot, int button, long nowMs, ItemStack stackBefore, TerminalItem before) {
         lastClickMs = nowMs;
         clickCount++;
-        if (!inChest(slot)) return;
-        // The slot as the server last had it: the reading taken just before the click (the guards
-        // refreshed it), which for a slot that is already pending is what it read before that click.
-        TerminalItem before = slot < items.size() ? items.get(slot) : TerminalItem.of(slot, slotStack(slot));
-        state.add(new Pending(slot, button, nowMs, slotStack(slot), before));
+        if (!inChest(slot) || before == null) return;
+        state.add(new Pending(slot, button, nowMs, stackBefore, before));
         noted[slot] = false;
+    }
+
+    /**
+     * The slot as the server last had it: the reading taken just before the click (the guards
+     * refreshed it), which for a slot that is already pending is what it read before that click.
+     * Null outside the chest part.
+     */
+    private TerminalItem before(int slot) {
+        if (!inChest(slot)) return null;
+        return slot < items.size() ? items.get(slot) : TerminalItem.of(slot, slotStack(slot));
     }
 
     private void note(int slot) {
@@ -439,6 +465,12 @@ public final class TerminalSession {
 
     /** A click the guards refused, for feedback. */
     public record Refusal(int slot, TerminalClicks.Verdict verdict, long atMs) {}
+
+    /**
+     * A vanilla-chest click let through and not yet sent: its slot and button, when, and the slot
+     * as it read before vanilla handled the click (null outside the chest part).
+     */
+    record VanillaClick(int slot, int button, long atMs, ItemStack stackBefore, TerminalItem before) {}
 
     /**
      * What the solver may use besides the chest: the slots this session clicked, the clicks still

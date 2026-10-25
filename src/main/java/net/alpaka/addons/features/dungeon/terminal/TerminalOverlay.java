@@ -32,8 +32,12 @@ import java.util.function.Supplier;
  * this window - a number key, the drop key, a click in the inventory below - only the first-click
  * and rate guards, since it reaches the terminal's window on the server all the same. A drag is
  * one decision, made when it starts, so that it is never sent in part; the "collect" vanilla adds
- * when a double click is released follows the click it belongs to. A refused click is never turned
- * into another one.
+ * when a double click is released follows the click it belongs to when that one was refused. With
+ * Block Wrong Clicks on, a collect on a terminal cell and every drag are refused outright, and
+ * vanilla's shift double click, which would shift-click every matching pane, is never sent in a
+ * terminal ({@link #allowShiftCollect}). A refused click is never turned into another one. A click
+ * let through is recorded on the session only once vanilla handed it to the server
+ * ({@link #afterSlotClickSent}), so one another mod cancels in between leaves no trace.
  */
 public final class TerminalOverlay {
 
@@ -139,53 +143,95 @@ public final class TerminalOverlay {
     // --- clicks ---
 
     /**
+     * The click {@link #allowSlotClick} let through, until vanilla has handed it to the server
+     * ({@link #afterSlotClickSent}). Cleared at every slotClicked head, so a click another mod
+     * cancelled after the head never counts.
+     */
+    private static Allowed allowed = null;
+
+    /** A click let through and not yet sent; {@code click} only for a click on a cell. */
+    private record Allowed(TerminalSession session, Input kind, long atMs, TerminalSession.VanillaClick click) {}
+
+    /**
      * A click about to be sent from the vanilla chest; false refuses it (nothing is sent).
-     * When it returns true it records the click on the session. {@code slot} is null for a click
-     * outside the window.
+     * Records nothing yet: a click let through is recorded once it went out. {@code slot} is null
+     * for a click outside the window.
      */
     public static boolean allowSlotClick(AbstractContainerScreen<?> screen, Slot slot, int slotId, int button,
                                          ContainerInput input) {
+        allowed = null;
         TerminalSession session = TerminalSession.current(screen.getMenu());
         if (session == null || !session.kind().enabled()) return true;
         // What vanilla does with it too: the slot's own index wins over the id passed along.
         int id = slot != null ? slot.index : slotId;
         long now = Util.getMillis();
         Input kind = inputOf(session, id, button, input);
-        TerminalClicks.Verdict verdict = SEQUENCE.decide(session, kind, now,
+        boolean onCell = id >= 0 && id < session.chestSize();
+        boolean blockWrong = TerminalSettings.current().blockWrongClicks() && !session.kind().isMelody();
+        TerminalClicks.Verdict verdict = SEQUENCE.decide(session, kind, now, () -> judge(kind, onCell, blockWrong,
                 () -> TerminalClicks.check(session, id, button, now),
-                () -> TerminalClicks.checkGuards(session, now));
+                () -> TerminalClicks.checkGuards(session, now)));
         if (verdict != TerminalClicks.Verdict.ALLOW) {
-            session.onRefused(id, verdict, now);
+            // A collect is no click of its own to the player; a red frame for it would land on a
+            // cell they may well have clicked right.
+            if (kind != Input.COLLECT) session.onRefused(id, verdict, now);
             return false;
         }
-        switch (kind) {
-            case CELL -> session.onVanillaClickAllowed(id, button, now);
-            case DRAG_START, COLLECT, OTHER -> session.onOtherClickSent(now);
-            case DRAG_MORE -> { }
-        }
+        allowed = new Allowed(session, kind, now, kind == Input.CELL ? session.vanillaClickAllowed(id, button, now) : null);
         return true;
     }
 
     /**
-     * At slotClicked's return, once vanilla handled a click it was let through: lets the session
-     * note what the clicked slot holds now, so that it can tell the server's answer from it at
-     * once (see TerminalSession). Without this hook it notes it a frame later, which is nearly
-     * always just as good.
+     * Right after slotClicked handed the click it let through to the server, and vanilla handled it
+     * on the client: the session records it and notes what the slot holds now, so that it can tell
+     * the server's answer from it at once (see TerminalSession).
      */
-    public static void afterSlotClick(AbstractContainerScreen<?> screen, Slot slot, int slotId) {
+    public static void afterSlotClickSent(AbstractContainerScreen<?> screen) {
+        Allowed click = allowed;
+        allowed = null;
+        if (click == null || TerminalSession.current(screen.getMenu()) != click.session()) return;
+        switch (click.kind()) {
+            case CELL -> click.session().onVanillaClickSent(click.click());
+            case DRAG_START, COLLECT, OTHER -> click.session().onOtherClickSent(click.atMs());
+            case DRAG_MORE -> { }
+        }
+    }
+
+    /**
+     * Vanilla's shift double click: on the release it shift-clicks every slot of the window that
+     * holds the same item as the one shift-clicked last. In a terminal those are clicks on cells
+     * the player never aimed at - every red pane at once - and a guard that refused the presses
+     * would let the first of them through on a pane nobody clicked. So none of them is sent in a
+     * terminal, whatever the presses got; the presses themselves are judged like any click.
+     */
+    public static boolean allowShiftCollect(AbstractContainerScreen<?> screen) {
         TerminalSession session = TerminalSession.current(screen.getMenu());
-        if (session != null) session.afterVanillaClick(slot != null ? slot.index : slotId);
+        return session == null || !session.kind().enabled();
+    }
+
+    /** Lets go of everything kept from the last terminal: on a world change, disconnect or when it closed. */
+    static void reset() {
+        frame = null;
+        frameSession = null;
+        frameSolution = null;
+        framePalette = null;
+        allowed = null;
+        SEQUENCE.reset();
     }
 
     /** The click kinds the guards tell apart. */
     enum Input {
         /** A left or right click, or a shift click, on a terminal cell: every guard. */
         CELL,
-        /** The start of a drag: the first-click and rate guards, for the whole drag. */
+        /** The start of a drag: the first-click and rate guards, for the whole drag; refused with Block Wrong Clicks. */
         DRAG_START,
         /** The rest of a drag: whatever its start got. */
         DRAG_MORE,
-        /** The collect a double click sends on release: refused with the click before it. */
+        /**
+         * The collect a double click sends on release: refused with the click before it when that
+         * one was refused; else the first-click and rate guards, and refused on a terminal cell with
+         * Block Wrong Clicks.
+         */
         COLLECT,
         /** Anything else: the first-click and rate guards. */
         OTHER
@@ -202,8 +248,30 @@ public final class TerminalOverlay {
     }
 
     /**
+     * What a click of this kind gets on its own, before the clicks around it count: a click on a
+     * cell every guard, anything else the first-click and rate guards. With Block Wrong Clicks on,
+     * a collect on a terminal cell and every drag are refused outright: no terminal needs either,
+     * a drag's cells are not known when it starts, and a collect can come without a press of its
+     * own reaching the guards (with the clicked pane still on the cursor, vanilla's second press of
+     * a double click sends nothing and the collect on its release is all that goes out), so judging
+     * it by the guards alone would let a click on a done cell through. Pure.
+     *
+     * @param onCell     the click is on one of the terminal's own slots
+     * @param blockWrong Block Wrong Clicks is on and the terminal is not Click the Button on Time
+     */
+    static TerminalClicks.Verdict judge(Input input, boolean onCell, boolean blockWrong,
+                                        Supplier<TerminalClicks.Verdict> cell, Supplier<TerminalClicks.Verdict> guards) {
+        return switch (input) {
+            case CELL -> cell.get();
+            case DRAG_START -> blockWrong ? TerminalClicks.Verdict.WRONG : guards.get();
+            case COLLECT -> blockWrong && onCell ? TerminalClicks.Verdict.WRONG : guards.get();
+            case DRAG_MORE, OTHER -> guards.get();
+        };
+    }
+
+    /**
      * What the clicks before this one decided, where it matters for this one: the verdict of the
-     * drag under way, and whether the last click was refused. Pure, apart from asking the guards.
+     * drag under way, and whether the last click was refused. Pure, apart from asking the check.
      */
     static final class Sequence {
         /** A double click's collect comes this soon after the click it belongs to, at most. */
@@ -214,27 +282,35 @@ public final class TerminalOverlay {
         private TerminalClicks.Verdict last = TerminalClicks.Verdict.ALLOW;
         private long lastMs = Long.MIN_VALUE / 2;
 
-        TerminalClicks.Verdict decide(TerminalSession forSession, Input input, long nowMs,
-                                      Supplier<TerminalClicks.Verdict> cell, Supplier<TerminalClicks.Verdict> guards) {
+        /**
+         * The verdict for a click of kind {@code input}; {@code own} is what it gets on its own
+         * ({@link #judge}), asked only when the clicks before it do not decide.
+         */
+        TerminalClicks.Verdict decide(TerminalSession forSession, Input input, long nowMs, Supplier<TerminalClicks.Verdict> own) {
             if (forSession != session) {
+                reset();
                 session = forSession;
-                drag = null;
-                last = TerminalClicks.Verdict.ALLOW;
-                lastMs = Long.MIN_VALUE / 2;
             }
             TerminalClicks.Verdict verdict = switch (input) {
-                case CELL -> cell.get();
-                case DRAG_START -> drag = guards.get();
+                case CELL, OTHER -> own.get();
+                case DRAG_START -> drag = own.get();
                 // A drag is sent whole or not at all; one that started before the session is let be.
                 case DRAG_MORE -> drag == null ? TerminalClicks.Verdict.ALLOW : drag;
-                case COLLECT -> last != TerminalClicks.Verdict.ALLOW && nowMs - lastMs <= COLLECT_MS ? last : guards.get();
-                case OTHER -> guards.get();
+                case COLLECT -> last != TerminalClicks.Verdict.ALLOW && nowMs - lastMs <= COLLECT_MS ? last : own.get();
             };
             if (input != Input.DRAG_MORE) {
                 last = verdict;
                 lastMs = nowMs;
             }
             return verdict;
+        }
+
+        /** Forgets the session and everything decided in it. */
+        void reset() {
+            session = null;
+            drag = null;
+            last = TerminalClicks.Verdict.ALLOW;
+            lastMs = Long.MIN_VALUE / 2;
         }
     }
 }

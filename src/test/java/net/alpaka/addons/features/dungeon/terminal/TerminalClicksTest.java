@@ -13,6 +13,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** The guards on terminal clicks (design.md 1.4, compliance.md T1-T4, R1-R2). */
@@ -52,6 +53,25 @@ class TerminalClicksTest {
     void withoutPingsTimeAloneDecides() {
         assertEquals(Verdict.ALLOW, decide(DEFAULTS, TerminalKind.PANES, at(500, 0, false, NEVER), RIGHT));
         assertEquals(Verdict.TOO_EARLY, decide(DEFAULTS, TerminalKind.PANES, at(499, 0, false, NEVER), RIGHT));
+    }
+
+    @Test
+    void pingsThatStopAfterTheTerminalOpenedStillCount() {
+        // Pings arrived when it opened; the server froze after 3 ticks and its last ping is 2.1 s old.
+        // The server's own check paused with it: the tick half of the guard stays.
+        assertTrue(TerminalClicks.ticksCount(true, 3));
+        assertEquals(Verdict.TOO_EARLY, decide(DEFAULTS, TerminalKind.PANES,
+                at(2100, 3, TerminalClicks.ticksCount(true, 3), NEVER), RIGHT));
+        assertEquals(Verdict.ALLOW, decide(DEFAULTS, TerminalKind.PANES,
+                at(2600, 10, TerminalClicks.ticksCount(true, 10), NEVER), RIGHT));
+        // No pings when it opened and none since: time alone.
+        assertFalse(TerminalClicks.ticksCount(false, 0));
+        assertEquals(Verdict.ALLOW, decide(DEFAULTS, TerminalKind.PANES,
+                at(500, 0, TerminalClicks.ticksCount(false, 0), NEVER), RIGHT));
+        // Opened during a freeze, and the server has ticked since: the ticks count from then on.
+        assertTrue(TerminalClicks.ticksCount(false, 1));
+        assertEquals(Verdict.TOO_EARLY, decide(DEFAULTS, TerminalKind.PANES,
+                at(600, 1, TerminalClicks.ticksCount(false, 1), NEVER), RIGHT));
     }
 
     @Test

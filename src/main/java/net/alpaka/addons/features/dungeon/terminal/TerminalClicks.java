@@ -8,9 +8,10 @@ import java.util.function.BooleanSupplier;
  *
  * The checks, each with its own switch (see {@link TerminalSettings}):
  * - first click: until {@code firstClickMs} have passed since the session opened AND as many
- *   server ticks ({@code firstClickTicks()}) were counted - time alone when no ping arrived for
- *   {@link ServerTicks#STALE_MS}. Not armed again on a carried-on session. Applies to every
- *   terminal, Click the Button on Time included.
+ *   server ticks ({@code firstClickTicks()}) were counted - time alone only when the server sent
+ *   no ping within {@link ServerTicks#STALE_MS} before the session opened and none since. Not
+ *   armed again on a carried-on session. Applies to every terminal, Click the Button on Time
+ *   included.
  * - rate: within {@link TerminalSettings#RATE_MS} of the previous accepted click.
  * - wrong: {@link TerminalSolution#wrongClick} with pending cells counted as done; off by default,
  *   never for Click the Button on Time.
@@ -39,7 +40,8 @@ public final class TerminalClicks {
      * @param nowMs          the click, on the {@code Util.getMillis()} clock
      * @param openedAtMs     when the session opened
      * @param ticksSinceOpen server ticks counted since then
-     * @param pingsLive      whether the server's pings are arriving (one within {@link ServerTicks#STALE_MS})
+     * @param pingsLive      whether the server's ticks can be counted for this terminal: pings were
+     *                       arriving when it opened, or one has arrived since ({@link #ticksCount})
      * @param lastClickMs    the last click that went out
      */
     public record Timing(long nowMs, long openedAtMs, long ticksSinceOpen, boolean pingsLive, long lastClickMs) {}
@@ -66,8 +68,21 @@ public final class TerminalClicks {
     }
 
     private static Timing timing(TerminalSession session, long nowMs) {
-        return new Timing(nowMs, session.openedAtMs(), ServerTicks.since(session.openedAtTick()),
-                ServerTicks.live(nowMs), session.lastClickMs());
+        long ticks = ServerTicks.since(session.openedAtTick());
+        return new Timing(nowMs, session.openedAtMs(), ticks, ticksCount(session.pingsLiveAtOpen(), ticks),
+                session.lastClickMs());
+    }
+
+    /**
+     * Whether the first-click guard waits for server ticks in a terminal: decided by whether pings
+     * were arriving when it opened, not by whether they arrive now. A server that freezes stops
+     * sending them, and its own first-click check is believed to pause with it; falling back to time
+     * alone then would let a click through a few ticks after the window opened on the server's
+     * clock. There is no time limit: the terminal waits until the server ticks again. A tick counted
+     * since it opened turns the wait on too, for a terminal that opened in the middle of a freeze.
+     */
+    static boolean ticksCount(boolean pingsLiveAtOpen, long ticksSinceOpen) {
+        return pingsLiveAtOpen || ticksSinceOpen > 0;
     }
 
     /**
@@ -88,8 +103,8 @@ public final class TerminalClicks {
     /**
      * Whether the terminal opened too recently. The server is believed to run its own check on its
      * main thread, whose clock stops when the server freezes; so the server's ticks have to have
-     * passed as well as the time. When the server sends no pings at all the ticks cannot be
-     * counted, and time alone decides rather than locking the terminal.
+     * passed as well as the time. When the server sent no pings at all when the terminal opened, and
+     * none since, the ticks cannot be counted, and time alone decides rather than locking it.
      */
     static boolean tooEarly(TerminalSettings settings, Timing timing) {
         if (timing.nowMs() - timing.openedAtMs() < settings.firstClickMs()) return true;

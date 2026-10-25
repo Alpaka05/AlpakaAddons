@@ -188,6 +188,16 @@ class MarketParsingTest {
     }
 
     @Test
+    void aSearchWithOneResultIsStillAList() {
+        List<MarketMenu.Slot> slots = browser();
+        slots.set(12, slot(12, "black_stained_glass_pane", " "));
+        MarketMenu menu = MarketMenu.parse(MarketKind.AUCTION_HOUSE, "Auctions: \"hyperion\"", 6, slots);
+        assertEquals(List.of(11), menu.content);
+        assertEquals(MarketMenu.Layout.GRID, menu.layout);
+        assertNull(menu.hero);
+    }
+
+    @Test
     void cosmeticsIsACategory() {
         List<MarketMenu.Slot> slots = browser();
         slots.set(45, slot(45, "orange_dye", "Cosmetics", "Category", "", "Click to view items!"));

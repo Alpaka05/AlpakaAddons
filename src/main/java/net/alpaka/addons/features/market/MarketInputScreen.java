@@ -61,6 +61,8 @@ public class MarketInputScreen extends SignEditScreen {
     private String pendingText = null;
 
     private final List<Hit> hits = new ArrayList<>();
+    /** The item being put up for auction, for a price sign that asks what it sells for; else null. */
+    private final LowestBin.Item selling;
 
     // ---- Suggestions, for a search ---------------------------------------------------------------
 
@@ -106,6 +108,7 @@ public class MarketInputScreen extends SignEditScreen {
         super(sign, isFrontText, filtered);
         this.prompt = prompt;
         this.context = context;
+        this.selling = prompt.type() == SignPrompt.Type.PRICE && prompt.auctionPrice() ? LowestBin.selling() : null;
     }
 
     /**
@@ -193,7 +196,7 @@ public class MarketInputScreen extends SignEditScreen {
     }
 
     private int panelH() {
-        return HEADER_H + 10 + FIELD_H + 6 + 10 + (hasChips() ? CHIP_H + 8 : 0) + 8 + AlpakaStyle.BUTTON_H + 10;
+        return HEADER_H + 10 + FIELD_H + 6 + 10 + (selling != null ? CHIP_H + 8 : 0) + (hasChips() ? CHIP_H + 8 : 0) + 8 + AlpakaStyle.BUTTON_H + 10;
     }
 
     private boolean hasChips() {
@@ -261,6 +264,10 @@ public class MarketInputScreen extends SignEditScreen {
         drawReading(graphics, fx + fw - 2, hy);
 
         int cy = hy + 10 + 8;
+        if (selling != null) {
+            drawLowestBin(graphics, mouseX, mouseY, fx, cy, fw);
+            cy += CHIP_H + 8;
+        }
         if (hasChips()) {
             drawChips(graphics, mouseX, mouseY, fx, cy, fw);
             cy += CHIP_H + 8;
@@ -400,8 +407,8 @@ public class MarketInputScreen extends SignEditScreen {
                 ModernGuiUtils.drawRoundedRect(graphics, rx, ry, rw, SUGGESTION_H, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW_SELECTED);
                 ModernGuiUtils.drawRoundedRect(graphics, rx, ry + 5, 2, SUGGESTION_H - 10, 1, accent);
             }
-            // The item itself where Hypixel's list knows it; a recent search it does not know keeps a clock.
-            ItemStack icon = ItemIcons.forName(s.name());
+            // The item itself, by its tag; a recent search no list knows keeps a clock.
+            ItemStack icon = ItemIcons.forItem(ItemTags.suggestionTag(s.name(), context), s.name());
             if (!icon.isEmpty()) {
                 graphics.item(icon, rx + 6, ry + (SUGGESTION_H - 16) / 2);
             } else {
@@ -500,10 +507,11 @@ public class MarketInputScreen extends SignEditScreen {
         replace(suggestions.get(index).name());
     }
 
+    /** The field's icon; none for a price, whose "= … coins" under the field already says what it is. */
     private MarketIcons.Glyph glyph() {
         return switch (prompt.type()) {
             case SEARCH -> MarketIcons.Glyph.SEARCH;
-            case PRICE -> MarketIcons.Glyph.COIN;
+            case PRICE -> null;
             case AMOUNT -> MarketIcons.Glyph.BOX;
             case DURATION -> MarketIcons.Glyph.CLOCK;
             default -> context == null ? MarketIcons.Glyph.ORDERS : MarketIcons.of(context);
@@ -526,11 +534,12 @@ public class MarketInputScreen extends SignEditScreen {
         ModernGuiUtils.drawRect(graphics, x + lineInset, y + FIELD_H - 1, w - 2 * lineInset, 1, full ? AlpakaStyle.DANGER : accent);
 
         int iconSize = 10;
-        MarketIcons.draw(graphics, glyph(), x + 8, y + (FIELD_H - iconSize) / 2f, iconSize,
-                prompt.type() == SignPrompt.Type.PRICE ? COIN : accent);
-        int tx = x + 24;
+        MarketIcons.Glyph glyph = glyph();
+        if (glyph != null) MarketIcons.draw(graphics, glyph, x + 8, y + (FIELD_H - iconSize) / 2f, iconSize, accent);
+        int textX = glyph != null ? 24 : 8;
+        int tx = x + textX;
         int ty = y + (FIELD_H - 8) / 2;
-        int room = w - 24 - 8;
+        int room = w - textX - 8;
         String text = text();
         if (text.isEmpty()) {
             // A little after the caret, which blinks at the very start.
@@ -572,8 +581,7 @@ public class MarketInputScreen extends SignEditScreen {
         boolean coins = prompt.type() == SignPrompt.Type.PRICE;
         String reading = "= " + Coins.full(value) + (coins ? " coins" : "");
         int rw = GuiFont.width(this.font, reading);
-        graphics.text(this.font, GuiFont.text(reading), right - rw, y, coins ? COIN : AlpakaStyle.TEXT_SOFT, false);
-        if (coins) MarketIcons.draw(graphics, MarketIcons.Glyph.COIN, right - rw - 11, y, 8, COIN);
+        graphics.text(this.font, GuiFont.text(reading), right - rw, y, coins ? MarketInk.ink(COIN) : AlpakaStyle.TEXT_SOFT, false);
     }
 
     private void drawChips(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w) {
@@ -597,6 +605,45 @@ public class MarketInputScreen extends SignEditScreen {
                 else replace(chip);
             }, true));
             cx += cw + 4;
+        }
+    }
+
+    /**
+     * The row of prices taken from the item's lowest BIN: that price and a little under it, each
+     * one click into the field. Says why instead where there is no price to offer.
+     */
+    private void drawLowestBin(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w) {
+        String label = "Lowest BIN";
+        graphics.text(this.font, GuiFont.text(label), x + 2, y + 3, AlpakaStyle.TEXT_MUTED, false);
+        int cx = x + GuiFont.width(this.font, label) + 10;
+        String source = "SkyCofl";
+        int sourceW = GuiFont.width(this.font, source);
+        String note = null;
+        if (!AlpakaConfig.instance.allowApiCalls) {
+            note = "Turn on Network Features";
+        } else {
+            LowestBin.Result result = LowestBin.get(selling, LowestBin.ownUuid());
+            switch (result.state()) {
+                case LOADING -> note = "Looking it up…";
+                case NONE -> note = "None listed right now";
+                case FAILED -> note = "Could not load";
+                case READY -> {
+                    for (LowestBin.Suggestion chip : LowestBin.suggestions(result.each() * selling.count())) {
+                        int cw = GuiFont.width(this.font, chip.label()) + 12;
+                        if (cx + cw > x + w - sourceW - 6) break;
+                        boolean hover = AlpakaStyle.inside(mouseX, mouseY, cx, y, cw, CHIP_H);
+                        ModernGuiUtils.drawRoundedRect(graphics, cx, y, cw, CHIP_H, CHIP_H / 2, hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW);
+                        graphics.text(this.font, GuiFont.text(chip.label()), cx + 6, y + 3, hover ? MarketInk.ink(COIN) : AlpakaStyle.TEXT_SOFT, false);
+                        hits.add(new Hit(cx, y, cw, CHIP_H, mx -> replace(Coins.full(chip.coins())), true));
+                        cx += cw + 4;
+                    }
+                }
+            }
+        }
+        if (note != null) graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, note, x + w - sourceW - 6 - cx)), cx, y + 3, AlpakaStyle.TEXT_MUTED, false);
+        // SkyCofl asks to be named where its prices show.
+        if (AlpakaConfig.instance.allowApiCalls) {
+            graphics.text(this.font, GuiFont.text(source), x + w - 2 - sourceW, y + 3, AlpakaStyle.DIVIDER, false);
         }
     }
 

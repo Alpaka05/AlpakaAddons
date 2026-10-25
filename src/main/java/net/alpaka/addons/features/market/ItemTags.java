@@ -133,6 +133,31 @@ public final class ItemTags {
         return kind == MarketKind.AUCTION_HOUSE ? auctionSuggestions : allSuggestions;
     }
 
+    /**
+     * The tag to show a suggested name's item by: this market's first, and of a name the Auction
+     * House shares between items, the first that is not a plain Minecraft item, as that is what the
+     * suggestion leads to. Null while SkyCofl's list loads, or for a name it does not know, such as
+     * a recent search for a part of a name.
+     */
+    public static String suggestionTag(String name, MarketKind kind) {
+        Map<String, String> bazaar = bazaarByName;
+        Map<String, String> auction = auctionByName;
+        Map<String, List<String>> tags = auctionTags;
+        if (name == null || bazaar == null || auction == null || tags == null) return null;
+        String key = name.trim().toLowerCase(Locale.ROOT);
+        if (kind == MarketKind.BAZAAR && bazaar.containsKey(key)) return bazaar.get(key);
+        List<String> shared = tags.get(name);
+        if (shared != null && !shared.isEmpty()) {
+            ItemIcons.Catalog catalog = ItemIcons.catalog();
+            for (String tag : shared) {
+                if (catalog == null || !catalog.vanilla(tag)) return tag;
+            }
+            return shared.get(0);
+        }
+        String tag = auction.get(key);
+        return tag != null ? tag : bazaar.get(key);
+    }
+
     /** The names with at least one tag that is not a plain Minecraft item's. */
     static List<String> withoutVanilla(Map<String, List<String>> tagsByName, java.util.function.Predicate<String> vanilla) {
         List<String> out = new ArrayList<>();

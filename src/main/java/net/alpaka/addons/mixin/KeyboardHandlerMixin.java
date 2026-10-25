@@ -1,6 +1,7 @@
 package net.alpaka.addons.mixin;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import net.alpaka.addons.client.KeyRepeat;
 import net.alpaka.addons.compat.MacOSInputFixesCompat;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
 import net.alpaka.addons.features.party.PartyInviteFeature;
@@ -27,6 +28,8 @@ public class KeyboardHandlerMixin {
 
     @Inject(method = "keyPress", at = @At("HEAD"), cancellable = true)
     private void alpaka$interceptKeys(long window, int action, KeyEvent event, CallbackInfo ci) {
+        // For the screens down the line, which hear a repeat as one more press.
+        KeyRepeat.note(action == InputConstants.REPEAT);
         if (action == InputConstants.RELEASE) return;
         // On a Mac with MacOS Input Fixes, Tab comes in twice and the game keeps only the second.
         if (MacOSInputFixesCompat.isDiscardedCopy(event.key())) return;

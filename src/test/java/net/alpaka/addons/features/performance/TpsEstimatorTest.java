@@ -80,4 +80,12 @@ class TpsEstimatorTest {
         tps.onTicks(1, 100_000);
         assertTrue(Float.isNaN(tps.tps(100_000)));
     }
+
+    @Test
+    void nearFullSpeedShowsAsTwenty() {
+        assertEquals(200, TpsEstimator.shownTenths(19.94f));
+        assertEquals(200, TpsEstimator.shownTenths(19.5f));
+        assertEquals(194, TpsEstimator.shownTenths(19.44f));
+        assertEquals(-1, TpsEstimator.shownTenths(Float.NaN));
+    }
 }

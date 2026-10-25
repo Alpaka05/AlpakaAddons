@@ -1,9 +1,11 @@
 package net.alpaka.addons.config;
 
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.annotations.SerializedName;
 import net.alpaka.addons.AlpakaAddons;
+import net.alpaka.addons.client.gui.AlpakaStyle;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.File;
@@ -15,12 +17,39 @@ import java.util.List;
 import java.util.Map;
 
 public class AlpakaConfig {
-    private static final File FILE = FabricLoader.getInstance().getConfigDir().resolve("alpaka.json").toFile();
-    /** The last file that loaded cleanly, copied aside at start-up. See {@link #load()}. */
-    private static final File BACKUP = FabricLoader.getInstance().getConfigDir().resolve("alpaka.json.bak").toFile();
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    /**
+     * Where the settings are kept: the file, and the last file that loaded cleanly, copied aside at
+     * start-up (see {@link #load()}).
+     */
+    record ConfigStore(File file, File backup) {
+        /** alpaka.json in Fabric's config folder. */
+        static ConfigStore inConfigDir() {
+            java.nio.file.Path dir = FabricLoader.getInstance().getConfigDir();
+            return new ConfigStore(dir.resolve("alpaka.json").toFile(), dir.resolve("alpaka.json.bak").toFile());
+        }
+    }
+
+    /**
+     * Looked up on first use rather than when the class loads: asking Fabric for its config folder
+     * then kept the class - and loading and migrating with it - from being used outside the game.
+     */
+    private static ConfigStore store;
+
+    private static ConfigStore store() {
+        if (store == null) store = ConfigStore.inConfigDir();
+        return store;
+    }
+
+    // NaN and infinite floats are written as such rather than refused. One in the file loaded
+    // without complaint, and every save after it threw - quietly, so no setting was written again.
+    // sanitize() puts such a value back to its default on load; this keeps one that slips in later
+    // from blocking the file.
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().serializeSpecialFloatingPointValues().create();
 
     public static AlpakaConfig instance = new AlpakaConfig();
+
+    /** The settings layout the file was written in; 0 for files from before the field. See {@link #migrate()}. */
+    public int configVersion = 0;
 
     /**
      * Draws the first-person hand over the third-person back view. Off for fresh installs: a
@@ -46,8 +75,17 @@ public class AlpakaConfig {
     /** What those share buttons post: 0 the tracker's own line, 1 Hypixel's drop message as it came. */
     public int slayerShareMessage = 0;
     public boolean fullbrightEnabled = false;
+    /** Sky Effects: animated skies, drawn by this client only. Each sky has its own switch. */
+    public boolean skyEffectsEnabled = false;
+    public boolean skyEffectsNether = true;
+    public boolean skyEffectsOverworld = true;
+    public boolean skyEffectsEnd = true;
+    /** How strongly the effects show, 0.1..1; at 1 the skies are drawn in full. */
+    public float skyEffectsIntensity = 1.0f;
+    /** How fast they move, 0.25..3; 1 is the designed pace. */
+    public float skyEffectsSpeed = 1.0f;
 
-    // Cosmetics. Both are drawn by this client for this client only - nothing is sent, nobody else
+    // Cosmetics. All are drawn by this client for this client only - nothing is sent, nobody else
     // sees them - and both apply to the player's own model in third person.
     /** Draw the player's own name tag with effects instead of vanilla's (which never shows it). */
     public boolean customNameTagEnabled = false;
@@ -85,6 +123,21 @@ public class AlpakaConfig {
     public float chromaHatSpeed = 1.0f;
     /** Raises (positive) or lowers the hat from where it rests on the head, in blocks. */
     public float chromaHatHeightOffset = 0.0f;
+
+    /** An animated aura of light around the player's own model in third person. */
+    public boolean auraEnabled = false;
+    /** Index into {@code AuraFeature.EFFECT_NAMES}: spirit orbs, helix, sigil, inferno, galaxy, fireflies, storm. */
+    public int auraEffect = 0;
+    /** Index into {@code AuraFeature.COLOR_MODE_NAMES}: the effect's own colors, rainbow, or the two below. */
+    public int auraColorMode = 0;
+    /** The two ends of the aura's gradient in the Custom color mode. */
+    public int auraPrimaryColor = 0xFF55FFFF;
+    public int auraSecondaryColor = 0xFFFF55FF;
+    /** How far the aura reaches out from the player, as a factor. */
+    public float auraSize = 1.0f;
+    public float auraSpeed = 1.0f;
+    /** How strongly the aura glows, in percent. */
+    public float auraBrightness = 80.0f;
 
     // Player scale. The model is drawn stretched or shrunk per axis, in the world only; the hitbox,
     // eye height, camera and reach are untouched, and nothing is sent, so nobody else sees it.
@@ -137,6 +190,8 @@ public class AlpakaConfig {
     public float inventorySnowSpeed = 1.0f;
     /** Multiplier on the number of flakes; 1 is the original 105. */
     public float inventorySnowAmount = 1.0f;
+    /** Which Inventory Particles are shown, an index into SnowOverlayRenderer.TYPE_NAMES; 0 is snow. */
+    public int inventoryParticleType = 0;
     public float containerBgOpacity = 0.75f;
     public boolean containerBgFadeInEnabled = true;
     public int containerBgFadeInDurationMs = 250;
@@ -177,6 +232,8 @@ public class AlpakaConfig {
     public boolean hideMobDeathsEnabled = false;
     /** With Hide Mob Deaths: also no puff of smoke when the server removes the body. */
     public boolean hideMobDeathSmoke = false;
+    /** Hides explosion particles, server smoke puffs and explosion debris. Cosmetic only. */
+    public boolean hideExplosions = false;
     /** Hides the flames on burning mobs, players and yourself in third person. Cosmetic only. */
     public boolean hideEntityFire = false;
     /** Opacity of the fire covering the screen while you burn in first person, 0..1; 1 is vanilla, 0 hides it. */
@@ -221,6 +278,8 @@ public class AlpakaConfig {
     public boolean blazeMuteAllWorldAudio = false;
     public float lowHpHeartbeatThreshold = 0.30f;
     public int menuAccentColor = 0xFF29B6B2; // Default teal
+    /** Index into {@code AlpakaStyle.Theme}: how the Alpaka menus look. 0 is the dark default. */
+    public int menuTheme = 0;
     /** The player's own presets in the color picker, ARGB, oldest first; shared by every color option. */
     public java.util.List<Integer> customColorPresets = new java.util.ArrayList<>();
     /**
@@ -248,6 +307,8 @@ public class AlpakaConfig {
     public boolean notificationSmoothFont = true;
     public boolean customEscapeMenuEnabled = true;
     public boolean customMainMenuEnabled = false;
+    /** Inventory Particles behind the custom main menu as well; off keeps them to container screens. */
+    public boolean customMainMenuParticles = false;
     /** The small player model on the HUD. Off for fresh installs. */
     public boolean playerModelEnabled = false;
     public boolean playerModelOnlyActions = true;
@@ -277,6 +338,7 @@ public class AlpakaConfig {
     public boolean performanceHudShowFps = true;
     public boolean performanceHudShowPing = true;
     public boolean performanceHudShowTps = true;
+    public boolean performanceHudAnimate = false;
     public int performanceHudX = net.alpaka.addons.client.hud.HudDefaults.PERFORMANCE_X;
     public int performanceHudY = net.alpaka.addons.client.hud.HudDefaults.PERFORMANCE_Y;
     public float performanceHudScale = 1.0f;
@@ -301,6 +363,8 @@ public class AlpakaConfig {
     public boolean slayerHudShowBear = true;
     /** Keeps the "Bear" line to the Blaze HUD, where the effect matters most. */
     public boolean slayerHudBearBlazeOnly = false;
+    /** The "Radio" line on the Blaze HUD: players on the Blazetekk Ham Radio's channel. */
+    public boolean slayerHudShowRadio = true;
     /** Seconds of standing still before the session clock stops. */
     public float slayerHudAfkPauseSeconds = 60.0f;
     /** Stop the clock the moment the sidebar says the player is no longer in the slayer's zone. */
@@ -318,15 +382,22 @@ public class AlpakaConfig {
      * Whether the mod may contact anything over the network ("Network Features").
      *
      * Everything else in this mod works from what the client already has. This is the one setting
-     * that lets it reach outside, for three things: a public endpoint describing the running election
+     * that lets it reach outside, for four things: a public endpoint describing the running election
      * (no API key, no player named, the same answer for everybody), the main menu's player
-     * count, an ordinary status ping to mc.hypixel.net like the server list sends, and the update
-     * check against the mod's public GitHub releases. Off means no
+     * count, an ordinary status ping to mc.hypixel.net like the server list sends, the update
+     * check against the mod's public GitHub releases, and the main menu's What's New card, which
+     * reads the newest of those releases' notes. Off means no
      * request is made and nothing derived from one is used. The JSON key keeps its old name.
      */
     public boolean allowApiCalls = true;
     /** A chat line on joining a world when a newer release is on GitHub. Needs allowApiCalls. */
     public boolean updateNotificationsEnabled = true;
+    /** Which releases the update check offers: 0 full releases only, 1 pre-releases as well (UpdateChecker.STREAM_NAMES). */
+    public int updateStream = 0;
+    /** The release whose notes the player last opened from the main menu; its What's New card shows a dot until then. */
+    public String releaseNotesSeen = "";
+    /** The What's New card on the custom main menu, with the newest release's notes. */
+    public boolean customMainMenuWhatsNew = true;
 
     /**
      * Folder holding the slayer record, or empty for this machine's shared default.
@@ -362,6 +433,14 @@ public class AlpakaConfig {
     // Saved as ragAxeCountdownEnabled before the feature was renamed; read that too so the setting carries over.
     @SerializedName(value = "ragnarockEnabled", alternate = "ragAxeCountdownEnabled")
     public boolean ragnarockEnabled = true;
+
+    // Deployable timer: the strongest power orb or flare in range, with its time left.
+    public boolean deployableTimerEnabled = false;
+    public int deployableTimerHudX = net.alpaka.addons.client.hud.HudDefaults.DEPLOYABLE_TIMER_X;
+    public int deployableTimerHudY = net.alpaka.addons.client.hud.HudDefaults.DEPLOYABLE_TIMER_Y;
+    public float deployableTimerHudScale = 1.0f;
+    public boolean deployableTimerHudBlur = true;
+    public boolean deployableTimerHudSmoothFont = true;
     public int slayerTimerHudX = net.alpaka.addons.client.hud.HudDefaults.SLAYER_TIMER_X;
     public int slayerTimerHudY = net.alpaka.addons.client.hud.HudDefaults.SLAYER_TIMER_Y;
     public float slayerTimerHudScale = 1.0f;
@@ -521,6 +600,8 @@ public class AlpakaConfig {
     public boolean scoreboardAlpakaFooter = true;
     /** Ctrl+F in the chat turns the input line into a search that filters the visible messages. */
     public boolean chatSearchEnabled = true;
+    /** Right-clicking a message in the open chat copies its text; see ChatCopyFeature. */
+    public boolean chatCopyEnabled = true;
     /** Scrolling the chat glides the lines into place instead of jumping a line per notch. */
     public boolean chatSmoothScrollEnabled = true;
     /** The open chat's scrollbar is a wider, rounded bar that can be dragged with the mouse. */
@@ -575,6 +656,20 @@ public class AlpakaConfig {
     public boolean compactChatEnabled = true;
     /** Seconds since the last identical message within which a repeat still stacks; 0 = back-to-back only. */
     public int compactChatWindowSeconds = 30;
+    /** Hides Hypixel chat spam; which kinds is up to the switches below. */
+    public boolean messageFilterEnabled = false;
+    public boolean messageFilterEmpty = true;
+    public boolean messageFilterWelcome = true;
+    public boolean messageFilterGuildExp = true;
+    public boolean messageFilterKillCombo = true;
+    public boolean messageFilterProfileJoin = true;
+    public boolean messageFilterRewardBundles = true;
+    public boolean messageFilterAutopet = true;
+    public boolean messageFilterFireSale = true;
+    public boolean messageFilterWatchdog = true;
+    public boolean messageFilterStash = true;
+    /** The player's own filters, made in the Message Filter's sub menu. */
+    public java.util.List<net.alpaka.addons.features.chat.CustomMessageFilter> messageFilterCustom = new java.util.ArrayList<>();
     /** All / Party / Guild / PMs tabs above the chat input. */
     public boolean chatTabsEnabled = true;
     /** With chat tabs: a plain message typed on a channel tab goes to that channel (/pc, /gc, /r). */
@@ -652,12 +747,35 @@ public class AlpakaConfig {
      */
     public boolean customAuctionHouseEnabled = true;
     public boolean customBazaarEnabled = true;
+    /**
+     * Number keys, arrows and the like press the market screen's buttons, one click per press; see
+     * MarketScreen.keyPressed. One switch for each market.
+     */
+    public boolean auctionHouseHotkeysEnabled = true;
+    public boolean bazaarHotkeysEnabled = true;
     /** Hypixel's sign prompts - a search, a price, an amount - as an input bar; see MarketInputScreen. */
     public boolean customSignInputEnabled = true;
     /** SkyCofl's price history on a product's or an auction's page; see PriceGraph. Needs allowApiCalls. */
     public boolean marketPriceHistoryEnabled = true;
     /** How far back it goes, an index into PriceHistory.Range: day, week, month, all time. */
     public int marketPriceHistoryRange = 1;
+    /** The Item Value key shows what the hovered item is worth, part by part; see ItemValuePopup. Needs allowApiCalls. */
+    public boolean itemValueEnabled = true;
+    /** Which Bazaar price the parts count at: 0 what they cost to buy now, 1 what they sell for now. */
+    public int itemValueBazaarPrice = 0;
+    /** The Chest Value panel beside a menu: what everything in it is worth; see ChestValuePanel. Needs allowApiCalls. */
+    public boolean chestValueEnabled = true;
+    /** Whether the panel is showing: its key switches it, and it stays so from menu to menu until pressed again. */
+    public boolean chestValueShown = false;
+    /** Whether a chest's panel counts the player's own inventory below it too. */
+    public boolean chestValueIncludeInventory = false;
+    /** Which side of the menu the panel sits on: 0 left, 1 right (where the item list mods usually are). */
+    public int chestValueSide = 0;
+    /** How its list is ordered, an index into ChestValue.Sort: value, price each, amount. */
+    public int chestValueSort = 0;
+    /** Where the panel was moved to, as a share of the screen's width and height; -1 beside the menu. */
+    public float chestValueX = -1f;
+    public float chestValueY = -1f;
 
     // Command Wheel options
     /**
@@ -671,6 +789,32 @@ public class AlpakaConfig {
      * opens it, a click runs a command, and pressing the key again closes it.
      */
     public boolean commandWheelToggleMode = false;
+
+    /**
+     * The mod's keys, by key mapping name ("key.alpaka.zoom") to the bound key's name
+     * ("key.keyboard.c"). A key left out is on its default. They are set in the config menu and kept
+     * here rather than in options.txt; see AlpakaKeyBinds.
+     */
+    public Map<String, String> keyBinds = new HashMap<>();
+    /** Whether keys bound in vanilla's Controls before have been taken over from options.txt. */
+    public boolean keyBindsImported = false;
+
+    /** Holding the Zoom key zooms in; scrolling while holding it zooms further. */
+    public boolean zoomEnabled = true;
+    /** Off: zoom while the key is held. On: one press zooms in, the next zooms back out. */
+    public boolean zoomToggleMode = false;
+    /** How far the zoom goes in, as a factor of the normal view. */
+    public float zoomAmount = 4.0f;
+    /** Scrolling while zoomed changes the zoom instead of the hotbar slot. */
+    public boolean zoomScrollEnabled = true;
+    /** How the zoom moves in and out: an index into ZoomFeature.ANIMATIONS. */
+    public int zoomAnimation = 1;
+    /** How long the zoom animation takes, in milliseconds. */
+    public int zoomAnimationMs = 250;
+    /** Turns on vanilla's cinematic camera while zoomed. */
+    public boolean zoomCinematicCamera = false;
+    /** Turns the mouse down by the zoom factor, so aiming feels the same zoomed in. */
+    public boolean zoomReduceSensitivity = true;
 
     /** Legacy, pre-pages. Read once by CommandWheelPages and then cleared. */
     public java.util.List<String> commandWheelCommands = new java.util.ArrayList<>(java.util.List.of(
@@ -945,6 +1089,21 @@ public class AlpakaConfig {
         public Map<Integer, Long> bestBossMsByTier = new HashMap<>();
 
         /**
+         * When each tier's best in {@link #bestBossMsByTier} was set, wall clock, by tier; missing
+         * for bests older than this field. Read by the merge with the file, together with
+         * {@link #bestsClearedAtMs}.
+         */
+        public Map<Integer, Long> bestBossAtMsByTier = new HashMap<>();
+
+        /**
+         * When this slayer's bests were last cleared ({@code /alpakaslayer reset pb}), wall clock,
+         * or 0 when never. The merge with the file drops every best set before it, wherever it is
+         * kept: the file, or another instance's memory, would otherwise hand the cleared best back
+         * within a second.
+         */
+        public long bestsClearedAtMs = 0L;
+
+        /**
          * Last known lifetime slayer XP for this slayer, or -1 when it has never been observed.
          *
          * Hypixel does not tell the client this figure during play - the only place it appears is
@@ -968,6 +1127,31 @@ public class AlpakaConfig {
          * larger gap is a total that drifted high and is corrected. See SlayerXpTracker.
          */
         public long recentlyCreditedXp = 0L;
+
+        /**
+         * When {@link #totalXp} was last read from the Slayer menu, wall clock, or 0 when never.
+         * The merge with the file keeps the newer reading rather than the larger number, so a total
+         * corrected down is not taken back by the old one still on the other side.
+         */
+        public long totalXpObservedAtMs = 0L;
+
+        /** Records a new best time for a tier, and when it was set. */
+        public void recordBest(int tier, long ms) {
+            if (bestBossMsByTier == null) bestBossMsByTier = new HashMap<>();
+            if (bestBossAtMsByTier == null) bestBossAtMsByTier = new HashMap<>();
+            bestBossMsByTier.put(tier, ms);
+            bestBossAtMsByTier.put(tier, System.currentTimeMillis());
+        }
+
+        /** Forgets every best time of this slayer, for good; returns whether there was one. */
+        public boolean clearBests() {
+            boolean had = bestBossMsByTier != null
+                    && bestBossMsByTier.values().stream().anyMatch(best -> best != null && best > 0L);
+            if (bestBossMsByTier != null) bestBossMsByTier.clear();
+            if (bestBossAtMsByTier != null) bestBossAtMsByTier.clear();
+            bestsClearedAtMs = System.currentTimeMillis();
+            return had;
+        }
     }
 
     public AlpakaConfig() {
@@ -1004,38 +1188,42 @@ public class AlpakaConfig {
         fresh.statsDirectory = old.statsDirectory;
         fresh.statsDirectoryHadFile = old.statsDirectoryHadFile;
         fresh.lastSeenVersion = old.lastSeenVersion;
+        fresh.configVersion = old.configVersion;
         fresh.menuFontNunitoApplied = true;
+        // The keys go back to their defaults too; options.txt is not read again for the old ones.
+        fresh.keyBindsImported = true;
         instance = fresh;
+        applyMenuTheme();
         save();
     }
 
     public static void load() {
-        existedAtStart = FILE.exists();
-        if (!FILE.exists()) {
-            save();
+        load(store());
+    }
+
+    /** Loads the settings from {@code from}, which later saves go to as well. Used directly by tests. */
+    static void load(ConfigStore from) {
+        store = from;
+        existedAtStart = from.file().exists();
+        if (!existedAtStart) {
+            instance = new AlpakaConfig();
         } else {
-            AlpakaConfig loaded = read(FILE);
+            AlpakaConfig loaded = read(from.file());
             if (loaded != null) {
                 instance = loaded;
                 // A copy of the last file that loaded, taken once per start rather than on every
                 // save: every write is atomic now, so this only has to cover damage from outside.
-                AtomicJsonFile.backup(FILE, BACKUP);
+                AtomicJsonFile.backup(from.file(), from.backup());
             } else {
                 recoverUnreadable();
             }
         }
 
-        // Hide Name Tag Background became a color; hiding is now zero opacity.
-        if (instance.hideNameTagBackground != null) {
-            if (instance.hideNameTagBackground) instance.nameTagBackgroundColor = 0;
-            instance.hideNameTagBackground = null;
+        int sanitized = ConfigSanitizer.sanitize(instance, new AlpakaConfig());
+        if (sanitized > 0) {
+            AlpakaAddons.LOGGER.warn("Put {} unusable value(s) in alpaka.json back to their defaults", sanitized);
         }
-
-        // The menu's default accent moved from warm gold to teal. A config still on the exact old
-        // default never chose gold, so it follows the new default; any other color is a choice.
-        if (instance.menuAccentColor == 0xFFE5B849) {
-            instance.menuAccentColor = 0xFF29B6B2;
-        }
+        boolean migrated = instance.migrate();
 
         // The default font moved from Inter to Poppins with the redesign. Once only, so picking Inter
         // again afterwards sticks.
@@ -1044,29 +1232,73 @@ public class AlpakaConfig {
             instance.menuFontNunitoApplied = true;
         }
 
+        // Settings that were replaced keep the other pattern: a legacy field, read once and then
+        // cleared, so it needs no number.
+        instance.migrateNameTagBackground();
         instance.migrateInventoryHudVisibility();
         instance.migrateWorldAgeHud();
 
-        if (instance.slayerBossMap == null) {
-            instance.slayerBossMap = new HashMap<>();
-        }
         for (SlayerType type : SlayerType.values()) {
             if (!instance.slayerBossMap.containsKey(type)) {
                 instance.slayerBossMap.put(type, new SlayerData());
             }
         }
 
-        // Deleting presets is allowed now, so fewer than three is a choice; only a missing list or a
-        // hand-edited null entry needs mending.
-        if (instance.itemPresets == null) {
-            instance.itemPresets = new ArrayList<>();
-        } else {
-            instance.itemPresets = new ArrayList<>(instance.itemPresets);
-            instance.itemPresets.removeIf(java.util.Objects::isNull);
-        }
+        // Deleting presets is allowed now, so fewer than three is a choice; a hand-edited null entry
+        // has already been dropped by the sanitizer.
         if (instance.activeItemPresetIndex >= instance.itemPresets.size()) {
             instance.activeItemPresetIndex = -1;
         }
+
+        if (!existedAtStart || sanitized > 0 || migrated) save();
+        applyMenuTheme();
+    }
+
+    /** Puts the saved Menu Theme on every menu. */
+    public static void applyMenuTheme() {
+        AlpakaStyle.applyTheme(AlpakaStyle.Theme.of(instance.menuTheme));
+    }
+
+    /**
+     * One-time changes to the settings, in order: the step at index i brings a file from layout i to
+     * i + 1. Each runs once per file, the first time a version that has it loads that file, so a
+     * value the player picks afterwards is never changed back. They used to run on every start: an
+     * accent color set to exactly the old gold turned back into teal each time.
+     */
+    private static final java.util.List<java.util.function.Consumer<AlpakaConfig>> MIGRATIONS = java.util.List.of(
+            AlpakaConfig::migrateTo1
+    );
+
+    /** The settings layout this version writes. A file with a lower number gets the steps it has not had. */
+    static final int CONFIG_VERSION = MIGRATIONS.size();
+
+    /** Layout 0 to 1: the changes that ran on every start before there was a layout number. */
+    private void migrateTo1() {
+        // The menu's default accent moved from warm gold to teal. A config still on the exact old
+        // default never chose gold, so it follows the new default; any other color is a choice.
+        if (menuAccentColor == 0xFFE5B849) {
+            menuAccentColor = 0xFF29B6B2;
+        }
+    }
+
+    /**
+     * Runs the steps of {@link #MIGRATIONS} this file has not had. Returns whether the layout number
+     * moved. A file from a newer version keeps its higher number and gets no steps.
+     */
+    boolean migrate() {
+        if (configVersion >= CONFIG_VERSION) return false;
+        for (int step = Math.max(0, configVersion); step < MIGRATIONS.size(); step++) {
+            MIGRATIONS.get(step).accept(this);
+        }
+        configVersion = CONFIG_VERSION;
+        return true;
+    }
+
+    /** Hide Name Tag Background became a color; hiding is now zero opacity. */
+    private void migrateNameTagBackground() {
+        if (hideNameTagBackground == null) return;
+        if (hideNameTagBackground) nameTagBackgroundColor = 0;
+        hideNameTagBackground = null;
     }
 
     /**
@@ -1078,8 +1310,8 @@ public class AlpakaConfig {
      * reads it as null, and a malformed one was replaced with defaults without a word.
      */
     private static void recoverUnreadable() {
-        File aside = AtomicJsonFile.quarantine(FILE);
-        AlpakaConfig fromBackup = read(BACKUP);
+        File aside = AtomicJsonFile.quarantine(store().file());
+        AlpakaConfig fromBackup = read(store().backup());
         String where = aside != null ? " The damaged file was kept as " + aside.getName() + "." : "";
         if (fromBackup != null) {
             instance = fromBackup;
@@ -1156,33 +1388,38 @@ public class AlpakaConfig {
         return betterChatEnabled && part;
     }
 
+    /**
+     * Switches every feature off: each feature's own switch (every custom sound is a feature of its
+     * own here), and the lone switches that belong to no feature (Hide Mob Fire, the scoreboard's
+     * blur and footer, ...). Nothing else is touched. A feature's settings, and every font, color,
+     * slider, choice and HUD style switch, stay as they are, so a feature switched back on comes back
+     * the way it was. This used to switch the settings off and reset values too, and the backup made
+     * that stick after the next start: Block Overlay came back with no outline at all.
+     *
+     * DisableAllFeaturesTest lists the switches this has to cover and the settings it must leave.
+     */
     public void disableAllFeatures() {
         this.renderHandInThirdPerson = false;
         this.slayerDropTrackerEnabled = false;
         this.hideHypixelDropMessage = false;
         this.slayerRngDropGuildChatEnabled = false;
         this.customNameTagEnabled = false;
-        this.nameTagOutlineEnabled = false;
-        this.nameTagShadowEnabled = false;
-        this.nameTagChromaBorderEnabled = false;
         this.chromaHatEnabled = false;
+        this.auraEnabled = false;
         this.playerScaleEnabled = false;
-        this.playerScaleOthers = false;
         this.fullbrightEnabled = false;
+        this.skyEffectsEnabled = false;
         this.inventorySnowEnabled = false;
         this.containerBgFadeInEnabled = false;
         this.cleanBlazeEnabled = false;
-        this.cleanBlazeNameTags = false;
         this.blazeFirePitsEnabled = false;
         this.hideSlayerChatMessages = false;
         this.stopBlazeSpinning = false;
         this.hideHurtOverlayEnabled = false;
         this.hideMobDeathsEnabled = false;
+        this.hideExplosions = false;
         this.hideEntityFire = false;
-        this.firstPersonFireOpacity = 1.0f;
-        this.firstPersonFireHeight = 1.0f;
         this.firstPersonFireStatic = false;
-        this.nameTagBackgroundColor = DEFAULT_NAME_TAG_BACKGROUND;
         this.showOwnNameTag = false;
         this.nameTagTextShadow = false;
         this.wideHealthBarEnabled = false;
@@ -1202,75 +1439,44 @@ public class AlpakaConfig {
         this.customSoundSuccessfulHit = false;
         this.muteVanillaSoundsInBlazeSlayer = false;
         this.customEscapeMenuEnabled = false;
-        this.menuFont = 0;
-        this.menuFontInChat = false;
-        this.menuFontInScoreboard = false;
         this.customMainMenuEnabled = false;
         this.playerModelEnabled = false;
-        this.playerModelOnlyActions = false;
-        this.playerModelDisableMovement = false;
-        this.playerModelHideArmor = false;
-        this.playerModelShowInGuis = false;
         this.performanceHudEnabled = false;
         this.slayerHudEnabled = false;
-        this.slayerHudPauseOutsideArea = false;
-        this.slayerHudOnlyInSlayerAreas = false;
         this.customTabEnabled = false;
         this.allowApiCalls = false;
         this.slayerTimerEnabled = false;
-        this.slayerTimerChatEnabled = false;
-        this.slayerTimerHudEnabled = false;
         this.ragnarockEnabled = false;
+        this.deployableTimerEnabled = false;
         this.customAuctionHouseEnabled = false;
         this.customBazaarEnabled = false;
         this.customSignInputEnabled = false;
         this.marketPriceHistoryEnabled = false;
+        this.itemValueEnabled = false;
+        this.chestValueEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
         this.customDamageTagsEnabled = false;
         this.blockOverlayEnabled = false;
-        this.blockFadeInEnabled = false;
-        this.blockOutlineEnabled = false;
-        this.blockChromaEnabled = false;
-        this.blockIgnoreDepth = false;
-        this.blockIgnorePlants = false;
-        this.blockFillEnabled = false;
-        this.blockHideOnEtherwarp = false;
         this.etherwarpOverlayEnabled = false;
-        this.etherwarpLineEnabled = false;
         this.etherwarpSoundEnabled = false;
         this.betterChatEnabled = false;
-        this.smoothChatEnabled = false;
-        this.chatOpenAnimationEnabled = false;
-        this.chatBlurEnabled = false;
         this.scoreboardBlurEnabled = false;
         this.scoreboardAlpakaFooter = false;
-        this.notificationBlur = false;
-        this.notificationSmoothFont = false;
         this.chatSearchEnabled = false;
-        this.chatSmoothScrollEnabled = false;
-        this.chatScrollbarEnabled = false;
-        this.chatMovable = false;
+        this.chatCopyEnabled = false;
         this.alwaysSprintEnabled = false;
         this.expandChatHistory = false;
         this.chatPeekEnabled = false;
-        this.chatPeekInMenus = false;
         this.betterScreenshotMessageEnabled = false;
-        this.autoCopyScreenshots = false;
         this.compactChatEnabled = false;
+        this.messageFilterEnabled = false;
         this.chatTabsEnabled = false;
-        this.chatTabsSendToChannel = false;
         this.inventoryHudEnabled = false;
         this.bridgeBotFormatterEnabled = false;
         this.guildPrefixEnabled = false;
         this.itemSizeFeatureEnabled = false;
-        this.itemSwayDisabled = false;
-        this.itemLightingDisabled = false;
         this.itemStarlightEnabled = false;
-        this.itemSwingTranslationDisabled = false;
-        this.itemNoEquipEnabled = false;
-        this.itemSwingAlwaysFinishEnabled = false;
-        this.itemIgnoreEmptyHandEnabled = false;
         // Features added after the list above was written; the dialog promises every feature.
         this.updateNotificationsEnabled = false;
         this.scrollableTooltipsEnabled = false;
@@ -1280,6 +1486,9 @@ public class AlpakaConfig {
         this.bossSpawnAlertEnabled = false;
         this.bossCocoonAlertEnabled = false;
         this.partyInvitePromptEnabled = false;
+        this.oldMasterStarsEnabled = false;
+        this.cacheResourcePackEnabled = false;
+        this.zoomEnabled = false;
         save();
     }
 
@@ -1314,7 +1523,7 @@ public class AlpakaConfig {
             return;
         }
         try {
-            AtomicJsonFile.write(FILE, GSON.toJson(instance));
+            AtomicJsonFile.write(store().file(), GSON.toJson(instance));
         } catch (Exception e) {
             AlpakaAddons.LOGGER.error("Failed to save config", e);
         }

@@ -57,12 +57,20 @@ public final class PriceGraph {
 
     public static void draw(GuiGraphicsExtractor graphics, Font font, MarketKind kind, ItemTags.Tag tag,
                             int x, int y, int w, int h, int mx, int my, Clicks clicks) {
+        draw(graphics, font, kind, tag, "Price History", x, y, w, h, mx, my, clicks);
+    }
+
+    /** The panel under another title, such as the name of the part of an item whose history it shows. */
+    public static void draw(GuiGraphicsExtractor graphics, Font font, MarketKind kind, ItemTags.Tag tag, String title,
+                            int x, int y, int w, int h, int mx, int my, Clicks clicks) {
         ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, AlpakaStyle.CARD_RADIUS + 1, AlpakaStyle.ROW);
         ModernGuiUtils.drawRect(graphics, x + AlpakaStyle.CARD_RADIUS + 1, y, w - 2 * (AlpakaStyle.CARD_RADIUS + 1), 1, 0x14FFFFFF);
 
         // Header: the title, the source, and the range to choose.
         PriceHistory.Range range = PriceHistory.Range.of(AlpakaConfig.instance.marketPriceHistoryRange);
-        graphics.text(font, GuiFont.text("Price History"), x + 8, y + 7, AlpakaStyle.TEXT, false);
+        int chipsW = 0;
+        for (PriceHistory.Range r : PriceHistory.Range.values()) chipsW += GuiFont.width(font, r.chip) + 12;
+        graphics.text(font, GuiFont.text(AlpakaStyle.ellipsize(font, title, w - 16 - chipsW)), x + 8, y + 7, AlpakaStyle.TEXT, false);
         int chipsRight = x + w - 6;
         PriceHistory.Range[] ranges = PriceHistory.Range.values();
         for (int i = ranges.length - 1; i >= 0; i--) {
@@ -152,8 +160,8 @@ public final class PriceGraph {
     private static void chart(GuiGraphicsExtractor graphics, Font font, MarketKind kind, String tag, PriceHistory.Range range,
                               List<PriceHistory.Point> points, int x, int y, int w, int h, int mx, int my, Clicks clicks) {
         boolean bazaar = kind == MarketKind.BAZAAR;
-        int firstColor = BUY;
-        int secondColor = bazaar ? SELL : LOWEST;
+        int firstColor = MarketInk.ink(BUY);
+        int secondColor = bazaar ? MarketInk.ink(SELL) : MarketInk.ink(LOWEST);
         String firstName = bazaar ? "Buy" : "Average";
         String secondName = bazaar ? "Sell" : "Lowest";
 
@@ -169,7 +177,7 @@ public final class PriceGraph {
             String text = String.format(Locale.ROOT, "%s%.1f%%", change >= 0 ? "+" : "", change);
             int tw = GuiFont.width(font, text);
             if (lx + 8 < x + w - 8 - tw) {
-                graphics.text(font, GuiFont.text(text), x + w - 8 - tw, y + 1, change >= 0 ? UP : DOWN, false);
+                graphics.text(font, GuiFont.text(text), x + w - 8 - tw, y + 1, change >= 0 ? MarketInk.ink(UP) : MarketInk.ink(DOWN), false);
             }
         }
 
@@ -361,7 +369,7 @@ public final class PriceGraph {
         if (bx + bw > px + pw) bx = Math.round(hx) - 6 - bw;
         bx = Math.max(px, bx);
         int by = py + 2;
-        ModernGuiUtils.drawRoundedRect(graphics, bx, by, bw, bh, AlpakaStyle.ROW_RADIUS, 0xF0181818);
+        ModernGuiUtils.drawRoundedRect(graphics, bx, by, bw, bh, AlpakaStyle.ROW_RADIUS, (AlpakaStyle.PANEL & 0x00FFFFFF) | 0xF0000000);
         ModernGuiUtils.drawRoundedOutline(graphics, bx, by, bw, bh, AlpakaStyle.ROW_RADIUS, AlpakaStyle.DIVIDER);
         graphics.text(font, GuiFont.text(when), bx + 6, by + 4, AlpakaStyle.TEXT_SOFT, false);
         WheelMesh dots = new WheelMesh(1.0f / guiScale());

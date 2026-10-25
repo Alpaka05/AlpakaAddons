@@ -15,6 +15,12 @@ public final class Markets {
         return kind == MarketKind.AUCTION_HOUSE ? config.customAuctionHouseEnabled : config.customBazaarEnabled;
     }
 
+    /** Whether the keys press this market's buttons: Enable Hotkeys under its Custom screen. */
+    public static boolean hotkeys(MarketKind kind) {
+        AlpakaConfig config = AlpakaConfig.instance;
+        return kind == MarketKind.AUCTION_HOUSE ? config.auctionHouseHotkeysEnabled : config.bazaarHotkeysEnabled;
+    }
+
     /** Whether Hypixel's sign prompts get the input bar. */
     public static boolean signInput() {
         return AlpakaConfig.instance.customSignInputEnabled && (SkyblockUtils.isOnSkyblock() || devAnywhere);

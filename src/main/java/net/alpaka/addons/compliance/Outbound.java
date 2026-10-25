@@ -15,8 +15,9 @@ import net.minecraft.world.inventory.ContainerInput;
  * Every message, command or menu click the mod sends is the direct result of the player pressing a
  * key, clicking, or pressing Enter, and says which through its {@link Cause}. Nothing reacts to
  * other players' chat, timers or game events by sending; two features once did - a party-chat
- * auto-reply and a guild announcement fired from a timer - and were removed. A source scan in the
- * tests fails the build if anything outside this class calls the network directly.
+ * auto-reply and a guild announcement fired from a timer - and were removed. A scan of the compiled
+ * classes in the tests (OutboundBytecodeScanTest) fails the build if anything outside this class
+ * sends to the server, apart from the resource pack answers of the pack cache.
  *
  * The one exception is {@link #latencyProbe()}: not a message or command but vanilla's own ping
  * request, which nobody else sees and which the server answers without acting on it. It goes out on
@@ -103,11 +104,17 @@ public final class Outbound {
      * click. Never a drag, a double-click collect, a number-key swap or a drop, and never for a menu
      * that is no longer the open one. The market screens only change how a menu looks; what reaches
      * Hypixel is what the vanilla chest would have sent for the same click.
+     *
+     * A key press may stand in for the mouse on a button the screen shows with that key on it (1 on
+     * Buy Instantly, say): then it is one plain left click on that slot, once per press, never a
+     * shift click.
      */
     public static boolean menuClick(AbstractContainerMenu menu, int slotIndex, int button, ContainerInput input, Cause cause) {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
-        if (player == null || mc.gameMode == null || menu == null || cause != Cause.MENU_CLICK) return false;
+        if (player == null || mc.gameMode == null || menu == null) return false;
+        if (cause != Cause.MENU_CLICK && cause != Cause.KEY_PRESS) return false;
+        if (cause == Cause.KEY_PRESS && (button != 0 || input != ContainerInput.PICKUP)) return false;
         if (player.containerMenu != menu) return false;
         if (slotIndex < 0 || slotIndex >= menu.slots.size()) return false;
         if (button != 0 && button != 1) return false;

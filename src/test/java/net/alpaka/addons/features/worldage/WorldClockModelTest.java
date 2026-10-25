@@ -111,6 +111,15 @@ class WorldClockModelTest {
     }
 
     @Test
+    void pinnedClockShowsNoDayBeforeItsFirstJump() {
+        // The second Crimson Isle update came 14 ticks after the first, before the first jump; read
+        // as a running clock it showed the clock's raw count, day 28399, for a second.
+        WorldClockModel model = replay(CRIMSON_ISLE[0], CRIMSON_ISLE[1]);
+        assertEquals(WorldClockModel.Mode.WAITING, model.mode());
+        assertEquals(WorldClockModel.UNKNOWN_DAY, model.day(CRIMSON_ISLE[1].clockTicks()));
+    }
+
+    @Test
     void firstUpdateAloneIsUnknown() {
         // One value cannot tell a running clock from a pinned one.
         WorldClockModel model = replay(CRIMSON_ISLE[0]);
@@ -124,7 +133,8 @@ class WorldClockModelTest {
         assertEquals(WorldClockModel.Mode.WAITING, model.mode());
         model.onTimeUpdate(500L, 2L * 24000L, 1.0f);
         model.onTimeUpdate(520L, 2L * 24000L + 20L, 1.0f);
-        assertEquals(2L, model.day(2L * 24000L + 20L));
+        model.onTimeUpdate(540L, 2L * 24000L + 40L, 1.0f);
+        assertEquals(2L, model.day(2L * 24000L + 40L));
     }
 
     @Test

@@ -9,6 +9,7 @@ import net.alpaka.addons.features.chat.AlpakaChatGraphicsClip;
 import net.alpaka.addons.features.bridge.BridgeBotFormatter;
 import net.alpaka.addons.features.chat.AlpakaChatScroll;
 import net.alpaka.addons.features.chat.ChatBlurFeature;
+import net.alpaka.addons.features.chat.ChatCopyFeature;
 import net.alpaka.addons.features.chat.ChatHudElement;
 import net.alpaka.addons.features.chat.ChatScrollbar;
 import net.alpaka.addons.client.hud.VisiblePlacement;
@@ -23,28 +24,31 @@ import net.alpaka.addons.features.chat.SmoothChatFeature;
 import net.alpaka.addons.features.guild.GuildPrefixFormatter;
 import net.alpaka.addons.features.slayer.SlayerChatFilter;
 import net.alpaka.addons.features.slayer.SlayerDropTracker;
+import net.alpaka.addons.utils.AlpakaPerf;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.ChatComponent;
+import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.multiplayer.chat.GuiMessage;
 import net.minecraft.client.multiplayer.chat.GuiMessageSource;
 import net.minecraft.client.multiplayer.chat.GuiMessageTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MessageSignature;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 
 import java.util.List;
+import org.joml.Matrix3x2f;
+import org.joml.Vector2f;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Coerce;
-import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
-import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
@@ -76,16 +80,18 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
     /** The graphics the chat is being extracted into, while it is; null during clickable-text capture. */
     @Unique private GuiGraphicsExtractor alpaka$graphics;
 
-    @ModifyConstant(
+    // The constant's value rather than the constant itself, so a mod that changes the same limit is
+    // chained with this one instead of finding its hook gone.
+    @com.llamalad7.mixinextras.injector.ModifyExpressionValue(
         method = {"<init>", "addMessageToDisplayQueue", "addMessageToQueue", "addRecentChat"},
-        constant = @Constant(intValue = 100)
+        at = @At(value = "CONSTANT", args = "intValue=100")
     )
     private int modifyMaxChatHistory(int original) {
         return AlpakaConfig.instance.chatHistoryLength();
     }
 
     /**
-     * Applies our guild-chat formatting to the copy of the message that gets drawn.
+     * Applies our guild-chat formatting to the lines of the message that get drawn.
      *
      * ### Why the display queue and not addMessage
      *
@@ -102,16 +108,29 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
      * history, the written chat log and every filter keep Hypixel's original wording, while only
      * the wrapped lines that reach the screen carry our formatting.
      *
-     * Rebuilding the record rather than mutating it matters: the very same GuiMessage instance is
-     * handed to addMessageToQueue straight afterwards, and that one has to stay untouched.
+     * Only the wrapping sees the formatted copy: the lines are cut from it, while each line keeps
+     * the stored message as its parent, and the message itself goes on to addMessageToQueue
+     * untouched. Anything that finds a message's lines by their parent depends on that. With the
+     * copy as the parent, Compact Chat could not find the lines of an earlier guild or bridge message
+     * and left it on screen next to the folded one.
      *
      * The cost of living here is that the work repeats whenever the chat is re-wrapped, since
      * refreshTrimmedMessages replays the stored messages through this method. That is a window
      * resize, not a per-frame path, and each replay starts from the original text, so it cannot
      * compound.
      */
-    @ModifyVariable(method = "addMessageToDisplayQueue", at = @At("HEAD"), argsOnly = true, ordinal = 0)
-    private GuiMessage formatGuildMessage(GuiMessage message) {
+    @WrapOperation(
+        method = "addMessageToDisplayQueue",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/chat/GuiMessage;splitLines(Lnet/minecraft/client/gui/Font;I)Ljava/util/List;")
+    )
+    private List<FormattedCharSequence> alpaka$wrapFormattedGuildMessage(GuiMessage message, Font font, int width,
+                                                                      Operation<List<FormattedCharSequence>> original) {
+        return original.call(alpaka$formatGuildMessage(message), font, width);
+    }
+
+    /** The message with our guild and bridge formatting, or the message itself when neither applies. */
+    @Unique
+    private static GuiMessage alpaka$formatGuildMessage(GuiMessage message) {
         Component original = message.content();
         Component component = original;
 
@@ -127,6 +146,18 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
 
         if (component == original) return message;
         return new GuiMessage(message.addedTime(), component, message.signature(), message.source(), message.tag());
+    }
+
+    /** Times one message's way into the chat, every hook of the mod on it included. */
+    @WrapMethod(method = "addMessage(Lnet/minecraft/network/chat/Component;Lnet/minecraft/network/chat/MessageSignature;Lnet/minecraft/client/multiplayer/chat/GuiMessageSource;Lnet/minecraft/client/multiplayer/chat/GuiMessageTag;)V", require = 0)
+    private void alpaka$timeMessage(Component component, MessageSignature signature, GuiMessageSource source, GuiMessageTag tag,
+                                    Operation<Void> original) {
+        long t = AlpakaPerf.begin(AlpakaPerf.Section.CHAT_MESSAGE);
+        try {
+            original.call(component, signature, source, tag);
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.CHAT_MESSAGE, t);
+        }
     }
 
     @Inject(
@@ -244,13 +275,23 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
         return original.call(chat) || ChatPeekFeature.isPeeking();
     }
 
-    @org.spongepowered.asm.mixin.Unique
-    private long alpaka$replayStartNanos;
+    /**
+     * Times the whole re-layout, the replay hooks below included, with its end in a finally. Only a
+     * measurement, like the two other timers here, so the game starts without it if it cannot apply.
+     */
+    @WrapMethod(method = "refreshTrimmedMessages", require = 0)
+    private void alpaka$timeReplay(Operation<Void> original) {
+        long t = AlpakaPerf.begin(AlpakaPerf.Section.CHAT_REPLAY);
+        try {
+            original.call();
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.CHAT_REPLAY, t);
+        }
+    }
 
     /** A re-layout replays every stored message through the queue; none of that is a new arrival. */
     @Inject(method = "refreshTrimmedMessages", at = @At("HEAD"))
     private void alpaka$beginReplay(CallbackInfo ci) {
-        this.alpaka$replayStartNanos = net.alpaka.addons.utils.AlpakaPerf.begin(net.alpaka.addons.utils.AlpakaPerf.Section.CHAT_REPLAY);
         SmoothChatFeature.clear();
         SmoothChatFeature.beginReplay();
     }
@@ -258,7 +299,6 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
     @Inject(method = "refreshTrimmedMessages", at = @At("RETURN"))
     private void alpaka$endReplay(CallbackInfo ci) {
         SmoothChatFeature.endReplay();
-        net.alpaka.addons.utils.AlpakaPerf.end(net.alpaka.addons.utils.AlpakaPerf.Section.CHAT_REPLAY, this.alpaka$replayStartNanos);
     }
 
     /**
@@ -444,6 +484,9 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
                         && !this.trimmedMessages.get(index).endOfEntry();
             });
         }
+        if (pass == 1 && clip != null) {
+            ChatCopyFeature.setHovered(this.alpaka$messageUnderMouse(clip.alpaka$graphics(), offset, chatBottom, width, lineHeight, boxLines));
+        }
         if (offset > 0.01f) {
             access.updatePose(pose -> pose.translate(0.0f, offset));
         }
@@ -458,6 +501,29 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
             clip.alpaka$clearTextClip();
         }
         return result;
+    }
+
+    /**
+     * Copy Chat: the message under the mouse, taken from the drawing pass, which is the one place
+     * the chat's pose - scale, Movable Chat, the scroll's fraction of a line - is at hand. Only
+     * while the chat screen is open: peeking holds the chat open too, but there the mouse is the
+     * hidden cursor that moves with the camera.
+     */
+    @Unique
+    private GuiMessage alpaka$messageUnderMouse(GuiGraphicsExtractor graphics, float offset, int chatBottom, int width,
+                                                int lineHeight, float boxLines) {
+        if (!this.alpaka$foreground || !ChatCopyFeature.isEnabled() || ChatPeekFeature.isPeeking()) return null;
+        if (!(this.minecraft.gui.screen() instanceof ChatScreen) || lineHeight <= 0) return null;
+        Vector2f mouse = new Vector2f(this.alpaka$mouseX, this.alpaka$mouseY);
+        // The box stays put while the lines scroll inside it; the row is read in the lines' own place.
+        Vector2f inBox = new Matrix3x2f(graphics.pose()).invert().transformPosition(new Vector2f(mouse));
+        if (inBox.x < -4 || inBox.x > width + 8 || inBox.y > chatBottom || inBox.y < chatBottom - boxLines * lineHeight) {
+            return null;
+        }
+        Vector2f inLines = new Matrix3x2f(graphics.pose()).translate(0.0f, offset).invert().transformPosition(mouse);
+        int index = this.chatScrollbarPos + Mth.floor((chatBottom - inLines.y) / lineHeight);
+        if (index < 0 || index >= this.trimmedMessages.size()) return null;
+        return this.trimmedMessages.get(index).parent();
     }
 
     /**
@@ -537,6 +603,18 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
 
     // ------------------------------------------------------------------ blurred background
 
+    /** Times the chat's extraction for the frame, every hook of the mod in it included. */
+    @WrapMethod(method = EXTRACT_PUBLIC, require = 0)
+    private void alpaka$timeExtraction(GuiGraphicsExtractor graphics, Font font, int ticks, int mouseX, int mouseY,
+                                       ChatComponent.DisplayMode mode, boolean focused, Operation<Void> original) {
+        long t = AlpakaPerf.begin(AlpakaPerf.Section.CHAT_EXTRACT);
+        try {
+            original.call(graphics, font, ticks, mouseX, mouseY, mode, focused);
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.CHAT_EXTRACT, t);
+        }
+    }
+
     @Inject(method = EXTRACT_PUBLIC, at = @At("HEAD"))
     private void alpaka$beginBlurExtraction(GuiGraphicsExtractor graphics, Font font, int ticks, int mouseX, int mouseY,
                                             ChatComponent.DisplayMode mode, boolean focused, CallbackInfo ci) {
@@ -547,6 +625,8 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
     }
 
     @Unique private int alpaka$mouseX;
+    /** Whether the current layout pass draws the chat as open. */
+    @Unique private boolean alpaka$foreground;
     @Unique private int alpaka$mouseY;
 
     // ------------------------------------------------------------------ movable chat and scrollbar
@@ -615,6 +695,7 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
     @Inject(method = EXTRACT_PRIVATE, at = @At("HEAD"))
     private void alpaka$beginPass(ChatComponent.ChatGraphicsAccess access, int guiHeight, int ticks, ChatComponent.DisplayMode mode, CallbackInfo ci) {
         this.alpaka$pass = 0;
+        this.alpaka$foreground = mode.foreground;
         ChatBlurFeature.resetPanel(mode.foreground);
         // Taken once per layout, so both line passes and the scrollbar agree on the height.
         this.alpaka$openProgress = mode.foreground && !ChatPeekFeature.isPeeking() ? ChatOpenAnimation.progress() : 1.0f;
@@ -640,18 +721,42 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
         this.chatScrollbarPos = (int) Math.floor(this.alpaka$smoothScroll);
     }
 
+    /** The background pass's line box, as vanilla hands it to its box drawing; see alpaka$measureLineBox. */
+    @Unique private int alpaka$boxBottom;
+    @Unique private int alpaka$boxLineHeight;
+    @Unique private int alpaka$boxWidth;
+    @Unique private float alpaka$boxOpacity;
+
+    /** Takes the line box's measures right before the background pass runs. */
+    @Inject(method = EXTRACT_PRIVATE, at = @At(value = "INVOKE", target = FOR_EACH_LINE, ordinal = 0))
+    private void alpaka$takeLineBox(ChatComponent.ChatGraphicsAccess access, int screenHeight, int ticks, ChatComponent.DisplayMode mode,
+                                    CallbackInfo ci,
+                                    @Local(name = "chatBottom") int chatBottom, @Local(name = "entryHeight") int entryHeight,
+                                    @Local(name = "maxWidth") int maxWidth, @Local(name = "backgroundOpacity") float backgroundOpacity) {
+        this.alpaka$boxBottom = chatBottom;
+        this.alpaka$boxLineHeight = entryHeight;
+        this.alpaka$boxWidth = maxWidth;
+        this.alpaka$boxOpacity = backgroundOpacity;
+    }
+
     /**
-     * Vanilla's background pass draws one flat box per line through this lambda. With the blurred
-     * panel on, each box is measured instead and the fill is skipped; the panel goes in for all of
-     * them just before the text pass below. Clickable-text capture runs the same code without a
-     * graphics to draw into, and is left alone.
+     * Vanilla's background pass draws one flat box per line. With the blurred panel on, each box is
+     * measured instead and the fill is skipped; the panel goes in for all of them just before the
+     * text pass. Clickable-text capture runs the same code without a graphics to draw into, and is
+     * left alone.
+     *
+     * Hooked where forEachLine hands each line on rather than inside vanilla's box lambda: the
+     * lambda's generated name changes with Minecraft versions, and the hook with it.
      */
-    @Inject(method = "lambda$extractRenderState$1", at = @At("HEAD"), cancellable = true)
-    private static void alpaka$measureLineBox(int chatBottom, int lineHeight, ChatComponent.ChatGraphicsAccess access, int width,
-                                              float backgroundOpacity, GuiMessage.Line line, int index, float alpha, CallbackInfo ci) {
-        if (ChatBlurFeature.collectLine(chatBottom, lineHeight, width, backgroundOpacity, alpha)) {
-            ci.cancel();
+    @WrapOperation(method = "forEachLine", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/gui/components/ChatComponent$LineConsumer;accept(Lnet/minecraft/client/multiplayer/chat/GuiMessage$Line;IF)V"))
+    private void alpaka$measureLineBox(@Coerce Object consumer, GuiMessage.Line line, int index, float alpha, Operation<Void> original) {
+        // The background pass is the first of the two, while alpaka$pass reads 1.
+        if (this.alpaka$pass == 1 && ChatBlurFeature.collectLine(
+                this.alpaka$boxBottom, this.alpaka$boxLineHeight, this.alpaka$boxWidth, this.alpaka$boxOpacity, alpha)) {
+            return;
         }
+        original.call(consumer, line, index, alpha);
     }
 
     /**

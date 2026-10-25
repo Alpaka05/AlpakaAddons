@@ -4,6 +4,7 @@ import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.chat.ChatOverHud;
 import net.alpaka.addons.features.chat.ChatPeekFeature;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
+import net.alpaka.addons.features.deployable.DeployableTimerHudRenderer;
 import net.alpaka.addons.features.inventoryhud.InventoryHudRenderer;
 import net.alpaka.addons.features.notification.AlpakaNotifications;
 import net.alpaka.addons.features.performance.PerformanceHudRenderer;
@@ -25,6 +26,7 @@ import net.minecraft.client.gui.screens.LevelLoadingScreen;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.network.chat.Component;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.sugar.Local;
 import net.minecraft.client.gui.Font;
@@ -63,26 +65,51 @@ public class HudMixin implements ChatOverHud.Late {
 
     @Inject(method = "extractRenderState", at = @At("TAIL"))
     private void onExtractRenderState(GuiGraphicsExtractor graphicsExtractor, DeltaTracker deltaTracker, CallbackInfo ci) {
+        // Each timed in a finally, so a HUD that throws cannot leave the profiler a section deep.
         long t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_PLAYER_MODEL);
-        PlayerModelRenderer.render(graphicsExtractor, deltaTracker);
-        AlpakaPerf.end(AlpakaPerf.Section.HUD_PLAYER_MODEL, t);
+        try {
+            PlayerModelRenderer.render(graphicsExtractor, deltaTracker);
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.HUD_PLAYER_MODEL, t);
+        }
         t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_PERFORMANCE);
-        PerformanceHudRenderer.render(graphicsExtractor, deltaTracker);
-        AlpakaPerf.end(AlpakaPerf.Section.HUD_PERFORMANCE, t);
+        try {
+            PerformanceHudRenderer.render(graphicsExtractor, deltaTracker);
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.HUD_PERFORMANCE, t);
+        }
         t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_SLAYER);
-        SlayerHudRenderer.render(graphicsExtractor, deltaTracker);
-        AlpakaPerf.end(AlpakaPerf.Section.HUD_SLAYER, t);
+        try {
+            SlayerHudRenderer.render(graphicsExtractor, deltaTracker);
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.HUD_SLAYER, t);
+        }
         t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_SLAYER_TIMER);
-        SlayerTimerHudRenderer.render(graphicsExtractor, deltaTracker);
-        AlpakaPerf.end(AlpakaPerf.Section.HUD_SLAYER_TIMER, t);
+        try {
+            SlayerTimerHudRenderer.render(graphicsExtractor, deltaTracker);
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.HUD_SLAYER_TIMER, t);
+        }
+        t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_DEPLOYABLE_TIMER);
+        try {
+            DeployableTimerHudRenderer.render(graphicsExtractor, deltaTracker);
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.HUD_DEPLOYABLE_TIMER, t);
+        }
         RagnarockFeature.render(graphicsExtractor);
         t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_INVENTORY);
-        InventoryHudRenderer.render(graphicsExtractor, deltaTracker);
-        AlpakaPerf.end(AlpakaPerf.Section.HUD_INVENTORY, t);
+        try {
+            InventoryHudRenderer.render(graphicsExtractor, deltaTracker);
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.HUD_INVENTORY, t);
+        }
         // Last, so a notice sits above every other overlay rather than under one.
         t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_NOTIFICATIONS);
-        AlpakaNotifications.render(graphicsExtractor, deltaTracker);
-        AlpakaPerf.end(AlpakaPerf.Section.HUD_NOTIFICATIONS, t);
+        try {
+            AlpakaNotifications.render(graphicsExtractor, deltaTracker);
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.HUD_NOTIFICATIONS, t);
+        }
     }
 
     /**
@@ -145,15 +172,21 @@ public class HudMixin implements ChatOverHud.Late {
         return OldMasterStarsFeature.apply(original.call(stack));
     }
 
-    /** The scoreboard sidebar: its two flat boxes become one blurred panel; see ScoreboardBlurFeature. */
-    @Inject(method = "displayScoreboardSidebar", at = @At("HEAD"))
-    private void alpaka$beginScoreboard(GuiGraphicsExtractor graphicsExtractor, Objective objective, CallbackInfo ci) {
+    /**
+     * The scoreboard sidebar: its two flat boxes become one blurred panel; see ScoreboardBlurFeature.
+     * Opened and closed around the whole method in one place, the close in a finally: as a HEAD and a
+     * TAIL hook, a sidebar that threw left the panel's shifted pose on the stack for the rest of the HUD.
+     */
+    @WrapMethod(method = "displayScoreboardSidebar")
+    private void alpaka$scoreboard(GuiGraphicsExtractor graphicsExtractor, Objective objective, Operation<Void> original) {
+        long t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_SCOREBOARD);
         ScoreboardBlurFeature.begin(graphicsExtractor);
-    }
-
-    @Inject(method = "displayScoreboardSidebar", at = @At("TAIL"))
-    private void alpaka$endScoreboard(GuiGraphicsExtractor graphicsExtractor, Objective objective, CallbackInfo ci) {
-        ScoreboardBlurFeature.end(graphicsExtractor);
+        try {
+            original.call(graphicsExtractor, objective);
+        } finally {
+            ScoreboardBlurFeature.end(graphicsExtractor);
+            AlpakaPerf.end(AlpakaPerf.Section.HUD_SCOREBOARD, t);
+        }
     }
 
     @WrapOperation(

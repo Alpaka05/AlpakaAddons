@@ -272,12 +272,37 @@ public final class MarketPreview {
         c.setItem(11, item(Items.HOPPER, "§6Sell Instantly", "§8Enchanted Hay Bale", "", "§7Inventory: §a12 items", "",
                 "§7Amount: §a12§7x", "§7Price per unit: §6147,002.5 coins", "§7Total: §61,764,030 coins", "", "§eClick to sell!"));
         c.setItem(15, item(Items.FILLED_MAP, "§aCreate Buy Order", "§8Enchanted Hay Bale", "", "§7Top Orders:",
-                "§8- §6147,002.5 coins §7each | §a1,640§7x", "§8- §6147,000 coins §7each | §a320§7x", "", "§eClick to setup Buy Order!"));
+                "§8- §6147,002.5 coins §7each | §a1,640§7x §7from §f3 §7orders", "§8- §6147,000 coins §7each | §a320§7x §7from §f1 §7order",
+                "§8- §6146,950.1 coins §7each | §a2,048§7x §7from §f5 §7orders", "§8- §6146,900 coins §7each | §a64§7x §7from §f1 §7order",
+                "§8- §6146,500 coins §7each | §a700§7x §7from §f2 §7orders", "§8- §6146,000 coins §7each | §a3,200§7x §7from §f4 §7orders",
+                "§8- §6145,000 coins §7each | §a160§7x §7from §f1 §7order", "", "§eClick to setup Buy Order!"));
         c.setItem(16, item(Items.MAP, "§6Create Sell Offer", "§8Enchanted Hay Bale", "", "§7Top Offers:",
-                "§8- §6153,420.2 coins §7each | §a960§7x", "§8- §6153,500 coins §7each | §a64§7x", "", "§eClick to setup Sell Offer!"));
+                "§8- §6153,420.2 coins §7each | §a960§7x §7in §f2 §7offers", "§8- §6153,500 coins §7each | §a64§7x §7in §f1 §7offer",
+                "§8- §6153,999.9 coins §7each | §a1,280§7x §7in §f3 §7offers", "§8- §6154,000 coins §7each | §a128§7x §7in §f1 §7offer",
+                "§8- §6155,000 coins §7each | §a2,560§7x §7in §f6 §7offers", "", "§eClick to setup Sell Offer!"));
         c.setItem(30, item(Items.ARROW, "§aGo Back", "§7To Farming"));
         c.setItem(31, item(Items.PAPER, "§aView Graphs", "§7See the price history.", "", "§eClick to view!"));
         return screen(4, c, "Farming ➜ Enchanted Hay Bale", MarketKind.BAZAAR);
+    }
+
+    /** The player's own auctions, with Create Auction beside them. */
+    public static MarketScreen manageAuctions() {
+        SimpleContainer c = filled(6, Items.STAINED_GLASS_PANE.black());
+        c.setItem(10, auction(AUCTIONS[0], true));
+        c.setItem(11, auction(AUCTIONS[1], false));
+        c.setItem(48, item(Items.GOLDEN_HORSE_ARMOR, "§aCreate Auction", "§7Set your own items on auction", "§7for other players to purchase.", "", "§eClick to become rich!"));
+        c.setItem(49, item(Items.ARROW, "§aGo Back", "§7To Auction House"));
+        c.setItem(50, item(Items.HOPPER, "§aSort", "§8 Recently Updated", "§b▶ Highest Price", "§8 Lowest Price", "", "§eClick to switch sort!"));
+        return screen(6, c, "Manage Auctions", MarketKind.AUCTION_HOUSE);
+    }
+
+    /** The question before the whole inventory is sold, as Hypixel asks it. */
+    public static MarketScreen bazaarSellConfirm() {
+        SimpleContainer c = filled(3, Items.STAINED_GLASS_PANE.black());
+        c.setItem(11, item(Items.HOPPER, "§aSell Inventory", "§7Instantly sells the items in", "§7your inventory to the Bazaar:", "",
+                "§a12§7x §fEnchanted Hay Bale", "§a1§7x §5Purple Jerry Box", "", "§7You earn: §61,840,410 coins", "", "§eClick to confirm!"));
+        c.setItem(15, item(Items.DYED_TERRACOTTA.red(), "§cCancel", "§7Keep your items."));
+        return screen(3, c, "Are you sure?", MarketKind.BAZAAR);
     }
 
     public static MarketScreen bazaarOrders() {
@@ -316,6 +341,7 @@ public final class MarketPreview {
     /** The price sign of "Create BIN Auction", as Hypixel writes it, with this typed. */
     public static MarketInputScreen binPrice(String typed) {
         Markets.menuOpened("Create BIN Auction");
+        LowestBin.devSelling(new LowestBin.Item("HYPERION", null, 1, "Hyperion"), 444_000_000);
         return input(new String[] {"", "^^^^^^^^^^^^^^^", "Your auction", "starting bid"}, MarketKind.AUCTION_HOUSE, typed);
     }
 

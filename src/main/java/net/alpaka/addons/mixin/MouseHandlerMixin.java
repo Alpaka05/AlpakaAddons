@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class MouseHandlerMixin {
     @Inject(method = "onScroll", at = @At("HEAD"), cancellable = true)
     private void onMouseScroll(long window, double xoffset, double yoffset, CallbackInfo info) {
-        if (ZoomFeature.isZooming()) {
+        if (ZoomFeature.handlesScroll()) {
             if (yoffset != 0) {
                 ZoomFeature.onMouseScroll(yoffset);
             }

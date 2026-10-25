@@ -56,8 +56,9 @@ blaze death currently plays the hit sound.
 
 ## Dungeon solver data
 
-Some of the data the dungeon solvers use (under `src/main/java/net/alpaka/addons/features/dungeon/`
-and `src/main/resources/assets/alpaka/dungeon/`) is adapted from
+Some of the data the dungeon solvers and their tests use (under
+`src/main/java/net/alpaka/addons/features/dungeon/`, `src/main/resources/assets/alpaka/dungeon/` and
+`src/test/java/net/alpaka/addons/features/dungeon/`) is adapted from
 [Odin](https://github.com/odtheking/Odin) by odtheking, under the BSD 3-Clause License. Each such
 file says so in a header comment and has a row below. Game facts (coordinates, chat lines, quiz
 answers) are not anyone's work and are not listed. No code or data is taken from Skyblocker,
@@ -65,6 +66,13 @@ NoFrills or Skytils.
 
 | File | What | Source | Licence |
 | --- | --- | --- | --- |
+| `src/main/resources/assets/alpaka/dungeon/quiz_answers.json` (read by `features/dungeon/puzzle/QuizAnswers.java`) | Quiz answer table (questions, answers, fairy souls per zone). The answers themselves are game facts, cross-checked against Skyblocker's and Skytils' lists and both wikis; Backwater Bayou only from Odin | Odin, `src/main/resources/assets/odin/puzzles/quiz-answers.json` | BSD-3-Clause |
+| `src/main/java/net/alpaka/addons/features/dungeon/puzzle/CreeperBeamsPairs.java` | Creeper Beams lantern pairs (11 pairs; Odin's 13 rows minus one duplicate and one reversed duplicate) | Odin, `src/main/resources/assets/odin/puzzles/creeper-beams-solutions.json` (commit b412ad1c) | BSD-3-Clause |
+| `src/main/resources/assets/alpaka/dungeon/water_board.json` (read by `features/dungeon/puzzle/WaterBoardSolutions.java`) | Water Board solution timings, Standard and Fast sets | Odin, `src/main/resources/assets/odin/puzzles/water-solutions.json` (sets "false" and "true"). The Standard set is the one-flow solutions by derek1984, Jade and bonsai collected in [Desco1/WaterSolver](https://github.com/Desco1/WaterSolver), as shipped in Odin | BSD-3-Clause |
+| `src/main/java/net/alpaka/addons/features/dungeon/terminal/TerminalSolver.java` | Select All item name prefixes per color (white: white, bone, wool; black: black, ink; blue: blue, lapis; brown: brown, cocoa; green: green, cactus; red: red, rose; yellow: yellow, dandelion; light gray: light gray, silver) | Odin, `SelectAllHandler.kt` | BSD-3-Clause |
+| `src/main/java/net/alpaka/addons/features/dungeon/device/ArrowAlignPatterns.java` | Arrow Align: the nine solution layouts (target rotation per item frame) | Odin, `features/impl/boss/ArrowAlign.kt` (`possibleSolutions`) | BSD-3-Clause |
+| `src/test/java/net/alpaka/addons/features/dungeon/puzzle/BoulderSearchTest.java` | The eight Boulder board layouts and three of their push lists, as test data only | Odin, `src/main/resources/assets/odin/puzzles/boulder-solutions.json` | BSD-3-Clause |
+| `src/test/java/net/alpaka/addons/features/dungeon/puzzle/IceFillSearchTest.java` | The fifteen Ice Fill floor layouts, decoded, as test data only | Odin, `src/main/resources/assets/odin/puzzles/ice-fill-floors.json` | BSD-3-Clause |
 
 Odin's licence, as BSD-3 asks for it to be reproduced with anything derived from it:
 

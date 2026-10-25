@@ -797,6 +797,22 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         int rowY = clipY + 2 - detailScroll.offset();
         int startY = rowY;
 
+        // In setup mode the feature list with its switches is folded away, so the feature's own
+        // switch moves to the top of its settings.
+        if (setupMode && setupProgress > 0.5f && feature.hasToggle()) {
+            ConfigOption master = feature.master;
+            boolean shown = visible(rowY, SETTING_ROW_H, clipY, clipH);
+            boolean hover = inside(mouseX, mouseY, rowX, rowY, rowW, SETTING_ROW_H) && inside(mouseX, mouseY, x, clipY, w, clipH);
+            if (hover) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, SETTING_ROW_H, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
+            int right = rowX + rowW - 4;
+            // While the list is still folding it animates the switch already.
+            if (setupProgress >= 0.999f) master.updateToggleProgress(deltaSec);
+            graphics.text(this.font, GuiFont.text("Enabled"), rowX + 4, rowY + 4, AlpakaStyle.TEXT, false);
+            drawToggle(graphics, right - TOGGLE_W, rowY + (SETTING_ROW_H - TOGGLE_H) / 2, master.getToggleProgress());
+            if (shown) hits.add(new Hit(rowX, Math.max(rowY, clipY), rowW, SETTING_ROW_H, (mx, my) -> master.toggleBool()));
+            rowY += SETTING_ROW_H;
+        }
+
         // Description, folded away on request.
         String description = feature.description == null ? "" : feature.description;
         if (!description.isEmpty()) {

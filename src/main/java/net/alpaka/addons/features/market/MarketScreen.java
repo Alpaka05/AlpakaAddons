@@ -475,9 +475,10 @@ public class MarketScreen extends ContainerScreen {
         if (crumbs.isEmpty()) {
             graphics.text(this.font, title, tx, y + (HEADER_H - titleH) / 2, AlpakaStyle.TEXT, false);
         } else {
-            graphics.text(this.font, title, tx, y + 5, AlpakaStyle.TEXT, false);
+            // The same lines as the config's logo and version, so the title keeps clear of the edge.
+            graphics.text(this.font, title, tx, y + 8, AlpakaStyle.TEXT, false);
             String path = String.join("  ›  ", crumbs);
-            graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, path, room)), tx, y + 20,
+            graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, path, room)), tx, y + 22,
                     AlpakaStyle.TEXT_MUTED, false);
         }
     }

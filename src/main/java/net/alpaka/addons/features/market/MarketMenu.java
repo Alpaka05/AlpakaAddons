@@ -327,7 +327,11 @@ public final class MarketMenu {
                 if (firstRich == null) firstRich = slot;
             }
         }
-        if (rich >= 2 || content.size() > 10) {
+        // A page to browse - categories, a sort or a filter beside it - is a list even with a single
+        // auction or product on it, as when a search finds just one.
+        boolean browsing = !categories.isEmpty() || controls.containsKey(Control.SORT)
+                || controls.containsKey(Control.TIER) || controls.containsKey(Control.BIN_FILTER);
+        if (rich >= 2 || content.size() > 10 || (browsing && rich >= 1)) {
             layout = Layout.GRID;
             return;
         }

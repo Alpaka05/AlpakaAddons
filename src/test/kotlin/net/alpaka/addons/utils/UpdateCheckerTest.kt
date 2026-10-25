@@ -13,9 +13,9 @@ class UpdateCheckerTest {
             """"prerelease":$prerelease,"assets":[$assets]}"""
     }
 
-    private fun newest(running: String, minecraft: String, vararg releases: String) =
+    private fun newest(running: String, minecraft: String, vararg releases: String, preReleases: Boolean = false) =
         UpdateChecker.newest("[" + releases.joinToString(",") + "]", ReleaseVersion.parse(running)!!,
-            UpdateChecker.jarSuffixes(minecraft))?.version
+            UpdateChecker.jarSuffixes(minecraft), preReleases)?.version
 
     @Test
     fun aHotfixGameLooksForItsOwnVersionThenTheMajorMinor() {
@@ -45,9 +45,21 @@ class UpdateCheckerTest {
     }
 
     @Test
-    fun draftsAreSkippedAndPreReleasesReachOnlyTesters() {
+    fun draftsAreSkippedAndPreReleasesOnlyOnThePreReleaseStream() {
         val beta = release("2.0.0-beta.1", "alpaka-2.0.0-beta.1-mc26.2.jar", prerelease = true)
-        assertNull(newest("1.4.0", "26.2", release("1.5.0", "alpaka-1.5.0-mc26.2.jar", draft = true), beta))
-        assertEquals("2.0.0-beta.1", newest("2.0.0-alpha+3.a1b2c3d", "26.2.1", beta))
+        val draft = release("1.5.0", "alpaka-1.5.0-mc26.2.jar", draft = true)
+        assertNull(newest("1.4.0", "26.2", draft, beta))
+        assertNull(newest("1.4.0", "26.2", draft, preReleases = true))
+        assertEquals("2.0.0-beta.1", newest("1.4.0", "26.2", beta, preReleases = true))
+        assertEquals("2.0.0-beta.1", newest("2.0.0-alpha+3.a1b2c3d", "26.2.1", beta, preReleases = true))
+        // A suffixed tag GitHub doesn't mark as a pre-release is one all the same.
+        assertNull(newest("1.4.0", "26.2", release("2.0.0-rc.1", "alpaka-2.0.0-rc.1-mc26.2.jar")))
+    }
+
+    @Test
+    fun aTesterOnTheReleaseStreamHearsOnlyOfTheRelease() {
+        val beta = release("2.0.0-beta.1", "alpaka-2.0.0-beta.1-mc26.2.jar", prerelease = true)
+        assertNull(newest("2.0.0-alpha+3.a1b2c3d", "26.2", beta))
+        assertEquals("2.0.0", newest("2.0.0-alpha+3.a1b2c3d", "26.2", beta, release("2.0.0", "alpaka-2.0.0-mc26.2.jar")))
     }
 }

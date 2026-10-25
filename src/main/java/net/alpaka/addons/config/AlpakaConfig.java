@@ -1,9 +1,11 @@
 package net.alpaka.addons.config;
 
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.annotations.SerializedName;
 import net.alpaka.addons.AlpakaAddons;
+import net.alpaka.addons.client.gui.AlpakaStyle;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.File;
@@ -230,6 +232,8 @@ public class AlpakaConfig {
     public boolean hideMobDeathsEnabled = false;
     /** With Hide Mob Deaths: also no puff of smoke when the server removes the body. */
     public boolean hideMobDeathSmoke = false;
+    /** Hides explosion particles, server smoke puffs and explosion debris. Cosmetic only. */
+    public boolean hideExplosions = false;
     /** Hides the flames on burning mobs, players and yourself in third person. Cosmetic only. */
     public boolean hideEntityFire = false;
     /** Opacity of the fire covering the screen while you burn in first person, 0..1; 1 is vanilla, 0 hides it. */
@@ -274,6 +278,8 @@ public class AlpakaConfig {
     public boolean blazeMuteAllWorldAudio = false;
     public float lowHpHeartbeatThreshold = 0.30f;
     public int menuAccentColor = 0xFF29B6B2; // Default teal
+    /** Index into {@code AlpakaStyle.Theme}: how the Alpaka menus look. 0 is the dark default. */
+    public int menuTheme = 0;
     /** The player's own presets in the color picker, ARGB, oldest first; shared by every color option. */
     public java.util.List<Integer> customColorPresets = new java.util.ArrayList<>();
     /**
@@ -332,6 +338,7 @@ public class AlpakaConfig {
     public boolean performanceHudShowFps = true;
     public boolean performanceHudShowPing = true;
     public boolean performanceHudShowTps = true;
+    public boolean performanceHudAnimate = false;
     public int performanceHudX = net.alpaka.addons.client.hud.HudDefaults.PERFORMANCE_X;
     public int performanceHudY = net.alpaka.addons.client.hud.HudDefaults.PERFORMANCE_Y;
     public float performanceHudScale = 1.0f;
@@ -385,6 +392,8 @@ public class AlpakaConfig {
     public boolean allowApiCalls = true;
     /** A chat line on joining a world when a newer release is on GitHub. Needs allowApiCalls. */
     public boolean updateNotificationsEnabled = true;
+    /** Which releases the update check offers: 0 full releases only, 1 pre-releases as well (UpdateChecker.STREAM_NAMES). */
+    public int updateStream = 0;
     /** The release whose notes the player last opened from the main menu; its What's New card shows a dot until then. */
     public String releaseNotesSeen = "";
     /** The What's New card on the custom main menu, with the newest release's notes. */
@@ -591,6 +600,8 @@ public class AlpakaConfig {
     public boolean scoreboardAlpakaFooter = true;
     /** Ctrl+F in the chat turns the input line into a search that filters the visible messages. */
     public boolean chatSearchEnabled = true;
+    /** Right-clicking a message in the open chat copies its text; see ChatCopyFeature. */
+    public boolean chatCopyEnabled = true;
     /** Scrolling the chat glides the lines into place instead of jumping a line per notch. */
     public boolean chatSmoothScrollEnabled = true;
     /** The open chat's scrollbar is a wider, rounded bar that can be dragged with the mouse. */
@@ -715,6 +726,19 @@ public class AlpakaConfig {
     public boolean itemValueEnabled = true;
     /** Which Bazaar price the parts count at: 0 what they cost to buy now, 1 what they sell for now. */
     public int itemValueBazaarPrice = 0;
+    /** The Chest Value panel beside a menu: what everything in it is worth; see ChestValuePanel. Needs allowApiCalls. */
+    public boolean chestValueEnabled = true;
+    /** Whether the panel is showing: its key switches it, and it stays so from menu to menu until pressed again. */
+    public boolean chestValueShown = false;
+    /** Whether a chest's panel counts the player's own inventory below it too. */
+    public boolean chestValueIncludeInventory = false;
+    /** Which side of the menu the panel sits on: 0 left, 1 right (where the item list mods usually are). */
+    public int chestValueSide = 0;
+    /** How its list is ordered, an index into ChestValue.Sort: value, price each, amount. */
+    public int chestValueSort = 0;
+    /** Where the panel was moved to, as a share of the screen's width and height; -1 beside the menu. */
+    public float chestValueX = -1f;
+    public float chestValueY = -1f;
 
     // Command Wheel options
     /**
@@ -728,6 +752,32 @@ public class AlpakaConfig {
      * opens it, a click runs a command, and pressing the key again closes it.
      */
     public boolean commandWheelToggleMode = false;
+
+    /**
+     * The mod's keys, by key mapping name ("key.alpaka.zoom") to the bound key's name
+     * ("key.keyboard.c"). A key left out is on its default. They are set in the config menu and kept
+     * here rather than in options.txt; see AlpakaKeyBinds.
+     */
+    public Map<String, String> keyBinds = new HashMap<>();
+    /** Whether keys bound in vanilla's Controls before have been taken over from options.txt. */
+    public boolean keyBindsImported = false;
+
+    /** Holding the Zoom key zooms in; scrolling while holding it zooms further. */
+    public boolean zoomEnabled = true;
+    /** Off: zoom while the key is held. On: one press zooms in, the next zooms back out. */
+    public boolean zoomToggleMode = false;
+    /** How far the zoom goes in, as a factor of the normal view. */
+    public float zoomAmount = 4.0f;
+    /** Scrolling while zoomed changes the zoom instead of the hotbar slot. */
+    public boolean zoomScrollEnabled = true;
+    /** How the zoom moves in and out: an index into ZoomFeature.ANIMATIONS. */
+    public int zoomAnimation = 1;
+    /** How long the zoom animation takes, in milliseconds. */
+    public int zoomAnimationMs = 250;
+    /** Turns on vanilla's cinematic camera while zoomed. */
+    public boolean zoomCinematicCamera = false;
+    /** Turns the mouse down by the zoom factor, so aiming feels the same zoomed in. */
+    public boolean zoomReduceSensitivity = true;
 
     /** Legacy, pre-pages. Read once by CommandWheelPages and then cleared. */
     public java.util.List<String> commandWheelCommands = new java.util.ArrayList<>(java.util.List.of(
@@ -1103,7 +1153,10 @@ public class AlpakaConfig {
         fresh.lastSeenVersion = old.lastSeenVersion;
         fresh.configVersion = old.configVersion;
         fresh.menuFontNunitoApplied = true;
+        // The keys go back to their defaults too; options.txt is not read again for the old ones.
+        fresh.keyBindsImported = true;
         instance = fresh;
+        applyMenuTheme();
         save();
     }
 
@@ -1161,6 +1214,12 @@ public class AlpakaConfig {
         }
 
         if (!existedAtStart || sanitized > 0 || migrated) save();
+        applyMenuTheme();
+    }
+
+    /** Puts the saved Menu Theme on every menu. */
+    public static void applyMenuTheme() {
+        AlpakaStyle.applyTheme(AlpakaStyle.Theme.of(instance.menuTheme));
     }
 
     /**
@@ -1321,6 +1380,7 @@ public class AlpakaConfig {
         this.stopBlazeSpinning = false;
         this.hideHurtOverlayEnabled = false;
         this.hideMobDeathsEnabled = false;
+        this.hideExplosions = false;
         this.hideEntityFire = false;
         this.firstPersonFireStatic = false;
         this.showOwnNameTag = false;
@@ -1355,6 +1415,7 @@ public class AlpakaConfig {
         this.customSignInputEnabled = false;
         this.marketPriceHistoryEnabled = false;
         this.itemValueEnabled = false;
+        this.chestValueEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
         this.customDamageTagsEnabled = false;
@@ -1365,6 +1426,7 @@ public class AlpakaConfig {
         this.scoreboardBlurEnabled = false;
         this.scoreboardAlpakaFooter = false;
         this.chatSearchEnabled = false;
+        this.chatCopyEnabled = false;
         this.alwaysSprintEnabled = false;
         this.expandChatHistory = false;
         this.chatPeekEnabled = false;
@@ -1387,6 +1449,7 @@ public class AlpakaConfig {
         this.partyInvitePromptEnabled = false;
         this.oldMasterStarsEnabled = false;
         this.cacheResourcePackEnabled = false;
+        this.zoomEnabled = false;
         save();
     }
 

@@ -4,7 +4,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.Window;
 import net.alpaka.addons.client.AlpakaKeyCategory;
 import net.alpaka.addons.config.AlpakaConfig;
-import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
+import net.alpaka.addons.client.AlpakaKeyBinds;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -26,7 +26,7 @@ import org.lwjgl.glfw.GLFW;
  * the key is held, in the world and in a menu alike, and letting go puts the chat back to its newest
  * line.
  *
- * The key is unbound until the player picks one under Options > Controls, in the mod's own section.
+ * The key is unbound until the player picks one in the feature's settings in the config menu.
  *
  * Everything hangs off {@link #isPeeking()}: the two hooks in ChatComponent (the chat height and the
  * display mode of the HUD draw), the HUD chat hook in Hud, the overlay hook in Screen and the scroll
@@ -53,7 +53,7 @@ public final class ChatPeekFeature {
 
     public static void register() {
         PEEK_KEY = new PeekKeyMapping();
-        KeyMappingHelper.registerKeyMapping(PEEK_KEY);
+        AlpakaKeyBinds.register(PEEK_KEY);
     }
 
     /**

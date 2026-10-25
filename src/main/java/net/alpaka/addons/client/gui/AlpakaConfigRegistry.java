@@ -1319,6 +1319,8 @@ public class AlpakaConfigRegistry {
 
         // --- 5. SKYBLOCK ---
 
+        registerDungeonOptions();
+
         OPTIONS.add(new ConfigOption("Etherwarp Overlay", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("etherwarp_overlay", "Etherwarp Overlay",
@@ -2310,6 +2312,258 @@ public class AlpakaConfigRegistry {
 
         registerHudStyleToggles();
         buildCategoryCache();
+    }
+
+    /** One line of a dropdown, saved on every change. */
+    private static ConfigOption.ToggleEntry toggle(String label, java.util.function.Predicate<AlpakaConfig> getter,
+                                                   java.util.function.BiConsumer<AlpakaConfig, Boolean> setter) {
+        return new ConfigOption.ToggleEntry(label,
+                () -> getter.test(AlpakaConfig.instance),
+                v -> { setter.accept(AlpakaConfig.instance, v); AlpakaConfig.save(); });
+    }
+
+    /**
+     * The Dungeon section: the puzzle solvers, the F7/M7 terminal solvers with their own custom
+     * window, and the F7/M7 device solvers. All of it only draws or refuses the player's own click;
+     * see features/dungeon/DungeonSolvers. Four masters, each a feature row of its own (ConfigTree).
+     */
+    private static void registerDungeonOptions() {
+        OPTIONS.add(new ConfigOption("Dungeon", ConfigCategory.SKYBLOCK));
+
+        OPTIONS.add(new ConfigOption("dungeon_solvers", "Solvers",
+                "Shows the solution of every Catacombs puzzle as boxes, lines and labels in the room you are in. "
+                        + "It only draws, and walls hide it like any block.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.dungeonSolversEnabled,
+                v -> { AlpakaConfig.instance.dungeonSolversEnabled = v; AlpakaConfig.save(); },
+                "dungeon dungeons catacombs puzzle puzzles solver solvers solution helper room f1 f2 f3 f4 f5 f6 f7 m7 "
+                        + "master mode three weirdos chests quiz trivia oruo tic tac toe higher or lower blaze creeper beams "
+                        + "lanterns teleport maze tp pads water board levers boulder boxes ice fill ice path silverfish"));
+
+        OPTIONS.add(new ConfigOption("dungeon_solver_puzzles", "Puzzles",
+                "Pick which puzzles are solved.",
+                ConfigCategory.SKYBLOCK,
+                java.util.List.of(
+                        toggle("Three Weirdos", c -> c.solveThreeWeirdos, (c, v) -> c.solveThreeWeirdos = v),
+                        toggle("Quiz", c -> c.solveQuiz, (c, v) -> c.solveQuiz = v),
+                        toggle("Tic Tac Toe", c -> c.solveTicTacToe, (c, v) -> c.solveTicTacToe = v),
+                        toggle("Higher Or Lower", c -> c.solveHigherOrLower, (c, v) -> c.solveHigherOrLower = v),
+                        toggle("Creeper Beams", c -> c.solveCreeperBeams, (c, v) -> c.solveCreeperBeams = v),
+                        toggle("Teleport Maze", c -> c.solveTeleportMaze, (c, v) -> c.solveTeleportMaze = v),
+                        toggle("Water Board", c -> c.solveWaterBoard, (c, v) -> c.solveWaterBoard = v),
+                        toggle("Boulder", c -> c.solveBoulder, (c, v) -> c.solveBoulder = v),
+                        toggle("Ice Fill", c -> c.solveIceFill, (c, v) -> c.solveIceFill = v),
+                        toggle("Ice Path", c -> c.solveIcePath, (c, v) -> c.solveIcePath = v)
+                ),
+                "dungeon puzzle puzzles pick which weirdos quiz trivia tic tac toe blaze creeper beams teleport maze "
+                        + "water board boulder ice fill path silverfish"));
+
+        OPTIONS.add(ConfigOption.color("dungeon_solver_color", "Solution Color",
+                "What to do now: the right chest, answer, pad, lever or block. The device solvers use it too.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.dungeonSolverColor,
+                v -> { AlpakaConfig.instance.dungeonSolverColor = v; AlpakaConfig.save(); },
+                "dungeon solver solution color correct green highlight"));
+
+        OPTIONS.add(ConfigOption.color("dungeon_solver_next_color", "Next Color",
+                "What comes after it, such as the next blaze or the next step.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.dungeonSolverNextColor,
+                v -> { AlpakaConfig.instance.dungeonSolverNextColor = v; AlpakaConfig.save(); },
+                "dungeon solver next color second step yellow"));
+
+        OPTIONS.add(ConfigOption.color("dungeon_solver_wrong_color", "Wrong Color",
+                "Used pads, lying weirdos and wrong answers.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.dungeonSolverWrongColor,
+                v -> { AlpakaConfig.instance.dungeonSolverWrongColor = v; AlpakaConfig.save(); },
+                "dungeon solver wrong color red liar used pad"));
+
+        OPTIONS.add(new ConfigOption("dungeon_solver_box_style", "Box Style",
+                "How a marked block is drawn: its edges, a translucent fill, or both.",
+                ConfigCategory.SKYBLOCK,
+                () -> (float) AlpakaConfig.instance.dungeonSolverBoxStyle,
+                v -> {
+                    int index = Math.round(v);
+                    if (index != AlpakaConfig.instance.dungeonSolverBoxStyle) {
+                        AlpakaConfig.instance.dungeonSolverBoxStyle = index;
+                        AlpakaConfig.save();
+                    }
+                },
+                0.0f, (float) (net.alpaka.addons.features.dungeon.render.SolverColors.BOX_STYLES.length - 1),
+                val -> net.alpaka.addons.features.dungeon.render.SolverColors.boxStyleName(Math.round(val)),
+                "dungeon solver box style outline filled fill both edges")
+                .choices(net.alpaka.addons.features.dungeon.render.SolverColors.BOX_STYLES));
+
+        OPTIONS.add(new ConfigOption("dungeon_solver_line_width", "Line Thickness",
+                "How thick box edges and lines are.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.dungeonSolverLineWidth,
+                v -> { AlpakaConfig.instance.dungeonSolverLineWidth = Math.round(v * 10.0f) / 10.0f; AlpakaConfig.save(); },
+                1.0f, 6.0f, val -> String.format(Locale.ROOT, "%.1f px", val),
+                "dungeon solver line thickness width outline px pixels"));
+
+        OPTIONS.add(new ConfigOption("dungeon_solver_labels", "Show Labels",
+                "Order numbers, click counts and countdowns next to the marks.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.dungeonSolverLabels,
+                v -> { AlpakaConfig.instance.dungeonSolverLabels = v; AlpakaConfig.save(); },
+                "dungeon solver labels text numbers order count countdown timer"));
+
+        OPTIONS.add(new ConfigOption("terminal_solvers", "Terminal Solvers",
+                "Marks the solution of the F7 and M7 terminals in their chest window. It only draws; "
+                        + "every click is still yours.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.terminalSolversEnabled,
+                v -> { AlpakaConfig.instance.terminalSolversEnabled = v; AlpakaConfig.save(); },
+                "dungeon catacombs f7 m7 floor 7 goldor terminal terminals solver solvers panes rubix color numbers order "
+                        + "starts with select all melody chest gui p3"));
+
+        OPTIONS.add(new ConfigOption("terminal_solver_types", "Terminals",
+                "Pick which terminals are solved.",
+                ConfigCategory.SKYBLOCK,
+                java.util.List.of(
+                        toggle("Correct All the Panes", c -> c.solvePanesTerminal, (c, v) -> c.solvePanesTerminal = v),
+                        toggle("Change All to Same Color", c -> c.solveRubixTerminal, (c, v) -> c.solveRubixTerminal = v),
+                        toggle("Click in Order", c -> c.solveNumbersTerminal, (c, v) -> c.solveNumbersTerminal = v),
+                        toggle("What Starts With", c -> c.solveStartsWithTerminal, (c, v) -> c.solveStartsWithTerminal = v),
+                        toggle("Select All", c -> c.solveSelectAllTerminal, (c, v) -> c.solveSelectAllTerminal = v),
+                        toggle("Click the Button on Time", c -> c.solveMelodyTerminal, (c, v) -> c.solveMelodyTerminal = v)
+                ),
+                "terminal terminals pick which panes rubix same color numbers order starts with select all melody button"));
+
+        OPTIONS.add(new ConfigOption("terminal_hide_other_items", "Hide Other Items",
+                "In the chest window, items that are not part of the solution are not drawn. Only changes what you see.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.terminalHideOtherItems,
+                v -> { AlpakaConfig.instance.terminalHideOtherItems = v; AlpakaConfig.save(); },
+                "terminal hide other items wrong clutter clean"));
+
+        OPTIONS.add(new ConfigOption("terminal_predict_clicks", "Predict Clicks",
+                "Moves the marks on as soon as you click instead of when the server confirms the click. "
+                        + "Off, a clicked cell only shows as pending until the server answers.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.terminalPredictClicks,
+                v -> { AlpakaConfig.instance.terminalPredictClicks = v; AlpakaConfig.save(); },
+                "terminal predict prediction clicks ping lag pending confirm"));
+
+        OPTIONS.add(new ConfigOption("terminal_block_wrong_clicks", "Block Wrong Clicks",
+                "Ignores a click on a cell that is not part of the solution, or with the wrong mouse button. "
+                        + "Nothing is sent for a blocked click. Never used for Click the Button on Time. Use at your own risk.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.terminalBlockWrongClicks,
+                v -> { AlpakaConfig.instance.terminalBlockWrongClicks = v; AlpakaConfig.save(); },
+                "terminal block wrong clicks misclick refuse cancel protect"));
+
+        OPTIONS.add(new ConfigOption("terminal_first_click_guard", "First Click Protection",
+                "Hypixel is believed to flag clicks made right after a terminal opens, so these are ignored and nothing "
+                        + "is sent for them. Turning this off is at your own risk.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.terminalFirstClickGuard,
+                v -> { AlpakaConfig.instance.terminalFirstClickGuard = v; AlpakaConfig.save(); },
+                "terminal first click protection guard delay watchdog flag ban lag"));
+
+        OPTIONS.add(new ConfigOption("terminal_first_click_ms", "First Click Delay",
+                "How long after a terminal opens clicks are ignored. The server also has to tick once per 50 ms of it, "
+                        + "so a lagging server waits longer.",
+                ConfigCategory.SKYBLOCK,
+                () -> (float) AlpakaConfig.instance.terminalFirstClickMs,
+                v -> { AlpakaConfig.instance.terminalFirstClickMs = Math.round(v / 10.0f) * 10; AlpakaConfig.save(); },
+                350.0f, 800.0f, val -> String.format(Locale.ROOT, "%d ms", Math.round(val)),
+                "terminal first click delay ms milliseconds ticks protection"));
+
+        OPTIONS.add(new ConfigOption("terminal_rate_guard", "Click Rate Guard",
+                "Ignores a click that comes within one server tick of the last one, so fast clicks are not throttled. "
+                        + "Nothing is sent for an ignored click.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.terminalRateGuard,
+                v -> { AlpakaConfig.instance.terminalRateGuard = v; AlpakaConfig.save(); },
+                "terminal click rate guard throttle limit fast double click tick"));
+
+        OPTIONS.add(ConfigOption.color("terminal_solution_color", "Solution Color",
+                "The cells to click.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.terminalSolutionColor,
+                v -> { AlpakaConfig.instance.terminalSolutionColor = v; AlpakaConfig.save(); },
+                "terminal solution color click green"));
+
+        OPTIONS.add(ConfigOption.color("terminal_next_color", "Second Color",
+                "Click in Order: the cell after the next one.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.terminalNextColor,
+                v -> { AlpakaConfig.instance.terminalNextColor = v; AlpakaConfig.save(); },
+                "terminal second next color numbers order"));
+
+        OPTIONS.add(ConfigOption.color("terminal_third_color", "Third Color",
+                "Click in Order: the third cell.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.terminalThirdColor,
+                v -> { AlpakaConfig.instance.terminalThirdColor = v; AlpakaConfig.save(); },
+                "terminal third color numbers order"));
+
+        OPTIONS.add(ConfigOption.color("terminal_rubix_left_color", "Left Click Color",
+                "Change All to Same Color: panes that need left clicks.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.terminalRubixLeftColor,
+                v -> { AlpakaConfig.instance.terminalRubixLeftColor = v; AlpakaConfig.save(); },
+                "terminal rubix same color left click"));
+
+        OPTIONS.add(ConfigOption.color("terminal_rubix_right_color", "Right Click Color",
+                "Change All to Same Color: panes that need right clicks.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.terminalRubixRightColor,
+                v -> { AlpakaConfig.instance.terminalRubixRightColor = v; AlpakaConfig.save(); },
+                "terminal rubix same color right click"));
+
+        OPTIONS.add(ConfigOption.color("terminal_melody_color", "Melody Color",
+                "Click the Button on Time: the target column and the moving pane.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.terminalMelodyColor,
+                v -> { AlpakaConfig.instance.terminalMelodyColor = v; AlpakaConfig.save(); },
+                "terminal melody color button on time column"));
+
+        OPTIONS.add(new ConfigOption("terminal_custom_gui", "Custom Terminal GUI",
+                "Shows terminals in a larger, cleaner window with the solution drawn in. Works together with Terminal "
+                        + "Solvers. The clicks sent are exactly the clicks you make.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.terminalCustomGui,
+                v -> { AlpakaConfig.instance.terminalCustomGui = v; AlpakaConfig.save(); },
+                "dungeon f7 m7 terminal custom gui window screen bigger larger clean odin grid"));
+
+        OPTIONS.add(new ConfigOption("terminal_gui_scale", "GUI Size",
+                "How large the cells of the custom window are. It shrinks to fit the screen.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.terminalGuiScale,
+                v -> { AlpakaConfig.instance.terminalGuiScale = Math.round(v * 10.0f) / 10.0f; AlpakaConfig.save(); },
+                1.0f, 3.0f, val -> String.format(Locale.ROOT, "%.1fx", val),
+                "terminal gui size scale cells bigger larger"));
+
+        OPTIONS.add(ConfigOption.color("terminal_gui_background_color", "Background Color",
+                "The custom window's background.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.terminalGuiBackgroundColor,
+                v -> { AlpakaConfig.instance.terminalGuiBackgroundColor = v; AlpakaConfig.save(); },
+                "terminal gui background color panel"));
+
+        OPTIONS.add(new ConfigOption("device_solvers", "Device Solvers",
+                "Marks what to do at the F7 and M7 devices in the Goldor phase, in the Solvers colors. It only draws, "
+                        + "and walls hide it like any block.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.deviceSolversEnabled,
+                v -> { AlpakaConfig.instance.deviceSolversEnabled = v; AlpakaConfig.save(); },
+                "dungeon catacombs f7 m7 floor 7 goldor p3 device devices solver simon says arrow align item frames "
+                        + "lights levers sharpshooter target practice shoot"));
+
+        OPTIONS.add(new ConfigOption("device_solver_types", "Devices",
+                "Pick which devices are solved.",
+                ConfigCategory.SKYBLOCK,
+                java.util.List.of(
+                        toggle("Simon Says", c -> c.solveSimonSays, (c, v) -> c.solveSimonSays = v),
+                        toggle("Arrow Align", c -> c.solveArrowAlign, (c, v) -> c.solveArrowAlign = v),
+                        toggle("Lights", c -> c.solveLightsDevice, (c, v) -> c.solveLightsDevice = v),
+                        toggle("Sharpshooter", c -> c.solveSharpshooter, (c, v) -> c.solveSharpshooter = v)
+                ),
+                "device devices pick which simon says arrow align lights levers sharpshooter"));
     }
 
     /**

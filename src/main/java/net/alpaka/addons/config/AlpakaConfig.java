@@ -503,6 +503,80 @@ public class AlpakaConfig {
     public int etherwarpSoundIndex = 0;
     public float etherwarpSoundVolume = 1.0f;
 
+    // Dungeon solvers. Visual help in the Catacombs: puzzles, F7/M7 terminals and devices. Nothing is
+    // sent; the custom terminal GUI clicks only what the player clicks, through Outbound.menuClick.
+    // Ranged values are clamped where they are read, so a hand-edited file cannot push them out.
+    /** Master switch of the puzzle solvers ("Solvers"). */
+    public boolean dungeonSolversEnabled = false;
+    public boolean solveThreeWeirdos = true;
+    public boolean solveQuiz = true;
+    public boolean solveTicTacToe = true;
+    public boolean solveHigherOrLower = true;
+    public boolean solveCreeperBeams = true;
+    public boolean solveTeleportMaze = true;
+    public boolean solveWaterBoard = true;
+    public boolean solveBoulder = true;
+    public boolean solveIceFill = true;
+    public boolean solveIcePath = true;
+    /** The thing to do now. Also used by the device solvers. */
+    public int dungeonSolverColor = 0xCC55FF55;
+    /** What comes after it. */
+    public int dungeonSolverNextColor = 0xCCFFD24D;
+    /** Used pads, liars, wrong answers. */
+    public int dungeonSolverWrongColor = 0xCCFF5555;
+    /** 0 outline, 1 filled, 2 both; see {@code SolverColors}. */
+    public int dungeonSolverBoxStyle = 2;
+    /** Outline and line thickness in screen pixels, 1..6. */
+    public float dungeonSolverLineWidth = 2.5f;
+    /** Order numbers, click counts and countdowns in the world. */
+    public boolean dungeonSolverLabels = true;
+
+    /** Master switch of the F7/M7 terminal solvers ("Terminal Solvers"). */
+    public boolean terminalSolversEnabled = false;
+    public boolean solvePanesTerminal = true;
+    public boolean solveRubixTerminal = true;
+    public boolean solveNumbersTerminal = true;
+    public boolean solveStartsWithTerminal = true;
+    public boolean solveSelectAllTerminal = true;
+    public boolean solveMelodyTerminal = true;
+    /** Master of its own feature row ("Custom Terminal GUI"); only acts while the terminal solvers are on. */
+    public boolean terminalCustomGui = false;
+    /** 1.0..3.0; a cell is round(18 * scale) GUI pixels, shrunk to fit the window. */
+    public float terminalGuiScale = 1.5f;
+    /** Vanilla chest: items that are not part of the solution are not drawn (display only). */
+    public boolean terminalHideOtherItems = false;
+    /** Advance the highlights before the server confirms a click (display only). */
+    public boolean terminalPredictClicks = false;
+    /** Refuse a wrong click: nothing is sent for it. Never for Melody. */
+    public boolean terminalBlockWrongClicks = false;
+    /** Refuse clicks right after a terminal opens: nothing is sent for them. */
+    public boolean terminalFirstClickGuard = true;
+    /** 350..800 ms; the server ticks required are ceil(ms / 50). */
+    public int terminalFirstClickMs = 500;
+    /** Refuse a click less than one server tick (50 ms) after the previous accepted one. */
+    public boolean terminalRateGuard = true;
+    /** Click this. */
+    public int terminalSolutionColor = 0xFF55FF55;
+    /** Click in Order: the second. */
+    public int terminalNextColor = 0xFF3FA8FF;
+    /** Click in Order: the third. */
+    public int terminalThirdColor = 0xFF8E6BFF;
+    /** Change All to Same Color: panes that need left clicks. */
+    public int terminalRubixLeftColor = 0xFF55FF55;
+    /** Change All to Same Color: panes that need right clicks. */
+    public int terminalRubixRightColor = 0xFFFF7A55;
+    /** Click the Button on Time: the target column and the moving pane. */
+    public int terminalMelodyColor = 0xFFFF55FF;
+    /** Background of the custom terminal GUI. */
+    public int terminalGuiBackgroundColor = 0xE0101014;
+
+    /** Master switch of the F7/M7 device solvers ("Device Solvers"); they use the Solvers colors. */
+    public boolean deviceSolversEnabled = false;
+    public boolean solveSimonSays = true;
+    public boolean solveArrowAlign = true;
+    public boolean solveLightsDevice = true;
+    public boolean solveSharpshooter = true;
+
     // Inventory HUD. Shows the 27 main-inventory slots on screen; position and scale are set in
     // the HUD editor, or it can ride directly above the hotbar.
     public boolean inventoryHudEnabled = false;
@@ -1395,6 +1469,10 @@ public class AlpakaConfig {
         this.partyInvitePromptEnabled = false;
         this.oldMasterStarsEnabled = false;
         this.cacheResourcePackEnabled = false;
+        this.dungeonSolversEnabled = false;
+        this.terminalSolversEnabled = false;
+        this.terminalCustomGui = false;
+        this.deviceSolversEnabled = false;
         save();
     }
 

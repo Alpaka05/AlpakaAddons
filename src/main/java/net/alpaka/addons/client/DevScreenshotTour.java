@@ -82,6 +82,8 @@ public final class DevScreenshotTour {
             screen("config-menu-font", () -> AlpakaConfigScreen.openOn("Design", "Menu Font").withChoiceOpen()),
             screen("config-world", () -> AlpakaConfigScreen.openOn("World", "Block Overlay")),
             screen("config-world-sky", () -> AlpakaConfigScreen.openOn("World", "Sky Effects")),
+            screen("config-dungeon", () -> AlpakaConfigScreen.openOn("Dungeon", "Solvers")),
+            screen("config-dungeon-terminals", () -> AlpakaConfigScreen.openOn("Dungeon", "Terminal Solvers")),
             screen("config-viewmodel", () -> AlpakaConfigScreen.openOn("Viewmodel", "Viewmodel Modifiers")),
             screen("color-picker", () -> new ColorPickerScreen(null, "Accent Color", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
             screen("wheel-editor", () -> new CommandWheelConfigScreen(new CustomMainMenuScreen())),

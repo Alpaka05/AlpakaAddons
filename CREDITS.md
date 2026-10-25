@@ -53,3 +53,48 @@ All paths are under `src/main/resources/assets/alpaka/sounds/`.
 
 `mob/blaze/death.ogg` and `random/successful_hit.ogg` are the same file, byte for byte, so the
 blaze death currently plays the hit sound.
+
+## Dungeon solver data
+
+Some of the data the dungeon solvers use (under `src/main/java/net/alpaka/addons/features/dungeon/`
+and `src/main/resources/assets/alpaka/dungeon/`) is adapted from
+[Odin](https://github.com/odtheking/Odin) by odtheking, under the BSD 3-Clause License. Each such
+file says so in a header comment and has a row below. Game facts (coordinates, chat lines, quiz
+answers) are not anyone's work and are not listed. No code or data is taken from Skyblocker,
+NoFrills or Skytils.
+
+| File | What | Source | Licence |
+| --- | --- | --- | --- |
+
+Odin's licence, as BSD-3 asks for it to be reproduced with anything derived from it:
+
+```
+BSD 3-Clause License
+
+Copyright (c) 2025, odtheking
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```

@@ -52,7 +52,11 @@ public final class AlpakaPerf {
         LEVEL_OVERLAYS("alpaka:level_overlays"),
         DAMAGE_TAGS("alpaka:damage_tags"),
         DAMAGE_TAGS_TICK("alpaka:damage_tags_tick"),
-        SLAYER_TICK("alpaka:slayer_tick");
+        SLAYER_TICK("alpaka:slayer_tick"),
+        /** The dungeon solvers' marks in the world, drawn and submitted. */
+        DUNGEON_SOLVERS("alpaka:dungeon_solvers"),
+        /** The dungeon solvers' tick: room detection and every solver. */
+        DUNGEON_SOLVERS_TICK("alpaka:dungeon_solvers_tick");
 
         final String id;
         final boolean countOnly;

@@ -56,6 +56,7 @@ class DisableAllFeaturesTest {
             "cacheResourcePackEnabled", "guildPrefixEnabled", "bridgeBotFormatterEnabled", "ragnarockEnabled",
             "onlyCritDamageEnabled", "deployableTimerEnabled", "customAuctionHouseEnabled", "customBazaarEnabled",
             "marketPriceHistoryEnabled", "customSignInputEnabled",
+            "dungeonSolversEnabled", "terminalSolversEnabled", "terminalCustomGui", "deviceSolversEnabled",
             // Cosmetics
             "customNameTagEnabled", "chromaHatEnabled", "playerScaleEnabled", "customDamageTagsEnabled",
             // Utility and sounds
@@ -91,6 +92,13 @@ class DisableAllFeaturesTest {
             // Wide Health Bar, Always Sprint, Price History
             "wideHealthBarCentered", "wideHealthBarAbsorption", "alwaysSprintIgnoreGarden",
             "marketPriceHistoryRange",
+            // Dungeon solvers: each puzzle, terminal and device has its own switch under its master
+            "solveThreeWeirdos", "solveQuiz", "solveTicTacToe", "solveHigherOrLower", "solveCreeperBeams",
+            "solveTeleportMaze", "solveWaterBoard", "solveBoulder", "solveIceFill", "solveIcePath",
+            "dungeonSolverLabels", "solvePanesTerminal", "solveRubixTerminal", "solveNumbersTerminal",
+            "solveStartsWithTerminal", "solveSelectAllTerminal", "solveMelodyTerminal", "terminalHideOtherItems",
+            "terminalPredictClicks", "terminalBlockWrongClicks", "terminalFirstClickGuard", "terminalRateGuard",
+            "solveSimonSays", "solveArrowAlign", "solveLightsDevice", "solveSharpshooter",
             // HUD style: how things look, like the fonts and colors
             "hudBlurAll", "hudSmoothFontAll", "slayerHudBlur", "slayerHudSmoothFont", "slayerTimerHudBlur",
             "slayerTimerHudSmoothFont", "performanceHudBlur", "performanceHudSmoothFont", "inventoryHudBlur",

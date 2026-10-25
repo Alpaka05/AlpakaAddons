@@ -272,6 +272,19 @@ public final class DevScreenshotTour {
                     net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, false), () -> true, 1),
             screen("market-config", () -> AlpakaConfigScreen.openOn("Markets", "Custom Auction House")),
             screen("market-config-price-history", () -> AlpakaConfigScreen.openOn("Markets", "Price History")),
+            // The custom terminal window for each F7/M7 terminal, on chests filled locally.
+            screen("terminal-gui-panes", () -> net.alpaka.addons.features.dungeon.terminal.TerminalScreen.preview(
+                    net.alpaka.addons.features.dungeon.terminal.TerminalKind.PANES)),
+            screen("terminal-gui-rubix", () -> net.alpaka.addons.features.dungeon.terminal.TerminalScreen.preview(
+                    net.alpaka.addons.features.dungeon.terminal.TerminalKind.RUBIX)),
+            screen("terminal-gui-numbers", () -> net.alpaka.addons.features.dungeon.terminal.TerminalScreen.preview(
+                    net.alpaka.addons.features.dungeon.terminal.TerminalKind.NUMBERS)),
+            screen("terminal-gui-starts-with", () -> net.alpaka.addons.features.dungeon.terminal.TerminalScreen.preview(
+                    net.alpaka.addons.features.dungeon.terminal.TerminalKind.STARTS_WITH)),
+            screen("terminal-gui-select-all", () -> net.alpaka.addons.features.dungeon.terminal.TerminalScreen.preview(
+                    net.alpaka.addons.features.dungeon.terminal.TerminalKind.SELECT_ALL)),
+            screen("terminal-gui-melody", () -> net.alpaka.addons.features.dungeon.terminal.TerminalScreen.preview(
+                    net.alpaka.addons.features.dungeon.terminal.TerminalKind.MELODY)),
             // The Item Value popup over a chest of SkyBlock items, opened the way the key opens it, over
             // the item under the mouse. Its prices come from the network, so it waits for them.
             new Stop(null, () -> Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.itemvalue.ItemValuePreview.chest()),

@@ -76,7 +76,9 @@ the Hub's stained glass vendor) and the Arrow Align layouts the tests compare ag
 | `src/test/java/net/alpaka/addons/features/dungeon/puzzle/BoulderSearchTest.java` | The eight Boulder board layouts and three of their push lists, as test data only | Odin, `src/main/resources/assets/odin/puzzles/boulder-solutions.json` | BSD-3-Clause |
 | `src/test/java/net/alpaka/addons/features/dungeon/puzzle/IceFillSearchTest.java` | The fifteen Ice Fill floor layouts, decoded, as test data only | Odin, `src/main/resources/assets/odin/puzzles/ice-fill-floors.json` | BSD-3-Clause |
 
-Odin's licence, as BSD-3 asks for it to be reproduced with anything derived from it:
+Odin's licence, as BSD-3 asks for it to be reproduced with anything derived from it. The same text ships
+inside the mod, in `src/main/resources/assets/alpaka/dungeon/licenses/odin-bsd-3-clause.txt`, so every
+release jar carries it too:
 
 ```
 BSD 3-Clause License

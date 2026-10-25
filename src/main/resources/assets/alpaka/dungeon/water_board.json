@@ -1,5 +1,5 @@
 {
-  "credits": "Standard: the one-flow solutions by derek1984, Jade and bonsai, collected in Desco1/WaterSolver (https://github.com/Desco1/WaterSolver), as shipped in Odin. Fast: Odin's optimized solutions. Both adapted from Odin (https://github.com/odtheking/Odin) src/main/resources/assets/odin/puzzles/water-solutions.json, Copyright (c) 2025, odtheking, BSD-3-Clause; the licence text is in CREDITS.md.",
+  "credits": "Standard: the one-flow solutions by derek1984, Jade and bonsai, collected in Desco1/WaterSolver (https://github.com/Desco1/WaterSolver), as shipped in Odin. Fast: Odin's optimized solutions. Both adapted from Odin (https://github.com/odtheking/Odin) src/main/resources/assets/odin/puzzles/water-solutions.json, Copyright (c) 2025, odtheking, BSD-3-Clause; the licence text ships in assets/alpaka/dungeon/licenses/odin-bsd-3-clause.txt.",
   "format": "sets -> variant (1..4) -> closed doors (three ascending door indices) -> lever -> seconds after the water lever is switched on, ascending. 0.0 on a lever other than water means: flip it before the water. Water always starts with 0.0 (switching it on starts the clock); a second water time switches it off again.",
   "sets": {
     "standard": {

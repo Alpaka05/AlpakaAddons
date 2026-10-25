@@ -1,7 +1,7 @@
 {
   "_about": [
     "Answers to Oruo the Omniscient's Quiz in the Catacombs, read by QuizAnswers.",
-    "Solution data adapted from Odin by odtheking, BSD-3-Clause, see CREDITS.md. The answers are game facts, checked and completed against both Hypixel SkyBlock wikis and Skyblocker's and Skytils' lists (puzzles-chat.md 3.4).",
+    "Solution data adapted from Odin by odtheking, BSD-3-Clause; the licence text ships in assets/alpaka/dungeon/licenses/odin-bsd-3-clause.txt. The answers are game facts, checked and completed against both Hypixel SkyBlock wikis and Skyblocker's and Skytils' lists (puzzles-chat.md 3.4).",
     "questions: the question exactly as Hypixel asks it, and every option that answers it. With more than one answer the solver only marks an option if exactly one of the three is listed.",
     "fairySoulZones: 'How many Fairy Souls are there in <zone>?', with or without 'the' before the zone; the option is '<n> Fairy Souls'.",
     "'What SkyBlock year is it?' is worked out from the clock, not listed here.",

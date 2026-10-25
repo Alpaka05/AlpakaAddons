@@ -95,6 +95,7 @@ class DisableAllFeaturesTest {
             // Dungeon solvers: each puzzle, terminal and device has its own switch under its master
             "solveThreeWeirdos", "solveQuiz", "solveTicTacToe", "solveHigherOrLower", "solveCreeperBeams",
             "solveTeleportMaze", "solveWaterBoard", "solveBoulder", "solveIceFill", "solveIcePath",
+            "waterBoardFastSolutions",
             "dungeonSolverLabels", "solvePanesTerminal", "solveRubixTerminal", "solveNumbersTerminal",
             "solveStartsWithTerminal", "solveSelectAllTerminal", "solveMelodyTerminal", "terminalHideOtherItems",
             "terminalPredictClicks", "terminalBlockWrongClicks", "terminalFirstClickGuard", "terminalRateGuard",

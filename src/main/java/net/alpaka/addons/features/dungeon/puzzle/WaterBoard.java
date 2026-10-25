@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.dungeon.puzzle;
 
+import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.dungeon.SolverContext;
 import net.alpaka.addons.features.dungeon.puzzle.WaterBoardLayout.Cell;
 import net.alpaka.addons.features.dungeon.render.SolverColors;
@@ -138,7 +139,7 @@ public final class WaterBoard extends PuzzleSolver {
 
     /** The solution set in use. Fast (Odin's quicker set) needs tighter timing; Odin keeps it off by default too. */
     private static WaterBoardSolutions.Table table() {
-        return WaterBoardSolutions.Table.STANDARD;
+        return AlpakaConfig.instance.waterBoardFastSolutions ? WaterBoardSolutions.Table.FAST : WaterBoardSolutions.Table.STANDARD;
     }
 
     // --- tick ---

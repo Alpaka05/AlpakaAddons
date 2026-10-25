@@ -2358,6 +2358,14 @@ public class AlpakaConfigRegistry {
                 "dungeon puzzle puzzles pick which weirdos quiz trivia tic tac toe blaze creeper beams teleport maze "
                         + "water board boulder ice fill path silverfish"));
 
+        OPTIONS.add(new ConfigOption("water_board_fast_solutions", "Water Board: Fast Solutions",
+                "Uses quicker Water Board solutions with flips closer together. They need tighter timing; "
+                        + "off uses the standard solutions.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.waterBoardFastSolutions,
+                v -> { AlpakaConfig.instance.waterBoardFastSolutions = v; AlpakaConfig.save(); },
+                "dungeon water board levers fast quick quicker faster solutions timing"));
+
         OPTIONS.add(ConfigOption.color("dungeon_solver_color", "Solution Color",
                 "What to do now: the right chest, answer, pad, lever or block. The device solvers use it too.",
                 ConfigCategory.SKYBLOCK,

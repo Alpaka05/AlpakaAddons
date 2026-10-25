@@ -372,7 +372,10 @@ public final class ItemValuePopup {
         AlpakaStyle.popover(graphics, x, y, w, h);
         String tip = drawHeader(graphics, font, x, y, w, mx, my);
         int cy = y + HEADER_H;
-        if (showBar) drawBar(graphics, x + PAD, cy + 6, w - 2 * PAD);
+        if (showBar) {
+            String barTip = drawBar(graphics, x + PAD, cy + 6, w - 2 * PAD, mx, my);
+            if (barTip != null) tip = barTip;
+        }
         cy += barArea;
 
         listX = x;
@@ -491,20 +494,42 @@ public final class ItemValuePopup {
         return tip;
     }
 
-    /** The bar split into the groups by their share of the total. */
-    private static void drawBar(GuiGraphicsExtractor graphics, int x, int y, int w) {
+    /**
+     * The bar split into the groups by their share of the total. Returns a tooltip naming the group
+     * under the mouse, so the colors can be read without the list beside them.
+     */
+    private static String drawBar(GuiGraphicsExtractor graphics, int x, int y, int w, int mx, int my) {
         ModernGuiUtils.drawRoundedRect(graphics, x, y, w, BAR_H, BAR_H / 2, AlpakaStyle.LINE);
         double total = breakdown.total();
-        if (total <= 0) return;
+        if (total <= 0) return null;
         List<int[]> segments = new ArrayList<>();
+        List<Row> owners = new ArrayList<>();
         int at = x;
         double sum = 0;
         for (Row row : rows) {
             if (!row.heading() || !row.priced() || row.amount() <= 0) continue;
             sum += row.amount();
             int end = x + (int) Math.round(w * Math.min(1.0, sum / total));
-            if (end - at >= 1) segments.add(new int[] {at, end, color(row.group())});
+            if (end - at >= 1) {
+                segments.add(new int[] {at, end, color(row.group())});
+                owners.add(row);
+            }
             at = end;
+        }
+        String tip = null;
+        // A little taller than the bar, which is only a few pixels high.
+        if (AlpakaStyle.inside(mx, my, x, y - 3, w, BAR_H + 6)) {
+            for (int i = 0; i < segments.size(); i++) {
+                int[] s = segments.get(i);
+                if (mx >= s[0] && mx < s[1]) {
+                    Row row = owners.get(i);
+                    double share = row.amount() / total;
+                    tip = row.label() + ": " + (row.estimated() ? "~" : "") + Coins.compact(row.amount()) + ", "
+                            + (share < 0.005 ? "<1%" : Math.round(share * 100) + "%") + " of the item's value.";
+                    hoverTip("bar:" + row.group());
+                    break;
+                }
+            }
         }
         for (int i = 0; i < segments.size(); i++) {
             int[] s = segments.get(i);
@@ -522,6 +547,7 @@ public final class ItemValuePopup {
                 ModernGuiUtils.drawRect(graphics, sx, y, sw, BAR_H, s[2]);
             }
         }
+        return tip;
     }
 
     /** The list of parts, scrolled. Returns a tooltip for the row under the mouse. */

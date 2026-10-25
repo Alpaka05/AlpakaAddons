@@ -29,7 +29,9 @@ import java.util.Set;
 /**
  * Creeper Beams: marks which sea lanterns to shoot together, so that each beam passes through the
  * creeper in the middle of the room. Both lanterns of a pair get a box and a line between them, in
- * a color of their own, and the same number, which tells the pairs apart without the colors. A pair
+ * a color of their own, and the same number, which tells the pairs apart without the colors. The
+ * colors follow the Solvers colors: the first pair the Solution Color, the second the Next Color,
+ * the other two hues turned from the Solution Color ({@link SolverColors#pairColor}). A pair
  * whose beam is done (both lanterns turned to prismarine) is no longer shown; one with a single lit
  * lantern keeps only an outline there.
  *
@@ -44,17 +46,6 @@ import java.util.Set;
  */
 public final class CreeperBeams extends PuzzleSolver {
 
-    /** One color per pair, told apart easily; the alpha comes from the Solution Color. */
-    private static final int[] PALETTE = {
-            0x3FA8FF, // blue
-            0xFF9A3C, // orange
-            0xFF55FF, // magenta
-            0x7CFF4D, // lime
-            0x4DFFF0, // cyan
-            0xFFE14D, // yellow
-            0x9B6BFF, // violet
-            0xF2F2F2, // white
-    };
     /** How far a number sits from its lantern's centre, towards the other lantern: out of the block. */
     private static final double LABEL_OFFSET = 0.9;
 
@@ -100,30 +91,37 @@ public final class CreeperBeams extends PuzzleSolver {
         if (creeper == null || !roomLoaded(level, base)) return;
         claims = true;
 
-        if (rotation == null && !rotationUnknown) {
-            RoomFrame frame = ctx.frame();
-            if (frame != null) {
-                rotation = frame.rotation();
-                rotationFromFrame = true;
-            } else {
-                // The whole room is loaded, so what the lanterns say now they will keep saying.
-                rotation = CreeperBeamsLayout.findRotation(view, cellX, cellZ);
-                rotationUnknown = rotation == null;
+        RoomFrame frame = ctx.frame();
+        if (frame != null && !rotationFromFrame) {
+            // The frame settles it, also when it arrives after the lanterns were asked: DungeonRooms
+            // may have waited for a chunk the room check here did not need.
+            if (frame.rotation() != rotation) {
+                geometric = null;
+                // The pairs found before were guesses; the ones the table gives start from 1.
+                numbers.clear();
             }
+            rotation = frame.rotation();
+            rotationFromFrame = true;
+            rotationUnknown = false;
+        } else if (rotation == null && !rotationUnknown && DungeonRooms.lastProbe() != DungeonRooms.Probe.RETRY) {
+            // Only once DungeonRooms found the cell has no frame; while it is still waiting for a
+            // chunk (a few ticks at most) the frame may yet come. The whole room is loaded, so what
+            // the lanterns say now they will keep saying.
+            rotation = CreeperBeamsLayout.findRotation(view, cellX, cellZ);
+            rotationUnknown = rotation == null;
         }
         known = rotation == null ? List.of() : CreeperBeamsLayout.knownPairs(view, CreeperBeamsLayout.frame(cellX, cellZ, rotation));
         if (geometric == null && known.size() < CreeperBeamsLayout.BEAMS) {
             geometric = pairByGeometry(view, base, cellX, cellZ);
         }
 
-        int alpha = SolverColors.solution() >>> 24;
         List<Pair> all = new ArrayList<>(known);
         if (geometric != null) all.addAll(geometric);
         for (Pair pair : all) {
             State state = pair.state(view);
             if (state == null || state == State.DONE) continue;
             int number = numbers.computeIfAbsent(pair, p -> numbers.size());
-            int color = SolverColors.withAlpha(PALETTE[number % PALETTE.length], alpha);
+            int color = SolverColors.pairColor(number);
             shown.add(new Shown(pair, view.kindAt(pair.a()) == Kind.PRISMARINE, view.kindAt(pair.b()) == Kind.PRISMARINE,
                     color, number + 1));
         }

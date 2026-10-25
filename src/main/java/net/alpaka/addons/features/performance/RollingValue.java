@@ -12,7 +12,7 @@ import net.minecraft.util.ARGB;
  * rolls upward, a falling one downward.
  */
 final class RollingValue {
-    static final long DURATION_MS = 250L;
+    static final long DURATION_MS = 400L;
     private static final int LINE_HEIGHT = 9;
 
     private String value = null;

@@ -338,6 +338,7 @@ public class AlpakaConfig {
     public boolean performanceHudShowFps = true;
     public boolean performanceHudShowPing = true;
     public boolean performanceHudShowTps = true;
+    public boolean performanceHudAnimate = false;
     public int performanceHudX = net.alpaka.addons.client.hud.HudDefaults.PERFORMANCE_X;
     public int performanceHudY = net.alpaka.addons.client.hud.HudDefaults.PERFORMANCE_Y;
     public float performanceHudScale = 1.0f;

@@ -27,6 +27,12 @@ public final class TpsEstimator {
     static final long RESET_GAP_MS = 30_000L;
     static final float MAX_TPS = 20.0f;
 
+    /**
+     * Readings at or above this show as full speed. A healthy server measures 19.9 one second and
+     * 20.0 the next; that tenth tells the player nothing and only makes the number flicker.
+     */
+    static final float FULL_SPEED_FROM = 19.5f;
+
     private final long[] times = new long[CAPACITY];
     private final long[] ticks = new long[CAPACITY];
     private int count = 0;
@@ -66,6 +72,13 @@ public final class TpsEstimator {
         if (silence > stall) span += silence;
         float rate = tickSpan * 1000.0f / span;
         return Math.max(0.0f, Math.min(MAX_TPS, rate));
+    }
+
+    /** A reading in tenths of a tick for the HUD, with near-full speed shown as 20.0; -1 for NaN. */
+    public static int shownTenths(float tps) {
+        if (Float.isNaN(tps)) return -1;
+        if (tps >= FULL_SPEED_FROM) return Math.round(MAX_TPS * 10.0f);
+        return Math.round(tps * 10.0f);
     }
 
     /** When the last packet arrived, or {@link Long#MIN_VALUE} before the first. */

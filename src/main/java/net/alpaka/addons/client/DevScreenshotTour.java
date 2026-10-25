@@ -66,6 +66,7 @@ public final class DevScreenshotTour {
             screen("config-chat", () -> AlpakaConfigScreen.openOn("Chat", "Chat Tabs")),
             screen("config-chat-peek-key", () -> AlpakaConfigScreen.openOn("Chat", "Chat Peek")),
             screen("config-zoom-key", () -> AlpakaConfigScreen.openOn("World", "Zoom")),
+            screen("config-chest-value-key", () -> AlpakaConfigScreen.openOn("Markets", "Chest Value")),
             screen("config-damage-tags", () -> AlpakaConfigScreen.openOn("Cosmetics", "Custom Damage Tags")),
             screen("config-aura", () -> AlpakaConfigScreen.openOn("Cosmetics", "Aura")),
             screen("config-search", () -> new AlpakaConfigScreen(null, "blaze")),
@@ -304,6 +305,33 @@ public final class DevScreenshotTour {
             new Stop(null, () -> placeMouseAt(net.alpaka.addons.features.itemvalue.ItemValuePreview.slotCenter(16)), () -> true, 3),
             new Stop("item-value-no-id", net.alpaka.addons.features.itemvalue.ItemValueFeature::devPress, () -> true, 20),
             new Stop(null, net.alpaka.addons.features.itemvalue.ItemValuePopup::close, () -> true, 1),
+            // The Chest Value panel beside the same chest, shown the way its key shows it, left of the
+            // chest; then a line under the mouse lighting up its slots, and a slot lighting up its line.
+            new Stop(null, () -> placeMouse(0.5, 0.97), () -> true, 1),
+            new Stop("chest-value", net.alpaka.addons.features.chestvalue.ChestValueFeature::devShow,
+                    net.alpaka.addons.features.itemvalue.ItemValuePreview::settled, 40),
+            new Stop("chest-value-line", () -> placeMouseAt(net.alpaka.addons.features.chestvalue.ChestValuePanel.devRowPoint(2)),
+                    () -> true, 20),
+            new Stop("chest-value-slot", () -> placeMouseAt(net.alpaka.addons.features.itemvalue.ItemValuePreview.slotCenter(14)),
+                    () -> true, 5),
+            new Stop("chest-value-breakdown", () -> net.alpaka.addons.features.chestvalue.ChestValuePanel.devClick(
+                    net.alpaka.addons.features.chestvalue.ChestValuePanel.devRowPoint(0)), () -> true, 20),
+            // The player's own inventory counted too, as the chip under the header switches it on. The
+            // tour plays in creative, where the inventory itself opens as the creative one.
+            new Stop(null, () -> {
+                net.alpaka.addons.features.itemvalue.ItemValuePopup.close();
+                net.alpaka.addons.features.itemvalue.ItemValuePreview.fillInventory();
+                AlpakaConfig.instance.chestValueIncludeInventory = true;
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.itemvalue.ItemValuePreview.chest());
+                placeMouse(0.5, 0.97);
+            }, () -> true, 10),
+            new Stop("chest-value-inventory", () -> {}, () -> true, 10),
+            new Stop(null, () -> {
+                AlpakaConfig.instance.chestValueIncludeInventory = false;
+                net.alpaka.addons.features.chestvalue.ChestValueFeature.devHide();
+                Minecraft.getInstance().gui.setScreen(null);
+            }, () -> true, 5),
+            screen("chest-value-config", () -> AlpakaConfigScreen.openOn("Markets", "Chest Value")),
             // Over a card of the Auction House: the item the market screen draws under the mouse.
             new Stop(null, () -> {
                 Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.auctionBrowser());

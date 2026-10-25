@@ -5,5 +5,6 @@
   "key.alpaka.chat_peek": "Chat Peek",
   "key.alpaka.command_wheel": "Command Wheel",
   "key.alpaka.inventory_hud": "Inventory HUD",
-  "key.alpaka.item_value": "Item Value"
+  "key.alpaka.item_value": "Item Value",
+  "key.alpaka.chest_value": "Chest Value"
 }

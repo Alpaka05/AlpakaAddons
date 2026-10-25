@@ -55,7 +55,7 @@ class DisableAllFeaturesTest {
             "slayerHudEnabled", "worldAgeJoinMessageEnabled", "partyInvitePromptEnabled",
             "cacheResourcePackEnabled", "guildPrefixEnabled", "bridgeBotFormatterEnabled", "ragnarockEnabled",
             "onlyCritDamageEnabled", "deployableTimerEnabled", "customAuctionHouseEnabled", "customBazaarEnabled",
-            "marketPriceHistoryEnabled", "customSignInputEnabled",
+            "marketPriceHistoryEnabled", "customSignInputEnabled", "chestValueEnabled",
             // Cosmetics
             "customNameTagEnabled", "chromaHatEnabled", "playerScaleEnabled", "customDamageTagsEnabled",
             // Utility and sounds
@@ -91,6 +91,9 @@ class DisableAllFeaturesTest {
             // Wide Health Bar, Always Sprint, Price History
             "wideHealthBarCentered", "wideHealthBarAbsorption", "alwaysSprintIgnoreGarden",
             "marketPriceHistoryRange",
+            // Chest Value: whether it shows, and how
+            "chestValueShown", "chestValueIncludeInventory", "chestValueSide", "chestValueSort",
+            "chestValueX", "chestValueY",
             // HUD style: how things look, like the fonts and colors
             "hudBlurAll", "hudSmoothFontAll", "slayerHudBlur", "slayerHudSmoothFont", "slayerTimerHudBlur",
             "slayerTimerHudSmoothFont", "performanceHudBlur", "performanceHudSmoothFont", "inventoryHudBlur",

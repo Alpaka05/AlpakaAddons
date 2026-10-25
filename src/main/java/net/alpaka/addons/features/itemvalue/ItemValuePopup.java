@@ -163,7 +163,7 @@ public final class ItemValuePopup {
     }
 
     /** Opens the popup on an item of a menu, beside the mouse. */
-    static void open(Screen in, ItemStack item, double mouseX, double mouseY) {
+    public static void open(Screen in, ItemStack item, double mouseX, double mouseY) {
         screen = in;
         stack = item.copy();
         data = skyblockData(item);

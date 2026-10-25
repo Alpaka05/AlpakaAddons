@@ -12,6 +12,7 @@ import net.alpaka.addons.features.nametag.CustomNameTagFeature;
 import net.alpaka.addons.features.notification.AlpakaNotifications;
 import net.alpaka.addons.features.playerscale.PlayerScaleFeature;
 import net.alpaka.addons.features.snow.SnowOverlayRenderer;
+import net.alpaka.addons.utils.UpdateChecker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
@@ -62,6 +63,15 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.updateNotificationsEnabled,
                 v -> { AlpakaConfig.instance.updateNotificationsEnabled = v; AlpakaConfig.save(); },
                 "update new version release github download notify check outdated update notifications"));
+
+        OPTIONS.add(new ConfigOption("update_stream", "Update Stream",
+                "Which versions the update check tells you about: full releases only, or pre-releases as well.",
+                ConfigCategory.GENERAL,
+                () -> (float) UpdateChecker.stream(),
+                v -> { AlpakaConfig.instance.updateStream = Math.round(v); AlpakaConfig.save(); UpdateChecker.streamChanged(); },
+                0.0f, (float) (UpdateChecker.STREAM_NAMES.length - 1),
+                val -> UpdateChecker.STREAM_NAMES[Math.round(val)],
+                "update stream channel release pre-release prerelease beta alpha snapshot test version").choices(UpdateChecker.STREAM_NAMES));
 
         // Duration, position and a test notice, together as one feature with the test on top.
         OPTIONS.add(new ConfigOption("Notification Customization", ConfigCategory.GENERAL));

@@ -54,4 +54,14 @@ public abstract class AbstractContainerScreenMixin {
             ci.cancel();
         }
     }
+
+    /**
+     * After vanilla handled a terminal click it let through: the session notes what the slot holds
+     * now. A cancel at HEAD skips this, so it only runs for clicks that went out. Observes only.
+     */
+    @Inject(method = "slotClicked", at = @At("RETURN"))
+    private void alpaka$terminalAfterClick(Slot slot, int slotId, int button, ContainerInput input, CallbackInfo ci) {
+        if (!AlpakaConfig.instance.terminalSolversEnabled) return;
+        TerminalOverlay.afterSlotClick((AbstractContainerScreen<?>) (Object) this, slot, slotId);
+    }
 }

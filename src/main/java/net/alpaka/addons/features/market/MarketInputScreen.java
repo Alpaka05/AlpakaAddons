@@ -407,8 +407,8 @@ public class MarketInputScreen extends SignEditScreen {
                 ModernGuiUtils.drawRoundedRect(graphics, rx, ry, rw, SUGGESTION_H, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW_SELECTED);
                 ModernGuiUtils.drawRoundedRect(graphics, rx, ry + 5, 2, SUGGESTION_H - 10, 1, accent);
             }
-            // The item itself where Hypixel's list knows it; a recent search it does not know keeps a clock.
-            ItemStack icon = ItemIcons.forName(s.name());
+            // The item itself, by its tag; a recent search no list knows keeps a clock.
+            ItemStack icon = ItemIcons.forItem(ItemTags.suggestionTag(s.name(), context), s.name());
             if (!icon.isEmpty()) {
                 graphics.item(icon, rx + 6, ry + (SUGGESTION_H - 16) / 2);
             } else {

@@ -10,6 +10,8 @@ import com.mojang.authlib.properties.PropertyMap;
 import net.alpaka.addons.AlpakaAddons;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.utils.ModVersion;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.item.MissingItemModel;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
@@ -52,7 +54,29 @@ public final class ItemIcons {
 
     private static final String ITEMS = "https://api.hypixel.net/v2/resources/skyblock/items";
 
-    record Info(String material, int damage, String skin, boolean glowing, String color) {}
+    /**
+     * How an item looks. The model, when there is one, is a model from Hypixel's resource pack,
+     * {@code hypixel_skyblock:item/...}; the material is what the item is underneath, mostly paper,
+     * and what it shows as without the pack.
+     */
+    record Info(String material, int damage, String skin, boolean glowing, String color, String model) {
+        Info(String material, int damage, String skin, boolean glowing, String color) {
+            this(material, damage, skin, glowing, color, null);
+        }
+    }
+
+    /**
+     * A built item: as it shows with Hypixel's resource pack, and without it. Which one is chosen
+     * every frame, as the pack comes and goes with the server.
+     */
+    private record Icon(ItemStack plain, ItemStack modeled, Identifier model) {
+        static final Icon NONE = new Icon(ItemStack.EMPTY, null, null);
+
+        ItemStack get() {
+            if (modeled == null) return plain;
+            return Minecraft.getInstance().getModelManager().getItemModel(model) instanceof MissingItemModel ? plain : modeled;
+        }
+    }
 
     /** An amount of an item - essence is one too, ESSENCE_WITHER - or of coins, where the item is null. */
     public record Cost(String item, long amount) {
@@ -76,7 +100,7 @@ public final class ItemIcons {
      * Hypixel's list as far as it is used: how items look by name, every item id, the ids of plain
      * Minecraft items, every item's name by its id, and the upgrades of those that have any.
      */
-    record Catalog(Map<String, Info> byName, Set<String> ids, Set<String> vanillaIds,
+    record Catalog(Map<String, Info> byName, Map<String, Info> byId, Set<String> ids, Set<String> vanillaIds,
                    Map<String, String> names, Map<String, Upgrades> upgrades) {
         /**
          * Whether the item with SkyCofl's tag is a plain Minecraft item - Diamond Sword, Oak Planks -
@@ -91,25 +115,91 @@ public final class ItemIcons {
     private static volatile Catalog catalog = null;
     private static volatile boolean fetching = false;
     private static volatile long retryAt = 0L;
-    /** Built stacks by name; only touched on the render thread. */
-    private static final Map<String, ItemStack> STACKS = new HashMap<>();
+    /** Built items by name; only touched on the render thread. */
+    private static final Map<String, Icon> STACKS = new HashMap<>();
+    /** Built items by SkyCofl's tag, final ones only; only touched on the render thread. */
+    private static final Map<String, Icon> BY_TAG = new HashMap<>();
+    /** Hypixel's look for a tag, shown while the repository's file is on its way. */
+    private static final Map<String, Icon> INTERIM = new HashMap<>();
+
+    /**
+     * The item with SkyCofl's tag, which the suggestions know each name by. A tag that says plainly
+     * what it is (an enchanted book, a potion, a 1.8 block such as WOOL:6) is drawn as that. Every
+     * other item as the NotEnoughUpdates repository has it ({@link NeuItems}), as Skyblocker does:
+     * it has pets, runes and shards, which Hypixel's list leaves out, and is right where Hypixel's
+     * list is stale (High Class Archfiend Dice wears the plain dice's skin there). Until its file is
+     * in, or if it has none, by the item's id in Hypixel's list; without a tag, or for one nobody
+     * knows, by name. Going by the tag also finds the right one of items that share a name.
+     */
+    public static ItemStack forItem(String tag, String name) {
+        if (!AlpakaConfig.instance.allowApiCalls) return ItemStack.EMPTY;
+        if (tag == null || tag.isEmpty()) return forName(name);
+        Icon cached = BY_TAG.get(tag);
+        if (cached != null) return cached.get();
+        Info plain = plain(tag, name);
+        if (plain != null) return remember(tag, build(plain));
+        Info neu = NeuItems.look(tag);
+        if (neu != null) {
+            INTERIM.remove(tag);
+            return remember(tag, build(neu));
+        }
+        Catalog loaded = catalog();
+        if (loaded == null) return ItemStack.EMPTY;
+        Info hypixel = loaded.byId().get(tag);
+        if (NeuItems.missing(tag)) {
+            INTERIM.remove(tag);
+            if (hypixel != null) return remember(tag, build(hypixel));
+            return remember(tag, forNameIcon(name));
+        }
+        // Not known yet: asked again on the next frame.
+        return hypixel == null ? ItemStack.EMPTY : INTERIM.computeIfAbsent(tag, t -> build(hypixel)).get();
+    }
+
+    private static ItemStack remember(String tag, Icon icon) {
+        BY_TAG.put(tag, icon);
+        return icon.get();
+    }
+
+    /**
+     * How an item looks that its tag already says: an enchantment on the Bazaar is a book, a potion
+     * a potion bottle, and a plain item's tag is its 1.8 material and damage value.
+     */
+    static Info plain(String tag, String name) {
+        if (tag.startsWith("ENCHANTMENT_")) return new Info("enchanted_book", 0, null, false, null);
+        if (tag.startsWith("POTION")) {
+            boolean splash = name != null && name.toLowerCase(Locale.ROOT).contains("splash");
+            return new Info(splash ? "splash_potion" : "potion", 0, null, false, null);
+        }
+        int colon = tag.indexOf(':');
+        if (colon > 0) {
+            try {
+                return new Info(tag.substring(0, colon), Integer.parseInt(tag.substring(colon + 1)), null, false, null);
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        return null;
+    }
 
     /** The item for a name, or an empty stack while the list loads or if the name is not in it. */
     public static ItemStack forName(String name) {
         if (!AlpakaConfig.instance.allowApiCalls || name == null) return ItemStack.EMPTY;
+        return forNameIcon(name).get();
+    }
+
+    private static Icon forNameIcon(String name) {
         Catalog loaded = catalog;
-        if (loaded == null) {
+        if (loaded == null || name == null) {
             load();
-            return ItemStack.EMPTY;
+            return Icon.NONE;
         }
-        Map<String, Info> map = loaded.byName();
         String key = name.toLowerCase(Locale.ROOT).trim();
-        ItemStack cached = STACKS.get(key);
+        Icon cached = STACKS.get(key);
         if (cached != null) return cached;
-        Info info = map.get(key);
-        ItemStack stack = info == null ? ItemStack.EMPTY : build(info);
-        STACKS.put(key, stack);
-        return stack;
+        Info info = loaded.byName().get(key);
+        Icon icon = info == null ? Icon.NONE : build(info);
+        STACKS.put(key, icon);
+        return icon;
     }
 
     /** Hypixel's list, or null while it loads or Network Features is off; asking starts loading it. */
@@ -156,7 +246,17 @@ public final class ItemIcons {
         return ResolvableProfile.createResolved(new GameProfile(id, "alpaka", properties));
     }
 
-    private static ItemStack build(Info info) {
+    /** The item, and where it has a model from Hypixel's resource pack, the item wearing it too. */
+    private static Icon build(Info info) {
+        ItemStack plain = stack(info);
+        Identifier model = info.model() == null ? null : Identifier.tryParse(info.model());
+        if (model == null || plain.isEmpty()) return new Icon(plain, null, null);
+        ItemStack modeled = plain.copy();
+        modeled.set(DataComponents.ITEM_MODEL, model);
+        return new Icon(plain, modeled, model);
+    }
+
+    private static ItemStack stack(Info info) {
         Identifier id = Identifier.tryParse("minecraft:" + LegacyItems.modernId(info.material(), info.damage()));
         if (id == null || !BuiltInRegistries.ITEM.containsKey(id)) return ItemStack.EMPTY;
         Item item = BuiltInRegistries.ITEM.getValue(id);
@@ -217,11 +317,12 @@ public final class ItemIcons {
      */
     static Catalog index(JsonElement root) {
         Map<String, Info> map = new HashMap<>();
+        Map<String, Info> byId = new HashMap<>();
         Set<String> ids = new HashSet<>();
         Set<String> vanilla = new HashSet<>();
         Map<String, String> names = new HashMap<>();
         Map<String, Upgrades> upgrades = new HashMap<>();
-        if (!root.isJsonObject() || !root.getAsJsonObject().has("items")) return new Catalog(map, ids, vanilla, names, upgrades);
+        if (!root.isJsonObject() || !root.getAsJsonObject().has("items")) return new Catalog(map, byId, ids, vanilla, names, upgrades);
         for (JsonElement element : root.getAsJsonObject().getAsJsonArray("items")) {
             if (!element.isJsonObject()) continue;
             JsonObject o = element.getAsJsonObject();
@@ -244,9 +345,12 @@ public final class ItemIcons {
             }
             boolean glowing = o.has("glowing") && o.get("glowing").getAsBoolean();
             String color = o.has("color") ? string(o, "color") : null;
-            map.putIfAbsent(name.toLowerCase(Locale.ROOT), new Info(material, damage, skin, glowing, color));
+            String model = o.has("item_model") ? string(o, "item_model") : null;
+            Info info = new Info(material, damage, skin, glowing, color, model == null || model.isEmpty() ? null : model);
+            map.putIfAbsent(name.toLowerCase(Locale.ROOT), info);
+            if (!id.isEmpty()) byId.put(id, info);
         }
-        return new Catalog(map, ids, vanilla, names, upgrades);
+        return new Catalog(map, byId, ids, vanilla, names, upgrades);
     }
 
     /** An item's star, dungeon conversion and gemstone slot costs and its own enchantments; null without any. */

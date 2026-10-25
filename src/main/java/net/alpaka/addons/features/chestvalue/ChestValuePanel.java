@@ -460,15 +460,9 @@ public final class ChestValuePanel {
     /** The menu's name and its total, with how it moved since the menu opened, and the button that hides the panel. */
     private static String drawHeader(GuiGraphicsExtractor graphics, Font font, AbstractContainerScreen<?> c,
                                      int x, int y, int w, int mx, int my) {
-        int well = 22;
-        int wx = x + PAD;
-        int wy = y + (HEADER_H - well) / 2;
-        ModernGuiUtils.drawRoundedRect(graphics, wx, wy, well, well, 5, MarketIcons.fade(COIN, 0.14f));
-        MarketIcons.draw(graphics, c instanceof InventoryScreen ? MarketIcons.Glyph.INVENTORY : MarketIcons.Glyph.BOX,
-                wx + 5, wy + 5, 12, COIN);
-
+        // No icon before the name: the title and the total say what this is, and the name keeps the room.
         int closeX = drawClose(graphics, x, y, w, HEADER_H, mx, my);
-        int tx = wx + well + 6;
+        int tx = x + PAD + 2;
         int room = closeX - 4 - tx;
         Component title = title(c);
         String extra = !(c instanceof InventoryScreen) && AlpakaConfig.instance.chestValueIncludeInventory ? " + Inventory" : "";

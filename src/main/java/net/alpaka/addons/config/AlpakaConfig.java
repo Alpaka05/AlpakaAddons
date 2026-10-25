@@ -620,6 +620,8 @@ public class AlpakaConfig {
     public boolean alwaysSprintEnabled = false;
     /** Always sprint stays off on the Garden, where farming wants walking speed. */
     public boolean alwaysSprintIgnoreGarden = false;
+    /** The cursor stays put when Hypixel swaps one menu for the next (backpack pages and the like). */
+    public boolean keepCursorPositionEnabled = true;
     public boolean expandChatHistory = true;
     /** How many chat lines Expand Chat History keeps; vanilla keeps 100. */
     public int chatHistoryLimit = 5000;
@@ -1428,6 +1430,7 @@ public class AlpakaConfig {
         this.chatSearchEnabled = false;
         this.chatCopyEnabled = false;
         this.alwaysSprintEnabled = false;
+        this.keepCursorPositionEnabled = false;
         this.expandChatHistory = false;
         this.chatPeekEnabled = false;
         this.betterScreenshotMessageEnabled = false;

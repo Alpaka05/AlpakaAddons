@@ -285,6 +285,22 @@ public final class DevScreenshotTour {
                     net.alpaka.addons.features.dungeon.terminal.TerminalKind.SELECT_ALL)),
             screen("terminal-gui-melody", () -> net.alpaka.addons.features.dungeon.terminal.TerminalScreen.preview(
                     net.alpaka.addons.features.dungeon.terminal.TerminalKind.MELODY)),
+            // The same terminals in the vanilla chest, with the Terminal Solvers overlay (the default
+            // mode). Switched on for the tour only; not saved.
+            new Stop(null, () -> AlpakaConfig.instance.terminalSolversEnabled = true, () -> true, 1),
+            screen("terminal-overlay-panes", () -> net.alpaka.addons.features.dungeon.terminal.TerminalScreen.previewVanilla(
+                    net.alpaka.addons.features.dungeon.terminal.TerminalKind.PANES)),
+            screen("terminal-overlay-rubix", () -> net.alpaka.addons.features.dungeon.terminal.TerminalScreen.previewVanilla(
+                    net.alpaka.addons.features.dungeon.terminal.TerminalKind.RUBIX)),
+            screen("terminal-overlay-numbers", () -> net.alpaka.addons.features.dungeon.terminal.TerminalScreen.previewVanilla(
+                    net.alpaka.addons.features.dungeon.terminal.TerminalKind.NUMBERS)),
+            screen("terminal-overlay-starts-with", () -> net.alpaka.addons.features.dungeon.terminal.TerminalScreen.previewVanilla(
+                    net.alpaka.addons.features.dungeon.terminal.TerminalKind.STARTS_WITH)),
+            screen("terminal-overlay-select-all", () -> net.alpaka.addons.features.dungeon.terminal.TerminalScreen.previewVanilla(
+                    net.alpaka.addons.features.dungeon.terminal.TerminalKind.SELECT_ALL)),
+            screen("terminal-overlay-melody", () -> net.alpaka.addons.features.dungeon.terminal.TerminalScreen.previewVanilla(
+                    net.alpaka.addons.features.dungeon.terminal.TerminalKind.MELODY)),
+            new Stop(null, () -> AlpakaConfig.instance.terminalSolversEnabled = false, () -> true, 1),
             // The Item Value popup over a chest of SkyBlock items, opened the way the key opens it, over
             // the item under the mouse. Its prices come from the network, so it waits for them.
             new Stop(null, () -> Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.itemvalue.ItemValuePreview.chest()),

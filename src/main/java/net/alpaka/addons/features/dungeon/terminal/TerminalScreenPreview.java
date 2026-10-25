@@ -45,6 +45,32 @@ final class TerminalScreenPreview {
         return TerminalScreen.preview(menu, inventory, title, kind);
     }
 
+    /**
+     * The vanilla chest with the solver's overlay, for {@code kind} on the same filled chest, or null
+     * without a player. A preview session stands in for the one a real terminal gets; the chest is
+     * still not the player's open menu, so a click on it would go nowhere.
+     */
+    static Screen vanilla(TerminalKind kind) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc == null || mc.player == null) return null;
+        Inventory inventory = mc.player.getInventory();
+        int rows = kind.rows();
+        SimpleContainer chest = new SimpleContainer(rows * 9);
+        for (int i = 0; i < rows * 9; i++) chest.setItem(i, filler());
+        String title = switch (kind) {
+            case PANES -> panes(chest);
+            case RUBIX -> rubix(chest);
+            case NUMBERS -> numbers(chest);
+            case STARTS_WITH -> startsWith(chest);
+            case SELECT_ALL -> selectAll(chest);
+            case MELODY -> melody(chest);
+        };
+        ChestMenu menu = new ChestMenu(type(rows), 9_200 + kind.ordinal(), inventory, chest, rows);
+        TerminalSession.openPreview(kind, menu, title);
+        return new net.minecraft.client.gui.screens.inventory.ContainerScreen(menu, inventory,
+                net.minecraft.network.chat.Component.literal(title));
+    }
+
     private static MenuType<ChestMenu> type(int rows) {
         return switch (rows) {
             case 1 -> MenuType.GENERIC_9x1;

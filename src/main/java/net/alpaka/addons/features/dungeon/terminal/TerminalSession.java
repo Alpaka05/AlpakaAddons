@@ -83,6 +83,8 @@ public final class TerminalSession {
     private final boolean continued;
     private final State state;
 
+    /** A session on a locally filled chest for the screenshot tour; held by its screen, not by the open menu. */
+    private boolean preview = false;
     private long lastClickMs = Long.MIN_VALUE / 2;
     private int clickCount = 0;
     private Refusal lastRefusal = null;
@@ -175,6 +177,20 @@ public final class TerminalSession {
         open(kind, menu, plain);
     }
 
+    /**
+     * For the screenshot tour: a session on a chest filled locally, which is not the player's open
+     * menu, so the vanilla chest's overlay can be looked at without a server. It lasts as long as a
+     * screen shows that chest; the guards count it as long open.
+     */
+    static TerminalSession openPreview(TerminalKind kind, AbstractContainerMenu menu, String plainTitle) {
+        TerminalSession session = new TerminalSession(kind, plainTitle, menu, Util.getMillis() - 60_000L,
+                ServerTicks.count() - 1_200L, false, false, new State());
+        session.preview = true;
+        current = session;
+        replacing = null;
+        return session;
+    }
+
     /** Ends the session; the chest was closed or replaced by something else. */
     public static void close() {
         current = null;
@@ -196,7 +212,11 @@ public final class TerminalSession {
     public static void tick(Minecraft mc) {
         TerminalSession session = current;
         if (session == null) return;
-        if (mc.player == null || mc.player.containerMenu != session.menu || !AlpakaConfig.instance.terminalSolversEnabled) {
+        boolean shown = session.preview
+                ? mc.gui.screen() instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?> screen
+                        && screen.getMenu() == session.menu
+                : mc.player != null && mc.player.containerMenu == session.menu;
+        if (mc.player == null || !shown || !AlpakaConfig.instance.terminalSolversEnabled) {
             current = null;
             TerminalOverlay.reset();
         }

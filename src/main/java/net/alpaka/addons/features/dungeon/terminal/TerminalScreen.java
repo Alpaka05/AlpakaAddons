@@ -163,6 +163,11 @@ public class TerminalScreen extends ContainerScreen {
         return TerminalScreenPreview.screen(kind);
     }
 
+    /** The vanilla chest with the terminal overlay on a locally filled chest, for the screenshot tour; sends nothing. */
+    public static Screen previewVanilla(TerminalKind kind) {
+        return TerminalScreenPreview.vanilla(kind);
+    }
+
     /** A preview on {@code menu}, which is not the player's open menu, so no click could go anywhere. */
     static TerminalScreen preview(ChestMenu menu, Inventory inventory, String title, TerminalKind kind) {
         return new TerminalScreen(menu, inventory, Component.literal(title), kind, title, null);
@@ -373,6 +378,17 @@ public class TerminalScreen extends ContainerScreen {
             else if (mark == TerminalSolution.Mark.DONE) ground = palette.neutral(0x30);
             else ground = palette.neutral(0x16);
             ModernGuiUtils.drawRoundedRect(graphics, r.x(), r.y(), r.w(), r.h(), radius, ground);
+            if (fill != 0) {
+                // A ring in the color around a dark centre only tinted with it: glass panes and the
+                // other see-through items would otherwise take on the solution's color, and a red
+                // pane on a green cell reads as a green one.
+                int ring = Math.max(2, l.cell() / 12);
+                int innerRadius = Math.max(1, radius - ring);
+                int x = r.x() + ring, y = r.y() + ring, w = r.w() - 2 * ring, h = r.h() - 2 * ring;
+                ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, innerRadius,
+                        TerminalGuiPalette.withAlpha(palette.background(), 0xFF));
+                ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, innerRadius, TerminalGuiPalette.withAlpha(fill, 0x48));
+            }
 
             if (!real) continue;
             // Hide Other Items leaves out what the solution does not use, once it knows what that is.

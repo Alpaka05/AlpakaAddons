@@ -224,6 +224,12 @@ public final class DevScreenshotTour {
                 net.alpaka.addons.features.market.MarketPreview.inventory(true);
                 Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.auctionBrowser());
             }, () -> true, 30),
+            // Scrolled to the end with the drawer open: the last cards come out above it.
+            new Stop(null, () -> {
+                placeMouse(0.75, 0.75);
+                scroll(0.45, 0.4, -10);
+            }, () -> true, 10),
+            new Stop("market-ah-inventory-scrolled-end", () -> scroll(0.45, 0.4, -10), () -> true, 30),
             new Stop(null, () -> net.alpaka.addons.features.market.MarketPreview.inventory(false), () -> true, 1),
             new Stop("market-ah-view", () -> Minecraft.getInstance().gui.setScreen(
                     net.alpaka.addons.features.market.MarketPreview.auctionView()), () -> true, 80),

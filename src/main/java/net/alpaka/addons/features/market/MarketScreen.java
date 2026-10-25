@@ -668,7 +668,8 @@ public class MarketScreen extends ContainerScreen {
             }
         }
 
-        sideScroll.max = Math.max(0, rowY + sideScroll.offset() - start + 4 - clipH);
+        // rowY - start is the content's height whatever the scroll, so the limit does not move with it.
+        sideScroll.max = Math.max(0, rowY - start + 4 - clipH);
         sideScroll.update(deltaSec);
         AlpakaStyle.scrollFades(graphics, x, clipY, w, clipH, sideScroll.offset() > 0, sideScroll.offset() + 1 < sideScroll.max);
         graphics.disableScissor();
@@ -754,7 +755,10 @@ public class MarketScreen extends ContainerScreen {
         int contentHeight = m.layout == MarketMenu.Layout.GRID
                 ? drawGrid(graphics, m, mx, my, inClip, cx, cy, cw, ch, now)
                 : drawTiles(graphics, m, mx, my, inClip, cx, cy, cw, ch, now);
-        contentScroll.max = Math.max(0, contentHeight - ch);
+        // The open drawer covers the grid's bottom right, so the grid scrolls on until its last row
+        // comes out above it.
+        int visibleH = inventoryOpen && m.layout == MarketMenu.Layout.GRID && drawerY > cy && drawerY < cy + ch ? drawerY - cy : ch;
+        contentScroll.max = Math.max(0, contentHeight - visibleH);
         contentScroll.update(deltaSec);
         boolean above = contentScroll.offset() > 0;
         boolean below = contentScroll.offset() + 1 < contentScroll.max;

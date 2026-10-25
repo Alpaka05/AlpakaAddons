@@ -63,6 +63,8 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     private static final int SETTING_ROW_H = 16;
     private static final int SLIDER_ROW_H = 24;
     private static final int ACTION_ROW_H = 18;
+    /** Space under a full-width button, so a hovered row below it doesn't merge with it into one box. */
+    private static final int ACTION_GAP_BELOW = 2;
     private static final int TOGGLE_W = 16;
     private static final int TOGGLE_H = 9;
     private static final int SWATCH_W = 16;
@@ -845,6 +847,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             case ACTION -> option.isColor() ? SETTING_ROW_H : ACTION_ROW_H;
             default -> SETTING_ROW_H;
         };
+        int gapBelow = option.getType() == ConfigOption.Type.ACTION && !option.isColor() ? ACTION_GAP_BELOW : 0;
         boolean shown = visible(rowY, rowH, clipY, clipH);
         boolean hover = inside(mouseX, mouseY, rowX, rowY, rowW, rowH) && inside(mouseX, mouseY, colX, clipY, colW, clipH);
         if (hover) {
@@ -864,7 +867,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             }
             if (!visible(rowY, blockH, clipY, clipH)) {
                 if (option.getType() == ConfigOption.Type.BOOLEAN) option.updateToggleProgress(deltaSec);
-                return rowY + blockH;
+                return rowY + blockH + gapBelow;
             }
         }
         int labelY = rowY + 4;
@@ -984,7 +987,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             default -> {
             }
         }
-        return rowY + rowH;
+        return rowY + rowH + gapBelow;
     }
 
     /**

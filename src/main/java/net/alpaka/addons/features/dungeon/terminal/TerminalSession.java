@@ -33,10 +33,22 @@ import java.util.Set;
  * ({@link #beforeMenuOpens}); anything else - the server closing it first, the player closing it
  * and opening it again - is a new session with the guard armed.
  *
- * The solution describes what the server confirmed. A clicked cell is "pending" until the
- * server's update for its slot arrives, or {@link #PENDING_TIMEOUT_MS} passes; a vanilla click
- * moves the item onto the cursor at once, so while it is pending the slot is read as it was
- * before the click instead of as empty.
+ * <h2>Pending clicks</h2>
+ *
+ * The solution describes what the server confirmed (design.md 4.7). A clicked slot is "pending"
+ * until the server sends that slot again, or {@link #PENDING_TIMEOUT_MS} passes. Until then it is
+ * read as it was before the click: vanilla's own handling of a click already changes the chest on
+ * the client - the item goes onto the cursor, or a carried one into the slot - and none of that is
+ * what the server says.
+ *
+ * Telling the server's update from vanilla's own change: every update from the server puts a new
+ * ItemStack into the slot, while vanilla's handling of a click leaves its own stack behind. So
+ * right after vanilla handled a click, the stack the slot holds is noted, and the next different
+ * one is the server's answer. "Right after" is exact for the custom window, which reports a click
+ * once it went out ({@link #onClickSent}). The vanilla chest decides before vanilla handles the
+ * click, so there the note is taken by {@link #afterVanillaClick} when that hook exists and
+ * otherwise first thing in the next frame, ahead of any packet that came in after the click.
+ * Several answers for one slot within one frame read as one; the rest then expire.
  *
  * Client thread only.
  */
@@ -66,9 +78,19 @@ public final class TerminalSession {
 
     private long lastClickMs = Long.MIN_VALUE / 2;
     private int clickCount = 0;
+    private Refusal lastRefusal = null;
+
     private long signature = 0L;
+    private boolean solvedOnce = false;
     private List<TerminalItem> items = List.of();
     private TerminalSolution solution;
+    private long refusalSignature = 0L;
+    private TerminalSolution refusalSolution = null;
+
+    /** Per slot: the stack it held right after vanilla's own handling of the last click on it. */
+    private final ItemStack[] afterClick = new ItemStack[TerminalSolution.MAX_SLOTS];
+    /** Per slot: whether {@link #afterClick} has been noted since the last click on it. */
+    private final boolean[] noted = new boolean[TerminalSolution.MAX_SLOTS];
 
     private TerminalSession(TerminalKind kind, String title, AbstractContainerMenu menu, long openedAtMs,
                             long openedAtTick, boolean continued, State state) {
@@ -111,8 +133,8 @@ public final class TerminalSession {
                     previous.openedAtTick, true, previous.state);
             next.lastClickMs = previous.lastClickMs;
             next.clickCount = previous.clickCount;
-            next.state.pending.clear();
-            next.state.changed();
+            // The new window's slots are new stacks; the clicks made in the old one are answered by it.
+            next.state.clearPending();
             current = next;
             return next;
         }
@@ -165,10 +187,14 @@ public final class TerminalSession {
         }
     }
 
-    /** A chat line: a throttle notice means the last clicks will not be confirmed. */
+    /**
+     * A chat line (from DungeonSolvers): Hypixel's "This menu has been throttled! Please slow
+     * down..." means the last clicks were ignored, so their pending marks go and nothing they did
+     * counts as confirmed.
+     */
     public static void onChat(String plain) {
         TerminalSession session = current;
-        if (session != null && plain.startsWith(THROTTLED_PREFIX)) session.onThrottled();
+        if (session != null && plain != null && plain.startsWith(THROTTLED_PREFIX)) session.onThrottled();
     }
 
     // --- this session ---
@@ -189,6 +215,11 @@ public final class TerminalSession {
     /** The chest's rows as the client has it (its real size, not what the kind expects). */
     public int rows() {
         return menu instanceof ChestMenu chest ? chest.getRowCount() : kind.rows();
+    }
+
+    /** How many slots the chest part has: menu slots below this are the terminal's, the rest the player's inventory. */
+    public int chestSize() {
+        return Math.min(Math.min(rows() * 9, menu.slots.size()), TerminalSolution.MAX_SLOTS);
     }
 
     /** When the terminal opened, on the {@code Util.getMillis()} clock. Kept across a carried-on reopen. */
@@ -219,61 +250,152 @@ public final class TerminalSession {
         return clickCount;
     }
 
+    /** The last click the guards refused here, for a moment's feedback; null before any. */
+    public Refusal lastRefusal() {
+        return lastRefusal;
+    }
+
     /**
-     * Records a click that was just sent for this terminal: by the custom window after
-     * {@code Outbound.menuClick} returned true, or by the overlay when it lets a vanilla click through.
+     * Records a click on {@code slot} that has just gone out: the custom window calls this once
+     * {@code Outbound.menuClick} returned true, so vanilla has already handled it on the client.
+     * A slot outside the chest part only counts for the rate guard.
      */
     public void onClickSent(int slot, int button, long nowMs) {
+        record(slot, button, nowMs);
+        if (inChest(slot)) note(slot);
+    }
+
+    /**
+     * The vanilla chest's version of {@link #onClickSent}: called when a terminal click is let
+     * through at slotClicked's head, before vanilla handles it. What the slot holds afterwards is
+     * noted by {@link #afterVanillaClick}, or failing that first thing in the next frame.
+     */
+    void onVanillaClickAllowed(int slot, int button, long nowMs) {
+        record(slot, button, nowMs);
+        if (!inChest(slot)) return;
+        TerminalSession self = this;
+        // Queued now, before the click goes out, so it runs before any packet answering it.
+        Minecraft.getInstance().schedule(() -> {
+            if (current == self && !noted[slot]) note(slot);
+        });
+    }
+
+    /** From the vanilla chest, at slotClicked's return: vanilla has handled the click now. */
+    void afterVanillaClick(int slot) {
+        if (inChest(slot) && !noted[slot] && state.isPending(slot)) note(slot);
+    }
+
+    /** Another kind of click went out (a number key, the drop key, a drag): only the rate guard needs it. */
+    void onOtherClickSent(long nowMs) {
         lastClickMs = nowMs;
         clickCount++;
-        ItemStack before = slotStack(slot);
-        TerminalItem item = slot >= 0 && slot < items.size() ? items.get(slot) : TerminalItem.of(slot, before);
-        state.clicked.add(slot);
-        state.pending.put(slot, new Pending(slot, button, nowMs, before, item));
-        state.changed();
+    }
+
+    /** The guards refused a click on {@code slot}; nothing was sent. */
+    public void onRefused(int slot, TerminalClicks.Verdict verdict, long nowMs) {
+        lastRefusal = new Refusal(slot, verdict, nowMs);
     }
 
     /** Whether {@code slot} was clicked and the server has not answered for it yet. */
     public boolean pending(int slot, long nowMs) {
-        expire(nowMs);
-        return state.pending.containsKey(slot);
+        refresh(nowMs);
+        return state.isPending(slot);
     }
 
     /** Every pending slot. */
     public Set<Integer> pendingSlots(long nowMs) {
-        expire(nowMs);
-        return Collections.unmodifiableSet(state.pending.keySet());
+        refresh(nowMs);
+        return state.pending();
     }
 
-    /** Drops every pending mark, as after a throttle notice. */
+    /** Drops every pending mark, and what the clicks since then counted for, as after a throttle notice. */
     public void onThrottled() {
-        if (state.pending.isEmpty()) return;
-        state.pending.clear();
-        state.changed();
+        state.throttled(Util.getMillis());
     }
 
     /** The chest part as last read, one entry per slot from 0; the slot number is the index. */
     public List<TerminalItem> items() {
-        solution();
+        refresh(Util.getMillis());
         return items;
     }
 
     /** The solution for the chest as it is now; worked out again only when its contents changed. */
     public TerminalSolution solution() {
-        long now = Util.getMillis();
-        expire(now);
+        refresh(Util.getMillis());
+        return solution;
+    }
+
+    /**
+     * The solution the wrong-click refusal goes by: pending clicks count as done, whether or not
+     * Predict Clicks is on (design.md 4.7), so that a quick right click after a right click that is
+     * still on its way is not taken for a wrong one.
+     */
+    public TerminalSolution refusalSolution() {
+        refresh(Util.getMillis());
+        if (state.predict) return solution;
+        if (refusalSolution == null || refusalSignature != signature) {
+            refusalSolution = TerminalSolver.solve(kind, title, items, state, true);
+            refusalSignature = signature;
+        }
+        return refusalSolution;
+    }
+
+    /** Brings pending clicks and the solution up to date with the chest. Cheap when nothing changed. */
+    void refresh(long nowMs) {
+        settleAnswers();
+        state.expire(nowMs);
         boolean predict = AlpakaConfig.instance.terminalPredictClicks;
         if (predict != state.predict) {
             state.predict = predict;
             state.changed();
         }
-        long sig = contentSignature() * 31 + state.version;
-        if (sig != signature || items.isEmpty()) {
-            signature = sig;
+        long content = contentSignature();
+        if (content * 31 + state.version != signature || !solvedOnce) {
             items = snapshot();
             solution = TerminalSolver.solve(kind, title, items, state);
+            solvedOnce = true;
+            // After solving: locking Change All to Same Color's target counts as a change of the
+            // state, but this solution already has it.
+            signature = content * 31 + state.version;
         }
-        return solution;
+    }
+
+    // --- clicks ---
+
+    private boolean inChest(int slot) {
+        return slot >= 0 && slot < chestSize();
+    }
+
+    private void record(int slot, int button, long nowMs) {
+        lastClickMs = nowMs;
+        clickCount++;
+        if (!inChest(slot)) return;
+        // The slot as the server last had it: the reading taken just before the click (the guards
+        // refreshed it), which for a slot that is already pending is what it read before that click.
+        TerminalItem before = slot < items.size() ? items.get(slot) : TerminalItem.of(slot, slotStack(slot));
+        state.add(new Pending(slot, button, nowMs, slotStack(slot), before));
+        noted[slot] = false;
+    }
+
+    private void note(int slot) {
+        afterClick[slot] = slotStack(slot);
+        noted[slot] = true;
+    }
+
+    /**
+     * A pending slot whose stack is no longer the one vanilla left there holds the server's answer;
+     * it answers the oldest click on that slot. An empty slot is not an answer (Hypixel sends blank
+     * updates in between).
+     */
+    private void settleAnswers() {
+        if (state.pending.isEmpty()) return;
+        for (int slot : state.pending()) {
+            if (!noted[slot]) continue;
+            ItemStack now = slotStack(slot);
+            if (now.isEmpty() || now == afterClick[slot]) continue;
+            afterClick[slot] = now;
+            state.answer(slot, TerminalItem.of(slot, now));
+        }
     }
 
     // --- reading the chest ---
@@ -289,7 +411,7 @@ public final class TerminalSession {
      */
     private long contentSignature() {
         long h = 17L;
-        int size = Math.min(rows() * 9, menu.slots.size());
+        int size = chestSize();
         for (int i = 0; i < size; i++) {
             ItemStack stack = menu.getSlot(i).getItem();
             h = h * 31 + System.identityHashCode(stack);
@@ -299,43 +421,38 @@ public final class TerminalSession {
     }
 
     private List<TerminalItem> snapshot() {
-        int size = Math.min(rows() * 9, menu.slots.size());
+        int size = chestSize();
         List<TerminalItem> read = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
-            ItemStack stack = menu.getSlot(i).getItem();
-            Pending pending = state.pending.get(i);
-            // The vanilla click put this item on the cursor; until the server answers, it is still there.
-            read.add(stack.isEmpty() && pending != null ? pending.item() : TerminalItem.of(i, stack));
+            Pending pending = state.firstPending(i);
+            // Clicked and not answered yet: as the server last had it, not as vanilla's handling left it.
+            read.add(pending != null ? pending.item() : TerminalItem.of(i, menu.getSlot(i).getItem()));
         }
         return Collections.unmodifiableList(read);
     }
 
     /**
-     * Retires pending clicks: confirmed once the slot holds a new non-empty stack from the server,
-     * dropped once {@link #PENDING_TIMEOUT_MS} passed.
+     * A click waiting for the server: its slot and button, when it went out, the slot's stack at
+     * that moment (null in tests) and how the slot read as the server last had it.
      */
-    private void expire(long nowMs) {
-        if (state.pending.isEmpty()) return;
-        boolean changed = state.pending.values().removeIf(p -> {
-            if (nowMs - p.atMs() > PENDING_TIMEOUT_MS) return true;
-            ItemStack now = slotStack(p.slot());
-            return !now.isEmpty() && now != p.stackBefore();
-        });
-        if (changed) state.changed();
-    }
-
-    /** A click waiting for the server: the slot's stack (null in tests) and how it read before the click. */
     public record Pending(int slot, int button, long atMs, ItemStack stackBefore, TerminalItem item) {}
+
+    /** A click the guards refused, for feedback. */
+    public record Refusal(int slot, TerminalClicks.Verdict verdict, long atMs) {}
 
     /**
      * What the solver may use besides the chest: the slots this session clicked, the clicks still
-     * pending, a locked Change All to Same Color target, and whether Predict Clicks is on. Public
-     * so tests can build one.
+     * pending, the server's answers to them, a locked Change All to Same Color target, and whether
+     * Predict Clicks is on. Public so tests can build one.
      */
     public static final class State {
         private final LinkedHashSet<Integer> clicked = new LinkedHashSet<>();
-        private final Map<Integer, Pending> pending = new HashMap<>();
+        /** Unanswered clicks, oldest first; a slot clicked twice is in it twice. */
+        private final List<Pending> pending = new ArrayList<>();
+        /** Per slot, how the server answered the player's last click on it. */
+        private final Map<Integer, Answer> answered = new HashMap<>();
         private int rubixTarget = -1;
+        private long rubixSlots = 0L;
         private boolean predict = false;
         private long version = 0L;
 
@@ -346,13 +463,42 @@ public final class TerminalSession {
             return Collections.unmodifiableSet(clicked);
         }
 
-        /** Slots clicked and not yet answered by the server. */
+        /** Slots clicked and not yet answered by the server, oldest click first. */
         public Set<Integer> pending() {
-            return Collections.unmodifiableSet(pending.keySet());
+            Set<Integer> slots = new LinkedHashSet<>();
+            for (Pending p : pending) slots.add(p.slot());
+            return Collections.unmodifiableSet(slots);
         }
 
         public boolean isPending(int slot) {
-            return pending.containsKey(slot);
+            return firstPending(slot) != null;
+        }
+
+        /** Unanswered clicks on {@code slot}. */
+        public int pendingCount(int slot) {
+            int n = 0;
+            for (Pending p : pending) {
+                if (p.slot() == slot) n++;
+            }
+            return n;
+        }
+
+        /** Change All to Same Color: the steps unanswered clicks on {@code slot} make, +1 per left click, -1 per right. */
+        public int pendingSteps(int slot) {
+            int steps = 0;
+            for (Pending p : pending) {
+                if (p.slot() == slot) steps += p.button() == 1 ? -1 : 1;
+            }
+            return steps;
+        }
+
+        /**
+         * How the slot read when the server answered the player's click on it, or null when it has
+         * not (yet). What Starts With and Select All go by for items that always glint.
+         */
+        public TerminalItem confirmedAs(int slot) {
+            Answer answer = answered.get(slot);
+            return answer == null ? null : answer.item();
         }
 
         /** Change All to Same Color: the locked target color's index, or -1 while none is locked. */
@@ -360,9 +506,20 @@ public final class TerminalSession {
             return rubixTarget;
         }
 
+        /** The slots that held panes when the target was locked, one bit per slot. */
+        public long rubixSlots() {
+            return rubixSlots;
+        }
+
         public void lockRubixTarget(int target) {
-            if (rubixTarget != target) {
+            lockRubixTarget(target, rubixSlots);
+        }
+
+        /** Locks the target, noting which slots held panes then. */
+        public void lockRubixTarget(int target, long paneSlots) {
+            if (rubixTarget != target || rubixSlots != paneSlots) {
                 rubixTarget = target;
+                rubixSlots = paneSlots;
                 changed();
             }
         }
@@ -379,8 +536,20 @@ public final class TerminalSession {
             return this;
         }
 
+        /** A pending left click. */
         public State withPending(int slot, long atMs) {
-            pending.put(slot, new Pending(slot, 0, atMs, null, TerminalItem.empty(slot)));
+            return withPending(slot, 0, atMs);
+        }
+
+        public State withPending(int slot, int button, long atMs) {
+            add(new Pending(slot, button, atMs, null, TerminalItem.empty(slot)));
+            return this;
+        }
+
+        /** The server answered the click on {@code slot} with {@code as}. */
+        public State withConfirmed(int slot, TerminalItem as) {
+            clicked.add(slot);
+            answered.put(slot, new Answer(as, 0L));
             changed();
             return this;
         }
@@ -399,5 +568,65 @@ public final class TerminalSession {
         void changed() {
             version++;
         }
+
+        // What the session does with clicks.
+
+        void add(Pending click) {
+            clicked.add(click.slot());
+            pending.add(click);
+            changed();
+        }
+
+        Pending firstPending(int slot) {
+            for (Pending p : pending) {
+                if (p.slot() == slot) return p;
+            }
+            return null;
+        }
+
+        /**
+         * The server answered the oldest click on {@code slot} with {@code now}. The clicks on it
+         * still waiting now start from that answer. False when nothing was pending there.
+         */
+        boolean answer(int slot, TerminalItem now) {
+            Pending first = firstPending(slot);
+            if (first == null) return false;
+            pending.remove(first);
+            answered.put(slot, new Answer(now, first.atMs()));
+            for (int i = 0; i < pending.size(); i++) {
+                Pending p = pending.get(i);
+                if (p.slot() == slot) pending.set(i, new Pending(p.slot(), p.button(), p.atMs(), p.stackBefore(), now));
+            }
+            changed();
+            return true;
+        }
+
+        /** Drops clicks that waited longer than {@link #PENDING_TIMEOUT_MS}; they may never be answered. */
+        boolean expire(long nowMs) {
+            if (pending.isEmpty()) return false;
+            boolean dropped = pending.removeIf(p -> nowMs - p.atMs() > PENDING_TIMEOUT_MS);
+            if (dropped) changed();
+            return dropped;
+        }
+
+        /**
+         * A throttle notice: the clicks of the last moment were ignored. Their pending marks go,
+         * and an answer to one of them - the server still sends the slot back, unchanged - does
+         * not count as a confirmed click.
+         */
+        void throttled(long nowMs) {
+            boolean changed = !pending.isEmpty();
+            pending.clear();
+            changed |= answered.values().removeIf(a -> nowMs - a.clickAtMs() <= PENDING_TIMEOUT_MS);
+            if (changed) changed();
+        }
+
+        void clearPending() {
+            if (pending.isEmpty()) return;
+            pending.clear();
+            changed();
+        }
+
+        private record Answer(TerminalItem item, long clickAtMs) {}
     }
 }

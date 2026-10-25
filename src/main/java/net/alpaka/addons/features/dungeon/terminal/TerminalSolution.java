@@ -10,6 +10,10 @@ import java.util.Arrays;
  * It describes the chest as the server last confirmed it. A cell the player has just clicked shows
  * as pending through {@link TerminalSession#pending}, not here, unless Predict Clicks is on and the
  * solver was told to treat pending clicks as done.
+ *
+ * Click the Button on Time marks only the active row's button ({@link Mark#CLICK}); the target
+ * column and the moving pane come from {@link #inTargetColumn} and {@link #movingSlot}, drawn the
+ * same way whether or not they line up.
  */
 public final class TerminalSolution {
 
@@ -128,6 +132,31 @@ public final class TerminalSolution {
         return buttonSlot;
     }
 
+    /** The slot of the moving pane, or -1. */
+    public int movingSlot() {
+        return activeRow >= 0 && movingColumn >= 0 ? activeRow * 9 + movingColumn : -1;
+    }
+
+    /**
+     * Click the Button on Time: whether {@code slot} is in the target column, from the magenta pane
+     * at the top to the one at the bottom (the rows of the play area). False for the other terminals.
+     */
+    public boolean inTargetColumn(int slot) {
+        if (!kind.isMelody() || columnTarget < 0 || !inRange(slot) || slot % 9 != columnTarget) return false;
+        int[] area = kind.playArea();
+        int row = slot / 9;
+        return row >= area[0] && row <= area[1];
+    }
+
+    /** How many slots are still to click (marked {@link Mark#CLICK}). */
+    public int toClick() {
+        int n = 0;
+        for (Mark mark : marks) {
+            if (mark == Mark.CLICK) n++;
+        }
+        return n;
+    }
+
     /**
      * Whether the moving pane is in the target column. For tests and the debug dump only: drawing
      * anything differently at that moment would be a "click now" cue (design.md 1.8), so the
@@ -145,6 +174,10 @@ public final class TerminalSolution {
     public String toString() {
         StringBuilder out = new StringBuilder(kind.name()).append(loaded ? " loaded" : " loading");
         if (solved) out.append(" solved");
+        if (kind.isMelody()) {
+            out.append(" column=").append(columnTarget).append(" moving=").append(movingColumn)
+                    .append(" row=").append(activeRow).append(" button=").append(buttonSlot);
+        }
         for (int slot = 0; slot < MAX_SLOTS; slot++) {
             if (marks[slot] == Mark.OTHER && clicks[slot] == 0) continue;
             out.append(' ').append(slot).append('=').append(marks[slot]);

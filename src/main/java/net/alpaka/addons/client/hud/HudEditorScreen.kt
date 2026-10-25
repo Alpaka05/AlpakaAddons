@@ -404,9 +404,9 @@ class HudEditorScreen(private val parent: Screen?) : Screen(GuiFont.text("HUD Ed
         /** Travel in GUI pixels before a press on an element starts moving it. */
         const val DRAG_THRESHOLD = 3.0
         /** A box's outline at rest: the menu's soft text color, half see-through over the world. */
-        const val GUIDE_COLOR = (AlpakaStyle.TEXT_SOFT and 0x00FFFFFF) or (0x80 shl 24)
+        val GUIDE_COLOR get() = (AlpakaStyle.TEXT_SOFT and 0x00FFFFFF) or (0x80 shl 24)
         /** Behind the status line and the names: the window color, nearly opaque. */
-        const val PILL_COLOR = (AlpakaStyle.PANEL and 0x00FFFFFF) or (0xE6 shl 24)
+        val PILL_COLOR get() = (AlpakaStyle.PANEL and 0x00FFFFFF) or (0xE6 shl 24)
         const val STATUS_H = 14
         const val LABEL_H = 13
 

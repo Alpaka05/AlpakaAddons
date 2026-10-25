@@ -125,7 +125,7 @@ object InventoryHudRenderer {
     const val MAX_SCALE = 3.0f
 
     /** Backdrop color, the config menu's panel. Alpha comes from the player's slider. */
-    private const val PANEL_BG = AlpakaStyle.PANEL and 0xFFFFFF
+    private const val PANEL_BG = AlpakaStyle.HUD_PANEL and 0xFFFFFF
 
     /**
      * Corner radius of the flat panel, in panel pixels: the other HUD panels' and the scoreboard's,

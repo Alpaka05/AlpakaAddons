@@ -1,6 +1,8 @@
 package net.alpaka.addons.mixin;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import net.alpaka.addons.features.chat.ChatCopyFeature;
+import net.alpaka.addons.features.chat.ChatOpenAnimation;
 import net.alpaka.addons.features.chat.ChatSearchFeature;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
 import net.alpaka.addons.features.chat.ScreenshotMessageFeature;
@@ -16,6 +18,7 @@ import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Style;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
@@ -23,8 +26,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * The mod's additions to the chat screen: the slayer HUD click, the chat tabs, the screenshot
- * buttons and the send-to-channel redirect.
+ * The mod's additions to the chat screen: the slayer HUD click, Copy Chat, the chat tabs, the
+ * screenshot buttons and the send-to-channel redirect.
  *
  * The chat screen is the one place the HUD is drawn while a cursor exists, which is what makes the
  * HUD click possible at all - the rest of the time the mouse is captured for looking around. Every
@@ -35,6 +38,54 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class ChatScreenMixin {
     @Shadow private CommandSuggestions commandSuggestions;
     @Shadow protected EditBox input;
+
+    /** Whether this chat screen has been set up once; a resize runs init again, which is no new opening. */
+    @Unique private boolean alpaka$opened;
+
+    @Inject(method = "init", at = @At("HEAD"))
+    private void alpaka$startOpenAnimation(CallbackInfo ci) {
+        if (this.alpaka$opened) return;
+        this.alpaka$opened = true;
+        ChatOpenAnimation.onOpen();
+    }
+
+    /**
+     * Opening Animation: the input bar and the text in it are drawn shifted down by the part of the
+     * slide still to go, so the bar rises from below the screen's bottom edge as the chat unrolls.
+     * The bar is the screen's first fill; the input box is drawn by the screen's own pass.
+     */
+    @Inject(method = "extractRenderState",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;fill(IIIII)V", ordinal = 0))
+    private void alpaka$lowerInputBar(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
+        this.alpaka$pushInputSlide(graphics);
+    }
+
+    @Inject(method = "extractRenderState",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;fill(IIIII)V", ordinal = 0, shift = At.Shift.AFTER))
+    private void alpaka$restoreAfterInputBar(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
+        graphics.pose().popMatrix();
+    }
+
+    @Inject(method = "extractRenderState",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screens/Screen;extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIF)V"))
+    private void alpaka$lowerInputBox(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
+        this.alpaka$pushInputSlide(graphics);
+    }
+
+    @Inject(method = "extractRenderState",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screens/Screen;extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIF)V", shift = At.Shift.AFTER))
+    private void alpaka$restoreAfterInputBox(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
+        graphics.pose().popMatrix();
+    }
+
+    /** Always pushes, so the matching pop after the draw is unconditional. */
+    @Unique
+    private void alpaka$pushInputSlide(GuiGraphicsExtractor graphics) {
+        graphics.pose().pushMatrix();
+        float rest = 1.0f - ChatOpenAnimation.progress();
+        // The bar is 14 pixels from the bottom edge to its top: that far down, it is just out of sight.
+        if (rest > 0.0f) graphics.pose().translate(0.0f, rest * 14.0f);
+    }
 
     /**
      * Tab cycles the chat tabs, Shift+Tab the other way. Left to vanilla while a command is being
@@ -56,6 +107,7 @@ public class ChatScreenMixin {
             return;
         }
         if (ChatTabsFeature.onChatScreenKey(event.key(), event.hasShiftDown(), event.hasControlDown(),
+                net.alpaka.addons.client.KeyRepeat.isRepeat(),
                 this.commandSuggestions != null && this.commandSuggestions.isVisible(),
                 this.input == null ? "" : this.input.getValue())) {
             cir.setReturnValue(true);
@@ -95,9 +147,10 @@ public class ChatScreenMixin {
     }
 
     /**
-     * The slayer HUD's click, once vanilla has offered the click to the chat's own links and found
-     * none: only then does it get handed to the screen, which is where this sits. At the head of the
-     * method, as it used to be, the HUD took clicks meant for links drawn under it.
+     * The slayer HUD's click and Copy Chat's right-click, once vanilla has offered the click to the
+     * chat's own links and found none: only then does it get handed to the screen, which is where
+     * this sits. At the head of the method, as it used to be, the HUD took clicks meant for links
+     * drawn under it.
      */
     @Inject(
             method = "mouseClicked",
@@ -105,7 +158,8 @@ public class ChatScreenMixin {
             cancellable = true
     )
     private void onMouseClicked(MouseButtonEvent event, boolean doubleClick, CallbackInfoReturnable<Boolean> cir) {
-        if (SlayerHudElement.INSTANCE.handleChatClick(event.x(), event.y(), event.button())) {
+        if (SlayerHudElement.INSTANCE.handleChatClick(event.x(), event.y(), event.button())
+                || ChatCopyFeature.handleClick(event.button(), event.hasShiftDown())) {
             cir.setReturnValue(true);
         }
     }

@@ -14,7 +14,8 @@ import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.minecraft.client.Minecraft;
 
-import net.alpaka.addons.features.worldage.WorldAgeHudRenderer;
+import net.alpaka.addons.features.deployable.DeployableTracker;
+import net.alpaka.addons.features.worldage.WorldAgeFeature;
 
 public class AlpakaClient implements ClientModInitializer {
     @Override
@@ -22,40 +23,62 @@ public class AlpakaClient implements ClientModInitializer {
         // Before anything else reads them. The slayer record is loaded separately because it is keyed
         // by account and Skyblock profile rather than by instance; see AlpakaStats.
         AlpakaConfig.load();
+        // Once the game is up, settings outside their slider's range are brought back inside it;
+        // see AlpakaConfigRegistry.clampStoredValues for why not here.
+        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.CLIENT_STARTED.register(
+                client -> net.alpaka.addons.client.gui.AlpakaConfigRegistry.clampStoredValues());
         net.alpaka.addons.config.AlpakaStats.load();
         net.alpaka.addons.AlpakaAddons.LOGGER.info("Alpaka Addons {} loaded", net.alpaka.addons.utils.ModVersion.mod());
+        // Has to run here, before the game first scans its resource packs, so the cached server
+        // pack joins that first load instead of costing a second one.
+        net.alpaka.addons.features.resourcepack.ServerPackCache.restoreAtStartup();
 
         // Next, so the overlay's own render pipeline is registered before the shader manager
         // precompiles vanilla's; see BlockOverlayRenderTypes.
         net.alpaka.addons.features.blockoverlay.BlockOverlayRenderTypes.init();
         net.alpaka.addons.client.gui.AlpakaGuiPipelines.init();
+        net.alpaka.addons.features.sky.SkyEffectsFeature.init();
+        net.alpaka.addons.features.chat.ChatBlurFeature.init();
         net.alpaka.addons.features.viewmodel.HandItemStarlightFeature.init();
+        net.alpaka.addons.features.cosmetics.AuraFeature.init();
         CustomSoundFeature.register();
         SessionLifecycle.register();
         StartupNotices.register();
         net.alpaka.addons.utils.UpdateChecker.register();
         net.alpaka.addons.features.slayer.SmolderingPolarization.register();
+        net.alpaka.addons.features.slayer.HamRadio.register();
         DevScreenshotTour.register();
         SlayerDropTracker.registerEvents();
+        DeployableTracker.registerEvents();
         net.alpaka.addons.features.slayer.SkyblockProfileTracker.INSTANCE.register();
         // The slayer record waits for its folder when a cloud drive comes up after the game did;
         // polled from the tick so the wait ends even while nothing reads the record.
         // The same tick writes the record once if anything changed it; see AlpakaStats.markDirty.
-        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            net.alpaka.addons.config.AlpakaStats.retryLoadIfAwaiting();
-            net.alpaka.addons.config.AlpakaStats.flushIfDirty();
-        });
+        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(
+                client -> net.alpaka.addons.config.AlpakaStats.tick());
         ZoomFeature.register();
         net.alpaka.addons.features.chat.ChatPeekFeature.register();
-        net.alpaka.addons.features.chat.ActionBarOverChat.register();
+        net.alpaka.addons.features.chat.ChatOverHud.register();
+        net.alpaka.addons.features.chat.ChatSearchFeature.register();
+        net.alpaka.addons.features.itemvalue.ItemValueFeature.register();
+        net.alpaka.addons.features.chestvalue.ChestValueFeature.register();
+        net.alpaka.addons.features.chat.ScreenshotPreview.register();
         CommandWheelFeature.register();
         InventoryHudFeature.register();
+        // After the last of the mod's keys above; see AlpakaKeyBinds.
+        AlpakaKeyBinds.finishRegistration();
         net.alpaka.addons.features.blaze.FirePitFeature.register();
+        net.alpaka.addons.features.cosmetics.AuraFeature.register();
         net.alpaka.addons.features.damagetags.CustomDamageTagFeature.register();
         net.alpaka.addons.utils.DungeonState.register();
         net.alpaka.addons.features.notification.MentionNotifier.register();
         net.alpaka.addons.features.party.PartyInviteFeature.register();
-        WorldAgeHudRenderer.registerEvents();
+        net.alpaka.addons.features.chat.MessageFilterFeature.register();
+        net.alpaka.addons.features.tooltip.OldMasterStarsFeature.register();
+        net.alpaka.addons.features.ragnarock.RagnarockFeature.register();
+        WorldAgeFeature.registerEvents();
+        net.alpaka.addons.features.performance.PerformanceStats.register();
+        net.alpaka.addons.features.market.LowestBin.register();
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             // Every alias takes an optional search term: "/aa" opens the config as before, and
@@ -91,18 +114,33 @@ public class AlpakaClient implements ClientModInitializer {
                     Minecraft.getInstance().execute(AlpakaDiagnostics::print);
                     return 1;
                 })
-                // "/alpakadebug perf": the mod's own frame and tick time since the last reset, from
-                // the same sections that show in vanilla's profiler. "perf reset" starts over.
+                // "/alpakadebug perf": the mod's own frame and tick time, from the same sections that
+                // show in vanilla's profiler. Off until "perf start", which starts from zero; "perf
+                // stop" ends it and prints the totals, "perf reset" starts over.
                 .then(ClientCommands.literal("perf")
                     .executes(context -> {
-                        Minecraft.getInstance().execute(() -> {
-                            SlayerDropTracker.sendModMessage("§6--- Performance ---");
-                            for (String line : net.alpaka.addons.utils.AlpakaPerf.report()) {
-                                SlayerDropTracker.sendModMessage("§7" + line);
-                            }
-                        });
+                        Minecraft.getInstance().execute(AlpakaClient::printPerf);
                         return 1;
                     })
+                    .then(ClientCommands.literal("start")
+                        .executes(context -> {
+                            Minecraft.getInstance().execute(() -> {
+                                net.alpaka.addons.utils.AlpakaPerf.start();
+                                SlayerDropTracker.sendModMessage("§7Measuring. §f/alpakadebug perf§7 shows the numbers, "
+                                        + "§f/alpakadebug perf stop§7 ends.");
+                            });
+                            return 1;
+                        })
+                    )
+                    .then(ClientCommands.literal("stop")
+                        .executes(context -> {
+                            Minecraft.getInstance().execute(() -> {
+                                net.alpaka.addons.utils.AlpakaPerf.stop();
+                                printPerf();
+                            });
+                            return 1;
+                        })
+                    )
                     .then(ClientCommands.literal("reset")
                         .executes(context -> {
                             Minecraft.getInstance().execute(() -> {
@@ -222,16 +260,21 @@ public class AlpakaClient implements ClientModInitializer {
             );
 
             // --- Viewmodel Preset Command ---
-            // "/alpakapreset <n>" switches to a slot, "/alpakapreset save <n>" writes the current
-            // viewmodel settings into one - the same thing the "Save Preset" buttons on the Item
-            // Size screen do, reachable without opening it.
+            // "/alpakapreset <n>" switches to a preset, "/alpakapreset save <n>" writes the current
+            // viewmodel settings into one - the same as the Load and Save buttons under Viewmodel >
+            // Presets, reachable without opening the menu. n counts in the order the menu lists them.
             dispatcher.register(ClientCommands.literal("alpakapreset")
-                .then(ClientCommands.argument("number", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1, 3))
+                .then(ClientCommands.argument("number", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1))
                     .executes(context -> {
                         int num = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "number");
                         Minecraft.getInstance().execute(() -> {
-                            net.alpaka.addons.config.AlpakaConfig.instance.loadPreset(num - 1);
-                            SlayerDropTracker.sendModMessage("§aSwitched to Preset " + num + ".");
+                            net.alpaka.addons.config.AlpakaConfig config = net.alpaka.addons.config.AlpakaConfig.instance;
+                            if (num > config.itemPresets.size()) {
+                                SlayerDropTracker.sendModMessage(noSuchPreset(num));
+                                return;
+                            }
+                            config.loadPreset(num - 1);
+                            SlayerDropTracker.sendModMessage("§aSwitched to " + config.presetName(num - 1) + ".");
                             try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
                         });
                         return 1;
@@ -239,12 +282,17 @@ public class AlpakaClient implements ClientModInitializer {
                 )
                 .then(ClientCommands.literal("save")
                     .requires(FabricClientCommandSource::attended)
-                    .then(ClientCommands.argument("number", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1, 3))
+                    .then(ClientCommands.argument("number", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1))
                         .executes(context -> {
                             int num = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "number");
                             Minecraft.getInstance().execute(() -> {
-                                net.alpaka.addons.config.AlpakaConfig.instance.savePreset(num - 1);
-                                SlayerDropTracker.sendModMessage("§aSaved your viewmodel and swing settings to Preset " + num + ".");
+                                net.alpaka.addons.config.AlpakaConfig config = net.alpaka.addons.config.AlpakaConfig.instance;
+                                if (num > config.itemPresets.size()) {
+                                    SlayerDropTracker.sendModMessage(noSuchPreset(num));
+                                    return;
+                                }
+                                config.savePreset(num - 1);
+                                SlayerDropTracker.sendModMessage("§aSaved your viewmodel and swing settings to " + config.presetName(num - 1) + ".");
                                 try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
                             });
                             return 1;
@@ -252,14 +300,17 @@ public class AlpakaClient implements ClientModInitializer {
                     )
                     .executes(context -> {
                         Minecraft.getInstance().execute(() ->
-                                SlayerDropTracker.sendModMessage("§7Usage: §6/alpakapreset save <1|2|3>"));
+                                SlayerDropTracker.sendModMessage("§7Usage: §6/alpakapreset save <number>"));
                         return 1;
                     })
                 )
                 .executes(context -> {
                     Minecraft.getInstance().execute(() -> {
-                        SlayerDropTracker.sendModMessage("§7Current preset: §ePreset " + (net.alpaka.addons.config.AlpakaConfig.instance.activeItemPresetIndex + 1)
-                                + "§7. Usage: §6/alpakapreset <1|2|3> §7to switch, §6/alpakapreset save <1|2|3> §7to save.");
+                        net.alpaka.addons.config.AlpakaConfig config = net.alpaka.addons.config.AlpakaConfig.instance;
+                        int active = config.activeItemPresetIndex;
+                        String current = active >= 0 && active < config.itemPresets.size() ? config.presetName(active) : "none";
+                        SlayerDropTracker.sendModMessage("§7Current preset: §e" + current
+                                + "§7. Usage: §6/alpakapreset <number> §7to switch, §6/alpakapreset save <number> §7to save.");
                     });
                     return 1;
                 })
@@ -291,6 +342,14 @@ public class AlpakaClient implements ClientModInitializer {
                 )
             );
         });
+    }
+
+    /** "/alpakadebug perf": what was measured, or how to start measuring. */
+    private static void printPerf() {
+        SlayerDropTracker.sendModMessage("§6--- Performance ---");
+        for (String line : net.alpaka.addons.utils.AlpakaPerf.report()) {
+            SlayerDropTracker.sendModMessage("§7" + line);
+        }
     }
 
     /** Reports where the slayer record lives and whether it is actually there. */
@@ -381,5 +440,13 @@ public class AlpakaClient implements ClientModInitializer {
         Minecraft.getInstance().execute(() ->
                 Minecraft.getInstance().gui.setScreen(new AlpakaConfigScreen(null, search)));
         return 1;
+    }
+
+    /** The reply to a preset number past the end of the list. */
+    private static String noSuchPreset(int num) {
+        int count = net.alpaka.addons.config.AlpakaConfig.instance.itemPresets.size();
+        return count == 0
+                ? "§cThere are no presets yet. Make one under Viewmodel > Presets."
+                : "§cThere is no Preset " + num + ". You have " + count + (count == 1 ? " preset." : " presets.");
     }
 }

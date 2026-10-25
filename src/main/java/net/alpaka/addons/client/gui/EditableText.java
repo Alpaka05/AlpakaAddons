@@ -182,6 +182,11 @@ public final class EditableText {
         moveCaret(best, false);
     }
 
+    /** Puts the caret at this position, dropping any selection; for putting back a refused edit. */
+    public void setCaret(int position) {
+        moveCaret(position, false);
+    }
+
     public void selectAll() {
         anchor = 0;
         caret = text.length();

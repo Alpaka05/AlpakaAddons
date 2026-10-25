@@ -38,6 +38,9 @@ import java.util.Arrays;
  * The row is drawn in the mod's menu look: rounded tabs, the config's text greys, the accent for the
  * tab that is up and for unread counts, and the chat's own font - the menu font when the chat is
  * written in it. The labels cast vanilla's drop shadow in either font, as the chat's own lines do.
+ *
+ * Guild chat can also be kept off All, for a busy guild drowning out everything else; it then shows
+ * only on the Guild tab, which counts it as unread as usual.
  */
 public final class ChatTabsFeature {
 
@@ -105,6 +108,15 @@ public final class ChatTabsFeature {
         for (ChatTab tab : ChatTab.values()) {
             if (!isShown(tab)) unread[tab.ordinal()] = 0;
         }
+        // Hiding the Guild tab brings guild lines kept off All back there, and showing it again
+        // takes them away.
+        if (AlpakaConfig.instance.chatTabsGuildOnlyInGuildTab) onFilterChanged();
+    }
+
+    /** A setting changed what a tab lets through: re-lays the history out under it. */
+    public static void onFilterChanged() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.gui != null) minecraft.gui.hud.getChat().rescaleChat();
     }
 
     /**
@@ -114,7 +126,14 @@ public final class ChatTabsFeature {
      * what keeps the guild tab working alongside the custom guild tag.
      */
     public static boolean accepts(GuiMessage message) {
-        if (!isEnabled() || active == ChatTab.ALL) return true;
+        if (!isEnabled()) return true;
+        if (active == ChatTab.ALL) {
+            // Guild lines can be kept to the Guild tab, but only while that tab is in the row;
+            // otherwise they would be nowhere at all.
+            if (!AlpakaConfig.instance.chatTabsGuildOnlyInGuildTab || !isShown(ChatTab.GUILD)) return true;
+            String text = ChatTab.strip(message.content().getString());
+            return ChatTab.isUrgent(text) || ChatTab.classify(text) != ChatTab.GUILD;
+        }
         // The mod's own lines, and every other client-side one, are not exempt: they belong to no
         // channel, so they sort to All like any other unclaimed line rather than following the
         // player onto every tab.
@@ -164,14 +183,17 @@ public final class ChatTabsFeature {
     }
 
     /**
-     * A key press in the chat screen. True when it cycled the tabs, which then goes no further.
+     * A key press in the chat screen. True when it was Tab for the tabs, which then goes no further.
      * Ctrl+Tab always cycles, Ctrl+Shift+Tab backwards. Plain Tab only does on an empty line: with
-     * text typed it is vanilla's player-name completion, which it used to take over.
+     * text typed it is vanilla's player-name completion, which it used to take over. A held Tab
+     * repeats, and the chat screen hears every repeat as another press, so it raced through the
+     * tabs; a repeat is swallowed without cycling, as on the peek.
      */
-    public static boolean onChatScreenKey(int key, boolean shift, boolean control, boolean suggestionsVisible, String input) {
+    public static boolean onChatScreenKey(int key, boolean shift, boolean control, boolean repeat,
+                                          boolean suggestionsVisible, String input) {
         if (!tabKeyEnabled() || key != GLFW.GLFW_KEY_TAB) return false;
         if (!control && (suggestionsVisible || !input.isBlank())) return false;
-        cycle(shift);
+        if (!repeat) cycle(shift);
         return true;
     }
 
@@ -331,7 +353,7 @@ public final class ChatTabsFeature {
 
             drawTab(graphics, x, y0, width, background, selected, hovered);
             // As the config's sidebar: the open one and the hovered one in full, the rest softer.
-            int color = selected || hovered ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
+            int color = selected || hovered ? AlpakaStyle.HUD_TEXT : AlpakaStyle.HUD_TEXT_SOFT;
             graphics.text(font, label, x + TAB_PAD, y0 + LABEL_TOP, color, shadow);
             x += width + TAB_GAP;
         }

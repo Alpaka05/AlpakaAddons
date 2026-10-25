@@ -4,9 +4,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
+import net.minecraft.client.gui.navigation.ScreenRectangle;
 
+import java.util.List;
+import java.util.Set;
+import java.util.function.IntPredicate;
+
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -34,12 +38,98 @@ class ChatBlurFeatureTest {
         assertEquals(radius, ChatBlurFeature.blurRadius(guiScale, strength));
     }
 
-    /** A radius without its post effect would leave the panel unblurred, with only a log warning. */
+    /** Radius, then the halvings and sample spacing the blur uses for it. */
+    @ParameterizedTest(name = "radius {0} -> {1} levels at {2}")
+    @CsvSource({
+            "1,  1, 0.5",
+            "2,  1, 1.0",
+            "3,  1, 1.5",
+            "5,  2, 1.25",
+            "10, 3, 1.25",
+            "15, 3, 1.875",
+            "20, 4, 1.25",
+    })
+    void planGrowsWithTheRadius(int radius, int levels, float offset) {
+        DualKawaseBlur.Plan plan = DualKawaseBlur.plan(radius);
+        assertEquals(levels, plan.levels());
+        assertEquals(offset, plan.offset(), 1e-6);
+    }
+
     @Test
-    void everyRadiusHasItsPostEffect() {
+    void noRadiusMeansNoBlur() {
+        assertEquals(DualKawaseBlur.Plan.NONE, DualKawaseBlur.plan(0));
+    }
+
+    /** Every radius the strength slider can reach fits in the halvings the blur has targets for. */
+    @Test
+    void everyRadiusFitsTheTargets() {
         for (int radius = 1; radius <= ChatBlurFeature.MAX_BLUR_RADIUS; radius++) {
-            Path effect = Path.of("src/main/resources/assets/alpaka/post_effect/chat_blur_r" + radius + ".json");
-            assertTrue(Files.exists(effect), effect + " is missing");
+            DualKawaseBlur.Plan plan = DualKawaseBlur.plan(radius);
+            assertTrue(plan.levels() >= 1 && plan.levels() <= DualKawaseBlur.MAX_LEVELS, "radius " + radius);
         }
+    }
+
+    /** Glass under a veil covers the world exactly as much as the chat's tint on its own. */
+    @ParameterizedTest(name = "tint {0}")
+    @CsvSource({"0.0", "0.25", "0.5", "0.9", "1.0"})
+    void glassAndVeilAddUpToTheTint(float tint) {
+        float veil = tint * ChatBlurFeature.VEIL_SHARE;
+        float glass = ChatBlurFeature.glassTint(tint, veil);
+        assertEquals(tint, 1.0f - (1.0f - glass) * (1.0f - veil), 1e-5);
+    }
+
+    @Test
+    void hoverHighlightCoversTheWholeMessage() {
+        // Rows 0-1 are one message, 2 stands alone, 3-5 wrap into a third; the predicate says
+        // which rows continue in the row below.
+        Set<Integer> continued = Set.of(1, 4, 5);
+        IntPredicate continuesBelow = continued::contains;
+        assertEquals(0, ChatBlurFeature.messageBottom(1, continuesBelow));
+        assertEquals(1, ChatBlurFeature.messageTop(0, continuesBelow));
+        assertEquals(2, ChatBlurFeature.messageBottom(2, continuesBelow));
+        assertEquals(2, ChatBlurFeature.messageTop(2, continuesBelow));
+        assertEquals(3, ChatBlurFeature.messageBottom(5, continuesBelow));
+        assertEquals(5, ChatBlurFeature.messageTop(4, continuesBelow));
+    }
+
+    /** The blur reaches at least as far as it is wide, and further the wider it gets. */
+    @Test
+    void reachGrowsWithTheBlur() {
+        int last = 0;
+        for (int radius = 1; radius <= ChatBlurFeature.MAX_BLUR_RADIUS; radius++) {
+            int reach = DualKawaseBlur.reach(DualKawaseBlur.plan(radius));
+            assertTrue(reach >= radius, "radius " + radius);
+            assertTrue(reach >= last, "radius " + radius);
+            last = reach;
+        }
+        // Full strength at GUI scale 4: four halvings at 1.25, (1.25 + 2) * 2^5 + 2.
+        assertEquals(106, DualKawaseBlur.reach(DualKawaseBlur.plan(20)));
+    }
+
+    @Test
+    void anAreaIsScaledGrownAndCutToTheFrame() {
+        List<int[]> areas = ChatBlurFeature.blurAreas(
+                List.of(new ScreenRectangle(10, 10, 40, 10), new ScreenRectangle(0, 380, 20, 20)), 2, 10, 1000, 800);
+
+        assertEquals(2, areas.size());
+        assertArrayEquals(new int[]{10, 10, 110, 50}, areas.get(0));
+        assertArrayEquals(new int[]{0, 750, 50, 800}, areas.get(1), "cut at the frame's left and bottom edges");
+    }
+
+    @Test
+    void overlappingAreasBecomeOne() {
+        List<int[]> areas = ChatBlurFeature.blurAreas(List.of(
+                new ScreenRectangle(10, 10, 40, 10),
+                new ScreenRectangle(45, 15, 40, 10),
+                new ScreenRectangle(300, 300, 10, 10)), 2, 10, 1000, 800);
+
+        assertEquals(2, areas.size());
+        assertArrayEquals(new int[]{10, 10, 180, 60}, areas.get(0));
+        assertArrayEquals(new int[]{590, 590, 630, 630}, areas.get(1));
+    }
+
+    @Test
+    void areasCoveringMostOfTheFrameBlurItWhole() {
+        assertTrue(ChatBlurFeature.blurAreas(List.of(new ScreenRectangle(0, 0, 450, 350)), 2, 10, 1000, 800).isEmpty());
     }
 }

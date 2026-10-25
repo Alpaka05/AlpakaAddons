@@ -3,8 +3,10 @@ package net.alpaka.addons.mixin;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.alpaka.addons.client.gui.AlpakaGuiElementSink;
+import net.alpaka.addons.client.gui.AlpakaGuiUnderlay;
 import net.alpaka.addons.client.gui.GuiItemFade;
 import net.alpaka.addons.client.gui.GuiSkinStyle;
+import net.alpaka.addons.compat.GnetumCompat;
 import net.alpaka.addons.features.tooltip.ScrollableTooltipsFeature;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.navigation.ScreenRectangle;
@@ -53,6 +55,15 @@ public abstract class GuiGraphicsExtractorMixin implements AlpakaGuiElementSink 
         alpaka$scissors.addLast(area);
     }
 
+    /**
+     * A screen asks for vanilla's menu blur, which goes over the whole HUD: the HUD's own blurred
+     * panels can skip theirs while it is open (ChatBlurFeature#requestForHud).
+     */
+    @Inject(method = "blurBeforeThisStratum", at = @At("HEAD"))
+    private void alpaka$noteMenuBlur(CallbackInfo ci) {
+        net.alpaka.addons.features.chat.ChatBlurFeature.onMenuBlur();
+    }
+
     @Inject(method = "disableScissor", at = @At("TAIL"))
     private void alpaka$trackDisableScissor(CallbackInfo ci) {
         alpaka$scissors.pollLast();
@@ -61,6 +72,16 @@ public abstract class GuiGraphicsExtractorMixin implements AlpakaGuiElementSink 
     @Override
     public void alpaka$submitElement(GuiElementRenderState state) {
         guiRenderState.addGuiElement(state);
+    }
+
+    @Override
+    public void alpaka$submitUnderlay(GuiElementRenderState state) {
+        if (GnetumCompat.isDeferring()) {
+            GnetumCompat.deferUnderlay(state);
+            guiRenderState.addGuiElement(state);
+            return;
+        }
+        ((AlpakaGuiUnderlay) guiRenderState).alpaka$addUnderlay(state);
     }
 
     @Override

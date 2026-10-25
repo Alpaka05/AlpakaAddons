@@ -357,7 +357,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
         val canPrev = row.page > 0
         AlpakaStyle.chevronButton(graphics, prevX, btnY, SMALL_BTN, true, inside(mouseX, mouseY, prevX, btnY, SMALL_BTN, SMALL_BTN), canPrev)
         AlpakaStyle.chevronButton(graphics, nextX, btnY, SMALL_BTN, false, inside(mouseX, mouseY, nextX, btnY, SMALL_BTN, SMALL_BTN), true)
-        AlpakaStyle.iconButton(graphics, this.font, delX, btnY, SMALL_BTN, "✕", inside(mouseX, mouseY, delX, btnY, SMALL_BTN, SMALL_BTN), true, true)
+        AlpakaStyle.trashButton(graphics, delX, btnY, SMALL_BTN, inside(mouseX, mouseY, delX, btnY, SMALL_BTN, SMALL_BTN))
     }
 
     private fun inside(mx: Int, my: Int, x: Int, y: Int, w: Int, h: Int) = AlpakaStyle.inside(mx.toDouble(), my.toDouble(), x, y, w, h)

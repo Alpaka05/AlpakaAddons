@@ -5,6 +5,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.features.slayer.SlayerQuestDetector
 import net.alpaka.addons.features.slayer.SlayerType
+import net.alpaka.addons.utils.AlpakaPerf
 import net.alpaka.addons.utils.SkyblockUtils
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext
@@ -49,10 +50,10 @@ object FirePitFeature {
     /** Height of the column above the pit block, in blocks. */
     private const val AURA_HEIGHT = 2.0f
 
-    /** Color of the column: a hot red-orange. Alpha at the floor; it fades to nothing at the top. */
-    private const val RED = 1.0f
-    private const val GREEN = 0.28f
-    private const val BLUE = 0.08f
+    /**
+     * Alpha of the column at the floor; it fades to nothing at the top. The color itself is
+     * [AlpakaConfig.blazeFirePitColor], whose own alpha scales this.
+     */
     private const val FLOOR_ALPHA = 0.42f
 
     /** The tint laid over the pit's own top face. */
@@ -89,7 +90,14 @@ object FirePitFeature {
     @JvmStatic
     fun register() {
         ClientTickEvents.END_CLIENT_TICK.register { tick(it) }
-        LevelRenderEvents.COLLECT_SUBMITS.register { submit(it) }
+        LevelRenderEvents.COLLECT_SUBMITS.register { context ->
+            val t = AlpakaPerf.begin(AlpakaPerf.Section.LEVEL_OVERLAYS)
+            try {
+                submit(context)
+            } finally {
+                AlpakaPerf.end(AlpakaPerf.Section.LEVEL_OVERLAYS, t)
+            }
+        }
     }
 
     @JvmStatic
@@ -146,8 +154,9 @@ object FirePitFeature {
         val camX = camera.x
         val camY = camera.y
         val camZ = camera.z
+        val tint = Tint(AlpakaConfig.instance.blazeFirePitColor)
         context.submitNodeCollector().submitCustomGeometry(poseStack, RenderTypes.debugQuads()) { pose, buffer ->
-            for ((pos, fade) in snapshot) drawColumn(buffer, pose, pos, fade, members, camX, camY, camZ)
+            for ((pos, fade) in snapshot) drawColumn(buffer, pose, tint, pos, fade, members, camX, camY, camZ)
         }
     }
 
@@ -164,7 +173,7 @@ object FirePitFeature {
      * first: far from the world's origin a float cannot hold a block position finely enough, and the
      * column would shake as the camera moves.
      */
-    private fun drawColumn(buffer: VertexConsumer, pose: PoseStack.Pose, pos: BlockPos, fade: Float,
+    private fun drawColumn(buffer: VertexConsumer, pose: PoseStack.Pose, tint: Tint, pos: BlockPos, fade: Float,
                            members: Set<BlockPos>, camX: Double, camY: Double, camZ: Double) {
         val x0 = (pos.x - camX).toFloat()
         val z0 = (pos.z - camZ).toFloat()
@@ -172,49 +181,58 @@ object FirePitFeature {
         val z1 = z0 + 1.0f
         val y0 = (pos.y + 1.0 - camY).toFloat() + SURFACE_OFFSET
         val y1 = y0 + AURA_HEIGHT
-        val floor = FLOOR_ALPHA * fade
+        val floor = FLOOR_ALPHA * tint.a * fade
 
-        val top = TOP_ALPHA * fade
-        quad(buffer, pose, x0, y0, z0, x0, y0, z1, x1, y0, z1, x1, y0, z0, top, top, top, top)
+        val top = TOP_ALPHA * tint.a * fade
+        quad(buffer, pose, tint, x0, y0, z0, x0, y0, z1, x1, y0, z1, x1, y0, z0, top, top, top, top)
 
         for (side in Direction.Plane.HORIZONTAL) {
             if (pos.relative(side) in members) continue
             when (side) {
-                Direction.NORTH -> wall(buffer, pose, x0, z0, x1, z0, y0, y1, floor)
-                Direction.SOUTH -> wall(buffer, pose, x0, z1, x1, z1, y0, y1, floor)
-                Direction.WEST -> wall(buffer, pose, x0, z0, x0, z1, y0, y1, floor)
-                Direction.EAST -> wall(buffer, pose, x1, z0, x1, z1, y0, y1, floor)
+                Direction.NORTH -> wall(buffer, pose, tint, x0, z0, x1, z0, y0, y1, floor)
+                Direction.SOUTH -> wall(buffer, pose, tint, x0, z1, x1, z1, y0, y1, floor)
+                Direction.WEST -> wall(buffer, pose, tint, x0, z0, x0, z1, y0, y1, floor)
+                Direction.EAST -> wall(buffer, pose, tint, x1, z0, x1, z1, y0, y1, floor)
                 else -> {}
             }
         }
     }
 
     /** A vertical wall from (xa, za) to (xb, zb), at [floor] alpha at the bottom and clear at the top. */
-    private fun wall(buffer: VertexConsumer, pose: PoseStack.Pose,
+    private fun wall(buffer: VertexConsumer, pose: PoseStack.Pose, tint: Tint,
                      xa: Float, za: Float, xb: Float, zb: Float, y0: Float, y1: Float, floor: Float) {
-        quad(buffer, pose, xa, y0, za, xb, y0, zb, xb, y1, zb, xa, y1, za, floor, floor, 0.0f, 0.0f)
+        quad(buffer, pose, tint, xa, y0, za, xb, y0, zb, xb, y1, zb, xa, y1, za, floor, floor, 0.0f, 0.0f)
     }
 
     /**
      * A quad with its own alpha per corner, in both windings: the pit's walls are seen from inside
      * the column as well as from outside, and debug quads may be culled.
      */
-    private fun quad(buffer: VertexConsumer, pose: PoseStack.Pose,
+    private fun quad(buffer: VertexConsumer, pose: PoseStack.Pose, tint: Tint,
                      x1: Float, y1: Float, z1: Float, x2: Float, y2: Float, z2: Float,
                      x3: Float, y3: Float, z3: Float, x4: Float, y4: Float, z4: Float,
                      a1: Float, a2: Float, a3: Float, a4: Float) {
-        vertex(buffer, pose, x1, y1, z1, a1)
-        vertex(buffer, pose, x2, y2, z2, a2)
-        vertex(buffer, pose, x3, y3, z3, a3)
-        vertex(buffer, pose, x4, y4, z4, a4)
+        vertex(buffer, pose, tint, x1, y1, z1, a1)
+        vertex(buffer, pose, tint, x2, y2, z2, a2)
+        vertex(buffer, pose, tint, x3, y3, z3, a3)
+        vertex(buffer, pose, tint, x4, y4, z4, a4)
 
-        vertex(buffer, pose, x4, y4, z4, a4)
-        vertex(buffer, pose, x3, y3, z3, a3)
-        vertex(buffer, pose, x2, y2, z2, a2)
-        vertex(buffer, pose, x1, y1, z1, a1)
+        vertex(buffer, pose, tint, x4, y4, z4, a4)
+        vertex(buffer, pose, tint, x3, y3, z3, a3)
+        vertex(buffer, pose, tint, x2, y2, z2, a2)
+        vertex(buffer, pose, tint, x1, y1, z1, a1)
     }
 
-    private fun vertex(buffer: VertexConsumer, pose: PoseStack.Pose, x: Float, y: Float, z: Float, alpha: Float) {
-        buffer.addVertex(pose, x, y, z).setColor(RED, GREEN, BLUE, alpha)
+    private fun vertex(buffer: VertexConsumer, pose: PoseStack.Pose, tint: Tint,
+                       x: Float, y: Float, z: Float, alpha: Float) {
+        buffer.addVertex(pose, x, y, z).setColor(tint.r, tint.g, tint.b, alpha)
+    }
+
+    /** An ARGB config color split into 0..1 channels. */
+    private class Tint(argb: Int) {
+        val r = (argb ushr 16 and 0xFF) / 255.0f
+        val g = (argb ushr 8 and 0xFF) / 255.0f
+        val b = (argb and 0xFF) / 255.0f
+        val a = (argb ushr 24 and 0xFF) / 255.0f
     }
 }

@@ -3,7 +3,6 @@ package net.alpaka.addons.client;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.config.AlpakaStats;
 import net.alpaka.addons.features.blaze.FirePitFeature;
-import net.alpaka.addons.features.critters.PangolinHighlightFeature;
 import net.alpaka.addons.features.inventoryhud.InventoryHudFeature;
 import net.alpaka.addons.features.party.PartyInviteFeature;
 import net.alpaka.addons.features.slayer.SkyblockProfileTracker;
@@ -55,24 +54,25 @@ public final class SessionLifecycle {
         SlayerTimer.INSTANCE.clear();
         PartyInviteFeature.dismiss();
         InventoryHudFeature.reset();
-        PangolinHighlightFeature.reset();
         FirePitFeature.reset();
         net.alpaka.addons.features.damagetags.CustomDamageTagFeature.reset();
         net.alpaka.addons.utils.DungeonState.reset();
+        net.alpaka.addons.features.ragnarock.RagnarockFeature.reset();
+        net.alpaka.addons.features.worldage.WorldClockTracker.reset();
         AlpakaStats.flushNow();
     }
 
     private static void onLevelChange() {
         SlayerQuestDetector.INSTANCE.resetForLevelChange();
-        PangolinHighlightFeature.reset();
         FirePitFeature.reset();
         net.alpaka.addons.features.damagetags.CustomDamageTagFeature.reset();
         net.alpaka.addons.utils.DungeonState.reset();
+        net.alpaka.addons.features.ragnarock.RagnarockFeature.reset();
     }
 
     /** Nothing waiting to be written is lost on exit. */
     private static void onStopping() {
         AlpakaConfig.endDeferredSaves();
-        AlpakaStats.flushNow();
+        AlpakaStats.flushOnExit();
     }
 }

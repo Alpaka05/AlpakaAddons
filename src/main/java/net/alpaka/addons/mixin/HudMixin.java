@@ -1,23 +1,35 @@
 package net.alpaka.addons.mixin;
 
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.features.chat.ChatOverHud;
 import net.alpaka.addons.features.chat.ChatPeekFeature;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
+import net.alpaka.addons.features.deployable.DeployableTimerHudRenderer;
 import net.alpaka.addons.features.inventoryhud.InventoryHudRenderer;
 import net.alpaka.addons.features.notification.AlpakaNotifications;
+import net.alpaka.addons.features.performance.PerformanceHudRenderer;
 import net.alpaka.addons.features.playermodel.PlayerModelRenderer;
+import net.alpaka.addons.features.ragnarock.RagnarockFeature;
 import net.alpaka.addons.features.scoreboard.ScoreboardBlurFeature;
+import net.alpaka.addons.features.scoreboard.ScoreboardFooterFeature;
 import net.alpaka.addons.features.slayer.SlayerHudRenderer;
+import net.alpaka.addons.features.tooltip.OldMasterStarsFeature;
 import net.alpaka.addons.features.slayer.SlayerTimerHudRenderer;
-import net.alpaka.addons.features.worldage.WorldAgeHudRenderer;
 import net.alpaka.addons.utils.AlpakaPerf;
 import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.Hud;
+import net.minecraft.client.gui.screens.LevelLoadingScreen;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.scores.Objective;
+import net.minecraft.network.chat.Component;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.sugar.Local;
+import net.minecraft.client.gui.Font;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -32,31 +44,70 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * whether or not a screen is open, which is what lets the overlays stay visible behind the chat.
  */
 @Mixin(Hud.class)
-public class HudMixin {
+public class HudMixin implements ChatOverHud.Late {
+    @Shadow @Final private Minecraft minecraft;
+    @Shadow private boolean isHidden;
     @Shadow private int toolHighlightTimer;
     @Shadow private ItemStack lastToolHighlight;
 
+    /**
+     * Better Chat: the chat and the player list after the whole HUD, under the same conditions as
+     * in it, and the notices after them.
+     */
+    @Override
+    public void alpaka$extractChatLate(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
+        if (this.isHidden || this.minecraft.gui.screen() instanceof LevelLoadingScreen) return;
+        ChatOverHud.extractElements(graphics, deltaTracker);
+        AlpakaNotifications.renderAfterChat(graphics);
+    }
+
     @Inject(method = "extractRenderState", at = @At("TAIL"))
     private void onExtractRenderState(GuiGraphicsExtractor graphicsExtractor, DeltaTracker deltaTracker, CallbackInfo ci) {
+        // Each timed in a finally, so a HUD that throws cannot leave the profiler a section deep.
         long t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_PLAYER_MODEL);
-        PlayerModelRenderer.render(graphicsExtractor, deltaTracker);
-        AlpakaPerf.end(AlpakaPerf.Section.HUD_PLAYER_MODEL, t);
-        t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_WORLD_AGE);
-        WorldAgeHudRenderer.render(graphicsExtractor, deltaTracker);
-        AlpakaPerf.end(AlpakaPerf.Section.HUD_WORLD_AGE, t);
+        try {
+            PlayerModelRenderer.render(graphicsExtractor, deltaTracker);
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.HUD_PLAYER_MODEL, t);
+        }
+        t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_PERFORMANCE);
+        try {
+            PerformanceHudRenderer.render(graphicsExtractor, deltaTracker);
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.HUD_PERFORMANCE, t);
+        }
         t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_SLAYER);
-        SlayerHudRenderer.render(graphicsExtractor, deltaTracker);
-        AlpakaPerf.end(AlpakaPerf.Section.HUD_SLAYER, t);
+        try {
+            SlayerHudRenderer.render(graphicsExtractor, deltaTracker);
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.HUD_SLAYER, t);
+        }
         t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_SLAYER_TIMER);
-        SlayerTimerHudRenderer.render(graphicsExtractor, deltaTracker);
-        AlpakaPerf.end(AlpakaPerf.Section.HUD_SLAYER_TIMER, t);
+        try {
+            SlayerTimerHudRenderer.render(graphicsExtractor, deltaTracker);
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.HUD_SLAYER_TIMER, t);
+        }
+        t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_DEPLOYABLE_TIMER);
+        try {
+            DeployableTimerHudRenderer.render(graphicsExtractor, deltaTracker);
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.HUD_DEPLOYABLE_TIMER, t);
+        }
+        RagnarockFeature.render(graphicsExtractor);
         t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_INVENTORY);
-        InventoryHudRenderer.render(graphicsExtractor, deltaTracker);
-        AlpakaPerf.end(AlpakaPerf.Section.HUD_INVENTORY, t);
+        try {
+            InventoryHudRenderer.render(graphicsExtractor, deltaTracker);
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.HUD_INVENTORY, t);
+        }
         // Last, so a notice sits above every other overlay rather than under one.
         t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_NOTIFICATIONS);
-        AlpakaNotifications.render(graphicsExtractor, deltaTracker);
-        AlpakaPerf.end(AlpakaPerf.Section.HUD_NOTIFICATIONS, t);
+        try {
+            AlpakaNotifications.render(graphicsExtractor, deltaTracker);
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.HUD_NOTIFICATIONS, t);
+        }
     }
 
     /**
@@ -101,15 +152,30 @@ public class HudMixin {
         }
     }
 
-    /** The scoreboard sidebar: its two flat boxes become one blurred panel; see ScoreboardBlurFeature. */
-    @Inject(method = "displayScoreboardSidebar", at = @At("HEAD"))
-    private void alpaka$beginScoreboard(GuiGraphicsExtractor graphicsExtractor, Objective objective, CallbackInfo ci) {
-        ScoreboardBlurFeature.begin(graphicsExtractor);
+    /** Old Master Stars for the held item's name above the hotbar; the tooltip is done by its feature. */
+    @WrapOperation(
+            method = "extractSelectedItemName",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/world/item/ItemStack;getHoverName()Lnet/minecraft/network/chat/Component;")
+    )
+    private Component alpaka$oldMasterStars(ItemStack stack, Operation<Component> original) {
+        return OldMasterStarsFeature.apply(original.call(stack));
     }
 
-    @Inject(method = "displayScoreboardSidebar", at = @At("TAIL"))
-    private void alpaka$endScoreboard(GuiGraphicsExtractor graphicsExtractor, Objective objective, CallbackInfo ci) {
-        ScoreboardBlurFeature.end(graphicsExtractor);
+    /**
+     * The scoreboard sidebar: its two flat boxes become one blurred panel; see ScoreboardBlurFeature.
+     * Opened and closed around the whole method in one place, the close in a finally: as a HEAD and a
+     * TAIL hook, a sidebar that threw left the panel's shifted pose on the stack for the rest of the HUD.
+     */
+    @WrapMethod(method = "displayScoreboardSidebar")
+    private void alpaka$scoreboard(GuiGraphicsExtractor graphicsExtractor, Objective objective, Operation<Void> original) {
+        long t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_SCOREBOARD);
+        ScoreboardBlurFeature.begin(graphicsExtractor);
+        try {
+            original.call(graphicsExtractor, objective);
+        } finally {
+            ScoreboardBlurFeature.end(graphicsExtractor);
+            AlpakaPerf.end(AlpakaPerf.Section.HUD_SCOREBOARD, t);
+        }
     }
 
     @WrapOperation(
@@ -126,5 +192,16 @@ public class HudMixin {
     )
     private void alpaka$scoreboardBodyBox(GuiGraphicsExtractor graphics, int x0, int y0, int x1, int y1, int color, Operation<Void> original) {
         if (!ScoreboardBlurFeature.bodyBox(graphics, x0, y0, x1, y1, color)) original.call(graphics, x0, y0, x1, y1, color);
+    }
+
+    /** The AlpakaAddons footer is centred like the title instead of starting at the left edge. */
+    @WrapOperation(
+            method = "displayScoreboardSidebar",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;text(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;IIIZ)V", ordinal = 1)
+    )
+    private void alpaka$centerScoreboardFooter(GuiGraphicsExtractor graphics, Font font, Component line, int x, int y, int color, boolean shadow,
+                                               Operation<Void> original, @Local(name = "width") int width) {
+        if (ScoreboardFooterFeature.isFooter(line)) x = ScoreboardFooterFeature.centeredX(x, width, font.width(line));
+        original.call(graphics, font, line, x, y, color, shadow);
     }
 }

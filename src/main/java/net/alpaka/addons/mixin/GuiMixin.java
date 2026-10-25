@@ -11,7 +11,10 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import net.alpaka.addons.features.chat.ChatOverHud;
 import net.alpaka.addons.features.chat.ScreenshotPreview;
+import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.gui.Hud;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.toasts.ToastManager;
 import org.spongepowered.asm.mixin.Mixin;
@@ -34,7 +37,10 @@ public abstract class GuiMixin {
 
     @Inject(method = "setScreen", at = @At("HEAD"), cancellable = true)
     private void replacePauseScreen(Screen screen, CallbackInfo ci) {
-        if (screen != null && screen.getClass() == PauseScreen.class && AlpakaConfig.instance.customEscapeMenuEnabled) {
+        // Not the pause without a menu that F3+Esc opens (showsPauseMenu false): that one is meant
+        // to show nothing but the game.
+        if (screen != null && screen.getClass() == PauseScreen.class && ((PauseScreen) screen).showsPauseMenu()
+                && AlpakaConfig.instance.customEscapeMenuEnabled) {
             ci.cancel();
             this.setScreen(new CustomPauseScreen());
         }
@@ -73,6 +79,16 @@ public abstract class GuiMixin {
         } else if (!isOldInventory && isNewInventory) {
             net.alpaka.addons.features.sound.CustomSoundFeature.playInventoryOpenSound();
         }
+    }
+
+    /** Better Chat: the chat goes on top of the finished HUD; see ChatOverHud. */
+    @WrapOperation(
+            method = "extractRenderState",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/Hud;extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/client/DeltaTracker;)V")
+    )
+    private void alpaka$chatAfterHud(Hud hud, GuiGraphicsExtractor graphics, DeltaTracker deltaTracker, Operation<Void> original) {
+        original.call(hud, graphics, deltaTracker);
+        ChatOverHud.extractAfterHud(hud, graphics, deltaTracker);
     }
 
     /** The screenshot preview, over the screen and under the toasts; see ScreenshotPreview. */

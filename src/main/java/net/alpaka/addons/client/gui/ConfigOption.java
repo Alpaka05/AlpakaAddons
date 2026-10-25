@@ -20,7 +20,11 @@ public class ConfigOption {
         DROPDOWN,
         TEXT,
         /** A sample of what the feature puts on screen, drawn in the settings; see {@link #preview}. */
-        PREVIEW
+        PREVIEW,
+        /** The viewmodel presets, one card each, which the config screen draws itself; see {@link #presets}. */
+        PRESETS,
+        /** One of the mod's keys, bound right in the settings; see {@link #keybind}. */
+        KEYBIND
     }
 
     /**
@@ -57,7 +61,7 @@ public class ConfigOption {
     private final String description;
     private final ConfigCategory category;
     private final Type type;
-    private final String keywords;
+    private String keywords;
 
     // Boolean
     private Supplier<Boolean> getterBool;
@@ -87,12 +91,12 @@ public class ConfigOption {
 
     // Header constructor
     public ConfigOption(String title, ConfigCategory category) {
-        this.id = title.toLowerCase().replace(" ", "_");
+        this.id = title.toLowerCase(Locale.ROOT).replace(" ", "_");
         this.title = title;
         this.description = "";
         this.category = category;
         this.type = Type.HEADER;
-        this.keywords = title.toLowerCase();
+        this.keywords = title.toLowerCase(Locale.ROOT);
     }
 
     // Preview constructor, see preview()
@@ -102,7 +106,7 @@ public class ConfigOption {
         this.description = "";
         this.category = category;
         this.type = type;
-        this.keywords = title.toLowerCase();
+        this.keywords = title.toLowerCase(Locale.ROOT);
     }
 
     // Boolean option constructor
@@ -115,7 +119,7 @@ public class ConfigOption {
         this.type = Type.BOOLEAN;
         this.getterBool = getterBool;
         this.setterBool = setterBool;
-        this.keywords = (title + " " + description + " " + keywords).toLowerCase();
+        this.keywords = (title + " " + description + " " + keywords).toLowerCase(Locale.ROOT);
     }
 
     // Float Slider option constructor
@@ -132,7 +136,7 @@ public class ConfigOption {
         this.minVal = minVal;
         this.maxVal = maxVal;
         this.formatter = formatter;
-        this.keywords = (title + " " + description + " " + keywords).toLowerCase();
+        this.keywords = (title + " " + description + " " + keywords).toLowerCase(Locale.ROOT);
     }
 
     // Action button constructor
@@ -145,7 +149,7 @@ public class ConfigOption {
         this.type = Type.ACTION;
         this.actionLabel = actionLabel;
         this.actionHandler = actionHandler;
-        this.keywords = (title + " " + description + " " + keywords).toLowerCase();
+        this.keywords = (title + " " + description + " " + keywords).toLowerCase(Locale.ROOT);
     }
 
     /**
@@ -194,7 +198,7 @@ public class ConfigOption {
         if (entries != null) {
             for (ToggleEntry entry : entries) entryText.append(' ').append(entry.getLabel());
         }
-        this.keywords = (title + " " + description + " " + keywords + entryText).toLowerCase();
+        this.keywords = (title + " " + description + " " + keywords + entryText).toLowerCase(Locale.ROOT);
     }
 
     public String getId() { return id; }
@@ -210,7 +214,7 @@ public class ConfigOption {
      * option - the config screen does this several times a frame while a search is active.
      */
     public static String normalizeQuery(String query) {
-        return query == null ? "" : query.trim().toLowerCase();
+        return query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
     }
 
     /** Whether this option matches an already-normalised query. Allocation-free. */
@@ -265,6 +269,17 @@ public class ConfigOption {
             setterFloat.accept(Math.max(minVal, Math.min(maxVal, val)));
         }
     }
+    /**
+     * Puts a slider's stored value back inside the range when it lies outside it. A value inside is
+     * never written, so a setter's rounding cannot touch it. Returns whether the value changed.
+     */
+    public boolean clampStoredValue() {
+        if (type != Type.SLIDER || getterFloat == null || setterFloat == null || maxVal <= minVal) return false;
+        float stored = getterFloat.get();
+        if (stored >= minVal && stored <= maxVal) return false;
+        setFloat(getFloat());
+        return true;
+    }
     public float getMinVal() { return minVal; }
     public float getMaxVal() { return maxVal; }
 
@@ -317,6 +332,49 @@ public class ConfigOption {
         ConfigOption option = new ConfigOption(title, category, Type.PREVIEW, id);
         option.previewText = text;
         return option;
+    }
+
+    /**
+     * The list of saved viewmodel presets: a card per preset with its name, Load, Save and Delete,
+     * and a button that adds one. A single option, because how many presets there are changes while
+     * the menu is open and the option list is built once.
+     */
+    public static ConfigOption presets(String id, String title, ConfigCategory category, String keywords) {
+        ConfigOption option = new ConfigOption(title, category, Type.PRESETS, id);
+        option.keywords = (title + " " + keywords).toLowerCase(Locale.ROOT);
+        return option;
+    }
+
+    private Supplier<net.minecraft.client.KeyMapping> keyMapping;
+
+    /**
+     * One of the mod's keys, shown as a field with the bound key: a click on it waits for the next
+     * key or mouse button. Placed in the settings of the feature it belongs to, which is why the keys
+     * are not in vanilla's Controls; see AlpakaKeyBinds.
+     *
+     * The mapping is given as a supplier because the features make theirs when they register, which
+     * may be after this list is built.
+     */
+    public static ConfigOption keybind(String id, String title, String description, ConfigCategory category,
+                                       Supplier<net.minecraft.client.KeyMapping> mapping, String keywords) {
+        ConfigOption option = new ConfigOption(id, title, description, category, Type.KEYBIND,
+                (title + " " + description + " key keybind hotkey bind button " + keywords).toLowerCase(Locale.ROOT));
+        option.keyMapping = mapping;
+        return option;
+    }
+
+    private ConfigOption(String id, String title, String description, ConfigCategory category, Type type, String keywords) {
+        this.id = id;
+        this.title = title;
+        this.description = description;
+        this.category = category;
+        this.type = type;
+        this.keywords = keywords;
+    }
+
+    /** The key mapping a keybind option sets, or null while its feature has not registered it. */
+    public net.minecraft.client.KeyMapping getKeyMapping() {
+        return keyMapping == null ? null : keyMapping.get();
     }
 
     /** The sample a preview shows. */
@@ -393,7 +451,7 @@ public class ConfigOption {
         this.textGetter = getter;
         this.textSetter = setter;
         this.placeholder = placeholder;
-        this.keywords = (title + " " + description + " " + keywords).toLowerCase();
+        this.keywords = (title + " " + description + " " + keywords).toLowerCase(Locale.ROOT);
     }
 
     public String getText() {

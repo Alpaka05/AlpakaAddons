@@ -1,9 +1,16 @@
 package net.alpaka.addons.config;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.annotations.SerializedName;
 import net.alpaka.addons.features.slayer.SlayerType;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Folding the slayer record on disk into the one in memory before a save.
@@ -72,6 +79,59 @@ final class StatsMerge {
         }
     }
 
+    /**
+     * Keeps the faster of the two best times for every tier either side has one for - except bests
+     * set before the later of the two sides' clears. A best is all-time, so the faster one wins;
+     * but {@code /alpakaslayer reset pb} takes them back, and the copy of an old best on the other
+     * side must not bring it back. Bests from before the set times existed count as set at 0, so
+     * any clear removes them.
+     */
+    static void mergeBestTimes(AlpakaConfig.SlayerData into, AlpakaConfig.SlayerData from) {
+        long cleared = Math.max(into.bestsClearedAtMs, from.bestsClearedAtMs);
+        into.bestsClearedAtMs = cleared;
+        if (into.bestBossMsByTier == null) into.bestBossMsByTier = new HashMap<>();
+        if (into.bestBossAtMsByTier == null) into.bestBossAtMsByTier = new HashMap<>();
+        // This side first: a clear on the other side takes back a best this side still holds.
+        if (cleared > 0) {
+            into.bestBossMsByTier.keySet().removeIf(tier -> setAt(into, tier) <= cleared);
+            into.bestBossAtMsByTier.keySet().retainAll(into.bestBossMsByTier.keySet());
+        }
+        if (from.bestBossMsByTier == null) return;
+        for (Map.Entry<Integer, Long> best : from.bestBossMsByTier.entrySet()) {
+            Integer tier = best.getKey();
+            Long theirs = best.getValue();
+            if (tier == null || theirs == null || theirs <= 0) continue;
+            long theirsAt = setAt(from, tier);
+            if (cleared > 0 && theirsAt <= cleared) continue;
+            Long ours = into.bestBossMsByTier.get(tier);
+            if (ours == null || ours <= 0 || theirs < ours) {
+                into.bestBossMsByTier.put(tier, theirs);
+                if (theirsAt > 0) into.bestBossAtMsByTier.put(tier, theirsAt);
+                else into.bestBossAtMsByTier.remove(tier);
+            }
+        }
+    }
+
+    /** When a tier's best was set, or 0 when that is not known. */
+    private static long setAt(AlpakaConfig.SlayerData data, Integer tier) {
+        Long at = data.bestBossAtMsByTier == null ? null : data.bestBossAtMsByTier.get(tier);
+        return at == null ? 0L : at;
+    }
+
+    /**
+     * The newer lifetime XP: the later Slayer menu reading wins, so a total corrected down is not
+     * taken back by the higher, older one on the other side. Between two copies of the same
+     * reading, the higher figure, since only kills credited on top of it can make them differ.
+     */
+    static void mergeTotalXp(AlpakaConfig.SlayerData into, AlpakaConfig.SlayerData from) {
+        if (from.totalXpObservedAtMs > into.totalXpObservedAtMs) {
+            into.totalXp = from.totalXp;
+            into.totalXpObservedAtMs = from.totalXpObservedAtMs;
+        } else if (from.totalXpObservedAtMs == into.totalXpObservedAtMs && from.totalXp > into.totalXp) {
+            into.totalXp = from.totalXp;
+        }
+    }
+
     /** One slayer: the higher kills, the later drop, the better best time, the newer XP. */
     static void mergeSlayer(AlpakaConfig.SlayerData ours, AlpakaConfig.SlayerData theirs) {
         if (theirs.kills > ours.kills) ours.kills = theirs.kills;
@@ -83,13 +143,138 @@ final class StatsMerge {
                 if (at == null || drop.getValue() > at) ours.drops.put(drop.getKey(), drop.getValue());
             }
         }
-        if (theirs.bestBossMs > 0 && (ours.bestBossMs <= 0 || theirs.bestBossMs < ours.bestBossMs)) {
-            ours.bestBossMs = theirs.bestBossMs;
-        }
-        if (theirs.totalXp > ours.totalXp) ours.totalXp = theirs.totalXp;
+        mergeBestTimes(ours, theirs);
+        mergeTotalXp(ours, theirs);
         if (theirs.lastXpCreditedAtMs > ours.lastXpCreditedAtMs) {
             ours.lastXpCreditedAtMs = theirs.lastXpCreditedAtMs;
             ours.recentlyCreditedXp = theirs.recentlyCreditedXp;
         }
+    }
+
+    /**
+     * Puts back into {@code written} - the record as this version writes it - what {@code disk}
+     * holds that this version does not know: fields a newer version added to the record, an
+     * account's, a profile's or a slayer's, and slayers it does not know. Without this, an older
+     * copy of the mod writing the shared file (a second launcher, the backport line) threw away
+     * whatever the newer one had added; the per-tier bests went that way once.
+     *
+     * Only unknown fields and unknown slayers come back. Entries of the maps this version does know
+     * (accounts, profiles, drops, bests) are what the typed merge decided, and bringing a missing
+     * one back from the file would undo a cleared best. The schema version never goes down.
+     */
+    static void keepUnknown(JsonObject disk, JsonObject written) {
+        copyUnknownFields(disk, written, AlpakaStats.class);
+        int theirs = schemaOf(disk);
+        if (theirs > schemaOf(written)) written.addProperty("schemaVersion", theirs);
+        JsonObject diskAccounts = object(disk, "accounts");
+        JsonObject ourAccounts = object(written, "accounts");
+        if (diskAccounts == null || ourAccounts == null) return;
+        for (Map.Entry<String, JsonElement> account : diskAccounts.entrySet()) {
+            JsonObject diskAccount = asObject(account.getValue());
+            JsonObject ourAccount = object(ourAccounts, account.getKey());
+            if (diskAccount == null || ourAccount == null) continue;
+            copyUnknownFields(diskAccount, ourAccount, AlpakaStats.Account.class);
+
+            JsonObject diskProfiles = object(diskAccount, "profiles");
+            JsonObject ourProfiles = object(ourAccount, "profiles");
+            if (diskProfiles == null || ourProfiles == null) continue;
+            for (Map.Entry<String, JsonElement> profile : diskProfiles.entrySet()) {
+                JsonObject diskProfile = asObject(profile.getValue());
+                JsonObject ourProfile = object(ourProfiles, profile.getKey());
+                if (diskProfile == null || ourProfile == null) continue;
+                copyUnknownFields(diskProfile, ourProfile, AlpakaStats.ProfileStats.class);
+
+                JsonObject diskSlayers = object(diskProfile, "slayerBossMap");
+                JsonObject ourSlayers = object(ourProfile, "slayerBossMap");
+                if (diskSlayers == null || ourSlayers == null) continue;
+                for (Map.Entry<String, JsonElement> slayer : diskSlayers.entrySet()) {
+                    if (!isSlayer(slayer.getKey())) {
+                        // A slayer only a newer version knows: kept whole.
+                        if (!ourSlayers.has(slayer.getKey())) ourSlayers.add(slayer.getKey(), slayer.getValue());
+                        continue;
+                    }
+                    JsonObject diskSlayer = asObject(slayer.getValue());
+                    JsonObject ourSlayer = object(ourSlayers, slayer.getKey());
+                    if (diskSlayer != null && ourSlayer != null) {
+                        copyUnknownFields(diskSlayer, ourSlayer, AlpakaConfig.SlayerData.class);
+                    }
+                }
+            }
+        }
+    }
+
+    /** The layout a record says it is in; files from before the field count as 1. */
+    static int schemaOf(JsonObject json) {
+        JsonElement version = json.get("schemaVersion");
+        if (version == null || !version.isJsonPrimitive() || !version.getAsJsonPrimitive().isNumber()) return 1;
+        return version.getAsInt();
+    }
+
+    /**
+     * A copy of {@code json} without the slayers this version does not know, for reading it into the
+     * typed record. Gson reads an unknown enum key as null: one such slayer turned into a "null"
+     * entry that was written back as such, and two made the whole file unreadable ("duplicate key").
+     * {@link #keepUnknown} puts them back on the next write.
+     */
+    static JsonObject knownOnly(JsonObject json) {
+        JsonObject copy = json.deepCopy();
+        JsonObject accounts = object(copy, "accounts");
+        if (accounts == null) return copy;
+        for (Map.Entry<String, JsonElement> account : accounts.entrySet()) {
+            JsonObject profiles = object(asObject(account.getValue()), "profiles");
+            if (profiles == null) continue;
+            for (Map.Entry<String, JsonElement> profile : profiles.entrySet()) {
+                JsonObject slayers = object(asObject(profile.getValue()), "slayerBossMap");
+                if (slayers == null) continue;
+                for (String key : new java.util.ArrayList<>(slayers.keySet())) {
+                    if (!isSlayer(key)) slayers.remove(key);
+                }
+            }
+        }
+        return copy;
+    }
+
+    private static final Map<Class<?>, Set<String>> KNOWN_FIELDS = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** Copies the members of {@code from} that are no field of {@code type} into {@code into}. */
+    private static void copyUnknownFields(JsonObject from, JsonObject into, Class<?> type) {
+        Set<String> known = KNOWN_FIELDS.computeIfAbsent(type, StatsMerge::serializedFields);
+        for (Map.Entry<String, JsonElement> member : from.entrySet()) {
+            if (!known.contains(member.getKey()) && !into.has(member.getKey())) {
+                into.add(member.getKey(), member.getValue());
+            }
+        }
+    }
+
+    /** The names Gson reads and writes for {@code type}'s fields, alternates included. */
+    private static Set<String> serializedFields(Class<?> type) {
+        Set<String> names = new HashSet<>();
+        for (Field field : type.getDeclaredFields()) {
+            int modifiers = field.getModifiers();
+            if (Modifier.isStatic(modifiers) || Modifier.isTransient(modifiers)) continue;
+            SerializedName serialized = field.getAnnotation(SerializedName.class);
+            if (serialized == null) {
+                names.add(field.getName());
+            } else {
+                names.add(serialized.value());
+                names.addAll(java.util.List.of(serialized.alternate()));
+            }
+        }
+        return names;
+    }
+
+    private static boolean isSlayer(String name) {
+        for (SlayerType type : SlayerType.values()) {
+            if (type.name().equals(name)) return true;
+        }
+        return false;
+    }
+
+    private static JsonObject object(JsonObject parent, String key) {
+        return parent != null && parent.has(key) ? asObject(parent.get(key)) : null;
+    }
+
+    private static JsonObject asObject(JsonElement element) {
+        return element != null && element.isJsonObject() ? element.getAsJsonObject() : null;
     }
 }

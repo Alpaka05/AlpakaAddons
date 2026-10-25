@@ -4,7 +4,7 @@ import com.mojang.blaze3d.platform.InputConstants
 import net.alpaka.addons.client.AlpakaKeyCategory
 import net.alpaka.addons.config.AlpakaConfig
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
-import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper
+import net.alpaka.addons.client.AlpakaKeyBinds
 import net.minecraft.client.KeyMapping
 import net.minecraft.client.Minecraft
 import net.minecraft.world.item.Item
@@ -15,12 +15,12 @@ import org.lwjgl.glfw.GLFW
  * is attached there; a freely placed panel switches on and off without a fade.
  *
  * Three inputs feed one number, [openAmount]:
- *  - the "always visible" setting,
- *  - a brief auto-open when the inventory contents change, if that setting is on,
- *  - and the keybind, which flips the standing state that "always visible" sets.
+ *  - the visibility setting: always, on item change, or on key press,
+ *  - a brief auto-open when the inventory contents change, if "on item change" is chosen,
+ *  - and the keybind, which flips the standing state that "always" sets.
  *
- * The keybind flipping rather than forcing is what makes one key sensible in both configurations:
- * with "always visible" on it hides the HUD, with it off it reveals the HUD, and either way pressing
+ * The keybind flipping rather than forcing is what makes one key sensible in every mode: with
+ * "always" it hides the HUD, in the other two it reveals the HUD, and either way pressing
  * again returns to normal. While flipped, item changes leave the HUD alone: a manual hide survives
  * an item pickup, and a manual reveal is not hidden by one.
  *
@@ -99,11 +99,11 @@ object InventoryHudFeature {
 
     @JvmStatic
     fun register() {
-        TOGGLE_KEY = KeyMappingHelper.registerKeyMapping(
+        TOGGLE_KEY = AlpakaKeyBinds.register(
             KeyMapping(
                 "key.alpaka.inventory_hud",
                 InputConstants.Type.KEYSYM,
-                // Unbound for fresh installs: H is Skyblocker's slot lock. A key set in options.txt
+                // Unbound for fresh installs: H is Skyblocker's slot lock. A key the player bound
                 // stays as it is.
                 GLFW.GLFW_KEY_UNKNOWN,
                 AlpakaKeyCategory.CATEGORY
@@ -198,11 +198,12 @@ object InventoryHudFeature {
         lastChangeMs != 0L && System.currentTimeMillis() - lastChangeMs < PEEK_DURATION_MS
 
     /**
-     * How far open the HUD is, 0..1, advanced from the wall clock so the fade runs at the same
-     * speed regardless of frame rate. Linear; the renderer applies the easing.
+     * Moves the fade on to now and returns how far open the HUD is, 0..1. Advanced from the wall
+     * clock, so the fade runs at the same speed regardless of frame rate; called once per frame by
+     * the renderer. Linear; the renderer applies the easing.
      */
     @JvmStatic
-    fun openAmount(): Float {
+    fun advanceOpenAmount(): Float {
         val now = System.currentTimeMillis()
         val dt = (now - lastFrameMs).coerceAtMost(MAX_FRAME_MS) / 1000.0f
         lastFrameMs = now
@@ -232,10 +233,11 @@ object InventoryHudFeature {
         // The keybind flips the standing state only. Flipping the peek along with it would turn
         // "show on item change" inside out once the key had been pressed: up all the time, and
         // gone exactly when an item arrives.
+        val always = cfg.inventoryHudVisibility == InventoryHudVisibility.ALWAYS
         val shown = if (inverted) {
-            !cfg.inventoryHudAlwaysVisible
+            !always
         } else {
-            cfg.inventoryHudAlwaysVisible || (cfg.inventoryHudShowOnItemChange && peeking())
+            always || (cfg.inventoryHudVisibility == InventoryHudVisibility.ITEM_CHANGE && peeking())
         }
         return if (shown) 1.0f else 0.0f
     }

@@ -96,7 +96,7 @@ public final class ConfigTree {
             // Visuals
             "fullbright", "clean_blaze", "blaze_fire_pits", "stop_blaze_spinning", "hide_hurt_overlay", "hide_mob_deaths",
             "hide_explosions",
-            "render_hand_third_person", "smooth_perspective", "disable_front_perspective",
+            "render_hand_third_person", "smooth_perspective", "disable_front_perspective", "zoom",
             "sky_effects",
             "container_bg_opacity", "inventory_snow", "scrollable_tooltips", "persistent_item_name", "old_master_stars", "wide_health_bar",
             "better_chat", "chat_search", "chat_copy", "expand_chat_history", "compact_chat",
@@ -185,7 +185,7 @@ public final class ConfigTree {
                             "custom_sound_zombie_remedy", "custom_sound_low_hp_heartbeat"}},
             {{"Visuals"},
                     {"World", "fullbright", "sky_effects", "block_overlay_enabled", "hide_hurt_overlay", "hide_mob_deaths", "hide_explosions",
-                            "#Hide Fire Overlay", "#Nametags", "render_hand_third_person", "smooth_perspective", "disable_front_perspective"},
+                            "#Hide Fire Overlay", "#Nametags", "render_hand_third_person", "smooth_perspective", "disable_front_perspective", "zoom"},
                     {"Interface", "inventory_hud_enabled", "player_model_enabled", "performance_hud_enabled", "container_bg_opacity",
                             "scrollable_tooltips", "persistent_item_name", "old_master_stars", "wide_health_bar", "inventory_snow", "#Scoreboard"},
                     {"Chat", "better_chat", "chat_tabs", "chat_search", "chat_copy", "chat_peek", "compact_chat",
@@ -247,6 +247,13 @@ public final class ConfigTree {
                 }
                 pendingHeader = null;
             }
+        }
+
+        // A feature's key always comes first, right under its description, wherever it was
+        // registered; the rest keep their registry order (the sort is stable).
+        for (Feature feature : byKey.values()) {
+            feature.settings.sort(java.util.Comparator.comparing(
+                    (ConfigOption option) -> option.getType() != ConfigOption.Type.KEYBIND));
         }
 
         // Then the sidebar, as LAYOUT has it.

@@ -103,6 +103,10 @@ branch's own code, every time:
   Smooth Font switches are the last settings; nothing goes below them. A new setting for such a
   feature is registered before them (the per-HUD ones are registered at the end in
   `registerHudStyleToggles` for this reason). This rule is for design-rework only.
+- **design-rework: the key comes first.** A feature's key (`ConfigOption.keybind`, title "Key") is
+  its first setting, right under the description. `ConfigTree` moves it there wherever it is
+  registered, but register it straight after the feature anyway. Never register a key through
+  Fabric's `KeyMappingHelper` (that puts it in vanilla Controls); use `AlpakaKeyBinds.register`.
 - If it isn't clear which page or section an option belongs on, ask before you open the PR. Check
   in the menu (screenshot tour) that it shows up where intended.
 

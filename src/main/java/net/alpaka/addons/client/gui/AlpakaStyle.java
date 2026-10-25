@@ -432,6 +432,30 @@ public final class AlpakaStyle {
         mesh.submit(graphics);
     }
 
+    /**
+     * A reset button: a circular arrow turning back, gray until hovered, then in the accent on a soft
+     * square. Drawn as a mesh rather than a glyph, since the menu fonts have no such arrow.
+     */
+    public static void resetButton(GuiGraphicsExtractor graphics, int x, int y, int size, boolean hover) {
+        if (hover) ModernGuiUtils.drawRoundedRect(graphics, x, y, size, size, FIELD_RADIUS, ROW_SELECTED);
+        int color = hover ? ModernGuiUtils.getAccentColor() : TEXT_MUTED;
+        int scale = guiScale();
+        net.alpaka.addons.features.wheel.WheelMesh mesh = new net.alpaka.addons.features.wheel.WheelMesh(1.0f / scale);
+        float cx = x + size / 2.0f;
+        float cy = y + size / 2.0f + 0.5f;
+        float radius = size * 0.3f;
+        float line = Math.max(1.0f, meshLine(scale));
+        // The ring runs clockwise from the top round to the upper left; the gap between is where the
+        // arrowhead at the top points into, back the other way.
+        float start = (float) (-Math.PI / 2);
+        float end = start + (float) (2 * Math.PI) - 1.1f;
+        mesh.ringSector(cx, cy, radius - line / 2, radius + line / 2, start, end, start, end, color, color, false);
+        float head = line * 1.8f;
+        float tipY = cy - radius;
+        mesh.convexPolygon(new float[] {cx - head * 1.1f, tipY, cx + head * 0.4f, tipY - head, cx + head * 0.4f, tipY + head}, color);
+        mesh.submit(graphics);
+    }
+
     /** A plus centred on the point, its arms feathered like the dashed circle. */
     public static void plus(GuiGraphicsExtractor graphics, float cx, float cy, float half, int color) {
         int scale = guiScale();

@@ -2,6 +2,7 @@ package net.alpaka.addons.features.chestvalue;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.mojang.blaze3d.platform.cursor.CursorTypes;
 import com.mojang.serialization.JsonOps;
 import net.alpaka.addons.client.gui.AlpakaStyle;
 import net.alpaka.addons.client.gui.GuiFont;
@@ -62,6 +63,9 @@ import java.util.Set;
  * It sits to the left of the menu by default, beside its top edge, since the item list mods (NEU,
  * REI, Skyblocker's) take the right; never over the menu's own slots, and away from the recipe book
  * when that is open. With little room it narrows to icons and values, and with none it stays away.
+ *
+ * Its header is a handle: held there, the panel moves like a window and stays where it was put, in
+ * every menu and after a restart; a double-click on the header puts it back beside the menu.
  *
  * Pointing at a line lights up the slots that item is in; pointing at a slot lights up its line.
  * Clicking a line opens the Item Value breakdown of that item. It only reads the menu's slots and
@@ -135,6 +139,14 @@ public final class ChestValuePanel {
     private static long tipSince = 0L;
     private static Object hoveredTip = null;
     private static int heldButton = -1;
+
+    /** Whether the header is held and the panel follows the mouse, like a window by its title bar. */
+    private static boolean dragging = false;
+    private static int grabX, grabY;
+    private static int headerBottom;
+    private static long lastHeaderPress = 0L;
+    /** Two presses on the header this close together put the panel back beside the menu. */
+    private static final long DOUBLE_CLICK_MS = 350;
 
     private record Hit(int x, int y, int w, int h, Runnable action) {
         boolean contains(double mx, double my) {
@@ -279,6 +291,7 @@ public final class ChestValuePanel {
         pointed = null;
         tipKey = null;
         heldButton = -1;
+        dragging = false;
         panelW = 0;
     }
 
@@ -332,17 +345,19 @@ public final class ChestValuePanel {
         Font font = mc.font;
         int screenW = graphics.guiWidth();
         int screenH = graphics.guiHeight();
-        if (!place(container, screenW)) {
-            panelW = 0;
-            return;
-        }
-        boolean narrow = panelW < FULL_W;
-        int x = panelX;
-        int w = panelW;
-
         double[] cursor = cursor();
         int mx = (int) Math.floor(cursor[0]);
         int my = (int) Math.floor(cursor[1]);
+        boolean beside = place(container, screenW);
+        boolean moved = moved();
+        if (!beside && !moved) {
+            panelW = 0;
+            return;
+        }
+        // Moved by the player, it keeps the width it had beside the menu, or the full one where there was no room.
+        if (!beside) panelW = Math.min(MAX_W, screenW - 2 * EDGE);
+        boolean narrow = panelW < FULL_W;
+        int w = panelW;
         hits.clear();
         pointed = null;
         String tip = null;
@@ -363,9 +378,25 @@ public final class ChestValuePanel {
         int maxH = screenH - 2 * EDGE;
         int listArea = Math.max(Math.min(content, 2 * ROW_H), Math.min(content, maxH - fixed));
         int h = Math.min(maxH, fixed + listArea);
-        int y = Math.max(EDGE, Math.min(screenH - EDGE - h, ((AbstractContainerScreenAccessor) container).alpaka$topPos()));
+        int x = panelX;
+        int y = ((AbstractContainerScreenAccessor) container).alpaka$topPos();
+        if (dragging) {
+            AlpakaConfig.instance.chestValueX = (float) (mx - grabX) / screenW;
+            AlpakaConfig.instance.chestValueY = (float) (my - grabY) / screenH;
+            moved = true;
+            graphics.requestCursor(CursorTypes.RESIZE_ALL);
+        }
+        if (moved) {
+            // Kept as a share of the screen, so it lands in the same spot at another size or GUI scale.
+            x = Math.round(AlpakaConfig.instance.chestValueX * screenW);
+            y = Math.round(AlpakaConfig.instance.chestValueY * screenH);
+        }
+        x = Math.max(EDGE, Math.min(screenW - EDGE - w, x));
+        y = Math.max(EDGE, Math.min(screenH - EDGE - h, y));
+        panelX = x;
         panelY = y;
         panelH = h;
+        headerBottom = y + headerH;
 
         graphics.nextStratum();
         float scale = shownAt > 0 ? PloppAnimation.getOpenScale(shownAt) : 1f;
@@ -379,6 +410,10 @@ public final class ChestValuePanel {
         int cy = y;
         String t = narrow ? drawNarrowHeader(graphics, font, x, cy, w, mx, my) : drawHeader(graphics, font, container, x, cy, w, mx, my);
         if (t != null) tip = t;
+        if (tip == null && !dragging && AlpakaStyle.inside(mx, my, x, y, w, headerH) && !overHit(mx, my)) {
+            tip = moved ? "Drag to move. Double-click to put it back beside the menu." : "Drag to move.";
+            hoverTip("move");
+        }
         cy += headerH;
         if (!narrow) {
             t = drawToolbar(graphics, font, container, x, cy, w, mx, my, now);
@@ -982,13 +1017,48 @@ public final class ChestValuePanel {
                 return true;
             }
         }
+        // The header, where nothing else answers, is the handle to move the panel by.
+        if (my < headerBottom) {
+            long now = System.currentTimeMillis();
+            if (now - lastHeaderPress < DOUBLE_CLICK_MS && moved()) {
+                AlpakaConfig.instance.chestValueX = -1f;
+                AlpakaConfig.instance.chestValueY = -1f;
+                AlpakaConfig.save();
+                lastHeaderPress = 0L;
+                return true;
+            }
+            lastHeaderPress = now;
+            dragging = true;
+            grabX = (int) Math.floor(mx) - panelX;
+            grabY = (int) Math.floor(my) - panelY;
+        }
         return true;
     }
 
     static boolean mouseReleased(int button) {
         if (heldButton < 0 || button != heldButton) return false;
         heldButton = -1;
+        if (dragging) {
+            dragging = false;
+            // Clamped as drawn, so a panel let go half off the screen is remembered where it shows.
+            if (moved()) {
+                Minecraft mc = Minecraft.getInstance();
+                AlpakaConfig.instance.chestValueX = (float) panelX / mc.getWindow().getGuiScaledWidth();
+                AlpakaConfig.instance.chestValueY = (float) panelY / mc.getWindow().getGuiScaledHeight();
+            }
+            AlpakaConfig.save();
+        }
         return true;
+    }
+
+    /** Whether the player has moved the panel away from its place beside the menu. */
+    private static boolean moved() {
+        return AlpakaConfig.instance.chestValueX >= 0 && AlpakaConfig.instance.chestValueY >= 0;
+    }
+
+    private static boolean overHit(int mx, int my) {
+        for (Hit hit : hits) if (hit.contains(mx, my)) return true;
+        return false;
     }
 
     static boolean mouseDragged(int button) {

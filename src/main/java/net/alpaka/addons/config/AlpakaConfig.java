@@ -721,6 +721,9 @@ public class AlpakaConfig {
     public int chestValueSide = 0;
     /** How its list is ordered, an index into ChestValue.Sort: value, price each, amount. */
     public int chestValueSort = 0;
+    /** Where the panel was moved to, as a share of the screen's width and height; -1 beside the menu. */
+    public float chestValueX = -1f;
+    public float chestValueY = -1f;
 
     // Command Wheel options
     /**

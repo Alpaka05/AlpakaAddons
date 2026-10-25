@@ -728,6 +728,57 @@ public class AlpakaConfigRegistry {
                 0.0f, 300.0f, AlpakaConfigRegistry::formatWindow,
                 "compact chat window time seconds stack repeated between other messages delay gap"));
 
+        OPTIONS.add(new ConfigOption("message_filter", "Message Filter",
+                "Hides Hypixel's chat spam. Pick below which messages.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.messageFilterEnabled,
+                v -> { AlpakaConfig.instance.messageFilterEnabled = v; AlpakaConfig.save(); },
+                "message filter hide spam chat block remove clean hypixel skyblock"));
+
+        OPTIONS.add(new ConfigOption("message_filter_types", "Hidden Messages",
+                "Which messages the filter hides.",
+                ConfigCategory.VISUALS,
+                java.util.List.of(
+                        new ConfigOption.ToggleEntry("Empty Lines",
+                                () -> AlpakaConfig.instance.messageFilterEmpty,
+                                v -> { AlpakaConfig.instance.messageFilterEmpty = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Welcome To SkyBlock",
+                                () -> AlpakaConfig.instance.messageFilterWelcome,
+                                v -> { AlpakaConfig.instance.messageFilterWelcome = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Guild & Event EXP",
+                                () -> AlpakaConfig.instance.messageFilterGuildExp,
+                                v -> { AlpakaConfig.instance.messageFilterGuildExp = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Kill Combo",
+                                () -> AlpakaConfig.instance.messageFilterKillCombo,
+                                v -> { AlpakaConfig.instance.messageFilterKillCombo = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Profile Join",
+                                () -> AlpakaConfig.instance.messageFilterProfileJoin,
+                                v -> { AlpakaConfig.instance.messageFilterProfileJoin = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Reward Bundles",
+                                () -> AlpakaConfig.instance.messageFilterRewardBundles,
+                                v -> { AlpakaConfig.instance.messageFilterRewardBundles = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Autopet",
+                                () -> AlpakaConfig.instance.messageFilterAutopet,
+                                v -> { AlpakaConfig.instance.messageFilterAutopet = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Fire Sales",
+                                () -> AlpakaConfig.instance.messageFilterFireSale,
+                                v -> { AlpakaConfig.instance.messageFilterFireSale = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Watchdog",
+                                () -> AlpakaConfig.instance.messageFilterWatchdog,
+                                v -> { AlpakaConfig.instance.messageFilterWatchdog = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Stash Reminders",
+                                () -> AlpakaConfig.instance.messageFilterStash,
+                                v -> { AlpakaConfig.instance.messageFilterStash = v; AlpakaConfig.save(); })
+                ),
+                "message filter hidden empty blank lines welcome guild gexp event exp kill combo grandma wolf profile id join reward bundle seasonal autopet pet rule fire sale community shop watchdog ban announcement stash stashed items materials pick up reminder"));
+
+        OPTIONS.add(new ConfigOption("message_filter_custom", "Custom Filters",
+                "Your own filters: paste a copied message and pick whether it must match exactly, at the start, anywhere, or as a regex.",
+                ConfigCategory.VISUALS,
+                "Edit Filters",
+                parent -> Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.client.MessageFilterScreen(parent)),
+                "message filter custom own add copied message regex starts with contains equals exact hide block list"));
+
         OPTIONS.add(new ConfigOption("mention_notification", "Chat Mentions",
                 "Slides in a notification when somebody says your name in chat.",
                 ConfigCategory.VISUALS,

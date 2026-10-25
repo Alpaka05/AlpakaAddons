@@ -2,6 +2,7 @@ package net.alpaka.addons.features.itemvalue;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.mojang.blaze3d.platform.cursor.CursorTypes;
 import com.mojang.serialization.JsonOps;
 import net.alpaka.addons.client.gui.AlpakaStyle;
 import net.alpaka.addons.client.gui.GuiFont;
@@ -45,6 +46,9 @@ import java.util.Set;
  * the item is worth and what that is made of - a bar split by share, then the parts grouped as the
  * bar is - and, opened under the Price History row at the bottom, the price history of the item or
  * of whichever part is clicked.
+ *
+ * Its header is a handle: held there, the popup can be moved like a window, and it stays where it
+ * was put until it is opened on another item.
  *
  * It belongs to the menu it was opened in and goes with it. While it is open it takes the clicks
  * meant for it and every click beside it, which closes it, so nothing reaches a slot of the menu
@@ -122,6 +126,14 @@ public final class ItemValuePopup {
     /** A mouse button whose press the popup took, so its release and drags are not the menu's either. */
     private static int heldButton = -1;
 
+    /** Whether the header is held and the popup follows the mouse, like a window by its title bar. */
+    private static boolean dragging = false;
+    /** Where the mouse took hold, from the popup's corner. */
+    private static int grabX, grabY;
+    /** Whether it was moved; then it stays where it was put rather than beside the item. */
+    private static boolean moved = false;
+    private static int movedX, movedY;
+
     private record Hit(int x, int y, int w, int h, Runnable action) {
         boolean contains(double mx, double my) {
             return AlpakaStyle.inside(mx, my, x, y, w, h);
@@ -183,6 +195,8 @@ public final class ItemValuePopup {
         maxScroll = 0;
         tipKey = null;
         panelW = 0;
+        dragging = false;
+        moved = false;
     }
 
     public static void close() {
@@ -197,6 +211,8 @@ public final class ItemValuePopup {
         hits.clear();
         heldButton = -1;
         panelW = 0;
+        dragging = false;
+        moved = false;
     }
 
     /** The menu closed or was replaced: the popup goes with it. */
@@ -357,6 +373,17 @@ public final class ItemValuePopup {
         if (x + w > screenW - EDGE) x = anchorX - 12 - w;
         x = Math.max(EDGE, Math.min(screenW - EDGE - w, x));
         int y = Math.max(EDGE, Math.min(screenH - EDGE - h, anchorY - 16));
+        if (dragging) {
+            moved = true;
+            movedX = mx - grabX;
+            movedY = my - grabY;
+            graphics.requestCursor(CursorTypes.RESIZE_ALL);
+        }
+        if (moved) {
+            // Kept on the screen, also when the graph opening makes it taller.
+            x = Math.max(EDGE, Math.min(screenW - EDGE - w, movedX));
+            y = Math.max(EDGE, Math.min(screenH - EDGE - h, movedY));
+        }
         panelX = x;
         panelY = y;
         panelW = w;
@@ -847,6 +874,12 @@ public final class ItemValuePopup {
                 return true;
             }
         }
+        // The header, where nothing else answers, is the handle to move the popup by.
+        if (my < panelY + HEADER_H) {
+            dragging = true;
+            grabX = (int) Math.floor(mx) - panelX;
+            grabY = (int) Math.floor(my) - panelY;
+        }
         return true;
     }
 
@@ -854,6 +887,7 @@ public final class ItemValuePopup {
     static boolean mouseReleased(int button) {
         if (heldButton < 0 || button != heldButton) return false;
         heldButton = -1;
+        dragging = false;
         return true;
     }
 

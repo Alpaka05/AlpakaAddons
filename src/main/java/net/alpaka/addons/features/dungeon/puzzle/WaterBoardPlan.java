@@ -17,9 +17,15 @@ import java.util.Set;
  * first step switches it on, which starts the clock. After that every step is due a fixed number of
  * server ticks after that moment. A flip of a lever, by whoever, takes the first step off its queue
  * - except a flip the plan did not ask for: before the water, flipping a lever whose next step is
- * not "flip it now" means it has to be flipped back, so a "flip back" step goes in front; during
- * the run, a lever flipped with nothing left to do gets one too. Nothing is ever dropped silently, so
- * a wrong flip cannot leave the board in a state the solution does not expect.
+ * not "flip it now" means it has to be flipped back, so a "flip back" step goes in front. During
+ * the run the same goes for a lever flipped with nothing left to do, and for a flip that comes
+ * well before the lever's next step: a flip counts as that step once it is nearer to it than to
+ * the lever's step before, or at most {@link #EARLY_TICKS} before it ({@link #ESTIMATED_EARLY_TICKS}
+ * while the clock is estimated), so a double flip or a teammate's stray flip does not use up a
+ * step that is seconds away. The water lever cannot be flipped back
+ * into the run: a change of the water the plan did not ask for leaves the run off its plan
+ * ({@link #offPlan}), which only starting over can mend. Nothing is ever dropped silently, so a
+ * wrong flip cannot leave the board in a state the solution does not expect.
  *
  * Flips come from two places. The player's own click counts at once, so the marks move with the
  * click, and waits for the board to confirm it: if the board's blocks have not moved within two
@@ -109,6 +115,13 @@ public final class WaterBoardPlan {
     /** A step this many ticks overdue reads "Late". */
     public static final int LATE_TICKS = 10;
     /**
+     * During the run, a flip this many ticks before a lever's next step still counts as that step,
+     * however near the step before it was. Some Fast solutions flip one lever twice 10 ticks apart.
+     */
+    public static final int EARLY_TICKS = 10;
+    /** The same while the start was worked out from a teammate's flip or the water, which can be this far off. */
+    public static final int ESTIMATED_EARLY_TICKS = 30;
+    /**
      * Water seen at the entrance takes about this long from the water lever. Only used when the
      * water was noticed by its flow rather than its lever, so the countdown is marked as estimated.
      */
@@ -118,8 +131,15 @@ public final class WaterBoardPlan {
 
     private enum Op { POP, PUSH, START, WATER }
 
-    /** What one flip did to the plan, so a click the server ignored can be taken back. */
-    private record Applied(WaterBoardLever lever, long at, Op op, Step step) {}
+    /**
+     * What one flip did to the plan, so a click the server ignored can be taken back.
+     * {@code lastTaken} is the lever's {@link #lastTaken} before a POP.
+     */
+    private record Applied(WaterBoardLever lever, long at, Op op, Step step, int lastTaken) {
+        Applied(WaterBoardLever lever, long at, Op op, Step step) {
+            this(lever, at, op, step, 0);
+        }
+    }
 
     private final Map<WaterBoardLever, ArrayDeque<Step>> queues = new EnumMap<>(WaterBoardLever.class);
     /** The player's own flips that the board has not shown yet, oldest first. */
@@ -134,6 +154,10 @@ public final class WaterBoardPlan {
     private long lastWaterChange = Long.MIN_VALUE / 2;
     /** The latest any step of the plan was due, done or not, in ticks after the start. */
     private int lastDue = 0;
+    /** Per lever: when the step last taken off its queue was due (0, the start, before any). */
+    private final int[] lastTaken = new int[WaterBoardLever.values().length];
+    /** Water changes during the run that were not the plan's; any at all means the run is off its plan. */
+    private int offPlanWater = 0;
 
     private WaterBoardPlan() {
         for (WaterBoardLever lever : WaterBoardLever.values()) queues.put(lever, new ArrayDeque<>());
@@ -235,15 +259,32 @@ public final class WaterBoardPlan {
     private Applied applyLever(WaterBoardLever lever, long now) {
         ArrayDeque<Step> queue = queues.get(lever);
         Step head = queue.peekFirst();
-        boolean takesHead = phase == Phase.READY
-                ? head != null && head.beforeWater()
-                : head != null;
-        if (takesHead) return new Applied(lever, now, Op.POP, queue.pollFirst());
-        int at = phase == Phase.READY ? 0 : (int) Math.max(0L, now - startTick);
+        int elapsed = (int) Math.max(0L, now - startTick);
+        boolean takesHead;
+        if (head == null) takesHead = false;
+        else if (phase == Phase.READY) takesHead = head.beforeWater();
+        else takesHead = head.kind() == Kind.FLIP_BACK || head.beforeWater() || elapsed >= head.ticks() - earlySlack(lever, head);
+        if (takesHead) {
+            Step popped = queue.pollFirst();
+            Applied applied = new Applied(lever, now, Op.POP, popped, lastTaken[lever.ordinal()]);
+            if (popped.kind() != Kind.FLIP_BACK) lastTaken[lever.ordinal()] = popped.ticks();
+            return applied;
+        }
+        int at = phase == Phase.READY ? 0 : elapsed;
         Step back = new Step(lever, at, Kind.FLIP_BACK);
         queue.addFirst(back);
         lastDue = Math.max(lastDue, at);
         return new Applied(lever, now, Op.PUSH, back);
+    }
+
+    /**
+     * How early a flip during the run may come and still be {@code head}, the lever's next step:
+     * up to halfway from the step taken before it, and at least {@link #EARLY_TICKS} (more while
+     * the clock is estimated).
+     */
+    private int earlySlack(WaterBoardLever lever, Step head) {
+        int least = estimated ? ESTIMATED_EARLY_TICKS : EARLY_TICKS;
+        return Math.max(least, (head.ticks() - lastTaken[lever.ordinal()]) / 2);
     }
 
     /** The water lever's flip: before the run it starts the clock at {@code start}, during it switches the water. */
@@ -264,13 +305,18 @@ public final class WaterBoardPlan {
         Step head = queue.peekFirst();
         Kind wanted = waterOn ? Kind.WATER_ON : Kind.WATER_OFF;
         Step popped = head != null && head.kind() == wanted ? queue.pollFirst() : null;
+        // Not the plan's: the stream was cut or started again, and the countdowns no longer hold.
+        if (popped == null) offPlanWater++;
         return new Applied(WaterBoardLever.WATER, now, Op.WATER, popped);
     }
 
     private void undo(Applied applied) {
         ArrayDeque<Step> queue = queues.get(applied.lever());
         switch (applied.op()) {
-            case POP -> queue.addFirst(applied.step());
+            case POP -> {
+                queue.addFirst(applied.step());
+                lastTaken[applied.lever().ordinal()] = applied.lastTaken();
+            }
             case PUSH -> queue.removeFirstOccurrence(applied.step());
             case START -> {
                 phase = Phase.READY;
@@ -284,6 +330,7 @@ public final class WaterBoardPlan {
                 waterOn = !waterOn;
                 lastWaterChange = applied.at();
                 if (applied.step() != null) queue.addFirst(applied.step());
+                else offPlanWater--;
             }
         }
     }
@@ -314,6 +361,14 @@ public final class WaterBoardPlan {
     /** Whether the water is on, as far as the plan knows. */
     public boolean waterOn() {
         return waterOn;
+    }
+
+    /**
+     * Whether the water was switched on or off during the run when the plan did not ask for it: the
+     * countdowns no longer match the flow, and the run can only be started over.
+     */
+    public boolean offPlan() {
+        return offPlanWater > 0;
     }
 
     /** The steps of one lever, next first. */

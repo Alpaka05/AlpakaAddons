@@ -90,18 +90,34 @@ public final class WaterBoard extends PuzzleSolver {
         DONE
     }
 
-    /** Why there is no solution to show, as shown above the water lever. */
+    /**
+     * Why there is no solution to show, as shown above the water lever. These describe the board
+     * rather than order anything: the water may be a teammate's run that is going right. Only the
+     * two that mean the solver cannot help here are in the Wrong Color; the rest are in the Next
+     * Color, so that red above the water lever never reads as "flip it".
+     */
     private enum Problem {
-        WATER("Turn the water off and let it drain"),
-        DOORS("Doors are not in a start state"),
-        LAYOUT("Unknown board layout"),
-        DATA("No solution for this board"),
-        MISSED("Missed: turn the water off to try again");
+        WATER_RUNNING("Water is running: no solution until it is off and drained", false),
+        WATER_DRAINING("Water is draining: waiting for a dry board", false),
+        DOORS("Doors are not in a start state", false),
+        LAYOUT("Unknown board layout", true),
+        DATA("No solution for this board", true),
+        /** The run is over without the doors, and they are three closed: a new solution follows. */
+        MISSED_RETRY("Missed: turn the water off for a new solution", false),
+        /** The run is over without the doors, and they are no longer in a state with a solution. */
+        MISSED_STUCK("Missed: doors are not in a start state", false);
 
         final String text;
+        final boolean error;
 
-        Problem(String text) {
+        Problem(String text, boolean error) {
             this.text = text;
+            this.error = error;
+        }
+
+        /** The missed run's problem for the doors as they read now. */
+        static Problem missed(WaterBoardLayout.Doors doors) {
+            return doors.clear() && doors.closedCount() == 3 ? MISSED_RETRY : MISSED_STUCK;
         }
     }
 
@@ -196,9 +212,11 @@ public final class WaterBoard extends PuzzleSolver {
         Boolean water = WaterBoardLayout.waterOnBoard(view);
         if (water == null) return;
         // Solutions start from a dry board with the water off; water still running would
-        // toggle doors on its own.
+        // toggle doors on its own. It may be a teammate's run, so only say what is going on.
         if (water) {
-            problem = Problem.WATER;
+            BlockState waterLever = level.getBlockState(leverPos[WaterBoardLever.WATER.ordinal()]);
+            boolean running = !waterLever.is(Blocks.LEVER) || waterLever.getValue(LeverBlock.POWERED);
+            problem = running ? Problem.WATER_RUNNING : Problem.WATER_DRAINING;
             return;
         }
         if (doors.closedCount() != 3) {
@@ -300,6 +318,14 @@ public final class WaterBoard extends PuzzleSolver {
         }
         long sinceLastStep = now - (plan.startTick() + plan.lastDueTicks());
         Boolean water = WaterBoardLayout.waterOnBoard(view);
+        if (plan.offPlan() && !plan.awaitingConfirmation()) {
+            // The water was switched when the plan did not ask for it: the countdowns no longer
+            // match the flow. Start over as soon as the board is dry, without waiting for them.
+            if (plan.waterOn()) problem = Problem.missed(doors);
+            else if (Boolean.FALSE.equals(water)) replan();
+            else problem = Problem.WATER_DRAINING;
+            return;
+        }
         if (!plan.waterOn() && Boolean.FALSE.equals(water) && !plan.awaitingConfirmation()
                 && (plan.remaining() == 0 || sinceLastStep > DRAIN_TICKS)) {
             // The water ran and drained and the doors are not all open: the solution was missed.
@@ -307,7 +333,9 @@ public final class WaterBoard extends PuzzleSolver {
             replan();
             return;
         }
-        problem = plan.waterOn() && plan.remaining() == 0 && sinceLastStep > MISSED_TICKS ? Problem.MISSED : null;
+        // Every step was due long ago (a flip-back left undone counts among them) and the doors
+        // are still not all open: the run was missed.
+        problem = plan.waterOn() && sinceLastStep > MISSED_TICKS ? Problem.missed(doors) : null;
     }
 
     private void replan() {
@@ -350,9 +378,10 @@ public final class WaterBoard extends PuzzleSolver {
         if (problem != null) {
             BlockPos at = leverPos[WaterBoardLever.WATER.ordinal()];
             draw.label(new Vec3(at.getX() + 0.5, at.getY() + LABEL_BASE + 0.4, at.getZ() + 0.5), problem.text,
-                    SolverColors.wrong(), 1.0f);
+                    problem.error ? SolverColors.wrong() : SolverColors.next(), 1.0f);
         }
-        if (stage != Stage.PLANNED || plan == null) return;
+        // While a run is missed or off its plan, its countdowns and "Late" labels say nothing true.
+        if (stage != Stage.PLANNED || plan == null || problem != null || plan.offPlan()) return;
         List<WaterBoardPlan.Mark> marks = plan.marks(now(Util.getMillis()));
         for (WaterBoardPlan.Mark mark : marks) {
             int i = mark.lever().ordinal();

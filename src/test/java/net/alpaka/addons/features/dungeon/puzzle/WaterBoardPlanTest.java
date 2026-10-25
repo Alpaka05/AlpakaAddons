@@ -300,6 +300,99 @@ class WaterBoardPlanTest {
     }
 
     @Test
+    void aSecondFlipLongBeforeTheNextStepIsUndoneNotCounted() {
+        // Emerald at 3.3 s and 7.8 s; a held click flips it again 4 ticks after the first.
+        WaterBoardPlan plan = standard(2, "014");
+        plan.ownFlip(WATER, 1000, false);
+        plan.ownFlip(EMERALD, 1066, false);
+        assertEquals(List.of("emerald TIMED @156"), plan.queue(EMERALD).stream().map(Step::toString).toList());
+        plan.ownFlip(EMERALD, 1070, false);
+        assertEquals(List.of("emerald FLIP_BACK @70", "emerald TIMED @156"),
+                plan.queue(EMERALD).stream().map(Step::toString).toList());
+        Mark emerald = mark(plan, EMERALD, 1071);
+        assertEquals(Tone.WRONG, emerald.tone());
+        assertEquals("#1 Flip Back", emerald.lines().get(0).text());
+        // Flipped back: the 7.8 s step is still to do.
+        plan.ownFlip(EMERALD, 1080, false);
+        assertEquals(List.of("emerald TIMED @156"), plan.queue(EMERALD).stream().map(Step::toString).toList());
+    }
+
+    @Test
+    void aFlipNearItsStepCountsForIt() {
+        WaterBoardPlan plan = standard(1, "124"); // coal 2.9 s, gold 6.7 s, terracotta 10.2 s
+        plan.ownFlip(WATER, 1000, false);
+        plan.ownFlip(COAL, 1050, false); // 8 ticks early: on time as far as anyone can tell
+        assertEquals(List.of(), plan.queue(COAL));
+        // A misclick on terracotta, seconds before its step: it has to be flipped back.
+        plan.ownFlip(TERRACOTTA, 1060, false);
+        assertEquals(List.of("terracotta FLIP_BACK @60", "terracotta TIMED @204"),
+                plan.queue(TERRACOTTA).stream().map(Step::toString).toList());
+
+        // Nearer to the next step than to the one before: that step, done a little early.
+        WaterBoardPlan emerald = standard(2, "014");
+        emerald.ownFlip(WATER, 1000, false);
+        emerald.ownFlip(EMERALD, 1066, false);
+        emerald.ownFlip(EMERALD, 1140, false);
+        assertEquals(List.of(), emerald.queue(EMERALD));
+    }
+
+    @Test
+    void stepsCloseTogetherAndAnEstimatedClock() {
+        // Fast 4 "024": coal at 0.6 s and 1.8 s. A flip 4 ticks after the first is not the second.
+        WaterBoardPlan own = plan(WaterBoardSolutions.Table.FAST, 4, "024");
+        own.ownFlip(WATER, 1000, false);
+        own.ownFlip(COAL, 1012, false);
+        own.ownFlip(COAL, 1016, false);
+        assertEquals(Kind.FLIP_BACK, own.queue(COAL).getFirst().kind());
+        // With the start seen from a teammate's flip the clock can be off by a second or so, and
+        // the same flip counts for the step.
+        WaterBoardPlan seen = plan(WaterBoardSolutions.Table.FAST, 4, "024");
+        seen.observedFlip(WATER, 1000, 0);
+        assertTrue(seen.estimated());
+        seen.observedFlip(COAL, 1012, 0);
+        seen.observedFlip(COAL, 1016, 0);
+        assertEquals(List.of("coal TIMED @100", "coal TIMED @130"), seen.queue(COAL).stream().map(Step::toString).toList());
+    }
+
+    @Test
+    void anUnplannedWaterChangeLeavesTheRunOffItsPlan() {
+        WaterBoardPlan plan = standard(1, "124"); // water [0.0]
+        plan.ownFlip(WATER, 1000, false);
+        int left = plan.remaining();
+        assertFalse(plan.offPlan());
+        // A teammate switches it off at 3 s.
+        plan.observedFlip(WATER, 1060, 0);
+        assertFalse(plan.waterOn());
+        assertTrue(plan.offPlan());
+        assertEquals(left, plan.remaining());
+    }
+
+    @Test
+    void anIgnoredOwnWaterClickDoesNotLeaveTheRunOffItsPlan() {
+        WaterBoardPlan plan = standard(1, "124");
+        plan.ownFlip(WATER, 1000, false);
+        plan.ownFlip(WATER, 1060, true);
+        assertTrue(plan.offPlan());
+        plan.expire(1100);
+        assertFalse(plan.offPlan());
+        assertTrue(plan.waterOn());
+    }
+
+    @Test
+    void theWaterOnAgainAfterAPlannedStopIsOffPlan() {
+        WaterBoardPlan plan = standard(2, "013"); // water [0.0, 7.5]
+        plan.ownFlip(QUARTZ, 0, false);
+        plan.ownFlip(EMERALD, 0, false);
+        plan.ownFlip(WATER, 1000, false);
+        plan.ownFlip(WATER, 1150, false);
+        assertFalse(plan.waterOn());
+        assertFalse(plan.offPlan());
+        plan.observedFlip(WATER, 1200, 0);
+        assertTrue(plan.waterOn());
+        assertTrue(plan.offPlan());
+    }
+
+    @Test
     void stepsLeftOverFromBeforeTheWaterAreDueAtOnce() {
         WaterBoardPlan plan = standard(1, "012");
         plan.ownFlip(WATER, 1000, false); // four flips still to do

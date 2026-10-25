@@ -249,6 +249,13 @@ public final class ConfigTree {
             }
         }
 
+        // A feature's key always comes first, right under its description, wherever it was
+        // registered; the rest keep their registry order (the sort is stable).
+        for (Feature feature : byKey.values()) {
+            feature.settings.sort(java.util.Comparator.comparing(
+                    (ConfigOption option) -> option.getType() != ConfigOption.Type.KEYBIND));
+        }
+
         // Then the sidebar, as LAYOUT has it.
         List<Group> groups = new ArrayList<>();
         Set<String> placed = new java.util.HashSet<>();

@@ -48,6 +48,10 @@ public final class ProfileSession {
 
     /** Elite's skill history, by metric id; filled in after the profile. */
     private volatile Map<String, List<ProfileHistory.Point>> eliteSeries = Map.of();
+    /** Soopy's stat history, by metric id; filled in page by page after the profile. */
+    private volatile Map<String, List<ProfileHistory.Point>> soopySeries = Map.of();
+    /** Whether Soopy's pages are still coming in. */
+    public volatile boolean historyLoading;
     /** Bumped whenever something a graph draws from changes, to drop cached series. */
     private volatile int version;
     private final Map<String, List<ProfileHistory.Point>> seriesCache = new HashMap<>();
@@ -81,8 +85,13 @@ public final class ProfileSession {
     }
 
     private void load(String wantedProfile, boolean fresh) {
-        ProfileApi.account(query).thenCompose(account -> {
-            readAccount(account);
+        // The Bingo event decides which Bingo profiles are still worth listing; without an answer
+        // none are, which is right outside an event.
+        CompletableFuture<JsonElement> bingo = ProfileApi.bingo().exceptionally(e -> null);
+        ProfileApi.account(query).thenCombine(bingo, (account, event) -> {
+            readAccount(account, event, System.currentTimeMillis());
+            return account;
+        }).thenCompose(account -> {
             String id = wantedProfile != null ? wantedProfile : pickProfile();
             if (id == null) throw new ProfileApi.NotFound(playerName + " has no SkyBlock profiles.");
             profileId = id;
@@ -105,22 +114,38 @@ public final class ProfileSession {
             state = State.READY;
             version++;
             loadSkillHistory(parsed);
+            loadSoopyHistory(parsed);
         });
     }
 
-    private void readAccount(JsonElement account) {
+    private void readAccount(JsonElement account, JsonElement bingoEvent, long now) {
         uuid = Json.str(account, "id");
         playerName = Json.str(account, "name");
         skinHash = Json.str(account, "skin.texture");
-        List<ProfileRef> refs = new ArrayList<>();
+        profiles = profiles(account, bingoEvent, now);
+    }
+
+    /**
+     * The account's profiles worth showing, the selected one first and the others by name, as the
+     * game's profile menu has them. A Bingo profile only counts while a Bingo event runs: once it
+     * is over the profile is a leftover nobody looks at again. Should that leave nothing, everything
+     * is shown after all.
+     */
+    static List<ProfileRef> profiles(JsonElement account, JsonElement bingoEvent, long now) {
+        boolean bingoRunning = bingoEvent != null
+                && Json.num(bingoEvent, "start", Double.MAX_VALUE) <= now && now <= Json.num(bingoEvent, "end", 0);
+        List<ProfileRef> all = new ArrayList<>();
+        List<ProfileRef> shown = new ArrayList<>();
         for (JsonElement p : Json.arr(account, "profiles")) {
             String id = Json.str(p, "profileId");
             if (id == null || Json.bool(p, "wasRemoved")) continue;
-            refs.add(new ProfileRef(id, Json.str(p, "profileName"), Json.str(p, "gameMode"), Json.bool(p, "selected")));
+            ProfileRef ref = new ProfileRef(id, Json.str(p, "profileName"), Json.str(p, "gameMode"), Json.bool(p, "selected"));
+            all.add(ref);
+            if (bingoRunning || !"bingo".equals(ref.gameMode())) shown.add(ref);
         }
-        // The selected profile first, the others by name, as the game's profile menu shows them.
+        List<ProfileRef> refs = shown.isEmpty() ? all : shown;
         refs.sort(Comparator.comparing((ProfileRef r) -> !r.selected()).thenComparing(r -> r.name() == null ? "" : r.name()));
-        profiles = List.copyOf(refs);
+        return List.copyOf(refs);
     }
 
     private String pickProfile() {
@@ -171,6 +196,125 @@ public final class ProfileSession {
                 });
     }
 
+    /** At most this many of Soopy's pages, about a hundred snapshots each: several years. */
+    private static final int SOOPY_MAX_PAGES = 15;
+
+    /**
+     * Soopy's history, newest page first, one after the other; each page shows in the graphs as it
+     * arrives, so the recent past is there at once and older years fill in behind it.
+     */
+    private void loadSoopyHistory(ProfileData parsed) {
+        historyLoading = true;
+        loadSoopyPage(parsed, 0, new ArrayList<>(), System.currentTimeMillis());
+    }
+
+    private void loadSoopyPage(ProfileData parsed, int page, List<JsonElement> pages, long askedAt) {
+        String id = parsed.profileId;
+        ProfileApi.soopyHistory(parsed.uuid, id, page).whenComplete((answer, failure) -> {
+            if (!id.equals(profileId)) return;
+            boolean more = failure == null && !Json.arr(answer, "data").isEmpty();
+            if (more) {
+                pages.add(answer);
+                Map<String, List<ProfileHistory.Point>> series = soopySeries(pages);
+                calibrateNetworth(series, parsed.networth, askedAt);
+                soopySeries = series;
+                version++;
+            }
+            if (more && page + 1 < SOOPY_MAX_PAGES) {
+                loadSoopyPage(parsed, page + 1, pages, askedAt);
+            } else {
+                historyLoading = false;
+            }
+        });
+    }
+
+    /**
+     * Soopy's pages as series by metric id. A "NoChange" entry means the profile was looked at again
+     * and its numbers were still those of the snapshot before, so it repeats them: the line stays
+     * flat up to that moment instead of cutting across the gap. A skill at zero was the skills API
+     * being off at the time, not a profile without XP, and is left out.
+     */
+    static Map<String, List<ProfileHistory.Point>> soopySeries(List<JsonElement> pages) {
+        List<JsonElement> entries = new ArrayList<>();
+        for (JsonElement page : pages) for (JsonElement e : Json.arr(page, "data")) entries.add(e);
+        entries.sort(Comparator.comparingDouble(e -> Json.num(e, "last_save", 0)));
+        Map<String, List<ProfileHistory.Point>> out = new HashMap<>();
+        Map<String, Double> last = new HashMap<>();
+        for (JsonElement e : entries) {
+            long t = (long) Json.num(e, "last_save", 0);
+            if (t <= 0) continue;
+            String type = Json.str(e, "type");
+            if ("Data".equals(type)) {
+                last = new HashMap<>();
+                put(last, Metrics.NETWORTH, Json.num(e, "networth"), true);
+                put(last, Metrics.SB_LEVEL, Json.num(e, "sbLvl"), true);
+                put(last, Metrics.SLAYER_TOTAL, Json.num(e, "slayer.totalExp"), false);
+                for (String[] boss : ProfileData.SLAYERS) {
+                    put(last, Metrics.SLAYER + boss[0], Json.num(e, "slayer." + boss[0] + ".xp"), false);
+                }
+                put(last, Metrics.CATACOMBS, Json.num(e, "dungeons.catacombs_xp"), false);
+                for (String c : ProfileData.CLASSES) {
+                    put(last, Metrics.CLASS + c, Json.num(e, "dungeons.class_levels." + c + ".xp"), false);
+                }
+                for (var skill : Json.obj(e, "skills").entrySet()) {
+                    if (skill.getValue().isJsonPrimitive()) {
+                        put(last, Metrics.SKILL + skill.getKey(), skill.getValue().getAsDouble(), true);
+                    }
+                }
+            } else if (!"NoChange".equals(type)) {
+                continue;
+            }
+            for (var m : last.entrySet()) {
+                out.computeIfAbsent(m.getKey(), k -> new ArrayList<>()).add(new ProfileHistory.Point(t, m.getValue()));
+            }
+        }
+        out.computeIfPresent(Metrics.NETWORTH, (k, v) -> withoutDips(v));
+        return out;
+    }
+
+    /**
+     * Soopy works networth out its own way, and lands well apart from Elite: 179B where Elite says
+     * 259B for the same profile at the same moment. Put into one graph as they are, the switch from
+     * one to the other reads as a jump that never happened. So Soopy's networth is scaled by how the
+     * two compare now - its "realtime" snapshot from this very look against Elite's number - which
+     * keeps the history's shape and lands it on Elite's. Without a snapshot of Soopy's from this
+     * look there is nothing to compare with, and its networth is left out.
+     */
+    static void calibrateNetworth(Map<String, List<ProfileHistory.Point>> series, double eliteNow, long askedAt) {
+        List<ProfileHistory.Point> networth = series.get(Metrics.NETWORTH);
+        if (networth == null || networth.isEmpty()) return;
+        ProfileHistory.Point now = null;
+        for (ProfileHistory.Point p : networth) if (p.timeMs() >= askedAt - 10 * 60_000L) now = p;
+        if (now == null || !(eliteNow > 0) || !(now.value() > 0)) {
+            series.remove(Metrics.NETWORTH);
+            return;
+        }
+        double factor = eliteNow / now.value();
+        List<ProfileHistory.Point> scaled = new ArrayList<>(networth.size());
+        for (ProfileHistory.Point p : networth) scaled.add(new ProfileHistory.Point(p.timeMs(), p.value() * factor));
+        series.put(Metrics.NETWORTH, scaled);
+    }
+
+    /**
+     * Drops single snapshots far below both neighbours: an inventory API switched off for a moment
+     * makes the networth read a tenth of itself for one look, which says nothing about the profile.
+     */
+    static List<ProfileHistory.Point> withoutDips(List<ProfileHistory.Point> points) {
+        List<ProfileHistory.Point> out = new ArrayList<>(points.size());
+        for (int i = 0; i < points.size(); i++) {
+            double v = points.get(i).value();
+            boolean dip = i > 0 && i < points.size() - 1
+                    && v < points.get(i - 1).value() * 0.5 && v < points.get(i + 1).value() * 0.5;
+            if (!dip) out.add(points.get(i));
+        }
+        return out;
+    }
+
+    private static void put(Map<String, Double> into, String metric, double value, boolean zeroIsMissing) {
+        if (Double.isNaN(value) || value < 0 || zeroIsMissing && value == 0) return;
+        into.put(metric, value);
+    }
+
     /** Elite's graph answers as series by metric id, the skill average worked out for each point. */
     static Map<String, List<ProfileHistory.Point>> skillSeries(List<JsonElement> answers, Map<String, Integer> maxLevels) {
         Map<String, List<ProfileHistory.Point>> out = new HashMap<>();
@@ -201,7 +345,7 @@ public final class ProfileSession {
 
     /**
      * One metric over time for the profile on show: the dashboard's own snapshots together with
-     * Elite's skill history, oldest first.
+     * Elite's skill history and Soopy's stat history, oldest first.
      */
     public synchronized List<ProfileHistory.Point> series(String metric) {
         ProfileData d = data;
@@ -213,6 +357,7 @@ public final class ProfileSession {
         return seriesCache.computeIfAbsent(metric, m -> {
             List<ProfileHistory.Point> merged = new ArrayList<>(ProfileHistory.series(d.uuid, d.profileId, m));
             merged.addAll(eliteSeries.getOrDefault(m, List.of()));
+            merged.addAll(soopySeries.getOrDefault(m, List.of()));
             merged.sort(Comparator.comparingLong(ProfileHistory.Point::timeMs));
             // Elite and the snapshots often looked at almost the same moment; one point is enough.
             List<ProfileHistory.Point> out = new ArrayList<>(merged.size());

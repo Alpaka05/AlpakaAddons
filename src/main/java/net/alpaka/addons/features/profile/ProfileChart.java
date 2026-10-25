@@ -27,7 +27,7 @@ public final class ProfileChart {
 
     /** How far back a graph goes. */
     public enum Range {
-        WEEK("7D", 7), MONTH("30D", 30), QUARTER("90D", 90), ALL("All", 0);
+        WEEK("7D", 7), MONTH("30D", 30), QUARTER("90D", 90), YEAR("1Y", 365), ALL("All", 0);
 
         public final String chip;
         public final int days;

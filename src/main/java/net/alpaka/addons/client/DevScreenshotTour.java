@@ -216,6 +216,11 @@ public final class DevScreenshotTour {
             profile("profile-unknown-player", "zzqqxxnotaname123", "OVERVIEW"),
             new Stop(null, DevScreenshotTour::enterWorld,
                     () -> Minecraft.getInstance().player != null && Minecraft.getInstance().gui.screen() == null, 100),
+            // The pets with their heads and skins, which only exist once a world is loaded; then the
+            // Skills page with the item icons.
+            profile("profile-pets-in-world", "Refraction", "PETS"),
+            new Stop("profile-pets-heads", () -> {}, () -> true, 60),
+            profile("profile-skills-in-world", "TimeDeo", "SKILLS"),
             new Stop("world-hud", DevScreenshotTour::showHuds, () -> true, 30),
             // The screenshot preview of the picture just taken: resting in the corner, then mid-shrink.
             // A run that leaves out world-hud never gets its picture, so these two pass then.

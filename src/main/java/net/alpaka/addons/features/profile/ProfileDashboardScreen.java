@@ -467,14 +467,18 @@ public class ProfileDashboardScreen extends Screen {
         if (d != null && d.lastUpdated > 0) {
             text(graphics, "Updated " + Metrics.ago(d.lastUpdated * 1000L), x + PAD, fy, AlpakaStyle.TEXT_MUTED);
         }
-        String source = "Data from Elite";
+        String source = "Elite & Soopy";
         int sw = textW(source);
         boolean hoverSource = AlpakaStyle.inside(mx, my, x + PAD - 2, fy + 10, sw + 4, 11);
         text(graphics, source, x + PAD, fy + 12, hoverSource ? AlpakaStyle.accent() : AlpakaStyle.DIVIDER);
         if (session.playerName != null) {
             String url = ProfileApi.ELITE_SITE + session.playerName + (d != null && d.profileName != null ? "/" + d.profileName : "");
             hits.add(new Hit(x + PAD - 2, fy + 10, sw + 4, 11, () -> openLink("Open Elite", url)));
-            if (hoverSource) tip("source", "Profile data from Elite (elitebot.dev), which reads it from Hypixel. Click to open this profile there.");
+            if (hoverSource) {
+                tip("source", "Profile data from Elite (elitebot.dev), which reads it from Hypixel; the history from Elite and "
+                        + "Soopy (soopy.dev), pet heads from the NEU repository. Soopy works networth out differently, so its "
+                        + "older networth is scaled to match Elite's. Click to open this profile on Elite.");
+            }
         }
     }
 
@@ -1274,12 +1278,21 @@ public class ProfileDashboardScreen extends Screen {
             boolean hover = hover(cx, cy, cw, ch);
             ModernGuiUtils.drawRoundedRect(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
             if (p.active()) ModernGuiUtils.drawRoundedOutline(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, MarketIcons.fade(AlpakaStyle.accent(), 0.8f));
+            // The pet's head, in the skin it wears, as the game shows it; a placeholder while it loads.
+            ItemStack head = PetIcons.icon(p);
+            if (head != null) {
+                stackIcon(graphics, head, cx + 5, cy + 7, 1.0f);
+            } else {
+                ModernGuiUtils.drawRoundedRect(graphics, cx + 6, cy + 8, 14, 14, 3, AlpakaStyle.ROW_SELECTED);
+            }
+            int tx = cx + 25;
+            int tw = cw - 25 - 6;
             String level = "Lvl " + p.level();
-            text(graphics, level, cx + cw - 6 - textW(level), cy + 5, p.level() >= p.maxLevel() ? ink(0xFFFFC94D) : AlpakaStyle.TEXT_SOFT);
-            text(graphics, AlpakaStyle.ellipsize(this.font, p.name(), cw - 18 - textW(level)), cx + 6, cy + 5, ink(ProfileData.rarityColor(p.tier())));
+            text(graphics, level, tx + tw - textW(level), cy + 5, p.level() >= p.maxLevel() ? ink(0xFFFFC94D) : AlpakaStyle.TEXT_SOFT);
+            text(graphics, AlpakaStyle.ellipsize(this.font, p.name(), tw - 6 - textW(level)), tx, cy + 5, ink(ProfileData.rarityColor(p.tier())));
             String held = p.active() ? "Active" + (p.heldItem() == null ? "" : " · " + heldItem(p.heldItem())) : p.heldItem() == null ? "" : heldItem(p.heldItem());
-            text(graphics, AlpakaStyle.ellipsize(this.font, held, cw - 12), cx + 6, cy + 17, p.active() ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
-            if (p.level() < p.maxLevel()) bar(graphics, cx + 6, cy + ch - 3, cw - 12, 1, p.progress(), MarketIcons.fade(AlpakaStyle.accent(), 0.7f));
+            text(graphics, AlpakaStyle.ellipsize(this.font, held, tw), tx, cy + 17, p.active() ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
+            if (p.level() < p.maxLevel()) bar(graphics, tx, cy + ch - 3, tw, 1, p.progress(), MarketIcons.fade(AlpakaStyle.accent(), 0.7f));
             if (hover) {
                 tip(p, ProfileData.title(p.tier()) + " " + p.name() + ", level " + p.level() + " of " + p.maxLevel()
                         + (p.heldItem() != null ? ", holding " + heldItem(p.heldItem()) : "")
@@ -1562,6 +1575,14 @@ public class ProfileDashboardScreen extends Screen {
      * An item drawn as an icon. Items only get their components once a world is joined, so opened
      * from the main menu's config there are no icons, rather than a crash.
      */
+    private static void stackIcon(GuiGraphicsExtractor graphics, ItemStack stack, int x, int y, float scale) {
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(x, y);
+        graphics.pose().scale(scale, scale);
+        graphics.item(stack, 0, 0);
+        graphics.pose().popMatrix();
+    }
+
     private static void icon(GuiGraphicsExtractor graphics, Item item, int x, int y, float scale) {
         ItemStack stack = STACKS.get(item);
         if (stack == null) {
@@ -1643,6 +1664,7 @@ public class ProfileDashboardScreen extends Screen {
             case WEEK -> "7 days";
             case MONTH -> "30 days";
             case QUARTER -> "90 days";
+            case YEAR -> "year";
             case ALL -> "whole history";
         };
     }

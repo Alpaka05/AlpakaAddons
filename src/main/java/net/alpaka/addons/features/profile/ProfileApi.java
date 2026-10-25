@@ -21,9 +21,10 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * Hypixel's own API wants a key every player would have to make and paste, so the profile comes
  * from Elite (api.elitebot.dev), which reads it from Hypixel and hands it out without one, already
- * worked out: levels, networth, pets. Elite also keeps a history of every profile's skill XP, which
- * gives the skill graphs their past from the first look. The collection tiers come from Hypixel's
- * public resources, which need no key either.
+ * worked out: levels, networth, pets. Elite also keeps a history of every profile's skill XP, and
+ * Soopy (api.soopy.dev) one of networth, SkyBlock level, Catacombs, slayers and skills going back
+ * years, which gives the graphs their past from the first look. The collection tiers and the
+ * running Bingo event come from Hypixel's public resources, which need no key either.
  *
  * Answers are kept for a minute, so flipping pages costs nothing, and requests are spaced out to
  * stay well inside Elite's limit of 20 at a time. Only used while Network Features is on.
@@ -32,6 +33,7 @@ public final class ProfileApi {
     private ProfileApi() {}
 
     static final String ELITE = "https://api.elitebot.dev";
+    static final String SOOPY = "https://api.soopy.dev";
     static final String HYPIXEL_RESOURCES = "https://api.hypixel.net/v2/resources/skyblock";
     /** Where the dashboard's footer links to, as the source of the numbers. */
     public static final String ELITE_SITE = "https://elitebot.dev/@";
@@ -85,6 +87,49 @@ public final class ProfileApi {
             url += "&from=" + from;
         }
         return get(url, 10 * FRESH_MS);
+    }
+
+    /**
+     * One page of Soopy's stat history for a profile: about a hundred snapshots, newest first, page 0
+     * the most recent. Soopy has kept these for years for every profile looked up through it. An
+     * empty page is the end.
+     */
+    static CompletableFuture<JsonElement> soopyHistory(String uuid, String profileId, int page) {
+        // The first page "realtime", as Soopy's own site asks for it: Soopy reads the profile now
+        // and adds that as its newest snapshot, which is what lines its networth up with Elite's.
+        String url = SOOPY + "/skyblock/stathistory/" + uuid + "/" + profileId + "/" + page + (page == 0 ? "/realtime" : "");
+        return get(url, 10 * FRESH_MS);
+    }
+
+    /** The current or last Bingo event, with its start and end. */
+    static CompletableFuture<JsonElement> bingo() {
+        return get(HYPIXEL_RESOURCES + "/bingo", 60 * FRESH_MS);
+    }
+
+    /** A file of the NEU item repository, as text; see {@link PetIcons}. */
+    static CompletableFuture<String> neuItem(String url) {
+        // Not spaced out like Elite's requests: GitHub serves these files from its CDN, and a page
+        // of pets asks for dozens at once.
+        CompletableFuture<String> future = new CompletableFuture<>();
+        CompletableFuture.runAsync(() -> {
+            HttpRequest request = HttpRequest.newBuilder(URI.create(url))
+                    .timeout(Duration.ofSeconds(20))
+                    .header("User-Agent", "AlpakaAddons/" + ModVersion.mod())
+                    .GET()
+                    .build();
+            client().sendAsync(request, HttpResponse.BodyHandlers.ofString()).whenComplete((response, error) -> {
+                if (error != null || response == null) {
+                    future.completeExceptionally(error != null ? error : new IllegalStateException("no response"));
+                } else if (response.statusCode() == 404) {
+                    future.completeExceptionally(new NotFound("No such item."));
+                } else if (response.statusCode() / 100 != 2) {
+                    future.completeExceptionally(new IllegalStateException("Answered " + response.statusCode()));
+                } else {
+                    future.complete(response.body());
+                }
+            });
+        });
+        return future;
     }
 
     /** Every collection with its tiers, from Hypixel's resources. Changes with game updates only. */

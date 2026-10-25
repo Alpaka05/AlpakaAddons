@@ -41,7 +41,16 @@ object DeployableTimerHudRenderer {
     /** Each kind's head, built once; building one means a profile and a skin lookup. */
     private val icons = EnumMap<Deployable, ItemStack>(Deployable::class.java)
 
-    private fun icon(type: Deployable): ItemStack = icons.getOrPut(type) { head(type.textureValue()) }
+    /**
+     * Null until a world has been joined: items get their components only then, and building a stack
+     * before that throws. The HUD editor can be opened from the title screen, where the sample is drawn
+     * without its head.
+     */
+    private fun icon(type: Deployable): ItemStack? {
+        icons[type]?.let { return it }
+        if (!Items.PLAYER_HEAD.builtInRegistryHolder().areComponentsBound()) return null
+        return head(type.textureValue()).also { icons[type] = it }
+    }
 
     /** A player head wearing the skin with this texture value, as Hypixel's heads carry it. */
     private fun head(texture: String): ItemStack {
@@ -95,7 +104,7 @@ object DeployableTimerHudRenderer {
         graphics.pose().pushMatrix()
         graphics.pose().translate(x.toFloat(), y.toFloat())
         graphics.pose().scale(scale, scale)
-        graphics.item(icon(active.type()), 0, 0)
+        icon(active.type())?.let { graphics.item(it, 0, 0) }
         graphics.text(font, time, ICON_SIZE + ICON_GAP, TEXT_Y, color(active))
         graphics.pose().popMatrix()
     }

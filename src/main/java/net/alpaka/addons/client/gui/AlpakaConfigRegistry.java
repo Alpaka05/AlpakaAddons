@@ -2367,7 +2367,8 @@ public class AlpakaConfigRegistry {
                 "dungeon water board levers fast quick quicker faster solutions timing"));
 
         OPTIONS.add(ConfigOption.color("dungeon_solver_color", "Solution Color",
-                "What to do now: the right chest, answer, pad, lever or block. The device solvers use it too.",
+                "What to do now: the right chest, answer, pad, lever or block. The device solvers use it too, and "
+                        + "Creeper Beams colors its pairs from it and the Next Color.",
                 ConfigCategory.SKYBLOCK,
                 c -> c.dungeonSolverColor,
                 v -> { AlpakaConfig.instance.dungeonSolverColor = v; AlpakaConfig.save(); },
@@ -2419,8 +2420,9 @@ public class AlpakaConfigRegistry {
                 "dungeon solver labels text numbers order count countdown timer"));
 
         OPTIONS.add(new ConfigOption("terminal_solvers", "Terminal Solvers",
-                "Marks the solution of the F7 and M7 terminals in their chest window. It only draws; "
-                        + "every click is still yours.",
+                "Marks the solution of the F7 and M7 terminals in their chest window. It never clicks for you, but "
+                        + "by default it ignores clicks made right after a terminal opens or within 50 ms of the last one, "
+                        + "and nothing is sent for those (First Click Protection, Click Rate Guard).",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.terminalSolversEnabled,
                 v -> { AlpakaConfig.instance.terminalSolversEnabled = v; AlpakaConfig.save(); },
@@ -2481,12 +2483,13 @@ public class AlpakaConfigRegistry {
                 "terminal first click delay ms milliseconds ticks protection"));
 
         OPTIONS.add(new ConfigOption("terminal_rate_guard", "Click Rate Guard",
-                "Ignores a click that comes within one server tick of the last one, so fast clicks are not throttled. "
-                        + "Nothing is sent for an ignored click.",
+                "Ignores a click that comes less than one server tick (50 ms) after the last click that went out, "
+                        + "which helps keep Hypixel from throttling the terminal. Nothing is sent for an ignored click. "
+                        + "Turning this off is at your own risk.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.terminalRateGuard,
                 v -> { AlpakaConfig.instance.terminalRateGuard = v; AlpakaConfig.save(); },
-                "terminal click rate guard throttle limit fast double click tick"));
+                "terminal click rate guard throttle limit fast double click tick warning risk"));
 
         OPTIONS.add(ConfigOption.color("terminal_solution_color", "Solution Color",
                 "The cells to click.",
@@ -2531,8 +2534,9 @@ public class AlpakaConfigRegistry {
                 "terminal melody color button on time column"));
 
         OPTIONS.add(new ConfigOption("terminal_custom_gui", "Custom Terminal GUI",
-                "Shows terminals in a larger, cleaner window with the solution drawn in. Works together with Terminal "
-                        + "Solvers. The clicks sent are exactly the clicks you make.",
+                "Shows terminals in a larger, cleaner window with the solution drawn in. Needs Terminal Solvers on, "
+                        + "and opens only for the terminals ticked under Terminals. Only the clicks you make are sent, "
+                        + "unchanged; a click the Terminal Solvers guards ignore is not sent at all.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.terminalCustomGui,
                 v -> { AlpakaConfig.instance.terminalCustomGui = v; AlpakaConfig.save(); },

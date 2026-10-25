@@ -57,7 +57,7 @@ class DisableAllFeaturesTest {
             // Cosmetics
             "customNameTagEnabled", "chromaHatEnabled", "playerScaleEnabled", "customDamageTagsEnabled",
             // Utility and sounds
-            "alwaysSprintEnabled", "customSoundsEnabled", "muteVanillaSoundsInBlazeSlayer"
+            "alwaysSprintEnabled", "keepCursorPositionEnabled", "customSoundsEnabled", "muteVanillaSoundsInBlazeSlayer"
     );
 
     /**

@@ -407,8 +407,8 @@ public class MarketInputScreen extends SignEditScreen {
                 ModernGuiUtils.drawRoundedRect(graphics, rx, ry, rw, SUGGESTION_H, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW_SELECTED);
                 ModernGuiUtils.drawRoundedRect(graphics, rx, ry + 5, 2, SUGGESTION_H - 10, 1, accent);
             }
-            // The item itself where Hypixel's list knows it; a recent search it does not know keeps a clock.
-            ItemStack icon = ItemIcons.forName(s.name());
+            // The item itself, by its tag; a recent search no list knows keeps a clock.
+            ItemStack icon = ItemIcons.forItem(ItemTags.suggestionTag(s.name(), context), s.name());
             if (!icon.isEmpty()) {
                 graphics.item(icon, rx + 6, ry + (SUGGESTION_H - 16) / 2);
             } else {
@@ -581,7 +581,7 @@ public class MarketInputScreen extends SignEditScreen {
         boolean coins = prompt.type() == SignPrompt.Type.PRICE;
         String reading = "= " + Coins.full(value) + (coins ? " coins" : "");
         int rw = GuiFont.width(this.font, reading);
-        graphics.text(this.font, GuiFont.text(reading), right - rw, y, coins ? COIN : AlpakaStyle.TEXT_SOFT, false);
+        graphics.text(this.font, GuiFont.text(reading), right - rw, y, coins ? MarketInk.ink(COIN) : AlpakaStyle.TEXT_SOFT, false);
     }
 
     private void drawChips(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w) {
@@ -633,7 +633,7 @@ public class MarketInputScreen extends SignEditScreen {
                         if (cx + cw > x + w - sourceW - 6) break;
                         boolean hover = AlpakaStyle.inside(mouseX, mouseY, cx, y, cw, CHIP_H);
                         ModernGuiUtils.drawRoundedRect(graphics, cx, y, cw, CHIP_H, CHIP_H / 2, hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW);
-                        graphics.text(this.font, GuiFont.text(chip.label()), cx + 6, y + 3, hover ? COIN : AlpakaStyle.TEXT_SOFT, false);
+                        graphics.text(this.font, GuiFont.text(chip.label()), cx + 6, y + 3, hover ? MarketInk.ink(COIN) : AlpakaStyle.TEXT_SOFT, false);
                         hits.add(new Hit(cx, y, cw, CHIP_H, mx -> replace(Coins.full(chip.coins())), true));
                         cx += cw + 4;
                     }

@@ -91,14 +91,15 @@ public final class ConfigTree {
     /** The options that are features of their own. Everything else is a setting of the one before. */
     private static final Set<String> MASTERS = Set.of(
             // General
-            "allow_api_calls", "update_notifications", "menu_font", "menu_accent_color",
+            "allow_api_calls", "update_notifications", "menu_font", "menu_theme", "menu_accent_color",
             "custom_escape_menu", "custom_main_menu", "disable_all_features", "reset_all_settings",
             // Visuals
             "fullbright", "clean_blaze", "blaze_fire_pits", "stop_blaze_spinning", "hide_hurt_overlay", "hide_mob_deaths",
-            "render_hand_third_person", "smooth_perspective", "disable_front_perspective",
+            "hide_explosions",
+            "render_hand_third_person", "smooth_perspective", "disable_front_perspective", "zoom",
             "sky_effects",
             "container_bg_opacity", "inventory_snow", "scrollable_tooltips", "persistent_item_name", "old_master_stars", "wide_health_bar",
-            "better_chat", "chat_search", "expand_chat_history", "compact_chat", "message_filter",
+            "better_chat", "chat_search", "chat_copy", "expand_chat_history", "compact_chat", "message_filter",
             "mention_notification", "chat_peek", "better_screenshot_message", "chat_tabs",
             "player_model_enabled", "performance_hud_enabled", "inventory_hud_enabled",
             // Item viewmodel: the adjustments are the modifiers' own settings
@@ -111,7 +112,7 @@ public final class ConfigTree {
             "hide_slayer_chat", "boss_spawn_alert", "boss_cocoon_alert", "slayer_timer", "slayer_hud_enabled",
             "world_age_join_message_enabled", "party_invite_prompt",
             "guild_prefix", "bridge_bot_formatter", "only_crit_damage", "ragnarock", "deployable_timer", "cache_resource_pack",
-            "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value",
+            "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value", "chest_value",
             // Cosmetics
             "custom_name_tag", "chroma_hat", "aura", "player_scale", "custom_damage_tags",
             // Sound & utility
@@ -177,17 +178,17 @@ public final class ConfigTree {
             {{"General"},
                     {"Main", "allow_api_calls", "update_notifications", "#Notification Customization",
                             "command_wheel_custom_commands", "always_sprint", "disable_all_features", "reset_all_settings"},
-                    {"Design", "menu_font", "#HUD Style", "menu_accent_color", "custom_main_menu", "custom_escape_menu"},
+                    {"Design", "menu_font", "menu_theme", "#HUD Style", "menu_accent_color", "custom_main_menu", "custom_escape_menu"},
                     {"Sounds", "custom_sounds", "custom_sound_button_click", "custom_sound_hotbar_scroll",
                             "custom_sound_inventory_open_close", "custom_sound_inventory_click", "custom_sound_rare_drop",
                             "custom_sound_notification", "custom_sound_player_hurt", "custom_sound_successful_hit",
                             "custom_sound_zombie_remedy", "custom_sound_low_hp_heartbeat"}},
             {{"Visuals"},
-                    {"World", "fullbright", "sky_effects", "block_overlay_enabled", "hide_hurt_overlay", "hide_mob_deaths",
-                            "#Hide Fire Overlay", "#Nametags", "render_hand_third_person", "smooth_perspective", "disable_front_perspective"},
+                    {"World", "fullbright", "sky_effects", "block_overlay_enabled", "hide_hurt_overlay", "hide_mob_deaths", "hide_explosions",
+                            "#Hide Fire Overlay", "#Nametags", "render_hand_third_person", "smooth_perspective", "disable_front_perspective", "zoom"},
                     {"Interface", "inventory_hud_enabled", "player_model_enabled", "performance_hud_enabled", "container_bg_opacity",
                             "scrollable_tooltips", "persistent_item_name", "old_master_stars", "wide_health_bar", "inventory_snow", "#Scoreboard"},
-                    {"Chat", "better_chat", "chat_tabs", "chat_search", "chat_peek", "compact_chat",
+                    {"Chat", "better_chat", "chat_tabs", "chat_search", "chat_copy", "chat_peek", "compact_chat",
                             "message_filter", "expand_chat_history", "mention_notification", "better_screenshot_message"},
                     {"Viewmodel", "item_size_feature", "#Swing Customizations", "item_starlight", "item_motion_blur",
                             "#Viewmodel Presets", "item_viewmodel_reset"},
@@ -200,7 +201,8 @@ public final class ConfigTree {
                             "mute_vanilla_sounds_blaze_slayer", "custom_sound_blaze_death"},
                     {"Tools", "etherwarp_overlay", "etherwarp_sound", "only_crit_damage",
                             "world_age_join_message_enabled", "ragnarock", "deployable_timer", "cache_resource_pack"},
-                    {"Markets", "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value"},
+                    {"Markets", "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value",
+                            "chest_value"},
                     {"Social", "party_invite_prompt", "guild_prefix", "bridge_bot_formatter"}},
     };
 
@@ -246,6 +248,13 @@ public final class ConfigTree {
                 }
                 pendingHeader = null;
             }
+        }
+
+        // A feature's key always comes first, right under its description, wherever it was
+        // registered; the rest keep their registry order (the sort is stable).
+        for (Feature feature : byKey.values()) {
+            feature.settings.sort(java.util.Comparator.comparing(
+                    (ConfigOption option) -> option.getType() != ConfigOption.Type.KEYBIND));
         }
 
         // Then the sidebar, as LAYOUT has it.

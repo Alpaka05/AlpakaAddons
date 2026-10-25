@@ -12,6 +12,7 @@ import net.alpaka.addons.features.nametag.CustomNameTagFeature;
 import net.alpaka.addons.features.notification.AlpakaNotifications;
 import net.alpaka.addons.features.playerscale.PlayerScaleFeature;
 import net.alpaka.addons.features.snow.SnowOverlayRenderer;
+import net.alpaka.addons.utils.UpdateChecker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
@@ -21,6 +22,7 @@ import java.util.stream.Collectors;
 
 public class AlpakaConfigRegistry {
     private static final List<ConfigOption> OPTIONS = new ArrayList<>();
+    private static final String[] CHEST_VALUE_SIDES = {"Left", "Right"};
     private static final java.util.Map<ConfigCategory, List<ConfigOption>> CATEGORY_CACHE = new java.util.EnumMap<>(ConfigCategory.class);
 
     static {
@@ -63,6 +65,15 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.updateNotificationsEnabled = v; AlpakaConfig.save(); },
                 "update new version release github download notify check outdated update notifications"));
 
+        OPTIONS.add(new ConfigOption("update_stream", "Update Stream",
+                "Which versions the update check tells you about: full releases only, or pre-releases as well.",
+                ConfigCategory.GENERAL,
+                () -> (float) UpdateChecker.stream(),
+                v -> { AlpakaConfig.instance.updateStream = Math.round(v); AlpakaConfig.save(); UpdateChecker.streamChanged(); },
+                0.0f, (float) (UpdateChecker.STREAM_NAMES.length - 1),
+                val -> UpdateChecker.STREAM_NAMES[Math.round(val)],
+                "update stream channel release pre-release prerelease beta alpha snapshot test version").choices(UpdateChecker.STREAM_NAMES));
+
         // Duration, position and a test notice, together as one feature with the test on top.
         OPTIONS.add(new ConfigOption("Notification Customization", ConfigCategory.GENERAL));
 
@@ -102,6 +113,15 @@ public class AlpakaConfigRegistry {
                 0.0f, (float) (GuiFont.NAMES.length - 1),
                 val -> GuiFont.NAMES[Math.round(val)],
                 "menu font typeface text smooth modern inter poppins varela round outfit nunito minecraft pixel gui bold").choices(GuiFont.NAMES));
+
+        OPTIONS.add(new ConfigOption("menu_theme", "Menu Theme",
+                "How the Alpaka menus look: light, dark, pure black for OLED screens, or coffee brown.",
+                ConfigCategory.GENERAL,
+                () -> (float) java.util.Arrays.asList(AlpakaStyle.Theme.MENU_ORDER).indexOf(AlpakaStyle.Theme.of(AlpakaConfig.instance.menuTheme)),
+                v -> { AlpakaConfig.instance.menuTheme = AlpakaStyle.Theme.MENU_ORDER[Math.round(v)].ordinal(); AlpakaConfig.save(); AlpakaConfig.applyMenuTheme(); },
+                0.0f, (float) (AlpakaStyle.THEME_NAMES.length - 1),
+                val -> AlpakaStyle.THEME_NAMES[Math.round(val)],
+                "menu theme look mode dark light white bright oled black amoled night day appearance gui colors cappuccino coffee brown espresso mocha warm").choices(AlpakaStyle.THEME_NAMES));
 
         // How the HUDs look, chat and scoreboard included: main switches for the blurred panel and
         // the menu font, and the one blur strength they share. Each HUD's own switches sit in its
@@ -175,11 +195,12 @@ public class AlpakaConfigRegistry {
                 "Reset All Settings",
                 parent -> {
                     AlpakaConfig.resetToDefaults();
+                    net.alpaka.addons.client.AlpakaKeyBinds.applyAll();
                     GuiFont.refreshChat();
                 },
                 "reset all settings default defaults factory restore clear confirm prompt confirmation")
                 .confirm("Reset All Settings",
-                        "Puts every setting of Alpaka Addons back to its default, HUD positions and Command Wheel commands included. "
+                        "Puts every setting of Alpaka Addons back to its default, HUD positions, keys and Command Wheel commands included. "
                                 + "Slayer stats and saved viewmodel presets are kept. This cannot be undone.",
                         "Reset All", true));
 
@@ -316,6 +337,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.hideMobDeathSmoke = v; AlpakaConfig.save(); },
                 "hide mob death smoke poof particles cloud puff"));
 
+        OPTIONS.add(new ConfigOption("hide_explosions", "Hide Explosions",
+                "Hides the flash, smoke and debris of explosions.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.hideExplosions,
+                v -> { AlpakaConfig.instance.hideExplosions = v; AlpakaConfig.save(); },
+                "hide explosion explosions explode tnt creeper hyperion wither impact implosion bonzo particles flash cloud smoke"));
+
         OPTIONS.add(new ConfigOption("Hide Fire Overlay", ConfigCategory.VISUALS));
 
         OPTIONS.add(new ConfigOption("hide_entity_fire", "Hide Mob Fire",
@@ -401,6 +429,73 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.smoothPerspectiveDurationMs = Math.round(v); AlpakaConfig.save(); },
                 100.0f, 1000.0f, val -> String.format(Locale.ROOT, "%d ms", Math.round(val)),
                 "smooth perspective camera speed duration transition time ms"));
+
+        OPTIONS.add(new ConfigOption("zoom", "Zoom",
+                "Zooms in while you hold the Zoom key, or from one press to the next with Toggle Zoom.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.zoomEnabled,
+                v -> { AlpakaConfig.instance.zoomEnabled = v; AlpakaConfig.save(); },
+                "zoom optifine spyglass binoculars magnify fov camera scroll hold"));
+
+        OPTIONS.add(ConfigOption.keybind("zoom_key", "Key",
+                "The key to hold for zooming. C by default.",
+                ConfigCategory.VISUALS,
+                () -> net.alpaka.addons.features.zoom.ZoomFeature.ZOOM_KEY,
+                "zoom optifine"));
+
+        OPTIONS.add(new ConfigOption("zoom_toggle", "Toggle Zoom",
+                "Press the key once to zoom in and again to zoom out, instead of holding it.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.zoomToggleMode,
+                v -> { AlpakaConfig.instance.zoomToggleMode = v; AlpakaConfig.save(); },
+                "zoom toggle hold press mode sticky"));
+
+        OPTIONS.add(new ConfigOption("zoom_amount", "Zoom Amount",
+                "How far the zoom goes in at first.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.zoomAmount,
+                v -> { AlpakaConfig.instance.zoomAmount = Math.round(v * 2.0f) / 2.0f; AlpakaConfig.save(); },
+                1.5f, 20.0f, val -> String.format(Locale.ROOT, "%.1fx", val),
+                "zoom amount factor strength level how far magnification fov"));
+
+        OPTIONS.add(new ConfigOption("zoom_scroll", "Scroll to Zoom",
+                "Scrolling while zoomed zooms further in or out instead of changing the hotbar slot.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.zoomScrollEnabled,
+                v -> { AlpakaConfig.instance.zoomScrollEnabled = v; AlpakaConfig.save(); },
+                "zoom scroll wheel mouse adjust further in out hotbar"));
+
+        OPTIONS.add(new ConfigOption("zoom_animation", "Animation",
+                "How the view moves in and out: at once, easing smoothly, or with a little bounce.",
+                ConfigCategory.VISUALS,
+                () -> (float) AlpakaConfig.instance.zoomAnimation,
+                v -> { AlpakaConfig.instance.zoomAnimation = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (net.alpaka.addons.features.zoom.ZoomFeature.ANIMATIONS.length - 1),
+                val -> net.alpaka.addons.features.zoom.ZoomFeature.ANIMATIONS[Math.round(val)],
+                "zoom animation effect smooth instant bouncy spring ease transition")
+                .choices(net.alpaka.addons.features.zoom.ZoomFeature.ANIMATIONS));
+
+        OPTIONS.add(new ConfigOption("zoom_animation_duration", "Animation Duration",
+                "How long zooming in or out takes. Has no effect with the Instant animation.",
+                ConfigCategory.VISUALS,
+                () -> (float) AlpakaConfig.instance.zoomAnimationMs,
+                v -> { AlpakaConfig.instance.zoomAnimationMs = Math.round(v / 10.0f) * 10; AlpakaConfig.save(); },
+                50.0f, 1000.0f, val -> String.format(Locale.ROOT, "%d ms", Math.round(val)),
+                "zoom animation duration speed smoothness time ms slow fast"));
+
+        OPTIONS.add(new ConfigOption("zoom_cinematic_camera", "Cinematic Camera",
+                "Smooths the mouse while zoomed, like vanilla's cinematic camera.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.zoomCinematicCamera,
+                v -> { AlpakaConfig.instance.zoomCinematicCamera = v; AlpakaConfig.save(); },
+                "zoom cinematic camera smooth mouse f8 optifine"));
+
+        OPTIONS.add(new ConfigOption("zoom_reduce_sensitivity", "Lower Sensitivity",
+                "Slows the mouse down with the zoom, so aiming feels the same zoomed in.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.zoomReduceSensitivity,
+                v -> { AlpakaConfig.instance.zoomReduceSensitivity = v; AlpakaConfig.save(); },
+                "zoom mouse sensitivity slow aim precise reduce"));
 
         OPTIONS.add(new ConfigOption("Interfaces", ConfigCategory.VISUALS));
 
@@ -596,6 +691,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.chatSearchEnabled = v; AlpakaConfig.save(); },
                 "chat search find filter ctrl f messages history lookup cmd mac macos"));
 
+        OPTIONS.add(new ConfigOption("chat_copy", "Copy Chat",
+                "Right-click a message in the open chat to copy its text, Shift+right-click to copy it with its color codes.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatCopyEnabled,
+                v -> { AlpakaConfig.instance.chatCopyEnabled = v; AlpakaConfig.save(); },
+                "chat copy clipboard message right click text paste shift color codes formatting"));
+
         OPTIONS.add(new ConfigOption("expand_chat_history", "Expand Chat History",
                 "Keeps far more chat than vanilla's 100 lines, even after leaving a server.",
                 ConfigCategory.VISUALS,
@@ -692,11 +794,17 @@ public class AlpakaConfigRegistry {
                 "mention npc server hypixel skyblock boss players only real ignore filter"));
 
         OPTIONS.add(new ConfigOption("chat_peek", "Chat Peek",
-                "Shows the full chat, scrollable, while you hold the Chat Peek key. The key is unbound by default; set it in Controls.",
+                "Shows the full chat, scrollable, while you hold the Chat Peek key.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.chatPeekEnabled,
                 v -> { AlpakaConfig.instance.chatPeekEnabled = v; AlpakaConfig.save(); },
                 "chat peek hold key read scroll history keybind open bigger larger peek chat unbound controls"));
+
+        OPTIONS.add(ConfigOption.keybind("chat_peek_key", "Key",
+                "The key to hold for Chat Peek. Unbound by default.",
+                ConfigCategory.VISUALS,
+                () -> net.alpaka.addons.features.chat.ChatPeekFeature.PEEK_KEY,
+                "chat peek"));
 
         OPTIONS.add(new ConfigOption("chat_peek_in_menus", "Chat Peek in Menus",
                 "Lets Chat Peek work while an inventory or menu is open too.",
@@ -923,6 +1031,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.performanceHudShowTps = v; AlpakaConfig.save(); },
                 "performance hud tps ticks per second server lag"));
 
+        OPTIONS.add(new ConfigOption("performance_hud_animate", "Animate Changes",
+                "When a number changes, its digits roll out and fade while the new ones roll in, like a flip clock.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.performanceHudAnimate,
+                v -> { AlpakaConfig.instance.performanceHudAnimate = v; AlpakaConfig.save(); },
+                "performance hud animate animation roll flip clock slide fade numbers digits"));
+
         OPTIONS.add(new ConfigOption("Inventory HUD", ConfigCategory.VISUALS));
 
         OPTIONS.add(new ConfigOption("inventory_hud_enabled", "Inventory HUD",
@@ -940,7 +1055,7 @@ public class AlpakaConfigRegistry {
                 "inventory hud hotbar attach above merge dock position free center centre off: free position"));
 
         OPTIONS.add(new ConfigOption("inventory_hud_visibility", "Visibility",
-                "When the inventory shows: always, briefly when an item is picked up or dropped, or only when you press the Inventory HUD key. The key is unbound by default; set it in Controls.",
+                "When the inventory shows: always, briefly when an item is picked up or dropped, or only when you press the Inventory HUD key.",
                 ConfigCategory.VISUALS,
                 () -> (float) AlpakaConfig.instance.inventoryHudVisibility,
                 v -> { AlpakaConfig.instance.inventoryHudVisibility = Math.round(v); AlpakaConfig.save(); },
@@ -948,6 +1063,12 @@ public class AlpakaConfigRegistry {
                 val -> InventoryHudVisibility.NAMES[Math.round(val)],
                 "inventory hud always visible permanent show on pickup drop item change peek temporary keybind key press toggle hidden unbound controls mode")
                 .choices(InventoryHudVisibility.NAMES));
+
+        OPTIONS.add(ConfigOption.keybind("inventory_hud_key", "Key",
+                "Shows or hides the inventory, whatever Visibility is set to. Unbound by default.",
+                ConfigCategory.VISUALS,
+                () -> net.alpaka.addons.features.inventoryhud.InventoryHudFeature.TOGGLE_KEY,
+                "inventory hud toggle show hide"));
 
         OPTIONS.add(new ConfigOption("inventory_hud_vanilla_texture", "Chest Style",
                 "Draws the panel as a three-row chest, using your resource pack.",
@@ -1687,12 +1808,26 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customAuctionHouseEnabled = v; AlpakaConfig.save(); },
                 "auction house ah auctions browser bin bid custom menu gui redesign cards market"));
 
+        OPTIONS.add(new ConfigOption("auction_house_hotkeys", "Enable Hotkeys",
+                "Number keys open the first nine auctions or press the numbered buttons, Shift and a number picks a category, the arrow keys turn the page, / or Ctrl+F searches and Backspace goes back. One click per key press.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.auctionHouseHotkeysEnabled,
+                v -> { AlpakaConfig.instance.auctionHouseHotkeysEnabled = v; AlpakaConfig.save(); },
+                "auction house ah hotkeys keys keyboard shortcuts number keys quick buy category page search"));
+
         OPTIONS.add(new ConfigOption("custom_bazaar", "Custom Bazaar",
                 "Shows the Bazaar in Alpaka's design, with buy and sell prices on every product. Each click is the same click on Hypixel's menu.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.customBazaarEnabled,
                 v -> { AlpakaConfig.instance.customBazaarEnabled = v; AlpakaConfig.save(); },
                 "bazaar bz buy sell order offer instant custom menu gui redesign prices market"));
+
+        OPTIONS.add(new ConfigOption("bazaar_hotkeys", "Enable Hotkeys",
+                "Number keys open the first nine products or press the numbered buttons, Shift and a number picks a category, the arrow keys turn the page, / or Ctrl+F searches and Backspace goes back. One click per key press.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.bazaarHotkeysEnabled,
+                v -> { AlpakaConfig.instance.bazaarHotkeysEnabled = v; AlpakaConfig.save(); },
+                "bazaar bz hotkeys keys keyboard shortcuts number keys instant buy sell category page search"));
 
         OPTIONS.add(new ConfigOption("market_price_history", "Price History",
                 "Shows the price history from SkyCofl on a product's or an auction's page. Needs Network Features.",
@@ -1718,11 +1853,17 @@ public class AlpakaConfigRegistry {
                 "sign input search price amount bid query text field bar auction bazaar"));
 
         OPTIONS.add(new ConfigOption("item_value", "Item Value",
-                "Press the Item Value key over an item to see what it is worth, broken down into its enchantments, stars, gemstones and upgrades at current prices. The key is unbound by default; set it in Controls. Needs Network Features.",
+                "Press the Item Value key over an item to see what it is worth, broken down into its enchantments, stars, gemstones and upgrades at current prices. Needs Network Features.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.itemValueEnabled,
                 v -> { AlpakaConfig.instance.itemValueEnabled = v; AlpakaConfig.save(); },
                 "item value worth price networth net worth estimate breakdown enchantments stars gemstones upgrades hotkey key popup lowest bin bazaar graph unbound controls"));
+
+        OPTIONS.add(ConfigOption.keybind("item_value_key", "Key",
+                "The key to press over an item in a menu. Unbound by default.",
+                ConfigCategory.SKYBLOCK,
+                () -> net.alpaka.addons.features.itemvalue.ItemValueFeature.KEY,
+                "item value worth price"));
 
         OPTIONS.add(new ConfigOption("item_value_bazaar_price", "Bazaar Prices",
                 "Whether parts sold on the Bazaar count at what they cost to buy now or at what they would sell for now.",
@@ -1732,6 +1873,28 @@ public class AlpakaConfigRegistry {
                 0.0f, (float) (net.alpaka.addons.features.itemvalue.ItemPrices.SIDES.length - 1),
                 val -> net.alpaka.addons.features.itemvalue.ItemPrices.SIDES[Math.round(val)],
                 "item value bazaar price instant buy sell side order offer").choices(net.alpaka.addons.features.itemvalue.ItemPrices.SIDES));
+
+        OPTIONS.add(new ConfigOption("chest_value", "Chest Value",
+                "Press the Chest Value key in a chest, backpack, Ender Chest or your inventory to show what everything in it is worth: every item with its price and share of the total. It stays shown in every menu until you press the key again. Needs Network Features.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.chestValueEnabled,
+                v -> { AlpakaConfig.instance.chestValueEnabled = v; AlpakaConfig.save(); },
+                "chest value worth price networth net worth total inventory backpack ender chest storage container hotkey key panel overlay share lowest bin bazaar unbound controls"));
+
+        OPTIONS.add(ConfigOption.keybind("chest_value_key", "Key",
+                "The key to press in a menu, or anywhere else, to show or hide the panel. Unbound by default.",
+                ConfigCategory.SKYBLOCK,
+                () -> net.alpaka.addons.features.chestvalue.ChestValueFeature.KEY,
+                "chest value worth price panel"));
+
+        OPTIONS.add(new ConfigOption("chest_value_side", "Panel Side",
+                "Which side of the menu the panel sits on. Left keeps it clear of item list mods such as NEU, REI and Skyblocker, which use the right.",
+                ConfigCategory.SKYBLOCK,
+                () -> (float) AlpakaConfig.instance.chestValueSide,
+                v -> { AlpakaConfig.instance.chestValueSide = Math.round(v); AlpakaConfig.save(); },
+                0.0f, 1.0f,
+                val -> CHEST_VALUE_SIDES[Math.round(val)],
+                "chest value side left right position place").choices(CHEST_VALUE_SIDES));
 
         OPTIONS.add(new ConfigOption("Guild Chat", ConfigCategory.SKYBLOCK));
 
@@ -2194,11 +2357,17 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Utility", ConfigCategory.SOUND_MISC));
 
         OPTIONS.add(new ConfigOption("command_wheel_custom_commands", "Command Wheel",
-                "A wheel of your own commands on a key. Bind the Command Wheel key in Controls; it is unbound by default.",
+                "A wheel of your own commands on a key.",
                 ConfigCategory.SOUND_MISC,
                 "Edit Commands",
                 parent -> Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.client.CommandWheelConfigScreen(parent)),
                 "quick command wheel commands add remove edit custom list menu keybind quick command menu editor entries unbound controls"));
+
+        OPTIONS.add(ConfigOption.keybind("command_wheel_key", "Key",
+                "The key that opens the wheel. Unbound by default.",
+                ConfigCategory.SOUND_MISC,
+                () -> net.alpaka.addons.features.wheel.CommandWheelFeature.COMMAND_WHEEL_KEY,
+                "quick command wheel open"));
 
         OPTIONS.add(new ConfigOption("command_wheel_toggle_mode", "Toggle Command Wheel",
                 "Press the key once to open the wheel and click a command, instead of holding the key and releasing it.",

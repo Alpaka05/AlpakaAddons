@@ -104,11 +104,17 @@ public final class Outbound {
      * click. Never a drag, a double-click collect, a number-key swap or a drop, and never for a menu
      * that is no longer the open one. The market screens only change how a menu looks; what reaches
      * Hypixel is what the vanilla chest would have sent for the same click.
+     *
+     * A key press may stand in for the mouse on a button the screen shows with that key on it (1 on
+     * Buy Instantly, say): then it is one plain left click on that slot, once per press, never a
+     * shift click.
      */
     public static boolean menuClick(AbstractContainerMenu menu, int slotIndex, int button, ContainerInput input, Cause cause) {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
-        if (player == null || mc.gameMode == null || menu == null || cause != Cause.MENU_CLICK) return false;
+        if (player == null || mc.gameMode == null || menu == null) return false;
+        if (cause != Cause.MENU_CLICK && cause != Cause.KEY_PRESS) return false;
+        if (cause == Cause.KEY_PRESS && (button != 0 || input != ContainerInput.PICKUP)) return false;
         if (player.containerMenu != menu) return false;
         if (slotIndex < 0 || slotIndex >= menu.slots.size()) return false;
         if (button != 0 && button != 1) return false;

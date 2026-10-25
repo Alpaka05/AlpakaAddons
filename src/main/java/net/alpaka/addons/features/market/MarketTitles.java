@@ -55,6 +55,8 @@ public final class MarketTitles {
         if (previous == MarketKind.BAZAAR && t.contains(ARROW) && !t.contains("Museum")) {
             return MarketKind.BAZAAR;
         }
+        // Selling the whole inventory or the sacks asks first, under a title every menu may use.
+        if (previous == MarketKind.BAZAAR && t.equals("Are you sure?")) return MarketKind.BAZAAR;
         return null;
     }
 

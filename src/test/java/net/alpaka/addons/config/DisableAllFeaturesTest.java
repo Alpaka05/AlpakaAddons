@@ -41,9 +41,9 @@ class DisableAllFeaturesTest {
             "fullbrightEnabled", "skyEffectsEnabled", "cleanBlazeEnabled", "blazeFirePitsEnabled", "stopBlazeSpinning",
             "hideHurtOverlayEnabled", "hideMobDeathsEnabled", "hideEntityFire", "firstPersonFireStatic",
             "nameTagTextShadow", "showOwnNameTag", "renderHandInThirdPerson", "smoothPerspectiveEnabled",
-            "disableFrontPerspective", "containerBgFadeInEnabled", "inventorySnowEnabled",
+            "disableFrontPerspective", "zoomEnabled", "containerBgFadeInEnabled", "inventorySnowEnabled",
             "scrollableTooltipsEnabled", "persistentItemNameEnabled", "oldMasterStarsEnabled",
-            "wideHealthBarEnabled", "betterChatEnabled", "chatSearchEnabled", "expandChatHistory",
+            "wideHealthBarEnabled", "betterChatEnabled", "chatSearchEnabled", "chatCopyEnabled", "expandChatHistory",
             "compactChatEnabled", "mentionNotificationEnabled", "chatPeekEnabled", "chatTabsEnabled",
             "betterScreenshotMessageEnabled", "playerModelEnabled", "performanceHudEnabled",
             "inventoryHudEnabled", "scoreboardBlurEnabled", "scoreboardAlpakaFooter",
@@ -55,7 +55,7 @@ class DisableAllFeaturesTest {
             "slayerHudEnabled", "worldAgeJoinMessageEnabled", "partyInvitePromptEnabled",
             "cacheResourcePackEnabled", "guildPrefixEnabled", "bridgeBotFormatterEnabled", "ragnarockEnabled",
             "onlyCritDamageEnabled", "deployableTimerEnabled", "customAuctionHouseEnabled", "customBazaarEnabled",
-            "marketPriceHistoryEnabled", "customSignInputEnabled",
+            "marketPriceHistoryEnabled", "customSignInputEnabled", "chestValueEnabled",
             // Cosmetics
             "customNameTagEnabled", "chromaHatEnabled", "playerScaleEnabled", "customDamageTagsEnabled",
             // Utility and sounds
@@ -91,6 +91,9 @@ class DisableAllFeaturesTest {
             // Wide Health Bar, Always Sprint, Price History
             "wideHealthBarCentered", "wideHealthBarAbsorption", "alwaysSprintIgnoreGarden",
             "marketPriceHistoryRange",
+            // Chest Value: whether it shows, and how
+            "chestValueShown", "chestValueIncludeInventory", "chestValueSide", "chestValueSort",
+            "chestValueX", "chestValueY",
             // HUD style: how things look, like the fonts and colors
             "hudBlurAll", "hudSmoothFontAll", "slayerHudBlur", "slayerHudSmoothFont", "slayerTimerHudBlur",
             "slayerTimerHudSmoothFont", "performanceHudBlur", "performanceHudSmoothFont", "inventoryHudBlur",

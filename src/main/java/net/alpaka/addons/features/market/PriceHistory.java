@@ -65,10 +65,14 @@ public final class PriceHistory {
 
     /**
      * One moment of the history. For the Bazaar {@code first} is the instant buy price and
-     * {@code second} the sell price; for the Auction House the average and the lowest sale. A price
-     * that was not there is NaN.
+     * {@code second} the sell price; for the Auction House the average and the lowest sale, with the
+     * highest sale and the number of sales too. A value that was not there is NaN.
      */
-    public record Point(long timeMs, double first, double second) {}
+    public record Point(long timeMs, double first, double second, double high, double volume) {
+        public Point(long timeMs, double first, double second) {
+            this(timeMs, first, second, Double.NaN, Double.NaN);
+        }
+    }
 
     public enum State { LOADING, READY, EMPTY, FAILED }
 
@@ -226,8 +230,11 @@ public final class PriceHistory {
             long time = time(o, "time");
             double avg = number(o, "avg");
             double min = number(o, "min");
+            double max = number(o, "max");
+            JsonElement v = o.get("volume");
+            double volume = v != null && v.isJsonPrimitive() && v.getAsJsonPrimitive().isNumber() ? Math.max(0, v.getAsDouble()) : Double.NaN;
             if (time < 0 || Double.isNaN(avg)) continue;
-            points.add(new Point(time, avg, min));
+            points.add(new Point(time, avg, min, max, volume));
         }
         points.sort(Comparator.comparingLong(Point::timeMs));
         return points;
@@ -261,6 +268,87 @@ public final class PriceHistory {
         } catch (RuntimeException ignored) {
             return -1;
         }
+    }
+
+    // ---- The Auction House's summary -----------------------------------------------------------
+
+    /**
+     * What SkyCofl says about an item on the Auction House right now: the median and most common
+     * sale and the sales a day over the last two days, and the lowest BIN listed. A value it does not
+     * know is NaN.
+     */
+    public record Summary(State state, double median, double mode, double salesPerDay, double lowestBin) {}
+
+    private static final class ObjectEntry {
+        volatile State state = State.LOADING;
+        volatile JsonObject body = null;
+        volatile long fetchedAt = 0L;
+        volatile long retryAt = 0L;
+        volatile boolean fetching = false;
+    }
+
+    private static final Map<String, ObjectEntry> OBJECTS = new ConcurrentHashMap<>();
+    private static final long SUMMARY_FRESH_MS = 5 * 60_000L;
+
+    /** The summary for an auctioned item, asked for in the background like the history. Never waits. */
+    public static Summary summary(String tag) {
+        String t = URLEncoder.encode(tag, StandardCharsets.UTF_8);
+        ObjectEntry prices = object(BASE + "/item/price/" + t);
+        ObjectEntry current = object(BASE + "/item/price/" + t + "/current");
+        State state = prices.state == State.READY || current.state == State.READY ? State.READY
+                : prices.state == State.LOADING || current.state == State.LOADING ? State.LOADING
+                : prices.state;
+        return summaryOf(state, prices.body, current.body);
+    }
+
+    static Summary summaryOf(State state, JsonObject prices, JsonObject current) {
+        double median = prices == null ? Double.NaN : number(prices, "median");
+        double mode = prices == null ? Double.NaN : number(prices, "mode");
+        double volume = prices == null ? Double.NaN : number(prices, "volume");
+        // "buy" is what buying one costs now: the lowest BIN.
+        double lowest = current == null ? Double.NaN : number(current, "buy");
+        return new Summary(state, median, mode, volume, lowest);
+    }
+
+    private static ObjectEntry object(String url) {
+        ObjectEntry entry = OBJECTS.computeIfAbsent(url, k -> new ObjectEntry());
+        long now = System.currentTimeMillis();
+        boolean due = entry.state == State.READY ? now - entry.fetchedAt > SUMMARY_FRESH_MS : now >= entry.retryAt;
+        if (due && !entry.fetching && RateLimit.take(now)) fetchObject(entry, url);
+        return entry;
+    }
+
+    private static void fetchObject(ObjectEntry entry, String url) {
+        entry.fetching = true;
+        HttpRequest request = HttpRequest.newBuilder(URI.create(url))
+                .timeout(Duration.ofSeconds(15))
+                .header("User-Agent", "AlpakaAddons/" + ModVersion.mod())
+                .GET()
+                .build();
+        client().sendAsync(request, HttpResponse.BodyHandlers.ofString()).whenComplete((response, error) -> {
+            long now = System.currentTimeMillis();
+            try {
+                if (error == null && response != null && response.statusCode() == 200) {
+                    JsonElement root = JsonParser.parseString(response.body());
+                    entry.body = root.isJsonObject() ? root.getAsJsonObject() : null;
+                    entry.state = entry.body == null ? State.EMPTY : State.READY;
+                    entry.fetchedAt = now;
+                } else if (response != null && (response.statusCode() == 404 || response.statusCode() == 400)) {
+                    entry.state = State.EMPTY;
+                    entry.retryAt = now + SUMMARY_FRESH_MS;
+                } else {
+                    AlpakaAddons.LOGGER.warn("Could not load the item's prices from {} ({})", url,
+                            error != null ? error.toString() : response == null ? "no response" : "HTTP " + response.statusCode());
+                    if (entry.body == null) entry.state = State.FAILED;
+                    entry.retryAt = now + 60_000L;
+                }
+            } catch (RuntimeException e) {
+                if (entry.body == null) entry.state = State.FAILED;
+                entry.retryAt = now + 60_000L;
+            } finally {
+                entry.fetching = false;
+            }
+        });
     }
 
     /** At most 20 requests a minute, whatever the player clicks: SkyCofl allows far more. */

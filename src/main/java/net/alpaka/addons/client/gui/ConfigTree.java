@@ -99,7 +99,7 @@ public final class ConfigTree {
             "render_hand_third_person", "smooth_perspective", "disable_front_perspective",
             "sky_effects",
             "container_bg_opacity", "inventory_snow", "scrollable_tooltips", "persistent_item_name", "old_master_stars", "wide_health_bar",
-            "better_chat", "chat_search", "expand_chat_history", "compact_chat",
+            "better_chat", "chat_search", "chat_copy", "expand_chat_history", "compact_chat",
             "mention_notification", "chat_peek", "better_screenshot_message", "chat_tabs",
             "player_model_enabled", "performance_hud_enabled", "inventory_hud_enabled",
             // Item viewmodel: the adjustments are the modifiers' own settings
@@ -188,7 +188,7 @@ public final class ConfigTree {
                             "#Hide Fire Overlay", "#Nametags", "render_hand_third_person", "smooth_perspective", "disable_front_perspective"},
                     {"Interface", "inventory_hud_enabled", "player_model_enabled", "performance_hud_enabled", "container_bg_opacity",
                             "scrollable_tooltips", "persistent_item_name", "old_master_stars", "wide_health_bar", "inventory_snow", "#Scoreboard"},
-                    {"Chat", "better_chat", "chat_tabs", "chat_search", "chat_peek", "compact_chat",
+                    {"Chat", "better_chat", "chat_tabs", "chat_search", "chat_copy", "chat_peek", "compact_chat",
                             "expand_chat_history", "mention_notification", "better_screenshot_message"},
                     {"Viewmodel", "item_size_feature", "#Swing Customizations", "item_starlight", "item_motion_blur",
                             "#Viewmodel Presets", "item_viewmodel_reset"},

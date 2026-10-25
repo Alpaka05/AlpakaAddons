@@ -9,6 +9,7 @@ import net.alpaka.addons.features.chat.AlpakaChatGraphicsClip;
 import net.alpaka.addons.features.bridge.BridgeBotFormatter;
 import net.alpaka.addons.features.chat.AlpakaChatScroll;
 import net.alpaka.addons.features.chat.ChatBlurFeature;
+import net.alpaka.addons.features.chat.ChatCopyFeature;
 import net.alpaka.addons.features.chat.ChatHudElement;
 import net.alpaka.addons.features.chat.ChatScrollbar;
 import net.alpaka.addons.client.hud.VisiblePlacement;
@@ -28,6 +29,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.ChatComponent;
+import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.multiplayer.chat.GuiMessage;
 import net.minecraft.client.multiplayer.chat.GuiMessageSource;
 import net.minecraft.client.multiplayer.chat.GuiMessageTag;
@@ -37,6 +39,8 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 
 import java.util.List;
+import org.joml.Matrix3x2f;
+import org.joml.Vector2f;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -480,6 +484,9 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
                         && !this.trimmedMessages.get(index).endOfEntry();
             });
         }
+        if (pass == 1 && clip != null) {
+            ChatCopyFeature.setHovered(this.alpaka$messageUnderMouse(clip.alpaka$graphics(), offset, chatBottom, width, lineHeight, boxLines));
+        }
         if (offset > 0.01f) {
             access.updatePose(pose -> pose.translate(0.0f, offset));
         }
@@ -494,6 +501,29 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
             clip.alpaka$clearTextClip();
         }
         return result;
+    }
+
+    /**
+     * Copy Chat: the message under the mouse, taken from the drawing pass, which is the one place
+     * the chat's pose - scale, Movable Chat, the scroll's fraction of a line - is at hand. Only
+     * while the chat screen is open: peeking holds the chat open too, but there the mouse is the
+     * hidden cursor that moves with the camera.
+     */
+    @Unique
+    private GuiMessage alpaka$messageUnderMouse(GuiGraphicsExtractor graphics, float offset, int chatBottom, int width,
+                                                int lineHeight, float boxLines) {
+        if (!this.alpaka$foreground || !ChatCopyFeature.isEnabled() || ChatPeekFeature.isPeeking()) return null;
+        if (!(this.minecraft.gui.screen() instanceof ChatScreen) || lineHeight <= 0) return null;
+        Vector2f mouse = new Vector2f(this.alpaka$mouseX, this.alpaka$mouseY);
+        // The box stays put while the lines scroll inside it; the row is read in the lines' own place.
+        Vector2f inBox = new Matrix3x2f(graphics.pose()).invert().transformPosition(new Vector2f(mouse));
+        if (inBox.x < -4 || inBox.x > width + 8 || inBox.y > chatBottom || inBox.y < chatBottom - boxLines * lineHeight) {
+            return null;
+        }
+        Vector2f inLines = new Matrix3x2f(graphics.pose()).translate(0.0f, offset).invert().transformPosition(mouse);
+        int index = this.chatScrollbarPos + Mth.floor((chatBottom - inLines.y) / lineHeight);
+        if (index < 0 || index >= this.trimmedMessages.size()) return null;
+        return this.trimmedMessages.get(index).parent();
     }
 
     /**
@@ -595,6 +625,8 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
     }
 
     @Unique private int alpaka$mouseX;
+    /** Whether the current layout pass draws the chat as open. */
+    @Unique private boolean alpaka$foreground;
     @Unique private int alpaka$mouseY;
 
     // ------------------------------------------------------------------ movable chat and scrollbar
@@ -663,6 +695,7 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
     @Inject(method = EXTRACT_PRIVATE, at = @At("HEAD"))
     private void alpaka$beginPass(ChatComponent.ChatGraphicsAccess access, int guiHeight, int ticks, ChatComponent.DisplayMode mode, CallbackInfo ci) {
         this.alpaka$pass = 0;
+        this.alpaka$foreground = mode.foreground;
         ChatBlurFeature.resetPanel(mode.foreground);
         // Taken once per layout, so both line passes and the scrollbar agree on the height.
         this.alpaka$openProgress = mode.foreground && !ChatPeekFeature.isPeeking() ? ChatOpenAnimation.progress() : 1.0f;

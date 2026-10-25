@@ -15,6 +15,12 @@ package net.alpaka.addons.features.dungeon.terminal;
  * double click is the same plain click, where vanilla would send a PICKUP_ALL that
  * {@code Outbound.menuClick} does not allow.
  *
+ * A press made while the cursor holds an item locks out every other press until a button comes up,
+ * as vanilla's quick craft does: a second left or right press while the first is still down sends
+ * nothing, whatever the cursor holds by then, and letting go of the other button ends the wait
+ * without a click (vanilla then skips the held button's release too). The lock starts on a press
+ * between cells as well, since vanilla starts it for any slot and for a press outside the window.
+ *
  * Middle and side buttons, a press on no cell, and anything after the cursor emptied in between
  * give nothing. There is no queue: what is not sent in the handler of its own press or release is
  * never sent.
@@ -30,7 +36,9 @@ public final class TerminalGuiInput {
      */
     public record Click(int slot, int button, boolean quickMove) {}
 
+    /** The cell a press made with a full cursor waits on; -1 for a press on no cell, which still locks. */
     private int heldSlot = -1;
+    /** The button of that press, or -1 while no press waits. */
     private int heldButton = -1;
 
     /**
@@ -42,10 +50,12 @@ public final class TerminalGuiInput {
      */
     public Click press(int slot, int button, boolean shift, boolean carrying) {
         if (button != 0 && button != 1) return null;
-        heldSlot = -1;
-        heldButton = -1;
-        if (slot < 0) return null;
-        if (!carrying) return new Click(slot, button, shift);
+        // Vanilla's quick-craft lock: while a press made with a full cursor is down, every other
+        // press does nothing. Vanilla checks the lock before the cursor, so an emptied cursor does
+        // not lift it.
+        if (heldButton >= 0) return null;
+        if (!carrying) return slot < 0 ? null : new Click(slot, button, shift);
+        // A press on no cell locks as well; its release never sends (slot -1 matches no cell).
         heldSlot = slot;
         heldButton = button;
         return null;

@@ -98,6 +98,46 @@ class TerminalGuiInputTest {
     }
 
     @Test
+    void aSecondButtonWhileAPressWaitsSendsNothing() {
+        // Vanilla's quick craft: the left press with a full cursor locks out the right one, and the
+        // right release cancels it; nothing is sent for either press.
+        TerminalGuiInput input = new TerminalGuiInput();
+        assertNull(input.press(12, 0, false, CARRYING));
+        assertNull(input.press(13, 1, false, CARRYING));
+        assertNull(input.press(13, 1, false, false), "the lock holds after the cursor emptied too");
+        assertNull(input.release(13, 1, false, CARRYING));
+        assertNull(input.release(12, 0, false, CARRYING));
+        assertFalse(input.holding());
+
+        // The server emptied the cursor between the two presses: still no click on the right press.
+        assertNull(input.press(12, 0, false, CARRYING));
+        assertNull(input.press(13, 1, false, false));
+        assertNull(input.release(13, 1, false, false));
+        assertNull(input.release(12, 0, false, false));
+    }
+
+    @Test
+    void aPressBetweenCellsLocksToo() {
+        TerminalGuiInput input = new TerminalGuiInput();
+        assertNull(input.press(-1, 0, false, CARRYING));
+        assertTrue(input.holding());
+        assertNull(input.press(13, 1, false, false), "vanilla's lock starts for a miss as well");
+        assertNull(input.release(-1, 0, false, CARRYING));
+        assertFalse(input.holding());
+        // Once released, presses work as before.
+        assertEquals(new Click(13, 1, false), input.press(13, 1, false, false));
+    }
+
+    @Test
+    void theWaitingPressStillFiresOnItsOwnRelease() {
+        TerminalGuiInput input = new TerminalGuiInput();
+        assertNull(input.press(12, 0, false, CARRYING));
+        assertNull(input.press(13, 1, false, CARRYING));
+        assertEquals(new Click(12, 0, false), input.release(12, 0, false, CARRYING), "vanilla sends this one too");
+        assertNull(input.release(13, 1, false, CARRYING));
+    }
+
+    @Test
     void oneClickAtMostPerPress() {
         TerminalGuiInput input = new TerminalGuiInput();
         int sent = 0;

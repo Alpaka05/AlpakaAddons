@@ -21,6 +21,8 @@ import java.util.regex.Pattern;
  * the lore of Create Buy Order and Create Sell Offer. For an auction, what SkyCofl knows about the
  * item on the Auction House: the lowest BIN, how often it sells, its median and average price, how
  * this auction's price compares, and the hour it sells most.
+ *
+ * Its colors go through {@link MarketInk}, so they stay readable on a light Menu Theme.
  */
 public final class MarketStats {
     private MarketStats() {}
@@ -111,8 +113,8 @@ public final class MarketStats {
         long most = 1;
         for (int i = 0; i < Math.min(rows, orders.size()); i++) most = Math.max(most, orders.get(i).amount());
         for (int i = 0; i < Math.min(rows, offers.size()); i++) most = Math.max(most, offers.get(i).amount());
-        column(graphics, font, "Buy Orders", "No buy orders", BUY, orders, x + 8, y, colW, rows, most);
-        column(graphics, font, "Sell Offers", "No sell offers", SELL, offers, x + 8 + colW + 8, y, colW, rows, most);
+        column(graphics, font, "Buy Orders", "No buy orders", MarketInk.ink(BUY), orders, x + 8, y, colW, rows, most);
+        column(graphics, font, "Sell Offers", "No sell offers", MarketInk.ink(SELL), offers, x + 8 + colW + 8, y, colW, rows, most);
     }
 
     private static void column(GuiGraphicsExtractor graphics, Font font, String title, String none, int color, List<Level> levels,
@@ -136,7 +138,7 @@ public final class MarketStats {
             int amountW = GuiFont.width(font, amount);
             String price = Coins.full(level.price());
             if (GuiFont.width(font, price) + amountW + 8 > w) price = Coins.compact(level.price());
-            graphics.text(font, GuiFont.text(price), x + 2, ry + 1, COIN, false);
+            graphics.text(font, GuiFont.text(price), x + 2, ry + 1, MarketInk.ink(COIN), false);
             graphics.text(font, GuiFont.text(amount), x + w - 2 - amountW, ry + 1, AlpakaStyle.TEXT_SOFT, false);
         }
     }
@@ -225,25 +227,25 @@ public final class MarketStats {
             double over = (price - summary.lowestBin()) / summary.lowestBin() * 100.0;
             if (over <= 0.05) {
                 vsLowest = "This is it";
-                vsColor = BUY;
+                vsColor = MarketInk.ink(BUY);
             } else {
                 vsLowest = String.format(Locale.ROOT, "This: +%.0f%%", over);
             }
         }
-        tiles.add(new Tile("Lowest BIN", coins(summary.lowestBin(), summaryLoading), COIN, vsLowest, vsColor));
+        tiles.add(new Tile("Lowest BIN", coins(summary.lowestBin(), summaryLoading), MarketInk.ink(COIN), vsLowest, vsColor));
         tiles.add(new Tile("Sales / Day", count(stats.salesPerDay(), historyLoading), AlpakaStyle.TEXT,
                 Double.isNaN(stats.sales()) ? "" : Coins.full(Math.round(stats.sales())) + " Sold", AlpakaStyle.TEXT_MUTED));
-        tiles.add(new Tile("Median", coins(summary.median(), summaryLoading), COIN,
+        tiles.add(new Tile("Median", coins(summary.median(), summaryLoading), MarketInk.ink(COIN),
                 Double.isNaN(summary.mode()) ? "" : "Mode " + Coins.compact(summary.mode()), AlpakaStyle.TEXT_MUTED));
         if (price != null && !Double.isNaN(summary.median()) && summary.median() > 0) {
             String verdict = verdict(price, summary.median());
-            int color = verdict.startsWith("Below") ? BUY : verdict.startsWith("Above") ? RED : AlpakaStyle.TEXT;
+            int color = verdict.startsWith("Below") ? MarketInk.ink(BUY) : verdict.startsWith("Above") ? MarketInk.ink(RED) : AlpakaStyle.TEXT;
             double change = (price - summary.median()) / summary.median() * 100.0;
             tiles.add(new Tile("Price Check", verdict, color, String.format(Locale.ROOT, "%+.0f%% vs median", change), AlpakaStyle.TEXT_MUTED));
         } else {
             tiles.add(new Tile("Price Check", summaryLoading ? "…" : "—", AlpakaStyle.TEXT, "", AlpakaStyle.TEXT_MUTED));
         }
-        tiles.add(new Tile("Average", coins(stats.average(), historyLoading), COIN, "Per Sale", AlpakaStyle.TEXT_MUTED));
+        tiles.add(new Tile("Average", coins(stats.average(), historyLoading), MarketInk.ink(COIN), "Per Sale", AlpakaStyle.TEXT_MUTED));
         tiles.add(new Tile("Busiest Hour", hour < 0 ? (week.points().isEmpty() && week.state() == PriceHistory.State.LOADING ? "…" : "—")
                 : String.format(Locale.ROOT, "%02d:00", hour), AlpakaStyle.TEXT, "Most Sales, Past Week", AlpakaStyle.TEXT_MUTED));
 

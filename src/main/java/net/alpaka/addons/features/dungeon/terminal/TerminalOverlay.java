@@ -47,6 +47,12 @@ public final class TerminalOverlay {
     private static final long REFUSED_FLASH_MS = 300L;
     private static final int REFUSED_FRAME = 0xFFFF5555;
     private static final int LABEL_COLOR = 0xFFFFFFFF;
+    /**
+     * Over the items the solution does not ask for, or that are done: a dark veil, so the ones to
+     * click stand out. Without it a red pane on its green fill reads as green - glass is
+     * see-through - and looks just like the lime panes already done.
+     */
+    private static final int REST_VEIL = 0x99000000;
 
     // This frame's reading, so the chest is solved once per frame rather than once per slot. A new
     // GuiGraphicsExtractor is made for every frame.
@@ -87,7 +93,11 @@ public final class TerminalOverlay {
         TerminalSession session = sessionOf(screen.getMenu(), slot);
         if (session == null) return;
         read(session, graphics);
-        String label = frameSolution.label(slot.index);
+        int index = slot.index;
+        if (resting(frameSolution, framePalette, index)) graphics.fill(slot.x, slot.y, slot.x + 16, slot.y + 16, REST_VEIL);
+        // Click in Order's number is the stack's own count, which vanilla already writes in the
+        // corner; a second one in the middle would read as "44".
+        String label = frameSolution.kind() == TerminalKind.NUMBERS ? null : frameSolution.label(index);
         if (label != null) {
             Font font = Minecraft.getInstance().font;
             int x = slot.x + 8 - font.width(label) / 2;
@@ -124,6 +134,17 @@ public final class TerminalOverlay {
         TerminalKind kind = solution.kind();
         if (kind.isMelody()) return !kind.isPlaySlot(slot) && !solution.inTargetColumn(slot);
         return solution.mark(slot) == TerminalSolution.Mark.OTHER;
+    }
+
+    /**
+     * Whether {@code slot} is a terminal cell the solution leaves alone (done, or not asked for), once
+     * the chest is loaded: it gets the dark veil. Anything with a fill of its own - the cells to click,
+     * Click the Button on Time's column, moving pane and button - never does.
+     */
+    static boolean resting(TerminalSolution solution, TerminalPalette palette, int slot) {
+        if (!solution.loaded() || !solution.kind().isPlaySlot(slot) || palette.fill(solution, slot) != 0) return false;
+        TerminalSolution.Mark mark = solution.mark(slot);
+        return mark == TerminalSolution.Mark.DONE || mark == TerminalSolution.Mark.OTHER;
     }
 
     /** The pending veil and a refused click's frame. */
@@ -203,10 +224,13 @@ public final class TerminalOverlay {
      * the player never aimed at - every red pane at once - and a guard that refused the presses
      * would let the first of them through on a pane nobody clicked. So none of them is sent in a
      * terminal, whatever the presses got; the presses themselves are judged like any click.
+     *
+     * Part of the Click Rate Guard: the whole volley goes out within one tick, which is what that
+     * guard is for. With the guard switched off, vanilla's volley goes out as it always would.
      */
     public static boolean allowShiftCollect(AbstractContainerScreen<?> screen) {
         TerminalSession session = TerminalSession.current(screen.getMenu());
-        return session == null || !session.kind().enabled();
+        return session == null || !session.kind().enabled() || !TerminalSettings.current().rateGuard();
     }
 
     /** Lets go of everything kept from the last terminal: on a world change, disconnect or when it closed. */

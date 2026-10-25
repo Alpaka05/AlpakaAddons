@@ -2484,6 +2484,7 @@ public class AlpakaConfigRegistry {
 
         OPTIONS.add(new ConfigOption("terminal_rate_guard", "Click Rate Guard",
                 "Ignores a click that comes less than one server tick (50 ms) after the last click that went out, "
+                        + "and the volley of clicks a shift double click would send to every matching item, "
                         + "which helps keep Hypixel from throttling the terminal. Nothing is sent for an ignored click. "
                         + "Turning this off is at your own risk.",
                 ConfigCategory.SKYBLOCK,

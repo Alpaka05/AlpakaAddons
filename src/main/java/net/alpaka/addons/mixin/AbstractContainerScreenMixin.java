@@ -74,7 +74,8 @@ public abstract class AbstractContainerScreenMixin {
     /**
      * The release of a shift double click shift-clicks every slot holding the same item as the one
      * shift-clicked last (the first slotClicked call in mouseReleased). In a terminal none of those
-     * is sent: they are clicks on cells the player never aimed at. Only ever sends less.
+     * is sent while the Click Rate Guard is on: they are clicks on cells the player never aimed at,
+     * all within one tick. Only ever sends less.
      */
     @WrapOperation(method = "mouseReleased", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/client/gui/screens/inventory/AbstractContainerScreen;slotClicked(Lnet/minecraft/world/inventory/Slot;IILnet/minecraft/world/inventory/ContainerInput;)V",

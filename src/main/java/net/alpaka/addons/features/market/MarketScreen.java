@@ -610,15 +610,22 @@ public class MarketScreen extends ContainerScreen {
                     case TIER -> "Item Tier";
                     default -> "BIN Filter";
                 };
-                MarketIcons.Glyph glyph = switch (c) {
-                    case SORT -> MarketIcons.Glyph.SORT;
-                    case TIER -> MarketIcons.Glyph.TIER;
-                    default -> MarketIcons.Glyph.BIN;
-                };
                 String value = m.controlValues.getOrDefault(c, plain(slot).name());
                 boolean hover = inClip && AlpakaStyle.inside(mx, my, rowX, rowY, rowW, filterH);
                 if (hover) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, filterH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
-                MarketIcons.draw(graphics, glyph, rowX + 7, rowY + (filterH - 9) / 2f, 9, hover ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
+                // Hypixel's own item for the filter, as the categories show theirs; our glyph only
+                // while the slot is still empty.
+                ItemStack item = stack(slot);
+                if (!item.isEmpty()) {
+                    sideItem(graphics, item, rowX, rowY, filterH);
+                } else {
+                    MarketIcons.Glyph glyph = switch (c) {
+                        case SORT -> MarketIcons.Glyph.SORT;
+                        case TIER -> MarketIcons.Glyph.TIER;
+                        default -> MarketIcons.Glyph.BIN;
+                    };
+                    MarketIcons.draw(graphics, glyph, rowX + 7, rowY + (filterH - 9) / 2f, 9, hover ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
+                }
                 if (compact) {
                     graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, value, rowW - 33)), rowX + 21, rowY + 4,
                             hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT, false);

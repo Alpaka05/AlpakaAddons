@@ -52,6 +52,10 @@ public final class ProfileSession {
     private volatile Map<String, List<ProfileHistory.Point>> soopySeries = Map.of();
     /** Whether Soopy's pages are still coming in. */
     public volatile boolean historyLoading;
+    /** SkyKings' history, by metric id, when the player set a key. */
+    private volatile Map<String, List<ProfileHistory.Point>> skykingsSeries = Map.of();
+    /** What came of asking SkyKings, for the source note: null without a key. */
+    public volatile String skykingsNote;
     /** Bumped whenever something a graph draws from changes, to drop cached series. */
     private volatile int version;
     private final Map<String, List<ProfileHistory.Point>> seriesCache = new HashMap<>();
@@ -115,6 +119,7 @@ public final class ProfileSession {
             version++;
             loadSkillHistory(parsed);
             loadSoopyHistory(parsed);
+            loadSkyKings(parsed);
         });
     }
 
@@ -200,6 +205,112 @@ public final class ProfileSession {
             int nextEmpty = empty ? emptyInARow + 1 : 0;
             if (stretch + 1 < ELITE_STRETCHES && nextEmpty < 2) loadSkillStretch(parsed, maxLevels, stretch + 1, nextEmpty, answers);
         });
+    }
+
+    /** SkyKings' history for the profile on show, when the player set a key. */
+    private void loadSkyKings(ProfileData parsed) {
+        String key = net.alpaka.addons.config.AlpakaConfig.instance.skykingsApiKey;
+        if (key == null || key.isBlank()) {
+            skykingsNote = null;
+            return;
+        }
+        String id = parsed.profileId;
+        String mode = null;
+        for (ProfileRef r : profiles) if (r.id().equals(id)) mode = r.gameMode();
+        String gameMode = mode;
+        skykingsNote = "loading";
+        ProfileApi.skykingsUser(parsed.uuid, key.trim()).whenComplete((answer, failure) -> {
+            if (!id.equals(profileId)) return;
+            if (failure != null) {
+                Throwable cause = failure instanceof CompletionException && failure.getCause() != null ? failure.getCause() : failure;
+                skykingsNote = cause.getMessage() == null ? "SkyKings couldn't be reached." : cause.getMessage();
+                return;
+            }
+            Map<String, List<ProfileHistory.Point>> series = skykingsSeries(answer, parsed.profileName, gameMode);
+            calibrateSkyKingsNetworth(series, parsed.networth, System.currentTimeMillis());
+            skykingsSeries = series;
+            skykingsNote = series.isEmpty() ? "SkyKings has no history of this profile." : null;
+            version++;
+        });
+    }
+
+    /** The profile type SkyKings files a game mode under. */
+    static String skykingsType(String gameMode) {
+        if (gameMode == null) return "normal";
+        return switch (gameMode) {
+            case "island" -> "stranded";
+            default -> gameMode;
+        };
+    }
+
+    /**
+     * SkyKings' snapshots of one profile as series by metric id. Its profiles go by name and type,
+     * not by id; the type tells apart, say, a normal Kiwi from an Ironman Kiwi. The skill average is
+     * left to Elite: SkyKings has no Hunting, and an average of different skills would jump where
+     * the two meet.
+     */
+    static Map<String, List<ProfileHistory.Point>> skykingsSeries(JsonElement answer, String profileName, String gameMode) {
+        Map<String, List<ProfileHistory.Point>> out = new HashMap<>();
+        if (profileName == null) return out;
+        String type = skykingsType(gameMode);
+        List<JsonElement> entries = new ArrayList<>();
+        for (JsonElement e : Json.arr(answer, "data.historic_data")) entries.add(e);
+        entries.sort(Comparator.comparingDouble(e -> Json.num(e, "timestamp", 0)));
+        for (JsonElement e : entries) {
+            double ts = Json.num(e, "timestamp", 0);
+            if (!(ts > 0)) continue;
+            long t = ts < 1e12 ? (long) (ts * 1000) : (long) ts;
+            JsonElement p = null;
+            for (JsonElement candidate : Json.arr(e, "profiles")) {
+                if (profileName.equalsIgnoreCase(Json.str(candidate, "profile_name"))
+                        && type.equals(Json.str(candidate, "profile_type") == null ? "normal" : Json.str(candidate, "profile_type"))) {
+                    p = candidate;
+                }
+            }
+            if (p == null) continue;
+            Map<String, Double> m = new HashMap<>();
+            double sbXp = Json.num(p, "skyblock_xp");
+            if (sbXp > 0) m.put(Metrics.SB_LEVEL, sbXp / 100.0);
+            for (var skill : Json.obj(p, "skills").entrySet()) {
+                double xp = Json.num(skill.getValue(), "xp");
+                if (xp > 0) m.put(Metrics.SKILL + skill.getKey(), xp);
+            }
+            for (String[] boss : ProfileData.SLAYERS) put(m, Metrics.SLAYER + boss[0], Json.num(p, "slayer_xp." + boss[0]), false);
+            put(m, Metrics.SLAYER_TOTAL, Json.num(p, "slayer_xp.total"), false);
+            put(m, Metrics.CATACOMBS, Json.num(p, "catacombs_xp"), false);
+            for (String c : ProfileData.CLASSES) put(m, Metrics.CLASS + c, Json.num(p, "class_xp." + c), false);
+            put(m, Metrics.NETWORTH, Json.num(p, "networth"), true);
+            double kuudra = 0;
+            for (var k : Json.obj(p, "kuudra").entrySet()) {
+                if (!k.getKey().startsWith("highest_wave") && k.getValue().isJsonPrimitive()) kuudra += k.getValue().getAsDouble();
+            }
+            if (kuudra > 0) m.put(Metrics.KUUDRA, kuudra);
+            put(m, Metrics.TROPHY_FISH, Json.num(p, "trophy_fish.total_caught"), true);
+            for (var v : m.entrySet()) out.computeIfAbsent(v.getKey(), k -> new ArrayList<>()).add(new ProfileHistory.Point(t, v.getValue()));
+        }
+        out.computeIfPresent(Metrics.NETWORTH, (k, v) -> withoutDips(v));
+        return out;
+    }
+
+    /**
+     * SkyKings' networth comes close to Elite's but not quite (79B against 84B), so it is scaled the
+     * same way as Soopy's: by its newest snapshot against Elite's number now. SkyKings looks once a
+     * day, so a snapshot up to three days old still stands for now; prices move less than the two
+     * calculations differ. An older one would carry real growth into the factor, and then the
+     * networth is left out.
+     */
+    static void calibrateSkyKingsNetworth(Map<String, List<ProfileHistory.Point>> series, double eliteNow, long now) {
+        List<ProfileHistory.Point> networth = series.get(Metrics.NETWORTH);
+        if (networth == null || networth.isEmpty()) return;
+        ProfileHistory.Point last = networth.get(networth.size() - 1);
+        if (!(eliteNow > 0) || !(last.value() > 0) || now - last.timeMs() > 3 * ProfileHistory.DAY) {
+            series.remove(Metrics.NETWORTH);
+            return;
+        }
+        double factor = eliteNow / last.value();
+        List<ProfileHistory.Point> scaled = new ArrayList<>(networth.size());
+        for (ProfileHistory.Point p : networth) scaled.add(new ProfileHistory.Point(p.timeMs(), p.value() * factor));
+        series.put(Metrics.NETWORTH, scaled);
     }
 
     /** At most this many of Soopy's pages, about a hundred snapshots each: several years. */
@@ -302,28 +413,37 @@ public final class ProfileSession {
     }
 
     /**
-     * Drops short dips far below what came before and after: an inventory API switched off for a
-     * while makes the networth read a tenth of itself, which says nothing about the profile. A dip
-     * may be a few points long, since the looks that found nothing new repeat it.
+     * Drops short excursions far from what came before and after. Down: an inventory API switched
+     * off for a while makes the networth read a tenth of itself. Up: one item's price spiking for a
+     * few days - SkyKings once had 48B, 106B, 165B, 165B, 48B within a week while nothing on the
+     * profile changed. A run may be a few points long, since the looks that found nothing new
+     * repeat it; it only goes when the value comes back to where it was.
      */
     static List<ProfileHistory.Point> withoutDips(List<ProfileHistory.Point> points) {
         List<ProfileHistory.Point> out = new ArrayList<>(points.size());
         int i = 0;
         while (i < points.size()) {
-            ProfileHistory.Point p = points.get(i);
             if (!out.isEmpty()) {
                 double before = out.get(out.size() - 1).value();
                 int end = i;
-                while (end < points.size() && end - i < 6 && points.get(end).value() < before * 0.5) end++;
-                if (end > i && end < points.size() && points.get(end).value() >= before * 0.5) {
+                while (end < points.size() && end - i < 8 && away(points.get(end).value(), before)) end++;
+                if (end > i && end < points.size() && back(points.get(end).value(), before)) {
                     i = end;
                     continue;
                 }
             }
-            out.add(p);
+            out.add(points.get(i));
             i++;
         }
         return out;
+    }
+
+    private static boolean away(double value, double before) {
+        return value < before * 0.5 || value > before * 1.5;
+    }
+
+    private static boolean back(double value, double before) {
+        return value >= before * 0.5 && value <= before * 1.25;
     }
 
     private static void put(Map<String, Double> into, String metric, double value, boolean zeroIsMissing) {
@@ -374,6 +494,7 @@ public final class ProfileSession {
             List<ProfileHistory.Point> merged = new ArrayList<>(ProfileHistory.series(d.uuid, d.profileId, m));
             merged.addAll(eliteSeries.getOrDefault(m, List.of()));
             merged.addAll(soopySeries.getOrDefault(m, List.of()));
+            merged.addAll(skykingsSeries.getOrDefault(m, List.of()));
             merged.sort(Comparator.comparingLong(ProfileHistory.Point::timeMs));
             // Elite and the snapshots often looked at almost the same moment; one point is enough.
             List<ProfileHistory.Point> out = new ArrayList<>(merged.size());

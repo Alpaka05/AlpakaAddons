@@ -34,6 +34,7 @@ public final class ProfileApi {
 
     static final String ELITE = "https://api.elitebot.dev";
     static final String SOOPY = "https://api.soopy.dev";
+    static final String SKYKINGS = "https://api.skykings.net";
     static final String HYPIXEL_RESOURCES = "https://api.hypixel.net/v2/resources/skyblock";
     /** Where the dashboard's footer links to, as the source of the numbers. */
     public static final String ELITE_SITE = "https://elitebot.dev/@";
@@ -99,6 +100,56 @@ public final class ProfileApi {
         // and adds that as its newest snapshot, which is what lines its networth up with Elite's.
         String url = SOOPY + "/skyblock/stathistory/" + uuid + "/" + profileId + "/" + page + (page == 0 ? "/realtime" : "");
         return get(url, 10 * FRESH_MS);
+    }
+
+    /**
+     * A player's history at SkyKings, which records the players of every guild on its leaderboard
+     * about once a day: skills, slayers, Catacombs, networth and more, per profile. Needs the
+     * player's own key; nearly three megabytes, so kept for half an hour.
+     */
+    static CompletableFuture<JsonElement> skykingsUser(String uuid, String key) {
+        String url = SKYKINGS + "/leaderboard/user?uuid=" + uuid;
+        long now = System.currentTimeMillis();
+        Cached cached = CACHE.get(url);
+        if (cached != null && now - cached.at() < 30 * FRESH_MS && !cached.future().isCompletedExceptionally()) {
+            return cached.future();
+        }
+        CompletableFuture<JsonElement> future = new CompletableFuture<>();
+        CACHE.put(url, new Cached(now, future));
+        HttpRequest request = HttpRequest.newBuilder(URI.create(url))
+                .timeout(Duration.ofSeconds(40))
+                .header("User-Agent", "AlpakaAddons/" + ModVersion.mod())
+                .header("Authorization", key)
+                .GET()
+                .build();
+        client().sendAsync(request, HttpResponse.BodyHandlers.ofString()).whenComplete((response, error) -> {
+            if (error != null || response == null) {
+                CACHE.remove(url);
+                future.completeExceptionally(error != null ? error : new IllegalStateException("no response"));
+                return;
+            }
+            int status = response.statusCode();
+            if (status == 401 || status == 403) {
+                CACHE.remove(url);
+                future.completeExceptionally(new IllegalStateException("SkyKings didn't accept the API key."));
+            } else if (status == 404) {
+                future.completeExceptionally(new NotFound("SkyKings doesn't track this player."));
+            } else if (status == 429) {
+                CACHE.remove(url);
+                future.completeExceptionally(new IllegalStateException("SkyKings' request limit is reached; try again in a few minutes."));
+            } else if (status / 100 != 2) {
+                CACHE.remove(url);
+                future.completeExceptionally(new IllegalStateException("SkyKings answered " + status + "."));
+            } else {
+                try {
+                    future.complete(JsonParser.parseString(response.body()));
+                } catch (RuntimeException parse) {
+                    CACHE.remove(url);
+                    future.completeExceptionally(parse);
+                }
+            }
+        });
+        return future;
     }
 
     /** The current or last Bingo event, with its start and end. */

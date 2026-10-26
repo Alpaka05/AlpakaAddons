@@ -759,6 +759,12 @@ public class AlpakaConfig {
     public boolean profileDashboardTracking = true;
     /** Minutes between two of those snapshots. */
     public int profileDashboardTrackingMinutes = 60;
+    /**
+     * The player's own SkyKings API key, for SkyKings' daily history in the dashboard's graphs.
+     * Empty for none. Each player makes their own; the mod never ships one (SkyKings asks that keys
+     * stay with their owner), and it is only ever sent to api.skykings.net.
+     */
+    public String skykingsApiKey = "";
 
     // Command Wheel options
     /**

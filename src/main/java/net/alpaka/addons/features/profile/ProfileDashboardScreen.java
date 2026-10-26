@@ -467,7 +467,8 @@ public class ProfileDashboardScreen extends Screen {
         if (d != null && d.lastUpdated > 0) {
             text(graphics, "Updated " + Metrics.ago(d.lastUpdated * 1000L), x + PAD, fy, AlpakaStyle.TEXT_MUTED);
         }
-        String source = "Elite & Soopy";
+        boolean skykings = !AlpakaConfig.instance.skykingsApiKey.isBlank();
+        String source = "Data Sources";
         int sw = textW(source);
         boolean hoverSource = AlpakaStyle.inside(mx, my, x + PAD - 2, fy + 10, sw + 4, 11);
         text(graphics, source, x + PAD, fy + 12, hoverSource ? AlpakaStyle.accent() : AlpakaStyle.DIVIDER);
@@ -477,7 +478,11 @@ public class ProfileDashboardScreen extends Screen {
             if (hoverSource) {
                 tip("source", "Profile data from Elite (elitebot.dev), which reads it from Hypixel; the history from Elite and "
                         + "Soopy (soopy.dev), pet heads from the NEU repository. Soopy works networth out differently, so its "
-                        + "older networth is scaled to match Elite's. Click to open this profile on Elite.");
+                        + "older networth is scaled to match Elite's."
+                        + (skykings ? " With your key, SkyKings' daily history too" + (session.skykingsNote != null
+                                && !session.skykingsNote.equals("loading") ? ": " + session.skykingsNote : ".")
+                                : " A SkyKings API key in the config adds SkyKings' daily history.")
+                        + " Click to open this profile on Elite.");
             }
         }
     }

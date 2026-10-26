@@ -1,0 +1,276 @@
+package net.alpaka.addons.features.dungeonmap
+
+import com.mojang.blaze3d.platform.NativeImage
+import net.alpaka.addons.client.gui.AlpakaGuiElementSink
+import net.alpaka.addons.client.gui.BlurRectRenderState
+import net.alpaka.addons.client.gui.GradientRoundedRectRenderState
+import net.alpaka.addons.client.gui.ModernGuiUtils
+import net.alpaka.addons.config.AlpakaConfig
+import net.alpaka.addons.features.chat.ChatBlurFeature
+import net.alpaka.addons.utils.DungeonState
+import net.alpaka.addons.utils.SkyblockUtils
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiGraphicsExtractor
+import net.minecraft.client.gui.screens.ChatScreen
+import net.minecraft.client.renderer.RenderPipelines
+import net.minecraft.client.renderer.texture.DynamicTexture
+import net.minecraft.resources.Identifier
+import net.minecraft.world.level.material.MapColor
+import net.minecraft.world.level.saveddata.maps.MapDecorationTypes
+import org.joml.Matrix3x2f
+import kotlin.math.abs
+
+object DungeonMapRenderer {
+    private val clearTexture = MapTexture("dungeon_map_clear")
+    private val bossTexture = MapTexture("dungeon_map_boss")
+    private val previewTexture = MapTexture("dungeon_map_preview")
+    private val bossPreviewTexture = MapTexture("dungeon_map_boss_preview")
+    private val preview = DungeonMapSnapshot().apply { update(previewPixels(), false) }
+
+    private fun padding() = AlpakaConfig.instance.dungeonMapPadding.toInt().coerceIn(4, 16)
+    private fun panelWidth() = 128 + padding() * 2
+    private fun titleHeight() = if (AlpakaConfig.instance.dungeonMapTitle) 16 else 0
+    // Reserve both panels even during clear, so entering the boss never shifts the HUD's anchor.
+    fun width() = panelWidth() * (if (AlpakaConfig.instance.dungeonMapBossMode == 2) 2 else 1)
+    fun height() = 128 + padding() * 2 + titleHeight()
+
+    @JvmStatic
+    fun render(graphics: GuiGraphicsExtractor) {
+        val mc = Minecraft.getInstance()
+        val cfg = AlpakaConfig.instance
+        if (!cfg.dungeonMapEnabled || mc.player == null || mc.level == null || mc.gui.hud.isHidden() ||
+            !DungeonState.inDungeon() || !SkyblockUtils.isOnSkyblock()) return
+        if (mc.gui.screen() != null && mc.gui.screen() !is ChatScreen) return
+        if (DungeonState.inBossRoom && !cfg.dungeonMapShowBoss || !DungeonState.inBossRoom && !cfg.dungeonMapShowClear) return
+        val box = DungeonMapHudElement.visibleBounds(mc.window.guiScaledWidth, mc.window.guiScaledHeight)
+        draw(graphics, box.x0, box.y0, false)
+    }
+
+    @JvmStatic
+    fun draw(graphics: GuiGraphicsExtractor, x: Int, y: Int, editing: Boolean) {
+        val cfg = AlpakaConfig.instance
+        val boss = DungeonState.inBossRoom || editing && cfg.dungeonMapBossMode == 2
+        graphics.pose().pushMatrix()
+        graphics.pose().translate(x.toFloat(), y.toFloat())
+        val scale = DungeonMapHudElement.scaleValue()
+        graphics.pose().scale(scale, scale)
+        try {
+            if (!boss || cfg.dungeonMapBossMode == 1) {
+                panel(graphics, false, editing, scale)
+            } else {
+                panel(graphics, true, editing, scale)
+                if (cfg.dungeonMapBossMode == 2) {
+                    graphics.pose().translate(panelWidth().toFloat(), 0f)
+                    panel(graphics, false, editing, scale)
+                }
+            }
+        } finally {
+            graphics.pose().popMatrix()
+        }
+    }
+
+    private fun panel(g: GuiGraphicsExtractor, boss: Boolean, editing: Boolean, scale: Float) {
+        val cfg = AlpakaConfig.instance
+        val mc = Minecraft.getInstance()
+        backdrop(g, scale)
+        val pad = padding()
+        if (cfg.dungeonMapTitle) {
+            val title = when {
+                boss -> "Boss Room"
+                DungeonState.inBossRoom || editing && cfg.dungeonMapBossMode == 2 -> "Clear Map (Saved)"
+                else -> "Dungeon Map"
+            }
+            g.text(mc.font, title + (DungeonState.floor?.let { " • $it" } ?: ""), pad, pad + 2, cfg.dungeonMapTextColor, true)
+        }
+        val top = pad + titleHeight()
+        g.enableScissor(pad, top, pad + 128, top + 128)
+        g.pose().pushMatrix()
+        g.pose().translate(pad.toFloat(), top.toFloat())
+        try {
+            if (boss && editing) {
+                val pixels = IntArray(128 * 128) { i ->
+                    val x = i % 128
+                    val y = i / 128
+                    when {
+                        x !in 8..119 || y !in 8..119 -> 0
+                        x !in 12..115 || y !in 12..115 ||
+                            x in 30..40 && y in 30..40 || x in 87..97 && y in 30..40 ||
+                            x in 30..40 && y in 87..97 || x in 87..97 && y in 87..97 -> cfg.dungeonMapBossWallColor
+                        else -> cfg.dungeonMapBossFloorColor
+                    }
+                }
+                bossPreviewTexture.upload(pixels, pixels.contentHashCode())
+                bossPreviewTexture.draw(g)
+                if (cfg.dungeonMapPlayers) {
+                    marker(g, 64f, 64f, 0f, true, "You")
+                    marker(g, 80f, 45f, 1.2f, false, "Teammate")
+                }
+            } else if (boss) {
+                val pixels = BossRoomMap.pixels
+                if (pixels == null) waiting(g, "Loading Arena…") else {
+                    bossTexture.upload(pixels, BossRoomMap.revision)
+                    bossTexture.draw(g)
+                    if (cfg.dungeonMapPlayers) bossPlayers(g)
+                }
+            } else {
+                val source = if (editing) preview else DungeonMapFeature.snapshot
+                if (source.colors == null) waiting(g, "Waiting For Map…") else {
+                    val texture = if (editing) previewTexture else clearTexture
+                    texture.updateMap(source, palette())
+                    texture.draw(g)
+                    // Saved clear positions are stale in the boss room and must not look live.
+                    if (cfg.dungeonMapPlayers && (editing || !DungeonState.inBossRoom)) {
+                        if (editing) {
+                            marker(g, 40f, 40f, 0f, true, "You")
+                            marker(g, 83f, 65f, 1.2f, false, "Teammate")
+                        } else for (decoration in DungeonMapFeature.markers) {
+                            marker(g, decoration.x() / 2f + 64f, decoration.y() / 2f + 64f,
+                                decoration.rot() * (Math.PI.toFloat() / 8),
+                                decoration.type() == MapDecorationTypes.PLAYER, decoration.name().orElse(null)?.string)
+                        }
+                    }
+                }
+            }
+        } finally {
+            g.pose().popMatrix()
+            g.disableScissor()
+        }
+    }
+
+    private fun waiting(g: GuiGraphicsExtractor, text: String) {
+        val mc = Minecraft.getInstance()
+        g.text(mc.font, text, (128 - mc.font.width(text)) / 2, 60, AlpakaConfig.instance.dungeonMapTextColor, true)
+    }
+
+    private fun bossPlayers(g: GuiGraphicsExtractor) {
+        val mc = Minecraft.getInstance()
+        val local = mc.player ?: return
+        val projection = BossRoomMap.projection ?: return
+        for (player in mc.level?.players() ?: return) {
+            if (player !== local && (player.isInvisible || player.isSpectator ||
+                    mc.connection?.getPlayerInfo(player.uuid) == null || abs(player.y - local.y) > 8)) continue
+            val x = projection.mapX(player.x)
+            val y = projection.mapY(player.z)
+            if (x !in 0f..128f || y !in 0f..128f) continue
+            marker(g, x, y, (player.yRot + 180) * (Math.PI.toFloat() / 180), player === local, player.name.string)
+        }
+    }
+
+    private fun marker(g: GuiGraphicsExtractor, x: Float, y: Float, rotation: Float, self: Boolean, name: String?) {
+        val cfg = AlpakaConfig.instance
+        val color = if (self) cfg.dungeonMapSelfColor else cfg.dungeonMapPlayerColor
+        g.pose().pushMatrix()
+        g.pose().translate(x, y)
+        g.pose().rotate(rotation)
+        val scale = cfg.dungeonMapMarkerScale.coerceIn(0.5f, 2.5f)
+        g.pose().scale(scale, scale)
+        g.fill(-1, -4, 1, -2, 0xDD000000.toInt())
+        g.fill(-3, -2, 3, 3, 0xDD000000.toInt())
+        g.fill(-1, -3, 1, -1, color)
+        g.fill(-2, -1, 2, 2, color)
+        g.pose().popMatrix()
+        if (cfg.dungeonMapNames && !name.isNullOrEmpty()) {
+            val mc = Minecraft.getInstance()
+            g.text(mc.font, name, x.toInt() - mc.font.width(name) / 2, y.toInt() + 5,
+                cfg.dungeonMapTextColor, true)
+        }
+    }
+
+    private fun backdrop(g: GuiGraphicsExtractor, scale: Float) {
+        val cfg = AlpakaConfig.instance
+        val w = panelWidth()
+        val h = height()
+        val opacity = cfg.dungeonMapBackgroundOpacity.coerceIn(0f, 100f) / 100f
+        val tint = (Math.round((cfg.dungeonMapBackgroundColor ushr 24) * opacity) shl 24) or
+            (cfg.dungeonMapBackgroundColor and 0xFFFFFF)
+        val sink = g as? AlpakaGuiElementSink
+        if (sink == null) {
+            if (cfg.dungeonMapBackground) g.fill(0, 0, w, h, tint)
+            if (cfg.dungeonMapFrame) g.outline(0, 0, w, h, cfg.dungeonMapFrameStart)
+            return
+        }
+        val toScreen = Minecraft.getInstance().window.guiScale.toFloat() * scale
+        val pose = Matrix3x2f(g.pose())
+        val radius = Math.round(cfg.dungeonMapCornerRadius.coerceIn(0f, 16f) * toScreen)
+        val scissor = sink.`alpaka$currentScissor`()
+        if (cfg.dungeonMapBackground) {
+            if (cfg.dungeonMapBlur) {
+                val panel = BlurRectRenderState(pose, 0, 0, w, h, radius, tint, toScreen, scissor)
+                ChatBlurFeature.requestForHud(panel.bounds())
+                sink.`alpaka$submitElement`(panel)
+            } else sink.`alpaka$submitElement`(GradientRoundedRectRenderState(
+                pose, 0, 0, w, h, radius, 0, tint, tint, tint, tint, toScreen, scissor))
+        }
+        if (cfg.dungeonMapFrame) {
+            val start = cfg.dungeonMapFrameStart
+            val end = cfg.dungeonMapFrameEnd
+            val mid = ModernGuiUtils.lerpColor(start, end, 0.5f)
+            sink.`alpaka$submitElement`(GradientRoundedRectRenderState(pose, 0, 0, w, h, radius,
+                maxOf(1, Math.round(cfg.dungeonMapFrameWidth.coerceIn(1f, 4f) * toScreen)),
+                start, mid, end, mid, toScreen, scissor))
+        }
+    }
+
+    private fun palette(): IntArray {
+        val c = AlpakaConfig.instance
+        return intArrayOf(if (c.dungeonMapCustomColors) 1 else 0, c.dungeonMapRoomColor,
+            c.dungeonMapEntranceColor, c.dungeonMapPuzzleColor, c.dungeonMapTrapColor,
+            c.dungeonMapMinibossColor, c.dungeonMapFairyColor, c.dungeonMapBloodColor,
+            c.dungeonMapUnknownColor, c.dungeonMapDoorColor, c.dungeonMapClearedColor,
+            c.dungeonMapCompleteColor, c.dungeonMapFailedColor)
+    }
+
+    private class MapTexture(name: String) {
+        private val id = Identifier.fromNamespaceAndPath("alpaka", name)
+        private var texture: DynamicTexture? = null
+        private var revision = -1
+        private var lastPalette = intArrayOf()
+
+        fun updateMap(snapshot: DungeonMapSnapshot, palette: IntArray) {
+            if (revision == snapshot.revision && palette.contentEquals(lastPalette)) return
+            val colors = snapshot.colors ?: return
+            val inks = snapshot.inks ?: return
+            val pixels = IntArray(colors.size) { i ->
+                if (palette[0] != 0 && inks[i] != DungeonMapInk.ORIGINAL) palette[inks[i].ordinal]
+                else MapColor.getColorFromPackedId(colors[i].toInt() and 255)
+            }
+            lastPalette = palette
+            upload(pixels, snapshot.revision, true)
+        }
+
+        fun upload(pixels: IntArray, version: Int, force: Boolean = false) {
+            if (!force && revision == version) return
+            var current = texture
+            if (current == null) {
+                current = DynamicTexture({ id.toString() }, NativeImage(128, 128, false))
+                texture = current
+                Minecraft.getInstance().textureManager.register(id, current)
+            }
+            val image = current.pixels ?: return
+            for (i in pixels.indices) image.setPixel(i % 128, i / 128, pixels[i])
+            current.upload()
+            revision = version
+        }
+
+        fun draw(g: GuiGraphicsExtractor) {
+            g.blit(RenderPipelines.GUI_TEXTURED, id, 0, 0, 0f, 0f, 128, 128, 128, 128)
+        }
+    }
+
+    private fun previewPixels(): ByteArray {
+        val data = ByteArray(128 * 128)
+        val colors = intArrayOf(30, 63, 66, 85, 63, 82, 63, 74, 62, 63, 63, 18, 85, 85, 63, 85)
+        for (row in 0..3) for (col in 0..3) {
+            val x = 10 + col * 28
+            val y = 10 + row * 28
+            for (dy in 0..19) for (dx in 0..19) data[(y + dy) * 128 + x + dx] = colors[row * 4 + col].toByte()
+            if (col < 3) for (dx in 20..27) for (dy in 8..11) data[(y + dy) * 128 + x + dx] = 63
+            if (row < 3) for (dy in 20..27) for (dx in 8..11) data[(y + dy) * 128 + x + dx] = 63
+            if (row == 1) {
+                for (i in 0..5) data[(y + 12 - i) * 128 + x + 8 + i] = 30
+                data[(y + 11) * 128 + x + 7] = 30
+            }
+        }
+        return data
+    }
+}

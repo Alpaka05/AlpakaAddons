@@ -466,6 +466,49 @@ public class AlpakaConfig {
 
     // Inventory HUD. Shows the 27 main-inventory slots on screen; position and scale are set in
     // the HUD editor, or it can ride directly above the hotbar.
+    // Dungeon Map: screen position is edited in the HUD editor.
+    public boolean dungeonMapEnabled = false;
+    public int dungeonMapX = net.alpaka.addons.client.hud.HudDefaults.DUNGEON_MAP_X;
+    public int dungeonMapY = net.alpaka.addons.client.hud.HudDefaults.DUNGEON_MAP_Y;
+    public boolean dungeonMapShowClear = true;
+    public boolean dungeonMapShowBoss = true;
+    public int dungeonMapBossMode = 0;
+    public float dungeonMapBossRange = 96.0f;
+    public float dungeonMapScale = 1.0f;
+    public boolean dungeonMapTitle = true;
+    public boolean dungeonMapPlayers = true;
+    public boolean dungeonMapNames = false;
+    public float dungeonMapMarkerScale = 1.0f;
+    public int dungeonMapSelfColor = 0xFFFFFFFF;
+    public int dungeonMapPlayerColor = 0xFF55DDFF;
+    public int dungeonMapTextColor = 0xFFE8EEEE;
+    public boolean dungeonMapBackground = true;
+    public int dungeonMapBackgroundColor = 0xFF191919;
+    public float dungeonMapBackgroundOpacity = 65.0f;
+    public boolean dungeonMapBlur = true;
+    public boolean dungeonMapFrame = true;
+    public int dungeonMapFrameStart = 0xFF29B6B2;
+    public int dungeonMapFrameEnd = 0xFFB04FFF;
+    public float dungeonMapFrameWidth = 1.0f;
+    public float dungeonMapCornerRadius = 6.0f;
+    public float dungeonMapPadding = 6.0f;
+    public boolean dungeonMapCustomColors = true;
+    public int dungeonMapRoomColor = 0xFFB78A60;
+    public int dungeonMapEntranceColor = 0xFF4DBB75;
+    public int dungeonMapPuzzleColor = 0xFFB86CE0;
+    public int dungeonMapTrapColor = 0xFFE89B45;
+    public int dungeonMapMinibossColor = 0xFFF3D55B;
+    public int dungeonMapFairyColor = 0xFFF08BBD;
+    public int dungeonMapBloodColor = 0xFFE15959;
+    public int dungeonMapUnknownColor = 0xFF555D68;
+    public int dungeonMapDoorColor = 0xFF282D38;
+    public int dungeonMapClearedColor = 0xFFFFFFFF;
+    public int dungeonMapCompleteColor = 0xFF55E68B;
+    public int dungeonMapFailedColor = 0xFFFF5555;
+    public boolean dungeonMapBossCustomColors = true;
+    public int dungeonMapBossFloorColor = 0xFF687981;
+    public int dungeonMapBossWallColor = 0xFFB8C5CC;
+
     public boolean inventoryHudEnabled = false;
     public int inventoryHudX = net.alpaka.addons.client.hud.HudDefaults.INVENTORY_X;
     public int inventoryHudY = net.alpaka.addons.client.hud.HudDefaults.INVENTORY_Y;
@@ -1227,6 +1270,7 @@ public class AlpakaConfig {
         this.compactChatEnabled = false;
         this.chatTabsEnabled = false;
         this.inventoryHudEnabled = false;
+        this.dungeonMapEnabled = false;
         this.bridgeBotFormatterEnabled = false;
         this.guildPrefixEnabled = false;
         this.itemSizeFeatureEnabled = false;

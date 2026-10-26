@@ -101,6 +101,12 @@ public class HudMixin implements ChatOverHud.Late {
         } finally {
             AlpakaPerf.end(AlpakaPerf.Section.HUD_INVENTORY, t);
         }
+        t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_DUNGEON_MAP);
+        try {
+            net.alpaka.addons.features.dungeonmap.DungeonMapRenderer.render(graphicsExtractor);
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.HUD_DUNGEON_MAP, t);
+        }
         // Last, so a notice sits above every other overlay rather than under one.
         t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_NOTIFICATIONS);
         try {

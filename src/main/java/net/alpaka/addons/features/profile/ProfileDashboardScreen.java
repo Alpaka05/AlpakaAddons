@@ -779,7 +779,13 @@ public class ProfileDashboardScreen extends Screen {
             graphics.pose().scale(1.35f, 1.35f);
             text(graphics, AlpakaStyle.ellipsize(this.font, t.value(), (int) ((tw - 14) / 1.35f)), 0, 0, AlpakaStyle.TEXT);
             graphics.pose().popMatrix();
-            if (clickable) {
+            if (clickable && session.historyProblem() != null) {
+                // No history to show, so neither a change nor a line; the card still picks the graph,
+                // which then says what it needs.
+                String metric = t.metric();
+                hit(tx, ty, tw, th, () -> chosen.put(page, metric));
+                if (t.note() != null) text(graphics, AlpakaStyle.ellipsize(this.font, t.note(), tw - 14), tx + 7, ty + th - 13, AlpakaStyle.TEXT_MUTED);
+            } else if (clickable) {
                 List<ProfileHistory.Point> series = session.series(t.metric());
                 List<ProfileHistory.Point> visible = ProfileChart.visible(series, range, System.currentTimeMillis());
                 double change = ProfileChart.change(visible);
@@ -816,12 +822,11 @@ public class ProfileDashboardScreen extends Screen {
             if (level != null) value += "  ·  " + level;
             text(graphics, value, x + 8 + textW(title) + 8, y + 7, AlpakaStyle.accent());
         }
-        // A key that doesn't work would otherwise only show as graphs that stay sparse.
-        String problem = session.skykingsNote;
-        if (problem != null && !problem.equals("loading")) {
-            // Centred under the graph, between the dates at its two ends.
-            String shown = AlpakaStyle.ellipsize(this.font, "SkyKings: " + problem, w / 2);
-            text(graphics, shown, x + (w - textW(shown)) / 2, y + h - 13, AlpakaStyle.DANGER_SOFT);
+        // Without SkyKings' history no graph at all: a few scattered points would only mislead.
+        String problem = session.historyProblem();
+        if (problem != null) {
+            ProfileChart.message(graphics, this.font, problem, x, y + 22, w, h - 26);
+            return y + h;
         }
         int chipsRight = x + w - 6;
         ProfileChart.Range[] ranges = ProfileChart.Range.values();

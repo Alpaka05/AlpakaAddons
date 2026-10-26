@@ -56,6 +56,8 @@ public final class ProfileSession {
     private volatile Map<String, List<ProfileHistory.Point>> skykingsSeries = Map.of();
     /** What came of asking SkyKings, for the source note: null without a key. */
     public volatile String skykingsNote;
+    /** Whether SkyKings' history of the profile on show has arrived. */
+    private volatile boolean skykingsReady;
     /** The key SkyKings was last asked with, "" for none; see {@link #syncSkyKings}. */
     private volatile String skykingsKeyUsed = null;
     /** Bumped whenever something a graph draws from changes, to drop cached series. */
@@ -227,6 +229,7 @@ public final class ProfileSession {
     private void loadSkyKings(ProfileData parsed) {
         String key = net.alpaka.addons.config.AlpakaConfig.instance.skykingsApiKey;
         skykingsKeyUsed = key == null ? "" : key.trim();
+        skykingsReady = false;
         if (key == null || key.isBlank()) {
             skykingsNote = null;
             if (!skykingsSeries.isEmpty()) {
@@ -253,6 +256,7 @@ public final class ProfileSession {
                 calibrateSkyKingsNetworth(series, parsed.networth, System.currentTimeMillis());
                 skykingsSeries = series;
                 skykingsNote = series.isEmpty() ? "SkyKings has no history of this profile." : null;
+                skykingsReady = !series.isEmpty();
                 version++;
                 net.alpaka.addons.AlpakaAddons.LOGGER.info("Profile Dashboard: SkyKings history for {} / {}: {} snapshots",
                         playerName, parsed.profileName, series.getOrDefault(Metrics.SB_LEVEL, List.of()).size());
@@ -262,6 +266,24 @@ public final class ProfileSession {
                 net.alpaka.addons.AlpakaAddons.LOGGER.warn("Profile Dashboard: couldn't read SkyKings' history", e);
             }
         });
+    }
+
+    /**
+     * Why the graphs aren't shown, or null when they are. They need SkyKings: without its daily
+     * history the other sources leave months-long holes, and a graph of a few scattered points
+     * says less than none. So without a working key there are no graphs, only this.
+     */
+    public String historyProblem() {
+        String key = net.alpaka.addons.config.AlpakaConfig.instance.skykingsApiKey;
+        if (key == null || key.isBlank()) {
+            return "The graphs need a SkyKings API key. Make a free one on skykings.net (log in with Discord, "
+                    + "Dashboard › API Keys) and paste it under Profile Dashboard in the config: /aa skykings";
+        }
+        if (skykingsReady) return null;
+        String note = skykingsNote;
+        if (note == null || note.equals("loading")) return "Loading the history from SkyKings…";
+        if (note.contains("accept")) return note + " Check the key under Profile Dashboard in the config: /aa skykings";
+        return note;
     }
 
     /** The profile type SkyKings files a game mode under. */

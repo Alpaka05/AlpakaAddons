@@ -2390,6 +2390,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.alwaysSprintIgnoreGarden = v; AlpakaConfig.save(); },
                 "always sprint garden farming disable ignore off skyblock island"));
 
+        OPTIONS.add(new ConfigOption("keep_cursor_position", "Keep Cursor Position",
+                "The cursor stays where it is when one menu follows another, such as backpack pages, instead of jumping back to the middle.",
+                ConfigCategory.SOUND_MISC,
+                () -> AlpakaConfig.instance.keepCursorPositionEnabled,
+                v -> { AlpakaConfig.instance.keepCursorPositionEnabled = v; AlpakaConfig.save(); },
+                "keep cursor position mouse reset center centre middle inventory menu backpack storage page gui no cursor reset"));
+
         OPTIONS.add(new ConfigOption("Custom Sounds", ConfigCategory.SOUND_MISC));
 
         OPTIONS.add(new ConfigOption("custom_sounds", "Custom Sounds",

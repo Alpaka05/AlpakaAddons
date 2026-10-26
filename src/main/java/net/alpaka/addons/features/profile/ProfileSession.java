@@ -56,6 +56,8 @@ public final class ProfileSession {
     private volatile Map<String, List<ProfileHistory.Point>> skykingsSeries = Map.of();
     /** What came of asking SkyKings, for the source note: null without a key. */
     public volatile String skykingsNote;
+    /** The key SkyKings was last asked with, "" for none; see {@link #syncSkyKings}. */
+    private volatile String skykingsKeyUsed = null;
     /** Bumped whenever something a graph draws from changes, to drop cached series. */
     private volatile int version;
     private final Map<String, List<ProfileHistory.Point>> seriesCache = new HashMap<>();
@@ -207,11 +209,30 @@ public final class ProfileSession {
         });
     }
 
+    /**
+     * Asks SkyKings again when the key in the config is not the one the profile on show was loaded
+     * with. A session is kept for a few minutes so the dashboard reopens at once; without this, a
+     * key entered in that time only counted after a Refresh, and the graphs stayed as they were.
+     * Called every frame; a string comparison when nothing changed.
+     */
+    public void syncSkyKings() {
+        ProfileData d = data;
+        if (d == null || state != State.READY) return;
+        String key = net.alpaka.addons.config.AlpakaConfig.instance.skykingsApiKey;
+        String current = key == null ? "" : key.trim();
+        if (!current.equals(skykingsKeyUsed)) loadSkyKings(d);
+    }
+
     /** SkyKings' history for the profile on show, when the player set a key. */
     private void loadSkyKings(ProfileData parsed) {
         String key = net.alpaka.addons.config.AlpakaConfig.instance.skykingsApiKey;
+        skykingsKeyUsed = key == null ? "" : key.trim();
         if (key == null || key.isBlank()) {
             skykingsNote = null;
+            if (!skykingsSeries.isEmpty()) {
+                skykingsSeries = Map.of();
+                version++;
+            }
             return;
         }
         String id = parsed.profileId;
@@ -224,13 +245,22 @@ public final class ProfileSession {
             if (failure != null) {
                 Throwable cause = failure instanceof CompletionException && failure.getCause() != null ? failure.getCause() : failure;
                 skykingsNote = cause.getMessage() == null ? "SkyKings couldn't be reached." : cause.getMessage();
+                net.alpaka.addons.AlpakaAddons.LOGGER.warn("Profile Dashboard: SkyKings history for {} failed: {}", playerName, cause.toString());
                 return;
             }
-            Map<String, List<ProfileHistory.Point>> series = skykingsSeries(answer, parsed.profileName, gameMode);
-            calibrateSkyKingsNetworth(series, parsed.networth, System.currentTimeMillis());
-            skykingsSeries = series;
-            skykingsNote = series.isEmpty() ? "SkyKings has no history of this profile." : null;
-            version++;
+            try {
+                Map<String, List<ProfileHistory.Point>> series = skykingsSeries(answer, parsed.profileName, gameMode);
+                calibrateSkyKingsNetworth(series, parsed.networth, System.currentTimeMillis());
+                skykingsSeries = series;
+                skykingsNote = series.isEmpty() ? "SkyKings has no history of this profile." : null;
+                version++;
+                net.alpaka.addons.AlpakaAddons.LOGGER.info("Profile Dashboard: SkyKings history for {} / {}: {} snapshots",
+                        playerName, parsed.profileName, series.getOrDefault(Metrics.SB_LEVEL, List.of()).size());
+            } catch (RuntimeException e) {
+                // A completion stage swallows what is thrown in it; said here, it shows in the log.
+                skykingsNote = "SkyKings' answer couldn't be read.";
+                net.alpaka.addons.AlpakaAddons.LOGGER.warn("Profile Dashboard: couldn't read SkyKings' history", e);
+            }
         });
     }
 

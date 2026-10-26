@@ -225,6 +225,7 @@ public class ProfileDashboardScreen extends Screen {
         float deltaSec = Math.min(0.1f, (now - lastFrameMs) / 1000.0f);
         lastFrameMs = now;
 
+        session.syncSkyKings();
         int x = panelX();
         int y = panelY();
         int w = panelW();
@@ -814,6 +815,13 @@ public class ProfileDashboardScreen extends Screen {
             String level = Metrics.levelNote(metric, last, maxLevel);
             if (level != null) value += "  ·  " + level;
             text(graphics, value, x + 8 + textW(title) + 8, y + 7, AlpakaStyle.accent());
+        }
+        // A key that doesn't work would otherwise only show as graphs that stay sparse.
+        String problem = session.skykingsNote;
+        if (problem != null && !problem.equals("loading")) {
+            // Centred under the graph, between the dates at its two ends.
+            String shown = AlpakaStyle.ellipsize(this.font, "SkyKings: " + problem, w / 2);
+            text(graphics, shown, x + (w - textW(shown)) / 2, y + h - 13, AlpakaStyle.DANGER_SOFT);
         }
         int chipsRight = x + w - 6;
         ProfileChart.Range[] ranges = ProfileChart.Range.values();

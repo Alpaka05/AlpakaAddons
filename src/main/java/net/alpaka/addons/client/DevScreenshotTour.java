@@ -224,6 +224,17 @@ public final class DevScreenshotTour {
             profile("profile-unknown-player", "zzqqxxnotaname123", "OVERVIEW"),
             new Stop(null, DevScreenshotTour::enterWorld,
                     () -> Minecraft.getInstance().player != null && Minecraft.getInstance().gui.screen() == null, 100),
+            new Stop("world-hud", DevScreenshotTour::showHuds, () -> true, 30),
+            // The screenshot preview of the picture just taken: resting in the corner, then mid-shrink.
+            // A run that leaves out world-hud never gets its picture, so these two pass then.
+            new Stop(null, () -> {}, () -> !shoots("world-hud") || tourShot("world-hud").isFile(), 2),
+            new Stop(null, () -> {
+                if (!shoots("world-hud")) return;
+                ScreenshotPreview.devFreezeAt(1150.0f);
+                ScreenshotPreview.show(tourShot("world-hud"));
+            }, () -> !shoots("world-hud") || ScreenshotPreview.isOnScreen(), 2),
+            new Stop("screenshot-preview", () -> {}, () -> true, 2),
+            new Stop("screenshot-preview-shrink", () -> ScreenshotPreview.devFreezeAt(120.0f), () -> true, 2),
             // The pets with their heads and skins, which only exist once a world is loaded; then the
             // Skills page with the item icons.
             profile("profile-pets-in-world", "Refraction", "PETS"),
@@ -267,17 +278,6 @@ public final class DevScreenshotTour {
                 Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpen("Alpakaa", "INVENTORY"));
                 placeMouse(0.405, 0.667);
             }, () -> true, 60),
-            new Stop("world-hud", DevScreenshotTour::showHuds, () -> true, 30),
-            // The screenshot preview of the picture just taken: resting in the corner, then mid-shrink.
-            // A run that leaves out world-hud never gets its picture, so these two pass then.
-            new Stop(null, () -> {}, () -> !shoots("world-hud") || tourShot("world-hud").isFile(), 2),
-            new Stop(null, () -> {
-                if (!shoots("world-hud")) return;
-                ScreenshotPreview.devFreezeAt(1150.0f);
-                ScreenshotPreview.show(tourShot("world-hud"));
-            }, () -> !shoots("world-hud") || ScreenshotPreview.isOnScreen(), 2),
-            new Stop("screenshot-preview", () -> {}, () -> true, 2),
-            new Stop("screenshot-preview-shrink", () -> ScreenshotPreview.devFreezeAt(120.0f), () -> true, 2),
             new Stop(null, () -> ScreenshotPreview.devFreezeAt(-1.0f), () -> true, 5),
             // The Auction House and the Bazaar in the market screens, on chests filled locally.
             screen("market-ah-main", net.alpaka.addons.features.market.MarketPreview::auctionHouse),

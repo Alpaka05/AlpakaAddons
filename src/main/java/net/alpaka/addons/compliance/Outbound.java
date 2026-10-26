@@ -15,17 +15,20 @@ import net.minecraft.world.inventory.ContainerInput;
  * Every message, command or menu click the mod sends is the direct result of the player pressing a
  * key, clicking, or pressing Enter, and says which through its {@link Cause}. A command typed in the
  * first seconds on a server may wait for Hypixel's join cooldown before it goes out, but it is still
- * the one the player sent, once. The one opt-in exception is {@link Cause#PARTY_CHAT_REQUEST}. Nothing reacts to
- * other players' chat, timers or game events by sending unless the player switched it on; two
- * features once did so unasked - a party-chat auto-reply and a guild announcement fired from a
- * timer - and were removed. A scan of the compiled
+ * the one the player sent, once. Nothing reacts to other players' chat, timers or game events by
+ * sending unless the player switched it on; two features once did so unasked - a party-chat
+ * auto-reply and a guild announcement fired from a timer - and were removed. A scan of the compiled
  * classes in the tests (OutboundBytecodeScanTest) fails the build if anything outside this class
  * sends to the server, apart from the resource pack answers of the pack cache.
  *
- * The one exception is {@link #latencyProbe()}: not a message or command but vanilla's own ping
- * request, which nobody else sees and which the server answers without acting on it. It goes out on
- * a timer because a ping has no other way to be measured, and at most once every
- * {@link #PROBE_FLOOR_MS} ms, enforced here so no caller can send more.
+ * There are three exceptions. {@link #latencyProbe()} is not a message or command but vanilla's own
+ * ping request, which nobody else sees and which the server answers without acting on it. It goes
+ * out on a timer because a ping has no other way to be measured, and at most once every
+ * {@link #PROBE_FLOOR_MS} ms, enforced here so no caller can send more. {@link #quickJoinSkyblock()}
+ * is Quick Join's /skyblock after joining Hypixel, which the player switched on for exactly that.
+ * It can only ever be that command, at most once every {@link #QUICK_JOIN_FLOOR_MS} ms. And
+ * {@link Cause#PARTY_CHAT_REQUEST} is a party chat line answering a party member's "!tps", sent only
+ * when the player switched on Answer Without Confirmation, at most once every two seconds.
  */
 public final class Outbound {
     /** What the player did that sends the command. */
@@ -70,6 +73,10 @@ public final class Outbound {
     private static int lastClickContainer = -1;
     private static int lastClickSlot = -1;
     private static long lastClickAtMs = 0L;
+
+    /** The least time between two Quick Join commands, however often Hypixel is joined. */
+    public static final long QUICK_JOIN_FLOOR_MS = 30_000L;
+    private static long lastQuickJoinAtMs = Long.MIN_VALUE / 2;
 
     private Outbound() {}
 
@@ -144,6 +151,21 @@ public final class Outbound {
 
         AlpakaAddons.LOGGER.debug("Clicking slot {} of menu {} ({} {}, {})", slotIndex, menu.containerId, input, button, cause);
         mc.gameMode.handleContainerInput(menu.containerId, slotIndex, button, input, player);
+        return true;
+    }
+
+    /**
+     * Sends /skyblock for Quick Join, once Hypixel has been joined. Returns whether it went out; a
+     * call within {@link #QUICK_JOIN_FLOOR_MS} of the last one is dropped.
+     */
+    public static boolean quickJoinSkyblock() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.player.connection == null) return false;
+        long now = Util.getMillis();
+        if (now - lastQuickJoinAtMs < QUICK_JOIN_FLOOR_MS) return false;
+        lastQuickJoinAtMs = now;
+        AlpakaAddons.LOGGER.debug("Sending /skyblock (Quick Join)");
+        mc.player.connection.sendCommand("skyblock");
         return true;
     }
 }

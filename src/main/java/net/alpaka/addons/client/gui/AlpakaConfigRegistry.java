@@ -2436,6 +2436,27 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.keepCursorPositionEnabled = v; AlpakaConfig.save(); },
                 "keep cursor position mouse reset center centre middle inventory menu backpack storage page gui no cursor reset"));
 
+        OPTIONS.add(new ConfigOption("quick_join", "Quick Join",
+                "Gets you into the game faster: straight into SkyBlock when you join Hypixel, and onto Hypixel when the game starts.",
+                ConfigCategory.SOUND_MISC,
+                () -> AlpakaConfig.instance.quickJoinEnabled,
+                v -> { AlpakaConfig.instance.quickJoinEnabled = v; AlpakaConfig.save(); },
+                "quick join auto skyblock lobby warp hypixel connect fast start skip"));
+
+        OPTIONS.add(new ConfigOption("quick_join_skyblock", "Join SkyBlock",
+                "Sends /skyblock once you have joined Hypixel, unless you already landed in SkyBlock.",
+                ConfigCategory.SOUND_MISC,
+                () -> AlpakaConfig.instance.quickJoinSkyblock,
+                v -> { AlpakaConfig.instance.quickJoinSkyblock = v; AlpakaConfig.save(); },
+                "quick join auto skyblock lobby warp command hypixel"));
+
+        OPTIONS.add(new ConfigOption("quick_join_on_launch", "Join Hypixel on Launch",
+                "Connects to Hypixel as soon as the game has started. Hold Shift while it loads to stay in the main menu.",
+                ConfigCategory.SOUND_MISC,
+                () -> AlpakaConfig.instance.quickJoinOnLaunch,
+                v -> { AlpakaConfig.instance.quickJoinOnLaunch = v; AlpakaConfig.save(); },
+                "quick join launch startup start auto connect hypixel server main menu skip"));
+
         OPTIONS.add(new ConfigOption("Custom Sounds", ConfigCategory.SOUND_MISC));
 
         OPTIONS.add(new ConfigOption("custom_sounds", "Custom Sounds",

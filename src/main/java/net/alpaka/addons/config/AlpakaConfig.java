@@ -622,6 +622,12 @@ public class AlpakaConfig {
     public boolean alwaysSprintIgnoreGarden = false;
     /** The cursor stays put when Hypixel swaps one menu for the next (backpack pages and the like). */
     public boolean keepCursorPositionEnabled = true;
+    /** Quick Join's main switch. Off for fresh installs: it sends a command nobody typed. */
+    public boolean quickJoinEnabled = false;
+    /** Quick Join sends /skyblock once after joining Hypixel. */
+    public boolean quickJoinSkyblock = true;
+    /** Quick Join also connects to Hypixel as soon as the game has started. */
+    public boolean quickJoinOnLaunch = false;
     public boolean expandChatHistory = true;
     /** How many chat lines Expand Chat History keeps; vanilla keeps 100. */
     public int chatHistoryLimit = 5000;
@@ -1458,6 +1464,7 @@ public class AlpakaConfig {
         this.chatCopyEnabled = false;
         this.alwaysSprintEnabled = false;
         this.keepCursorPositionEnabled = false;
+        this.quickJoinEnabled = false;
         this.expandChatHistory = false;
         this.chatPeekEnabled = false;
         this.betterScreenshotMessageEnabled = false;

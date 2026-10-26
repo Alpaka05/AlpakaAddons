@@ -727,13 +727,12 @@ public class MarketScreen extends ContainerScreen {
         return rowY + rowH + 1;
     }
 
-    /** An item at the start of a sidebar row, a little smaller than in a slot to sit with the text. */
+    /**
+     * An item at the start of a sidebar row, at its full 16 pixels on whole pixels: scaled down or
+     * placed between pixels, its texture turns blurry.
+     */
     private static void sideItem(GuiGraphicsExtractor graphics, ItemStack item, int rowX, int rowY, int rowH) {
-        graphics.pose().pushMatrix();
-        graphics.pose().translate(rowX + 5, rowY + (rowH - 12) / 2f);
-        graphics.pose().scale(0.75f, 0.75f);
-        graphics.item(item, 0, 0);
-        graphics.pose().popMatrix();
+        graphics.item(item, rowX + 3, rowY + (rowH - 16) / 2);
     }
 
     // ---- Content --------------------------------------------------------------------------------

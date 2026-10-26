@@ -40,7 +40,9 @@ session always win over this file.
     `OutboundBytecodeScanTest` scans the compiled classes and fails the build if anything else
     sends to the server (packets, chat, commands, gameplay actions, method references included).
     The documented exceptions: `Outbound.latencyProbe()`, the Performance HUD's ping (at most every
-    5 s), and the resource pack answers of the pack cache in `mixin/DownloadedPackSourceMixin` and
+    5 s), `Outbound.quickJoinSkyblock()`, Quick Join's opt-in /skyblock after joining Hypixel
+    (at most every 30 s), and the resource pack answers of the pack cache in
+    `mixin/DownloadedPackSourceMixin` and
     `mixin/ClientCommonPacketListenerPackCacheMixin`.
 - `src/test/`: JUnit 5 tests (Java and Kotlin).
 - `tools/`: helper scripts (Modrinth cleanup, menu icons, ...).

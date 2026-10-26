@@ -451,8 +451,11 @@ public class ProfileDashboardScreen extends Screen {
         for (Page p : Page.values()) {
             boolean hover = AlpakaStyle.inside(mx, my, rowX, rowY, rowW, rowH) && !profileMenuOpen;
             if (hover && p != page) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, rowH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
-            icon(graphics, p.icon, rowX + 5, rowY + (rowH - 12) / 2, 0.75f);
-            text(graphics, p.title, rowX + 22, rowY + (rowH - 8) / 2, p == page || hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
+            // Items only at their full 16 pixels: scaled down, the game's nearest-neighbour sampling
+            // drops rows and columns unevenly and they turn blotchy. Rows too slim for that go without.
+            boolean icons = rowH >= 18;
+            if (icons) icon(graphics, p.icon, rowX + 5, rowY + (rowH - 16) / 2, 1.0f);
+            text(graphics, p.title, rowX + (icons ? 27 : 10), rowY + (rowH - 8) / 2, p == page || hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
             Page target = p;
             hits.add(new Hit(rowX, rowY, rowW, rowH, () -> {
                 page = target;

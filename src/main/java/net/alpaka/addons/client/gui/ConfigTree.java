@@ -110,7 +110,7 @@ public final class ConfigTree {
             "etherwarp_overlay", "etherwarp_sound",
             "slayer_drop_tracker", "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat",
             "hide_slayer_chat", "boss_spawn_alert", "boss_cocoon_alert", "slayer_timer", "slayer_hud_enabled",
-            "world_age_join_message_enabled", "party_invite_prompt",
+            "world_age_join_message_enabled", "party_invite_prompt", "party_commands", "shorten_warp", "warp_cooldown_queue",
             "guild_prefix", "bridge_bot_formatter", "only_crit_damage", "ragnarock", "deployable_timer", "cache_resource_pack",
             "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value", "chest_value",
             // Cosmetics
@@ -202,7 +202,7 @@ public final class ConfigTree {
                             "world_age_join_message_enabled", "ragnarock", "deployable_timer", "cache_resource_pack"},
                     {"Markets", "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value",
                             "chest_value"},
-                    {"Social", "party_invite_prompt", "guild_prefix", "bridge_bot_formatter"}},
+                    {"Social", "party_invite_prompt", "party_commands", "shorten_warp", "warp_cooldown_queue", "guild_prefix", "bridge_bot_formatter"}},
     };
 
     /** "Enable Inventory HUD" reads as "Inventory HUD" in a list of features that each switch on. */

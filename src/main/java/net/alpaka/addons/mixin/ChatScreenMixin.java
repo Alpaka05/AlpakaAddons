@@ -203,6 +203,22 @@ public class ChatScreenMixin {
     }
 
     /**
+     * A typed command goes past Shorten Warp and the Warp Cooldown Queue first: either may send it
+     * in another form or hold it, and then vanilla must not send it as well.
+     */
+    @Inject(method = "handleChatInput", at = @At("HEAD"), cancellable = true)
+    private void alpaka$handleTypedCommand(String message, boolean addToRecent, CallbackInfo ci) {
+        ChatScreen self = (ChatScreen) (Object) this;
+        String normalized = self.normalizeChatMessage(message);
+        if (!normalized.startsWith("/")) return;
+        if (!net.alpaka.addons.features.commands.TypedCommands.handle(normalized.substring(1))) return;
+        if (addToRecent) {
+            Minecraft.getInstance().gui.hud.getChat().addRecentChat(normalized);
+        }
+        ci.cancel();
+    }
+
+    /**
      * Sends a plain message typed on a channel tab to that channel, when the toggle for it is on.
      * Mirrors the vanilla method - normalise, remember, send - only sending a command instead.
      */

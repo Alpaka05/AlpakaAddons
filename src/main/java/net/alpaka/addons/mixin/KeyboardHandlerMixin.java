@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Key presses the mod answers before the game sees them: the party prompt's Y and N, and Tab
+ * Key presses the mod answers before the game sees them: the party prompts' Y and N, and Tab
  * cycling the chat tabs while the chat is held open with Peek Chat.
  *
  * Taken at the very front of the keyboard handler, so a consumed press never reaches a key mapping
@@ -36,6 +36,10 @@ public class KeyboardHandlerMixin {
         // repeat of a taken key is swallowed too, without acting on it again.
         boolean repeat = action == InputConstants.REPEAT;
         if (PartyInviteFeature.onKey(event.key(), event.scancode(), repeat)) {
+            ci.cancel();
+            return;
+        }
+        if (net.alpaka.addons.features.party.PartyCommandsFeature.onKey(event.key(), event.scancode(), repeat)) {
             ci.cancel();
             return;
         }

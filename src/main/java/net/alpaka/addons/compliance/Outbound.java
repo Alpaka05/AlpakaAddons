@@ -13,7 +13,9 @@ import net.minecraft.world.inventory.ContainerInput;
  * The one place the mod sends anything to the server.
  *
  * Every message, command or menu click the mod sends is the direct result of the player pressing a
- * key, clicking, or pressing Enter, and says which through its {@link Cause}. Nothing reacts to
+ * key, clicking, or pressing Enter, and says which through its {@link Cause}. A command typed in the
+ * first seconds on a server may wait for Hypixel's join cooldown before it goes out, but it is still
+ * the one the player sent, once. Nothing reacts to
  * other players' chat, timers or game events by sending; two features once did - a party-chat
  * auto-reply and a guild announcement fired from a timer - and were removed. A scan of the compiled
  * classes in the tests (OutboundBytecodeScanTest) fails the build if anything outside this class
@@ -34,7 +36,12 @@ public final class Outbound {
         /** Released or clicked a command wheel segment. */
         WHEEL,
         /** Clicked the mod's drawing of a slot in an open menu, such as a card in the Auction House. */
-        MENU_CLICK
+        MENU_CLICK,
+        /**
+         * Pressed Enter on a command Hypixel refuses for the first seconds on a server; it goes out
+         * once, when that wait is over, and never again (WarpCooldownQueue).
+         */
+        QUEUED_CHAT_INPUT
     }
 
     /** The same command again this soon is taken as a double input and dropped. */

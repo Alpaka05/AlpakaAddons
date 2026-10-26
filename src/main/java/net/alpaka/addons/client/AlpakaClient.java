@@ -73,6 +73,8 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.utils.DungeonState.register();
         net.alpaka.addons.features.notification.MentionNotifier.register();
         net.alpaka.addons.features.party.PartyInviteFeature.register();
+        net.alpaka.addons.features.party.PartyCommandsFeature.register();
+        net.alpaka.addons.features.commands.WarpCooldownQueue.register();
         net.alpaka.addons.features.chat.MessageFilterFeature.register();
         net.alpaka.addons.features.tooltip.OldMasterStarsFeature.register();
         net.alpaka.addons.features.ragnarock.RagnarockFeature.register();

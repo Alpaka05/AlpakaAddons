@@ -968,7 +968,7 @@ public class ProfileDashboardScreen extends Screen {
         int cols = w >= 380 ? 2 : 1;
         int gap = 6;
         int cw = (w - (cols - 1) * gap) / cols;
-        int ch = 34;
+        int ch = 38;
         String selected = metricFor(page);
         for (int i = 0; i < levels.size(); i++) {
             ProfileData.Level l = levels.get(i);
@@ -979,21 +979,22 @@ public class ProfileDashboardScreen extends Screen {
             ModernGuiUtils.drawRoundedRect(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
             if (metric.equals(selected)) ModernGuiUtils.drawRoundedOutline(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, MarketIcons.fade(AlpakaStyle.accent(), 0.8f));
             Item icon = SKILL_ICONS.get(l.id());
-            if (icon != null) icon(graphics, icon, cx + 7, cy + 9, 1.0f);
-            int tx = cx + 29;
-            int tw = cw - 29 - 8;
+            // At twice its size: a whole multiple keeps every texel on whole screen pixels.
+            if (icon != null) icon(graphics, icon, cx + 4, cy + 3, 2.0f);
+            int tx = cx + 42;
+            int tw = cw - 42 - 8;
             boolean isSelectedClass = prefix.equals(Metrics.CLASS) && l.id().equals(session.data.selectedClass);
             String name = l.name() + (isSelectedClass ? "  •" : "");
-            text(graphics, name, tx, cy + 5, AlpakaStyle.TEXT_SOFT);
+            text(graphics, name, tx, cy + 7, AlpakaStyle.TEXT_SOFT);
             String level = l.maxed() ? "MAX " + l.level() : l.level() + " / " + l.maxLevel();
-            text(graphics, level, tx + tw - textW(level), cy + 5, l.maxed() ? ink(0xFFFFC94D) : AlpakaStyle.TEXT);
-            bar(graphics, tx, cy + 17, tw, 3, l.progress(), l.maxed() ? ink(0xFFFFC94D) : AlpakaStyle.accent());
+            text(graphics, level, tx + tw - textW(level), cy + 7, l.maxed() ? ink(0xFFFFC94D) : AlpakaStyle.TEXT);
+            bar(graphics, tx, cy + 19, tw, 3, l.progress(), l.maxed() ? ink(0xFFFFC94D) : AlpakaStyle.accent());
             String xp = l.maxed() ? Coins.compact(l.xp()) + " XP" : Coins.compact(l.xpCurrent()) + " / " + Coins.compact(l.xpForNext());
-            text(graphics, xp, tx, cy + 23, AlpakaStyle.TEXT_MUTED);
+            text(graphics, xp, tx, cy + 25, AlpakaStyle.TEXT_MUTED);
             double rate = session.ratePerDay(metric, 7);
             if (rate > 0) {
                 String pace = "+" + Coins.compact(rate) + "/day";
-                text(graphics, pace, tx + tw - textW(pace), cy + 23, ink(ProfileChart.UP));
+                text(graphics, pace, tx + tw - textW(pace), cy + 25, ink(ProfileChart.UP));
             }
             hit(cx, cy, cw, ch, () -> chosen.put(page, metric));
             if (hover) {
@@ -1071,23 +1072,23 @@ public class ProfileDashboardScreen extends Screen {
         y = tiles(graphics, tiles, x, y, w, 3) + 6;
 
         String selected = metricFor(Page.SLAYERS);
-        int rowH = 36;
+        int rowH = 38;
         for (ProfileData.Slayer s : d.slayers) {
             String metric = Metrics.SLAYER + s.id();
             boolean hover = hover(x, y, w, rowH);
             ModernGuiUtils.drawRoundedRect(graphics, x, y, w, rowH, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
             if (metric.equals(selected)) ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, rowH, AlpakaStyle.CARD_RADIUS, MarketIcons.fade(AlpakaStyle.accent(), 0.8f));
             Item icon = SKILL_ICONS.get(s.id());
-            if (icon != null) icon(graphics, icon, x + 8, y + 10, 1.0f);
-            int tx = x + 31;
-            text(graphics, s.name(), tx, y + 6, AlpakaStyle.TEXT_SOFT);
+            if (icon != null) icon(graphics, icon, x + 4, y + 3, 2.0f);
+            int tx = x + 42;
+            text(graphics, s.name(), tx, y + 7, AlpakaStyle.TEXT_SOFT);
             String level = s.maxed() ? "MAX " + s.level() : "Level " + s.level();
             int levelX = tx + textW(s.name()) + 8;
-            text(graphics, level, levelX, y + 6, s.maxed() ? ink(0xFFFFC94D) : AlpakaStyle.TEXT);
+            text(graphics, level, levelX, y + 7, s.maxed() ? ink(0xFFFFC94D) : AlpakaStyle.TEXT);
             int right = x + w - 8;
             String xp = s.maxed() ? Coins.full(s.xp()) + " XP" : Coins.compact(s.xpForNext()) + " XP to " + (s.level() + 1);
-            if (levelX + textW(level) + 12 + textW(xp) < right) text(graphics, xp, right - textW(xp), y + 6, AlpakaStyle.TEXT_MUTED);
-            bar(graphics, tx, y + 18, w - 31 - 8, 3, s.progress(), s.maxed() ? ink(0xFFFFC94D) : AlpakaStyle.accent());
+            if (levelX + textW(level) + 12 + textW(xp) < right) text(graphics, xp, right - textW(xp), y + 7, AlpakaStyle.TEXT_MUTED);
+            bar(graphics, tx, y + 19, w - 42 - 8, 3, s.progress(), s.maxed() ? ink(0xFFFFC94D) : AlpakaStyle.accent());
 
             // The kills of each tier, as far as the boss has tiers, and the recent pace.
             int tiers = s.id().equals("zombie") || s.id().equals("vampire") || s.kills()[4] > 0 ? 5 : 4;
@@ -1097,11 +1098,11 @@ public class ProfileDashboardScreen extends Screen {
                 killText.append("T").append(t + 1).append(" ").append(Coins.compact(s.kills()[t]));
             }
             String killsLine = killText.toString();
-            text(graphics, killsLine, tx, y + 25, AlpakaStyle.TEXT_MUTED);
+            text(graphics, killsLine, tx, y + 26, AlpakaStyle.TEXT_MUTED);
             double rate = session.ratePerDay(metric, 7);
             if (rate > 0) {
                 String pace = "+" + Coins.compact(rate) + " XP/day";
-                if (tx + textW(killsLine) + 12 + textW(pace) < right) text(graphics, pace, right - textW(pace), y + 25, ink(ProfileChart.UP));
+                if (tx + textW(killsLine) + 12 + textW(pace) < right) text(graphics, pace, right - textW(pace), y + 26, ink(ProfileChart.UP));
             }
             hit(x, y, w, rowH, () -> chosen.put(Page.SLAYERS, metric));
             if (hover) {
@@ -1287,10 +1288,10 @@ public class ProfileDashboardScreen extends Screen {
         }
         y += h + 6;
 
-        int cols = Math.max(2, w / 150);
+        int cols = Math.max(2, w / 170);
         int gap = 4;
         int cw = (w - (cols - 1) * gap) / cols;
-        int ch = 30;
+        int ch = 40;
         for (int i = 0; i < d.pets.size(); i++) {
             ProfileData.Pet p = d.pets.get(i);
             int cx = x + (i % cols) * (cw + gap);
@@ -1301,19 +1302,20 @@ public class ProfileDashboardScreen extends Screen {
             if (p.active()) ModernGuiUtils.drawRoundedOutline(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, MarketIcons.fade(AlpakaStyle.accent(), 0.8f));
             // The pet's head, in the skin it wears, as the game shows it; a placeholder while it loads.
             ItemStack head = PetIcons.icon(p);
+            // Twice the size of an item, so the head can be made out; a whole multiple stays sharp.
             if (head != null) {
-                stackIcon(graphics, head, cx + 5, cy + 7, 1.0f);
+                stackIcon(graphics, head, cx + 4, cy + 4, 2.0f);
             } else {
-                ModernGuiUtils.drawRoundedRect(graphics, cx + 6, cy + 8, 14, 14, 3, AlpakaStyle.ROW_SELECTED);
+                ModernGuiUtils.drawRoundedRect(graphics, cx + 6, cy + 6, 28, 28, 4, AlpakaStyle.ROW_SELECTED);
             }
-            int tx = cx + 25;
-            int tw = cw - 25 - 6;
+            int tx = cx + 42;
+            int tw = cw - 42 - 6;
             String level = "Lvl " + p.level();
-            text(graphics, level, tx + tw - textW(level), cy + 5, p.level() >= p.maxLevel() ? ink(0xFFFFC94D) : AlpakaStyle.TEXT_SOFT);
-            text(graphics, AlpakaStyle.ellipsize(this.font, p.name(), tw - 6 - textW(level)), tx, cy + 5, ink(ProfileData.rarityColor(p.tier())));
+            text(graphics, level, tx + tw - textW(level), cy + 9, p.level() >= p.maxLevel() ? ink(0xFFFFC94D) : AlpakaStyle.TEXT_SOFT);
+            text(graphics, AlpakaStyle.ellipsize(this.font, p.name(), tw - 6 - textW(level)), tx, cy + 9, ink(ProfileData.rarityColor(p.tier())));
             String held = p.active() ? "Active" + (p.heldItem() == null ? "" : " · " + heldItem(p.heldItem())) : p.heldItem() == null ? "" : heldItem(p.heldItem());
-            text(graphics, AlpakaStyle.ellipsize(this.font, held, tw), tx, cy + 17, p.active() ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
-            if (p.level() < p.maxLevel()) bar(graphics, tx, cy + ch - 3, tw, 1, p.progress(), MarketIcons.fade(AlpakaStyle.accent(), 0.7f));
+            text(graphics, AlpakaStyle.ellipsize(this.font, held, tw), tx, cy + 21, p.active() ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
+            if (p.level() < p.maxLevel()) bar(graphics, tx, cy + ch - 5, tw, 1, p.progress(), MarketIcons.fade(AlpakaStyle.accent(), 0.7f));
             if (hover) {
                 tip(p, ProfileData.title(p.tier()) + " " + p.name() + ", level " + p.level() + " of " + p.maxLevel()
                         + (p.heldItem() != null ? ", holding " + heldItem(p.heldItem()) : "")

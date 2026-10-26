@@ -662,7 +662,10 @@ public class MarketScreen extends ContainerScreen {
                     case SELL_INVENTORY -> MarketIcons.Glyph.SELL;
                     default -> MarketIcons.Glyph.SACK;
                 };
-                rowY = sideRow(graphics, mx, my, inClip, rowX, rowY, rowW, rowH, clipY, clipH, slot, label, glyph, null);
+                // Hypixel's own item for the action too; our glyph only while the slot is still empty.
+                ItemStack item = stack(slot);
+                rowY = sideRow(graphics, mx, my, inClip, rowX, rowY, rowW, rowH, clipY, clipH, slot, label,
+                        item.isEmpty() ? glyph : null, item);
             }
             rowY += 6;
         }

@@ -276,13 +276,13 @@ public final class ProfileSession {
     public String historyProblem() {
         String key = net.alpaka.addons.config.AlpakaConfig.instance.skykingsApiKey;
         if (key == null || key.isBlank()) {
-            return "The graphs need a SkyKings API key. Make a free one on skykings.net (log in with Discord, "
-                    + "Dashboard › API Keys) and paste it under Profile Dashboard in the config: /aa skykings";
+            // How to get one is explained with the setting itself.
+            return "Graphs need a SkyKings API key: /aa skykings";
         }
         if (skykingsReady) return null;
         String note = skykingsNote;
         if (note == null || note.equals("loading")) return "Loading the history from SkyKings…";
-        if (note.contains("accept")) return note + " Check the key under Profile Dashboard in the config: /aa skykings";
+        if (note.contains("accept")) return "SkyKings didn't accept the API key: /aa skykings";
         return note;
     }
 

@@ -1928,7 +1928,7 @@ public class AlpakaConfigRegistry {
                 "profile dashboard record interval minutes snapshot how often"));
 
         OPTIONS.add(new ConfigOption("profile_dashboard_skykings_key", "SkyKings API Key",
-                "Optional. SkyKings records most players about once a day, which fills the graphs' gaps. Make a free key on skykings.net (log in with Discord, Dashboard › API Keys) and paste it here. Only sent to SkyKings, kept on this computer.",
+                "Needed for the dashboard's graphs: SkyKings records most players about once a day. Make a free key on skykings.net (log in with Discord, Dashboard › API Keys) and paste it here. Only sent to SkyKings, kept on this computer.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.skykingsApiKey,
                 v -> { AlpakaConfig.instance.skykingsApiKey = v.trim(); },

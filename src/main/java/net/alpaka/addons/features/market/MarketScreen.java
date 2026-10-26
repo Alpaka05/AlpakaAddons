@@ -875,7 +875,6 @@ public class MarketScreen extends ContainerScreen {
             ModernGuiUtils.drawRoundedOutline(graphics, px, py, w, h, AlpakaStyle.CARD_RADIUS, MarketIcons.fade(rarity, 0.45f * hv * alpha));
         }
         drawPressFlash(graphics, slot, px, py, w, h);
-        ModernGuiUtils.drawRoundedRect(graphics, px + 3, py + 8, 2, h - 16, 1, MarketIcons.fade(rarity, (0.55f + 0.45f * hv) * alpha));
 
         boolean compact = h < CARD_H;
         int well = compact ? 18 : 22;

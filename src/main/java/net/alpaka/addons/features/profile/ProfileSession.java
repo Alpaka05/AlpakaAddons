@@ -171,29 +171,35 @@ public final class ProfileSession {
         if (data == null) state = State.FAILED;
     }
 
+    /** Elite hands out its history 29 days at a time; this many stretches make about a year. */
+    private static final int ELITE_STRETCHES = 13;
+
     /**
-     * Elite's skill history: the last 29 days, then two more stretches before it, so the graphs
-     * reach back about three months from the first look.
+     * Elite's skill history, 29 days at a time from now backwards, each stretch showing as it
+     * arrives. Elite often has the months Soopy is missing: it records a profile whenever anyone
+     * looks it up there, and many mods do. Two empty stretches in a row are taken as the start of
+     * what Elite knows.
      */
     private void loadSkillHistory(ProfileData parsed) {
-        String id = parsed.profileId;
         Map<String, Integer> maxLevels = new HashMap<>();
         for (ProfileData.Level s : parsed.skills) maxLevels.put(s.id(), s.maxLevel());
-        List<CompletableFuture<JsonElement>> parts = List.of(
-                ProfileApi.skillGraph(parsed.uuid, id, 0),
-                ProfileApi.skillGraph(parsed.uuid, id, 29),
-                ProfileApi.skillGraph(parsed.uuid, id, 58));
-        CompletableFuture.allOf(parts.stream().map(f -> f.exceptionally(e -> null)).toArray(CompletableFuture[]::new))
-                .thenRun(() -> {
-                    if (!id.equals(profileId)) return;
-                    List<JsonElement> answers = new ArrayList<>();
-                    for (CompletableFuture<JsonElement> f : parts) {
-                        JsonElement e = f.getNow(null);
-                        if (e != null) answers.add(e);
-                    }
-                    eliteSeries = skillSeries(answers, maxLevels);
-                    version++;
-                });
+        loadSkillStretch(parsed, maxLevels, 0, 0, new ArrayList<>());
+    }
+
+    private void loadSkillStretch(ProfileData parsed, Map<String, Integer> maxLevels, int stretch, int emptyInARow,
+                                  List<JsonElement> answers) {
+        String id = parsed.profileId;
+        ProfileApi.skillGraph(parsed.uuid, id, stretch * 29).whenComplete((answer, failure) -> {
+            if (!id.equals(profileId)) return;
+            boolean empty = failure != null || answer == null || !answer.isJsonArray() || answer.getAsJsonArray().isEmpty();
+            if (!empty) {
+                answers.add(answer);
+                eliteSeries = skillSeries(answers, maxLevels);
+                version++;
+            }
+            int nextEmpty = empty ? emptyInARow + 1 : 0;
+            if (stretch + 1 < ELITE_STRETCHES && nextEmpty < 2) loadSkillStretch(parsed, maxLevels, stretch + 1, nextEmpty, answers);
+        });
     }
 
     /** At most this many of Soopy's pages, about a hundred snapshots each: several years. */
@@ -296,16 +302,26 @@ public final class ProfileSession {
     }
 
     /**
-     * Drops single snapshots far below both neighbours: an inventory API switched off for a moment
-     * makes the networth read a tenth of itself for one look, which says nothing about the profile.
+     * Drops short dips far below what came before and after: an inventory API switched off for a
+     * while makes the networth read a tenth of itself, which says nothing about the profile. A dip
+     * may be a few points long, since the looks that found nothing new repeat it.
      */
     static List<ProfileHistory.Point> withoutDips(List<ProfileHistory.Point> points) {
         List<ProfileHistory.Point> out = new ArrayList<>(points.size());
-        for (int i = 0; i < points.size(); i++) {
-            double v = points.get(i).value();
-            boolean dip = i > 0 && i < points.size() - 1
-                    && v < points.get(i - 1).value() * 0.5 && v < points.get(i + 1).value() * 0.5;
-            if (!dip) out.add(points.get(i));
+        int i = 0;
+        while (i < points.size()) {
+            ProfileHistory.Point p = points.get(i);
+            if (!out.isEmpty()) {
+                double before = out.get(out.size() - 1).value();
+                int end = i;
+                while (end < points.size() && end - i < 6 && points.get(end).value() < before * 0.5) end++;
+                if (end > i && end < points.size() && points.get(end).value() >= before * 0.5) {
+                    i = end;
+                    continue;
+                }
+            }
+            out.add(p);
+            i++;
         }
         return out;
     }

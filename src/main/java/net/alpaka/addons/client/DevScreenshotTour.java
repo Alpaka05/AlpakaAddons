@@ -213,6 +213,14 @@ public final class DevScreenshotTour {
                     net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenScrolled("TimeDeo", "SKILLS")), () -> true, 30),
             // The value under the mouse on the graph.
             new Stop("profile-graph-hover", () -> placeMouse(0.7, 0.75), () -> true, 10),
+            // Years of networth over all time, with the months nobody recorded dotted; the mouse in such a gap.
+            new Stop("profile-history-all", () -> {
+                net.alpaka.addons.features.profile.ProfileDashboardScreen.devRange("ALL");
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpen("Alpakaa", "NETWORTH"));
+                placeMouse(0.05, 0.05);
+            }, () -> true, 160),
+            new Stop("profile-history-gap", () -> placeMouse(0.82, 0.88), () -> true, 10),
+            new Stop(null, () -> net.alpaka.addons.features.profile.ProfileDashboardScreen.devRange("MONTH"), () -> true, 1),
             profile("profile-unknown-player", "zzqqxxnotaname123", "OVERVIEW"),
             new Stop(null, DevScreenshotTour::enterWorld,
                     () -> Minecraft.getInstance().player != null && Minecraft.getInstance().gui.screen() == null, 100),

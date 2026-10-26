@@ -17,7 +17,15 @@ public final class ProfileTracker {
     /** The first snapshot of a session waits this long, past the joining and the island hopping. */
     private static final long FIRST_DELAY_MS = 3 * 60_000L;
 
+    /**
+     * The snapshots also go to Soopy, at most this often: its history is what the dashboard shows on
+     * any computer and after a reinstall, where the local file is missing. It recorded the months a
+     * Soopy mod was installed and nothing since, which is where the old graphs' gaps come from.
+     */
+    private static final long SOOPY_EVERY_MS = 3 * 60 * 60_000L;
+
     private static long nextAt = 0L;
+    private static long soopyAt = 0L;
     private static boolean busy = false;
     private static int ticks = 0;
 
@@ -58,7 +66,13 @@ public final class ProfileTracker {
         }).whenComplete((member, failure) -> {
             busy = false;
             if (failure == null && member instanceof JsonObject object) {
-                ProfileHistory.record(new ProfileData(object, name));
+                ProfileData data = new ProfileData(object, name);
+                ProfileHistory.record(data);
+                long now = System.currentTimeMillis();
+                if (now - soopyAt >= SOOPY_EVERY_MS && data.profileId != null) {
+                    soopyAt = now;
+                    ProfileApi.soopyHistory(uuid, data.profileId, 0).exceptionally(e -> null);
+                }
             }
         });
     }

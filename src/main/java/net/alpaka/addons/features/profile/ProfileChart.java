@@ -129,23 +129,36 @@ public final class ProfileChart {
 
         WheelMesh mesh = new WheelMesh(1.0f / guiScale());
         int fill = MarketIcons.fade(color, 0.16f);
+        int gapFill = MarketIcons.fade(color, 0.06f);
         float bottom = py + ph;
+        long gap = gapMs(t1 - t0);
         float prevX = Float.NaN;
         float prevY = Float.NaN;
+        long prevT = 0;
         for (ProfileHistory.Point p : points) {
             float cx = xOf(p.timeMs(), t0, t1, px, pw);
             float cy = yOf(p.value(), min, max, py, ph);
-            if (!Float.isNaN(prevX)) mesh.quad(prevX, prevY, fill, prevX, bottom, fill, cx, bottom, fill, cx, cy, fill);
+            if (!Float.isNaN(prevX)) {
+                int f = p.timeMs() - prevT > gap ? gapFill : fill;
+                mesh.quad(prevX, prevY, f, prevX, bottom, f, cx, bottom, f, cx, cy, f);
+            }
             prevX = cx;
             prevY = cy;
+            prevT = p.timeMs();
         }
         prevX = Float.NaN;
         for (ProfileHistory.Point p : points) {
             float cx = xOf(p.timeMs(), t0, t1, px, pw);
             float cy = yOf(p.value(), min, max, py, ph);
-            if (!Float.isNaN(prevX)) line(mesh, prevX, prevY, cx, cy, 1.4f, color);
+            if (!Float.isNaN(prevX)) {
+                // Across a stretch nobody recorded, a dotted line: the two ends are known, the way
+                // between them is not.
+                if (p.timeMs() - prevT > gap) dotted(mesh, prevX, prevY, cx, cy, MarketIcons.fade(color, 0.7f));
+                else line(mesh, prevX, prevY, cx, cy, 1.4f, color);
+            }
             prevX = cx;
             prevY = cy;
+            prevT = p.timeMs();
         }
         // Where the history stops short of now, a dotted run to the right edge: nothing was
         // recorded since, which is not the same as nothing having changed.
@@ -156,6 +169,15 @@ public final class ProfileChart {
 
         if (AlpakaStyle.inside(mx, my, px, py - 2, pw, ph + 4)) {
             long at = t0 + (long) ((mx - px) / (double) pw * (t1 - t0));
+            long[] hole = holeAt(points, at, gap);
+            if (hole != null) {
+                // In a gap the nearest point would pass off a value from weeks away as this moment's.
+                String text = "No data from " + DAY_FORMAT.format(Instant.ofEpochMilli(hole[0]).atZone(ZoneId.systemDefault()))
+                        + " to " + DAY_FORMAT.format(Instant.ofEpochMilli(hole[1]).atZone(ZoneId.systemDefault()));
+                int bx = Math.min(mx + 8, px + pw - GuiFont.width(font, text) - 12);
+                overlay.accept(() -> note(graphics, font, text, Math.max(px, bx), py + 2));
+                return true;
+            }
             int index = nearest(points, at);
             ProfileHistory.Point p = points.get(index);
             float hx = xOf(p.timeMs(), t0, t1, px, pw);
@@ -168,6 +190,42 @@ public final class ProfileChart {
             overlay.accept(() -> hoverBox(graphics, font, metric, maxLevel, p, first, color, hx, px, py, pw));
         }
         return true;
+    }
+
+    private static final DateTimeFormatter DAY_FORMAT = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US);
+
+    /**
+     * How long two points may lie apart before the time between them counts as a gap: a week, or
+     * a fortieth of what the graph spans when that is longer, so a graph of years doesn't dot every
+     * quiet fortnight.
+     */
+    static long gapMs(long spanMs) {
+        return Math.max(7 * ProfileHistory.DAY, spanMs / 40);
+    }
+
+    /** The gap the moment falls into, as its two ends; null when it is not in one. */
+    static long[] holeAt(List<ProfileHistory.Point> points, long at, long gap) {
+        for (int i = 1; i < points.size(); i++) {
+            long a = points.get(i - 1).timeMs();
+            long b = points.get(i).timeMs();
+            if (at > a && at < b) return b - a > gap ? new long[] {a, b} : null;
+        }
+        return null;
+    }
+
+    private static void dotted(WheelMesh mesh, float xa, float ya, float xb, float yb, int color) {
+        float dx = xb - xa;
+        float dy = yb - ya;
+        float len = (float) Math.sqrt(dx * dx + dy * dy);
+        for (float d = 0; d < len; d += 4) mesh.disc(xa + dx * d / len, ya + dy * d / len, 0.7f, color);
+    }
+
+    private static void note(GuiGraphicsExtractor graphics, Font font, String text, int x, int y) {
+        int w = GuiFont.width(font, text) + 12;
+        graphics.nextStratum();
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, 16, AlpakaStyle.ROW_RADIUS, (AlpakaStyle.PANEL & 0x00FFFFFF) | 0xF0000000);
+        ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, 16, AlpakaStyle.ROW_RADIUS, AlpakaStyle.DIVIDER);
+        graphics.text(font, GuiFont.text(text), x + 6, y + 4, AlpakaStyle.TEXT_SOFT, false);
     }
 
     /** A small line without labels, for a card. */

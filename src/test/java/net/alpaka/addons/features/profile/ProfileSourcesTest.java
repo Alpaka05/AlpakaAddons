@@ -82,5 +82,22 @@ class ProfileSourcesTest {
                 new ProfileHistory.Point(3, 172), new ProfileHistory.Point(4, 10));
         // The last one has no later neighbour to say it was a dip, so it stays.
         assertEquals(List.of(177.0, 172.0, 10.0), ProfileSession.withoutDips(points).stream().map(ProfileHistory.Point::value).toList());
+        // A dip repeated by the looks after it is still a dip.
+        List<ProfileHistory.Point> repeated = List.of(new ProfileHistory.Point(1, 177), new ProfileHistory.Point(2, 20.8),
+                new ProfileHistory.Point(3, 20.8), new ProfileHistory.Point(4, 180));
+        assertEquals(List.of(177.0, 180.0), ProfileSession.withoutDips(repeated).stream().map(ProfileHistory.Point::value).toList());
+    }
+
+    @Test
+    void aStretchWithoutDataIsAGap() {
+        long day = ProfileHistory.DAY;
+        List<ProfileHistory.Point> points = List.of(new ProfileHistory.Point(0, 1), new ProfileHistory.Point(day, 2),
+                new ProfileHistory.Point(100 * day, 3));
+        long gap = ProfileChart.gapMs(100 * day);
+        assertEquals(7 * day, gap);
+        assertNull(ProfileChart.holeAt(points, day / 2, gap));
+        assertEquals(List.of(day, 100 * day), java.util.Arrays.stream(ProfileChart.holeAt(points, 50 * day, gap)).boxed().toList());
+        // Over years, a quiet fortnight is not worth marking.
+        assertEquals(1000 * day / 40, ProfileChart.gapMs(1000 * day));
     }
 }

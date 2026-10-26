@@ -1699,6 +1699,11 @@ public class ProfileDashboardScreen extends Screen {
         return screen;
     }
 
+    /** For the screenshot tour: the graphs' range, by name ("ALL"). */
+    public static void devRange(String name) {
+        range = ProfileChart.Range.valueOf(name);
+    }
+
     /** For the screenshot tour: the page scrolled to its end. */
     public static ProfileDashboardScreen devOpenScrolled(String player, String page) {
         ProfileDashboardScreen screen = devOpen(player, page);

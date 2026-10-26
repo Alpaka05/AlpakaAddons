@@ -42,7 +42,7 @@ session always win over this file.
     The documented exceptions: `Outbound.latencyProbe()`, the Performance HUD's ping (at most every
     5 s), `Outbound.quickJoinSkyblock()`, Quick Join's opt-in /skyblock after joining Hypixel
     (at most every 30 s), party chat answers to a party member's "!tps"-style command when the
-    player switched on Answer Without Confirmation (`Cause.PARTY_CHAT_REQUEST`, design-rework, off
+    player switched on Auto Answer (`Cause.PARTY_CHAT_REQUEST`, design-rework, off
     by default, at most every 2 s), and the resource pack answers of the pack cache in
     `mixin/DownloadedPackSourceMixin` and `mixin/ClientCommonPacketListenerPackCacheMixin`.
 - `src/test/`: JUnit 5 tests (Java and Kotlin).

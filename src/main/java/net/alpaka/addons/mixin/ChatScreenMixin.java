@@ -203,7 +203,7 @@ public class ChatScreenMixin {
     }
 
     /**
-     * A typed command goes past Shorten Warp and the Warp Cooldown Queue first: either may send it
+     * A typed command goes past Shorten Warp and Warp Cooldown first: either may send it
      * in another form or hold it, and then vanilla must not send it as well.
      */
     @Inject(method = "handleChatInput", at = @At("HEAD"), cancellable = true)

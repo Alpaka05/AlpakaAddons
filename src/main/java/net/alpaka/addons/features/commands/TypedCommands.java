@@ -6,7 +6,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 
 /**
- * Commands the player types into chat, on their way out: Shorten Warp and the Warp Cooldown Queue
+ * Commands the player types into chat, on their way out: Shorten Warp and Warp Cooldown
  * get to look at each before it is sent.
  */
 public final class TypedCommands {

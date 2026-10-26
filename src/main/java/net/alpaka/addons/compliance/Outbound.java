@@ -28,7 +28,7 @@ import net.minecraft.world.inventory.ContainerInput;
  * is Quick Join's /skyblock after joining Hypixel, which the player switched on for exactly that.
  * It can only ever be that command, at most once every {@link #QUICK_JOIN_FLOOR_MS} ms. And
  * {@link Cause#PARTY_CHAT_REQUEST} is a party chat line answering a party member's "!tps", sent only
- * when the player switched on Answer Without Confirmation, at most once every two seconds.
+ * when the player switched on Auto Answer, at most once every two seconds.
  */
 public final class Outbound {
     /** What the player did that sends the command. */
@@ -48,7 +48,7 @@ public final class Outbound {
         QUEUED_CHAT_INPUT,
         /**
          * Nothing: a party member asked for a party chat line ("!tps") and the player switched on
-         * Answer Without Confirmation. Off by default, only for commands that post in party chat,
+         * Auto Answer. Off by default, only for commands that post in party chat,
          * at most once every two seconds (PartyCommandsFeature).
          */
         PARTY_CHAT_REQUEST

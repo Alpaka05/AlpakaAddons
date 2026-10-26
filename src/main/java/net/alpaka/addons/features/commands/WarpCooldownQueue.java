@@ -14,7 +14,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Warp Cooldown Queue: a warp typed right after joining a server waits for Hypixel's cooldown
+ * Warp Cooldown: a warp typed right after joining a server waits for Hypixel's cooldown
  * instead of being refused.
  *
  * Hypixel turns a warp down for the first few seconds on a server ("You may only use this command

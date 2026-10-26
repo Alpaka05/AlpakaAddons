@@ -26,7 +26,7 @@ import java.util.Locale;
  * waiting lets it go. The keys are only taken while the notice is up and no screen is open, and a
  * party invite's notice, if one is up as well, answers first.
  *
- * With Answer Without Confirmation on, the info and fun commands - the ones that only post a line
+ * With Auto Answer on, the info and fun commands - the ones that only post a line
  * in party chat - are answered on their own, as Odin and SkyHanni answer them. That is the one
  * place the mod sends because of someone else's chat, so it is off by default, never covers the
  * leader's actions (warp, kick, transfer...), and answers at most once every {@link #AUTO_GAP_MS},

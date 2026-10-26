@@ -1791,13 +1791,13 @@ public class AlpakaConfigRegistry {
                 "party invite prompt accept join decline y n key popup hypixel"));
 
         OPTIONS.add(new ConfigOption("party_commands", "Party Commands",
-                "When a party member writes a command like !warp, !tps or !pt in party chat, a Y/N prompt offers to run it for them. Nothing is sent without your Y.",
+                "When a party member writes a command like !warp, !tps or !pt in party chat, a Y/N prompt offers to run it for them.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.partyCommandsEnabled,
                 v -> { AlpakaConfig.instance.partyCommandsEnabled = v; AlpakaConfig.save(); },
                 "party commands chat !warp !w !tps !ping !fps !pt !transfer !allinvite !coords !kick !f7 !m7 odin skyhanni prompt y n"));
 
-        OPTIONS.add(new ConfigOption("party_commands_auto_answer", "Answer Without Confirmation",
+        OPTIONS.add(new ConfigOption("party_commands_auto_answer", "Auto Answer",
                 "Info and fun commands like !tps, !ping or !dice are answered in party chat right away, without the Y/N prompt. Leader commands like !warp or !kick always ask.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.partyCommandsAutoAnswer,
@@ -1833,7 +1833,7 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.shortenWarpEnabled = v; AlpakaConfig.save(); },
                 "shorten warp short shortcut alias destination /isle /hub /garden /dh command"));
 
-        OPTIONS.add(new ConfigOption("warp_cooldown_queue", "Warp Cooldown Queue",
+        OPTIONS.add(new ConfigOption("warp_cooldown_queue", "Warp Cooldown",
                 "A warp typed right after joining a server waits for Hypixel's cooldown and goes out on its own when it ends, instead of being refused.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.warpCooldownQueueEnabled,

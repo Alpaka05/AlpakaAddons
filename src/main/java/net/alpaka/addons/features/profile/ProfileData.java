@@ -37,8 +37,9 @@ public final class ProfileData {
         }
     }
 
+    /** A pet. {@code exp} is all the XP on it; {@code expForMax} what its max level takes, 0 when unknown. */
     public record Pet(String type, String name, String tier, int level, int maxLevel, double progress, String heldItem,
-                      String skin, boolean active) {}
+                      String skin, boolean active, double exp, double expForMax) {}
 
     /** One collection: what it is, how much was gathered, and the tier reached of how many. */
     public record Collection(String id, String name, String category, long amount, int tier, int maxTier, long nextAt,
@@ -170,7 +171,7 @@ public final class ProfileData {
             if (type == null) continue;
             pets.add(new Pet(type, title(type), Json.str(e, "tier"), (int) Json.num(e, "level", 1),
                     (int) Json.num(e, "maxLevel", 100), Json.num(e, "progress", 0), Json.str(e, "heldItem"),
-                    Json.str(e, "skin"), Json.bool(e, "active")));
+                    Json.str(e, "skin"), Json.bool(e, "active"), Json.num(e, "exp", 0), Json.num(e, "xpMaxLevel", 0)));
         }
         pets.sort((a, b) -> {
             int r = Integer.compare(rarityRank(b.tier()), rarityRank(a.tier()));

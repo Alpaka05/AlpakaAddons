@@ -22,7 +22,7 @@ class ProfileDataTest {
              "skyblockXp":54691,"purse":3046605291.7,"bankBalance":1253163663.8,"personalBank":1052275638.9,
              "networth":{"normal":259177212311.5,"liquid":86932742481.3},
              "collections":{"WHEAT":9396494,"CARROT_ITEM":12},"collectionTiers":{"WHEAT":11},
-             "pets":[{"type":"GOLDEN_DRAGON","tier":"LEGENDARY","level":200,"maxLevel":200,"progress":0,"active":true,"heldItem":"MINOS_RELIC"},
+             "pets":[{"type":"GOLDEN_DRAGON","tier":"LEGENDARY","level":200,"maxLevel":200,"progress":0,"active":true,"heldItem":"MINOS_RELIC","exp":375980352.25,"xpMaxLevel":210255385},
                      {"type":"PARROT","tier":"EPIC","level":56,"maxLevel":100,"progress":0.3}],
              "petSummary":{"maxLevelPets":1,"totalSkins":3},
              "stats":{
@@ -65,6 +65,8 @@ class ProfileDataTest {
         // Pets by rarity, then level.
         assertEquals("Golden Dragon", d.pets.get(0).name());
         assertTrue(d.pets.get(0).active());
+        assertEquals(375980352.25, d.pets.get(0).exp());
+        assertEquals(210255385, d.pets.get(0).expForMax());
     }
 
     @Test

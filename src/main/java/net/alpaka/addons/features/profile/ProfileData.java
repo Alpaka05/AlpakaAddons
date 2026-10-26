@@ -206,10 +206,11 @@ public final class ProfileData {
                 int tier = (int) Json.num(tiers, id, -1);
                 List<Long> required = new ArrayList<>();
                 for (JsonElement t : Json.arr(item.getValue(), "tiers")) required.add((long) Json.num(t, "amountRequired", 0));
-                if (tier < 0) {
-                    tier = 0;
-                    for (long need : required) if (amount >= need) tier++;
-                }
+                // The tier the profile has on record can lag far behind its amount - Moonflower at VI
+                // with 7.45M where VI asks for 500k - so the tier the amount reaches counts as well.
+                int reached = 0;
+                for (long need : required) if (amount >= need) reached++;
+                tier = Math.max(tier, reached);
                 long nextAt = tier < required.size() ? required.get(tier) : 0;
                 long prevAt = tier > 0 && tier - 1 < required.size() ? required.get(tier - 1) : 0;
                 out.add(new Collection(id, Json.str(item.getValue(), "name"), categoryName == null ? category.getKey() : categoryName,

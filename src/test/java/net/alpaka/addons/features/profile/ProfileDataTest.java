@@ -94,6 +94,14 @@ class ProfileDataTest {
         assertEquals(1, carrot.tier());
         assertEquals(250, carrot.nextAt());
         assertEquals(10, carrot.prevAt());
+        // A tier on record behind the amount: the amount decides.
+        JsonElement stale = JsonParser.parseString("""
+                {"collections":{"FARMING":{"name":"Farming","items":{
+                  "WHEAT":{"name":"Wheat","maxTiers":11,"tiers":[{"amountRequired":50},{"amountRequired":100}]}}}}}""");
+        JsonObject raw = JsonParser.parseString(MEMBER).getAsJsonObject();
+        raw.getAsJsonObject("collectionTiers").addProperty("WHEAT", 1);
+        ProfileData.Collection wheat = new ProfileData(raw, "Someone").collections(stale).get(0);
+        assertEquals(2, wheat.tier());
     }
 
     @Test

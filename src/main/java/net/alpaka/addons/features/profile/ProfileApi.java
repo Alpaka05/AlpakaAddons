@@ -152,6 +152,17 @@ public final class ProfileApi {
         return future;
     }
 
+    /**
+     * One of a member's inventories with every item in it - name, lore, enchantments, attributes -
+     * by the id the profile lists it under. Spaced further apart than the other requests: opening
+     * the backpacks asks for nearly twenty at once, and Elite allows twenty in ten seconds.
+     */
+    static CompletableFuture<JsonElement> inventory(String uuid, String profileId, String inventoryId) {
+        return get(ELITE + "/profile/" + uuid + "/" + profileId + "/inventories/" + inventoryId, 5 * FRESH_MS, INVENTORY_SPACING_MS);
+    }
+
+    private static final long INVENTORY_SPACING_MS = 550L;
+
     /** The current or last Bingo event, with its start and end. */
     static CompletableFuture<JsonElement> bingo() {
         return get(HYPIXEL_RESOURCES + "/bingo", 60 * FRESH_MS);
@@ -193,6 +204,10 @@ public final class ProfileApi {
     }
 
     private static CompletableFuture<JsonElement> get(String url, long freshMs) {
+        return get(url, freshMs, SPACING_MS);
+    }
+
+    private static CompletableFuture<JsonElement> get(String url, long freshMs, long spacingMs) {
         long now = System.currentTimeMillis();
         Cached cached = CACHE.get(url);
         if (cached != null && freshMs > 0 && now - cached.at() < freshMs && !cached.future().isCompletedExceptionally()) {
@@ -200,14 +215,18 @@ public final class ProfileApi {
         }
         CompletableFuture<JsonElement> future = new CompletableFuture<>();
         CACHE.put(url, new Cached(now, future));
-        long delay = reserveSlot(now);
+        long delay = reserveSlot(now, spacingMs);
         CompletableFuture.delayedExecutor(delay, java.util.concurrent.TimeUnit.MILLISECONDS).execute(() -> send(url, future));
         return future;
     }
 
     private static synchronized long reserveSlot(long now) {
+        return reserveSlot(now, SPACING_MS);
+    }
+
+    private static synchronized long reserveSlot(long now, long spacingMs) {
         long slot = Math.max(now, nextSlot);
-        nextSlot = slot + SPACING_MS;
+        nextSlot = slot + spacingMs;
         return slot - now;
     }
 

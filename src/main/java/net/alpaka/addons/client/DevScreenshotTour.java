@@ -231,6 +231,42 @@ public final class DevScreenshotTour {
             // The tooltip of a pet: its exact XP and how far past the max level it is.
             new Stop("profile-pets-tooltip", () -> placeMouse(0.45, 0.86), () -> true, 30),
             profile("profile-skills-in-world", "TimeDeo", "SKILLS"),
+            // The inventories: each tab once its items are in, and an item's own tooltip.
+            new Stop("profile-inv-inventory", () -> {
+                net.alpaka.addons.features.profile.ProfileDashboardScreen.devInventoryTab("INVENTORY");
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpen("Alpakaa", "INVENTORY"));
+                placeMouse(0.02, 0.02);
+            }, () -> true, 100),
+            new Stop("profile-inv-backpacks", () -> {
+                net.alpaka.addons.features.profile.ProfileDashboardScreen.devInventoryTab("BACKPACKS");
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpen("Alpakaa", "INVENTORY"));
+                placeMouse(0.02, 0.02);
+            }, () -> true, 200),
+            new Stop("profile-inv-wardrobe", () -> {
+                net.alpaka.addons.features.profile.ProfileDashboardScreen.devInventoryTab("WARDROBE");
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpen("Alpakaa", "INVENTORY"));
+                placeMouse(0.02, 0.02);
+            }, () -> true, 300),
+            new Stop("profile-inv-ender-chest", () -> {
+                net.alpaka.addons.features.profile.ProfileDashboardScreen.devInventoryTab("ENDER_CHEST");
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpen("Alpakaa", "INVENTORY"));
+                placeMouse(0.02, 0.02);
+            }, () -> true, 300),
+            new Stop("profile-inv-accessories", () -> {
+                net.alpaka.addons.features.profile.ProfileDashboardScreen.devInventoryTab("ACCESSORIES");
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpen("Alpakaa", "INVENTORY"));
+                placeMouse(0.02, 0.02);
+            }, () -> true, 300),
+            new Stop("profile-inv-bags", () -> {
+                net.alpaka.addons.features.profile.ProfileDashboardScreen.devInventoryTab("BAGS");
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpen("Alpakaa", "INVENTORY"));
+                placeMouse(0.02, 0.02);
+            }, () -> true, 300),
+            new Stop("profile-inv-tooltip", () -> {
+                net.alpaka.addons.features.profile.ProfileDashboardScreen.devInventoryTab("INVENTORY");
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpen("Alpakaa", "INVENTORY"));
+                placeMouse(0.405, 0.667);
+            }, () -> true, 60),
             new Stop("world-hud", DevScreenshotTour::showHuds, () -> true, 30),
             // The screenshot preview of the picture just taken: resting in the corner, then mid-shrink.
             // A run that leaves out world-hud never gets its picture, so these two pass then.

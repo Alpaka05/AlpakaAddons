@@ -57,6 +57,7 @@ public class ProfileDashboardScreen extends Screen {
         DUNGEONS("Dungeons", Items.WITHER_SKELETON_SKULL),
         SLAYERS("Slayers", Items.ROTTEN_FLESH),
         NETWORTH("Networth", Items.GOLD_INGOT),
+        INVENTORY("Inventories", Items.CHEST),
         PETS("Pets", Items.BONE),
         COLLECTIONS("Collections", Items.PAINTING),
         MORE("More Stats", Items.COMPASS);
@@ -271,6 +272,10 @@ public class ProfileDashboardScreen extends Screen {
         }
         if (hoveredTip != null && now - tipSince >= 250) {
             AlpakaStyle.tooltip(graphics, this.font, this.width, this.height, mouseX, mouseY, hoveredTip);
+        }
+        if (hoveredItem != null) {
+            graphics.setComponentTooltipForNextFrame(this.font, InventoryItems.tooltip(hoveredItem), mouseX, mouseY);
+            hoveredItem = null;
         }
         AlpakaStyle.endOpen(graphics, pushed);
     }
@@ -539,6 +544,7 @@ public class ProfileDashboardScreen extends Screen {
             case NETWORTH -> networth(graphics, d, x, y, w);
             case PETS -> pets(graphics, d, x, y, w);
             case COLLECTIONS -> collections(graphics, d, x, y, w);
+            case INVENTORY -> inventories(graphics, d, x, y, w);
             case MORE -> more(graphics, d, x, y, w);
         };
     }
@@ -861,6 +867,7 @@ public class ProfileDashboardScreen extends Screen {
             case PETS -> Metrics.PETS_MAXED;
             case COLLECTIONS -> Metrics.MINIONS;
             case MORE -> Metrics.SB_LEVEL;
+            case INVENTORY -> Metrics.NETWORTH;
         };
     }
 
@@ -1424,6 +1431,281 @@ public class ProfileDashboardScreen extends Screen {
         return n >= 0 && n < r.length ? r[n] : String.valueOf(n);
     }
 
+    // ---- Inventories ----------------------------------------------------------------------------
+
+    /** The tabs of the inventory page: what each shows, and the inventories it needs. */
+    private enum InvTab {
+        INVENTORY("Inventory"), ENDER_CHEST("Ender Chest"), BACKPACKS("Backpacks"), WARDROBE("Wardrobe"),
+        ACCESSORIES("Accessories"), VAULT("Vault"), BAGS("Bags");
+
+        final String title;
+
+        InvTab(String title) {
+            this.title = title;
+        }
+
+        boolean present(ProfileData d) {
+            return switch (this) {
+                case INVENTORY -> d.inventories.containsKey("inventory");
+                case ENDER_CHEST -> d.inventories.containsKey("ender_chest");
+                case BACKPACKS -> !backpacks(d).isEmpty();
+                case WARDROBE -> d.inventories.containsKey("wardrobe");
+                case ACCESSORIES -> d.inventories.containsKey("talisman_bag");
+                case VAULT -> d.inventories.containsKey("personal_vault");
+                case BAGS -> BAGS_SHOWN.stream().anyMatch(b -> d.inventories.containsKey(b[0]));
+            };
+        }
+    }
+
+    private static final List<String[]> BAGS_SHOWN = List.of(
+            new String[] {"potion_bag", "Potion Bag"}, new String[] {"quiver", "Quiver"}, new String[] {"sacks_bag", "Sack of Sacks"},
+            new String[] {"farming_toolkit", "Farming Toolkit"}, new String[] {"hunting_toolkit", "Hunting Toolkit"});
+    private static InvTab invTab = InvTab.INVENTORY;
+    private static final int SLOT = 18;
+    /** A section of nine slots in a card: the slots and the card's padding. */
+    private static final int SECTION_W = 9 * SLOT + 16;
+    /** The item under the mouse this frame, whose tooltip the game draws after it. */
+    private JsonElement hoveredItem;
+
+    /** The backpacks the profile has, in the order of their slots in the Storage menu. */
+    private static List<String> backpacks(ProfileData d) {
+        List<String> out = new ArrayList<>();
+        for (String name : d.inventories.keySet()) if (name.matches("backpack_\\d+")) out.add(name);
+        out.sort(java.util.Comparator.comparingInt(n -> Integer.parseInt(n.substring("backpack_".length()))));
+        return out;
+    }
+
+    private int inventories(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
+        if (!d.inventoryApi) return apiOff(graphics, "Inventory", x, y, w);
+        // The tabs, as chips; only those the profile has something for.
+        List<InvTab> tabs = new ArrayList<>();
+        for (InvTab t : InvTab.values()) if (t.present(d)) tabs.add(t);
+        if (tabs.isEmpty()) return note(graphics, "Nothing in this profile's inventories.", x, y, w);
+        if (!tabs.contains(invTab)) invTab = tabs.get(0);
+        int cx = x;
+        int cy = y;
+        for (InvTab t : tabs) {
+            int cw = textW(t.title) + 14;
+            if (cx + cw > x + w) {
+                cx = x;
+                cy += 18;
+            }
+            boolean selected = t == invTab;
+            boolean hover = hover(cx, cy, cw, 15);
+            int bg = selected ? MarketIcons.fade(AlpakaStyle.accent(), hover ? 0.35f : 0.24f) : hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW;
+            ModernGuiUtils.drawRoundedRect(graphics, cx, cy, cw, 15, 7, bg);
+            text(graphics, t.title, cx + 7, cy + 4, selected ? AlpakaStyle.accent() : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
+            hit(cx, cy, cw, 15, () -> invTab = t);
+            cx += cw + 4;
+        }
+        y = cy + 15 + 8;
+        return switch (invTab) {
+            case INVENTORY -> playerInventory(graphics, d, x, y, w);
+            case ENDER_CHEST -> pagedSections(graphics, "ender_chest", "Page", x, y, w);
+            case BACKPACKS -> backpackSections(graphics, d, x, y, w);
+            case WARDROBE -> wardrobe(graphics, d, x, y, w);
+            case ACCESSORIES -> pagedSections(graphics, "talisman_bag", "Page", x, y, w);
+            case VAULT -> flow(graphics, List.of(new Section("Personal Vault", null, "personal_vault", range(0, slotsOf(d, "personal_vault")))), x, y, w);
+            case BAGS -> {
+                List<Section> sections = new ArrayList<>();
+                for (String[] bag : BAGS_SHOWN) {
+                    if (d.inventories.containsKey(bag[0])) sections.add(new Section(bag[1], null, bag[0], range(0, slotsOf(d, bag[0]))));
+                }
+                yield flow(graphics, sections, x, y, w);
+            }
+        };
+    }
+
+    private static int slotsOf(ProfileData d, String name) {
+        ProfileData.InventoryRef ref = d.inventories.get(name);
+        return ref == null ? 0 : ref.slots();
+    }
+
+    private static List<String> range(int from, int count) {
+        List<String> keys = new ArrayList<>(count);
+        for (int i = from; i < from + count; i++) keys.add(String.valueOf(i));
+        return keys;
+    }
+
+    /** A card of slots: a title, an optional icon beside it, and the slots of one inventory by key. */
+    private record Section(String title, JsonElement icon, String inventory, List<String> keys) {}
+
+    /** Sections side by side as far as they fit, each into the shortest column, as the More page does. */
+    private int flow(GuiGraphicsExtractor graphics, List<Section> sections, int x, int y, int w) {
+        int cols = Math.max(1, (w + 8) / (SECTION_W + 8));
+        int gap = cols > 1 ? (w - cols * SECTION_W) / (cols - 1) : 0;
+        int[] heights = new int[cols];
+        for (Section s : sections) {
+            int col = 0;
+            for (int i = 1; i < cols; i++) if (heights[i] < heights[col]) col = i;
+            int sx = x + col * (SECTION_W + gap);
+            heights[col] += section(graphics, s, sx, y + heights[col]) + 6;
+        }
+        int tallest = 0;
+        for (int h : heights) tallest = Math.max(tallest, h);
+        return y + tallest;
+    }
+
+    private int section(GuiGraphicsExtractor graphics, Section s, int x, int y) {
+        int rows = Math.max(1, (s.keys().size() + 8) / 9);
+        int h = 22 + rows * SLOT + 8;
+        card(graphics, x, y, SECTION_W, h);
+        int tx = x + 8;
+        if (s.icon() != null) {
+            ItemStack icon = InventoryItems.stack(s.icon());
+            if (!icon.isEmpty()) {
+                stackIcon(graphics, icon, x + 6, y + 3, 1.0f);
+                tx = x + 26;
+            }
+        }
+        text(graphics, AlpakaStyle.ellipsize(this.font, s.title(), SECTION_W - (tx - x) - 8), tx, y + 7, AlpakaStyle.TEXT);
+        JsonElement inv = session.inventory(s.inventory());
+        int gx = x + 8;
+        int gy = y + 22;
+        if (inv == null) {
+            boolean failed = session.inventoryState(s.inventory()) == ProfileSession.State.FAILED;
+            ProfileChart.message(graphics, this.font, failed ? "Couldn't load. Click to try again." : "Loading…", x, gy, SECTION_W, rows * SLOT);
+            if (failed) hit(x, gy, SECTION_W, rows * SLOT, session::retryFailed);
+            return h;
+        }
+        slots(graphics, Json.obj(inv, "items"), s.keys(), gx, gy, 9);
+        return h;
+    }
+
+    /** Slots in rows of {@code cols}, by key; a null key leaves a gap, a key without an item an empty slot. */
+    private void slots(GuiGraphicsExtractor graphics, com.google.gson.JsonObject items, List<String> keys, int x, int y, int cols) {
+        for (int i = 0; i < keys.size(); i++) {
+            String key = keys.get(i);
+            if (key == null) continue;
+            int sx = x + (i % cols) * SLOT;
+            int sy = y + (i / cols) * SLOT;
+            // Far outside the view: not even the slot is drawn; an Ender Chest has 405 of them.
+            if (sy > clipY + clipH || sy + SLOT < clipY) continue;
+            slot(graphics, items.get(key), sx, sy);
+        }
+    }
+
+    private void slot(GuiGraphicsExtractor graphics, JsonElement item, int sx, int sy) {
+        boolean has = InventoryItems.present(item);
+        boolean hover = has && hover(sx, sy, SLOT - 1, SLOT - 1);
+        ModernGuiUtils.drawRoundedRect(graphics, sx, sy, SLOT - 1, SLOT - 1, 2, hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.PANEL);
+        if (!has) return;
+        ItemStack stack = InventoryItems.stack(item);
+        if (!stack.isEmpty()) {
+            graphics.item(stack, sx, sy);
+            graphics.itemDecorations(this.font, stack, sx, sy);
+        }
+        if (hover) hoveredItem = item;
+    }
+
+    /** The inventory as the game shows it: armor and equipment beside the three rows, the hotbar below. */
+    private int playerInventory(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
+        JsonElement inv = session.inventory("inventory");
+        JsonElement armor = session.inventory("armor");
+        JsonElement equipment = session.inventory("equipment");
+        int sideW = 2 * SLOT + 8;
+        int cw = 16 + sideW + 9 * SLOT;
+        int h = 22 + 4 * SLOT + 6 + 8;
+        card(graphics, x, y, cw, h);
+        text(graphics, "Inventory", x + 8, y + 7, AlpakaStyle.TEXT);
+        int gy = y + 22;
+        if (armor != null) slots(graphics, Json.obj(armor, "items"), List.of("3", "2", "1", "0"), x + 8, gy, 1);
+        if (equipment != null) slots(graphics, Json.obj(equipment, "items"), List.of("0", "1", "2", "3"), x + 8 + SLOT, gy, 1);
+        int mx0 = x + 8 + sideW;
+        if (inv == null) {
+            ProfileChart.message(graphics, this.font, "Loading…", mx0, gy, 9 * SLOT, 4 * SLOT);
+            return y + h;
+        }
+        com.google.gson.JsonObject items = Json.obj(inv, "items");
+        slots(graphics, items, range(9, 27), mx0, gy, 9);
+        slots(graphics, items, range(0, 9), mx0, gy + 3 * SLOT + 6, 9);
+        return y + h;
+    }
+
+    /** One inventory in pages of 45 slots, such as the Ender Chest; pages with nothing in them are left out. */
+    private int pagedSections(GuiGraphicsExtractor graphics, String name, String label, int x, int y, int w) {
+        JsonElement inv = session.inventory(name);
+        int slots = slotsOf(session.data, name);
+        if (inv == null) return flow(graphics, List.of(new Section(label + " 1", null, name, range(0, Math.min(45, slots)))), x, y, w);
+        com.google.gson.JsonObject items = Json.obj(inv, "items");
+        List<Section> sections = new ArrayList<>();
+        for (int page = 0; page * 45 < slots; page++) {
+            List<String> keys = range(page * 45, Math.min(45, slots - page * 45));
+            boolean any = false;
+            for (String k : keys) any |= InventoryItems.present(items.get(k));
+            if (any) sections.add(new Section(label + " " + (page + 1), null, name, keys));
+        }
+        if (sections.isEmpty()) return note(graphics, "Empty.", x, y, w);
+        return flow(graphics, sections, x, y, w);
+    }
+
+    /** Every backpack in its own card, named as the Storage menu names its slot and drawn with its own icon. */
+    private int backpackSections(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
+        JsonElement icons = session.inventory("icons_backpack");
+        List<Section> sections = new ArrayList<>();
+        for (String name : backpacks(d)) {
+            int number = Integer.parseInt(name.substring("backpack_".length()));
+            JsonElement icon = icons == null ? null : Json.obj(icons, "items").get(String.valueOf(number));
+            sections.add(new Section("Backpack " + (number + 1), InventoryItems.present(icon) ? icon : null, name, range(0, slotsOf(d, name))));
+        }
+        return flow(graphics, sections, x, y, w);
+    }
+
+    /**
+     * The wardrobe as columns, one per set: the four armor pieces and below them the four pieces of
+     * equipment saved with it. The set worn right now is not in the wardrobe but on the player, so
+     * its column shows the armor and equipment being worn, outlined.
+     */
+    private int wardrobe(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
+        JsonElement wardrobe = session.inventory("wardrobe");
+        JsonElement equipmentSets = d.inventories.containsKey("equipment_wardrobe") ? session.inventory("equipment_wardrobe") : null;
+        JsonElement armor = session.inventory("armor");
+        JsonElement equipment = session.inventory("equipment");
+        ProfileData.InventoryRef ref = d.inventories.get("wardrobe");
+        int sets = Math.max(9, ref == null ? 0 : ref.slots() / 4);
+        int equipped = (int) Json.num(ref == null ? null : ref.metadata(), "equipped_set", -1);
+        int perRow = Math.max(1, Math.min(9, (w - 16) / (SLOT + 4)));
+        int colW = SLOT + 4;
+        int setH = 10 + 4 * SLOT + 4 + 4 * SLOT;
+        int rows = (sets + perRow - 1) / perRow;
+        int h = 22 + rows * (setH + 8) + 2;
+        int cw = 16 + perRow * colW - 4;
+        card(graphics, x, y, cw, h);
+        text(graphics, "Wardrobe", x + 8, y + 7, AlpakaStyle.TEXT);
+        if (wardrobe == null) {
+            ProfileChart.message(graphics, this.font, "Loading…", x, y + 22, cw, h - 22);
+            return y + h;
+        }
+        com.google.gson.JsonObject armorSets = Json.obj(wardrobe, "items");
+        com.google.gson.JsonObject equipmentItems = equipmentSets == null ? new com.google.gson.JsonObject() : Json.obj(equipmentSets, "items");
+        String[] pieces = {"HELMET", "CHESTPLATE", "LEGGINGS", "BOOTS"};
+        for (int i = 0; i < sets; i++) {
+            int set = i + 1;
+            int sx = x + 8 + (i % perRow) * colW;
+            int sy = y + 22 + (i / perRow) * (setH + 8);
+            boolean worn = set == equipped;
+            String label = String.valueOf(set);
+            text(graphics, label, sx + (SLOT - 1 - textW(label)) / 2, sy, worn ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
+            int py = sy + 10;
+            for (int p = 0; p < 4; p++) {
+                JsonElement item = worn ? (armor == null ? null : Json.obj(armor, "items").get(String.valueOf(3 - p)))
+                        : armorSets.get(set + ":" + pieces[p]);
+                slot(graphics, item, sx, py + p * SLOT);
+            }
+            int ey = py + 4 * SLOT + 4;
+            for (int p = 0; p < 4; p++) {
+                JsonElement item = worn ? (equipment == null ? null : Json.obj(equipment, "items").get(String.valueOf(p)))
+                        : equipmentItems.get(set + ":EQUIPMENT_SLOT_" + (p + 1));
+                slot(graphics, item, sx, ey + p * SLOT);
+            }
+            if (worn) {
+                ModernGuiUtils.drawRoundedOutline(graphics, sx - 2, py - 2, SLOT + 3, 8 * SLOT + 8, 3,
+                        MarketIcons.fade(AlpakaStyle.accent(), 0.8f));
+            }
+        }
+        return y + h;
+    }
+
     // ---- More stats -----------------------------------------------------------------------------
 
     private record Card(String title, List<String[]> rows) {}
@@ -1734,6 +2016,11 @@ public class ProfileDashboardScreen extends Screen {
         screen.page = Page.valueOf(page);
         screen.openTimeMs = 1L;
         return screen;
+    }
+
+    /** For the screenshot tour: the tab of the inventory page, by name ("BACKPACKS"). */
+    public static void devInventoryTab(String name) {
+        invTab = InvTab.valueOf(name);
     }
 
     /** For the screenshot tour: the graphs' range, by name ("ALL"). */

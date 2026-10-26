@@ -45,6 +45,9 @@ public final class ProfileSession {
     public volatile JsonElement networth;
     public volatile State collectionsState;
     public volatile JsonElement collections;
+    /** The inventories asked for so far, by name, and how asking went; filled as their tabs are opened. */
+    private final Map<String, JsonElement> inventories = new java.util.concurrent.ConcurrentHashMap<>();
+    private final Map<String, State> inventoryStates = new java.util.concurrent.ConcurrentHashMap<>();
 
     /** Elite's skill history, by metric id; filled in after the profile. */
     private volatile Map<String, List<ProfileHistory.Point>> eliteSeries = Map.of();
@@ -576,8 +579,42 @@ public final class ProfileSession {
         return networth;
     }
 
+    /**
+     * An inventory's contents by its name, asked for the first time it is wanted; null while it
+     * loads, when it failed, or when the profile has no such inventory.
+     */
+    public JsonElement inventory(String name) {
+        ProfileData d = data;
+        if (d == null) return null;
+        ProfileData.InventoryRef ref = d.inventories.get(name);
+        if (ref == null) return null;
+        String key = d.profileId + "/" + name;
+        JsonElement known = inventories.get(key);
+        if (known != null) return known;
+        if (inventoryStates.putIfAbsent(key, State.LOADING) == null) {
+            ProfileApi.inventory(d.uuid, d.profileId, ref.id()).whenComplete((answer, failure) -> {
+                if (failure == null && answer != null) {
+                    inventories.put(key, answer);
+                    inventoryStates.put(key, State.READY);
+                } else {
+                    inventoryStates.put(key, State.FAILED);
+                    net.alpaka.addons.AlpakaAddons.LOGGER.warn("Profile Dashboard: inventory {} of {} failed: {}", name, playerName,
+                            failure == null ? "no answer" : failure.toString());
+                }
+            });
+        }
+        return null;
+    }
+
+    /** How asking for an inventory went; null before it was asked for. */
+    public State inventoryState(String name) {
+        ProfileData d = data;
+        return d == null ? null : inventoryStates.get(d.profileId + "/" + name);
+    }
+
     /** Lets the networth and the collections be asked for again after they failed. */
     public void retryFailed() {
+        inventoryStates.values().removeIf(s -> s == State.FAILED);
         if (networthState == State.FAILED) networthState = null;
         if (collectionsState == State.FAILED) collectionsState = null;
     }

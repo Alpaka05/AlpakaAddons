@@ -49,7 +49,12 @@ public final class ProfileData {
         }
     }
 
+    /** One of the member's inventories as the profile lists it: its id to ask Elite for, its name and size. */
+    public record InventoryRef(String id, String name, int slots, JsonObject metadata) {}
+
     public final JsonObject raw;
+    /** The inventories that hold anything, by name: "inventory", "ender_chest", "backpack_3", ... */
+    public final Map<String, InventoryRef> inventories = new LinkedHashMap<>();
     public final String uuid;
     public final String playerName;
     public final String profileId;
@@ -181,6 +186,16 @@ public final class ProfileData {
         this.petsMaxed = (int) Json.num(raw, "petSummary.maxLevelPets", 0);
         this.petSkins = (int) Json.num(raw, "petSummary.totalSkins", 0);
         this.petScore = (int) Json.num(raw, "stats.miscStats.highestPetScore", 0);
+
+        for (JsonElement e : Json.arr(raw, "inventories")) {
+            String id = Json.str(e, "id");
+            String name = Json.str(e, "name");
+            if (id == null || name == null) continue;
+            int slots = (int) Json.num(e, "slotCount", 0);
+            // The backpack icons list no slots, yet they are what the backpacks are drawn with.
+            if (slots <= 0 && !name.equals("icons_backpack")) continue;
+            inventories.put(name, new InventoryRef(id, name, slots, Json.obj(e, "metadata")));
+        }
 
         this.magicalPower = Json.num(raw, "stats.accessories.highestMagicalPower", 0);
         this.farmingWeight = Json.num(raw, "farmingWeight.totalWeight", 0);

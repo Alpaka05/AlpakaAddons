@@ -22,11 +22,15 @@ import java.util.Locale;
  * Party commands: a party member writes "!warp", "!tps" or the like into party chat, and the mod
  * offers to answer it.
  *
- * Other mods answer these on their own. This one never does: a reply sent because someone else
- * typed something is an auto-reply, which Hypixel counts as a macro and which this mod removed once
- * already (see {@link Outbound}). So a request raises a notification instead, as a party invite
- * does: Y runs the answer, N or waiting lets it go. The keys are only taken while the notice is up
- * and no screen is open, and a party invite's notice, if one is up as well, answers first.
+ * By default a request raises a notification, as a party invite does: Y runs the answer, N or
+ * waiting lets it go. The keys are only taken while the notice is up and no screen is open, and a
+ * party invite's notice, if one is up as well, answers first.
+ *
+ * With Answer Without Confirmation on, the info and fun commands - the ones that only post a line
+ * in party chat - are answered on their own, as Odin and SkyHanni answer them. That is the one
+ * place the mod sends because of someone else's chat, so it is off by default, never covers the
+ * leader's actions (warp, kick, transfer...), and answers at most once every {@link #AUTO_GAP_MS},
+ * a short moment after the request, through {@link Outbound.Cause#PARTY_CHAT_REQUEST}.
  *
  * Which requests are offered at all is set per command in the config; the leader's chores that can
  * hurt a party - kick, transfer, promote - start switched off.
@@ -49,6 +53,17 @@ public final class PartyCommandsFeature {
     private static PartyChatCommand pendingRequest = null;
     private static long requestedAtMs = 0L;
     private static long noticeId = 0L;
+
+    /** The least time between two answers sent without confirmation; requests in between are dropped. */
+    static final long AUTO_GAP_MS = 2_000L;
+
+    /** How long an answer without confirmation waits, so it does not land in the same tick as the request. */
+    private static final long AUTO_DELAY_MS = 300L;
+
+    private static PartyCommand autoCommand = null;
+    private static PartyChatCommand autoRequest = null;
+    private static long autoSendAtMs = 0L;
+    private static long lastAutoAtMs = Long.MIN_VALUE / 2;
 
     private static String lastKey = null;
     private static long lastKeyAtMs = 0L;
@@ -75,6 +90,12 @@ public final class PartyCommandsFeature {
         ClientReceiveMessageEvents.GAME_CANCELED.register((message, overlay) -> {
             if (!overlay) onChat(message);
         });
+        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(client -> tick());
+    }
+
+    /** Whether a command is answered without asking: only one that just posts in party chat. */
+    static boolean answersDirectly(PartyCommand command) {
+        return AlpakaConfig.instance.partyCommandsAutoAnswer && command.group() != PartyCommand.Group.LEADER;
     }
 
     static void onChat(Component message) {
@@ -84,6 +105,11 @@ public final class PartyCommandsFeature {
             if (request == null) continue;
             PartyCommand command = PartyCommand.byAlias(request.name());
             if (command == null || !isCommandEnabled(command)) continue;
+            // Your own "!tps" is answered too when it needs no confirmation; a prompt for it would not be.
+            if (answersDirectly(command)) {
+                answerLater(command, request);
+                return;
+            }
             if (isSelf(request.sender())) continue;
             offer(command, request);
             return;
@@ -118,6 +144,26 @@ public final class PartyCommandsFeature {
         noticeId = AlpakaNotifications.sendLines("Party Command", lines, 0, hold);
     }
 
+    private static void answerLater(PartyCommand command, PartyChatCommand request) {
+        long now = System.currentTimeMillis();
+        if (autoCommand != null || now - lastAutoAtMs < AUTO_GAP_MS) return;
+        lastAutoAtMs = now;
+        autoCommand = command;
+        autoRequest = request;
+        autoSendAtMs = now + AUTO_DELAY_MS;
+    }
+
+    private static void tick() {
+        if (autoCommand == null || System.currentTimeMillis() < autoSendAtMs) return;
+        PartyCommand command = autoCommand;
+        PartyChatCommand request = autoRequest;
+        autoCommand = null;
+        autoRequest = null;
+        if (!isEnabled() || !answersDirectly(command)) return;
+        String answer = command.answer(request);
+        if (answer != null) Outbound.command(answer, Outbound.Cause.PARTY_CHAT_REQUEST);
+    }
+
     /** Whether a request is up and its keys should answer. Clears one that has run out. */
     public static boolean isShowing() {
         if (pending == null) return false;
@@ -149,6 +195,8 @@ public final class PartyCommandsFeature {
     }
 
     public static void dismiss() {
+        autoCommand = null;
+        autoRequest = null;
         pending = null;
         pendingRequest = null;
         if (noticeId != 0L) {

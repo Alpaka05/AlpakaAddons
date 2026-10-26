@@ -8,6 +8,8 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 class PartyCommandTest {
@@ -17,6 +19,10 @@ class PartyCommandTest {
         PartyCommand.Measurements.tpsSource = () -> "19.8";
         PartyCommand.Measurements.pingSource = () -> "42ms";
         PartyCommand.Measurements.coordsSource = () -> "x: 1, y: 2, z: 3";
+        PartyCommand.Measurements.fpsSource = () -> "144";
+        PartyCommand.Measurements.locationSource = () -> "Village";
+        PartyCommand.Measurements.holdingSource = () -> "Hyperion";
+        PartyCommand.Measurements.timeSource = () -> "12:00";
         PartyCommand.Measurements.randomSource = bound -> bound;
     }
 
@@ -25,6 +31,10 @@ class PartyCommandTest {
         PartyCommand.Measurements.tpsSource = PartyCommandsFeature::currentTps;
         PartyCommand.Measurements.pingSource = PartyCommandsFeature::currentPing;
         PartyCommand.Measurements.coordsSource = PartyCommandsFeature::currentCoords;
+        PartyCommand.Measurements.fpsSource = PartyCommandsFeature::currentFps;
+        PartyCommand.Measurements.locationSource = PartyCommandsFeature::currentLocation;
+        PartyCommand.Measurements.holdingSource = PartyCommandsFeature::currentHolding;
+        PartyCommand.Measurements.timeSource = PartyCommandsFeature::currentTime;
         PartyCommand.Measurements.randomSource =
                 bound -> java.util.concurrent.ThreadLocalRandom.current().nextInt(bound) + 1;
     }
@@ -65,6 +75,27 @@ class PartyCommandTest {
     })
     void ignoresAnythingButAPartyMembersCommand(String line) {
         assertNull(PartyChatCommand.parse(line));
+    }
+
+    @Test
+    void onlyPartyChatPostsAreAnsweredWithoutConfirmation() {
+        net.alpaka.addons.config.AlpakaConfig saved = net.alpaka.addons.config.AlpakaConfig.instance;
+        try {
+            net.alpaka.addons.config.AlpakaConfig.instance = new net.alpaka.addons.config.AlpakaConfig();
+            // Off by default: everything asks.
+            assertFalse(PartyCommandsFeature.answersDirectly(PartyCommand.TPS));
+            net.alpaka.addons.config.AlpakaConfig.instance.partyCommandsAutoAnswer = true;
+            for (PartyCommand command : PartyCommand.values()) {
+                boolean postsOnly = command.group() != PartyCommand.Group.LEADER;
+                assertEquals(postsOnly, PartyCommandsFeature.answersDirectly(command), command.name());
+                if (postsOnly) {
+                    String answer = command.answer(PartyChatCommand.parse("Party > Friend: !x 5"));
+                    assertTrue(answer.startsWith("pc "), command + " answers " + answer);
+                }
+            }
+        } finally {
+            net.alpaka.addons.config.AlpakaConfig.instance = saved;
+        }
     }
 
     @Test

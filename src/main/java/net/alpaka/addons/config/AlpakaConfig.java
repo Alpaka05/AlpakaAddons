@@ -723,6 +723,8 @@ public class AlpakaConfig {
     public boolean warpCooldownQueueEnabled = true;
     /** A party member's "!warp", "!tps"... raises a Y/N prompt to answer it; see PartyCommandsFeature. */
     public boolean partyCommandsEnabled = false;
+    /** Info and fun party commands are answered without the Y/N prompt. */
+    public boolean partyCommandsAutoAnswer = false;
     /** The party commands not offered, by PartyCommand name. The ones that can hurt a party start off. */
     public java.util.List<String> partyCommandsDisabled = new java.util.ArrayList<>(java.util.List.of(
             "TRANSFER", "KICK", "KICK_OFFLINE", "PROMOTE", "DEMOTE"));

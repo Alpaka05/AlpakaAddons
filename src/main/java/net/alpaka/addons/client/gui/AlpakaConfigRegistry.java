@@ -1797,6 +1797,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.partyCommandsEnabled = v; AlpakaConfig.save(); },
                 "party commands chat !warp !w !tps !ping !fps !pt !transfer !allinvite !coords !kick !f7 !m7 odin skyhanni prompt y n"));
 
+        OPTIONS.add(new ConfigOption("party_commands_auto_answer", "Answer Without Confirmation",
+                "Info and fun commands like !tps, !ping or !dice are answered in party chat right away, without the Y/N prompt. Leader commands like !warp or !kick always ask.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.partyCommandsAutoAnswer,
+                v -> { AlpakaConfig.instance.partyCommandsAutoAnswer = v; AlpakaConfig.save(); },
+                "party commands auto answer reply automatic direct without confirmation prompt instant tps ping fps"));
+
         for (net.alpaka.addons.features.party.PartyCommand.Group group : net.alpaka.addons.features.party.PartyCommand.Group.values()) {
             java.util.List<ConfigOption.ToggleEntry> entries = new java.util.ArrayList<>();
             for (net.alpaka.addons.features.party.PartyCommand command : net.alpaka.addons.features.party.PartyCommand.values()) {

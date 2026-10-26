@@ -15,9 +15,10 @@ import net.minecraft.world.inventory.ContainerInput;
  * Every message, command or menu click the mod sends is the direct result of the player pressing a
  * key, clicking, or pressing Enter, and says which through its {@link Cause}. A command typed in the
  * first seconds on a server may wait for Hypixel's join cooldown before it goes out, but it is still
- * the one the player sent, once. Nothing reacts to
- * other players' chat, timers or game events by sending; two features once did - a party-chat
- * auto-reply and a guild announcement fired from a timer - and were removed. A scan of the compiled
+ * the one the player sent, once. The one opt-in exception is {@link Cause#PARTY_CHAT_REQUEST}. Nothing reacts to
+ * other players' chat, timers or game events by sending unless the player switched it on; two
+ * features once did so unasked - a party-chat auto-reply and a guild announcement fired from a
+ * timer - and were removed. A scan of the compiled
  * classes in the tests (OutboundBytecodeScanTest) fails the build if anything outside this class
  * sends to the server, apart from the resource pack answers of the pack cache.
  *
@@ -41,7 +42,13 @@ public final class Outbound {
          * Pressed Enter on a command Hypixel refuses for the first seconds on a server; it goes out
          * once, when that wait is over, and never again (WarpCooldownQueue).
          */
-        QUEUED_CHAT_INPUT
+        QUEUED_CHAT_INPUT,
+        /**
+         * Nothing: a party member asked for a party chat line ("!tps") and the player switched on
+         * Answer Without Confirmation. Off by default, only for commands that post in party chat,
+         * at most once every two seconds (PartyCommandsFeature).
+         */
+        PARTY_CHAT_REQUEST
     }
 
     /** The same command again this soon is taken as a double input and dropped. */

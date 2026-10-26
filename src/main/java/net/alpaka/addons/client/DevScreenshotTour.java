@@ -228,6 +228,8 @@ public final class DevScreenshotTour {
             // Skills page with the item icons.
             profile("profile-pets-in-world", "Refraction", "PETS"),
             new Stop("profile-pets-heads", () -> {}, () -> true, 60),
+            // The tooltip of a pet: its exact XP and how far past the max level it is.
+            new Stop("profile-pets-tooltip", () -> placeMouse(0.45, 0.86), () -> true, 30),
             profile("profile-skills-in-world", "TimeDeo", "SKILLS"),
             new Stop("world-hud", DevScreenshotTour::showHuds, () -> true, 30),
             // The screenshot preview of the picture just taken: resting in the corner, then mid-shrink.

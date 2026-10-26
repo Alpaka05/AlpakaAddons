@@ -1313,24 +1313,31 @@ public class ProfileDashboardScreen extends Screen {
             String level = "Lvl " + p.level();
             text(graphics, level, tx + tw - textW(level), cy + 9, p.level() >= p.maxLevel() ? ink(0xFFFFC94D) : AlpakaStyle.TEXT_SOFT);
             text(graphics, AlpakaStyle.ellipsize(this.font, p.name(), tw - 6 - textW(level)), tx, cy + 9, ink(ProfileData.rarityColor(p.tier())));
-            // The XP on it, which goes on growing past the max level - what sets two level 100 pets apart.
-            String xp = Coins.compact(p.exp()) + " XP";
-            text(graphics, xp, tx + tw - textW(xp), cy + 21, AlpakaStyle.TEXT_SOFT);
             String held = p.active() ? "Active" + (p.heldItem() == null ? "" : " · " + heldItem(p.heldItem())) : p.heldItem() == null ? "" : heldItem(p.heldItem());
-            text(graphics, AlpakaStyle.ellipsize(this.font, held, tw - textW(xp) - 6), tx, cy + 21, p.active() ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
+            text(graphics, AlpakaStyle.ellipsize(this.font, held, tw), tx, cy + 21, p.active() ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
             if (p.level() < p.maxLevel()) bar(graphics, tx, cy + ch - 5, tw, 1, p.progress(), MarketIcons.fade(AlpakaStyle.accent(), 0.7f));
             if (hover) {
-                String expText = Coins.full(Math.floor(p.exp())) + " XP"
-                        + (p.expForMax() > 0 && p.level() < p.maxLevel()
-                        ? ", " + Coins.full(Math.ceil(Math.max(0, p.expForMax() - p.exp()))) + " to level " + p.maxLevel()
-                        : p.expForMax() > 0 && p.exp() > p.expForMax() ? ", " + Coins.full(Math.floor(p.exp() - p.expForMax())) + " past max" : "");
-                tip(p, ProfileData.title(p.tier()) + " " + p.name() + ", level " + p.level() + " of " + p.maxLevel() + ", " + expText
-                        + (p.heldItem() != null ? ", holding " + heldItem(p.heldItem()) : "")
-                        + (p.skin() != null ? ", skin " + ProfileData.title(p.skin()) : "") + ".");
+                tip(p, petTip(p));
             }
         }
         int rows = (d.pets.size() + cols - 1) / cols;
         return y + rows * (ch + gap) - gap;
+    }
+
+    /**
+     * What the card doesn't already say: the exact XP, which goes on growing past the max level and
+     * sets two level 100 pets apart, how far it is past the max or short of it, and the skin.
+     */
+    private static String petTip(ProfileData.Pet p) {
+        StringBuilder tip = new StringBuilder(Coins.full(Math.floor(p.exp())) + " XP");
+        if (p.expForMax() > 0) {
+            double over = p.exp() - p.expForMax();
+            tip.append(over >= 0
+                    ? "\n" + Coins.full(Math.floor(over)) + " XP over max level"
+                    : "\n" + Coins.full(Math.ceil(-over)) + " XP to level " + p.maxLevel());
+        }
+        if (p.skin() != null) tip.append("\nSkin: ").append(ProfileData.title(p.skin()));
+        return tip.toString();
     }
 
     private static String heldItem(String id) {

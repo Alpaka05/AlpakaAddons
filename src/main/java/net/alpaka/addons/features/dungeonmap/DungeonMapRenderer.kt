@@ -11,21 +11,31 @@ import net.alpaka.addons.utils.DungeonState
 import net.alpaka.addons.utils.SkyblockUtils
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
+import net.minecraft.client.gui.components.PlayerFaceExtractor
 import net.minecraft.client.gui.screens.ChatScreen
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.client.renderer.texture.DynamicTexture
+import net.minecraft.client.resources.DefaultPlayerSkin
 import net.minecraft.resources.Identifier
+import net.minecraft.world.entity.player.PlayerSkin
 import net.minecraft.world.level.material.MapColor
-import net.minecraft.world.level.saveddata.maps.MapDecorationTypes
 import org.joml.Matrix3x2f
+import java.util.UUID
+import java.util.function.Supplier
 import kotlin.math.abs
 
 object DungeonMapRenderer {
     private val clearTexture = MapTexture("dungeon_map_clear")
-    private val bossTexture = MapTexture("dungeon_map_boss")
+    private val bossTexture = MapTexture("dungeon_map_boss", BossMapProjection.TEXTURE)
     private val previewTexture = MapTexture("dungeon_map_preview")
     private val bossPreviewTexture = MapTexture("dungeon_map_boss_preview")
     private val preview = DungeonMapSnapshot().apply { update(previewPixels(), false) }
+    // The editor can be opened from the title screen, where there is no player to take a skin from.
+    private val profileSkin: Supplier<PlayerSkin> by lazy {
+        Minecraft.getInstance().skinManager.createLookup(Minecraft.getInstance().gameProfile, false)
+    }
+    private val previewTeammateSkin by lazy { DefaultPlayerSkin.get(UUID(0L, 3L)) }
+    private const val DEGREES = (Math.PI / 180).toFloat()
 
     private fun padding() = AlpakaConfig.instance.dungeonMapPadding.toInt().coerceIn(4, 16)
     private fun panelWidth() = 128 + padding() * 2
@@ -102,16 +112,13 @@ object DungeonMapRenderer {
                 bossPreviewTexture.upload(pixels, pixels.contentHashCode())
                 bossPreviewTexture.draw(g)
                 if (cfg.dungeonMapPlayers) {
-                    marker(g, 64f, 64f, 0f, true, "You")
-                    marker(g, 80f, 45f, 1.2f, false, "Teammate")
+                    drawPlayer(g, 80f, 45f, -111f, false, "Teammate", previewTeammateSkin)
+                    drawPlayer(g, 64f, 64f, 180f, true, "You", previewOwnSkin())
                 }
             } else if (boss) {
                 val pixels = BossRoomMap.pixels
-                if (pixels == null) waiting(g, "Loading Arena…") else {
-                    bossTexture.upload(pixels, BossRoomMap.revision)
-                    bossTexture.draw(g)
-                    if (cfg.dungeonMapPlayers) bossPlayers(g)
-                }
+                val projection = BossRoomMap.projection
+                if (pixels == null || projection == null) waiting(g, "Loading Arena…") else bossArena(g, pixels, projection)
             } else {
                 val source = if (editing) preview else DungeonMapFeature.snapshot
                 if (source.colors == null) waiting(g, "Waiting For Map…") else {
@@ -121,12 +128,15 @@ object DungeonMapRenderer {
                     // Saved clear positions are stale in the boss room and must not look live.
                     if (cfg.dungeonMapPlayers && (editing || !DungeonState.inBossRoom)) {
                         if (editing) {
-                            marker(g, 40f, 40f, 0f, true, "You")
-                            marker(g, 83f, 65f, 1.2f, false, "Teammate")
-                        } else for (decoration in DungeonMapFeature.markers) {
-                            marker(g, decoration.x() / 2f + 64f, decoration.y() / 2f + 64f,
-                                decoration.rot() * (Math.PI.toFloat() / 8),
-                                decoration.type() == MapDecorationTypes.PLAYER, decoration.name().orElse(null)?.string)
+                            drawPlayer(g, 83f, 65f, -111f, false, "Teammate", previewTeammateSkin)
+                            drawPlayer(g, 40f, 40f, 180f, true, "You", previewOwnSkin())
+                        } else {
+                            val partialTick = mc.deltaTracker.getGameTimeDeltaPartialTick(false)
+                            val now = DungeonMapFeature.now()
+                            for (player in DungeonMapFeature.players) {
+                                val at = DungeonMapFeature.locate(player, partialTick, now) ?: continue
+                                drawPlayer(g, at.x, at.y, at.yaw, player.self, player.name, player.skin)
+                            }
                         }
                     }
                 }
@@ -142,37 +152,80 @@ object DungeonMapRenderer {
         g.text(mc.font, text, (128 - mc.font.width(text)) / 2, 60, AlpakaConfig.instance.dungeonMapTextColor, true)
     }
 
-    private fun bossPlayers(g: GuiGraphicsExtractor) {
+    private fun previewOwnSkin(): PlayerSkin = Minecraft.getInstance().player?.skin ?: profileSkin.get()
+
+    /**
+     * The sampled terrain and the players on it. With smooth movement on, the view stays centred on
+     * the player's position of this frame and slides over terrain sampled every half second;
+     * otherwise it shows the terrain the way it was sampled.
+     */
+    private fun bossArena(g: GuiGraphicsExtractor, pixels: IntArray, projection: BossMapProjection) {
+        val cfg = AlpakaConfig.instance
         val mc = Minecraft.getInstance()
         val local = mc.player ?: return
-        val projection = BossRoomMap.projection ?: return
+        val smooth = cfg.dungeonMapSmoothMarkers
+        val partialTick = if (smooth) mc.deltaTracker.getGameTimeDeltaPartialTick(false) else 1f
+        // Kept within the margin, so even a teleport shows sampled terrain until the next sampling.
+        val reach = projection.span * BossMapProjection.MARGIN / BossMapProjection.STEPS.toDouble()
+        val view = if (smooth) local.getPosition(partialTick).let {
+            BossMapProjection(it.x.coerceIn(projection.centerX - reach, projection.centerX + reach),
+                it.z.coerceIn(projection.centerZ - reach, projection.centerZ + reach), projection.span)
+        } else projection
+        val edge = -2f * BossMapProjection.MARGIN
+        g.pose().pushMatrix()
+        g.pose().translate(view.mapX(projection.centerX) - 64f + edge, view.mapY(projection.centerZ) - 64f + edge)
+        bossTexture.upload(pixels, BossRoomMap.revision)
+        bossTexture.draw(g)
+        g.pose().popMatrix()
+        if (!cfg.dungeonMapPlayers) return
         for (player in mc.level?.players() ?: return) {
             if (player !== local && (player.isInvisible || player.isSpectator ||
                     mc.connection?.getPlayerInfo(player.uuid) == null || abs(player.y - local.y) > 8)) continue
-            val x = projection.mapX(player.x)
-            val y = projection.mapY(player.z)
-            if (x !in 0f..128f || y !in 0f..128f) continue
-            marker(g, x, y, (player.yRot + 180) * (Math.PI.toFloat() / 180), player === local, player.name.string)
+            val at = if (smooth) player.getPosition(partialTick) else player.position()
+            // Players outside the view are left to the scissor, which also cuts heads and names off cleanly at the edge.
+            drawPlayer(g, view.mapX(at.x), view.mapY(at.z), player.getViewYRot(partialTick), player === local,
+                player.name.string, player.skin)
         }
     }
 
-    private fun marker(g: GuiGraphicsExtractor, x: Float, y: Float, rotation: Float, self: Boolean, name: String?) {
+    /**
+     * A player's head or arrow. [yaw] is the game's: 0 faces south, which is down on the map, while
+     * both are drawn facing up.
+     */
+    private fun drawPlayer(g: GuiGraphicsExtractor, x: Float, y: Float, yaw: Float, self: Boolean, name: String?,
+                           skin: PlayerSkin?) {
         val cfg = AlpakaConfig.instance
         val color = if (self) cfg.dungeonMapSelfColor else cfg.dungeonMapPlayerColor
+        val facing = (yaw + 180f) * DEGREES
+        val scale = cfg.dungeonMapMarkerScale.coerceIn(0.5f, 2.5f)
+        val face = if (cfg.dungeonMapPlayerHeads) skin else null
         g.pose().pushMatrix()
         g.pose().translate(x, y)
-        g.pose().rotate(rotation)
-        val scale = cfg.dungeonMapMarkerScale.coerceIn(0.5f, 2.5f)
         g.pose().scale(scale, scale)
-        g.fill(-1, -4, 1, -2, 0xDD000000.toInt())
-        g.fill(-3, -2, 3, 3, 0xDD000000.toInt())
-        g.fill(-1, -3, 1, -1, color)
-        g.fill(-2, -1, 2, 2, color)
+        if (face != null) {
+            val border = cfg.dungeonMapHeadBorder
+            if (cfg.dungeonMapRotateHeads) g.pose().rotate(facing)
+            if (border) g.fill(-5, -5, 5, 5, color)
+            PlayerFaceExtractor.extractRenderState(g, face, -4, -4, 8)
+            // A notch shows where the player looks; on an upright head it circles the head.
+            if (!cfg.dungeonMapRotateHeads) g.pose().rotate(facing)
+            val top = if (border) -7 else -6
+            g.fill(-1, top, 1, top + 2, color)
+        } else {
+            g.pose().rotate(facing)
+            g.fill(-1, -4, 1, -2, 0xDD000000.toInt())
+            g.fill(-3, -2, 3, 3, 0xDD000000.toInt())
+            g.fill(-1, -3, 1, -1, color)
+            g.fill(-2, -1, 2, 2, color)
+        }
         g.pose().popMatrix()
         if (cfg.dungeonMapNames && !name.isNullOrEmpty()) {
-            val mc = Minecraft.getInstance()
-            g.text(mc.font, name, x.toInt() - mc.font.width(name) / 2, y.toInt() + 5,
-                cfg.dungeonMapTextColor, true)
+            val font = Minecraft.getInstance().font
+            // Placed through the pose rather than whole pixels, so the name moves with its marker.
+            g.pose().pushMatrix()
+            g.pose().translate(x, y + (if (face != null) 6f else 4f) * scale + 1f)
+            g.text(font, name, -font.width(name) / 2, 0, cfg.dungeonMapTextColor, true)
+            g.pose().popMatrix()
         }
     }
 
@@ -220,7 +273,7 @@ object DungeonMapRenderer {
             c.dungeonMapCompleteColor, c.dungeonMapFailedColor)
     }
 
-    private class MapTexture(name: String) {
+    private class MapTexture(name: String, private val size: Int = 128) {
         private val id = Identifier.fromNamespaceAndPath("alpaka", name)
         private var texture: DynamicTexture? = null
         private var revision = -1
@@ -242,18 +295,18 @@ object DungeonMapRenderer {
             if (!force && revision == version) return
             var current = texture
             if (current == null) {
-                current = DynamicTexture({ id.toString() }, NativeImage(128, 128, false))
+                current = DynamicTexture({ id.toString() }, NativeImage(size, size, false))
                 texture = current
                 Minecraft.getInstance().textureManager.register(id, current)
             }
             val image = current.pixels ?: return
-            for (i in pixels.indices) image.setPixel(i % 128, i / 128, pixels[i])
+            for (i in pixels.indices) image.setPixel(i % size, i / size, pixels[i])
             current.upload()
             revision = version
         }
 
         fun draw(g: GuiGraphicsExtractor) {
-            g.blit(RenderPipelines.GUI_TEXTURED, id, 0, 0, 0f, 0f, 128, 128, 128, 128)
+            g.blit(RenderPipelines.GUI_TEXTURED, id, 0, 0, 0f, 0f, size, size, size, size)
         }
     }
 

@@ -571,6 +571,8 @@ public class AlpakaConfig {
     public int terminalMelodyColor = 0xFFFF55FF;
     /** Background of the custom terminal GUI. */
     public int terminalGuiBackgroundColor = 0xE0101014;
+    /** Terminal practice: best time per terminal in ms, keyed "PANES", or "PANES@150" with a simulated ping. */
+    public Map<String, Long> terminalPracticeBestMs = new HashMap<>();
 
     /** Master switch of the F7/M7 device solvers ("Device Solvers"); they use the Solvers colors. */
     public boolean deviceSolversEnabled = false;

@@ -506,8 +506,6 @@ public class AlpakaConfig {
     public int etherwarpSoundIndex = 0;
     public float etherwarpSoundVolume = 1.0f;
 
-    // Inventory HUD. Shows the 27 main-inventory slots on screen; position and scale are set in
-    // the HUD editor, or it can ride directly above the hotbar.
     // Dungeon Map: screen position is edited in the HUD editor.
     public boolean dungeonMapEnabled = false;
     public int dungeonMapX = net.alpaka.addons.client.hud.HudDefaults.DUNGEON_MAP_X;
@@ -520,6 +518,10 @@ public class AlpakaConfig {
     public boolean dungeonMapTitle = true;
     public boolean dungeonMapPlayers = true;
     public boolean dungeonMapNames = false;
+    public boolean dungeonMapPlayerHeads = true;
+    public boolean dungeonMapRotateHeads = true;
+    public boolean dungeonMapHeadBorder = true;
+    public boolean dungeonMapSmoothMarkers = true;
     public float dungeonMapMarkerScale = 1.0f;
     public int dungeonMapSelfColor = 0xFFFFFFFF;
     public int dungeonMapPlayerColor = 0xFF55DDFF;
@@ -551,6 +553,8 @@ public class AlpakaConfig {
     public int dungeonMapBossFloorColor = 0xFF687981;
     public int dungeonMapBossWallColor = 0xFFB8C5CC;
 
+    // Inventory HUD. Shows the 27 main-inventory slots on screen; position and scale are set in
+    // the HUD editor, or it can ride directly above the hotbar.
     public boolean inventoryHudEnabled = false;
     public int inventoryHudX = net.alpaka.addons.client.hud.HudDefaults.INVENTORY_X;
     public int inventoryHudY = net.alpaka.addons.client.hud.HudDefaults.INVENTORY_Y;

@@ -53,11 +53,24 @@ public final class DevScreenshotTour {
 
     private static final List<Stop> STOPS = "dungeon-map".equals(System.getenv(ENV)) ? List.of(
             screen("dungeon-map-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_enabled")),
+            screen("dungeon-map-head-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_player_heads")),
             screen("dungeon-map-background-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_background")),
             screen("dungeon-map-color-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_room_color")),
             screen("dungeon-map-hud", () -> dungeonMapPreview(false, false)),
             screen("dungeon-map-both", () -> dungeonMapPreview(true, false)),
-            screen("dungeon-map-transparent", () -> dungeonMapPreview(true, true))
+            screen("dungeon-map-transparent", () -> dungeonMapPreview(true, true)),
+            screen("dungeon-map-upright-heads", () -> {
+                HudEditorScreen editor = dungeonMapPreview(false, false);
+                AlpakaConfig.instance.dungeonMapRotateHeads = false;
+                AlpakaConfig.instance.dungeonMapNames = true;
+                AlpakaConfig.instance.dungeonMapMarkerScale = 1.5f;
+                return editor;
+            }),
+            screen("dungeon-map-arrows", () -> {
+                HudEditorScreen editor = dungeonMapPreview(false, false);
+                AlpakaConfig.instance.dungeonMapPlayerHeads = false;
+                return editor;
+            })
     ) : List.of(
             // With the mouse in the top-right corner, so the avatar visibly looks up and towards it.
             new Stop("main-menu", () -> {
@@ -623,6 +636,10 @@ public final class DevScreenshotTour {
         AlpakaConfig.instance.dungeonMapScale = 0.8f;
         AlpakaConfig.instance.dungeonMapX = 220;
         AlpakaConfig.instance.dungeonMapY = 50;
+        AlpakaConfig.instance.dungeonMapPlayerHeads = true;
+        AlpakaConfig.instance.dungeonMapRotateHeads = true;
+        AlpakaConfig.instance.dungeonMapNames = false;
+        AlpakaConfig.instance.dungeonMapMarkerScale = 1.0f;
         return new HudEditorScreen(null);
     }
 

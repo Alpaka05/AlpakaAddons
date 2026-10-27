@@ -1091,32 +1091,56 @@ public class AlpakaConfigRegistry {
                 "dungeon map title"));
 
         OPTIONS.add(new ConfigOption("dungeon_map_players", "Show Players",
-                "Draws server map markers during clear, and nearby visible players in the boss arena.", ConfigCategory.DUNGEON,
+                "Draws your team on the map during clear, and nearby visible players in the boss arena.", ConfigCategory.DUNGEON,
                 () -> AlpakaConfig.instance.dungeonMapPlayers,
                 v -> { AlpakaConfig.instance.dungeonMapPlayers = v; AlpakaConfig.save(); },
                 "dungeon map players"));
 
+        OPTIONS.add(new ConfigOption("dungeon_map_player_heads", "Show Player Heads",
+                "Draws every player as the head of their skin instead of an arrow, during clear and in the boss room.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapPlayerHeads,
+                v -> { AlpakaConfig.instance.dungeonMapPlayerHeads = v; AlpakaConfig.save(); },
+                "dungeon map player heads skin face avatar"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_rotate_heads", "Rotate Heads",
+                "Turns each head with the way the player looks. Off keeps heads upright, with a small notch showing the direction.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapRotateHeads,
+                v -> { AlpakaConfig.instance.dungeonMapRotateHeads = v; AlpakaConfig.save(); },
+                "dungeon map player heads rotate upright direction"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_head_border", "Head Border",
+                "Frames each head in its marker color.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapHeadBorder,
+                v -> { AlpakaConfig.instance.dungeonMapHeadBorder = v; AlpakaConfig.save(); },
+                "dungeon map player heads border outline frame"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_smooth_markers", "Smooth Movement",
+                "Glides markers between map updates and follows players in render distance live. Off shows Hypixel's markers exactly as they arrive.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapSmoothMarkers,
+                v -> { AlpakaConfig.instance.dungeonMapSmoothMarkers = v; AlpakaConfig.save(); },
+                "dungeon map smooth movement interpolation marker lag"));
+
         OPTIONS.add(new ConfigOption("dungeon_map_names", "Show Player Names",
-                "Shows names when available. Boss names only appear for nearby loaded players on your level.", ConfigCategory.DUNGEON,
+                "Shows names under the markers. In the boss room only nearby players on your level are shown.", ConfigCategory.DUNGEON,
                 () -> AlpakaConfig.instance.dungeonMapNames,
                 v -> { AlpakaConfig.instance.dungeonMapNames = v; AlpakaConfig.save(); },
                 "dungeon map names"));
 
         OPTIONS.add(new ConfigOption("dungeon_map_marker_scale", "Player Marker Size",
-                "Size of player arrows without changing the map size.", ConfigCategory.DUNGEON,
+                "Size of player arrows and heads without changing the map size.", ConfigCategory.DUNGEON,
                 () -> AlpakaConfig.instance.dungeonMapMarkerScale,
                 v -> { AlpakaConfig.instance.dungeonMapMarkerScale = v; AlpakaConfig.save(); },
                 0.5f, 2.5f, val -> String.format(Locale.ROOT, "%.2fx", val),
                 "dungeon map marker scale"));
 
         OPTIONS.add(ConfigOption.color("dungeon_map_self_color", "Your Marker Color",
-                "Color of your player arrow.", ConfigCategory.DUNGEON,
+                "Color of your arrow and head border.", ConfigCategory.DUNGEON,
                 c -> c.dungeonMapSelfColor,
                 v -> { AlpakaConfig.instance.dungeonMapSelfColor = v; AlpakaConfig.save(); },
                 "dungeon map color self color"));
 
         OPTIONS.add(ConfigOption.color("dungeon_map_player_color", "Other Player Color",
-                "Color of the other player arrows.", ConfigCategory.DUNGEON,
+                "Color of the other players' arrows and head borders.", ConfigCategory.DUNGEON,
                 c -> c.dungeonMapPlayerColor,
                 v -> { AlpakaConfig.instance.dungeonMapPlayerColor = v; AlpakaConfig.save(); },
                 "dungeon map color player color"));

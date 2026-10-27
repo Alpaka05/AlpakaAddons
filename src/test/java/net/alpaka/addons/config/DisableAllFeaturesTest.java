@@ -73,6 +73,7 @@ class DisableAllFeaturesTest {
     private static final Set<String> KEPT = Set.of(
             "dungeonMapShowClear", "dungeonMapShowBoss", "dungeonMapBossMode", "dungeonMapScale",
             "dungeonMapBackground", "dungeonMapBlur", "dungeonMapFrame", "dungeonMapRoomColor",
+            "dungeonMapPlayerHeads", "dungeonMapRotateHeads", "dungeonMapHeadBorder", "dungeonMapSmoothMarkers",
             // Block Overlay
             "blockOutlineEnabled", "blockFillEnabled", "blockFadeInEnabled", "blockChromaEnabled",
             "blockIgnoreDepth", "blockIgnorePlants", "blockHideOnEtherwarp",

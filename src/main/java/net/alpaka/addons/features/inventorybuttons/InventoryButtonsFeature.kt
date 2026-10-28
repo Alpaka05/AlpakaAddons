@@ -77,7 +77,7 @@ object InventoryButtonsFeature {
     @JvmStatic
     fun box(screen: AbstractContainerScreen<*>): InventoryButtonLayout.Box {
         val a = screen as AbstractContainerScreenAccessor
-        return InventoryButtonLayout.Box(a.`alpaka$getLeftPos`(), a.`alpaka$getTopPos`(), a.`alpaka$getImageWidth`(), a.`alpaka$getImageHeight`())
+        return InventoryButtonLayout.Box(a.`alpaka$leftPos`(), a.`alpaka$topPos`(), a.`alpaka$imageWidth`(), a.`alpaka$imageHeight`())
     }
 
     private fun buttonAt(screen: AbstractContainerScreen<*>, mouseX: Double, mouseY: Double): InventoryButton? {

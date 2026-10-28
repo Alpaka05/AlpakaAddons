@@ -9,6 +9,7 @@ import net.alpaka.addons.features.inventorybuttons.InventoryButtonIcons
 import net.alpaka.addons.features.inventorybuttons.InventoryButtonLayout
 import net.alpaka.addons.features.inventorybuttons.InventoryButtonLayout.Box
 import net.alpaka.addons.features.inventorybuttons.InventoryButtonsFeature
+import net.alpaka.addons.features.tooltip.ScrollableTooltipsFeature
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
@@ -35,7 +36,7 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
     private val parent: Screen?,
     /** A button to open with picked, by its place in the list; -1 for none. */
     private val openOn: Int = -1,
-) : Screen(GuiFont.text("Inventory Buttons")) {
+) : Screen(GuiFont.text("Inventory Buttons")), ScrollableTooltipsFeature.KeepsWheel {
 
     private enum class Preview(val label: String, val imageHeight: Int, val rows: Int) {
         INVENTORY("Inventory", 166, 0),

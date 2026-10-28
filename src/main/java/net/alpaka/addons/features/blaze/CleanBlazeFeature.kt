@@ -115,9 +115,11 @@ object CleanBlazeFeature {
         return DEMON_NAMES.any { SkyblockUtils.containsIgnoringFormatting(raw, it) }
     }
 
+    /** A part of Clean Blaze, but anywhere on SkyBlock: blazes spin outside the slayer zones too. */
     @JvmStatic
     fun shouldStopBlazeRodSpin(): Boolean {
-        return AlpakaConfig.instance.stopBlazeSpinning && SkyblockUtils.isOnSkyblock()
+        val cfg = AlpakaConfig.instance
+        return cfg.cleanBlazeEnabled && cfg.stopBlazeSpinning && SkyblockUtils.isOnSkyblock()
     }
 
     @JvmStatic

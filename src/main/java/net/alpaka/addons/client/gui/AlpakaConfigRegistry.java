@@ -297,6 +297,27 @@ public class AlpakaConfigRegistry {
                 ),
                 "blaze flame smoke angry villager lava drip particles potion effect swirl enchant enchanting glyph ender portal witch spell fire burning overlay fireball projectile lightning bolt flash thunder nametag name tag health smoldering miniboss demon clean hide"));
 
+        OPTIONS.add(new ConfigOption("stop_blaze_spinning", "Stop Blaze Spinning",
+                "Stops blaze rods from spinning around blaze mobs.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.stopBlazeSpinning,
+                v -> { AlpakaConfig.instance.stopBlazeSpinning = v; AlpakaConfig.save(); },
+                "blaze rods spin spinning rotation animation stop mob"));
+
+        OPTIONS.add(new ConfigOption("mute_vanilla_sounds_blaze_slayer", "Mute Blaze Noise",
+                "Mutes blazes, fire, lava and ghasts during a Blaze quest. Menu and mod sounds still play.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.muteVanillaSoundsInBlazeSlayer,
+                v -> { AlpakaConfig.instance.muteVanillaSoundsInBlazeSlayer = v; AlpakaConfig.save(); },
+                "mute silence vanilla game audio blaze slayer quiet boss spawn hear silence blaze slayer noise"));
+
+        OPTIONS.add(new ConfigOption("blaze_mute_all_world_audio", "Mute All World Sounds",
+                "Mutes every world sound during a Blaze quest, not just the fight's noise.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.blazeMuteAllWorldAudio,
+                v -> { AlpakaConfig.instance.blazeMuteAllWorldAudio = v; AlpakaConfig.save(); },
+                "mute silence all world audio blaze slayer quiet silence: all world audio sounds"));
+
         OPTIONS.add(new ConfigOption("blaze_fire_pits", "Fire Pit Highlight",
                 "Marks the fire pits on the floor with a glowing column during your Blaze slayer boss.",
                 ConfigCategory.VISUALS,
@@ -310,13 +331,6 @@ public class AlpakaConfigRegistry {
                 c -> c.blazeFirePitColor,
                 v -> { AlpakaConfig.instance.blazeFirePitColor = v; AlpakaConfig.save(); },
                 "blaze slayer fire pit pits highlight column aura color colour picker"));
-
-        OPTIONS.add(new ConfigOption("stop_blaze_spinning", "Stop Blaze Spinning",
-                "Stops blaze rods from spinning around blaze mobs.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.stopBlazeSpinning,
-                v -> { AlpakaConfig.instance.stopBlazeSpinning = v; AlpakaConfig.save(); },
-                "blaze rods spin spinning rotation animation stop mob"));
 
         OPTIONS.add(new ConfigOption("hide_hurt_overlay", "Hide Damage Flash",
                 "Hides the red flash on mobs and players when they take a hit.",
@@ -523,6 +537,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.containerBgFadeInDurationMs = Math.round(v); AlpakaConfig.save(); },
                 50.0f, 1000.0f, val -> String.format(Locale.ROOT, "%d ms", Math.round(val)),
                 "container background fade speed duration time ms transition container fade speed"));
+
+        OPTIONS.add(new ConfigOption("hide_inventory_effects", "Hide Effects",
+                "Hides the list of active potion effects next to your inventory.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.hideInventoryEffects,
+                v -> { AlpakaConfig.instance.hideInventoryEffects = v; AlpakaConfig.save(); },
+                "hide effects potion effect status buffs inventory list side absorption night vision haste strength god potion"));
 
         // The id keeps its old name so existing configs and search links still find the option.
         OPTIONS.add(new ConfigOption("inventory_snow", "Inventory Particles",
@@ -2378,6 +2399,20 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.commandWheelToggleMode = v; AlpakaConfig.save(); },
                 "quick command wheel toggle hold press release click open mode keybind"));
 
+        OPTIONS.add(new ConfigOption("command_shortcuts", "Command Shortcuts",
+                "Short aliases for commands, such as /v for /visit (/v Steve still works), and keys that run a command.",
+                ConfigCategory.SOUND_MISC,
+                () -> AlpakaConfig.instance.commandShortcutsEnabled,
+                v -> { AlpakaConfig.instance.commandShortcutsEnabled = v; AlpakaConfig.save(); },
+                "command shortcuts alias aliases abbreviation short keybind key bind hotkey run command visit warp skyblocker"));
+
+        OPTIONS.add(new ConfigOption("command_shortcuts_edit", "Shortcuts",
+                "Add, edit or remove aliases and key shortcuts.",
+                ConfigCategory.SOUND_MISC,
+                "Edit Shortcuts",
+                parent -> Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.client.CommandShortcutsConfigScreen(parent)),
+                "command shortcuts alias aliases edit add remove keybind key bind hotkey list menu"));
+
         OPTIONS.add(new ConfigOption("always_sprint", "Always Sprint",
                 "Sprints whenever you walk forward, no sprint key needed.",
                 ConfigCategory.SOUND_MISC,
@@ -2550,20 +2585,6 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(soundVolume("custom_sound_successful_hit_volume", "Volume", "successful hit",
                 () -> AlpakaConfig.instance.customSoundSuccessfulHitVolume,
                 v -> AlpakaConfig.instance.customSoundSuccessfulHitVolume = v));
-
-        OPTIONS.add(new ConfigOption("mute_vanilla_sounds_blaze_slayer", "Mute Blaze Noise",
-                "Mutes blazes, fire, lava and ghasts during a Blaze quest. Menu and mod sounds still play.",
-                ConfigCategory.SOUND_MISC,
-                () -> AlpakaConfig.instance.muteVanillaSoundsInBlazeSlayer,
-                v -> { AlpakaConfig.instance.muteVanillaSoundsInBlazeSlayer = v; AlpakaConfig.save(); },
-                "mute silence vanilla game audio blaze slayer quiet boss spawn hear silence blaze slayer noise"));
-
-        OPTIONS.add(new ConfigOption("blaze_mute_all_world_audio", "Mute All World Sounds",
-                "Mutes every world sound during a Blaze quest, not just the fight's noise.",
-                ConfigCategory.SOUND_MISC,
-                () -> AlpakaConfig.instance.blazeMuteAllWorldAudio,
-                v -> { AlpakaConfig.instance.blazeMuteAllWorldAudio = v; AlpakaConfig.save(); },
-                "mute silence all world audio blaze slayer quiet silence: all world audio sounds"));
 
         OPTIONS.add(new ConfigOption("Low Health Warning", ConfigCategory.SOUND_MISC));
 

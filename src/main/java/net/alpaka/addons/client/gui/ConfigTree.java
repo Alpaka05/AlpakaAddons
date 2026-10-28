@@ -94,8 +94,9 @@ public final class ConfigTree {
             "allow_api_calls", "update_notifications", "menu_font", "menu_theme", "menu_accent_color",
             "custom_escape_menu", "custom_main_menu", "disable_all_features", "reset_all_settings",
             // Visuals
-            "fullbright", "clean_blaze", "blaze_fire_pits", "stop_blaze_spinning", "hide_hurt_overlay", "hide_mob_deaths",
+            "fullbright", "clean_blaze", "blaze_fire_pits", "hide_hurt_overlay", "hide_mob_deaths",
             "hide_explosions",
+            "hide_inventory_effects",
             "render_hand_third_person", "smooth_perspective", "disable_front_perspective", "zoom",
             "sky_effects",
             "container_bg_opacity", "inventory_snow", "scrollable_tooltips", "persistent_item_name", "old_master_stars", "wide_health_bar",
@@ -116,11 +117,11 @@ public final class ConfigTree {
             // Cosmetics
             "custom_name_tag", "chroma_hat", "aura", "player_scale", "custom_damage_tags",
             // Sound & utility
-            "command_wheel_custom_commands", "always_sprint", "keep_cursor_position", "quick_join", "custom_sounds",
+            "command_wheel_custom_commands", "command_shortcuts", "always_sprint", "keep_cursor_position", "quick_join", "custom_sounds",
             "custom_sound_button_click", "custom_sound_hotbar_scroll", "custom_sound_inventory_open_close",
             "custom_sound_inventory_click", "custom_sound_rare_drop", "custom_sound_notification",
             "custom_sound_player_hurt", "custom_sound_blaze_death", "custom_sound_zombie_remedy",
-            "custom_sound_successful_hit", "mute_vanilla_sounds_blaze_slayer", "custom_sound_low_hp_heartbeat"
+            "custom_sound_successful_hit", "custom_sound_low_hp_heartbeat"
     );
 
     /** Settings registered away from their feature. */
@@ -177,7 +178,7 @@ public final class ConfigTree {
     private static final String[][][] LAYOUT = {
             {{"General"},
                     {"Main", "allow_api_calls", "update_notifications", "#Notification Customization",
-                            "command_wheel_custom_commands", "always_sprint", "keep_cursor_position", "quick_join", "disable_all_features", "reset_all_settings"},
+                            "always_sprint", "keep_cursor_position", "quick_join", "disable_all_features", "reset_all_settings"},
                     {"Design", "menu_font", "menu_theme", "#HUD Style", "menu_accent_color", "custom_main_menu", "custom_escape_menu"},
                     {"Sounds", "custom_sounds", "custom_sound_button_click", "custom_sound_hotbar_scroll",
                             "custom_sound_inventory_open_close", "custom_sound_inventory_click", "custom_sound_rare_drop",
@@ -187,6 +188,7 @@ public final class ConfigTree {
                     {"World", "fullbright", "sky_effects", "block_overlay_enabled", "hide_hurt_overlay", "hide_mob_deaths", "hide_explosions",
                             "#Hide Fire Overlay", "#Nametags", "render_hand_third_person", "smooth_perspective", "disable_front_perspective", "zoom"},
                     {"Interface", "inventory_hud_enabled", "player_model_enabled", "performance_hud_enabled", "container_bg_opacity",
+                            "hide_inventory_effects",
                             "scrollable_tooltips", "persistent_item_name", "old_master_stars", "wide_health_bar", "inventory_snow", "#Scoreboard"},
                     {"Chat", "better_chat", "chat_tabs", "chat_search", "chat_copy", "chat_peek", "compact_chat",
                             "message_filter", "expand_chat_history", "mention_notification", "better_screenshot_message"},
@@ -196,13 +198,13 @@ public final class ConfigTree {
             {{"SkyBlock"},
                     {"Slayer", "slayer_hud_enabled", "slayer_timer", "boss_spawn_alert", "boss_cocoon_alert", "slayer_drop_tracker",
                             "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat",
-                            "hide_slayer_chat", "clean_blaze", "blaze_fire_pits", "stop_blaze_spinning",
-                            "mute_vanilla_sounds_blaze_slayer"},
+                            "hide_slayer_chat", "clean_blaze", "blaze_fire_pits"},
                     {"Tools", "etherwarp_overlay", "etherwarp_sound", "only_crit_damage",
                             "world_age_join_message_enabled", "ragnarock", "deployable_timer", "cache_resource_pack"},
                     {"Markets", "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value",
                             "chest_value"},
-                    {"Social", "party_invite_prompt", "guild_prefix", "bridge_bot_formatter"}},
+                    {"Social", "party_invite_prompt", "guild_prefix", "bridge_bot_formatter",
+                            "command_wheel_custom_commands", "command_shortcuts"}},
     };
 
     /** "Enable Inventory HUD" reads as "Inventory HUD" in a list of features that each switch on. */

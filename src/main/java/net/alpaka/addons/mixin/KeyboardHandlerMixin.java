@@ -43,4 +43,18 @@ public class KeyboardHandlerMixin {
             ci.cancel();
         }
     }
+
+    /**
+     * Command Shortcuts' keys, after the hooks above: injected at the same spot, they run in the
+     * order they are declared, so a pending party prompt still gets its Y and N first.
+     */
+    @Inject(method = "keyPress", at = @At("HEAD"), cancellable = true)
+    private void alpaka$commandShortcutKeys(long window, int action, KeyEvent event, CallbackInfo ci) {
+        // A doubled Tab or Escape from MacOS Input Fixes is taken whole; Outbound drops the
+        // second, identical command.
+        if (action == InputConstants.RELEASE || ci.isCancelled()) return;
+        if (net.alpaka.addons.features.shortcuts.CommandShortcuts.onKey(event, action == InputConstants.REPEAT)) {
+            ci.cancel();
+        }
+    }
 }

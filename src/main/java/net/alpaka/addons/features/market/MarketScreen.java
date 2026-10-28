@@ -10,6 +10,7 @@ import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.wheel.WheelMesh;
 import net.alpaka.addons.utils.SkyblockUtils;
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
@@ -176,6 +177,8 @@ public class MarketScreen extends ContainerScreen {
     private final List<Integer> keyCategories = new ArrayList<>();
     /** Create Auction in the sidebar in the last frame, which C presses; null without one. */
     private Integer keyCreateAuction;
+    /** The Auction House's Reset Settings in the last frame, which R presses; null without one. */
+    private Integer keyResetSettings;
     /**
      * Number keys held down, so holding one presses its button once and not again with every
      * repeat. Shared by all market screens: the press may open the next page before the release.
@@ -372,6 +375,7 @@ public class MarketScreen extends ContainerScreen {
         keyActions.clear();
         keyCategories.clear();
         keyCreateAuction = null;
+        keyResetSettings = null;
         if (classic()) {
             super.extractRenderState(graphics, mouseX, mouseY, partialTick);
             drawClassicToggle(graphics, mouseX, mouseY);
@@ -610,15 +614,22 @@ public class MarketScreen extends ContainerScreen {
                     case TIER -> "Item Tier";
                     default -> "BIN Filter";
                 };
-                MarketIcons.Glyph glyph = switch (c) {
-                    case SORT -> MarketIcons.Glyph.SORT;
-                    case TIER -> MarketIcons.Glyph.TIER;
-                    default -> MarketIcons.Glyph.BIN;
-                };
                 String value = m.controlValues.getOrDefault(c, plain(slot).name());
                 boolean hover = inClip && AlpakaStyle.inside(mx, my, rowX, rowY, rowW, filterH);
                 if (hover) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, filterH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
-                MarketIcons.draw(graphics, glyph, rowX + 7, rowY + (filterH - 9) / 2f, 9, hover ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
+                // Hypixel's own item for the filter, as the categories show theirs; our glyph only
+                // while the slot is still empty.
+                ItemStack item = stack(slot);
+                if (!item.isEmpty()) {
+                    sideItem(graphics, item, rowX, rowY, filterH);
+                } else {
+                    MarketIcons.Glyph glyph = switch (c) {
+                        case SORT -> MarketIcons.Glyph.SORT;
+                        case TIER -> MarketIcons.Glyph.TIER;
+                        default -> MarketIcons.Glyph.BIN;
+                    };
+                    MarketIcons.draw(graphics, glyph, rowX + 7, rowY + (filterH - 9) / 2f, 9, hover ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
+                }
                 if (compact) {
                     graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, value, rowW - 33)), rowX + 21, rowY + 4,
                             hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT, false);
@@ -655,7 +666,10 @@ public class MarketScreen extends ContainerScreen {
                     case SELL_INVENTORY -> MarketIcons.Glyph.SELL;
                     default -> MarketIcons.Glyph.SACK;
                 };
-                rowY = sideRow(graphics, mx, my, inClip, rowX, rowY, rowW, rowH, clipY, clipH, slot, label, glyph, null);
+                // Hypixel's own item for the action too; our glyph only while the slot is still empty.
+                ItemStack item = stack(slot);
+                rowY = sideRow(graphics, mx, my, inClip, rowX, rowY, rowW, rowH, clipY, clipH, slot, label,
+                        item.isEmpty() ? glyph : null, item);
             }
             rowY += 6;
         }
@@ -664,11 +678,12 @@ public class MarketScreen extends ContainerScreen {
             rowY = groupStart(graphics, "More", x, rowY, w, compact, first);
             for (int slot : m.extras) {
                 rowY = sideRow(graphics, mx, my, inClip, rowX, rowY, rowW, rowH, clipY, clipH, slot, plain(slot).name(), null, stack(slot),
-                        takesCreateKey(slot) ? "C" : null);
+                        extraKey(slot));
             }
         }
 
-        sideScroll.max = Math.max(0, rowY + sideScroll.offset() - start + 4 - clipH);
+        // rowY - start is the content's height whatever the scroll, so the limit does not move with it.
+        sideScroll.max = Math.max(0, rowY - start + 4 - clipH);
         sideScroll.update(deltaSec);
         AlpakaStyle.scrollFades(graphics, x, clipY, w, clipH, sideScroll.offset() > 0, sideScroll.offset() + 1 < sideScroll.max);
         graphics.disableScissor();
@@ -717,13 +732,12 @@ public class MarketScreen extends ContainerScreen {
         return rowY + rowH + 1;
     }
 
-    /** An item at the start of a sidebar row, a little smaller than in a slot to sit with the text. */
+    /**
+     * An item at the start of a sidebar row, at its full 16 pixels on whole pixels: scaled down or
+     * placed between pixels, its texture turns blurry.
+     */
     private static void sideItem(GuiGraphicsExtractor graphics, ItemStack item, int rowX, int rowY, int rowH) {
-        graphics.pose().pushMatrix();
-        graphics.pose().translate(rowX + 5, rowY + (rowH - 12) / 2f);
-        graphics.pose().scale(0.75f, 0.75f);
-        graphics.item(item, 0, 0);
-        graphics.pose().popMatrix();
+        graphics.item(item, rowX + 3, rowY + (rowH - 16) / 2);
     }
 
     // ---- Content --------------------------------------------------------------------------------
@@ -754,7 +768,10 @@ public class MarketScreen extends ContainerScreen {
         int contentHeight = m.layout == MarketMenu.Layout.GRID
                 ? drawGrid(graphics, m, mx, my, inClip, cx, cy, cw, ch, now)
                 : drawTiles(graphics, m, mx, my, inClip, cx, cy, cw, ch, now);
-        contentScroll.max = Math.max(0, contentHeight - ch);
+        // The open drawer covers the grid's bottom right, so the grid scrolls on until its last row
+        // comes out above it.
+        int visibleH = inventoryOpen && m.layout == MarketMenu.Layout.GRID && drawerY > cy && drawerY < cy + ch ? drawerY - cy : ch;
+        contentScroll.max = Math.max(0, contentHeight - visibleH);
         contentScroll.update(deltaSec);
         boolean above = contentScroll.offset() > 0;
         boolean below = contentScroll.offset() + 1 < contentScroll.max;
@@ -875,12 +892,13 @@ public class MarketScreen extends ContainerScreen {
             ModernGuiUtils.drawRoundedOutline(graphics, px, py, w, h, AlpakaStyle.CARD_RADIUS, MarketIcons.fade(rarity, 0.45f * hv * alpha));
         }
         drawPressFlash(graphics, slot, px, py, w, h);
-        ModernGuiUtils.drawRoundedRect(graphics, px + 3, py + 8, 2, h - 16, 1, MarketIcons.fade(rarity, (0.55f + 0.45f * hv) * alpha));
 
         boolean compact = h < CARD_H;
         int well = compact ? 18 : 22;
         int wx = px + 8;
-        int wy = py + (h - well) / 2;
+        // On a full card the item sits below the name, beside the two lines under it, so the name
+        // has the card's whole width; a compact card has one line and no room below for it.
+        int wy = compact ? py + (h - well) / 2 : py + 14;
         ModernGuiUtils.drawRoundedRect(graphics, wx, wy, well, well, 5, MarketIcons.fade(rarity, (0.10f + 0.08f * hv) * alpha));
         GuiItemFade.begin(alpha);
         int inset = (well - 16) / 2;
@@ -892,7 +910,8 @@ public class MarketScreen extends ContainerScreen {
         int tw = px + w - 6 - tx;
         int textAlpha = Math.round(alpha * 255) << 24;
         Component name = stack.getHoverName();
-        int nameX = tx;
+        int nameStart = compact ? tx : wx;
+        int nameX = nameStart;
         int nameEnd = tx + tw;
         // The room the key takes at the end of the second line, which the lines leave free.
         int reserve = 0;
@@ -904,7 +923,7 @@ public class MarketScreen extends ContainerScreen {
             for (String side : new String[] {"BUY ", "SELL "}) {
                 if (plainName.startsWith(side)) {
                     name = withoutPrefix(name, side.length());
-                    nameX += pill(graphics, tx, py + 5, side.trim(), side.startsWith("B") ? MarketInk.ink(GREEN) : MarketInk.ink(COIN), alpha) + 4;
+                    nameX += pill(graphics, nameStart, py + 5, side.trim(), side.startsWith("B") ? MarketInk.ink(GREEN) : MarketInk.ink(COIN), alpha) + 4;
                 }
             }
         }
@@ -1511,14 +1530,28 @@ public class MarketScreen extends ContainerScreen {
     }
 
     /**
-     * Whether this is the Auction House's Create Auction button, the one thing done from Manage
-     * Auctions besides looking; it takes the key C. Remembers it for the key when it is.
+     * The key of one of the Auction House's extra buttons, as its chip shows it, or null when the
+     * button has none: Create Auction, the one thing done from Manage Auctions besides looking (C
+     * unless rebound), and Reset Settings for the browser's filters (R unless rebound). Remembers
+     * the button for the key.
      */
-    private boolean takesCreateKey(int slot) {
-        if (kind != MarketKind.AUCTION_HOUSE || keyCreateAuction != null || !Markets.hotkeys(kind)) return false;
-        if (!plain(slot).name().trim().equalsIgnoreCase("Create Auction")) return false;
-        keyCreateAuction = slot;
-        return true;
+    private String extraKey(int slot) {
+        if (kind != MarketKind.AUCTION_HOUSE || !Markets.hotkeys(kind)) return null;
+        String name = plain(slot).name().trim();
+        MarketKeys.Set keys = MarketKeys.of(kind);
+        KeyMapping mapping;
+        if (name.equalsIgnoreCase("Create Auction") && keyCreateAuction == null) {
+            mapping = keys.createAuction();
+            if (mapping == null || mapping.isUnbound()) return null;
+            keyCreateAuction = slot;
+        } else if (name.equalsIgnoreCase("Reset Settings") && keyResetSettings == null) {
+            mapping = keys.resetSettings();
+            if (mapping == null || mapping.isUnbound()) return null;
+            keyResetSettings = slot;
+        } else {
+            return null;
+        }
+        return mapping.getTranslatedKeyMessage().getString();
     }
 
     /** The next key, 1 to 9, that picks a category with Shift; 0 once all nine are taken. */
@@ -1654,8 +1687,8 @@ public class MarketScreen extends ContainerScreen {
             int ex = ix - 8;
             for (int slot : m.extras) {
                 String label = AlpakaStyle.ellipsize(this.font, plain(slot).name(), 90);
-                boolean createKey = takesCreateKey(slot);
-                int ew = GuiFont.width(this.font, label) + 26 + (createKey ? 14 : 0);
+                String keyLabel = extraKey(slot);
+                int ew = GuiFont.width(this.font, label) + 26 + (keyLabel != null ? GuiFont.width(this.font, keyLabel) + 8 : 0);
                 ex -= ew;
                 if (ex < lx + 4) break;
                 boolean hover = AlpakaStyle.inside(mx, my, ex, by, ew, 16);
@@ -1666,7 +1699,7 @@ public class MarketScreen extends ContainerScreen {
                 graphics.item(stack(slot), 0, 0);
                 graphics.pose().popMatrix();
                 graphics.text(this.font, GuiFont.text(label), ex + 18, by + 4, hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT, false);
-                if (createKey) keyChip(graphics, "C", ex + ew - 4, by + 4, 1f);
+                if (keyLabel != null) keyChip(graphics, keyLabel, ex + ew - 4, by + 4, 1f);
                 hits.add(new Hit(ex, by, ew, 16, (b, s) -> click(slot, b, s), false));
                 if (hover) hoveredStack = stack(slot);
                 ex -= 4;
@@ -1902,6 +1935,15 @@ public class MarketScreen extends ContainerScreen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        // A market key bound to a side button of the mouse, say back and forward for the pages.
+        if (!classic() && event.button() > 1 && model != null && Markets.hotkeys(kind)) {
+            Integer target = boundTarget(mapping -> mapping.matchesMouse(event));
+            if (target != null) {
+                AlpakaStyle.click();
+                click(target, 0, false, Outbound.Cause.KEY_PRESS);
+                return true;
+            }
+        }
         // Front-most first: later hits were drawn on top.
         for (int i = hits.size() - 1; i >= 0; i--) {
             Hit hit = hits.get(i);
@@ -1963,8 +2005,9 @@ public class MarketScreen extends ContainerScreen {
 
     /**
      * The slot a key presses: 1 to 9 the numbered actions or auctions, Shift with 1 to 9 the
-     * categories, the arrows the page, Ctrl or Cmd with F the search, Backspace the way back, C
-     * Create Auction.
+     * categories, Ctrl or Cmd with F the search, and the market's own keys (MarketKeys): the arrows
+     * the page, Backspace the way back, C Create Auction, R Reset Settings, unless rebound in the
+     * settings.
      */
     private Integer hotkeyTarget(KeyEvent event) {
         if (model == null) return null;
@@ -1981,13 +2024,20 @@ public class MarketScreen extends ContainerScreen {
             return digit < targets.size() ? targets.get(digit) : null;
         }
         if (shift) return null;
-        return switch (key) {
-            case GLFW.GLFW_KEY_C -> keyCreateAuction;
-            case GLFW.GLFW_KEY_LEFT -> model.controls.get(MarketMenu.Control.PREVIOUS);
-            case GLFW.GLFW_KEY_RIGHT -> model.controls.get(MarketMenu.Control.NEXT);
-            case GLFW.GLFW_KEY_BACKSPACE -> model.controls.get(MarketMenu.Control.BACK);
-            default -> null;
-        };
+        return boundTarget(mapping -> mapping.matches(event));
+    }
+
+    /** The slot the market's key that matches presses, or null when none does or its button is not shown. */
+    private Integer boundTarget(java.util.function.Predicate<KeyMapping> test) {
+        MarketKeys.Set keys = MarketKeys.of(kind);
+        java.util.function.Predicate<KeyMapping> matches = mapping -> !mapping.isUnbound() && test.test(mapping);
+        if (matches.test(keys.previousPage())) return model.controls.get(MarketMenu.Control.PREVIOUS);
+        if (matches.test(keys.nextPage())) return model.controls.get(MarketMenu.Control.NEXT);
+        if (matches.test(keys.back())) return model.controls.get(MarketMenu.Control.BACK);
+        if (matches.test(keys.search())) return model.controls.get(MarketMenu.Control.SEARCH);
+        if (keys.createAuction() != null && matches.test(keys.createAuction())) return keyCreateAuction;
+        if (keys.resetSettings() != null && matches.test(keys.resetSettings())) return keyResetSettings;
+        return null;
     }
 
     /** "/" opens the search; read as a character, so it works wherever the keyboard has it. */

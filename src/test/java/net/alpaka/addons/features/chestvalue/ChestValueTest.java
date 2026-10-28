@@ -111,4 +111,13 @@ class ChestValueTest {
                 200x Wheat - 400 (<1%)
                 3x Trash - no price""", text);
     }
+
+    @Test
+    void readsWhatASackHoldsFromTheLore() {
+        assertEquals(12_345, ChestValue.sackCount(List.of("Slayer Sack", "", "Stored: 12,345/465.7k", "", "Click to pickup!")));
+        assertEquals(0, ChestValue.sackCount(List.of("Slayer Sack", "Stored: 0/465.7k", "Empty sack!")));
+        assertEquals(1_500, ChestValue.sackCount(List.of("Stored: 1.5k/60k")));
+        assertEquals(-1, ChestValue.sackCount(List.of("Rarity: Legendary", "Stored in your Ender Chest")));
+        assertEquals(-1, ChestValue.sackCount(List.of()));
+    }
 }

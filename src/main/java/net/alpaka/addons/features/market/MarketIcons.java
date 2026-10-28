@@ -19,7 +19,7 @@ public final class MarketIcons {
         // The markets
         AUCTION_HOUSE, BAZAAR,
         // Small symbols
-        COIN, CLOCK, SEARCH, SORT, TIER, BIN, ORDERS, SELL, SACK, INVENTORY, CLASSIC, PERSON, BACK, CLOSE, BOX
+        COIN, CLOCK, SEARCH, SORT, TIER, BIN, ORDERS, SELL, SACK, INVENTORY, CLASSIC, PERSON, BACK, CLOSE, BOX, PROMPT
     }
 
     /** The icon of a market, for the header. */
@@ -50,6 +50,7 @@ public final class MarketIcons {
             case BACK -> arrowLeft(pen, color);
             case CLOSE -> cross(pen, color);
             case BOX -> box(pen, color);
+            case PROMPT -> chevron(pen, color);
         }
         mesh.submit(graphics);
     }
@@ -160,6 +161,11 @@ public final class MarketIcons {
     private static void cross(Pen p, int color) {
         p.line(3.5f, 3.5f, 12.5f, 12.5f, 1.8f, color);
         p.line(12.5f, 3.5f, 3.5f, 12.5f, 1.8f, color);
+    }
+
+    private static void chevron(Pen p, int color) {
+        p.line(5f, 3.5f, 11f, 8f, 1.8f, color);
+        p.line(11f, 8f, 5f, 12.5f, 1.8f, color);
     }
 
     private static void box(Pen p, int color) {

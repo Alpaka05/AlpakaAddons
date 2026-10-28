@@ -56,19 +56,24 @@ public class AlpakaClient implements ClientModInitializer {
         // The same tick writes the record once if anything changed it; see AlpakaStats.markDirty.
         net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(
                 client -> net.alpaka.addons.config.AlpakaStats.tick());
+        net.alpaka.addons.features.market.MarketKeys.register();
         ZoomFeature.register();
         net.alpaka.addons.features.chat.ChatPeekFeature.register();
+        // Before ChatOverHud, which hands the player list over as it stands after this replaced it.
+        net.alpaka.addons.features.tablist.CustomTabFeature.register();
         net.alpaka.addons.features.chat.ChatOverHud.register();
         net.alpaka.addons.features.chat.ChatSearchFeature.register();
         net.alpaka.addons.features.itemvalue.ItemValueFeature.register();
         net.alpaka.addons.features.chestvalue.ChestValueFeature.register();
         net.alpaka.addons.features.chat.ScreenshotPreview.register();
         CommandWheelFeature.register();
+        net.alpaka.addons.features.shortcuts.CommandShortcuts.register();
         InventoryHudFeature.register();
         // After the last of the mod's keys above; see AlpakaKeyBinds.
         AlpakaKeyBinds.finishRegistration();
         net.alpaka.addons.features.blaze.FirePitFeature.register();
         net.alpaka.addons.features.cosmetics.AuraFeature.register();
+        net.alpaka.addons.features.slayer.SlayerBossHighlight.register();
         net.alpaka.addons.features.damagetags.CustomDamageTagFeature.register();
         net.alpaka.addons.utils.DungeonState.register();
         net.alpaka.addons.features.dungeonmap.DungeonMapFeature.register();
@@ -77,6 +82,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.quickjoin.QuickJoin.register();
         net.alpaka.addons.features.chat.MessageFilterFeature.register();
         net.alpaka.addons.features.tooltip.OldMasterStarsFeature.register();
+        net.alpaka.addons.features.storagepreview.StoragePreviewFeature.register();
         net.alpaka.addons.features.ragnarock.RagnarockFeature.register();
         WorldAgeFeature.registerEvents();
         net.alpaka.addons.features.performance.PerformanceStats.register();

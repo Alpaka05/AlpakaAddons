@@ -4,10 +4,12 @@ import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.utils.DungeonState
 import net.alpaka.addons.utils.SkyblockUtils
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
+import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
 import net.minecraft.client.Minecraft
 import net.minecraft.client.player.AbstractClientPlayer
 import net.minecraft.client.player.LocalPlayer
 import net.minecraft.core.component.DataComponents
+import net.minecraft.network.chat.Component
 import net.minecraft.world.entity.player.PlayerSkin
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.saveddata.maps.MapDecoration
@@ -34,6 +36,15 @@ object DungeonMapFeature {
     /** Everyone on the clear map as of the last tick, the player last so they are drawn on top. */
     var players: List<ClearPlayer> = emptyList()
         private set
+    /** Room names and secret counts to draw, rebuilt when the map or a room changes. */
+    var labels: List<RoomLabel> = emptyList()
+        private set
+    /** Checkmark pixels the labels replace (see [RoomLabels.Result.cover]), with a revision for the texture. */
+    var cover: IntArray? = null
+        private set
+    var coverRevision = 0
+        private set
+    private var labelKey = ""
     private val tracks = HashMap<String, MarkerTrack>()
     private var party: List<PartyMember> = emptyList()
     private var mapId: MapId? = null
@@ -45,6 +56,14 @@ object DungeonMapFeature {
     @JvmStatic
     fun register() {
         ClientTickEvents.END_CLIENT_TICK.register { client -> tick(client) }
+        // "3/5 Secrets" on the action bar, also when another mod hides that part of it.
+        ClientReceiveMessageEvents.GAME.register { message, overlay -> if (overlay) onActionBar(message) }
+        ClientReceiveMessageEvents.GAME_CANCELED.register { message, overlay -> if (overlay) onActionBar(message) }
+    }
+
+    private fun onActionBar(message: Component) {
+        if (!AlpakaConfig.instance.dungeonMapEnabled || !DungeonState.inDungeon() || DungeonState.inBossRoom) return
+        DungeonRooms.onActionBar(SkyblockUtils.cleanColor(message.string))
     }
 
     private fun tick(client: Minecraft) {
@@ -57,6 +76,8 @@ object DungeonMapFeature {
         if (!cfg.dungeonMapEnabled) return
         if (DungeonState.inBossRoom) {
             players = emptyList()
+            // The saved map's labels still follow the options.
+            updateLabels()
             // Every half second, and sooner for a fast or teleporting player, so the view that follows
             // them stays on sampled terrain.
             val due = ticks % 10 == 0 || ticks % 2 == 0 && cfg.dungeonMapSmoothMarkers && BossRoomMap.drifted(client)
@@ -73,6 +94,10 @@ object DungeonMapFeature {
         }
         // The tab list only changes when someone dies or is revived; four reads a second are plenty.
         if (ticks % 5 == 0) party = DungeonParty.read(client)
+        // Rooms are recognized from loaded chunks, so the scan retries until each one has arrived.
+        if (ticks % 20 == 0) client.level?.let(DungeonRooms::scan)
+        DungeonRooms.track(player)
+        updateLabels()
         // Read every tick: markers that wait for the next read arrive late and step unevenly.
         val decorations = data.decorations.toList()
         watchOwnMarker(player, decorations)
@@ -81,6 +106,33 @@ object DungeonMapFeature {
             val now = now()
             tracks.values.removeIf { now - it.touched > 2000 }
         }
+    }
+
+    private fun updateLabels() {
+        val cfg = AlpakaConfig.instance
+        val inks = snapshot.inks
+        if (!cfg.dungeonMapRoomNames && !cfg.dungeonMapRoomSecrets || inks == null || !calibration.ready) {
+            labels = emptyList()
+            setCover(null)
+            return
+        }
+        // Again when the map, a room or an option changes, and every second for the calibration.
+        val key = "${snapshot.revision}/${DungeonRooms.revision}/${cfg.dungeonMapRoomNames}/" +
+            "${cfg.dungeonMapRoomSecrets}/${cfg.dungeonMapHideCheckmarks}"
+        if (key == labelKey && ticks % 20 != 0) return
+        labelKey = key
+        val result = RoomLabels.build(inks, DungeonRooms::room, calibration::cellX, calibration::cellY,
+            calibration.drawnRoomSize(), DungeonRooms::found, cfg.dungeonMapRoomNames, cfg.dungeonMapRoomSecrets,
+            cfg.dungeonMapHideCheckmarks)
+        labels = result.labels
+        for (label in result.labels) if (label.state == RoomState.COMPLETE) DungeonRooms.complete(label.room)
+        setCover(result.cover)
+    }
+
+    private fun setCover(value: IntArray?) {
+        if (value.contentEquals(cover)) return
+        cover = value
+        coverRevision++
     }
 
     private fun findMap(player: LocalPlayer) {
@@ -174,6 +226,10 @@ object DungeonMapFeature {
     fun reset() {
         mapId = null
         players = emptyList()
+        labels = emptyList()
+        setCover(null)
+        labelKey = ""
+        DungeonRooms.reset()
         party = emptyList()
         tracks.clear()
         stillTicks = 0

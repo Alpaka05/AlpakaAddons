@@ -68,6 +68,7 @@ class DisableAllFeaturesTest {
             "dungeonMapShowClear", "dungeonMapShowBoss", "dungeonMapBossMode", "dungeonMapScale",
             "dungeonMapBackground", "dungeonMapBlur", "dungeonMapFrame", "dungeonMapRoomColor",
             "dungeonMapPlayerHeads", "dungeonMapRotateHeads", "dungeonMapHeadBorder", "dungeonMapSmoothMarkers",
+            "dungeonMapRoomNames", "dungeonMapRoomSecrets", "dungeonMapHideCheckmarks",
             // Block Overlay
             "blockOutlineEnabled", "blockFillEnabled", "blockFadeInEnabled", "blockChromaEnabled",
             "blockIgnoreDepth", "blockIgnorePlants", "blockHideOnEtherwarp",

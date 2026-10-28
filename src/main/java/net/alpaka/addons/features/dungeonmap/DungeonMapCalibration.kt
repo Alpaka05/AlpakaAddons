@@ -19,6 +19,11 @@ class DungeonMapCalibration {
     /** Map pixels per block, 0 until known. */
     var scale = 0.0
         private set
+    /** Width of a drawn room in map pixels, read off the entrance; 0 until then. */
+    var roomSize = 0
+        private set
+    private var startX = 0
+    private var startY = 0
     private var roomX = Double.NaN
     private var roomY = Double.NaN
     private var sumX = 0.0
@@ -31,6 +36,24 @@ class DungeonMapCalibration {
 
     fun mapX(worldX: Double) = (worldX * scale + offset(roomX, sumX)).toFloat()
     fun mapY(worldZ: Double) = (worldZ * scale + offset(roomY, sumY)).toFloat()
+
+    /**
+     * The middle of world cell column [index]'s room squares on the map. Once the entrance has shown
+     * the grid, the position is snapped onto it, so labels sit exactly in the drawn rooms even when
+     * the offset comes from the marker.
+     */
+    fun cellX(index: Int) = snap(mapX(DungeonRooms.cellCenter(index).toDouble()), startX)
+    fun cellY(index: Int) = snap(mapY(DungeonRooms.cellCenter(index).toDouble()), startY)
+
+    /** Drawn room width, guessed from the scale while the entrance has not been measured. */
+    fun drawnRoomSize() = if (roomSize > 0) roomSize else Math.round(scale * 32 - 4).toInt()
+
+    private fun snap(raw: Float, start: Int): Float {
+        if (roomSize == 0) return raw
+        val pitch = roomSize + 4
+        val step = Math.round((raw - start - roomSize / 2f) / pitch)
+        return start + step * pitch + roomSize / 2f
+    }
 
     private fun offset(room: Double, sum: Double) = when {
         samples == 0 -> room
@@ -73,8 +96,9 @@ class DungeonMapCalibration {
         val pitch = size + 4
         setScale(pitch / 32.0)
         // 22 px is where the first room starts on the small floors, and 22 % 22 is 0.
-        val startX = (left % pitch).let { if (it == 0) pitch else it }
-        val startY = (top % pitch).let { if (it == 0) pitch else it }
+        startX = (left % pitch).let { if (it == 0) pitch else it }
+        startY = (top % pitch).let { if (it == 0) pitch else it }
+        roomSize = size
         roomX = startX + size / 2.0 + ROOM_CENTER * scale
         roomY = startY + size / 2.0 + ROOM_CENTER * scale
     }
@@ -115,6 +139,9 @@ class DungeonMapCalibration {
 
     fun reset() {
         scale = 0.0
+        roomSize = 0
+        startX = 0
+        startY = 0
         roomX = Double.NaN
         roomY = Double.NaN
         clearReadings()

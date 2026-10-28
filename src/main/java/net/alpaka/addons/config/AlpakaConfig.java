@@ -474,6 +474,10 @@ public class AlpakaConfig {
     public float dungeonMapBossRange = 96.0f;
     public float dungeonMapScale = 1.0f;
     public boolean dungeonMapTitle = true;
+    public boolean dungeonMapRoomNames = false;
+    public boolean dungeonMapRoomSecrets = false;
+    public boolean dungeonMapHideCheckmarks = true;
+    public float dungeonMapRoomLabelScale = 0.5f;
     public boolean dungeonMapPlayers = true;
     public boolean dungeonMapNames = false;
     public boolean dungeonMapPlayerHeads = true;

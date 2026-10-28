@@ -52,7 +52,39 @@ public final class DevScreenshotTour {
     /** The dev config's own wheel pages, put back after the wheel stops. */
     private static java.util.List<java.util.List<String>> savedWheelPages;
 
-    private static final List<Stop> STOPS = List.of(
+    private static final List<Stop> STOPS = "leap-menu".equals(System.getenv(ENV)) ? List.of(
+            screen("leap-menu-settings", () -> AlpakaConfigScreen.openOnOption(null, "leap_menu_enabled")),
+            screen("leap-menu-map", () -> leapMenuPreview(true)),
+            screen("leap-menu-buttons", () -> leapMenuPreview(false))
+    ) : "dungeon-map".equals(System.getenv(ENV)) ? List.of(
+            screen("dungeon-map-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_enabled")),
+            screen("dungeon-map-head-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_player_heads")),
+            screen("dungeon-map-background-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_background")),
+            screen("dungeon-map-color-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_room_color")),
+            screen("dungeon-map-hud", () -> dungeonMapPreview(false, false)),
+            screen("dungeon-map-both", () -> dungeonMapPreview(true, false)),
+            screen("dungeon-map-transparent", () -> dungeonMapPreview(true, true)),
+            screen("dungeon-map-upright-heads", () -> {
+                HudEditorScreen editor = dungeonMapPreview(false, false);
+                AlpakaConfig.instance.dungeonMapRotateHeads = false;
+                AlpakaConfig.instance.dungeonMapNames = true;
+                AlpakaConfig.instance.dungeonMapMarkerScale = 1.5f;
+                return editor;
+            }),
+            screen("dungeon-map-room-labels", () -> {
+                HudEditorScreen editor = dungeonMapPreview(false, false);
+                AlpakaConfig.instance.dungeonMapRoomNames = true;
+                AlpakaConfig.instance.dungeonMapRoomSecrets = true;
+                AlpakaConfig.instance.dungeonMapScale = 1.5f;
+                return editor;
+            }),
+            screen("dungeon-map-room-label-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_room_names")),
+            screen("dungeon-map-arrows", () -> {
+                HudEditorScreen editor = dungeonMapPreview(false, false);
+                AlpakaConfig.instance.dungeonMapPlayerHeads = false;
+                return editor;
+            })
+    ) : List.of(
             // With the mouse in the top-right corner, so the avatar visibly looks up and towards it.
             new Stop("main-menu", () -> {
                 Minecraft.getInstance().gui.setScreen(new CustomMainMenuScreen());
@@ -176,6 +208,44 @@ public final class DevScreenshotTour {
     private static int ticks = 0;
     private static int stop = -1;
     private static boolean done = false;
+
+    /** A focused map tour uses the normal HUD editor and only changes this dev client's config. */
+    private static HudEditorScreen dungeonMapPreview(boolean both, boolean transparent) {
+        AlpakaConfig.instance.dungeonMapEnabled = true;
+        AlpakaConfig.instance.dungeonMapBossMode = both ? 2 : 0;
+        AlpakaConfig.instance.dungeonMapBackground = !transparent;
+        AlpakaConfig.instance.dungeonMapFrame = !transparent;
+        AlpakaConfig.instance.dungeonMapScale = 0.8f;
+        AlpakaConfig.instance.dungeonMapX = 220;
+        AlpakaConfig.instance.dungeonMapY = 50;
+        AlpakaConfig.instance.dungeonMapPlayerHeads = true;
+        AlpakaConfig.instance.dungeonMapRotateHeads = true;
+        AlpakaConfig.instance.dungeonMapNames = false;
+        AlpakaConfig.instance.dungeonMapMarkerScale = 1.0f;
+        AlpakaConfig.instance.dungeonMapRoomNames = false;
+        AlpakaConfig.instance.dungeonMapRoomSecrets = false;
+        return new HudEditorScreen(null);
+    }
+
+    /** A Spirit Leap chest with four teammates, one of them dead, as Hypixel sends it. */
+    private static net.minecraft.client.gui.screens.Screen leapMenuPreview(boolean map) {
+        AlpakaConfig.instance.leapMenuShowMap = map;
+        var player = Minecraft.getInstance().player;
+        var chest = new net.minecraft.world.SimpleContainer(27);
+        String[][] team = {{"Alpaka05", "HEALER"}, {"Technoblade", "BERSERK"}, {"Dream", "MAGE"}, {"Grian", "TANK"}};
+        for (int i = 0; i < team.length; i++) {
+            var head = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.PLAYER_HEAD);
+            head.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, net.minecraft.network.chat.Component.literal("§b" + team[i][0]));
+            head.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(List.of(
+                    net.minecraft.network.chat.Component.literal(i == 3 ? "§cThis player is dead!" : "§7Click to teleport!"))));
+            chest.setItem(11 + i, head);
+            net.alpaka.addons.features.leapmenu.LeapMenu.INSTANCE.rememberClass(team[i][0],
+                    net.alpaka.addons.features.leapmenu.DungeonClass.valueOf(team[i][1]));
+        }
+        var menu = net.minecraft.world.inventory.ChestMenu.threeRows(0, player.getInventory(), chest);
+        return new net.alpaka.addons.features.leapmenu.LeapMenuScreen(menu, player.getInventory(),
+                net.minecraft.network.chat.Component.literal("Spirit Leap"), true);
+    }
 
     private DevScreenshotTour() {}
 

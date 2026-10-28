@@ -21,17 +21,23 @@ public class DamageTagFeature {
     private static final Pattern DAMAGE_NUMBER = Pattern.compile("^(?:\\d{1,3}(?:,\\d{3})*|\\d+(?:\\.\\d+)?[kKmMbB])$");
 
     /**
-     * The heart Hypixel puts after a hit the Ring of Love accessory doubled. Matched in both forms
-     * so a resource pack or font swap between the two does not lose the tag.
+     * The marks Hypixel puts after the number to say what kind of hit it was: Ring of Love's heart
+     * (in both forms, so a resource pack or font swap between the two does not lose it), magic damage
+     * {@code ✷}, and the {@code ⚔ + ☄ ♞ ﬗ} of Tara armor, the End Stone Sword, Voodoo Doll and the
+     * Guardian pet. Taken from SkyHanni's damage pattern.
      */
-    private static final char LOVE_HEART = '❤';
-    private static final char LOVE_HEART_ALT = '♥';
+    private static final String MARKS = "❤♥✷⚔+☄♞ﬗ";
+
+    /** The stars around a crit: {@code ✧}, or {@code ✯} when Overload made it. */
+    private static boolean isCritStar(char c) {
+        return c == '✧' || c == '✦' || c == '✯';
+    }
 
     /** Damage splashes are short-lived; an armor stand older than this is a hologram, not a splash. */
     private static final int MAX_TAG_AGE_TICKS = 300;
 
     /** What a stand's cached verdict holds for a name that is no splash, so that is remembered too. */
-    private static final Splash NO_SPLASH = new Splash("", false, false);
+    private static final Splash NO_SPLASH = new Splash("", false, "");
 
     public static boolean shouldHideEntity(Entity entity) {
         return shouldHideNameTag(entity);
@@ -56,9 +62,9 @@ public class DamageTagFeature {
 
     /**
      * A damage splash read off its armor stand: the number as Hypixel wrote it, whether it crit, and
-     * whether Ring of Love doubled it (the heart after the number).
+     * the marks after it ({@link #MARKS}, empty for none), which the custom tags draw again.
      */
-    public record Splash(String number, boolean crit, boolean love) {}
+    public record Splash(String number, boolean crit, String marks) {}
 
     /** The splash this entity shows, or null when it is not a young armor stand named like one. */
     public static Splash parseSplash(Entity entity) {
@@ -94,25 +100,29 @@ public class DamageTagFeature {
         if (customName.contains("§l")) return null;
 
         // One pass instead of stripping the colors, trimming and replacing the decoration: formatting
-        // codes, the crit stars, Ring of Love's heart, the asterisks some splashes carry and every
-        // space are set aside, and what is left is the number.
+        // codes, the crit stars, the asterisks some splashes carry and every space are set aside, the
+        // marks are collected, and what is left is the number. A mark only ever follows the number, so
+        // one before it or a digit after it means the name is something else.
         StringBuilder number = new StringBuilder(customName.length());
+        StringBuilder marks = null;
         boolean crit = false;
-        boolean love = false;
         for (int i = 0; i < customName.length(); i++) {
             char c = customName.charAt(i);
             if (c == '§') {
                 i++; // The code's second character belongs to the code, whatever it is.
-            } else if (c == '✧' || c == '✦') {
+            } else if (isCritStar(c)) {
                 crit = true;
-            } else if (c == LOVE_HEART || c == LOVE_HEART_ALT) {
-                love = true;
+            } else if (MARKS.indexOf(c) >= 0) {
+                if (number.isEmpty()) return null;
+                if (marks == null) marks = new StringBuilder(2);
+                marks.append(c);
             } else if (c != '*' && !Character.isWhitespace(c)) {
+                if (marks != null) return null;
                 number.append(c);
             }
         }
         if (number.isEmpty() || !DAMAGE_NUMBER.matcher(number).matches()) return null;
-        return new Splash(number.toString(), crit, love);
+        return new Splash(number.toString(), crit, marks == null ? "" : marks.toString());
     }
 
     /** A damage tag that did not crit: what Only Show Crit Damage hides. A crit always stays. */
@@ -174,6 +184,6 @@ public class DamageTagFeature {
         return (c >= '0' && c <= '9')
                 || c == ',' || c == '.' || c == '*' || Character.isWhitespace(c)
                 || c == 'k' || c == 'K' || c == 'm' || c == 'M' || c == 'b' || c == 'B'
-                || c == '✧' || c == '✦' || c == LOVE_HEART || c == LOVE_HEART_ALT;
+                || isCritStar(c) || MARKS.indexOf(c) >= 0;
     }
 }

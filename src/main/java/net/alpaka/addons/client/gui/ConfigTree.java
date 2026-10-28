@@ -104,7 +104,7 @@ public final class ConfigTree {
             "container_bg_opacity", "inventory_snow", "scrollable_tooltips", "persistent_item_name", "old_master_stars", "wide_health_bar",
             "better_chat", "chat_search", "chat_copy", "expand_chat_history", "compact_chat", "message_filter",
             "mention_notification", "chat_peek", "better_screenshot_message", "chat_tabs",
-            "player_model_enabled", "performance_hud_enabled", "inventory_hud_enabled",
+            "player_model_enabled", "performance_hud_enabled", "inventory_hud_enabled", "custom_tab",
             // Item viewmodel: the adjustments are the modifiers' own settings
             "item_size_feature", "item_starlight", "item_motion_blur", "item_viewmodel_reset",
             // Block overlay: one feature, outline, fill, animation and filters its settings
@@ -143,6 +143,8 @@ public final class ConfigTree {
             Map.entry("performance_hud_blur", "performance_hud_enabled"),
             Map.entry("performance_hud_smooth_font", "performance_hud_enabled"),
             Map.entry("inventory_hud_blur", "inventory_hud_enabled"),
+            Map.entry("custom_tab_blur", "custom_tab"),
+            Map.entry("custom_tab_smooth_font", "custom_tab"),
             Map.entry("notification_blur", "#Notification Customization"),
             Map.entry("notification_smooth_font", "#Notification Customization")
     );
@@ -191,7 +193,7 @@ public final class ConfigTree {
                             "#Hide Fire Overlay", "#Nametags", "render_hand_third_person", "smooth_perspective", "disable_front_perspective", "zoom"},
                     {"Interface", "inventory_hud_enabled", "player_model_enabled", "performance_hud_enabled", "container_bg_opacity",
                             "hide_inventory_effects",
-                            "scrollable_tooltips", "persistent_item_name", "old_master_stars", "wide_health_bar", "#Scoreboard"},
+                            "scrollable_tooltips", "persistent_item_name", "old_master_stars", "wide_health_bar", "custom_tab", "#Scoreboard"},
                     {"Chat", "better_chat", "chat_tabs", "chat_search", "chat_copy", "chat_peek", "compact_chat",
                             "message_filter", "expand_chat_history", "mention_notification", "better_screenshot_message"},
                     {"Viewmodel", "item_size_feature", "#Swing Customizations", "item_starlight", "item_motion_blur",

@@ -747,6 +747,29 @@ public class AlpakaConfig {
     public boolean wideHealthBarCentered = false;
     /** Absorption hearts: 0 a row of their own, 1 gold over the first hearts, 2 hidden. */
     public int wideHealthBarAbsorption = 0;
+    /**
+     * Custom Tab: SkyBlock's player list on one panel, sorted into its categories. Layout 0 puts the
+     * categories next to each other, 1 under each other. See CustomTabFeature.
+     */
+    public boolean customTabEnabled = false;
+    public boolean customTabBlur = true;
+    public boolean customTabSmoothFont = true;
+    public int customTabLayout = 0;
+    public boolean customTabHideAds = true;
+    public boolean customTabToggle = false;
+    /** The list stays up in the chat and in inventories and chests, drawn above them. */
+    public boolean customTabInMenus = false;
+    /** Hypixel's progress drawn as bars: its pipe bars, counts toward a goal, skill percentages. */
+    public boolean customTabProgressBars = true;
+    /** A row lights up for a moment when its value changes. */
+    public boolean customTabHighlightChanges = true;
+    /** Each widget (Area, Profile, Pet, ...) in a faint box of its own. */
+    public boolean customTabSectionBoxes = true;
+    /** The panel behind the list; off leaves only the text. */
+    public boolean customTabBackground = true;
+    /** The list slides down out of the top edge and back up instead of appearing at once. */
+    public boolean customTabAnimated = true;
+    public float customTabScale = 1.0f;
 
     /** A Hypixel party invite raises a notification: Y joins, N dismisses. */
     public boolean partyInvitePromptEnabled = true;
@@ -1503,6 +1526,7 @@ public class AlpakaConfig {
         this.playerModelEnabled = false;
         this.performanceHudEnabled = false;
         this.slayerHudEnabled = false;
+        this.customTabEnabled = false;
         this.allowApiCalls = false;
         this.slayerTimerEnabled = false;
         this.ragnarockEnabled = false;

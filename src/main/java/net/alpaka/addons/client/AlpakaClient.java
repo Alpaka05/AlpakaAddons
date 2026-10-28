@@ -58,6 +58,8 @@ public class AlpakaClient implements ClientModInitializer {
                 client -> net.alpaka.addons.config.AlpakaStats.tick());
         ZoomFeature.register();
         net.alpaka.addons.features.chat.ChatPeekFeature.register();
+        // Before ChatOverHud, which hands the player list over as it stands after this replaced it.
+        net.alpaka.addons.features.tablist.CustomTabFeature.register();
         net.alpaka.addons.features.chat.ChatOverHud.register();
         net.alpaka.addons.features.chat.ChatSearchFeature.register();
         net.alpaka.addons.features.itemvalue.ItemValueFeature.register();

@@ -24,6 +24,7 @@
     "LightningBoltMixin",
     "LivingEntityMixin",
     "LivingEntityRendererMixin",
+    "MinecraftFrameMixin",
     "NameTagFeatureRendererMixin",
     "NameTagSubmitMixin",
     "ParticleEngineMixin",

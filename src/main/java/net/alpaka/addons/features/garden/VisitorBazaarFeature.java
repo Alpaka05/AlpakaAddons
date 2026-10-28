@@ -40,7 +40,7 @@ public final class VisitorBazaarFeature {
         for (Component line : lore.lines()) lines.add(line.getString());
         String item = missingItem(stack.getHoverName().getString(), lines);
         if (item == null) return false;
-        Outbound.command("bz " + item, Outbound.Cause.CLICK);
+        Outbound.command("bz " + item, Outbound.Cause.MENU_CLICK);
         return true;
     }
 

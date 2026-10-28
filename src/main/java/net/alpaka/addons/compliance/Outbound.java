@@ -30,8 +30,8 @@ public final class Outbound {
         KEY_PRESS,
         /** Released or clicked a command wheel segment. */
         WHEEL,
-        /** Clicked a slot in a menu, such as a garden visitor's Accept Offer. */
-        CLICK
+        /** Clicked the mod's drawing of a slot in an open menu, such as a player in the Leap Menu. */
+        MENU_CLICK
     }
 
     /** The same command again this soon is taken as a double input and dropped. */

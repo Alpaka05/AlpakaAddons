@@ -443,19 +443,23 @@ object SlayerBossEntityTracker {
 
     /**
      * Whether a raw name tag is an owner line, and whose: true when it names [playerName], false when
-     * it names somebody else, null when it is no owner line at all. Reads both the old
-     * "Spawned by: <player>" and the current "<player>'s SLAYER BOSS".
+     * it names somebody else, null when it is no owner line at all. Reads the current
+     * "<player>'s SLAYER BOSS", and with [legacy] the old "Spawned by: <player>" as well.
+     *
+     * Without [legacy] only a slayer boss's line counts: Hypixel still writes "Spawned by:" over
+     * other mobs a player summons, such as the Great Spook's Primal Fear.
      *
      * Checked on the raw name first, before anything is stripped; see [findBossNameTag].
      */
     @JvmStatic
-    fun ownerLine(raw: String, playerName: String): Boolean? {
+    @JvmOverloads
+    fun ownerLine(raw: String, playerName: String, legacy: Boolean = true): Boolean? {
         if (SkyblockUtils.containsIgnoringFormatting(raw, OWNER_SUFFIX)) {
             val name = SkyblockUtils.cleanColor(raw)
             val at = name.indexOf(OWNER_SUFFIX)
             return at >= 0 && namesPlayer(name.substring(0, at), playerName)
         }
-        if (SkyblockUtils.containsIgnoringFormatting(raw, OWNER_MARKER)) {
+        if (legacy && SkyblockUtils.containsIgnoringFormatting(raw, OWNER_MARKER)) {
             val name = SkyblockUtils.cleanColor(raw)
             val at = name.indexOf(OWNER_MARKER)
             return at >= 0 && namesPlayer(name.substring(at + OWNER_MARKER.length), playerName)

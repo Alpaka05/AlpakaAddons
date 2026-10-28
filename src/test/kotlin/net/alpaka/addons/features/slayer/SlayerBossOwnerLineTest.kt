@@ -24,6 +24,13 @@ class SlayerBossOwnerLineTest {
     }
 
     @Test
+    fun withoutLegacyOnlyTheSlayerBossLineCounts() {
+        // The Great Spook's Primal Fear carries the old line, and is no slayer boss.
+        assertNull(SlayerBossEntityTracker.ownerLine("§eSpawned by: §6Alpakaa", "Alpakaa", legacy = false))
+        assertEquals(true, SlayerBossEntityTracker.ownerLine("§eAlpakaa's §c§lSLAYER BOSS", "Alpakaa", legacy = false))
+    }
+
+    @Test
     fun otherTagsAreNoOwnerLine() {
         assertNull(SlayerBossEntityTracker.ownerLine("§8§lASHEN §6♨6 04:08", "Alpakaa"))
         assertNull(SlayerBossEntityTracker.ownerLine("§8[Lv999] §c☠ ⓉⓎⓅⒽⓄⒺⓊⓈ §a1.4M§f/§a10M§c❤", "Alpakaa"))

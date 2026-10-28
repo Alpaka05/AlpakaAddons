@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(AbstractContainerScreen.class)
-public abstract class AbstractContainerScreenMixin {
+public abstract class AbstractContainerScreenVisitorMixin {
 
     /** Visitor Bazaar Shortcut: a refused Accept Offer click opens the bazaar instead. */
     @Inject(method = "slotClicked", at = @At("HEAD"), cancellable = true)

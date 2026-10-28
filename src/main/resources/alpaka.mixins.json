@@ -43,7 +43,7 @@
     "ClientPacketListenerPackCacheMixin",
     "ClientCommonPacketListenerPackCacheMixin",
     "ClientPacketListenerMixin",
-    "AbstractContainerScreenMixin"
+    "AbstractContainerScreenVisitorMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -4,6 +4,7 @@
   "compatibilityLevel": "JAVA_21",
   "plugin": "net.alpaka.addons.compat.OptionalHooksPlugin",
   "client": [
+    "AbstractContainerScreenStoragePreviewMixin",
     "AtmosphericFogEnvironmentMixin",
     "AvatarRendererMixin",
     "BlazeModelMixin",

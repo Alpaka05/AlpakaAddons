@@ -437,6 +437,13 @@ public class AlpakaConfig {
     public boolean slayerTimerChatEnabled = true;
     /** Show the running time on screen while the boss is up. */
     public boolean slayerTimerHudEnabled = true;
+    /** Highlight the player's own slayer boss. */
+    public boolean slayerBossHighlightEnabled = true;
+    /** How the boss is highlighted, an index into SlayerBossHighlight.STYLE_NAMES. */
+    public int slayerBossHighlightStyle = 0;
+    public int slayerBossHighlightColor = 0xFFFF5555;
+    /** On the Blaze slayer, color the boss and its demons by their current attunement. */
+    public boolean slayerBossHighlightAttunement = true;
     /** The Ragnarock's cast countdown under the crosshair instead of in the action bar. */
     // Saved as ragAxeCountdownEnabled before the feature was renamed; read that too so the setting carries over.
     @SerializedName(value = "ragnarockEnabled", alternate = "ragAxeCountdownEnabled")
@@ -1465,6 +1472,7 @@ public class AlpakaConfig {
         this.hideInventoryEffects = false;
         this.cleanBlazeEnabled = false;
         this.blazeFirePitsEnabled = false;
+        this.slayerBossHighlightEnabled = false;
         this.hideSlayerChatMessages = false;
         this.stopBlazeSpinning = false;
         this.hideHurtOverlayEnabled = false;

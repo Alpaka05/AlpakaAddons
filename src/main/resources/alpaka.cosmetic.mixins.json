@@ -23,6 +23,7 @@
     "LightmapMixin",
     "LightningBoltMixin",
     "LivingEntityMixin",
+    "LivingEntityRenderStateMixin",
     "LivingEntityRendererMixin",
     "NameTagFeatureRendererMixin",
     "NameTagSubmitMixin",

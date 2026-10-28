@@ -10,6 +10,7 @@ import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.wheel.WheelMesh;
 import net.alpaka.addons.utils.SkyblockUtils;
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
@@ -664,7 +665,7 @@ public class MarketScreen extends ContainerScreen {
             rowY = groupStart(graphics, "More", x, rowY, w, compact, first);
             for (int slot : m.extras) {
                 rowY = sideRow(graphics, mx, my, inClip, rowX, rowY, rowW, rowH, clipY, clipH, slot, plain(slot).name(), null, stack(slot),
-                        takesCreateKey(slot) ? "C" : null);
+                        takesCreateKey(slot) ? createKeyLabel() : null);
             }
         }
 
@@ -1512,13 +1513,21 @@ public class MarketScreen extends ContainerScreen {
 
     /**
      * Whether this is the Auction House's Create Auction button, the one thing done from Manage
-     * Auctions besides looking; it takes the key C. Remembers it for the key when it is.
+     * Auctions besides looking; it takes the Create Auction key (C unless rebound). Remembers it for
+     * the key when it is.
      */
     private boolean takesCreateKey(int slot) {
         if (kind != MarketKind.AUCTION_HOUSE || keyCreateAuction != null || !Markets.hotkeys(kind)) return false;
+        KeyMapping create = MarketKeys.of(kind).createAuction();
+        if (create == null || create.isUnbound()) return false;
         if (!plain(slot).name().trim().equalsIgnoreCase("Create Auction")) return false;
         keyCreateAuction = slot;
         return true;
+    }
+
+    /** The Create Auction key as its chip shows it. */
+    private static String createKeyLabel() {
+        return MarketKeys.AUCTION_HOUSE.createAuction().getTranslatedKeyMessage().getString();
     }
 
     /** The next key, 1 to 9, that picks a category with Shift; 0 once all nine are taken. */
@@ -1655,7 +1664,8 @@ public class MarketScreen extends ContainerScreen {
             for (int slot : m.extras) {
                 String label = AlpakaStyle.ellipsize(this.font, plain(slot).name(), 90);
                 boolean createKey = takesCreateKey(slot);
-                int ew = GuiFont.width(this.font, label) + 26 + (createKey ? 14 : 0);
+                String createLabel = createKey ? createKeyLabel() : null;
+                int ew = GuiFont.width(this.font, label) + 26 + (createKey ? GuiFont.width(this.font, createLabel) + 8 : 0);
                 ex -= ew;
                 if (ex < lx + 4) break;
                 boolean hover = AlpakaStyle.inside(mx, my, ex, by, ew, 16);
@@ -1666,7 +1676,7 @@ public class MarketScreen extends ContainerScreen {
                 graphics.item(stack(slot), 0, 0);
                 graphics.pose().popMatrix();
                 graphics.text(this.font, GuiFont.text(label), ex + 18, by + 4, hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT, false);
-                if (createKey) keyChip(graphics, "C", ex + ew - 4, by + 4, 1f);
+                if (createKey) keyChip(graphics, createLabel, ex + ew - 4, by + 4, 1f);
                 hits.add(new Hit(ex, by, ew, 16, (b, s) -> click(slot, b, s), false));
                 if (hover) hoveredStack = stack(slot);
                 ex -= 4;
@@ -1902,6 +1912,15 @@ public class MarketScreen extends ContainerScreen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        // A market key bound to a side button of the mouse, say back and forward for the pages.
+        if (!classic() && event.button() > 1 && model != null && Markets.hotkeys(kind)) {
+            Integer target = boundTarget(mapping -> mapping.matchesMouse(event));
+            if (target != null) {
+                AlpakaStyle.click();
+                click(target, 0, false, Outbound.Cause.KEY_PRESS);
+                return true;
+            }
+        }
         // Front-most first: later hits were drawn on top.
         for (int i = hits.size() - 1; i >= 0; i--) {
             Hit hit = hits.get(i);
@@ -1963,8 +1982,8 @@ public class MarketScreen extends ContainerScreen {
 
     /**
      * The slot a key presses: 1 to 9 the numbered actions or auctions, Shift with 1 to 9 the
-     * categories, the arrows the page, Ctrl or Cmd with F the search, Backspace the way back, C
-     * Create Auction.
+     * categories, Ctrl or Cmd with F the search, and the market's own keys (MarketKeys): the arrows
+     * the page, Backspace the way back, C Create Auction, unless rebound in the settings.
      */
     private Integer hotkeyTarget(KeyEvent event) {
         if (model == null) return null;
@@ -1981,13 +2000,19 @@ public class MarketScreen extends ContainerScreen {
             return digit < targets.size() ? targets.get(digit) : null;
         }
         if (shift) return null;
-        return switch (key) {
-            case GLFW.GLFW_KEY_C -> keyCreateAuction;
-            case GLFW.GLFW_KEY_LEFT -> model.controls.get(MarketMenu.Control.PREVIOUS);
-            case GLFW.GLFW_KEY_RIGHT -> model.controls.get(MarketMenu.Control.NEXT);
-            case GLFW.GLFW_KEY_BACKSPACE -> model.controls.get(MarketMenu.Control.BACK);
-            default -> null;
-        };
+        return boundTarget(mapping -> mapping.matches(event));
+    }
+
+    /** The slot the market's key that matches presses, or null when none does or its button is not shown. */
+    private Integer boundTarget(java.util.function.Predicate<KeyMapping> test) {
+        MarketKeys.Set keys = MarketKeys.of(kind);
+        java.util.function.Predicate<KeyMapping> matches = mapping -> !mapping.isUnbound() && test.test(mapping);
+        if (matches.test(keys.previousPage())) return model.controls.get(MarketMenu.Control.PREVIOUS);
+        if (matches.test(keys.nextPage())) return model.controls.get(MarketMenu.Control.NEXT);
+        if (matches.test(keys.back())) return model.controls.get(MarketMenu.Control.BACK);
+        if (matches.test(keys.search())) return model.controls.get(MarketMenu.Control.SEARCH);
+        if (keys.createAuction() != null && matches.test(keys.createAuction())) return keyCreateAuction;
+        return null;
     }
 
     /** "/" opens the search; read as a character, so it works wherever the keyboard has it. */

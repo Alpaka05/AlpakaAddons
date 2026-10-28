@@ -6,5 +6,14 @@
   "key.alpaka.command_wheel": "Command Wheel",
   "key.alpaka.inventory_hud": "Inventory HUD",
   "key.alpaka.item_value": "Item Value",
-  "key.alpaka.chest_value": "Chest Value"
+  "key.alpaka.chest_value": "Chest Value",
+  "key.alpaka.ah_previous_page": "Auction House: Previous Page",
+  "key.alpaka.ah_next_page": "Auction House: Next Page",
+  "key.alpaka.ah_back": "Auction House: Back",
+  "key.alpaka.ah_search": "Auction House: Search",
+  "key.alpaka.ah_create_auction": "Auction House: Create Auction",
+  "key.alpaka.bz_previous_page": "Bazaar: Previous Page",
+  "key.alpaka.bz_next_page": "Bazaar: Next Page",
+  "key.alpaka.bz_back": "Bazaar: Back",
+  "key.alpaka.bz_search": "Bazaar: Search"
 }

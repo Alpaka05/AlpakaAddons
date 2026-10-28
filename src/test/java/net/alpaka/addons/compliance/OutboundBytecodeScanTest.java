@@ -48,7 +48,7 @@ class OutboundBytecodeScanTest {
      */
     private static final Map<String, String> ALLOWED = Map.of(
             "compliance/Outbound",
-            "the gate: commands for a key press, click or Enter, and the Performance HUD's latency probe",
+            "the gate: commands for a key press, click or Enter, Quick Join's /skyblock and the Performance HUD's latency probe",
             "mixin/DownloadedPackSourceMixin",
             "answers a server resource pack that is already loaded the way vanilla answers one it just loaded",
             "mixin/ClientCommonPacketListenerPackCacheMixin",

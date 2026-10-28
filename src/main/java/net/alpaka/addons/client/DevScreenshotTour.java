@@ -89,6 +89,17 @@ public final class DevScreenshotTour {
             screen("config-viewmodel", () -> AlpakaConfigScreen.openOn("Viewmodel", "Viewmodel Modifiers")),
             screen("color-picker", () -> new ColorPickerScreen(null, "Accent Color", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
             screen("wheel-editor", () -> new CommandWheelConfigScreen(new CustomMainMenuScreen())),
+            new Stop("shortcuts-editor", () -> {
+                AlpakaConfig.instance.commandAliases = new java.util.ArrayList<>(List.of(
+                        new AlpakaConfig.CommandAlias("/v", "/visit"),
+                        new AlpakaConfig.CommandAlias("/pa", "/p accept"),
+                        new AlpakaConfig.CommandAlias("/v", "/viewrecipe")));
+                AlpakaConfig.instance.commandKeyShortcuts = new java.util.ArrayList<>(List.of(
+                        new AlpakaConfig.KeyShortcut("key.keyboard.y", 0, "/sb menu"),
+                        new AlpakaConfig.KeyShortcut("key.keyboard.h", 2, "/warp hub")));
+                Minecraft.getInstance().gui.setScreen(new CommandShortcutsConfigScreen(new CustomMainMenuScreen()));
+            }, () -> true, 30),
+            screen("config-shortcuts", () -> AlpakaConfigScreen.openOn("Main", "Command Shortcuts")),
             screen("hud-editor", () -> {
                 // Every HUD at its default place, as a fresh config has them.
                 for (net.alpaka.addons.client.hud.HudElement element : net.alpaka.addons.client.hud.HudRegistry.ELEMENTS) {

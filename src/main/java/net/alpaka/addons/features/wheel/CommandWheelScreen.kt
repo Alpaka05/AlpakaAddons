@@ -116,7 +116,7 @@ class CommandWheelScreen(
     override fun isPauseScreen(): Boolean = false
 
     override fun init() {
-        pages = CommandWheelPages.pages().map { ArrayList(it) }
+        pages = CommandWheelPages.pages(CommandWheelPages.activeWheel()).map { ArrayList(it) }
         showPage(lastPage)
     }
 

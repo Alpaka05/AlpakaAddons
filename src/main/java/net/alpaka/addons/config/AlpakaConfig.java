@@ -195,6 +195,8 @@ public class AlpakaConfig {
     public float containerBgOpacity = 0.75f;
     public boolean containerBgFadeInEnabled = true;
     public int containerBgFadeInDurationMs = 250;
+    /** Hides the potion effect list vanilla draws next to the inventory. */
+    public boolean hideInventoryEffects = false;
     /**
      * Clean Blaze, only on SkyBlock in the Blaze slayer's zones. The fields after it pick what it
      * hides.
@@ -203,11 +205,17 @@ public class AlpakaConfig {
     public boolean cleanBlazeParticles = true;
     /** The potion swirls, enchanting glyphs and ender particles around the boss and its demons. */
     public boolean cleanBlazeEffectParticles = true;
+    /** The dust in the Hellion Shield attunement's colour around the boss and its demons. */
+    public boolean cleanBlazeAttunementDust = true;
     public boolean cleanBlazeFire = true;
     public boolean cleanBlazeFireballs = true;
     public boolean cleanBlazeLightning = true;
     /** Off by default: the health on blaze name tags is what a grinder watches. */
     public boolean cleanBlazeNameTags = false;
+    /** "Strike using the ... attunement on your dagger!" lines in the Blaze zones. */
+    public boolean cleanBlazeWrongDaggerChat = true;
+    /** "Your hit was reduced by Hellion Shield!" and "You took ... damage from ..." in the Blaze zones. */
+    public boolean cleanBlazeDamageChat = true;
     /** During the player's own Blaze slayer boss, a glowing column over each fire pit block. */
     public boolean blazeFirePitsEnabled = true;
     /** ARGB color of the fire pit column; its alpha scales the column's own fade. Default hot red-orange. */
@@ -429,6 +437,13 @@ public class AlpakaConfig {
     public boolean slayerTimerChatEnabled = true;
     /** Show the running time on screen while the boss is up. */
     public boolean slayerTimerHudEnabled = true;
+    /** Highlight the player's own slayer boss. */
+    public boolean slayerBossHighlightEnabled = true;
+    /** How the boss is highlighted, an index into SlayerBossHighlight.STYLE_NAMES. */
+    public int slayerBossHighlightStyle = 0;
+    public int slayerBossHighlightColor = 0xFFFF5555;
+    /** On the Blaze slayer, color the boss and its demons by their current attunement. */
+    public boolean slayerBossHighlightAttunement = true;
     /** The Ragnarock's cast countdown under the crosshair instead of in the action bar. */
     // Saved as ragAxeCountdownEnabled before the feature was renamed; read that too so the setting carries over.
     @SerializedName(value = "ragnarockEnabled", alternate = "ragAxeCountdownEnabled")
@@ -620,6 +635,14 @@ public class AlpakaConfig {
     public boolean alwaysSprintEnabled = false;
     /** Always sprint stays off on the Garden, where farming wants walking speed. */
     public boolean alwaysSprintIgnoreGarden = false;
+    /** The cursor stays put when Hypixel swaps one menu for the next (backpack pages and the like). */
+    public boolean keepCursorPositionEnabled = true;
+    /** Quick Join's main switch. Off for fresh installs: it sends a command nobody typed. */
+    public boolean quickJoinEnabled = false;
+    /** Quick Join sends /skyblock once after joining Hypixel. */
+    public boolean quickJoinSkyblock = true;
+    /** Quick Join also connects to Hypixel as soon as the game has started. */
+    public boolean quickJoinOnLaunch = false;
     public boolean expandChatHistory = true;
     /** How many chat lines Expand Chat History keeps; vanilla keeps 100. */
     public int chatHistoryLimit = 5000;
@@ -668,6 +691,19 @@ public class AlpakaConfig {
     public boolean messageFilterFireSale = true;
     public boolean messageFilterWatchdog = true;
     public boolean messageFilterStash = true;
+    public boolean messageFilterSacks = true;
+    /** Dungeon chatter, only hidden inside a Catacombs run; one switch per group. */
+    public boolean messageFilterDungeonPrepare = true;
+    public boolean messageFilterDungeonStart = true;
+    public boolean messageFilterDungeonAmbience = true;
+    public boolean messageFilterDungeonPickup = true;
+    public boolean messageFilterDungeonReminder = true;
+    public boolean messageFilterDungeonBlessing = true;
+    public boolean messageFilterDungeonNotPossible = true;
+    public boolean messageFilterDungeonDamage = true;
+    public boolean messageFilterDungeonAbility = true;
+    public boolean messageFilterDungeonPuzzle = true;
+    public boolean messageFilterDungeonEnd = true;
     /** The player's own filters, made in the Message Filter's sub menu. */
     public java.util.List<net.alpaka.addons.features.chat.CustomMessageFilter> messageFilterCustom = new java.util.ArrayList<>();
     /** All / Party / Guild / PMs tabs above the chat input. */
@@ -785,6 +821,12 @@ public class AlpakaConfig {
     public java.util.List<java.util.List<String>> commandWheelPages = null;
 
     /**
+     * Wheels of single Skyblock profiles, keyed "account uuid:profile", pages as above. A profile
+     * listed here opens its own wheel; every other one opens {@link #commandWheelPages}.
+     */
+    public java.util.Map<String, java.util.List<java.util.List<String>>> commandWheelProfilePages = new java.util.HashMap<>();
+
+    /**
      * Off: hold the wheel key to open the wheel, release it to run the aimed command. On: one press
      * opens it, a click runs a command, and pressing the key again closes it.
      */
@@ -825,6 +867,45 @@ public class AlpakaConfig {
             "/pets",
             "/pv"
     ));
+
+    // Command Shortcuts; see CommandShortcuts.
+    public boolean commandShortcutsEnabled = true;
+    /** Typed aliases: "/v Steve" goes out as "/visit Steve". */
+    public java.util.List<CommandAlias> commandAliases = new java.util.ArrayList<>();
+    /** Keys that run a command with no screen open: Y for "/sb menu". */
+    public java.util.List<KeyShortcut> commandKeyShortcuts = new java.util.ArrayList<>();
+
+    /** One alias, both sides without their slash: "v" stands for "visit". */
+    public static class CommandAlias {
+        public String alias = "";
+        public String command = "";
+
+        public CommandAlias() {}
+
+        public CommandAlias(String alias, String command) {
+            this.alias = alias;
+            this.command = command;
+        }
+    }
+
+    /**
+     * One key shortcut: the key by its InputConstants name ("key.keyboard.y"), the modifier keys
+     * held with it (GLFW's MOD_SHIFT, MOD_CONTROL, MOD_ALT, MOD_SUPER bits), and the command
+     * without its slash. An empty key is not bound yet.
+     */
+    public static class KeyShortcut {
+        public String key = "";
+        public int modifiers = 0;
+        public String command = "";
+
+        public KeyShortcut() {}
+
+        public KeyShortcut(String key, int modifiers, String command) {
+            this.key = key;
+            this.modifiers = modifiers;
+            this.command = command;
+        }
+    }
 
     // Item viewmodel options
     public boolean itemSizeFeatureEnabled = false;
@@ -1411,8 +1492,10 @@ public class AlpakaConfig {
         this.skyEffectsEnabled = false;
         this.inventorySnowEnabled = false;
         this.containerBgFadeInEnabled = false;
+        this.hideInventoryEffects = false;
         this.cleanBlazeEnabled = false;
         this.blazeFirePitsEnabled = false;
+        this.slayerBossHighlightEnabled = false;
         this.hideSlayerChatMessages = false;
         this.stopBlazeSpinning = false;
         this.hideHurtOverlayEnabled = false;
@@ -1466,6 +1549,8 @@ public class AlpakaConfig {
         this.chatSearchEnabled = false;
         this.chatCopyEnabled = false;
         this.alwaysSprintEnabled = false;
+        this.keepCursorPositionEnabled = false;
+        this.quickJoinEnabled = false;
         this.expandChatHistory = false;
         this.chatPeekEnabled = false;
         this.betterScreenshotMessageEnabled = false;

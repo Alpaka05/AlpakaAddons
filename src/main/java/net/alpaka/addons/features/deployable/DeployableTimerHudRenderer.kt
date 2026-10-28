@@ -11,6 +11,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.ChatScreen
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
 import kotlin.math.ceil
 
 /**
@@ -34,7 +35,16 @@ object DeployableTimerHudRenderer {
     /** Each kind's head, built once; building one means a profile and a skin lookup. */
     private val icons = EnumMap<Deployable, ItemStack>(Deployable::class.java)
 
-    private fun icon(type: Deployable): ItemStack = icons.getOrPut(type) { ItemIcons.head(type.textureValue()) }
+    /**
+     * Null until a world has been joined: items get their components only then, and building a stack
+     * before that throws. The HUD editor can be opened from the title screen, where the sample is drawn
+     * without its head.
+     */
+    private fun icon(type: Deployable): ItemStack? {
+        icons[type]?.let { return it }
+        if (!Items.PLAYER_HEAD.builtInRegistryHolder().areComponentsBound()) return null
+        return ItemIcons.head(type.textureValue()).also { icons[type] = it }
+    }
 
     /** Green while more than half is left, yellow down to a fifth, then red. */
     private fun color(active: DeployableTracker.Active): Int {
@@ -75,7 +85,7 @@ object DeployableTimerHudRenderer {
         if (cfg.blurOn(cfg.deployableTimerHudBlur)) {
             HudPanel.aroundText(graphics, ICON_SIZE + ICON_GAP + font.width(time), ICON_SIZE, scale)
         }
-        graphics.item(icon(active.type()), 0, 0)
+        icon(active.type())?.let { graphics.item(it, 0, 0) }
         graphics.text(font, time, ICON_SIZE + ICON_GAP, TEXT_Y, color(active), HudPanel.TEXT_SHADOW)
         graphics.pose().popMatrix()
     }

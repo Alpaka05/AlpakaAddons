@@ -66,15 +66,18 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.chestvalue.ChestValueFeature.register();
         net.alpaka.addons.features.chat.ScreenshotPreview.register();
         CommandWheelFeature.register();
+        net.alpaka.addons.features.shortcuts.CommandShortcuts.register();
         InventoryHudFeature.register();
         // After the last of the mod's keys above; see AlpakaKeyBinds.
         AlpakaKeyBinds.finishRegistration();
         net.alpaka.addons.features.blaze.FirePitFeature.register();
         net.alpaka.addons.features.cosmetics.AuraFeature.register();
+        net.alpaka.addons.features.slayer.SlayerBossHighlight.register();
         net.alpaka.addons.features.damagetags.CustomDamageTagFeature.register();
         net.alpaka.addons.utils.DungeonState.register();
         net.alpaka.addons.features.notification.MentionNotifier.register();
         net.alpaka.addons.features.party.PartyInviteFeature.register();
+        net.alpaka.addons.features.quickjoin.QuickJoin.register();
         net.alpaka.addons.features.chat.MessageFilterFeature.register();
         net.alpaka.addons.features.tooltip.OldMasterStarsFeature.register();
         net.alpaka.addons.features.ragnarock.RagnarockFeature.register();

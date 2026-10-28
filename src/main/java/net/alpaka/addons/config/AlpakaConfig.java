@@ -488,7 +488,6 @@ public class AlpakaConfig {
     /** The mod's room and terrain colors; off keeps Hypixel's map colors and the blocks' own. */
     public boolean dungeonMapCustomColors = true;
     public int dungeonMapSelfColor = 0xFFFFFFFF;
-    public int dungeonMapPlayerColor = 0xFF55DDFF;
     public int dungeonMapTextColor = 0xFFE8EEEE;
     public boolean dungeonMapSmoothFont = true;
     public boolean dungeonMapBackground = true;
@@ -498,6 +497,11 @@ public class AlpakaConfig {
     public boolean dungeonMapFrame = true;
     public int dungeonMapFrameStart = 0xFF29B6B2;
     public int dungeonMapFrameEnd = 0xFFB04FFF;
+
+    // Door Highlight: wither and blood doors during the clear; the color's alpha is the fill's.
+    public boolean dungeonDoorHighlight = false;
+    public int dungeonDoorLockedColor = 0x50E04848;
+    public int dungeonDoorOpenableColor = 0x5055E68B;
 
     // Inventory HUD. Shows the 27 main-inventory slots on screen; position and scale are set in
     // the HUD editor, or it can ride directly above the hotbar.
@@ -1263,6 +1267,7 @@ public class AlpakaConfig {
         this.chatTabsEnabled = false;
         this.inventoryHudEnabled = false;
         this.dungeonMapEnabled = false;
+        this.dungeonDoorHighlight = false;
         this.bridgeBotFormatterEnabled = false;
         this.guildPrefixEnabled = false;
         this.itemSizeFeatureEnabled = false;

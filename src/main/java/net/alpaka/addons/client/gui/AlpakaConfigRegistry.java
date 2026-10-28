@@ -925,7 +925,7 @@ public class AlpakaConfigRegistry {
                 "dungeon map players"));
 
         OPTIONS.add(new ConfigOption("dungeon_map_player_icons", "Player Icons",
-                "Heads turn with the player. Upright Heads stay upright with an arrow circling them. Arrows draws arrows only.", ConfigCategory.DUNGEON,
+                "Heads turn with the player. Upright Heads stay upright with an arrow circling them. Arrows draws arrows only. Teammates are framed in their class's color, like in the Leap Menu.", ConfigCategory.DUNGEON,
                 () -> !AlpakaConfig.instance.dungeonMapPlayerHeads ? 2.0f : AlpakaConfig.instance.dungeonMapRotateHeads ? 0.0f : 1.0f,
                 v -> {
                     int icons = Math.round(v);
@@ -967,12 +967,6 @@ public class AlpakaConfigRegistry {
                 c -> c.dungeonMapSelfColor,
                 v -> { AlpakaConfig.instance.dungeonMapSelfColor = v; AlpakaConfig.save(); },
                 "dungeon map color self marker head border arrow"));
-
-        OPTIONS.add(ConfigOption.color("dungeon_map_player_color", "Teammate Color",
-                "Border of your teammates' heads, and their arrows.", ConfigCategory.DUNGEON,
-                c -> c.dungeonMapPlayerColor,
-                v -> { AlpakaConfig.instance.dungeonMapPlayerColor = v; AlpakaConfig.save(); },
-                "dungeon map color player teammate marker head border arrow"));
 
         OPTIONS.add(ConfigOption.color("dungeon_map_text_color", "Text Color",
                 "Color of the current room, player names and the labels of rooms nobody has cleared yet.", ConfigCategory.DUNGEON,
@@ -1021,6 +1015,25 @@ public class AlpakaConfigRegistry {
                 c -> c.dungeonMapFrameEnd,
                 v -> { AlpakaConfig.instance.dungeonMapFrameEnd = v; AlpakaConfig.save(); },
                 "dungeon map color frame end"));
+
+        OPTIONS.add(new ConfigOption("Door Highlight", ConfigCategory.DUNGEON));
+        OPTIONS.add(new ConfigOption("dungeon_door_highlight", "Door Highlight",
+                "Marks wither and blood doors during the clear: red while nobody has the key, green once your team has one. Only where you can see the door.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonDoorHighlight,
+                v -> { AlpakaConfig.instance.dungeonDoorHighlight = v; AlpakaConfig.save(); },
+                "dungeon door highlight wither blood key door esp"));
+
+        OPTIONS.add(ConfigOption.color("dungeon_door_locked_color", "Locked Door Color",
+                "Color of a door nobody has the key for. Its alpha sets how strongly the door is filled.", ConfigCategory.DUNGEON,
+                c -> c.dungeonDoorLockedColor,
+                v -> { AlpakaConfig.instance.dungeonDoorLockedColor = v; AlpakaConfig.save(); },
+                "dungeon door highlight color locked"));
+
+        OPTIONS.add(ConfigOption.color("dungeon_door_openable_color", "Openable Door Color",
+                "Color of a door your team has the key for.", ConfigCategory.DUNGEON,
+                c -> c.dungeonDoorOpenableColor,
+                v -> { AlpakaConfig.instance.dungeonDoorOpenableColor = v; AlpakaConfig.save(); },
+                "dungeon door highlight color openable key"));
 
         OPTIONS.add(new ConfigOption("Inventory HUD", ConfigCategory.VISUALS));
 

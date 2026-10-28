@@ -47,6 +47,8 @@ object DungeonMapRenderer {
     private const val PADDING = 6
     private const val HEADER = 12
     private const val CORNER_RADIUS = 6f
+    /** A teammate whose class the tab list has not shown. */
+    private const val UNKNOWN_CLASS = 0xFFB0B4BC.toInt()
 
     private fun panelWidth() = 128 + PADDING * 2
     private fun headerHeight() = if (AlpakaConfig.instance.dungeonMapCurrentRoom) HEADER else 0
@@ -173,7 +175,7 @@ object DungeonMapRenderer {
         // Saved clear positions are stale in the boss room and must not look live.
         if (!cfg.dungeonMapPlayers || !editing && DungeonState.inBossRoom) return
         if (editing) {
-            drawPlayer(g, 83f, 65f, -111f, false, "Teammate", previewTeammateSkin)
+            drawPlayer(g, 83f, 65f, -111f, false, "Teammate", previewTeammateSkin, "Healer")
             drawPlayer(g, 40f, 40f, 180f, true, "You", previewOwnSkin())
             return
         }
@@ -192,7 +194,7 @@ object DungeonMapRenderer {
         bossPreviewTexture.upload(if (custom) bossPreviewAlpaka else bossPreviewBlocks, if (custom) 1 else 2)
         bossPreviewTexture.draw(g)
         if (cfg.dungeonMapPlayers) {
-            drawPlayer(g, 80f, 45f, -111f, false, "Teammate", previewTeammateSkin)
+            drawPlayer(g, 80f, 45f, -111f, false, "Teammate", previewTeammateSkin, "Healer")
             drawPlayer(g, 64f, 64f, 180f, true, "You", previewOwnSkin())
         }
     }
@@ -322,13 +324,14 @@ object DungeonMapRenderer {
     }
 
     /**
-     * A player's head or arrow. [yaw] is the game's: 0 faces south, which is down on the map, while
+     * A player's head or arrow, framed in their class's color. [yaw] is the game's: 0 faces south, which is down on the map, while
      * both are drawn facing up.
      */
     private fun drawPlayer(g: GuiGraphicsExtractor, x: Float, y: Float, yaw: Float, self: Boolean, name: String?,
-                           skin: PlayerSkin?) {
+                           skin: PlayerSkin?, dungeonClass: String? = DungeonMapFeature.classOf(name)) {
         val cfg = AlpakaConfig.instance
-        val color = if (self) cfg.dungeonMapSelfColor else cfg.dungeonMapPlayerColor
+        // Teammates in their class's color, the same as in the Leap Menu.
+        val color = if (self) cfg.dungeonMapSelfColor else DungeonParty.classColor(dungeonClass) ?: UNKNOWN_CLASS
         val facing = (yaw + 180f) * DEGREES
         val scale = cfg.dungeonMapMarkerScale.coerceIn(0.5f, 2.5f)
         val face = if (cfg.dungeonMapPlayerHeads) skin else null

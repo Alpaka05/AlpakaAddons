@@ -29,7 +29,9 @@ public final class Outbound {
         /** Pressed a key, such as Y on a party invite. */
         KEY_PRESS,
         /** Released or clicked a command wheel segment. */
-        WHEEL
+        WHEEL,
+        /** Clicked the mod's drawing of a slot in an open menu, such as a player in the Leap Menu. */
+        MENU_CLICK
     }
 
     /** The same command again this soon is taken as a double input and dropped. */

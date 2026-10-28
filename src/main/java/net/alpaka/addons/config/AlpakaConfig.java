@@ -420,6 +420,8 @@ public class AlpakaConfig {
     // Saved as ragAxeCountdownEnabled before the feature was renamed; read that too so the setting carries over.
     @SerializedName(value = "ragnarockEnabled", alternate = "ragAxeCountdownEnabled")
     public boolean ragnarockEnabled = true;
+    /** Clicking a garden visitor's Accept Offer while items are missing opens the bazaar for them. */
+    public boolean visitorBazaarEnabled = true;
 
     // Deployable timer: the strongest power orb or flare in range, with its time left.
     public boolean deployableTimerEnabled = false;
@@ -1281,6 +1283,7 @@ public class AlpakaConfig {
         this.allowApiCalls = false;
         this.slayerTimerEnabled = false;
         this.ragnarockEnabled = false;
+        this.visitorBazaarEnabled = false;
         this.deployableTimerEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;

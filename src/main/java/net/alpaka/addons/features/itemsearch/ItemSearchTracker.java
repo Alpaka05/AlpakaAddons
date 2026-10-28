@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.itemsearch;
 
+import net.alpaka.addons.AlpakaAddons;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.utils.SkyblockUtils;
 import net.minecraft.client.Minecraft;
@@ -19,6 +20,8 @@ import net.minecraft.world.item.component.ItemLore;
 import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.ChestType;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,7 +52,11 @@ public final class ItemSearchTracker {
 
     /** A block right-clicked: remembered when it is a chest on the player's own island. */
     static void onUseBlock(BlockPos pos, BlockState state) {
-        if (!active() || !(state.getBlock() instanceof ChestBlock) || !onOwnIsland()) return;
+        if (!active() || !(state.getBlock() instanceof ChestBlock)) return;
+        if (!onOwnIsland()) {
+            AlpakaAddons.LOGGER.info("Item Search: chest at {} not tracked, not on your own island", pos);
+            return;
+        }
         BlockPos first = pos.immutable();
         BlockPos second = state.getValue(ChestBlock.TYPE) == ChestType.SINGLE ? null : ChestBlock.getConnectedBlockPos(first, state).immutable();
         // A large chest is saved under the same block whichever half was clicked.
@@ -64,6 +71,22 @@ public final class ItemSearchTracker {
         ItemSearchHighlight.chestOpened(first);
     }
 
+    /**
+     * A menu opened: if the player is looking at a chest on their island, that is the chest it
+     * belongs to. Covers the case where the right-click itself was not seen, as when another mod
+     * handled it first.
+     */
+    static void onMenuOpened() {
+        if (!active()) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || !(mc.hitResult instanceof BlockHitResult hit) || hit.getType() != HitResult.Type.BLOCK) return;
+        if (pendingChest != null && System.currentTimeMillis() - pendingChestAt < CHEST_WAIT_MS) return;
+        onUseBlock(hit.getBlockPos(), mc.level.getBlockState(hit.getBlockPos()));
+    }
+
+    /** For the log: the names of the stacks the last menu had that were left out for having no SkyBlock id. */
+    private static final List<String> dropped = new ArrayList<>();
+
     /** A menu closed: its contents are saved if it is one Item Search knows. */
     static void onMenuClosed(Component title, AbstractContainerMenu menu) {
         if (!active()) return;
@@ -73,10 +96,20 @@ public final class ItemSearchTracker {
             if (!(slot.container instanceof Inventory)) slots.add(slot);
         }
         long now = System.currentTimeMillis();
+        int filled = 0;
+        for (Slot slot : slots) if (!slot.getItem().isEmpty()) filled++;
 
         ItemSearchMenus.Menu parsed = ItemSearchMenus.parseTitle(text);
+        boolean chest = parsed == null && pendingChest != null && now - pendingChestAt < CHEST_WAIT_MS && isChestTitle(title, text);
+        AlpakaAddons.LOGGER.info("Item Search: closed \"{}\" ({} slots, {} filled) -> {}{}", text, slots.size(), filled,
+                parsed != null ? parsed : chest ? "island chest " + pendingChest : "not tracked",
+                parsed == null && !chest && pendingChest != null ? " (chest clicked " + (now - pendingChestAt) + " ms ago)" : "");
+        // Every one of Hypixel's menus has its frame and buttons; one with nothing in it closed
+        // before its items arrived, as when paging quickly, and must not wipe what was saved.
+        if (parsed != null && filled == 0) return;
+        dropped.clear();
         if (parsed == null) {
-            if (pendingChest != null && now - pendingChestAt < CHEST_WAIT_MS && isChestTitle(title, text)) {
+            if (chest) {
                 List<ItemSearchStore.Item> items = new ArrayList<>();
                 for (Slot slot : slots) add(items, slot.getItem());
                 BlockPos pos = pendingChest;
@@ -97,6 +130,7 @@ public final class ItemSearchTracker {
             case SACKS -> saveSack(parsed, slots, now);
             default -> {}
         }
+        if (!dropped.isEmpty()) AlpakaAddons.LOGGER.info("Item Search: left out (no SkyBlock id): {}", dropped);
     }
 
     private static void saveRange(ItemSearchMenus.Menu menu, List<Slot> slots, int from, int to, long now) {
@@ -115,6 +149,8 @@ public final class ItemSearchTracker {
         for (int column = 0; column < 9; column++) {
             int number = (page - 1) * 9 + column + 1;
             String button = SkyblockUtils.cleanColor(slots.get(36 + column).getItem().getHoverName().getString());
+            AlpakaAddons.LOGGER.info("Item Search: wardrobe slot {}: button \"{}\", top \"{}\"", number, button,
+                    SkyblockUtils.cleanColor(slots.get(column).getItem().getHoverName().getString()));
             if (button.contains("Equipped")) {
                 ItemSearchStore.remove(ItemSearchStore.key(ItemSearchSource.WARDROBE, number, null, null));
                 continue;
@@ -152,7 +188,11 @@ public final class ItemSearchTracker {
      * own glass panes, arrows and locked-slot markers do not, so they stay out.
      */
     private static void add(List<ItemSearchStore.Item> items, ItemStack stack) {
-        if (stack.isEmpty() || skyblockId(stack) == null) return;
+        if (stack.isEmpty()) return;
+        if (skyblockId(stack) == null) {
+            if (dropped.size() < 12) dropped.add(SkyblockUtils.cleanColor(stack.getHoverName().getString()));
+            return;
+        }
         items.add(new ItemSearchStore.Item(stack.copyWithCount(1), stack.getCount()));
     }
 
@@ -186,7 +226,7 @@ public final class ItemSearchTracker {
                 && tr.getKey().startsWith("container.chest")) {
             return true;
         }
-        return text.equals("Chest") || text.equals("Large Chest");
+        return text.endsWith("Chest");
     }
 
     /** Whether the player is on their own Private Island, where the sidebar's zone line reads "Your Island". */
@@ -194,6 +234,10 @@ public final class ItemSearchTracker {
         if (!SkyblockUtils.isOnSkyblock()) return false;
         for (String line : SkyblockUtils.getSidebarLines()) {
             if (line.contains("⏣") && line.contains("Your Island")) return true;
+        }
+        // The sidebar can be hidden or reshaped by other mods; the tab list's area line is the fallback.
+        for (String line : SkyblockUtils.getTabListLines()) {
+            if (line.trim().startsWith("Area: Private Island")) return true;
         }
         return false;
     }

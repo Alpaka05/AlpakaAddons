@@ -52,7 +52,15 @@ public final class ItemSearchFeature {
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> ItemSearchStore.flush());
 
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
-            if (!(screen instanceof AbstractContainerScreen<?> container)) return;
+            if (!(screen instanceof AbstractContainerScreen<?> container)) {
+                // For finding out why a menu is not read: another mod drawing it as a screen of its own.
+                if (client.player != null && client.player.containerMenu != client.player.inventoryMenu && ItemSearchTracker.active()) {
+                    net.alpaka.addons.AlpakaAddons.LOGGER.info("Item Search: menu open behind {} \"{}\", not read",
+                            screen.getClass().getName(), screen.getTitle().getString());
+                }
+                return;
+            }
+            ItemSearchTracker.onMenuOpened();
             ScreenEvents.remove(screen).register(s -> ItemSearchTracker.onMenuClosed(s.getTitle(), container.getMenu()));
             ScreenEvents.afterExtract(screen).register((s, graphics, mx, my, delta) -> ItemSearchHighlight.drawSlots(container, graphics));
             // In a menu the key searches for the item under the mouse.

@@ -87,6 +87,14 @@ public final class DevScreenshotTour {
             screen("config-world", () -> AlpakaConfigScreen.openOn("World", "Block Overlay")),
             screen("config-world-sky", () -> AlpakaConfigScreen.openOn("World", "Sky Effects")),
             screen("config-viewmodel", () -> AlpakaConfigScreen.openOn("Viewmodel", "Viewmodel Modifiers")),
+            // The wheel turned on over the settings in several goes, well past their end: the column
+            // stops at its last setting instead of scrolling on into emptiness.
+            new Stop(null, () -> Minecraft.getInstance().gui.setScreen(AlpakaConfigScreen.openOn("Viewmodel", "Viewmodel Modifiers")),
+                    () -> true, 10),
+            new Stop(null, () -> scroll(0.97, 0.5, -10), () -> true, 10),
+            new Stop(null, () -> scroll(0.97, 0.5, -10), () -> true, 10),
+            new Stop(null, () -> scroll(0.97, 0.5, -10), () -> true, 10),
+            new Stop("config-viewmodel-scrolled-end", () -> scroll(0.97, 0.5, -10), () -> true, 30),
             screen("color-picker", () -> new ColorPickerScreen(null, "Accent Color", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
             screen("wheel-editor", () -> new CommandWheelConfigScreen(new CustomMainMenuScreen())),
             new Stop("shortcuts-editor", () -> {
@@ -234,6 +242,12 @@ public final class DevScreenshotTour {
                 net.alpaka.addons.features.market.MarketPreview.inventory(true);
                 Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.auctionBrowser());
             }, () -> true, 30),
+            // Scrolled to the end with the drawer open: the last cards come out above it.
+            new Stop(null, () -> {
+                placeMouse(0.75, 0.75);
+                scroll(0.45, 0.4, -10);
+            }, () -> true, 10),
+            new Stop("market-ah-inventory-scrolled-end", () -> scroll(0.45, 0.4, -10), () -> true, 30),
             new Stop(null, () -> net.alpaka.addons.features.market.MarketPreview.inventory(false), () -> true, 1),
             new Stop("market-ah-view", () -> Minecraft.getInstance().gui.setScreen(
                     net.alpaka.addons.features.market.MarketPreview.auctionView()), () -> true, 80),
@@ -600,6 +614,12 @@ public final class DevScreenshotTour {
 
     private static net.minecraft.client.gui.screens.Screen screen() {
         return Minecraft.getInstance().gui.screen();
+    }
+
+    /** The mouse wheel turned at this share of the window's width and height, as the player would turn it. */
+    private static void scroll(double x, double y, double amount) {
+        net.minecraft.client.gui.screens.Screen screen = screen();
+        if (screen != null) screen.mouseScrolled(screen.width * x, screen.height * y, 0, amount);
     }
 
     /** A left click at this point of the open screen, as the player's mouse would deliver it. */

@@ -305,6 +305,8 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
         val box = pagePickerBox(f, pageCount)
         val targets = pickerTargets(pageCount)
         val rows = pickerRows(f, pageCount)
+        // The window may have grown since the picker opened, giving room for more rows.
+        pickerScroll = pickerScroll.coerceIn(0, maxOf(0, targets.size - rows))
         AlpakaStyle.popover(graphics, box[0], box[1], box[2], box[3])
         graphics.enableScissor(box[0], box[1] + PICKER_PAD, box[0] + box[2], box[1] + box[3] - PICKER_PAD)
         for (i in 0 until rows) {

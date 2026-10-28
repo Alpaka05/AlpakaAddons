@@ -453,7 +453,7 @@ public class AlpakaConfig {
     public boolean slayerTimerHudEnabled = true;
     /** Highlight the player's own slayer boss. */
     public boolean slayerBossHighlightEnabled = true;
-    /** How the boss is highlighted, an index into SlayerBossHighlight.STYLE_NAMES. */
+    /** How the boss is highlighted, an index into EntityHighlight.STYLE_NAMES. */
     public int slayerBossHighlightStyle = 0;
     public int slayerBossHighlightColor = 0xFFFF5555;
     /** On the Blaze slayer, color the boss and its demons by their current attunement. */
@@ -534,6 +534,64 @@ public class AlpakaConfig {
     /** Index into {@code EtherwarpOverlayFeature.SOUND_NAMES}: whoosh, pling, thud, chime, pop. */
     public int etherwarpSoundIndex = 0;
     public float etherwarpSoundVolume = 1.0f;
+
+    // Dungeon Map: screen position is edited in the HUD editor.
+    /** Highlight the starred mobs and minibosses during a dungeon clear. */
+    public boolean starredMobsHighlightEnabled = false;
+    /** How starred mobs are highlighted, an index into EntityHighlight.STYLE_NAMES. */
+    public int starredMobsHighlightStyle = 0;
+    public int starredMobsHighlightColor = 0xFFFFAA00;
+    /** During the clear, hide the name tags of mobs without a star. */
+    public boolean starredMobsHideNames = false;
+    public boolean dungeonMapEnabled = false;
+    public int dungeonMapX = net.alpaka.addons.client.hud.HudDefaults.DUNGEON_MAP_X;
+    public int dungeonMapY = net.alpaka.addons.client.hud.HudDefaults.DUNGEON_MAP_Y;
+    public boolean dungeonMapShowClear = true;
+    public boolean dungeonMapShowBoss = true;
+    public int dungeonMapBossMode = 0;
+    public float dungeonMapBossRange = 96.0f;
+    public float dungeonMapScale = 1.0f;
+    public boolean dungeonMapTitle = true;
+    public boolean dungeonMapRoomNames = false;
+    public boolean dungeonMapRoomSecrets = false;
+    public boolean dungeonMapHideCheckmarks = true;
+    public float dungeonMapRoomLabelScale = 0.5f;
+    public boolean dungeonMapPlayers = true;
+    public boolean dungeonMapNames = false;
+    public boolean dungeonMapPlayerHeads = true;
+    public boolean dungeonMapRotateHeads = true;
+    public boolean dungeonMapHeadBorder = true;
+    public boolean dungeonMapSmoothMarkers = true;
+    public float dungeonMapMarkerScale = 1.0f;
+    public int dungeonMapSelfColor = 0xFFFFFFFF;
+    public int dungeonMapPlayerColor = 0xFF55DDFF;
+    public int dungeonMapTextColor = 0xFFE8EEEE;
+    public boolean dungeonMapBackground = true;
+    public int dungeonMapBackgroundColor = 0xFF191919;
+    public float dungeonMapBackgroundOpacity = 65.0f;
+    public boolean dungeonMapBlur = true;
+    public boolean dungeonMapFrame = true;
+    public int dungeonMapFrameStart = 0xFF29B6B2;
+    public int dungeonMapFrameEnd = 0xFFB04FFF;
+    public float dungeonMapFrameWidth = 1.0f;
+    public float dungeonMapCornerRadius = 6.0f;
+    public float dungeonMapPadding = 6.0f;
+    public boolean dungeonMapCustomColors = true;
+    public int dungeonMapRoomColor = 0xFFB78A60;
+    public int dungeonMapEntranceColor = 0xFF4DBB75;
+    public int dungeonMapPuzzleColor = 0xFFB86CE0;
+    public int dungeonMapTrapColor = 0xFFE89B45;
+    public int dungeonMapMinibossColor = 0xFFF3D55B;
+    public int dungeonMapFairyColor = 0xFFF08BBD;
+    public int dungeonMapBloodColor = 0xFFE15959;
+    public int dungeonMapUnknownColor = 0xFF555D68;
+    public int dungeonMapDoorColor = 0xFF282D38;
+    public int dungeonMapClearedColor = 0xFFFFFFFF;
+    public int dungeonMapCompleteColor = 0xFF55E68B;
+    public int dungeonMapFailedColor = 0xFFFF5555;
+    public boolean dungeonMapBossCustomColors = true;
+    public int dungeonMapBossFloorColor = 0xFF687981;
+    public int dungeonMapBossWallColor = 0xFFB8C5CC;
 
     // Inventory HUD. Shows the 27 main-inventory slots on screen; position and scale are set in
     // the HUD editor, or it can ride directly above the hotbar.
@@ -1574,6 +1632,8 @@ public class AlpakaConfig {
         this.messageFilterEnabled = false;
         this.chatTabsEnabled = false;
         this.inventoryHudEnabled = false;
+        this.dungeonMapEnabled = false;
+        this.starredMobsHighlightEnabled = false;
         this.bridgeBotFormatterEnabled = false;
         this.guildPrefixEnabled = false;
         this.itemSizeFeatureEnabled = false;

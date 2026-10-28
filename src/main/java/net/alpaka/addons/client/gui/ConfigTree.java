@@ -95,6 +95,8 @@ public final class ConfigTree {
             "custom_escape_menu", "custom_main_menu", "disable_all_features", "reset_all_settings",
             // SkyBlock, kept apart from the list below so it does not collide with other changes there
             "slayer_boss_highlight",
+            // Dungeon, kept apart the same way
+            "starred_mobs_highlight",
             // Visuals
             "fullbright", "clean_blaze", "blaze_fire_pits", "hide_hurt_overlay", "hide_mob_deaths",
             "hide_explosions",
@@ -104,7 +106,7 @@ public final class ConfigTree {
             "container_bg_opacity", "inventory_snow", "scrollable_tooltips", "persistent_item_name", "old_master_stars", "storage_preview", "wide_health_bar",
             "better_chat", "chat_search", "chat_copy", "expand_chat_history", "compact_chat", "message_filter",
             "mention_notification", "chat_peek", "better_screenshot_message", "chat_tabs",
-            "player_model_enabled", "performance_hud_enabled", "inventory_hud_enabled", "custom_tab",
+            "player_model_enabled", "performance_hud_enabled", "inventory_hud_enabled", "custom_tab", "dungeon_map_enabled",
             // Item viewmodel: the adjustments are the modifiers' own settings
             "item_size_feature", "item_starlight", "item_motion_blur", "item_viewmodel_reset",
             // Block overlay: one feature, outline, fill, animation and filters its settings
@@ -200,6 +202,7 @@ public final class ConfigTree {
                             "#Viewmodel Presets", "item_viewmodel_reset"},
                     {"Cosmetics", "custom_name_tag", "custom_damage_tags", "chroma_hat", "aura", "player_scale", "inventory_snow"}},
             {{"SkyBlock"},
+                    {"Dungeon", "dungeon_map_enabled", "starred_mobs_highlight"},
                     {"Slayer", "slayer_hud_enabled", "slayer_timer", "boss_spawn_alert", "boss_cocoon_alert", "slayer_drop_tracker",
                             "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat", "slayer_boss_highlight",
                             "hide_slayer_chat", "clean_blaze", "blaze_fire_pits"},

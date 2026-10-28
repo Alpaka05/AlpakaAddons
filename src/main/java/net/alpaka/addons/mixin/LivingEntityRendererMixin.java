@@ -1,6 +1,7 @@
 package net.alpaka.addons.mixin;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import net.alpaka.addons.features.dungeonmobs.StarredMobsHighlight;
 import net.alpaka.addons.features.hurtoverlay.HurtOverlayFeature;
 import net.alpaka.addons.features.slayer.BossHighlightRenderState;
 import net.alpaka.addons.features.slayer.SlayerBossHighlight;
@@ -26,7 +27,9 @@ public class LivingEntityRendererMixin {
         // TAIL: vanilla has just derived hasRedOverlay from hurtTime/deathTime, and nothing after
         // this point reads it before the layers are drawn.
         HurtOverlayFeature.apply(state);
+        // Boss Highlight first: it clears the overlay left on the reused state by the last mob.
         SlayerBossHighlight.applyOverlay(entity, (BossHighlightRenderState) state);
+        StarredMobsHighlight.applyOverlay(entity, (BossHighlightRenderState) state);
     }
 
     /**

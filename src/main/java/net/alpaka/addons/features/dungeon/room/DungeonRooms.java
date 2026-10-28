@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.dungeon.room;
 
+import net.alpaka.addons.AlpakaAddons;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.utils.DungeonState;
 import net.alpaka.addons.utils.SkyblockUtils;
@@ -34,7 +35,8 @@ import java.util.Map;
  * While the player stands on a roof - ten or more blocks up from the room's floor level, the way
  * Odin tells it - the room does not count as the one they are in.
  *
- * Only reads blocks the client already has. Runs only while the Solvers master is on.
+ * Each cell's result goes to the log once, so a room the solvers did not pick up can be looked into
+ * after the run. Only reads blocks the client already has. Runs only while the Solvers master is on.
  */
 public final class DungeonRooms {
 
@@ -119,8 +121,15 @@ public final class DungeonRooms {
             RoomFrame found = probe(worldView(level), cx, cz, result);
             lastProbe = result[0];
             switch (result[0]) {
-                case FRAME -> CACHE.put(key, known = found);
-                case NO_CLAY -> CACHE.put(key, known = NO_FRAME);
+                case FRAME -> {
+                    CACHE.put(key, known = found);
+                    AlpakaAddons.LOGGER.info("[dungeon] Cell {},{}: roof {}, clay {} at {}, {}",
+                            cx, cz, found.roofY(), found.corner(), found.originX(), found.originZ());
+                }
+                case NO_CLAY -> {
+                    CACHE.put(key, known = NO_FRAME);
+                    AlpakaAddons.LOGGER.info("[dungeon] Cell {},{}: no blue terracotta in a roof corner", cx, cz);
+                }
                 case RETRY -> RETRY_AT.put(key, ticks + RETRY_TICKS);
             }
         } else if (known != null) {

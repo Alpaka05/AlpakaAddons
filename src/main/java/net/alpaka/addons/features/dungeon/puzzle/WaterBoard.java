@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.dungeon.puzzle;
 
+import net.alpaka.addons.AlpakaAddons;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.dungeon.SolverContext;
 import net.alpaka.addons.features.dungeon.puzzle.WaterBoardLayout.Cell;
@@ -25,6 +26,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -78,6 +80,14 @@ public final class WaterBoard extends PuzzleSolver {
     private static final double LABEL_BASE = 1.25;
     private static final double LABEL_STEP = 0.3;
     private static final double BOX_INFLATE = 0.02;
+    /**
+     * Where the board's state is written while it has no solution: over the middle of the room, a
+     * little above the lever labels, in sight from the water lever and from the board alike. Above
+     * the water lever it stood behind a player who looks at the board from there, and read as nothing.
+     */
+    private static final Vec3 STATUS_AT = new Vec3(15.5, 63.0, 15.5);
+    /** Fewest of the seven levers a room needs where the Water Board has them to be worth a line in the log. */
+    private static final int NEAR_MISS_LEVERS = 2;
 
     private enum Stage {
         /** The player has not been in the room yet. */
@@ -91,10 +101,10 @@ public final class WaterBoard extends PuzzleSolver {
     }
 
     /**
-     * Why there is no solution to show, as shown above the water lever. These describe the board
+     * Why there is no solution to show, as shown over the middle of the room. These describe the board
      * rather than order anything: the water may be a teammate's run that is going right. Only the
      * two that mean the solver cannot help here are in the Wrong Color; the rest are in the Next
-     * Color, so that red above the water lever never reads as "flip it".
+     * Color, so that red never reads as an order.
      */
     private enum Problem {
         WATER_RUNNING("Water is running: no solution until it is off and drained", false),
@@ -147,6 +157,12 @@ public final class WaterBoard extends PuzzleSolver {
     /** Per board lever: whether its blocks can be found, so a flip of it shows on the board. */
     private final boolean[] observable = new boolean[LEVERS.length];
     private Boolean waterPowered = null;
+    /** What the board read is waiting for while it says nothing, for the log; null when it waits for nothing. */
+    private String waitingFor = null;
+    /** The state last written to the log, so that each change is written once. */
+    private String logged = null;
+    /** Rooms with some of the levers where the Water Board has them but not all, logged once each. */
+    private final Set<RoomFrame> nearMisses = new HashSet<>();
 
     @Override
     public DungeonPuzzle puzzle() {
@@ -170,7 +186,11 @@ public final class WaterBoard extends PuzzleSolver {
         if (!frame.equals(room)) {
             if (ticks < nextSearch) return;
             nextSearch = ticks + SEARCH_TICKS;
-            if (!WaterBoardLayout.isRoom(view(ctx.level(), frame))) return;
+            WaterBoardLayout.View look = view(ctx.level(), frame);
+            if (!WaterBoardLayout.isRoom(look)) {
+                logNearMiss(frame, look);
+                return;
+            }
             // One Water Board per run; a second one would be a new run in the same world.
             enter(frame);
         }
@@ -187,6 +207,7 @@ public final class WaterBoard extends PuzzleSolver {
             default -> {
             }
         }
+        logState();
     }
 
     private void enter(RoomFrame frame) {
@@ -202,15 +223,22 @@ public final class WaterBoard extends PuzzleSolver {
         WaterBoardLayout.Doors doors = WaterBoardLayout.doors(view, ambiguousReads >= AMBIGUOUS_READS);
         if (!doors.clear()) {
             if (doors.read() == WaterBoardLayout.DoorRead.AMBIGUOUS) ambiguousReads++;
+            waitingFor = "doors " + doors.read().name().toLowerCase();
             return;
         }
         if (doors.allOpen()) {
             stage = Stage.DONE;
             problem = null;
+            waitingFor = null;
             return;
         }
         Boolean water = WaterBoardLayout.waterOnBoard(view);
-        if (water == null) return;
+        if (water == null) {
+            waitingFor = "board not loaded";
+            return;
+        }
+        waitingFor = null;
+        closedMask = doors.closedMask();
         // Solutions start from a dry board with the water off; water still running would
         // toggle doors on its own. It may be a teammate's run, so only say what is going on.
         if (water) {
@@ -228,6 +256,7 @@ public final class WaterBoard extends PuzzleSolver {
             problem = Problem.LAYOUT;
             return;
         }
+        variant = found;
         WaterBoardSolutions solutions = WaterBoardSolutions.bundled();
         Map<WaterBoardLever, double[]> solution = solutions == null ? null : solutions.get(table(), found, doors.key());
         if (solution == null) {
@@ -244,7 +273,11 @@ public final class WaterBoard extends PuzzleSolver {
             read[lever.ordinal()] = WaterBoardLayout.flipped(view, lever, found);
             if (read[lever.ordinal()] == null) unknown = true;
         }
-        if (unknown && unknownReads++ < UNKNOWN_READS) return;
+        if (unknown && unknownReads++ < UNKNOWN_READS) {
+            waitingFor = "lever blocks moving";
+            return;
+        }
+        waitingFor = null;
         BlockState waterLever = level.getBlockState(leverPos[WaterBoardLever.WATER.ordinal()]);
         if (!waterLever.is(Blocks.LEVER)) return;
 
@@ -376,9 +409,7 @@ public final class WaterBoard extends PuzzleSolver {
     public void render(SolverDraw draw, float partialTick) {
         if (!inRoom || room == null) return;
         if (problem != null) {
-            BlockPos at = leverPos[WaterBoardLever.WATER.ordinal()];
-            draw.label(new Vec3(at.getX() + 0.5, at.getY() + LABEL_BASE + 0.4, at.getZ() + 0.5), problem.text,
-                    problem.error ? SolverColors.wrong() : SolverColors.next(), 1.0f);
+            draw.label(room.toWorld(STATUS_AT), problem.text, problem.error ? SolverColors.wrong() : SolverColors.next(), 1.0f);
         }
         // While a run is missed or off its plan, its countdowns and "Late" labels say nothing true.
         if (stage != Stage.PLANNED || plan == null || problem != null || plan.offPlan()) return;
@@ -421,6 +452,8 @@ public final class WaterBoard extends PuzzleSolver {
         room = null;
         stage = Stage.SEARCHING;
         inRoom = false;
+        logged = null;
+        nearMisses.clear();
     }
 
     private void clear() {
@@ -432,6 +465,7 @@ public final class WaterBoard extends PuzzleSolver {
         ambiguousReads = 0;
         unknownReads = 0;
         waterPowered = null;
+        waitingFor = null;
         nextCheck = ticks;
         Arrays.fill(leverPos, null);
         Arrays.fill(leverBox, null);
@@ -468,6 +502,59 @@ public final class WaterBoard extends PuzzleSolver {
             }
         }
         return out.toString();
+    }
+
+    // --- the log ---
+
+    /**
+     * Writes the solver's state to the log whenever it changes: the room, what the board read and
+     * why there is no solution, if there is none. A run can then be followed afterwards from the
+     * game's log, without the debug command; countdowns are left out, so a run is a few lines.
+     */
+    private void logState() {
+        if (room == null) return;
+        StringBuilder out = new StringBuilder(stage.name().toLowerCase())
+                .append(" in cell ").append(room.cellX()).append(',').append(room.cellZ())
+                .append(" (clay ").append(room.corner()).append(", roof ").append(room.roofY()).append(')');
+        if (waitingFor != null && stage == Stage.WAITING) out.append(", waiting for ").append(waitingFor);
+        if (problem != null) out.append(", ").append(problem.text);
+        if (variant != 0 || problem != null) {
+            out.append(", layout ").append(variant == 0 ? "?" : variant)
+                    .append(", doors closed ").append(closedMask == 0 ? "none" : WaterBoardLayout.doorKey(closedMask));
+        }
+        if (plan != null) {
+            out.append(", ").append(table().key()).append(", ").append(plan.phase().name().toLowerCase())
+                    .append(", ").append(plan.remaining()).append(" steps left");
+        }
+        String state = out.toString();
+        if (state.equals(logged)) return;
+        logged = state;
+        AlpakaAddons.LOGGER.info("[dungeon] Water Board: {}", state);
+    }
+
+    /**
+     * A room with some of the Water Board's levers where they belong but not all: most likely the
+     * Water Board read through a wrong frame, so which levers are missing and what is there instead
+     * goes to the log, once per room.
+     */
+    private void logNearMiss(RoomFrame frame, WaterBoardLayout.View view) {
+        if (nearMisses.contains(frame)) return;
+        int found = 0;
+        StringBuilder missing = new StringBuilder();
+        for (WaterBoardLever lever : LEVERS) {
+            Cell cell = view.at(lever.lever());
+            if (cell == Cell.UNLOADED) return;
+            if (cell == Cell.LEVER) {
+                found++;
+            } else {
+                missing.append(missing.isEmpty() ? "" : ", ").append(lever.displayName()).append(' ').append(lever.lever().toShortString())
+                        .append(" is ").append(cell.name().toLowerCase());
+            }
+        }
+        nearMisses.add(frame);
+        if (found < NEAR_MISS_LEVERS) return;
+        AlpakaAddons.LOGGER.info("[dungeon] Water Board: cell {},{} (clay {}, roof {}) has {} of 7 levers; {}",
+                frame.cellX(), frame.cellZ(), frame.corner(), frame.roofY(), found, missing);
     }
 
     // --- the world ---

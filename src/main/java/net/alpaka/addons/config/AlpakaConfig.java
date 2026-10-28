@@ -659,6 +659,10 @@ public class AlpakaConfig {
     /** In SkyBlock's anvil, books that combine with the one put in are highlighted. */
     public boolean anvilCombineHelperEnabled = false;
     public int anvilCombineHelperColor = 0x8055FF55;
+    /** Chronomatron, Ultrasequencer and Superpairs: what to click next is highlighted. */
+    public boolean experimentSolverEnabled = false;
+    public int experimentSolverNextColor = 0xA055FF55;
+    public int experimentSolverLaterColor = 0x70FFFF55;
     /**
      * One long row of twenty hearts in place of the two short ones, the hunger bar and the armor bar,
      * neither of which SkyBlock needs; absorption hearts sit on the row above it.
@@ -1320,6 +1324,7 @@ public class AlpakaConfig {
         this.oldMasterStarsEnabled = false;
         this.maxEnchantColorEnabled = false;
         this.anvilCombineHelperEnabled = false;
+        this.experimentSolverEnabled = false;
         this.mentionNotificationEnabled = false;
         this.itemMotionBlurEnabled = false;
         this.bossSpawnAlertEnabled = false;

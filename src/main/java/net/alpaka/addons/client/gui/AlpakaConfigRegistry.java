@@ -1847,6 +1847,27 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.anvilCombineHelperColor = v; AlpakaConfig.save(); },
                 "anvil combine helper highlight color colour picker books"));
 
+        OPTIONS.add(new ConfigOption("experiment_solver", "Experiment Solver",
+                "Shows the answers in the Experimentation Table: the next click in Chronomatron and Ultrasequencer, and every card already seen in Superpairs.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.experimentSolverEnabled,
+                v -> { AlpakaConfig.instance.experimentSolverEnabled = v; AlpakaConfig.save(); },
+                "experiment experiments experimentation table solver chronomatron ultrasequencer superpairs enchanting minigame add-ons"));
+
+        OPTIONS.add(ConfigOption.color("experiment_solver_next_color", "Next Click Color",
+                "The slot to click now, and Superpairs cards whose pair is known.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.experimentSolverNextColor,
+                v -> { AlpakaConfig.instance.experimentSolverNextColor = v; AlpakaConfig.save(); },
+                "experiment solver next click highlight color colour picker"));
+
+        OPTIONS.add(ConfigOption.color("experiment_solver_later_color", "Click After Color",
+                "The slot to click after that.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.experimentSolverLaterColor,
+                v -> { AlpakaConfig.instance.experimentSolverLaterColor = v; AlpakaConfig.save(); },
+                "experiment solver after following second highlight color colour picker"));
+
         OPTIONS.add(new ConfigOption("Damage Display", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("only_crit_damage", "Only Show Crit Damage",

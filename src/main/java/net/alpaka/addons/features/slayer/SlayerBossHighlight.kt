@@ -162,7 +162,8 @@ object SlayerBossHighlight {
         }
         for (stand in stands) {
             val raw = stand.customName?.string ?: continue
-            if (SlayerBossEntityTracker.ownerLine(raw, playerName) != true) continue
+            // Only the slayer boss line: a Primal Fear says "Spawned by: <player>" too.
+            if (SlayerBossEntityTracker.ownerLine(raw, playerName, legacy = false) != true) continue
             mobUnder(level, stand, player)?.let { ownedMobIds.add(it.id) }
         }
     }

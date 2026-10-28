@@ -876,6 +876,336 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.performanceHudAnimate = v; AlpakaConfig.save(); },
                 "performance hud animate animation roll flip clock slide fade numbers digits"));
 
+        OPTIONS.add(new ConfigOption("Dungeon Map", ConfigCategory.DUNGEON));
+        OPTIONS.add(new ConfigOption("dungeon_map_enabled", "Enable Dungeon Map",
+                "Shows the dungeon map and a local boss arena map. Move and resize it in the HUD editor.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapEnabled,
+                v -> { AlpakaConfig.instance.dungeonMapEnabled = v; AlpakaConfig.save(); },
+                "dungeon map minimap catacombs overlay hud boss"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_show_clear", "Show During Clear",
+                "Displays the received Magical Map during the dungeon clear.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapShowClear,
+                v -> { AlpakaConfig.instance.dungeonMapShowClear = v; AlpakaConfig.save(); },
+                "dungeon map show clear"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_show_boss", "Show In Boss Room",
+                "Keeps the map HUD visible during the boss fight.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapShowBoss,
+                v -> { AlpakaConfig.instance.dungeonMapShowBoss = v; AlpakaConfig.save(); },
+                "dungeon map show boss"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_boss_mode", "Boss Room Display",
+                "Boss Room shows nearby loaded terrain on your current level. Dungeon Map keeps the last clear map. Both shows them side by side.", ConfigCategory.DUNGEON,
+                () -> (float) AlpakaConfig.instance.dungeonMapBossMode,
+                v -> { AlpakaConfig.instance.dungeonMapBossMode = Math.round(v); AlpakaConfig.save(); },
+                0.0f, 2.0f, val -> new String[]{"Boss Room", "Dungeon Map", "Both"}[Math.round(val)],
+                "dungeon map boss room arena clear both").choices(new String[]{"Boss Room", "Dungeon Map", "Both"}));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_boss_range", "Boss Map Range",
+                "Width of the local boss map in blocks. North stays at the top. Unloaded areas remain empty.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapBossRange,
+                v -> { AlpakaConfig.instance.dungeonMapBossRange = v; AlpakaConfig.save(); },
+                32.0f, 192.0f, val -> String.format(Locale.ROOT, "%.0f Blocks", val),
+                "dungeon map boss range"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_scale", "Map Scale",
+                "Size of the entire map HUD. Also adjustable with the HUD editor scroll wheel.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapScale,
+                v -> { AlpakaConfig.instance.dungeonMapScale = v; AlpakaConfig.save(); },
+                0.5f, 3.0f, val -> String.format(Locale.ROOT, "%.2fx", val),
+                "dungeon map scale"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_position", "Edit Map Position",
+                "Move and resize the map in the HUD editor.", ConfigCategory.DUNGEON,
+                "Open HUD Editor", parent -> Minecraft.getInstance().gui.setScreen(
+                        new net.alpaka.addons.client.hud.HudEditorScreen(parent)),
+                "dungeon map hud editor move position size"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_title", "Show Title",
+                "Shows the floor and identifies the retained clear map during the boss fight.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapTitle,
+                v -> { AlpakaConfig.instance.dungeonMapTitle = v; AlpakaConfig.save(); },
+                "dungeon map title"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_room_names", "Show Room Names",
+                "Writes each room's name on the map once it is recognized from the loaded world. Entrance, blood and fairy rooms are left out.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapRoomNames,
+                v -> { AlpakaConfig.instance.dungeonMapRoomNames = v; AlpakaConfig.save(); },
+                "dungeon map room names labels"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_room_secrets", "Show Room Secrets",
+                "Shows found and total secrets per room, like 3/5. The found count comes from the action bar once you have been in the room, or from a green checkmark; until then it shows ?.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapRoomSecrets,
+                v -> { AlpakaConfig.instance.dungeonMapRoomSecrets = v; AlpakaConfig.save(); },
+                "dungeon map room secrets found count labels"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_hide_checkmarks", "Hide Checkmarks Under Labels",
+                "Removes the checkmark of a room that has a label and colors the label by the room's state instead.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapHideCheckmarks,
+                v -> { AlpakaConfig.instance.dungeonMapHideCheckmarks = v; AlpakaConfig.save(); },
+                "dungeon map hide checkmarks labels"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_room_label_scale", "Room Label Size",
+                "Text size of room names and secret counts.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapRoomLabelScale,
+                v -> { AlpakaConfig.instance.dungeonMapRoomLabelScale = v; AlpakaConfig.save(); },
+                0.3f, 1.0f, val -> String.format(Locale.ROOT, "%.2fx", val),
+                "dungeon map room label size scale text"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_players", "Show Players",
+                "Draws your team on the map during clear, and nearby visible players in the boss arena.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapPlayers,
+                v -> { AlpakaConfig.instance.dungeonMapPlayers = v; AlpakaConfig.save(); },
+                "dungeon map players"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_player_heads", "Show Player Heads",
+                "Draws every player as the head of their skin instead of an arrow, during clear and in the boss room.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapPlayerHeads,
+                v -> { AlpakaConfig.instance.dungeonMapPlayerHeads = v; AlpakaConfig.save(); },
+                "dungeon map player heads skin face avatar"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_rotate_heads", "Rotate Heads",
+                "Turns each head with the way the player looks. Off keeps heads upright, with a small notch showing the direction.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapRotateHeads,
+                v -> { AlpakaConfig.instance.dungeonMapRotateHeads = v; AlpakaConfig.save(); },
+                "dungeon map player heads rotate upright direction"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_head_border", "Head Border",
+                "Frames each head in its marker color.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapHeadBorder,
+                v -> { AlpakaConfig.instance.dungeonMapHeadBorder = v; AlpakaConfig.save(); },
+                "dungeon map player heads border outline frame"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_smooth_markers", "Smooth Movement",
+                "Glides markers between map updates and follows players in render distance live. Off shows Hypixel's markers exactly as they arrive.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapSmoothMarkers,
+                v -> { AlpakaConfig.instance.dungeonMapSmoothMarkers = v; AlpakaConfig.save(); },
+                "dungeon map smooth movement interpolation marker lag"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_names", "Show Player Names",
+                "Shows names under the markers. In the boss room only nearby players on your level are shown.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapNames,
+                v -> { AlpakaConfig.instance.dungeonMapNames = v; AlpakaConfig.save(); },
+                "dungeon map names"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_marker_scale", "Player Marker Size",
+                "Size of player arrows and heads without changing the map size.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapMarkerScale,
+                v -> { AlpakaConfig.instance.dungeonMapMarkerScale = v; AlpakaConfig.save(); },
+                0.5f, 2.5f, val -> String.format(Locale.ROOT, "%.2fx", val),
+                "dungeon map marker scale"));
+
+        OPTIONS.add(ConfigOption.color("dungeon_map_self_color", "Your Marker Color",
+                "Color of your arrow and head border.", ConfigCategory.DUNGEON,
+                c -> c.dungeonMapSelfColor,
+                v -> { AlpakaConfig.instance.dungeonMapSelfColor = v; AlpakaConfig.save(); },
+                "dungeon map color self color"));
+
+        OPTIONS.add(ConfigOption.color("dungeon_map_player_color", "Other Player Color",
+                "Color of the other players' arrows and head borders.", ConfigCategory.DUNGEON,
+                c -> c.dungeonMapPlayerColor,
+                v -> { AlpakaConfig.instance.dungeonMapPlayerColor = v; AlpakaConfig.save(); },
+                "dungeon map color player color"));
+
+        OPTIONS.add(ConfigOption.color("dungeon_map_text_color", "Text Color",
+                "Color of titles and player names.", ConfigCategory.DUNGEON,
+                c -> c.dungeonMapTextColor,
+                v -> { AlpakaConfig.instance.dungeonMapTextColor = v; AlpakaConfig.save(); },
+                "dungeon map color text color"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_background", "Show Background",
+                "Enables the colored background and optional blur. Turn off for a fully transparent backdrop.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapBackground,
+                v -> { AlpakaConfig.instance.dungeonMapBackground = v; AlpakaConfig.save(); },
+                "dungeon map background"));
+
+        OPTIONS.add(ConfigOption.color("dungeon_map_background_color", "Background Color",
+                "Background tint. The opacity slider controls transparency.", ConfigCategory.DUNGEON,
+                c -> c.dungeonMapBackgroundColor,
+                v -> { AlpakaConfig.instance.dungeonMapBackgroundColor = v; AlpakaConfig.save(); },
+                "dungeon map color background color"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_background_opacity", "Background Opacity",
+                "Opacity of the background tint. At zero, blur can still be shown.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapBackgroundOpacity,
+                v -> { AlpakaConfig.instance.dungeonMapBackgroundOpacity = v; AlpakaConfig.save(); },
+                0.0f, 100.0f, val -> String.format(Locale.ROOT, "%.0f%%", val),
+                "dungeon map background opacity"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_blur", "Blur Background",
+                "Blurs the world behind the map. Uses the shared HUD blur strength. Requires Show Background.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapBlur,
+                v -> { AlpakaConfig.instance.dungeonMapBlur = v; AlpakaConfig.save(); },
+                "dungeon map blur"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_frame", "Show Frame",
+                "Draws a two-color gradient frame, like the Inventory HUD.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapFrame,
+                v -> { AlpakaConfig.instance.dungeonMapFrame = v; AlpakaConfig.save(); },
+                "dungeon map frame"));
+
+        OPTIONS.add(ConfigOption.color("dungeon_map_frame_start", "Frame Start Color",
+                "Top-left color of the frame.", ConfigCategory.DUNGEON,
+                c -> c.dungeonMapFrameStart,
+                v -> { AlpakaConfig.instance.dungeonMapFrameStart = v; AlpakaConfig.save(); },
+                "dungeon map color frame start"));
+
+        OPTIONS.add(ConfigOption.color("dungeon_map_frame_end", "Frame End Color",
+                "Bottom-right color of the frame.", ConfigCategory.DUNGEON,
+                c -> c.dungeonMapFrameEnd,
+                v -> { AlpakaConfig.instance.dungeonMapFrameEnd = v; AlpakaConfig.save(); },
+                "dungeon map color frame end"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_frame_width", "Frame Thickness",
+                "Thickness of the optional gradient frame.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapFrameWidth,
+                v -> { AlpakaConfig.instance.dungeonMapFrameWidth = v; AlpakaConfig.save(); },
+                1.0f, 4.0f, val -> String.format(Locale.ROOT, "%.1f px", val),
+                "dungeon map frame width"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_rounding", "Corner Radius",
+                "Rounding of the frame and background. Zero gives square corners.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapCornerRadius,
+                v -> { AlpakaConfig.instance.dungeonMapCornerRadius = v; AlpakaConfig.save(); },
+                0.0f, 16.0f, val -> String.format(Locale.ROOT, "%.0f px", val),
+                "dungeon map rounding"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_padding", "Map Padding",
+                "Space between the map and its frame.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapPadding,
+                v -> { AlpakaConfig.instance.dungeonMapPadding = v; AlpakaConfig.save(); },
+                4.0f, 16.0f, val -> String.format(Locale.ROOT, "%.0f px", val),
+                "dungeon map padding"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_custom_colors", "Custom Dungeon Colors",
+                "Uses the colors below for rooms, doors and room status. Off keeps the server colors.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapCustomColors,
+                v -> { AlpakaConfig.instance.dungeonMapCustomColors = v; AlpakaConfig.save(); },
+                "dungeon map custom colors"));
+
+        OPTIONS.add(ConfigOption.color("dungeon_map_room_color", "Normal Room Color",
+                "Custom color for normal room.", ConfigCategory.DUNGEON,
+                c -> c.dungeonMapRoomColor,
+                v -> { AlpakaConfig.instance.dungeonMapRoomColor = v; AlpakaConfig.save(); },
+                "dungeon map color room color"));
+
+        OPTIONS.add(ConfigOption.color("dungeon_map_entrance_color", "Entrance Color",
+                "Custom color for entrance.", ConfigCategory.DUNGEON,
+                c -> c.dungeonMapEntranceColor,
+                v -> { AlpakaConfig.instance.dungeonMapEntranceColor = v; AlpakaConfig.save(); },
+                "dungeon map color entrance color"));
+
+        OPTIONS.add(ConfigOption.color("dungeon_map_puzzle_color", "Puzzle Room Color",
+                "Custom color for puzzle room.", ConfigCategory.DUNGEON,
+                c -> c.dungeonMapPuzzleColor,
+                v -> { AlpakaConfig.instance.dungeonMapPuzzleColor = v; AlpakaConfig.save(); },
+                "dungeon map color puzzle color"));
+
+        OPTIONS.add(ConfigOption.color("dungeon_map_trap_color", "Trap Room Color",
+                "Custom color for trap room.", ConfigCategory.DUNGEON,
+                c -> c.dungeonMapTrapColor,
+                v -> { AlpakaConfig.instance.dungeonMapTrapColor = v; AlpakaConfig.save(); },
+                "dungeon map color trap color"));
+
+        OPTIONS.add(ConfigOption.color("dungeon_map_miniboss_color", "Miniboss Room Color",
+                "Custom color for miniboss room.", ConfigCategory.DUNGEON,
+                c -> c.dungeonMapMinibossColor,
+                v -> { AlpakaConfig.instance.dungeonMapMinibossColor = v; AlpakaConfig.save(); },
+                "dungeon map color miniboss color"));
+
+        OPTIONS.add(ConfigOption.color("dungeon_map_fairy_color", "Fairy Room Color",
+                "Custom color for fairy room.", ConfigCategory.DUNGEON,
+                c -> c.dungeonMapFairyColor,
+                v -> { AlpakaConfig.instance.dungeonMapFairyColor = v; AlpakaConfig.save(); },
+                "dungeon map color fairy color"));
+
+        OPTIONS.add(ConfigOption.color("dungeon_map_blood_color", "Blood Room Color",
+                "Custom color for blood room.", ConfigCategory.DUNGEON,
+                c -> c.dungeonMapBloodColor,
+                v -> { AlpakaConfig.instance.dungeonMapBloodColor = v; AlpakaConfig.save(); },
+                "dungeon map color blood color"));
+
+        OPTIONS.add(ConfigOption.color("dungeon_map_unknown_color", "Unexplored Room Color",
+                "Custom color for unexplored room.", ConfigCategory.DUNGEON,
+                c -> c.dungeonMapUnknownColor,
+                v -> { AlpakaConfig.instance.dungeonMapUnknownColor = v; AlpakaConfig.save(); },
+                "dungeon map color unknown color"));
+
+        OPTIONS.add(ConfigOption.color("dungeon_map_door_color", "Wither Door Color",
+                "Custom color for wither door.", ConfigCategory.DUNGEON,
+                c -> c.dungeonMapDoorColor,
+                v -> { AlpakaConfig.instance.dungeonMapDoorColor = v; AlpakaConfig.save(); },
+                "dungeon map color door color"));
+
+        OPTIONS.add(ConfigOption.color("dungeon_map_cleared_color", "Cleared Checkmark Color",
+                "Custom color for cleared checkmark.", ConfigCategory.DUNGEON,
+                c -> c.dungeonMapClearedColor,
+                v -> { AlpakaConfig.instance.dungeonMapClearedColor = v; AlpakaConfig.save(); },
+                "dungeon map color cleared color"));
+
+        OPTIONS.add(ConfigOption.color("dungeon_map_complete_color", "Completed Checkmark Color",
+                "Custom color for completed checkmark.", ConfigCategory.DUNGEON,
+                c -> c.dungeonMapCompleteColor,
+                v -> { AlpakaConfig.instance.dungeonMapCompleteColor = v; AlpakaConfig.save(); },
+                "dungeon map color complete color"));
+
+        OPTIONS.add(ConfigOption.color("dungeon_map_failed_color", "Failed Checkmark Color",
+                "Custom color for failed checkmark.", ConfigCategory.DUNGEON,
+                c -> c.dungeonMapFailedColor,
+                v -> { AlpakaConfig.instance.dungeonMapFailedColor = v; AlpakaConfig.save(); },
+                "dungeon map color failed color"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_boss_custom_colors", "Custom Boss Terrain Colors",
+                "Uses separate colors for the arena floor and walls. Off uses Minecraft block map colors.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapBossCustomColors,
+                v -> { AlpakaConfig.instance.dungeonMapBossCustomColors = v; AlpakaConfig.save(); },
+                "dungeon map boss custom colors"));
+
+        OPTIONS.add(ConfigOption.color("dungeon_map_boss_floor_color", "Boss Floor Color",
+                "Color of blocks below your feet on the local boss map.", ConfigCategory.DUNGEON,
+                c -> c.dungeonMapBossFloorColor,
+                v -> { AlpakaConfig.instance.dungeonMapBossFloorColor = v; AlpakaConfig.save(); },
+                "dungeon map color boss floor color"));
+
+        OPTIONS.add(ConfigOption.color("dungeon_map_boss_wall_color", "Boss Wall Color",
+                "Color of blocks at your level on the local boss map.", ConfigCategory.DUNGEON,
+                c -> c.dungeonMapBossWallColor,
+                v -> { AlpakaConfig.instance.dungeonMapBossWallColor = v; AlpakaConfig.save(); },
+                "dungeon map color boss wall color"));
+
+        OPTIONS.add(new ConfigOption("Starred Mobs Highlight", ConfigCategory.DUNGEON));
+
+        OPTIONS.add(new ConfigOption("starred_mobs_highlight", "Starred Mobs Highlight",
+                "Highlights the starred mobs a room needs killed, and the minibosses, during the dungeon clear.",
+                ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.starredMobsHighlightEnabled,
+                v -> { AlpakaConfig.instance.starredMobsHighlightEnabled = v; AlpakaConfig.save(); },
+                "dungeon starred star mobs highlight glow outline hitbox box overlay esp clear miniboss catacombs"));
+
+        OPTIONS.add(new ConfigOption("starred_mobs_highlight_style", "Highlight Style",
+                "Outline glows around the mob, Hitbox draws a box around it, Overlay tints its model.",
+                ConfigCategory.DUNGEON,
+                () -> (float) AlpakaConfig.instance.starredMobsHighlightStyle,
+                v -> { AlpakaConfig.instance.starredMobsHighlightStyle = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (net.alpaka.addons.utils.EntityHighlight.STYLE_NAMES.length - 1),
+                val -> net.alpaka.addons.utils.EntityHighlight.STYLE_NAMES[Math.round(val)],
+                "dungeon starred mobs highlight style mode outline glow hitbox box overlay tint").choices(net.alpaka.addons.utils.EntityHighlight.STYLE_NAMES));
+
+        OPTIONS.add(ConfigOption.color("starred_mobs_highlight_color", "Highlight Color",
+                "Color of the starred mob highlight.",
+                ConfigCategory.DUNGEON,
+                c -> c.starredMobsHighlightColor,
+                v -> { AlpakaConfig.instance.starredMobsHighlightColor = v; AlpakaConfig.save(); },
+                "dungeon starred mobs highlight color colour picker"));
+
+        OPTIONS.add(new ConfigOption("starred_mobs_hide_names", "Hide Non-Starred Name Tags",
+                "Hides the name tags of mobs without a star during the clear. Minibosses and the Mimic keep theirs.",
+                ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.starredMobsHideNames,
+                v -> { AlpakaConfig.instance.starredMobsHideNames = v; AlpakaConfig.save(); },
+                "dungeon hide non starred mobs name tags nametags names health clutter clear"));
+
         OPTIONS.add(new ConfigOption("Inventory HUD", ConfigCategory.VISUALS));
 
         OPTIONS.add(new ConfigOption("inventory_hud_enabled", "Enable Inventory HUD",
@@ -1613,9 +1943,9 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.SKYBLOCK,
                 () -> (float) AlpakaConfig.instance.slayerBossHighlightStyle,
                 v -> { AlpakaConfig.instance.slayerBossHighlightStyle = Math.round(v); AlpakaConfig.save(); },
-                0.0f, (float) (net.alpaka.addons.features.slayer.SlayerBossHighlight.STYLE_NAMES.length - 1),
-                val -> net.alpaka.addons.features.slayer.SlayerBossHighlight.STYLE_NAMES[Math.round(val)],
-                "slayer boss highlight style mode outline glow hitbox box overlay tint").choices(net.alpaka.addons.features.slayer.SlayerBossHighlight.STYLE_NAMES));
+                0.0f, (float) (net.alpaka.addons.utils.EntityHighlight.STYLE_NAMES.length - 1),
+                val -> net.alpaka.addons.utils.EntityHighlight.STYLE_NAMES[Math.round(val)],
+                "slayer boss highlight style mode outline glow hitbox box overlay tint").choices(net.alpaka.addons.utils.EntityHighlight.STYLE_NAMES));
 
         OPTIONS.add(ConfigOption.color("slayer_boss_highlight_color", "Highlight Color",
                 "Color of the boss highlight.",

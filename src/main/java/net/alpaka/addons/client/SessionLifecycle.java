@@ -57,6 +57,8 @@ public final class SessionLifecycle {
         FirePitFeature.reset();
         net.alpaka.addons.features.damagetags.CustomDamageTagFeature.reset();
         net.alpaka.addons.utils.DungeonState.reset();
+        net.alpaka.addons.features.dungeonmap.DungeonMapFeature.reset();
+        net.alpaka.addons.features.dungeonmobs.StarredMobsHighlight.reset();
         net.alpaka.addons.features.ragnarock.RagnarockFeature.reset();
         net.alpaka.addons.features.worldage.WorldClockTracker.reset();
         AlpakaStats.flushNow();
@@ -67,6 +69,8 @@ public final class SessionLifecycle {
         FirePitFeature.reset();
         net.alpaka.addons.features.damagetags.CustomDamageTagFeature.reset();
         net.alpaka.addons.utils.DungeonState.reset();
+        net.alpaka.addons.features.dungeonmap.DungeonMapFeature.reset();
+        net.alpaka.addons.features.dungeonmobs.StarredMobsHighlight.reset();
         net.alpaka.addons.features.ragnarock.RagnarockFeature.reset();
     }
 

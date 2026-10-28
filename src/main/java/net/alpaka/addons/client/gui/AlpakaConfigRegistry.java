@@ -2537,11 +2537,12 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("terminal_custom_gui", "Custom Terminal GUI",
                 "Shows terminals in a larger, cleaner window with the solution drawn in. Needs Terminal Solvers on, "
                         + "and opens only for the terminals ticked under Terminals. Only the clicks you make are sent, "
-                        + "unchanged; a click the Terminal Solvers guards ignore is not sent at all.",
+                        + "unchanged; a click the Terminal Solvers guards ignore is not sent at all. "
+                        + "Practice anywhere with /alpakaterminal [terminal] [ping]; nothing is sent while you practice.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.terminalCustomGui,
                 v -> { AlpakaConfig.instance.terminalCustomGui = v; AlpakaConfig.save(); },
-                "dungeon f7 m7 terminal custom gui window screen bigger larger clean odin grid"));
+                "dungeon f7 m7 terminal custom gui window screen bigger larger clean odin grid practice simulator termsim"));
 
         OPTIONS.add(new ConfigOption("terminal_gui_scale", "GUI Size",
                 "How large the cells of the custom window are. It shrinks to fit the screen.",

@@ -2116,6 +2116,27 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.commandWheelToggleMode = v; AlpakaConfig.save(); },
                 "quick command wheel toggle hold press release click open mode keybind"));
 
+        OPTIONS.add(new ConfigOption("inventory_buttons", "Inventory Buttons",
+                "Your own buttons around the inventory and every chest or menu. A click runs their command.",
+                ConfigCategory.SOUND_MISC,
+                () -> AlpakaConfig.instance.inventoryButtonsEnabled,
+                v -> { AlpakaConfig.instance.inventoryButtonsEnabled = v; AlpakaConfig.save(); },
+                "inventory buttons custom command shortcut chest menu gui icon quick storage pets wardrobe"));
+
+        OPTIONS.add(new ConfigOption("inventory_buttons_edit", "Edit Inventory Buttons",
+                "Add buttons, pick their command and icon, and drag them to where you want them.",
+                ConfigCategory.SOUND_MISC,
+                "Edit Buttons",
+                parent -> Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.client.InventoryButtonsEditorScreen(parent)),
+                "inventory buttons edit add remove move place icon command editor"));
+
+        OPTIONS.add(new ConfigOption("inventory_buttons_skyblock_only", "Only on SkyBlock",
+                "Show the inventory buttons only while you are on Hypixel SkyBlock.",
+                ConfigCategory.SOUND_MISC,
+                () -> AlpakaConfig.instance.inventoryButtonsSkyblockOnly,
+                v -> { AlpakaConfig.instance.inventoryButtonsSkyblockOnly = v; AlpakaConfig.save(); },
+                "inventory buttons skyblock only hypixel"));
+
         OPTIONS.add(new ConfigOption("always_sprint", "Always Sprint",
                 "Walking forward sprints on its own, no sprint key needed.",
                 ConfigCategory.SOUND_MISC,

@@ -101,6 +101,26 @@ public final class DevScreenshotTour {
             new Stop("screenshot-preview-shrink", () -> ScreenshotPreview.devFreezeAt(120.0f), () -> true, 2),
             new Stop(null, () -> ScreenshotPreview.devFreezeAt(-1.0f), () -> true, 5),
             new Stop("hud-editor-world", () -> Minecraft.getInstance().gui.setScreen(new HudEditorScreen(null)), () -> true, 20),
+            // The inventory buttons: in the inventory, in a large chest, and in their editor.
+            new Stop("inventory-buttons", () -> {
+                AlpakaConfig.instance.inventoryButtonsEnabled = true;
+                AlpakaConfig.instance.inventoryButtonsSkyblockOnly = false;
+                Minecraft mc = Minecraft.getInstance();
+                mc.gui.setScreen(new net.minecraft.client.gui.screens.inventory.InventoryScreen(mc.player));
+                placeMouse(0.5, 0.5);
+            }, () -> true, 20),
+            new Stop("inventory-buttons-chest", () -> {
+                Minecraft mc = Minecraft.getInstance();
+                mc.gui.setScreen(new net.minecraft.client.gui.screens.inventory.ContainerScreen(
+                        net.minecraft.world.inventory.ChestMenu.sixRows(0, mc.player.getInventory()),
+                        mc.player.getInventory(), net.minecraft.network.chat.Component.literal("Large Chest")));
+            }, () -> true, 20),
+            screen("inventory-buttons-editor", () -> new InventoryButtonsEditorScreen(null)),
+            screen("inventory-buttons-editor-edit", () -> new InventoryButtonsEditorScreen(null, 2)),
+            new Stop(null, () -> {
+                AlpakaConfig.instance.inventoryButtonsEnabled = false;
+                Minecraft.getInstance().gui.setScreen(null);
+            }, () -> true, 5),
             screen("pause-menu", net.alpaka.addons.features.escapemenu.CustomPauseScreen::new),
             // The Friends overlay over the pause menu, opened as the Friends key (O) opens it: it
             // draws the menu as its backdrop and then blurs itself, so the menu must not blur too.

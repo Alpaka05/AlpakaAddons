@@ -382,8 +382,10 @@ object SlayerTimer {
         // in the very tick it had to watch the death happen. Every fight then reported "boss death
         // never seen" and fell back to the sidebar's kill. The recent-quest memory keeps it running
         // past the moment the sidebar goes quiet.
-        // Nothing to watch while the timer is off; the tracker is also reset on every kill.
-        if (!AlpakaConfig.instance.slayerTimerEnabled) return
+        // Nothing to watch while neither the timer nor the boss highlight needs the boss; the
+        // tracker is also reset on every kill.
+        val cfg = AlpakaConfig.instance
+        if (!cfg.slayerTimerEnabled && !cfg.slayerBossHighlightEnabled) return
 
         val quest = SlayerQuestDetector.currentOrRecent() ?: return
         SlayerBossEntityTracker.tick(quest, SlayerQuestDetector.inBossFight)

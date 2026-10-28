@@ -1598,6 +1598,39 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.slayerTimerHudEnabled = v; AlpakaConfig.save(); },
                 "slayer boss timer hud live overlay screen"));
 
+        OPTIONS.add(new ConfigOption("Slayer Boss Highlight", ConfigCategory.SKYBLOCK));
+
+
+        OPTIONS.add(new ConfigOption("slayer_boss_highlight", "Boss Highlight",
+                "Highlights your own slayer boss so it stands out from the crowd.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slayerBossHighlightEnabled,
+                v -> { AlpakaConfig.instance.slayerBossHighlightEnabled = v; AlpakaConfig.save(); },
+                "slayer boss highlight glow outline hitbox box overlay tint color own mark"));
+
+        OPTIONS.add(new ConfigOption("slayer_boss_highlight_style", "Highlight Style",
+                "Outline glows around the boss, Hitbox draws a box around it, Overlay tints its model.",
+                ConfigCategory.SKYBLOCK,
+                () -> (float) AlpakaConfig.instance.slayerBossHighlightStyle,
+                v -> { AlpakaConfig.instance.slayerBossHighlightStyle = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (net.alpaka.addons.features.slayer.SlayerBossHighlight.STYLE_NAMES.length - 1),
+                val -> net.alpaka.addons.features.slayer.SlayerBossHighlight.STYLE_NAMES[Math.round(val)],
+                "slayer boss highlight style mode outline glow hitbox box overlay tint").choices(net.alpaka.addons.features.slayer.SlayerBossHighlight.STYLE_NAMES));
+
+        OPTIONS.add(ConfigOption.color("slayer_boss_highlight_color", "Highlight Color",
+                "Color of the boss highlight.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.slayerBossHighlightColor,
+                v -> { AlpakaConfig.instance.slayerBossHighlightColor = v; AlpakaConfig.save(); },
+                "slayer boss highlight color colour picker"));
+
+        OPTIONS.add(new ConfigOption("slayer_boss_highlight_attunement", "Blaze Attunement Colors",
+                "On the Blaze slayer, uses the color of the current attunement for the boss and its demons.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slayerBossHighlightAttunement,
+                v -> { AlpakaConfig.instance.slayerBossHighlightAttunement = v; AlpakaConfig.save(); },
+                "blaze slayer inferno demonlord attunement hellion shield ashen spirit crystal auric dagger demon quazii typhoeus color"));
+
         OPTIONS.add(new ConfigOption("Slayer Session HUD", ConfigCategory.SKYBLOCK));
 
 

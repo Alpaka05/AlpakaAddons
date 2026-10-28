@@ -46,6 +46,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.utils.UpdateChecker.register();
         net.alpaka.addons.features.slayer.SmolderingPolarization.register();
         net.alpaka.addons.features.slayer.HamRadio.register();
+        net.alpaka.addons.features.slayer.SlayerBossHighlight.register();
         DevScreenshotTour.register();
         SlayerDropTracker.registerEvents();
         DeployableTracker.registerEvents();

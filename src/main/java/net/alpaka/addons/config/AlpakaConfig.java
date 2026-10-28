@@ -676,6 +676,19 @@ public class AlpakaConfig {
     public boolean messageFilterFireSale = true;
     public boolean messageFilterWatchdog = true;
     public boolean messageFilterStash = true;
+    public boolean messageFilterSacks = true;
+    /** Dungeon chatter, only hidden inside a Catacombs run; one switch per group. */
+    public boolean messageFilterDungeonPrepare = true;
+    public boolean messageFilterDungeonStart = true;
+    public boolean messageFilterDungeonAmbience = true;
+    public boolean messageFilterDungeonPickup = true;
+    public boolean messageFilterDungeonReminder = true;
+    public boolean messageFilterDungeonBlessing = true;
+    public boolean messageFilterDungeonNotPossible = true;
+    public boolean messageFilterDungeonDamage = true;
+    public boolean messageFilterDungeonAbility = true;
+    public boolean messageFilterDungeonPuzzle = true;
+    public boolean messageFilterDungeonEnd = true;
     /** The player's own filters, made in the Message Filter's sub menu. */
     public java.util.List<net.alpaka.addons.features.chat.CustomMessageFilter> messageFilterCustom = new java.util.ArrayList<>();
     /** All / Party / Guild / PMs tabs above the chat input. */

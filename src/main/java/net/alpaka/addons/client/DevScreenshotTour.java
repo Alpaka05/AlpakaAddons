@@ -69,6 +69,16 @@ public final class DevScreenshotTour {
             screen("config-old-starlight", () -> new AlpakaConfigScreen(null, "starlight")),
             screen("color-picker", () -> new ColorPickerScreen(null, "Accent Color", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
             screen("wheel-editor", () -> new CommandWheelConfigScreen(new CustomMainMenuScreen())),
+            new Stop("shortcuts-editor", () -> {
+                AlpakaConfig.instance.commandAliases = new java.util.ArrayList<>(List.of(
+                        new AlpakaConfig.CommandAlias("/v", "/visit"),
+                        new AlpakaConfig.CommandAlias("/pa", "/p accept"),
+                        new AlpakaConfig.CommandAlias("/v", "/viewrecipe")));
+                AlpakaConfig.instance.commandKeyShortcuts = new java.util.ArrayList<>(List.of(
+                        new AlpakaConfig.KeyShortcut("key.keyboard.y", 0, "/sb menu"),
+                        new AlpakaConfig.KeyShortcut("key.keyboard.h", 2, "/warp hub")));
+                Minecraft.getInstance().gui.setScreen(new CommandShortcutsConfigScreen(new CustomMainMenuScreen()));
+            }, () -> true, 30),
             screen("hud-editor", () -> new HudEditorScreen(null)),
             // The wheel itself, on a full page of long names: they must not run into each other,
             // and the page arrows sit at the edges.

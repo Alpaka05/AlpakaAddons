@@ -4,6 +4,7 @@ import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.compliance.Outbound
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.config.AlpakaConfig.InventoryButton
+import net.alpaka.addons.features.market.MarketScreen
 import net.alpaka.addons.mixin.AbstractContainerScreenAccessor
 import net.alpaka.addons.utils.SkyblockUtils
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands
@@ -57,10 +58,16 @@ object InventoryButtonsFeature {
         }
     }
 
-    /** Whether the buttons show at all right now. */
-    private fun active(): Boolean {
+    /**
+     * Whether the buttons show on [screen] right now. Not over the custom Auction House or Bazaar:
+     * that screen covers the chest with its own, larger window, so the buttons would sit behind it
+     * and a click meant for the market could run a command instead. In its classic view, where
+     * Hypixel's chest shows, they are back.
+     */
+    private fun active(screen: AbstractContainerScreen<*>): Boolean {
         val cfg = AlpakaConfig.instance
         if (!cfg.inventoryButtonsEnabled || cfg.inventoryButtons.isNullOrEmpty()) return false
+        if (screen is MarketScreen && !screen.classic()) return false
         return !cfg.inventoryButtonsSkyblockOnly || SkyblockUtils.isOnSkyblock()
     }
 
@@ -82,7 +89,7 @@ object InventoryButtonsFeature {
     }
 
     private fun buttonAt(screen: AbstractContainerScreen<*>, mouseX: Double, mouseY: Double): InventoryButton? {
-        if (!active()) return null
+        if (!active(screen)) return null
         val box = box(screen)
         // The last drawn is on top, so it is the one a click finds first.
         for (button in AlpakaConfig.instance.inventoryButtons.asReversed()) {
@@ -96,7 +103,7 @@ object InventoryButtonsFeature {
     }
 
     private fun extract(screen: AbstractContainerScreen<*>, graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
-        if (!active()) return
+        if (!active(screen)) return
         val box = box(screen)
         val hovered = buttonAt(screen, mouseX.toDouble(), mouseY.toDouble())
         for (button in AlpakaConfig.instance.inventoryButtons) {

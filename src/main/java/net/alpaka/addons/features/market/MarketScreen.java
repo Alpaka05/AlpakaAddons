@@ -257,7 +257,8 @@ public class MarketScreen extends ContainerScreen {
         sideScroll.target = previous.sideScroll.target;
     }
 
-    private boolean classic() {
+    /** Whether Hypixel's own chest shows instead of this screen's layout ("Classic" in the footer). */
+    public boolean classic() {
         return CLASSIC.contains(kind);
     }
 

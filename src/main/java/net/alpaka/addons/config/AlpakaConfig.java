@@ -195,6 +195,8 @@ public class AlpakaConfig {
     public float containerBgOpacity = 0.75f;
     public boolean containerBgFadeInEnabled = true;
     public int containerBgFadeInDurationMs = 250;
+    /** Hides the potion effect list vanilla draws next to the inventory. */
+    public boolean hideInventoryEffects = false;
     /**
      * Clean Blaze, only on SkyBlock in the Blaze slayer's zones. The fields after it pick what it
      * hides.
@@ -203,11 +205,17 @@ public class AlpakaConfig {
     public boolean cleanBlazeParticles = true;
     /** The potion swirls, enchanting glyphs and ender particles around the boss and its demons. */
     public boolean cleanBlazeEffectParticles = true;
+    /** The dust in the Hellion Shield attunement's colour around the boss and its demons. */
+    public boolean cleanBlazeAttunementDust = true;
     public boolean cleanBlazeFire = true;
     public boolean cleanBlazeFireballs = true;
     public boolean cleanBlazeLightning = true;
     /** Off by default: the health on blaze name tags is what a grinder watches. */
     public boolean cleanBlazeNameTags = false;
+    /** "Strike using the ... attunement on your dagger!" lines in the Blaze zones. */
+    public boolean cleanBlazeWrongDaggerChat = true;
+    /** "Your hit was reduced by Hellion Shield!" and "You took ... damage from ..." in the Blaze zones. */
+    public boolean cleanBlazeDamageChat = true;
     /** During the player's own Blaze slayer boss, a glowing column over each fire pit block. */
     public boolean blazeFirePitsEnabled = true;
     /** ARGB color of the fire pit column; its alpha scales the column's own fade. Default hot red-orange. */
@@ -270,6 +278,18 @@ public class AlpakaConfig {
     public boolean customSoundInventoryClick = true;
     public boolean customSoundZombieRemedy = true;
     public boolean customSoundSuccessfulHit = true;
+    /** Per-sound volumes, multiplied with customSoundsVolume. Shared toggles share one volume. */
+    public float customSoundButtonClickVolume = 1.0f;
+    public float customSoundHotbarScrollVolume = 1.0f;
+    public float customSoundInventoryOpenCloseVolume = 1.0f;
+    public float customSoundInventoryClickVolume = 1.0f;
+    public float customSoundRareDropVolume = 1.0f;
+    public float customSoundNotificationVolume = 1.0f;
+    public float customSoundPlayerHurtVolume = 1.0f;
+    public float customSoundBlazeDeathVolume = 1.0f;
+    public float customSoundZombieRemedyVolume = 1.0f;
+    public float customSoundSuccessfulHitVolume = 1.0f;
+    public float customSoundLowHpHeartbeatVolume = 1.0f;
     public boolean muteVanillaSoundsInBlazeSlayer = false;
     /**
      * With the Blaze slayer mute on: every world sound instead of only the fight's own noise
@@ -307,6 +327,8 @@ public class AlpakaConfig {
     public boolean notificationSmoothFont = true;
     public boolean customEscapeMenuEnabled = true;
     public boolean customMainMenuEnabled = false;
+    /** The custom main menu's background, avatar and fireflies shift with the mouse. */
+    public boolean customMainMenuParallax = true;
     /** Inventory Particles behind the custom main menu as well; off keeps them to container screens. */
     public boolean customMainMenuParticles = false;
     /** The small player model on the HUD. Off for fresh installs. */
@@ -338,6 +360,7 @@ public class AlpakaConfig {
     public boolean performanceHudShowFps = true;
     public boolean performanceHudShowPing = true;
     public boolean performanceHudShowTps = true;
+    public boolean performanceHudAnimate = false;
     public int performanceHudX = net.alpaka.addons.client.hud.HudDefaults.PERFORMANCE_X;
     public int performanceHudY = net.alpaka.addons.client.hud.HudDefaults.PERFORMANCE_Y;
     public float performanceHudScale = 1.0f;
@@ -391,6 +414,8 @@ public class AlpakaConfig {
     public boolean allowApiCalls = true;
     /** A chat line on joining a world when a newer release is on GitHub. Needs allowApiCalls. */
     public boolean updateNotificationsEnabled = true;
+    /** Which releases the update check offers: 0 full releases only, 1 pre-releases as well (UpdateChecker.STREAM_NAMES). */
+    public int updateStream = 0;
     /** The release whose notes the player last opened from the main menu; its What's New card shows a dot until then. */
     public String releaseNotesSeen = "";
     /** The What's New card on the custom main menu, with the newest release's notes. */
@@ -426,6 +451,13 @@ public class AlpakaConfig {
     public boolean slayerTimerChatEnabled = true;
     /** Show the running time on screen while the boss is up. */
     public boolean slayerTimerHudEnabled = true;
+    /** Highlight the player's own slayer boss. */
+    public boolean slayerBossHighlightEnabled = true;
+    /** How the boss is highlighted, an index into EntityHighlight.STYLE_NAMES. */
+    public int slayerBossHighlightStyle = 0;
+    public int slayerBossHighlightColor = 0xFFFF5555;
+    /** On the Blaze slayer, color the boss and its demons by their current attunement. */
+    public boolean slayerBossHighlightAttunement = true;
     /** The Ragnarock's cast countdown under the crosshair instead of in the action bar. */
     // Saved as ragAxeCountdownEnabled before the feature was renamed; read that too so the setting carries over.
     @SerializedName(value = "ragnarockEnabled", alternate = "ragAxeCountdownEnabled")
@@ -502,6 +534,64 @@ public class AlpakaConfig {
     /** Index into {@code EtherwarpOverlayFeature.SOUND_NAMES}: whoosh, pling, thud, chime, pop. */
     public int etherwarpSoundIndex = 0;
     public float etherwarpSoundVolume = 1.0f;
+
+    // Dungeon Map: screen position is edited in the HUD editor.
+    /** Highlight the starred mobs and minibosses during a dungeon clear. */
+    public boolean starredMobsHighlightEnabled = false;
+    /** How starred mobs are highlighted, an index into EntityHighlight.STYLE_NAMES. */
+    public int starredMobsHighlightStyle = 0;
+    public int starredMobsHighlightColor = 0xFFFFAA00;
+    /** During the clear, hide the name tags of mobs without a star. */
+    public boolean starredMobsHideNames = false;
+    public boolean dungeonMapEnabled = false;
+    public int dungeonMapX = net.alpaka.addons.client.hud.HudDefaults.DUNGEON_MAP_X;
+    public int dungeonMapY = net.alpaka.addons.client.hud.HudDefaults.DUNGEON_MAP_Y;
+    public boolean dungeonMapShowClear = true;
+    public boolean dungeonMapShowBoss = true;
+    public int dungeonMapBossMode = 0;
+    public float dungeonMapBossRange = 96.0f;
+    public float dungeonMapScale = 1.0f;
+    public boolean dungeonMapTitle = true;
+    public boolean dungeonMapRoomNames = false;
+    public boolean dungeonMapRoomSecrets = false;
+    public boolean dungeonMapHideCheckmarks = true;
+    public float dungeonMapRoomLabelScale = 0.5f;
+    public boolean dungeonMapPlayers = true;
+    public boolean dungeonMapNames = false;
+    public boolean dungeonMapPlayerHeads = true;
+    public boolean dungeonMapRotateHeads = true;
+    public boolean dungeonMapHeadBorder = true;
+    public boolean dungeonMapSmoothMarkers = true;
+    public float dungeonMapMarkerScale = 1.0f;
+    public int dungeonMapSelfColor = 0xFFFFFFFF;
+    public int dungeonMapPlayerColor = 0xFF55DDFF;
+    public int dungeonMapTextColor = 0xFFE8EEEE;
+    public boolean dungeonMapBackground = true;
+    public int dungeonMapBackgroundColor = 0xFF191919;
+    public float dungeonMapBackgroundOpacity = 65.0f;
+    public boolean dungeonMapBlur = true;
+    public boolean dungeonMapFrame = true;
+    public int dungeonMapFrameStart = 0xFF29B6B2;
+    public int dungeonMapFrameEnd = 0xFFB04FFF;
+    public float dungeonMapFrameWidth = 1.0f;
+    public float dungeonMapCornerRadius = 6.0f;
+    public float dungeonMapPadding = 6.0f;
+    public boolean dungeonMapCustomColors = true;
+    public int dungeonMapRoomColor = 0xFFB78A60;
+    public int dungeonMapEntranceColor = 0xFF4DBB75;
+    public int dungeonMapPuzzleColor = 0xFFB86CE0;
+    public int dungeonMapTrapColor = 0xFFE89B45;
+    public int dungeonMapMinibossColor = 0xFFF3D55B;
+    public int dungeonMapFairyColor = 0xFFF08BBD;
+    public int dungeonMapBloodColor = 0xFFE15959;
+    public int dungeonMapUnknownColor = 0xFF555D68;
+    public int dungeonMapDoorColor = 0xFF282D38;
+    public int dungeonMapClearedColor = 0xFFFFFFFF;
+    public int dungeonMapCompleteColor = 0xFF55E68B;
+    public int dungeonMapFailedColor = 0xFFFF5555;
+    public boolean dungeonMapBossCustomColors = true;
+    public int dungeonMapBossFloorColor = 0xFF687981;
+    public int dungeonMapBossWallColor = 0xFFB8C5CC;
 
     // Dungeon solvers. Visual help in the Catacombs: puzzles, F7/M7 terminals and devices. Nothing is
     // sent; the custom terminal GUI clicks only what the player clicks, through Outbound.menuClick.
@@ -673,6 +763,8 @@ public class AlpakaConfig {
     public boolean scoreboardAlpakaFooter = true;
     /** Ctrl+F in the chat turns the input line into a search that filters the visible messages. */
     public boolean chatSearchEnabled = true;
+    /** Right-clicking a message in the open chat copies its text; see ChatCopyFeature. */
+    public boolean chatCopyEnabled = true;
     /** Scrolling the chat glides the lines into place instead of jumping a line per notch. */
     public boolean chatSmoothScrollEnabled = true;
     /** The open chat's scrollbar is a wider, rounded bar that can be dragged with the mouse. */
@@ -691,6 +783,14 @@ public class AlpakaConfig {
     public boolean alwaysSprintEnabled = false;
     /** Always sprint stays off on the Garden, where farming wants walking speed. */
     public boolean alwaysSprintIgnoreGarden = false;
+    /** The cursor stays put when Hypixel swaps one menu for the next (backpack pages and the like). */
+    public boolean keepCursorPositionEnabled = true;
+    /** Quick Join's main switch. Off for fresh installs: it sends a command nobody typed. */
+    public boolean quickJoinEnabled = false;
+    /** Quick Join sends /skyblock once after joining Hypixel. */
+    public boolean quickJoinSkyblock = true;
+    /** Quick Join also connects to Hypixel as soon as the game has started. */
+    public boolean quickJoinOnLaunch = false;
     public boolean expandChatHistory = true;
     /** How many chat lines Expand Chat History keeps; vanilla keeps 100. */
     public int chatHistoryLimit = 5000;
@@ -727,6 +827,33 @@ public class AlpakaConfig {
     public boolean compactChatEnabled = true;
     /** Seconds since the last identical message within which a repeat still stacks; 0 = back-to-back only. */
     public int compactChatWindowSeconds = 30;
+    /** Hides Hypixel chat spam; which kinds is up to the switches below. */
+    public boolean messageFilterEnabled = false;
+    public boolean messageFilterEmpty = true;
+    public boolean messageFilterWelcome = true;
+    public boolean messageFilterGuildExp = true;
+    public boolean messageFilterKillCombo = true;
+    public boolean messageFilterProfileJoin = true;
+    public boolean messageFilterRewardBundles = true;
+    public boolean messageFilterAutopet = true;
+    public boolean messageFilterFireSale = true;
+    public boolean messageFilterWatchdog = true;
+    public boolean messageFilterStash = true;
+    public boolean messageFilterSacks = true;
+    /** Dungeon chatter, only hidden inside a Catacombs run; one switch per group. */
+    public boolean messageFilterDungeonPrepare = true;
+    public boolean messageFilterDungeonStart = true;
+    public boolean messageFilterDungeonAmbience = true;
+    public boolean messageFilterDungeonPickup = true;
+    public boolean messageFilterDungeonReminder = true;
+    public boolean messageFilterDungeonBlessing = true;
+    public boolean messageFilterDungeonNotPossible = true;
+    public boolean messageFilterDungeonDamage = true;
+    public boolean messageFilterDungeonAbility = true;
+    public boolean messageFilterDungeonPuzzle = true;
+    public boolean messageFilterDungeonEnd = true;
+    /** The player's own filters, made in the Message Filter's sub menu. */
+    public java.util.List<net.alpaka.addons.features.chat.CustomMessageFilter> messageFilterCustom = new java.util.ArrayList<>();
     /** All / Party / Guild / PMs tabs above the chat input. */
     public boolean chatTabsEnabled = true;
     /** With chat tabs: a plain message typed on a channel tab goes to that channel (/pc, /gc, /r). */
@@ -759,6 +886,8 @@ public class AlpakaConfig {
     public boolean persistentItemNameEnabled = false;
     /** Master stars show as red stars, as they used to, instead of a number behind the gold ones. */
     public boolean oldMasterStarsEnabled = false;
+    /** Hovering a backpack or ender chest page in the Storage menu shows what was last seen inside. */
+    public boolean storagePreviewEnabled = true;
     /**
      * One long row of twenty hearts in place of the two short ones, the hunger bar and the armor bar,
      * neither of which SkyBlock needs; absorption hearts sit on the row above it.
@@ -768,6 +897,29 @@ public class AlpakaConfig {
     public boolean wideHealthBarCentered = false;
     /** Absorption hearts: 0 a row of their own, 1 gold over the first hearts, 2 hidden. */
     public int wideHealthBarAbsorption = 0;
+    /**
+     * Custom Tab: SkyBlock's player list on one panel, sorted into its categories. Layout 0 puts the
+     * categories next to each other, 1 under each other. See CustomTabFeature.
+     */
+    public boolean customTabEnabled = false;
+    public boolean customTabBlur = true;
+    public boolean customTabSmoothFont = true;
+    public int customTabLayout = 0;
+    public boolean customTabHideAds = true;
+    public boolean customTabToggle = false;
+    /** The list stays up in the chat and in inventories and chests, drawn above them. */
+    public boolean customTabInMenus = false;
+    /** Hypixel's progress drawn as bars: its pipe bars, counts toward a goal, skill percentages. */
+    public boolean customTabProgressBars = true;
+    /** A row lights up for a moment when its value changes. */
+    public boolean customTabHighlightChanges = true;
+    /** Each widget (Area, Profile, Pet, ...) in a faint box of its own. */
+    public boolean customTabSectionBoxes = true;
+    /** The panel behind the list; off leaves only the text. */
+    public boolean customTabBackground = true;
+    /** The list slides down out of the top edge and back up instead of appearing at once. */
+    public boolean customTabAnimated = true;
+    public float customTabScale = 1.0f;
 
     /** A Hypixel party invite raises a notification: Y joins, N dismisses. */
     public boolean partyInvitePromptEnabled = true;
@@ -781,6 +933,12 @@ public class AlpakaConfig {
      */
     public boolean customAuctionHouseEnabled = true;
     public boolean customBazaarEnabled = true;
+    /**
+     * Number keys, arrows and the like press the market screen's buttons, one click per press; see
+     * MarketScreen.keyPressed. One switch for each market.
+     */
+    public boolean auctionHouseHotkeysEnabled = true;
+    public boolean bazaarHotkeysEnabled = true;
     /** Hypixel's sign prompts - a search, a price, an amount - as an input bar; see MarketInputScreen. */
     public boolean customSignInputEnabled = true;
     /** SkyCofl's price history on a product's or an auction's page; see PriceGraph. Needs allowApiCalls. */
@@ -791,6 +949,19 @@ public class AlpakaConfig {
     public boolean itemValueEnabled = true;
     /** Which Bazaar price the parts count at: 0 what they cost to buy now, 1 what they sell for now. */
     public int itemValueBazaarPrice = 0;
+    /** The Chest Value panel beside a menu: what everything in it is worth; see ChestValuePanel. Needs allowApiCalls. */
+    public boolean chestValueEnabled = true;
+    /** Whether the panel is showing: its key switches it, and it stays so from menu to menu until pressed again. */
+    public boolean chestValueShown = false;
+    /** Whether a chest's panel counts the player's own inventory below it too. */
+    public boolean chestValueIncludeInventory = false;
+    /** Which side of the menu the panel sits on: 0 left, 1 right (where the item list mods usually are). */
+    public int chestValueSide = 0;
+    /** How its list is ordered, an index into ChestValue.Sort: value, price each, amount. */
+    public int chestValueSort = 0;
+    /** Where the panel was moved to, as a share of the screen's width and height; -1 beside the menu. */
+    public float chestValueX = -1f;
+    public float chestValueY = -1f;
 
     // Command Wheel options
     /**
@@ -800,10 +971,42 @@ public class AlpakaConfig {
     public java.util.List<java.util.List<String>> commandWheelPages = null;
 
     /**
+     * Wheels of single Skyblock profiles, keyed "account uuid:profile", pages as above. A profile
+     * listed here opens its own wheel; every other one opens {@link #commandWheelPages}.
+     */
+    public java.util.Map<String, java.util.List<java.util.List<String>>> commandWheelProfilePages = new java.util.HashMap<>();
+
+    /**
      * Off: hold the wheel key to open the wheel, release it to run the aimed command. On: one press
      * opens it, a click runs a command, and pressing the key again closes it.
      */
     public boolean commandWheelToggleMode = false;
+
+    /**
+     * The mod's keys, by key mapping name ("key.alpaka.zoom") to the bound key's name
+     * ("key.keyboard.c"). A key left out is on its default. They are set in the config menu and kept
+     * here rather than in options.txt; see AlpakaKeyBinds.
+     */
+    public Map<String, String> keyBinds = new HashMap<>();
+    /** Whether keys bound in vanilla's Controls before have been taken over from options.txt. */
+    public boolean keyBindsImported = false;
+
+    /** Holding the Zoom key zooms in; scrolling while holding it zooms further. */
+    public boolean zoomEnabled = true;
+    /** Off: zoom while the key is held. On: one press zooms in, the next zooms back out. */
+    public boolean zoomToggleMode = false;
+    /** How far the zoom goes in, as a factor of the normal view. */
+    public float zoomAmount = 4.0f;
+    /** Scrolling while zoomed changes the zoom instead of the hotbar slot. */
+    public boolean zoomScrollEnabled = true;
+    /** How the zoom moves in and out: an index into ZoomFeature.ANIMATIONS. */
+    public int zoomAnimation = 1;
+    /** How long the zoom animation takes, in milliseconds. */
+    public int zoomAnimationMs = 250;
+    /** Turns on vanilla's cinematic camera while zoomed. */
+    public boolean zoomCinematicCamera = false;
+    /** Turns the mouse down by the zoom factor, so aiming feels the same zoomed in. */
+    public boolean zoomReduceSensitivity = true;
 
     /** Legacy, pre-pages. Read once by CommandWheelPages and then cleared. */
     public java.util.List<String> commandWheelCommands = new java.util.ArrayList<>(java.util.List.of(
@@ -814,6 +1017,45 @@ public class AlpakaConfig {
             "/pets",
             "/pv"
     ));
+
+    // Command Shortcuts; see CommandShortcuts.
+    public boolean commandShortcutsEnabled = true;
+    /** Typed aliases: "/v Steve" goes out as "/visit Steve". */
+    public java.util.List<CommandAlias> commandAliases = new java.util.ArrayList<>();
+    /** Keys that run a command with no screen open: Y for "/sb menu". */
+    public java.util.List<KeyShortcut> commandKeyShortcuts = new java.util.ArrayList<>();
+
+    /** One alias, both sides without their slash: "v" stands for "visit". */
+    public static class CommandAlias {
+        public String alias = "";
+        public String command = "";
+
+        public CommandAlias() {}
+
+        public CommandAlias(String alias, String command) {
+            this.alias = alias;
+            this.command = command;
+        }
+    }
+
+    /**
+     * One key shortcut: the key by its InputConstants name ("key.keyboard.y"), the modifier keys
+     * held with it (GLFW's MOD_SHIFT, MOD_CONTROL, MOD_ALT, MOD_SUPER bits), and the command
+     * without its slash. An empty key is not bound yet.
+     */
+    public static class KeyShortcut {
+        public String key = "";
+        public int modifiers = 0;
+        public String command = "";
+
+        public KeyShortcut() {}
+
+        public KeyShortcut(String key, int modifiers, String command) {
+            this.key = key;
+            this.modifiers = modifiers;
+            this.command = command;
+        }
+    }
 
     // Item viewmodel options
     public boolean itemSizeFeatureEnabled = false;
@@ -1179,6 +1421,8 @@ public class AlpakaConfig {
         fresh.lastSeenVersion = old.lastSeenVersion;
         fresh.configVersion = old.configVersion;
         fresh.menuFontNunitoApplied = true;
+        // The keys go back to their defaults too; options.txt is not read again for the old ones.
+        fresh.keyBindsImported = true;
         instance = fresh;
         applyMenuTheme();
         save();
@@ -1398,8 +1642,10 @@ public class AlpakaConfig {
         this.skyEffectsEnabled = false;
         this.inventorySnowEnabled = false;
         this.containerBgFadeInEnabled = false;
+        this.hideInventoryEffects = false;
         this.cleanBlazeEnabled = false;
         this.blazeFirePitsEnabled = false;
+        this.slayerBossHighlightEnabled = false;
         this.hideSlayerChatMessages = false;
         this.stopBlazeSpinning = false;
         this.hideHurtOverlayEnabled = false;
@@ -1430,6 +1676,7 @@ public class AlpakaConfig {
         this.playerModelEnabled = false;
         this.performanceHudEnabled = false;
         this.slayerHudEnabled = false;
+        this.customTabEnabled = false;
         this.allowApiCalls = false;
         this.slayerTimerEnabled = false;
         this.ragnarockEnabled = false;
@@ -1439,6 +1686,7 @@ public class AlpakaConfig {
         this.customSignInputEnabled = false;
         this.marketPriceHistoryEnabled = false;
         this.itemValueEnabled = false;
+        this.chestValueEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
         this.customDamageTagsEnabled = false;
@@ -1449,13 +1697,19 @@ public class AlpakaConfig {
         this.scoreboardBlurEnabled = false;
         this.scoreboardAlpakaFooter = false;
         this.chatSearchEnabled = false;
+        this.chatCopyEnabled = false;
         this.alwaysSprintEnabled = false;
+        this.keepCursorPositionEnabled = false;
+        this.quickJoinEnabled = false;
         this.expandChatHistory = false;
         this.chatPeekEnabled = false;
         this.betterScreenshotMessageEnabled = false;
         this.compactChatEnabled = false;
+        this.messageFilterEnabled = false;
         this.chatTabsEnabled = false;
         this.inventoryHudEnabled = false;
+        this.dungeonMapEnabled = false;
+        this.starredMobsHighlightEnabled = false;
         this.bridgeBotFormatterEnabled = false;
         this.guildPrefixEnabled = false;
         this.itemSizeFeatureEnabled = false;
@@ -1464,6 +1718,7 @@ public class AlpakaConfig {
         this.updateNotificationsEnabled = false;
         this.scrollableTooltipsEnabled = false;
         this.persistentItemNameEnabled = false;
+        this.storagePreviewEnabled = false;
         this.mentionNotificationEnabled = false;
         this.itemMotionBlurEnabled = false;
         this.bossSpawnAlertEnabled = false;
@@ -1471,6 +1726,7 @@ public class AlpakaConfig {
         this.partyInvitePromptEnabled = false;
         this.oldMasterStarsEnabled = false;
         this.cacheResourcePackEnabled = false;
+        this.zoomEnabled = false;
         this.dungeonSolversEnabled = false;
         this.terminalSolversEnabled = false;
         this.terminalCustomGui = false;

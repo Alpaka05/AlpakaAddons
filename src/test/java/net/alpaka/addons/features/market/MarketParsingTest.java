@@ -4,10 +4,12 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -22,6 +24,9 @@ class MarketParsingTest {
         assertEquals(MarketKind.AUCTION_HOUSE, MarketTitles.classify("BIN Auction View", null));
         assertEquals(MarketKind.BAZAAR, MarketTitles.classify("Bazaar ➜ Farming", null));
         assertEquals(MarketKind.BAZAAR, MarketTitles.classify("How many do you want?", null));
+        assertEquals(MarketKind.BAZAAR, MarketTitles.classify("Are you sure?", MarketKind.BAZAAR));
+        assertNull(MarketTitles.classify("Are you sure?", null));
+        assertNull(MarketTitles.classify("Are you sure?", MarketKind.AUCTION_HOUSE));
     }
 
     @Test
@@ -185,6 +190,16 @@ class MarketParsingTest {
         assertEquals(2, menu.page);
         assertEquals(MarketMenu.Layout.GRID, menu.layout);
         assertFalse(menu.empty);
+    }
+
+    @Test
+    void aSearchWithOneResultIsStillAList() {
+        List<MarketMenu.Slot> slots = browser();
+        slots.set(12, slot(12, "black_stained_glass_pane", " "));
+        MarketMenu menu = MarketMenu.parse(MarketKind.AUCTION_HOUSE, "Auctions: \"hyperion\"", 6, slots);
+        assertEquals(List.of(11), menu.content);
+        assertEquals(MarketMenu.Layout.GRID, menu.layout);
+        assertNull(menu.hero);
     }
 
     @Test
@@ -448,6 +463,74 @@ class MarketParsingTest {
     }
 
     @Test
+    void suggestionIconsGoByTagNotByName() {
+        ItemIcons.Catalog catalog = ItemIcons.index(com.google.gson.JsonParser.parseString("""
+                {"items":[
+                 {"id":"STARRED_BONZO_MASK","material":"SKULL_ITEM","durability":3,"name":"Bonzo's Mask","glowing":true},
+                 {"id":"BONZO_MASK","material":"SKULL_ITEM","durability":3,"name":"Bonzo's Mask"},
+                 {"id":"PET_SKIN_SHEEP_LIGHT_GREEN","material":"SKULL_ITEM","durability":3,"name":"Light Green Sheep Skin"},
+                 {"id":"LUMBERJACK_RING","material":"PAPER","name":"Lumberjack Ring",
+                  "item_model":"hypixel_skyblock:item/accessories/lumberjack/lumberjack_ring"}]}"""));
+        assertEquals("hypixel_skyblock:item/accessories/lumberjack/lumberjack_ring", catalog.byId().get("LUMBERJACK_RING").model());
+        assertNull(catalog.byId().get("BONZO_MASK").model());
+        // Two items of one name: by name the first wins, by tag each is itself.
+        assertTrue(catalog.byName().get("bonzo's mask").glowing());
+        assertFalse(catalog.byId().get("BONZO_MASK").glowing());
+        assertNotNull(catalog.byId().get("PET_SKIN_SHEEP_LIGHT_GREEN"));
+
+        assertEquals("enchanted_book", ItemIcons.plain("ENCHANTMENT_SMOLDERING_5", "Smoldering V").material());
+        assertEquals("splash_potion", ItemIcons.plain("POTION_damage", "Damage IV Splash Potion").material());
+        assertEquals("potion", ItemIcons.plain("POTION_burning", "Burning I Potion").material());
+        ItemIcons.Info wool = ItemIcons.plain("WOOL:6", "Pink Wool");
+        assertEquals("WOOL", wool.material());
+        assertEquals(6, wool.damage());
+        assertNull(ItemIcons.plain("PET_GRIFFIN", "Griffin"));
+    }
+
+    @Test
+    void findsPetsRunesAndShardsInTheNeuRepository() {
+        List<String> pet = NeuItems.candidates("PET_GRIFFIN", null);
+        assertEquals("GRIFFIN;4", pet.get(0));
+        assertTrue(pet.contains("GRIFFIN;0"));
+        assertEquals("PET_GRIFFIN", pet.get(pet.size() - 1));
+        assertEquals(List.of("PET_SKIN_TIGER_TWILIGHT"), NeuItems.candidates("PET_SKIN_TIGER_TWILIGHT", null));
+        assertEquals(List.of("PET_ITEM_BIG_TEETH_COMMON"), NeuItems.candidates("PET_ITEM_BIG_TEETH_COMMON", null));
+        assertEquals(List.of("TIDAL_RUNE;1", "TIDAL_RUNE;2", "TIDAL_RUNE;3", "RUNE_TIDAL"), NeuItems.candidates("RUNE_TIDAL", null));
+        assertEquals("SMITTEN_RUNE;3", NeuItems.candidates("UNIQUE_RUNE_SMITTEN", null).get(0));
+
+        Map<String, String> shards = NeuItems.shardIds("""
+                [{"stock":"SHARD_CRETAN_BULL","id":"ATTRIBUTE_SHARD_MYTHOLOGICAL_RESISTANCE;1"},
+                 {"stock":"ENCHANTMENT_SHARPNESS_5","id":"SHARPNESS;5"}]""");
+        assertEquals(Map.of("SHARD_CRETAN_BULL", "ATTRIBUTE_SHARD_MYTHOLOGICAL_RESISTANCE;1"), shards);
+        assertEquals("ATTRIBUTE_SHARD_MYTHOLOGICAL_RESISTANCE;1", NeuItems.candidates("SHARD_CRETAN_BULL", shards).get(0));
+
+        ItemIcons.Info head = NeuItems.parse("""
+                {"itemid":"minecraft:skull","damage":3,
+                 "nbttag":"{ExtraAttributes:{id:\\"REKINDLED_EMBER_BURNING\\"},ItemModel:\\"minecraft:player_head\\",SkullOwner:{Properties:{textures:[0:{Name:\\"textures\\",Value:\\"ewogIA==\\"}]}}}"}""");
+        assertEquals("player_head", head.material());
+        assertEquals("ewogIA==", head.skin());
+        assertFalse(head.glowing());
+
+        ItemIcons.Info boots = NeuItems.parse("""
+                {"itemid":"minecraft:leather_boots","damage":0,"nbttag":"{display:{color:16711680},ench:[]}"}""");
+        assertEquals("leather_boots", boots.material());
+        assertEquals("255,0,0", boots.color());
+        assertTrue(boots.glowing());
+
+        // A model from Hypixel's resource pack stays apart from the paper underneath.
+        ItemIcons.Info ring = NeuItems.parse("""
+                {"itemid":"minecraft:paper","damage":0,
+                 "nbttag":"{ExtraAttributes:{id:\\"LUMBERJACK_RING\\"},ItemModel:\\"hypixel_skyblock:item/accessories/lumberjack/lumberjack_ring\\"}"}""");
+        assertEquals("paper", ring.material());
+        assertEquals("hypixel_skyblock:item/accessories/lumberjack/lumberjack_ring", ring.model());
+
+        // Without today's model the 1.8 skull stays a skull, turned into a player head by its damage.
+        ItemIcons.Info old = NeuItems.parse("""
+                {"itemid":"minecraft:skull","damage":3,"nbttag":"{}"}""");
+        assertEquals("player_head", LegacyItems.modernId(old.material(), old.damage()));
+    }
+
+    @Test
     void oneWildSaleDoesNotSetTheScale() {
         List<PriceHistory.Point> points = new ArrayList<>();
         for (int i = 0; i < 100; i++) points.add(new PriceHistory.Point(i, 500 + i % 10, 450));
@@ -497,5 +580,75 @@ class MarketParsingTest {
         assertArrayEquals(new int[] {0, 4, 10, 13}, match.ranges());
         SearchSuggestions.Match initials = SearchSuggestions.rank("aotd", List.of("Aspect of the Dragons"), 1).get(0);
         assertArrayEquals(new int[] {0, 1, 7, 8, 10, 11, 14, 15}, initials.ranges());
+    }
+
+    // ---- Market stats ---------------------------------------------------------------------------
+
+    @Test
+    void readsTheOrderBookFromTheButtonsLore() {
+        List<MarketStats.Level> orders = MarketStats.levels(List.of("Enchanted Hay Bale", "", "Top Orders:",
+                "- 147,002.5 coins each | 1,640x from 3 orders", "- 147,000 coins each | 320x from 1 order",
+                "- 5.3 coins each | 64x", "", "Click to setup Buy Order!"));
+        assertEquals(3, orders.size());
+        assertEquals(new MarketStats.Level(147_002.5, 1_640, 3), orders.get(0));
+        assertEquals(new MarketStats.Level(147_000, 320, 1), orders.get(1));
+        assertEquals(new MarketStats.Level(5.3, 64, 0), orders.get(2));
+        List<MarketStats.Level> offers = MarketStats.levels(List.of("Top Offers:", "- 153,420.2 coins each | 960x in 2 offers"));
+        assertEquals(new MarketStats.Level(153_420.2, 960, 2), offers.get(0));
+        assertTrue(MarketStats.levels(List.of("Top Orders:", "No buy orders yet!")).isEmpty());
+        assertEquals(List.of(new MarketStats.Level(3.1, 4_950, 0)), MarketStats.levels(List.of("Only Order:", "- 3.1 coins each | 4,950x")));
+        assertEquals(10.0, MarketStats.spread(List.of(new MarketStats.Level(90, 1, 1)), List.of(new MarketStats.Level(100, 1, 1))), 1e-9);
+        assertTrue(Double.isNaN(MarketStats.spread(List.of(), offers)));
+    }
+
+    @Test
+    void readsSkyCoflsAuctionHistoryWithVolume() {
+        List<PriceHistory.Point> points = PriceHistory.parseAuction("""
+                [{"min":505911000.0,"max":998000000.0,"avg":879382200.0,"volume":5,"time":"2026-10-16T20:00:00"},
+                 {"min":465000000.0,"max":1.45E+09,"avg":880412000.0,"volume":0,"time":"2026-10-16T21:00:00"}]""");
+        assertEquals(2, points.size());
+        assertEquals(998_000_000.0, points.get(0).high());
+        assertEquals(5.0, points.get(0).volume());
+        assertEquals(0.0, points.get(1).volume());
+    }
+
+    @Test
+    void sumsUpARangeOfSales() {
+        List<PriceHistory.Point> points = List.of(
+                new PriceHistory.Point(0, 100, 90, 110, 3),
+                new PriceHistory.Point(3_600_000, 200, 180, 220, 1));
+        MarketStats.RangeStats stats = MarketStats.rangeStats(points, PriceHistory.Range.DAY);
+        assertEquals(4.0, stats.salesPerDay());
+        assertEquals(4.0, stats.sales());
+        assertEquals(125.0, stats.average());
+        assertEquals(4.0 / 7, MarketStats.rangeStats(points, PriceHistory.Range.WEEK).salesPerDay(), 1e-9);
+        assertTrue(Double.isNaN(MarketStats.rangeStats(List.of(), PriceHistory.Range.DAY).salesPerDay()));
+    }
+
+    @Test
+    void findsTheHourThatSellsMost() {
+        List<PriceHistory.Point> week = new ArrayList<>();
+        for (int i = 0; i < 72; i++) week.add(new PriceHistory.Point(i * 3_600_000L, 100, 90, 110, i % 24 == 18 ? 9 : 1));
+        assertEquals(18, MarketStats.busiestHour(week, java.time.ZoneOffset.UTC));
+        assertEquals(20, MarketStats.busiestHour(week, java.time.ZoneOffset.ofHours(2)));
+        List<PriceHistory.Point> daily = new ArrayList<>();
+        for (int i = 0; i < 72; i++) daily.add(new PriceHistory.Point(i * 86_400_000L, 100, 90, 110, 5));
+        assertEquals(-1, MarketStats.busiestHour(daily, java.time.ZoneOffset.UTC));
+        assertEquals(-1, MarketStats.busiestHour(week.subList(0, 10), java.time.ZoneOffset.UTC));
+    }
+
+    @Test
+    void readsSkyCoflsSummaryAndJudgesAPrice() {
+        PriceHistory.Summary summary = PriceHistory.summaryOf(PriceHistory.State.READY,
+                com.google.gson.JsonParser.parseString("{\"min\":430000000,\"median\":938000000,\"mean\":809360992.45,\"mode\":535000000,\"volume\":92.5,\"max\":1515151515}").getAsJsonObject(),
+                com.google.gson.JsonParser.parseString("{\"sell\":432180000.0,\"buy\":441000000.0,\"available\":1,\"isAh\":true}").getAsJsonObject());
+        assertEquals(938_000_000.0, summary.median());
+        assertEquals(535_000_000.0, summary.mode());
+        assertEquals(92.5, summary.salesPerDay());
+        assertEquals(441_000_000.0, summary.lowestBin());
+        assertTrue(Double.isNaN(PriceHistory.summaryOf(PriceHistory.State.FAILED, null, null).lowestBin()));
+        assertEquals("Below Market", MarketStats.verdict(80, 100));
+        assertEquals("Fair Price", MarketStats.verdict(105, 100));
+        assertEquals("Above Market", MarketStats.verdict(1_140, 938));
     }
 }

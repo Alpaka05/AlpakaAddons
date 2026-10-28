@@ -1,9 +1,20 @@
 {
   "key.category.alpaka.addons": "Alpaka Addons",
   "category.alpaka.addons": "Alpaka Addons",
+  "key.alpaka.ah_previous_page": "Auction House: Previous Page",
+  "key.alpaka.ah_next_page": "Auction House: Next Page",
+  "key.alpaka.ah_back": "Auction House: Back",
+  "key.alpaka.ah_search": "Auction House: Search",
+  "key.alpaka.ah_create_auction": "Auction House: Create Auction",
+  "key.alpaka.ah_reset_settings": "Auction House: Reset Settings",
+  "key.alpaka.bz_previous_page": "Bazaar: Previous Page",
+  "key.alpaka.bz_next_page": "Bazaar: Next Page",
+  "key.alpaka.bz_back": "Bazaar: Back",
+  "key.alpaka.bz_search": "Bazaar: Search",
   "key.alpaka.zoom": "Zoom",
   "key.alpaka.chat_peek": "Chat Peek",
   "key.alpaka.command_wheel": "Command Wheel",
   "key.alpaka.inventory_hud": "Inventory HUD",
-  "key.alpaka.item_value": "Item Value"
+  "key.alpaka.item_value": "Item Value",
+  "key.alpaka.chest_value": "Chest Value"
 }

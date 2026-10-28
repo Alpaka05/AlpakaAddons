@@ -2,6 +2,7 @@ package net.alpaka.addons.features.itemvalue;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.mojang.blaze3d.platform.cursor.CursorTypes;
 import com.mojang.serialization.JsonOps;
 import net.alpaka.addons.client.gui.AlpakaStyle;
 import net.alpaka.addons.client.gui.GuiFont;
@@ -45,6 +46,9 @@ import java.util.Set;
  * the item is worth and what that is made of - a bar split by share, then the parts grouped as the
  * bar is - and, opened under the Price History row at the bottom, the price history of the item or
  * of whichever part is clicked.
+ *
+ * Its header is a handle: held there, the popup can be moved like a window, and it stays where it
+ * was put until it is opened on another item.
  *
  * It belongs to the menu it was opened in and goes with it. While it is open it takes the clicks
  * meant for it and every click beside it, which closes it, so nothing reaches a slot of the menu
@@ -122,6 +126,14 @@ public final class ItemValuePopup {
     /** A mouse button whose press the popup took, so its release and drags are not the menu's either. */
     private static int heldButton = -1;
 
+    /** Whether the header is held and the popup follows the mouse, like a window by its title bar. */
+    private static boolean dragging = false;
+    /** Where the mouse took hold, from the popup's corner. */
+    private static int grabX, grabY;
+    /** Whether it was moved; then it stays where it was put rather than beside the item. */
+    private static boolean moved = false;
+    private static int movedX, movedY;
+
     private record Hit(int x, int y, int w, int h, Runnable action) {
         boolean contains(double mx, double my) {
             return AlpakaStyle.inside(mx, my, x, y, w, h);
@@ -163,7 +175,7 @@ public final class ItemValuePopup {
     }
 
     /** Opens the popup on an item of a menu, beside the mouse. */
-    static void open(Screen in, ItemStack item, double mouseX, double mouseY) {
+    public static void open(Screen in, ItemStack item, double mouseX, double mouseY) {
         screen = in;
         stack = item.copy();
         data = skyblockData(item);
@@ -183,6 +195,8 @@ public final class ItemValuePopup {
         maxScroll = 0;
         tipKey = null;
         panelW = 0;
+        dragging = false;
+        moved = false;
     }
 
     public static void close() {
@@ -197,6 +211,8 @@ public final class ItemValuePopup {
         hits.clear();
         heldButton = -1;
         panelW = 0;
+        dragging = false;
+        moved = false;
     }
 
     /** The menu closed or was replaced: the popup goes with it. */
@@ -357,6 +373,17 @@ public final class ItemValuePopup {
         if (x + w > screenW - EDGE) x = anchorX - 12 - w;
         x = Math.max(EDGE, Math.min(screenW - EDGE - w, x));
         int y = Math.max(EDGE, Math.min(screenH - EDGE - h, anchorY - 16));
+        if (dragging) {
+            moved = true;
+            movedX = mx - grabX;
+            movedY = my - grabY;
+            graphics.requestCursor(CursorTypes.RESIZE_ALL);
+        }
+        if (moved) {
+            // Kept on the screen, also when the graph opening makes it taller.
+            x = Math.max(EDGE, Math.min(screenW - EDGE - w, movedX));
+            y = Math.max(EDGE, Math.min(screenH - EDGE - h, movedY));
+        }
         panelX = x;
         panelY = y;
         panelW = w;
@@ -372,7 +399,10 @@ public final class ItemValuePopup {
         AlpakaStyle.popover(graphics, x, y, w, h);
         String tip = drawHeader(graphics, font, x, y, w, mx, my);
         int cy = y + HEADER_H;
-        if (showBar) drawBar(graphics, x + PAD, cy + 6, w - 2 * PAD);
+        if (showBar) {
+            String barTip = drawBar(graphics, x + PAD, cy + 6, w - 2 * PAD, mx, my);
+            if (barTip != null) tip = barTip;
+        }
         cy += barArea;
 
         listX = x;
@@ -491,20 +521,42 @@ public final class ItemValuePopup {
         return tip;
     }
 
-    /** The bar split into the groups by their share of the total. */
-    private static void drawBar(GuiGraphicsExtractor graphics, int x, int y, int w) {
+    /**
+     * The bar split into the groups by their share of the total. Returns a tooltip naming the group
+     * under the mouse, so the colors can be read without the list beside them.
+     */
+    private static String drawBar(GuiGraphicsExtractor graphics, int x, int y, int w, int mx, int my) {
         ModernGuiUtils.drawRoundedRect(graphics, x, y, w, BAR_H, BAR_H / 2, AlpakaStyle.LINE);
         double total = breakdown.total();
-        if (total <= 0) return;
+        if (total <= 0) return null;
         List<int[]> segments = new ArrayList<>();
+        List<Row> owners = new ArrayList<>();
         int at = x;
         double sum = 0;
         for (Row row : rows) {
             if (!row.heading() || !row.priced() || row.amount() <= 0) continue;
             sum += row.amount();
             int end = x + (int) Math.round(w * Math.min(1.0, sum / total));
-            if (end - at >= 1) segments.add(new int[] {at, end, color(row.group())});
+            if (end - at >= 1) {
+                segments.add(new int[] {at, end, color(row.group())});
+                owners.add(row);
+            }
             at = end;
+        }
+        String tip = null;
+        // A little taller than the bar, which is only a few pixels high.
+        if (AlpakaStyle.inside(mx, my, x, y - 3, w, BAR_H + 6)) {
+            for (int i = 0; i < segments.size(); i++) {
+                int[] s = segments.get(i);
+                if (mx >= s[0] && mx < s[1]) {
+                    Row row = owners.get(i);
+                    double share = row.amount() / total;
+                    tip = row.label() + ": " + (row.estimated() ? "~" : "") + Coins.compact(row.amount()) + ", "
+                            + (share < 0.005 ? "<1%" : Math.round(share * 100) + "%") + " of the item's value.";
+                    hoverTip("bar:" + row.group());
+                    break;
+                }
+            }
         }
         for (int i = 0; i < segments.size(); i++) {
             int[] s = segments.get(i);
@@ -522,6 +574,7 @@ public final class ItemValuePopup {
                 ModernGuiUtils.drawRect(graphics, sx, y, sw, BAR_H, s[2]);
             }
         }
+        return tip;
     }
 
     /** The list of parts, scrolled. Returns a tooltip for the row under the mouse. */
@@ -821,6 +874,12 @@ public final class ItemValuePopup {
                 return true;
             }
         }
+        // The header, where nothing else answers, is the handle to move the popup by.
+        if (my < panelY + HEADER_H) {
+            dragging = true;
+            grabX = (int) Math.floor(mx) - panelX;
+            grabY = (int) Math.floor(my) - panelY;
+        }
         return true;
     }
 
@@ -828,6 +887,7 @@ public final class ItemValuePopup {
     static boolean mouseReleased(int button) {
         if (heldButton < 0 || button != heldButton) return false;
         heldButton = -1;
+        dragging = false;
         return true;
     }
 

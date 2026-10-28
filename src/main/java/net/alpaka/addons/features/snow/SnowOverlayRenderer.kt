@@ -759,27 +759,28 @@ object SnowOverlayRenderer {
      * plain quads plus one per texture in use. Sprites are turned and squeezed here rather than
      * through the pose, so a whole frame shares one pose: the one the screen drew with.
      *
-     * The buffers live as long as the overlay and only grow; each element gets its own copy, since
-     * the GUI builds its vertices after this frame's drawing has returned.
+     * Quads go straight into a bucket per texture, so handing them over needs no sorting and
+     * allocates nothing but each element's copy. The buckets live as long as the overlay and only
+     * grow; each element gets its own copy, since the GUI builds its vertices after this frame's
+     * drawing has returned.
      */
     private class ParticleBatch {
-        private var xy = FloatArray(8 * 256)
-        private var uv = FloatArray(8 * 256)
-        private var colors = IntArray(256)
-        private var textures = arrayOfNulls<Identifier>(256)
-        private var quads = 0
+        /** Plain quads first, then one bucket per texture in the order they were first used. */
+        private val buckets = arrayListOf(Bucket(null))
+        private var last = buckets[0]
 
         fun clear() {
-            quads = 0
+            for (bucket in buckets) bucket.quads = 0
         }
 
         /** A plain quad from ([x0], [y0]) to ([x1], [y1]). */
         fun rect(x0: Float, y0: Float, x1: Float, y1: Float, argb: Int) {
-            val q = next(null, argb)
-            corner(q, 0, x0, y0, 0.0f, 0.0f)
-            corner(q, 1, x0, y1, 0.0f, 0.0f)
-            corner(q, 2, x1, y1, 0.0f, 0.0f)
-            corner(q, 3, x1, y0, 0.0f, 0.0f)
+            val b = buckets[0]
+            val q = b.next(argb)
+            b.corner(q, 0, x0, y0, 0.0f, 0.0f)
+            b.corner(q, 1, x0, y1, 0.0f, 0.0f)
+            b.corner(q, 2, x1, y1, 0.0f, 0.0f)
+            b.corner(q, 3, x1, y0, 0.0f, 0.0f)
         }
 
         /**
@@ -788,12 +789,13 @@ object SnowOverlayRenderer {
          */
         fun sprite(texture: Identifier, cx: Float, cy: Float, rotation: Float, scaleX: Float,
                    x0: Float, y0: Float, x1: Float, y1: Float, argb: Int) {
-            val q = next(texture, argb)
+            val b = bucket(texture)
+            val q = b.next(argb)
             val cos = if (rotation == 0.0f) 1.0f else cos(rotation)
             val sin = if (rotation == 0.0f) 0.0f else sin(rotation)
             fun put(c: Int, lx: Float, ly: Float, u: Float, v: Float) {
                 val sx = lx * scaleX
-                corner(q, c, cx + sx * cos - ly * sin, cy + sx * sin + ly * cos, u, v)
+                b.corner(q, c, cx + sx * cos - ly * sin, cy + sx * sin + ly * cos, u, v)
             }
             put(0, x0, y0, 0.0f, 0.0f)
             put(1, x0, y1, 0.0f, 1.0f)
@@ -801,50 +803,36 @@ object SnowOverlayRenderer {
             put(3, x1, y0, 1.0f, 0.0f)
         }
 
-        private fun next(texture: Identifier?, argb: Int): Int {
-            if (quads == colors.size) {
-                val size = quads * 2
-                xy = xy.copyOf(8 * size)
-                uv = uv.copyOf(8 * size)
-                colors = colors.copyOf(size)
-                textures = textures.copyOf(size)
+        /** A type uses a handful of textures and mostly draws runs of the same one, hence no map. */
+        private fun bucket(texture: Identifier): Bucket {
+            if (last.texture == texture) return last
+            for (i in 1 until buckets.size) {
+                if (buckets[i].texture == texture) {
+                    last = buckets[i]
+                    return last
+                }
             }
-            colors[quads] = argb
-            textures[quads] = texture
-            return quads++
-        }
-
-        private fun corner(q: Int, c: Int, x: Float, y: Float, u: Float, v: Float) {
-            val at = 8 * q + 2 * c
-            xy[at] = x
-            xy[at + 1] = y
-            uv[at] = u
-            uv[at + 1] = v
+            last = Bucket(texture)
+            buckets.add(last)
+            return last
         }
 
         /** Adds the frame's quads to the GUI: plain ones first, then each texture's. */
         fun submit(graphics: GuiGraphicsExtractor, width: Int, height: Int) {
-            if (quads == 0) return
+            if (buckets.all { it.quads == 0 }) return
             val pose = Matrix3x2f(graphics.pose())
             val scissor = graphics.scissorStack.peek()
             var bounds: ScreenRectangle? = ScreenRectangle(0, 0, width, height).transformMaxBounds(pose)
             if (scissor != null && bounds != null) bounds = bounds.intersection(scissor)
             if (bounds == null) return
 
-            val groups = LinkedHashMap<Identifier?, MutableList<Int>>()
-            groups[null] = ArrayList()
-            for (q in 0 until quads) groups.getOrPut(textures[q]) { ArrayList() }.add(q)
-
-            for ((texture, members) in groups) {
-                if (members.isEmpty()) continue
-                val ownXy = FloatArray(8 * members.size)
-                val ownUv = if (texture == null) null else FloatArray(8 * members.size)
-                val ownColors = IntArray(members.size)
-                for ((n, q) in members.withIndex()) {
-                    System.arraycopy(xy, 8 * q, ownXy, 8 * n, 8)
-                    if (ownUv != null) System.arraycopy(uv, 8 * q, ownUv, 8 * n, 8)
-                    ownColors[n] = colors[q]
-                }
+            for (bucket in buckets) {
+                val quads = bucket.quads
+                if (quads == 0) continue
+                val texture = bucket.texture
+                val ownXy = bucket.xy.copyOf(8 * quads)
+                val ownUv = if (texture == null) null else bucket.uv.copyOf(8 * quads)
+                val ownColors = bucket.colors.copyOf(quads)
                 val setup = if (texture == null) {
                     TextureSetup.noTexture()
                 } else {
@@ -854,6 +842,35 @@ object SnowOverlayRenderer {
                 val pipeline = if (texture == null) RenderPipelines.GUI else RenderPipelines.GUI_TEXTURED
                 graphics.guiRenderState.addGuiElement(
                     QuadsElement(pose, pipeline, setup, ownXy, ownUv, ownColors, scissor, bounds))
+            }
+        }
+    }
+
+    /** The quads of one texture, or the plain ones for a null [texture]. */
+    private class Bucket(val texture: Identifier?) {
+        var xy = FloatArray(8 * 64)
+        var uv = if (texture == null) FloatArray(0) else FloatArray(8 * 64)
+        var colors = IntArray(64)
+        var quads = 0
+
+        fun next(argb: Int): Int {
+            if (quads == colors.size) {
+                val size = quads * 2
+                xy = xy.copyOf(8 * size)
+                if (texture != null) uv = uv.copyOf(8 * size)
+                colors = colors.copyOf(size)
+            }
+            colors[quads] = argb
+            return quads++
+        }
+
+        fun corner(q: Int, c: Int, x: Float, y: Float, u: Float, v: Float) {
+            val at = 8 * q + 2 * c
+            xy[at] = x
+            xy[at + 1] = y
+            if (texture != null) {
+                uv[at] = u
+                uv[at + 1] = v
             }
         }
     }

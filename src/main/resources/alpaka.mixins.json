@@ -13,6 +13,7 @@
     "LocalPlayerSignMixin",
     "AbstractSignEditScreenAccessor",
     "AbstractContainerScreenAccessor",
+    "AbstractRecipeBookScreenAccessor",
     "AbstractContainerScreenMixin",
     "ScreenItemValueMixin",
     "KeyboardHandlerItemValueMixin",

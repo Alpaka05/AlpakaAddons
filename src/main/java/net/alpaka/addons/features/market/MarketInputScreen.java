@@ -13,6 +13,7 @@ import net.minecraft.client.gui.screens.inventory.SignEditScreen;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.util.StringUtil;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.HangingSignBlockEntity;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
@@ -407,8 +408,8 @@ public class MarketInputScreen extends SignEditScreen {
                 ModernGuiUtils.drawRoundedRect(graphics, rx, ry, rw, SUGGESTION_H, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW_SELECTED);
                 ModernGuiUtils.drawRoundedRect(graphics, rx, ry + 5, 2, SUGGESTION_H - 10, 1, accent);
             }
-            // The item itself where Hypixel's list knows it; a recent search it does not know keeps a clock.
-            ItemStack icon = ItemIcons.forName(s.name());
+            // The item itself, by its tag; a recent search no list knows keeps a clock.
+            ItemStack icon = ItemIcons.forItem(ItemTags.suggestionTag(s.name(), context), s.name());
             if (!icon.isEmpty()) {
                 graphics.item(icon, rx + 6, ry + (SUGGESTION_H - 16) / 2);
             } else {
@@ -507,17 +508,6 @@ public class MarketInputScreen extends SignEditScreen {
         replace(suggestions.get(index).name());
     }
 
-    /** The field's icon; none for a price, whose "= … coins" under the field already says what it is. */
-    private MarketIcons.Glyph glyph() {
-        return switch (prompt.type()) {
-            case SEARCH -> MarketIcons.Glyph.SEARCH;
-            case PRICE -> null;
-            case AMOUNT -> MarketIcons.Glyph.BOX;
-            case DURATION -> MarketIcons.Glyph.CLOCK;
-            default -> context == null ? MarketIcons.Glyph.ORDERS : MarketIcons.of(context);
-        };
-    }
-
     /**
      * The field. With {@code below} more than zero the suggestion list hangs from it, and the two
      * are one box: one outline round both, the field's focus line dividing them.
@@ -534,12 +524,20 @@ public class MarketInputScreen extends SignEditScreen {
         ModernGuiUtils.drawRect(graphics, x + lineInset, y + FIELD_H - 1, w - 2 * lineInset, 1, full ? AlpakaStyle.DANGER : accent);
 
         int iconSize = 10;
-        MarketIcons.Glyph glyph = glyph();
-        if (glyph != null) MarketIcons.draw(graphics, glyph, x + 8, y + (FIELD_H - iconSize) / 2f, iconSize, accent);
-        int textX = glyph != null ? 24 : 8;
+        MarketIcons.draw(graphics, MarketIcons.Glyph.PROMPT, x + 8, y + (FIELD_H - iconSize) / 2f, iconSize, accent);
+        int textX = 24;
         int tx = x + textX;
         int ty = y + (FIELD_H - 8) / 2;
-        int room = w - textX - 8;
+
+        // The paste button at the right end: the clipboard in, and confirmed at once.
+        int pasteSize = FIELD_H - 8;
+        int pasteX = x + w - 4 - pasteSize;
+        int pasteY = y + 4;
+        boolean hoverPaste = AlpakaStyle.inside(mouseX, mouseY, pasteX, pasteY, pasteSize, pasteSize);
+        AlpakaStyle.pasteButton(graphics, pasteX, pasteY, pasteSize, hoverPaste);
+        hits.add(new Hit(pasteX, pasteY, pasteSize, pasteSize, mx -> pasteAndConfirm(), true));
+
+        int room = pasteX - 6 - tx;
         String text = text();
         if (text.isEmpty()) {
             // A little after the caret, which blinks at the very start.
@@ -559,7 +557,7 @@ public class MarketInputScreen extends SignEditScreen {
         if ((now - caretFrom) / 500 % 2 == 0) ModernGuiUtils.drawRect(graphics, ox + caretPx, ty - 1, 1, 10, AlpakaStyle.TEXT);
         graphics.disableScissor();
 
-        hits.add(new Hit(x, y, w, FIELD_H, mx -> placeCaret((int) Math.round(mx) - ox), false));
+        hits.add(new Hit(x, y, pasteX - 2 - x, FIELD_H, mx -> placeCaret((int) Math.round(mx) - ox), false));
     }
 
     /** For a price or an amount, what Hypixel will read the text as, so "1.5m" is seen to mean 1,500,000. */
@@ -661,6 +659,22 @@ public class MarketInputScreen extends SignEditScreen {
         if (text.isEmpty()) return;
         String value = text + suffix;
         edit(() -> input.setText(value));
+    }
+
+    /**
+     * Puts the clipboard's first line in the field, as Ctrl+V would, and confirms it. Nothing is
+     * sent if the clipboard is empty or does not fit the sign; the field then shows why.
+     */
+    private void pasteAndConfirm() {
+        String clip = Minecraft.getInstance().keyboardHandler.getClipboard();
+        if (clip == null) return;
+        int newline = clip.indexOf('\n');
+        if (newline >= 0) clip = clip.substring(0, newline);
+        String value = StringUtil.filterText(clip.replace('\t', ' ')).trim();
+        if (value.isEmpty()) return;
+        replace(value);
+        if (text().equals(value)) confirm();
+        else fullAtMs = System.currentTimeMillis();
     }
 
     private void placeCaret(int x) {

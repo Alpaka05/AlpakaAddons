@@ -11,6 +11,8 @@ import net.alpaka.addons.client.gui.PloppAnimation;
 import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.utils.ModVersion;
+import com.mojang.blaze3d.platform.InputConstants;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.CharacterEvent;
@@ -71,6 +73,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     private static final int SWATCH_H = 9;
     private static final int TEXT_FIELD_W = 76;
     private static final int CHOICE_FIELD_W = 84;
+    private static final int KEY_FIELD_W = 76;
     private static final int PREVIEW_LABEL_H = 12;
     private static final int PREVIEW_PAD = 5;
     private static final int MAX_TEXT_OPTION_LENGTH = 32;
@@ -116,6 +119,8 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     private final List<ConfigOption> presetNameFields = new ArrayList<>();
     /** The choice setting whose list is open, if any; one at a time. */
     private ConfigOption openChoice = null;
+    /** The keybind waiting for its new key or mouse button, if any. */
+    private ConfigOption listeningKey = null;
 
     private final Scroll sidebarScroll = new Scroll();
     private final Scroll featureScroll = new Scroll();
@@ -797,6 +802,22 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         int rowY = clipY + 2 - detailScroll.offset();
         int startY = rowY;
 
+        // In setup mode the feature list with its switches is folded away, so the feature's own
+        // switch moves to the top of its settings.
+        if (setupMode && setupProgress > 0.5f && feature.hasToggle()) {
+            ConfigOption master = feature.master;
+            boolean shown = visible(rowY, SETTING_ROW_H, clipY, clipH);
+            boolean hover = inside(mouseX, mouseY, rowX, rowY, rowW, SETTING_ROW_H) && inside(mouseX, mouseY, x, clipY, w, clipH);
+            if (hover) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, SETTING_ROW_H, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
+            int right = rowX + rowW - 4;
+            // While the list is still folding it animates the switch already.
+            if (setupProgress >= 0.999f) master.updateToggleProgress(deltaSec);
+            graphics.text(this.font, GuiFont.text("Enabled"), rowX + 4, rowY + 4, AlpakaStyle.TEXT, false);
+            drawToggle(graphics, right - TOGGLE_W, rowY + (SETTING_ROW_H - TOGGLE_H) / 2, master.getToggleProgress());
+            if (shown) hits.add(new Hit(rowX, Math.max(rowY, clipY), rowW, SETTING_ROW_H, (mx, my) -> master.toggleBool()));
+            rowY += SETTING_ROW_H;
+        }
+
         // Description, folded away on request.
         String description = feature.description == null ? "" : feature.description;
         if (!description.isEmpty()) {
@@ -826,7 +847,9 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             rowY = drawSetting(graphics, mouseX, mouseY, option, rowX, rowY, rowW, x, w, clipY, clipH, deltaSec);
         }
 
-        detailScroll.max = Math.max(0, (rowY + detailScroll.offset()) - startY + 6 - clipH);
+        // rowY - startY is the content's height whatever the scroll; adding the offset again made the
+        // limit grow with every turn of the wheel, until the column scrolled away into emptiness.
+        detailScroll.max = Math.max(0, rowY - startY + 6 - clipH);
         detailScroll.update(deltaSec);
         AlpakaStyle.scrollFades(graphics, x, clipY, w, clipH, detailScroll.offset() > 0, detailScroll.offset() + 1 < detailScroll.max);
         graphics.disableScissor();
@@ -852,7 +875,9 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         boolean hover = inside(mouseX, mouseY, rowX, rowY, rowW, rowH) && inside(mouseX, mouseY, colX, clipY, colW, clipH);
         if (hover) {
             hoveredTipThisFrame = option;
-            hoveredTipTextThisFrame = option.getDescription();
+            hoveredTipTextThisFrame = listeningKey == option
+                    ? "Press a key or a mouse button. Escape unbinds it, a click anywhere keeps it as it was."
+                    : option.getDescription();
         }
         // A row wholly outside the column's clip would draw nothing: its text would be laid out only
         // for the scissor to drop it. Skip it, keeping a switch's animation running so its knob is in
@@ -982,6 +1007,64 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                         searchFocused = false;
                         caretBlinkFrom = System.currentTimeMillis();
                     }));
+                }
+            }
+            case KEYBIND -> {
+                KeyMapping mapping = option.getKeyMapping();
+                if (mapping == null) return rowY + rowH;
+                if (hover) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, rowH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
+                boolean listening = listeningKey == option;
+                int fieldW = Math.min(KEY_FIELD_W, rowW / 2);
+                int fieldX = right - fieldW;
+                int fieldY = rowY + 2;
+                int fieldH = rowH - 4;
+                // Reset, a circular arrow left of the field, only while the key is not its default.
+                int resetW = fieldH;
+                int resetX = fieldX - 3 - resetW;
+                boolean showReset = !mapping.isDefault() && !listening;
+                drawLabel(graphics, option.getTitle(), rowX + 4, labelY, (showReset ? resetX : fieldX) - 8 - (rowX + 4));
+                boolean resetHover = showReset && hover && inside(mouseX, mouseY, resetX, fieldY, resetW, fieldH);
+                if (showReset) {
+                    AlpakaStyle.resetButton(graphics, resetX, fieldY, resetW, resetHover);
+                    if (resetHover) hoveredTipTextThisFrame = "Back to the default key: "
+                            + mapping.getDefaultKey().getDisplayName().getString() + ".";
+                }
+                boolean fieldHover = hover && inside(mouseX, mouseY, fieldX, fieldY, fieldW, fieldH);
+                ModernGuiUtils.drawRoundedRect(graphics, fieldX, fieldY, fieldW, fieldH, AlpakaStyle.FIELD_RADIUS,
+                        fieldHover && !listening ? AlpakaStyle.ROW_HOVER : AlpakaStyle.FIELD);
+                ModernGuiUtils.drawRect(graphics, fieldX + 3, fieldY + fieldH - 1, fieldW - 6, 1,
+                        listening ? ModernGuiUtils.getAccentColor() : AlpakaStyle.LINE);
+                String value;
+                int color;
+                if (listening) {
+                    value = "Press a Key";
+                    color = ModernGuiUtils.getAccentColor();
+                } else if (mapping.isUnbound()) {
+                    value = "Not Bound";
+                    color = AlpakaStyle.TEXT_MUTED;
+                } else {
+                    value = mapping.getTranslatedKeyMessage().getString();
+                    // Red when another key mapping shares the key, as vanilla's Controls shows it,
+                    // and the tooltip says which.
+                    KeyMapping other = AlpakaKeyBinds.conflict(mapping);
+                    color = other != null ? AlpakaStyle.DANGER_SOFT : AlpakaStyle.TEXT;
+                    if (other != null && hover && !resetHover) {
+                        hoveredTipTextThisFrame = option.getDescription() + " " + value + " is also bound to "
+                                + Component.translatable(other.getName()).getString() + ".";
+                    }
+                }
+                String keyText = ellipsize(value, fieldW - 8);
+                ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text(keyText), fieldX + fieldW / 2, fieldY + (fieldH - 8) / 2, color);
+                if (shown) {
+                    hits.add(new Hit(rowX, hitY, rowW, rowH, (mx, my) -> {
+                        listeningKey = option;
+                        focusedText = null;
+                        searchFocused = false;
+                    }));
+                    if (showReset) {
+                        hits.add(new Hit(resetX, Math.max(fieldY, clipY), resetW, fieldH,
+                                (mx, my) -> AlpakaKeyBinds.set(mapping, mapping.getDefaultKey())));
+                    }
                 }
             }
             default -> {
@@ -1200,6 +1283,16 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (listeningKey != null) {
+            // The middle and side buttons bind; left and right click are what the menu is used with,
+            // so they leave the key as it was, as a click outside a text field does.
+            ConfigOption option = listeningKey;
+            listeningKey = null;
+            if (event.button() > 1 && option.getKeyMapping() != null) {
+                AlpakaKeyBinds.set(option.getKeyMapping(), InputConstants.Type.MOUSE.getOrCreate(event.button()));
+            }
+            return true;
+        }
         if (event.button() != 0) return super.mouseClicked(event, doubleClick);
         double mx = event.x();
         double my = event.y();
@@ -1247,9 +1340,11 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         if (scrollY == 0) return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
         int featX = panelX() + sidebarW();
         int detailX = featX + featureColumnW();
-        if (mouseX < featX) sidebarScroll.by(-scrollY * 20);
-        else if (mouseX < detailX) featureScroll.by(-scrollY * 24);
-        else detailScroll.by(-scrollY * 24);
+        // In setup mode the sidebar and the feature list are folded away and only the settings are
+        // left, so the wheel turns those wherever the mouse is.
+        if (setupProgress >= 0.999f || mouseX >= detailX) detailScroll.by(-scrollY * 24);
+        else if (mouseX < featX) sidebarScroll.by(-scrollY * 20);
+        else featureScroll.by(-scrollY * 24);
         return true;
     }
 
@@ -1274,6 +1369,16 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     @Override
     public boolean keyPressed(KeyEvent event) {
         int key = event.key();
+        if (listeningKey != null) {
+            // Escape unbinds, as in vanilla's Controls.
+            ConfigOption option = listeningKey;
+            listeningKey = null;
+            if (option.getKeyMapping() != null) {
+                AlpakaKeyBinds.set(option.getKeyMapping(), key == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE
+                        ? InputConstants.UNKNOWN : InputConstants.getKey(event));
+            }
+            return true;
+        }
         if (event.hasControlDownWithQuirk() && key == org.lwjgl.glfw.GLFW.GLFW_KEY_F) {
             searchFocused = true;
             caretBlinkFrom = System.currentTimeMillis();
@@ -1322,6 +1427,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     @Override
     public void removed() {
         draggedSlider = null;
+        listeningKey = null;
         AlpakaConfig.endDeferredSaves();
         super.removed();
     }

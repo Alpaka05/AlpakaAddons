@@ -312,6 +312,28 @@ public final class AlpakaStyle {
         ModernGuiUtils.drawRect(graphics, cx + 1, cy - 1, 1, 4, color);
     }
 
+    /**
+     * A paste button: a small clipboard in the same thin lines as {@link #trashButton}, gray until
+     * hovered, then in the accent color on a soft square.
+     */
+    public static void pasteButton(GuiGraphicsExtractor graphics, int x, int y, int size, boolean hover) {
+        if (hover) ModernGuiUtils.drawRoundedRect(graphics, x, y, size, size, FIELD_RADIUS, ROW_SELECTED);
+        int color = hover ? ModernGuiUtils.getAccentColor() : TEXT_MUTED;
+        int cx = x + size / 2;
+        int cy = y + size / 2;
+        // The clip on top, the board round it, then three lines of text on the board.
+        ModernGuiUtils.drawRect(graphics, cx - 1, cy - 6, 3, 1, color);
+        ModernGuiUtils.drawRect(graphics, cx - 2, cy - 5, 5, 2, color);
+        ModernGuiUtils.drawRect(graphics, cx - 4, cy - 4, 2, 1, color);
+        ModernGuiUtils.drawRect(graphics, cx + 3, cy - 4, 2, 1, color);
+        ModernGuiUtils.drawRect(graphics, cx - 4, cy - 3, 1, 8, color);
+        ModernGuiUtils.drawRect(graphics, cx + 4, cy - 3, 1, 8, color);
+        ModernGuiUtils.drawRect(graphics, cx - 3, cy + 5, 7, 1, color);
+        ModernGuiUtils.drawRect(graphics, cx - 2, cy - 1, 5, 1, color);
+        ModernGuiUtils.drawRect(graphics, cx - 2, cy + 1, 5, 1, color);
+        ModernGuiUtils.drawRect(graphics, cx - 2, cy + 3, 3, 1, color);
+    }
+
     /** An arrow that acts as a button, drawn with the menu's chevron rather than a glyph. */
     public static void chevronButton(GuiGraphicsExtractor graphics, int x, int y, int size, boolean left,
                                      boolean hover, boolean enabled) {
@@ -429,6 +451,30 @@ public final class AlpakaStyle {
             float from = d * step - (float) Math.PI / 2 - span / 2;
             mesh.ringSector(cx, cy, radius - line, radius, from, from + span, from, from + span, color, color, false);
         }
+        mesh.submit(graphics);
+    }
+
+    /**
+     * A reset button: a circular arrow turning back, gray until hovered, then in the accent on a soft
+     * square. Drawn as a mesh rather than a glyph, since the menu fonts have no such arrow.
+     */
+    public static void resetButton(GuiGraphicsExtractor graphics, int x, int y, int size, boolean hover) {
+        if (hover) ModernGuiUtils.drawRoundedRect(graphics, x, y, size, size, FIELD_RADIUS, ROW_SELECTED);
+        int color = hover ? ModernGuiUtils.getAccentColor() : TEXT_MUTED;
+        int scale = guiScale();
+        net.alpaka.addons.features.wheel.WheelMesh mesh = new net.alpaka.addons.features.wheel.WheelMesh(1.0f / scale);
+        float cx = x + size / 2.0f;
+        float cy = y + size / 2.0f + 0.5f;
+        float radius = size * 0.3f;
+        float line = Math.max(1.0f, meshLine(scale));
+        // The ring runs clockwise from the top round to the upper left; the gap between is where the
+        // arrowhead at the top points into, back the other way.
+        float start = (float) (-Math.PI / 2);
+        float end = start + (float) (2 * Math.PI) - 1.1f;
+        mesh.ringSector(cx, cy, radius - line / 2, radius + line / 2, start, end, start, end, color, color, false);
+        float head = line * 1.8f;
+        float tipY = cy - radius;
+        mesh.convexPolygon(new float[] {cx - head * 1.1f, tipY, cx + head * 0.4f, tipY - head, cx + head * 0.4f, tipY + head}, color);
         mesh.submit(graphics);
     }
 

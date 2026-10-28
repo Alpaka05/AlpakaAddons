@@ -41,9 +41,9 @@ class DisableAllFeaturesTest {
             "fullbrightEnabled", "skyEffectsEnabled", "cleanBlazeEnabled", "blazeFirePitsEnabled", "stopBlazeSpinning",
             "hideHurtOverlayEnabled", "hideMobDeathsEnabled", "hideEntityFire", "firstPersonFireStatic",
             "nameTagTextShadow", "showOwnNameTag", "renderHandInThirdPerson", "smoothPerspectiveEnabled",
-            "disableFrontPerspective", "containerBgFadeInEnabled", "inventorySnowEnabled",
+            "disableFrontPerspective", "zoomEnabled", "containerBgFadeInEnabled", "inventorySnowEnabled",
             "scrollableTooltipsEnabled", "persistentItemNameEnabled", "oldMasterStarsEnabled",
-            "wideHealthBarEnabled", "betterChatEnabled", "chatSearchEnabled", "expandChatHistory",
+            "wideHealthBarEnabled", "betterChatEnabled", "chatSearchEnabled", "chatCopyEnabled", "expandChatHistory",
             "compactChatEnabled", "mentionNotificationEnabled", "chatPeekEnabled", "chatTabsEnabled",
             "betterScreenshotMessageEnabled", "playerModelEnabled", "performanceHudEnabled",
             "inventoryHudEnabled", "scoreboardBlurEnabled", "scoreboardAlpakaFooter",
@@ -54,13 +54,14 @@ class DisableAllFeaturesTest {
             "hideSlayerChatMessages", "bossSpawnAlertEnabled", "bossCocoonAlertEnabled", "slayerTimerEnabled",
             "slayerHudEnabled", "worldAgeJoinMessageEnabled", "partyInvitePromptEnabled",
             "cacheResourcePackEnabled", "guildPrefixEnabled", "bridgeBotFormatterEnabled", "ragnarockEnabled",
-            "onlyCritDamageEnabled", "deployableTimerEnabled", "customAuctionHouseEnabled", "customBazaarEnabled",
-            "marketPriceHistoryEnabled", "customSignInputEnabled",
+            "onlyCritDamageEnabled", "deployableTimerEnabled", "dungeonMapEnabled", "customAuctionHouseEnabled", "customBazaarEnabled",
+            "marketPriceHistoryEnabled", "customSignInputEnabled", "chestValueEnabled",
+            "starredMobsHighlightEnabled",
             "dungeonSolversEnabled", "terminalSolversEnabled", "terminalCustomGui", "deviceSolversEnabled",
             // Cosmetics
             "customNameTagEnabled", "chromaHatEnabled", "playerScaleEnabled", "customDamageTagsEnabled",
             // Utility and sounds
-            "alwaysSprintEnabled", "customSoundsEnabled", "muteVanillaSoundsInBlazeSlayer",
+            "alwaysSprintEnabled", "keepCursorPositionEnabled", "customSoundsEnabled", "muteVanillaSoundsInBlazeSlayer",
             "customSoundButtonClick", "customSoundHotbarScroll", "customSoundInventoryOpenClose",
             "customSoundInventoryClick", "customSoundRareDrop", "customSoundNotification",
             "customSoundPlayerHurt", "customSoundBlazeDeath", "customSoundZombieRemedy",
@@ -72,6 +73,11 @@ class DisableAllFeaturesTest {
      * switching the feature back on brings it back changed.
      */
     private static final Set<String> KEPT = Set.of(
+            "dungeonMapShowClear", "dungeonMapShowBoss", "dungeonMapBossMode", "dungeonMapScale",
+            "dungeonMapBackground", "dungeonMapBlur", "dungeonMapFrame", "dungeonMapRoomColor",
+            "dungeonMapPlayerHeads", "dungeonMapRotateHeads", "dungeonMapHeadBorder", "dungeonMapSmoothMarkers",
+            "dungeonMapRoomNames", "dungeonMapRoomSecrets", "dungeonMapHideCheckmarks",
+            "starredMobsHideNames", "starredMobsHighlightStyle",
             // Block Overlay
             "blockOutlineEnabled", "blockFillEnabled", "blockFadeInEnabled", "blockChromaEnabled",
             "blockIgnoreDepth", "blockIgnorePlants", "blockHideOnEtherwarp",
@@ -92,6 +98,9 @@ class DisableAllFeaturesTest {
             // Wide Health Bar, Always Sprint, Price History
             "wideHealthBarCentered", "wideHealthBarAbsorption", "alwaysSprintIgnoreGarden",
             "marketPriceHistoryRange",
+            // Chest Value: whether it shows, and how
+            "chestValueShown", "chestValueIncludeInventory", "chestValueSide", "chestValueSort",
+            "chestValueX", "chestValueY",
             // Dungeon solvers: each puzzle, terminal and device has its own switch under its master
             "solveThreeWeirdos", "solveQuiz", "solveTicTacToe", "solveHigherOrLower", "solveCreeperBeams",
             "solveTeleportMaze", "solveWaterBoard", "solveBoulder", "solveIceFill", "solveIcePath",

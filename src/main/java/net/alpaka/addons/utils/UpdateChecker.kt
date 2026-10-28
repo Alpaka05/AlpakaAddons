@@ -22,9 +22,10 @@ import java.time.Duration
  * ### What counts as newer
  *
  * A release whose version is higher than the running one, and which carries a jar for the
- * Minecraft version the game is running. Drafts are skipped. Pre-releases (`2.0.0-beta.1`) are
- * offered only to a player already running one, so a tester of the next version hears of the next
- * beta and of the release itself, while everyone else hears of full releases only. Releases are built per Minecraft version
+ * Minecraft version the game is running. Drafts are skipped. Pre-releases (marked so on GitHub, or
+ * tagged like `2.0.0-beta.1`) are offered only on the "Pre-Releases" stream
+ * ([AlpakaConfig.updateStream]); on "Releases" a tester of the next version still hears of the
+ * release itself, just not of the next beta. Releases are built per Minecraft version
  * (`alpaka-1.2.22-mc26.2.jar`), and a release with no jar for this game is one the player cannot
  * install, so it is not announced. A jar built for 26.2 is for every 26.2.x (see [jarSuffixes]).
  *
@@ -44,6 +45,24 @@ object UpdateChecker {
 
     /** A release found to be newer, waiting for the player to be in a world to hear about it. */
     internal class Release(val version: String, val url: String)
+
+    /** The choices of "Update Stream", by [AlpakaConfig.updateStream]. */
+    @JvmField
+    val STREAM_NAMES = arrayOf("Releases", "Pre-Releases")
+
+    /** [AlpakaConfig.updateStream], kept inside [STREAM_NAMES] so a hand-edited config cannot break the menu. */
+    @JvmStatic
+    fun stream(): Int = AlpakaConfig.instance.updateStream.coerceIn(0, STREAM_NAMES.size - 1)
+
+    /**
+     * After "Update Stream" changes: forget what the old stream found, so the next tick in a world
+     * asks again for the new one instead of waiting for the next start.
+     */
+    @JvmStatic
+    fun streamChanged() {
+        found = null
+        requested = false
+    }
 
     private val client: HttpClient by lazy {
         HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()
@@ -78,6 +97,7 @@ object UpdateChecker {
     private fun fetch() {
         val current = ReleaseVersion.parse(ModVersion.mod()) ?: return // A build without a version has nothing to compare.
         val jarSuffixes = jarSuffixes(ModVersion.minecraft())
+        val preReleases = stream() == 1
 
         val request = HttpRequest.newBuilder(URI.create(ENDPOINT))
             .timeout(Duration.ofSeconds(10))
@@ -96,7 +116,7 @@ object UpdateChecker {
                         )
                         return@whenComplete
                     }
-                    found = newest(response.body(), current, jarSuffixes)
+                    found = newest(response.body(), current, jarSuffixes, preReleases)
                 } catch (t: Throwable) {
                     AlpakaAddons.LOGGER.warn("Could not check for a newer release", t)
                 }
@@ -117,8 +137,11 @@ object UpdateChecker {
         return listOf("-mc$minecraft.jar", "-mc$majorMinor.jar").distinct()
     }
 
-    /** The highest release above [current] with a jar ending in one of [jarSuffixes], or null if there is none. */
-    internal fun newest(body: String, current: ReleaseVersion, jarSuffixes: List<String>): Release? {
+    /**
+     * The highest release above [current] with a jar ending in one of [jarSuffixes], or null if there
+     * is none. Pre-releases are only considered with [preReleases].
+     */
+    internal fun newest(body: String, current: ReleaseVersion, jarSuffixes: List<String>, preReleases: Boolean = false): Release? {
         var best: Release? = null
         var bestVersion = current
         for (element in JsonParser.parseString(body).asJsonArray) {
@@ -127,7 +150,7 @@ object UpdateChecker {
             val version = release.get("tag_name")?.asString?.removePrefix("v") ?: continue
             val parsed = ReleaseVersion.parse(version) ?: continue
             val preRelease = release.get("prerelease")?.asBoolean == true || parsed.isPreRelease
-            if (preRelease && !current.isPreRelease) continue
+            if (preRelease && !preReleases) continue
             if (parsed <= bestVersion) continue
             val hasJar = release.getAsJsonArray("assets")?.any { asset ->
                 val name = asset.asJsonObject.get("name")?.asString ?: return@any false

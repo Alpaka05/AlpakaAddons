@@ -94,7 +94,7 @@ public final class ConfigTree {
             "allow_api_calls", "update_notifications", "menu_font", "menu_theme", "menu_accent_color",
             "custom_escape_menu", "custom_main_menu", "disable_all_features", "reset_all_settings",
             // Visuals
-            "fullbright", "clean_blaze", "blaze_fire_pits", "stop_blaze_spinning", "hide_hurt_overlay", "hide_mob_deaths",
+            "fullbright", "clean_blaze", "blaze_fire_pits", "hide_hurt_overlay", "hide_mob_deaths",
             "hide_explosions",
             "hide_inventory_effects",
             "render_hand_third_person", "smooth_perspective", "disable_front_perspective", "zoom",
@@ -121,7 +121,7 @@ public final class ConfigTree {
             "custom_sound_button_click", "custom_sound_hotbar_scroll", "custom_sound_inventory_open_close",
             "custom_sound_inventory_click", "custom_sound_rare_drop", "custom_sound_notification",
             "custom_sound_player_hurt", "custom_sound_blaze_death", "custom_sound_zombie_remedy",
-            "custom_sound_successful_hit", "mute_vanilla_sounds_blaze_slayer", "custom_sound_low_hp_heartbeat"
+            "custom_sound_successful_hit", "custom_sound_low_hp_heartbeat"
     );
 
     /** Settings registered away from their feature. */
@@ -198,8 +198,7 @@ public final class ConfigTree {
             {{"SkyBlock"},
                     {"Slayer", "slayer_hud_enabled", "slayer_timer", "boss_spawn_alert", "boss_cocoon_alert", "slayer_drop_tracker",
                             "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat",
-                            "hide_slayer_chat", "clean_blaze", "blaze_fire_pits", "stop_blaze_spinning",
-                            "mute_vanilla_sounds_blaze_slayer"},
+                            "hide_slayer_chat", "clean_blaze", "blaze_fire_pits"},
                     {"Tools", "etherwarp_overlay", "etherwarp_sound", "only_crit_damage",
                             "world_age_join_message_enabled", "ragnarock", "deployable_timer", "cache_resource_pack"},
                     {"Markets", "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value",

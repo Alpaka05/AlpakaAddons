@@ -72,10 +72,10 @@ class DisableAllFeaturesTest {
      * switching the feature back on brings it back changed.
      */
     private static final Set<String> KEPT = Set.of(
-            "dungeonMapShowClear", "dungeonMapShowBoss", "dungeonMapBossMode", "dungeonMapScale",
-            "dungeonMapBackground", "dungeonMapBlur", "dungeonMapFrame", "dungeonMapRoomColor",
-            "dungeonMapPlayerHeads", "dungeonMapRotateHeads", "dungeonMapHeadBorder", "dungeonMapSmoothMarkers",
-            "dungeonMapRoomNames", "dungeonMapRoomSecrets", "dungeonMapHideCheckmarks",
+            "dungeonMapShowBoss", "dungeonMapBossMode", "dungeonMapScale", "dungeonMapCurrentRoom",
+            "dungeonMapBackground", "dungeonMapBlur", "dungeonMapFrame", "dungeonMapCustomColors",
+            "dungeonMapPlayerHeads", "dungeonMapRotateHeads", "dungeonMapSmoothMarkers", "dungeonMapSmoothFont",
+            "dungeonMapRoomNames", "dungeonMapRoomSecrets",
             "starredMobsHideNames", "starredMobsHighlightStyle",
             // Block Overlay
             "blockOutlineEnabled", "blockFillEnabled", "blockFadeInEnabled", "blockChromaEnabled",

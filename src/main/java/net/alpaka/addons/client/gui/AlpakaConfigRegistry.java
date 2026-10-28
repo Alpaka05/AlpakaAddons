@@ -18,6 +18,8 @@ import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class AlpakaConfigRegistry {
@@ -223,6 +225,9 @@ public class AlpakaConfigRegistry {
                         new ConfigOption.ToggleEntry("Potion effect, enchanting and ender particles",
                                 () -> AlpakaConfig.instance.cleanBlazeEffectParticles,
                                 v -> { AlpakaConfig.instance.cleanBlazeEffectParticles = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Attunement-colored dust around the boss and demons",
+                                () -> AlpakaConfig.instance.cleanBlazeAttunementDust,
+                                v -> { AlpakaConfig.instance.cleanBlazeAttunementDust = v; AlpakaConfig.save(); }),
                         new ConfigOption.ToggleEntry("Burning on blazes, minibosses and demons",
                                 () -> AlpakaConfig.instance.cleanBlazeFire,
                                 v -> { AlpakaConfig.instance.cleanBlazeFire = v; AlpakaConfig.save(); }),
@@ -234,9 +239,15 @@ public class AlpakaConfigRegistry {
                                 v -> { AlpakaConfig.instance.cleanBlazeLightning = v; AlpakaConfig.save(); }),
                         new ConfigOption.ToggleEntry("Name tags (health included)",
                                 () -> AlpakaConfig.instance.cleanBlazeNameTags,
-                                v -> { AlpakaConfig.instance.cleanBlazeNameTags = v; AlpakaConfig.save(); })
+                                v -> { AlpakaConfig.instance.cleanBlazeNameTags = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Wrong dagger attunement messages",
+                                () -> AlpakaConfig.instance.cleanBlazeWrongDaggerChat,
+                                v -> { AlpakaConfig.instance.cleanBlazeWrongDaggerChat = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Damage messages (Hellion Shield, boss hits)",
+                                () -> AlpakaConfig.instance.cleanBlazeDamageChat,
+                                v -> { AlpakaConfig.instance.cleanBlazeDamageChat = v; AlpakaConfig.save(); })
                 ),
-                "blaze flame smoke angry villager lava drip particles potion effect swirl enchant enchanting glyph ender portal witch spell fire burning overlay fireball projectile lightning bolt flash thunder nametag name tag health smoldering miniboss demon clean hide"));
+                "blaze flame smoke angry villager lava drip particles potion effect swirl enchant enchanting glyph ender portal witch spell attunement dust ashen spirit crystal auric hellion shield fire burning overlay fireball projectile lightning bolt flash thunder nametag name tag health smoldering miniboss demon chat message wrong dagger strike damage true damage beam reduced clean hide"));
 
         OPTIONS.add(new ConfigOption("blaze_fire_pits", "Fire Pit Highlight",
                 "During your Blaze slayer boss, marks the fire pits on the floor with a glowing column.",
@@ -397,6 +408,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.containerBgFadeInDurationMs = Math.round(v); AlpakaConfig.save(); },
                 50.0f, 1000.0f, val -> String.format(Locale.ROOT, "%d ms", Math.round(val)),
                 "container background fade speed duration time ms transition"));
+
+        OPTIONS.add(new ConfigOption("hide_inventory_effects", "Hide Effects",
+                "Hides the list of active potion effects next to your inventory.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.hideInventoryEffects,
+                v -> { AlpakaConfig.instance.hideInventoryEffects = v; AlpakaConfig.save(); },
+                "hide effects potion effect status buffs inventory list side absorption night vision haste strength god potion"));
 
         // The id keeps its old name so existing configs and search links still find the option.
         OPTIONS.add(new ConfigOption("inventory_snow", "Inventory Particles",
@@ -1878,6 +1896,39 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.slayerTimerHudEnabled = v; AlpakaConfig.save(); },
                 "slayer boss timer hud live overlay screen"));
 
+        OPTIONS.add(new ConfigOption("Slayer Boss Highlight", ConfigCategory.SKYBLOCK));
+
+
+        OPTIONS.add(new ConfigOption("slayer_boss_highlight", "Boss Highlight",
+                "Highlights your own slayer boss so it stands out from the crowd.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slayerBossHighlightEnabled,
+                v -> { AlpakaConfig.instance.slayerBossHighlightEnabled = v; AlpakaConfig.save(); },
+                "slayer boss highlight glow outline hitbox box overlay tint color own mark"));
+
+        OPTIONS.add(new ConfigOption("slayer_boss_highlight_style", "Highlight Style",
+                "Outline glows around the boss, Hitbox draws a box around it, Overlay tints its model.",
+                ConfigCategory.SKYBLOCK,
+                () -> (float) AlpakaConfig.instance.slayerBossHighlightStyle,
+                v -> { AlpakaConfig.instance.slayerBossHighlightStyle = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (net.alpaka.addons.features.slayer.SlayerBossHighlight.STYLE_NAMES.length - 1),
+                val -> net.alpaka.addons.features.slayer.SlayerBossHighlight.STYLE_NAMES[Math.round(val)],
+                "slayer boss highlight style mode outline glow hitbox box overlay tint").choices(net.alpaka.addons.features.slayer.SlayerBossHighlight.STYLE_NAMES));
+
+        OPTIONS.add(ConfigOption.color("slayer_boss_highlight_color", "Highlight Color",
+                "Color of the boss highlight.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.slayerBossHighlightColor,
+                v -> { AlpakaConfig.instance.slayerBossHighlightColor = v; AlpakaConfig.save(); },
+                "slayer boss highlight color colour picker"));
+
+        OPTIONS.add(new ConfigOption("slayer_boss_highlight_attunement", "Blaze Attunement Colors",
+                "On the Blaze slayer, uses the color of the current attunement for the boss and its demons.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slayerBossHighlightAttunement,
+                v -> { AlpakaConfig.instance.slayerBossHighlightAttunement = v; AlpakaConfig.save(); },
+                "blaze slayer inferno demonlord attunement hellion shield ashen spirit crystal auric dagger demon quazii typhoeus color"));
+
         OPTIONS.add(new ConfigOption("Slayer Session HUD", ConfigCategory.SKYBLOCK));
 
 
@@ -2414,6 +2465,20 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.commandWheelToggleMode = v; AlpakaConfig.save(); },
                 "quick command wheel toggle hold press release click open mode keybind"));
 
+        OPTIONS.add(new ConfigOption("command_shortcuts", "Command Shortcuts",
+                "Short aliases for commands, such as /v for /visit (/v Steve still works), and keys that run a command.",
+                ConfigCategory.SOUND_MISC,
+                () -> AlpakaConfig.instance.commandShortcutsEnabled,
+                v -> { AlpakaConfig.instance.commandShortcutsEnabled = v; AlpakaConfig.save(); },
+                "command shortcuts alias aliases abbreviation short keybind key bind hotkey run command visit warp skyblocker"));
+
+        OPTIONS.add(new ConfigOption("command_shortcuts_edit", "Edit Command Shortcuts",
+                "Add, edit or remove aliases and key shortcuts.",
+                ConfigCategory.SOUND_MISC,
+                "Edit Shortcuts",
+                parent -> Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.client.CommandShortcutsConfigScreen(parent)),
+                "command shortcuts alias aliases edit add remove keybind key bind hotkey list menu"));
+
         OPTIONS.add(new ConfigOption("always_sprint", "Always Sprint",
                 "Walking forward sprints on its own, no sprint key needed.",
                 ConfigCategory.SOUND_MISC,
@@ -2454,12 +2519,20 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customSoundButtonClick = v; AlpakaConfig.save(); },
                 "button click sound ui audio feedback chime"));
 
+        OPTIONS.add(soundVolume("custom_sound_button_click_volume", "Button Click Volume", "button click",
+                () -> AlpakaConfig.instance.customSoundButtonClickVolume,
+                v -> AlpakaConfig.instance.customSoundButtonClickVolume = v));
+
         OPTIONS.add(new ConfigOption("custom_sound_hotbar_scroll", "Hotbar Scroll Sound",
                 "Plays custom sound effect when scrolling or switching hotbar slots.",
                 ConfigCategory.SOUND_MISC,
                 () -> AlpakaConfig.instance.customSoundHotbarScroll,
                 v -> { AlpakaConfig.instance.customSoundHotbarScroll = v; AlpakaConfig.save(); },
                 "hotbar scroll slot equip switch audio sound"));
+
+        OPTIONS.add(soundVolume("custom_sound_hotbar_scroll_volume", "Hotbar Scroll Volume", "hotbar scroll",
+                () -> AlpakaConfig.instance.customSoundHotbarScrollVolume,
+                v -> AlpakaConfig.instance.customSoundHotbarScrollVolume = v));
 
         OPTIONS.add(new ConfigOption("custom_sound_inventory_open_close", "Inventory Open/Close Sound",
                 "Plays custom sound effect when opening or closing container GUIs.",
@@ -2468,12 +2541,20 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customSoundInventoryOpenClose = v; AlpakaConfig.save(); },
                 "inventory open close gui container sound audio custom"));
 
+        OPTIONS.add(soundVolume("custom_sound_inventory_open_close_volume", "Open/Close Volume", "open/close",
+                () -> AlpakaConfig.instance.customSoundInventoryOpenCloseVolume,
+                v -> AlpakaConfig.instance.customSoundInventoryOpenCloseVolume = v));
+
         OPTIONS.add(new ConfigOption("custom_sound_inventory_click", "Inventory Click Sound",
                 "Plays custom sound when clicking items or picking them up.",
                 ConfigCategory.SOUND_MISC,
                 () -> AlpakaConfig.instance.customSoundInventoryClick,
                 v -> { AlpakaConfig.instance.customSoundInventoryClick = v; AlpakaConfig.save(); },
                 "inventory click item pickup container sound audio custom"));
+
+        OPTIONS.add(soundVolume("custom_sound_inventory_click_volume", "Inventory Click Volume", "inventory click",
+                () -> AlpakaConfig.instance.customSoundInventoryClickVolume,
+                v -> AlpakaConfig.instance.customSoundInventoryClickVolume = v));
 
         OPTIONS.add(new ConfigOption("Gameplay Sounds", ConfigCategory.SOUND_MISC));
 
@@ -2484,12 +2565,20 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customSoundRareDrop = v; AlpakaConfig.save(); },
                 "rare drop sound slayer loot celebration audio"));
 
+        OPTIONS.add(soundVolume("custom_sound_rare_drop_volume", "Rare Drop Volume", "rare drop",
+                () -> AlpakaConfig.instance.customSoundRareDropVolume,
+                v -> AlpakaConfig.instance.customSoundRareDropVolume = v));
+
         OPTIONS.add(new ConfigOption("custom_sound_notification", "Boss Spawn Sound",
                 "Plays sound effect when a Slayer boss spawns.",
                 ConfigCategory.SOUND_MISC,
                 () -> AlpakaConfig.instance.customSoundNotification,
                 v -> { AlpakaConfig.instance.customSoundNotification = v; AlpakaConfig.save(); },
                 "boss spawn sound notification alert audio"));
+
+        OPTIONS.add(soundVolume("custom_sound_notification_volume", "Boss Spawn Volume", "boss spawn",
+                () -> AlpakaConfig.instance.customSoundNotificationVolume,
+                v -> AlpakaConfig.instance.customSoundNotificationVolume = v));
 
         OPTIONS.add(new ConfigOption("custom_sound_player_hurt", "Player Hurt Sound",
                 "Plays custom sound effect when taking damage.",
@@ -2498,12 +2587,20 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customSoundPlayerHurt = v; AlpakaConfig.save(); },
                 "player hurt sound damage hit audio custom"));
 
+        OPTIONS.add(soundVolume("custom_sound_player_hurt_volume", "Player Hurt Volume", "player hurt",
+                () -> AlpakaConfig.instance.customSoundPlayerHurtVolume,
+                v -> AlpakaConfig.instance.customSoundPlayerHurtVolume = v));
+
         OPTIONS.add(new ConfigOption("custom_sound_blaze_death", "Blaze Death Sound",
                 "Custom sound when a blaze you fought dies. Other kills are ignored.",
                 ConfigCategory.SOUND_MISC,
                 () -> AlpakaConfig.instance.customSoundBlazeDeath,
                 v -> { AlpakaConfig.instance.customSoundBlazeDeath = v; AlpakaConfig.save(); },
                 "blaze death sound kill slayer audio custom own kills"));
+
+        OPTIONS.add(soundVolume("custom_sound_blaze_death_volume", "Blaze Death Volume", "blaze death",
+                () -> AlpakaConfig.instance.customSoundBlazeDeathVolume,
+                v -> AlpakaConfig.instance.customSoundBlazeDeathVolume = v));
 
         OPTIONS.add(new ConfigOption("custom_sound_zombie_remedy", "Zombie Remedy Sound",
                 "Plays custom sound for the zombie villager cure effect.",
@@ -2512,12 +2609,20 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customSoundZombieRemedy = v; AlpakaConfig.save(); },
                 "zombie remedy cure villager sound audio custom"));
 
+        OPTIONS.add(soundVolume("custom_sound_zombie_remedy_volume", "Zombie Remedy Volume", "zombie remedy",
+                () -> AlpakaConfig.instance.customSoundZombieRemedyVolume,
+                v -> AlpakaConfig.instance.customSoundZombieRemedyVolume = v));
+
         OPTIONS.add(new ConfigOption("custom_sound_successful_hit", "Successful Hit Sound",
                 "Plays custom sound on a critical or successful hit.",
                 ConfigCategory.SOUND_MISC,
                 () -> AlpakaConfig.instance.customSoundSuccessfulHit,
                 v -> { AlpakaConfig.instance.customSoundSuccessfulHit = v; AlpakaConfig.save(); },
                 "successful hit crit critical attack sound audio custom"));
+
+        OPTIONS.add(soundVolume("custom_sound_successful_hit_volume", "Successful Hit Volume", "successful hit",
+                () -> AlpakaConfig.instance.customSoundSuccessfulHitVolume,
+                v -> AlpakaConfig.instance.customSoundSuccessfulHitVolume = v));
 
         OPTIONS.add(new ConfigOption("mute_vanilla_sounds_blaze_slayer", "Silence Blaze Slayer Noise",
                 "Mutes blazes, fire, lava and ghasts during a Blaze quest. Menu and mod sounds play.",
@@ -2542,6 +2647,10 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customSoundLowHpHeartbeat = v; AlpakaConfig.save(); },
                 "low hp health heartbeat sound survival audio custom lowhp pulse alert"));
 
+        OPTIONS.add(soundVolume("custom_sound_low_hp_heartbeat_volume", "Heartbeat Volume", "heartbeat",
+                () -> AlpakaConfig.instance.customSoundLowHpHeartbeatVolume,
+                v -> AlpakaConfig.instance.customSoundLowHpHeartbeatVolume = v));
+
         OPTIONS.add(new ConfigOption("low_hp_heartbeat_threshold", "Heartbeat HP Threshold",
                 "Health percentage at which the heartbeat starts.",
                 ConfigCategory.SOUND_MISC,
@@ -2551,6 +2660,18 @@ public class AlpakaConfigRegistry {
                 "heartbeat low hp health percentage threshold trigger sound volume"));
 
         buildCategoryCache();
+    }
+
+    /** A 0-100% volume slider for one custom sound, on top of the shared custom sounds volume. */
+    private static ConfigOption soundVolume(String id, String title, String sound,
+                                            Supplier<Float> getter, Consumer<Float> setter) {
+        return new ConfigOption(id, title,
+                "How loud this sound plays, on top of the custom sounds volume.",
+                ConfigCategory.SOUND_MISC,
+                getter,
+                v -> { setter.accept(v); AlpakaConfig.save(); },
+                0.0f, 1.0f, val -> String.format(Locale.ROOT, "%d%%", Math.round(val * 100)),
+                sound + " sound volume loudness audio quiet loud percent");
     }
 
     private static void buildCategoryCache() {

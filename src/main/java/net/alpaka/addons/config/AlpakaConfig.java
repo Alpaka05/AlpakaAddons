@@ -177,6 +177,8 @@ public class AlpakaConfig {
     public float containerBgOpacity = 0.75f;
     public boolean containerBgFadeInEnabled = true;
     public int containerBgFadeInDurationMs = 250;
+    /** Hides the potion effect list vanilla draws next to the inventory. */
+    public boolean hideInventoryEffects = false;
     /**
      * Clean Blaze, only on SkyBlock in the Blaze slayer's zones. The fields after it pick what it
      * hides.
@@ -185,11 +187,17 @@ public class AlpakaConfig {
     public boolean cleanBlazeParticles = true;
     /** The potion swirls, enchanting glyphs and ender particles around the boss and its demons. */
     public boolean cleanBlazeEffectParticles = true;
+    /** The dust in the Hellion Shield attunement's colour around the boss and its demons. */
+    public boolean cleanBlazeAttunementDust = true;
     public boolean cleanBlazeFire = true;
     public boolean cleanBlazeFireballs = true;
     public boolean cleanBlazeLightning = true;
     /** Off by default: the health on blaze name tags is what a grinder watches. */
     public boolean cleanBlazeNameTags = false;
+    /** "Strike using the ... attunement on your dagger!" lines in the Blaze zones. */
+    public boolean cleanBlazeWrongDaggerChat = true;
+    /** "Your hit was reduced by Hellion Shield!" and "You took ... damage from ..." in the Blaze zones. */
+    public boolean cleanBlazeDamageChat = true;
     /** During the player's own Blaze slayer boss, a glowing column over each fire pit block. */
     public boolean blazeFirePitsEnabled = true;
     /** ARGB color of the fire pit column; its alpha scales the column's own fade. Default hot red-orange. */
@@ -252,6 +260,18 @@ public class AlpakaConfig {
     public boolean customSoundInventoryClick = true;
     public boolean customSoundZombieRemedy = true;
     public boolean customSoundSuccessfulHit = true;
+    /** Per-sound volumes, multiplied with customSoundsVolume. Shared toggles share one volume. */
+    public float customSoundButtonClickVolume = 1.0f;
+    public float customSoundHotbarScrollVolume = 1.0f;
+    public float customSoundInventoryOpenCloseVolume = 1.0f;
+    public float customSoundInventoryClickVolume = 1.0f;
+    public float customSoundRareDropVolume = 1.0f;
+    public float customSoundNotificationVolume = 1.0f;
+    public float customSoundPlayerHurtVolume = 1.0f;
+    public float customSoundBlazeDeathVolume = 1.0f;
+    public float customSoundZombieRemedyVolume = 1.0f;
+    public float customSoundSuccessfulHitVolume = 1.0f;
+    public float customSoundLowHpHeartbeatVolume = 1.0f;
     public boolean muteVanillaSoundsInBlazeSlayer = false;
     /**
      * With the Blaze slayer mute on: every world sound instead of only the fight's own noise
@@ -389,6 +409,13 @@ public class AlpakaConfig {
     public boolean slayerTimerChatEnabled = true;
     /** Show the running time on screen while the boss is up. */
     public boolean slayerTimerHudEnabled = true;
+    /** Highlight the player's own slayer boss. */
+    public boolean slayerBossHighlightEnabled = true;
+    /** How the boss is highlighted, an index into SlayerBossHighlight.STYLE_NAMES. */
+    public int slayerBossHighlightStyle = 0;
+    public int slayerBossHighlightColor = 0xFFFF5555;
+    /** On the Blaze slayer, color the boss and its demons by their current attunement. */
+    public boolean slayerBossHighlightAttunement = true;
     /** The Ragnarock's cast countdown under the crosshair instead of in the action bar. */
     // Saved as ragAxeCountdownEnabled before the feature was renamed; read that too so the setting carries over.
     @SerializedName(value = "ragnarockEnabled", alternate = "ragAxeCountdownEnabled")
@@ -695,6 +722,12 @@ public class AlpakaConfig {
     public java.util.List<java.util.List<String>> commandWheelPages = null;
 
     /**
+     * Wheels of single Skyblock profiles, keyed "account uuid:profile", pages as above. A profile
+     * listed here opens its own wheel; every other one opens {@link #commandWheelPages}.
+     */
+    public java.util.Map<String, java.util.List<java.util.List<String>>> commandWheelProfilePages = new java.util.HashMap<>();
+
+    /**
      * Off: hold the wheel key to open the wheel, release it to run the aimed command. On: one press
      * opens it, a click runs a command, and pressing the key again closes it.
      */
@@ -709,6 +742,45 @@ public class AlpakaConfig {
             "/pets",
             "/pv"
     ));
+
+    // Command Shortcuts; see CommandShortcuts.
+    public boolean commandShortcutsEnabled = true;
+    /** Typed aliases: "/v Steve" goes out as "/visit Steve". */
+    public java.util.List<CommandAlias> commandAliases = new java.util.ArrayList<>();
+    /** Keys that run a command with no screen open: Y for "/sb menu". */
+    public java.util.List<KeyShortcut> commandKeyShortcuts = new java.util.ArrayList<>();
+
+    /** One alias, both sides without their slash: "v" stands for "visit". */
+    public static class CommandAlias {
+        public String alias = "";
+        public String command = "";
+
+        public CommandAlias() {}
+
+        public CommandAlias(String alias, String command) {
+            this.alias = alias;
+            this.command = command;
+        }
+    }
+
+    /**
+     * One key shortcut: the key by its InputConstants name ("key.keyboard.y"), the modifier keys
+     * held with it (GLFW's MOD_SHIFT, MOD_CONTROL, MOD_ALT, MOD_SUPER bits), and the command
+     * without its slash. An empty key is not bound yet.
+     */
+    public static class KeyShortcut {
+        public String key = "";
+        public int modifiers = 0;
+        public String command = "";
+
+        public KeyShortcut() {}
+
+        public KeyShortcut(String key, int modifiers, String command) {
+            this.key = key;
+            this.modifiers = modifiers;
+            this.command = command;
+        }
+    }
 
     // Item viewmodel options
     public boolean itemSizeFeatureEnabled = false;
@@ -1234,8 +1306,10 @@ public class AlpakaConfig {
         this.fullbrightEnabled = false;
         this.inventorySnowEnabled = false;
         this.containerBgFadeInEnabled = false;
+        this.hideInventoryEffects = false;
         this.cleanBlazeEnabled = false;
         this.blazeFirePitsEnabled = false;
+        this.slayerBossHighlightEnabled = false;
         this.hideSlayerChatMessages = false;
         this.stopBlazeSpinning = false;
         this.hideHurtOverlayEnabled = false;

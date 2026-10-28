@@ -191,6 +191,12 @@ object SlayerBossEntityTracker {
     /** Whether the boss behind the name tag was resolved, for the diagnostics command. */
     val hasMob: Boolean get() = trackedMobId != -1
 
+    /** The boss itself while it is being followed and alive, for [SlayerBossHighlight]. */
+    fun bossMob(level: ClientLevel): LivingEntity? {
+        if (trackedMobId == -1 || diedAtMs != null) return null
+        return (level.getEntity(trackedMobId) as? LivingEntity)?.takeIf { !it.isRemoved }
+    }
+
     /**
      * The boss's death, or null when none was seen, and forgets the boss for the next one.
      *

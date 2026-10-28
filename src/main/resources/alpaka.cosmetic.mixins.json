@@ -25,6 +25,7 @@
     "LightningBoltMixin",
     "LivingEntityMixin",
     "LivingEntityRendererMixin",
+    "LivingEntityRenderStateMixin",
     "NameTagFeatureRendererMixin",
     "NameTagSubmitMixin",
     "ParticleEngineMixin",

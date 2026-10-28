@@ -78,6 +78,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.utils.DungeonState.register();
         net.alpaka.addons.features.dungeonmap.DungeonMapFeature.register();
         net.alpaka.addons.features.dungeonmobs.StarredMobsHighlight.register();
+        net.alpaka.addons.features.dungeonmap.DoorHighlight.register();
         net.alpaka.addons.features.notification.MentionNotifier.register();
         net.alpaka.addons.features.party.PartyInviteFeature.register();
         net.alpaka.addons.features.quickjoin.QuickJoin.register();

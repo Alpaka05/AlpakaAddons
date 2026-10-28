@@ -57,6 +57,7 @@ class DisableAllFeaturesTest {
             "onlyCritDamageEnabled", "deployableTimerEnabled", "dungeonMapEnabled", "customAuctionHouseEnabled", "customBazaarEnabled",
             "marketPriceHistoryEnabled", "customSignInputEnabled", "chestValueEnabled",
             "starredMobsHighlightEnabled",
+            "dungeonDoorHighlight",
             // Cosmetics
             "customNameTagEnabled", "chromaHatEnabled", "playerScaleEnabled", "customDamageTagsEnabled",
             // Utility and sounds

@@ -47,6 +47,8 @@ object DungeonMapFeature {
     private var labelKey = -1L
     private val tracks = HashMap<String, MarkerTrack>()
     private var party: List<PartyMember> = emptyList()
+    /** Every teammate's class, by lowercase name, kept for the run: the tab list shows the dead as DEAD. */
+    private val classes = HashMap<String, String>()
     private var mapId: MapId? = null
     private var ticks = 0
     private var stillTicks = 0
@@ -73,7 +75,8 @@ object DungeonMapFeature {
             return
         }
         val cfg = AlpakaConfig.instance
-        if (!cfg.dungeonMapEnabled) return
+        // Door Highlight reads the same map.
+        if (!cfg.dungeonMapEnabled && !cfg.dungeonDoorHighlight) return
         if (DungeonState.inBossRoom) {
             players = emptyList()
             // The saved map's labels still follow the options.
@@ -93,7 +96,10 @@ object DungeonMapFeature {
             if (inks == null || !calibration.measureRooms(inks)) calibration.assumeFloor(DungeonState.floor)
         }
         // The tab list only changes when someone dies or is revived; four reads a second are plenty.
-        if (ticks % 5 == 0) party = DungeonParty.read(client)
+        if (ticks % 5 == 0) {
+            party = DungeonParty.read(client)
+            for (member in party) if (member.alive) classes[member.name.lowercase()] = member.dungeonClass
+        }
         // Rooms are recognized from loaded chunks, so the scan retries until each one has arrived.
         if (ticks % 20 == 0) client.level?.let(DungeonRooms::scan)
         DungeonRooms.track(player)
@@ -196,6 +202,9 @@ object DungeonMapFeature {
         return result
     }
 
+    /** A teammate's class, as last seen alive in the tab list this run. */
+    fun classOf(name: String?): String? = name?.let { classes[it.lowercase()] }
+
     private fun skinOf(client: Minecraft, name: String?, entity: AbstractClientPlayer?): PlayerSkin? =
         entity?.skin ?: name?.let { client.connection?.getPlayerInfo(it)?.skin }
 
@@ -229,7 +238,9 @@ object DungeonMapFeature {
         setCover(null)
         labelKey = -1L
         DungeonRooms.reset()
+        DoorHighlight.reset()
         party = emptyList()
+        classes.clear()
         tracks.clear()
         stillTicks = 0
         lastX = Double.NaN

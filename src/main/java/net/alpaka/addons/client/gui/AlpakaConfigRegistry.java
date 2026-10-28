@@ -1777,6 +1777,15 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.onlyCritDamageEnabled = v; AlpakaConfig.save(); },
                 "damage indicator tags numbers hide non-crit fire poison abilities crit skyblock"));
 
+        OPTIONS.add(new ConfigOption("Garden", ConfigCategory.SKYBLOCK));
+
+        OPTIONS.add(new ConfigOption("visitor_bazaar", "Visitor Bazaar Shortcut",
+                "Clicking Accept Offer at a garden visitor while you lack the items opens the bazaar for them.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.visitorBazaarEnabled,
+                v -> { AlpakaConfig.instance.visitorBazaarEnabled = v; AlpakaConfig.save(); },
+                "garden visitor bazaar bz buy missing items accept offer shortcut shopping farming"));
+
 
         // --- 6. COSMETICS ---
 

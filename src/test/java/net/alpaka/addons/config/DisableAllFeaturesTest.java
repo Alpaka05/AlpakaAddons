@@ -53,7 +53,7 @@ class DisableAllFeaturesTest {
             "hideSlayerChatMessages", "bossSpawnAlertEnabled", "bossCocoonAlertEnabled", "slayerTimerEnabled",
             "slayerHudEnabled", "worldAgeJoinMessageEnabled", "partyInvitePromptEnabled",
             "cacheResourcePackEnabled", "guildPrefixEnabled", "bridgeBotFormatterEnabled", "ragnarockEnabled",
-            "onlyCritDamageEnabled", "deployableTimerEnabled",
+            "onlyCritDamageEnabled", "deployableTimerEnabled", "visitorBazaarEnabled",
             // Cosmetics
             "customNameTagEnabled", "chromaHatEnabled", "playerScaleEnabled", "customDamageTagsEnabled",
             // Utility and sounds

@@ -29,7 +29,9 @@ public final class Outbound {
         /** Pressed a key, such as Y on a party invite. */
         KEY_PRESS,
         /** Released or clicked a command wheel segment. */
-        WHEEL
+        WHEEL,
+        /** Clicked a slot in a menu, such as a garden visitor's Accept Offer. */
+        CLICK
     }
 
     /** The same command again this soon is taken as a double input and dropped. */

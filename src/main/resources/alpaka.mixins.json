@@ -42,7 +42,8 @@
     "ConnectScreenPackCacheMixin",
     "ClientPacketListenerPackCacheMixin",
     "ClientCommonPacketListenerPackCacheMixin",
-    "ClientPacketListenerMixin"
+    "ClientPacketListenerMixin",
+    "AbstractContainerScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1

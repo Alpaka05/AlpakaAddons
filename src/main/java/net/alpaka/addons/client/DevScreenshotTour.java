@@ -484,6 +484,18 @@ public final class DevScreenshotTour {
             new Stop(null, DevScreenshotTour::scoreboardAndStarlight, () -> true, 20),
             new Stop("scoreboard-starlight", () -> {}, () -> true, 5),
             new Stop("scoreboard-starlight-later", () -> {}, () -> true, 15),
+            // A Water Board room as far as the solver reads it, turned (its clay in the north-east
+            // corner) and in an F7 run by the sidebar: from the water lever with the board in a start
+            // state, then with a fourth door closed, which has no solution, then from the board
+            // looking back. Then back where the player stood, out of the run.
+            new Stop(null, () -> waterBoardRoom(true), () -> net.alpaka.addons.utils.DungeonState.inDungeon(), 60),
+            new Stop("dungeon-water-board", () -> {}, () -> true, 5),
+            new Stop("dungeon-water-board-four-doors", () -> waterBoardDoor(1, true), () -> true, 30),
+            new Stop("dungeon-water-board-back", () -> {
+                waterBoardDoor(1, false);
+                waterBoardStand(15.5, 22.5, net.minecraft.core.Direction.NORTH);
+            }, () -> true, 40),
+            new Stop(null, () -> waterBoardRoom(false), () -> true, 20),
             screen("viewmodel-setup", () -> AlpakaConfigScreen.openOn("Viewmodel", "Viewmodel Modifiers").inSetupMode()),
             screen("viewmodel-setup-swing", () -> AlpakaConfigScreen.openOn("Viewmodel", "Swing").inSetupMode()),
             new Stop("viewmodel-setup-swinging", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 1),
@@ -1027,6 +1039,132 @@ public final class DevScreenshotTour {
                 level.setBlockAndUpdate(pos, net.minecraft.world.level.block.Blocks.CLAY.defaultBlockState());
             }
         });
+    }
+
+    /**
+     * The tour's Water Board room: grid cell 2,3 of the Catacombs, its blue terracotta in the roof's
+     * north-east corner, so every position goes through a turn the way most real rooms' do.
+     */
+    private static final net.alpaka.addons.features.dungeon.room.RoomFrame WATER_BOARD = net.alpaka.addons.features.dungeon.room.RoomFrame.of(
+            2, 3, net.alpaka.addons.features.dungeon.room.RoomFrame.centre(2) + net.alpaka.addons.features.dungeon.room.RoomFrame.HALF,
+            net.alpaka.addons.features.dungeon.room.RoomFrame.centre(3) - net.alpaka.addons.features.dungeon.room.RoomFrame.HALF, 100);
+
+    /** Where the player stood before the Water Board room: x, y, z, yaw, pitch. */
+    private static double[] beforeWaterBoard = null;
+
+    /**
+     * Builds the room and puts the player at its water lever, in an F7 run by the sidebar, or takes
+     * them back where they were and out of the run. Only what the solver reads is built: a floor,
+     * the roof's middle and its clay corner, the seven levers, the five doors with 0, 2 and 4 closed,
+     * and a board with layout 1's blocks where they start.
+     */
+    private static void waterBoardRoom(boolean build) {
+        Minecraft mc = Minecraft.getInstance();
+        net.minecraft.client.server.IntegratedServer server = mc.getSingleplayerServer();
+        if (server == null || mc.player == null) return;
+        AlpakaConfig.instance.dungeonSolversEnabled = build;
+        AlpakaConfig.instance.solveWaterBoard = true;
+        AlpakaConfig.instance.inventoryHudEnabled = false;
+        mc.gui.hud.getChat().clearMessages(false);
+        String[] commands = build ? new String[]{
+                "team add tourdungeon",
+                "team modify tourdungeon prefix {text:\" ⏣ The Catacombs (F7)\",color:\"red\"}",
+                "team join tourdungeon §9",
+                "scoreboard players set §9 tour 7",
+        } : new String[]{
+                "scoreboard players reset §9 tour",
+                "team remove tourdungeon",
+        };
+        if (build) {
+            beforeWaterBoard = new double[]{mc.player.getX(), mc.player.getY(), mc.player.getZ(), mc.player.getYRot(), mc.player.getXRot()};
+        } else {
+            net.alpaka.addons.utils.DungeonState.reset();
+        }
+        double[] back = beforeWaterBoard;
+        server.execute(() -> {
+            for (String command : commands) {
+                server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), command);
+            }
+            if (build) {
+                buildWaterBoard(server.overworld());
+            } else if (back != null) {
+                server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), String.format(java.util.Locale.ROOT,
+                        "execute in minecraft:overworld run tp @a %.3f %.3f %.3f %.1f %.1f", back[0], back[1], back[2], back[3], back[4]));
+            }
+        });
+        if (build) waterBoardStand(15.5, 7.5, net.minecraft.core.Direction.SOUTH);
+    }
+
+    private static void buildWaterBoard(net.minecraft.server.level.ServerLevel level) {
+        net.alpaka.addons.features.dungeon.room.RoomFrame frame = WATER_BOARD;
+        net.minecraft.world.level.block.state.BlockState bricks = net.minecraft.world.level.block.Blocks.STONE_BRICKS.defaultBlockState();
+        for (int rx = 0; rx <= 30; rx++) {
+            for (int rz = 0; rz <= 30; rz++) level.setBlock(frame.toWorld(rx, 59, rz), bricks, 2);
+        }
+        // Only the roof's middle, where the probe finds its height, and the corner: daylight gets in.
+        level.setBlock(frame.toWorld(15, 100, 15), bricks, 2);
+        level.setBlock(frame.clay(), net.minecraft.world.level.block.Blocks.DYED_TERRACOTTA.pick(net.minecraft.world.item.DyeColor.BLUE).defaultBlockState(), 2);
+
+        java.util.Set<net.minecraft.core.BlockPos> starts = new java.util.HashSet<>();
+        for (net.alpaka.addons.features.dungeon.puzzle.WaterBoardLever lever : net.alpaka.addons.features.dungeon.puzzle.WaterBoardLever.values()) {
+            if (lever.representative(1) != null) starts.add(lever.representative(1));
+        }
+        for (int rx = 6; rx <= 24; rx++) {
+            for (int y = 58; y <= 81; y++) {
+                level.setBlock(frame.toWorld(rx, y, 28), bricks, 2);
+                // A maze of sorts in the water's plane, open in front of the blocks set back behind it.
+                boolean wall = rx == 6 || rx == 24 || (y % 4 == 0 && rx % 6 != 3);
+                net.minecraft.core.BlockPos plane = new net.minecraft.core.BlockPos(rx, y, 26);
+                boolean open = starts.contains(plane) || starts.contains(plane.offset(0, 0, 1));
+                level.setBlock(frame.toWorld(rx, y, 26), wall && !open ? bricks : net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 2);
+                level.setBlock(frame.toWorld(rx, y, 27), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 2);
+            }
+        }
+        for (net.alpaka.addons.features.dungeon.puzzle.WaterBoardLever lever : net.alpaka.addons.features.dungeon.puzzle.WaterBoardLever.values()) {
+            net.minecraft.core.BlockPos start = lever.representative(1);
+            if (start != null) level.setBlock(frame.toWorld(start), waterBoardMaterial(lever), 2);
+            net.minecraft.core.BlockPos at = frame.toWorld(lever.lever());
+            if (!lever.isWater()) level.setBlock(at.below(), waterBoardMaterial(lever), 2);
+            level.setBlock(at, net.minecraft.world.level.block.Blocks.LEVER.defaultBlockState().setValue(
+                    net.minecraft.world.level.block.FaceAttachedHorizontalDirectionalBlock.FACE,
+                    net.minecraft.world.level.block.state.properties.AttachFace.FLOOR), 2);
+        }
+        for (int door = 0; door < 5; door++) waterBoardDoor(level, door, door % 2 == 0);
+    }
+
+    private static net.minecraft.world.level.block.state.BlockState waterBoardMaterial(net.alpaka.addons.features.dungeon.puzzle.WaterBoardLever lever) {
+        return (switch (lever) {
+            case COAL -> net.minecraft.world.level.block.Blocks.COAL_BLOCK;
+            case GOLD -> net.minecraft.world.level.block.Blocks.GOLD_BLOCK;
+            case QUARTZ -> net.minecraft.world.level.block.Blocks.QUARTZ_BLOCK;
+            case DIAMOND -> net.minecraft.world.level.block.Blocks.DIAMOND_BLOCK;
+            case EMERALD -> net.minecraft.world.level.block.Blocks.EMERALD_BLOCK;
+            case TERRACOTTA -> net.minecraft.world.level.block.Blocks.TERRACOTTA;
+            case WATER -> net.minecraft.world.level.block.Blocks.STONE_BRICKS;
+        }).defaultBlockState();
+    }
+
+    /** Opens or closes one of the room's doors, by the index the solutions use. */
+    private static void waterBoardDoor(int door, boolean closed) {
+        net.minecraft.client.server.IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+        if (server != null) server.execute(() -> waterBoardDoor(server.overworld(), door, closed));
+    }
+
+    private static void waterBoardDoor(net.minecraft.server.level.ServerLevel level, int door, boolean closed) {
+        net.minecraft.world.level.block.state.BlockState state = closed
+                ? net.minecraft.world.level.block.Blocks.WOOL.pick(net.minecraft.world.item.DyeColor.PURPLE).defaultBlockState()
+                : net.minecraft.world.level.block.Blocks.AIR.defaultBlockState();
+        for (int y = 56; y <= 57; y++) level.setBlock(WATER_BOARD.toWorld(15, y, 19 - door), state, 2);
+    }
+
+    /** The player on the room's floor at this room position, facing this way in the room. */
+    private static void waterBoardStand(double rx, double rz, net.minecraft.core.Direction facing) {
+        net.minecraft.client.server.IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+        if (server == null) return;
+        net.minecraft.world.phys.Vec3 at = WATER_BOARD.toWorld(new net.minecraft.world.phys.Vec3(rx, 60.0, rz));
+        float yaw = WATER_BOARD.toWorld(facing).toYRot();
+        server.execute(() -> server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), String.format(java.util.Locale.ROOT,
+                "execute in minecraft:overworld run tp @a %.3f %.3f %.3f %.1f %.1f", at.x, at.y, at.z, yaw, 8.0f)));
     }
 
     /** The aura in third person, facing away from the fire pits, nothing else on screen. */

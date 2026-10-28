@@ -38,15 +38,15 @@ public final class WarpShortcut {
             "dungeon_hub", "dungeons", "dh", "dhub", "winter", "jerry", "workshop");
 
     /**
-     * Names the Garden answers itself while the player is on it: "/barn" there walks back to the
-     * barn to claim visitors, and only elsewhere means the Farming Islands' barn.
+     * Names that mean a spot on the Garden while the player is on it: "/barn" there teleports to the
+     * barn ("/plottp barn") to claim visitors, and only elsewhere warps to the Farming Islands' barn.
      */
-    static final Set<String> GARDEN_COMMANDS = Set.of("barn");
+    static final Set<String> GARDEN_PLOTS = Set.of("barn");
 
     /**
-     * The warp a typed command stands for, without its slash ("warp isle"), or null to send it as
-     * typed. {@code knownCommand} says whether a command name already means something;
-     * {@code onGarden} whether the player is on their Garden.
+     * The warp a typed command stands for, without its slash ("warp isle", or "plottp barn" on the
+     * Garden), or null to send it as typed. {@code knownCommand} says whether a command name
+     * already means something; {@code onGarden} whether the player is on their Garden.
      */
     public static String rewrite(String command, Predicate<String> knownCommand, boolean onGarden) {
         if (command == null) return null;
@@ -54,7 +54,7 @@ public final class WarpShortcut {
         if (trimmed.isEmpty() || trimmed.indexOf(' ') >= 0) return null;
         String name = trimmed.toLowerCase(Locale.ROOT);
         if (!DESTINATIONS.contains(name) || knownCommand.test(name)) return null;
-        if (onGarden && GARDEN_COMMANDS.contains(name)) return null;
+        if (onGarden && GARDEN_PLOTS.contains(name)) return "plottp " + name;
         return "warp " + name;
     }
 }

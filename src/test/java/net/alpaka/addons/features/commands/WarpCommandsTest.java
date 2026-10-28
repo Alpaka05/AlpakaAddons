@@ -29,9 +29,9 @@ class WarpCommandsTest {
     }
 
     @Test
-    void leavesTheGardensBarnCommandAloneOnTheGarden() {
+    void barnTeleportsToTheBarnOnTheGarden() {
         Set<String> known = Set.of("warp");
-        assertNull(WarpShortcut.rewrite("barn", known::contains, true));
+        assertEquals("plottp barn", WarpShortcut.rewrite("barn", known::contains, true));
         assertEquals("warp barn", WarpShortcut.rewrite("barn", known::contains, false));
         assertEquals("warp isle", WarpShortcut.rewrite("isle", known::contains, true));
     }

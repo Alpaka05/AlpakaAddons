@@ -1976,7 +1976,7 @@ public class AlpakaConfigRegistry {
                 "damage indicator tags numbers hide non-crit fire poison abilities crit skyblock"));
 
         OPTIONS.add(new ConfigOption("visitor_bazaar", "Visitor Bazaar Shortcut",
-                "Clicking Accept Offer at a garden visitor while you lack the items opens the bazaar for them.",
+                "Clicking Accept Offer at a garden visitor while you lack the items opens the bazaar for them and copies the amount.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.visitorBazaarEnabled,
                 v -> { AlpakaConfig.instance.visitorBazaarEnabled = v; AlpakaConfig.save(); },

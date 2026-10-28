@@ -26,6 +26,7 @@
     "LivingEntityMixin",
     "LivingEntityRenderStateMixin",
     "LivingEntityRendererMixin",
+    "MinecraftFrameMixin",
     "NameTagFeatureRendererMixin",
     "NameTagSubmitMixin",
     "ParticleEngineMixin",

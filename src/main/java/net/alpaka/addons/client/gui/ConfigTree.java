@@ -116,7 +116,7 @@ public final class ConfigTree {
             // Cosmetics
             "custom_name_tag", "chroma_hat", "aura", "player_scale", "custom_damage_tags",
             // Sound & utility
-            "command_wheel_custom_commands", "always_sprint", "keep_cursor_position", "quick_join", "custom_sounds",
+            "command_wheel_custom_commands", "command_shortcuts", "always_sprint", "keep_cursor_position", "quick_join", "custom_sounds",
             "custom_sound_button_click", "custom_sound_hotbar_scroll", "custom_sound_inventory_open_close",
             "custom_sound_inventory_click", "custom_sound_rare_drop", "custom_sound_notification",
             "custom_sound_player_hurt", "custom_sound_blaze_death", "custom_sound_zombie_remedy",
@@ -177,7 +177,7 @@ public final class ConfigTree {
     private static final String[][][] LAYOUT = {
             {{"General"},
                     {"Main", "allow_api_calls", "update_notifications", "#Notification Customization",
-                            "command_wheel_custom_commands", "always_sprint", "keep_cursor_position", "quick_join", "disable_all_features", "reset_all_settings"},
+                            "command_wheel_custom_commands", "command_shortcuts", "always_sprint", "keep_cursor_position", "quick_join", "disable_all_features", "reset_all_settings"},
                     {"Design", "menu_font", "menu_theme", "#HUD Style", "menu_accent_color", "custom_main_menu", "custom_escape_menu"},
                     {"Sounds", "custom_sounds", "custom_sound_button_click", "custom_sound_hotbar_scroll",
                             "custom_sound_inventory_open_close", "custom_sound_inventory_click", "custom_sound_rare_drop",

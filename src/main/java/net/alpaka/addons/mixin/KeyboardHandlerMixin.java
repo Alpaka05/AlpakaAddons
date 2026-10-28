@@ -5,6 +5,7 @@ import net.alpaka.addons.client.KeyRepeat;
 import net.alpaka.addons.compat.MacOSInputFixesCompat;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
 import net.alpaka.addons.features.party.PartyInviteFeature;
+import net.alpaka.addons.features.shortcuts.CommandShortcuts;
 import net.minecraft.client.KeyboardHandler;
 import net.minecraft.client.input.KeyEvent;
 import org.spongepowered.asm.mixin.Mixin;
@@ -13,8 +14,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Key presses the mod answers before the game sees them: the party prompt's Y and N, and Tab
- * cycling the chat tabs while the chat is held open with Peek Chat.
+ * Key presses the mod answers before the game sees them: the party prompt's Y and N, Tab
+ * cycling the chat tabs while the chat is held open with Peek Chat, and Command Shortcuts' keys.
  *
  * Taken at the very front of the keyboard handler, so a consumed press never reaches a key mapping
  * or the open screen - which is what keeps Tab from also bringing up the player list, and Y or N
@@ -40,6 +41,10 @@ public class KeyboardHandlerMixin {
             return;
         }
         if (ChatTabsFeature.onPeekKey(event.key(), event.hasShiftDown(), repeat)) {
+            ci.cancel();
+            return;
+        }
+        if (CommandShortcuts.onKey(event, repeat)) {
             ci.cancel();
         }
     }

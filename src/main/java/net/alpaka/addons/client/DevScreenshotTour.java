@@ -377,7 +377,7 @@ public final class DevScreenshotTour {
             }, () -> true, 20),
             screen("inventory-buttons-editor", () -> new InventoryButtonsEditorScreen(null)),
             screen("inventory-buttons-editor-edit", () -> new InventoryButtonsEditorScreen(null, 2)),
-            screen("inventory-buttons-config", () -> AlpakaConfigScreen.openOn("Main", "Inventory Buttons")),
+            screen("inventory-buttons-config", () -> AlpakaConfigScreen.openOn("Social", "Inventory Buttons")),
             new Stop(null, () -> {
                 AlpakaConfig.instance.inventoryButtonsEnabled = false;
                 Minecraft.getInstance().gui.setScreen(null);

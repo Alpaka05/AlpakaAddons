@@ -173,6 +173,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customMainMenuEnabled = v; AlpakaConfig.save(); },
                 "custom main menu title screen hypixel start launch background GUI hypixel-themed"));
 
+        OPTIONS.add(new ConfigOption("custom_main_menu_parallax", "Main Menu Parallax",
+                "The custom main menu's background moves with the mouse.",
+                ConfigCategory.GENERAL,
+                () -> AlpakaConfig.instance.customMainMenuParallax,
+                v -> { AlpakaConfig.instance.customMainMenuParallax = v; AlpakaConfig.save(); },
+                "custom main menu parallax background mouse move motion depth effect title screen"));
+
         OPTIONS.add(new ConfigOption("custom_main_menu_particles", "Inventory Particles in Main Menu",
                 "Shows your Inventory Particles behind the custom main menu too.",
                 ConfigCategory.GENERAL,

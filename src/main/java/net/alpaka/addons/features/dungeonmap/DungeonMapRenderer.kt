@@ -123,8 +123,16 @@ object DungeonMapRenderer {
                 val source = if (editing) preview else DungeonMapFeature.snapshot
                 if (source.colors == null) waiting(g, "Waiting For Map…") else {
                     val texture = if (editing) previewTexture else clearTexture
-                    texture.updateMap(source, palette())
-                    texture.draw(g)
+                    if (editing) {
+                        val sample = previewLabels()
+                        texture.updateMap(source, palette(), sample.cover, previewKey.hashCode())
+                        texture.draw(g)
+                        drawRoomLabels(g, sample.labels)
+                    } else {
+                        texture.updateMap(source, palette(), DungeonMapFeature.cover, DungeonMapFeature.coverRevision)
+                        texture.draw(g)
+                        drawRoomLabels(g, DungeonMapFeature.labels)
+                    }
                     // Saved clear positions are stale in the boss room and must not look live.
                     if (cfg.dungeonMapPlayers && (editing || !DungeonState.inBossRoom)) {
                         if (editing) {
@@ -150,6 +158,59 @@ object DungeonMapRenderer {
     private fun waiting(g: GuiGraphicsExtractor, text: String) {
         val mc = Minecraft.getInstance()
         g.text(mc.font, text, (128 - mc.font.width(text)) / 2, 60, AlpakaConfig.instance.dungeonMapTextColor, true)
+    }
+
+    private var previewKey = ""
+    private var previewResult = RoomLabels.Result(emptyList(), null)
+
+    /** Labels on the editor's sample map, built the same way as in a run, from made-up rooms. */
+    private fun previewLabels(): RoomLabels.Result {
+        val cfg = AlpakaConfig.instance
+        val key = "${cfg.dungeonMapRoomNames}/${cfg.dungeonMapRoomSecrets}/${cfg.dungeonMapHideCheckmarks}"
+        if (key == previewKey) return previewResult
+        previewKey = key
+        val inks = preview.inks ?: return previewResult
+        // The sample map's rooms are 20 px apart from 28 px, starting at 10.
+        previewResult = RoomLabels.build(inks, { PREVIEW_ROOMS[it] }, { 20f + 28 * it }, { 20f + 28 * it }, 20,
+            { PREVIEW_FOUND[it.name] }, cfg.dungeonMapRoomNames, cfg.dungeonMapRoomSecrets, cfg.dungeonMapHideCheckmarks)
+        return previewResult
+    }
+
+    private val PREVIEW_ROOMS = mapOf(
+        1 to RoomInfo("Atlas", "NORMAL", 6), 2 to RoomInfo("Water Board", "PUZZLE", 0),
+        6 to RoomInfo("Balcony", "NORMAL", 4), 8 to RoomInfo("Archway", "NORMAL", 3),
+        9 to RoomInfo("Shadow Assassin", "CHAMPION", 0), 12 to RoomInfo("Old Trap", "TRAP", 4),
+        13 to RoomInfo("Bridges", "NORMAL", 6), 20 to RoomInfo("Beams", "NORMAL", 2),
+    )
+    private val PREVIEW_FOUND = mapOf("Atlas" to 2, "Bridges" to 5, "Beams" to 0)
+
+    /** Each word on a line of its own, centred on the room and colored by its checkmark. */
+    private fun drawRoomLabels(g: GuiGraphicsExtractor, labels: List<RoomLabel>) {
+        if (labels.isEmpty()) return
+        val cfg = AlpakaConfig.instance
+        val font = Minecraft.getInstance().font
+        val scale = cfg.dungeonMapRoomLabelScale.coerceIn(0.3f, 1f)
+        val line = font.lineHeight * scale
+        // A room nobody has finished yet is a step darker than a cleared one.
+        val open = ModernGuiUtils.lerpColor(cfg.dungeonMapTextColor, 0xFF000000.toInt(), 0.3f)
+        for (label in labels) {
+            val color = when (label.state) {
+                RoomState.COMPLETE -> cfg.dungeonMapCompleteColor
+                RoomState.FAILED -> cfg.dungeonMapFailedColor
+                RoomState.CLEARED -> cfg.dungeonMapClearedColor
+                RoomState.NONE -> open
+            }
+            var y = label.y - line * label.lines.size / 2f
+            for (text in label.lines) {
+                g.pose().pushMatrix()
+                g.pose().translate(label.x, y)
+                g.pose().scale(scale, scale)
+                g.pose().translate(-font.width(text) / 2f, 0f)
+                g.text(font, text, 0, 0, color, true)
+                g.pose().popMatrix()
+                y += line
+            }
+        }
     }
 
     private fun previewOwnSkin(): PlayerSkin = Minecraft.getInstance().player?.skin ?: profileSkin.get()
@@ -278,16 +339,20 @@ object DungeonMapRenderer {
         private var texture: DynamicTexture? = null
         private var revision = -1
         private var lastPalette = intArrayOf()
+        private var lastCover = 0
 
-        fun updateMap(snapshot: DungeonMapSnapshot, palette: IntArray) {
-            if (revision == snapshot.revision && palette.contentEquals(lastPalette)) return
+        /** [cover] replaces checkmark pixels under labels; [coverRevision] tells when it changed. */
+        fun updateMap(snapshot: DungeonMapSnapshot, palette: IntArray, cover: IntArray?, coverRevision: Int) {
+            if (revision == snapshot.revision && palette.contentEquals(lastPalette) && coverRevision == lastCover) return
             val colors = snapshot.colors ?: return
             val inks = snapshot.inks ?: return
-            val pixels = IntArray(colors.size) { i ->
+            val pixels = IntArray(colors.size) { pixel ->
+                val i = cover?.get(pixel)?.takeIf { it >= 0 } ?: pixel
                 if (palette[0] != 0 && inks[i] != DungeonMapInk.ORIGINAL) palette[inks[i].ordinal]
                 else MapColor.getColorFromPackedId(colors[i].toInt() and 255)
             }
             lastPalette = palette
+            lastCover = coverRevision
             upload(pixels, snapshot.revision, true)
         }
 

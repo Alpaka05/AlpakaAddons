@@ -18,6 +18,8 @@ class ItemSearchMenusTest {
             "Ender Chest (3/9)|ENDER_CHEST|3|",
             "Jumbo Backpack (Slot #12)|BACKPACK|12|",
             "Small Backpack (Slot #1)|BACKPACK|1|",
+            "Jumbo Backpack ✦ (Slot #1)|BACKPACK|1|",
+            "(2/3) Armor Sets|WARDROBE|2|",
             "Wardrobe (2/2)|WARDROBE|2|",
             "Accessory Bag (2/4)|ACCESSORY_BAG|2|",
             "Accessory Bag|ACCESSORY_BAG|1|",

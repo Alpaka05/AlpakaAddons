@@ -85,6 +85,8 @@ public final class ItemSearchResults {
         Map<String, Entry> byKey = new LinkedHashMap<>();
         if (only == null || only == ItemSearchSource.INVENTORY) addInventory(byKey);
         dropBrokenChests();
+        // The set worn shows in the wardrobe too; it is counted once, as worn.
+        java.util.Set<String> worn = wornKeys();
         for (ItemSearchStore.Container c : ItemSearchStore.all()) {
             if (only != null && c.source != only) continue;
             Map<String, Long> here = new LinkedHashMap<>();
@@ -92,6 +94,7 @@ public final class ItemSearchResults {
             for (ItemSearchStore.Item item : c.items) {
                 if (item.count() <= 0) continue;
                 String key = groupKey(item.stack());
+                if (c.source == ItemSearchSource.WARDROBE && worn.contains(key)) continue;
                 here.merge(key, item.count(), Long::sum);
                 stacks.putIfAbsent(key, item.stack());
             }
@@ -133,6 +136,18 @@ public final class ItemSearchResults {
             add(byKey, e.getKey(), stacks.get(e.getKey()),
                     new Place(ItemSearchSource.INVENTORY, 0, name, null, null, e.getValue()));
         }
+    }
+
+    /** The group keys of the armor the player wears that are unique items, which can only be in one place. */
+    private static java.util.Set<String> wornKeys() {
+        java.util.Set<String> keys = new java.util.HashSet<>();
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null) return keys;
+        for (EquipmentSlot slot : new EquipmentSlot[]{EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET}) {
+            ItemStack stack = player.getItemBySlot(slot);
+            if (!stack.isEmpty() && ItemSearchTracker.uuid(stack) != null) keys.add(groupKey(stack));
+        }
+        return keys;
     }
 
     private static void add(Map<String, Entry> byKey, String key, ItemStack stack, Place place) {

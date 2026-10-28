@@ -18,8 +18,10 @@ public final class ItemSearchMenus {
     public record Menu(ItemSearchSource source, int page, String label) {}
 
     private static final Pattern ENDER_CHEST = Pattern.compile("^Ender Chest \\((\\d+)/\\d+\\)$");
-    private static final Pattern BACKPACK = Pattern.compile("^.*Backpack \\(Slot #(\\d+)\\)$");
-    private static final Pattern WARDROBE = Pattern.compile("^Wardrobe \\((\\d+)/\\d+\\)$");
+    /** "Jumbo Backpack (Slot #12)", and "Jumbo Backpack ✦ (Slot #1)" for an upgraded one. */
+    private static final Pattern BACKPACK = Pattern.compile("^.*Backpack.* \\(Slot #(\\d+)\\)$");
+    /** The wardrobe, "(1/3) Armor Sets" since Hypixel renamed it, "Wardrobe (1/2)" before. */
+    private static final Pattern WARDROBE = Pattern.compile("^(?:\\((\\d+)/\\d+\\) Armor Sets|Wardrobe \\((\\d+)/\\d+\\))$");
     private static final Pattern ACCESSORY_BAG = Pattern.compile("^Accessory Bag(?: \\((\\d+)/\\d+\\))?$");
     /** "Mining Sack", "Enchanted Agronomy Sack", "Gemstones Sack", with a page where it has more than one. */
     private static final Pattern SACK = Pattern.compile("^((?:.+ )?Sack)(?: \\((\\d+)/\\d+\\))?$");
@@ -31,7 +33,9 @@ public final class ItemSearchMenus {
         Matcher m;
         if ((m = ENDER_CHEST.matcher(t)).matches()) return new Menu(ItemSearchSource.ENDER_CHEST, Integer.parseInt(m.group(1)), null);
         if ((m = BACKPACK.matcher(t)).matches()) return new Menu(ItemSearchSource.BACKPACK, Integer.parseInt(m.group(1)), null);
-        if ((m = WARDROBE.matcher(t)).matches()) return new Menu(ItemSearchSource.WARDROBE, Integer.parseInt(m.group(1)), null);
+        if ((m = WARDROBE.matcher(t)).matches()) {
+            return new Menu(ItemSearchSource.WARDROBE, Integer.parseInt(m.group(1) != null ? m.group(1) : m.group(2)), null);
+        }
         if ((m = ACCESSORY_BAG.matcher(t)).matches()) {
             return new Menu(ItemSearchSource.ACCESSORY_BAG, m.group(1) == null ? 1 : Integer.parseInt(m.group(1)), null);
         }

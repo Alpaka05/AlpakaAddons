@@ -224,10 +224,15 @@ public final class ChestValuePanel {
      * Whether the panel goes with this menu at all: not with the market screens or the creative
      * inventory, and not with Hypixel's Storage overview, whose slots are buttons for the backpacks
      * and ender chest pages (one of them a Hunting Toolkit). A single backpack or page has it as usual.
+     * On SkyBlock only the menus that hold the player's own items have it ({@link ChestValue#holdsOwnItems}),
+     * not the SkyBlock Menu, skill or collection pages, whose items are buttons.
      */
     private static boolean applies(Screen s) {
-        return s instanceof AbstractContainerScreen<?> && !(s instanceof MarketScreen) && !(s instanceof CreativeModeInventoryScreen)
-                && !"Storage".equals(SkyblockUtils.cleanColor(s.getTitle().getString()).trim());
+        if (!(s instanceof AbstractContainerScreen<?>) || s instanceof MarketScreen || s instanceof CreativeModeInventoryScreen) return false;
+        if (s instanceof InventoryScreen) return true;
+        String title = SkyblockUtils.cleanColor(s.getTitle().getString()).trim();
+        if ("Storage".equals(title)) return false;
+        return !SkyblockUtils.isOnSkyblock() || ChestValue.holdsOwnItems(title);
     }
 
     private static boolean includesInventory(AbstractContainerScreen<?> c) {

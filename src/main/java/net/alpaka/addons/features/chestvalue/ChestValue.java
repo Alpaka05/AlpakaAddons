@@ -56,6 +56,24 @@ public final class ChestValue {
         }
     }
 
+    /**
+     * The SkyBlock menus that hold the player's own items, by their title: chests (placed ones, the
+     * Ender Chest pages and the dungeon reward chests), backpacks, sacks, the bags, the wardrobe, pets,
+     * minions, a trade and the crafting table. Every other SkyBlock menu - the SkyBlock Menu, skill,
+     * collection and recipe pages, shops - only shows items as buttons and pictures, so its value
+     * means nothing.
+     */
+    public static boolean holdsOwnItems(String title) {
+        String t = title.trim();
+        if (t.endsWith("Chest") || t.startsWith("Ender Chest") || t.contains("Backpack") || t.contains("Sack")
+                || t.contains("Minion") || t.startsWith("You ")) return true;
+        for (String prefix : OWN_ITEM_MENUS) if (t.startsWith(prefix)) return true;
+        return false;
+    }
+
+    private static final List<String> OWN_ITEM_MENUS = List.of("Accessory Bag", "Fishing Bag", "Potion Bag", "Quiver",
+            "Personal Vault", "Wardrobe", "Pets", "Your Equipment", "Craft Item");
+
     /** A sack's line for what it holds of an item: "Stored: 1,234/465.7k". */
     private static final Pattern STORED = Pattern.compile("^Stored: ([\\d,.]+[kKmMbB]?)/");
 

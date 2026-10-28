@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.inventorybuttons
 
+import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.compliance.Outbound
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.config.AlpakaConfig.InventoryButton
@@ -106,12 +107,43 @@ object InventoryButtonsFeature {
         if (hovered != null) graphics.setTooltipForNextFrame(Minecraft.getInstance().font, tooltip(hovered), java.util.Optional.empty(), mouseX, mouseY)
     }
 
-    /**
-     * One button: a raised square in the colors of a vanilla container panel, so it reads as part
-     * of the inventory it sits beside, with its item on it. Hovered, it lightens like a slot does.
-     */
+    /** The looks a button can have, by [AlpakaConfig.inventoryButtonsStyle]. */
+    const val STYLE_ALPAKA = 0
+    const val STYLE_VANILLA = 1
+    const val STYLE_ICON_ONLY = 2
+    @JvmField
+    val STYLE_NAMES = arrayOf("Alpaka", "Vanilla", "Icon Only")
+
+    /** One button with its item on it, in the look picked in the settings. */
     @JvmStatic
     fun drawButton(graphics: GuiGraphicsExtractor, button: InventoryButton, x: Int, y: Int, hovered: Boolean) {
+        val cfg = AlpakaConfig.instance
+        when (cfg.inventoryButtonsStyle) {
+            STYLE_VANILLA -> drawVanilla(graphics, x, y)
+            STYLE_ICON_ONLY -> if (hovered) drawAlpaka(graphics, x, y, cfg.inventoryButtonsColor, cfg.inventoryButtonsRounding, false)
+            else -> drawAlpaka(graphics, x, y, cfg.inventoryButtonsColor, cfg.inventoryButtonsRounding, hovered)
+        }
+        drawIcon(graphics, button.icon, x + 1, y + 1)
+        if (hovered && cfg.inventoryButtonsStyle == STYLE_VANILLA) {
+            val s = InventoryButtonLayout.SIZE
+            graphics.fill(x + 1, y + 1, x + s - 1, y + s - 1, 0x80FFFFFF.toInt())
+        }
+    }
+
+    /**
+     * The config menu's look: a dark rounded tile with a hairline edge that turns to the accent
+     * color on hover, the way a row in the menu lights up.
+     */
+    private fun drawAlpaka(graphics: GuiGraphicsExtractor, x: Int, y: Int, color: Int, rounding: Int, hovered: Boolean) {
+        val s = InventoryButtonLayout.SIZE
+        val r = rounding.coerceIn(0, s / 2)
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, s, s, r, color)
+        if (hovered) ModernGuiUtils.drawRoundedRect(graphics, x, y, s, s, r, 0x1AFFFFFF)
+        ModernGuiUtils.drawRoundedOutline(graphics, x, y, s, s, r, if (hovered) ModernGuiUtils.getAccentColor() else 0x40FFFFFF)
+    }
+
+    /** A raised square in the colors of a vanilla container panel, so it reads as part of the inventory. */
+    private fun drawVanilla(graphics: GuiGraphicsExtractor, x: Int, y: Int) {
         val s = InventoryButtonLayout.SIZE
         graphics.fill(x + 1, y, x + s - 1, y + s, 0xFF000000.toInt())
         graphics.fill(x, y + 1, x + s, y + s - 1, 0xFF000000.toInt())
@@ -120,8 +152,6 @@ object InventoryButtonsFeature {
         graphics.fill(x + 1, y + 1, x + 2, y + s - 2, 0xFFFFFFFF.toInt())
         graphics.fill(x + 2, y + s - 2, x + s - 1, y + s - 1, 0xFF555555.toInt())
         graphics.fill(x + s - 2, y + 2, x + s - 1, y + s - 1, 0xFF555555.toInt())
-        drawIcon(graphics, button.icon, x + 1, y + 1)
-        if (hovered) graphics.fill(x + 1, y + 1, x + s - 1, y + s - 1, 0x80FFFFFF.toInt())
     }
 
     /** The button's item at [x], [y]; the item's first letter on a gray square where there is none yet. */

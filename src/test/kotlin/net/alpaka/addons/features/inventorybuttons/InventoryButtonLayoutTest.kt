@@ -70,4 +70,11 @@ class InventoryButtonLayoutTest {
         assertEquals(listOf("minecraft:ender_chest"), InventoryButtonIcons.search(all, "ender chest"))
         assertEquals(all, InventoryButtonIcons.search(all, " "))
     }
+
+    @Test
+    fun `the icon search finds SkyBlock ids whatever their case`() {
+        val all = listOf("skyblock:ASPECT_OF_THE_VOID", "skyblock:HYPERION", "minecraft:ender_pearl")
+        assertEquals(listOf("skyblock:ASPECT_OF_THE_VOID"), InventoryButtonIcons.search(all, "aspect void"))
+        assertEquals("HYPERION", InventoryButtonIcons.path("skyblock:HYPERION"))
+    }
 }

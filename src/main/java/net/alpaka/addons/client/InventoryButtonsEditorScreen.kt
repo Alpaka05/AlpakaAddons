@@ -56,7 +56,8 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
     private val searchText = EditableText(40)
     private var focus = Field.NONE
 
-    private val allIcons: List<String> by lazy { InventoryButtonIcons.all() }
+    /** The picker's full list as last searched; it grows once SkyBlock's items have loaded. */
+    private var searchedIn: List<String>? = null
     private var icons: List<String> = emptyList()
     private var iconQuery: String? = null
     private var iconScroll = 0
@@ -145,10 +146,12 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
 
     private fun filteredIcons(): List<String> {
         val q = searchText.text
-        if (q != iconQuery) {
-            icons = InventoryButtonIcons.search(allIcons, q)
+        val all = InventoryButtonIcons.all()
+        if (q != iconQuery || all !== searchedIn) {
+            if (q != iconQuery) iconScroll = 0
+            icons = InventoryButtonIcons.search(all, q)
             iconQuery = q
-            iconScroll = 0
+            searchedIn = all
         }
         return icons
     }
@@ -350,7 +353,7 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
             graphics.fill(cx + cw - 3, thumbY, cx + cw - 1, thumbY + thumbH, Skin.LINE)
         }
         if (hoveredIcon != null) {
-            graphics.setTooltipForNextFrame(GuiFont.text(InventoryButtonIcons.path(hoveredIcon).replace('_', ' ')), mx.toInt(), my.toInt())
+            graphics.setTooltipForNextFrame(GuiFont.text(InventoryButtonIcons.name(hoveredIcon)), mx.toInt(), my.toInt())
         }
     }
 

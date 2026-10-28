@@ -2,6 +2,7 @@ package net.alpaka.addons.features.commands;
 
 import net.alpaka.addons.compliance.Outbound;
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.utils.SkyblockUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 
@@ -33,6 +34,7 @@ public final class TypedCommands {
         ClientPacketListener connection = Minecraft.getInstance().getConnection();
         if (connection == null) return null;
         // The dispatcher holds the server's commands and every mod's client commands alike.
-        return WarpShortcut.rewrite(command, name -> connection.getCommands().getRoot().getChild(name) != null);
+        return WarpShortcut.rewrite(command, name -> connection.getCommands().getRoot().getChild(name) != null,
+                SkyblockUtils.isOnGarden());
     }
 }

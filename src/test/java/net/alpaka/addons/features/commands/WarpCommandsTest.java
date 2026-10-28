@@ -16,16 +16,24 @@ class WarpCommandsTest {
     @Test
     void shortensDestinationsTheServerDoesNotKnow() {
         Set<String> known = Set.of("hub", "garden", "party", "warp");
-        assertEquals("warp isle", WarpShortcut.rewrite("isle", known::contains));
-        assertEquals("warp dh", WarpShortcut.rewrite("DH", known::contains));
-        assertEquals("warp crimson", WarpShortcut.rewrite(" crimson ", known::contains));
+        assertEquals("warp isle", WarpShortcut.rewrite("isle", known::contains, false));
+        assertEquals("warp dh", WarpShortcut.rewrite("DH", known::contains, false));
+        assertEquals("warp crimson", WarpShortcut.rewrite(" crimson ", known::contains, false));
         // The server's own commands keep their meaning.
-        assertNull(WarpShortcut.rewrite("hub", known::contains));
-        assertNull(WarpShortcut.rewrite("garden", known::contains));
+        assertNull(WarpShortcut.rewrite("hub", known::contains, false));
+        assertNull(WarpShortcut.rewrite("garden", known::contains, false));
         // Not a destination, or more than a name.
-        assertNull(WarpShortcut.rewrite("party warp", known::contains));
-        assertNull(WarpShortcut.rewrite("isle 2", known::contains));
-        assertNull(WarpShortcut.rewrite("pv", known::contains));
+        assertNull(WarpShortcut.rewrite("party warp", known::contains, false));
+        assertNull(WarpShortcut.rewrite("isle 2", known::contains, false));
+        assertNull(WarpShortcut.rewrite("pv", known::contains, false));
+    }
+
+    @Test
+    void leavesTheGardensBarnCommandAloneOnTheGarden() {
+        Set<String> known = Set.of("warp");
+        assertNull(WarpShortcut.rewrite("barn", known::contains, true));
+        assertEquals("warp barn", WarpShortcut.rewrite("barn", known::contains, false));
+        assertEquals("warp isle", WarpShortcut.rewrite("isle", known::contains, true));
     }
 
     @ParameterizedTest

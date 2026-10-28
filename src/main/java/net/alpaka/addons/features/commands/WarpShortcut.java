@@ -38,15 +38,23 @@ public final class WarpShortcut {
             "dungeon_hub", "dungeons", "dh", "dhub", "winter", "jerry", "workshop");
 
     /**
-     * The warp a typed command stands for, without its slash ("warp isle"), or null to send it as
-     * typed. {@code knownCommand} says whether a command name already means something.
+     * Names the Garden answers itself while the player is on it: "/barn" there walks back to the
+     * barn to claim visitors, and only elsewhere means the Farming Islands' barn.
      */
-    public static String rewrite(String command, Predicate<String> knownCommand) {
+    static final Set<String> GARDEN_COMMANDS = Set.of("barn");
+
+    /**
+     * The warp a typed command stands for, without its slash ("warp isle"), or null to send it as
+     * typed. {@code knownCommand} says whether a command name already means something;
+     * {@code onGarden} whether the player is on their Garden.
+     */
+    public static String rewrite(String command, Predicate<String> knownCommand, boolean onGarden) {
         if (command == null) return null;
         String trimmed = command.trim();
         if (trimmed.isEmpty() || trimmed.indexOf(' ') >= 0) return null;
         String name = trimmed.toLowerCase(Locale.ROOT);
         if (!DESTINATIONS.contains(name) || knownCommand.test(name)) return null;
+        if (onGarden && GARDEN_COMMANDS.contains(name)) return null;
         return "warp " + name;
     }
 }

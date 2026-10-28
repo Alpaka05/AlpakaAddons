@@ -1,10 +1,6 @@
 {
   "key.category.alpaka.addons": "Alpaka Addons",
   "category.alpaka.addons": "Alpaka Addons",
-  "key.alpaka.zoom": "Zoom",
-  "key.alpaka.command_wheel": "Befehlsrad",
-  "key.alpaka.inventory_hud": "Inventar-HUD",
-  "key.alpaka.item_value": "Item-Wert",
   "key.alpaka.ah_previous_page": "Auktionshaus: Vorherige Seite",
   "key.alpaka.ah_next_page": "Auktionshaus: Nächste Seite",
   "key.alpaka.ah_back": "Auktionshaus: Zurück",
@@ -13,5 +9,9 @@
   "key.alpaka.bz_previous_page": "Basar: Vorherige Seite",
   "key.alpaka.bz_next_page": "Basar: Nächste Seite",
   "key.alpaka.bz_back": "Basar: Zurück",
-  "key.alpaka.bz_search": "Basar: Suche"
+  "key.alpaka.bz_search": "Basar: Suche",
+  "key.alpaka.zoom": "Zoom",
+  "key.alpaka.command_wheel": "Befehlsrad",
+  "key.alpaka.inventory_hud": "Inventar-HUD",
+  "key.alpaka.item_value": "Item-Wert"
 }

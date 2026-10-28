@@ -56,13 +56,13 @@ public class AlpakaClient implements ClientModInitializer {
         // The same tick writes the record once if anything changed it; see AlpakaStats.markDirty.
         net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(
                 client -> net.alpaka.addons.config.AlpakaStats.tick());
+        net.alpaka.addons.features.market.MarketKeys.register();
         ZoomFeature.register();
         net.alpaka.addons.features.chat.ChatPeekFeature.register();
         net.alpaka.addons.features.chat.ChatOverHud.register();
         net.alpaka.addons.features.chat.ChatSearchFeature.register();
         net.alpaka.addons.features.itemvalue.ItemValueFeature.register();
         net.alpaka.addons.features.chestvalue.ChestValueFeature.register();
-        net.alpaka.addons.features.market.MarketKeys.register();
         net.alpaka.addons.features.chat.ScreenshotPreview.register();
         CommandWheelFeature.register();
         net.alpaka.addons.features.shortcuts.CommandShortcuts.register();

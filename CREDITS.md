@@ -16,6 +16,17 @@ All four are under the SIL Open Font License 1.1. The licence texts ship with th
 | Poppins Bold | `poppins_bold.ttf` | OFL 1.1, `poppins-ofl.txt` |
 | Varela Round | `varela_round.ttf` | OFL 1.1, `varela_round-ofl.txt` |
 
+## Dungeon map data
+
+The Dungeon Map recognizes rooms the way [Odin](https://github.com/odtheking/Odin) by odtheking does,
+and uses its room table, under the BSD 3-Clause License. The licence text ships inside the mod in
+`src/main/resources/assets/alpaka/dungeonmap/licenses/odin-bsd-3-clause.txt`.
+
+| File | What | Source | Licence |
+| --- | --- | --- | --- |
+| `src/main/resources/assets/alpaka/dungeonmap/rooms.json` (read by `features/dungeonmap/DungeonRooms.kt`) | Room names, types, secret counts and center-column cores of all 140 rooms | Odin, `src/main/resources/assets/odin/rooms.json` (commit b412ad1c) | BSD-3-Clause |
+| `src/main/java/net/alpaka/addons/features/dungeonmap/DungeonRooms.kt` | The center-column hash a room is recognized by, and how action bar secret counts are assigned to rooms | Odin, `features/impl/dungeon/map/WorldScan.kt` and `utils/skyblock/ActionBarListener.kt` | BSD-3-Clause |
+
 ## Sounds
 
 **To fill in.** No source or licence has been recorded for any of these yet. For each file, note

@@ -491,6 +491,45 @@ public class AlpakaConfig {
     public int etherwarpSoundIndex = 0;
     public float etherwarpSoundVolume = 1.0f;
 
+    // Dungeon Map: screen position is edited in the HUD editor.
+    public boolean dungeonMapEnabled = false;
+    public int dungeonMapX = net.alpaka.addons.client.hud.HudDefaults.DUNGEON_MAP_X;
+    public int dungeonMapY = net.alpaka.addons.client.hud.HudDefaults.DUNGEON_MAP_Y;
+    public float dungeonMapScale = 1.0f;
+    /** In the boss room: whether the map shows at all, and then 0 arena, 1 saved clear map, 2 both. */
+    public boolean dungeonMapShowBoss = true;
+    public int dungeonMapBossMode = 0;
+    public float dungeonMapBossRange = 96.0f;
+    /** The room the player is in, above the map; the boss's name in the boss room. */
+    public boolean dungeonMapCurrentRoom = true;
+    public boolean dungeonMapRoomNames = false;
+    public boolean dungeonMapRoomSecrets = false;
+    public float dungeonMapRoomLabelScale = 0.5f;
+    public boolean dungeonMapPlayers = true;
+    /** Heads instead of arrows, and whether they turn with the player (Player Icons in the menu). */
+    public boolean dungeonMapPlayerHeads = true;
+    public boolean dungeonMapRotateHeads = true;
+    public boolean dungeonMapSmoothMarkers = true;
+    public boolean dungeonMapNames = false;
+    public float dungeonMapMarkerScale = 1.0f;
+    /** The mod's room and terrain colors; off keeps Hypixel's map colors and the blocks' own. */
+    public boolean dungeonMapCustomColors = true;
+    public int dungeonMapSelfColor = 0xFFFFFFFF;
+    public int dungeonMapTextColor = 0xFFE8EEEE;
+    public boolean dungeonMapSmoothFont = true;
+    public boolean dungeonMapBackground = true;
+    /** Background tint; its alpha is the opacity. */
+    public int dungeonMapBackgroundTint = 0xA6191919;
+    public boolean dungeonMapBlur = true;
+    public boolean dungeonMapFrame = true;
+    public int dungeonMapFrameStart = 0xFF29B6B2;
+    public int dungeonMapFrameEnd = 0xFFB04FFF;
+
+    // Door Highlight: wither and blood doors during the clear; the color's alpha is the fill's.
+    public boolean dungeonDoorHighlight = false;
+    public int dungeonDoorLockedColor = 0x50E04848;
+    public int dungeonDoorOpenableColor = 0x5055E68B;
+
     // Inventory HUD. Shows the 27 main-inventory slots on screen; position and scale are set in
     // the HUD editor, or it can ride directly above the hotbar.
     public boolean inventoryHudEnabled = false;
@@ -1301,6 +1340,8 @@ public class AlpakaConfig {
         this.compactChatEnabled = false;
         this.chatTabsEnabled = false;
         this.inventoryHudEnabled = false;
+        this.dungeonMapEnabled = false;
+        this.dungeonDoorHighlight = false;
         this.bridgeBotFormatterEnabled = false;
         this.guildPrefixEnabled = false;
         this.itemSizeFeatureEnabled = false;

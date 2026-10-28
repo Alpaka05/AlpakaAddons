@@ -52,7 +52,48 @@ public final class DevScreenshotTour {
     /** The dev config's own wheel pages, put back after the wheel stops. */
     private static java.util.List<java.util.List<String>> savedWheelPages;
 
-    private static final List<Stop> STOPS = List.of(
+    private static final List<Stop> STOPS = "dungeon-map".equals(System.getenv(ENV)) ? List.of(
+            screen("dungeon-map-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_enabled")),
+            screen("dungeon-map-player-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_player_icons")),
+            screen("dungeon-map-color-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_colors")),
+            screen("dungeon-map-background-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_background")),
+            screen("dungeon-map-hud", () -> dungeonMapPreview(false, false)),
+            screen("dungeon-map-both", () -> dungeonMapPreview(true, false)),
+            screen("dungeon-map-transparent", () -> dungeonMapPreview(true, true)),
+            screen("dungeon-map-upright-heads", () -> {
+                HudEditorScreen editor = dungeonMapPreview(false, false);
+                AlpakaConfig.instance.dungeonMapRotateHeads = false;
+                AlpakaConfig.instance.dungeonMapNames = true;
+                AlpakaConfig.instance.dungeonMapMarkerScale = 1.5f;
+                return editor;
+            }),
+            screen("dungeon-map-room-labels", () -> {
+                HudEditorScreen editor = dungeonMapPreview(false, false);
+                AlpakaConfig.instance.dungeonMapRoomNames = true;
+                AlpakaConfig.instance.dungeonMapRoomSecrets = true;
+                AlpakaConfig.instance.dungeonMapScale = 1.5f;
+                return editor;
+            }),
+            screen("dungeon-map-room-labels-pixel-font", () -> {
+                HudEditorScreen editor = dungeonMapPreview(false, false);
+                AlpakaConfig.instance.dungeonMapRoomNames = true;
+                AlpakaConfig.instance.dungeonMapRoomSecrets = true;
+                AlpakaConfig.instance.dungeonMapSmoothFont = false;
+                AlpakaConfig.instance.dungeonMapScale = 1.5f;
+                return editor;
+            }),
+            screen("dungeon-map-hypixel-colors", () -> {
+                HudEditorScreen editor = dungeonMapPreview(false, false);
+                AlpakaConfig.instance.dungeonMapCustomColors = false;
+                return editor;
+            }),
+            screen("dungeon-map-room-label-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_room_names")),
+            screen("dungeon-map-arrows", () -> {
+                HudEditorScreen editor = dungeonMapPreview(false, false);
+                AlpakaConfig.instance.dungeonMapPlayerHeads = false;
+                return editor;
+            })
+    ) : List.of(
             // With the mouse in the top-right corner, so the avatar visibly looks up and towards it.
             new Stop("main-menu", () -> {
                 Minecraft.getInstance().gui.setScreen(new CustomMainMenuScreen());
@@ -186,6 +227,28 @@ public final class DevScreenshotTour {
     private static int ticks = 0;
     private static int stop = -1;
     private static boolean done = false;
+
+    /** A focused map tour uses the normal HUD editor and only changes this dev client's config. */
+    private static HudEditorScreen dungeonMapPreview(boolean both, boolean transparent) {
+        AlpakaConfig.instance.dungeonMapEnabled = true;
+        AlpakaConfig.instance.dungeonMapShowBoss = true;
+        AlpakaConfig.instance.dungeonMapBossMode = both ? 2 : 0;
+        AlpakaConfig.instance.dungeonMapBackground = !transparent;
+        AlpakaConfig.instance.dungeonMapFrame = !transparent;
+        AlpakaConfig.instance.dungeonMapScale = 0.8f;
+        AlpakaConfig.instance.dungeonMapX = 220;
+        AlpakaConfig.instance.dungeonMapY = 50;
+        AlpakaConfig.instance.dungeonMapPlayerHeads = true;
+        AlpakaConfig.instance.dungeonMapRotateHeads = true;
+        AlpakaConfig.instance.dungeonMapNames = false;
+        AlpakaConfig.instance.dungeonMapMarkerScale = 1.0f;
+        AlpakaConfig.instance.dungeonMapRoomNames = false;
+        AlpakaConfig.instance.dungeonMapRoomSecrets = false;
+        AlpakaConfig.instance.dungeonMapCurrentRoom = true;
+        AlpakaConfig.instance.dungeonMapSmoothFont = true;
+        AlpakaConfig.instance.dungeonMapCustomColors = true;
+        return new HudEditorScreen(null);
+    }
 
     private DevScreenshotTour() {}
 

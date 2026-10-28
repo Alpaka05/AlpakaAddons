@@ -170,18 +170,21 @@ object SlayerBossHighlight {
     /**
      * The mob an owner line floats over. Hypixel numbers a mob's name tag stack straight after the
      * mob, so the few ids below the line are tried first; the nearest mob underneath otherwise.
+     *
+     * Invisible mobs are never it. Quazii's beams come from an invisible guardian Hypixel keeps right
+     * next to the demon, with an id close to its stack, and that guardian used to take the highlight.
      */
     private fun mobUnder(level: ClientLevel, stand: ArmorStand, player: Player): LivingEntity? {
         val below = AABB(stand.x - TAG_SLACK * 2, stand.y - MOB_BELOW, stand.z - TAG_SLACK * 2,
             stand.x + TAG_SLACK * 2, stand.y, stand.z + TAG_SLACK * 2)
         for (offset in 1..3) {
             val mob = level.getEntity(stand.id - offset) as? LivingEntity ?: continue
-            if (mob is ArmorStand || mob === player) continue
+            if (!isCandidate(mob, player)) continue
             if (mob.boundingBox.intersects(below)) return mob
         }
         var best: LivingEntity? = null
         var bestDistance = Double.MAX_VALUE
-        for (mob in level.getEntitiesOfClass(LivingEntity::class.java, below) { it !is ArmorStand && it !== player }) {
+        for (mob in level.getEntitiesOfClass(LivingEntity::class.java, below) { isCandidate(it, player) }) {
             val distance = mob.distanceToSqr(stand)
             if (distance < bestDistance) {
                 bestDistance = distance
@@ -190,6 +193,9 @@ object SlayerBossHighlight {
         }
         return best
     }
+
+    private fun isCandidate(mob: LivingEntity, player: Player): Boolean =
+        mob !is ArmorStand && mob !== player && !mob.isInvisible
 
     /**
      * What the name tags over [mob] say about its shield: an [Attunement], [IMMUNE], or null when

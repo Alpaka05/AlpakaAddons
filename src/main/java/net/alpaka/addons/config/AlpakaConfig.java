@@ -453,7 +453,7 @@ public class AlpakaConfig {
     public boolean slayerTimerHudEnabled = true;
     /** Highlight the player's own slayer boss. */
     public boolean slayerBossHighlightEnabled = true;
-    /** How the boss is highlighted, an index into SlayerBossHighlight.STYLE_NAMES. */
+    /** How the boss is highlighted, an index into EntityHighlight.STYLE_NAMES. */
     public int slayerBossHighlightStyle = 0;
     public int slayerBossHighlightColor = 0xFFFF5555;
     /** On the Blaze slayer, color the boss and its demons by their current attunement. */
@@ -536,6 +536,13 @@ public class AlpakaConfig {
     public float etherwarpSoundVolume = 1.0f;
 
     // Dungeon Map: screen position is edited in the HUD editor.
+    /** Highlight the starred mobs and minibosses during a dungeon clear. */
+    public boolean starredMobsHighlightEnabled = false;
+    /** How starred mobs are highlighted, an index into EntityHighlight.STYLE_NAMES. */
+    public int starredMobsHighlightStyle = 0;
+    public int starredMobsHighlightColor = 0xFFFFAA00;
+    /** During the clear, hide the name tags of mobs without a star. */
+    public boolean starredMobsHideNames = false;
     public boolean dungeonMapEnabled = false;
     public int dungeonMapX = net.alpaka.addons.client.hud.HudDefaults.DUNGEON_MAP_X;
     public int dungeonMapY = net.alpaka.addons.client.hud.HudDefaults.DUNGEON_MAP_Y;
@@ -1626,6 +1633,7 @@ public class AlpakaConfig {
         this.chatTabsEnabled = false;
         this.inventoryHudEnabled = false;
         this.dungeonMapEnabled = false;
+        this.starredMobsHighlightEnabled = false;
         this.bridgeBotFormatterEnabled = false;
         this.guildPrefixEnabled = false;
         this.itemSizeFeatureEnabled = false;

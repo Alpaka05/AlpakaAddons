@@ -1506,6 +1506,38 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.dungeonMapBossWallColor = v; AlpakaConfig.save(); },
                 "dungeon map color boss wall color"));
 
+        OPTIONS.add(new ConfigOption("Starred Mobs Highlight", ConfigCategory.DUNGEON));
+
+        OPTIONS.add(new ConfigOption("starred_mobs_highlight", "Starred Mobs Highlight",
+                "Highlights the starred mobs a room needs killed, and the minibosses, during the dungeon clear.",
+                ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.starredMobsHighlightEnabled,
+                v -> { AlpakaConfig.instance.starredMobsHighlightEnabled = v; AlpakaConfig.save(); },
+                "dungeon starred star mobs highlight glow outline hitbox box overlay esp clear miniboss catacombs"));
+
+        OPTIONS.add(new ConfigOption("starred_mobs_highlight_style", "Highlight Style",
+                "Outline glows around the mob, Hitbox draws a box around it, Overlay tints its model.",
+                ConfigCategory.DUNGEON,
+                () -> (float) AlpakaConfig.instance.starredMobsHighlightStyle,
+                v -> { AlpakaConfig.instance.starredMobsHighlightStyle = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (net.alpaka.addons.utils.EntityHighlight.STYLE_NAMES.length - 1),
+                val -> net.alpaka.addons.utils.EntityHighlight.STYLE_NAMES[Math.round(val)],
+                "dungeon starred mobs highlight style mode outline glow hitbox box overlay tint").choices(net.alpaka.addons.utils.EntityHighlight.STYLE_NAMES));
+
+        OPTIONS.add(ConfigOption.color("starred_mobs_highlight_color", "Highlight Color",
+                "Color of the starred mob highlight.",
+                ConfigCategory.DUNGEON,
+                c -> c.starredMobsHighlightColor,
+                v -> { AlpakaConfig.instance.starredMobsHighlightColor = v; AlpakaConfig.save(); },
+                "dungeon starred mobs highlight color colour picker"));
+
+        OPTIONS.add(new ConfigOption("starred_mobs_hide_names", "Hide Non-Starred Name Tags",
+                "Hides the name tags of mobs without a star during the clear. Minibosses and the Mimic keep theirs.",
+                ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.starredMobsHideNames,
+                v -> { AlpakaConfig.instance.starredMobsHideNames = v; AlpakaConfig.save(); },
+                "dungeon hide non starred mobs name tags nametags names health clutter clear"));
+
         OPTIONS.add(new ConfigOption("Inventory HUD", ConfigCategory.VISUALS));
 
         OPTIONS.add(new ConfigOption("inventory_hud_enabled", "Inventory HUD",
@@ -2162,9 +2194,9 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.SKYBLOCK,
                 () -> (float) AlpakaConfig.instance.slayerBossHighlightStyle,
                 v -> { AlpakaConfig.instance.slayerBossHighlightStyle = Math.round(v); AlpakaConfig.save(); },
-                0.0f, (float) (net.alpaka.addons.features.slayer.SlayerBossHighlight.STYLE_NAMES.length - 1),
-                val -> net.alpaka.addons.features.slayer.SlayerBossHighlight.STYLE_NAMES[Math.round(val)],
-                "slayer boss highlight style mode outline glow hitbox box overlay tint").choices(net.alpaka.addons.features.slayer.SlayerBossHighlight.STYLE_NAMES));
+                0.0f, (float) (net.alpaka.addons.utils.EntityHighlight.STYLE_NAMES.length - 1),
+                val -> net.alpaka.addons.utils.EntityHighlight.STYLE_NAMES[Math.round(val)],
+                "slayer boss highlight style mode outline glow hitbox box overlay tint").choices(net.alpaka.addons.utils.EntityHighlight.STYLE_NAMES));
 
         OPTIONS.add(ConfigOption.color("slayer_boss_highlight_color", "Highlight Color",
                 "Color of the boss highlight.",

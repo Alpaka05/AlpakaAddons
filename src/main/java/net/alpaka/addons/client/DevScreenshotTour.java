@@ -70,6 +70,14 @@ public final class DevScreenshotTour {
                 AlpakaConfig.instance.dungeonMapMarkerScale = 1.5f;
                 return editor;
             }),
+            screen("dungeon-map-room-labels", () -> {
+                HudEditorScreen editor = dungeonMapPreview(false, false);
+                AlpakaConfig.instance.dungeonMapRoomNames = true;
+                AlpakaConfig.instance.dungeonMapRoomSecrets = true;
+                AlpakaConfig.instance.dungeonMapScale = 1.5f;
+                return editor;
+            }),
+            screen("dungeon-map-room-label-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_room_names")),
             screen("dungeon-map-arrows", () -> {
                 HudEditorScreen editor = dungeonMapPreview(false, false);
                 AlpakaConfig.instance.dungeonMapPlayerHeads = false;
@@ -644,6 +652,8 @@ public final class DevScreenshotTour {
         AlpakaConfig.instance.dungeonMapRotateHeads = true;
         AlpakaConfig.instance.dungeonMapNames = false;
         AlpakaConfig.instance.dungeonMapMarkerScale = 1.0f;
+        AlpakaConfig.instance.dungeonMapRoomNames = false;
+        AlpakaConfig.instance.dungeonMapRoomSecrets = false;
         return new HudEditorScreen(null);
     }
 

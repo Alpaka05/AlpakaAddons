@@ -34,7 +34,8 @@ object BossRoomMap {
             val x = view.worldX(column)
             val z = view.worldZ(row)
             pos.set(x, feet, z)
-            if (!level.hasChunk(x shr 4, z shr 4)) continue
+            // The client level claims to have every chunk; its chunk cache knows which arrived.
+            if (!level.chunkSource.hasChunk(x shr 4, z shr 4)) continue
             var color = 0
             for (y in feet + 1 downTo feet - 8) {
                 pos.set(x, y, z)

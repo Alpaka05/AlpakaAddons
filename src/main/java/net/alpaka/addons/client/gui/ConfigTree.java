@@ -177,7 +177,7 @@ public final class ConfigTree {
     private static final String[][][] LAYOUT = {
             {{"General"},
                     {"Main", "allow_api_calls", "update_notifications", "#Notification Customization",
-                            "command_wheel_custom_commands", "always_sprint", "keep_cursor_position", "quick_join", "disable_all_features", "reset_all_settings"},
+                            "always_sprint", "keep_cursor_position", "quick_join", "disable_all_features", "reset_all_settings"},
                     {"Design", "menu_font", "menu_theme", "#HUD Style", "menu_accent_color", "custom_main_menu", "custom_escape_menu"},
                     {"Sounds", "custom_sounds", "custom_sound_button_click", "custom_sound_hotbar_scroll",
                             "custom_sound_inventory_open_close", "custom_sound_inventory_click", "custom_sound_rare_drop",
@@ -202,7 +202,8 @@ public final class ConfigTree {
                             "world_age_join_message_enabled", "ragnarock", "deployable_timer", "cache_resource_pack"},
                     {"Markets", "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value",
                             "chest_value"},
-                    {"Social", "party_invite_prompt", "guild_prefix", "bridge_bot_formatter"}},
+                    {"Social", "party_invite_prompt", "guild_prefix", "bridge_bot_formatter",
+                            "command_wheel_custom_commands", "command_shortcuts"}},
     };
 
     /** "Enable Inventory HUD" reads as "Inventory HUD" in a list of features that each switch on. */

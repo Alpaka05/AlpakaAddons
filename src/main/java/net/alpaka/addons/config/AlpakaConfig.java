@@ -270,6 +270,18 @@ public class AlpakaConfig {
     public boolean customSoundInventoryClick = true;
     public boolean customSoundZombieRemedy = true;
     public boolean customSoundSuccessfulHit = true;
+    /** Per-sound volumes, multiplied with customSoundsVolume. Shared toggles share one volume. */
+    public float customSoundButtonClickVolume = 1.0f;
+    public float customSoundHotbarScrollVolume = 1.0f;
+    public float customSoundInventoryOpenCloseVolume = 1.0f;
+    public float customSoundInventoryClickVolume = 1.0f;
+    public float customSoundRareDropVolume = 1.0f;
+    public float customSoundNotificationVolume = 1.0f;
+    public float customSoundPlayerHurtVolume = 1.0f;
+    public float customSoundBlazeDeathVolume = 1.0f;
+    public float customSoundZombieRemedyVolume = 1.0f;
+    public float customSoundSuccessfulHitVolume = 1.0f;
+    public float customSoundLowHpHeartbeatVolume = 1.0f;
     public boolean muteVanillaSoundsInBlazeSlayer = false;
     /**
      * With the Blaze slayer mute on: every world sound instead of only the fight's own noise

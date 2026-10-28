@@ -24,6 +24,8 @@ import net.minecraft.util.Util;
 public final class Outbound {
     /** What the player did that sends the command. */
     public enum Cause {
+        /** Clicked something in one of the mod's own windows, such as a result in Item Search. */
+        BUTTON,
         /** Pressed Enter on a line typed into the chat box. */
         CHAT_INPUT,
         /** Pressed a key, such as Y on a party invite. */

@@ -102,6 +102,11 @@ public final class DevScreenshotTour {
             new Stop(null, () -> ScreenshotPreview.devFreezeAt(-1.0f), () -> true, 5),
             new Stop("hud-editor-world", () -> Minecraft.getInstance().gui.setScreen(new HudEditorScreen(null)), () -> true, 20),
             screen("pause-menu", net.alpaka.addons.features.escapemenu.CustomPauseScreen::new),
+            // Item Search over made-up containers: everything, one item hovered, then a query.
+            screen("item-search", () -> net.alpaka.addons.features.itemsearch.ItemSearchPreview.screen(null)),
+            new Stop("item-search-hover", () -> placeMouse(0.356, 0.24), () -> true, 15),
+            screen("item-search-query", () -> net.alpaka.addons.features.itemsearch.ItemSearchPreview.screen("diamond")),
+            screen("item-search-config", () -> AlpakaConfigScreen.openOnOption(null, "item_search")),
             // The Friends overlay over the pause menu, opened as the Friends key (O) opens it: it
             // draws the menu as its backdrop and then blurs itself, so the menu must not blur too.
             new Stop("pause-menu-friends", () -> {

@@ -1701,6 +1701,29 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.partyInvitePromptEnabled = v; AlpakaConfig.save(); },
                 "party invite prompt accept join decline y n key popup hypixel"));
 
+        OPTIONS.add(new ConfigOption("Item Search", ConfigCategory.SKYBLOCK));
+
+        OPTIONS.add(new ConfigOption("item_search", "Item Search",
+                "A window with a search bar over everything you own: your inventory, Ender Chest, backpacks, sacks, wardrobe, Accessory Bag, Personal Vault and the chests on your island. Each place is known from the last time you opened it. Open it with /alpakasearch or its key (Controls, under Alpaka Addons); the key over an item in a menu searches for that item.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.itemSearchEnabled,
+                v -> { AlpakaConfig.instance.itemSearchEnabled = v; AlpakaConfig.save(); },
+                "item search find where storage ender chest echest backpack sack sacks wardrobe accessory bag vault island chest inventory lookup locate key"));
+
+        OPTIONS.add(new ConfigOption("item_search_open", "Open Item Search",
+                "Opens the search window. Works on SkyBlock only.",
+                ConfigCategory.SKYBLOCK,
+                "Open",
+                parent -> net.alpaka.addons.features.itemsearch.ItemSearchFeature.open(null, parent),
+                "item search open window"));
+
+        OPTIONS.add(new ConfigOption("item_search_clear", "Forget Saved Items",
+                "Forgets every remembered container of the profile you are on, so the search starts empty again. Each comes back the next time you open it.",
+                ConfigCategory.SKYBLOCK,
+                "Forget",
+                parent -> net.alpaka.addons.features.itemsearch.ItemSearchStore.clear(),
+                "item search clear reset forget saved items containers chests").confirmFirst());
+
         OPTIONS.add(new ConfigOption("Resource Pack", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("cache_resource_pack", "Cache Resource Pack",

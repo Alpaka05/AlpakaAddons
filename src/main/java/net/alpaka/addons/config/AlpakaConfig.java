@@ -394,6 +394,9 @@ public class AlpakaConfig {
     @SerializedName(value = "ragnarockEnabled", alternate = "ragAxeCountdownEnabled")
     public boolean ragnarockEnabled = true;
 
+    /** Item Search: a window to search everything the player owns; see ItemSearchFeature. */
+    public boolean itemSearchEnabled = true;
+
     // Deployable timer: the strongest power orb or flare in range, with its time left.
     public boolean deployableTimerEnabled = false;
     public int deployableTimerHudX = net.alpaka.addons.client.hud.HudDefaults.DEPLOYABLE_TIMER_X;
@@ -1208,6 +1211,7 @@ public class AlpakaConfig {
         this.slayerTimerEnabled = false;
         this.ragnarockEnabled = false;
         this.deployableTimerEnabled = false;
+        this.itemSearchEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
         this.customDamageTagsEnabled = false;

@@ -110,8 +110,10 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
     private fun labelY() = commandY() + ROW_STEP
     private fun showInY() = labelY() + ROW_STEP
     private fun searchY() = showInY() + ROW_STEP
-    private fun fieldX() = contentX() + LABEL_W
-    private fun fieldW() = contentW() - LABEL_W
+    private fun fieldX() = contentX() + labelW()
+    private fun fieldW() = contentW() - labelW()
+    /** The labels' column: as wide as the widest label in the menu font, which differs by font. */
+    private fun labelW() = LABELS.maxOf { GuiFont.width(font, it) } + 6
     private fun gridY() = searchY() + ROW_STEP
     private fun gridH() = panelY() + panelH() - Skin.PAD - gridY()
     private fun gridCols() = maxOf(1, (contentW() - 4) / CELL)
@@ -253,7 +255,9 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
         val y = panelY()
         val w = panelW()
         Skin.panel(graphics, x, y, w, panelH())
-        Skin.header(graphics, font, "Inventory Buttons", x, y, w)
+        // The full title only where it clears the Done button; a narrow panel says just "Buttons".
+        val title = if (GuiFont.width(font, "Inventory Buttons") + DONE_W + Skin.PAD + 14 <= w) "Inventory Buttons" else "Buttons"
+        Skin.header(graphics, font, title, x, y, w)
         Skin.button(graphics, font, doneX(), doneY(), DONE_W, Skin.BUTTON_H, "Done", inside(mx, my, doneX(), doneY(), DONE_W, Skin.BUTTON_H), Skin.PRIMARY)
 
         val cx = contentX()
@@ -591,6 +595,7 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
     companion object {
         private val CHEST_LOCATION: Identifier = Identifier.withDefaultNamespace("textures/gui/container/generic_54.png")
         private val SHOW_IN = arrayOf("All", "Inventory", "Chests")
+        private val LABELS = listOf("Preview", "Command", "Tooltip", "Show In", "Icon")
 
         private const val IMAGE_W = 176
         private const val MARGIN = 6
@@ -598,7 +603,6 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
         private const val PANEL_MAX_H = 320
         private const val DONE_W = 44
         private const val DELETE_W = 18
-        private const val LABEL_W = 44
         private const val ROW_STEP = 22
         private const val LIST_ROW = 20
         private const val CELL = 18

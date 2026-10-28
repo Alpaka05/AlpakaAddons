@@ -553,6 +553,10 @@ public class AlpakaConfig {
     public int dungeonMapBossFloorColor = 0xFF687981;
     public int dungeonMapBossWallColor = 0xFFB8C5CC;
 
+    // Leap Menu: Hypixel's Spirit Leap chest drawn as one button per teammate.
+    public boolean leapMenuEnabled = false;
+    public boolean leapMenuShowMap = true;
+
     // Inventory HUD. Shows the 27 main-inventory slots on screen; position and scale are set in
     // the HUD editor, or it can ride directly above the hotbar.
     public boolean inventoryHudEnabled = false;
@@ -1507,6 +1511,7 @@ public class AlpakaConfig {
         this.chatTabsEnabled = false;
         this.inventoryHudEnabled = false;
         this.dungeonMapEnabled = false;
+        this.leapMenuEnabled = false;
         this.bridgeBotFormatterEnabled = false;
         this.guildPrefixEnabled = false;
         this.itemSizeFeatureEnabled = false;

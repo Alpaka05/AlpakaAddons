@@ -54,13 +54,14 @@ object DungeonMapFeature {
             return
         }
         val cfg = AlpakaConfig.instance
-        if (!cfg.dungeonMapEnabled) return
+        // The Leap Menu shows this map too, so it is kept up to date for either.
+        if (!cfg.dungeonMapEnabled && !(cfg.leapMenuEnabled && cfg.leapMenuShowMap)) return
         if (DungeonState.inBossRoom) {
             players = emptyList()
             // Every half second, and sooner for a fast or teleporting player, so the view that follows
             // them stays on sampled terrain.
             val due = ticks % 10 == 0 || ticks % 2 == 0 && cfg.dungeonMapSmoothMarkers && BossRoomMap.drifted(client)
-            if (cfg.dungeonMapShowBoss && cfg.dungeonMapBossMode != 1 && due) BossRoomMap.update(client)
+            if (cfg.dungeonMapEnabled && cfg.dungeonMapShowBoss && cfg.dungeonMapBossMode != 1 && due) BossRoomMap.update(client)
             return
         }
         val player = client.player ?: return

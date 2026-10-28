@@ -54,7 +54,7 @@ class DisableAllFeaturesTest {
             "hideSlayerChatMessages", "bossSpawnAlertEnabled", "bossCocoonAlertEnabled", "slayerTimerEnabled",
             "slayerHudEnabled", "worldAgeJoinMessageEnabled", "partyInvitePromptEnabled",
             "cacheResourcePackEnabled", "guildPrefixEnabled", "bridgeBotFormatterEnabled", "ragnarockEnabled",
-            "onlyCritDamageEnabled", "deployableTimerEnabled", "dungeonMapEnabled", "customAuctionHouseEnabled", "customBazaarEnabled",
+            "onlyCritDamageEnabled", "deployableTimerEnabled", "dungeonMapEnabled", "leapMenuEnabled", "customAuctionHouseEnabled", "customBazaarEnabled",
             "marketPriceHistoryEnabled", "customSignInputEnabled", "chestValueEnabled",
             // Cosmetics
             "customNameTagEnabled", "chromaHatEnabled", "playerScaleEnabled", "customDamageTagsEnabled",
@@ -74,6 +74,7 @@ class DisableAllFeaturesTest {
             "dungeonMapShowClear", "dungeonMapShowBoss", "dungeonMapBossMode", "dungeonMapScale",
             "dungeonMapBackground", "dungeonMapBlur", "dungeonMapFrame", "dungeonMapRoomColor",
             "dungeonMapPlayerHeads", "dungeonMapRotateHeads", "dungeonMapHeadBorder", "dungeonMapSmoothMarkers",
+            "leapMenuShowMap",
             // Block Overlay
             "blockOutlineEnabled", "blockFillEnabled", "blockFadeInEnabled", "blockChromaEnabled",
             "blockIgnoreDepth", "blockIgnorePlants", "blockHideOnEtherwarp",

@@ -18,6 +18,7 @@
     "GameRendererMixin",
     "ItemFeatureRendererMixin",
     "ItemInHandRendererMixin",
+    "LeapMenuScreensMixin",
     "LevelRendererMixin",
     "LightmapMixin",
     "LightningBoltMixin",

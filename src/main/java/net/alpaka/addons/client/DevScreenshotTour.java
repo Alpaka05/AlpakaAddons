@@ -51,7 +51,11 @@ public final class DevScreenshotTour {
         return new Stop(shot, () -> Minecraft.getInstance().gui.setScreen(screen.get()), () -> true, 30);
     }
 
-    private static final List<Stop> STOPS = "dungeon-map".equals(System.getenv(ENV)) ? List.of(
+    private static final List<Stop> STOPS = "leap-menu".equals(System.getenv(ENV)) ? List.of(
+            screen("leap-menu-settings", () -> AlpakaConfigScreen.openOnOption(null, "leap_menu_enabled")),
+            screen("leap-menu-map", () -> leapMenuPreview(true)),
+            screen("leap-menu-buttons", () -> leapMenuPreview(false))
+    ) : "dungeon-map".equals(System.getenv(ENV)) ? List.of(
             screen("dungeon-map-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_enabled")),
             screen("dungeon-map-head-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_player_heads")),
             screen("dungeon-map-background-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_background")),
@@ -641,6 +645,26 @@ public final class DevScreenshotTour {
         AlpakaConfig.instance.dungeonMapNames = false;
         AlpakaConfig.instance.dungeonMapMarkerScale = 1.0f;
         return new HudEditorScreen(null);
+    }
+
+    /** A Spirit Leap chest with four teammates, one of them dead, as Hypixel sends it. */
+    private static net.minecraft.client.gui.screens.Screen leapMenuPreview(boolean map) {
+        AlpakaConfig.instance.leapMenuShowMap = map;
+        var player = Minecraft.getInstance().player;
+        var chest = new net.minecraft.world.SimpleContainer(27);
+        String[][] team = {{"Alpaka05", "HEALER"}, {"Technoblade", "BERSERK"}, {"Dream", "MAGE"}, {"Grian", "TANK"}};
+        for (int i = 0; i < team.length; i++) {
+            var head = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.PLAYER_HEAD);
+            head.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, net.minecraft.network.chat.Component.literal("§b" + team[i][0]));
+            head.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(List.of(
+                    net.minecraft.network.chat.Component.literal(i == 3 ? "§cThis player is dead!" : "§7Click to teleport!"))));
+            chest.setItem(11 + i, head);
+            net.alpaka.addons.features.leapmenu.LeapMenu.INSTANCE.rememberClass(team[i][0],
+                    net.alpaka.addons.features.leapmenu.DungeonClass.valueOf(team[i][1]));
+        }
+        var menu = net.minecraft.world.inventory.ChestMenu.threeRows(0, player.getInventory(), chest);
+        return new net.alpaka.addons.features.leapmenu.LeapMenuScreen(menu, player.getInventory(),
+                net.minecraft.network.chat.Component.literal("Spirit Leap"), true);
     }
 
     private DevScreenshotTour() {}

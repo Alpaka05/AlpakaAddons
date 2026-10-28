@@ -61,9 +61,9 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.chat.ChatSearchFeature.register();
         net.alpaka.addons.features.chat.ScreenshotPreview.register();
         CommandWheelFeature.register();
-        net.alpaka.addons.features.itemsearch.ItemSearchFeature.register();
         InventoryHudFeature.register();
         net.alpaka.addons.features.blaze.FirePitFeature.register();
+        net.alpaka.addons.features.itemsearch.ItemSearchFeature.register();
         net.alpaka.addons.features.damagetags.CustomDamageTagFeature.register();
         net.alpaka.addons.utils.DungeonState.register();
         net.alpaka.addons.features.notification.MentionNotifier.register();

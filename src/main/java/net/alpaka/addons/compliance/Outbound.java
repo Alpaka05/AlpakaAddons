@@ -37,7 +37,9 @@ public final class Outbound {
         /** Released or clicked a command wheel segment. */
         WHEEL,
         /** Clicked the mod's drawing of a slot in an open menu, such as a card in the Auction House. */
-        MENU_CLICK
+        MENU_CLICK,
+        /** Clicked one of the player's own inventory buttons. */
+        INVENTORY_BUTTON
     }
 
     /** The same command again this soon is taken as a double input and dropped. */

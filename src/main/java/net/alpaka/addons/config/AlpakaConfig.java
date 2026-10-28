@@ -811,6 +811,64 @@ public class AlpakaConfig {
             "/pv"
     ));
 
+    // Inventory Buttons: the player's own buttons around inventories and menus; see InventoryButtonsFeature.
+    public boolean inventoryButtonsEnabled = false;
+    /** Shows them only on Hypixel SkyBlock, where their commands mean something. */
+    public boolean inventoryButtonsSkyblockOnly = true;
+    /** The buttons, in the order the editor lists them. */
+    public java.util.List<InventoryButton> inventoryButtons = InventoryButton.defaults();
+
+    /**
+     * One inventory button: what it runs, what it shows, and where it sits.
+     *
+     * The position is kept against the edge of the container's panel the button is nearest to,
+     * not against the screen: a chest of six rows is taller than the inventory, and a button beside
+     * the player's own slots should stay beside them in both (see InventoryButtonLayout).
+     */
+    public static class InventoryButton {
+        /** Shows in every container screen. */
+        public static final int SHOW_ALL = 0;
+        /** Shows only in the player's own inventory. */
+        public static final int SHOW_INVENTORY = 1;
+        /** Shows only in chests and the server's menus. */
+        public static final int SHOW_CONTAINERS = 2;
+
+        /** The command with its slash, as the player typed it. */
+        public String command = "/";
+        /** The tooltip's title; the command is shown when this is empty. */
+        public String label = "";
+        /** The item drawn on the button, by its id. */
+        public String icon = "minecraft:chest";
+        /** Offset from the panel edge named by {@link #anchorRight}/{@link #anchorBottom}, in GUI pixels. */
+        public int x = -22;
+        public int y = 0;
+        public boolean anchorRight = false;
+        public boolean anchorBottom = false;
+        /** Where it shows: {@link #SHOW_ALL}, {@link #SHOW_INVENTORY} or {@link #SHOW_CONTAINERS}. */
+        public int showIn = SHOW_ALL;
+
+        public InventoryButton() {}
+
+        public InventoryButton(String command, String label, String icon, int x, int y) {
+            this.command = command;
+            this.label = label;
+            this.icon = icon;
+            this.x = x;
+            this.y = y;
+        }
+
+        /** A column of common SkyBlock menus down the left of the panel, for a first start. */
+        public static java.util.List<InventoryButton> defaults() {
+            java.util.List<InventoryButton> list = new java.util.ArrayList<>();
+            list.add(new InventoryButton("/storage", "Storage", "minecraft:chest", -22, 4));
+            list.add(new InventoryButton("/ec", "Ender Chest", "minecraft:ender_chest", -22, 24));
+            list.add(new InventoryButton("/pets", "Pets", "minecraft:bone", -22, 44));
+            list.add(new InventoryButton("/wardrobe", "Wardrobe", "minecraft:leather_chestplate", -22, 64));
+            list.add(new InventoryButton("/sbmenu", "SkyBlock Menu", "minecraft:nether_star", -22, 84));
+            return list;
+        }
+    }
+
     // Item viewmodel options
     public boolean itemSizeFeatureEnabled = false;
     public float itemScale = 1.0f;

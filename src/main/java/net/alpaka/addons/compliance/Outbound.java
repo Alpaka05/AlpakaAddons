@@ -36,7 +36,10 @@ public final class Outbound {
         KEY_PRESS,
         /** Released or clicked a command wheel segment. */
         WHEEL,
-        /** Clicked the mod's drawing of a slot in an open menu, such as a card in the Auction House. */
+        /**
+         * Clicked a slot in an open menu, or the mod's drawing of one: a card in the Auction House,
+         * a garden visitor's Accept Offer.
+         */
         MENU_CLICK
     }
 

@@ -1,6 +1,7 @@
 package net.alpaka.addons.features.blaze
 
 import net.alpaka.addons.config.AlpakaConfig
+import net.alpaka.addons.features.slayer.SlayerDropTracker
 import net.alpaka.addons.features.slayer.SlayerSessionTracker
 import net.alpaka.addons.features.slayer.SlayerType
 import net.alpaka.addons.utils.SkyblockUtils
@@ -37,7 +38,8 @@ import net.minecraft.world.entity.projectile.hurtingprojectile.SmallFireball
  *
  * SkyHanni's Blaze Slayer Clear View does much the same; running both is harmless but redundant.
  *
- * Purely about how the blazes look. The slayer chatter has its own setting in
+ * Besides the looks, two kinds of boss fight chatter can go too: the wrong dagger attunement lines
+ * and the damage lines. The general slayer chatter (quest, radio, level up) has its own setting in
  * [net.alpaka.addons.features.slayer.SlayerChatFilter].
  */
 object CleanBlazeFeature {
@@ -71,6 +73,44 @@ object CleanBlazeFeature {
             inScope = SkyblockUtils.isOnSkyblock() && SlayerSessionTracker.isInTrackerArea(SlayerType.BLAZE)
         }
         return inScope
+    }
+
+    /** "Strike using the CRYSTAL attunement on your dagger!", sent on every hit with the wrong one. */
+    private val WRONG_DAGGER = Regex("""^Strike using the \w+ attunement on your dagger!$""")
+
+    /**
+     * "Your hit was reduced by Hellion Shield!" and the boss's damage reports, such as "You took
+     * 1,500 true damage from Quazii's beam!". Anchored at the start, so a player quoting one in
+     * chat keeps their line.
+     */
+    private val DAMAGE = listOf(
+        Regex("""^Your hit was reduced by Hellion Shield!$"""),
+        Regex("""^You took [\d,.]+ (?:true )?damage from .+!$"""),
+    )
+
+    /**
+     * Whether a chat line is boss fight chatter the player switched off. Takes the line as Hypixel
+     * sent it; only the visible chat log loses it, the slayer tracking still reads it.
+     */
+    @JvmStatic
+    fun shouldHideChat(rawMessage: String): Boolean {
+        val config = AlpakaConfig.instance
+        if (!config.cleanBlazeWrongDaggerChat && !config.cleanBlazeDamageChat) return false
+        val kind = chatKind(SlayerDropTracker.cleanColor(rawMessage).trim()) ?: return false
+        val wanted = when (kind) {
+            ChatKind.WRONG_DAGGER -> config.cleanBlazeWrongDaggerChat
+            ChatKind.DAMAGE -> config.cleanBlazeDamageChat
+        }
+        return wanted && active()
+    }
+
+    internal enum class ChatKind { WRONG_DAGGER, DAMAGE }
+
+    /** Which kind of boss fight chatter a color-stripped line is, if any. Switches aside, for tests. */
+    internal fun chatKind(cleanText: String): ChatKind? = when {
+        WRONG_DAGGER.matches(cleanText) -> ChatKind.WRONG_DAGGER
+        DAMAGE.any { it.matches(cleanText) } -> ChatKind.DAMAGE
+        else -> null
     }
 
     @JvmStatic

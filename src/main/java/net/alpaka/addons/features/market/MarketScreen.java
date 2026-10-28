@@ -884,12 +884,13 @@ public class MarketScreen extends ContainerScreen {
             ModernGuiUtils.drawRoundedOutline(graphics, px, py, w, h, AlpakaStyle.CARD_RADIUS, MarketIcons.fade(rarity, 0.45f * hv * alpha));
         }
         drawPressFlash(graphics, slot, px, py, w, h);
-        ModernGuiUtils.drawRoundedRect(graphics, px + 3, py + 8, 2, h - 16, 1, MarketIcons.fade(rarity, (0.55f + 0.45f * hv) * alpha));
 
         boolean compact = h < CARD_H;
         int well = compact ? 18 : 22;
         int wx = px + 8;
-        int wy = py + (h - well) / 2;
+        // On a full card the item sits below the name, beside the two lines under it, so the name
+        // has the card's whole width; a compact card has one line and no room below for it.
+        int wy = compact ? py + (h - well) / 2 : py + 14;
         ModernGuiUtils.drawRoundedRect(graphics, wx, wy, well, well, 5, MarketIcons.fade(rarity, (0.10f + 0.08f * hv) * alpha));
         GuiItemFade.begin(alpha);
         int inset = (well - 16) / 2;
@@ -901,7 +902,8 @@ public class MarketScreen extends ContainerScreen {
         int tw = px + w - 6 - tx;
         int textAlpha = Math.round(alpha * 255) << 24;
         Component name = stack.getHoverName();
-        int nameX = tx;
+        int nameStart = compact ? tx : wx;
+        int nameX = nameStart;
         int nameEnd = tx + tw;
         // The room the key takes at the end of the second line, which the lines leave free.
         int reserve = 0;
@@ -913,7 +915,7 @@ public class MarketScreen extends ContainerScreen {
             for (String side : new String[] {"BUY ", "SELL "}) {
                 if (plainName.startsWith(side)) {
                     name = withoutPrefix(name, side.length());
-                    nameX += pill(graphics, tx, py + 5, side.trim(), side.startsWith("B") ? MarketInk.ink(GREEN) : MarketInk.ink(COIN), alpha) + 4;
+                    nameX += pill(graphics, nameStart, py + 5, side.trim(), side.startsWith("B") ? MarketInk.ink(GREEN) : MarketInk.ink(COIN), alpha) + 4;
                 }
             }
         }

@@ -280,6 +280,9 @@ public class AlpakaConfigRegistry {
                         new ConfigOption.ToggleEntry("Potion & Magic Particles",
                                 () -> AlpakaConfig.instance.cleanBlazeEffectParticles,
                                 v -> { AlpakaConfig.instance.cleanBlazeEffectParticles = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Attunement Dust",
+                                () -> AlpakaConfig.instance.cleanBlazeAttunementDust,
+                                v -> { AlpakaConfig.instance.cleanBlazeAttunementDust = v; AlpakaConfig.save(); }),
                         new ConfigOption.ToggleEntry("Fire on Blazes & Demons",
                                 () -> AlpakaConfig.instance.cleanBlazeFire,
                                 v -> { AlpakaConfig.instance.cleanBlazeFire = v; AlpakaConfig.save(); }),
@@ -291,9 +294,36 @@ public class AlpakaConfigRegistry {
                                 v -> { AlpakaConfig.instance.cleanBlazeLightning = v; AlpakaConfig.save(); }),
                         new ConfigOption.ToggleEntry("Name Tags",
                                 () -> AlpakaConfig.instance.cleanBlazeNameTags,
-                                v -> { AlpakaConfig.instance.cleanBlazeNameTags = v; AlpakaConfig.save(); })
+                                v -> { AlpakaConfig.instance.cleanBlazeNameTags = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Wrong Dagger Messages",
+                                () -> AlpakaConfig.instance.cleanBlazeWrongDaggerChat,
+                                v -> { AlpakaConfig.instance.cleanBlazeWrongDaggerChat = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Damage Messages",
+                                () -> AlpakaConfig.instance.cleanBlazeDamageChat,
+                                v -> { AlpakaConfig.instance.cleanBlazeDamageChat = v; AlpakaConfig.save(); })
                 ),
-                "blaze flame smoke angry villager lava drip particles potion effect swirl enchant enchanting glyph ender portal witch spell fire burning overlay fireball projectile lightning bolt flash thunder nametag name tag health smoldering miniboss demon clean hide"));
+                "blaze flame smoke angry villager lava drip particles potion effect swirl enchant enchanting glyph ender portal witch spell attunement dust ashen spirit crystal auric hellion shield fire burning overlay fireball projectile lightning bolt flash thunder nametag name tag health smoldering miniboss demon chat message wrong dagger strike damage true damage beam reduced clean hide"));
+
+        OPTIONS.add(new ConfigOption("stop_blaze_spinning", "Stop Blaze Spinning",
+                "Stops blaze rods from spinning around blaze mobs.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.stopBlazeSpinning,
+                v -> { AlpakaConfig.instance.stopBlazeSpinning = v; AlpakaConfig.save(); },
+                "blaze rods spin spinning rotation animation stop mob"));
+
+        OPTIONS.add(new ConfigOption("mute_vanilla_sounds_blaze_slayer", "Mute Blaze Noise",
+                "Mutes blazes, fire, lava and ghasts during a Blaze quest. Menu and mod sounds still play.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.muteVanillaSoundsInBlazeSlayer,
+                v -> { AlpakaConfig.instance.muteVanillaSoundsInBlazeSlayer = v; AlpakaConfig.save(); },
+                "mute silence vanilla game audio blaze slayer quiet boss spawn hear silence blaze slayer noise"));
+
+        OPTIONS.add(new ConfigOption("blaze_mute_all_world_audio", "Mute All World Sounds",
+                "Mutes every world sound during a Blaze quest, not just the fight's noise.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.blazeMuteAllWorldAudio,
+                v -> { AlpakaConfig.instance.blazeMuteAllWorldAudio = v; AlpakaConfig.save(); },
+                "mute silence all world audio blaze slayer quiet silence: all world audio sounds"));
 
         OPTIONS.add(new ConfigOption("blaze_fire_pits", "Fire Pit Highlight",
                 "Marks the fire pits on the floor with a glowing column during your Blaze slayer boss.",
@@ -308,13 +338,6 @@ public class AlpakaConfigRegistry {
                 c -> c.blazeFirePitColor,
                 v -> { AlpakaConfig.instance.blazeFirePitColor = v; AlpakaConfig.save(); },
                 "blaze slayer fire pit pits highlight column aura color colour picker"));
-
-        OPTIONS.add(new ConfigOption("stop_blaze_spinning", "Stop Blaze Spinning",
-                "Stops blaze rods from spinning around blaze mobs.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.stopBlazeSpinning,
-                v -> { AlpakaConfig.instance.stopBlazeSpinning = v; AlpakaConfig.save(); },
-                "blaze rods spin spinning rotation animation stop mob"));
 
         OPTIONS.add(new ConfigOption("hide_hurt_overlay", "Hide Damage Flash",
                 "Hides the red flash on mobs and players when they take a hit.",
@@ -522,6 +545,13 @@ public class AlpakaConfigRegistry {
                 50.0f, 1000.0f, val -> String.format(Locale.ROOT, "%d ms", Math.round(val)),
                 "container background fade speed duration time ms transition container fade speed"));
 
+        OPTIONS.add(new ConfigOption("hide_inventory_effects", "Hide Effects",
+                "Hides the list of active potion effects next to your inventory.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.hideInventoryEffects,
+                v -> { AlpakaConfig.instance.hideInventoryEffects = v; AlpakaConfig.save(); },
+                "hide effects potion effect status buffs inventory list side absorption night vision haste strength god potion"));
+
         // The id keeps its old name so existing configs and search links still find the option.
         OPTIONS.add(new ConfigOption("inventory_snow", "Inventory Particles",
                 "Lets particles drift over container screens, like chests and your inventory.",
@@ -636,6 +666,87 @@ public class AlpakaConfigRegistry {
                 val -> net.alpaka.addons.features.healthbar.WideHealthBarFeature.ABSORPTION_NAMES[Math.round(val)],
                 "absorption hearts gold golden yellow hide merge health row gold over health on hearts own row")
                 .choices(net.alpaka.addons.features.healthbar.WideHealthBarFeature.ABSORPTION_NAMES));
+
+        OPTIONS.add(new ConfigOption("custom_tab", "Custom Tab",
+                "Redraws the SkyBlock tab list as one clean panel, sorted into its categories, without the empty slots.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabEnabled,
+                v -> { AlpakaConfig.instance.customTabEnabled = v; AlpakaConfig.save(); },
+                "custom tab list tablist player list compact clean panel sorted widgets columns skyblock"));
+
+        OPTIONS.add(new ConfigOption("custom_tab_layout", "Layout",
+                "Side by Side puts the categories next to each other, Stacked puts them under each other.",
+                ConfigCategory.VISUALS,
+                () -> (float) AlpakaConfig.instance.customTabLayout,
+                v -> { AlpakaConfig.instance.customTabLayout = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (net.alpaka.addons.features.tablist.CustomTabFeature.LAYOUT_NAMES.length - 1),
+                val -> net.alpaka.addons.features.tablist.CustomTabFeature.LAYOUT_NAMES[Math.round(val)],
+                "tab list layout side by side stacked columns rows horizontal vertical next to under each other")
+                .choices(net.alpaka.addons.features.tablist.CustomTabFeature.LAYOUT_NAMES));
+
+        OPTIONS.add(new ConfigOption("custom_tab_hide_ads", "Hide Hypixel Ads",
+                "Hides the server address and the store link Hypixel puts above and below the tab list.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabHideAds,
+                v -> { AlpakaConfig.instance.customTabHideAds = v; AlpakaConfig.save(); },
+                "tab list hide ads advertising advert store hypixel.net header footer ranks boosters"));
+
+        OPTIONS.add(new ConfigOption("custom_tab_toggle", "Toggle Tab List",
+                "One press of the player list key opens the tab list and the next closes it, instead of holding the key.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabToggle,
+                v -> { AlpakaConfig.instance.customTabToggle = v; AlpakaConfig.save(); },
+                "tab list toggle press hold key keep open player list switch"));
+
+        OPTIONS.add(new ConfigOption("custom_tab_in_menus", "Show in Menus",
+                "Keeps the tab list up while the chat, your inventory or a chest is open, drawn above it.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabInMenus,
+                v -> { AlpakaConfig.instance.customTabInMenus = v; AlpakaConfig.save(); },
+                "tab list menus chat inventory chest container open screen gui visible stay over"));
+
+        OPTIONS.add(new ConfigOption("custom_tab_progress_bars", "Progress Bars",
+                "Draws progress as bars: Hypixel's bars of lines, counts toward a goal like Fairy Souls and the RNG Meter, and skill percentages.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabProgressBars,
+                v -> { AlpakaConfig.instance.customTabProgressBars = v; AlpakaConfig.save(); },
+                "tab list progress bar bars meter skill percent rng reputation fairy souls level xp"));
+
+        OPTIONS.add(new ConfigOption("custom_tab_highlight_changes", "Highlight Changes",
+                "Lights a row up for a moment when its value changes, so you see at a glance what is new. Timers are left out.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabHighlightChanges,
+                v -> { AlpakaConfig.instance.customTabHighlightChanges = v; AlpakaConfig.save(); },
+                "tab list highlight changes flash glow new value changed update blink"));
+
+        OPTIONS.add(new ConfigOption("custom_tab_section_boxes", "Section Boxes",
+                "Puts each part of the tab list, like Area, Profile or Pet, in a faint box of its own so the parts are easy to tell apart.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabSectionBoxes,
+                v -> { AlpakaConfig.instance.customTabSectionBoxes = v; AlpakaConfig.save(); },
+                "tab list section boxes box border outline frame card widget group block separate"));
+
+        OPTIONS.add(new ConfigOption("custom_tab_animated", "Slide Animation",
+                "The tab list slides down from the top of the screen when it opens and back up when it closes, instead of appearing at once.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabAnimated,
+                v -> { AlpakaConfig.instance.customTabAnimated = v; AlpakaConfig.save(); },
+                "tab list slide animation animated open close smooth dock drop down appear instantly"));
+
+        OPTIONS.add(new ConfigOption("custom_tab_background", "Background",
+                "Draws the panel behind the tab list. Off leaves only the text.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabBackground,
+                v -> { AlpakaConfig.instance.customTabBackground = v; AlpakaConfig.save(); },
+                "tab list background panel box transparent none hide disable off text only"));
+
+        OPTIONS.add(new ConfigOption("custom_tab_scale", "Scale",
+                "How big the tab list is drawn.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.customTabScale,
+                v -> { AlpakaConfig.instance.customTabScale = Math.round(v * 20.0f) / 20.0f; AlpakaConfig.save(); },
+                0.5f, 1.5f, val -> String.format(Locale.ROOT, "%.2fx", val),
+                "tab list scale size bigger smaller zoom"));
 
         OPTIONS.add(new ConfigOption("Chat", ConfigCategory.VISUALS));
 
@@ -775,9 +886,52 @@ public class AlpakaConfigRegistry {
                                 v -> { AlpakaConfig.instance.messageFilterWatchdog = v; AlpakaConfig.save(); }),
                         new ConfigOption.ToggleEntry("Stash Reminders",
                                 () -> AlpakaConfig.instance.messageFilterStash,
-                                v -> { AlpakaConfig.instance.messageFilterStash = v; AlpakaConfig.save(); })
+                                v -> { AlpakaConfig.instance.messageFilterStash = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Sacks",
+                                () -> AlpakaConfig.instance.messageFilterSacks,
+                                v -> { AlpakaConfig.instance.messageFilterSacks = v; AlpakaConfig.save(); })
                 ),
-                "message filter hidden empty blank lines welcome guild gexp event exp kill combo grandma wolf profile id join reward bundle seasonal autopet pet rule fire sale community shop watchdog ban announcement stash stashed items materials pick up reminder"));
+                "message filter hidden empty blank lines welcome guild gexp event exp kill combo grandma wolf profile id join reward bundle seasonal autopet pet rule fire sale community shop watchdog ban announcement stash stashed items materials pick up reminder sacks sack items added removed"));
+
+        OPTIONS.add(new ConfigOption("message_filter_dungeon", "Dungeon Messages",
+                "Which dungeon messages the filter hides during a Catacombs run.",
+                ConfigCategory.VISUALS,
+                java.util.List.of(
+                        new ConfigOption.ToggleEntry("Preparation",
+                                () -> AlpakaConfig.instance.messageFilterDungeonPrepare,
+                                v -> { AlpakaConfig.instance.messageFilterDungeonPrepare = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Class Buffs & Mort",
+                                () -> AlpakaConfig.instance.messageFilterDungeonStart,
+                                v -> { AlpakaConfig.instance.messageFilterDungeonStart = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Ambience",
+                                () -> AlpakaConfig.instance.messageFilterDungeonAmbience,
+                                v -> { AlpakaConfig.instance.messageFilterDungeonAmbience = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Pickups",
+                                () -> AlpakaConfig.instance.messageFilterDungeonPickup,
+                                v -> { AlpakaConfig.instance.messageFilterDungeonPickup = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Key Reminders",
+                                () -> AlpakaConfig.instance.messageFilterDungeonReminder,
+                                v -> { AlpakaConfig.instance.messageFilterDungeonReminder = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Blessings",
+                                () -> AlpakaConfig.instance.messageFilterDungeonBlessing,
+                                v -> { AlpakaConfig.instance.messageFilterDungeonBlessing = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Not Possible",
+                                () -> AlpakaConfig.instance.messageFilterDungeonNotPossible,
+                                v -> { AlpakaConfig.instance.messageFilterDungeonNotPossible = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Damage Taken",
+                                () -> AlpakaConfig.instance.messageFilterDungeonDamage,
+                                v -> { AlpakaConfig.instance.messageFilterDungeonDamage = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Abilities & Healing",
+                                () -> AlpakaConfig.instance.messageFilterDungeonAbility,
+                                v -> { AlpakaConfig.instance.messageFilterDungeonAbility = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Puzzles & Quiz",
+                                () -> AlpakaConfig.instance.messageFilterDungeonPuzzle,
+                                v -> { AlpakaConfig.instance.messageFilterDungeonPuzzle = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("End Of Run",
+                                () -> AlpakaConfig.instance.messageFilterDungeonEnd,
+                                v -> { AlpakaConfig.instance.messageFilterDungeonEnd = v; AlpakaConfig.save(); })
+                ),
+                "message filter dungeon dungeons catacombs mort ready countdown class buff ambience pickup superboom revive stone wither essence orb fairy key door blessing not possible damage ability abilities heal tether cooldown mana puzzle quiz oruo end run team bonus"));
 
         OPTIONS.add(new ConfigOption("message_filter_custom", "Custom Filters",
                 "Your own filters: paste a copied message and pick whether it must match exactly, at the start, anywhere, or as a regex.",
@@ -1686,6 +1840,39 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.slayerTimerHudEnabled = v; AlpakaConfig.save(); },
                 "slayer boss timer hud live overlay screen"));
 
+        OPTIONS.add(new ConfigOption("Slayer Boss Highlight", ConfigCategory.SKYBLOCK));
+
+
+        OPTIONS.add(new ConfigOption("slayer_boss_highlight", "Boss Highlight",
+                "Highlights your own slayer boss so it stands out from the crowd.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slayerBossHighlightEnabled,
+                v -> { AlpakaConfig.instance.slayerBossHighlightEnabled = v; AlpakaConfig.save(); },
+                "slayer boss highlight glow outline hitbox box overlay tint color own mark"));
+
+        OPTIONS.add(new ConfigOption("slayer_boss_highlight_style", "Highlight Style",
+                "Outline glows around the boss, Hitbox draws a box around it, Overlay tints its model.",
+                ConfigCategory.SKYBLOCK,
+                () -> (float) AlpakaConfig.instance.slayerBossHighlightStyle,
+                v -> { AlpakaConfig.instance.slayerBossHighlightStyle = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (net.alpaka.addons.features.slayer.SlayerBossHighlight.STYLE_NAMES.length - 1),
+                val -> net.alpaka.addons.features.slayer.SlayerBossHighlight.STYLE_NAMES[Math.round(val)],
+                "slayer boss highlight style mode outline glow hitbox box overlay tint").choices(net.alpaka.addons.features.slayer.SlayerBossHighlight.STYLE_NAMES));
+
+        OPTIONS.add(ConfigOption.color("slayer_boss_highlight_color", "Highlight Color",
+                "Color of the boss highlight.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.slayerBossHighlightColor,
+                v -> { AlpakaConfig.instance.slayerBossHighlightColor = v; AlpakaConfig.save(); },
+                "slayer boss highlight color colour picker"));
+
+        OPTIONS.add(new ConfigOption("slayer_boss_highlight_attunement", "Blaze Attunement Colors",
+                "On the Blaze slayer, uses the color of the current attunement for the boss and its demons.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slayerBossHighlightAttunement,
+                v -> { AlpakaConfig.instance.slayerBossHighlightAttunement = v; AlpakaConfig.save(); },
+                "blaze slayer inferno demonlord attunement hellion shield ashen spirit crystal auric dagger demon quazii typhoeus color"));
+
         OPTIONS.add(new ConfigOption("Slayer Session HUD", ConfigCategory.SKYBLOCK));
 
 
@@ -2383,6 +2570,20 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.commandWheelToggleMode = v; AlpakaConfig.save(); },
                 "quick command wheel toggle hold press release click open mode keybind"));
 
+        OPTIONS.add(new ConfigOption("command_shortcuts", "Command Shortcuts",
+                "Short aliases for commands, such as /v for /visit (/v Steve still works), and keys that run a command.",
+                ConfigCategory.SOUND_MISC,
+                () -> AlpakaConfig.instance.commandShortcutsEnabled,
+                v -> { AlpakaConfig.instance.commandShortcutsEnabled = v; AlpakaConfig.save(); },
+                "command shortcuts alias aliases abbreviation short keybind key bind hotkey run command visit warp skyblocker"));
+
+        OPTIONS.add(new ConfigOption("command_shortcuts_edit", "Shortcuts",
+                "Add, edit or remove aliases and key shortcuts.",
+                ConfigCategory.SOUND_MISC,
+                "Edit Shortcuts",
+                parent -> Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.client.CommandShortcutsConfigScreen(parent)),
+                "command shortcuts alias aliases edit add remove keybind key bind hotkey list menu"));
+
         OPTIONS.add(new ConfigOption("always_sprint", "Always Sprint",
                 "Sprints whenever you walk forward, no sprint key needed.",
                 ConfigCategory.SOUND_MISC,
@@ -2516,20 +2717,6 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customSoundSuccessfulHit = v; AlpakaConfig.save(); },
                 "successful hit crit critical attack sound audio custom"));
 
-        OPTIONS.add(new ConfigOption("mute_vanilla_sounds_blaze_slayer", "Mute Blaze Noise",
-                "Mutes blazes, fire, lava and ghasts during a Blaze quest. Menu and mod sounds still play.",
-                ConfigCategory.SOUND_MISC,
-                () -> AlpakaConfig.instance.muteVanillaSoundsInBlazeSlayer,
-                v -> { AlpakaConfig.instance.muteVanillaSoundsInBlazeSlayer = v; AlpakaConfig.save(); },
-                "mute silence vanilla game audio blaze slayer quiet boss spawn hear silence blaze slayer noise"));
-
-        OPTIONS.add(new ConfigOption("blaze_mute_all_world_audio", "Mute All World Sounds",
-                "Mutes every world sound during a Blaze quest, not just the fight's noise.",
-                ConfigCategory.SOUND_MISC,
-                () -> AlpakaConfig.instance.blazeMuteAllWorldAudio,
-                v -> { AlpakaConfig.instance.blazeMuteAllWorldAudio = v; AlpakaConfig.save(); },
-                "mute silence all world audio blaze slayer quiet silence: all world audio sounds"));
-
         OPTIONS.add(new ConfigOption("Low Health Warning", ConfigCategory.SOUND_MISC));
 
         OPTIONS.add(new ConfigOption("custom_sound_low_hp_heartbeat", "Low Health Heartbeat",
@@ -2583,6 +2770,11 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.notificationBlur, v -> AlpakaConfig.instance.notificationBlur = v);
         styleToggle("notification_smooth_font", "Smooth Font", ConfigCategory.GENERAL, false,
                 () -> AlpakaConfig.instance.notificationSmoothFont, v -> AlpakaConfig.instance.notificationSmoothFont = v);
+
+        styleToggle("custom_tab_blur", "Blur", ConfigCategory.VISUALS, true,
+                () -> AlpakaConfig.instance.customTabBlur, v -> AlpakaConfig.instance.customTabBlur = v);
+        styleToggle("custom_tab_smooth_font", "Smooth Font", ConfigCategory.VISUALS, false,
+                () -> AlpakaConfig.instance.customTabSmoothFont, v -> AlpakaConfig.instance.customTabSmoothFont = v);
 
         styleToggle("chat_blur", "Blur", ConfigCategory.VISUALS, true,
                 () -> AlpakaConfig.instance.chatBlurEnabled, v -> AlpakaConfig.instance.chatBlurEnabled = v);

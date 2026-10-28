@@ -136,13 +136,41 @@ final class Missing {
         return gaps;
     }
 
-    /** The pets the profile has none of, rarest first. */
-    static List<MissingPet> pets(Set<String> owned, Neu neu) {
+    /**
+     * Pets that are one pet under a different name per rarity: a Droplet Wisp becomes a Frost,
+     * Glacial and then Subzero Wisp, so owning any of them is owning the pet.
+     */
+    private static final List<Set<String>> FAMILIES = List.of(
+            Set.of("DROPLET_WISP", "FROST_WISP", "GLACIAL_WISP", "SUBZERO_WISP"));
+    /** Only to be had on a Bingo profile. */
+    private static final String BINGO_PET = "BINGO";
+
+    /** The pets the profile has none of, rarest first; a family shows once, under its top name. */
+    static List<MissingPet> pets(Set<String> owned, Neu neu, boolean bingoProfile) {
         List<MissingPet> missing = new ArrayList<>();
         for (var e : neu.petTiers().entrySet()) {
-            if (!owned.contains(e.getKey())) missing.add(new MissingPet(e.getKey(), ProfileData.title(e.getKey()), e.getValue()));
+            String type = e.getKey();
+            if (owned.contains(type) || (!bingoProfile && type.equals(BINGO_PET))) continue;
+            Set<String> family = familyOf(type);
+            if (family != null && (family.stream().anyMatch(owned::contains) || !type.equals(top(family, neu)))) continue;
+            missing.add(new MissingPet(type, ProfileData.title(type), e.getValue()));
         }
         missing.sort(Comparator.comparingInt((MissingPet p) -> ProfileData.rarityRank(p.tier())).reversed().thenComparing(MissingPet::name));
         return missing;
+    }
+
+    private static Set<String> familyOf(String type) {
+        for (Set<String> family : FAMILIES) if (family.contains(type)) return family;
+        return null;
+    }
+
+    /** The family member that comes in the highest rarity. */
+    private static String top(Set<String> family, Neu neu) {
+        String best = null;
+        for (String type : family) {
+            String tier = neu.petTiers().get(type);
+            if (tier != null && (best == null || ProfileData.rarityRank(tier) > ProfileData.rarityRank(neu.petTiers().get(best)))) best = type;
+        }
+        return best;
     }
 }

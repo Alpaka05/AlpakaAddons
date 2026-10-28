@@ -381,18 +381,22 @@ public class ProfileDashboardScreen extends Screen {
         return null;
     }
 
+    /** The shown profile's game mode, such as "ironman" or "bingo"; null for a normal one. */
+    private static String gameMode(ProfileSession s) {
+        for (ProfileSession.ProfileRef r : s.profiles) if (r.id().equals(s.profileId)) return r.gameMode();
+        return null;
+    }
+
     /** A mark after the profile's name for the special modes. */
     private static String modeMark(ProfileSession s) {
-        for (ProfileSession.ProfileRef r : s.profiles) {
-            if (!r.id().equals(s.profileId) || r.gameMode() == null) continue;
-            return switch (r.gameMode()) {
-                case "ironman" -> " (Ironman)";
-                case "bingo" -> " (Bingo)";
-                case "island" -> " (Stranded)";
-                default -> "";
-            };
-        }
-        return "";
+        String mode = gameMode(s);
+        if (mode == null) return "";
+        return switch (mode) {
+            case "ironman" -> " (Ironman)";
+            case "bingo" -> " (Bingo)";
+            case "island" -> " (Stranded)";
+            default -> "";
+        };
     }
 
     private void drawProfileMenu(GuiGraphicsExtractor graphics, int x, int y, int w) {
@@ -1613,7 +1617,7 @@ public class ProfileDashboardScreen extends Screen {
         if (missingPetsFor != d) {
             java.util.Set<String> owned = new java.util.HashSet<>();
             for (ProfileData.Pet p : d.pets) owned.add(p.type());
-            missingPets = Missing.pets(owned, neu);
+            missingPets = Missing.pets(owned, neu, "bingo".equals(gameMode(session)));
             missingPetsFor = d;
         }
         List<Missing.MissingPet> missing = missingPets;

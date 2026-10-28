@@ -18,7 +18,9 @@ class MissingTest {
              "ignored_talisman": ["CRUX_TALISMAN_1"]}
             """;
     private static final String PETNUMS = """
-            {"BEE": {"COMMON": {}, "LEGENDARY": {}}, "ROCK": {"COMMON": {}, "EPIC": {}}, "WOLF": {"MYTHIC": {}}}
+            {"BEE": {"COMMON": {}, "LEGENDARY": {}}, "ROCK": {"COMMON": {}, "EPIC": {}}, "WOLF": {"MYTHIC": {}},
+             "BINGO": {"MYTHIC": {}}, "DROPLET_WISP": {"UNCOMMON": {}}, "FROST_WISP": {"RARE": {}},
+             "GLACIAL_WISP": {"EPIC": {}}, "SUBZERO_WISP": {"LEGENDARY": {}}}
             """;
     private static final Map<String, String> TIERS = Map.of(
             "SPEED_TALISMAN", "COMMON", "SPEED_RING", "UNCOMMON", "SPEED_ARTIFACT", "RARE",
@@ -48,10 +50,24 @@ class MissingTest {
 
     @Test
     void missingPetsInTheirHighestRarity() {
-        List<Missing.MissingPet> pets = Missing.pets(Set.of("BEE"), neu);
+        List<Missing.MissingPet> pets = Missing.pets(Set.of("BEE", "SUBZERO_WISP"), neu, false);
         assertEquals(List.of("WOLF", "ROCK"), pets.stream().map(Missing.MissingPet::type).toList());
         assertEquals("MYTHIC", pets.get(0).tier());
         assertEquals("EPIC", pets.get(1).tier());
+    }
+
+    @Test
+    void theWispsAreOnePet() {
+        // A lower wisp owned counts for the whole line, none owned shows the top one only.
+        assertTrue(Missing.pets(Set.of("FROST_WISP"), neu, false).stream().noneMatch(p -> p.type().endsWith("_WISP")));
+        assertEquals(List.of("SUBZERO_WISP"), Missing.pets(Set.of(), neu, false).stream()
+                .map(Missing.MissingPet::type).filter(t -> t.endsWith("_WISP")).toList());
+    }
+
+    @Test
+    void theBingoPetOnlyOnBingoProfiles() {
+        assertTrue(Missing.pets(Set.of(), neu, false).stream().noneMatch(p -> p.type().equals("BINGO")));
+        assertTrue(Missing.pets(Set.of(), neu, true).stream().anyMatch(p -> p.type().equals("BINGO")));
     }
 
     @Test

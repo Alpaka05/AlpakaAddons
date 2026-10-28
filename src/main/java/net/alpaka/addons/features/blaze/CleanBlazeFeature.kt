@@ -19,7 +19,7 @@ import net.minecraft.world.entity.projectile.hurtingprojectile.SmallFireball
  * Strips the visual noise off Hypixel's blazes while slaying them: their flame, smoke, angry
  * villager and lava drip particles, the potion swirls, enchanting glyphs and ender particles
  * around the boss and its demons (the ones SkyHanni's slayer spawn particle hider lists), the
- * burning overlay, the fireballs they throw and lightning, each with its own toggle, and optionally
+ * attunement coloured dust around them, the burning overlay, the fireballs they throw and lightning, each with its own toggle, and optionally
  * their name tags.
  *
  * Only on SkyBlock, in the Blaze slayer's zones. It used to apply
@@ -87,6 +87,10 @@ object CleanBlazeFeature {
             type === ParticleTypes.INSTANT_EFFECT || type === ParticleTypes.WITCH ||
             type === ParticleTypes.ENCHANT || type === ParticleTypes.PORTAL
         ) return AlpakaConfig.instance.cleanBlazeEffectParticles && active()
+        // The coloured dust around the boss and its demons, in the colour of the attunement their
+        // Hellion Shield wants (white Spirit, dark grey Ashen, cyan Crystal, yellow Auric). The
+        // name tag shows the attunement too, so the dust is only noise.
+        if (type === ParticleTypes.DUST) return AlpakaConfig.instance.cleanBlazeAttunementDust && active()
         return false
     }
 

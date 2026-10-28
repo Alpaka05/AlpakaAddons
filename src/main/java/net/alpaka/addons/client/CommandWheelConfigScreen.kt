@@ -24,10 +24,20 @@ import kotlin.math.min
  * page picked in the bottom row, or to the first page with room when that is left on "Auto"; a page
  * that is full hands the command on to the next one (see [CommandWheelPages]).
  *
+ * The row above the list picks which wheel is edited: the shared one, or the own wheel of a
+ * Skyblock profile. The profile in play can get one there, starting as a copy of the shared wheel,
+ * and a profile's wheel can be dropped again, after which that profile opens the shared one.
+ *
  * Drawn with the same pieces as the config screen: rounded panels with hairline borders, the menu
  * font without shadows, the accent color for whatever is selected or being dropped on.
  */
 class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.literal("Configure Quick Commands")) {
+
+    /** The wheel being edited, as a [CommandWheelPages] key; starts on the one the key opens now. */
+    private var wheel: String? = CommandWheelPages.activeWheel()
+
+    /** Until when a first click on Remove waits for the second one that drops the profile's wheel. */
+    private var removeArmedUntil = 0L
 
     private var newCommandInput: String = "/"
     private var inputFocused: Boolean = false
@@ -57,6 +67,8 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
 
     private class Frame(
         val winX: Int, val winY: Int, val winW: Int, val winH: Int,
+        /** The row that picks the wheel being edited, above the list. */
+        val wheelRowY: Int,
         val listX: Int, val listY: Int, val listW: Int, val listH: Int,
         /** The new-command field, and the page, add and reset buttons: one row, or two when narrow. */
         val inputY: Int, val inputW: Int, val buttonsY: Int, val buttonsX: Int,
@@ -75,7 +87,8 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
         val winX = (this.width - winW) / 2
         val winY = maxOf(MARGIN / 2, (this.height - winH) / 2)
         val listX = winX + 16
-        val listY = winY + HEADER_H + 10
+        val wheelRowY = winY + HEADER_H + 10
+        val listY = wheelRowY + WHEEL_ROW_H + 8
         val listW = winW - 32
 
         val buttonsW = PAGE_BTN_W + ADD_W + RESET_W + 12
@@ -85,7 +98,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
         val inputW = if (split) listW else INPUT_W
         val buttonsX = if (split) listX + listW - buttonsW else listX + INPUT_W + 6
         val listH = inputY - 10 - listY
-        return Frame(winX, winY, winW, winH, listX, listY, listW, listH, inputY, inputW, bottom, buttonsX)
+        return Frame(winX, winY, winW, winH, wheelRowY, listX, listY, listW, listH, inputY, inputW, bottom, buttonsX)
     }
 
     private enum class Kind { HEADER, ITEM, NEW_PAGE }
@@ -182,8 +195,10 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
         graphics.fill(0, 0, this.width, this.height, 0x70000000)
         graphics.pose().popMatrix()
 
+        // A wheel dropped elsewhere (another screen, a config reload) falls back to the shared one.
+        if (wheel != null && !CommandWheelPages.hasOwnWheel(wheel!!)) wheel = null
         val f = frame()
-        val pages = CommandWheelPages.pages()
+        val pages = CommandWheelPages.pages(wheel)
         val accent = ModernGuiUtils.getAccentColor()
 
         ModernGuiUtils.drawPanelShadow(graphics, f.winX, f.winY, f.winW, f.winH, ModernGuiUtils.PANEL_RADIUS, 1.0f)
@@ -199,6 +214,8 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
 
         val hoverClose = mouseX in doneX(f)..(doneX(f) + DONE_W) && mouseY in doneY(f)..(doneY(f) + DONE_H)
         ModernGuiUtils.drawModernButton(graphics, this.font, doneX(f), doneY(f), DONE_W, DONE_H, "Done", hoverClose, false)
+
+        drawWheelRow(graphics, f, mouseX, mouseY)
 
         // The list: pages as sections, each command a row.
         ModernGuiUtils.drawRoundedPanel(graphics, f.listX, f.listY, f.listW, f.listH, ModernGuiUtils.WIDGET_RADIUS + 2,
@@ -312,6 +329,116 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
         ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text(glyph), x + SMALL_BTN / 2, y + (SMALL_BTN - 8) / 2, color)
     }
 
+    /** The wheels to pick from: the shared one, then every profile of this account with its own. */
+    private fun wheelChoices(): List<String?> = listOf<String?>(null) + CommandWheelPages.profileWheels()
+
+    private fun wheelLabel(): String = "Wheel: " + (wheel?.let { CommandWheelPages.profileName(it) } ?: "Shared")
+
+    /**
+     * The button on the right of the wheel row, or null when it has none: on a profile's wheel it
+     * removes that wheel, on the shared one it gives the profile in play a wheel of its own.
+     */
+    private fun wheelActionLabel(): String? {
+        val current = wheel
+        if (current != null) return if (System.currentTimeMillis() < removeArmedUntil) "Click Again to Remove" else "Remove Profile Wheel"
+        val profile = CommandWheelPages.currentProfileKey() ?: return null
+        if (CommandWheelPages.hasOwnWheel(profile)) return null
+        return "+ Own Wheel for " + CommandWheelPages.profileName(profile)
+    }
+
+    private fun wheelHint(): String = when {
+        wheel != null -> "Opens on ${CommandWheelPages.profileName(wheel!!)} instead of the shared wheel."
+        CommandWheelPages.currentProfileKey() == null -> "Join Skyblock to give a profile its own wheel."
+        else -> "Opens on every profile without its own wheel."
+    }
+
+    private fun wheelActionW(label: String): Int = GuiFont.width(this.font, label) + 20
+
+    /** The picker's width: its own, less whatever a long profile name on the right needs on a narrow window. */
+    private fun pickW(f: Frame): Int {
+        val action = wheelActionLabel() ?: return WHEEL_BTN_W
+        return min(WHEEL_BTN_W, f.listW - wheelActionW(action) - 6)
+    }
+
+    private fun drawWheelRow(graphics: GuiGraphicsExtractor, f: Frame, mouseX: Int, mouseY: Int) {
+        val y = f.wheelRowY
+        val pickW = pickW(f)
+        val hoverPick = mouseX in f.listX..(f.listX + pickW) && mouseY in y..(y + WHEEL_ROW_H)
+        ModernGuiUtils.drawModernButton(graphics, this.font, f.listX, y, pickW, WHEEL_ROW_H, wheelLabel(), hoverPick, wheel != null)
+
+        var hintRight = f.listX + f.listW
+        val action = wheelActionLabel()
+        if (action != null) {
+            val w = wheelActionW(action)
+            val x = f.listX + f.listW - w
+            val hover = mouseX in x..(x + w) && mouseY in y..(y + WHEEL_ROW_H)
+            if (wheel != null) {
+                drawDestructiveButton(graphics, x, y, w, action, hover)
+            } else {
+                ModernGuiUtils.drawModernButton(graphics, this.font, x, y, w, WHEEL_ROW_H, action, hover, false)
+            }
+            hintRight = x - 8
+        }
+
+        // Only where it fits whole; a cut-off sentence says less than none.
+        val hint = wheelHint()
+        val hintX = f.listX + pickW + 10
+        if (hintX + GuiFont.width(this.font, hint) <= hintRight) {
+            graphics.text(this.font, GuiFont.text(hint), hintX, y + (WHEEL_ROW_H - 8) / 2, ModernGuiUtils.COLOR_TEXT_DARK, false)
+        }
+    }
+
+    /** A destructive button in the look of the rows' remove button, red and white on hover. */
+    private fun drawDestructiveButton(graphics: GuiGraphicsExtractor, x: Int, y: Int, w: Int, label: String, hovered: Boolean) {
+        val bg = if (hovered) 0xFFDC2626.toInt() else 0x33DC2626
+        val border = if (hovered) 0xFFEF4444.toInt() else 0x88DC2626.toInt()
+        ModernGuiUtils.drawRoundedPanel(graphics, x, y, w, WHEEL_ROW_H, ModernGuiUtils.WIDGET_RADIUS, bg, border)
+        ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text(label), x + w / 2, y + (WHEEL_ROW_H - 8) / 2,
+            if (hovered) 0xFFFFFFFF.toInt() else 0xFFFCA5A5.toInt())
+    }
+
+    /** Switches the editor to another wheel and starts that one's list from the top. */
+    private fun showWheel(next: String?) {
+        wheel = next
+        removeArmedUntil = 0L
+        addTargetPage = -1
+        scrollY = 0.0
+        targetScrollY = 0.0
+    }
+
+    private fun clickWheelRow(f: Frame, mouseX: Int, mouseY: Int): Boolean {
+        val y = f.wheelRowY
+        if (mouseY !in y..(y + WHEEL_ROW_H)) return false
+        if (mouseX in f.listX..(f.listX + pickW(f))) {
+            val choices = wheelChoices()
+            if (choices.size > 1) {
+                playPloppSound()
+                showWheel(choices[(choices.indexOf(wheel) + 1) % choices.size])
+            }
+            return true
+        }
+        val action = wheelActionLabel() ?: return false
+        val w = wheelActionW(action)
+        val x = f.listX + f.listW - w
+        if (mouseX !in x..(x + w)) return false
+        playPloppSound()
+        val current = wheel
+        if (current != null) {
+            // Two clicks: a profile's whole list goes with it, and there is no undo.
+            if (System.currentTimeMillis() < removeArmedUntil) {
+                CommandWheelPages.removeProfileWheel(current)
+                showWheel(null)
+            } else {
+                removeArmedUntil = System.currentTimeMillis() + REMOVE_CONFIRM_MS
+            }
+        } else {
+            val profile = CommandWheelPages.currentProfileKey() ?: return true
+            CommandWheelPages.createProfileWheel(profile)
+            showWheel(profile)
+        }
+        return true
+    }
+
     private fun addTargetLabel(pageCount: Int): String = when {
         addTargetPage < 0 -> "Auto"
         addTargetPage >= pageCount -> "New page"
@@ -336,11 +463,16 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
         val mouseX = event.x().toInt()
         val mouseY = event.y().toInt()
         val f = frame()
-        val pages = CommandWheelPages.pages()
+        val pages = CommandWheelPages.pages(wheel)
 
         if (mouseX in doneX(f)..(doneX(f) + DONE_W) && mouseY in doneY(f)..(doneY(f) + DONE_H)) {
             playPloppSound()
             this.onClose()
+            return true
+        }
+
+        if (clickWheelRow(f, mouseX, mouseY)) {
+            inputFocused = false
             return true
         }
 
@@ -363,7 +495,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
             }
             if (mouseX in resetBtnX(f)..(resetBtnX(f) + RESET_W)) {
                 playPloppSound()
-                CommandWheelPages.reset()
+                CommandWheelPages.reset(wheel)
                 addTargetPage = -1
                 return true
             }
@@ -387,16 +519,16 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
                     val prevX = prevBtnX(rowX, rowW)
                     if (mouseX in delX..(delX + SMALL_BTN)) {
                         playPloppSound()
-                        CommandWheelPages.remove(row.page, row.index)
+                        CommandWheelPages.remove(wheel, row.page, row.index)
                         clampAddTarget()
                         return true
                     }
                     if (mouseX in nextX..(nextX + SMALL_BTN)) {
-                        if (CommandWheelPages.shiftToPage(row.page, row.index, 1)) playPloppSound()
+                        if (CommandWheelPages.shiftToPage(wheel, row.page, row.index, 1)) playPloppSound()
                         return true
                     }
                     if (mouseX in prevX..(prevX + SMALL_BTN)) {
-                        if (row.page > 0 && CommandWheelPages.shiftToPage(row.page, row.index, -1)) playPloppSound()
+                        if (row.page > 0 && CommandWheelPages.shiftToPage(wheel, row.page, row.index, -1)) playPloppSound()
                         return true
                     }
                 }
@@ -432,7 +564,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
                 // so hand it the index as it would have been before the removal.
                 var toIndex = dropIndex
                 if (dropPage == pressPage && dropIndex >= pressIndex) toIndex++
-                if (CommandWheelPages.move(pressPage, pressIndex, dropPage, toIndex)) playPloppSound()
+                if (CommandWheelPages.move(wheel, pressPage, pressIndex, dropPage, toIndex)) playPloppSound()
                 clampAddTarget()
             }
             pressPage = -1
@@ -445,7 +577,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
     }
 
     private fun clampAddTarget() {
-        val count = CommandWheelPages.pageCount()
+        val count = CommandWheelPages.pageCount(wheel)
         if (addTargetPage > count) addTargetPage = count
     }
 
@@ -454,12 +586,12 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
         if (trimmed.isEmpty() || trimmed == "/") return
         if (!trimmed.startsWith("/")) trimmed = "/$trimmed"
 
-        if (!CommandWheelPages.contains(trimmed)) {
+        if (!CommandWheelPages.contains(wheel, trimmed)) {
             playPloppSound()
             val wanted = if (addTargetPage < 0) null else addTargetPage
-            CommandWheelPages.add(trimmed, wanted)
+            CommandWheelPages.add(wheel, trimmed, wanted)
             // "New page" has been used up; the next command should join it rather than open another.
-            if (addTargetPage >= CommandWheelPages.pageCount()) addTargetPage = CommandWheelPages.pageCount() - 1
+            if (addTargetPage >= CommandWheelPages.pageCount(wheel)) addTargetPage = CommandWheelPages.pageCount(wheel) - 1
         }
         newCommandInput = "/"
     }
@@ -505,7 +637,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
 
     companion object {
         private const val WIN_W = 470
-        private const val WIN_H = 372
+        private const val WIN_H = 402
         private const val MIN_W = 300
         private const val MIN_H = 220
         /** Space kept free around the window, as the config screen keeps. */
@@ -518,6 +650,10 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(Component.li
         private const val PAGE_BTN_W = 84
         private const val ADD_W = 60
         private const val RESET_W = 60
+        private const val WHEEL_ROW_H = 22
+        private const val WHEEL_BTN_W = 130
+        /** How long Remove waits for its second click. */
+        private const val REMOVE_CONFIRM_MS = 3000L
 
         private const val PAGE_HEADER_H = 22
         private const val ITEM_H = 26

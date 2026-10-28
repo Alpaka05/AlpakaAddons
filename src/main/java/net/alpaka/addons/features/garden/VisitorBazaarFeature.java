@@ -24,10 +24,9 @@ import java.util.regex.Pattern;
  * the bazaar on a missing item instead of sending a click the server would only refuse, and copies
  * the amount still needed so it can be pasted into the bazaar's custom amount sign.
  *
- * Hypixel doesn't mark which of several required items is missing. An item the inventory already
- * holds enough of is skipped, which covers the usual case of buying the first item and coming
- * back; bazaar buys that went into a sack can't be seen, so clicking the same offer again moves on
- * to the next item instead.
+ * Hypixel doesn't mark which of several required items is missing, so the inventory is counted:
+ * the click opens the first item the inventory doesn't hold enough of, and only moves on to the next
+ * once that one is complete.
  */
 public final class VisitorBazaarFeature {
     static final String ACCEPT_OFFER = "Accept Offer";
@@ -44,10 +43,6 @@ public final class VisitorBazaarFeature {
     /** The item a click opens, and how many of it to buy. */
     record Pick(String item, int amount) {}
 
-    /** The offer last clicked and the item that click opened, so the next click moves on. */
-    private static List<Required> lastOffer = List.of();
-    private static String lastOpened = null;
-
     private VisitorBazaarFeature() {}
 
     public static void register() {
@@ -55,7 +50,7 @@ public final class VisitorBazaarFeature {
             if (!AlpakaConfig.instance.visitorBazaarEnabled) return;
             List<Required> offer = offer(stack);
             if (offer == null) return;
-            Pick pick = pick(offer, VisitorBazaarFeature::inInventory, offer.equals(lastOffer) ? lastOpened : null);
+            Pick pick = pick(offer, VisitorBazaarFeature::inInventory);
             // With several items the line says which one the click opens.
             String target = offer.size() > 1 ? ": " + pick.item() : "";
             lines.add(Component.literal("Click to Open Bazaar Page" + target).withStyle(ChatFormatting.YELLOW)
@@ -71,9 +66,7 @@ public final class VisitorBazaarFeature {
         if (!AlpakaConfig.instance.visitorBazaarEnabled || slot == null || !slot.hasItem()) return false;
         List<Required> offer = offer(slot.getItem());
         if (offer == null) return false;
-        Pick pick = pick(offer, VisitorBazaarFeature::inInventory, offer.equals(lastOffer) ? lastOpened : null);
-        lastOffer = offer;
-        lastOpened = pick.item();
+        Pick pick = pick(offer, VisitorBazaarFeature::inInventory);
         Minecraft.getInstance().keyboardHandler.setClipboard(Integer.toString(pick.amount()));
         Outbound.command("bz " + pick.item(), Outbound.Cause.MENU_CLICK);
         return true;
@@ -134,22 +127,17 @@ public final class VisitorBazaarFeature {
     }
 
     /**
-     * The item to open: of those the inventory doesn't hold enough of (all of them if it holds
-     * enough of every one), the one after {@code lastOpened}, or the first.
+     * The item to open: the first one the inventory doesn't hold enough of, with the amount still
+     * needed. If it holds enough of every one, the items are somewhere Hypixel counts but the
+     * inventory doesn't show, and the first item is opened with its full amount.
      */
-    static Pick pick(List<Required> offer, ToIntFunction<String> have, String lastOpened) {
-        List<Required> lacking = new ArrayList<>();
-        for (Required r : offer) if (have.applyAsInt(r.item()) < r.amount()) lacking.add(r);
-        List<Required> candidates = lacking.isEmpty() ? offer : lacking;
-        Required chosen = candidates.get(0);
-        for (int i = 0; i < candidates.size(); i++) {
-            if (candidates.get(i).item().equals(lastOpened)) {
-                chosen = candidates.get((i + 1) % candidates.size());
-                break;
-            }
+    static Pick pick(List<Required> offer, ToIntFunction<String> have) {
+        for (Required r : offer) {
+            int held = have.applyAsInt(r.item());
+            if (held < r.amount()) return new Pick(r.item(), r.amount() - held);
         }
-        int held = have.applyAsInt(chosen.item());
-        return new Pick(chosen.item(), held < chosen.amount() ? chosen.amount() - held : chosen.amount());
+        Required first = offer.get(0);
+        return new Pick(first.item(), first.amount());
     }
 
     private static String strip(String text) {

@@ -140,6 +140,8 @@ public final class ConfigTree {
             Map.entry("performance_hud_blur", "performance_hud_enabled"),
             Map.entry("performance_hud_smooth_font", "performance_hud_enabled"),
             Map.entry("inventory_hud_blur", "inventory_hud_enabled"),
+            Map.entry("dungeon_map_blur", "dungeon_map_enabled"),
+            Map.entry("dungeon_map_smooth_font", "dungeon_map_enabled"),
             Map.entry("notification_blur", "#Notification Customization"),
             Map.entry("notification_smooth_font", "#Notification Customization")
     );

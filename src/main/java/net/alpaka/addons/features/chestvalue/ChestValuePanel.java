@@ -260,13 +260,32 @@ public final class ChestValuePanel {
             if (custom == null) continue;
             Valuation v = value(custom);
             if (v.id() == null) continue;
+            int count = count(item, player);
+            if (count <= 0) continue;
             String name = SkyblockUtils.cleanColor(item.getHoverName().getString());
-            stacks.add(new Stack(i, v.id(), name, item.getCount(), v.each(), v.estimated(), v.market(), item.copy()));
-            heldNow.add(new Held(custom, item.getCount()));
+            stacks.add(new Stack(i, v.id(), name, count, v.each(), v.estimated(), v.market(), item.copy()));
+            heldNow.add(new Held(custom, count));
         }
         anyItems = any;
         summary = ChestValue.of(stacks, Sort.of(AlpakaConfig.instance.chestValueSort));
         if (baseline == null && !waiting()) baseline = List.copyOf(heldNow);
+    }
+
+    /**
+     * How many of the item a slot stands for: the stack's own count, or in a sack what its lore says
+     * is stored there. An empty sack line counts nothing.
+     */
+    private static int count(ItemStack item, boolean player) {
+        if (!player) {
+            ItemLore lore = item.get(DataComponents.LORE);
+            if (lore != null) {
+                List<String> lines = new ArrayList<>(lore.lines().size());
+                for (Component line : lore.lines()) lines.add(SkyblockUtils.cleanColor(line.getString()));
+                long stored = ChestValue.sackCount(lines);
+                if (stored >= 0) return (int) Math.min(stored, Integer.MAX_VALUE);
+            }
+        }
+        return item.getCount();
     }
 
     /** What the menu held when it opened, at today's prices. */

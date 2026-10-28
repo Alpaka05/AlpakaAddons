@@ -770,6 +770,12 @@ public class AlpakaConfig {
     public java.util.List<java.util.List<String>> commandWheelPages = null;
 
     /**
+     * Wheels of single Skyblock profiles, keyed "account uuid:profile", pages as above. A profile
+     * listed here opens its own wheel; every other one opens {@link #commandWheelPages}.
+     */
+    public java.util.Map<String, java.util.List<java.util.List<String>>> commandWheelProfilePages = new java.util.HashMap<>();
+
+    /**
      * Off: hold the wheel key to open the wheel, release it to run the aimed command. On: one press
      * opens it, a click runs a command, and pressing the key again closes it.
      */

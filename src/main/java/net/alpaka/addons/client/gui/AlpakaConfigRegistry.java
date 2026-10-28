@@ -2137,6 +2137,32 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.inventoryButtonsSkyblockOnly = v; AlpakaConfig.save(); },
                 "inventory buttons skyblock only hypixel"));
 
+        OPTIONS.add(new ConfigOption("inventory_buttons_style", "Button Style",
+                "How the buttons look: the Alpaka menu's dark tiles, vanilla's gray slots, or the icon alone.",
+                ConfigCategory.SOUND_MISC,
+                () -> (float) AlpakaConfig.instance.inventoryButtonsStyle,
+                v -> { AlpakaConfig.instance.inventoryButtonsStyle = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (net.alpaka.addons.features.inventorybuttons.InventoryButtonsFeature.STYLE_NAMES.length - 1),
+                val -> net.alpaka.addons.features.inventorybuttons.InventoryButtonsFeature.STYLE_NAMES[Math.round(val)],
+                "inventory buttons style look design alpaka vanilla icon only appearance theme")
+                .choices(net.alpaka.addons.features.inventorybuttons.InventoryButtonsFeature.STYLE_NAMES));
+
+        OPTIONS.add(ConfigOption.color("inventory_buttons_color", "Button Color",
+                "The tile behind each icon in the Alpaka style, and behind a hovered icon in Icon Only.",
+                ConfigCategory.SOUND_MISC,
+                c -> c.inventoryButtonsColor,
+                v -> { AlpakaConfig.instance.inventoryButtonsColor = v; AlpakaConfig.save(); },
+                "inventory buttons color colour background tile appearance"));
+
+        OPTIONS.add(new ConfigOption("inventory_buttons_rounding", "Corner Rounding",
+                "How round the corners of the Alpaka style's tiles are.",
+                ConfigCategory.SOUND_MISC,
+                () -> (float) AlpakaConfig.instance.inventoryButtonsRounding,
+                v -> { AlpakaConfig.instance.inventoryButtonsRounding = Math.round(v); AlpakaConfig.save(); },
+                0.0f, 9.0f,
+                val -> Math.round(val) + " px",
+                "inventory buttons corner rounding radius round square appearance"));
+
         OPTIONS.add(new ConfigOption("always_sprint", "Always Sprint",
                 "Walking forward sprints on its own, no sprint key needed.",
                 ConfigCategory.SOUND_MISC,

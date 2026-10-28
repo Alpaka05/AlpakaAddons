@@ -278,6 +278,28 @@ public final class DevScreenshotTour {
                 Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpen("Alpakaa", "INVENTORY"));
                 placeMouse(0.405, 0.667);
             }, () -> true, 60),
+            // The Farming and Mining pages of the Skills page, the pets and accessories still missing.
+            new Stop("profile-page-farming", () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenSkill("Alpakaa", "farming", false)), () -> true, 60),
+            new Stop("profile-page-farming-crops", () -> ((net.alpaka.addons.features.profile.ProfileDashboardScreen) screen()).devScroll(330),
+                    () -> true, 10),
+            new Stop("profile-page-farming-crop-tip", () -> placeMouse(0.45, 0.5), () -> true, 15),
+            new Stop("profile-page-farming-lower", () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenSkill("Alpakaa", "farming", true)), () -> true, 30),
+            new Stop("profile-page-mining", () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenSkill("Alpakaa", "mining", false)), () -> true, 30),
+            new Stop("profile-page-mining-middle", () -> ((net.alpaka.addons.features.profile.ProfileDashboardScreen) screen()).devScroll(330),
+                    () -> true, 10),
+            new Stop("profile-page-mining-lower", () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenSkill("Alpakaa", "mining", true)), () -> true, 30),
+            new Stop("profile-page-pets-missing", () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenScrolled("Alpakaa", "PETS")), () -> true, 120),
+            new Stop("profile-page-acc-missing", () -> {
+                net.alpaka.addons.features.profile.ProfileDashboardScreen.devInventoryTab("ACCESSORIES");
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenScrolled("Alpakaa", "INVENTORY"));
+                placeMouse(0.02, 0.02);
+            }, () -> true, 200),
+            new Stop("profile-page-acc-tooltip", () -> placeMouse(0.40, 0.55), () -> true, 20),
             new Stop(null, () -> ScreenshotPreview.devFreezeAt(-1.0f), () -> true, 5),
             // The Auction House and the Bazaar in the market screens, on chests filled locally.
             screen("market-ah-main", net.alpaka.addons.features.market.MarketPreview::auctionHouse),

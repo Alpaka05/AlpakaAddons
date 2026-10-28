@@ -103,8 +103,14 @@ public class ProfileDashboardScreen extends Screen {
 
     private final List<Hit> hits = new ArrayList<>();
     private final List<Runnable> overlays = new ArrayList<>();
+    /** Areas, mostly items, greyed out above the content: what the profile doesn't have yet. */
+    private final List<int[]> veils = new ArrayList<>();
+    private static final int VEIL = 0xA0131313;
     private final Scroll scroll = new Scroll();
     private Page scrolledPage = null;
+    private String scrolledDetail = null;
+    /** The skill whose own page the Skills page shows instead of all skills: "farming", "mining" or null. */
+    private String skillDetail = null;
     private String hoveredTip;
     private Object hoveredTipKey;
     private Object lastTipKey;
@@ -220,6 +226,7 @@ public class ProfileDashboardScreen extends Screen {
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         hits.clear();
         overlays.clear();
+        veils.clear();
         hoveredTip = null;
         hoveredTipKey = null;
         long now = System.currentTimeMillis();
@@ -247,14 +254,20 @@ public class ProfileDashboardScreen extends Screen {
         clipY = y + HEADER_H;
         clipW = w - SIDE_W - 1;
         clipH = h - HEADER_H - 4;
-        if (scrolledPage != page) {
+        if (scrolledPage != page || !java.util.Objects.equals(scrolledDetail, skillDetail)) {
             scrolledPage = page;
+            scrolledDetail = skillDetail;
             scroll.current = scroll.target = 0;
         }
         graphics.enableScissor(clipX, clipY, clipX + clipW, clipY + clipH);
         clipping = true;
         int top = clipY + PAD - scroll.offset();
         int bottom = drawContent(graphics, clipX + PAD + 2, top, clipW - 2 * PAD - 4, now);
+        if (!veils.isEmpty()) {
+            // Items are drawn above everything else of their layer, so the veils over them need one of their own.
+            graphics.nextStratum();
+            for (int[] v : veils) graphics.fill(v[0], v[1], v[0] + v[2], v[1] + v[3], VEIL);
+        }
         clipping = false;
         scroll.max = Math.max(0, bottom + scroll.offset() - clipY - clipH + PAD);
         if (devScrollToEnd) scroll.current = scroll.target = scroll.max;
@@ -276,7 +289,10 @@ public class ProfileDashboardScreen extends Screen {
         if (hoveredItem != null) {
             graphics.setComponentTooltipForNextFrame(this.font, InventoryItems.tooltip(hoveredItem), mouseX, mouseY);
             hoveredItem = null;
+        } else if (hoveredLines != null) {
+            graphics.setComponentTooltipForNextFrame(this.font, hoveredLines, mouseX, mouseY);
         }
+        hoveredLines = null;
         AlpakaStyle.endOpen(graphics, pushed);
     }
 
@@ -465,6 +481,7 @@ public class ProfileDashboardScreen extends Screen {
             hits.add(new Hit(rowX, rowY, rowW, rowH, () -> {
                 page = target;
                 lastPage = target;
+                skillDetail = null;
             }));
             rowY += rowH + 1;
         }
@@ -952,6 +969,8 @@ public class ProfileDashboardScreen extends Screen {
     }
 
     private int skills(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
+        if ("farming".equals(skillDetail)) return farming(graphics, d, x, y, w);
+        if ("mining".equals(skillDetail)) return mining(graphics, d, x, y, w);
         if (!d.skillsApi) return apiOff(graphics, "Skills", x, y, w);
         int maxed = 0;
         for (ProfileData.Level s : d.skills) if (s.maxed()) maxed++;
@@ -991,8 +1010,11 @@ public class ProfileDashboardScreen extends Screen {
             int tx = cx + 42;
             int tw = cw - 42 - 8;
             boolean isSelectedClass = prefix.equals(Metrics.CLASS) && l.id().equals(session.data.selectedClass);
+            // Farming and Mining open a page of their own, which the arrow promises.
+            boolean opens = prefix.equals(Metrics.SKILL) && SKILL_PAGES.contains(l.id());
             String name = l.name() + (isSelectedClass ? "  •" : "");
             text(graphics, name, tx, cy + 7, AlpakaStyle.TEXT_SOFT);
+            if (opens) text(graphics, "›", tx + textW(name) + 4, cy + 7, hover ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
             String level = l.maxed() ? "MAX " + l.level() : l.level() + " / " + l.maxLevel();
             text(graphics, level, tx + tw - textW(level), cy + 7, l.maxed() ? ink(0xFFFFC94D) : AlpakaStyle.TEXT);
             bar(graphics, tx, cy + 19, tw, 3, l.progress(), l.maxed() ? ink(0xFFFFC94D) : AlpakaStyle.accent());
@@ -1003,16 +1025,261 @@ public class ProfileDashboardScreen extends Screen {
                 String pace = "+" + Coins.compact(rate) + "/day";
                 text(graphics, pace, tx + tw - textW(pace), cy + 25, ink(ProfileChart.UP));
             }
-            hit(cx, cy, cw, ch, () -> chosen.put(page, metric));
+            String id = l.id();
+            hit(cx, cy, cw, ch, () -> {
+                chosen.put(page, metric);
+                if (opens) skillDetail = id;
+            });
             if (hover) {
                 String tipText = l.name() + ": " + Coins.full(Math.floor(l.xp())) + " XP in total.";
                 if (!l.maxed()) tipText += " " + Coins.full(Math.ceil(l.xpForNext() - l.xpCurrent())) + " XP to level " + (l.level() + 1) + ".";
                 if (isSelectedClass) tipText += " Your selected class.";
-                tip(metric, tipText + " Click for its graph.");
+                tip(metric, tipText + (opens ? " Click for the " + l.name() + " page." : " Click for its graph."));
             }
         }
         int rows = (levels.size() + cols - 1) / cols;
         return y + rows * (ch + 4) - 4;
+    }
+
+    // ---- Farming and Mining ---------------------------------------------------------------------
+
+    /** The skills that open a page of their own from the Skills page. */
+    private static final List<String> SKILL_PAGES = List.of("farming", "mining");
+
+    /** The Garden's crops: their key in Elite's garden data, their name, and how they look. */
+    private static final String[][] CROPS = {
+            {"wheat", "Wheat"}, {"carrot", "Carrot"}, {"potato", "Potato"}, {"pumpkin", "Pumpkin"},
+            {"melon", "Melon"}, {"mushroom", "Mushroom"}, {"cocoaBeans", "Cocoa Beans"}, {"cactus", "Cactus"},
+            {"sugarCane", "Sugar Cane"}, {"netherWart", "Nether Wart"}, {"sunflower", "Sunflower"},
+            {"moonflower", "Moonflower"}, {"wildRose", "Wild Rose"}};
+    private static final Map<String, Item> CROP_ICONS = new HashMap<>();
+    static {
+        CROP_ICONS.put("wheat", Items.WHEAT);
+        CROP_ICONS.put("carrot", Items.CARROT);
+        CROP_ICONS.put("potato", Items.POTATO);
+        CROP_ICONS.put("pumpkin", Items.PUMPKIN);
+        CROP_ICONS.put("melon", Items.MELON_SLICE);
+        CROP_ICONS.put("mushroom", Items.RED_MUSHROOM);
+        CROP_ICONS.put("cocoaBeans", Items.COCOA_BEANS);
+        CROP_ICONS.put("cactus", Items.CACTUS);
+        CROP_ICONS.put("sugarCane", Items.SUGAR_CANE);
+        CROP_ICONS.put("netherWart", Items.NETHER_WART);
+        CROP_ICONS.put("sunflower", Items.SUNFLOWER);
+        CROP_ICONS.put("moonflower", Items.BLUE_ORCHID);
+        CROP_ICONS.put("wildRose", Items.ROSE_BUSH);
+    }
+
+    /** The way back to all skills, and the page's name beside it. */
+    private int skillHeader(GuiGraphicsExtractor graphics, String title, int x, int y) {
+        String back = "‹ All Skills";
+        int cw = textW(back) + 14;
+        boolean hover = hover(x, y, cw, 15);
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, cw, 15, 7, hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW);
+        text(graphics, back, x + 7, y + 4, hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
+        hit(x, y, cw, 15, () -> skillDetail = null);
+        text(graphics, title, x + cw + 8, y + 4, AlpakaStyle.TEXT);
+        return y + 15 + 8;
+    }
+
+    private static ProfileData.Level skill(ProfileData d, String id) {
+        for (ProfileData.Level l : d.skills) if (l.id().equals(id)) return l;
+        return null;
+    }
+
+    private static Tile skillTile(ProfileData d, String id, String name) {
+        ProfileData.Level l = skill(d, id);
+        String value = l == null ? "—" : l.maxed() ? "MAX " + l.level() : String.valueOf(l.level());
+        String note = l == null || l.maxed() ? null : Math.round(l.progress() * 100) + "% to " + (l.level() + 1);
+        return new Tile(Metrics.SKILL + id, name, value, note);
+    }
+
+    private int farming(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
+        y = skillHeader(graphics, "Farming", x, y);
+        JsonElement r = d.raw;
+        List<Tile> tiles = new ArrayList<>();
+        tiles.add(skillTile(d, "farming", "Farming"));
+        tiles.add(new Tile(Metrics.FARMING_WEIGHT, "Farming Weight", Coins.full(Math.round(d.farmingWeight * 10) / 10.0), null));
+        double progress = Json.num(r, "garden.gardenProgress", 0);
+        tiles.add(new Tile(null, "Garden Level", Coins.full(Json.num(r, "garden.gardenLevel", 0)),
+                progress > 0 && progress < 1 ? Math.round(progress * 100) + "% to the next" : null));
+        tiles.add(new Tile(null, "Visitors Served", Coins.full(Json.num(r, "garden.completedVisitors", 0)),
+                Coins.full(Json.num(r, "garden.uniqueVisitors", 0)) + " different ones"));
+        y = tiles(graphics, tiles, x, y, w, 4) + 6;
+        String metric = metricFor(Page.SKILLS);
+        y = chartCard(graphics, metric, metricMaxLevel(d, metric), x, y, w, 120) + 6;
+        if (!Json.obj(r, "garden.crops").isEmpty()) y = crops(graphics, d, x, y, w) + 6;
+        return cards(graphics, farmingCards(d), x, y, w);
+    }
+
+    /** Every crop: its milestone, how much was farmed, its share of the weight and the best contest. */
+    private int crops(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
+        JsonElement r = d.raw;
+        int cols = w >= 540 ? 3 : w >= 340 ? 2 : 1;
+        int gap = 6;
+        int cw = (w - (cols - 1) * gap) / cols;
+        int ch = 42;
+        for (int i = 0; i < CROPS.length; i++) {
+            String key = CROPS[i][0];
+            String name = CROPS[i][1];
+            String plain = name.replace(" ", "");
+            int cx = x + (i % cols) * (cw + gap);
+            int cy = y + (i / cols) * (ch + 4);
+            boolean hover = hover(cx, cy, cw, ch);
+            ModernGuiUtils.drawRoundedRect(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
+            icon(graphics, CROP_ICONS.get(key), cx + 4, cy + 5, 2.0f);
+            int tx = cx + 42;
+            int tw = cw - 42 - 8;
+            int milestone = (int) Json.num(r, "garden.cropMilestoneLevels." + key, 0);
+            String level = "Milestone " + milestone;
+            text(graphics, AlpakaStyle.ellipsize(this.font, name, tw - textW(level) - 6), tx, cy + 7, AlpakaStyle.TEXT_SOFT);
+            text(graphics, level, tx + tw - textW(level), cy + 7, AlpakaStyle.TEXT);
+            double amount = Json.num(r, "garden.crops." + key, 0);
+            text(graphics, Coins.compact(amount), tx, cy + 19, AlpakaStyle.TEXT);
+            double weight = Json.num(r, "farmingWeight.cropWeight." + name, 0);
+            String wt = String.format(Locale.US, "%.1f weight", weight);
+            text(graphics, wt, tx + tw - textW(wt), cy + 19, AlpakaStyle.TEXT_MUTED);
+            double best = Json.num(r, "jacob.stats.personalBests." + plain, 0);
+            if (best > 0) text(graphics, "Best contest " + Coins.compact(best), tx, cy + 30, AlpakaStyle.TEXT_MUTED);
+            if (hover) {
+                StringBuilder tipText = new StringBuilder(name + ": " + Coins.full(amount) + " farmed.");
+                int upgrade = (int) Json.num(r, "garden.cropUpgrades." + key, 0);
+                tipText.append(" Crop Upgrade ").append(upgrade).append(" / 9.");
+                double contests = Json.num(r, "jacob.stats.crops." + plain + ".participations", 0);
+                if (contests > 0) {
+                    tipText.append(" ").append(Coins.full(contests)).append(contests == 1 ? " contest" : " contests");
+                    List<String> medals = new ArrayList<>();
+                    for (String medal : new String[] {"diamond", "platinum", "gold", "silver", "bronze"}) {
+                        int n = (int) Json.num(r, "jacob.stats.crops." + plain + ".medals." + medal, 0);
+                        if (n > 0) medals.add(n + " " + medal);
+                    }
+                    tipText.append(medals.isEmpty() ? "." : ": " + String.join(", ", medals) + ".");
+                }
+                if (best > 0) tipText.append(" Best contest: ").append(Coins.full(best)).append(".");
+                tip(CROPS[i], tipText.toString());
+            }
+        }
+        int rows = (CROPS.length + cols - 1) / cols;
+        return y + rows * (ch + 4) - 4;
+    }
+
+    private static List<Card> farmingCards(ProfileData d) {
+        JsonElement r = d.raw;
+        List<Card> cards = new ArrayList<>();
+
+        List<String[]> jacob = new ArrayList<>();
+        count(jacob, "Contests", Json.num(r, "jacob.participations", 0));
+        for (String medal : new String[] {"diamond", "platinum", "gold", "silver", "bronze"}) {
+            double earned = Json.num(r, "jacob.earnedMedals." + medal, 0);
+            if (earned > 0) jacob.add(row(ProfileData.title(medal) + " Medals", Coins.full(earned)));
+        }
+        count(jacob, "Crops With Gold", Json.num(r, "jacob.uniqueGoldMedals", 0));
+        jacob.add(row("Double Drops", (int) Json.num(r, "jacob.perks.doubleDrops", 0) + " / 15"));
+        jacob.add(row("Farming Level Cap", "+" + (int) Json.num(r, "jacob.perks.levelCap", 0) + " / 10"));
+        add(cards, "Jacob's Contests", jacob);
+
+        List<String[]> garden = new ArrayList<>();
+        int plots = Json.arr(r, "garden.plots").size();
+        if (plots > 0) garden.add(row("Plots Unlocked", plots + " / 24"));
+        count(garden, "Garden XP", Json.num(r, "garden.experience", 0));
+        count(garden, "Copper", Json.num(r, "unparsed.copper", 0));
+        count(garden, "Visitors Served", Json.num(r, "garden.completedVisitors", 0));
+        count(garden, "Different Visitors", Json.num(r, "garden.uniqueVisitors", 0));
+        add(cards, "Garden", garden);
+
+        List<String[]> composter = new ArrayList<>();
+        for (String[] up : new String[][] {{"speed", "Speed"}, {"multi_drop", "Multi Drop"}, {"fuel_cap", "Fuel Cap"},
+                {"organic_matter_cap", "Organic Matter Cap"}, {"cost_reduction", "Cost Reduction"}}) {
+            JsonElement level = Json.at(r, "garden.composter.upgrades." + up[0]);
+            if (level != null) composter.add(row(up[1], (int) Json.num(r, "garden.composter.upgrades." + up[0], 0) + " / 25"));
+        }
+        add(cards, "Composter", composter);
+
+        List<String[]> pests = new ArrayList<>();
+        double total = Json.sum(r, "farmingWeight.pests");
+        count(pests, "Total", total);
+        for (var e : Json.obj(r, "farmingWeight.pests").entrySet()) {
+            if (e.getValue().isJsonPrimitive() && e.getValue().getAsDouble() > 0) {
+                pests.add(row(ProfileData.title(e.getKey().replaceAll("([a-z])([A-Z])", "$1_$2")), Coins.full(e.getValue().getAsDouble())));
+            }
+        }
+        add(cards, "Pests Killed", pests);
+
+        List<String[]> bonus = new ArrayList<>();
+        for (var e : Json.obj(r, "farmingWeight.bonusWeight").entrySet()) {
+            if (e.getValue().isJsonPrimitive()) bonus.add(row(e.getKey(), String.format(Locale.US, "%.2f", e.getValue().getAsDouble())));
+        }
+        add(cards, "Bonus Weight", bonus);
+        return cards;
+    }
+
+    private int mining(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
+        y = skillHeader(graphics, "Mining", x, y);
+        JsonElement r = d.raw;
+        List<Tile> tiles = new ArrayList<>();
+        tiles.add(skillTile(d, "mining", "Mining"));
+        // Elite's Heart of the Mountain tier stays at 1 for profiles past Hypixel's skill tree
+        // rework; Peak of the Mountain is right for everyone.
+        if (Json.num(r, "stats.mining.experience", 0) > 0) {
+            tiles.add(new Tile(null, "Heart of the Mountain", "Tier " + (int) Json.num(r, "stats.mining.hotmLevel", 0), null));
+        } else {
+            tiles.add(new Tile(null, "Peak of the Mountain", (int) Json.num(r, "stats.mining.peakOfTheMountainLevel", 0) + " / 10", null));
+        }
+        tiles.add(new Tile(null, "Nucleus Runs", Coins.full(Json.num(r, "stats.mining.crystalNucleusRuns", 0)), null));
+        tiles.add(new Tile(null, "Commissions", "Milestone " + (int) Json.num(r, "stats.mining.commissionMilestone", 0), null));
+        y = tiles(graphics, tiles, x, y, w, 4) + 6;
+        String metric = metricFor(Page.SKILLS);
+        y = chartCard(graphics, metric, metricMaxLevel(d, metric), x, y, w, 120) + 6;
+        return cards(graphics, miningCards(d), x, y, w);
+    }
+
+    private static List<Card> miningCards(ProfileData d) {
+        JsonElement r = d.raw;
+        List<Card> cards = new ArrayList<>();
+
+        List<String[]> powder = new ArrayList<>();
+        for (String type : new String[] {"mithril", "gemstone", "glacite"}) {
+            double available = Json.num(r, "stats.mining.powder." + type + ".available");
+            if (!Double.isNaN(available)) powder.add(row(ProfileData.title(type), Coins.full(available)));
+        }
+        add(cards, "Powder", powder);
+
+        List<String[]> perks = new ArrayList<>();
+        List<Map.Entry<String, JsonElement>> nodes = new ArrayList<>(Json.obj(r, "stats.mining.nodes").entrySet());
+        nodes.sort((a, b) -> Double.compare(b.getValue().getAsDouble(), a.getValue().getAsDouble()));
+        for (var e : nodes) {
+            if (!e.getValue().isJsonPrimitive()) continue;
+            boolean on = !Json.obj(r, "stats.mining.nodeToggles").has(e.getKey()) || Json.bool(r, "stats.mining.nodeToggles." + e.getKey());
+            String perk = ProfileData.title(e.getKey()).replace(" Of The ", " of the ").replace(" Of ", " of ");
+            perks.add(row(perk, (on ? "" : "off · ") + Coins.full(e.getValue().getAsDouble())));
+        }
+        add(cards, "Heart of the Mountain", perks);
+
+        List<String[]> crystals = new ArrayList<>();
+        for (var e : Json.obj(r, "stats.mining.crystals").entrySet()) {
+            double placed = Json.num(e.getValue(), "totalPlaced", 0);
+            double found = Json.num(e.getValue(), "totalFound", 0);
+            String value = placed > 0 ? Coins.full(placed) + " placed" : found > 0 ? Coins.full(found) + " found" : "—";
+            crystals.add(row(ProfileData.title(e.getKey()), value));
+        }
+        add(cards, "Crystals", crystals);
+
+        List<String[]> glacite = new ArrayList<>();
+        count(glacite, "Mineshafts Entered", Json.num(r, "stats.mining.glacite.mineshaftsEntered", 0));
+        count(glacite, "Fossils Donated", Json.num(r, "stats.mining.glacite.fossilsDonatedCount", 0));
+        count(glacite, "Fossil Dust", Json.num(r, "stats.mining.glacite.fossilDust", 0));
+        for (var e : Json.obj(r, "stats.mining.glacite.corpsesLooted").entrySet()) {
+            if (e.getValue().isJsonPrimitive()) count(glacite, ProfileData.title(e.getKey()) + " Corpses", e.getValue().getAsDouble());
+        }
+        add(cards, "Glacite Tunnels", glacite);
+
+        List<String[]> more = new ArrayList<>();
+        double lastHollows = Json.num(r, "stats.mining.crystalHollowsLastAccess", 0);
+        if (lastHollows > 0) more.add(row("Crystal Hollows", Metrics.ago((long) lastHollows)));
+        String rock = Json.str(r, "stats.mining.rockMilestone.currentRarity");
+        if (rock != null) more.add(row("Rock Pet Milestone", ProfileData.title(rock)));
+        count(more, "Tokens Spent", Json.num(r, "stats.mining.tokensSpent", 0));
+        add(cards, "More", more);
+        return cards;
     }
 
     // ---- Dungeons -------------------------------------------------------------------------------
@@ -1328,6 +1595,54 @@ public class ProfileDashboardScreen extends Screen {
             }
         }
         int rows = (d.pets.size() + cols - 1) / cols;
+        y += rows * (ch + gap) - gap;
+        return missingPets(graphics, d, x, y + 12, w, cols, cw, ch, gap);
+    }
+
+    private ProfileData missingPetsFor;
+    private List<Missing.MissingPet> missingPets = List.of();
+
+    /** Every pet the profile has none of, greyed out, in the highest rarity it comes in. */
+    private int missingPets(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w, int cols, int cw, int ch, int gap) {
+        Missing.Neu neu = Missing.neu();
+        if (neu == null) {
+            text(graphics, "Missing Pets", x, y, AlpakaStyle.TEXT);
+            text(graphics, "Loading the list of every pet…", x, y + 14, AlpakaStyle.TEXT_MUTED);
+            return y + 22;
+        }
+        if (missingPetsFor != d) {
+            java.util.Set<String> owned = new java.util.HashSet<>();
+            for (ProfileData.Pet p : d.pets) owned.add(p.type());
+            missingPets = Missing.pets(owned, neu);
+            missingPetsFor = d;
+        }
+        List<Missing.MissingPet> missing = missingPets;
+        if (missing.isEmpty()) return y - 12;
+        text(graphics, "Missing Pets", x, y, AlpakaStyle.TEXT);
+        text(graphics, String.valueOf(missing.size()), x + textW("Missing Pets") + 6, y, AlpakaStyle.TEXT_MUTED);
+        y += 14;
+        for (int i = 0; i < missing.size(); i++) {
+            Missing.MissingPet m = missing.get(i);
+            int cx = x + (i % cols) * (cw + gap);
+            int cy = y + (i / cols) * (ch + gap);
+            if (cy > clipY + clipH + 40 || cy + ch < clipY - 40) continue;
+            boolean hover = hover(cx, cy, cw, ch);
+            ModernGuiUtils.drawRoundedRect(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW : AlpakaStyle.PANEL);
+            ItemStack head = PetIcons.icon(new ProfileData.Pet(m.type(), m.name(), m.tier(), 1, 100, 0, null, null, false, 0, 0));
+            if (head != null) {
+                stackIcon(graphics, head, cx + 4, cy + 4, 2.0f);
+                veils.add(new int[] {cx + 4, cy + 4, 32, 32});
+            } else {
+                ModernGuiUtils.drawRoundedRect(graphics, cx + 6, cy + 6, 28, 28, 4, AlpakaStyle.ROW);
+            }
+            int tx = cx + 42;
+            int tw = cw - 42 - 6;
+            text(graphics, AlpakaStyle.ellipsize(this.font, m.name(), tw), tx, cy + 9, AlpakaStyle.TEXT_MUTED);
+            String up = "Up to " + ProfileData.title(m.tier());
+            text(graphics, AlpakaStyle.ellipsize(this.font, up, tw), tx, cy + 21, MarketIcons.fade(ink(ProfileData.rarityColor(m.tier())), 0.55f));
+            if (hover) tip(m, "Not on this profile yet. Comes up to " + ProfileData.title(m.tier()) + ".");
+        }
+        int rows = (missing.size() + cols - 1) / cols;
         return y + rows * (ch + gap) - gap;
     }
 
@@ -1466,6 +1781,8 @@ public class ProfileDashboardScreen extends Screen {
     private static final int SECTION_W = 9 * SLOT + 16;
     /** The item under the mouse this frame, whose tooltip the game draws after it. */
     private JsonElement hoveredItem;
+    /** A tooltip in the game's own look, for things not from an inventory; null for none. */
+    private List<Component> hoveredLines;
 
     /** The backpacks the profile has, in the order of their slots in the Storage menu. */
     private static List<String> backpacks(ProfileData d) {
@@ -1504,7 +1821,7 @@ public class ProfileDashboardScreen extends Screen {
             case ENDER_CHEST -> pagedSections(graphics, "ender_chest", "Page", x, y, w);
             case BACKPACKS -> backpackSections(graphics, d, x, y, w);
             case WARDROBE -> wardrobe(graphics, d, x, y, w);
-            case ACCESSORIES -> pagedSections(graphics, "talisman_bag", "Page", x, y, w);
+            case ACCESSORIES -> accessories(graphics, x, pagedSections(graphics, "talisman_bag", "Page", x, y, w) + 12, w);
             case VAULT -> flow(graphics, List.of(new Section("Personal Vault", null, "personal_vault", range(0, slotsOf(d, "personal_vault")))), x, y, w);
             case BAGS -> {
                 List<Section> sections = new ArrayList<>();
@@ -1622,6 +1939,82 @@ public class ProfileDashboardScreen extends Screen {
         return y + h;
     }
 
+    /**
+     * Below the bag: the accessories still to get, and those owned only in a lower version, greyed
+     * out, most Magical Power first. They count from the bag and the inventory, as the game does.
+     */
+    private int accessories(GuiGraphicsExtractor graphics, int x, int y, int w) {
+        JsonElement bag = session.inventory("talisman_bag");
+        JsonElement inv = session.inventory("inventory");
+        Map<String, String> tiers = ItemIcons.accessories();
+        Missing.Neu neu = Missing.neu();
+        if (bag == null || inv == null || tiers == null || neu == null) {
+            text(graphics, "Missing Accessories", x, y, AlpakaStyle.TEXT);
+            text(graphics, "Loading…", x, y + 14, AlpakaStyle.TEXT_MUTED);
+            return y + 22;
+        }
+        if (gapsFromBag != bag || gapsFromInv != inv) {
+            java.util.Set<String> owned = new java.util.HashSet<>();
+            for (JsonElement source : List.of(bag, inv)) {
+                for (var e : Json.obj(source, "items").entrySet()) {
+                    String id = Json.str(e.getValue(), "skyblockId");
+                    if (id != null && tiers.containsKey(id)) owned.add(id);
+                }
+            }
+            accessoryGaps = Missing.accessories(owned, tiers, neu, ItemIcons::name);
+            gapsFromBag = bag;
+            gapsFromInv = inv;
+        }
+        List<Missing.Gap> gaps = accessoryGaps;
+        List<Missing.Gap> missing = new ArrayList<>();
+        List<Missing.Gap> upgrades = new ArrayList<>();
+        for (Missing.Gap g : gaps) (g.upgradeOf() == null ? missing : upgrades).add(g);
+        if (!upgrades.isEmpty()) y = gapCard(graphics, "Upgrades", upgrades, x, y, w) + 6;
+        if (!missing.isEmpty()) y = gapCard(graphics, "Missing", missing, x, y, w) + 6;
+        return y - 6;
+    }
+
+    private JsonElement gapsFromBag;
+    private JsonElement gapsFromInv;
+    private List<Missing.Gap> accessoryGaps = List.of();
+
+    /** A card of accessories to get, greyed out, with what they'd add in total. */
+    private int gapCard(GuiGraphicsExtractor graphics, String title, List<Missing.Gap> gaps, int x, int y, int w) {
+        int cols = Math.max(1, (w - 16) / SLOT);
+        int rows = (gaps.size() + cols - 1) / cols;
+        int h = 22 + rows * SLOT + 8;
+        card(graphics, x, y, w, h);
+        int power = 0;
+        for (Missing.Gap g : gaps) power += g.power();
+        text(graphics, title, x + 8, y + 7, AlpakaStyle.TEXT);
+        String sum = gaps.size() + " · +" + power + " Magical Power";
+        text(graphics, sum, x + w - 8 - textW(sum), y + 7, AlpakaStyle.TEXT_MUTED);
+        int gx = x + 8;
+        int gy = y + 22;
+        for (int i = 0; i < gaps.size(); i++) {
+            Missing.Gap g = gaps.get(i);
+            int sx = gx + (i % cols) * SLOT;
+            int sy = gy + (i / cols) * SLOT;
+            if (sy > clipY + clipH || sy + SLOT < clipY) continue;
+            boolean hover = hover(sx, sy, SLOT - 1, SLOT - 1);
+            ModernGuiUtils.drawRoundedRect(graphics, sx, sy, SLOT - 1, SLOT - 1, 2, hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.PANEL);
+            ItemStack stack = ItemIcons.forItem(g.id(), g.name());
+            if (!stack.isEmpty()) graphics.item(stack, sx, sy);
+            if (!hover) veils.add(new int[] {sx, sy, SLOT - 1, SLOT - 1});
+            if (hover) {
+                List<Component> lines = new ArrayList<>();
+                lines.add(Component.literal(g.name()).withColor(ProfileData.rarityColor(g.tier())));
+                lines.add(Component.literal("+" + g.power() + " Magical Power").withColor(0xFF55FF55));
+                if (g.upgradeOf() != null) {
+                    String from = ItemIcons.name(g.upgradeOf());
+                    lines.add(Component.literal("Upgrade of " + (from == null ? ProfileData.title(g.upgradeOf()) : from)).withColor(0xFFAAAAAA));
+                }
+                hoveredLines = lines;
+            }
+        }
+        return y + h;
+    }
+
     /** One inventory in pages of 45 slots, such as the Ender Chest; pages with nothing in them are left out. */
     private int pagedSections(GuiGraphicsExtractor graphics, String name, String label, int x, int y, int w) {
         JsonElement inv = session.inventory(name);
@@ -1718,8 +2111,11 @@ public class ProfileDashboardScreen extends Screen {
         tiles.add(new Tile(Metrics.KUUDRA, "Kuudra Runs", Coins.full(Json.num(d.raw, "stats.crimsonIsle.totalKuudraRuns", 0)), null));
         y = tiles(graphics, tiles, x, y, w, 4) + 6;
         y = chartCard(graphics, metricFor(Page.MORE), 0, x, y, w, 110) + 6;
+        return cards(graphics, moreCards(d), x, y, w);
+    }
 
-        List<Card> cards = moreCards(d);
+    /** Cards of rows, each into the shortest of up to three columns. */
+    private int cards(GuiGraphicsExtractor graphics, List<Card> cards, int x, int y, int w) {
         int cols = w >= 540 ? 3 : w >= 340 ? 2 : 1;
         int gap = 6;
         int cw = (w - (cols - 1) * gap) / cols;
@@ -2006,6 +2402,7 @@ public class ProfileDashboardScreen extends Screen {
         chosen.clear();
         breakdownFor = null;
         collectionsData = null;
+        skillDetail = null;
     }
 
     // ---- Screenshot tour ------------------------------------------------------------------------
@@ -2033,6 +2430,20 @@ public class ProfileDashboardScreen extends Screen {
         ProfileDashboardScreen screen = devOpen(player, page);
         screen.devScrollToEnd = true;
         return screen;
+    }
+
+    /** For the screenshot tour: the Farming or Mining page of the Skills page, at the top or the end. */
+    public static ProfileDashboardScreen devOpenSkill(String player, String skill, boolean scrolled) {
+        ProfileDashboardScreen screen = devOpen(player, "SKILLS");
+        screen.skillDetail = skill;
+        screen.chosen.put(Page.SKILLS, Metrics.SKILL + skill);
+        screen.devScrollToEnd = scrolled;
+        return screen;
+    }
+
+    /** For the screenshot tour: scrolls the page down by this many pixels. */
+    public void devScroll(int pixels) {
+        scroll.current = scroll.target = Math.min(scroll.max, scroll.target + pixels);
     }
 
     private boolean devScrollToEnd;

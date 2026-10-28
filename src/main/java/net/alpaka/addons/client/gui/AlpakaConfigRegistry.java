@@ -2037,7 +2037,7 @@ public class AlpakaConfigRegistry {
                 "auction house ah hotkeys back go back return backspace"));
 
         OPTIONS.add(ConfigOption.keybind("auction_house_search_key", "Search Key",
-                "Opens the search, in addition to / and Ctrl+F. Unbound by default.",
+                "An extra key that opens the search. / and Ctrl+F always open it too. Unbound by default.",
                 ConfigCategory.SKYBLOCK,
                 () -> net.alpaka.addons.features.market.MarketKeys.AUCTION_HOUSE.search(),
                 "auction house ah hotkeys search find query slash"));
@@ -2087,7 +2087,7 @@ public class AlpakaConfigRegistry {
                 "bazaar bz hotkeys back go back return backspace"));
 
         OPTIONS.add(ConfigOption.keybind("bazaar_search_key", "Search Key",
-                "Opens the search, in addition to / and Ctrl+F. Unbound by default.",
+                "An extra key that opens the search. / and Ctrl+F always open it too. Unbound by default.",
                 ConfigCategory.SKYBLOCK,
                 () -> net.alpaka.addons.features.market.MarketKeys.BAZAAR.search(),
                 "bazaar bz hotkeys search find query slash"));

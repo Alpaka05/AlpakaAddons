@@ -1330,12 +1330,6 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.dungeonMapTextColor = v; AlpakaConfig.save(); },
                 "dungeon map color text"));
 
-        OPTIONS.add(new ConfigOption("dungeon_map_smooth_font", "Smooth Font",
-                "Writes everything on the map in the menu font instead of Minecraft's pixel font.", ConfigCategory.DUNGEON,
-                () -> AlpakaConfig.instance.dungeonMapSmoothFont,
-                v -> { AlpakaConfig.instance.dungeonMapSmoothFont = v; AlpakaConfig.save(); },
-                "dungeon map smooth font text menu font"));
-
         OPTIONS.add(new ConfigOption("dungeon_map_background", "Show Background",
                 "A panel behind the map. Off leaves it fully transparent.", ConfigCategory.DUNGEON,
                 () -> AlpakaConfig.instance.dungeonMapBackground,
@@ -1347,12 +1341,6 @@ public class AlpakaConfigRegistry {
                 c -> c.dungeonMapBackgroundTint,
                 v -> { AlpakaConfig.instance.dungeonMapBackgroundTint = v; AlpakaConfig.save(); },
                 "dungeon map color background opacity"));
-
-        OPTIONS.add(new ConfigOption("dungeon_map_blur", "Blur Background",
-                "Blurs the world behind the background panel.", ConfigCategory.DUNGEON,
-                () -> AlpakaConfig.instance.dungeonMapBlur,
-                v -> { AlpakaConfig.instance.dungeonMapBlur = v; AlpakaConfig.save(); },
-                "dungeon map blur background"));
 
         OPTIONS.add(new ConfigOption("dungeon_map_frame", "Show Frame",
                 "Draws a two-color gradient frame, like the Inventory HUD.", ConfigCategory.DUNGEON,
@@ -3079,6 +3067,10 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.notificationBlur, v -> AlpakaConfig.instance.notificationBlur = v);
         styleToggle("notification_smooth_font", "Smooth Font", ConfigCategory.GENERAL, false,
                 () -> AlpakaConfig.instance.notificationSmoothFont, v -> AlpakaConfig.instance.notificationSmoothFont = v);
+        styleToggle("dungeon_map_blur", "Blur", ConfigCategory.DUNGEON, true,
+                () -> AlpakaConfig.instance.dungeonMapBlur, v -> AlpakaConfig.instance.dungeonMapBlur = v);
+        styleToggle("dungeon_map_smooth_font", "Smooth Font", ConfigCategory.DUNGEON, false,
+                () -> AlpakaConfig.instance.dungeonMapSmoothFont, v -> AlpakaConfig.instance.dungeonMapSmoothFont = v);
 
         styleToggle("custom_tab_blur", "Blur", ConfigCategory.VISUALS, true,
                 () -> AlpakaConfig.instance.customTabBlur, v -> AlpakaConfig.instance.customTabBlur = v);

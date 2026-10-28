@@ -274,8 +274,9 @@ object DungeonMapRenderer {
         }
     }
 
-    /** The menu font with Smooth Font on, else Minecraft's own. */
-    private fun textStyle(): Style = if (AlpakaConfig.instance.dungeonMapSmoothFont) GuiFont.style() else Style.EMPTY
+    /** The menu font with Smooth Font on here and under HUD Style, else Minecraft's own. */
+    private fun textStyle(): Style =
+        if (AlpakaConfig.instance.smoothOn(AlpakaConfig.instance.dungeonMapSmoothFont)) GuiFont.style() else Style.EMPTY
 
     private fun textWidth(font: Font, text: String, style: Style) =
         if (style.isEmpty) font.width(text) else font.width(FormattedText.of(text, style))

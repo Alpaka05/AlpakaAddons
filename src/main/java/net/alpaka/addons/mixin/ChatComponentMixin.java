@@ -22,6 +22,7 @@ import net.alpaka.addons.features.chat.CompactChatFeature;
 import net.alpaka.addons.features.chat.ScreenshotMessageFeature;
 import net.alpaka.addons.features.chat.SmoothChatFeature;
 import net.alpaka.addons.features.guild.GuildPrefixFormatter;
+import net.alpaka.addons.features.blaze.CleanBlazeFeature;
 import net.alpaka.addons.features.slayer.SlayerChatFilter;
 import net.alpaka.addons.features.slayer.SlayerDropTracker;
 import net.alpaka.addons.utils.AlpakaPerf;
@@ -170,7 +171,8 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
         // downstream of every listener, so the message is kept out of the visible log while the
         // slayer tracking that reads it still sees it.
         if (SlayerDropTracker.shouldHideDropMessage(component)
-                || SlayerChatFilter.shouldCancelChatMessage(component.getString())) {
+                || SlayerChatFilter.shouldCancelChatMessage(component.getString())
+                || CleanBlazeFeature.shouldHideChat(component.getString())) {
             ci.cancel();
             return;
         }

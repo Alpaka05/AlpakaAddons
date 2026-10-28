@@ -84,8 +84,14 @@ object SlayerBossEntityTracker {
      */
     private const val UNOWNED_RADIUS_SQ = 100.0
 
-    /** The line Hypixel puts above a mob that a player summoned. */
+    /** The line Hypixel used to put above a mob that a player summoned: "Spawned by: <player>". */
     private const val OWNER_MARKER = "Spawned by:"
+
+    /**
+     * The line Hypixel puts there since its update of 2026-10-28: "<player>'s SLAYER BOSS". It sits
+     * over the Blaze slayer's demons as well, not only over the boss.
+     */
+    private const val OWNER_SUFFIX = "'s SLAYER BOSS"
 
     /** The heart Hypixel ends a mob name tag's health figure with. */
     private const val HEALTH_MARKER = "❤"
@@ -389,14 +395,9 @@ object SlayerBossEntityTracker {
             // in a slayer area is a floating damage number, and stripping each of those per tick
             // just to find out it is a damage number would be the whole cost of this search. Both
             // markers survive Hypixel's habit of dropping formatting codes mid-word this way.
-            if (SkyblockUtils.containsIgnoringFormatting(raw, OWNER_MARKER)) {
-                val name = SkyblockUtils.cleanColor(raw)
-                val ownerAt = name.indexOf(OWNER_MARKER)
-                if (ownerAt >= 0 && namesPlayer(name.substring(ownerAt + OWNER_MARKER.length), playerName)) {
-                    owned.add(stand)
-                } else {
-                    foreign.add(stand)
-                }
+            val owner = ownerLine(raw, playerName)
+            if (owner != null) {
+                if (owner) owned.add(stand) else foreign.add(stand)
             } else if (SkyblockUtils.containsIgnoringFormatting(raw, HEALTH_MARKER)
                 || (type == SlayerType.ENDERMAN && SkyblockUtils.containsIgnoringFormatting(raw, HITS_MARKER))
             ) {
@@ -441,7 +442,29 @@ object SlayerBossEntityTracker {
     }
 
     /**
-     * Whether the text after "Spawned by:" names this player.
+     * Whether a raw name tag is an owner line, and whose: true when it names [playerName], false when
+     * it names somebody else, null when it is no owner line at all. Reads both the old
+     * "Spawned by: <player>" and the current "<player>'s SLAYER BOSS".
+     *
+     * Checked on the raw name first, before anything is stripped; see [findBossNameTag].
+     */
+    @JvmStatic
+    fun ownerLine(raw: String, playerName: String): Boolean? {
+        if (SkyblockUtils.containsIgnoringFormatting(raw, OWNER_SUFFIX)) {
+            val name = SkyblockUtils.cleanColor(raw)
+            val at = name.indexOf(OWNER_SUFFIX)
+            return at >= 0 && namesPlayer(name.substring(0, at), playerName)
+        }
+        if (SkyblockUtils.containsIgnoringFormatting(raw, OWNER_MARKER)) {
+            val name = SkyblockUtils.cleanColor(raw)
+            val at = name.indexOf(OWNER_MARKER)
+            return at >= 0 && namesPlayer(name.substring(at + OWNER_MARKER.length), playerName)
+        }
+        return null
+    }
+
+    /**
+     * Whether the text next to the owner marker names this player.
      *
      * Compared token by token rather than by [String.contains] so that a rank prefix in front of the
      * name is tolerated while another player whose name merely contains ours is not.

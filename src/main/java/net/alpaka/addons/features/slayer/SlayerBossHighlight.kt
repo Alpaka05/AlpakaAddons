@@ -15,23 +15,23 @@ import net.minecraft.client.renderer.rendertype.RenderTypes
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.decoration.ArmorStand
-import net.minecraft.world.entity.monster.skeleton.WitherSkeleton
-import net.minecraft.world.entity.monster.zombie.ZombifiedPiglin
+import net.minecraft.world.entity.player.Player
 import net.minecraft.world.phys.AABB
 
 /**
  * Highlights the player's own slayer boss, as a glowing outline, a box around its hitbox or a color
  * laid over its model.
  *
- * The boss is the one [SlayerBossEntityTracker] already follows, so another player's boss next to
- * ours is never highlighted. On the Blaze slayer the highlight takes the color of the boss's current
+ * Only mobs with this player's owner line over them count ("<player>'s SLAYER BOSS", see
+ * [SlayerBossEntityTracker.ownerLine]), plus the boss [SlayerBossEntityTracker] already follows, so
+ * another player's boss next to ours is never highlighted. On the Blaze slayer the highlight takes the color of the boss's current
  * Hellion Shield attunement, which is the dagger attunement it has to be hit with. When the
  * Demonlord splits into its two demons it turns immune; then it loses the highlight and only the
  * demon that can be hit right now carries one, in that demon's attunement color.
  *
  * Attunements are read the way Skyblocker's `AttunementColors` reads them: Hypixel puts the word
- * (`ASHEN ♨8`, `IMMUNE`, ...) on a name tag stacked over the mob. Nothing is scanned beyond the
- * boss's own surroundings, and only while the sidebar says our Blaze boss is up.
+ * (`ASHEN ♨8`, `IMMUNE`, ...) on a name tag stacked over the mob. Nothing is searched for outside
+ * a boss fight of ours, and then only the name tags around the player, twice a second.
  */
 object SlayerBossHighlight {
 
@@ -44,10 +44,22 @@ object SlayerBossHighlight {
     private const val STYLE_OVERLAY = 2
 
     /**
-     * How far from the Demonlord its demons may stand, in blocks. They appear next to it and the
-     * fight stays in one arena, so this only has to keep another player's demons out.
+     * How far from the player an owner line is looked for, in blocks. The boss and its demons stay
+     * close to the player who fights them.
      */
-    private const val DEMON_RADIUS = 16.0
+    private const val OWNER_SEARCH_RADIUS = 16.0
+
+    /**
+     * How often the owner lines are looked for, in ticks. Between searches the mobs found are
+     * followed by id, which costs nothing; a demon that appears is picked up within this.
+     */
+    private const val RESCAN_TICKS = 10
+
+    /** How far below its owner line a mob may stand, in blocks. */
+    private const val MOB_BELOW = 4.0
+
+    /** How strongly the overlay lifts a light color towards white, which a tint alone cannot do. */
+    private const val OVERLAY_WHITE_LIFT = 0.6f
 
     /** How far above a mob its name tag stack reaches, in blocks. */
     private const val TAG_STACK_HEIGHT = 3.0
@@ -72,6 +84,12 @@ object SlayerBossHighlight {
     /** Marks a name tag that says the mob cannot be hit right now. */
     private val IMMUNE = Any()
 
+    /** Ids of the mobs found under this player's owner lines by the last search. */
+    private val ownedMobIds = ArrayList<Int>()
+
+    /** Ticks until the owner lines are searched again. */
+    private var rescanIn = 0
+
     /** Entity id to ARGB highlight color, for this tick. */
     private val targets = HashMap<Int, Int>()
 
@@ -95,31 +113,82 @@ object SlayerBossHighlight {
     private fun tick(mc: Minecraft) {
         targets.clear()
         val cfg = AlpakaConfig.instance
-        if (!cfg.slayerBossHighlightEnabled || !SlayerQuestDetector.inBossFight) return
+        if (!cfg.slayerBossHighlightEnabled || !SlayerQuestDetector.inBossFight) {
+            ownedMobIds.clear()
+            rescanIn = 0
+            return
+        }
         val level = mc.level ?: return
+        val player = mc.player ?: return
         if (!SkyblockUtils.isOnSkyblock()) return
-        val boss = SlayerBossEntityTracker.bossMob(level) ?: return
         style = cfg.slayerBossHighlightStyle.coerceIn(STYLE_OUTLINE, STYLE_OVERLAY)
         val color = cfg.slayerBossHighlightColor
 
+        if (--rescanIn <= 0) {
+            rescanIn = RESCAN_TICKS
+            rescanOwned(level, player)
+        }
+
+        val mobs = LinkedHashSet<LivingEntity>()
+        SlayerBossEntityTracker.bossMob(level)?.let { mobs.add(it) }
+        for (id in ownedMobIds) {
+            val mob = level.getEntity(id) as? LivingEntity ?: continue
+            if (!mob.isRemoved && mob.isAlive) mobs.add(mob)
+        }
+        if (mobs.isEmpty()) return
+
         if (SlayerQuestDetector.currentOrRecent() != SlayerType.BLAZE) {
-            targets[boss.id] = color
+            for (mob in mobs) targets[mob.id] = color
             return
         }
-
-        // An immune Demonlord is mid-split; the demons are what can be hit.
-        val bossTag = readAttunement(level, boss)
-        if (bossTag != IMMUNE) targets[boss.id] = attunementColor(bossTag, color, cfg)
-
-        val demons = level.getEntitiesOfClass(LivingEntity::class.java, boss.boundingBox.inflate(DEMON_RADIUS)) {
-            it is WitherSkeleton || it is ZombifiedPiglin
-        }
-        for (demon in demons) {
-            // A wither skeleton or pigman without an attunement over it is not a demon at all.
-            val tag = readAttunement(level, demon) ?: continue
+        for (mob in mobs) {
+            // An immune Demonlord is mid-split, and of the two demons only one can be hit at a
+            // time; whatever says IMMUNE is not worth looking at right now.
+            val tag = readAttunement(level, mob)
             if (tag == IMMUNE) continue
-            targets[demon.id] = attunementColor(tag, color, cfg)
+            targets[mob.id] = attunementColor(tag, color, cfg)
         }
+    }
+
+    /**
+     * Finds every mob with this player's owner line over it: the boss, and on the Blaze slayer its
+     * demons, which carry "<player>'s SLAYER BOSS" as well since Hypixel's update of 2026-10-28.
+     */
+    private fun rescanOwned(level: ClientLevel, player: Player) {
+        ownedMobIds.clear()
+        val playerName = player.gameProfile?.name ?: return
+        val stands = level.getEntitiesOfClass(ArmorStand::class.java, player.boundingBox.inflate(OWNER_SEARCH_RADIUS)) {
+            it.hasCustomName()
+        }
+        for (stand in stands) {
+            val raw = stand.customName?.string ?: continue
+            if (SlayerBossEntityTracker.ownerLine(raw, playerName) != true) continue
+            mobUnder(level, stand, player)?.let { ownedMobIds.add(it.id) }
+        }
+    }
+
+    /**
+     * The mob an owner line floats over. Hypixel numbers a mob's name tag stack straight after the
+     * mob, so the few ids below the line are tried first; the nearest mob underneath otherwise.
+     */
+    private fun mobUnder(level: ClientLevel, stand: ArmorStand, player: Player): LivingEntity? {
+        val below = AABB(stand.x - TAG_SLACK * 2, stand.y - MOB_BELOW, stand.z - TAG_SLACK * 2,
+            stand.x + TAG_SLACK * 2, stand.y, stand.z + TAG_SLACK * 2)
+        for (offset in 1..3) {
+            val mob = level.getEntity(stand.id - offset) as? LivingEntity ?: continue
+            if (mob is ArmorStand || mob === player) continue
+            if (mob.boundingBox.intersects(below)) return mob
+        }
+        var best: LivingEntity? = null
+        var bestDistance = Double.MAX_VALUE
+        for (mob in level.getEntitiesOfClass(LivingEntity::class.java, below) { it !is ArmorStand && it !== player }) {
+            val distance = mob.distanceToSqr(stand)
+            if (distance < bestDistance) {
+                bestDistance = distance
+                best = mob
+            }
+        }
+        return best
     }
 
     /**
@@ -161,26 +230,29 @@ object SlayerBossHighlight {
 
     /**
      * Called from LivingEntityRendererMixin once vanilla has extracted a mob's render state: notes
-     * the overlay tint on the state, where the model is drawn from later in the frame.
+     * the overlay on the state, where the model is drawn from later in the frame.
+     *
+     * The model tint multiplies the texture, so on its own it can only darken: white, the Spirit
+     * attunement, changed nothing at all. The white flash vanilla uses for a creeper about to blow
+     * lifts the model towards white instead, so a light color gets that on top, in proportion to
+     * how light it is.
      */
     @JvmStatic
     fun applyOverlay(entity: Entity, state: BossHighlightRenderState) {
-        state.`alpaka$setHighlightTint`(overlayTint(entity))
-    }
-
-    /**
-     * The overlay color for a highlighted entity: the color mixed into white by its alpha, since
-     * the model tint multiplies the texture. 0 when the entity is not highlighted with an overlay.
-     */
-    private fun overlayTint(entity: Entity): Int {
-        if (style != STYLE_OVERLAY) return 0
-        val color = colorOf(entity) ?: return 0
+        val color = if (style == STYLE_OVERLAY) colorOf(entity) else null
+        if (color == null) {
+            state.`alpaka$setHighlight`(0, 0.0f)
+            return
+        }
         val strength = (color ushr 24 and 0xFF) / 255.0f * OVERLAY_MAX
         fun mix(shift: Int): Int {
             val channel = color ushr shift and 0xFF
             return (255 + (channel - 255) * strength).toInt().coerceIn(0, 255) shl shift
         }
-        return 0xFF000000.toInt() or mix(16) or mix(8) or mix(0)
+        val tint = 0xFF000000.toInt() or mix(16) or mix(8) or mix(0)
+        val luminance = (0.299f * (color ushr 16 and 0xFF) + 0.587f * (color ushr 8 and 0xFF) +
+            0.114f * (color and 0xFF)) / 255.0f
+        state.`alpaka$setHighlight`(tint, strength * luminance * OVERLAY_WHITE_LIFT)
     }
 
     private fun submitHitboxes(context: LevelRenderContext) {

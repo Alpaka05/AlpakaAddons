@@ -12,13 +12,22 @@ public class LivingEntityRenderStateMixin implements BossHighlightRenderState {
     @Unique
     private int alpaka$highlightTint;
 
+    @Unique
+    private float alpaka$highlightWhite;
+
     @Override
     public int alpaka$getHighlightTint() {
         return alpaka$highlightTint;
     }
 
     @Override
-    public void alpaka$setHighlightTint(int tint) {
+    public float alpaka$getHighlightWhite() {
+        return alpaka$highlightWhite;
+    }
+
+    @Override
+    public void alpaka$setHighlight(int tint, float white) {
         this.alpaka$highlightTint = tint;
+        this.alpaka$highlightWhite = white;
     }
 }

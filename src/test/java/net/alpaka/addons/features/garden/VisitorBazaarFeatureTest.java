@@ -52,24 +52,29 @@ class VisitorBazaarFeatureTest {
 
     @Test
     void opensTheFirstItemAtFirst() {
-        assertEquals(new Pick("Enchanted Hay Bale", 1280), VisitorBazaarFeature.pick(TWO, item -> 0, null));
+        assertEquals(new Pick("Enchanted Hay Bale", 1280), VisitorBazaarFeature.pick(TWO, item -> 0));
     }
 
     @Test
     void skipsAnItemTheInventoryHoldsEnoughOf() {
         Map<String, Integer> held = Map.of("Enchanted Hay Bale", 1280);
-        assertEquals(new Pick("Box of Seeds", 3), VisitorBazaarFeature.pick(TWO, item -> held.getOrDefault(item, 0), null));
+        assertEquals(new Pick("Box of Seeds", 3), VisitorBazaarFeature.pick(TWO, item -> held.getOrDefault(item, 0)));
     }
 
     @Test
     void copiesOnlyWhatIsStillNeeded() {
         Map<String, Integer> held = Map.of("Enchanted Hay Bale", 1000);
-        assertEquals(new Pick("Enchanted Hay Bale", 280), VisitorBazaarFeature.pick(TWO, item -> held.getOrDefault(item, 0), null));
+        assertEquals(new Pick("Enchanted Hay Bale", 280), VisitorBazaarFeature.pick(TWO, item -> held.getOrDefault(item, 0)));
     }
 
     @Test
-    void clickingAgainMovesOnWhenTheInventoryShowsNothing() {
-        assertEquals(new Pick("Box of Seeds", 3), VisitorBazaarFeature.pick(TWO, item -> 0, "Enchanted Hay Bale"));
-        assertEquals(new Pick("Enchanted Hay Bale", 1280), VisitorBazaarFeature.pick(TWO, item -> 0, "Box of Seeds"));
+    void staysOnTheFirstItemUntilTheInventoryHoldsEnough() {
+        Map<String, Integer> held = Map.of("Enchanted Hay Bale", 1279);
+        assertEquals(new Pick("Enchanted Hay Bale", 1), VisitorBazaarFeature.pick(TWO, item -> held.getOrDefault(item, 0)));
+    }
+
+    @Test
+    void opensTheFirstItemWhenTheInventoryHoldsEverything() {
+        assertEquals(new Pick("Enchanted Hay Bale", 1280), VisitorBazaarFeature.pick(TWO, item -> 5000));
     }
 }

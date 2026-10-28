@@ -177,6 +177,8 @@ public class AlpakaConfig {
     public float containerBgOpacity = 0.75f;
     public boolean containerBgFadeInEnabled = true;
     public int containerBgFadeInDurationMs = 250;
+    /** Hides the potion effect list vanilla draws next to the inventory. */
+    public boolean hideInventoryEffects = false;
     /**
      * Clean Blaze, only on SkyBlock in the Blaze slayer's zones. The fields after it pick what it
      * hides.
@@ -1183,6 +1185,7 @@ public class AlpakaConfig {
         this.fullbrightEnabled = false;
         this.inventorySnowEnabled = false;
         this.containerBgFadeInEnabled = false;
+        this.hideInventoryEffects = false;
         this.cleanBlazeEnabled = false;
         this.blazeFirePitsEnabled = false;
         this.hideSlayerChatMessages = false;

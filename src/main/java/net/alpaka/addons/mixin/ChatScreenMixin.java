@@ -200,22 +200,6 @@ public class ChatScreenMixin {
     }
 
     /**
-     * A typed command whose first word is a Command Shortcuts alias goes out as what the alias
-     * stands for, with whatever followed it. The chat history keeps it as typed.
-     */
-    @Inject(method = "handleChatInput", at = @At("HEAD"), cancellable = true)
-    private void alpaka$expandCommandAlias(String message, boolean addToRecent, CallbackInfo ci) {
-        ChatScreen self = (ChatScreen) (Object) this;
-        String normalized = self.normalizeChatMessage(message);
-        if (!normalized.startsWith("/")) return;
-        if (!net.alpaka.addons.features.shortcuts.CommandShortcuts.expandTyped(normalized.substring(1))) return;
-        if (addToRecent) {
-            Minecraft.getInstance().gui.hud.getChat().addRecentChat(normalized);
-        }
-        ci.cancel();
-    }
-
-    /**
      * Sends a plain message typed on a channel tab to that channel, when the toggle for it is on.
      * Mirrors the vanilla method - normalise, remember, send - only sending a command instead.
      */
@@ -230,6 +214,23 @@ public class ChatScreenMixin {
             mc.gui.hud.getChat().addRecentChat(normalized);
         }
         net.alpaka.addons.compliance.Outbound.command(command, net.alpaka.addons.compliance.Outbound.Cause.CHAT_INPUT);
+        ci.cancel();
+    }
+
+    /**
+     * A typed command whose first word is a Command Shortcuts alias goes out as what the alias
+     * stands for, with whatever followed it. The chat history keeps it as typed. A plain message
+     * is left to the channel tab hook above.
+     */
+    @Inject(method = "handleChatInput", at = @At("HEAD"), cancellable = true)
+    private void alpaka$expandCommandAlias(String message, boolean addToRecent, CallbackInfo ci) {
+        ChatScreen self = (ChatScreen) (Object) this;
+        String normalized = self.normalizeChatMessage(message);
+        if (!normalized.startsWith("/")) return;
+        if (!net.alpaka.addons.features.shortcuts.CommandShortcuts.expandTyped(normalized.substring(1))) return;
+        if (addToRecent) {
+            Minecraft.getInstance().gui.hud.getChat().addRecentChat(normalized);
+        }
         ci.cancel();
     }
 }

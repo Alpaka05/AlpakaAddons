@@ -534,9 +534,7 @@ public class MarketInputScreen extends SignEditScreen {
         int pasteX = x + w - 4 - pasteSize;
         int pasteY = y + 4;
         boolean hoverPaste = AlpakaStyle.inside(mouseX, mouseY, pasteX, pasteY, pasteSize, pasteSize);
-        if (hoverPaste) ModernGuiUtils.drawRoundedRect(graphics, pasteX, pasteY, pasteSize, pasteSize, AlpakaStyle.FIELD_RADIUS, AlpakaStyle.ROW_SELECTED);
-        MarketIcons.draw(graphics, MarketIcons.Glyph.PASTE, pasteX + (pasteSize - iconSize) / 2f, pasteY + (pasteSize - iconSize) / 2f, iconSize,
-                hoverPaste ? accent : AlpakaStyle.TEXT_MUTED);
+        AlpakaStyle.pasteButton(graphics, pasteX, pasteY, pasteSize, hoverPaste);
         hits.add(new Hit(pasteX, pasteY, pasteSize, pasteSize, mx -> pasteAndConfirm(), true));
 
         int room = pasteX - 6 - tx;

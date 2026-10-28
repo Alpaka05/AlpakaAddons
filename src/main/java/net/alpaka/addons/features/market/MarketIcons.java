@@ -19,7 +19,7 @@ public final class MarketIcons {
         // The markets
         AUCTION_HOUSE, BAZAAR,
         // Small symbols
-        COIN, CLOCK, SEARCH, SORT, TIER, BIN, ORDERS, SELL, SACK, INVENTORY, CLASSIC, PERSON, BACK, CLOSE, BOX, PROMPT, PASTE
+        COIN, CLOCK, SEARCH, SORT, TIER, BIN, ORDERS, SELL, SACK, INVENTORY, CLASSIC, PERSON, BACK, CLOSE, BOX, PROMPT
     }
 
     /** The icon of a market, for the header. */
@@ -51,7 +51,6 @@ public final class MarketIcons {
             case CLOSE -> cross(pen, color);
             case BOX -> box(pen, color);
             case PROMPT -> chevron(pen, color);
-            case PASTE -> clipboard(pen, color);
         }
         mesh.submit(graphics);
     }

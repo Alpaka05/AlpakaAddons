@@ -251,11 +251,14 @@ public final class ConfigTree {
             }
         }
 
-        // A feature's key always comes first, right under its description, wherever it was
-        // registered; the rest keep their registry order (the sort is stable).
+        // A feature's key (the keybind titled "Key") always comes first, right under its
+        // description, wherever it was registered; the rest keep their registry order (the sort is
+        // stable). Keys with titles of their own, such as the market screens' page keys, stay where
+        // they were registered, below the switch that turns them on.
         for (Feature feature : byKey.values()) {
             feature.settings.sort(java.util.Comparator.comparing(
-                    (ConfigOption option) -> option.getType() != ConfigOption.Type.KEYBIND));
+                    (ConfigOption option) -> option.getType() != ConfigOption.Type.KEYBIND
+                            || !option.getTitle().equals("Key")));
         }
 
         // Then the sidebar, as LAYOUT has it.

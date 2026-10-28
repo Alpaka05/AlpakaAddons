@@ -910,6 +910,31 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.dungeonMapTitle = v; AlpakaConfig.save(); },
                 "dungeon map title"));
 
+        OPTIONS.add(new ConfigOption("dungeon_map_room_names", "Show Room Names",
+                "Writes each room's name on the map once it is recognized from the loaded world. Entrance, blood and fairy rooms are left out.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapRoomNames,
+                v -> { AlpakaConfig.instance.dungeonMapRoomNames = v; AlpakaConfig.save(); },
+                "dungeon map room names labels"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_room_secrets", "Show Room Secrets",
+                "Shows found and total secrets per room, like 3/5. The found count comes from the action bar once you have been in the room, or from a green checkmark; until then it shows ?.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapRoomSecrets,
+                v -> { AlpakaConfig.instance.dungeonMapRoomSecrets = v; AlpakaConfig.save(); },
+                "dungeon map room secrets found count labels"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_hide_checkmarks", "Hide Checkmarks Under Labels",
+                "Removes the checkmark of a room that has a label and colors the label by the room's state instead.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapHideCheckmarks,
+                v -> { AlpakaConfig.instance.dungeonMapHideCheckmarks = v; AlpakaConfig.save(); },
+                "dungeon map hide checkmarks labels"));
+
+        OPTIONS.add(new ConfigOption("dungeon_map_room_label_scale", "Room Label Size",
+                "Text size of room names and secret counts.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapRoomLabelScale,
+                v -> { AlpakaConfig.instance.dungeonMapRoomLabelScale = v; AlpakaConfig.save(); },
+                0.3f, 1.0f, val -> String.format(Locale.ROOT, "%.2fx", val),
+                "dungeon map room label size scale text"));
+
         OPTIONS.add(new ConfigOption("dungeon_map_players", "Show Players",
                 "Draws your team on the map during clear, and nearby visible players in the boss arena.", ConfigCategory.DUNGEON,
                 () -> AlpakaConfig.instance.dungeonMapPlayers,

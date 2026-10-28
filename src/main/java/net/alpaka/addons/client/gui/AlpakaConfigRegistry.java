@@ -18,6 +18,8 @@ import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class AlpakaConfigRegistry {
@@ -2652,12 +2654,20 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customSoundButtonClick = v; AlpakaConfig.save(); },
                 "button click sound ui audio feedback chime ui button click sound"));
 
+        OPTIONS.add(soundVolume("custom_sound_button_click_volume", "Volume", "button click",
+                () -> AlpakaConfig.instance.customSoundButtonClickVolume,
+                v -> AlpakaConfig.instance.customSoundButtonClickVolume = v));
+
         OPTIONS.add(new ConfigOption("custom_sound_hotbar_scroll", "Hotbar Scroll Sound",
                 "Plays a custom sound when you scroll or switch hotbar slots.",
                 ConfigCategory.SOUND_MISC,
                 () -> AlpakaConfig.instance.customSoundHotbarScroll,
                 v -> { AlpakaConfig.instance.customSoundHotbarScroll = v; AlpakaConfig.save(); },
                 "hotbar scroll slot equip switch audio sound"));
+
+        OPTIONS.add(soundVolume("custom_sound_hotbar_scroll_volume", "Volume", "hotbar scroll",
+                () -> AlpakaConfig.instance.customSoundHotbarScrollVolume,
+                v -> AlpakaConfig.instance.customSoundHotbarScrollVolume = v));
 
         OPTIONS.add(new ConfigOption("custom_sound_inventory_open_close", "Container Open & Close Sound",
                 "Plays a custom sound when you open or close a container.",
@@ -2666,12 +2676,20 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customSoundInventoryOpenClose = v; AlpakaConfig.save(); },
                 "inventory open close gui container sound audio custom inventory open/close sound"));
 
+        OPTIONS.add(soundVolume("custom_sound_inventory_open_close_volume", "Volume", "open/close",
+                () -> AlpakaConfig.instance.customSoundInventoryOpenCloseVolume,
+                v -> AlpakaConfig.instance.customSoundInventoryOpenCloseVolume = v));
+
         OPTIONS.add(new ConfigOption("custom_sound_inventory_click", "Inventory Click Sound",
                 "Plays a custom sound when you click an item or pick it up.",
                 ConfigCategory.SOUND_MISC,
                 () -> AlpakaConfig.instance.customSoundInventoryClick,
                 v -> { AlpakaConfig.instance.customSoundInventoryClick = v; AlpakaConfig.save(); },
                 "inventory click item pickup container sound audio custom"));
+
+        OPTIONS.add(soundVolume("custom_sound_inventory_click_volume", "Volume", "inventory click",
+                () -> AlpakaConfig.instance.customSoundInventoryClickVolume,
+                v -> AlpakaConfig.instance.customSoundInventoryClickVolume = v));
 
         OPTIONS.add(new ConfigOption("Gameplay Sounds", ConfigCategory.SOUND_MISC));
 
@@ -2682,12 +2700,20 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customSoundRareDrop = v; AlpakaConfig.save(); },
                 "rare drop sound slayer loot celebration audio slayer rare drop sound"));
 
+        OPTIONS.add(soundVolume("custom_sound_rare_drop_volume", "Volume", "rare drop",
+                () -> AlpakaConfig.instance.customSoundRareDropVolume,
+                v -> AlpakaConfig.instance.customSoundRareDropVolume = v));
+
         OPTIONS.add(new ConfigOption("custom_sound_notification", "Boss Spawn Sound",
                 "Plays a sound when a slayer boss spawns.",
                 ConfigCategory.SOUND_MISC,
                 () -> AlpakaConfig.instance.customSoundNotification,
                 v -> { AlpakaConfig.instance.customSoundNotification = v; AlpakaConfig.save(); },
                 "boss spawn sound notification alert audio"));
+
+        OPTIONS.add(soundVolume("custom_sound_notification_volume", "Volume", "boss spawn",
+                () -> AlpakaConfig.instance.customSoundNotificationVolume,
+                v -> AlpakaConfig.instance.customSoundNotificationVolume = v));
 
         OPTIONS.add(new ConfigOption("custom_sound_player_hurt", "Player Hurt Sound",
                 "Plays a custom sound when you take damage.",
@@ -2696,12 +2722,20 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customSoundPlayerHurt = v; AlpakaConfig.save(); },
                 "player hurt sound damage hit audio custom"));
 
+        OPTIONS.add(soundVolume("custom_sound_player_hurt_volume", "Volume", "player hurt",
+                () -> AlpakaConfig.instance.customSoundPlayerHurtVolume,
+                v -> AlpakaConfig.instance.customSoundPlayerHurtVolume = v));
+
         OPTIONS.add(new ConfigOption("custom_sound_blaze_death", "Blaze Death Sound",
                 "Plays a custom sound when a blaze you fought dies. Other kills are ignored.",
                 ConfigCategory.SOUND_MISC,
                 () -> AlpakaConfig.instance.customSoundBlazeDeath,
                 v -> { AlpakaConfig.instance.customSoundBlazeDeath = v; AlpakaConfig.save(); },
                 "blaze death sound kill slayer audio custom own kills"));
+
+        OPTIONS.add(soundVolume("custom_sound_blaze_death_volume", "Volume", "blaze death",
+                () -> AlpakaConfig.instance.customSoundBlazeDeathVolume,
+                v -> AlpakaConfig.instance.customSoundBlazeDeathVolume = v));
 
         OPTIONS.add(new ConfigOption("custom_sound_zombie_remedy", "Zombie Remedy Sound",
                 "Plays a custom sound for the zombie villager cure effect.",
@@ -2710,12 +2744,20 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.customSoundZombieRemedy = v; AlpakaConfig.save(); },
                 "zombie remedy cure villager sound audio custom"));
 
+        OPTIONS.add(soundVolume("custom_sound_zombie_remedy_volume", "Volume", "zombie remedy",
+                () -> AlpakaConfig.instance.customSoundZombieRemedyVolume,
+                v -> AlpakaConfig.instance.customSoundZombieRemedyVolume = v));
+
         OPTIONS.add(new ConfigOption("custom_sound_successful_hit", "Successful Hit Sound",
                 "Plays a custom sound on a critical or successful hit.",
                 ConfigCategory.SOUND_MISC,
                 () -> AlpakaConfig.instance.customSoundSuccessfulHit,
                 v -> { AlpakaConfig.instance.customSoundSuccessfulHit = v; AlpakaConfig.save(); },
                 "successful hit crit critical attack sound audio custom"));
+
+        OPTIONS.add(soundVolume("custom_sound_successful_hit_volume", "Volume", "successful hit",
+                () -> AlpakaConfig.instance.customSoundSuccessfulHitVolume,
+                v -> AlpakaConfig.instance.customSoundSuccessfulHitVolume = v));
 
         OPTIONS.add(new ConfigOption("Low Health Warning", ConfigCategory.SOUND_MISC));
 
@@ -2725,6 +2767,10 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.customSoundLowHpHeartbeat,
                 v -> { AlpakaConfig.instance.customSoundLowHpHeartbeat = v; AlpakaConfig.save(); },
                 "low hp health heartbeat sound survival audio custom lowhp pulse alert low hp heartbeat sound"));
+
+        OPTIONS.add(soundVolume("custom_sound_low_hp_heartbeat_volume", "Volume", "heartbeat",
+                () -> AlpakaConfig.instance.customSoundLowHpHeartbeatVolume,
+                v -> AlpakaConfig.instance.customSoundLowHpHeartbeatVolume = v));
 
         OPTIONS.add(new ConfigOption("low_hp_heartbeat_threshold", "Heartbeat Threshold",
                 "The health percentage at which the heartbeat starts.",
@@ -2802,6 +2848,18 @@ public class AlpakaConfigRegistry {
         String keywords = blur ? "blur blurred background panel glass frosted rounded" : "smooth font menu font typeface text nunito";
         OPTIONS.add(new ConfigOption(id, title, description, category, getter,
                 v -> { setter.accept(v); AlpakaConfig.save(); }, keywords));
+    }
+
+    /** A 0-100% volume slider for one custom sound, on top of the shared custom sounds volume. */
+    private static ConfigOption soundVolume(String id, String title, String sound,
+                                            Supplier<Float> getter, Consumer<Float> setter) {
+        return new ConfigOption(id, title,
+                "How loud this sound plays, on top of the custom sounds volume.",
+                ConfigCategory.SOUND_MISC,
+                getter,
+                v -> { setter.accept(v); AlpakaConfig.save(); },
+                0.0f, 1.0f, val -> String.format(Locale.ROOT, "%d%%", Math.round(val * 100)),
+                sound + " sound volume loudness audio quiet loud percent");
     }
 
     private static void buildCategoryCache() {

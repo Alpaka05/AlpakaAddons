@@ -177,6 +177,8 @@ public class MarketScreen extends ContainerScreen {
     private final List<Integer> keyCategories = new ArrayList<>();
     /** Create Auction in the sidebar in the last frame, which C presses; null without one. */
     private Integer keyCreateAuction;
+    /** The Auction House's Reset Settings in the last frame, which R presses; null without one. */
+    private Integer keyResetSettings;
     /**
      * Number keys held down, so holding one presses its button once and not again with every
      * repeat. Shared by all market screens: the press may open the next page before the release.
@@ -373,6 +375,7 @@ public class MarketScreen extends ContainerScreen {
         keyActions.clear();
         keyCategories.clear();
         keyCreateAuction = null;
+        keyResetSettings = null;
         if (classic()) {
             super.extractRenderState(graphics, mouseX, mouseY, partialTick);
             drawClassicToggle(graphics, mouseX, mouseY);
@@ -665,7 +668,7 @@ public class MarketScreen extends ContainerScreen {
             rowY = groupStart(graphics, "More", x, rowY, w, compact, first);
             for (int slot : m.extras) {
                 rowY = sideRow(graphics, mx, my, inClip, rowX, rowY, rowW, rowH, clipY, clipH, slot, plain(slot).name(), null, stack(slot),
-                        takesCreateKey(slot) ? createKeyLabel() : null);
+                        extraKey(slot));
             }
         }
 
@@ -1512,22 +1515,28 @@ public class MarketScreen extends ContainerScreen {
     }
 
     /**
-     * Whether this is the Auction House's Create Auction button, the one thing done from Manage
-     * Auctions besides looking; it takes the Create Auction key (C unless rebound). Remembers it for
-     * the key when it is.
+     * The key of one of the Auction House's extra buttons, as its chip shows it, or null when the
+     * button has none: Create Auction, the one thing done from Manage Auctions besides looking (C
+     * unless rebound), and Reset Settings for the browser's filters (R unless rebound). Remembers
+     * the button for the key.
      */
-    private boolean takesCreateKey(int slot) {
-        if (kind != MarketKind.AUCTION_HOUSE || keyCreateAuction != null || !Markets.hotkeys(kind)) return false;
-        KeyMapping create = MarketKeys.of(kind).createAuction();
-        if (create == null || create.isUnbound()) return false;
-        if (!plain(slot).name().trim().equalsIgnoreCase("Create Auction")) return false;
-        keyCreateAuction = slot;
-        return true;
-    }
-
-    /** The Create Auction key as its chip shows it. */
-    private static String createKeyLabel() {
-        return MarketKeys.AUCTION_HOUSE.createAuction().getTranslatedKeyMessage().getString();
+    private String extraKey(int slot) {
+        if (kind != MarketKind.AUCTION_HOUSE || !Markets.hotkeys(kind)) return null;
+        String name = plain(slot).name().trim();
+        MarketKeys.Set keys = MarketKeys.of(kind);
+        KeyMapping mapping;
+        if (name.equalsIgnoreCase("Create Auction") && keyCreateAuction == null) {
+            mapping = keys.createAuction();
+            if (mapping == null || mapping.isUnbound()) return null;
+            keyCreateAuction = slot;
+        } else if (name.equalsIgnoreCase("Reset Settings") && keyResetSettings == null) {
+            mapping = keys.resetSettings();
+            if (mapping == null || mapping.isUnbound()) return null;
+            keyResetSettings = slot;
+        } else {
+            return null;
+        }
+        return mapping.getTranslatedKeyMessage().getString();
     }
 
     /** The next key, 1 to 9, that picks a category with Shift; 0 once all nine are taken. */
@@ -1663,9 +1672,8 @@ public class MarketScreen extends ContainerScreen {
             int ex = ix - 8;
             for (int slot : m.extras) {
                 String label = AlpakaStyle.ellipsize(this.font, plain(slot).name(), 90);
-                boolean createKey = takesCreateKey(slot);
-                String createLabel = createKey ? createKeyLabel() : null;
-                int ew = GuiFont.width(this.font, label) + 26 + (createKey ? GuiFont.width(this.font, createLabel) + 8 : 0);
+                String keyLabel = extraKey(slot);
+                int ew = GuiFont.width(this.font, label) + 26 + (keyLabel != null ? GuiFont.width(this.font, keyLabel) + 8 : 0);
                 ex -= ew;
                 if (ex < lx + 4) break;
                 boolean hover = AlpakaStyle.inside(mx, my, ex, by, ew, 16);
@@ -1676,7 +1684,7 @@ public class MarketScreen extends ContainerScreen {
                 graphics.item(stack(slot), 0, 0);
                 graphics.pose().popMatrix();
                 graphics.text(this.font, GuiFont.text(label), ex + 18, by + 4, hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT, false);
-                if (createKey) keyChip(graphics, createLabel, ex + ew - 4, by + 4, 1f);
+                if (keyLabel != null) keyChip(graphics, keyLabel, ex + ew - 4, by + 4, 1f);
                 hits.add(new Hit(ex, by, ew, 16, (b, s) -> click(slot, b, s), false));
                 if (hover) hoveredStack = stack(slot);
                 ex -= 4;
@@ -1983,7 +1991,8 @@ public class MarketScreen extends ContainerScreen {
     /**
      * The slot a key presses: 1 to 9 the numbered actions or auctions, Shift with 1 to 9 the
      * categories, Ctrl or Cmd with F the search, and the market's own keys (MarketKeys): the arrows
-     * the page, Backspace the way back, C Create Auction, unless rebound in the settings.
+     * the page, Backspace the way back, C Create Auction, R Reset Settings, unless rebound in the
+     * settings.
      */
     private Integer hotkeyTarget(KeyEvent event) {
         if (model == null) return null;
@@ -2012,6 +2021,7 @@ public class MarketScreen extends ContainerScreen {
         if (matches.test(keys.back())) return model.controls.get(MarketMenu.Control.BACK);
         if (matches.test(keys.search())) return model.controls.get(MarketMenu.Control.SEARCH);
         if (keys.createAuction() != null && matches.test(keys.createAuction())) return keyCreateAuction;
+        if (keys.resetSettings() != null && matches.test(keys.resetSettings())) return keyResetSettings;
         return null;
     }
 

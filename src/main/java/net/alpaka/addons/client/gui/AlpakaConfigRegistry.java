@@ -1866,6 +1866,12 @@ public class AlpakaConfigRegistry {
                 () -> net.alpaka.addons.features.market.MarketKeys.AUCTION_HOUSE.createAuction(),
                 "auction house ah hotkeys create auction sell manage"));
 
+        OPTIONS.add(ConfigOption.keybind("auction_house_reset_settings_key", "Reset Settings Key",
+                "Presses Reset Settings, which clears the sort and filters. R by default.",
+                ConfigCategory.SKYBLOCK,
+                () -> net.alpaka.addons.features.market.MarketKeys.AUCTION_HOUSE.resetSettings(),
+                "auction house ah hotkeys reset settings sort filters clear"));
+
         OPTIONS.add(new ConfigOption("custom_bazaar", "Custom Bazaar",
                 "Shows the Bazaar in Alpaka's design, with buy and sell prices on every product. Each click is the same click on Hypixel's menu.",
                 ConfigCategory.SKYBLOCK,

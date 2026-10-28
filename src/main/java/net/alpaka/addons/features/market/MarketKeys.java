@@ -14,9 +14,9 @@ import org.lwjgl.glfw.GLFW;
 public final class MarketKeys {
     private MarketKeys() {}
 
-    /** One market's keys. Create Auction is null for the Bazaar, which has no such button. */
+    /** One market's keys. Create Auction and Reset Settings are null for the Bazaar, which has no such buttons. */
     public record Set(KeyMapping previousPage, KeyMapping nextPage, KeyMapping back, KeyMapping search,
-                      KeyMapping createAuction) {
+                      KeyMapping createAuction, KeyMapping resetSettings) {
     }
 
     public static Set AUCTION_HOUSE;
@@ -28,13 +28,14 @@ public final class MarketKeys {
                 key("auction_house", "key.alpaka.ah_next_page", GLFW.GLFW_KEY_RIGHT),
                 key("auction_house", "key.alpaka.ah_back", GLFW.GLFW_KEY_BACKSPACE),
                 key("auction_house", "key.alpaka.ah_search", GLFW.GLFW_KEY_UNKNOWN),
-                key("auction_house", "key.alpaka.ah_create_auction", GLFW.GLFW_KEY_C));
+                key("auction_house", "key.alpaka.ah_create_auction", GLFW.GLFW_KEY_C),
+                key("auction_house", "key.alpaka.ah_reset_settings", GLFW.GLFW_KEY_R));
         BAZAAR = new Set(
                 key("bazaar", "key.alpaka.bz_previous_page", GLFW.GLFW_KEY_LEFT),
                 key("bazaar", "key.alpaka.bz_next_page", GLFW.GLFW_KEY_RIGHT),
                 key("bazaar", "key.alpaka.bz_back", GLFW.GLFW_KEY_BACKSPACE),
                 key("bazaar", "key.alpaka.bz_search", GLFW.GLFW_KEY_UNKNOWN),
-                null);
+                null, null);
     }
 
     public static Set of(MarketKind kind) {

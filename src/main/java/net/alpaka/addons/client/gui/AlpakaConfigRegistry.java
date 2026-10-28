@@ -295,6 +295,27 @@ public class AlpakaConfigRegistry {
                 ),
                 "blaze flame smoke angry villager lava drip particles potion effect swirl enchant enchanting glyph ender portal witch spell fire burning overlay fireball projectile lightning bolt flash thunder nametag name tag health smoldering miniboss demon clean hide"));
 
+        OPTIONS.add(new ConfigOption("stop_blaze_spinning", "Stop Blaze Spinning",
+                "Stops blaze rods from spinning around blaze mobs.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.stopBlazeSpinning,
+                v -> { AlpakaConfig.instance.stopBlazeSpinning = v; AlpakaConfig.save(); },
+                "blaze rods spin spinning rotation animation stop mob"));
+
+        OPTIONS.add(new ConfigOption("mute_vanilla_sounds_blaze_slayer", "Mute Blaze Noise",
+                "Mutes blazes, fire, lava and ghasts during a Blaze quest. Menu and mod sounds still play.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.muteVanillaSoundsInBlazeSlayer,
+                v -> { AlpakaConfig.instance.muteVanillaSoundsInBlazeSlayer = v; AlpakaConfig.save(); },
+                "mute silence vanilla game audio blaze slayer quiet boss spawn hear silence blaze slayer noise"));
+
+        OPTIONS.add(new ConfigOption("blaze_mute_all_world_audio", "Mute All World Sounds",
+                "Mutes every world sound during a Blaze quest, not just the fight's noise.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.blazeMuteAllWorldAudio,
+                v -> { AlpakaConfig.instance.blazeMuteAllWorldAudio = v; AlpakaConfig.save(); },
+                "mute silence all world audio blaze slayer quiet silence: all world audio sounds"));
+
         OPTIONS.add(new ConfigOption("blaze_fire_pits", "Fire Pit Highlight",
                 "Marks the fire pits on the floor with a glowing column during your Blaze slayer boss.",
                 ConfigCategory.VISUALS,
@@ -308,13 +329,6 @@ public class AlpakaConfigRegistry {
                 c -> c.blazeFirePitColor,
                 v -> { AlpakaConfig.instance.blazeFirePitColor = v; AlpakaConfig.save(); },
                 "blaze slayer fire pit pits highlight column aura color colour picker"));
-
-        OPTIONS.add(new ConfigOption("stop_blaze_spinning", "Stop Blaze Spinning",
-                "Stops blaze rods from spinning around blaze mobs.",
-                ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.stopBlazeSpinning,
-                v -> { AlpakaConfig.instance.stopBlazeSpinning = v; AlpakaConfig.save(); },
-                "blaze rods spin spinning rotation animation stop mob"));
 
         OPTIONS.add(new ConfigOption("hide_hurt_overlay", "Hide Damage Flash",
                 "Hides the red flash on mobs and players when they take a hit.",
@@ -2508,20 +2522,6 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.customSoundSuccessfulHit,
                 v -> { AlpakaConfig.instance.customSoundSuccessfulHit = v; AlpakaConfig.save(); },
                 "successful hit crit critical attack sound audio custom"));
-
-        OPTIONS.add(new ConfigOption("mute_vanilla_sounds_blaze_slayer", "Mute Blaze Noise",
-                "Mutes blazes, fire, lava and ghasts during a Blaze quest. Menu and mod sounds still play.",
-                ConfigCategory.SOUND_MISC,
-                () -> AlpakaConfig.instance.muteVanillaSoundsInBlazeSlayer,
-                v -> { AlpakaConfig.instance.muteVanillaSoundsInBlazeSlayer = v; AlpakaConfig.save(); },
-                "mute silence vanilla game audio blaze slayer quiet boss spawn hear silence blaze slayer noise"));
-
-        OPTIONS.add(new ConfigOption("blaze_mute_all_world_audio", "Mute All World Sounds",
-                "Mutes every world sound during a Blaze quest, not just the fight's noise.",
-                ConfigCategory.SOUND_MISC,
-                () -> AlpakaConfig.instance.blazeMuteAllWorldAudio,
-                v -> { AlpakaConfig.instance.blazeMuteAllWorldAudio = v; AlpakaConfig.save(); },
-                "mute silence all world audio blaze slayer quiet silence: all world audio sounds"));
 
         OPTIONS.add(new ConfigOption("Low Health Warning", ConfigCategory.SOUND_MISC));
 

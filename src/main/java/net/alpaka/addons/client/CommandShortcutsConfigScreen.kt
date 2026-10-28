@@ -42,6 +42,12 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(Componen
     /** The key row waiting for a key press, or -1. */
     private var capturingKey = -1
 
+    /**
+     * The character of the key just captured, still to come: it arrives after the key press, when
+     * the command cell already has the focus, and must not be typed into it.
+     */
+    private var swallowChar = false
+
     private var scrollY = 0.0
     private var targetScrollY = 0.0
     private var maxScrollY = 0.0
@@ -335,6 +341,10 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(Componen
     }
 
     override fun charTyped(event: CharacterEvent): Boolean {
+        if (swallowChar) {
+            swallowChar = false
+            return true
+        }
         if (focusKind != null) {
             insert(String(Character.toChars(event.codepoint())))
             return true
@@ -343,6 +353,8 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(Componen
     }
 
     override fun keyPressed(event: KeyEvent): Boolean {
+        // A captured key without a character (F5, Ctrl + E) leaves none to swallow.
+        swallowChar = false
         if (capturingKey >= 0) {
             val shortcut = keys.getOrNull(capturingKey)
             if (event.key() == GLFW.GLFW_KEY_ESCAPE || shortcut == null) {
@@ -354,6 +366,7 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(Componen
             shortcut.key = InputConstants.getKey(event).name
             shortcut.modifiers = event.modifiers() and CommandShortcuts.MODIFIER_MASK
             capturingKey = -1
+            swallowChar = true
             playPloppSound()
             // Straight on to the command, which a fresh row still needs.
             focus(Kind.KEY, keys.indexOf(shortcut), 1)

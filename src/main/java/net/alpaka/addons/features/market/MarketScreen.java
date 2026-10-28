@@ -610,15 +610,22 @@ public class MarketScreen extends ContainerScreen {
                     case TIER -> "Item Tier";
                     default -> "BIN Filter";
                 };
-                MarketIcons.Glyph glyph = switch (c) {
-                    case SORT -> MarketIcons.Glyph.SORT;
-                    case TIER -> MarketIcons.Glyph.TIER;
-                    default -> MarketIcons.Glyph.BIN;
-                };
                 String value = m.controlValues.getOrDefault(c, plain(slot).name());
                 boolean hover = inClip && AlpakaStyle.inside(mx, my, rowX, rowY, rowW, filterH);
                 if (hover) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, filterH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
-                MarketIcons.draw(graphics, glyph, rowX + 7, rowY + (filterH - 9) / 2f, 9, hover ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
+                // Hypixel's own item for the filter, as the categories show theirs; our glyph only
+                // while the slot is still empty.
+                ItemStack item = stack(slot);
+                if (!item.isEmpty()) {
+                    sideItem(graphics, item, rowX, rowY, filterH);
+                } else {
+                    MarketIcons.Glyph glyph = switch (c) {
+                        case SORT -> MarketIcons.Glyph.SORT;
+                        case TIER -> MarketIcons.Glyph.TIER;
+                        default -> MarketIcons.Glyph.BIN;
+                    };
+                    MarketIcons.draw(graphics, glyph, rowX + 7, rowY + (filterH - 9) / 2f, 9, hover ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
+                }
                 if (compact) {
                     graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, value, rowW - 33)), rowX + 21, rowY + 4,
                             hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT, false);
@@ -655,7 +662,10 @@ public class MarketScreen extends ContainerScreen {
                     case SELL_INVENTORY -> MarketIcons.Glyph.SELL;
                     default -> MarketIcons.Glyph.SACK;
                 };
-                rowY = sideRow(graphics, mx, my, inClip, rowX, rowY, rowW, rowH, clipY, clipH, slot, label, glyph, null);
+                // Hypixel's own item for the action too; our glyph only while the slot is still empty.
+                ItemStack item = stack(slot);
+                rowY = sideRow(graphics, mx, my, inClip, rowX, rowY, rowW, rowH, clipY, clipH, slot, label,
+                        item.isEmpty() ? glyph : null, item);
             }
             rowY += 6;
         }
@@ -717,13 +727,12 @@ public class MarketScreen extends ContainerScreen {
         return rowY + rowH + 1;
     }
 
-    /** An item at the start of a sidebar row, a little smaller than in a slot to sit with the text. */
+    /**
+     * An item at the start of a sidebar row, at its full 16 pixels on whole pixels: scaled down or
+     * placed between pixels, its texture turns blurry.
+     */
     private static void sideItem(GuiGraphicsExtractor graphics, ItemStack item, int rowX, int rowY, int rowH) {
-        graphics.pose().pushMatrix();
-        graphics.pose().translate(rowX + 5, rowY + (rowH - 12) / 2f);
-        graphics.pose().scale(0.75f, 0.75f);
-        graphics.item(item, 0, 0);
-        graphics.pose().popMatrix();
+        graphics.item(item, rowX + 3, rowY + (rowH - 16) / 2);
     }
 
     // ---- Content --------------------------------------------------------------------------------

@@ -168,11 +168,18 @@ object DungeonMapRenderer {
         val mc = Minecraft.getInstance()
         val scale = size / 128f
         val texture = if (preview) previewTexture else clearTexture
-        texture.updateMap(source, palette())
         g.pose().pushMatrix()
         g.pose().translate(x.toFloat(), y.toFloat())
         g.pose().scale(scale, scale)
-        texture.draw(g)
+        // The same texture and room labels as the HUD, which isn't drawn while a screen is open.
+        if (preview) {
+            texture.updateMap(source, palette(), null, -1)
+            texture.draw(g)
+        } else {
+            texture.updateMap(source, palette(), DungeonMapFeature.cover, DungeonMapFeature.coverRevision)
+            texture.draw(g)
+            drawRoomLabels(g, DungeonMapFeature.labels)
+        }
         g.pose().popMatrix()
 
         class Spot(val x: Float, val y: Float, val name: String?, val self: Boolean, val skin: PlayerSkin?)

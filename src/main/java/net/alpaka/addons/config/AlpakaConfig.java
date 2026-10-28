@@ -659,6 +659,45 @@ public class AlpakaConfig {
             "/pv"
     ));
 
+    // Command Shortcuts; see CommandShortcuts.
+    public boolean commandShortcutsEnabled = true;
+    /** Typed aliases: "/v Steve" goes out as "/visit Steve". */
+    public java.util.List<CommandAlias> commandAliases = new java.util.ArrayList<>();
+    /** Keys that run a command with no screen open: Y for "/sb menu". */
+    public java.util.List<KeyShortcut> commandKeyShortcuts = new java.util.ArrayList<>();
+
+    /** One alias, both sides without their slash: "v" stands for "visit". */
+    public static class CommandAlias {
+        public String alias = "";
+        public String command = "";
+
+        public CommandAlias() {}
+
+        public CommandAlias(String alias, String command) {
+            this.alias = alias;
+            this.command = command;
+        }
+    }
+
+    /**
+     * One key shortcut: the key by its InputConstants name ("key.keyboard.y"), the modifier keys
+     * held with it (GLFW's MOD_SHIFT, MOD_CONTROL, MOD_ALT, MOD_SUPER bits), and the command
+     * without its slash. An empty key is not bound yet.
+     */
+    public static class KeyShortcut {
+        public String key = "";
+        public int modifiers = 0;
+        public String command = "";
+
+        public KeyShortcut() {}
+
+        public KeyShortcut(String key, int modifiers, String command) {
+            this.key = key;
+            this.modifiers = modifiers;
+            this.command = command;
+        }
+    }
+
     // Item viewmodel options
     public boolean itemSizeFeatureEnabled = false;
     public float itemScale = 1.0f;

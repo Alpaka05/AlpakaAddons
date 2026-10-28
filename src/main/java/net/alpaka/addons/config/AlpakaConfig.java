@@ -761,6 +761,8 @@ public class AlpakaConfig {
     /** Where the panel was moved to, as a share of the screen's width and height; -1 beside the menu. */
     public float chestValueX = -1f;
     public float chestValueY = -1f;
+    /** Item Search: a window to search everything the player owns; see ItemSearchFeature. */
+    public boolean itemSearchEnabled = true;
 
     // Command Wheel options
     /**
@@ -1438,6 +1440,7 @@ public class AlpakaConfig {
         this.marketPriceHistoryEnabled = false;
         this.itemValueEnabled = false;
         this.chestValueEnabled = false;
+        this.itemSearchEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
         this.customDamageTagsEnabled = false;

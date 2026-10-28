@@ -1896,6 +1896,37 @@ public class AlpakaConfigRegistry {
                 val -> CHEST_VALUE_SIDES[Math.round(val)],
                 "chest value side left right position place").choices(CHEST_VALUE_SIDES));
 
+        OPTIONS.add(new ConfigOption("item_search", "Item Search",
+                "A window with a search bar over everything you own: your inventory, Ender Chest, backpacks, sacks, wardrobe, Accessory Bag, Personal Vault and the chests on your island. Each place is known from the last time you opened it. Open it with its key or /alpakasearch; the key over an item in a menu searches for that item.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.itemSearchEnabled,
+                v -> { AlpakaConfig.instance.itemSearchEnabled = v; AlpakaConfig.save(); },
+                "item search find where storage ender chest echest backpack sack sacks wardrobe accessory bag vault island chest inventory lookup locate"));
+
+        OPTIONS.add(ConfigOption.keybind("item_search_key", "Key",
+                "Opens Item Search. In a menu, it searches for the item under the mouse. Unbound by default.",
+                ConfigCategory.SKYBLOCK,
+                () -> net.alpaka.addons.features.itemsearch.ItemSearchFeature.KEY,
+                "item search find"));
+
+        OPTIONS.add(new ConfigOption("item_search_open", "Open Item Search",
+                "Opens the search window. Works on SkyBlock only.",
+                ConfigCategory.SKYBLOCK,
+                "Open",
+                parent -> net.alpaka.addons.features.itemsearch.ItemSearchFeature.open(null, parent),
+                "item search open window"));
+
+        OPTIONS.add(new ConfigOption("item_search_clear", "Forget Saved Items",
+                "Forgets every remembered container of the profile you are on, so the search starts empty again.",
+                ConfigCategory.SKYBLOCK,
+                "Forget",
+                parent -> net.alpaka.addons.features.itemsearch.ItemSearchStore.clear(),
+                "item search clear reset forget saved items containers chests")
+                .confirm("Forget Saved Items",
+                        "Item Search forgets what it remembered from your Ender Chest, backpacks, sacks, wardrobe and island chests on this profile. "
+                                + "Each comes back the next time you open it.",
+                        "Forget", true));
+
         OPTIONS.add(new ConfigOption("Guild Chat", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("guild_prefix", "Custom Guild Tag",

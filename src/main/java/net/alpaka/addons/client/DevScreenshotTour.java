@@ -289,6 +289,11 @@ public final class DevScreenshotTour {
             screen("market-config", () -> AlpakaConfigScreen.openOn("Markets", "Custom Auction House")),
             screen("market-config-price-history", () -> AlpakaConfigScreen.openOn("Markets", "Price History")),
             screen("market-config-bazaar", () -> AlpakaConfigScreen.openOn("Markets", "Custom Bazaar")),
+            // Item Search over made-up containers: everything, one item hovered, then a query.
+            screen("item-search", () -> net.alpaka.addons.features.itemsearch.ItemSearchPreview.screen(null)),
+            new Stop("item-search-hover", () -> placeMouse(0.356, 0.24), () -> true, 15),
+            screen("item-search-query", () -> net.alpaka.addons.features.itemsearch.ItemSearchPreview.screen("diamond")),
+            screen("item-search-config", () -> AlpakaConfigScreen.openOn("Tools", "Item Search")),
             // The Item Value popup over a chest of SkyBlock items, opened the way the key opens it, over
             // the item under the mouse. Its prices come from the network, so it waits for them.
             new Stop(null, () -> Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.itemvalue.ItemValuePreview.chest()),

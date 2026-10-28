@@ -41,4 +41,16 @@ public class LivingEntityRendererMixin {
         int highlight = ((BossHighlightRenderState) state).alpaka$getHighlightTint();
         return highlight == 0 ? tint : ARGB.multiply(tint, highlight);
     }
+
+    /**
+     * Lifts a highlighted slayer boss towards white, for light overlay colors the tint above cannot
+     * show. Uses the white flash of a creeper about to explode; the larger of the two wins.
+     */
+    @ModifyExpressionValue(
+            method = "submit(Lnet/minecraft/client/renderer/entity/state/LivingEntityRenderState;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;Lnet/minecraft/client/renderer/state/level/CameraRenderState;)V",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/LivingEntityRenderer;getWhiteOverlayProgress(Lnet/minecraft/client/renderer/entity/state/LivingEntityRenderState;)F")
+    )
+    private float alpaka$whitenBossHighlight(float progress, LivingEntityRenderState state) {
+        return Math.max(progress, ((BossHighlightRenderState) state).alpaka$getHighlightWhite());
+    }
 }

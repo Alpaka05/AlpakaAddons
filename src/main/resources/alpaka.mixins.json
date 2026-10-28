@@ -14,6 +14,7 @@
     "ClientPacketListenerPerformanceMixin",
     "ClientCommonPacketListenerPerformanceMixin",
     "HudOverlayAccessor",
+    "AbstractContainerScreenAccessor",
     "PlayerTabOverlayAccessor",
     "LevelExtractorMixin",
     "ChatComponentMixin",
@@ -42,8 +43,7 @@
     "ConnectScreenPackCacheMixin",
     "ClientPacketListenerPackCacheMixin",
     "ClientCommonPacketListenerPackCacheMixin",
-    "ClientPacketListenerMixin",
-    "AbstractContainerScreenAccessor"
+    "ClientPacketListenerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

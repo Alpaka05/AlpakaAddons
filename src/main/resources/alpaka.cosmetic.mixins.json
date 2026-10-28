@@ -13,6 +13,7 @@
     "ClientLevelMobDeathMixin",
     "ClientPacketListenerMobDeathMixin",
     "EntityRenderDispatcherMixin",
+    "EffectsInInventoryMixin",
     "EntityRendererMixin",
     "FontTextureMixin",
     "GameRendererMixin",

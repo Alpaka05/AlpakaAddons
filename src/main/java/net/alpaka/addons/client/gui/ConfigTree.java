@@ -96,6 +96,7 @@ public final class ConfigTree {
             // Visuals
             "fullbright", "clean_blaze", "blaze_fire_pits", "stop_blaze_spinning", "hide_hurt_overlay", "hide_mob_deaths",
             "hide_explosions",
+            "hide_inventory_effects",
             "render_hand_third_person", "smooth_perspective", "disable_front_perspective", "zoom",
             "sky_effects",
             "container_bg_opacity", "inventory_snow", "scrollable_tooltips", "persistent_item_name", "old_master_stars", "wide_health_bar",
@@ -187,6 +188,7 @@ public final class ConfigTree {
                     {"World", "fullbright", "sky_effects", "block_overlay_enabled", "hide_hurt_overlay", "hide_mob_deaths", "hide_explosions",
                             "#Hide Fire Overlay", "#Nametags", "render_hand_third_person", "smooth_perspective", "disable_front_perspective", "zoom"},
                     {"Interface", "inventory_hud_enabled", "player_model_enabled", "performance_hud_enabled", "container_bg_opacity",
+                            "hide_inventory_effects",
                             "scrollable_tooltips", "persistent_item_name", "old_master_stars", "wide_health_bar", "inventory_snow", "#Scoreboard"},
                     {"Chat", "better_chat", "chat_tabs", "chat_search", "chat_copy", "chat_peek", "compact_chat",
                             "message_filter", "expand_chat_history", "mention_notification", "better_screenshot_message"},

@@ -522,6 +522,13 @@ public class AlpakaConfigRegistry {
                 50.0f, 1000.0f, val -> String.format(Locale.ROOT, "%d ms", Math.round(val)),
                 "container background fade speed duration time ms transition container fade speed"));
 
+        OPTIONS.add(new ConfigOption("hide_inventory_effects", "Hide Effects",
+                "Hides the list of active potion effects next to your inventory.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.hideInventoryEffects,
+                v -> { AlpakaConfig.instance.hideInventoryEffects = v; AlpakaConfig.save(); },
+                "hide effects potion effect status buffs inventory list side absorption night vision haste strength god potion"));
+
         // The id keeps its old name so existing configs and search links still find the option.
         OPTIONS.add(new ConfigOption("inventory_snow", "Inventory Particles",
                 "Lets particles drift over container screens, like chests and your inventory.",

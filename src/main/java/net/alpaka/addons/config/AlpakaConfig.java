@@ -651,6 +651,14 @@ public class AlpakaConfig {
     public boolean persistentItemNameEnabled = false;
     /** Master stars show as red stars, as they used to, instead of a number behind the gold ones. */
     public boolean oldMasterStarsEnabled = false;
+    /** Enchantments at their highest level are drawn in {@link #maxEnchantColor} in tooltips. */
+    public boolean maxEnchantColorEnabled = false;
+    public int maxEnchantColor = 0xFFFFAA00;
+    /** Ultimate enchantments too, which Hypixel already marks with bold pink. */
+    public boolean maxEnchantColorUltimate = false;
+    /** In SkyBlock's anvil, books that combine with the one put in are highlighted. */
+    public boolean anvilCombineHelperEnabled = false;
+    public int anvilCombineHelperColor = 0x8055FF55;
     /**
      * One long row of twenty hearts in place of the two short ones, the hunger bar and the armor bar,
      * neither of which SkyBlock needs; absorption hearts sit on the row above it.
@@ -1310,6 +1318,8 @@ public class AlpakaConfig {
         this.scrollableTooltipsEnabled = false;
         this.persistentItemNameEnabled = false;
         this.oldMasterStarsEnabled = false;
+        this.maxEnchantColorEnabled = false;
+        this.anvilCombineHelperEnabled = false;
         this.mentionNotificationEnabled = false;
         this.itemMotionBlurEnabled = false;
         this.bossSpawnAlertEnabled = false;

@@ -1810,6 +1810,43 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.deployableTimerEnabled = v; AlpakaConfig.save(); },
                 "deployable timer power orb flare radiant mana flux overflux plasmaflux warning alert sos hud icon time left range buff"));
 
+        OPTIONS.add(new ConfigOption("Enchantments", ConfigCategory.SKYBLOCK));
+
+        OPTIONS.add(new ConfigOption("max_enchant_color", "Max Enchant Color",
+                "Enchantments at their highest level get their own color in tooltips.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.maxEnchantColorEnabled,
+                v -> { AlpakaConfig.instance.maxEnchantColorEnabled = v; AlpakaConfig.save(); },
+                "enchantments enchants max maxed level highest color colour tooltip lore sharpness perfect"));
+
+        OPTIONS.add(ConfigOption.color("max_enchant_color_value", "Max Level Color",
+                "Color of maxed enchantments.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.maxEnchantColor,
+                v -> { AlpakaConfig.instance.maxEnchantColor = v; AlpakaConfig.save(); },
+                "enchantments enchants max maxed level color colour picker tooltip"));
+
+        OPTIONS.add(new ConfigOption("max_enchant_color_ultimate", "Include Ultimate Enchants",
+                "Maxed ultimate enchantments get the color too instead of their pink.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.maxEnchantColorUltimate,
+                v -> { AlpakaConfig.instance.maxEnchantColorUltimate = v; AlpakaConfig.save(); },
+                "enchantments enchants ultimate pink max color tooltip wise soul eater chimera"));
+
+        OPTIONS.add(new ConfigOption("anvil_combine_helper", "Anvil Combine Helper",
+                "Put an enchanted book into the anvil and the books it combines with are highlighted in your inventory.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.anvilCombineHelperEnabled,
+                v -> { AlpakaConfig.instance.anvilCombineHelperEnabled = v; AlpakaConfig.save(); },
+                "anvil combine helper enchanted book books highlight matching same level merge inventory"));
+
+        OPTIONS.add(ConfigOption.color("anvil_combine_helper_color", "Highlight Color",
+                "Color of the highlighted books.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.anvilCombineHelperColor,
+                v -> { AlpakaConfig.instance.anvilCombineHelperColor = v; AlpakaConfig.save(); },
+                "anvil combine helper highlight color colour picker books"));
+
         OPTIONS.add(new ConfigOption("Damage Display", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("only_crit_damage", "Only Show Crit Damage",

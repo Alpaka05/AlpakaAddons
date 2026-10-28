@@ -215,17 +215,6 @@ public final class ItemIcons {
         return fetching;
     }
 
-    /** Whether Hypixel's list is there to answer {@link #name} and {@link #upgrades}; asking starts loading it. */
-    public static boolean ready() {
-        return catalog() != null;
-    }
-
-    /** The item's name in Hypixel's list, such as "Wither Blood"; null while the list loads or for an id it does not know. */
-    public static String name(String id) {
-        Catalog loaded = catalog();
-        return loaded == null || id == null ? null : loaded.names().get(id);
-    }
-
     /**
      * Every SkyBlock item by id with its name, plain Minecraft items left out, for the inventory
      * buttons' icon picker; null while the list loads or Network Features is off.
@@ -238,6 +227,17 @@ public final class ItemIcons {
             if (!loaded.vanillaIds().contains(id)) out.put(id, loaded.names().getOrDefault(id, id));
         }
         return out;
+    }
+
+    /** Whether Hypixel's list is there to answer {@link #name} and {@link #upgrades}; asking starts loading it. */
+    public static boolean ready() {
+        return catalog() != null;
+    }
+
+    /** The item's name in Hypixel's list, such as "Wither Blood"; null while the list loads or for an id it does not know. */
+    public static String name(String id) {
+        Catalog loaded = catalog();
+        return loaded == null || id == null ? null : loaded.names().get(id);
     }
 
     /** What upgrading the item costs; null while the list loads, or for an item that has no upgrades. */

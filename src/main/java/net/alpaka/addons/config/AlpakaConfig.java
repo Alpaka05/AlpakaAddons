@@ -624,6 +624,8 @@ public class AlpakaConfig {
     public boolean persistentItemNameEnabled = false;
     /** Master stars show as red stars, as they used to, instead of a number behind the gold ones. */
     public boolean oldMasterStarsEnabled = false;
+    /** Hovering a backpack or ender chest page in the Storage menu shows what was last seen inside. */
+    public boolean storagePreviewEnabled = true;
     /**
      * One long row of twenty hearts in place of the two short ones, the hunger bar and the armor bar,
      * neither of which SkyBlock needs; absorption hearts sit on the row above it.
@@ -1236,6 +1238,7 @@ public class AlpakaConfig {
         this.scrollableTooltipsEnabled = false;
         this.persistentItemNameEnabled = false;
         this.oldMasterStarsEnabled = false;
+        this.storagePreviewEnabled = false;
         this.mentionNotificationEnabled = false;
         this.itemMotionBlurEnabled = false;
         this.bossSpawnAlertEnabled = false;

@@ -157,13 +157,13 @@ object CustomDamageTagFeature {
         val baseY = player.eyeY - 0.6
         val baseZ = player.z + look.z * 3.0
         val now = System.currentTimeMillis()
-        // Number, crit, Ring of Love.
+        // Number, crit, marks.
         val samples = listOf(
-            Triple("1,234", false, false), Triple("48,920", true, false), Triple("139k", false, false),
-            Triple("2,417,880", true, true), Triple("873", false, true),
+            Triple("1,234", false, ""), Triple("48,920", true, ""), Triple("139k", false, "✷"),
+            Triple("2,417,880", true, LOVE_HEART), Triple("873", false, LOVE_HEART),
         )
         for ((i, sample) in samples.withIndex()) {
-            val text = format(sample.first) + if (sample.third) LOVE_HEART else ""
+            val text = format(sample.first) + sample.third
             add(Tag(baseX + (i - 2) * 0.5, baseY, baseZ, text, sample.second, now + i * 150L))
         }
     }
@@ -193,8 +193,8 @@ object CustomDamageTagFeature {
             // Hypixel's own splash stays hidden either way; these only decide whether ours is drawn.
             if (hiddenInDungeon) continue
             if (cfg.customDamageTagHideNearSlayerBoss && nearSlayerBoss(level, entity)) continue
-            // Ring of Love's heart stays on the copy: it is what tells a doubled hit apart.
-            val text = format(splash.number) + if (splash.love) LOVE_HEART else ""
+            // The marks stay on the copy: they tell a doubled hit or magic damage apart.
+            val text = format(splash.number) + splash.marks
             add(Tag(entity.x, entity.y + entity.bbHeight + NAME_TAG_LIFT, entity.z, text, splash.crit, now))
         }
     }
@@ -280,9 +280,10 @@ object CustomDamageTagFeature {
      *
      * Built straight as the sequence the font draws rather than as a Component read through
      * visualOrderText. A tag only ever holds ASCII digits, ',', '.' and a k/M/B suffix (the damage
-     * number pattern or [format]), which read left to right in every language, so a component tree
-     * and an ICU bidi pass per tag per frame could never change the order. Should a tag ever hold
-     * other characters, it has to go back through visualOrderText. The styles are worked out up
+     * number pattern or [format]), which read left to right in every language, followed by the
+     * splash's marks, symbols that stay where they are at the end of a left-to-right run. So a
+     * component tree and an ICU bidi pass per tag per frame could never change the order. Should a
+     * tag ever hold other characters, it has to go back through visualOrderText. The styles are worked out up
      * front, so the width pass and the later draw see the same ones.
      */
     private fun gradient(text: String, start: Int, end: Int, time: Double?): FormattedCharSequence {

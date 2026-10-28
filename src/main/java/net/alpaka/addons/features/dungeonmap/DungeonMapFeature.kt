@@ -44,7 +44,7 @@ object DungeonMapFeature {
         private set
     var coverRevision = 0
         private set
-    private var labelKey = ""
+    private var labelKey = -1L
     private val tracks = HashMap<String, MarkerTrack>()
     private var party: List<PartyMember> = emptyList()
     private var mapId: MapId? = null
@@ -117,13 +117,12 @@ object DungeonMapFeature {
             return
         }
         // Again when the map, a room or an option changes, and every second for the calibration.
-        val key = "${snapshot.revision}/${DungeonRooms.revision}/${cfg.dungeonMapRoomNames}/" +
-            "${cfg.dungeonMapRoomSecrets}/${cfg.dungeonMapHideCheckmarks}"
+        val key = (snapshot.revision.toLong() shl 32) + DungeonRooms.revision * 4L +
+            (if (cfg.dungeonMapRoomNames) 2 else 0) + (if (cfg.dungeonMapRoomSecrets) 1 else 0)
         if (key == labelKey && ticks % 20 != 0) return
         labelKey = key
         val result = RoomLabels.build(inks, DungeonRooms::room, calibration::cellX, calibration::cellY,
-            calibration.drawnRoomSize(), DungeonRooms::found, cfg.dungeonMapRoomNames, cfg.dungeonMapRoomSecrets,
-            cfg.dungeonMapHideCheckmarks)
+            calibration.drawnRoomSize(), DungeonRooms::found, cfg.dungeonMapRoomNames, cfg.dungeonMapRoomSecrets)
         labels = result.labels
         for (label in result.labels) if (label.state == RoomState.COMPLETE) DungeonRooms.complete(label.room)
         setCover(result.cover)
@@ -228,7 +227,7 @@ object DungeonMapFeature {
         players = emptyList()
         labels = emptyList()
         setCover(null)
-        labelKey = ""
+        labelKey = -1L
         DungeonRooms.reset()
         party = emptyList()
         tracks.clear()

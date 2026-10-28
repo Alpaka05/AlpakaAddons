@@ -50,13 +50,13 @@ class DisableAllFeaturesTest {
             "itemSizeFeatureEnabled", "itemStarlightEnabled", "itemMotionBlurEnabled", "blockOverlayEnabled",
             "etherwarpOverlayEnabled", "etherwarpSoundEnabled",
             // SkyBlock
+            "visitorBazaarEnabled",
             "slayerDropTrackerEnabled", "hideHypixelDropMessage", "slayerRngDropGuildChatEnabled",
             "hideSlayerChatMessages", "bossSpawnAlertEnabled", "bossCocoonAlertEnabled", "slayerTimerEnabled",
             "slayerHudEnabled", "worldAgeJoinMessageEnabled", "partyInvitePromptEnabled",
             "cacheResourcePackEnabled", "guildPrefixEnabled", "bridgeBotFormatterEnabled", "ragnarockEnabled",
             "onlyCritDamageEnabled", "deployableTimerEnabled", "customAuctionHouseEnabled", "customBazaarEnabled",
             "marketPriceHistoryEnabled", "customSignInputEnabled", "chestValueEnabled",
-            "visitorBazaarEnabled",
             // Cosmetics
             "customNameTagEnabled", "chromaHatEnabled", "playerScaleEnabled", "customDamageTagsEnabled",
             // Utility and sounds

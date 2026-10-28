@@ -1475,6 +1475,7 @@ public class AlpakaConfig {
         this.allowApiCalls = false;
         this.slayerTimerEnabled = false;
         this.ragnarockEnabled = false;
+        this.visitorBazaarEnabled = false;
         this.deployableTimerEnabled = false;
         this.customAuctionHouseEnabled = false;
         this.customBazaarEnabled = false;
@@ -1482,7 +1483,6 @@ public class AlpakaConfig {
         this.marketPriceHistoryEnabled = false;
         this.itemValueEnabled = false;
         this.chestValueEnabled = false;
-        this.visitorBazaarEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
         this.customDamageTagsEnabled = false;

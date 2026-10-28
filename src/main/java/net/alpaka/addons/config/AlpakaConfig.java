@@ -205,6 +205,8 @@ public class AlpakaConfig {
     public boolean cleanBlazeParticles = true;
     /** The potion swirls, enchanting glyphs and ender particles around the boss and its demons. */
     public boolean cleanBlazeEffectParticles = true;
+    /** The dust in the Hellion Shield attunement's colour around the boss and its demons. */
+    public boolean cleanBlazeAttunementDust = true;
     public boolean cleanBlazeFire = true;
     public boolean cleanBlazeFireballs = true;
     public boolean cleanBlazeLightning = true;

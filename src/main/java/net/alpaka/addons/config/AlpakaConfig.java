@@ -187,11 +187,17 @@ public class AlpakaConfig {
     public boolean cleanBlazeParticles = true;
     /** The potion swirls, enchanting glyphs and ender particles around the boss and its demons. */
     public boolean cleanBlazeEffectParticles = true;
+    /** The dust in the Hellion Shield attunement's colour around the boss and its demons. */
+    public boolean cleanBlazeAttunementDust = true;
     public boolean cleanBlazeFire = true;
     public boolean cleanBlazeFireballs = true;
     public boolean cleanBlazeLightning = true;
     /** Off by default: the health on blaze name tags is what a grinder watches. */
     public boolean cleanBlazeNameTags = false;
+    /** "Strike using the ... attunement on your dagger!" lines in the Blaze zones. */
+    public boolean cleanBlazeWrongDaggerChat = true;
+    /** "Your hit was reduced by Hellion Shield!" and "You took ... damage from ..." in the Blaze zones. */
+    public boolean cleanBlazeDamageChat = true;
     /** During the player's own Blaze slayer boss, a glowing column over each fire pit block. */
     public boolean blazeFirePitsEnabled = true;
     /** ARGB color of the fire pit column; its alpha scales the column's own fade. Default hot red-orange. */

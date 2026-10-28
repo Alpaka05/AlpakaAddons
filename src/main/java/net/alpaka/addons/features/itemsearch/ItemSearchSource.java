@@ -48,7 +48,7 @@ public enum ItemSearchSource {
             case BACKPACK -> "Backpack " + page;
             case SACKS -> label != null ? label : "Sacks";
             case CHEST -> label != null ? label : "Island Chest";
-            case WARDROBE -> "Wardrobe Slot " + page;
+            case WARDROBE -> "Wardrobe Page " + page;
             case ACCESSORY_BAG -> "Accessory Bag " + page;
             case VAULT -> "Personal Vault";
         };
@@ -64,8 +64,7 @@ public enum ItemSearchSource {
             case ENDER_CHEST -> "ec " + page;
             case BACKPACK -> "bp " + page;
             case SACKS -> "sacks";
-            // Hypixel's wardrobe shows nine slots a page; the slot number is what is saved.
-            case WARDROBE -> "wd " + ((page - 1) / 9 + 1);
+            case WARDROBE -> "wd " + page;
             case ACCESSORY_BAG -> "ab " + page;
             // The Personal Vault is a button in the bank's menu; there is no command of its own.
             case VAULT -> "bank";

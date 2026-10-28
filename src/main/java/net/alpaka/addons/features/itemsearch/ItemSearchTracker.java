@@ -126,7 +126,9 @@ public final class ItemSearchTracker {
             case ENDER_CHEST, BACKPACK -> saveRange(parsed, slots, 9, slots.size(), now);
             // The bottom row is Hypixel's.
             case ACCESSORY_BAG, VAULT -> saveRange(parsed, slots, 0, Math.max(0, (rows - 1) * 9), now);
-            case WARDROBE -> saveWardrobe(parsed.page(), slots, now);
+            // Its buttons carry no SkyBlock id, so every slot can be read; the set worn is told
+            // apart when the list is built (ItemSearchResults).
+            case WARDROBE -> saveRange(parsed, slots, 0, slots.size(), now);
             case SACKS -> saveSack(parsed, slots, now);
             default -> {}
         }
@@ -137,28 +139,6 @@ public final class ItemSearchTracker {
         List<ItemSearchStore.Item> items = new ArrayList<>();
         for (int i = from; i < to && i < slots.size(); i++) add(items, slots.get(i).getItem());
         ItemSearchStore.put(new ItemSearchStore.Container(menu.source(), menu.page(), null, null, null, now, items));
-    }
-
-    /**
-     * The wardrobe: nine slots a page, each a column of helmet, chestplate, leggings and boots, with
-     * its button under them. The set the player wears is left out - it is on the player, where the
-     * inventory already counts it.
-     */
-    private static void saveWardrobe(int page, List<Slot> slots, long now) {
-        if (slots.size() < 45) return;
-        for (int column = 0; column < 9; column++) {
-            int number = (page - 1) * 9 + column + 1;
-            String button = SkyblockUtils.cleanColor(slots.get(36 + column).getItem().getHoverName().getString());
-            AlpakaAddons.LOGGER.info("Item Search: wardrobe slot {}: button \"{}\", top \"{}\"", number, button,
-                    SkyblockUtils.cleanColor(slots.get(column).getItem().getHoverName().getString()));
-            if (button.contains("Equipped")) {
-                ItemSearchStore.remove(ItemSearchStore.key(ItemSearchSource.WARDROBE, number, null, null));
-                continue;
-            }
-            List<ItemSearchStore.Item> items = new ArrayList<>();
-            for (int row = 0; row < 4; row++) add(items, slots.get(row * 9 + column).getItem());
-            ItemSearchStore.put(new ItemSearchStore.Container(ItemSearchSource.WARDROBE, number, null, null, null, now, items));
-        }
     }
 
     /** A sack: each slot an item kept in it, with the amount stored in its lore rather than in the stack. */

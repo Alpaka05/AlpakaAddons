@@ -8,6 +8,8 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * What a whole menu is worth: every SkyBlock item in it at what {@link
@@ -52,6 +54,23 @@ public final class ChestValue {
         boolean priced() {
             return !Double.isNaN(each) && each > 0;
         }
+    }
+
+    /** A sack's line for what it holds of an item: "Stored: 1,234/465.7k". */
+    private static final Pattern STORED = Pattern.compile("^Stored: ([\\d,.]+[kKmMbB]?)/");
+
+    /**
+     * How many of an item a sack holds, read from the item's lore, or -1 when the lore has no such
+     * line. A sack shows each item once, as a single item, whatever it holds; the lore says how many.
+     */
+    public static long sackCount(List<String> lore) {
+        for (String line : lore) {
+            Matcher m = STORED.matcher(line.trim());
+            if (!m.find()) continue;
+            Double count = Coins.parseInput(m.group(1));
+            return count == null ? -1 : Math.round(count);
+        }
+        return -1;
     }
 
     /** The same item from one or more slots, as one line of the list. */

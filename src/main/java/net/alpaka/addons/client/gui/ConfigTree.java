@@ -93,6 +93,8 @@ public final class ConfigTree {
             // General
             "allow_api_calls", "update_notifications", "menu_font", "menu_theme", "menu_accent_color",
             "custom_escape_menu", "custom_main_menu", "disable_all_features", "reset_all_settings",
+            // SkyBlock, kept apart from the list below so it does not collide with other changes there
+            "slayer_boss_highlight",
             // Visuals
             "fullbright", "clean_blaze", "blaze_fire_pits", "hide_hurt_overlay", "hide_mob_deaths",
             "hide_explosions",
@@ -111,7 +113,6 @@ public final class ConfigTree {
             "etherwarp_overlay", "etherwarp_sound",
             "slayer_drop_tracker", "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat",
             "hide_slayer_chat", "boss_spawn_alert", "boss_cocoon_alert", "slayer_timer", "slayer_hud_enabled",
-            "slayer_boss_highlight",
             "world_age_join_message_enabled", "party_invite_prompt",
             "guild_prefix", "bridge_bot_formatter", "only_crit_damage", "ragnarock", "deployable_timer", "cache_resource_pack",
             "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value", "chest_value",

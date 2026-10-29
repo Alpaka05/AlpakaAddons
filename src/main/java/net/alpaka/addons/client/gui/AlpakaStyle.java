@@ -312,6 +312,28 @@ public final class AlpakaStyle {
         ModernGuiUtils.drawRect(graphics, cx + 1, cy - 1, 1, 4, color);
     }
 
+    /**
+     * A paste button: a small clipboard in the same thin lines as {@link #trashButton}, gray until
+     * hovered, then in the accent color on a soft square.
+     */
+    public static void pasteButton(GuiGraphicsExtractor graphics, int x, int y, int size, boolean hover) {
+        if (hover) ModernGuiUtils.drawRoundedRect(graphics, x, y, size, size, FIELD_RADIUS, ROW_SELECTED);
+        int color = hover ? ModernGuiUtils.getAccentColor() : TEXT_MUTED;
+        int cx = x + size / 2;
+        int cy = y + size / 2;
+        // The clip on top, the board round it, then three lines of text on the board.
+        ModernGuiUtils.drawRect(graphics, cx - 1, cy - 6, 3, 1, color);
+        ModernGuiUtils.drawRect(graphics, cx - 2, cy - 5, 5, 2, color);
+        ModernGuiUtils.drawRect(graphics, cx - 4, cy - 4, 2, 1, color);
+        ModernGuiUtils.drawRect(graphics, cx + 3, cy - 4, 2, 1, color);
+        ModernGuiUtils.drawRect(graphics, cx - 4, cy - 3, 1, 8, color);
+        ModernGuiUtils.drawRect(graphics, cx + 4, cy - 3, 1, 8, color);
+        ModernGuiUtils.drawRect(graphics, cx - 3, cy + 5, 7, 1, color);
+        ModernGuiUtils.drawRect(graphics, cx - 2, cy - 1, 5, 1, color);
+        ModernGuiUtils.drawRect(graphics, cx - 2, cy + 1, 5, 1, color);
+        ModernGuiUtils.drawRect(graphics, cx - 2, cy + 3, 3, 1, color);
+    }
+
     /** An arrow that acts as a button, drawn with the menu's chevron rather than a glyph. */
     public static void chevronButton(GuiGraphicsExtractor graphics, int x, int y, int size, boolean left,
                                      boolean hover, boolean enabled) {

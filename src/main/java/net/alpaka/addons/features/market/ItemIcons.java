@@ -98,10 +98,11 @@ public final class ItemIcons {
 
     /**
      * Hypixel's list as far as it is used: how items look by name, every item id, the ids of plain
-     * Minecraft items, every item's name by its id, and the upgrades of those that have any.
+     * Minecraft items, every item's name by its id, the upgrades of those that have any, and the
+     * rarity of every accessory outside the Rift.
      */
     record Catalog(Map<String, Info> byName, Map<String, Info> byId, Set<String> ids, Set<String> vanillaIds,
-                   Map<String, String> names, Map<String, Upgrades> upgrades) {
+                   Map<String, String> names, Map<String, Upgrades> upgrades, Map<String, String> accessories) {
         /**
          * Whether the item with SkyCofl's tag is a plain Minecraft item - Diamond Sword, Oak Planks -
          * rather than one of SkyBlock's own. Those cannot be auctioned. A tag Hypixel does not list
@@ -215,6 +216,20 @@ public final class ItemIcons {
         return fetching;
     }
 
+    /**
+     * Every SkyBlock item by id with its name, plain Minecraft items left out, for the inventory
+     * buttons' icon picker; null while the list loads or Network Features is off.
+     */
+    public static Map<String, String> skyblockItems() {
+        Catalog loaded = catalog();
+        if (loaded == null) return null;
+        Map<String, String> out = new HashMap<>();
+        for (String id : loaded.ids()) {
+            if (!loaded.vanillaIds().contains(id)) out.put(id, loaded.names().getOrDefault(id, id));
+        }
+        return out;
+    }
+
     /** Whether Hypixel's list is there to answer {@link #name} and {@link #upgrades}; asking starts loading it. */
     public static boolean ready() {
         return catalog() != null;
@@ -224,6 +239,12 @@ public final class ItemIcons {
     public static String name(String id) {
         Catalog loaded = catalog();
         return loaded == null || id == null ? null : loaded.names().get(id);
+    }
+
+    /** Every accessory outside the Rift with its rarity, by id; null while the list loads. */
+    public static Map<String, String> accessories() {
+        Catalog loaded = catalog();
+        return loaded == null ? null : loaded.accessories();
     }
 
     /** What upgrading the item costs; null while the list loads, or for an item that has no upgrades. */
@@ -322,7 +343,8 @@ public final class ItemIcons {
         Set<String> vanilla = new HashSet<>();
         Map<String, String> names = new HashMap<>();
         Map<String, Upgrades> upgrades = new HashMap<>();
-        if (!root.isJsonObject() || !root.getAsJsonObject().has("items")) return new Catalog(map, byId, ids, vanilla, names, upgrades);
+        Map<String, String> accessories = new HashMap<>();
+        if (!root.isJsonObject() || !root.getAsJsonObject().has("items")) return new Catalog(map, byId, ids, vanilla, names, upgrades, accessories);
         for (JsonElement element : root.getAsJsonObject().getAsJsonArray("items")) {
             if (!element.isJsonObject()) continue;
             JsonObject o = element.getAsJsonObject();
@@ -336,6 +358,11 @@ public final class ItemIcons {
                 if (!name.isEmpty()) names.put(id, name);
                 Upgrades up = upgrades(o);
                 if (up != null) upgrades.put(id, up);
+                // The Rift's accessories only count in the Rift, and none of the profile viewers list them.
+                if ("ACCESSORY".equals(string(o, "category")) && !"RIFT".equals(string(o, "origin"))) {
+                    String tier = string(o, "tier");
+                    accessories.put(id, tier.isEmpty() ? "COMMON" : tier);
+                }
             }
             if (name.isEmpty() || material.isEmpty()) continue;
             String skin = null;
@@ -350,7 +377,7 @@ public final class ItemIcons {
             map.putIfAbsent(name.toLowerCase(Locale.ROOT), info);
             if (!id.isEmpty()) byId.put(id, info);
         }
-        return new Catalog(map, byId, ids, vanilla, names, upgrades);
+        return new Catalog(map, byId, ids, vanilla, names, upgrades, accessories);
     }
 
     /** An item's star, dungeon conversion and gemstone slot costs and its own enchantments; null without any. */

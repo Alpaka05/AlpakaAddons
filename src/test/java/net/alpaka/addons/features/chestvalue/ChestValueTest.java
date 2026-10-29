@@ -111,4 +111,24 @@ class ChestValueTest {
                 200x Wheat - 400 (<1%)
                 3x Trash - no price""", text);
     }
+
+    @Test
+    void readsWhatASackHoldsFromTheLore() {
+        assertEquals(12_345, ChestValue.sackCount(List.of("Slayer Sack", "", "Stored: 12,345/465.7k", "", "Click to pickup!")));
+        assertEquals(0, ChestValue.sackCount(List.of("Slayer Sack", "Stored: 0/465.7k", "Empty sack!")));
+        assertEquals(1_500, ChestValue.sackCount(List.of("Stored: 1.5k/60k")));
+        assertEquals(-1, ChestValue.sackCount(List.of("Rarity: Legendary", "Stored in your Ender Chest")));
+        assertEquals(-1, ChestValue.sackCount(List.of()));
+    }
+
+    @Test
+    void onlyMenusWithOwnItemsCount() {
+        for (String title : List.of("Chest", "Large Chest", "Ender Chest (2/9)", "Jumbo Backpack (Slot #3)",
+                "Enchanted Agronomy Sack", "Sack of Sacks", "Accessory Bag (1/3)", "Wardrobe (1/2)", "Pets",
+                "Cobblestone Minion XI", "Obsidian Chest", "Craft Item", "You                  Steve"))
+            assertTrue(ChestValue.holdsOwnItems(title), title);
+        for (String title : List.of("SkyBlock Menu", "Fishing Skill", "Your Skills", "Mining Collections",
+                "Obsidian Collection", "Recipe Book", "Farm Merchant"))
+            assertFalse(ChestValue.holdsOwnItems(title), title);
+    }
 }

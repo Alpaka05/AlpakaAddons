@@ -101,10 +101,15 @@ public final class PerformanceStats {
         TIME_UPDATES.onTicks(step >= 1 && step <= MAX_PLAUSIBLE_STEP ? step : TICKS_PER_TIME_UPDATE, Util.getMillis());
     }
 
-    /** From the packet listener, for every ping the server sends; Hypixel sends one each tick. */
-    public static void onServerPing(Object packet) {
-        if (!firstSighting(packet)) return;
+    /**
+     * From the packet listener, for every ping the server sends; Hypixel sends one each tick.
+     * Returns whether this was the first time this packet was seen, so the listener can count it
+     * elsewhere too (the dungeon solvers' server tick clock).
+     */
+    public static boolean onServerPing(Object packet) {
+        if (!firstSighting(packet)) return false;
         TICK_PINGS.onTicks(1L, Util.getMillis());
+        return true;
     }
 
     /** From the packet listener, for every answer to a ping request, ours or not. */

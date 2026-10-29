@@ -48,6 +48,13 @@ public final class ScrollableTooltipsFeature {
     private static int fingerprint = 0;
     private static long lastDrawnMs = 0L;
 
+    /**
+     * A screen whose tooltips are short and whose wheel always belongs to the screen, such as the
+     * inventory buttons' icon grid: with Always Scrollable on, every item name there would
+     * otherwise take the wheel from the grid.
+     */
+    public interface KeepsWheel {}
+
     public static boolean isEnabled() {
         return AlpakaConfig.instance.scrollableTooltipsEnabled;
     }

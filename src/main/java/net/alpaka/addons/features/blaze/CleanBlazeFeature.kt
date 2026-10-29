@@ -1,6 +1,7 @@
 package net.alpaka.addons.features.blaze
 
 import net.alpaka.addons.config.AlpakaConfig
+import net.alpaka.addons.features.slayer.SlayerDropTracker
 import net.alpaka.addons.features.slayer.SlayerSessionTracker
 import net.alpaka.addons.features.slayer.SlayerType
 import net.alpaka.addons.utils.SkyblockUtils
@@ -19,7 +20,7 @@ import net.minecraft.world.entity.projectile.hurtingprojectile.SmallFireball
  * Strips the visual noise off Hypixel's blazes while slaying them: their flame, smoke, angry
  * villager and lava drip particles, the potion swirls, enchanting glyphs and ender particles
  * around the boss and its demons (the ones SkyHanni's slayer spawn particle hider lists), the
- * burning overlay, the fireballs they throw and lightning, each with its own toggle, and optionally
+ * attunement coloured dust around them, the burning overlay, the fireballs they throw and lightning, each with its own toggle, and optionally
  * their name tags.
  *
  * Only on SkyBlock, in the Blaze slayer's zones. It used to apply
@@ -37,7 +38,8 @@ import net.minecraft.world.entity.projectile.hurtingprojectile.SmallFireball
  *
  * SkyHanni's Blaze Slayer Clear View does much the same; running both is harmless but redundant.
  *
- * Purely about how the blazes look. The slayer chatter has its own setting in
+ * Besides the looks, two kinds of boss fight chatter can go too: the wrong dagger attunement lines
+ * and the damage lines. The general slayer chatter (quest, radio, level up) has its own setting in
  * [net.alpaka.addons.features.slayer.SlayerChatFilter].
  */
 object CleanBlazeFeature {
@@ -73,6 +75,44 @@ object CleanBlazeFeature {
         return inScope
     }
 
+    /** "Strike using the CRYSTAL attunement on your dagger!", sent on every hit with the wrong one. */
+    private val WRONG_DAGGER = Regex("""^Strike using the \w+ attunement on your dagger!$""")
+
+    /**
+     * "Your hit was reduced by Hellion Shield!" and the boss's damage reports, such as "You took
+     * 1,500 true damage from Quazii's beam!". Anchored at the start, so a player quoting one in
+     * chat keeps their line.
+     */
+    private val DAMAGE = listOf(
+        Regex("""^Your hit was reduced by Hellion Shield!$"""),
+        Regex("""^You took [\d,.]+ (?:true )?damage from .+!$"""),
+    )
+
+    /**
+     * Whether a chat line is boss fight chatter the player switched off. Takes the line as Hypixel
+     * sent it; only the visible chat log loses it, the slayer tracking still reads it.
+     */
+    @JvmStatic
+    fun shouldHideChat(rawMessage: String): Boolean {
+        val config = AlpakaConfig.instance
+        if (!config.cleanBlazeWrongDaggerChat && !config.cleanBlazeDamageChat) return false
+        val kind = chatKind(SlayerDropTracker.cleanColor(rawMessage).trim()) ?: return false
+        val wanted = when (kind) {
+            ChatKind.WRONG_DAGGER -> config.cleanBlazeWrongDaggerChat
+            ChatKind.DAMAGE -> config.cleanBlazeDamageChat
+        }
+        return wanted && active()
+    }
+
+    internal enum class ChatKind { WRONG_DAGGER, DAMAGE }
+
+    /** Which kind of boss fight chatter a color-stripped line is, if any. Switches aside, for tests. */
+    internal fun chatKind(cleanText: String): ChatKind? = when {
+        WRONG_DAGGER.matches(cleanText) -> ChatKind.WRONG_DAGGER
+        DAMAGE.any { it.matches(cleanText) } -> ChatKind.DAMAGE
+        else -> null
+    }
+
     @JvmStatic
     fun shouldCancelParticle(options: ParticleOptions): Boolean {
         val type = options.type
@@ -87,6 +127,10 @@ object CleanBlazeFeature {
             type === ParticleTypes.INSTANT_EFFECT || type === ParticleTypes.WITCH ||
             type === ParticleTypes.ENCHANT || type === ParticleTypes.PORTAL
         ) return AlpakaConfig.instance.cleanBlazeEffectParticles && active()
+        // The coloured dust around the boss and its demons, in the colour of the attunement their
+        // Hellion Shield wants (white Spirit, dark grey Ashen, cyan Crystal, yellow Auric). The
+        // name tag shows the attunement too, so the dust is only noise.
+        if (type === ParticleTypes.DUST) return AlpakaConfig.instance.cleanBlazeAttunementDust && active()
         return false
     }
 
@@ -115,9 +159,11 @@ object CleanBlazeFeature {
         return DEMON_NAMES.any { SkyblockUtils.containsIgnoringFormatting(raw, it) }
     }
 
+    /** A part of Clean Blaze, but anywhere on SkyBlock: blazes spin outside the slayer zones too. */
     @JvmStatic
     fun shouldStopBlazeRodSpin(): Boolean {
-        return AlpakaConfig.instance.stopBlazeSpinning && SkyblockUtils.isOnSkyblock()
+        val cfg = AlpakaConfig.instance
+        return cfg.cleanBlazeEnabled && cfg.stopBlazeSpinning && SkyblockUtils.isOnSkyblock()
     }
 
     @JvmStatic

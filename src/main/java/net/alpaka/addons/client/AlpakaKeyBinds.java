@@ -32,6 +32,9 @@ public final class AlpakaKeyBinds {
 
     private static final List<KeyMapping> MAPPINGS = new ArrayList<>();
 
+    /** Keys that only act inside one of the mod's menus, by the menu they belong to; see {@link #registerMenuKey}. */
+    private static final Map<KeyMapping, String> MENU_KEYS = new HashMap<>();
+
     /** options.txt's key lines, read once for the takeover; null until needed. */
     private static Map<String, String> legacy;
 
@@ -48,6 +51,16 @@ public final class AlpakaKeyBinds {
         apply(mapping);
         KeyMapping.resetMapping();
         return mapping;
+    }
+
+    /**
+     * Like {@link #register}, for a key that only acts inside one of the mod's menus (named by
+     * menu), such as the market screen's. Such a key clashes only with the other keys of that menu
+     * and with the inventory key, which closes it; the game's keys do nothing there.
+     */
+    public static <T extends KeyMapping> T registerMenuKey(T mapping, String menu) {
+        MENU_KEYS.put(mapping, menu);
+        return register(mapping);
     }
 
     /**
@@ -85,10 +98,17 @@ public final class AlpakaKeyBinds {
      */
     public static KeyMapping conflict(KeyMapping mapping) {
         if (mapping.isUnbound()) return null;
-        for (KeyMapping other : MAPPINGS) {
-            if (other != mapping && mapping.same(other)) return other;
-        }
+        String menu = MENU_KEYS.get(mapping);
         Minecraft mc = Minecraft.getInstance();
+        if (menu != null) {
+            for (KeyMapping other : MAPPINGS) {
+                if (other != mapping && menu.equals(MENU_KEYS.get(other)) && mapping.same(other)) return other;
+            }
+            return mc.options != null && mapping.same(mc.options.keyInventory) ? mc.options.keyInventory : null;
+        }
+        for (KeyMapping other : MAPPINGS) {
+            if (other != mapping && !MENU_KEYS.containsKey(other) && mapping.same(other)) return other;
+        }
         if (mc.options == null) return null;
         for (KeyMapping other : mc.options.keyMappings) {
             if (other != mapping && mapping.same(other)) return other;

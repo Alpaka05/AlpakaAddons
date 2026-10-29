@@ -13,19 +13,22 @@ import net.minecraft.world.inventory.ContainerInput;
  * The one place the mod sends anything to the server.
  *
  * Every message, command or menu click the mod sends is the direct result of the player pressing a
- * key, clicking, or pressing Enter, and says which through its {@link Cause}. Nothing reacts to
- * other players' chat, timers or game events by sending; two features once did - a party-chat
+ * key, clicking, or pressing Enter, and says which through its {@link Cause}. A command typed in the
+ * first seconds on a server may wait for Hypixel's join cooldown before it goes out, but it is still
+ * the one the player sent, once. Nothing reacts to other players' chat, timers or game events by
+ * sending unless the player switched it on; two features once did so unasked - a party-chat
  * auto-reply and a guild announcement fired from a timer - and were removed. A scan of the compiled
  * classes in the tests (OutboundBytecodeScanTest) fails the build if anything outside this class
  * sends to the server, apart from the resource pack answers of the pack cache.
  *
- * There are two exceptions. {@link #latencyProbe()} is not a message or command but vanilla's own
+ * There are three exceptions. {@link #latencyProbe()} is not a message or command but vanilla's own
  * ping request, which nobody else sees and which the server answers without acting on it. It goes
  * out on a timer because a ping has no other way to be measured, and at most once every
  * {@link #PROBE_FLOOR_MS} ms, enforced here so no caller can send more. {@link #quickJoinSkyblock()}
- * is the one command sent without an input: Quick Join's /skyblock after joining Hypixel, which the
- * player switched on for exactly that. It can only ever be that command, at most once every
- * {@link #QUICK_JOIN_FLOOR_MS} ms.
+ * is Quick Join's /skyblock after joining Hypixel, which the player switched on for exactly that.
+ * It can only ever be that command, at most once every {@link #QUICK_JOIN_FLOOR_MS} ms. And
+ * {@link Cause#PARTY_CHAT_REQUEST} is a party chat line answering a party member's "!tps", sent only
+ * when the player switched on Auto Answer, at most once every two seconds.
  */
 public final class Outbound {
     /** What the player did that sends the command. */
@@ -34,10 +37,23 @@ public final class Outbound {
         CHAT_INPUT,
         /** Pressed a key, such as Y on a party invite. */
         KEY_PRESS,
+        /** Clicked something in one of the mod's own windows, such as a result in Item Search. */
+        BUTTON,
         /** Released or clicked a command wheel segment. */
         WHEEL,
         /** Clicked the mod's drawing of a slot in an open menu, such as a card in the Auction House. */
         MENU_CLICK,
+        /**
+         * Pressed Enter on a command Hypixel refuses for the first seconds on a server; it goes out
+         * once, when that wait is over, and never again (WarpCooldownQueue).
+         */
+        QUEUED_CHAT_INPUT,
+        /**
+         * Nothing: a party member asked for a party chat line ("!tps") and the player switched on
+         * Auto Answer. Off by default, only for commands that post in party chat,
+         * at most once every two seconds (PartyCommandsFeature).
+         */
+        PARTY_CHAT_REQUEST,
         /** Clicked one of the player's own inventory buttons. */
         INVENTORY_BUTTON
     }

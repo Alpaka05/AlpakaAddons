@@ -80,4 +80,8 @@ public final class HudDefaults {
      */
     public static final int INVENTORY_X = 10;
     public static final int INVENTORY_Y = 10;
+
+    /** Below the performance line; the map is only shown in Catacombs runs. */
+    public static final int DUNGEON_MAP_X = 10;
+    public static final int DUNGEON_MAP_Y = 48;
 }

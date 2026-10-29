@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.chat;
 
+import net.alpaka.addons.features.chat.MessageFilterFeature.DungeonKind;
 import net.alpaka.addons.features.chat.MessageFilterFeature.Kind;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -43,6 +44,9 @@ class MessageFilterFeatureTest {
             "(This totals 3 types of materials stashed!)                            | STASH",
             ">>> CLICK HERE to pick them up! <<<                                    | STASH",
             ">>> CLICK HERE to pick it up! <<<                                      | STASH",
+            "[Sacks] +11 items. (Last 7s.)                                          | SACKS",
+            "[Sacks] -1 item. (Last 5s.)                                            | SACKS",
+            "[Sacks] +2,111 items, -4 items. (Last 30s.)                            | SACKS",
     })
     void recognizesSpam(String text, Kind kind) {
         assertEquals(kind, MessageFilterFeature.classify(text.strip()));
@@ -58,6 +62,7 @@ class MessageFilterFeatureTest {
             "[MVP+] Someone: Autopet equipped your [Lvl 100] Mosquito! VIEW RULE",
             "Guild > Someone: ♨ And 3 more!",
             "Someone: You have 2 items stashed away!",
+            "[MVP+] Someone: [Sacks] +11 items. (Last 7s.)",
     })
     void leavesOtherLinesAlone(String text) {
         assertNull(MessageFilterFeature.classify(text));
@@ -120,5 +125,52 @@ class MessageFilterFeatureTest {
         assertEquals(Kind.STASH, MessageFilterFeature.classify(
                 "You have 2 items stashed away!\n                >>> CLICK HERE to pick them up! <<<"));
         assertNull(MessageFilterFeature.classify("You have 2 items stashed away!\nSomeone: hi"));
+    }
+
+    /** Color-stripped dungeon lines (from SkyHanni's DungeonChatFilter) and the group each is in. */
+    @ParameterizedTest(name = "{0} -> {1}")
+    @CsvSource(delimiter = '|', value = {
+            "Alpakaa has started the dungeon countdown. The dungeon will begin in 1 minute. | PREPARE",
+            "Alpakaa is now ready!                                                   | PREPARE",
+            "Dungeon starts in 4 seconds.                                            | PREPARE",
+            "Dungeon starts in 1 second.                                             | PREPARE",
+            "[NPC] Mort: Talk to me to change your class and ready up.               | PREPARE",
+            "[NPC] Mort: Good luck.                                                  | START",
+            "[Berserk] Melee Damage 48% -> 88%                                       | START",
+            "A shiver runs down your spine...                                        | AMBIENCE",
+            "Alpakaa has obtained Superboom TNT x2!                                  | PICKUP",
+            "You found a Wither Essence! Everyone gains an extra essence!            | PICKUP",
+            "Fairy the Fairy: Have a great life!                                     | PICKUP",
+            "RIGHT CLICK on a WITHER door to open it. This key can only be used to open 1 door! | REMINDER",
+            "DUNGEON BUFF! Alpakaa found a Blessing of Power III! (Hidden)           | BLESSING",
+            "A Blessing of Life was picked up!                                       | BLESSING",
+            "'     Granted you +20 HP and +5 Defense.'                               | BLESSING",
+            "This chest has already been searched!                                   | NOT_POSSIBLE",
+            "The Lost Adventurer struck you for 1,234 damage!                        | DAMAGE",
+            "Crypt Lurker hit you for 512.3 damage.                                  | DAMAGE",
+            "Mute silenced you!                                                      | DAMAGE",
+            "Your Implosion hit 3 enemies for 1,234,567 damage.                      | ABILITY",
+            "This ability is on cooldown for 2s.                                     | ABILITY",
+            "Ragnarok is ready to use! Press DROP to activate it!                    | ABILITY",
+            "PUZZLE SOLVED! Alpakaa tied Tic Tac Toe! Good job!                      | PUZZLE",
+            "[STATUE] Oruo the Omniscient: One more question!                        | PUZZLE",
+            "Alpakaa unlocked Wither Essence x3!                                     | END",
+            "+41,234 Catacombs Experience (Team Bonus)                               | END",
+    })
+    void recognizesDungeonChatter(String text, DungeonKind kind) {
+        assertEquals(kind, MessageFilterFeature.classifyDungeon(text));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "Party > [MVP+] Alpakaa: Good luck.",
+            "[MVP+] Someone: The Lost Adventurer struck you for 1,234 damage!",
+            "Party > Someone: is now ready!",
+            "[MVP+] Someone: A shiver runs down your spine...",
+            "[BOSS] Maxor: WELL WELL WELL LOOK WHO'S HERE!",
+            "RARE DROP! Necron's Handle (+250% ✯ Magic Find)",
+    })
+    void leavesOtherDungeonLinesAlone(String text) {
+        assertNull(MessageFilterFeature.classifyDungeon(text));
     }
 }

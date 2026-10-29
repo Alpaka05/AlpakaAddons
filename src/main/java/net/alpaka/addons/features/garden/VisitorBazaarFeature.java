@@ -2,6 +2,7 @@ package net.alpaka.addons.features.garden;
 
 import net.alpaka.addons.compliance.Outbound;
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.utils.SkyblockUtils;
 import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -27,11 +28,16 @@ import java.util.regex.Pattern;
  * Hypixel doesn't mark which of several required items is missing, so the inventory is counted:
  * the click opens the first item the inventory doesn't hold enough of, and only moves on to the next
  * once that one is complete.
+ *
+ * An Ironman profile can't use the bazaar, so there the click opens the item's recipe instead.
  */
 public final class VisitorBazaarFeature {
     static final String ACCEPT_OFFER = "Accept Offer";
     static final String ITEMS_REQUIRED = "Items Required:";
     static final String MISSING = "Missing items to accept!";
+
+    /** The symbol Hypixel puts after an Ironman profile's name and the player's own in the tab list. */
+    static final String IRONMAN = "♲";
 
     private static final Pattern FORMATTING = Pattern.compile("§.");
     /** The amount Hypixel writes after the item, such as " x13" or " x1,280". */
@@ -53,8 +59,13 @@ public final class VisitorBazaarFeature {
             Pick pick = pick(offer, VisitorBazaarFeature::inInventory);
             // With several items the line says which one the click opens.
             String target = offer.size() > 1 ? ": " + pick.item() : "";
-            lines.add(Component.literal("Click to Open Bazaar Page" + target).withStyle(ChatFormatting.YELLOW)
-                    .append(Component.literal(" (copies " + pick.amount() + ")").withStyle(ChatFormatting.DARK_GRAY)));
+            if (onIronman()) {
+                lines.add(Component.literal("Click to Open Recipe" + target).withStyle(ChatFormatting.YELLOW)
+                        .append(Component.literal(" (" + pick.amount() + " needed)").withStyle(ChatFormatting.DARK_GRAY)));
+            } else {
+                lines.add(Component.literal("Click to Open Bazaar Page" + target).withStyle(ChatFormatting.YELLOW)
+                        .append(Component.literal(" (copies " + pick.amount() + ")").withStyle(ChatFormatting.DARK_GRAY)));
+            }
         });
     }
 
@@ -67,8 +78,12 @@ public final class VisitorBazaarFeature {
         List<Required> offer = offer(slot.getItem());
         if (offer == null) return false;
         Pick pick = pick(offer, VisitorBazaarFeature::inInventory);
-        Minecraft.getInstance().keyboardHandler.setClipboard(Integer.toString(pick.amount()));
-        Outbound.command("bz " + pick.item(), Outbound.Cause.MENU_CLICK);
+        if (onIronman()) {
+            Outbound.command("recipe " + pick.item(), Outbound.Cause.MENU_CLICK);
+        } else {
+            Minecraft.getInstance().keyboardHandler.setClipboard(Integer.toString(pick.amount()));
+            Outbound.command("bz " + pick.item(), Outbound.Cause.MENU_CLICK);
+        }
         return true;
     }
 
@@ -79,6 +94,32 @@ public final class VisitorBazaarFeature {
         List<String> lines = new ArrayList<>(lore.lines().size());
         for (Component line : lore.lines()) lines.add(line.getString());
         return offer(stack.getHoverName().getString(), lines);
+    }
+
+    private static boolean onIronman() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        return player != null && isIronman(SkyblockUtils.getTabListLines(), player.getGameProfile().name());
+    }
+
+    /**
+     * Whether the tab list shows an Ironman profile: its "Profile:" line, or the player's own entry
+     * ("[312] Name ♲"), carries the Ironman symbol.
+     */
+    static boolean isIronman(List<String> tabLines, String playerName) {
+        for (String line : tabLines) {
+            if (!line.contains(IRONMAN)) continue;
+            if (line.startsWith("Profile:")) return true;
+            int at = line.indexOf(playerName);
+            int end = at + playerName.length();
+            // The whole name, not the start of a longer one ("Ab" in "Abc").
+            boolean whole = at >= 0 && (end == line.length() || !isNameChar(line.charAt(end)));
+            if (whole && line.indexOf(IRONMAN, end) >= end) return true;
+        }
+        return false;
+    }
+
+    private static boolean isNameChar(char c) {
+        return Character.isLetterOrDigit(c) || c == '_';
     }
 
     /** How many of an item, by its plain name, the player's inventory holds. */

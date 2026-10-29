@@ -70,7 +70,11 @@ public final class ScoreboardBlurFeature {
         int top = titleTop != Integer.MIN_VALUE ? Math.min(titleTop, y0) : y0;
         // The sidebar has no scale of its own: one panel pixel is one GUI pixel. Vanilla's body
         // color is the tint, so the player's text background opacity still sets its strength.
-        HudPanel.submit(graphics, x0 - PADDING, top - PADDING, x1 + PADDING, y1 + PADDING, 1.0f, color, 1.0f);
+        // Always asks for the blur: the request is what takes a sidebar Gnetum caches out of its
+        // cache. Skipping it while cached kept it cached for good, and the blur only showed for a
+        // frame when Gnetum redrew its cache.
+        HudPanel.submit(graphics, x0 - PADDING, top - PADDING, x1 + PADDING, y1 + PADDING, 1.0f, color, 1.0f,
+                HudPanel.Glass.HUD);
         return true;
     }
 }

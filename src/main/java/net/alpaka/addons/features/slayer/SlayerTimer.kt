@@ -222,10 +222,9 @@ object SlayerTimer {
         timed: Boolean = true,
         stated: Boolean = true,
     ) {
-        // Read before the reset below clears it.
-        val diedByHealth = SlayerBossEntityTracker.diedByHealth
-        // Reset whatever the toggles say, so the next boss is never mistaken for this one.
-        SlayerBossEntityTracker.reset()
+        // Taken whatever the toggles say: handing the death over also forgets the boss, so the next
+        // one is never mistaken for this one.
+        val death = SlayerBossEntityTracker.takeDeath()
         if (!AlpakaConfig.instance.slayerTimerEnabled) return
         if (sidebarStartMs == 0L) return
         if (!timed) {
@@ -233,6 +232,39 @@ object SlayerTimer {
             return
         }
 
+        val fight = stopClock(type, killedAtMs, death, stated)
+        lastFight = fight
+        val elapsed = fight.reportedMs
+        val notCounted = fight.notCounted
+
+        val tier = fight.tier
+        val data = AlpakaStats.slayerBossMap().getOrPut(type) { AlpakaConfig.SlayerData() }
+        if (data.bestBossMsByTier == null) data.bestBossMsByTier = HashMap()
+        val previousBest = personalBest(type, tier)
+        val isBest = notCounted == null && (previousBest == null || elapsed < previousBest)
+        if (isBest) {
+            data.recordBest(tier, elapsed)
+            AlpakaStats.markDirty()
+        }
+        lastResultWasBest = isBest
+
+        if (AlpakaConfig.instance.slayerTimerChatEnabled) {
+            announce(bossLabel(type, tier), elapsed, previousBest, isBest, notCounted)
+        }
+    }
+
+    /**
+     * Stops the running fight's clock and says what it measured. Reads neither the settings nor the
+     * stats, so tests can drive it.
+     *
+     * [death]: the boss's death as the entity tracker saw it, or null when it saw none.
+     */
+    internal fun stopClock(
+        type: SlayerType,
+        killedAtMs: Long,
+        death: SlayerBossEntityTracker.Death?,
+        stated: Boolean,
+    ): FightBreakdown {
         // The moment the kill was *noticed*, not the moment it is being acted on. An inferred kill
         // is held back for a second so that dying can still veto it, and timing the fight to the end
         // of that hold would add the hold onto every reported time.
@@ -242,16 +274,18 @@ object SlayerTimer {
         // the two numbers, so a fight this mod could not watch properly under-reports itself rather
         // than inventing a personal best.
         val from = if (startMs != 0L) startMs else sidebarStartMs
-        val death = SlayerBossEntityTracker.diedAtMs?.takeIf { now - it <= ENTITY_DEATH_WINDOW_MS }
-        val elapsed = ((death ?: now) - from).coerceAtLeast(0L)
+        val deathMs = death?.atMs?.takeIf { now - it <= ENTITY_DEATH_WINDOW_MS }
+        val elapsed = ((deathMs ?: now) - from).coerceAtLeast(0L)
 
-        lastFight = FightBreakdown(
+        val fight = FightBreakdown(
             type = type,
             sidebarStartMs = sidebarStartMs,
             entityStartMs = if (startMs != 0L && startMs != sidebarStartMs) startMs else null,
-            entityDeathMs = death,
+            entityDeathMs = deathMs,
             sidebarKillMs = now,
             reportedMs = elapsed,
+            tier = runningTier,
+            notCounted = whyNotABest(runningTier, deathMs != null && death?.byHealth == true, stated),
         )
 
         sidebarStartMs = 0L
@@ -261,22 +295,17 @@ object SlayerTimer {
         // Wall clock, not the kill's own moment: this only drives how long the finished time lingers
         // on the HUD, which should be counted from when it went up.
         lastResultAtMs = System.currentTimeMillis()
+        return fight
+    }
 
-        val tier = runningTier
-        val data = AlpakaStats.slayerBossMap().getOrPut(type) { AlpakaConfig.SlayerData() }
-        if (data.bestBossMsByTier == null) data.bestBossMsByTier = HashMap()
-        val previousBest = personalBest(type, tier)
-        val notCounted = whyNotABest(tier, death != null && diedByHealth, stated)
-        val isBest = notCounted == null && (previousBest == null || elapsed < previousBest)
-        if (isBest) {
-            data.bestBossMsByTier[tier] = elapsed
-            AlpakaStats.markDirty()
-        }
-        lastResultWasBest = isBest
-
-        if (AlpakaConfig.instance.slayerTimerChatEnabled) {
-            announce(bossLabel(type, tier), elapsed, previousBest, isBest, notCounted)
-        }
+    /** For tests: a fight running as [onBossSpawned] and [tick] would have started it. */
+    internal fun startForTest(type: SlayerType, tier: Int, sidebarStartMs: Long, entityStartMs: Long?, verified: Boolean) {
+        this.sidebarStartMs = sidebarStartMs
+        startMs = entityStartMs ?: sidebarStartMs
+        runningType = type
+        runningTier = tier
+        fightVerified = verified
+        entityStartSeen = entityStartMs != null
     }
 
     /**
@@ -353,8 +382,10 @@ object SlayerTimer {
         // in the very tick it had to watch the death happen. Every fight then reported "boss death
         // never seen" and fell back to the sidebar's kill. The recent-quest memory keeps it running
         // past the moment the sidebar goes quiet.
-        // Nothing to watch while the timer is off; the tracker is also reset on every kill.
-        if (!AlpakaConfig.instance.slayerTimerEnabled) return
+        // Nothing to watch while neither the timer nor the boss highlight needs the boss; the
+        // tracker is also reset on every kill.
+        val cfg = AlpakaConfig.instance
+        if (!cfg.slayerTimerEnabled && !cfg.slayerBossHighlightEnabled) return
 
         val quest = SlayerQuestDetector.currentOrRecent() ?: return
         SlayerBossEntityTracker.tick(quest, SlayerQuestDetector.inBossFight)
@@ -390,6 +421,10 @@ object SlayerTimer {
         val entityDeathMs: Long?,
         val sidebarKillMs: Long,
         val reportedMs: Long,
+        /** The quest's tier, 1-5, or 0 when the sidebar did not say. */
+        val tier: Int,
+        /** Why the time cannot stand as a personal best, or null when it can. */
+        val notCounted: String?,
     ) {
 
         /** The breakdown as chat lines, for `/alpakadebug`. */
@@ -426,11 +461,9 @@ object SlayerTimer {
         var cleared = 0
         for ((slayer, data) in AlpakaStats.slayerBossMap()) {
             if (type != null && slayer != type) continue
-            val bests = data.bestBossMsByTier
-            if (bests != null && bests.values.any { it != null && it > 0L }) {
-                bests.clear()
-                cleared++
-            }
+            // Cleared with the moment it happened, so the merge with the file does not bring the
+            // bests straight back from the copy still on disk.
+            if (data.clearBests()) cleared++
         }
         if (cleared > 0) AlpakaStats.markDirty()
         return cleared

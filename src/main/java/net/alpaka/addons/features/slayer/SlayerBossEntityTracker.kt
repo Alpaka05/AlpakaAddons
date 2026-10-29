@@ -84,8 +84,14 @@ object SlayerBossEntityTracker {
      */
     private const val UNOWNED_RADIUS_SQ = 100.0
 
-    /** The line Hypixel puts above a mob that a player summoned. */
+    /** The line Hypixel used to put above a mob that a player summoned: "Spawned by: <player>". */
     private const val OWNER_MARKER = "Spawned by:"
+
+    /**
+     * The line Hypixel puts there since its update of 2026-10-28: "<player>'s SLAYER BOSS". It sits
+     * over the Blaze slayer's demons as well, not only over the boss.
+     */
+    private const val OWNER_SUFFIX = "'s SLAYER BOSS"
 
     /** The heart Hypixel ends a mob name tag's health figure with. */
     private const val HEALTH_MARKER = "❤"
@@ -170,8 +176,7 @@ object SlayerBossEntityTracker {
      * cleared again if a matching boss turns up afterwards - both for the Tarantula split above and
      * because the other way to lose a boss is to have walked out of range of it.
      */
-    var diedAtMs: Long? = null
-        private set
+    private var diedAtMs: Long? = null
 
     /**
      * Whether [diedAtMs] comes from the boss's health reaching [DEAD_HEALTH], rather than from the
@@ -181,14 +186,41 @@ object SlayerBossEntityTracker {
      * teleported out of range or was never resolved properly, so it can end a fight on the clock
      * but cannot vouch for that fight as a personal best.
      */
-    var diedByHealth = false
-        private set
+    private var diedByHealth = false
+
+    /** The boss's death as this tracker saw it: when, and whether its health said so. */
+    class Death(val atMs: Long, val byHealth: Boolean)
 
     /** Whether a boss is being followed right now, for the diagnostics command. */
     val isTracking: Boolean get() = trackedId != -1
 
     /** Whether the boss behind the name tag was resolved, for the diagnostics command. */
     val hasMob: Boolean get() = trackedMobId != -1
+
+    /** The boss itself while it is being followed and alive, for [SlayerBossHighlight]. */
+    fun bossMob(level: ClientLevel): LivingEntity? {
+        if (trackedMobId == -1 || diedAtMs != null) return null
+        return (level.getEntity(trackedMobId) as? LivingEntity)?.takeIf { !it.isRemoved }
+    }
+
+    /**
+     * The boss's death, or null when none was seen, and forgets the boss for the next one.
+     *
+     * One call for both on purpose: the death has to be read before [reset] clears it. Reading it
+     * after the reset is how every fight lost its death, ended on the sidebar's kill instead and
+     * could not be vouched for by the boss's health.
+     */
+    fun takeDeath(): Death? {
+        val death = diedAtMs?.let { Death(it, diedByHealth) }
+        reset()
+        return death
+    }
+
+    /** For tests: a death as [tick] would record it. */
+    internal fun dieForTest(atMs: Long, byHealth: Boolean) {
+        diedAtMs = atMs
+        diedByHealth = byHealth
+    }
 
     /**
      * Forgets the current boss, for a kill, a cancelled quest or a world change.
@@ -227,7 +259,9 @@ object SlayerBossEntityTracker {
             val tag = level.getEntity(trackedId)
             val mob = if (trackedMobId == -1) null else level.getEntity(trackedMobId) as? LivingEntity
 
-            if (mob != null && mob.isAlive) {
+            // Not mob.isAlive, which is also false at a health of 0: a sync straight to 0 would
+            // read as the entity going missing rather than as the boss dying.
+            if (mob != null && !mob.isRemoved) {
                 if (mob.health > DEAD_HEALTH) {
                     // The only place a recorded death is taken back. Seeing the boss standing there
                     // above the threshold is proof it is not dead; nothing else is, and an earlier
@@ -361,14 +395,9 @@ object SlayerBossEntityTracker {
             // in a slayer area is a floating damage number, and stripping each of those per tick
             // just to find out it is a damage number would be the whole cost of this search. Both
             // markers survive Hypixel's habit of dropping formatting codes mid-word this way.
-            if (SkyblockUtils.containsIgnoringFormatting(raw, OWNER_MARKER)) {
-                val name = SkyblockUtils.cleanColor(raw)
-                val ownerAt = name.indexOf(OWNER_MARKER)
-                if (ownerAt >= 0 && namesPlayer(name.substring(ownerAt + OWNER_MARKER.length), playerName)) {
-                    owned.add(stand)
-                } else {
-                    foreign.add(stand)
-                }
+            val owner = ownerLine(raw, playerName)
+            if (owner != null) {
+                if (owner) owned.add(stand) else foreign.add(stand)
             } else if (SkyblockUtils.containsIgnoringFormatting(raw, HEALTH_MARKER)
                 || (type == SlayerType.ENDERMAN && SkyblockUtils.containsIgnoringFormatting(raw, HITS_MARKER))
             ) {
@@ -413,7 +442,33 @@ object SlayerBossEntityTracker {
     }
 
     /**
-     * Whether the text after "Spawned by:" names this player.
+     * Whether a raw name tag is an owner line, and whose: true when it names [playerName], false when
+     * it names somebody else, null when it is no owner line at all. Reads the current
+     * "<player>'s SLAYER BOSS", and with [legacy] the old "Spawned by: <player>" as well.
+     *
+     * Without [legacy] only a slayer boss's line counts: Hypixel still writes "Spawned by:" over
+     * other mobs a player summons, such as the Great Spook's Primal Fear.
+     *
+     * Checked on the raw name first, before anything is stripped; see [findBossNameTag].
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun ownerLine(raw: String, playerName: String, legacy: Boolean = true): Boolean? {
+        if (SkyblockUtils.containsIgnoringFormatting(raw, OWNER_SUFFIX)) {
+            val name = SkyblockUtils.cleanColor(raw)
+            val at = name.indexOf(OWNER_SUFFIX)
+            return at >= 0 && namesPlayer(name.substring(0, at), playerName)
+        }
+        if (legacy && SkyblockUtils.containsIgnoringFormatting(raw, OWNER_MARKER)) {
+            val name = SkyblockUtils.cleanColor(raw)
+            val at = name.indexOf(OWNER_MARKER)
+            return at >= 0 && namesPlayer(name.substring(at + OWNER_MARKER.length), playerName)
+        }
+        return null
+    }
+
+    /**
+     * Whether the text next to the owner marker names this player.
      *
      * Compared token by token rather than by [String.contains] so that a rank prefix in front of the
      * name is tolerated while another player whose name merely contains ours is not.

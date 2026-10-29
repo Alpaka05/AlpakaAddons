@@ -51,7 +51,14 @@ import kotlin.math.sqrt
  * Everything moves on eased curves driven by real frame time, so it looks the same at 60 and 240
  * frames per second, and everything rounded is drawn by [WheelMesh] rather than stacked rectangles.
  */
-class CommandWheelScreen : Screen(GuiFont.text("Command Wheel")) {
+class CommandWheelScreen(
+    /**
+     * Whether the wheel key is still held from the press that opened the wheel. Held down, the key
+     * repeats, and in toggle mode a repeat closed the wheel again at once; it only closes it once it
+     * has been let go and pressed anew.
+     */
+    private var keyHeld: Boolean = false,
+) : Screen(GuiFont.text("Command Wheel")) {
 
     private var pages: List<List<String>> = emptyList()
     private var page = 0
@@ -109,7 +116,7 @@ class CommandWheelScreen : Screen(GuiFont.text("Command Wheel")) {
     override fun isPauseScreen(): Boolean = false
 
     override fun init() {
-        pages = CommandWheelPages.pages().map { ArrayList(it) }
+        pages = CommandWheelPages.pages(CommandWheelPages.activeWheel()).map { ArrayList(it) }
         showPage(lastPage)
     }
 
@@ -147,7 +154,7 @@ class CommandWheelScreen : Screen(GuiFont.text("Command Wheel")) {
     override fun keyPressed(event: KeyEvent): Boolean {
         val key = CommandWheelFeature.COMMAND_WHEEL_KEY
         if (key != null && key.matches(event) && AlpakaConfig.instance.commandWheelToggleMode) {
-            close()
+            if (!keyHeld) close()
             return true
         }
         return super.keyPressed(event)
@@ -156,6 +163,7 @@ class CommandWheelScreen : Screen(GuiFont.text("Command Wheel")) {
     override fun keyReleased(event: KeyEvent): Boolean {
         val key = CommandWheelFeature.COMMAND_WHEEL_KEY
         if (key != null && key.matches(event)) {
+            keyHeld = false
             // In toggle mode this is just the press that opened the wheel letting go.
             if (!AlpakaConfig.instance.commandWheelToggleMode) runSelectedAndClose()
             return true
@@ -598,9 +606,9 @@ class CommandWheelScreen : Screen(GuiFont.text("Command Wheel")) {
         private const val SCROLL_GESTURE_GAP_NANOS = 250_000_000L
 
         /** The menu's row colors, a touch see-through so the world shows behind the ring. */
-        private const val COLOR_SEGMENT = (AlpakaStyle.ROW_HOVER and 0x00FFFFFF) or (0xE8 shl 24)
-        private const val COLOR_SEGMENT_OUTER = (AlpakaStyle.ROW_SELECTED and 0x00FFFFFF) or (0xE8 shl 24)
-        private const val COLOR_HUB = (AlpakaStyle.PANEL and 0x00FFFFFF) or (0xF6 shl 24)
-        private const val COLOR_LABEL = AlpakaStyle.TEXT_SOFT
+        private val COLOR_SEGMENT get() = (AlpakaStyle.ROW_HOVER and 0x00FFFFFF) or (0xE8 shl 24)
+        private val COLOR_SEGMENT_OUTER get() = (AlpakaStyle.ROW_SELECTED and 0x00FFFFFF) or (0xE8 shl 24)
+        private val COLOR_HUB get() = (AlpakaStyle.PANEL and 0x00FFFFFF) or (0xF6 shl 24)
+        private val COLOR_LABEL get() = AlpakaStyle.TEXT_SOFT
     }
 }

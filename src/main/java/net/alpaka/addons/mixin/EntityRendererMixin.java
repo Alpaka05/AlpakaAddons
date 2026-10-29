@@ -2,9 +2,12 @@ package net.alpaka.addons.mixin;
 
 import net.alpaka.addons.features.blaze.CleanBlazeFeature;
 import net.alpaka.addons.features.damagetags.DamageTagFeature;
+import net.alpaka.addons.features.dungeonmobs.StarredMobsHighlight;
 import net.alpaka.addons.features.fire.FireOverlayFeature;
 import net.alpaka.addons.features.mobdeath.HideMobDeathsFeature;
 import net.alpaka.addons.features.playerscale.PlayerScaleFeature;
+import net.alpaka.addons.features.slayer.SlayerBossHighlight;
+import net.alpaka.addons.utils.AlpakaPerf;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
@@ -31,30 +34,25 @@ public class EntityRendererMixin<T extends Entity, S extends EntityRenderState> 
         }
     }
 
+    // The rule hooks below run per entity and frame, so they are only counted; timing each would
+    // cost more than most of what it timed. The entity phase is timed as a whole in
+    // LevelExtractorMixin.
+
     @Inject(method = "extractRenderState", at = @At("TAIL"))
     private void onExtractRenderState(T entity, S state, float partialTick, CallbackInfo ci) {
-        long t = net.alpaka.addons.utils.AlpakaPerf.begin(net.alpaka.addons.utils.AlpakaPerf.Section.ENTITY_RULES);
+        AlpakaPerf.count(AlpakaPerf.Section.ENTITY_RULES);
         CleanBlazeFeature.shouldHideEntityFire(entity, state);
         FireOverlayFeature.applyEntity(state);
-        net.alpaka.addons.utils.AlpakaPerf.end(net.alpaka.addons.utils.AlpakaPerf.Section.ENTITY_RULES, t);
-    }
-
-    @Inject(method = "shouldShowName", at = @At("HEAD"), cancellable = true)
-    private void hideBlazeNameTags(T entity, double distance, CallbackInfoReturnable<Boolean> info) {
-        long t = net.alpaka.addons.utils.AlpakaPerf.begin(net.alpaka.addons.utils.AlpakaPerf.Section.ENTITY_RULES);
-        if (CleanBlazeFeature.shouldHideNameTag(entity) || DamageTagFeature.shouldHideNameTag(entity)) {
-            info.setReturnValue(false);
-        }
-        net.alpaka.addons.utils.AlpakaPerf.end(net.alpaka.addons.utils.AlpakaPerf.Section.ENTITY_RULES, t);
+        SlayerBossHighlight.applyOutline(entity, state);
+        StarredMobsHighlight.applyOutline(entity, state);
     }
 
     @Inject(method = "shouldRender", at = @At("HEAD"), cancellable = true)
     private void filterBlazeEntities(T entity, Frustum frustum, double x, double y, double z, CallbackInfoReturnable<Boolean> info) {
-        long t = net.alpaka.addons.utils.AlpakaPerf.begin(net.alpaka.addons.utils.AlpakaPerf.Section.ENTITY_RULES);
+        AlpakaPerf.count(AlpakaPerf.Section.ENTITY_RULES);
         if (CleanBlazeFeature.shouldHideEntity(entity) || DamageTagFeature.shouldHideEntity(entity)
-                || HideMobDeathsFeature.shouldHideEntity(entity)) {
+                || HideMobDeathsFeature.shouldHideEntity(entity) || StarredMobsHighlight.shouldHideEntity(entity)) {
             info.setReturnValue(false);
         }
-        net.alpaka.addons.utils.AlpakaPerf.end(net.alpaka.addons.utils.AlpakaPerf.Section.ENTITY_RULES, t);
     }
 }

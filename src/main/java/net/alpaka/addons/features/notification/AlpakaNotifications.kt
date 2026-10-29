@@ -5,6 +5,7 @@ import net.alpaka.addons.client.gui.HudPanel
 import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.client.gui.NoticeHost
 import net.alpaka.addons.config.AlpakaConfig
+import net.alpaka.addons.features.chat.ChatOverHud
 import net.minecraft.client.DeltaTracker
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
@@ -116,7 +117,7 @@ object AlpakaNotifications {
      * world still shows through, with the HUD panel's corners and a soft shadow - the same box as
      * the blurred one, only without the blur. Solid enough to read over bright terrain.
      */
-    private const val PANEL = (0xE0 shl 24) or (AlpakaStyle.PANEL and 0xFFFFFF)
+    private const val PANEL = (0xE0 shl 24) or (AlpakaStyle.HUD_PANEL and 0xFFFFFF)
     private const val BAR_TRACK = 0x1AFFFFFF
     /**
      * The blurred panel's tint: neutral black like the other HUD panels, but stronger than their
@@ -125,7 +126,7 @@ object AlpakaNotifications {
     private const val BLUR_TINT = 0x8C000000.toInt()
     /** How far the time bar stays clear of the panel's rounded corners, either kind. */
     private const val BAR_INSET = HudPanel.RADIUS
-    private const val BODY_TEXT = AlpakaStyle.TEXT_SOFT
+    private const val BODY_TEXT = AlpakaStyle.HUD_TEXT_SOFT
 
     /** How many pieces the bar's fade towards its tip is drawn in; the game has no horizontal gradient. */
     private const val BAR_STEPS = 6
@@ -243,6 +244,19 @@ object AlpakaNotifications {
     /** Called every frame from the HUD hook. */
     @JvmStatic
     fun render(graphics: GuiGraphicsExtractor, @Suppress("UNUSED_PARAMETER") deltaTracker: DeltaTracker) {
+        // With Better Chat the chat is drawn after the HUD, so a notice drawn here sat under it in
+        // its corner; ChatOverHud draws the notices after the chat instead (renderAfterChat).
+        if (ChatOverHud.isEnabled()) return
+        draw(graphics)
+    }
+
+    /** The notices after Better Chat's chat, last of all, so the chat does not cover one. */
+    @JvmStatic
+    fun renderAfterChat(graphics: GuiGraphicsExtractor) {
+        if (ChatOverHud.isEnabled()) draw(graphics)
+    }
+
+    private fun draw(graphics: GuiGraphicsExtractor) {
         val mc = Minecraft.getInstance()
         val now = System.currentTimeMillis()
         // Pruned before the early return, so expired notices leave even while nothing is drawn.
@@ -273,8 +287,16 @@ object AlpakaNotifications {
         val now = System.currentTimeMillis()
         synchronized(active) { active.removeAll { now >= it.retireAtMs } }
         graphics.nextStratum()
-        draw(graphics, now)
+        drawingOverScreen = true
+        try {
+            draw(graphics, now)
+        } finally {
+            drawingOverScreen = false
+        }
     }
+
+    /** Set while the notices are drawn on top of a screen, whose own blur does not cover them. */
+    private var drawingOverScreen = false
 
     private fun draw(graphics: GuiGraphicsExtractor, now: Long) {
         val mc = Minecraft.getInstance()
@@ -392,7 +414,8 @@ object AlpakaNotifications {
 
         if (blurred) {
             // The panel fades as a whole, blur included, rather than through its tint alone.
-            HudPanel.submit(graphics, x, y, x + WIDTH, y + height, 1.0f, BLUR_TINT, shown)
+            HudPanel.submit(graphics, x, y, x + WIDTH, y + height, 1.0f, BLUR_TINT, shown,
+                if (drawingOverScreen) HudPanel.Glass.OVER_SCREEN else HudPanel.Glass.HUD)
         } else {
             drawPanel(graphics, x, y, height, shown)
         }

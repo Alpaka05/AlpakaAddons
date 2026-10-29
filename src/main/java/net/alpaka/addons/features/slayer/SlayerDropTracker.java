@@ -21,6 +21,7 @@ import net.minecraft.ChatFormatting;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.Locale;
 
 public class SlayerDropTracker {
 
@@ -255,17 +256,13 @@ public class SlayerDropTracker {
         SlayerKillLog.INSTANCE.tick();
     }
 
-    public static boolean isOnSkyblock() {
-        return net.alpaka.addons.utils.SkyblockUtils.isOnSkyblock();
-    }
-
     public static boolean isInRift() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return false;
         Scoreboard scoreboard = mc.level.getScoreboard();
         Objective objective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR);
         if (objective != null) {
-            String displayName = cleanColor(objective.getDisplayName().getString()).toLowerCase();
+            String displayName = cleanColor(objective.getDisplayName().getString()).toLowerCase(Locale.ROOT);
             return displayName.contains("rift");
         }
         return false;
@@ -344,7 +341,7 @@ public class SlayerDropTracker {
         if (!AlpakaConfig.instance.slayerDropTrackerEnabled) return;
 
         if (AlpakaConfig.instance.customSoundsEnabled && SERVER_DROP_PATTERN.matcher(string).matches()) {
-            String lower = string.toLowerCase();
+            String lower = string.toLowerCase(Locale.ROOT);
             if (lower.contains("insane drop!") || lower.contains("crazy rare drop!") || lower.contains("judgement core") || lower.contains("warden heart") || lower.contains("archfiend dice")) {
                 CustomSoundFeature.playInsaneDropSound();
             } else if (lower.contains("rare drop!") || lower.contains("very rare drop!")) {

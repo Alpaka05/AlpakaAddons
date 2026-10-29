@@ -1,6 +1,7 @@
 package net.alpaka.addons.mixin;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import net.alpaka.addons.features.chat.ChatCopyFeature;
 import net.alpaka.addons.features.chat.ChatOpenAnimation;
 import net.alpaka.addons.features.chat.ChatSearchFeature;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
@@ -25,8 +26,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * The mod's additions to the chat screen: the slayer HUD click, the chat tabs, the screenshot
- * buttons and the send-to-channel redirect.
+ * The mod's additions to the chat screen: the slayer HUD click, Copy Chat, the chat tabs, the
+ * screenshot buttons and the send-to-channel redirect.
  *
  * The chat screen is the one place the HUD is drawn while a cursor exists, which is what makes the
  * HUD click possible at all - the rest of the time the mouse is captured for looking around. Every
@@ -106,6 +107,7 @@ public class ChatScreenMixin {
             return;
         }
         if (ChatTabsFeature.onChatScreenKey(event.key(), event.hasShiftDown(), event.hasControlDown(),
+                net.alpaka.addons.client.KeyRepeat.isRepeat(),
                 this.commandSuggestions != null && this.commandSuggestions.isVisible(),
                 this.input == null ? "" : this.input.getValue())) {
             cir.setReturnValue(true);
@@ -145,9 +147,10 @@ public class ChatScreenMixin {
     }
 
     /**
-     * The slayer HUD's click, once vanilla has offered the click to the chat's own links and found
-     * none: only then does it get handed to the screen, which is where this sits. At the head of the
-     * method, as it used to be, the HUD took clicks meant for links drawn under it.
+     * The slayer HUD's click and Copy Chat's right-click, once vanilla has offered the click to the
+     * chat's own links and found none: only then does it get handed to the screen, which is where
+     * this sits. At the head of the method, as it used to be, the HUD took clicks meant for links
+     * drawn under it.
      */
     @Inject(
             method = "mouseClicked",
@@ -155,7 +158,8 @@ public class ChatScreenMixin {
             cancellable = true
     )
     private void onMouseClicked(MouseButtonEvent event, boolean doubleClick, CallbackInfoReturnable<Boolean> cir) {
-        if (SlayerHudElement.INSTANCE.handleChatClick(event.x(), event.y(), event.button())) {
+        if (SlayerHudElement.INSTANCE.handleChatClick(event.x(), event.y(), event.button())
+                || ChatCopyFeature.handleClick(event.button(), event.hasShiftDown())) {
             cir.setReturnValue(true);
         }
     }
@@ -213,6 +217,23 @@ public class ChatScreenMixin {
             mc.gui.hud.getChat().addRecentChat(normalized);
         }
         net.alpaka.addons.compliance.Outbound.command(command, net.alpaka.addons.compliance.Outbound.Cause.CHAT_INPUT);
+        ci.cancel();
+    }
+
+    /**
+     * A typed command whose first word is a Command Shortcuts alias goes out as what the alias
+     * stands for, with whatever followed it. The chat history keeps it as typed. A plain message
+     * is left to the channel tab hook above.
+     */
+    @Inject(method = "handleChatInput", at = @At("HEAD"), cancellable = true)
+    private void alpaka$expandCommandAlias(String message, boolean addToRecent, CallbackInfo ci) {
+        ChatScreen self = (ChatScreen) (Object) this;
+        String normalized = self.normalizeChatMessage(message);
+        if (!normalized.startsWith("/")) return;
+        if (!net.alpaka.addons.features.shortcuts.CommandShortcuts.expandTyped(normalized.substring(1))) return;
+        if (addToRecent) {
+            Minecraft.getInstance().gui.hud.getChat().addRecentChat(normalized);
+        }
         ci.cancel();
     }
 }

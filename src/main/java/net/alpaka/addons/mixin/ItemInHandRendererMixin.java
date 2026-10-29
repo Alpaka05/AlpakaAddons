@@ -4,6 +4,9 @@ import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.viewmodel.HandItemLightingFeature;
 import net.alpaka.addons.features.viewmodel.HandItemStarlightFeature;
 import net.alpaka.addons.features.viewmodel.ItemMotionBlurFeature;
+import net.alpaka.addons.utils.AlpakaPerf;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Options;
 import net.minecraft.world.entity.LivingEntity;
@@ -24,7 +27,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
-import org.spongepowered.asm.mixin.injection.Redirect;
+import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
@@ -55,15 +58,13 @@ public class ItemInHandRendererMixin {
     private void applyItemArmAttackTransform(PoseStack poseStack, HumanoidArm arm, float swingProgress) {
     }
 
-    @Redirect(
+    /** No sway: the camera-lag rotations are left out. A condition rather than a redirect, so a viewmodel mod's hook on the same call still runs. */
+    @WrapWithCondition(
             method = "submitHandsWithItems",
             at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;mulPose(Lorg/joml/Quaternionfc;)V")
     )
-    private void redirectMulPose(PoseStack poseStack, org.joml.Quaternionfc quaternion) {
-        if (AlpakaConfig.instance.itemSizeFeatureEnabled && AlpakaConfig.instance.itemSwayDisabled) {
-            return;
-        }
-        poseStack.mulPose(quaternion);
+    private boolean alpaka$keepSway(PoseStack poseStack, org.joml.Quaternionfc quaternion) {
+        return !(AlpakaConfig.instance.itemSizeFeatureEnabled && AlpakaConfig.instance.itemSwayDisabled);
     }
 
     @Inject(method = "swingArm", at = @At("HEAD"), cancellable = true)
@@ -247,6 +248,21 @@ public class ItemInHandRendererMixin {
             SubmitNodeCollector queue, int light, CallbackInfo ci) {
         if (player == Minecraft.getInstance().player) {
             ItemMotionBlurFeature.noteArmItem(hand, swingProgress);
+        }
+    }
+
+    /**
+     * Times the first-person hands, with everything the viewmodel features add to them. Only a
+     * measurement, so the game starts without it if it cannot apply.
+     */
+    @WrapMethod(method = "submitHandsWithItems", require = 0)
+    private void alpaka$timeHands(float frameInterp, PoseStack poseStack, SubmitNodeCollector collector, LocalPlayer player,
+                                  int packedLight, Operation<Void> original) {
+        long t = AlpakaPerf.begin(AlpakaPerf.Section.HAND_ITEMS);
+        try {
+            original.call(frameInterp, poseStack, collector, player, packedLight);
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.HAND_ITEMS, t);
         }
     }
 

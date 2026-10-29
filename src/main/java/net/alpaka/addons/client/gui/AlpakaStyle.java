@@ -19,28 +19,108 @@ public final class AlpakaStyle {
 
     // ---- Colors ---------------------------------------------------------------------------------
 
-    public static final int BACKDROP = 0x80000000;
-    public static final int PANEL = 0xFF131313;
-    public static final int LINE = 0xFF262626;
-    public static final int DIVIDER = 0xFF3A3A3A;
-    public static final int ROW = 0xFF1E1E1E;
-    public static final int ROW_HOVER = 0xFF242424;
-    public static final int ROW_SELECTED = 0xFF2A2A2A;
-    public static final int FIELD = 0xFF1F1F1F;
-    public static final int TEXT = 0xFFEDEDED;
-    public static final int TEXT_SOFT = 0xFFBDBDBD;
-    public static final int TEXT_MUTED = 0xFF7C7C7C;
-    public static final int TRACK = 0xFF3A3A3A;
+    // The colors follow the Menu Theme the player picked, so they are set by applyTheme rather than
+    // fixed: every window reads them as it draws and changes look the moment the theme does. They
+    // start out as the dark theme's, which is what a fresh config picks too.
+
+    public static int BACKDROP = 0x80000000;
+    public static int PANEL = 0xFF131313;
+    public static int LINE = 0xFF262626;
+    public static int DIVIDER = 0xFF3A3A3A;
+    public static int ROW = 0xFF1E1E1E;
+    public static int ROW_HOVER = 0xFF242424;
+    public static int ROW_SELECTED = 0xFF2A2A2A;
+    public static int FIELD = 0xFF1F1F1F;
+    public static int TEXT = 0xFFEDEDED;
+    public static int TEXT_SOFT = 0xFFBDBDBD;
+    public static int TEXT_MUTED = 0xFF7C7C7C;
+    public static int TRACK = 0xFF3A3A3A;
     /** A switch that is off: its outline, and its knob. */
-    private static final int TOGGLE_OFF = 0xFF6E6E6E;
-    private static final int TOGGLE_KNOB_OFF = 0xFF8A8A8A;
+    private static int TOGGLE_OFF = 0xFF6E6E6E;
+    private static int TOGGLE_KNOB_OFF = 0xFF8A8A8A;
     /** Behind a tooltip: opaque, so nothing under it shows through its text. */
-    private static final int TOOLTIP = 0xFF1A1A1A;
+    private static int TOOLTIP = 0xFF1A1A1A;
+    /** The ring around a color knob, which has to stand out from the color inside it. */
+    private static int KNOB_RING = 0xFFEDEDED;
     /** Behind a preview of something the game draws itself: the dark of the chat's own background. */
-    public static final int PREVIEW = 0xFF0D0D0D;
-    public static final int DANGER = 0xFFE5534B;
+    public static int PREVIEW = 0xFF0D0D0D;
+    public static int DANGER = 0xFFE5534B;
     /** A dangerous action's text at rest; {@link #DANGER} once hovered. */
-    public static final int DANGER_SOFT = 0xFFC9726C;
+    public static int DANGER_SOFT = 0xFFC9726C;
+
+    /** The window colors the HUDs keep whatever the Menu Theme: they sit over the world, not in a menu. */
+    public static final int HUD_PANEL = 0xFF131313;
+    public static final int HUD_TEXT = 0xFFEDEDED;
+    public static final int HUD_TEXT_SOFT = 0xFFBDBDBD;
+
+    /**
+     * The Menu Theme's choices as the list shows them, light to dark. The config saves a theme's
+     * place in {@link Theme} instead, so reordering the list never changes a saved choice.
+     */
+    public static final String[] THEME_NAMES = {"Light", "Dark", "OLED", "Cappuccino"};
+
+    /**
+     * The looks a menu can have: the dark one it always had, a light one, one of pure black for
+     * OLED screens, whose black pixels are off, and a coffee brown one. New ones go at the end, as
+     * the config saves a theme's place here. Accent and danger colors stay the player's.
+     */
+    public enum Theme {
+        //     backdrop     panel        line         divider      row          row hover    row selected field
+        //     text         text soft    text muted   track        toggle off   knob off     tooltip      knob ring
+        //     preview      danger       danger soft
+        DARK(0x80000000, 0xFF131313, 0xFF262626, 0xFF3A3A3A, 0xFF1E1E1E, 0xFF242424, 0xFF2A2A2A, 0xFF1F1F1F,
+                0xFFEDEDED, 0xFFBDBDBD, 0xFF7C7C7C, 0xFF3A3A3A, 0xFF6E6E6E, 0xFF8A8A8A, 0xFF1A1A1A, 0xFFEDEDED,
+                0xFF0D0D0D, 0xFFE5534B, 0xFFC9726C),
+        LIGHT(0x66000000, 0xFFF3F3F5, 0xFFDEDEE2, 0xFFC6C6CC, 0xFFE7E7EA, 0xFFE0E0E4, 0xFFD6D6DB, 0xFFE9E9EC,
+                0xFF1C1C21, 0xFF46464D, 0xFF85858D, 0xFFC6C6CC, 0xFF9C9CA3, 0xFF8A8A91, 0xFFFFFFFF, 0xFFFFFFFF,
+                0xFF2B2B2B, 0xFFD23B32, 0xFFC0564F),
+        OLED(0xB0000000, 0xFF000000, 0xFF1A1A1A, 0xFF2C2C2C, 0xFF0D0D0D, 0xFF141414, 0xFF1B1B1B, 0xFF0F0F0F,
+                0xFFEDEDED, 0xFFBDBDBD, 0xFF7C7C7C, 0xFF2E2E2E, 0xFF6E6E6E, 0xFF8A8A8A, 0xFF0A0A0A, 0xFFEDEDED,
+                0xFF000000, 0xFFE5534B, 0xFFC9726C),
+        // Espresso browns with cream text, like the coffee themes of code editors.
+        CAPPUCCINO(0x80000000, 0xFF2B211C, 0xFF3D3029, 0xFF54443A, 0xFF362A24, 0xFF3E3129, 0xFF47392F, 0xFF382C25,
+                0xFFF3E6D8, 0xFFD2BFAB, 0xFF9C8676, 0xFF54443A, 0xFF8A7464, 0xFFA48D7C, 0xFF32271F, 0xFFF3E6D8,
+                0xFF1A1411, 0xFFE5674F, 0xFFC98370);
+
+        private final int[] c;
+
+        Theme(int... colors) {
+            this.c = colors;
+        }
+
+        /** The themes in the order of {@link #THEME_NAMES}. */
+        public static final Theme[] MENU_ORDER = {LIGHT, DARK, OLED, CAPPUCCINO};
+
+        /** The theme saved under this index, the dark one for anything unknown. */
+        public static Theme of(int index) {
+            Theme[] all = values();
+            return index >= 0 && index < all.length ? all[index] : DARK;
+        }
+    }
+
+    /** Switches every menu to the theme. Called on loading the config and whenever the option changes. */
+    public static void applyTheme(Theme theme) {
+        int[] c = theme.c;
+        BACKDROP = c[0];
+        PANEL = c[1];
+        LINE = c[2];
+        DIVIDER = c[3];
+        ROW = c[4];
+        ROW_HOVER = c[5];
+        ROW_SELECTED = c[6];
+        FIELD = c[7];
+        TEXT = c[8];
+        TEXT_SOFT = c[9];
+        TEXT_MUTED = c[10];
+        TRACK = c[11];
+        TOGGLE_OFF = c[12];
+        TOGGLE_KNOB_OFF = c[13];
+        TOOLTIP = c[14];
+        KNOB_RING = c[15];
+        PREVIEW = c[16];
+        DANGER = c[17];
+        DANGER_SOFT = c[18];
+    }
 
     // ---- Metrics, in GUI pixels -----------------------------------------------------------------
 
@@ -232,6 +312,28 @@ public final class AlpakaStyle {
         ModernGuiUtils.drawRect(graphics, cx + 1, cy - 1, 1, 4, color);
     }
 
+    /**
+     * A paste button: a small clipboard in the same thin lines as {@link #trashButton}, gray until
+     * hovered, then in the accent color on a soft square.
+     */
+    public static void pasteButton(GuiGraphicsExtractor graphics, int x, int y, int size, boolean hover) {
+        if (hover) ModernGuiUtils.drawRoundedRect(graphics, x, y, size, size, FIELD_RADIUS, ROW_SELECTED);
+        int color = hover ? ModernGuiUtils.getAccentColor() : TEXT_MUTED;
+        int cx = x + size / 2;
+        int cy = y + size / 2;
+        // The clip on top, the board round it, then three lines of text on the board.
+        ModernGuiUtils.drawRect(graphics, cx - 1, cy - 6, 3, 1, color);
+        ModernGuiUtils.drawRect(graphics, cx - 2, cy - 5, 5, 2, color);
+        ModernGuiUtils.drawRect(graphics, cx - 4, cy - 4, 2, 1, color);
+        ModernGuiUtils.drawRect(graphics, cx + 3, cy - 4, 2, 1, color);
+        ModernGuiUtils.drawRect(graphics, cx - 4, cy - 3, 1, 8, color);
+        ModernGuiUtils.drawRect(graphics, cx + 4, cy - 3, 1, 8, color);
+        ModernGuiUtils.drawRect(graphics, cx - 3, cy + 5, 7, 1, color);
+        ModernGuiUtils.drawRect(graphics, cx - 2, cy - 1, 5, 1, color);
+        ModernGuiUtils.drawRect(graphics, cx - 2, cy + 1, 5, 1, color);
+        ModernGuiUtils.drawRect(graphics, cx - 2, cy + 3, 3, 1, color);
+    }
+
     /** An arrow that acts as a button, drawn with the menu's chevron rather than a glyph. */
     public static void chevronButton(GuiGraphicsExtractor graphics, int x, int y, int size, boolean left,
                                      boolean hover, boolean enabled) {
@@ -352,6 +454,30 @@ public final class AlpakaStyle {
         mesh.submit(graphics);
     }
 
+    /**
+     * A reset button: a circular arrow turning back, gray until hovered, then in the accent on a soft
+     * square. Drawn as a mesh rather than a glyph, since the menu fonts have no such arrow.
+     */
+    public static void resetButton(GuiGraphicsExtractor graphics, int x, int y, int size, boolean hover) {
+        if (hover) ModernGuiUtils.drawRoundedRect(graphics, x, y, size, size, FIELD_RADIUS, ROW_SELECTED);
+        int color = hover ? ModernGuiUtils.getAccentColor() : TEXT_MUTED;
+        int scale = guiScale();
+        net.alpaka.addons.features.wheel.WheelMesh mesh = new net.alpaka.addons.features.wheel.WheelMesh(1.0f / scale);
+        float cx = x + size / 2.0f;
+        float cy = y + size / 2.0f + 0.5f;
+        float radius = size * 0.3f;
+        float line = Math.max(1.0f, meshLine(scale));
+        // The ring runs clockwise from the top round to the upper left; the gap between is where the
+        // arrowhead at the top points into, back the other way.
+        float start = (float) (-Math.PI / 2);
+        float end = start + (float) (2 * Math.PI) - 1.1f;
+        mesh.ringSector(cx, cy, radius - line / 2, radius + line / 2, start, end, start, end, color, color, false);
+        float head = line * 1.8f;
+        float tipY = cy - radius;
+        mesh.convexPolygon(new float[] {cx - head * 1.1f, tipY, cx + head * 0.4f, tipY - head, cx + head * 0.4f, tipY + head}, color);
+        mesh.submit(graphics);
+    }
+
     /** A plus centred on the point, its arms feathered like the dashed circle. */
     public static void plus(GuiGraphicsExtractor graphics, float cx, float cy, float half, int color) {
         int scale = guiScale();
@@ -377,7 +503,7 @@ public final class AlpakaStyle {
         graphics.pose().translate(cx - diameter / 2.0f - x, cy - diameter / 2.0f - y);
         int round = (diameter + 3) / 2;
         ModernGuiUtils.drawRoundedRect(graphics, x - 1, y, diameter + 2, diameter + 2, round, 0x50000000);
-        ModernGuiUtils.drawRoundedRect(graphics, x, y, diameter, diameter, round, TEXT);
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, diameter, diameter, round, KNOB_RING);
         ModernGuiUtils.drawRoundedRect(graphics, x + 2, y + 2, diameter - 4, diameter - 4, round, color | 0xFF000000);
         graphics.pose().popMatrix();
     }

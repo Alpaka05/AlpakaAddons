@@ -4,7 +4,7 @@ import com.mojang.blaze3d.platform.InputConstants
 import net.alpaka.addons.client.AlpakaKeyCategory
 import net.alpaka.addons.config.AlpakaConfig
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
-import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper
+import net.alpaka.addons.client.AlpakaKeyBinds
 import net.minecraft.client.KeyMapping
 import net.minecraft.client.Minecraft
 import net.minecraft.world.item.Item
@@ -99,11 +99,11 @@ object InventoryHudFeature {
 
     @JvmStatic
     fun register() {
-        TOGGLE_KEY = KeyMappingHelper.registerKeyMapping(
+        TOGGLE_KEY = AlpakaKeyBinds.register(
             KeyMapping(
                 "key.alpaka.inventory_hud",
                 InputConstants.Type.KEYSYM,
-                // Unbound for fresh installs: H is Skyblocker's slot lock. A key set in options.txt
+                // Unbound for fresh installs: H is Skyblocker's slot lock. A key the player bound
                 // stays as it is.
                 GLFW.GLFW_KEY_UNKNOWN,
                 AlpakaKeyCategory.CATEGORY
@@ -198,11 +198,12 @@ object InventoryHudFeature {
         lastChangeMs != 0L && System.currentTimeMillis() - lastChangeMs < PEEK_DURATION_MS
 
     /**
-     * How far open the HUD is, 0..1, advanced from the wall clock so the fade runs at the same
-     * speed regardless of frame rate. Linear; the renderer applies the easing.
+     * Moves the fade on to now and returns how far open the HUD is, 0..1. Advanced from the wall
+     * clock, so the fade runs at the same speed regardless of frame rate; called once per frame by
+     * the renderer. Linear; the renderer applies the easing.
      */
     @JvmStatic
-    fun openAmount(): Float {
+    fun advanceOpenAmount(): Float {
         val now = System.currentTimeMillis()
         val dt = (now - lastFrameMs).coerceAtMost(MAX_FRAME_MS) / 1000.0f
         lastFrameMs = now

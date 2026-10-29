@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Locale;
 
 /**
  * The config options arranged the way the redesigned screen shows them: category, then section,
@@ -58,7 +59,7 @@ public final class ConfigTree {
 
         public boolean matches(String normalizedQuery) {
             if (normalizedQuery.isEmpty()) return true;
-            if (title.toLowerCase().contains(normalizedQuery)) return true;
+            if (title.toLowerCase(Locale.ROOT).contains(normalizedQuery)) return true;
             if (master != null && master.matchesNormalized(normalizedQuery)) return true;
             for (ConfigOption option : settings) {
                 if (option.matchesNormalized(normalizedQuery)) return true;
@@ -90,15 +91,22 @@ public final class ConfigTree {
     /** The options that are features of their own. Everything else is a setting of the one before. */
     private static final Set<String> MASTERS = Set.of(
             // General
-            "allow_api_calls", "update_notifications", "menu_font", "menu_accent_color",
+            "allow_api_calls", "update_notifications", "menu_font", "menu_theme", "menu_accent_color",
             "custom_escape_menu", "custom_main_menu", "disable_all_features", "reset_all_settings",
+            // SkyBlock, kept apart from the list below so it does not collide with other changes there
+            "slayer_boss_highlight",
+            // Dungeon, kept apart the same way
+            "starred_mobs_highlight",
             // Visuals
-            "fullbright", "clean_blaze", "blaze_fire_pits", "stop_blaze_spinning", "hide_hurt_overlay", "hide_mob_deaths",
-            "render_hand_third_person", "smooth_perspective", "disable_front_perspective",
-            "container_bg_opacity", "inventory_snow", "scrollable_tooltips", "persistent_item_name", "old_master_stars", "wide_health_bar",
-            "better_chat", "chat_search", "expand_chat_history", "compact_chat",
+            "fullbright", "clean_blaze", "blaze_fire_pits", "hide_hurt_overlay", "hide_mob_deaths",
+            "hide_explosions",
+            "hide_inventory_effects",
+            "render_hand_third_person", "smooth_perspective", "disable_front_perspective", "zoom",
+            "sky_effects",
+            "container_bg_opacity", "inventory_snow", "scrollable_tooltips", "persistent_item_name", "old_master_stars", "storage_preview", "wide_health_bar",
+            "better_chat", "chat_search", "chat_copy", "expand_chat_history", "compact_chat", "message_filter",
             "mention_notification", "chat_peek", "better_screenshot_message", "chat_tabs",
-            "player_model_enabled", "inventory_hud_enabled",
+            "player_model_enabled", "performance_hud_enabled", "inventory_hud_enabled", "custom_tab", "dungeon_map_enabled",
             // Item viewmodel: the adjustments are the modifiers' own settings
             "item_size_feature", "item_starlight", "item_motion_blur", "item_viewmodel_reset",
             // Block overlay: one feature, outline, fill, animation and filters its settings
@@ -107,21 +115,23 @@ public final class ConfigTree {
             "etherwarp_overlay", "etherwarp_sound",
             "slayer_drop_tracker", "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat",
             "hide_slayer_chat", "boss_spawn_alert", "boss_cocoon_alert", "slayer_timer", "slayer_hud_enabled",
-            "world_age_hud_enabled", "world_age_join_message_enabled", "party_invite_prompt",
-            "guild_prefix", "bridge_bot_formatter", "only_crit_damage", "ragnarock", "cache_resource_pack",
+            "world_age_join_message_enabled", "party_invite_prompt",
+            "guild_prefix", "bridge_bot_formatter", "only_crit_damage", "ragnarock", "deployable_timer", "cache_resource_pack",
+            "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value", "chest_value",
             // Cosmetics
-            "custom_name_tag", "chroma_hat", "player_scale", "custom_damage_tags",
+            "custom_name_tag", "chroma_hat", "aura", "player_scale", "custom_damage_tags",
             // Sound & utility
-            "command_wheel_custom_commands", "always_sprint", "custom_sounds",
+            "command_wheel_custom_commands", "command_shortcuts", "always_sprint", "keep_cursor_position", "quick_join", "custom_sounds",
             "custom_sound_button_click", "custom_sound_hotbar_scroll", "custom_sound_inventory_open_close",
             "custom_sound_inventory_click", "custom_sound_rare_drop", "custom_sound_notification",
             "custom_sound_player_hurt", "custom_sound_blaze_death", "custom_sound_zombie_remedy",
-            "custom_sound_successful_hit", "mute_vanilla_sounds_blaze_slayer", "custom_sound_low_hp_heartbeat"
+            "custom_sound_successful_hit", "custom_sound_low_hp_heartbeat"
     );
 
     /** Settings registered away from their feature. */
     private static final Map<String, String> PARENTS = Map.ofEntries(
             Map.entry("smooth_perspective_duration", "smooth_perspective"),
+            Map.entry("custom_main_menu_whats_new", "custom_main_menu"),
             // The chat's background and font are parts of Better Chat.
             Map.entry("chat_blur", "better_chat"),
             Map.entry("chat_smooth_font", "better_chat"),
@@ -130,9 +140,13 @@ public final class ConfigTree {
             Map.entry("slayer_hud_smooth_font", "slayer_hud_enabled"),
             Map.entry("slayer_timer_blur", "slayer_timer"),
             Map.entry("slayer_timer_smooth_font", "slayer_timer"),
-            Map.entry("world_age_blur", "world_age_hud_enabled"),
-            Map.entry("world_age_smooth_font", "world_age_hud_enabled"),
+            Map.entry("deployable_timer_blur", "deployable_timer"),
+            Map.entry("deployable_timer_smooth_font", "deployable_timer"),
+            Map.entry("performance_hud_blur", "performance_hud_enabled"),
+            Map.entry("performance_hud_smooth_font", "performance_hud_enabled"),
             Map.entry("inventory_hud_blur", "inventory_hud_enabled"),
+            Map.entry("custom_tab_blur", "custom_tab"),
+            Map.entry("custom_tab_smooth_font", "custom_tab"),
             Map.entry("notification_blur", "#Notification Customization"),
             Map.entry("notification_smooth_font", "#Notification Customization")
     );
@@ -170,31 +184,34 @@ public final class ConfigTree {
     private static final String[][][] LAYOUT = {
             {{"General"},
                     {"Main", "allow_api_calls", "update_notifications", "#Notification Customization",
-                            "command_wheel_custom_commands", "always_sprint", "disable_all_features", "reset_all_settings"},
-                    {"Design", "menu_font", "#HUD Style", "menu_accent_color", "custom_main_menu", "custom_escape_menu"},
+                            "always_sprint", "keep_cursor_position", "quick_join", "disable_all_features", "reset_all_settings"},
+                    {"Design", "menu_font", "menu_theme", "#HUD Style", "menu_accent_color", "custom_main_menu", "custom_escape_menu"},
                     {"Sounds", "custom_sounds", "custom_sound_button_click", "custom_sound_hotbar_scroll",
                             "custom_sound_inventory_open_close", "custom_sound_inventory_click", "custom_sound_rare_drop",
                             "custom_sound_notification", "custom_sound_player_hurt", "custom_sound_successful_hit",
-                            "custom_sound_zombie_remedy", "custom_sound_low_hp_heartbeat"}},
+                            "custom_sound_zombie_remedy", "custom_sound_blaze_death", "custom_sound_low_hp_heartbeat"}},
             {{"Visuals"},
-                    {"World", "fullbright", "block_overlay_enabled", "hide_hurt_overlay", "hide_mob_deaths",
-                            "#Hide Fire Overlay", "#Nametags", "render_hand_third_person", "smooth_perspective", "disable_front_perspective"},
-                    {"Interface", "inventory_hud_enabled", "player_model_enabled", "container_bg_opacity",
-                            "scrollable_tooltips", "persistent_item_name", "old_master_stars", "wide_health_bar", "inventory_snow", "#Scoreboard"},
-                    {"Chat", "better_chat", "chat_tabs", "chat_search", "chat_peek", "compact_chat",
-                            "expand_chat_history", "mention_notification", "better_screenshot_message"},
+                    {"World", "fullbright", "sky_effects", "block_overlay_enabled", "hide_hurt_overlay", "hide_mob_deaths", "hide_explosions",
+                            "#Hide Fire Overlay", "#Nametags", "render_hand_third_person", "smooth_perspective", "disable_front_perspective", "zoom"},
+                    {"Interface", "inventory_hud_enabled", "player_model_enabled", "performance_hud_enabled", "container_bg_opacity",
+                            "hide_inventory_effects",
+                            "scrollable_tooltips", "persistent_item_name", "old_master_stars", "storage_preview", "wide_health_bar", "custom_tab", "#Scoreboard"},
+                    {"Chat", "better_chat", "chat_tabs", "chat_search", "chat_copy", "chat_peek", "compact_chat",
+                            "message_filter", "expand_chat_history", "mention_notification", "better_screenshot_message"},
                     {"Viewmodel", "item_size_feature", "#Swing Customizations", "item_starlight", "item_motion_blur",
                             "#Viewmodel Presets", "item_viewmodel_reset"},
-                    {"Cosmetics", "custom_name_tag", "custom_damage_tags", "chroma_hat", "player_scale"}},
+                    {"Cosmetics", "custom_name_tag", "custom_damage_tags", "chroma_hat", "aura", "player_scale", "inventory_snow"}},
             {{"SkyBlock"},
+                    {"Dungeon", "dungeon_map_enabled", "starred_mobs_highlight"},
                     {"Slayer", "slayer_hud_enabled", "slayer_timer", "boss_spawn_alert", "boss_cocoon_alert", "slayer_drop_tracker",
-                            "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat",
-                            "hide_slayer_chat"},
-                    {"Blaze", "clean_blaze", "blaze_fire_pits", "stop_blaze_spinning",
-                            "mute_vanilla_sounds_blaze_slayer", "custom_sound_blaze_death"},
+                            "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat", "slayer_boss_highlight",
+                            "hide_slayer_chat", "clean_blaze", "blaze_fire_pits"},
                     {"Tools", "etherwarp_overlay", "etherwarp_sound", "only_crit_damage",
-                            "world_age_hud_enabled", "world_age_join_message_enabled", "ragnarock", "cache_resource_pack"},
-                    {"Social", "party_invite_prompt", "guild_prefix", "bridge_bot_formatter"}},
+                            "world_age_join_message_enabled", "ragnarock", "deployable_timer", "cache_resource_pack"},
+                    {"Markets", "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value",
+                            "chest_value"},
+                    {"Social", "party_invite_prompt", "guild_prefix", "bridge_bot_formatter",
+                            "command_wheel_custom_commands", "command_shortcuts"}},
     };
 
     /** "Enable Inventory HUD" reads as "Inventory HUD" in a list of features that each switch on. */
@@ -239,6 +256,16 @@ public final class ConfigTree {
                 }
                 pendingHeader = null;
             }
+        }
+
+        // A feature's key (the keybind titled "Key") always comes first, right under its
+        // description, wherever it was registered; the rest keep their registry order (the sort is
+        // stable). Keys with titles of their own, such as the market screens' page keys, stay where
+        // they were registered, below the switch that turns them on.
+        for (Feature feature : byKey.values()) {
+            feature.settings.sort(java.util.Comparator.comparing(
+                    (ConfigOption option) -> option.getType() != ConfigOption.Type.KEYBIND
+                            || !option.getTitle().equals("Key")));
         }
 
         // Then the sidebar, as LAYOUT has it.

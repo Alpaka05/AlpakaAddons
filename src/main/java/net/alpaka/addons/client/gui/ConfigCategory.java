@@ -5,8 +5,9 @@ public enum ConfigCategory {
     VISUALS("Visuals & Rendering", "Visual effects, overlays, player model & inventory HUD"),
     VIEWMODEL("Item Viewmodel", "Hand positioning, scaling, rotations & swing animations"),
     BLOCK_OVERLAY("Block Overlay", "Custom block outline, colors, chroma & fill effects"),
-    COSMETICS("Cosmetics", "Your own animated name tag, the chroma sensei hat & player scale"),
+    COSMETICS("Cosmetics", "Your own animated name tag, the sensei hat, an aura & player scale"),
     SKYBLOCK("SkyBlock", "Hypixel SkyBlock utilities & slayer drop trackers"),
+    DUNGEON("Dungeon", "Dungeon map, boss arena & map appearance"),
     SOUND_MISC("Sound & Utility", "Custom sounds, the Command Wheel & Always Sprint");
 
     private final String displayName;

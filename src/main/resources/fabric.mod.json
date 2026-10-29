@@ -17,14 +17,16 @@
   "environment": "client",
   "entrypoints": {
     "client": [
-      "net.alpaka.addons.client.AlpakaClient"
+      "net.alpaka.addons.client.AlpakaClient",
+      "net.alpaka.addons.compat.OptionalHooksReport"
     ],
     "modmenu": [
       "net.alpaka.addons.client.AlpakaModMenu"
     ]
   },
   "mixins": [
-    "alpaka.mixins.json"
+    "alpaka.mixins.json",
+    "alpaka.cosmetic.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.16.0",

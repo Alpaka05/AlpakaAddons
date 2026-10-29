@@ -25,7 +25,8 @@ object HudRegistry {
         SlayerTimerHudElement,
         DeployableTimerHudElement,
         PlayerModelHudElement,
-        InventoryHudElement
+        InventoryHudElement,
+        net.alpaka.addons.features.dungeonmap.DungeonMapHudElement
     )
 
     /**

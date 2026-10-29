@@ -847,7 +847,9 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             rowY = drawSetting(graphics, mouseX, mouseY, option, rowX, rowY, rowW, x, w, clipY, clipH, deltaSec);
         }
 
-        detailScroll.max = Math.max(0, (rowY + detailScroll.offset()) - startY + 6 - clipH);
+        // rowY - startY is the content's height whatever the scroll; adding the offset again made the
+        // limit grow with every turn of the wheel, until the column scrolled away into emptiness.
+        detailScroll.max = Math.max(0, rowY - startY + 6 - clipH);
         detailScroll.update(deltaSec);
         AlpakaStyle.scrollFades(graphics, x, clipY, w, clipH, detailScroll.offset() > 0, detailScroll.offset() + 1 < detailScroll.max);
         graphics.disableScissor();
@@ -1338,9 +1340,11 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         if (scrollY == 0) return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
         int featX = panelX() + sidebarW();
         int detailX = featX + featureColumnW();
-        if (mouseX < featX) sidebarScroll.by(-scrollY * 20);
-        else if (mouseX < detailX) featureScroll.by(-scrollY * 24);
-        else detailScroll.by(-scrollY * 24);
+        // In setup mode the sidebar and the feature list are folded away and only the settings are
+        // left, so the wheel turns those wherever the mouse is.
+        if (setupProgress >= 0.999f || mouseX >= detailX) detailScroll.by(-scrollY * 24);
+        else if (mouseX < featX) sidebarScroll.by(-scrollY * 20);
+        else featureScroll.by(-scrollY * 24);
         return true;
     }
 

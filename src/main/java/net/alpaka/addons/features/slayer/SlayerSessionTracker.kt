@@ -322,8 +322,10 @@ object SlayerSessionTracker {
      *
      * Killing a boss counts as activity in its own right, so a fight that ends after a long
      * stationary ranged phase does not leave the session looking idle.
+     *
+     * Returns the XP credited for the boss, for the slayer log.
      */
-    fun onBossKilled(type: SlayerType, killedAtMs: Long = System.currentTimeMillis(), timed: Boolean = true) {
+    fun onBossKilled(type: SlayerType, killedAtMs: Long = System.currentTimeMillis(), timed: Boolean = true): Long {
         // The moment the kill was noticed rather than the moment it is acted on, for the same reason
         // SlayerTimer takes it as a parameter: an inferred kill is held back for a second so dying
         // can veto it, and that hold must not land in the session's boss times.
@@ -348,6 +350,7 @@ object SlayerSessionTracker {
         // The persisted lifetime figure moves with it, so a disconnect cannot lose this kill's XP.
         // See SlayerXpTracker for why it is not derived from the session total.
         SlayerXpTracker.credit(type, awarded)
+        return awarded
     }
 
     /**

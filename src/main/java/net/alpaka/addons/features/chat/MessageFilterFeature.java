@@ -1,6 +1,7 @@
 package net.alpaka.addons.features.chat;
 
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.utils.DungeonState;
 import net.alpaka.addons.utils.SkyblockUtils;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.minecraft.network.chat.Component;
@@ -15,7 +16,8 @@ import java.util.regex.Pattern;
  * one of these lines (the profile name for the slayer record) listen to both, so hiding the profile
  * lines does not cost them anything.
  *
- * The patterns follow SkyHanni (ChatFilter, PetStoragePatterns, WatchdogHider), matched against the
+ * The patterns follow SkyHanni (ChatFilter, PetStoragePatterns, WatchdogHider, SackApi,
+ * DungeonChatFilter), matched against the
  * color-stripped line and anchored at both ends: a player typing the same words has their name and a
  * colon in front and is never hidden.
  * Action bar text is left alone.
@@ -43,7 +45,32 @@ public final class MessageFilterFeature {
         /** The weekly "[WATCHDOG ANNOUNCEMENT]" ban count, and the lines that come with it. */
         WATCHDOG,
         /** "You have 2 items stashed away!" with its "CLICK HERE to pick them up!" line. */
-        STASH
+        STASH,
+        /** "[Sacks] +11 items. (Last 7s.)", the summary of what went into or out of the sacks. */
+        SACKS
+    }
+
+    /** The groups of dungeon chatter, as SkyHanni splits them; each has its own switch. */
+    public enum DungeonKind {
+        /** Ready-up, the countdown and the potion notices before the run starts. */
+        PREPARE,
+        /** Mort's lines and the class buff summary at the start. */
+        START,
+        AMBIENCE,
+        /** Superboom, Revive Stones, Wither Essence, orbs and the fairy's lines. */
+        PICKUP,
+        /** The "RIGHT CLICK on a WITHER door" key reminders. */
+        REMINDER,
+        BLESSING,
+        /** "This chest has already been searched!" and similar refusals. */
+        NOT_POSSIBLE,
+        DAMAGE,
+        /** Class abilities, healing, tethers and cooldown lines. */
+        ABILITY,
+        /** Puzzle solved lines and Oruo's quiz talk. */
+        PUZZLE,
+        /** Essence and team bonus lines at the end of a run. */
+        END
     }
 
     private static final Pattern WELCOME = Pattern.compile("^Welcome to Hypixel SkyBlock!$");
@@ -80,6 +107,104 @@ public final class MessageFilterFeature {
             "^You have [\\d,]+ (?:item|material)s? stashed away!$"
                     + "|^\\(This totals [\\d,]+ types? of (?:item|material)s? stashed!\\)$"
                     + "|^>>> CLICK HERE to pick (?:them|it) up! <<<$");
+    /** "[Sacks] +11 items. (Last 7s.)", "[Sacks] +2,111 items, -4 items. (Last 30s.)". */
+    private static final Pattern SACKS = Pattern.compile(
+            "^\\[Sacks\\] [+-][\\d,]+ items?(?:, -[\\d,]+ items?)?\\. \\(Last [\\d,]+s\\.\\)$");
+
+    /**
+     * A player's name, maybe with a rank in front. Free parts at the start of a dungeon pattern are
+     * written without colons ({@code [^:]+}), since a player typing the same words has a colon after
+     * their name.
+     */
+    private static final String PLAYER = "(?:\\[[^\\]]+\\] )?[A-Za-z0-9_]{1,16}";
+
+    /** Dungeon lines in the order they are checked; the first group that matches wins. */
+    private static final java.util.List<java.util.Map.Entry<DungeonKind, Pattern>> DUNGEON = java.util.List.of(
+            dungeon(DungeonKind.PREPARE,
+                    "^[^:]+ has started the dungeon countdown\\. The dungeon will begin in 1 minute\\.$"
+                            + "|^\\[NPC\\] Mort: Talk to me to change your class and ready up\\.$"
+                            + "|^" + PLAYER + " is now ready!$"
+                            + "|^Dungeon starts in \\d+ seconds?\\.$"
+                            + "|^Your active Potion Effects have been paused and stored\\. They will be restored when you leave Dungeons! You are not allowed to use existing Potion Effects while in Dungeons\\.$"
+                            + "|^You can no longer consume or splash any potions during the remainder of this Dungeon run!$"),
+            dungeon(DungeonKind.START,
+                    "^\\[NPC\\] Mort: (?:Here, I found this map when I first entered the dungeon\\.|You should find it useful if you get lost\\.|Good luck\\.)$"
+                            + "|^\\[(?:Archer|Berserk|Healer|Mage|Tank)\\] [^:]+ \\S+ -> \\S+$"),
+            dungeon(DungeonKind.AMBIENCE, "^A shiver runs down your spine\\.\\.\\.$"),
+            dungeon(DungeonKind.PICKUP,
+                    "^" + PLAYER + " has obtained (?:Superboom TNT(?: x2)?|Revive Stone|Premium Flesh|Beating Heart)!$"
+                            + "|^RARE DROP! (?:Hunk of Blue Ice|Beating Heart) \\(.+\\)$"
+                            + "|^(?:You|" + PLAYER + ") found a Wither Essence! Everyone gains an extra essence!$"
+                            + "|^[^:]+ the Fairy: (?:You killed me! (?:Take this Revive Stone|I'll revive you|I'll revive your friend .+) so that my death is not in vain!|Have a great life!)$"
+                            + "|^\\S+ You picked up an? .+ Orb from .+ healing you for .+ and granting you \\+.+ for \\d+ seconds\\.$"),
+            dungeon(DungeonKind.REMINDER,
+                    "^RIGHT CLICK on (?:a WITHER door|the BLOOD DOOR) to open it\\. This key can only be used to open 1 door!$"),
+            dungeon(DungeonKind.BLESSING,
+                    "^DUNGEON BUFF! .+$"
+                            + "|^A Blessing of .+ was picked up!$"
+                            + "|^" + PLAYER + " has obtained Blessing of .+!$"
+                            + "|^ +(?:Also granted|Granted|Grants) you .+\\.$"
+                            + "|^BUFF! You have gained Healing V!$"),
+            dungeon(DungeonKind.NOT_POSSIBLE,
+                    "^(?:You cannot hit the silverfish while it's moving!"
+                            + "|You cannot move the silverfish in that direction!"
+                            + "|There are blocks in the way!"
+                            + "|This chest has already been searched!"
+                            + "|This lever has already been used\\."
+                            + "|You cannot do that in this room!"
+                            + "|You do not have the key for this door!"
+                            + "|You have already opened this dungeon chest!"
+                            + "|You cannot use abilities in this room!"
+                            + "|A mystical force in this room prevents you from using that ability!)$"),
+            // Before DAMAGE: "Your Implosion hit 3 enemies for ..." is an ability's line, not damage taken.
+            dungeon(DungeonKind.ABILITY,
+                    "^Your [^:]+ hit [\\d,]+ enem(?:y|ies) for [\\d,.]+ damage\\.$"
+                            + "|^BUFF! You were splashed by .+ with Healing VIII!$"
+                            + "|^You were healed for .+ health by .+(?:!|'s Healing Bow and gained \\+.+ Strength for 10 seconds\\.)$"
+                            + "|^You gained .+ HP worth of absorption for 3s from .+!$"
+                            + "|^[^:]+ picked up your .+ Orb!$"
+                            + "|^This ability is on cooldown for .+s\\.$"
+                            + "|^[^:]+ healed you for .+ health!$"
+                            + "|^Your bone plating reduced the damage you took by .+!$"
+                            + "|^[^:]+ formed a tether with you!$"
+                            + "|^Your tether with .+ healed you for .+ health\\.$"
+                            + "|^Your Spirit Pet (?:healed .+ for .+ health!|hit .+ enem(?:y|ies) for .+ damage\\.)$"
+                            + "|^You need at least .+ mana to activate this!$"
+                            + "|^[^:]+ granted you .+ strength for 20 seconds!$"
+                            + "|^Your fairy healed .+ for .+ health!$"
+                            + "|^[^:]+ fairy healed you for .+ health!$"
+                            + "|^Guided Sheep is now available!$"
+                            + "|^Creeper Veil (?:Activated|De-activated)!$"
+                            + "|^(?:Rapid Fire|Castle of Stone|Ragnarok|Thunderstorm) is ready to use! Press DROP to activate it!$"),
+            dungeon(DungeonKind.DAMAGE,
+                    "^[^:]+ used .+ on you!$"
+                            + "|^[^:]+ (?:struck|hit) you for .+ damage[.!]$"
+                            + "|^[^:]+ exploded, hitting you for .+ damage\\.$"
+                            + "|^[^:]+ hit you with .+ for .+ damage!$"
+                            + "|^[^:]+ struck you for .+!$"
+                            + "|^The Mage's Magma burnt you for .+ true damage\\.$"
+                            + "|^Mute silenced you!$"),
+            dungeon(DungeonKind.PUZZLE,
+                    "^PUZZLE SOLVED! [^:]+ (?:wasn't fooled by .+|tied Tic Tac Toe)! Good job!$"
+                            + "|^\\[STATUE\\] Oruo the Omniscient: (?:.+ thinks the answer is .+! Lock in your party's answer in my Chamber!"
+                            + "|Though I sit stationary in this prison that is The Catacombs, my knowledge knows no bounds\\."
+                            + "|Prove your knowledge by answering 3 questions and I shall reward you in ways that transcend time!"
+                            + "|Answer incorrectly, and your moment of ineptitude will live on for generations\\."
+                            + "|2 questions left\\.\\.\\. Then you will have proven your worth to me!"
+                            + "|One more question!"
+                            + "|I bestow upon you all the power of a hundred years!"
+                            + "|You've already proven enough to me! No need to press more of my buttons!"
+                            + "|I've had enough of you and your party fiddling with my buttons\\. Scram!"
+                            + "|Enough! My buttons are not to be pressed with such lack of grace!)$"),
+            dungeon(DungeonKind.END,
+                    "^[^:]+ unlocked .+ Essence x[\\d,]+!$"
+                            + "|^ {4}.+ Essence x[\\d,]+$"
+                            + "|^[^:]+ Experience \\(Team Bonus\\)$"));
+
+    private static java.util.Map.Entry<DungeonKind, Pattern> dungeon(DungeonKind kind, String regex) {
+        return java.util.Map.entry(kind, Pattern.compile(regex));
+    }
+
     private static final String WATCHDOG_HEADER = "[WATCHDOG ANNOUNCEMENT]";
     /**
      * Hypixel sends the announcement line by line and closes it with a blank line. The lines after
@@ -108,7 +233,11 @@ public final class MessageFilterFeature {
         if (!config.messageFilterEnabled) return false;
         String text = SkyblockUtils.cleanColor(message.getString());
         Kind kind = next(text);
-        if (kind == null) return matchesCustom(text, config.messageFilterCustom);
+        if (kind == null) {
+            DungeonKind dungeonKind = DungeonState.inDungeon() ? classifyDungeon(text) : null;
+            return (dungeonKind != null && switchFor(dungeonKind, config))
+                    || matchesCustom(text, config.messageFilterCustom);
+        }
 
         long now = System.currentTimeMillis();
         if (kind == Kind.REWARD_BUNDLE) lastRewardReminderMs = now;
@@ -152,6 +281,15 @@ public final class MessageFilterFeature {
         if (FIRE_SALE.matcher(text).matches()) return Kind.FIRE_SALE;
         if (text.startsWith(WATCHDOG_HEADER)) return Kind.WATCHDOG;
         if (isStashReminder(text)) return Kind.STASH;
+        if (SACKS.matcher(text).matches()) return Kind.SACKS;
+        return null;
+    }
+
+    /** Which group of dungeon chatter a color-stripped line is, or null for anything else. */
+    static DungeonKind classifyDungeon(String text) {
+        for (java.util.Map.Entry<DungeonKind, Pattern> entry : DUNGEON) {
+            if (entry.getValue().matcher(text).matches()) return entry.getKey();
+        }
         return null;
     }
 
@@ -182,6 +320,23 @@ public final class MessageFilterFeature {
             case FIRE_SALE -> config.messageFilterFireSale;
             case WATCHDOG -> config.messageFilterWatchdog;
             case STASH -> config.messageFilterStash;
+            case SACKS -> config.messageFilterSacks;
+        };
+    }
+
+    private static boolean switchFor(DungeonKind kind, AlpakaConfig config) {
+        return switch (kind) {
+            case PREPARE -> config.messageFilterDungeonPrepare;
+            case START -> config.messageFilterDungeonStart;
+            case AMBIENCE -> config.messageFilterDungeonAmbience;
+            case PICKUP -> config.messageFilterDungeonPickup;
+            case REMINDER -> config.messageFilterDungeonReminder;
+            case BLESSING -> config.messageFilterDungeonBlessing;
+            case NOT_POSSIBLE -> config.messageFilterDungeonNotPossible;
+            case DAMAGE -> config.messageFilterDungeonDamage;
+            case ABILITY -> config.messageFilterDungeonAbility;
+            case PUZZLE -> config.messageFilterDungeonPuzzle;
+            case END -> config.messageFilterDungeonEnd;
         };
     }
 }

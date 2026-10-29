@@ -172,7 +172,8 @@ public class SoundEngineMixin {
     @Unique
     private static boolean alpaka$shouldMute(SoundInstance sound, Identifier id) {
         AlpakaConfig cfg = AlpakaConfig.instance;
-        if (!cfg.muteVanillaSoundsInBlazeSlayer) return false;
+        // A part of Clean Blaze, so its switch turns the mute off too.
+        if (!cfg.cleanBlazeEnabled || !cfg.muteVanillaSoundsInBlazeSlayer) return false;
         if (SlayerQuestDetector.INSTANCE.getActiveType() != SlayerType.BLAZE) return false;
         if (cfg.blazeMuteAllWorldAudio) return WORLD_SOURCES.contains(sound.getSource());
         return MINECRAFT_NAMESPACE.equals(id.getNamespace()) && BLAZE_NOISE.contains(id.getPath());

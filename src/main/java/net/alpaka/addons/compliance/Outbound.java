@@ -37,6 +37,8 @@ public final class Outbound {
         CHAT_INPUT,
         /** Pressed a key, such as Y on a party invite. */
         KEY_PRESS,
+        /** Clicked something in one of the mod's own windows, such as a result in Item Search. */
+        BUTTON,
         /** Released or clicked a command wheel segment. */
         WHEEL,
         /** Clicked the mod's drawing of a slot in an open menu, such as a card in the Auction House. */

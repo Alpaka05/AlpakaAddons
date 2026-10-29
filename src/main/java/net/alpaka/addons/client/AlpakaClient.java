@@ -65,6 +65,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.chat.ChatSearchFeature.register();
         net.alpaka.addons.features.itemvalue.ItemValueFeature.register();
         net.alpaka.addons.features.chestvalue.ChestValueFeature.register();
+        net.alpaka.addons.features.itemsearch.ItemSearchFeature.register();
         net.alpaka.addons.features.chat.ScreenshotPreview.register();
         CommandWheelFeature.register();
         net.alpaka.addons.features.shortcuts.CommandShortcuts.register();
@@ -218,6 +219,20 @@ public class AlpakaClient implements ClientModInitializer {
                         return 1;
                     })
                 )
+            );
+
+            // "/alpakasearch" opens Item Search, "/alpakasearch hyperion" with that already typed in.
+            dispatcher.register(ClientCommands.literal("alpakasearch")
+                .executes(context -> {
+                    net.alpaka.addons.features.itemsearch.ItemSearchFeature.open(null, null);
+                    return 1;
+                })
+                .then(ClientCommands.argument("query", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
+                    .executes(context -> {
+                        net.alpaka.addons.features.itemsearch.ItemSearchFeature.open(
+                                com.mojang.brigadier.arguments.StringArgumentType.getString(context, "query"), null);
+                        return 1;
+                    }))
             );
 
             dispatcher.register(ClientCommands.literal("alpakaslayer")

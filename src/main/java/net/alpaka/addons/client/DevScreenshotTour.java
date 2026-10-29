@@ -451,6 +451,11 @@ public final class DevScreenshotTour {
             }, () -> true, 30),
             new Stop(null, () -> net.alpaka.addons.features.market.MarketPreview.classic(
                     net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, false), () -> true, 1),
+            // Item Search over made-up containers: everything, one item hovered, then a query.
+            screen("item-search", () -> net.alpaka.addons.features.itemsearch.ItemSearchPreview.screen(null)),
+            new Stop("item-search-hover", () -> placeMouse(0.356, 0.24), () -> true, 15),
+            screen("item-search-query", () -> net.alpaka.addons.features.itemsearch.ItemSearchPreview.screen("diamond")),
+            screen("item-search-config", () -> AlpakaConfigScreen.openOn("Markets", "Item Search")),
             screen("market-config", () -> AlpakaConfigScreen.openOn("Markets", "Custom Auction House")),
             screen("market-config-price-history", () -> AlpakaConfigScreen.openOn("Markets", "Price History")),
             screen("market-config-bazaar", () -> AlpakaConfigScreen.openOn("Markets", "Custom Bazaar")),

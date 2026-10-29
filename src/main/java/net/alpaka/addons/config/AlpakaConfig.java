@@ -965,6 +965,8 @@ public class AlpakaConfig {
     public boolean itemValueEnabled = true;
     /** Which Bazaar price the parts count at: 0 what they cost to buy now, 1 what they sell for now. */
     public int itemValueBazaarPrice = 0;
+    /** Item Search: a window to search everything the player owns; see ItemSearchFeature. */
+    public boolean itemSearchEnabled = true;
     /** The Chest Value panel beside a menu: what everything in it is worth; see ChestValuePanel. Needs allowApiCalls. */
     public boolean chestValueEnabled = true;
     /** Whether the panel is showing: its key switches it, and it stays so from menu to menu until pressed again. */
@@ -1713,6 +1715,7 @@ public class AlpakaConfig {
         this.customBazaarEnabled = false;
         this.customSignInputEnabled = false;
         this.marketPriceHistoryEnabled = false;
+        this.itemSearchEnabled = false;
         this.itemValueEnabled = false;
         this.chestValueEnabled = false;
         this.profileDashboardEnabled = false;

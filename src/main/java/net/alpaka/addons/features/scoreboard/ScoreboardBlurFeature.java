@@ -1,12 +1,10 @@
 package net.alpaka.addons.features.scoreboard;
 
 import net.alpaka.addons.client.gui.AlpakaGuiElementSink;
-import net.alpaka.addons.client.gui.BlurRectRenderState;
+import net.alpaka.addons.client.gui.HudPanel;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.chat.ChatBlurFeature;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import org.joml.Matrix3x2f;
 
 /**
  * The blurred scoreboard background: one rounded panel behind the sidebar that shows the world
@@ -26,12 +24,11 @@ public final class ScoreboardBlurFeature {
 
     /** How far the sidebar moves left, in GUI pixels, so the panel clears the screen edge. */
     public static final int SHIFT = 3;
-    /** How far the panel grows past vanilla's boxes, in GUI pixels. */
+    /**
+     * How far the panel grows past vanilla's boxes, in GUI pixels. Its corners and shadow are
+     * {@link HudPanel}'s, which draws it.
+     */
     private static final int PADDING = 2;
-    /** The panel's corner radius in GUI pixels. */
-    private static final int RADIUS = 4;
-    /** How far the panel's drop shadow reaches, in GUI pixels. */
-    private static final int SHADOW = 4;
 
     // The sidebar being extracted: whether it is drawn as a panel, and the title box's top edge.
     private static boolean active;
@@ -40,7 +37,7 @@ public final class ScoreboardBlurFeature {
     private ScoreboardBlurFeature() {}
 
     public static boolean isEnabled() {
-        return AlpakaConfig.instance.scoreboardBlurEnabled;
+        return AlpakaConfig.instance.blurOn(AlpakaConfig.instance.scoreboardBlurEnabled);
     }
 
     /** The sidebar is about to be extracted; moves it off the screen edge when it gets a panel. */
@@ -69,19 +66,15 @@ public final class ScoreboardBlurFeature {
 
     /** Vanilla's body box. Returns true when the panel takes it over and it must not be drawn. */
     public static boolean bodyBox(GuiGraphicsExtractor graphics, int x0, int y0, int x1, int y1, int color) {
-        if (!active || !(graphics instanceof AlpakaGuiElementSink sink)) return false;
+        if (!active || !(graphics instanceof AlpakaGuiElementSink)) return false;
         int top = titleTop != Integer.MIN_VALUE ? Math.min(titleTop, y0) : y0;
-        float toScreen = (float) Minecraft.getInstance().getWindow().getGuiScale();
-        BlurRectRenderState panel = new BlurRectRenderState(
-                new Matrix3x2f(graphics.pose()),
-                x0 - PADDING, top - PADDING, x1 + PADDING, y1 + PADDING,
-                Math.round(RADIUS * toScreen), color, toScreen, 1.0f,
-                Math.round(SHADOW * toScreen), sink.alpaka$currentScissor());
-        // Asked before the submission, so a HUD cached by Gnetum hands this panel to the frame's own
-        // pass. Skipping the request while Gnetum caches the sidebar kept it cached for good - only
-        // the request takes it out - and the blur only showed for a frame when the cache was redrawn.
-        ChatBlurFeature.requestForHud(panel.bounds());
-        sink.alpaka$submitElement(panel);
+        // The sidebar has no scale of its own: one panel pixel is one GUI pixel. Vanilla's body
+        // color is the tint, so the player's text background opacity still sets its strength.
+        // Always asks for the blur: the request is what takes a sidebar Gnetum caches out of its
+        // cache. Skipping it while cached kept it cached for good, and the blur only showed for a
+        // frame when Gnetum redrew its cache.
+        HudPanel.submit(graphics, x0 - PADDING, top - PADDING, x1 + PADDING, y1 + PADDING, 1.0f, color, 1.0f,
+                HudPanel.Glass.HUD);
         return true;
     }
 }

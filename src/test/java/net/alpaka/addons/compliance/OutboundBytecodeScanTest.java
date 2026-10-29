@@ -34,7 +34,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * The mod may only send a chat message or command as the direct result of the player pressing a
  * key, clicking or pressing Enter. Two features once broke that - a party-chat auto-reply and a
  * guild announcement fired from a timer - so a new call site has to be added to this list on
- * purpose, after checking that it only runs on such an action.
+ * purpose, after checking that it only runs on such an action. (The one opt-in exception, party
+ * chat answers to "!tps"-style requests, still goes through Outbound with a cause of its own.)
+ * Menu clicks count too: a mod that clicks slots on its own is exactly what Hypixel bans for.
  *
  * The bytecode is scanned rather than the source: a pattern over the source missed Kotlin's
  * {@code ?.send(}, {@code getConnection().send(}, method references, gameplay packets and
@@ -47,7 +49,7 @@ class OutboundBytecodeScanTest {
      */
     private static final Map<String, String> ALLOWED = Map.of(
             "compliance/Outbound",
-            "the gate: commands for a key press, click or Enter, and the Performance HUD's latency probe",
+            "the gate: commands for a key press, click or Enter, Quick Join's /skyblock and the Performance HUD's latency probe",
             "mixin/DownloadedPackSourceMixin",
             "answers a server resource pack that is already loaded the way vanilla answers one it just loaded",
             "mixin/ClientCommonPacketListenerPackCacheMixin",

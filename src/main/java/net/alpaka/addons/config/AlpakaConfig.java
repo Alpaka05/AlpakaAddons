@@ -1,15 +1,19 @@
 package net.alpaka.addons.config;
 
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.annotations.SerializedName;
 import net.alpaka.addons.AlpakaAddons;
+import net.alpaka.addons.client.gui.AlpakaStyle;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.File;
 
 import net.alpaka.addons.features.slayer.SlayerType;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class AlpakaConfig {
@@ -71,7 +75,6 @@ public class AlpakaConfig {
     /** What those share buttons post: 0 the tracker's own line, 1 Hypixel's drop message as it came. */
     public int slayerShareMessage = 0;
     public boolean fullbrightEnabled = false;
-
     /** Sky Effects: animated skies, drawn by this client only. Each sky has its own switch. */
     public boolean skyEffectsEnabled = false;
     public boolean skyEffectsNether = true;
@@ -82,7 +85,7 @@ public class AlpakaConfig {
     /** How fast they move, 0.25..3; 1 is the designed pace. */
     public float skyEffectsSpeed = 1.0f;
 
-    // Cosmetics. Both are drawn by this client for this client only - nothing is sent, nobody else
+    // Cosmetics. All are drawn by this client for this client only - nothing is sent, nobody else
     // sees them - and both apply to the player's own model in third person.
     /** Draw the player's own name tag with effects instead of vanilla's (which never shows it). */
     public boolean customNameTagEnabled = false;
@@ -120,6 +123,21 @@ public class AlpakaConfig {
     public float chromaHatSpeed = 1.0f;
     /** Raises (positive) or lowers the hat from where it rests on the head, in blocks. */
     public float chromaHatHeightOffset = 0.0f;
+
+    /** An animated aura of light around the player's own model in third person. */
+    public boolean auraEnabled = false;
+    /** Index into {@code AuraFeature.EFFECT_NAMES}: spirit orbs, helix, sigil, inferno, galaxy, fireflies, storm. */
+    public int auraEffect = 0;
+    /** Index into {@code AuraFeature.COLOR_MODE_NAMES}: the effect's own colors, rainbow, or the two below. */
+    public int auraColorMode = 0;
+    /** The two ends of the aura's gradient in the Custom color mode. */
+    public int auraPrimaryColor = 0xFF55FFFF;
+    public int auraSecondaryColor = 0xFFFF55FF;
+    /** How far the aura reaches out from the player, as a factor. */
+    public float auraSize = 1.0f;
+    public float auraSpeed = 1.0f;
+    /** How strongly the aura glows, in percent. */
+    public float auraBrightness = 80.0f;
 
     // Player scale. The model is drawn stretched or shrunk per axis, in the world only; the hitbox,
     // eye height, camera and reach are untouched, and nothing is sent, so nobody else sees it.
@@ -280,11 +298,33 @@ public class AlpakaConfig {
     public boolean blazeMuteAllWorldAudio = false;
     public float lowHpHeartbeatThreshold = 0.30f;
     public int menuAccentColor = 0xFF29B6B2; // Default teal
+    /** Index into {@code AlpakaStyle.Theme}: how the Alpaka menus look. 0 is the dark default. */
+    public int menuTheme = 0;
+    /** The player's own presets in the color picker, ARGB, oldest first; shared by every color option. */
+    public java.util.List<Integer> customColorPresets = new java.util.ArrayList<>();
     /**
      * Index into {@code GuiFont.NAMES}: the typeface the Alpaka menus are written in. 0 is the
      * vanilla pixel font; the default is Poppins.
      */
     public int menuFont = 2;
+    /** Set once a config still on the old default font (Inter) has been moved to the new default. */
+    public boolean menuFontNunitoApplied = false;
+    /** Chat messages in the menu font rather than the pixel font. */
+    public boolean menuFontInChat = false;
+    /** The scoreboard sidebar in the menu font rather than the pixel font. */
+    public boolean menuFontInScoreboard = false;
+    /**
+     * The mod's own HUDs: each on a blurred panel like the chat's, and each in the menu font, both
+     * per HUD. See HudPanel.
+     */
+    public boolean slayerHudBlur = true;
+    public boolean slayerTimerHudBlur = true;
+    public boolean performanceHudBlur = true;
+    public boolean notificationBlur = true;
+    public boolean slayerHudSmoothFont = true;
+    public boolean slayerTimerHudSmoothFont = true;
+    public boolean performanceHudSmoothFont = true;
+    public boolean notificationSmoothFont = true;
     public boolean customEscapeMenuEnabled = true;
     public boolean customMainMenuEnabled = false;
     /** The custom main menu's background, avatar and fireflies shift with the mouse. */
@@ -311,6 +351,8 @@ public class AlpakaConfig {
     public Integer worldAgeHudX = null;
     public Integer worldAgeHudY = null;
     public Float worldAgeHudScale = null;
+    public Boolean worldAgeHudBlur = null;
+    public Boolean worldAgeHudSmoothFont = null;
 
     /** Performance HUD: the day, FPS, ping and the server's TPS on one line; see PerformanceStats. */
     public boolean performanceHudEnabled = false;
@@ -359,7 +401,7 @@ public class AlpakaConfig {
     // SkyHanni does - and remembers the fastest ever per slayer. The sidebar is only the fallback
     // for a fight where the boss entity could not be watched, so there is no setting for it.
     /**
-     * Whether the mod may contact anything over the network ("Allow Network Features").
+     * Whether the mod may contact anything over the network ("Network Features").
      *
      * Everything else in this mod works from what the client already has. This is the one setting
      * that lets it reach outside, for four things: a public endpoint describing the running election
@@ -411,7 +453,7 @@ public class AlpakaConfig {
     public boolean slayerTimerHudEnabled = true;
     /** Highlight the player's own slayer boss. */
     public boolean slayerBossHighlightEnabled = true;
-    /** How the boss is highlighted, an index into SlayerBossHighlight.STYLE_NAMES. */
+    /** How the boss is highlighted, an index into EntityHighlight.STYLE_NAMES. */
     public int slayerBossHighlightStyle = 0;
     public int slayerBossHighlightColor = 0xFFFF5555;
     /** On the Blaze slayer, color the boss and its demons by their current attunement. */
@@ -423,9 +465,13 @@ public class AlpakaConfig {
 
     // Deployable timer: the strongest power orb or flare in range, with its time left.
     public boolean deployableTimerEnabled = false;
+    /** Clicking a garden visitor's Accept Offer while items are missing opens the bazaar for them. */
+    public boolean visitorBazaarEnabled = true;
     public int deployableTimerHudX = net.alpaka.addons.client.hud.HudDefaults.DEPLOYABLE_TIMER_X;
     public int deployableTimerHudY = net.alpaka.addons.client.hud.HudDefaults.DEPLOYABLE_TIMER_Y;
     public float deployableTimerHudScale = 1.0f;
+    public boolean deployableTimerHudBlur = true;
+    public boolean deployableTimerHudSmoothFont = true;
     public int slayerTimerHudX = net.alpaka.addons.client.hud.HudDefaults.SLAYER_TIMER_X;
     public int slayerTimerHudY = net.alpaka.addons.client.hud.HudDefaults.SLAYER_TIMER_Y;
     public float slayerTimerHudScale = 1.0f;
@@ -491,6 +537,144 @@ public class AlpakaConfig {
     public int etherwarpSoundIndex = 0;
     public float etherwarpSoundVolume = 1.0f;
 
+    // Pest Finder: the vacuum's trail extended to a waypoint, and an outline on the pests on the Garden.
+    public boolean pestFinderEnabled = false;
+    public int pestFinderGuessColor = 0xFFFF5555;
+    public boolean pestFinderGuessLine = true;
+    public int pestFinderGuessSeconds = 15;
+    public boolean pestFinderHideParticles = true;
+    public boolean pestFinderHighlight = true;
+    public int pestFinderHighlightColor = 0xFF55FF55;
+    public boolean pestFinderLineToPests = true;
+    /** The Garden's plot names by grid square, read from the desk's Configure Plots menu; empty until then. */
+    public java.util.List<String> pestFinderPlotNames = new java.util.ArrayList<>();
+
+    // Dungeon Map: screen position is edited in the HUD editor.
+    /** Highlight the starred mobs and minibosses during a dungeon clear. */
+    public boolean starredMobsHighlightEnabled = false;
+    /** How starred mobs are highlighted, an index into EntityHighlight.STYLE_NAMES. */
+    public int starredMobsHighlightStyle = 0;
+    public int starredMobsHighlightColor = 0xFFFFAA00;
+    /** During the clear, hide the name tags of mobs without a star. */
+    public boolean starredMobsHideNames = false;
+    public boolean dungeonMapEnabled = false;
+    public int dungeonMapX = net.alpaka.addons.client.hud.HudDefaults.DUNGEON_MAP_X;
+    public int dungeonMapY = net.alpaka.addons.client.hud.HudDefaults.DUNGEON_MAP_Y;
+    public float dungeonMapScale = 1.0f;
+    /** In the boss room: whether the map shows at all, and then 0 arena, 1 saved clear map, 2 both. */
+    public boolean dungeonMapShowBoss = true;
+    public int dungeonMapBossMode = 0;
+    public float dungeonMapBossRange = 96.0f;
+    /** The room the player is in, above the map; the boss's name in the boss room. */
+    public boolean dungeonMapCurrentRoom = true;
+    public boolean dungeonMapRoomNames = false;
+    public boolean dungeonMapRoomSecrets = false;
+    public float dungeonMapRoomLabelScale = 0.5f;
+    public boolean dungeonMapPlayers = true;
+    /** Heads instead of arrows, and whether they turn with the player (Player Icons in the menu). */
+    public boolean dungeonMapPlayerHeads = true;
+    public boolean dungeonMapRotateHeads = true;
+    public boolean dungeonMapSmoothMarkers = true;
+    public boolean dungeonMapNames = false;
+    public float dungeonMapMarkerScale = 1.0f;
+    /** The mod's room and terrain colors; off keeps Hypixel's map colors and the blocks' own. */
+    public boolean dungeonMapCustomColors = true;
+    public int dungeonMapSelfColor = 0xFFFFFFFF;
+    public int dungeonMapTextColor = 0xFFE8EEEE;
+    public boolean dungeonMapSmoothFont = true;
+    public boolean dungeonMapBackground = true;
+    /** Background tint; its alpha is the opacity. */
+    public int dungeonMapBackgroundTint = 0xA6191919;
+    public boolean dungeonMapBlur = true;
+    public boolean dungeonMapFrame = true;
+    public int dungeonMapFrameStart = 0xFF29B6B2;
+    public int dungeonMapFrameEnd = 0xFFB04FFF;
+
+    // Door Highlight: wither and blood doors during the clear; the color's alpha is the fill's.
+    public boolean dungeonDoorHighlight = false;
+    public int dungeonDoorLockedColor = 0x50E04848;
+    public int dungeonDoorOpenableColor = 0x5055E68B;
+
+    // Leap Menu: Hypixel's Spirit Leap chest drawn as one button per teammate.
+    public boolean leapMenuEnabled = false;
+    public boolean leapMenuShowMap = true;
+
+    // Dungeon solvers. Visual help in the Catacombs: puzzles, F7/M7 terminals and devices. Nothing is
+    // sent; the custom terminal GUI clicks only what the player clicks, through Outbound.menuClick.
+    // Ranged values are clamped where they are read, so a hand-edited file cannot push them out.
+    /** Master switch of the puzzle solvers ("Solvers"). */
+    public boolean dungeonSolversEnabled = false;
+    public boolean solveThreeWeirdos = true;
+    public boolean solveQuiz = true;
+    public boolean solveTicTacToe = true;
+    public boolean solveHigherOrLower = true;
+    public boolean solveCreeperBeams = true;
+    public boolean solveTeleportMaze = true;
+    public boolean solveWaterBoard = true;
+    public boolean solveBoulder = true;
+    public boolean solveIceFill = true;
+    public boolean solveIcePath = true;
+    /** Water Board: Odin's quicker solutions, with flips closer together. */
+    public boolean waterBoardFastSolutions = false;
+    /** The thing to do now. Also used by the device solvers. */
+    public int dungeonSolverColor = 0xCC55FF55;
+    /** What comes after it. */
+    public int dungeonSolverNextColor = 0xCCFFD24D;
+    /** Used pads, liars, wrong answers. */
+    public int dungeonSolverWrongColor = 0xCCFF5555;
+    /** 0 outline, 1 filled, 2 both; see {@code SolverColors}. */
+    public int dungeonSolverBoxStyle = 2;
+    /** Outline and line thickness in screen pixels, 1..6. */
+    public float dungeonSolverLineWidth = 2.5f;
+    /** Order numbers, click counts and countdowns in the world. */
+    public boolean dungeonSolverLabels = true;
+
+    /** Master switch of the F7/M7 terminal solvers ("Terminal Solvers"). */
+    public boolean terminalSolversEnabled = false;
+    public boolean solvePanesTerminal = true;
+    public boolean solveRubixTerminal = true;
+    public boolean solveNumbersTerminal = true;
+    public boolean solveStartsWithTerminal = true;
+    public boolean solveSelectAllTerminal = true;
+    public boolean solveMelodyTerminal = true;
+    /** Master of its own feature row ("Custom Terminal GUI"); only acts while the terminal solvers are on. */
+    public boolean terminalCustomGui = false;
+    /** 1.0..3.0; a cell is round(18 * scale) GUI pixels, shrunk to fit the window. */
+    public float terminalGuiScale = 1.5f;
+    /** Vanilla chest: items that are not part of the solution are not drawn (display only). */
+    public boolean terminalHideOtherItems = false;
+    /** Advance the highlights before the server confirms a click (display only). */
+    public boolean terminalPredictClicks = false;
+    /** Refuse a wrong click: nothing is sent for it. Never for Melody. */
+    public boolean terminalBlockWrongClicks = false;
+    /** Refuse clicks right after a terminal opens: nothing is sent for them. */
+    public boolean terminalFirstClickGuard = true;
+    /** 350..800 ms; the server ticks required are ceil(ms / 50). */
+    public int terminalFirstClickMs = 500;
+    /** Refuse a click less than one server tick (50 ms) after the previous accepted one. */
+    public boolean terminalRateGuard = true;
+    /** Click this. */
+    public int terminalSolutionColor = 0xFF55FF55;
+    /** Click in Order: the second. */
+    public int terminalNextColor = 0xFF3FA8FF;
+    /** Click in Order: the third. */
+    public int terminalThirdColor = 0xFF8E6BFF;
+    /** Change All to Same Color: panes that need left clicks. */
+    public int terminalRubixLeftColor = 0xFF55FF55;
+    /** Change All to Same Color: panes that need right clicks. */
+    public int terminalRubixRightColor = 0xFFFF7A55;
+    /** Click the Button on Time: the target column and the moving pane. */
+    public int terminalMelodyColor = 0xFFFF55FF;
+    /** Background of the custom terminal GUI. */
+    public int terminalGuiBackgroundColor = 0xE0101014;
+
+    /** Master switch of the F7/M7 device solvers ("Device Solvers"); they use the Solvers colors. */
+    public boolean deviceSolversEnabled = false;
+    public boolean solveSimonSays = true;
+    public boolean solveArrowAlign = true;
+    public boolean solveLightsDevice = true;
+    public boolean solveSharpshooter = true;
+
     // Inventory HUD. Shows the 27 main-inventory slots on screen; position and scale are set in
     // the HUD editor, or it can ride directly above the hotbar.
     public boolean inventoryHudEnabled = false;
@@ -507,7 +691,7 @@ public class AlpakaConfig {
     /** Legacy, before the visibility choice. Read once by {@link #migrateInventoryHudVisibility} and then cleared. */
     public Boolean inventoryHudAlwaysVisible = null;
     public Boolean inventoryHudShowOnItemChange = null;
-    /** Backdrop strength behind the slots, in percent. 0 leaves only the accent frame. */
+    /** Backdrop strength behind the slots, in percent. 0 leaves only the gradient frame. */
     public float inventoryHudBackgroundOpacity = 70.0f;
     /**
      * Whether the panel is drawn from Minecraft's own inventory texture instead of a flat backdrop.
@@ -516,7 +700,7 @@ public class AlpakaConfig {
      * textures/gui/container/inventory.png, the same file the inventory screen uses, so whatever
      * pack is loaded paints them.
      *
-     * Off restores the flat panel with the accent frame.
+     * Off restores the flat panel with the gradient frame.
      */
     public boolean inventoryHudVanillaTexture = false;
     /** Flat style only: the panel shows the world behind it blurred, like the chat's background. */
@@ -544,8 +728,8 @@ public class AlpakaConfig {
     // Chat options
     /**
      * Better Chat: the main switch over everything that changes how the chat looks - Smooth Chat,
-     * the opening animation, the smooth scrolling and the blurred background. Each keeps its own
-     * switch under it.
+     * the opening animation, the smooth scrolling, the blurred background and the smooth font. Each keeps its own switch
+     * under it.
      */
     public boolean betterChatEnabled = true;
     /** A new message slides up into the chat and fades in instead of appearing at once. */
@@ -554,6 +738,23 @@ public class AlpakaConfig {
     public int smoothChatStrength = 5;
     /** Opening the chat unrolls it upwards and slides the input line in instead of showing it at once. */
     public boolean chatOpenAnimationEnabled = true;
+    /**
+     * HUD Style's main switches: off, no HUD gets the blurred panel or the smooth font, whatever its
+     * own switch says. Each HUD's own switch sits in that feature's settings.
+     */
+    public boolean hudBlurAll = true;
+    public boolean hudSmoothFontAll = true;
+
+    /** A HUD's own blur switch, as far as the main switch lets it through. */
+    public boolean blurOn(boolean own) {
+        return hudBlurAll && own;
+    }
+
+    /** A HUD's own smooth font switch, as far as the main switch lets it through. */
+    public boolean smoothOn(boolean own) {
+        return hudSmoothFontAll && own;
+    }
+
     /** One rounded, padded panel behind the chat that shows the world blurred through it. */
     public boolean chatBlurEnabled = true;
     /**
@@ -586,14 +787,27 @@ public class AlpakaConfig {
     /** Moving forward sprints on its own, without holding the sprint key. */
     /** Off for fresh installs. Vanilla's own toggle-sprint option already does this for most players. */
     public boolean alwaysSprintEnabled = false;
+    /** Always sprint stays off on the Garden, where farming wants walking speed. */
+    public boolean alwaysSprintIgnoreGarden = false;
     /** The cursor stays put when Hypixel swaps one menu for the next (backpack pages and the like). */
     public boolean keepCursorPositionEnabled = true;
+    /** Quick Join's main switch. Off for fresh installs: it sends a command nobody typed. */
+    public boolean quickJoinEnabled = false;
+    /** Quick Join sends /skyblock once after joining Hypixel. */
+    public boolean quickJoinSkyblock = true;
+    /** Quick Join also connects to Hypixel as soon as the game has started. */
+    public boolean quickJoinOnLaunch = false;
     public boolean expandChatHistory = true;
     /** How many chat lines Expand Chat History keeps; vanilla keeps 100. */
-    public int chatHistoryLimit = 1000;
-    /** Hold the Peek Chat key to see the whole chat, scrollable, without opening it. */
+    public int chatHistoryLimit = 5000;
+
+    /** How much history the chat keeps right now: the limit above while Expand Chat History is on, else vanilla's 100. */
+    public int chatHistoryLength() {
+        return expandChatHistory ? Math.max(100, chatHistoryLimit) : 100;
+    }
+    /** Hold the Chat Peek key to see the whole chat, scrollable, without opening it. */
     public boolean chatPeekEnabled = true;
-    /** Peek Chat also works with an inventory or another menu open, drawn on top of it. */
+    /** Chat Peek also works with an inventory or another menu open, drawn on top of it. */
     public boolean chatPeekInMenus = true;
     /** Better Screenshots: everything below. The key keeps its old name so the setting carries over. */
     public boolean betterScreenshotMessageEnabled = true;
@@ -619,6 +833,33 @@ public class AlpakaConfig {
     public boolean compactChatEnabled = true;
     /** Seconds since the last identical message within which a repeat still stacks; 0 = back-to-back only. */
     public int compactChatWindowSeconds = 30;
+    /** Hides Hypixel chat spam; which kinds is up to the switches below. */
+    public boolean messageFilterEnabled = false;
+    public boolean messageFilterEmpty = true;
+    public boolean messageFilterWelcome = true;
+    public boolean messageFilterGuildExp = true;
+    public boolean messageFilterKillCombo = true;
+    public boolean messageFilterProfileJoin = true;
+    public boolean messageFilterRewardBundles = true;
+    public boolean messageFilterAutopet = true;
+    public boolean messageFilterFireSale = true;
+    public boolean messageFilterWatchdog = true;
+    public boolean messageFilterStash = true;
+    public boolean messageFilterSacks = true;
+    /** Dungeon chatter, only hidden inside a Catacombs run; one switch per group. */
+    public boolean messageFilterDungeonPrepare = true;
+    public boolean messageFilterDungeonStart = true;
+    public boolean messageFilterDungeonAmbience = true;
+    public boolean messageFilterDungeonPickup = true;
+    public boolean messageFilterDungeonReminder = true;
+    public boolean messageFilterDungeonBlessing = true;
+    public boolean messageFilterDungeonNotPossible = true;
+    public boolean messageFilterDungeonDamage = true;
+    public boolean messageFilterDungeonAbility = true;
+    public boolean messageFilterDungeonPuzzle = true;
+    public boolean messageFilterDungeonEnd = true;
+    /** The player's own filters, made in the Message Filter's sub menu. */
+    public java.util.List<net.alpaka.addons.features.chat.CustomMessageFilter> messageFilterCustom = new java.util.ArrayList<>();
     /** All / Party / Guild / PMs tabs above the chat input. */
     public boolean chatTabsEnabled = true;
     /** With chat tabs: a plain message typed on a channel tab goes to that channel (/pc, /gc, /r). */
@@ -651,19 +892,122 @@ public class AlpakaConfig {
     public boolean persistentItemNameEnabled = false;
     /** Master stars show as red stars, as they used to, instead of a number behind the gold ones. */
     public boolean oldMasterStarsEnabled = false;
+    /** Hovering a backpack or ender chest page in the Storage menu shows what was last seen inside. */
+    public boolean storagePreviewEnabled = true;
+    /** Enchantments at their highest level are drawn in {@link #maxEnchantColor} in tooltips. */
+    public boolean maxEnchantColorEnabled = false;
+    public int maxEnchantColor = 0xFFFFAA00;
+    /** Ultimate enchantments too, which Hypixel already marks with bold pink. */
+    public boolean maxEnchantColorUltimate = false;
+    /** In SkyBlock's anvil, books that combine with the one put in are highlighted. */
+    public boolean anvilCombineHelperEnabled = false;
+    public int anvilCombineHelperColor = 0x8055FF55;
+    /** Chronomatron, Ultrasequencer and Superpairs: what to click next is highlighted. */
+    public boolean experimentSolverEnabled = false;
+    public int experimentSolverNextColor = 0xA055FF55;
+    public int experimentSolverLaterColor = 0x70FFFF55;
     /**
      * One long row of twenty hearts in place of the two short ones, the hunger bar and the armor bar,
      * neither of which SkyBlock needs; absorption hearts sit on the row above it.
      */
     public boolean wideHealthBarEnabled = false;
+    /** The row of twenty in one piece, centred over the hotbar; the level number moves onto the XP bar. */
+    public boolean wideHealthBarCentered = false;
+    /** Absorption hearts: 0 a row of their own, 1 gold over the first hearts, 2 hidden. */
+    public int wideHealthBarAbsorption = 0;
+    /**
+     * Custom Tab: SkyBlock's player list on one panel, sorted into its categories. Layout 0 puts the
+     * categories next to each other, 1 under each other. See CustomTabFeature.
+     */
+    public boolean customTabEnabled = false;
+    public boolean customTabBlur = true;
+    public boolean customTabSmoothFont = true;
+    public int customTabLayout = 0;
+    public boolean customTabHideAds = true;
+    public boolean customTabToggle = false;
+    /** The list stays up in the chat and in inventories and chests, drawn above them. */
+    public boolean customTabInMenus = false;
+    /** Hypixel's progress drawn as bars: its pipe bars, counts toward a goal, skill percentages. */
+    public boolean customTabProgressBars = true;
+    /** A row lights up for a moment when its value changes. */
+    public boolean customTabHighlightChanges = true;
+    /** Each widget (Area, Profile, Pet, ...) in a faint box of its own. */
+    public boolean customTabSectionBoxes = true;
+    /** The panel behind the list; off leaves only the text. */
+    public boolean customTabBackground = true;
+    /** The list slides down out of the top edge and back up instead of appearing at once. */
+    public boolean customTabAnimated = true;
+    public float customTabScale = 1.0f;
 
     /** A Hypixel party invite raises a notification: Y joins, N dismisses. */
     public boolean partyInvitePromptEnabled = true;
 
+    /** "/isle" is sent as "/warp isle"; see WarpShortcut. */
+    public boolean shortenWarpEnabled = true;
+    /** A warp typed in the first seconds on a server waits for Hypixel's cooldown; see WarpCooldownQueue. */
+    public boolean warpCooldownQueueEnabled = true;
+    /** A party member's "!warp", "!tps"... raises a Y/N prompt to answer it; see PartyCommandsFeature. */
+    public boolean partyCommandsEnabled = false;
+    /** Info and fun party commands are answered without the Y/N prompt. */
+    public boolean partyCommandsAutoAnswer = false;
+    /** The party commands not offered, by PartyCommand name. The ones that can hurt a party start off. */
+    public java.util.List<String> partyCommandsDisabled = new java.util.ArrayList<>(java.util.List.of(
+            "TRANSFER", "KICK", "KICK_OFFLINE", "PROMOTE", "DEMOTE"));
+
     /** Keeps Hypixel's server resource pack loaded between joins; see ServerPackCache. */
     public boolean cacheResourcePackEnabled = false;
 
-    // Quick Command Menu options
+    /**
+     * The Auction House and the Bazaar in the mod's own screen. It only redraws Hypixel's menus:
+     * every click on it is one click on the slot it stands for, see MarketScreen.
+     */
+    public boolean customAuctionHouseEnabled = true;
+    public boolean customBazaarEnabled = true;
+    /**
+     * Number keys, arrows and the like press the market screen's buttons, one click per press; see
+     * MarketScreen.keyPressed. One switch for each market.
+     */
+    public boolean auctionHouseHotkeysEnabled = true;
+    public boolean bazaarHotkeysEnabled = true;
+    /** Hypixel's sign prompts - a search, a price, an amount - as an input bar; see MarketInputScreen. */
+    public boolean customSignInputEnabled = true;
+    /** SkyCofl's price history on a product's or an auction's page; see PriceGraph. Needs allowApiCalls. */
+    public boolean marketPriceHistoryEnabled = true;
+    /** How far back it goes, an index into PriceHistory.Range: day, week, month, all time. */
+    public int marketPriceHistoryRange = 1;
+    /** The Item Value key shows what the hovered item is worth, part by part; see ItemValuePopup. Needs allowApiCalls. */
+    public boolean itemValueEnabled = true;
+    /** Which Bazaar price the parts count at: 0 what they cost to buy now, 1 what they sell for now. */
+    public int itemValueBazaarPrice = 0;
+    /** Item Search: a window to search everything the player owns; see ItemSearchFeature. */
+    public boolean itemSearchEnabled = true;
+    /** The Chest Value panel beside a menu: what everything in it is worth; see ChestValuePanel. Needs allowApiCalls. */
+    public boolean chestValueEnabled = true;
+    /** Whether the panel is showing: its key switches it, and it stays so from menu to menu until pressed again. */
+    public boolean chestValueShown = false;
+    /** Whether a chest's panel counts the player's own inventory below it too. */
+    public boolean chestValueIncludeInventory = false;
+    /** Which side of the menu the panel sits on: 0 left, 1 right (where the item list mods usually are). */
+    public int chestValueSide = 0;
+    /** How its list is ordered, an index into ChestValue.Sort: value, price each, amount. */
+    public int chestValueSort = 0;
+    /** Where the panel was moved to, as a share of the screen's width and height; -1 beside the menu. */
+    public float chestValueX = -1f;
+    public float chestValueY = -1f;
+    /** /alpakaprofile opens the Profile Dashboard; see ProfileDashboardScreen. Needs allowApiCalls. */
+    public boolean profileDashboardEnabled = true;
+    /** Snapshots of the player's own profile while playing, for the dashboard's graphs; see ProfileTracker. */
+    public boolean profileDashboardTracking = true;
+    /** Minutes between two of those snapshots. */
+    public int profileDashboardTrackingMinutes = 60;
+    /**
+     * The player's own SkyKings API key, for SkyKings' daily history in the dashboard's graphs.
+     * Empty for none. Each player makes their own; the mod never ships one (SkyKings asks that keys
+     * stay with their owner), and it is only ever sent to api.skykings.net.
+     */
+    public String skykingsApiKey = "";
+
+    // Command Wheel options
     /**
      * The quick command wheel, one list per page. Null until CommandWheelPages first folds the
      * legacy flat list below into pages; from then on this is the record and the flat list is null.
@@ -681,6 +1025,32 @@ public class AlpakaConfig {
      * opens it, a click runs a command, and pressing the key again closes it.
      */
     public boolean commandWheelToggleMode = false;
+
+    /**
+     * The mod's keys, by key mapping name ("key.alpaka.zoom") to the bound key's name
+     * ("key.keyboard.c"). A key left out is on its default. They are set in the config menu and kept
+     * here rather than in options.txt; see AlpakaKeyBinds.
+     */
+    public Map<String, String> keyBinds = new HashMap<>();
+    /** Whether keys bound in vanilla's Controls before have been taken over from options.txt. */
+    public boolean keyBindsImported = false;
+
+    /** Holding the Zoom key zooms in; scrolling while holding it zooms further. */
+    public boolean zoomEnabled = true;
+    /** Off: zoom while the key is held. On: one press zooms in, the next zooms back out. */
+    public boolean zoomToggleMode = false;
+    /** How far the zoom goes in, as a factor of the normal view. */
+    public float zoomAmount = 4.0f;
+    /** Scrolling while zoomed changes the zoom instead of the hotbar slot. */
+    public boolean zoomScrollEnabled = true;
+    /** How the zoom moves in and out: an index into ZoomFeature.ANIMATIONS. */
+    public int zoomAnimation = 1;
+    /** How long the zoom animation takes, in milliseconds. */
+    public int zoomAnimationMs = 250;
+    /** Turns on vanilla's cinematic camera while zoomed. */
+    public boolean zoomCinematicCamera = false;
+    /** Turns the mouse down by the zoom factor, so aiming feels the same zoomed in. */
+    public boolean zoomReduceSensitivity = true;
 
     /** Legacy, pre-pages. Read once by CommandWheelPages and then cleared. */
     public java.util.List<String> commandWheelCommands = new java.util.ArrayList<>(java.util.List.of(
@@ -728,6 +1098,70 @@ public class AlpakaConfig {
             this.key = key;
             this.modifiers = modifiers;
             this.command = command;
+        }
+    }
+
+    // Inventory Buttons: the player's own buttons around inventories and menus; see InventoryButtonsFeature.
+    public boolean inventoryButtonsEnabled = false;
+    /** Shows them only on Hypixel SkyBlock, where their commands mean something. */
+    public boolean inventoryButtonsSkyblockOnly = true;
+    /** How the buttons look: 0 Alpaka (the config menu's look), 1 Vanilla, 2 Icon Only. */
+    public int inventoryButtonsStyle = 0;
+    /** The tile behind each button's icon in the Alpaka style, and on hover in Icon Only. */
+    public int inventoryButtonsColor = 0xE6131313;
+    /** How round the tile's corners are, in GUI pixels. */
+    public int inventoryButtonsRounding = 4;
+    /** The buttons, in the order the editor lists them. */
+    public java.util.List<InventoryButton> inventoryButtons = InventoryButton.defaults();
+
+    /**
+     * One inventory button: what it runs, what it shows, and where it sits.
+     *
+     * The position is kept against the edge of the container's panel the button is nearest to,
+     * not against the screen: a chest of six rows is taller than the inventory, and a button beside
+     * the player's own slots should stay beside them in both (see InventoryButtonLayout).
+     */
+    public static class InventoryButton {
+        /** Shows in every container screen. */
+        public static final int SHOW_ALL = 0;
+        /** Shows only in the player's own inventory. */
+        public static final int SHOW_INVENTORY = 1;
+        /** Shows only in chests and the server's menus. */
+        public static final int SHOW_CONTAINERS = 2;
+
+        /** The command with its slash, as the player typed it. */
+        public String command = "/";
+        /** The tooltip's title; the command is shown when this is empty. */
+        public String label = "";
+        /** The item drawn on the button, by its id. */
+        public String icon = "minecraft:chest";
+        /** Offset from the panel edge named by {@link #anchorRight}/{@link #anchorBottom}, in GUI pixels. */
+        public int x = -22;
+        public int y = 0;
+        public boolean anchorRight = false;
+        public boolean anchorBottom = false;
+        /** Where it shows: {@link #SHOW_ALL}, {@link #SHOW_INVENTORY} or {@link #SHOW_CONTAINERS}. */
+        public int showIn = SHOW_ALL;
+
+        public InventoryButton() {}
+
+        public InventoryButton(String command, String label, String icon, int x, int y) {
+            this.command = command;
+            this.label = label;
+            this.icon = icon;
+            this.x = x;
+            this.y = y;
+        }
+
+        /** A column of common SkyBlock menus down the left of the panel, for a first start. */
+        public static java.util.List<InventoryButton> defaults() {
+            java.util.List<InventoryButton> list = new java.util.ArrayList<>();
+            list.add(new InventoryButton("/storage", "Storage", "minecraft:chest", -22, 4));
+            list.add(new InventoryButton("/ec", "Ender Chest", "minecraft:ender_chest", -22, 24));
+            list.add(new InventoryButton("/pets", "Pets", "minecraft:bone", -22, 44));
+            list.add(new InventoryButton("/wardrobe", "Wardrobe", "minecraft:leather_chestplate", -22, 64));
+            list.add(new InventoryButton("/sbmenu", "SkyBlock Menu", "minecraft:nether_star", -22, 84));
+            return list;
         }
     }
 
@@ -799,6 +1233,8 @@ public class AlpakaConfig {
         public float motionBlurLength = 80.0f;
         public float motionBlurOpacity = 0.35f;
         public float motionBlurSteps = 8.0f;
+        /** What the player called it; empty for none, and it shows as "Preset n" then. */
+        public String name = "";
 
         public ItemPreset() {}
 
@@ -824,17 +1260,24 @@ public class AlpakaConfig {
         }
     }
 
-    public ItemPreset[] itemPresets = new ItemPreset[] {
-        new ItemPreset(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, false, false, false, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f),
-        new ItemPreset(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, false, false, false, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f),
-        new ItemPreset(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, false, false, false, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f)
-    };
+    /**
+     * The saved presets, in the order they were made. As many as the player wants; a config from
+     * before presets could be added and deleted had exactly three, and reads in unchanged.
+     */
+    public List<ItemPreset> itemPresets = new ArrayList<>(List.of(new ItemPreset(), new ItemPreset(), new ItemPreset()));
 
+    /** The preset last loaded or saved, which the menu marks; -1 for none. */
     public int activeItemPresetIndex = 0;
 
+    /** The name a preset goes by: its own, or "Preset n" when it has none. */
+    public String presetName(int index) {
+        String name = index >= 0 && index < itemPresets.size() ? itemPresets.get(index).name : null;
+        return name == null || name.isBlank() ? "Preset " + (index + 1) : name;
+    }
+
     public void loadPreset(int index) {
-        if (itemPresets != null && index >= 0 && index < itemPresets.length) {
-            ItemPreset preset = itemPresets[index];
+        if (index >= 0 && index < itemPresets.size()) {
+            ItemPreset preset = itemPresets.get(index);
             this.itemScale = preset.scale;
             this.itemXOffset = preset.xOffset;
             this.itemYOffset = preset.yOffset;
@@ -905,41 +1348,57 @@ public class AlpakaConfig {
     }
 
     public void savePreset(int index) {
-        if (itemPresets == null || itemPresets.length < 3) {
-            itemPresets = new ItemPreset[] {
-                new ItemPreset(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, false, false, false, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f),
-                new ItemPreset(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, false, false, false, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f),
-                new ItemPreset(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, false, false, false, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f)
-            };
-        }
-        if (index >= 0 && index < itemPresets.length) {
-            itemPresets[index] = new ItemPreset(
-                    this.itemScale,
-                    this.itemXOffset,
-                    this.itemYOffset,
-                    this.itemZOffset,
-                    this.itemRotationX,
-                    this.itemRotationY,
-                    this.itemRotationZ,
-                    this.itemSwingSpeed,
-                    this.itemSwayDisabled,
-                    this.itemSwingTranslationDisabled,
-                    this.itemNoEquipEnabled,
-                    this.itemSwingAlwaysFinishEnabled,
-                    this.swingDriftX,
-                    this.swingDriftY,
-                    this.swingDriftZ,
-                    this.swingArcX,
-                    this.swingArcY,
-                    this.swingArcZ
-            );
-            itemPresets[index].motionBlurEnabled = this.itemMotionBlurEnabled;
-            itemPresets[index].motionBlurLength = this.itemMotionBlurLength;
-            itemPresets[index].motionBlurOpacity = this.itemMotionBlurOpacity;
-            itemPresets[index].motionBlurSteps = this.itemMotionBlurSteps;
+        if (index >= 0 && index < itemPresets.size()) {
+            ItemPreset preset = currentAsPreset();
+            preset.name = itemPresets.get(index).name;
+            itemPresets.set(index, preset);
             this.activeItemPresetIndex = index;
             save();
         }
+    }
+
+    /** Adds a preset holding the current settings at the end of the list, and makes it the active one. */
+    public void addPreset() {
+        itemPresets.add(currentAsPreset());
+        this.activeItemPresetIndex = itemPresets.size() - 1;
+        save();
+    }
+
+    /** Deletes a preset; the ones after it move up. The current settings stay as they are. */
+    public void deletePreset(int index) {
+        if (index < 0 || index >= itemPresets.size()) return;
+        itemPresets.remove(index);
+        if (activeItemPresetIndex == index) activeItemPresetIndex = -1;
+        else if (activeItemPresetIndex > index) activeItemPresetIndex--;
+        save();
+    }
+
+    private ItemPreset currentAsPreset() {
+        ItemPreset preset = new ItemPreset(
+                this.itemScale,
+                this.itemXOffset,
+                this.itemYOffset,
+                this.itemZOffset,
+                this.itemRotationX,
+                this.itemRotationY,
+                this.itemRotationZ,
+                this.itemSwingSpeed,
+                this.itemSwayDisabled,
+                this.itemSwingTranslationDisabled,
+                this.itemNoEquipEnabled,
+                this.itemSwingAlwaysFinishEnabled,
+                this.swingDriftX,
+                this.swingDriftY,
+                this.swingDriftZ,
+                this.swingArcX,
+                this.swingArcY,
+                this.swingArcZ
+        );
+        preset.motionBlurEnabled = this.itemMotionBlurEnabled;
+        preset.motionBlurLength = this.itemMotionBlurLength;
+        preset.motionBlurOpacity = this.itemMotionBlurOpacity;
+        preset.motionBlurSteps = this.itemMotionBlurSteps;
+        return preset;
     }
 
     public Map<SlayerType, SlayerData> slayerBossMap = new HashMap<>();
@@ -1053,6 +1512,30 @@ public class AlpakaConfig {
         return existedAtStart;
     }
 
+    /**
+     * Every setting back to its default, after the player confirmed it in the config.
+     *
+     * What is not a setting stays: slayer kills and drops, the saved viewmodel presets, where the
+     * stats record is synced to (a fact about this machine - losing it would look like losing the
+     * stats), and the bookkeeping of which version last ran and which one-off migrations are done.
+     */
+    public static void resetToDefaults() {
+        AlpakaConfig old = instance;
+        AlpakaConfig fresh = new AlpakaConfig();
+        fresh.slayerBossMap = old.slayerBossMap;
+        fresh.itemPresets = old.itemPresets;
+        fresh.statsDirectory = old.statsDirectory;
+        fresh.statsDirectoryHadFile = old.statsDirectoryHadFile;
+        fresh.lastSeenVersion = old.lastSeenVersion;
+        fresh.configVersion = old.configVersion;
+        fresh.menuFontNunitoApplied = true;
+        // The keys go back to their defaults too; options.txt is not read again for the old ones.
+        fresh.keyBindsImported = true;
+        instance = fresh;
+        applyMenuTheme();
+        save();
+    }
+
     public static void load() {
         load(store());
     }
@@ -1081,6 +1564,13 @@ public class AlpakaConfig {
         }
         boolean migrated = instance.migrate();
 
+        // The default font moved from Inter to Poppins with the redesign. Once only, so picking Inter
+        // again afterwards sticks.
+        if (!instance.menuFontNunitoApplied) {
+            if (instance.menuFont == 1) instance.menuFont = 2;
+            instance.menuFontNunitoApplied = true;
+        }
+
         // Settings that were replaced keep the other pattern: a legacy field, read once and then
         // cleared, so it needs no number.
         instance.migrateNameTagBackground();
@@ -1093,15 +1583,19 @@ public class AlpakaConfig {
             }
         }
 
-        if (instance.itemPresets.length < 3) {
-            instance.itemPresets = new ItemPreset[] {
-                new ItemPreset(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, false, false, false, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f),
-                new ItemPreset(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, false, false, false, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f),
-                new ItemPreset(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, false, false, false, false, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f)
-            };
+        // Deleting presets is allowed now, so fewer than three is a choice; a hand-edited null entry
+        // has already been dropped by the sanitizer.
+        if (instance.activeItemPresetIndex >= instance.itemPresets.size()) {
+            instance.activeItemPresetIndex = -1;
         }
 
         if (!existedAtStart || sanitized > 0 || migrated) save();
+        applyMenuTheme();
+    }
+
+    /** Puts the saved Menu Theme on every menu. */
+    public static void applyMenuTheme() {
+        AlpakaStyle.applyTheme(AlpakaStyle.Theme.of(instance.menuTheme));
     }
 
     /**
@@ -1123,12 +1617,6 @@ public class AlpakaConfig {
         // default never chose gold, so it follows the new default; any other color is a choice.
         if (menuAccentColor == 0xFFE5B849) {
             menuAccentColor = 0xFF29B6B2;
-        }
-
-        // The history slider used to reach 20000; a longer history kept tens of megabytes of chat
-        // alive and made every re-layout slow, so it ends at 5000 now.
-        if (chatHistoryLimit > 5000) {
-            chatHistoryLimit = 5000;
         }
     }
 
@@ -1187,11 +1675,12 @@ public class AlpakaConfig {
 
     /**
      * The World Age HUD became the Performance HUD's Show Day. Whoever had it on keeps seeing the
-     * day where it was; if the Performance HUD was off, it comes on with only the day shown, so
-     * nothing appears that was not there before.
+     * day where and how it was; if the Performance HUD was off, it comes on with only the day shown,
+     * so nothing appears that was not there before.
      */
     private void migrateWorldAgeHud() {
-        if (worldAgeHudEnabled == null && worldAgeHudX == null && worldAgeHudY == null && worldAgeHudScale == null) return;
+        if (worldAgeHudEnabled == null && worldAgeHudX == null && worldAgeHudY == null && worldAgeHudScale == null
+                && worldAgeHudBlur == null && worldAgeHudSmoothFont == null) return;
         if (Boolean.TRUE.equals(worldAgeHudEnabled)) {
             performanceHudShowDay = true;
             if (!performanceHudEnabled) {
@@ -1202,12 +1691,16 @@ public class AlpakaConfig {
                 if (worldAgeHudX != null) performanceHudX = worldAgeHudX;
                 if (worldAgeHudY != null) performanceHudY = worldAgeHudY;
                 if (worldAgeHudScale != null) performanceHudScale = worldAgeHudScale;
+                if (worldAgeHudBlur != null) performanceHudBlur = worldAgeHudBlur;
+                if (worldAgeHudSmoothFont != null) performanceHudSmoothFont = worldAgeHudSmoothFont;
             }
         }
         worldAgeHudEnabled = null;
         worldAgeHudX = null;
         worldAgeHudY = null;
         worldAgeHudScale = null;
+        worldAgeHudBlur = null;
+        worldAgeHudSmoothFont = null;
     }
 
     /** The config in {@code file}, or null when it is missing, empty or cannot be parsed. */
@@ -1235,12 +1728,12 @@ public class AlpakaConfig {
     }
 
     /**
-     * Switches every feature off: each feature's own switch, and the lone switches that belong to no
-     * feature (Hide Mob Fire, the scoreboard's blur and footer, ...). Nothing else is touched. A
-     * feature's settings, and every font, color, slider and choice, stay as they are, so a feature
-     * switched back on comes back the way it was. This used to switch the settings off and reset
-     * values too, and the backup made that stick after the next start: Block Overlay came back with
-     * no outline at all, Custom Sounds came back silent.
+     * Switches every feature off: each feature's own switch (every custom sound is a feature of its
+     * own here), and the lone switches that belong to no feature (Hide Mob Fire, the scoreboard's
+     * blur and footer, ...). Nothing else is touched. A feature's settings, and every font, color,
+     * slider, choice and HUD style switch, stay as they are, so a feature switched back on comes back
+     * the way it was. This used to switch the settings off and reset values too, and the backup made
+     * that stick after the next start: Block Overlay came back with no outline at all.
      *
      * DisableAllFeaturesTest lists the switches this has to cover and the settings it must leave.
      */
@@ -1251,8 +1744,10 @@ public class AlpakaConfig {
         this.slayerRngDropGuildChatEnabled = false;
         this.customNameTagEnabled = false;
         this.chromaHatEnabled = false;
+        this.auraEnabled = false;
         this.playerScaleEnabled = false;
         this.fullbrightEnabled = false;
+        this.skyEffectsEnabled = false;
         this.inventorySnowEnabled = false;
         this.containerBgFadeInEnabled = false;
         this.hideInventoryEffects = false;
@@ -1272,16 +1767,37 @@ public class AlpakaConfig {
         this.smoothPerspectiveEnabled = false;
         this.disableFrontPerspective = false;
         this.customSoundsEnabled = false;
+        this.customSoundButtonClick = false;
+        this.customSoundHotbarScroll = false;
+        this.customSoundRareDrop = false;
+        this.customSoundNotification = false;
+        this.customSoundPlayerHurt = false;
+        this.customSoundInventoryOpenClose = false;
+        this.customSoundLowHpHeartbeat = false;
+        this.customSoundBlazeDeath = false;
+        this.customSoundInventoryClick = false;
+        this.customSoundZombieRemedy = false;
+        this.customSoundSuccessfulHit = false;
         this.muteVanillaSoundsInBlazeSlayer = false;
         this.customEscapeMenuEnabled = false;
         this.customMainMenuEnabled = false;
         this.playerModelEnabled = false;
         this.performanceHudEnabled = false;
         this.slayerHudEnabled = false;
+        this.customTabEnabled = false;
         this.allowApiCalls = false;
         this.slayerTimerEnabled = false;
         this.ragnarockEnabled = false;
+        this.visitorBazaarEnabled = false;
         this.deployableTimerEnabled = false;
+        this.customAuctionHouseEnabled = false;
+        this.customBazaarEnabled = false;
+        this.customSignInputEnabled = false;
+        this.marketPriceHistoryEnabled = false;
+        this.itemSearchEnabled = false;
+        this.itemValueEnabled = false;
+        this.chestValueEnabled = false;
+        this.profileDashboardEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
         this.customDamageTagsEnabled = false;
@@ -1295,28 +1811,46 @@ public class AlpakaConfig {
         this.chatCopyEnabled = false;
         this.alwaysSprintEnabled = false;
         this.keepCursorPositionEnabled = false;
+        this.quickJoinEnabled = false;
         this.expandChatHistory = false;
         this.chatPeekEnabled = false;
         this.betterScreenshotMessageEnabled = false;
         this.compactChatEnabled = false;
+        this.messageFilterEnabled = false;
         this.chatTabsEnabled = false;
         this.inventoryHudEnabled = false;
+        this.dungeonMapEnabled = false;
+        this.starredMobsHighlightEnabled = false;
+        this.leapMenuEnabled = false;
+        this.dungeonDoorHighlight = false;
+        this.pestFinderEnabled = false;
         this.bridgeBotFormatterEnabled = false;
         this.guildPrefixEnabled = false;
         this.itemSizeFeatureEnabled = false;
         this.itemStarlightEnabled = false;
-        // Switches that came after the list above.
+        // Features added after the list above was written; the dialog promises every feature.
         this.updateNotificationsEnabled = false;
         this.scrollableTooltipsEnabled = false;
         this.persistentItemNameEnabled = false;
-        this.oldMasterStarsEnabled = false;
+        this.storagePreviewEnabled = false;
+        this.maxEnchantColorEnabled = false;
+        this.anvilCombineHelperEnabled = false;
+        this.experimentSolverEnabled = false;
         this.mentionNotificationEnabled = false;
         this.itemMotionBlurEnabled = false;
         this.bossSpawnAlertEnabled = false;
         this.bossCocoonAlertEnabled = false;
         this.partyInvitePromptEnabled = false;
+        this.shortenWarpEnabled = false;
+        this.warpCooldownQueueEnabled = false;
+        this.partyCommandsEnabled = false;
+        this.oldMasterStarsEnabled = false;
         this.cacheResourcePackEnabled = false;
-        this.skyEffectsEnabled = false;
+        this.zoomEnabled = false;
+        this.dungeonSolversEnabled = false;
+        this.terminalSolversEnabled = false;
+        this.terminalCustomGui = false;
+        this.deviceSolversEnabled = false;
         save();
     }
 

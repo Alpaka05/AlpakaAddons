@@ -24,16 +24,17 @@ import java.util.Optional
  *
  * ### What counts as newer
  *
- * A release whose version is higher than the running one, and which carries a jar for the Minecraft
- * version the game is running. Drafts never count. Pre-releases (marked so on GitHub, or tagged with
- * a suffix such as `2.0.0-alpha.1`) count only on the "Pre-Releases" stream
- * ([AlpakaConfig.updateStream]); there they are ordered like semver, so `2.0.0-alpha.2` is above
- * `2.0.0-alpha.1` and `2.0.0` is above both. Releases are built per Minecraft version
+ * A release whose version is higher than the running one, and which carries a jar for the
+ * Minecraft version the game is running. Drafts are skipped. Pre-releases (marked so on GitHub, or
+ * tagged like `2.0.0-beta.1`) are offered only on the "Pre-Releases" stream
+ * ([AlpakaConfig.updateStream]); on "Releases" a tester of the next version still hears of the
+ * release itself, just not of the next beta. Releases are built per Minecraft version
  * (`alpaka-1.2.22-mc26.2.jar`), and a release with no jar for this game is one the player cannot
  * install, so it is not announced. A jar built for 26.2 is for every 26.2.x (see [jarSuffixes]).
  *
  * A build between releases (`1.2.22+25.d4e2c70`) counts as its release, so a test build of the
- * latest release is not told to update to it.
+ * latest release is not told to update to it. A build ahead of the next one (`2.0.0-alpha+3.a1b2c3d`)
+ * sorts below that version's betas and the release, see [ReleaseVersion].
  *
  * ### What this sends
  *
@@ -52,27 +53,6 @@ object UpdateChecker {
 
     private val SHA256 = Regex("[0-9a-f]{64}")
 
-    /** The choices of "Update Stream", by [AlpakaConfig.updateStream]. */
-    @JvmField
-    val STREAM_NAMES = arrayOf("Releases", "Pre-Releases")
-
-    /** [AlpakaConfig.updateStream], kept inside [STREAM_NAMES] so a hand-edited config cannot break the menu. */
-    @JvmStatic
-    fun stream(): Int = AlpakaConfig.instance.updateStream.coerceIn(0, STREAM_NAMES.size - 1)
-
-    private fun includePreReleases() = stream() == 1
-
-    /**
-     * After "Update Stream" changes: forget what the old stream found, so the next tick in a world
-     * asks again for the new one instead of the player having to run `/alpakaupdate check`.
-     */
-    @JvmStatic
-    fun streamChanged() {
-        latest = null
-        found = null
-        requested = false
-    }
-
     /**
      * A release found to be newer, with the jar for this game. [sha256] is the jar's checksum as
      * GitHub lists it, or null when it lists none.
@@ -85,6 +65,25 @@ object UpdateChecker {
         val jarSize: Long,
         val sha256: String?,
     )
+
+    /** The choices of "Update Stream", by [AlpakaConfig.updateStream]. */
+    @JvmField
+    val STREAM_NAMES = arrayOf("Releases", "Pre-Releases")
+
+    /** [AlpakaConfig.updateStream], kept inside [STREAM_NAMES] so a hand-edited config cannot break the menu. */
+    @JvmStatic
+    fun stream(): Int = AlpakaConfig.instance.updateStream.coerceIn(0, STREAM_NAMES.size - 1)
+
+    /**
+     * After "Update Stream" changes: forget what the old stream found, so the next tick in a world
+     * asks again for the new one instead of the player having to run `/alpakaupdate check`.
+     */
+    @JvmStatic
+    fun streamChanged() {
+        latest = null
+        found = null
+        requested = false
+    }
 
     private val client: HttpClient by lazy {
         HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()
@@ -174,14 +173,13 @@ object UpdateChecker {
      * and a short reason when the check failed; it runs on the HTTP client's thread.
      */
     private fun fetch(done: (Release?, String?) -> Unit) {
-        val current = ModVersion.mod().substringBefore('+')
-        val currentParts = parse(current, allowPreRelease = true)
-        if (currentParts == null) { // A build without a version has nothing to compare.
+        val current = ReleaseVersion.parse(ModVersion.mod())
+        if (current == null) { // A build without a version has nothing to compare.
             done(null, "this build has no version to compare")
             return
         }
         val jarSuffixes = jarSuffixes(ModVersion.minecraft())
-        val preReleases = includePreReleases()
+        val preReleases = stream() == 1
 
         val request = HttpRequest.newBuilder(URI.create(ENDPOINT))
             .timeout(Duration.ofSeconds(10))
@@ -209,7 +207,7 @@ object UpdateChecker {
                         done(null, problem)
                         return@whenComplete
                     }
-                    val release = newest(response!!.body(), currentParts, jarSuffixes, preReleases)
+                    val release = newest(response!!.body(), current, jarSuffixes, preReleases)
                     if (release != null) latest = release
                     done(release, null)
                 } catch (t: Throwable) {
@@ -225,8 +223,8 @@ object UpdateChecker {
      *
      * Release jars are named after the major.minor they were built against (`-mc26.2.jar`, see
      * archiveVersion in build.gradle), while fabric.mod.json accepts every 26.2.x. Looking for the
-     * exact version only, a game on a hotfix such as 26.2.1 found no jar in any release, was told it
-     * had the newest one, and never heard of an update again.
+     * exact version only, a game on a hotfix such as 26.2.1 found no jar in any release and never
+     * heard of an update again.
      */
     internal fun jarSuffixes(minecraft: String): List<String> {
         val majorMinor = minecraft.substringBefore('-').split('.').take(2).joinToString(".")
@@ -238,16 +236,17 @@ object UpdateChecker {
      * is none. Where a release has several, the first ending in [jarSuffixes] wins. Pre-releases are
      * only considered with [preReleases].
      */
-    internal fun newest(body: String, current: Version, jarSuffixes: List<String>, preReleases: Boolean = false): Release? {
+    internal fun newest(body: String, current: ReleaseVersion, jarSuffixes: List<String>, preReleases: Boolean = false): Release? {
         var best: Release? = null
-        var bestParts = current
+        var bestVersion = current
         for (element in JsonParser.parseString(body).asJsonArray) {
             val release = element.asJsonObject
             if (release.get("draft")?.asBoolean == true) continue
-            if (!preReleases && release.get("prerelease")?.asBoolean == true) continue
             val version = release.get("tag_name")?.asString?.removePrefix("v") ?: continue
-            val parts = parse(version, allowPreRelease = preReleases) ?: continue
-            if (compare(parts, bestParts) <= 0) continue
+            val parsed = ReleaseVersion.parse(version) ?: continue
+            val preRelease = release.get("prerelease")?.asBoolean == true || parsed.isPreRelease
+            if (preRelease && !preReleases) continue
+            if (parsed <= bestVersion) continue
             val assets = release.getAsJsonArray("assets")?.map { it.asJsonObject } ?: continue
             val jar = jarSuffixes.firstNotNullOfOrNull { suffix ->
                 assets.firstOrNull { it.get("name")?.asString?.endsWith(suffix) == true }
@@ -260,7 +259,7 @@ object UpdateChecker {
                 jar.get("size")?.asLong ?: 0L,
                 sha256(jar.get("digest")),
             )
-            bestParts = parts
+            bestVersion = parsed
         }
         return best
     }
@@ -295,47 +294,5 @@ object UpdateChecker {
         }
         SlayerDropTracker.sendModMessage(line)
         if (blocker != null) SlayerDropTracker.sendModMessage("§8  $blocker.")
-    }
-
-    /** A version's numbers ("1.2.22" as [1, 2, 22]) and its pre-release suffix ("alpha.1" as ["alpha", "1"]), empty for none. */
-    internal data class Version(val numbers: List<Int>, val preRelease: List<String> = emptyList())
-
-    /**
-     * "1.2.22" or, with [allowPreRelease], "2.0.0-alpha.1"; null for anything else. Without it a
-     * suffixed tag is not a release and is skipped.
-     */
-    internal fun parse(version: String, allowPreRelease: Boolean = false): Version? {
-        val core = version.substringBefore('-')
-        val suffix = version.substringAfter('-', "")
-        if (suffix.isNotEmpty() && !allowPreRelease) return null
-        if (version.contains('-') && suffix.isEmpty()) return null
-        val numbers = core.split('.').map { it.toIntOrNull() ?: return null }
-        if (numbers.isEmpty()) return null
-        return Version(numbers, if (suffix.isEmpty()) emptyList() else suffix.split('.'))
-    }
-
-    /** Semver order: the numbers first, then a pre-release below its release, then the suffix part by part. */
-    private fun compare(a: Version, b: Version): Int {
-        for (i in 0 until maxOf(a.numbers.size, b.numbers.size)) {
-            val diff = a.numbers.getOrElse(i) { 0 } - b.numbers.getOrElse(i) { 0 }
-            if (diff != 0) return diff
-        }
-        if (a.preRelease.isEmpty() || b.preRelease.isEmpty()) {
-            return b.preRelease.size.coerceAtMost(1) - a.preRelease.size.coerceAtMost(1)
-        }
-        for (i in 0 until minOf(a.preRelease.size, b.preRelease.size)) {
-            val x = a.preRelease[i]
-            val y = b.preRelease[i]
-            val xn = x.toIntOrNull()
-            val yn = y.toIntOrNull()
-            val diff = when {
-                xn != null && yn != null -> xn.compareTo(yn)
-                xn != null -> -1 // Numbers sort below words, as in semver.
-                yn != null -> 1
-                else -> x.compareTo(y)
-            }
-            if (diff != 0) return diff
-        }
-        return a.preRelease.size - b.preRelease.size
     }
 }

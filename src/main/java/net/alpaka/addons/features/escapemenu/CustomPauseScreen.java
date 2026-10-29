@@ -1,6 +1,7 @@
 package net.alpaka.addons.features.escapemenu;
 
 import net.alpaka.addons.client.AlpakaConfigScreen;
+import net.alpaka.addons.client.AlpakaConfirmScreen;
 import net.alpaka.addons.client.gui.GuiFont;
 import net.alpaka.addons.client.gui.ModernGuiUtils;
 import net.alpaka.addons.features.mainmenu.MenuStyle;
@@ -9,9 +10,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
-import net.minecraft.client.gui.screens.ConfirmLinkScreen;
 import net.minecraft.client.gui.screens.PauseScreen;
-import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
 import net.minecraft.client.gui.screens.options.OptionsScreen;
 import net.minecraft.client.input.InputWithModifiers;
@@ -33,7 +32,7 @@ import net.minecraft.network.chat.Component;
  * Everything appears in a short stagger: the dim fades in, then the logo and the rows follow one
  * another, each springing up a few pixels into place as it fades in.
  */
-public class CustomPauseScreen extends PauseScreen {
+public class CustomPauseScreen extends PauseScreen implements net.alpaka.addons.client.gui.NoticeHost {
 
     // ------------------------------------------------------------------ layout
 
@@ -52,23 +51,10 @@ public class CustomPauseScreen extends PauseScreen {
     /** Logo, gap, three row pitches and the last row: the whole stack, centred on the screen. */
     private static final int STACK_HEIGHT = LOGO_SIZE + LOGO_GAP + 3 * ROW_PITCH + BUTTON_HEIGHT;
 
-    /** The disconnect prompt: two lines of question, then the buttons; sized once for layout and drawing. */
-    private static final int PROMPT_WIDTH = 236;
-    private static final int PROMPT_HEIGHT = 96;
-    private static final int PROMPT_RADIUS = 14;
-    private static final int PROMPT_BUTTON_Y = 58;
-    private static final int PROMPT_BUTTON_WIDTH = 92;
-    private static final int PROMPT_BUTTON_HEIGHT = 22;
-
     // --------------------------------------------------------------- appearance
 
     /** The dim over the blurred world; light, so the world stays part of the picture. */
     private static final int COLOR_DIM = 0x52000000;
-    /** The further dim while the disconnect prompt is up. */
-    private static final int COLOR_PROMPT_DIM = 0x66000000;
-
-    /** The prompt's glass, nearly opaque: it stands over the menu rather than beside it. */
-    private static final int PROMPT_FILL = 0xF00D1117;
 
     /** How long the dim and each element take to appear, and the delay between successive rows. */
     static final float APPEAR_SECONDS = 0.22f;
@@ -76,9 +62,11 @@ public class CustomPauseScreen extends PauseScreen {
     /** How far the logo and the rows rise as they spring in. */
     private static final float RISE = 8f;
 
-    private boolean showDisconnectPrompt = false;
+    private static final String WIKI_URL = "https://hypixelskyblock.minecraft.wiki/";
+
     private long openTime = 0L;
-    private long promptOpenTime = 0L;
+    /** Set while the leave dialog is up, so cancelling it brings the menu back without its entrance. */
+    private boolean returningFromDialog = false;
 
     /** Eased hover amount for the logo, on the same curve the buttons use for theirs. */
     private float logoHover = 0.0f;
@@ -89,9 +77,6 @@ public class CustomPauseScreen extends PauseScreen {
     private PauseButton optionsButton;
     private PauseButton wikiButton;
     private PauseButton disconnectButton;
-
-    private PauseButton promptCancelButton;
-    private PauseButton promptConfirmButton;
 
     /**
      * A {@link PauseScreen} by inheritance, with vanilla's own title, so that other mods recognise
@@ -127,11 +112,9 @@ public class CustomPauseScreen extends PauseScreen {
 
     /**
      * 0 → 1 progress of the element with this stagger index through its entrance, linear; the dim is
-     * index 0, the logo 1, the rows 2 to 5. Index -1 is always fully there (the prompt's buttons,
-     * which arrive with the prompt instead).
+     * index 0, the logo 1, the rows 2 to 5.
      */
     static float progressAt(float elapsedSeconds, int index) {
-        if (index < 0) return 1.0f;
         float t = (elapsedSeconds - index * STAGGER_SECONDS) / APPEAR_SECONDS;
         return Math.max(0.0f, Math.min(1.0f, t));
     }
@@ -146,12 +129,6 @@ public class CustomPauseScreen extends PauseScreen {
         return (1.0f - MenuStyle.easeOutBack(progress)) * RISE;
     }
 
-    /** 0 → 1 how far in the disconnect prompt is, eased out; 0 while it is not up. */
-    private float promptShown() {
-        if (!this.showDisconnectPrompt) return 0.0f;
-        return MenuStyle.easeOutCubic((System.currentTimeMillis() - this.promptOpenTime) / 1000.0f / APPEAR_SECONDS);
-    }
-
     /** The color with its alpha scaled by the factor. */
     static int fade(int color, float factor) {
         return MenuStyle.fade(color, factor);
@@ -159,7 +136,10 @@ public class CustomPauseScreen extends PauseScreen {
 
     @Override
     protected void init() {
-        this.openTime = System.currentTimeMillis();
+        // Back from a dialog the menu is simply there again, its clock and the logo's float running
+        // on; otherwise it springs in.
+        if (!this.returningFromDialog || this.openTime == 0L) this.openTime = System.currentTimeMillis();
+        this.returningFromDialog = false;
 
         int centerX = this.width / 2;
         int centerY = this.height / 2;
@@ -213,7 +193,11 @@ public class CustomPauseScreen extends PauseScreen {
         this.wikiButton = new PauseButton(Kind.GLASS, 4, rightX, rowY + ROW_PITCH * 2, HALF_WIDTH, BUTTON_HEIGHT,
                 MenuStyle.ICON_BOOK, "Wiki", btn -> {
             if (this.minecraft != null) {
-                ConfirmLinkScreen.confirmLinkNow(this, "https://hypixelskyblock.minecraft.wiki/");
+                // A link out of the game asks first, in the dialog every such question in the mod uses.
+                this.returningFromDialog = true;
+                this.minecraft.gui.setScreen(new AlpakaConfirmScreen(this, "Open Wiki",
+                        "Opens the Hypixel SkyBlock wiki in your browser: " + WIKI_URL, "Open", false,
+                        () -> net.minecraft.util.Util.getPlatform().openUri(WIKI_URL)));
             }
         });
         this.addRenderableWidget(this.wikiButton);
@@ -222,55 +206,47 @@ public class CustomPauseScreen extends PauseScreen {
         String leaveText = isSingleplayerWorld() ? "Save & Quit" : "Disconnect";
         this.disconnectButton = new PauseButton(Kind.QUIT, 5, fullX, rowY + ROW_PITCH * 3, BUTTON_WIDTH, BUTTON_HEIGHT,
                 MenuStyle.ICON_DOOR, leaveText, btn -> {
-            this.showDisconnectPrompt = true;
-            this.promptOpenTime = System.currentTimeMillis();
-            this.updateWidgetStates();
+            // Leaving asks first, in the dialog every such question in the mod uses.
+            if (this.minecraft == null) return;
+            this.returningFromDialog = true;
+            this.minecraft.gui.setScreen(new AlpakaConfirmScreen(this, leaveText, leaveMessage(), leaveText, true,
+                    this::leave));
         });
         this.addRenderableWidget(this.disconnectButton);
-
-        // The disconnect prompt's buttons, drawn and clicked by hand while the prompt is up.
-        int promptX = centerX - PROMPT_WIDTH / 2;
-        int promptY = centerY - PROMPT_HEIGHT / 2;
-        int pBtnY = promptY + PROMPT_BUTTON_Y;
-
-        this.promptCancelButton = new PauseButton(Kind.GLASS, -1, promptX + 16, pBtnY,
-                PROMPT_BUTTON_WIDTH, PROMPT_BUTTON_HEIGHT, null, "Cancel", btn -> {
-            this.showDisconnectPrompt = false;
-            this.updateWidgetStates();
-        });
-
-        this.promptConfirmButton = new PauseButton(Kind.QUIT, -1, promptX + PROMPT_WIDTH - 16 - PROMPT_BUTTON_WIDTH, pBtnY,
-                PROMPT_BUTTON_WIDTH, PROMPT_BUTTON_HEIGHT, MenuStyle.ICON_DOOR, leaveText, btn -> {
-            if (this.minecraft != null) {
-                // As vanilla's pause menu does: a player report still being written is offered
-                // back first, and leaving only goes ahead once it is sent or dropped.
-                btn.active = false;
-                this.minecraft.getReportingContext().draftReportHandled(this.minecraft, this, this::leaveWorld, true);
-            }
-        });
-
-        this.updateWidgetStates();
     }
 
-    private void leaveWorld() {
-        if (this.minecraft == null) return;
-        if (this.minecraft.level != null) {
-            this.minecraft.level.disconnect(Component.literal("Disconnected"));
+    /** For the screenshot tour: the middle of the Wiki button. */
+    public int[] devWikiPoint() {
+        return new int[] {this.wikiButton.getX() + this.wikiButton.getWidth() / 2,
+                this.wikiButton.getY() + this.wikiButton.getHeight() / 2};
+    }
+
+    /** For the screenshot tour: the middle of the leave button, to click it as a player would. */
+    public int[] devLeavePoint() {
+        return new int[] {this.disconnectButton.getX() + this.disconnectButton.getWidth() / 2,
+                this.disconnectButton.getY() + this.disconnectButton.getHeight() / 2};
+    }
+
+    /** What leaving does here, for the dialog that asks first. */
+    private String leaveMessage() {
+        if (isSingleplayerWorld()) return "Saves the world and returns to the main menu.";
+        if (this.minecraft != null && this.minecraft.hasSingleplayerServer()) {
+            return "Saves the world and closes it, for everyone you opened it to over LAN as well.";
         }
-        this.minecraft.disconnect(new TitleScreen(), false);
+        return "Leaves the server.";
     }
 
-    private void updateWidgetStates() {
-        boolean mainActive = !this.showDisconnectPrompt;
-        if (this.resumeButton != null) this.resumeButton.active = mainActive;
-        if (this.serverListButton != null) this.serverListButton.active = mainActive;
-        if (this.modsButton != null) this.modsButton.active = mainActive;
-        if (this.optionsButton != null) this.optionsButton.active = mainActive;
-        if (this.wikiButton != null) this.wikiButton.active = mainActive;
-        if (this.disconnectButton != null) this.disconnectButton.active = mainActive;
-
-        if (this.promptCancelButton != null) this.promptCancelButton.active = this.showDisconnectPrompt;
-        if (this.promptConfirmButton != null) this.promptConfirmButton.active = this.showDisconnectPrompt;
+    /**
+     * Leaves the world or the server the way vanilla's pause menu does: saving a local world, then
+     * on to the main menu, the server list or Realms, whichever the game came from - and asking
+     * first about an unsent chat report, as vanilla does.
+     */
+    private void leave() {
+        if (this.minecraft == null) return;
+        // As vanilla's pause menu does: a player report still being written is offered back first,
+        // and leaving only goes ahead once it is sent or dropped.
+        this.minecraft.getReportingContext().draftReportHandled(this.minecraft, this,
+                () -> this.minecraft.disconnectFromWorld(net.minecraft.client.multiplayer.ClientLevel.DEFAULT_QUIT_MESSAGE), true);
     }
 
     @Override
@@ -278,11 +254,12 @@ public class CustomPauseScreen extends PauseScreen {
         // Vanilla's menu blur, but not vanilla's heavy in-world darkening: the dim here is lighter
         // and fades in, so the world stays visible behind the menu.
         //
-        // Only while this menu is the screen on top, as vanilla's pause menu does it. The Friends
-        // overlay (the Friends key, O) opens over any pause menu, draws it as its backdrop and then
-        // blurs on its own; a second blur in the same frame throws and crashes the game. The catch
-        // covers another mod's screen that does the same without being the one on top.
-        if (isTopmostScreen()) {
+        // Only while this menu is the screen on top, as vanilla's pause menu does it, or while our
+        // own dialog shows it as its backdrop (the dialog leaves the blur to the window behind it).
+        // The Friends overlay (the Friends key, O) opens over any pause menu, draws it as its
+        // backdrop and then blurs on its own; a second blur in the same frame throws and crashes the
+        // game. The catch covers another mod's screen that does the same without being the one on top.
+        if (blursWorld()) {
             try {
                 this.extractBlurredBackground(graphics);
             } catch (IllegalStateException ignored) {
@@ -303,9 +280,9 @@ public class CustomPauseScreen extends PauseScreen {
         // it grows and gives a little wiggle, like the main menu's copy of it.
         float logoProgress = progressAt(elapsed(), 1);
         if (logoProgress > 0.0f) {
-            boolean logoHovered = !this.showDisconnectPrompt && isOverLogo(mouseX, mouseY);
+            boolean logoHovered = isOverLogo(mouseX, mouseY);
             this.logoHover += ((logoHovered ? 1.0f : 0.0f) - this.logoHover) * MenuStyle.HOVER_EASE;
-            float logoAppear = MenuStyle.easeOutCubic(logoProgress) * (1.0f - promptShown());
+            float logoAppear = MenuStyle.easeOutCubic(logoProgress);
             graphics.pose().pushMatrix();
             graphics.pose().translate(0.0f, rise(logoProgress));
             MenuStyle.logo(graphics, logoLeft(), logoTop(), LOGO_SIZE, this.logoHover, logoAppear, elapsed());
@@ -316,54 +293,12 @@ public class CustomPauseScreen extends PauseScreen {
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
-        if (!this.showDisconnectPrompt) return;
-
-        float promptAlpha = promptShown();
-
-        // The prompt's full-screen dim, against an identity matrix for the same reason as the
-        // backdrop: a full-screen darkening must never move with an inherited transform.
-        graphics.pose().pushMatrix();
-        graphics.pose().identity();
-        graphics.fill(0, 0, this.width, this.height, fade(COLOR_PROMPT_DIM, promptAlpha));
-        graphics.pose().popMatrix();
-
-        // The prompt is a small card of the main menu's glass: the question, and the two buttons.
-        int centerX = this.width / 2;
-        int promptX = centerX - PROMPT_WIDTH / 2;
-        int promptY = this.height / 2 - PROMPT_HEIGHT / 2;
-        graphics.pose().pushMatrix();
-        graphics.pose().translate(0.0f, (1.0f - promptAlpha) * RISE);
-        MenuStyle.cardShadow(graphics, promptX, promptY, PROMPT_WIDTH, PROMPT_HEIGHT, PROMPT_RADIUS, promptAlpha);
-        ModernGuiUtils.drawRoundedRect(graphics, promptX, promptY, PROMPT_WIDTH, PROMPT_HEIGHT, PROMPT_RADIUS,
-                fade(PROMPT_FILL, promptAlpha));
-        MenuStyle.cardEdge(graphics, promptX, promptY, PROMPT_WIDTH, PROMPT_HEIGHT, PROMPT_RADIUS, promptAlpha);
-
-        ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("Are you sure you want to"),
-                centerX, promptY + 18, fade(MenuStyle.TEXT, promptAlpha));
-        ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("leave the game session?"),
-                centerX, promptY + 32, fade(MenuStyle.MUTED, promptAlpha));
-
-        if (this.promptCancelButton != null) {
-            this.promptCancelButton.extractRenderState(graphics, mouseX, mouseY, partialTick);
-        }
-        if (this.promptConfirmButton != null) {
-            this.promptConfirmButton.extractRenderState(graphics, mouseX, mouseY, partialTick);
-        }
-        graphics.pose().popMatrix();
+        // Notices crisp over the menu, not blurred away under it with the HUD.
+        net.alpaka.addons.features.notification.AlpakaNotifications.renderOverScreen(graphics);
     }
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (this.showDisconnectPrompt) {
-            if (this.promptCancelButton != null && this.promptCancelButton.mouseClicked(event, doubleClick)) {
-                return true;
-            }
-            if (this.promptConfirmButton != null && this.promptConfirmButton.mouseClicked(event, doubleClick)) {
-                return true;
-            }
-            return true;
-        }
-
         if (event.button() == 0 && isOverLogo(event.x(), event.y()) && this.minecraft != null) {
             // Vanilla's click, which the custom-sound swap replaces when the player opted in.
             net.minecraft.client.gui.components.AbstractWidget.playButtonClickSound(this.minecraft.getSoundManager());
@@ -377,11 +312,6 @@ public class CustomPauseScreen extends PauseScreen {
     @Override
     public boolean keyPressed(KeyEvent event) {
         if (event.key() == 256) { // GLFW_KEY_ESCAPE
-            if (this.showDisconnectPrompt) {
-                this.showDisconnectPrompt = false;
-                this.updateWidgetStates();
-                return true;
-            }
             this.onClose();
             return true;
         }
@@ -394,7 +324,7 @@ public class CustomPauseScreen extends PauseScreen {
     /**
      * A button of the menu in the main menu's style: its icon and its label, centred together, on
      * glass whose edge takes the accent under the mouse. Each button springs up into place at its
-     * own moment of the open stagger, and fades out while the disconnect prompt is up.
+     * own moment of the open stagger.
      */
     private final class PauseButton extends AbstractButton {
         private final Kind kind;
@@ -424,10 +354,7 @@ public class CustomPauseScreen extends PauseScreen {
         protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
             float progress = progressAt(elapsed(), this.appearIndex);
             if (progress <= 0.0f) return;
-            // The menu's own buttons fade out as the prompt comes up - its glass would otherwise
-            // show them through it behind the question - and the prompt's buttons arrive with it.
-            float prompt = promptShown();
-            float appear = MenuStyle.easeOutCubic(progress) * (this.appearIndex >= 0 ? 1.0f - prompt : prompt);
+            float appear = MenuStyle.easeOutCubic(progress);
             if (appear <= 0.01f) return;
 
             boolean hovered = mouseX >= this.getX() && mouseX < this.getX() + this.width
@@ -479,9 +406,14 @@ public class CustomPauseScreen extends PauseScreen {
         void onPress(PauseButton button);
     }
 
-    /** Whether this menu is the screen on top; vanilla's PauseScreen.isTopmostScreen(), which is private. */
-    private boolean isTopmostScreen() {
-        return this.minecraft != null && this.minecraft.gui.screen() == this;
+    /**
+     * Whether this menu blurs the world: as the screen on top (vanilla's PauseScreen.isTopmostScreen(),
+     * which is private), or as the backdrop of our own dialog, which does not blur by itself.
+     */
+    private boolean blursWorld() {
+        if (this.minecraft == null) return false;
+        net.minecraft.client.gui.screens.Screen top = this.minecraft.gui.screen();
+        return top == this || top instanceof AlpakaConfirmScreen;
     }
 
     /**

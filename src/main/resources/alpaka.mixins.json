@@ -9,6 +9,15 @@
     "ScreenMixin",
     "ArmorStandSplashMixin",
     "MultiPlayerGameModeMixin",
+    "MenuScreensMixin",
+    "LocalPlayerSignMixin",
+    "AbstractSignEditScreenAccessor",
+    "AbstractContainerScreenAccessor",
+    "AbstractRecipeBookScreenAccessor",
+    "AbstractContainerScreenMixin",
+    "AbstractContainerScreenVisitorMixin",
+    "ScreenItemValueMixin",
+    "KeyboardHandlerItemValueMixin",
     "GuiMixin",
     "HudMixin",
     "ClientPacketListenerPerformanceMixin",
@@ -30,6 +39,12 @@
     "GuiGraphicsExtractorMixin",
     "KeyboardHandlerMixin",
     "SkyHanniTabListRendererMixin",
+    "TrueTypeGlyphProviderDefinitionMixin",
+    "TrueTypeGlyphProviderMixin",
+    "NativeImageFontMixin",
+    "GuiMessageFontMixin",
+    "HudScoreboardFontMixin",
+    "ScoreboardEntryFontMixin",
     "GuiRendererMixin",
     "GuiRenderStateMixin",
     "GuiRenderStateNodeMixin",
@@ -42,7 +57,8 @@
     "ConnectScreenPackCacheMixin",
     "ClientPacketListenerPackCacheMixin",
     "ClientCommonPacketListenerPackCacheMixin",
-    "ClientPacketListenerMixin"
+    "ClientPacketListenerMixin",
+    "ClientPacketListenerTeleportMixin"
   ],
   "injectors": {
     "defaultRequire": 1

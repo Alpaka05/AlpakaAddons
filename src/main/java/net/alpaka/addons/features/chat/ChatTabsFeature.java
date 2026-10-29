@@ -1,8 +1,9 @@
 package net.alpaka.addons.features.chat;
 
+import net.alpaka.addons.client.gui.AlpakaStyle;
+import net.alpaka.addons.client.gui.GuiFont;
 import net.alpaka.addons.client.gui.ModernGuiUtils;
 import net.alpaka.addons.config.AlpakaConfig;
-import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -10,7 +11,9 @@ import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.multiplayer.chat.GuiMessage;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
 import org.lwjgl.glfw.GLFW;
+import java.util.Arrays;
 
 /**
  * All / Party / Guild / Co-op / PMs / NPCs tabs in the chat screen.
@@ -32,6 +35,10 @@ import org.lwjgl.glfw.GLFW;
  * Each channel tab can be left out of the row, for a player with no use for, say, Co-op. A hidden
  * channel's lines are not lost: they sort to it as before and so still show on All.
  *
+ * The row is drawn in the mod's menu look: rounded tabs, the config's text greys, the accent for the
+ * tab that is up and for unread counts, and the chat's own font - the menu font when the chat is
+ * written in it. The labels cast vanilla's drop shadow in either font, as the chat's own lines do.
+ *
  * Guild chat can also be kept off All, for a busy guild drowning out everything else; it then shows
  * only on the Guild tab, which counts it as unread as usual.
  */
@@ -51,12 +58,10 @@ public final class ChatTabsFeature {
     /** Each tab's label as last built and the unread count it shows; reused until the count changes. */
     private static final Component[] LABELS = new Component[TABS.length];
     private static final int[] LABEL_COUNTS = new int[TABS.length];
-    /** The filter chip's text for each tab. */
+    /** The filter chip's text for each tab, built on first draw. */
     private static final Component[] CHIPS = new Component[TABS.length];
-
-    static {
-        for (ChatTab tab : TABS) CHIPS[tab.ordinal()] = Component.literal(tab.label + " only");
-    }
+    /** Whether the cached labels and chips are in the menu font; both are dropped when this changes. */
+    private static boolean cachedInChatFont;
 
     // Layout, in GUI pixels. The input box starts at height - 14; the tabs end a pixel above it. The
     // lowest chat line ends at height - 40, so the row never touches the messages either.
@@ -65,6 +70,20 @@ public final class ChatTabsFeature {
     private static final int TAB_GAP = 2;
     private static final int LEFT = 2;
     private static final int BOTTOM_GAP = 15;
+    /** Corner radius of a tab and of the filter chip, a step below the HUD panels' for the smaller box. */
+    private static final int TAB_RADIUS = 3;
+    /**
+     * Where a label starts below the box's top. Both fonts put their baseline 7 pixels below where
+     * the text is drawn, so the capitals sit on the same rows in either: 2 to 8 of the 12, with two
+     * rows above them and two below (the first holding their shadow) before the selected tab's
+     * underline on row 11.
+     */
+    private static final int LABEL_TOP = 2;
+    /** How far the selected tab's underline stays clear of the rounded corners on either side. */
+    private static final int UNDERLINE_INSET = 2;
+    /** The tint behind the selected tab and the chip: the accent, faint. */
+    private static final int ACCENT_TINT_ALPHA = 0x30000000;
+    private static final int HOVER_TINT = 0x20FFFFFF;
 
     public static boolean isEnabled() {
         return AlpakaConfig.instance.chatTabsEnabled;
@@ -234,15 +253,40 @@ public final class ChatTabsFeature {
         Minecraft mc = Minecraft.getInstance();
         if (mc.gui.screen() instanceof ChatScreen) return;
         Font font = mc.font;
-        Component label = CHIPS[active.ordinal()];
+        Component label = chipOf(active);
         int y1 = graphics.guiHeight() - BOTTOM_GAP;
         int y0 = y1 - TAB_HEIGHT;
         int width = font.width(label) + TAB_PAD * 2;
-        int accent = ModernGuiUtils.getAccentColor();
-        graphics.fill(LEFT, y0, LEFT + width, y1, mc.options.getBackgroundColor(Integer.MIN_VALUE));
-        graphics.fill(LEFT, y0, LEFT + width, y1, (accent & 0xFFFFFF) | 0x30000000);
-        graphics.fill(LEFT, y1 - 1, LEFT + width, y1, accent);
-        graphics.text(font, label, LEFT + TAB_PAD, y0 + 2, 0xFFFFFFFF);
+        drawTab(graphics, LEFT, y0, width, mc.options.getBackgroundColor(Integer.MIN_VALUE), true, false);
+        graphics.text(font, label, LEFT + TAB_PAD, y0 + LABEL_TOP, AlpakaStyle.TEXT, true);
+    }
+
+    /**
+     * One tab's box, or the chip's: rounded like the menus' rows, in vanilla's text background
+     * color. With vanilla's default, Background for Chat Only, that is a fixed half-transparent
+     * black whatever the chat's own background opacity is; only with that option off does it follow
+     * the Text Background Opacity slider. The tab that is up carries a faint accent tint and an
+     * accent underline that stops short of the rounded corners.
+     */
+    private static void drawTab(GuiGraphicsExtractor graphics, int x, int y0, int width, int background,
+                                boolean selected, boolean hovered) {
+        ModernGuiUtils.drawRoundedRect(graphics, x, y0, width, TAB_HEIGHT, TAB_RADIUS, background);
+        if (selected) {
+            int accent = ModernGuiUtils.getAccentColor();
+            ModernGuiUtils.drawRoundedRect(graphics, x, y0, width, TAB_HEIGHT, TAB_RADIUS, (accent & 0xFFFFFF) | ACCENT_TINT_ALPHA);
+            ModernGuiUtils.drawRoundedRect(graphics, x + UNDERLINE_INSET, y0 + TAB_HEIGHT - 1,
+                    width - UNDERLINE_INSET * 2, 1, 1, accent);
+        } else if (hovered) {
+            ModernGuiUtils.drawRoundedRect(graphics, x, y0, width, TAB_HEIGHT, TAB_RADIUS, HOVER_TINT);
+        }
+    }
+
+    /**
+     * A label in the font the chat is written in: the menu font when the chat uses it, vanilla's
+     * otherwise. Measured and drawn as the same component, so the click areas match the boxes.
+     */
+    private static Component inChatFont(Component label) {
+        return GuiFont.inChat() ? GuiFont.restyle(label) : label;
     }
 
     /** The tab row under the held-open chat, without hover since there is no cursor on it. */
@@ -268,18 +312,42 @@ public final class ChatTabsFeature {
         };
     }
 
+    /** Drops the cached labels and chips once the chat has switched font. */
+    private static void checkChatFont() {
+        boolean inChat = GuiFont.inChat();
+        if (inChat == cachedInChatFont) return;
+        cachedInChatFont = inChat;
+        Arrays.fill(LABELS, null);
+        Arrays.fill(CHIPS, null);
+    }
+
+    /** The filter chip's text: the channel in full, the word after it quieter, so it reads as the channel's name. */
+    private static Component chipOf(ChatTab tab) {
+        checkChatFont();
+        int i = tab.ordinal();
+        if (CHIPS[i] == null) {
+            CHIPS[i] = inChatFont(Component.literal(tab.label)
+                    .append(Component.literal(" only").withStyle(Style.EMPTY.withColor(AlpakaStyle.TEXT_MUTED & 0xFFFFFF))));
+        }
+        return CHIPS[i];
+    }
+
+    /** A tab's name, with its unread count after it in the accent color while there is one. */
     private static Component labelOf(ChatTab tab) {
+        checkChatFont();
         int i = tab.ordinal();
         int count = unread[i];
         Component cached = LABELS[i];
         if (cached != null && LABEL_COUNTS[i] == count) return cached;
         MutableComponent label = Component.literal(tab.label);
         if (count > 0) {
-            label.append(Component.literal(" " + (count > 99 ? "99+" : String.valueOf(count))).withStyle(ChatFormatting.YELLOW));
+            label.append(Component.literal(" " + (count > 99 ? "99+" : String.valueOf(count)))
+                    .withStyle(Style.EMPTY.withColor(ModernGuiUtils.getAccentColor() & 0xFFFFFF)));
         }
-        LABELS[i] = label;
+        Component styled = inChatFont(label);
+        LABELS[i] = styled;
         LABEL_COUNTS[i] = count;
-        return label;
+        return styled;
     }
 
     /** Draws the row. Called from the chat screen before the command suggestions, so those stay on top. */
@@ -290,7 +358,9 @@ public final class ChatTabsFeature {
         int y1 = screenHeight - BOTTOM_GAP;
         int y0 = y1 - TAB_HEIGHT;
         int background = mc.options.getBackgroundColor(Integer.MIN_VALUE);
-        int accent = ModernGuiUtils.getAccentColor();
+        // Vanilla's chat lines always cast their shadow, in the pixel font and in the menu font
+        // alike, so the labels under them do too.
+        boolean shadow = true;
         int x = LEFT;
         for (ChatTab tab : TABS) {
             if (!isShown(tab)) continue;
@@ -299,15 +369,10 @@ public final class ChatTabsFeature {
             boolean selected = tab == active;
             boolean hovered = mouseX >= x && mouseX < x + width && mouseY >= y0 && mouseY < y1;
 
-            graphics.fill(x, y0, x + width, y1, background);
-            if (selected) {
-                graphics.fill(x, y0, x + width, y1, (accent & 0xFFFFFF) | 0x30000000);
-                graphics.fill(x, y1 - 1, x + width, y1, accent);
-            } else if (hovered) {
-                graphics.fill(x, y0, x + width, y1, 0x20FFFFFF);
-            }
-            int color = selected ? 0xFFFFFFFF : hovered ? 0xFFDDDDDD : 0xFFA0A0A0;
-            graphics.text(font, label, x + TAB_PAD, y0 + 2, color);
+            drawTab(graphics, x, y0, width, background, selected, hovered);
+            // As the config's sidebar: the open one and the hovered one in full, the rest softer.
+            int color = selected || hovered ? AlpakaStyle.HUD_TEXT : AlpakaStyle.HUD_TEXT_SOFT;
+            graphics.text(font, label, x + TAB_PAD, y0 + LABEL_TOP, color, shadow);
             x += width + TAB_GAP;
         }
     }

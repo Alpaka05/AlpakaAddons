@@ -1,6 +1,7 @@
 package net.alpaka.addons.features.deployable
 
 import java.util.Locale
+import net.alpaka.addons.client.gui.HudPanel
 import net.alpaka.addons.client.hud.HudBounds
 import net.alpaka.addons.client.hud.HudDefaults
 import net.alpaka.addons.client.hud.HudElement
@@ -47,7 +48,7 @@ object DeployableTimerHudElement : HudElement {
         val width = kotlin.math.ceil(DeployableTimerHudRenderer.width(font, DeployableTimerHudRenderer.shown()) * scale).toInt()
         val height = DeployableTimerHudRenderer.height(scale)
 
-        val margin = TEXT_MARGIN
+        val margin = HudPanel.margin(cfg.blurOn(cfg.deployableTimerHudBlur), scale, TEXT_MARGIN)
         return HudBounds(
             cfg.deployableTimerHudX - margin,
             cfg.deployableTimerHudY - margin,

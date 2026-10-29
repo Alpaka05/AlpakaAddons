@@ -131,10 +131,16 @@ public class ChatScreenMixin {
         ChatTabsFeature.onChatClosed();
     }
 
-    /** The input bar's background takes the accent while searching. */
+    /**
+     * The input bar's background takes the accent while searching.
+     *
+     * Pinned to the first fill: in 26.2 it is the only one the method itself makes (the chat lines
+     * and suggestions fill inside their own methods, out of this injector's reach), so nothing else
+     * turns accent today - the ordinal keeps it that way should vanilla add another fill here.
+     */
     @ModifyArg(
             method = "extractRenderState",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;fill(IIIII)V"),
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;fill(IIIII)V", ordinal = 0),
             index = 4
     )
     private int alpaka$tintSearchBar(int color) {
@@ -197,6 +203,22 @@ public class ChatScreenMixin {
                 && (UpdateInstaller.handleClick(custom) || ScreenshotMessageFeature.handleClick(custom))) {
             cir.setReturnValue(true);
         }
+    }
+
+    /**
+     * A typed command goes past Shorten Warp and Warp Cooldown first: either may send it
+     * in another form or hold it, and then vanilla must not send it as well.
+     */
+    @Inject(method = "handleChatInput", at = @At("HEAD"), cancellable = true)
+    private void alpaka$handleTypedCommand(String message, boolean addToRecent, CallbackInfo ci) {
+        ChatScreen self = (ChatScreen) (Object) this;
+        String normalized = self.normalizeChatMessage(message);
+        if (!normalized.startsWith("/")) return;
+        if (!net.alpaka.addons.features.commands.TypedCommands.handle(normalized.substring(1))) return;
+        if (addToRecent) {
+            Minecraft.getInstance().gui.hud.getChat().addRecentChat(normalized);
+        }
+        ci.cancel();
     }
 
     /**

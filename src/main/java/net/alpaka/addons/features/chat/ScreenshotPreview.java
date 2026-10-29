@@ -13,6 +13,7 @@ import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.render.TextureSetup;
+import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.Identifier;
@@ -34,6 +35,9 @@ import java.util.List;
  * The file is read and scaled down off the render thread, then uploaded as a texture of its own,
  * which is released as soon as the preview is gone. It is drawn after everything else, toasts
  * aside, so it shows over menus as well.
+ *
+ * While the chat is open the thumbnail rests higher, clear of the input bar along the bottom, and
+ * glides between the two places when the chat opens or closes.
  *
  * A screenshot taken while the preview is on screen would capture the preview itself, since the
  * game grabs the last finished frame. So that press is held back: the next frame is drawn without
@@ -57,6 +61,13 @@ public final class ScreenshotPreview {
     private static final float MARGIN = 10.0f;
     private static final float RADIUS = 5.0f;
     private static final float SHADOW = 8.0f;
+    /**
+     * How far the thumbnail rises while the chat is open: the height of vanilla's input bar, whose
+     * box starts 14 pixels above the screen's bottom edge, so the margin is kept above the bar.
+     */
+    private static final float CHAT_INPUT_HEIGHT = 14.0f;
+    /** How quickly the thumbnail follows the chat opening or closing, as a time constant in ms. */
+    private static final float LIFT_TAU = 60.0f;
 
     /** How much the thumbnail grows while the cursor is on it, and how fast it gets there. */
     private static final float HOVER_GROW = 0.04f;
@@ -65,12 +76,15 @@ public final class ScreenshotPreview {
     private static DynamicTexture texture;
     /** The screenshot on screen; what a click on the thumbnail acts on. */
     private static File file;
-    private static long shownAtMs;
-    private static long lastFrameMs;
+    private static long lastHoverMs;
     private static float hover;
     /** Where the thumbnail was last drawn, in GUI pixels; clickable only while it rests in the corner. */
     private static boolean clickable;
     private static float hitX, hitY, hitW, hitH;
+    private static long shownAtMs;
+    /** How far the thumbnail is lifted right now, easing towards {@link #liftTarget}. */
+    private static float lift;
+    private static long lastFrameMs;
     /** Screenshot presses waiting for a frame without the preview; see the class comment. */
     private static final List<Runnable> pendingCaptures = new ArrayList<>();
 
@@ -124,9 +138,27 @@ public final class ScreenshotPreview {
         mc.getTextureManager().register(TEXTURE, texture);
         file = shown;
         shownAtMs = Util.getMillis();
-        lastFrameMs = shownAtMs;
+        lastHoverMs = shownAtMs;
         hover = 0.0f;
         hitW = 0.0f;
+        // Starts where it belongs: the shrink already lands it above an open chat's input bar.
+        lift = liftTarget();
+        lastFrameMs = shownAtMs;
+    }
+
+    /** Where the thumbnail should rest: above the input bar while the chat is open. */
+    private static float liftTarget() {
+        return Minecraft.getInstance().gui.screen() instanceof ChatScreen ? CHAT_INPUT_HEIGHT : 0.0f;
+    }
+
+    /** Moves the lift towards its target, at the same speed whatever the frame rate. */
+    private static void updateLift() {
+        long now = Util.getMillis();
+        long deltaMs = Math.clamp(now - lastFrameMs, 0L, 250L);
+        lastFrameMs = now;
+        float target = liftTarget();
+        lift += (target - lift) * (1.0f - (float) Math.exp(-deltaMs / LIFT_TAU));
+        if (Math.abs(target - lift) < 0.01f) lift = target;
     }
 
     private static void release() {
@@ -202,8 +234,8 @@ public final class ScreenshotPreview {
         }
 
         long now = Util.getMillis();
-        long frameMs = now - lastFrameMs;
-        lastFrameMs = now;
+        long frameMs = now - lastHoverMs;
+        lastHoverMs = now;
         clickable = false;
 
         // The cursor resting on the resting thumbnail holds the clock, so the picture stays put.
@@ -231,7 +263,8 @@ public final class ScreenshotPreview {
         float e = easeOutBack(Math.min(1.0f, elapsed / SHRINK_MS));
         float thumbScale = Math.clamp(AlpakaConfig.instance.screenshotPreviewSize, 5.0f, 60.0f) / 100.0f;
         float thumbX = sw - MARGIN - sw * thumbScale;
-        float thumbY = sh - MARGIN - sh * thumbScale;
+        updateLift();
+        float thumbY = sh - MARGIN - lift - sh * thumbScale;
         float s = lerp(1.0f, thumbScale, e);
         float x = lerp(0.0f, thumbX, e);
         float y = lerp(0.0f, thumbY, e);

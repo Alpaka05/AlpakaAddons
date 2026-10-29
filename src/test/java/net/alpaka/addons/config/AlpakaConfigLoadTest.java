@@ -83,9 +83,9 @@ class AlpakaConfigLoadTest {
 
         assertEquals("", config.bridgeBotName);
         assertEquals("", config.statsDirectory);
-        assertNotNull(config.itemPresets[0]);
-        assertEquals(1.0f, config.itemPresets[1].scale);
-        assertEquals(0.5f, config.itemPresets[1].xOffset);
+        assertEquals(2, config.itemPresets.size(), "presets can be deleted here, so a null one is dropped");
+        assertEquals(1.0f, config.itemPresets.get(0).scale);
+        assertEquals(0.5f, config.itemPresets.get(0).xOffset);
         assertEquals(List.of(List.of("/hub", "/pv")), config.commandWheelPages);
         assertNotNull(config.slayerBossMap.get(SlayerType.BLAZE));
     }
@@ -98,7 +98,7 @@ class AlpakaConfigLoadTest {
 
         AlpakaConfig config = load(old.toString());
         assertEquals(TEAL, config.menuAccentColor);
-        assertEquals(5000, config.chatHistoryLimit);
+        assertEquals(20000, config.chatHistoryLimit, "the history slider reaches 20000 on this line");
         assertEquals(AlpakaConfig.CONFIG_VERSION, config.configVersion);
 
         // Picked again by hand: from now on it is a choice.

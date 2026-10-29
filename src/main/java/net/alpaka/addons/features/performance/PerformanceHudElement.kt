@@ -1,6 +1,7 @@
 package net.alpaka.addons.features.performance
 
 import java.util.Locale
+import net.alpaka.addons.client.gui.HudPanel
 import net.alpaka.addons.client.hud.HudBounds
 import net.alpaka.addons.client.hud.HudDefaults
 import net.alpaka.addons.client.hud.HudElement
@@ -45,11 +46,12 @@ object PerformanceHudElement : HudElement {
         val width = PerformanceHudRenderer.getWidth(font, scale)
         val height = PerformanceHudRenderer.getHeight(scale)
 
+        val margin = HudPanel.margin(cfg.blurOn(cfg.performanceHudBlur), scale, TEXT_MARGIN)
         return HudBounds(
-            cfg.performanceHudX - TEXT_MARGIN,
-            cfg.performanceHudY - TEXT_MARGIN,
-            cfg.performanceHudX + width + TEXT_MARGIN,
-            cfg.performanceHudY + height + TEXT_MARGIN
+            cfg.performanceHudX - margin,
+            cfg.performanceHudY - margin,
+            cfg.performanceHudX + width + margin,
+            cfg.performanceHudY + height + margin
         )
     }
 

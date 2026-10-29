@@ -2,9 +2,10 @@ package net.alpaka.addons.features.wheel
 
 import net.alpaka.addons.compliance.Outbound
 import net.alpaka.addons.config.AlpakaConfig
+import net.alpaka.addons.client.gui.AlpakaStyle
 import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.client.gui.ModernGuiUtils
-import net.alpaka.addons.features.sound.CustomSoundFeature
+import net.alpaka.addons.client.gui.PloppAnimation
 import net.alpaka.addons.features.wheel.WheelMesh.Companion.TAU
 import net.alpaka.addons.features.wheel.WheelMesh.Companion.lerpColor
 import net.alpaka.addons.features.wheel.WheelMesh.Companion.scaleAlpha
@@ -57,7 +58,7 @@ class CommandWheelScreen(
      * has been let go and pressed anew.
      */
     private var keyHeld: Boolean = false,
-) : Screen(Component.literal("Quick Command Menu")) {
+) : Screen(GuiFont.text("Command Wheel")) {
 
     private var pages: List<List<String>> = emptyList()
     private var page = 0
@@ -108,6 +109,8 @@ class CommandWheelScreen(
     private var wheelMeshScale = 0
 
     private val openedAtNanos = System.nanoTime()
+    /** The same moment on the wall clock, for the menus' shared opening pop. */
+    private val openedAtMs = System.currentTimeMillis()
     private var lastFrameNanos = openedAtNanos
 
     override fun isPauseScreen(): Boolean = false
@@ -143,7 +146,7 @@ class CommandWheelScreen(
     private fun stepPage(delta: Int) {
         if (pages.size <= 1) return
         showPage(((page + delta) % pages.size + pages.size) % pages.size)
-        try { CustomSoundFeature.playButtonClickSound() } catch (_: Throwable) {}
+        AlpakaStyle.click()
     }
 
     // ------------------------------------------------------------------ input
@@ -409,7 +412,8 @@ class CommandWheelScreen(
 
         val pose = graphics.pose()
         pose.pushMatrix()
-        val openScale = 0.86f + 0.14f * open
+        // The pop every window of the mod opens with.
+        val openScale = PloppAnimation.getOpenScale(openedAtMs)
         pose.scaleAround(openScale * layout.scale, openScale * layout.scale, layout.cx, layout.cy)
 
         // A soft pool of shadow behind the whole wheel, so it reads as sitting above the world
@@ -453,7 +457,7 @@ class CommandWheelScreen(
         mesh.disc(layout.cx, layout.cy, layout.hubRadius, scaleAlpha(COLOR_HUB, open))
         mesh.ring(
             layout.cx, layout.cy, layout.hubRadius - 1f, layout.hubRadius,
-            scaleAlpha(lerpColor(ModernGuiUtils.COLOR_CARD_BORDER, accent, aim * 0.7f), open)
+            scaleAlpha(lerpColor(AlpakaStyle.DIVIDER, accent, aim * 0.7f), open)
         )
         mesh.submit(graphics)
 
@@ -484,7 +488,7 @@ class CommandWheelScreen(
         // long name on the left or right grows away from the wheel instead of into it, and the
         // selected one scales up around that same anchor and takes the accent color, lifted a
         // little towards white so it stays readable even with a dark accent.
-        val labelSelected = lerpColor(accent, 0xFFFFFFFF.toInt(), 0.25f)
+        val labelSelected = lerpColor(accent, AlpakaStyle.TEXT, 0.25f)
         for (i in 0 until count) {
             val h = highlight[i]
             val angle = segmentAngle(layout, i)
@@ -504,7 +508,8 @@ class CommandWheelScreen(
             val scale = 1f + LABEL_GROWTH * h
             pose.pushMatrix()
             pose.scaleAround(scale, scale, anchorX, anchorY)
-            graphics.text(this.font, labels[i], x, y, color, false)
+            // With its shadow: the labels sit beyond the ring, straight on the world.
+            graphics.text(this.font, labels[i], x, y, color, true)
             pose.popMatrix()
         }
 
@@ -531,7 +536,7 @@ class CommandWheelScreen(
             mesh.disc(ax, ay, ARROW_RADIUS * lift, scaleAlpha(COLOR_HUB, open))
             mesh.ring(
                 ax, ay, ARROW_RADIUS * lift - 1.5f, ARROW_RADIUS * lift,
-                scaleAlpha(lerpColor(ModernGuiUtils.COLOR_CARD_BORDER, accent, glow), open)
+                scaleAlpha(lerpColor(AlpakaStyle.DIVIDER, accent, glow), open)
             )
             mesh.submit(graphics)
 
@@ -554,17 +559,17 @@ class CommandWheelScreen(
 
         val counter = "${page + 1} / ${pages.size}"
         ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text(counter), this.width / 2,
-            this.height - 24, scaleAlpha(ModernGuiUtils.COLOR_TEXT_MUTED, open))
+            this.height - 24, scaleAlpha(AlpakaStyle.TEXT_MUTED, open))
     }
 
     private fun drawEmptyState(graphics: GuiGraphicsExtractor, open: Float) {
         val cx = this.width / 2
         val cy = this.height / 2
-        val primary = scaleAlpha(ModernGuiUtils.COLOR_TEXT_PRIMARY, open)
-        val muted = scaleAlpha(ModernGuiUtils.COLOR_TEXT_MUTED, open)
+        val primary = scaleAlpha(AlpakaStyle.TEXT, open)
+        val muted = scaleAlpha(AlpakaStyle.TEXT_MUTED, open)
         if ((primary ushr 24) < 8) return
-        ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("No quick commands yet"), cx, cy - 10, primary)
-        ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("Add some under Alpaka Config → Quick Command Menu"), cx, cy + 4, muted)
+        ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("No commands yet"), cx, cy - 10, primary)
+        ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("Add some in /aa under Command Wheel"), cx, cy + 4, muted)
     }
 
     companion object {
@@ -600,9 +605,10 @@ class CommandWheelScreen(
         /** A pause this long between scroll events ends one scroll gesture and lets the next turn a page. */
         private const val SCROLL_GESTURE_GAP_NANOS = 250_000_000L
 
-        private const val COLOR_SEGMENT = 0xE8262626.toInt()
-        private const val COLOR_SEGMENT_OUTER = 0xE82C2C2C.toInt()
-        private const val COLOR_HUB = 0xF6171717.toInt()
-        private const val COLOR_LABEL = 0xFFB8B8B8.toInt()
+        /** The menu's row colors, a touch see-through so the world shows behind the ring. */
+        private val COLOR_SEGMENT get() = (AlpakaStyle.ROW_HOVER and 0x00FFFFFF) or (0xE8 shl 24)
+        private val COLOR_SEGMENT_OUTER get() = (AlpakaStyle.ROW_SELECTED and 0x00FFFFFF) or (0xE8 shl 24)
+        private val COLOR_HUB get() = (AlpakaStyle.PANEL and 0x00FFFFFF) or (0xF6 shl 24)
+        private val COLOR_LABEL get() = AlpakaStyle.TEXT_SOFT
     }
 }

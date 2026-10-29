@@ -7,16 +7,18 @@ import net.alpaka.addons.features.chat.ChatTabsFeature;
 import net.alpaka.addons.features.deployable.DeployableTimerHudRenderer;
 import net.alpaka.addons.features.inventoryhud.InventoryHudRenderer;
 import net.alpaka.addons.features.notification.AlpakaNotifications;
+import net.alpaka.addons.features.performance.PerformanceHudRenderer;
 import net.alpaka.addons.features.playermodel.PlayerModelRenderer;
 import net.alpaka.addons.features.ragnarock.RagnarockFeature;
 import net.alpaka.addons.features.scoreboard.ScoreboardBlurFeature;
 import net.alpaka.addons.features.scoreboard.ScoreboardFooterFeature;
 import net.alpaka.addons.features.slayer.SlayerHudRenderer;
+import net.alpaka.addons.features.tablist.CustomTabFeature;
 import net.alpaka.addons.features.tooltip.OldMasterStarsFeature;
 import net.alpaka.addons.features.slayer.SlayerTimerHudRenderer;
-import net.alpaka.addons.features.performance.PerformanceHudRenderer;
 import net.alpaka.addons.utils.AlpakaPerf;
 import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.Hud;
@@ -101,6 +103,12 @@ public class HudMixin implements ChatOverHud.Late {
         } finally {
             AlpakaPerf.end(AlpakaPerf.Section.HUD_INVENTORY, t);
         }
+        t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_DUNGEON_MAP);
+        try {
+            net.alpaka.addons.features.dungeonmap.DungeonMapRenderer.render(graphicsExtractor);
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.HUD_DUNGEON_MAP, t);
+        }
         // Last, so a notice sits above every other overlay rather than under one.
         t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_NOTIFICATIONS);
         try {
@@ -138,6 +146,15 @@ public class HudMixin implements ChatOverHud.Late {
             ChatTabsFeature.releasePlayerListKey();
             ci.cancel();
         }
+    }
+
+    /** Toggle Tab List for vanilla's list too, where the Custom Tab leaves it in place. */
+    @WrapOperation(
+            method = "extractTabList",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/KeyMapping;isDown()Z")
+    )
+    private boolean alpaka$toggleTabList(KeyMapping key, Operation<Boolean> original) {
+        return CustomTabFeature.listShown(original.call(key));
     }
 
     /**

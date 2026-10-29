@@ -233,8 +233,10 @@ public class SlayerDropTracker {
             long killedAtMs = SlayerQuestDetector.INSTANCE.getKillDetectedAtMs();
             countKill(killed);
             boolean timed = SlayerQuestDetector.INSTANCE.getKillTimed();
-            SlayerSessionTracker.INSTANCE.onBossKilled(killed, killedAtMs, timed);
+            long xp = SlayerSessionTracker.INSTANCE.onBossKilled(killed, killedAtMs, timed);
             SlayerTimer.INSTANCE.onBossKilled(killed, killedAtMs, timed, SlayerQuestDetector.INSTANCE.getKillStated());
+            // Last, so the timer's fight time and the session's XP for this boss are settled.
+            SlayerKillLog.INSTANCE.onBossKilled(killed, killedAtMs, xp);
         }
 
         // Only signal for a boss spawning: Hypixel never sends a chat announcement for a
@@ -251,6 +253,7 @@ public class SlayerDropTracker {
         }
 
         flushPendingDrops();
+        SlayerKillLog.INSTANCE.tick();
     }
 
     public static boolean isInRift() {
@@ -323,6 +326,16 @@ public class SlayerDropTracker {
         if (QUEST_COMPLETE_PATTERN.matcher(string).matches()) {
             SlayerQuestDetector.INSTANCE.onChatKill(SlayerQuestDetector.INSTANCE.currentOrRecent());
             return;
+        }
+
+        // Also ahead of the tracker's switch: the slayer log has no switch of its own.
+        Matcher loggedDrop = DROP_PATTERN.matcher(string);
+        if (loggedDrop.matches()) {
+            // Only with a quest up, unlike the tracker below, which files any Rift drop under the
+            // Vampire: a log line claiming a boss drop has to come from a slayer being run.
+            SlayerType boss = SlayerQuestDetector.INSTANCE.currentOrRecent();
+            if (boss != null && isInRift()) boss = SlayerType.VAMPIRE;
+            if (boss != null) SlayerKillLog.INSTANCE.onDrop(boss, loggedDrop.group("item"), string);
         }
 
         if (!AlpakaConfig.instance.slayerDropTrackerEnabled) return;
@@ -453,14 +466,14 @@ public class SlayerDropTracker {
             Component dropComponent = getDropComponent(pending.message(), pending.item());
             MutableComponent feedback;
             if (lastDropped == null) {
-                feedback = Component.literal("First ").append(dropComponent)
-                        .append(Component.literal(" - at " + currentKills + " " + pending.type().display + " kills"));
+                feedback = Component.literal("First ").withStyle(ChatFormatting.GRAY).append(dropComponent)
+                        .append(Component.literal(" - at " + currentKills + " " + pending.type().display + (currentKills != 1 ? " kills" : " kill")));
             } else {
                 int sinceLast = currentKills - lastDropped;
-                feedback = Component.literal("Dropped ").append(dropComponent)
+                feedback = Component.literal("Dropped ").withStyle(ChatFormatting.GRAY).append(dropComponent)
                         .append(Component.literal(" after "))
                         .append(Component.literal(String.valueOf(sinceLast)).withStyle(ChatFormatting.GREEN))
-                        .append(Component.literal(" Boss" + (sinceLast != 1 ? "es" : "")));
+                        .append(Component.literal(" boss" + (sinceLast != 1 ? "es" : "")));
             }
             if (AlpakaConfig.instance.slayerRngDropGuildChatEnabled && isHeadlineDrop(pending.type(), pending.item())) {
                 Component source = AlpakaConfig.instance.slayerShareMessage == SHARE_HYPIXEL_LINE
@@ -545,6 +558,17 @@ public class SlayerDropTracker {
         return null;
     }
 
+    /** Dev tour only: a headline drop line and a since line, to see the share buttons in the chat. */
+    public static void devShareSample() {
+        String drop = "Dropped High Class Archfiend Dice after 412 bosses";
+        sendModMessage(Component.literal("Dropped ").withStyle(ChatFormatting.GRAY)
+                .append(Component.literal("High Class Archfiend Dice").withStyle(ChatFormatting.LIGHT_PURPLE))
+                .append(" after ").append(Component.literal("412").withStyle(ChatFormatting.GREEN))
+                .append(" bosses"));
+        sendModMessage(shareButtons(drop));
+        sendModMessage(Component.literal("§fBosses since last Warden Heart: 87  ").append(shareButtons("Bosses since last Warden Heart: 87")));
+    }
+
     /** /alpakaslayer since &lt;item&gt;: the player's own count, with buttons to share it. */
     public static void printSince(String query) {
         SinceAnswer answer = findSince(query);
@@ -579,7 +603,7 @@ public class SlayerDropTracker {
                 continue;
             }
             int kills = data != null ? data.kills : 0;
-            lines.add("  §e" + type.display + ": §a" + kills + " §7kills");
+            lines.add("  §e" + type.display + ": §a" + kills + " §7kill" + (kills != 1 ? "s" : ""));
         }
 
         lines.add("§6Personal Bests");
@@ -592,7 +616,7 @@ public class SlayerDropTracker {
             }
         }
         if (!anyBest) {
-            lines.add("  §8no boss timed yet");
+            lines.add("  §8No boss timed yet.");
         }
 
         // Only each slayer's headline RNG drop, the one worth counting a dry streak against - the
@@ -610,14 +634,14 @@ public class SlayerDropTracker {
 
             Integer since = SlayerRngDropTracker.INSTANCE.bossesSince(type);
             if (since == null) {
-                lines.add("  §e" + type.display + "§7: " + item + " §8- §cnever §7in " + data.kills + " bosses");
+                lines.add("  §e" + type.display + "§7: " + item + " §8- §cnever §7in " + data.kills + " boss" + (data.kills != 1 ? "es" : ""));
             } else {
                 lines.add("  §e" + type.display + "§7: " + item + " §8- §a" + since + " §7boss"
                         + (since != 1 ? "es" : "") + " ago");
             }
         }
         if (!anyDrop) {
-            lines.add("  §8nothing recorded yet");
+            lines.add("  §8Nothing recorded yet.");
         }
         lines.add("§8Use /alpakaslayer <slayer> for every drop of one slayer.");
         sendModBlock("§6§lSlayer Stats", lines);
@@ -644,7 +668,7 @@ public class SlayerDropTracker {
         }
 
         if (data == null || data.drops == null || data.drops.isEmpty()) {
-            lines.add("  §8nothing recorded yet");
+            lines.add("  §8Nothing recorded yet.");
         } else {
             data.drops.entrySet().stream()
                     .sorted(java.util.Map.Entry.comparingByValue(java.util.Comparator.reverseOrder()))

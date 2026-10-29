@@ -139,8 +139,8 @@ class WheelMesh @JvmOverloads constructor(private val feather: Float, private va
         fun band(r0: Float, alpha0: Float, r1: Float, alpha1: Float) {
             if (r1 <= r0) return
             // Each step's far edge is the next step's near edge - the same t, so the same angles and
-            // points - and the colours depend only on the band's two radii. Carrying the edge over and
-            // taking the colours once halves the sines and cosines, which are most of what a mesh
+            // points - and the colors depend only on the band's two radii. Carrying the edge over and
+            // taking the colors once halves the sines and cosines, which are most of what a mesh
             // costs to build.
             val c0 = colorAt(r0, alpha0)
             val c1 = colorAt(r1, alpha1)

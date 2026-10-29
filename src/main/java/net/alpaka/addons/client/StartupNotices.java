@@ -64,7 +64,7 @@ public final class StartupNotices {
         if (!updated) return;
 
         SlayerDropTracker.sendModMessage(Component.literal("§7Updated to §f" + current + "§7. ")
-                .append(Component.literal("[Release notes]").withStyle(style -> style
+                .append(Component.literal("[Release Notes]").withStyle(style -> style
                         .withColor(ChatFormatting.AQUA)
                         .withClickEvent(new ClickEvent.OpenUrl(URI.create(RELEASES_URL)))
                         .withHoverEvent(new HoverEvent.ShowText(Component.literal(RELEASES_URL))))));
@@ -73,7 +73,7 @@ public final class StartupNotices {
         // version that could still post to party and guild chat by itself.
         if (previous.isEmpty()) {
             SlayerDropTracker.sendModMessage("§7The mod no longer sends chat by itself: the automatic §f!since§7 party reply "
-                    + "and the guild drop announcement are gone. §fShare Buttons On Top Drops§7 "
+                    + "and the guild drop announcement are gone. §fShare Buttons on RNG Drops§7 "
                     + "in §f/aa§7 adds buttons that fill your chat box instead.");
         }
     }

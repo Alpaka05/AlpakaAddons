@@ -1,17 +1,14 @@
 package net.alpaka.addons.utils;
 
 import net.alpaka.addons.AlpakaAddons;
+import net.alpaka.addons.client.AlpakaConfirmScreen;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.slayer.SlayerDropTracker;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
 import net.fabricmc.loader.api.metadata.ModOrigin;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.ConfirmScreen;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.ClickEvent;
-import net.minecraft.network.chat.CommonComponents;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Util;
 
@@ -47,7 +44,7 @@ import java.util.regex.Pattern;
  *
  * Nothing happens without that confirmation. The [Install] button on the chat notice (or
  * {@code /alpakaupdate install}) only opens a confirmation screen naming the version, file, size
- * and checksum; its "Install on restart" button is the one thing that starts a download. The click
+ * and checksum; its "Install on Restart" button is the one thing that starts a download. The click
  * event carries no data, so a server that sends a message with the same button can at most open
  * that screen for the release this client found itself.
  *
@@ -162,20 +159,16 @@ public final class UpdateInstaller {
             return;
         }
 
+        // Asked in the one dialog the mod asks everything in; it goes back to the chat it was
+        // clicked in, or to no screen for the typed command.
         Minecraft mc = Minecraft.getInstance();
-        Screen previous = mc.gui.screen();
         String details = release.getJarName() + ", "
                 + String.format(Locale.ROOT, "%.1f MB", release.getJarSize() / (1024.0 * 1024.0))
                 + ", SHA-256 " + release.getSha256().substring(0, 12) + "...";
-        mc.gui.setScreen(new ConfirmScreen(yes -> {
-            mc.gui.setScreen(previous);
-            if (yes) download(release);
-        },
-                Component.literal("Install Alpaka Addons " + version + "?"),
-                Component.literal("It is downloaded from GitHub now and checked before anything changes. It replaces "
-                        + ModVersion.mod() + " when you close the game.\n\n" + details),
-                Component.literal("Install on restart"),
-                CommonComponents.GUI_CANCEL));
+        mc.gui.setScreen(new AlpakaConfirmScreen(mc.gui.screen(), "Install Alpaka Addons " + version,
+                "It is downloaded from GitHub now and checked before anything changes. It replaces "
+                        + ModVersion.mod() + " when you close the game. " + details,
+                "Install on Restart", false, () -> download(release)));
     }
 
     /** Drops a confirmed update before the game closes. */

@@ -162,9 +162,9 @@ object MenuStyle {
     fun guiScale(): Float = Minecraft.getInstance().window.guiScale.toFloat()
 
     // The status dot with its pulse, and the glint, draw with one mesh kept between frames instead
-    // of building a new one every time they draw. Sharing it is safe because each fills and submits
-    // it before the other can take it, and submit() copies out what it hands on. The feather is
-    // about one screen pixel, so a new GUI scale needs a new mesh.
+    // of building a new one every time they draw. Sharing it is safe because each fills and submits it before the
+    // other can take it, and submit() copies out what it hands on. The feather is about one screen
+    // pixel, so a new GUI scale needs a new mesh.
     private var sharedMesh: WheelMesh? = null
     private var sharedMeshScale = 0
 

@@ -580,6 +580,29 @@ public class AlpakaStats {
     }
 
     /**
+     * Whether the folder may be written to right now. For the slayer log, which lives in the same
+     * folder and has to wait for a drive that is not mounted yet just like the record does.
+     */
+    public static boolean storeAvailable() {
+        return !awaitingStore && !storeMissing();
+    }
+
+    /**
+     * The Skyblock profile in play as a player would write it ("Kiwi"), or empty while unknown.
+     * The same answer {@link #current()} files the record under, without creating anything.
+     */
+    public static String currentProfileLabel() {
+        String account = accountKey();
+        String profile = SkyblockProfileTracker.INSTANCE.currentFor(account);
+        if (profile == null) {
+            Account entry = instance.accounts.get(account);
+            profile = entry == null ? null : entry.lastProfile;
+        }
+        if (profile == null || profile.isEmpty()) return "";
+        return Character.toUpperCase(profile.charAt(0)) + profile.substring(1);
+    }
+
+    /**
      * Moves a record left in the instance's own config folder to the shared one, once.
      *
      * Copied rather than moved: if this machine is later pointed back at an older build, or the
@@ -1029,7 +1052,7 @@ public class AlpakaStats {
         lastSaveFailureNoticeMs = now;
 
         String reason = e.getMessage() == null || e.getMessage().isBlank() ? e.getClass().getSimpleName() : e.getMessage();
-        SlayerDropTracker.sendModMessage("§cSlayer stats could not be saved to §f" + file.getAbsolutePath());
+        SlayerDropTracker.sendModMessage("§cCouldn't save the slayer stats to §f" + file.getAbsolutePath());
         SlayerDropTracker.sendModMessage("§c" + reason);
         SlayerDropTracker.sendModMessage("§7Kills since the last successful save exist only in memory. "
                 + "§f/alpakastats folder default §7or a valid folder fixes this without a restart.");

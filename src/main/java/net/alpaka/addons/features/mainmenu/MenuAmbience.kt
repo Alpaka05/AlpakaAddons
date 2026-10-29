@@ -60,8 +60,8 @@ internal object MenuAmbience {
     class Placement(val x: Float, val y: Float, val width: Float, val height: Float)
 
     /**
-     * The picture, cover-fitted with room to move, drifting slowly ([drift] of the full sway) and
-     * shifted against the mouse by up to [parallax] pixels; returns where it went, so what stands in it can move with it. Drawn
+     * The picture, cover-fitted with room to move, drifting slowly ([drift] of the full sway) and shifted against the mouse by
+     * up to [parallax] pixels; returns where it went, so what stands in it can move with it. Drawn
      * with linear filtering: it is shown smaller or larger than its own size on nearly every
      * screen, and the nearest texel would make its fine detail shimmer.
      */

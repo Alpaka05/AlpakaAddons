@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * It has to switch off every feature and nothing else. A feature's settings, and every font, color
  * and slider, stay as they are, so that a feature switched back on is the way it was. The method
  * used to switch the settings off and reset values as well, and the backup made that stick after
- * the next start: Block Overlay came back without its outline, Custom Sounds came back silent.
+ * the next start: Block Overlay came back without its outline.
  * AlpakaConfig itself cannot be initialized outside the game, hence the source.
  */
 class DisableAllFeaturesTest {
@@ -31,7 +31,8 @@ class DisableAllFeaturesTest {
 
     /**
      * Every feature's own switch, and the lone switches that belong to no feature. A new feature puts
-     * its switch both here and in the method.
+     * its switch both here and in the method. Every custom sound is a feature of its own here, as
+     * ConfigTree.MASTERS has it.
      */
     private static final Set<String> SWITCHES = Set.of(
             // General
@@ -40,7 +41,7 @@ class DisableAllFeaturesTest {
             "fullbrightEnabled", "skyEffectsEnabled", "cleanBlazeEnabled", "blazeFirePitsEnabled", "stopBlazeSpinning",
             "hideHurtOverlayEnabled", "hideMobDeathsEnabled", "hideEntityFire", "firstPersonFireStatic",
             "nameTagTextShadow", "showOwnNameTag", "renderHandInThirdPerson", "smoothPerspectiveEnabled",
-            "disableFrontPerspective", "containerBgFadeInEnabled", "inventorySnowEnabled",
+            "disableFrontPerspective", "zoomEnabled", "containerBgFadeInEnabled", "inventorySnowEnabled",
             "scrollableTooltipsEnabled", "persistentItemNameEnabled", "oldMasterStarsEnabled",
             "wideHealthBarEnabled", "betterChatEnabled", "chatSearchEnabled", "chatCopyEnabled", "expandChatHistory",
             "compactChatEnabled", "mentionNotificationEnabled", "chatPeekEnabled", "chatTabsEnabled",
@@ -49,15 +50,24 @@ class DisableAllFeaturesTest {
             "itemSizeFeatureEnabled", "itemStarlightEnabled", "itemMotionBlurEnabled", "blockOverlayEnabled",
             "etherwarpOverlayEnabled", "etherwarpSoundEnabled",
             // SkyBlock
+            "visitorBazaarEnabled",
             "slayerDropTrackerEnabled", "hideHypixelDropMessage", "slayerRngDropGuildChatEnabled",
             "hideSlayerChatMessages", "bossSpawnAlertEnabled", "bossCocoonAlertEnabled", "slayerTimerEnabled",
             "slayerHudEnabled", "worldAgeJoinMessageEnabled", "partyInvitePromptEnabled",
             "cacheResourcePackEnabled", "guildPrefixEnabled", "bridgeBotFormatterEnabled", "ragnarockEnabled",
-            "onlyCritDamageEnabled", "deployableTimerEnabled",
+            "onlyCritDamageEnabled", "deployableTimerEnabled", "dungeonMapEnabled", "leapMenuEnabled", "customAuctionHouseEnabled", "customBazaarEnabled",
+            "marketPriceHistoryEnabled", "customSignInputEnabled", "chestValueEnabled",
+            "starredMobsHighlightEnabled",
+            "dungeonSolversEnabled", "terminalSolversEnabled", "terminalCustomGui", "deviceSolversEnabled",
+            "dungeonDoorHighlight",
             // Cosmetics
             "customNameTagEnabled", "chromaHatEnabled", "playerScaleEnabled", "customDamageTagsEnabled",
             // Utility and sounds
-            "alwaysSprintEnabled", "keepCursorPositionEnabled", "customSoundsEnabled", "muteVanillaSoundsInBlazeSlayer"
+            "alwaysSprintEnabled", "keepCursorPositionEnabled", "customSoundsEnabled", "muteVanillaSoundsInBlazeSlayer",
+            "customSoundButtonClick", "customSoundHotbarScroll", "customSoundInventoryOpenClose",
+            "customSoundInventoryClick", "customSoundRareDrop", "customSoundNotification",
+            "customSoundPlayerHurt", "customSoundBlazeDeath", "customSoundZombieRemedy",
+            "customSoundSuccessfulHit", "customSoundLowHpHeartbeat"
     );
 
     /**
@@ -65,14 +75,15 @@ class DisableAllFeaturesTest {
      * switching the feature back on brings it back changed.
      */
     private static final Set<String> KEPT = Set.of(
+            "dungeonMapShowBoss", "dungeonMapBossMode", "dungeonMapScale", "dungeonMapCurrentRoom",
+            "dungeonMapBackground", "dungeonMapBlur", "dungeonMapFrame", "dungeonMapCustomColors",
+            "dungeonMapPlayerHeads", "dungeonMapRotateHeads", "dungeonMapSmoothMarkers", "dungeonMapSmoothFont",
+            "dungeonMapRoomNames", "dungeonMapRoomSecrets",
+            "leapMenuShowMap",
+            "starredMobsHideNames", "starredMobsHighlightStyle",
             // Block Overlay
             "blockOutlineEnabled", "blockFillEnabled", "blockFadeInEnabled", "blockChromaEnabled",
             "blockIgnoreDepth", "blockIgnorePlants", "blockHideOnEtherwarp",
-            // Custom Sounds: on main, every sound is a part of that one feature
-            "customSoundButtonClick", "customSoundHotbarScroll", "customSoundInventoryOpenClose",
-            "customSoundInventoryClick", "customSoundRareDrop", "customSoundNotification",
-            "customSoundPlayerHurt", "customSoundBlazeDeath", "customSoundZombieRemedy",
-            "customSoundSuccessfulHit", "customSoundLowHpHeartbeat",
             // Better Chat, Chat Peek, Chat Tabs, screenshots
             "smoothChatEnabled", "chatOpenAnimationEnabled", "chatSmoothScrollEnabled", "chatBlurEnabled",
             "chatScrollbarEnabled", "chatMovable", "chatPeekInMenus", "chatTabsSendToChannel",
@@ -87,6 +98,24 @@ class DisableAllFeaturesTest {
             // Viewmodel
             "itemSwayDisabled", "itemLightingDisabled", "itemNoEquipEnabled", "itemIgnoreEmptyHandEnabled",
             "itemSwingTranslationDisabled", "itemSwingAlwaysFinishEnabled",
+            // Wide Health Bar, Always Sprint, Price History
+            "wideHealthBarCentered", "wideHealthBarAbsorption", "alwaysSprintIgnoreGarden",
+            "marketPriceHistoryRange",
+            // Chest Value: whether it shows, and how
+            "chestValueShown", "chestValueIncludeInventory", "chestValueSide", "chestValueSort",
+            "chestValueX", "chestValueY",
+            // Dungeon solvers: each puzzle, terminal and device has its own switch under its master
+            "solveThreeWeirdos", "solveQuiz", "solveTicTacToe", "solveHigherOrLower", "solveCreeperBeams",
+            "solveTeleportMaze", "solveWaterBoard", "solveBoulder", "solveIceFill", "solveIcePath",
+            "waterBoardFastSolutions",
+            "dungeonSolverLabels", "solvePanesTerminal", "solveRubixTerminal", "solveNumbersTerminal",
+            "solveStartsWithTerminal", "solveSelectAllTerminal", "solveMelodyTerminal", "terminalHideOtherItems",
+            "terminalPredictClicks", "terminalBlockWrongClicks", "terminalFirstClickGuard", "terminalRateGuard",
+            "solveSimonSays", "solveArrowAlign", "solveLightsDevice", "solveSharpshooter",
+            // HUD style: how things look, like the fonts and colors
+            "hudBlurAll", "hudSmoothFontAll", "slayerHudBlur", "slayerHudSmoothFont", "slayerTimerHudBlur",
+            "slayerTimerHudSmoothFont", "performanceHudBlur", "performanceHudSmoothFont", "inventoryHudBlur",
+            "notificationBlur", "notificationSmoothFont", "menuFontInChat", "menuFontInScoreboard",
             // Values
             "menuFont", "menuAccentColor", "nameTagBackgroundColor", "firstPersonFireOpacity",
             "firstPersonFireHeight", "containerBgOpacity"

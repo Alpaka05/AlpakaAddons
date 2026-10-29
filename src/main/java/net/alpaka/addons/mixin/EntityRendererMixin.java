@@ -2,7 +2,9 @@ package net.alpaka.addons.mixin;
 
 import net.alpaka.addons.features.blaze.CleanBlazeFeature;
 import net.alpaka.addons.features.damagetags.DamageTagFeature;
+import net.alpaka.addons.features.dungeonmobs.StarredMobsHighlight;
 import net.alpaka.addons.features.fire.FireOverlayFeature;
+import net.alpaka.addons.features.garden.PestFinder;
 import net.alpaka.addons.features.mobdeath.HideMobDeathsFeature;
 import net.alpaka.addons.features.playerscale.PlayerScaleFeature;
 import net.alpaka.addons.features.slayer.SlayerBossHighlight;
@@ -43,13 +45,15 @@ public class EntityRendererMixin<T extends Entity, S extends EntityRenderState> 
         CleanBlazeFeature.shouldHideEntityFire(entity, state);
         FireOverlayFeature.applyEntity(state);
         SlayerBossHighlight.applyOutline(entity, state);
+        StarredMobsHighlight.applyOutline(entity, state);
+        PestFinder.applyOutline(entity, state);
     }
 
     @Inject(method = "shouldRender", at = @At("HEAD"), cancellable = true)
     private void filterBlazeEntities(T entity, Frustum frustum, double x, double y, double z, CallbackInfoReturnable<Boolean> info) {
         AlpakaPerf.count(AlpakaPerf.Section.ENTITY_RULES);
         if (CleanBlazeFeature.shouldHideEntity(entity) || DamageTagFeature.shouldHideEntity(entity)
-                || HideMobDeathsFeature.shouldHideEntity(entity)) {
+                || HideMobDeathsFeature.shouldHideEntity(entity) || StarredMobsHighlight.shouldHideEntity(entity)) {
             info.setReturnValue(false);
         }
     }

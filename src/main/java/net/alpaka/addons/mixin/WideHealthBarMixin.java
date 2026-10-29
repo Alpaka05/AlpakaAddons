@@ -4,6 +4,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.healthbar.WideHealthBarFeature;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.Hud;
 import net.minecraft.util.RandomSource;
@@ -19,7 +20,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * The wide health bar: rows of twenty hearts where vanilla draws ten, no hunger bar, no armor bar,
- * and the air bubbles moved along so they still sit against the hearts.
+ * and the air bubbles moved along so they still sit against the hearts. Centred, the level number
+ * moves onto the experience bar to make room.
  *
  * Every hook stands down while the player rides something with hearts of its own, because vanilla
  * draws those in the hunger bar's place - the very space the long row takes over - and the
@@ -51,6 +53,29 @@ public abstract class WideHealthBarMixin {
             ci.cancel();
         }
     }
+
+    /**
+     * Centred, the hearts run through the middle where the level number sits; the number moves down
+     * onto the experience bar, over its middle.
+     */
+    @WrapOperation(
+            method = "extractHotbarAndDecorations",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/contextualbar/ContextualBar;extractExperienceLevel(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/client/gui/Font;I)V")
+    )
+    private void alpaka$levelOntoTheBar(GuiGraphicsExtractor graphics, Font font, int level, Operation<Void> original) {
+        if (!WideHealthBarFeature.centered() || !alpaka$wideBar()) {
+            original.call(graphics, font, level);
+            return;
+        }
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(0.0f, LEVEL_DROP);
+        original.call(graphics, font, level);
+        graphics.pose().popMatrix();
+    }
+
+    /** How far the level number moves down: from above the experience bar onto it. */
+    @Unique
+    private static final float LEVEL_DROP = 5.0f;
 
     /** No armor row either: SkyBlock shows its defence in the action bar, so the icons only took space. */
     @WrapOperation(

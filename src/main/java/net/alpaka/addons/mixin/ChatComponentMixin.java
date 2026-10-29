@@ -12,6 +12,7 @@ import net.alpaka.addons.features.chat.ChatBlurFeature;
 import net.alpaka.addons.features.chat.ChatCopyFeature;
 import net.alpaka.addons.features.chat.ChatHudElement;
 import net.alpaka.addons.features.chat.ChatScrollbar;
+import net.alpaka.addons.client.hud.VisiblePlacement;
 import net.alpaka.addons.features.chat.ChatPeekFeature;
 import net.alpaka.addons.features.chat.ChatOpenAnimation;
 import net.alpaka.addons.features.chat.ChatScrollAnimator;
@@ -87,13 +88,7 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
         at = @At(value = "CONSTANT", args = "intValue=100")
     )
     private int modifyMaxChatHistory(int original) {
-        return alpaka$historyLimit();
-    }
-
-    /** How many messages, and how many wrapped lines, the chat keeps. */
-    @Unique
-    private static int alpaka$historyLimit() {
-        return AlpakaConfig.instance.expandChatHistory ? Math.max(100, AlpakaConfig.instance.chatHistoryLimit) : 100;
+        return AlpakaConfig.instance.chatHistoryLength();
     }
 
     /**
@@ -287,16 +282,6 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
     }
 
     /**
-     * The lines a re-layout produces, oldest first, while it runs; null otherwise.
-     *
-     * Vanilla puts every line in at the front of the display list, which shifts the whole list each
-     * time: harmless for 100 lines, but quadratic for an expanded history, and a re-layout runs on
-     * every tab switch and every key typed into the chat search. Collected here instead and put in
-     * at once when the re-layout ends.
-     */
-    @Unique private java.util.ArrayList<GuiMessage.Line> alpaka$replayLines;
-
-    /**
      * Times the whole re-layout, the replay hooks below included, with its end in a finally. Only a
      * measurement, like the two other timers here, so the game starts without it if it cannot apply.
      */
@@ -309,6 +294,16 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
             AlpakaPerf.end(AlpakaPerf.Section.CHAT_REPLAY, t);
         }
     }
+
+    /**
+     * The lines a re-layout produces, oldest first, while it runs; null otherwise.
+     *
+     * Vanilla puts every line in at the front of the display list, which shifts the whole list each
+     * time: harmless for 100 lines, but quadratic for an expanded history, and a re-layout runs on
+     * every tab switch and every key typed into the chat search. Collected here instead and put in
+     * at once when the re-layout ends.
+     */
+    @Unique private java.util.ArrayList<GuiMessage.Line> alpaka$replayLines;
 
     /** A re-layout replays every stored message through the queue; none of that is a new arrival. */
     @Inject(method = "refreshTrimmedMessages", at = @At("HEAD"))
@@ -325,7 +320,7 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
         if (lines != null) {
             // Newest first, as vanilla keeps them, cut to the same limit it trims to line by line.
             java.util.Collections.reverse(lines);
-            int limit = alpaka$historyLimit();
+            int limit = AlpakaConfig.instance.chatHistoryLength();
             this.trimmedMessages.addAll(lines.size() > limit ? lines.subList(0, limit) : lines);
         }
         SmoothChatFeature.endReplay();
@@ -560,8 +555,8 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
      * The fade: an arriving line is drawn with the slide's progress as its alpha, on top of the
      * time fade vanilla already applies. The alpha stays just above zero rather than at it, so a
      * line at the very start of its fade is invisible instead of undefined. Only the alpha changes,
-     * so only that argument is hooked: @ModifyArgs boxed all three into an Args object for every
-     * drawn line, every frame, even with smooth chat off.
+     * so only that argument is hooked: @ModifyArgs would box all three into an Args object for
+     * every drawn line, every frame, even with smooth chat off.
      */
     @ModifyArg(
         method = "forEachLine",
@@ -672,8 +667,9 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
         if (access instanceof AlpakaChatGraphicsClip) ChatScrollbar.beginLayout();
         if (!ChatHudElement.INSTANCE.isFeatureEnabled()) return;
         int screenWidth = this.minecraft.getWindow().getGuiScaledWidth();
-        float dx = ChatHudElement.INSTANCE.visibleAnchorX(screenWidth, guiHeight);
-        float dy = ChatHudElement.INSTANCE.visibleAnchorY(screenWidth, guiHeight) - (guiHeight - 40);
+        VisiblePlacement placement = ChatHudElement.INSTANCE.visiblePlacement(screenWidth, guiHeight);
+        float dx = placement.getAnchorX();
+        float dy = placement.getAnchorY() - (guiHeight - 40);
         if (dx != 0.0f || dy != 0.0f) access.updatePose(pose -> pose.translate(dx, dy));
     }
 

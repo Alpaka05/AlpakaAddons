@@ -1,19 +1,19 @@
 package net.alpaka.addons.client
 
+import net.alpaka.addons.client.gui.AlpakaStyle
+import net.alpaka.addons.client.gui.AlpakaStyle.ButtonKind
 import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.config.AlpakaConfig.CommandAlias
 import net.alpaka.addons.config.AlpakaConfig.KeyShortcut
 import net.alpaka.addons.features.shortcuts.CommandShortcuts
-import net.alpaka.addons.features.sound.CustomSoundFeature
 import com.mojang.blaze3d.platform.InputConstants
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.input.CharacterEvent
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
-import net.minecraft.network.chat.Component
 import org.lwjgl.glfw.GLFW
 import kotlin.math.max
 import kotlin.math.min
@@ -25,9 +25,10 @@ import kotlin.math.min
  * Every cell is a field: a click puts the caret in it, Tab moves on to the next one. A key cell
  * waits for the next key press instead, with any modifiers held then. Rows left completely empty
  * are dropped when the screen closes; an alias or key used twice is shown red, since only the first
- * one counts. Laid out like the command wheel editor next to it.
+ * one counts. Drawn with [AlpakaStyle], like the command wheel editor next to it.
  */
-class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(Component.literal("Command Shortcuts")) {
+class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(GuiFont.text("Command Shortcuts")),
+    net.alpaka.addons.client.gui.NoticeHost {
 
     private enum class Kind { SECTION, HINT, ALIAS, KEY, ADD_ALIAS, ADD_KEY }
 
@@ -52,6 +53,8 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(Componen
     private var targetScrollY = 0.0
     private var maxScrollY = 0.0
     private var lastFrameMs = System.currentTimeMillis()
+    private var openTimeMs = 0L
+    private var caretFrom = 0L
 
     private var rows: List<Row> = emptyList()
     private var contentHeight = 0
@@ -71,16 +74,16 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(Componen
         val winH = (this.height - MARGIN * 2).coerceIn(MIN_H, WIN_H)
         val winX = (this.width - winW) / 2
         val winY = maxOf(MARGIN / 2, (this.height - winH) / 2)
-        val listX = winX + 16
-        val listY = winY + HEADER_H + 10
-        val listW = winW - 32
-        val listH = winY + winH - 16 - listY
+        val listX = winX + AlpakaStyle.PAD + 4
+        val listY = winY + AlpakaStyle.HEADER_H + 2
+        val listW = winW - 2 * (AlpakaStyle.PAD + 4)
+        val listH = winY + winH - AlpakaStyle.PAD - listY
         return Frame(winX, winY, winW, winH, listX, listY, listW, listH)
     }
 
     private fun buildRows() {
         val list = ArrayList<Row>()
-        var y = 6
+        var y = 2
         fun add(kind: Kind, index: Int, h: Int, text: String = "") {
             list.add(Row(kind, index, y, h, text))
             y += h
@@ -94,7 +97,7 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(Componen
         add(Kind.HINT, 1, HINT_H, "Runs the command when the key is pressed in game.")
         for (i in keys.indices) { add(Kind.KEY, i, ITEM_H); y += ITEM_GAP }
         add(Kind.ADD_KEY, 0, ITEM_H)
-        y += 6
+        y += 4
         rows = list
         contentHeight = y
     }
@@ -102,53 +105,35 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(Componen
     // Cell positions within a row, shared by drawing and clicking.
     private fun leftW(kind: Kind) = if (kind == Kind.KEY) KEY_W else ALIAS_W
     private fun commandX(rowX: Int, kind: Kind) = rowX + leftW(kind) + ARROW_W
-    private fun delX(rowX: Int, rowW: Int) = rowX + rowW - SMALL_BTN - 2
+    private fun delX(rowX: Int, rowW: Int) = rowX + rowW - SMALL_BTN - 3
     private fun commandW(rowX: Int, rowW: Int, kind: Kind) = delX(rowX, rowW) - 6 - commandX(rowX, kind)
 
-    private fun doneX(f: Frame) = f.winX + f.winW - DONE_W - 12
-    private fun doneY(f: Frame) = f.winY + (HEADER_H - DONE_H) / 2
+    private fun doneX(f: Frame) = f.winX + f.winW - DONE_W - AlpakaStyle.PAD
+    private fun doneY(f: Frame) = f.winY + (AlpakaStyle.HEADER_H - AlpakaStyle.BUTTON_H) / 2
 
-    private fun inside(mx: Int, my: Int, x: Int, y: Int, w: Int, h: Int) = mx in x..(x + w) && my in y..(y + h)
+    private fun inside(mx: Int, my: Int, x: Int, y: Int, w: Int, h: Int) = AlpakaStyle.inside(mx.toDouble(), my.toDouble(), x, y, w, h)
 
-    private fun playPloppSound() {
-        try {
-            CustomSoundFeature.playButtonClickSound()
-        } catch (_: Throwable) {}
-    }
+    private fun playPloppSound() = AlpakaStyle.click()
 
     // -------------------------------------------------------------- rendering
 
-    override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
-        super.extractBackground(graphics, mouseX, mouseY, partialTick)
+    override fun init() {
+        if (openTimeMs == 0L) openTimeMs = System.currentTimeMillis()
+    }
 
+    override fun extractBackground(graphics: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
         val now = System.currentTimeMillis()
         val deltaSec = min(0.1f, (now - lastFrameMs) / 1000f)
         lastFrameMs = now
 
-        graphics.pose().pushMatrix()
-        graphics.pose().identity()
-        graphics.fill(0, 0, this.width, this.height, 0x70000000)
-        graphics.pose().popMatrix()
+        AlpakaStyle.backdrop(graphics, this.width, this.height)
+        val pushed = AlpakaStyle.beginOpen(graphics, openTimeMs, this.width, this.height)
 
         val f = frame()
-        val accent = ModernGuiUtils.getAccentColor()
-
-        ModernGuiUtils.drawPanelShadow(graphics, f.winX, f.winY, f.winW, f.winH, ModernGuiUtils.PANEL_RADIUS, 1.0f)
-        ModernGuiUtils.drawRoundedPanel(graphics, f.winX, f.winY, f.winW, f.winH, ModernGuiUtils.PANEL_RADIUS,
-            ModernGuiUtils.COLOR_PANEL_BG, ModernGuiUtils.COLOR_CARD_BORDER)
-
-        // Header band with the accent rule, as on the other menus.
-        val r = ModernGuiUtils.PANEL_RADIUS
-        ModernGuiUtils.drawRoundedRect(graphics, f.winX + 1, f.winY + 1, f.winW - 2, HEADER_H - 1, r - 1, ModernGuiUtils.COLOR_SIDEBAR_BG)
-        ModernGuiUtils.drawRect(graphics, f.winX + 1, f.winY + HEADER_H - r, f.winW - 2, r, ModernGuiUtils.COLOR_SIDEBAR_BG)
-        ModernGuiUtils.drawRect(graphics, f.winX + 1, f.winY + HEADER_H - 1, f.winW - 2, 1, accent)
-        graphics.text(this.font, GuiFont.text("Command Shortcuts"), f.winX + 16, f.winY + 15, ModernGuiUtils.COLOR_TEXT_PRIMARY, false)
-
-        val hoverDone = inside(mouseX, mouseY, doneX(f), doneY(f), DONE_W, DONE_H)
-        ModernGuiUtils.drawModernButton(graphics, this.font, doneX(f), doneY(f), DONE_W, DONE_H, "Done", hoverDone, false)
-
-        ModernGuiUtils.drawRoundedPanel(graphics, f.listX, f.listY, f.listW, f.listH, ModernGuiUtils.WIDGET_RADIUS + 2,
-            ModernGuiUtils.COLOR_SIDEBAR_BG, ModernGuiUtils.COLOR_CARD_BORDER)
+        AlpakaStyle.panel(graphics, f.winX, f.winY, f.winW, f.winH)
+        AlpakaStyle.header(graphics, this.font, "Command Shortcuts", f.winX, f.winY, f.winW)
+        val hoverDone = inside(mouseX, mouseY, doneX(f), doneY(f), DONE_W, AlpakaStyle.BUTTON_H)
+        AlpakaStyle.button(graphics, this.font, doneX(f), doneY(f), DONE_W, AlpakaStyle.BUTTON_H, "Done", hoverDone, ButtonKind.PRIMARY)
 
         buildRows()
         maxScrollY = max(0.0, (contentHeight - f.listH).toDouble())
@@ -156,68 +141,85 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(Componen
         scrollY += (targetScrollY - scrollY) * min(1.0, deltaSec * 14.0)
 
         val inList = inside(mouseX, mouseY, f.listX, f.listY, f.listW, f.listH)
-        graphics.enableScissor(f.listX + 1, f.listY + 1, f.listX + f.listW - 1, f.listY + f.listH - 1)
+        graphics.enableScissor(f.listX, f.listY, f.listX + f.listW, f.listY + f.listH)
 
-        val rowX = f.listX + 8
-        val rowW = f.listW - 16
+        val rowX = f.listX
+        val rowW = f.listW
         val aliasDupes = duplicateAliases()
         val keyDupes = duplicateKeys()
         for (row in rows) {
             val y = f.listY + row.y - scrollY.toInt()
             if (y + row.height < f.listY || y > f.listY + f.listH) continue
             when (row.kind) {
-                Kind.SECTION -> graphics.text(this.font, GuiFont.text(row.text), rowX + 2, y + 8, accent, false)
-                Kind.HINT -> graphics.text(this.font, GuiFont.text(row.text), rowX + 2, y + 1, ModernGuiUtils.COLOR_TEXT_MUTED, false)
+                Kind.SECTION -> AlpakaStyle.groupLabel(graphics, this.font, row.text, rowX + 4, y + 8)
+                Kind.HINT -> graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, row.text, rowW - 8)),
+                    rowX + 4, y + 1, AlpakaStyle.TEXT_SOFT, false)
                 Kind.ALIAS, Kind.KEY -> drawEntryRow(graphics, row, rowX, y, rowW, mouseX, mouseY, inList,
                     if (row.kind == Kind.ALIAS) row.index in aliasDupes else row.index in keyDupes)
                 Kind.ADD_ALIAS, Kind.ADD_KEY -> {
                     val hovered = inList && inside(mouseX, mouseY, rowX, y, rowW, row.height)
-                    ModernGuiUtils.drawRoundedOutline(graphics, rowX, y, rowW, row.height, ModernGuiUtils.WIDGET_RADIUS + 1,
-                        if (hovered) accent else ModernGuiUtils.COLOR_CARD_BORDER)
-                    val label = if (row.kind == Kind.ADD_ALIAS) "+ Add Alias" else "+ Add Key Shortcut"
-                    ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text(label), rowX + rowW / 2, y + (row.height - 8) / 2,
-                        if (hovered) accent else ModernGuiUtils.COLOR_TEXT_MUTED)
+                    val accent = ModernGuiUtils.getAccentColor()
+                    ModernGuiUtils.drawRoundedOutline(graphics, rowX, y, rowW, row.height, AlpakaStyle.CARD_RADIUS,
+                        if (hovered) accent else AlpakaStyle.DIVIDER)
+                    val label = if (row.kind == Kind.ADD_ALIAS) "Add Alias" else "Add Key Shortcut"
+                    val color = if (hovered) accent else AlpakaStyle.TEXT_MUTED
+                    val lw = GuiFont.width(this.font, label)
+                    val cx = rowX + rowW / 2
+                    AlpakaStyle.plus(graphics, (cx - lw / 2 - 6).toFloat(), y + row.height / 2f, 3f, color)
+                    graphics.text(this.font, GuiFont.text(label), cx - lw / 2 + 2, y + (row.height - 8) / 2, color, false)
                 }
             }
         }
+        AlpakaStyle.scrollFades(graphics, f.listX, f.listY, f.listW, f.listH, scrollY > 0.5, scrollY < maxScrollY - 0.5)
         graphics.disableScissor()
+
+        AlpakaStyle.endOpen(graphics, pushed)
+        net.alpaka.addons.features.notification.AlpakaNotifications.renderOverScreen(graphics)
     }
 
     private fun drawEntryRow(graphics: GuiGraphicsExtractor, row: Row, x: Int, y: Int, w: Int, mouseX: Int, mouseY: Int,
                              inList: Boolean, duplicate: Boolean) {
+        val hovered = inList && inside(mouseX, mouseY, x, y, w, row.height)
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, row.height, AlpakaStyle.CARD_RADIUS, if (hovered) AlpakaStyle.ROW_HOVER else AlpakaStyle.ROW)
+
+        val fieldX = x + 3
         val fieldY = y + (row.height - FIELD_H) / 2
-        val leftW = leftW(row.kind)
-        val hoverLeft = inList && inside(mouseX, mouseY, x, fieldY, leftW, FIELD_H)
+        val leftW = leftW(row.kind) - 3
+        val hoverLeft = inList && inside(mouseX, mouseY, fieldX, fieldY, leftW, FIELD_H)
         if (row.kind == Kind.ALIAS) {
             val alias = aliases[row.index]
             val focused = focusKind == Kind.ALIAS && focusIndex == row.index && focusColumn == 0
-            ModernGuiUtils.drawModernTextField(graphics, this.font, x, fieldY, leftW, FIELD_H, alias.alias, "/alias", focused, hoverLeft)
-            if (duplicate) ModernGuiUtils.drawRoundedOutline(graphics, x, fieldY, leftW, FIELD_H, ModernGuiUtils.WIDGET_RADIUS, ModernGuiUtils.COLOR_TOGGLE_OFF_TEXT)
+            AlpakaStyle.textField(graphics, this.font, fieldX, fieldY, leftW, FIELD_H, alias.alias, "/alias", focused, hoverLeft, caretFrom)
         } else {
             val shortcut = keys[row.index]
             val capturing = capturingKey == row.index
-            val label = if (capturing) "Press a key..." else CommandShortcuts.keyLabel(shortcut)
-            ModernGuiUtils.drawModernButton(graphics, this.font, x, fieldY, leftW, FIELD_H, label, hoverLeft || capturing, capturing)
-            if (duplicate && !capturing) ModernGuiUtils.drawRoundedOutline(graphics, x, fieldY, leftW, FIELD_H, ModernGuiUtils.WIDGET_RADIUS, ModernGuiUtils.COLOR_TOGGLE_OFF_TEXT)
+            val label = if (capturing) "Press a Key..." else CommandShortcuts.keyLabel(shortcut)
+            val shown = AlpakaStyle.ellipsize(this.font, label, leftW - 8)
+            if (capturing) {
+                AlpakaStyle.button(graphics, this.font, fieldX, fieldY, leftW, FIELD_H, shown, true, ButtonKind.PRIMARY)
+            } else {
+                // Set off from the row like the fields beside it, since it sits on the same row color.
+                ModernGuiUtils.drawRoundedRect(graphics, fieldX, fieldY, leftW, FIELD_H, AlpakaStyle.FIELD_RADIUS,
+                    if (hoverLeft) AlpakaStyle.ROW_SELECTED else AlpakaStyle.FIELD)
+                ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text(shown), fieldX + leftW / 2, fieldY + (FIELD_H - 8) / 2,
+                    if (shortcut.key.isNullOrEmpty()) AlpakaStyle.TEXT_MUTED else AlpakaStyle.TEXT)
+            }
         }
+        // Only the first of two equal aliases or keys counts; the later one is underlined red.
+        if (duplicate) ModernGuiUtils.drawRect(graphics, fieldX + 3, fieldY + FIELD_H - 1, leftW - 6, 1, AlpakaStyle.DANGER)
 
-        ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("→"), x + leftW + ARROW_W / 2, fieldY + (FIELD_H - 8) / 2, ModernGuiUtils.COLOR_TEXT_MUTED)
+        AlpakaStyle.sideChevron(graphics, x + leftW(row.kind) + ARROW_W / 2, fieldY + FIELD_H / 2, false, AlpakaStyle.TEXT_MUTED)
 
         val cmdX = commandX(x, row.kind)
         val cmdW = commandW(x, w, row.kind)
         val command = if (row.kind == Kind.ALIAS) aliases[row.index].command else keys[row.index].command
         val cmdFocused = focusKind == row.kind && focusIndex == row.index && focusColumn == 1
-        ModernGuiUtils.drawModernTextField(graphics, this.font, cmdX, fieldY, cmdW, FIELD_H, command, "/command",
-            cmdFocused, inList && inside(mouseX, mouseY, cmdX, fieldY, cmdW, FIELD_H))
+        AlpakaStyle.textField(graphics, this.font, cmdX, fieldY, cmdW, FIELD_H, command, "/command",
+            cmdFocused, inList && inside(mouseX, mouseY, cmdX, fieldY, cmdW, FIELD_H), caretFrom)
 
         val dx = delX(x, w)
         val btnY = y + (row.height - SMALL_BTN) / 2
-        val hoverDel = inList && inside(mouseX, mouseY, dx, btnY, SMALL_BTN, SMALL_BTN)
-        val bg = if (hoverDel) 0xFFDC2626.toInt() else 0x33DC2626
-        val border = if (hoverDel) 0xFFEF4444.toInt() else 0x88DC2626.toInt()
-        ModernGuiUtils.drawRoundedPanel(graphics, dx, btnY, SMALL_BTN, SMALL_BTN, ModernGuiUtils.WIDGET_RADIUS, bg, border)
-        ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("✕"), dx + SMALL_BTN / 2, btnY + (SMALL_BTN - 8) / 2,
-            if (hoverDel) 0xFFFFFFFF.toInt() else 0xFFFCA5A5.toInt())
+        AlpakaStyle.trashButton(graphics, dx, btnY, SMALL_BTN, inList && inside(mouseX, mouseY, dx, btnY, SMALL_BTN, SMALL_BTN))
     }
 
     /** Alias rows that repeat an earlier alias, which therefore never apply. */
@@ -250,7 +252,7 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(Componen
         val f = frame()
         capturingKey = -1
 
-        if (inside(mouseX, mouseY, doneX(f), doneY(f), DONE_W, DONE_H)) {
+        if (inside(mouseX, mouseY, doneX(f), doneY(f), DONE_W, AlpakaStyle.BUTTON_H)) {
             playPloppSound()
             this.onClose()
             return true
@@ -259,8 +261,8 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(Componen
         endEditing()
         if (!inside(mouseX, mouseY, f.listX, f.listY, f.listW, f.listH)) return super.mouseClicked(event, isDoubleClick)
 
-        val rowX = f.listX + 8
-        val rowW = f.listW - 16
+        val rowX = f.listX
+        val rowW = f.listW
         for (row in rows) {
             val y = f.listY + row.y - scrollY.toInt()
             if (!inside(mouseX, mouseY, rowX, y, rowW, row.height)) continue
@@ -286,7 +288,7 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(Componen
                             if (row.kind == Kind.ALIAS) aliases.removeAt(row.index) else keys.removeAt(row.index)
                             save()
                         }
-                        inside(mouseX, mouseY, rowX, fieldY, leftW(row.kind), FIELD_H) -> {
+                        inside(mouseX, mouseY, rowX + 3, fieldY, leftW(row.kind) - 3, FIELD_H) -> {
                             if (row.kind == Kind.ALIAS) focus(Kind.ALIAS, row.index, 0)
                             else {
                                 playPloppSound()
@@ -305,6 +307,7 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(Componen
     }
 
     private fun focus(kind: Kind, index: Int, column: Int) {
+        caretFrom = System.currentTimeMillis()
         focusKind = kind
         focusIndex = index
         focusColumn = column
@@ -424,25 +427,24 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(Componen
     }
 
     companion object {
-        private const val WIN_W = 470
-        private const val WIN_H = 372
-        private const val MIN_W = 300
-        private const val MIN_H = 220
+        private const val WIN_W = 360
+        private const val WIN_H = 300
+        private const val MIN_W = 260
+        private const val MIN_H = 180
+        /** Space kept free around the window, as the config screen keeps. */
         private const val MARGIN = 8
-        private const val HEADER_H = 38
-        private const val DONE_W = 60
-        private const val DONE_H = 22
+        private const val DONE_W = 44
 
-        private const val SECTION_H = 22
-        private const val HINT_H = 14
-        private const val SECTION_GAP = 10
-        private const val ITEM_H = 26
-        private const val ITEM_GAP = 4
-        private const val FIELD_H = 20
-        private const val ALIAS_W = 90
-        private const val KEY_W = 110
-        private const val ARROW_W = 18
-        private const val SMALL_BTN = 18
+        private const val SECTION_H = 19
+        private const val HINT_H = 13
+        private const val SECTION_GAP = 6
+        private const val ITEM_H = 20
+        private const val ITEM_GAP = 3
+        private const val FIELD_H = 16
+        private const val ALIAS_W = 72
+        private const val KEY_W = 92
+        private const val ARROW_W = 14
+        private const val SMALL_BTN = 14
 
         /** As long as a chat command may be. */
         private const val MAX_LEN = 256

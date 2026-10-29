@@ -1,23 +1,17 @@
 package net.alpaka.addons.features.deployable
 
-import com.google.common.collect.ImmutableMultimap
-import com.mojang.authlib.GameProfile
-import com.mojang.authlib.properties.Property
-import com.mojang.authlib.properties.PropertyMap
-import java.nio.charset.StandardCharsets
 import java.util.EnumMap
-import java.util.UUID
+import net.alpaka.addons.client.gui.HudPanel
 import net.alpaka.addons.config.AlpakaConfig
+import net.alpaka.addons.features.market.ItemIcons
 import net.minecraft.client.DeltaTracker
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.ChatScreen
-import net.minecraft.core.component.DataComponents
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
-import net.minecraft.world.item.component.ResolvableProfile
 import kotlin.math.ceil
 
 /**
@@ -49,16 +43,7 @@ object DeployableTimerHudRenderer {
     private fun icon(type: Deployable): ItemStack? {
         icons[type]?.let { return it }
         if (!Items.PLAYER_HEAD.builtInRegistryHolder().areComponentsBound()) return null
-        return head(type.textureValue()).also { icons[type] = it }
-    }
-
-    /** A player head wearing the skin with this texture value, as Hypixel's heads carry it. */
-    private fun head(texture: String): ItemStack {
-        val id = UUID.nameUUIDFromBytes(texture.toByteArray(StandardCharsets.UTF_8))
-        val properties = PropertyMap(ImmutableMultimap.of("textures", Property("textures", texture)))
-        val stack = ItemStack(Items.PLAYER_HEAD)
-        stack.set(DataComponents.PROFILE, ResolvableProfile.createResolved(GameProfile(id, "alpaka", properties)))
-        return stack
+        return ItemIcons.head(type.textureValue()).also { icons[type] = it }
     }
 
     /** Green while more than half is left, yellow down to a fifth, then red. */
@@ -82,16 +67,8 @@ object DeployableTimerHudRenderer {
         if (mc.gui.screen() != null && mc.gui.screen() !is ChatScreen) return
 
         val active = DeployableTracker.active() ?: return
-        // Clamped so a GUI-scale change cannot leave the HUD off screen; the stored position is untouched.
-        val screenWidth = mc.window.guiScaledWidth
-        val screenHeight = mc.window.guiScaledHeight
-        renderHud(
-            graphics,
-            DeployableTimerHudElement.visibleAnchorX(screenWidth, screenHeight),
-            DeployableTimerHudElement.visibleAnchorY(screenWidth, screenHeight),
-            cfg.deployableTimerHudScale,
-            active,
-        )
+        val placement = DeployableTimerHudElement.visiblePlacement(mc.window.guiScaledWidth, mc.window.guiScaledHeight)
+        renderHud(graphics, placement.anchorX, placement.anchorY, cfg.deployableTimerHudScale, active)
     }
 
     /** What to draw: the live deployable, or the sample while there is none to position against. */
@@ -99,18 +76,25 @@ object DeployableTimerHudRenderer {
 
     fun renderHud(graphics: GuiGraphicsExtractor, x: Int, y: Int, scale: Float, active: DeployableTracker.Active) {
         val font = Minecraft.getInstance().font ?: return
+        val cfg = AlpakaConfig.instance
         val time = timeText(active)
 
         graphics.pose().pushMatrix()
         graphics.pose().translate(x.toFloat(), y.toFloat())
         graphics.pose().scale(scale, scale)
+        if (cfg.blurOn(cfg.deployableTimerHudBlur)) {
+            HudPanel.aroundText(graphics, ICON_SIZE + ICON_GAP + font.width(time), ICON_SIZE, scale)
+        }
         icon(active.type())?.let { graphics.item(it, 0, 0) }
-        graphics.text(font, time, ICON_SIZE + ICON_GAP, TEXT_Y, color(active))
+        graphics.text(font, time, ICON_SIZE + ICON_GAP, TEXT_Y, color(active), HudPanel.TEXT_SHADOW)
         graphics.pose().popMatrix()
     }
 
-    private fun timeText(active: DeployableTracker.Active): Component =
-        Component.literal(Deployable.formatTime(active.secondsLeft()))
+    private fun timeText(active: DeployableTracker.Active): Component {
+        val cfg = AlpakaConfig.instance
+        return HudPanel.text(Component.literal(Deployable.formatTime(active.secondsLeft())),
+            cfg.smoothOn(cfg.deployableTimerHudSmoothFont))
+    }
 
     /** Unscaled width, for the editor's box. */
     fun width(font: Font, active: DeployableTracker.Active): Int = ICON_SIZE + ICON_GAP + font.width(timeText(active))

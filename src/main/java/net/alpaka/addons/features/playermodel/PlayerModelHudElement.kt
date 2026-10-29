@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.playermodel
 
+import java.util.Locale
 import net.alpaka.addons.client.hud.HudBounds
 import net.alpaka.addons.client.hud.HudElement
 import net.alpaka.addons.config.AlpakaConfig
@@ -60,5 +61,12 @@ object PlayerModelHudElement : HudElement {
 
     override fun scaleValue(): Float = AlpakaConfig.instance.playerModelScale.toFloat()
 
-    override fun scaleLabel(): String = "${AlpakaConfig.instance.playerModelScale}x"
+    /**
+     * The scale as a factor of the default, like every other HUD's "1.00x". The stored value is the
+     * avatar's size in pixels per block (30 by default), which as "30x" read as thirty times larger.
+     */
+    override fun scaleLabel(): String = String.format(
+        Locale.ROOT, "%.2fx",
+        AlpakaConfig.instance.playerModelScale / PlayerModelRenderer.DEFAULT_SCALE.toFloat()
+    )
 }

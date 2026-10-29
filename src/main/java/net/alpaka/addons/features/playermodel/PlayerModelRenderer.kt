@@ -20,8 +20,9 @@ import org.joml.Vector3f
 import kotlin.math.atan
 
 /**
- * Draws a miniature 3D avatar of the local player on the HUD, fading and sliding in from the
- * nearest screen edge.
+ * Draws a miniature 3D avatar of the local player on the HUD. It is either there or not: it used
+ * to fade and slide in from the nearest screen edge, which drew the eye every time the player
+ * started or stopped moving.
  *
  * Everything the feature suppresses - armor, the burning overlay, movement-driven pose - is
  * applied to the freshly extracted [EntityRenderState], never to the live player. The state is
@@ -34,10 +35,6 @@ object PlayerModelRenderer {
     const val DEFAULT_X = net.alpaka.addons.client.hud.HudDefaults.PLAYER_MODEL_X
     const val DEFAULT_Y = net.alpaka.addons.client.hud.HudDefaults.PLAYER_MODEL_Y
     const val DEFAULT_SCALE = 30
-
-    /** Fade/slide speed in alpha per second; 5.0 gives a ~200ms transition. */
-    private const val FADE_SPEED = 5.0f
-    private const val ALPHA_EPSILON = 0.001f
 
     /** Avatar bounding box, as multiples of the configured scale. */
     private const val BOX_HALF_WIDTH = 0.8f
@@ -81,9 +78,6 @@ object PlayerModelRenderer {
      * item's swing duration - 6 ticks, so ~300ms - making this roughly half speed.
      */
     private const val SLOW_SWING_DURATION_MS = 600.0f
-
-    private var alpha = 0.0f
-    private var lastTimeMs = System.currentTimeMillis()
 
     // Slow-swing tracking. Only ever drives the HUD avatar's render state; the real player's
     // swing timing, reach and hit registration are untouched.
@@ -130,12 +124,6 @@ object PlayerModelRenderer {
         if (mc.gui.hud.isHidden()) return
         val player = mc.player ?: return
 
-        // The two early returns above deliberately leave the timestamp stale: a long stretch
-        // behind F1 then yields a large dt, so the avatar snaps back instead of sliding in.
-        val now = System.currentTimeMillis()
-        val dt = (now - lastTimeMs) / 1000.0f
-        lastTimeMs = now
-
         val cfg = AlpakaConfig.instance
         // Ticked before the visibility check so an in-flight slow swing can keep the avatar up.
         updateSlowSwing(player)
@@ -143,29 +131,18 @@ object PlayerModelRenderer {
         // No fade or slide either way: the avatar is either there or not. The transitions read as
         // it swiping in and out every time the player started or stopped moving, which drew the
         // eye exactly when nothing of interest was happening.
-        alpha = if (shouldShowModel(mc, player, cfg)) 1.0f else 0.0f
-        if (alpha <= ALPHA_EPSILON) return
+        if (!shouldShowModel(mc, player, cfg)) return
 
         // Clamped so a GUI-scale change cannot strand the avatar off screen. The stored position
         // is untouched, so dropping the scale back restores the original spot exactly.
         val screenWidth = mc.window.guiScaledWidth
         val screenHeight = mc.window.guiScaledHeight
-        val targetX = PlayerModelHudElement.visibleAnchorX(screenWidth, screenHeight)
-        val targetY = PlayerModelHudElement.visibleAnchorY(screenWidth, screenHeight)
-        val scale = cfg.playerModelScale
-
-        val x = if (alpha >= 1.0f) {
-            // Fully faded in, so the eased slide has converged on the target - no need to ask
-            // the window for the off-screen start position on the steady-state path.
-            targetX
-        } else {
-            // Slide in from whichever horizontal edge the HUD sits closest to.
-            val startX = if (targetX < screenWidth / 2) -scale else screenWidth + scale
-            val eased = 1.0f - (1.0f - alpha) * (1.0f - alpha) // ease-out quadratic
-            (startX + (targetX - startX) * eased).toInt()
-        }
-
-        renderPlayerModel(graphics, x, targetY, scale, player)
+        renderPlayerModel(
+            graphics,
+            PlayerModelHudElement.visibleAnchorX(screenWidth, screenHeight),
+            PlayerModelHudElement.visibleAnchorY(screenWidth, screenHeight),
+            cfg.playerModelScale, player
+        )
     }
 
     private fun shouldShowModel(mc: Minecraft, player: LocalPlayer, cfg: AlpakaConfig): Boolean {
@@ -191,7 +168,7 @@ object PlayerModelRenderer {
             player.isPassenger ||
             player.swingTime > 0 ||
             // A slowed swing outlives the player's own swingTime, so keep the avatar up until
-            // the stretched animation has finished rather than fading out mid-arc.
+            // the stretched animation has finished rather than vanishing mid-arc.
             slowSwingActive ||
             player.isSwimming ||
             player.isFallFlying

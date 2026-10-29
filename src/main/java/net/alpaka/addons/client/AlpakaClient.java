@@ -37,16 +37,16 @@ public class AlpakaClient implements ClientModInitializer {
         // precompiles vanilla's; see BlockOverlayRenderTypes.
         net.alpaka.addons.features.blockoverlay.BlockOverlayRenderTypes.init();
         net.alpaka.addons.client.gui.AlpakaGuiPipelines.init();
+        net.alpaka.addons.features.sky.SkyEffectsFeature.init();
         net.alpaka.addons.features.chat.ChatBlurFeature.init();
         net.alpaka.addons.features.viewmodel.HandItemStarlightFeature.init();
-        net.alpaka.addons.features.sky.SkyEffectsFeature.init();
+        net.alpaka.addons.features.cosmetics.AuraFeature.init();
         CustomSoundFeature.register();
         SessionLifecycle.register();
         StartupNotices.register();
         net.alpaka.addons.utils.UpdateChecker.register();
         net.alpaka.addons.features.slayer.SmolderingPolarization.register();
         net.alpaka.addons.features.slayer.HamRadio.register();
-        net.alpaka.addons.features.slayer.SlayerBossHighlight.register();
         DevScreenshotTour.register();
         SlayerDropTracker.registerEvents();
         DeployableTracker.registerEvents();
@@ -56,23 +56,50 @@ public class AlpakaClient implements ClientModInitializer {
         // The same tick writes the record once if anything changed it; see AlpakaStats.markDirty.
         net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(
                 client -> net.alpaka.addons.config.AlpakaStats.tick());
+        net.alpaka.addons.features.market.MarketKeys.register();
         ZoomFeature.register();
         net.alpaka.addons.features.chat.ChatPeekFeature.register();
+        // Before ChatOverHud, which hands the player list over as it stands after this replaced it.
+        net.alpaka.addons.features.tablist.CustomTabFeature.register();
         net.alpaka.addons.features.chat.ChatOverHud.register();
         net.alpaka.addons.features.chat.ChatSearchFeature.register();
+        net.alpaka.addons.features.itemvalue.ItemValueFeature.register();
+        net.alpaka.addons.features.chestvalue.ChestValueFeature.register();
+        net.alpaka.addons.features.itemsearch.ItemSearchFeature.register();
+        net.alpaka.addons.features.garden.PestFinder.register();
         net.alpaka.addons.features.chat.ScreenshotPreview.register();
         CommandWheelFeature.register();
         net.alpaka.addons.features.shortcuts.CommandShortcuts.register();
+        net.alpaka.addons.features.inventorybuttons.InventoryButtonsFeature.register();
         InventoryHudFeature.register();
+        // After the last of the mod's keys above; see AlpakaKeyBinds.
+        AlpakaKeyBinds.finishRegistration();
         net.alpaka.addons.features.blaze.FirePitFeature.register();
+        net.alpaka.addons.features.cosmetics.AuraFeature.register();
+        net.alpaka.addons.features.slayer.SlayerBossHighlight.register();
         net.alpaka.addons.features.damagetags.CustomDamageTagFeature.register();
         net.alpaka.addons.utils.DungeonState.register();
+        net.alpaka.addons.features.dungeonmap.DungeonMapFeature.register();
+        net.alpaka.addons.features.dungeonmobs.StarredMobsHighlight.register();
+        // After DungeonState, so a chat line that starts the boss room has been seen by it first.
+        net.alpaka.addons.features.dungeon.DungeonSolvers.register();
+        net.alpaka.addons.features.leapmenu.LeapMenu.register();
+        net.alpaka.addons.features.dungeonmap.DoorHighlight.register();
         net.alpaka.addons.features.notification.MentionNotifier.register();
         net.alpaka.addons.features.party.PartyInviteFeature.register();
+        net.alpaka.addons.features.quickjoin.QuickJoin.register();
+        net.alpaka.addons.features.party.PartyCommandsFeature.register();
+        net.alpaka.addons.features.commands.WarpCooldownQueue.register();
+        net.alpaka.addons.features.chat.MessageFilterFeature.register();
         net.alpaka.addons.features.tooltip.OldMasterStarsFeature.register();
+        net.alpaka.addons.features.storagepreview.StoragePreviewFeature.register();
+        net.alpaka.addons.features.garden.VisitorBazaarFeature.register();
+        net.alpaka.addons.features.enchantments.MaxEnchantColorFeature.register();
         net.alpaka.addons.features.ragnarock.RagnarockFeature.register();
         WorldAgeFeature.registerEvents();
         net.alpaka.addons.features.performance.PerformanceStats.register();
+        net.alpaka.addons.features.market.LowestBin.register();
+        net.alpaka.addons.features.profile.ProfileTracker.register();
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             // Every alias takes an optional search term: "/aa" opens the config as before, and
@@ -101,6 +128,16 @@ public class AlpakaClient implements ClientModInitializer {
                     return 1;
                 })
             );
+
+            // The Profile Dashboard: the player's own profile, or another player's by name.
+            for (String alias : new String[]{"alpakaprofile", "aprofile", "ap"}) {
+                dispatcher.register(ClientCommands.literal(alias)
+                    .executes(context -> openProfile(null))
+                    .then(ClientCommands.argument("player", com.mojang.brigadier.arguments.StringArgumentType.word())
+                        .executes(context -> openProfile(
+                                com.mojang.brigadier.arguments.StringArgumentType.getString(context, "player"))))
+                );
+            }
 
             /** Prints what the mod currently detects - Skyblock, island, sidebar - into chat. */
             dispatcher.register(ClientCommands.literal("alpakadebug")
@@ -154,6 +191,26 @@ public class AlpakaClient implements ClientModInitializer {
                         return 1;
                     })
                 )
+                // "/alpakadebug dungeon": the run, room frame, tab list puzzles and solvers as the
+                // dungeon solvers see them; "dungeon terminal" writes every terminal chest that opens
+                // to the log, to check the layouts in a real run. Both only read and print locally.
+                .then(ClientCommands.literal("dungeon")
+                    .executes(context -> {
+                        Minecraft.getInstance().execute(net.alpaka.addons.features.dungeon.DungeonDebug::printRoom);
+                        return 1;
+                    })
+                    .then(ClientCommands.literal("terminal")
+                        .executes(context -> {
+                            Minecraft.getInstance().execute(() -> {
+                                boolean on = net.alpaka.addons.features.dungeon.DungeonDebug.toggleTerminalDump();
+                                SlayerDropTracker.sendModMessage(on
+                                        ? "§7Terminal dump §aon§7: every terminal chest is written to the log as it opens."
+                                        : "§7Terminal dump §coff§7.");
+                            });
+                            return 1;
+                        })
+                    )
+                )
                 // "/alpakadebug firepits": runs the fire pit highlight without a Blaze boss, so a
                 // clay block placed in a test world (/setblock) shows how the column looks.
                 .then(ClientCommands.literal("firepits")
@@ -167,6 +224,20 @@ public class AlpakaClient implements ClientModInitializer {
                         return 1;
                     })
                 )
+            );
+
+            // "/alpakasearch" opens Item Search, "/alpakasearch hyperion" with that already typed in.
+            dispatcher.register(ClientCommands.literal("alpakasearch")
+                .executes(context -> {
+                    net.alpaka.addons.features.itemsearch.ItemSearchFeature.open(null, null);
+                    return 1;
+                })
+                .then(ClientCommands.argument("query", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
+                    .executes(context -> {
+                        net.alpaka.addons.features.itemsearch.ItemSearchFeature.open(
+                                com.mojang.brigadier.arguments.StringArgumentType.getString(context, "query"), null);
+                        return 1;
+                    }))
             );
 
             dispatcher.register(ClientCommands.literal("alpakaslayer")
@@ -254,16 +325,21 @@ public class AlpakaClient implements ClientModInitializer {
             );
 
             // --- Viewmodel Preset Command ---
-            // "/alpakapreset <n>" switches to a slot, "/alpakapreset save <n>" writes the current
-            // viewmodel settings into one - the same thing the "Save Preset" buttons on the Item
-            // Size screen do, reachable without opening it.
+            // "/alpakapreset <n>" switches to a preset, "/alpakapreset save <n>" writes the current
+            // viewmodel settings into one - the same as the Load and Save buttons under Viewmodel >
+            // Presets, reachable without opening the menu. n counts in the order the menu lists them.
             dispatcher.register(ClientCommands.literal("alpakapreset")
-                .then(ClientCommands.argument("number", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1, 3))
+                .then(ClientCommands.argument("number", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1))
                     .executes(context -> {
                         int num = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "number");
                         Minecraft.getInstance().execute(() -> {
-                            net.alpaka.addons.config.AlpakaConfig.instance.loadPreset(num - 1);
-                            SlayerDropTracker.sendModMessage("§aSwitched to Viewmodel Preset " + num + ".");
+                            net.alpaka.addons.config.AlpakaConfig config = net.alpaka.addons.config.AlpakaConfig.instance;
+                            if (num > config.itemPresets.size()) {
+                                SlayerDropTracker.sendModMessage(noSuchPreset(num));
+                                return;
+                            }
+                            config.loadPreset(num - 1);
+                            SlayerDropTracker.sendModMessage("§aSwitched to " + config.presetName(num - 1) + ".");
                             try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
                         });
                         return 1;
@@ -271,12 +347,17 @@ public class AlpakaClient implements ClientModInitializer {
                 )
                 .then(ClientCommands.literal("save")
                     .requires(FabricClientCommandSource::attended)
-                    .then(ClientCommands.argument("number", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1, 3))
+                    .then(ClientCommands.argument("number", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1))
                         .executes(context -> {
                             int num = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "number");
                             Minecraft.getInstance().execute(() -> {
-                                net.alpaka.addons.config.AlpakaConfig.instance.savePreset(num - 1);
-                                SlayerDropTracker.sendModMessage("§aSaved the current viewmodel settings to Preset " + num + ".");
+                                net.alpaka.addons.config.AlpakaConfig config = net.alpaka.addons.config.AlpakaConfig.instance;
+                                if (num > config.itemPresets.size()) {
+                                    SlayerDropTracker.sendModMessage(noSuchPreset(num));
+                                    return;
+                                }
+                                config.savePreset(num - 1);
+                                SlayerDropTracker.sendModMessage("§aSaved your viewmodel and swing settings to " + config.presetName(num - 1) + ".");
                                 try { CustomSoundFeature.playButtonClickSound(); } catch (Throwable ignored) {}
                             });
                             return 1;
@@ -284,14 +365,17 @@ public class AlpakaClient implements ClientModInitializer {
                     )
                     .executes(context -> {
                         Minecraft.getInstance().execute(() ->
-                                SlayerDropTracker.sendModMessage("§7Usage: §6/alpakapreset save <1|2|3>"));
+                                SlayerDropTracker.sendModMessage("§7Usage: §6/alpakapreset save <number>"));
                         return 1;
                     })
                 )
                 .executes(context -> {
                     Minecraft.getInstance().execute(() -> {
-                        SlayerDropTracker.sendModMessage("§7Current preset: §ePreset " + (net.alpaka.addons.config.AlpakaConfig.instance.activeItemPresetIndex + 1)
-                                + "§7. Usage: §6/alpakapreset <1|2|3> §7to switch, §6/alpakapreset save <1|2|3> §7to save.");
+                        net.alpaka.addons.config.AlpakaConfig config = net.alpaka.addons.config.AlpakaConfig.instance;
+                        int active = config.activeItemPresetIndex;
+                        String current = active >= 0 && active < config.itemPresets.size() ? config.presetName(active) : "none";
+                        SlayerDropTracker.sendModMessage("§7Current preset: §e" + current
+                                + "§7. Usage: §6/alpakapreset <number> §7to switch, §6/alpakapreset save <number> §7to save.");
                     });
                     return 1;
                 })
@@ -355,9 +439,20 @@ public class AlpakaClient implements ClientModInitializer {
         });
     }
 
+    private static int openProfile(String player) {
+        Minecraft.getInstance().execute(() -> {
+            if (!AlpakaConfig.instance.profileDashboardEnabled) {
+                SlayerDropTracker.sendModMessage("§7The Profile Dashboard is off. Turn it on in §f/aa profile§7.");
+                return;
+            }
+            net.alpaka.addons.features.profile.ProfileDashboardScreen.open(player);
+        });
+        return 1;
+    }
+
     /** "/alpakadebug perf": what was measured, or how to start measuring. */
     private static void printPerf() {
-        SlayerDropTracker.sendModMessage("§6--- Alpaka performance ---");
+        SlayerDropTracker.sendModMessage("§6--- Performance ---");
         for (String line : net.alpaka.addons.utils.AlpakaPerf.report()) {
             SlayerDropTracker.sendModMessage("§7" + line);
         }
@@ -371,15 +466,17 @@ public class AlpakaClient implements ClientModInitializer {
 
         SlayerDropTracker.sendModMessage("§7Slayer stats: §f" + file.getAbsolutePath());
         SlayerDropTracker.sendModMessage(custom
-                ? "§8  custom folder - /alpakastats folder default to go back to the shared one"
-                : "§8  shared default - /alpakastats folder <path> to point it at a synced folder");
+                ? "§8  Custom folder. /alpakastats folder default goes back to the shared one."
+                : "§8  Shared default. /alpakastats folder <path> points it at a synced folder.");
         if (net.alpaka.addons.config.AlpakaStats.isAwaitingStore()) {
-            SlayerDropTracker.sendModMessage("§e  folder not available - drive not mounted? Kills wait in memory until it appears");
+            SlayerDropTracker.sendModMessage("§e  Folder not available. Is the drive mounted? Kills wait in memory until it appears.");
         } else {
             SlayerDropTracker.sendModMessage(file.exists()
-                    ? "§8  file present (" + file.length() + " bytes)"
-                    : "§8  no file yet; it is written on the next kill");
+                    ? "§8  File present (" + file.length() + " bytes)."
+                    : "§8  No file yet. It is written on the next kill.");
         }
+
+        net.alpaka.addons.features.slayer.SlayerKillLog.INSTANCE.reportLocation(file.getParentFile());
     }
 
     /**
@@ -415,6 +512,7 @@ public class AlpakaClient implements ClientModInitializer {
         }
 
         String previous = AlpakaConfig.instance.statsDirectory;
+        java.io.File previousDir = net.alpaka.addons.config.AlpakaStats.directory();
         boolean previousHadFile = AlpakaConfig.instance.statsDirectoryHadFile;
         AlpakaConfig.instance.statsDirectory = cleaned;
         // A new folder has never held the record, so an empty one is not a folder still syncing.
@@ -424,7 +522,7 @@ public class AlpakaClient implements ClientModInitializer {
         if (!dir.isDirectory() && !dir.mkdirs()) {
             AlpakaConfig.instance.statsDirectory = previous;
             AlpakaConfig.instance.statsDirectoryHadFile = previousHadFile;
-            SlayerDropTracker.sendModMessage("§cCould not create §f" + dir.getAbsolutePath());
+            SlayerDropTracker.sendModMessage("§cCouldn't create §f" + dir.getAbsolutePath());
             SlayerDropTracker.sendModMessage("§7The setting was not changed; check the path and try again.");
             return;
         }
@@ -433,6 +531,7 @@ public class AlpakaClient implements ClientModInitializer {
         // Merges with whatever is already there rather than replacing it, so pointing a second PC
         // at a folder that already holds a record adds to it instead of flattening it.
         net.alpaka.addons.config.AlpakaStats.save();
+        net.alpaka.addons.features.slayer.SlayerKillLog.INSTANCE.onFolderChanged(previousDir, dir);
         printStatsLocation();
     }
 
@@ -451,5 +550,13 @@ public class AlpakaClient implements ClientModInitializer {
         Minecraft.getInstance().execute(() ->
                 Minecraft.getInstance().gui.setScreen(new AlpakaConfigScreen(null, search)));
         return 1;
+    }
+
+    /** The reply to a preset number past the end of the list. */
+    private static String noSuchPreset(int num) {
+        int count = net.alpaka.addons.config.AlpakaConfig.instance.itemPresets.size();
+        return count == 0
+                ? "§cThere are no presets yet. Make one under Viewmodel > Presets."
+                : "§cThere is no Preset " + num + ". You have " + count + (count == 1 ? " preset." : " presets.");
     }
 }

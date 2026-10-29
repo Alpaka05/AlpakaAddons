@@ -52,7 +52,7 @@ Alpaka Addons is most useful for **Slayers**, but a lot of it helps anywhere in 
 - **Chat Search:** Ctrl+F filters the chat to messages containing your text.
 - **Chat Peek:** hold a key to read and scroll the full chat while playing, even with a menu open.
 - **Compact Chat:** repeated messages stack into one line with (x2), (x3)…
-- **Expand Chat History:** keeps 1000 messages (up to 5000), even after leaving a server.
+- **Expand Chat History:** keeps 5000 messages, even after leaving a server.
 - **Smooth Chat:** messages slide in, scrolling glides, and an optional blurred, rounded background.
 - **Chat Mentions**, **Custom Guild Tag** and a **Bridge Bot Formatter** that shows relayed Discord messages as `[Discord]`.
 - **Better Screenshots**: a preview that shrinks into the corner, and Open, Copy and Delete buttons.
@@ -66,7 +66,7 @@ Alpaka Addons is most useful for **Slayers**, but a lot of it helps anywhere in 
 - **Player Model HUD:** a small 3D version of yourself on screen.
 - **Wide Health Bar:** both heart rows in one line, since SkyBlock has no hunger.
 - **Performance HUD:** the server's day, FPS, ping and TPS on one line, each part optional.
-- **Server Age Join Message** with the server's age and when you last visited.
+- **World Age on Join:** a chat message with the server's age and when you last visited.
 - **Notifications** for mentions, boss spawns and party invites, in any corner or at the top centre.
 - **Party Invite Prompt:** accept with Y or dismiss with N.
 - **Scrollable Tooltips**, **Keep Item Name Visible** and adjustable container background opacity.
@@ -128,7 +128,7 @@ Alpaka Addons runs entirely on your client and follows the [Hypixel rules](https
 - the item data of your own items, for the Etherwarp overlay
 - the contents of menus, and only once you have opened them yourself
 
-**What it contacts.** With "Allow Network Features" on (it can be turned off in General), the mod fetches the current SkyBlock mayor from Hypixel's public API to get slayer XP right, and pings the Hypixel server from the main menu to show its player count. With "Update Notifications" also on, it asks GitHub once per start whether a newer release of the mod is out. Only after you click Install and confirm does it download that release's jar from GitHub, check it against GitHub's checksum and swap it in when you close the game. None of these sends anything about you. With the setting off, the mod makes no network requests at all.
+**What it contacts.** With "Allow Network Features" on (it can be turned off in General), the mod fetches the current SkyBlock mayor from Hypixel's public API to get slayer XP right, and pings the Hypixel server from the main menu to show its player count. With "Update Check" also on, it asks GitHub once per start whether a newer release of the mod is out. Only after you click Install and confirm does it download that release's jar from GitHub, check it against GitHub's checksum and swap it in when you close the game. None of these sends anything about you. With the setting off, the mod makes no network requests at all.
 
 **Guardrails.**
 
@@ -159,3 +159,5 @@ git tag 1.4.0 && git push origin 1.4.0
 ```
 
 Raise the middle number for a release with new features (1.3.0 → 1.4.0), the last one for a release that only fixes bugs (1.3.0 → 1.3.1).
+
+A branch working towards the next major version sets `version_line` in `gradle.properties` (`version_line=2.0.0` on `design-rework`). Its builds are then named for that version, `2.0.0-alpha+134.0de331d`, until a tag of it exists. Test builds handed out before the release are tagged as betas on that branch, `2.0.0-beta.1`, and published as GitHub pre-releases; only players already on a pre-release are told about them. `2.0.0` itself is tagged once the branch is merged into `main`, and `version_line` can then be removed.

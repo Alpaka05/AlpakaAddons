@@ -1,5 +1,8 @@
 package net.alpaka.addons.features.performance;
 
+import net.alpaka.addons.client.gui.GuiFont;
+import net.alpaka.addons.client.gui.HudPanel;
+import net.alpaka.addons.client.hud.VisiblePlacement;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.worldage.WorldAgeFeature;
 import net.alpaka.addons.features.worldage.WorldClockTracker;
@@ -25,13 +28,14 @@ public final class PerformanceHudRenderer {
 
     /**
      * The drawn line, kept between frames. Its numbers change about once a second at most, so it is
-     * rebuilt only when one of them, the parts shown does; the box is measured from it.
+     * rebuilt only when one of them, the parts shown or the font does; the box is measured from it.
      */
     private static long cachedDay = Long.MIN_VALUE;
     private static int cachedFps = Integer.MIN_VALUE;
     private static int cachedPing = Integer.MIN_VALUE;
     private static int cachedTenthTps = Integer.MIN_VALUE;
     private static int cachedParts = -1;
+    private static Style cachedStyle = null;
     private static Component cachedText = null;
 
     /** The values of the four parts, in the order they are drawn, each rolling when it changes. */
@@ -51,15 +55,18 @@ public final class PerformanceHudRenderer {
         int ping = cfg.performanceHudShowPing ? PerformanceStats.pingMs() : 0;
         float tps = cfg.performanceHudShowTps ? PerformanceStats.tps() : 0.0f;
         int tenthTps = TpsEstimator.shownTenths(tps);
+        boolean smooth = cfg.smoothOn(cfg.performanceHudSmoothFont);
+        Style style = smooth ? GuiFont.style() : Style.EMPTY;
 
         if (cachedText == null || parts != cachedParts || day != cachedDay || fps != cachedFps || ping != cachedPing
-                || tenthTps != cachedTenthTps) {
+                || tenthTps != cachedTenthTps || !style.equals(cachedStyle)) {
             cachedParts = parts;
             cachedDay = day;
             cachedFps = fps;
             cachedPing = ping;
             cachedTenthTps = tenthTps;
-            cachedText = build(parts, day, fps, ping, tenthTps);
+            cachedStyle = style;
+            cachedText = HudPanel.text(build(parts, day, fps, ping, tenthTps), smooth);
         }
         return cachedText;
     }
@@ -140,10 +147,8 @@ public final class PerformanceHudRenderer {
         PerformanceStats.markShown();
         int screenWidth = mc.getWindow().getGuiScaledWidth();
         int screenHeight = mc.getWindow().getGuiScaledHeight();
-        renderHud(graphics,
-                PerformanceHudElement.INSTANCE.visibleAnchorX(screenWidth, screenHeight),
-                PerformanceHudElement.INSTANCE.visibleAnchorY(screenWidth, screenHeight),
-                cfg.performanceHudScale);
+        VisiblePlacement placement = PerformanceHudElement.INSTANCE.visiblePlacement(screenWidth, screenHeight);
+        renderHud(graphics, placement.getAnchorX(), placement.getAnchorY(), cfg.performanceHudScale);
     }
 
     public static void renderHud(GuiGraphicsExtractor graphics, int x, int y, float scale) {
@@ -154,7 +159,14 @@ public final class PerformanceHudRenderer {
         graphics.pose().pushMatrix();
         graphics.pose().translate((float) x, (float) y);
         graphics.pose().scale(scale, scale);
-        if (!drawRolling(graphics, font, Style.EMPTY, true)) graphics.text(font, text, 0, 0, 0xFFFFFFFF);
+        AlpakaConfig cfg = AlpakaConfig.instance;
+        if (cfg.blurOn(cfg.performanceHudBlur)) {
+            HudPanel.aroundText(graphics, font.width(text), 9, scale);
+        }
+        Style style = cfg.smoothOn(cfg.performanceHudSmoothFont) ? GuiFont.style() : Style.EMPTY;
+        if (!drawRolling(graphics, font, style, HudPanel.TEXT_SHADOW)) {
+            graphics.text(font, text, 0, 0, 0xFFFFFFFF, HudPanel.TEXT_SHADOW);
+        }
         graphics.pose().popMatrix();
     }
 

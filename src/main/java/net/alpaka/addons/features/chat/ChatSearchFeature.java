@@ -8,7 +8,9 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.multiplayer.chat.GuiMessage;
 import net.minecraft.locale.Language;
 
+import java.util.IdentityHashMap;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Chat search: Ctrl+F in the chat screen - Cmd+F on macOS - turns the input line into a search
@@ -36,19 +38,13 @@ public final class ChatSearchFeature {
     /** The query the chat is laid out for, which trails {@link #query} while typing. */
     private static String laidOutQuery = "";
     /** {@link #laidOutQuery} in lower case, the form every message is compared in. */
-    private static String needle = "";
+    private static String queryLower = "";
     /** When the chat is due to be laid out for {@link #query}, or 0 when nothing is pending. */
     private static long layoutDueAtMs = 0L;
-    /**
-     * Each message's text without formatting codes and in lower case, while a search is open. Every
-     * search re-lays the whole history out, and flattening and lower-casing thousands of messages each
-     * time showed as a hitch. Weak, identity keys; emptied when the search closes, and when a resource
-     * reload changes the language, since translated parts then read differently.
-     */
-    private static final java.util.Map<GuiMessage, String> LOWER_TEXT =
-            new com.google.common.collect.MapMaker().weakKeys().makeMap();
-    /** The language LOWER_TEXT was filled in. */
-    private static Language lowerTextLanguage;
+    /** Each message's text, lower-cased, for the current search only (see accepts). */
+    private static final Map<GuiMessage, String> LOWERED = new IdentityHashMap<>();
+    /** The language LOWERED was filled in; null until the search's first lookup. */
+    private static Language loweredIn;
     /** The message that was being typed when the search started, restored on leaving it. */
     private static String draft = "";
 
@@ -72,14 +68,23 @@ public final class ChatSearchFeature {
      * find every line with a green "§a" in it.
      */
     public static boolean accepts(GuiMessage message) {
-        if (!searching || needle.isEmpty()) return true;
+        if (!searching || queryLower.isEmpty()) return true;
+        // Every keystroke replays the whole history through here, and a stored message's text does
+        // not change, so it is flattened and lower-cased once per search instead of once per
+        // keystroke. Identity keys skip the record's deep equals. The memo is emptied when the search
+        // ends, and when a resource reload swaps the language, since translated parts then read
+        // differently. Messages arriving during a long search pass through here too, so the memo is
+        // also emptied once it outgrows twice the chat's history length; otherwise it would keep
+        // messages the chat has already trimmed away alive until the search ends. Emptying it only
+        // means each message is flattened again on the next keystroke.
         Language language = Language.getInstance();
-        if (language != lowerTextLanguage) {
-            LOWER_TEXT.clear();
-            lowerTextLanguage = language;
+        if (language != loweredIn) {
+            LOWERED.clear();
+            loweredIn = language;
         }
-        return LOWER_TEXT.computeIfAbsent(message,
-                m -> ChatTab.strip(m.content().getString()).toLowerCase(Locale.ROOT)).contains(needle);
+        if (LOWERED.size() >= 2 * AlpakaConfig.instance.chatHistoryLength()) LOWERED.clear();
+        String text = LOWERED.computeIfAbsent(message, m -> ChatTab.strip(m.content().getString()).toLowerCase(Locale.ROOT));
+        return text.contains(queryLower);
     }
 
     public static void toggle(EditBox input) {
@@ -91,10 +96,11 @@ public final class ChatSearchFeature {
         searching = true;
         query = "";
         laidOutQuery = "";
-        needle = "";
+        queryLower = "";
         layoutDueAtMs = 0L;
-        // No layout: an empty search shows every message, which is what the chat shows already. It
-        // used to lay the whole history out twice here, once for clearing the input and once more.
+        LOWERED.clear();
+        loweredIn = null;
+        // No layout: an empty search shows every message, which is what the chat shows already.
         if (input != null) {
             draft = input.getValue();
             input.setValue("");
@@ -109,9 +115,10 @@ public final class ChatSearchFeature {
         boolean filtered = !laidOutQuery.isEmpty();
         query = "";
         laidOutQuery = "";
-        needle = "";
+        queryLower = "";
         layoutDueAtMs = 0L;
-        LOWER_TEXT.clear();
+        LOWERED.clear();
+        loweredIn = null;
         if (input != null) {
             input.setSuggestion(null);
             input.setValue(draft);
@@ -134,7 +141,7 @@ public final class ChatSearchFeature {
         layoutDueAtMs = 0L;
         if (!searching || query.equals(laidOutQuery)) return;
         laidOutQuery = query;
-        needle = query.toLowerCase(Locale.ROOT);
+        queryLower = query.toLowerCase(Locale.ROOT);
         refresh();
     }
 

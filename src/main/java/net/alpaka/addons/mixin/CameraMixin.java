@@ -1,6 +1,8 @@
 package net.alpaka.addons.mixin;
 
+import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import net.alpaka.addons.features.perspective.SmoothPerspectiveFeature;
+import net.alpaka.addons.features.zoom.ZoomFeature;
 import net.minecraft.client.Camera;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.DeltaTracker;
@@ -74,5 +76,12 @@ public abstract class CameraMixin {
         // Vanilla's own sweep, so the camera stops at a wall instead of passing into it.
         if (pose.distance() > 0.0f) move(-getMaxZoom(pose.distance()), 0.0f, 0.0f);
         this.detached = SmoothPerspectiveFeature.isDetachedTransition();
+    }
+
+    /** The zoom, on the finished FOV; see {@link ZoomFeature} for why not the player's FOV modifier. */
+    @ModifyReturnValue(method = "calculateFov", at = @At("RETURN"))
+    private float alpaka$zoom(float fov) {
+        double divisor = ZoomFeature.fovDivisor();
+        return divisor == 1.0 ? fov : (float) (fov / divisor);
     }
 }

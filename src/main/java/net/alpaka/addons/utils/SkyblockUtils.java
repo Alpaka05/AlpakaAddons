@@ -63,19 +63,57 @@ public class SkyblockUtils {
         return cachedOnSkyblock;
     }
 
+    /** How long an {@link #isOnGarden()} verdict is reused; the tab list walk is not free. */
+    private static final long GARDEN_CACHE_MS = 1000L;
+
+    private static long gardenCheckedAtMs = 0L;
+    private static boolean cachedOnGarden = false;
+    private static java.lang.ref.WeakReference<Object> gardenCachedForLevel = null;
+
+    /**
+     * Whether the player is on their Garden, cached for {@link #GARDEN_CACHE_MS}. Asked every tick
+     * by Always Sprint.
+     *
+     * The sidebar's zone line reads "The Garden" at the barn and "Plot - ..." on a plot; the tab
+     * list's "Area: Garden" widget is the fallback for when the sidebar is hidden or reshaped.
+     */
+    public static boolean isOnGarden() {
+        Object level = Minecraft.getInstance().level;
+        long now = System.currentTimeMillis();
+        Object cachedLevel = gardenCachedForLevel == null ? null : gardenCachedForLevel.get();
+        if (level == cachedLevel && now - gardenCheckedAtMs < GARDEN_CACHE_MS) {
+            return cachedOnGarden;
+        }
+
+        gardenCheckedAtMs = now;
+        gardenCachedForLevel = level == null ? null : new java.lang.ref.WeakReference<>(level);
+        cachedOnGarden = computeOnGarden();
+        return cachedOnGarden;
+    }
+
+    private static boolean computeOnGarden() {
+        if (!isOnSkyblock()) return false;
+        for (String line : getSidebarLines()) {
+            if (line.contains(AREA_MARKER) && (line.contains("The Garden") || line.contains("Plot - "))) {
+                return true;
+            }
+        }
+        for (String line : getTabListLines()) {
+            if (line.startsWith("Area: Garden")) return true;
+        }
+        return false;
+    }
+
     /** The End island's zones, as the sidebar's zone line names them. */
     private static final String[] END_ISLAND_ZONES = {"The End", "Dragon's Nest", "Void Sepulture", "Zealot Bruiser Hideout"};
-
-    /** How long an {@link #isOnEndIsland()} verdict is reused; the tab list walk is not free. */
-    private static final long END_ISLAND_CACHE_MS = 1000L;
 
     private static long endIslandCheckedAtMs = 0L;
     private static boolean cachedOnEndIsland = false;
     private static java.lang.ref.WeakReference<Object> endIslandCachedForLevel = null;
 
     /**
-     * Whether the player is on SkyBlock's End island, cached for {@link #END_ISLAND_CACHE_MS}. Asked
-     * every frame by Sky Effects: Hypixel sends the island as an Overworld-like dimension, so nothing in
+     * Whether the player is on SkyBlock's End island, cached like {@link #isOnGarden()}. Asked every
+     * frame by Sky Effects: Hypixel sends the island as an Overworld-like dimension, so nothing in
      * the world itself tells it apart.
      *
      * The sidebar's zone line names the part of the island ("The End", "Void Sepulture", ...); the
@@ -85,7 +123,7 @@ public class SkyblockUtils {
         Object level = Minecraft.getInstance().level;
         long now = System.currentTimeMillis();
         Object cachedLevel = endIslandCachedForLevel == null ? null : endIslandCachedForLevel.get();
-        if (level == cachedLevel && now - endIslandCheckedAtMs < END_ISLAND_CACHE_MS) {
+        if (level == cachedLevel && now - endIslandCheckedAtMs < GARDEN_CACHE_MS) {
             return cachedOnEndIsland;
         }
 

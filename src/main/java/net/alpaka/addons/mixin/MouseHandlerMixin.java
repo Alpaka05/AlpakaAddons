@@ -29,7 +29,7 @@ public class MouseHandlerMixin {
 
     @Inject(method = "onScroll", at = @At("HEAD"), cancellable = true)
     private void onMouseScroll(long window, double xoffset, double yoffset, CallbackInfo info) {
-        if (ZoomFeature.isZooming()) {
+        if (ZoomFeature.handlesScroll()) {
             if (yoffset != 0) {
                 ZoomFeature.onMouseScroll(yoffset);
             }
@@ -42,7 +42,8 @@ public class MouseHandlerMixin {
             return;
         }
         // Scrolls an oversized tooltip instead of the screen under it.
-        if (Minecraft.getInstance().gui.screen() != null && ScrollableTooltipsFeature.onScroll(yoffset)) {
+        var screen = Minecraft.getInstance().gui.screen();
+        if (screen != null && !(screen instanceof ScrollableTooltipsFeature.KeepsWheel) && ScrollableTooltipsFeature.onScroll(yoffset)) {
             info.cancel();
         }
     }

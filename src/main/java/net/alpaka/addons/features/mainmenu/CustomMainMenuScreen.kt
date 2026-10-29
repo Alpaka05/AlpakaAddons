@@ -31,7 +31,6 @@ import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.AbstractButton
 import net.minecraft.client.gui.components.AbstractWidget
 import net.minecraft.client.gui.narration.NarrationElementOutput
-import net.minecraft.client.gui.screens.ConnectScreen
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen
 import net.minecraft.client.gui.screens.options.OptionsScreen
@@ -41,9 +40,6 @@ import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.client.input.InputWithModifiers
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
-import net.minecraft.client.multiplayer.ServerData
-import net.minecraft.client.multiplayer.ServerList
-import net.minecraft.client.multiplayer.resolver.ServerAddress
 import net.minecraft.network.chat.Component
 import org.joml.Matrix3x2f
 
@@ -254,32 +250,8 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
 
     private fun joinServer(ip: String) {
         val mc = this.minecraft ?: return
-        val address = ServerAddress.parseString(ip)
-        // The player's own server-list entry when there is one, as the server list itself would
-        // join: its resource pack choice stands. A fresh entry is always set to prompt, so Hypixel's
-        // pack was asked about again on every join from here.
-        val data = savedEntryFor(mc, ip)
-            ?: ServerData(if (ip.contains("alpha")) "Hypixel Alpha" else "Hypixel Network", ip, ServerData.Type.OTHER)
-        ConnectScreen.startConnecting(this, mc, address, data, false, null)
+        net.alpaka.addons.features.quickjoin.QuickJoin.connect(this, mc, ip)
     }
-
-    /** The first server-list entry for the same Hypixel network as [ip], or null; alpha only matches alpha. */
-    private fun savedEntryFor(mc: Minecraft, ip: String): ServerData? {
-        val wanted = hostOf(ip)
-        val alpha = wanted.startsWith("alpha.")
-        val list = ServerList(mc)
-        list.load()
-        for (i in 0 until list.size()) {
-            val entry = list.get(i)
-            val host = hostOf(entry.ip)
-            val same = if (alpha) host == wanted
-                else (host == "hypixel.net" || host.endsWith(".hypixel.net")) && !host.startsWith("alpha.")
-            if (same) return entry
-        }
-        return null
-    }
-
-    private fun hostOf(ip: String): String = ip.trim().lowercase().substringBefore(':').trimEnd('.')
 
     override fun init() {
         this.clearWidgets()
@@ -552,8 +524,8 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
             val ping = if (withPing && HypixelStatus.pingMs > 0) " · ${HypixelStatus.pingMs} ms" else ""
             ONLINE_DOT to "$count online$ping"
         }
-        HypixelStatus.State.OFFLINE -> MUTED to "can't reach Hypixel"
-        HypixelStatus.State.CONNECTING -> MUTED to "connecting…"
+        HypixelStatus.State.OFFLINE -> MUTED to "Can't reach Hypixel"
+        HypixelStatus.State.CONNECTING -> MUTED to "Connecting…"
     }
 
     /** 0 → 1 how far in the release notes window is, eased out; 0 while it is closed. */

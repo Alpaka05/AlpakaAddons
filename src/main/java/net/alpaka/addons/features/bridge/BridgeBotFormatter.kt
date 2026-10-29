@@ -61,7 +61,7 @@ object BridgeBotFormatter {
         // "§2Guild > §a[VIP] ... §f: Author: message" - matching on it directly never fires.
         // Detection happens on the stripped text; the body is sliced out of the colored original.
         val coded = original.string
-        // Every channel marker contains '>', and stripping colour codes only removes characters, so a
+        // Every channel marker contains '>', and stripping color codes only removes characters, so a
         // line without one cannot be a relay. Turning it away here skips the regex for nearly every
         // message - this runs for each line laid out, the replays after a tab switch or search included.
         if (coded.indexOf('>') < 0) return null

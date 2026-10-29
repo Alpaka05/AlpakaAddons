@@ -1,52 +1,87 @@
 package net.alpaka.addons.client.hud;
 
+import net.alpaka.addons.client.gui.HudPanel;
+
 /**
  * Where each HUD starts out, in one place: the config's initial values and the editor's Reset both
- * read these.
+ * read these. Only a fresh config and Reset use them; a position the player has saved stays put.
  *
  * Every default is anchored to the top-left corner for now, so each offset is simply the position
- * in GUI pixels; once positions are stored as anchor plus offset, these become those offsets. They
- * are laid out so no two of the mod's own HUDs overlap: the boss timer used to sit inside the
- * session HUD's box (later under it), and the player model in the middle of the text column. The
- * boss timer is the one exception to the corner: it starts centered, see {@link #CENTERED_X}.
+ * in GUI pixels; once positions are stored as anchor plus offset, these become those offsets.
+ *
+ * The layout keeps the mod's own text HUDs short and at the top of the left edge, since the chat
+ * fills the left edge from the bottom up (its lowest line ends 40 pixels above the screen's bottom,
+ * and ten lines reach 90 pixels above that):
+ *
+ * <ul>
+ *   <li>A top row: the Performance HUD's one line, with the day first, in the corner.</li>
+ *   <li>The boss timer centered along the top, under the HUD editor's bar; see
+ *       {@link #CENTERED_X}.</li>
+ *   <li>Under that row, the slayer session HUD, which at its tallest - ten rows - still ends above
+ *       a full ten-line chat on a screen 270 GUI pixels tall (1080p at GUI scale 4).</li>
+ *   <li>The player model right of the session HUD's rows, and low enough that the HUD editor's
+ *       header and status line, centred along the top, never cover it.</li>
+ * </ul>
+ *
+ * The panels keep a few pixels between them, so none of these HUDs overlap or touch. The boss
+ * timer used to sit under the session HUD, where a session with every row on reached into it.
  */
 public final class HudDefaults {
     private HudDefaults() {}
 
-    /** The top-left corner: the Performance HUD's line, with the day first. */
+    /** The gap kept between two HUDs' panels, in GUI pixels. */
+    private static final int PANEL_GAP = 7;
+    /** One line of text: the font's line height. */
+    private static final int LINE = 9;
+
+    /** The top row's line. */
+    private static final int TOP_ROW_Y = 10;
+
+    /** The top-left corner. */
     public static final int PERFORMANCE_X = 10;
-    public static final int PERFORMANCE_Y = 10;
+    public static final int PERFORMANCE_Y = TOP_ROW_Y;
 
     /**
      * An x that stands for "centered on the screen" rather than a pixel. Positions are absolute, so a
-     * centre depends on the screen's width; the HUD works it out each frame while its x is this.
+     * center depends on the screen's width; the HUD works it out each frame while its x is this.
      * Dragging it in the editor stores a real x again.
      */
     public static final int CENTERED_X = Integer.MIN_VALUE;
 
     /**
-     * Centred along the top, where a running boss is easy to keep an eye on; shown only while a boss
-     * is up. Below the line of one boss bar (its name and bar end at 17), which Hypixel shows now
-     * and then.
+     * Centered along the top, where a running boss is easy to keep an eye on; shown only while a boss
+     * is up. Its panel starts just below the HUD editor's bar and status line (to 59), which sit
+     * centered at the top too and would otherwise cover it in the editor.
      */
     public static final int SLAYER_TIMER_X = CENTERED_X;
-    public static final int SLAYER_TIMER_Y = 22;
-
-    /** Under the Performance HUD's line, and 16 pixels tall, so it ends well above the slayer session HUD. */
-    public static final int DEPLOYABLE_TIMER_X = PERFORMANCE_X;
-    public static final int DEPLOYABLE_TIMER_Y = PERFORMANCE_Y + 16;
-
-    public static final int SLAYER_SESSION_X = 10;
-    public static final int SLAYER_SESSION_Y = 60;
+    public static final int SLAYER_TIMER_Y = 60 + HudPanel.PAD_Y;
 
     /**
-     * The avatar's feet; at the default size it stands 78 pixels tall and 48 wide. To the right of
-     * the text column rather than inside it, and with its head below the top row and the boss timer.
+     * Past the world age at the end of the top row. The icon is taller than a line, so it starts
+     * a little higher and its text lines up with the row.
      */
-    public static final int PLAYER_MODEL_X = 190;
-    public static final int PLAYER_MODEL_Y = 110;
+    public static final int DEPLOYABLE_TIMER_X = 150;
+    public static final int DEPLOYABLE_TIMER_Y = SLAYER_TIMER_Y - 4;
 
-    /** Only used once the inventory HUD is detached from the hotbar. */
+    public static final int SLAYER_SESSION_X = 10;
+    /** Under the top row: that row's panel bottom, the gap, then this panel's top padding. */
+    public static final int SLAYER_SESSION_Y = TOP_ROW_Y + LINE + HudPanel.PAD_Y + PANEL_GAP + HudPanel.PAD_Y;
+
+    /**
+     * The avatar's feet; at the default size it stands 72 pixels tall and 48 wide. Right of the
+     * session HUD's widest rows, and with its top at 60, below the HUD editor's header (to 59).
+     */
+    public static final int PLAYER_MODEL_X = 160;
+    public static final int PLAYER_MODEL_Y = 132;
+
+    /**
+     * Only used once the inventory HUD is detached from the hotbar. It then starts over the top
+     * row; it is the one HUD without a place of its own, since it is rarely detached.
+     */
     public static final int INVENTORY_X = 10;
     public static final int INVENTORY_Y = 10;
+
+    /** Below the performance line; the map is only shown in Catacombs runs. */
+    public static final int DUNGEON_MAP_X = 10;
+    public static final int DUNGEON_MAP_Y = 48;
 }

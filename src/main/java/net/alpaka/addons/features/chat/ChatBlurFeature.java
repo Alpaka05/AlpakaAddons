@@ -7,6 +7,7 @@ import com.mojang.blaze3d.textures.FilterMode;
 import com.mojang.blaze3d.textures.GpuTexture;
 import net.alpaka.addons.client.gui.AlpakaGuiElementSink;
 import net.alpaka.addons.client.gui.BlurRectRenderState;
+import net.alpaka.addons.client.gui.HudPanel;
 import net.alpaka.addons.client.gui.RoundedRectRenderState;
 import net.alpaka.addons.compat.GnetumCompat;
 import org.joml.Vector2f;
@@ -81,10 +82,10 @@ public final class ChatBlurFeature {
 
     /** How wide the panel grows past vanilla's own box, in chat pixels. */
     public static final int PADDING = 3;
-    /** The panel's corner radius in chat pixels. */
-    public static final int RADIUS = 5;
-    /** How far the panel's drop shadow reaches, in chat pixels. */
-    public static final int SHADOW = 4;
+    /** The panel's corner radius in chat pixels: the HUD panels' and the scoreboard's, so they match. */
+    public static final int RADIUS = HudPanel.RADIUS;
+    /** How far the panel's drop shadow reaches, in chat pixels: the HUD panels' too. */
+    public static final int SHADOW = HudPanel.SHADOW;
 
     /** Blur radius per GUI scale step at full strength: 5 screen pixels for each GUI pixel. */
     private static final int RADIUS_PER_SCALE = 5;
@@ -151,7 +152,7 @@ public final class ChatBlurFeature {
     private ChatBlurFeature() {}
 
     public static boolean isEnabled() {
-        return AlpakaConfig.instance.betterChatOn(AlpakaConfig.instance.chatBlurEnabled);
+        return AlpakaConfig.instance.betterChatOn(AlpakaConfig.instance.blurOn(AlpakaConfig.instance.chatBlurEnabled));
     }
 
     /** The chat is about to be extracted into this graphics, with the mouse here. */
@@ -312,9 +313,10 @@ public final class ChatBlurFeature {
         if (line < 0 || line >= panelLines) return;
         int top = panelBottom - (messageTop(line, continuesBelow) + 1) * panelLineHeight;
         int bottom = panelBottom - messageBottom(line, continuesBelow) * panelLineHeight;
+        // A pixel in from the panel's sides, so its corners are a pixel tighter than the panel's.
         sink.alpaka$submitElement(new RoundedRectRenderState(
                 linePose, x0 + 1, top, x1 - 1, bottom,
-                Math.round(3 * toScreen), 0, HOVER_HIGHLIGHT,
+                Math.round((RADIUS - 1) * toScreen), 0, HOVER_HIGHLIGHT,
                 Math.max(1, Math.round(toScreen)), sink.alpaka$currentScissor()));
     }
 

@@ -1,5 +1,7 @@
 package net.alpaka.addons.features.slayer
 
+import net.alpaka.addons.client.gui.GuiFont
+import net.alpaka.addons.client.gui.HudPanel
 import net.alpaka.addons.config.AlpakaConfig
 import net.minecraft.client.DeltaTracker
 import net.minecraft.client.Minecraft
@@ -7,6 +9,7 @@ import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.ChatScreen
 import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.Style
 import kotlin.math.ceil
 
 /**
@@ -31,10 +34,22 @@ object SlayerTimerHudRenderer {
     private const val LABEL_GAP = 5
 
     /**
-     * [LABEL] as drawn, kept between frames: a component built anew every frame also had its bidi
-     * order worked out anew every frame.
+     * [LABEL] as drawn, kept between frames. The word never changes, so only the font can make it
+     * stale, and [labelStyle] is the font it was built in. Rebuilding it cost a wrapper and a bidi
+     * pass every frame.
      */
-    private val LABEL_TEXT: Component = Component.literal(LABEL)
+    private var labelStyle: Style? = null
+    private var labelText: Component? = null
+
+    private fun label(smooth: Boolean): Component {
+        val style = if (smooth) GuiFont.style() else Style.EMPTY
+        val cached = labelText
+        if (cached != null && style == labelStyle) return cached
+        val built = HudPanel.text(Component.literal(LABEL), smooth)
+        labelStyle = style
+        labelText = built
+        return built
+    }
 
     /** Called every frame from the HUD hook. */
     @JvmStatic
@@ -81,15 +96,25 @@ object SlayerTimerHudRenderer {
         graphics.pose().pushMatrix()
         graphics.pose().translate(x.toFloat(), y.toFloat())
         graphics.pose().scale(scale, scale)
-        graphics.text(font, LABEL_TEXT, 0, 0, COLOR_LABEL)
-        graphics.text(font, Component.literal(SlayerTimer.format(elapsed)), font.width(LABEL) + LABEL_GAP, 0, color)
+        val cfg = AlpakaConfig.instance
+        val smooth = cfg.smoothOn(cfg.slayerTimerHudSmoothFont)
+        val label = label(smooth)
+        val time = HudPanel.text(Component.literal(SlayerTimer.format(elapsed)), smooth)
+        val timeX = font.width(label) + LABEL_GAP
+        val blurred = cfg.blurOn(cfg.slayerTimerHudBlur)
+        if (blurred) HudPanel.aroundText(graphics, timeX + font.width(time), GLYPH_HEIGHT, scale)
+        val shadow = HudPanel.TEXT_SHADOW
+        graphics.text(font, label, 0, 0, COLOR_LABEL, shadow)
+        graphics.text(font, time, timeX, 0, color, shadow)
         graphics.pose().popMatrix()
     }
 
     /** Unscaled width of the line, for the editor's bounding box. */
     fun width(font: Font, preview: Boolean): Int {
         val elapsed = if (preview) 42_300L else SlayerTimer.displayMs() ?: 0L
-        return font.width(LABEL) + LABEL_GAP + font.width(SlayerTimer.format(elapsed))
+        val smooth = AlpakaConfig.instance.smoothOn(AlpakaConfig.instance.slayerTimerHudSmoothFont)
+        return font.width(label(smooth)) + LABEL_GAP +
+            font.width(HudPanel.text(Component.literal(SlayerTimer.format(elapsed)), smooth))
     }
 
     fun height(scale: Float): Int = ceil(GLYPH_HEIGHT * scale).toDouble().toInt()

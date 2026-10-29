@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.healthbar;
 
+import net.alpaka.addons.config.AlpakaConfig;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
@@ -20,6 +21,11 @@ import net.minecraft.world.entity.player.Player;
  * air bubbles follow, and the armor bar goes too: SkyBlock reports defence in the action bar, so its
  * icons only took space.
  *
+ * Centred, the row is one piece over the middle of the hotbar instead of two halves around the
+ * level number, which then moves down onto the experience bar; every row, absorption's included, is
+ * centred on its own length. Absorption can also go gold over the
+ * first hearts - used up before the red ones, as it is in the game - or be left out.
+ *
  * The hearts themselves are vanilla's: damage blink, regeneration bounce, low-health shake, the
  * poison, wither and frozen tints and the hardcore variants all behave exactly as before, and a
  * resource pack that recolors the vanilla hearts recolors these too.
@@ -32,7 +38,22 @@ public final class WideHealthBarFeature {
     /** Icons in a right-hand vanilla bar run from its right edge leftwards, nine wide and eight apart. */
     private static final int RIGHT_BAR_WIDTH = (HEARTS_PER_ROW / 2 - 1) * HEART_STEP + HEART_SIZE;
 
+    /** The absorption modes, by {@link AlpakaConfig#wideHealthBarAbsorption}. */
+    public static final String[] ABSORPTION_NAMES = {"Own Row", "On Hearts", "Hidden"};
+    private static final int ABSORPTION_MERGED = 1;
+    private static final int ABSORPTION_HIDDEN = 2;
+
     private WideHealthBarFeature() {
+    }
+
+    public static boolean centered() {
+        return AlpakaConfig.instance.wideHealthBarEnabled && AlpakaConfig.instance.wideHealthBarCentered;
+    }
+
+    /** Whether absorption takes rows of its own, as vanilla does. */
+    private static boolean absorptionOwnRow() {
+        int mode = AlpakaConfig.instance.wideHealthBarAbsorption;
+        return mode != ABSORPTION_MERGED && mode != ABSORPTION_HIDDEN;
     }
 
     /**
@@ -57,7 +78,13 @@ public final class WideHealthBarFeature {
     }
 
     private static int rows(float maxHealth, int absorption) {
-        return Mth.ceil((maxHealth + absorption) / 2.0F / HEARTS_PER_ROW);
+        int extra = absorptionOwnRow() ? absorption : 0;
+        if (centered() && extra > 0) {
+            // Centred, absorption starts a row of its own instead of filling up the last health row.
+            return Mth.ceil(Mth.ceil(maxHealth / 2.0F) / (float) HEARTS_PER_ROW)
+                    + Mth.ceil(Mth.ceil(extra / 2.0F) / (float) HEARTS_PER_ROW);
+        }
+        return Mth.ceil((maxHealth + extra) / 2.0F / HEARTS_PER_ROW);
     }
 
     /** Vanilla's row pitch: ten pixels, squeezed once a player somehow needs more than two rows. */
@@ -77,13 +104,34 @@ public final class WideHealthBarFeature {
         HeartStyle absorbing = style == HeartStyle.WITHERED ? style : HeartStyle.ABSORBING;
         boolean hardcore = player.level().getLevelData().isHardcore();
         int healthContainers = Mth.ceil(maxHealth / 2.0);
-        int absorptionContainers = Mth.ceil(absorption / 2.0);
         int maxHealthHalves = healthContainers * 2;
+        boolean ownRow = absorptionOwnRow();
+        // Gold over the first hearts: as much of the absorption as the health row can show.
+        int goldHalves = AlpakaConfig.instance.wideHealthBarAbsorption == ABSORPTION_MERGED
+                ? Math.min(absorption, maxHealthHalves) : 0;
+        int absorptionContainers = ownRow ? Mth.ceil(absorption / 2.0) : 0;
         int rowHeight = rowHeight(rows(maxHealth, absorption));
 
+        boolean centered = centered();
+        int healthRows = Mth.ceil(healthContainers / (float) HEARTS_PER_ROW);
+
         for (int index = healthContainers + absorptionContainers - 1; index >= 0; index--) {
-            int x = columnX(index % HEARTS_PER_ROW, xLeft, xRight);
-            int y = yLineBase - (index / HEARTS_PER_ROW) * rowHeight;
+            int x;
+            int row;
+            if (centered) {
+                // Health and absorption each in rows of their own, every row centred on its own length.
+                boolean health = index < healthContainers;
+                int i = health ? index : index - healthContainers;
+                int total = health ? healthContainers : absorptionContainers;
+                int inRow = Math.min(HEARTS_PER_ROW, total - (i / HEARTS_PER_ROW) * HEARTS_PER_ROW);
+                int width = (inRow - 1) * HEART_STEP + HEART_SIZE;
+                x = (xLeft + xRight) / 2 - width / 2 + (i % HEARTS_PER_ROW) * HEART_STEP;
+                row = (health ? 0 : healthRows) + i / HEARTS_PER_ROW;
+            } else {
+                x = columnX(index % HEARTS_PER_ROW, xLeft, xRight);
+                row = index / HEARTS_PER_ROW;
+            }
+            int y = yLineBase - row * rowHeight;
             if (currentHealth + absorption <= 4) {
                 y += random.nextInt(2);
             }
@@ -104,6 +152,9 @@ public final class WideHealthBarFeature {
             }
             if (halves < currentHealth) {
                 blit(graphics, style.sprite(hardcore, halves + 1 == currentHealth, false), x, y);
+            }
+            if (index < healthContainers && halves < goldHalves) {
+                blit(graphics, absorbing.sprite(hardcore, halves + 1 == goldHalves, false), x, y);
             }
         }
     }

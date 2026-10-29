@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * The same answer carries the server's icon, Hypixel's "H", which the server list shows as well;
  * it is kept as a texture for the Join Hypixel button ([icon]). The mod ships no copy of it.
  *
- * Nothing is pinged while "Allow Network Features" is off.
+ * Nothing is pinged while "Network Features" is off.
  */
 object HypixelStatus {
     enum class State { OFF, CONNECTING, ONLINE, OFFLINE }

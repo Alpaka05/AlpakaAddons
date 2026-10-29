@@ -20,7 +20,11 @@ public class ConfigOption {
         DROPDOWN,
         TEXT,
         /** A sample of what the feature puts on screen, drawn in the settings; see {@link #preview}. */
-        PREVIEW
+        PREVIEW,
+        /** The viewmodel presets, one card each, which the config screen draws itself; see {@link #presets}. */
+        PRESETS,
+        /** One of the mod's keys, bound right in the settings; see {@link #keybind}. */
+        KEYBIND
     }
 
     /**
@@ -57,7 +61,7 @@ public class ConfigOption {
     private final String description;
     private final ConfigCategory category;
     private final Type type;
-    private final String keywords;
+    private String keywords;
 
     // Boolean
     private Supplier<Boolean> getterBool;
@@ -295,7 +299,7 @@ public class ConfigOption {
     }
 
     // Action
-    public String getActionLabel() { return actionLabel != null ? actionLabel : "Open..."; }
+    public String getActionLabel() { return actionLabel != null ? actionLabel : "Open…"; }
 
     private String[] choices;
 
@@ -330,6 +334,49 @@ public class ConfigOption {
         return option;
     }
 
+    /**
+     * The list of saved viewmodel presets: a card per preset with its name, Load, Save and Delete,
+     * and a button that adds one. A single option, because how many presets there are changes while
+     * the menu is open and the option list is built once.
+     */
+    public static ConfigOption presets(String id, String title, ConfigCategory category, String keywords) {
+        ConfigOption option = new ConfigOption(title, category, Type.PRESETS, id);
+        option.keywords = (title + " " + keywords).toLowerCase(Locale.ROOT);
+        return option;
+    }
+
+    private Supplier<net.minecraft.client.KeyMapping> keyMapping;
+
+    /**
+     * One of the mod's keys, shown as a field with the bound key: a click on it waits for the next
+     * key or mouse button. Placed in the settings of the feature it belongs to, which is why the keys
+     * are not in vanilla's Controls; see AlpakaKeyBinds.
+     *
+     * The mapping is given as a supplier because the features make theirs when they register, which
+     * may be after this list is built.
+     */
+    public static ConfigOption keybind(String id, String title, String description, ConfigCategory category,
+                                       Supplier<net.minecraft.client.KeyMapping> mapping, String keywords) {
+        ConfigOption option = new ConfigOption(id, title, description, category, Type.KEYBIND,
+                (title + " " + description + " key keybind hotkey bind button " + keywords).toLowerCase(Locale.ROOT));
+        option.keyMapping = mapping;
+        return option;
+    }
+
+    private ConfigOption(String id, String title, String description, ConfigCategory category, Type type, String keywords) {
+        this.id = id;
+        this.title = title;
+        this.description = description;
+        this.category = category;
+        this.type = type;
+        this.keywords = keywords;
+    }
+
+    /** The key mapping a keybind option sets, or null while its feature has not registered it. */
+    public net.minecraft.client.KeyMapping getKeyMapping() {
+        return keyMapping == null ? null : keyMapping.get();
+    }
+
     /** The sample a preview shows. */
     public net.minecraft.network.chat.Component getPreviewText() {
         return previewText == null ? net.minecraft.network.chat.Component.empty() : previewText.get();
@@ -341,33 +388,28 @@ public class ConfigOption {
     /** The color a color option currently holds. */
     public int getColor() { return colorGetter.getAsInt(); }
 
-    private boolean confirmFirst = false;
+    private boolean dangerous = false;
 
     /**
-     * Makes this action ask for a second click before it runs, for actions that overwrite something
-     * the player set: saving over a preset, resetting a value.
+     * Makes this action ask first, in a dialog, for actions that overwrite or throw away something the
+     * player set: resetting settings, saving over a preset. The action runs only once the dialog's
+     * confirm button is clicked; Cancel and Escape go back to the menu without doing anything.
+     *
+     * @param dangerous whether the action destroys settings: its row and the dialog's confirm button
+     *                  are then red, otherwise the confirm button carries the accent
      */
-    public ConfigOption confirmFirst() {
-        this.confirmFirst = true;
+    public ConfigOption confirm(String title, String message, String confirmLabel, boolean dangerous) {
+        Consumer<Screen> action = this.actionHandler;
+        this.actionHandler = parent -> net.minecraft.client.Minecraft.getInstance().gui.setScreen(
+                new net.alpaka.addons.client.AlpakaConfirmScreen(parent, title, message, confirmLabel, dangerous,
+                        () -> action.accept(parent)));
+        this.dangerous = dangerous;
         return this;
     }
 
-    public boolean isConfirmFirst() { return confirmFirst; }
+    /** Whether this action destroys settings, which its row shows in red. */
+    public boolean isDangerous() { return dangerous; }
 
-    private boolean buttonOnly = false;
-
-    /**
-     * Makes this action answer only its button, not a click anywhere on its card, for actions that
-     * overwrite settings straight away with nothing to back out of: loading a preset. Every
-     * {@link #confirmFirst()} action is button-only as well. Everything else - a color picker, an
-     * editor, a reset behind a confirmation screen - opens from the whole card, like a toggle.
-     */
-    public ConfigOption buttonOnly() {
-        this.buttonOnly = true;
-        return this;
-    }
-
-    public boolean isButtonOnly() { return buttonOnly || confirmFirst; }
     public void triggerAction(Screen parent) {
         if (actionHandler != null) {
             actionHandler.accept(parent);
@@ -422,5 +464,35 @@ public class ConfigOption {
 
     public String getPlaceholder() {
         return placeholder;
+    }
+
+    private boolean secret = false;
+    private int maxLength = 32;
+
+    /**
+     * Marks a text option as a secret, such as an API key: shown masked but for its last four
+     * characters, and long enough to paste one in.
+     */
+    public ConfigOption secret(int maxLength) {
+        this.secret = true;
+        this.maxLength = maxLength;
+        return this;
+    }
+
+    public boolean isSecret() {
+        return secret;
+    }
+
+    /** How many characters the text may have. */
+    public int getMaxLength() {
+        return maxLength;
+    }
+
+    /** The text as the field shows it: a secret masked but for its end, so the player can tell which key it is. */
+    public String getShownText() {
+        String text = getText();
+        if (!secret || text.isEmpty()) return text;
+        String end = text.length() > 8 ? text.substring(text.length() - 4) : "";
+        return "•".repeat(Math.min(10, text.length() - end.length())) + end;
     }
 }

@@ -4,6 +4,7 @@ import java.util.Locale
 import net.alpaka.addons.client.hud.HudBounds
 import net.alpaka.addons.client.hud.HudDefaults
 import net.alpaka.addons.client.hud.HudElement
+import net.alpaka.addons.client.gui.HudPanel
 import net.alpaka.addons.config.AlpakaConfig
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
@@ -24,7 +25,7 @@ object SlayerTimerHudElement : HudElement {
     private const val TEXT_MARGIN = 2
 
     override val id: String = "slayer_timer"
-    override val name: String = "Slayer Boss Timer"
+    override val name: String = "Boss Timer"
 
     override val isFeatureEnabled: Boolean
         get() = AlpakaConfig.instance.slayerTimerEnabled && AlpakaConfig.instance.slayerTimerHudEnabled
@@ -42,15 +43,17 @@ object SlayerTimerHudElement : HudElement {
 
     override fun bounds(): HudBounds {
         val cfg = AlpakaConfig.instance
+        val scale = cfg.slayerTimerHudScale
         val width = lineWidth()
-        val height = SlayerTimerHudRenderer.height(cfg.slayerTimerHudScale)
+        val height = SlayerTimerHudRenderer.height(scale)
         val x = x(width)
 
+        val margin = HudPanel.margin(cfg.blurOn(cfg.slayerTimerHudBlur), scale, TEXT_MARGIN)
         return HudBounds(
-            x - TEXT_MARGIN,
-            cfg.slayerTimerHudY - TEXT_MARGIN,
-            x + width + TEXT_MARGIN,
-            cfg.slayerTimerHudY + height + TEXT_MARGIN,
+            x - margin,
+            cfg.slayerTimerHudY - margin,
+            x + width + margin,
+            cfg.slayerTimerHudY + height + margin,
         )
     }
 

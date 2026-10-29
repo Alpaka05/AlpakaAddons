@@ -535,6 +535,16 @@ public class AlpakaConfig {
     public int etherwarpSoundIndex = 0;
     public float etherwarpSoundVolume = 1.0f;
 
+    // Pest Finder: the vacuum's trail extended to a waypoint, and an outline on the pests on the Garden.
+    public boolean pestFinderEnabled = false;
+    public int pestFinderGuessColor = 0xFFFF5555;
+    public boolean pestFinderGuessLine = true;
+    public int pestFinderGuessSeconds = 15;
+    public boolean pestFinderHideParticles = true;
+    public boolean pestFinderHighlight = true;
+    public int pestFinderHighlightColor = 0xFF55FF55;
+    public boolean pestFinderLineToPests = true;
+
     // Dungeon Map: screen position is edited in the HUD editor.
     /** Highlight the starred mobs and minibosses during a dungeon clear. */
     public boolean starredMobsHighlightEnabled = false;
@@ -1634,6 +1644,7 @@ public class AlpakaConfig {
         this.inventoryHudEnabled = false;
         this.dungeonMapEnabled = false;
         this.starredMobsHighlightEnabled = false;
+        this.pestFinderEnabled = false;
         this.bridgeBotFormatterEnabled = false;
         this.guildPrefixEnabled = false;
         this.itemSizeFeatureEnabled = false;

@@ -544,6 +544,8 @@ public class AlpakaConfig {
     public boolean pestFinderHighlight = true;
     public int pestFinderHighlightColor = 0xFF55FF55;
     public boolean pestFinderLineToPests = true;
+    /** The Garden's plot names by grid square, read from the desk's Configure Plots menu; empty until then. */
+    public java.util.List<String> pestFinderPlotNames = new java.util.ArrayList<>();
 
     // Dungeon Map: screen position is edited in the HUD editor.
     /** Highlight the starred mobs and minibosses during a dungeon clear. */

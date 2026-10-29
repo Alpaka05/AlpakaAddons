@@ -1,10 +1,17 @@
 package net.alpaka.addons.features.garden
 
+import com.mojang.blaze3d.platform.InputConstants
+import net.alpaka.addons.client.AlpakaKeyBinds
+import net.alpaka.addons.client.AlpakaKeyCategory
+import net.alpaka.addons.compliance.Outbound
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.utils.SkyblockUtils
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
+import net.minecraft.ChatFormatting
+import net.minecraft.client.KeyMapping
 import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.client.renderer.entity.state.EntityRenderState
 import net.minecraft.core.BlockPos
@@ -13,6 +20,7 @@ import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.gizmos.GizmoStyle
 import net.minecraft.gizmos.Gizmos
 import net.minecraft.gizmos.TextGizmo
+import net.minecraft.network.chat.Component
 import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket
 import net.minecraft.util.ARGB
 import net.minecraft.world.entity.Entity
@@ -23,6 +31,7 @@ import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.component.CustomData
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
+import org.lwjgl.glfw.GLFW
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -34,11 +43,13 @@ import kotlin.math.sqrt
  * - **Vacuum guess.** A left click with a vacuum makes Hypixel draw a short particle trail towards
  *   the nearest pest. The trail is read as it arrives and extended to its end ([PestTrailGuess]),
  *   which is marked with a waypoint (box, beam and label) and, optionally, a line from the
- *   crosshair. It goes away when the player gets there, or after a set time.
+ *   crosshair. It goes away when the player gets there, or after a set time. When it points at
+ *   the center of a plot (Hypixel's answer when it only knows the plot), a key sends /plottp there.
  * - **Pest highlight.** Pests the client has loaded get a glowing outline, and while a vacuum is in
  *   hand a line from the crosshair to each of them.
  *
- * Everything here only reads what the server sends and draws on top of it; nothing is sent.
+ * Apart from that key's command, which goes through Outbound, everything here only reads what
+ * the server sends and draws on top of it.
  * Only on the Garden.
  */
 object PestFinder {
@@ -57,9 +68,6 @@ object PestFinder {
 
     /** How often the pests around are looked for, in ticks. */
     private const val RESCAN_TICKS = 5
-
-    /** Garden plots are 96 blocks wide, in a 5 by 5 grid centered on the origin. */
-    private const val PLOT_SIZE = 96.0
 
     /** A guess this close to a plot's center is Hypixel pointing at the plot, not at a pest. */
     private const val PLOT_MIDDLE_RADIUS = 1.5
@@ -94,8 +102,19 @@ object PestFinder {
     /** Ids of the pests' name tags, for the lines; refreshed with [outlined]. */
     private val pestTags = ArrayList<Int>()
 
-    /** Ids of the entities that make up the pests the client has loaded. */
-    private val outlined = HashSet<Int>()
+    /**
+     * Ids of the entities that make up the pests the client has loaded, to whether each is the
+     * stand wearing the pest's head (whose own body is then left undrawn, see [isPestHead]).
+     */
+    private val outlined = HashMap<Int, Boolean>()
+
+    /** Reads the plot names off the desk's menu every this many ticks while it is open. */
+    private const val MENU_READ_TICKS = 10
+    private var menuReadIn = 0
+
+    /** Sends /plottp to the plot the guess points at. Unbound by default. */
+    @JvmField
+    var TELEPORT_KEY: KeyMapping? = null
 
     /** See EtherwarpOverlayFeature: the custom data last read, and whether it was a vacuum. */
     private var cachedData: CustomData? = null
@@ -103,6 +122,8 @@ object PestFinder {
 
     @JvmStatic
     fun register() {
+        TELEPORT_KEY = AlpakaKeyBinds.register(KeyMapping("key.alpaka.pest_finder_teleport",
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_UNKNOWN, AlpakaKeyCategory.CATEGORY))
         ClientTickEvents.END_CLIENT_TICK.register { tick(it) }
         ClientPlayConnectionEvents.JOIN.register { _, _, _ -> reset() }
         ClientPlayConnectionEvents.DISCONNECT.register { _, _ -> reset() }
@@ -173,11 +194,11 @@ object PestFinder {
     }
 
     private fun isPlotMiddle(x: Double, z: Double): Boolean {
-        val cx = (x / PLOT_SIZE).roundToInt()
-        val cz = (z / PLOT_SIZE).roundToInt()
+        val cx = (x / GardenPlots.SIZE).roundToInt()
+        val cz = (z / GardenPlots.SIZE).roundToInt()
         if (abs(cx) > 2 || abs(cz) > 2) return false
-        val dx = x - cx * PLOT_SIZE
-        val dz = z - cz * PLOT_SIZE
+        val dx = x - cx * GardenPlots.SIZE
+        val dz = z - cz * GardenPlots.SIZE
         return dx * dx + dz * dz <= PLOT_MIDDLE_RADIUS * PLOT_MIDDLE_RADIUS
     }
 
@@ -197,6 +218,10 @@ object PestFinder {
     // ---------------------------------------------------------------- tick
 
     private fun tick(mc: Minecraft) {
+        val key = TELEPORT_KEY
+        while (key != null && key.consumeClick()) {
+            if (mc.gui.screen() == null) teleport(mc)
+        }
         val level = mc.level
         val player = mc.player
         if (level == null || player == null || !active()) {
@@ -204,6 +229,12 @@ object PestFinder {
             return
         }
         val cfg = AlpakaConfig.instance
+
+        val screen = mc.gui.screen()
+        if (screen is AbstractContainerScreen<*> && --menuReadIn <= 0) {
+            menuReadIn = MENU_READ_TICKS
+            GardenPlots.readMenu(screen)
+        }
 
         if (clickedAtMs != 0L) {
             val age = System.currentTimeMillis() - clickedAtMs
@@ -259,23 +290,68 @@ object PestFinder {
             if (entity === tag || entity is Player) continue
             if (entity is ArmorStand) {
                 if (!entity.getItemBySlot(EquipmentSlot.HEAD).isEmpty) {
-                    outlined.add(entity.id)
+                    outlined[entity.id] = true
                     foundHead = true
                 }
             } else {
                 mobs.add(entity.id)
             }
         }
-        if (!foundHead) outlined.addAll(mobs)
+        if (!foundHead) for (id in mobs) outlined[id] = false
     }
 
     /** Called from EntityRendererMixin: the outline on the pests. */
     @JvmStatic
     fun applyOutline(entity: Entity, state: EntityRenderState) {
-        if (outlined.isEmpty() || !outlined.contains(entity.id)) return
+        if (!highlighting() || !outlined.containsKey(entity.id)) return
+        state.outlineColor = (AlpakaConfig.instance.pestFinderHighlightColor and 0xFFFFFF).takeIf { it != 0 } ?: 0x010101
+    }
+
+    /**
+     * Called from LivingEntityRendererMixin for every living entity: whether it is the stand wearing
+     * a pest's head, whose body is then left out so the outline sits on the head alone.
+     */
+    @JvmStatic
+    fun isPestHead(entity: Entity): Boolean = highlighting() && outlined[entity.id] == true
+
+    private fun highlighting(): Boolean {
+        if (outlined.isEmpty()) return false
         val cfg = AlpakaConfig.instance
-        if (!cfg.pestFinderEnabled || !cfg.pestFinderHighlight) return
-        state.outlineColor = (cfg.pestFinderHighlightColor and 0xFFFFFF).takeIf { it != 0 } ?: 0x010101
+        return cfg.pestFinderEnabled && cfg.pestFinderHighlight
+    }
+
+    // ---------------------------------------------------------------- teleport
+
+    /**
+     * The teleport key: /plottp to the plot the guess points at, when the guess is a plot's center
+     * and the player is not on that plot already. Otherwise a line above the hotbar says why not.
+     */
+    private fun teleport(mc: Minecraft) {
+        val player = mc.player ?: return
+        if (!active()) return
+        val g = guess
+        if (g == null) {
+            notice("No pest guess yet; left-click a vacuum first.", ChatFormatting.RED)
+            return
+        }
+        val target = GardenPlots.index(g.x, g.z)
+        if (!guessIsPlotMiddle || target == null || target == GardenPlots.BARN) {
+            notice("The pest guess points at the pest itself, not at a plot.", ChatFormatting.YELLOW)
+            return
+        }
+        val name = GardenPlots.name(target)
+        if (GardenPlots.index(player.x, player.z) == target) {
+            notice("You are on Plot $name already.", ChatFormatting.YELLOW)
+            return
+        }
+        if (Outbound.command("plottp $name", Outbound.Cause.KEY_PRESS)) {
+            // The guess was the plot's center; on the plot, a new click finds the pest itself.
+            clearGuess()
+        }
+    }
+
+    private fun notice(text: String, color: ChatFormatting) {
+        Minecraft.getInstance().gui.hud.setOverlayMessage(Component.literal(text).withStyle(color), false)
     }
 
     // ---------------------------------------------------------------- drawing
@@ -310,7 +386,7 @@ object PestFinder {
                 ARGB.color(0x80, color), 6.0f).setAlwaysOnTop()
 
             val distance = sqrt(eye.distanceToSqr(center))
-            val label = (if (guessIsPlotMiddle) "Pest Guess (Plot Middle)" else "Pest Guess") +
+            val label = (if (guessIsPlotMiddle) plotMiddleLabel(g) else "Pest Guess") +
                 String.format(Locale.ROOT, " %.0fm", distance)
             text(label, center.add(0.0, 1.6, 0.0), color, distance)
 
@@ -325,6 +401,13 @@ object PestFinder {
                 Gizmos.line(crosshair, target, cfg.pestFinderHighlightColor or 0xFF000000.toInt(), 2.0f).setAlwaysOnTop()
             }
         }
+    }
+
+    /** "Plot 3", and the teleport key when one is bound. */
+    private fun plotMiddleLabel(g: Vec3): String {
+        val index = GardenPlots.index(g.x, g.z) ?: return "Pest Guess (Plot Middle)"
+        val key = TELEPORT_KEY?.takeUnless { it.isUnbound }?.translatedKeyMessage?.string
+        return "Pest Guess (Plot ${GardenPlots.name(index)})" + (key?.let { " [$it] Teleport" } ?: "")
     }
 
     /** A label that stays readable from afar: scaled up with the distance beyond a few blocks. */

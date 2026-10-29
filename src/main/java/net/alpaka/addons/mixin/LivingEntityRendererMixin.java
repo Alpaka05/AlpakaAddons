@@ -2,12 +2,15 @@ package net.alpaka.addons.mixin;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import net.alpaka.addons.features.dungeonmobs.StarredMobsHighlight;
+import net.alpaka.addons.features.garden.PestFinder;
+import net.alpaka.addons.features.garden.PestRenderState;
 import net.alpaka.addons.features.hurtoverlay.HurtOverlayFeature;
 import net.alpaka.addons.features.slayer.BossHighlightRenderState;
 import net.alpaka.addons.features.slayer.SlayerBossHighlight;
 import net.minecraft.util.ARGB;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
+import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.world.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -30,6 +33,22 @@ public class LivingEntityRendererMixin {
         // Boss Highlight first: it clears the overlay left on the reused state by the last mob.
         SlayerBossHighlight.applyOverlay(entity, (BossHighlightRenderState) state);
         StarredMobsHighlight.applyOverlay(entity, (BossHighlightRenderState) state);
+        // Set or cleared on every entity, since the state is reused.
+        ((PestRenderState) state).alpaka$setPestHead(PestFinder.isPestHead(entity));
+    }
+
+    /**
+     * Pest Finder: a pest is an invisible armor stand wearing the pest's head. Vanilla draws the
+     * outline of an invisible glowing entity's whole model, which outlined the stand from head to
+     * base plate; without a render type the body is skipped and only the head, drawn by its layer,
+     * keeps the outline. Only for an invisible stand, so nothing that is meant to be seen goes.
+     */
+    @ModifyExpressionValue(
+            method = "submit(Lnet/minecraft/client/renderer/entity/state/LivingEntityRenderState;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;Lnet/minecraft/client/renderer/state/level/CameraRenderState;)V",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/LivingEntityRenderer;getRenderType(Lnet/minecraft/client/renderer/entity/state/LivingEntityRenderState;ZZZ)Lnet/minecraft/client/renderer/rendertype/RenderType;")
+    )
+    private RenderType alpaka$pestHeadOnly(RenderType original, LivingEntityRenderState state) {
+        return state.isInvisibleToPlayer && ((PestRenderState) state).alpaka$isPestHead() ? null : original;
     }
 
     /**

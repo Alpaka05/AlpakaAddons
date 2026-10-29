@@ -2082,6 +2082,12 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.pestFinderEnabled = v; AlpakaConfig.save(); },
                 "pest finder garden vacuum tracker waypoint guess line tracer locate find pests farming"));
 
+        OPTIONS.add(ConfigOption.keybind("pest_finder_teleport_key", "Key",
+                "Teleports you with /plottp to the plot the waypoint points at, when it marks a plot's center. Open Configure Plots at your desk once so renamed plots are known. Unbound by default.",
+                ConfigCategory.SKYBLOCK,
+                () -> net.alpaka.addons.features.garden.PestFinder.TELEPORT_KEY,
+                "pest finder teleport plottp plot warp"));
+
         OPTIONS.add(ConfigOption.color("pest_finder_guess_color", "Waypoint Color",
                 "Color of the waypoint where the vacuum's trail leads. A guess at a plot's center is shown in yellow.",
                 ConfigCategory.SKYBLOCK,

@@ -155,6 +155,86 @@ object DungeonMapRenderer {
         }
     }
 
+    /**
+     * The clear map at [size] GUI pixels for the Leap Menu, with every teammate's head framed in
+     * [colorOf] their class. Returns the teammate under the mouse, whose head is drawn larger, as is
+     * [highlight]'s. [preview] draws the editor's sample map instead, for the screenshot tour.
+     */
+    @JvmStatic
+    fun drawLeapMap(g: GuiGraphicsExtractor, x: Int, y: Int, size: Int, mouseX: Int, mouseY: Int, highlight: String?,
+                    preview: Boolean, colorOf: (String) -> Int): String? {
+        val source = if (preview) this.preview else DungeonMapFeature.snapshot
+        if (source.colors == null) return null
+        val mc = Minecraft.getInstance()
+        val scale = size / 128f
+        val texture = if (preview) previewTexture else clearTexture
+        g.pose().pushMatrix()
+        g.pose().translate(x.toFloat(), y.toFloat())
+        g.pose().scale(scale, scale)
+        // The same texture and room labels as the HUD, which isn't drawn while a screen is open.
+        if (preview) {
+            texture.updateMap(source, palette(), null, -1)
+            texture.draw(g)
+        } else {
+            texture.updateMap(source, palette(), DungeonMapFeature.cover, DungeonMapFeature.coverRevision)
+            texture.draw(g)
+            drawRoomLabels(g, DungeonMapFeature.labels)
+        }
+        g.pose().popMatrix()
+
+        class Spot(val x: Float, val y: Float, val name: String?, val self: Boolean, val skin: PlayerSkin?)
+        val spots = ArrayList<Spot>()
+        if (preview) {
+            spots += Spot(83f, 65f, "Teammate", false, previewTeammateSkin)
+            spots += Spot(33f, 95f, "Healer", false, DefaultPlayerSkin.get(UUID(0L, 5L)))
+            spots += Spot(40f, 40f, mc.player?.name?.string, true, previewOwnSkin())
+        } else {
+            val partialTick = mc.deltaTracker.getGameTimeDeltaPartialTick(false)
+            val now = DungeonMapFeature.now()
+            for (player in DungeonMapFeature.players) {
+                val at = DungeonMapFeature.locate(player, partialTick, now) ?: continue
+                spots += Spot(at.x, at.y, player.name, player.self, player.skin)
+            }
+        }
+        // The closest teammate within reach of the mouse, in map pixels.
+        val mapMouseX = (mouseX - x) / scale
+        val mapMouseY = (mouseY - y) / scale
+        var hovered: String? = null
+        var best = LEAP_REACH
+        for (spot in spots) {
+            if (spot.self || spot.name == null) continue
+            val distance = kotlin.math.hypot(spot.x - mapMouseX, spot.y - mapMouseY)
+            if (distance < best) {
+                best = distance
+                hovered = spot.name
+            }
+        }
+        g.enableScissor(x, y, x + size, y + size)
+        try {
+            for (spot in spots) {
+                val big = !spot.self && spot.name != null &&
+                    (spot.name.equals(hovered, true) || spot.name.equals(highlight, true))
+                val head = if (big) 14 else 10
+                val cx = Math.round(x + spot.x * scale)
+                val cy = Math.round(y + spot.y * scale)
+                val color = if (spot.self || spot.name == null) 0xFFFFFFFF.toInt() else colorOf(spot.name)
+                val half = head / 2
+                g.fill(cx - half - 1, cy - half - 1, cx + half + 1, cy + half + 1, color)
+                if (spot.skin != null) PlayerFaceExtractor.extractRenderState(g, spot.skin, cx - half, cy - half, head)
+                else g.fill(cx - half, cy - half, cx + half, cy + half, 0xFF202020.toInt())
+                if (!spot.self && spot.name != null) {
+                    val name = spot.name
+                    g.text(mc.font, name, cx - mc.font.width(name) / 2, cy + half + 2, if (big) color else 0xFFE8EEEE.toInt(), true)
+                }
+            }
+        } finally {
+            g.disableScissor()
+        }
+        return hovered
+    }
+
+    private const val LEAP_REACH = 9f
+
     private fun waiting(g: GuiGraphicsExtractor, text: String) {
         val mc = Minecraft.getInstance()
         g.text(mc.font, text, (128 - mc.font.width(text)) / 2, 60, AlpakaConfig.instance.dungeonMapTextColor, true)

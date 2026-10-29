@@ -1506,6 +1506,19 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.dungeonMapBossWallColor = v; AlpakaConfig.save(); },
                 "dungeon map color boss wall color"));
 
+        OPTIONS.add(new ConfigOption("Leap Menu", ConfigCategory.DUNGEON));
+        OPTIONS.add(new ConfigOption("leap_menu_enabled", "Enable Leap Menu",
+                "Shows the Spirit Leap menu as one big button per teammate, with their head, name and class, colored by class. One click leaps.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.leapMenuEnabled,
+                v -> { AlpakaConfig.instance.leapMenuEnabled = v; AlpakaConfig.save(); },
+                "leap menu spirit leap infinileap teleport teammate custom gui class"));
+
+        OPTIONS.add(new ConfigOption("leap_menu_show_map", "Show Dungeon Map",
+                "Shows the dungeon map next to the buttons during the clear. Click a player on the map to leap to them.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.leapMenuShowMap,
+                v -> { AlpakaConfig.instance.leapMenuShowMap = v; AlpakaConfig.save(); },
+                "leap menu map dungeon map click player"));
+
         OPTIONS.add(new ConfigOption("Starred Mobs Highlight", ConfigCategory.DUNGEON));
 
         OPTIONS.add(new ConfigOption("starred_mobs_highlight", "Starred Mobs Highlight",

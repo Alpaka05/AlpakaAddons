@@ -593,6 +593,10 @@ public class AlpakaConfig {
     public int dungeonMapBossFloorColor = 0xFF687981;
     public int dungeonMapBossWallColor = 0xFFB8C5CC;
 
+    // Leap Menu: Hypixel's Spirit Leap chest drawn as one button per teammate.
+    public boolean leapMenuEnabled = false;
+    public boolean leapMenuShowMap = true;
+
     // Dungeon solvers. Visual help in the Catacombs: puzzles, F7/M7 terminals and devices. Nothing is
     // sent; the custom terminal GUI clicks only what the player clicks, through Outbound.menuClick.
     // Ranged values are clamped where they are read, so a hand-edited file cannot push them out.
@@ -1735,6 +1739,7 @@ public class AlpakaConfig {
         this.inventoryHudEnabled = false;
         this.dungeonMapEnabled = false;
         this.starredMobsHighlightEnabled = false;
+        this.leapMenuEnabled = false;
         this.bridgeBotFormatterEnabled = false;
         this.guildPrefixEnabled = false;
         this.itemSizeFeatureEnabled = false;

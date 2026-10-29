@@ -5,6 +5,8 @@
   "plugin": "net.alpaka.addons.compat.OptionalHooksPlugin",
   "client": [
     "AbstractClientPlayerMixin",
+    "AbstractContainerMenuSlotSetMixin",
+    "AbstractContainerScreenSlotHighlightMixin",
     "AtmosphericFogEnvironmentMixin",
     "AvatarRendererMixin",
     "BlazeModelMixin",

@@ -95,6 +95,8 @@ public final class ConfigTree {
             "custom_escape_menu", "custom_main_menu", "disable_all_features", "reset_all_settings",
             // SkyBlock, kept apart from the list below so it does not collide with other changes there
             "slayer_boss_highlight",
+            // Dungeon, kept apart the same way
+            "starred_mobs_highlight",
             // Visuals
             "fullbright", "clean_blaze", "blaze_fire_pits", "hide_hurt_overlay", "hide_mob_deaths",
             "hide_explosions",
@@ -104,22 +106,26 @@ public final class ConfigTree {
             "container_bg_opacity", "inventory_snow", "scrollable_tooltips", "persistent_item_name", "old_master_stars", "storage_preview", "wide_health_bar",
             "better_chat", "chat_search", "chat_copy", "expand_chat_history", "compact_chat", "message_filter",
             "mention_notification", "chat_peek", "better_screenshot_message", "chat_tabs",
-            "player_model_enabled", "performance_hud_enabled", "inventory_hud_enabled", "custom_tab",
+            "player_model_enabled", "performance_hud_enabled", "inventory_hud_enabled", "custom_tab", "dungeon_map_enabled", "leap_menu_enabled",
             // Item viewmodel: the adjustments are the modifiers' own settings
             "item_size_feature", "item_starlight", "item_motion_blur", "item_viewmodel_reset",
             // Block overlay: one feature, outline, fill, animation and filters its settings
             "block_overlay_enabled",
             // SkyBlock
-            "etherwarp_overlay", "etherwarp_sound",
+            "etherwarp_overlay", "etherwarp_sound", "item_search",
             "slayer_drop_tracker", "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat",
             "hide_slayer_chat", "boss_spawn_alert", "boss_cocoon_alert", "slayer_timer", "slayer_hud_enabled",
-            "world_age_join_message_enabled", "party_invite_prompt",
+            "world_age_join_message_enabled", "party_invite_prompt", "party_commands", "shorten_warp", "warp_cooldown_queue",
             "guild_prefix", "bridge_bot_formatter", "only_crit_damage", "ragnarock", "deployable_timer", "cache_resource_pack",
+            "visitor_bazaar",
             "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value", "chest_value",
+            "profile_dashboard",
+            // SkyBlock: dungeon
+            "dungeon_solvers", "terminal_solvers", "terminal_custom_gui", "device_solvers",
             // Cosmetics
             "custom_name_tag", "chroma_hat", "aura", "player_scale", "custom_damage_tags",
             // Sound & utility
-            "command_wheel_custom_commands", "command_shortcuts", "always_sprint", "keep_cursor_position", "quick_join", "custom_sounds",
+            "command_wheel_custom_commands", "command_shortcuts", "inventory_buttons", "always_sprint", "keep_cursor_position", "quick_join", "custom_sounds",
             "custom_sound_button_click", "custom_sound_hotbar_scroll", "custom_sound_inventory_open_close",
             "custom_sound_inventory_click", "custom_sound_rare_drop", "custom_sound_notification",
             "custom_sound_player_hurt", "custom_sound_blaze_death", "custom_sound_zombie_remedy",
@@ -202,15 +208,19 @@ public final class ConfigTree {
                             "#Viewmodel Presets", "item_viewmodel_reset"},
                     {"Cosmetics", "custom_name_tag", "custom_damage_tags", "chroma_hat", "aura", "player_scale", "inventory_snow"}},
             {{"SkyBlock"},
+                    {"Dungeon", "dungeon_map_enabled", "leap_menu_enabled", "starred_mobs_highlight", "dungeon_solvers", "terminal_solvers", "terminal_custom_gui", "device_solvers"},
                     {"Slayer", "slayer_hud_enabled", "slayer_timer", "boss_spawn_alert", "boss_cocoon_alert", "slayer_drop_tracker",
                             "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat", "slayer_boss_highlight",
                             "hide_slayer_chat", "clean_blaze", "blaze_fire_pits"},
+                    {"Garden", "visitor_bazaar"},
                     {"Tools", "etherwarp_overlay", "etherwarp_sound", "only_crit_damage",
-                            "world_age_join_message_enabled", "ragnarock", "deployable_timer", "#Enchantments", "cache_resource_pack"},
+                            "world_age_join_message_enabled", "ragnarock", "deployable_timer", "#Enchantments", "cache_resource_pack",
+                            "profile_dashboard"},
                     {"Markets", "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value",
+                            "item_search",
                             "chest_value"},
-                    {"Social", "party_invite_prompt", "guild_prefix", "bridge_bot_formatter",
-                            "command_wheel_custom_commands", "command_shortcuts"}},
+                    {"Social", "party_invite_prompt", "party_commands", "shorten_warp", "warp_cooldown_queue", "guild_prefix", "bridge_bot_formatter",
+                            "command_wheel_custom_commands", "command_shortcuts", "inventory_buttons"}},
     };
 
     /** "Enable Inventory HUD" reads as "Inventory HUD" in a list of features that each switch on. */

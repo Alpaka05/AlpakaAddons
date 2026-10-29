@@ -48,6 +48,7 @@ public final class AlpakaPerf {
         HUD_SLAYER("alpaka:hud_slayer"),
         HUD_SLAYER_TIMER("alpaka:hud_slayer_timer"),
         HUD_DEPLOYABLE_TIMER("alpaka:hud_deployable_timer"),
+        HUD_DUNGEON_MAP("alpaka:hud_dungeon_map"),
         HUD_INVENTORY("alpaka:hud_inventory"),
         HUD_NOTIFICATIONS("alpaka:hud_notifications"),
         HUD_SCOREBOARD("alpaka:hud_scoreboard"),
@@ -67,7 +68,11 @@ public final class AlpakaPerf {
         LEVEL_OVERLAYS("alpaka:level_overlays"),
         DAMAGE_TAGS("alpaka:damage_tags"),
         DAMAGE_TAGS_TICK("alpaka:damage_tags_tick"),
-        SLAYER_TICK("alpaka:slayer_tick");
+        SLAYER_TICK("alpaka:slayer_tick"),
+        /** The dungeon solvers' marks in the world, drawn and submitted. */
+        DUNGEON_SOLVERS("alpaka:dungeon_solvers"),
+        /** The dungeon solvers' tick: room detection and every solver. */
+        DUNGEON_SOLVERS_TICK("alpaka:dungeon_solvers_tick");
 
         final String id;
         final boolean countOnly;

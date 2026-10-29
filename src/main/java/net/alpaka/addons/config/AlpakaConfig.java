@@ -491,6 +491,16 @@ public class AlpakaConfig {
     public int etherwarpSoundIndex = 0;
     public float etherwarpSoundVolume = 1.0f;
 
+    // Pest Finder: the vacuum's trail extended to a waypoint, and an outline on the pests on the Garden.
+    public boolean pestFinderEnabled = false;
+    public int pestFinderGuessColor = 0xFFFF5555;
+    public boolean pestFinderGuessLine = true;
+    public int pestFinderGuessSeconds = 15;
+    public boolean pestFinderHideParticles = true;
+    public boolean pestFinderHighlight = true;
+    public int pestFinderHighlightColor = 0xFF55FF55;
+    public boolean pestFinderLineToPests = true;
+
     // Inventory HUD. Shows the 27 main-inventory slots on screen; position and scale are set in
     // the HUD editor, or it can ride directly above the hotbar.
     public boolean inventoryHudEnabled = false;
@@ -1301,6 +1311,7 @@ public class AlpakaConfig {
         this.compactChatEnabled = false;
         this.chatTabsEnabled = false;
         this.inventoryHudEnabled = false;
+        this.pestFinderEnabled = false;
         this.bridgeBotFormatterEnabled = false;
         this.guildPrefixEnabled = false;
         this.itemSizeFeatureEnabled = false;

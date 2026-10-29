@@ -26,6 +26,9 @@ public class AlpakaConfigRegistry {
     private static final List<ConfigOption> OPTIONS = new ArrayList<>();
     private static final String[] CHEST_VALUE_SIDES = {"Left", "Right"};
     private static final java.util.Map<ConfigCategory, List<ConfigOption>> CATEGORY_CACHE = new java.util.EnumMap<>(ConfigCategory.class);
+    private static final String[] BOSS_MAP_MODES = {"Arena Map", "Saved Map", "Both", "Hidden"};
+    private static final String[] PLAYER_ICONS = {"Heads", "Upright Heads", "Arrows"};
+    private static final String[] MAP_COLORS = {"Alpaka", "Hypixel"};
 
     static {
         registerAllOptions();
@@ -54,18 +57,18 @@ public class AlpakaConfigRegistry {
         // and whether they replace vanilla's, the one place HUDs are arranged, and the way back out
         // of everything.
         OPTIONS.add(new ConfigOption("allow_api_calls", "Network Features",
-                "Lets the mod go online for the mayor's slayer XP buff, the main menu's player count, the update check and SkyCofl's price history.",
+                "Lets the mod go online for the mayor's slayer XP buff, the main menu's player count, the update check, SkyCofl's price history and the Profile Dashboard.",
                 ConfigCategory.GENERAL,
                 () -> AlpakaConfig.instance.allowApiCalls,
                 v -> { AlpakaConfig.instance.allowApiCalls = v; AlpakaConfig.save(); },
                 "api network internet hypixel request mayor election offline privacy allow network features"));
 
         OPTIONS.add(new ConfigOption("update_notifications", "Update Check",
-                "Tells you in chat when a new version is out. Needs Network Features.",
+                "Tells you in chat when a new version is out, with a button to install it. Needs Network Features.",
                 ConfigCategory.GENERAL,
                 () -> AlpakaConfig.instance.updateNotificationsEnabled,
                 v -> { AlpakaConfig.instance.updateNotificationsEnabled = v; AlpakaConfig.save(); },
-                "update new version release github download notify check outdated update notifications"));
+                "update new version release github download install notify check outdated update notifications"));
 
         OPTIONS.add(new ConfigOption("update_stream", "Update Stream",
                 "Which versions the update check tells you about: full releases only, or pre-releases as well.",
@@ -1210,55 +1213,41 @@ public class AlpakaConfigRegistry {
 
         OPTIONS.add(new ConfigOption("Dungeon Map", ConfigCategory.DUNGEON));
         OPTIONS.add(new ConfigOption("dungeon_map_enabled", "Enable Dungeon Map",
-                "Shows the dungeon map and a local boss arena map. Move and resize it in the HUD editor.", ConfigCategory.DUNGEON,
+                "Shows the dungeon map during the clear and a map of the boss arena. Move and resize it in the HUD editor.", ConfigCategory.DUNGEON,
                 () -> AlpakaConfig.instance.dungeonMapEnabled,
                 v -> { AlpakaConfig.instance.dungeonMapEnabled = v; AlpakaConfig.save(); },
                 "dungeon map minimap catacombs overlay hud boss"));
 
-        OPTIONS.add(new ConfigOption("dungeon_map_show_clear", "Show During Clear",
-                "Displays the received Magical Map during the dungeon clear.", ConfigCategory.DUNGEON,
-                () -> AlpakaConfig.instance.dungeonMapShowClear,
-                v -> { AlpakaConfig.instance.dungeonMapShowClear = v; AlpakaConfig.save(); },
-                "dungeon map show clear"));
+        OPTIONS.add(new ConfigOption("dungeon_map_position", "Edit Map Position",
+                "Move the map, and scroll over it to resize it.", ConfigCategory.DUNGEON,
+                "Open HUD Editor", parent -> Minecraft.getInstance().gui.setScreen(
+                        new net.alpaka.addons.client.hud.HudEditorScreen(parent)),
+                "dungeon map hud editor move position size scale"));
 
-        OPTIONS.add(new ConfigOption("dungeon_map_show_boss", "Show In Boss Room",
-                "Keeps the map HUD visible during the boss fight.", ConfigCategory.DUNGEON,
-                () -> AlpakaConfig.instance.dungeonMapShowBoss,
-                v -> { AlpakaConfig.instance.dungeonMapShowBoss = v; AlpakaConfig.save(); },
-                "dungeon map show boss"));
+        OPTIONS.add(new ConfigOption("dungeon_map_boss_mode", "In Boss Room",
+                "Arena Map draws the loaded terrain around you, on your level. Saved Map keeps the clear map. Both shows them side by side.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapShowBoss ? (float) AlpakaConfig.instance.dungeonMapBossMode : 3.0f,
+                v -> {
+                    int mode = Math.round(v);
+                    AlpakaConfig.instance.dungeonMapShowBoss = mode < 3;
+                    if (mode < 3) AlpakaConfig.instance.dungeonMapBossMode = mode;
+                    AlpakaConfig.save();
+                },
+                0.0f, 3.0f, val -> BOSS_MAP_MODES[Math.round(val)],
+                "dungeon map boss room arena clear saved both hidden").choices(BOSS_MAP_MODES));
 
-        OPTIONS.add(new ConfigOption("dungeon_map_boss_mode", "Boss Room Display",
-                "Boss Room shows nearby loaded terrain on your current level. Dungeon Map keeps the last clear map. Both shows them side by side.", ConfigCategory.DUNGEON,
-                () -> (float) AlpakaConfig.instance.dungeonMapBossMode,
-                v -> { AlpakaConfig.instance.dungeonMapBossMode = Math.round(v); AlpakaConfig.save(); },
-                0.0f, 2.0f, val -> new String[]{"Boss Room", "Dungeon Map", "Both"}[Math.round(val)],
-                "dungeon map boss room arena clear both").choices(new String[]{"Boss Room", "Dungeon Map", "Both"}));
-
-        OPTIONS.add(new ConfigOption("dungeon_map_boss_range", "Boss Map Range",
-                "Width of the local boss map in blocks. North stays at the top. Unloaded areas remain empty.", ConfigCategory.DUNGEON,
+        OPTIONS.add(new ConfigOption("dungeon_map_boss_range", "Arena Map Range",
+                "Width of the arena map in blocks. North stays at the top.", ConfigCategory.DUNGEON,
                 () -> AlpakaConfig.instance.dungeonMapBossRange,
                 v -> { AlpakaConfig.instance.dungeonMapBossRange = v; AlpakaConfig.save(); },
                 32.0f, 192.0f, val -> String.format(Locale.ROOT, "%.0f Blocks", val),
-                "dungeon map boss range"));
+                "dungeon map boss arena range"));
 
-        OPTIONS.add(new ConfigOption("dungeon_map_scale", "Map Scale",
-                "Size of the entire map HUD. Also adjustable with the HUD editor scroll wheel.", ConfigCategory.DUNGEON,
-                () -> AlpakaConfig.instance.dungeonMapScale,
-                v -> { AlpakaConfig.instance.dungeonMapScale = v; AlpakaConfig.save(); },
-                0.5f, 3.0f, val -> String.format(Locale.ROOT, "%.2fx", val),
-                "dungeon map scale"));
-
-        OPTIONS.add(new ConfigOption("dungeon_map_position", "Edit Map Position",
-                "Move and resize the map in the HUD editor.", ConfigCategory.DUNGEON,
-                "Open HUD Editor", parent -> Minecraft.getInstance().gui.setScreen(
-                        new net.alpaka.addons.client.hud.HudEditorScreen(parent)),
-                "dungeon map hud editor move position size"));
-
-        OPTIONS.add(new ConfigOption("dungeon_map_title", "Show Title",
-                "Shows the floor and identifies the retained clear map during the boss fight.", ConfigCategory.DUNGEON,
-                () -> AlpakaConfig.instance.dungeonMapTitle,
-                v -> { AlpakaConfig.instance.dungeonMapTitle = v; AlpakaConfig.save(); },
-                "dungeon map title"));
+        OPTIONS.add(new ConfigOption("dungeon_map_current_room", "Show Current Room",
+                "Shows the room you are in above the map, with its secrets, and the boss's name in the boss room.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapCurrentRoom,
+                v -> { AlpakaConfig.instance.dungeonMapCurrentRoom = v; AlpakaConfig.save(); },
+                "dungeon map current room name title header"));
 
         OPTIONS.add(new ConfigOption("dungeon_map_room_names", "Show Room Names",
                 "Writes each room's name on the map once it is recognized from the loaded world. Entrance, blood and fairy rooms are left out.", ConfigCategory.DUNGEON,
@@ -1267,16 +1256,10 @@ public class AlpakaConfigRegistry {
                 "dungeon map room names labels"));
 
         OPTIONS.add(new ConfigOption("dungeon_map_room_secrets", "Show Room Secrets",
-                "Shows found and total secrets per room, like 3/5. The found count comes from the action bar once you have been in the room, or from a green checkmark; until then it shows ?.", ConfigCategory.DUNGEON,
+                "Shows found and total secrets per room, like 3/5, colored by the room's checkmark, which they replace. The found count comes from the action bar once you have been in the room; until then it shows ?.", ConfigCategory.DUNGEON,
                 () -> AlpakaConfig.instance.dungeonMapRoomSecrets,
                 v -> { AlpakaConfig.instance.dungeonMapRoomSecrets = v; AlpakaConfig.save(); },
-                "dungeon map room secrets found count labels"));
-
-        OPTIONS.add(new ConfigOption("dungeon_map_hide_checkmarks", "Hide Checkmarks Under Labels",
-                "Removes the checkmark of a room that has a label and colors the label by the room's state instead.", ConfigCategory.DUNGEON,
-                () -> AlpakaConfig.instance.dungeonMapHideCheckmarks,
-                v -> { AlpakaConfig.instance.dungeonMapHideCheckmarks = v; AlpakaConfig.save(); },
-                "dungeon map hide checkmarks labels"));
+                "dungeon map room secrets found count labels checkmarks"));
 
         OPTIONS.add(new ConfigOption("dungeon_map_room_label_scale", "Room Label Size",
                 "Text size of room names and secret counts.", ConfigCategory.DUNGEON,
@@ -1286,96 +1269,78 @@ public class AlpakaConfigRegistry {
                 "dungeon map room label size scale text"));
 
         OPTIONS.add(new ConfigOption("dungeon_map_players", "Show Players",
-                "Draws your team on the map during clear, and nearby visible players in the boss arena.", ConfigCategory.DUNGEON,
+                "Draws your team on the map during the clear, and nearby players on your level in the boss arena.", ConfigCategory.DUNGEON,
                 () -> AlpakaConfig.instance.dungeonMapPlayers,
                 v -> { AlpakaConfig.instance.dungeonMapPlayers = v; AlpakaConfig.save(); },
                 "dungeon map players"));
 
-        OPTIONS.add(new ConfigOption("dungeon_map_player_heads", "Show Player Heads",
-                "Draws every player as the head of their skin instead of an arrow, during clear and in the boss room.", ConfigCategory.DUNGEON,
-                () -> AlpakaConfig.instance.dungeonMapPlayerHeads,
-                v -> { AlpakaConfig.instance.dungeonMapPlayerHeads = v; AlpakaConfig.save(); },
-                "dungeon map player heads skin face avatar"));
-
-        OPTIONS.add(new ConfigOption("dungeon_map_rotate_heads", "Rotate Heads",
-                "Turns each head with the way the player looks. Off keeps heads upright, with a small notch showing the direction.", ConfigCategory.DUNGEON,
-                () -> AlpakaConfig.instance.dungeonMapRotateHeads,
-                v -> { AlpakaConfig.instance.dungeonMapRotateHeads = v; AlpakaConfig.save(); },
-                "dungeon map player heads rotate upright direction"));
-
-        OPTIONS.add(new ConfigOption("dungeon_map_head_border", "Head Border",
-                "Frames each head in its marker color.", ConfigCategory.DUNGEON,
-                () -> AlpakaConfig.instance.dungeonMapHeadBorder,
-                v -> { AlpakaConfig.instance.dungeonMapHeadBorder = v; AlpakaConfig.save(); },
-                "dungeon map player heads border outline frame"));
+        OPTIONS.add(new ConfigOption("dungeon_map_player_icons", "Player Icons",
+                "Heads turn with the player. Upright Heads stay upright with an arrow circling them. Arrows draws arrows only. Teammates are framed in their class's color, like in the Leap Menu.", ConfigCategory.DUNGEON,
+                () -> !AlpakaConfig.instance.dungeonMapPlayerHeads ? 2.0f : AlpakaConfig.instance.dungeonMapRotateHeads ? 0.0f : 1.0f,
+                v -> {
+                    int icons = Math.round(v);
+                    AlpakaConfig.instance.dungeonMapPlayerHeads = icons < 2;
+                    if (icons < 2) AlpakaConfig.instance.dungeonMapRotateHeads = icons == 0;
+                    AlpakaConfig.save();
+                },
+                0.0f, 2.0f, val -> PLAYER_ICONS[Math.round(val)],
+                "dungeon map player heads skin face arrows rotate upright direction").choices(PLAYER_ICONS));
 
         OPTIONS.add(new ConfigOption("dungeon_map_smooth_markers", "Smooth Movement",
-                "Glides markers between map updates and follows players in render distance live. Off shows Hypixel's markers exactly as they arrive.", ConfigCategory.DUNGEON,
+                "Glides players between map updates and follows those in render distance live. Off shows Hypixel's markers exactly as they arrive.", ConfigCategory.DUNGEON,
                 () -> AlpakaConfig.instance.dungeonMapSmoothMarkers,
                 v -> { AlpakaConfig.instance.dungeonMapSmoothMarkers = v; AlpakaConfig.save(); },
                 "dungeon map smooth movement interpolation marker lag"));
 
         OPTIONS.add(new ConfigOption("dungeon_map_names", "Show Player Names",
-                "Shows names under the markers. In the boss room only nearby players on your level are shown.", ConfigCategory.DUNGEON,
+                "Shows names under the players.", ConfigCategory.DUNGEON,
                 () -> AlpakaConfig.instance.dungeonMapNames,
                 v -> { AlpakaConfig.instance.dungeonMapNames = v; AlpakaConfig.save(); },
                 "dungeon map names"));
 
-        OPTIONS.add(new ConfigOption("dungeon_map_marker_scale", "Player Marker Size",
-                "Size of player arrows and heads without changing the map size.", ConfigCategory.DUNGEON,
+        OPTIONS.add(new ConfigOption("dungeon_map_marker_scale", "Player Icon Size",
+                "Size of player heads and arrows without changing the map size.", ConfigCategory.DUNGEON,
                 () -> AlpakaConfig.instance.dungeonMapMarkerScale,
                 v -> { AlpakaConfig.instance.dungeonMapMarkerScale = v; AlpakaConfig.save(); },
                 0.5f, 2.5f, val -> String.format(Locale.ROOT, "%.2fx", val),
-                "dungeon map marker scale"));
+                "dungeon map marker icon head arrow scale size"));
 
-        OPTIONS.add(ConfigOption.color("dungeon_map_self_color", "Your Marker Color",
-                "Color of your arrow and head border.", ConfigCategory.DUNGEON,
+        OPTIONS.add(new ConfigOption("dungeon_map_colors", "Map Colors",
+                "Alpaka redraws rooms, doors and the arena in its own colors, made to read well on any background. Hypixel keeps the map's and the blocks' own colors.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonMapCustomColors ? 0.0f : 1.0f,
+                v -> { AlpakaConfig.instance.dungeonMapCustomColors = Math.round(v) == 0; AlpakaConfig.save(); },
+                0.0f, 1.0f, val -> MAP_COLORS[Math.round(val)],
+                "dungeon map colors palette rooms doors hypixel").choices(MAP_COLORS));
+
+        OPTIONS.add(ConfigOption.color("dungeon_map_self_color", "Your Color",
+                "Border of your head, and your arrow.", ConfigCategory.DUNGEON,
                 c -> c.dungeonMapSelfColor,
                 v -> { AlpakaConfig.instance.dungeonMapSelfColor = v; AlpakaConfig.save(); },
-                "dungeon map color self color"));
-
-        OPTIONS.add(ConfigOption.color("dungeon_map_player_color", "Other Player Color",
-                "Color of the other players' arrows and head borders.", ConfigCategory.DUNGEON,
-                c -> c.dungeonMapPlayerColor,
-                v -> { AlpakaConfig.instance.dungeonMapPlayerColor = v; AlpakaConfig.save(); },
-                "dungeon map color player color"));
+                "dungeon map color self marker head border arrow"));
 
         OPTIONS.add(ConfigOption.color("dungeon_map_text_color", "Text Color",
-                "Color of titles and player names.", ConfigCategory.DUNGEON,
+                "Color of the current room, player names and the labels of rooms nobody has cleared yet.", ConfigCategory.DUNGEON,
                 c -> c.dungeonMapTextColor,
                 v -> { AlpakaConfig.instance.dungeonMapTextColor = v; AlpakaConfig.save(); },
-                "dungeon map color text color"));
+                "dungeon map color text"));
 
         OPTIONS.add(new ConfigOption("dungeon_map_background", "Show Background",
-                "Enables the colored background and optional blur. Turn off for a fully transparent backdrop.", ConfigCategory.DUNGEON,
+                "A panel behind the map. Off leaves it fully transparent.", ConfigCategory.DUNGEON,
                 () -> AlpakaConfig.instance.dungeonMapBackground,
                 v -> { AlpakaConfig.instance.dungeonMapBackground = v; AlpakaConfig.save(); },
                 "dungeon map background"));
 
         OPTIONS.add(ConfigOption.color("dungeon_map_background_color", "Background Color",
-                "Background tint. The opacity slider controls transparency.", ConfigCategory.DUNGEON,
-                c -> c.dungeonMapBackgroundColor,
-                v -> { AlpakaConfig.instance.dungeonMapBackgroundColor = v; AlpakaConfig.save(); },
-                "dungeon map color background color"));
-
-        OPTIONS.add(new ConfigOption("dungeon_map_background_opacity", "Background Opacity",
-                "Opacity of the background tint. At zero, blur can still be shown.", ConfigCategory.DUNGEON,
-                () -> AlpakaConfig.instance.dungeonMapBackgroundOpacity,
-                v -> { AlpakaConfig.instance.dungeonMapBackgroundOpacity = v; AlpakaConfig.save(); },
-                0.0f, 100.0f, val -> String.format(Locale.ROOT, "%.0f%%", val),
-                "dungeon map background opacity"));
-
-        OPTIONS.add(new ConfigOption("dungeon_map_blur", "Blur Background",
-                "Blurs the world behind the map. Uses the shared HUD blur strength. Requires Show Background.", ConfigCategory.DUNGEON,
-                () -> AlpakaConfig.instance.dungeonMapBlur,
-                v -> { AlpakaConfig.instance.dungeonMapBlur = v; AlpakaConfig.save(); },
-                "dungeon map blur"));
+                "Tint of the background panel; its alpha sets how see-through it is.", ConfigCategory.DUNGEON,
+                c -> c.dungeonMapBackgroundTint,
+                v -> { AlpakaConfig.instance.dungeonMapBackgroundTint = v; AlpakaConfig.save(); },
+                "dungeon map color background opacity"));
 
         OPTIONS.add(new ConfigOption("dungeon_map_frame", "Show Frame",
                 "Draws a two-color gradient frame, like the Inventory HUD.", ConfigCategory.DUNGEON,
                 () -> AlpakaConfig.instance.dungeonMapFrame,
                 v -> { AlpakaConfig.instance.dungeonMapFrame = v; AlpakaConfig.save(); },
-                "dungeon map frame"));
+                "dungeon map frame border"));
 
         OPTIONS.add(ConfigOption.color("dungeon_map_frame_start", "Frame Start Color",
                 "Top-left color of the frame.", ConfigCategory.DUNGEON,
@@ -1389,122 +1354,37 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.dungeonMapFrameEnd = v; AlpakaConfig.save(); },
                 "dungeon map color frame end"));
 
-        OPTIONS.add(new ConfigOption("dungeon_map_frame_width", "Frame Thickness",
-                "Thickness of the optional gradient frame.", ConfigCategory.DUNGEON,
-                () -> AlpakaConfig.instance.dungeonMapFrameWidth,
-                v -> { AlpakaConfig.instance.dungeonMapFrameWidth = v; AlpakaConfig.save(); },
-                1.0f, 4.0f, val -> String.format(Locale.ROOT, "%.1f px", val),
-                "dungeon map frame width"));
+        OPTIONS.add(new ConfigOption("Door Highlight", ConfigCategory.DUNGEON));
+        OPTIONS.add(new ConfigOption("dungeon_door_highlight", "Door Highlight",
+                "Marks wither and blood doors during the clear: red while nobody has the key, green once your team has one. Only where you can see the door.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.dungeonDoorHighlight,
+                v -> { AlpakaConfig.instance.dungeonDoorHighlight = v; AlpakaConfig.save(); },
+                "dungeon door highlight wither blood key door esp"));
 
-        OPTIONS.add(new ConfigOption("dungeon_map_rounding", "Corner Radius",
-                "Rounding of the frame and background. Zero gives square corners.", ConfigCategory.DUNGEON,
-                () -> AlpakaConfig.instance.dungeonMapCornerRadius,
-                v -> { AlpakaConfig.instance.dungeonMapCornerRadius = v; AlpakaConfig.save(); },
-                0.0f, 16.0f, val -> String.format(Locale.ROOT, "%.0f px", val),
-                "dungeon map rounding"));
+        OPTIONS.add(ConfigOption.color("dungeon_door_locked_color", "Locked Door Color",
+                "Color of a door nobody has the key for. Its alpha sets how strongly the door is filled.", ConfigCategory.DUNGEON,
+                c -> c.dungeonDoorLockedColor,
+                v -> { AlpakaConfig.instance.dungeonDoorLockedColor = v; AlpakaConfig.save(); },
+                "dungeon door highlight color locked"));
 
-        OPTIONS.add(new ConfigOption("dungeon_map_padding", "Map Padding",
-                "Space between the map and its frame.", ConfigCategory.DUNGEON,
-                () -> AlpakaConfig.instance.dungeonMapPadding,
-                v -> { AlpakaConfig.instance.dungeonMapPadding = v; AlpakaConfig.save(); },
-                4.0f, 16.0f, val -> String.format(Locale.ROOT, "%.0f px", val),
-                "dungeon map padding"));
+        OPTIONS.add(ConfigOption.color("dungeon_door_openable_color", "Openable Door Color",
+                "Color of a door your team has the key for.", ConfigCategory.DUNGEON,
+                c -> c.dungeonDoorOpenableColor,
+                v -> { AlpakaConfig.instance.dungeonDoorOpenableColor = v; AlpakaConfig.save(); },
+                "dungeon door highlight color openable key"));
 
-        OPTIONS.add(new ConfigOption("dungeon_map_custom_colors", "Custom Dungeon Colors",
-                "Uses the colors below for rooms, doors and room status. Off keeps the server colors.", ConfigCategory.DUNGEON,
-                () -> AlpakaConfig.instance.dungeonMapCustomColors,
-                v -> { AlpakaConfig.instance.dungeonMapCustomColors = v; AlpakaConfig.save(); },
-                "dungeon map custom colors"));
+        OPTIONS.add(new ConfigOption("Leap Menu", ConfigCategory.DUNGEON));
+        OPTIONS.add(new ConfigOption("leap_menu_enabled", "Enable Leap Menu",
+                "Shows the Spirit Leap menu as one big button per teammate, with their head, name and class, colored by class. One click leaps.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.leapMenuEnabled,
+                v -> { AlpakaConfig.instance.leapMenuEnabled = v; AlpakaConfig.save(); },
+                "leap menu spirit leap infinileap teleport teammate custom gui class"));
 
-        OPTIONS.add(ConfigOption.color("dungeon_map_room_color", "Normal Room Color",
-                "Custom color for normal room.", ConfigCategory.DUNGEON,
-                c -> c.dungeonMapRoomColor,
-                v -> { AlpakaConfig.instance.dungeonMapRoomColor = v; AlpakaConfig.save(); },
-                "dungeon map color room color"));
-
-        OPTIONS.add(ConfigOption.color("dungeon_map_entrance_color", "Entrance Color",
-                "Custom color for entrance.", ConfigCategory.DUNGEON,
-                c -> c.dungeonMapEntranceColor,
-                v -> { AlpakaConfig.instance.dungeonMapEntranceColor = v; AlpakaConfig.save(); },
-                "dungeon map color entrance color"));
-
-        OPTIONS.add(ConfigOption.color("dungeon_map_puzzle_color", "Puzzle Room Color",
-                "Custom color for puzzle room.", ConfigCategory.DUNGEON,
-                c -> c.dungeonMapPuzzleColor,
-                v -> { AlpakaConfig.instance.dungeonMapPuzzleColor = v; AlpakaConfig.save(); },
-                "dungeon map color puzzle color"));
-
-        OPTIONS.add(ConfigOption.color("dungeon_map_trap_color", "Trap Room Color",
-                "Custom color for trap room.", ConfigCategory.DUNGEON,
-                c -> c.dungeonMapTrapColor,
-                v -> { AlpakaConfig.instance.dungeonMapTrapColor = v; AlpakaConfig.save(); },
-                "dungeon map color trap color"));
-
-        OPTIONS.add(ConfigOption.color("dungeon_map_miniboss_color", "Miniboss Room Color",
-                "Custom color for miniboss room.", ConfigCategory.DUNGEON,
-                c -> c.dungeonMapMinibossColor,
-                v -> { AlpakaConfig.instance.dungeonMapMinibossColor = v; AlpakaConfig.save(); },
-                "dungeon map color miniboss color"));
-
-        OPTIONS.add(ConfigOption.color("dungeon_map_fairy_color", "Fairy Room Color",
-                "Custom color for fairy room.", ConfigCategory.DUNGEON,
-                c -> c.dungeonMapFairyColor,
-                v -> { AlpakaConfig.instance.dungeonMapFairyColor = v; AlpakaConfig.save(); },
-                "dungeon map color fairy color"));
-
-        OPTIONS.add(ConfigOption.color("dungeon_map_blood_color", "Blood Room Color",
-                "Custom color for blood room.", ConfigCategory.DUNGEON,
-                c -> c.dungeonMapBloodColor,
-                v -> { AlpakaConfig.instance.dungeonMapBloodColor = v; AlpakaConfig.save(); },
-                "dungeon map color blood color"));
-
-        OPTIONS.add(ConfigOption.color("dungeon_map_unknown_color", "Unexplored Room Color",
-                "Custom color for unexplored room.", ConfigCategory.DUNGEON,
-                c -> c.dungeonMapUnknownColor,
-                v -> { AlpakaConfig.instance.dungeonMapUnknownColor = v; AlpakaConfig.save(); },
-                "dungeon map color unknown color"));
-
-        OPTIONS.add(ConfigOption.color("dungeon_map_door_color", "Wither Door Color",
-                "Custom color for wither door.", ConfigCategory.DUNGEON,
-                c -> c.dungeonMapDoorColor,
-                v -> { AlpakaConfig.instance.dungeonMapDoorColor = v; AlpakaConfig.save(); },
-                "dungeon map color door color"));
-
-        OPTIONS.add(ConfigOption.color("dungeon_map_cleared_color", "Cleared Checkmark Color",
-                "Custom color for cleared checkmark.", ConfigCategory.DUNGEON,
-                c -> c.dungeonMapClearedColor,
-                v -> { AlpakaConfig.instance.dungeonMapClearedColor = v; AlpakaConfig.save(); },
-                "dungeon map color cleared color"));
-
-        OPTIONS.add(ConfigOption.color("dungeon_map_complete_color", "Completed Checkmark Color",
-                "Custom color for completed checkmark.", ConfigCategory.DUNGEON,
-                c -> c.dungeonMapCompleteColor,
-                v -> { AlpakaConfig.instance.dungeonMapCompleteColor = v; AlpakaConfig.save(); },
-                "dungeon map color complete color"));
-
-        OPTIONS.add(ConfigOption.color("dungeon_map_failed_color", "Failed Checkmark Color",
-                "Custom color for failed checkmark.", ConfigCategory.DUNGEON,
-                c -> c.dungeonMapFailedColor,
-                v -> { AlpakaConfig.instance.dungeonMapFailedColor = v; AlpakaConfig.save(); },
-                "dungeon map color failed color"));
-
-        OPTIONS.add(new ConfigOption("dungeon_map_boss_custom_colors", "Custom Boss Terrain Colors",
-                "Uses separate colors for the arena floor and walls. Off uses Minecraft block map colors.", ConfigCategory.DUNGEON,
-                () -> AlpakaConfig.instance.dungeonMapBossCustomColors,
-                v -> { AlpakaConfig.instance.dungeonMapBossCustomColors = v; AlpakaConfig.save(); },
-                "dungeon map boss custom colors"));
-
-        OPTIONS.add(ConfigOption.color("dungeon_map_boss_floor_color", "Boss Floor Color",
-                "Color of blocks below your feet on the local boss map.", ConfigCategory.DUNGEON,
-                c -> c.dungeonMapBossFloorColor,
-                v -> { AlpakaConfig.instance.dungeonMapBossFloorColor = v; AlpakaConfig.save(); },
-                "dungeon map color boss floor color"));
-
-        OPTIONS.add(ConfigOption.color("dungeon_map_boss_wall_color", "Boss Wall Color",
-                "Color of blocks at your level on the local boss map.", ConfigCategory.DUNGEON,
-                c -> c.dungeonMapBossWallColor,
-                v -> { AlpakaConfig.instance.dungeonMapBossWallColor = v; AlpakaConfig.save(); },
-                "dungeon map color boss wall color"));
+        OPTIONS.add(new ConfigOption("leap_menu_show_map", "Show Dungeon Map",
+                "Shows the dungeon map next to the buttons during the clear. Click a player on the map to leap to them.", ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.leapMenuShowMap,
+                v -> { AlpakaConfig.instance.leapMenuShowMap = v; AlpakaConfig.save(); },
+                "leap menu map dungeon map click player"));
 
         OPTIONS.add(new ConfigOption("Starred Mobs Highlight", ConfigCategory.DUNGEON));
 
@@ -1975,6 +1855,8 @@ public class AlpakaConfigRegistry {
 
         // --- 5. SKYBLOCK ---
 
+        registerDungeonOptions();
+
         OPTIONS.add(new ConfigOption("Etherwarp Overlay", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("etherwarp_overlay", "Etherwarp Overlay",
@@ -2388,6 +2270,56 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.partyInvitePromptEnabled = v; AlpakaConfig.save(); },
                 "party invite prompt accept join decline y n key popup hypixel"));
 
+        OPTIONS.add(new ConfigOption("party_commands", "Party Commands",
+                "When a party member writes a command like !warp, !tps or !pt in party chat, a Y/N prompt offers to run it for them.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.partyCommandsEnabled,
+                v -> { AlpakaConfig.instance.partyCommandsEnabled = v; AlpakaConfig.save(); },
+                "party commands chat !warp !w !tps !ping !fps !pt !transfer !allinvite !coords !kick !f7 !m7 odin skyhanni prompt y n"));
+
+        OPTIONS.add(new ConfigOption("party_commands_auto_answer", "Auto Answer",
+                "Info and fun commands like !tps, !ping or !dice are answered in party chat right away, without the Y/N prompt. Leader commands like !warp or !kick always ask.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.partyCommandsAutoAnswer,
+                v -> { AlpakaConfig.instance.partyCommandsAutoAnswer = v; AlpakaConfig.save(); },
+                "party commands auto answer reply automatic direct without confirmation prompt instant tps ping fps"));
+
+        for (net.alpaka.addons.features.party.PartyCommand.Group group : net.alpaka.addons.features.party.PartyCommand.Group.values()) {
+            java.util.List<ConfigOption.ToggleEntry> entries = new java.util.ArrayList<>();
+            for (net.alpaka.addons.features.party.PartyCommand command : net.alpaka.addons.features.party.PartyCommand.values()) {
+                if (command.group() != group) continue;
+                entries.add(new ConfigOption.ToggleEntry(command.label(),
+                        () -> net.alpaka.addons.features.party.PartyCommandsFeature.isCommandEnabled(command),
+                        v -> net.alpaka.addons.features.party.PartyCommandsFeature.setCommandEnabled(command, v)));
+            }
+            String[] text = switch (group) {
+                case LEADER -> new String[]{"party_commands_leader", "Leader Commands",
+                        "Commands that need you to be the party leader. Kick, transfer, promote and demote start off."};
+                case INFO -> new String[]{"party_commands_info", "Info Commands",
+                        "Commands that post something about you in party chat, like your TPS or coordinates."};
+                case FUN -> new String[]{"party_commands_fun", "Fun Commands",
+                        "Dice, coin flip and the Magic 8-Ball, answered in party chat."};
+            };
+            OPTIONS.add(new ConfigOption(text[0], text[1], text[2], ConfigCategory.SKYBLOCK, entries,
+                    "party commands pick which " + text[1].toLowerCase(java.util.Locale.ROOT)));
+        }
+
+        OPTIONS.add(new ConfigOption("Commands", ConfigCategory.SKYBLOCK));
+
+        OPTIONS.add(new ConfigOption("shorten_warp", "Shorten Warp",
+                "Type just the destination to warp there: /isle instead of /warp isle. Commands that already exist keep their meaning.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.shortenWarpEnabled,
+                v -> { AlpakaConfig.instance.shortenWarpEnabled = v; AlpakaConfig.save(); },
+                "shorten warp short shortcut alias destination /isle /hub /garden /dh command"));
+
+        OPTIONS.add(new ConfigOption("warp_cooldown_queue", "Warp Cooldown",
+                "A warp typed right after joining a server waits for Hypixel's cooldown and goes out on its own when it ends, instead of being refused.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.warpCooldownQueueEnabled,
+                v -> { AlpakaConfig.instance.warpCooldownQueueEnabled = v; AlpakaConfig.save(); },
+                "warp cooldown queue delay wait server join transfer early command you may only use this command"));
+
         OPTIONS.add(new ConfigOption("Resource Pack", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("cache_resource_pack", "Cache Resource Pack",
@@ -2532,6 +2464,37 @@ public class AlpakaConfigRegistry {
                 val -> net.alpaka.addons.features.itemvalue.ItemPrices.SIDES[Math.round(val)],
                 "item value bazaar price instant buy sell side order offer").choices(net.alpaka.addons.features.itemvalue.ItemPrices.SIDES));
 
+        OPTIONS.add(new ConfigOption("item_search", "Item Search",
+                "A window with a search bar over everything you own: your inventory, Ender Chest, backpacks, sacks, wardrobe, Accessory Bag, Personal Vault and the chests on your island. Each place is known from the last time you opened it. Open it with its key or /alpakasearch; the key over an item in a menu searches for that item.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.itemSearchEnabled,
+                v -> { AlpakaConfig.instance.itemSearchEnabled = v; AlpakaConfig.save(); },
+                "item search find where storage ender chest echest backpack sack sacks wardrobe accessory bag vault island chest inventory lookup locate"));
+
+        OPTIONS.add(ConfigOption.keybind("item_search_key", "Key",
+                "Opens Item Search. In a menu, it searches for the item under the mouse. Unbound by default.",
+                ConfigCategory.SKYBLOCK,
+                () -> net.alpaka.addons.features.itemsearch.ItemSearchFeature.KEY,
+                "item search find"));
+
+        OPTIONS.add(new ConfigOption("item_search_open", "Open Item Search",
+                "Opens the search window. Works on SkyBlock only.",
+                ConfigCategory.SKYBLOCK,
+                "Open",
+                parent -> net.alpaka.addons.features.itemsearch.ItemSearchFeature.open(null, parent),
+                "item search open window"));
+
+        OPTIONS.add(new ConfigOption("item_search_clear", "Forget Saved Items",
+                "Forgets every remembered container of the profile you are on, so the search starts empty again.",
+                ConfigCategory.SKYBLOCK,
+                "Forget",
+                parent -> net.alpaka.addons.features.itemsearch.ItemSearchStore.clear(),
+                "item search clear reset forget saved items containers chests")
+                .confirm("Forget Saved Items",
+                        "Item Search forgets what it remembered from your Ender Chest, backpacks, sacks, wardrobe and island chests on this profile. "
+                                + "Each comes back the next time you open it.",
+                        "Forget", true));
+
         OPTIONS.add(new ConfigOption("chest_value", "Chest Value",
                 "Press the Chest Value key in a chest, backpack, Ender Chest or your inventory to show what everything in it is worth: every item with its price and share of the total. It stays shown in every menu until you press the key again. Needs Network Features.",
                 ConfigCategory.SKYBLOCK,
@@ -2553,6 +2516,45 @@ public class AlpakaConfigRegistry {
                 0.0f, 1.0f,
                 val -> CHEST_VALUE_SIDES[Math.round(val)],
                 "chest value side left right position place").choices(CHEST_VALUE_SIDES));
+
+        OPTIONS.add(new ConfigOption("Profile", ConfigCategory.SKYBLOCK));
+
+        OPTIONS.add(new ConfigOption("profile_dashboard", "Profile Dashboard",
+                "/alpakaprofile opens a dashboard of your SkyBlock profile: networth, skills, dungeons, slayers, pets and collections, with graphs of your progress. /alpakaprofile <name> shows another player. Data from Elite; needs Network Features.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.profileDashboardEnabled,
+                v -> { AlpakaConfig.instance.profileDashboardEnabled = v; AlpakaConfig.save(); },
+                "profile dashboard stats statistics networth skills dungeons catacombs slayer pets collections graph progress history viewer pv elite command"));
+
+        OPTIONS.add(new ConfigOption("profile_dashboard_open", "Open Dashboard",
+                "Opens the dashboard on your own profile, as /alpakaprofile does.",
+                ConfigCategory.SKYBLOCK,
+                "Open Dashboard",
+                parent -> net.alpaka.addons.features.profile.ProfileDashboardScreen.open(null, parent),
+                "profile dashboard open show"));
+
+        OPTIONS.add(new ConfigOption("profile_dashboard_tracking", "Record Progress",
+                "While you play SkyBlock, saves a snapshot of your profile now and then, so the graphs fill in without opening the dashboard. Kept on this computer only.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.profileDashboardTracking,
+                v -> { AlpakaConfig.instance.profileDashboardTracking = v; AlpakaConfig.save(); },
+                "profile dashboard record track progress history snapshot background hourly graph"));
+
+        OPTIONS.add(new ConfigOption("profile_dashboard_tracking_minutes", "Record Every",
+                "How often the snapshot is taken while you play.",
+                ConfigCategory.SKYBLOCK,
+                () -> (float) AlpakaConfig.instance.profileDashboardTrackingMinutes,
+                v -> { AlpakaConfig.instance.profileDashboardTrackingMinutes = Math.round(v); AlpakaConfig.save(); },
+                15.0f, 240.0f, v -> Math.round(v) + " min",
+                "profile dashboard record interval minutes snapshot how often"));
+
+        OPTIONS.add(new ConfigOption("profile_dashboard_skykings_key", "SkyKings API Key",
+                "Needed for the dashboard's graphs: SkyKings records most players about once a day. Make a free key on skykings.net (log in with Discord, Dashboard › API Keys) and paste it here. Only sent to SkyKings, kept on this computer.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.skykingsApiKey,
+                v -> { AlpakaConfig.instance.skykingsApiKey = v.trim(); },
+                "sk_...",
+                "skykings api key token history graph profile dashboard").secret(64));
 
         OPTIONS.add(new ConfigOption("Guild Chat", ConfigCategory.SKYBLOCK));
 
@@ -2603,6 +2605,64 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.deployableTimerEnabled = v; AlpakaConfig.save(); },
                 "deployable timer power orb flare radiant mana flux overflux plasmaflux warning alert sos hud icon time left range buff"));
 
+        OPTIONS.add(new ConfigOption("Enchantments", ConfigCategory.SKYBLOCK));
+
+        OPTIONS.add(new ConfigOption("max_enchant_color", "Max Enchant Color",
+                "Enchantments at their highest level get their own color in tooltips.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.maxEnchantColorEnabled,
+                v -> { AlpakaConfig.instance.maxEnchantColorEnabled = v; AlpakaConfig.save(); },
+                "enchantments enchants max maxed level highest color colour tooltip lore sharpness perfect"));
+
+        OPTIONS.add(ConfigOption.color("max_enchant_color_value", "Max Level Color",
+                "Color of maxed enchantments.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.maxEnchantColor,
+                v -> { AlpakaConfig.instance.maxEnchantColor = v; AlpakaConfig.save(); },
+                "enchantments enchants max maxed level color colour picker tooltip"));
+
+        OPTIONS.add(new ConfigOption("max_enchant_color_ultimate", "Include Ultimate Enchants",
+                "Maxed ultimate enchantments get the color too instead of their pink.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.maxEnchantColorUltimate,
+                v -> { AlpakaConfig.instance.maxEnchantColorUltimate = v; AlpakaConfig.save(); },
+                "enchantments enchants ultimate pink max color tooltip wise soul eater chimera"));
+
+        OPTIONS.add(new ConfigOption("anvil_combine_helper", "Anvil Combine Helper",
+                "Put an enchanted book into the anvil and the books it combines with are highlighted in your inventory.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.anvilCombineHelperEnabled,
+                v -> { AlpakaConfig.instance.anvilCombineHelperEnabled = v; AlpakaConfig.save(); },
+                "anvil combine helper enchanted book books highlight matching same level merge inventory"));
+
+        OPTIONS.add(ConfigOption.color("anvil_combine_helper_color", "Highlight Color",
+                "Color of the highlighted books.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.anvilCombineHelperColor,
+                v -> { AlpakaConfig.instance.anvilCombineHelperColor = v; AlpakaConfig.save(); },
+                "anvil combine helper highlight color colour picker books"));
+
+        OPTIONS.add(new ConfigOption("experiment_solver", "Experiment Solver",
+                "Shows the answers in the Experimentation Table: the next click in Chronomatron and Ultrasequencer, and every card already seen in Superpairs.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.experimentSolverEnabled,
+                v -> { AlpakaConfig.instance.experimentSolverEnabled = v; AlpakaConfig.save(); },
+                "experiment experiments experimentation table solver chronomatron ultrasequencer superpairs enchanting minigame add-ons"));
+
+        OPTIONS.add(ConfigOption.color("experiment_solver_next_color", "Next Click Color",
+                "The slot to click now, and Superpairs cards whose pair is known.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.experimentSolverNextColor,
+                v -> { AlpakaConfig.instance.experimentSolverNextColor = v; AlpakaConfig.save(); },
+                "experiment solver next click highlight color colour picker"));
+
+        OPTIONS.add(ConfigOption.color("experiment_solver_later_color", "Click After Color",
+                "The slot to click after that.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.experimentSolverLaterColor,
+                v -> { AlpakaConfig.instance.experimentSolverLaterColor = v; AlpakaConfig.save(); },
+                "experiment solver after following second highlight color colour picker"));
+
         OPTIONS.add(new ConfigOption("Damage Display", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("only_crit_damage", "Only Show Crit Damage",
@@ -2611,6 +2671,13 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.onlyCritDamageEnabled,
                 v -> { AlpakaConfig.instance.onlyCritDamageEnabled = v; AlpakaConfig.save(); },
                 "damage indicator tags numbers hide non-crit fire poison abilities crit skyblock"));
+
+        OPTIONS.add(new ConfigOption("visitor_bazaar", "Visitor Bazaar Shortcut",
+                "Clicking Accept Offer at a garden visitor while you lack the items opens the bazaar for them and copies the amount.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.visitorBazaarEnabled,
+                v -> { AlpakaConfig.instance.visitorBazaarEnabled = v; AlpakaConfig.save(); },
+                "garden visitor bazaar bz buy missing items accept offer shortcut shopping farming"));
 
 
         // --- 6. COSMETICS ---
@@ -3048,6 +3115,53 @@ public class AlpakaConfigRegistry {
                 parent -> Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.client.CommandShortcutsConfigScreen(parent)),
                 "command shortcuts alias aliases edit add remove keybind key bind hotkey list menu"));
 
+        OPTIONS.add(new ConfigOption("inventory_buttons", "Inventory Buttons",
+                "Your own buttons around the inventory and every chest or menu. A click runs their command.",
+                ConfigCategory.SOUND_MISC,
+                () -> AlpakaConfig.instance.inventoryButtonsEnabled,
+                v -> { AlpakaConfig.instance.inventoryButtonsEnabled = v; AlpakaConfig.save(); },
+                "inventory buttons custom command shortcut chest menu gui icon quick storage pets wardrobe"));
+
+        OPTIONS.add(new ConfigOption("inventory_buttons_edit", "Edit Inventory Buttons",
+                "Add buttons, pick their command and icon, and drag them to where you want them.",
+                ConfigCategory.SOUND_MISC,
+                "Edit Buttons",
+                parent -> Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.client.InventoryButtonsEditorScreen(parent)),
+                "inventory buttons edit add remove move place icon command editor"));
+
+        OPTIONS.add(new ConfigOption("inventory_buttons_skyblock_only", "Only on SkyBlock",
+                "Show the inventory buttons only while you are on Hypixel SkyBlock.",
+                ConfigCategory.SOUND_MISC,
+                () -> AlpakaConfig.instance.inventoryButtonsSkyblockOnly,
+                v -> { AlpakaConfig.instance.inventoryButtonsSkyblockOnly = v; AlpakaConfig.save(); },
+                "inventory buttons skyblock only hypixel"));
+
+        OPTIONS.add(new ConfigOption("inventory_buttons_style", "Button Style",
+                "How the buttons look: the Alpaka menu's dark tiles, vanilla's gray slots, or the icon alone.",
+                ConfigCategory.SOUND_MISC,
+                () -> (float) AlpakaConfig.instance.inventoryButtonsStyle,
+                v -> { AlpakaConfig.instance.inventoryButtonsStyle = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (net.alpaka.addons.features.inventorybuttons.InventoryButtonsFeature.STYLE_NAMES.length - 1),
+                val -> net.alpaka.addons.features.inventorybuttons.InventoryButtonsFeature.STYLE_NAMES[Math.round(val)],
+                "inventory buttons style look design alpaka vanilla icon only appearance theme")
+                .choices(net.alpaka.addons.features.inventorybuttons.InventoryButtonsFeature.STYLE_NAMES));
+
+        OPTIONS.add(ConfigOption.color("inventory_buttons_color", "Button Color",
+                "The tile behind each icon in the Alpaka style, and behind a hovered icon in Icon Only.",
+                ConfigCategory.SOUND_MISC,
+                c -> c.inventoryButtonsColor,
+                v -> { AlpakaConfig.instance.inventoryButtonsColor = v; AlpakaConfig.save(); },
+                "inventory buttons color colour background tile appearance"));
+
+        OPTIONS.add(new ConfigOption("inventory_buttons_rounding", "Corner Rounding",
+                "How round the corners of the Alpaka style's tiles are.",
+                ConfigCategory.SOUND_MISC,
+                () -> (float) AlpakaConfig.instance.inventoryButtonsRounding,
+                v -> { AlpakaConfig.instance.inventoryButtonsRounding = Math.round(v); AlpakaConfig.save(); },
+                0.0f, 9.0f,
+                val -> Math.round(val) + " px",
+                "inventory buttons corner rounding radius round square appearance"));
+
         OPTIONS.add(new ConfigOption("always_sprint", "Always Sprint",
                 "Sprints whenever you walk forward, no sprint key needed.",
                 ConfigCategory.SOUND_MISC,
@@ -3246,6 +3360,271 @@ public class AlpakaConfigRegistry {
         buildCategoryCache();
     }
 
+    /** One line of a dropdown, saved on every change. */
+    private static ConfigOption.ToggleEntry toggle(String label, java.util.function.Predicate<AlpakaConfig> getter,
+                                                   java.util.function.BiConsumer<AlpakaConfig, Boolean> setter) {
+        return new ConfigOption.ToggleEntry(label,
+                () -> getter.test(AlpakaConfig.instance),
+                v -> { setter.accept(AlpakaConfig.instance, v); AlpakaConfig.save(); });
+    }
+
+    /**
+     * The Dungeon section: the puzzle solvers, the F7/M7 terminal solvers with their own custom
+     * window, and the F7/M7 device solvers. All of it only draws or refuses the player's own click;
+     * see features/dungeon/DungeonSolvers. Four masters, each a feature row of its own (ConfigTree).
+     */
+    private static void registerDungeonOptions() {
+        OPTIONS.add(new ConfigOption("Dungeon", ConfigCategory.SKYBLOCK));
+
+        OPTIONS.add(new ConfigOption("dungeon_solvers", "Solvers",
+                "Shows the solution of every Catacombs puzzle as boxes, lines and labels in the room you are in. "
+                        + "It only draws, and walls hide it like any block.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.dungeonSolversEnabled,
+                v -> { AlpakaConfig.instance.dungeonSolversEnabled = v; AlpakaConfig.save(); },
+                "dungeon dungeons catacombs puzzle puzzles solver solvers solution helper room f1 f2 f3 f4 f5 f6 f7 m7 "
+                        + "master mode three weirdos chests quiz trivia oruo tic tac toe higher or lower blaze creeper beams "
+                        + "lanterns teleport maze tp pads water board levers boulder boxes ice fill ice path silverfish"));
+
+        OPTIONS.add(new ConfigOption("dungeon_solver_puzzles", "Puzzles",
+                "Pick which puzzles are solved.",
+                ConfigCategory.SKYBLOCK,
+                java.util.List.of(
+                        toggle("Three Weirdos", c -> c.solveThreeWeirdos, (c, v) -> c.solveThreeWeirdos = v),
+                        toggle("Quiz", c -> c.solveQuiz, (c, v) -> c.solveQuiz = v),
+                        toggle("Tic Tac Toe", c -> c.solveTicTacToe, (c, v) -> c.solveTicTacToe = v),
+                        toggle("Higher Or Lower", c -> c.solveHigherOrLower, (c, v) -> c.solveHigherOrLower = v),
+                        toggle("Creeper Beams", c -> c.solveCreeperBeams, (c, v) -> c.solveCreeperBeams = v),
+                        toggle("Teleport Maze", c -> c.solveTeleportMaze, (c, v) -> c.solveTeleportMaze = v),
+                        toggle("Water Board", c -> c.solveWaterBoard, (c, v) -> c.solveWaterBoard = v),
+                        toggle("Boulder", c -> c.solveBoulder, (c, v) -> c.solveBoulder = v),
+                        toggle("Ice Fill", c -> c.solveIceFill, (c, v) -> c.solveIceFill = v),
+                        toggle("Ice Path", c -> c.solveIcePath, (c, v) -> c.solveIcePath = v)
+                ),
+                "dungeon puzzle puzzles pick which weirdos quiz trivia tic tac toe blaze creeper beams teleport maze "
+                        + "water board boulder ice fill path silverfish"));
+
+        OPTIONS.add(new ConfigOption("water_board_fast_solutions", "Water Board: Fast Solutions",
+                "Uses quicker Water Board solutions with flips closer together. They need tighter timing; "
+                        + "off uses the standard solutions.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.waterBoardFastSolutions,
+                v -> { AlpakaConfig.instance.waterBoardFastSolutions = v; AlpakaConfig.save(); },
+                "dungeon water board levers fast quick quicker faster solutions timing"));
+
+        OPTIONS.add(ConfigOption.color("dungeon_solver_color", "Solution Color",
+                "What to do now: the right chest, answer, pad, lever or block. The device solvers use it too, and "
+                        + "Creeper Beams colors its pairs from it and the Next Color.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.dungeonSolverColor,
+                v -> { AlpakaConfig.instance.dungeonSolverColor = v; AlpakaConfig.save(); },
+                "dungeon solver solution color correct green highlight"));
+
+        OPTIONS.add(ConfigOption.color("dungeon_solver_next_color", "Next Color",
+                "What comes after it, such as the next blaze or the next step.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.dungeonSolverNextColor,
+                v -> { AlpakaConfig.instance.dungeonSolverNextColor = v; AlpakaConfig.save(); },
+                "dungeon solver next color second step yellow"));
+
+        OPTIONS.add(ConfigOption.color("dungeon_solver_wrong_color", "Wrong Color",
+                "Used pads, lying weirdos and wrong answers.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.dungeonSolverWrongColor,
+                v -> { AlpakaConfig.instance.dungeonSolverWrongColor = v; AlpakaConfig.save(); },
+                "dungeon solver wrong color red liar used pad"));
+
+        OPTIONS.add(new ConfigOption("dungeon_solver_box_style", "Box Style",
+                "How a marked block is drawn: its edges, a translucent fill, or both.",
+                ConfigCategory.SKYBLOCK,
+                () -> (float) AlpakaConfig.instance.dungeonSolverBoxStyle,
+                v -> {
+                    int index = Math.round(v);
+                    if (index != AlpakaConfig.instance.dungeonSolverBoxStyle) {
+                        AlpakaConfig.instance.dungeonSolverBoxStyle = index;
+                        AlpakaConfig.save();
+                    }
+                },
+                0.0f, (float) (net.alpaka.addons.features.dungeon.render.SolverColors.BOX_STYLES.length - 1),
+                val -> net.alpaka.addons.features.dungeon.render.SolverColors.boxStyleName(Math.round(val)),
+                "dungeon solver box style outline filled fill both edges")
+                .choices(net.alpaka.addons.features.dungeon.render.SolverColors.BOX_STYLES));
+
+        OPTIONS.add(new ConfigOption("dungeon_solver_line_width", "Line Thickness",
+                "How thick box edges and lines are.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.dungeonSolverLineWidth,
+                v -> { AlpakaConfig.instance.dungeonSolverLineWidth = Math.round(v * 10.0f) / 10.0f; AlpakaConfig.save(); },
+                1.0f, 6.0f, val -> String.format(Locale.ROOT, "%.1f px", val),
+                "dungeon solver line thickness width outline px pixels"));
+
+        OPTIONS.add(new ConfigOption("dungeon_solver_labels", "Show Labels",
+                "Order numbers, click counts and countdowns next to the marks.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.dungeonSolverLabels,
+                v -> { AlpakaConfig.instance.dungeonSolverLabels = v; AlpakaConfig.save(); },
+                "dungeon solver labels text numbers order count countdown timer"));
+
+        OPTIONS.add(new ConfigOption("terminal_solvers", "Terminal Solvers",
+                "Marks the solution of the F7 and M7 terminals in their chest window. It never clicks for you, but "
+                        + "by default it ignores clicks made right after a terminal opens or within 50 ms of the last one, "
+                        + "and nothing is sent for those (First Click Protection, Click Rate Guard).",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.terminalSolversEnabled,
+                v -> { AlpakaConfig.instance.terminalSolversEnabled = v; AlpakaConfig.save(); },
+                "dungeon catacombs f7 m7 floor 7 goldor terminal terminals solver solvers panes rubix color numbers order "
+                        + "starts with select all melody chest gui p3"));
+
+        OPTIONS.add(new ConfigOption("terminal_solver_types", "Terminals",
+                "Pick which terminals are solved.",
+                ConfigCategory.SKYBLOCK,
+                java.util.List.of(
+                        toggle("Correct All the Panes", c -> c.solvePanesTerminal, (c, v) -> c.solvePanesTerminal = v),
+                        toggle("Change All to Same Color", c -> c.solveRubixTerminal, (c, v) -> c.solveRubixTerminal = v),
+                        toggle("Click in Order", c -> c.solveNumbersTerminal, (c, v) -> c.solveNumbersTerminal = v),
+                        toggle("What Starts With", c -> c.solveStartsWithTerminal, (c, v) -> c.solveStartsWithTerminal = v),
+                        toggle("Select All", c -> c.solveSelectAllTerminal, (c, v) -> c.solveSelectAllTerminal = v),
+                        toggle("Click the Button on Time", c -> c.solveMelodyTerminal, (c, v) -> c.solveMelodyTerminal = v)
+                ),
+                "terminal terminals pick which panes rubix same color numbers order starts with select all melody button"));
+
+        OPTIONS.add(new ConfigOption("terminal_hide_other_items", "Hide Other Items",
+                "In the chest window, items that are not part of the solution are not drawn. Only changes what you see.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.terminalHideOtherItems,
+                v -> { AlpakaConfig.instance.terminalHideOtherItems = v; AlpakaConfig.save(); },
+                "terminal hide other items wrong clutter clean"));
+
+        OPTIONS.add(new ConfigOption("terminal_predict_clicks", "Predict Clicks",
+                "Moves the marks on as soon as you click instead of when the server confirms the click. "
+                        + "Off, a clicked cell only shows as pending until the server answers.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.terminalPredictClicks,
+                v -> { AlpakaConfig.instance.terminalPredictClicks = v; AlpakaConfig.save(); },
+                "terminal predict prediction clicks ping lag pending confirm"));
+
+        OPTIONS.add(new ConfigOption("terminal_block_wrong_clicks", "Block Wrong Clicks",
+                "Ignores a click on a cell that is not part of the solution, or with the wrong mouse button. "
+                        + "Nothing is sent for a blocked click. Never used for Click the Button on Time. Use at your own risk.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.terminalBlockWrongClicks,
+                v -> { AlpakaConfig.instance.terminalBlockWrongClicks = v; AlpakaConfig.save(); },
+                "terminal block wrong clicks misclick refuse cancel protect"));
+
+        OPTIONS.add(new ConfigOption("terminal_first_click_guard", "First Click Protection",
+                "Hypixel is believed to flag clicks made right after a terminal opens, so these are ignored and nothing "
+                        + "is sent for them. Turning this off is at your own risk.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.terminalFirstClickGuard,
+                v -> { AlpakaConfig.instance.terminalFirstClickGuard = v; AlpakaConfig.save(); },
+                "terminal first click protection guard delay watchdog flag ban lag"));
+
+        OPTIONS.add(new ConfigOption("terminal_first_click_ms", "First Click Delay",
+                "How long after a terminal opens clicks are ignored. The server also has to tick once per 50 ms of it, "
+                        + "so a lagging server waits longer.",
+                ConfigCategory.SKYBLOCK,
+                () -> (float) AlpakaConfig.instance.terminalFirstClickMs,
+                v -> { AlpakaConfig.instance.terminalFirstClickMs = Math.round(v / 10.0f) * 10; AlpakaConfig.save(); },
+                350.0f, 800.0f, val -> String.format(Locale.ROOT, "%d ms", Math.round(val)),
+                "terminal first click delay ms milliseconds ticks protection"));
+
+        OPTIONS.add(new ConfigOption("terminal_rate_guard", "Click Rate Guard",
+                "Ignores a click that comes less than one server tick (50 ms) after the last click that went out, "
+                        + "and the volley of clicks a shift double click would send to every matching item, "
+                        + "which helps keep Hypixel from throttling the terminal. Nothing is sent for an ignored click. "
+                        + "Turning this off is at your own risk.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.terminalRateGuard,
+                v -> { AlpakaConfig.instance.terminalRateGuard = v; AlpakaConfig.save(); },
+                "terminal click rate guard throttle limit fast double click tick warning risk"));
+
+        OPTIONS.add(ConfigOption.color("terminal_solution_color", "Solution Color",
+                "The cells to click.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.terminalSolutionColor,
+                v -> { AlpakaConfig.instance.terminalSolutionColor = v; AlpakaConfig.save(); },
+                "terminal solution color click green"));
+
+        OPTIONS.add(ConfigOption.color("terminal_next_color", "Second Color",
+                "Click in Order: the cell after the next one.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.terminalNextColor,
+                v -> { AlpakaConfig.instance.terminalNextColor = v; AlpakaConfig.save(); },
+                "terminal second next color numbers order"));
+
+        OPTIONS.add(ConfigOption.color("terminal_third_color", "Third Color",
+                "Click in Order: the third cell.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.terminalThirdColor,
+                v -> { AlpakaConfig.instance.terminalThirdColor = v; AlpakaConfig.save(); },
+                "terminal third color numbers order"));
+
+        OPTIONS.add(ConfigOption.color("terminal_rubix_left_color", "Left Click Color",
+                "Change All to Same Color: panes that need left clicks.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.terminalRubixLeftColor,
+                v -> { AlpakaConfig.instance.terminalRubixLeftColor = v; AlpakaConfig.save(); },
+                "terminal rubix same color left click"));
+
+        OPTIONS.add(ConfigOption.color("terminal_rubix_right_color", "Right Click Color",
+                "Change All to Same Color: panes that need right clicks.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.terminalRubixRightColor,
+                v -> { AlpakaConfig.instance.terminalRubixRightColor = v; AlpakaConfig.save(); },
+                "terminal rubix same color right click"));
+
+        OPTIONS.add(ConfigOption.color("terminal_melody_color", "Melody Color",
+                "Click the Button on Time: the target column and the moving pane.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.terminalMelodyColor,
+                v -> { AlpakaConfig.instance.terminalMelodyColor = v; AlpakaConfig.save(); },
+                "terminal melody color button on time column"));
+
+        OPTIONS.add(new ConfigOption("terminal_custom_gui", "Custom Terminal GUI",
+                "Shows terminals in a larger, cleaner window with the solution drawn in. Needs Terminal Solvers on, "
+                        + "and opens only for the terminals ticked under Terminals. Only the clicks you make are sent, "
+                        + "unchanged; a click the Terminal Solvers guards ignore is not sent at all.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.terminalCustomGui,
+                v -> { AlpakaConfig.instance.terminalCustomGui = v; AlpakaConfig.save(); },
+                "dungeon f7 m7 terminal custom gui window screen bigger larger clean odin grid"));
+
+        OPTIONS.add(new ConfigOption("terminal_gui_scale", "GUI Size",
+                "How large the cells of the custom window are. It shrinks to fit the screen.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.terminalGuiScale,
+                v -> { AlpakaConfig.instance.terminalGuiScale = Math.round(v * 10.0f) / 10.0f; AlpakaConfig.save(); },
+                1.0f, 3.0f, val -> String.format(Locale.ROOT, "%.1fx", val),
+                "terminal gui size scale cells bigger larger"));
+
+        OPTIONS.add(ConfigOption.color("terminal_gui_background_color", "Background Color",
+                "The custom window's background.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.terminalGuiBackgroundColor,
+                v -> { AlpakaConfig.instance.terminalGuiBackgroundColor = v; AlpakaConfig.save(); },
+                "terminal gui background color panel"));
+
+        OPTIONS.add(new ConfigOption("device_solvers", "Device Solvers",
+                "Marks what to do at the F7 and M7 devices in the Goldor phase, in the Solvers colors. It only draws, "
+                        + "and walls hide it like any block.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.deviceSolversEnabled,
+                v -> { AlpakaConfig.instance.deviceSolversEnabled = v; AlpakaConfig.save(); },
+                "dungeon catacombs f7 m7 floor 7 goldor p3 device devices solver simon says arrow align item frames "
+                        + "lights levers sharpshooter target practice shoot"));
+
+        OPTIONS.add(new ConfigOption("device_solver_types", "Devices",
+                "Pick which devices are solved.",
+                ConfigCategory.SKYBLOCK,
+                java.util.List.of(
+                        toggle("Simon Says", c -> c.solveSimonSays, (c, v) -> c.solveSimonSays = v),
+                        toggle("Arrow Align", c -> c.solveArrowAlign, (c, v) -> c.solveArrowAlign = v),
+                        toggle("Lights", c -> c.solveLightsDevice, (c, v) -> c.solveLightsDevice = v),
+                        toggle("Sharpshooter", c -> c.solveSharpshooter, (c, v) -> c.solveSharpshooter = v)
+                ),
+                "device devices pick which simon says arrow align lights levers sharpshooter"));
+    }
+
     /**
      * Each HUD's own Blur and Smooth Font switches. Registered last and placed in the
      * HUD's feature by ConfigTree's PARENTS, so they come after its other settings. Chat and the
@@ -3278,6 +3657,10 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.notificationBlur, v -> AlpakaConfig.instance.notificationBlur = v);
         styleToggle("notification_smooth_font", "Smooth Font", ConfigCategory.GENERAL, false,
                 () -> AlpakaConfig.instance.notificationSmoothFont, v -> AlpakaConfig.instance.notificationSmoothFont = v);
+        styleToggle("dungeon_map_blur", "Blur", ConfigCategory.DUNGEON, true,
+                () -> AlpakaConfig.instance.dungeonMapBlur, v -> AlpakaConfig.instance.dungeonMapBlur = v);
+        styleToggle("dungeon_map_smooth_font", "Smooth Font", ConfigCategory.DUNGEON, false,
+                () -> AlpakaConfig.instance.dungeonMapSmoothFont, v -> AlpakaConfig.instance.dungeonMapSmoothFont = v);
 
         styleToggle("custom_tab_blur", "Blur", ConfigCategory.VISUALS, true,
                 () -> AlpakaConfig.instance.customTabBlur, v -> AlpakaConfig.instance.customTabBlur = v);

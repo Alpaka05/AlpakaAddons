@@ -106,22 +106,26 @@ public final class ConfigTree {
             "container_bg_opacity", "inventory_snow", "scrollable_tooltips", "persistent_item_name", "old_master_stars", "storage_preview", "wide_health_bar",
             "better_chat", "chat_search", "chat_copy", "expand_chat_history", "compact_chat", "message_filter",
             "mention_notification", "chat_peek", "better_screenshot_message", "chat_tabs",
-            "player_model_enabled", "performance_hud_enabled", "inventory_hud_enabled", "custom_tab", "dungeon_map_enabled",
+            "player_model_enabled", "performance_hud_enabled", "inventory_hud_enabled", "custom_tab", "dungeon_map_enabled", "dungeon_door_highlight", "leap_menu_enabled",
             // Item viewmodel: the adjustments are the modifiers' own settings
             "item_size_feature", "item_starlight", "item_motion_blur", "item_viewmodel_reset",
             // Block overlay: one feature, outline, fill, animation and filters its settings
             "block_overlay_enabled",
             // SkyBlock
-            "etherwarp_overlay", "etherwarp_sound", "pest_finder",
+            "etherwarp_overlay", "etherwarp_sound", "item_search", "pest_finder",
             "slayer_drop_tracker", "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat",
             "hide_slayer_chat", "boss_spawn_alert", "boss_cocoon_alert", "slayer_timer", "slayer_hud_enabled",
-            "world_age_join_message_enabled", "party_invite_prompt",
+            "world_age_join_message_enabled", "party_invite_prompt", "party_commands", "shorten_warp", "warp_cooldown_queue",
             "guild_prefix", "bridge_bot_formatter", "only_crit_damage", "ragnarock", "deployable_timer", "cache_resource_pack",
+            "visitor_bazaar",
             "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value", "chest_value",
+            "profile_dashboard",
+            // SkyBlock: dungeon
+            "dungeon_solvers", "terminal_solvers", "terminal_custom_gui", "device_solvers",
             // Cosmetics
             "custom_name_tag", "chroma_hat", "aura", "player_scale", "custom_damage_tags",
             // Sound & utility
-            "command_wheel_custom_commands", "command_shortcuts", "always_sprint", "keep_cursor_position", "quick_join", "custom_sounds",
+            "command_wheel_custom_commands", "command_shortcuts", "inventory_buttons", "always_sprint", "keep_cursor_position", "quick_join", "custom_sounds",
             "custom_sound_button_click", "custom_sound_hotbar_scroll", "custom_sound_inventory_open_close",
             "custom_sound_inventory_click", "custom_sound_rare_drop", "custom_sound_notification",
             "custom_sound_player_hurt", "custom_sound_blaze_death", "custom_sound_zombie_remedy",
@@ -147,6 +151,8 @@ public final class ConfigTree {
             Map.entry("inventory_hud_blur", "inventory_hud_enabled"),
             Map.entry("custom_tab_blur", "custom_tab"),
             Map.entry("custom_tab_smooth_font", "custom_tab"),
+            Map.entry("dungeon_map_blur", "dungeon_map_enabled"),
+            Map.entry("dungeon_map_smooth_font", "dungeon_map_enabled"),
             Map.entry("notification_blur", "#Notification Customization"),
             Map.entry("notification_smooth_font", "#Notification Customization")
     );
@@ -162,7 +168,8 @@ public final class ConfigTree {
             "Notification Customization", "Notifications",
             "Scoreboard", "Scoreboard Style",
             "Nametags", "Nametags",
-            "Hide Fire Overlay", "Hide Fire Overlay"
+            "Hide Fire Overlay", "Hide Fire Overlay",
+            "Enchantments", "Enchantments"
     );
 
     /** What a feature built from a header is about; it has no master option to take it from. */
@@ -173,7 +180,8 @@ public final class ConfigTree {
             "Scoreboard", "The sidebar scoreboard's footer, background and font.",
             "Nametags", "How the nametags above players and mobs look, and whether you see your own.",
             "Hide Fire Overlay", "Hides the flames on burning mobs, and fades, lowers or stills the fire on your screen while you burn.",
-            "Notification Customization", "How long notifications stay, where they appear and how they look. Send a test to see the result."
+            "Notification Customization", "How long notifications stay, where they appear and how they look. Send a test to see the result.",
+            "Enchantments", "Maxed enchantments in their own color in tooltips, and the books that combine with the one in the anvil highlighted."
     );
 
     /**
@@ -202,17 +210,19 @@ public final class ConfigTree {
                             "#Viewmodel Presets", "item_viewmodel_reset"},
                     {"Cosmetics", "custom_name_tag", "custom_damage_tags", "chroma_hat", "aura", "player_scale", "inventory_snow"}},
             {{"SkyBlock"},
-                    {"Dungeon", "dungeon_map_enabled", "starred_mobs_highlight"},
+                    {"Dungeon", "dungeon_map_enabled", "dungeon_door_highlight", "leap_menu_enabled", "starred_mobs_highlight", "dungeon_solvers", "terminal_solvers", "terminal_custom_gui", "device_solvers"},
                     {"Slayer", "slayer_hud_enabled", "slayer_timer", "boss_spawn_alert", "boss_cocoon_alert", "slayer_drop_tracker",
                             "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat", "slayer_boss_highlight",
                             "hide_slayer_chat", "clean_blaze", "blaze_fire_pits"},
                     {"Garden", "pest_finder", "visitor_bazaar"},
                     {"Tools", "etherwarp_overlay", "etherwarp_sound", "only_crit_damage",
-                            "world_age_join_message_enabled", "ragnarock", "deployable_timer", "cache_resource_pack"},
+                            "world_age_join_message_enabled", "ragnarock", "deployable_timer", "#Enchantments", "cache_resource_pack",
+                            "profile_dashboard"},
                     {"Markets", "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value",
+                            "item_search",
                             "chest_value"},
-                    {"Social", "party_invite_prompt", "guild_prefix", "bridge_bot_formatter",
-                            "command_wheel_custom_commands", "command_shortcuts"}},
+                    {"Social", "party_invite_prompt", "party_commands", "shorten_warp", "warp_cooldown_queue", "guild_prefix", "bridge_bot_formatter",
+                            "command_wheel_custom_commands", "command_shortcuts", "inventory_buttons"}},
     };
 
     /** "Enable Inventory HUD" reads as "Inventory HUD" in a list of features that each switch on. */

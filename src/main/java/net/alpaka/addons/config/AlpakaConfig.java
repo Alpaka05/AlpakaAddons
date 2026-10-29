@@ -465,6 +465,8 @@ public class AlpakaConfig {
 
     // Deployable timer: the strongest power orb or flare in range, with its time left.
     public boolean deployableTimerEnabled = false;
+    /** Clicking a garden visitor's Accept Offer while items are missing opens the bazaar for them. */
+    public boolean visitorBazaarEnabled = true;
     public int deployableTimerHudX = net.alpaka.addons.client.hud.HudDefaults.DEPLOYABLE_TIMER_X;
     public int deployableTimerHudY = net.alpaka.addons.client.hud.HudDefaults.DEPLOYABLE_TIMER_Y;
     public float deployableTimerHudScale = 1.0f;
@@ -558,52 +560,120 @@ public class AlpakaConfig {
     public boolean dungeonMapEnabled = false;
     public int dungeonMapX = net.alpaka.addons.client.hud.HudDefaults.DUNGEON_MAP_X;
     public int dungeonMapY = net.alpaka.addons.client.hud.HudDefaults.DUNGEON_MAP_Y;
-    public boolean dungeonMapShowClear = true;
+    public float dungeonMapScale = 1.0f;
+    /** In the boss room: whether the map shows at all, and then 0 arena, 1 saved clear map, 2 both. */
     public boolean dungeonMapShowBoss = true;
     public int dungeonMapBossMode = 0;
     public float dungeonMapBossRange = 96.0f;
-    public float dungeonMapScale = 1.0f;
-    public boolean dungeonMapTitle = true;
+    /** The room the player is in, above the map; the boss's name in the boss room. */
+    public boolean dungeonMapCurrentRoom = true;
     public boolean dungeonMapRoomNames = false;
     public boolean dungeonMapRoomSecrets = false;
-    public boolean dungeonMapHideCheckmarks = true;
     public float dungeonMapRoomLabelScale = 0.5f;
     public boolean dungeonMapPlayers = true;
-    public boolean dungeonMapNames = false;
+    /** Heads instead of arrows, and whether they turn with the player (Player Icons in the menu). */
     public boolean dungeonMapPlayerHeads = true;
     public boolean dungeonMapRotateHeads = true;
-    public boolean dungeonMapHeadBorder = true;
     public boolean dungeonMapSmoothMarkers = true;
+    public boolean dungeonMapNames = false;
     public float dungeonMapMarkerScale = 1.0f;
+    /** The mod's room and terrain colors; off keeps Hypixel's map colors and the blocks' own. */
+    public boolean dungeonMapCustomColors = true;
     public int dungeonMapSelfColor = 0xFFFFFFFF;
-    public int dungeonMapPlayerColor = 0xFF55DDFF;
     public int dungeonMapTextColor = 0xFFE8EEEE;
+    public boolean dungeonMapSmoothFont = true;
     public boolean dungeonMapBackground = true;
-    public int dungeonMapBackgroundColor = 0xFF191919;
-    public float dungeonMapBackgroundOpacity = 65.0f;
+    /** Background tint; its alpha is the opacity. */
+    public int dungeonMapBackgroundTint = 0xA6191919;
     public boolean dungeonMapBlur = true;
     public boolean dungeonMapFrame = true;
     public int dungeonMapFrameStart = 0xFF29B6B2;
     public int dungeonMapFrameEnd = 0xFFB04FFF;
-    public float dungeonMapFrameWidth = 1.0f;
-    public float dungeonMapCornerRadius = 6.0f;
-    public float dungeonMapPadding = 6.0f;
-    public boolean dungeonMapCustomColors = true;
-    public int dungeonMapRoomColor = 0xFFB78A60;
-    public int dungeonMapEntranceColor = 0xFF4DBB75;
-    public int dungeonMapPuzzleColor = 0xFFB86CE0;
-    public int dungeonMapTrapColor = 0xFFE89B45;
-    public int dungeonMapMinibossColor = 0xFFF3D55B;
-    public int dungeonMapFairyColor = 0xFFF08BBD;
-    public int dungeonMapBloodColor = 0xFFE15959;
-    public int dungeonMapUnknownColor = 0xFF555D68;
-    public int dungeonMapDoorColor = 0xFF282D38;
-    public int dungeonMapClearedColor = 0xFFFFFFFF;
-    public int dungeonMapCompleteColor = 0xFF55E68B;
-    public int dungeonMapFailedColor = 0xFFFF5555;
-    public boolean dungeonMapBossCustomColors = true;
-    public int dungeonMapBossFloorColor = 0xFF687981;
-    public int dungeonMapBossWallColor = 0xFFB8C5CC;
+
+    // Door Highlight: wither and blood doors during the clear; the color's alpha is the fill's.
+    public boolean dungeonDoorHighlight = false;
+    public int dungeonDoorLockedColor = 0x50E04848;
+    public int dungeonDoorOpenableColor = 0x5055E68B;
+
+    // Leap Menu: Hypixel's Spirit Leap chest drawn as one button per teammate.
+    public boolean leapMenuEnabled = false;
+    public boolean leapMenuShowMap = true;
+
+    // Dungeon solvers. Visual help in the Catacombs: puzzles, F7/M7 terminals and devices. Nothing is
+    // sent; the custom terminal GUI clicks only what the player clicks, through Outbound.menuClick.
+    // Ranged values are clamped where they are read, so a hand-edited file cannot push them out.
+    /** Master switch of the puzzle solvers ("Solvers"). */
+    public boolean dungeonSolversEnabled = false;
+    public boolean solveThreeWeirdos = true;
+    public boolean solveQuiz = true;
+    public boolean solveTicTacToe = true;
+    public boolean solveHigherOrLower = true;
+    public boolean solveCreeperBeams = true;
+    public boolean solveTeleportMaze = true;
+    public boolean solveWaterBoard = true;
+    public boolean solveBoulder = true;
+    public boolean solveIceFill = true;
+    public boolean solveIcePath = true;
+    /** Water Board: Odin's quicker solutions, with flips closer together. */
+    public boolean waterBoardFastSolutions = false;
+    /** The thing to do now. Also used by the device solvers. */
+    public int dungeonSolverColor = 0xCC55FF55;
+    /** What comes after it. */
+    public int dungeonSolverNextColor = 0xCCFFD24D;
+    /** Used pads, liars, wrong answers. */
+    public int dungeonSolverWrongColor = 0xCCFF5555;
+    /** 0 outline, 1 filled, 2 both; see {@code SolverColors}. */
+    public int dungeonSolverBoxStyle = 2;
+    /** Outline and line thickness in screen pixels, 1..6. */
+    public float dungeonSolverLineWidth = 2.5f;
+    /** Order numbers, click counts and countdowns in the world. */
+    public boolean dungeonSolverLabels = true;
+
+    /** Master switch of the F7/M7 terminal solvers ("Terminal Solvers"). */
+    public boolean terminalSolversEnabled = false;
+    public boolean solvePanesTerminal = true;
+    public boolean solveRubixTerminal = true;
+    public boolean solveNumbersTerminal = true;
+    public boolean solveStartsWithTerminal = true;
+    public boolean solveSelectAllTerminal = true;
+    public boolean solveMelodyTerminal = true;
+    /** Master of its own feature row ("Custom Terminal GUI"); only acts while the terminal solvers are on. */
+    public boolean terminalCustomGui = false;
+    /** 1.0..3.0; a cell is round(18 * scale) GUI pixels, shrunk to fit the window. */
+    public float terminalGuiScale = 1.5f;
+    /** Vanilla chest: items that are not part of the solution are not drawn (display only). */
+    public boolean terminalHideOtherItems = false;
+    /** Advance the highlights before the server confirms a click (display only). */
+    public boolean terminalPredictClicks = false;
+    /** Refuse a wrong click: nothing is sent for it. Never for Melody. */
+    public boolean terminalBlockWrongClicks = false;
+    /** Refuse clicks right after a terminal opens: nothing is sent for them. */
+    public boolean terminalFirstClickGuard = true;
+    /** 350..800 ms; the server ticks required are ceil(ms / 50). */
+    public int terminalFirstClickMs = 500;
+    /** Refuse a click less than one server tick (50 ms) after the previous accepted one. */
+    public boolean terminalRateGuard = true;
+    /** Click this. */
+    public int terminalSolutionColor = 0xFF55FF55;
+    /** Click in Order: the second. */
+    public int terminalNextColor = 0xFF3FA8FF;
+    /** Click in Order: the third. */
+    public int terminalThirdColor = 0xFF8E6BFF;
+    /** Change All to Same Color: panes that need left clicks. */
+    public int terminalRubixLeftColor = 0xFF55FF55;
+    /** Change All to Same Color: panes that need right clicks. */
+    public int terminalRubixRightColor = 0xFFFF7A55;
+    /** Click the Button on Time: the target column and the moving pane. */
+    public int terminalMelodyColor = 0xFFFF55FF;
+    /** Background of the custom terminal GUI. */
+    public int terminalGuiBackgroundColor = 0xE0101014;
+
+    /** Master switch of the F7/M7 device solvers ("Device Solvers"); they use the Solvers colors. */
+    public boolean deviceSolversEnabled = false;
+    public boolean solveSimonSays = true;
+    public boolean solveArrowAlign = true;
+    public boolean solveLightsDevice = true;
+    public boolean solveSharpshooter = true;
 
     // Inventory HUD. Shows the 27 main-inventory slots on screen; position and scale are set in
     // the HUD editor, or it can ride directly above the hotbar.
@@ -824,6 +894,18 @@ public class AlpakaConfig {
     public boolean oldMasterStarsEnabled = false;
     /** Hovering a backpack or ender chest page in the Storage menu shows what was last seen inside. */
     public boolean storagePreviewEnabled = true;
+    /** Enchantments at their highest level are drawn in {@link #maxEnchantColor} in tooltips. */
+    public boolean maxEnchantColorEnabled = false;
+    public int maxEnchantColor = 0xFFFFAA00;
+    /** Ultimate enchantments too, which Hypixel already marks with bold pink. */
+    public boolean maxEnchantColorUltimate = false;
+    /** In SkyBlock's anvil, books that combine with the one put in are highlighted. */
+    public boolean anvilCombineHelperEnabled = false;
+    public int anvilCombineHelperColor = 0x8055FF55;
+    /** Chronomatron, Ultrasequencer and Superpairs: what to click next is highlighted. */
+    public boolean experimentSolverEnabled = false;
+    public int experimentSolverNextColor = 0xA055FF55;
+    public int experimentSolverLaterColor = 0x70FFFF55;
     /**
      * One long row of twenty hearts in place of the two short ones, the hunger bar and the armor bar,
      * neither of which SkyBlock needs; absorption hearts sit on the row above it.
@@ -860,6 +942,18 @@ public class AlpakaConfig {
     /** A Hypixel party invite raises a notification: Y joins, N dismisses. */
     public boolean partyInvitePromptEnabled = true;
 
+    /** "/isle" is sent as "/warp isle"; see WarpShortcut. */
+    public boolean shortenWarpEnabled = true;
+    /** A warp typed in the first seconds on a server waits for Hypixel's cooldown; see WarpCooldownQueue. */
+    public boolean warpCooldownQueueEnabled = true;
+    /** A party member's "!warp", "!tps"... raises a Y/N prompt to answer it; see PartyCommandsFeature. */
+    public boolean partyCommandsEnabled = false;
+    /** Info and fun party commands are answered without the Y/N prompt. */
+    public boolean partyCommandsAutoAnswer = false;
+    /** The party commands not offered, by PartyCommand name. The ones that can hurt a party start off. */
+    public java.util.List<String> partyCommandsDisabled = new java.util.ArrayList<>(java.util.List.of(
+            "TRANSFER", "KICK", "KICK_OFFLINE", "PROMOTE", "DEMOTE"));
+
     /** Keeps Hypixel's server resource pack loaded between joins; see ServerPackCache. */
     public boolean cacheResourcePackEnabled = false;
 
@@ -885,6 +979,8 @@ public class AlpakaConfig {
     public boolean itemValueEnabled = true;
     /** Which Bazaar price the parts count at: 0 what they cost to buy now, 1 what they sell for now. */
     public int itemValueBazaarPrice = 0;
+    /** Item Search: a window to search everything the player owns; see ItemSearchFeature. */
+    public boolean itemSearchEnabled = true;
     /** The Chest Value panel beside a menu: what everything in it is worth; see ChestValuePanel. Needs allowApiCalls. */
     public boolean chestValueEnabled = true;
     /** Whether the panel is showing: its key switches it, and it stays so from menu to menu until pressed again. */
@@ -898,6 +994,18 @@ public class AlpakaConfig {
     /** Where the panel was moved to, as a share of the screen's width and height; -1 beside the menu. */
     public float chestValueX = -1f;
     public float chestValueY = -1f;
+    /** /alpakaprofile opens the Profile Dashboard; see ProfileDashboardScreen. Needs allowApiCalls. */
+    public boolean profileDashboardEnabled = true;
+    /** Snapshots of the player's own profile while playing, for the dashboard's graphs; see ProfileTracker. */
+    public boolean profileDashboardTracking = true;
+    /** Minutes between two of those snapshots. */
+    public int profileDashboardTrackingMinutes = 60;
+    /**
+     * The player's own SkyKings API key, for SkyKings' daily history in the dashboard's graphs.
+     * Empty for none. Each player makes their own; the mod never ships one (SkyKings asks that keys
+     * stay with their owner), and it is only ever sent to api.skykings.net.
+     */
+    public String skykingsApiKey = "";
 
     // Command Wheel options
     /**
@@ -990,6 +1098,70 @@ public class AlpakaConfig {
             this.key = key;
             this.modifiers = modifiers;
             this.command = command;
+        }
+    }
+
+    // Inventory Buttons: the player's own buttons around inventories and menus; see InventoryButtonsFeature.
+    public boolean inventoryButtonsEnabled = false;
+    /** Shows them only on Hypixel SkyBlock, where their commands mean something. */
+    public boolean inventoryButtonsSkyblockOnly = true;
+    /** How the buttons look: 0 Alpaka (the config menu's look), 1 Vanilla, 2 Icon Only. */
+    public int inventoryButtonsStyle = 0;
+    /** The tile behind each button's icon in the Alpaka style, and on hover in Icon Only. */
+    public int inventoryButtonsColor = 0xE6131313;
+    /** How round the tile's corners are, in GUI pixels. */
+    public int inventoryButtonsRounding = 4;
+    /** The buttons, in the order the editor lists them. */
+    public java.util.List<InventoryButton> inventoryButtons = InventoryButton.defaults();
+
+    /**
+     * One inventory button: what it runs, what it shows, and where it sits.
+     *
+     * The position is kept against the edge of the container's panel the button is nearest to,
+     * not against the screen: a chest of six rows is taller than the inventory, and a button beside
+     * the player's own slots should stay beside them in both (see InventoryButtonLayout).
+     */
+    public static class InventoryButton {
+        /** Shows in every container screen. */
+        public static final int SHOW_ALL = 0;
+        /** Shows only in the player's own inventory. */
+        public static final int SHOW_INVENTORY = 1;
+        /** Shows only in chests and the server's menus. */
+        public static final int SHOW_CONTAINERS = 2;
+
+        /** The command with its slash, as the player typed it. */
+        public String command = "/";
+        /** The tooltip's title; the command is shown when this is empty. */
+        public String label = "";
+        /** The item drawn on the button, by its id. */
+        public String icon = "minecraft:chest";
+        /** Offset from the panel edge named by {@link #anchorRight}/{@link #anchorBottom}, in GUI pixels. */
+        public int x = -22;
+        public int y = 0;
+        public boolean anchorRight = false;
+        public boolean anchorBottom = false;
+        /** Where it shows: {@link #SHOW_ALL}, {@link #SHOW_INVENTORY} or {@link #SHOW_CONTAINERS}. */
+        public int showIn = SHOW_ALL;
+
+        public InventoryButton() {}
+
+        public InventoryButton(String command, String label, String icon, int x, int y) {
+            this.command = command;
+            this.label = label;
+            this.icon = icon;
+            this.x = x;
+            this.y = y;
+        }
+
+        /** A column of common SkyBlock menus down the left of the panel, for a first start. */
+        public static java.util.List<InventoryButton> defaults() {
+            java.util.List<InventoryButton> list = new java.util.ArrayList<>();
+            list.add(new InventoryButton("/storage", "Storage", "minecraft:chest", -22, 4));
+            list.add(new InventoryButton("/ec", "Ender Chest", "minecraft:ender_chest", -22, 24));
+            list.add(new InventoryButton("/pets", "Pets", "minecraft:bone", -22, 44));
+            list.add(new InventoryButton("/wardrobe", "Wardrobe", "minecraft:leather_chestplate", -22, 64));
+            list.add(new InventoryButton("/sbmenu", "SkyBlock Menu", "minecraft:nether_star", -22, 84));
+            return list;
         }
     }
 
@@ -1616,13 +1788,16 @@ public class AlpakaConfig {
         this.allowApiCalls = false;
         this.slayerTimerEnabled = false;
         this.ragnarockEnabled = false;
+        this.visitorBazaarEnabled = false;
         this.deployableTimerEnabled = false;
         this.customAuctionHouseEnabled = false;
         this.customBazaarEnabled = false;
         this.customSignInputEnabled = false;
         this.marketPriceHistoryEnabled = false;
+        this.itemSearchEnabled = false;
         this.itemValueEnabled = false;
         this.chestValueEnabled = false;
+        this.profileDashboardEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
         this.customDamageTagsEnabled = false;
@@ -1646,6 +1821,8 @@ public class AlpakaConfig {
         this.inventoryHudEnabled = false;
         this.dungeonMapEnabled = false;
         this.starredMobsHighlightEnabled = false;
+        this.leapMenuEnabled = false;
+        this.dungeonDoorHighlight = false;
         this.pestFinderEnabled = false;
         this.bridgeBotFormatterEnabled = false;
         this.guildPrefixEnabled = false;
@@ -1656,14 +1833,24 @@ public class AlpakaConfig {
         this.scrollableTooltipsEnabled = false;
         this.persistentItemNameEnabled = false;
         this.storagePreviewEnabled = false;
+        this.maxEnchantColorEnabled = false;
+        this.anvilCombineHelperEnabled = false;
+        this.experimentSolverEnabled = false;
         this.mentionNotificationEnabled = false;
         this.itemMotionBlurEnabled = false;
         this.bossSpawnAlertEnabled = false;
         this.bossCocoonAlertEnabled = false;
         this.partyInvitePromptEnabled = false;
+        this.shortenWarpEnabled = false;
+        this.warpCooldownQueueEnabled = false;
+        this.partyCommandsEnabled = false;
         this.oldMasterStarsEnabled = false;
         this.cacheResourcePackEnabled = false;
         this.zoomEnabled = false;
+        this.dungeonSolversEnabled = false;
+        this.terminalSolversEnabled = false;
+        this.terminalCustomGui = false;
+        this.deviceSolversEnabled = false;
         save();
     }
 

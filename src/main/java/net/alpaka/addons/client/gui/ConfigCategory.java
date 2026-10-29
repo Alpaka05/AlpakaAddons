@@ -7,7 +7,7 @@ public enum ConfigCategory {
     BLOCK_OVERLAY("Block Overlay", "Custom block outline, colors, chroma & fill effects"),
     COSMETICS("Cosmetics", "Your own animated name tag, the sensei hat, an aura & player scale"),
     SKYBLOCK("SkyBlock", "Hypixel SkyBlock utilities & slayer drop trackers"),
-    DUNGEON("Dungeon", "Dungeon map, boss arena & map appearance"),
+    DUNGEON("Dungeon", "Dungeon map, boss arena & the Leap Menu"),
     SOUND_MISC("Sound & Utility", "Custom sounds, the Command Wheel & Always Sprint");
 
     private final String displayName;

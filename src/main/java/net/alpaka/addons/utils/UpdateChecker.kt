@@ -1,5 +1,6 @@
 package net.alpaka.addons.utils
 
+import com.google.gson.JsonElement
 import com.google.gson.JsonParser
 import net.alpaka.addons.AlpakaAddons
 import net.alpaka.addons.config.AlpakaConfig
@@ -15,9 +16,11 @@ import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.Duration
+import java.util.Optional
 
 /**
- * Tells the player in chat, once per game session, when a newer release of the mod is on GitHub.
+ * Tells the player in chat, once per game session, when a newer release of the mod is on GitHub,
+ * and offers to install it ([UpdateInstaller]).
  *
  * ### What counts as newer
  *
@@ -37,14 +40,31 @@ import java.time.Duration
  *
  * One GET to GitHub's public releases list for this repository, once per start, with no key and
  * nothing about the player. Only while [AlpakaConfig.allowApiCalls] and
- * [AlpakaConfig.updateNotificationsEnabled] are both on.
+ * [AlpakaConfig.updateNotificationsEnabled] are both on; `/alpakaupdate check` asks again on
+ * request, and needs only the first. The jar itself is downloaded only once the player has
+ * confirmed the install.
  */
 object UpdateChecker {
 
     private const val ENDPOINT = "https://api.github.com/repos/Alpaka05/AlpakaAddons/releases?per_page=20"
 
-    /** A release found to be newer, waiting for the player to be in a world to hear about it. */
-    internal class Release(val version: String, val url: String)
+    /** A manual check this soon after the last one is turned down, so spamming it cannot use up GitHub's limit. */
+    private const val MANUAL_COOLDOWN_MS = 60_000L
+
+    private val SHA256 = Regex("[0-9a-f]{64}")
+
+    /**
+     * A release found to be newer, with the jar for this game. [sha256] is the jar's checksum as
+     * GitHub lists it, or null when it lists none.
+     */
+    class Release(
+        val version: String,
+        val url: String,
+        val jarName: String,
+        val jarUrl: String,
+        val jarSize: Long,
+        val sha256: String?,
+    )
 
     /** The choices of "Update Stream", by [AlpakaConfig.updateStream]. */
     @JvmField
@@ -56,10 +76,11 @@ object UpdateChecker {
 
     /**
      * After "Update Stream" changes: forget what the old stream found, so the next tick in a world
-     * asks again for the new one instead of waiting for the next start.
+     * asks again for the new one instead of the player having to run `/alpakaupdate check`.
      */
     @JvmStatic
     fun streamChanged() {
+        latest = null
         found = null
         requested = false
     }
@@ -71,13 +92,28 @@ object UpdateChecker {
     /** Whether this session's one request has been made. */
     private var requested = false
 
+    /** A release waiting for the player to be in a world to hear about it. */
     @Volatile
     private var found: Release? = null
+
+    /** The newest release found this session, for the install button and `/alpakaupdate`. */
+    @Volatile
+    private var latest: Release? = null
+
+    @Volatile
+    private var checking = false
+
+    private var lastManualCheckMs = 0L
 
     @JvmStatic
     fun register() {
         ClientTickEvents.END_CLIENT_TICK.register { tick(it) }
+        UpdateInstaller.cleanUp()
     }
+
+    /** The newest release found this session, or null if there is none or no check has answered yet. */
+    @JvmStatic
+    fun latestRelease(): Release? = latest
 
     private fun tick(mc: Minecraft) {
         if (mc.player == null) return
@@ -86,7 +122,7 @@ object UpdateChecker {
 
         if (!requested) {
             requested = true
-            fetch()
+            fetch { release, _ -> found = release }
             return
         }
         val release = found ?: return
@@ -94,8 +130,54 @@ object UpdateChecker {
         announce(release)
     }
 
-    private fun fetch() {
-        val current = ReleaseVersion.parse(ModVersion.mod()) ?: return // A build without a version has nothing to compare.
+    /** `/alpakaupdate`: the release found this session, or that there is none. */
+    @JvmStatic
+    fun status() {
+        val release = latest
+        if (release != null) {
+            announce(release)
+        } else {
+            SlayerDropTracker.sendModMessage("§7You have §f${ModVersion.mod()}§7 and no newer release was found this session. "
+                + "§f/alpakaupdate check§7 looks again.")
+        }
+    }
+
+    /** `/alpakaupdate check`: asks GitHub now and answers in chat either way. */
+    @JvmStatic
+    fun checkNow() {
+        if (!AlpakaConfig.instance.allowApiCalls) {
+            SlayerDropTracker.sendModMessage("§7Network features are off in §f/aa§7, so the mod can't check for updates.")
+            return
+        }
+        val now = System.currentTimeMillis()
+        if (checking || now - lastManualCheckMs < MANUAL_COOLDOWN_MS) {
+            SlayerDropTracker.sendModMessage("§7Checked just now - try again in a minute.")
+            return
+        }
+        lastManualCheckMs = now
+        requested = true // This check stands in for the automatic one if that has not run yet.
+        SlayerDropTracker.sendModMessage("§7Checking for a newer release...")
+        fetch { release, problem ->
+            Minecraft.getInstance().execute {
+                when {
+                    problem != null -> SlayerDropTracker.sendModMessage("§cCouldn't check for a newer release ($problem).")
+                    release == null -> SlayerDropTracker.sendModMessage("§7You have the newest release (§f${ModVersion.mod()}§7).")
+                    else -> announce(release)
+                }
+            }
+        }
+    }
+
+    /**
+     * Asks GitHub for the newest release. [done] gets that release, or null when there is none newer,
+     * and a short reason when the check failed; it runs on the HTTP client's thread.
+     */
+    private fun fetch(done: (Release?, String?) -> Unit) {
+        val current = ReleaseVersion.parse(ModVersion.mod())
+        if (current == null) { // A build without a version has nothing to compare.
+            done(null, "this build has no version to compare")
+            return
+        }
         val jarSuffixes = jarSuffixes(ModVersion.minecraft())
         val preReleases = stream() == 1
 
@@ -106,19 +188,31 @@ object UpdateChecker {
             .GET()
             .build()
 
+        checking = true
         client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
             .whenComplete { response, error ->
+                checking = false
                 try {
-                    if (error != null || response == null || response.statusCode() != 200) {
-                        AlpakaAddons.LOGGER.warn(
-                            "Could not check for a newer release ({})",
-                            error?.toString() ?: "HTTP ${response?.statusCode()}",
-                        )
+                    val status = response?.statusCode()
+                    val problem = when {
+                        error != null || response == null -> error?.toString() ?: "no answer"
+                        // Unauthenticated requests get 60 an hour per address, shared with anything
+                        // else on that address; the limit resets within the hour.
+                        status == 403 || status == 429 -> "HTTP $status, most likely GitHub's hourly limit - try again later"
+                        status != 200 -> "HTTP $status"
+                        else -> null
+                    }
+                    if (problem != null) {
+                        AlpakaAddons.LOGGER.warn("Could not check for a newer release ({})", problem)
+                        done(null, problem)
                         return@whenComplete
                     }
-                    found = newest(response.body(), current, jarSuffixes, preReleases)
+                    val release = newest(response!!.body(), current, jarSuffixes, preReleases)
+                    if (release != null) latest = release
+                    done(release, null)
                 } catch (t: Throwable) {
                     AlpakaAddons.LOGGER.warn("Could not check for a newer release", t)
+                    done(null, "GitHub's answer could not be read")
                 }
             }
     }
@@ -139,7 +233,8 @@ object UpdateChecker {
 
     /**
      * The highest release above [current] with a jar ending in one of [jarSuffixes], or null if there
-     * is none. Pre-releases are only considered with [preReleases].
+     * is none. Where a release has several, the first ending in [jarSuffixes] wins. Pre-releases are
+     * only considered with [preReleases].
      */
     internal fun newest(body: String, current: ReleaseVersion, jarSuffixes: List<String>, preReleases: Boolean = false): Release? {
         var best: Release? = null
@@ -152,23 +247,52 @@ object UpdateChecker {
             val preRelease = release.get("prerelease")?.asBoolean == true || parsed.isPreRelease
             if (preRelease && !preReleases) continue
             if (parsed <= bestVersion) continue
-            val hasJar = release.getAsJsonArray("assets")?.any { asset ->
-                val name = asset.asJsonObject.get("name")?.asString ?: return@any false
-                jarSuffixes.any { name.endsWith(it) }
-            } == true
-            if (!hasJar) continue
-            best = Release(version, release.get("html_url")?.asString ?: continue)
+            val assets = release.getAsJsonArray("assets")?.map { it.asJsonObject } ?: continue
+            val jar = jarSuffixes.firstNotNullOfOrNull { suffix ->
+                assets.firstOrNull { it.get("name")?.asString?.endsWith(suffix) == true }
+            } ?: continue
+            best = Release(
+                version,
+                release.get("html_url")?.asString ?: continue,
+                jar.get("name").asString,
+                jar.get("browser_download_url")?.asString ?: continue,
+                jar.get("size")?.asLong ?: 0L,
+                sha256(jar.get("digest")),
+            )
             bestVersion = parsed
         }
         return best
     }
 
+    /** The hex of a `sha256:<hex>` digest, as GitHub lists it for each asset; null for anything else. */
+    private fun sha256(digest: JsonElement?): String? {
+        if (digest == null || !digest.isJsonPrimitive) return null
+        val text = digest.asString.lowercase()
+        if (!text.startsWith("sha256:")) return null
+        return text.removePrefix("sha256:").takeIf { SHA256.matches(it) }
+    }
+
     private fun announce(release: Release) {
-        SlayerDropTracker.sendModMessage(Component.literal("§7Version §f${release.version}§7 is out (you have §f${ModVersion.mod().substringBefore('+')}§7). ")
-            .append(Component.literal("[Download]").withStyle { style ->
+        if (UpdateInstaller.isStaged(release.version)) {
+            SlayerDropTracker.sendModMessage("§7Version §f${release.version}§7 is downloaded and installs when you close the game.")
+            return
+        }
+        val line = Component.literal("§7Version §f${release.version}§7 is out (you have §f${ModVersion.mod().substringBefore('+')}§7). ")
+            .append(Component.literal("[Release Page]").withStyle { style ->
                 style.withColor(ChatFormatting.AQUA)
                     .withClickEvent(ClickEvent.OpenUrl(URI.create(release.url)))
                     .withHoverEvent(HoverEvent.ShowText(Component.literal(release.url)))
-            }))
+            })
+        // Only offered where installing can work; otherwise a hint says why, so the button's absence is not a puzzle.
+        val blocker = UpdateInstaller.blocker(release)
+        if (blocker == null) {
+            line.append(" ").append(Component.literal("[Install]").withStyle { style ->
+                style.withColor(ChatFormatting.GREEN)
+                    .withClickEvent(ClickEvent.Custom(UpdateInstaller.INSTALL, Optional.empty()))
+                    .withHoverEvent(HoverEvent.ShowText(Component.literal("Asks first, then installs it when you close the game")))
+            })
+        }
+        SlayerDropTracker.sendModMessage(line)
+        if (blocker != null) SlayerDropTracker.sendModMessage("§8  $blocker.")
     }
 }

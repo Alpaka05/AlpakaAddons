@@ -14,6 +14,8 @@ object BossRoomMap {
         private set
     var revision = 0
         private set
+    /** Drawn and refilled on the client thread, so one buffer serves every sampling. */
+    private val buffer = IntArray(BossMapProjection.TEXTURE * BossMapProjection.TEXTURE)
 
     fun update(client: Minecraft) {
         val level = client.level ?: return
@@ -26,7 +28,7 @@ object BossRoomMap {
         val steps = BossMapProjection.STEPS
         // Only a view that follows the player ever shows the margin.
         val sampled = if (cfg.dungeonMapSmoothMarkers) margin else 0
-        val result = IntArray(side * side)
+        val result = buffer.also { it.fill(0) }
         val pos = BlockPos.MutableBlockPos()
         // At most 96x96 samples every half second bound the work even in the large F7 arena. Looking
         // near the player's feet keeps the ceiling from covering the floor on indoor boss maps.
@@ -43,8 +45,8 @@ object BossRoomMap {
                 if (state.isAir) continue
                 val mapColor = state.getMapColor(level, pos)
                 if (mapColor == MapColor.NONE) continue
-                color = if (cfg.dungeonMapBossCustomColors) {
-                    if (y >= feet) cfg.dungeonMapBossWallColor else cfg.dungeonMapBossFloorColor
+                color = if (cfg.dungeonMapCustomColors) {
+                    if (y >= feet) DungeonMapColors.BOSS_WALL else DungeonMapColors.BOSS_FLOOR
                 } else mapColor.calculateARGBColor(if (y >= feet) MapColor.Brightness.HIGH else MapColor.Brightness.NORMAL)
                 break
             }

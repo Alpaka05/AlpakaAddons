@@ -7,6 +7,7 @@ import net.alpaka.addons.features.chat.ChatSearchFeature;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
 import net.alpaka.addons.features.chat.ScreenshotMessageFeature;
 import net.alpaka.addons.features.slayer.SlayerHudElement;
+import net.alpaka.addons.utils.UpdateInstaller;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.CommandSuggestions;
@@ -197,9 +198,27 @@ public class ChatScreenMixin {
     @Inject(method = "handleComponentClicked", at = @At("HEAD"), cancellable = true)
     private void alpaka$handleModClickEvents(Style clicked, boolean allowInsertions, CallbackInfoReturnable<Boolean> cir) {
         if (allowInsertions) return;
-        if (clicked.getClickEvent() instanceof ClickEvent.Custom custom && ScreenshotMessageFeature.handleClick(custom)) {
+        // The update button first: the screenshot handler claims every event in the mod's namespace.
+        if (clicked.getClickEvent() instanceof ClickEvent.Custom custom
+                && (UpdateInstaller.handleClick(custom) || ScreenshotMessageFeature.handleClick(custom))) {
             cir.setReturnValue(true);
         }
+    }
+
+    /**
+     * A typed command goes past Shorten Warp and Warp Cooldown first: either may send it
+     * in another form or hold it, and then vanilla must not send it as well.
+     */
+    @Inject(method = "handleChatInput", at = @At("HEAD"), cancellable = true)
+    private void alpaka$handleTypedCommand(String message, boolean addToRecent, CallbackInfo ci) {
+        ChatScreen self = (ChatScreen) (Object) this;
+        String normalized = self.normalizeChatMessage(message);
+        if (!normalized.startsWith("/")) return;
+        if (!net.alpaka.addons.features.commands.TypedCommands.handle(normalized.substring(1))) return;
+        if (addToRecent) {
+            Minecraft.getInstance().gui.hud.getChat().addRecentChat(normalized);
+        }
+        ci.cancel();
     }
 
     /**

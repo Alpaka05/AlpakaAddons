@@ -65,10 +65,12 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.chat.ChatSearchFeature.register();
         net.alpaka.addons.features.itemvalue.ItemValueFeature.register();
         net.alpaka.addons.features.chestvalue.ChestValueFeature.register();
+        net.alpaka.addons.features.itemsearch.ItemSearchFeature.register();
         net.alpaka.addons.features.garden.PestFinder.register();
         net.alpaka.addons.features.chat.ScreenshotPreview.register();
         CommandWheelFeature.register();
         net.alpaka.addons.features.shortcuts.CommandShortcuts.register();
+        net.alpaka.addons.features.inventorybuttons.InventoryButtonsFeature.register();
         InventoryHudFeature.register();
         // After the last of the mod's keys above; see AlpakaKeyBinds.
         AlpakaKeyBinds.finishRegistration();
@@ -79,16 +81,25 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.utils.DungeonState.register();
         net.alpaka.addons.features.dungeonmap.DungeonMapFeature.register();
         net.alpaka.addons.features.dungeonmobs.StarredMobsHighlight.register();
+        // After DungeonState, so a chat line that starts the boss room has been seen by it first.
+        net.alpaka.addons.features.dungeon.DungeonSolvers.register();
+        net.alpaka.addons.features.leapmenu.LeapMenu.register();
+        net.alpaka.addons.features.dungeonmap.DoorHighlight.register();
         net.alpaka.addons.features.notification.MentionNotifier.register();
         net.alpaka.addons.features.party.PartyInviteFeature.register();
         net.alpaka.addons.features.quickjoin.QuickJoin.register();
+        net.alpaka.addons.features.party.PartyCommandsFeature.register();
+        net.alpaka.addons.features.commands.WarpCooldownQueue.register();
         net.alpaka.addons.features.chat.MessageFilterFeature.register();
         net.alpaka.addons.features.tooltip.OldMasterStarsFeature.register();
         net.alpaka.addons.features.storagepreview.StoragePreviewFeature.register();
+        net.alpaka.addons.features.garden.VisitorBazaarFeature.register();
+        net.alpaka.addons.features.enchantments.MaxEnchantColorFeature.register();
         net.alpaka.addons.features.ragnarock.RagnarockFeature.register();
         WorldAgeFeature.registerEvents();
         net.alpaka.addons.features.performance.PerformanceStats.register();
         net.alpaka.addons.features.market.LowestBin.register();
+        net.alpaka.addons.features.profile.ProfileTracker.register();
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             // Every alias takes an optional search term: "/aa" opens the config as before, and
@@ -117,6 +128,16 @@ public class AlpakaClient implements ClientModInitializer {
                     return 1;
                 })
             );
+
+            // The Profile Dashboard: the player's own profile, or another player's by name.
+            for (String alias : new String[]{"alpakaprofile", "aprofile", "ap"}) {
+                dispatcher.register(ClientCommands.literal(alias)
+                    .executes(context -> openProfile(null))
+                    .then(ClientCommands.argument("player", com.mojang.brigadier.arguments.StringArgumentType.word())
+                        .executes(context -> openProfile(
+                                com.mojang.brigadier.arguments.StringArgumentType.getString(context, "player"))))
+                );
+            }
 
             /** Prints what the mod currently detects - Skyblock, island, sidebar - into chat. */
             dispatcher.register(ClientCommands.literal("alpakadebug")
@@ -170,6 +191,26 @@ public class AlpakaClient implements ClientModInitializer {
                         return 1;
                     })
                 )
+                // "/alpakadebug dungeon": the run, room frame, tab list puzzles and solvers as the
+                // dungeon solvers see them; "dungeon terminal" writes every terminal chest that opens
+                // to the log, to check the layouts in a real run. Both only read and print locally.
+                .then(ClientCommands.literal("dungeon")
+                    .executes(context -> {
+                        Minecraft.getInstance().execute(net.alpaka.addons.features.dungeon.DungeonDebug::printRoom);
+                        return 1;
+                    })
+                    .then(ClientCommands.literal("terminal")
+                        .executes(context -> {
+                            Minecraft.getInstance().execute(() -> {
+                                boolean on = net.alpaka.addons.features.dungeon.DungeonDebug.toggleTerminalDump();
+                                SlayerDropTracker.sendModMessage(on
+                                        ? "§7Terminal dump §aon§7: every terminal chest is written to the log as it opens."
+                                        : "§7Terminal dump §coff§7.");
+                            });
+                            return 1;
+                        })
+                    )
+                )
                 // "/alpakadebug firepits": runs the fire pit highlight without a Blaze boss, so a
                 // clay block placed in a test world (/setblock) shows how the column looks.
                 .then(ClientCommands.literal("firepits")
@@ -183,6 +224,20 @@ public class AlpakaClient implements ClientModInitializer {
                         return 1;
                     })
                 )
+            );
+
+            // "/alpakasearch" opens Item Search, "/alpakasearch hyperion" with that already typed in.
+            dispatcher.register(ClientCommands.literal("alpakasearch")
+                .executes(context -> {
+                    net.alpaka.addons.features.itemsearch.ItemSearchFeature.open(null, null);
+                    return 1;
+                })
+                .then(ClientCommands.argument("query", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
+                    .executes(context -> {
+                        net.alpaka.addons.features.itemsearch.ItemSearchFeature.open(
+                                com.mojang.brigadier.arguments.StringArgumentType.getString(context, "query"), null);
+                        return 1;
+                    }))
             );
 
             dispatcher.register(ClientCommands.literal("alpakaslayer")
@@ -351,7 +406,48 @@ public class AlpakaClient implements ClientModInitializer {
                     )
                 )
             );
+
+            // The update the chat notice offers, for when that line has scrolled away. "install"
+            // still asks on a screen before anything is downloaded; it and "cancel" change the mods
+            // folder at exit, so like the other commands that change files they only run typed.
+            dispatcher.register(ClientCommands.literal("alpakaupdate")
+                .executes(context -> {
+                    Minecraft.getInstance().execute(net.alpaka.addons.utils.UpdateChecker::status);
+                    return 1;
+                })
+                .then(ClientCommands.literal("check")
+                    .executes(context -> {
+                        Minecraft.getInstance().execute(net.alpaka.addons.utils.UpdateChecker::checkNow);
+                        return 1;
+                    })
+                )
+                .then(ClientCommands.literal("install")
+                    .requires(FabricClientCommandSource::attended)
+                    .executes(context -> {
+                        Minecraft.getInstance().execute(net.alpaka.addons.utils.UpdateInstaller::confirm);
+                        return 1;
+                    })
+                )
+                .then(ClientCommands.literal("cancel")
+                    .requires(FabricClientCommandSource::attended)
+                    .executes(context -> {
+                        Minecraft.getInstance().execute(net.alpaka.addons.utils.UpdateInstaller::cancel);
+                        return 1;
+                    })
+                )
+            );
         });
+    }
+
+    private static int openProfile(String player) {
+        Minecraft.getInstance().execute(() -> {
+            if (!AlpakaConfig.instance.profileDashboardEnabled) {
+                SlayerDropTracker.sendModMessage("§7The Profile Dashboard is off. Turn it on in §f/aa profile§7.");
+                return;
+            }
+            net.alpaka.addons.features.profile.ProfileDashboardScreen.open(player);
+        });
+        return 1;
     }
 
     /** "/alpakadebug perf": what was measured, or how to start measuring. */
@@ -379,6 +475,8 @@ public class AlpakaClient implements ClientModInitializer {
                     ? "§8  File present (" + file.length() + " bytes)."
                     : "§8  No file yet. It is written on the next kill.");
         }
+
+        net.alpaka.addons.features.slayer.SlayerKillLog.INSTANCE.reportLocation(file.getParentFile());
     }
 
     /**
@@ -414,6 +512,7 @@ public class AlpakaClient implements ClientModInitializer {
         }
 
         String previous = AlpakaConfig.instance.statsDirectory;
+        java.io.File previousDir = net.alpaka.addons.config.AlpakaStats.directory();
         boolean previousHadFile = AlpakaConfig.instance.statsDirectoryHadFile;
         AlpakaConfig.instance.statsDirectory = cleaned;
         // A new folder has never held the record, so an empty one is not a folder still syncing.
@@ -432,6 +531,7 @@ public class AlpakaClient implements ClientModInitializer {
         // Merges with whatever is already there rather than replacing it, so pointing a second PC
         // at a folder that already holds a record adds to it instead of flattening it.
         net.alpaka.addons.config.AlpakaStats.save();
+        net.alpaka.addons.features.slayer.SlayerKillLog.INSTANCE.onFolderChanged(previousDir, dir);
         printStatsLocation();
     }
 

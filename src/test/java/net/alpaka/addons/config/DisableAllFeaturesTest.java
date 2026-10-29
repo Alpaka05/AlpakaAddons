@@ -50,13 +50,16 @@ class DisableAllFeaturesTest {
             "itemSizeFeatureEnabled", "itemStarlightEnabled", "itemMotionBlurEnabled", "blockOverlayEnabled",
             "etherwarpOverlayEnabled", "etherwarpSoundEnabled",
             // SkyBlock
+            "visitorBazaarEnabled",
             "slayerDropTrackerEnabled", "hideHypixelDropMessage", "slayerRngDropGuildChatEnabled",
             "hideSlayerChatMessages", "bossSpawnAlertEnabled", "bossCocoonAlertEnabled", "slayerTimerEnabled",
             "slayerHudEnabled", "worldAgeJoinMessageEnabled", "partyInvitePromptEnabled",
             "cacheResourcePackEnabled", "guildPrefixEnabled", "bridgeBotFormatterEnabled", "ragnarockEnabled",
-            "onlyCritDamageEnabled", "deployableTimerEnabled", "dungeonMapEnabled", "customAuctionHouseEnabled", "customBazaarEnabled",
+            "onlyCritDamageEnabled", "deployableTimerEnabled", "dungeonMapEnabled", "leapMenuEnabled", "customAuctionHouseEnabled", "customBazaarEnabled",
             "marketPriceHistoryEnabled", "customSignInputEnabled", "chestValueEnabled",
             "starredMobsHighlightEnabled",
+            "dungeonSolversEnabled", "terminalSolversEnabled", "terminalCustomGui", "deviceSolversEnabled",
+            "dungeonDoorHighlight",
             // Cosmetics
             "customNameTagEnabled", "chromaHatEnabled", "playerScaleEnabled", "customDamageTagsEnabled",
             // Utility and sounds
@@ -72,10 +75,11 @@ class DisableAllFeaturesTest {
      * switching the feature back on brings it back changed.
      */
     private static final Set<String> KEPT = Set.of(
-            "dungeonMapShowClear", "dungeonMapShowBoss", "dungeonMapBossMode", "dungeonMapScale",
-            "dungeonMapBackground", "dungeonMapBlur", "dungeonMapFrame", "dungeonMapRoomColor",
-            "dungeonMapPlayerHeads", "dungeonMapRotateHeads", "dungeonMapHeadBorder", "dungeonMapSmoothMarkers",
-            "dungeonMapRoomNames", "dungeonMapRoomSecrets", "dungeonMapHideCheckmarks",
+            "dungeonMapShowBoss", "dungeonMapBossMode", "dungeonMapScale", "dungeonMapCurrentRoom",
+            "dungeonMapBackground", "dungeonMapBlur", "dungeonMapFrame", "dungeonMapCustomColors",
+            "dungeonMapPlayerHeads", "dungeonMapRotateHeads", "dungeonMapSmoothMarkers", "dungeonMapSmoothFont",
+            "dungeonMapRoomNames", "dungeonMapRoomSecrets",
+            "leapMenuShowMap",
             "starredMobsHideNames", "starredMobsHighlightStyle",
             // Block Overlay
             "blockOutlineEnabled", "blockFillEnabled", "blockFadeInEnabled", "blockChromaEnabled",
@@ -100,6 +104,14 @@ class DisableAllFeaturesTest {
             // Chest Value: whether it shows, and how
             "chestValueShown", "chestValueIncludeInventory", "chestValueSide", "chestValueSort",
             "chestValueX", "chestValueY",
+            // Dungeon solvers: each puzzle, terminal and device has its own switch under its master
+            "solveThreeWeirdos", "solveQuiz", "solveTicTacToe", "solveHigherOrLower", "solveCreeperBeams",
+            "solveTeleportMaze", "solveWaterBoard", "solveBoulder", "solveIceFill", "solveIcePath",
+            "waterBoardFastSolutions",
+            "dungeonSolverLabels", "solvePanesTerminal", "solveRubixTerminal", "solveNumbersTerminal",
+            "solveStartsWithTerminal", "solveSelectAllTerminal", "solveMelodyTerminal", "terminalHideOtherItems",
+            "terminalPredictClicks", "terminalBlockWrongClicks", "terminalFirstClickGuard", "terminalRateGuard",
+            "solveSimonSays", "solveArrowAlign", "solveLightsDevice", "solveSharpshooter",
             // HUD style: how things look, like the fonts and colors
             "hudBlurAll", "hudSmoothFontAll", "slayerHudBlur", "slayerHudSmoothFont", "slayerTimerHudBlur",
             "slayerTimerHudSmoothFont", "performanceHudBlur", "performanceHudSmoothFont", "inventoryHudBlur",

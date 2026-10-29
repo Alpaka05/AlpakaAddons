@@ -999,7 +999,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                 drawLabel(graphics, option.getTitle(), rowX + 4, labelY, fieldX - 8 - (rowX + 4));
                 boolean focused = focusedText == option;
                 boolean fieldHover = inside(mouseX, mouseY, fieldX, rowY + 2, fieldW, rowH - 4);
-                AlpakaStyle.textField(graphics, this.font, fieldX, rowY + 2, fieldW, rowH - 4, option.getText(),
+                AlpakaStyle.textField(graphics, this.font, fieldX, rowY + 2, fieldW, rowH - 4, option.getShownText(),
                         option.getPlaceholder(), focused, fieldHover, caretBlinkFrom);
                 if (shown) {
                     hits.add(Hit.quiet(rowX, hitY, rowW, rowH, (mx, my) -> {
@@ -1352,7 +1352,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     public boolean charTyped(CharacterEvent event) {
         if (focusedText != null) {
             int codePoint = event.codepoint();
-            if (codePoint >= 32 && codePoint != 127 && focusedText.getText().length() < MAX_TEXT_OPTION_LENGTH) {
+            if (codePoint >= 32 && codePoint != 127 && focusedText.getText().length() < focusedText.getMaxLength()) {
                 focusedText.setText(focusedText.getText() + (char) codePoint);
             }
             caretBlinkFrom = System.currentTimeMillis();
@@ -1386,6 +1386,20 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             return true;
         }
         if (focusedText != null) {
+            // Pasting is how a key or a name usually arrives; the first line of the clipboard,
+            // cut to what the field takes.
+            if (event.isPaste()) {
+                String clip = this.minecraft == null ? null : this.minecraft.keyboardHandler.getClipboard();
+                if (clip != null) {
+                    int newline = clip.indexOf('\n');
+                    if (newline >= 0) clip = clip.substring(0, newline);
+                    clip = clip.replace("\r", "").replace("\t", " ").trim();
+                    String joined = focusedText.getText() + clip;
+                    focusedText.setText(joined.substring(0, Math.min(joined.length(), focusedText.getMaxLength())));
+                    caretBlinkFrom = System.currentTimeMillis();
+                }
+                return true;
+            }
             if (key == org.lwjgl.glfw.GLFW.GLFW_KEY_BACKSPACE) {
                 String current = focusedText.getText();
                 if (!current.isEmpty()) focusedText.setText(current.substring(0, current.length() - 1));

@@ -17,5 +17,6 @@
   "key.alpaka.inventory_hud": "Inventory HUD",
   "key.alpaka.item_value": "Item Value",
   "key.alpaka.chest_value": "Chest Value",
+  "key.alpaka.item_search": "Item Search",
   "key.alpaka.pest_finder_teleport": "Pest Finder: Teleport to Plot"
 }

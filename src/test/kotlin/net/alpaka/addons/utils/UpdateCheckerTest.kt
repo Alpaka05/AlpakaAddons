@@ -8,14 +8,19 @@ import org.junit.jupiter.api.Test
 class UpdateCheckerTest {
 
     private fun release(tag: String, vararg jars: String, draft: Boolean = false, prerelease: Boolean = false): String {
-        val assets = jars.joinToString(",") { """{"name":"$it"}""" }
+        val assets = jars.joinToString(",") {
+            """{"name":"$it","browser_download_url":"https://example.invalid/$it","size":1}"""
+        }
         return """{"tag_name":"$tag","html_url":"https://example.invalid/$tag","draft":$draft,""" +
             """"prerelease":$prerelease,"assets":[$assets]}"""
     }
 
-    private fun newest(running: String, minecraft: String, vararg releases: String, preReleases: Boolean = false) =
+    private fun newestRelease(running: String, minecraft: String, vararg releases: String, preReleases: Boolean = false) =
         UpdateChecker.newest("[" + releases.joinToString(",") + "]", ReleaseVersion.parse(running)!!,
-            UpdateChecker.jarSuffixes(minecraft), preReleases)?.version
+            UpdateChecker.jarSuffixes(minecraft), preReleases)
+
+    private fun newest(running: String, minecraft: String, vararg releases: String, preReleases: Boolean = false) =
+        newestRelease(running, minecraft, *releases, preReleases = preReleases)?.version
 
     @Test
     fun aHotfixGameLooksForItsOwnVersionThenTheMajorMinor() {
@@ -29,6 +34,28 @@ class UpdateCheckerTest {
         val next = release("2.0.1", "alpaka-2.0.1-mc26.2.jar")
         assertEquals("2.0.1", newest("2.0.0", "26.2", next))
         assertEquals("2.0.1", newest("2.0.0", "26.2.1", next))
+    }
+
+    @Test
+    fun theInstallerGetsTheGameJarNotTheSources() {
+        val next = release("2.0.1", "alpaka-2.0.1-mc26.2-sources.jar", "alpaka-2.0.1-mc26.2.jar")
+        assertEquals("alpaka-2.0.1-mc26.2.jar", newestRelease("2.0.0", "26.2", next)?.jarName)
+    }
+
+    @Test
+    fun aJarForTheExactVersionWins() {
+        val next = release("2.0.1", "alpaka-2.0.1-mc26.2.jar", "alpaka-2.0.1-mc26.2.1.jar")
+        assertEquals("alpaka-2.0.1-mc26.2.1.jar", newestRelease("2.0.0", "26.2.1", next)?.jarName)
+    }
+
+    @Test
+    fun theChecksumIsTakenOnlyFromAValidSha256Digest() {
+        val hex = "ab".repeat(32)
+        fun digest(value: String) = """{"tag_name":"2.0.1","html_url":"https://example.invalid/2.0.1","assets":[""" +
+            """{"name":"alpaka-2.0.1-mc26.2.jar","browser_download_url":"https://example.invalid/a.jar","size":1,"digest":"$value"}]}"""
+        assertEquals(hex, newestRelease("2.0.0", "26.2", digest("sha256:${hex.uppercase()}"))?.sha256)
+        assertNull(newestRelease("2.0.0", "26.2", digest("sha1:$hex"))?.sha256)
+        assertNull(newestRelease("2.0.0", "26.2", digest("sha256:abc"))?.sha256)
     }
 
     @Test

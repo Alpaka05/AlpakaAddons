@@ -15,6 +15,48 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MarketParsingTest {
 
+    @Test
+    void keepsTheItemAndExactCostInThePurchaseSummary() {
+        List<MarketMenu.Slot> slots = List.of(
+                new MarketMenu.Slot(11, "green_terracotta", "Confirm",
+                        List.of("Purchasing: Hyperion", "Cost: 1,140,000,001 coins", "", "Click to confirm!"), false),
+                new MarketMenu.Slot(15, "red_terracotta", "Cancel", List.of("Back to the auction."), false));
+        MarketMenu menu = MarketMenu.parse(MarketKind.AUCTION_HOUSE, "Confirm Purchase", 3, slots);
+        assertEquals(11, menu.confirmationSlot());
+        assertEquals(15, menu.cancelSlot);
+        assertEquals(List.of("Purchasing: Hyperion", "Cost: 1,140,000,001 coins"), menu.confirmationLines);
+        assertNull(MarketMenu.parse(MarketKind.AUCTION_HOUSE, "Other Menu", 3, slots).confirmationSlot());
+        assertNull(MarketMenu.parse(MarketKind.AUCTION_HOUSE, "Confirm Purchase", 3, slots.subList(0, 1)).confirmationSlot());
+    }
+
+    @Test
+    void keepsEveryItemInTheInventorySaleSummary() {
+        MarketMenu menu = MarketMenu.parse(MarketKind.BAZAAR, "Are you sure?", 3, List.of(
+                new MarketMenu.Slot(11, "hopper", "Sell Inventory", List.of("Instantly sells the items in",
+                        "your inventory to the Bazaar:", "", "12x Enchanted Hay Bale", "1x Purple Jerry Box",
+                        "You earn: 1,840,410 coins", "Click to confirm!"), false),
+                new MarketMenu.Slot(15, "red_terracotta", "Cancel", List.of("Keep your items."), false)));
+        assertEquals(11, menu.confirmationSlot());
+        assertTrue(menu.confirmationLines.contains("12x Enchanted Hay Bale"));
+        assertTrue(menu.confirmationLines.contains("1x Purple Jerry Box"));
+        assertTrue(menu.confirmationLines.contains("You earn: 1,840,410 coins"));
+    }
+
+    @Test
+    void rejectsInvalidAmountsWithoutRejectingValidPriceSuffixes() {
+        SignPrompt amount = new SignPrompt(SignPrompt.Type.AMOUNT, "Enter amount to order", 1);
+        SignPrompt price = new SignPrompt(SignPrompt.Type.PRICE, "Set price", 1);
+        assertNotNull(amount.validationError(""));
+        assertNotNull(amount.validationError("hello"));
+        assertNotNull(amount.validationError("0"));
+        assertNotNull(amount.validationError("1.5"));
+        assertNull(amount.validationError("1.5k"));
+        assertNull(price.validationError("1.5"));
+        assertNull(price.validationError("250k"));
+        assertNull(price.validationError("1.5m"));
+        assertNull(new SignPrompt(SignPrompt.Type.SEARCH, "Enter query", 2).validationError(""));
+    }
+
     // ---- Titles ---------------------------------------------------------------------------------
 
     @Test

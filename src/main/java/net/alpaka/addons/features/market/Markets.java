@@ -8,6 +8,25 @@ import net.minecraft.client.gui.screens.Screen;
 public final class Markets {
     private Markets() {}
 
+    private static String tradeItem;
+    private static String tradeAction;
+    private static MarketKind tradeKind;
+    private static long tradeAtMs;
+
+    static void rememberTrade(MarketKind kind, net.minecraft.world.item.ItemStack item, String action) {
+        tradeKind = kind;
+        tradeItem = SkyblockUtils.cleanColor(item.getHoverName().getString())
+                + (item.getCount() > 1 ? " ×" + item.getCount() : "");
+        tradeAction = action;
+        tradeAtMs = System.currentTimeMillis();
+    }
+
+    /** A short-lived heading for the sign reached from the clicked product action. */
+    static String tradeContext(MarketKind kind) {
+        if (kind == null || kind != tradeKind || System.currentTimeMillis() - tradeAtMs > 30_000L) return null;
+        return tradeItem + " · " + tradeAction;
+    }
+
     /** Whether the custom screen replaces this market's menus right now. */
     public static boolean skinned(MarketKind kind) {
         if (kind == null || !SkyblockUtils.isOnSkyblock()) return false;

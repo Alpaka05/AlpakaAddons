@@ -64,6 +64,7 @@ public class MarketInputScreen extends SignEditScreen {
     private final List<Hit> hits = new ArrayList<>();
     /** The item being put up for auction, for a price sign that asks what it sells for; else null. */
     private final LowestBin.Item selling;
+    private final String tradeContext;
 
     // ---- Suggestions, for a search ---------------------------------------------------------------
 
@@ -110,6 +111,8 @@ public class MarketInputScreen extends SignEditScreen {
         this.prompt = prompt;
         this.context = context;
         this.selling = prompt.type() == SignPrompt.Type.PRICE && prompt.auctionPrice() ? LowestBin.selling() : null;
+        this.tradeContext = prompt.type() == SignPrompt.Type.SEARCH ? null
+                : selling != null ? selling.name() + " ×" + selling.count() : Markets.tradeContext(context);
     }
 
     /**
@@ -197,7 +200,19 @@ public class MarketInputScreen extends SignEditScreen {
     }
 
     private int panelH() {
-        return HEADER_H + 10 + FIELD_H + 6 + 10 + (selling != null ? CHIP_H + 8 : 0) + (hasChips() ? CHIP_H + 8 : 0) + 8 + AlpakaStyle.BUTTON_H + 10;
+        return baseHeight() + suggestionHeight();
+    }
+
+    private int baseHeight() {
+        return HEADER_H + 10 + FIELD_H + 6 + 10 + (tradeContext != null ? 14 : 0)
+                + (selling != null ? CHIP_H + 19 : 0) + (hasChips() ? CHIP_H + 8 : 0) + 8 + AlpakaStyle.BUTTON_H + 10;
+    }
+
+    private int suggestionHeight() {
+        if (!dropdownOpen()) return 0;
+        int room = Math.max(1, (this.height - 24 - baseHeight() - SUGGESTION_FOOTER_H - 5) / SUGGESTION_H);
+        int rows = Math.max(1, Math.min(room, Math.min(SUGGESTION_ROWS, suggestions.size())));
+        return 5 + rows * SUGGESTION_H + SUGGESTION_FOOTER_H;
     }
 
     private boolean hasChips() {
@@ -220,12 +235,13 @@ public class MarketInputScreen extends SignEditScreen {
 
     @Override
     public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-        AlpakaStyle.backdrop(graphics, this.width, this.height);
+        AlpakaStyle.backdrop(graphics, this.width, this.height, 0.55f);
     }
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int realMouseX, int realMouseY, float partialTick) {
         hits.clear();
+        updateSuggestions();
         boolean scaling = AlpakaStyle.beginOpen(graphics, openTimeMs, this.width, this.height);
         int w = panelW();
         int h = panelH();
@@ -233,11 +249,10 @@ public class MarketInputScreen extends SignEditScreen {
         // A little above the middle, where the eye already is after clicking a menu's search.
         int y = Math.max(8, (this.height - h) / 2 - 20);
 
-        // The suggestion list hangs under the field, over whatever is below it, which then takes no mouse.
-        updateSuggestions();
+        // Suggestions reserve space under the field, keeping the question and buttons visible.
         int fx = x + PAD + 2;
         int fw = w - PAD * 2 - 4;
-        int fy = y + HEADER_H + 10;
+        int fy = y + HEADER_H + 10 + (tradeContext != null ? 14 : 0);
         int[] list = dropdownOpen() ? dropdownRect(fx, fy + FIELD_H, fw) : null;
         boolean overList = list != null && AlpakaStyle.inside(realMouseX, realMouseY, list[0], list[1], list[2], list[3]);
         int mouseX = overList ? -10000 : realMouseX;
@@ -254,12 +269,15 @@ public class MarketInputScreen extends SignEditScreen {
         MarketIcons.draw(graphics, MarketIcons.Glyph.CLOSE, closeX + 4, closeY + 4, 8, hoverClose ? AlpakaStyle.DANGER : AlpakaStyle.TEXT_MUTED);
         hits.add(new Hit(closeX, closeY, 16, 16, mx -> cancel(), true));
         AlpakaStyle.headerLine(graphics, x, y, w);
+        if (tradeContext != null) {
+            graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, tradeContext, fw)), fx, y + HEADER_H + 7, AlpakaStyle.TEXT_SOFT, false);
+        }
 
         // The field; with suggestions open it is drawn last, as the top of one box with the list.
         if (list == null) drawField(graphics, mouseX, mouseY, fx, fy, fw, 0);
 
         // Under it: Hypixel's own question on the left, the amount written out on the right.
-        int hy = fy + FIELD_H + 6;
+        int hy = fy + FIELD_H + 6 + (list == null ? 0 : list[3]);
         String question = prompt.subtitle(menuTitle);
         graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, question, fw / 2)), fx + 2, hy, AlpakaStyle.TEXT_MUTED, false);
         drawReading(graphics, fx + fw - 2, hy);
@@ -267,7 +285,8 @@ public class MarketInputScreen extends SignEditScreen {
         int cy = hy + 10 + 8;
         if (selling != null) {
             drawLowestBin(graphics, mouseX, mouseY, fx, cy, fw);
-            cy += CHIP_H + 8;
+            graphics.text(this.font, GuiFont.text("Item Type Reference · Upgrades May Differ"), fx + 2, cy + CHIP_H + 3, AlpakaStyle.TEXT_MUTED, false);
+            cy += CHIP_H + 19;
         }
         if (hasChips()) {
             drawChips(graphics, mouseX, mouseY, fx, cy, fw);
@@ -283,11 +302,14 @@ public class MarketInputScreen extends SignEditScreen {
         int cancelX = confirmX - 6 - cancelW;
         boolean hoverConfirm = AlpakaStyle.inside(mouseX, mouseY, confirmX, cy, confirmW, bh);
         boolean hoverCancel = AlpakaStyle.inside(mouseX, mouseY, cancelX, cy, cancelW, bh);
+        boolean valid = prompt.validationError(text()) == null;
         AlpakaStyle.button(graphics, this.font, cancelX, cy, cancelW, bh, "Cancel", hoverCancel, AlpakaStyle.ButtonKind.PLAIN);
-        AlpakaStyle.button(graphics, this.font, confirmX, cy, confirmW, bh, confirm, hoverConfirm, AlpakaStyle.ButtonKind.PRIMARY);
+        AlpakaStyle.button(graphics, this.font, confirmX, cy, confirmW, bh, confirm, hoverConfirm, AlpakaStyle.ButtonKind.PRIMARY, valid);
         hits.add(new Hit(cancelX, cy, cancelW, bh, mx -> cancel(), true));
-        hits.add(new Hit(confirmX, cy, confirmW, bh, mx -> confirm(), true));
-        graphics.text(this.font, GuiFont.text("Enter to confirm · Esc to cancel"), x + PAD + 2, cy + (bh - 8) / 2,
+        if (valid) hits.add(new Hit(confirmX, cy, confirmW, bh, mx -> confirm(), true));
+        String hint = list != null ? "Esc: Close Suggestions" : "Enter: Confirm · Esc: Cancel";
+        hint = AlpakaStyle.ellipsize(this.font, hint, cancelX - x - PAD - 8);
+        graphics.text(this.font, GuiFont.text(hint), x + PAD + 2, cy + (bh - 8) / 2,
                 AlpakaStyle.DIVIDER, false);
 
         if (list != null) {
@@ -354,10 +376,7 @@ public class MarketInputScreen extends SignEditScreen {
 
     /** The list's place: straight under the field, up to six rows, as many as fit on the screen. */
     private int[] dropdownRect(int x, int y, int w) {
-        int rows = Math.max(1, Math.min(SUGGESTION_ROWS, suggestions.size()));
-        int room = (this.height - 6 - y - SUGGESTION_FOOTER_H - 8) / SUGGESTION_H;
-        rows = Math.max(1, Math.min(rows, room));
-        return new int[] {x, y, w, 3 + rows * SUGGESTION_H + SUGGESTION_FOOTER_H + 2};
+        return new int[] {x, y, w, suggestionHeight()};
     }
 
     /**
@@ -529,13 +548,13 @@ public class MarketInputScreen extends SignEditScreen {
         int tx = x + textX;
         int ty = y + (FIELD_H - 8) / 2;
 
-        // The paste button at the right end: the clipboard in, and confirmed at once.
+        // Pasting is an edit; submitting the value remains a separate, explicit action.
         int pasteSize = FIELD_H - 8;
         int pasteX = x + w - 4 - pasteSize;
         int pasteY = y + 4;
         boolean hoverPaste = AlpakaStyle.inside(mouseX, mouseY, pasteX, pasteY, pasteSize, pasteSize);
         AlpakaStyle.pasteButton(graphics, pasteX, pasteY, pasteSize, hoverPaste);
-        hits.add(new Hit(pasteX, pasteY, pasteSize, pasteSize, mx -> pasteAndConfirm(), true));
+        hits.add(new Hit(pasteX, pasteY, pasteSize, pasteSize, mx -> paste(), true));
 
         int room = pasteX - 6 - tx;
         String text = text();
@@ -571,8 +590,9 @@ public class MarketInputScreen extends SignEditScreen {
             return;
         }
         Double value = Coins.parseInput(text);
-        if (value == null) {
-            String bad = "Not a number";
+        String error = prompt.validationError(text);
+        if (error != null) {
+            String bad = error;
             graphics.text(this.font, GuiFont.text(bad), right - GuiFont.width(this.font, bad), y, AlpakaStyle.DANGER_SOFT, false);
             return;
         }
@@ -662,10 +682,9 @@ public class MarketInputScreen extends SignEditScreen {
     }
 
     /**
-     * Puts the clipboard's first line in the field, as Ctrl+V would, and confirms it. Nothing is
-     * sent if the clipboard is empty or does not fit the sign; the field then shows why.
+     * Puts the clipboard's first line in the field, as Ctrl+V would.
      */
-    private void pasteAndConfirm() {
+    private void paste() {
         String clip = Minecraft.getInstance().keyboardHandler.getClipboard();
         if (clip == null) return;
         int newline = clip.indexOf('\n');
@@ -673,8 +692,7 @@ public class MarketInputScreen extends SignEditScreen {
         String value = StringUtil.filterText(clip.replace('\t', ' ')).trim();
         if (value.isEmpty()) return;
         replace(value);
-        if (text().equals(value)) confirm();
-        else fullAtMs = System.currentTimeMillis();
+        if (!text().equals(value)) fullAtMs = System.currentTimeMillis();
     }
 
     private void placeCaret(int x) {
@@ -689,6 +707,7 @@ public class MarketInputScreen extends SignEditScreen {
      */
     private void confirm() {
         if (closing) return;
+        if (prompt.validationError(text()) != null) return;
         String[] answer = split(prompt.answer(text()));
         if (answer == null) answer = split(text());
         if (answer == null) {

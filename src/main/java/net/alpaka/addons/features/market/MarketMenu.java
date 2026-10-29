@@ -96,6 +96,8 @@ public final class MarketMenu {
     public String backTarget;
     /** Whether the chest holds anything but filler yet; right after opening its items are on their way. */
     public boolean empty = true;
+    public Integer cancelSlot;
+    public final List<String> confirmationLines = new ArrayList<>();
 
     private MarketMenu(MarketKind kind, String title, int rows) {
         this.kind = kind;
@@ -166,6 +168,20 @@ public final class MarketMenu {
 
         menu.readProductPage(slots);
         menu.chooseLayout();
+        for (int slot : menu.content) {
+            if (nameAt(slots, slot).equalsIgnoreCase("Cancel")) menu.cancelSlot = slot;
+        }
+        Integer confirm = menu.confirmationSlot();
+        if (confirm != null) {
+            for (Slot slot : slots) {
+                if (slot.index() != confirm) continue;
+                for (String raw : slot.lore()) {
+                    String line = raw.trim();
+                    if (line.isEmpty() || line.matches("[-▬=_ ]+") || line.toLowerCase(Locale.ROOT).contains("click to")) continue;
+                    menu.confirmationLines.add(line);
+                }
+            }
+        }
         if (menu.pages < 0 && title != null) {
             Matcher m = PAGE_OF.matcher(title);
             if (m.find()) {
@@ -354,5 +370,12 @@ public final class MarketMenu {
     /** Whether the menu has a sidebar to show: categories, filters, actions or extras. */
     public boolean hasSidebar() {
         return hasSidebarControls() || (!extras.isEmpty() && !extrasInFooter());
+    }
+
+    /** Only use the compact confirmation layout when both server buttons are unambiguous. */
+    public Integer confirmationSlot() {
+        if (!(title.startsWith("Confirm") || title.equals("Are you sure?"))
+                || content.size() != 2 || hero != null || cancelSlot == null) return null;
+        return content.get(0).equals(cancelSlot) ? content.get(1) : content.get(0);
     }
 }

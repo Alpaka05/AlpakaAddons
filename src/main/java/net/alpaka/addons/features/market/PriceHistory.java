@@ -301,6 +301,14 @@ public final class PriceHistory {
         return summaryOf(state, prices.body, current.body);
     }
 
+    /** The older successful fetch, so a failed refresh never makes the reference look newer. */
+    static long summaryUpdatedAt(String tag) {
+        String t = URLEncoder.encode(tag, StandardCharsets.UTF_8);
+        ObjectEntry prices = OBJECTS.get(BASE + "/item/price/" + t);
+        ObjectEntry current = OBJECTS.get(BASE + "/item/price/" + t + "/current");
+        return prices == null || current == null ? 0 : Math.min(prices.fetchedAt, current.fetchedAt);
+    }
+
     static Summary summaryOf(State state, JsonObject prices, JsonObject current) {
         double median = prices == null ? Double.NaN : number(prices, "median");
         double mode = prices == null ? Double.NaN : number(prices, "mode");

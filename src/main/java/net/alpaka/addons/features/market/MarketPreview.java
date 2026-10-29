@@ -370,6 +370,10 @@ public final class MarketPreview {
         MarketScreen.devInventory(open);
     }
 
+    public static void history(boolean open) {
+        MarketScreen.devHistory(open);
+    }
+
     /** A market switched to Hypixel's own menu, or back, for the screenshot tour. */
     public static void classic(MarketKind kind, boolean classic) {
         MarketScreen.devClassic(kind, classic);

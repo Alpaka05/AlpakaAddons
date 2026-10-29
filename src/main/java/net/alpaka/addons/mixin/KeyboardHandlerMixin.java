@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Key presses the mod answers before the game sees them: the party prompt's Y and N, Tab
+ * Key presses the mod answers before the game sees them: the party prompts' Y and N, Tab
  * cycling the chat tabs while the chat is held open with Peek Chat, and the player list key while
  * the Custom Tab toggles.
  *
@@ -42,6 +42,10 @@ public class KeyboardHandlerMixin {
             return;
         }
         if (PartyInviteFeature.onKey(event.key(), event.scancode(), repeat)) {
+            ci.cancel();
+            return;
+        }
+        if (net.alpaka.addons.features.party.PartyCommandsFeature.onKey(event.key(), event.scancode(), repeat)) {
             ci.cancel();
             return;
         }

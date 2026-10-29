@@ -75,8 +75,8 @@ object DungeonMapFeature {
             return
         }
         val cfg = AlpakaConfig.instance
-        // Door Highlight reads the same map.
-        if (!cfg.dungeonMapEnabled && !cfg.dungeonDoorHighlight) return
+        // Door Highlight and the Leap Menu read the same map.
+        if (!cfg.dungeonMapEnabled && !cfg.dungeonDoorHighlight && !(cfg.leapMenuEnabled && cfg.leapMenuShowMap)) return
         if (DungeonState.inBossRoom) {
             players = emptyList()
             // The saved map's labels still follow the options.
@@ -84,7 +84,7 @@ object DungeonMapFeature {
             // Every half second, and sooner for a fast or teleporting player, so the view that follows
             // them stays on sampled terrain.
             val due = ticks % 10 == 0 || ticks % 2 == 0 && cfg.dungeonMapSmoothMarkers && BossRoomMap.drifted(client)
-            if (cfg.dungeonMapShowBoss && cfg.dungeonMapBossMode != 1 && due) BossRoomMap.update(client)
+            if (cfg.dungeonMapEnabled && cfg.dungeonMapShowBoss && cfg.dungeonMapBossMode != 1 && due) BossRoomMap.update(client)
             return
         }
         val player = client.player ?: return

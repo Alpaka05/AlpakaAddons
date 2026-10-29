@@ -465,4 +465,34 @@ public class ConfigOption {
     public String getPlaceholder() {
         return placeholder;
     }
+
+    private boolean secret = false;
+    private int maxLength = 32;
+
+    /**
+     * Marks a text option as a secret, such as an API key: shown masked but for its last four
+     * characters, and long enough to paste one in.
+     */
+    public ConfigOption secret(int maxLength) {
+        this.secret = true;
+        this.maxLength = maxLength;
+        return this;
+    }
+
+    public boolean isSecret() {
+        return secret;
+    }
+
+    /** How many characters the text may have. */
+    public int getMaxLength() {
+        return maxLength;
+    }
+
+    /** The text as the field shows it: a secret masked but for its end, so the player can tell which key it is. */
+    public String getShownText() {
+        String text = getText();
+        if (!secret || text.isEmpty()) return text;
+        String end = text.length() > 8 ? text.substring(text.length() - 4) : "";
+        return "•".repeat(Math.min(10, text.length() - end.length())) + end;
+    }
 }

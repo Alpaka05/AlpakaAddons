@@ -53,24 +53,30 @@ public final class SessionLifecycle {
         SlayerQuestDetector.INSTANCE.resetForDisconnect();
         SlayerTimer.INSTANCE.clear();
         PartyInviteFeature.dismiss();
+        net.alpaka.addons.features.party.PartyCommandsFeature.dismiss();
+        net.alpaka.addons.features.commands.WarpCooldownQueue.onDisconnect();
         InventoryHudFeature.reset();
         FirePitFeature.reset();
         net.alpaka.addons.features.damagetags.CustomDamageTagFeature.reset();
         net.alpaka.addons.utils.DungeonState.reset();
         net.alpaka.addons.features.dungeonmap.DungeonMapFeature.reset();
         net.alpaka.addons.features.dungeonmobs.StarredMobsHighlight.reset();
+        net.alpaka.addons.features.dungeon.DungeonSolvers.reset();
         net.alpaka.addons.features.ragnarock.RagnarockFeature.reset();
         net.alpaka.addons.features.worldage.WorldClockTracker.reset();
         AlpakaStats.flushNow();
+        net.alpaka.addons.features.slayer.SlayerKillLog.INSTANCE.flushNow();
     }
 
     private static void onLevelChange() {
+        net.alpaka.addons.features.commands.WarpCooldownQueue.onWorldChange();
         SlayerQuestDetector.INSTANCE.resetForLevelChange();
         FirePitFeature.reset();
         net.alpaka.addons.features.damagetags.CustomDamageTagFeature.reset();
         net.alpaka.addons.utils.DungeonState.reset();
         net.alpaka.addons.features.dungeonmap.DungeonMapFeature.reset();
         net.alpaka.addons.features.dungeonmobs.StarredMobsHighlight.reset();
+        net.alpaka.addons.features.dungeon.DungeonSolvers.reset();
         net.alpaka.addons.features.ragnarock.RagnarockFeature.reset();
     }
 
@@ -78,5 +84,6 @@ public final class SessionLifecycle {
     private static void onStopping() {
         AlpakaConfig.endDeferredSaves();
         AlpakaStats.flushOnExit();
+        net.alpaka.addons.features.slayer.SlayerKillLog.INSTANCE.flushNow();
     }
 }

@@ -7,6 +7,7 @@
 **A client-side Fabric mod for Hypixel SkyBlock: slayer tracking, a better chat and a cleaner look.**
 
 [![Latest release](https://img.shields.io/github/v/release/Alpaka05/AlpakaAddons?label=release&color=29B6B2)](https://github.com/Alpaka05/AlpakaAddons/releases/latest)
+[![Build](https://github.com/Alpaka05/AlpakaAddons/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/Alpaka05/AlpakaAddons/actions/workflows/build.yml)
 ![Minecraft 26.2](https://img.shields.io/badge/Minecraft-26.2-8A6FDF)
 ![Fabric](https://img.shields.io/badge/loader-Fabric-DBB47E)
 ![Client-side](https://img.shields.io/badge/client--side-only-4C9A2A)

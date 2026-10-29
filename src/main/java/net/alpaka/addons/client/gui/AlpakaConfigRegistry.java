@@ -64,11 +64,11 @@ public class AlpakaConfigRegistry {
                 "api network internet hypixel request mayor election offline privacy allow network features"));
 
         OPTIONS.add(new ConfigOption("update_notifications", "Update Check",
-                "Tells you in chat when a new version is out. Needs Network Features.",
+                "Tells you in chat when a new version is out, with a button to install it. Needs Network Features.",
                 ConfigCategory.GENERAL,
                 () -> AlpakaConfig.instance.updateNotificationsEnabled,
                 v -> { AlpakaConfig.instance.updateNotificationsEnabled = v; AlpakaConfig.save(); },
-                "update new version release github download notify check outdated update notifications"));
+                "update new version release github download install notify check outdated update notifications"));
 
         OPTIONS.add(new ConfigOption("update_stream", "Update Stream",
                 "Which versions the update check tells you about: full releases only, or pre-releases as well.",

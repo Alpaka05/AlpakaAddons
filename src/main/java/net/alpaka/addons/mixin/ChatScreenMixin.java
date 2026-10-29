@@ -7,6 +7,7 @@ import net.alpaka.addons.features.chat.ChatSearchFeature;
 import net.alpaka.addons.features.chat.ChatTabsFeature;
 import net.alpaka.addons.features.chat.ScreenshotMessageFeature;
 import net.alpaka.addons.features.slayer.SlayerHudElement;
+import net.alpaka.addons.utils.UpdateInstaller;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.CommandSuggestions;
@@ -197,7 +198,9 @@ public class ChatScreenMixin {
     @Inject(method = "handleComponentClicked", at = @At("HEAD"), cancellable = true)
     private void alpaka$handleModClickEvents(Style clicked, boolean allowInsertions, CallbackInfoReturnable<Boolean> cir) {
         if (allowInsertions) return;
-        if (clicked.getClickEvent() instanceof ClickEvent.Custom custom && ScreenshotMessageFeature.handleClick(custom)) {
+        // The update button first: the screenshot handler claims every event in the mod's namespace.
+        if (clicked.getClickEvent() instanceof ClickEvent.Custom custom
+                && (UpdateInstaller.handleClick(custom) || ScreenshotMessageFeature.handleClick(custom))) {
             cir.setReturnValue(true);
         }
     }

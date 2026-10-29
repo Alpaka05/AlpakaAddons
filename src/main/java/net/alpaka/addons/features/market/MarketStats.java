@@ -56,6 +56,11 @@ public final class MarketStats {
         return HEADER_H + 2 * TILE_H + GAP + 6;
     }
 
+    public static int auctionHeight(int width) {
+        int cols = width >= 250 ? 3 : 2;
+        return HEADER_H + ((6 + cols - 1) / cols) * (TILE_H + GAP) + 24;
+    }
+
     // ---- The Bazaar's order book ----------------------------------------------------------------
 
     /** One price in the order book: what is ordered or offered at it, by how many orders. */
@@ -208,8 +213,6 @@ public final class MarketStats {
                                         PriceHistory.Range range, int x, int y, int w, int h) {
         panel(graphics, x, y, w, h);
         graphics.text(font, GuiFont.text("Market Stats"), x + 8, y + 7, AlpakaStyle.TEXT, false);
-        String rangeName = range == PriceHistory.Range.ALL ? "All Time" : "Past " + range.label;
-        graphics.text(font, GuiFont.text(rangeName), x + w - 8 - GuiFont.width(font, rangeName), y + 7, AlpakaStyle.TEXT_MUTED, false);
 
         PriceHistory.Summary summary = PriceHistory.summary(tag);
         PriceHistory.Result history = PriceHistory.get(MarketKind.AUCTION_HOUSE, tag, range);
@@ -226,37 +229,43 @@ public final class MarketStats {
         if (price != null && !Double.isNaN(summary.lowestBin()) && summary.lowestBin() > 0) {
             double over = (price - summary.lowestBin()) / summary.lowestBin() * 100.0;
             if (over <= 0.05) {
-                vsLowest = "This is it";
-                vsColor = MarketInk.ink(BUY);
+                vsLowest = "At / Below";
             } else {
                 vsLowest = String.format(Locale.ROOT, "This: +%.0f%%", over);
             }
         }
         tiles.add(new Tile("Lowest BIN", coins(summary.lowestBin(), summaryLoading), MarketInk.ink(COIN), vsLowest, vsColor));
-        tiles.add(new Tile("Sales / Day", count(stats.salesPerDay(), historyLoading), AlpakaStyle.TEXT,
-                Double.isNaN(stats.sales()) ? "" : Coins.full(Math.round(stats.sales())) + " Sold", AlpakaStyle.TEXT_MUTED));
-        tiles.add(new Tile("Median", coins(summary.median(), summaryLoading), MarketInk.ink(COIN),
-                Double.isNaN(summary.mode()) ? "" : "Mode " + Coins.compact(summary.mode()), AlpakaStyle.TEXT_MUTED));
+        tiles.add(new Tile("Item Median", coins(summary.median(), summaryLoading), MarketInk.ink(COIN),
+                "Recent Sales", AlpakaStyle.TEXT_MUTED));
         if (price != null && !Double.isNaN(summary.median()) && summary.median() > 0) {
-            String verdict = verdict(price, summary.median());
-            int color = verdict.startsWith("Below") ? MarketInk.ink(BUY) : verdict.startsWith("Above") ? MarketInk.ink(RED) : AlpakaStyle.TEXT;
             double change = (price - summary.median()) / summary.median() * 100.0;
-            tiles.add(new Tile("Price Check", verdict, color, String.format(Locale.ROOT, "%+.0f%% vs median", change), AlpakaStyle.TEXT_MUTED));
+            tiles.add(new Tile("vs Median", String.format(Locale.ROOT, "%+.0f%%", change), AlpakaStyle.TEXT,
+                    "Item Type Only", AlpakaStyle.TEXT_MUTED));
         } else {
             tiles.add(new Tile("Price Check", summaryLoading ? "…" : "—", AlpakaStyle.TEXT, "", AlpakaStyle.TEXT_MUTED));
         }
-        tiles.add(new Tile("Average", coins(stats.average(), historyLoading), MarketInk.ink(COIN), "Per Sale", AlpakaStyle.TEXT_MUTED));
+        tiles.add(new Tile("Sales / Day", count(stats.salesPerDay(), historyLoading), AlpakaStyle.TEXT,
+                range == PriceHistory.Range.ALL ? "All Time" : "Past " + range.label, AlpakaStyle.TEXT_MUTED));
+        tiles.add(new Tile("Average", coins(stats.average(), historyLoading), MarketInk.ink(COIN),
+                range == PriceHistory.Range.ALL ? "All Time" : "Past " + range.label, AlpakaStyle.TEXT_MUTED));
         tiles.add(new Tile("Busiest Hour", hour < 0 ? (week.points().isEmpty() && week.state() == PriceHistory.State.LOADING ? "…" : "—")
-                : String.format(Locale.ROOT, "%02d:00", hour), AlpakaStyle.TEXT, "Most Sales, Past Week", AlpakaStyle.TEXT_MUTED));
+                : String.format(Locale.ROOT, "%02d:00", hour), AlpakaStyle.TEXT, "Past Week", AlpakaStyle.TEXT_MUTED));
 
         int cols = w >= 250 ? 3 : 2;
-        int rows = Math.max(1, Math.min(2, (h - HEADER_H - 6 + GAP) / (TILE_H + GAP)));
+        int rows = (tiles.size() + cols - 1) / cols;
         int tileW = (w - 12 - (cols - 1) * GAP) / cols;
         for (int i = 0; i < Math.min(tiles.size(), cols * rows); i++) {
             int tx = x + 6 + (i % cols) * (tileW + GAP);
             int ty = y + HEADER_H + (i / cols) * (TILE_H + GAP);
             tile(graphics, font, tiles.get(i), tx, ty, tileW);
         }
+        graphics.text(font, GuiFont.text(AlpakaStyle.ellipsize(font, "Upgrades May Differ", w - 16)),
+                x + 8, y + HEADER_H + rows * (TILE_H + GAP), AlpakaStyle.TEXT_MUTED, false);
+        long updated = PriceHistory.summaryUpdatedAt(tag);
+        String age = updated <= 0 ? "SkyCofl · Update Time Unknown"
+                : "SkyCofl · Updated " + Math.max(0, (System.currentTimeMillis() - updated) / 60_000L) + "m Ago";
+        graphics.text(font, GuiFont.text(AlpakaStyle.ellipsize(font, age, w - 16)), x + 8,
+                y + HEADER_H + rows * (TILE_H + GAP) + 11, AlpakaStyle.TEXT_MUTED, false);
     }
 
     private static void tile(GuiGraphicsExtractor graphics, Font font, Tile tile, int x, int y, int w) {

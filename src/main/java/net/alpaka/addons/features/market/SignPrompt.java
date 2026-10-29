@@ -110,6 +110,16 @@ public record SignPrompt(Type type, String question, int inputLines) {
         return value == null ? typed : Coins.plain(value, type == Type.PRICE);
     }
 
+    /** Reject obvious mistakes locally; Hypixel still validates its own limits after submission. */
+    public String validationError(String text) {
+        if (!type.numeric()) return null;
+        Double number = Coins.parseInput(text);
+        if (number == null || !Double.isFinite(number)) return "Enter a Number";
+        if (number <= 0) return "Must Be Greater Than Zero";
+        if (type == Type.AMOUNT && (number != Math.floor(number) || number >= Long.MAX_VALUE)) return "Enter a Whole Amount";
+        return null;
+    }
+
     /** Whether this is the price of an auction being created, rather than a bid on one. */
     public boolean auctionPrice() {
         return question.toLowerCase(Locale.ROOT).contains("starting bid");

@@ -79,6 +79,8 @@ public class MarketScreen extends ContainerScreen {
     private static final int TILE_MAX_W = 136;
     private static final int TILE_H = 88;
     private static final int CELL = 18;
+    private static final int LIST_ROW_H = 17;
+    private static final int LIST_HEADER_H = 16;
 
     // ---- Colors (the rest are AlpakaStyle's) ----------------------------------------------------
 
@@ -120,6 +122,8 @@ public class MarketScreen extends ContainerScreen {
     private static final EnumSet<MarketKind> CLASSIC = EnumSet.noneOf(MarketKind.class);
     /** Whether the inventory drawer is open; kept as the player moves from page to page. */
     private static boolean inventoryOpen = false;
+    private static boolean historyOpen = false;
+    private static final Map<String, Double> LIST_POSITIONS = new java.util.LinkedHashMap<>();
 
     // ---- State ----------------------------------------------------------------------------------
 
@@ -145,6 +149,11 @@ public class MarketScreen extends ContainerScreen {
     private int indicatorColor = 0;
     private final Scroll contentScroll = new Scroll();
     private final Scroll sideScroll = new Scroll();
+    private String listPositionKey;
+    private ItemStack lastTooltipStack = ItemStack.EMPTY;
+    private long itemTipSince;
+    private boolean draggingScroll;
+    private int scrollTrackY, scrollTrackH, scrollThumbH;
 
     private int pressedSlot = -1;
     private long pressedAtMs = 0L;
@@ -335,6 +344,9 @@ public class MarketScreen extends ContainerScreen {
         ContainerInput input = shift ? ContainerInput.QUICK_MOVE : ContainerInput.PICKUP;
         ItemStack before = stack(slot).copy();
         if (Outbound.menuClick(menu, slot, button, input, cause)) {
+            if (model != null && model.hero != null && slot != model.hero && model.content.contains(slot)) {
+                Markets.rememberTrade(kind, stack(model.hero), plain(slot).name());
+            }
             pressedSlot = slot;
             pressedAtMs = System.currentTimeMillis();
             pressedStack = before;
@@ -344,11 +356,20 @@ public class MarketScreen extends ContainerScreen {
     // ---- Geometry -------------------------------------------------------------------------------
 
     private int panelW() {
-        return Math.max(260, Math.min(620, this.width - 16));
+        MarketMenu m = model();
+        int desired = confirmation(m) ? 330
+                : m.layout == MarketMenu.Layout.TILES && m.hero == null && !m.hasSidebar() ? 360
+                : Math.max(360, Math.min(560, Math.round(this.width * 0.8f)));
+        return Math.max(240, Math.min(desired, this.width - 24));
     }
 
     private int panelH() {
-        return Math.max(180, Math.min(372, this.height - 16));
+        MarketMenu m = model();
+        int desired = confirmation(m) ? HEADER_H + FOOTER_H + 50 + confirmationLines(m).size() * 12
+                : m.layout == MarketMenu.Layout.TILES && m.hero == null && !m.hasSidebar() ? 184
+                : Math.max(m.hero == null ? 200 : 212, Math.min(320, Math.round(this.height * 0.84f)));
+        if (inventoryOpen && !confirmation(m)) desired += 106;
+        return Math.max(confirmation(m) ? 128 : 150, Math.min(desired, this.height - 28));
     }
 
     private int panelX() {
@@ -367,7 +388,7 @@ public class MarketScreen extends ContainerScreen {
             super.extractBackground(graphics, mouseX, mouseY, partialTick);
             return;
         }
-        AlpakaStyle.backdrop(graphics, this.width, this.height);
+        AlpakaStyle.backdrop(graphics, this.width, this.height, 0.55f);
     }
 
     @Override
@@ -399,9 +420,10 @@ public class MarketScreen extends ContainerScreen {
         int footerY = y + h - FOOTER_H;
         drawerW = 9 * CELL + 12;
         drawerH = 18 + 4 * CELL + 4 + 8;
-        drawerX = x + w - PAD - drawerW;
+        drawerX = x + (w - drawerW) / 2;
         drawerY = footerY - 4 - drawerH;
-        boolean underDrawer = inventoryOpen && AlpakaStyle.inside(mouseX, mouseY, drawerX, drawerY, drawerW, drawerH);
+        boolean showInventory = inventoryOpen && !confirmation(m);
+        boolean underDrawer = showInventory && AlpakaStyle.inside(mouseX, mouseY, drawerX, drawerY, drawerW, drawerH);
         int mx = underDrawer ? -10000 : mouseX;
         int my = underDrawer ? -10000 : mouseY;
 
@@ -409,22 +431,30 @@ public class MarketScreen extends ContainerScreen {
 
         AlpakaStyle.panel(graphics, x, y, w, h);
 
-        sideW = m.hasSidebar() ? Math.max(90, Math.min(122, (int) (w * 0.21))) : 0;
+        sideW = m.hasSidebar() ? Math.min(126, Math.max(108, w / 3)) : 0;
         sideX = x;
         contentX = x + sideW + (sideW > 0 ? 1 : 0);
         contentY = y + HEADER_H;
         contentW = x + w - contentX;
         contentH = h - HEADER_H - FOOTER_H;
+        if (showInventory) contentH = Math.max(48, contentH - drawerH - 8);
 
         drawHeader(graphics, m, mx, my, x, y, w);
         AlpakaStyle.headerLine(graphics, x, y, w);
         if (sideW > 0) {
-            drawSidebar(graphics, m, mx, my, x, contentY, sideW, h - HEADER_H, deltaSec);
-            ModernGuiUtils.drawRect(graphics, x + sideW, contentY + 6, 1, h - HEADER_H - 12, AlpakaStyle.LINE);
+            int sideHits = hits.size();
+            drawSidebar(graphics, m, mx, my, x, contentY, sideW, contentH, deltaSec);
+            for (int i = hits.size() - 1; i >= sideHits; i--) {
+                Hit hit = hits.get(i);
+                int bottom = Math.min(contentY + contentH, hit.y() + hit.h());
+                if (bottom <= hit.y()) hits.remove(i);
+                else hits.set(i, new Hit(hit.x(), hit.y(), hit.w(), bottom - hit.y(), hit.action(), hit.sound()));
+            }
+            ModernGuiUtils.drawRect(graphics, x + sideW, contentY + 6, 1, contentH - 12, AlpakaStyle.LINE);
         }
         drawContent(graphics, m, mx, my, deltaSec, now);
-        drawFooter(graphics, m, mx, my, contentX, footerY, x + w - contentX);
-        if (inventoryOpen) drawDrawer(graphics, mouseX, mouseY);
+        drawFooter(graphics, m, mx, my, x, footerY, w);
+        if (showInventory) drawDrawer(graphics, mouseX, mouseY);
 
         if (hoveredTipKey != lastTipKey) {
             lastTipKey = hoveredTipKey;
@@ -438,7 +468,11 @@ public class MarketScreen extends ContainerScreen {
 
         // The item on the cursor, and the hovered item's own tooltip, as vanilla draws them.
         extractCarriedItem(graphics, mouseX, mouseY);
-        if (!hoveredStack.isEmpty() && menu.getCarried().isEmpty()
+        if (hoveredStack != lastTooltipStack) {
+            lastTooltipStack = hoveredStack;
+            itemTipSince = now;
+        }
+        if (!hoveredStack.isEmpty() && now - itemTipSince >= 180 && menu.getCarried().isEmpty()
                 && !net.alpaka.addons.features.itemvalue.ItemValuePopup.hidesTooltipOf(this, hoveredStack)) {
             graphics.setTooltipForNextFrame(this.font, hoveredStack, mouseX, mouseY);
         }
@@ -470,7 +504,8 @@ public class MarketScreen extends ContainerScreen {
             boolean hoverBack = AlpakaStyle.inside(mx, my, backX, by, button, button);
             glyphButton(graphics, backX, by, button, MarketIcons.Glyph.BACK, hoverBack, accent);
             hits.add(new Hit(backX, by, button, button, (b, s) -> click(back, b, s), false));
-            if (hoverBack) tip("back", m.backTarget != null ? "Back to " + m.backTarget : "Go Back");
+            if (hoverBack) tip("back", (m.backTarget != null ? "Back to " + m.backTarget : "Go Back")
+                    + keyHint(MarketKeys.of(kind).back()));
             right = backX - 6;
         }
 
@@ -490,7 +525,7 @@ public class MarketScreen extends ContainerScreen {
             graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, text, sw - 26)), sx + 20, sy + 5,
                     active ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_MUTED, false);
             hits.add(new Hit(sx, sy, sw, sh, (b, s) -> click(search, b, s), false));
-            if (hover) hoveredStack = stack(search);
+            if (hover) tip("search", "Search" + (Markets.hotkeys(kind) ? " · / or Ctrl/Cmd+F" : ""));
             right = sx - 8;
         }
 
@@ -500,6 +535,7 @@ public class MarketScreen extends ContainerScreen {
         Component title = GuiFont.title(kind.displayName);
         boolean large = title != null;
         if (title == null) title = GuiFont.text(kind.displayName);
+        if (this.font.width(title) > room) title = GuiFont.text(AlpakaStyle.ellipsize(this.font, kind.displayName, room));
         int titleH = large ? 12 : 8;
         if (crumbs.isEmpty()) {
             graphics.text(this.font, title, tx, y + (HEADER_H - titleH) / 2, AlpakaStyle.TEXT, false);
@@ -539,15 +575,14 @@ public class MarketScreen extends ContainerScreen {
         boolean inClip = AlpakaStyle.inside(mx, my, x, clipY, w, clipH);
         int filters = count(m, FILTERS);
         int actions = count(m, ACTIONS);
-        int extras = m.extrasInFooter() ? 0 : m.extras.size();
+        int extras = extrasInFooter(m) ? 0 : m.extras.size();
 
-        // On a small window everything gets a little tighter, rather than the filters scrolling
-        // out of sight: slimmer rows, one line per filter, hairlines instead of group labels.
+        // Compact rows leave more room for the filters, which keep both their title and value.
         int natural = 6 + group(m.categories.size(), GROUP_LABEL_H, SIDE_ROW_H) + group(filters, GROUP_LABEL_H, FILTER_ROW_H)
                 + group(actions, GROUP_LABEL_H, SIDE_ROW_H) + group(extras, GROUP_LABEL_H, SIDE_ROW_H);
         boolean compact = natural > clipH;
         int rowH = compact ? 16 : SIDE_ROW_H;
-        int filterH = compact ? 16 : FILTER_ROW_H;
+        int filterH = FILTER_ROW_H;
 
         graphics.enableScissor(x, clipY, x + w, clipY + clipH);
         int rowY = y + 6 - sideScroll.offset();
@@ -588,7 +623,7 @@ public class MarketScreen extends ContainerScreen {
                 sideItem(graphics, stack(slot), rowX, rowY, rowH);
                 int text = category.selected() || hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
                 int nameW = rowW - 26;
-                int categoryKey = nextCategoryKey(slot);
+                int categoryKey = rowY >= clipY && rowY + rowH <= clipY + clipH ? nextCategoryKey(slot) : 0;
                 // The keys show while Shift is held, the one that picks a category with a number.
                 if (categoryKey > 0 && this.minecraft != null && this.minecraft.hasShiftDown()) {
                     nameW = keyChip(graphics, categoryKey, rowX + rowW - 4, rowY + (rowH - 8) / 2, 1f) - 4 - (rowX + 21);
@@ -601,7 +636,7 @@ public class MarketScreen extends ContainerScreen {
                 if (hover) hoveredStack = stack(slot);
                 rowY += rowH + 1;
             }
-            rowY += 6;
+            rowY += compact ? 2 : 6;
         }
 
         if (filters > 0) {
@@ -631,16 +666,11 @@ public class MarketScreen extends ContainerScreen {
                     };
                     MarketIcons.draw(graphics, glyph, rowX + 7, rowY + (filterH - 9) / 2f, 9, hover ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
                 }
-                if (compact) {
-                    graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, value, rowW - 33)), rowX + 21, rowY + 4,
-                            hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT, false);
-                } else {
-                    graphics.text(this.font, GuiFont.text(label), rowX + 21, rowY + 3, AlpakaStyle.TEXT_MUTED, false);
-                    graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, value, rowW - 33)), rowX + 21, rowY + 13,
-                            hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT, false);
-                }
-                AlpakaStyle.sideChevron(graphics, rowX + rowW - 6, rowY + filterH / 2, false,
-                        hover ? AlpakaStyle.accent() : AlpakaStyle.DIVIDER);
+                graphics.text(this.font, GuiFont.text(label), rowX + 21, rowY + 3, AlpakaStyle.TEXT_MUTED, false);
+                graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, value, rowW - 33)), rowX + 21, rowY + 13,
+                        hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT, false);
+                MarketIcons.draw(graphics, MarketIcons.Glyph.SORT, rowX + rowW - 10, rowY + 9, 8,
+                        hover ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
                 if (visible(rowY, filterH, clipY, clipH)) {
                     int s = slot;
                     hits.add(new Hit(rowX, Math.max(rowY, clipY), rowW, filterH, (b, sh) -> click(s, b, sh), false));
@@ -648,7 +678,7 @@ public class MarketScreen extends ContainerScreen {
                 if (hover) hoveredStack = stack(slot);
                 rowY += filterH + 1;
             }
-            rowY += 6;
+            rowY += compact ? 2 : 6;
         }
 
         if (actions > 0) {
@@ -743,6 +773,52 @@ public class MarketScreen extends ContainerScreen {
 
     // ---- Content --------------------------------------------------------------------------------
 
+    private boolean confirmation(MarketMenu m) {
+        return m.confirmationSlot() != null;
+    }
+
+    private List<String> confirmationLines(MarketMenu m) {
+        return m.confirmationLines;
+    }
+
+    private int drawConfirmation(GuiGraphicsExtractor graphics, MarketMenu m, int mx, int my,
+                                 int cx, int cy, int cw, int ch) {
+        int slot = m.confirmationSlot();
+        int top = cy + 10 - contentScroll.offset();
+        int y = top;
+        for (String line : confirmationLines(m)) {
+            int color = line.toLowerCase(Locale.ROOT).matches(".*(cost|coins|earn|total|price).*" )
+                    ? MarketInk.ink(COIN) : AlpakaStyle.TEXT;
+            for (FormattedText part : GuiFont.splitLines(this.font, line, cw - 32)) {
+                graphics.text(this.font, Language.getInstance().getVisualOrder(part), cx + 16, y, color, false);
+                y += 12;
+            }
+        }
+        int bw = (cw - 36) / 2;
+        int by = y + 10;
+        String confirm = plain(slot).name();
+        if (confirm.equalsIgnoreCase("Confirm") && plainTitle.equals("Confirm Purchase")) confirm = "Buy Item";
+        confirmationButton(graphics, slot, confirm, cx + 12, by, bw, mx, my, true);
+        confirmationButton(graphics, m.cancelSlot, "Cancel", cx + 24 + bw, by, bw, mx, my, false);
+        return by - top + AlpakaStyle.BUTTON_H + 20;
+    }
+
+    private void confirmationButton(GuiGraphicsExtractor graphics, int slot, String label, int x, int y,
+                                    int w, int mx, int my, boolean primary) {
+        boolean hover = AlpakaStyle.inside(mx, my, x, y, w, AlpakaStyle.BUTTON_H);
+        AlpakaStyle.button(graphics, this.font, x, y, w, AlpakaStyle.BUTTON_H, label, hover,
+                primary ? AlpakaStyle.ButtonKind.PRIMARY : AlpakaStyle.ButtonKind.PLAIN);
+        int key = y >= contentY && y + AlpakaStyle.BUTTON_H <= contentY + contentH ? nextKey(slot) : 0;
+        if (key > 0) keyChip(graphics, key, x + w - 5, y + (AlpakaStyle.BUTTON_H - 8) / 2, 1f);
+        hits.add(new Hit(x, y, w, AlpakaStyle.BUTTON_H, (b, s) -> click(slot, b, s), false));
+        if (hover) hoveredStack = stack(slot);
+    }
+
+    private String positionKey(MarketMenu m) {
+        return kind + "|" + plainTitle + "|" + m.page + "|" + m.query + "|" + m.controlValues + "|"
+                + m.categories.stream().filter(MarketMenu.Category::selected).map(MarketMenu.Category::name).toList();
+    }
+
     private void drawContent(GuiGraphicsExtractor graphics, MarketMenu m, int mx, int my, float deltaSec, long now) {
         int cx = contentX;
         int cy = contentY;
@@ -759,21 +835,42 @@ public class MarketScreen extends ContainerScreen {
         if (m.content.isEmpty()) {
             int iconSize = 22;
             MarketIcons.draw(graphics, MarketIcons.Glyph.BOX, cx + (cw - iconSize) / 2f, cy + ch / 2f - 22, iconSize, AlpakaStyle.DIVIDER);
-            String empty = "Nothing here";
+            String empty = m.query == null ? "Nothing Here Yet" : "No Results — Try Another Search or Filter";
+            empty = AlpakaStyle.ellipsize(this.font, empty, cw - 16);
             graphics.text(this.font, GuiFont.text(empty), cx + (cw - GuiFont.width(this.font, empty)) / 2, cy + ch / 2 + 6,
                     AlpakaStyle.TEXT_MUTED, false);
             return;
         }
 
+        if (m.layout == MarketMenu.Layout.GRID) {
+            String key = positionKey(m);
+            if (!key.equals(listPositionKey)) {
+                listPositionKey = key;
+                contentScroll.current = contentScroll.target = LIST_POSITIONS.getOrDefault(key, 0.0);
+            }
+        }
+        int firstHit = hits.size();
         graphics.enableScissor(cx, cy + 1, cx + cw, cy + ch);
-        int contentHeight = m.layout == MarketMenu.Layout.GRID
+        int contentHeight = confirmation(m) ? drawConfirmation(graphics, m, mx, my, cx, cy, cw, ch)
+                : m.layout == MarketMenu.Layout.GRID
                 ? drawGrid(graphics, m, mx, my, inClip, cx, cy, cw, ch, now)
                 : drawTiles(graphics, m, mx, my, inClip, cx, cy, cw, ch, now);
-        // The open drawer covers the grid's bottom right, so the grid scrolls on until its last row
-        // comes out above it.
-        int visibleH = inventoryOpen && m.layout == MarketMenu.Layout.GRID && drawerY > cy && drawerY < cy + ch ? drawerY - cy : ch;
-        contentScroll.max = Math.max(0, contentHeight - visibleH);
+        // The inventory has its own space; clipped rows never accept clicks outside the viewport.
+        for (int i = hits.size() - 1; i >= firstHit; i--) {
+            Hit hit = hits.get(i);
+            int left = Math.max(cx, hit.x());
+            int top = Math.max(cy, hit.y());
+            int right = Math.min(cx + cw, hit.x() + hit.w());
+            int bottom = Math.min(cy + ch, hit.y() + hit.h());
+            if (right <= left || bottom <= top) hits.remove(i);
+            else hits.set(i, new Hit(left, top, right - left, bottom - top, hit.action(), hit.sound()));
+        }
+        contentScroll.max = Math.max(0, contentHeight - ch);
         contentScroll.update(deltaSec);
+        if (m.layout == MarketMenu.Layout.GRID) {
+            LIST_POSITIONS.put(listPositionKey, contentScroll.target);
+            if (LIST_POSITIONS.size() > 32) LIST_POSITIONS.remove(LIST_POSITIONS.keySet().iterator().next());
+        }
         boolean above = contentScroll.offset() > 0;
         boolean below = contentScroll.offset() + 1 < contentScroll.max;
         AlpakaStyle.scrollFades(graphics, cx, cy + 1, cw, ch - 1, above, below);
@@ -782,6 +879,10 @@ public class MarketScreen extends ContainerScreen {
             int thumbH = Math.max(16, (int) (trackH * (ch / (double) (ch + contentScroll.max))));
             int thumbY = cy + 6 + (int) ((trackH - thumbH) * (contentScroll.current / contentScroll.max));
             ModernGuiUtils.drawRoundedRect(graphics, cx + cw - 4, thumbY, 2, thumbH, 1, inClip ? AlpakaStyle.TEXT_MUTED : AlpakaStyle.DIVIDER);
+            scrollTrackY = cy + 6;
+            scrollTrackH = trackH;
+            scrollThumbH = thumbH;
+            hits.add(new Hit(cx + cw - 7, cy + 2, 7, ch - 4, (b, s) -> draggingScroll = b == 0, false));
         }
         graphics.disableScissor();
         updateHover(deltaSec);
@@ -815,6 +916,11 @@ public class MarketScreen extends ContainerScreen {
 
     private int drawGrid(GuiGraphicsExtractor graphics, MarketMenu m, int mx, int my, boolean inClip,
                          int cx, int cy, int cw, int ch, long now) {
+        LoreInfo.Type type = m.info.get(m.content.get(0)).type;
+        if (type == LoreInfo.Type.AUCTION || type == LoreInfo.Type.PRODUCT || type == LoreInfo.Type.ORDER) {
+            boolean sameType = m.content.stream().allMatch(slot -> m.info.get(slot).type == type);
+            if (sameType) return drawListings(graphics, m, type, mx, my, cx, cy, cw, ch);
+        }
         int innerX = cx + 6;
         int innerW = cw - 14;
         int cols = Math.max(1, (innerW + GAP) / (CARD_MIN_W + GAP));
@@ -826,14 +932,78 @@ public class MarketScreen extends ContainerScreen {
             int slot = m.content.get(i);
             int px = innerX + (i % cols) * (cardW + GAP);
             int py = top + (i / cols) * (CARD_H + GAP);
-            // The first nine take the number keys, also while scrolled out of sight.
-            int key = i < 9 ? nextKey(slot) : 0;
             if (py + CARD_H < cy || py > cy + ch) continue;
+            int key = py >= cy && py + CARD_H <= cy + ch ? nextKey(slot) : 0;
             float in = entrance(i, now);
             drawCard(graphics, slot, m.info.get(slot), px, py + Math.round((1 - in) * 6), cardW, CARD_H, mx, my, inClip, in, cy, ch,
                     key, true);
         }
         return gridRows * (CARD_H + GAP) - GAP + 12;
+    }
+
+    /** Fixed columns keep prices aligned while the item names keep the remaining space. */
+    private int drawListings(GuiGraphicsExtractor graphics, MarketMenu m, LoreInfo.Type type, int mx, int my,
+                             int cx, int cy, int cw, int ch) {
+        int x = cx + 6;
+        int w = cw - 14;
+        int right = x + w - 5;
+        int listY = cy + LIST_HEADER_H;
+        int rowH = type == LoreInfo.Type.ORDER ? CARD_H + 3 : LIST_ROW_H;
+        graphics.text(this.font, GuiFont.text(type == LoreInfo.Type.ORDER ? "Your Orders" : "Item"), x + 24, cy + 4, AlpakaStyle.TEXT_MUTED, false);
+        if (type == LoreInfo.Type.PRODUCT) {
+            rightText(graphics, "Instant Buy", right - 58, cy + 4, AlpakaStyle.TEXT_MUTED);
+            rightText(graphics, "Instant Sell", right, cy + 4, AlpakaStyle.TEXT_MUTED);
+        } else if (type == LoreInfo.Type.AUCTION) {
+            rightText(graphics, "Price", right - 49, cy + 4, AlpakaStyle.TEXT_MUTED);
+            rightText(graphics, "Ends", right, cy + 4, AlpakaStyle.TEXT_MUTED);
+        }
+        graphics.enableScissor(cx, listY, cx + cw, cy + ch);
+        int top = listY - contentScroll.offset();
+        for (int i = 0; i < m.content.size(); i++) {
+            int py = top + i * rowH;
+            if (py + rowH <= listY || py >= cy + ch) continue;
+            int slot = m.content.get(i);
+            int key = py >= listY && py + rowH <= cy + ch ? nextKey(slot) : 0;
+            boolean hover = AlpakaStyle.inside(mx, my, x, Math.max(py, listY), w,
+                    Math.max(0, Math.min(py + rowH, cy + ch) - Math.max(py, listY)));
+            LoreInfo info = m.info.get(slot);
+            if (type == LoreInfo.Type.ORDER) {
+                drawCard(graphics, slot, info, x, py, w, CARD_H, mx, my, hover, 1f, listY, cy + ch - listY, key);
+                continue;
+            }
+            ModernGuiUtils.drawRoundedRect(graphics, x, py, w, rowH - 1, 3,
+                    hover ? AlpakaStyle.ROW_HOVER : i % 2 == 0 ? AlpakaStyle.ROW : AlpakaStyle.PANEL);
+            ItemStack item = stack(slot);
+            graphics.item(item, x + 14, py);
+            graphics.itemDecorations(this.font, item, x + 14, py);
+            int nameX = x + 35;
+            int nameEnd = right - (type == LoreInfo.Type.PRODUCT ? 116 : 109);
+            styled(graphics, item.getHoverName(), nameX, py + 4, Math.max(12, nameEnd - nameX), AlpakaStyle.TEXT);
+            if (type == LoreInfo.Type.PRODUCT) {
+                rightText(graphics, info.buyPrice == null ? "—" : Coins.compact(info.buyPrice), right - 58, py + 4, MarketInk.ink(COIN));
+                rightText(graphics, info.sellPrice == null ? "—" : Coins.compact(info.sellPrice), right, py + 4, MarketInk.ink(COIN));
+            } else {
+                pill(graphics, nameEnd + 4, py + 4, info.isOver() ? "End" : info.isBin() ? "BIN" : "BID",
+                        MarketInk.ink(info.isOver() ? RED : info.isBin() ? GREEN : AQUA), 1f);
+                Double price = info.auctionPrice();
+                rightText(graphics, price == null ? "—" : Coins.compact(price), right - 49, py + 4, MarketInk.ink(COIN));
+                String time = info.isOver() ? info.status.replace("!", "") : info.endsIn == null ? "—" : shortTime(info.endsIn);
+                if (GuiFont.width(this.font, time) > 45 && info.endsIn != null && !info.isOver()) time = time.split(" ")[0];
+                time = AlpakaStyle.ellipsize(this.font, time, 45);
+                rightText(graphics, time, right, py + 4, Coins.seconds(time) >= 0 && Coins.seconds(time) < 300 ? MarketInk.ink(RED) : AlpakaStyle.TEXT_MUTED);
+            }
+            if (key > 0) keyChip(graphics, key, x + 12, py + 4, 1f);
+            int hitTop = Math.max(py, listY);
+            int hitBottom = Math.min(py + rowH, cy + ch);
+            hits.add(new Hit(x, hitTop, w, hitBottom - hitTop, (b, s) -> click(slot, b, s), false));
+            if (hover) hoveredStack = item;
+        }
+        graphics.disableScissor();
+        return LIST_HEADER_H + m.content.size() * rowH + 4;
+    }
+
+    private void rightText(GuiGraphicsExtractor graphics, String text, int right, int y, int color) {
+        graphics.text(this.font, GuiFont.text(text), right - GuiFont.width(this.font, text), y, color, false);
     }
 
     private void drawCard(GuiGraphicsExtractor graphics, int slot, LoreInfo info, int px, int py, int w, int h,
@@ -996,7 +1166,7 @@ public class MarketScreen extends ContainerScreen {
         int end = priceLine(graphics, "Sell", info.sellPrice, tx, ly3, alpha);
         if (info.buyPrice != null && info.sellPrice != null && info.buyPrice > 0) {
             double margin = (info.buyPrice - info.sellPrice) / info.buyPrice * 100.0;
-            String text = String.format(java.util.Locale.ROOT, "%.1f%%", margin);
+            String text = String.format(java.util.Locale.ROOT, "Spread %.1f%%", margin);
             int w = GuiFont.width(this.font, text);
             if (tx + tw - w - 8 > end) {
                 int chipX = tx + tw - w - 6;
@@ -1032,7 +1202,8 @@ public class MarketScreen extends ContainerScreen {
         }
         float ratio = info.fillRatio();
         if (ratio >= 0) {
-            String pct = Math.round(ratio * 100) + "%";
+            boolean claim = info.clickHint != null && info.clickHint.toLowerCase(Locale.ROOT).contains("claim");
+            String pct = claim ? "Ready to Claim" : Math.round(ratio * 100) + "% Filled";
             int pw = GuiFont.width(this.font, pct);
             int barW = tw - pw - 6;
             int by = py + 30;
@@ -1140,22 +1311,8 @@ public class MarketScreen extends ContainerScreen {
         int index = 0;
         List<Integer> tiles = new ArrayList<>(m.content);
         if (m.hero != null) tiles.remove(m.hero);
-        boolean withGraph = m.hero != null && PriceGraph.enabled() && hasHistory(m.info.get(m.hero));
         if (m.hero != null) {
-            int heroW = Math.max(128, Math.min(210, (int) (aw * 0.4)));
-            // Beside a price history the page's actions go into the hero, where the inventory
-            // drawer, which opens over the right-hand side, never covers them.
-            List<Integer> heroActions = withGraph ? tiles : List.of();
-            float in = entrance(index++, now);
-            if (drawHero(graphics, m.hero, m.info.get(m.hero), heroActions, ax, ay, heroW, ah, mx, my, inClip, in, cy, ch, index, now)) {
-                index += tiles.size();
-                tiles = List.of();
-            }
-            ax += heroW + 8;
-            aw -= heroW + 8;
-        }
-        if (withGraph) {
-            return drawWithGraph(graphics, m, tiles, mx, my, inClip, ax, ay, aw, ah, cy, ch, index, now);
+            return drawDetailPage(graphics, m, tiles, mx, my, inClip, ax, cy + 4, aw, ch - 8, cy, ch, index, now);
         }
         if (tiles.isEmpty()) return ch;
 
@@ -1181,7 +1338,8 @@ public class MarketScreen extends ContainerScreen {
                 int px = left + c * (tileW + GAP);
                 int py = top + r * (tileH + GAP);
                 float in = entrance(index++, now);
-                drawTile(graphics, slot, m.info.get(slot), px, py + Math.round((1 - in) * 6), tileW, tileH, mx, my, inClip, in, nextKey(slot));
+                int key = py >= cy && py + tileH <= cy + ch ? nextKey(slot) : 0;
+                drawTile(graphics, slot, m.info.get(slot), px, py + Math.round((1 - in) * 6), tileW, tileH, mx, my, inClip, in, key);
             }
         }
         return total + 16;
@@ -1209,50 +1367,30 @@ public class MarketScreen extends ContainerScreen {
             int py = top + (i / cols) * (cardH + GAP);
             float in = entrance(index + i, now);
             drawCard(graphics, slot, m.info.get(slot), px, py + Math.round((1 - in) * 6), cardW, cardH, mx, my, inClip, in, cy, ch,
-                    nextKey(slot));
+                    py >= cy && py + cardH <= cy + ch ? nextKey(slot) : 0);
         }
         return total + 16;
     }
 
-    /** Whether a hero is something SkyCofl keeps a price history for: a product or an auction. */
-    private static boolean hasHistory(LoreInfo info) {
-        return info != null && (info.type == LoreInfo.Type.PRODUCT || info.type == LoreInfo.Type.AUCTION);
-    }
-
-    /** Slim action cards: a name and one line. Used under the price history where height is short. */
-    private static final int COMPACT_CARD_H = 30;
-    private static final int COMPACT_CARD_MIN_W = 96;
-
-    /**
-     * A product's or an auction's page with its price history: the graph over the actions, which
-     * become cards - slim ones when the window is short - so the graph gets the room.
-     */
-    private int drawWithGraph(GuiGraphicsExtractor graphics, MarketMenu m, List<Integer> actions, int mx, int my, boolean inClip,
+    /** Keep current market data independent of the optional, expandable history. */
+    private int drawDetailPage(GuiGraphicsExtractor graphics, MarketMenu m, List<Integer> actions, int mx, int my, boolean inClip,
                               int ax, int ay, int aw, int ah, int cy, int ch, int index, long now) {
-        int actionsH = 0;
-        int cardH = CARD_H;
-        int minW = CARD_MIN_W;
-        if (!actions.isEmpty()) {
-            // Full cards if the graph keeps a useful height beside them, slim ones otherwise.
-            int cols = Math.max(1, Math.min(actions.size(), (aw + GAP) / (CARD_MIN_W + GAP)));
-            int rows = (actions.size() + cols - 1) / cols;
-            actionsH = rows * (CARD_H + GAP) - GAP;
-            if (ah - actionsH - 8 < 96) {
-                cardH = COMPACT_CARD_H;
-                minW = COMPACT_CARD_MIN_W;
-                cols = Math.max(1, Math.min(actions.size(), (aw + GAP) / (minW + GAP)));
-                rows = (actions.size() + cols - 1) / cols;
-                actionsH = rows * (cardH + GAP) - GAP;
-            }
+        int heroW = Math.max(144, Math.min(210, Math.round(aw * 0.48f)));
+        int rightX = ax + heroW + 8;
+        int rightW = aw - heroW - 8;
+        int bodyH = Math.max(ah, kind == MarketKind.BAZAAR ? 144 : 112);
+        int top = ay - contentScroll.offset();
+        boolean fits = drawHero(graphics, m.hero, m.info.get(m.hero), actions, ax, top, heroW, bodyH,
+                mx, my, inClip, 1f, cy, ch, index, now);
+        if (!fits && !actions.isEmpty()) {
+            int actionsY = top + bodyH + 8;
+            bodyH += drawActionCards(graphics, m, actions, mx, my, inClip, ax, actionsY, heroW, 120,
+                    cy, ch, index, now) + 8;
         }
-        int graphH = Math.max(64, ah - (actions.isEmpty() ? 0 : actionsH + 8));
-        MarketMenu.Slot hero = plain(m.hero);
-        ItemTags.Tag tag = AlpakaConfig.instance.allowApiCalls
-                ? ItemTags.of(stack(m.hero), hero.name(), kind)
-                : new ItemTags.Tag(ItemTags.Lookup.UNKNOWN, null);
 
-        // With the actions in the hero, the graph keeps a wide shape and the room under it holds the
-        // product's order book or the auctioned item's market stats.
+        ItemTags.Tag tag = AlpakaConfig.instance.allowApiCalls
+                ? ItemTags.of(stack(m.hero), plain(m.hero).name(), kind)
+                : new ItemTags.Tag(ItemTags.Lookup.UNKNOWN, null);
         List<MarketStats.Level> orders = null;
         List<MarketStats.Level> offers = null;
         if (kind == MarketKind.BAZAAR) {
@@ -1262,44 +1400,48 @@ public class MarketScreen extends ContainerScreen {
                 else if (name.equals("create sell offer")) offers = MarketStats.levels(plain(slot).lore());
             }
         }
-        boolean book = orders != null || offers != null;
-        boolean stats = !book && kind == MarketKind.AUCTION_HOUSE && tag.tag() != null;
-        int panelH = 0;
-        if (actions.isEmpty() && (book || stats)) {
-            int panelMin = book ? MarketStats.bookMinHeight() : MarketStats.statsMinHeight();
-            int panelMax = book ? MarketStats.bookMaxHeight() : MarketStats.statsMaxHeight();
-            int wide = Math.max(96, Math.max(Math.round(aw * 0.5f), ah - 8 - panelMax));
-            int g = Math.min(wide, ah - 8 - panelMin);
-            if (g >= 72) {
-                graphH = g;
-                panelH = ah - 8 - graphH;
-            }
-        }
-        // With nothing under it, the graph ends above the open inventory drawer rather than behind it,
-        // as long as that leaves it tall enough to draw; else the drawer just covers part of it.
-        if (panelH == 0 && actions.isEmpty() && inventoryOpen && drawerX < ax + aw && drawerX + drawerW > ax
-                && drawerY < ay + graphH && drawerY - 6 - ay >= 72) {
-            graphH = drawerY - 6 - ay;
-        }
-        PriceGraph.draw(graphics, this.font, kind, tag, ax, ay, aw, graphH, mx, my, (x, y, w, h, action, tipText) -> {
-            hits.add(new Hit(x, y, w, h, (b, s) -> action.run(), true));
-            if (tipText != null && AlpakaStyle.inside(mx, my, x, y, w, h)) tip("graph:" + x + ":" + y, tipText);
-        });
-        if (panelH > 0) {
-            int py = ay + graphH + 8;
-            if (book) {
-                MarketStats.drawOrderBook(graphics, this.font, orders == null ? List.of() : orders,
-                        offers == null ? List.of() : offers, ax, py, aw, panelH);
-            } else {
+        int statsH;
+        if (orders != null || offers != null) {
+            statsH = MarketStats.bookMaxHeight();
+            MarketStats.drawOrderBook(graphics, this.font, orders == null ? List.of() : orders,
+                    offers == null ? List.of() : offers, rightX, top, rightW, statsH);
+        } else {
+            statsH = MarketStats.auctionHeight(rightW);
+            if (tag.tag() != null) {
                 LoreInfo info = m.info.get(m.hero);
-                MarketStats.drawAuctionStats(graphics, this.font, tag.tag(), info == null ? null : info.auctionPrice(),
-                        PriceHistory.Range.of(AlpakaConfig.instance.marketPriceHistoryRange), ax, py, aw, panelH);
+                Double price = info == null ? null : info.auctionPrice();
+                if (price != null) price /= Math.max(1, stack(m.hero).getCount());
+                MarketStats.drawAuctionStats(graphics, this.font, tag.tag(), price,
+                        PriceHistory.Range.of(AlpakaConfig.instance.marketPriceHistoryRange), rightX, top, rightW, statsH);
+            } else {
+                ModernGuiUtils.drawRoundedRect(graphics, rightX, top, rightW, statsH, 5, AlpakaStyle.ROW);
+                String note = AlpakaConfig.instance.allowApiCalls ? "Market Data Unavailable" : "Market Data Needs Network Features";
+                int noteY = top + 10;
+                for (FormattedText line : GuiFont.splitLines(this.font, note, rightW - 16)) {
+                    graphics.text(this.font, Language.getInstance().getVisualOrder(line), rightX + 8, noteY, AlpakaStyle.TEXT_MUTED, false);
+                    noteY += 11;
+                }
             }
         }
-        if (actions.isEmpty()) return ch;
-        int areaY = ay + graphH + 8;
-        drawActionCards(graphics, m, actions, mx, my, inClip, ax, areaY, aw, ah - graphH - 8, cy, ch, index, now, minW, cardH);
-        return ch;
+        int rightH = statsH;
+        if (PriceGraph.enabled()) {
+            int by = top + statsH + 6;
+            boolean hover = inClip && AlpakaStyle.inside(mx, my, rightX, by, rightW, 18);
+            AlpakaStyle.button(graphics, this.font, rightX, by, rightW, 18,
+                    historyOpen ? "Hide Price History" : "Show Price History", hover, AlpakaStyle.ButtonKind.PLAIN);
+            hits.add(new Hit(rightX, by, rightW, 18, (b, s) -> historyOpen = !historyOpen, true));
+            rightH += 24;
+            if (historyOpen) {
+                int graphY = by + 24;
+                PriceGraph.draw(graphics, this.font, kind, tag, rightX, graphY, rightW, 112, mx, my,
+                        (x, y, w, h, action, text) -> {
+                            hits.add(new Hit(x, y, w, h, (b, s) -> action.run(), true));
+                            if (text != null && inClip && AlpakaStyle.inside(mx, my, x, y, w, h)) tip("graph:" + x + ":" + y, text);
+                        });
+                rightH += 118;
+            }
+        }
+        return Math.max(bodyH, rightH) + 8;
     }
 
     private TileKind tileKind(int slot) {
@@ -1411,9 +1553,8 @@ public class MarketScreen extends ContainerScreen {
 
     /**
      * The one auction or product a page is about, with its prices or seller in rows; the whole lore
-     * is its tooltip. Given actions, they go at its foot, numbered for the keys 1 to 9: as cards
-     * under the large item where there is room, as slim buttons where there is less, and with the
-     * item small beside its name, one or two buttons a row, where there is less still. Returns
+     * is its tooltip. Given actions, they go at its foot, numbered for the keys 1 to 9: as slim
+     * buttons by default, or cards where there is ample room. Returns
      * whether the actions are drawn here; if even that does not fit, they are not.
      */
     private boolean drawHero(GuiGraphicsExtractor graphics, int slot, LoreInfo info, List<Integer> actions, int px, int py, int w, int h,
@@ -1423,24 +1564,36 @@ public class MarketScreen extends ContainerScreen {
         int rarity = rarity(stack);
 
         int n = actions.size();
-        int rowsH = heroRows(info) * 15;
+        boolean compact = h < 174;
+        int rowStep = compact ? 12 : 15;
+        int header = compact ? 24 : 28;
+        int buttonH = compact ? 16 : HERO_BUTTON_H;
+        int buttonGap = compact ? 1 : HERO_BUTTON_GAP;
+        int groupH = compact ? 10 : 14;
+        int rowsH = heroRows(info) * rowStep;
         int bottom = py + h - 6;
-        int roomLarge = bottom - (py + 82 + rowsH + 2);
-        int roomSmall = bottom - (py + 28 + rowsH + 2);
-        int buttonsH = n * (HERO_BUTTON_H + HERO_BUTTON_GAP) - HERO_BUTTON_GAP;
-        int pairsH = (n + 1) / 2 * (HERO_BUTTON_H + HERO_BUTTON_GAP) - HERO_BUTTON_GAP;
-        boolean large = true;
+        int roomSmall = bottom - (py + header + rowsH + 2);
+        int buttonsH = n * (buttonH + buttonGap) - buttonGap;
+        int pairsH = (n + 1) / 2 * (buttonH + buttonGap) - buttonGap;
         boolean buttons = true;
         int cols = 1;
         boolean fits = n > 0;
-        if (n == 0 || n * (CARD_H + GAP) - GAP <= roomLarge) {
+        boolean grouped = kind == MarketKind.BAZAAR && actions.size() == 4
+                && actions.stream().allMatch(action -> List.of("buy instantly", "sell instantly", "create buy order", "create sell offer")
+                .contains(plain(action).name().toLowerCase(Locale.ROOT)));
+        if (grouped) {
+            actions = new ArrayList<>(actions);
+            actions.sort(java.util.Comparator.comparingInt(action -> List.of("buy instantly", "create buy order", "sell instantly", "create sell offer")
+                    .indexOf(plain(action).name().toLowerCase(Locale.ROOT))));
+            buttonsH += groupH * 2;
+        }
+        if (grouped && buttonsH <= roomSmall) {
+            // Buy and Sell each keep their instant and order actions together.
+        } else if (!grouped && (n == 0 || (roomSmall >= 160 && n * (CARD_H + GAP) - GAP <= roomSmall))) {
             buttons = false;
-        } else if (buttonsH <= roomLarge) {
-            // Slim buttons under the large item.
         } else if (buttonsH <= roomSmall) {
-            large = false;
-        } else if (pairsH <= roomSmall && (w - 12 - HERO_BUTTON_GAP) / 2 >= 72) {
-            large = false;
+            // Slim actions leave room for the item's data above them.
+        } else if (!grouped && pairsH <= roomSmall && (w - 12 - HERO_BUTTON_GAP) / 2 >= 72) {
             cols = 2;
         } else {
             fits = false;
@@ -1451,27 +1604,13 @@ public class MarketScreen extends ContainerScreen {
 
         int iconCx = px + w / 2;
         int textAlpha = Math.round(alpha * 255) << 24;
-        int ry;
-        if (large) {
-            int iconCy = py + 34;
-            WheelMesh glow = new WheelMesh(1.0f / guiScale());
-            glow.radialGradient(iconCx, iconCy, 40f, MarketIcons.fade(rarity, 0.30f * alpha), rarity & 0x00FFFFFF);
-            glow.submit(graphics);
-            GuiItemFade.begin(alpha);
-            drawScaledItem(graphics, stack, iconCx - 24, iconCy - 24, 3.0f);
-            GuiItemFade.end();
-            styledCentered(graphics, stack.getHoverName(), iconCx, py + 66, w - 12, 0x00FFFFFF | textAlpha);
-            ry = py + 82;
-        } else {
-            // The item in its own size beside its name, the pair centred.
-            int nameW = Math.min(w - 36, this.font.width(GuiFont.restyle(stack.getHoverName())));
-            int left = iconCx - (16 + 4 + nameW) / 2;
-            GuiItemFade.begin(alpha);
-            graphics.item(stack, left, py + 6);
-            GuiItemFade.end();
-            styled(graphics, stack.getHoverName(), left + 20, py + 10, nameW, 0x00FFFFFF | textAlpha);
-            ry = py + 28;
-        }
+        int nameW = Math.min(w - 36, this.font.width(GuiFont.restyle(stack.getHoverName())));
+        int left = iconCx - (16 + 4 + nameW) / 2;
+        GuiItemFade.begin(alpha);
+        graphics.item(stack, left, py + 6);
+        GuiItemFade.end();
+        styled(graphics, stack.getHoverName(), left + 20, py + 10, nameW, 0x00FFFFFF | textAlpha);
+        int ry = py + header;
 
         int rowX = px + 8;
         int rowW = w - 16;
@@ -1479,18 +1618,23 @@ public class MarketScreen extends ContainerScreen {
             Double price = info.auctionPrice();
             if (price != null) {
                 ry = heroRow(graphics, info.isBin() ? "Buy It Now" : info.topBid != null ? "Top Bid" : "Starting Bid",
-                        Coins.full(price), MarketInk.ink(COIN), true, rowX, ry, rowW, alpha);
+                        Coins.full(price), MarketInk.ink(COIN), true, rowX, ry, rowW, alpha, rowStep);
             }
-            if (info.seller != null) ry = heroRow(graphics, "Seller", withoutRank(info.seller), AlpakaStyle.TEXT, false, rowX, ry, rowW, alpha);
-            if (info.bids != null) ry = heroRow(graphics, "Bids", String.valueOf(info.bids), AlpakaStyle.TEXT, false, rowX, ry, rowW, alpha);
+            if (info.seller != null) ry = heroRow(graphics, "Seller", withoutRank(info.seller), AlpakaStyle.TEXT, false, rowX, ry, rowW, alpha, rowStep);
+            if (info.bids != null) ry = heroRow(graphics, "Bids", String.valueOf(info.bids), AlpakaStyle.TEXT, false, rowX, ry, rowW, alpha, rowStep);
             if (info.endsIn != null) {
                 long seconds = Coins.seconds(info.endsIn);
-                ry = heroRow(graphics, "Ends In", info.endsIn, seconds >= 0 && seconds < 300 ? MarketInk.ink(RED) : AlpakaStyle.TEXT, false, rowX, ry, rowW, alpha);
+                ry = heroRow(graphics, "Ends In", info.endsIn, seconds >= 0 && seconds < 300 ? MarketInk.ink(RED) : AlpakaStyle.TEXT, false, rowX, ry, rowW, alpha, rowStep);
             }
-            if (info.status != null) ry = heroRow(graphics, "Status", info.status, info.isOver() ? MarketInk.ink(RED) : MarketInk.ink(GREEN), false, rowX, ry, rowW, alpha);
+            if (info.status != null) ry = heroRow(graphics, "Status", info.status, info.isOver() ? MarketInk.ink(RED) : MarketInk.ink(GREEN), false, rowX, ry, rowW, alpha, rowStep);
         } else if (info != null && info.type == LoreInfo.Type.PRODUCT) {
-            if (info.buyPrice != null) ry = heroRow(graphics, "Buy Price", Coins.full(info.buyPrice), MarketInk.ink(COIN), true, rowX, ry, rowW, alpha);
-            if (info.sellPrice != null) ry = heroRow(graphics, "Sell Price", Coins.full(info.sellPrice), MarketInk.ink(COIN), true, rowX, ry, rowW, alpha);
+            if (info.buyPrice != null) ry = heroRow(graphics, "Buy Price", Coins.full(info.buyPrice), MarketInk.ink(COIN), true, rowX, ry, rowW, alpha, rowStep);
+            if (info.sellPrice != null) ry = heroRow(graphics, "Sell Price", Coins.full(info.sellPrice), MarketInk.ink(COIN), true, rowX, ry, rowW, alpha, rowStep);
+        }
+        if (info != null && info.type == LoreInfo.Type.AUCTION) {
+            int actionsHeight = fits ? ((n + cols - 1) / cols) * ((buttons ? buttonH : CARD_H) + (buttons ? buttonGap : GAP)) : 0;
+            int lines = Math.min(4, (bottom - actionsHeight - ry - 10) / 11);
+            if (lines > 0) loreLines(graphics, stack, rowX + 2, ry + 6, rowW - 4, lines, alpha);
         }
         // Before the actions, which are drawn over the card and take their own clicks and tooltips.
         hits.add(new Hit(px, py, w, h, (b, s) -> click(slot, b, s), false));
@@ -1499,16 +1643,24 @@ public class MarketScreen extends ContainerScreen {
 
         int x = px + 6;
         int aw = w - 12;
-        int itemH = buttons ? HERO_BUTTON_H : CARD_H;
-        int gap = buttons ? HERO_BUTTON_GAP : GAP;
+        int itemH = buttons ? buttonH : CARD_H;
+        int gap = buttons ? buttonGap : GAP;
         int itemW = (aw - (cols - 1) * gap) / cols;
         int rows = (n + cols - 1) / cols;
         int y0 = bottom - (rows * (itemH + gap) - gap);
+        if (grouped) y0 -= groupH * 2;
         for (int i = 0; i < n; i++) {
             int action = actions.get(i);
-            int key = nextKey(action);
             int ax = x + (i % cols) * (itemW + gap);
             int ay = y0 + (i / cols) * (itemH + gap);
+            if (grouped) {
+                ay += i < 2 ? groupH : groupH * 2;
+                if (i == 0 || i == 2) {
+                    graphics.text(this.font, GuiFont.text(i == 0 ? "Buy" : "Sell"), ax + 2, ay - groupH + 1,
+                            i == 0 ? MarketInk.ink(GREEN) : MarketInk.ink(COIN), false);
+                }
+            }
+            int key = ay >= clipY && ay + itemH <= clipY + clipH ? nextKey(action) : 0;
             float in = entrance(index + i, now);
             ay += Math.round((1 - in) * 6);
             if (buttons) {
@@ -1621,8 +1773,8 @@ public class MarketScreen extends ContainerScreen {
     }
 
     private int heroRow(GuiGraphicsExtractor graphics, String label, String value, int color, boolean coin,
-                        int x, int y, int w, float alpha) {
-        ModernGuiUtils.drawRoundedRect(graphics, x - 2, y - 3, w + 4, 14, 3, MarketIcons.fade(AlpakaStyle.PANEL, 0.55f * alpha));
+                        int x, int y, int w, float alpha, int step) {
+        ModernGuiUtils.drawRoundedRect(graphics, x - 2, y - 3, w + 4, step - 1, 3, MarketIcons.fade(AlpakaStyle.PANEL, 0.55f * alpha));
         graphics.text(this.font, GuiFont.text(label), x + 2, y, MarketIcons.fade(AlpakaStyle.TEXT_MUTED, alpha), false);
         int labelW = GuiFont.width(this.font, label);
         int room = w - labelW - 16;
@@ -1635,10 +1787,37 @@ public class MarketScreen extends ContainerScreen {
         int vw = GuiFont.width(this.font, shown);
         int vx = x + w - 2 - vw;
         graphics.text(this.font, GuiFont.text(shown), vx, y, MarketIcons.fade(color, alpha), false);
-        return y + 15;
+        return y + step;
     }
 
     // ---- Footer ---------------------------------------------------------------------------------
+
+    private String extraLabel(int slot) {
+        String name = plain(slot).name();
+        return name.equals("Advanced Search") ? "Advanced" : AlpakaStyle.ellipsize(this.font, name, 90);
+    }
+
+    private boolean extrasInFooter(MarketMenu m) {
+        if (m.extrasInFooter()) return true;
+        if (m.extras.size() > 2) return false;
+        int used = PAD * 2 + footButtonWidth("Classic") + footButtonWidth("Inventory") + 16;
+        if (m.layout == MarketMenu.Layout.GRID && !m.content.isEmpty()) used += GuiFont.width(this.font, countLabel(m)) + 8;
+        if (m.controls.containsKey(MarketMenu.Control.NEXT) || m.controls.containsKey(MarketMenu.Control.PREVIOUS)) {
+            String page = pageLabel(m);
+            used += 46 + GuiFont.width(this.font, page);
+        }
+        for (int slot : m.extras) used += GuiFont.width(this.font, extraLabel(slot)) + 30
+                + (plain(slot).name().equals("Create Auction") || plain(slot).name().equals("Reset Settings") ? 16 : 0);
+        return used <= panelW();
+    }
+
+    private String pageLabel(MarketMenu m) {
+        return m.page > 0 ? (m.pages > 0 ? "Page " + m.page + " of " + m.pages : "Page " + m.page) : "Page";
+    }
+
+    private String keyHint(KeyMapping mapping) {
+        return Markets.hotkeys(kind) && !mapping.isUnbound() ? " · " + mapping.getTranslatedKeyMessage().getString() : "";
+    }
 
     private void drawFooter(GuiGraphicsExtractor graphics, MarketMenu m, int mx, int my, int x, int y, int w) {
         ModernGuiUtils.drawRect(graphics, x + PAD, y, w - PAD * 2, 1, AlpakaStyle.LINE);
@@ -1651,10 +1830,10 @@ public class MarketScreen extends ContainerScreen {
             AlpakaStyle.chevronButton(graphics, lx, by, 16, true, hoverPrev, previous != null);
             if (previous != null) {
                 hits.add(new Hit(lx, by, 16, 16, (b, s) -> click(previous, b, s), false));
-                if (hoverPrev) hoveredStack = stack(previous);
+                if (hoverPrev) tip("previous", "Previous Page" + keyHint(MarketKeys.of(kind).previousPage()));
             }
             lx += 20;
-            String page = m.page > 0 ? (m.pages > 0 ? "Page " + m.page + " of " + m.pages : "Page " + m.page) : "Page";
+            String page = pageLabel(m);
             graphics.text(this.font, GuiFont.text(page), lx, by + 4, AlpakaStyle.TEXT_SOFT, false);
             lx += GuiFont.width(this.font, page) + 4;
             boolean hoverNext = next != null && AlpakaStyle.inside(mx, my, lx, by, 16, 16);
@@ -1662,12 +1841,14 @@ public class MarketScreen extends ContainerScreen {
             if (next != null) {
                 int nx = lx;
                 hits.add(new Hit(nx, by, 16, 16, (b, s) -> click(next, b, s), false));
-                if (hoverNext) hoveredStack = stack(next);
+                if (hoverNext) tip("next", "Next Page" + keyHint(MarketKeys.of(kind).nextPage()));
             }
             lx += 22;
         }
         if (!m.empty && !m.content.isEmpty() && m.layout == MarketMenu.Layout.GRID) {
-            graphics.text(this.font, GuiFont.text(countLabel(m)), lx, by + 4, AlpakaStyle.TEXT_MUTED, false);
+            String count = countLabel(m);
+            graphics.text(this.font, GuiFont.text(count), lx, by + 4, AlpakaStyle.TEXT_MUTED, false);
+            lx += GuiFont.width(this.font, count) + 8;
         }
 
         // On the right: the inventory drawer and the way back to the vanilla chest.
@@ -1676,7 +1857,8 @@ public class MarketScreen extends ContainerScreen {
         boolean hoverClassic = AlpakaStyle.inside(mx, my, rx, by, bw, 16);
         footButton(graphics, rx, by, bw, MarketIcons.Glyph.CLASSIC, "Classic", hoverClassic, false);
         hits.add(new Hit(rx, by, bw, 16, (b, s) -> CLASSIC.add(kind), true));
-        if (hoverClassic) tip("classic", "Show Hypixel's own menu instead, until you restart the game.");
+        if (hoverClassic) tip("classic", "Show Hypixel's menu. Alpaka View switches back.");
+        if (confirmation(m)) return;
         int iw = footButtonWidth("Inventory");
         int ix = rx - 4 - iw;
         boolean hoverInv = AlpakaStyle.inside(mx, my, ix, by, iw, 16);
@@ -1684,10 +1866,10 @@ public class MarketScreen extends ContainerScreen {
         hits.add(new Hit(ix, by, iw, 16, (b, s) -> inventoryOpen = !inventoryOpen, true));
 
         // A page's one or two extra buttons, such as the Bazaar's View Graphs, before them.
-        if (m.extrasInFooter()) {
+        if (extrasInFooter(m)) {
             int ex = ix - 8;
             for (int slot : m.extras) {
-                String label = AlpakaStyle.ellipsize(this.font, plain(slot).name(), 90);
+                String label = extraLabel(slot);
                 String keyLabel = extraKey(slot);
                 int ew = GuiFont.width(this.font, label) + 26 + (keyLabel != null ? GuiFont.width(this.font, keyLabel) + 8 : 0);
                 ex -= ew;
@@ -1964,11 +2146,18 @@ public class MarketScreen extends ContainerScreen {
 
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
+        draggingScroll = false;
         return classic() ? super.mouseReleased(event) : true;
     }
 
     @Override
     public boolean mouseDragged(MouseButtonEvent event, double deltaX, double deltaY) {
+        if (!classic() && draggingScroll && event.button() == 0 && contentScroll.max > 0) {
+            double ratio = (event.y() - scrollTrackY - scrollThumbH / 2.0) / Math.max(1, scrollTrackH - scrollThumbH);
+            contentScroll.target = Math.max(0, Math.min(contentScroll.max, ratio * contentScroll.max));
+            contentScroll.current = contentScroll.target;
+            return true;
+        }
         return classic() ? super.mouseDragged(event, deltaX, deltaY) : true;
     }
 
@@ -2092,6 +2281,10 @@ public class MarketScreen extends ContainerScreen {
 
     static void devInventory(boolean open) {
         inventoryOpen = open;
+    }
+
+    static void devHistory(boolean open) {
+        historyOpen = open;
     }
 
     static void devClassic(MarketKind kind, boolean classic) {

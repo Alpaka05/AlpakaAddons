@@ -397,6 +397,11 @@ public final class DevScreenshotTour {
             new Stop(null, () -> net.alpaka.addons.features.market.MarketPreview.inventory(false), () -> true, 1),
             new Stop("market-ah-view", () -> Minecraft.getInstance().gui.setScreen(
                     net.alpaka.addons.features.market.MarketPreview.auctionView()), () -> true, 80),
+            new Stop("market-ah-view-history", () -> {
+                net.alpaka.addons.features.market.MarketPreview.history(true);
+                scroll(0.65, 0.4, -8);
+            }, () -> true, 80),
+            new Stop(null, () -> net.alpaka.addons.features.market.MarketPreview.history(false), () -> true, 1),
             screen("market-ah-confirm", net.alpaka.addons.features.market.MarketPreview::auctionConfirm),
             screen("market-bazaar", net.alpaka.addons.features.market.MarketPreview::bazaar),
             new Stop("market-bazaar-hover", () -> placeMouse(0.62, 0.42), () -> true, 15),
@@ -404,6 +409,15 @@ public final class DevScreenshotTour {
             // With SkyCofl's price history beside the product; it loads from the network, so it gets time.
             new Stop("market-bazaar-product", () -> Minecraft.getInstance().gui.setScreen(
                     net.alpaka.addons.features.market.MarketPreview.bazaarProduct()), () -> true, 100),
+            new Stop("market-bazaar-product-no-history", () -> {
+                AlpakaConfig.instance.marketPriceHistoryEnabled = false;
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.bazaarProduct());
+            }, () -> true, 30),
+            new Stop(null, () -> {
+                AlpakaConfig.instance.marketPriceHistoryEnabled = true;
+                net.alpaka.addons.features.market.MarketPreview.history(true);
+                scroll(0.65, 0.4, -8);
+            }, () -> true, 30),
             new Stop("market-graph-hover", () -> placeMouse(0.72, 0.3), () -> true, 10),
             new Stop("market-graph-month", () -> {
                 AlpakaConfig.instance.marketPriceHistoryRange = 2;
@@ -411,9 +425,10 @@ public final class DevScreenshotTour {
             }, () -> true, 80),
             new Stop(null, () -> {
                 AlpakaConfig.instance.marketPriceHistoryRange = 1;
+                net.alpaka.addons.features.market.MarketPreview.history(false);
                 placeMouse(0.5, 0.97);
             }, () -> true, 1),
-            // The product with the inventory open: the actions in the hero stay free, the drawer covers the order book.
+            // The inventory has its own area below the product, leaving the order book usable.
             new Stop("market-bazaar-product-inventory", () -> {
                 net.alpaka.addons.features.market.MarketPreview.inventory(true);
                 Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.bazaarProduct());
@@ -458,6 +473,9 @@ public final class DevScreenshotTour {
             screen("market-input-amount", () -> net.alpaka.addons.features.market.MarketPreview.input(
                     new String[] {"", "^^^^^^^^^^^^^^^", "Enter amount", "to order"},
                     net.alpaka.addons.features.market.MarketKind.BAZAAR, null)),
+            screen("market-input-amount-invalid", () -> net.alpaka.addons.features.market.MarketPreview.input(
+                    new String[] {"", "^^^^^^^^^^^^^^^", "Enter amount", "to order"},
+                    net.alpaka.addons.features.market.MarketKind.BAZAAR, "1.5")),
             new Stop("market-classic", () -> {
                 net.alpaka.addons.features.market.MarketPreview.classic(net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, true);
                 Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.auctionBrowser());

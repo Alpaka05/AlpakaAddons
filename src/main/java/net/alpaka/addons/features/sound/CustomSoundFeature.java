@@ -91,17 +91,17 @@ public class CustomSoundFeature {
 
     public static void playButtonClickSound() {
         if (!AlpakaConfig.instance.customSoundButtonClick) return;
-        playSound(BUTTON_CLICK_SOUND, 1.0f);
+        playSound(BUTTON_CLICK_SOUND, AlpakaConfig.instance.customSoundButtonClickVolume);
     }
 
     public static void playBlazeDeathSound() {
         if (!AlpakaConfig.instance.customSoundBlazeDeath) return;
-        playSound(BLAZE_DEATH_SOUND);
+        playSound(BLAZE_DEATH_SOUND, AlpakaConfig.instance.customSoundBlazeDeathVolume);
     }
 
     public static void playInventoryClickSound() {
         if (!AlpakaConfig.instance.customSoundInventoryClick) return;
-        playSound(INVENTORY_CLICK_SOUND);
+        playSound(INVENTORY_CLICK_SOUND, AlpakaConfig.instance.customSoundInventoryClickVolume);
     }
 
     /**
@@ -110,64 +110,61 @@ public class CustomSoundFeature {
      */
     public static void playDamageSound() {
         if (!AlpakaConfig.instance.customSoundPlayerHurt) return;
-        playSound(DAMAGE_SOUND);
+        playSound(DAMAGE_SOUND, AlpakaConfig.instance.customSoundPlayerHurtVolume);
     }
 
     public static void playHeartbeatSound() {
         if (!AlpakaConfig.instance.customSoundLowHpHeartbeat) return;
-        playSound(HEARTBEAT_SOUND);
+        playSound(HEARTBEAT_SOUND, AlpakaConfig.instance.customSoundLowHpHeartbeatVolume);
     }
 
     public static void playBossSpawnSound() {
         if (!AlpakaConfig.instance.customSoundNotification) return;
-        playSound(BOSS_SPAWN_SOUND);
+        playSound(BOSS_SPAWN_SOUND, AlpakaConfig.instance.customSoundNotificationVolume);
     }
 
     public static void playInventoryOpenSound() {
         if (!AlpakaConfig.instance.customSoundInventoryOpenClose) return;
-        playSound(INVENTORY_OPEN_SOUND);
+        playSound(INVENTORY_OPEN_SOUND, AlpakaConfig.instance.customSoundInventoryOpenCloseVolume);
     }
 
     public static void playInventoryCloseSound() {
         if (!AlpakaConfig.instance.customSoundInventoryOpenClose) return;
-        playSound(INVENTORY_CLOSE_SOUND);
+        playSound(INVENTORY_CLOSE_SOUND, AlpakaConfig.instance.customSoundInventoryOpenCloseVolume);
     }
 
     public static void playZombieRemedySound() {
         if (!AlpakaConfig.instance.customSoundZombieRemedy) return;
-        playSound(ZOMBIE_REMEDY_SOUND);
+        playSound(ZOMBIE_REMEDY_SOUND, AlpakaConfig.instance.customSoundZombieRemedyVolume);
     }
 
     public static void playHitSound() {
         if (!AlpakaConfig.instance.customSoundSuccessfulHit) return;
-        playSound(SUCCESSFUL_HIT_SOUND);
+        playSound(SUCCESSFUL_HIT_SOUND, AlpakaConfig.instance.customSoundSuccessfulHitVolume);
     }
 
     public static void playHotbarEquipSound() {
         if (!AlpakaConfig.instance.customSoundHotbarScroll) return;
-        playSound(HOTBAR_EQUIP_SOUND);
+        playSound(HOTBAR_EQUIP_SOUND, AlpakaConfig.instance.customSoundHotbarScrollVolume);
     }
 
     public static void playRareDropSound() {
         if (!AlpakaConfig.instance.customSoundRareDrop) return;
-        playSound(RARE_DROP_SOUND);
+        playSound(RARE_DROP_SOUND, AlpakaConfig.instance.customSoundRareDropVolume);
     }
 
     public static void playInsaneDropSound() {
         if (!AlpakaConfig.instance.customSoundRareDrop) return;
-        playSound(INSANE_DROP_SOUND);
+        playSound(INSANE_DROP_SOUND, AlpakaConfig.instance.customSoundRareDropVolume);
     }
 
-    private static void playSound(SoundEvent sound) {
-        playSound(sound, 1.0f);
-    }
-
-    private static void playSound(SoundEvent sound, float pitch) {
+    /** Plays at the sound's own volume, scaled by the shared custom sounds volume. */
+    private static void playSound(SoundEvent sound, float volume) {
         if (!AlpakaConfig.instance.customSoundsEnabled) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc != null && mc.getSoundManager() != null && sound != null) {
-            float vol = AlpakaConfig.instance.customSoundsVolume;
-            mc.getSoundManager().play(SimpleSoundInstance.forUI(sound, pitch, vol));
+            float vol = AlpakaConfig.instance.customSoundsVolume * volume;
+            mc.getSoundManager().play(SimpleSoundInstance.forUI(sound, 1.0f, vol));
         }
     }
 }

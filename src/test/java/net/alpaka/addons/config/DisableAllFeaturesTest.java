@@ -56,6 +56,8 @@ class DisableAllFeaturesTest {
             "cacheResourcePackEnabled", "guildPrefixEnabled", "bridgeBotFormatterEnabled", "ragnarockEnabled",
             "onlyCritDamageEnabled", "deployableTimerEnabled", "dungeonMapEnabled", "leapMenuEnabled", "customAuctionHouseEnabled", "customBazaarEnabled",
             "marketPriceHistoryEnabled", "customSignInputEnabled", "chestValueEnabled",
+            "starredMobsHighlightEnabled",
+            "dungeonSolversEnabled", "terminalSolversEnabled", "terminalCustomGui", "deviceSolversEnabled",
             // Cosmetics
             "customNameTagEnabled", "chromaHatEnabled", "playerScaleEnabled", "customDamageTagsEnabled",
             // Utility and sounds
@@ -76,6 +78,7 @@ class DisableAllFeaturesTest {
             "dungeonMapPlayerHeads", "dungeonMapRotateHeads", "dungeonMapHeadBorder", "dungeonMapSmoothMarkers",
             "dungeonMapRoomNames", "dungeonMapRoomSecrets", "dungeonMapHideCheckmarks",
             "leapMenuShowMap",
+            "starredMobsHideNames", "starredMobsHighlightStyle",
             // Block Overlay
             "blockOutlineEnabled", "blockFillEnabled", "blockFadeInEnabled", "blockChromaEnabled",
             "blockIgnoreDepth", "blockIgnorePlants", "blockHideOnEtherwarp",
@@ -99,6 +102,14 @@ class DisableAllFeaturesTest {
             // Chest Value: whether it shows, and how
             "chestValueShown", "chestValueIncludeInventory", "chestValueSide", "chestValueSort",
             "chestValueX", "chestValueY",
+            // Dungeon solvers: each puzzle, terminal and device has its own switch under its master
+            "solveThreeWeirdos", "solveQuiz", "solveTicTacToe", "solveHigherOrLower", "solveCreeperBeams",
+            "solveTeleportMaze", "solveWaterBoard", "solveBoulder", "solveIceFill", "solveIcePath",
+            "waterBoardFastSolutions",
+            "dungeonSolverLabels", "solvePanesTerminal", "solveRubixTerminal", "solveNumbersTerminal",
+            "solveStartsWithTerminal", "solveSelectAllTerminal", "solveMelodyTerminal", "terminalHideOtherItems",
+            "terminalPredictClicks", "terminalBlockWrongClicks", "terminalFirstClickGuard", "terminalRateGuard",
+            "solveSimonSays", "solveArrowAlign", "solveLightsDevice", "solveSharpshooter",
             // HUD style: how things look, like the fonts and colors
             "hudBlurAll", "hudSmoothFontAll", "slayerHudBlur", "slayerHudSmoothFont", "slayerTimerHudBlur",
             "slayerTimerHudSmoothFont", "performanceHudBlur", "performanceHudSmoothFont", "inventoryHudBlur",

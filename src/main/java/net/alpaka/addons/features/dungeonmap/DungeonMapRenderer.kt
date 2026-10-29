@@ -421,8 +421,11 @@ object DungeonMapRenderer {
         private var lastPalette = intArrayOf()
         private var lastCover = 0
 
-        /** [cover] replaces checkmark pixels under labels; [coverRevision] tells when it changed. */
-        fun updateMap(snapshot: DungeonMapSnapshot, palette: IntArray, cover: IntArray?, coverRevision: Int) {
+        /**
+         * [cover] replaces checkmark pixels under labels; [coverRevision] tells when it changed. A map
+         * drawn without labels leaves both out.
+         */
+        fun updateMap(snapshot: DungeonMapSnapshot, palette: IntArray, cover: IntArray? = null, coverRevision: Int = 0) {
             if (revision == snapshot.revision && palette.contentEquals(lastPalette) && coverRevision == lastCover) return
             val colors = snapshot.colors ?: return
             val inks = snapshot.inks ?: return

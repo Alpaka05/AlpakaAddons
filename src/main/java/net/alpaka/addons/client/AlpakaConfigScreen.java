@@ -847,7 +847,9 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             rowY = drawSetting(graphics, mouseX, mouseY, option, rowX, rowY, rowW, x, w, clipY, clipH, deltaSec);
         }
 
-        detailScroll.max = Math.max(0, (rowY + detailScroll.offset()) - startY + 6 - clipH);
+        // rowY - startY is the content's height whatever the scroll; adding the offset again made the
+        // limit grow with every turn of the wheel, until the column scrolled away into emptiness.
+        detailScroll.max = Math.max(0, rowY - startY + 6 - clipH);
         detailScroll.update(deltaSec);
         AlpakaStyle.scrollFades(graphics, x, clipY, w, clipH, detailScroll.offset() > 0, detailScroll.offset() + 1 < detailScroll.max);
         graphics.disableScissor();
@@ -997,7 +999,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                 drawLabel(graphics, option.getTitle(), rowX + 4, labelY, fieldX - 8 - (rowX + 4));
                 boolean focused = focusedText == option;
                 boolean fieldHover = inside(mouseX, mouseY, fieldX, rowY + 2, fieldW, rowH - 4);
-                AlpakaStyle.textField(graphics, this.font, fieldX, rowY + 2, fieldW, rowH - 4, option.getText(),
+                AlpakaStyle.textField(graphics, this.font, fieldX, rowY + 2, fieldW, rowH - 4, option.getShownText(),
                         option.getPlaceholder(), focused, fieldHover, caretBlinkFrom);
                 if (shown) {
                     hits.add(Hit.quiet(rowX, hitY, rowW, rowH, (mx, my) -> {
@@ -1338,9 +1340,11 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         if (scrollY == 0) return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
         int featX = panelX() + sidebarW();
         int detailX = featX + featureColumnW();
-        if (mouseX < featX) sidebarScroll.by(-scrollY * 20);
-        else if (mouseX < detailX) featureScroll.by(-scrollY * 24);
-        else detailScroll.by(-scrollY * 24);
+        // In setup mode the sidebar and the feature list are folded away and only the settings are
+        // left, so the wheel turns those wherever the mouse is.
+        if (setupProgress >= 0.999f || mouseX >= detailX) detailScroll.by(-scrollY * 24);
+        else if (mouseX < featX) sidebarScroll.by(-scrollY * 20);
+        else featureScroll.by(-scrollY * 24);
         return true;
     }
 
@@ -1348,7 +1352,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     public boolean charTyped(CharacterEvent event) {
         if (focusedText != null) {
             int codePoint = event.codepoint();
-            if (codePoint >= 32 && codePoint != 127 && focusedText.getText().length() < MAX_TEXT_OPTION_LENGTH) {
+            if (codePoint >= 32 && codePoint != 127 && focusedText.getText().length() < focusedText.getMaxLength()) {
                 focusedText.setText(focusedText.getText() + (char) codePoint);
             }
             caretBlinkFrom = System.currentTimeMillis();
@@ -1382,6 +1386,20 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             return true;
         }
         if (focusedText != null) {
+            // Pasting is how a key or a name usually arrives; the first line of the clipboard,
+            // cut to what the field takes.
+            if (event.isPaste()) {
+                String clip = this.minecraft == null ? null : this.minecraft.keyboardHandler.getClipboard();
+                if (clip != null) {
+                    int newline = clip.indexOf('\n');
+                    if (newline >= 0) clip = clip.substring(0, newline);
+                    clip = clip.replace("\r", "").replace("\t", " ").trim();
+                    String joined = focusedText.getText() + clip;
+                    focusedText.setText(joined.substring(0, Math.min(joined.length(), focusedText.getMaxLength())));
+                    caretBlinkFrom = System.currentTimeMillis();
+                }
+                return true;
+            }
             if (key == org.lwjgl.glfw.GLFW.GLFW_KEY_BACKSPACE) {
                 String current = focusedText.getText();
                 if (!current.isEmpty()) focusedText.setText(current.substring(0, current.length() - 1));

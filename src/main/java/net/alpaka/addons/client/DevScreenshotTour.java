@@ -51,6 +51,15 @@ public final class DevScreenshotTour {
         return new Stop(shot, () -> Minecraft.getInstance().gui.setScreen(screen.get()), () -> true, 30);
     }
 
+    /** The Profile Dashboard on a player and page, once what the page loads has arrived. */
+    private static Stop profile(String shot, String player, String page) {
+        net.alpaka.addons.features.profile.ProfileDashboardScreen[] open = new net.alpaka.addons.features.profile.ProfileDashboardScreen[1];
+        return new Stop(shot, () -> {
+            open[0] = net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpen(player, page);
+            Minecraft.getInstance().gui.setScreen(open[0]);
+        }, () -> open[0] != null && open[0].devReady(), 30);
+    }
+
     private static final List<Stop> STOPS = "leap-menu".equals(System.getenv(ENV)) ? List.of(
             screen("leap-menu-settings", () -> AlpakaConfigScreen.openOnOption(null, "leap_menu_enabled")),
             screen("leap-menu-map", () -> leapMenuPreview(true)),
@@ -103,6 +112,7 @@ public final class DevScreenshotTour {
             screen("config-aura", () -> AlpakaConfigScreen.openOn("Cosmetics", "Aura")),
             screen("config-search", () -> new AlpakaConfigScreen(null, "blaze")),
             screen("config-inventory-hud", () -> AlpakaConfigScreen.openOn("Interface", "Inventory HUD")),
+            screen("config-custom-tab", () -> AlpakaConfigScreen.openOn("Interface", "Custom Tab")),
             screen("config-hud-style", () -> AlpakaConfigScreen.openOn("Design", "HUD Style")),
             screen("config-better-chat", () -> AlpakaConfigScreen.openOn("Chat", "Better Chat")),
             screen("config-style-timer", () -> AlpakaConfigScreen.openOn("Slayer", "Slayer Boss Timer")),
@@ -117,9 +127,30 @@ public final class DevScreenshotTour {
             screen("config-menu-font", () -> AlpakaConfigScreen.openOn("Design", "Menu Font").withChoiceOpen()),
             screen("config-world", () -> AlpakaConfigScreen.openOn("World", "Block Overlay")),
             screen("config-world-sky", () -> AlpakaConfigScreen.openOn("World", "Sky Effects")),
+            screen("config-dungeon", () -> AlpakaConfigScreen.openOn("Dungeon", "Solvers")),
+            screen("config-dungeon-terminals", () -> AlpakaConfigScreen.openOn("Dungeon", "Terminal Solvers")),
             screen("config-viewmodel", () -> AlpakaConfigScreen.openOn("Viewmodel", "Viewmodel Modifiers")),
+            // The wheel turned on over the settings in several goes, well past their end: the column
+            // stops at its last setting instead of scrolling on into emptiness.
+            new Stop(null, () -> Minecraft.getInstance().gui.setScreen(AlpakaConfigScreen.openOn("Viewmodel", "Viewmodel Modifiers")),
+                    () -> true, 10),
+            new Stop(null, () -> scroll(0.97, 0.5, -10), () -> true, 10),
+            new Stop(null, () -> scroll(0.97, 0.5, -10), () -> true, 10),
+            new Stop(null, () -> scroll(0.97, 0.5, -10), () -> true, 10),
+            new Stop("config-viewmodel-scrolled-end", () -> scroll(0.97, 0.5, -10), () -> true, 30),
             screen("color-picker", () -> new ColorPickerScreen(null, "Accent Color", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
             screen("wheel-editor", () -> new CommandWheelConfigScreen(new CustomMainMenuScreen())),
+            new Stop("shortcuts-editor", () -> {
+                AlpakaConfig.instance.commandAliases = new java.util.ArrayList<>(List.of(
+                        new AlpakaConfig.CommandAlias("/v", "/visit"),
+                        new AlpakaConfig.CommandAlias("/pa", "/p accept"),
+                        new AlpakaConfig.CommandAlias("/v", "/viewrecipe")));
+                AlpakaConfig.instance.commandKeyShortcuts = new java.util.ArrayList<>(List.of(
+                        new AlpakaConfig.KeyShortcut("key.keyboard.y", 0, "/sb menu"),
+                        new AlpakaConfig.KeyShortcut("key.keyboard.h", 2, "/warp hub")));
+                Minecraft.getInstance().gui.setScreen(new CommandShortcutsConfigScreen(new CustomMainMenuScreen()));
+            }, () -> true, 30),
+            screen("config-shortcuts", () -> AlpakaConfigScreen.openOn("Main", "Command Shortcuts")),
             screen("hud-editor", () -> {
                 // Every HUD at its default place, as a fresh config has them.
                 for (net.alpaka.addons.client.hud.HudElement element : net.alpaka.addons.client.hud.HudRegistry.ELEMENTS) {
@@ -220,8 +251,39 @@ public final class DevScreenshotTour {
                     () -> true, 10),
             new Stop("confirm-quick-commands-after-reset", () -> click(((AlpakaConfirmScreen) screen()).devConfirmPoint()),
                     () -> true, 30),
+            // The Profile Dashboard on real profiles from Elite, every page, a mid-game one and a name that does not exist.
+            profile("profile-overview", "Refraction", "OVERVIEW"),
+            profile("profile-skills", "Refraction", "SKILLS"),
+            profile("profile-dungeons", "Refraction", "DUNGEONS"),
+            profile("profile-slayers", "Refraction", "SLAYERS"),
+            profile("profile-networth", "Refraction", "NETWORTH"),
+            profile("profile-pets", "Refraction", "PETS"),
+            profile("profile-collections", "Refraction", "COLLECTIONS"),
+            profile("profile-more", "Refraction", "MORE"),
+            profile("profile-midgame", "TimeDeo", "OVERVIEW"),
+            new Stop("profile-midgame-lower", () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenScrolled("TimeDeo", "OVERVIEW")), () -> true, 30),
+            new Stop("profile-skills-lower", () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenScrolled("TimeDeo", "SKILLS")), () -> true, 30),
+            // The value under the mouse on the graph.
+            new Stop("profile-graph-hover", () -> placeMouse(0.7, 0.75), () -> true, 10),
+            // Years of networth over all time, with the months nobody recorded dotted; the mouse in such a gap.
+            new Stop("profile-history-all", () -> {
+                net.alpaka.addons.features.profile.ProfileDashboardScreen.devRange("ALL");
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpen("Alpakaa", "NETWORTH"));
+                placeMouse(0.05, 0.05);
+            }, () -> true, 160),
+            new Stop("profile-history-gap", () -> placeMouse(0.82, 0.88), () -> true, 10),
+            new Stop(null, () -> net.alpaka.addons.features.profile.ProfileDashboardScreen.devRange("MONTH"), () -> true, 1),
+            profile("profile-unknown-player", "zzqqxxnotaname123", "OVERVIEW"),
             new Stop(null, DevScreenshotTour::enterWorld,
                     () -> Minecraft.getInstance().player != null && Minecraft.getInstance().gui.screen() == null, 100),
+            // The Custom Tab over a list laid out like SkyBlock's: side by side, stacked, and plain.
+            // Right after entering the world, so ALPAKA_SCREENSHOT_TOUR=custom reaches them.
+            new Stop("custom-tab", () -> customTab(0, true), () -> true, 20),
+            new Stop("custom-tab-stacked", () -> customTab(1, true), () -> true, 20),
+            new Stop("custom-tab-plain", () -> customTab(0, false), () -> true, 20),
+            new Stop(null, () -> net.alpaka.addons.features.tablist.CustomTabFeature.devShow(null), () -> true, 2),
             new Stop("world-hud", DevScreenshotTour::showHuds, () -> true, 30),
             // The screenshot preview of the picture just taken: resting in the corner, then mid-shrink.
             // A run that leaves out world-hud never gets its picture, so these two pass then.
@@ -233,6 +295,71 @@ public final class DevScreenshotTour {
             }, () -> !shoots("world-hud") || ScreenshotPreview.isOnScreen(), 2),
             new Stop("screenshot-preview", () -> {}, () -> true, 2),
             new Stop("screenshot-preview-shrink", () -> ScreenshotPreview.devFreezeAt(120.0f), () -> true, 2),
+            // The pets with their heads and skins, which only exist once a world is loaded; then the
+            // Skills page with the item icons.
+            profile("profile-pets-in-world", "Refraction", "PETS"),
+            new Stop("profile-pets-heads", () -> {}, () -> true, 60),
+            // The tooltip of a pet: its exact XP and how far past the max level it is.
+            new Stop("profile-pets-tooltip", () -> placeMouse(0.45, 0.86), () -> true, 30),
+            profile("profile-skills-in-world", "TimeDeo", "SKILLS"),
+            // The inventories: each tab once its items are in, and an item's own tooltip.
+            new Stop("profile-inv-inventory", () -> {
+                net.alpaka.addons.features.profile.ProfileDashboardScreen.devInventoryTab("INVENTORY");
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpen("Alpakaa", "INVENTORY"));
+                placeMouse(0.02, 0.02);
+            }, () -> true, 100),
+            new Stop("profile-inv-backpacks", () -> {
+                net.alpaka.addons.features.profile.ProfileDashboardScreen.devInventoryTab("BACKPACKS");
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpen("Alpakaa", "INVENTORY"));
+                placeMouse(0.02, 0.02);
+            }, () -> true, 200),
+            new Stop("profile-inv-wardrobe", () -> {
+                net.alpaka.addons.features.profile.ProfileDashboardScreen.devInventoryTab("WARDROBE");
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpen("Alpakaa", "INVENTORY"));
+                placeMouse(0.02, 0.02);
+            }, () -> true, 300),
+            new Stop("profile-inv-ender-chest", () -> {
+                net.alpaka.addons.features.profile.ProfileDashboardScreen.devInventoryTab("ENDER_CHEST");
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpen("Alpakaa", "INVENTORY"));
+                placeMouse(0.02, 0.02);
+            }, () -> true, 300),
+            new Stop("profile-inv-accessories", () -> {
+                net.alpaka.addons.features.profile.ProfileDashboardScreen.devInventoryTab("ACCESSORIES");
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpen("Alpakaa", "INVENTORY"));
+                placeMouse(0.02, 0.02);
+            }, () -> true, 300),
+            new Stop("profile-inv-bags", () -> {
+                net.alpaka.addons.features.profile.ProfileDashboardScreen.devInventoryTab("BAGS");
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpen("Alpakaa", "INVENTORY"));
+                placeMouse(0.02, 0.02);
+            }, () -> true, 300),
+            new Stop("profile-inv-tooltip", () -> {
+                net.alpaka.addons.features.profile.ProfileDashboardScreen.devInventoryTab("INVENTORY");
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpen("Alpakaa", "INVENTORY"));
+                placeMouse(0.405, 0.667);
+            }, () -> true, 60),
+            // The Farming and Mining pages of the Skills page, the pets and accessories still missing.
+            new Stop("profile-page-farming", () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenSkill("Alpakaa", "farming", false)), () -> true, 60),
+            new Stop("profile-page-farming-crops", () -> ((net.alpaka.addons.features.profile.ProfileDashboardScreen) screen()).devScroll(330),
+                    () -> true, 10),
+            new Stop("profile-page-farming-crop-tip", () -> placeMouse(0.45, 0.5), () -> true, 15),
+            new Stop("profile-page-farming-lower", () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenSkill("Alpakaa", "farming", true)), () -> true, 30),
+            new Stop("profile-page-mining", () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenSkill("Alpakaa", "mining", false)), () -> true, 30),
+            new Stop("profile-page-mining-middle", () -> ((net.alpaka.addons.features.profile.ProfileDashboardScreen) screen()).devScroll(330),
+                    () -> true, 10),
+            new Stop("profile-page-mining-lower", () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenSkill("Alpakaa", "mining", true)), () -> true, 30),
+            new Stop("profile-page-pets-missing", () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenScrolled("Alpakaa", "PETS")), () -> true, 120),
+            new Stop("profile-page-acc-missing", () -> {
+                net.alpaka.addons.features.profile.ProfileDashboardScreen.devInventoryTab("ACCESSORIES");
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenScrolled("Alpakaa", "INVENTORY"));
+                placeMouse(0.02, 0.02);
+            }, () -> true, 200),
+            new Stop("profile-page-acc-tooltip", () -> placeMouse(0.40, 0.55), () -> true, 20),
             new Stop(null, () -> ScreenshotPreview.devFreezeAt(-1.0f), () -> true, 5),
             // The Auction House and the Bazaar in the market screens, on chests filled locally.
             screen("market-ah-main", net.alpaka.addons.features.market.MarketPreview::auctionHouse),
@@ -248,6 +375,12 @@ public final class DevScreenshotTour {
                 net.alpaka.addons.features.market.MarketPreview.inventory(true);
                 Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.auctionBrowser());
             }, () -> true, 30),
+            // Scrolled to the end with the drawer open: the last cards come out above it.
+            new Stop(null, () -> {
+                placeMouse(0.75, 0.75);
+                scroll(0.45, 0.4, -10);
+            }, () -> true, 10),
+            new Stop("market-ah-inventory-scrolled-end", () -> scroll(0.45, 0.4, -10), () -> true, 30),
             new Stop(null, () -> net.alpaka.addons.features.market.MarketPreview.inventory(false), () -> true, 1),
             new Stop("market-ah-view", () -> Minecraft.getInstance().gui.setScreen(
                     net.alpaka.addons.features.market.MarketPreview.auctionView()), () -> true, 80),
@@ -321,6 +454,35 @@ public final class DevScreenshotTour {
             screen("market-config", () -> AlpakaConfigScreen.openOn("Markets", "Custom Auction House")),
             screen("market-config-price-history", () -> AlpakaConfigScreen.openOn("Markets", "Price History")),
             screen("market-config-bazaar", () -> AlpakaConfigScreen.openOn("Markets", "Custom Bazaar")),
+            // The custom terminal window for each F7/M7 terminal, on chests filled locally.
+            screen("terminal-gui-panes", () -> net.alpaka.addons.features.dungeon.terminal.TerminalScreen.preview(
+                    net.alpaka.addons.features.dungeon.terminal.TerminalKind.PANES)),
+            screen("terminal-gui-rubix", () -> net.alpaka.addons.features.dungeon.terminal.TerminalScreen.preview(
+                    net.alpaka.addons.features.dungeon.terminal.TerminalKind.RUBIX)),
+            screen("terminal-gui-numbers", () -> net.alpaka.addons.features.dungeon.terminal.TerminalScreen.preview(
+                    net.alpaka.addons.features.dungeon.terminal.TerminalKind.NUMBERS)),
+            screen("terminal-gui-starts-with", () -> net.alpaka.addons.features.dungeon.terminal.TerminalScreen.preview(
+                    net.alpaka.addons.features.dungeon.terminal.TerminalKind.STARTS_WITH)),
+            screen("terminal-gui-select-all", () -> net.alpaka.addons.features.dungeon.terminal.TerminalScreen.preview(
+                    net.alpaka.addons.features.dungeon.terminal.TerminalKind.SELECT_ALL)),
+            screen("terminal-gui-melody", () -> net.alpaka.addons.features.dungeon.terminal.TerminalScreen.preview(
+                    net.alpaka.addons.features.dungeon.terminal.TerminalKind.MELODY)),
+            // The same terminals in the vanilla chest, with the Terminal Solvers overlay (the default
+            // mode). Switched on for the tour only; not saved.
+            new Stop(null, () -> AlpakaConfig.instance.terminalSolversEnabled = true, () -> true, 1),
+            screen("terminal-overlay-panes", () -> net.alpaka.addons.features.dungeon.terminal.TerminalScreen.previewVanilla(
+                    net.alpaka.addons.features.dungeon.terminal.TerminalKind.PANES)),
+            screen("terminal-overlay-rubix", () -> net.alpaka.addons.features.dungeon.terminal.TerminalScreen.previewVanilla(
+                    net.alpaka.addons.features.dungeon.terminal.TerminalKind.RUBIX)),
+            screen("terminal-overlay-numbers", () -> net.alpaka.addons.features.dungeon.terminal.TerminalScreen.previewVanilla(
+                    net.alpaka.addons.features.dungeon.terminal.TerminalKind.NUMBERS)),
+            screen("terminal-overlay-starts-with", () -> net.alpaka.addons.features.dungeon.terminal.TerminalScreen.previewVanilla(
+                    net.alpaka.addons.features.dungeon.terminal.TerminalKind.STARTS_WITH)),
+            screen("terminal-overlay-select-all", () -> net.alpaka.addons.features.dungeon.terminal.TerminalScreen.previewVanilla(
+                    net.alpaka.addons.features.dungeon.terminal.TerminalKind.SELECT_ALL)),
+            screen("terminal-overlay-melody", () -> net.alpaka.addons.features.dungeon.terminal.TerminalScreen.previewVanilla(
+                    net.alpaka.addons.features.dungeon.terminal.TerminalKind.MELODY)),
+            new Stop(null, () -> AlpakaConfig.instance.terminalSolversEnabled = false, () -> true, 1),
             // The Item Value popup over a chest of SkyBlock items, opened the way the key opens it, over
             // the item under the mouse. Its prices come from the network, so it waits for them.
             new Stop(null, () -> Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.itemvalue.ItemValuePreview.chest()),
@@ -531,6 +693,18 @@ public final class DevScreenshotTour {
             new Stop(null, DevScreenshotTour::scoreboardAndStarlight, () -> true, 20),
             new Stop("scoreboard-starlight", () -> {}, () -> true, 5),
             new Stop("scoreboard-starlight-later", () -> {}, () -> true, 15),
+            // A Water Board room as far as the solver reads it, turned (its clay in the north-east
+            // corner) and in an F7 run by the sidebar: from the water lever with the board in a start
+            // state, then with a fourth door closed, which has no solution, then from the board
+            // looking back. Then back where the player stood, out of the run.
+            new Stop(null, () -> waterBoardRoom(true), () -> net.alpaka.addons.utils.DungeonState.inDungeon(), 60),
+            new Stop("dungeon-water-board", () -> {}, () -> true, 5),
+            new Stop("dungeon-water-board-four-doors", () -> waterBoardDoor(1, true), () -> true, 30),
+            new Stop("dungeon-water-board-back", () -> {
+                waterBoardDoor(1, false);
+                waterBoardStand(15.5, 22.5, net.minecraft.core.Direction.NORTH);
+            }, () -> true, 40),
+            new Stop(null, () -> waterBoardRoom(false), () -> true, 20),
             screen("viewmodel-setup", () -> AlpakaConfigScreen.openOn("Viewmodel", "Viewmodel Modifiers").inSetupMode()),
             screen("viewmodel-setup-swing", () -> AlpakaConfigScreen.openOn("Viewmodel", "Swing").inSetupMode()),
             new Stop("viewmodel-setup-swinging", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 1),
@@ -614,6 +788,12 @@ public final class DevScreenshotTour {
 
     private static net.minecraft.client.gui.screens.Screen screen() {
         return Minecraft.getInstance().gui.screen();
+    }
+
+    /** The mouse wheel turned at this share of the window's width and height, as the player would turn it. */
+    private static void scroll(double x, double y, double amount) {
+        net.minecraft.client.gui.screens.Screen screen = screen();
+        if (screen != null) screen.mouseScrolled(screen.width * x, screen.height * y, 0, amount);
     }
 
     /** A left click at this point of the open screen, as the player's mouse would deliver it. */
@@ -844,6 +1024,39 @@ public final class DevScreenshotTour {
         for (int i = 1; i <= 6; i++) {
             mc.gui.hud.getChat().addClientSystemMessage(Component.literal("§7Tour line " + i + " §8- a message arriving in a burst"));
         }
+    }
+
+    /** The Custom Tab on a made-up SkyBlock list, in the given layout, styled or plain. */
+    private static void customTab(int layout, boolean styled) {
+        AlpakaConfig.instance.customTabEnabled = true;
+        AlpakaConfig.instance.customTabLayout = layout;
+        AlpakaConfig.instance.customTabBlur = styled;
+        AlpakaConfig.instance.customTabSmoothFont = styled;
+        Minecraft.getInstance().gui.setScreen(null);
+        String self = Minecraft.getInstance().player.getGameProfile().name();
+        List<Component> slots = new java.util.ArrayList<>();
+        String[][] columns = {
+                {"§b§lPlayers §r§f(9)", "§r§8[§r§b312§r§8] §r§6" + self + " §r§c♲", "§8[§r§a188§r§8] §r§bNotch",
+                        "§8[§r§e244§r§8] §r§a[VIP] Steve", "§8[§r§9150§r§8] §r§7Alex", "§8[§r§c401§r§8] §r§6[MVP++] Technoblade",
+                        "§8[§r§a97§r§8] §r§7Herobrine", "§8[§r§b273§r§8] §r§b[MVP+] Dream", "§8[§r§e205§r§8] §r§7jeb_",
+                        "§8[§r§a120§r§8] §r§7Dinnerbone"},
+                {"§3§lInfo", "§b§lArea: §r§7Hub", " Server: §r§8mini12AB", " Gems: §r§a1,250", " Bank: §r§61.2B", "",
+                        "§e§lSkills: §r§aCombat 60", " Farming 50: §r§e42.1%", " Mining 60: §r§aMAX", "",
+                        "§b§lEvent: §r§eSpooky Festival", " Starts In: §r§e2h 13m"},
+                {"§2§lAccount Info", "§a§lProfile: §r§eBanana", " SB Level: §r§8[§r§b312§r§8]", " Pet: §r§6[Lvl 100] Golden Dragon", "",
+                        "§c§lSlayer:", " §r§7Inferno Demonlord IV", " §r§eSlay the boss!", "", "§d§lActive Effects: §r§e7",
+                        " §r§cGod Potion§r§f: 18h"},
+                {"§2§lAccount Info", "§6§lFire Sales:", " §r§7None", "", "§e§lElection: §r§bFinnegan", " §r§70d 7h left"},
+        };
+        for (String[] column : columns) {
+            for (int i = 0; i < net.alpaka.addons.features.tablist.TabListParser.COLUMN_SLOTS; i++) {
+                slots.add(Component.literal(i < column.length ? column[i] : ""));
+            }
+        }
+        net.alpaka.addons.features.tablist.CustomTabFeature.devShow(new net.alpaka.addons.features.tablist.CustomTabFeature.DevSample(slots,
+                Component.literal("§bYou are playing on §r§e§lMC.HYPIXEL.NET"),
+                Component.literal("\n§a§lActive Effects\n§7You have 7 active effects. Use \"/effects\" to see them!\n\n"
+                        + "§d§lCookie Buff\n§7Duration: §r§a3d 4h\n\n§aRanks, Boosters & MORE! §r§c§lSTORE.HYPIXEL.NET")));
     }
 
     /** The menu font in the chat and on a sidebar laid out like SkyBlock's. */
@@ -1112,6 +1325,132 @@ public final class DevScreenshotTour {
                 level.setBlockAndUpdate(pos, net.minecraft.world.level.block.Blocks.CLAY.defaultBlockState());
             }
         });
+    }
+
+    /**
+     * The tour's Water Board room: grid cell 2,3 of the Catacombs, its blue terracotta in the roof's
+     * north-east corner, so every position goes through a turn the way most real rooms' do.
+     */
+    private static final net.alpaka.addons.features.dungeon.room.RoomFrame WATER_BOARD = net.alpaka.addons.features.dungeon.room.RoomFrame.of(
+            2, 3, net.alpaka.addons.features.dungeon.room.RoomFrame.centre(2) + net.alpaka.addons.features.dungeon.room.RoomFrame.HALF,
+            net.alpaka.addons.features.dungeon.room.RoomFrame.centre(3) - net.alpaka.addons.features.dungeon.room.RoomFrame.HALF, 100);
+
+    /** Where the player stood before the Water Board room: x, y, z, yaw, pitch. */
+    private static double[] beforeWaterBoard = null;
+
+    /**
+     * Builds the room and puts the player at its water lever, in an F7 run by the sidebar, or takes
+     * them back where they were and out of the run. Only what the solver reads is built: a floor,
+     * the roof's middle and its clay corner, the seven levers, the five doors with 0, 2 and 4 closed,
+     * and a board with layout 1's blocks where they start.
+     */
+    private static void waterBoardRoom(boolean build) {
+        Minecraft mc = Minecraft.getInstance();
+        net.minecraft.client.server.IntegratedServer server = mc.getSingleplayerServer();
+        if (server == null || mc.player == null) return;
+        AlpakaConfig.instance.dungeonSolversEnabled = build;
+        AlpakaConfig.instance.solveWaterBoard = true;
+        AlpakaConfig.instance.inventoryHudEnabled = false;
+        mc.gui.hud.getChat().clearMessages(false);
+        String[] commands = build ? new String[]{
+                "team add tourdungeon",
+                "team modify tourdungeon prefix {text:\" ⏣ The Catacombs (F7)\",color:\"red\"}",
+                "team join tourdungeon §9",
+                "scoreboard players set §9 tour 7",
+        } : new String[]{
+                "scoreboard players reset §9 tour",
+                "team remove tourdungeon",
+        };
+        if (build) {
+            beforeWaterBoard = new double[]{mc.player.getX(), mc.player.getY(), mc.player.getZ(), mc.player.getYRot(), mc.player.getXRot()};
+        } else {
+            net.alpaka.addons.utils.DungeonState.reset();
+        }
+        double[] back = beforeWaterBoard;
+        server.execute(() -> {
+            for (String command : commands) {
+                server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), command);
+            }
+            if (build) {
+                buildWaterBoard(server.overworld());
+            } else if (back != null) {
+                server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), String.format(java.util.Locale.ROOT,
+                        "execute in minecraft:overworld run tp @a %.3f %.3f %.3f %.1f %.1f", back[0], back[1], back[2], back[3], back[4]));
+            }
+        });
+        if (build) waterBoardStand(15.5, 7.5, net.minecraft.core.Direction.SOUTH);
+    }
+
+    private static void buildWaterBoard(net.minecraft.server.level.ServerLevel level) {
+        net.alpaka.addons.features.dungeon.room.RoomFrame frame = WATER_BOARD;
+        net.minecraft.world.level.block.state.BlockState bricks = net.minecraft.world.level.block.Blocks.STONE_BRICKS.defaultBlockState();
+        for (int rx = 0; rx <= 30; rx++) {
+            for (int rz = 0; rz <= 30; rz++) level.setBlock(frame.toWorld(rx, 59, rz), bricks, 2);
+        }
+        // Only the roof's middle, where the probe finds its height, and the corner: daylight gets in.
+        level.setBlock(frame.toWorld(15, 100, 15), bricks, 2);
+        level.setBlock(frame.clay(), net.minecraft.world.level.block.Blocks.DYED_TERRACOTTA.pick(net.minecraft.world.item.DyeColor.BLUE).defaultBlockState(), 2);
+
+        java.util.Set<net.minecraft.core.BlockPos> starts = new java.util.HashSet<>();
+        for (net.alpaka.addons.features.dungeon.puzzle.WaterBoardLever lever : net.alpaka.addons.features.dungeon.puzzle.WaterBoardLever.values()) {
+            if (lever.representative(1) != null) starts.add(lever.representative(1));
+        }
+        for (int rx = 6; rx <= 24; rx++) {
+            for (int y = 58; y <= 81; y++) {
+                level.setBlock(frame.toWorld(rx, y, 28), bricks, 2);
+                // A maze of sorts in the water's plane, open in front of the blocks set back behind it.
+                boolean wall = rx == 6 || rx == 24 || (y % 4 == 0 && rx % 6 != 3);
+                net.minecraft.core.BlockPos plane = new net.minecraft.core.BlockPos(rx, y, 26);
+                boolean open = starts.contains(plane) || starts.contains(plane.offset(0, 0, 1));
+                level.setBlock(frame.toWorld(rx, y, 26), wall && !open ? bricks : net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 2);
+                level.setBlock(frame.toWorld(rx, y, 27), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), 2);
+            }
+        }
+        for (net.alpaka.addons.features.dungeon.puzzle.WaterBoardLever lever : net.alpaka.addons.features.dungeon.puzzle.WaterBoardLever.values()) {
+            net.minecraft.core.BlockPos start = lever.representative(1);
+            if (start != null) level.setBlock(frame.toWorld(start), waterBoardMaterial(lever), 2);
+            net.minecraft.core.BlockPos at = frame.toWorld(lever.lever());
+            if (!lever.isWater()) level.setBlock(at.below(), waterBoardMaterial(lever), 2);
+            level.setBlock(at, net.minecraft.world.level.block.Blocks.LEVER.defaultBlockState().setValue(
+                    net.minecraft.world.level.block.FaceAttachedHorizontalDirectionalBlock.FACE,
+                    net.minecraft.world.level.block.state.properties.AttachFace.FLOOR), 2);
+        }
+        for (int door = 0; door < 5; door++) waterBoardDoor(level, door, door % 2 == 0);
+    }
+
+    private static net.minecraft.world.level.block.state.BlockState waterBoardMaterial(net.alpaka.addons.features.dungeon.puzzle.WaterBoardLever lever) {
+        return (switch (lever) {
+            case COAL -> net.minecraft.world.level.block.Blocks.COAL_BLOCK;
+            case GOLD -> net.minecraft.world.level.block.Blocks.GOLD_BLOCK;
+            case QUARTZ -> net.minecraft.world.level.block.Blocks.QUARTZ_BLOCK;
+            case DIAMOND -> net.minecraft.world.level.block.Blocks.DIAMOND_BLOCK;
+            case EMERALD -> net.minecraft.world.level.block.Blocks.EMERALD_BLOCK;
+            case TERRACOTTA -> net.minecraft.world.level.block.Blocks.TERRACOTTA;
+            case WATER -> net.minecraft.world.level.block.Blocks.STONE_BRICKS;
+        }).defaultBlockState();
+    }
+
+    /** Opens or closes one of the room's doors, by the index the solutions use. */
+    private static void waterBoardDoor(int door, boolean closed) {
+        net.minecraft.client.server.IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+        if (server != null) server.execute(() -> waterBoardDoor(server.overworld(), door, closed));
+    }
+
+    private static void waterBoardDoor(net.minecraft.server.level.ServerLevel level, int door, boolean closed) {
+        net.minecraft.world.level.block.state.BlockState state = closed
+                ? net.minecraft.world.level.block.Blocks.WOOL.pick(net.minecraft.world.item.DyeColor.PURPLE).defaultBlockState()
+                : net.minecraft.world.level.block.Blocks.AIR.defaultBlockState();
+        for (int y = 56; y <= 57; y++) level.setBlock(WATER_BOARD.toWorld(15, y, 19 - door), state, 2);
+    }
+
+    /** The player on the room's floor at this room position, facing this way in the room. */
+    private static void waterBoardStand(double rx, double rz, net.minecraft.core.Direction facing) {
+        net.minecraft.client.server.IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+        if (server == null) return;
+        net.minecraft.world.phys.Vec3 at = WATER_BOARD.toWorld(new net.minecraft.world.phys.Vec3(rx, 60.0, rz));
+        float yaw = WATER_BOARD.toWorld(facing).toYRot();
+        server.execute(() -> server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), String.format(java.util.Locale.ROOT,
+                "execute in minecraft:overworld run tp @a %.3f %.3f %.3f %.1f %.1f", at.x, at.y, at.z, yaw, 8.0f)));
     }
 
     /** The aura in third person, facing away from the fire pits, nothing else on screen. */

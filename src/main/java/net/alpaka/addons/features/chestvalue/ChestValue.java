@@ -8,6 +8,8 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * What a whole menu is worth: every SkyBlock item in it at what {@link
@@ -52,6 +54,41 @@ public final class ChestValue {
         boolean priced() {
             return !Double.isNaN(each) && each > 0;
         }
+    }
+
+    /**
+     * The SkyBlock menus that hold the player's own items, by their title: chests (placed ones, the
+     * Ender Chest pages and the dungeon reward chests), backpacks, sacks, the bags, the wardrobe, pets,
+     * minions, a trade and the crafting table. Every other SkyBlock menu - the SkyBlock Menu, skill,
+     * collection and recipe pages, shops - only shows items as buttons and pictures, so its value
+     * means nothing.
+     */
+    public static boolean holdsOwnItems(String title) {
+        String t = title.trim();
+        if (t.endsWith("Chest") || t.startsWith("Ender Chest") || t.contains("Backpack") || t.contains("Sack")
+                || t.contains("Minion") || t.startsWith("You ")) return true;
+        for (String prefix : OWN_ITEM_MENUS) if (t.startsWith(prefix)) return true;
+        return false;
+    }
+
+    private static final List<String> OWN_ITEM_MENUS = List.of("Accessory Bag", "Fishing Bag", "Potion Bag", "Quiver",
+            "Personal Vault", "Wardrobe", "Pets", "Your Equipment", "Craft Item");
+
+    /** A sack's line for what it holds of an item: "Stored: 1,234/465.7k". */
+    private static final Pattern STORED = Pattern.compile("^Stored: ([\\d,.]+[kKmMbB]?)/");
+
+    /**
+     * How many of an item a sack holds, read from the item's lore, or -1 when the lore has no such
+     * line. A sack shows each item once, as a single item, whatever it holds; the lore says how many.
+     */
+    public static long sackCount(List<String> lore) {
+        for (String line : lore) {
+            Matcher m = STORED.matcher(line.trim());
+            if (!m.find()) continue;
+            Double count = Coins.parseInput(m.group(1));
+            return count == null ? -1 : Math.round(count);
+        }
+        return -1;
     }
 
     /** The same item from one or more slots, as one line of the list. */

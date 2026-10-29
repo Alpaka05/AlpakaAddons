@@ -180,7 +180,7 @@ public final class PartyInviteFeature {
     }
 
     /** The lower-case character a key produces on the current layout, or 0 when it has none. */
-    private static char keyCharacter(int key, int scancode) {
+    static char keyCharacter(int key, int scancode) {
         String name = GLFW.glfwGetKeyName(key, scancode);
         if (name != null && name.length() == 1) {
             return Character.toLowerCase(name.charAt(0));

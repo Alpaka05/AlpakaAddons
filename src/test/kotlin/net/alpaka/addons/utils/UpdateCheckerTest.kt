@@ -69,6 +69,8 @@ class UpdateCheckerTest {
         assertEquals("1.10.0", newest("1.9.0", "26.2",
             release("1.9.5", "alpaka-1.9.5-mc26.2.jar"),
             release("1.10.0", "alpaka-1.10.0-mc26.2.jar")))
+        // An older release is never offered.
+        assertNull(newest("1.10.0", "26.2", release("1.9.0", "alpaka-1.9.0-mc26.2.jar")))
     }
 
     @Test
@@ -81,6 +83,13 @@ class UpdateCheckerTest {
         assertEquals("2.0.0-beta.1", newest("2.0.0-alpha+3.a1b2c3d", "26.2.1", beta, preReleases = true))
         // A suffixed tag GitHub doesn't mark as a pre-release is one all the same.
         assertNull(newest("1.4.0", "26.2", release("2.0.0-rc.1", "alpaka-2.0.0-rc.1-mc26.2.jar")))
+        // A plain tag GitHub marks as a pre-release is one too: only the pre-release stream offers it.
+        val marked = release("1.6.0", "alpaka-1.6.0-mc26.2.jar", prerelease = true)
+        assertNull(newest("1.5.0", "26.2", marked))
+        assertEquals("1.6.0", newest("1.5.0", "26.2", marked, preReleases = true))
+        // A running 2.0.0 is past its own release candidate.
+        assertNull(newest("2.0.0", "26.2", release("2.0.0-rc.1", "alpaka-2.0.0-rc.1-mc26.2.jar", prerelease = true),
+            preReleases = true))
     }
 
     @Test

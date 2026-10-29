@@ -187,6 +187,8 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
     /** The mouse's place from the screen's centre, -1 → 1, eased; drives the parallax. */
     private var parallaxX = 0f
     private var parallaxY = 0f
+    /** How much of the background's slow drift is shown, 0 → 1, eased; off with the parallax. */
+    private var driftWeight = if (AlpakaConfig.instance.customMainMenuParallax) 1f else 0f
     private var lastFrameMs = 0L
 
     /** The release notes window while it is open, and when it opened. */
@@ -347,7 +349,7 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         val mc = this.minecraft ?: Minecraft.getInstance()
         val preciseX = (mc.mouseHandler.xpos() * this.width / mc.window.screenWidth).toFloat()
         val preciseY = (mc.mouseHandler.ypos() * this.height / mc.window.screenHeight).toFloat()
-        // With the parallax off the layers stay centred; easing towards the centre rather than
+        // With the parallax off the layers stay centred and the background stops drifting; easing towards the centre rather than
         // snapping to it lets a toggle while the menu is open glide back.
         val parallaxOn = AlpakaConfig.instance.customMainMenuParallax
         val targetX = if (parallaxOn) ((preciseX - this.width / 2f) / (this.width / 2f)).coerceIn(-1f, 1f) else 0f
@@ -355,12 +357,13 @@ class CustomMainMenuScreen : Screen(Component.literal("Custom Main Menu")) {
         val ease = 1f - kotlin.math.exp(-dt * PARALLAX_EASE_RATE)
         parallaxX += (targetX - parallaxX) * ease
         parallaxY += (targetY - parallaxY) * ease
+        driftWeight += ((if (parallaxOn) 1f else 0f) - driftWeight) * ease
         val nx = parallaxX
         val ny = parallaxY
         val layout = Layout()
 
         val placement = if (hasBackground) {
-            MenuAmbience.background(graphics, this.width, this.height, t, nx, ny, BACKGROUND_PARALLAX)
+            MenuAmbience.background(graphics, this.width, this.height, t, nx, ny, BACKGROUND_PARALLAX, driftWeight)
         } else {
             this.extractPanorama(graphics, partialTick)
             null

@@ -60,13 +60,13 @@ internal object MenuAmbience {
     class Placement(val x: Float, val y: Float, val width: Float, val height: Float)
 
     /**
-     * The picture, cover-fitted with room to move, drifting slowly and shifted against the mouse by
+     * The picture, cover-fitted with room to move, drifting slowly ([drift] of the full sway) and shifted against the mouse by
      * up to [parallax] pixels; returns where it went, so what stands in it can move with it. Drawn
      * with linear filtering: it is shown smaller or larger than its own size on nearly every
      * screen, and the nearest texel would make its fine detail shimmer.
      */
     fun background(graphics: GuiGraphicsExtractor, width: Int, height: Int, t: Float,
-                   mouseNx: Float, mouseNy: Float, parallax: Float): Placement {
+                   mouseNx: Float, mouseNy: Float, parallax: Float, drift: Float): Placement {
         val texture = Minecraft.getInstance().textureManager.getTexture(BACKGROUND)
         var drawWidth = width * OVERSCAN
         var drawHeight = drawWidth / BACKGROUND_ASPECT
@@ -76,11 +76,11 @@ internal object MenuAmbience {
         }
         val spareX = (drawWidth - width) / 2f
         val spareY = (drawHeight - height) / 2f
-        val drift = sin(t * 2f * PI.toFloat() / DRIFT_SECONDS) * spareX * DRIFT_SHARE
+        val sway = sin(t * 2f * PI.toFloat() / DRIFT_SECONDS) * spareX * DRIFT_SHARE * drift
         // On whole screen pixels: the avatar standing in the picture can only be drawn on whole
         // screen pixels, and if the picture slid between them the two would round apart and the
         // avatar would jitter against the ground. Both step together instead.
-        val x = snapToScreen(-spareX + drift - mouseNx * parallax)
+        val x = snapToScreen(-spareX + sway - mouseNx * parallax)
         val y = snapToScreen(-spareY - mouseNy * parallax * 0.5f)
 
         val roundedWidth = Math.round(drawWidth)

@@ -340,6 +340,8 @@ public final class DevScreenshotTour {
             screen("market-input-amount", () -> net.alpaka.addons.features.market.MarketPreview.input(
                     new String[] {"", "^^^^^^^^^^^^^^^", "Enter amount", "to order"},
                     net.alpaka.addons.features.market.MarketKind.BAZAAR, null)),
+            screen("market-input-rancher", () -> net.alpaka.addons.features.market.MarketPreview.input(
+                    new String[] {"", "^^^^^^", "Set your", "speed cap!"}, null, null)),
             new Stop("market-classic", () -> {
                 net.alpaka.addons.features.market.MarketPreview.classic(net.alpaka.addons.features.market.MarketKind.AUCTION_HOUSE, true);
                 Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.market.MarketPreview.auctionBrowser());

@@ -465,6 +465,8 @@ public class AlpakaConfig {
 
     // Deployable timer: the strongest power orb or flare in range, with its time left.
     public boolean deployableTimerEnabled = false;
+    /** Clicking a garden visitor's Accept Offer while items are missing opens the bazaar for them. */
+    public boolean visitorBazaarEnabled = true;
     public int deployableTimerHudX = net.alpaka.addons.client.hud.HudDefaults.DEPLOYABLE_TIMER_X;
     public int deployableTimerHudY = net.alpaka.addons.client.hud.HudDefaults.DEPLOYABLE_TIMER_Y;
     public float deployableTimerHudScale = 1.0f;
@@ -1774,6 +1776,7 @@ public class AlpakaConfig {
         this.allowApiCalls = false;
         this.slayerTimerEnabled = false;
         this.ragnarockEnabled = false;
+        this.visitorBazaarEnabled = false;
         this.deployableTimerEnabled = false;
         this.customAuctionHouseEnabled = false;
         this.customBazaarEnabled = false;

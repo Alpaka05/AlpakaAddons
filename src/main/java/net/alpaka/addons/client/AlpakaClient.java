@@ -91,6 +91,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.chat.MessageFilterFeature.register();
         net.alpaka.addons.features.tooltip.OldMasterStarsFeature.register();
         net.alpaka.addons.features.storagepreview.StoragePreviewFeature.register();
+        net.alpaka.addons.features.garden.VisitorBazaarFeature.register();
         net.alpaka.addons.features.ragnarock.RagnarockFeature.register();
         WorldAgeFeature.registerEvents();
         net.alpaka.addons.features.performance.PerformanceStats.register();

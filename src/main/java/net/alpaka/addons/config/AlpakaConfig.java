@@ -894,6 +894,18 @@ public class AlpakaConfig {
     public boolean oldMasterStarsEnabled = false;
     /** Hovering a backpack or ender chest page in the Storage menu shows what was last seen inside. */
     public boolean storagePreviewEnabled = true;
+    /** Enchantments at their highest level are drawn in {@link #maxEnchantColor} in tooltips. */
+    public boolean maxEnchantColorEnabled = false;
+    public int maxEnchantColor = 0xFFFFAA00;
+    /** Ultimate enchantments too, which Hypixel already marks with bold pink. */
+    public boolean maxEnchantColorUltimate = false;
+    /** In SkyBlock's anvil, books that combine with the one put in are highlighted. */
+    public boolean anvilCombineHelperEnabled = false;
+    public int anvilCombineHelperColor = 0x8055FF55;
+    /** Chronomatron, Ultrasequencer and Superpairs: what to click next is highlighted. */
+    public boolean experimentSolverEnabled = false;
+    public int experimentSolverNextColor = 0xA055FF55;
+    public int experimentSolverLaterColor = 0x70FFFF55;
     /**
      * One long row of twenty hearts in place of the two short ones, the hunger bar and the armor bar,
      * neither of which SkyBlock needs; absorption hearts sit on the row above it.
@@ -1819,6 +1831,9 @@ public class AlpakaConfig {
         this.scrollableTooltipsEnabled = false;
         this.persistentItemNameEnabled = false;
         this.storagePreviewEnabled = false;
+        this.maxEnchantColorEnabled = false;
+        this.anvilCombineHelperEnabled = false;
+        this.experimentSolverEnabled = false;
         this.mentionNotificationEnabled = false;
         this.itemMotionBlurEnabled = false;
         this.bossSpawnAlertEnabled = false;

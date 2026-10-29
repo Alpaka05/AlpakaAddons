@@ -166,7 +166,8 @@ public final class ConfigTree {
             "Notification Customization", "Notifications",
             "Scoreboard", "Scoreboard Style",
             "Nametags", "Nametags",
-            "Hide Fire Overlay", "Hide Fire Overlay"
+            "Hide Fire Overlay", "Hide Fire Overlay",
+            "Enchantments", "Enchantments"
     );
 
     /** What a feature built from a header is about; it has no master option to take it from. */
@@ -177,7 +178,8 @@ public final class ConfigTree {
             "Scoreboard", "The sidebar scoreboard's footer, background and font.",
             "Nametags", "How the nametags above players and mobs look, and whether you see your own.",
             "Hide Fire Overlay", "Hides the flames on burning mobs, and fades, lowers or stills the fire on your screen while you burn.",
-            "Notification Customization", "How long notifications stay, where they appear and how they look. Send a test to see the result."
+            "Notification Customization", "How long notifications stay, where they appear and how they look. Send a test to see the result.",
+            "Enchantments", "Maxed enchantments in their own color in tooltips, and the books that combine with the one in the anvil highlighted."
     );
 
     /**
@@ -212,7 +214,7 @@ public final class ConfigTree {
                             "hide_slayer_chat", "clean_blaze", "blaze_fire_pits"},
                     {"Garden", "visitor_bazaar"},
                     {"Tools", "etherwarp_overlay", "etherwarp_sound", "only_crit_damage",
-                            "world_age_join_message_enabled", "ragnarock", "deployable_timer", "cache_resource_pack",
+                            "world_age_join_message_enabled", "ragnarock", "deployable_timer", "#Enchantments", "cache_resource_pack",
                             "profile_dashboard"},
                     {"Markets", "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value",
                             "item_search",

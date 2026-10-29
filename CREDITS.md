@@ -121,3 +121,14 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
+
+## Pest Finder
+
+Pest Finder's vacuum waypoint extends the vacuum's particle trail the way
+[SkyHanni](https://github.com/hannibal002/SkyHanni) does in its Pest Particle Waypoint: a cubic fitted to
+the trail, and its constants for how far along the curve the pest lies. The code is written anew for
+this mod.
+
+| File | What | Source | Licence |
+| --- | --- | --- | --- |
+| `src/main/java/net/alpaka/addons/features/garden/PestTrailGuess.kt` | Fitting the trail and extending it to the pest | SkyHanni, `features/garden/pests/PestParticleWaypoint.kt`, `utils/PolynomialFitter.kt` and `LocationUtils.computePitchWeight` | LGPL-2.1 (method only, no code copied) |

@@ -1955,6 +1955,71 @@ public class AlpakaConfigRegistry {
                 0.1f, 2.0f, val -> String.format(Locale.ROOT, "%.0f%%", val * 100.0f),
                 "etherwarp sound volume loud quiet"));
 
+        OPTIONS.add(new ConfigOption("Pest Finder", ConfigCategory.SKYBLOCK));
+
+        OPTIONS.add(new ConfigOption("pest_finder", "Pest Finder",
+                "Helps find pests on the Garden: left-click a vacuum for a waypoint where its trail leads, and pests nearby glow.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.pestFinderEnabled,
+                v -> { AlpakaConfig.instance.pestFinderEnabled = v; AlpakaConfig.save(); },
+                "pest finder garden vacuum tracker waypoint guess line tracer locate find pests farming"));
+
+        OPTIONS.add(ConfigOption.keybind("pest_finder_teleport_key", "Key",
+                "Teleports you with /plottp to the plot the waypoint points at, when it marks a plot's center. Open Configure Plots at your desk once so renamed plots are known. Unbound by default.",
+                ConfigCategory.SKYBLOCK,
+                () -> net.alpaka.addons.features.garden.PestFinder.TELEPORT_KEY,
+                "pest finder teleport plottp plot warp"));
+
+        OPTIONS.add(ConfigOption.color("pest_finder_guess_color", "Waypoint Color",
+                "Color of the waypoint where the vacuum's trail leads. A guess at a plot's center is shown in yellow.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.pestFinderGuessColor,
+                v -> { AlpakaConfig.instance.pestFinderGuessColor = v; AlpakaConfig.save(); },
+                "pest finder waypoint guess color colour"));
+
+        OPTIONS.add(new ConfigOption("pest_finder_guess_line", "Line to Waypoint",
+                "Draws a line from your crosshair to the waypoint.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.pestFinderGuessLine,
+                v -> { AlpakaConfig.instance.pestFinderGuessLine = v; AlpakaConfig.save(); },
+                "pest finder line tracer waypoint crosshair"));
+
+        OPTIONS.add(new ConfigOption("pest_finder_guess_seconds", "Waypoint Duration",
+                "How long the waypoint stays after a click. It goes away sooner once you reach it.",
+                ConfigCategory.SKYBLOCK,
+                () -> (float) AlpakaConfig.instance.pestFinderGuessSeconds,
+                v -> { AlpakaConfig.instance.pestFinderGuessSeconds = Math.round(v); AlpakaConfig.save(); },
+                5.0f, 30.0f, val -> Math.round(val) + " s",
+                "pest finder waypoint duration seconds time"));
+
+        OPTIONS.add(new ConfigOption("pest_finder_hide_particles", "Hide Trail Particles",
+                "Hides the vacuum's particle trail once it has been read.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.pestFinderHideParticles,
+                v -> { AlpakaConfig.instance.pestFinderHideParticles = v; AlpakaConfig.save(); },
+                "pest finder hide particles trail villager"));
+
+        OPTIONS.add(new ConfigOption("pest_finder_highlight", "Highlight Pests",
+                "Gives the pests around you a glowing outline, visible through walls.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.pestFinderHighlight,
+                v -> { AlpakaConfig.instance.pestFinderHighlight = v; AlpakaConfig.save(); },
+                "pest finder highlight outline glow esp"));
+
+        OPTIONS.add(ConfigOption.color("pest_finder_highlight_color", "Highlight Color",
+                "Color of the pests' outline and of the lines to them.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.pestFinderHighlightColor,
+                v -> { AlpakaConfig.instance.pestFinderHighlightColor = v; AlpakaConfig.save(); },
+                "pest finder highlight outline color colour"));
+
+        OPTIONS.add(new ConfigOption("pest_finder_line_to_pests", "Lines to Pests",
+                "While you hold a vacuum, draws a line from your crosshair to every pest around you.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.pestFinderLineToPests,
+                v -> { AlpakaConfig.instance.pestFinderLineToPests = v; AlpakaConfig.save(); },
+                "pest finder line tracer pests vacuum"));
+
         OPTIONS.add(new ConfigOption("Slayer Tracking", ConfigCategory.SKYBLOCK));
 
 

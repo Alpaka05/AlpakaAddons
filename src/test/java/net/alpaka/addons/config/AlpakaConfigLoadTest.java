@@ -98,13 +98,20 @@ class AlpakaConfigLoadTest {
 
         AlpakaConfig config = load(old.toString());
         assertEquals(TEAL, config.menuAccentColor);
-        assertEquals(20000, config.chatHistoryLimit, "the history slider reaches 20000 on this line");
+        assertEquals(5000, config.chatHistoryLimit, "the history slider ends at 5000");
         assertEquals(AlpakaConfig.CONFIG_VERSION, config.configVersion);
 
         // Picked again by hand: from now on it is a choice.
         config.menuAccentColor = OLD_GOLD;
         AlpakaConfig.save();
         assertEquals(OLD_GOLD, load(saved()).menuAccentColor);
+    }
+
+    @Test
+    void aHistoryPastTheSlidersEndIsCutOnceAndAShorterOneStays() throws IOException {
+        assertEquals(5000, load("{\"configVersion\": 1, \"chatHistoryLimit\": 20000}").chatHistoryLimit);
+        assertEquals(3000, load("{\"configVersion\": 1, \"chatHistoryLimit\": 3000}").chatHistoryLimit);
+        assertEquals(1000, load("{}").chatHistoryLimit, "1000 by default");
     }
 
     @Test

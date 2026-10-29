@@ -8,9 +8,16 @@ import net.minecraft.client.gui.screens.Screen;
 public final class Markets {
     private Markets() {}
 
+    /**
+     * Whether the custom Auction House and Bazaar screens are part of this build. They aren't ready
+     * for a release yet, so they stay off and out of the settings. The Custom Sign Input, Item Value,
+     * Chest Value and the price history share their code and keep working. True brings them back.
+     */
+    public static final boolean SCREENS_AVAILABLE = false;
+
     /** Whether the custom screen replaces this market's menus right now. */
     public static boolean skinned(MarketKind kind) {
-        if (kind == null || !SkyblockUtils.isOnSkyblock()) return false;
+        if (!SCREENS_AVAILABLE || kind == null || !SkyblockUtils.isOnSkyblock()) return false;
         AlpakaConfig config = AlpakaConfig.instance;
         return kind == MarketKind.AUCTION_HOUSE ? config.customAuctionHouseEnabled : config.customBazaarEnabled;
     }

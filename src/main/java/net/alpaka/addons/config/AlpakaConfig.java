@@ -799,7 +799,7 @@ public class AlpakaConfig {
     public boolean quickJoinOnLaunch = false;
     public boolean expandChatHistory = true;
     /** How many chat lines Expand Chat History keeps; vanilla keeps 100. */
-    public int chatHistoryLimit = 5000;
+    public int chatHistoryLimit = 1000;
 
     /** How much history the chat keeps right now: the limit above while Expand Chat History is on, else vanilla's 100. */
     public int chatHistoryLength() {
@@ -1605,7 +1605,8 @@ public class AlpakaConfig {
      * accent color set to exactly the old gold turned back into teal each time.
      */
     private static final java.util.List<java.util.function.Consumer<AlpakaConfig>> MIGRATIONS = java.util.List.of(
-            AlpakaConfig::migrateTo1
+            AlpakaConfig::migrateTo1,
+            AlpakaConfig::migrateTo2
     );
 
     /** The settings layout this version writes. A file with a lower number gets the steps it has not had. */
@@ -1617,6 +1618,14 @@ public class AlpakaConfig {
         // default never chose gold, so it follows the new default; any other color is a choice.
         if (menuAccentColor == 0xFFE5B849) {
             menuAccentColor = 0xFF29B6B2;
+        }
+    }
+
+    /** Layout 1 to 2: the chat history slider ends at 5000 instead of 20000. */
+    private void migrateTo2() {
+        // A longer history kept tens of megabytes of chat alive and made every re-layout slow.
+        if (chatHistoryLimit > 5000) {
+            chatHistoryLimit = 5000;
         }
     }
 

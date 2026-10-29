@@ -177,7 +177,7 @@ public class AlpakaConfigRegistry {
                 "custom main menu title screen hypixel start launch background GUI hypixel-themed"));
 
         OPTIONS.add(new ConfigOption("custom_main_menu_parallax", "Main Menu Parallax",
-                "The custom main menu's background moves with the mouse.",
+                "The custom main menu's background drifts and moves with the mouse. Off keeps it still.",
                 ConfigCategory.GENERAL,
                 () -> AlpakaConfig.instance.customMainMenuParallax,
                 v -> { AlpakaConfig.instance.customMainMenuParallax = v; AlpakaConfig.save(); },

@@ -2325,6 +2325,56 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.partyInvitePromptEnabled = v; AlpakaConfig.save(); },
                 "party invite prompt accept join decline y n key popup hypixel"));
 
+        OPTIONS.add(new ConfigOption("party_commands", "Party Commands",
+                "When a party member writes a command like !warp, !tps or !pt in party chat, a Y/N prompt offers to run it for them.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.partyCommandsEnabled,
+                v -> { AlpakaConfig.instance.partyCommandsEnabled = v; AlpakaConfig.save(); },
+                "party commands chat !warp !w !tps !ping !fps !pt !transfer !allinvite !coords !kick !f7 !m7 odin skyhanni prompt y n"));
+
+        OPTIONS.add(new ConfigOption("party_commands_auto_answer", "Auto Answer",
+                "Info and fun commands like !tps, !ping or !dice are answered in party chat right away, without the Y/N prompt. Leader commands like !warp or !kick always ask.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.partyCommandsAutoAnswer,
+                v -> { AlpakaConfig.instance.partyCommandsAutoAnswer = v; AlpakaConfig.save(); },
+                "party commands auto answer reply automatic direct without confirmation prompt instant tps ping fps"));
+
+        for (net.alpaka.addons.features.party.PartyCommand.Group group : net.alpaka.addons.features.party.PartyCommand.Group.values()) {
+            java.util.List<ConfigOption.ToggleEntry> entries = new java.util.ArrayList<>();
+            for (net.alpaka.addons.features.party.PartyCommand command : net.alpaka.addons.features.party.PartyCommand.values()) {
+                if (command.group() != group) continue;
+                entries.add(new ConfigOption.ToggleEntry(command.label(),
+                        () -> net.alpaka.addons.features.party.PartyCommandsFeature.isCommandEnabled(command),
+                        v -> net.alpaka.addons.features.party.PartyCommandsFeature.setCommandEnabled(command, v)));
+            }
+            String[] text = switch (group) {
+                case LEADER -> new String[]{"party_commands_leader", "Leader Commands",
+                        "Commands that need you to be the party leader. Kick, transfer, promote and demote start off."};
+                case INFO -> new String[]{"party_commands_info", "Info Commands",
+                        "Commands that post something about you in party chat, like your TPS or coordinates."};
+                case FUN -> new String[]{"party_commands_fun", "Fun Commands",
+                        "Dice, coin flip and the Magic 8-Ball, answered in party chat."};
+            };
+            OPTIONS.add(new ConfigOption(text[0], text[1], text[2], ConfigCategory.SKYBLOCK, entries,
+                    "party commands pick which " + text[1].toLowerCase(java.util.Locale.ROOT)));
+        }
+
+        OPTIONS.add(new ConfigOption("Commands", ConfigCategory.SKYBLOCK));
+
+        OPTIONS.add(new ConfigOption("shorten_warp", "Shorten Warp",
+                "Type just the destination to warp there: /isle instead of /warp isle. Commands that already exist keep their meaning.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.shortenWarpEnabled,
+                v -> { AlpakaConfig.instance.shortenWarpEnabled = v; AlpakaConfig.save(); },
+                "shorten warp short shortcut alias destination /isle /hub /garden /dh command"));
+
+        OPTIONS.add(new ConfigOption("warp_cooldown_queue", "Warp Cooldown",
+                "A warp typed right after joining a server waits for Hypixel's cooldown and goes out on its own when it ends, instead of being refused.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.warpCooldownQueueEnabled,
+                v -> { AlpakaConfig.instance.warpCooldownQueueEnabled = v; AlpakaConfig.save(); },
+                "warp cooldown queue delay wait server join transfer early command you may only use this command"));
+
         OPTIONS.add(new ConfigOption("Resource Pack", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("cache_resource_pack", "Cache Resource Pack",

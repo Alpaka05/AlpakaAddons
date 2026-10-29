@@ -924,6 +924,18 @@ public class AlpakaConfig {
     /** A Hypixel party invite raises a notification: Y joins, N dismisses. */
     public boolean partyInvitePromptEnabled = true;
 
+    /** "/isle" is sent as "/warp isle"; see WarpShortcut. */
+    public boolean shortenWarpEnabled = true;
+    /** A warp typed in the first seconds on a server waits for Hypixel's cooldown; see WarpCooldownQueue. */
+    public boolean warpCooldownQueueEnabled = true;
+    /** A party member's "!warp", "!tps"... raises a Y/N prompt to answer it; see PartyCommandsFeature. */
+    public boolean partyCommandsEnabled = false;
+    /** Info and fun party commands are answered without the Y/N prompt. */
+    public boolean partyCommandsAutoAnswer = false;
+    /** The party commands not offered, by PartyCommand name. The ones that can hurt a party start off. */
+    public java.util.List<String> partyCommandsDisabled = new java.util.ArrayList<>(java.util.List.of(
+            "TRANSFER", "KICK", "KICK_OFFLINE", "PROMOTE", "DEMOTE"));
+
     /** Keeps Hypixel's server resource pack loaded between joins; see ServerPackCache. */
     public boolean cacheResourcePackEnabled = false;
 
@@ -1737,6 +1749,9 @@ public class AlpakaConfig {
         this.bossSpawnAlertEnabled = false;
         this.bossCocoonAlertEnabled = false;
         this.partyInvitePromptEnabled = false;
+        this.shortenWarpEnabled = false;
+        this.warpCooldownQueueEnabled = false;
+        this.partyCommandsEnabled = false;
         this.oldMasterStarsEnabled = false;
         this.cacheResourcePackEnabled = false;
         this.zoomEnabled = false;

@@ -206,7 +206,7 @@ public final class ConfigTree {
                     {"Slayer", "slayer_hud_enabled", "slayer_timer", "boss_spawn_alert", "boss_cocoon_alert", "slayer_drop_tracker",
                             "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat", "slayer_boss_highlight",
                             "hide_slayer_chat", "clean_blaze", "blaze_fire_pits"},
-                    {"Garden", "pest_finder"},
+                    {"Garden", "pest_finder", "visitor_bazaar"},
                     {"Tools", "etherwarp_overlay", "etherwarp_sound", "only_crit_damage",
                             "world_age_join_message_enabled", "ragnarock", "deployable_timer", "cache_resource_pack"},
                     {"Markets", "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value",

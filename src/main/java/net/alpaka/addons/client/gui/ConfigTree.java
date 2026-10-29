@@ -118,6 +118,7 @@ public final class ConfigTree {
             "world_age_join_message_enabled", "party_invite_prompt",
             "guild_prefix", "bridge_bot_formatter", "only_crit_damage", "ragnarock", "deployable_timer", "cache_resource_pack",
             "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value", "chest_value",
+            "profile_dashboard",
             // SkyBlock: dungeon
             "dungeon_solvers", "terminal_solvers", "terminal_custom_gui", "device_solvers",
             // Cosmetics
@@ -209,7 +210,8 @@ public final class ConfigTree {
                             "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat", "slayer_boss_highlight",
                             "hide_slayer_chat", "clean_blaze", "blaze_fire_pits"},
                     {"Tools", "etherwarp_overlay", "etherwarp_sound", "only_crit_damage",
-                            "world_age_join_message_enabled", "ragnarock", "deployable_timer", "cache_resource_pack"},
+                            "world_age_join_message_enabled", "ragnarock", "deployable_timer", "cache_resource_pack",
+                            "profile_dashboard"},
                     {"Markets", "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value",
                             "chest_value"},
                     {"Social", "party_invite_prompt", "guild_prefix", "bridge_bot_formatter",

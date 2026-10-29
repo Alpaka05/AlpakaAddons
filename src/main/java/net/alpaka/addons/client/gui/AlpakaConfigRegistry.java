@@ -54,7 +54,7 @@ public class AlpakaConfigRegistry {
         // and whether they replace vanilla's, the one place HUDs are arranged, and the way back out
         // of everything.
         OPTIONS.add(new ConfigOption("allow_api_calls", "Network Features",
-                "Lets the mod go online for the mayor's slayer XP buff, the main menu's player count, the update check and SkyCofl's price history.",
+                "Lets the mod go online for the mayor's slayer XP buff, the main menu's player count, the update check, SkyCofl's price history and the Profile Dashboard.",
                 ConfigCategory.GENERAL,
                 () -> AlpakaConfig.instance.allowApiCalls,
                 v -> { AlpakaConfig.instance.allowApiCalls = v; AlpakaConfig.save(); },
@@ -2490,6 +2490,45 @@ public class AlpakaConfigRegistry {
                 0.0f, 1.0f,
                 val -> CHEST_VALUE_SIDES[Math.round(val)],
                 "chest value side left right position place").choices(CHEST_VALUE_SIDES));
+
+        OPTIONS.add(new ConfigOption("Profile", ConfigCategory.SKYBLOCK));
+
+        OPTIONS.add(new ConfigOption("profile_dashboard", "Profile Dashboard",
+                "/alpakaprofile opens a dashboard of your SkyBlock profile: networth, skills, dungeons, slayers, pets and collections, with graphs of your progress. /alpakaprofile <name> shows another player. Data from Elite; needs Network Features.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.profileDashboardEnabled,
+                v -> { AlpakaConfig.instance.profileDashboardEnabled = v; AlpakaConfig.save(); },
+                "profile dashboard stats statistics networth skills dungeons catacombs slayer pets collections graph progress history viewer pv elite command"));
+
+        OPTIONS.add(new ConfigOption("profile_dashboard_open", "Open Dashboard",
+                "Opens the dashboard on your own profile, as /alpakaprofile does.",
+                ConfigCategory.SKYBLOCK,
+                "Open Dashboard",
+                parent -> net.alpaka.addons.features.profile.ProfileDashboardScreen.open(null, parent),
+                "profile dashboard open show"));
+
+        OPTIONS.add(new ConfigOption("profile_dashboard_tracking", "Record Progress",
+                "While you play SkyBlock, saves a snapshot of your profile now and then, so the graphs fill in without opening the dashboard. Kept on this computer only.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.profileDashboardTracking,
+                v -> { AlpakaConfig.instance.profileDashboardTracking = v; AlpakaConfig.save(); },
+                "profile dashboard record track progress history snapshot background hourly graph"));
+
+        OPTIONS.add(new ConfigOption("profile_dashboard_tracking_minutes", "Record Every",
+                "How often the snapshot is taken while you play.",
+                ConfigCategory.SKYBLOCK,
+                () -> (float) AlpakaConfig.instance.profileDashboardTrackingMinutes,
+                v -> { AlpakaConfig.instance.profileDashboardTrackingMinutes = Math.round(v); AlpakaConfig.save(); },
+                15.0f, 240.0f, v -> Math.round(v) + " min",
+                "profile dashboard record interval minutes snapshot how often"));
+
+        OPTIONS.add(new ConfigOption("profile_dashboard_skykings_key", "SkyKings API Key",
+                "Needed for the dashboard's graphs: SkyKings records most players about once a day. Make a free key on skykings.net (log in with Discord, Dashboard › API Keys) and paste it here. Only sent to SkyKings, kept on this computer.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.skykingsApiKey,
+                v -> { AlpakaConfig.instance.skykingsApiKey = v.trim(); },
+                "sk_...",
+                "skykings api key token history graph profile dashboard").secret(64));
 
         OPTIONS.add(new ConfigOption("Guild Chat", ConfigCategory.SKYBLOCK));
 

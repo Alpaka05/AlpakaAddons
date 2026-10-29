@@ -51,6 +51,15 @@ public final class DevScreenshotTour {
         return new Stop(shot, () -> Minecraft.getInstance().gui.setScreen(screen.get()), () -> true, 30);
     }
 
+    /** The Profile Dashboard on a player and page, once what the page loads has arrived. */
+    private static Stop profile(String shot, String player, String page) {
+        net.alpaka.addons.features.profile.ProfileDashboardScreen[] open = new net.alpaka.addons.features.profile.ProfileDashboardScreen[1];
+        return new Stop(shot, () -> {
+            open[0] = net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpen(player, page);
+            Minecraft.getInstance().gui.setScreen(open[0]);
+        }, () -> open[0] != null && open[0].devReady(), 30);
+    }
+
     private static final List<Stop> STOPS = "dungeon-map".equals(System.getenv(ENV)) ? List.of(
             screen("dungeon-map-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_enabled")),
             screen("dungeon-map-head-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_player_heads")),
@@ -238,6 +247,31 @@ public final class DevScreenshotTour {
                     () -> true, 10),
             new Stop("confirm-quick-commands-after-reset", () -> click(((AlpakaConfirmScreen) screen()).devConfirmPoint()),
                     () -> true, 30),
+            // The Profile Dashboard on real profiles from Elite, every page, a mid-game one and a name that does not exist.
+            profile("profile-overview", "Refraction", "OVERVIEW"),
+            profile("profile-skills", "Refraction", "SKILLS"),
+            profile("profile-dungeons", "Refraction", "DUNGEONS"),
+            profile("profile-slayers", "Refraction", "SLAYERS"),
+            profile("profile-networth", "Refraction", "NETWORTH"),
+            profile("profile-pets", "Refraction", "PETS"),
+            profile("profile-collections", "Refraction", "COLLECTIONS"),
+            profile("profile-more", "Refraction", "MORE"),
+            profile("profile-midgame", "TimeDeo", "OVERVIEW"),
+            new Stop("profile-midgame-lower", () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenScrolled("TimeDeo", "OVERVIEW")), () -> true, 30),
+            new Stop("profile-skills-lower", () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenScrolled("TimeDeo", "SKILLS")), () -> true, 30),
+            // The value under the mouse on the graph.
+            new Stop("profile-graph-hover", () -> placeMouse(0.7, 0.75), () -> true, 10),
+            // Years of networth over all time, with the months nobody recorded dotted; the mouse in such a gap.
+            new Stop("profile-history-all", () -> {
+                net.alpaka.addons.features.profile.ProfileDashboardScreen.devRange("ALL");
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpen("Alpakaa", "NETWORTH"));
+                placeMouse(0.05, 0.05);
+            }, () -> true, 160),
+            new Stop("profile-history-gap", () -> placeMouse(0.82, 0.88), () -> true, 10),
+            new Stop(null, () -> net.alpaka.addons.features.profile.ProfileDashboardScreen.devRange("MONTH"), () -> true, 1),
+            profile("profile-unknown-player", "zzqqxxnotaname123", "OVERVIEW"),
             new Stop(null, DevScreenshotTour::enterWorld,
                     () -> Minecraft.getInstance().player != null && Minecraft.getInstance().gui.screen() == null, 100),
             // The Custom Tab over a list laid out like SkyBlock's: side by side, stacked, and plain.
@@ -257,6 +291,71 @@ public final class DevScreenshotTour {
             }, () -> !shoots("world-hud") || ScreenshotPreview.isOnScreen(), 2),
             new Stop("screenshot-preview", () -> {}, () -> true, 2),
             new Stop("screenshot-preview-shrink", () -> ScreenshotPreview.devFreezeAt(120.0f), () -> true, 2),
+            // The pets with their heads and skins, which only exist once a world is loaded; then the
+            // Skills page with the item icons.
+            profile("profile-pets-in-world", "Refraction", "PETS"),
+            new Stop("profile-pets-heads", () -> {}, () -> true, 60),
+            // The tooltip of a pet: its exact XP and how far past the max level it is.
+            new Stop("profile-pets-tooltip", () -> placeMouse(0.45, 0.86), () -> true, 30),
+            profile("profile-skills-in-world", "TimeDeo", "SKILLS"),
+            // The inventories: each tab once its items are in, and an item's own tooltip.
+            new Stop("profile-inv-inventory", () -> {
+                net.alpaka.addons.features.profile.ProfileDashboardScreen.devInventoryTab("INVENTORY");
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpen("Alpakaa", "INVENTORY"));
+                placeMouse(0.02, 0.02);
+            }, () -> true, 100),
+            new Stop("profile-inv-backpacks", () -> {
+                net.alpaka.addons.features.profile.ProfileDashboardScreen.devInventoryTab("BACKPACKS");
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpen("Alpakaa", "INVENTORY"));
+                placeMouse(0.02, 0.02);
+            }, () -> true, 200),
+            new Stop("profile-inv-wardrobe", () -> {
+                net.alpaka.addons.features.profile.ProfileDashboardScreen.devInventoryTab("WARDROBE");
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpen("Alpakaa", "INVENTORY"));
+                placeMouse(0.02, 0.02);
+            }, () -> true, 300),
+            new Stop("profile-inv-ender-chest", () -> {
+                net.alpaka.addons.features.profile.ProfileDashboardScreen.devInventoryTab("ENDER_CHEST");
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpen("Alpakaa", "INVENTORY"));
+                placeMouse(0.02, 0.02);
+            }, () -> true, 300),
+            new Stop("profile-inv-accessories", () -> {
+                net.alpaka.addons.features.profile.ProfileDashboardScreen.devInventoryTab("ACCESSORIES");
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpen("Alpakaa", "INVENTORY"));
+                placeMouse(0.02, 0.02);
+            }, () -> true, 300),
+            new Stop("profile-inv-bags", () -> {
+                net.alpaka.addons.features.profile.ProfileDashboardScreen.devInventoryTab("BAGS");
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpen("Alpakaa", "INVENTORY"));
+                placeMouse(0.02, 0.02);
+            }, () -> true, 300),
+            new Stop("profile-inv-tooltip", () -> {
+                net.alpaka.addons.features.profile.ProfileDashboardScreen.devInventoryTab("INVENTORY");
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpen("Alpakaa", "INVENTORY"));
+                placeMouse(0.405, 0.667);
+            }, () -> true, 60),
+            // The Farming and Mining pages of the Skills page, the pets and accessories still missing.
+            new Stop("profile-page-farming", () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenSkill("Alpakaa", "farming", false)), () -> true, 60),
+            new Stop("profile-page-farming-crops", () -> ((net.alpaka.addons.features.profile.ProfileDashboardScreen) screen()).devScroll(330),
+                    () -> true, 10),
+            new Stop("profile-page-farming-crop-tip", () -> placeMouse(0.45, 0.5), () -> true, 15),
+            new Stop("profile-page-farming-lower", () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenSkill("Alpakaa", "farming", true)), () -> true, 30),
+            new Stop("profile-page-mining", () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenSkill("Alpakaa", "mining", false)), () -> true, 30),
+            new Stop("profile-page-mining-middle", () -> ((net.alpaka.addons.features.profile.ProfileDashboardScreen) screen()).devScroll(330),
+                    () -> true, 10),
+            new Stop("profile-page-mining-lower", () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenSkill("Alpakaa", "mining", true)), () -> true, 30),
+            new Stop("profile-page-pets-missing", () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenScrolled("Alpakaa", "PETS")), () -> true, 120),
+            new Stop("profile-page-acc-missing", () -> {
+                net.alpaka.addons.features.profile.ProfileDashboardScreen.devInventoryTab("ACCESSORIES");
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenScrolled("Alpakaa", "INVENTORY"));
+                placeMouse(0.02, 0.02);
+            }, () -> true, 200),
+            new Stop("profile-page-acc-tooltip", () -> placeMouse(0.40, 0.55), () -> true, 20),
             new Stop(null, () -> ScreenshotPreview.devFreezeAt(-1.0f), () -> true, 5),
             // The Auction House and the Bazaar in the market screens, on chests filled locally.
             screen("market-ah-main", net.alpaka.addons.features.market.MarketPreview::auctionHouse),

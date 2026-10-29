@@ -37,6 +37,10 @@ object DungeonRooms {
     private var skipNext = false
     private var lastTotal = -1
 
+    /** The recognized room the player is standing in or over, for the map's header. */
+    var here: RoomInfo? = null
+        private set
+
     /** Changes whenever a room is recognized or a count changes, so labels are rebuilt. */
     var revision = 0
         private set
@@ -129,9 +133,10 @@ object DungeonRooms {
     internal fun track(blockX: Int, blockY: Int, blockZ: Int) {
         val x = (blockX + 201) shr 5
         val z = (blockZ + 201) shr 5
-        if (x !in 0..5 || z !in 0..5) return
         val cell = x + z * 6
-        val room = cells[cell] ?: return
+        val room = if (x in 0..5 && z in 0..5) cells[cell] else null
+        here = room
+        if (room == null) return
         // Walking over a room's roof is not being in it.
         if (room === current || blockY > roofs[cell] - 10) return
         current = room
@@ -173,6 +178,7 @@ object DungeonRooms {
         roofs.fill(0)
         found.clear()
         current = null
+        here = null
         skipNext = false
         lastTotal = -1
         revision++

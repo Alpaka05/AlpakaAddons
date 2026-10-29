@@ -28,6 +28,16 @@ object DungeonParty {
     private val TAB_ORDER = compareBy<PlayerInfo>({ -it.tabListOrder }, { if (it.gameMode == GameType.SPECTATOR) 1 else 0 },
         { it.team?.name ?: "" }).thenComparing({ it.profile.name() }, String.CASE_INSENSITIVE_ORDER)
 
+    /** Each class in Hypixel's color, the same as the Leap Menu's; null for a class not known. */
+    fun classColor(dungeonClass: String?): Int? = when (dungeonClass) {
+        "Archer" -> 0xFFFFAA00.toInt()
+        "Berserk" -> 0xFFD83A3A.toInt()
+        "Healer" -> 0xFFFF55FF.toInt()
+        "Mage" -> 0xFF55FFFF.toInt()
+        "Tank" -> 0xFF2EB82E.toInt()
+        else -> null
+    }
+
     fun parse(line: String): PartyMember? {
         val match = LINE.matchEntire(line.trim()) ?: return null
         val dungeonClass = match.groupValues[2]

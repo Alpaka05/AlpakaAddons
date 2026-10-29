@@ -66,9 +66,9 @@ public final class DevScreenshotTour {
             screen("leap-menu-buttons", () -> leapMenuPreview(false))
     ) : "dungeon-map".equals(System.getenv(ENV)) ? List.of(
             screen("dungeon-map-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_enabled")),
-            screen("dungeon-map-head-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_player_heads")),
+            screen("dungeon-map-player-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_player_icons")),
+            screen("dungeon-map-color-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_colors")),
             screen("dungeon-map-background-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_background")),
-            screen("dungeon-map-color-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_room_color")),
             screen("dungeon-map-hud", () -> dungeonMapPreview(false, false)),
             screen("dungeon-map-both", () -> dungeonMapPreview(true, false)),
             screen("dungeon-map-transparent", () -> dungeonMapPreview(true, true)),
@@ -84,6 +84,19 @@ public final class DevScreenshotTour {
                 AlpakaConfig.instance.dungeonMapRoomNames = true;
                 AlpakaConfig.instance.dungeonMapRoomSecrets = true;
                 AlpakaConfig.instance.dungeonMapScale = 1.5f;
+                return editor;
+            }),
+            screen("dungeon-map-room-labels-pixel-font", () -> {
+                HudEditorScreen editor = dungeonMapPreview(false, false);
+                AlpakaConfig.instance.dungeonMapRoomNames = true;
+                AlpakaConfig.instance.dungeonMapRoomSecrets = true;
+                AlpakaConfig.instance.dungeonMapSmoothFont = false;
+                AlpakaConfig.instance.dungeonMapScale = 1.5f;
+                return editor;
+            }),
+            screen("dungeon-map-hypixel-colors", () -> {
+                HudEditorScreen editor = dungeonMapPreview(false, false);
+                AlpakaConfig.instance.dungeonMapCustomColors = false;
                 return editor;
             }),
             screen("dungeon-map-room-label-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_room_names")),
@@ -848,6 +861,7 @@ public final class DevScreenshotTour {
     /** A focused map tour uses the normal HUD editor and only changes this dev client's config. */
     private static HudEditorScreen dungeonMapPreview(boolean both, boolean transparent) {
         AlpakaConfig.instance.dungeonMapEnabled = true;
+        AlpakaConfig.instance.dungeonMapShowBoss = true;
         AlpakaConfig.instance.dungeonMapBossMode = both ? 2 : 0;
         AlpakaConfig.instance.dungeonMapBackground = !transparent;
         AlpakaConfig.instance.dungeonMapFrame = !transparent;
@@ -860,6 +874,9 @@ public final class DevScreenshotTour {
         AlpakaConfig.instance.dungeonMapMarkerScale = 1.0f;
         AlpakaConfig.instance.dungeonMapRoomNames = false;
         AlpakaConfig.instance.dungeonMapRoomSecrets = false;
+        AlpakaConfig.instance.dungeonMapCurrentRoom = true;
+        AlpakaConfig.instance.dungeonMapSmoothFont = true;
+        AlpakaConfig.instance.dungeonMapCustomColors = true;
         return new HudEditorScreen(null);
     }
 

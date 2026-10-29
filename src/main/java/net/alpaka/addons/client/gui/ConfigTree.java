@@ -106,7 +106,7 @@ public final class ConfigTree {
             "container_bg_opacity", "inventory_snow", "scrollable_tooltips", "persistent_item_name", "old_master_stars", "storage_preview", "wide_health_bar",
             "better_chat", "chat_search", "chat_copy", "expand_chat_history", "compact_chat", "message_filter",
             "mention_notification", "chat_peek", "better_screenshot_message", "chat_tabs",
-            "player_model_enabled", "performance_hud_enabled", "inventory_hud_enabled", "custom_tab", "dungeon_map_enabled", "leap_menu_enabled",
+            "player_model_enabled", "performance_hud_enabled", "inventory_hud_enabled", "custom_tab", "dungeon_map_enabled", "dungeon_door_highlight", "leap_menu_enabled",
             // Item viewmodel: the adjustments are the modifiers' own settings
             "item_size_feature", "item_starlight", "item_motion_blur", "item_viewmodel_reset",
             // Block overlay: one feature, outline, fill, animation and filters its settings
@@ -151,6 +151,8 @@ public final class ConfigTree {
             Map.entry("inventory_hud_blur", "inventory_hud_enabled"),
             Map.entry("custom_tab_blur", "custom_tab"),
             Map.entry("custom_tab_smooth_font", "custom_tab"),
+            Map.entry("dungeon_map_blur", "dungeon_map_enabled"),
+            Map.entry("dungeon_map_smooth_font", "dungeon_map_enabled"),
             Map.entry("notification_blur", "#Notification Customization"),
             Map.entry("notification_smooth_font", "#Notification Customization")
     );
@@ -208,7 +210,7 @@ public final class ConfigTree {
                             "#Viewmodel Presets", "item_viewmodel_reset"},
                     {"Cosmetics", "custom_name_tag", "custom_damage_tags", "chroma_hat", "aura", "player_scale", "inventory_snow"}},
             {{"SkyBlock"},
-                    {"Dungeon", "dungeon_map_enabled", "leap_menu_enabled", "starred_mobs_highlight", "dungeon_solvers", "terminal_solvers", "terminal_custom_gui", "device_solvers"},
+                    {"Dungeon", "dungeon_map_enabled", "dungeon_door_highlight", "leap_menu_enabled", "starred_mobs_highlight", "dungeon_solvers", "terminal_solvers", "terminal_custom_gui", "device_solvers"},
                     {"Slayer", "slayer_hud_enabled", "slayer_timer", "boss_spawn_alert", "boss_cocoon_alert", "slayer_drop_tracker",
                             "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat", "slayer_boss_highlight",
                             "hide_slayer_chat", "clean_blaze", "blaze_fire_pits"},

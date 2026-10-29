@@ -9,6 +9,8 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -36,6 +38,9 @@ public final class ExperimentSolver {
 
     private ExperimentSolver() {
     }
+
+    /** Chronomatron's steps and clicks go to the log, so a wrong highlight can be traced afterwards. */
+    private static final Logger LOGGER = LoggerFactory.getLogger("Alpaka/Experiments");
 
     private static final int STATUS_SLOT = 49;
     private static final int BOARD_FIRST = 9;
@@ -79,15 +84,20 @@ public final class ExperimentSolver {
         Game current = current(changed);
         if (current == null) return;
         if (slot == STATUS_SLOT) {
-            // Nothing is cleared between rounds: answering a round uses up what was recorded for
-            // it, and clearing on the status change could drop a step whose packet came first.
-            answering = stack.is(Items.CLOCK);
+            boolean nowAnswering = stack.is(Items.CLOCK);
+            if (nowAnswering != answering) {
+                answering = nowAnswering;
+                if (current == Game.CHRONOMATRON) {
+                    if (answering) CHRONOMATRON.startAnswering();
+                    else CHRONOMATRON.startShowing();
+                }
+            }
             return;
         }
         if (slot < BOARD_FIRST || slot > BOARD_LAST) return;
         switch (current) {
             case CHRONOMATRON -> {
-                if (!answering) CHRONOMATRON.onShown(slot, path(stack).endsWith("terracotta"), path(stack).endsWith("stained_glass"));
+                if (!answering) CHRONOMATRON.onShown(slot, litColor(stack), glassColor(stack) != null);
             }
             case ULTRASEQUENCER -> {
                 if (!answering) {
@@ -106,7 +116,9 @@ public final class ExperimentSolver {
         Game current = current(clicked);
         if (current == null || !answering) return;
         switch (current) {
-            case CHRONOMATRON -> CHRONOMATRON.onClicked(slot);
+            case CHRONOMATRON -> {
+                if (slot >= BOARD_FIRST && slot <= BOARD_LAST) CHRONOMATRON.onClicked(color(clicked.getSlot(slot).getItem()));
+            }
             case ULTRASEQUENCER -> ULTRASEQUENCER.onClicked(slot);
             case SUPERPAIRS -> { }
         }
@@ -117,7 +129,7 @@ public final class ExperimentSolver {
         Game current = current(screen.getMenu());
         if (current == null || slot.container != menu.slots.get(0).container) return;
         int color = switch (current) {
-            case CHRONOMATRON -> answering ? CHRONOMATRON.highlight(slot.index) : 0;
+            case CHRONOMATRON -> answering ? CHRONOMATRON.highlight(color(slot.getItem())) : 0;
             case ULTRASEQUENCER -> answering ? ULTRASEQUENCER.highlight(slot.index) : 0;
             case SUPERPAIRS -> isHidden(slot.getItem()) ? SUPERPAIRS.highlight(slot.index) : 0;
         };
@@ -138,6 +150,24 @@ public final class ExperimentSolver {
 
     private static String path(ItemStack stack) {
         return BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath();
+    }
+
+    /** The color of a lit Chronomatron block ("red" for red terracotta), or null. */
+    static String litColor(ItemStack stack) {
+        String path = path(stack);
+        return path.endsWith("_terracotta") ? path.substring(0, path.length() - "_terracotta".length()) : null;
+    }
+
+    /** The color of an unlit Chronomatron block ("red" for red stained glass), or null. */
+    static String glassColor(ItemStack stack) {
+        String path = path(stack);
+        return path.endsWith("_stained_glass") ? path.substring(0, path.length() - "_stained_glass".length()) : null;
+    }
+
+    /** A Chronomatron block's color, lit or not. */
+    private static String color(ItemStack stack) {
+        String lit = litColor(stack);
+        return lit != null ? lit : glassColor(stack);
     }
 
     /** A covered Superpairs card or the board's border: glass, a pane or nothing. */
@@ -163,44 +193,85 @@ public final class ExperimentSolver {
     }
 
     /**
-     * Chronomatron lights colored blocks one after another (a terracotta block in place of its
-     * glass, on one slot or a column of two), then the player repeats them. Every round replays the
-     * whole sequence with one more step, so it is simply recorded again each time; the clicks of
-     * the round before have used up the old recording.
+     * Chronomatron lights colored blocks one after another (terracotta in place of the block's
+     * glass, on one slot or a column of two), then the player repeats them. Every color has its
+     * own slots, so the sequence is kept as colors and every slot of the next color is highlighted.
+     *
+     * Each round replays the whole sequence and adds one step. The sequence is kept across rounds
+     * and the replay only checked against it, so a block lit late or a missed update can't shift
+     * the steps; where the replay disagrees, the rest is recorded anew. A step starts when a block
+     * lights while none is lit, or one of another color; that also holds when the next block lights
+     * before the last one has gone dark.
      */
     static final class Chronomatron {
-        /** The slots each step lit, in order; the last one is the step being shown, maybe still empty. */
-        final List<Set<Integer>> steps = new ArrayList<>();
+        final List<String> sequence = new ArrayList<>();
+        /** Steps shown so far in this round's replay. */
+        int replayed;
+        /** Steps the player has answered this round. */
+        int answered;
+        /** The slots lit right now, all of {@link #litColor}. */
+        private final Set<Integer> lit = new HashSet<>();
+        private String litColor;
 
         void reset() {
-            steps.clear();
+            sequence.clear();
+            startShowing();
+            answered = 0;
         }
 
-        void onShown(int slot, boolean lit, boolean unlit) {
-            if (lit) {
-                if (steps.isEmpty()) steps.add(new HashSet<>());
-                steps.getLast().add(slot);
-            } else if (unlit && !steps.isEmpty() && steps.getLast().contains(slot)) {
-                // The step went dark again; the next lit block is the next step.
-                steps.add(new HashSet<>());
+        void startShowing() {
+            replayed = 0;
+            lit.clear();
+            litColor = null;
+        }
+
+        void startAnswering() {
+            // A replay that ended early leaves the rest of an older sequence that wasn't shown.
+            if (replayed < sequence.size()) sequence.subList(replayed, sequence.size()).clear();
+            answered = 0;
+            lit.clear();
+            litColor = null;
+            LOGGER.info("[chronomatron] answer {}", sequence);
+        }
+
+        /** A board slot changed while the game shows its pattern. */
+        void onShown(int slot, String lightsUp, boolean darkens) {
+            if (lightsUp != null) {
+                if (!lit.isEmpty() && lightsUp.equals(litColor)) {
+                    lit.add(slot);
+                    return;
+                }
+                lit.clear();
+                lit.add(slot);
+                litColor = lightsUp;
+                step(lightsUp);
+            } else if (darkens) {
+                lit.remove(slot);
             }
         }
 
-        void onClicked(int slot) {
-            dropEmpty();
-            if (!steps.isEmpty() && steps.getFirst().contains(slot)) steps.removeFirst();
+        private void step(String color) {
+            if (replayed < sequence.size() && !sequence.get(replayed).equals(color)) {
+                sequence.subList(replayed, sequence.size()).clear();
+            }
+            boolean added = replayed >= sequence.size();
+            if (added) sequence.add(color);
+            replayed++;
+            LOGGER.info("[chronomatron] step {} {} ({})", replayed, color, added ? "new" : "replay");
         }
 
-        int highlight(int slot) {
-            dropEmpty();
-            if (steps.isEmpty()) return 0;
-            if (steps.getFirst().contains(slot)) return nowColor();
-            if (steps.size() > 1 && steps.get(1).contains(slot)) return laterColor();
+        /** The player clicked a block of this color (null for anything else). */
+        void onClicked(String color) {
+            boolean right = color != null && answered < sequence.size() && sequence.get(answered).equals(color);
+            if (right) answered++;
+            LOGGER.info("[chronomatron] click {} ({})", color, right ? "step " + answered : "not the next step");
+        }
+
+        int highlight(String color) {
+            if (color == null || answered >= sequence.size()) return 0;
+            if (sequence.get(answered).equals(color)) return nowColor();
+            if (answered + 1 < sequence.size() && sequence.get(answered + 1).equals(color)) return laterColor();
             return 0;
-        }
-
-        private void dropEmpty() {
-            steps.removeIf(Set::isEmpty);
         }
     }
 

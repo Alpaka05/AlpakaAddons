@@ -118,6 +118,8 @@ public final class ConfigTree {
             "world_age_join_message_enabled", "party_invite_prompt",
             "guild_prefix", "bridge_bot_formatter", "only_crit_damage", "ragnarock", "deployable_timer", "cache_resource_pack",
             "custom_auction_house", "custom_bazaar", "market_price_history", "custom_sign_input", "item_value", "chest_value",
+            // SkyBlock: dungeon
+            "dungeon_solvers", "terminal_solvers", "terminal_custom_gui", "device_solvers",
             // Cosmetics
             "custom_name_tag", "chroma_hat", "aura", "player_scale", "custom_damage_tags",
             // Sound & utility
@@ -202,7 +204,7 @@ public final class ConfigTree {
                             "#Viewmodel Presets", "item_viewmodel_reset"},
                     {"Cosmetics", "custom_name_tag", "custom_damage_tags", "chroma_hat", "aura", "player_scale", "inventory_snow"}},
             {{"SkyBlock"},
-                    {"Dungeon", "dungeon_map_enabled", "starred_mobs_highlight"},
+                    {"Dungeon", "dungeon_map_enabled", "starred_mobs_highlight", "dungeon_solvers", "terminal_solvers", "terminal_custom_gui", "device_solvers"},
                     {"Slayer", "slayer_hud_enabled", "slayer_timer", "boss_spawn_alert", "boss_cocoon_alert", "slayer_drop_tracker",
                             "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat", "slayer_boss_highlight",
                             "hide_slayer_chat", "clean_blaze", "blaze_fire_pits"},

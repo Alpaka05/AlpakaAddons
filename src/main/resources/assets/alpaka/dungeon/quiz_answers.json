@@ -1,0 +1,55 @@
+{
+  "_about": [
+    "Answers to Oruo the Omniscient's Quiz in the Catacombs, read by QuizAnswers.",
+    "Solution data adapted from Odin by odtheking, BSD-3-Clause; the licence text ships in assets/alpaka/dungeon/licenses/odin-bsd-3-clause.txt. The answers are game facts, checked and completed against both Hypixel SkyBlock wikis and Skyblocker's and Skytils' lists (puzzles-chat.md 3.4).",
+    "questions: the question exactly as Hypixel asks it, and every option that answers it. With more than one answer the solver only marks an option if exactly one of the three is listed.",
+    "fairySoulZones: 'How many Fairy Souls are there in <zone>?', with or without 'the' before the zone; the option is '<n> Fairy Souls'.",
+    "'What SkyBlock year is it?' is worked out from the clock, not listed here.",
+    "Matching ignores case, apostrophes and repeated spaces, so Spider's Den and Spiders Den are the same."
+  ],
+  "questions": [
+    { "q": "What is the status of The Watcher?", "a": ["Stalker"] },
+    { "q": "What is the status of Bonzo?", "a": ["New Necromancer"] },
+    { "q": "What is the status of Scarf?", "a": ["Apprentice Necromancer"] },
+    { "q": "What is the status of The Professor?", "a": ["Professor"] },
+    { "q": "What is the status of Thorn?", "a": ["Shaman Necromancer"] },
+    { "q": "What is the status of Livid?", "a": ["Master Necromancer"] },
+    { "q": "What is the status of Sadan?", "a": ["Necromancer Lord"] },
+    { "q": "What is the status of Maxor?", "a": ["The Wither Lords"] },
+    { "q": "What is the status of Goldor?", "a": ["The Wither Lords"] },
+    { "q": "What is the status of Storm?", "a": ["The Wither Lords"] },
+    { "q": "What is the status of Necron?", "a": ["The Wither Lords"] },
+    { "q": "What is the status of Maxor, Storm, Goldor, and Necron?", "a": ["The Wither Lords"] },
+    { "q": "Which brother is on the Spider's Den?", "a": ["Rick"] },
+    { "q": "What is the name of Rick's brother?", "a": ["Pat"] },
+    { "q": "What is the name of the vendor in the Hub who sells stained glass?", "a": ["Wool Weaver"] },
+    { "q": "What is the name of the person that upgrades pets?", "a": ["Kat"] },
+    { "q": "What is the name of the lady of the Nether?", "a": ["Elle"] },
+    { "q": "Which villager in the Village gives you a Rogue Sword?", "a": ["Jamie"] },
+    { "q": "How many unique minions are there?", "a": ["61 Minions"] },
+    { "q": "How many total Fairy Souls are there?", "a": ["289 Fairy Souls", "273 Fairy Souls"] },
+    {
+      "q": "Which of these enemies does not spawn in the Spider's Den?",
+      "a": ["Zombie Spider", "Cave Spider", "Wither Skeleton", "Dashing Spooder", "Broodfather", "Night Spider"]
+    },
+    { "q": "Which of these monsters only spawns at night?", "a": ["Zombie Villager", "Ghast"] },
+    {
+      "q": "Which of these is not a dragon in The End?",
+      "a": ["Zoomer Dragon", "Zombie Dragon", "Weak Dragon", "Stonk Dragon", "Holy Dragon", "Boomer Dragon",
+            "Booger Dragon", "Older Dragon", "Elder Dragon", "Stable Dragon", "Professor Dragon"]
+    }
+  ],
+  "fairySoulZones": {
+    "Hub": 80,
+    "Spider's Den": 19,
+    "End": 12,
+    "Farming Islands": 20,
+    "Crimson Isle": 29,
+    "Park": 12,
+    "Jerry's Workshop": 5,
+    "Deep Caverns": 21,
+    "Gold Mine": 12,
+    "Dungeon Hub": 7,
+    "Backwater Bayou": 5
+  }
+}

@@ -8,7 +8,6 @@ import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.utils.SkyblockUtils
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
-import net.minecraft.ChatFormatting
 import net.minecraft.client.KeyMapping
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
@@ -20,7 +19,6 @@ import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.gizmos.GizmoStyle
 import net.minecraft.gizmos.Gizmos
 import net.minecraft.gizmos.TextGizmo
-import net.minecraft.network.chat.Component
 import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket
 import net.minecraft.util.ARGB
 import net.minecraft.world.entity.Entity
@@ -324,34 +322,18 @@ object PestFinder {
 
     /**
      * The teleport key: /plottp to the plot the guess points at, when the guess is a plot's center
-     * and the player is not on that plot already. Otherwise a line above the hotbar says why not.
+     * and the player is not on that plot already. Otherwise the key does nothing.
      */
     private fun teleport(mc: Minecraft) {
         val player = mc.player ?: return
-        if (!active()) return
-        val g = guess
-        if (g == null) {
-            notice("No pest guess yet; left-click a vacuum first.", ChatFormatting.RED)
-            return
-        }
-        val target = GardenPlots.index(g.x, g.z)
-        if (!guessIsPlotMiddle || target == null || target == GardenPlots.BARN) {
-            notice("The pest guess points at the pest itself, not at a plot.", ChatFormatting.YELLOW)
-            return
-        }
-        val name = GardenPlots.name(target)
-        if (GardenPlots.index(player.x, player.z) == target) {
-            notice("You are on Plot $name already.", ChatFormatting.YELLOW)
-            return
-        }
-        if (Outbound.command("plottp $name", Outbound.Cause.KEY_PRESS)) {
+        if (!active() || !guessIsPlotMiddle) return
+        val g = guess ?: return
+        val target = GardenPlots.index(g.x, g.z) ?: return
+        if (target == GardenPlots.BARN || GardenPlots.index(player.x, player.z) == target) return
+        if (Outbound.command("plottp ${GardenPlots.name(target)}", Outbound.Cause.KEY_PRESS)) {
             // The guess was the plot's center; on the plot, a new click finds the pest itself.
             clearGuess()
         }
-    }
-
-    private fun notice(text: String, color: ChatFormatting) {
-        Minecraft.getInstance().gui.hud.setOverlayMessage(Component.literal(text).withStyle(color), false)
     }
 
     // ---------------------------------------------------------------- drawing

@@ -3,6 +3,8 @@ package net.alpaka.addons.features.enchantments;
 import net.alpaka.addons.config.AlpakaConfig;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
@@ -19,30 +21,59 @@ class ExperimentSolverTest {
     }
 
     @Test
-    void chronomatronRecordsStepsAndUsesThemUp() {
+    void chronomatronRecordsColorsAndUsesThemUp() {
         ExperimentSolver.Chronomatron chrono = new ExperimentSolver.Chronomatron();
-        // Step one lights a column of two, step two a single block, then the same block again.
-        chrono.onShown(20, true, false);
-        chrono.onShown(29, true, false);
-        chrono.onShown(20, false, true);
-        chrono.onShown(29, false, true);
-        chrono.onShown(22, true, false);
-        chrono.onShown(22, false, true);
-        chrono.onShown(22, true, false);
-        chrono.onShown(22, false, true);
+        // Round one: red lights a column of two. Then the player answers.
+        chrono.onShown(20, "red", false);
+        chrono.onShown(29, "red", false);
+        chrono.onShown(20, null, true);
+        chrono.onShown(29, null, true);
+        chrono.startAnswering();
+        assertEquals(NOW, chrono.highlight("red"));
+        assertEquals(0, chrono.highlight("blue"));
+        chrono.onClicked("red");
+        assertEquals(0, chrono.highlight("red"));
 
-        assertEquals(NOW, chrono.highlight(20));
-        assertEquals(NOW, chrono.highlight(29));
-        assertEquals(LATER, chrono.highlight(22));
+        // Round two replays red and adds blue twice; blue lights before red has gone dark.
+        chrono.startShowing();
+        chrono.onShown(20, "red", false);
+        chrono.onShown(29, "red", false);
+        chrono.onShown(22, "blue", false);
+        chrono.onShown(20, null, true);
+        chrono.onShown(29, null, true);
+        chrono.onShown(22, null, true);
+        chrono.onShown(22, "blue", false);
+        chrono.onShown(22, null, true);
+        chrono.startAnswering();
+        assertEquals(List.of("red", "blue", "blue"), chrono.sequence);
 
-        chrono.onClicked(23);
-        assertEquals(NOW, chrono.highlight(20), "a wrong click changes nothing");
-        chrono.onClicked(29);
-        assertEquals(NOW, chrono.highlight(22));
-        assertEquals(0, chrono.highlight(20));
-        chrono.onClicked(22);
-        chrono.onClicked(22);
-        assertEquals(0, chrono.highlight(22));
+        assertEquals(NOW, chrono.highlight("red"));
+        assertEquals(LATER, chrono.highlight("blue"));
+        chrono.onClicked("green");
+        assertEquals(NOW, chrono.highlight("red"), "a wrong click changes nothing");
+        chrono.onClicked("red");
+        assertEquals(NOW, chrono.highlight("blue"));
+        chrono.onClicked("blue");
+        assertEquals(NOW, chrono.highlight("blue"));
+        chrono.onClicked("blue");
+        assertEquals(0, chrono.highlight("blue"));
+    }
+
+    @Test
+    void chronomatronRecordsAgainWhereTheReplayDisagrees() {
+        ExperimentSolver.Chronomatron chrono = new ExperimentSolver.Chronomatron();
+        chrono.onShown(20, "red", false);
+        chrono.onShown(20, null, true);
+        chrono.onShown(21, "lime", false);
+        chrono.onShown(21, null, true);
+        chrono.startAnswering();
+
+        // The next replay starts with another color, as when the menu was opened mid-game.
+        chrono.startShowing();
+        chrono.onShown(23, "blue", false);
+        chrono.onShown(23, null, true);
+        chrono.startAnswering();
+        assertEquals(List.of("blue"), chrono.sequence);
     }
 
     @Test

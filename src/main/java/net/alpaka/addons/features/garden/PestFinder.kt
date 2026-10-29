@@ -26,6 +26,7 @@ import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.entity.player.Player
+import net.minecraft.world.item.Items
 import net.minecraft.world.item.component.CustomData
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
@@ -277,25 +278,28 @@ object PestFinder {
 
     /**
      * Notes the entities a pest is made of, under its name tag. A pest is a stand wearing the pest's
-     * head over an invisible mob that carries its hitbox; the head is what the player sees, so it is
-     * what gets the outline. The mob only when there is no head, so the pest is never left unmarked.
+     * player head over an invisible mob that carries its hitbox; the head is what the player sees, so
+     * it is what gets the outline. Only the one head stand nearest the tag: a pest trap is built from
+     * stands too, wearing blocks, and a pest let out of one stands among them. The mob only when
+     * there is no head, so the pest is never left unmarked.
      */
     private fun addBody(level: ClientLevel, tag: ArmorStand) {
         val below = AABB(tag.x - 0.8, tag.y - 3.0, tag.z - 0.8, tag.x + 0.8, tag.y + 0.5, tag.z + 0.8)
-        var foundHead = false
-        val mobs = ArrayList<Int>(2)
+        var head: ArmorStand? = null
+        var mob: LivingEntity? = null
         for (entity in level.getEntitiesOfClass(LivingEntity::class.java, below)) {
             if (entity === tag || entity is Player) continue
             if (entity is ArmorStand) {
-                if (!entity.getItemBySlot(EquipmentSlot.HEAD).isEmpty) {
-                    outlined[entity.id] = true
-                    foundHead = true
-                }
-            } else {
-                mobs.add(entity.id)
+                if (!entity.getItemBySlot(EquipmentSlot.HEAD).`is`(Items.PLAYER_HEAD)) continue
+                if (head == null || entity.distanceToSqr(tag) < head.distanceToSqr(tag)) head = entity
+            } else if (mob == null || entity.distanceToSqr(tag) < mob.distanceToSqr(tag)) {
+                mob = entity
             }
         }
-        if (!foundHead) for (id in mobs) outlined[id] = false
+        when {
+            head != null -> outlined[head.id] = true
+            mob != null -> outlined[mob.id] = false
+        }
     }
 
     /** Called from EntityRendererMixin: the outline on the pests. */

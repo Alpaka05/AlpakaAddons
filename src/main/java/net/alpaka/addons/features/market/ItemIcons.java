@@ -216,6 +216,20 @@ public final class ItemIcons {
         return fetching;
     }
 
+    /**
+     * Every SkyBlock item by id with its name, plain Minecraft items left out, for the inventory
+     * buttons' icon picker; null while the list loads or Network Features is off.
+     */
+    public static Map<String, String> skyblockItems() {
+        Catalog loaded = catalog();
+        if (loaded == null) return null;
+        Map<String, String> out = new HashMap<>();
+        for (String id : loaded.ids()) {
+            if (!loaded.vanillaIds().contains(id)) out.put(id, loaded.names().getOrDefault(id, id));
+        }
+        return out;
+    }
+
     /** Whether Hypixel's list is there to answer {@link #name} and {@link #upgrades}; asking starts loading it. */
     public static boolean ready() {
         return catalog() != null;

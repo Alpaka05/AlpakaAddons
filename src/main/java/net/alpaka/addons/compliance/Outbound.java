@@ -53,7 +53,9 @@ public final class Outbound {
          * Auto Answer. Off by default, only for commands that post in party chat,
          * at most once every two seconds (PartyCommandsFeature).
          */
-        PARTY_CHAT_REQUEST
+        PARTY_CHAT_REQUEST,
+        /** Clicked one of the player's own inventory buttons. */
+        INVENTORY_BUTTON
     }
 
     /** The same command again this soon is taken as a double input and dropped. */

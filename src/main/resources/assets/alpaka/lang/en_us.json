@@ -4,5 +4,6 @@
   "key.alpaka.zoom": "Zoom",
   "key.alpaka.chat_peek": "Peek Chat",
   "key.alpaka.command_wheel": "Command Wheel",
-  "key.alpaka.inventory_hud": "Inventory HUD"
+  "key.alpaka.inventory_hud": "Inventory HUD",
+  "key.alpaka.pest_finder_teleport": "Pest Finder: Teleport to Plot"
 }

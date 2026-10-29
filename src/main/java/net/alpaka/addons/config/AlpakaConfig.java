@@ -500,6 +500,8 @@ public class AlpakaConfig {
     public boolean pestFinderHighlight = true;
     public int pestFinderHighlightColor = 0xFF55FF55;
     public boolean pestFinderLineToPests = true;
+    /** The Garden's plot names by grid square, read from the desk's Configure Plots menu; empty until then. */
+    public java.util.List<String> pestFinderPlotNames = new java.util.ArrayList<>();
 
     // Inventory HUD. Shows the 27 main-inventory slots on screen; position and scale are set in
     // the HUD editor, or it can ride directly above the hotbar.

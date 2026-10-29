@@ -1496,7 +1496,7 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Pest Finder", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("pest_finder", "Pest Finder",
-                "Helps find pests on the Garden: left-click a vacuum for a waypoint where its trail leads, and pests nearby glow.",
+                "Helps find pests on the Garden: left-click a vacuum for a waypoint where its trail leads, and pests nearby glow. When the waypoint marks a plot's center, the Pest Finder key in Controls teleports you there with /plottp (open Configure Plots at your desk once so renamed plots are known).",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.pestFinderEnabled,
                 v -> { AlpakaConfig.instance.pestFinderEnabled = v; AlpakaConfig.save(); },

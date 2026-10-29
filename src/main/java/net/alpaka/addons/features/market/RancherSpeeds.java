@@ -9,8 +9,8 @@ import java.util.Locale;
 /**
  * The best speed cap for each Garden crop, offered under the field when Rancher's Boots ask for one.
  *
- * The speeds are SkyHanni's defaults (its "Optimal Speed" settings): the speed at which a standard
- * farm design moves exactly one block per crop break. Crops that share a speed share a row.
+ * The speeds are the ones the farming community settled on: the speed at which a standard farm
+ * design moves exactly one block per crop break. Crops that share a speed share a row.
  */
 public final class RancherSpeeds {
     private RancherSpeeds() {}
@@ -25,7 +25,7 @@ public final class RancherSpeeds {
             new Group(328, List.of("Sugar Cane", "Sunflower", "Moonflower", "Wild Rose")),
             new Group(464, List.of("Cactus")));
 
-    /** The item a crop is shown as; the items SkyHanni shows for them. */
+    /** The item a crop is shown as; as the farming mods show them. */
     public static Item icon(String crop) {
         return switch (crop) {
             case "Wheat" -> Items.WHEAT;

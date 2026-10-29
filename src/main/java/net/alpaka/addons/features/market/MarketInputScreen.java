@@ -67,6 +67,8 @@ public class MarketInputScreen extends SignEditScreen {
     private final LowestBin.Item selling;
     /** Whether Rancher's Boots ask for a speed cap, which then gets each crop's best speed to pick. */
     private final boolean speedCap;
+    /** The speed row picked with the arrow keys or the mouse, -1 for none. */
+    private int speedHighlight = -1;
 
     // ---- Suggestions, for a search ---------------------------------------------------------------
 
@@ -186,6 +188,8 @@ public class MarketInputScreen extends SignEditScreen {
         String before = input.getText();
         int caret = input.getCaret();
         change.run();
+        // Typing takes back a picked speed: Enter then confirms what was typed.
+        if (!input.getText().equals(before)) speedHighlight = -1;
         if (!input.getText().equals(before) && split(input.getText()) == null) {
             input.setText(before);
             input.setCaret(caret);
@@ -660,17 +664,19 @@ public class MarketInputScreen extends SignEditScreen {
     }
 
     /**
-     * The best speed cap for each crop, a row per speed with its crops; a click sets that speed, as
-     * typing it and pressing Enter would.
+     * The best speed cap for each crop, a row per speed with its crops; a click, or the arrow keys
+     * and Enter, set that speed, as typing it and pressing Enter would.
      */
     private void drawSpeeds(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w) {
         graphics.text(this.font, GuiFont.text("Optimal Speed"), x + 2, y, AlpakaStyle.TEXT_MUTED, false);
-        String source = "SkyHanni";
-        graphics.text(this.font, GuiFont.text(source), x + w - 2 - GuiFont.width(this.font, source), y, AlpakaStyle.DIVIDER, false);
         int accent = AlpakaStyle.accent();
         int ry = y + 12;
-        for (RancherSpeeds.Group group : RancherSpeeds.GROUPS) {
-            boolean hover = AlpakaStyle.inside(mouseX, mouseY, x, ry, w, SPEED_ROW_H);
+        boolean moved = mouseX != lastMouseX || mouseY != lastMouseY;
+        for (int i = 0; i < RancherSpeeds.GROUPS.size(); i++) {
+            RancherSpeeds.Group group = RancherSpeeds.GROUPS.get(i);
+            // The mouse takes the highlight only when it moves, so it does not fight the arrow keys.
+            if (moved && AlpakaStyle.inside(mouseX, mouseY, x, ry, w, SPEED_ROW_H)) speedHighlight = i;
+            boolean hover = i == speedHighlight;
             ModernGuiUtils.drawRoundedRect(graphics, x, ry, w, SPEED_ROW_H, AlpakaStyle.ROW_RADIUS, hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW);
             if (hover) ModernGuiUtils.drawRoundedRect(graphics, x, ry + 4, 2, SPEED_ROW_H - 8, 1, accent);
             // The crops' items, overlapping a little so four fit.
@@ -681,7 +687,7 @@ public class MarketInputScreen extends SignEditScreen {
             }
             int tx = x + 5 + 4 * 12 + 8;
             String speed = String.valueOf(group.speed());
-            String hint = hover ? "Set ↵  " : "";
+            String hint = hover ? "Enter ↵  " : "";
             int speedW = GuiFont.width(this.font, hint + speed);
             int ty = ry + (SPEED_ROW_H - 8) / 2;
             String names = String.join(", ", group.crops());
@@ -690,12 +696,18 @@ public class MarketInputScreen extends SignEditScreen {
             int sx = x + w - 8 - speedW;
             if (hover) graphics.text(this.font, GuiFont.text(hint), sx, ty, AlpakaStyle.TEXT_MUTED, false);
             graphics.text(this.font, GuiFont.text(speed), x + w - 8 - GuiFont.width(this.font, speed), ty, hover ? accent : AlpakaStyle.TEXT, false);
-            hits.add(new Hit(x, ry, w, SPEED_ROW_H, mx -> {
-                replace(speed);
-                if (text().equals(speed)) confirm();
-            }, true));
+            int index = i;
+            hits.add(new Hit(x, ry, w, SPEED_ROW_H, mx -> chooseSpeed(index), true));
             ry += SPEED_ROW_H + 2;
         }
+    }
+
+    /** Sets a speed row's speed: into the field, then confirmed as if typed and Enter pressed. */
+    private void chooseSpeed(int index) {
+        if (index < 0 || index >= RancherSpeeds.GROUPS.size()) return;
+        String speed = String.valueOf(RancherSpeeds.GROUPS.get(index).speed());
+        replace(speed);
+        if (text().equals(speed)) confirm();
     }
 
     // ---- Editing --------------------------------------------------------------------------------
@@ -824,6 +836,7 @@ public class MarketInputScreen extends SignEditScreen {
         }
         if (event.isConfirmation()) {
             if (open && highlight >= 0) choose(highlight);
+            else if (speedCap && speedHighlight >= 0) chooseSpeed(speedHighlight);
             else confirm();
             return true;
         }
@@ -833,6 +846,11 @@ public class MarketInputScreen extends SignEditScreen {
         }
         // Up and down walk the suggestions. Without them they would move to Hypixel's own lines,
         // which are not the answer, so they do nothing.
+        if (speedCap && (event.isDown() || event.isUp())) {
+            int last = RancherSpeeds.GROUPS.size() - 1;
+            speedHighlight = event.isDown() ? Math.min(last, speedHighlight + 1) : Math.max(-1, speedHighlight - 1);
+            return true;
+        }
         if (event.isDown()) {
             if (open) {
                 highlight = Math.min(suggestions.size() - 1, highlight + 1);

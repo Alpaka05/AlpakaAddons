@@ -52,3 +52,14 @@ All paths are under `src/main/resources/assets/alpaka/sounds/`.
 
 `mob/blaze/death.ogg` and `random/successful_hit.ogg` are the same file, byte for byte, so the
 blaze death currently plays the hit sound.
+
+## Pest Finder
+
+Pest Finder's vacuum waypoint extends the vacuum's particle trail the way
+[SkyHanni](https://github.com/hannibal002/SkyHanni) does in its Pest Particle Waypoint: a cubic fitted to
+the trail, and its constants for how far along the curve the pest lies. The code is written anew for
+this mod.
+
+| File | What | Source | Licence |
+| --- | --- | --- | --- |
+| `src/main/java/net/alpaka/addons/features/garden/PestTrailGuess.kt` | Fitting the trail and extending it to the pest | SkyHanni, `features/garden/pests/PestParticleWaypoint.kt`, `utils/PolynomialFitter.kt` and `LocationUtils.computePitchWeight` | LGPL-2.1 (method only, no code copied) |

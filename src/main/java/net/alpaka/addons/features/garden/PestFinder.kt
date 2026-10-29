@@ -65,6 +65,12 @@ object PestFinder {
     /** A guess is not cleared for being reached in the first second, while the trail still grows. */
     private const val REACHED_GRACE_MS = 1_000L
 
+    /** How far beside its name tag a part of a pest may be, in blocks; an Earthworm is long. */
+    private const val PART_RADIUS = 2.0
+
+    /** How far a pest part's entity id may be from its name tag's. */
+    private const val PART_ID_SPREAD = 8
+
     /** How often the pests around are looked for, in ticks. */
     private const val RESCAN_TICKS = 5
 
@@ -277,27 +283,37 @@ object PestFinder {
         name.contains(PEST_SYMBOL) || (name.contains('❤') && PEST_NAME.containsMatchIn(name))
 
     /**
-     * Notes the entities a pest is made of, under its name tag. A pest is a stand wearing the pest's
-     * player head over an invisible mob that carries its hitbox; the head is what the player sees, so
-     * it is what gets the outline. Only the one head stand nearest the tag: a pest trap is built from
-     * stands too, wearing blocks, and a pest let out of one stands among them. The mob only when
-     * there is no head, so the pest is never left unmarked.
+     * Notes the entities a pest is made of, under its name tag. A pest is one or more stands wearing
+     * player heads (an Earthworm has three, one per segment) over an invisible mob that carries its
+     * hitbox; the heads are what the player sees, so they get the outline. A pest trap is built from
+     * stands too, but they wear blocks, and a pest let out of one stands among them.
+     *
+     * Hypixel spawns a pest's parts right next to its name tag, so their ids are close to the tag's;
+     * that keeps two pests in one trap apart. Should the ids ever be spread out, the head nearest the
+     * tag still gets marked, and the mob when there is no head at all.
      */
     private fun addBody(level: ClientLevel, tag: ArmorStand) {
-        val below = AABB(tag.x - 0.8, tag.y - 3.0, tag.z - 0.8, tag.x + 0.8, tag.y + 0.5, tag.z + 0.8)
-        var head: ArmorStand? = null
+        val r = PART_RADIUS
+        val around = AABB(tag.x - r, tag.y - 3.0, tag.z - r, tag.x + r, tag.y + 0.5, tag.z + r)
+        var nearestHead: ArmorStand? = null
+        var foundHead = false
         var mob: LivingEntity? = null
-        for (entity in level.getEntitiesOfClass(LivingEntity::class.java, below)) {
+        for (entity in level.getEntitiesOfClass(LivingEntity::class.java, around)) {
             if (entity === tag || entity is Player) continue
             if (entity is ArmorStand) {
                 if (!entity.getItemBySlot(EquipmentSlot.HEAD).`is`(Items.PLAYER_HEAD)) continue
-                if (head == null || entity.distanceToSqr(tag) < head.distanceToSqr(tag)) head = entity
+                if (abs(entity.id - tag.id) <= PART_ID_SPREAD) {
+                    outlined[entity.id] = true
+                    foundHead = true
+                }
+                if (nearestHead == null || entity.distanceToSqr(tag) < nearestHead.distanceToSqr(tag)) nearestHead = entity
             } else if (mob == null || entity.distanceToSqr(tag) < mob.distanceToSqr(tag)) {
                 mob = entity
             }
         }
+        if (foundHead) return
         when {
-            head != null -> outlined[head.id] = true
+            nearestHead != null -> outlined[nearestHead.id] = true
             mob != null -> outlined[mob.id] = false
         }
     }

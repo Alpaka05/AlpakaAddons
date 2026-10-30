@@ -28,10 +28,14 @@ object FarmingHudRenderer {
     private const val GLYPH_HEIGHT = 9
     private const val REBUILD_INTERVAL_MS = 250L
 
-    /** The crop icons on the Contest line, drawn a line high rather than at an item's 16 pixels. */
-    private const val ICON_SIZE = 10
+    /**
+     * The smallest a crop icon is drawn, in GUI pixels. The real size is the next one at which each
+     * of the item's 16 texture pixels covers a whole number of screen pixels; any size in between
+     * gives texture pixels of uneven widths, which is what made the icons look blurry. At GUI
+     * scale 3 that is 16, at 4 it is 12.
+     */
+    private const val ICON_MIN_SIZE = 12f
     private const val ICON_GAP = 1
-    private const val ICON_SCALE = ICON_SIZE / 16.0f
 
     private const val COLOR_TITLE = 0xFF55FF55.toInt()
     private const val COLOR_LABEL = 0xFFAAAAAA.toInt()
@@ -68,6 +72,11 @@ object FarmingHudRenderer {
         val iconXs: IntArray,
         /** Where each row's value text starts: after the lead icon, if it has one. */
         val textXs: IntArray,
+        /** Each row's top; a row with icons is taller than a line of text. */
+        val tops: IntArray,
+        val heights: IntArray,
+        /** The icons' size in unscaled pixels. */
+        val iconSize: Float,
         val closeText: Component,
     )
 
@@ -76,6 +85,7 @@ object FarmingHudRenderer {
     private var cachedPreview = false
     private var cachedToggles = 0
     private var cachedFont: Style? = null
+    private var cachedIconSize = 0f
 
     /** Each crop's item, built once. */
     private val cropStacks = HashMap<String, ItemStack>()
@@ -93,15 +103,24 @@ object FarmingHudRenderer {
         return mask
     }
 
-    private fun layout(preview: Boolean): Layout {
+    /** The icon size for a HUD drawn at [scale]: see [ICON_MIN_SIZE]. */
+    private fun iconSize(scale: Float): Float {
+        val screenPerUnit = Minecraft.getInstance().window.guiScale * scale
+        if (screenPerUnit <= 0f) return 16f
+        val texel = ceil(ICON_MIN_SIZE * screenPerUnit / 16f).coerceAtLeast(1f)
+        return texel * 16f / screenPerUnit
+    }
+
+    private fun layout(preview: Boolean, scale: Float): Layout {
         val now = System.currentTimeMillis()
+        val iconSize = iconSize(scale)
         val toggles = toggleMask()
         val smoothFont = AlpakaConfig.instance.smoothOn(AlpakaConfig.instance.farmingHudSmoothFont)
         val fontStyle = if (smoothFont) GuiFont.style() else Style.EMPTY
 
         val existing = cached
         if (existing != null && cachedPreview == preview && cachedToggles == toggles && cachedFont == fontStyle &&
-            now - cachedAtMs < REBUILD_INTERVAL_MS
+            cachedIconSize == iconSize && now - cachedAtMs < REBUILD_INTERVAL_MS
         ) {
             return existing
         }
@@ -110,7 +129,7 @@ object FarmingHudRenderer {
         val font = Minecraft.getInstance().font
         val closeText = HudPanel.text(Component.literal(")"), smoothFont)
         val built = if (rows.isEmpty() || font == null) {
-            Layout(emptyList(), 0, 0, IntArray(0), emptyArray(), emptyArray(), IntArray(0), IntArray(0), closeText)
+            Layout(emptyList(), 0, 0, IntArray(0), emptyArray(), emptyArray(), IntArray(0), IntArray(0), IntArray(0), IntArray(0), iconSize, closeText)
         } else {
             val labelTexts = Array(rows.size) { HudPanel.text(Component.literal(rows[it].label), smoothFont) }
             var labelMax = 0
@@ -122,6 +141,10 @@ object FarmingHudRenderer {
             val valueXs = IntArray(rows.size)
             val iconXs = IntArray(rows.size)
             val textXs = IntArray(rows.size)
+            val tops = IntArray(rows.size)
+            val heights = IntArray(rows.size)
+            val iconWidth = ceil(iconSize).toInt()
+            var top = 0
             val valueTexts = arrayOfNulls<Component>(rows.size)
             var widest = 0
             for (index in rows.indices) {
@@ -129,7 +152,11 @@ object FarmingHudRenderer {
                 val labelEnd = font.width(labelTexts[index])
                 val valueX = if (row.spansColumns) labelEnd + LABEL_GAP else labelWidth
                 valueXs[index] = valueX
-                val textX = if (row.leadIcon != null) valueX + ICON_SIZE + LEAD_ICON_GAP else valueX
+                val hasIcons = row.leadIcon != null || row.icons.isNotEmpty()
+                heights[index] = if (hasIcons) maxOf(LINE_HEIGHT, iconWidth) else LINE_HEIGHT
+                tops[index] = top
+                top += heights[index]
+                val textX = if (row.leadIcon != null) valueX + iconWidth + LEAD_ICON_GAP else valueX
                 textXs[index] = textX
                 val value = if (row.icons.isEmpty()) row.value else "${row.value} ("
                 val valueText = if (value.isNotEmpty()) HudPanel.text(Component.literal(value), smoothFont) else null
@@ -137,11 +164,13 @@ object FarmingHudRenderer {
                 var end = if (valueText == null) labelEnd else textX + font.width(valueText)
                 if (row.icons.isNotEmpty()) {
                     iconXs[index] = end
-                    end += row.icons.size * (ICON_SIZE + ICON_GAP) - ICON_GAP + font.width(closeText)
+                    end += row.icons.size * (iconWidth + ICON_GAP) - ICON_GAP + font.width(closeText)
                 }
                 widest = maxOf(widest, end)
             }
-            Layout(rows, widest, (rows.size - 1) * LINE_HEIGHT + GLYPH_HEIGHT, valueXs, labelTexts, valueTexts, iconXs, textXs, closeText)
+            // The last row ends with its glyphs (or icons), not with the gap to a next line.
+            val height = top - (if (heights.last() == LINE_HEIGHT) LINE_HEIGHT - GLYPH_HEIGHT else 0)
+            Layout(rows, widest, height, valueXs, labelTexts, valueTexts, iconXs, textXs, tops, heights, iconSize, closeText)
         }
 
         cached = built
@@ -149,6 +178,7 @@ object FarmingHudRenderer {
         cachedPreview = preview
         cachedToggles = toggles
         cachedFont = fontStyle
+        cachedIconSize = iconSize
         return built
     }
 
@@ -268,7 +298,7 @@ object FarmingHudRenderer {
     /** Draws the HUD at an explicit position and size. Shared with the editor. */
     fun renderHud(graphics: GuiGraphicsExtractor, x: Int, y: Int, scale: Float, preview: Boolean) {
         val font = Minecraft.getInstance().font ?: return
-        val laid = layout(preview)
+        val laid = layout(preview, scale)
         if (laid.rows.isEmpty()) return
 
         graphics.pose().pushMatrix()
@@ -278,32 +308,44 @@ object FarmingHudRenderer {
             HudPanel.aroundText(graphics, laid.unscaledWidth, laid.unscaledHeight, scale)
         }
         val shadow = HudPanel.TEXT_SHADOW
-        var top = 0
+        val iconStep = ceil(laid.iconSize).toInt() + ICON_GAP
         for (index in laid.rows.indices) {
             val row = laid.rows[index]
-            graphics.text(font, laid.labelTexts[index], 0, top, if (row.spansColumns) row.valueColor else COLOR_LABEL, shadow)
-            row.leadIcon?.let { drawCrop(graphics, it, laid.valueXs[index], top) }
-            laid.valueTexts[index]?.let { graphics.text(font, it, laid.textXs[index], top, row.valueColor, shadow) }
+            val top = laid.tops[index]
+            // Text sits in the middle of a row made taller by its icons.
+            val textTop = top + (laid.heights[index] - LINE_HEIGHT + 1) / 2
+            val iconTop = top + (laid.heights[index] - laid.iconSize) / 2f
+            graphics.text(font, laid.labelTexts[index], 0, textTop, if (row.spansColumns) row.valueColor else COLOR_LABEL, shadow)
+            row.leadIcon?.let { drawCrop(graphics, it, laid.valueXs[index].toFloat(), iconTop, laid.iconSize, x, y, scale) }
+            laid.valueTexts[index]?.let { graphics.text(font, it, laid.textXs[index], textTop, row.valueColor, shadow) }
             if (row.icons.isNotEmpty()) {
                 var iconX = laid.iconXs[index]
                 for (crop in row.icons) {
-                    drawCrop(graphics, crop, iconX, top)
-                    iconX += ICON_SIZE + ICON_GAP
+                    drawCrop(graphics, crop, iconX.toFloat(), iconTop, laid.iconSize, x, y, scale)
+                    iconX += iconStep
                 }
-                graphics.text(font, laid.closeText, iconX - ICON_GAP, top, row.valueColor, shadow)
+                graphics.text(font, laid.closeText, iconX - ICON_GAP, textTop, row.valueColor, shadow)
             }
-            top += LINE_HEIGHT
         }
         graphics.pose().popMatrix()
     }
 
-    /** A crop's item, a line high, with its left edge at [x] on the row starting at [top]. */
-    private fun drawCrop(graphics: GuiGraphicsExtractor, crop: String, x: Int, top: Int) {
+    /**
+     * A crop's item, [size] pixels square at ([left], [top]) inside the HUD drawn at [hudX], [hudY]
+     * and [scale]. The corner is moved onto the nearest screen pixel, so the texture pixels line up
+     * with the screen's instead of each being smeared over two.
+     */
+    private fun drawCrop(
+        graphics: GuiGraphicsExtractor, crop: String, left: Float, top: Float, size: Float,
+        hudX: Int, hudY: Int, scale: Float,
+    ) {
         val stack = cropStack(crop) ?: return
+        val guiScale = Minecraft.getInstance().window.guiScale.toFloat()
+        fun snap(origin: Int, local: Float): Float =
+            (Math.round((origin + local * scale) * guiScale) / guiScale - origin) / scale
         graphics.pose().pushMatrix()
-        // A pixel above the text's top, so the icon sits centered on the glyphs.
-        graphics.pose().translate(x.toFloat(), (top - 1).toFloat())
-        graphics.pose().scale(ICON_SCALE, ICON_SCALE)
+        graphics.pose().translate(snap(hudX, left), snap(hudY, top))
+        graphics.pose().scale(size / 16f, size / 16f)
         graphics.item(stack, 0, 0)
         graphics.pose().popMatrix()
     }
@@ -319,10 +361,10 @@ object FarmingHudRenderer {
     }
 
     /** Width in scaled pixels, for the editor's bounding box. */
-    fun width(preview: Boolean, scale: Float): Int = ceil(layout(preview).unscaledWidth * scale).toInt()
+    fun width(preview: Boolean, scale: Float): Int = ceil(layout(preview, scale).unscaledWidth * scale).toInt()
 
     /** Height in scaled pixels, for the editor's bounding box. */
-    fun height(preview: Boolean, scale: Float): Int = ceil(layout(preview).unscaledHeight * scale).toInt()
+    fun height(preview: Boolean, scale: Float): Int = ceil(layout(preview, scale).unscaledHeight * scale).toInt()
 
     private fun formatNumber(value: Long): String = String.format(Locale.US, "%,d", value)
 

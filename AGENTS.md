@@ -42,19 +42,21 @@ session always win over this file.
     The documented exceptions: `Outbound.latencyProbe()`, the Performance HUD's ping (at most every
     5 s), `Outbound.quickJoinSkyblock()`, Quick Join's opt-in /skyblock after joining Hypixel
     (at most every 30 s), party chat answers to a party member's "!tps"-style command when the
-    player switched on Auto Answer (`Cause.PARTY_CHAT_REQUEST`, design-rework, off
-    by default, at most every 2 s), and the resource pack answers of the pack cache in
+    player switched on Auto Answer (`Cause.PARTY_CHAT_REQUEST`, off by default,
+    at most every 2 s), and the resource pack answers of the pack cache in
     `mixin/DownloadedPackSourceMixin` and `mixin/ClientCommonPacketListenerPackCacheMixin`.
 - `src/test/`: JUnit 5 tests (Java and Kotlin).
 - `tools/`: helper scripts (Modrinth cleanup, menu icons, ...).
 
 ## Branches
 
-- `main`: Minecraft 26.2, version line 1.x. Releases come from here.
-- `design-rework`: the redesigned config menu and design language (AlpakaStyle), version line
-  2.0.0-alpha. It stays off main until the maintainer says the redesign is ready, so never merge
-  design-rework into main. A feature meant for both gets two PRs: one against main (ported onto the
-  old config menu) and one against design-rework (cherry-pick, or the same change redone there).
+- `main`: Minecraft 26.2, the only line under development. It has the redesigned config menu
+  and design language (AlpakaStyle) and builds as 2.0.0-alpha (`version_line=2.0.0`). Every PR goes
+  against main, and only one PR per change.
+- `design-rework`: where the redesign was built until it was merged into main on 2026-10-29 (#354).
+  It is finished and frozen: don't base branches or PRs on it, don't open "twin" PRs for it, and
+  don't deploy it. Older PRs, commits and notes that talk about "both lines", "the old config menu"
+  or a `-design-rework` twin describe that earlier state.
 - `mc-26.1.2`: backport line for Minecraft 26.1.2, discontinued since 2026-10-18 (releases are
   26.2 only). Not synced any more; only touched when the maintainer asks.
 - `test/*`: throwaway integration branches for test builds. Never base PRs on them.
@@ -64,18 +66,17 @@ session always win over this file.
 The full procedure is in `.agents/rules/shipping.md` (Claude also has it as the `alpaka-ship`
 skill). In short:
 
-1. Every change gets its own branch (`fix/...`, `feat/...`, `perf/...`, `docs/...`) off the right
-   base, Conventional Commit messages (`fix(block-overlay): ...`), pushed, and a PR against that base.
-   The maintainer merges PRs, agents don't, unless told to.
-2. If the change belongs on both lines, open the second PR right away.
-3. **Every change is deployed to the maintainer's Mac on its own, without asking:**
-   - changes for `main` go into the Modrinth App profile **Fabric 26.2**,
-   - changes for `design-rework` go into **OneClient** (cluster "26.2 Fabric").
+1. Every change gets its own branch (`fix/...`, `feat/...`, `perf/...`, `docs/...`) off
+   `origin/main`, Conventional Commit messages (`fix(block-overlay): ...`), pushed, and one PR
+   against main. The maintainer merges PRs, agents don't, unless told to.
+2. **Every change is deployed to the maintainer's Mac on its own, without asking, into OneClient**
+   (cluster "26.2 Fabric"). The Modrinth App profile "Fabric 26.2" is no longer a deploy target
+   (since 2026-10-30).
 
-   `alpaka-test-build <main|design-rework>` (on the server) builds the base branch plus every open
-   PR against it and deploys the result to the right place, so the maintainer always tests the
-   whole pending state, not just the latest PR.
-4. Report in German, short: what changed, PR links, what was deployed where.
+   `alpaka-test-build main` (on the server) builds main plus every open PR against it and deploys
+   the result to OneClient, so the maintainer always tests the whole pending state, not just the
+   latest PR.
+3. Report in German, short: what changed, PR links, what was deployed where.
 
 ## Working rules
 
@@ -89,25 +90,19 @@ skill). In short:
 
 ## Where a new config option goes
 
-main and design-rework have two different config menus, and an option placed right in one can
-land in the wrong spot in the other. Work out where it goes in each menu separately, from that
-branch's own code, every time:
+`ConfigTree` builds the config menu as sidebar page → feature → settings from the registry
+(`AlpakaConfigRegistry`), so registration order and a few lists decide where an option shows up:
 
-- **main (old menu):** one flat list per tab (`ConfigCategory`), split by header options. The
-  option appears exactly where it is registered in `AlpakaConfigRegistry`, under the header before
-  it. Register it in the section it belongs to, not just at the end of the tab.
-- **design-rework (new menu):** `ConfigTree` builds sidebar page → feature → settings from the
-  registry. An option is a feature of its own (its own row in the middle column) only if its id is
-  in `ConfigTree.MASTERS`; otherwise it silently becomes a setting of whatever feature was
-  registered just before it. Each feature then has to be listed on its sidebar page in
-  `ConfigTree.LAYOUT`, or it ends up under "Other". Settings registered away from their feature
-  go into `PARENTS`.
-- **design-rework: Blur and Smooth Font come last.** In every feature that has them, the Blur and
-  Smooth Font switches are the last settings; nothing goes below them. A new setting for such a
-  feature is registered before them (the per-HUD ones are registered at the end in
-  `registerHudStyleToggles` for this reason). This rule is for design-rework only.
-- **design-rework: the key comes first.** A feature's key (`ConfigOption.keybind`, title "Key") is
-  its first setting, right under the description. `ConfigTree` moves it there wherever it is
+- An option is a feature of its own (its own row in the middle column) only if its id is in
+  `ConfigTree.MASTERS`; otherwise it silently becomes a setting of whatever feature was registered
+  just before it. Each feature then has to be listed on its sidebar page in `ConfigTree.LAYOUT`, or
+  it ends up under "Other". Settings registered away from their feature go into `PARENTS`.
+- **Blur and Smooth Font come last.** In every feature that has them, the Blur and Smooth Font
+  switches are the last settings; nothing goes below them. A new setting for such a feature is
+  registered before them (the per-HUD ones are registered at the end in `registerHudStyleToggles`
+  for this reason).
+- **The key comes first.** A feature's key (`ConfigOption.keybind`, title "Key") is its first
+  setting, right under the description. `ConfigTree` moves it there wherever it is
   registered, but register it straight after the feature anyway. Never register a key through
   Fabric's `KeyMappingHelper` (that puts it in vanilla Controls); use `AlpakaKeyBinds.register`.
 - If it isn't clear which page or section an option belongs on, ask before you open the PR. Check
@@ -118,8 +113,7 @@ branch's own code, every time:
 - User-visible text: English, American spelling ("Color"), Title Case for titles.
 - Colour options always via `ConfigOption.color(...)` (shows a swatch and a reset button), never a
   plain "Choose Color" button.
-- On design-rework, every window opened from the config uses `AlpakaStyle` (header height
-  `AlpakaStyle.HEADER_H`), and every dangerous action asks through the one `AlpakaConfirmScreen`
+- Every window opened from the config uses `AlpakaStyle` (header height `AlpakaStyle.HEADER_H`), and every dangerous action asks through the one `AlpakaConfirmScreen`
   (`ConfigOption.confirm(...)`). The pause and main menu keep their glass style (`MenuStyle`), HUD
   text keeps its Hypixel colours.
 - Comments explain why, in plain sentences; match the surrounding code.

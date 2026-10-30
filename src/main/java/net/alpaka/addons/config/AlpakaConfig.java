@@ -463,7 +463,7 @@ public class AlpakaConfig {
     @SerializedName(value = "ragnarockEnabled", alternate = "ragAxeCountdownEnabled")
     public boolean ragnarockEnabled = true;
 
-    // Deployable timer: the strongest power orb or flare in range, with its time left.
+    // Deployable timer: the strongest deployable of each family in range, with its time left.
     public boolean deployableTimerEnabled = false;
     /** Clicking a garden visitor's Accept Offer while items are missing opens the bazaar for them. */
     public boolean visitorBazaarEnabled = true;

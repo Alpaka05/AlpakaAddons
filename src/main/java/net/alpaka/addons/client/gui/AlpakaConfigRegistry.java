@@ -2604,11 +2604,11 @@ public class AlpakaConfigRegistry {
                 "ragnarock ragnarok rag axe sword cast casting countdown timer crosshair action bar ability strength"));
 
         OPTIONS.add(new ConfigOption("deployable_timer", "Deployable Timer",
-                "Shows the strongest power orb or flare in range with the time it has left. Move it in the HUD editor.",
+                "Shows the deployables in range with the time they have left: power orbs and flares, mining lanterns, the Umberella, your Totem of Corruption and your Black Hole. Move it in the HUD editor.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.deployableTimerEnabled,
                 v -> { AlpakaConfig.instance.deployableTimerEnabled = v; AlpakaConfig.save(); },
-                "deployable timer power orb flare radiant mana flux overflux plasmaflux warning alert sos hud icon time left range buff"));
+                "deployable timer power orb flare radiant mana flux overflux plasmaflux warning alert sos lantern mithril titanium glacite dwarven will-o'-wisp wisp umberella umbrella totem corruption black hole fishing mining hud icon time left range buff"));
 
         OPTIONS.add(new ConfigOption("Enchantments", ConfigCategory.SKYBLOCK));
 

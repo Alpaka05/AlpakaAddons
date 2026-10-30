@@ -48,7 +48,7 @@ export JAVA_HOME=$(ls -d ~/.jdks/*25* | head -1)
 For each base a PR was opened against, run on the server:
 
 ```bash
-alpaka-test-build main            # -> Modrinth App profile "Fabric 26.2"
+alpaka-test-build main            # -> OneClient, cluster "26.2 Fabric" (since 2026-10-30; was Modrinth)
 alpaka-test-build design-rework   # -> OneClient, cluster "26.2 Fabric"
 ```
 
@@ -68,7 +68,7 @@ catches up.
 
 - What changed, in one or two sentences.
 - PR links per branch.
-- What now runs where: jar name and profile (Fabric 26.2 / OneClient), and that the game must be
+- What now runs where: jar name and OneClient, and that the game must be
   restarted.
 - Anything skipped or still open (e.g. a PR left out for a conflict).
 

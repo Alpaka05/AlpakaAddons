@@ -68,12 +68,12 @@ skill). In short:
    base, Conventional Commit messages (`fix(block-overlay): ...`), pushed, and a PR against that base.
    The maintainer merges PRs, agents don't, unless told to.
 2. If the change belongs on both lines, open the second PR right away.
-3. **Every change is deployed to the maintainer's Mac on its own, without asking:**
-   - changes for `main` go into the Modrinth App profile **Fabric 26.2**,
-   - changes for `design-rework` go into **OneClient** (cluster "26.2 Fabric").
+3. **Every change is deployed to the maintainer's Mac on its own, without asking, always into
+   OneClient** (cluster "26.2 Fabric"), whatever the base branch. The Modrinth App profile
+   "Fabric 26.2" is no longer a deploy target (since 2026-10-30).
 
    `alpaka-test-build <main|design-rework>` (on the server) builds the base branch plus every open
-   PR against it and deploys the result to the right place, so the maintainer always tests the
+   PR against it and deploys the result to OneClient, so the maintainer always tests the
    whole pending state, not just the latest PR.
 4. Report in German, short: what changed, PR links, what was deployed where.
 

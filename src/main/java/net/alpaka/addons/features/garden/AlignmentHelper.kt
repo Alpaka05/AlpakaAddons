@@ -96,7 +96,9 @@ object AlignmentHelper {
         val dx = x - lastX
         val dy = y - lastY
         val dz = z - lastZ
-        stillTicks = if (lastX.isNaN() || dx * dx + dy * dy + dz * dz > STILL_EPSILON_SQ) 0 else stillTicks + 1
+        // Hovering in flight keeps the position too, but only standing on the ground counts.
+        val moved = lastX.isNaN() || dx * dx + dy * dy + dz * dz > STILL_EPSILON_SQ
+        stillTicks = if (moved || !player.onGround() || player.abilities.flying) 0 else stillTicks + 1
         lastX = x
         lastY = y
         lastZ = z

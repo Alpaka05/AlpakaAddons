@@ -2036,7 +2036,7 @@ public class AlpakaConfigRegistry {
                 "alignment helper toggle garden"));
 
         OPTIONS.add(new ConfigOption("alignment_helper_mode", "Activation",
-                "When the helper is active: after standing still for a while, switched by its key, or whenever you hold a farming tool.",
+                "When the helper is active: after standing still on the ground for a while, switched by its key, or whenever you hold a farming tool.",
                 ConfigCategory.SKYBLOCK,
                 () -> (float) AlpakaConfig.instance.alignmentHelperMode,
                 v -> { AlpakaConfig.instance.alignmentHelperMode = Math.round(v); AlpakaConfig.save(); },
@@ -2045,7 +2045,7 @@ public class AlpakaConfigRegistry {
                 "alignment helper activation mode condition standing still key farming tool hoe").choices(net.alpaka.addons.features.garden.AlignmentHelper.MODE_NAMES));
 
         OPTIONS.add(new ConfigOption("alignment_helper_still_seconds", "Standing Still For",
-                "How long you have to stand still before the helper turns on, when Activation is Standing Still.",
+                "How long you have to stand still on the ground before the helper turns on, when Activation is Standing Still.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.alignmentHelperStillSeconds,
                 v -> { AlpakaConfig.instance.alignmentHelperStillSeconds = Math.round(v * 2.0f) / 2.0f; AlpakaConfig.save(); },

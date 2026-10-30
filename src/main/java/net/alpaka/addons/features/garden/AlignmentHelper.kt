@@ -22,7 +22,8 @@ import java.util.Locale
  * Alignment Helper: the Garden's farms are built for one exact yaw and pitch, and this helps set
  * them before farming. While it is active the mouse turns slower and the angles are shown under the
  * crosshair; while farming (a farming tool in hand and the attack key held) the mouse can be locked
- * so a bump does not knock the angle off. Only the camera is touched; nothing is sent to the server.
+ * so a bump does not knock the angle off. Both stay off on the Barn plot. Only the camera is
+ * touched; nothing is sent to the server.
  */
 object AlignmentHelper {
 
@@ -100,13 +101,18 @@ object AlignmentHelper {
         lastY = y
         lastZ = z
 
+        // Nobody farms on the Barn; standing at the visitors or the desk must not slow the mouse.
+        if (GardenPlots.index(x, z) == GardenPlots.BARN) {
+            active = false
+            locked = false
+            return
+        }
         val farmingTool = isFarmingTool(player.mainHandItem)
-        val onBarn = GardenPlots.index(x, z) == GardenPlots.BARN
-        locked = cfg.alignmentHelperLockMouse && farmingTool && !onBarn && mc.gui.screen() == null
+        locked = cfg.alignmentHelperLockMouse && farmingTool && mc.gui.screen() == null
                 && mc.options.keyAttack.isDown
         active = !locked && when (cfg.alignmentHelperMode) {
             MODE_KEY -> toggledOn
-            MODE_FARMING_TOOL -> farmingTool && !onBarn
+            MODE_FARMING_TOOL -> farmingTool
             else -> stillTicks >= Math.round(cfg.alignmentHelperStillSeconds * 20f)
         }
     }

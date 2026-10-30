@@ -2023,7 +2023,7 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Alignment Helper", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("alignment_helper", "Alignment Helper",
-                "Helps set the exact yaw and pitch a farm needs before you start: the mouse turns slower and the angles show under the crosshair.",
+                "Helps set the exact yaw and pitch a farm needs before you start: the mouse turns slower and the angles show under the crosshair. Always off on the Barn.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.alignmentHelperEnabled,
                 v -> { AlpakaConfig.instance.alignmentHelperEnabled = v; AlpakaConfig.save(); },
@@ -2036,7 +2036,7 @@ public class AlpakaConfigRegistry {
                 "alignment helper toggle garden"));
 
         OPTIONS.add(new ConfigOption("alignment_helper_mode", "Activation",
-                "When the helper is active: after standing still for a while, switched by its key, or whenever you hold a farming tool outside the Barn.",
+                "When the helper is active: after standing still for a while, switched by its key, or whenever you hold a farming tool.",
                 ConfigCategory.SKYBLOCK,
                 () -> (float) AlpakaConfig.instance.alignmentHelperMode,
                 v -> { AlpakaConfig.instance.alignmentHelperMode = Math.round(v); AlpakaConfig.save(); },

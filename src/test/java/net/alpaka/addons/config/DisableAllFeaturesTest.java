@@ -53,7 +53,7 @@ class DisableAllFeaturesTest {
             "visitorBazaarEnabled",
             "slayerDropTrackerEnabled", "hideHypixelDropMessage", "slayerRngDropGuildChatEnabled",
             "hideSlayerChatMessages", "bossSpawnAlertEnabled", "bossCocoonAlertEnabled", "slayerTimerEnabled",
-            "slayerHudEnabled", "worldAgeJoinMessageEnabled", "partyInvitePromptEnabled",
+            "slayerHudEnabled", "farmingHudEnabled", "worldAgeJoinMessageEnabled", "partyInvitePromptEnabled",
             "cacheResourcePackEnabled", "guildPrefixEnabled", "bridgeBotFormatterEnabled", "ragnarockEnabled",
             "onlyCritDamageEnabled", "deployableTimerEnabled", "dungeonMapEnabled", "leapMenuEnabled", "customAuctionHouseEnabled", "customBazaarEnabled",
             "marketPriceHistoryEnabled", "customSignInputEnabled", "chestValueEnabled",
@@ -113,7 +113,7 @@ class DisableAllFeaturesTest {
             "terminalPredictClicks", "terminalBlockWrongClicks", "terminalFirstClickGuard", "terminalRateGuard",
             "solveSimonSays", "solveArrowAlign", "solveLightsDevice", "solveSharpshooter",
             // HUD style: how things look, like the fonts and colors
-            "hudBlurAll", "hudSmoothFontAll", "slayerHudBlur", "slayerHudSmoothFont", "slayerTimerHudBlur",
+            "hudBlurAll", "hudSmoothFontAll", "slayerHudBlur", "slayerHudSmoothFont", "farmingHudBlur", "farmingHudSmoothFont", "slayerTimerHudBlur",
             "slayerTimerHudSmoothFont", "performanceHudBlur", "performanceHudSmoothFont", "inventoryHudBlur",
             "notificationBlur", "notificationSmoothFont", "menuFontInChat", "menuFontInScoreboard",
             // Values

@@ -46,6 +46,7 @@ public final class AlpakaPerf {
         HUD_PLAYER_MODEL("alpaka:hud_player_model"),
         HUD_PERFORMANCE("alpaka:hud_performance"),
         HUD_SLAYER("alpaka:hud_slayer"),
+        HUD_FARMING("alpaka:hud_farming"),
         HUD_SLAYER_TIMER("alpaka:hud_slayer_timer"),
         HUD_DEPLOYABLE_TIMER("alpaka:hud_deployable_timer"),
         HUD_DUNGEON_MAP("alpaka:hud_dungeon_map"),

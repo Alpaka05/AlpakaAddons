@@ -22,6 +22,7 @@ object HudRegistry {
         ChatHudElement,
         PerformanceHudElement,
         SlayerHudElement,
+        net.alpaka.addons.features.garden.FarmingHudElement,
         SlayerTimerHudElement,
         DeployableTimerHudElement,
         PlayerModelHudElement,

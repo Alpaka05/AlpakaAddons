@@ -1955,6 +1955,29 @@ public class AlpakaConfigRegistry {
                 0.1f, 2.0f, val -> String.format(Locale.ROOT, "%.0f%%", val * 100.0f),
                 "etherwarp sound volume loud quiet"));
 
+        OPTIONS.add(new ConfigOption("Farming HUD", ConfigCategory.SKYBLOCK));
+
+        OPTIONS.add(new ConfigOption("farming_hud_enabled", "Farming HUD",
+                "Shows your farming stats on the Garden: XP per hour, crop milestone, pest cooldown, repellent and the next Jacob's Contest.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.farmingHudEnabled,
+                v -> { AlpakaConfig.instance.farmingHudEnabled = v; AlpakaConfig.save(); },
+                "farming hud garden xp per hour crop milestone tier eta pest cooldown repellent jacob contest crops"));
+
+        OPTIONS.add(new ConfigOption("farming_hud_lines", "Shown Lines",
+                "Pick which lines the HUD shows. Milestone and pest cooldown need the Crop Milestones and Pests tab widgets.",
+                ConfigCategory.SKYBLOCK,
+                java.util.List.of(
+                        toggle("Title", c -> c.farmingHudShowTitle, (c, v) -> c.farmingHudShowTitle = v),
+                        toggle("Farming XP per Hour", c -> c.farmingHudShowXpPerHour, (c, v) -> c.farmingHudShowXpPerHour = v),
+                        toggle("Crop Milestone", c -> c.farmingHudShowMilestone, (c, v) -> c.farmingHudShowMilestone = v),
+                        toggle("Time to Next Milestone", c -> c.farmingHudShowMilestoneEta, (c, v) -> c.farmingHudShowMilestoneEta = v),
+                        toggle("Pest Cooldown", c -> c.farmingHudShowPestCooldown, (c, v) -> c.farmingHudShowPestCooldown = v),
+                        toggle("Pest Repellent", c -> c.farmingHudShowRepellent, (c, v) -> c.farmingHudShowRepellent = v),
+                        toggle("Next Jacob's Contest", c -> c.farmingHudShowContest, (c, v) -> c.farmingHudShowContest = v)
+                ),
+                "farming hud lines toggle show hide title xp per hour crop milestone eta next tier pest cooldown repellent jacob contest crops"));
+
         OPTIONS.add(new ConfigOption("Pest Finder", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("pest_finder", "Pest Finder",
@@ -3640,6 +3663,10 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.slayerHudBlur, v -> AlpakaConfig.instance.slayerHudBlur = v);
         styleToggle("slayer_hud_smooth_font", "Smooth Font", ConfigCategory.SKYBLOCK, false,
                 () -> AlpakaConfig.instance.slayerHudSmoothFont, v -> AlpakaConfig.instance.slayerHudSmoothFont = v);
+        styleToggle("farming_hud_blur", "Blur", ConfigCategory.SKYBLOCK, true,
+                () -> AlpakaConfig.instance.farmingHudBlur, v -> AlpakaConfig.instance.farmingHudBlur = v);
+        styleToggle("farming_hud_smooth_font", "Smooth Font", ConfigCategory.SKYBLOCK, false,
+                () -> AlpakaConfig.instance.farmingHudSmoothFont, v -> AlpakaConfig.instance.farmingHudSmoothFont = v);
         styleToggle("slayer_timer_blur", "Blur", ConfigCategory.SKYBLOCK, true,
                 () -> AlpakaConfig.instance.slayerTimerHudBlur, v -> AlpakaConfig.instance.slayerTimerHudBlur = v);
         styleToggle("slayer_timer_smooth_font", "Smooth Font", ConfigCategory.SKYBLOCK, false,

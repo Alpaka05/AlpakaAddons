@@ -6,6 +6,7 @@
   "client": [
     "ClientPacketListenerTimeMixin",
     "MouseHandlerMixin",
+    "AlignmentMouseHandlerMixin",
     "ScreenMixin",
     "ArmorStandSplashMixin",
     "MultiPlayerGameModeMixin",

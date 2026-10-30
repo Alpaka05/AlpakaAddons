@@ -2020,6 +2020,60 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.pestFinderLineToPests = v; AlpakaConfig.save(); },
                 "pest finder line tracer pests vacuum"));
 
+        OPTIONS.add(new ConfigOption("Alignment Helper", ConfigCategory.SKYBLOCK));
+
+        OPTIONS.add(new ConfigOption("alignment_helper", "Alignment Helper",
+                "Helps set the exact yaw and pitch a farm needs before you start: the mouse turns slower and the angles show under the crosshair. Always off on the Barn.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.alignmentHelperEnabled,
+                v -> { AlpakaConfig.instance.alignmentHelperEnabled = v; AlpakaConfig.save(); },
+                "alignment helper garden farming angle yaw pitch sensitivity aim align farm crops"));
+
+        OPTIONS.add(ConfigOption.keybind("alignment_helper_key", "Key",
+                "Switches the helper on and off while Activation is set to Key. Unbound by default.",
+                ConfigCategory.SKYBLOCK,
+                () -> net.alpaka.addons.features.garden.AlignmentHelper.KEY,
+                "alignment helper toggle garden"));
+
+        OPTIONS.add(new ConfigOption("alignment_helper_mode", "Activation",
+                "When the helper is active: after standing still on the ground for a while, switched by its key, or whenever you hold a farming tool.",
+                ConfigCategory.SKYBLOCK,
+                () -> (float) AlpakaConfig.instance.alignmentHelperMode,
+                v -> { AlpakaConfig.instance.alignmentHelperMode = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (net.alpaka.addons.features.garden.AlignmentHelper.MODE_NAMES.length - 1),
+                val -> net.alpaka.addons.features.garden.AlignmentHelper.MODE_NAMES[Math.round(val)],
+                "alignment helper activation mode condition standing still key farming tool hoe").choices(net.alpaka.addons.features.garden.AlignmentHelper.MODE_NAMES));
+
+        OPTIONS.add(new ConfigOption("alignment_helper_still_seconds", "Standing Still For",
+                "How long you have to stand still on the ground before the helper turns on, when Activation is Standing Still.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.alignmentHelperStillSeconds,
+                v -> { AlpakaConfig.instance.alignmentHelperStillSeconds = Math.round(v * 2.0f) / 2.0f; AlpakaConfig.save(); },
+                0.5f, 5.0f, val -> String.format(Locale.ROOT, "%.1f s", Math.round(val * 2.0f) / 2.0f),
+                "alignment helper standing still time seconds delay"));
+
+        OPTIONS.add(new ConfigOption("alignment_helper_sensitivity", "Sensitivity",
+                "How fast the mouse turns while the helper is active, compared to your normal sensitivity.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.alignmentHelperSensitivity,
+                v -> { AlpakaConfig.instance.alignmentHelperSensitivity = Math.round(v * 20.0f) / 20.0f; AlpakaConfig.save(); },
+                0.05f, 0.75f, val -> Math.round(val * 20.0f) * 5 + "%",
+                "alignment helper sensitivity mouse speed slow precise"));
+
+        OPTIONS.add(new ConfigOption("alignment_helper_show_angles", "Show Angles",
+                "Shows your yaw to five decimals and your pitch to two under the crosshair while the helper is active.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.alignmentHelperShowAngles,
+                v -> { AlpakaConfig.instance.alignmentHelperShowAngles = v; AlpakaConfig.save(); },
+                "alignment helper show angles yaw pitch crosshair degrees f3"));
+
+        OPTIONS.add(new ConfigOption("alignment_helper_lock_mouse", "Lock Mouse While Farming",
+                "While you hold a farming tool and the attack key outside the Barn, the mouse does not turn the camera, so a bump cannot change your angle.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.alignmentHelperLockMouse,
+                v -> { AlpakaConfig.instance.alignmentHelperLockMouse = v; AlpakaConfig.save(); },
+                "alignment helper lock mouse camera farming freeze rotation"));
+
         OPTIONS.add(new ConfigOption("Slayer Tracking", ConfigCategory.SKYBLOCK));
 
 

@@ -549,6 +549,17 @@ public class AlpakaConfig {
     /** The Garden's plot names by grid square, read from the desk's Configure Plots menu; empty until then. */
     public java.util.List<String> pestFinderPlotNames = new java.util.ArrayList<>();
 
+    // Alignment Helper: slower mouse and the angles under the crosshair while lining up on the Garden.
+    public boolean alignmentHelperEnabled = false;
+    /** When it is active, an index into AlignmentHelper.MODE_NAMES: standing still, key, farming tool. */
+    public int alignmentHelperMode = 0;
+    public float alignmentHelperStillSeconds = 2.0f;
+    /** What the mouse's movement is multiplied by while it is active. */
+    public float alignmentHelperSensitivity = 0.25f;
+    public boolean alignmentHelperShowAngles = true;
+    /** Locks the camera while farming: a farming tool in hand and the attack key held. */
+    public boolean alignmentHelperLockMouse = true;
+
     // Dungeon Map: screen position is edited in the HUD editor.
     /** Highlight the starred mobs and minibosses during a dungeon clear. */
     public boolean starredMobsHighlightEnabled = false;
@@ -1833,6 +1844,7 @@ public class AlpakaConfig {
         this.leapMenuEnabled = false;
         this.dungeonDoorHighlight = false;
         this.pestFinderEnabled = false;
+        this.alignmentHelperEnabled = false;
         this.bridgeBotFormatterEnabled = false;
         this.guildPrefixEnabled = false;
         this.itemSizeFeatureEnabled = false;

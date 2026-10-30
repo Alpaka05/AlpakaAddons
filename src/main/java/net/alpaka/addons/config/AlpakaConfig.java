@@ -478,6 +478,8 @@ public class AlpakaConfig {
     public boolean worldAgeJoinMessageEnabled = true;
     public int worldAgeRecentThresholdSec = 60;
     public boolean onlyCritDamageEnabled = true;
+    /** Clicks on the nameless black glass panes that fill SkyBlock menus are ignored; see FillerPaneClicks. */
+    public boolean ignoreFillerPanesEnabled = true;
     /**
      * The mod draws damage splashes itself, animated and in gradients, in place of Hypixel's.
      * Off by default while it is being tried out.
@@ -1809,6 +1811,7 @@ public class AlpakaConfig {
         this.profileDashboardEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
+        this.ignoreFillerPanesEnabled = false;
         this.customDamageTagsEnabled = false;
         this.blockOverlayEnabled = false;
         this.etherwarpOverlayEnabled = false;

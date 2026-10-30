@@ -397,6 +397,44 @@ public class AlpakaConfig {
      */
     public boolean slayerHudOnlyInSlayerAreas = true;
 
+    // Farming HUD, on the Garden only. Each line has its own toggle, like the slayer session HUD.
+    public boolean farmingHudEnabled = true;
+    public int farmingHudX = net.alpaka.addons.client.hud.HudDefaults.FARMING_X;
+    public int farmingHudY = net.alpaka.addons.client.hud.HudDefaults.FARMING_Y;
+    public float farmingHudScale = 1.0f;
+    public boolean farmingHudShowTitle = true;
+    public boolean farmingHudShowXpPerHour = true;
+    public boolean farmingHudShowMilestone = true;
+    public boolean farmingHudShowMilestoneEta = true;
+    public boolean farmingHudShowPestCooldown = true;
+    public boolean farmingHudShowRepellent = true;
+    public boolean farmingHudShowContest = true;
+    public boolean farmingHudBlur = true;
+    public boolean farmingHudSmoothFont = true;
+    /**
+     * When the last Pest Repellent runs out (epoch ms), from its chat message; kept so the time left
+     * survives a restart. Whether it was a Pest Repellent MAX.
+     */
+    public long farmingRepellentUntilMs = 0L;
+    public boolean farmingRepellentMax = false;
+    /**
+     * How long the pest cooldown runs after pests spawn, learned from the Pests widget, so the HUD
+     * can count it down from the spawn message alone. 0 until learned.
+     */
+    public long farmingPestCooldownMs = 0L;
+    /**
+     * Each crop's progress as the Crop Milestones menu last showed it, by crop name: what turns the
+     * tab list's percentage into crops.
+     */
+    public Map<String, CropMilestone> farmingMilestones = new HashMap<>();
+
+    public static class CropMilestone {
+        public int tier;
+        public long current;
+        public long needed;
+        public double percent;
+    }
+
     // Slayer boss timer. Times a single boss fight over the boss entity's own lifetime - the way
     // SkyHanni does - and remembers the fastest ever per slayer. The sidebar is only the fallback
     // for a fight where the boss entity could not be watched, so there is no setting for it.
@@ -1793,6 +1831,7 @@ public class AlpakaConfig {
         this.playerModelEnabled = false;
         this.performanceHudEnabled = false;
         this.slayerHudEnabled = false;
+        this.farmingHudEnabled = false;
         this.customTabEnabled = false;
         this.allowApiCalls = false;
         this.slayerTimerEnabled = false;

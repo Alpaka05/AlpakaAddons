@@ -40,9 +40,13 @@ object FarmingHudRenderer {
     private const val COLOR_BAD = 0xFFFF5555.toInt()
     private const val COLOR_WARN = 0xFFFFFF55.toInt()
 
+    /** The gap between a crop icon in front of a value and the value. */
+    private const val LEAD_ICON_GAP = 2
+
     /**
      * One row; the title alone spans both columns. A row with [icons] draws them after its value,
-     * in brackets: the Contest line's crops.
+     * in brackets: the Contest line's crops. [leadIcon] is a crop drawn in front of the value, in
+     * place of its name: the Milestone line's.
      */
     private data class Line(
         val label: String,
@@ -50,6 +54,7 @@ object FarmingHudRenderer {
         val valueColor: Int,
         val spansColumns: Boolean = false,
         val icons: List<String> = emptyList(),
+        val leadIcon: String? = null,
     )
 
     private class Layout(
@@ -61,6 +66,8 @@ object FarmingHudRenderer {
         val valueTexts: Array<Component?>,
         /** Where each row's icons start, after its value and the opening bracket. */
         val iconXs: IntArray,
+        /** Where each row's value text starts: after the lead icon, if it has one. */
+        val textXs: IntArray,
         val closeText: Component,
     )
 
@@ -103,7 +110,7 @@ object FarmingHudRenderer {
         val font = Minecraft.getInstance().font
         val closeText = HudPanel.text(Component.literal(")"), smoothFont)
         val built = if (rows.isEmpty() || font == null) {
-            Layout(emptyList(), 0, 0, IntArray(0), emptyArray(), emptyArray(), IntArray(0), closeText)
+            Layout(emptyList(), 0, 0, IntArray(0), emptyArray(), emptyArray(), IntArray(0), IntArray(0), closeText)
         } else {
             val labelTexts = Array(rows.size) { HudPanel.text(Component.literal(rows[it].label), smoothFont) }
             var labelMax = 0
@@ -114,6 +121,7 @@ object FarmingHudRenderer {
             val labelWidth = if (labelMax > 0) labelMax + LABEL_GAP else 0
             val valueXs = IntArray(rows.size)
             val iconXs = IntArray(rows.size)
+            val textXs = IntArray(rows.size)
             val valueTexts = arrayOfNulls<Component>(rows.size)
             var widest = 0
             for (index in rows.indices) {
@@ -121,17 +129,19 @@ object FarmingHudRenderer {
                 val labelEnd = font.width(labelTexts[index])
                 val valueX = if (row.spansColumns) labelEnd + LABEL_GAP else labelWidth
                 valueXs[index] = valueX
+                val textX = if (row.leadIcon != null) valueX + ICON_SIZE + LEAD_ICON_GAP else valueX
+                textXs[index] = textX
                 val value = if (row.icons.isEmpty()) row.value else "${row.value} ("
                 val valueText = if (value.isNotEmpty()) HudPanel.text(Component.literal(value), smoothFont) else null
                 valueTexts[index] = valueText
-                var end = if (valueText == null) labelEnd else valueX + font.width(valueText)
+                var end = if (valueText == null) labelEnd else textX + font.width(valueText)
                 if (row.icons.isNotEmpty()) {
                     iconXs[index] = end
                     end += row.icons.size * (ICON_SIZE + ICON_GAP) - ICON_GAP + font.width(closeText)
                 }
                 widest = maxOf(widest, end)
             }
-            Layout(rows, widest, (rows.size - 1) * LINE_HEIGHT + GLYPH_HEIGHT, valueXs, labelTexts, valueTexts, iconXs, closeText)
+            Layout(rows, widest, (rows.size - 1) * LINE_HEIGHT + GLYPH_HEIGHT, valueXs, labelTexts, valueTexts, iconXs, textXs, closeText)
         }
 
         cached = built
@@ -162,17 +172,19 @@ object FarmingHudRenderer {
                 when {
                     noMilestoneWidget -> Line("Milestone", "Tab Widget Off", COLOR_WARN)
                     milestone == null -> Line("Milestone", "-", COLOR_VALUE)
-                    milestone.maxed -> Line("Milestone", "${milestone.crop} ${milestone.tier} (Max)", COLOR_GOOD)
+                    milestone.maxed -> Line("Milestone", "${milestone.tier} (Max)", COLOR_GOOD, leadIcon = milestone.crop)
                     // In crops once the Crop Milestones menu has been opened, as a percentage before.
                     crops != null -> Line(
                         "Milestone",
-                        "${milestone.crop} ${milestone.tier}: ${formatNumber(crops.first)}/${formatShort(crops.second)}",
+                        "${milestone.tier}: ${formatNumber(crops.first)}/${formatShort(crops.second)}",
                         COLOR_VALUE,
+                        leadIcon = milestone.crop,
                     )
                     else -> Line(
                         "Milestone",
-                        String.format(Locale.ROOT, "%s %d: %.1f%%", milestone.crop, milestone.tier, milestone.percent),
+                        String.format(Locale.ROOT, "%d: %.1f%%", milestone.tier, milestone.percent),
                         COLOR_VALUE,
+                        leadIcon = milestone.crop,
                     )
                 }
             )
@@ -270,24 +282,29 @@ object FarmingHudRenderer {
         for (index in laid.rows.indices) {
             val row = laid.rows[index]
             graphics.text(font, laid.labelTexts[index], 0, top, if (row.spansColumns) row.valueColor else COLOR_LABEL, shadow)
-            laid.valueTexts[index]?.let { graphics.text(font, it, laid.valueXs[index], top, row.valueColor, shadow) }
+            row.leadIcon?.let { drawCrop(graphics, it, laid.valueXs[index], top) }
+            laid.valueTexts[index]?.let { graphics.text(font, it, laid.textXs[index], top, row.valueColor, shadow) }
             if (row.icons.isNotEmpty()) {
                 var iconX = laid.iconXs[index]
                 for (crop in row.icons) {
-                    cropStack(crop)?.let { stack ->
-                        graphics.pose().pushMatrix()
-                        // A pixel above the text's top, so the icon sits centered on the glyphs.
-                        graphics.pose().translate(iconX.toFloat(), (top - 1).toFloat())
-                        graphics.pose().scale(ICON_SCALE, ICON_SCALE)
-                        graphics.item(stack, 0, 0)
-                        graphics.pose().popMatrix()
-                    }
+                    drawCrop(graphics, crop, iconX, top)
                     iconX += ICON_SIZE + ICON_GAP
                 }
                 graphics.text(font, laid.closeText, iconX - ICON_GAP, top, row.valueColor, shadow)
             }
             top += LINE_HEIGHT
         }
+        graphics.pose().popMatrix()
+    }
+
+    /** A crop's item, a line high, with its left edge at [x] on the row starting at [top]. */
+    private fun drawCrop(graphics: GuiGraphicsExtractor, crop: String, x: Int, top: Int) {
+        val stack = cropStack(crop) ?: return
+        graphics.pose().pushMatrix()
+        // A pixel above the text's top, so the icon sits centered on the glyphs.
+        graphics.pose().translate(x.toFloat(), (top - 1).toFloat())
+        graphics.pose().scale(ICON_SCALE, ICON_SCALE)
+        graphics.item(stack, 0, 0)
         graphics.pose().popMatrix()
     }
 

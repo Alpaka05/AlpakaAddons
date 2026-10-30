@@ -1,6 +1,7 @@
 package net.alpaka.addons.features.garden
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -12,15 +13,19 @@ class FarmingParseTest {
         "Info",
         "Pests:",
         " Alive: 3",
-        " Plots: 4, 12",
-        " Cooldown: 1m 58s",
+        " Plots: 19",
+        " Spray: None",
+        " Repellent: None",
+        " Bonus: INACTIVE",
+        " Cooldown: 4m 32s",
         "",
         "Crop Milestones:",
-        " Cocoa Beans 31: 68.4%",
-        "Jacob's Contest: 12m",
-        " ○ Pumpkin",
-        "  Mushroom",
-        " ○ Wheat",
+        " Mushroom 25: 48.6%",
+        "Jacob's Contest:",
+        " Starts In: 29m",
+        " ○ Cactus",
+        "  Carrot",
+        " ○ Moonflower",
         "Skills: Farming 60: MAX",
     )
 
@@ -41,13 +46,16 @@ class FarmingParseTest {
 
     @Test
     fun readsTheGardenWidgets() {
-        assertEquals("1m 58s", FarmingParse.field(FarmingParse.widget(tab, "Pests:")!!, "Cooldown"))
+        val pests = FarmingParse.widget(tab, "Pests:")!!
+        assertEquals("4m 32s", FarmingParse.field(pests, "Cooldown"))
+        assertEquals("None", FarmingParse.field(pests, "Repellent"))
         assertEquals(
-            FarmingParse.Milestone("Cocoa Beans", 31, 68.4),
+            FarmingParse.Milestone("Mushroom", 25, 48.6),
             FarmingParse.milestone(FarmingParse.widget(tab, "Crop Milestones:")!!),
         )
-        assertEquals("12m", FarmingParse.widgetTitleValue(tab, "Jacob's Contest:"))
-        assertEquals(listOf("Pumpkin", "Mushroom", "Wheat"), FarmingParse.contestCrops(FarmingParse.widget(tab, "Jacob's Contest:")!!))
+        val contest = FarmingParse.widget(tab, "Jacob's Contest:")!!
+        assertEquals("29m", FarmingParse.field(contest, "Starts In"))
+        assertEquals(listOf("Cactus", "Carrot", "Moonflower"), FarmingParse.contestCrops(contest))
         assertNull(FarmingParse.widget(tab, "Visitors:"))
     }
 
@@ -65,6 +73,35 @@ class FarmingParseTest {
             FarmingParse.repellent("YUM! Pests will now spawn 4x less while you break crops for the next 60m!"),
         )
         assertNull(FarmingParse.repellent("YUM! You ate a cookie."))
+    }
+
+    @Test
+    fun readsTheCropMilestonesMenu() {
+        val lore = listOf(
+            "Harvest Mushroom on your Garden",
+            "to increase your Mushroom tier!",
+            "",
+            "Total: 3,807,695",
+            "",
+            "Progress to Tier 26: 48.7%",
+            "                    389,285/800k",
+            "",
+            "Progress to Tier 46: 18.8%",
+            "                    3,807,695/20.2M",
+        )
+        assertEquals(
+            FarmingParse.MenuMilestone("Mushroom", 25, 389_285L, 800_000L, 48.7),
+            FarmingParse.menuMilestone("Mushroom 25", lore),
+        )
+        assertNull(FarmingParse.menuMilestone("Go Back", listOf("To Desk")))
+        assertEquals(20_200_000L, FarmingParse.amount("20.2M"))
+    }
+
+    @Test
+    fun recognisesSpawnedPests() {
+        assertTrue(FarmingParse.pestSpawned("YUCK! 3 ൠ Pest have spawned in Plot - 19!"))
+        assertTrue(FarmingParse.pestSpawned("GROSS! A ൠ Pest has spawned in The Barn!"))
+        assertFalse(FarmingParse.pestSpawned("From [MVP+] Someone: YUCK! 6 ൠ Pest have spawned in Plot - 7!"))
     }
 
     @Test

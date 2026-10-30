@@ -1965,7 +1965,7 @@ public class AlpakaConfigRegistry {
                 "farming hud garden xp per hour crop milestone tier eta pest cooldown repellent jacob contest crops"));
 
         OPTIONS.add(new ConfigOption("farming_hud_lines", "Shown Lines",
-                "Pick which lines the HUD shows. Milestone and pest cooldown need the Crop Milestones and Pests tab widgets.",
+                "Pick which lines the HUD shows. Milestone and pest cooldown need the Crop Milestones and Pests tab widgets; open /cropmilestones once to see the milestone in crops.",
                 ConfigCategory.SKYBLOCK,
                 java.util.List.of(
                         toggle("Title", c -> c.farmingHudShowTitle, (c, v) -> c.farmingHudShowTitle = v),

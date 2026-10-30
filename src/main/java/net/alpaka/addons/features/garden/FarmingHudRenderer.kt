@@ -4,6 +4,7 @@ import java.util.Locale
 import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.client.gui.HudPanel
 import net.alpaka.addons.config.AlpakaConfig
+import net.alpaka.addons.features.market.RancherSpeeds
 import net.alpaka.addons.utils.SkyblockUtils
 import net.minecraft.client.DeltaTracker
 import net.minecraft.client.Minecraft
@@ -11,6 +12,8 @@ import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.ChatScreen
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.Style
+import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
 import kotlin.math.ceil
 import kotlin.math.roundToLong
 
@@ -25,6 +28,11 @@ object FarmingHudRenderer {
     private const val GLYPH_HEIGHT = 9
     private const val REBUILD_INTERVAL_MS = 250L
 
+    /** The crop icons on the Contest line, drawn a line high rather than at an item's 16 pixels. */
+    private const val ICON_SIZE = 10
+    private const val ICON_GAP = 1
+    private const val ICON_SCALE = ICON_SIZE / 16.0f
+
     private const val COLOR_TITLE = 0xFF55FF55.toInt()
     private const val COLOR_LABEL = 0xFFAAAAAA.toInt()
     private const val COLOR_VALUE = 0xFFFFFFFF.toInt()
@@ -32,8 +40,17 @@ object FarmingHudRenderer {
     private const val COLOR_BAD = 0xFFFF5555.toInt()
     private const val COLOR_WARN = 0xFFFFFF55.toInt()
 
-    /** One row; the title alone spans both columns. */
-    private data class Line(val label: String, val value: String, val valueColor: Int, val spansColumns: Boolean = false)
+    /**
+     * One row; the title alone spans both columns. A row with [icons] draws them after its value,
+     * in brackets: the Contest line's crops.
+     */
+    private data class Line(
+        val label: String,
+        val value: String,
+        val valueColor: Int,
+        val spansColumns: Boolean = false,
+        val icons: List<String> = emptyList(),
+    )
 
     private class Layout(
         val rows: List<Line>,
@@ -42,6 +59,9 @@ object FarmingHudRenderer {
         val valueXs: IntArray,
         val labelTexts: Array<Component>,
         val valueTexts: Array<Component?>,
+        /** Where each row's icons start, after its value and the opening bracket. */
+        val iconXs: IntArray,
+        val closeText: Component,
     )
 
     private var cached: Layout? = null
@@ -49,6 +69,9 @@ object FarmingHudRenderer {
     private var cachedPreview = false
     private var cachedToggles = 0
     private var cachedFont: Style? = null
+
+    /** Each crop's item, built once. */
+    private val cropStacks = HashMap<String, ItemStack>()
 
     private fun toggleMask(): Int {
         val cfg = AlpakaConfig.instance
@@ -78,8 +101,9 @@ object FarmingHudRenderer {
 
         val rows = buildRows(preview, now)
         val font = Minecraft.getInstance().font
+        val closeText = HudPanel.text(Component.literal(")"), smoothFont)
         val built = if (rows.isEmpty() || font == null) {
-            Layout(emptyList(), 0, 0, IntArray(0), emptyArray(), emptyArray())
+            Layout(emptyList(), 0, 0, IntArray(0), emptyArray(), emptyArray(), IntArray(0), closeText)
         } else {
             val labelTexts = Array(rows.size) { HudPanel.text(Component.literal(rows[it].label), smoothFont) }
             var labelMax = 0
@@ -89,6 +113,7 @@ object FarmingHudRenderer {
             }
             val labelWidth = if (labelMax > 0) labelMax + LABEL_GAP else 0
             val valueXs = IntArray(rows.size)
+            val iconXs = IntArray(rows.size)
             val valueTexts = arrayOfNulls<Component>(rows.size)
             var widest = 0
             for (index in rows.indices) {
@@ -96,11 +121,17 @@ object FarmingHudRenderer {
                 val labelEnd = font.width(labelTexts[index])
                 val valueX = if (row.spansColumns) labelEnd + LABEL_GAP else labelWidth
                 valueXs[index] = valueX
-                val valueText = if (row.value.isNotEmpty()) HudPanel.text(Component.literal(row.value), smoothFont) else null
+                val value = if (row.icons.isEmpty()) row.value else "${row.value} ("
+                val valueText = if (value.isNotEmpty()) HudPanel.text(Component.literal(value), smoothFont) else null
                 valueTexts[index] = valueText
-                widest = maxOf(widest, if (valueText == null) labelEnd else valueX + font.width(valueText))
+                var end = if (valueText == null) labelEnd else valueX + font.width(valueText)
+                if (row.icons.isNotEmpty()) {
+                    iconXs[index] = end
+                    end += row.icons.size * (ICON_SIZE + ICON_GAP) - ICON_GAP + font.width(closeText)
+                }
+                widest = maxOf(widest, end)
             }
-            Layout(rows, widest, (rows.size - 1) * LINE_HEIGHT + GLYPH_HEIGHT, valueXs, labelTexts, valueTexts)
+            Layout(rows, widest, (rows.size - 1) * LINE_HEIGHT + GLYPH_HEIGHT, valueXs, labelTexts, valueTexts, iconXs, closeText)
         }
 
         cached = built
@@ -123,17 +154,24 @@ object FarmingHudRenderer {
             rows.add(Line("XP/hr", perHour?.let { formatNumber(it.roundToLong()) } ?: "-", COLOR_VALUE))
         }
 
-        val milestone = if (preview) FarmingParse.Milestone("Wheat", 32, 45.2) else FarmingTracker.milestone
+        val milestone = if (preview) FarmingParse.Milestone("Mushroom", 25, 48.7) else FarmingTracker.milestone
         val noMilestoneWidget = !preview && !FarmingTracker.hasMilestoneWidget
         if (cfg.farmingHudShowMilestone) {
+            val crops = if (preview) 389_285L to 800_000L else FarmingTracker.milestoneCrops()
             rows.add(
                 when {
                     noMilestoneWidget -> Line("Milestone", "Tab Widget Off", COLOR_WARN)
                     milestone == null -> Line("Milestone", "-", COLOR_VALUE)
                     milestone.maxed -> Line("Milestone", "${milestone.crop} ${milestone.tier} (Max)", COLOR_GOOD)
+                    // In crops once the Crop Milestones menu has been opened, as a percentage before.
+                    crops != null -> Line(
+                        "Milestone",
+                        "${milestone.crop} ${milestone.tier}: ${formatNumber(crops.first)}/${formatShort(crops.second)}",
+                        COLOR_VALUE,
+                    )
                     else -> Line(
                         "Milestone",
-                        String.format(Locale.ROOT, "%s %d (%.1f%%)", milestone.crop, milestone.tier, milestone.percent),
+                        String.format(Locale.ROOT, "%s %d: %.1f%%", milestone.crop, milestone.tier, milestone.percent),
                         COLOR_VALUE,
                     )
                 }
@@ -152,14 +190,15 @@ object FarmingHudRenderer {
         }
 
         if (cfg.farmingHudShowPestCooldown) {
-            val cooldown = if (preview) "1m 58s" else FarmingTracker.pestCooldown
+            val left = if (preview) 118_000L else FarmingTracker.pestCooldownLeftMs(now)
             rows.add(
                 when {
-                    !preview && !FarmingTracker.hasPestWidget -> Line("Pest CD", "Tab Widget Off", COLOR_WARN)
-                    cooldown == null -> Line("Pest CD", "?", COLOR_VALUE)
-                    cooldown.startsWith("READY") -> Line("Pest CD", "Ready", COLOR_GOOD)
-                    cooldown.startsWith("MAX") -> Line("Pest CD", "Max Pests", COLOR_BAD)
-                    else -> Line("Pest CD", cooldown, COLOR_VALUE)
+                    !preview && FarmingTracker.maxPests -> Line("Pest CD", "Max Pests", COLOR_BAD)
+                    left == null && !preview && !FarmingTracker.hasPestWidget -> Line("Pest CD", "Tab Widget Off", COLOR_WARN)
+                    // Not known until the widget shows a cooldown or pests have spawned once.
+                    left == null -> Line("Pest CD", "-", COLOR_VALUE)
+                    left <= 0L -> Line("Pest CD", "Ready", COLOR_GOOD)
+                    else -> Line("Pest CD", formatDuration(left), COLOR_VALUE)
                 }
             )
         }
@@ -181,30 +220,23 @@ object FarmingHudRenderer {
         return rows
     }
 
-    /** The running or next Jacob's Contest: when, and its crops. */
+    /** The running or next Jacob's Contest: when, and its crops as their items. */
     private fun contestLine(preview: Boolean, now: Long): Line {
-        if (preview) return Line("Contest", "12m 30s: Wheat, Carrot, Potato", COLOR_VALUE)
+        if (preview) return Line("Contest", "12m 30s", COLOR_VALUE, icons = listOf("Wheat", "Carrot", "Potato"))
 
         val contest = JacobContests.current(now)
         if (contest != null) {
-            val crops = contest.crops.joinToString(", ")
             return if (contest.startMs <= now) {
                 val left = contest.startMs + JacobContests.LENGTH_MS - now
-                Line("Contest", "Now (${formatDuration(left)}): $crops", COLOR_GOOD)
+                Line("Contest", "Now ${formatDuration(left)}", COLOR_GOOD, icons = contest.crops)
             } else {
-                Line("Contest", "${formatDuration(contest.startMs - now)}: $crops", COLOR_VALUE)
+                Line("Contest", formatDuration(contest.startMs - now), COLOR_VALUE, icons = contest.crops)
             }
         }
 
         // No calendar (API calls off, or not fetched yet): what the tab list's widget says.
-        val time = FarmingTracker.tabContestTime
-        val crops = FarmingTracker.tabContestCrops.joinToString(", ")
-        return when {
-            time == null && crops.isEmpty() -> Line("Contest", "-", COLOR_VALUE)
-            crops.isEmpty() -> Line("Contest", time!!, COLOR_VALUE)
-            time.isNullOrEmpty() -> Line("Contest", crops, COLOR_VALUE)
-            else -> Line("Contest", "$time: $crops", COLOR_VALUE)
-        }
+        val time = FarmingTracker.tabContestTime?.takeIf { it.isNotEmpty() }
+        return Line("Contest", time ?: "-", COLOR_VALUE, icons = FarmingTracker.tabContestCrops)
     }
 
     /** Called every frame from the HUD hook. */
@@ -239,9 +271,34 @@ object FarmingHudRenderer {
             val row = laid.rows[index]
             graphics.text(font, laid.labelTexts[index], 0, top, if (row.spansColumns) row.valueColor else COLOR_LABEL, shadow)
             laid.valueTexts[index]?.let { graphics.text(font, it, laid.valueXs[index], top, row.valueColor, shadow) }
+            if (row.icons.isNotEmpty()) {
+                var iconX = laid.iconXs[index]
+                for (crop in row.icons) {
+                    cropStack(crop)?.let { stack ->
+                        graphics.pose().pushMatrix()
+                        // A pixel above the text's top, so the icon sits centered on the glyphs.
+                        graphics.pose().translate(iconX.toFloat(), (top - 1).toFloat())
+                        graphics.pose().scale(ICON_SCALE, ICON_SCALE)
+                        graphics.item(stack, 0, 0)
+                        graphics.pose().popMatrix()
+                    }
+                    iconX += ICON_SIZE + ICON_GAP
+                }
+                graphics.text(font, laid.closeText, iconX - ICON_GAP, top, row.valueColor, shadow)
+            }
             top += LINE_HEIGHT
         }
         graphics.pose().popMatrix()
+    }
+
+    /**
+     * Null until a world has been joined: items get their components only then, and building a
+     * stack before that throws. The HUD editor can be opened from the title screen.
+     */
+    private fun cropStack(crop: String): ItemStack? {
+        cropStacks[crop]?.let { return it }
+        if (!Items.STONE.builtInRegistryHolder().areComponentsBound()) return null
+        return ItemStack(RancherSpeeds.icon(crop)).also { cropStacks[crop] = it }
     }
 
     /** Width in scaled pixels, for the editor's bounding box. */
@@ -251,6 +308,13 @@ object FarmingHudRenderer {
     fun height(preview: Boolean, scale: Float): Int = ceil(layout(preview).unscaledHeight * scale).toInt()
 
     private fun formatNumber(value: Long): String = String.format(Locale.US, "%,d", value)
+
+    /** "800k", "1.6M": what a tier needs, as short as the menu writes it. */
+    private fun formatShort(value: Long): String = when {
+        value >= 1_000_000L -> String.format(Locale.ROOT, "%.1fM", value / 1_000_000.0).replace(".0M", "M")
+        value >= 1_000L -> String.format(Locale.ROOT, "%.1fk", value / 1_000.0).replace(".0k", "k")
+        else -> value.toString()
+    }
 
     /** "1h 12m" above an hour, "4m 05s" below. */
     private fun formatDuration(ms: Long): String {

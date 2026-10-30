@@ -29,6 +29,18 @@ object FarmingParse {
     /** "YUM! Pests will now spawn 2x less while you break crops for the next 60m!" */
     private val REPELLENT_CHAT = Regex("Pests will now spawn (\\d+)x less while you break crops for the next (\\d+)m")
 
+    /**
+     * "YUCK! 3 ൠ Pests have spawned in Plot - 19!", "GROSS! A ൠ Pest has spawned in The Barn!".
+     * Anchored at the start, so a player quoting it ("From [MVP+] Name: YUCK! ...") does not count.
+     */
+    private val PEST_SPAWN = Regex("^\\w+! .*Pests? ha(?:s|ve) spawned in (?:Plot - .+|The Barn)!")
+
+    /** The crop's own item in the Crop Milestones menu: "Mushroom 25". */
+    private val MENU_NAME = Regex("^([A-Za-z][A-Za-z ]*?) (\\d+)$")
+    /** "Progress to Tier 26: 48.7%", followed by "389,285/800k". */
+    private val MENU_PROGRESS = Regex("^Progress to Tier (\\d+): ([\\d.]+)%")
+    private val MENU_AMOUNT = Regex("^([\\d,.]+[kKmMbB]?)/([\\d,.]+[kKmMbB]?)")
+
     private val DURATION_PART = Regex("(\\d+)\\s*([dhms])")
 
     data class XpGain(val gained: Double, val progress: String, val current: Double?, val needed: String?)
@@ -38,6 +50,9 @@ object FarmingParse {
     }
 
     data class Repellent(val factor: Int, val minutes: Int)
+
+    /** One crop's progress to its next tier as the Crop Milestones menu shows it. */
+    data class MenuMilestone(val crop: String, val tier: Int, val current: Long, val needed: Long, val percent: Double)
 
     fun xpGain(actionBar: String): XpGain? {
         val match = XP_GAIN.find(actionBar) ?: return null
@@ -57,7 +72,7 @@ object FarmingParse {
         val body = ArrayList<String>()
         for (index in start + 1 until lines.size) {
             val line = lines[index]
-            if (line.isBlank() || !line.startsWith(" ")) break
+            if (line.isBlank() || !Character.isWhitespace(line[0])) break
             body.add(line)
         }
         return body
@@ -89,6 +104,42 @@ object FarmingParse {
     fun repellent(chat: String): Repellent? {
         val match = REPELLENT_CHAT.find(chat) ?: return null
         return Repellent(match.groupValues[1].toInt(), match.groupValues[2].toInt())
+    }
+
+    fun pestSpawned(chat: String): Boolean = PEST_SPAWN.containsMatchIn(chat)
+
+    /**
+     * Reads one crop's item in the Crop Milestones menu: its name and lore lines, colors stripped.
+     * Null for anything else in the menu, and for a maxed crop, which has no next tier.
+     */
+    fun menuMilestone(name: String, lore: List<String>): MenuMilestone? {
+        val title = MENU_NAME.find(name.trim()) ?: return null
+        val crop = title.groupValues[1]
+        if (crop !in CROPS) return null
+        val tier = title.groupValues[2].toInt()
+        for (index in lore.indices) {
+            val progress = MENU_PROGRESS.find(lore[index].trim()) ?: continue
+            // The first "Progress to Tier" is the next tier; a later one is the way to the last.
+            if (progress.groupValues[1].toInt() != tier + 1) return null
+            val amount = lore.getOrNull(index + 1)?.trim()?.let { MENU_AMOUNT.find(it) } ?: return null
+            val current = amount(amount.groupValues[1]) ?: return null
+            val needed = amount(amount.groupValues[2]) ?: return null
+            return MenuMilestone(crop, tier, current, needed, progress.groupValues[2].toDouble())
+        }
+        return null
+    }
+
+    /** "389,285", "800k", "20.2M" as a whole number. */
+    fun amount(text: String): Long? {
+        val suffix = text.lastOrNull()?.lowercaseChar()
+        val factor = when (suffix) {
+            'k' -> 1_000.0
+            'm' -> 1_000_000.0
+            'b' -> 1_000_000_000.0
+            else -> 1.0
+        }
+        val digits = if (factor == 1.0) text else text.dropLast(1)
+        return number(digits)?.let { Math.round(it * factor) }
     }
 
     /** "1h 12m", "4m 30s" or "45s" as milliseconds; null when there is no time in it. */

@@ -559,6 +559,8 @@ public class AlpakaConfig {
     public int starredMobsHighlightColor = 0xFFFFAA00;
     /** During the clear, hide the name tags of mobs without a star. */
     public boolean starredMobsHideNames = false;
+    /** Color the glow Hypixel gives dungeon teammates by their class instead of their rank. */
+    public boolean teammateClassGlowEnabled = false;
     public boolean dungeonMapEnabled = false;
     public int dungeonMapX = net.alpaka.addons.client.hud.HudDefaults.DUNGEON_MAP_X;
     public int dungeonMapY = net.alpaka.addons.client.hud.HudDefaults.DUNGEON_MAP_Y;
@@ -1833,6 +1835,7 @@ public class AlpakaConfig {
         this.inventoryHudEnabled = false;
         this.dungeonMapEnabled = false;
         this.starredMobsHighlightEnabled = false;
+        this.teammateClassGlowEnabled = false;
         this.leapMenuEnabled = false;
         this.dungeonDoorHighlight = false;
         this.pestFinderEnabled = false;

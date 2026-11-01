@@ -1418,6 +1418,16 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.starredMobsHideNames = v; AlpakaConfig.save(); },
                 "dungeon hide non starred mobs name tags nametags names health clutter clear"));
 
+        OPTIONS.add(new ConfigOption("Teammate Class Glow", ConfigCategory.DUNGEON));
+
+        OPTIONS.add(new ConfigOption("teammate_class_glow", "Teammate Class Glow",
+                "Colors the glow Hypixel gives your dungeon teammates by their class instead of their rank: Archer orange, "
+                        + "Berserk red, Healer pink, Mage aqua, Tank green. It only recolors that glow and adds none.",
+                ConfigCategory.DUNGEON,
+                () -> AlpakaConfig.instance.teammateClassGlowEnabled,
+                v -> { AlpakaConfig.instance.teammateClassGlowEnabled = v; AlpakaConfig.save(); },
+                "dungeon teammate teammates team party class classes glow outline color colour archer berserk healer mage tank rank"));
+
         OPTIONS.add(new ConfigOption("Inventory HUD", ConfigCategory.VISUALS));
 
         OPTIONS.add(new ConfigOption("inventory_hud_enabled", "Inventory HUD",

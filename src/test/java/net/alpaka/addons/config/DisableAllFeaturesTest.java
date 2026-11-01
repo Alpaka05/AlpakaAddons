@@ -57,7 +57,7 @@ class DisableAllFeaturesTest {
             "cacheResourcePackEnabled", "guildPrefixEnabled", "bridgeBotFormatterEnabled", "ragnarockEnabled",
             "onlyCritDamageEnabled", "ignoreFillerPanesEnabled", "deployableTimerEnabled", "dungeonMapEnabled", "leapMenuEnabled", "customAuctionHouseEnabled", "customBazaarEnabled",
             "marketPriceHistoryEnabled", "customSignInputEnabled", "chestValueEnabled",
-            "starredMobsHighlightEnabled",
+            "starredMobsHighlightEnabled", "teammateClassGlowEnabled",
             "dungeonSolversEnabled", "terminalSolversEnabled", "terminalCustomGui", "deviceSolversEnabled",
             "dungeonDoorHighlight",
             // Cosmetics

@@ -8,6 +8,7 @@ import net.alpaka.addons.features.garden.PestFinder;
 import net.alpaka.addons.features.mobdeath.HideMobDeathsFeature;
 import net.alpaka.addons.features.playerscale.PlayerScaleFeature;
 import net.alpaka.addons.features.slayer.SlayerBossHighlight;
+import net.alpaka.addons.features.teammateglow.TeammateClassGlow;
 import net.alpaka.addons.utils.AlpakaPerf;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.entity.EntityRenderer;
@@ -44,6 +45,7 @@ public class EntityRendererMixin<T extends Entity, S extends EntityRenderState> 
         AlpakaPerf.count(AlpakaPerf.Section.ENTITY_RULES);
         CleanBlazeFeature.shouldHideEntityFire(entity, state);
         FireOverlayFeature.applyEntity(state);
+        TeammateClassGlow.applyOutline(entity, state);
         SlayerBossHighlight.applyOutline(entity, state);
         StarredMobsHighlight.applyOutline(entity, state);
         PestFinder.applyOutline(entity, state);

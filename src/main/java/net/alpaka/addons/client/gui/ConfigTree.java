@@ -96,7 +96,7 @@ public final class ConfigTree {
             // SkyBlock, kept apart from the list below so it does not collide with other changes there
             "slayer_boss_highlight",
             // Dungeon, kept apart the same way
-            "starred_mobs_highlight",
+            "starred_mobs_highlight", "teammate_class_glow",
             // Visuals
             "fullbright", "clean_blaze", "blaze_fire_pits", "hide_hurt_overlay", "hide_mob_deaths",
             "hide_explosions",
@@ -210,7 +210,7 @@ public final class ConfigTree {
                             "#Viewmodel Presets", "item_viewmodel_reset"},
                     {"Cosmetics", "custom_name_tag", "custom_damage_tags", "chroma_hat", "aura", "player_scale", "inventory_snow"}},
             {{"SkyBlock"},
-                    {"Dungeon", "dungeon_map_enabled", "dungeon_door_highlight", "leap_menu_enabled", "starred_mobs_highlight", "dungeon_solvers", "terminal_solvers", "terminal_custom_gui", "device_solvers"},
+                    {"Dungeon", "dungeon_map_enabled", "dungeon_door_highlight", "leap_menu_enabled", "starred_mobs_highlight", "teammate_class_glow", "dungeon_solvers", "terminal_solvers", "terminal_custom_gui", "device_solvers"},
                     {"Slayer", "slayer_hud_enabled", "slayer_timer", "boss_spawn_alert", "boss_cocoon_alert", "slayer_drop_tracker",
                             "hide_hypixel_drop_message", "slayer_rng_drop_guild_chat", "slayer_boss_highlight",
                             "hide_slayer_chat", "clean_blaze", "blaze_fire_pits"},

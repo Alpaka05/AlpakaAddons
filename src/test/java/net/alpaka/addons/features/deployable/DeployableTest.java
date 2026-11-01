@@ -13,12 +13,34 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class DeployableTest {
 
     @Test
-    void orbsAreFoundByTheirNameTag() {
-        assertEquals(Deployable.PLASMAFLUX, Deployable.orbFromName("Plasmaflux"));
-        assertEquals(Deployable.MANA_FLUX, Deployable.orbFromName("Mana Flux"));
-        // A flare's name never stands on an orb's tag.
-        assertNull(Deployable.orbFromName("SOS Flare"));
-        assertNull(Deployable.orbFromName("Zombie"));
+    void timedTagsAreFoundByTheirName() {
+        assertEquals(Deployable.PLASMAFLUX, Deployable.fromTagName("Plasmaflux"));
+        assertEquals(Deployable.MANA_FLUX, Deployable.fromTagName("Mana Flux"));
+        assertEquals(Deployable.GLACITE_LANTERN, Deployable.fromTagName("Glacite Lantern"));
+        assertEquals(Deployable.WILL_O_WISP, Deployable.fromTagName("Will-o'-wisp"));
+        assertEquals(Deployable.UMBERELLA, Deployable.fromTagName("Umberella"));
+        // A flare's name never stands on a tag, and the totem and black hole are read on their own.
+        assertNull(Deployable.fromTagName("SOS Flare"));
+        assertNull(Deployable.fromTagName("Black Hole"));
+        assertNull(Deployable.fromTagName("Totem of Corruption"));
+        assertNull(Deployable.fromTagName("Zombie"));
+    }
+
+    @Test
+    void lanternsRankByTier() {
+        assertTrue(Deployable.WILL_O_WISP.beats(Deployable.GLACITE_LANTERN));
+        assertTrue(Deployable.GLACITE_LANTERN.beats(Deployable.TITANIUM_LANTERN));
+        assertTrue(Deployable.MITHRIL_LANTERN.beats(Deployable.DWARVEN_LANTERN));
+        assertTrue(Deployable.GLACITE_LANTERN.wholeMineshaft());
+        assertFalse(Deployable.TITANIUM_LANTERN.wholeMineshaft());
+    }
+
+    @Test
+    void everyHeadHasATexture() {
+        for (Deployable d : Deployable.values()) {
+            if (d == Deployable.TOTEM_OF_CORRUPTION) assertNull(d.textureValue());
+            else assertTrue(d.textureValue() != null && !d.textureValue().isEmpty(), d.name());
+        }
     }
 
     @Test

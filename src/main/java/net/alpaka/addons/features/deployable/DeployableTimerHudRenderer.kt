@@ -15,14 +15,17 @@ import net.minecraft.world.item.Items
 import kotlin.math.ceil
 
 /**
- * Draws the strongest deployable in range: its head as an icon, and the time it has left beside it.
- * Shown only while one is in range; the editor draws a sample Plasmaflux instead.
+ * Draws the strongest deployable of each family in range, one line each: its head as an icon, and
+ * the time it has left beside it. Shown only while one is in range; the editor draws a sample
+ * Plasmaflux and Glacite Lantern instead.
  */
 object DeployableTimerHudRenderer {
 
     private const val ICON_SIZE = 16
     private const val ICON_GAP = 3
     private const val GLYPH_HEIGHT = 9
+    private const val LINE_GAP = 2
+    private const val LINE_HEIGHT = ICON_SIZE + LINE_GAP
     /** Centres the line on the icon. */
     private const val TEXT_Y = (ICON_SIZE - GLYPH_HEIGHT + 1) / 2
 
@@ -30,7 +33,10 @@ object DeployableTimerHudRenderer {
     private const val COLOR_HALF = 0xFFFFFF55.toInt()
     private const val COLOR_LOW = 0xFFFF5555.toInt()
 
-    private val PREVIEW = DeployableTracker.Active(Deployable.PLASMAFLUX, 42)
+    private val PREVIEW = listOf(
+        DeployableTracker.Active(Deployable.PLASMAFLUX, 42),
+        DeployableTracker.Active(Deployable.GLACITE_LANTERN, 183),
+    )
 
     /** Each kind's head, built once; building one means a profile and a skin lookup. */
     private val icons = EnumMap<Deployable, ItemStack>(Deployable::class.java)
@@ -43,10 +49,15 @@ object DeployableTimerHudRenderer {
     private fun icon(type: Deployable): ItemStack? {
         icons[type]?.let { return it }
         if (!Items.PLAYER_HEAD.builtInRegistryHolder().areComponentsBound()) return null
-        return ItemIcons.head(type.textureValue()).also { icons[type] = it }
+        val texture = type.textureValue()
+        val stack = if (texture != null) ItemIcons.head(texture) else ItemStack(Items.BANNER.white())
+        return stack.also { icons[type] = it }
     }
 
-    /** Green while more than half is left, yellow down to a fifth, then red. */
+    /**
+     * Green while more than half is left, yellow down to a fifth, then red. A Bubblegum pet item
+     * doubles the time, which simply reads as plenty until the normal duration is reached.
+     */
     private fun color(active: DeployableTracker.Active): Int {
         val left = active.secondsLeft().toFloat() / active.type().durationSeconds
         return when {
@@ -66,27 +77,30 @@ object DeployableTimerHudRenderer {
         if (mc.gui.hud.isHidden() || mc.level == null || mc.player == null) return
         if (mc.gui.screen() != null && mc.gui.screen() !is ChatScreen) return
 
-        val active = DeployableTracker.active() ?: return
+        val active = DeployableTracker.active()
+        if (active.isEmpty()) return
         val placement = DeployableTimerHudElement.visiblePlacement(mc.window.guiScaledWidth, mc.window.guiScaledHeight)
         renderHud(graphics, placement.anchorX, placement.anchorY, cfg.deployableTimerHudScale, active)
     }
 
-    /** What to draw: the live deployable, or the sample while there is none to position against. */
-    fun shown(): DeployableTracker.Active = DeployableTracker.active() ?: PREVIEW
+    /** What to draw: the live deployables, or the sample while there is none to position against. */
+    fun shown(): List<DeployableTracker.Active> = DeployableTracker.active().ifEmpty { PREVIEW }
 
-    fun renderHud(graphics: GuiGraphicsExtractor, x: Int, y: Int, scale: Float, active: DeployableTracker.Active) {
+    fun renderHud(graphics: GuiGraphicsExtractor, x: Int, y: Int, scale: Float, shown: List<DeployableTracker.Active>) {
         val font = Minecraft.getInstance().font ?: return
         val cfg = AlpakaConfig.instance
-        val time = timeText(active)
 
         graphics.pose().pushMatrix()
         graphics.pose().translate(x.toFloat(), y.toFloat())
         graphics.pose().scale(scale, scale)
         if (cfg.blurOn(cfg.deployableTimerHudBlur)) {
-            HudPanel.aroundText(graphics, ICON_SIZE + ICON_GAP + font.width(time), ICON_SIZE, scale)
+            HudPanel.aroundText(graphics, width(font, shown), unscaledHeight(shown.size), scale)
         }
-        icon(active.type())?.let { graphics.item(it, 0, 0) }
-        graphics.text(font, time, ICON_SIZE + ICON_GAP, TEXT_Y, color(active), HudPanel.TEXT_SHADOW)
+        shown.forEachIndexed { i, active ->
+            val top = i * LINE_HEIGHT
+            icon(active.type())?.let { graphics.item(it, 0, top) }
+            graphics.text(font, timeText(active), ICON_SIZE + ICON_GAP, top + TEXT_Y, color(active), HudPanel.TEXT_SHADOW)
+        }
         graphics.pose().popMatrix()
     }
 
@@ -96,8 +110,11 @@ object DeployableTimerHudRenderer {
             cfg.smoothOn(cfg.deployableTimerHudSmoothFont))
     }
 
-    /** Unscaled width, for the editor's box. */
-    fun width(font: Font, active: DeployableTracker.Active): Int = ICON_SIZE + ICON_GAP + font.width(timeText(active))
+    /** Unscaled width of the widest line, for the editor's box. */
+    fun width(font: Font, shown: List<DeployableTracker.Active>): Int =
+        ICON_SIZE + ICON_GAP + (shown.maxOfOrNull { font.width(timeText(it)) } ?: 0)
 
-    fun height(scale: Float): Int = ceil(ICON_SIZE * scale).toInt()
+    private fun unscaledHeight(lines: Int): Int = lines * LINE_HEIGHT - LINE_GAP
+
+    fun height(scale: Float, shown: List<DeployableTracker.Active>): Int = ceil(unscaledHeight(shown.size) * scale).toInt()
 }

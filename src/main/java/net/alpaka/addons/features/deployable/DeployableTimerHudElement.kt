@@ -45,8 +45,9 @@ object DeployableTimerHudElement : HudElement {
 
         // Measured against the sample whenever nothing is in range, so the box does not collapse
         // in the editor, which is exactly when it is being positioned.
-        val width = kotlin.math.ceil(DeployableTimerHudRenderer.width(font, DeployableTimerHudRenderer.shown()) * scale).toInt()
-        val height = DeployableTimerHudRenderer.height(scale)
+        val shown = DeployableTimerHudRenderer.shown()
+        val width = kotlin.math.ceil(DeployableTimerHudRenderer.width(font, shown) * scale).toInt()
+        val height = DeployableTimerHudRenderer.height(scale, shown)
 
         val margin = HudPanel.margin(cfg.blurOn(cfg.deployableTimerHudBlur), scale, TEXT_MARGIN)
         return HudBounds(

@@ -1092,6 +1092,13 @@ public class AlpakaConfigRegistry {
                 ),
                 "chat tabs shown visible hide pick choose select party guild coop co-op pm private messages npc npcs"));
 
+        OPTIONS.add(new ConfigOption("chat_tabs_show_count", "Show Count",
+                "Shows how many unread messages a tab has next to its name.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatTabsShowCount,
+                v -> { AlpakaConfig.instance.chatTabsShowCount = v; AlpakaConfig.save(); },
+                "chat tabs show count unread number badge new messages"));
+
         OPTIONS.add(new ConfigOption("chat_tabs_send_to_channel", "Send to Tab Channel",
                 "Sends what you type on a channel tab to that channel.",
                 ConfigCategory.VISUALS,

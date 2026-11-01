@@ -270,8 +270,7 @@ object DungeonMapRenderer {
     /** The editor's sample arena: a square room with four pillars. */
     private fun bossPreview(g: GuiGraphicsExtractor) {
         val cfg = AlpakaConfig.instance
-        val custom = cfg.dungeonMapCustomColors
-        bossPreviewTexture.upload(if (custom) bossPreviewAlpaka else bossPreviewBlocks, if (custom) 1 else 2)
+        bossPreviewTexture.upload(bossPreviewBlocks, 1)
         bossPreviewTexture.draw(g)
         if (cfg.dungeonMapPlayers) {
             drawPlayer(g, 80f, 45f, -111f, false, "Teammate", previewTeammateSkin, "Healer")
@@ -279,7 +278,6 @@ object DungeonMapRenderer {
         }
     }
 
-    private val bossPreviewAlpaka by lazy { bossPreviewPixels(DungeonMapColors.BOSS_WALL, DungeonMapColors.BOSS_FLOOR) }
     private val bossPreviewBlocks by lazy {
         bossPreviewPixels(MapColor.STONE.calculateARGBColor(MapColor.Brightness.HIGH),
             MapColor.STONE.calculateARGBColor(MapColor.Brightness.NORMAL))
@@ -387,7 +385,7 @@ object DungeonMapRenderer {
             BossMapProjection(it.x.coerceIn(projection.centerX - reach, projection.centerX + reach),
                 it.z.coerceIn(projection.centerZ - reach, projection.centerZ + reach), projection.span)
         } else projection
-        val edge = -2f * BossMapProjection.MARGIN
+        val edge = -BossMapProjection.MARGIN.toFloat()
         g.pose().pushMatrix()
         g.pose().translate(view.mapX(projection.centerX) - 64f + edge, view.mapY(projection.centerZ) - 64f + edge)
         bossTexture.upload(pixels, BossRoomMap.revision)

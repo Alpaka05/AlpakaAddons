@@ -1225,7 +1225,7 @@ public class AlpakaConfigRegistry {
                 "dungeon map hud editor move position size scale"));
 
         OPTIONS.add(new ConfigOption("dungeon_map_boss_mode", "In Boss Room",
-                "Arena Map draws the loaded terrain around you, on your level. Saved Map keeps the clear map. Both shows them side by side.", ConfigCategory.DUNGEON,
+                "Arena Map draws the boss room around you from above, in the blocks' own colors. Saved Map keeps the clear map. Both shows them side by side.", ConfigCategory.DUNGEON,
                 () -> AlpakaConfig.instance.dungeonMapShowBoss ? (float) AlpakaConfig.instance.dungeonMapBossMode : 3.0f,
                 v -> {
                     int mode = Math.round(v);
@@ -1306,7 +1306,7 @@ public class AlpakaConfigRegistry {
                 "dungeon map marker icon head arrow scale size"));
 
         OPTIONS.add(new ConfigOption("dungeon_map_colors", "Map Colors",
-                "Alpaka redraws rooms, doors and the arena in its own colors, made to read well on any background. Hypixel keeps the map's and the blocks' own colors.", ConfigCategory.DUNGEON,
+                "Alpaka redraws rooms and doors in its own colors, made to read well on any background. Hypixel keeps the map's own colors.", ConfigCategory.DUNGEON,
                 () -> AlpakaConfig.instance.dungeonMapCustomColors ? 0.0f : 1.0f,
                 v -> { AlpakaConfig.instance.dungeonMapCustomColors = Math.round(v) == 0; AlpakaConfig.save(); },
                 0.0f, 1.0f, val -> MAP_COLORS[Math.round(val)],

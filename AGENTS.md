@@ -113,7 +113,8 @@ skill). In short:
 - User-visible text: English, American spelling ("Color"), Title Case for titles.
 - Colour options always via `ConfigOption.color(...)` (shows a swatch and a reset button), never a
   plain "Choose Color" button.
-- Every window opened from the config uses `AlpakaStyle` (header height `AlpakaStyle.HEADER_H`), and every dangerous action asks through the one `AlpakaConfirmScreen`
+- Every window opened from the config uses `AlpakaStyle` (header height `AlpakaStyle.HEADER_H`),
+  and every dangerous action asks through the one `AlpakaConfirmScreen`
   (`ConfigOption.confirm(...)`). The pause and main menu keep their glass style (`MenuStyle`), HUD
   text keeps its Hypixel colours.
 - Comments explain why, in plain sentences; match the surrounding code.

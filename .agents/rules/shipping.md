@@ -50,8 +50,8 @@ catches up.
 
 - Only one build at a time.
 - If the Mac isn't reachable (lid closed, Remote Login off), say so instead of retrying in a loop.
-- `alpaka-deploy-mac <repo>` deploys one checkout as it is (target chosen by branch, or
-  `ALPAKA_TARGET=oneclient|modrinth`).
+- `alpaka-deploy-mac <repo>` deploys one checkout as it is (OneClient for any checkout of
+  current main; `ALPAKA_TARGET=oneclient|modrinth` forces the target).
 - Changes that only touch docs or agent files (nothing in the jar) need no deploy.
 
 ## 5. Report (German, short)

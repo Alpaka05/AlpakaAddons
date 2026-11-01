@@ -16,6 +16,7 @@
     "AbstractRecipeBookScreenAccessor",
     "AbstractContainerScreenMixin",
     "AbstractContainerScreenVisitorMixin",
+    "AbstractContainerScreenFillerPaneMixin",
     "ScreenItemValueMixin",
     "KeyboardHandlerItemValueMixin",
     "GuiMixin",

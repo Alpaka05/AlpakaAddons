@@ -2320,6 +2320,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.warpCooldownQueueEnabled = v; AlpakaConfig.save(); },
                 "warp cooldown queue delay wait server join transfer early command you may only use this command"));
 
+        OPTIONS.add(new ConfigOption("ignore_filler_panes", "Ignore Filler Panes",
+                "Clicks on the empty black glass panes in SkyBlock menus do nothing, so a missed click doesn't pick one up.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.ignoreFillerPanesEnabled,
+                v -> { AlpakaConfig.instance.ignoreFillerPanesEnabled = v; AlpakaConfig.save(); },
+                "ignore filler glass pane black empty menu click misclick pick up gui inventory skyblock"));
+
         OPTIONS.add(new ConfigOption("Resource Pack", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("cache_resource_pack", "Cache Resource Pack",

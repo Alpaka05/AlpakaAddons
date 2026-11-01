@@ -43,6 +43,7 @@ public final class PerformanceHudRenderer {
     private static final RollingValue FPS = new RollingValue();
     private static final RollingValue PING = new RollingValue();
     private static final RollingValue TPS = new RollingValue();
+    private static final ShownTps SHOWN_TPS = new ShownTps();
 
     private PerformanceHudRenderer() {}
 
@@ -54,7 +55,7 @@ public final class PerformanceHudRenderer {
         int fps = cfg.performanceHudShowFps ? PerformanceStats.fps() : 0;
         int ping = cfg.performanceHudShowPing ? PerformanceStats.pingMs() : 0;
         float tps = cfg.performanceHudShowTps ? PerformanceStats.tps() : 0.0f;
-        int tenthTps = TpsEstimator.shownTenths(tps);
+        int tenthTps = SHOWN_TPS.update(TpsEstimator.shownTenths(tps), Util.getMillis());
         boolean smooth = cfg.smoothOn(cfg.performanceHudSmoothFont);
         Style style = smooth ? GuiFont.style() : Style.EMPTY;
 

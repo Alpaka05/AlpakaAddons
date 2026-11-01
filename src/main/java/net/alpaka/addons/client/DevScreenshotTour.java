@@ -741,9 +741,12 @@ public final class DevScreenshotTour {
             // A Water Board room as far as the solver reads it, turned (its clay in the north-east
             // corner) and in an F7 run by the sidebar: from the water lever with the board in a start
             // state, then with a fourth door closed, which has no solution, then from the board
-            // looking back. Then back where the player stood, out of the run.
+            // looking back. Then back where the player stood, out of the run. Three doors close only
+            // once the player is in the room, after the solver read them all open, as real runs had it.
             new Stop(null, () -> waterBoardRoom(true), () -> net.alpaka.addons.utils.DungeonState.inDungeon(), 60),
-            new Stop("dungeon-water-board", () -> {}, () -> true, 5),
+            new Stop("dungeon-water-board", () -> {
+                for (int door = 0; door < 5; door += 2) waterBoardDoor(door, true);
+            }, () -> true, 30),
             new Stop("dungeon-water-board-four-doors", () -> waterBoardDoor(1, true), () -> true, 30),
             new Stop("dungeon-water-board-back", () -> {
                 waterBoardDoor(1, false);
@@ -1390,8 +1393,9 @@ public final class DevScreenshotTour {
     /**
      * Builds the room and puts the player at its water lever, in an F7 run by the sidebar, or takes
      * them back where they were and out of the run. Only what the solver reads is built: a floor,
-     * the roof's middle and its clay corner, the seven levers, the five doors with 0, 2 and 4 closed,
-     * and a board with layout 1's blocks where they start.
+     * the roof's middle and its clay corner, the seven levers, the five doors all open (real runs
+     * read them so on entering; the first stop closes 0, 2 and 4), and a board with layout 1's
+     * blocks where they start.
      */
     private static void waterBoardRoom(boolean build) {
         Minecraft mc = Minecraft.getInstance();
@@ -1464,7 +1468,7 @@ public final class DevScreenshotTour {
                     net.minecraft.world.level.block.FaceAttachedHorizontalDirectionalBlock.FACE,
                     net.minecraft.world.level.block.state.properties.AttachFace.FLOOR), 2);
         }
-        for (int door = 0; door < 5; door++) waterBoardDoor(level, door, door % 2 == 0);
+        for (int door = 0; door < 5; door++) waterBoardDoor(level, door, false);
     }
 
     private static net.minecraft.world.level.block.state.BlockState waterBoardMaterial(net.alpaka.addons.features.dungeon.puzzle.WaterBoardLever lever) {

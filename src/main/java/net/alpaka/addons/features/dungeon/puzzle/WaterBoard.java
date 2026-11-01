@@ -96,7 +96,7 @@ public final class WaterBoard extends PuzzleSolver {
         WAITING,
         /** A solution is being played out. */
         PLANNED,
-        /** All doors open. */
+        /** All doors open after some were seen closed: solved. */
         DONE
     }
 
@@ -147,6 +147,8 @@ public final class WaterBoard extends PuzzleSolver {
 
     private int variant = 0;
     private int closedMask = 0;
+    /** Whether a door was seen closed in this room; only then does all open mean solved. */
+    private boolean doorsSeenClosed = false;
     private WaterBoardPlan plan = null;
     /** World positions of the levers in the room. */
     private final BlockPos[] leverPos = new BlockPos[LEVERS.length];
@@ -227,11 +229,21 @@ public final class WaterBoard extends PuzzleSolver {
             return;
         }
         if (doors.allOpen()) {
-            stage = Stage.DONE;
             problem = null;
-            waitingFor = null;
+            // On entering, the doors can read all open: in two runs on 2026-11-01 the first look
+            // found them all open and the next read, 14 and 16 s later, three closed. Most likely
+            // Hypixel closes them only once a player is in the room. Taken as solved, that hid the
+            // solver for the whole run. Without closed doors seen here first, keep looking; a board
+            // solved before the player came just stays waiting, with nothing to show.
+            if (doorsSeenClosed) {
+                stage = Stage.DONE;
+                waitingFor = null;
+            } else {
+                waitingFor = "doors to close";
+            }
             return;
         }
+        doorsSeenClosed = true;
         Boolean water = WaterBoardLayout.waterOnBoard(view);
         if (water == null) {
             waitingFor = "board not loaded";
@@ -462,6 +474,7 @@ public final class WaterBoard extends PuzzleSolver {
         plan = null;
         variant = 0;
         closedMask = 0;
+        doorsSeenClosed = false;
         ambiguousReads = 0;
         unknownReads = 0;
         waterPowered = null;
@@ -482,6 +495,7 @@ public final class WaterBoard extends PuzzleSolver {
     public String debugState() {
         if (room == null) return null;
         StringBuilder out = new StringBuilder(stage.name().toLowerCase());
+        if (waitingFor != null && stage == Stage.WAITING) out.append(", waiting for ").append(waitingFor);
         if (problem != null) out.append(", ").append(problem.text);
         if (variant != 0) {
             out.append(", layout ").append(variant).append(", doors ").append(WaterBoardLayout.doorKey(closedMask))

@@ -2056,8 +2056,8 @@ public class AlpakaConfigRegistry {
                 "How fast the mouse turns while the helper is active, compared to your normal sensitivity.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.alignmentHelperSensitivity,
-                v -> { AlpakaConfig.instance.alignmentHelperSensitivity = Math.round(v * 20.0f) / 20.0f; AlpakaConfig.save(); },
-                0.05f, 0.75f, val -> Math.round(val * 20.0f) * 5 + "%",
+                v -> { AlpakaConfig.instance.alignmentHelperSensitivity = Math.round(v * 100.0f) / 100.0f; AlpakaConfig.save(); },
+                0.01f, 0.5f, val -> Math.round(val * 100.0f) + "%",
                 "alignment helper sensitivity mouse speed slow precise"));
 
         OPTIONS.add(new ConfigOption("alignment_helper_show_angles", "Show Angles",

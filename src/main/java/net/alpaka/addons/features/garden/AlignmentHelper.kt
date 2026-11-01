@@ -126,7 +126,8 @@ object AlignmentHelper {
     @JvmStatic
     fun mouseFactor(): Double {
         if (locked) return 0.0
-        if (active) return AlpakaConfig.instance.alignmentHelperSensitivity.toDouble()
+        // Clamped to the slider's range, for a value saved when the slider still went higher.
+        if (active) return AlpakaConfig.instance.alignmentHelperSensitivity.coerceIn(0.01f, 0.5f).toDouble()
         return 1.0
     }
 

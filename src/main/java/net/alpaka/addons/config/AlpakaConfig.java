@@ -551,11 +551,12 @@ public class AlpakaConfig {
 
     // Alignment Helper: slower mouse and the angles under the crosshair while lining up on the Garden.
     public boolean alignmentHelperEnabled = false;
-    /** When it is active, an index into AlignmentHelper.MODE_NAMES: standing still, key, farming tool. */
-    public int alignmentHelperMode = 0;
-    public float alignmentHelperStillSeconds = 2.0f;
+    /** How long the player stands still on the ground with a farming tool before it turns on. */
+    public float alignmentHelperStillSeconds = 1.0f;
     /** What the mouse's movement is multiplied by while it is active. */
     public float alignmentHelperSensitivity = 0.25f;
+    /** Only slow mouse movements are slowed down; quick flicks pass at full speed. */
+    public boolean alignmentHelperFineOnly = true;
     public boolean alignmentHelperShowAngles = true;
     /** Locks the camera while farming: a farming tool in hand and the attack key held. */
     public boolean alignmentHelperLockMouse = true;

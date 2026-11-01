@@ -2023,34 +2023,25 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Alignment Helper", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("alignment_helper", "Alignment Helper",
-                "Helps set the exact yaw and pitch a farm needs before you start: the mouse turns slower and the angles show under the crosshair. Always off on the Barn.",
+                "Helps set the exact yaw and pitch a farm needs: when you stand still with a farming tool, the mouse turns slower and the angles show under the crosshair. Always off on the Barn.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.alignmentHelperEnabled,
                 v -> { AlpakaConfig.instance.alignmentHelperEnabled = v; AlpakaConfig.save(); },
                 "alignment helper garden farming angle yaw pitch sensitivity aim align farm crops"));
 
         OPTIONS.add(ConfigOption.keybind("alignment_helper_key", "Key",
-                "Switches the helper on and off while Activation is set to Key. Unbound by default.",
+                "Switches the helper the other way, on or off, until you walk again. Unbound by default.",
                 ConfigCategory.SKYBLOCK,
                 () -> net.alpaka.addons.features.garden.AlignmentHelper.KEY,
-                "alignment helper toggle garden"));
-
-        OPTIONS.add(new ConfigOption("alignment_helper_mode", "Activation",
-                "When the helper is active: after standing still on the ground for a while, switched by its key, or whenever you hold a farming tool.",
-                ConfigCategory.SKYBLOCK,
-                () -> (float) AlpakaConfig.instance.alignmentHelperMode,
-                v -> { AlpakaConfig.instance.alignmentHelperMode = Math.round(v); AlpakaConfig.save(); },
-                0.0f, (float) (net.alpaka.addons.features.garden.AlignmentHelper.MODE_NAMES.length - 1),
-                val -> net.alpaka.addons.features.garden.AlignmentHelper.MODE_NAMES[Math.round(val)],
-                "alignment helper activation mode condition standing still key farming tool hoe").choices(net.alpaka.addons.features.garden.AlignmentHelper.MODE_NAMES));
+                "alignment helper toggle override garden"));
 
         OPTIONS.add(new ConfigOption("alignment_helper_still_seconds", "Standing Still For",
-                "How long you have to stand still on the ground before the helper turns on, when Activation is Standing Still.",
+                "How long you stand still on the ground with a farming tool before the helper turns on. It turns off when you walk, break crops or put the tool away.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.alignmentHelperStillSeconds,
-                v -> { AlpakaConfig.instance.alignmentHelperStillSeconds = Math.round(v * 2.0f) / 2.0f; AlpakaConfig.save(); },
-                0.5f, 5.0f, val -> String.format(Locale.ROOT, "%.1f s", Math.round(val * 2.0f) / 2.0f),
-                "alignment helper standing still time seconds delay"));
+                v -> { AlpakaConfig.instance.alignmentHelperStillSeconds = Math.round(v * 4.0f) / 4.0f; AlpakaConfig.save(); },
+                0.25f, 3.0f, val -> String.format(Locale.ROOT, "%.2f s", Math.round(val * 4.0f) / 4.0f),
+                "alignment helper standing still time seconds delay activation automatic"));
 
         OPTIONS.add(new ConfigOption("alignment_helper_sensitivity", "Sensitivity",
                 "How fast the mouse turns while the helper is active, compared to your normal sensitivity.",
@@ -2059,6 +2050,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.alignmentHelperSensitivity = Math.round(v * 100.0f) / 100.0f; AlpakaConfig.save(); },
                 0.01f, 0.5f, val -> Math.round(val * 100.0f) + "%",
                 "alignment helper sensitivity mouse speed slow precise"));
+
+        OPTIONS.add(new ConfigOption("alignment_helper_fine_only", "Only Slow Fine Moves",
+                "Only slow, small mouse movements are slowed down; a quick flick still turns you at full speed.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.alignmentHelperFineOnly,
+                v -> { AlpakaConfig.instance.alignmentHelperFineOnly = v; AlpakaConfig.save(); },
+                "alignment helper fine flick fast adaptive acceleration precision"));
 
         OPTIONS.add(new ConfigOption("alignment_helper_show_angles", "Show Angles",
                 "Shows your yaw to five decimals and your pitch to two under the crosshair while the helper is active.",

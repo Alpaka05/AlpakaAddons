@@ -20,22 +20,15 @@ import java.util.Locale
 
 /**
  * Alignment Helper: the Garden's farms are built for one exact yaw and pitch, and this helps set
- * them before farming. While it is active the mouse turns slower and the angles are shown under the
- * crosshair; while farming (a farming tool in hand and the attack key held) the mouse can be locked
+ * them before farming. It switches itself on when you stand still on the ground with a farming tool
+ * (not a vacuum) and off as soon as you walk, break crops or put the tool away. While it is active
+ * the mouse turns slower and the angles are shown under the crosshair; while farming (a farming tool in hand and the attack key held) the mouse can be locked
  * so a bump does not knock the angle off. Both stay off on the Barn plot. Only the camera is
  * touched; nothing is sent to the server.
  */
 object AlignmentHelper {
 
-    /** The Activation choices, in the order of [AlpakaConfig.alignmentHelperMode]. */
-    const val MODE_STANDING_STILL = 0
-    const val MODE_KEY = 1
-    const val MODE_FARMING_TOOL = 2
-
-    @JvmField
-    val MODE_NAMES = arrayOf("Standing Still", "Key", "Holding Farming Tool")
-
-    /** Toggles the helper while Activation is Key. Unbound by default. */
+    /** Switches the helper the other way until you walk again. Unbound by default. */
     @JvmField
     var KEY: KeyMapping? = null
 
@@ -48,7 +41,8 @@ object AlignmentHelper {
     /** Movement smaller than this per tick counts as standing still; a crop's knockback is not walking. */
     private const val STILL_EPSILON_SQ = 1.0e-6
 
-    private var toggledOn = false
+    /** Set by the key: forced on (true) or off (false) until the player walks; null follows the rules. */
+    private var override: Boolean? = null
     private var lastX = Double.NaN
     private var lastY = Double.NaN
     private var lastZ = Double.NaN
@@ -69,7 +63,7 @@ object AlignmentHelper {
 
     @JvmStatic
     fun reset() {
-        toggledOn = false
+        override = null
         lastX = Double.NaN
         stillTicks = 0
         active = false
@@ -88,8 +82,6 @@ object AlignmentHelper {
             reset()
             return
         }
-        if (pressed && cfg.alignmentHelperMode == MODE_KEY) toggledOn = !toggledOn
-
         val x = player.x
         val y = player.y
         val z = player.z
@@ -99,6 +91,7 @@ object AlignmentHelper {
         // Hovering in flight keeps the position too, but only standing on the ground counts.
         val moved = lastX.isNaN() || dx * dx + dy * dy + dz * dz > STILL_EPSILON_SQ
         stillTicks = if (moved || !player.onGround() || player.abilities.flying) 0 else stillTicks + 1
+        if (moved) override = null
         lastX = x
         lastY = y
         lastZ = z
@@ -107,28 +100,46 @@ object AlignmentHelper {
         if (GardenPlots.index(x, z) == GardenPlots.BARN) {
             active = false
             locked = false
+            override = null
             return
         }
         val farmingTool = isFarmingTool(player.mainHandItem)
-        locked = cfg.alignmentHelperLockMouse && farmingTool && mc.gui.screen() == null
-                && mc.options.keyAttack.isDown
-        active = !locked && when (cfg.alignmentHelperMode) {
-            MODE_KEY -> toggledOn
-            MODE_FARMING_TOOL -> farmingTool
-            else -> stillTicks >= Math.round(cfg.alignmentHelperStillSeconds * 20f)
-        }
+        val attacking = mc.options.keyAttack.isDown
+        locked = cfg.alignmentHelperLockMouse && farmingTool && mc.gui.screen() == null && attacking
+        // A vacuum or any other item is not a farming tool, so collecting pests never slows the mouse.
+        val auto = farmingTool && !attacking && stillTicks >= Math.round(cfg.alignmentHelperStillSeconds * 20f)
+        if (pressed) override = !(override ?: auto)
+        active = !locked && (override ?: auto)
     }
 
     /**
-     * What the mouse's movement since the last turn is multiplied by: 0 while locked, the reduced
-     * sensitivity while the helper is active, 1 otherwise. Called from MouseHandler.turnPlayer.
+     * What the mouse's movement since the last turn ([dx], [dy] pixels over [seconds]) is multiplied
+     * by: 0 while locked, the reduced sensitivity while the helper is active, 1 otherwise. Called
+     * from MouseHandler.turnPlayer.
      */
     @JvmStatic
-    fun mouseFactor(): Double {
+    fun mouseFactor(dx: Double, dy: Double, seconds: Double): Double {
         if (locked) return 0.0
+        if (!active) return 1.0
         // Clamped to the slider's range, for a value saved when the slider still went higher.
-        if (active) return AlpakaConfig.instance.alignmentHelperSensitivity.coerceIn(0.01f, 0.5f).toDouble()
-        return 1.0
+        val sensitivity = AlpakaConfig.instance.alignmentHelperSensitivity.coerceIn(0.01f, 0.5f).toDouble()
+        if (!AlpakaConfig.instance.alignmentHelperFineOnly) return sensitivity
+        return fineFactor(sensitivity, if (seconds > 0.0) Math.hypot(dx, dy) / seconds else 0.0)
+    }
+
+    /** Mouse speeds in pixels per second: up to SLOW fully slowed down, from FAST not at all. */
+    private const val SLOW_SPEED = 400.0
+    private const val FAST_SPEED = 2000.0
+
+    /**
+     * Fine Moves Only: a slow, small movement is the player lining up and gets the reduced
+     * [sensitivity]; a quick flick is the player turning around and passes at full speed, with a
+     * smooth blend in between.
+     */
+    @JvmStatic
+    fun fineFactor(sensitivity: Double, speed: Double): Double {
+        val t = ((speed - SLOW_SPEED) / (FAST_SPEED - SLOW_SPEED)).coerceIn(0.0, 1.0)
+        return sensitivity + (1.0 - sensitivity) * t
     }
 
     @JvmStatic

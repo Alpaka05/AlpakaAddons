@@ -30,4 +30,13 @@ class AlignmentHelperTest {
             assertFalse(AlignmentHelper.isFarmingToolId(id), id)
         }
     }
+
+    @Test
+    fun `slow moves get the reduced sensitivity, quick flicks pass at full speed`() {
+        assertEquals(0.25, AlignmentHelper.fineFactor(0.25, 0.0), 1e-9)
+        assertEquals(0.25, AlignmentHelper.fineFactor(0.25, 400.0), 1e-9)
+        assertEquals(0.625, AlignmentHelper.fineFactor(0.25, 1200.0), 1e-9)
+        assertEquals(1.0, AlignmentHelper.fineFactor(0.25, 2000.0), 1e-9)
+        assertEquals(1.0, AlignmentHelper.fineFactor(0.25, 10000.0), 1e-9)
+    }
 }

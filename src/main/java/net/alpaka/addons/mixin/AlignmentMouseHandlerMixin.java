@@ -16,7 +16,7 @@ public class AlignmentMouseHandlerMixin {
 
     @Inject(method = "turnPlayer", at = @At("HEAD"))
     private void alpaka$alignmentHelper(double movementTime, CallbackInfo ci) {
-        double factor = AlignmentHelper.mouseFactor();
+        double factor = AlignmentHelper.mouseFactor(this.accumulatedDX, this.accumulatedDY, movementTime);
         if (factor == 1.0) return;
         this.accumulatedDX *= factor;
         this.accumulatedDY *= factor;

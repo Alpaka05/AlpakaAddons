@@ -46,10 +46,12 @@ object FarmingHudRenderer {
 
     /** The gap between a crop icon in front of a value and the value. */
     private const val LEAD_ICON_GAP = 2
+    /** Between the Contest line's time and its crops. */
+    private const val TRAILING_ICON_GAP = 3
 
     /**
-     * One row; the title alone spans both columns. A row with [icons] draws them after its value,
-     * in brackets: the Contest line's crops. [leadIcon] is a crop drawn in front of the value, in
+     * One row; the title alone spans both columns. A row with [icons] draws them after its value:
+     * the Contest line's crops. [leadIcon] is a crop drawn in front of the value, in
      * place of its name: the Milestone line's.
      */
     private data class Line(
@@ -68,7 +70,7 @@ object FarmingHudRenderer {
         val valueXs: IntArray,
         val labelTexts: Array<Component>,
         val valueTexts: Array<Component?>,
-        /** Where each row's icons start, after its value and the opening bracket. */
+        /** Where each row's icons start, after its value. */
         val iconXs: IntArray,
         /** Where each row's value text starts: after the lead icon, if it has one. */
         val textXs: IntArray,
@@ -77,7 +79,6 @@ object FarmingHudRenderer {
         val heights: IntArray,
         /** The icons' size in unscaled pixels. */
         val iconSize: Float,
-        val closeText: Component,
     )
 
     private var cached: Layout? = null
@@ -127,9 +128,8 @@ object FarmingHudRenderer {
 
         val rows = buildRows(preview, now)
         val font = Minecraft.getInstance().font
-        val closeText = HudPanel.text(Component.literal(")"), smoothFont)
         val built = if (rows.isEmpty() || font == null) {
-            Layout(emptyList(), 0, 0, IntArray(0), emptyArray(), emptyArray(), IntArray(0), IntArray(0), IntArray(0), IntArray(0), iconSize, closeText)
+            Layout(emptyList(), 0, 0, IntArray(0), emptyArray(), emptyArray(), IntArray(0), IntArray(0), IntArray(0), IntArray(0), iconSize)
         } else {
             val labelTexts = Array(rows.size) { HudPanel.text(Component.literal(rows[it].label), smoothFont) }
             var labelMax = 0
@@ -158,19 +158,18 @@ object FarmingHudRenderer {
                 top += heights[index]
                 val textX = if (row.leadIcon != null) valueX + iconWidth + LEAD_ICON_GAP else valueX
                 textXs[index] = textX
-                val value = if (row.icons.isEmpty()) row.value else "${row.value} ("
-                val valueText = if (value.isNotEmpty()) HudPanel.text(Component.literal(value), smoothFont) else null
+                val valueText = if (row.value.isNotEmpty()) HudPanel.text(Component.literal(row.value), smoothFont) else null
                 valueTexts[index] = valueText
                 var end = if (valueText == null) labelEnd else textX + font.width(valueText)
                 if (row.icons.isNotEmpty()) {
-                    iconXs[index] = end
-                    end += row.icons.size * (iconWidth + ICON_GAP) - ICON_GAP + font.width(closeText)
+                    iconXs[index] = end + TRAILING_ICON_GAP
+                    end = iconXs[index] + row.icons.size * (iconWidth + ICON_GAP) - ICON_GAP
                 }
                 widest = maxOf(widest, end)
             }
             // The last row ends with its glyphs (or icons), not with the gap to a next line.
             val height = top - (if (heights.last() == LINE_HEIGHT) LINE_HEIGHT - GLYPH_HEIGHT else 0)
-            Layout(rows, widest, height, valueXs, labelTexts, valueTexts, iconXs, textXs, tops, heights, iconSize, closeText)
+            Layout(rows, widest, height, valueXs, labelTexts, valueTexts, iconXs, textXs, tops, heights, iconSize)
         }
 
         cached = built
@@ -270,7 +269,8 @@ object FarmingHudRenderer {
         if (contest != null) {
             return if (contest.startMs <= now) {
                 val left = contest.startMs + JacobContests.LENGTH_MS - now
-                Line("Contest", "Now ${formatDuration(left)}", COLOR_GOOD, icons = contest.crops)
+                // Green says it is running; the time is what is left of it.
+                Line("Contest", formatDuration(left), COLOR_GOOD, icons = contest.crops)
             } else {
                 Line("Contest", formatDuration(contest.startMs - now), COLOR_VALUE, icons = contest.crops)
             }
@@ -324,7 +324,6 @@ object FarmingHudRenderer {
                     drawCrop(graphics, crop, iconX.toFloat(), iconTop, laid.iconSize, x, y, scale)
                     iconX += iconStep
                 }
-                graphics.text(font, laid.closeText, iconX - ICON_GAP, textTop, row.valueColor, shadow)
             }
         }
         graphics.pose().popMatrix()

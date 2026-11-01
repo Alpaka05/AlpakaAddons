@@ -878,6 +878,8 @@ public class AlpakaConfig {
     public boolean chatTabsShowCoop = true;
     public boolean chatTabsShowPrivate = true;
     public boolean chatTabsShowNpc = true;
+    /** With chat tabs: a tab shows how many messages arrived on it since it was last up. */
+    public boolean chatTabsShowCount = true;
 
     // Interface options
     /** The mouse wheel scrolls a tooltip that is taller than the screen. */

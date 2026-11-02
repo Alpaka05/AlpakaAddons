@@ -2568,12 +2568,19 @@ public class AlpakaConfigRegistry {
                 "profile dashboard record interval minutes snapshot how often"));
 
         OPTIONS.add(new ConfigOption("profile_dashboard_skykings_key", "SkyKings API Key",
-                "Needed for the dashboard's graphs: SkyKings records most players about once a day. Make a free key on skykings.net (log in with Discord, Dashboard › API Keys) and paste it here. Only sent to SkyKings, kept on this computer.",
+                "Needed for the dashboard's graphs and the guild item search. Make a free key on skykings.net (log in with Discord, Dashboard › API Keys) and paste it here. Only sent to SkyKings, kept on this computer.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.skykingsApiKey,
                 v -> { AlpakaConfig.instance.skykingsApiKey = v.trim(); },
                 "sk_...",
                 "skykings api key token history graph profile dashboard").secret(64));
+
+        OPTIONS.add(new ConfigOption("profile_dashboard_guild_search", "Space Helmet Search",
+                "Searches every accessible profile of the top 10 Normal SkyKings guilds for Space Helmets from Dctr. Checks inventory, Ender Chest, backpacks, wardrobe and worn armor. Needs Network Features and your SkyKings API key; progress is saved between restarts.",
+                ConfigCategory.SKYBLOCK,
+                "Open Search",
+                parent -> net.minecraft.client.Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.features.profile.GuildItemSearchScreen(parent)),
+                "profile dashboard guild item search space helmet dctr storage backpack wardrobe skykings"));
 
         OPTIONS.add(new ConfigOption("Guild Chat", ConfigCategory.SKYBLOCK));
 

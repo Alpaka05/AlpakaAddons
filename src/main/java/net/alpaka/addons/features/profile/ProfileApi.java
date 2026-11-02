@@ -62,6 +62,22 @@ public final class ProfileApi {
         return client;
     }
 
+    /** A scan streams its answers instead of keeping thousands of inventories in the viewer cache. */
+    static CompletableFuture<HttpResponse<String>> searchRequest(String path, boolean skyKings, String key) {
+        long delay = skyKings ? 0 : reserveSlot(System.currentTimeMillis(), 650L);
+        return CompletableFuture.supplyAsync(() -> {
+            if (!net.alpaka.addons.config.AlpakaConfig.instance.allowApiCalls) {
+                throw new IllegalStateException("Network Features are off.");
+            }
+            HttpRequest.Builder request = HttpRequest.newBuilder(URI.create((skyKings ? SKYKINGS : ELITE) + path))
+                    .timeout(Duration.ofSeconds(40))
+                    .header("User-Agent", "AlpakaAddons/" + ModVersion.mod());
+            if (skyKings) request.header("Authorization", key);
+            return request.GET().build();
+        }, CompletableFuture.delayedExecutor(delay, java.util.concurrent.TimeUnit.MILLISECONDS))
+                .thenCompose(request -> client().sendAsync(request, HttpResponse.BodyHandlers.ofString()));
+    }
+
     /** The account with its profiles; {@code player} is a name or a UUID. */
     static CompletableFuture<JsonElement> account(String player) {
         return get(ELITE + "/account/" + encode(player), FRESH_MS);

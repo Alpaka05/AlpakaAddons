@@ -64,6 +64,12 @@ public final class DevScreenshotTour {
             screen("leap-menu-settings", () -> AlpakaConfigScreen.openOnOption(null, "leap_menu_enabled")),
             screen("leap-menu-map", () -> leapMenuPreview(true)),
             screen("leap-menu-buttons", () -> leapMenuPreview(false))
+    ) : "guild-helmet-search".equals(System.getenv(ENV)) ? List.of(
+            screen("guild-helmet-search-settings", () -> AlpakaConfigScreen.openOnOption(null, "profile_dashboard_guild_search")),
+            new Stop("guild-helmet-search-settings-lower", () -> screen().mouseScrolled(400, 200, 0, -20), () -> true, 30),
+            profile("guild-helmet-search-viewer", "fkn9", "INVENTORY"),
+            screen("guild-helmet-search-empty", () -> net.alpaka.addons.features.profile.GuildItemSearchScreen.devPreview(null, false)),
+            screen("guild-helmet-search-results", () -> net.alpaka.addons.features.profile.GuildItemSearchScreen.devPreview(null, true))
     ) : "dungeon-map".equals(System.getenv(ENV)) ? List.of(
             screen("dungeon-map-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_enabled")),
             screen("dungeon-map-player-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_player_icons")),

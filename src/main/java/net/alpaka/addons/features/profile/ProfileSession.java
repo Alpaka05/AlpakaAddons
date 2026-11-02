@@ -69,9 +69,13 @@ public final class ProfileSession {
     private int seriesVersion = -1;
 
     public ProfileSession(String query, boolean own) {
+        this(query, own, null);
+    }
+
+    ProfileSession(String query, boolean own, String wantedProfile) {
         this.query = query;
         this.own = own;
-        load(null, false);
+        load(wantedProfile, false);
     }
 
     /** Shows another of the player's profiles. */

@@ -3,6 +3,7 @@ package net.alpaka.addons.features.profile;
 import com.google.gson.JsonElement;
 import net.alpaka.addons.features.market.ItemIcons;
 import net.alpaka.addons.utils.SkyblockUtils;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
@@ -32,6 +33,8 @@ final class InventoryItems {
 
     /** The item to draw, or empty while its look is still on its way. Render thread only. */
     static ItemStack stack(JsonElement item) {
+        // Search results can open a profile before joining a world, when item components aren't bound.
+        if (Minecraft.getInstance().level == null) return ItemStack.EMPTY;
         ItemStack base = base(item);
         Built built = STACKS.get(item);
         if (built != null && built.base() == base) return built.stack();

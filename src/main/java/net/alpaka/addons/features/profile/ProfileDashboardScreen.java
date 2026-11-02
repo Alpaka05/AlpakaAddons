@@ -165,6 +165,20 @@ public class ProfileDashboardScreen extends Screen {
         mc.gui.setScreen(new ProfileDashboardScreen(session(player), parent));
     }
 
+    /** Search results select their own profile, rather than whichever profile the player last used. */
+    static void openMatch(GuildItemSearch.Match match, Screen parent) {
+        if (!AlpakaConfig.instance.allowApiCalls) return;
+        ProfileDashboardScreen screen = new ProfileDashboardScreen(
+                new ProfileSession(match.playerUuid(), false, match.profileId()), parent);
+        screen.page = Page.INVENTORY;
+        invTab = match.inventory().startsWith("backpack_") ? InvTab.BACKPACKS : switch (match.inventory()) {
+            case "ender_chest" -> InvTab.ENDER_CHEST;
+            case "wardrobe" -> InvTab.WARDROBE;
+            default -> InvTab.INVENTORY;
+        };
+        Minecraft.getInstance().gui.setScreen(screen);
+    }
+
     @Override
     public void onClose() {
         if (this.minecraft != null) this.minecraft.gui.setScreen(parent);
@@ -454,7 +468,7 @@ public class ProfileDashboardScreen extends Screen {
     private void drawSidebar(GuiGraphicsExtractor graphics, int x, int y, int h, float deltaSec) {
         int rowX = x + 4;
         int rowW = SIDE_W - 8;
-        int pages = Page.values().length;
+        int pages = Page.values().length + 1;
         // On a small window the label and the footer give way first, then the rows get slimmer.
         int footerH = 30;
         boolean label = h >= 12 + pages * (SIDE_ROW_H + 1) + footerH + 12;
@@ -489,6 +503,11 @@ public class ProfileDashboardScreen extends Screen {
             }));
             rowY += rowH + 1;
         }
+        boolean hoverSearch = AlpakaStyle.inside(mx, my, rowX, rowY, rowW, rowH) && !profileMenuOpen;
+        AlpakaStyle.button(graphics, this.font, rowX, rowY, rowW, rowH,
+                "Helmet Search", hoverSearch, AlpakaStyle.ButtonKind.PLAIN);
+        hits.add(new Hit(rowX, rowY, rowW, rowH,
+                () -> Minecraft.getInstance().gui.setScreen(new GuildItemSearchScreen(this))));
         if (!footer) return;
 
         // At the bottom: how fresh the numbers are, and where they come from.

@@ -2255,12 +2255,12 @@ public class ProfileDashboardScreen extends Screen {
             families += i.families().size();
         }
         List<Tile> tiles = new ArrayList<>();
-        tiles.add(new Tile(Metrics.BESTIARY, "Milestone", Coins.full(d.bestiaryMilestone), null));
+        // Plain cards: the milestone's history has gaps, so no graph to pick.
+        tiles.add(new Tile(null, "Milestone", Coins.full(d.bestiaryMilestone), null));
         tiles.add(new Tile(null, "Maxed Families", repo == null ? "…" : maxed + " / " + families, null));
         tiles.add(new Tile(null, "Kills", Coins.full(Json.num(raw, "stats.bestiaryDerivations.totalKills", 0)), null));
         tiles.add(new Tile(null, "Deaths", Coins.full(Json.num(raw, "stats.bestiaryDerivations.totalDeaths", 0)), null));
         y = tiles(graphics, tiles, x, y, w, 4) + 6;
-        y = chartCard(graphics, metricFor(Page.BESTIARY), 0, x, y, w, 110) + 6;
         if (repo == null) {
             int h = 40;
             card(graphics, x, y, w, h);
@@ -2290,7 +2290,7 @@ public class ProfileDashboardScreen extends Screen {
             text(graphics, count, tx + tw - textW(count), cy + 7, done ? ink(GOLD) : AlpakaStyle.TEXT_MUTED);
             text(graphics, AlpakaStyle.ellipsize(this.font, island.name(), tw - 8 - textW(count)), tx, cy + 7, AlpakaStyle.TEXT_SOFT);
             bar(graphics, tx, cy + 19, tw, 2, island.progress(), done ? ink(GOLD) : AlpakaStyle.accent());
-            text(graphics, Math.round(island.progress() * 100) + "% of tiers", tx, cy + 24, AlpakaStyle.TEXT_MUTED);
+            text(graphics, (int) Math.floor(island.progress() * 100) + "% of tiers", tx, cy + 24, AlpakaStyle.TEXT_MUTED);
             String name = island.name();
             hit(cx, cy, cw, ch, () -> skillDetail = name);
             if (hover) tip(island, name + ": " + island.maxed() + " of " + island.families().size() + " families maxed. Click for them.");

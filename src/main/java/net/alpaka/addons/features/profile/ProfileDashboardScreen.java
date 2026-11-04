@@ -115,7 +115,7 @@ public class ProfileDashboardScreen extends Screen {
     private String scrolledDetail = null;
     /**
      * The sub-page shown instead of the page's overview, null for none: the skill on the Skills page
-     * ("farming", "mining"), the island on the Bestiary page.
+     * ("farming", "mining"), the skill's collections on the Collections page, the island on the Bestiary page.
      */
     private String skillDetail = null;
     private String hoveredTip;

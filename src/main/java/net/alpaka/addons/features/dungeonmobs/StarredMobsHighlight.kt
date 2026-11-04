@@ -28,6 +28,8 @@ import net.minecraft.world.phys.AABB
  * the mob is the one just below it, found the way Boss Highlight finds a slayer boss under its
  * owner line. Minibosses are player NPCs, also known by name, as Skyblocker does.
  *
+ * Only mobs in the player's line of sight are highlighted, never one behind a wall.
+ *
  * Only during the clear: in the boss room the starred mobs are gone and the boss has its own
  * features. Nothing runs outside a dungeon.
  */
@@ -110,10 +112,13 @@ object StarredMobsHighlight {
             if (hiddenTags.size > 512) hiddenTags.clear()
         }
 
+        // Only mobs the player can see: the outline glow is drawn through walls, and highlighting a
+        // mob behind one is the mob ESP Hypixel bans. Checked every tick, so a mob lights up as it
+        // comes into view and goes dark behind the next corner.
         val color = cfg.starredMobsHighlightColor
         for (id in starredIds) {
             val mob = level.getEntity(id) as? LivingEntity ?: continue
-            if (!mob.isRemoved && mob.isAlive) targets[id] = color
+            if (!mob.isRemoved && mob.isAlive && player.hasLineOfSight(mob)) targets[id] = color
         }
     }
 

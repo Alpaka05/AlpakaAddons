@@ -1316,10 +1316,15 @@ public class ProfileDashboardScreen extends Screen {
         List<Tile> tiles = new ArrayList<>();
         tiles.add(new Tile(Metrics.CATACOMBS, "Catacombs", String.format(Locale.US, "%.2f", Levels.catacombs(d.catacombs.xp())), null,
                 d.catacombs.overflow() != null));
-        tiles.add(new Tile(null, "Class Average", String.format(Locale.US, "%.2f", d.classAverage), null));
-        tiles.add(new Tile(Metrics.RUNS, "Total Runs", Coins.full(d.totalRuns), null));
+        // In chroma once every class is past 50, like a level in overflow.
+        tiles.add(new Tile(null, "Class Average", String.format(Locale.US, "%.2f", d.classAverageOverflow), null,
+                d.classAverage >= 50 && d.classAverageOverflow > 50));
         tiles.add(new Tile(null, "Selected Class", d.selectedClass == null ? "—" : ProfileData.title(d.selectedClass), null));
-        y = tiles(graphics, tiles, x, y, w, 4) + 6;
+        tiles.add(new Tile(Metrics.RUNS, "Total Runs", Coins.full(d.totalRuns), null));
+        tiles.add(new Tile(null, "Total Secrets", Coins.full(d.secretsFound), null));
+        // Per completed run, Entrance and Master Mode included, as the profile viewers count it.
+        tiles.add(new Tile(null, "Secrets / Run", d.totalRuns > 0 ? String.format(Locale.US, "%.2f", d.secretsFound / d.totalRuns) : "—", null));
+        y = tiles(graphics, tiles, x, y, w, 3) + 6;
         y = levelGrid(graphics, d.classes, Metrics.CLASS, x, y, w) + 6;
 
         // Floors: completions and the fastest S+ of each, Entrance to F7 and M1 to M7.

@@ -86,6 +86,9 @@ public final class ProfileData {
     public final List<Level> classes = new ArrayList<>();
     public final String selectedClass;
     public final double classAverage;
+    /** The class average with every class counted on past 50, as the classes' own cards show them. */
+    public final double classAverageOverflow;
+    public final double secretsFound;
     public final List<Floor> floors = new ArrayList<>();
     public final int totalRuns;
 
@@ -144,6 +147,11 @@ public final class ProfileData {
         }
         this.selectedClass = Json.str(dungeons, "selectedClass");
         this.classAverage = Json.num(dungeons, "classAverage", 0);
+        // Over all five classes, an unplayed one as 0, as the game's own average is taken.
+        double classLevels = 0;
+        for (Level c : classes) classLevels += c.uncapped() != null ? c.uncapped().exact() : c.level();
+        this.classAverageOverflow = classLevels / CLASSES.length;
+        this.secretsFound = Json.num(dungeons, "secretsFound", 0);
         int runs = 0;
         for (int tier = 0; tier <= 7; tier++) {
             JsonObject f = Json.obj(dungeons, "floors." + tier);

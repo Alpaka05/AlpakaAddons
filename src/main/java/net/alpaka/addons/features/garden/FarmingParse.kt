@@ -10,6 +10,13 @@ object FarmingParse {
     /** "+12.5 Farming (45.3%)" or "+12.5 Farming (123,456/200,000)" in the action bar. */
     private val XP_GAIN = Regex("\\+([\\d,.]+) Farming \\(([^)]*)\\)")
     private val XP_PROGRESS = Regex("([\\d,.]+)/([\\d,.]+[kKmMbB]?)")
+    private val XP_PERCENT = Regex("^([\\d.]+)%$")
+
+    /**
+     * The Farming level in the tab list's Skills widget: " Farming 50: 42.1%", or on the widget's own
+     * title line when it shows just one skill ("Skills: Farming 50: 42.1%").
+     */
+    private val SKILL_LEVEL = Regex("(?:^|\\s)Farming (\\d+): ")
 
     /** " Wheat 15: 45.2%" or " Wheat 46: MAX" in the Crop Milestones widget. */
     private val MILESTONE = Regex("^\\s*([A-Za-z][A-Za-z ]*?) (\\d+): (?:([\\d.]+)%|(MAX))")
@@ -43,7 +50,14 @@ object FarmingParse {
 
     private val DURATION_PART = Regex("(\\d+)\\s*([dhms])")
 
-    data class XpGain(val gained: Double, val progress: String, val current: Double?, val needed: String?)
+    /** One Farming gain in the action bar: the progress either as [current]/[needed] or as [percent]. */
+    data class XpGain(
+        val gained: Double,
+        val progress: String,
+        val current: Double?,
+        val needed: String?,
+        val percent: Double? = null,
+    )
 
     data class Milestone(val crop: String, val tier: Int, val percent: Double?) {
         val maxed: Boolean get() = percent == null
@@ -59,8 +73,13 @@ object FarmingParse {
         val gained = number(match.groupValues[1]) ?: return null
         val progress = match.groupValues[2].trim()
         val fraction = XP_PROGRESS.find(progress)
-        return XpGain(gained, progress, fraction?.let { number(it.groupValues[1]) }, fraction?.groupValues?.get(2))
+        val percent = if (fraction == null) XP_PERCENT.find(progress)?.let { number(it.groupValues[1]) } else null
+        return XpGain(gained, progress, fraction?.let { number(it.groupValues[1]) }, fraction?.groupValues?.get(2), percent)
     }
+
+    /** The Farming level from the tab list's Skills widget; null when the widget does not show it. */
+    fun farmingLevel(lines: List<String>): Int? =
+        lines.firstNotNullOfOrNull { SKILL_LEVEL.find(it)?.groupValues?.get(1)?.toIntOrNull() }
 
     /**
      * The lines of one tab list widget after its title, or null when the list has no such widget.

@@ -71,6 +71,15 @@ public final class Levels {
         return Math.min(maxLevel, level + extra);
     }
 
+    /**
+     * The total XP of a normal skill that stands at {@code percent} of the way from {@code level} to
+     * the next, as the tab list and the action bar show it. A maxed skill is the XP of its last level.
+     */
+    public static double skillXp(int level, double percent) {
+        double base = total(SKILL, level);
+        return level < SKILL.length ? base + SKILL[level] * percent / 100.0 : base;
+    }
+
     /** XP from zero to the start of {@code level}. */
     static long total(long[] table, int level) {
         long sum = 0;

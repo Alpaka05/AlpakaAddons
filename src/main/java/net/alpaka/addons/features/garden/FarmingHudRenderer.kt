@@ -190,7 +190,13 @@ object FarmingHudRenderer {
 
         if (cfg.farmingHudShowXpPerHour) {
             val perHour = if (preview) 412_800.0 else FarmingTracker.xpPerHour(now)
-            rows.add(Line("XP/hr", perHour?.let { formatNumber(it.roundToLong()) } ?: "-", COLOR_VALUE))
+            rows.add(
+                if (!preview && perHour == null && FarmingTracker.xpNeedsSkillWidget) {
+                    Line("XP/hr", "Skills Widget Off", COLOR_WARN)
+                } else {
+                    Line("XP/hr", perHour?.let { formatNumber(it.roundToLong()) } ?: "-", COLOR_VALUE)
+                },
+            )
         }
 
         val milestone = if (preview) FarmingParse.Milestone("Mushroom", 25, 48.7) else FarmingTracker.milestone

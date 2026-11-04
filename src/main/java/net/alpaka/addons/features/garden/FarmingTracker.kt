@@ -1,10 +1,12 @@
 package net.alpaka.addons.features.garden
 
 import net.alpaka.addons.config.AlpakaConfig
+import net.alpaka.addons.features.profile.Levels
 import net.alpaka.addons.features.tablist.TabListParser
 import net.alpaka.addons.mixin.PlayerTabOverlayAccessor
 import net.alpaka.addons.utils.SkyblockUtils
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
@@ -29,8 +31,8 @@ object FarmingTracker {
     private const val MENU_TITLE = "Crop Milestones"
 
     /**
-     * A pause longer than this between two gains is a break, not farming: its time is left out of
-     * the rates, so walking to the desk or answering a visitor does not drag them down.
+     * A pause longer than this between two Farming action bars is a break, not farming: its time is
+     * left out of the rates, so walking to the desk or answering a visitor does not drag them down.
      */
     private const val XP_IDLE_MS = 30_000L
     /** The milestone percentage moves in 0.1 steps, which at high tiers can take a while. */
@@ -56,10 +58,19 @@ object FarmingTracker {
     // Farming XP per hour.
     private var lastXpProgress: String? = null
     private var lastXpCurrent: Double? = null
-    private var lastXpNeeded: String? = null
-    private var lastXpAtMs = 0L
+    private var lastXpNeeded: Double? = null
+    private var lastXpPercent: Double? = null
+    private var lastXpLevel = 0
+    private var lastXpSeenMs = 0L
     private var xpGained = 0.0
     private var xpActiveMs = 0L
+
+    /**
+     * The action bar shows the Farming progress as a percentage and the tab list's Skills widget does
+     * not show the Farming level, so the XP behind the percentage cannot be worked out.
+     */
+    var xpNeedsSkillWidget = false
+        private set
 
     // Crop milestone, and how fast it fills.
     var milestone: FarmingParse.Milestone? = null
@@ -97,13 +108,15 @@ object FarmingTracker {
         ClientTickEvents.END_CLIENT_TICK.register { tick(it) }
         ClientReceiveMessageEvents.GAME.register { message, overlay -> onMessage(message, overlay) }
         ClientReceiveMessageEvents.GAME_CANCELED.register { message, overlay -> onMessage(message, overlay) }
+        // Another server can be another profile, with another level: measure from the next figure.
+        ClientPlayConnectionEvents.JOIN.register { _, _, _ -> forgetXpProgress() }
     }
 
     private fun onMessage(message: Component, overlay: Boolean) {
         if (!AlpakaConfig.instance.farmingHudEnabled) return
         val text = SkyblockUtils.cleanColor(message.string)
         val now = System.currentTimeMillis()
-        if (overlay) onActionBar(text, now) else onChat(text, now)
+        if (overlay) onActionBar(text, now) { farmingLevelFromTab() } else onChat(text, now)
     }
 
     private fun onChat(text: String, now: Long) {
@@ -128,38 +141,97 @@ object FarmingTracker {
         if (learned > 0) pestCooldownEndMs = now + learned
     }
 
-    internal fun onActionBar(text: String, now: Long) {
+    /**
+     * One action bar. [tabLevel] reads the Farming level from the tab list; it is only asked when the
+     * action bar shows a percentage.
+     */
+    internal fun onActionBar(text: String, now: Long, tabLevel: () -> Int?) {
         val gain = FarmingParse.xpGain(text) ?: return
-        // Hypixel sends the action bar again and again while the gain is on it; only a new progress
-        // figure is a new gain.
-        if (gain.progress == lastXpProgress) return
 
-        // With "123,456/200,000" the difference to the last figure is exact, even when two gains
-        // came in between two action bars. Across a level up, or with a percentage, the gain shown.
-        val previous = lastXpCurrent
-        val amount = if (previous != null && gain.current != null && gain.needed == lastXpNeeded && gain.current > previous) {
-            gain.current - previous
-        } else {
-            gain.gained
-        }
-        lastXpProgress = gain.progress
-        lastXpCurrent = gain.current
-        lastXpNeeded = gain.needed
-
-        val gap = now - lastXpAtMs
-        if (lastXpAtMs == 0L || gap > RESET_AFTER_MS) {
+        // Hypixel keeps the gain on the action bar for a moment and sends it again and again, so its
+        // action bars come in steadily while crops are broken: the time between them is farming time.
+        // The XP is counted apart from that, whenever the progress figure moves; with a percentage it
+        // stays put for many crops at high levels.
+        val gap = now - lastXpSeenMs
+        if (lastXpSeenMs == 0L || gap > RESET_AFTER_MS) {
             xpGained = 0.0
             xpActiveMs = 0L
+            forgetXpProgress()
         } else if (gap <= XP_IDLE_MS) {
-            xpGained += amount
             xpActiveMs += gap
         }
-        lastXpAtMs = now
+        lastXpSeenMs = now
+
+        if (gain.progress == lastXpProgress) return
+        lastXpProgress = gain.progress
+        val amount = xpSinceLast(gain, tabLevel) ?: return
+        if (amount > 0) xpGained += amount
+    }
+
+    /**
+     * The XP between the last progress figure and this one, null when there is no last figure to
+     * compare with. Taking the difference of the figures, and not the "+12.5" shown, also counts the
+     * gains whose action bars were never seen or did not move the figure.
+     */
+    private fun xpSinceLast(gain: FarmingParse.XpGain, tabLevel: () -> Int?): Double? {
+        val current = gain.current
+        if (current != null) {
+            xpNeedsSkillWidget = false
+            val needed = gain.needed?.let { FarmingParse.amount(it) }?.toDouble()
+            val previous = lastXpCurrent
+            val previousNeeded = lastXpNeeded
+            lastXpCurrent = current
+            lastXpNeeded = needed
+            lastXpPercent = null
+            if (previous == null) return null
+            return when {
+                needed == previousNeeded && current >= previous -> current - previous
+                // A level up: the rest of the old level, then what the new one has so far.
+                previousNeeded != null && previousNeeded > 0 && needed != previousNeeded -> previousNeeded - previous + current
+                else -> gain.gained
+            }
+        }
+
+        val percent = gain.percent ?: return gain.gained
+        // The tab list is refreshed later than the action bar, so it can still show the old level
+        // after a level up: the level never goes down here, and a percentage that fell is the next.
+        var level = maxOf(tabLevel() ?: 0, lastXpLevel)
+        if (level == 0) {
+            xpNeedsSkillWidget = true
+            return null
+        }
+        xpNeedsSkillWidget = false
+        val previous = lastXpPercent
+        val previousLevel = lastXpLevel
+        if (previous != null && percent < previous && level == previousLevel) level++
+        lastXpPercent = percent
+        lastXpLevel = level
+        lastXpCurrent = null
+        lastXpNeeded = null
+        if (previous == null || previousLevel == 0) return null
+        return Levels.skillXp(level, percent) - Levels.skillXp(previousLevel, previous)
+    }
+
+    private fun forgetXpProgress() {
+        lastXpProgress = null
+        lastXpCurrent = null
+        lastXpNeeded = null
+        lastXpPercent = null
+        lastXpLevel = 0
+    }
+
+    /** Starts the XP rate over, as if nothing had been farmed yet. */
+    internal fun resetXp() {
+        lastXpSeenMs = 0L
+        xpGained = 0.0
+        xpActiveMs = 0L
+        xpNeedsSkillWidget = false
+        forgetXpProgress()
     }
 
     /** Farming XP per hour of farming; null until there has been enough of it. */
     fun xpPerHour(now: Long = System.currentTimeMillis()): Double? {
-        if (xpActiveMs < MIN_ACTIVE_MS || now - lastXpAtMs > RESET_AFTER_MS) return null
+        if (xpNeedsSkillWidget || xpActiveMs < MIN_ACTIVE_MS || now - lastXpSeenMs > RESET_AFTER_MS) return null
         return xpGained / xpActiveMs * 3_600_000.0
     }
 
@@ -235,13 +307,25 @@ object FarmingTracker {
         if (changed) AlpakaConfig.save()
     }
 
-    private fun readTab(mc: Minecraft, now: Long) {
-        // In the order vanilla draws them, and with the leading spaces kept: a widget's own lines
-        // are told from the next widget's title only by being indented.
+    /**
+     * The tab list's lines in the order vanilla draws them, and with the leading spaces kept: a
+     * widget's own lines are told from the next widget's title only by being indented.
+     */
+    private fun tabLines(mc: Minecraft): List<String> {
         val accessor = mc.gui.hud.tabList as PlayerTabOverlayAccessor
-        val lines = accessor.`alpaka$getPlayerInfos`().map { info ->
+        return accessor.`alpaka$getPlayerInfos`().map { info ->
             TabListParser.plain(mc.gui.hud.tabList.getNameForDisplay(info))
         }
+    }
+
+    private fun farmingLevelFromTab(): Int? {
+        val mc = Minecraft.getInstance()
+        if (mc.player == null) return null
+        return FarmingParse.farmingLevel(tabLines(mc))
+    }
+
+    private fun readTab(mc: Minecraft, now: Long) {
+        val lines = tabLines(mc)
 
         val pests = FarmingParse.widget(lines, "Pests:")
         hasPestWidget = pests != null

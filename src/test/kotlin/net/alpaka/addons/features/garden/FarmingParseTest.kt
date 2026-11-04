@@ -42,6 +42,15 @@ class FarmingParseTest {
         assertEquals("200,000", fraction.needed)
 
         assertNull(FarmingParse.xpGain("+3 Mining (12%)"))
+        assertEquals(45.3, percent.percent)
+        assertNull(fraction.percent)
+    }
+
+    @Test
+    fun readsTheFarmingLevelFromTheSkillsWidget() {
+        assertEquals(50, FarmingParse.farmingLevel(listOf("Skills: Combat 60", " Farming 50: 42.1%", " Mining 60: MAX")))
+        assertEquals(37, FarmingParse.farmingLevel(listOf("Skills: Farming 37: 8.4%")))
+        assertNull(FarmingParse.farmingLevel(listOf("Crop Milestones:", " Wheat 15: 45.2%")))
     }
 
     @Test

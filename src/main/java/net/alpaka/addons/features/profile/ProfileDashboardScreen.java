@@ -2336,7 +2336,7 @@ public class ProfileDashboardScreen extends Screen {
                     f.kills() > 0 ? AlpakaStyle.TEXT_SOFT : AlpakaStyle.TEXT_MUTED);
             double progress = f.maxed() ? 1 : (f.kills() - f.prevAt()) / (double) (f.nextAt() - f.prevAt());
             bar(graphics, tx, cy + 19, tw, 2, progress, f.maxed() ? ink(GOLD) : AlpakaStyle.accent());
-            String kills = Coins.compact(f.kills()) + (f.maxed() ? "" : " / " + Coins.compact(f.nextAt()));
+            String kills = Coins.full(f.kills()) + (f.maxed() ? "" : " / " + Coins.full(f.nextAt()));
             text(graphics, kills, tx, cy + 24, AlpakaStyle.TEXT_MUTED);
             if (hover) {
                 tip(f, f.def().name() + ": " + Coins.full(f.kills()) + " kills, tier " + f.tier() + " of " + f.maxTier()

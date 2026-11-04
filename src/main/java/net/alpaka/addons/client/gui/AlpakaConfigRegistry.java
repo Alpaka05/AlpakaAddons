@@ -2552,21 +2552,6 @@ public class AlpakaConfigRegistry {
                 parent -> net.alpaka.addons.features.profile.ProfileDashboardScreen.open(null, parent),
                 "profile dashboard open show"));
 
-        OPTIONS.add(new ConfigOption("profile_dashboard_tracking", "Record Progress",
-                "While you play SkyBlock, saves a snapshot of your profile now and then, so the graphs fill in without opening the dashboard. Kept on this computer only.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.profileDashboardTracking,
-                v -> { AlpakaConfig.instance.profileDashboardTracking = v; AlpakaConfig.save(); },
-                "profile dashboard record track progress history snapshot background hourly graph"));
-
-        OPTIONS.add(new ConfigOption("profile_dashboard_tracking_minutes", "Record Every",
-                "How often the snapshot is taken while you play.",
-                ConfigCategory.SKYBLOCK,
-                () -> (float) AlpakaConfig.instance.profileDashboardTrackingMinutes,
-                v -> { AlpakaConfig.instance.profileDashboardTrackingMinutes = Math.round(v); AlpakaConfig.save(); },
-                15.0f, 240.0f, v -> Math.round(v) + " min",
-                "profile dashboard record interval minutes snapshot how often"));
-
         OPTIONS.add(new ConfigOption("profile_dashboard_skykings_key", "SkyKings API Key",
                 "Needed for the dashboard's graphs: SkyKings records most players about once a day. Make a free key on skykings.net (log in with Discord, Dashboard › API Keys) and paste it here. Only sent to SkyKings, kept on this computer.",
                 ConfigCategory.SKYBLOCK,

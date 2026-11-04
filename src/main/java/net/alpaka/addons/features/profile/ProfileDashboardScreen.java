@@ -67,7 +67,7 @@ public class ProfileDashboardScreen extends Screen {
         BESTIARY("Bestiary", Items.WRITABLE_BOOK),
         MUSEUM("Museum", Items.ARMOR_STAND),
         RIFT("Rift", Items.ENDER_EYE),
-        CHOCOLATE("Chocolate Factory", Items.COCOA_BEANS);
+        CHOCOLATE("Rabbits", Items.COCOA_BEANS);
 
         final String title;
         final Item icon;
@@ -930,9 +930,8 @@ public class ProfileDashboardScreen extends Screen {
             case PETS -> Metrics.PETS_MAXED;
             case COLLECTIONS -> Metrics.MINIONS;
             case BESTIARY -> Metrics.BESTIARY;
-            case CHOCOLATE -> Metrics.CHOCOLATE;
             // No graph on these pages.
-            case MUSEUM, RIFT -> null;
+            case MUSEUM, RIFT, CHOCOLATE -> null;
             case INVENTORY -> Metrics.NETWORTH;
         };
     }
@@ -3225,7 +3224,7 @@ public class ProfileDashboardScreen extends Screen {
         return cards(graphics, cards, x, y, w);
     }
 
-    // ---- Chocolate Factory ----------------------------------------------------------------------
+    // ---- Rabbits (Chocolate Factory) ------------------------------------------------------------
 
     /** The rarities' colors, as Hypixel writes them. */
     private static final int[] RARITY_COLORS = {0xFFFFFFFF, 0xFF55FF55, 0xFF5555FF, 0xFFAA00AA, 0xFFFFAA00, 0xFFFF55FF, 0xFF55FFFF};
@@ -3240,12 +3239,12 @@ public class ProfileDashboardScreen extends Screen {
         double unique = Json.sum(c, "uniqueRabbits");
 
         List<Tile> tiles = new ArrayList<>();
-        tiles.add(new Tile(Metrics.CHOCOLATE, "Chocolate Produced", Coins.compact(produced), null));
+        // Plain cards: the page has no graph.
+        tiles.add(new Tile(null, "Chocolate Produced", Coins.compact(produced), null));
         tiles.add(new Tile(null, "Prestige", Coins.full(Json.num(c, "prestige", 0)), null));
         tiles.add(new Tile(null, "Chocolate", Coins.compact(Json.num(c, "chocolate", 0)), null));
         tiles.add(new Tile(null, "Unique Rabbits", Coins.full(unique) + (collection > 0 ? " / " + collection : ""), null));
         y = tiles(graphics, tiles, x, y, w, 4) + 6;
-        y = chartCard(graphics, metricFor(Page.CHOCOLATE), 0, x, y, w, 110) + 6;
         y = rabbits(graphics, c, all, x, y, w) + 6;
 
         List<Card> cards = new ArrayList<>();

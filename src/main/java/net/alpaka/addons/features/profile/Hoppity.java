@@ -8,7 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * How many rabbits of each rarity Hoppity's collection has, for the Chocolate Factory page. Elite
+ * How many rabbits of each rarity Hoppity's collection has, for the Rabbits page. Elite
  * only counts the rabbits a profile found; the whole collection comes from the NEU repository's
  * {@code constants/hoppity.json}.
  */

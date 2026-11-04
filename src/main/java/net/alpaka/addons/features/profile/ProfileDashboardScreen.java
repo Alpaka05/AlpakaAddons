@@ -384,6 +384,12 @@ public class ProfileDashboardScreen extends Screen {
     }
 
     /** The shown profile's game mode, such as "ironman" or "bingo"; null for a normal one. */
+    /** Whether the profile on show is a co-op, whose bank is shared and each member's personal bank apart. */
+    private static boolean coop(ProfileSession s) {
+        for (ProfileSession.ProfileRef r : s.profiles) if (r.id().equals(s.profileId)) return r.members() > 1;
+        return false;
+    }
+
     private static String gameMode(ProfileSession s) {
         for (ProfileSession.ProfileRef r : s.profiles) if (r.id().equals(s.profileId)) return r.gameMode();
         return null;
@@ -1850,9 +1856,12 @@ public class ProfileDashboardScreen extends Screen {
     private int networth(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
         List<Tile> tiles = new ArrayList<>();
         tiles.add(new Tile(Metrics.NETWORTH, "Networth", Coins.compact(d.networth), null));
-        tiles.add(new Tile(Metrics.LIQUID, "Liquid", Coins.compact(d.liquidNetworth), "What it would sell for right away."));
-        tiles.add(new Tile(Metrics.PURSE, "Purse", Coins.compact(d.purse), null));
-        tiles.add(new Tile(Metrics.BANK, "Bank", Coins.compact(d.bank + d.personalBank), null));
+        // Plain cards: the history has next to nothing for these.
+        tiles.add(new Tile(null, "Liquid", Coins.compact(d.liquidNetworth), "sells right away"));
+        tiles.add(new Tile(null, "Purse", Coins.compact(d.purse), null));
+        tiles.add(coop(session)
+                ? new Tile(null, "Bank", Coins.compact(d.bank) + " / " + Coins.compact(d.personalBank), "co-op / personal")
+                : new Tile(null, "Bank", Coins.compact(d.bank + d.personalBank), null));
         y = tiles(graphics, tiles, x, y, w, 4) + 6;
         if (!d.inventoryApi) {
             y = note(graphics, "The Inventory API is off for this profile, so the networth only counts coins. Turn it on in SkyBlock's settings under API Settings.", x, y, w) + 6;

@@ -141,6 +141,8 @@ public final class DevScreenshotTour {
             screen("config-world", () -> AlpakaConfigScreen.openOn("World", "Block Overlay")),
             screen("config-world-sky", () -> AlpakaConfigScreen.openOn("World", "Sky Effects")),
             screen("config-dungeon", () -> AlpakaConfigScreen.openOn("Dungeon", "Solvers")),
+            // Further down Solvers' settings: the Water Board ones below the puzzle list.
+            new Stop("config-dungeon-water-board", () -> scroll(0.75, 0.6, -6), () -> true, 30),
             screen("config-dungeon-terminals", () -> AlpakaConfigScreen.openOn("Dungeon", "Terminal Solvers")),
             screen("config-viewmodel", () -> AlpakaConfigScreen.openOn("Viewmodel", "Viewmodel Modifiers")),
             // The wheel turned on over the settings in several goes, well past their end: the column

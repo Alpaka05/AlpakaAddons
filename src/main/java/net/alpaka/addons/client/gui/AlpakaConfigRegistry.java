@@ -3416,6 +3416,14 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.waterBoardFastSolutions = v; AlpakaConfig.save(); },
                 "dungeon water board levers fast quick quicker faster solutions timing"));
 
+        OPTIONS.add(new ConfigOption("water_board_line_to_lever", "Water Board: Line to Next Lever",
+                "Draws a line from your crosshair to the next lever, so you find it without looking around. "
+                        + "Only in the Water Board room, and walls hide it like any block.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.waterBoardLineToLever,
+                v -> { AlpakaConfig.instance.waterBoardLineToLever = v; AlpakaConfig.save(); },
+                "dungeon water board levers line tracer pointer next lever where find"));
+
         OPTIONS.add(ConfigOption.color("dungeon_solver_color", "Solution Color",
                 "What to do now: the right chest, answer, pad, lever or block. The device solvers use it too, and "
                         + "Creeper Beams colors its pairs from it and the Next Color.",

@@ -618,6 +618,8 @@ public class AlpakaConfig {
     public boolean solveIcePath = true;
     /** Water Board: Odin's quicker solutions, with flips closer together. */
     public boolean waterBoardFastSolutions = false;
+    /** Water Board: a line from the crosshair to the next lever. */
+    public boolean waterBoardLineToLever = true;
     /** The thing to do now. Also used by the device solvers. */
     public int dungeonSolverColor = 0xCC55FF55;
     /** What comes after it. */

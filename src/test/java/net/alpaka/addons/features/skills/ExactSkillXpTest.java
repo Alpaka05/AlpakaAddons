@@ -16,7 +16,7 @@ class ExactSkillXpTest {
 
     @BeforeEach
     void forget() {
-        ExactSkillXp.forget();
+        ExactSkillXp.reset();
     }
 
     @Test
@@ -37,6 +37,22 @@ class ExactSkillXpTest {
         assertEquals(51, ExactSkillXp.level("farming", 50, 0.05));
         // Once the tab catches up nothing moves.
         assertEquals(51, ExactSkillXp.level("farming", 51, 0.07));
+    }
+
+    @Test
+    void aSeenLevelFarAboveTheTabIsFromAnotherProfile() {
+        assertEquals(50, ExactSkillXp.level("farming", 50, 40.0));
+        // Switched to a profile at Farming 20 without a new login or world change.
+        assertEquals(20, ExactSkillXp.level("farming", 20, 30.0));
+        assertEquals(20, ExactSkillXp.level("farming", 20, 31.0));
+    }
+
+    @Test
+    void resetForgetsTheSeenLevels() {
+        assertEquals(50, ExactSkillXp.level("farming", 50, 99.95));
+        assertEquals(51, ExactSkillXp.level("farming", 50, 0.02));
+        ExactSkillXp.reset();
+        assertEquals(50, ExactSkillXp.level("farming", 50, 0.05));
     }
 
     @Test

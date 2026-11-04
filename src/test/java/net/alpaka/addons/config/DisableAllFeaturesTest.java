@@ -57,7 +57,7 @@ class DisableAllFeaturesTest {
             "cacheResourcePackEnabled", "guildPrefixEnabled", "bridgeBotFormatterEnabled", "ragnarockEnabled",
             "onlyCritDamageEnabled", "ignoreFillerPanesEnabled", "deployableTimerEnabled", "dungeonMapEnabled", "leapMenuEnabled", "customAuctionHouseEnabled", "customBazaarEnabled",
             "marketPriceHistoryEnabled", "customSignInputEnabled", "chestValueEnabled",
-            "starredMobsHighlightEnabled",
+            "starredMobsHighlightEnabled", "teammateClassGlowEnabled",
             "dungeonSolversEnabled", "terminalSolversEnabled", "terminalCustomGui", "deviceSolversEnabled",
             "dungeonDoorHighlight",
             // Cosmetics
@@ -107,7 +107,7 @@ class DisableAllFeaturesTest {
             // Dungeon solvers: each puzzle, terminal and device has its own switch under its master
             "solveThreeWeirdos", "solveQuiz", "solveTicTacToe", "solveHigherOrLower", "solveCreeperBeams",
             "solveTeleportMaze", "solveWaterBoard", "solveBoulder", "solveIceFill", "solveIcePath",
-            "waterBoardFastSolutions",
+            "waterBoardFastSolutions", "waterBoardLineToLever",
             "dungeonSolverLabels", "solvePanesTerminal", "solveRubixTerminal", "solveNumbersTerminal",
             "solveStartsWithTerminal", "solveSelectAllTerminal", "solveMelodyTerminal", "terminalHideOtherItems",
             "terminalPredictClicks", "terminalBlockWrongClicks", "terminalFirstClickGuard", "terminalRateGuard",

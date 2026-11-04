@@ -9,6 +9,7 @@ import net.alpaka.addons.features.dungeon.render.SolverDraw;
 import net.alpaka.addons.features.dungeon.room.RoomFrame;
 import net.alpaka.addons.features.dungeon.terminal.ServerTicks;
 import net.alpaka.addons.features.performance.PerformanceStats;
+import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ClientPacketListener;
@@ -16,6 +17,7 @@ import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Util;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LeverBlock;
@@ -23,6 +25,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import org.joml.Vector3fc;
 
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -45,12 +48,13 @@ import java.util.Set;
  * marks every lever that still has something to do: a box in the Solution Color on the lever for
  * the next step, the Next Color on the others, the Wrong Color on a lever to flip back and on the
  * water lever while flips before the water are left, and above each lever one label per step,
- * "#2 Flip", "#5 Water On", "#6 3.4s". The countdowns run in server ticks from the moment the
- * water came on, so they slow down with the server, and they end in plain text - no sound, flash
- * or color change marks the moment a flip is due (design.md rule 8). Flips are tracked from the
- * board itself, so teammates' flips, a lever flipped by mistake (it gets a "Flip Back" step) and
- * walking in on a half-done board all work out; the player's own click only moves the marks a
- * little earlier.
+ * "#2 Flip", "#5 Water On", "#6 3.4s", and a line from the crosshair to the next lever (Line to
+ * Next Lever) so it is found without looking around. The countdowns run in server ticks from the
+ * moment the water came on, so they slow down with the server, and they end in plain text - no
+ * sound, flash or color change marks the moment a flip is due (design.md rule 8). Flips are
+ * tracked from the board itself, so teammates' flips, a lever flipped by mistake (it gets a "Flip
+ * Back" step) and walking in on a half-done board all work out; the player's own click only moves
+ * the marks a little earlier.
  *
  * Everything is read, nothing is acted on: the player's lever clicks are observed after vanilla
  * made them and never changed (changing one makes the client try the off hand too, which Hypixel
@@ -80,6 +84,8 @@ public final class WaterBoard extends PuzzleSolver {
     private static final double LABEL_BASE = 1.25;
     private static final double LABEL_STEP = 0.3;
     private static final double BOX_INFLATE = 0.02;
+    /** The line to the next lever starts this far in front of the player's eyes, at the crosshair. */
+    private static final double LINE_START = 0.5;
     /**
      * Where the board's state is written while it has no solution: over the middle of the room, a
      * little above the lever labels, in sight from the water lever and from the board alike. Above
@@ -96,7 +102,7 @@ public final class WaterBoard extends PuzzleSolver {
         WAITING,
         /** A solution is being played out. */
         PLANNED,
-        /** All doors open. */
+        /** All doors open after some were seen closed: solved. */
         DONE
     }
 
@@ -147,6 +153,8 @@ public final class WaterBoard extends PuzzleSolver {
 
     private int variant = 0;
     private int closedMask = 0;
+    /** Whether a door was seen closed in this room; only then does all open mean solved. */
+    private boolean doorsSeenClosed = false;
     private WaterBoardPlan plan = null;
     /** World positions of the levers in the room. */
     private final BlockPos[] leverPos = new BlockPos[LEVERS.length];
@@ -227,11 +235,21 @@ public final class WaterBoard extends PuzzleSolver {
             return;
         }
         if (doors.allOpen()) {
-            stage = Stage.DONE;
             problem = null;
-            waitingFor = null;
+            // On entering, the doors can read all open: in two runs on 2026-11-01 the first look
+            // found them all open and the next read, 14 and 16 s later, three closed. Most likely
+            // Hypixel closes them only once a player is in the room. Taken as solved, that hid the
+            // solver for the whole run. Without closed doors seen here first, keep looking; a board
+            // solved before the player came just stays waiting, with nothing to show.
+            if (doorsSeenClosed) {
+                stage = Stage.DONE;
+                waitingFor = null;
+            } else {
+                waitingFor = "doors to close";
+            }
             return;
         }
+        doorsSeenClosed = true;
         Boolean water = WaterBoardLayout.waterOnBoard(view);
         if (water == null) {
             waitingFor = "board not loaded";
@@ -429,6 +447,34 @@ public final class WaterBoard extends PuzzleSolver {
         if (marks.size() >= 2) {
             draw.line(centre(marks.get(0).lever()), centre(marks.get(1).lever()), SolverColors.next());
         }
+        // Where the next lever is, from the crosshair, in its box's color: the box alone is easy to
+        // miss when the lever is beside or behind the player. Unlike a tracer to something behind a
+        // wall, it only ever points at a lever of the room the player is in, whose place is no
+        // secret: both its ends have to lie in the room, and it is depth-tested like every other mark.
+        if (AlpakaConfig.instance.waterBoardLineToLever && !marks.isEmpty()) {
+            Vec3 from = lineStart(partialTick);
+            if (from != null) {
+                WaterBoardPlan.Mark next = marks.getFirst();
+                draw.line(from, centre(next.lever()), color(next.tone()));
+            }
+        }
+    }
+
+    /**
+     * Just in front of the camera in first person, so the line leaves from the crosshair; the camera,
+     * not the player's eyes, because it eases into a new eye height after crouching. In front of the
+     * player's eyes while the camera is behind or in front of the player. Null without a player.
+     */
+    private static Vec3 lineStart(float partialTick) {
+        Minecraft mc = Minecraft.getInstance();
+        Camera camera = mc.gameRenderer.mainCamera();
+        if (camera.isInitialized() && !camera.isDetached()) {
+            Vector3fc forward = camera.forwardVector();
+            return camera.position().add(forward.x() * LINE_START, forward.y() * LINE_START, forward.z() * LINE_START);
+        }
+        Player player = mc.player;
+        if (player == null) return null;
+        return player.getEyePosition(partialTick).add(player.getViewVector(partialTick).scale(LINE_START));
     }
 
     private Vec3 centre(WaterBoardLever lever) {
@@ -462,6 +508,7 @@ public final class WaterBoard extends PuzzleSolver {
         plan = null;
         variant = 0;
         closedMask = 0;
+        doorsSeenClosed = false;
         ambiguousReads = 0;
         unknownReads = 0;
         waterPowered = null;
@@ -482,6 +529,7 @@ public final class WaterBoard extends PuzzleSolver {
     public String debugState() {
         if (room == null) return null;
         StringBuilder out = new StringBuilder(stage.name().toLowerCase());
+        if (waitingFor != null && stage == Stage.WAITING) out.append(", waiting for ").append(waitingFor);
         if (problem != null) out.append(", ").append(problem.text);
         if (variant != 0) {
             out.append(", layout ").append(variant).append(", doors ").append(WaterBoardLayout.doorKey(closedMask))

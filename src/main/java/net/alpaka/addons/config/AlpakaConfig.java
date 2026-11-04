@@ -589,6 +589,18 @@ public class AlpakaConfig {
     /** The Garden's plot names by grid square, read from the desk's Configure Plots menu; empty until then. */
     public java.util.List<String> pestFinderPlotNames = new java.util.ArrayList<>();
 
+    // Alignment Helper: slower mouse and the angles under the crosshair while lining up on the Garden.
+    public boolean alignmentHelperEnabled = false;
+    /** How long the player stands still on the ground with a farming tool before it turns on. */
+    public float alignmentHelperStillSeconds = 1.0f;
+    /** What the mouse's movement is multiplied by while it is active. */
+    public float alignmentHelperSensitivity = 0.25f;
+    /** Only slow mouse movements are slowed down; quick flicks pass at full speed. */
+    public boolean alignmentHelperFineOnly = true;
+    public boolean alignmentHelperShowAngles = true;
+    /** Locks the camera while farming: a farming tool in hand and the attack key held. */
+    public boolean alignmentHelperLockMouse = true;
+
     // Dungeon Map: screen position is edited in the HUD editor.
     /** Highlight the starred mobs and minibosses during a dungeon clear. */
     public boolean starredMobsHighlightEnabled = false;
@@ -597,6 +609,8 @@ public class AlpakaConfig {
     public int starredMobsHighlightColor = 0xFFFFAA00;
     /** During the clear, hide the name tags of mobs without a star. */
     public boolean starredMobsHideNames = false;
+    /** Color the glow Hypixel gives dungeon teammates by their class instead of their rank. */
+    public boolean teammateClassGlowEnabled = false;
     public boolean dungeonMapEnabled = false;
     public int dungeonMapX = net.alpaka.addons.client.hud.HudDefaults.DUNGEON_MAP_X;
     public int dungeonMapY = net.alpaka.addons.client.hud.HudDefaults.DUNGEON_MAP_Y;
@@ -656,6 +670,8 @@ public class AlpakaConfig {
     public boolean solveIcePath = true;
     /** Water Board: Odin's quicker solutions, with flips closer together. */
     public boolean waterBoardFastSolutions = false;
+    /** Water Board: a line from the crosshair to the next lever. */
+    public boolean waterBoardLineToLever = true;
     /** The thing to do now. Also used by the device solvers. */
     public int dungeonSolverColor = 0xCC55FF55;
     /** What comes after it. */
@@ -1870,9 +1886,11 @@ public class AlpakaConfig {
         this.inventoryHudEnabled = false;
         this.dungeonMapEnabled = false;
         this.starredMobsHighlightEnabled = false;
+        this.teammateClassGlowEnabled = false;
         this.leapMenuEnabled = false;
         this.dungeonDoorHighlight = false;
         this.pestFinderEnabled = false;
+        this.alignmentHelperEnabled = false;
         this.bridgeBotFormatterEnabled = false;
         this.guildPrefixEnabled = false;
         this.itemSizeFeatureEnabled = false;

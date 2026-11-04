@@ -2,7 +2,9 @@ package net.alpaka.addons.features.market;
 
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.utils.SkyblockUtils;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 
 /** Where the market screens are switched on, and which market the player is in at the moment. */
 public final class Markets {
@@ -46,7 +48,34 @@ public final class Markets {
     public static MarketKind context(Screen screen) {
         if (screen instanceof MarketScreen market) return market.kind;
         if (screen instanceof MarketInputScreen input) return input.context();
+        if (screen instanceof AbstractContainerScreen<?> chest && vanillaKind != null
+                && chest.getMenu().containerId == vanillaMenuId) {
+            return vanillaKind;
+        }
         return null;
+    }
+
+    /**
+     * A market menu left to vanilla's chest screen, by the id of its chest: without the custom
+     * screens that is every one, and the sign input still has to know which market its search is
+     * for. -1 while the last menu opened was no market's.
+     */
+    private static int vanillaMenuId = -1;
+    private static MarketKind vanillaKind = null;
+
+    /** Notes a chest opening in vanilla's screen: a market's when {@code kind} is set, else none. */
+    static void vanillaMenuOpening(int containerId, MarketKind kind) {
+        vanillaMenuId = kind == null ? -1 : containerId;
+        vanillaKind = kind;
+    }
+
+    /** Lets a market menu shown in vanilla's chest screen count as left when it closes, as {@link MarketScreen} does. */
+    public static void register() {
+        ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
+            if (!(screen instanceof AbstractContainerScreen<?> chest) || screen instanceof MarketScreen) return;
+            MarketKind kind = context(chest);
+            if (kind != null) ScreenEvents.remove(screen).register(s -> left(kind));
+        });
     }
 
     /** How long after a market menu closed its market still counts as where the player is. */

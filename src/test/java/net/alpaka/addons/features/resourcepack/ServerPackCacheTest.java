@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -41,5 +42,16 @@ class ServerPackCacheTest {
     void hashComesFromTheDownloadFileName() {
         assertEquals(HASH, ServerPackCache.hashOf(Path.of("downloads", "id", HASH)));
         assertNull(ServerPackCache.hashOf(Path.of("downloads", "id", "pack.zip")));
+    }
+
+    @Test
+    void onlyHypixelsOwnHostsCount() {
+        assertTrue(ServerPackCache.isHypixelHost("mc.hypixel.net"));
+        assertTrue(ServerPackCache.isHypixelHost("hypixel.net"));
+        assertTrue(ServerPackCache.isHypixelHost("MC.Hypixel.NET:25565"));
+        assertTrue(ServerPackCache.isHypixelHost("alpha.hypixel.net."));
+        assertFalse(ServerPackCache.isHypixelHost("hypixel.net.example.com"));
+        assertFalse(ServerPackCache.isHypixelHost("fakehypixel.net"));
+        assertFalse(ServerPackCache.isHypixelHost("play.example.com"));
     }
 }

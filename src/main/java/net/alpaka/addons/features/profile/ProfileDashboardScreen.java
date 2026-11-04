@@ -17,7 +17,9 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -61,6 +63,7 @@ public class ProfileDashboardScreen extends Screen {
         INVENTORY("Inventories", Items.CHEST),
         PETS("Pets", Items.BONE),
         COLLECTIONS("Collections", Items.PAINTING),
+        BESTIARY("Bestiary", Items.WRITABLE_BOOK),
         MORE("More Stats", Items.COMPASS);
 
         final String title;
@@ -568,6 +571,7 @@ public class ProfileDashboardScreen extends Screen {
             case PETS -> pets(graphics, d, x, y, w);
             case COLLECTIONS -> collections(graphics, d, x, y, w);
             case INVENTORY -> inventories(graphics, d, x, y, w);
+            case BESTIARY -> bestiary(graphics, d, x, y, w);
             case MORE -> more(graphics, d, x, y, w);
         };
     }
@@ -885,6 +889,7 @@ public class ProfileDashboardScreen extends Screen {
             case SLAYERS -> Metrics.SLAYER_TOTAL;
             case PETS -> Metrics.PETS_MAXED;
             case COLLECTIONS -> Metrics.MINIONS;
+            case BESTIARY -> Metrics.BESTIARY;
             case MORE -> Metrics.SB_LEVEL;
             case INVENTORY -> Metrics.NETWORTH;
         };
@@ -2218,6 +2223,104 @@ public class ProfileDashboardScreen extends Screen {
         String[] r = {"", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV",
                 "XVI", "XVII", "XVIII", "XIX", "XX", "XXI", "XXII", "XXIII", "XXIV", "XXV"};
         return n >= 0 && n < r.length ? r[n] : String.valueOf(n);
+    }
+
+    // ---- Bestiary -------------------------------------------------------------------------------
+
+    private List<Bestiary.IslandDef> bestiaryRepo;
+    private ProfileData bestiaryData;
+    private List<Bestiary.Island> bestiaryList = List.of();
+    private static final Map<String, ItemStack> BESTIARY_ICONS = new HashMap<>();
+
+    private int bestiary(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
+        JsonElement raw = d.raw;
+        List<Bestiary.IslandDef> repo = Bestiary.repo();
+        if (repo != null && (repo != bestiaryRepo || bestiaryData != d)) {
+            bestiaryRepo = repo;
+            bestiaryData = d;
+            bestiaryList = Bestiary.of(repo, Json.at(raw, "stats.bestiary.mobKills"));
+        }
+        int maxed = 0, families = 0;
+        for (Bestiary.Island i : bestiaryList) {
+            maxed += i.maxed();
+            families += i.families().size();
+        }
+        List<Tile> tiles = new ArrayList<>();
+        tiles.add(new Tile(Metrics.BESTIARY, "Milestone", Coins.full(d.bestiaryMilestone), null));
+        tiles.add(new Tile(null, "Maxed Families", repo == null ? "…" : maxed + " / " + families, null));
+        tiles.add(new Tile(null, "Kills", Coins.full(Json.num(raw, "stats.bestiaryDerivations.totalKills", 0)), null));
+        tiles.add(new Tile(null, "Deaths", Coins.full(Json.num(raw, "stats.bestiaryDerivations.totalDeaths", 0)), null));
+        y = tiles(graphics, tiles, x, y, w, 4) + 6;
+        y = chartCard(graphics, metricFor(Page.BESTIARY), 0, x, y, w, 110) + 6;
+        if (repo == null) {
+            int h = 40;
+            card(graphics, x, y, w, h);
+            ProfileChart.message(graphics, this.font, Bestiary.failed() ? "Couldn't load the Bestiary families. Trying again shortly."
+                    : "Loading the Bestiary…", x, y, w, h);
+            return y + h;
+        }
+
+        int cols = Math.max(2, w / 160);
+        int gap = 4;
+        int cw = (w - (cols - 1) * gap) / cols;
+        int ch = 38;
+        for (Bestiary.Island island : bestiaryList) {
+            List<Bestiary.Family> list = island.families();
+            text(graphics, island.name(), x + 2, y + 2, AlpakaStyle.TEXT);
+            text(graphics, island.maxed() + " / " + list.size() + " maxed", x + 2 + textW(island.name()) + 8, y + 2, AlpakaStyle.TEXT_MUTED);
+            y += 14;
+            for (int i = 0; i < list.size(); i++) {
+                Bestiary.Family f = list.get(i);
+                int cx = x + (i % cols) * (cw + gap);
+                int cy = y + (i / cols) * (ch + gap);
+                if (cy > clipY + clipH + 40 || cy + ch < clipY - 40) continue;
+                boolean hover = hover(cx, cy, cw, ch);
+                ModernGuiUtils.drawRoundedRect(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
+                ItemStack icon = bestiaryIcon(f.def());
+                if (!icon.isEmpty()) {
+                    stackIcon(graphics, icon, cx + 3, cy + 3, 2.0f);
+                    if (f.kills() == 0) veils.add(new int[] {cx + 3, cy + 3, 32, 32});
+                }
+                int tx = cx + 40;
+                int tw = cw - 40 - 6;
+                String tier = f.maxed() ? "MAX" : f.tier() == 0 ? "—" : roman(f.tier());
+                int tierColor = f.maxed() ? ink(GOLD) : f.tier() == 0 ? AlpakaStyle.DIVIDER : AlpakaStyle.TEXT;
+                text(graphics, tier, tx + tw - textW(tier), cy + 7, tierColor);
+                text(graphics, AlpakaStyle.ellipsize(this.font, f.def().name(), tw - 8 - textW(tier)), tx, cy + 7,
+                        f.kills() > 0 ? AlpakaStyle.TEXT_SOFT : AlpakaStyle.TEXT_MUTED);
+                double progress = f.maxed() ? 1 : (f.kills() - f.prevAt()) / (double) (f.nextAt() - f.prevAt());
+                bar(graphics, tx, cy + 19, tw, 2, progress, f.maxed() ? ink(GOLD) : AlpakaStyle.accent());
+                String kills = Coins.compact(f.kills()) + (f.maxed() ? "" : " / " + Coins.compact(f.nextAt()));
+                text(graphics, kills, tx, cy + 24, AlpakaStyle.TEXT_MUTED);
+                if (hover) {
+                    tip(f, f.def().name() + ": " + Coins.full(f.kills()) + " kills, tier " + f.tier() + " of " + f.maxTier()
+                            + (f.maxed() ? "." : ". " + Coins.full(f.nextAt() - f.kills()) + " more for the next tier."));
+                }
+            }
+            y += ((list.size() + cols - 1) / cols) * (ch + gap) + 6;
+        }
+        return y;
+    }
+
+    /** The family's head, or the item NEU gives it instead (a Dragon Egg for the dragons). */
+    private static ItemStack bestiaryIcon(Bestiary.FamilyDef f) {
+        String key = f.texture() != null ? f.texture() : "item:" + f.item();
+        ItemStack known = BESTIARY_ICONS.get(key);
+        if (known != null) return known;
+        ItemStack built = ItemStack.EMPTY;
+        try {
+            if (f.texture() != null) {
+                built = ItemIcons.head(f.texture());
+            } else if (f.item() != null) {
+                Identifier id = Identifier.tryParse("minecraft:" + f.item());
+                if (id != null && BuiltInRegistries.ITEM.containsKey(id)) built = new ItemStack(BuiltInRegistries.ITEM.getValue(id));
+            }
+        } catch (RuntimeException notBoundYet) {
+            // Items get their components once a world is joined; until then, no icon.
+            return ItemStack.EMPTY;
+        }
+        BESTIARY_ICONS.put(key, built);
+        return built;
     }
 
     // ---- Inventories ----------------------------------------------------------------------------

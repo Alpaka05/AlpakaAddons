@@ -2133,7 +2133,8 @@ public class ProfileDashboardScreen extends Screen {
         int maxed = 0;
         for (ProfileData.Collection c : collectionList) if (c.maxed()) maxed++;
         tiles.add(new Tile(null, "Maxed Collections", resources == null ? "…" : maxed + " / " + collectionList.size(), null));
-        tiles.add(new Tile(Metrics.MINIONS, "Unique Minions", Coins.full(Json.num(raw, "minionSummary.uniqueTiersCrafted", 0)), null));
+        // A plain card: the page has no graph to pick, and the count rarely moves.
+        tiles.add(new Tile(null, "Unique Minions", Coins.full(Json.num(raw, "minionSummary.uniqueTiersCrafted", 0)), null));
         tiles.add(new Tile(null, "Minion Slots", (int) Json.num(raw, "minionSummary.currentSlots", 0) + " / " + (int) Json.num(raw, "minionSummary.maxSlots", 0), null));
         double toNext = Json.num(raw, "minionSummary.uniqueTiersToNextSlot", Double.NaN);
         tiles.add(new Tile(null, "Next Slot In", Double.isNaN(toNext) || toNext <= 0 ? "—" : (int) toNext + " crafts", "unique minion tiers"));

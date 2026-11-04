@@ -800,7 +800,8 @@ public class ProfileDashboardScreen extends Screen {
             Tile t = tiles.get(i);
             int tx = x + (i % cols) * (tw + gap);
             int ty = y + (i / cols) * (th + gap);
-            boolean clickable = t.metric() != null;
+            // A graph only where there is a history to draw.
+            boolean clickable = t.metric() != null && Metrics.hasHistory(t.metric());
             boolean hover = clickable && hover(tx, ty, tw, th);
             boolean isSelected = clickable && t.metric().equals(selected != null ? selected : defaultMetric(page));
             ModernGuiUtils.drawRoundedRect(graphics, tx, ty, tw, th, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
@@ -955,8 +956,8 @@ public class ProfileDashboardScreen extends Screen {
         SKILL_ICONS.put("carpentry", Items.CRAFTING_TABLE);
         SKILL_ICONS.put("runecrafting", Items.MAGMA_CREAM);
         SKILL_ICONS.put("social", Items.EMERALD);
-        SKILL_ICONS.put("taming", Items.LEAD);
-        SKILL_ICONS.put("hunting", Items.BOW);
+        SKILL_ICONS.put("taming", Items.GHAST_SPAWN_EGG);
+        SKILL_ICONS.put("hunting", Items.LEAD);
         SKILL_ICONS.put("healer", Items.SPLASH_POTION);
         SKILL_ICONS.put("mage", Items.BLAZE_ROD);
         SKILL_ICONS.put("berserk", Items.IRON_SWORD);

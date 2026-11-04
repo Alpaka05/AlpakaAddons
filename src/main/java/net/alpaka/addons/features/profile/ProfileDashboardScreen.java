@@ -974,6 +974,7 @@ public class ProfileDashboardScreen extends Screen {
         if ("mining".equals(skillDetail)) return mining(graphics, d, x, y, w);
         if ("foraging".equals(skillDetail)) return foraging(graphics, d, x, y, w);
         if ("fishing".equals(skillDetail)) return fishing(graphics, d, x, y, w);
+        if ("combat".equals(skillDetail)) return combat(graphics, d, x, y, w);
         if (!d.skillsApi) return apiOff(graphics, "Skills", x, y, w);
         int maxed = 0;
         for (ProfileData.Level s : d.skills) if (s.maxed()) maxed++;
@@ -1014,7 +1015,7 @@ public class ProfileDashboardScreen extends Screen {
             int tx = cx + 42;
             int tw = cw - 42 - 8;
             boolean isSelectedClass = prefix.equals(Metrics.CLASS) && l.id().equals(session.data.selectedClass);
-            // Farming, Mining, Foraging and Fishing open a page of their own, which the arrow promises.
+            // Farming, Mining, Combat, Foraging and Fishing open a page of their own, which the arrow promises.
             boolean opens = prefix.equals(Metrics.SKILL) && SKILL_PAGES.contains(l.id());
             String name = l.name();
             text(graphics, name, tx, cy + 7, isSelectedClass ? ink(ProfileChart.UP) : AlpakaStyle.TEXT_SOFT);
@@ -1100,7 +1101,7 @@ public class ProfileDashboardScreen extends Screen {
     // ---- Farming and Mining ---------------------------------------------------------------------
 
     /** The skills that open a page of their own from the Skills page. */
-    private static final List<String> SKILL_PAGES = List.of("farming", "mining", "foraging", "fishing");
+    private static final List<String> SKILL_PAGES = List.of("farming", "mining", "combat", "foraging", "fishing");
 
     /** The Garden's crops: their key in Elite's garden data, their name, and how they look. */
     private static final String[][] CROPS = {
@@ -1290,7 +1291,8 @@ public class ProfileDashboardScreen extends Screen {
         y = chartCard(graphics, metric, metricMaxLevel(d, metric), x, y, w, 120) + 6;
         String tokens = Json.num(r, "stats.mining.tokensSpent", 0) > 0 ? Coins.full(Json.num(r, "stats.mining.tokensSpent", 0)) + " tokens spent" : null;
         y = skillTree(graphics, "Heart of the Mountain", SkillTrees.hotm(), Json.obj(r, "stats.mining.nodes"),
-                Json.obj(r, "stats.mining.nodeToggles"), tokens, x, y, w) + 6;
+                Json.obj(r, "stats.mining.nodeToggles"), "core_of_the_mountain", (int) Json.num(r, "stats.mining.hotmLevel", 0),
+                tokens, x, y, w) + 6;
         return cards(graphics, miningCards(d), x, y, w);
     }
 
@@ -1333,6 +1335,121 @@ public class ProfileDashboardScreen extends Screen {
         return cards;
     }
 
+    // ---- Combat ----------------------------------------------------------------------------------
+
+    /** The Dojo's tests by Elite's id, with the names the Dojo gives them. */
+    private static final String[][] DOJO_TESTS = {
+            {"mob_kb", "Force"}, {"wall_jump", "Stamina"}, {"archer", "Mastery"}, {"sword_swap", "Discipline"},
+            {"snake", "Swiftness"}, {"lock_head", "Control"}, {"fireball", "Tenacity"}};
+    /** Kuudra's tiers by Elite's id, lowest first. */
+    private static final String[][] KUUDRA_TIERS = {
+            {"none", "Basic"}, {"hot", "Hot"}, {"burning", "Burning"}, {"fiery", "Fiery"}, {"infernal", "Infernal"}};
+
+    /** The Dojo belt these points earn. */
+    static String dojoBelt(double points) {
+        if (points >= 10_000) return "Black Belt";
+        if (points >= 7_000) return "Brown Belt";
+        if (points >= 6_000) return "Blue Belt";
+        if (points >= 4_000) return "Green Belt";
+        if (points >= 2_000) return "Yellow Belt";
+        return "White Belt";
+    }
+
+    private int combat(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
+        y = skillHeader(graphics, "Combat", x, y);
+        JsonElement r = d.raw;
+        List<Tile> tiles = new ArrayList<>();
+        tiles.add(skillTile(d, "combat", "Combat"));
+        String highest = Json.str(r, "stats.crimsonIsle.highestKuudraTier");
+        String highestName = null;
+        for (String[] t : KUUDRA_TIERS) if (t[0].equals(highest)) highestName = t[1];
+        tiles.add(new Tile(null, "Kuudra Runs", Coins.full(Json.num(r, "stats.crimsonIsle.totalKuudraRuns", 0)),
+                highestName == null ? null : "Up to " + highestName));
+        String faction = Json.str(r, "stats.crimsonIsle.selectedFaction");
+        double reputation = "barbarians".equals(faction) ? Json.num(r, "stats.crimsonIsle.barbariansReputation", 0)
+                : Json.num(r, "stats.crimsonIsle.magesReputation", 0);
+        tiles.add(new Tile(null, "Reputation", faction == null ? "—" : Coins.full(reputation),
+                faction == null ? null : ProfileData.title(faction)));
+        double dojo = Json.num(r, "stats.crimsonIsle.dojoPointsTotal", 0);
+        tiles.add(new Tile(null, "Dojo Points", Coins.full(dojo), dojoBelt(dojo)));
+        y = tiles(graphics, tiles, x, y, w, 4) + 6;
+        String metric = metricFor(Page.SKILLS);
+        y = chartCard(graphics, metric, metricMaxLevel(d, metric), x, y, w, 120) + 6;
+        return cards(graphics, combatCards(d), x, y, w);
+    }
+
+    private static List<Card> combatCards(ProfileData d) {
+        JsonElement r = d.raw;
+        List<Card> cards = new ArrayList<>();
+
+        List<String[]> kuudra = new ArrayList<>();
+        for (String[] t : KUUDRA_TIERS) {
+            double runs = Json.num(r, "stats.crimsonIsle.kuudraCompletions." + t[0], 0);
+            double wave = Json.num(r, "stats.crimsonIsle.kuudraHighestWaves." + t[0], 0);
+            if (runs > 0 || wave > 0) kuudra.add(row(t[1], Coins.full(runs) + (wave > 0 ? " · wave " + (int) wave : "")));
+        }
+        add(cards, "Kuudra", kuudra);
+
+        List<String[]> dojo = new ArrayList<>();
+        for (String[] t : DOJO_TESTS) {
+            JsonElement test = Json.obj(r, "stats.crimsonIsle.dojoTests." + t[0]);
+            double points = Json.num(test, "points", 0);
+            if (points <= 0) continue;
+            String rank = Json.str(test, "rank");
+            double time = Json.num(test, "time", 0);
+            dojo.add(row(t[1], (rank == null ? "" : rank + " · ") + Coins.full(points) + (time > 0 ? " · " + Metrics.clock((long) time) : "")));
+        }
+        add(cards, "Dojo", dojo);
+
+        List<String[]> crimson = new ArrayList<>();
+        String faction = Json.str(r, "stats.crimsonIsle.selectedFaction");
+        if (faction != null) crimson.add(row("Faction", ProfileData.title(faction)));
+        count(crimson, "Mage Reputation", Json.num(r, "stats.crimsonIsle.magesReputation"));
+        count(crimson, "Barbarian Reputation", Json.num(r, "stats.crimsonIsle.barbariansReputation"));
+        add(cards, "Crimson Isle", crimson);
+
+        List<String[]> fights = new ArrayList<>();
+        count(fights, "Kills", Json.num(r, "stats.playerStats.killsDeaths.totalKills"));
+        count(fights, "Deaths", Json.num(r, "stats.playerStats.killsDeaths.totalDeaths"));
+        double kd = Json.num(r, "stats.playerStats.derivations.killDeathRatio");
+        if (!Double.isNaN(kd) && kd > 0) fights.add(row("Kills per Death", String.format(Locale.US, "%.1f", kd)));
+        double damage = Json.num(r, "stats.playerStats.damage.highestDamage");
+        if (!Double.isNaN(damage) && damage > 0) fights.add(row("Highest Hit", Coins.compact(damage)));
+        count(fights, "Bestiary Milestone", Json.num(r, "stats.bestiary.milestoneLevel"));
+        add(cards, "Fights", fights);
+
+        // The mobs killed most, leaving out the totals Hypixel files among them.
+        List<String[]> top = new ArrayList<>();
+        for (JsonElement e : Json.arr(r, "stats.playerStats.derivations.topKills")) {
+            String mob = Json.str(e, "mobId");
+            if (mob == null || mob.equals("total") || mob.equals("unknown")) continue;
+            count(top, ProfileData.title(mob), Json.num(e, "count", 0));
+            if (top.size() >= 8) break;
+        }
+        add(cards, "Most Killed", top);
+
+        List<String[]> dragons = new ArrayList<>();
+        count(dragons, "Dragons Summoned", Json.num(r, "stats.playerStats.dragonFight.amountSummoned.total"));
+        count(dragons, "Superior Summoned", Json.num(r, "stats.playerStats.dragonFight.amountSummoned.superior"));
+        count(dragons, "Crystals Destroyed", Json.num(r, "stats.playerStats.dragonFight.enderCrystalsDestroyed"));
+        double most = Json.num(r, "stats.playerStats.dragonFight.mostDamage.best");
+        if (!Double.isNaN(most) && most > 0) dragons.add(row("Most Damage", Coins.compact(most)));
+        add(cards, "Ender Dragons", dragons);
+
+        List<String[]> mythos = new ArrayList<>();
+        count(mythos, "Burrows Dug", Json.num(r, "stats.playerStats.mythos.burrowsDugNext.total")
+                + Json.num(r, "stats.playerStats.mythos.burrowsDugTreasure.total", 0));
+        count(mythos, "Chains Completed", Json.num(r, "stats.playerStats.mythos.burrowsChainsComplete.total"));
+        count(mythos, "Inquisitors", Json.num(r, "stats.playerStats.mythos.killsMinosInquisitor"));
+        count(mythos, "Minos Champions", Json.num(r, "stats.playerStats.mythos.killsMinosChampion"));
+        count(mythos, "Minotaurs", Json.num(r, "stats.playerStats.mythos.killsMinotaur"));
+        count(mythos, "Gaia Constructs", Json.num(r, "stats.playerStats.mythos.killsGaiaConstruct"));
+        count(mythos, "Siamese Lynxes", Json.num(r, "stats.playerStats.mythos.killsSiameseLynx"));
+        count(mythos, "Minos Hunters", Json.num(r, "stats.playerStats.mythos.killsMinosHunter"));
+        add(cards, "Mythological Ritual", mythos);
+        return cards;
+    }
+
     // ---- Foraging and Fishing --------------------------------------------------------------------
 
     private int foraging(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
@@ -1352,7 +1469,8 @@ public class ProfileDashboardScreen extends Screen {
         y = chartCard(graphics, metric, metricMaxLevel(d, metric), x, y, w, 120) + 6;
         double spent = Json.num(r, "stats.foraging.hotfTokensSpent", 0);
         y = skillTree(graphics, "Heart of the Forest", SkillTrees.hotf(), Json.obj(r, "stats.foraging.nodes"),
-                Json.obj(r, "stats.foraging.nodeToggles"), spent > 0 ? Coins.full(spent) + " tokens spent" : null, x, y, w) + 6;
+                Json.obj(r, "stats.foraging.nodeToggles"), "center_of_the_forest", (int) Json.num(r, "stats.foraging.hotfLevel", 0),
+                spent > 0 ? Coins.full(spent) + " tokens spent" : null, x, y, w) + 6;
         return cards(graphics, foragingCards(d), x, y, w);
     }
 
@@ -1421,7 +1539,7 @@ public class ProfileDashboardScreen extends Screen {
         int gap = 6;
         int pad = 8;
         int cw = (w - 2 * pad - (cols - 1) * gap) / cols;
-        int ch = 30;
+        int ch = 38;
         List<TrophyFish.Fish> all = TrophyFish.ALL;
         int rows = (all.size() + cols - 1) / cols;
         int h = 24 + rows * (ch + 4) - 4 + pad;
@@ -1449,17 +1567,18 @@ public class ProfileDashboardScreen extends Screen {
             boolean hover = hover(cx, cy, cw, ch);
             ModernGuiUtils.drawRoundedRect(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW_SELECTED);
             ItemStack head = trophyHead(f.heads()[Math.max(0, best)]);
-            if (head != null) stackIcon(graphics, head, cx + 7, cy + 7, 1.0f);
-            int tx = cx + 29;
-            int tw = cw - 29 - 6;
+            // At twice its size, so the head's pixels stay whole and it reads at a glance.
+            if (head != null) stackIcon(graphics, head, cx + 3, cy + 3, 2.0f);
+            int tx = cx + 41;
+            int tw = cw - 41 - 6;
             int nameColor = total > 0 ? ink(ProfileData.rarityColor(f.rarity())) : AlpakaStyle.TEXT_MUTED;
             String sum = Coins.full(total);
-            text(graphics, AlpakaStyle.ellipsize(this.font, f.name(), tw - textW(sum) - 6), tx, cy + 5, nameColor);
-            text(graphics, sum, tx + tw - textW(sum), cy + 5, total > 0 ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_MUTED);
+            text(graphics, AlpakaStyle.ellipsize(this.font, f.name(), tw - textW(sum) - 6), tx, cy + 8, nameColor);
+            text(graphics, sum, tx + tw - textW(sum), cy + 8, total > 0 ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_MUTED);
             int slot = tw / tier.length;
             for (int t = 0; t < tier.length; t++) {
                 String n = tier[t] > 0 ? Coins.compact(tier[t]) : "—";
-                text(graphics, n, tx + t * slot, cy + 17, tier[t] > 0 ? ink(TROPHY_TIER_COLORS[t]) : MarketIcons.fade(AlpakaStyle.TEXT_MUTED, 0.5f));
+                text(graphics, n, tx + t * slot, cy + 22, tier[t] > 0 ? ink(TROPHY_TIER_COLORS[t]) : MarketIcons.fade(AlpakaStyle.TEXT_MUTED, 0.5f));
             }
             if (hover) {
                 StringBuilder tipText = new StringBuilder(f.name()).append(" (").append(ProfileData.title(f.rarity())).append("): ")
@@ -1524,9 +1643,10 @@ public class ProfileDashboardScreen extends Screen {
      * A Heart of the Mountain or Forest as the game lays it out: each perk on its place in the grid,
      * joined to the perks beside it, the top tier at the top. A perk not taken is dark, one under way
      * pink with its level in it, a maxed one gold, a switched-off one faded; abilities are round.
+     * Hovering a perk shows its tooltip from the game.
      */
     private int skillTree(GuiGraphicsExtractor graphics, String title, SkillTrees.Tree tree, JsonObject levels, JsonObject toggles,
-                          String info, int x, int y, int w) {
+                          String core, int tier, String info, int x, int y, int w) {
         int pad = 8;
         if (tree == null || tree.perks().isEmpty()) {
             card(graphics, x, y, w, 36);
@@ -1586,8 +1706,11 @@ public class ProfileDashboardScreen extends Screen {
                 text(graphics, n, cx + (nodeW - textW(n)) / 2, cy + 4, 0xFF1B1B20);
             }
             if (hover) {
-                String state = p.maxLevel() > 1 ? "Level " + level + " / " + p.maxLevel() : level > 0 ? "Unlocked" : "Not unlocked";
-                tip(title + p.id(), p.name() + (p.ability() ? " (ability)" : "") + ": " + state + "." + (off ? " Switched off." : ""));
+                // The perk's own tooltip, lore and numbers for its level, as the game shows it.
+                Boolean enabled = toggles.has(p.id()) ? !off : null;
+                List<Component> lines = new ArrayList<>();
+                for (String line : SkillTrees.tooltip(tree, p, levels, core, tier, enabled)) lines.add(Component.literal(line));
+                hoveredLines = lines;
             }
         }
 
@@ -2501,19 +2624,6 @@ public class ProfileDashboardScreen extends Screen {
         int fossils = Json.arr(r, "stats.mining.glacite.fossilsDonated").size();
         if (fossils > 0) mining.add(row("Fossils Donated", String.valueOf(fossils)));
         add(cards, "Mining", mining);
-
-        List<String[]> crimson = new ArrayList<>();
-        String faction = Json.str(r, "stats.crimsonIsle.selectedFaction");
-        if (faction != null) crimson.add(row("Faction", ProfileData.title(faction)));
-        count(crimson, "Mage Reputation", Json.num(r, "stats.crimsonIsle.magesReputation"));
-        count(crimson, "Barbarian Reputation", Json.num(r, "stats.crimsonIsle.barbariansReputation"));
-        String[][] tiers = {{"none", "Basic"}, {"hot", "Hot"}, {"burning", "Burning"}, {"fiery", "Fiery"}, {"infernal", "Infernal"}};
-        for (String[] t : tiers) {
-            double n = Json.num(r, "stats.crimsonIsle.kuudraCompletions." + t[0]);
-            if (n > 0) crimson.add(row("Kuudra " + t[1], Coins.full(n)));
-        }
-        count(crimson, "Dojo Points", Json.num(r, "stats.crimsonIsle.dojoPointsTotal"));
-        add(cards, "Crimson Isle", crimson);
 
         List<String[]> fishing = new ArrayList<>();
         count(fishing, "Trophy Fish", Json.num(r, "stats.fishing.totalTrophyFishCaught"));

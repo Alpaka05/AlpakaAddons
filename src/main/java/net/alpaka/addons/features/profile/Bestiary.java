@@ -23,7 +23,8 @@ final class Bestiary {
     /** One family as NEU lists it: its mob ids, the kills of each tier up to the cap, and its icon. */
     record FamilyDef(String name, String texture, String item, List<String> mobs, long[] tiers) {}
 
-    record IslandDef(String name, List<FamilyDef> families) {}
+    /** An island, or a part of one: its name, its icon (a head's texture or an item) and its families. */
+    record IslandDef(String name, String texture, String item, List<FamilyDef> families) {}
 
     /** A family on a profile: the kills of all its mobs and the tier they reach. */
     record Family(FamilyDef def, long kills, int tier) {
@@ -45,11 +46,25 @@ final class Bestiary {
         }
     }
 
-    record Island(String name, List<Family> families) {
+    record Island(IslandDef def, List<Family> families) {
+        String name() {
+            return def.name();
+        }
+
         int maxed() {
             int n = 0;
             for (Family f : families) if (f.maxed()) n++;
             return n;
+        }
+
+        /** How far the island is, by tiers: every tier of every family counts the same, as in the milestone. */
+        double progress() {
+            int tiers = 0, max = 0;
+            for (Family f : families) {
+                tiers += f.tier();
+                max += f.maxTier();
+            }
+            return max == 0 ? 0 : tiers / (double) max;
         }
     }
 
@@ -128,7 +143,7 @@ final class Bestiary {
             families.add(new FamilyDef(plain(Json.str(f, "name")), Json.str(f, "texture"), Json.str(f, "item"), mobs,
                     tiers.stream().mapToLong(Long::longValue).toArray()));
         }
-        return new IslandDef(name == null ? "?" : plain(name), families);
+        return new IslandDef(name == null ? "?" : plain(name), Json.str(island, "icon.texture"), Json.str(island, "icon.item"), families);
     }
 
     /** NEU writes the names in the game's colour codes ("§aGhast"). */
@@ -148,7 +163,7 @@ final class Bestiary {
                 while (tier < def.tiers().length && kills >= def.tiers()[tier]) tier++;
                 families.add(new Family(def, kills, tier));
             }
-            out.add(new Island(island.name(), families));
+            out.add(new Island(island, families));
         }
         return out;
     }

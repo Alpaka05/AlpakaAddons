@@ -113,7 +113,10 @@ public class ProfileDashboardScreen extends Screen {
     private final Scroll scroll = new Scroll();
     private Page scrolledPage = null;
     private String scrolledDetail = null;
-    /** The skill whose own page the Skills page shows instead of all skills: "farming", "mining" or null. */
+    /**
+     * The sub-page shown instead of the page's overview, null for none: the skill on the Skills page
+     * ("farming", "mining"), the island on the Bestiary page.
+     */
     private String skillDetail = null;
     private String hoveredTip;
     private Object hoveredTipKey;
@@ -2240,6 +2243,12 @@ public class ProfileDashboardScreen extends Screen {
             bestiaryData = d;
             bestiaryList = Bestiary.of(repo, Json.at(raw, "stats.bestiary.mobKills"));
         }
+        if (skillDetail != null) {
+            for (Bestiary.Island island : bestiaryList) {
+                if (island.name().equals(skillDetail)) return bestiaryIsland(graphics, island, x, y, w);
+            }
+            skillDetail = null;
+        }
         int maxed = 0, families = 0;
         for (Bestiary.Island i : bestiaryList) {
             maxed += i.maxed();
@@ -2260,59 +2269,94 @@ public class ProfileDashboardScreen extends Screen {
             return y + h;
         }
 
+        // One card per island, the families a click away: all of them on one page went on for screens.
         int cols = Math.max(2, w / 160);
         int gap = 4;
         int cw = (w - (cols - 1) * gap) / cols;
         int ch = 38;
-        for (Bestiary.Island island : bestiaryList) {
-            List<Bestiary.Family> list = island.families();
-            text(graphics, island.name(), x + 2, y + 2, AlpakaStyle.TEXT);
-            text(graphics, island.maxed() + " / " + list.size() + " maxed", x + 2 + textW(island.name()) + 8, y + 2, AlpakaStyle.TEXT_MUTED);
-            y += 14;
-            for (int i = 0; i < list.size(); i++) {
-                Bestiary.Family f = list.get(i);
-                int cx = x + (i % cols) * (cw + gap);
-                int cy = y + (i / cols) * (ch + gap);
-                if (cy > clipY + clipH + 40 || cy + ch < clipY - 40) continue;
-                boolean hover = hover(cx, cy, cw, ch);
-                ModernGuiUtils.drawRoundedRect(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
-                ItemStack icon = bestiaryIcon(f.def());
-                if (!icon.isEmpty()) {
-                    stackIcon(graphics, icon, cx + 3, cy + 3, 2.0f);
-                    if (f.kills() == 0) veils.add(new int[] {cx + 3, cy + 3, 32, 32});
-                }
-                int tx = cx + 40;
-                int tw = cw - 40 - 6;
-                String tier = f.maxed() ? "MAX" : f.tier() == 0 ? "—" : roman(f.tier());
-                int tierColor = f.maxed() ? ink(GOLD) : f.tier() == 0 ? AlpakaStyle.DIVIDER : AlpakaStyle.TEXT;
-                text(graphics, tier, tx + tw - textW(tier), cy + 7, tierColor);
-                text(graphics, AlpakaStyle.ellipsize(this.font, f.def().name(), tw - 8 - textW(tier)), tx, cy + 7,
-                        f.kills() > 0 ? AlpakaStyle.TEXT_SOFT : AlpakaStyle.TEXT_MUTED);
-                double progress = f.maxed() ? 1 : (f.kills() - f.prevAt()) / (double) (f.nextAt() - f.prevAt());
-                bar(graphics, tx, cy + 19, tw, 2, progress, f.maxed() ? ink(GOLD) : AlpakaStyle.accent());
-                String kills = Coins.compact(f.kills()) + (f.maxed() ? "" : " / " + Coins.compact(f.nextAt()));
-                text(graphics, kills, tx, cy + 24, AlpakaStyle.TEXT_MUTED);
-                if (hover) {
-                    tip(f, f.def().name() + ": " + Coins.full(f.kills()) + " kills, tier " + f.tier() + " of " + f.maxTier()
-                            + (f.maxed() ? "." : ". " + Coins.full(f.nextAt() - f.kills()) + " more for the next tier."));
-                }
-            }
-            y += ((list.size() + cols - 1) / cols) * (ch + gap) + 6;
+        for (int i = 0; i < bestiaryList.size(); i++) {
+            Bestiary.Island island = bestiaryList.get(i);
+            int cx = x + (i % cols) * (cw + gap);
+            int cy = y + (i / cols) * (ch + gap);
+            if (cy > clipY + clipH + 40 || cy + ch < clipY - 40) continue;
+            boolean hover = hover(cx, cy, cw, ch);
+            ModernGuiUtils.drawRoundedRect(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
+            ItemStack icon = bestiaryIcon(island.def().texture(), island.def().item());
+            if (!icon.isEmpty()) stackIcon(graphics, icon, cx + 3, cy + 3, 2.0f);
+            int tx = cx + 40;
+            int tw = cw - 40 - 6;
+            boolean done = island.maxed() == island.families().size();
+            String count = done ? "MAX" : island.maxed() + " / " + island.families().size();
+            text(graphics, count, tx + tw - textW(count), cy + 7, done ? ink(GOLD) : AlpakaStyle.TEXT_MUTED);
+            text(graphics, AlpakaStyle.ellipsize(this.font, island.name(), tw - 8 - textW(count)), tx, cy + 7, AlpakaStyle.TEXT_SOFT);
+            bar(graphics, tx, cy + 19, tw, 2, island.progress(), done ? ink(GOLD) : AlpakaStyle.accent());
+            text(graphics, Math.round(island.progress() * 100) + "% of tiers", tx, cy + 24, AlpakaStyle.TEXT_MUTED);
+            String name = island.name();
+            hit(cx, cy, cw, ch, () -> skillDetail = name);
+            if (hover) tip(island, name + ": " + island.maxed() + " of " + island.families().size() + " families maxed. Click for them.");
         }
-        return y;
+        return y + ((bestiaryList.size() + cols - 1) / cols) * (ch + gap) - gap;
     }
 
-    /** The family's head, or the item NEU gives it instead (a Dragon Egg for the dragons). */
-    private static ItemStack bestiaryIcon(Bestiary.FamilyDef f) {
-        String key = f.texture() != null ? f.texture() : "item:" + f.item();
+    /** One island's families, each with its tier and the kills to the next. */
+    private int bestiaryIsland(GuiGraphicsExtractor graphics, Bestiary.Island island, int x, int y, int w) {
+        String back = "‹ All Islands";
+        int bw = textW(back) + 14;
+        boolean backHover = hover(x, y, bw, 15);
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, bw, 15, 7, backHover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW);
+        text(graphics, back, x + 7, y + 4, backHover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
+        hit(x, y, bw, 15, () -> skillDetail = null);
+        text(graphics, island.name(), x + bw + 8, y + 4, AlpakaStyle.TEXT);
+        text(graphics, island.maxed() + " / " + island.families().size() + " maxed", x + bw + 8 + textW(island.name()) + 8, y + 4, AlpakaStyle.TEXT_MUTED);
+        y += 15 + 8;
+
+        List<Bestiary.Family> list = island.families();
+        int cols = Math.max(2, w / 160);
+        int gap = 4;
+        int cw = (w - (cols - 1) * gap) / cols;
+        int ch = 38;
+        for (int i = 0; i < list.size(); i++) {
+            Bestiary.Family f = list.get(i);
+            int cx = x + (i % cols) * (cw + gap);
+            int cy = y + (i / cols) * (ch + gap);
+            if (cy > clipY + clipH + 40 || cy + ch < clipY - 40) continue;
+            boolean hover = hover(cx, cy, cw, ch);
+            ModernGuiUtils.drawRoundedRect(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
+            ItemStack icon = bestiaryIcon(f.def().texture(), f.def().item());
+            if (!icon.isEmpty()) {
+                stackIcon(graphics, icon, cx + 3, cy + 3, 2.0f);
+                if (f.kills() == 0) veils.add(new int[] {cx + 3, cy + 3, 32, 32});
+            }
+            int tx = cx + 40;
+            int tw = cw - 40 - 6;
+            String tier = f.maxed() ? "MAX" : f.tier() == 0 ? "—" : roman(f.tier());
+            int tierColor = f.maxed() ? ink(GOLD) : f.tier() == 0 ? AlpakaStyle.DIVIDER : AlpakaStyle.TEXT;
+            text(graphics, tier, tx + tw - textW(tier), cy + 7, tierColor);
+            text(graphics, AlpakaStyle.ellipsize(this.font, f.def().name(), tw - 8 - textW(tier)), tx, cy + 7,
+                    f.kills() > 0 ? AlpakaStyle.TEXT_SOFT : AlpakaStyle.TEXT_MUTED);
+            double progress = f.maxed() ? 1 : (f.kills() - f.prevAt()) / (double) (f.nextAt() - f.prevAt());
+            bar(graphics, tx, cy + 19, tw, 2, progress, f.maxed() ? ink(GOLD) : AlpakaStyle.accent());
+            String kills = Coins.compact(f.kills()) + (f.maxed() ? "" : " / " + Coins.compact(f.nextAt()));
+            text(graphics, kills, tx, cy + 24, AlpakaStyle.TEXT_MUTED);
+            if (hover) {
+                tip(f, f.def().name() + ": " + Coins.full(f.kills()) + " kills, tier " + f.tier() + " of " + f.maxTier()
+                        + (f.maxed() ? "." : ". " + Coins.full(f.nextAt() - f.kills()) + " more for the next tier."));
+            }
+        }
+        return y + ((list.size() + cols - 1) / cols) * (ch + gap) - gap;
+    }
+
+    /** A family's or island's head, or the item NEU gives it instead (a Dragon Egg for the dragons). */
+    private static ItemStack bestiaryIcon(String texture, String item) {
+        String key = texture != null ? texture : "item:" + item;
         ItemStack known = BESTIARY_ICONS.get(key);
         if (known != null) return known;
         ItemStack built = ItemStack.EMPTY;
         try {
-            if (f.texture() != null) {
-                built = ItemIcons.head(f.texture());
-            } else if (f.item() != null) {
-                Identifier id = Identifier.tryParse("minecraft:" + f.item());
+            if (texture != null) {
+                built = ItemIcons.head(texture);
+            } else if (item != null) {
+                Identifier id = Identifier.tryParse("minecraft:" + item);
                 if (id != null && BuiltInRegistries.ITEM.containsKey(id)) built = new ItemStack(BuiltInRegistries.ITEM.getValue(id));
             }
         } catch (RuntimeException notBoundYet) {

@@ -11,6 +11,7 @@ import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.market.Coins;
 import net.alpaka.addons.features.market.ItemIcons;
 import net.alpaka.addons.features.market.MarketIcons;
+import net.alpaka.addons.utils.SkyblockUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
@@ -64,7 +65,9 @@ public class ProfileDashboardScreen extends Screen {
         PETS("Pets", Items.BONE),
         COLLECTIONS("Collections", Items.PAINTING),
         BESTIARY("Bestiary", Items.WRITABLE_BOOK),
-        MORE("More Stats", Items.COMPASS);
+        MUSEUM("Museum", Items.ARMOR_STAND),
+        RIFT("Rift", Items.ENDER_EYE),
+        CHOCOLATE("Chocolate Factory", Items.COCOA_BEANS);
 
         final String title;
         final Item icon;
@@ -115,7 +118,8 @@ public class ProfileDashboardScreen extends Screen {
     private String scrolledDetail = null;
     /**
      * The sub-page shown instead of the page's overview, null for none: the skill on the Skills page
-     * ("farming", "mining"), the skill's collections on the Collections page, the island on the Bestiary page.
+     * ("farming", "mining"), the skill's collections on the Collections page, the island on the Bestiary page,
+     * the category on the Museum page.
      */
     private String skillDetail = null;
     private String hoveredTip;
@@ -515,7 +519,7 @@ public class ProfileDashboardScreen extends Screen {
             hits.add(new Hit(x + PAD - 2, fy + 10, sw + 4, 11, () -> openLink("Open Elite", url)));
             if (hoverSource) {
                 tip("source", "Profile data from Elite (elitebot.dev), which reads it from Hypixel; the history from Elite and "
-                        + "Soopy (soopy.dev), pet heads from the NEU repository. Soopy works networth out differently, so its "
+                        + "Soopy (soopy.dev), pet heads, the Bestiary, the Museum and Hoppity's rabbits from the NEU repository. Soopy works networth out differently, so its "
                         + "older networth is scaled to match Elite's."
                         + (skykings ? " With your key, SkyKings' daily history too" + (session.skykingsNote != null
                                 && !session.skykingsNote.equals("loading") ? ": " + session.skykingsNote : ".")
@@ -575,7 +579,9 @@ public class ProfileDashboardScreen extends Screen {
             case COLLECTIONS -> collections(graphics, d, x, y, w);
             case INVENTORY -> inventories(graphics, d, x, y, w);
             case BESTIARY -> bestiary(graphics, d, x, y, w);
-            case MORE -> more(graphics, d, x, y, w);
+            case MUSEUM -> museum(graphics, d, x, y, w);
+            case RIFT -> rift(graphics, d, x, y, w);
+            case CHOCOLATE -> chocolate(graphics, d, x, y, w);
         };
     }
 
@@ -894,7 +900,9 @@ public class ProfileDashboardScreen extends Screen {
             case PETS -> Metrics.PETS_MAXED;
             case COLLECTIONS -> Metrics.MINIONS;
             case BESTIARY -> Metrics.BESTIARY;
-            case MORE -> Metrics.SB_LEVEL;
+            case CHOCOLATE -> Metrics.CHOCOLATE;
+            // No graph on these pages.
+            case MUSEUM, RIFT -> null;
             case INVENTORY -> Metrics.NETWORTH;
         };
     }
@@ -2301,16 +2309,7 @@ public class ProfileDashboardScreen extends Screen {
 
     /** One island's families, each with its tier and the kills to the next. */
     private int bestiaryIsland(GuiGraphicsExtractor graphics, Bestiary.Island island, int x, int y, int w) {
-        String back = "‹ All Islands";
-        int bw = textW(back) + 14;
-        boolean backHover = hover(x, y, bw, 15);
-        ModernGuiUtils.drawRoundedRect(graphics, x, y, bw, 15, 7, backHover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW);
-        text(graphics, back, x + 7, y + 4, backHover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
-        hit(x, y, bw, 15, () -> skillDetail = null);
-        text(graphics, island.name(), x + bw + 8, y + 4, AlpakaStyle.TEXT);
-        text(graphics, island.maxed() + " / " + island.families().size() + " maxed", x + bw + 8 + textW(island.name()) + 8, y + 4, AlpakaStyle.TEXT_MUTED);
-        y += 15 + 8;
-
+        y = backRow(graphics, "‹ All Islands", island.name(), island.maxed() + " / " + island.families().size() + " maxed", x, y);
         List<Bestiary.Family> list = island.families();
         int cols = Math.max(2, w / 160);
         int gap = 4;
@@ -2810,20 +2809,9 @@ public class ProfileDashboardScreen extends Screen {
         return y + rows * (pageH + gap) - gap;
     }
 
-    // ---- More stats -----------------------------------------------------------------------------
+    // ---- Cards ----------------------------------------------------------------------------------
 
     private record Card(String title, List<String[]> rows) {}
-
-    private int more(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
-        List<Tile> tiles = new ArrayList<>();
-        tiles.add(new Tile(Metrics.SB_LEVEL, "SkyBlock Level", String.format(Locale.US, "%.2f", d.skyblockLevel), null));
-        tiles.add(new Tile(Metrics.FAIRY_SOULS, "Fairy Souls", Coins.full(Json.num(d.raw, "stats.playerStats.fairySouls.collected", 0)), null));
-        tiles.add(new Tile(Metrics.BESTIARY, "Bestiary", "Milestone " + d.bestiaryMilestone, null));
-        tiles.add(new Tile(Metrics.KUUDRA, "Kuudra Runs", Coins.full(Json.num(d.raw, "stats.crimsonIsle.totalKuudraRuns", 0)), null));
-        y = tiles(graphics, tiles, x, y, w, 4) + 6;
-        y = chartCard(graphics, metricFor(Page.MORE), 0, x, y, w, 110) + 6;
-        return cards(graphics, moreCards(d), x, y, w);
-    }
 
     /** Cards of rows, each into the shortest of up to three columns. */
     private int cards(GuiGraphicsExtractor graphics, List<Card> cards, int x, int y, int w) {
@@ -2854,86 +2842,329 @@ public class ProfileDashboardScreen extends Screen {
         return y + tallest - gap;
     }
 
-    private static List<Card> moreCards(ProfileData d) {
-        JsonElement r = d.raw;
+    /** The row above a sub-page: the way back, the sub-page's name and how far it is. */
+    private int backRow(GuiGraphicsExtractor graphics, String back, String title, String note, int x, int y) {
+        int bw = textW(back) + 14;
+        boolean backHover = hover(x, y, bw, 15);
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, bw, 15, 7, backHover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW);
+        text(graphics, back, x + 7, y + 4, backHover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
+        hit(x, y, bw, 15, () -> skillDetail = null);
+        text(graphics, title, x + bw + 8, y + 4, AlpakaStyle.TEXT);
+        text(graphics, note, x + bw + 8 + textW(title) + 8, y + 4, AlpakaStyle.TEXT_MUTED);
+        return y + 15 + 8;
+    }
+
+    private static String date(double epochMs) {
+        return DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US).format(Instant.ofEpochMilli((long) epochMs).atZone(ZoneId.systemDefault()));
+    }
+
+    // ---- Museum ---------------------------------------------------------------------------------
+
+    private Museum.Repo museumRepo;
+    private JsonElement museumFor;
+    private Museum.Donated museum;
+    private static final String SPECIAL = "special";
+    private static final int CELL = 20;
+
+    /** Each category's icon, after the skill it belongs to. */
+    private static Item museumIcon(String category) {
+        return switch (category) {
+            case "combat" -> Items.DIAMOND_SWORD;
+            case "farming" -> Items.GOLDEN_HOE;
+            case "mining" -> Items.IRON_PICKAXE;
+            case "fishing" -> Items.FISHING_ROD;
+            case "foraging" -> Items.JUNGLE_SAPLING;
+            case "dungeoneering" -> Items.WITHER_SKELETON_SKULL;
+            case "hunting" -> Items.LEAD;
+            default -> Items.NETHER_STAR;
+        };
+    }
+
+    private int museum(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
+        if (!Json.bool(d.raw, "api.museum")) return apiOff(graphics, "Museum", x, y, w);
+        Museum.Repo repo = Museum.repo();
+        JsonElement answer = session.networth();
+        if (repo != null && answer != null && (repo != museumRepo || answer != museumFor)) {
+            museumRepo = repo;
+            museumFor = answer;
+            museum = Museum.of(repo, Json.arr(answer, "categories.museum.items"));
+        }
+        Museum.Donated m = repo != null && answer != null ? museum : null;
+        if (m != null && skillDetail != null) {
+            if (skillDetail.equals(SPECIAL)) return museumSpecial(graphics, m, x, y, w);
+            for (Museum.Category c : m.categories()) {
+                if (c.def().id().equals(skillDetail)) return museumCategory(graphics, repo, c, x, y, w);
+            }
+            skillDetail = null;
+        }
+
+        int complete = 0;
+        if (m != null) for (Museum.Category c : m.categories()) if (c.donated() == c.entries().size()) complete++;
+        double value = Json.num(answer, "categories.museum.total");
+        List<Tile> tiles = new ArrayList<>();
+        // Plain cards: the museum has no history to draw.
+        tiles.add(new Tile(null, "Items Donated", m == null ? "…" : m.donated() + " / " + repo.total(), null));
+        tiles.add(new Tile(null, "Museum Value", answer == null ? "…" : Double.isNaN(value) ? "—" : Coins.compact(value), null));
+        tiles.add(new Tile(null, "Special Items", m == null ? "…" : Coins.full(m.special().size()), null));
+        tiles.add(new Tile(null, "Categories Done", m == null ? "…" : complete + " / " + m.categories().size(), null));
+        y = tiles(graphics, tiles, x, y, w, 4) + 6;
+        if (m == null) {
+            boolean failed = answer == null ? session.networthState == ProfileSession.State.FAILED : Museum.failed();
+            int h = 40;
+            card(graphics, x, y, w, h);
+            ProfileChart.message(graphics, this.font, failed ? "Couldn't load the museum. Click to try again." : "Loading the museum…", x, y, w, h);
+            if (failed && answer == null) hit(x, y, w, h, session::retryFailed);
+            return y + h;
+        }
+
+        // One card per category, the items a click away, as on the Bestiary page.
+        int count = m.categories().size() + 1;
+        int cols = Math.max(2, w / 160);
+        int gap = 4;
+        int cw = (w - (cols - 1) * gap) / cols;
+        int ch = 38;
+        for (int i = 0; i < count; i++) {
+            boolean special = i == m.categories().size();
+            Museum.Category c = special ? null : m.categories().get(i);
+            String id = special ? SPECIAL : c.def().id();
+            String name = special ? "Special" : c.name();
+            int cx = x + (i % cols) * (cw + gap);
+            int cy = y + (i / cols) * (ch + gap);
+            boolean hover = hover(cx, cy, cw, ch);
+            ModernGuiUtils.drawRoundedRect(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
+            icon(graphics, museumIcon(id), cx + 3, cy + 3, 2.0f);
+            int tx = cx + 40;
+            int tw = cw - 40 - 6;
+            boolean done = !special && c.donated() == c.entries().size();
+            String amount = special ? Coins.full(m.special().size()) : done ? "MAX" : c.donated() + " / " + c.entries().size();
+            text(graphics, amount, tx + tw - textW(amount), cy + 7, done ? ink(GOLD) : AlpakaStyle.TEXT_MUTED);
+            text(graphics, AlpakaStyle.ellipsize(this.font, name, tw - 8 - textW(amount)), tx, cy + 7, AlpakaStyle.TEXT_SOFT);
+            if (special) {
+                // Special items have no end, so no bar either.
+                text(graphics, "no limit", tx, cy + 24, AlpakaStyle.TEXT_MUTED);
+            } else {
+                bar(graphics, tx, cy + 19, tw, 2, c.progress(), done ? ink(GOLD) : AlpakaStyle.accent());
+                text(graphics, (int) Math.floor(c.progress() * 100) + "% donated", tx, cy + 24, AlpakaStyle.TEXT_MUTED);
+            }
+            hit(cx, cy, cw, ch, () -> skillDetail = id);
+            if (hover) {
+                tip(id, special ? m.special().size() + " special items donated. Click for them."
+                        : name + ": " + c.donated() + " of " + c.entries().size() + " donated. Click for them.");
+            }
+        }
+        return y + ((count + cols - 1) / cols) * (ch + gap) - gap;
+    }
+
+    /** A category's items and sets, the ones not donated yet greyed out. */
+    private int museumCategory(GuiGraphicsExtractor graphics, Museum.Repo repo, Museum.Category c, int x, int y, int w) {
+        y = backRow(graphics, "‹ All Categories", c.name(), c.donated() + " / " + c.entries().size() + " donated", x, y);
+        int cols = Math.max(1, (w + 2) / CELL);
+        List<Museum.Entry> entries = c.entries();
+        for (int i = 0; i < entries.size(); i++) {
+            Museum.Entry e = entries.get(i);
+            int sx = x + (i % cols) * CELL;
+            int sy = y + (i / cols) * CELL;
+            if (sy > clipY + clipH || sy + CELL < clipY) continue;
+            JsonElement shown = museumItem(repo, e);
+            ItemStack stack = shown != null ? InventoryItems.stack(shown) : ItemIcons.forItem(Museum.iconId(repo, e.id()), null);
+            museumSlot(graphics, stack, sx, sy, !e.donated(), museumTip(repo, e));
+        }
+        return y + ((entries.size() + cols - 1) / cols) * CELL - 2;
+    }
+
+    private int museumSpecial(GuiGraphicsExtractor graphics, Museum.Donated m, int x, int y, int w) {
+        y = backRow(graphics, "‹ All Categories", "Special", m.special().size() + " donated", x, y);
+        if (m.special().isEmpty()) return note(graphics, "No special items donated yet.", x, y, w);
+        int cols = Math.max(1, (w + 2) / CELL);
+        for (int i = 0; i < m.special().size(); i++) {
+            JsonElement item = m.special().get(i);
+            int sx = x + (i % cols) * CELL;
+            int sy = y + (i / cols) * CELL;
+            if (sy > clipY + clipH || sy + CELL < clipY) continue;
+            List<Component> lines = new ArrayList<>();
+            String name = Json.str(item, "item.name");
+            lines.add(Component.literal(name == null ? ProfileData.title(String.valueOf(Json.str(item, "item.skyblockId"))) : name));
+            double value = Json.num(item, "networth", 0);
+            if (value > 0) lines.add(Component.literal("§7Value: §6" + Coins.compact(value)));
+            museumSlot(graphics, InventoryItems.stack(Json.at(item, "item")), sx, sy, false, lines);
+        }
+        return y + ((m.special().size() + cols - 1) / cols) * CELL - 2;
+    }
+
+    private void museumSlot(GuiGraphicsExtractor graphics, ItemStack stack, int sx, int sy, boolean missing, List<Component> tip) {
+        int size = CELL - 2;
+        boolean hover = hover(sx, sy, size, size);
+        ModernGuiUtils.drawRoundedRect(graphics, sx, sy, size, size, 2, hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW);
+        if (!stack.isEmpty()) graphics.item(stack, sx + 1, sy + 1);
+        if (missing) veils.add(new int[] {sx, sy, size, size});
+        if (hover) hoveredLines = tip;
+    }
+
+    /** The donated item an entry is drawn by: a set's piece NEU shows it by when that is there. */
+    private static JsonElement museumItem(Museum.Repo repo, Museum.Entry e) {
+        if (e.items().isEmpty()) return null;
+        String icon = Museum.iconId(repo, e.id());
+        for (JsonElement item : e.items()) {
+            if (icon.equals(Json.str(item, "item.skyblockId"))) return Json.at(item, "item");
+        }
+        return Json.at(e.items().get(0), "item");
+    }
+
+    private static List<Component> museumTip(Museum.Repo repo, Museum.Entry e) {
+        String name = ItemIcons.name(Museum.iconId(repo, e.id()));
+        String color = "§f";
+        if (!e.items().isEmpty()) {
+            String donatedName = Json.str(e.items().get(0), "item.name");
+            if (donatedName != null && donatedName.startsWith("§") && donatedName.length() > 1) color = donatedName.substring(0, 2);
+            if (name == null && donatedName != null) name = SkyblockUtils.cleanColor(donatedName);
+        }
+        if (name == null) {
+            name = ProfileData.title(e.id());
+        } else if (Museum.isSet(repo, e.id())) {
+            // The set by its piece's name without the piece: "Tank Miner Helmet" is the Tank Miner Armor.
+            int space = name.lastIndexOf(' ');
+            name = (space > 0 ? name.substring(0, space) : name) + " Armor";
+        }
+        List<Component> lines = new ArrayList<>();
+        lines.add(Component.literal(color + name));
+        if (!e.donated()) {
+            lines.add(Component.literal("§cNot donated yet"));
+        } else if (e.items().isEmpty()) {
+            lines.add(Component.literal("§aDonated through a better tier"));
+        } else {
+            lines.add(Component.literal("§aDonated"));
+            if (e.value() > 0) lines.add(Component.literal("§7Value: §6" + Coins.compact(e.value())));
+        }
+        return lines;
+    }
+
+    // ---- Rift -----------------------------------------------------------------------------------
+
+    /** The Timecharms by Elite's id, in the order the Rift hands them out. */
+    private static final String[][] TIMECHARMS = {
+            {"wyldly_supreme", "Supreme Timecharm"}, {"mirrored", "Mirrorverse Timecharm"},
+            {"chicken_n_egg", "Chicken N Egg Timecharm"}, {"citizen", "SkyBlock Citizen Timecharm"},
+            {"lazy_living", "Living Timecharm"}, {"slime", "Globulate Timecharm"},
+            {"vampiric", "Vampiric Timecharm"}, {"mountain", "Celestial Timecharm"}};
+
+    private int rift(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
+        JsonElement r = Json.at(d.raw, "stats.rift");
+        if (r == null) return note(graphics, "This profile hasn't been to the Rift yet.", x, y, w);
+        Map<String, Double> secured = new HashMap<>();
+        for (JsonElement t : Json.arr(r, "securedTrophies")) {
+            String type = Json.str(t, "type");
+            if (type != null) secured.put(type, Json.num(t, "timestamp", 0));
+        }
+        List<Tile> tiles = new ArrayList<>();
+        double souls = Json.num(r, "enigmaSoulsFound", 0);
+        double soulsTotal = Json.num(r, "enigmaSoulsTotal", 0);
+        tiles.add(new Tile(null, "Enigma Souls", (int) souls + (soulsTotal > 0 ? " / " + (int) soulsTotal : ""), null));
+        tiles.add(new Tile(null, "Motes", Coins.compact(Json.num(r, "motesPurse", 0)), null));
+        tiles.add(new Tile(null, "Montezuma's Cats", Json.arr(r, "foundCats").size() + " / 9", null));
+        tiles.add(new Tile(null, "Timecharms", secured.size() + " / " + TIMECHARMS.length, null));
+        y = tiles(graphics, tiles, x, y, w, 4) + 6;
+
         List<Card> cards = new ArrayList<>();
-
-        List<String[]> sb = new ArrayList<>();
-        double firstJoin = Json.num(r, "stats.miscStats.firstJoin");
-        if (firstJoin > 0) {
-            sb.add(row("Playing Since", DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US)
-                    .format(Instant.ofEpochMilli((long) firstJoin).atZone(ZoneId.systemDefault()))));
+        List<String[]> charms = new ArrayList<>();
+        for (String[] t : TIMECHARMS) {
+            Double at = secured.get(t[0]);
+            charms.add(row(t[1], at == null ? "—" : at > 0 ? date(at) : "Secured"));
         }
-        count(sb, "Kills", Json.num(r, "stats.playerStats.killsDeaths.totalKills"));
-        count(sb, "Deaths", Json.num(r, "stats.playerStats.killsDeaths.totalDeaths"));
-        count(sb, "Bestiary Kills", Json.num(r, "stats.bestiaryDerivations.totalKills"));
-        count(sb, "Soulflow", Json.num(r, "stats.miscStats.soulflow"));
-        count(sb, "Pelts", Json.num(r, "stats.miscStats.pelts"));
-        add(cards, "SkyBlock", sb);
+        add(cards, "Timecharms", charms);
 
-        List<String[]> coins = new ArrayList<>();
-        coins(coins, "Purse", d.purse);
-        coins(coins, "Bank", d.bank);
-        if (d.personalBank > 0) coins(coins, "Personal Bank", d.personalBank);
-        if (d.liquidNetworth > 0) coins(coins, "Liquid Networth", d.liquidNetworth);
-        add(cards, "Coins", coins);
+        List<String[]> progress = new ArrayList<>();
+        count(progress, "Eyes Unlocked", Json.arr(r, "unlockedEyes").size());
+        count(progress, "Areas Unlocked", Json.arr(r, "lifetimePurchasedBoundaries").size());
+        count(progress, "Portals", Json.num(r, "totalPortals"));
+        if (Json.bool(r, "consumedPrism")) progress.add(row("Rift Prism", "Consumed"));
+        if (Json.bool(r, "unlockedRiftCatPet")) progress.add(row("Montezuma Pet", "Unlocked"));
+        add(cards, "Progress", progress);
 
-        List<String[]> mining = new ArrayList<>();
-        count(mining, "Mithril Powder", Json.num(r, "stats.mining.powder.mithril.available"));
-        count(mining, "Gemstone Powder", Json.num(r, "stats.mining.powder.gemstone.available"));
-        count(mining, "Glacite Powder", Json.num(r, "stats.mining.powder.glacite.available"));
-        count(mining, "Nucleus Runs", Json.num(r, "stats.mining.crystalNucleusRuns"));
-        count(mining, "Commission Milestone", Json.num(r, "stats.mining.commissionMilestone"));
-        int fossils = Json.arr(r, "stats.mining.glacite.fossilsDonated").size();
-        if (fossils > 0) mining.add(row("Fossils Donated", String.valueOf(fossils)));
-        add(cards, "Mining", mining);
+        List<String[]> stacks = new ArrayList<>();
+        count(stacks, "Lifetime Motes", Json.num(r, "lifetimeMotesEarned"));
+        count(stacks, "Motes Orbs Picked Up", Json.num(r, "motesOrbPickup"));
+        count(stacks, "McGrubber's Burgers", Json.num(r, "maxBurgers"));
+        count(stacks, "Grubber Stacks", Json.num(r, "grubberStacks"));
+        count(stacks, "Croak Stacks", Json.num(r, "croakStacks"));
+        count(stacks, "Siren Statue Kills", Json.num(r, "sirenStatueKills"));
+        add(cards, "Stats", stacks);
+        return cards(graphics, cards, x, y, w);
+    }
 
-        List<String[]> fishing = new ArrayList<>();
-        count(fishing, "Trophy Fish", Json.num(r, "stats.fishing.totalTrophyFishCaught"));
-        String rank = Json.str(r, "stats.fishing.trophyRank");
-        if (rank != null) fishing.add(row("Trophy Rank", ProfileData.title(rank)));
-        count(fishing, "Sea Creatures", Json.num(r, "stats.fishing.seaCreatureKills"));
-        count(fishing, "Treasures", Json.num(r, "stats.fishing.treasuresCaught"));
-        count(fishing, "Items Fished", Json.num(r, "stats.fishing.itemsFished"));
-        add(cards, "Fishing", fishing);
+    // ---- Chocolate Factory ----------------------------------------------------------------------
 
-        List<String[]> garden = new ArrayList<>();
-        count(garden, "Garden Level", Json.num(r, "garden.gardenLevel"));
-        count(garden, "Unique Visitors", Json.num(r, "garden.uniqueVisitors"));
-        count(garden, "Visitors Served", Json.num(r, "garden.completedVisitors"));
-        count(garden, "Copper", Json.num(r, "unparsed.copper"));
-        if (d.farmingWeight > 0) garden.add(row("Farming Weight", Coins.full(Math.round(d.farmingWeight * 10) / 10.0)));
-        double gold = Json.num(r, "jacob.earnedMedals.gold", 0);
-        double platinum = Json.num(r, "jacob.earnedMedals.platinum", 0);
-        double diamond = Json.num(r, "jacob.earnedMedals.diamond", 0);
-        if (gold + platinum + diamond > 0) {
-            garden.add(row("Contest Medals", (int) gold + " Gold · " + (int) platinum + " Plat · " + (int) diamond + " Dia"));
+    /** The rarities' colors, as Hypixel writes them. */
+    private static final int[] RARITY_COLORS = {0xFFFFFFFF, 0xFF55FF55, 0xFF5555FF, 0xFFAA00AA, 0xFFFFAA00, 0xFFFF55FF, 0xFF55FFFF};
+
+    private int chocolate(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
+        JsonElement c = Json.at(d.raw, "chocolateFactory");
+        double produced = Json.num(c, "totalChocolate", 0);
+        if (c == null || produced <= 0) return note(graphics, "This profile hasn't opened the Chocolate Factory yet.", x, y, w);
+        Map<String, Integer> all = Hoppity.rabbits();
+        int collection = 0;
+        if (all != null) for (int n : all.values()) collection += n;
+        double unique = Json.sum(c, "uniqueRabbits");
+
+        List<Tile> tiles = new ArrayList<>();
+        tiles.add(new Tile(Metrics.CHOCOLATE, "Chocolate Produced", Coins.compact(produced), null));
+        tiles.add(new Tile(null, "Prestige", Coins.full(Json.num(c, "prestige", 0)), null));
+        tiles.add(new Tile(null, "Chocolate", Coins.compact(Json.num(c, "chocolate", 0)), null));
+        tiles.add(new Tile(null, "Unique Rabbits", Coins.full(unique) + (collection > 0 ? " / " + collection : ""), null));
+        y = tiles(graphics, tiles, x, y, w, 4) + 6;
+        y = chartCard(graphics, metricFor(Page.CHOCOLATE), 0, x, y, w, 110) + 6;
+        y = rabbits(graphics, c, all, x, y, w) + 6;
+
+        List<Card> cards = new ArrayList<>();
+        List<String[]> factory = new ArrayList<>();
+        double sincePrestige = Json.num(c, "chocolateSincePrestige");
+        if (sincePrestige > 0) factory.add(row("Since Prestige", Coins.compact(sincePrestige)));
+        double spent = Json.num(c, "chocolateSpent");
+        if (spent > 0) factory.add(row("Chocolate Spent", Coins.compact(spent)));
+        count(factory, "Cocoa Fortune Upgrades", Json.num(c, "cocoaFortuneUpgrades"));
+        count(factory, "Refined Truffles Eaten", Json.num(c, "refinedTrufflesConsumed"));
+        if (Json.bool(c, "unlockedZorro")) factory.add(row("Zorro", "Unlocked"));
+        double viewed = Json.num(c, "lastViewed");
+        if (viewed > 0) factory.add(row("Last Visited", Metrics.ago((long) viewed)));
+        add(cards, "Factory", factory);
+        return cards(graphics, cards, x, y, w);
+    }
+
+    /** Hoppity's collection by rarity: the rabbits found of each, and how often one turned up. */
+    private int rabbits(GuiGraphicsExtractor graphics, JsonElement c, Map<String, Integer> all, int x, int y, int w) {
+        int rowH = 13;
+        int h = 24 + Hoppity.RARITIES.length * rowH + 2;
+        card(graphics, x, y, w, h);
+        text(graphics, "Rabbits", x + 8, y + 7, AlpakaStyle.TEXT);
+        // Above the right column, which counts every rabbit found, duplicates too.
+        String hint = "with duplicates";
+        if (w > 260) text(graphics, hint, x + w - 8 - textW(hint), y + 7, AlpakaStyle.TEXT_MUTED);
+        int labelW = textW("Legendary") + 12;
+        int foundW = textW("00,000 found") + 8;
+        int countW = textW("000 / 000") + 10;
+        int barX = x + 8 + labelW;
+        int barW = w - 16 - labelW - countW - foundW;
+        int ry = y + 22;
+        for (int i = 0; i < Hoppity.RARITIES.length; i++) {
+            String rarity = Hoppity.RARITIES[i];
+            int found = (int) Json.num(c, "uniqueRabbits." + rarity, 0);
+            int seen = (int) Json.num(c, "totalRabbits." + rarity, 0);
+            Integer of = all == null ? null : all.get(rarity);
+            int color = ink(RARITY_COLORS[i]);
+            String name = ProfileData.title(rarity);
+            text(graphics, name, x + 8, ry, color);
+            boolean done = of != null && found >= of;
+            if (barW > 20) bar(graphics, barX, ry + 3, barW, 2, of == null || of == 0 ? 0 : found / (double) of, done ? ink(GOLD) : color);
+            String amount = of == null ? String.valueOf(found) : found + " / " + of;
+            text(graphics, amount, barX + barW + countW - textW(amount) - 4, ry, done ? ink(GOLD) : AlpakaStyle.TEXT);
+            String total = Coins.full(seen) + " found";
+            text(graphics, total, x + w - 8 - textW(total), ry, AlpakaStyle.TEXT_MUTED);
+            if (hover(x, ry - 2, w, rowH)) {
+                tip("rabbit." + rarity, name + ": " + found + (of == null ? "" : " of " + of) + " rabbits, found "
+                        + Coins.full(seen) + " times with the duplicates.");
+            }
+            ry += rowH;
         }
-        add(cards, "Garden", garden);
-
-        List<String[]> chocolate = new ArrayList<>();
-        count(chocolate, "Prestige", Json.num(r, "chocolateFactory.prestige"));
-        double total = Json.num(r, "chocolateFactory.totalChocolate");
-        if (total > 0) chocolate.add(row("Chocolate Produced", Coins.compact(total)));
-        double unique = Json.sum(r, "chocolateFactory.uniqueRabbits");
-        if (unique > 0) chocolate.add(row("Unique Rabbits", Coins.full(unique)));
-        add(cards, "Chocolate Factory", chocolate);
-
-        List<String[]> rift = new ArrayList<>();
-        double souls = Json.num(r, "stats.rift.enigmaSoulsFound");
-        double soulsTotal = Json.num(r, "stats.rift.enigmaSoulsTotal");
-        if (souls >= 0 && soulsTotal > 0) rift.add(row("Enigma Souls", (int) souls + " / " + (int) soulsTotal));
-        count(rift, "Motes", Json.num(r, "stats.rift.motesPurse"));
-        int cats = Json.arr(r, "stats.rift.foundCats").size();
-        if (cats > 0) rift.add(row("Montezuma's Cats", cats + " / 9"));
-        add(cards, "Rift", rift);
-
-        List<String[]> essence = new ArrayList<>();
-        for (var e : Json.obj(r, "stats.miscStats.essence").entrySet()) {
-            if (e.getValue().isJsonPrimitive()) count(essence, ProfileData.title(e.getKey()), e.getValue().getAsDouble());
-        }
-        add(cards, "Essence", essence);
-        return cards;
+        return y + h;
     }
 
     private static String[] row(String label, String value) {
@@ -3188,6 +3419,13 @@ public class ProfileDashboardScreen extends Screen {
         return screen;
     }
 
+    /** For the screenshot tour: a page's sub-page, such as a Museum category ("combat"). */
+    public static ProfileDashboardScreen devOpenDetail(String player, String page, String detail) {
+        ProfileDashboardScreen screen = devOpen(player, page);
+        screen.skillDetail = detail;
+        return screen;
+    }
+
     /** For the screenshot tour: scrolls the page down by this many pixels. */
     public void devScroll(int pixels) {
         scroll.current = scroll.target = Math.min(scroll.max, scroll.target + pixels);
@@ -3202,6 +3440,11 @@ public class ProfileDashboardScreen extends Screen {
         if (s.data == null) return true;
         if (page == Page.NETWORTH) return s.networthState == ProfileSession.State.READY || s.networthState == ProfileSession.State.FAILED;
         if (page == Page.COLLECTIONS) return s.collectionsState == ProfileSession.State.READY || s.collectionsState == ProfileSession.State.FAILED;
+        if (page == Page.MUSEUM) {
+            return (s.networthState == ProfileSession.State.READY || s.networthState == ProfileSession.State.FAILED)
+                    && (Museum.repo() != null || Museum.failed());
+        }
+        if (page == Page.CHOCOLATE) return Hoppity.rabbits() != null;
         return true;
     }
 

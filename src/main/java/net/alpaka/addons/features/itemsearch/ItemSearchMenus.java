@@ -17,14 +17,14 @@ public final class ItemSearchMenus {
     /** A menu Item Search reads: the kind, the page or slot number, and a name of its own where it has one. */
     public record Menu(ItemSearchSource source, int page, String label) {}
 
-    private static final Pattern ENDER_CHEST = Pattern.compile("^Ender Chest \\((\\d+)/\\d+\\)$");
+    private static final Pattern ENDER_CHEST = Pattern.compile("^Ender Chest \\((\\d{1,4})/\\d+\\)$");
     /** "Jumbo Backpack (Slot #12)", and "Jumbo Backpack ✦ (Slot #1)" for an upgraded one. */
-    private static final Pattern BACKPACK = Pattern.compile("^.*Backpack.* \\(Slot #(\\d+)\\)$");
+    private static final Pattern BACKPACK = Pattern.compile("^.*Backpack.* \\(Slot #(\\d{1,4})\\)$");
     /** The wardrobe, "(1/3) Armor Sets" since Hypixel renamed it, "Wardrobe (1/2)" before. */
-    private static final Pattern WARDROBE = Pattern.compile("^(?:\\((\\d+)/\\d+\\) Armor Sets|Wardrobe \\((\\d+)/\\d+\\))$");
-    private static final Pattern ACCESSORY_BAG = Pattern.compile("^Accessory Bag(?: \\((\\d+)/\\d+\\))?$");
+    private static final Pattern WARDROBE = Pattern.compile("^(?:\\((\\d{1,4})/\\d+\\) Armor Sets|Wardrobe \\((\\d{1,4})/\\d+\\))$");
+    private static final Pattern ACCESSORY_BAG = Pattern.compile("^Accessory Bag(?: \\((\\d{1,4})/\\d+\\))?$");
     /** "Mining Sack", "Enchanted Agronomy Sack", "Gemstones Sack", with a page where it has more than one. */
-    private static final Pattern SACK = Pattern.compile("^((?:.+ )?Sack)(?: \\((\\d+)/\\d+\\))?$");
+    private static final Pattern SACK = Pattern.compile("^((?:.+ )?Sack)(?: \\((\\d{1,4})/\\d+\\))?$");
 
     /** The menu a title names, or null for one Item Search does not read. Island chests are told by their block, not here. */
     public static Menu parseTitle(String title) {

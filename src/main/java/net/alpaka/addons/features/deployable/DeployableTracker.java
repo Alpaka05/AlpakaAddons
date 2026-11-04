@@ -42,10 +42,13 @@ public final class DeployableTracker {
     /** The widest range of any deployable; nothing further away can reach the player. */
     private static final double SCAN_RADIUS = 41.0;
 
-    /** "Plasmaflux 52s", once the color codes are gone. */
-    private static final Pattern TIMED_TAG = Pattern.compile("^(.+?) (\\d+)s$");
+    /**
+     * "Plasmaflux 52s", once the color codes are gone. The digits are bounded, here and below, so a
+     * stray name cannot overflow parseInt: this runs every tick, and an exception there crashes the game.
+     */
+    private static final Pattern TIMED_TAG = Pattern.compile("^(.+?) (\\d{1,5})s$");
     /** The totem's time line: "Remaining: 2m 30s" or "Remaining: 5s". */
-    private static final Pattern TOTEM_REMAINING = Pattern.compile("^Remaining: (?:(\\d+)m )?(\\d+)s$");
+    private static final Pattern TOTEM_REMAINING = Pattern.compile("^Remaining: (?:(\\d{1,5})m )?(\\d{1,5})s$");
     /** The owner line under a totem ("Owner: ") or a black hole ("Spawned by: "). */
     private static final Pattern OWNER_TAG = Pattern.compile("^(?:Owner|Spawned by): (.+)$");
     /** How far apart the stands of one totem or black hole may be, in blocks. */

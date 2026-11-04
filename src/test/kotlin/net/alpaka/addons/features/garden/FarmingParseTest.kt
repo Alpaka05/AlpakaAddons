@@ -122,5 +122,7 @@ class FarmingParseTest {
         assertEquals(4_320_000L, FarmingParse.durationMs("1h 12m"))
         assertEquals(118_000L, FarmingParse.durationMs("1m 58s"))
         assertNull(FarmingParse.durationMs("READY"))
+        // Too long to be a time: skipped, not thrown.
+        assertNull(FarmingParse.durationMs("99999999999999999999m"))
     }
 }

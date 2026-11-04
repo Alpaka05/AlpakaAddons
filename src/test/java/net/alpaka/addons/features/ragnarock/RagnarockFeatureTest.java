@@ -24,6 +24,8 @@ class RagnarockFeatureTest {
         assertEquals(3, RagnarockFeature.find("9,011/9,248❤     226❈     CASTING IN 3s").seconds());
         assertEquals(1, RagnarockFeature.find("§c§lCASTING IN 1s").seconds());
         assertEquals(0, RagnarockFeature.find("100❤     CASTING").seconds());
+        // A number too long for an int is not the cast, and must not throw.
+        assertNull(RagnarockFeature.find("CASTING IN 99999999999s"));
     }
 
     @Test

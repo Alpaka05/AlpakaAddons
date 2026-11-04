@@ -52,7 +52,8 @@ object FarmingParse {
     private val MENU_PROGRESS = Regex("^Progress to Tier (\\d+): ([\\d.]+)%")
     private val MENU_AMOUNT = Regex("^([\\d,.]+[kKmMbB]?)/([\\d,.]+[kKmMbB]?)")
 
-    private val DURATION_PART = Regex("(\\d+)\\s*([dhms])")
+    /** One part of a time; a number too long to be a time is skipped whole rather than overflowing toLong. */
+    private val DURATION_PART =Regex("(?<!\\d)(\\d{1,6})\\s*([dhms])")
 
     /** One Farming gain in the action bar: the progress either as [current]/[needed] or as [percent]. */
     data class XpGain(
@@ -141,15 +142,17 @@ object FarmingParse {
         val title = MENU_NAME.find(name.trim()) ?: return null
         val crop = title.groupValues[1]
         if (crop !in CROPS) return null
-        val tier = title.groupValues[2].toInt()
+        // A number that does not parse is not a milestone item; it must not throw while the menu is drawn.
+        val tier = title.groupValues[2].toIntOrNull() ?: return null
         for (index in lore.indices) {
             val progress = MENU_PROGRESS.find(lore[index].trim()) ?: continue
             // The first "Progress to Tier" is the next tier; a later one is the way to the last.
-            if (progress.groupValues[1].toInt() != tier + 1) return null
+            if (progress.groupValues[1].toIntOrNull() != tier + 1) return null
             val amount = lore.getOrNull(index + 1)?.trim()?.let { MENU_AMOUNT.find(it) } ?: return null
             val current = amount(amount.groupValues[1]) ?: return null
             val needed = amount(amount.groupValues[2]) ?: return null
-            return MenuMilestone(crop, tier, current, needed, progress.groupValues[2].toDouble())
+            val percent = progress.groupValues[2].toDoubleOrNull() ?: return null
+            return MenuMilestone(crop, tier, current, needed, percent)
         }
         return null
     }

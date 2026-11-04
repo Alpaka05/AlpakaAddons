@@ -99,8 +99,10 @@ public final class LoreInfo {
         else if ((m = STARTING.matcher(line)).find()) info.startingBid = Coins.parseLore(m.group(1));
         else if ((m = TOP_BID.matcher(line)).find()) info.topBid = Coins.parseLore(m.group(1));
         else if ((m = YOUR_BID.matcher(line)).find()) info.yourBid = Coins.parseLore(m.group(1));
-        else if ((m = BIDS.matcher(line)).find()) info.bids = Integer.parseInt(m.group(1).replace(",", ""));
-        else if ((m = BIDDER.matcher(line)).find()) info.bidder = m.group(1).trim();
+        else if ((m = BIDS.matcher(line)).find()) {
+            Long bids = count(m.group(1));
+            if (bids != null && bids <= Integer.MAX_VALUE) info.bids = bids.intValue();
+        } else if ((m = BIDDER.matcher(line)).find()) info.bidder = m.group(1).trim();
         else if ((m = ENDS.matcher(line)).find()) info.endsIn = m.group(1).trim();
         else if ((m = STATUS.matcher(line)).find()) info.status = m.group(1).trim();
         else if ((m = OVER.matcher(line)).find()) info.status = m.group(1) + "!";
@@ -114,7 +116,7 @@ public final class LoreInfo {
                 info.amount = Math.round(amount);
             }
         } else if ((m = AMOUNT.matcher(line)).find()) {
-            if (info.amount == null) info.amount = Long.parseLong(m.group(1).replace(",", ""));
+            if (info.amount == null) info.amount = count(m.group(1));
         } else if ((m = UNIT.matcher(line)).find()) {
             info.unitPrice = Coins.parseLore(m.group(1));
             if (info.unitPrice != null) info.coinLines.add(new CoinLine("Price per unit", info.unitPrice));
@@ -128,6 +130,15 @@ public final class LoreInfo {
             if (info.clickHint == null) info.clickHint = line;
         } else if (info.firstLine == null && !SEPARATOR.matcher(line).matches()) {
             info.firstLine = line;
+        }
+    }
+
+    /** "1,234" as a number; null for digits too long for a long, which no real lore line has. */
+    private static Long count(String digits) {
+        try {
+            return Long.parseLong(digits.replace(",", ""));
+        } catch (NumberFormatException e) {
+            return null;
         }
     }
 

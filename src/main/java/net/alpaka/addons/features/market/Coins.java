@@ -9,7 +9,8 @@ public final class Coins {
     private Coins() {}
 
     private static final DecimalFormatSymbols US = DecimalFormatSymbols.getInstance(Locale.US);
-    private static final java.util.regex.Pattern TIME_PART = java.util.regex.Pattern.compile("(\\d+)\\s*([dhms])");
+    /** One part of a time; a number too long to be a time is skipped whole rather than overflowing parseLong. */
+    private static final java.util.regex.Pattern TIME_PART = java.util.regex.Pattern.compile("(?<!\\d)(\\d{1,6})\\s*([dhms])");
 
     /**
      * A number as it appears in a lore line, such as "1,234,567.5". Null when it isn't one.

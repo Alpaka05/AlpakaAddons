@@ -76,7 +76,7 @@ public final class PuzzleTab {
     /** {@code "Three Weirdos: [✦]"}, {@code "Higher Or Lower: [✖] (Player)"}, {@code "???: [✦]"}; trimmed. */
     static final Pattern LINE = Pattern.compile(
             "^(?<name>[A-Za-z]+(?: [A-Za-z]+)*|\\?\\?\\?): \\[(?<status>[✦✔✖])] ?(?:\\((?<player>\\w{1,16})\\))?$");
-    static final Pattern HEADER = Pattern.compile("^Puzzles: \\((?<count>\\d+)\\)$");
+    static final Pattern HEADER = Pattern.compile("^Puzzles: \\((?<count>\\d{1,3})\\)$");
 
     private static List<String> lastLines = null;
     private static Parsed lastParsed = Parsed.NONE;

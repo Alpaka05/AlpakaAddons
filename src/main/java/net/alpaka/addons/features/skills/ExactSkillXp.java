@@ -128,7 +128,7 @@ public final class ExactSkillXp {
      * ("Mining 60: MAX") has no next level, so it counts as none.
      */
     static Integer levelInTab(List<String> lines, String skill) {
-        Pattern line = Pattern.compile("(?:^|\\s)" + Pattern.quote(skill) + " (\\d+): (?!MAX)");
+        Pattern line = Pattern.compile("(?:^|\\s)" + Pattern.quote(skill) + " (\\d{1,3}): (?!MAX)");
         for (String text : lines) {
             Matcher m = line.matcher(text);
             if (m.find()) return Integer.parseInt(m.group(1));

@@ -86,6 +86,8 @@ class MarketParsingTest {
         assertEquals(5 * 3600 + 3 * 60 + 12, Coins.seconds("5h 3m 12s"));
         assertEquals(86_400 + 2 * 3600, Coins.seconds("1d 2h"));
         assertEquals(-1, Coins.seconds("Soon!"));
+        // Too long to be a time: skipped, not thrown.
+        assertEquals(-1, Coins.seconds("99999999999999999999s"));
     }
 
     // ---- Lore -----------------------------------------------------------------------------------

@@ -480,31 +480,40 @@ public class ProfileDashboardScreen extends Screen {
         int rowW = SIDE_W - 8;
         int pages = Page.values().length;
 
-        // At the top, the search through every item the profile owns.
-        int fieldY = y + 6;
-        boolean hoverField = AlpakaStyle.inside(mx, my, rowX, fieldY, rowW, AlpakaStyle.BUTTON_H) && !profileMenuOpen;
-        AlpakaStyle.textField(graphics, this.font, rowX, fieldY, rowW, AlpakaStyle.BUTTON_H, itemSearch.getText(), "Search Items",
-                itemSearchFocused, hoverField, itemCaretFrom);
-        hits.add(new Hit(rowX, fieldY, rowW, AlpakaStyle.BUTTON_H, () -> {
-            itemSearchFocused = true;
-            itemCaretFrom = System.currentTimeMillis();
-        }));
-        if (hoverField && !itemSearchFocused) {
-            tip("itemsearch", "Search every item the profile owns: inventory, Ender Chest, backpacks, wardrobe, accessories, vault, bags, museum, sacks and pets.");
-        }
-        int listTop = fieldY + AlpakaStyle.BUTTON_H + 2;
-        int listH = y + h - listTop;
-
-        // On a small window the label and the footer give way first, then the rows get slimmer.
+        // On a small window the footer gives way first, then the rows get slimmer. The label stays:
+        // the item search opens from it.
         int footerH = 30;
-        boolean label = listH >= 12 + pages * (SIDE_ROW_H + 1) + footerH + 12;
-        boolean footer = listH >= pages * 17 + footerH + 12;
-        int rowH = Math.max(14, Math.min(SIDE_ROW_H, (listH - 10 - (label ? 12 : 0) - (footer ? footerH : 0)) / pages - 1));
-        int rowY = listTop + (label ? 8 : 5);
-        if (label) {
+        boolean footer = h >= 12 + pages * 17 + footerH + 12;
+        int rowH = Math.max(14, Math.min(SIDE_ROW_H, (h - 10 - 12 - (footer ? footerH : 0)) / pages - 1));
+        int rowY = y + 8;
+        if (itemSearchOpen || !itemSearch.isEmpty()) {
+            // The search through every item the profile owns, where the label was.
+            int fh = 14;
+            int fy = rowY - 3;
+            boolean hoverField = AlpakaStyle.inside(mx, my, rowX, fy, rowW, fh) && !profileMenuOpen;
+            AlpakaStyle.textField(graphics, this.font, rowX, fy, rowW, fh, itemSearch.getText(), "Search Items",
+                    itemSearchFocused, hoverField, itemCaretFrom);
+            hits.add(new Hit(rowX, fy, rowW, fh, () -> {
+                itemSearchFocused = true;
+                itemCaretFrom = System.currentTimeMillis();
+            }));
+        } else {
             AlpakaStyle.groupLabel(graphics, this.font, "Profile", x + PAD, rowY);
-            rowY += 12;
+            // The magnifier just after the label opens the item search in its place.
+            int gx = x + PAD + textW("Profile") + 4;
+            int gy = rowY - 2;
+            boolean hoverGlass = AlpakaStyle.inside(mx, my, gx - 2, gy - 1, 13, 12) && !profileMenuOpen;
+            MarketIcons.draw(graphics, MarketIcons.Glyph.SEARCH, gx, gy + 1, 8, hoverGlass ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
+            hits.add(new Hit(gx - 2, gy - 1, 13, 12, () -> {
+                itemSearchOpen = true;
+                itemSearchFocused = true;
+                itemCaretFrom = System.currentTimeMillis();
+            }));
+            if (hoverGlass) {
+                tip("itemsearch", "Search every item the profile owns: inventory, Ender Chest, backpacks, wardrobe, accessories, vault, bags, museum, sacks and pets.");
+            }
         }
+        rowY += 12;
 
         float targetY = rowY + page.ordinal() * (rowH + 1);
         if (Float.isNaN(indicatorY)) indicatorY = targetY;
@@ -527,6 +536,7 @@ public class ProfileDashboardScreen extends Screen {
                 lastPage = target;
                 skillDetail = null;
                 itemSearch.setText("");
+                itemSearchOpen = false;
             }));
             rowY += rowH + 1;
         }
@@ -3319,6 +3329,8 @@ public class ProfileDashboardScreen extends Screen {
     // ---- Item search ----------------------------------------------------------------------------
 
     private final EditableText itemSearch = new EditableText(40);
+    /** The field is shown in place of the sidebar's label: opened from its magnifier, closed again once empty. */
+    private boolean itemSearchOpen;
     private boolean itemSearchFocused;
     private long itemCaretFrom;
 
@@ -3400,6 +3412,7 @@ public class ProfileDashboardScreen extends Screen {
     private Runnable opener(Page target, InvTab tab, String detail) {
         return () -> {
             itemSearch.setText("");
+            itemSearchOpen = false;
             itemSearchFocused = false;
             page = target;
             lastPage = target;
@@ -3771,6 +3784,7 @@ public class ProfileDashboardScreen extends Screen {
         search.setText("");
         searchFocused = false;
         itemSearch.setText("");
+        itemSearchOpen = false;
         searchIndex = List.of();
         searchIndexKey = null;
         profileMenuOpen = false;
@@ -3854,6 +3868,7 @@ public class ProfileDashboardScreen extends Screen {
         if (event.button() != 0) return true;
         searchFocused = false;
         itemSearchFocused = false;
+        if (itemSearch.isEmpty()) itemSearchOpen = false;
         if (profileMenuOpen) {
             // Only the list takes the click; anywhere else, the chip included, closes it.
             for (int i = hits.size() - 1; i >= menuHitsFrom; i--) {
@@ -3888,13 +3903,18 @@ public class ProfileDashboardScreen extends Screen {
     public boolean keyPressed(KeyEvent event) {
         if (itemSearchFocused) {
             if (event.isEscape()) {
-                // The first Escape clears the search, the next leaves the field.
-                if (itemSearch.isEmpty()) itemSearchFocused = false;
-                else itemSearch.setText("");
+                // The first Escape clears the search, the next closes the field.
+                if (itemSearch.isEmpty()) {
+                    itemSearchFocused = false;
+                    itemSearchOpen = false;
+                } else {
+                    itemSearch.setText("");
+                }
                 return true;
             }
             if (event.isConfirmation()) {
                 itemSearchFocused = false;
+                if (itemSearch.isEmpty()) itemSearchOpen = false;
                 return true;
             }
             itemSearch.keyPressed(event.key(), event.hasControlDownWithQuirk(), event.hasShiftDown());
@@ -3920,6 +3940,7 @@ public class ProfileDashboardScreen extends Screen {
         }
         if (event.isEscape() && searching()) {
             itemSearch.setText("");
+            itemSearchOpen = false;
             return true;
         }
         if (event.isEscape() || (this.minecraft != null && this.minecraft.options.keyInventory.matches(event))) {

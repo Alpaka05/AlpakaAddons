@@ -1983,11 +1983,11 @@ public class ProfileDashboardScreen extends Screen {
         }
         List<Tile> tiles = new ArrayList<>();
         // Plain cards: the page has no graph to pick, and these counts rarely move.
+        tiles.add(new Tile(null, "Pets", Coins.full(d.pets.size()), null));
         tiles.add(new Tile(null, "Max Pets", neu == null ? "…" : maxPets.maxed() + " / " + maxPets.total(),
                 "max level and rarity"));
         tiles.add(new Tile(null, "Pet Skins", Coins.full(d.petSkins), null));
         tiles.add(new Tile(null, "Pet Score", Coins.full(d.petScore), "highest reached"));
-        tiles.add(new Tile(null, "Pelts", Coins.full(Json.num(d.raw, "stats.miscStats.pelts", 0)), null));
         y = tiles(graphics, tiles, x, y, w, 4) + 6;
         if (d.pets.isEmpty()) return note(graphics, "No pets on this profile.", x, y, w);
 

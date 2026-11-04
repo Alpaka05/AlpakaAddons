@@ -10,11 +10,6 @@ public final class Coins {
 
     private static final DecimalFormatSymbols US = DecimalFormatSymbols.getInstance(Locale.US);
     private static final java.util.regex.Pattern TIME_PART = java.util.regex.Pattern.compile("(\\d+)\\s*([dhms])");
-    /**
-     * A comma with one or two digits after it and nothing more but a suffix: "1,5m", "2,25k". A
-     * thousands separator always has three digits after it, so this can only be a decimal comma.
-     */
-    private static final java.util.regex.Pattern DECIMAL_COMMA = java.util.regex.Pattern.compile("(\\d+),(\\d{1,2})([kmb]?)");
 
     /**
      * A number as it appears in a lore line, such as "1,234,567.5". Null when it isn't one.
@@ -29,6 +24,12 @@ public final class Coins {
             return null;
         }
     }
+
+    /**
+     * A comma with one or two digits after it and nothing more but a suffix: "1,5m", "2,25k". A
+     * thousands separator always has three digits after it, so this can only be a decimal comma.
+     */
+    private static final java.util.regex.Pattern DECIMAL_COMMA = java.util.regex.Pattern.compile("(\\d+),(\\d{1,2})([kmb]?)");
 
     /**
      * A number as the player types it into one of Hypixel's inputs: digits with commas or a point,

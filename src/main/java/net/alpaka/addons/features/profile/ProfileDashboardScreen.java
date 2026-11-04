@@ -227,6 +227,7 @@ public class ProfileDashboardScreen extends Screen {
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         hits.clear();
         overlays.clear();
+        pinTop = pinBottom = Integer.MIN_VALUE;
         veils.clear();
         hoveredTip = null;
         hoveredTipKey = null;
@@ -2250,6 +2251,18 @@ public class ProfileDashboardScreen extends Screen {
             new String[] {"farming_toolkit", "Farming Toolkit"}, new String[] {"hunting_toolkit", "Hunting Toolkit"});
     private static InvTab invTab = InvTab.INVENTORY;
     private static final int SLOT = 18;
+    /**
+     * How many times its size a slot is drawn: 2 for a single inventory with room to spare, so its
+     * items read as in the game; a whole multiple keeps every texel on whole pixels.
+     */
+    private int slotScale = 1;
+    /**
+     * The tab bar pinned to the top of the view while the page scrolls under it: the band it
+     * covers, where nothing of the content may light up or take a click. Empty when not pinned.
+     */
+    private int pinTop = Integer.MIN_VALUE;
+    private int pinBottom = Integer.MIN_VALUE;
+    private boolean drawingPin;
     /** A section of nine slots in a card: the slots and the card's padding. */
     private static final int SECTION_W = 9 * SLOT + 16;
     /** The item under the mouse this frame, whose tooltip the game draws after it. */
@@ -2272,6 +2285,40 @@ public class ProfileDashboardScreen extends Screen {
         for (InvTab t : InvTab.values()) if (t.present(d)) tabs.add(t);
         if (tabs.isEmpty()) return note(graphics, "Nothing in this profile's inventories.", x, y, w);
         if (!tabs.contains(invTab)) invTab = tabs.get(0);
+        int rows = 1;
+        int rowX = x;
+        for (InvTab t : tabs) {
+            int cw = textW(t.title) + 14;
+            if (rowX + cw > x + w) {
+                rows++;
+                rowX = x;
+            }
+            rowX += cw + 4;
+        }
+        int barH = rows * 18 - 3;
+        int contentY = y + barH + 8;
+        // Scrolled past, the bar stays at the top of the view and the page runs on beneath it.
+        int barY = Math.max(y, clipY + 4);
+        boolean pinned = barY > y;
+        if (pinned) {
+            pinTop = clipY;
+            pinBottom = barY + barH + 4;
+        }
+        int bottom = invContent(graphics, d, x, contentY, w);
+        if (pinned) {
+            // Above the items, which are drawn over everything else of their stratum.
+            graphics.nextStratum();
+            veils.removeIf(v -> v[1] < pinBottom);
+            graphics.fill(x - PAD, clipY, x + w + PAD, pinBottom, AlpakaStyle.PANEL);
+            graphics.fill(x - PAD, pinBottom - 1, x + w + PAD, pinBottom, AlpakaStyle.LINE);
+        }
+        drawingPin = true;
+        invTabs(graphics, tabs, x, barY, w);
+        drawingPin = false;
+        return bottom;
+    }
+
+    private void invTabs(GuiGraphicsExtractor graphics, List<InvTab> tabs, int x, int y, int w) {
         int cx = x;
         int cy = y;
         for (InvTab t : tabs) {
@@ -2288,14 +2335,16 @@ public class ProfileDashboardScreen extends Screen {
             hit(cx, cy, cw, 15, () -> invTab = t);
             cx += cw + 4;
         }
-        y = cy + 15 + 8;
+    }
+
+    private int invContent(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
         return switch (invTab) {
             case INVENTORY -> playerInventory(graphics, d, x, y, w);
             case ENDER_CHEST -> pagedSections(graphics, "ender_chest", "Page", x, y, w);
             case BACKPACKS -> backpackSections(graphics, d, x, y, w);
             case WARDROBE -> wardrobe(graphics, d, x, y, w);
             case ACCESSORIES -> accessories(graphics, x, pagedSections(graphics, "talisman_bag", "Page", x, y, w) + 12, w);
-            case VAULT -> flow(graphics, List.of(new Section("Personal Vault", null, "personal_vault", range(0, slotsOf(d, "personal_vault")))), x, y, w);
+            case VAULT -> single(graphics, new Section("Personal Vault", null, "personal_vault", range(0, slotsOf(d, "personal_vault"))), x, y, w);
             case BAGS -> {
                 List<Section> sections = new ArrayList<>();
                 for (String[] bag : BAGS_SHOWN) {
@@ -2336,10 +2385,21 @@ public class ProfileDashboardScreen extends Screen {
         return y + tallest;
     }
 
+    /** One inventory alone on its tab: twice the size when it fits, in the middle of the page. */
+    private int single(GuiGraphicsExtractor graphics, Section s, int x, int y, int w) {
+        slotScale = 9 * SLOT * 2 + 16 <= w ? 2 : 1;
+        int sw = 9 * SLOT * slotScale + 16;
+        int h = section(graphics, s, x + (w - sw) / 2, y);
+        slotScale = 1;
+        return y + h;
+    }
+
     private int section(GuiGraphicsExtractor graphics, Section s, int x, int y) {
         int rows = Math.max(1, (s.keys().size() + 8) / 9);
-        int h = 22 + rows * SLOT + 8;
-        card(graphics, x, y, SECTION_W, h);
+        int slot = SLOT * slotScale;
+        int sectionW = 9 * slot + 16;
+        int h = 22 + rows * slot + 8;
+        card(graphics, x, y, sectionW, h);
         int tx = x + 8;
         if (s.icon() != null) {
             ItemStack icon = InventoryItems.stack(s.icon());
@@ -2348,14 +2408,14 @@ public class ProfileDashboardScreen extends Screen {
                 tx = x + 26;
             }
         }
-        text(graphics, AlpakaStyle.ellipsize(this.font, s.title(), SECTION_W - (tx - x) - 8), tx, y + 7, AlpakaStyle.TEXT);
+        text(graphics, AlpakaStyle.ellipsize(this.font, s.title(), sectionW - (tx - x) - 8), tx, y + 7, AlpakaStyle.TEXT);
         JsonElement inv = session.inventory(s.inventory());
         int gx = x + 8;
         int gy = y + 22;
         if (inv == null) {
             boolean failed = session.inventoryState(s.inventory()) == ProfileSession.State.FAILED;
-            ProfileChart.message(graphics, this.font, failed ? "Couldn't load. Click to try again." : "Loading…", x, gy, SECTION_W, rows * SLOT);
-            if (failed) hit(x, gy, SECTION_W, rows * SLOT, session::retryFailed);
+            ProfileChart.message(graphics, this.font, failed ? "Couldn't load. Click to try again." : "Loading…", x, gy, sectionW, rows * slot);
+            if (failed) hit(x, gy, sectionW, rows * slot, session::retryFailed);
             return h;
         }
         slots(graphics, Json.obj(inv, "items"), s.keys(), gx, gy, 9);
@@ -2367,23 +2427,30 @@ public class ProfileDashboardScreen extends Screen {
         for (int i = 0; i < keys.size(); i++) {
             String key = keys.get(i);
             if (key == null) continue;
-            int sx = x + (i % cols) * SLOT;
-            int sy = y + (i / cols) * SLOT;
+            int size = SLOT * slotScale;
+            int sx = x + (i % cols) * size;
+            int sy = y + (i / cols) * size;
             // Far outside the view: not even the slot is drawn; an Ender Chest has 405 of them.
-            if (sy > clipY + clipH || sy + SLOT < clipY) continue;
+            if (sy > clipY + clipH || sy + size < clipY) continue;
             slot(graphics, items.get(key), sx, sy);
         }
     }
 
     private void slot(GuiGraphicsExtractor graphics, JsonElement item, int sx, int sy) {
+        int size = SLOT * slotScale - 1;
         boolean has = InventoryItems.present(item);
-        boolean hover = has && hover(sx, sy, SLOT - 1, SLOT - 1);
-        ModernGuiUtils.drawRoundedRect(graphics, sx, sy, SLOT - 1, SLOT - 1, 2, hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.PANEL);
+        boolean hover = has && hover(sx, sy, size, size);
+        ModernGuiUtils.drawRoundedRect(graphics, sx, sy, size, size, 2 * slotScale, hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.PANEL);
         if (!has) return;
         ItemStack stack = InventoryItems.stack(item);
         if (!stack.isEmpty()) {
-            graphics.item(stack, sx, sy);
-            graphics.itemDecorations(this.font, stack, sx, sy);
+            int inset = (size - 16 * slotScale) / 2;
+            graphics.pose().pushMatrix();
+            graphics.pose().translate(sx + inset, sy + inset);
+            graphics.pose().scale(slotScale, slotScale);
+            graphics.item(stack, 0, 0);
+            graphics.itemDecorations(this.font, stack, 0, 0);
+            graphics.pose().popMatrix();
         }
         if (hover) hoveredItem = item;
     }
@@ -2393,22 +2460,28 @@ public class ProfileDashboardScreen extends Screen {
         JsonElement inv = session.inventory("inventory");
         JsonElement armor = session.inventory("armor");
         JsonElement equipment = session.inventory("equipment");
-        int sideW = 2 * SLOT + 8;
-        int cw = 16 + sideW + 9 * SLOT;
-        int h = 22 + 4 * SLOT + 6 + 8;
+        // Twice the size when there is room, in the middle of the page, as the game's own screen.
+        slotScale = 16 + 11 * SLOT * 2 + 8 * 2 <= w ? 2 : 1;
+        int slot = SLOT * slotScale;
+        int sideW = 2 * slot + 8 * slotScale;
+        int cw = 16 + sideW + 9 * slot;
+        int h = 22 + 4 * slot + 6 * slotScale + 8;
+        x += (w - cw) / 2;
         card(graphics, x, y, cw, h);
         text(graphics, "Inventory", x + 8, y + 7, AlpakaStyle.TEXT);
         int gy = y + 22;
         if (armor != null) slots(graphics, Json.obj(armor, "items"), List.of("3", "2", "1", "0"), x + 8, gy, 1);
-        if (equipment != null) slots(graphics, Json.obj(equipment, "items"), List.of("0", "1", "2", "3"), x + 8 + SLOT, gy, 1);
+        if (equipment != null) slots(graphics, Json.obj(equipment, "items"), List.of("0", "1", "2", "3"), x + 8 + slot, gy, 1);
         int mx0 = x + 8 + sideW;
         if (inv == null) {
-            ProfileChart.message(graphics, this.font, "Loading…", mx0, gy, 9 * SLOT, 4 * SLOT);
+            ProfileChart.message(graphics, this.font, "Loading…", mx0, gy, 9 * slot, 4 * slot);
+            slotScale = 1;
             return y + h;
         }
         com.google.gson.JsonObject items = Json.obj(inv, "items");
         slots(graphics, items, range(9, 27), mx0, gy, 9);
-        slots(graphics, items, range(0, 9), mx0, gy + 3 * SLOT + 6, 9);
+        slots(graphics, items, range(0, 9), mx0, gy + 3 * slot + 6 * slotScale, 9);
+        slotScale = 1;
         return y + h;
     }
 
@@ -2850,6 +2923,7 @@ public class ProfileDashboardScreen extends Screen {
     private boolean hover(int x, int y, int w, int h) {
         if (profileMenuOpen) return false;
         if (clipping && !AlpakaStyle.inside(mx, my, clipX, clipY, clipW, clipH)) return false;
+        if (clipping && !drawingPin && my >= pinTop && my < pinBottom) return false;
         return AlpakaStyle.inside(mx, my, x, y, w, h);
     }
 
@@ -2864,7 +2938,7 @@ public class ProfileDashboardScreen extends Screen {
     /** A click area in the content: only the part of it that is in view. */
     private void hit(int x, int y, int w, int h, Runnable action) {
         if (clipping) {
-            int top = Math.max(y, clipY);
+            int top = Math.max(y, drawingPin ? clipY : Math.max(clipY, pinBottom));
             int bottom = Math.min(y + h, clipY + clipH);
             if (bottom <= top) return;
             hits.add(new Hit(x, top, w, bottom - top, action));

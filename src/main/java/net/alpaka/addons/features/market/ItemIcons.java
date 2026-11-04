@@ -133,7 +133,7 @@ public final class ItemIcons {
      * knows, by name. Going by the tag also finds the right one of items that share a name.
      */
     public static ItemStack forItem(String tag, String name) {
-        if (!AlpakaConfig.instance.allowApiCalls) return ItemStack.EMPTY;
+        if (!AlpakaConfig.instance.allowApiCalls || !componentsBound()) return ItemStack.EMPTY;
         if (tag == null || tag.isEmpty()) return forName(name);
         Icon cached = BY_TAG.get(tag);
         if (cached != null) return cached.get();
@@ -184,7 +184,7 @@ public final class ItemIcons {
 
     /** The item for a name, or an empty stack while the list loads or if the name is not in it. */
     public static ItemStack forName(String name) {
-        if (!AlpakaConfig.instance.allowApiCalls || name == null) return ItemStack.EMPTY;
+        if (!AlpakaConfig.instance.allowApiCalls || name == null || !componentsBound()) return ItemStack.EMPTY;
         return forNameIcon(name).get();
     }
 
@@ -251,6 +251,15 @@ public final class ItemIcons {
     public static Upgrades upgrades(String id) {
         Catalog loaded = catalog();
         return loaded == null || id == null ? null : loaded.upgrades().get(id);
+    }
+
+    /**
+     * Whether items have their components yet. They get them once a world is joined; before that
+     * (the Profile Dashboard opened from the title screen's config) building a stack throws.
+     * Checked before the caches, so no empty icon is remembered for later.
+     */
+    private static boolean componentsBound() {
+        return Items.STONE.builtInRegistryHolder().areComponentsBound();
     }
 
     /** A player head wearing the skin with this texture value, as Hypixel's heads carry it. */

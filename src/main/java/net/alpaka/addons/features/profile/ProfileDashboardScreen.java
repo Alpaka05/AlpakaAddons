@@ -2140,9 +2140,10 @@ public class ProfileDashboardScreen extends Screen {
         tiles.add(new Tile(null, "Maxed Collections", resources == null ? "…" : maxed + " / " + collectionList.size(), null));
         // A plain card: the page has no graph to pick, and the count rarely moves.
         tiles.add(new Tile(null, "Unique Minions", Coins.full(Json.num(raw, "minionSummary.uniqueTiersCrafted", 0)), null));
-        tiles.add(new Tile(null, "Minion Slots", (int) Json.num(raw, "minionSummary.currentSlots", 0) + " / " + (int) Json.num(raw, "minionSummary.maxSlots", 0), null));
         double toNext = Json.num(raw, "minionSummary.uniqueTiersToNextSlot", Double.NaN);
-        tiles.add(new Tile(null, "Next Slot In", Double.isNaN(toNext) || toNext <= 0 ? "—" : (int) toNext + " crafts", "unique minion tiers"));
+        tiles.add(new Tile(null, "Minion Slots", (int) Json.num(raw, "minionSummary.currentSlots", 0) + " / " + (int) Json.num(raw, "minionSummary.maxSlots", 0),
+                Double.isNaN(toNext) || toNext <= 0 ? null : "next in " + (int) toNext + " crafts"));
+        tiles.add(new Tile(null, "Pelts", Coins.full(Json.num(raw, "stats.miscStats.pelts", 0)), null));
         y = tiles(graphics, tiles, x, y, w, 4) + 6;
         if (!d.collectionsApi) return note(graphics, "The Collections API is off for this profile. Turn it on in SkyBlock's settings under API Settings.", x, y, w);
         if (resources == null) {

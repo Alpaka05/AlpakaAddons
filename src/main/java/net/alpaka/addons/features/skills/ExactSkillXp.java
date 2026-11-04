@@ -5,7 +5,6 @@ import net.alpaka.addons.features.market.Coins;
 import net.alpaka.addons.features.profile.Levels;
 import net.alpaka.addons.features.tablist.TabListParser;
 import net.alpaka.addons.mixin.PlayerTabOverlayAccessor;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.network.chat.Component;
@@ -52,9 +51,13 @@ public final class ExactSkillXp {
 
     private static final Map<String, Seen> SEEN = new HashMap<>();
 
-    public static void register() {
-        // Another server can be another profile, with other levels.
-        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> SEEN.clear());
+    /**
+     * Forgets the levels seen so far. Called on every world change and disconnect (SessionLifecycle):
+     * a profile switch or a server transfer on Hypixel is not always a new login, and the next
+     * profile can have lower levels.
+     */
+    public static void reset() {
+        SEEN.clear();
     }
 
     /** The action bar as it is drawn: with XP in place of the percentage when the feature is on. */
@@ -91,18 +94,18 @@ public final class ExactSkillXp {
      * The skill's level for this percentage. The tab list is refreshed later than the action bar and
      * can still show the old level after a level up, so the level never goes down here, and a
      * percentage that fell is the next level. Null while no level is known at all.
+     *
+     * A seen level is only trusted up to one above the tab list's: a level up runs at most one ahead
+     * of the tab, so anything higher is left over from another profile.
      */
     static Integer level(String skill, Integer tabLevel, double percent) {
         Seen seen = SEEN.get(skill);
+        if (seen != null && tabLevel != null && seen.level() > tabLevel + 1) seen = null;
         int level = Math.max(tabLevel == null ? 0 : tabLevel, seen == null ? 0 : seen.level());
         if (level == 0) return null;
         if (seen != null && percent < seen.percent() && level == seen.level()) level++;
         SEEN.put(skill, new Seen(level, percent));
         return level;
-    }
-
-    static void forget() {
-        SEEN.clear();
     }
 
     /** "1,948,760/4,300,000", or "1.95M/4.3M" rounded. */

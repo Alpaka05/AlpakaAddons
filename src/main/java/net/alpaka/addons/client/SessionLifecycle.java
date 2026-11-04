@@ -65,6 +65,7 @@ public final class SessionLifecycle {
         net.alpaka.addons.features.dungeon.DungeonSolvers.reset();
         net.alpaka.addons.features.ragnarock.RagnarockFeature.reset();
         net.alpaka.addons.features.worldage.WorldClockTracker.reset();
+        net.alpaka.addons.features.skills.ExactSkillXp.reset();
         AlpakaStats.flushNow();
         net.alpaka.addons.features.slayer.SlayerKillLog.INSTANCE.flushNow();
     }
@@ -80,6 +81,7 @@ public final class SessionLifecycle {
         net.alpaka.addons.features.teammateglow.TeammateClassGlow.reset();
         net.alpaka.addons.features.dungeon.DungeonSolvers.reset();
         net.alpaka.addons.features.ragnarock.RagnarockFeature.reset();
+        net.alpaka.addons.features.skills.ExactSkillXp.reset();
     }
 
     /** Nothing waiting to be written is lost on exit. */

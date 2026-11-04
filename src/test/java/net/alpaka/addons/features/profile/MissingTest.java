@@ -49,6 +49,38 @@ class MissingTest {
     }
 
     @Test
+    void neusGapsAndWrongOrderDoNotMakeMissingAccessories() {
+        // As NEU has them: no step from the Artifact to the Relic, and the Powder line upside down.
+        Missing.Neu real = Missing.parse("""
+                {"talisman_upgrades": {
+                    "PESTHUNTER_BADGE": ["PESTHUNTER_RING", "PESTHUNTER_ARTIFACT", "PESTHUNTER_RELIC"],
+                    "PESTHUNTER_RING": ["PESTHUNTER_ARTIFACT", "PESTHUNTER_RELIC"],
+                    "POWDER_OF_ONE": ["POWDER_OF_THE_PEOPLE", "POWDER_OF_THE_FEW", "POWDER_OF_THE_MANY"],
+                    "POWDER_OF_THE_PEOPLE": ["POWDER_OF_THE_FEW", "POWDER_OF_THE_MANY"],
+                    "POWDER_OF_THE_FEW": ["POWDER_OF_THE_MANY"],
+                    "SOUL_CAMPFIRE_TALISMAN_28": ["SOUL_CAMPFIRE_TALISMAN_29"],
+                    "PARTY_HAT_CRAB_RED": ["PARTY_HAT_CRAB_AQUA"], "PARTY_HAT_CRAB_AQUA": ["PARTY_HAT_CRAB_RED"]},
+                 "ignored_talisman": []}
+                """, PETNUMS);
+        Map<String, String> tiers = Map.ofEntries(
+                Map.entry("PESTHUNTER_BADGE", "UNCOMMON"), Map.entry("PESTHUNTER_RING", "RARE"),
+                Map.entry("PESTHUNTER_ARTIFACT", "EPIC"), Map.entry("PESTHUNTER_RELIC", "LEGENDARY"),
+                Map.entry("POWDER_OF_ONE", "COMMON"), Map.entry("POWDER_OF_THE_FEW", "UNCOMMON"),
+                Map.entry("POWDER_OF_THE_MANY", "RARE"), Map.entry("POWDER_OF_THE_PEOPLE", "EPIC"),
+                Map.entry("SOUL_CAMPFIRE_TALISMAN_28", "LEGENDARY"), Map.entry("SOUL_CAMPFIRE_TALISMAN_29", "LEGENDARY"),
+                Map.entry("PARTY_HAT_CRAB", "SPECIAL"), Map.entry("PARTY_HAT_CRAB_ANIMATED", "SPECIAL"),
+                Map.entry("PARTY_HAT_SLOTH", "SPECIAL"));
+        Set<String> owned = Set.of("PESTHUNTER_RELIC", "POWDER_OF_THE_PEOPLE", "SOUL_CAMPFIRE_TALISMAN_28", "PARTY_HAT_CRAB_ANIMATED");
+        List<Missing.Gap> gaps = Missing.accessories(owned, tiers, real, id -> null);
+        // Only the God Badge is left: same rarity, but the next step of its line.
+        assertEquals(List.of("SOUL_CAMPFIRE_TALISMAN_29"), gaps.stream().map(Missing.Gap::id).toList());
+        assertEquals("SOUL_CAMPFIRE_TALISMAN_28", gaps.get(0).upgradeOf());
+        // Without any hat, one of them is missing, once.
+        long hats = Missing.accessories(Set.of(), tiers, real, id -> null).stream().filter(g -> Missing.celebrationHat(g.id())).count();
+        assertEquals(1, hats);
+    }
+
+    @Test
     void missingPetsInTheirHighestRarity() {
         List<Missing.MissingPet> pets = Missing.pets(Set.of("BEE", "SUBZERO_WISP"), neu, false);
         assertEquals(List.of("WOLF", "ROCK"), pets.stream().map(Missing.MissingPet::type).toList());
@@ -68,6 +100,23 @@ class MissingTest {
     void theBingoPetOnlyOnBingoProfiles() {
         assertTrue(Missing.pets(Set.of(), neu, false).stream().noneMatch(p -> p.type().equals("BINGO")));
         assertTrue(Missing.pets(Set.of(), neu, true).stream().anyMatch(p -> p.type().equals("BINGO")));
+    }
+
+    private static ProfileData.Pet pet(String type, String tier, int level) {
+        return new ProfileData.Pet(type, type, tier, level, 100, 0, null, null, false, 0, 0);
+    }
+
+    @Test
+    void maxPetsNeedMaxLevelAndTopRarity() {
+        Missing.MaxPets max = Missing.maxPets(List.of(
+                pet("BEE", "LEGENDARY", 100), pet("BEE", "LEGENDARY", 100),
+                pet("ROCK", "LEGENDARY", 99), pet("WOLF", "MYTHIC", 100),
+                pet("FROST_WISP", "RARE", 100), pet("NEW_PET", "EPIC", 100)), neu, false);
+        // Bee once, Wolf, and the pet NEU doesn't know yet; Rock is short a level, the wisp not the top one.
+        assertEquals(3, max.maxed());
+        // Bee, Rock, Wolf, the wisps as one, and the new pet; no Bingo pet.
+        assertEquals(5, max.total());
+        assertEquals(5, Missing.maxPets(List.of(), neu, true).total());
     }
 
     @Test

@@ -1092,6 +1092,13 @@ public class AlpakaConfigRegistry {
                 ),
                 "chat tabs shown visible hide pick choose select party guild coop co-op pm private messages npc npcs"));
 
+        OPTIONS.add(new ConfigOption("chat_tabs_show_count", "Show Count",
+                "Shows how many unread messages a tab has next to its name.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatTabsShowCount,
+                v -> { AlpakaConfig.instance.chatTabsShowCount = v; AlpakaConfig.save(); },
+                "chat tabs show count unread number badge new messages"));
+
         OPTIONS.add(new ConfigOption("chat_tabs_send_to_channel", "Send to Tab Channel",
                 "Sends what you type on a channel tab to that channel.",
                 ConfigCategory.VISUALS,
@@ -2343,6 +2350,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.warpCooldownQueueEnabled = v; AlpakaConfig.save(); },
                 "warp cooldown queue delay wait server join transfer early command you may only use this command"));
 
+        OPTIONS.add(new ConfigOption("ignore_filler_panes", "Ignore Filler Panes",
+                "Clicks on the empty black glass panes in SkyBlock menus do nothing, so a missed click doesn't pick one up.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.ignoreFillerPanesEnabled,
+                v -> { AlpakaConfig.instance.ignoreFillerPanesEnabled = v; AlpakaConfig.save(); },
+                "ignore filler glass pane black empty menu click misclick pick up gui inventory skyblock"));
+
         OPTIONS.add(new ConfigOption("Resource Pack", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("cache_resource_pack", "Cache Resource Pack",
@@ -2561,21 +2575,6 @@ public class AlpakaConfigRegistry {
                 parent -> net.alpaka.addons.features.profile.ProfileDashboardScreen.open(null, parent),
                 "profile dashboard open show"));
 
-        OPTIONS.add(new ConfigOption("profile_dashboard_tracking", "Record Progress",
-                "While you play SkyBlock, saves a snapshot of your profile now and then, so the graphs fill in without opening the dashboard. Kept on this computer only.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.profileDashboardTracking,
-                v -> { AlpakaConfig.instance.profileDashboardTracking = v; AlpakaConfig.save(); },
-                "profile dashboard record track progress history snapshot background hourly graph"));
-
-        OPTIONS.add(new ConfigOption("profile_dashboard_tracking_minutes", "Record Every",
-                "How often the snapshot is taken while you play.",
-                ConfigCategory.SKYBLOCK,
-                () -> (float) AlpakaConfig.instance.profileDashboardTrackingMinutes,
-                v -> { AlpakaConfig.instance.profileDashboardTrackingMinutes = Math.round(v); AlpakaConfig.save(); },
-                15.0f, 240.0f, v -> Math.round(v) + " min",
-                "profile dashboard record interval minutes snapshot how often"));
-
         OPTIONS.add(new ConfigOption("profile_dashboard_skykings_key", "SkyKings API Key",
                 "Needed for the dashboard's graphs: SkyKings records most players about once a day. Make a free key on skykings.net (log in with Discord, Dashboard › API Keys) and paste it here. Only sent to SkyKings, kept on this computer.",
                 ConfigCategory.SKYBLOCK,
@@ -2627,11 +2626,11 @@ public class AlpakaConfigRegistry {
                 "ragnarock ragnarok rag axe sword cast casting countdown timer crosshair action bar ability strength"));
 
         OPTIONS.add(new ConfigOption("deployable_timer", "Deployable Timer",
-                "Shows the strongest power orb or flare in range with the time it has left. Move it in the HUD editor.",
+                "Shows the deployables in range with the time they have left: power orbs and flares, mining lanterns, the Umberella, your Totem of Corruption and your Black Hole. Move it in the HUD editor.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.deployableTimerEnabled,
                 v -> { AlpakaConfig.instance.deployableTimerEnabled = v; AlpakaConfig.save(); },
-                "deployable timer power orb flare radiant mana flux overflux plasmaflux warning alert sos hud icon time left range buff"));
+                "deployable timer power orb flare radiant mana flux overflux plasmaflux warning alert sos lantern mithril titanium glacite dwarven will-o'-wisp wisp umberella umbrella totem corruption black hole fishing mining hud icon time left range buff"));
 
         OPTIONS.add(new ConfigOption("Enchantments", ConfigCategory.SKYBLOCK));
 

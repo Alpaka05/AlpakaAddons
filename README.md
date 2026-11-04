@@ -118,17 +118,34 @@ Keybinds for **Zoom**, **Peek Chat**, **Command Wheel** and **Inventory HUD** ar
 
 ## Fair Play
 
-Alpaka Addons runs entirely on your client and follows the [Hypixel rules](https://hypixel.net/rules). It only shows or rearranges what the game already tells you. There are no macros, no automation and nothing that plays the game for you.
+Alpaka Addons runs entirely on your client and follows the [Hypixel rules](https://hypixel.net/rules). It only shows or rearranges what the game already tells you, or what you look up yourself. There are no macros, no automation and nothing that plays the game for you.
 
-**Chat and commands.** The mod never sends anything unless you act: pressing Enter in chat, pressing the party-accept key, or picking a command on the command wheel. Each of those sends exactly one command. Share buttons only fill your chat box, so you read the message and send it yourself. Every outgoing command goes through one place in the code, and a test fails the build if anything else tries to send one.
+**Not affiliated with Hypixel.** Alpaka Addons is a fan-made mod. It is not affiliated with, endorsed by or associated with Hypixel Inc. or Mojang.
 
-**What the mod reads.** Only what your client already has:
+**Chat and commands.** The mod sends a chat message or command only when you act: pressing Enter in chat, pressing the party-accept key, clicking a button in one of its windows or picking a command on the command wheel. Each of those sends exactly one command. Share buttons only fill your chat box, so you read the message and send it yourself. Every outgoing command goes through one place in the code, and a test fails the build if anything else tries to send one. Three things send without a click, each only while you have it switched on:
+
+- **Quick Join** sends `/skyblock` once after you join Hypixel (off by default).
+- **Auto Answer** replies in party chat when a party member asks for something like `!tps` (off by default, at most once every two seconds).
+- The **Performance HUD's ping** uses Minecraft's own ping request to the server, which nobody sees and which changes nothing, at most once every five seconds.
+
+When a server offers a resource pack, the mod's pack cache answers it the way Minecraft itself does.
+
+**What the mod reads.** In the game, only what your client already has:
 
 - chat lines, the sidebar, the tab list and boss name tags, for the slayer tracker and timers
-- the item data of your own items, for the Etherwarp overlay
+- the item data of your own items, for overlays such as Etherwarp and Item Value
 - the contents of menus, and only once you have opened them yourself
 
-**What it contacts.** With "Allow Network Features" on (it can be turned off in General), the mod fetches the current SkyBlock mayor from Hypixel's public API to get slayer XP right, and pings the Hypixel server from the main menu to show its player count. With "Update Check" also on, it asks GitHub once per start whether a newer release of the mod is out. Only after you click Install and confirm does it download that release's jar from GitHub, check it against GitHub's checksum and swap it in when you close the game. None of these sends anything about you. With the setting off, the mod makes no network requests at all.
+**What it contacts.** With "Allow Network Features" on (it can be turned off in General), the mod asks these services. Each request is made because you opened something or because the feature needs it right then. None of them gets your Minecraft login.
+
+- **Hypixel's public API** (api.hypixel.net): the current mayor, for slayer XP; Bazaar prices and the list of SkyBlock items, collections, skills and Bingo dates, for prices, icons and the Profile Dashboard. These need no key and send nothing about you.
+- **The Hypixel server's status**, for the player count on the main menu.
+- **SkyCofl** (sky.coflnet.com): auction prices and price history, for Item Value, the Auction House price suggestions and the market graphs. Requests name the item, never you.
+- **The NotEnoughUpdates repository** on GitHub: item looks, pet heads and the lists behind the Bestiary, Museum, skill trees and rabbits.
+- **For the Profile Dashboard**, only when you open it on a player: **Elite** (api.elitebot.dev) for the profile itself, **Soopy** (api.soopy.dev) for its history, and **SkyKings** (api.skykings.net) only if you entered your own SkyKings key. They are asked for the player you look up, by name or UUID.
+- **GitHub**, with "Update Check" on: once per start, whether a newer release is out. Only after you click Install and confirm does it download that release's jar from GitHub, check it against GitHub's checksum and swap it in when you close the game.
+
+Player heads load their skins from Mojang, as everywhere in Minecraft. With "Allow Network Features" off, the mod makes none of these requests.
 
 **Guardrails.**
 
@@ -160,4 +177,4 @@ git tag 1.4.0 && git push origin 1.4.0
 
 Raise the middle number for a release with new features (1.3.0 → 1.4.0), the last one for a release that only fixes bugs (1.3.0 → 1.3.1).
 
-A branch working towards the next major version sets `version_line` in `gradle.properties` (`version_line=2.0.0` on `design-rework`). Its builds are then named for that version, `2.0.0-alpha+134.0de331d`, until a tag of it exists. Test builds handed out before the release are tagged as betas on that branch, `2.0.0-beta.1`, and published as GitHub pre-releases; only players already on a pre-release are told about them. `2.0.0` itself is tagged once the branch is merged into `main`, and `version_line` can then be removed.
+A branch working towards the next major version sets `version_line` in `gradle.properties` (`version_line=2.0.0` for the 2.0 line). Its builds are then named for that version, `2.0.0-alpha+134.0de331d`, until a tag of it exists. Test builds handed out before the release are tagged as betas on that branch, `2.0.0-beta.1`, and published as GitHub pre-releases; only players already on a pre-release are told about them. `2.0.0` itself is tagged on `main` once it is ready, and `version_line` can then be removed.

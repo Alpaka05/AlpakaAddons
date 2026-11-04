@@ -336,7 +336,8 @@ public final class ChatTabsFeature {
     private static Component labelOf(ChatTab tab) {
         checkChatFont();
         int i = tab.ordinal();
-        int count = unread[i];
+        // With Show Count off the tabs still count, so switching it back on shows what came in.
+        int count = AlpakaConfig.instance.chatTabsShowCount ? unread[i] : 0;
         Component cached = LABELS[i];
         if (cached != null && LABEL_COUNTS[i] == count) return cached;
         MutableComponent label = Component.literal(tab.label);

@@ -8,8 +8,11 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 
 import java.util.ArrayDeque;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -29,6 +32,11 @@ import java.util.regex.Pattern;
  * Hypixel frames level-ups, slayer rewards and other events with rows of dashes or "▬" and blank
  * lines. Those repeat by design - the box needs both its edges - so a line made of nothing but
  * separator characters or whitespace is always let through as it is.
+ *
+ * A boxed message that is folded takes its box along, though: when the earlier copy sat between two
+ * separator lines (blank lines inside the box included), those edges are taken out with it. The new
+ * copy arrives with a box of its own, so a message that keeps repeating ends up as one box with the
+ * counter on its line, instead of an ever longer stack of empty boxes.
  *
  * ### Identity
  *
@@ -107,7 +115,7 @@ public final class CompactChatFeature {
         Entry match = find(content, text, window, allMessages);
         if (match != null) {
             recent.remove(match);
-            if (remove(match.message, allMessages, trimmedMessages)) {
+            if (remove(withFrame(match.message, allMessages), allMessages, trimmedMessages)) {
                 count = match.count + 1;
             }
         }
@@ -142,7 +150,7 @@ public final class CompactChatFeature {
      * message added inside the window; without one it has to be the newest message in the chat.
      */
     private static Entry find(Component content, String text, long window, List<GuiMessage> allMessages) {
-        GuiMessage newest = allMessages.isEmpty() ? null : allMessages.get(0);
+        GuiMessage newest = window == 0 ? newestFoldable(allMessages) : null;
         for (Entry entry : recent) {
             if (!entry.text.equals(text) || !entry.original.equals(content)) continue;
             if (window == 0) {
@@ -151,6 +159,47 @@ public final class CompactChatFeature {
             return entry;
         }
         return null;
+    }
+
+    /**
+     * The newest message in the chat that is not a separator or blank line. A boxed repeat arrives
+     * after its own opening edge, so back-to-back has to look past the edges.
+     */
+    private static GuiMessage newestFoldable(List<GuiMessage> allMessages) {
+        for (GuiMessage message : allMessages) {
+            if (isFoldable(message.content().getString())) return message;
+        }
+        return null;
+    }
+
+    /**
+     * The message together with its box: the separator line on each side of it, and any blank lines
+     * between those and the message. Only a complete box counts - an edge on one side alone may
+     * belong to a neighbouring box - otherwise the message stands alone.
+     */
+    private static List<GuiMessage> withFrame(GuiMessage message, List<GuiMessage> allMessages) {
+        int index = -1;
+        for (int i = 0; i < allMessages.size(); i++) {
+            if (allMessages.get(i) == message) {
+                index = i;
+                break;
+            }
+        }
+        if (index < 0) return List.of(message);
+        int newer = frameEdge(allMessages, index, -1);
+        int older = frameEdge(allMessages, index, 1);
+        if (newer < 0 || older < 0) return List.of(message);
+        return List.copyOf(allMessages.subList(newer, older + 1));
+    }
+
+    /** The index of the separator line next to the message in the given direction, past blank lines; -1 if there is none. */
+    private static int frameEdge(List<GuiMessage> allMessages, int index, int step) {
+        for (int i = index + step; i >= 0 && i < allMessages.size(); i += step) {
+            String plain = COLOR_CODES.matcher(allMessages.get(i).content().getString()).replaceAll("");
+            if (plain.isBlank()) continue;
+            return SEPARATOR.matcher(plain).matches() ? i : -1;
+        }
+        return -1;
     }
 
     /** Forgets entries that fell out of the window, so a stale line is never folded into. */
@@ -162,11 +211,6 @@ public final class CompactChatFeature {
         }
     }
 
-    /**
-     * Takes the given message out of both lists, wherever it sits: its lines each point back at it,
-     * and there may be none if a chat tab was hiding it. Returns false when the message was already
-     * gone, in which case there is nothing to fold into.
-     */
     /** Where the last fold took lines out of the display list, and how many; -1 when it took none. */
     private static int removedIndex = -1;
     private static int removedCount = 0;
@@ -184,26 +228,28 @@ public final class CompactChatFeature {
         return result;
     }
 
-    private static boolean remove(GuiMessage message, List<GuiMessage> allMessages, List<GuiMessage.Line> trimmedMessages) {
-        boolean removed = false;
-        Iterator<GuiMessage> it = allMessages.iterator();
-        while (it.hasNext()) {
-            if (it.next() == message) {
-                it.remove();
-                removed = true;
-                break;
-            }
-        }
+    /**
+     * Takes the given messages - one message, or one message with its box, next to each other - out
+     * of both lists, wherever they sit: their lines each point back at them, and there may be none if
+     * a chat tab was hiding them. Returns false when the first message was already gone, in which
+     * case there is nothing to fold into.
+     */
+    private static boolean remove(List<GuiMessage> messages, List<GuiMessage> allMessages, List<GuiMessage.Line> trimmedMessages) {
+        Set<GuiMessage> doomed = Collections.newSetFromMap(new IdentityHashMap<>());
+        doomed.addAll(messages);
+        int before = allMessages.size();
+        allMessages.removeIf(doomed::contains);
+        boolean removed = allMessages.size() < before;
         if (removed) {
             int first = -1;
             int count = 0;
             for (int i = 0; i < trimmedMessages.size(); i++) {
-                if (trimmedMessages.get(i).parent() == message) {
+                if (doomed.contains(trimmedMessages.get(i).parent())) {
                     if (first < 0) first = i;
                     count++;
                 }
             }
-            trimmedMessages.removeIf(line -> line.parent() == message);
+            trimmedMessages.removeIf(line -> doomed.contains(line.parent()));
             if (count > 0) {
                 removedIndex = first;
                 removedCount = count;

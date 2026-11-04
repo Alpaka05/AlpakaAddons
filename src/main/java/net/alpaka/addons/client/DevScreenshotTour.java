@@ -272,7 +272,8 @@ public final class DevScreenshotTour {
             profile("profile-networth", "Refraction", "NETWORTH"),
             profile("profile-pets", "Refraction", "PETS"),
             profile("profile-collections", "Refraction", "COLLECTIONS"),
-            profile("profile-more", "Refraction", "MORE"),
+            profile("profile-rift", "Refraction", "RIFT"),
+            profile("profile-chocolate", "Refraction", "CHOCOLATE"),
             profile("profile-midgame", "TimeDeo", "OVERVIEW"),
             new Stop("profile-midgame-lower", () -> Minecraft.getInstance().gui.setScreen(
                     net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenScrolled("TimeDeo", "OVERVIEW")), () -> true, 30),
@@ -365,6 +366,11 @@ public final class DevScreenshotTour {
                     () -> true, 10),
             new Stop("profile-page-mining-lower", () -> Minecraft.getInstance().gui.setScreen(
                     net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenSkill("Alpakaa", "mining", true)), () -> true, 30),
+            // The Museum with its items, which need a world for their icons, and one category.
+            profile("profile-museum", "Alpakaa", "MUSEUM"),
+            new Stop("profile-museum-combat", () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenDetail("Alpakaa", "MUSEUM", "combat")), () -> true, 120),
+            new Stop("profile-museum-tip", () -> placeMouse(0.36, 0.3), () -> true, 15),
             new Stop("profile-page-pets-missing", () -> Minecraft.getInstance().gui.setScreen(
                     net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenScrolled("Alpakaa", "PETS")), () -> true, 120),
             new Stop("profile-page-acc-missing", () -> {

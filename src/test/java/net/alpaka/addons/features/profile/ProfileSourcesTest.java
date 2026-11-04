@@ -56,6 +56,19 @@ class ProfileSourcesTest {
     }
 
     @Test
+    void deletedAndLeftProfilesAreNotListed() {
+        JsonElement account = JsonParser.parseString("""
+                {"id":"u","name":"P","profiles":[
+                 {"profileId":"a","profileName":"Apple","selected":false,"deleted":true,
+                  "members":[{"uuid":"u","active":false}]},
+                 {"profileId":"b","profileName":"Raspberry","selected":false,
+                  "members":[{"uuid":"o","active":true},{"uuid":"u","active":false}]},
+                 {"profileId":"c","profileName":"Peach","selected":true,
+                  "members":[{"uuid":"u","active":true},{"uuid":"x","active":false}]}]}""");
+        assertEquals(List.of("Peach"), ProfileSession.profiles(account, null, 0).stream().map(ProfileSession.ProfileRef::name).toList());
+    }
+
+    @Test
     void readsTheHeadTextureFromANeuItem() {
         String body = "{\"nbttag\": \"{SkullOwner:{Properties:{textures:[0:{Name:\\\"textures\\\",Value:\\\"ewogIHRleHR1cmVz=\\\"}]}}}\"}";
         assertEquals("ewogIHRleHR1cmVz=", PetIcons.extract(body));

@@ -501,7 +501,7 @@ public class AlpakaConfig {
     @SerializedName(value = "ragnarockEnabled", alternate = "ragAxeCountdownEnabled")
     public boolean ragnarockEnabled = true;
 
-    // Deployable timer: the strongest power orb or flare in range, with its time left.
+    // Deployable timer: the strongest deployable of each family in range, with its time left.
     public boolean deployableTimerEnabled = false;
     /** Clicking a garden visitor's Accept Offer while items are missing opens the bazaar for them. */
     public boolean visitorBazaarEnabled = true;
@@ -516,6 +516,8 @@ public class AlpakaConfig {
     public boolean worldAgeJoinMessageEnabled = true;
     public int worldAgeRecentThresholdSec = 60;
     public boolean onlyCritDamageEnabled = true;
+    /** Clicks on the nameless black glass panes that fill SkyBlock menus are ignored; see FillerPaneClicks. */
+    public boolean ignoreFillerPanesEnabled = true;
     /**
      * The mod draws damage splashes itself, animated and in gradients, in place of Hypixel's.
      * Off by default while it is being tried out.
@@ -914,6 +916,8 @@ public class AlpakaConfig {
     public boolean chatTabsShowCoop = true;
     public boolean chatTabsShowPrivate = true;
     public boolean chatTabsShowNpc = true;
+    /** With chat tabs: a tab shows how many messages arrived on it since it was last up. */
+    public boolean chatTabsShowCount = true;
 
     // Interface options
     /** The mouse wheel scrolls a tooltip that is taller than the screen. */
@@ -1034,10 +1038,6 @@ public class AlpakaConfig {
     public float chestValueY = -1f;
     /** /alpakaprofile opens the Profile Dashboard; see ProfileDashboardScreen. Needs allowApiCalls. */
     public boolean profileDashboardEnabled = true;
-    /** Snapshots of the player's own profile while playing, for the dashboard's graphs; see ProfileTracker. */
-    public boolean profileDashboardTracking = true;
-    /** Minutes between two of those snapshots. */
-    public int profileDashboardTrackingMinutes = 60;
     /**
      * The player's own SkyKings API key, for SkyKings' daily history in the dashboard's graphs.
      * Empty for none. Each player makes their own; the mod never ships one (SkyKings asks that keys
@@ -1848,6 +1848,7 @@ public class AlpakaConfig {
         this.profileDashboardEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
+        this.ignoreFillerPanesEnabled = false;
         this.customDamageTagsEnabled = false;
         this.blockOverlayEnabled = false;
         this.etherwarpOverlayEnabled = false;

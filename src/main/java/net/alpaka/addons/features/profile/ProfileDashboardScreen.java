@@ -526,7 +526,7 @@ public class ProfileDashboardScreen extends Screen {
                         + (skykings ? " With your key, SkyKings' daily history too" + (session.skykingsNote != null
                                 && !session.skykingsNote.equals("loading") ? ": " + session.skykingsNote : ".")
                                 : " A SkyKings API key in the config adds SkyKings' daily history.")
-                        + " Click to open this profile on Elite.");
+                        + " Not affiliated with Hypixel. Click to open this profile on Elite.");
             }
         }
     }

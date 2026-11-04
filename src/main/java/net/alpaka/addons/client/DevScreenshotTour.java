@@ -143,6 +143,7 @@ public final class DevScreenshotTour {
             screen("config-dungeon", () -> AlpakaConfigScreen.openOn("Dungeon", "Solvers")),
             // Further down Solvers' settings: the Water Board ones below the puzzle list.
             new Stop("config-dungeon-water-board", () -> scroll(0.75, 0.6, -6), () -> true, 30),
+            screen("config-dungeon-teammate-glow", () -> AlpakaConfigScreen.openOn("Dungeon", "Teammate Class Glow")),
             screen("config-dungeon-terminals", () -> AlpakaConfigScreen.openOn("Dungeon", "Terminal Solvers")),
             screen("config-viewmodel", () -> AlpakaConfigScreen.openOn("Viewmodel", "Viewmodel Modifiers")),
             // The wheel turned on over the settings in several goes, well past their end: the column
@@ -761,6 +762,16 @@ public final class DevScreenshotTour {
                 waterBoardStand(15.5, 22.5, net.minecraft.core.Direction.NORTH);
             }, () -> true, 40),
             new Stop(null, () -> waterBoardRoom(false), () -> true, 20),
+            // Teammate Class Glow on the player in third person, glowing the way Hypixel makes dungeon
+            // teammates glow: first in the team color (white without a team), then as a Healer.
+            new Stop(null, () -> teammateGlow(true), () -> net.alpaka.addons.utils.DungeonState.inDungeon(), 40),
+            new Stop("dungeon-teammate-glow-rank", () -> {}, () -> true, 5),
+            new Stop("dungeon-teammate-glow-class", () -> {
+                AlpakaConfig.instance.teammateClassGlowEnabled = true;
+                net.alpaka.addons.features.teammateglow.TeammateClassGlow.remember(List.of(new net.alpaka.addons.features.dungeonmap.PartyMember(
+                        Minecraft.getInstance().player.getGameProfile().name(), "Healer")));
+            }, () -> true, 10),
+            new Stop(null, () -> teammateGlow(false), () -> true, 20),
             screen("viewmodel-setup", () -> AlpakaConfigScreen.openOn("Viewmodel", "Viewmodel Modifiers").inSetupMode()),
             screen("viewmodel-setup-swing", () -> AlpakaConfigScreen.openOn("Viewmodel", "Swing").inSetupMode()),
             new Stop("viewmodel-setup-swinging", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 1),
@@ -1512,6 +1523,44 @@ public final class DevScreenshotTour {
         float yaw = WATER_BOARD.toWorld(facing).toYRot();
         server.execute(() -> server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), String.format(java.util.Locale.ROOT,
                 "execute in minecraft:overworld run tp @a %.3f %.3f %.3f %.1f %.1f", at.x, at.y, at.z, yaw, 8.0f)));
+    }
+
+    /**
+     * The player in third person in an F7 run by the sidebar, glowing through the Glowing effect the
+     * way Hypixel makes dungeon teammates glow; or all of that undone, out of the run.
+     */
+    private static void teammateGlow(boolean on) {
+        Minecraft mc = Minecraft.getInstance();
+        net.minecraft.client.server.IntegratedServer server = mc.getSingleplayerServer();
+        if (server == null || mc.player == null) return;
+        mc.gui.setScreen(null);
+        mc.gui.hud.getChat().clearMessages(false);
+        AlpakaConfig.instance.inventoryHudEnabled = false;
+        AlpakaConfig.instance.teammateClassGlowEnabled = false;
+        String[] commands = on ? new String[]{
+                "team add tourdungeon",
+                "team modify tourdungeon prefix {text:\" ⏣ The Catacombs (F7)\",color:\"red\"}",
+                "team join tourdungeon §9",
+                "scoreboard players set §9 tour 7",
+                "effect give @a minecraft:glowing infinite 0 true",
+        } : new String[]{
+                "effect clear @a minecraft:glowing",
+                "scoreboard players reset §9 tour",
+                "team remove tourdungeon",
+        };
+        server.execute(() -> {
+            for (String command : commands) {
+                server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), command);
+            }
+        });
+        if (on) {
+            mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+            mc.player.setXRot(18.0f);
+        } else {
+            mc.options.setCameraType(CameraType.FIRST_PERSON);
+            net.alpaka.addons.features.teammateglow.TeammateClassGlow.reset();
+            net.alpaka.addons.utils.DungeonState.reset();
+        }
     }
 
     /** The aura in third person, facing away from the fire pits, nothing else on screen. */

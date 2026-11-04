@@ -81,6 +81,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.utils.DungeonState.register();
         net.alpaka.addons.features.dungeonmap.DungeonMapFeature.register();
         net.alpaka.addons.features.dungeonmobs.StarredMobsHighlight.register();
+        net.alpaka.addons.features.teammateglow.TeammateClassGlow.register();
         // After DungeonState, so a chat line that starts the boss room has been seen by it first.
         net.alpaka.addons.features.dungeon.DungeonSolvers.register();
         net.alpaka.addons.features.leapmenu.LeapMenu.register();

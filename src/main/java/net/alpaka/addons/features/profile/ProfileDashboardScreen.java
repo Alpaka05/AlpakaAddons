@@ -2153,7 +2153,7 @@ public class ProfileDashboardScreen extends Screen {
         int cols = Math.max(2, w / 160);
         int gap = 4;
         int cw = (w - (cols - 1) * gap) / cols;
-        int ch = 30;
+        int ch = 38;
         for (var e : byCategory.entrySet()) {
             List<ProfileData.Collection> list = e.getValue();
             int done = 0;
@@ -2169,15 +2169,20 @@ public class ProfileDashboardScreen extends Screen {
                 if (cy > clipY + clipH + 40 || cy + ch < clipY - 40) continue;
                 boolean hover = hover(cx, cy, cw, ch);
                 ModernGuiUtils.drawRoundedRect(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
+                // The item at twice its size, as the game's collection menu shows it.
+                ItemStack icon = collectionIcon(c);
+                if (!icon.isEmpty()) stackIcon(graphics, icon, cx + 3, cy + 3, 2.0f);
+                int tx = cx + 40;
+                int tw = cw - 40 - 6;
                 String tier = c.maxed() ? "MAX" : c.tier() == 0 ? "—" : roman(c.tier());
                 int tierColor = c.maxed() ? ink(GOLD) : c.tier() == 0 ? AlpakaStyle.DIVIDER : AlpakaStyle.TEXT;
-                text(graphics, tier, cx + cw - 6 - textW(tier), cy + 5, tierColor);
-                text(graphics, AlpakaStyle.ellipsize(this.font, c.name() == null ? c.id() : c.name(), cw - 18 - textW(tier)), cx + 6, cy + 5,
+                text(graphics, tier, tx + tw - textW(tier), cy + 7, tierColor);
+                text(graphics, AlpakaStyle.ellipsize(this.font, c.name() == null ? c.id() : c.name(), tw - 8 - textW(tier)), tx, cy + 7,
                         c.amount() > 0 ? AlpakaStyle.TEXT_SOFT : AlpakaStyle.TEXT_MUTED);
                 double progress = c.maxed() ? 1 : c.nextAt() > c.prevAt() ? (c.amount() - c.prevAt()) / (double) (c.nextAt() - c.prevAt()) : 0;
-                bar(graphics, cx + 6, cy + 17, cw - 12, 2, progress, c.maxed() ? ink(GOLD) : AlpakaStyle.accent());
+                bar(graphics, tx, cy + 19, tw, 2, progress, c.maxed() ? ink(GOLD) : AlpakaStyle.accent());
                 String amount = Coins.compact(c.amount()) + (c.maxed() || c.nextAt() <= 0 ? "" : " / " + Coins.compact(c.nextAt()));
-                text(graphics, amount, cx + 6, cy + 21, AlpakaStyle.TEXT_MUTED);
+                text(graphics, amount, tx, cy + 24, AlpakaStyle.TEXT_MUTED);
                 if (hover) {
                     tip(c, (c.name() == null ? c.id() : c.name()) + ": " + Coins.full(c.amount()) + " collected, tier " + c.tier()
                             + " of " + c.maxTier() + (c.maxed() ? "." : ". " + Coins.full(c.nextAt() - c.amount()) + " more for the next tier."));
@@ -2186,6 +2191,24 @@ public class ProfileDashboardScreen extends Screen {
             y += ((list.size() + cols - 1) / cols) * (ch + gap) + 6;
         }
         return y;
+    }
+
+    /** Collections whose id names no item the game knows now: the item their menu shows. */
+    private static final Map<String, String> COLLECTION_ITEMS = Map.of(
+            "MUSHROOM_COLLECTION", "RED_MUSHROOM:0", "GEMSTONE_COLLECTION", "ROUGH_RUBY_GEM", "SEEDS", "WHEAT_SEEDS:0");
+
+    /**
+     * A collection's item. Its id is the item's 1.8 name ({@code INK_SACK:3}, {@code NETHER_STALK})
+     * for the vanilla ones, so those go through the legacy names first; what that does not know is
+     * one of SkyBlock's own items ({@code MOONFLOWER}, {@code UMBER}).
+     */
+    private static ItemStack collectionIcon(ProfileData.Collection c) {
+        String id = COLLECTION_ITEMS.getOrDefault(c.id(), c.id());
+        if (!id.contains(":")) {
+            ItemStack vanilla = ItemIcons.forItem(id + ":0", c.name());
+            if (!vanilla.isEmpty()) return vanilla;
+        }
+        return ItemIcons.forItem(id, c.name());
     }
 
     private static String roman(int n) {

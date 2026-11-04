@@ -44,6 +44,16 @@ class ProfileDataTest {
     }
 
     @Test
+    void theMuseumCountsAsAnInventoryThoughItListsNoSlots() {
+        JsonObject raw = JsonParser.parseString(MEMBER).getAsJsonObject();
+        raw.add("inventories", JsonParser.parseString("""
+                [{"id":"i1","name":"inventory","slotCount":36},{"id":"m1","name":"museum","slotCount":0},
+                 {"id":"e1","name":"candy_inventory","slotCount":0}]"""));
+        ProfileData d = new ProfileData(raw, "Someone");
+        assertEquals(List.of("inventory", "museum"), List.copyOf(d.inventories.keySet()));
+    }
+
+    @Test
     void readsTheProfile() {
         ProfileData d = data();
         assertEquals("Apple", d.profileName);

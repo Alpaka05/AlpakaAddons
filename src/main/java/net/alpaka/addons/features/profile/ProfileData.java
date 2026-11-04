@@ -207,8 +207,9 @@ public final class ProfileData {
             String name = Json.str(e, "name");
             if (id == null || name == null) continue;
             int slots = (int) Json.num(e, "slotCount", 0);
-            // The backpack icons list no slots, yet they are what the backpacks are drawn with.
-            if (slots <= 0 && !name.equals("icons_backpack")) continue;
+            // The backpack icons and the museum list no slots, yet hold items: what the backpacks are
+            // drawn with, and every donated item.
+            if (slots <= 0 && !name.equals("icons_backpack") && !name.equals("museum")) continue;
             inventories.put(name, new InventoryRef(id, name, slots, Json.obj(e, "metadata")));
         }
 

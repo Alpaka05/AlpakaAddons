@@ -620,6 +620,8 @@ public class AlpakaConfig {
     public boolean solveIcePath = true;
     /** Water Board: Odin's quicker solutions, with flips closer together. */
     public boolean waterBoardFastSolutions = false;
+    /** Water Board: a line from the crosshair to the next lever. */
+    public boolean waterBoardLineToLever = true;
     /** The thing to do now. Also used by the device solvers. */
     public int dungeonSolverColor = 0xCC55FF55;
     /** What comes after it. */
@@ -880,6 +882,8 @@ public class AlpakaConfig {
     public boolean chatTabsShowCoop = true;
     public boolean chatTabsShowPrivate = true;
     public boolean chatTabsShowNpc = true;
+    /** With chat tabs: a tab shows how many messages arrived on it since it was last up. */
+    public boolean chatTabsShowCount = true;
 
     // Interface options
     /** The mouse wheel scrolls a tooltip that is taller than the screen. */
@@ -1000,10 +1004,6 @@ public class AlpakaConfig {
     public float chestValueY = -1f;
     /** /alpakaprofile opens the Profile Dashboard; see ProfileDashboardScreen. Needs allowApiCalls. */
     public boolean profileDashboardEnabled = true;
-    /** Snapshots of the player's own profile while playing, for the dashboard's graphs; see ProfileTracker. */
-    public boolean profileDashboardTracking = true;
-    /** Minutes between two of those snapshots. */
-    public int profileDashboardTrackingMinutes = 60;
     /**
      * The player's own SkyKings API key, for SkyKings' daily history in the dashboard's graphs.
      * Empty for none. Each player makes their own; the mod never ships one (SkyKings asks that keys

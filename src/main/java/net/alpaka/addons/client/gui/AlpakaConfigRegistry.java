@@ -1092,6 +1092,13 @@ public class AlpakaConfigRegistry {
                 ),
                 "chat tabs shown visible hide pick choose select party guild coop co-op pm private messages npc npcs"));
 
+        OPTIONS.add(new ConfigOption("chat_tabs_show_count", "Show Count",
+                "Shows how many unread messages a tab has next to its name.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.chatTabsShowCount,
+                v -> { AlpakaConfig.instance.chatTabsShowCount = v; AlpakaConfig.save(); },
+                "chat tabs show count unread number badge new messages"));
+
         OPTIONS.add(new ConfigOption("chat_tabs_send_to_channel", "Send to Tab Channel",
                 "Sends what you type on a channel tab to that channel.",
                 ConfigCategory.VISUALS,
@@ -2555,21 +2562,6 @@ public class AlpakaConfigRegistry {
                 parent -> net.alpaka.addons.features.profile.ProfileDashboardScreen.open(null, parent),
                 "profile dashboard open show"));
 
-        OPTIONS.add(new ConfigOption("profile_dashboard_tracking", "Record Progress",
-                "While you play SkyBlock, saves a snapshot of your profile now and then, so the graphs fill in without opening the dashboard. Kept on this computer only.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.profileDashboardTracking,
-                v -> { AlpakaConfig.instance.profileDashboardTracking = v; AlpakaConfig.save(); },
-                "profile dashboard record track progress history snapshot background hourly graph"));
-
-        OPTIONS.add(new ConfigOption("profile_dashboard_tracking_minutes", "Record Every",
-                "How often the snapshot is taken while you play.",
-                ConfigCategory.SKYBLOCK,
-                () -> (float) AlpakaConfig.instance.profileDashboardTrackingMinutes,
-                v -> { AlpakaConfig.instance.profileDashboardTrackingMinutes = Math.round(v); AlpakaConfig.save(); },
-                15.0f, 240.0f, v -> Math.round(v) + " min",
-                "profile dashboard record interval minutes snapshot how often"));
-
         OPTIONS.add(new ConfigOption("profile_dashboard_skykings_key", "SkyKings API Key",
                 "Needed for the dashboard's graphs: SkyKings records most players about once a day. Make a free key on skykings.net (log in with Discord, Dashboard › API Keys) and paste it here. Only sent to SkyKings, kept on this computer.",
                 ConfigCategory.SKYBLOCK,
@@ -3433,6 +3425,14 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.waterBoardFastSolutions,
                 v -> { AlpakaConfig.instance.waterBoardFastSolutions = v; AlpakaConfig.save(); },
                 "dungeon water board levers fast quick quicker faster solutions timing"));
+
+        OPTIONS.add(new ConfigOption("water_board_line_to_lever", "Water Board: Line to Next Lever",
+                "Draws a line from your crosshair to the next lever, so you find it without looking around. "
+                        + "Only in the Water Board room, and walls hide it like any block.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.waterBoardLineToLever,
+                v -> { AlpakaConfig.instance.waterBoardLineToLever = v; AlpakaConfig.save(); },
+                "dungeon water board levers line tracer pointer next lever where find"));
 
         OPTIONS.add(ConfigOption.color("dungeon_solver_color", "Solution Color",
                 "What to do now: the right chest, answer, pad, lever or block. The device solvers use it too, and "

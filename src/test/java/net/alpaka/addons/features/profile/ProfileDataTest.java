@@ -29,7 +29,7 @@ class ProfileDataTest {
                "skills":{"average":53.4,"totalXp":2675286773.8,"levels":{
                  "farming":{"level":50,"maxLevel":50,"xp":260056683.0,"xpCurrent":204884258.0,"xpForNext":0},
                  "hunting":{"level":21,"maxLevel":50,"xp":256850,"xpCurrent":56850,"xpForNext":400000}}},
-               "dungeons":{"catacombsExperience":30741859.6,"catacombsLevel":38,"selectedClass":"mage","classAverage":44.8,
+               "dungeons":{"catacombsExperience":30741859.6,"catacombsLevel":38,"selectedClass":"mage","classAverage":44.8,"secretsFound":1234,
                  "classLevels":{"mage":{"level":43,"xp":118899330.3,"xpCurrent":9339690.3,"xpForNext":30000000}},
                  "floors":{"0":{"completions":1},"7":{"completions":19,"fastestTimeSPlus":245000}},
                  "masterFloors":{"7":{"completions":420,"fastestTimeS":330000}}},
@@ -41,6 +41,16 @@ class ProfileDataTest {
 
     private static ProfileData data() {
         return new ProfileData(JsonParser.parseString(MEMBER).getAsJsonObject(), "Someone");
+    }
+
+    @Test
+    void theMuseumCountsAsAnInventoryThoughItListsNoSlots() {
+        JsonObject raw = JsonParser.parseString(MEMBER).getAsJsonObject();
+        raw.add("inventories", JsonParser.parseString("""
+                [{"id":"i1","name":"inventory","slotCount":36},{"id":"m1","name":"museum","slotCount":0},
+                 {"id":"e1","name":"candy_inventory","slotCount":0}]"""));
+        ProfileData d = new ProfileData(raw, "Someone");
+        assertEquals(List.of("inventory", "museum"), List.copyOf(d.inventories.keySet()));
     }
 
     @Test
@@ -59,6 +69,9 @@ class ProfileDataTest {
         assertEquals(15, d.floors.size());
         assertEquals(1 + 19 + 420, d.totalRuns);
         assertEquals(245000, d.floors.get(7).fastestSPlus());
+        assertEquals(1234, d.secretsFound);
+        // Only mage played: its exact level over all five classes.
+        assertEquals(Levels.catacombsOverflow(118899330.3).exact() / 5, d.classAverageOverflow, 1e-9);
         // Slayers in the game's order; Elite's xpForNext is what is still missing.
         assertEquals("enderman", d.slayers.get(0).id());
         assertEquals(599995, d.slayers.get(0).xpForNext());

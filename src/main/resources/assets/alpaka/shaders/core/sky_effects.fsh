@@ -75,14 +75,14 @@ vec3 hash33(vec3 p3) {
 }
 
 // 1D value noise that repeats every `period` (a whole number), so it closes up around a circle.
-float noise1(float x, float period) {
+float valueNoise1(float x, float period) {
     float i = floor(x);
     float u = fract(x);
     u = u * u * (3.0 - 2.0 * u);
     return mix(hash11(mod(i, period)), hash11(mod(i + 1.0, period)), u);
 }
 
-float noise2(vec2 p) {
+float valueNoise2(vec2 p) {
     vec2 i = floor(p);
     vec2 f = fract(p);
     vec2 u = f * f * (3.0 - 2.0 * f);
@@ -99,7 +99,7 @@ vec2 noise22(vec2 p) {
                mix(hash22(i + vec2(0.0, 1.0)), hash22(i + vec2(1.0, 1.0)), u.x), u.y);
 }
 
-float noise3(vec3 p) {
+float valueNoise3(vec3 p) {
     vec3 i = floor(p);
     vec3 f = fract(p);
     vec3 u = f * f * (3.0 - 2.0 * f);
@@ -117,7 +117,7 @@ float fbm2(vec2 p, int octaves) {
     float value = 0.0;
     float amplitude = 0.5;
     for (int i = 0; i < octaves; i++) {
-        value += amplitude * noise2(p);
+        value += amplitude * valueNoise2(p);
         p = TURN2 * p * 2.03 + 17.17;
         amplitude *= 0.5;
     }
@@ -139,7 +139,7 @@ float fbm3(vec3 p, int octaves) {
     float value = 0.0;
     float amplitude = 0.5;
     for (int i = 0; i < octaves; i++) {
-        value += amplitude * noise3(p);
+        value += amplitude * valueNoise3(p);
         p = TURN3 * p * 2.02 + vec3(1.7, 9.2, 4.1);
         amplitude *= 0.5;
     }
@@ -266,9 +266,9 @@ vec3 netherSky(vec3 dir, float t, float pixel, vec3 fog) {
     // through white; which parts of the storm burn wanders in large patches. Thin glowing seams
     // run along the clouds' edges there, never thinner than the pixels allow.
     float body = smoothstep(0.3, 0.75, f);
-    float fire = smoothstep(0.3, 0.7, noise2(p * 0.22 + vec2(t * 0.02, -t * 0.015) + 3.0));
+    float fire = smoothstep(0.3, 0.7, valueNoise2(p * 0.22 + vec2(t * 0.02, -t * 0.015) + 3.0));
     // Flame tongues: fine, fast detail licking along the hot clouds.
-    float tongues = noise2(p * 4.0 + warp * 3.0 + vec2(0.0, -t * 0.4)) - 0.5;
+    float tongues = valueNoise2(p * 4.0 + warp * 3.0 + vec2(0.0, -t * 0.4)) - 0.5;
     float heat = smoothstep(0.48, 0.86, f + 0.25 * (warp.y - 0.5) + 0.12 * tongues) * (0.35 + 0.65 * fire);
     float width = 0.02 + df;
     float seam = exp(-pow((f - 0.5) / width, 2.0)) * 0.02 / width * fire;
@@ -309,14 +309,14 @@ vec3 aurora(vec3 dir, float t) {
         float edge = 0.19 + 0.1 * n
                 + 0.06 * sin(x * 1.6 + t * 0.04)
                 + 0.035 * sin(x * 4.3 - t * 0.07 + 1.3)
-                + 0.03 * (noise1(x * 7.0 + t * 0.1, 1000.0) - 0.5);
+                + 0.03 * (valueNoise1(x * 7.0 + t * 0.1, 1000.0) - 0.5);
         float h = elevation - edge;
         if (h < -0.03) continue;
-        float rays = noise1(x * 70.0 + t * 0.35, 1000.0) * 0.6 + noise1(x * 23.0 - t * 0.2, 1000.0) * 0.4;
+        float rays = valueNoise1(x * 70.0 + t * 0.35, 1000.0) * 0.6 + valueNoise1(x * 23.0 - t * 0.2, 1000.0) * 0.4;
         rays = 0.35 + 0.65 * rays * rays;
-        float pulse = smoothstep(0.2, 0.8, noise1(x * 2.5 - t * 0.12 + n * 5.0, 1000.0));
+        float pulse = smoothstep(0.2, 0.8, valueNoise1(x * 2.5 - t * 0.12 + n * 5.0, 1000.0));
         // The bright stretches reach higher, as where a real curtain folds towards the viewer.
-        float reach = 0.12 + 0.1 * noise1(x * 3.0 + t * 0.05 + n * 7.0, 1000.0) + 0.12 * pulse;
+        float reach = 0.12 + 0.1 * valueNoise1(x * 3.0 + t * 0.05 + n * 7.0, 1000.0) + 0.12 * pulse;
         float curtain = smoothstep(-0.03, 0.0, h) * exp(-max(h, 0.0) / reach * 2.0);
         vec3 tint = mix(vec3(0.15, 1.0, 0.5), vec3(0.6, 0.3, 1.0), smoothstep(0.02, 0.2, h));
         light += tint * curtain * rays * (0.2 + 0.8 * pulse) * (0.85 - 0.3 * n);
@@ -336,7 +336,7 @@ vec3 milkyWay(vec3 dir, float starAngle) {
     float band = exp(-across * across * 14.0);
     if (band < 0.03) return vec3(0.0);
     float cloud = fbm3(s * 3.5, 4);
-    float dust = smoothstep(0.42, 0.62, noise3(s * 9.0 + 4.0) * 0.6 + cloud * 0.5);
+    float dust = smoothstep(0.42, 0.62, valueNoise3(s * 9.0 + 4.0) * 0.6 + cloud * 0.5);
     return vec3(0.6, 0.65, 0.9) * band * smoothstep(0.3, 0.75, cloud) * (1.0 - 0.6 * dust) * 0.45;
 }
 
@@ -352,7 +352,7 @@ vec3 sunGlow(vec3 dir, vec3 sun, float t) {
     vec3 side = normalize(abs(sun.y) < 0.99 ? cross(vec3(0.0, 1.0, 0.0), sun) : vec3(1.0, 0.0, 0.0));
     vec3 lift = cross(sun, side);
     float around = atan(dot(dir, lift), dot(dir, side)) / TAU + 0.5;
-    float rays = noise1(around * 24.0 + t * 0.05, 24.0) * noise1(around * 9.0 - t * 0.03 + 3.0, 9.0);
+    float rays = valueNoise1(around * 24.0 + t * 0.05, 24.0) * valueNoise1(around * 9.0 - t * 0.03 + 3.0, 9.0);
     float halo = pow(c, 400.0) * 0.4 + pow(c, 40.0) * 0.14 + pow(c, 6.0) * 0.05;
     float beams = rays * pow(c, 18.0) * 0.3;
     vec3 tint = mix(vec3(1.0, 0.55, 0.25), vec3(1.0, 0.9, 0.7), smoothstep(0.0, 0.5, sun.y));
@@ -424,7 +424,7 @@ vec3 endSky(vec3 dir, float t, float pixel, float strength) {
     float gas = fbm3(g + warp * 1.6 + vec3(t * 0.005, 0.0, -t * 0.004), 5);
     // How fast the gas changes from pixel to pixel; taken before any branch.
     float dgas = fwidth(gas);
-    float detail = noise3(g * 7.0 + warp * 3.0);
+    float detail = valueNoise3(g * 7.0 + warp * 3.0);
 
     vec3 deep = vec3(0.012, 0.005, 0.024);
     vec3 blue = vec3(0.1, 0.16, 0.5);

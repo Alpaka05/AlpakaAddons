@@ -2334,7 +2334,9 @@ public class ProfileDashboardScreen extends Screen {
     private void value(GuiGraphicsExtractor graphics, String value, int x, int y, int maxW) {
         Component big = GuiFont.title(value);
         if (big != null && this.font.width(big) <= maxW) {
-            graphics.text(this.font, big, x, y, AlpakaStyle.TEXT, false);
+            // The larger cut's capitals reach higher above the line than the scaled text did, so it
+            // sits lower to keep clear of the card's title.
+            graphics.text(this.font, big, x, y + 4, AlpakaStyle.TEXT, false);
             return;
         }
         if (big != null) {

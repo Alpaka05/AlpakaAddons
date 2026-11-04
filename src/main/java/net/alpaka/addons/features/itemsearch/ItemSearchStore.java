@@ -27,6 +27,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -38,7 +39,9 @@ import java.util.concurrent.Executors;
  * {@code item-search/<account>/}, so a second launcher sees the same items. The items are saved
  * whole, with their lore, since that is what the search reads and what the tooltip shows.
  *
- * Only touched on the game thread; the file is written on a thread of its own from a copy.
+ * Only touched on the game thread. The file is read, and written from a copy, on a thread of its
+ * own; only turning the JSON into items and back happens on the game thread, as the item codecs work
+ * with the level's registries and the remembered items can still change there.
  */
 public final class ItemSearchStore {
     private ItemSearchStore() {}
@@ -84,8 +87,12 @@ public final class ItemSearchStore {
 
     private static final Gson GSON = new GsonBuilder().create();
     private static final long SAVE_DELAY_MS = 3_000L;
-    private static final ExecutorService WRITER = Executors.newSingleThreadExecutor(r -> {
-        Thread t = new Thread(r, "Alpaka Item Search writer");
+    /**
+     * Reads and writes the files, one at a time and in order, so a profile read again right after it
+     * was left sees the write that left it.
+     */
+    private static final ExecutorService FILES = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "Alpaka Item Search files");
         t.setDaemon(true);
         return t;
     });
@@ -98,6 +105,9 @@ public final class ItemSearchStore {
      * the level before the last write.
      */
     private static HolderLookup.Provider loadedRegistries = null;
+    /** The profile whose file is being read in the background, and the read; null when none is. */
+    private static String loadingFor = null;
+    private static CompletableFuture<JsonObject> loading = null;
     private static boolean dirty = false;
     private static long changedAt = 0L;
     /** Showing the screenshot tour's made-up containers, which are never saved. */
@@ -152,15 +162,21 @@ public final class ItemSearchStore {
             loadedFor = null;
             containers.clear();
         }
+        // Starts reading the profile's file as soon as the profile is known, and takes it in once
+        // read, so the first look at the items rarely has to wait for the disk. Only while the
+        // feature is on, so a player who doesn't use it never has the file read.
+        if (ItemSearchTracker.active()) ensureLoaded(false);
     }
 
     /** Writes what changed now, as when leaving the server. */
     public static void flush() {
         if (!dirty || loadedFor == null || loadedRegistries == null) return;
         dirty = false;
-        String json = GSON.toJson(encode(loadedRegistries));
+        // The items are encoded here, as they can still change on this thread; the finished JSON
+        // tree is no longer touched, so turning it into text can wait for the file thread.
+        JsonObject root = encode(loadedRegistries);
         File file = fileFor(loadedFor);
-        WRITER.execute(() -> write(file, json));
+        FILES.execute(() -> write(file, GSON.toJson(root)));
     }
 
     /** "account/profile" for the player in play, or null when the profile is not known yet. */
@@ -178,26 +194,55 @@ public final class ItemSearchStore {
 
     /** Loads the profile's file the first time it is needed. False while there is nothing to load into. */
     private static boolean ensureLoaded() {
+        return ensureLoaded(true);
+    }
+
+    /**
+     * As above; with {@code wait} false it only starts the read and returns false until the file is
+     * read. Waiting is for the callers that would otherwise lose or miss items, and is rare, as the
+     * tick has usually started the read long before.
+     */
+    private static boolean ensureLoaded(boolean wait) {
         if (preview) return false;
         String owner = owner();
         if (owner == null) return false;
         if (owner.equals(loadedFor)) return true;
         HolderLookup.Provider registries = registries();
         if (registries == null) return false;
+        if (!owner.equals(loadingFor)) {
+            loadingFor = owner;
+            loading = read(fileFor(owner));
+        }
+        if (!wait && !loading.isDone()) return false;
+        JsonObject root = loading.join();
+        loadingFor = null;
+        loading = null;
         if (loadedFor != null) flush();
         containers.clear();
         dirty = false;
         loadedFor = owner;
         loadedRegistries = registries;
-        File file = fileFor(owner);
-        if (!file.isFile()) return true;
-        try {
-            JsonObject root = JsonParser.parseString(Files.readString(file.toPath(), StandardCharsets.UTF_8)).getAsJsonObject();
-            decode(root, registries);
-        } catch (Exception e) {
-            AlpakaAddons.LOGGER.warn("Item Search: could not read {}", file, e);
+        if (root != null) {
+            try {
+                decode(root, registries);
+            } catch (Exception e) {
+                AlpakaAddons.LOGGER.warn("Item Search: could not read the items of {}", owner, e);
+            }
         }
         return true;
+    }
+
+    /** Reads and parses the file on the file thread; null when there is none or it can't be read. */
+    private static CompletableFuture<JsonObject> read(File file) {
+        return CompletableFuture.supplyAsync(() -> {
+            if (!file.isFile()) return null;
+            try {
+                return JsonParser.parseString(Files.readString(file.toPath(), StandardCharsets.UTF_8)).getAsJsonObject();
+            } catch (Exception e) {
+                AlpakaAddons.LOGGER.warn("Item Search: could not read {}", file, e);
+                return null;
+            }
+        }, FILES);
     }
 
     private static HolderLookup.Provider registries() {

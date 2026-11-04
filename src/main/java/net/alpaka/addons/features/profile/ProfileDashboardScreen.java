@@ -804,11 +804,7 @@ public class ProfileDashboardScreen extends Screen {
             ModernGuiUtils.drawRoundedRect(graphics, tx, ty, tw, th, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
             if (isSelected) ModernGuiUtils.drawRoundedOutline(graphics, tx, ty, tw, th, AlpakaStyle.CARD_RADIUS, MarketIcons.fade(AlpakaStyle.accent(), 0.8f));
             text(graphics, AlpakaStyle.ellipsize(this.font, t.label(), tw - 12), tx + 7, ty + 6, AlpakaStyle.TEXT_MUTED);
-            graphics.pose().pushMatrix();
-            graphics.pose().translate(tx + 7, ty + 18);
-            graphics.pose().scale(1.35f, 1.35f);
-            text(graphics, AlpakaStyle.ellipsize(this.font, t.value(), (int) ((tw - 14) / 1.35f)), 0, 0, AlpakaStyle.TEXT);
-            graphics.pose().popMatrix();
+            value(graphics, t.value(), tx + 7, ty + 18, tw - 14);
             if (clickable && session.historyProblem() != null) {
                 // No history to show, so neither a change nor a line; the card still picks the graph,
                 // which then says what it needs.
@@ -1019,10 +1015,15 @@ public class ProfileDashboardScreen extends Screen {
             String name = l.name() + (isSelectedClass ? "  •" : "");
             text(graphics, name, tx, cy + 7, AlpakaStyle.TEXT_SOFT);
             if (opens) text(graphics, "›", tx + textW(name) + 4, cy + 7, hover ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
-            String level = l.maxed() ? "MAX " + l.level() : l.level() + " / " + l.maxLevel();
+            // Once maxed, the XP past the cap counts on as an overflow level, with its own bar.
+            Levels.Overflow over = l.overflow();
+            String level = over != null ? String.format(Locale.US, "%.2f", over.exact())
+                    : l.maxed() ? "MAX " + l.level() : l.level() + " / " + l.maxLevel();
             text(graphics, level, tx + tw - textW(level), cy + 7, l.maxed() ? ink(0xFFFFC94D) : AlpakaStyle.TEXT);
-            bar(graphics, tx, cy + 19, tw, 3, l.progress(), l.maxed() ? ink(0xFFFFC94D) : AlpakaStyle.accent());
-            String xp = l.maxed() ? Coins.compact(l.xp()) + " XP" : Coins.compact(l.xpCurrent()) + " / " + Coins.compact(l.xpForNext());
+            bar(graphics, tx, cy + 19, tw, 3, over != null ? over.progress() : l.progress(), l.maxed() ? ink(0xFFFFC94D) : AlpakaStyle.accent());
+            String xp = over != null ? "Max " + l.maxLevel() + " · " + Coins.compact(over.xpCurrent()) + " / " + Coins.compact(over.xpForNext())
+                    : l.maxed() ? Coins.compact(l.xp()) + " XP"
+                    : Coins.compact(l.xpCurrent()) + " / " + Coins.compact(l.xpForNext());
             text(graphics, xp, tx, cy + 25, AlpakaStyle.TEXT_MUTED);
             double rate = session.ratePerDay(metric, 7);
             if (rate > 0) {
@@ -1037,6 +1038,9 @@ public class ProfileDashboardScreen extends Screen {
             if (hover) {
                 String tipText = l.name() + ": " + Coins.full(Math.floor(l.xp())) + " XP in total.";
                 if (!l.maxed()) tipText += " " + Coins.full(Math.ceil(l.xpForNext() - l.xpCurrent())) + " XP to level " + (l.level() + 1) + ".";
+                if (over != null) tipText += " Maxed at " + l.maxLevel() + "; the XP past it makes overflow level "
+                        + String.format(Locale.US, "%.2f", over.exact()) + ", " + Coins.full(Math.ceil(over.xpForNext() - over.xpCurrent()))
+                        + " XP to " + (over.level() + 1) + ".";
                 if (isSelectedClass) tipText += " Your selected class.";
                 tip(metric, tipText + (opens ? " Click for the " + l.name() + " page." : " Click for its graph."));
             }
@@ -1092,8 +1096,11 @@ public class ProfileDashboardScreen extends Screen {
 
     private static Tile skillTile(ProfileData d, String id, String name) {
         ProfileData.Level l = skill(d, id);
-        String value = l == null ? "—" : l.maxed() ? "MAX " + l.level() : String.valueOf(l.level());
-        String note = l == null || l.maxed() ? null : Math.round(l.progress() * 100) + "% to " + (l.level() + 1);
+        Levels.Overflow over = l == null ? null : l.overflow();
+        String value = l == null ? "—" : over != null ? String.format(Locale.US, "%.2f", over.exact())
+                : l.maxed() ? "MAX " + l.level() : String.valueOf(l.level());
+        String note = l == null ? null : over != null ? "Max " + l.maxLevel() + ", overflow"
+                : l.maxed() ? null : Math.round(l.progress() * 100) + "% to " + (l.level() + 1);
         return new Tile(Metrics.SKILL + id, name, value, note);
     }
 
@@ -2316,6 +2323,29 @@ public class ProfileDashboardScreen extends Screen {
         graphics.pose().translate(x, y);
         graphics.pose().scale(scale, scale);
         graphics.item(stack, 0, 0);
+        graphics.pose().popMatrix();
+    }
+
+    /**
+     * A card's big number. In a TrueType font it is drawn in the font's own larger cut
+     * ({@link GuiFont#title}): the normal text under a scaled pose was resampled, and blurry. The
+     * pixel font has no such cut and is scaled as before.
+     */
+    private void value(GuiGraphicsExtractor graphics, String value, int x, int y, int maxW) {
+        Component big = GuiFont.title(value);
+        if (big != null && this.font.width(big) <= maxW) {
+            graphics.text(this.font, big, x, y, AlpakaStyle.TEXT, false);
+            return;
+        }
+        if (big != null) {
+            // Too long for the large cut: the normal size, cut to fit, stays sharp.
+            text(graphics, AlpakaStyle.ellipsize(this.font, value, maxW), x, y + 2, AlpakaStyle.TEXT);
+            return;
+        }
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(x, y);
+        graphics.pose().scale(1.35f, 1.35f);
+        text(graphics, AlpakaStyle.ellipsize(this.font, value, (int) (maxW / 1.35f)), 0, 0, AlpakaStyle.TEXT);
         graphics.pose().popMatrix();
     }
 

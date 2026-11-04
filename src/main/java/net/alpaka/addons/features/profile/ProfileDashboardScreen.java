@@ -2385,13 +2385,22 @@ public class ProfileDashboardScreen extends Screen {
         return y + tallest;
     }
 
-    /** One inventory alone on its tab: twice the size when it fits, in the middle of the page. */
+    /** One inventory alone on its tab: twice the size when it fits, in the middle of the view. */
     private int single(GuiGraphicsExtractor graphics, Section s, int x, int y, int w) {
         slotScale = 9 * SLOT * 2 + 16 <= w ? 2 : 1;
         int sw = 9 * SLOT * slotScale + 16;
-        int h = section(graphics, s, x + (w - sw) / 2, y);
+        int rows = Math.max(1, (s.keys().size() + 8) / 9);
+        int h = section(graphics, s, x + (w - sw) / 2, middle(y, 22 + rows * SLOT * slotScale + 8));
         slotScale = 1;
         return y + h;
+    }
+
+    /**
+     * Where a card of this height starts to sit in the middle of the view below {@code y}, rather
+     * than stuck to its top; at {@code y} when it doesn't fit.
+     */
+    private int middle(int y, int h) {
+        return y + Math.max(0, (clipY + clipH - 6 - y - h) / 2);
     }
 
     private int section(GuiGraphicsExtractor graphics, Section s, int x, int y) {
@@ -2467,6 +2476,7 @@ public class ProfileDashboardScreen extends Screen {
         int cw = 16 + sideW + 9 * slot;
         int h = 22 + 4 * slot + 6 * slotScale + 8;
         x += (w - cw) / 2;
+        y = middle(y, h);
         card(graphics, x, y, cw, h);
         text(graphics, "Inventory", x + 8, y + 7, AlpakaStyle.TEXT);
         int gy = y + 22;

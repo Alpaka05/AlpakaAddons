@@ -1976,8 +1976,9 @@ public class ProfileDashboardScreen extends Screen {
 
     private int pets(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
         List<Tile> tiles = new ArrayList<>();
-        tiles.add(new Tile(Metrics.PETS, "Pets", Coins.full(d.pets.size()), null));
-        tiles.add(new Tile(Metrics.PETS_MAXED, "Max Level", Coins.full(d.petsMaxed), null));
+        // Plain cards: the page has no graph to pick, and these counts rarely move.
+        tiles.add(new Tile(null, "Pets", Coins.full(d.pets.size()), null));
+        tiles.add(new Tile(null, "Max Level", Coins.full(d.petsMaxed), null));
         tiles.add(new Tile(null, "Pet Skins", Coins.full(d.petSkins), null));
         tiles.add(new Tile(null, "Pet Score", Coins.full(d.petScore), "highest reached"));
         y = tiles(graphics, tiles, x, y, w, 4) + 6;

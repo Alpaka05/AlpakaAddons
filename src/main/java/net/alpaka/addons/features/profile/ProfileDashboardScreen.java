@@ -1994,10 +1994,16 @@ public class ProfileDashboardScreen extends Screen {
     // ---- Pets -----------------------------------------------------------------------------------
 
     private int pets(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
+        Missing.Neu neu = Missing.neu();
+        if (neu != null && maxPetsFor != d) {
+            maxPets = Missing.maxPets(d.pets, neu, "bingo".equals(gameMode(session)));
+            maxPetsFor = d;
+        }
         List<Tile> tiles = new ArrayList<>();
         // Plain cards: the page has no graph to pick, and these counts rarely move.
         tiles.add(new Tile(null, "Pets", Coins.full(d.pets.size()), null));
-        tiles.add(new Tile(null, "Max Level", Coins.full(d.petsMaxed), null));
+        tiles.add(new Tile(null, "Max Pets", neu == null ? "…" : maxPets.maxed() + " / " + maxPets.total(),
+                "max level and rarity"));
         tiles.add(new Tile(null, "Pet Skins", Coins.full(d.petSkins), null));
         tiles.add(new Tile(null, "Pet Score", Coins.full(d.petScore), "highest reached"));
         y = tiles(graphics, tiles, x, y, w, 4) + 6;
@@ -2067,6 +2073,8 @@ public class ProfileDashboardScreen extends Screen {
         return missingPets(graphics, d, x, y + 12, w, cols, cw, ch, gap);
     }
 
+    private ProfileData maxPetsFor;
+    private Missing.MaxPets maxPets;
     private ProfileData missingPetsFor;
     private List<Missing.MissingPet> missingPets = List.of();
 
@@ -2941,7 +2949,6 @@ public class ProfileDashboardScreen extends Screen {
         count(sb, "Deaths", Json.num(r, "stats.playerStats.killsDeaths.totalDeaths"));
         count(sb, "Bestiary Kills", Json.num(r, "stats.bestiaryDerivations.totalKills"));
         count(sb, "Soulflow", Json.num(r, "stats.miscStats.soulflow"));
-        count(sb, "Pelts", Json.num(r, "stats.miscStats.pelts"));
         add(cards, "SkyBlock", sb);
 
         List<String[]> coins = new ArrayList<>();

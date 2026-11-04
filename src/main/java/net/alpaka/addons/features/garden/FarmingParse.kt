@@ -33,8 +33,12 @@ object FarmingParse {
         "Cocoa Beans", "Moonflower", "Sunflower", "Wild Rose",
     )
 
-    /** "YUM! Pests will now spawn 2x less while you break crops for the next 60m!" */
-    private val REPELLENT_CHAT = Regex("Pests will now spawn (\\d+)x less while you break crops for the next (\\d+)m")
+    /**
+     * "YUM! Pests will now spawn 2x less while you break crops for the next 60m!". Anchored like
+     * [PEST_SPAWN], so a player typing it in chat neither sets the timer nor, with a huge number,
+     * throws inside the chat packet handler (which disconnects).
+     */
+    private val REPELLENT_CHAT = Regex("^\\w+! Pests will now spawn (\\d{1,3})x less while you break crops for the next (\\d{1,4})m")
 
     /**
      * "YUCK! 3 ൠ Pests have spawned in Plot - 19!", "GROSS! A ൠ Pest has spawned in The Barn!".
@@ -122,7 +126,9 @@ object FarmingParse {
 
     fun repellent(chat: String): Repellent? {
         val match = REPELLENT_CHAT.find(chat) ?: return null
-        return Repellent(match.groupValues[1].toInt(), match.groupValues[2].toInt())
+        val factor = match.groupValues[1].toIntOrNull() ?: return null
+        val minutes = match.groupValues[2].toIntOrNull() ?: return null
+        return Repellent(factor, minutes)
     }
 
     fun pestSpawned(chat: String): Boolean = PEST_SPAWN.containsMatchIn(chat)

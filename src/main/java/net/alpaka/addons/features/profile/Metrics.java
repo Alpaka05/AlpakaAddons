@@ -38,6 +38,20 @@ public final class Metrics {
     public static final String GARDEN = "garden";
     public static final String MINIONS = "minions";
 
+    /**
+     * Whether some service keeps a history of this metric (Elite, Soopy, SkyKings), so its graph
+     * reaches back before the player first opened the dashboard. The rest only grow from the
+     * dashboard's own snapshots, which stay nearly empty, so they get no graph. Kuudra runs and
+     * trophy fish come from SkyKings alone, so only with a SkyKings key.
+     */
+    public static boolean hasHistory(String id) {
+        if (id.equals(KUUDRA) || id.equals(TROPHY_FISH)) {
+            return !net.alpaka.addons.config.AlpakaConfig.instance.skykingsApiKey.isBlank();
+        }
+        return id.equals(NETWORTH) || id.equals(SB_LEVEL) || id.startsWith(SKILL) || id.equals(CATACOMBS)
+                || id.startsWith(CLASS) || id.startsWith(SLAYER);
+    }
+
     public enum Kind { COINS, XP, LEVEL, COUNT, DECIMAL }
 
     public static Kind kind(String id) {

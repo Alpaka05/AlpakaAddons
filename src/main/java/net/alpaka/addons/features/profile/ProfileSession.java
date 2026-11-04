@@ -139,18 +139,21 @@ public final class ProfileSession {
 
     /**
      * The account's profiles worth showing, the selected one first and the others by name, as the
-     * game's profile menu has them. A Bingo profile only counts while a Bingo event runs: once it
-     * is over the profile is a leftover nobody looks at again. Should that leave nothing, everything
-     * is shown after all.
+     * game's profile menu has them. Elite keeps every profile it ever saw: one the player deleted
+     * comes back {@code deleted}, and one they left or were kicked from still lists them as a
+     * member, only no longer {@code active}. Neither is in the game's menu any more, so neither is
+     * here. A Bingo profile only counts while a Bingo event runs: once it is over the profile is a
+     * leftover nobody looks at again. Should that leave nothing, the Bingo ones are shown after all.
      */
     static List<ProfileRef> profiles(JsonElement account, JsonElement bingoEvent, long now) {
         boolean bingoRunning = bingoEvent != null
                 && Json.num(bingoEvent, "start", Double.MAX_VALUE) <= now && now <= Json.num(bingoEvent, "end", 0);
+        String uuid = Json.str(account, "id");
         List<ProfileRef> all = new ArrayList<>();
         List<ProfileRef> shown = new ArrayList<>();
         for (JsonElement p : Json.arr(account, "profiles")) {
             String id = Json.str(p, "profileId");
-            if (id == null || Json.bool(p, "wasRemoved")) continue;
+            if (id == null || Json.bool(p, "wasRemoved") || Json.bool(p, "deleted") || leftBy(p, uuid)) continue;
             ProfileRef ref = new ProfileRef(id, Json.str(p, "profileName"), Json.str(p, "gameMode"), Json.bool(p, "selected"));
             all.add(ref);
             if (bingoRunning || !"bingo".equals(ref.gameMode())) shown.add(ref);
@@ -158,6 +161,18 @@ public final class ProfileSession {
         List<ProfileRef> refs = shown.isEmpty() ? all : shown;
         refs.sort(Comparator.comparing((ProfileRef r) -> !r.selected()).thenComparing(r -> r.name() == null ? "" : r.name()));
         return List.copyOf(refs);
+    }
+
+    /** Whether the player is still listed on the profile but no longer one of its members. */
+    private static boolean leftBy(JsonElement profile, String uuid) {
+        if (uuid == null) return false;
+        for (JsonElement m : Json.arr(profile, "members")) {
+            if (uuid.equals(Json.str(m, "uuid"))) {
+                JsonElement active = m.isJsonObject() ? m.getAsJsonObject().get("active") : null;
+                return active != null && active.isJsonPrimitive() && !active.getAsBoolean();
+            }
+        }
+        return false;
     }
 
     private String pickProfile() {

@@ -71,6 +71,64 @@ public final class Levels {
         return Math.min(maxLevel, level + extra);
     }
 
+    /**
+     * A level counted on past the cap: the whole level, the XP already into the next one and what
+     * the next one takes.
+     */
+    public record Overflow(int level, double xpCurrent, double xpForNext) {
+        /** The level with the way to the next as the fraction, 63.42. */
+        public double exact() {
+            return level + (xpForNext > 0 ? Math.max(0, Math.min(1, xpCurrent / xpForNext)) : 0);
+        }
+
+        public double progress() {
+            return xpForNext > 0 ? Math.max(0, Math.min(1, xpCurrent / xpForNext)) : 1;
+        }
+    }
+
+    /** What level 61 takes; each level after takes the slope more, see {@link #skillOverflow}. */
+    static final long SKILL_PAST_60 = 7_600_000L;
+    static final long SKILL_SLOPE = 600_000L;
+
+    /**
+     * The skill level this much XP would be with no cap, as SkyHanni counts it: the normal table up
+     * to 60 whatever the skill's own cap, then 7.6M for level 61 and 600k more for each level after,
+     * the step doubling every tenth level. Null for Runecrafting and Social, whose short tables have
+     * no such rule.
+     */
+    public static Overflow skillOverflow(String skill, double xp) {
+        if (tableFor(skill) != SKILL) return null;
+        double left = Math.max(0, xp);
+        int level = 0;
+        for (long need : SKILL) {
+            if (left < need) return new Overflow(level, left, need);
+            left -= need;
+            level++;
+        }
+        long slope = SKILL_SLOPE;
+        double need = SKILL_PAST_60;
+        while (left >= need) {
+            left -= need;
+            level++;
+            need += slope;
+            if (level % 10 == 0) slope *= 2;
+        }
+        return new Overflow(level, left, need);
+    }
+
+    /** The Catacombs or class level with no cap: the table up to 50, then 200M a level. */
+    public static Overflow catacombsOverflow(double xp) {
+        double left = Math.max(0, xp);
+        int level = 0;
+        for (long need : CATACOMBS) {
+            if (left < need) return new Overflow(level, left, need);
+            left -= need;
+            level++;
+        }
+        int past = (int) Math.floor(left / CATACOMBS_OVERFLOW);
+        return new Overflow(level + past, left - (double) past * CATACOMBS_OVERFLOW, CATACOMBS_OVERFLOW);
+    }
+
     /** XP from zero to the start of {@code level}. */
     static long total(long[] table, int level) {
         long sum = 0;

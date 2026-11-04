@@ -108,7 +108,12 @@ public final class Metrics {
     public static String levelNote(String id, double value, int maxLevel) {
         double level = Double.NaN;
         if (id.startsWith(SKILL) && !id.equals(SKILL_AVG)) {
-            level = Levels.skill(id.substring(SKILL.length()), value, maxLevel > 0 ? maxLevel : 60);
+            String skill = id.substring(SKILL.length());
+            int cap = maxLevel > 0 ? maxLevel : 60;
+            level = Levels.skill(skill, value, cap);
+            // At the cap the XP counts on as an overflow level, as in the skill's card.
+            Levels.Overflow over = level >= cap ? Levels.skillOverflow(skill, value) : null;
+            if (over != null) level = over.exact();
         } else if (id.equals(CATACOMBS) || id.startsWith(CLASS)) {
             level = Levels.catacombs(value);
         }

@@ -17,9 +17,15 @@ import java.util.Map;
 public final class ProfileData {
 
     /** A skill, Catacombs or a class: the level, and how far along the way to the next it is. */
-    public record Level(String id, String name, int level, int maxLevel, double xp, double xpCurrent, double xpForNext) {
+    public record Level(String id, String name, int level, int maxLevel, double xp, double xpCurrent, double xpForNext,
+                        Levels.Overflow uncapped) {
         public boolean maxed() {
             return level >= maxLevel || xpForNext <= 0;
+        }
+
+        /** The level past the cap the XP adds up to, once maxed; null before, or with no such rule. */
+        public Levels.Overflow overflow() {
+            return maxed() ? uncapped : null;
         }
 
         /** 0 to 1 towards the next level; 1 when there is none. */
@@ -80,6 +86,9 @@ public final class ProfileData {
     public final List<Level> classes = new ArrayList<>();
     public final String selectedClass;
     public final double classAverage;
+    /** The class average with every class counted on past 50, as the classes' own cards show them. */
+    public final double classAverageOverflow;
+    public final double secretsFound;
     public final List<Floor> floors = new ArrayList<>();
     public final int totalRuns;
 
@@ -128,15 +137,21 @@ public final class ProfileData {
         int cataLevel = (int) Json.num(dungeons, "catacombsLevel", 0);
         this.catacombs = new Level("catacombs", "Catacombs", cataLevel, 50, cataXp,
                 cataXp - Levels.total(Levels.CATACOMBS, cataLevel),
-                cataLevel < 50 ? Levels.CATACOMBS[cataLevel] : 0);
+                cataLevel < 50 ? Levels.CATACOMBS[cataLevel] : 0, Levels.catacombsOverflow(cataXp));
         for (String id : CLASSES) {
             JsonObject c = Json.obj(dungeons, "classLevels." + id);
             if (c.isEmpty()) continue;
             Level parsed = level(id, title(id), c);
-            classes.add(new Level(parsed.id(), parsed.name(), parsed.level(), 50, parsed.xp(), parsed.xpCurrent(), parsed.xpForNext()));
+            classes.add(new Level(parsed.id(), parsed.name(), parsed.level(), 50, parsed.xp(), parsed.xpCurrent(), parsed.xpForNext(),
+                    Levels.catacombsOverflow(parsed.xp())));
         }
         this.selectedClass = Json.str(dungeons, "selectedClass");
         this.classAverage = Json.num(dungeons, "classAverage", 0);
+        // Over all five classes, an unplayed one as 0, as the game's own average is taken.
+        double classLevels = 0;
+        for (Level c : classes) classLevels += c.uncapped() != null ? c.uncapped().exact() : c.level();
+        this.classAverageOverflow = classLevels / CLASSES.length;
+        this.secretsFound = Json.num(dungeons, "secretsFound", 0);
         int runs = 0;
         for (int tier = 0; tier <= 7; tier++) {
             JsonObject f = Json.obj(dungeons, "floors." + tier);
@@ -204,7 +219,8 @@ public final class ProfileData {
 
     private static Level level(String id, String name, JsonObject s) {
         return new Level(id, name, (int) Json.num(s, "level", 0), (int) Json.num(s, "maxLevel", 60),
-                Json.num(s, "xp", 0), Json.num(s, "xpCurrent", 0), Json.num(s, "xpForNext", 0));
+                Json.num(s, "xp", 0), Json.num(s, "xpCurrent", 0), Json.num(s, "xpForNext", 0),
+                Levels.skillOverflow(id, Json.num(s, "xp", 0)));
     }
 
     /** The collections with their tiers, named and grouped as Hypixel's resources have them. */

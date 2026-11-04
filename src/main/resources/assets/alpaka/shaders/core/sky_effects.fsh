@@ -271,7 +271,9 @@ vec3 netherSky(vec3 dir, float t, float pixel, vec3 fog) {
     float tongues = valueNoise2(p * 4.0 + warp * 3.0 + vec2(0.0, -t * 0.4)) - 0.5;
     float heat = smoothstep(0.48, 0.86, f + 0.25 * (warp.y - 0.5) + 0.12 * tongues) * (0.35 + 0.65 * fire);
     float width = 0.02 + df;
-    float seam = exp(-pow((f - 0.5) / width, 2.0)) * 0.02 / width * fire;
+    // Squared by hand: pow() is undefined for a negative base, and Apple's GPUs return NaN there.
+    float seamD = (f - 0.5) / width;
+    float seam = exp(-seamD * seamD) * 0.02 / width * fire;
     vec3 storm = base * mix(1.0, 0.25, body);
     storm = mix(storm, flame * (0.55 + 0.45 * glow), clamp(heat * 1.15 + seam * 0.35, 0.0, 1.0));
     storm += whiteHot * pow(heat, 4.0) * 0.7;
@@ -439,7 +441,10 @@ vec3 endSky(vec3 dir, float t, float pixel, float strength) {
     vec3 col = nebula * density * (0.55 + 0.45 * detail) * 0.85;
     // Glowing wisps along the edges of the gas, never thinner than the pixels allow.
     float width = 0.02 + dgas;
-    float wisp = (exp(-pow((gas - 0.47) / width, 2.0)) + 0.5 * exp(-pow((gas - 0.58) / width, 2.0))) * 0.02 / width;
+    // Squared by hand: pow() is undefined for a negative base, and Apple's GPUs return NaN there.
+    float wispA = (gas - 0.47) / width;
+    float wispB = (gas - 0.58) / width;
+    float wisp = (exp(-wispA * wispA) + 0.5 * exp(-wispB * wispB)) * 0.02 / width;
     col += mix(magenta, cyan, smoothstep(0.4, 0.7, warp)) * wisp * 0.22;
     col += magenta * pow(smoothstep(0.62, 0.9, gas), 3.0) * 0.6;
 

@@ -112,6 +112,8 @@ public class ProfileDashboardScreen extends Screen {
     private final List<Runnable> overlays = new ArrayList<>();
     /** Areas, mostly items, greyed out above the content: what the profile doesn't have yet. */
     private final List<int[]> veils = new ArrayList<>();
+    /** Corners of museum slots whose item is taken out right now, marked above the items like the veils. */
+    private final List<int[]> borrowedDots = new ArrayList<>();
     private static final int VEIL = 0xA0131313;
     private final Scroll scroll = new Scroll();
     private Page scrolledPage = null;
@@ -239,6 +241,7 @@ public class ProfileDashboardScreen extends Screen {
         overlays.clear();
         pinTop = pinBottom = Integer.MIN_VALUE;
         veils.clear();
+        borrowedDots.clear();
         hoveredTip = null;
         hoveredTipKey = null;
         long now = System.currentTimeMillis();
@@ -266,19 +269,22 @@ public class ProfileDashboardScreen extends Screen {
         clipY = y + HEADER_H;
         clipW = w - SIDE_W - 1;
         clipH = h - HEADER_H - 4;
-        if (scrolledPage != page || !java.util.Objects.equals(scrolledDetail, skillDetail)) {
+        // A search is a view of its own, and every new query starts at the top.
+        String detail = searching() ? "\u0000search:" + itemSearch.getText() : skillDetail;
+        if (scrolledPage != page || !java.util.Objects.equals(scrolledDetail, detail)) {
             scrolledPage = page;
-            scrolledDetail = skillDetail;
+            scrolledDetail = detail;
             scroll.current = scroll.target = 0;
         }
         graphics.enableScissor(clipX, clipY, clipX + clipW, clipY + clipH);
         clipping = true;
         int top = clipY + PAD - scroll.offset();
         int bottom = drawContent(graphics, clipX + PAD + 2, top, clipW - 2 * PAD - 4, now);
-        if (!veils.isEmpty()) {
+        if (!veils.isEmpty() || !borrowedDots.isEmpty()) {
             // Items are drawn above everything else of their layer, so the veils over them need one of their own.
             graphics.nextStratum();
             for (int[] v : veils) graphics.fill(v[0], v[1], v[0] + v[2], v[1] + v[3], VEIL);
+            for (int[] dot : borrowedDots) ModernGuiUtils.drawRoundedRect(graphics, dot[0], dot[1], 4, 4, 2, ink(GOLD));
         }
         clipping = false;
         scroll.max = Math.max(0, bottom + scroll.offset() - clipY - clipH + PAD);
@@ -473,12 +479,28 @@ public class ProfileDashboardScreen extends Screen {
         int rowX = x + 4;
         int rowW = SIDE_W - 8;
         int pages = Page.values().length;
+
+        // At the top, the search through every item the profile owns.
+        int fieldY = y + 6;
+        boolean hoverField = AlpakaStyle.inside(mx, my, rowX, fieldY, rowW, AlpakaStyle.BUTTON_H) && !profileMenuOpen;
+        AlpakaStyle.textField(graphics, this.font, rowX, fieldY, rowW, AlpakaStyle.BUTTON_H, itemSearch.getText(), "Search Items",
+                itemSearchFocused, hoverField, itemCaretFrom);
+        hits.add(new Hit(rowX, fieldY, rowW, AlpakaStyle.BUTTON_H, () -> {
+            itemSearchFocused = true;
+            itemCaretFrom = System.currentTimeMillis();
+        }));
+        if (hoverField && !itemSearchFocused) {
+            tip("itemsearch", "Search every item the profile owns: inventory, Ender Chest, backpacks, wardrobe, accessories, vault, bags, museum, sacks and pets.");
+        }
+        int listTop = fieldY + AlpakaStyle.BUTTON_H + 2;
+        int listH = y + h - listTop;
+
         // On a small window the label and the footer give way first, then the rows get slimmer.
         int footerH = 30;
-        boolean label = h >= 12 + pages * (SIDE_ROW_H + 1) + footerH + 12;
-        boolean footer = h >= pages * 17 + footerH + 12;
-        int rowH = Math.max(14, Math.min(SIDE_ROW_H, (h - 10 - (label ? 12 : 0) - (footer ? footerH : 0)) / pages - 1));
-        int rowY = y + (label ? 8 : 5);
+        boolean label = listH >= 12 + pages * (SIDE_ROW_H + 1) + footerH + 12;
+        boolean footer = listH >= pages * 17 + footerH + 12;
+        int rowH = Math.max(14, Math.min(SIDE_ROW_H, (listH - 10 - (label ? 12 : 0) - (footer ? footerH : 0)) / pages - 1));
+        int rowY = listTop + (label ? 8 : 5);
         if (label) {
             AlpakaStyle.groupLabel(graphics, this.font, "Profile", x + PAD, rowY);
             rowY += 12;
@@ -504,6 +526,7 @@ public class ProfileDashboardScreen extends Screen {
                 page = target;
                 lastPage = target;
                 skillDetail = null;
+                itemSearch.setText("");
             }));
             rowY += rowH + 1;
         }
@@ -575,6 +598,7 @@ public class ProfileDashboardScreen extends Screen {
             return y + h;
         }
         ProfileData d = s.data;
+        if (searching()) return itemResults(graphics, d, x, y, w);
         return switch (page) {
             case OVERVIEW -> overview(graphics, d, x, y, w, now);
             case SKILLS -> skills(graphics, d, x, y, w);
@@ -2944,6 +2968,9 @@ public class ProfileDashboardScreen extends Screen {
     private Museum.Repo museumRepo;
     private JsonElement museumFor;
     private Museum.Donated museum;
+    /** What each item in the museum is worth, by its uuid, from the networth; taken-out items are valued where they are. */
+    private JsonElement museumValuesFor;
+    private Map<String, Double> museumValues = Map.of();
     private static final String SPECIAL = "special";
     private static final int CELL = 20;
 
@@ -2963,14 +2990,27 @@ public class ProfileDashboardScreen extends Screen {
 
     private int museum(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
         if (!Json.bool(d.raw, "api.museum")) return apiOff(graphics, "Museum", x, y, w);
+        if (!d.inventories.containsKey("museum")) return note(graphics, "Nothing donated to the museum yet.", x, y, w);
         Museum.Repo repo = Museum.repo();
+        // The museum inventory rather than the networth's museum category: only it still lists the
+        // items taken out, which count as donated all the same.
+        JsonElement inventory = session.inventory("museum");
         JsonElement answer = session.networth();
-        if (repo != null && answer != null && (repo != museumRepo || answer != museumFor)) {
+        if (repo != null && inventory != null && (repo != museumRepo || inventory != museumFor)) {
             museumRepo = repo;
-            museumFor = answer;
-            museum = Museum.of(repo, Json.arr(answer, "categories.museum.items"));
+            museumFor = inventory;
+            museum = Museum.of(repo, Json.obj(inventory, "items").asMap().values());
         }
-        Museum.Donated m = repo != null && answer != null ? museum : null;
+        if (answer != null && answer != museumValuesFor) {
+            museumValuesFor = answer;
+            Map<String, Double> values = new HashMap<>();
+            for (JsonElement item : Json.arr(answer, "categories.museum.items")) {
+                String uuid = Json.str(item, "item.uuid");
+                if (uuid != null) values.put(uuid, Json.num(item, "networth", 0));
+            }
+            museumValues = values;
+        }
+        Museum.Donated m = repo != null && inventory != null ? museum : null;
         if (m != null && skillDetail != null) {
             if (skillDetail.equals(SPECIAL)) return museumSpecial(graphics, m, x, y, w);
             for (Museum.Category c : m.categories()) {
@@ -2979,22 +3019,20 @@ public class ProfileDashboardScreen extends Screen {
             skillDetail = null;
         }
 
-        int complete = 0;
-        if (m != null) for (Museum.Category c : m.categories()) if (c.donated() == c.entries().size()) complete++;
         double value = Json.num(answer, "categories.museum.total");
         List<Tile> tiles = new ArrayList<>();
         // Plain cards: the museum has no history to draw.
         tiles.add(new Tile(null, "Items Donated", m == null ? "…" : m.donated() + " / " + repo.total(), null));
         tiles.add(new Tile(null, "Museum Value", answer == null ? "…" : Double.isNaN(value) ? "—" : Coins.compact(value), null));
         tiles.add(new Tile(null, "Special Items", m == null ? "…" : Coins.full(m.special().size()), null));
-        tiles.add(new Tile(null, "Categories Done", m == null ? "…" : complete + " / " + m.categories().size(), null));
+        tiles.add(new Tile(null, "Taken Out", m == null ? "…" : Coins.full(m.borrowed()), "still count as donated"));
         y = tiles(graphics, tiles, x, y, w, 4) + 6;
         if (m == null) {
-            boolean failed = answer == null ? session.networthState == ProfileSession.State.FAILED : Museum.failed();
+            boolean failed = inventory == null ? session.inventoryState("museum") == ProfileSession.State.FAILED : Museum.failed();
             int h = 40;
             card(graphics, x, y, w, h);
             ProfileChart.message(graphics, this.font, failed ? "Couldn't load the museum. Click to try again." : "Loading the museum…", x, y, w, h);
-            if (failed && answer == null) hit(x, y, w, h, session::retryFailed);
+            if (failed && inventory == null) hit(x, y, w, h, session::retryFailed);
             return y + h;
         }
 
@@ -3048,7 +3086,7 @@ public class ProfileDashboardScreen extends Screen {
             if (sy > clipY + clipH || sy + CELL < clipY) continue;
             JsonElement shown = museumItem(repo, e);
             ItemStack stack = shown != null ? InventoryItems.stack(shown) : ItemIcons.forItem(Museum.iconId(repo, e.id()), null);
-            museumSlot(graphics, stack, sx, sy, !e.donated(), museumTip(repo, e));
+            museumSlot(graphics, stack, sx, sy, !e.donated(), e.borrowed(), museumTip(repo, e));
         }
         return y + ((entries.size() + cols - 1) / cols) * CELL - 2;
     }
@@ -3062,22 +3100,26 @@ public class ProfileDashboardScreen extends Screen {
             int sx = x + (i % cols) * CELL;
             int sy = y + (i / cols) * CELL;
             if (sy > clipY + clipH || sy + CELL < clipY) continue;
+            boolean out = Museum.borrowed(item);
             List<Component> lines = new ArrayList<>();
-            String name = Json.str(item, "item.name");
-            lines.add(Component.literal(name == null ? ProfileData.title(String.valueOf(Json.str(item, "item.skyblockId"))) : name));
-            double value = Json.num(item, "networth", 0);
+            String name = Json.str(item, "name");
+            lines.add(Component.literal(name == null ? ProfileData.title(String.valueOf(Json.str(item, "skyblockId"))) : name));
+            lines.add(Component.literal(out ? "§eDonated, taken out right now" : "§aDonated"));
+            double value = museumValue(List.of(item));
             if (value > 0) lines.add(Component.literal("§7Value: §6" + Coins.compact(value)));
-            museumSlot(graphics, InventoryItems.stack(Json.at(item, "item")), sx, sy, false, lines);
+            museumSlot(graphics, InventoryItems.stack(item), sx, sy, false, out, lines);
         }
         return y + ((m.special().size() + cols - 1) / cols) * CELL - 2;
     }
 
-    private void museumSlot(GuiGraphicsExtractor graphics, ItemStack stack, int sx, int sy, boolean missing, List<Component> tip) {
+    /** A slot of the museum: greyed out while missing, with a dot in the corner while taken out. */
+    private void museumSlot(GuiGraphicsExtractor graphics, ItemStack stack, int sx, int sy, boolean missing, boolean out, List<Component> tip) {
         int size = CELL - 2;
         boolean hover = hover(sx, sy, size, size);
         ModernGuiUtils.drawRoundedRect(graphics, sx, sy, size, size, 2, hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW);
         if (!stack.isEmpty()) graphics.item(stack, sx + 1, sy + 1);
         if (missing) veils.add(new int[] {sx, sy, size, size});
+        if (out) borrowedDots.add(new int[] {sx + size - 5, sy + 1});
         if (hover) hoveredLines = tip;
     }
 
@@ -3086,16 +3128,26 @@ public class ProfileDashboardScreen extends Screen {
         if (e.items().isEmpty()) return null;
         String icon = Museum.iconId(repo, e.id());
         for (JsonElement item : e.items()) {
-            if (icon.equals(Json.str(item, "item.skyblockId"))) return Json.at(item, "item");
+            if (icon.equals(Json.str(item, "skyblockId"))) return item;
         }
-        return Json.at(e.items().get(0), "item");
+        return e.items().get(0);
     }
 
-    private static List<Component> museumTip(Museum.Repo repo, Museum.Entry e) {
+    /** The worth of donated items still in the museum; the networth values the ones taken out where they are. */
+    private double museumValue(List<JsonElement> items) {
+        double v = 0;
+        for (JsonElement item : items) {
+            String uuid = Json.str(item, "uuid");
+            if (uuid != null) v += museumValues.getOrDefault(uuid, 0.0);
+        }
+        return v;
+    }
+
+    private List<Component> museumTip(Museum.Repo repo, Museum.Entry e) {
         String name = ItemIcons.name(Museum.iconId(repo, e.id()));
         String color = "§f";
         if (!e.items().isEmpty()) {
-            String donatedName = Json.str(e.items().get(0), "item.name");
+            String donatedName = Json.str(e.items().get(0), "name");
             if (donatedName != null && donatedName.startsWith("§") && donatedName.length() > 1) color = donatedName.substring(0, 2);
             if (name == null && donatedName != null) name = SkyblockUtils.cleanColor(donatedName);
         }
@@ -3113,8 +3165,9 @@ public class ProfileDashboardScreen extends Screen {
         } else if (e.items().isEmpty()) {
             lines.add(Component.literal("§aDonated through a better tier"));
         } else {
-            lines.add(Component.literal("§aDonated"));
-            if (e.value() > 0) lines.add(Component.literal("§7Value: §6" + Coins.compact(e.value())));
+            lines.add(Component.literal(e.borrowed() ? "§eDonated, taken out right now" : "§aDonated"));
+            double value = museumValue(e.items());
+            if (value > 0) lines.add(Component.literal("§7Value: §6" + Coins.compact(value)));
         }
         return lines;
     }
@@ -3262,6 +3315,268 @@ public class ProfileDashboardScreen extends Screen {
 
     private static void add(List<Card> cards, String title, List<String[]> rows) {
         if (!rows.isEmpty()) cards.add(new Card(title, rows));
+    }
+
+    // ---- Item search ----------------------------------------------------------------------------
+
+    private final EditableText itemSearch = new EditableText(40);
+    private boolean itemSearchFocused;
+    private long itemCaretFrom;
+
+    /**
+     * One thing the profile owns, as the search finds it: its name in the game's colors, the text
+     * it is matched by, where it is, and the page it is on.
+     */
+    private record Found(String name, String haystack, String where, int count, JsonElement item, String iconId,
+                         ProfileData.Pet pet, Runnable open) {}
+
+    private List<Found> searchIndex = List.of();
+    private String searchIndexKey;
+    private String resultsFor;
+    private List<Found> results = List.of();
+    /** At most this many rows: a single letter finds thousands, and nobody scrolls through them. */
+    private static final int MAX_RESULTS = 400;
+
+    private boolean searching() {
+        return !itemSearch.getText().isBlank() && session.data != null;
+    }
+
+    /** The inventories in the order the search lists them: what is carried first, the museum last. */
+    private static int inventoryRank(String name) {
+        if (name.startsWith("backpack_")) {
+            try {
+                return 400 + Integer.parseInt(name.substring("backpack_".length()));
+            } catch (NumberFormatException e) {
+                return 499;
+            }
+        }
+        return switch (name) {
+            case "inventory" -> 0;
+            case "armor" -> 1;
+            case "equipment" -> 2;
+            case "ender_chest" -> 300;
+            case "wardrobe" -> 500;
+            case "equipment_wardrobe" -> 501;
+            case "talisman_bag" -> 600;
+            case "personal_vault" -> 700;
+            case "museum" -> 900;
+            case "icons_backpack" -> 950;
+            default -> 800;
+        };
+    }
+
+    /** Where in an inventory an item sits, as the game names it: "Ender Chest · Page 2", "Backpack 4". */
+    private static String where(String inventory, String key) {
+        if (inventory.startsWith("backpack_")) {
+            try {
+                return "Backpack " + (Integer.parseInt(inventory.substring("backpack_".length())) + 1);
+            } catch (NumberFormatException e) {
+                return "Backpack";
+            }
+        }
+        switch (inventory) {
+            case "ender_chest":
+                try {
+                    return "Ender Chest · Page " + (Integer.parseInt(key) / 45 + 1);
+                } catch (NumberFormatException e) {
+                    return "Ender Chest";
+                }
+            case "wardrobe":
+            case "equipment_wardrobe":
+                int colon = key.indexOf(':');
+                return colon > 0 ? "Wardrobe · Set " + key.substring(0, colon) : "Wardrobe";
+            case "inventory": return "Inventory";
+            case "armor": return "Armor";
+            case "equipment": return "Equipment";
+            case "talisman_bag": return "Accessory Bag";
+            case "museum": return "Museum";
+            case "icons_backpack": return "Storage";
+            default:
+                for (String[] bag : BAGS_SHOWN) if (bag[0].equals(inventory)) return bag[1];
+                return categoryLabel(inventory);
+        }
+    }
+
+    /** Leaves the search for the page an item is shown on. */
+    private Runnable opener(Page target, InvTab tab, String detail) {
+        return () -> {
+            itemSearch.setText("");
+            itemSearchFocused = false;
+            page = target;
+            lastPage = target;
+            skillDetail = detail;
+            if (tab != null) invTab = tab;
+        };
+    }
+
+    private Runnable opener(String inventory) {
+        if (inventory.equals("museum")) return opener(Page.MUSEUM, null, null);
+        InvTab tab;
+        if (inventory.startsWith("backpack_") || inventory.equals("icons_backpack")) tab = InvTab.BACKPACKS;
+        else tab = switch (inventory) {
+            case "inventory", "armor", "equipment" -> InvTab.INVENTORY;
+            case "ender_chest" -> InvTab.ENDER_CHEST;
+            case "wardrobe", "equipment_wardrobe" -> InvTab.WARDROBE;
+            case "talisman_bag" -> InvTab.ACCESSORIES;
+            case "personal_vault" -> InvTab.VAULT;
+            default -> InvTab.BAGS;
+        };
+        return opener(Page.INVENTORY, tab, null);
+    }
+
+    private static String haystack(String name, String id) {
+        String plain = name == null ? "" : SkyblockUtils.cleanColor(name);
+        return (plain + " " + (id == null ? "" : id.replace('_', ' '))).toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * Everything the profile owns, from every inventory loaded so far plus the sacks and pets;
+     * asking also starts loading the inventories not asked for yet. Built again whenever another
+     * inventory has come in.
+     */
+    private List<Found> searchIndex(ProfileData d, int[] loaded) {
+        List<String> names = new ArrayList<>(d.inventories.keySet());
+        names.sort(java.util.Comparator.comparingInt(ProfileDashboardScreen::inventoryRank));
+        StringBuilder key = new StringBuilder(d.profileId).append('/').append(System.identityHashCode(d));
+        List<JsonElement> answers = new ArrayList<>();
+        for (String name : names) {
+            JsonElement inv = session.inventory(name);
+            answers.add(inv);
+            if (inv != null) loaded[0]++;
+            key.append(inv == null ? '-' : '+');
+        }
+        loaded[1] = names.size();
+        if (key.toString().equals(searchIndexKey)) return searchIndex;
+
+        List<Found> index = new ArrayList<>();
+        for (int i = 0; i < names.size(); i++) {
+            JsonElement inv = answers.get(i);
+            if (inv == null) continue;
+            String name = names.get(i);
+            Runnable open = opener(name);
+            for (var e : Json.obj(inv, "items").entrySet()) {
+                JsonElement item = e.getValue();
+                if (!InventoryItems.present(item)) continue;
+                // A museum item taken out is found where it really is, not twice.
+                if (name.equals("museum") && Museum.borrowed(item)) continue;
+                String title = Json.str(item, "name");
+                String id = Json.str(item, "skyblockId");
+                if (title == null && id == null) continue;
+                index.add(new Found(title != null ? title : ProfileData.title(id), haystack(title, id), where(name, e.getKey()),
+                        (int) Json.num(item, "count", 1), item, null, null, open));
+            }
+        }
+        for (var e : Json.obj(d.raw, "sacks").entrySet()) {
+            if (!e.getValue().isJsonPrimitive() || e.getValue().getAsDouble() <= 0) continue;
+            String id = e.getKey();
+            String title = ItemIcons.name(id);
+            index.add(new Found("§f" + (title != null ? title : ProfileData.title(id)), haystack(title, id), "Sacks",
+                    (int) Math.min(Integer.MAX_VALUE, e.getValue().getAsDouble()), null, id, null, null));
+        }
+        Runnable pets = opener(Page.PETS, null, null);
+        for (ProfileData.Pet p : d.pets) {
+            String title = "§7[Lvl " + p.level() + "] " + rarityCode(p.tier()) + p.name();
+            index.add(new Found(title, haystack(p.name() + " pet", p.type()), p.active() ? "Pets · Active" : "Pets", 1, null, null, p, pets));
+        }
+        searchIndex = List.copyOf(index);
+        searchIndexKey = key.toString();
+        resultsFor = null;
+        return searchIndex;
+    }
+
+    private static String rarityCode(String tier) {
+        if (tier == null) return "§f";
+        return switch (tier.toUpperCase(Locale.ROOT)) {
+            case "UNCOMMON" -> "§a";
+            case "RARE" -> "§9";
+            case "EPIC" -> "§5";
+            case "LEGENDARY" -> "§6";
+            case "MYTHIC" -> "§d";
+            case "DIVINE" -> "§b";
+            case "SPECIAL", "VERY_SPECIAL" -> "§c";
+            default -> "§f";
+        };
+    }
+
+    /** Every word of the query somewhere in the item's name or id. */
+    private static List<Found> match(List<Found> index, String query) {
+        String[] words = query.toLowerCase(Locale.ROOT).trim().split("\\s+");
+        List<Found> out = new ArrayList<>();
+        for (Found f : index) {
+            boolean all = true;
+            for (String word : words) {
+                if (!f.haystack().contains(word)) {
+                    all = false;
+                    break;
+                }
+            }
+            if (all) out.add(f);
+        }
+        return out;
+    }
+
+    private int itemResults(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
+        String query = itemSearch.getText().trim();
+        int[] loaded = new int[2];
+        List<Found> index = searchIndex(d, loaded);
+        String resultsKey = query + "\u0000" + searchIndexKey;
+        if (!resultsKey.equals(resultsFor)) {
+            resultsFor = resultsKey;
+            results = match(index, query);
+        }
+
+        String title = results.isEmpty() ? "No items match “" + query + "”" : Coins.full(results.size()) + (results.size() == 1 ? " item" : " items")
+                + " match “" + query + "”";
+        text(graphics, AlpakaStyle.ellipsize(this.font, title, w - 140), x + 2, y + 2, AlpakaStyle.TEXT);
+        String status = !d.inventoryApi ? "Inventory API off" : loaded[0] < loaded[1]
+                ? "Loading inventories " + loaded[0] + " / " + loaded[1] + "…" : "Esc to clear";
+        text(graphics, status, x + w - 2 - textW(status), y + 2, AlpakaStyle.TEXT_MUTED);
+        y += 16;
+        if (!d.inventoryApi) {
+            y = note(graphics, "The Inventory API is off for this profile, so only its sacks and pets can be searched.", x, y, w) + 6;
+        }
+        if (results.isEmpty()) return y;
+
+        int rowH = 20;
+        int shown = Math.min(MAX_RESULTS, results.size());
+        for (int i = 0; i < shown; i++) {
+            Found f = results.get(i);
+            int ry = y + i * rowH;
+            if (ry > clipY + clipH || ry + rowH < clipY) continue;
+            boolean hover = hover(x, ry, w, rowH - 2);
+            ModernGuiUtils.drawRoundedRect(graphics, x, ry, w, rowH - 2, AlpakaStyle.ROW_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
+            ItemStack stack = f.item() != null ? InventoryItems.stack(f.item())
+                    : f.pet() != null ? PetIcons.icon(f.pet())
+                    : ItemIcons.forItem(f.iconId(), SkyblockUtils.cleanColor(f.name()));
+            if (!stack.isEmpty()) graphics.item(stack, x + 2, ry + 1);
+            String where = f.where();
+            int whereW = textW(where);
+            text(graphics, where, x + w - 8 - whereW, ry + 5, AlpakaStyle.TEXT_MUTED);
+            String count = f.count() > 1 ? "x" + Coins.full(f.count()) : "";
+            int nameX = x + 24;
+            int nameMax = x + w - 16 - whereW - (count.isEmpty() ? 0 : textW(count) + 8) - nameX;
+            styled(graphics, f.name(), nameX, ry + 5, nameMax);
+            if (!count.isEmpty()) {
+                int nameW = Math.min(nameMax, this.font.width(GuiFont.text(f.name())));
+                text(graphics, count, nameX + nameW + 6, ry + 5, AlpakaStyle.TEXT_MUTED);
+            }
+            if (f.open() != null) hit(x, ry, w, rowH - 2, f.open());
+            if (hover) {
+                if (f.item() != null) {
+                    hoveredItem = f.item();
+                } else {
+                    List<Component> lines = new ArrayList<>();
+                    lines.add(Component.literal(f.name()));
+                    lines.add(Component.literal("§7" + where + (f.count() > 1 ? " · " + Coins.full(f.count()) : "")));
+                    hoveredLines = lines;
+                }
+            }
+        }
+        y += shown * rowH;
+        if (results.size() > shown) {
+            y = note(graphics, Coins.full(results.size() - shown) + " more. Type a little more to narrow the search.", x, y + 4, w);
+        }
+        return y;
     }
 
     // ---- Small parts ----------------------------------------------------------------------------
@@ -3456,6 +3771,9 @@ public class ProfileDashboardScreen extends Screen {
         session = session(name);
         search.setText("");
         searchFocused = false;
+        itemSearch.setText("");
+        searchIndex = List.of();
+        searchIndexKey = null;
         profileMenuOpen = false;
         faceFor = null;
         chosen.clear();
@@ -3522,7 +3840,8 @@ public class ProfileDashboardScreen extends Screen {
         if (page == Page.NETWORTH) return s.networthState == ProfileSession.State.READY || s.networthState == ProfileSession.State.FAILED;
         if (page == Page.COLLECTIONS) return s.collectionsState == ProfileSession.State.READY || s.collectionsState == ProfileSession.State.FAILED;
         if (page == Page.MUSEUM) {
-            return (s.networthState == ProfileSession.State.READY || s.networthState == ProfileSession.State.FAILED)
+            ProfileSession.State museumState = s.inventoryState("museum");
+            return (museumState == ProfileSession.State.READY || museumState == ProfileSession.State.FAILED)
                     && (Museum.repo() != null || Museum.failed());
         }
         if (page == Page.CHOCOLATE) return Hoppity.rabbits() != null;
@@ -3535,6 +3854,7 @@ public class ProfileDashboardScreen extends Screen {
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         if (event.button() != 0) return true;
         searchFocused = false;
+        itemSearchFocused = false;
         if (profileMenuOpen) {
             // Only the list takes the click; anywhere else, the chip included, closes it.
             for (int i = hits.size() - 1; i >= menuHitsFrom; i--) {
@@ -3567,6 +3887,21 @@ public class ProfileDashboardScreen extends Screen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
+        if (itemSearchFocused) {
+            if (event.isEscape()) {
+                // The first Escape clears the search, the next leaves the field.
+                if (itemSearch.isEmpty()) itemSearchFocused = false;
+                else itemSearch.setText("");
+                return true;
+            }
+            if (event.isConfirmation()) {
+                itemSearchFocused = false;
+                return true;
+            }
+            itemSearch.keyPressed(event.key(), event.hasControlDownWithQuirk(), event.hasShiftDown());
+            itemCaretFrom = System.currentTimeMillis();
+            return true;
+        }
         if (searchFocused) {
             if (event.isEscape()) {
                 searchFocused = false;
@@ -3584,6 +3919,10 @@ public class ProfileDashboardScreen extends Screen {
             profileMenuOpen = false;
             return true;
         }
+        if (event.isEscape() && searching()) {
+            itemSearch.setText("");
+            return true;
+        }
         if (event.isEscape() || (this.minecraft != null && this.minecraft.options.keyInventory.matches(event))) {
             onClose();
             return true;
@@ -3593,6 +3932,13 @@ public class ProfileDashboardScreen extends Screen {
 
     @Override
     public boolean charTyped(CharacterEvent event) {
+        if (itemSearchFocused) {
+            for (char c : Character.toChars(event.codepoint())) {
+                if (c >= 32 && c != 127 && c != '§') itemSearch.insert(c);
+            }
+            itemCaretFrom = System.currentTimeMillis();
+            return true;
+        }
         if (!searchFocused) return false;
         for (char c : Character.toChars(event.codepoint())) {
             if (Character.isLetterOrDigit(c) && c < 128 || c == '_') search.insert(c);

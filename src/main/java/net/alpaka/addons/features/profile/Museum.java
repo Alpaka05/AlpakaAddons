@@ -15,8 +15,9 @@ import java.util.Map;
  * The Museum as the game's menu has it: its categories, the items and armor sets each holds, and
  * which of them a profile donated.
  *
- * Elite hands out the donated items in the networth's {@code museum} category, armor sets split
- * into their pieces. What the categories hold, which pieces make up a set and which items count as
+ * Elite hands out the donated items as the member's {@code museum} inventory, armor sets split
+ * into their pieces. Items taken out of the museum stay in it, marked {@code museum_borrowing}:
+ * they still count as donated, as in the game, while the networth's museum category leaves them out. What the categories hold, which pieces make up a set and which items count as
  * donated with a better one come from the NEU repository's {@code constants/museum.json}, as in the
  * other profile viewers. What is donated but in none of the categories is a special item.
  */
@@ -48,11 +49,18 @@ final class Museum {
      * items it stands for (empty when it only counts through a better one).
      */
     record Entry(String id, boolean donated, List<JsonElement> items) {
-        double value() {
-            double v = 0;
-            for (JsonElement item : items) v += Json.num(item, "networth", 0);
-            return v;
+        /** Taken out of the museum right now: donated, but every piece of it is with the player. */
+        boolean borrowed() {
+            if (items.isEmpty()) return false;
+            for (JsonElement item : items) if (!Museum.borrowed(item)) return false;
+            return true;
         }
+    }
+
+    /** Whether a donated item is out of the museum, with the player, right now. */
+    static boolean borrowed(JsonElement item) {
+        String flag = Json.str(item, "attributes.museum_borrowing");
+        return flag != null && !flag.equals("0") && !flag.equalsIgnoreCase("false");
     }
 
     record Category(CategoryDef def, List<Entry> entries) {
@@ -76,6 +84,14 @@ final class Museum {
         int donated() {
             int n = 0;
             for (Category c : categories) n += c.donated();
+            return n;
+        }
+
+        /** The entries and special items taken out right now. */
+        int borrowed() {
+            int n = 0;
+            for (Category c : categories) for (Entry e : c.entries()) if (e.borrowed()) n++;
+            for (JsonElement item : special) if (Museum.borrowed(item)) n++;
             return n;
         }
     }
@@ -136,7 +152,7 @@ final class Museum {
         return out;
     }
 
-    /** The profile's museum from the items Elite lists in the networth's {@code museum} category. */
+    /** The profile's museum from the items of the {@code museum} inventory. */
     static Donated of(Repo repo, Iterable<JsonElement> museumItems) {
         Map<String, String> pieceToSet = new HashMap<>();
         repo.sets().forEach((set, pieces) -> pieces.forEach(p -> pieceToSet.put(p, set)));
@@ -146,7 +162,7 @@ final class Museum {
         Map<String, List<JsonElement>> byEntry = new LinkedHashMap<>();
         List<JsonElement> special = new ArrayList<>();
         for (JsonElement item : museumItems) {
-            String id = Json.str(item, "item.skyblockId");
+            String id = Json.str(item, "skyblockId");
             if (id == null) continue;
             String entry = entryOf(repo, pieceToSet, listed, id);
             if (entry == null) special.add(item);

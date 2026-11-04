@@ -22,11 +22,14 @@ class MuseumTest {
              "mapped_ids": {"STARRED_MIDAS_SWORD": "MIDAS_SWORD"}}
             """;
 
+    /** Items as the museum inventory has them; an id ending in "!" was taken out. */
     private static List<JsonElement> donated(String... ids) {
         StringBuilder json = new StringBuilder("[");
         for (int i = 0; i < ids.length; i++) {
             if (i > 0) json.append(',');
-            json.append("{\"item\": {\"skyblockId\": \"").append(ids[i]).append("\"}, \"networth\": 10}");
+            boolean out = ids[i].endsWith("!");
+            json.append("{\"skyblockId\": \"").append(out ? ids[i].substring(0, ids[i].length() - 1) : ids[i]).append('"')
+                    .append(out ? ", \"attributes\": {\"museum_borrowing\": \"1\"}" : "").append('}');
         }
         List<JsonElement> out = new java.util.ArrayList<>();
         JsonParser.parseString(json.append(']').toString()).getAsJsonArray().forEach(out::add);
@@ -54,11 +57,24 @@ class MuseumTest {
         assertTrue(byId.get("ASPECT_OF_THE_END").donated());
         assertTrue(byId.get("ASPECT_OF_THE_END").items().isEmpty());
         assertEquals(2, byId.get("TANK_MINER").items().size());
-        assertEquals(20, byId.get("TANK_MINER").value());
         assertTrue(byId.get("MIDAS_SWORD").donated());
         assertFalse(m.categories().get(1).entries().get(0).donated());
         assertEquals(1, m.special().size());
         assertEquals(4, m.donated());
+    }
+
+    @Test
+    void itemsTakenOutStillCount() {
+        Museum.Repo repo = Museum.parse(REPO);
+        Museum.Donated m = Museum.of(repo, donated("MIDAS_SWORD!", "TANK_MINER_BOOTS!", "TANK_MINER_HELMET", "CAKE_SOUL!"));
+        Map<String, Museum.Entry> byId = new java.util.HashMap<>();
+        for (Museum.Entry e : m.categories().get(0).entries()) byId.put(e.id(), e);
+        assertTrue(byId.get("MIDAS_SWORD").donated());
+        assertTrue(byId.get("MIDAS_SWORD").borrowed());
+        // Half the set is still in the museum, so the set is not out.
+        assertFalse(byId.get("TANK_MINER").borrowed());
+        assertEquals(2, m.donated());
+        assertEquals(2, m.borrowed());
     }
 
     @Test

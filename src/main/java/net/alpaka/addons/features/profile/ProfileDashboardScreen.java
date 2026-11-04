@@ -984,13 +984,14 @@ public class ProfileDashboardScreen extends Screen {
                 fastestRate > 0 ? Coins.compact(fastestRate) + " XP a day" : "needs a week of history"));
         y = tiles(graphics, tiles, x, y, w, 4) + 6;
 
-        y = levelGrid(graphics, d.skills, Metrics.SKILL, x, y, w);
+        y = levelGrid(graphics, d.skills, Metrics.SKILL, x, y, w, Double.NaN);
         String metric = metricFor(Page.SKILLS);
         return chartCard(graphics, metric, metricMaxLevel(d, metric), x, y + 6, w, 130);
     }
 
     /** Levels as rows of two: icon, name, level, the bar to the next one and the recent pace. */
-    private int levelGrid(GuiGraphicsExtractor graphics, List<ProfileData.Level> levels, String prefix, int x, int y, int w) {
+    /** {@code average}, unless NaN, is a last card after the levels: the class average, as a level of its own. */
+    private int levelGrid(GuiGraphicsExtractor graphics, List<ProfileData.Level> levels, String prefix, int x, int y, int w, double average) {
         int cols = w >= 380 ? 2 : 1;
         int gap = 6;
         int cw = (w - (cols - 1) * gap) / cols;
@@ -1012,8 +1013,8 @@ public class ProfileDashboardScreen extends Screen {
             boolean isSelectedClass = prefix.equals(Metrics.CLASS) && l.id().equals(session.data.selectedClass);
             // Farming and Mining open a page of their own, which the arrow promises.
             boolean opens = prefix.equals(Metrics.SKILL) && SKILL_PAGES.contains(l.id());
-            String name = l.name() + (isSelectedClass ? "  •" : "");
-            text(graphics, name, tx, cy + 7, AlpakaStyle.TEXT_SOFT);
+            String name = l.name();
+            text(graphics, name, tx, cy + 7, isSelectedClass ? ink(ProfileChart.UP) : AlpakaStyle.TEXT_SOFT);
             if (opens) text(graphics, "›", tx + textW(name) + 4, cy + 7, hover ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
             // Once maxed, the XP past the cap counts on as an overflow level, with its own bar.
             // In it, a gold MAX stands before the number and the bar runs in a soft chroma on a gold
@@ -1055,8 +1056,42 @@ public class ProfileDashboardScreen extends Screen {
                 tip(metric, tipText + (opens ? " Click for the " + l.name() + " page." : " Click for its graph."));
             }
         }
-        int rows = (levels.size() + cols - 1) / cols;
+        int count = levels.size();
+        if (!Double.isNaN(average)) {
+            averageCard(graphics, levels, average, x + (count % cols) * (cw + gap), y + (count / cols) * (ch + 4), cw, ch);
+            count++;
+        }
+        int rows = (count + cols - 1) / cols;
         return y + rows * (ch + 4) - 4;
+    }
+
+    /**
+     * The class average as a card like the classes': once every class is maxed, a gold MAX and the
+     * way to the next whole average in chroma, as an overflow level; before, the way to 50.
+     */
+    private void averageCard(GuiGraphicsExtractor graphics, List<ProfileData.Level> classes, double average, int cx, int cy, int cw, int ch) {
+        boolean hover = hover(cx, cy, cw, ch);
+        ModernGuiUtils.drawRoundedRect(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
+        icon(graphics, Items.NETHER_STAR, cx + 4, cy + 3, 2.0f);
+        int tx = cx + 42;
+        int tw = cw - 42 - 8;
+        int all = ProfileData.CLASSES.length;
+        boolean maxed = classes.size() == all && classes.stream().allMatch(ProfileData.Level::maxed);
+        text(graphics, "Class Average", tx, cy + 7, AlpakaStyle.TEXT_SOFT);
+        String level = String.format(Locale.US, "%.2f", average);
+        if (maxed) {
+            int lx = tx + tw - textW(level);
+            text(graphics, level, lx, cy + 7, AlpakaStyle.TEXT);
+            text(graphics, "MAX", lx - 5 - textW("MAX"), cy + 7, ink(GOLD));
+            chromaBar(graphics, tx, cy + 19, tw, 3, average - Math.floor(average));
+            text(graphics, "Max 50 · all " + all + " classes", tx, cy + 25, AlpakaStyle.TEXT_MUTED);
+        } else {
+            String shown = level + " / 50";
+            text(graphics, shown, tx + tw - textW(shown), cy + 7, AlpakaStyle.TEXT);
+            bar(graphics, tx, cy + 19, tw, 3, average / 50, AlpakaStyle.accent());
+            text(graphics, "Over all " + all + " classes", tx, cy + 25, AlpakaStyle.TEXT_MUTED);
+        }
+        if (hover) tip("classAverage", "The five classes' levels averaged, overflow past 50 included; one never played counts as 0.");
     }
 
     // ---- Farming and Mining ---------------------------------------------------------------------
@@ -1308,14 +1343,12 @@ public class ProfileDashboardScreen extends Screen {
     private int dungeons(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
         List<Tile> tiles = new ArrayList<>();
         tiles.add(new Tile(Metrics.CATACOMBS, "Catacombs", String.format(Locale.US, "%.2f", Levels.catacombs(d.catacombs.xp())), null));
-        tiles.add(new Tile(null, "Class Average", String.format(Locale.US, "%.2f", d.classAverageOverflow), null));
-        tiles.add(new Tile(null, "Selected Class", d.selectedClass == null ? "—" : ProfileData.title(d.selectedClass), null));
         tiles.add(new Tile(Metrics.RUNS, "Total Runs", Coins.full(d.totalRuns), null));
         tiles.add(new Tile(null, "Total Secrets", Coins.full(d.secretsFound), null));
         // Per completed run, Entrance and Master Mode included, as the profile viewers count it.
         tiles.add(new Tile(null, "Secrets / Run", d.totalRuns > 0 ? String.format(Locale.US, "%.2f", d.secretsFound / d.totalRuns) : "—", null));
-        y = tiles(graphics, tiles, x, y, w, 3) + 6;
-        y = levelGrid(graphics, d.classes, Metrics.CLASS, x, y, w) + 6;
+        y = tiles(graphics, tiles, x, y, w, 4) + 6;
+        y = levelGrid(graphics, d.classes, Metrics.CLASS, x, y, w, d.classAverageOverflow) + 6;
 
         // Floors: completions and the fastest S+ of each, Entrance to F7 and M1 to M7.
         int h = 24 + 2 * 34 + 6;

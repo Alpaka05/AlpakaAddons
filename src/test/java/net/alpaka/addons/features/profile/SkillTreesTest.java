@@ -74,6 +74,20 @@ class SkillTreesTest {
     }
 
     @Test
+    void deeplyNestedExpressionsFailInsteadOfOverflowing() {
+        Map<String, Object> vars = Map.of();
+        assertEquals(1.0, NeuLisp.eval(nested(NeuLisp.MAX_DEPTH), vars, id -> 0.0));
+        assertNull(NeuLisp.eval(nested(NeuLisp.MAX_DEPTH + 1), vars, id -> 0.0));
+        // Deep enough to overflow the stack without the limit.
+        assertNull(NeuLisp.eval(nested(200_000), vars, id -> 0.0));
+    }
+
+    /** {@code (+ (+ ... (+ 1)))}, {@code depth} lists deep. */
+    private static String nested(int depth) {
+        return "(+ ".repeat(depth) + "1" + ")".repeat(depth);
+    }
+
+    @Test
     void tooltipsShowTheLoreForTheLevel() {
         SkillTrees.Tree tree = SkillTrees.parse(MOLE_AND_CORE, "hotm");
         SkillTrees.Perk mole = SkillTrees.at(tree, 3, 6);

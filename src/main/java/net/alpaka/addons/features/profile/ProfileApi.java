@@ -50,16 +50,47 @@ public final class ProfileApi {
         }
     }
 
-    private record Cached(long at, CompletableFuture<JsonElement> future) {}
+    /** An answer and how long it may be handed out again, after which it is dropped. */
+    private record Cached(long at, long keepMs, CompletableFuture<JsonElement> future) {}
 
     private static final Map<String, Cached> CACHE = new ConcurrentHashMap<>();
     private static HttpClient client;
+    private static HttpClient keyedClient;
     private static long nextSlot = 0L;
 
     private static synchronized HttpClient client() {
         if (client == null) client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10))
                 .followRedirects(HttpClient.Redirect.NORMAL).build();
         return client;
+    }
+
+    /**
+     * For requests that carry the player's own key. Follows no redirect, since the client would send
+     * the key along to wherever it points, even another host; a redirect counts as a failed request.
+     */
+    private static synchronized HttpClient keyedClient() {
+        if (keyedClient == null) keyedClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10))
+                .followRedirects(HttpClient.Redirect.NEVER).build();
+        return keyedClient;
+    }
+
+    /**
+     * Keeps an answer, first dropping every one past its time. Without that the cache would grow with
+     * every player looked at, and a networth alone is over a megabyte. A dropped request still in
+     * flight completes for whoever already holds it.
+     */
+    private static void keep(String url, Cached cached) {
+        long now = cached.at();
+        CACHE.values().removeIf(c -> now - c.at() >= c.keepMs());
+        CACHE.put(url, cached);
+    }
+
+    /**
+     * How long an answer asked for with {@code freshMs} can still be handed out: at least a minute,
+     * as a member asked for fresh is handed out to the next ordinary ask within that time.
+     */
+    private static long keepMs(long freshMs) {
+        return Math.max(freshMs, FRESH_MS);
     }
 
     /** The account with its profiles; {@code player} is a name or a UUID. */
@@ -115,21 +146,24 @@ public final class ProfileApi {
             return cached.future();
         }
         CompletableFuture<JsonElement> future = new CompletableFuture<>();
-        CACHE.put(url, new Cached(now, future));
+        keep(url, new Cached(now, 30 * FRESH_MS, future));
         HttpRequest request = HttpRequest.newBuilder(URI.create(url))
                 .timeout(Duration.ofSeconds(40))
                 .header("User-Agent", "AlpakaAddons/" + ModVersion.mod())
                 .header("Authorization", key)
                 .GET()
                 .build();
-        client().sendAsync(request, HttpResponse.BodyHandlers.ofString()).whenComplete((response, error) -> {
+        keyedClient().sendAsync(request, HttpResponse.BodyHandlers.ofString()).whenComplete((response, error) -> {
             if (error != null || response == null) {
                 CACHE.remove(url);
                 future.completeExceptionally(error != null ? error : new IllegalStateException("no response"));
                 return;
             }
             int status = response.statusCode();
-            if (status == 401 || status == 403) {
+            if (status / 100 == 3) {
+                CACHE.remove(url);
+                future.completeExceptionally(new IllegalStateException("SkyKings answered with a redirect, which isn't followed with your key."));
+            } else if (status == 401 || status == 403) {
                 CACHE.remove(url);
                 future.completeExceptionally(new IllegalStateException("SkyKings didn't accept the API key."));
             } else if (status == 404) {
@@ -214,7 +248,7 @@ public final class ProfileApi {
             return cached.future();
         }
         CompletableFuture<JsonElement> future = new CompletableFuture<>();
-        CACHE.put(url, new Cached(now, future));
+        keep(url, new Cached(now, keepMs(freshMs), future));
         long delay = reserveSlot(now, spacingMs);
         CompletableFuture.delayedExecutor(delay, java.util.concurrent.TimeUnit.MILLISECONDS).execute(() -> send(url, future));
         return future;

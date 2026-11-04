@@ -81,10 +81,22 @@ public class ProfileDashboardScreen extends Screen {
     /** What the screen was last left on, so reopening it shows the same page and range. */
     private static Page lastPage = Page.OVERVIEW;
     private static ProfileChart.Range range = ProfileChart.Range.MONTH;
-    /** Sessions of this game, by who was asked for, so reopening the dashboard is instant. */
-    private static final Map<String, ProfileSession> SESSIONS = new HashMap<>();
-    private static final Map<String, Long> SESSION_AGE = new HashMap<>();
+    /**
+     * Sessions of this game, by who was asked for, so reopening the dashboard is instant. Each one
+     * holds several megabytes (networth, inventories, graphs), so only the few players looked at last
+     * are kept, least recently asked for dropped first. Only touched on the client thread; the screen
+     * holds its own session, so dropping one from here never takes it from under an open dashboard.
+     */
+    private static final Map<String, KeptSession> SESSIONS = new LinkedHashMap<>(16, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, KeptSession> eldest) {
+            return size() > SESSIONS_KEPT;
+        }
+    };
+    private static final int SESSIONS_KEPT = 5;
     private static final long SESSION_KEEP_MS = 5 * 60_000L;
+
+    private record KeptSession(ProfileSession session, long at) {}
 
     private static final int HEADER_H = AlpakaStyle.HEADER_H;
     private static final int PAD = AlpakaStyle.PAD;
@@ -190,13 +202,15 @@ public class ProfileDashboardScreen extends Screen {
         String query = isOwn ? mc.getUser().getProfileId().toString().replace("-", "") : player.trim();
         String key = query.toLowerCase(Locale.ROOT);
         long now = System.currentTimeMillis();
-        ProfileSession cached = SESSIONS.get(key);
-        if (cached != null && cached.state != ProfileSession.State.FAILED && now - SESSION_AGE.getOrDefault(key, 0L) < SESSION_KEEP_MS) {
-            return cached;
+        // Sessions past their time are never handed out again, so they go now instead of waiting to
+        // be pushed out by newer ones.
+        SESSIONS.values().removeIf(kept -> now - kept.at() >= SESSION_KEEP_MS);
+        KeptSession cached = SESSIONS.get(key);
+        if (cached != null && cached.session().state != ProfileSession.State.FAILED) {
+            return cached.session();
         }
         ProfileSession fresh = new ProfileSession(query, isOwn);
-        SESSIONS.put(key, fresh);
-        SESSION_AGE.put(key, now);
+        SESSIONS.put(key, new KeptSession(fresh, now));
         return fresh;
     }
 

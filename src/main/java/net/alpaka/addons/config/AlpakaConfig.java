@@ -309,6 +309,11 @@ public class AlpakaConfig {
     public int menuFont = 2;
     /** Set once a config still on the old default font (Inter) has been moved to the new default. */
     public boolean menuFontNunitoApplied = false;
+    /**
+     * Whether the loaded file was written by 1.3.1 or later, told by chatHistoryLimit, which first
+     * appeared in 1.3.1. Not saved; true for a config that came from no file.
+     */
+    transient boolean savedBy131OrLater = true;
     /** Chat messages in the menu font rather than the pixel font. */
     public boolean menuFontInChat = false;
     /** The scoreboard sidebar in the menu font rather than the pixel font. */
@@ -1624,9 +1629,10 @@ public class AlpakaConfig {
         boolean migrated = instance.migrate();
 
         // The default font moved from Inter to Poppins with the redesign. Once only, so picking Inter
-        // again afterwards sticks.
+        // again afterwards sticks. Only 1.2.19 to 1.3.0 had Inter as the default: from 1.3.1 on it
+        // was already Poppins, so Inter in a newer file was picked on purpose and stays.
         if (!instance.menuFontNunitoApplied) {
-            if (instance.menuFont == 1) instance.menuFont = 2;
+            if (instance.menuFont == 1 && !instance.savedBy131OrLater) instance.menuFont = 2;
             instance.menuFontNunitoApplied = true;
         }
 
@@ -1776,10 +1782,26 @@ public class AlpakaConfig {
         try {
             String json = AtomicJsonFile.read(file);
             if (json == null || json.isBlank()) return null;
-            return GSON.fromJson(json, AlpakaConfig.class);
+            AlpakaConfig config = GSON.fromJson(json, AlpakaConfig.class);
+            if (config != null) config.savedBy131OrLater = hasKey(json, "chatHistoryLimit");
+            return config;
         } catch (Exception e) {
             AlpakaAddons.LOGGER.error("Failed to read {}", file.getAbsolutePath(), e);
             return null;
+        }
+    }
+
+    /**
+     * Whether the top level of {@code json} has {@code key}. Gson fills a missing field with its
+     * default, so only the raw file shows whether it was there. When that cannot be told, true, so
+     * nothing the player chose is changed on a guess.
+     */
+    private static boolean hasKey(String json, String key) {
+        try {
+            com.google.gson.JsonElement root = com.google.gson.JsonParser.parseString(json);
+            return !root.isJsonObject() || root.getAsJsonObject().has(key);
+        } catch (RuntimeException e) {
+            return true;
         }
     }
 

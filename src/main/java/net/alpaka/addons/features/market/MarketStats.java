@@ -85,8 +85,15 @@ public final class MarketStats {
             if (!m.find()) break;
             Double price = Coins.parseLore(m.group(1));
             if (price == null) continue;
-            long amount = Long.parseLong(m.group(2).replace(",", ""));
-            int orders = m.group(3) == null ? 0 : Integer.parseInt(m.group(3).replace(",", ""));
+            long amount;
+            int orders;
+            try {
+                amount = Long.parseLong(m.group(2).replace(",", ""));
+                orders = m.group(3) == null ? 0 : Integer.parseInt(m.group(3).replace(",", ""));
+            } catch (NumberFormatException e) {
+                // A count too long for its type is no real order; skip the line rather than throw while drawing.
+                continue;
+            }
             out.add(new Level(price, amount, orders));
         }
         return out;

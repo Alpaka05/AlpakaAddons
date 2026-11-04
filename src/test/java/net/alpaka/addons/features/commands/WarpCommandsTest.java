@@ -54,5 +54,7 @@ class WarpCommandsTest {
         assertTrue(matcher.matches());
         assertEquals("4", matcher.group("seconds"));
         assertFalse(WarpCooldownQueue.REFUSAL.matcher("[MVP+] Someone: You may only use this command after 4s on the server!").matches());
+        // Too long to parse: not taken for the refusal.
+        assertFalse(WarpCooldownQueue.REFUSAL.matcher("You may only use this command after 99999999999999999999s on the server!").matches());
     }
 }

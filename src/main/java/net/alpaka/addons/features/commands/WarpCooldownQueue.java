@@ -44,8 +44,9 @@ public final class WarpCooldownQueue {
     /** The commands that warp; "/warp isle" and the ones Shorten Warp makes as well. */
     private static final Set<String> WARP_COMMANDS = Set.of("warp", "is", "hub", "warpforge", "garden");
 
+    /** Hypixel's refusal; the digits are bounded so a mangled line cannot overflow parseLong. */
     static final Pattern REFUSAL = Pattern.compile(
-            "^You may only use this command after (?<seconds>\\d+)s on the server!$");
+            "^You may only use this command after (?<seconds>\\d{1,6})s on the server!$");
 
     private static long worldChangedAtMs = 0L;
     private static String held = null;

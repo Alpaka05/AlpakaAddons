@@ -125,7 +125,15 @@ public final class RagnarockFeature {
         } else {
             while (end < text.length() && Character.isWhitespace(text.charAt(end))) end++;
         }
-        int secs = m.group(1) != null ? Integer.parseInt(m.group(1)) : 0;
+        int secs = 0;
+        if (m.group(1) != null) {
+            // An action bar with a number too long for an int is not the cast; leave it alone.
+            try {
+                secs = Integer.parseInt(m.group(1));
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
         return new Match(start, end, secs);
     }
 

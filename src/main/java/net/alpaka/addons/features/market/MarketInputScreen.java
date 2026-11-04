@@ -4,6 +4,7 @@ import net.alpaka.addons.client.gui.AlpakaStyle;
 import net.alpaka.addons.client.gui.EditableText;
 import net.alpaka.addons.client.gui.GuiFont;
 import net.alpaka.addons.client.gui.ModernGuiUtils;
+import net.alpaka.addons.compat.MacOSInputFixesCompat;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.mixin.AbstractSignEditScreenAccessor;
 import net.alpaka.addons.utils.SkyblockUtils;
@@ -34,7 +35,7 @@ import java.util.List;
  * broken at a space (see {@link SignPrompt#split}) - so the lines are always ones a player could
  * have typed into the vanilla sign. A price or an amount goes in plain digits, "4000000" for "4m"
  * (see {@link SignPrompt#answer}). Cancel and Escape empty the answer first, which Hypixel takes as
- * no answer. The chips only fill the field; the player still confirms.
+ * no answer. The chips and the paste button only fill the field; the player still confirms.
  */
 public class MarketInputScreen extends SignEditScreen {
     private static final int HEADER_H = AlpakaStyle.HEADER_H;
@@ -547,13 +548,13 @@ public class MarketInputScreen extends SignEditScreen {
         int tx = x + textX;
         int ty = y + (FIELD_H - 8) / 2;
 
-        // The paste button at the right end: the clipboard in, and confirmed at once.
+        // The paste button at the right end: the clipboard into the field, for the player to check and confirm.
         int pasteSize = FIELD_H - 8;
         int pasteX = x + w - 4 - pasteSize;
         int pasteY = y + 4;
         boolean hoverPaste = AlpakaStyle.inside(mouseX, mouseY, pasteX, pasteY, pasteSize, pasteSize);
         AlpakaStyle.pasteButton(graphics, pasteX, pasteY, pasteSize, hoverPaste);
-        hits.add(new Hit(pasteX, pasteY, pasteSize, pasteSize, mx -> pasteAndConfirm(), true));
+        hits.add(new Hit(pasteX, pasteY, pasteSize, pasteSize, mx -> paste(), true));
 
         int room = pasteX - 6 - tx;
         String text = text();
@@ -727,10 +728,11 @@ public class MarketInputScreen extends SignEditScreen {
     }
 
     /**
-     * Puts the clipboard's first line in the field, as Ctrl+V would, and confirms it. Nothing is
-     * sent if the clipboard is empty or does not fit the sign; the field then shows why.
+     * Puts the clipboard's first line in the field, as Ctrl+V would. It is not confirmed: a price or
+     * an amount from the clipboard may not be the one the player meant, and Enter is one key away.
+     * If it does not fit the sign the field flashes and keeps what it had.
      */
-    private void pasteAndConfirm() {
+    private void paste() {
         String clip = Minecraft.getInstance().keyboardHandler.getClipboard();
         if (clip == null) return;
         int newline = clip.indexOf('\n');
@@ -738,8 +740,7 @@ public class MarketInputScreen extends SignEditScreen {
         String value = StringUtil.filterText(clip.replace('\t', ' ')).trim();
         if (value.isEmpty()) return;
         replace(value);
-        if (text().equals(value)) confirm();
-        else fullAtMs = System.currentTimeMillis();
+        if (!text().equals(value)) fullAtMs = System.currentTimeMillis();
     }
 
     private void placeCaret(int x) {
@@ -824,6 +825,9 @@ public class MarketInputScreen extends SignEditScreen {
     @Override
     public boolean keyPressed(KeyEvent event) {
         boolean open = dropdownOpen() && !suggestions.isEmpty();
+        // On a Mac, MacOS Input Fixes hands Escape over twice; acting on both would close the list
+        // and then cancel the whole bar with a single press.
+        if (MacOSInputFixesCompat.isDiscardedCopy(event.key())) return true;
         if (event.isEscape()) {
             // The first Escape closes the list, the next one the bar.
             if (dropdownOpen()) {
@@ -884,6 +888,22 @@ public class MarketInputScreen extends SignEditScreen {
     @Override
     public void onClose() {
         cancel();
+    }
+
+    /**
+     * Vanilla closes the editor through its Done path once the sign is gone or the player is too far
+     * from it, and mods that hook Done write into the lines then (see {@link #close}). The bar checks
+     * the same things itself and cancels instead. Done is private, so this replaces vanilla's check
+     * in tick rather than overriding Done.
+     */
+    @Override
+    public void tick() {
+        net.minecraft.client.player.LocalPlayer player = this.minecraft.player;
+        if (player == null || this.sign.isRemoved() || this.sign.playerIsTooFarAwayToEdit(player.getUUID())) {
+            cancel();
+            return;
+        }
+        super.tick();
     }
 
     // ---- For the screenshot tour ----------------------------------------------------------------

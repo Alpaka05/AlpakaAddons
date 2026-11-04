@@ -26,12 +26,22 @@ public final class Coins {
     }
 
     /**
+     * A comma with one or two digits after it and nothing more but a suffix: "1,5m", "2,25k". A
+     * thousands separator always has three digits after it, so this can only be a decimal comma.
+     */
+    private static final java.util.regex.Pattern DECIMAL_COMMA = java.util.regex.Pattern.compile("(\\d+),(\\d{1,2})([kmb]?)");
+
+    /**
      * A number as the player types it into one of Hypixel's inputs: digits with commas or a point,
-     * optionally followed by k, m or b ("1.5m", "250k"). Null for anything else.
+     * optionally followed by k, m or b ("1.5m", "250k"). A comma before the last one or two digits
+     * is a decimal point, as players from much of Europe write it ("1,5m"); one before three digits
+     * separates thousands ("1,500,000"). Null for anything else.
      */
     public static Double parseInput(String text) {
         if (text == null) return null;
-        String t = text.replace(",", "").replace(" ", "").toLowerCase(Locale.ROOT);
+        String t = text.replace(" ", "").toLowerCase(Locale.ROOT);
+        java.util.regex.Matcher decimal = DECIMAL_COMMA.matcher(t);
+        t = decimal.matches() ? decimal.group(1) + "." + decimal.group(2) + decimal.group(3) : t.replace(",", "");
         if (t.isEmpty()) return null;
         double factor = 1;
         char last = t.charAt(t.length() - 1);

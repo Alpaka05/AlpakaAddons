@@ -96,6 +96,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.garden.VisitorBazaarFeature.register();
         net.alpaka.addons.features.enchantments.MaxEnchantColorFeature.register();
         net.alpaka.addons.features.ragnarock.RagnarockFeature.register();
+        net.alpaka.addons.features.skills.ExactSkillXp.register();
         WorldAgeFeature.registerEvents();
         net.alpaka.addons.features.performance.PerformanceStats.register();
         net.alpaka.addons.features.market.LowestBin.register();

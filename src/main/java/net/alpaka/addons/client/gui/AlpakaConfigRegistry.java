@@ -1396,7 +1396,7 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Starred Mobs Highlight", ConfigCategory.DUNGEON));
 
         OPTIONS.add(new ConfigOption("starred_mobs_highlight", "Starred Mobs Highlight",
-                "Highlights the starred mobs a room needs killed, and the minibosses, during the dungeon clear.",
+                "Highlights the starred mobs a room needs killed, and the minibosses, during the dungeon clear. Only mobs in plain sight, never through walls.",
                 ConfigCategory.DUNGEON,
                 () -> AlpakaConfig.instance.starredMobsHighlightEnabled,
                 v -> { AlpakaConfig.instance.starredMobsHighlightEnabled = v; AlpakaConfig.save(); },

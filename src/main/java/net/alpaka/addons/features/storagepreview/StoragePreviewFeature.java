@@ -9,15 +9,17 @@ import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
 import net.alpaka.addons.AlpakaAddons;
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.config.AtomicJsonFile;
 import net.alpaka.addons.features.slayer.SkyblockProfileTracker;
 import net.alpaka.addons.utils.SkyblockUtils;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.ClientTooltipComponentCallback;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.multiplayer.ClientPacketListener;
-import net.minecraft.core.HolderLookup;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.inventory.Slot;
@@ -32,6 +34,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -70,10 +76,21 @@ public final class StoragePreviewFeature {
 
     private static final String FILE_NAME = "alpaka-storage.json";
     private static final Gson GSON = new GsonBuilder().create();
+    /** How long closing the game waits for a write still in progress. */
+    private static final long WRITER_WAIT_MS = 3_000L;
+    /** Writes the file off the client thread; one thread, so two writes never overlap or swap order. */
+    private static final ExecutorService WRITER = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "Alpaka Storage Preview writer");
+        t.setDaemon(true);
+        return t;
+    });
 
     /** account/profile -> page key ("ec1", "bp3") -> the page's content, slot for slot. */
     private static final Map<String, Map<String, List<ItemStack>>> pages = new HashMap<>();
-    /** The file's content as read, decoded per account/profile once a registry is at hand. */
+    /**
+     * The file's content: as read, then kept current with every page that changes, already encoded.
+     * Profiles are decoded from it once a registry is at hand.
+     */
     private static JsonObject fileData = null;
 
     private static AbstractContainerScreen<?> watched = null;
@@ -86,6 +103,8 @@ public final class StoragePreviewFeature {
 
     public static void register() {
         ClientTickEvents.END_CLIENT_TICK.register(client -> tick());
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> leavePage());
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> onStopping());
         ClientTooltipComponentCallback.EVENT.register(StoragePreviewFeature::clientComponent);
     }
 
@@ -93,7 +112,11 @@ public final class StoragePreviewFeature {
         return component instanceof StoragePreviewTooltip preview ? new ClientStoragePreviewTooltip(preview) : null;
     }
 
-    /** Copies the open page into the cache every tick, so it is current when the page closes. */
+    /**
+     * Watches the open page every tick, so the cache is current when the page closes. The page is
+     * only copied, encoded and marked for saving when its content differs from what is remembered:
+     * an untouched page costs a comparison a tick, and closing it writes nothing.
+     */
     private static void tick() {
         Minecraft mc = Minecraft.getInstance();
         if (!(mc.gui.screen() instanceof AbstractContainerScreen<?> screen)
@@ -124,18 +147,43 @@ public final class StoragePreviewFeature {
         }
         if (!loaded) return;
 
+        ClientPacketListener connection = mc.getConnection();
+        String id = profileId(mc);
+        Map<String, List<ItemStack>> profile = currentProfile();
+        if (connection == null || id == null || profile == null) return;
+        List<ItemStack> known = profile.get(key);
+        if (known != null && sameContent(menu, size, known)) return;
+
         List<ItemStack> content = new ArrayList<>(size - NAV_SLOTS);
         for (int i = NAV_SLOTS; i < size; i++) {
             Slot slot = menu.getSlot(i);
             content.add(slot.getItem().copy());
         }
-        Map<String, List<ItemStack>> profile = currentProfile();
-        if (profile == null) return;
         profile.put(key, content);
+        // Encoded now, while the registries are certainly at hand, and only this page: saving then
+        // has no item to encode.
+        RegistryOps<JsonElement> ops = connection.registryAccess().createSerializationContext(JsonOps.INSTANCE);
+        JsonArray items = new JsonArray();
+        for (ItemStack stack : content) {
+            items.add(ItemStack.OPTIONAL_CODEC.encodeStart(ops, stack).result().orElse(new JsonObject()));
+        }
+        JsonObject root = file();
+        JsonObject stored = root.get(id) instanceof JsonObject existing ? existing : new JsonObject();
+        root.add(id, stored);
+        stored.add(key, items);
         dirty = true;
     }
 
-    /** The page just closed, or another screen took its place: write what was recorded. */
+    /** Whether the open page's content slots hold exactly what is remembered for it. */
+    private static boolean sameContent(ChestMenu menu, int size, List<ItemStack> known) {
+        if (known.size() != size - NAV_SLOTS) return false;
+        for (int i = NAV_SLOTS; i < size; i++) {
+            if (!ItemStack.matches(menu.getSlot(i).getItem(), known.get(i - NAV_SLOTS))) return false;
+        }
+        return true;
+    }
+
+    /** The page just closed, another screen took its place, or the server was left: write what was recorded. */
     private static void leavePage() {
         watched = null;
         if (dirty) {
@@ -178,19 +226,25 @@ public final class StoragePreviewFeature {
         return java.util.Optional.of(new StoragePreviewTooltip(content));
     }
 
+    /** "account/profile" for the player in play; null outside a world. */
+    private static String profileId(Minecraft mc) {
+        if (mc.getConnection() == null || mc.getUser() == null) return null;
+        String account = mc.getUser().getProfileId().toString();
+        String profileName = SkyblockProfileTracker.INSTANCE.currentFor(account);
+        return account + "/" + (profileName != null ? profileName : "unknown-profile");
+    }
+
     /** The current account and profile's pages, loaded from the file the first time; null outside a world. */
     private static Map<String, List<ItemStack>> currentProfile() {
         Minecraft mc = Minecraft.getInstance();
         ClientPacketListener connection = mc.getConnection();
-        if (connection == null || mc.getUser() == null) return null;
-        String account = mc.getUser().getProfileId().toString();
-        String profileName = SkyblockProfileTracker.INSTANCE.currentFor(account);
-        String id = account + "/" + (profileName != null ? profileName : "unknown-profile");
+        String id = profileId(mc);
+        if (connection == null || id == null) return null;
         Map<String, List<ItemStack>> profile = pages.get(id);
         if (profile != null) return profile;
 
         profile = new HashMap<>();
-        JsonObject stored = file().has(id) ? file().getAsJsonObject(id) : null;
+        JsonObject stored = file().get(id) instanceof JsonObject object ? object : null;
         if (stored != null) {
             RegistryOps<JsonElement> ops = connection.registryAccess().createSerializationContext(JsonOps.INSTANCE);
             for (Map.Entry<String, JsonElement> page : stored.entrySet()) {
@@ -217,35 +271,63 @@ public final class StoragePreviewFeature {
                 try {
                     fileData = JsonParser.parseString(Files.readString(f.toPath(), StandardCharsets.UTF_8)).getAsJsonObject();
                 } catch (IOException | RuntimeException e) {
+                    // Moved aside, so the next save does not replace what may still be recovered by hand.
                     AlpakaAddons.LOGGER.warn("Could not read {}, starting with no storage previews", FILE_NAME, e);
+                    AtomicJsonFile.quarantine(f);
                 }
             }
         }
         return fileData;
     }
 
-    /** Writes every profile loaded this session over its stored copy; others stay as they were. */
+    /**
+     * Writes the file in the background. The items were encoded as each page changed; turning it all
+     * into text and writing it happens off the client thread, where it hitched the game every time a
+     * page was closed. The writer gets its own copy of each profile's page list, since the client
+     * thread goes on putting pages in; a page's encoded items are never changed once put in, only
+     * replaced. The file is moved into place whole, so a write cut short leaves the previous file
+     * rather than one that cannot be read.
+     */
     private static void save() {
-        ClientPacketListener connection = Minecraft.getInstance().getConnection();
-        if (connection == null) return;
-        HolderLookup.Provider registries = connection.registryAccess();
-        RegistryOps<JsonElement> ops = registries.createSerializationContext(JsonOps.INSTANCE);
-        JsonObject root = file();
-        for (Map.Entry<String, Map<String, List<ItemStack>>> profile : pages.entrySet()) {
-            JsonObject stored = new JsonObject();
-            for (Map.Entry<String, List<ItemStack>> page : profile.getValue().entrySet()) {
-                JsonArray items = new JsonArray();
-                for (ItemStack stack : page.getValue()) {
-                    items.add(ItemStack.OPTIONAL_CODEC.encodeStart(ops, stack).result().orElse(new JsonObject()));
-                }
-                stored.add(page.getKey(), items);
+        JsonObject snapshot = new JsonObject();
+        for (Map.Entry<String, JsonElement> entry : file().entrySet()) {
+            if (entry.getValue() instanceof JsonObject profile) {
+                JsonObject copy = new JsonObject();
+                for (Map.Entry<String, JsonElement> page : profile.entrySet()) copy.add(page.getKey(), page.getValue());
+                snapshot.add(entry.getKey(), copy);
+            } else {
+                snapshot.add(entry.getKey(), entry.getValue());
             }
-            root.add(profile.getKey(), stored);
         }
+        File file = storageFile();
+        Runnable write = () -> {
+            try {
+                AtomicJsonFile.write(file, GSON.toJson(snapshot));
+            } catch (IOException | RuntimeException e) {
+                AlpakaAddons.LOGGER.warn("Could not write {}", FILE_NAME, e);
+            }
+        };
         try {
-            Files.writeString(storageFile().toPath(), GSON.toJson(root), StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            AlpakaAddons.LOGGER.warn("Could not write {}", FILE_NAME, e);
+            WRITER.execute(write);
+        } catch (RejectedExecutionException stopped) {
+            // The game is closing and the writer has stopped: write here, so nothing is lost.
+            write.run();
+        }
+    }
+
+    /**
+     * The game is closing: writes what the open page recorded and waits a few seconds for the
+     * writer, which as a daemon thread would otherwise be cut off mid-write.
+     */
+    private static void onStopping() {
+        leavePage();
+        WRITER.shutdown();
+        try {
+            if (!WRITER.awaitTermination(WRITER_WAIT_MS, TimeUnit.MILLISECONDS)) {
+                AlpakaAddons.LOGGER.warn("{} was still being written as the game closed", FILE_NAME);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 }

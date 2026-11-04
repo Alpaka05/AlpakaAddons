@@ -161,6 +161,27 @@ class AlpakaConfigLoadTest {
     }
 
     @Test
+    void interFromBefore131MovesToPoppinsOnce() throws IOException {
+        // 1.3.0 and older: Inter was the default, and there was no chatHistoryLimit yet.
+        AlpakaConfig config = load("{\"menuFont\": 1}");
+        assertEquals(2, config.menuFont);
+        assertTrue(config.menuFontNunitoApplied);
+
+        // Picked again afterwards: it stays.
+        config.menuFont = 1;
+        AlpakaConfig.save();
+        assertEquals(1, load(saved()).menuFont);
+    }
+
+    @Test
+    void interChosenIn131OrLaterStays() throws IOException {
+        // 1.3.1 and 1.4.0 already defaulted to Poppins, so Inter there was the player's choice.
+        AlpakaConfig config = load("{\"menuFont\": 1, \"chatHistoryLimit\": 1000}");
+        assertEquals(1, config.menuFont);
+        assertTrue(config.menuFontNunitoApplied);
+    }
+
+    @Test
     void anEmptyFileWithoutABackupGivesDefaults() throws IOException {
         AlpakaConfig config = load("");
 

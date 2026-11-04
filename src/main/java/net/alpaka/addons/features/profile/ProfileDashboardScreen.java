@@ -593,8 +593,7 @@ public class ProfileDashboardScreen extends Screen {
         tiles.add(new Tile(Metrics.NETWORTH, "Networth", d.networth > 0 ? Coins.compact(d.networth) : "API off", null));
         tiles.add(new Tile(Metrics.SB_LEVEL, "SkyBlock Level", String.format(Locale.US, "%.2f", d.skyblockLevel), null));
         tiles.add(new Tile(Metrics.SKILL_AVG, "Skill Average", d.skillsApi ? String.format(Locale.US, "%.2f", d.skillAverage) : "API off", null));
-        tiles.add(new Tile(Metrics.CATACOMBS, "Catacombs", String.format(Locale.US, "%.2f", Levels.catacombs(d.catacombs.xp())), null,
-                d.catacombs.overflow() != null));
+        tiles.add(new Tile(Metrics.CATACOMBS, "Catacombs", String.format(Locale.US, "%.2f", Levels.catacombs(d.catacombs.xp())), null));
         tiles.add(new Tile(Metrics.SLAYER_TOTAL, "Slayer XP", Coins.compact(d.slayerXp), null));
         tiles.add(new Tile(Metrics.MAGICAL_POWER, "Magical Power", Coins.full(d.magicalPower), null));
         tiles.add(new Tile(Metrics.PETS_MAXED, "Max Level Pets", d.petsMaxed + " / " + d.pets.size(), null));
@@ -787,11 +786,7 @@ public class ProfileDashboardScreen extends Screen {
     // ---- Tiles and graphs -----------------------------------------------------------------------
 
     /** A number on a card: its metric (for the sparkline and the graph; null for none), name and value. */
-    private record Tile(String metric, String label, String value, String note, boolean overflow) {
-        Tile(String metric, String label, String value, String note) {
-            this(metric, label, value, note, false);
-        }
-    }
+    private record Tile(String metric, String label, String value, String note) {}
 
     private int tiles(GuiGraphicsExtractor graphics, List<Tile> tiles, int x, int y, int w, int columns) {
         int cols = w < 380 ? Math.min(2, columns) : columns;
@@ -809,7 +804,7 @@ public class ProfileDashboardScreen extends Screen {
             ModernGuiUtils.drawRoundedRect(graphics, tx, ty, tw, th, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
             if (isSelected) ModernGuiUtils.drawRoundedOutline(graphics, tx, ty, tw, th, AlpakaStyle.CARD_RADIUS, MarketIcons.fade(AlpakaStyle.accent(), 0.8f));
             text(graphics, AlpakaStyle.ellipsize(this.font, t.label(), tw - 12), tx + 7, ty + 6, AlpakaStyle.TEXT_MUTED);
-            value(graphics, t.value(), tx + 7, ty + 18, tw - 14, t.overflow());
+            value(graphics, t.value(), tx + 7, ty + 18, tw - 14);
             if (clickable && session.historyProblem() != null) {
                 // No history to show, so neither a change nor a line; the card still picks the graph,
                 // which then says what it needs.
@@ -1021,20 +1016,18 @@ public class ProfileDashboardScreen extends Screen {
             text(graphics, name, tx, cy + 7, AlpakaStyle.TEXT_SOFT);
             if (opens) text(graphics, "›", tx + textW(name) + 4, cy + 7, hover ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
             // Once maxed, the XP past the cap counts on as an overflow level, with its own bar.
-            // In it, the level and its bar run in chroma on a gold track, and a gold MAX stands before
-            // the number, so a maxed skill reads as maxed at a glance rather than as one under way.
+            // In it, a gold MAX stands before the number and the bar runs in a soft chroma on a gold
+            // track, so a maxed skill reads as maxed at a glance rather than as one under way.
             Levels.Overflow over = l.overflow();
             if (over != null) {
                 String level = String.format(Locale.US, "%.2f", over.exact());
                 int lx = tx + tw - textW(level);
-                chromaText(graphics, level, lx, cy + 7, false);
+                text(graphics, level, lx, cy + 7, AlpakaStyle.TEXT);
                 String max = "MAX";
                 text(graphics, max, lx - 5 - textW(max), cy + 7, ink(GOLD));
                 chromaBar(graphics, tx, cy + 19, tw, 3, over.progress());
-                String cap = "Max " + l.maxLevel();
-                text(graphics, cap, tx, cy + 25, ink(GOLD));
-                text(graphics, " · " + Coins.compact(over.xpCurrent()) + " / " + Coins.compact(over.xpForNext()),
-                        tx + textW(cap), cy + 25, AlpakaStyle.TEXT_MUTED);
+                text(graphics, "Max " + l.maxLevel() + " · " + Coins.compact(over.xpCurrent()) + " / " + Coins.compact(over.xpForNext()),
+                        tx, cy + 25, AlpakaStyle.TEXT_MUTED);
             } else {
                 String level = l.maxed() ? "MAX " + l.level() : l.level() + " / " + l.maxLevel();
                 text(graphics, level, tx + tw - textW(level), cy + 7, l.maxed() ? ink(GOLD) : AlpakaStyle.TEXT);
@@ -1118,7 +1111,7 @@ public class ProfileDashboardScreen extends Screen {
                 : l.maxed() ? "MAX " + l.level() : String.valueOf(l.level());
         String note = l == null ? null : over != null ? "Max " + l.maxLevel() + ", overflow"
                 : l.maxed() ? null : Math.round(l.progress() * 100) + "% to " + (l.level() + 1);
-        return new Tile(Metrics.SKILL + id, name, value, note, over != null);
+        return new Tile(Metrics.SKILL + id, name, value, note);
     }
 
     private int farming(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
@@ -1314,11 +1307,8 @@ public class ProfileDashboardScreen extends Screen {
 
     private int dungeons(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
         List<Tile> tiles = new ArrayList<>();
-        tiles.add(new Tile(Metrics.CATACOMBS, "Catacombs", String.format(Locale.US, "%.2f", Levels.catacombs(d.catacombs.xp())), null,
-                d.catacombs.overflow() != null));
-        // In chroma once every class is past 50, like a level in overflow.
-        tiles.add(new Tile(null, "Class Average", String.format(Locale.US, "%.2f", d.classAverageOverflow), null,
-                d.classAverage >= 50 && d.classAverageOverflow > 50));
+        tiles.add(new Tile(Metrics.CATACOMBS, "Catacombs", String.format(Locale.US, "%.2f", Levels.catacombs(d.catacombs.xp())), null));
+        tiles.add(new Tile(null, "Class Average", String.format(Locale.US, "%.2f", d.classAverageOverflow), null));
         tiles.add(new Tile(null, "Selected Class", d.selectedClass == null ? "—" : ProfileData.title(d.selectedClass), null));
         tiles.add(new Tile(Metrics.RUNS, "Total Runs", Coins.full(d.totalRuns), null));
         tiles.add(new Tile(null, "Total Secrets", Coins.full(d.secretsFound), null));
@@ -2315,27 +2305,13 @@ public class ProfileDashboardScreen extends Screen {
     private static final int GOLD = 0xFFFFC94D;
 
     /**
-     * The chroma of an overflow level at a point on screen: a soft rainbow running slowly to the
+     * The chroma of an overflow bar at a point on screen: a soft rainbow drifting slowly to the
      * right, pale enough to sit with the menu's pink and gold.
      */
     private static int chroma(int x) {
-        double t = System.currentTimeMillis() / 4000.0;
-        float hue = (float) ((t - x / 140.0) % 1.0 + 1.0) % 1.0f;
-        return ink(0xFF000000 | (java.awt.Color.HSBtoRGB(hue, 0.5f, 1.0f) & 0xFFFFFF));
-    }
-
-    /** Text in chroma, letter by letter; {@code big} in the font's larger cut, as a card's value. */
-    private void chromaText(GuiGraphicsExtractor graphics, String text, int x, int y, boolean big) {
-        for (int i = 0; i < text.length(); i++) {
-            // Each letter at the width of everything before it, so the spacing stays the font's own.
-            String before = text.substring(0, i);
-            String letter = text.substring(i, i + 1);
-            Component bigBefore = big ? GuiFont.title(before) : null;
-            Component bigLetter = big ? GuiFont.title(letter) : null;
-            int lx = x + (bigBefore != null ? this.font.width(bigBefore) : textW(before));
-            if (bigLetter != null) graphics.text(this.font, bigLetter, lx, y, chroma(lx), false);
-            else text(graphics, letter, lx, y, chroma(lx));
-        }
+        double t = System.currentTimeMillis() / 6000.0;
+        float hue = (float) ((t - x / 220.0) % 1.0 + 1.0) % 1.0f;
+        return ink(0xFF000000 | (java.awt.Color.HSBtoRGB(hue, 0.32f, 0.95f) & 0xFFFFFF));
     }
 
     /** A level bar in overflow: a gold track for the cap reached, filled in chroma towards the next level. */
@@ -2391,17 +2367,12 @@ public class ProfileDashboardScreen extends Screen {
      * ({@link GuiFont#title}): the normal text under a scaled pose was resampled, and blurry. The
      * pixel font has no such cut and is scaled as before.
      */
-    private void value(GuiGraphicsExtractor graphics, String value, int x, int y, int maxW, boolean overflow) {
+    private void value(GuiGraphicsExtractor graphics, String value, int x, int y, int maxW) {
         Component big = GuiFont.title(value);
         if (big != null && this.font.width(big) <= maxW) {
             // The larger cut's capitals reach higher above the line than the scaled text did, so it
             // sits lower to keep clear of the card's title.
-            if (overflow) chromaText(graphics, value, x, y + 4, true);
-            else graphics.text(this.font, big, x, y + 4, AlpakaStyle.TEXT, false);
-            return;
-        }
-        if (overflow) {
-            chromaText(graphics, value, x, big != null ? y + 2 : y, false);
+            graphics.text(this.font, big, x, y + 4, AlpakaStyle.TEXT, false);
             return;
         }
         if (big != null) {

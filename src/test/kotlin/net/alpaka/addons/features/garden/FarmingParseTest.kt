@@ -82,6 +82,10 @@ class FarmingParseTest {
             FarmingParse.repellent("YUM! Pests will now spawn 4x less while you break crops for the next 60m!"),
         )
         assertNull(FarmingParse.repellent("YUM! You ate a cookie."))
+        // A player quoting it, or with a number too big for an Int, must not count or throw.
+        assertNull(FarmingParse.repellent("[MVP+] Name: YUM! Pests will now spawn 4x less while you break crops for the next 60m!"))
+        assertNull(FarmingParse.repellent("Name: Pests will now spawn 99999999999x less while you break crops for the next 1m"))
+        assertNull(FarmingParse.repellent("YUM! Pests will now spawn 4x less while you break crops for the next 99999999999m!"))
     }
 
     @Test

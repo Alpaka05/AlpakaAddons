@@ -2596,21 +2596,32 @@ public class ProfileDashboardScreen extends Screen {
      * its column shows the armor and equipment being worn, outlined.
      */
     /**
-     * The wardrobe as the game pages it, nine sets a page, the pages side by side as far as they
-     * fit: each set's armor above its equipment, the worn one outlined.
+     * The armor and the equipment wardrobe, each as the game pages it, nine sets a page, the pages
+     * side by side as far as they fit. The two are separate in the game - set 3 of armor can be
+     * worn with set 2 of equipment - so each has its own worn set, outlined. A worn set's pieces
+     * are on the player rather than in the wardrobe, so they come from the armor and equipment.
      */
     private int wardrobe(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
-        JsonElement wardrobe = session.inventory("wardrobe");
-        JsonElement equipmentSets = d.inventories.containsKey("equipment_wardrobe") ? session.inventory("equipment_wardrobe") : null;
+        String[] pieces = {"HELMET", "CHESTPLATE", "LEGGINGS", "BOOTS"};
         JsonElement armor = session.inventory("armor");
+        y = wardrobePages(graphics, d, "wardrobe", "Armor", armor,
+                (set, p) -> set + ":" + pieces[p], p -> String.valueOf(3 - p), x, y, w);
+        if (!d.inventories.containsKey("equipment_wardrobe")) return y;
         JsonElement equipment = session.inventory("equipment");
-        ProfileData.InventoryRef ref = d.inventories.get("wardrobe");
+        return wardrobePages(graphics, d, "equipment_wardrobe", "Equipment", equipment,
+                (set, p) -> set + ":EQUIPMENT_SLOT_" + (p + 1), p -> String.valueOf(p), x, y + 8, w);
+    }
+
+    private int wardrobePages(GuiGraphicsExtractor graphics, ProfileData d, String name, String title, JsonElement worn,
+                              java.util.function.BiFunction<Integer, Integer, String> key,
+                              java.util.function.IntFunction<String> wornKey, int x, int y, int w) {
+        JsonElement wardrobe = session.inventory(name);
+        ProfileData.InventoryRef ref = d.inventories.get(name);
         int sets = Math.max(9, ref == null ? 0 : ref.slots() / 4);
         int equipped = (int) Json.num(ref == null ? null : ref.metadata(), "equipped_set", -1);
         int colW = SLOT + 4;
-        int setH = 10 + 4 * SLOT + 4 + 4 * SLOT;
         int pageW = 16 + 9 * colW - 4;
-        int pageH = 22 + setH + 8;
+        int pageH = 22 + 10 + 4 * SLOT + 8;
         int gap = 8;
         int pages = (sets + 8) / 9;
         int perRow = Math.max(1, Math.min(pages, (w + gap) / (pageW + gap)));
@@ -2619,39 +2630,31 @@ public class ProfileDashboardScreen extends Screen {
         int rows = (pages + perRow - 1) / perRow;
         if (wardrobe == null) {
             card(graphics, x0, y, rowW, pageH);
-            text(graphics, "Wardrobe", x0 + 8, y + 7, AlpakaStyle.TEXT);
+            text(graphics, title, x0 + 8, y + 7, AlpakaStyle.TEXT);
             ProfileChart.message(graphics, this.font, "Loading…", x0, y + 22, rowW, pageH - 22);
             return y + pageH;
         }
-        com.google.gson.JsonObject armorSets = Json.obj(wardrobe, "items");
-        com.google.gson.JsonObject equipmentItems = equipmentSets == null ? new com.google.gson.JsonObject() : Json.obj(equipmentSets, "items");
-        String[] pieces = {"HELMET", "CHESTPLATE", "LEGGINGS", "BOOTS"};
+        com.google.gson.JsonObject items = Json.obj(wardrobe, "items");
+        com.google.gson.JsonObject wornItems = worn == null ? new com.google.gson.JsonObject() : Json.obj(worn, "items");
         for (int page = 0; page < pages; page++) {
             int px = x0 + (page % perRow) * (pageW + gap);
             int pyTop = y + (page / perRow) * (pageH + gap);
             card(graphics, px, pyTop, pageW, pageH);
-            text(graphics, "Wardrobe · Page " + (page + 1), px + 8, pyTop + 7, AlpakaStyle.TEXT);
+            text(graphics, title + " · Page " + (page + 1), px + 8, pyTop + 7, AlpakaStyle.TEXT);
             for (int i = page * 9; i < Math.min(sets, page * 9 + 9); i++) {
                 int set = i + 1;
                 int sx = px + 8 + (i % 9) * colW;
                 int sy = pyTop + 22;
-                boolean worn = set == equipped;
+                boolean isWorn = set == equipped;
                 String label = String.valueOf(set);
-                text(graphics, label, sx + (SLOT - 1 - textW(label)) / 2, sy, worn ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
+                text(graphics, label, sx + (SLOT - 1 - textW(label)) / 2, sy, isWorn ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
                 int py = sy + 10;
                 for (int p = 0; p < 4; p++) {
-                    JsonElement item = worn ? (armor == null ? null : Json.obj(armor, "items").get(String.valueOf(3 - p)))
-                            : armorSets.get(set + ":" + pieces[p]);
+                    JsonElement item = isWorn ? wornItems.get(wornKey.apply(p)) : items.get(key.apply(set, p));
                     slot(graphics, item, sx, py + p * SLOT);
                 }
-                int ey = py + 4 * SLOT + 4;
-                for (int p = 0; p < 4; p++) {
-                    JsonElement item = worn ? (equipment == null ? null : Json.obj(equipment, "items").get(String.valueOf(p)))
-                            : equipmentItems.get(set + ":EQUIPMENT_SLOT_" + (p + 1));
-                    slot(graphics, item, sx, ey + p * SLOT);
-                }
-                if (worn) {
-                    ModernGuiUtils.drawRoundedOutline(graphics, sx - 2, py - 2, SLOT + 3, 8 * SLOT + 8, 3,
+                if (isWorn) {
+                    ModernGuiUtils.drawRoundedOutline(graphics, sx - 2, py - 2, SLOT + 3, 4 * SLOT + 3, 3,
                             MarketIcons.fade(AlpakaStyle.accent(), 0.8f));
                 }
             }

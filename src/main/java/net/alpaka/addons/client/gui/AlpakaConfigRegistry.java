@@ -2687,6 +2687,20 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.ragnarockEnabled = v; AlpakaConfig.save(); },
                 "ragnarock ragnarok rag axe sword cast casting countdown timer crosshair action bar ability strength"));
 
+        OPTIONS.add(new ConfigOption("exact_skill_xp", "Exact Skill XP",
+                "Shows skill gains in the action bar as XP, like 1,948,760/4,300,000, instead of a percentage. Needs the skill in the tab list's Skills widget.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.exactSkillXpEnabled,
+                v -> { AlpakaConfig.instance.exactSkillXpEnabled = v; AlpakaConfig.save(); },
+                "exact skill xp experience action bar percent percentage progress level farming mining combat foraging fishing enchanting alchemy taming carpentry runecrafting social number"));
+
+        OPTIONS.add(new ConfigOption("exact_skill_xp_rounded", "Rounded",
+                "Shortens the XP to 1.95M/4.3M. Hypixel only sends the percentage, so the last digits are an estimate.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.exactSkillXpRounded,
+                v -> { AlpakaConfig.instance.exactSkillXpRounded = v; AlpakaConfig.save(); },
+                "exact skill xp rounded round short shorten compact abbreviate million k m"));
+
         OPTIONS.add(new ConfigOption("deployable_timer", "Deployable Timer",
                 "Shows the deployables in range with the time they have left: power orbs and flares, mining lanterns, the Umberella, your Totem of Corruption and your Black Hole. Move it in the HUD editor.",
                 ConfigCategory.SKYBLOCK,

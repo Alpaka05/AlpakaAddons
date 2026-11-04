@@ -21,6 +21,7 @@
     "EntityRendererMixin",
     "FontTextureMixin",
     "GameRendererMixin",
+    "HudOverlayMessageMixin",
     "ItemFeatureRendererMixin",
     "ItemInHandRendererMixin",
     "LeapMenuScreensMixin",

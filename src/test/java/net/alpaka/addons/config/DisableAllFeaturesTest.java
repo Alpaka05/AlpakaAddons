@@ -63,6 +63,7 @@ class DisableAllFeaturesTest {
             // Cosmetics
             "customNameTagEnabled", "chromaHatEnabled", "playerScaleEnabled", "customDamageTagsEnabled",
             // Utility and sounds
+            "exactSkillXpEnabled",
             "alwaysSprintEnabled", "keepCursorPositionEnabled", "customSoundsEnabled", "muteVanillaSoundsInBlazeSlayer",
             "customSoundButtonClick", "customSoundHotbarScroll", "customSoundInventoryOpenClose",
             "customSoundInventoryClick", "customSoundRareDrop", "customSoundNotification",
@@ -100,7 +101,7 @@ class DisableAllFeaturesTest {
             "itemSwingTranslationDisabled", "itemSwingAlwaysFinishEnabled",
             // Wide Health Bar, Always Sprint, Price History
             "wideHealthBarCentered", "wideHealthBarAbsorption", "alwaysSprintIgnoreGarden",
-            "marketPriceHistoryRange",
+            "marketPriceHistoryRange", "exactSkillXpRounded",
             // Chest Value: whether it shows, and how
             "chestValueShown", "chestValueIncludeInventory", "chestValueSide", "chestValueSort",
             "chestValueX", "chestValueY",

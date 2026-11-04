@@ -25,7 +25,7 @@ final class NeuLisp {
         if (source == null || source.isBlank()) return null;
         try {
             int[] at = {0};
-            Object tree = read(source, at);
+            Object tree = read(source, at, 0);
             return eval(tree, vars, perkLevel);
         } catch (RuntimeException unreadable) {
             return null;
@@ -35,10 +35,18 @@ final class NeuLisp {
     /** A name in the source, as opposed to a string literal. */
     private record Symbol(String name) {}
 
-    private static Object read(String s, int[] at) {
+    /**
+     * The deepest nesting read. The layouts come from NEU's repository over the network, so a broken
+     * or hostile file could nest deep enough to overflow the stack, which no catch here would stop;
+     * 64 is far more than any real perk needs. As eval only walks what read built, this bounds it too.
+     */
+    static final int MAX_DEPTH = 64;
+
+    private static Object read(String s, int[] at, int depth) {
         skip(s, at);
         char c = s.charAt(at[0]);
         if (c == '(') {
+            if (depth >= MAX_DEPTH) throw new IllegalArgumentException("nested too deep");
             at[0]++;
             List<Object> list = new ArrayList<>();
             while (true) {
@@ -47,7 +55,7 @@ final class NeuLisp {
                     at[0]++;
                     return list;
                 }
-                list.add(read(s, at));
+                list.add(read(s, at, depth + 1));
             }
         }
         if (c == '"') {

@@ -1,6 +1,7 @@
 package net.alpaka.addons.features.profile;
 
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import net.alpaka.addons.client.gui.AlpakaStyle;
 import net.alpaka.addons.client.gui.EditableText;
 import net.alpaka.addons.client.gui.GuiFont;
@@ -971,6 +972,8 @@ public class ProfileDashboardScreen extends Screen {
     private int skills(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
         if ("farming".equals(skillDetail)) return farming(graphics, d, x, y, w);
         if ("mining".equals(skillDetail)) return mining(graphics, d, x, y, w);
+        if ("foraging".equals(skillDetail)) return foraging(graphics, d, x, y, w);
+        if ("fishing".equals(skillDetail)) return fishing(graphics, d, x, y, w);
         if (!d.skillsApi) return apiOff(graphics, "Skills", x, y, w);
         int maxed = 0;
         for (ProfileData.Level s : d.skills) if (s.maxed()) maxed++;
@@ -1011,7 +1014,7 @@ public class ProfileDashboardScreen extends Screen {
             int tx = cx + 42;
             int tw = cw - 42 - 8;
             boolean isSelectedClass = prefix.equals(Metrics.CLASS) && l.id().equals(session.data.selectedClass);
-            // Farming and Mining open a page of their own, which the arrow promises.
+            // Farming, Mining, Foraging and Fishing open a page of their own, which the arrow promises.
             boolean opens = prefix.equals(Metrics.SKILL) && SKILL_PAGES.contains(l.id());
             String name = l.name();
             text(graphics, name, tx, cy + 7, isSelectedClass ? ink(ProfileChart.UP) : AlpakaStyle.TEXT_SOFT);
@@ -1097,7 +1100,7 @@ public class ProfileDashboardScreen extends Screen {
     // ---- Farming and Mining ---------------------------------------------------------------------
 
     /** The skills that open a page of their own from the Skills page. */
-    private static final List<String> SKILL_PAGES = List.of("farming", "mining");
+    private static final List<String> SKILL_PAGES = List.of("farming", "mining", "foraging", "fishing");
 
     /** The Garden's crops: their key in Elite's garden data, their name, and how they look. */
     private static final String[][] CROPS = {
@@ -1285,6 +1288,9 @@ public class ProfileDashboardScreen extends Screen {
         y = tiles(graphics, tiles, x, y, w, 4) + 6;
         String metric = metricFor(Page.SKILLS);
         y = chartCard(graphics, metric, metricMaxLevel(d, metric), x, y, w, 120) + 6;
+        String tokens = Json.num(r, "stats.mining.tokensSpent", 0) > 0 ? Coins.full(Json.num(r, "stats.mining.tokensSpent", 0)) + " tokens spent" : null;
+        y = skillTree(graphics, "Heart of the Mountain", SkillTrees.hotm(), Json.obj(r, "stats.mining.nodes"),
+                Json.obj(r, "stats.mining.nodeToggles"), tokens, x, y, w) + 6;
         return cards(graphics, miningCards(d), x, y, w);
     }
 
@@ -1298,17 +1304,6 @@ public class ProfileDashboardScreen extends Screen {
             if (!Double.isNaN(available)) powder.add(row(ProfileData.title(type), Coins.full(available)));
         }
         add(cards, "Powder", powder);
-
-        List<String[]> perks = new ArrayList<>();
-        List<Map.Entry<String, JsonElement>> nodes = new ArrayList<>(Json.obj(r, "stats.mining.nodes").entrySet());
-        nodes.sort((a, b) -> Double.compare(b.getValue().getAsDouble(), a.getValue().getAsDouble()));
-        for (var e : nodes) {
-            if (!e.getValue().isJsonPrimitive()) continue;
-            boolean on = !Json.obj(r, "stats.mining.nodeToggles").has(e.getKey()) || Json.bool(r, "stats.mining.nodeToggles." + e.getKey());
-            String perk = ProfileData.title(e.getKey()).replace(" Of The ", " of the ").replace(" Of ", " of ");
-            perks.add(row(perk, (on ? "" : "off · ") + Coins.full(e.getValue().getAsDouble())));
-        }
-        add(cards, "Heart of the Mountain", perks);
 
         List<String[]> crystals = new ArrayList<>();
         for (var e : Json.obj(r, "stats.mining.crystals").entrySet()) {
@@ -1336,6 +1331,279 @@ public class ProfileDashboardScreen extends Screen {
         count(more, "Tokens Spent", Json.num(r, "stats.mining.tokensSpent", 0));
         add(cards, "More", more);
         return cards;
+    }
+
+    // ---- Foraging and Fishing --------------------------------------------------------------------
+
+    private int foraging(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
+        y = skillHeader(graphics, "Foraging", x, y);
+        JsonElement r = d.raw;
+        List<Tile> tiles = new ArrayList<>();
+        tiles.add(skillTile(d, "foraging", "Foraging"));
+        double hotfXp = Json.num(r, "stats.foraging.hotfExperience", 0);
+        tiles.add(new Tile(null, "Heart of the Forest", "Tier " + (int) Json.num(r, "stats.foraging.hotfLevel", 0),
+                hotfXp > 0 ? Coins.compact(hotfXp) + " XP" : null));
+        tiles.add(new Tile(null, "Center of the Forest", (int) Json.num(r, "stats.foraging.centerOfTheForestLevel", 0) + " / 5", null));
+        double gifts = 0;
+        for (var e : Json.obj(r, "stats.foraging.treeGifts").entrySet()) gifts += Json.num(e.getValue(), "totalGifts", 0);
+        tiles.add(new Tile(null, "Tree Gifts", Coins.full(gifts), null));
+        y = tiles(graphics, tiles, x, y, w, 4) + 6;
+        String metric = metricFor(Page.SKILLS);
+        y = chartCard(graphics, metric, metricMaxLevel(d, metric), x, y, w, 120) + 6;
+        double spent = Json.num(r, "stats.foraging.hotfTokensSpent", 0);
+        y = skillTree(graphics, "Heart of the Forest", SkillTrees.hotf(), Json.obj(r, "stats.foraging.nodes"),
+                Json.obj(r, "stats.foraging.nodeToggles"), spent > 0 ? Coins.full(spent) + " tokens spent" : null, x, y, w) + 6;
+        return cards(graphics, foragingCards(d), x, y, w);
+    }
+
+    private static List<Card> foragingCards(ProfileData d) {
+        JsonElement r = d.raw;
+        List<Card> cards = new ArrayList<>();
+
+        List<String[]> gifts = new ArrayList<>();
+        for (var e : Json.obj(r, "stats.foraging.treeGifts").entrySet()) {
+            int tier = (int) Json.num(e.getValue(), "milestoneTier", 0);
+            double total = Json.num(e.getValue(), "totalGifts", 0);
+            gifts.add(row(ProfileData.title(e.getKey()), "Milestone " + tier + " / 7 · " + Coins.full(total)));
+        }
+        add(cards, "Tree Gifts", gifts);
+
+        List<String[]> forest = new ArrayList<>();
+        count(forest, "Forest Whispers", Json.num(r, "stats.foraging.forestsWhispers"));
+        count(forest, "Whispers Spent", Json.num(r, "stats.foraging.forestsWhispersSpent"));
+        count(forest, "Hina Chapter", Json.num(r, "stats.foraging.hinaChapterTier"));
+        String ability = Json.str(r, "stats.foraging.selectedAxeAbility");
+        if (ability != null) forest.add(row("Axe Ability", ProfileData.title(ability)));
+        add(cards, "Galatea", forest);
+
+        // Elite's personal bests are the logs of each tree's contest and two NPCs' own records.
+        List<String[]> bests = new ArrayList<>();
+        for (var e : Json.obj(r, "stats.foraging.personalBests").entrySet()) {
+            if (!e.getValue().isJsonPrimitive()) continue;
+            bests.add(row(ProfileData.title(e.getKey().toLowerCase(Locale.ROOT)), Coins.full(e.getValue().getAsDouble())));
+        }
+        add(cards, "Personal Bests", bests);
+        return cards;
+    }
+
+    private int fishing(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
+        y = skillHeader(graphics, "Fishing", x, y);
+        JsonElement r = d.raw;
+        List<Tile> tiles = new ArrayList<>();
+        tiles.add(skillTile(d, "fishing", "Fishing"));
+        String rank = Json.str(r, "stats.fishing.trophyRank");
+        tiles.add(new Tile(null, "Trophy Fish", Coins.full(Json.num(r, "stats.fishing.totalTrophyFishCaught", 0)),
+                rank == null ? null : ProfileData.title(rank) + " Trophy Hunter"));
+        double water = Json.num(r, "stats.fishing.waterSeaCreatureKills", 0);
+        double lava = Json.num(r, "stats.fishing.lavaSeaCreatureKills", 0);
+        tiles.add(new Tile(null, "Sea Creatures", Coins.full(Json.num(r, "stats.fishing.seaCreatureKills", 0)),
+                water + lava > 0 ? Coins.compact(water) + " water · " + Coins.compact(lava) + " lava" : null));
+        double large = Json.num(r, "stats.fishing.largeTreasuresCaught", 0);
+        tiles.add(new Tile(null, "Treasures", Coins.full(Json.num(r, "stats.fishing.treasuresCaught", 0)),
+                large > 0 ? Coins.full(large) + " large" : null));
+        y = tiles(graphics, tiles, x, y, w, 4) + 6;
+        String metric = metricFor(Page.SKILLS);
+        y = chartCard(graphics, metric, metricMaxLevel(d, metric), x, y, w, 120) + 6;
+        y = trophyFish(graphics, d, x, y, w) + 6;
+        return cards(graphics, fishingCards(d), x, y, w);
+    }
+
+    /** Tier colours of the Trophy Fish, bronze to diamond. */
+    private static final int[] TROPHY_TIER_COLORS = {0xFFD08A4E, 0xFFC9D1D9, 0xFFFFC94D, 0xFF6FE3F2};
+
+    /**
+     * Every Trophy Fish with its head in the best tier caught, the total and the count of each tier;
+     * a tier not caught yet is a dim dash, a fish not caught at all is greyed out.
+     */
+    private int trophyFish(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
+        JsonObject counts = Json.obj(d.raw, "stats.fishing.trophyFishCounts");
+        int cols = w >= 540 ? 3 : w >= 340 ? 2 : 1;
+        int gap = 6;
+        int pad = 8;
+        int cw = (w - 2 * pad - (cols - 1) * gap) / cols;
+        int ch = 30;
+        List<TrophyFish.Fish> all = TrophyFish.ALL;
+        int rows = (all.size() + cols - 1) / cols;
+        int h = 24 + rows * (ch + 4) - 4 + pad;
+        card(graphics, x, y, w, h);
+        text(graphics, "Trophy Fish", x + pad, y + 7, AlpakaStyle.TEXT);
+        // The tier totals as a legend on the right, each in its tier's colour.
+        int lx = x + w - pad;
+        for (int t = TrophyFish.TIERS.length - 1; t >= 0; t--) {
+            String label = Coins.full(Json.num(d.raw, "stats.fishing.trophyFishTierCounts." + TrophyFish.TIERS[t], 0)) + " " + ProfileData.title(TrophyFish.TIERS[t]);
+            lx -= textW(label);
+            text(graphics, label, lx, y + 7, ink(TROPHY_TIER_COLORS[t]));
+            lx -= 10;
+        }
+        for (int i = 0; i < all.size(); i++) {
+            TrophyFish.Fish f = all.get(i);
+            int cx = x + pad + (i % cols) * (cw + gap);
+            int cy = y + 22 + (i / cols) * (ch + 4);
+            int total = (int) Json.num(counts, f.id(), 0);
+            int best = -1;
+            int[] tier = new int[TrophyFish.TIERS.length];
+            for (int t = 0; t < tier.length; t++) {
+                tier[t] = (int) Json.num(counts, f.id() + "_" + TrophyFish.TIERS[t], 0);
+                if (tier[t] > 0) best = t;
+            }
+            boolean hover = hover(cx, cy, cw, ch);
+            ModernGuiUtils.drawRoundedRect(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW_SELECTED);
+            ItemStack head = trophyHead(f.heads()[Math.max(0, best)]);
+            if (head != null) stackIcon(graphics, head, cx + 7, cy + 7, 1.0f);
+            int tx = cx + 29;
+            int tw = cw - 29 - 6;
+            int nameColor = total > 0 ? ink(ProfileData.rarityColor(f.rarity())) : AlpakaStyle.TEXT_MUTED;
+            String sum = Coins.full(total);
+            text(graphics, AlpakaStyle.ellipsize(this.font, f.name(), tw - textW(sum) - 6), tx, cy + 5, nameColor);
+            text(graphics, sum, tx + tw - textW(sum), cy + 5, total > 0 ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_MUTED);
+            int slot = tw / tier.length;
+            for (int t = 0; t < tier.length; t++) {
+                String n = tier[t] > 0 ? Coins.compact(tier[t]) : "—";
+                text(graphics, n, tx + t * slot, cy + 17, tier[t] > 0 ? ink(TROPHY_TIER_COLORS[t]) : MarketIcons.fade(AlpakaStyle.TEXT_MUTED, 0.5f));
+            }
+            if (hover) {
+                StringBuilder tipText = new StringBuilder(f.name()).append(" (").append(ProfileData.title(f.rarity())).append("): ")
+                        .append(f.description());
+                tipText.append(total > 0 ? " Caught " + Coins.full(total) + " times" : " Not caught yet");
+                tipText.append(best >= 0 ? ", best tier " + ProfileData.title(TrophyFish.TIERS[best]) + "." : ".");
+                tip("trophy" + i, tipText.toString());
+            }
+        }
+        return y + h;
+    }
+
+    private static final Map<String, ItemStack> TROPHY_HEADS = new HashMap<>();
+
+    /** A Trophy Fish's head; null before a world is joined, when items cannot be built yet. */
+    private static ItemStack trophyHead(String hash) {
+        ItemStack known = TROPHY_HEADS.get(hash);
+        if (known != null) return known;
+        try {
+            ItemStack built = ItemIcons.head(TrophyFish.texture(hash));
+            TROPHY_HEADS.put(hash, built);
+            return built;
+        } catch (RuntimeException notBoundYet) {
+            return null;
+        }
+    }
+
+    private static List<Card> fishingCards(ProfileData d) {
+        JsonElement r = d.raw;
+        List<Card> cards = new ArrayList<>();
+
+        List<String[]> catches = new ArrayList<>();
+        count(catches, "Items Fished", Json.num(r, "stats.fishing.itemsFished"));
+        count(catches, "Normal Catches", Json.num(r, "stats.fishing.normalCatches"));
+        count(catches, "Treasures", Json.num(r, "stats.fishing.treasuresCaught"));
+        count(catches, "Large Treasures", Json.num(r, "stats.fishing.largeTreasuresCaught"));
+        count(catches, "Festival Sharks", Json.num(r, "stats.miscStats.festivals.fishingFestivalSharksKilled"));
+        String dolphin = Json.str(r, "stats.fishing.dolphinMilestone.currentRarity");
+        if (dolphin != null) catches.add(row("Dolphin Pet Milestone", ProfileData.title(dolphin)));
+        String last = Json.str(r, "stats.fishing.lastCaughtTrophyFish");
+        if (last != null) {
+            String[] parts = last.split("/");
+            String name = parts[0];
+            for (TrophyFish.Fish f : TrophyFish.ALL) if (f.id().equals(parts[0])) name = f.name();
+            catches.add(row("Last Trophy Fish", name + (parts.length > 1 ? " " + ProfileData.title(parts[1]) : "")));
+        }
+        add(cards, "Catches", catches);
+
+        JsonObject kills = Json.obj(r, "stats.playerStats.killsDeaths.kills");
+        for (String[][] list : new String[][][] {SeaCreatures.RARE_WATER, SeaCreatures.RARE_LAVA}) {
+            List<String[]> rows = new ArrayList<>();
+            for (String[] creature : list) count(rows, creature[1], SeaCreatures.kills(kills, creature[0]));
+            add(cards, list == SeaCreatures.RARE_WATER ? "Rare Water Creatures" : "Rare Lava Creatures", rows);
+        }
+        return cards;
+    }
+
+    /** The states of a tree's perk, as their colours. */
+    private static final int TREE_LOCKED = 0xFF3A3A42;
+
+    /**
+     * A Heart of the Mountain or Forest as the game lays it out: each perk on its place in the grid,
+     * joined to the perks beside it, the top tier at the top. A perk not taken is dark, one under way
+     * pink with its level in it, a maxed one gold, a switched-off one faded; abilities are round.
+     */
+    private int skillTree(GuiGraphicsExtractor graphics, String title, SkillTrees.Tree tree, JsonObject levels, JsonObject toggles,
+                          String info, int x, int y, int w) {
+        int pad = 8;
+        if (tree == null || tree.perks().isEmpty()) {
+            card(graphics, x, y, w, 36);
+            text(graphics, title, x + pad, y + 7, AlpakaStyle.TEXT);
+            text(graphics, "Loading…", x + pad, y + 21, AlpakaStyle.TEXT_MUTED);
+            return y + 36;
+        }
+        int cell = Math.min(68, (w - 2 * pad) / tree.columns());
+        int nodeW = Math.min(cell - 10, 34);
+        int nodeH = 16;
+        int rowH = 26;
+        int gridW = cell * tree.columns();
+        int gx = x + (w - gridW) / 2;
+        int top = y + 24;
+        int h = 24 + tree.rows() * rowH + 18;
+        card(graphics, x, y, w, h);
+        text(graphics, title, x + pad, y + 7, AlpakaStyle.TEXT);
+        int maxed = 0;
+        int taken = 0;
+        for (SkillTrees.Perk p : tree.perks()) {
+            int level = (int) Json.num(levels, p.id(), 0);
+            if (level > 0) taken++;
+            if (level >= p.maxLevel()) maxed++;
+        }
+        String summary = maxed + " / " + tree.perks().size() + " maxed" + (info != null ? " · " + info : "");
+        text(graphics, summary, x + w - pad - textW(summary), y + 7, AlpakaStyle.TEXT_MUTED);
+
+        // The links first, so the perks sit on top of them.
+        for (SkillTrees.Perk p : tree.perks()) {
+            int ax = gx + p.x() * cell + cell / 2;
+            int ay = top + p.y() * rowH + rowH / 2;
+            boolean on = Json.num(levels, p.id(), 0) > 0;
+            SkillTrees.Perk right = SkillTrees.at(tree, p.x() + 1, p.y());
+            if (right != null) {
+                boolean both = on && Json.num(levels, right.id(), 0) > 0;
+                graphics.fill(ax + nodeW / 2, ay - 1, ax + cell - nodeW / 2, ay + 1, both ? MarketIcons.fade(AlpakaStyle.accent(), 0.55f) : TREE_LOCKED);
+            }
+            SkillTrees.Perk below = SkillTrees.at(tree, p.x(), p.y() + 1);
+            if (below != null) {
+                boolean both = on && Json.num(levels, below.id(), 0) > 0;
+                graphics.fill(ax - 1, ay + nodeH / 2, ax + 1, ay + rowH - nodeH / 2, both ? MarketIcons.fade(AlpakaStyle.accent(), 0.55f) : TREE_LOCKED);
+            }
+        }
+        for (SkillTrees.Perk p : tree.perks()) {
+            int level = (int) Json.num(levels, p.id(), 0);
+            boolean off = toggles.has(p.id()) && !Json.bool(toggles, p.id());
+            int cx = gx + p.x() * cell + cell / 2 - nodeW / 2;
+            int cy = top + p.y() * rowH + rowH / 2 - nodeH / 2;
+            int fill = level <= 0 ? TREE_LOCKED : level >= p.maxLevel() ? ink(GOLD) : AlpakaStyle.accent();
+            if (off) fill = MarketIcons.fade(fill, 0.35f);
+            int radius = p.ability() ? nodeH / 2 : 4;
+            boolean hover = hover(cx, cy, nodeW, nodeH);
+            ModernGuiUtils.drawRoundedRect(graphics, cx, cy, nodeW, nodeH, radius, fill);
+            if (hover) ModernGuiUtils.drawRoundedOutline(graphics, cx, cy, nodeW, nodeH, radius, AlpakaStyle.TEXT);
+            if (p.maxLevel() > 1 && level > 0) {
+                String n = String.valueOf(level);
+                text(graphics, n, cx + (nodeW - textW(n)) / 2, cy + 4, 0xFF1B1B20);
+            }
+            if (hover) {
+                String state = p.maxLevel() > 1 ? "Level " + level + " / " + p.maxLevel() : level > 0 ? "Unlocked" : "Not unlocked";
+                tip(title + p.id(), p.name() + (p.ability() ? " (ability)" : "") + ": " + state + "." + (off ? " Switched off." : ""));
+            }
+        }
+
+        // A legend for the colours.
+        int ly = y + h - 14;
+        int lx = x + pad;
+        int[] colors = {ink(GOLD), AlpakaStyle.accent(), TREE_LOCKED, MarketIcons.fade(AlpakaStyle.accent(), 0.35f)};
+        String[] labels = {"Maxed", "Under way", "Not taken", "Switched off"};
+        for (int i = 0; i < labels.length; i++) {
+            ModernGuiUtils.drawRoundedRect(graphics, lx, ly + 1, 7, 7, 2, colors[i]);
+            text(graphics, labels[i], lx + 11, ly, AlpakaStyle.TEXT_MUTED);
+            lx += 11 + textW(labels[i]) + 12;
+        }
+        String took = taken + " taken";
+        text(graphics, took, x + w - pad - textW(took), ly, AlpakaStyle.TEXT_MUTED);
+        return y + h;
     }
 
     // ---- Dungeons -------------------------------------------------------------------------------

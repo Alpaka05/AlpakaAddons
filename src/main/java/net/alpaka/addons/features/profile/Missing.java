@@ -203,6 +203,38 @@ final class Missing {
         return missing;
     }
 
+    /** How many pets the profile has at their max level and highest rarity, of how many there are. */
+    record MaxPets(int maxed, int total) {}
+
+    /**
+     * Each pet counts once, a family under its top name, so a second copy or a lower Wisp adds
+     * nothing. A pet the profile owns that NEU doesn't list yet still counts, at the rarity it has:
+     * NEU lags behind new pets for a while.
+     */
+    static MaxPets maxPets(List<ProfileData.Pet> pets, Neu neu, boolean bingoProfile) {
+        Map<String, String> topTiers = new HashMap<>();
+        for (var e : neu.petTiers().entrySet()) {
+            String type = e.getKey();
+            if (!bingoProfile && type.equals(BINGO_PET)) continue;
+            Set<String> family = familyOf(type);
+            if (family != null && !type.equals(top(family, neu))) continue;
+            topTiers.put(type, e.getValue());
+        }
+        Set<String> maxed = new HashSet<>();
+        for (ProfileData.Pet p : pets) {
+            if (!bingoProfile && p.type().equals(BINGO_PET)) continue;
+            Set<String> family = familyOf(p.type());
+            String type = family == null ? p.type() : top(family, neu);
+            if (type == null) type = p.type();
+            String top = topTiers.get(type);
+            if (top == null) topTiers.put(type, top = p.tier());
+            if (type.equals(p.type()) && p.level() >= p.maxLevel() && ProfileData.rarityRank(p.tier()) >= ProfileData.rarityRank(top)) {
+                maxed.add(type);
+            }
+        }
+        return new MaxPets(maxed.size(), topTiers.size());
+    }
+
     private static Set<String> familyOf(String type) {
         for (Set<String> family : FAMILIES) if (family.contains(type)) return family;
         return null;

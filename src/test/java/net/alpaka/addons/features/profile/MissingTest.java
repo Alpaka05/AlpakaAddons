@@ -102,6 +102,23 @@ class MissingTest {
         assertTrue(Missing.pets(Set.of(), neu, true).stream().anyMatch(p -> p.type().equals("BINGO")));
     }
 
+    private static ProfileData.Pet pet(String type, String tier, int level) {
+        return new ProfileData.Pet(type, type, tier, level, 100, 0, null, null, false, 0, 0);
+    }
+
+    @Test
+    void maxPetsNeedMaxLevelAndTopRarity() {
+        Missing.MaxPets max = Missing.maxPets(List.of(
+                pet("BEE", "LEGENDARY", 100), pet("BEE", "LEGENDARY", 100),
+                pet("ROCK", "LEGENDARY", 99), pet("WOLF", "MYTHIC", 100),
+                pet("FROST_WISP", "RARE", 100), pet("NEW_PET", "EPIC", 100)), neu, false);
+        // Bee once, Wolf, and the pet NEU doesn't know yet; Rock is short a level, the wisp not the top one.
+        assertEquals(3, max.maxed());
+        // Bee, Rock, Wolf, the wisps as one, and the new pet; no Bingo pet.
+        assertEquals(5, max.total());
+        assertEquals(5, Missing.maxPets(List.of(), neu, true).total());
+    }
+
     @Test
     void magicalPowerByRarity() {
         assertEquals(22, Missing.magicalPower("MYTHIC"));

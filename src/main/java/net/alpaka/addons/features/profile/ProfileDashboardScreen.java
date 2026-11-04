@@ -394,6 +394,12 @@ public class ProfileDashboardScreen extends Screen {
     }
 
     /** The shown profile's game mode, such as "ironman" or "bingo"; null for a normal one. */
+    /** Whether the profile on show is a co-op, whose bank is shared and each member's personal bank apart. */
+    private static boolean coop(ProfileSession s) {
+        for (ProfileSession.ProfileRef r : s.profiles) if (r.id().equals(s.profileId)) return r.members() > 1;
+        return false;
+    }
+
     private static String gameMode(ProfileSession s) {
         for (ProfileSession.ProfileRef r : s.profiles) if (r.id().equals(s.profileId)) return r.gameMode();
         return null;
@@ -1867,9 +1873,12 @@ public class ProfileDashboardScreen extends Screen {
     private int networth(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
         List<Tile> tiles = new ArrayList<>();
         tiles.add(new Tile(Metrics.NETWORTH, "Networth", Coins.compact(d.networth), null));
-        tiles.add(new Tile(Metrics.LIQUID, "Liquid", Coins.compact(d.liquidNetworth), "What it would sell for right away."));
-        tiles.add(new Tile(Metrics.PURSE, "Purse", Coins.compact(d.purse), null));
-        tiles.add(new Tile(Metrics.BANK, "Bank", Coins.compact(d.bank + d.personalBank), null));
+        // Plain cards: the history has next to nothing for these.
+        tiles.add(new Tile(null, "Liquid", Coins.compact(d.liquidNetworth), "sells right away"));
+        tiles.add(new Tile(null, "Purse", Coins.compact(d.purse), null));
+        tiles.add(coop(session)
+                ? new Tile(null, "Bank", Coins.compact(d.bank) + " / " + Coins.compact(d.personalBank), "co-op / personal")
+                : new Tile(null, "Bank", Coins.compact(d.bank + d.personalBank), null));
         y = tiles(graphics, tiles, x, y, w, 4) + 6;
         if (!d.inventoryApi) {
             y = note(graphics, "The Inventory API is off for this profile, so the networth only counts coins. Turn it on in SkyBlock's settings under API Settings.", x, y, w) + 6;
@@ -1993,10 +2002,16 @@ public class ProfileDashboardScreen extends Screen {
     // ---- Pets -----------------------------------------------------------------------------------
 
     private int pets(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
+        Missing.Neu neu = Missing.neu();
+        if (neu != null && maxPetsFor != d) {
+            maxPets = Missing.maxPets(d.pets, neu, "bingo".equals(gameMode(session)));
+            maxPetsFor = d;
+        }
         List<Tile> tiles = new ArrayList<>();
         // Plain cards: the page has no graph to pick, and these counts rarely move.
         tiles.add(new Tile(null, "Pets", Coins.full(d.pets.size()), null));
-        tiles.add(new Tile(null, "Max Level", Coins.full(d.petsMaxed), null));
+        tiles.add(new Tile(null, "Max Pets", neu == null ? "…" : maxPets.maxed() + " / " + maxPets.total(),
+                "max level and rarity"));
         tiles.add(new Tile(null, "Pet Skins", Coins.full(d.petSkins), null));
         tiles.add(new Tile(null, "Pet Score", Coins.full(d.petScore), "highest reached"));
         y = tiles(graphics, tiles, x, y, w, 4) + 6;
@@ -2066,6 +2081,8 @@ public class ProfileDashboardScreen extends Screen {
         return missingPets(graphics, d, x, y + 12, w, cols, cw, ch, gap);
     }
 
+    private ProfileData maxPetsFor;
+    private Missing.MaxPets maxPets;
     private ProfileData missingPetsFor;
     private List<Missing.MissingPet> missingPets = List.of();
 
@@ -2154,9 +2171,10 @@ public class ProfileDashboardScreen extends Screen {
         tiles.add(new Tile(null, "Maxed Collections", resources == null ? "…" : maxed + " / " + collectionList.size(), null));
         // A plain card: the page has no graph to pick, and the count rarely moves.
         tiles.add(new Tile(null, "Unique Minions", Coins.full(Json.num(raw, "minionSummary.uniqueTiersCrafted", 0)), null));
-        tiles.add(new Tile(null, "Minion Slots", (int) Json.num(raw, "minionSummary.currentSlots", 0) + " / " + (int) Json.num(raw, "minionSummary.maxSlots", 0), null));
         double toNext = Json.num(raw, "minionSummary.uniqueTiersToNextSlot", Double.NaN);
-        tiles.add(new Tile(null, "Next Slot In", Double.isNaN(toNext) || toNext <= 0 ? "—" : (int) toNext + " crafts", "unique minion tiers"));
+        tiles.add(new Tile(null, "Minion Slots", (int) Json.num(raw, "minionSummary.currentSlots", 0) + " / " + (int) Json.num(raw, "minionSummary.maxSlots", 0),
+                Double.isNaN(toNext) || toNext <= 0 ? null : "next in " + (int) toNext + " crafts"));
+        tiles.add(new Tile(null, "Pelts", Coins.full(Json.num(raw, "stats.miscStats.pelts", 0)), null));
         y = tiles(graphics, tiles, x, y, w, 4) + 6;
         if (!d.collectionsApi) return note(graphics, "The Collections API is off for this profile. Turn it on in SkyBlock's settings under API Settings.", x, y, w);
         if (resources == null) {
@@ -2170,47 +2188,100 @@ public class ProfileDashboardScreen extends Screen {
 
         Map<String, List<ProfileData.Collection>> byCategory = new LinkedHashMap<>();
         for (ProfileData.Collection c : collectionList) byCategory.computeIfAbsent(c.category(), k -> new ArrayList<>()).add(c);
+        if (skillDetail != null) {
+            List<ProfileData.Collection> list = byCategory.get(skillDetail);
+            if (list != null) return collectionCategory(graphics, skillDetail, list, x, y, w);
+            skillDetail = null;
+        }
+        // One card per skill, its collections a click away: all of them on one page went on for screens.
         int cols = Math.max(2, w / 160);
         int gap = 4;
         int cw = (w - (cols - 1) * gap) / cols;
         int ch = 38;
+        int i = 0;
         for (var e : byCategory.entrySet()) {
+            String category = e.getKey();
             List<ProfileData.Collection> list = e.getValue();
-            int done = 0;
-            for (ProfileData.Collection c : list) if (c.maxed()) done++;
-            text(graphics, e.getKey(), x + 2, y + 2, AlpakaStyle.TEXT);
-            String count = done + " / " + list.size() + " maxed";
-            text(graphics, count, x + 2 + textW(e.getKey()) + 8, y + 2, AlpakaStyle.TEXT_MUTED);
-            y += 14;
-            for (int i = 0; i < list.size(); i++) {
-                ProfileData.Collection c = list.get(i);
-                int cx = x + (i % cols) * (cw + gap);
-                int cy = y + (i / cols) * (ch + gap);
-                if (cy > clipY + clipH + 40 || cy + ch < clipY - 40) continue;
-                boolean hover = hover(cx, cy, cw, ch);
-                ModernGuiUtils.drawRoundedRect(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
-                // The item at twice its size, as the game's collection menu shows it.
-                ItemStack icon = collectionIcon(c);
-                if (!icon.isEmpty()) stackIcon(graphics, icon, cx + 3, cy + 3, 2.0f);
-                int tx = cx + 40;
-                int tw = cw - 40 - 6;
-                String tier = c.maxed() ? "MAX" : c.tier() == 0 ? "—" : roman(c.tier());
-                int tierColor = c.maxed() ? ink(GOLD) : c.tier() == 0 ? AlpakaStyle.DIVIDER : AlpakaStyle.TEXT;
-                text(graphics, tier, tx + tw - textW(tier), cy + 7, tierColor);
-                text(graphics, AlpakaStyle.ellipsize(this.font, c.name() == null ? c.id() : c.name(), tw - 8 - textW(tier)), tx, cy + 7,
-                        c.amount() > 0 ? AlpakaStyle.TEXT_SOFT : AlpakaStyle.TEXT_MUTED);
-                double progress = c.maxed() ? 1 : c.nextAt() > c.prevAt() ? (c.amount() - c.prevAt()) / (double) (c.nextAt() - c.prevAt()) : 0;
-                bar(graphics, tx, cy + 19, tw, 2, progress, c.maxed() ? ink(GOLD) : AlpakaStyle.accent());
-                String amount = Coins.compact(c.amount()) + (c.maxed() || c.nextAt() <= 0 ? "" : " / " + Coins.compact(c.nextAt()));
-                text(graphics, amount, tx, cy + 24, AlpakaStyle.TEXT_MUTED);
-                if (hover) {
-                    tip(c, (c.name() == null ? c.id() : c.name()) + ": " + Coins.full(c.amount()) + " collected, tier " + c.tier()
-                            + " of " + c.maxTier() + (c.maxed() ? "." : ". " + Coins.full(c.nextAt() - c.amount()) + " more for the next tier."));
-                }
+            int cx = x + (i % cols) * (cw + gap);
+            int cy = y + (i / cols) * (ch + gap);
+            i++;
+            int done = 0, tiers = 0, maxTiers = 0;
+            for (ProfileData.Collection c : list) {
+                if (c.maxed()) done++;
+                tiers += Math.min(c.tier(), c.maxTier());
+                maxTiers += c.maxTier();
             }
-            y += ((list.size() + cols - 1) / cols) * (ch + gap) + 6;
+            boolean hover = hover(cx, cy, cw, ch);
+            ModernGuiUtils.drawRoundedRect(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
+            Item skillIcon = SKILL_ICONS.get(category.toLowerCase(Locale.ROOT));
+            if (skillIcon != null) {
+                icon(graphics, skillIcon, cx + 3, cy + 3, 2.0f);
+            } else {
+                ItemStack first = collectionIcon(list.get(0));
+                if (!first.isEmpty()) stackIcon(graphics, first, cx + 3, cy + 3, 2.0f);
+            }
+            int tx = cx + 40;
+            int tw = cw - 40 - 6;
+            boolean all = done == list.size();
+            String count = all ? "MAX" : done + " / " + list.size();
+            text(graphics, count, tx + tw - textW(count), cy + 7, all ? ink(GOLD) : AlpakaStyle.TEXT_MUTED);
+            String name = ProfileData.title(category);
+            text(graphics, AlpakaStyle.ellipsize(this.font, name, tw - 8 - textW(count)), tx, cy + 7, AlpakaStyle.TEXT_SOFT);
+            double progress = maxTiers == 0 ? 0 : tiers / (double) maxTiers;
+            bar(graphics, tx, cy + 19, tw, 2, progress, all ? ink(GOLD) : AlpakaStyle.accent());
+            text(graphics, (int) Math.floor(progress * 100) + "% of tiers", tx, cy + 24, AlpakaStyle.TEXT_MUTED);
+            hit(cx, cy, cw, ch, () -> skillDetail = category);
+            if (hover) tip(category, name + ": " + done + " of " + list.size() + " collections maxed. Click for them.");
         }
-        return y;
+        return y + ((byCategory.size() + cols - 1) / cols) * (ch + gap) - gap;
+    }
+
+    /** One skill's collections, each with its tier and what the next one takes. */
+    private int collectionCategory(GuiGraphicsExtractor graphics, String category, List<ProfileData.Collection> list, int x, int y, int w) {
+        String back = "‹ All Collections";
+        int bw = textW(back) + 14;
+        boolean backHover = hover(x, y, bw, 15);
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, bw, 15, 7, backHover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW);
+        text(graphics, back, x + 7, y + 4, backHover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
+        hit(x, y, bw, 15, () -> skillDetail = null);
+        String name = ProfileData.title(category);
+        int done = 0;
+        for (ProfileData.Collection c : list) if (c.maxed()) done++;
+        text(graphics, name, x + bw + 8, y + 4, AlpakaStyle.TEXT);
+        text(graphics, done + " / " + list.size() + " maxed", x + bw + 8 + textW(name) + 8, y + 4, AlpakaStyle.TEXT_MUTED);
+        y += 15 + 8;
+
+        int cols = Math.max(2, w / 160);
+        int gap = 4;
+        int cw = (w - (cols - 1) * gap) / cols;
+        int ch = 38;
+        for (int i = 0; i < list.size(); i++) {
+            ProfileData.Collection c = list.get(i);
+            int cx = x + (i % cols) * (cw + gap);
+            int cy = y + (i / cols) * (ch + gap);
+            if (cy > clipY + clipH + 40 || cy + ch < clipY - 40) continue;
+            boolean hover = hover(cx, cy, cw, ch);
+            ModernGuiUtils.drawRoundedRect(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
+            // The item at twice its size, as the game's collection menu shows it.
+            ItemStack icon = collectionIcon(c);
+            if (!icon.isEmpty()) stackIcon(graphics, icon, cx + 3, cy + 3, 2.0f);
+            int tx = cx + 40;
+            int tw = cw - 40 - 6;
+            String tier = c.maxed() ? "MAX" : c.tier() == 0 ? "—" : roman(c.tier());
+            int tierColor = c.maxed() ? ink(GOLD) : c.tier() == 0 ? AlpakaStyle.DIVIDER : AlpakaStyle.TEXT;
+            text(graphics, tier, tx + tw - textW(tier), cy + 7, tierColor);
+            text(graphics, AlpakaStyle.ellipsize(this.font, c.name() == null ? c.id() : c.name(), tw - 8 - textW(tier)), tx, cy + 7,
+                    c.amount() > 0 ? AlpakaStyle.TEXT_SOFT : AlpakaStyle.TEXT_MUTED);
+            double progress = c.maxed() ? 1 : c.nextAt() > c.prevAt() ? (c.amount() - c.prevAt()) / (double) (c.nextAt() - c.prevAt()) : 0;
+            bar(graphics, tx, cy + 19, tw, 2, progress, c.maxed() ? ink(GOLD) : AlpakaStyle.accent());
+            String amount = Coins.compact(c.amount()) + (c.maxed() || c.nextAt() <= 0 ? "" : " / " + Coins.compact(c.nextAt()));
+            text(graphics, amount, tx, cy + 24, AlpakaStyle.TEXT_MUTED);
+            if (hover) {
+                tip(c, (c.name() == null ? c.id() : c.name()) + ": " + Coins.full(c.amount()) + " collected, tier " + c.tier()
+                        + " of " + c.maxTier() + (c.maxed() ? "." : ". " + Coins.full(c.nextAt() - c.amount()) + " more for the next tier."));
+            }
+        }
+        return y + ((list.size() + cols - 1) / cols) * (ch + gap) - gap;
     }
 
     /** Collections whose id names no item the game knows now: the item their menu shows. */
@@ -2532,13 +2603,22 @@ public class ProfileDashboardScreen extends Screen {
         return y + tallest;
     }
 
-    /** One inventory alone on its tab: twice the size when it fits, in the middle of the page. */
+    /** One inventory alone on its tab: twice the size when it fits, in the middle of the view. */
     private int single(GuiGraphicsExtractor graphics, Section s, int x, int y, int w) {
         slotScale = 9 * SLOT * 2 + 16 <= w ? 2 : 1;
         int sw = 9 * SLOT * slotScale + 16;
-        int h = section(graphics, s, x + (w - sw) / 2, y);
+        int rows = Math.max(1, (s.keys().size() + 8) / 9);
+        int h = section(graphics, s, x + (w - sw) / 2, middle(y, 22 + rows * SLOT * slotScale + 8));
         slotScale = 1;
         return y + h;
+    }
+
+    /**
+     * Where a card of this height starts to sit in the middle of the view below {@code y}, rather
+     * than stuck to its top; at {@code y} when it doesn't fit.
+     */
+    private int middle(int y, int h) {
+        return y + Math.max(0, (clipY + clipH - 6 - y - h) / 2);
     }
 
     private int section(GuiGraphicsExtractor graphics, Section s, int x, int y) {
@@ -2614,6 +2694,7 @@ public class ProfileDashboardScreen extends Screen {
         int cw = 16 + sideW + 9 * slot;
         int h = 22 + 4 * slot + 6 * slotScale + 8;
         x += (w - cw) / 2;
+        y = middle(y, h);
         card(graphics, x, y, cw, h);
         text(graphics, "Inventory", x + 8, y + 7, AlpakaStyle.TEXT);
         int gy = y + 22;

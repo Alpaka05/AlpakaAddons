@@ -21,7 +21,8 @@ public final class ProfileSession {
 
     public enum State { LOADING, READY, FAILED }
 
-    public record ProfileRef(String id, String name, String gameMode, boolean selected) {}
+    /** A profile of the player's; {@code members} counts who is still on it, so above 1 it is a co-op. */
+    public record ProfileRef(String id, String name, String gameMode, boolean selected, int members) {}
 
     /** What was asked for: a name or a UUID. */
     public final String query;
@@ -154,7 +155,12 @@ public final class ProfileSession {
         for (JsonElement p : Json.arr(account, "profiles")) {
             String id = Json.str(p, "profileId");
             if (id == null || Json.bool(p, "wasRemoved") || Json.bool(p, "deleted") || leftBy(p, uuid)) continue;
-            ProfileRef ref = new ProfileRef(id, Json.str(p, "profileName"), Json.str(p, "gameMode"), Json.bool(p, "selected"));
+            int members = 0;
+            for (JsonElement m : Json.arr(p, "members")) {
+                JsonElement active = m.isJsonObject() ? m.getAsJsonObject().get("active") : null;
+                if (active == null || !active.isJsonPrimitive() || active.getAsBoolean()) members++;
+            }
+            ProfileRef ref = new ProfileRef(id, Json.str(p, "profileName"), Json.str(p, "gameMode"), Json.bool(p, "selected"), members);
             all.add(ref);
             if (bingoRunning || !"bingo".equals(ref.gameMode())) shown.add(ref);
         }

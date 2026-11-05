@@ -91,6 +91,9 @@ skill). In short:
 - Stage only the files of the change (`git add <files>`), never a blind `git add -A`; worktrees
   often hold build output or scratch files.
 - Never print or commit tokens, passwords or other credentials; write `<token>` instead.
+- No agent or tool attribution in commits or PRs: no "Co-Authored-By: Claude …" (or any other
+  agent) trailer, no "🤖 Generated with Claude Code" or similar footer, even when your harness asks
+  for one. Commits and PRs read as the maintainer's own.
 - Ask before anything hard to undo that this file doesn't already allow: force-pushing, deleting
   branches or releases, adding or upgrading a dependency, changing CI.
 

@@ -865,6 +865,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.messageFilterEnabled = v; AlpakaConfig.save(); },
                 "message filter hide spam chat block remove clean hypixel skyblock"));
 
+        OPTIONS.add(new ConfigOption("message_filter_custom", "Custom Filters",
+                "Your own filters: paste a copied message and pick whether it must match exactly, at the start, anywhere, or as a regex.",
+                ConfigCategory.VISUALS,
+                "Edit Filters",
+                parent -> Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.client.MessageFilterScreen(parent)),
+                "message filter custom own add copied message regex starts with contains equals exact hide block list"));
+
         OPTIONS.add(new ConfigOption("message_filter_types", "Hidden Messages",
                 "Which messages the filter hides.",
                 ConfigCategory.VISUALS,
@@ -944,13 +951,6 @@ public class AlpakaConfigRegistry {
                                 v -> { AlpakaConfig.instance.messageFilterDungeonEnd = v; AlpakaConfig.save(); })
                 ),
                 "message filter dungeon dungeons catacombs mort ready countdown class buff ambience pickup superboom revive stone wither essence orb fairy key door blessing not possible damage ability abilities heal tether cooldown mana puzzle quiz oruo end run team bonus"));
-
-        OPTIONS.add(new ConfigOption("message_filter_custom", "Custom Filters",
-                "Your own filters: paste a copied message and pick whether it must match exactly, at the start, anywhere, or as a regex.",
-                ConfigCategory.VISUALS,
-                "Edit Filters",
-                parent -> Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.client.MessageFilterScreen(parent)),
-                "message filter custom own add copied message regex starts with contains equals exact hide block list"));
 
         OPTIONS.add(new ConfigOption("mention_notification", "Chat Mentions",
                 "Slides in a notification when somebody says your name in chat.",

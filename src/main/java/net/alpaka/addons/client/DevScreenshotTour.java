@@ -845,6 +845,21 @@ public final class DevScreenshotTour {
                 AlpakaConfig.instance.auraColorMode = 0;
                 Minecraft.getInstance().options.setCameraType(CameraType.FIRST_PERSON);
             }, () -> true, 1),
+            // The rare drop animation, still at night, from the pop to the slow turn; then by day.
+            new Stop(null, () -> {
+                Minecraft.getInstance().player.setXRot(-8.0f);
+                net.alpaka.addons.features.cosmetics.RareDropAnimation.test();
+            }, () -> true, 4),
+            new Stop("rare-drop-pop", () -> {}, () -> true, 6),
+            new Stop("rare-drop-spin", () -> {}, () -> true, 30),
+            new Stop("rare-drop-hover", () -> {}, () -> true, 30),
+            new Stop(null, () -> {
+                net.minecraft.client.server.IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+                if (server != null) server.execute(() -> server.getCommands().performPrefixedCommand(
+                        server.createCommandSourceStack(), "time set noon"));
+                net.alpaka.addons.features.cosmetics.RareDropAnimation.test();
+            }, () -> true, 20),
+            new Stop("rare-drop-day", () -> {}, () -> true, 20),
             // Last, as it ends the world: confirming the leave dialog leaves for the title screen
             // rather than going back to the pause menu.
             screen("confirm-pause-before-leaving", net.alpaka.addons.features.escapemenu.CustomPauseScreen::new),

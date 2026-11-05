@@ -1708,9 +1708,13 @@ public class AlpakaConfig {
     /**
      * Layout 2 to 3: Hide Slayer Chat Spam and Clean Blaze's two chat switches became the Message
      * Filter's Slayer Messages. A group that was not hidden before stays visible; one that was keeps
-     * its switch on. Missing fields were on by default.
+     * its switch on; a field missing next to the others was on by default. A fresh install, or a file from before these fields, has none of them and keeps
+     * the defaults: Clean Blaze being off by default must not switch the Blaze lines off for it.
      */
     private void migrateTo3() {
+        if (hideSlayerChatMessages == null && hideSlayerChatQuest == null && hideSlayerChatRadio == null
+                && hideSlayerChatLevelUp == null && hideSlayerChatHealing == null && hideSlayerChatSunshade == null
+                && cleanBlazeWrongDaggerChat == null && cleanBlazeDamageChat == null) return;
         boolean slayerOn = !Boolean.FALSE.equals(hideSlayerChatMessages);
         messageFilterSlayerQuest = slayerOn && !Boolean.FALSE.equals(hideSlayerChatQuest);
         messageFilterSlayerRadio = slayerOn && !Boolean.FALSE.equals(hideSlayerChatRadio);

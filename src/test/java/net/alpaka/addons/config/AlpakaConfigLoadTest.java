@@ -126,9 +126,13 @@ class AlpakaConfigLoadTest {
         assertNull(off.cleanBlazeDamageChat, "legacy field cleared");
 
         AlpakaConfig on = load("{\"configVersion\": 2, \"hideSlayerChatRadio\": false, \"cleanBlazeEnabled\": false}");
-        assertTrue(on.messageFilterSlayerQuest, "missing fields were on by default");
+        assertTrue(on.messageFilterSlayerQuest, "fields missing next to old ones were on by default");
         assertFalse(on.messageFilterSlayerRadio);
         assertFalse(on.messageFilterBlazeWrongDagger, "Clean Blaze was off");
+
+        AlpakaConfig fresh = load("{\"configVersion\": 2, \"cleanBlazeEnabled\": false}");
+        assertTrue(fresh.messageFilterBlazeDamage, "without any old chat field the defaults stay");
+        assertTrue(fresh.messageFilterSlayerQuest);
 
         assertTrue(load("{\"configVersion\": 3, \"hideSlayerChatQuest\": false}").messageFilterSlayerQuest,
                 "a migrated file is not migrated again");

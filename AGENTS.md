@@ -44,7 +44,7 @@ session always win over this file.
     (at most every 30 s), party chat answers to a party member's "!tps"-style command when the
     player switched on Auto Answer (`Cause.PARTY_CHAT_REQUEST`, off by default,
     at most every 2 s), Warp Cooldown's delayed resend of a command the player typed and sent
-    with Enter on SkyBlock (`features/commands/WarpCooldownQueue`, `Cause.QUEUED_CHAT_INPUT`): a
+    with Enter, or picked on the command wheel, on SkyBlock (`features/commands/WarpCooldownQueue`, `Cause.QUEUED_CHAT_INPUT`): a
     warp (/warp, /is, /hub, /warpforge, /garden) typed in the first 3 s after a world change, or
     any command Hypixel refuses within 3 s with "You may only use this command after Ns on the
     server!", is held and sent once when that wait is over (at most 30 s after the world change);

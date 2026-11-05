@@ -26,9 +26,10 @@ import java.util.regex.Pattern;
  *   <li>Any other command Hypixel refuses with the message above is held for the time the message
  *       names, counted from the world change, and the refusal is hidden.</li>
  * </ul>
- * Only a command the player typed and sent with Enter is ever held, only the latest one, and only
- * once: a command that is refused again after waiting is left as refused. Joining another server or
- * leaving drops whatever is held, since that warp was meant for the server left behind.
+ * Only a command the player typed and sent with Enter, or picked on the command wheel, is ever
+ * held, only the latest one, and only once: a command that is refused again after waiting is left
+ * as refused. Joining another server or leaving drops whatever is held, since that warp was meant
+ * for the server left behind.
  */
 public final class WarpCooldownQueue {
 
@@ -80,8 +81,8 @@ public final class WarpCooldownQueue {
     }
 
     /**
-     * A command the player just sent with Enter, without its slash. True when it was held, and must
-     * not be sent now.
+     * A command the player just sent with Enter or picked on the command wheel, without its slash.
+     * True when it was held, and must not be sent now.
      */
     public static boolean onTyped(String command) {
         long now = System.currentTimeMillis();

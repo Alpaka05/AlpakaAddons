@@ -2399,14 +2399,14 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Commands", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("shorten_warp", "Shorten Warp",
-                "Type just the destination to warp there: /isle instead of /warp isle. Commands that already exist keep their meaning.",
+                "Type just the destination to warp there: /isle instead of /warp isle, in chat and on the command wheel. Commands that already exist keep their meaning.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.shortenWarpEnabled,
                 v -> { AlpakaConfig.instance.shortenWarpEnabled = v; AlpakaConfig.save(); },
                 "shorten warp short shortcut alias destination /isle /hub /garden /dh command"));
 
         OPTIONS.add(new ConfigOption("warp_cooldown_queue", "Warp Cooldown",
-                "A warp typed right after joining a server waits for Hypixel's cooldown and goes out on its own when it ends, instead of being refused.",
+                "A warp typed or picked on the command wheel right after joining a server waits for Hypixel's cooldown and goes out on its own when it ends, instead of being refused.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.warpCooldownQueueEnabled,
                 v -> { AlpakaConfig.instance.warpCooldownQueueEnabled = v; AlpakaConfig.save(); },

@@ -111,6 +111,8 @@ public class ProfileDashboardScreen extends Screen {
     private static final int HEADER_H = AlpakaStyle.HEADER_H;
     private static final int PAD = AlpakaStyle.PAD;
     private static final int SIDE_W = 116;
+    /** The sidebar folded down to its icons: a 16-pixel item in a row with a little room either side. */
+    private static final int SIDE_W_COLLAPSED = 32;
     private static final int SIDE_ROW_H = 20;
     private static final int CHIP_H = 12;
     private static final int[] PALETTE = {0xFF5CE1F0, 0xFFFFB347, 0xFF5BE38A, 0xFFB388FF, 0xFFFF6B9A, 0xFFFFE066,
@@ -129,6 +131,8 @@ public class ProfileDashboardScreen extends Screen {
     private long caretFrom = 0L;
     private boolean profileMenuOpen = false;
     private float indicatorY = Float.NaN;
+    /** How far the sidebar is folded, 0 open to 1 down to its icons; starts where it was left. */
+    private float sideFold = AlpakaConfig.instance.profileSidebarCollapsed ? 1.0f : 0.0f;
 
     private final List<Hit> hits = new ArrayList<>();
     private final List<Runnable> overlays = new ArrayList<>();
@@ -286,12 +290,16 @@ public class ProfileDashboardScreen extends Screen {
 
         drawHeader(graphics, x, y, w);
         AlpakaStyle.headerLine(graphics, x, y, w);
-        drawSidebar(graphics, x, y + HEADER_H, h - HEADER_H, deltaSec);
-        ModernGuiUtils.drawRect(graphics, x + SIDE_W, y + HEADER_H + 6, 1, h - HEADER_H - 12, AlpakaStyle.LINE);
+        float foldTarget = AlpakaConfig.instance.profileSidebarCollapsed ? 1.0f : 0.0f;
+        sideFold = PloppAnimation.interpolate(sideFold, foldTarget, deltaSec, 16.0f);
+        if (Math.abs(sideFold - foldTarget) < 0.002f) sideFold = foldTarget;
+        int sideW = Math.round(SIDE_W + (SIDE_W_COLLAPSED - SIDE_W) * sideFold);
+        drawSidebar(graphics, x, y + HEADER_H, sideW, h - HEADER_H, deltaSec);
+        ModernGuiUtils.drawRect(graphics, x + sideW, y + HEADER_H + 6, 1, h - HEADER_H - 12, AlpakaStyle.LINE);
 
-        clipX = x + SIDE_W + 1;
+        clipX = x + sideW + 1;
         clipY = y + HEADER_H;
-        clipW = w - SIDE_W - 1;
+        clipW = w - sideW - 1;
         clipH = h - HEADER_H - 4;
         // A search is a view of its own, and every new query starts at the top.
         String detail = searching() ? "\u0000search:" + itemSearch.getText() : skillDetail;
@@ -499,25 +507,51 @@ public class ProfileDashboardScreen extends Screen {
 
     // ---- Sidebar --------------------------------------------------------------------------------
 
-    private void drawSidebar(GuiGraphicsExtractor graphics, int x, int y, int h, float deltaSec) {
+    private void drawSidebar(GuiGraphicsExtractor graphics, int x, int y, int sideW, int h, float deltaSec) {
         int rowX = x + 4;
-        int rowW = SIDE_W - 8;
+        int rowW = sideW - 8;
+        // Fully open, or on its way to or from its icons: names, the search and the footer only
+        // show where they fit, so nothing spills over the page while the sidebar slides.
+        boolean open = sideW == SIDE_W;
+        boolean folded = AlpakaConfig.instance.profileSidebarCollapsed;
         int pages = Page.values().length;
 
         // On a small window the footer gives way first, then the rows get slimmer. The label stays:
         // the item search opens from it.
         int footerH = 30;
-        boolean footer = h >= 12 + pages * 17 + footerH + 12;
+        boolean footer = open && h >= 12 + pages * 17 + footerH + 12;
         int rowH = Math.max(14, Math.min(SIDE_ROW_H, (h - 10 - 12 - (footer ? footerH : 0)) / pages - 1));
         int rowY = y + 8;
-        if (itemSearchOpen || !itemSearch.isEmpty()) {
+
+        // The arrow that folds the sidebar down to its icons and opens it again: at the end of the
+        // label's line, or alone in the middle while folded.
+        int arrow = 12;
+        int ax = open ? rowX + rowW - arrow : rowX + (rowW - arrow) / 2;
+        int ay = rowY - 3;
+        boolean hoverArrow = AlpakaStyle.inside(mx, my, ax, ay, arrow, arrow) && !profileMenuOpen;
+        AlpakaStyle.chevronButton(graphics, ax, ay, arrow, !folded, hoverArrow, true);
+        hits.add(new Hit(ax, ay, arrow, arrow, () -> {
+            AlpakaConfig.instance.profileSidebarCollapsed = !AlpakaConfig.instance.profileSidebarCollapsed;
+            AlpakaConfig.save();
+            if (AlpakaConfig.instance.profileSidebarCollapsed) {
+                // The field has no room in the slim sidebar, so the search goes with it.
+                itemSearch.setText("");
+                itemSearchOpen = false;
+                itemSearchFocused = false;
+            }
+        }));
+        if (hoverArrow) tip("sidefold", folded ? "Show the page names." : "Fold the sidebar down to its icons.");
+
+        if (!open) {
+            // No label or search while folded or sliding.
+        } else if (itemSearchOpen || !itemSearch.isEmpty()) {
             // The search through every item the profile owns, where the label was.
             int fh = 14;
             int fy = rowY - 3;
             boolean hoverField = AlpakaStyle.inside(mx, my, rowX, fy, rowW, fh) && !profileMenuOpen;
-            AlpakaStyle.textField(graphics, this.font, rowX, fy, rowW, fh, itemSearch.getText(), "Search Items",
+            AlpakaStyle.textField(graphics, this.font, rowX, fy, rowW - arrow - 2, fh, itemSearch.getText(), "Search Items",
                     itemSearchFocused, hoverField, itemCaretFrom);
-            hits.add(new Hit(rowX, fy, rowW, fh, () -> {
+            hits.add(new Hit(rowX, fy, rowW - arrow - 2, fh, () -> {
                 itemSearchFocused = true;
                 itemCaretFrom = System.currentTimeMillis();
             }));
@@ -551,13 +585,20 @@ public class ProfileDashboardScreen extends Screen {
             if (hover && p != page) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, rowH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
             // Items only at their full 16 pixels: scaled down, the game's nearest-neighbour sampling
             // drops rows and columns unevenly and they turn blotchy. Rows too slim for that go without.
-            boolean icons = rowH >= 18;
+            // Folded, the icons are all there is, so they stay even in slim rows.
+            boolean icons = rowH >= 18 || !open;
+            int ix = rowX + Math.min(5, (rowW - 16) / 2);
             if (icons) {
                 ItemStack skyblock = p.skyblockIcon == null ? ItemStack.EMPTY : ItemIcons.forItem(p.skyblockIcon, null);
-                if (!skyblock.isEmpty()) stackIcon(graphics, skyblock, rowX + 5, rowY + (rowH - 16) / 2, 1.0f);
-                else icon(graphics, p.icon, rowX + 5, rowY + (rowH - 16) / 2, 1.0f);
+                if (!skyblock.isEmpty()) stackIcon(graphics, skyblock, ix, rowY + (rowH - 16) / 2, 1.0f);
+                else icon(graphics, p.icon, ix, rowY + (rowH - 16) / 2, 1.0f);
             }
-            text(graphics, p.title, rowX + (icons ? 27 : 10), rowY + (rowH - 8) / 2, p == page || hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
+            int tx = rowX + (icons ? 27 : 10);
+            if (tx + textW(p.title) <= rowX + rowW - 2) {
+                text(graphics, p.title, tx, rowY + (rowH - 8) / 2, p == page || hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
+            } else if (hover) {
+                tip(p, p.title);
+            }
             Page target = p;
             hits.add(new Hit(rowX, rowY, rowW, rowH, () -> {
                 page = target;

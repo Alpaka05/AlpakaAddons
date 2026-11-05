@@ -33,8 +33,9 @@ import java.util.regex.Pattern;
  * A maxed skill has no percentage: Hypixel shows the XP gained past the cap instead, over a 0
  * ("+12.5 Farming (5,183,244/0)"). That XP is counted on as overflow levels, as the Profile
  * Dashboard does, and the way to the next one is shown with the level in front:
- * "+12.5 Farming (60: 5,183,244/7,600,000)". The cap comes from the tab list's "Farming 60: MAX";
- * this XP is exact, so the rounded format only shortens it.
+ * "+12.5 Farming (60: 5,183,244/7,600,000)". This needs no tab list: the "/0" already says the
+ * skill is maxed, and the cap is the skill's own (CAPS), unless the tab list shows a lower one
+ * ("Farming 50: MAX" before Anita's perks). This XP is exact, so the rounded format only shortens it.
  *
  * Only what is drawn changes (see HudOverlayMessageMixin): every feature that reads the action bar
  * through Fabric's message events still gets Hypixel's own text.
@@ -46,10 +47,19 @@ public final class ExactSkillXp {
     /** "+12.5 Farming (45.32%)"; group 1 the skill, group 2 the percentage without the sign. */
     private static final Pattern GAIN = Pattern.compile("\\+[\\d.,]+ ([A-Z][a-z]+) \\(([\\d.]+)%\\)");
 
-    /** The skills Levels has a table for; Hunting and anything new keep their percentage. */
+    /** The skills Levels has a table for (Hunting uses the normal one); anything new keeps its percentage. */
     private static final Set<String> SKILLS = Set.of(
             "farming", "mining", "combat", "foraging", "fishing", "enchanting", "alchemy", "taming", "carpentry",
-            "runecrafting", "social");
+            "hunting", "runecrafting", "social");
+
+    /**
+     * Each skill's highest level, from Hypixel's /v2/resources/skyblock/skills. Farming's is 60 with
+     * all of Anita's perks; a lower one comes from the tab list.
+     */
+    static final Map<String, Integer> CAPS = Map.ofEntries(
+            Map.entry("farming", 60), Map.entry("mining", 60), Map.entry("combat", 60), Map.entry("foraging", 57),
+            Map.entry("fishing", 50), Map.entry("enchanting", 60), Map.entry("alchemy", 50), Map.entry("taming", 60),
+            Map.entry("carpentry", 50), Map.entry("hunting", 50), Map.entry("runecrafting", 25), Map.entry("social", 25));
 
     /** The last level and percentage seen per skill, to see a level up before the tab list does. */
     private record Seen(int level, double percent) {
@@ -60,7 +70,7 @@ public final class ExactSkillXp {
     /** "+12.5 Farming (5,183,244/0)" of a maxed skill; group 1 the skill, group 2 the XP past the cap. */
     private static final Pattern MAXED_GAIN = Pattern.compile("\\+[\\d.,]+ ([A-Z][a-z]+) \\(([\\d,]+(?:\\.\\d+)?)/0\\)");
 
-    /** The cap per skill, as the tab list last showed it maxed; the widget doesn't always list every skill. */
+    /** The cap per skill as the tab list last showed it maxed; the widget doesn't always list every skill. */
     private static final Map<String, Integer> CAP = new HashMap<>();
 
     /**
@@ -126,12 +136,13 @@ public final class ExactSkillXp {
     }
 
     /**
-     * The skill's cap: the tab list's, or the one it showed last since the world changed. Null while
-     * none is known; guessing would put the overflow levels off by the ten levels between caps.
+     * The skill's cap: the tab list's, or the one it showed last since the world changed, else the
+     * skill's own highest level. Null only for a skill with no known cap.
      */
     static Integer cap(String skill, Integer tabCap) {
         if (tabCap != null) CAP.put(skill, tabCap);
-        return CAP.get(skill);
+        Integer seen = CAP.get(skill);
+        return seen != null ? seen : CAPS.get(skill);
     }
 
     /**

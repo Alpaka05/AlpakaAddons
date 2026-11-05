@@ -92,11 +92,16 @@ class ExactSkillXpTest {
         assertEquals(60, ExactSkillXp.capInTab(tab, "Farming"));
         assertEquals(50, ExactSkillXp.capInTab(tab, "Fishing"));
         assertNull(ExactSkillXp.capInTab(tab, "Mining"));
-        // Remembered while the widget shows another skill, until the world changes.
-        assertEquals(60, ExactSkillXp.cap("farming", 60));
+        // Without the tab list each skill has its own cap.
         assertEquals(60, ExactSkillXp.cap("farming", null));
+        assertEquals(57, ExactSkillXp.cap("foraging", null));
+        assertEquals(50, ExactSkillXp.cap("hunting", null));
+        assertNull(ExactSkillXp.cap("dancing", null));
+        // A lower cap in the tab list (Farming before Anita's perks) is remembered until the world changes.
+        assertEquals(50, ExactSkillXp.cap("farming", 50));
+        assertEquals(50, ExactSkillXp.cap("farming", null));
         ExactSkillXp.reset();
-        assertNull(ExactSkillXp.cap("farming", null));
+        assertEquals(60, ExactSkillXp.cap("farming", null));
     }
 
     @Test
@@ -115,6 +120,11 @@ class ExactSkillXpTest {
         assertEquals(51, fishing.level());
         assertEquals(700_000, fishing.xpCurrent(), 1e-6);
         assertEquals(4_600_000, fishing.xpForNext(), 1e-6);
+        // Foraging stops at 57 (91,572,425 XP), so 58 takes 6.4M.
+        Levels.Overflow foraging = ExactSkillXp.overflow("foraging", 57, 100_000);
+        assertEquals(57, foraging.level());
+        assertEquals(91_572_425L, Levels.skillXpToReach("foraging", 57));
+        assertEquals(6_400_000, foraging.xpForNext(), 1e-6);
         assertNull(ExactSkillXp.overflow("runecrafting", 25, 1_000));
         assertNull(ExactSkillXp.overflow("farming", 60, 1e300));
     }

@@ -447,12 +447,11 @@ public class AlpakaConfig {
      * Whether the mod may contact anything over the network ("Network Features").
      *
      * Everything else in this mod works from what the client already has. This is the one setting
-     * that lets it reach outside, for four things: a public endpoint describing the running election
-     * (no API key, no player named, the same answer for everybody), the main menu's player
-     * count, an ordinary status ping to mc.hypixel.net like the server list sends, the update
-     * check against the mod's public GitHub releases, and the main menu's What's New card, which
-     * reads the newest of those releases' notes. Off means no
-     * request is made and nothing derived from one is used. The JSON key keeps its old name.
+     * that lets it reach outside; the README's "What it contacts" lists every service it is used
+     * for (Hypixel's public resources and Bazaar, SkyCofl, the NEU repository, the Profile
+     * Dashboard's Elite, Soopy and SkyKings, the main menu's status ping, GitHub releases). Off
+     * means no request is made and nothing derived from one is used. The JSON key keeps its old
+     * name.
      */
     public boolean allowApiCalls = true;
     /** A chat line on joining a world when a newer release is on GitHub. Needs allowApiCalls. */

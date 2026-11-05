@@ -85,4 +85,37 @@ class ExactSkillXpTest {
         assertEquals(3, out.getSiblings().size());
         assertEquals(aqua, out.getSiblings().get(1).getStyle());
     }
+
+    @Test
+    void readsTheCapOfAMaxedSkill() {
+        List<String> tab = List.of("Skills: Farming 60: MAX", " Fishing 50: MAX", " Mining 14: 22,922/75k");
+        assertEquals(60, ExactSkillXp.capInTab(tab, "Farming"));
+        assertEquals(50, ExactSkillXp.capInTab(tab, "Fishing"));
+        assertNull(ExactSkillXp.capInTab(tab, "Mining"));
+        // Remembered while the widget shows another skill, until the world changes.
+        assertEquals(60, ExactSkillXp.cap("farming", 60));
+        assertEquals(60, ExactSkillXp.cap("farming", null));
+        ExactSkillXp.reset();
+        assertNull(ExactSkillXp.cap("farming", null));
+    }
+
+    @Test
+    void xpPastTheCapCountsOnAsOverflowLevels() {
+        // Level 61 takes 7.6M, 62 then 8.2M.
+        Levels.Overflow at60 = ExactSkillXp.overflow("farming", 60, 5_183_244);
+        assertEquals(60, at60.level());
+        assertEquals(5_183_244, at60.xpCurrent(), 1e-6);
+        assertEquals(7_600_000, at60.xpForNext(), 1e-6);
+        Levels.Overflow at62 = ExactSkillXp.overflow("farming", 60, 7_600_000 + 8_200_000 + 1_000);
+        assertEquals(62, at62.level());
+        assertEquals(1_000, at62.xpCurrent(), 1e-6);
+        assertEquals(8_800_000, at62.xpForNext(), 1e-6);
+        // A skill capped at 50 goes on through the table's levels 51 to 60 first: 51 takes 4.3M.
+        Levels.Overflow fishing = ExactSkillXp.overflow("fishing", 50, 5_000_000);
+        assertEquals(51, fishing.level());
+        assertEquals(700_000, fishing.xpCurrent(), 1e-6);
+        assertEquals(4_600_000, fishing.xpForNext(), 1e-6);
+        assertNull(ExactSkillXp.overflow("runecrafting", 25, 1_000));
+        assertNull(ExactSkillXp.overflow("farming", 60, 1e300));
+    }
 }

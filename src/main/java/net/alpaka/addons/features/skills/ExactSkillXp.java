@@ -30,6 +30,12 @@ import java.util.regex.Pattern;
  * it is. The percentage has two decimals, so the last digits are an estimate, which is what the
  * rounded format is for.
  *
+ * A maxed skill has no percentage: Hypixel shows the XP gained past the cap instead, over a 0
+ * ("+12.5 Farming (5,183,244/0)"). That XP is counted on as overflow levels, as the Profile
+ * Dashboard does, and the way to the next one is shown with the level in front:
+ * "+12.5 Farming (60: 5,183,244/7,600,000)". The cap comes from the tab list's "Farming 60: MAX";
+ * this XP is exact, so the rounded format only shortens it.
+ *
  * Only what is drawn changes (see HudOverlayMessageMixin): every feature that reads the action bar
  * through Fabric's message events still gets Hypixel's own text.
  */
@@ -51,6 +57,12 @@ public final class ExactSkillXp {
 
     private static final Map<String, Seen> SEEN = new HashMap<>();
 
+    /** "+12.5 Farming (5,183,244/0)" of a maxed skill; group 1 the skill, group 2 the XP past the cap. */
+    private static final Pattern MAXED_GAIN = Pattern.compile("\\+[\\d.,]+ ([A-Z][a-z]+) \\(([\\d,]+(?:\\.\\d+)?)/0\\)");
+
+    /** The cap per skill, as the tab list last showed it maxed; the widget doesn't always list every skill. */
+    private static final Map<String, Integer> CAP = new HashMap<>();
+
     /**
      * Forgets the levels seen so far. Called on every world change and disconnect (SessionLifecycle):
      * a profile switch or a server transfer on Hypixel is not always a new login, and the next
@@ -58,6 +70,7 @@ public final class ExactSkillXp {
      */
     public static void reset() {
         SEEN.clear();
+        CAP.clear();
     }
 
     /** The action bar as it is drawn: with XP in place of the percentage when the feature is on. */
@@ -71,6 +84,8 @@ public final class ExactSkillXp {
         StringBuilder full = new StringBuilder();
         for (Piece piece : pieces) full.append(piece.text());
 
+        Matcher maxed = MAXED_GAIN.matcher(full);
+        if (maxed.find()) return rewriteMaxed(message, pieces, maxed);
         Matcher m = GAIN.matcher(full);
         if (!m.find()) return message;
         String skill = m.group(1).toLowerCase(Locale.ROOT);
@@ -88,6 +103,46 @@ public final class ExactSkillXp {
         String shown = format(needed * percent / 100.0, needed, AlpakaConfig.instance.exactSkillXpRounded);
         // The percentage and its sign, so the parentheses keep Hypixel's style.
         return replace(pieces, m.start(2), m.end(2) + 1, shown);
+    }
+
+    /** A maxed skill's gain with the overflow level and the way to the next in place of "XP/0". */
+    private static Component rewriteMaxed(Component unchanged, List<Piece> pieces, Matcher m) {
+        String skill = m.group(1).toLowerCase(Locale.ROOT);
+        if (!SKILLS.contains(skill)) return unchanged;
+        Integer cap = cap(skill, tabCap(m.group(1)));
+        if (cap == null) return unchanged;
+        double pastCap;
+        try {
+            pastCap = Double.parseDouble(m.group(2).replace(",", ""));
+        } catch (NumberFormatException e) {
+            return unchanged;
+        }
+        Levels.Overflow over = overflow(skill, cap, pastCap);
+        if (over == null) return unchanged;
+        String shown = over.level() + ": " + format(over.xpCurrent(), Math.round(over.xpForNext()),
+                AlpakaConfig.instance.exactSkillXpRounded);
+        // "XP/0", inside the parentheses.
+        return replace(pieces, m.start(2), m.end(2) + 2, shown);
+    }
+
+    /**
+     * The skill's cap: the tab list's, or the one it showed last since the world changed. Null while
+     * none is known; guessing would put the overflow levels off by the ten levels between caps.
+     */
+    static Integer cap(String skill, Integer tabCap) {
+        if (tabCap != null) CAP.put(skill, tabCap);
+        return CAP.get(skill);
+    }
+
+    /**
+     * The overflow level XP {@code pastCap} past {@code cap} makes: counted from the skill's total,
+     * as the Profile Dashboard counts it. Null for skills with no overflow rule.
+     */
+    static Levels.Overflow overflow(String skill, int cap, double pastCap) {
+        // The record is in the single billions; far past that is no real XP, and the level steps
+        // would outgrow a long before the count got there.
+        if (!(pastCap >= 0) || pastCap > 1e12) return null;
+        return Levels.skillOverflow(skill, Levels.skillXpToReach(skill, cap) + pastCap);
     }
 
     /**
@@ -116,13 +171,32 @@ public final class ExactSkillXp {
 
     /** The level the tab list's Skills widget shows for {@code skill} ("Farming"), or null. */
     private static Integer tabLevel(String skill) {
+        return levelInTab(tabLines(), skill);
+    }
+
+    /** The tab list's lines as plain text; none outside a world. */
+    private static List<String> tabLines() {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null || mc.gui == null) return null;
         List<String> lines = new ArrayList<>();
+        if (mc.player == null || mc.gui == null) return lines;
         for (PlayerInfo info : ((PlayerTabOverlayAccessor) mc.gui.hud.getTabList()).alpaka$getPlayerInfos()) {
             lines.add(TabListParser.plain(mc.gui.hud.getTabList().getNameForDisplay(info)));
         }
-        return levelInTab(lines, skill);
+        return lines;
+    }
+
+    /** The cap the tab list's Skills widget shows for a maxed {@code skill} ("Farming 60: MAX"), or null. */
+    private static Integer tabCap(String skill) {
+        return capInTab(tabLines(), skill);
+    }
+
+    static Integer capInTab(List<String> lines, String skill) {
+        Pattern line = Pattern.compile("(?:^|\\s)" + Pattern.quote(skill) + " (\\d{1,3}): MAX");
+        for (String text : lines) {
+            Matcher m = line.matcher(text);
+            if (m.find()) return Integer.parseInt(m.group(1));
+        }
+        return null;
     }
 
     /**

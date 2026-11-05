@@ -7,6 +7,7 @@ import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.slayer.SlayerDropTracker;
 import net.alpaka.addons.mixin.AbstractContainerScreenAccessor;
 import net.alpaka.addons.utils.SkyblockUtils;
+import net.alpaka.addons.utils.TextInputFocus;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
@@ -17,7 +18,6 @@ import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.world.InteractionResult;
@@ -87,7 +87,7 @@ public final class ItemSearchFeature {
     /** The key in a menu: searches for the hovered item. True when it did, so the menu does not get the key too. */
     private static boolean keyPressed(Screen screen) {
         if (!AlpakaConfig.instance.itemSearchEnabled) return false;
-        if (screen.getFocused() instanceof EditBox box && box.canConsumeInput()) return false;
+        if (TextInputFocus.isTyping(screen)) return false;
         if (!(screen instanceof AbstractContainerScreen<?> container)) return false;
         Slot slot = ((AbstractContainerScreenAccessor) container).alpaka$hoveredSlot();
         String query = slot == null || !slot.hasItem() ? null : SkyblockUtils.cleanColor(slot.getItem().getHoverName().getString()).trim();

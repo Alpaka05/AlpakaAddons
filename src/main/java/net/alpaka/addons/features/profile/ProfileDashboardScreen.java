@@ -55,26 +55,36 @@ public class ProfileDashboardScreen extends Screen {
 
     // ---- Pages ----------------------------------------------------------------------------------
 
+    /**
+     * The sidebar's pages. Where SkyBlock has an item that stands for a page (the Maddox Batphone
+     * for slayers, a backpack for inventories), the row wears it, drawn as the NotEnoughUpdates
+     * repository has it; until that is in, or with Network Features off, the plain item instead.
+     * Pages whose menu in SkyBlock already shows a plain item (Skills, Collections, Bestiary)
+     * keep that one.
+     */
     enum Page {
-        OVERVIEW("Overview", Items.NETHER_STAR),
-        SKILLS("Skills", Items.DIAMOND_SWORD),
-        DUNGEONS("Dungeons", Items.WITHER_SKELETON_SKULL),
-        SLAYERS("Slayers", Items.ROTTEN_FLESH),
-        NETWORTH("Networth", Items.GOLD_INGOT),
-        INVENTORY("Inventories", Items.CHEST),
-        PETS("Pets", Items.BONE),
-        COLLECTIONS("Collections", Items.PAINTING),
-        BESTIARY("Bestiary", Items.WRITABLE_BOOK),
-        MUSEUM("Museum", Items.ARMOR_STAND),
-        RIFT("Rift", Items.ENDER_EYE),
-        CHOCOLATE("Rabbits", Items.COCOA_BEANS);
+        OVERVIEW("Overview", Items.NETHER_STAR, "SKYBLOCK_MENU"),
+        SKILLS("Skills", Items.DIAMOND_SWORD, null),
+        DUNGEONS("Dungeons", Items.WITHER_SKELETON_SKULL, "MASTER_SKULL_TIER_7"),
+        SLAYERS("Slayers", Items.ROTTEN_FLESH, "AATROX_BATPHONE"),
+        NETWORTH("Networth", Items.GOLD_INGOT, "PIGGY_BANK"),
+        INVENTORY("Inventories", Items.CHEST, "JUMBO_BACKPACK"),
+        PETS("Pets", Items.BONE, null),
+        COLLECTIONS("Collections", Items.PAINTING, null),
+        BESTIARY("Bestiary", Items.WRITABLE_BOOK, null),
+        MUSEUM("Museum", Items.ARMOR_STAND, null),
+        RIFT("Rift", Items.ENDER_EYE, "RIFT_PRISM"),
+        CHOCOLATE("Rabbits", Items.COCOA_BEANS, "RABBIT_HAT");
 
         final String title;
         final Item icon;
+        /** The SkyBlock item's id, or null where the plain item is the right one. */
+        final String skyblockIcon;
 
-        Page(String title, Item icon) {
+        Page(String title, Item icon, String skyblockIcon) {
             this.title = title;
             this.icon = icon;
+            this.skyblockIcon = skyblockIcon;
         }
     }
 
@@ -542,7 +552,11 @@ public class ProfileDashboardScreen extends Screen {
             // Items only at their full 16 pixels: scaled down, the game's nearest-neighbour sampling
             // drops rows and columns unevenly and they turn blotchy. Rows too slim for that go without.
             boolean icons = rowH >= 18;
-            if (icons) icon(graphics, p.icon, rowX + 5, rowY + (rowH - 16) / 2, 1.0f);
+            if (icons) {
+                ItemStack skyblock = p.skyblockIcon == null ? ItemStack.EMPTY : ItemIcons.forItem(p.skyblockIcon, null);
+                if (!skyblock.isEmpty()) stackIcon(graphics, skyblock, rowX + 5, rowY + (rowH - 16) / 2, 1.0f);
+                else icon(graphics, p.icon, rowX + 5, rowY + (rowH - 16) / 2, 1.0f);
+            }
             text(graphics, p.title, rowX + (icons ? 27 : 10), rowY + (rowH - 8) / 2, p == page || hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
             Page target = p;
             hits.add(new Hit(rowX, rowY, rowW, rowH, () -> {

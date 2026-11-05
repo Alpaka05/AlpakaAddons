@@ -108,8 +108,11 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     /** Whether the details panel shows the feature's description; one choice for every feature. */
     private boolean descriptionOpen = true;
 
-    /** Dropdowns folded shut in the details panel. Open by default, so nothing is hidden until asked. */
-    private final Set<ConfigOption> collapsed = new HashSet<>();
+    /**
+     * Dropdowns opened in the details panel. Every list starts folded each time the config opens,
+     * so a long list of switches doesn't push the rest of the feature's settings out of view.
+     */
+    private final Set<ConfigOption> expanded = new HashSet<>();
 
     private ConfigOption focusedText = null;
     /**
@@ -885,7 +888,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         // the y returned is exactly what drawing it would have returned.
         if (!shown) {
             int blockH = rowH;
-            if (option.getType() == ConfigOption.Type.DROPDOWN && !collapsed.contains(option)) {
+            if (option.getType() == ConfigOption.Type.DROPDOWN && expanded.contains(option)) {
                 blockH = rowH + option.getEntries().size() * SETTING_ROW_H + 2;
             } else if (option.getType() == ConfigOption.Type.SLIDER && option.getChoices() != null && openChoice == option) {
                 blockH = rowH + option.getChoices().length * SETTING_ROW_H + 2;
@@ -950,7 +953,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                 }
             }
             case DROPDOWN -> {
-                boolean open = !collapsed.contains(option);
+                boolean open = expanded.contains(option);
                 if (hover) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, rowH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
                 String count = option.getEnabledEntryCount() + "/" + option.getEntryCount();
                 int countW = GuiFont.width(this.font, count);
@@ -959,7 +962,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                 AlpakaStyle.chevron(graphics, right - 4, rowY + 8, open, AlpakaStyle.TEXT_SOFT);
                 if (shown) {
                     hits.add(new Hit(rowX, hitY, rowW, rowH, (mx, my) -> {
-                        if (!collapsed.remove(option)) collapsed.add(option);
+                        if (!expanded.remove(option)) expanded.add(option);
                     }));
                 }
                 if (open) {

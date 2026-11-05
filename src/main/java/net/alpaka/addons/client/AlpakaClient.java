@@ -57,6 +57,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(
                 client -> net.alpaka.addons.config.AlpakaStats.tick());
         net.alpaka.addons.features.market.MarketKeys.register();
+        net.alpaka.addons.features.market.Markets.register();
         ZoomFeature.register();
         net.alpaka.addons.features.chat.ChatPeekFeature.register();
         // Before ChatOverHud, which hands the player list over as it stands after this replaced it.

@@ -228,11 +228,17 @@ public class MarketScreen extends ContainerScreen {
      * menu. Returns false, leaving it to vanilla, for any chest that is not a market's.
      */
     public static boolean tryOpen(MenuType<?> type, Minecraft mc, int containerId, Component title) {
-        if (mc.player == null || !isChest(type)) return false;
+        if (mc.player == null || !isChest(type)) {
+            Markets.vanillaMenuOpening(containerId, null);
+            return false;
+        }
         String plain = SkyblockUtils.cleanColor(title.getString());
         MarketKind kind = MarketTitles.classify(plain, Markets.navigationContext(mc.gui.screen()));
         if (kind != null) Markets.menuOpened(plain);
-        if (kind == null || !Markets.skinned(kind)) return false;
+        if (kind == null || !Markets.skinned(kind)) {
+            Markets.vanillaMenuOpening(containerId, kind);
+            return false;
+        }
         if (!(type.create(containerId, mc.player.getInventory()) instanceof ChestMenu menu)) return false;
 
         MarketScreen screen = new MarketScreen(menu, mc.player.getInventory(), title, kind);

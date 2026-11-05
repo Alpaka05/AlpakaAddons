@@ -35,7 +35,8 @@ import java.util.List;
  * broken at a space (see {@link SignPrompt#split}) - so the lines are always ones a player could
  * have typed into the vanilla sign. A price or an amount goes in plain digits, "4000000" for "4m"
  * (see {@link SignPrompt#answer}). Cancel and Escape empty the answer first, which Hypixel takes as
- * no answer. The chips and the paste button only fill the field; the player still confirms.
+ * no answer. The chips only fill the field; the player still confirms. The paste button confirms
+ * the clipboard at once, as the player's click.
  */
 public class MarketInputScreen extends SignEditScreen {
     private static final int HEADER_H = AlpakaStyle.HEADER_H;
@@ -548,13 +549,13 @@ public class MarketInputScreen extends SignEditScreen {
         int tx = x + textX;
         int ty = y + (FIELD_H - 8) / 2;
 
-        // The paste button at the right end: the clipboard into the field, for the player to check and confirm.
+        // The paste button at the right end: the clipboard in, and confirmed at once.
         int pasteSize = FIELD_H - 8;
         int pasteX = x + w - 4 - pasteSize;
         int pasteY = y + 4;
         boolean hoverPaste = AlpakaStyle.inside(mouseX, mouseY, pasteX, pasteY, pasteSize, pasteSize);
         AlpakaStyle.pasteButton(graphics, pasteX, pasteY, pasteSize, hoverPaste);
-        hits.add(new Hit(pasteX, pasteY, pasteSize, pasteSize, mx -> paste(), true));
+        hits.add(new Hit(pasteX, pasteY, pasteSize, pasteSize, mx -> pasteAndConfirm(), true));
 
         int room = pasteX - 6 - tx;
         String text = text();
@@ -728,11 +729,11 @@ public class MarketInputScreen extends SignEditScreen {
     }
 
     /**
-     * Puts the clipboard's first line in the field, as Ctrl+V would. It is not confirmed: a price or
-     * an amount from the clipboard may not be the one the player meant, and Enter is one key away.
-     * If it does not fit the sign the field flashes and keeps what it had.
+     * Puts the clipboard's first line in the field, as Ctrl+V would, and confirms it. Nothing is
+     * sent if the clipboard is empty or does not fit the sign; the field then flashes and keeps
+     * what it had.
      */
-    private void paste() {
+    private void pasteAndConfirm() {
         String clip = Minecraft.getInstance().keyboardHandler.getClipboard();
         if (clip == null) return;
         int newline = clip.indexOf('\n');
@@ -740,7 +741,8 @@ public class MarketInputScreen extends SignEditScreen {
         String value = StringUtil.filterText(clip.replace('\t', ' ')).trim();
         if (value.isEmpty()) return;
         replace(value);
-        if (!text().equals(value)) fullAtMs = System.currentTimeMillis();
+        if (text().equals(value)) confirm();
+        else fullAtMs = System.currentTimeMillis();
     }
 
     private void placeCaret(int x) {

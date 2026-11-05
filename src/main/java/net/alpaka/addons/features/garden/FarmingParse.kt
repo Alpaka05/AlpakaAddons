@@ -46,6 +46,14 @@ object FarmingParse {
      */
     private val PEST_SPAWN = Regex("^\\w+! .*Pests? ha(?:s|ve) spawned in (?:Plot - .+|The Barn)!")
 
+    /**
+     * The Visitors widget's title: "Visitors: (3)". The optional "/10" is there in case Hypixel ever
+     * shows the queue size, which the Max Occupancy upgrade raises from 5 up to 10.
+     */
+    private val VISITOR_COUNT = Regex("^\\s*Visitors: \\((\\d{1,3})(?:/\\d{1,3})?\\)")
+    /** " Next Visitor: 11m", " Next Visitor: Queue Full!" or " Next Visitor: Not Unlocked!". */
+    private val NEXT_VISITOR = Regex("^\\s*Next Visitor: (.+)$")
+
     /** The crop's own item in the Crop Milestones menu: "Mushroom 25". */
     private val MENU_NAME = Regex("^([A-Za-z][A-Za-z ]*?) (\\d+)$")
     /** "Progress to Tier 26: 48.7%", followed by "389,285/800k". */
@@ -124,6 +132,14 @@ object FarmingParse {
 
     fun contestCrops(body: List<String>): List<String> =
         body.mapNotNull { line -> CONTEST_CROP.find(line)?.groupValues?.get(1)?.trim()?.takeIf { it in CROPS } }
+
+    /** How many visitors are waiting, from the Visitors widget; null when the tab does not show it. */
+    fun visitorCount(lines: List<String>): Int? =
+        lines.firstNotNullOfOrNull { VISITOR_COUNT.find(it)?.groupValues?.get(1)?.toIntOrNull() }
+
+    /** What the tab list says after "Next Visitor:"; null when it has no such line. */
+    fun nextVisitor(lines: List<String>): String? =
+        lines.firstNotNullOfOrNull { NEXT_VISITOR.find(it)?.groupValues?.get(1)?.trim() }
 
     fun repellent(chat: String): Repellent? {
         val match = REPELLENT_CHAT.find(chat) ?: return null

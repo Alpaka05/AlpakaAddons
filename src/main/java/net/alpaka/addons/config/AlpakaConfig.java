@@ -413,6 +413,7 @@ public class AlpakaConfig {
     public boolean farmingHudShowMilestoneEta = true;
     public boolean farmingHudShowPestCooldown = true;
     public boolean farmingHudShowRepellent = true;
+    public boolean farmingHudShowVisitors = true;
     public boolean farmingHudShowContest = true;
     public boolean farmingHudBlur = true;
     public boolean farmingHudSmoothFont = true;

@@ -101,6 +101,7 @@ object FarmingHudRenderer {
         if (cfg.farmingHudShowPestCooldown) mask = mask or (1 shl 4)
         if (cfg.farmingHudShowRepellent) mask = mask or (1 shl 5)
         if (cfg.farmingHudShowContest) mask = mask or (1 shl 6)
+        if (cfg.farmingHudShowVisitors) mask = mask or (1 shl 7)
         return mask
     }
 
@@ -184,7 +185,7 @@ object FarmingHudRenderer {
     /** The rows, each behind its own toggle. [preview] fills them with sample figures for the editor. */
     private fun buildRows(preview: Boolean, now: Long): List<Line> {
         val cfg = AlpakaConfig.instance
-        val rows = ArrayList<Line>(7)
+        val rows = ArrayList<Line>(8)
 
         if (cfg.farmingHudShowTitle) rows.add(Line("§lFarming", "", COLOR_TITLE, spansColumns = true))
 
@@ -262,9 +263,25 @@ object FarmingHudRenderer {
             )
         }
 
+        if (cfg.farmingHudShowVisitors) rows.add(visitorLine(preview, now))
+
         if (cfg.farmingHudShowContest) rows.add(contestLine(preview, now))
 
         return rows
+    }
+
+    /** How many visitors wait and when the next one comes, or that the queue is full. */
+    private fun visitorLine(preview: Boolean, now: Long): Line {
+        if (preview) return Line("Visitors", "3 (Next 4m 12s)", COLOR_VALUE)
+        val count = FarmingTracker.visitorCount
+        if (!FarmingTracker.hasVisitorTimer) {
+            return if (count == null) Line("Visitors", "Tab Widget Off", COLOR_WARN) else Line("Visitors", count.toString(), COLOR_VALUE)
+        }
+        if (FarmingTracker.visitorsLocked) return Line("Visitors", "Not Unlocked", COLOR_LABEL)
+        // Hypixel says when the queue is full, so this needs no queue size (Max Occupancy raises it).
+        if (FarmingTracker.visitorQueueFull) return Line("Visitors", count?.let { "$it (Full)" } ?: "Full", COLOR_BAD)
+        val next = FarmingTracker.nextVisitorLeftMs(now)?.let(::formatDuration) ?: FarmingTracker.visitorTimeText ?: "-"
+        return Line("Visitors", if (count == null) "Next $next" else "$count (Next $next)", COLOR_VALUE)
     }
 
     /** The running or next Jacob's Contest: when, and its crops as their items. */

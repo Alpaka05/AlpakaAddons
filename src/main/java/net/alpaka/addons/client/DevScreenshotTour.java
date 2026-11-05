@@ -860,6 +860,15 @@ public final class DevScreenshotTour {
                 net.alpaka.addons.features.cosmetics.RareDropAnimation.test();
             }, () -> true, 20),
             new Stop("rare-drop-day", () -> {}, () -> true, 20),
+            // Every slayer's drop in turn, from the mod's own textures; the two above were the first two.
+            new Stop(null, net.alpaka.addons.features.cosmetics.RareDropAnimation::test, () -> true, 1),
+            new Stop("rare-drop-item-2", () -> {}, () -> true, 40),
+            new Stop(null, net.alpaka.addons.features.cosmetics.RareDropAnimation::test, () -> true, 1),
+            new Stop("rare-drop-item-3", () -> {}, () -> true, 40),
+            new Stop(null, net.alpaka.addons.features.cosmetics.RareDropAnimation::test, () -> true, 1),
+            new Stop("rare-drop-item-4", () -> {}, () -> true, 40),
+            new Stop(null, net.alpaka.addons.features.cosmetics.RareDropAnimation::test, () -> true, 1),
+            new Stop("rare-drop-item-5", () -> {}, () -> true, 40),
             // Last, as it ends the world: confirming the leave dialog leaves for the title screen
             // rather than going back to the pause menu.
             screen("confirm-pause-before-leaving", net.alpaka.addons.features.escapemenu.CustomPauseScreen::new),

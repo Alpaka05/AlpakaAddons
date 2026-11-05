@@ -2,7 +2,6 @@ package net.alpaka.addons.features.cosmetics
 
 import com.mojang.blaze3d.vertex.PoseStack
 import net.alpaka.addons.config.AlpakaConfig
-import net.alpaka.addons.features.market.ItemIcons
 import net.alpaka.addons.features.slayer.SlayerBossEntityTracker
 import net.alpaka.addons.features.slayer.SlayerType
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
@@ -15,7 +14,11 @@ import net.minecraft.client.renderer.item.ItemStackRenderState
 import net.minecraft.client.renderer.texture.OverlayTexture
 import net.minecraft.network.chat.Component
 import net.minecraft.util.ARGB
+import com.google.gson.JsonObject
+import com.mojang.serialization.JsonOps
+import net.minecraft.core.component.DataComponents
 import net.minecraft.world.item.ItemDisplayContext
+import net.minecraft.world.item.component.ResolvableProfile
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.phys.Vec3
@@ -33,7 +36,8 @@ import kotlin.math.sin
  *
  * Client-side only, like the aura: the item and its light are drawn by this client into its own
  * world and nothing is sent, so nobody else sees it. The glow is made of the aura's quads and shader
- * ([AuraCanvas], `aura.fsh`); the item is drawn as an item frame would draw it, turned and scaled.
+ * ([AuraCanvas], `aura.fsh`); the item is drawn as an item frame would draw it, turned and scaled,
+ * from textures that ship with the mod (see [stackFor]), so it works with Network Features off.
  *
  * Where the boss died is the last place the boss was seen alive, which [SlayerBossEntityTracker]
  * follows for the fight anyway. Hypixel's drop line comes as the boss dies, so that place is at most
@@ -73,7 +77,7 @@ object RareDropAnimation {
     private var testIndex = 0
 
     private val itemState = ItemStackRenderState()
-    private val fallbackStack: ItemStack by lazy { ItemStack(Items.NETHER_STAR) }
+    private val stacks = HashMap<String, ItemStack>()
 
     @JvmStatic
     fun register() {
@@ -140,13 +144,36 @@ object RareDropAnimation {
     }
 
     /**
-     * What the drop looks like: as the item search draws it (the NotEnoughUpdates repository by the
-     * item's id, then Hypixel's list by its name), or a nether star while those are off or loading.
+     * What the drop looks like, from the mod's own files so it needs no network: the heads wear
+     * their SkyBlock skins, copied from the NotEnoughUpdates repository into
+     * `textures/rare_drop/`, and the Overflux Capacitor is an enchanted quartz as on SkyBlock. A
+     * drop without a skin of its own (a new headline drop) shows as a nether star.
      */
-    private fun stackFor(item: String): ItemStack {
-        val tag = item.uppercase(Locale.ROOT).replace(' ', '_')
-        val stack = ItemIcons.forItem(tag, item)
-        return if (stack.isEmpty) fallbackStack else stack
+    private fun stackFor(item: String): ItemStack = stacks.getOrPut(item.lowercase(Locale.ROOT)) {
+        val id = item.lowercase(Locale.ROOT).replace(' ', '_')
+        when {
+            id == "overflux_capacitor" -> ItemStack(Items.QUARTZ).also {
+                it.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true)
+            }
+            id in HEAD_SKINS -> head(id) ?: ItemStack(Items.NETHER_STAR)
+            else -> ItemStack(Items.NETHER_STAR)
+        }
+    }
+
+    /** The headline drops that are player heads, by their skin's file name. */
+    private val HEAD_SKINS = setOf(
+        "warden_heart", "primordial_eye", "judgement_core", "high_class_archfiend_dice", "unfanged_vampire_part",
+    )
+
+    /**
+     * A player head whose skin is a texture of the mod's own. The profile names no player, only the
+     * texture, so nothing is looked up: vanilla's `profile={texture:...}`.
+     */
+    private fun head(id: String): ItemStack? {
+        val json = JsonObject()
+        json.addProperty("texture", "alpaka:rare_drop/$id")
+        val profile = ResolvableProfile.CODEC.parse(JsonOps.INSTANCE, json).result().orElse(null) ?: return null
+        return ItemStack(Items.PLAYER_HEAD).also { it.set(DataComponents.PROFILE, profile) }
     }
 
     private fun submit(context: LevelRenderContext) {

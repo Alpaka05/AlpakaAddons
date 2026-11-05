@@ -1091,6 +1091,9 @@ public class AlpakaConfig {
      */
     public boolean commandWheelToggleMode = false;
 
+    /** Plays the hotbar swap sound whenever the aim moves onto another command of the wheel. */
+    public boolean commandWheelHoverSound = true;
+
     /**
      * The mod's keys, by key mapping name ("key.alpaka.zoom") to the bound key's name
      * ("key.keyboard.c"). A key left out is on its default. They are set in the config menu and kept
@@ -1860,6 +1863,7 @@ public class AlpakaConfig {
         this.customSoundsEnabled = false;
         this.customSoundButtonClick = false;
         this.customSoundHotbarScroll = false;
+        this.commandWheelHoverSound = false;
         this.customSoundRareDrop = false;
         this.customSoundNotification = false;
         this.customSoundPlayerHurt = false;

@@ -148,6 +148,19 @@ public class CustomSoundFeature {
         playSound(HOTBAR_EQUIP_SOUND, AlpakaConfig.instance.customSoundHotbarScrollVolume);
     }
 
+    /**
+     * The hotbar swap sound for the command wheel's hover. It has its own switch in the wheel's
+     * settings, so it plays even while the custom sounds are off, at the hotbar sound's volume.
+     */
+    public static void playCommandWheelHoverSound() {
+        if (!AlpakaConfig.instance.commandWheelHoverSound) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc != null && mc.getSoundManager() != null && HOTBAR_EQUIP_SOUND != null) {
+            float vol = AlpakaConfig.instance.customSoundsVolume * AlpakaConfig.instance.customSoundHotbarScrollVolume;
+            mc.getSoundManager().play(SimpleSoundInstance.forUI(HOTBAR_EQUIP_SOUND, 1.0f, vol));
+        }
+    }
+
     public static void playRareDropSound() {
         if (!AlpakaConfig.instance.customSoundRareDrop) return;
         playSound(RARE_DROP_SOUND, AlpakaConfig.instance.customSoundRareDropVolume);

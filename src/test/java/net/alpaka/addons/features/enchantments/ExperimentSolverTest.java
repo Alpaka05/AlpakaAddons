@@ -24,10 +24,10 @@ class ExperimentSolverTest {
     void chronomatronRecordsColorsAndUsesThemUp() {
         ExperimentSolver.Chronomatron chrono = new ExperimentSolver.Chronomatron();
         // Round one: red lights a column of two. Then the player answers.
-        chrono.onShown(20, "red", false);
-        chrono.onShown(29, "red", false);
-        chrono.onShown(20, null, true);
-        chrono.onShown(29, null, true);
+        chrono.onShown(20, "red");
+        chrono.onShown(29, "red");
+        chrono.onShown(20, null);
+        chrono.onShown(29, null);
         chrono.startAnswering();
         assertEquals(NOW, chrono.highlight("red"));
         assertEquals(0, chrono.highlight("blue"));
@@ -36,14 +36,14 @@ class ExperimentSolverTest {
 
         // Round two replays red and adds blue twice; blue lights before red has gone dark.
         chrono.startShowing();
-        chrono.onShown(20, "red", false);
-        chrono.onShown(29, "red", false);
-        chrono.onShown(22, "blue", false);
-        chrono.onShown(20, null, true);
-        chrono.onShown(29, null, true);
-        chrono.onShown(22, null, true);
-        chrono.onShown(22, "blue", false);
-        chrono.onShown(22, null, true);
+        chrono.onShown(20, "red");
+        chrono.onShown(29, "red");
+        chrono.onShown(22, "blue");
+        chrono.onShown(20, null);
+        chrono.onShown(29, null);
+        chrono.onShown(22, null);
+        chrono.onShown(22, "blue");
+        chrono.onShown(22, null);
         chrono.startAnswering();
         assertEquals(List.of("red", "blue", "blue"), chrono.sequence);
 
@@ -62,18 +62,41 @@ class ExperimentSolverTest {
     @Test
     void chronomatronRecordsAgainWhereTheReplayDisagrees() {
         ExperimentSolver.Chronomatron chrono = new ExperimentSolver.Chronomatron();
-        chrono.onShown(20, "red", false);
-        chrono.onShown(20, null, true);
-        chrono.onShown(21, "lime", false);
-        chrono.onShown(21, null, true);
+        chrono.onShown(20, "red");
+        chrono.onShown(20, null);
+        chrono.onShown(21, "lime");
+        chrono.onShown(21, null);
         chrono.startAnswering();
 
         // The next replay starts with another color, as when the menu was opened mid-game.
         chrono.startShowing();
-        chrono.onShown(23, "blue", false);
-        chrono.onShown(23, null, true);
+        chrono.onShown(23, "blue");
+        chrono.onShown(23, null);
         chrono.startAnswering();
         assertEquals(List.of("blue"), chrono.sequence);
+    }
+
+    @Test
+    void chronomatronIgnoresTheClickedBlockLightingUp() {
+        // Recorded on Hypixel: the block the player clicks last turns terracotta without glint
+        // just after the next pattern has started; it is no step of that pattern.
+        ExperimentSolver.Chronomatron chrono = new ExperimentSolver.Chronomatron();
+        chrono.onShown(20, "pink");
+        chrono.onShown(20, null);
+        chrono.startAnswering();
+        chrono.onClicked("pink");
+
+        chrono.startShowing();
+        chrono.onShown(20, null); // the clicked block, lit without glint
+        chrono.onShown(20, null);
+        chrono.onShown(20, "pink");
+        chrono.onShown(20, null);
+        chrono.onShown(24, "red");
+        chrono.onShown(24, null);
+        chrono.startAnswering();
+        assertEquals(List.of("pink", "red"), chrono.sequence);
+        assertEquals(NOW, chrono.highlight("pink"));
+        assertEquals(LATER, chrono.highlight("red"));
     }
 
     @Test

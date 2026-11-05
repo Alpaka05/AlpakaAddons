@@ -32,7 +32,7 @@ import java.util.TreeMap;
  * ({@code AbstractContainerMenuSlotSetMixin}) and the player's clicks. The status item in
  * slot 49 says which half of a round it is: a clock while the player answers, glowstone while the
  * game shows its pattern. The board is the menu's rows between the top and bottom borders, slots
- * 9 to 44. The rules follow what Skyblocker and NoFrills read from the same menus.
+ * 9 to 44. The rules follow what Skyblocker, NEU and NoFrills read from the same menus.
  */
 public final class ExperimentSolver {
 
@@ -90,6 +90,15 @@ public final class ExperimentSolver {
                 if (current == Game.CHRONOMATRON) {
                     if (answering) CHRONOMATRON.startAnswering();
                     else CHRONOMATRON.startShowing();
+                } else if (current == Game.ULTRASEQUENCER && !answering) {
+                    // Every round shows the whole pattern again, maybe elsewhere; numbers already on
+                    // the board when the status turned are read from it.
+                    ULTRASEQUENCER.reset();
+                    for (int i = BOARD_FIRST; i <= BOARD_LAST; i++) {
+                        ItemStack shown = changed.getSlot(i).getItem();
+                        int number = number(shown);
+                        if (number > 0) ULTRASEQUENCER.onShown(i, number, shown.copy());
+                    }
                 }
             }
             return;
@@ -97,7 +106,7 @@ public final class ExperimentSolver {
         if (slot < BOARD_FIRST || slot > BOARD_LAST) return;
         switch (current) {
             case CHRONOMATRON -> {
-                if (!answering) CHRONOMATRON.onShown(slot, litColor(stack), glassColor(stack) != null);
+                if (!answering) CHRONOMATRON.onShown(slot, litColor(stack));
             }
             case ULTRASEQUENCER -> {
                 if (!answering) {
@@ -109,6 +118,15 @@ public final class ExperimentSolver {
                 if (!isHidden(stack)) SUPERPAIRS.onRevealed(slot, stack.copy());
             }
         }
+    }
+
+    /**
+     * Called when Hypixel sends a menu's whole contents. The status slot goes first, so the board
+     * that comes with it is read in the half of the round it belongs to.
+     */
+    public static void onContentsSet(AbstractContainerMenu changed, List<ItemStack> items) {
+        if (STATUS_SLOT < items.size()) onSlotSet(changed, STATUS_SLOT, items.get(STATUS_SLOT));
+        for (int i = 0; i < items.size(); i++) if (i != STATUS_SLOT) onSlotSet(changed, i, items.get(i));
     }
 
     /** Called when the player clicks a slot of the open menu. */
@@ -152,8 +170,17 @@ public final class ExperimentSolver {
         return BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath();
     }
 
-    /** The color of a lit Chronomatron block ("red" for red terracotta), or null. */
+    /**
+     * The color of a block the game lights while it shows its pattern ("red" for red terracotta),
+     * or null. Those glint; the block the player clicks turns terracotta too, but without glint,
+     * and must not be taken for the first step of the next pattern.
+     */
     static String litColor(ItemStack stack) {
+        return stack.hasFoil() ? terracottaColor(stack) : null;
+    }
+
+    /** The color of a terracotta block ("red" for red terracotta), or null. */
+    private static String terracottaColor(ItemStack stack) {
         String path = path(stack);
         return path.endsWith("_terracotta") ? path.substring(0, path.length() - "_terracotta".length()) : null;
     }
@@ -166,7 +193,7 @@ public final class ExperimentSolver {
 
     /** A Chronomatron block's color, lit or not. */
     private static String color(ItemStack stack) {
-        String lit = litColor(stack);
+        String lit = terracottaColor(stack);
         return lit != null ? lit : glassColor(stack);
     }
 
@@ -193,8 +220,8 @@ public final class ExperimentSolver {
     }
 
     /**
-     * Chronomatron lights colored blocks one after another (terracotta in place of the block's
-     * glass, on one slot or a column of two), then the player repeats them. Every color has its
+     * Chronomatron lights colored blocks one after another (glinting terracotta in place of the
+     * block's glass, on one slot or a column of two), then the player repeats them. Every color has its
      * own slots, so the sequence is kept as colors and every slot of the next color is highlighted.
      *
      * Each round replays the whole sequence and adds one step. The sequence is kept across rounds
@@ -234,20 +261,20 @@ public final class ExperimentSolver {
             LOGGER.info("[chronomatron] answer {}", sequence);
         }
 
-        /** A board slot changed while the game shows its pattern. */
-        void onShown(int slot, String lightsUp, boolean darkens) {
-            if (lightsUp != null) {
-                if (!lit.isEmpty() && lightsUp.equals(litColor)) {
-                    lit.add(slot);
-                    return;
-                }
-                lit.clear();
-                lit.add(slot);
-                litColor = lightsUp;
-                step(lightsUp);
-            } else if (darkens) {
+        /** A board slot changed while the game shows its pattern; null when it isn't lit (any more). */
+        void onShown(int slot, String lightsUp) {
+            if (lightsUp == null) {
                 lit.remove(slot);
+                return;
             }
+            if (!lit.isEmpty() && lightsUp.equals(litColor)) {
+                lit.add(slot);
+                return;
+            }
+            lit.clear();
+            lit.add(slot);
+            litColor = lightsUp;
+            step(lightsUp);
         }
 
         private void step(String color) {

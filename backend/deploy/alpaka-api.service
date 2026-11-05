@@ -14,7 +14,7 @@ After=network-online.target
 Environment=ALPAKA_API_BIND=127.0.0.1
 Environment=ALPAKA_API_PORT=8787
 Environment=ALPAKA_HYPIXEL_KEY_FILE=%h/.config/alpaka-api/hypixel.key
-ExecStart=%h/.local/share/alpaka-api/java -Xmx256m -jar %h/.local/share/alpaka-api/alpaka-api.jar
+ExecStart=%h/.local/share/alpaka-api/java -Xmx512m -jar %h/.local/share/alpaka-api/alpaka-api.jar
 Restart=on-failure
 RestartSec=5
 

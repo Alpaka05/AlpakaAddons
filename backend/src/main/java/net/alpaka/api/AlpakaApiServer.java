@@ -37,6 +37,8 @@ public final class AlpakaApiServer {
     private AlpakaApiServer() {}
 
     private static final String USER_AGENT = "AlpakaAddons-API/1.0 (+https://github.com/Alpaka05/AlpakaAddons)";
+    /** Hypixel's biggest profiles answers are a few MB; anything far beyond is no answer to keep. */
+    private static final int MAX_UPSTREAM_BYTES = 16 * 1024 * 1024;
     private static final Pattern ID = Pattern.compile("\"id\"\\s*:\\s*\"([0-9a-fA-F-]{32,36})\"");
 
     public static void main(String[] args) throws IOException {
@@ -102,11 +104,16 @@ public final class AlpakaApiServer {
 
     private static Api.Upstream hypixel(HttpClient client, String key) {
         return pathAndQuery -> {
-            HttpResponse<String> response = send(client, HttpRequest.newBuilder(URI.create("https://api.hypixel.net" + pathAndQuery))
+            HttpResponse<java.io.InputStream> response = sendStream(client, HttpRequest.newBuilder(URI.create("https://api.hypixel.net" + pathAndQuery))
                     .timeout(Duration.ofSeconds(20)).header("API-Key", key).header("User-Agent", USER_AGENT).GET().build());
             int remaining = (int) number(response, "ratelimit-remaining", -1);
             long reset = number(response, "ratelimit-reset", 0);
-            return new Api.Upstream.Result(response.statusCode(), response.body(), remaining, reset);
+            byte[] bytes;
+            try (java.io.InputStream in = response.body()) {
+                bytes = in.readNBytes(MAX_UPSTREAM_BYTES + 1);
+            }
+            if (bytes.length > MAX_UPSTREAM_BYTES) throw new IOException("Hypixel's answer is over " + MAX_UPSTREAM_BYTES + " bytes");
+            return new Api.Upstream.Result(response.statusCode(), new String(bytes, StandardCharsets.UTF_8), remaining, reset);
         };
     }
 
@@ -115,6 +122,15 @@ public final class AlpakaApiServer {
             return response.headers().firstValue(header).map(Long::parseLong).orElse(fallback);
         } catch (NumberFormatException e) {
             return fallback;
+        }
+    }
+
+    private static HttpResponse<java.io.InputStream> sendStream(HttpClient client, HttpRequest request) throws IOException {
+        try {
+            return client.send(request, HttpResponse.BodyHandlers.ofInputStream());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Interrupted", e);
         }
     }
 

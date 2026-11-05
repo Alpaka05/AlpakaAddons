@@ -663,7 +663,7 @@ public final class ProfileSession {
             riftProblem = null;
             riftState = State.LOADING;
             String member = d.uuid.replace("-", "");
-            AlpakaApi.profiles(member).whenComplete((answer, failure) -> {
+            AlpakaApi.dashboard(member).whenComplete((answer, failure) -> {
                 if (!id.equals(riftFor)) return;
                 if (failure != null) {
                     Throwable cause = failure instanceof java.util.concurrent.CompletionException && failure.getCause() != null ? failure.getCause() : failure;

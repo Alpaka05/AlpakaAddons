@@ -11,9 +11,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.security.SecureRandom;
 import java.time.Duration;
-import java.util.HexFormat;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -21,8 +19,9 @@ import java.util.concurrent.CompletableFuture;
  * Elite doesn't hand out, such as the Rift's inventories. Hypixel's API needs a key that may never
  * ship in a mod, so the key stays on that server (see {@code backend/} in the repository).
  *
- * Logging in works as joining a server does: the game tells Mojang's session server that the player
- * joins a made-up server id, and the API asks Mojang whether they did. The player's access token
+ * Logging in works as joining a server does: the API hands out a one-time challenge, the game tells
+ * Mojang's session server that the player joins a server with that id, and the API asks Mojang
+ * whether they did. The player's access token
  * only ever goes to Mojang, never to the API. The API then hands out a token of its own for half a
  * day. Only used from the Profile Dashboard, while Network Features is on, and only for a profile
  * someone opened.
@@ -42,7 +41,6 @@ final class AlpakaApi {
         }
     }
 
-    private static final SecureRandom RANDOM = new SecureRandom();
     private static HttpClient client;
     private static volatile String token;
     private static volatile long tokenUntil;
@@ -53,9 +51,13 @@ final class AlpakaApi {
         return client;
     }
 
-    /** Every SkyBlock profile of a player, as Hypixel's {@code /v2/skyblock/profiles} has them. */
-    static CompletableFuture<JsonElement> profiles(String uuid) {
-        return get("/v1/skyblock/profiles/" + uuid.replace("-", ""), true);
+    /**
+     * What the dashboard shows of a player from Hypixel: their SkyBlock profiles in the shape of
+     * Hypixel's {@code /v2/skyblock/profiles}, with only the player's own member data and of that only
+     * the fields the dashboard draws (the Rift's inventories).
+     */
+    static CompletableFuture<JsonElement> dashboard(String uuid) {
+        return get("/v1/dashboard/" + uuid.replace("-", ""), true);
     }
 
     private static CompletableFuture<JsonElement> get(String path, boolean mayLogInAgain) {
@@ -87,9 +89,8 @@ final class AlpakaApi {
     private static String logIn() {
         Minecraft mc = Minecraft.getInstance();
         User user = mc.getUser();
-        byte[] bytes = new byte[20];
-        RANDOM.nextBytes(bytes);
-        String serverId = HexFormat.of().formatHex(bytes);
+        // The server id comes from the API, so a login can't be made from any other server's join.
+        String serverId = challenge();
         try {
             mc.services().sessionService().joinServer(user.getProfileId(), user.getAccessToken(), serverId);
         } catch (Exception e) {
@@ -120,6 +121,27 @@ final class AlpakaApi {
             tokenUntil = System.currentTimeMillis() + Math.max(60, seconds - 300) * 1000L;
         }
         return t;
+    }
+
+    private static String challenge() {
+        HttpRequest request = HttpRequest.newBuilder(URI.create(BASE + "/v1/auth/challenge"))
+                .timeout(Duration.ofSeconds(20))
+                .header("User-Agent", "AlpakaAddons/" + ModVersion.mod())
+                .GET()
+                .build();
+        HttpResponse<String> response;
+        try {
+            response = client().send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (Exception e) {
+            if (e instanceof InterruptedException) Thread.currentThread().interrupt();
+            throw new Refused(0, "The AlpakaAddons API can't be reached right now.");
+        }
+        JsonElement body = parse(response.body());
+        String challenge = Json.str(body, "challenge");
+        if (response.statusCode() != 200 || challenge == null || !challenge.matches("[0-9a-f]{40}")) {
+            throw new Refused(response.statusCode(), reason(response.statusCode(), body));
+        }
+        return challenge;
     }
 
     private static CompletableFuture<JsonElement> send(String path, String bearer) {

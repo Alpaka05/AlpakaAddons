@@ -1064,6 +1064,8 @@ public class AlpakaConfig {
     public float chestValueY = -1f;
     /** /alpakaprofile opens the Profile Dashboard; see ProfileDashboardScreen. Needs allowApiCalls. */
     public boolean profileDashboardEnabled = true;
+    /** The dashboard's sidebar folded down to its icons; flipped from the sidebar itself, not an option of the menu. */
+    public boolean profileSidebarCollapsed = false;
     /**
      * The player's own SkyKings API key, for SkyKings' daily history in the dashboard's graphs.
      * Empty for none. Each player makes their own; the mod never ships one (SkyKings asks that keys

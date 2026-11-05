@@ -1091,23 +1091,25 @@ public class ProfileDashboardScreen extends Screen {
             String name = l.name();
             text(graphics, name, tx, cy + 7, isSelectedClass ? ink(ProfileChart.UP) : AlpakaStyle.TEXT_SOFT);
             if (opens) text(graphics, "›", tx + textW(name) + 4, cy + 7, hover ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
-            // Once maxed, the XP past the cap counts on as an overflow level, with its own bar.
-            // In it, a gold MAX stands before the number and the bar runs in a soft chroma on a gold
-            // track, so a maxed skill reads as maxed at a glance rather than as one under way.
+            // Every bar means the way to the next level, and gold only says the level is maxed. Once
+            // maxed, the XP past the cap counts on as an overflow level: a MAX badge before its whole
+            // number, and the gold bar fills towards the next one.
             Levels.Overflow over = l.overflow();
             if (over != null) {
-                String level = String.format(Locale.US, "%.2f", over.exact());
-                int lx = tx + tw - textW(level);
-                text(graphics, level, lx, cy + 7, AlpakaStyle.TEXT);
-                String max = "MAX";
-                text(graphics, max, lx - 5 - textW(max), cy + 7, ink(GOLD));
-                chromaBar(graphics, tx, cy + 19, tw, 3, over.progress());
-                text(graphics, "Max " + l.maxLevel() + " · " + Coins.compact(over.xpCurrent()) + " / " + Coins.compact(over.xpForNext()),
+                maxBadge(graphics, String.valueOf(over.level()), tx + tw, cy + 7);
+                goldBar(graphics, tx, cy + 19, tw, 3, over.progress());
+                text(graphics, Math.round(Math.floor(over.progress() * 100)) + "% to " + (over.level() + 1) + " · "
+                                + Coins.compact(over.xpCurrent()) + " / " + Coins.compact(over.xpForNext()),
                         tx, cy + 25, AlpakaStyle.TEXT_MUTED);
             } else {
-                String level = l.maxed() ? "MAX " + l.level() : l.level() + " / " + l.maxLevel();
-                text(graphics, level, tx + tw - textW(level), cy + 7, l.maxed() ? ink(GOLD) : AlpakaStyle.TEXT);
-                bar(graphics, tx, cy + 19, tw, 3, l.progress(), l.maxed() ? ink(GOLD) : AlpakaStyle.accent());
+                if (l.maxed()) {
+                    maxBadge(graphics, String.valueOf(l.level()), tx + tw, cy + 7);
+                    goldBar(graphics, tx, cy + 19, tw, 3, 1);
+                } else {
+                    String level = l.level() + " / " + l.maxLevel();
+                    text(graphics, level, tx + tw - textW(level), cy + 7, AlpakaStyle.TEXT);
+                    bar(graphics, tx, cy + 19, tw, 3, l.progress(), AlpakaStyle.accent());
+                }
                 String xp = l.maxed() ? Coins.compact(l.xp()) + " XP" : Coins.compact(l.xpCurrent()) + " / " + Coins.compact(l.xpForNext());
                 text(graphics, xp, tx, cy + 25, AlpakaStyle.TEXT_MUTED);
             }
@@ -1141,8 +1143,8 @@ public class ProfileDashboardScreen extends Screen {
     }
 
     /**
-     * The class average as a card like the classes': once every class is maxed, a gold MAX and the
-     * way to the next whole average in chroma, as an overflow level; before, the way to 50.
+     * The class average as a card like the classes': once every class is maxed, a MAX badge and the
+     * way to the next whole average in gold, as an overflow level; before, the way to 50.
      */
     private void averageCard(GuiGraphicsExtractor graphics, List<ProfileData.Level> classes, double average, int cx, int cy, int cw, int ch) {
         boolean hover = hover(cx, cy, cw, ch);
@@ -1155,11 +1157,12 @@ public class ProfileDashboardScreen extends Screen {
         text(graphics, "Class Average", tx, cy + 7, AlpakaStyle.TEXT_SOFT);
         String level = String.format(Locale.US, "%.2f", average);
         if (maxed) {
-            int lx = tx + tw - textW(level);
-            text(graphics, level, lx, cy + 7, AlpakaStyle.TEXT);
-            text(graphics, "MAX", lx - 5 - textW("MAX"), cy + 7, ink(GOLD));
-            chromaBar(graphics, tx, cy + 19, tw, 3, average - Math.floor(average));
-            text(graphics, "Max 50 · all " + all + " classes", tx, cy + 25, AlpakaStyle.TEXT_MUTED);
+            int whole = (int) Math.floor(average);
+            double progress = average - whole;
+            maxBadge(graphics, String.valueOf(whole), tx + tw, cy + 7);
+            goldBar(graphics, tx, cy + 19, tw, 3, progress);
+            text(graphics, Math.round(Math.floor(progress * 100)) + "% to " + (whole + 1) + " · all " + all + " classes",
+                    tx, cy + 25, AlpakaStyle.TEXT_MUTED);
         } else {
             String shown = level + " / 50";
             text(graphics, shown, tx + tw - textW(shown), cy + 7, AlpakaStyle.TEXT);
@@ -1881,7 +1884,8 @@ public class ProfileDashboardScreen extends Screen {
             int right = x + w - 8;
             String xp = s.maxed() ? Coins.full(s.xp()) + " XP" : Coins.compact(s.xpForNext()) + " XP to " + (s.level() + 1);
             if (levelX + textW(level) + 12 + textW(xp) < right) text(graphics, xp, right - textW(xp), y + 7, AlpakaStyle.TEXT_MUTED);
-            bar(graphics, tx, y + 19, w - 42 - 8, 3, s.progress(), s.maxed() ? ink(GOLD) : AlpakaStyle.accent());
+            if (s.maxed()) goldBar(graphics, tx, y + 19, w - 42 - 8, 3, 1);
+            else bar(graphics, tx, y + 19, w - 42 - 8, 3, s.progress(), AlpakaStyle.accent());
 
             // The kills of each tier, as far as the boss has tiers, and the recent pace.
             int tiers = s.id().equals("zombie") || s.id().equals("vampire") || s.kills()[4] > 0 ? 5 : 4;
@@ -3631,23 +3635,47 @@ public class ProfileDashboardScreen extends Screen {
     /** The gold of a maxed level. */
     private static final int GOLD = 0xFFFFC94D;
 
-    /**
-     * The chroma of an overflow bar at a point on screen: a soft rainbow drifting slowly to the
-     * right, pale enough to sit with the menu's pink and gold.
-     */
-    private static int chroma(int x) {
-        double t = System.currentTimeMillis() / 6000.0;
-        float hue = (float) ((t - x / 220.0) % 1.0 + 1.0) % 1.0f;
-        return ink(0xFF000000 | (java.awt.Color.HSBtoRGB(hue, 0.32f, 0.95f) & 0xFFFFFF));
+    /** A maxed level's number in gold, right-aligned at {@code right}, with a gold MAX badge before it. */
+    private void maxBadge(GuiGraphicsExtractor graphics, String level, int right, int y) {
+        int lx = right - textW(level);
+        text(graphics, level, lx, y, ink(GOLD));
+        String max = "MAX";
+        int pw = textW(max) + 6;
+        int px = lx - 5 - pw;
+        ModernGuiUtils.drawRoundedRect(graphics, px, y - 2, pw, 11, 3, ink(GOLD));
+        text(graphics, max, px + 3, y, ink(0xFF1A1A1A));
     }
 
-    /** A level bar in overflow: a gold track for the cap reached, filled in chroma towards the next level. */
-    private static void chromaBar(GuiGraphicsExtractor graphics, int x, int y, int w, int h, double progress) {
-        int radius = Math.max(0, h / 2);
-        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, radius, MarketIcons.fade(ink(GOLD), 0.35f));
+    /** A maxed level's bar: gold on the usual track, with a soft light running over it now and then. */
+    private static void goldBar(GuiGraphicsExtractor graphics, int x, int y, int w, int h, double progress) {
+        bar(graphics, x, y, w, h, progress, ink(GOLD));
         int fw = (int) Math.round(Math.max(0, Math.min(1, progress)) * w);
-        for (int sx = 0; sx < fw; sx += 2) {
-            graphics.fill(x + sx, y, x + Math.min(fw, sx + 2), y + h, chroma(x + sx));
+        shine(graphics, x, y, fw, h);
+    }
+
+    /** How often the light runs over the gold bars, how long one pass takes, and how wide it is. */
+    private static final long SHINE_PERIOD_MS = 6000;
+    private static final double SHINE_SWEEP_MS = 1200;
+    private static final int SHINE_HALF = 22;
+
+    /**
+     * The light over a gold bar's fill. Each pass starts a little later the further right and down
+     * the bar sits, so it travels over the cards together instead of flashing on all at once. The
+     * end columns are left out so the bar's rounded ends stay round.
+     */
+    private static void shine(GuiGraphicsExtractor graphics, int x, int y, int fw, int h) {
+        if (fw <= 2) return;
+        long delay = (long) ((x + 2L * y) * 1.5);
+        long local = Math.floorMod(System.currentTimeMillis() - delay, SHINE_PERIOD_MS);
+        if (local > SHINE_SWEEP_MS) return;
+        double pos = -SHINE_HALF + (fw + 2.0 * SHINE_HALF) * (local / SHINE_SWEEP_MS);
+        int from = Math.max(1, (int) Math.floor(pos - SHINE_HALF));
+        int to = Math.min(fw - 1, (int) Math.ceil(pos + SHINE_HALF));
+        for (int sx = from; sx < to; sx++) {
+            double d = 1 - Math.abs(sx + 0.5 - pos) / SHINE_HALF;
+            if (d <= 0) continue;
+            int alpha = (int) Math.round(d * d * 0.6 * 255);
+            graphics.fill(x + sx, y, x + sx + 1, y + h, ink((alpha << 24) | 0xFFFFFF));
         }
     }
 

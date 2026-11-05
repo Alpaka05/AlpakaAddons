@@ -41,4 +41,24 @@ class SlayerChatFilterTest {
         assertEquals(listOf<String>(), groups("[NPC] Maddox: Your radio signal is strong!"))
         assertEquals(listOf<String>(), groups("Officer > [MVP++] Foo: RARE DROP! Netherrack-Looking Sunshade"))
     }
+
+    @Test
+    fun blazeWrongDaggerLines() {
+        for (attunement in listOf("ASHEN", "SPIRIT", "CRYSTAL", "AURIC")) {
+            assertEquals(listOf("wrong dagger"), groups("Strike using the $attunement attunement on your dagger!"))
+        }
+    }
+
+    @Test
+    fun blazeDamageLines() {
+        assertEquals(listOf("blaze damage"), groups("Your hit was reduced by Hellion Shield!"))
+        assertEquals(listOf("blaze damage"), groups("You took 1,500 true damage from Quazii's beam!"))
+    }
+
+    @Test
+    fun playersQuotingBlazeLinesStay() {
+        assertEquals(listOf<String>(), groups("Party > Bob: Strike using the AURIC attunement on your dagger!"))
+        assertEquals(listOf<String>(), groups("Foo: Your hit was reduced by Hellion Shield!"))
+        assertEquals(listOf<String>(), groups("Guild > Foo: You took 1,500 true damage from Quazii's beam!"))
+    }
 }

@@ -306,15 +306,9 @@ public class AlpakaConfigRegistry {
                                 v -> { AlpakaConfig.instance.cleanBlazeLightning = v; AlpakaConfig.save(); }),
                         new ConfigOption.ToggleEntry("Name Tags",
                                 () -> AlpakaConfig.instance.cleanBlazeNameTags,
-                                v -> { AlpakaConfig.instance.cleanBlazeNameTags = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Wrong Dagger Messages",
-                                () -> AlpakaConfig.instance.cleanBlazeWrongDaggerChat,
-                                v -> { AlpakaConfig.instance.cleanBlazeWrongDaggerChat = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Damage Messages",
-                                () -> AlpakaConfig.instance.cleanBlazeDamageChat,
-                                v -> { AlpakaConfig.instance.cleanBlazeDamageChat = v; AlpakaConfig.save(); })
+                                v -> { AlpakaConfig.instance.cleanBlazeNameTags = v; AlpakaConfig.save(); })
                 ),
-                "blaze flame smoke angry villager lava drip particles potion effect swirl enchant enchanting glyph ender portal witch spell attunement dust ashen spirit crystal auric hellion shield fire burning overlay fireball projectile lightning bolt flash thunder nametag name tag health smoldering miniboss demon chat message wrong dagger strike damage true damage beam reduced clean hide"));
+                "blaze flame smoke angry villager lava drip particles potion effect swirl enchant enchanting glyph ender portal witch spell attunement dust ashen spirit crystal auric hellion shield fire burning overlay fireball projectile lightning bolt flash thunder nametag name tag health smoldering miniboss demon clean hide"));
 
         OPTIONS.add(new ConfigOption("stop_blaze_spinning", "Stop Blaze Spinning",
                 "Stops blaze rods from spinning around blaze mobs.",
@@ -951,6 +945,34 @@ public class AlpakaConfigRegistry {
                                 v -> { AlpakaConfig.instance.messageFilterDungeonEnd = v; AlpakaConfig.save(); })
                 ),
                 "message filter dungeon dungeons catacombs mort ready countdown class buff ambience pickup superboom revive stone wither essence orb fairy key door blessing not possible damage ability abilities heal tether cooldown mana puzzle quiz oruo end run team bonus"));
+
+        OPTIONS.add(new ConfigOption("message_filter_slayer", "Slayer Messages",
+                "Which slayer messages the filter hides. The Blaze ones only in the Blaze slayer's zones.",
+                ConfigCategory.VISUALS,
+                java.util.List.of(
+                        new ConfigOption.ToggleEntry("Quest & Boss Slain",
+                                () -> AlpakaConfig.instance.messageFilterSlayerQuest,
+                                v -> { AlpakaConfig.instance.messageFilterSlayerQuest = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Radio Signal",
+                                () -> AlpakaConfig.instance.messageFilterSlayerRadio,
+                                v -> { AlpakaConfig.instance.messageFilterSlayerRadio = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Level-Ups",
+                                () -> AlpakaConfig.instance.messageFilterSlayerLevelUp,
+                                v -> { AlpakaConfig.instance.messageFilterSlayerLevelUp = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Kill Healing",
+                                () -> AlpakaConfig.instance.messageFilterSlayerHealing,
+                                v -> { AlpakaConfig.instance.messageFilterSlayerHealing = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Sunshade Drop",
+                                () -> AlpakaConfig.instance.messageFilterSlayerSunshade,
+                                v -> { AlpakaConfig.instance.messageFilterSlayerSunshade = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Blaze Wrong Dagger",
+                                () -> AlpakaConfig.instance.messageFilterBlazeWrongDagger,
+                                v -> { AlpakaConfig.instance.messageFilterBlazeWrongDagger = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Blaze Damage",
+                                () -> AlpakaConfig.instance.messageFilterBlazeDamage,
+                                v -> { AlpakaConfig.instance.messageFilterBlazeDamage = v; AlpakaConfig.save(); })
+                ),
+                "message filter slayer chat spam quest started complete boss slain slay combat xp radio signal enjoyer level up lvl healing heal hp sunshade netherrack rare drop blaze wrong dagger attunement strike damage true damage beam hellion shield reduced hide"));
 
         OPTIONS.add(new ConfigOption("mention_notification", "Chat Mentions",
                 "Slides in a notification when somebody says your name in chat.",
@@ -2148,35 +2170,6 @@ public class AlpakaConfigRegistry {
                 "share message hypixel tracker line drop text guild party post").choices(net.alpaka.addons.features.slayer.SlayerDropTracker.SHARE_MESSAGE_NAMES));
 
 
-
-        OPTIONS.add(new ConfigOption("hide_slayer_chat", "Hide Slayer Chat Spam",
-                "Hides Hypixel's slayer quest, level-up and radio messages.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.hideSlayerChatMessages,
-                v -> { AlpakaConfig.instance.hideSlayerChatMessages = v; AlpakaConfig.save(); },
-                "hide slayer chat spam quest complete started radio level up messages"));
-
-        OPTIONS.add(new ConfigOption("hide_slayer_chat_parts", "Hide Slayer Chat Parts",
-                "Pick what Hide Slayer Chat Spam hides.",
-                ConfigCategory.SKYBLOCK,
-                java.util.List.of(
-                        new ConfigOption.ToggleEntry("Quest & Boss Slain",
-                                () -> AlpakaConfig.instance.hideSlayerChatQuest,
-                                v -> { AlpakaConfig.instance.hideSlayerChatQuest = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Radio Signal",
-                                () -> AlpakaConfig.instance.hideSlayerChatRadio,
-                                v -> { AlpakaConfig.instance.hideSlayerChatRadio = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Level-Ups",
-                                () -> AlpakaConfig.instance.hideSlayerChatLevelUp,
-                                v -> { AlpakaConfig.instance.hideSlayerChatLevelUp = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Kill Healing",
-                                () -> AlpakaConfig.instance.hideSlayerChatHealing,
-                                v -> { AlpakaConfig.instance.hideSlayerChatHealing = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Sunshade Drop",
-                                () -> AlpakaConfig.instance.hideSlayerChatSunshade,
-                                v -> { AlpakaConfig.instance.hideSlayerChatSunshade = v; AlpakaConfig.save(); })
-                ),
-                "slayer chat spam quest started complete boss slain slay combat xp radio signal enjoyer level up lvl healing heal hp sunshade netherrack rare drop hide"));
 
         OPTIONS.add(new ConfigOption("Slayer Boss Timer", ConfigCategory.SKYBLOCK));
 

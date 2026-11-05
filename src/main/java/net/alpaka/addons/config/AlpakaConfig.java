@@ -212,27 +212,23 @@ public class AlpakaConfig {
     public boolean cleanBlazeLightning = true;
     /** Off by default: the health on blaze name tags is what a grinder watches. */
     public boolean cleanBlazeNameTags = false;
-    /** "Strike using the ... attunement on your dagger!" lines in the Blaze zones. */
-    public boolean cleanBlazeWrongDaggerChat = true;
-    /** "Your hit was reduced by Hellion Shield!" and "You took ... damage from ..." in the Blaze zones. */
-    public boolean cleanBlazeDamageChat = true;
+    /** Legacy, before the Message Filter took over the Blaze chat lines. Read once by {@link #migrateTo3} and then cleared. */
+    public Boolean cleanBlazeWrongDaggerChat = null;
+    public Boolean cleanBlazeDamageChat = null;
     /** During the player's own Blaze slayer boss, a glowing column over each fire pit block. */
     public boolean blazeFirePitsEnabled = true;
     /** ARGB color of the fire pit column; its alpha scales the column's own fade. Default hot red-orange. */
     public int blazeFirePitColor = 0xFFFF4714;
     /**
-     * Hides Hypixel's slayer chatter - quest started/complete, level-ups, the radio lines.
-     *
-     * Used to be part of cleanBlazeEnabled, which forced a choice between the blaze effects and a
-     * quiet chat. Defaults to true so that split changes nothing for anyone who had clean blaze on.
+     * Legacy, from when Hide Slayer Chat Spam was a feature of its own; its groups are the Message
+     * Filter's Slayer Messages now. Read once by {@link #migrateTo3} and then cleared.
      */
-    public boolean hideSlayerChatMessages = true;
-    /** Which groups of slayer chatter hideSlayerChatMessages hides. All on, as before the split. */
-    public boolean hideSlayerChatQuest = true;
-    public boolean hideSlayerChatRadio = true;
-    public boolean hideSlayerChatLevelUp = true;
-    public boolean hideSlayerChatHealing = true;
-    public boolean hideSlayerChatSunshade = true;
+    public Boolean hideSlayerChatMessages = null;
+    public Boolean hideSlayerChatQuest = null;
+    public Boolean hideSlayerChatRadio = null;
+    public Boolean hideSlayerChatLevelUp = null;
+    public Boolean hideSlayerChatHealing = null;
+    public Boolean hideSlayerChatSunshade = null;
     public boolean stopBlazeSpinning = true;
     /** Hides the red hurt flash on mobs and players. Cosmetic only, the hit itself is untouched. */
     public boolean hideHurtOverlayEnabled = false;
@@ -923,6 +919,19 @@ public class AlpakaConfig {
     public boolean messageFilterDungeonAbility = true;
     public boolean messageFilterDungeonPuzzle = true;
     public boolean messageFilterDungeonEnd = true;
+    /**
+     * Slayer chatter; one switch per group. Hidden from the chat log only, after every listener has
+     * read it, since the slayer tracking needs the same lines (see SlayerChatFilter).
+     */
+    public boolean messageFilterSlayerQuest = true;
+    public boolean messageFilterSlayerRadio = true;
+    public boolean messageFilterSlayerLevelUp = true;
+    public boolean messageFilterSlayerHealing = true;
+    public boolean messageFilterSlayerSunshade = true;
+    /** "Strike using the ... attunement on your dagger!", only in the Blaze zones. */
+    public boolean messageFilterBlazeWrongDagger = true;
+    /** "Your hit was reduced by Hellion Shield!" and "You took ... damage from ...", only in the Blaze zones. */
+    public boolean messageFilterBlazeDamage = true;
     /** The player's own filters, made in the Message Filter's sub menu. */
     public java.util.List<net.alpaka.addons.features.chat.CustomMessageFilter> messageFilterCustom = new java.util.ArrayList<>();
     /** All / Party / Guild / PMs tabs above the chat input. */
@@ -1672,7 +1681,8 @@ public class AlpakaConfig {
      */
     private static final java.util.List<java.util.function.Consumer<AlpakaConfig>> MIGRATIONS = java.util.List.of(
             AlpakaConfig::migrateTo1,
-            AlpakaConfig::migrateTo2
+            AlpakaConfig::migrateTo2,
+            AlpakaConfig::migrateTo3
     );
 
     /** The settings layout this version writes. A file with a lower number gets the steps it has not had. */
@@ -1693,6 +1703,31 @@ public class AlpakaConfig {
         if (chatHistoryLimit > 5000) {
             chatHistoryLimit = 5000;
         }
+    }
+
+    /**
+     * Layout 2 to 3: Hide Slayer Chat Spam and Clean Blaze's two chat switches became the Message
+     * Filter's Slayer Messages. A group that was not hidden before stays visible; one that was keeps
+     * its switch on. Missing fields were on by default.
+     */
+    private void migrateTo3() {
+        boolean slayerOn = !Boolean.FALSE.equals(hideSlayerChatMessages);
+        messageFilterSlayerQuest = slayerOn && !Boolean.FALSE.equals(hideSlayerChatQuest);
+        messageFilterSlayerRadio = slayerOn && !Boolean.FALSE.equals(hideSlayerChatRadio);
+        messageFilterSlayerLevelUp = slayerOn && !Boolean.FALSE.equals(hideSlayerChatLevelUp);
+        messageFilterSlayerHealing = slayerOn && !Boolean.FALSE.equals(hideSlayerChatHealing);
+        messageFilterSlayerSunshade = slayerOn && !Boolean.FALSE.equals(hideSlayerChatSunshade);
+        // Clean Blaze's chat lines only went while Clean Blaze itself was on.
+        messageFilterBlazeWrongDagger = cleanBlazeEnabled && !Boolean.FALSE.equals(cleanBlazeWrongDaggerChat);
+        messageFilterBlazeDamage = cleanBlazeEnabled && !Boolean.FALSE.equals(cleanBlazeDamageChat);
+        hideSlayerChatMessages = null;
+        hideSlayerChatQuest = null;
+        hideSlayerChatRadio = null;
+        hideSlayerChatLevelUp = null;
+        hideSlayerChatHealing = null;
+        hideSlayerChatSunshade = null;
+        cleanBlazeWrongDaggerChat = null;
+        cleanBlazeDamageChat = null;
     }
 
     /**
@@ -1845,7 +1880,6 @@ public class AlpakaConfig {
         this.cleanBlazeEnabled = false;
         this.blazeFirePitsEnabled = false;
         this.slayerBossHighlightEnabled = false;
-        this.hideSlayerChatMessages = false;
         this.stopBlazeSpinning = false;
         this.hideHurtOverlayEnabled = false;
         this.hideMobDeathsEnabled = false;

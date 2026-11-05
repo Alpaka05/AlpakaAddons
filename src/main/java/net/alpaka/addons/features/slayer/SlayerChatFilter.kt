@@ -1,14 +1,16 @@
 package net.alpaka.addons.features.slayer
 
 import net.alpaka.addons.config.AlpakaConfig
+import net.alpaka.addons.utils.SkyblockUtils
 
 /**
- * Keeps Hypixel's slayer chatter out of the visible chat log.
+ * The Message Filter's Slayer Messages: keeps Hypixel's slayer chatter out of the visible chat log,
+ * the quest, radio, level-up, healing and Sunshade lines anywhere, and the Blaze boss fight's wrong
+ * dagger and damage lines in the Blaze zones.
  *
- * These lines used to be hidden by the clean-blaze option, which meant switching off a set of
- * particle and name-tag effects to get the chat back, or putting up with the chatter to keep the
- * effects. The two have nothing to do with each other, so they are separate settings now: clean
- * blaze deals only with what the blazes look like, this deals only with what they say.
+ * These used to be a feature of their own (Hide Slayer Chat Spam) and two switches of Clean Blaze.
+ * They sit with the other filters now, but are not hidden the way MessageFilterFeature hides its
+ * lines, for the reason below.
  *
  * ### Hidden, not swallowed
  *
@@ -23,8 +25,8 @@ import net.alpaka.addons.config.AlpakaConfig
 object SlayerChatFilter {
 
     /**
-     * One group of lines the player can switch off as a whole, in the "Hide Slayer Chat Parts"
-     * dropdown. Grouped by what the lines are about rather than one switch per line: nobody wants
+     * One group of lines the player can switch off as a whole, in the Message Filter's "Slayer
+     * Messages" dropdown. Grouped by what the lines are about rather than one switch per line: nobody wants
      * to keep exactly one of the three radio messages.
      *
      * Exact entries are plain text on purpose. Hypixel sends these wrapped in formatting - the real
@@ -39,7 +41,9 @@ object SlayerChatFilter {
         val name: String,
         val enabled: (AlpakaConfig) -> Boolean,
         val messages: Set<String> = emptySet(),
-        val patterns: List<Regex> = emptyList()
+        val patterns: List<Regex> = emptyList(),
+        /** Only hidden in the Blaze slayer's zones; elsewhere the same words can mean something else. */
+        val blazeZoneOnly: Boolean = false
     ) {
         fun matches(cleanText: String): Boolean =
             cleanText in messages || patterns.any { it.matches(cleanText) }
@@ -48,7 +52,7 @@ object SlayerChatFilter {
     private val GROUPS = listOf(
         Group(
             "quest",
-            { it.hideSlayerChatQuest },
+            { it.messageFilterSlayerQuest },
             messages = setOf(
                 "SLAYER QUEST COMPLETE!",
                 "SLAYER QUEST STARTED!",
@@ -59,7 +63,7 @@ object SlayerChatFilter {
         ),
         Group(
             "radio",
-            { it.hideSlayerChatRadio },
+            { it.messageFilterSlayerRadio },
             messages = setOf(
                 "Your radio is weak. Find another enjoyer to boost it.",
                 "Your radio signal is strong!",
@@ -68,7 +72,7 @@ object SlayerChatFilter {
         ),
         Group(
             "level up",
-            { it.hideSlayerChatLevelUp },
+            { it.messageFilterSlayerLevelUp },
             // Hypixel's two forms, "Blaze Slayer LVL 9 - LVL MAXED OUT!" (as SkyHanni matches it) and
             // "Wolf Slayer LVL 7 - Next LVL in 50,000 XP!". Anchored at the slayer's name: matched
             // anywhere, "Slayer LVL" also hid players writing about their levels.
@@ -79,14 +83,32 @@ object SlayerChatFilter {
         ),
         Group(
             "healing",
-            { it.hideSlayerChatHealing },
+            { it.messageFilterSlayerHealing },
             // "Your Slayer Kill gave you 160 HP healing for 10 seconds!"
             patterns = listOf(Regex("""^Your Slayer Kill gave you\s+[\d,]+\s+HP healing.*$""", RegexOption.IGNORE_CASE))
         ),
         Group(
             "sunshade",
-            { it.hideSlayerChatSunshade },
+            { it.messageFilterSlayerSunshade },
             patterns = listOf(Regex("""^RARE DROP! Netherrack-Looking Sunshade.*$""", RegexOption.IGNORE_CASE))
+        ),
+        Group(
+            "wrong dagger",
+            { it.messageFilterBlazeWrongDagger },
+            // "Strike using the CRYSTAL attunement on your dagger!", sent on every hit with the wrong one.
+            patterns = listOf(Regex("""^Strike using the \w+ attunement on your dagger!$""")),
+            blazeZoneOnly = true
+        ),
+        Group(
+            "blaze damage",
+            { it.messageFilterBlazeDamage },
+            // "Your hit was reduced by Hellion Shield!" and the boss's damage reports, such as
+            // "You took 1,500 true damage from Quazii's beam!".
+            patterns = listOf(
+                Regex("""^Your hit was reduced by Hellion Shield!$"""),
+                Regex("""^You took [\d,.]+ (?:true )?damage from .+!$"""),
+            ),
+            blazeZoneOnly = true
         )
     )
 
@@ -106,13 +128,19 @@ object SlayerChatFilter {
     @JvmStatic
     fun shouldCancelChatMessage(rawMessage: String): Boolean {
         val config = AlpakaConfig.instance
-        if (!config.hideSlayerChatMessages) return false
+        if (!config.messageFilterEnabled) return false
 
         val cleanText = SlayerDropTracker.cleanColor(rawMessage).trim()
         if (cleanText.isEmpty() || SENDER.containsMatchIn(cleanText)) return false
 
-        return GROUPS.any { it.enabled(config) && it.matches(cleanText) }
+        return GROUPS.any {
+            it.enabled(config) && it.matches(cleanText) && (!it.blazeZoneOnly || inBlazeZone())
+        }
     }
+
+    /** On SkyBlock and in a Blaze slayer zone. Asked only for a line that matched a Blaze group. */
+    private fun inBlazeZone(): Boolean =
+        SkyblockUtils.isOnSkyblock() && SlayerSessionTracker.isInTrackerArea(SlayerType.BLAZE)
 
     /** For tests: the groups that would hide this color-stripped line, switches aside. */
     internal fun groupsForTest(cleanText: String): List<String> =

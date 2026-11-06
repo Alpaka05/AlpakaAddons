@@ -20,5 +20,8 @@ out vec3 skyPos;
 
 void main() {
     gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);
+    // On the far plane (depth 0: the depth buffer is reversed), so the depth test lets the sky
+    // through only where nothing has been drawn yet, never over a block.
+    gl_Position.z = 0.0;
     skyPos = Position;
 }

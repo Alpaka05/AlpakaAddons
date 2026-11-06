@@ -2688,14 +2688,14 @@ public class AlpakaConfigRegistry {
                 "ragnarock ragnarok rag axe sword cast casting countdown timer crosshair action bar ability strength"));
 
         OPTIONS.add(new ConfigOption("exact_skill_xp", "Exact Skill XP",
-                "Shows skill gains in the action bar as XP, like 1,948,760/4,300,000, instead of a percentage. Needs the skill in the tab list's Skills widget.",
+                "Shows skill gains in the action bar as XP, like 1,948,760/4,300,000, instead of a percentage. Below the cap it needs the skill in the tab list's Skills widget; a maxed skill counts on in overflow levels, like Combat 63 (2,150,000/8,800,000), without it.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.exactSkillXpEnabled,
                 v -> { AlpakaConfig.instance.exactSkillXpEnabled = v; AlpakaConfig.save(); },
-                "exact skill xp experience action bar percent percentage progress level farming mining combat foraging fishing enchanting alchemy taming carpentry runecrafting social number"));
+                "exact skill xp experience action bar percent percentage progress level max maxed overflow cap farming mining combat foraging fishing enchanting alchemy taming carpentry hunting runecrafting social number"));
 
         OPTIONS.add(new ConfigOption("exact_skill_xp_rounded", "Rounded",
-                "Shortens the XP to 1.95M/4.3M. Hypixel only sends the percentage, so the last digits are an estimate.",
+                "Shortens the XP to 1.95M/4.3M. Below the cap Hypixel only sends the percentage, so the last digits are an estimate.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.exactSkillXpRounded,
                 v -> { AlpakaConfig.instance.exactSkillXpRounded = v; AlpakaConfig.save(); },

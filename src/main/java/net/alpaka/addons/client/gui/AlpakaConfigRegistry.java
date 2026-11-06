@@ -2688,7 +2688,7 @@ public class AlpakaConfigRegistry {
                 "ragnarock ragnarok rag axe sword cast casting countdown timer crosshair action bar ability strength"));
 
         OPTIONS.add(new ConfigOption("exact_skill_xp", "Exact Skill XP",
-                "Shows skill gains in the action bar as XP, like 1,948,760/4,300,000, instead of a percentage. Below the cap it needs the skill in the tab list's Skills widget; a maxed skill counts on in overflow levels, like 63: 2,150,000/8,800,000, without it.",
+                "Shows skill gains in the action bar as XP, like 1,948,760/4,300,000, instead of a percentage. Below the cap it needs the skill in the tab list's Skills widget; a maxed skill counts on in overflow levels, like Combat 63 (2,150,000/8,800,000), without it.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.exactSkillXpEnabled,
                 v -> { AlpakaConfig.instance.exactSkillXpEnabled = v; AlpakaConfig.save(); },

@@ -128,4 +128,15 @@ class ExactSkillXpTest {
         assertNull(ExactSkillXp.overflow("runecrafting", 25, 1_000));
         assertNull(ExactSkillXp.overflow("farming", 60, 1e300));
     }
+
+    @Test
+    void putsTheOverflowLevelBehindTheSkillName() {
+        Style aqua = Style.EMPTY.withColor(ChatFormatting.DARK_AQUA);
+        String gain = "+1,528.6 Combat (5,183,244/0)";
+        List<ExactSkillXp.Piece> pieces = List.of(new ExactSkillXp.Piece(aqua, gain));
+        int from = gain.indexOf(" (");
+        int to = gain.indexOf("/0") + 2;
+        Component out = ExactSkillXp.replace(pieces, from, to, " 60 (5,183,244/7,600,000");
+        assertEquals("+1,528.6 Combat 60 (5,183,244/7,600,000)", out.getString());
+    }
 }

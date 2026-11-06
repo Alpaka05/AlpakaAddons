@@ -33,7 +33,7 @@ import java.util.regex.Pattern;
  * A maxed skill has no percentage: Hypixel shows the XP gained past the cap instead, over a 0
  * ("+12.5 Farming (5,183,244/0)"). That XP is counted on as overflow levels, as the Profile
  * Dashboard does, and the way to the next one is shown with the level in front:
- * "+12.5 Farming (60: 5,183,244/7,600,000)". This needs no tab list: the "/0" already says the
+ * "+12.5 Farming 60 (5,183,244/7,600,000)". This needs no tab list: the "/0" already says the
  * skill is maxed, and the cap is the skill's own (CAPS), unless the tab list shows a lower one
  * ("Farming 50: MAX" before Anita's perks). This XP is exact, so the rounded format only shortens it.
  *
@@ -129,10 +129,11 @@ public final class ExactSkillXp {
         }
         Levels.Overflow over = overflow(skill, cap, pastCap);
         if (over == null) return unchanged;
-        String shown = over.level() + ": " + format(over.xpCurrent(), Math.round(over.xpForNext()),
+        // The level goes behind the skill's name, the way to the next in the parentheses:
+        // " 60 (5,183,244/7,600,000" in place of " (5,183,244/0".
+        String shown = " " + over.level() + " (" + format(over.xpCurrent(), Math.round(over.xpForNext()),
                 AlpakaConfig.instance.exactSkillXpRounded);
-        // "XP/0", inside the parentheses.
-        return replace(pieces, m.start(2), m.end(2) + 2, shown);
+        return replace(pieces, m.end(1), m.end(2) + 2, shown);
     }
 
     /**

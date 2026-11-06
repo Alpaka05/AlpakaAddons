@@ -910,6 +910,7 @@ public class AlpakaConfig {
     public boolean messageFilterFireSale = true;
     public boolean messageFilterWatchdog = true;
     public boolean messageFilterStash = true;
+    public boolean messageFilterEventRewards = true;
     public boolean messageFilterSacks = true;
     /** Dungeon chatter, only hidden inside a Catacombs run; one switch per group. */
     public boolean messageFilterDungeonPrepare = true;

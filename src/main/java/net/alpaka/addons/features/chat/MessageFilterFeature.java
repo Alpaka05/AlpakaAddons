@@ -46,6 +46,11 @@ public final class MessageFilterFeature {
         WATCHDOG,
         /** "You have 2 items stashed away!" with its "CLICK HERE to pick them up!" line. */
         STASH,
+        /**
+         * "You have 4 unclaimed event rewards!" with its "CLICK HERE to claim!" line and the
+         * "Event rewards are deleted after 10 SkyBlock years!" warning.
+         */
+        EVENT_REWARDS,
         /** "[Sacks] +11 items. (Last 7s.)", the summary of what went into or out of the sacks. */
         SACKS
     }
@@ -107,6 +112,14 @@ public final class MessageFilterFeature {
             "^You have [\\d,]+ (?:item|material)s? stashed away!$"
                     + "|^\\(This totals [\\d,]+ types? of (?:item|material)s? stashed!\\)$"
                     + "|^>>> CLICK HERE to pick (?:them|it) up! <<<$");
+    /**
+     * The lines of the unclaimed event rewards reminder, centered with spaces like the stash
+     * reminder and handled the same way.
+     */
+    private static final Pattern EVENT_REWARDS_LINE = Pattern.compile(
+            "^You have [\\d,]+ unclaimed event rewards?!$"
+                    + "|^>>> CLICK HERE to claim! <<<$"
+                    + "|^Event rewards are deleted after [\\d,]+ SkyBlock years?!$");
     /** "[Sacks] +11 items. (Last 7s.)", "[Sacks] +2,111 items, -4 items. (Last 30s.)". */
     private static final Pattern SACKS = Pattern.compile(
             "^\\[Sacks\\] [+-][\\d,]+ items?(?:, -[\\d,]+ items?)?\\. \\(Last [\\d,]+s\\.\\)$");
@@ -280,7 +293,8 @@ public final class MessageFilterFeature {
         if (AUTOPET.matcher(text).matches()) return Kind.AUTOPET;
         if (FIRE_SALE.matcher(text).matches()) return Kind.FIRE_SALE;
         if (text.startsWith(WATCHDOG_HEADER)) return Kind.WATCHDOG;
-        if (isStashReminder(text)) return Kind.STASH;
+        if (allLinesMatch(text, STASH_LINE)) return Kind.STASH;
+        if (allLinesMatch(text, EVENT_REWARDS_LINE)) return Kind.EVENT_REWARDS;
         if (SACKS.matcher(text).matches()) return Kind.SACKS;
         return null;
     }
@@ -293,10 +307,11 @@ public final class MessageFilterFeature {
         return null;
     }
 
-    private static boolean isStashReminder(String text) {
+    /** Whether every non-blank line of the message, trimmed, matches the pattern. */
+    private static boolean allLinesMatch(String text, Pattern pattern) {
         for (String line : text.split("\n")) {
             String trimmed = line.strip();
-            if (!trimmed.isEmpty() && !STASH_LINE.matcher(trimmed).matches()) return false;
+            if (!trimmed.isEmpty() && !pattern.matcher(trimmed).matches()) return false;
         }
         return true;
     }
@@ -320,6 +335,7 @@ public final class MessageFilterFeature {
             case FIRE_SALE -> config.messageFilterFireSale;
             case WATCHDOG -> config.messageFilterWatchdog;
             case STASH -> config.messageFilterStash;
+            case EVENT_REWARDS -> config.messageFilterEventRewards;
             case SACKS -> config.messageFilterSacks;
         };
     }

@@ -906,11 +906,14 @@ public class AlpakaConfigRegistry {
                         new ConfigOption.ToggleEntry("Stash Reminders",
                                 () -> AlpakaConfig.instance.messageFilterStash,
                                 v -> { AlpakaConfig.instance.messageFilterStash = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Event Rewards",
+                                () -> AlpakaConfig.instance.messageFilterEventRewards,
+                                v -> { AlpakaConfig.instance.messageFilterEventRewards = v; AlpakaConfig.save(); }),
                         new ConfigOption.ToggleEntry("Sacks",
                                 () -> AlpakaConfig.instance.messageFilterSacks,
                                 v -> { AlpakaConfig.instance.messageFilterSacks = v; AlpakaConfig.save(); })
                 ),
-                "message filter hidden empty blank lines welcome guild gexp event exp kill combo grandma wolf profile id join reward bundle seasonal autopet pet rule fire sale community shop watchdog ban announcement stash stashed items materials pick up reminder sacks sack items added removed"));
+                "message filter hidden empty blank lines welcome guild gexp event exp kill combo grandma wolf profile id join reward bundle seasonal autopet pet rule fire sale community shop watchdog ban announcement stash stashed items materials pick up reminder event rewards unclaimed claim deleted sacks sack items added removed"));
 
         OPTIONS.add(new ConfigOption("message_filter_dungeon", "Dungeon Messages",
                 "Which dungeon messages the filter hides during a Catacombs run.",

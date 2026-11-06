@@ -3204,6 +3204,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.commandWheelToggleMode = v; AlpakaConfig.save(); },
                 "quick command wheel toggle hold press release click open mode keybind"));
 
+        OPTIONS.add(new ConfigOption("command_wheel_hover_sound", "Hover Sound",
+                "Plays the hotbar swap sound when you aim at another command.",
+                ConfigCategory.SOUND_MISC,
+                () -> AlpakaConfig.instance.commandWheelHoverSound,
+                v -> { AlpakaConfig.instance.commandWheelHoverSound = v; AlpakaConfig.save(); },
+                "quick command wheel hover sound click tick hotbar swap select aim audio"));
+
         OPTIONS.add(new ConfigOption("command_shortcuts", "Command Shortcuts",
                 "Short aliases for commands, such as /v for /visit (/v Steve still works), and keys that run a command.",
                 ConfigCategory.SOUND_MISC,

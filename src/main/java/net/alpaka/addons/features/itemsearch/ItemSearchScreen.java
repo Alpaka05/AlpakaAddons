@@ -9,7 +9,6 @@ import net.alpaka.addons.compat.MacOSInputFixesCompat;
 import net.alpaka.addons.compliance.Outbound;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.itemvalue.ItemPrices;
-import net.alpaka.addons.features.itemvalue.ItemValuePopup;
 import net.alpaka.addons.features.slayer.SlayerDropTracker;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -55,18 +54,15 @@ public class ItemSearchScreen extends Screen {
 
     /** The place picked last and the order, kept until the game restarts; null for everywhere. */
     private static ItemSearchSource lastCategory = null;
-    private static ItemSearchResults.Sort lastSort = ItemSearchResults.Sort.AMOUNT;
 
     private final Screen parent;
     private final EditableText input = new EditableText(64);
     private ItemSearchSource category = lastCategory;
-    private ItemSearchResults.Sort sort = lastSort;
 
     private List<ItemSearchResults.Entry> all = List.of();
     private List<ItemSearchResults.Entry> shown = List.of();
     private int allCount = 0;
     private String shownFor = null;
-    private long pricesVersion = -1;
     private final Map<ItemSearchSource, ItemStack> icons = new EnumMap<>(ItemSearchSource.class);
 
     private int selected = 0;
@@ -150,16 +146,14 @@ public class ItemSearchScreen extends Screen {
 
     /** The list for the query and order as they are now, worked out again only when one of them changed. */
     private List<ItemSearchResults.Entry> shown() {
-        String key = input.getText() + "\u0000" + sort;
-        long version = sort == ItemSearchResults.Sort.VALUE ? ItemValuePopup.worthVersion() : 0;
-        if (!key.equals(shownFor) || version != pricesVersion) {
-            shown = ItemSearchResults.filter(all, input.getText(), sort);
-            if (!key.equals(shownFor)) {
-                selected = 0;
-                targetScrollY = 0;
-            }
+        String key = input.getText();
+        if (!key.equals(shownFor)) {
+            // Always by name: a list that keeps its order while typing is easier to read than one
+            // that reshuffles by amount or value.
+            shown = ItemSearchResults.filter(all, key, ItemSearchResults.Sort.NAME);
+            selected = 0;
+            targetScrollY = 0;
             shownFor = key;
-            pricesVersion = version;
         }
         return shown;
     }
@@ -173,7 +167,6 @@ public class ItemSearchScreen extends Screen {
     @Override
     public void onClose() {
         lastCategory = category;
-        lastSort = sort;
         Minecraft.getInstance().gui.setScreen(parent);
     }
 
@@ -213,20 +206,16 @@ public class ItemSearchScreen extends Screen {
 
         drawBar(graphics, f, mouseX, mouseY);
         ItemSearchResults.Entry tooltipFor = null;
-        boolean hoverSort = false;
         if (extra > 1) {
             graphics.enableScissor(f.x, f.y + f.barH, f.x + f.w, f.y + panelH);
             ModernGuiUtils.drawRect(graphics, f.x + AlpakaStyle.PAD, f.y + f.barH, f.w - AlpakaStyle.PAD * 2, 1, AlpakaStyle.LINE);
             tooltipFor = drawBody(graphics, f, bodyH, mouseX, mouseY, deltaSec);
-            hoverSort = drawFooter(graphics, f, f.bodyY() + bodyH, mouseX, mouseY);
+            drawFooter(graphics, f, f.bodyY() + bodyH);
             graphics.disableScissor();
         }
 
         if (pushed) graphics.pose().popMatrix();
         if (tooltipFor != null) graphics.setComponentTooltipForNextFrame(this.font, tooltip(tooltipFor), mouseX, mouseY);
-        else if (hoverSort) AlpakaStyle.tooltip(graphics, this.font, this.width, this.height, mouseX, mouseY,
-                sort == ItemSearchResults.Sort.VALUE && !AlpakaConfig.instance.allowApiCalls
-                        ? "Value needs Network Features, which are off." : "Click to change the order.");
     }
 
     /** The opening pop, around the bar rather than the screen's centre, since the bar sits high up. */
@@ -403,23 +392,14 @@ public class ItemSearchScreen extends Screen {
         graphics.pose().popMatrix();
     }
 
-    /** The key hints along the bottom and the order on the right; returns whether the order is hovered. */
-    private boolean drawFooter(GuiGraphicsExtractor graphics, Frame f, int y, int mouseX, int mouseY) {
+    /** The key hints along the bottom. */
+    private void drawFooter(GuiGraphicsExtractor graphics, Frame f, int y) {
         ModernGuiUtils.drawRect(graphics, f.x + AlpakaStyle.PAD, y, f.w - AlpakaStyle.PAD * 2, 1, AlpakaStyle.LINE);
         int cy = y + 1 + (FOOTER_H - 1) / 2;
         int x = f.x + 10;
         x = hint(graphics, x, cy, "↑↓", "Select");
         x = hint(graphics, x, cy, "Enter", "Open");
-        x = hint(graphics, x, cy, "Tab", category == null ? "Place" : "Next Place");
-
-        String sortText = "Sort: " + sort.label;
-        int sortW = GuiFont.width(this.font, sortText) + 10;
-        int sortX = f.x + f.w - 8 - sortW;
-        int sortY = cy - 6;
-        boolean hover = inside(mouseX, mouseY, sortX, sortY, sortW, 12);
-        if (hover) ModernGuiUtils.drawRoundedRect(graphics, sortX, sortY, sortW, 12, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW_HOVER);
-        graphics.text(this.font, GuiFont.text(sortText), sortX + 5, cy - 4, hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_MUTED, false);
-        return hover;
+        hint(graphics, x, cy, "Tab", "Place");
     }
 
     /** A key in a small cap with what it does beside it; returns where the next one starts. */
@@ -536,16 +516,6 @@ public class ItemSearchScreen extends Screen {
             return true;
         }
 
-        int footerY = f.footerY();
-        String sortText = "Sort: " + sort.label;
-        int sortW = GuiFont.width(this.font, sortText) + 10;
-        int cy = footerY + 1 + (FOOTER_H - 1) / 2;
-        if (inside(mx, my, f.x + f.w - 8 - sortW, cy - 6, sortW, 12)) {
-            AlpakaStyle.click();
-            sort = sort.next();
-            return true;
-        }
-
         if (!inside(mx, my, f.x, f.y, f.w, f.fullH())) {
             onClose();
             return true;
@@ -581,7 +551,6 @@ public class ItemSearchScreen extends Screen {
         Minecraft mc = Minecraft.getInstance();
         ItemSearchHighlight.item(entry.key);
         lastCategory = category;
-        lastSort = sort;
         switch (place.source()) {
             case INVENTORY -> mc.gui.setScreen(parent instanceof AbstractContainerScreen<?> ? parent
                     : mc.player == null ? null : new InventoryScreen(mc.player));

@@ -1900,8 +1900,48 @@ public class ProfileDashboardScreen extends Screen {
             }
         }
         y += h;
+        y = essence(graphics, d, x, y + 6, w);
         String metric = metricFor(Page.DUNGEONS);
         return chartCard(graphics, metric, 0, x, y + 6, w, 130);
+    }
+
+    /** Every essence the game has, so one the player has none of shows as none rather than missing. */
+    private static final List<String> ESSENCES = List.of("WITHER", "UNDEAD", "DRAGON", "DIAMOND", "GOLD", "ICE", "SPIDER", "CRIMSON", "FOREST");
+
+    /** The essence the player holds, most first, each with its item; Elite keys them "WITHER", "GOLD", ... */
+    private int essence(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
+        Map<String, Double> amounts = new LinkedHashMap<>();
+        for (String id : ESSENCES) amounts.put(id, 0.0);
+        for (var e : Json.obj(d.raw, "stats.miscStats.essence").entrySet()) {
+            if (e.getValue().isJsonPrimitive()) amounts.put(e.getKey().toUpperCase(Locale.ROOT), e.getValue().getAsDouble());
+        }
+        List<Map.Entry<String, Double>> sorted = new ArrayList<>(amounts.entrySet());
+        sorted.sort((a, b) -> Double.compare(b.getValue(), a.getValue()));
+
+        int cellH = 20;
+        int cols = Math.max(1, Math.min(sorted.size(), (w - 16) / 96));
+        int cellW = (w - 16) / cols;
+        int rows = (sorted.size() + cols - 1) / cols;
+        int h = 24 + rows * (cellH + 2) + 4;
+        card(graphics, x, y, w, h);
+        text(graphics, "Essence", x + 8, y + 7, AlpakaStyle.TEXT);
+        for (int i = 0; i < sorted.size(); i++) {
+            String id = sorted.get(i).getKey();
+            double amount = sorted.get(i).getValue();
+            String name = ProfileData.title(id.toLowerCase(Locale.ROOT));
+            int cx = x + 8 + (i % cols) * cellW;
+            int cy = y + 22 + (i / cols) * (cellH + 2);
+            boolean has = amount > 0;
+            ModernGuiUtils.drawRoundedRect(graphics, cx + 1, cy, cellW - 2, cellH, AlpakaStyle.ROW_RADIUS,
+                    has ? AlpakaStyle.ROW_HOVER : MarketIcons.fade(AlpakaStyle.ROW_HOVER, 0.5f));
+            stackIcon(graphics, ItemIcons.forItem("ESSENCE_" + id, name + " Essence"), cx + 3, cy + 2, 1.0f);
+            String value = Coins.compact(amount);
+            int vx = cx + cellW - 6 - textW(value);
+            text(graphics, AlpakaStyle.ellipsize(this.font, name, vx - cx - 26), cx + 22, cy + 6, has ? AlpakaStyle.TEXT_SOFT : AlpakaStyle.TEXT_MUTED);
+            text(graphics, value, vx, cy + 6, has ? AlpakaStyle.TEXT : AlpakaStyle.DIVIDER);
+            if (hover(cx + 1, cy, cellW - 2, cellH)) tip("essence:" + id, name + " Essence: " + Coins.full(amount) + ".");
+        }
+        return y + h;
     }
 
     // ---- Slayers --------------------------------------------------------------------------------

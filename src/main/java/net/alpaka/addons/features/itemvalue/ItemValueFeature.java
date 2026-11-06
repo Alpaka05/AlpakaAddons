@@ -6,12 +6,12 @@ import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.market.MarketScreen;
 import net.alpaka.addons.mixin.AbstractContainerScreenAccessor;
 import net.alpaka.addons.client.AlpakaKeyBinds;
+import net.alpaka.addons.utils.TextInputFocus;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.world.inventory.Slot;
@@ -64,13 +64,13 @@ public final class ItemValueFeature {
     public static boolean swallowsRepeat(net.minecraft.client.input.KeyEvent event) {
         if (KEY == null || !AlpakaConfig.instance.itemValueEnabled || !KEY.matches(event)) return false;
         Screen screen = Minecraft.getInstance().gui.screen();
-        return screen instanceof AbstractContainerScreen<?> && !(screen.getFocused() instanceof EditBox box && box.canConsumeInput());
+        return screen instanceof AbstractContainerScreen<?> && !TextInputFocus.isTyping(screen);
     }
 
     /** The key in a menu. True when it opened, moved or closed the popup, so the menu does not get it too. */
     static boolean keyPressed(Screen screen) {
         if (!AlpakaConfig.instance.itemValueEnabled) return false;
-        if (screen.getFocused() instanceof EditBox box && box.canConsumeInput()) return false;
+        if (TextInputFocus.isTyping(screen)) return false;
         ItemStack hovered = hovered(screen);
         if (hovered.isEmpty() || ItemValuePopup.shows(screen, hovered)) {
             if (!ItemValuePopup.isOpen()) return false;

@@ -9,6 +9,7 @@ import net.alpaka.addons.compat.MacOSInputFixesCompat;
 import net.alpaka.addons.compliance.Outbound;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.itemvalue.ItemPrices;
+import net.alpaka.addons.features.itemvalue.ItemValuePopup;
 import net.alpaka.addons.features.slayer.SlayerDropTracker;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -68,7 +69,7 @@ public class ItemSearchScreen extends Screen {
     private List<ItemSearchResults.Entry> shown = List.of();
     private int allCount = 0;
     private String shownFor = null;
-    private int pricesVersion = -1;
+    private long pricesVersion = -1;
     private final Map<ItemSearchSource, ItemStack> icons = new EnumMap<>(ItemSearchSource.class);
 
     private int selected = 0;
@@ -158,7 +159,7 @@ public class ItemSearchScreen extends Screen {
     /** The list for the query and order as they are now, worked out again only when one of them changed. */
     private List<ItemSearchResults.Entry> shown() {
         String key = input.getText() + "\u0000" + sort;
-        int version = sort == ItemSearchResults.Sort.VALUE ? ItemPrices.version() : 0;
+        long version = sort == ItemSearchResults.Sort.VALUE ? ItemValuePopup.worthVersion() : 0;
         if (!key.equals(shownFor) || version != pricesVersion) {
             shown = ItemSearchResults.filter(all, input.getText(), sort);
             if (!key.equals(shownFor)) {
@@ -447,10 +448,7 @@ public class ItemSearchScreen extends Screen {
 
     /** What all of an entry is worth, NaN without a price or with Network Features off. */
     private static double value(ItemSearchResults.Entry entry) {
-        if (!Double.isNaN(entry.value)) return entry.value;
-        if (!AlpakaConfig.instance.allowApiCalls) return Double.NaN;
-        ItemPrices.Quote quote = ItemPrices.quote(entry.id);
-        return quote == null ? Double.NaN : quote.price() * entry.total;
+        return ItemSearchResults.value(entry);
     }
 
     /** The rarity line at the end of the lore, such as "LEGENDARY DUNGEON BOW", if the item has one. */

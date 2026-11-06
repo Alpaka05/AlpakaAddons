@@ -36,27 +36,22 @@ import java.util.Optional;
  * The Item Search window, in the manner of a launcher's search: it opens as a single search bar in
  * the upper part of the screen and only grows a result list once something is typed (or a place is
  * picked with Tab). The results are rows with the item, its name in its rarity's color, where it
- * lies and how many there are; the row picked with the arrow keys or the mouse is shown on the right
- * with every place it lies, each of which can be clicked to open that one. Enter opens the place with
- * the most of it and outlines the item there.
+ * lies and how many there are; hovering the item shows its tooltip with every place. Enter or a
+ * click opens the place with the most of it and outlines the item there.
  */
 public class ItemSearchScreen extends Screen {
 
     private static final int MARGIN = 8;
-    private static final int WIN_W = 440;
-    private static final int MIN_W = 280;
-    /** The bar alone is narrower; it widens to the full window as the results open. */
-    private static final int BAR_W = 250;
+    private static final int WIN_W = 280;
+    private static final int MIN_W = 220;
     private static final int BAR_H = 26;
     private static final int ROW_H = 24;
     private static final int MAX_ROWS = 8;
     private static final int MIN_ROWS = 4;
     private static final int FOOTER_H = 20;
-    private static final int DETAIL_W = 150;
-    /** Below this window width the detail pane is left out and the list takes the whole width. */
-    private static final int DETAIL_MIN_WIN_W = 360;
     private static final int EMPTY_BODY_H = 46;
-    private static final int PLACE_ROW_H = 13;
+    /** How many places the tooltip names before it sums up the rest. */
+    private static final int MAX_PLACES = 8;
 
     /** The place picked last and the order, kept until the game restarts; null for everywhere. */
     private static ItemSearchSource lastCategory = null;
@@ -79,14 +74,11 @@ public class ItemSearchScreen extends Screen {
     private double targetScrollY = 0;
     /** How far the result area is open, 0 for the bar alone and 1 for the full list. */
     private float expand = 0f;
-    private float expandFrom = 0f;
     private int bodyFromH = 0;
     private long lastFrameMs = System.currentTimeMillis();
     private long openTimeMs = 0L;
     private long caretFrom = System.currentTimeMillis();
     private int lastMouseX = Integer.MIN_VALUE;
-    /** The bar as last drawn, at the width it had then, for the clicks. */
-    private Frame shownBar = null;
     private int lastMouseY = Integer.MIN_VALUE;
 
     public ItemSearchScreen(String query, Screen parent) {
@@ -100,7 +92,7 @@ public class ItemSearchScreen extends Screen {
     // ---- Layout ---------------------------------------------------------------------------------
 
     private record Frame(int x, int y, int w, int barH, int bodyH, int fullBodyH, int rows,
-                         int listX, int listW, int detailX, boolean detail, float textScale) {
+                         int listX, int listW, float textScale) {
         int bodyY() {
             return y + barH + 1;
         }
@@ -113,11 +105,6 @@ public class ItemSearchScreen extends Screen {
             return barH + 1 + fullBodyH + FOOTER_H;
         }
 
-        /** The same frame, as wide as given and centred where it was. */
-        Frame narrowed(int width) {
-            int nw = Math.min(w, width);
-            return new Frame(x + (w - nw) / 2, y, nw, barH, bodyH, fullBodyH, rows, listX, listW, detailX, detail, textScale);
-        }
     }
 
     /** Whether the result area shows: once something is typed, or a place is picked. */
@@ -135,11 +122,7 @@ public class ItemSearchScreen extends Screen {
         // Where the bar sits: in the upper part of the screen, but high enough for the open list to fit.
         int fullH = BAR_H + 1 + (maxRows * ROW_H + 8) + FOOTER_H;
         int y = Math.max(MARGIN, Math.min(Math.round(this.height * 0.22f), this.height - MARGIN - fullH));
-        boolean detail = w >= DETAIL_MIN_WIN_W && !empty;
-        int listX = x + 4;
-        int listW = (detail ? w - DETAIL_W : w) - 8;
-        int detailX = x + w - DETAIL_W;
-        return new Frame(x, y, w, BAR_H, bodyH, bodyH, maxRows, listX, listW, detailX, detail, textScale());
+        return new Frame(x, y, w, BAR_H, bodyH, bodyH, maxRows, x + 4, w - 8, textScale());
     }
 
     /**
@@ -216,13 +199,11 @@ public class ItemSearchScreen extends Screen {
         int bodyH = target > 0f ? f.bodyH : bodyFromH;
         int extra = Math.round((1 + bodyH + FOOTER_H) * eased);
         int panelH = f.barH + extra;
-        Frame p = f.narrowed(Math.round(BAR_W + (f.w - BAR_W) * eased));
-        shownBar = p;
 
         // A lighter backdrop than the other windows: the bar floats over the game.
         AlpakaStyle.backdrop(graphics, this.width, this.height, 0.6f + 0.4f * eased);
         boolean pushed = beginOpen(graphics, f);
-        AlpakaStyle.popover(graphics, p.x, p.y, p.w, panelH);
+        AlpakaStyle.popover(graphics, f.x, f.y, f.w, panelH);
 
         if (mouseX != lastMouseX || mouseY != lastMouseY) {
             hoverSelect(f, mouseX, mouseY);
@@ -230,12 +211,12 @@ public class ItemSearchScreen extends Screen {
             lastMouseY = mouseY;
         }
 
-        drawBar(graphics, p, mouseX, mouseY);
+        drawBar(graphics, f, mouseX, mouseY);
         ItemSearchResults.Entry tooltipFor = null;
         boolean hoverSort = false;
         if (extra > 1) {
-            graphics.enableScissor(p.x, p.y + p.barH, p.x + p.w, p.y + panelH);
-            ModernGuiUtils.drawRect(graphics, p.x + AlpakaStyle.PAD, p.y + p.barH, p.w - AlpakaStyle.PAD * 2, 1, AlpakaStyle.LINE);
+            graphics.enableScissor(f.x, f.y + f.barH, f.x + f.w, f.y + panelH);
+            ModernGuiUtils.drawRect(graphics, f.x + AlpakaStyle.PAD, f.y + f.barH, f.w - AlpakaStyle.PAD * 2, 1, AlpakaStyle.LINE);
             tooltipFor = drawBody(graphics, f, bodyH, mouseX, mouseY, deltaSec);
             hoverSort = drawFooter(graphics, f, f.bodyY() + bodyH, mouseX, mouseY);
             graphics.disableScissor();
@@ -326,7 +307,7 @@ public class ItemSearchScreen extends Screen {
         return start;
     }
 
-    /** The result list and the detail pane; returns the entry whose item tooltip is to be shown. */
+    /** The result list; returns the entry whose item tooltip is to be shown. */
     private ItemSearchResults.Entry drawBody(GuiGraphicsExtractor graphics, Frame f, int bodyH, int mouseX, int mouseY,
                                              float deltaSec) {
         List<ItemSearchResults.Entry> list = shown();
@@ -377,10 +358,6 @@ public class ItemSearchScreen extends Screen {
         AlpakaStyle.scrollFades(graphics, f.listX, top, f.listW, listH, scrollY > 0.5, scrollY < maxScroll - 0.5);
         graphics.disableScissor();
 
-        if (f.detail) {
-            ItemSearchResults.Entry detailTooltip = drawDetail(graphics, f, bodyH, mouseX, mouseY);
-            if (detailTooltip != null) tooltipFor = detailTooltip;
-        }
         return tooltipFor;
     }
 
@@ -389,87 +366,6 @@ public class ItemSearchScreen extends Screen {
         String best = entry.best().name();
         int more = entry.places.size() - 1;
         return more <= 0 ? best : best + " and " + more + (more == 1 ? " more" : " more places");
-    }
-
-    /** The detail pane for the picked entry: a large icon, its name and rarity, the total and every place. */
-    private ItemSearchResults.Entry drawDetail(GuiGraphicsExtractor graphics, Frame f, int bodyH, int mouseX, int mouseY) {
-        ItemSearchResults.Entry entry = selectedEntry();
-        if (entry == null) return null;
-        int x = f.detailX;
-        int top = f.bodyY();
-        ModernGuiUtils.drawRect(graphics, x, top + 8, 1, bodyH - 16, AlpakaStyle.LINE);
-        int innerX = x + 10;
-        int innerW = DETAIL_W - 18;
-        int cx = x + DETAIL_W / 2;
-
-        int iconY = top + 10;
-        drawIcon(graphics, entry.stack, cx - 16, iconY, 2f);
-        ItemSearchResults.Entry tooltipFor = inside(mouseX, mouseY, cx - 16, iconY, 32, 32) ? entry : null;
-
-        int y = iconY + 38;
-        ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, entry.name, innerW)),
-                cx, y, nameColor(entry.stack));
-        y += 11;
-        String rarity = rarityLine(entry);
-        if (rarity != null) {
-            ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, rarity, innerW)),
-                    cx, y, AlpakaStyle.TEXT_MUTED);
-            y += 11;
-        }
-        y += 4;
-        y = detailRow(graphics, innerX, innerW, y, "Total", String.format(Locale.ROOT, "%,d", entry.total), AlpakaStyle.TEXT);
-        double value = value(entry);
-        if (!Double.isNaN(value)) {
-            y = detailRow(graphics, innerX, innerW, y, "Value", ItemSearchMenus.shortCount(Math.round(value)) + " coins", 0xFFFFC94D);
-        }
-        y += 4;
-        ModernGuiUtils.drawRect(graphics, innerX, y, innerW, 1, AlpakaStyle.LINE);
-        y += 5;
-
-        int bottom = top + bodyH - 6;
-        int room = Math.max(0, (bottom - y) / PLACE_ROW_H);
-        int count = entry.places.size();
-        int listed = count > room ? Math.max(0, room - 1) : count;
-        for (int i = 0; i < listed; i++) {
-            ItemSearchResults.Place place = entry.places.get(i);
-            boolean hover = inside(mouseX, mouseY, innerX - 3, y, innerW + 6, PLACE_ROW_H);
-            if (hover) ModernGuiUtils.drawRoundedRect(graphics, innerX - 3, y, innerW + 6, PLACE_ROW_H, AlpakaStyle.ROW_RADIUS,
-                    AlpakaStyle.ROW_HOVER);
-            drawIcon(graphics, icon(place.source()), innerX, y + 2, 0.5625f);
-            String n = ItemSearchMenus.shortCount(place.count());
-            int nW = GuiFont.width(this.font, n);
-            graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, place.name(), innerW - 14 - nW - 4)),
-                    innerX + 13, y + 3, hover ? AlpakaStyle.accent() : AlpakaStyle.TEXT_SOFT, false);
-            graphics.text(this.font, GuiFont.text(n), innerX + innerW - nW, y + 3, AlpakaStyle.TEXT_MUTED, false);
-            y += PLACE_ROW_H;
-        }
-        if (listed < count) {
-            graphics.text(this.font, GuiFont.text("and " + (count - listed) + " more places"), innerX + 13, y + 3,
-                    AlpakaStyle.TEXT_MUTED, false);
-        }
-        return tooltipFor;
-    }
-
-    private int detailRow(GuiGraphicsExtractor graphics, int x, int w, int y, String label, String value, int color) {
-        graphics.text(this.font, GuiFont.text(label), x, y, AlpakaStyle.TEXT_MUTED, false);
-        int vw = GuiFont.width(this.font, value);
-        graphics.text(this.font, GuiFont.text(value), x + w - vw, y, color, false);
-        return y + 11;
-    }
-
-    /** What all of an entry is worth, NaN without a price or with Network Features off. */
-    private static double value(ItemSearchResults.Entry entry) {
-        return ItemSearchResults.value(entry);
-    }
-
-    /** The rarity line at the end of the lore, such as "LEGENDARY DUNGEON BOW", if the item has one. */
-    private static String rarityLine(ItemSearchResults.Entry entry) {
-        for (int i = entry.lore.size() - 1; i >= 0; i--) {
-            String line = entry.lore.get(i).trim();
-            if (line.isEmpty()) continue;
-            return line.equals(line.toUpperCase(Locale.ROOT)) && line.chars().anyMatch(Character::isLetter) ? line : null;
-        }
-        return null;
     }
 
     /** The color the item's name starts in, which on SkyBlock is its rarity's. */
@@ -558,6 +454,20 @@ public class ItemSearchScreen extends Screen {
         lines.add(Component.empty());
         lines.add(Component.literal("Total: ").withStyle(ChatFormatting.GRAY)
                 .append(Component.literal(String.format(Locale.ROOT, "%,d", entry.total)).withStyle(ChatFormatting.WHITE)));
+        double value = ItemSearchResults.value(entry);
+        if (!Double.isNaN(value)) {
+            lines.add(Component.literal("Value: ").withStyle(ChatFormatting.GRAY)
+                    .append(Component.literal(ItemSearchMenus.shortCount(Math.round(value)) + " coins").withStyle(ChatFormatting.GOLD)));
+        }
+        int listed = Math.min(MAX_PLACES, entry.places.size());
+        for (int i = 0; i < listed; i++) {
+            ItemSearchResults.Place place = entry.places.get(i);
+            lines.add(Component.literal(" " + place.name()).withStyle(ChatFormatting.GRAY)
+                    .append(Component.literal(" × " + String.format(Locale.ROOT, "%,d", place.count())).withStyle(ChatFormatting.DARK_GRAY)));
+        }
+        if (entry.places.size() > listed) {
+            lines.add(Component.literal(" and " + (entry.places.size() - listed) + " more places").withStyle(ChatFormatting.DARK_GRAY));
+        }
         lines.add(Component.literal(action(entry.best())).withStyle(ChatFormatting.YELLOW));
         return lines;
     }
@@ -598,18 +508,17 @@ public class ItemSearchScreen extends Screen {
         double mx = event.x();
         double my = event.y();
         Frame f = frame();
-        Frame b = shownBar != null ? shownBar : f.narrowed(open() ? f.w : BAR_W);
 
-        if (inside(mx, my, b.x, b.y, b.w, b.barH)) {
+        if (inside(mx, my, f.x, f.y, f.w, f.barH)) {
             caretFrom = System.currentTimeMillis();
-            int textX = b.x + 28 + (category == null ? 0 : GuiFont.width(this.font, category.label) + 30);
+            int textX = f.x + 28 + (category == null ? 0 : GuiFont.width(this.font, category.label) + 30);
             if (category != null && mx < textX) {
                 // The place pill: clicking it goes back to searching everywhere.
                 pick(null);
                 return true;
             }
             int offset = GuiFont.width(this.font, input.getText().substring(0, visibleStart(input.getText(),
-                    Math.round((b.w - 28 - (textX - b.x)) / b.textScale))));
+                    Math.round((f.w - 28 - (textX - f.x)) / f.textScale))));
             input.setCaretFromX((int) ((mx - textX) / f.textScale) + offset, s -> GuiFont.width(this.font, s));
             return true;
         }
@@ -637,37 +546,11 @@ public class ItemSearchScreen extends Screen {
             return true;
         }
 
-        if (f.detail) {
-            ItemSearchResults.Place place = placeAt(f, mx, my);
-            if (place != null) {
-                AlpakaStyle.click();
-                go(selectedEntry(), place);
-                return true;
-            }
-        }
         if (!inside(mx, my, f.x, f.y, f.w, f.fullH())) {
             onClose();
             return true;
         }
         return super.mouseClicked(event, doubleClick);
-    }
-
-    /** The place row of the detail pane under the mouse, or null; laid out as {@link #drawDetail} draws it. */
-    private ItemSearchResults.Place placeAt(Frame f, double mx, double my) {
-        ItemSearchResults.Entry entry = selectedEntry();
-        if (entry == null) return null;
-        int innerX = f.detailX + 10;
-        int innerW = DETAIL_W - 18;
-        int y = f.bodyY() + 10 + 38 + 11 + (rarityLine(entry) != null ? 11 : 0) + 4 + 11
-                + (Double.isNaN(value(entry)) ? 0 : 11) + 4 + 5;
-        int room = Math.max(0, (f.bodyY() + f.bodyH - 6 - y) / PLACE_ROW_H);
-        int count = entry.places.size();
-        int listed = count > room ? Math.max(0, room - 1) : count;
-        for (int i = 0; i < listed; i++) {
-            if (inside(mx, my, innerX - 3, y, innerW + 6, PLACE_ROW_H)) return entry.places.get(i);
-            y += PLACE_ROW_H;
-        }
-        return null;
     }
 
     private void pick(ItemSearchSource source) {

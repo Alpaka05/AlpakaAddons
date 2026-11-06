@@ -1,0 +1,38 @@
+// The AlpakaAddons API at api.alpaka.yt: the Profile Dashboard's way to Hypixel's API, which
+// needs a key that may never ship in the mod. A build of its own, apart from the mod's:
+//   ./gradlew -p backend build    (from the repository root, with the mod's Gradle wrapper)
+// No libraries beyond the JDK: its HTTP server and client are enough for a proxy this small.
+plugins {
+    id "java"
+    id "application"
+}
+
+group = "net.alpaka"
+version = "1.0.0"
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation platform("org.junit:junit-bom:5.11.4")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 25
+    options.encoding = "UTF-8"
+}
+
+application {
+    mainClass = "net.alpaka.api.AlpakaApiServer"
+}
+
+jar {
+    manifest { attributes "Main-Class": "net.alpaka.api.AlpakaApiServer" }
+}
+
+test {
+    useJUnitPlatform()
+}

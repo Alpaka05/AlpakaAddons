@@ -45,6 +45,8 @@ public class ItemSearchScreen extends Screen {
     private static final int MARGIN = 8;
     private static final int WIN_W = 440;
     private static final int MIN_W = 280;
+    /** The bar alone is narrower; it widens to the full window as the results open. */
+    private static final int BAR_W = 250;
     private static final int BAR_H = 26;
     private static final int ROW_H = 24;
     private static final int MAX_ROWS = 8;
@@ -83,6 +85,8 @@ public class ItemSearchScreen extends Screen {
     private long openTimeMs = 0L;
     private long caretFrom = System.currentTimeMillis();
     private int lastMouseX = Integer.MIN_VALUE;
+    /** The bar as last drawn, at the width it had then, for the clicks. */
+    private Frame shownBar = null;
     private int lastMouseY = Integer.MIN_VALUE;
 
     public ItemSearchScreen(String query, Screen parent) {
@@ -107,6 +111,12 @@ public class ItemSearchScreen extends Screen {
 
         int fullH() {
             return barH + 1 + fullBodyH + FOOTER_H;
+        }
+
+        /** The same frame, as wide as given and centred where it was. */
+        Frame narrowed(int width) {
+            int nw = Math.min(w, width);
+            return new Frame(x + (w - nw) / 2, y, nw, barH, bodyH, fullBodyH, rows, listX, listW, detailX, detail, textScale);
         }
     }
 
@@ -206,11 +216,13 @@ public class ItemSearchScreen extends Screen {
         int bodyH = target > 0f ? f.bodyH : bodyFromH;
         int extra = Math.round((1 + bodyH + FOOTER_H) * eased);
         int panelH = f.barH + extra;
+        Frame p = f.narrowed(Math.round(BAR_W + (f.w - BAR_W) * eased));
+        shownBar = p;
 
         // A lighter backdrop than the other windows: the bar floats over the game.
         AlpakaStyle.backdrop(graphics, this.width, this.height, 0.6f + 0.4f * eased);
         boolean pushed = beginOpen(graphics, f);
-        AlpakaStyle.popover(graphics, f.x, f.y, f.w, panelH);
+        AlpakaStyle.popover(graphics, p.x, p.y, p.w, panelH);
 
         if (mouseX != lastMouseX || mouseY != lastMouseY) {
             hoverSelect(f, mouseX, mouseY);
@@ -218,12 +230,12 @@ public class ItemSearchScreen extends Screen {
             lastMouseY = mouseY;
         }
 
-        drawBar(graphics, f, mouseX, mouseY);
+        drawBar(graphics, p, mouseX, mouseY);
         ItemSearchResults.Entry tooltipFor = null;
         boolean hoverSort = false;
         if (extra > 1) {
-            graphics.enableScissor(f.x, f.y + f.barH, f.x + f.w, f.y + panelH);
-            ModernGuiUtils.drawRect(graphics, f.x + AlpakaStyle.PAD, f.y + f.barH, f.w - AlpakaStyle.PAD * 2, 1, AlpakaStyle.LINE);
+            graphics.enableScissor(p.x, p.y + p.barH, p.x + p.w, p.y + panelH);
+            ModernGuiUtils.drawRect(graphics, p.x + AlpakaStyle.PAD, p.y + p.barH, p.w - AlpakaStyle.PAD * 2, 1, AlpakaStyle.LINE);
             tooltipFor = drawBody(graphics, f, bodyH, mouseX, mouseY, deltaSec);
             hoverSort = drawFooter(graphics, f, f.bodyY() + bodyH, mouseX, mouseY);
             graphics.disableScissor();
@@ -586,17 +598,18 @@ public class ItemSearchScreen extends Screen {
         double mx = event.x();
         double my = event.y();
         Frame f = frame();
+        Frame b = shownBar != null ? shownBar : f.narrowed(open() ? f.w : BAR_W);
 
-        if (inside(mx, my, f.x, f.y, f.w, f.barH)) {
+        if (inside(mx, my, b.x, b.y, b.w, b.barH)) {
             caretFrom = System.currentTimeMillis();
-            int textX = f.x + 28 + (category == null ? 0 : GuiFont.width(this.font, category.label) + 30);
+            int textX = b.x + 28 + (category == null ? 0 : GuiFont.width(this.font, category.label) + 30);
             if (category != null && mx < textX) {
                 // The place pill: clicking it goes back to searching everywhere.
                 pick(null);
                 return true;
             }
             int offset = GuiFont.width(this.font, input.getText().substring(0, visibleStart(input.getText(),
-                    Math.round((f.w - 28 - (textX - f.x)) / f.textScale))));
+                    Math.round((b.w - 28 - (textX - b.x)) / b.textScale))));
             input.setCaretFromX((int) ((mx - textX) / f.textScale) + offset, s -> GuiFont.width(this.font, s));
             return true;
         }

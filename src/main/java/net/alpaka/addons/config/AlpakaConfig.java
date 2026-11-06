@@ -57,12 +57,12 @@ public class AlpakaConfig {
      */
     public boolean renderHandInThirdPerson = false;
 
-    public boolean slayerDropTrackerEnabled = true;
+    public boolean slayerDropTrackerEnabled = false;
     /**
      * Keeps Hypixel's own drop line out of the chat log when the tracker reports that same drop,
      * so a slayer drop is announced once rather than twice.
      */
-    public boolean hideHypixelDropMessage = true;
+    public boolean hideHypixelDropMessage = false;
     /**
      * Adds "Share: [Guild] [Party]" buttons to the tracker's line for a slayer's headline RNG drop -
      * the one the slayer HUD counts a dry streak against, e.g. High Class Archfiend Dice for Inferno.
@@ -156,7 +156,7 @@ public class AlpakaConfig {
      * On by default, unlike most of what the mod adds: it changes nothing about how the game looks
      * until the moment somebody actually addresses the player, which is a moment worth not missing.
      */
-    public boolean mentionNotificationEnabled = true;
+    public boolean mentionNotificationEnabled = false;
     /** Only mentions from real players: lines from NPCs, bosses and the server itself are ignored. */
     public boolean mentionIgnoreServer = true;
     /**
@@ -177,14 +177,14 @@ public class AlpakaConfig {
      * Separate from the boss timer even though the same moment drives both: one is a clock, this is
      * a nudge for somebody who was looking elsewhere while the quest finished spawning.
      */
-    public boolean bossSpawnAlertEnabled = true;
+    public boolean bossSpawnAlertEnabled = false;
     /**
      * Whether a notice slides in when the slayer boss spawns inside a cocoon.
      *
      * The cocoon takes a few seconds to hatch, so this comes first and the spawn alert follows once
      * the boss is actually up.
      */
-    public boolean bossCocoonAlertEnabled = true;
+    public boolean bossCocoonAlertEnabled = false;
     /** Snow over container screens and the main menu. Off for fresh installs; it is seasonal decoration. */
     public boolean inventorySnowEnabled = false;
     public float inventorySnowSpeed = 1.0f;
@@ -201,7 +201,7 @@ public class AlpakaConfig {
      * Clean Blaze, only on SkyBlock in the Blaze slayer's zones. The fields after it pick what it
      * hides.
      */
-    public boolean cleanBlazeEnabled = true;
+    public boolean cleanBlazeEnabled = false;
     public boolean cleanBlazeParticles = true;
     /** The potion swirls, enchanting glyphs and ender particles around the boss and its demons. */
     public boolean cleanBlazeEffectParticles = true;
@@ -217,7 +217,7 @@ public class AlpakaConfig {
     /** "Your hit was reduced by Hellion Shield!" and "You took ... damage from ..." in the Blaze zones. */
     public boolean cleanBlazeDamageChat = true;
     /** During the player's own Blaze slayer boss, a glowing column over each fire pit block. */
-    public boolean blazeFirePitsEnabled = true;
+    public boolean blazeFirePitsEnabled = false;
     /** ARGB color of the fire pit column; its alpha scales the column's own fade. Default hot red-orange. */
     public int blazeFirePitColor = 0xFFFF4714;
     /**
@@ -226,7 +226,7 @@ public class AlpakaConfig {
      * Used to be part of cleanBlazeEnabled, which forced a choice between the blaze effects and a
      * quiet chat. Defaults to true so that split changes nothing for anyone who had clean blaze on.
      */
-    public boolean hideSlayerChatMessages = true;
+    public boolean hideSlayerChatMessages = false;
     /** Which groups of slayer chatter hideSlayerChatMessages hides. All on, as before the split. */
     public boolean hideSlayerChatQuest = true;
     public boolean hideSlayerChatRadio = true;
@@ -330,7 +330,7 @@ public class AlpakaConfig {
     public boolean slayerTimerHudSmoothFont = true;
     public boolean performanceHudSmoothFont = true;
     public boolean notificationSmoothFont = true;
-    public boolean customEscapeMenuEnabled = true;
+    public boolean customEscapeMenuEnabled = false;
     public boolean customMainMenuEnabled = false;
     /** The custom main menu's background, avatar and fireflies shift with the mouse. */
     public boolean customMainMenuParallax = true;
@@ -373,7 +373,7 @@ public class AlpakaConfig {
     // Slayer session HUD. Each line has its own toggle so the HUD can be trimmed to just the
     // numbers being watched; the whole HUD hides unless a slayer quest is active.
     /** The slayer session HUD, the mod's flagship. On for fresh installs. */
-    public boolean slayerHudEnabled = true;
+    public boolean slayerHudEnabled = false;
     public int slayerHudX = net.alpaka.addons.client.hud.HudDefaults.SLAYER_SESSION_X;
     public int slayerHudY = net.alpaka.addons.client.hud.HudDefaults.SLAYER_SESSION_Y;
     public float slayerHudScale = 1.0f;
@@ -403,7 +403,7 @@ public class AlpakaConfig {
     public boolean slayerHudOnlyInSlayerAreas = true;
 
     // Farming HUD, on the Garden only. Each line has its own toggle, like the slayer session HUD.
-    public boolean farmingHudEnabled = true;
+    public boolean farmingHudEnabled = false;
     public int farmingHudX = net.alpaka.addons.client.hud.HudDefaults.FARMING_X;
     public int farmingHudY = net.alpaka.addons.client.hud.HudDefaults.FARMING_Y;
     public float farmingHudScale = 1.0f;
@@ -453,7 +453,7 @@ public class AlpakaConfig {
      * means no request is made and nothing derived from one is used. The JSON key keeps its old
      * name.
      */
-    public boolean allowApiCalls = true;
+    public boolean allowApiCalls = false;
     /** A chat line on joining a world when a newer release is on GitHub. Needs allowApiCalls. */
     public boolean updateNotificationsEnabled = true;
     /** Which releases the update check offers: 0 full releases only, 1 pre-releases as well (UpdateChecker.STREAM_NAMES). */
@@ -488,13 +488,13 @@ public class AlpakaConfig {
      * Empty in a config written before this field existed. See StartupNotices.
      */
     public String lastSeenVersion = "";
-    public boolean slayerTimerEnabled = true;
+    public boolean slayerTimerEnabled = false;
     /** Announce each boss's time in chat once it dies. */
     public boolean slayerTimerChatEnabled = true;
     /** Show the running time on screen while the boss is up. */
     public boolean slayerTimerHudEnabled = true;
     /** Highlight the player's own slayer boss. */
-    public boolean slayerBossHighlightEnabled = true;
+    public boolean slayerBossHighlightEnabled = false;
     /** How the boss is highlighted, an index into EntityHighlight.STYLE_NAMES. */
     public int slayerBossHighlightStyle = 0;
     public int slayerBossHighlightColor = 0xFFFF5555;
@@ -503,7 +503,7 @@ public class AlpakaConfig {
     /** The Ragnarock's cast countdown under the crosshair instead of in the action bar. */
     // Saved as ragAxeCountdownEnabled before the feature was renamed; read that too so the setting carries over.
     @SerializedName(value = "ragnarockEnabled", alternate = "ragAxeCountdownEnabled")
-    public boolean ragnarockEnabled = true;
+    public boolean ragnarockEnabled = false;
 
     /** Skill gains in the action bar as XP ("1,948,760/4,300,000") instead of a percentage. */
     public boolean exactSkillXpEnabled = false;
@@ -513,7 +513,7 @@ public class AlpakaConfig {
     // Deployable timer: the strongest deployable of each family in range, with its time left.
     public boolean deployableTimerEnabled = false;
     /** Clicking a garden visitor's Accept Offer while items are missing opens the bazaar for them. */
-    public boolean visitorBazaarEnabled = true;
+    public boolean visitorBazaarEnabled = false;
     public int deployableTimerHudX = net.alpaka.addons.client.hud.HudDefaults.DEPLOYABLE_TIMER_X;
     public int deployableTimerHudY = net.alpaka.addons.client.hud.HudDefaults.DEPLOYABLE_TIMER_Y;
     public float deployableTimerHudScale = 1.0f;
@@ -522,9 +522,9 @@ public class AlpakaConfig {
     public int slayerTimerHudX = net.alpaka.addons.client.hud.HudDefaults.SLAYER_TIMER_X;
     public int slayerTimerHudY = net.alpaka.addons.client.hud.HudDefaults.SLAYER_TIMER_Y;
     public float slayerTimerHudScale = 1.0f;
-    public boolean worldAgeJoinMessageEnabled = true;
+    public boolean worldAgeJoinMessageEnabled = false;
     public int worldAgeRecentThresholdSec = 60;
-    public boolean onlyCritDamageEnabled = true;
+    public boolean onlyCritDamageEnabled = false;
     /** Clicks on the nameless black glass panes that fill SkyBlock menus are ignored; see FillerPaneClicks. */
     public boolean ignoreFillerPanesEnabled = true;
     /**
@@ -796,7 +796,7 @@ public class AlpakaConfig {
      * the opening animation, the smooth scrolling, the blurred background and the smooth font. Each keeps its own switch
      * under it.
      */
-    public boolean betterChatEnabled = true;
+    public boolean betterChatEnabled = false;
     /** A new message slides up into the chat and fades in instead of appearing at once. */
     public boolean smoothChatEnabled = true;
     /** How long the slide takes, 1 (quick) to 10 (slow); each step is 60 ms. */
@@ -829,9 +829,9 @@ public class AlpakaConfig {
      */
     public float chatBlurStrength = 100.0f;
     /** One rounded, blurred panel with a soft shadow behind the scoreboard sidebar; see ScoreboardBlurFeature. */
-    public boolean scoreboardBlurEnabled = true;
+    public boolean scoreboardBlurEnabled = false;
     /** Writes "AlpakaAddons" in a gradient over Hypixel's www.hypixel.net line; see ScoreboardFooterFeature. */
-    public boolean scoreboardAlpakaFooter = true;
+    public boolean scoreboardAlpakaFooter = false;
     /** Ctrl+F in the chat turns the input line into a search that filters the visible messages. */
     public boolean chatSearchEnabled = true;
     /** Right-clicking a message in the open chat copies its text; see ChatCopyFeature. */
@@ -875,7 +875,7 @@ public class AlpakaConfig {
     /** Chat Peek also works with an inventory or another menu open, drawn on top of it. */
     public boolean chatPeekInMenus = true;
     /** Better Screenshots: everything below. The key keeps its old name so the setting carries over. */
-    public boolean betterScreenshotMessageEnabled = true;
+    public boolean betterScreenshotMessageEnabled = false;
     /** Open, Copy and Delete buttons on the screenshot notice instead of vanilla's line. */
     public boolean screenshotChatButtons = true;
     /** The screenshot shrinking into the corner for a moment after it is taken. */
@@ -895,7 +895,7 @@ public class AlpakaConfig {
     /** Every screenshot goes to the clipboard the moment it is taken. */
     public boolean autoCopyScreenshots = false;
     /** A message repeated right after itself becomes one line with (x2), (x3)... */
-    public boolean compactChatEnabled = true;
+    public boolean compactChatEnabled = false;
     /** Seconds since the last identical message within which a repeat still stacks; 0 = back-to-back only. */
     public int compactChatWindowSeconds = 30;
     /** Hides Hypixel chat spam; which kinds is up to the switches below. */
@@ -926,7 +926,7 @@ public class AlpakaConfig {
     /** The player's own filters, made in the Message Filter's sub menu. */
     public java.util.List<net.alpaka.addons.features.chat.CustomMessageFilter> messageFilterCustom = new java.util.ArrayList<>();
     /** All / Party / Guild / PMs tabs above the chat input. */
-    public boolean chatTabsEnabled = true;
+    public boolean chatTabsEnabled = false;
     /** With chat tabs: a plain message typed on a channel tab goes to that channel (/pc, /gc, /r). */
     public boolean chatTabsSendToChannel = false;
     /** With chat tabs: the row also shows while peeking, and Tab cycles the tabs in chat and while peeking. */
@@ -1007,12 +1007,12 @@ public class AlpakaConfig {
     public float customTabScale = 1.0f;
 
     /** A Hypixel party invite raises a notification: Y joins, N dismisses. */
-    public boolean partyInvitePromptEnabled = true;
+    public boolean partyInvitePromptEnabled = false;
 
     /** "/isle" is sent as "/warp isle"; see WarpShortcut. */
-    public boolean shortenWarpEnabled = true;
+    public boolean shortenWarpEnabled = false;
     /** A warp typed in the first seconds on a server waits for Hypixel's cooldown; see WarpCooldownQueue. */
-    public boolean warpCooldownQueueEnabled = true;
+    public boolean warpCooldownQueueEnabled = false;
     /** A party member's "!warp", "!tps"... raises a Y/N prompt to answer it; see PartyCommandsFeature. */
     public boolean partyCommandsEnabled = false;
     /** Info and fun party commands are answered without the Y/N prompt. */
@@ -1028,8 +1028,8 @@ public class AlpakaConfig {
      * The Auction House and the Bazaar in the mod's own screen. It only redraws Hypixel's menus:
      * every click on it is one click on the slot it stands for, see MarketScreen.
      */
-    public boolean customAuctionHouseEnabled = true;
-    public boolean customBazaarEnabled = true;
+    public boolean customAuctionHouseEnabled = false;
+    public boolean customBazaarEnabled = false;
     /**
      * Number keys, arrows and the like press the market screen's buttons, one click per press; see
      * MarketScreen.keyPressed. One switch for each market.
@@ -1037,19 +1037,19 @@ public class AlpakaConfig {
     public boolean auctionHouseHotkeysEnabled = true;
     public boolean bazaarHotkeysEnabled = true;
     /** Hypixel's sign prompts - a search, a price, an amount - as an input bar; see MarketInputScreen. */
-    public boolean customSignInputEnabled = true;
+    public boolean customSignInputEnabled = false;
     /** SkyCofl's price history on a product's or an auction's page; see PriceGraph. Needs allowApiCalls. */
-    public boolean marketPriceHistoryEnabled = true;
+    public boolean marketPriceHistoryEnabled = false;
     /** How far back it goes, an index into PriceHistory.Range: day, week, month, all time. */
     public int marketPriceHistoryRange = 1;
     /** The Item Value key shows what the hovered item is worth, part by part; see ItemValuePopup. Needs allowApiCalls. */
-    public boolean itemValueEnabled = true;
+    public boolean itemValueEnabled = false;
     /** Which Bazaar price the parts count at: 0 what they cost to buy now, 1 what they sell for now. */
     public int itemValueBazaarPrice = 0;
     /** Item Search: a window to search everything the player owns; see ItemSearchFeature. */
     public boolean itemSearchEnabled = true;
     /** The Chest Value panel beside a menu: what everything in it is worth; see ChestValuePanel. Needs allowApiCalls. */
-    public boolean chestValueEnabled = true;
+    public boolean chestValueEnabled = false;
     /** Whether the panel is showing: its key switches it, and it stays so from menu to menu until pressed again. */
     public boolean chestValueShown = false;
     /** Whether a chest's panel counts the player's own inventory below it too. */
@@ -1104,7 +1104,7 @@ public class AlpakaConfig {
     public boolean keyBindsImported = false;
 
     /** Holding the Zoom key zooms in; scrolling while holding it zooms further. */
-    public boolean zoomEnabled = true;
+    public boolean zoomEnabled = false;
     /** Off: zoom while the key is held. On: one press zooms in, the next zooms back out. */
     public boolean zoomToggleMode = false;
     /** How far the zoom goes in, as a factor of the normal view. */
@@ -1131,7 +1131,7 @@ public class AlpakaConfig {
     ));
 
     // Command Shortcuts; see CommandShortcuts.
-    public boolean commandShortcutsEnabled = true;
+    public boolean commandShortcutsEnabled = false;
     /** Typed aliases: "/v Steve" goes out as "/visit Steve". */
     public java.util.List<CommandAlias> commandAliases = new java.util.ArrayList<>();
     /** Keys that run a command with no screen open: Y for "/sb menu". */

@@ -20,7 +20,6 @@ public abstract class AbstractContainerMenuSlotSetMixin {
 
     @Inject(method = "initializeContents", at = @At("RETURN"))
     private void alpaka$contentsSet(int stateId, List<ItemStack> items, ItemStack carried, CallbackInfo ci) {
-        AbstractContainerMenu menu = (AbstractContainerMenu) (Object) this;
-        for (int i = 0; i < items.size(); i++) ExperimentSolver.onSlotSet(menu, i, items.get(i));
+        ExperimentSolver.onContentsSet((AbstractContainerMenu) (Object) this, items);
     }
 }

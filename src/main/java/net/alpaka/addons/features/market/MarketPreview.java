@@ -334,6 +334,9 @@ public final class MarketPreview {
         if (context == MarketKind.AUCTION_HOUSE && Markets.recentSearches(context).isEmpty()) {
             for (String q : List.of("juju shortbow", "terminator", "aotv", "hyperion")) Markets.rememberSearch(context, q);
         }
+        if (context == MarketKind.AUCTION_HOUSE && Markets.recentPrices(context).isEmpty()) {
+            for (double p : new double[] {450_000_000, 439_000_000}) Markets.rememberPrice(context, p);
+        }
         MarketInputScreen screen = new MarketInputScreen(sign, true, false, SignPrompt.of(lines), context);
         return typed == null ? screen : screen.typed(typed);
     }

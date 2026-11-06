@@ -45,7 +45,7 @@ public class ItemSearchScreen extends Screen {
     private static final int MARGIN = 8;
     private static final int WIN_W = 440;
     private static final int MIN_W = 280;
-    private static final int BAR_H = 30;
+    private static final int BAR_H = 26;
     private static final int ROW_H = 24;
     private static final int MAX_ROWS = 8;
     private static final int MIN_ROWS = 4;
@@ -133,12 +133,11 @@ public class ItemSearchScreen extends Screen {
     }
 
     /**
-     * The query is drawn larger than the rest, at a size that still lands on whole screen pixels, so
-     * the font stays crisp: 1.5 at GUI scale 2, 1.33 at 3, 1.25 at 4.
+     * The size the query is drawn at. The font's own size: scaled up, the smooth menu fonts turn
+     * blurry, since they are sampled from a texture made for that size.
      */
     private static float textScale() {
-        int gui = Math.max(1, Minecraft.getInstance().getWindow().getGuiScale());
-        return gui == 1 ? 2f : (gui + 1f) / gui;
+        return 1f;
     }
 
     @Override

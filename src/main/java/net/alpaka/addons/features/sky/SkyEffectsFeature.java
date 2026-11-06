@@ -7,8 +7,10 @@ import com.mojang.blaze3d.framegraph.FrameGraphBuilder;
 import com.mojang.blaze3d.framegraph.FramePass;
 import com.mojang.blaze3d.pipeline.BlendFunction;
 import com.mojang.blaze3d.pipeline.ColorTargetState;
+import com.mojang.blaze3d.pipeline.DepthStencilState;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.pipeline.RenderTarget;
+import com.mojang.blaze3d.platform.CompareOp;
 import com.mojang.blaze3d.resource.ResourceHandle;
 import com.mojang.blaze3d.systems.RenderPass;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -249,7 +251,11 @@ public final class SkyEffectsFeature {
 
     /**
      * One shader, built once for each sky with that sky's define, with the uniforms vanilla's own
-     * sky gets. Seen from inside the box, and with no depth test, like vanilla's sky.
+     * sky gets. Seen from inside the box. Unlike vanilla's sky it is depth tested: the box lies on
+     * the far plane, so it shows only where the depth buffer is still clear. In vanilla's order
+     * that is everywhere, as the sky comes before the world; but where a mod changes that order
+     * (the maintainer's OneClient setup showed the aurora over distant blocks), the sky would
+     * otherwise paint over the world.
      */
     private static RenderPipeline register(String name, String define, BlendFunction blend) {
         RenderPipeline.Builder builder = RenderPipeline.builder()
@@ -262,7 +268,10 @@ public final class SkyEffectsFeature {
                 .withBindGroupLayout(BindGroupLayouts.FOG)
                 .withVertexBinding(0, DefaultVertexFormat.POSITION)
                 .withPrimitiveTopology(PrimitiveTopology.QUADS)
-                .withCull(false);
+                .withCull(false)
+                // The depth buffer is reversed (cleared to 0, nearer is greater), as vanilla's own
+                // pipelines test it; the sky writes no depth.
+                .withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, false));
         if (blend != null) builder.withColorTargetState(new ColorTargetState(blend));
         return RenderPipelinesAccessor.alpaka$register(builder.build());
     }

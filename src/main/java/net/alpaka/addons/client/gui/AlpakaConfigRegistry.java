@@ -3247,17 +3247,17 @@ public class AlpakaConfigRegistry {
                 "inventory buttons skyblock only hypixel"));
 
         OPTIONS.add(new ConfigOption("inventory_buttons_style", "Button Style",
-                "How the buttons look: the Alpaka menu's dark tiles, vanilla's gray slots, or the icon alone.",
+                "How the buttons look: the Alpaka menu's dark tiles, vanilla's gray slots or a dark version of them, or the icon alone.",
                 ConfigCategory.SOUND_MISC,
-                () -> (float) AlpakaConfig.instance.inventoryButtonsStyle,
-                v -> { AlpakaConfig.instance.inventoryButtonsStyle = Math.round(v); AlpakaConfig.save(); },
+                () -> (float) net.alpaka.addons.features.inventorybuttons.InventoryButtonsFeature.styleIndex(AlpakaConfig.instance.inventoryButtonsStyle),
+                v -> { AlpakaConfig.instance.inventoryButtonsStyle = net.alpaka.addons.features.inventorybuttons.InventoryButtonsFeature.STYLE_ORDER[Math.round(v)]; AlpakaConfig.save(); },
                 0.0f, (float) (net.alpaka.addons.features.inventorybuttons.InventoryButtonsFeature.STYLE_NAMES.length - 1),
                 val -> net.alpaka.addons.features.inventorybuttons.InventoryButtonsFeature.STYLE_NAMES[Math.round(val)],
-                "inventory buttons style look design alpaka vanilla icon only appearance theme")
+                "inventory buttons style look design alpaka vanilla dark icon only appearance theme")
                 .choices(net.alpaka.addons.features.inventorybuttons.InventoryButtonsFeature.STYLE_NAMES));
 
         OPTIONS.add(ConfigOption.color("inventory_buttons_color", "Button Color",
-                "The tile behind each icon in the Alpaka style, and behind a hovered icon in Icon Only.",
+                "The tile behind each icon in the Alpaka style.",
                 ConfigCategory.SOUND_MISC,
                 c -> c.inventoryButtonsColor,
                 v -> { AlpakaConfig.instance.inventoryButtonsColor = v; AlpakaConfig.save(); },

@@ -1173,9 +1173,9 @@ public class AlpakaConfig {
     public boolean inventoryButtonsEnabled = false;
     /** Shows them only on Hypixel SkyBlock, where their commands mean something. */
     public boolean inventoryButtonsSkyblockOnly = true;
-    /** How the buttons look: 0 Alpaka (the config menu's look), 1 Vanilla, 2 Icon Only. */
+    /** How the buttons look: 0 Alpaka (the config menu's look), 1 Vanilla, 2 Icon Only, 3 Vanilla Dark. */
     public int inventoryButtonsStyle = 0;
-    /** The tile behind each button's icon in the Alpaka style, and on hover in Icon Only. */
+    /** The tile behind each button's icon in the Alpaka style. */
     public int inventoryButtonsColor = 0xE6131313;
     /** How round the tile's corners are, in GUI pixels. */
     public int inventoryButtonsRounding = 4;

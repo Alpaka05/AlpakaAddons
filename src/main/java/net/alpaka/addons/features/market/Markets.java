@@ -147,4 +147,27 @@ public final class Markets {
         java.util.LinkedList<String> list = kind == null ? null : RECENT_SEARCHES.get(kind);
         return list == null ? java.util.List.of() : java.util.List.copyOf(list);
     }
+
+    // ---- Recent prices --------------------------------------------------------------------------
+
+    private static final int MAX_RECENT_PRICES = 5;
+    private static final java.util.Map<MarketKind, java.util.LinkedList<Double>> RECENT_PRICES =
+            new java.util.EnumMap<>(MarketKind.class);
+
+    /**
+     * Remembers a confirmed price for this session, newest first, so the next one is a click away:
+     * selling the same item several times in a row asks for the same price each time.
+     */
+    static void rememberPrice(MarketKind kind, double coins) {
+        if (kind == null || !(coins > 0)) return;
+        java.util.LinkedList<Double> list = RECENT_PRICES.computeIfAbsent(kind, k -> new java.util.LinkedList<>());
+        list.remove(coins);
+        list.addFirst(coins);
+        while (list.size() > MAX_RECENT_PRICES) list.removeLast();
+    }
+
+    static java.util.List<Double> recentPrices(MarketKind kind) {
+        java.util.LinkedList<Double> list = kind == null ? null : RECENT_PRICES.get(kind);
+        return list == null ? java.util.List.of() : java.util.List.copyOf(list);
+    }
 }

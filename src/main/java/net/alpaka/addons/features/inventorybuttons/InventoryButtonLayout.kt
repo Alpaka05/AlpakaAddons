@@ -1,6 +1,8 @@
 package net.alpaka.addons.features.inventorybuttons
 
+import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.config.AlpakaConfig.InventoryButton
+import kotlin.math.roundToInt
 
 /**
  * Where an inventory button sits on the screen, and how a position on the screen is stored.
@@ -12,8 +14,27 @@ import net.alpaka.addons.config.AlpakaConfig.InventoryButton
  * above it. Kept apart from Minecraft so it can be tested on its own.
  */
 object InventoryButtonLayout {
-    /** A button's width and height, a slot's size. */
-    const val SIZE = 18
+    /** A button's width and height in the Alpaka and Icon Only looks, a slot's size. */
+    const val BASE_SIZE = 18
+
+    /** A button's width and height in the vanilla looks, room for the button's frame around the icon. */
+    const val VANILLA_SIZE = 22
+
+    /** A button's width and height in the look picked in the settings. */
+    @JvmStatic
+    val SIZE: Int
+        get() = when (AlpakaConfig.instance.inventoryButtonsStyle) {
+            InventoryButtonsFeature.STYLE_VANILLA, InventoryButtonsFeature.STYLE_VANILLA_DARK -> VANILLA_SIZE
+            else -> BASE_SIZE
+        }
+
+    /**
+     * How far stored offsets are stretched for the current size. Positions are stored for
+     * [BASE_SIZE]; larger buttons spread out by the same step, so a column of buttons laid out with
+     * a [GAP] between them keeps that gap instead of overlapping.
+     */
+    private val scale: Float
+        get() = (SIZE + GAP).toFloat() / (BASE_SIZE + GAP)
 
     /** A container's panel on the screen, in GUI pixels. */
     data class Box(val left: Int, val top: Int, val width: Int, val height: Int) {
@@ -24,8 +45,9 @@ object InventoryButtonLayout {
     /** The button's top-left corner on a screen of [screenW] by [screenH], kept fully on it. */
     @JvmStatic
     fun place(button: InventoryButton, box: Box, screenW: Int, screenH: Int): IntArray {
-        val x = (if (button.anchorRight) box.right else box.left) + button.x
-        val y = (if (button.anchorBottom) box.bottom else box.top) + button.y
+        val k = scale
+        val x = (if (button.anchorRight) box.right else box.left) + (button.x * k).roundToInt()
+        val y = (if (button.anchorBottom) box.bottom else box.top) + (button.y * k).roundToInt()
         return intArrayOf(
             x.coerceIn(0, maxOf(0, screenW - SIZE)),
             y.coerceIn(0, maxOf(0, screenH - SIZE)),
@@ -37,8 +59,9 @@ object InventoryButtonLayout {
     fun store(button: InventoryButton, screenX: Int, screenY: Int, box: Box) {
         button.anchorRight = screenX + SIZE / 2 > box.left + box.width / 2
         button.anchorBottom = screenY + SIZE / 2 > box.top + box.height / 2
-        button.x = screenX - if (button.anchorRight) box.right else box.left
-        button.y = screenY - if (button.anchorBottom) box.bottom else box.top
+        val k = scale
+        button.x = ((screenX - if (button.anchorRight) box.right else box.left) / k).roundToInt()
+        button.y = ((screenY - if (button.anchorBottom) box.bottom else box.top) / k).roundToInt()
     }
 
     /**

@@ -3247,7 +3247,7 @@ public class AlpakaConfigRegistry {
                 "inventory buttons skyblock only hypixel"));
 
         OPTIONS.add(new ConfigOption("inventory_buttons_style", "Button Style",
-                "How the buttons look: the Alpaka menu's dark tiles, vanilla's gray slots or a dark version of them, or the icon alone.",
+                "How the buttons look: the Alpaka menu's dark tiles, vanilla's buttons in gray or dark, or the icon alone.",
                 ConfigCategory.SOUND_MISC,
                 () -> (float) net.alpaka.addons.features.inventorybuttons.InventoryButtonsFeature.styleIndex(AlpakaConfig.instance.inventoryButtonsStyle),
                 v -> { AlpakaConfig.instance.inventoryButtonsStyle = net.alpaka.addons.features.inventorybuttons.InventoryButtonsFeature.STYLE_ORDER[Math.round(v)]; AlpakaConfig.save(); },

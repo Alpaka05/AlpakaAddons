@@ -18,7 +18,9 @@ import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen
 import net.minecraft.client.gui.screens.inventory.InventoryScreen
+import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.network.chat.Component
+import net.minecraft.resources.Identifier
 import net.minecraft.ChatFormatting
 
 /**
@@ -140,34 +142,25 @@ object InventoryButtonsFeature {
     fun drawButton(graphics: GuiGraphicsExtractor, button: InventoryButton, x: Int, y: Int, hovered: Boolean) {
         val cfg = AlpakaConfig.instance
         val s = InventoryButtonLayout.SIZE
+        val ix = x + (s - 16) / 2
+        val iy = y + (s - 16) / 2
         when (cfg.inventoryButtonsStyle) {
-            STYLE_VANILLA -> drawVanilla(graphics, x, y, VANILLA_LIGHT)
-            STYLE_VANILLA_DARK -> drawVanilla(graphics, x, y, VANILLA_DARK)
-            STYLE_ICON_ONLY -> {
+            STYLE_VANILLA -> drawVanilla(graphics, x, y, hovered, dark = false)
+            STYLE_VANILLA_DARK -> drawVanilla(graphics, x, y, hovered, dark = true)
+            STYLE_ICON_ONLY -> if (hovered) {
                 // No tile to light up, so the icon itself grows a little around its middle.
-                if (hovered) {
-                    val c = s / 2f
-                    graphics.pose().pushMatrix()
-                    graphics.pose().translate(x + c, y + c)
-                    graphics.pose().scale(ICON_HOVER_SCALE, ICON_HOVER_SCALE)
-                    graphics.pose().translate(-(x + c), -(y + c))
-                    drawIcon(graphics, button.icon, x + 1, y + 1)
-                    graphics.pose().popMatrix()
-                } else {
-                    drawIcon(graphics, button.icon, x + 1, y + 1)
-                }
+                val c = s / 2f
+                graphics.pose().pushMatrix()
+                graphics.pose().translate(x + c, y + c)
+                graphics.pose().scale(ICON_HOVER_SCALE, ICON_HOVER_SCALE)
+                graphics.pose().translate(-(x + c), -(y + c))
+                drawIcon(graphics, button.icon, ix, iy)
+                graphics.pose().popMatrix()
                 return
             }
             else -> drawAlpaka(graphics, x, y, cfg.inventoryButtonsColor, cfg.inventoryButtonsRounding, hovered)
         }
-        drawIcon(graphics, button.icon, x + 1, y + 1)
-        if (hovered) {
-            when (cfg.inventoryButtonsStyle) {
-                STYLE_VANILLA -> graphics.fill(x + 1, y + 1, x + s - 1, y + s - 1, 0x80FFFFFF.toInt())
-                // A softer highlight, so the dark tile doesn't wash out to gray.
-                STYLE_VANILLA_DARK -> graphics.fill(x + 1, y + 1, x + s - 1, y + s - 1, 0x30FFFFFF)
-            }
-        }
+        drawIcon(graphics, button.icon, ix, iy)
     }
 
     /**
@@ -182,24 +175,32 @@ object InventoryButtonsFeature {
         ModernGuiUtils.drawRoundedOutline(graphics, x, y, s, s, r, if (hovered) ModernGuiUtils.getAccentColor() else 0x40FFFFFF)
     }
 
-    /** Face, top-left light and bottom-right shade of a raised square. */
-    private class Bevel(val face: Int, val light: Int, val shade: Int)
+    private val BUTTON = Identifier.withDefaultNamespace("widget/button")
+    private val BUTTON_HIGHLIGHTED = Identifier.withDefaultNamespace("widget/button_highlighted")
 
-    /** The colors of a vanilla container panel. */
-    private val VANILLA_LIGHT = Bevel(0xFFC6C6C6.toInt(), 0xFFFFFFFF.toInt(), 0xFF555555.toInt())
-    /** The same panel in dark, the way dark inventory resource packs draw it. */
-    private val VANILLA_DARK = Bevel(0xFF2E2E2E.toInt(), 0xFF4A4A4A.toInt(), 0xFF1A1A1A.toInt())
+    /** How the dark look tints vanilla's button: its stone texture stays, only darker. */
+    private const val DARK_TINT = 0xFF5A5A5A.toInt()
 
-    /** A raised square in the colors of a container panel, so it reads as part of the inventory. */
-    private fun drawVanilla(graphics: GuiGraphicsExtractor, x: Int, y: Int, bevel: Bevel) {
+    /**
+     * Vanilla's own button, the one on the title and pause screens, as a square around the icon.
+     * Drawn from the game's sprite, so a resource pack that restyles buttons restyles these too,
+     * and hovered it gets vanilla's white frame. The dark look tints the same sprite; tinted, the
+     * white frame would turn gray, so it is drawn on top in white.
+     */
+    private fun drawVanilla(graphics: GuiGraphicsExtractor, x: Int, y: Int, hovered: Boolean, dark: Boolean) {
         val s = InventoryButtonLayout.SIZE
-        graphics.fill(x + 1, y, x + s - 1, y + s, 0xFF000000.toInt())
-        graphics.fill(x, y + 1, x + s, y + s - 1, 0xFF000000.toInt())
-        graphics.fill(x + 1, y + 1, x + s - 1, y + s - 1, bevel.face)
-        graphics.fill(x + 1, y + 1, x + s - 2, y + 2, bevel.light)
-        graphics.fill(x + 1, y + 1, x + 2, y + s - 2, bevel.light)
-        graphics.fill(x + 2, y + s - 2, x + s - 1, y + s - 1, bevel.shade)
-        graphics.fill(x + s - 2, y + 2, x + s - 1, y + s - 1, bevel.shade)
+        if (!dark) {
+            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, if (hovered) BUTTON_HIGHLIGHTED else BUTTON, x, y, s, s)
+            return
+        }
+        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, BUTTON, x, y, s, s, DARK_TINT)
+        if (hovered) {
+            val white = 0xFFFFFFFF.toInt()
+            graphics.fill(x, y, x + s, y + 1, white)
+            graphics.fill(x, y + s - 1, x + s, y + s, white)
+            graphics.fill(x, y + 1, x + 1, y + s - 1, white)
+            graphics.fill(x + s - 1, y + 1, x + s, y + s - 1, white)
+        }
     }
 
     /** The button's item at [x], [y]; the item's first letter on a gray square where there is none yet. */

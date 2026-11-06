@@ -35,8 +35,8 @@ import java.util.List;
  * broken at a space (see {@link SignPrompt#split}) - so the lines are always ones a player could
  * have typed into the vanilla sign. A price or an amount goes in plain digits, "4000000" for "4m"
  * (see {@link SignPrompt#answer}). Cancel and Escape empty the answer first, which Hypixel takes as
- * no answer. The chips only fill the field; the player still confirms. The paste button confirms
- * the clipboard at once, as the player's click.
+ * no answer. The chips only fill the field; the player still confirms. The paste button and the
+ * Lowest BIN prices confirm at once, as the player's click.
  */
 public class MarketInputScreen extends SignEditScreen {
     private static final int HEADER_H = AlpakaStyle.HEADER_H;
@@ -628,7 +628,8 @@ public class MarketInputScreen extends SignEditScreen {
 
     /**
      * The row of prices taken from the item's lowest BIN: that price and a little under it, each
-     * one click into the field. Says why instead where there is no price to offer.
+     * one click to put it in the field and confirm it. Says why instead where there is no price to
+     * offer.
      */
     private void drawLowestBin(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w) {
         String label = "Lowest BIN";
@@ -652,7 +653,7 @@ public class MarketInputScreen extends SignEditScreen {
                         boolean hover = AlpakaStyle.inside(mouseX, mouseY, cx, y, cw, CHIP_H);
                         ModernGuiUtils.drawRoundedRect(graphics, cx, y, cw, CHIP_H, CHIP_H / 2, hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW);
                         graphics.text(this.font, GuiFont.text(chip.label()), cx + 6, y + 3, hover ? MarketInk.ink(COIN) : AlpakaStyle.TEXT_SOFT, false);
-                        hits.add(new Hit(cx, y, cw, CHIP_H, mx -> replace(Coins.full(chip.coins())), true));
+                        hits.add(new Hit(cx, y, cw, CHIP_H, mx -> chooseLowestBin(chip.coins()), true));
                         cx += cw + 4;
                     }
                 }
@@ -702,6 +703,17 @@ public class MarketInputScreen extends SignEditScreen {
             hits.add(new Hit(x, ry, w, SPEED_ROW_H, mx -> chooseSpeed(index), true));
             ry += SPEED_ROW_H + 2;
         }
+    }
+
+    /**
+     * Puts a Lowest BIN price in the field and confirms it, as the paste button does. If it does not
+     * fit the sign the field flashes and nothing is sent.
+     */
+    private void chooseLowestBin(long coins) {
+        String value = Coins.full(coins);
+        replace(value);
+        if (text().equals(value)) confirm();
+        else fullAtMs = System.currentTimeMillis();
     }
 
     /** Sets a speed row's speed: into the field, then confirmed as if typed and Enter pressed. */

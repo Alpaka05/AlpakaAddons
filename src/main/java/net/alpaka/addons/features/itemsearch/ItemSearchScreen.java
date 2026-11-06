@@ -261,8 +261,9 @@ public class ItemSearchScreen extends Screen {
         graphics.pose().translate(textX, textY);
         graphics.pose().scale(s, s);
         if (text.isEmpty()) {
-            String hint = category == null ? "Search your items" : "Search " + category.label;
-            graphics.text(this.font, GuiFont.text(hint), 0, 0, AlpakaStyle.TEXT_MUTED, false);
+            // With a place picked its pill already names it, so the hint stays short.
+            String hint = category == null ? "Search your items" : "Search";
+            graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, hint, maxW)), 0, 0, AlpakaStyle.TEXT_MUTED, false);
         }
         if (input.hasSelection()) {
             int sx = GuiFont.width(this.font, text.substring(start, Math.max(input.getSelectionStart(), start)));

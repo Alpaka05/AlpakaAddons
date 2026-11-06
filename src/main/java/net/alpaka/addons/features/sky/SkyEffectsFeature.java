@@ -40,7 +40,8 @@ import java.util.OptionalDouble;
 
 /**
  * Sky Effects: animated skies. A firestorm over the Nether, which vanilla gives no sky at all; an
- * aurora, the Milky Way and shooting stars over the Overworld by night and a glowing sun by day;
+ * aurora, the Milky Way and shooting stars over the Overworld by night and drifting clouds and a
+ * glowing sun by day;
  * a drifting nebula in place of the End's textured sky.
  *
  * Each is painted by the shader {@code alpaka:core/sky_effects} on a box around the camera, the
@@ -150,7 +151,9 @@ public final class SkyEffectsFeature {
      */
     public static void renderOverworld(RenderTarget target, float sunAngle, float moonAngle, float starAngle,
                                        float rainBrightness) {
-        if (!shows(AlpakaConfig.instance.skyEffectsOverworld)) return;
+        boolean lights = shows(AlpakaConfig.instance.skyEffectsOverworld);
+        boolean clouds = shows(AlpakaConfig.instance.skyEffectsClouds);
+        if (!lights && !clouds) return;
         Vector3f sun = towards(sunAngle);
         Vector3f moon = towards(moonAngle);
         // Night by the sun's height rather than the stars' brightness, which a server's own
@@ -161,7 +164,7 @@ public final class SkyEffectsFeature {
                 sun.x, sun.y, sun.z, 0.0f,
                 moon.x, moon.y, moon.z, 0.0f,
                 starAngle, 0.0f, 0.0f, 0.0f,
-                0.0f, 0.0f, 0.0f, 0.0f);
+                lights ? 1.0f : 0.0f, clouds ? 1.0f : 0.0f, 0.0f, 0.0f);
         draw(overworld(), target, night, Mth.clamp(rainBrightness, 0.0f, 1.0f), directions);
     }
 
@@ -234,7 +237,10 @@ public final class SkyEffectsFeature {
         return nether;
     }
 
-    /** Light added over vanilla's sky: blended premultiplied, the shader taking nothing of the sky away. */
+    /**
+     * Light added over vanilla's sky, and clouds laid over it: blended premultiplied, so the
+     * shader takes away only as much of the sky as its clouds cover.
+     */
     private static RenderPipeline overworld() {
         if (overworld == null) {
             overworld = register("sky_overworld", "SKY_OVERWORLD", BlendFunction.TRANSLUCENT_PREMULTIPLIED_ALPHA);

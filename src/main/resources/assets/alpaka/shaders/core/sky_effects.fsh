@@ -15,6 +15,7 @@
 //   TextureMat[0].xyz - Overworld: towards the sun
 //   TextureMat[1].xyz - Overworld: towards the moon
 //   TextureMat[2].x   - Overworld: the stars' angle, which turns the Milky Way with them
+//   TextureMat[3].xy  - Overworld: 1 where the lights (aurora, sun glow, ...) and the clouds are on
 // The Nether's colors come from the fog, so the storm takes on each biome's own hue.
 
 layout(std140) uniform DynamicTransforms {
@@ -290,7 +291,7 @@ vec3 netherSky(vec3 dir, float t, float pixel, vec3 fog) {
 
 #endif
 
-// --- The Overworld: aurora, Milky Way and shooting stars by night, a glowing sun by day ----------
+// --- The Overworld: aurora, Milky Way and shooting stars by night, clouds and a glowing sun by day -
 
 #ifdef SKY_OVERWORLD
 
@@ -361,19 +362,64 @@ vec3 sunGlow(vec3 dir, vec3 sun, float t) {
     return tint * (halo + beams);
 }
 
-vec3 overworldLight(vec3 dir, float t, float pixel) {
-    if (dir.y < -0.02) return vec3(0.0);
-    float night = ModelOffset.y;
-    float clear = ModelOffset.z;
-    vec3 sun = TextureMat[0].xyz;
-    vec3 moon = TextureMat[1].xyz;
+// Clouds drifting with the wind, as if on a flat layer high above: a direction meets that layer at
+// dir.xz / dir.y, so the clouds shrink and crowd together towards the horizon as real ones do.
+// Heaped cumulus, lit from the sun's side and grey where they lie in their own shadow, with
+// bright rims when they pass in front of the sun, and thin streaks of cirrus higher up. Golden
+// and pink at sunrise and sunset, dimming into the night; in rain they close up into grey overcast.
+// Returned premultiplied: color times cover, and how much of the sky they cover.
+vec4 clouds(vec3 dir, vec3 sun, float t, float night, float clear) {
+    // Where the layer is too far away to show more than flicker, it has faded out.
+    float horizon = smoothstep(0.03, 0.2, dir.y);
+    float dim = 1.0 - night;
+    if (horizon <= 0.0 || dim <= 0.0) return vec4(0.0);
 
-    // Faded towards the horizon as vanilla fades its sky disc into the fog (the disc's point in
-    // this direction lies 16 / dir.y away), and so also under water or in thick fog.
-    float fog = clamp(16.0 / max(dir.y, 0.001) / max(FogSkyEnd, 1.0), 0.0, 1.0);
-    float visible = (1.0 - fog) * smoothstep(-0.02, 0.05, dir.y) * clear;
-    if (visible <= 0.0) return vec3(0.0);
+    // The 0.08 keeps the far side of the layer from running off to infinity at the horizon.
+    vec2 p = dir.xz / (dir.y + 0.08);
+    vec2 drift = vec2(0.010, 0.0035) * t;
+    float cover = mix(0.95, 0.5, clear);
+    float edge = 0.72 - 0.4 * cover;
 
+    // Cumulus: a noise pushed around by a slower one, which also makes them change shape as they go.
+    vec2 q = (p + drift) * 2.2;
+    vec2 warp = fbm22(q * 0.3 + vec2(t * 0.003, 0.0), 3) - 0.5;
+    vec2 at = q + warp * 0.9;
+    float shape = fbm2(at, 5);
+    float density = smoothstep(edge, edge + 0.13, shape);
+    // How thick the cloud is here: the thick middles are a little darker underneath.
+    float core = smoothstep(edge + 0.04, edge + 0.3, shape);
+
+    // Their own shadow: how much cloud lies between this point and the sun.
+    float lit = 1.0;
+    if (density > 0.0) {
+        vec2 towardsSun = normalize(sun.xz + vec2(1e-4, 0.0)) * (0.12 + 0.2 * clamp(sun.y, 0.0, 1.0));
+        float between = smoothstep(edge, edge + 0.25, fbm2(at + towardsSun, 4));
+        lit = 1.0 - 0.75 * between;
+    }
+
+    // Cirrus: fine streaks combed out along the wind, higher and faster, only where the sky is open.
+    vec2 r = TURN2 * (p * 0.8 + drift * 1.8);
+    float wisps = fbm2(vec2(r.x * 1.2, r.y * 4.0) + 3.1, 4);
+    float cirrus = smoothstep(0.55, 0.8, wisps) * 0.3 * clear * (1.0 - density);
+
+    float low = 1.0 - smoothstep(0.0, 0.45, sun.y);
+    vec3 sunlit = mix(vec3(1.0, 0.99, 0.96), vec3(1.0, 0.62, 0.42), low);
+    vec3 shade = mix(vec3(0.56, 0.62, 0.74), vec3(0.46, 0.34, 0.5), low);
+    // Overcast is grey, whatever the sun does.
+    sunlit = mix(vec3(0.66, 0.68, 0.72), sunlit, clear);
+    shade = mix(vec3(0.38, 0.40, 0.45), shade, clear);
+
+    vec3 color = mix(shade, sunlit, lit) * (1.0 - 0.18 * core);
+    // The thin edges light up in front of the sun.
+    float rim = density * (1.0 - core);
+    color += sunlit * pow(max(dot(dir, sun), 0.0), 8.0) * rim * 0.9 * clear;
+
+    float alpha = (density * 0.93 + cirrus) * horizon * dim;
+    color *= mix(0.3, 1.0, dim);
+    return vec4(color * alpha, alpha);
+}
+
+vec3 overworldLight(vec3 dir, float t, float pixel, float night, vec3 sun, vec3 moon) {
     vec3 light = vec3(0.0);
     if (night > 0.0) {
         vec3 shooting = streak(dir, t, 8.0, 0.8, 0.45, 21.0, 0.3, pixel, vec3(1.0), vec3(0.55, 0.7, 1.0))
@@ -383,7 +429,31 @@ vec3 overworldLight(vec3 dir, float t, float pixel) {
     if (night < 1.0 && sun.y > -0.15) {
         light += sunGlow(dir, sun, t) * (1.0 - night) * smoothstep(-0.15, 0.05, sun.y);
     }
-    return light * visible;
+    return light;
+}
+
+vec4 overworldSky(vec3 dir, float t, float pixel) {
+    if (dir.y < -0.02) return vec4(0.0);
+    float night = ModelOffset.y;
+    float clear = ModelOffset.z;
+    vec3 sun = TextureMat[0].xyz;
+    vec3 moon = TextureMat[1].xyz;
+    bool lightsOn = TextureMat[3].x > 0.5;
+    bool cloudsOn = TextureMat[3].y > 0.5;
+
+    // Faded towards the horizon as vanilla fades its sky disc into the fog (the disc's point in
+    // this direction lies 16 / dir.y away), and so also under water or in thick fog.
+    float fog = clamp(16.0 / max(dir.y, 0.001) / max(FogSkyEnd, 1.0), 0.0, 1.0);
+    float open = (1.0 - fog) * smoothstep(-0.02, 0.05, dir.y);
+    if (open <= 0.0) return vec4(0.0);
+    float visible = open * clear;
+
+    vec3 light = vec3(0.0);
+    if (lightsOn && visible > 0.0) light = overworldLight(dir, t, pixel, night, sun, moon) * visible;
+    if (!cloudsOn) return vec4(light, 0.0);
+    // The clouds are laid over the lights, hiding some of the sun's glow as they pass it.
+    vec4 cloud = clouds(dir, sun, t, night, clear) * open;
+    return vec4(cloud.rgb + light * (1.0 - cloud.a), cloud.a);
 }
 
 #endif
@@ -472,7 +542,7 @@ void main() {
 #elif defined(SKY_END)
     fragColor = vec4(endSky(dir, t, pixel, strength), 1.0);
 #else
-    // Light added over vanilla's sky: blended as premultiplied alpha with nothing taken away.
-    fragColor = vec4(overworldLight(dir, t, pixel) * strength, 0.0);
+    // Light added over vanilla's sky and clouds laid over it, blended as premultiplied alpha.
+    fragColor = overworldSky(dir, t, pixel) * strength;
 #endif
 }

@@ -44,6 +44,10 @@ class MessageFilterFeatureTest {
             "(This totals 3 types of materials stashed!)                            | STASH",
             ">>> CLICK HERE to pick them up! <<<                                    | STASH",
             ">>> CLICK HERE to pick it up! <<<                                      | STASH",
+            "          You have 4 unclaimed event rewards!                          | EVENT_REWARDS",
+            "You have 1 unclaimed event reward!                                     | EVENT_REWARDS",
+            ">>> CLICK HERE to claim! <<<                                           | EVENT_REWARDS",
+            "Event rewards are deleted after 10 SkyBlock years!                     | EVENT_REWARDS",
             "[Sacks] +11 items. (Last 7s.)                                          | SACKS",
             "[Sacks] -1 item. (Last 5s.)                                            | SACKS",
             "[Sacks] +2,111 items, -4 items. (Last 30s.)                            | SACKS",
@@ -125,6 +129,16 @@ class MessageFilterFeatureTest {
         assertEquals(Kind.STASH, MessageFilterFeature.classify(
                 "You have 2 items stashed away!\n                >>> CLICK HERE to pick them up! <<<"));
         assertNull(MessageFilterFeature.classify("You have 2 items stashed away!\nSomeone: hi"));
+    }
+
+    @Test
+    void eventRewardsReminderInOneMessage() {
+        assertEquals(Kind.EVENT_REWARDS, MessageFilterFeature.classify(
+                "          You have 4 unclaimed event rewards!\n"
+                        + "                >>> CLICK HERE to claim! <<<\n"
+                        + "     Event rewards are deleted after 10 SkyBlock years!"));
+        assertNull(MessageFilterFeature.classify("You have 4 unclaimed event rewards!\nSomeone: hi"));
+        assertNull(MessageFilterFeature.classify("Someone: >>> CLICK HERE to claim! <<<"));
     }
 
     /** Color-stripped dungeon lines (from SkyHanni's DungeonChatFilter) and the group each is in. */

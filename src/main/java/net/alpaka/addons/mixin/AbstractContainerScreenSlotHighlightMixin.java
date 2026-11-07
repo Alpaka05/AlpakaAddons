@@ -3,7 +3,6 @@ package net.alpaka.addons.mixin;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import net.alpaka.addons.features.enchantments.AnvilCombineHelper;
 import net.alpaka.addons.features.enchantments.ExperimentSolver;
-import net.alpaka.addons.features.menuhighlight.MenuHighlights;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
@@ -16,8 +15,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Slot highlights and remembered items for the Anvil Combine Helper and the Experiment Solver, and
- * the Menu Highlights.
+ * Slot highlights and remembered items for the Anvil Combine Helper and the Experiment Solver.
  * The highlight is drawn before the slot's item, so the item stays on top of it.
  */
 @Mixin(AbstractContainerScreen.class)
@@ -26,7 +24,6 @@ public abstract class AbstractContainerScreenSlotHighlightMixin {
     private void alpaka$slotBackground(GuiGraphicsExtractor graphics, Slot slot, int mouseX, int mouseY, CallbackInfo ci) {
         AbstractContainerScreen<?> screen = (AbstractContainerScreen<?>) (Object) this;
         AnvilCombineHelper.extractSlotBackground(screen, graphics, slot);
-        MenuHighlights.drawSlot(screen, graphics, slot);
         if (screen instanceof ContainerScreen chest) ExperimentSolver.extractSlotBackground(chest, graphics, slot);
     }
 
@@ -40,5 +37,11 @@ public abstract class AbstractContainerScreenSlotHighlightMixin {
     @Inject(method = "slotClicked", at = @At("HEAD"))
     private void alpaka$slotClicked(Slot slot, int slotId, int button, ContainerInput input, CallbackInfo ci) {
         if (slot != null) ExperimentSolver.onSlotClicked(((AbstractContainerScreen<?>) (Object) this).getMenu(), slotId);
+    }
+
+    /** The Menu Highlights' marks, also behind the item, so it and the tooltip stay on top. */
+    @Inject(method = "extractSlot", at = @At("HEAD"))
+    private void alpaka$menuHighlight(GuiGraphicsExtractor graphics, Slot slot, int mouseX, int mouseY, CallbackInfo ci) {
+        net.alpaka.addons.features.menuhighlight.MenuHighlights.drawSlot((AbstractContainerScreen<?>) (Object) this, graphics, slot);
     }
 }

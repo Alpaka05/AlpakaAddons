@@ -607,9 +607,6 @@ bool isCovered(vec4 texel) {
 // off the screen or covered. The clouds depend on the direction alone, and drift by a hair a
 // frame, so this is as good as working them out.
 bool lastClouds(int reused, bool lastAllFresh, out vec4 result) {
-    // The tiles the last frame reused are the ones this frame works out anew; when it worked out
-    // all of them, every texel can be taken.
-    int lastReused = lastAllFresh ? -1 : 1 - reused;
     // The box's own point, as it was drawn, so view bobbing moves it as it moved the sky.
     vec4 clip = TextureMat * vec4(skyPos, 1.0);
     if (clip.w <= 0.0) return false;
@@ -618,20 +615,24 @@ bool lastClouds(int reused, bool lastAllFresh, out vec4 result) {
     vec2 base = floor(texel);
     ivec2 at = ivec2(base);
     if (at.x < 0 || at.y < 0 || at.x + 1 >= size.x || at.y + 1 >= size.y) return false;
-    vec4 a = texelFetch(Sampler2, at, 0);
-    vec4 b = texelFetch(Sampler2, at + ivec2(1, 0), 0);
-    vec4 c = texelFetch(Sampler2, at + ivec2(0, 1), 0);
-    vec4 d = texelFetch(Sampler2, at + ivec2(1, 1), 0);
-    if (isCovered(a) || isCovered(b) || isCovered(c) || isCovered(d)) return false;
-    // Only texels worked out in the last frame are taken, never ones it took from the frame
-    // before: the tiles it worked out had the other parity. Reused clouds are a frame old at
-    // most, and filtered once.
-    // A square's neighbours across a tile edge have the other parity, so the four texels must
-    // lie in one tile.
-    ivec2 tile = at >> 3;
-    if (lastReused >= 0 && (((tile.x + tile.y) & 1) == lastReused || (at.x & 7) == 7 || (at.y & 7) == 7)) {
-        return false;
+    // The four texels are taken from the tile the nearest of them lies in, held inside it: the
+    // tiles the last frame reused (the ones this frame works out anew) are never taken, so reused
+    // clouds are a frame old at most and filtered once, and a square across a tile edge reads its
+    // far side from the edge instead of being refused, which would leave odd threads working.
+    ivec2 lo = at;
+    ivec2 hi = at + 1;
+    if (!lastAllFresh) {
+        ivec2 tile = ivec2(floor(texel + 0.5)) >> 3;
+        if (((tile.x + tile.y) & 1) != reused) return false;
+        ivec2 first = tile * 8;
+        lo = clamp(lo, first, first + 7);
+        hi = clamp(hi, first, first + 7);
     }
+    vec4 a = texelFetch(Sampler2, lo, 0);
+    vec4 b = texelFetch(Sampler2, ivec2(hi.x, lo.y), 0);
+    vec4 c = texelFetch(Sampler2, ivec2(lo.x, hi.y), 0);
+    vec4 d = texelFetch(Sampler2, hi, 0);
+    if (isCovered(a) || isCovered(b) || isCovered(c) || isCovered(d)) return false;
     vec2 f = texel - base;
     result = mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
     return true;

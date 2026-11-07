@@ -64,6 +64,73 @@ class InventoryButtonLayoutTest {
         assertArrayEquals(intArrayOf(20, 20, 0, 0), s)
     }
 
+    /** A button as a settings file from before the 22 px buttons has it. */
+    private fun oldButton(x: Int, y: Int, right: Boolean, bottom: Boolean = false) = InventoryButton().also {
+        it.x = x
+        it.y = y
+        it.anchorRight = right
+        it.anchorBottom = bottom
+        it.grid = InventoryButtonLayout.OLD_SIZE
+    }
+
+    private fun assertNoOverlap(buttons: List<InventoryButton>, box: Box) {
+        val size = InventoryButtonLayout.SIZE
+        val places = buttons.map { InventoryButtonLayout.place(it, box, 480, 270) }
+        for (i in places.indices) for (j in i + 1 until places.size) {
+            val a = places[i]
+            val b = places[j]
+            val overlap = a[0] < b[0] + size && b[0] < a[0] + size && a[1] < b[1] + size && b[1] < a[1] + size
+            assertFalse(overlap, "buttons $i and $j overlap at ${a.toList()} and ${b.toList()}")
+        }
+    }
+
+    @Test
+    fun `old rows above the panel move apart without running into each other`() {
+        // Two rows above the inventory, the left half kept to the left edge, the right half to the right.
+        val buttons = listOf(
+            oldButton(0, -40, false), oldButton(20, -40, false), oldButton(40, -40, false), oldButton(60, -40, false),
+            oldButton(-96, -40, true), oldButton(-76, -40, true),
+            oldButton(0, -20, false), oldButton(20, -20, false), oldButton(40, -20, false), oldButton(60, -20, false),
+            oldButton(-96, -20, true), oldButton(-76, -20, true),
+        )
+        assertTrue(InventoryButtonLayout.migrate(buttons))
+        assertNoOverlap(buttons, inventory)
+        for (b in buttons) {
+            assertEquals(InventoryButtonLayout.SIZE, b.grid)
+            assertTrue(InventoryButtonLayout.place(b, inventory, 480, 270)[1] + InventoryButtonLayout.SIZE <= inventory.top)
+        }
+        assertFalse(InventoryButtonLayout.migrate(buttons), "moved only once")
+    }
+
+    @Test
+    fun `the old default column stays beside the panel's top`() {
+        val old = (0 until 5).map { oldButton(-22, 4 + it * 20, false) }
+        InventoryButtonLayout.migrate(old)
+        assertNoOverlap(old, inventory)
+        val first = InventoryButtonLayout.place(old[0], inventory, 480, 270)
+        assertTrue(first[0] + InventoryButtonLayout.SIZE <= inventory.left)
+        assertTrue(first[0] + InventoryButtonLayout.SIZE >= inventory.left - 6)
+        assertTrue(first[1] in inventory.top..inventory.top + 6)
+    }
+
+    @Test
+    fun `a row running past the panel's corner and a column beside it keep apart`() {
+        val row = listOf(oldButton(140, -20, false), oldButton(160, -20, false), oldButton(180, -20, false))
+        InventoryButtonLayout.migrate(row)
+        assertNoOverlap(row, inventory)
+        val column = listOf(oldButton(4, 0, true), oldButton(4, 20, true), oldButton(4, -20, true))
+        InventoryButtonLayout.migrate(column)
+        assertNoOverlap(column, inventory)
+    }
+
+    @Test
+    fun `new buttons are never moved`() {
+        val buttons = InventoryButton.defaults()
+        val before = buttons.map { it.x to it.y }
+        assertFalse(InventoryButtonLayout.migrate(buttons))
+        assertEquals(before, buttons.map { it.x to it.y })
+    }
+
     @Test
     fun `the icon search matches every word`() {
         val all = listOf("minecraft:ender_chest", "minecraft:chest", "minecraft:ender_pearl")

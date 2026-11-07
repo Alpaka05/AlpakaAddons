@@ -171,7 +171,8 @@ object AlignmentHelper {
     @JvmStatic
     fun formatPitch(pitch: Float): String = String.format(Locale.ROOT, "%.2f", pitch.toDouble())
 
-    private fun isFarmingTool(stack: ItemStack): Boolean {
+    @JvmStatic
+    fun isFarmingTool(stack: ItemStack): Boolean {
         if (stack.isEmpty) return false
         if (stack.`is`(ItemTags.HOES)) return true
         val data = stack.get(DataComponents.CUSTOM_DATA) ?: return false

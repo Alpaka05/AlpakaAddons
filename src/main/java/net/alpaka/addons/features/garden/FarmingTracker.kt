@@ -12,6 +12,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.core.component.DataComponents
 import net.minecraft.network.chat.Component
+import net.minecraft.world.item.ItemStack
 import kotlin.math.abs
 import kotlin.math.roundToLong
 
@@ -55,7 +56,18 @@ object FarmingTracker {
     /** The tab can still say "None" for a moment after the repellent was used. */
     private const val REPELLENT_GRACE_MS = 10_000L
 
+    /**
+     * A pause longer than this between two broken crops is a break (turning at a lane's end counts
+     * as farming, walking to a pest does not), and is left out of the blocks per second.
+     */
+    private const val BPS_IDLE_MS = 2_000L
+
     private var ticks = 0
+
+    // Blocks per second.
+    private var lastBreakMs = 0L
+    private var breaksCounted = 0
+    private var breakActiveMs = 0L
 
     // Farming XP per hour.
     private var lastXpProgress: String? = null
@@ -257,6 +269,42 @@ object FarmingTracker {
     fun xpPerHour(now: Long = System.currentTimeMillis()): Double? {
         if (xpNeedsSkillWidget || xpActiveMs < MIN_ACTIVE_MS || now - lastXpSeenMs > RESET_AFTER_MS) return null
         return xpGained / xpActiveMs * 3_600_000.0
+    }
+
+    /**
+     * The client broke a block. Only crops broken with a farming tool on the Garden count; each one
+     * after the first of a stretch adds the time since the one before.
+     */
+    @JvmStatic
+    fun onBlockBroken(stack: ItemStack) {
+        if (!AlpakaConfig.instance.farmingHudEnabled || !SkyblockUtils.isOnGarden()) return
+        if (!AlignmentHelper.isFarmingTool(stack)) return
+        onCropBroken(System.currentTimeMillis())
+    }
+
+    internal fun onCropBroken(now: Long) {
+        val gap = now - lastBreakMs
+        if (lastBreakMs == 0L || gap > RESET_AFTER_MS) {
+            breaksCounted = 0
+            breakActiveMs = 0L
+        } else if (gap <= BPS_IDLE_MS) {
+            breaksCounted++
+            breakActiveMs += gap
+        }
+        lastBreakMs = now
+    }
+
+    /** Starts the blocks per second over. */
+    internal fun resetBps() {
+        lastBreakMs = 0L
+        breaksCounted = 0
+        breakActiveMs = 0L
+    }
+
+    /** Crops broken per second of farming; null until there has been enough of it. */
+    fun blocksPerSecond(now: Long = System.currentTimeMillis()): Double? {
+        if (breakActiveMs < MIN_ACTIVE_MS || now - lastBreakMs > RESET_AFTER_MS) return null
+        return breaksCounted * 1000.0 / breakActiveMs
     }
 
     /** Milliseconds of farming until the next crop milestone tier, at the rate so far. */

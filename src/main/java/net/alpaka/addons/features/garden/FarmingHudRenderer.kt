@@ -27,6 +27,8 @@ object FarmingHudRenderer {
     private const val LABEL_GAP = 5
     private const val GLYPH_HEIGHT = 9
     private const val REBUILD_INTERVAL_MS = 250L
+    /** Extra space between two groups of rows. */
+    private const val GROUP_GAP = 3
 
     /**
      * The smallest a crop icon is drawn, in GUI pixels. The real size is the next one at which each
@@ -61,6 +63,8 @@ object FarmingHudRenderer {
         val spansColumns: Boolean = false,
         val icons: List<String> = emptyList(),
         val leadIcon: String? = null,
+        /** The first row of a group: drawn a little apart from the row above. */
+        val gapAbove: Boolean = false,
     )
 
     private class Layout(
@@ -102,6 +106,7 @@ object FarmingHudRenderer {
         if (cfg.farmingHudShowRepellent) mask = mask or (1 shl 5)
         if (cfg.farmingHudShowContest) mask = mask or (1 shl 6)
         if (cfg.farmingHudShowVisitors) mask = mask or (1 shl 7)
+        if (cfg.farmingHudShowBps) mask = mask or (1 shl 8)
         return mask
     }
 
@@ -155,6 +160,7 @@ object FarmingHudRenderer {
                 valueXs[index] = valueX
                 val hasIcons = row.leadIcon != null || row.icons.isNotEmpty()
                 heights[index] = if (hasIcons) maxOf(LINE_HEIGHT, iconWidth) else LINE_HEIGHT
+                if (row.gapAbove) top += GROUP_GAP
                 tops[index] = top
                 top += heights[index]
                 val textX = if (row.leadIcon != null) valueX + iconWidth + LEAD_ICON_GAP else valueX
@@ -182,13 +188,26 @@ object FarmingHudRenderer {
         return built
     }
 
-    /** The rows, each behind its own toggle. [preview] fills them with sample figures for the editor. */
+    /**
+     * The rows, each behind its own toggle. [preview] fills them with sample figures for the editor.
+     *
+     * Grouped by topic, with a small gap between groups: how fast you farm, the pests, the crop
+     * milestone, and what happens on the Garden. The short rows come first and the long ones (crop
+     * icons, visitor count and timer, contest crops) sit together at the bottom, so the panel's
+     * right edge does not jump in and out from row to row.
+     */
     private fun buildRows(preview: Boolean, now: Long): List<Line> {
         val cfg = AlpakaConfig.instance
-        val rows = ArrayList<Line>(8)
+        val rows = ArrayList<Line>(9)
 
         if (cfg.farmingHudShowTitle) rows.add(Line("§lFarming", "", COLOR_TITLE, spansColumns = true))
 
+        // Speed.
+        var group = rows.size
+        if (cfg.farmingHudShowBps) {
+            val bps = if (preview) 19.85 else FarmingTracker.blocksPerSecond(now)
+            rows.add(Line("BPS", bps?.let { String.format(Locale.ROOT, "%.2f", it) } ?: "-", COLOR_VALUE))
+        }
         if (cfg.farmingHudShowXpPerHour) {
             val perHour = if (preview) 412_800.0 else FarmingTracker.xpPerHour(now)
             rows.add(
@@ -200,6 +219,40 @@ object FarmingHudRenderer {
             )
         }
 
+        markGroup(rows, group)
+
+        // Pests.
+        group = rows.size
+        if (cfg.farmingHudShowPestCooldown) {
+            val left = if (preview) 118_000L else FarmingTracker.pestCooldownLeftMs(now)
+            rows.add(
+                when {
+                    !preview && FarmingTracker.maxPests -> Line("Pest CD", "Max Pests", COLOR_BAD)
+                    left == null && !preview && !FarmingTracker.hasPestWidget -> Line("Pest CD", "Tab Widget Off", COLOR_WARN)
+                    // Not known until the widget shows a cooldown or pests have spawned once.
+                    left == null -> Line("Pest CD", "-", COLOR_VALUE)
+                    left <= 0L -> Line("Pest CD", "Ready", COLOR_GOOD)
+                    else -> Line("Pest CD", formatDuration(left), COLOR_VALUE)
+                }
+            )
+        }
+
+        if (cfg.farmingHudShowRepellent) {
+            val left = if (preview) 2_712_000L else FarmingTracker.repellentLeftMs(now)
+            rows.add(
+                if (left == null) {
+                    Line("Repellent", "None", COLOR_BAD)
+                } else {
+                    val max = if (preview || cfg.farmingRepellentMax) " (Max)" else ""
+                    Line("Repellent", formatDuration(left) + max, COLOR_GOOD)
+                }
+            )
+        }
+
+        markGroup(rows, group)
+
+        // Crop milestone.
+        group = rows.size
         val milestone = if (preview) FarmingParse.Milestone("Mushroom", 25, 48.7) else FarmingTracker.milestone
         val noMilestoneWidget = !preview && !FarmingTracker.hasMilestoneWidget
         if (cfg.farmingHudShowMilestone) {
@@ -237,37 +290,22 @@ object FarmingHudRenderer {
             )
         }
 
-        if (cfg.farmingHudShowPestCooldown) {
-            val left = if (preview) 118_000L else FarmingTracker.pestCooldownLeftMs(now)
-            rows.add(
-                when {
-                    !preview && FarmingTracker.maxPests -> Line("Pest CD", "Max Pests", COLOR_BAD)
-                    left == null && !preview && !FarmingTracker.hasPestWidget -> Line("Pest CD", "Tab Widget Off", COLOR_WARN)
-                    // Not known until the widget shows a cooldown or pests have spawned once.
-                    left == null -> Line("Pest CD", "-", COLOR_VALUE)
-                    left <= 0L -> Line("Pest CD", "Ready", COLOR_GOOD)
-                    else -> Line("Pest CD", formatDuration(left), COLOR_VALUE)
-                }
-            )
-        }
+        markGroup(rows, group)
 
-        if (cfg.farmingHudShowRepellent) {
-            val left = if (preview) 2_712_000L else FarmingTracker.repellentLeftMs(now)
-            rows.add(
-                if (left == null) {
-                    Line("Repellent", "None", COLOR_BAD)
-                } else {
-                    val max = if (preview || cfg.farmingRepellentMax) " (Max)" else ""
-                    Line("Repellent", formatDuration(left) + max, COLOR_GOOD)
-                }
-            )
-        }
-
+        // The Garden.
+        group = rows.size
         if (cfg.farmingHudShowVisitors) rows.add(visitorLine(preview, now))
-
         if (cfg.farmingHudShowContest) rows.add(contestLine(preview, now))
+        markGroup(rows, group)
 
         return rows
+    }
+
+    /** Puts a gap above the group that starts at [first], when it has rows and is not the first. */
+    private fun markGroup(rows: MutableList<Line>, first: Int) {
+        if (first == 0 || first >= rows.size) return
+        if (rows[first - 1].spansColumns) return
+        rows[first] = rows[first].copy(gapAbove = true)
     }
 
     /** How many visitors wait and when the next one comes, or that the queue is full. */

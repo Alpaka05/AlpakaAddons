@@ -408,6 +408,7 @@ public class AlpakaConfig {
     public int farmingHudY = net.alpaka.addons.client.hud.HudDefaults.FARMING_Y;
     public float farmingHudScale = 1.0f;
     public boolean farmingHudShowTitle = true;
+    public boolean farmingHudShowBps = true;
     public boolean farmingHudShowXpPerHour = true;
     public boolean farmingHudShowMilestone = true;
     public boolean farmingHudShowMilestoneEta = true;

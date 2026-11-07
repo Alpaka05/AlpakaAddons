@@ -37,6 +37,17 @@ public class LevelRendererMixin {
     @Final
     private LevelRenderState levelRenderState;
 
+    /** Sky Effects: a frame of the world begins; skies asked for in it are drawn in it or dropped. */
+    @Inject(method = "render", at = @At("HEAD"))
+    private void alpaka$skyFrameStart(CallbackInfo ci) {
+        SkyEffectsFeature.levelFrameStart();
+    }
+
+    @Inject(method = "render", at = @At("RETURN"))
+    private void alpaka$skyFrameEnd(CallbackInfo ci) {
+        SkyEffectsFeature.levelFrameEnd();
+    }
+
     /**
      * Sky Effects, before vanilla looks at the sky. Vanilla adds no sky pass at all where the
      * dimension has no skybox, so the frame keeps the fog color it was cleared with; the Nether's

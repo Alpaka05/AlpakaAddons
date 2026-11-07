@@ -50,6 +50,13 @@ uniform sampler2D Sampler0;
 #if defined(SKY_CLOUDS)
 // The frame's depth so far: 0 where nothing has been drawn (the depth buffer is reversed).
 uniform sampler2D Sampler1;
+// The clouds' last frame, as this pass wrote them.
+uniform sampler2D Sampler2;
+
+// A copy of projection.glsl's block, to find where a direction lay in the last frame.
+layout(std140) uniform Projection {
+    mat4 ProjMat;
+};
 #elif defined(SKY_OVERWORLD)
 // The clouds, worked out at half resolution, premultiplied and with Intensity applied.
 uniform sampler2D Sampler1;
@@ -556,14 +563,16 @@ float overworldOpen(vec3 dir) {
 #ifdef SKY_CLOUDS
 
 // Whether the world covers every pixel that looks this texel up when the clouds are laid over the
-// sky: the 4x4 pixels around its 2x2, as the filter blends each pixel's four nearest texels. Only
-// then is the texel never seen; a texel next to the sky must keep its clouds, or they would thin
-// out along the world's edges. Most texels in open sky stop at the first pixel.
+// sky. The filter blends each pixel's four nearest texels, so a texel reaches the pixels around
+// its own 2x2; with an odd frame size the two grids drift apart by up to a pixel, so 5x5 of them
+// are looked at. Only then is the texel never seen; a texel next to the sky must keep its
+// clouds, or they would thin out along the world's edges. Most texels in open sky stop at the
+// first pixel.
 bool coveredByWorld() {
     ivec2 last = textureSize(Sampler1, 0) - 1;
-    ivec2 corner = ivec2(gl_FragCoord.xy) * 2 - 1;
-    for (int y = 0; y < 4; y++) {
-        for (int x = 0; x < 4; x++) {
+    ivec2 corner = ivec2(gl_FragCoord.xy) * 2 - 2;
+    for (int y = 0; y < 5; y++) {
+        for (int x = 0; x < 5; x++) {
             ivec2 at = clamp(corner + ivec2(x, y), ivec2(0), last);
             if (texelFetch(Sampler1, at, 0).r <= 0.0) return false;
         }
@@ -571,12 +580,54 @@ bool coveredByWorld() {
     return true;
 }
 
-// The clouds alone, premultiplied, for the half-resolution texture.
-vec4 cloudLayer(vec3 dir, float t) {
+// What a texel the world covers holds: no cloud (alpha 0) never has any color, so this cannot be
+// a real texel, and the next frame knows not to reuse it. No pixel ever blends it in.
+const vec4 COVERED = vec4(1.0 / 255.0, 0.0, 0.0, 0.0);
+
+bool isCovered(vec4 texel) {
+    return texel.a == 0.0 && texel.r > 0.5 / 255.0;
+}
+
+// The clouds of the last frame in this direction, when they are there to reuse: the last view
+// (a rotation, TextureMat[2].yzw and [3].z) turns the direction to where it was on the screen,
+// and the four texels around that point are blended as the filter would, unless one of them was
+// off the screen or covered. The clouds depend on the direction alone, and drift by a hair a
+// frame, so this is as good as working them out.
+bool lastClouds(vec3 dir, out vec4 result) {
+    vec4 q = vec4(TextureMat[2].yzw, TextureMat[3].z);
+    vec3 seen = dir + 2.0 * cross(q.xyz, cross(q.xyz, dir) + q.w * dir);
+    vec4 clip = ProjMat * vec4(seen, 1.0);
+    if (clip.w <= 0.0) return false;
+    ivec2 size = textureSize(Sampler2, 0);
+    vec2 texel = (clip.xy / clip.w * 0.5 + 0.5) * vec2(size) - 0.5;
+    vec2 base = floor(texel);
+    ivec2 at = ivec2(base);
+    if (at.x < 0 || at.y < 0 || at.x + 1 >= size.x || at.y + 1 >= size.y) return false;
+    vec4 a = texelFetch(Sampler2, at, 0);
+    vec4 b = texelFetch(Sampler2, at + ivec2(1, 0), 0);
+    vec4 c = texelFetch(Sampler2, at + ivec2(0, 1), 0);
+    vec4 d = texelFetch(Sampler2, at + ivec2(1, 1), 0);
+    if (isCovered(a) || isCovered(b) || isCovered(c) || isCovered(d)) return false;
+    vec2 f = texel - base;
+    result = mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+    return true;
+}
+
+// The clouds alone, premultiplied and with Intensity (strength) applied, for the half-resolution
+// texture. Half the texels, in a checkerboard that swaps each frame, reuse the last frame's
+// clouds where they can (TextureMat[3].w: which half is worked out anew, 1 or 2; 0 all of them).
+vec4 cloudLayer(vec3 dir, float t, float strength) {
     if (dir.y < -0.02) return vec4(0.0);
     float open = overworldOpen(dir);
-    if (open <= 0.0 || coveredByWorld()) return vec4(0.0);
-    return clouds(dir, TextureMat[0].xyz, t, ModelOffset.y, ModelOffset.z) * open;
+    if (open <= 0.0) return vec4(0.0);
+    if (coveredByWorld()) return COVERED;
+    float fresh = TextureMat[3].w;
+    if (fresh > 0.5) {
+        ivec2 texel = ivec2(gl_FragCoord.xy);
+        vec4 last;
+        if (((texel.x + texel.y) & 1) != int(fresh + 0.5) - 1 && lastClouds(dir, last)) return last;
+    }
+    return clouds(dir, TextureMat[0].xyz, t, ModelOffset.y, ModelOffset.z) * open * strength;
 }
 
 #else
@@ -701,7 +752,7 @@ void main() {
 #elif defined(SKY_CLOUDS)
     // Intensity applied before the texture's 8 bits clamp them, as it was when they were worked
     // out in the same pass as the rest.
-    fragColor = cloudLayer(dir, t) * strength;
+    fragColor = cloudLayer(dir, t, strength);
 #else
     // Light added over vanilla's sky and clouds laid over it, blended as premultiplied alpha.
     fragColor = overworldSky(dir, t, pixel, strength);

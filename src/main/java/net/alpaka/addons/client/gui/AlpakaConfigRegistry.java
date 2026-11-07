@@ -237,11 +237,11 @@ public class AlpakaConfigRegistry {
                 "gamma brightness light fullbright vision enables maximum everywhere torches"));
 
         OPTIONS.add(new ConfigOption("sky_effects", "Sky Effects",
-                "Animates the sky: a firestorm over the Nether, auroras and shooting stars over the Overworld at night and a glowing sun by day, a swirling nebula in the End.",
+                "Animates the sky: a firestorm over the Nether, auroras and shooting stars over the Overworld at night and drifting clouds and a glowing sun by day, a swirling nebula in the End.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.skyEffectsEnabled,
                 v -> { AlpakaConfig.instance.skyEffectsEnabled = v; AlpakaConfig.save(); },
-                "sky skies animated fancy firestorm fire storm nether crimson isle aurora northern lights borealis shooting stars meteor milky way galaxy nebula end space sun rays glow embers"));
+                "sky skies animated fancy firestorm fire storm nether crimson isle aurora northern lights borealis shooting stars meteor milky way galaxy nebula end space sun rays glow embers clouds day sunset"));
 
         OPTIONS.add(new ConfigOption("sky_effects_skies", "Animated Skies",
                 "Pick which skies are animated.",
@@ -253,11 +253,14 @@ public class AlpakaConfigRegistry {
                         new ConfigOption.ToggleEntry("Overworld Aurora",
                                 () -> AlpakaConfig.instance.skyEffectsOverworld,
                                 v -> { AlpakaConfig.instance.skyEffectsOverworld = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Overworld Clouds",
+                                () -> AlpakaConfig.instance.skyEffectsClouds,
+                                v -> { AlpakaConfig.instance.skyEffectsClouds = v; AlpakaConfig.save(); }),
                         new ConfigOption.ToggleEntry("End Nebula",
                                 () -> AlpakaConfig.instance.skyEffectsEnd,
                                 v -> { AlpakaConfig.instance.skyEffectsEnd = v; AlpakaConfig.save(); })
                 ),
-                "sky skies nether firestorm overworld aurora sun rays end nebula dimension pick which"));
+                "sky skies nether firestorm overworld aurora clouds sun rays end nebula dimension pick which"));
 
         OPTIONS.add(new ConfigOption("sky_effects_intensity", "Sky Intensity",
                 "How strongly the effects show over the plain sky.",

@@ -79,6 +79,7 @@ public class AlpakaConfig {
     public boolean skyEffectsEnabled = false;
     public boolean skyEffectsNether = true;
     public boolean skyEffectsOverworld = true;
+    public boolean skyEffectsClouds = true;
     public boolean skyEffectsEnd = true;
     /** How strongly the effects show, 0.1..1; at 1 the skies are drawn in full. */
     public float skyEffectsIntensity = 1.0f;

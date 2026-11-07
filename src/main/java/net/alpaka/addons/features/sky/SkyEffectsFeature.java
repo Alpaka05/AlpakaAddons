@@ -42,7 +42,6 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.material.FogType;
 import org.joml.Matrix4f;
-import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
@@ -112,10 +111,15 @@ public final class SkyEffectsFeature {
      */
     private static final TextureTarget[] cloudTargets = new TextureTarget[2];
     private static int cloudCurrent;
-    /** The view the last clouds were worked out in, and when; whether the other half can be reused. */
-    private static final Quaternionf lastCloudView = new Quaternionf();
+    /**
+     * Where the last clouds were worked out: the projection times the view they were seen with,
+     * and when; whether the other half can be reused.
+     */
+    private static final Matrix4f lastCloudClip = new Matrix4f();
     private static long lastCloudNanos;
     private static boolean lastCloudsValid;
+    /** The world's projection this frame, bobbing and FOV in it; null until the hook reports one. */
+    private static Matrix4f levelProjection;
     /** Which half of the checkerboard is worked out anew this frame. */
     private static int cloudParity;
     /** The last clouds are reused only if they are this recent: otherwise the sky has moved on. */
@@ -274,6 +278,12 @@ public final class SkyEffectsFeature {
         return true;
     }
 
+    /** The world's projection for this frame, as GameRenderer hands it on. */
+    public static void levelProjection(Matrix4f projection) {
+        if (levelProjection == null) levelProjection = new Matrix4f();
+        levelProjection.set(projection);
+    }
+
     /** The start of LevelRenderer.render: the world's frame. */
     public static void levelFrameStart() {
         inLevelFrame = true;
@@ -363,24 +373,26 @@ public final class SkyEffectsFeature {
         cloudCurrent ^= 1;
         TextureTarget layer = cloudTarget(cloudCurrent, target);
         long now = System.nanoTime();
-        boolean reuse = lastCloudsValid && last != null && last.width == layer.width && last.height == layer.height
-                && now - lastCloudNanos < CLOUD_REUSE_NANOS;
+        boolean reuse = lastCloudsValid && levelProjection != null && last != null && last.width == layer.width
+                && last.height == layer.height && now - lastCloudNanos < CLOUD_REUSE_NANOS;
         cloudParity ^= 1;
-        // For the clouds' pass: the last view (TextureMat[2].yzw and [3].z, a rotation) and which
-        // half is worked out anew, 1 or 2, or 0 when every texel is (TextureMat[3].w).
-        Matrix4f cloudDirections = new Matrix4f(directions)
-                .m21(lastCloudView.x).m22(lastCloudView.y).m23(lastCloudView.z).m32(lastCloudView.w)
-                .m33(reuse ? 1.0f + cloudParity : 0.0f);
+        // The clouds' pass has a block of its own (see the shader): the sun (its z is always 0)
+        // in ColorModulator.yz; Intensity plus twice which half is worked out anew (1 or 2, 0
+        // when every texel is) in ColorModulator.w; where the last clouds were in TextureMat.
+        float fresh = reuse ? 1.0f + cloudParity : 0.0f;
+        GpuBufferSlice cloudTransforms = RenderSystem.getDynamicUniforms().writeTransform(view,
+                new Vector4f(far, directions.m00(), directions.m01(), intensity + 2.0f * fresh),
+                new Vector3f(time, night, clear), lastCloudClip);
         GpuBufferSlice transforms = RenderSystem.getDynamicUniforms().writeTransform(view,
                 new Vector4f(far, target.width, target.height, intensity), new Vector3f(time, night, clear),
-                cloudDirections);
+                directions);
         // The frame's depth tells the clouds where the world covers them (see the shader).
         // Without last clouds to reuse, the grid stands in for them; the shader does not look.
-        drawBox(overworldClouds(), "Alpaka sky clouds", layer.getColorTextureView(), null, transforms, grid,
+        drawBox(overworldClouds(), "Alpaka sky clouds", layer.getColorTextureView(), null, cloudTransforms, grid,
                 target.getDepthTextureView(), reuse ? last.getColorTextureView() : grid.getTextureView());
         drawBox(pipeline, "Alpaka sky", target.getColorTextureView(), target.getDepthTextureView(), transforms, grid,
                 layer.getColorTextureView(), null);
-        view.getNormalizedRotation(lastCloudView);
+        if (levelProjection != null) levelProjection.mul(view, lastCloudClip);
         lastCloudNanos = now;
         lastCloudsValid = true;
     }

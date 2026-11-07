@@ -23,6 +23,10 @@
 //   TextureMat[1].xyz - Overworld: towards the moon
 //   TextureMat[2].x   - Overworld: the stars' angle, which turns the Milky Way with them
 //   TextureMat[3].xy  - Overworld: 1 where the lights (aurora, sun glow, ...) and the clouds are on
+// The clouds' own pass (SKY_CLOUDS) gets a block of its own: ColorModulator.yz the sun's x and y
+// (its z is always 0), ColorModulator.w Intensity plus twice which half of the texels is worked
+// out anew (1 or 2, 0 for all of them), and TextureMat where the last frame saw the sky: its
+// projection times its view.
 // The Nether's colors come from the fog, so the storm takes on each biome's own hue.
 
 layout(std140) uniform DynamicTransforms {
@@ -53,10 +57,6 @@ uniform sampler2D Sampler1;
 // The clouds' last frame, as this pass wrote them.
 uniform sampler2D Sampler2;
 
-// A copy of projection.glsl's block, to find where a direction lay in the last frame.
-layout(std140) uniform Projection {
-    mat4 ProjMat;
-};
 #elif defined(SKY_OVERWORLD)
 // The clouds, worked out at half resolution, premultiplied and with Intensity applied.
 uniform sampler2D Sampler1;
@@ -588,15 +588,14 @@ bool isCovered(vec4 texel) {
     return texel.a == 0.0 && texel.r > 0.5 / 255.0;
 }
 
-// The clouds of the last frame in this direction, when they are there to reuse: the last view
-// (a rotation, TextureMat[2].yzw and [3].z) turns the direction to where it was on the screen,
-// and the four texels around that point are blended as the filter would, unless one of them was
+// The clouds of the last frame in this direction, when they are there to reuse: the last frame's
+// projection and view (TextureMat) find where the box's point in this direction was on the
+// screen, and the four texels around it are blended as the filter would, unless one of them was
 // off the screen or covered. The clouds depend on the direction alone, and drift by a hair a
 // frame, so this is as good as working them out.
 bool lastClouds(vec3 dir, out vec4 result) {
-    vec4 q = vec4(TextureMat[2].yzw, TextureMat[3].z);
-    vec3 seen = dir + 2.0 * cross(q.xyz, cross(q.xyz, dir) + q.w * dir);
-    vec4 clip = ProjMat * vec4(seen, 1.0);
+    // On the box, as it was drawn, so view bobbing moves it as it moved the sky.
+    vec4 clip = TextureMat * vec4(dir * 100.0, 1.0);
     if (clip.w <= 0.0) return false;
     ivec2 size = textureSize(Sampler2, 0);
     vec2 texel = (clip.xy / clip.w * 0.5 + 0.5) * vec2(size) - 0.5;
@@ -613,21 +612,24 @@ bool lastClouds(vec3 dir, out vec4 result) {
     return true;
 }
 
-// The clouds alone, premultiplied and with Intensity (strength) applied, for the half-resolution
-// texture. Half the texels, in a checkerboard that swaps each frame, reuse the last frame's
-// clouds where they can (TextureMat[3].w: which half is worked out anew, 1 or 2; 0 all of them).
-vec4 cloudLayer(vec3 dir, float t, float strength) {
+// The clouds alone, premultiplied and with Intensity applied, for the half-resolution texture.
+// Half the texels reuse the last frame's clouds where they can, in a checkerboard of 8x8 tiles
+// that swaps each frame: tiles, so the GPU's neighbouring threads, which run together, take the
+// same way.
+vec4 cloudLayer(vec3 dir, float t) {
     if (dir.y < -0.02) return vec4(0.0);
     float open = overworldOpen(dir);
     if (open <= 0.0) return vec4(0.0);
     if (coveredByWorld()) return COVERED;
-    float fresh = TextureMat[3].w;
+    float fresh = floor(ColorModulator.w * 0.5);
+    float strength = ColorModulator.w - 2.0 * fresh;
     if (fresh > 0.5) {
-        ivec2 texel = ivec2(gl_FragCoord.xy);
+        ivec2 tile = ivec2(gl_FragCoord.xy) >> 3;
         vec4 last;
-        if (((texel.x + texel.y) & 1) != int(fresh + 0.5) - 1 && lastClouds(dir, last)) return last;
+        if (((tile.x + tile.y) & 1) != int(fresh + 0.5) - 1 && lastClouds(dir, last)) return last;
     }
-    return clouds(dir, TextureMat[0].xyz, t, ModelOffset.y, ModelOffset.z) * open * strength;
+    vec3 sun = vec3(ColorModulator.yz, 0.0);
+    return clouds(dir, sun, t, ModelOffset.y, ModelOffset.z) * open * strength;
 }
 
 #else
@@ -752,7 +754,7 @@ void main() {
 #elif defined(SKY_CLOUDS)
     // Intensity applied before the texture's 8 bits clamp them, as it was when they were worked
     // out in the same pass as the rest.
-    fragColor = cloudLayer(dir, t, strength);
+    fragColor = cloudLayer(dir, t);
 #else
     // Light added over vanilla's sky and clouds laid over it, blended as premultiplied alpha.
     fragColor = overworldSky(dir, t, pixel, strength);

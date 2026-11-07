@@ -571,6 +571,13 @@ float overworldOpen(vec3 dir) {
 bool coveredByWorld() {
     ivec2 last = textureSize(Sampler1, 0) - 1;
     ivec2 corner = ivec2(gl_FragCoord.xy) * 2 - 2;
+    // The corners first: a texel along the world's edge mostly has sky at one of them.
+    if (texelFetch(Sampler1, clamp(corner, ivec2(0), last), 0).r <= 0.0
+            || texelFetch(Sampler1, clamp(corner + ivec2(4, 0), ivec2(0), last), 0).r <= 0.0
+            || texelFetch(Sampler1, clamp(corner + ivec2(0, 4), ivec2(0), last), 0).r <= 0.0
+            || texelFetch(Sampler1, clamp(corner + ivec2(4, 4), ivec2(0), last), 0).r <= 0.0) {
+        return false;
+    }
     for (int y = 0; y < 5; y++) {
         for (int x = 0; x < 5; x++) {
             ivec2 at = clamp(corner + ivec2(x, y), ivec2(0), last);
@@ -593,9 +600,11 @@ bool isCovered(vec4 texel) {
 // screen, and the four texels around it are blended as the filter would, unless one of them was
 // off the screen or covered. The clouds depend on the direction alone, and drift by a hair a
 // frame, so this is as good as working them out.
-bool lastClouds(vec3 dir, out vec4 result) {
-    // On the box, as it was drawn, so view bobbing moves it as it moved the sky.
-    vec4 clip = TextureMat * vec4(dir * 100.0, 1.0);
+bool lastClouds(int reused, out vec4 result) {
+    // The tiles the last frame reused are the ones this frame works out anew.
+    int lastReused = 1 - reused;
+    // The box's own point, as it was drawn, so view bobbing moves it as it moved the sky.
+    vec4 clip = TextureMat * vec4(skyPos, 1.0);
     if (clip.w <= 0.0) return false;
     ivec2 size = textureSize(Sampler2, 0);
     vec2 texel = (clip.xy / clip.w * 0.5 + 0.5) * vec2(size) - 0.5;
@@ -607,6 +616,13 @@ bool lastClouds(vec3 dir, out vec4 result) {
     vec4 c = texelFetch(Sampler2, at + ivec2(0, 1), 0);
     vec4 d = texelFetch(Sampler2, at + ivec2(1, 1), 0);
     if (isCovered(a) || isCovered(b) || isCovered(c) || isCovered(d)) return false;
+    // Only texels worked out in the last frame are taken, never ones it took from the frame
+    // before: the tiles it worked out had the other parity. Reused clouds are a frame old at
+    // most, and filtered once.
+    // A square's neighbours across a tile edge have the other parity, so the four texels must
+    // lie in one tile.
+    ivec2 tile = at >> 3;
+    if (((tile.x + tile.y) & 1) == lastReused || (at.x & 7) == 7 || (at.y & 7) == 7) return false;
     vec2 f = texel - base;
     result = mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
     return true;
@@ -626,7 +642,8 @@ vec4 cloudLayer(vec3 dir, float t) {
     if (fresh > 0.5) {
         ivec2 tile = ivec2(gl_FragCoord.xy) >> 3;
         vec4 last;
-        if (((tile.x + tile.y) & 1) != int(fresh + 0.5) - 1 && lastClouds(dir, last)) return last;
+        int reused = 1 - (int(fresh + 0.5) - 1);
+        if (((tile.x + tile.y) & 1) == reused && lastClouds(reused, last)) return last;
     }
     vec3 sun = vec3(ColorModulator.yz, 0.0);
     return clouds(dir, sun, t, ModelOffset.y, ModelOffset.z) * open * strength;

@@ -362,12 +362,37 @@ vec3 sunGlow(vec3 dir, vec3 sun, float t) {
     return tint * (halo + beams);
 }
 
-// Clouds drifting with the wind, as if on a flat layer high above: a direction meets that layer at
-// dir.xz / dir.y, so the clouds shrink and crowd together towards the horizon as real ones do.
-// Heaped cumulus, lit from the sun's side and grey where they lie in their own shadow, with
-// bright rims when they pass in front of the sun, and thin streaks of cirrus higher up. Golden
-// and pink at sunrise and sunset, dimming into the night; in rain they close up into grey overcast.
+// Clouds drifting with the wind in a layer of some thickness high above. A 2D noise says how much
+// cloud stands over each spot of the ground, and the cloud there reaches the higher up the more
+// there is: flat bottoms and domed tops, like heaped cumulus. Each pixel walks its ray up through
+// the layer, so towards the horizon it sees past the bottoms onto the sides and tops, and nearer
+// clouds hide farther ones. A height met on the ray is lit by how much cloud lies above it towards
+// the sun, so the tops facing the sun are bright and the bottoms and the far sides grey. The layer
+// is reached at dir.xz / dir.y, so the clouds shrink and crowd together towards the horizon.
+// Thin edges light up in front of the sun, thin streaks of cirrus lie higher up. Golden and pink
+// at sunrise and sunset, dimming into the night; in rain they close up into grey overcast.
 // Returned premultiplied: color times cover, and how much of the sky they cover.
+
+const int CLOUD_STEPS_MAX = 24;
+const float CLOUD_DEPTH = 0.45;
+
+// How much cloud stands over a spot (scaled layer coordinates), minus where clouds begin.
+float cloudExcess(vec2 at, float edge, int octaves) {
+    return fbm2(at, octaves) - edge;
+}
+
+// How dense the cloud is at a height h through the layer (0 bottom, 1 top), given the excess
+// there: the more excess, the higher the cloud reaches, rising like a dome from the edges.
+float cloudDensity(float excess, float h) {
+    float bottom = smoothstep(0.0, 0.12, h);
+    return smoothstep(0.0, 0.14, excess - 0.26 * h * h - 0.05 * (1.0 - bottom));
+}
+
+// How far above h the cloud with this excess still reaches, through the layer (0 to 1).
+float cloudAbove(float excess, float h) {
+    return clamp(sqrt(max(excess, 0.0) / 0.26), 0.0, 1.0) - h;
+}
+
 vec4 clouds(vec3 dir, vec3 sun, float t, float night, float clear) {
     // Where the layer is too far away to show more than flicker, it has faded out.
     float horizon = smoothstep(0.03, 0.2, dir.y);
@@ -375,48 +400,73 @@ vec4 clouds(vec3 dir, vec3 sun, float t, float night, float clear) {
     if (horizon <= 0.0 || dim <= 0.0) return vec4(0.0);
 
     // The 0.08 keeps the far side of the layer from running off to infinity at the horizon.
-    vec2 p = dir.xz / (dir.y + 0.08);
+    vec2 onLayer = dir.xz / (dir.y + 0.08);
     vec2 drift = vec2(0.010, 0.0035) * t;
     float cover = mix(0.95, 0.5, clear);
     float edge = 0.72 - 0.4 * cover;
 
-    // Cumulus: a noise pushed around by a slower one, which also makes them change shape as they go.
-    vec2 q = (p + drift) * 2.2;
-    vec2 warp = fbm22(q * 0.3 + vec2(t * 0.003, 0.0), 3) - 0.5;
-    vec2 at = q + warp * 0.9;
-    float shape = fbm2(at, 5);
-    float density = smoothstep(edge, edge + 0.13, shape);
-    // How thick the cloud is here: the thick middles are a little darker underneath.
-    float core = smoothstep(edge + 0.04, edge + 0.3, shape);
-
-    // Their own shadow: how much cloud lies between this point and the sun.
-    float lit = 1.0;
-    if (density > 0.0) {
-        vec2 towardsSun = normalize(sun.xz + vec2(1e-4, 0.0)) * (0.12 + 0.2 * clamp(sun.y, 0.0, 1.0));
-        float between = smoothstep(edge, edge + 0.25, fbm2(at + towardsSun, 4));
-        lit = 1.0 - 0.75 * between;
-    }
-
-    // Cirrus: fine streaks combed out along the wind, higher and faster, only where the sky is open.
-    vec2 r = TURN2 * (p * 0.8 + drift * 1.8);
-    float wisps = fbm2(vec2(r.x * 1.2, r.y * 4.0) + 3.1, 4);
-    float cirrus = smoothstep(0.55, 0.8, wisps) * 0.3 * clear * (1.0 - density);
+    // A slower noise pushes the clouds around and makes them change shape as they go. It changes
+    // little over one ray, so it is taken once, halfway up.
+    vec2 mid = (onLayer * (1.0 + 0.5 * CLOUD_DEPTH) + drift) * 2.2;
+    vec2 warp = (fbm22(mid * 0.3 + vec2(t * 0.003, 0.0), 3) - 0.5) * 0.9;
 
     float low = 1.0 - smoothstep(0.0, 0.45, sun.y);
     vec3 sunlit = mix(vec3(1.0, 0.99, 0.96), vec3(1.0, 0.62, 0.42), low);
-    vec3 shade = mix(vec3(0.56, 0.62, 0.74), vec3(0.46, 0.34, 0.5), low);
+    vec3 shade = mix(vec3(0.52, 0.58, 0.70), vec3(0.42, 0.31, 0.47), low);
     // Overcast is grey, whatever the sun does.
     sunlit = mix(vec3(0.66, 0.68, 0.72), sunlit, clear);
-    shade = mix(vec3(0.38, 0.40, 0.45), shade, clear);
+    shade = mix(vec3(0.36, 0.38, 0.43), shade, clear);
+    float fade = horizon * dim;
 
-    vec3 color = mix(shade, sunlit, lit) * (1.0 - 0.18 * core);
-    // The thin edges light up in front of the sun.
-    float rim = density * (1.0 - core);
-    color += sunlit * pow(max(dot(dir, sun), 0.0), 8.0) * rim * 0.9 * clear;
+    // Cirrus: fine streaks combed out along the wind, higher and faster, behind the cumulus.
+    vec2 r = TURN2 * (onLayer * 0.8 + drift * 1.8);
+    float wisps = fbm2(vec2(r.x * 1.2, r.y * 4.0) + 3.1, 4);
+    float cirrus = smoothstep(0.55, 0.8, wisps) * 0.3 * clear;
 
-    float alpha = (density * 0.93 + cirrus) * horizon * dim;
-    color *= mix(0.3, 1.0, dim);
-    return vec4(color * alpha, alpha);
+    float forward = pow(max(dot(dir, sun), 0.0), 8.0) * clear;
+
+    // Towards the sun across the layer, per unit of height: the lower the sun, the farther.
+    vec2 towardsSun = normalize(sun.xz + vec2(1e-4, 0.0)) * 2.2 * CLOUD_DEPTH
+            / max(sun.y, 0.25) * 0.35;
+
+    // A flat ray crosses much more of the layer per step, so it takes more of them.
+    int steps = int(mix(float(CLOUD_STEPS_MAX), 14.0, smoothstep(0.1, 0.6, dir.y)));
+    // A fixed random offset per pixel on where the steps fall hides the slices between them.
+    float jitter = hash12(gl_FragCoord.xy);
+    float stepH = 1.0 / float(steps);
+    // A ray climbs the layer over a longer stretch the lower it looks; how thick one step is.
+    float stepLength = CLOUD_DEPTH / max(dir.y + 0.08, 0.1) * stepH;
+
+    vec3 color = vec3(0.0);
+    float through = 1.0;
+    for (int i = 0; i < steps; i++) {
+        float h = (float(i) + jitter) * stepH;
+        // Higher up the wind is a little faster.
+        vec2 at = (onLayer * (1.0 + h * CLOUD_DEPTH) + drift * (1.0 + 0.25 * h)) * 2.2 + warp;
+        // Small billows that change with height, so the sides are not smooth walls.
+        float excess = cloudExcess(at, edge, 4) - 0.07 * valueNoise2(at * 5.0 + vec2(h * 3.0, -h * 2.0));
+        float density = cloudDensity(excess, h);
+        if (density <= 0.0) continue;
+
+        // Light reaching this point: dimmed by the cloud still above it, and by cloud lying
+        // towards the sun. Thin edges and tops come out bright, thick middles grey underneath.
+        float overhead = max(cloudAbove(excess, h), 0.0);
+        float sunward = max(cloudAbove(cloudExcess(at + towardsSun * (1.0 - h), edge, 3), h), 0.0);
+        float lit = exp(-1.5 * overhead - 1.8 * sunward);
+        vec3 c = mix(shade, sunlit, 0.3 + 0.7 * lit) * mix(0.9, 1.0, h);
+        // The thin edges light up in front of the sun.
+        c += sunlit * forward * (1.0 - density) * 0.9;
+
+        float alpha = 1.0 - exp(-density * 14.0 * stepLength);
+        color += c * alpha * through;
+        through *= 1.0 - alpha;
+        if (through < 0.03) break;
+    }
+
+    color += sunlit * cirrus * through;
+    float alpha = (1.0 - through * (1.0 - cirrus)) * fade;
+    color *= fade * mix(0.3, 1.0, dim);
+    return vec4(color, alpha);
 }
 
 vec3 overworldLight(vec3 dir, float t, float pixel, float night, vec3 sun, vec3 moon) {

@@ -9,6 +9,7 @@
 //
 // The parameters ride in vanilla's DynamicTransforms block, which every sky draw fills anyway:
 //   ColorModulator.a  - Intensity, 0..1
+//   ColorModulator.x  - the far plane's depth in clip space, for the vertex shader
 //   ModelOffset.x     - the time in seconds, already scaled by Animation Speed
 //   ModelOffset.y     - Overworld: how far into the night it is, 0 by day .. 1 at night
 //   ModelOffset.z     - Overworld: how clear the sky is, 1 .. 0 in heavy rain
@@ -182,8 +183,8 @@ vec3 streak(vec3 dir, float t, float period, float duration, float chance, float
     float h = clamp(dot(dir - tail, along) / max(dot(along, along), 1e-7), 0.0, 1.0);
     float d = length(dir - normalize(tail + along * h));
     float width = max(0.0022, pixel * 1.3);
-    float trail = smoothstep(width, 0.0, d) * h * h;
-    float glow = smoothstep(width * 6.0, 0.0, length(dir - head)) * 0.5;
+    float trail = (1.0 - smoothstep(0.0, width, d)) * h * h;
+    float glow = (1.0 - smoothstep(0.0, width * 6.0, length(dir - head))) * 0.5;
     float fade = smoothstep(0.0, 0.08, progress) * (1.0 - smoothstep(0.7, 1.0, progress));
     return (mix(tailColor, headColor, h) * trail + headColor * glow) * fade;
 }
@@ -197,6 +198,8 @@ vec3 streak(vec3 dir, float t, float period, float duration, float chance, float
 // upwards by `rise` cells a second. About a fifth of the cells hold a spark near their middle, so
 // only the pixel's own cell needs looking at.
 float embers(vec3 dir, float t, float around, float rise, float pixel, float seed) {
+    // Born near the horizon, burnt out on the way up: nothing outside that band.
+    if (dir.y <= -0.04 || dir.y >= 0.8) return 0.0;
     float px = pixel * around / TAU;
     float visible = 1.0 - smoothstep(0.08, 0.2, px);
     if (visible <= 0.0) return 0.0;
@@ -214,10 +217,9 @@ float embers(vec3 dir, float t, float around, float rise, float pixel, float see
     d.y *= 0.45;
     float size = 0.05 + 0.05 * hash12(cell + seed + 9.1);
     float radius = max(size, px * 1.2);
-    float spark = smoothstep(radius, 0.0, length(d)) * (size * size) / (radius * radius);
+    float spark = (1.0 - smoothstep(0.0, radius, length(d))) * (size * size) / (radius * radius);
     float flicker = 0.55 + 0.45 * sin(t * (5.0 + 9.0 * h) + h * 120.0);
     float brightness = 0.35 + 0.65 * hash12(cell + seed + 5.3);
-    // Born near the horizon, burnt out on the way up.
     float life = smoothstep(-0.04, 0.04, dir.y) * (1.0 - smoothstep(0.35, 0.8, dir.y));
     return spark * flicker * brightness * life * visible;
 }
@@ -246,42 +248,46 @@ vec3 netherSky(vec3 dir, float t, float pixel, vec3 fog) {
     vec3 whiteHot = mix(vec3(1.0, 0.85, 0.5), vec3(0.8, 1.0, 1.0), soul);
 
     float up = max(dir.y, 0.0);
-
-    // The clouds lie on a plane overhead, wound into a vortex that turns slowly about the zenith...
-    vec2 p = dir.xz / (up + 0.1);
-    float twist = t * 0.035 + 0.8 * log(length(p) + 0.3);
-    p = mat2(cos(twist), sin(twist), -sin(twist), cos(twist)) * p;
-    // ... and boil: their field is pushed around by a second, slower one.
-    vec2 warp = fbm22(p * 0.55 + vec2(t * 0.045, -t * 0.03), 3);
-    float f = fbm2(p * 0.9 + warp * 2.4 + vec2(-t * 0.07, t * 0.045), 5);
-    // How fast the field changes from pixel to pixel; taken before any branch.
-    float df = fwidth(f);
-
     // Behind the clouds the sky glows in the fog's color low down and darkens overhead, so the
     // horizon still meets the land in the color the distant land fades into.
     vec3 base = mix(fog, hue * 0.12 + fog * 0.22, smoothstep(0.0, 0.7, up));
-    // Lit from below: the lower the clouds, the more of the fires' light reaches them.
-    float glow = exp(-up * 2.5);
 
-    // Thick smoke darkens the sky. Where the clouds are hot they glow, and the hottest burn
-    // through white; which parts of the storm burn wanders in large patches. Thin glowing seams
-    // run along the clouds' edges there, never thinner than the pixels allow.
-    float body = smoothstep(0.3, 0.75, f);
-    float fire = smoothstep(0.3, 0.7, valueNoise2(p * 0.22 + vec2(t * 0.02, -t * 0.015) + 3.0));
-    // Flame tongues: fine, fast detail licking along the hot clouds.
-    float tongues = valueNoise2(p * 4.0 + warp * 3.0 + vec2(0.0, -t * 0.4)) - 0.5;
-    float heat = smoothstep(0.48, 0.86, f + 0.25 * (warp.y - 0.5) + 0.12 * tongues) * (0.35 + 0.65 * fire);
-    float width = 0.02 + df;
-    // Squared by hand: pow() is undefined for a negative base, and Apple's GPUs return NaN there.
-    float seamD = (f - 0.5) / width;
-    float seam = exp(-seamD * seamD) * 0.02 / width * fire;
-    vec3 storm = base * mix(1.0, 0.25, body);
-    storm = mix(storm, flame * (0.55 + 0.45 * glow), clamp(heat * 1.15 + seam * 0.35, 0.0, 1.0));
-    storm += whiteHot * pow(heat, 4.0) * 0.7;
-    storm += whiteHot * stormFlash(dir, t) * (0.25 + 0.75 * body);
+    // The storm thins out towards the horizon, into the haze the distant land fades into, and is
+    // gone below 0.02: only worked out above. The derivative below is then taken in a branch, but
+    // only quads well below the storm's edge take the other way, where it has no effect.
+    vec3 col = base;
+    if (dir.y > 0.01) {
+        // The clouds lie on a plane overhead, wound into a vortex that turns slowly about the zenith...
+        vec2 p = dir.xz / (up + 0.1);
+        float twist = t * 0.035 + 0.8 * log(length(p) + 0.3);
+        p = mat2(cos(twist), sin(twist), -sin(twist), cos(twist)) * p;
+        // ... and boil: their field is pushed around by a second, slower one.
+        vec2 warp = fbm22(p * 0.55 + vec2(t * 0.045, -t * 0.03), 3);
+        float f = fbm2(p * 0.9 + warp * 2.4 + vec2(-t * 0.07, t * 0.045), 5);
+        // How fast the field changes from pixel to pixel.
+        float df = fwidth(f);
 
-    // The storm thins out towards the horizon, into the haze the distant land fades into.
-    vec3 col = mix(base, storm, smoothstep(0.02, 0.3, dir.y));
+        // Lit from below: the lower the clouds, the more of the fires' light reaches them.
+        float glow = exp(-up * 2.5);
+
+        // Thick smoke darkens the sky. Where the clouds are hot they glow, and the hottest burn
+        // through white; which parts of the storm burn wanders in large patches. Thin glowing
+        // seams run along the clouds' edges there, never thinner than the pixels allow.
+        float body = smoothstep(0.3, 0.75, f);
+        float fire = smoothstep(0.3, 0.7, valueNoise2(p * 0.22 + vec2(t * 0.02, -t * 0.015) + 3.0));
+        // Flame tongues: fine, fast detail licking along the hot clouds.
+        float tongues = valueNoise2(p * 4.0 + warp * 3.0 + vec2(0.0, -t * 0.4)) - 0.5;
+        float heat = smoothstep(0.48, 0.86, f + 0.25 * (warp.y - 0.5) + 0.12 * tongues) * (0.35 + 0.65 * fire);
+        float width = 0.02 + df;
+        // Squared by hand: pow() is undefined for a negative base, and Apple's GPUs return NaN there.
+        float seamD = (f - 0.5) / width;
+        float seam = exp(-seamD * seamD) * 0.02 / width * fire;
+        vec3 storm = base * mix(1.0, 0.25, body);
+        storm = mix(storm, flame * (0.55 + 0.45 * glow), clamp(heat * 1.15 + seam * 0.35, 0.0, 1.0));
+        storm += whiteHot * pow(heat, 4.0) * 0.7;
+        storm += whiteHot * stormFlash(dir, t) * (0.25 + 0.75 * body);
+        col = mix(base, storm, smoothstep(0.02, 0.3, dir.y));
+    }
 
     float sparks = embers(dir, t, 96.0, 0.7, pixel, 0.0) + 0.7 * embers(dir, t, 160.0, 1.1, pixel, 7.0);
     col += (flame + whiteHot * 0.3) * sparks;
@@ -302,7 +308,7 @@ vec3 netherSky(vec3 dir, float t, float pixel, vec3 fog) {
 vec3 aurora(vec3 dir, float t) {
     // North is -Z in Minecraft: 0 there, +-pi in the south, where the curtains have faded out.
     float azimuth = atan(dir.x, -dir.z);
-    float spread = smoothstep(2.4, 1.0, abs(azimuth));
+    float spread = 1.0 - smoothstep(1.0, 2.4, abs(azimuth));
     if (spread <= 0.0) return vec3(0.0);
     float elevation = asin(clamp(dir.y, -1.0, 1.0));
     vec3 light = vec3(0.0);
@@ -352,9 +358,13 @@ vec3 moonHalo(vec3 dir, vec3 moon) {
 vec3 sunGlow(vec3 dir, vec3 sun, float t) {
     float c = dot(dir, sun);
     if (c <= 0.0) return vec3(0.0);
-    vec3 side = normalize(abs(sun.y) < 0.99 ? cross(vec3(0.0, 1.0, 0.0), sun) : vec3(1.0, 0.0, 0.0));
+    // The sun moves in the XY plane, so Z is never parallel to it: a frame that turns smoothly
+    // with it all day, without a jump at noon.
+    vec3 side = normalize(cross(vec3(0.0, 0.0, 1.0), sun));
     vec3 lift = cross(sun, side);
-    float around = atan(dot(dir, lift), dot(dir, side)) / TAU + 0.5;
+    // atan(0, 0) is undefined; the very middle of the sun gets a fixed angle.
+    vec2 across = vec2(dot(dir, side), dot(dir, lift));
+    float around = dot(across, across) > 1e-12 ? atan(across.y, across.x) / TAU + 0.5 : 0.0;
     float rays = valueNoise1(around * 24.0 + t * 0.05, 24.0) * valueNoise1(around * 9.0 - t * 0.03 + 3.0, 9.0);
     float halo = pow(c, 400.0) * 0.4 + pow(c, 40.0) * 0.14 + pow(c, 6.0) * 0.05;
     float beams = rays * pow(c, 18.0) * 0.3;
@@ -381,6 +391,22 @@ float cloudExcess(vec2 at, float edge, int octaves) {
     return fbm2(at, octaves) - edge;
 }
 
+// fbm2(at, 4), or -1 as soon as the octaves still to come can no longer lift it above `needed`:
+// most of a ray's samples lie in open sky, and those are known after an octave or two. Each
+// octave adds at most its amplitude, so what is left after octave n is at most 0.5^n... summed.
+float cloudField(vec2 at, float needed) {
+    float value = 0.5 * valueNoise2(at);
+    if (value + 0.4375 <= needed) return -1.0;
+    at = TURN2 * at * 2.03 + 17.17;
+    value += 0.25 * valueNoise2(at);
+    if (value + 0.1875 <= needed) return -1.0;
+    at = TURN2 * at * 2.03 + 17.17;
+    value += 0.125 * valueNoise2(at);
+    if (value + 0.0625 <= needed) return -1.0;
+    at = TURN2 * at * 2.03 + 17.17;
+    return value + 0.0625 * valueNoise2(at);
+}
+
 // How dense the cloud is at a height h through the layer (0 bottom, 1 top), given the excess
 // there: the more excess, the higher the cloud reaches, rising like a dome from the edges.
 float cloudDensity(float excess, float h) {
@@ -402,6 +428,8 @@ vec4 clouds(vec3 dir, vec3 sun, float t, float night, float clear) {
     // The 0.08 keeps the far side of the layer from running off to infinity at the horizon.
     vec2 onLayer = dir.xz / (dir.y + 0.08);
     vec2 drift = vec2(0.010, 0.0035) * t;
+    // Their tops lean a little downwind of their bottoms.
+    const vec2 LEAN = vec2(0.3, 0.105);
     float cover = mix(0.95, 0.5, clear);
     float edge = 0.72 - 0.4 * cover;
 
@@ -417,11 +445,6 @@ vec4 clouds(vec3 dir, vec3 sun, float t, float night, float clear) {
     sunlit = mix(vec3(0.66, 0.68, 0.72), sunlit, clear);
     shade = mix(vec3(0.36, 0.38, 0.43), shade, clear);
     float fade = horizon * dim;
-
-    // Cirrus: fine streaks combed out along the wind, higher and faster, behind the cumulus.
-    vec2 r = TURN2 * (onLayer * 0.8 + drift * 1.8);
-    float wisps = fbm2(vec2(r.x * 1.2, r.y * 4.0) + 3.1, 4);
-    float cirrus = smoothstep(0.55, 0.8, wisps) * 0.3 * clear;
 
     float forward = pow(max(dot(dir, sun), 0.0), 8.0) * clear;
 
@@ -442,16 +465,21 @@ vec4 clouds(vec3 dir, vec3 sun, float t, float night, float clear) {
     for (int i = 0; i < steps; i++) {
         float h = (float(i) + jitter) * stepH;
         // Higher up the wind is a little faster.
-        vec2 at = (onLayer * (1.0 + h * CLOUD_DEPTH) + drift * (1.0 + 0.25 * h)) * 2.2 + warp;
+        vec2 at = (onLayer * (1.0 + h * CLOUD_DEPTH) + drift + LEAN * h) * 2.2 + warp;
+        // Below this the field holds no cloud at this height (see cloudDensity); the billows
+        // only take away, so they need not be looked at there either.
+        float needed = edge + 0.26 * h * h + 0.05 * (1.0 - smoothstep(0.0, 0.12, h));
+        float field = cloudField(at, needed);
+        if (field <= needed) continue;
         // Small billows that change with height, so the sides are not smooth walls.
-        float excess = cloudExcess(at, edge, 4) - 0.07 * valueNoise2(at * 5.0 + vec2(h * 3.0, -h * 2.0));
+        float excess = field - edge - 0.07 * valueNoise2(at * 5.0 + vec2(h * 3.0, -h * 2.0));
         float density = cloudDensity(excess, h);
         if (density <= 0.0) continue;
 
         // Light reaching this point: dimmed by the cloud still above it, and by cloud lying
         // towards the sun. Thin edges and tops come out bright, thick middles grey underneath.
         float overhead = max(cloudAbove(excess, h), 0.0);
-        float sunward = max(cloudAbove(cloudExcess(at + towardsSun * (1.0 - h), edge, 3), h), 0.0);
+        float sunward = max(cloudAbove(cloudExcess(at + towardsSun * (1.0 - h), edge, 2), h), 0.0);
         float lit = exp(-1.5 * overhead - 1.8 * sunward);
         vec3 c = mix(shade, sunlit, 0.3 + 0.7 * lit) * mix(0.9, 1.0, h);
         // The thin edges light up in front of the sun.
@@ -463,6 +491,14 @@ vec4 clouds(vec3 dir, vec3 sun, float t, float night, float clear) {
         if (through < 0.03) break;
     }
 
+    // Cirrus: fine streaks combed out along the wind, higher and faster, seen only through the
+    // gaps of the cumulus.
+    float cirrus = 0.0;
+    if (through > 0.03 && clear > 0.0) {
+        vec2 r = TURN2 * (onLayer * 0.8 + drift * 1.8);
+        float wisps = fbm2(vec2(r.x * 1.2, r.y * 4.0) + 3.1, 4);
+        cirrus = smoothstep(0.55, 0.8, wisps) * 0.3 * clear;
+    }
     color += sunlit * cirrus * through;
     float alpha = (1.0 - through * (1.0 - cirrus)) * fade;
     color *= fade * mix(0.3, 1.0, dim);
@@ -498,11 +534,13 @@ vec4 overworldSky(vec3 dir, float t, float pixel) {
     if (open <= 0.0) return vec4(0.0);
     float visible = open * clear;
 
+    // The clouds are laid over the lights, hiding some of the sun's glow as they pass it; where
+    // they hide all of it, the lights need not be worked out.
+    vec4 cloud = cloudsOn ? clouds(dir, sun, t, night, clear) * open : vec4(0.0);
     vec3 light = vec3(0.0);
-    if (lightsOn && visible > 0.0) light = overworldLight(dir, t, pixel, night, sun, moon) * visible;
-    if (!cloudsOn) return vec4(light, 0.0);
-    // The clouds are laid over the lights, hiding some of the sun's glow as they pass it.
-    vec4 cloud = clouds(dir, sun, t, night, clear) * open;
+    if (lightsOn && visible > 0.0 && cloud.a < 0.995) {
+        light = overworldLight(dir, t, pixel, night, sun, moon) * visible;
+    }
     return vec4(cloud.rgb + light * (1.0 - cloud.a), cloud.a);
 }
 
@@ -529,8 +567,8 @@ float stars(vec3 dir, float scale, float pixel, float t, float seed) {
     float size = 0.08 + 0.08 * hash13(cell + 1.9);
     float radius = max(size, px * 1.2);
     float d = length(q - center);
-    float core = smoothstep(radius, 0.0, d) * (size * size) / (radius * radius);
-    float halo = h > 0.94 ? smoothstep(0.28, 0.0, d) * 0.15 : 0.0;
+    float core = (1.0 - smoothstep(0.0, radius, d)) * (size * size) / (radius * radius);
+    float halo = h > 0.94 ? (1.0 - smoothstep(0.0, 0.28, d)) * 0.15 : 0.0;
     float twinkle = 0.6 + 0.4 * sin(t * (0.6 + 2.2 * hash13(cell + 3.3)) + TAU * h);
     return (core + halo) * twinkle * visible;
 }
@@ -546,7 +584,6 @@ vec3 endSky(vec3 dir, float t, float pixel, float strength) {
     float gas = fbm3(g + warp * 1.6 + vec3(t * 0.005, 0.0, -t * 0.004), 5);
     // How fast the gas changes from pixel to pixel; taken before any branch.
     float dgas = fwidth(gas);
-    float detail = valueNoise3(g * 7.0 + warp * 3.0);
 
     vec3 deep = vec3(0.012, 0.005, 0.024);
     vec3 blue = vec3(0.1, 0.16, 0.5);
@@ -555,6 +592,8 @@ vec3 endSky(vec3 dir, float t, float pixel, float strength) {
     vec3 cyan = vec3(0.2, 0.8, 0.95);
 
     float density = smoothstep(0.3, 0.72, gas);
+    // Fine detail, which only shows where there is gas.
+    float detail = density > 0.0 ? valueNoise3(g * 7.0 + warp * 3.0) : 0.0;
     vec3 nebula = mix(blue, violet, smoothstep(0.35, 0.6, gas));
     nebula = mix(nebula, magenta, smoothstep(0.55, 0.85, gas + 0.12 * (detail - 0.5)));
     nebula = mix(nebula, cyan, smoothstep(0.5, 0.72, warp) * 0.6 * density);

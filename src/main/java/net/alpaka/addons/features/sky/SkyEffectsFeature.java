@@ -55,19 +55,26 @@ import java.util.OptionalDouble;
  *
  * Where each goes in vanilla's frame:
  * - Nether: where a dimension has no skybox, vanilla adds no sky pass and the frame keeps the fog
- *   color it was cleared with. {@link #beforeSkyPass} adds a pass there, before the world is drawn
- *   over it. The storm is built from the fog's color, so it matches each biome.
- * - Overworld: inside vanilla's sky pass, right after the sun, moon and stars, as light added over
- *   them ({@link #renderOverworld}).
- * - End: inside vanilla's sky pass, in place of the textured sky ({@link #renderEnd}); the End's
- *   flashes are still drawn over it. SkyBlock's End island gets it too, though Hypixel sends that
- *   island as an Overworld-like dimension: there the sky is switched to the End's before vanilla
- *   draws it, without the Overworld's clouds, and the air fogs into the End's color
- *   ({@link #endSkyOnEndIsland}).
+ *   color it was cleared with; the storm goes over that ({@link #beforeSkyPass}). It is built from
+ *   the fog's color, so it matches each biome.
+ * - Overworld: over vanilla's sky, sun, moon and stars ({@link #renderOverworld}), its lights
+ *   added and its clouds laid over them. Vanilla's own clouds are left out while it draws its own.
+ * - End: in place of the textured sky ({@link #renderEnd}). SkyBlock's End island gets it too,
+ *   though Hypixel sends that island as an Overworld-like dimension: there the sky is switched to
+ *   the End's before vanilla draws it, without the Overworld's clouds, and the air fogs into the
+ *   End's color ({@link #endSkyOnEndIsland}).
+ *
+ * When: the shader is the costly part, and vanilla draws its sky before the world, on every pixel,
+ * even those the world then covers. So each sky is only asked for where vanilla would draw it,
+ * and drawn later, right after the opaque world ({@link #afterOpaqueWorld}), on the far plane
+ * behind a depth test: only where the sky still shows. The End's flashes, drawn over its sky, keep
+ * it in place while they light up. Should another mod render the world without passing that point,
+ * a sky asked for is never drawn; from the next frame on they are drawn in place again.
  *
  * Where vanilla shows no sky - under lava, in powder snow, blinded, or in the fog a boss bar like
- * the Ender Dragon's brings - none of them show either: the Overworld's and the End's ride inside
- * vanilla's sky pass, and the Nether's is added from where that pass is, making the same checks.
+ * the Ender Dragon's brings - none of them show either: the Overworld's and the End's are asked
+ * for from inside vanilla's sky pass, and the Nether's from where that pass is added, making the
+ * same checks.
  */
 public final class SkyEffectsFeature {
     /** Half the edge of the box the skies are drawn on, the size of vanilla's End sky box. */
@@ -85,6 +92,15 @@ public final class SkyEffectsFeature {
     private static RenderPipeline overworld;
     private static RenderPipeline end;
     private static GpuBuffer box;
+
+    /** A sky asked for and not yet drawn: its shader, its parameters and the view it was seen in. */
+    private record Pending(RenderPipeline pipeline, float night, float clear, Matrix4f directions, Matrix4f view) {}
+
+    private static Pending pending;
+    /** Whether skies wait for the opaque world; false once one was never drawn there. */
+    private static boolean afterWorld = true;
+    /** Whether the End's flashes light up this frame, which are drawn over its sky in vanilla's pass. */
+    private static boolean endFlashing;
 
     private SkyEffectsFeature() {}
 
@@ -118,6 +134,13 @@ public final class SkyEffectsFeature {
     public static void beforeSkyPass(FrameGraphBuilder frame, LevelTargetBundle targets, LevelRenderState level,
                                      CameraRenderState camera, GpuBufferSlice fog) {
         SkyRenderState sky = level.skyRenderState;
+        endFlashing = sky.endFlashIntensity > 1.0e-5f;
+        if (sky.skybox == DimensionType.Skybox.OVERWORLD && shows(AlpakaConfig.instance.skyEffectsClouds)
+                && !endSkyOnEndIsland(Minecraft.getInstance().level)) {
+            // Two layers of clouds, vanilla's blocks under the sky's own, look wrong; vanilla's
+            // clouds are left out the way it leaves out those of a dimension without any.
+            level.cloudColor = 0;
+        }
         if (sky.skybox == DimensionType.Skybox.OVERWORLD && endSkyOnEndIsland(Minecraft.getInstance().level)) {
             // From here on vanilla draws the End's sky, so no sun, moon or stars. A clear cloud
             // color is how vanilla itself leaves out the clouds of a dimension without any, and an
@@ -138,12 +161,14 @@ public final class SkyEffectsFeature {
         // Where vanilla would show no sky either.
         if (camera.fogType == FogType.LAVA || camera.fogType == FogType.POWDER_SNOW
                 || camera.entityRenderState.doesMobEffectBlockSky) return;
+        // The main pass sets this same fog before it draws the world.
+        if (afterWorld && request(nether(), 0.0f, 1.0f, new Matrix4f())) return;
         FramePass pass = frame.addPass("alpaka_sky");
         targets.main = pass.readsAndWrites(targets.main);
         ResourceHandle<RenderTarget> main = targets.main;
         pass.executes(() -> {
             RenderSystem.setShaderFog(fog);
-            draw(nether(), main.get(), 0.0f, 1.0f, new Matrix4f());
+            draw(nether(), main.get(), 0.0f, 1.0f, new Matrix4f(), RenderSystem.getModelViewMatrixCopy());
         });
     }
 
@@ -155,7 +180,8 @@ public final class SkyEffectsFeature {
                                        float rainBrightness) {
         boolean lights = shows(AlpakaConfig.instance.skyEffectsOverworld);
         boolean clouds = shows(AlpakaConfig.instance.skyEffectsClouds);
-        if (!lights && !clouds) return;
+        // In heavy rain the lights are hidden entirely.
+        if (!clouds && (!lights || rainBrightness <= 0.0f)) return;
         Vector3f sun = towards(sunAngle);
         Vector3f moon = towards(moonAngle);
         // Night by the sun's height rather than the stars' brightness, which a server's own
@@ -167,14 +193,53 @@ public final class SkyEffectsFeature {
                 moon.x, moon.y, moon.z, 0.0f,
                 starAngle, 0.0f, 0.0f, 0.0f,
                 lights ? 1.0f : 0.0f, clouds ? 1.0f : 0.0f, 0.0f, 0.0f);
-        draw(overworld(), target, night, Mth.clamp(rainBrightness, 0.0f, 1.0f), directions);
+        drawOrRequest(overworld(), target, night, Mth.clamp(rainBrightness, 0.0f, 1.0f), directions);
     }
 
     /** Draws the End's sky in place of vanilla's. False when that sky is off and vanilla's is to be drawn. */
     public static boolean renderEnd(RenderTarget target) {
         if (!shows(AlpakaConfig.instance.skyEffectsEnd)) return false;
-        draw(end(), target, 0.0f, 1.0f, new Matrix4f());
+        // The flashes are drawn over the sky in this pass; a sky drawn later would hide them.
+        if (endFlashing) {
+            draw(end(), target, 0.0f, 1.0f, new Matrix4f(), RenderSystem.getModelViewMatrixCopy());
+        } else {
+            drawOrRequest(end(), target, 0.0f, 1.0f, new Matrix4f());
+        }
         return true;
+    }
+
+    /** Asks for a sky to be drawn after the opaque world, or draws it now where that does not work. */
+    private static void drawOrRequest(RenderPipeline pipeline, RenderTarget target, float night, float clear,
+                                      Matrix4f directions) {
+        if (!afterWorld || !request(pipeline, night, clear, directions)) {
+            draw(pipeline, target, night, clear, directions, RenderSystem.getModelViewMatrixCopy());
+        }
+    }
+
+    /**
+     * Asks for a sky to be drawn after the opaque world. False when skies are drawn in place: the
+     * one asked for last frame was never drawn, so nothing calls {@link #afterOpaqueWorld}.
+     */
+    private static boolean request(RenderPipeline pipeline, float night, float clear, Matrix4f directions) {
+        if (pending != null) {
+            afterWorld = false;
+            pending = null;
+            return false;
+        }
+        pending = new Pending(pipeline, night, clear, directions, RenderSystem.getModelViewMatrixCopy());
+        return true;
+    }
+
+    /**
+     * Right after the opaque world: draws the sky asked for this frame, where nothing covers it.
+     * The main pass has its fog and projection set by then.
+     */
+    public static void afterOpaqueWorld() {
+        Pending sky = pending;
+        if (sky == null) return;
+        pending = null;
+        draw(sky.pipeline(), Minecraft.getInstance().gameRenderer.mainRenderTarget(), sky.night(), sky.clear(),
+                sky.directions(), sky.view());
     }
 
     /**
@@ -185,12 +250,15 @@ public final class SkyEffectsFeature {
         return new Vector3f(0.0f, 1.0f, 0.0f).rotateX(angle).rotateY(-Mth.HALF_PI);
     }
 
-    private static void draw(RenderPipeline pipeline, RenderTarget target, float night, float clear, Matrix4f directions) {
+    private static void draw(RenderPipeline pipeline, RenderTarget target, float night, float clear, Matrix4f directions,
+                             Matrix4f view) {
         float time = CLOCK.advance(System.nanoTime(), Mth.clamp(AlpakaConfig.instance.skyEffectsSpeed, 0.25f, 3.0f));
         float intensity = Mth.clamp(AlpakaConfig.instance.skyEffectsIntensity, 0.1f, 1.0f);
+        // The far plane in clip space, where the vertex shader puts the box (see the shader).
+        float far = RenderSystem.getDevice().getDeviceInfo().isZZeroToOne() ? 0.0f : -1.0f;
         GpuBufferSlice transforms = RenderSystem.getDynamicUniforms().writeTransform(
-                RenderSystem.getModelViewMatrixCopy(),
-                new Vector4f(1.0f, 1.0f, 1.0f, intensity),
+                view,
+                new Vector4f(far, 1.0f, 1.0f, intensity),
                 new Vector3f(time, night, clear),
                 directions);
         // Both buffers before the pass opens, as vanilla's sky does.
@@ -258,10 +326,11 @@ public final class SkyEffectsFeature {
     /**
      * One shader, built once for each sky with that sky's define, with the uniforms vanilla's own
      * sky gets. Seen from inside the box. Unlike vanilla's sky it is depth tested: the box lies on
-     * the far plane, so it shows only where the depth buffer is still clear. In vanilla's order
-     * that is everywhere, as the sky comes before the world; but where a mod changes that order
-     * (the maintainer's OneClient setup showed the aurora over distant blocks), the sky would
-     * otherwise paint over the world.
+     * the far plane, so it shows only where the depth buffer is still clear. Drawn after the
+     * opaque world, the GPU skips every pixel the world covers before the shader runs; drawn in
+     * vanilla's sky pass it passes everywhere, but where a mod draws the world first (the
+     * maintainer's OneClient setup showed the aurora over distant blocks) it still never paints
+     * over it.
      */
     private static RenderPipeline register(String name, String define, BlendFunction blend) {
         RenderPipeline.Builder builder = RenderPipeline.builder()

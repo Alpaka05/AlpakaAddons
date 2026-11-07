@@ -28,6 +28,7 @@
     "LevelRendererMixin",
     "LightmapMixin",
     "LightningBoltMixin",
+    "MultiPlayerGameModeFarmingMixin",
     "LivingEntityMixin",
     "LivingEntityRenderStateMixin",
     "LivingEntityRendererMixin",

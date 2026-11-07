@@ -126,6 +126,9 @@ public final class SkyEffectsFeature {
     private static int misses;
     /** Whether skies wait for the opaque world; false once too many were never drawn there. */
     private static boolean afterWorld = true;
+    /** When skies last went back to being drawn in place, and how long until they try late again. */
+    private static long gaveUpAt;
+    private static final long RETRY_NANOS = 10_000_000_000L;
     /** Whether the End's flashes light up this frame, which are drawn over its sky in vanilla's pass. */
     private static boolean endFlashing;
 
@@ -210,11 +213,12 @@ public final class SkyEffectsFeature {
                                        float rainBrightness) {
         boolean lights = shows(AlpakaConfig.instance.skyEffectsOverworld);
         boolean clouds = shows(AlpakaConfig.instance.skyEffectsClouds);
-        // In heavy rain the lights are hidden entirely.
-        if (!clouds && (!lights || rainBrightness <= 0.0f)) return;
+        if (!clouds) releaseClouds();
         Vector3f sun = towards(sunAngle);
         Vector3f moon = towards(moonAngle);
         float night = nightAt(sun);
+        // Nothing to draw: the clouds are gone at full night, the lights in heavy rain.
+        if ((!clouds || night >= 1.0f) && (!lights || rainBrightness <= 0.0f)) return;
         Matrix4f directions = new Matrix4f(
                 sun.x, sun.y, sun.z, 0.0f,
                 moon.x, moon.y, moon.z, 0.0f,
@@ -238,6 +242,11 @@ public final class SkyEffectsFeature {
     /** Asks for a sky to be drawn after the opaque world, or draws it now where that does not work. */
     private static void drawOrRequest(RenderPipeline pipeline, RenderTarget target, float night, float clear,
                                       Matrix4f directions) {
+        if (!afterWorld && System.nanoTime() - gaveUpAt > RETRY_NANOS) {
+            // Whatever kept the skies from being drawn late may have been passing: try again.
+            afterWorld = true;
+            misses = 0;
+        }
         if (!afterWorld || !request(pipeline, night, clear, directions)) {
             draw(pipeline, target, night, clear, directions, RenderSystem.getModelViewMatrixCopy());
         }
@@ -268,7 +277,10 @@ public final class SkyEffectsFeature {
             return;
         }
         pending = null;
-        if (++misses >= MISSES_ALLOWED) afterWorld = false;
+        if (++misses >= MISSES_ALLOWED) {
+            afterWorld = false;
+            gaveUpAt = System.nanoTime();
+        }
     }
 
     /**
@@ -321,7 +333,9 @@ public final class SkyEffectsFeature {
         DynamicTexture grid = noise();
         if (clouds) {
             TextureTarget layer = cloudTarget(target);
-            drawBox(overworldClouds(), "Alpaka sky clouds", layer.getColorTextureView(), null, transforms, grid, null);
+            // The frame's depth tells the clouds where the world covers them (see the shader).
+            drawBox(overworldClouds(), "Alpaka sky clouds", layer.getColorTextureView(), null, transforms, grid,
+                    target.getDepthTextureView());
             drawBox(pipeline, "Alpaka sky", target.getColorTextureView(), target.getDepthTextureView(), transforms, grid,
                     layer.getColorTextureView());
         } else {
@@ -332,22 +346,30 @@ public final class SkyEffectsFeature {
         }
     }
 
-    /** Draws the box with a sky's shader into a color target, depth tested where a depth target is given. */
+    /**
+     * Draws the box with a sky's shader into a color target: depth tested where a depth target is
+     * given, otherwise cleared first (the clouds' texture: clearing spares a tiled GPU reading the
+     * old contents back). {@code second} is the shader's Sampler1, if it has one: the clouds for
+     * the Overworld's pass, the frame's depth for the clouds' own.
+     */
     private static void drawBox(RenderPipeline pipeline, String label, GpuTextureView color, GpuTextureView depth,
-                                GpuBufferSlice transforms, DynamicTexture grid, GpuTextureView clouds) {
+                                GpuBufferSlice transforms, DynamicTexture grid, GpuTextureView second) {
         // Both buffers before the pass opens, as vanilla's sky does.
         GpuBuffer vertices = box();
         RenderSystem.AutoStorageIndexBuffer indices = RenderSystem.getSequentialBuffer(PrimitiveTopology.QUADS);
         GpuBuffer indexBuffer = indices.getBuffer(36);
         try (RenderPass pass = depth == null
-                ? RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> label, color, Optional.empty())
+                ? RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> label, color,
+                        Optional.of(new Vector4f(0.0f)))
                 : RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> label, color, Optional.empty(),
                         depth, OptionalDouble.empty())) {
             pass.setPipeline(pipeline);
             RenderSystem.bindDefaultUniforms(pass);
             pass.bindTexture("Sampler0", grid.getTextureView(), RenderSystem.getSamplerCache().getRepeat(FilterMode.LINEAR));
-            if (clouds != null) {
-                pass.bindTexture("Sampler1", clouds, RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR));
+            if (second != null) {
+                // The depth is read texel by texel; the clouds are blended.
+                FilterMode filter = pipeline == overworldClouds ? FilterMode.NEAREST : FilterMode.LINEAR;
+                pass.bindTexture("Sampler1", second, RenderSystem.getSamplerCache().getClampToEdge(filter));
             }
             pass.setUniform("DynamicTransforms", transforms);
             pass.setVertexBuffer(0, vertices.slice());
@@ -356,10 +378,15 @@ public final class SkyEffectsFeature {
         }
     }
 
-    /**
-     * The clouds' texture, half the frame's size each way, rounded up. The box covers every pixel
-     * of it, so it needs no clearing.
-     */
+    /** Lets the clouds' texture go while the clouds are off; it is made again when they come back. */
+    private static void releaseClouds() {
+        if (cloudTarget != null) {
+            cloudTarget.destroyBuffers();
+            cloudTarget = null;
+        }
+    }
+
+    /** The clouds' texture, half the frame's size each way, rounded up. */
     private static TextureTarget cloudTarget(RenderTarget frame) {
         int width = Math.max(1, (frame.width + 1) / 2);
         int height = Math.max(1, (frame.height + 1) / 2);
@@ -446,10 +473,13 @@ public final class SkyEffectsFeature {
         return overworld;
     }
 
-    /** The Overworld's clouds alone, written into their half-resolution texture as they are. */
+    /**
+     * The Overworld's clouds alone, written into their half-resolution texture as they are. It
+     * reads the frame's depth (Sampler1) to skip what the world covers.
+     */
     private static RenderPipeline overworldClouds() {
         if (overworldClouds == null) {
-            overworldClouds = register("sky_overworld_clouds", null, BindGroupLayouts.SAMPLER0, false,
+            overworldClouds = register("sky_overworld_clouds", null, BindGroupLayouts.SAMPLER0_SAMPLER1, false,
                     "SKY_OVERWORLD", "SKY_CLOUDS");
         }
         return overworldClouds;

@@ -9,7 +9,8 @@
 //
 // The Overworld's clouds, the costly part, are worked out at half the resolution in each
 // direction (SKY_CLOUDS, into a texture of their own) and laid over the sky from there
-// (Sampler1): they are soft enough that this does not show, and cost a quarter.
+// (Sampler1): they are soft enough that this does not show, and cost a quarter. That pass skips
+// the texels the world covers, from the frame's depth (its Sampler1).
 //
 // The parameters ride in vanilla's DynamicTransforms block, which every sky draw fills anyway:
 //   ColorModulator.a  - Intensity, 0..1
@@ -46,8 +47,11 @@ layout(std140) uniform Fog {
 // grids, g the r grid moved by (37, 17), so two slices of a 3D grid come in one lookup.
 uniform sampler2D Sampler0;
 
-#if defined(SKY_OVERWORLD) && !defined(SKY_CLOUDS)
-// The clouds, worked out at half resolution, premultiplied.
+#if defined(SKY_CLOUDS)
+// The frame's depth so far: 0 where nothing has been drawn (the depth buffer is reversed).
+uniform sampler2D Sampler1;
+#elif defined(SKY_OVERWORLD)
+// The clouds, worked out at half resolution, premultiplied and with Intensity applied.
 uniform sampler2D Sampler1;
 #endif
 
@@ -551,17 +555,34 @@ float overworldOpen(vec3 dir) {
 
 #ifdef SKY_CLOUDS
 
+// Whether the world covers every pixel that looks this texel up when the clouds are laid over the
+// sky: the 4x4 pixels around its 2x2, as the filter blends each pixel's four nearest texels. Only
+// then is the texel never seen; a texel next to the sky must keep its clouds, or they would thin
+// out along the world's edges. Most texels in open sky stop at the first pixel.
+bool coveredByWorld() {
+    ivec2 last = textureSize(Sampler1, 0) - 1;
+    ivec2 corner = ivec2(gl_FragCoord.xy) * 2 - 1;
+    for (int y = 0; y < 4; y++) {
+        for (int x = 0; x < 4; x++) {
+            ivec2 at = clamp(corner + ivec2(x, y), ivec2(0), last);
+            if (texelFetch(Sampler1, at, 0).r <= 0.0) return false;
+        }
+    }
+    return true;
+}
+
 // The clouds alone, premultiplied, for the half-resolution texture.
 vec4 cloudLayer(vec3 dir, float t) {
     if (dir.y < -0.02) return vec4(0.0);
     float open = overworldOpen(dir);
-    if (open <= 0.0) return vec4(0.0);
+    if (open <= 0.0 || coveredByWorld()) return vec4(0.0);
     return clouds(dir, TextureMat[0].xyz, t, ModelOffset.y, ModelOffset.z) * open;
 }
 
 #else
 
-vec4 overworldSky(vec3 dir, float t, float pixel) {
+// The Overworld's sky over vanilla's, Intensity (strength) applied.
+vec4 overworldSky(vec3 dir, float t, float pixel, float strength) {
     if (dir.y < -0.02) return vec4(0.0);
     float night = ModelOffset.y;
     float clear = ModelOffset.z;
@@ -576,16 +597,17 @@ vec4 overworldSky(vec3 dir, float t, float pixel) {
 
     // The clouds are laid over the lights, hiding some of the sun's glow as they pass it; where
     // they hide all of it, the lights need not be worked out. Their texture holds a quarter of
-    // the pixels; the filter blends the four nearest.
+    // the pixels, with Intensity already in; the filter blends the four nearest.
     vec4 cloud = cloudsOn ? textureLod(Sampler1, gl_FragCoord.xy / ColorModulator.yz, 0.0) : vec4(0.0);
+    float cover = cloud.a / strength;
     vec3 light = vec3(0.0);
     // The march stops at 3% light through, so about 0.97 is as thick as clouds get; the lights
     // fade out before that rather than stop at a line.
-    float behind = 1.0 - smoothstep(0.93, 0.96, cloud.a);
+    float behind = 1.0 - smoothstep(0.93, 0.96, cover);
     if (lightsOn && visible > 0.0 && behind > 0.0) {
         light = overworldLight(dir, t, pixel, night, sun, moon) * visible * behind;
     }
-    return vec4(cloud.rgb + light * (1.0 - cloud.a), cloud.a);
+    return vec4(cloud.rgb + light * strength * (1.0 - cover), cloud.a);
 }
 
 #endif
@@ -677,10 +699,11 @@ void main() {
 #elif defined(SKY_END)
     fragColor = vec4(endSky(dir, t, pixel, strength), 1.0);
 #elif defined(SKY_CLOUDS)
-    // Intensity is applied where they are laid over the sky.
-    fragColor = cloudLayer(dir, t);
+    // Intensity applied before the texture's 8 bits clamp them, as it was when they were worked
+    // out in the same pass as the rest.
+    fragColor = cloudLayer(dir, t) * strength;
 #else
     // Light added over vanilla's sky and clouds laid over it, blended as premultiplied alpha.
-    fragColor = overworldSky(dir, t, pixel) * strength;
+    fragColor = overworldSky(dir, t, pixel, strength);
 #endif
 }

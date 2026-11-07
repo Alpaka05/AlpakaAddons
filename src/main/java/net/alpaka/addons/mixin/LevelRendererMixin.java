@@ -37,12 +37,6 @@ public class LevelRendererMixin {
     @Final
     private LevelRenderState levelRenderState;
 
-    /**
-     * Sky Effects, before vanilla looks at the sky. Vanilla adds no sky pass at all where the
-     * dimension has no skybox, so the frame keeps the fog color it was cleared with; the Nether's
-     * own pass is added here, before the main pass draws the world over it. SkyBlock's End island
-     * is switched to the End's sky here too.
-     */
     /** Sky Effects: a frame of the world begins; skies asked for in it are drawn in it or dropped. */
     @Inject(method = "render", at = @At("HEAD"))
     private void alpaka$skyFrameStart(CallbackInfo ci) {
@@ -54,6 +48,12 @@ public class LevelRendererMixin {
         SkyEffectsFeature.levelFrameEnd();
     }
 
+    /**
+     * Sky Effects, before vanilla looks at the sky. Vanilla adds no sky pass at all where the
+     * dimension has no skybox, so the frame keeps the fog color it was cleared with; the Nether's
+     * own pass is added here, before the main pass draws the world over it. SkyBlock's End island
+     * is switched to the End's sky here too.
+     */
     @Inject(method = "addSkyPass", at = @At("HEAD"))
     private void alpaka$skyEffects(FrameGraphBuilder frame, CameraRenderState camera, GpuBufferSlice fog, CallbackInfo ci) {
         SkyEffectsFeature.beforeSkyPass(frame, targets, levelRenderState, camera, fog);

@@ -1,15 +1,20 @@
 #version 330
 
-// Sky Effects: the animated skies. One shader, built three times with a different define -
-// SKY_NETHER, SKY_OVERWORLD or SKY_END - by SkyEffectsFeature.
+// Sky Effects: the animated skies. One shader, built four times with a different define -
+// SKY_NETHER, SKY_OVERWORLD, SKY_END, and SKY_OVERWORLD with SKY_CLOUDS - by SkyEffectsFeature.
 //
 // It is drawn on a box around the camera, and skyPos is the box's point under the pixel, so its
 // direction is where in the world the pixel looks. Everything below is a function of that
-// direction and of the time: the sky needs no texture and has no seams.
+// direction and of the time, built from a grid of random values (Sampler0), so it has no seams.
+//
+// The Overworld's clouds, the costly part, are worked out at half the resolution in each
+// direction (SKY_CLOUDS, into a texture of their own) and laid over the sky from there
+// (Sampler1): they are soft enough that this does not show, and cost a quarter.
 //
 // The parameters ride in vanilla's DynamicTransforms block, which every sky draw fills anyway:
 //   ColorModulator.a  - Intensity, 0..1
 //   ColorModulator.x  - the far plane's depth in clip space, for the vertex shader
+//   ColorModulator.yz - Overworld: the size of the frame in pixels, to find the clouds' texel
 //   ModelOffset.x     - the time in seconds, already scaled by Animation Speed
 //   ModelOffset.y     - Overworld: how far into the night it is, 0 by day .. 1 at night
 //   ModelOffset.z     - Overworld: how clear the sky is, 1 .. 0 in heavy rain
@@ -40,6 +45,11 @@ layout(std140) uniform Fog {
 // Random values on a 256x256 grid that wraps around, filtered linearly: r and b two independent
 // grids, g the r grid moved by (37, 17), so two slices of a 3D grid come in one lookup.
 uniform sampler2D Sampler0;
+
+#if defined(SKY_OVERWORLD) && !defined(SKY_CLOUDS)
+// The clouds, worked out at half resolution, premultiplied.
+uniform sampler2D Sampler1;
+#endif
 
 in vec3 skyPos;
 
@@ -95,7 +105,9 @@ vec4 noiseGrid(vec2 p) {
     vec2 i = floor(p);
     vec2 f = fract(p);
     vec2 u = f * f * (3.0 - 2.0 * f);
-    return texture(Sampler0, (i + u + 0.5) / 256.0);
+    // The grid has one level, so no level needs choosing; textureLod also keeps lookups in
+    // branches, where most of them are, well defined.
+    return textureLod(Sampler0, (i + u + 0.5) / 256.0, 0.0);
 }
 
 float valueNoise2(vec2 p) {
@@ -113,7 +125,7 @@ float valueNoise3(vec3 p) {
     vec3 i = floor(p);
     vec3 f = fract(p);
     vec3 u = f * f * (3.0 - 2.0 * f);
-    vec2 slices = texture(Sampler0, (i.xy + vec2(37.0, 17.0) * i.z + u.xy + 0.5) / 256.0).rg;
+    vec2 slices = textureLod(Sampler0, (i.xy + vec2(37.0, 17.0) * i.z + u.xy + 0.5) / 256.0, 0.0).rg;
     return mix(slices.x, slices.y, u.z);
 }
 
@@ -260,10 +272,10 @@ vec3 netherSky(vec3 dir, float t, float pixel, vec3 fog) {
 
     // The storm thins out towards the horizon, into the haze the distant land fades into, and is
     // gone below 0.02: only worked out above. The derivative below is then taken in a branch, so
-    // in a quad across 0.01 it is undefined, even NaN; all of such a quad lies below 0.02, where
-    // the storm is not mixed in at all.
+    // in a quad across -0.01 it is undefined, even NaN; all of such a quad lies below 0.02 (a
+    // pixel would have to span 0.03 rad otherwise), where the storm is not mixed in at all.
     vec3 col = base;
-    if (dir.y > 0.01) {
+    if (dir.y > -0.01) {
         // The clouds lie on a plane overhead, wound into a vortex that turns slowly about the zenith...
         vec2 p = dir.xz / (up + 0.1);
         float twist = t * 0.035 + 0.8 * log(length(p) + 0.3);
@@ -393,7 +405,7 @@ vec3 sunGlow(vec3 dir, vec3 sun, float t) {
 // at sunrise and sunset, dimming into the night; in rain they close up into grey overcast.
 // Returned premultiplied: color times cover, and how much of the sky they cover.
 
-const int CLOUD_STEPS_MAX = 24;
+const int CLOUD_STEPS_MAX = 18;
 const float CLOUD_DEPTH = 0.45;
 
 // How much cloud stands over a spot (scaled layer coordinates), minus where clouds begin.
@@ -463,7 +475,7 @@ vec4 clouds(vec3 dir, vec3 sun, float t, float night, float clear) {
             / max(sun.y, 0.25) * 0.35;
 
     // A flat ray crosses much more of the layer per step, so it takes more of them.
-    int steps = int(mix(float(CLOUD_STEPS_MAX), 14.0, smoothstep(0.1, 0.6, dir.y)));
+    int steps = int(mix(float(CLOUD_STEPS_MAX), 12.0, smoothstep(0.1, 0.6, dir.y)));
     // A fixed random offset per pixel on where the steps fall hides the slices between them.
     float jitter = hash12(gl_FragCoord.xy);
     float stepH = 1.0 / float(steps);
@@ -529,6 +541,26 @@ vec3 overworldLight(vec3 dir, float t, float pixel, float night, vec3 sun, vec3 
     return light;
 }
 
+// How much of the Overworld's sky shows in this direction: faded towards the horizon as vanilla
+// fades its sky disc into the fog (the disc's point in this direction lies 16 / dir.y away), and
+// so also under water or in thick fog.
+float overworldOpen(vec3 dir) {
+    float fog = clamp(16.0 / max(dir.y, 0.001) / max(FogSkyEnd, 1.0), 0.0, 1.0);
+    return (1.0 - fog) * smoothstep(-0.02, 0.05, dir.y);
+}
+
+#ifdef SKY_CLOUDS
+
+// The clouds alone, premultiplied, for the half-resolution texture.
+vec4 cloudLayer(vec3 dir, float t) {
+    if (dir.y < -0.02) return vec4(0.0);
+    float open = overworldOpen(dir);
+    if (open <= 0.0) return vec4(0.0);
+    return clouds(dir, TextureMat[0].xyz, t, ModelOffset.y, ModelOffset.z) * open;
+}
+
+#else
+
 vec4 overworldSky(vec3 dir, float t, float pixel) {
     if (dir.y < -0.02) return vec4(0.0);
     float night = ModelOffset.y;
@@ -538,23 +570,25 @@ vec4 overworldSky(vec3 dir, float t, float pixel) {
     bool lightsOn = TextureMat[3].x > 0.5;
     bool cloudsOn = TextureMat[3].y > 0.5;
 
-    // Faded towards the horizon as vanilla fades its sky disc into the fog (the disc's point in
-    // this direction lies 16 / dir.y away), and so also under water or in thick fog.
-    float fog = clamp(16.0 / max(dir.y, 0.001) / max(FogSkyEnd, 1.0), 0.0, 1.0);
-    float open = (1.0 - fog) * smoothstep(-0.02, 0.05, dir.y);
+    float open = overworldOpen(dir);
     if (open <= 0.0) return vec4(0.0);
     float visible = open * clear;
 
     // The clouds are laid over the lights, hiding some of the sun's glow as they pass it; where
-    // they hide all of it, the lights need not be worked out.
-    vec4 cloud = cloudsOn ? clouds(dir, sun, t, night, clear) * open : vec4(0.0);
+    // they hide all of it, the lights need not be worked out. Their texture holds a quarter of
+    // the pixels; the filter blends the four nearest.
+    vec4 cloud = cloudsOn ? textureLod(Sampler1, gl_FragCoord.xy / ColorModulator.yz, 0.0) : vec4(0.0);
     vec3 light = vec3(0.0);
-    // The march stops at 3% light through, so 0.96 is as thick as clouds get.
-    if (lightsOn && visible > 0.0 && cloud.a < 0.96) {
-        light = overworldLight(dir, t, pixel, night, sun, moon) * visible;
+    // The march stops at 3% light through, so about 0.97 is as thick as clouds get; the lights
+    // fade out before that rather than stop at a line.
+    float behind = 1.0 - smoothstep(0.93, 0.96, cloud.a);
+    if (lightsOn && visible > 0.0 && behind > 0.0) {
+        light = overworldLight(dir, t, pixel, night, sun, moon) * visible * behind;
     }
     return vec4(cloud.rgb + light * (1.0 - cloud.a), cloud.a);
 }
+
+#endif
 
 #endif
 
@@ -642,6 +676,9 @@ void main() {
     fragColor = vec4(mix(fog, netherSky(dir, t, pixel, fog), strength), 1.0);
 #elif defined(SKY_END)
     fragColor = vec4(endSky(dir, t, pixel, strength), 1.0);
+#elif defined(SKY_CLOUDS)
+    // Intensity is applied where they are laid over the sky.
+    fragColor = cloudLayer(dir, t);
 #else
     // Light added over vanilla's sky and clouds laid over it, blended as premultiplied alpha.
     fragColor = overworldSky(dir, t, pixel) * strength;

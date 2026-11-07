@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.sky;
 
+import com.mojang.blaze3d.GpuFormat;
 import com.mojang.blaze3d.PrimitiveTopology;
 import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
@@ -9,13 +10,16 @@ import com.mojang.blaze3d.pipeline.BlendFunction;
 import com.mojang.blaze3d.pipeline.ColorTargetState;
 import com.mojang.blaze3d.pipeline.DepthStencilState;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.pipeline.BindGroupLayout;
 import com.mojang.blaze3d.pipeline.RenderTarget;
+import com.mojang.blaze3d.pipeline.TextureTarget;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.platform.CompareOp;
 import com.mojang.blaze3d.resource.ResourceHandle;
 import com.mojang.blaze3d.systems.RenderPass;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.FilterMode;
+import com.mojang.blaze3d.textures.GpuTextureView;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.ByteBufferBuilder;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
@@ -33,6 +37,7 @@ import net.minecraft.client.renderer.state.level.LevelRenderState;
 import net.minecraft.client.renderer.state.level.SkyRenderState;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.ARGB;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.material.FogType;
@@ -63,7 +68,8 @@ import java.util.SplittableRandom;
  *   color it was cleared with; the storm goes over that ({@link #beforeSkyPass}). It is built from
  *   the fog's color, so it matches each biome.
  * - Overworld: over vanilla's sky, sun, moon and stars ({@link #renderOverworld}), its lights
- *   added and its clouds laid over them.
+ *   added and its clouds laid over them. The clouds are worked out at half resolution into a
+ *   texture of their own first. Vanilla's clouds give way to them by day.
  * - End: in place of the textured sky ({@link #renderEnd}). SkyBlock's End island gets it too,
  *   though Hypixel sends that island as an Overworld-like dimension: there the sky is switched to
  *   the End's before vanilla draws it, without the Overworld's clouds, and the air fogs into the
@@ -97,6 +103,9 @@ public final class SkyEffectsFeature {
 
     private static RenderPipeline nether;
     private static RenderPipeline overworld;
+    private static RenderPipeline overworldClouds;
+    /** The Overworld's clouds at half the frame's resolution in each direction, premultiplied. */
+    private static TextureTarget cloudTarget;
     private static RenderPipeline end;
     private static GpuBuffer box;
     private static DynamicTexture noise;
@@ -126,6 +135,7 @@ public final class SkyEffectsFeature {
     public static void init() {
         nether();
         overworld();
+        overworldClouds();
         end();
     }
 
@@ -153,6 +163,14 @@ public final class SkyEffectsFeature {
                                      CameraRenderState camera, GpuBufferSlice fog) {
         SkyRenderState sky = level.skyRenderState;
         endFlashing = sky.endFlashIntensity > 1.0e-5f;
+        if (sky.skybox == DimensionType.Skybox.OVERWORLD && shows(AlpakaConfig.instance.skyEffectsClouds)
+                && !endSkyOnEndIsland(Minecraft.getInstance().level)) {
+            // Vanilla's blocky clouds under the sky's own look wrong, but the sky's fade out at
+            // night; vanilla's fade in as they go, and are left out by day the way vanilla leaves
+            // out the clouds of a dimension without any.
+            int alpha = Math.round(ARGB.alpha(level.cloudColor) * nightAt(towards(sky.sunAngle)));
+            level.cloudColor = ARGB.color(alpha, level.cloudColor);
+        }
         if (sky.skybox == DimensionType.Skybox.OVERWORLD && endSkyOnEndIsland(Minecraft.getInstance().level)) {
             // From here on vanilla draws the End's sky, so no sun, moon or stars. A clear cloud
             // color is how vanilla itself leaves out the clouds of a dimension without any, and an
@@ -196,10 +214,7 @@ public final class SkyEffectsFeature {
         if (!clouds && (!lights || rainBrightness <= 0.0f)) return;
         Vector3f sun = towards(sunAngle);
         Vector3f moon = towards(moonAngle);
-        // Night by the sun's height rather than the stars' brightness, which a server's own
-        // dimension may leave at nothing: from the sun touching the horizon to a while after.
-        float dusk = Mth.clamp((0.1f - sun.y) / 0.4f, 0.0f, 1.0f);
-        float night = dusk * dusk * (3.0f - 2.0f * dusk);
+        float night = nightAt(sun);
         Matrix4f directions = new Matrix4f(
                 sun.x, sun.y, sun.z, 0.0f,
                 moon.x, moon.y, moon.z, 0.0f,
@@ -248,7 +263,10 @@ public final class SkyEffectsFeature {
      */
     public static void levelFrameEnd() {
         inLevelFrame = false;
-        if (pending == null) return;
+        if (pending == null) {
+            misses = 0;
+            return;
+        }
         pending = null;
         if (++misses >= MISSES_ALLOWED) afterWorld = false;
     }
@@ -268,6 +286,16 @@ public final class SkyEffectsFeature {
     }
 
     /**
+     * How far into the night it is with the sun there, 0 by day to 1: by the sun's height rather
+     * than the stars' brightness, which a server's own dimension may leave at nothing; from the sun
+     * touching the horizon to a while after.
+     */
+    private static float nightAt(Vector3f sun) {
+        float dusk = Mth.clamp((0.1f - sun.y) / 0.4f, 0.0f, 1.0f);
+        return dusk * dusk * (3.0f - 2.0f * dusk);
+    }
+
+    /**
      * Towards a body vanilla puts in the sky at this angle: it turns the sky -90 degrees about Y,
      * then by the angle about X, and draws the sun and the moon straight up from there.
      */
@@ -281,26 +309,66 @@ public final class SkyEffectsFeature {
         float intensity = Mth.clamp(AlpakaConfig.instance.skyEffectsIntensity, 0.1f, 1.0f);
         // The far plane in clip space, where the vertex shader puts the box (see the shader).
         float far = RenderSystem.getDevice().getDeviceInfo().isZZeroToOne() ? 0.0f : -1.0f;
+        // The Overworld's clouds (TextureMat[3].y) are worked out first, at half resolution. At
+        // full night they are gone; the flag then tells the shader not to look for them.
+        boolean clouds = pipeline == overworld && directions.m31() > 0.5f && night < 1.0f;
+        if (pipeline == overworld && !clouds) directions = new Matrix4f(directions).m31(0.0f);
         GpuBufferSlice transforms = RenderSystem.getDynamicUniforms().writeTransform(
                 view,
-                new Vector4f(far, 1.0f, 1.0f, intensity),
+                new Vector4f(far, target.width, target.height, intensity),
                 new Vector3f(time, night, clear),
                 directions);
+        DynamicTexture grid = noise();
+        if (clouds) {
+            TextureTarget layer = cloudTarget(target);
+            drawBox(overworldClouds(), "Alpaka sky clouds", layer.getColorTextureView(), null, transforms, grid, null);
+            drawBox(pipeline, "Alpaka sky", target.getColorTextureView(), target.getDepthTextureView(), transforms, grid,
+                    layer.getColorTextureView());
+        } else {
+            // The Overworld's shader still has a second texture to bind; the grid stands in for
+            // the clouds it does not look at.
+            drawBox(pipeline, "Alpaka sky", target.getColorTextureView(), target.getDepthTextureView(), transforms, grid,
+                    pipeline == overworld ? grid.getTextureView() : null);
+        }
+    }
+
+    /** Draws the box with a sky's shader into a color target, depth tested where a depth target is given. */
+    private static void drawBox(RenderPipeline pipeline, String label, GpuTextureView color, GpuTextureView depth,
+                                GpuBufferSlice transforms, DynamicTexture grid, GpuTextureView clouds) {
         // Both buffers before the pass opens, as vanilla's sky does.
         GpuBuffer vertices = box();
         RenderSystem.AutoStorageIndexBuffer indices = RenderSystem.getSequentialBuffer(PrimitiveTopology.QUADS);
         GpuBuffer indexBuffer = indices.getBuffer(36);
-        DynamicTexture grid = noise();
-        try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "Alpaka sky",
-                target.getColorTextureView(), Optional.empty(), target.getDepthTextureView(), OptionalDouble.empty())) {
+        try (RenderPass pass = depth == null
+                ? RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> label, color, Optional.empty())
+                : RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> label, color, Optional.empty(),
+                        depth, OptionalDouble.empty())) {
             pass.setPipeline(pipeline);
             RenderSystem.bindDefaultUniforms(pass);
             pass.bindTexture("Sampler0", grid.getTextureView(), RenderSystem.getSamplerCache().getRepeat(FilterMode.LINEAR));
+            if (clouds != null) {
+                pass.bindTexture("Sampler1", clouds, RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR));
+            }
             pass.setUniform("DynamicTransforms", transforms);
             pass.setVertexBuffer(0, vertices.slice());
             pass.setIndexBuffer(indexBuffer, indices.type());
             pass.drawIndexed(36, 1, 0, 0, 0);
         }
+    }
+
+    /**
+     * The clouds' texture, half the frame's size each way, rounded up. The box covers every pixel
+     * of it, so it needs no clearing.
+     */
+    private static TextureTarget cloudTarget(RenderTarget frame) {
+        int width = Math.max(1, (frame.width + 1) / 2);
+        int height = Math.max(1, (frame.height + 1) / 2);
+        if (cloudTarget == null) {
+            cloudTarget = new TextureTarget("Alpaka sky clouds", width, height, false, GpuFormat.RGBA8_UNORM);
+        } else if (cloudTarget.width != width || cloudTarget.height != height) {
+            cloudTarget.resize(width, height);
+        }
+        return cloudTarget;
     }
 
     /**
@@ -330,7 +398,6 @@ public final class SkyEffectsFeature {
                 }
             }
             noise = new DynamicTexture(() -> "Alpaka sky noise", image);
-            noise.upload();
         }
         return noise;
     }
@@ -362,23 +429,34 @@ public final class SkyEffectsFeature {
     }
 
     private static RenderPipeline nether() {
-        if (nether == null) nether = register("sky_nether", "SKY_NETHER", null);
+        if (nether == null) nether = register("sky_nether", null, BindGroupLayouts.SAMPLER0, true, "SKY_NETHER");
         return nether;
     }
 
     /**
      * Light added over vanilla's sky, and clouds laid over it: blended premultiplied, so the
-     * shader takes away only as much of the sky as its clouds cover.
+     * shader takes away only as much of the sky as its clouds cover. The clouds come from their
+     * own texture (Sampler1).
      */
     private static RenderPipeline overworld() {
         if (overworld == null) {
-            overworld = register("sky_overworld", "SKY_OVERWORLD", BlendFunction.TRANSLUCENT_PREMULTIPLIED_ALPHA);
+            overworld = register("sky_overworld", BlendFunction.TRANSLUCENT_PREMULTIPLIED_ALPHA,
+                    BindGroupLayouts.SAMPLER0_SAMPLER1, true, "SKY_OVERWORLD");
         }
         return overworld;
     }
 
+    /** The Overworld's clouds alone, written into their half-resolution texture as they are. */
+    private static RenderPipeline overworldClouds() {
+        if (overworldClouds == null) {
+            overworldClouds = register("sky_overworld_clouds", null, BindGroupLayouts.SAMPLER0, false,
+                    "SKY_OVERWORLD", "SKY_CLOUDS");
+        }
+        return overworldClouds;
+    }
+
     private static RenderPipeline end() {
-        if (end == null) end = register("sky_end", "SKY_END", null);
+        if (end == null) end = register("sky_end", null, BindGroupLayouts.SAMPLER0, true, "SKY_END");
         return end;
     }
 
@@ -389,24 +467,27 @@ public final class SkyEffectsFeature {
      * opaque world, the GPU skips every pixel the world covers before the shader runs; drawn in
      * vanilla's sky pass it passes everywhere, but where a mod draws the world first (the
      * maintainer's OneClient setup showed the aurora over distant blocks) it still never paints
-     * over it.
+     * over it. The clouds' own texture has no depth, and is not tested.
      */
-    private static RenderPipeline register(String name, String define, BlendFunction blend) {
+    private static RenderPipeline register(String name, BlendFunction blend, BindGroupLayout samplers, boolean depthTested,
+                                           String... defines) {
         RenderPipeline.Builder builder = RenderPipeline.builder()
                 .withLocation(Identifier.fromNamespaceAndPath("alpaka", "pipeline/" + name))
                 .withVertexShader(Identifier.fromNamespaceAndPath("alpaka", "core/sky_effects"))
                 .withFragmentShader(Identifier.fromNamespaceAndPath("alpaka", "core/sky_effects"))
-                .withShaderDefine(define)
                 .withBindGroupLayout(BindGroupLayouts.GLOBALS)
                 .withBindGroupLayout(BindGroupLayouts.MATRICES_PROJECTION)
                 .withBindGroupLayout(BindGroupLayouts.FOG)
-                .withBindGroupLayout(BindGroupLayouts.SAMPLER0)
+                .withBindGroupLayout(samplers)
                 .withVertexBinding(0, DefaultVertexFormat.POSITION)
                 .withPrimitiveTopology(PrimitiveTopology.QUADS)
-                .withCull(false)
-                // The depth buffer is reversed (cleared to 0, nearer is greater), as vanilla's own
-                // pipelines test it; the sky writes no depth.
-                .withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, false));
+                .withCull(false);
+        for (String define : defines) builder.withShaderDefine(define);
+        if (depthTested) {
+            // The depth buffer is reversed (cleared to 0, nearer is greater), as vanilla's own
+            // pipelines test it; the sky writes no depth.
+            builder.withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, false));
+        }
         if (blend != null) builder.withColorTargetState(new ColorTargetState(blend));
         return RenderPipelinesAccessor.alpaka$register(builder.build());
     }

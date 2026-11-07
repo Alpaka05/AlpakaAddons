@@ -2422,6 +2422,41 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.ignoreFillerPanesEnabled = v; AlpakaConfig.save(); },
                 "ignore filler glass pane black empty menu click misclick pick up gui inventory skyblock"));
 
+        OPTIONS.add(new ConfigOption("menu_highlights", "Menu Highlights",
+                "Marks slots in SkyBlock menus the way Item Search marks what it found: your summoned pet in the Pets menu, and the tasks you haven't finished in the SkyBlock Leveling guide.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.menuHighlightsEnabled,
+                v -> { AlpakaConfig.instance.menuHighlightsEnabled = v; AlpakaConfig.save(); },
+                "menu highlights highlight mark slot outline pets pet summoned active current skyblock level leveling guide tasks unfinished incomplete missing"));
+
+        OPTIONS.add(new ConfigOption("menu_highlight_active_pet", "Active Pet",
+                "Marks the pet you have summoned in the Pets menu.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.menuHighlightActivePet,
+                v -> { AlpakaConfig.instance.menuHighlightActivePet = v; AlpakaConfig.save(); },
+                "menu highlights pets pet summoned active current despawn"));
+
+        OPTIONS.add(ConfigOption.color("menu_highlight_active_pet_color", "Active Pet Color",
+                "Color of the summoned pet's mark.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.menuHighlightActivePetColor,
+                v -> { AlpakaConfig.instance.menuHighlightActivePetColor = v; AlpakaConfig.save(); },
+                "menu highlights pet color colour picker"));
+
+        OPTIONS.add(new ConfigOption("menu_highlight_unfinished_tasks", "Unfinished Level Tasks",
+                "Marks the tasks and categories you haven't finished yet in the SkyBlock Leveling guide (/sblevels).",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.menuHighlightUnfinishedTasks,
+                v -> { AlpakaConfig.instance.menuHighlightUnfinishedTasks = v; AlpakaConfig.save(); },
+                "menu highlights skyblock level leveling guide sblevels tasks unfinished incomplete missing xp"));
+
+        OPTIONS.add(ConfigOption.color("menu_highlight_unfinished_tasks_color", "Unfinished Task Color",
+                "Color of the unfinished tasks' mark.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.menuHighlightUnfinishedTasksColor,
+                v -> { AlpakaConfig.instance.menuHighlightUnfinishedTasksColor = v; AlpakaConfig.save(); },
+                "menu highlights unfinished task color colour picker red"));
+
         OPTIONS.add(new ConfigOption("Resource Pack", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("cache_resource_pack", "Cache Resource Pack",

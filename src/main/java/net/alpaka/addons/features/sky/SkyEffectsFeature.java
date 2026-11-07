@@ -208,7 +208,6 @@ public final class SkyEffectsFeature {
     public static void beforeSkyPass(FrameGraphBuilder frame, LevelTargetBundle targets, LevelRenderState level,
                                      CameraRenderState camera, GpuBufferSlice fog) {
         SkyRenderState sky = level.skyRenderState;
-        endFlashing = sky.endFlashIntensity > 1.0e-5f;
         fogType = camera.fogType;
         if (sky.skybox == DimensionType.Skybox.OVERWORLD && shows(AlpakaConfig.instance.skyEffectsClouds)
                 && !endSkyOnEndIsland(Minecraft.getInstance().level)) {
@@ -226,6 +225,8 @@ public final class SkyEffectsFeature {
             sky.endFlashIntensity = 0.0f;
             level.cloudColor = 0;
         }
+        // After the End island's sky has its flashes taken away, which vanilla leaves standing.
+        endFlashing = sky.endFlashIntensity > 1.0e-5f;
         addNetherPass(frame, targets, sky, camera, fog);
     }
 

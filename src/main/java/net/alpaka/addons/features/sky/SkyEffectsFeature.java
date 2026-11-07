@@ -118,6 +118,17 @@ public final class SkyEffectsFeature {
     private static final Matrix4f lastCloudClip = new Matrix4f();
     private static long lastCloudNanos;
     private static boolean lastCloudsValid;
+    /**
+     * What the last clouds were worked out with besides the view: the frame's size, Intensity,
+     * night and how clear the sky was. A jump in any of them means they cannot be reused.
+     */
+    private static int lastCloudFrameWidth;
+    private static int lastCloudFrameHeight;
+    private static float lastCloudIntensity;
+    private static float lastCloudNight;
+    private static float lastCloudClear;
+    /** How far night and clear may move in a frame for the last clouds to still be reused. */
+    private static final float CLOUD_REUSE_DRIFT = 0.01f;
     /** The world's projection this frame, bobbing and FOV in it; null until the hook reports one. */
     private static Matrix4f levelProjection;
     /** Which half of the checkerboard is worked out anew this frame. */
@@ -374,7 +385,11 @@ public final class SkyEffectsFeature {
         TextureTarget layer = cloudTarget(cloudCurrent, target);
         long now = System.nanoTime();
         boolean reuse = lastCloudsValid && levelProjection != null && last != null && last.width == layer.width
-                && last.height == layer.height && now - lastCloudNanos < CLOUD_REUSE_NANOS;
+                && last.height == layer.height && now - lastCloudNanos < CLOUD_REUSE_NANOS
+                && target.width == lastCloudFrameWidth && target.height == lastCloudFrameHeight
+                && intensity == lastCloudIntensity
+                && Math.abs(night - lastCloudNight) < CLOUD_REUSE_DRIFT
+                && Math.abs(clear - lastCloudClear) < CLOUD_REUSE_DRIFT;
         cloudParity ^= 1;
         // The clouds' pass has a block of its own (see the shader): the sun (its z is always 0)
         // in ColorModulator.yz; Intensity plus twice which half is worked out anew (1 or 2, 0
@@ -395,6 +410,11 @@ public final class SkyEffectsFeature {
         if (levelProjection != null) levelProjection.mul(view, lastCloudClip);
         lastCloudNanos = now;
         lastCloudsValid = true;
+        lastCloudFrameWidth = target.width;
+        lastCloudFrameHeight = target.height;
+        lastCloudIntensity = intensity;
+        lastCloudNight = night;
+        lastCloudClear = clear;
     }
 
     /**

@@ -25,8 +25,8 @@
 //   TextureMat[3].xy  - Overworld: 1 where the lights (aurora, sun glow, ...) and the clouds are on
 // The clouds' own pass (SKY_CLOUDS) gets a block of its own: ColorModulator.yz the sun's x and y
 // (its z is always 0), ColorModulator.w Intensity plus twice which half of the texels is worked
-// out anew (1 or 2, 0 for all of them), and TextureMat where the last frame saw the sky: its
-// projection times its view.
+// out anew (1 or 2; 3 or 4 when the last frame worked out all of them; 0 for all of them), and
+// TextureMat where the last frame saw the sky: its projection times its view.
 // The Nether's colors come from the fog, so the storm takes on each biome's own hue.
 
 layout(std140) uniform DynamicTransforms {
@@ -396,7 +396,7 @@ vec3 sunGlow(vec3 dir, vec3 sun, float t) {
     if (c <= 0.42) return vec3(0.0);
     float halo = pow(c, 400.0) * 0.4 + pow(c, 40.0) * 0.14 + pow(c, 6.0) * 0.05;
     vec3 tint = mix(vec3(1.0, 0.55, 0.25), vec3(1.0, 0.9, 0.7), smoothstep(0.0, 0.5, sun.y));
-    // And so do the rays (0.3 * 0.72^18 < 0.0001): only nearer in are they worked out.
+    // And so do the rays (0.3 * 0.72^18 < 0.001): only nearer in are they worked out.
     if (c <= 0.72) return tint * halo;
     // The sun moves in the XY plane, so Z is never parallel to it: a frame that turns smoothly
     // with it all day, without a jump at noon.
@@ -585,6 +585,7 @@ bool coveredByWorld() {
     }
     for (int y = 0; y < 5; y++) {
         for (int x = 0; x < 5; x++) {
+            if ((x == 0 || x == 4) && (y == 0 || y == 4)) continue;
             ivec2 at = clamp(corner + ivec2(x, y), ivec2(0), last);
             if (texelFetch(Sampler1, at, 0).r <= 0.0) return false;
         }
@@ -605,9 +606,10 @@ bool isCovered(vec4 texel) {
 // screen, and the four texels around it are blended as the filter would, unless one of them was
 // off the screen or covered. The clouds depend on the direction alone, and drift by a hair a
 // frame, so this is as good as working them out.
-bool lastClouds(int reused, out vec4 result) {
-    // The tiles the last frame reused are the ones this frame works out anew.
-    int lastReused = 1 - reused;
+bool lastClouds(int reused, bool lastAllFresh, out vec4 result) {
+    // The tiles the last frame reused are the ones this frame works out anew; when it worked out
+    // all of them, every texel can be taken.
+    int lastReused = lastAllFresh ? -1 : 1 - reused;
     // The box's own point, as it was drawn, so view bobbing moves it as it moved the sky.
     vec4 clip = TextureMat * vec4(skyPos, 1.0);
     if (clip.w <= 0.0) return false;
@@ -627,7 +629,9 @@ bool lastClouds(int reused, out vec4 result) {
     // A square's neighbours across a tile edge have the other parity, so the four texels must
     // lie in one tile.
     ivec2 tile = at >> 3;
-    if (((tile.x + tile.y) & 1) == lastReused || (at.x & 7) == 7 || (at.y & 7) == 7) return false;
+    if (lastReused >= 0 && (((tile.x + tile.y) & 1) == lastReused || (at.x & 7) == 7 || (at.y & 7) == 7)) {
+        return false;
+    }
     vec2 f = texel - base;
     result = mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
     return true;
@@ -648,8 +652,10 @@ vec4 cloudLayer(vec3 dir, float t) {
     if (fresh > 0.5) {
         ivec2 tile = ivec2(gl_FragCoord.xy) >> 3;
         vec4 last;
-        int reused = 1 - (int(fresh + 0.5) - 1);
-        if (((tile.x + tile.y) & 1) == reused && lastClouds(reused, last)) return last;
+        int code = int(fresh + 0.5);
+        bool lastAllFresh = code > 2;
+        int reused = 1 - ((lastAllFresh ? code - 2 : code) - 1);
+        if (((tile.x + tile.y) & 1) == reused && lastClouds(reused, lastAllFresh, last)) return last;
     }
     vec3 sun = vec3(ColorModulator.yz, 0.0);
     return clouds(dir, sun, t, ModelOffset.y, ModelOffset.z) * open * strength;

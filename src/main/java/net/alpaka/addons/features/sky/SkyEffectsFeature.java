@@ -127,6 +127,13 @@ public final class SkyEffectsFeature {
     private static float lastCloudIntensity;
     private static float lastCloudNight;
     private static float lastCloudClear;
+    private static float lastCloudSunX;
+    private static float lastCloudSunY;
+    /** Whether the last cloud pass worked out every texel, so all of them can be reused. */
+    private static boolean lastCloudsAllFresh;
+    /** The camera's fog this frame and at the last cloud pass: surfacing from water jumps the clouds' fade. */
+    private static FogType fogType;
+    private static FogType lastCloudFog;
     /** How far night and clear may move in a frame for the last clouds to still be reused. */
     private static final float CLOUD_REUSE_DRIFT = 0.01f;
     /** The world's projection this frame, bobbing and FOV in it; null until the hook reports one. */
@@ -199,6 +206,7 @@ public final class SkyEffectsFeature {
                                      CameraRenderState camera, GpuBufferSlice fog) {
         SkyRenderState sky = level.skyRenderState;
         endFlashing = sky.endFlashIntensity > 1.0e-5f;
+        fogType = camera.fogType;
         if (sky.skybox == DimensionType.Skybox.OVERWORLD && shows(AlpakaConfig.instance.skyEffectsClouds)
                 && !endSkyOnEndIsland(Minecraft.getInstance().level)) {
             // Vanilla's blocky clouds under the sky's own look wrong, but the sky's fade out at
@@ -389,12 +397,16 @@ public final class SkyEffectsFeature {
                 && target.width == lastCloudFrameWidth && target.height == lastCloudFrameHeight
                 && intensity == lastCloudIntensity
                 && Math.abs(night - lastCloudNight) < CLOUD_REUSE_DRIFT
-                && Math.abs(clear - lastCloudClear) < CLOUD_REUSE_DRIFT;
+                && Math.abs(clear - lastCloudClear) < CLOUD_REUSE_DRIFT
+                && Math.abs(directions.m00() - lastCloudSunX) < CLOUD_REUSE_DRIFT
+                && Math.abs(directions.m01() - lastCloudSunY) < CLOUD_REUSE_DRIFT
+                && fogType == lastCloudFog;
         cloudParity ^= 1;
         // The clouds' pass has a block of its own (see the shader): the sun (its z is always 0)
-        // in ColorModulator.yz; Intensity plus twice which half is worked out anew (1 or 2, 0
-        // when every texel is) in ColorModulator.w; where the last clouds were in TextureMat.
-        float fresh = reuse ? 1.0f + cloudParity : 0.0f;
+        // in ColorModulator.yz; Intensity plus twice which half is worked out anew (1 or 2; 3 or
+        // 4 when the last pass worked out all of them; 0 when this one does) in
+        // ColorModulator.w; where the last clouds were in TextureMat.
+        float fresh = reuse ? 1.0f + cloudParity + (lastCloudsAllFresh ? 2.0f : 0.0f) : 0.0f;
         GpuBufferSlice cloudTransforms = RenderSystem.getDynamicUniforms().writeTransform(view,
                 new Vector4f(far, directions.m00(), directions.m01(), intensity + 2.0f * fresh),
                 new Vector3f(time, night, clear), lastCloudClip);
@@ -415,6 +427,10 @@ public final class SkyEffectsFeature {
         lastCloudIntensity = intensity;
         lastCloudNight = night;
         lastCloudClear = clear;
+        lastCloudSunX = directions.m00();
+        lastCloudSunY = directions.m01();
+        lastCloudFog = fogType;
+        lastCloudsAllFresh = !reuse;
     }
 
     /**

@@ -2762,6 +2762,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.experimentSolverLaterColor = v; AlpakaConfig.save(); },
                 "experiment solver after following second highlight color colour picker"));
 
+        OPTIONS.add(new ConfigOption("experiment_solver_prevent_misclicks", "Prevent Misclicks",
+                "Ignores clicks on a wrong block in Chronomatron and Ultrasequencer, so a misclick doesn't end the game.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.experimentSolverPreventMisclicks,
+                v -> { AlpakaConfig.instance.experimentSolverPreventMisclicks = v; AlpakaConfig.save(); },
+                "experiment solver prevent misclicks missclick wrong click block ignore chronomatron ultrasequencer"));
+
         OPTIONS.add(new ConfigOption("Damage Display", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("only_crit_damage", "Only Show Crit Damage",

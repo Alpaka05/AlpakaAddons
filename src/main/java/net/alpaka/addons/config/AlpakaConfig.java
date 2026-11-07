@@ -985,6 +985,8 @@ public class AlpakaConfig {
     public boolean experimentSolverEnabled = false;
     public int experimentSolverNextColor = 0xA055FF55;
     public int experimentSolverLaterColor = 0x70FFFF55;
+    /** Clicks on a wrong block in Chronomatron or Ultrasequencer are dropped instead of ending the game. */
+    public boolean experimentSolverPreventMisclicks = false;
     /**
      * One long row of twenty hearts in place of the two short ones, the hunger bar and the armor bar,
      * neither of which SkyBlock needs; absorption hearts sit on the row above it.

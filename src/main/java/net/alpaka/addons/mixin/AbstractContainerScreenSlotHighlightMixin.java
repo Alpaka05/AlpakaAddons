@@ -34,8 +34,15 @@ public abstract class AbstractContainerScreenSlotHighlightMixin {
         return ExperimentSolver.displayed(chest, slot, actual);
     }
 
-    @Inject(method = "slotClicked", at = @At("HEAD"))
+    /** A wrong click in an experiment is dropped here, before it reaches the server. */
+    @Inject(method = "slotClicked", at = @At("HEAD"), cancellable = true)
     private void alpaka$slotClicked(Slot slot, int slotId, int button, ContainerInput input, CallbackInfo ci) {
-        if (slot != null) ExperimentSolver.onSlotClicked(((AbstractContainerScreen<?>) (Object) this).getMenu(), slotId);
+        if (slot == null) return;
+        var menu = ((AbstractContainerScreen<?>) (Object) this).getMenu();
+        if (ExperimentSolver.isMisclick(menu, slotId)) {
+            ci.cancel();
+            return;
+        }
+        ExperimentSolver.onSlotClicked(menu, slotId);
     }
 }

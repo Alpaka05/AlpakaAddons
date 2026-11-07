@@ -14,6 +14,8 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.client.gui.Font
 import net.minecraft.client.renderer.item.ItemStackRenderState
+import net.minecraft.client.resources.sounds.SimpleSoundInstance
+import net.minecraft.sounds.SoundEvents
 import net.minecraft.client.renderer.texture.OverlayTexture
 import net.minecraft.network.chat.Component
 import net.minecraft.util.ARGB
@@ -78,12 +80,43 @@ object RareDropAnimation {
     /** How far below its spot the item looks for ground to stand on, in blocks. */
     private const val GROUND_SEARCH = 8
 
+    /**
+     * The chime as the item pops up: a rising major arpeggio on bells, the top note doubled by a
+     * chime and the first by an amethyst shimmer. Each note is (seconds after the start, pitch).
+     * Pitches are semitones above the base as 2^(n/12): root, third, fifth, octave.
+     */
+    private val NOTES = floatArrayOf(
+        0.00f, 1.0f,
+        0.07f, 1.2599f,
+        0.14f, 1.4983f,
+        0.21f, 2.0f,
+    )
+
     private class Active(
-        val level: ClientLevel, val x: Double, val y: Double, val z: Double, val item: String, val startNanos: Long,
+        val level: ClientLevel, val x: Double, val y: Double, val z: Double, val type: SlayerType, val item: String,
+        val startNanos: Long,
     ) {
         /** The name above the item, built once rather than every frame. */
         val name: FormattedCharSequence =
             Component.literal(item).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD).visualOrderText
+
+        /** How many of [NOTES] have been played. */
+        var notesPlayed = 0
+    }
+
+    /**
+     * Each slayer's own color, mixed into the gold: the outer halo, every other ray, the shock wave
+     * and a third of the sparkles. Gold stays the main color, so every drop still reads as the same
+     * reward.
+     */
+    private fun accentOf(type: SlayerType): Int = when (type) {
+        SlayerType.ZOMBIE -> 0x5CE65C
+        SlayerType.SPIDER -> 0xE8423A
+        SlayerType.WOLF -> 0xCFE3FF
+        SlayerType.ENDERMAN -> 0xB25CFF
+        SlayerType.BLAZE -> 0xFF5A1A
+        SlayerType.VAMPIRE -> 0xE0244E
+        else -> AMBER
     }
 
     private var active: Active? = null
@@ -134,7 +167,7 @@ object RareDropAnimation {
         // A flying boss (the Voidgloom, a leaping Sven) dies in the air; the item stands on the ground
         // below, where its ring belongs.
         val at = if (fresh) onGround(level, boss!!) else inFrontOfPlayer() ?: return
-        start(level, at, headline)
+        start(level, at, type, headline)
     }
 
     /**
@@ -155,11 +188,29 @@ object RareDropAnimation {
         testIndex++
         mc.gui.setScreen(null)
         val at = inFrontOfPlayer() ?: return
-        start(level, at, type.rngDropItem!!)
+        start(level, at, type, type.rngDropItem!!)
     }
 
-    private fun start(level: ClientLevel, at: Vec3, item: String) {
-        active = Active(level, at.x, at.y, at.z, item, System.nanoTime())
+    private fun start(level: ClientLevel, at: Vec3, type: SlayerType, item: String) {
+        active = Active(level, at.x, at.y, at.z, type, item, System.nanoTime())
+    }
+
+    /**
+     * Plays the notes of the chime that are due. Driven by the frame rather than the tick, whose 50 ms
+     * steps would smear the 70 ms arpeggio. Played as interface sounds, so they come from no place in
+     * the world and nobody else hears them.
+     */
+    private fun playDueNotes(anim: Active, t: Float) {
+        val cfg = AlpakaConfig.instance
+        val sounds = Minecraft.getInstance().soundManager
+        while (anim.notesPlayed * 2 < NOTES.size && NOTES[anim.notesPlayed * 2] <= t) {
+            val index = anim.notesPlayed++
+            if (!cfg.rareDropAnimationSound) continue
+            val pitch = NOTES[index * 2 + 1]
+            sounds.play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_BELL.value(), pitch, 0.7f))
+            if (index == 0) sounds.play(SimpleSoundInstance.forUI(SoundEvents.AMETHYST_BLOCK_CHIME, 1.2f, 1.0f))
+            if (index * 2 + 2 == NOTES.size) sounds.play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_CHIME.value(), pitch, 0.6f))
+        }
     }
 
     /**
@@ -249,6 +300,8 @@ object RareDropAnimation {
             return
         }
         val size = cfg.rareDropAnimationSize.coerceIn(0.5f, 2.5f)
+        playDueNotes(anim, t)
+        val accent = if (cfg.rareDropAnimationSlayerColors) accentOf(anim.type) else AMBER
 
         val pop = easeOutBack((t / POP_SECONDS).coerceIn(0f, 1f))
         val fade = ((duration - t) / FADE_SECONDS).coerceIn(0f, 1f)
@@ -271,7 +324,7 @@ object RareDropAnimation {
 
         context.submitNodeCollector().submitCustomGeometry(context.poseStack(), AuraFeature.renderType()) { pose, buffer ->
             val c = AuraCanvas(pose, buffer, ox, oy, oz, right.x, right.y, right.z, up.x, up.y, up.z, 1f)
-            drawLight(c, t, centerY, size, light, right, up)
+            drawLight(c, t, centerY, size, light, right, up, accent)
         }
 
         if (itemScale > 0.001f) {
@@ -307,15 +360,18 @@ object RareDropAnimation {
      * Everything that glows: the flash and shock wave of the pop, a beam of light into the sky, the
      * halo and rays behind the item, sparkles spiralling around it and a ring on the ground.
      */
-    private fun drawLight(c: AuraCanvas, t: Float, cy: Float, size: Float, light: Float, right: Vector3f, up: Vector3f) {
+    private fun drawLight(c: AuraCanvas, t: Float, cy: Float, size: Float, light: Float, right: Vector3f, up: Vector3f, accent: Int) {
         if (light <= 0f) return
+        // Strongly mixed: the glow adds its light to the scene, and by day a faint tint washes out.
+        val outer = AuraEffects.mix(GOLD_DEEP, accent, 0.85f)
+        val rayAccent = AuraEffects.mix(GOLD, accent, 0.85f)
 
         // The pop: a bright flash at the item and a wave running out across the ground.
         val burst = (t / 0.9f).coerceIn(0f, 1f)
         if (burst < 1f) {
             val k = easeOutCubic(burst)
             c.sprite(0f, cy, 0f, (1.5f + 6.5f * k) * size, GOLD_PALE, (1f - burst) * 0.95f)
-            c.flatArc(0.06f, 0.4f + 5.5f * k * size, 0.5f * size * (1f - burst) + 0.05f, GOLD, (1f - burst) * 0.9f, segments = 64)
+            c.flatArc(0.06f, 0.4f + 5.5f * k * size, 0.5f * size * (1f - burst) + 0.05f, rayAccent, (1f - burst) * 0.9f, segments = 64)
             c.ring(cy, 0.3f + 3.2f * k * size, 0.22f * size * (1f - burst) + 0.03f, GOLD_PALE, (1f - burst) * 0.8f, segments = 48)
         }
 
@@ -332,7 +388,7 @@ object RareDropAnimation {
 
         // The halo behind the item, breathing slowly.
         val breathe = 0.5f + 0.5f * sin(t * 2.6f)
-        c.sprite(0f, cy, 0f, (3.4f + 0.5f * breathe) * size, GOLD_DEEP, light * 0.55f)
+        c.sprite(0f, cy, 0f, (3.6f + 0.5f * breathe) * size, outer, light * 0.75f)
         c.sprite(0f, cy, 0f, (1.9f + 0.3f * breathe) * size, GOLD, light * 0.6f)
 
         // God rays: spokes of light in the plane facing the camera, turning slowly and flickering.
@@ -348,7 +404,7 @@ object RareDropAnimation {
             for (s in 0..6) {
                 val f = s / 6f
                 val r = 0.25f * size + length * f
-                c.point(dx * r, cy + dy * r, dz * r, 0.28f * size * (1f - f) + 0.01f, if (i % 2 == 0) GOLD else GOLD_PALE, light * 0.5f * flicker * (1f - f))
+                c.point(dx * r, cy + dy * r, dz * r, 0.28f * size * (1f - f) + 0.01f, if (i % 2 == 0) GOLD else rayAccent, light * 0.5f * flicker * (1f - f))
             }
             c.endRibbon()
         }
@@ -363,14 +419,14 @@ object RareDropAnimation {
             val radius = (0.9f + 0.7f * AuraEffects.hash(i * 13 + 1)) * size * (1f - 0.3f * life)
             val y = cy - 1.1f * size + 2.8f * size * life
             val twinkle = sin(life * PI.toFloat())
-            val rgb = if (i % 3 == 0) GOLD_PALE else if (i % 3 == 1) GOLD else AMBER
+            val rgb = if (i % 3 == 0) GOLD_PALE else if (i % 3 == 1) GOLD else accent
             c.sprite(cos(angle) * radius, y, sin(angle) * radius, (0.22f + 0.2f * seed) * size, rgb, light * twinkle, sparkle = true, spin = t * 2f + i)
         }
 
         // A ring of light on the ground under the item, and a comet running around it.
-        c.flatArc(0.05f, 1.4f * size, 0.18f * size, GOLD, light * 0.55f, segments = 64)
+        c.flatArc(0.05f, 1.4f * size, 0.18f * size, rayAccent, light * 0.7f, segments = 64)
         c.flatArc(0.06f, 1.4f * size, 0.3f * size, GOLD_PALE, light * 0.8f, start = t * 2.2f, sweep = 2.4f, segments = 32, fade = true)
-        c.sprite(0f, 0.1f, 0f, 3.2f * size, GOLD_DEEP, light * 0.25f)
+        c.sprite(0f, 0.1f, 0f, 3.2f * size, outer, light * 0.25f)
     }
 
     private fun easeOutCubic(x: Float): Float {

@@ -861,6 +861,12 @@ public final class DevScreenshotTour {
             }, () -> true, 20),
             new Stop("rare-drop-day", () -> {}, () -> true, 20),
             // Every slayer's drop in turn, from the mod's own textures; the two above were the first two.
+            // At night, where the slayer colors show best.
+            new Stop(null, () -> {
+                net.minecraft.client.server.IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+                if (server != null) server.execute(() -> server.getCommands().performPrefixedCommand(
+                        server.createCommandSourceStack(), "time set midnight"));
+            }, () -> true, 10),
             new Stop(null, net.alpaka.addons.features.cosmetics.RareDropAnimation::test, () -> true, 1),
             new Stop("rare-drop-item-2", () -> {}, () -> true, 40),
             new Stop(null, net.alpaka.addons.features.cosmetics.RareDropAnimation::test, () -> true, 1),

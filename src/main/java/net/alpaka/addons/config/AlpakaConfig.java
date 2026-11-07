@@ -147,6 +147,10 @@ public class AlpakaConfig {
     public float rareDropAnimationSize = 1.0f;
     /** How long the animation stays, in seconds. */
     public float rareDropAnimationDuration = 6.0f;
+    /** A rising chime as the item pops up, heard only by this client. */
+    public boolean rareDropAnimationSound = true;
+    /** Each slayer's own color mixed into the gold. */
+    public boolean rareDropAnimationSlayerColors = true;
 
     // Player scale. The model is drawn stretched or shrunk per axis, in the world only; the hitbox,
     // eye height, camera and reach are untouched, and nothing is sent, so nobody else sees it.

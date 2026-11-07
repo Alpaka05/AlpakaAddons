@@ -3100,6 +3100,20 @@ public class AlpakaConfigRegistry {
                 3.0f, 12.0f, val -> String.format(Locale.ROOT, "%.1f s", val),
                 "rare drop animation duration time long short seconds"));
 
+        OPTIONS.add(new ConfigOption("rare_drop_animation_sound", "Sound",
+                "Plays a rising chime as the item pops up. Only you hear it.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.rareDropAnimationSound,
+                v -> { AlpakaConfig.instance.rareDropAnimationSound = v; AlpakaConfig.save(); },
+                "rare drop animation sound chime bell ding audio"));
+
+        OPTIONS.add(new ConfigOption("rare_drop_animation_slayer_colors", "Slayer Colors",
+                "Mixes each slayer's own color into the gold, like purple for Enderman and green for Zombie.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.rareDropAnimationSlayerColors,
+                v -> { AlpakaConfig.instance.rareDropAnimationSlayerColors = v; AlpakaConfig.save(); },
+                "rare drop animation slayer colors colour accent tint purple green red orange"));
+
         OPTIONS.add(new ConfigOption("Damage Tags", ConfigCategory.COSMETICS));
 
         OPTIONS.add(new ConfigOption("custom_damage_tags", "Custom Damage Tags",

@@ -17,8 +17,10 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ExperimentSolverTest {
     private static final int NOW = AlpakaConfig.instance.experimentSolverNextColor;
@@ -84,6 +86,10 @@ class ExperimentSolverTest {
         void click(int slot) {
             session.onClicked(slot, slots[slot]);
         }
+
+        boolean misclick(int slot) {
+            return session.isMisclick(slot, slots[slot]);
+        }
     }
 
     /** Chronomatron (Metaphysical): each color is a column of two blocks. */
@@ -118,8 +124,14 @@ class ExperimentSolverTest {
             if (i + 1 < chain.size() && !chain.get(i + 1).equals(chain.get(i))) {
                 assertEquals(LATER, board.highlight(COLUMNS.get(chain.get(i + 1))[0]));
             }
+            assertFalse(board.misclick(now[1]));
+            for (Map.Entry<String, int[]> other : COLUMNS.entrySet()) {
+                if (!other.getKey().equals(chain.get(i))) assertTrue(board.misclick(other.getValue()[0]));
+            }
+            assertTrue(board.misclick(10), "a background pane is never the next step");
             board.click(now[0]);
         }
+        assertFalse(board.misclick(COLUMNS.get("orange")[0]), "after the last step nothing is blocked");
     }
 
     @Test
@@ -160,6 +172,7 @@ class ExperimentSolverTest {
         List<String> chain = new ArrayList<>();
         for (String note : List.of("orange", "orange", "cyan")) {
             board.showing();
+            assertFalse(board.misclick(COLUMNS.get("blue")[0]), "nothing is blocked while the pattern plays");
             chain.add(note);
             for (String shown : chain) light(board, shown);
             board.answering();
@@ -206,6 +219,9 @@ class ExperimentSolverTest {
         assertEquals(NOW, board.highlight(12));
         assertEquals(LATER, board.highlight(30));
         assertEquals(0, board.highlight(40));
+        assertTrue(board.misclick(30));
+        assertTrue(board.misclick(9));
+        assertFalse(board.misclick(12));
         assertEquals("1", board.session.displayed(12, board.slots[12]).getHoverName().getString());
         board.click(30);
         assertEquals(NOW, board.highlight(12), "clicking out of order does not advance");
@@ -235,6 +251,7 @@ class ExperimentSolverTest {
         board.set(33, named("enchanted_book", "Protection VI", 1));
         assertEquals(NOW, board.highlight(10));
         assertEquals(0, board.highlight(25));
+        assertFalse(board.misclick(25), "Superpairs has no wrong clicks to block");
         assertEquals("Protection VI", board.session.displayed(10, board.slots[10]).getHoverName().getString());
     }
 }

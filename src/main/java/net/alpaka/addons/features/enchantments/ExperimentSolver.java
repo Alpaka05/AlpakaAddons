@@ -86,6 +86,17 @@ public final class ExperimentSolver {
         if (current != null) current.onContentsSet(items);
     }
 
+    /**
+     * Whether a click on this slot of the open menu should be dropped: with Prevent Misclicks on,
+     * a board slot that isn't the next step while the player repeats a known pattern.
+     */
+    public static boolean isMisclick(AbstractContainerMenu clicked, int slot) {
+        if (!AlpakaConfig.instance.experimentSolverPreventMisclicks) return false;
+        Session current = current(clicked);
+        return current != null && slot >= BOARD_FIRST && slot <= BOARD_LAST
+                && current.isMisclick(slot, clicked.getSlot(slot).getItem());
+    }
+
     /** Called when the player clicks a slot of the open menu. */
     public static void onSlotClicked(AbstractContainerMenu clicked, int slot) {
         Session current = current(clicked);
@@ -181,6 +192,19 @@ public final class ExperimentSolver {
                 case ULTRASEQUENCER -> ultrasequencer.onClicked(slot);
                 case SUPERPAIRS -> { }
             }
+        }
+
+        /**
+         * Whether clicking this board slot would be wrong. Only while answering and only when the
+         * next step is known; anything else is let through.
+         */
+        boolean isMisclick(int slot, ItemStack clicked) {
+            if (!answering) return false;
+            return switch (game) {
+                case CHRONOMATRON -> chronomatron.isMisclick(color(clicked));
+                case ULTRASEQUENCER -> ultrasequencer.isMisclick(slot);
+                case SUPERPAIRS -> false;
+            };
         }
 
         /** The highlight behind a board slot holding this item, or 0. */
@@ -328,6 +352,10 @@ public final class ExperimentSolver {
             LOGGER.info("[chronomatron] click {} ({})", color, right ? "step " + answered : "not the next step");
         }
 
+        boolean isMisclick(String color) {
+            return answered < sequence.size() && !sequence.get(answered).equals(color);
+        }
+
         int highlight(String color) {
             if (color == null || answered >= sequence.size()) return 0;
             if (sequence.get(answered).equals(color)) return nowColor();
@@ -362,6 +390,10 @@ public final class ExperimentSolver {
                 slotByNumber.pollFirstEntry();
                 stackBySlot.remove(slot);
             }
+        }
+
+        boolean isMisclick(int slot) {
+            return !slotByNumber.isEmpty() && slotByNumber.firstEntry().getValue() != slot;
         }
 
         int highlight(int slot) {

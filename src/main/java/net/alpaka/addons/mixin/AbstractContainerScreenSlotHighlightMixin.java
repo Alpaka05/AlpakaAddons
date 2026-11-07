@@ -15,7 +15,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Slot highlights and remembered items for the Anvil Combine Helper and the Experiment Solver.
+ * Slot highlights and remembered items for the Anvil Combine Helper and the Experiment Solver, and
+ * the solver's Prevent Misclicks.
  * The highlight is drawn before the slot's item, so the item stays on top of it.
  */
 @Mixin(AbstractContainerScreen.class)
@@ -34,8 +35,15 @@ public abstract class AbstractContainerScreenSlotHighlightMixin {
         return ExperimentSolver.displayed(chest, slot, actual);
     }
 
-    @Inject(method = "slotClicked", at = @At("HEAD"))
+    /** A wrong click in an experiment is dropped here, before it reaches the server. */
+    @Inject(method = "slotClicked", at = @At("HEAD"), cancellable = true)
     private void alpaka$slotClicked(Slot slot, int slotId, int button, ContainerInput input, CallbackInfo ci) {
-        if (slot != null) ExperimentSolver.onSlotClicked(((AbstractContainerScreen<?>) (Object) this).getMenu(), slotId);
+        if (slot == null) return;
+        var menu = ((AbstractContainerScreen<?>) (Object) this).getMenu();
+        if (ExperimentSolver.isMisclick(menu, slotId)) {
+            ci.cancel();
+            return;
+        }
+        ExperimentSolver.onSlotClicked(menu, slotId);
     }
 }

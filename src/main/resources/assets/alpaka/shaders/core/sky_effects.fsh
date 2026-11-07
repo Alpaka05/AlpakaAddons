@@ -384,13 +384,20 @@ vec3 milkyWay(vec3 dir, float starAngle) {
 
 vec3 moonHalo(vec3 dir, vec3 moon) {
     float c = max(dot(dir, moon), 0.0);
+    // Farther out it adds less than an 8-bit step (0.06 * 0.8^30 < 0.0001).
+    if (c <= 0.8) return vec3(0.0);
     return vec3(0.6, 0.7, 1.0) * (pow(c, 300.0) * 0.25 + pow(c, 30.0) * 0.06);
 }
 
 // A soft glow around the sun, with long rays turning slowly through it; warmer the lower it stands.
 vec3 sunGlow(vec3 dir, vec3 sun, float t) {
     float c = dot(dir, sun);
-    if (c <= 0.0) return vec3(0.0);
+    // Farther out the widest term adds less than an 8-bit step (0.05 * 0.42^6 < 0.0003).
+    if (c <= 0.42) return vec3(0.0);
+    float halo = pow(c, 400.0) * 0.4 + pow(c, 40.0) * 0.14 + pow(c, 6.0) * 0.05;
+    vec3 tint = mix(vec3(1.0, 0.55, 0.25), vec3(1.0, 0.9, 0.7), smoothstep(0.0, 0.5, sun.y));
+    // And so do the rays (0.3 * 0.72^18 < 0.0001): only nearer in are they worked out.
+    if (c <= 0.72) return tint * halo;
     // The sun moves in the XY plane, so Z is never parallel to it: a frame that turns smoothly
     // with it all day, without a jump at noon.
     vec3 side = normalize(cross(vec3(0.0, 0.0, 1.0), sun));
@@ -399,9 +406,7 @@ vec3 sunGlow(vec3 dir, vec3 sun, float t) {
     vec2 across = vec2(dot(dir, side), dot(dir, lift));
     float around = dot(across, across) > 1e-12 ? atan(across.y, across.x) / TAU + 0.5 : 0.0;
     float rays = valueNoise1(around * 24.0 + t * 0.05, 24.0) * valueNoise1(around * 9.0 - t * 0.03 + 3.0, 9.0);
-    float halo = pow(c, 400.0) * 0.4 + pow(c, 40.0) * 0.14 + pow(c, 6.0) * 0.05;
     float beams = rays * pow(c, 18.0) * 0.3;
-    vec3 tint = mix(vec3(1.0, 0.55, 0.25), vec3(1.0, 0.9, 0.7), smoothstep(0.0, 0.5, sun.y));
     return tint * (halo + beams);
 }
 
@@ -633,7 +638,8 @@ bool lastClouds(int reused, out vec4 result) {
 // that swaps each frame: tiles, so the GPU's neighbouring threads, which run together, take the
 // same way.
 vec4 cloudLayer(vec3 dir, float t) {
-    if (dir.y < -0.02) return vec4(0.0);
+    // No clouds this low (see clouds()), whatever covers them.
+    if (dir.y <= 0.03) return vec4(0.0);
     float open = overworldOpen(dir);
     if (open <= 0.0) return vec4(0.0);
     if (coveredByWorld()) return COVERED;
@@ -669,7 +675,8 @@ vec4 overworldSky(vec3 dir, float t, float pixel, float strength) {
     // they hide all of it, the lights need not be worked out. Their texture holds a quarter of
     // the pixels, with Intensity already in; the filter blends the four nearest.
     vec4 cloud = cloudsOn ? textureLod(Sampler1, gl_FragCoord.xy / ColorModulator.yz, 0.0) : vec4(0.0);
-    float cover = cloud.a / strength;
+    // Clamped: in the frame Intensity changes, a texel could still carry the last one.
+    float cover = clamp(cloud.a / strength, 0.0, 1.0);
     vec3 light = vec3(0.0);
     // The march stops at 3% light through, so about 0.97 is as thick as clouds get; the lights
     // fade out before that rather than stop at a line.

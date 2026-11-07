@@ -43,6 +43,17 @@ public class LevelRendererMixin {
      * own pass is added here, before the main pass draws the world over it. SkyBlock's End island
      * is switched to the End's sky here too.
      */
+    /** Sky Effects: a frame of the world begins; skies asked for in it are drawn in it or dropped. */
+    @Inject(method = "render", at = @At("HEAD"))
+    private void alpaka$skyFrameStart(CallbackInfo ci) {
+        SkyEffectsFeature.levelFrameStart();
+    }
+
+    @Inject(method = "render", at = @At("RETURN"))
+    private void alpaka$skyFrameEnd(CallbackInfo ci) {
+        SkyEffectsFeature.levelFrameEnd();
+    }
+
     @Inject(method = "addSkyPass", at = @At("HEAD"))
     private void alpaka$skyEffects(FrameGraphBuilder frame, CameraRenderState camera, GpuBufferSlice fog, CallbackInfo ci) {
         SkyEffectsFeature.beforeSkyPass(frame, targets, levelRenderState, camera, fog);

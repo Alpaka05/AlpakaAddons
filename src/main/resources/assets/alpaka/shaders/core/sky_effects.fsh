@@ -37,6 +37,10 @@ layout(std140) uniform Fog {
     float FogCloudsEnd;
 };
 
+// Random values on a 256x256 grid that wraps around, filtered linearly: r and b two independent
+// grids, g the r grid moved by (37, 17), so two slices of a 3D grid come in one lookup.
+uniform sampler2D Sampler0;
+
 in vec3 skyPos;
 
 out vec4 fragColor;
@@ -84,31 +88,33 @@ float valueNoise1(float x, float period) {
     return mix(hash11(mod(i, period)), hash11(mod(i + 1.0, period)), u);
 }
 
+// Value noise from the grid texture: the filter blends the four corners of the cell, and moving
+// the lookup inside the cell along the smoothstep curve makes that blend the smooth one, so one
+// lookup does the work of four hashes and three mixes.
+vec4 noiseGrid(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return texture(Sampler0, (i + u + 0.5) / 256.0);
+}
+
 float valueNoise2(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    vec2 u = f * f * (3.0 - 2.0 * f);
-    return mix(mix(hash12(i), hash12(i + vec2(1.0, 0.0)), u.x),
-               mix(hash12(i + vec2(0.0, 1.0)), hash12(i + vec2(1.0, 1.0)), u.x), u.y);
+    return noiseGrid(p).r;
 }
 
-// Two independent noises for the price of little more than one, to push a 2D field around.
+// Two independent noises in the same lookup, to push a 2D field around.
 vec2 noise22(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    vec2 u = f * f * (3.0 - 2.0 * f);
-    return mix(mix(hash22(i), hash22(i + vec2(1.0, 0.0)), u.x),
-               mix(hash22(i + vec2(0.0, 1.0)), hash22(i + vec2(1.0, 1.0)), u.x), u.y);
+    return noiseGrid(p).rb;
 }
 
+// 3D: each slice of the grid is the one below moved by (37, 17), so a cell's lower and upper
+// slices are the texture's r and g at one place, blended along z.
 float valueNoise3(vec3 p) {
     vec3 i = floor(p);
     vec3 f = fract(p);
     vec3 u = f * f * (3.0 - 2.0 * f);
-    return mix(mix(mix(hash13(i), hash13(i + vec3(1.0, 0.0, 0.0)), u.x),
-                   mix(hash13(i + vec3(0.0, 1.0, 0.0)), hash13(i + vec3(1.0, 1.0, 0.0)), u.x), u.y),
-               mix(mix(hash13(i + vec3(0.0, 0.0, 1.0)), hash13(i + vec3(1.0, 0.0, 1.0)), u.x),
-                   mix(hash13(i + vec3(0.0, 1.0, 1.0)), hash13(i + vec3(1.0, 1.0, 1.0)), u.x), u.y), u.z);
+    vec2 slices = texture(Sampler0, (i.xy + vec2(37.0, 17.0) * i.z + u.xy + 0.5) / 256.0).rg;
+    return mix(slices.x, slices.y, u.z);
 }
 
 // Each octave is turned against the one before, so the grids the noise is built on never line up.
@@ -253,8 +259,9 @@ vec3 netherSky(vec3 dir, float t, float pixel, vec3 fog) {
     vec3 base = mix(fog, hue * 0.12 + fog * 0.22, smoothstep(0.0, 0.7, up));
 
     // The storm thins out towards the horizon, into the haze the distant land fades into, and is
-    // gone below 0.02: only worked out above. The derivative below is then taken in a branch, but
-    // only quads well below the storm's edge take the other way, where it has no effect.
+    // gone below 0.02: only worked out above. The derivative below is then taken in a branch, so
+    // in a quad across 0.01 it is undefined, even NaN; all of such a quad lies below 0.02, where
+    // the storm is not mixed in at all.
     vec3 col = base;
     if (dir.y > 0.01) {
         // The clouds lie on a plane overhead, wound into a vortex that turns slowly about the zenith...
@@ -286,7 +293,8 @@ vec3 netherSky(vec3 dir, float t, float pixel, vec3 fog) {
         storm = mix(storm, flame * (0.55 + 0.45 * glow), clamp(heat * 1.15 + seam * 0.35, 0.0, 1.0));
         storm += whiteHot * pow(heat, 4.0) * 0.7;
         storm += whiteHot * stormFlash(dir, t) * (0.25 + 0.75 * body);
-        col = mix(base, storm, smoothstep(0.02, 0.3, dir.y));
+        float weight = smoothstep(0.02, 0.3, dir.y);
+        if (weight > 0.0) col = mix(base, storm, weight);
     }
 
     float sparks = embers(dir, t, 96.0, 0.7, pixel, 0.0) + 0.7 * embers(dir, t, 160.0, 1.1, pixel, 7.0);
@@ -307,6 +315,8 @@ vec3 netherSky(vec3 dir, float t, float pixel, vec3 fog) {
 // down and violet at the top, as the real one.
 vec3 aurora(vec3 dir, float t) {
     // North is -Z in Minecraft: 0 there, +-pi in the south, where the curtains have faded out.
+    // Straight up the direction has none (atan(0, 0) is undefined); the curtains hang far below.
+    if (dir.x * dir.x + dir.z * dir.z < 1e-10) return vec3(0.0);
     float azimuth = atan(dir.x, -dir.z);
     float spread = 1.0 - smoothstep(1.0, 2.4, abs(azimuth));
     if (spread <= 0.0) return vec3(0.0);
@@ -479,7 +489,8 @@ vec4 clouds(vec3 dir, vec3 sun, float t, float night, float clear) {
         // Light reaching this point: dimmed by the cloud still above it, and by cloud lying
         // towards the sun. Thin edges and tops come out bright, thick middles grey underneath.
         float overhead = max(cloudAbove(excess, h), 0.0);
-        float sunward = max(cloudAbove(cloudExcess(at + towardsSun * (1.0 - h), edge, 2), h), 0.0);
+        // Two octaves are enough for a soft shadow; the third's average (0.0625) stands in for it.
+        float sunward = max(cloudAbove(cloudExcess(at + towardsSun * (1.0 - h), edge, 2) + 0.0625, h), 0.0);
         float lit = exp(-1.5 * overhead - 1.8 * sunward);
         vec3 c = mix(shade, sunlit, 0.3 + 0.7 * lit) * mix(0.9, 1.0, h);
         // The thin edges light up in front of the sun.
@@ -538,7 +549,8 @@ vec4 overworldSky(vec3 dir, float t, float pixel) {
     // they hide all of it, the lights need not be worked out.
     vec4 cloud = cloudsOn ? clouds(dir, sun, t, night, clear) * open : vec4(0.0);
     vec3 light = vec3(0.0);
-    if (lightsOn && visible > 0.0 && cloud.a < 0.995) {
+    // The march stops at 3% light through, so 0.96 is as thick as clouds get.
+    if (lightsOn && visible > 0.0 && cloud.a < 0.96) {
         light = overworldLight(dir, t, pixel, night, sun, moon) * visible;
     }
     return vec4(cloud.rgb + light * (1.0 - cloud.a), cloud.a);

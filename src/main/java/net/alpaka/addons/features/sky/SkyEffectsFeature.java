@@ -10,10 +10,12 @@ import com.mojang.blaze3d.pipeline.ColorTargetState;
 import com.mojang.blaze3d.pipeline.DepthStencilState;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.pipeline.RenderTarget;
+import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.platform.CompareOp;
 import com.mojang.blaze3d.resource.ResourceHandle;
 import com.mojang.blaze3d.systems.RenderPass;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.textures.FilterMode;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.ByteBufferBuilder;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
@@ -29,6 +31,7 @@ import net.minecraft.client.renderer.LevelTargetBundle;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.state.level.LevelRenderState;
 import net.minecraft.client.renderer.state.level.SkyRenderState;
+import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.dimension.DimensionType;
@@ -39,6 +42,7 @@ import org.joml.Vector4f;
 
 import java.util.Optional;
 import java.util.OptionalDouble;
+import java.util.SplittableRandom;
 
 /**
  * Sky Effects: animated skies. A firestorm over the Nether, which vanilla gives no sky at all; an
@@ -49,7 +53,8 @@ import java.util.OptionalDouble;
  * Each is painted by the shader {@code alpaka:core/sky_effects} on a box around the camera, the
  * box vanilla draws the End's sky on: it is centered on the camera and turns with the view, so
  * every pixel of it lies in the direction that pixel looks, and the shader paints the sky from that
- * direction and the time alone - no textures, no seams, and the same cost at any render distance.
+ * direction and the time alone - no seams, and the same cost at any render distance. Its only
+ * texture is a small grid of random values the noise is built from ({@link #noise}).
  * Its parameters ride in vanilla's DynamicTransforms uniform, which every draw fills anyway; the
  * shader's header lists them.
  *
@@ -58,7 +63,7 @@ import java.util.OptionalDouble;
  *   color it was cleared with; the storm goes over that ({@link #beforeSkyPass}). It is built from
  *   the fog's color, so it matches each biome.
  * - Overworld: over vanilla's sky, sun, moon and stars ({@link #renderOverworld}), its lights
- *   added and its clouds laid over them. Vanilla's own clouds are left out while it draws its own.
+ *   added and its clouds laid over them.
  * - End: in place of the textured sky ({@link #renderEnd}). SkyBlock's End island gets it too,
  *   though Hypixel sends that island as an Overworld-like dimension: there the sky is switched to
  *   the End's before vanilla draws it, without the Overworld's clouds, and the air fogs into the
@@ -68,8 +73,10 @@ import java.util.OptionalDouble;
  * even those the world then covers. So each sky is only asked for where vanilla would draw it,
  * and drawn later, right after the opaque world ({@link #afterOpaqueWorld}), on the far plane
  * behind a depth test: only where the sky still shows. The End's flashes, drawn over its sky, keep
- * it in place while they light up. Should another mod render the world without passing that point,
- * a sky asked for is never drawn; from the next frame on they are drawn in place again.
+ * it in place while they light up. That point is only taken inside the world's frame
+ * ({@link #levelFrameStart}): the hand and items in menus pass through the same code. Should
+ * another mod render the world without passing it, a sky asked for is dropped at the frame's end,
+ * and after a few such frames in a row they are drawn in place again.
  *
  * Where vanilla shows no sky - under lava, in powder snow, blinded, or in the fog a boss bar like
  * the Ender Dragon's brings - none of them show either: the Overworld's and the End's are asked
@@ -92,12 +99,23 @@ public final class SkyEffectsFeature {
     private static RenderPipeline overworld;
     private static RenderPipeline end;
     private static GpuBuffer box;
+    private static DynamicTexture noise;
+
+    /** The edge of the noise grid, as the shader divides by it. */
+    private static final int NOISE_SIZE = 256;
 
     /** A sky asked for and not yet drawn: its shader, its parameters and the view it was seen in. */
     private record Pending(RenderPipeline pipeline, float night, float clear, Matrix4f directions, Matrix4f view) {}
 
+    /** How many world frames in a row may drop their sky before skies are drawn in place. */
+    private static final int MISSES_ALLOWED = 3;
+
     private static Pending pending;
-    /** Whether skies wait for the opaque world; false once one was never drawn there. */
+    /** Whether a frame of the world is being rendered, the only time skies are drawn late. */
+    private static boolean inLevelFrame;
+    /** World frames in a row whose sky was asked for and never drawn. */
+    private static int misses;
+    /** Whether skies wait for the opaque world; false once too many were never drawn there. */
     private static boolean afterWorld = true;
     /** Whether the End's flashes light up this frame, which are drawn over its sky in vanilla's pass. */
     private static boolean endFlashing;
@@ -135,12 +153,6 @@ public final class SkyEffectsFeature {
                                      CameraRenderState camera, GpuBufferSlice fog) {
         SkyRenderState sky = level.skyRenderState;
         endFlashing = sky.endFlashIntensity > 1.0e-5f;
-        if (sky.skybox == DimensionType.Skybox.OVERWORLD && shows(AlpakaConfig.instance.skyEffectsClouds)
-                && !endSkyOnEndIsland(Minecraft.getInstance().level)) {
-            // Two layers of clouds, vanilla's blocks under the sky's own, look wrong; vanilla's
-            // clouds are left out the way it leaves out those of a dimension without any.
-            level.cloudColor = 0;
-        }
         if (sky.skybox == DimensionType.Skybox.OVERWORLD && endSkyOnEndIsland(Minecraft.getInstance().level)) {
             // From here on vanilla draws the End's sky, so no sun, moon or stars. A clear cloud
             // color is how vanilla itself leaves out the clouds of a dimension without any, and an
@@ -216,28 +228,41 @@ public final class SkyEffectsFeature {
         }
     }
 
-    /**
-     * Asks for a sky to be drawn after the opaque world. False when skies are drawn in place: the
-     * one asked for last frame was never drawn, so nothing calls {@link #afterOpaqueWorld}.
-     */
+    /** Asks for a sky to be drawn after the opaque world of this frame. False outside a world frame. */
     private static boolean request(RenderPipeline pipeline, float night, float clear, Matrix4f directions) {
-        if (pending != null) {
-            afterWorld = false;
-            pending = null;
-            return false;
-        }
+        if (!inLevelFrame) return false;
         pending = new Pending(pipeline, night, clear, directions, RenderSystem.getModelViewMatrixCopy());
         return true;
     }
 
+    /** The start of LevelRenderer.render: the world's frame. */
+    public static void levelFrameStart() {
+        inLevelFrame = true;
+        pending = null;
+    }
+
+    /**
+     * The end of LevelRenderer.render. A sky asked for and not drawn is dropped, never carried into
+     * another frame; when that happens frame after frame, nothing draws them late, so from then on
+     * they are drawn in place.
+     */
+    public static void levelFrameEnd() {
+        inLevelFrame = false;
+        if (pending == null) return;
+        pending = null;
+        if (++misses >= MISSES_ALLOWED) afterWorld = false;
+    }
+
     /**
      * Right after the opaque world: draws the sky asked for this frame, where nothing covers it.
-     * The main pass has its fog and projection set by then.
+     * The main pass has its fog and projection set by then. The hand and items in menus pass
+     * through here too, outside the world's frame, and are left alone.
      */
     public static void afterOpaqueWorld() {
         Pending sky = pending;
-        if (sky == null) return;
+        if (sky == null || !inLevelFrame) return;
         pending = null;
+        misses = 0;
         draw(sky.pipeline(), Minecraft.getInstance().gameRenderer.mainRenderTarget(), sky.night(), sky.clear(),
                 sky.directions(), sky.view());
     }
@@ -265,15 +290,49 @@ public final class SkyEffectsFeature {
         GpuBuffer vertices = box();
         RenderSystem.AutoStorageIndexBuffer indices = RenderSystem.getSequentialBuffer(PrimitiveTopology.QUADS);
         GpuBuffer indexBuffer = indices.getBuffer(36);
+        DynamicTexture grid = noise();
         try (RenderPass pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(() -> "Alpaka sky",
                 target.getColorTextureView(), Optional.empty(), target.getDepthTextureView(), OptionalDouble.empty())) {
             pass.setPipeline(pipeline);
             RenderSystem.bindDefaultUniforms(pass);
+            pass.bindTexture("Sampler0", grid.getTextureView(), RenderSystem.getSamplerCache().getRepeat(FilterMode.LINEAR));
             pass.setUniform("DynamicTransforms", transforms);
             pass.setVertexBuffer(0, vertices.slice());
             pass.setIndexBuffer(indexBuffer, indices.type());
             pass.drawIndexed(36, 1, 0, 0, 0);
         }
+    }
+
+    /**
+     * The grid the shader's noise is built from: random values at the corners of 256x256 cells
+     * that wrap around, which the texture filter blends; a lookup costs far less than the hashes
+     * the shader would work them out with. Red and blue are two independent grids, green is red
+     * moved by (37, 17), so a 3D noise finds two slices of its cell in one lookup. Always the
+     * same grid, so the skies look the same every time.
+     */
+    private static DynamicTexture noise() {
+        if (noise == null) {
+            SplittableRandom random = new SplittableRandom(0x5C1E5L);
+            int[] red = new int[NOISE_SIZE * NOISE_SIZE];
+            int[] blue = new int[NOISE_SIZE * NOISE_SIZE];
+            for (int i = 0; i < red.length; i++) {
+                red[i] = random.nextInt(256);
+                blue[i] = random.nextInt(256);
+            }
+            NativeImage image = new NativeImage(NOISE_SIZE, NOISE_SIZE, false);
+            int mask = NOISE_SIZE - 1;
+            for (int y = 0; y < NOISE_SIZE; y++) {
+                for (int x = 0; x < NOISE_SIZE; x++) {
+                    int r = red[y * NOISE_SIZE + x];
+                    int g = red[((y + 17) & mask) * NOISE_SIZE + ((x + 37) & mask)];
+                    int b = blue[y * NOISE_SIZE + x];
+                    image.setPixelABGR(x, y, 0xFF000000 | b << 16 | g << 8 | r);
+                }
+            }
+            noise = new DynamicTexture(() -> "Alpaka sky noise", image);
+            noise.upload();
+        }
+        return noise;
     }
 
     /** The box the skies are drawn on: six faces at {@link #BOX} around the camera. */
@@ -341,6 +400,7 @@ public final class SkyEffectsFeature {
                 .withBindGroupLayout(BindGroupLayouts.GLOBALS)
                 .withBindGroupLayout(BindGroupLayouts.MATRICES_PROJECTION)
                 .withBindGroupLayout(BindGroupLayouts.FOG)
+                .withBindGroupLayout(BindGroupLayouts.SAMPLER0)
                 .withVertexBinding(0, DefaultVertexFormat.POSITION)
                 .withPrimitiveTopology(PrimitiveTopology.QUADS)
                 .withCull(false)

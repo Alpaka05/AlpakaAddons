@@ -54,7 +54,7 @@ object FarmingHudRenderer {
     /**
      * One row; the title alone spans both columns. A row with [icons] draws them after its value:
      * the Contest line's crops. [leadIcon] is a crop drawn in front of the value, in
-     * place of its name: the Milestone line's.
+     * place of its name: the Next Tier line's.
      */
     private data class Line(
         val label: String,
@@ -255,37 +255,40 @@ object FarmingHudRenderer {
         group = rows.size
         val milestone = if (preview) FarmingParse.Milestone("Mushroom", 25, 48.7) else FarmingTracker.milestone
         val noMilestoneWidget = !preview && !FarmingTracker.hasMilestoneWidget
-        if (cfg.farmingHudShowMilestone) {
+        // The crop and its tier go in front of the Next Tier row; the Milestone row only shows the
+        // progress. With one of the two switched off, the other one carries the crop.
+        val showProgress = cfg.farmingHudShowMilestone
+        val showNext = cfg.farmingHudShowMilestoneEta
+        if (showProgress) {
             val crops = if (preview) 389_285L to 800_000L else FarmingTracker.milestoneCrops()
             rows.add(
                 when {
                     noMilestoneWidget -> Line("Milestone", "Tab Widget Off", COLOR_WARN)
                     milestone == null -> Line("Milestone", "-", COLOR_VALUE)
-                    milestone.maxed -> Line("Milestone", "${milestone.tier} (Max)", COLOR_GOOD, leadIcon = milestone.crop)
-                    // In crops once the Crop Milestones menu has been opened, as a percentage before.
-                    crops != null -> Line(
-                        "Milestone",
-                        "${milestone.tier}: ${formatNumber(crops.first)}/${formatShort(crops.second)}",
-                        COLOR_VALUE,
-                        leadIcon = milestone.crop,
-                    )
-                    else -> Line(
-                        "Milestone",
-                        String.format(Locale.ROOT, "%d: %.1f%%", milestone.tier, milestone.percent),
-                        COLOR_VALUE,
-                        leadIcon = milestone.crop,
-                    )
+                    milestone.maxed -> if (showNext) Line("Milestone", "Maxed", COLOR_GOOD)
+                        else Line("Milestone", "${milestone.tier} (Max)", COLOR_GOOD, leadIcon = milestone.crop)
+                    else -> {
+                        // In crops once the Crop Milestones menu has been opened, as a percentage before.
+                        val progress = if (crops != null) "${formatNumber(crops.first)}/${formatShort(crops.second)}"
+                            else String.format(Locale.ROOT, "%.1f%%", milestone.percent)
+                        if (showNext) Line("Milestone", progress, COLOR_VALUE)
+                        else Line("Milestone", "${milestone.tier + 1} · $progress", COLOR_VALUE, leadIcon = milestone.crop)
+                    }
                 }
             )
         }
 
-        if (cfg.farmingHudShowMilestoneEta) {
+        if (showNext) {
             val eta = if (preview) 2_538_000L else FarmingTracker.milestoneEtaMs()
             rows.add(
                 when {
                     noMilestoneWidget -> Line("Next Tier", "Tab Widget Off", COLOR_WARN)
-                    milestone?.maxed == true -> Line("Next Tier", "Maxed", COLOR_GOOD)
-                    else -> Line("Next Tier", eta?.let(::formatDuration) ?: "-", COLOR_VALUE)
+                    milestone == null -> Line("Next Tier", "-", COLOR_VALUE)
+                    milestone.maxed -> Line("Next Tier", "${milestone.tier} (Max)", COLOR_GOOD, leadIcon = milestone.crop)
+                    else -> {
+                        val tier = (milestone.tier + 1).toString()
+                        Line("Next Tier", eta?.let { "$tier in ${formatDuration(it)}" } ?: tier, COLOR_VALUE, leadIcon = milestone.crop)
+                    }
                 }
             )
         }

@@ -50,6 +50,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.slayer.SmolderingPolarization.register();
         net.alpaka.addons.features.slayer.HamRadio.register();
         DevScreenshotTour.register();
+        DevClutterBenchmark.register();
         SlayerDropTracker.registerEvents();
         DeployableTracker.registerEvents();
         net.alpaka.addons.features.slayer.SkyblockProfileTracker.INSTANCE.register();

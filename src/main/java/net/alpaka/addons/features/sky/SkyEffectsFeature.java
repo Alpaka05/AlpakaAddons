@@ -134,6 +134,9 @@ public final class SkyEffectsFeature {
     /** The camera's fog this frame and at the last cloud pass: surfacing from water jumps the clouds' fade. */
     private static FogType fogType;
     private static FogType lastCloudFog;
+    /** The render distance and animation time at the last cloud pass: the far fog and the clock's wrap. */
+    private static int lastCloudRenderDistance;
+    private static float lastCloudTime;
     /** How far night and clear may move in a frame for the last clouds to still be reused. */
     private static final float CLOUD_REUSE_DRIFT = 0.01f;
     /** The world's projection this frame, bobbing and FOV in it; null until the hook reports one. */
@@ -388,6 +391,8 @@ public final class SkyEffectsFeature {
             return;
         }
 
+        // The sky's far fog follows the render distance; the clouds' fade is worked out from it.
+        int renderDistance = Minecraft.getInstance().options.getEffectiveRenderDistance();
         TextureTarget last = cloudTargets[cloudCurrent];
         cloudCurrent ^= 1;
         TextureTarget layer = cloudTarget(cloudCurrent, target);
@@ -400,7 +405,10 @@ public final class SkyEffectsFeature {
                 && Math.abs(clear - lastCloudClear) < CLOUD_REUSE_DRIFT
                 && Math.abs(directions.m00() - lastCloudSunX) < CLOUD_REUSE_DRIFT
                 && Math.abs(directions.m01() - lastCloudSunY) < CLOUD_REUSE_DRIFT
-                && fogType == lastCloudFog;
+                && fogType == lastCloudFog
+                && renderDistance == lastCloudRenderDistance
+                // The clock starts over after four hours; the clouds then are others.
+                && time >= lastCloudTime;
         cloudParity ^= 1;
         // The clouds' pass has a block of its own (see the shader): the sun (its z is always 0)
         // in ColorModulator.yz; Intensity plus twice which half is worked out anew (1 or 2; 3 or
@@ -430,6 +438,8 @@ public final class SkyEffectsFeature {
         lastCloudSunX = directions.m00();
         lastCloudSunY = directions.m01();
         lastCloudFog = fogType;
+        lastCloudRenderDistance = renderDistance;
+        lastCloudTime = time;
         lastCloudsAllFresh = !reuse;
     }
 

@@ -139,6 +139,28 @@ class AlpakaConfigLoadTest {
     }
 
     @Test
+    void hideExplosionsBecomesHideVisualClutterWithOnlyExplosions() throws IOException {
+        AlpakaConfig had = load("{\"configVersion\": 3, \"hideExplosions\": true}");
+        assertTrue(had.hideVisualClutter, "the old switch turns the new feature on");
+        assertTrue(had.clutterExplosions);
+        assertFalse(had.clutterFallingBlocks, "nothing hides that was not hidden before");
+        assertFalse(had.clutterBlockBreak);
+        assertFalse(had.clutterHitParticles);
+        assertFalse(had.clutterFireworks);
+        assertFalse(had.clutterExperienceOrbs);
+        assertFalse(had.clutterDragonDeath);
+        assertTrue(saved().contains("\"hideVisualClutter\": true"));
+
+        AlpakaConfig hadNot = load("{\"configVersion\": 3, \"hideExplosions\": false}");
+        assertFalse(hadNot.hideVisualClutter);
+        assertTrue(hadNot.clutterFallingBlocks, "switched on later, it comes with every effect");
+        assertTrue(hadNot.clutterDragonDeath);
+
+        AlpakaConfig later = load("{\"configVersion\": 4, \"hideVisualClutter\": true, \"clutterFallingBlocks\": true}");
+        assertTrue(later.clutterFallingBlocks, "a choice made after the step stays");
+    }
+
+    @Test
     void aFileFromANewerVersionGetsNoStepsAndKeepsItsNumber() throws IOException {
         JsonObject newer = new JsonObject();
         newer.addProperty("configVersion", 99);

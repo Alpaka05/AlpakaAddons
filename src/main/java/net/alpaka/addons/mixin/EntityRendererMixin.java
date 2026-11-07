@@ -5,6 +5,7 @@ import net.alpaka.addons.features.damagetags.DamageTagFeature;
 import net.alpaka.addons.features.dungeonmobs.StarredMobsHighlight;
 import net.alpaka.addons.features.fire.FireOverlayFeature;
 import net.alpaka.addons.features.garden.PestFinder;
+import net.alpaka.addons.features.clutter.HideVisualClutterFeature;
 import net.alpaka.addons.features.mobdeath.HideMobDeathsFeature;
 import net.alpaka.addons.features.playerscale.PlayerScaleFeature;
 import net.alpaka.addons.features.slayer.SlayerBossHighlight;
@@ -55,7 +56,8 @@ public class EntityRendererMixin<T extends Entity, S extends EntityRenderState> 
     private void filterBlazeEntities(T entity, Frustum frustum, double x, double y, double z, CallbackInfoReturnable<Boolean> info) {
         AlpakaPerf.count(AlpakaPerf.Section.ENTITY_RULES);
         if (CleanBlazeFeature.shouldHideEntity(entity) || DamageTagFeature.shouldHideEntity(entity)
-                || HideMobDeathsFeature.shouldHideEntity(entity) || StarredMobsHighlight.shouldHideEntity(entity)) {
+                || HideMobDeathsFeature.shouldHideEntity(entity) || StarredMobsHighlight.shouldHideEntity(entity)
+                || HideVisualClutterFeature.shouldHideEntity(entity)) {
             info.setReturnValue(false);
         }
     }

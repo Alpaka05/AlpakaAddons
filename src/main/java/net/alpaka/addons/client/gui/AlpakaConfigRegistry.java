@@ -366,12 +366,54 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.hideMobDeathSmoke = v; AlpakaConfig.save(); },
                 "hide mob death smoke poof particles cloud puff"));
 
-        OPTIONS.add(new ConfigOption("hide_explosions", "Hide Explosions",
-                "Hides the flash, smoke and debris of explosions.",
+        OPTIONS.add(new ConfigOption("hide_visual_clutter", "Hide Visual Clutter",
+                "Hides effects that only cost frames: explosions, falling blocks, block particles, hit sparks, fireworks, experience orbs and dying dragons.",
                 ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.hideExplosions,
-                v -> { AlpakaConfig.instance.hideExplosions = v; AlpakaConfig.save(); },
+                () -> AlpakaConfig.instance.hideVisualClutter,
+                v -> { AlpakaConfig.instance.hideVisualClutter = v; AlpakaConfig.save(); },
+                "hide visual clutter performance fps lag particles effects explosions falling blocks fireworks orbs dragon"));
+        OPTIONS.add(new ConfigOption("hide_clutter_explosions", "Explosions",
+                "The flash, smoke and debris of explosions, like Hyperion, Bonzo's Staff, TNT and creepers.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.clutterExplosions,
+                v -> { AlpakaConfig.instance.clutterExplosions = v; AlpakaConfig.save(); },
                 "hide explosion explosions explode tnt creeper hyperion wither impact implosion bonzo particles flash cloud smoke"));
+        OPTIONS.add(new ConfigOption("hide_clutter_falling_blocks", "Falling Blocks",
+                "Blocks flying through the air, like the gold of Molten Wave. What they hit is decided by the server either way.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.clutterFallingBlocks,
+                v -> { AlpakaConfig.instance.clutterFallingBlocks = v; AlpakaConfig.save(); },
+                "hide falling blocks block entity sand gravel molten wave midas staff seismic wave debris"));
+        OPTIONS.add(new ConfigOption("hide_clutter_block_break", "Block Break Particles",
+                "The bits that fly off broken and mined blocks, yours and everyone else's. The cracks on the block stay.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.clutterBlockBreak,
+                v -> { AlpakaConfig.instance.clutterBlockBreak = v; AlpakaConfig.save(); },
+                "hide block break breaking particles mining farming garden crops terrain dig destroy"));
+        OPTIONS.add(new ConfigOption("hide_clutter_hit_particles", "Hit Particles",
+                "The sparks of critical and enchanted hits, and the sparkle trail behind fully drawn arrows.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.clutterHitParticles,
+                v -> { AlpakaConfig.instance.clutterHitParticles = v; AlpakaConfig.save(); },
+                "hide hit particles crit critical enchanted sparks magic stars arrow trail terminator"));
+        OPTIONS.add(new ConfigOption("hide_clutter_fireworks", "Fireworks",
+                "The bursts of firework rockets, with their sound.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.clutterFireworks,
+                v -> { AlpakaConfig.instance.clutterFireworks = v; AlpakaConfig.save(); },
+                "hide fireworks firework rocket burst explosion stars sparkle"));
+        OPTIONS.add(new ConfigOption("hide_clutter_experience_orbs", "Experience Orbs",
+                "Experience orbs on the ground, like the ones from Experience Bottles. The experience still counts.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.clutterExperienceOrbs,
+                v -> { AlpakaConfig.instance.clutterExperienceOrbs = v; AlpakaConfig.save(); },
+                "hide experience orbs xp exp bottle orb green"));
+        OPTIONS.add(new ConfigOption("hide_clutter_dragon_death", "Dragon Death",
+                "A dying Ender Dragon with its light rays and explosions, in the End and in Master Mode 7.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.clutterDragonDeath,
+                v -> { AlpakaConfig.instance.clutterDragonDeath = v; AlpakaConfig.save(); },
+                "hide ender dragon death animation rays beams light explosion end m7 wither king"));
 
         OPTIONS.add(new ConfigOption("Hide Fire Overlay", ConfigCategory.VISUALS));
 

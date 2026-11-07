@@ -141,6 +141,7 @@ public final class DevScreenshotTour {
             screen("config-menu-font", () -> AlpakaConfigScreen.openOn("Design", "Menu Font").withChoiceOpen()),
             screen("config-world", () -> AlpakaConfigScreen.openOn("World", "Block Overlay")),
             screen("config-world-sky", () -> AlpakaConfigScreen.openOn("World", "Sky Effects")),
+            screen("config-world-clutter", () -> AlpakaConfigScreen.openOn("World", "Hide Visual Clutter")),
             screen("config-dungeon", () -> AlpakaConfigScreen.openOn("Dungeon", "Solvers")),
             // Further down Solvers' settings: the Water Board ones below the puzzle list.
             new Stop("config-dungeon-water-board", () -> scroll(0.75, 0.6, -6), () -> true, 30),

@@ -15,8 +15,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Slot highlights and remembered items for the Anvil Combine Helper and the Experiment Solver, and
- * the solver's Prevent Misclicks.
+ * Slot highlights and remembered items for the Anvil Combine Helper and the Experiment Solver.
  * The highlight is drawn before the slot's item, so the item stays on top of it.
  */
 @Mixin(AbstractContainerScreen.class)

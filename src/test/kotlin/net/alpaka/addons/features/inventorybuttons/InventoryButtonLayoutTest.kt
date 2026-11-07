@@ -1,13 +1,11 @@
 package net.alpaka.addons.features.inventorybuttons
 
-import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.config.AlpakaConfig.InventoryButton
 import net.alpaka.addons.features.inventorybuttons.InventoryButtonLayout.Box
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 
 /** Where inventory buttons land, and how they keep their place between panels of different size. */
@@ -66,21 +64,13 @@ class InventoryButtonLayoutTest {
         assertArrayEquals(intArrayOf(20, 20, 0, 0), s)
     }
 
-    @AfterEach
-    fun resetConfig() {
-        AlpakaConfig.instance = AlpakaConfig()
-    }
-
-    private fun button(x: Int, y: Int, right: Boolean, bottom: Boolean = false) = InventoryButton().also {
+    /** A button as a settings file from before the 22 px buttons has it. */
+    private fun oldButton(x: Int, y: Int, right: Boolean, bottom: Boolean = false) = InventoryButton().also {
         it.x = x
         it.y = y
         it.anchorRight = right
         it.anchorBottom = bottom
-    }
-
-    private fun useVanilla(buttons: List<InventoryButton>) {
-        AlpakaConfig.instance.inventoryButtonsStyle = InventoryButtonsFeature.STYLE_VANILLA
-        AlpakaConfig.instance.inventoryButtons = ArrayList(buttons)
+        it.grid = InventoryButtonLayout.OLD_SIZE
     }
 
     private fun assertNoOverlap(buttons: List<InventoryButton>, box: Box) {
@@ -95,26 +85,29 @@ class InventoryButtonLayoutTest {
     }
 
     @Test
-    fun `larger vanilla buttons in a row above the panel don't run into each other`() {
+    fun `old rows above the panel move apart without running into each other`() {
         // Two rows above the inventory, the left half kept to the left edge, the right half to the right.
         val buttons = listOf(
-            button(0, -40, false), button(20, -40, false), button(40, -40, false), button(60, -40, false),
-            button(-96, -40, true), button(-76, -40, true),
-            button(0, -20, false), button(20, -20, false), button(40, -20, false), button(60, -20, false),
-            button(-96, -20, true), button(-76, -20, true),
+            oldButton(0, -40, false), oldButton(20, -40, false), oldButton(40, -40, false), oldButton(60, -40, false),
+            oldButton(-96, -40, true), oldButton(-76, -40, true),
+            oldButton(0, -20, false), oldButton(20, -20, false), oldButton(40, -20, false), oldButton(60, -20, false),
+            oldButton(-96, -20, true), oldButton(-76, -20, true),
         )
-        useVanilla(buttons)
+        assertTrue(InventoryButtonLayout.migrate(buttons))
         assertNoOverlap(buttons, inventory)
-        // Still clear of the panel.
-        for (b in buttons) assertTrue(InventoryButtonLayout.place(b, inventory, 480, 270)[1] + InventoryButtonLayout.SIZE <= inventory.top)
+        for (b in buttons) {
+            assertEquals(InventoryButtonLayout.SIZE, b.grid)
+            assertTrue(InventoryButtonLayout.place(b, inventory, 480, 270)[1] + InventoryButtonLayout.SIZE <= inventory.top)
+        }
+        assertFalse(InventoryButtonLayout.migrate(buttons), "moved only once")
     }
 
     @Test
-    fun `the default column stays beside the panel's top with larger vanilla buttons`() {
-        val buttons = InventoryButton.defaults()
-        useVanilla(buttons)
-        assertNoOverlap(buttons, inventory)
-        val first = InventoryButtonLayout.place(buttons[0], inventory, 480, 270)
+    fun `the old default column stays beside the panel's top`() {
+        val old = (0 until 5).map { oldButton(-22, 4 + it * 20, false) }
+        InventoryButtonLayout.migrate(old)
+        assertNoOverlap(old, inventory)
+        val first = InventoryButtonLayout.place(old[0], inventory, 480, 270)
         assertTrue(first[0] + InventoryButtonLayout.SIZE <= inventory.left)
         assertTrue(first[0] + InventoryButtonLayout.SIZE >= inventory.left - 6)
         assertTrue(first[1] in inventory.top..inventory.top + 6)
@@ -122,27 +115,20 @@ class InventoryButtonLayoutTest {
 
     @Test
     fun `a row running past the panel's corner and a column beside it keep apart`() {
-        val buttons = listOf(
-            button(140, -20, false), button(160, -20, false), button(180, -20, false),
-            button(4, 0, true), button(4, 20, true), button(4, -20, true),
-        )
-        useVanilla(buttons.take(3))
-        assertNoOverlap(buttons.take(3), inventory)
-        useVanilla(buttons.drop(3))
-        assertNoOverlap(buttons.drop(3), inventory)
+        val row = listOf(oldButton(140, -20, false), oldButton(160, -20, false), oldButton(180, -20, false))
+        InventoryButtonLayout.migrate(row)
+        assertNoOverlap(row, inventory)
+        val column = listOf(oldButton(4, 0, true), oldButton(4, 20, true), oldButton(4, -20, true))
+        InventoryButtonLayout.migrate(column)
+        assertNoOverlap(column, inventory)
     }
 
     @Test
-    fun `a vanilla button comes back within a pixel of where it was put`() {
+    fun `new buttons are never moved`() {
         val buttons = InventoryButton.defaults()
-        useVanilla(buttons)
-        for ((x, y) in listOf(100 to 20, 120 to 30, 300 to 200, 340 to 60, 130 to 120)) {
-            val b = InventoryButton()
-            InventoryButtonLayout.store(b, x, y, inventory)
-            // Positions are stored at the smaller base size, so a larger button can be off by one.
-            val p = InventoryButtonLayout.place(b, inventory, 480, 270)
-            assertTrue(kotlin.math.abs(p[0] - x) <= 1 && kotlin.math.abs(p[1] - y) <= 1, "at $x, $y: ${p.toList()}")
-        }
+        val before = buttons.map { it.x to it.y }
+        assertFalse(InventoryButtonLayout.migrate(buttons))
+        assertEquals(before, buttons.map { it.x to it.y })
     }
 
     @Test

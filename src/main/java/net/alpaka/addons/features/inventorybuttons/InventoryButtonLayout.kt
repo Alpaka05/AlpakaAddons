@@ -1,7 +1,7 @@
 package net.alpaka.addons.features.inventorybuttons
 
-import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.config.AlpakaConfig.InventoryButton
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
@@ -14,27 +14,14 @@ import kotlin.math.roundToInt
  * above it. Kept apart from Minecraft so it can be tested on its own.
  */
 object InventoryButtonLayout {
-    /** A button's width and height in the Alpaka and Icon Only looks, a slot's size. */
-    const val BASE_SIZE = 18
-
-    /** A button's width and height in the vanilla looks, room for the button's frame around the icon. */
-    const val VANILLA_SIZE = 22
-
-    /** A button's width and height in the look picked in the settings. */
-    @JvmStatic
-    val SIZE: Int
-        get() = when (AlpakaConfig.instance.inventoryButtonsStyle) {
-            InventoryButtonsFeature.STYLE_VANILLA, InventoryButtonsFeature.STYLE_VANILLA_DARK -> VANILLA_SIZE
-            else -> BASE_SIZE
-        }
-
     /**
-     * How far positions are stretched for the current size. Positions are stored for [BASE_SIZE];
-     * larger buttons spread out by the same factor, so buttons that didn't overlap at the base size
-     * don't overlap at the larger one either.
+     * A button's width and height, the same in every look: room for vanilla's button frame around
+     * a 16 px item, which is drawn at its own size in the middle, never scaled up.
      */
-    private val scale: Float
-        get() = SIZE.toFloat() / BASE_SIZE
+    const val SIZE = InventoryButton.SIZE
+
+    /** The size buttons were laid out for before every look had [SIZE]: a slot's size. */
+    const val OLD_SIZE = 18
 
     /** A container's panel on the screen, in GUI pixels. */
     data class Box(val left: Int, val top: Int, val width: Int, val height: Int) {
@@ -45,82 +32,73 @@ object InventoryButtonLayout {
     /** The button's top-left corner on a screen of [screenW] by [screenH], kept fully on it. */
     @JvmStatic
     fun place(button: InventoryButton, box: Box, screenW: Int, screenH: Int): IntArray {
-        val p = placeFree(button, box, others())
+        val x = (if (button.anchorRight) box.right else box.left) + button.x
+        val y = (if (button.anchorBottom) box.bottom else box.top) + button.y
         return intArrayOf(
-            p[0].coerceIn(0, maxOf(0, screenW - SIZE)),
-            p[1].coerceIn(0, maxOf(0, screenH - SIZE)),
+            x.coerceIn(0, maxOf(0, screenW - SIZE)),
+            y.coerceIn(0, maxOf(0, screenH - SIZE)),
         )
     }
 
     /** Stores a top-left corner on the screen in [button], against the panel edges nearest to it. */
     @JvmStatic
     fun store(button: InventoryButton, screenX: Int, screenY: Int, box: Box) {
-        val k = scale
-        if (k == 1f) {
-            storeBase(button, screenX, screenY, box)
-            return
-        }
-        // Undo the stretch from each corner it could have been stretched from, and keep the first
-        // guess that lands back where it was put; which corner applies depends on where the
-        // button ends up, so it can't be known before.
-        val others = others()
-        var best: IntArray? = null
-        var bestMiss = Int.MAX_VALUE
-        for (ox in listOf(box.left, box.right)) for (oy in listOf(box.top, box.bottom)) {
-            val bx = (ox + (screenX - ox) / k).roundToInt()
-            val by = (oy + (screenY - oy) / k).roundToInt()
-            storeBase(button, bx, by, box)
-            val p = placeFree(button, box, others)
-            val miss = kotlin.math.abs(p[0] - screenX) + kotlin.math.abs(p[1] - screenY)
-            if (miss < bestMiss) {
-                bestMiss = miss
-                best = intArrayOf(bx, by)
-            }
-            if (miss == 0) return
-        }
-        best?.let { storeBase(button, it[0], it[1], box) }
+        store(button, screenX, screenY, box, SIZE)
+        button.grid = SIZE
     }
 
-    /** The buttons the stretch looks at to tell rows from columns. */
-    private fun others(): List<InventoryButton> = AlpakaConfig.instance.inventoryButtons ?: emptyList()
-
-    /** Where [button] sits at [BASE_SIZE], before any stretch. */
-    private fun basePlace(button: InventoryButton, box: Box): IntArray = intArrayOf(
-        (if (button.anchorRight) box.right else box.left) + button.x,
-        (if (button.anchorBottom) box.bottom else box.top) + button.y,
-    )
-
-    private fun storeBase(button: InventoryButton, x: Int, y: Int, box: Box) {
-        button.anchorRight = x + BASE_SIZE / 2 > box.left + box.width / 2
-        button.anchorBottom = y + BASE_SIZE / 2 > box.top + box.height / 2
+    private fun store(button: InventoryButton, x: Int, y: Int, box: Box, size: Int) {
+        button.anchorRight = x + size / 2 > box.left + box.width / 2
+        button.anchorBottom = y + size / 2 > box.top + box.height / 2
         button.x = x - if (button.anchorRight) box.right else box.left
         button.y = y - if (button.anchorBottom) box.bottom else box.top
     }
 
+    /** The player's inventory panel, which old layouts are converted against. */
+    private val INVENTORY = Box(0, 0, 176, 166)
+
     /**
-     * The button's corner at the current size, not yet kept on the screen.
+     * Moves buttons laid out for [OLD_SIZE] to where they belong at [SIZE], once, when the settings
+     * load. Returns whether anything changed.
      *
-     * Larger buttons spread out from a panel corner, the same corner for every button of a row or
-     * a column, so the whole row grows as one. Stretching each button from its own anchor would
-     * pull the left half of a row above the panel to the right and the right half to the left,
-     * into each other. A row above or below the panel spreads from the panel's left edge and away
-     * from the panel; a column beside it spreads down from the top edge and away from its side.
+     * The buttons spread out by the size ratio, so buttons that didn't overlap before don't now,
+     * and a row or column spreads as a whole from one panel edge. Spreading each button from its
+     * own anchor would pull the left half of a row above the panel to the right and the right half
+     * to the left, into each other. A row above or below the panel spreads from the panel's left
+     * edge and away from the panel; a column beside it spreads down from the top edge and away
+     * from its side.
      */
-    private fun placeFree(button: InventoryButton, box: Box, others: List<InventoryButton>): IntArray {
-        val b = basePlace(button, box)
-        val k = scale
-        if (k == 1f) return b
-        val o = origin(button, b, box, others)
-        return intArrayOf(
-            (o[0] + (b[0] - o[0]) * k).roundToInt(),
-            (o[1] + (b[1] - o[1]) * k).roundToInt(),
-        )
+    @JvmStatic
+    fun migrate(buttons: List<InventoryButton>?): Boolean {
+        if (buttons == null || buttons.none { it.grid != SIZE }) return false
+        val box = INVENTORY
+        val k = SIZE.toFloat() / OLD_SIZE
+        val moved = buttons.map { button ->
+            if (button.grid == SIZE) return@map null
+            val b = oldPlace(button, box)
+            val o = origin(button, b, box, buttons)
+            intArrayOf(
+                (o[0] + (b[0] - o[0]) * k).roundToInt(),
+                (o[1] + (b[1] - o[1]) * k).roundToInt(),
+            )
+        }
+        for ((i, button) in buttons.withIndex()) {
+            val p = moved[i] ?: continue
+            store(button, p[0], p[1], box, SIZE)
+            button.grid = SIZE
+        }
+        return true
     }
 
-    /** The panel corner [button], at [b], spreads out from; see [placeFree]. */
-    private fun origin(button: InventoryButton, b: IntArray, box: Box, others: List<InventoryButton>): IntArray {
-        val nearX = if (b[0] + BASE_SIZE / 2 < box.left + box.width / 2) box.left else box.right
-        val nearY = if (b[1] + BASE_SIZE / 2 < box.top + box.height / 2) box.top else box.bottom
+    private fun oldPlace(button: InventoryButton, box: Box): IntArray = intArrayOf(
+        (if (button.anchorRight) box.right else box.left) + button.x,
+        (if (button.anchorBottom) box.bottom else box.top) + button.y,
+    )
+
+    /** The panel corner an old [button], at [b], spreads out from; see [migrate]. */
+    private fun origin(button: InventoryButton, b: IntArray, box: Box, buttons: List<InventoryButton>): IntArray {
+        val nearX = if (b[0] + OLD_SIZE / 2 < box.left + box.width / 2) box.left else box.right
+        val nearY = if (b[1] + OLD_SIZE / 2 < box.top + box.height / 2) box.top else box.bottom
         val beside = besidePanel(b, box)
         val aboveOrBelow = aboveOrBelowPanel(b, box)
         if (beside || aboveOrBelow) {
@@ -130,20 +108,20 @@ object InventoryButtonLayout {
         // below it, part of a row if one above or below the panel is next to it.
         var inColumn = false
         var inRow = false
-        for (other in others) {
+        for (other in buttons) {
             if (other === button) continue
-            val ob = basePlace(other, box)
-            if (kotlin.math.abs(ob[0] - b[0]) < BASE_SIZE && besidePanel(ob, box)) inColumn = true
-            if (kotlin.math.abs(ob[1] - b[1]) < BASE_SIZE && aboveOrBelowPanel(ob, box)) inRow = true
+            val ob = oldPlace(other, box)
+            if (abs(ob[0] - b[0]) < OLD_SIZE && besidePanel(ob, box)) inColumn = true
+            if (abs(ob[1] - b[1]) < OLD_SIZE && aboveOrBelowPanel(ob, box)) inRow = true
         }
         return intArrayOf(if (inColumn) nearX else box.left, if (inRow) nearY else box.top)
     }
 
     /** Left or right of the panel, level with some part of it. */
-    private fun besidePanel(b: IntArray, box: Box): Boolean = b[1] + BASE_SIZE > box.top && b[1] < box.bottom
+    private fun besidePanel(b: IntArray, box: Box): Boolean = b[1] + OLD_SIZE > box.top && b[1] < box.bottom
 
     /** Above or below the panel, or over it, in line with some part of it across. */
-    private fun aboveOrBelowPanel(b: IntArray, box: Box): Boolean = b[0] + BASE_SIZE > box.left && b[0] < box.right
+    private fun aboveOrBelowPanel(b: IntArray, box: Box): Boolean = b[0] + OLD_SIZE > box.left && b[0] < box.right
 
     /**
      * Snaps a dragged corner to what is near it, each axis on its own: the panel's edges, just

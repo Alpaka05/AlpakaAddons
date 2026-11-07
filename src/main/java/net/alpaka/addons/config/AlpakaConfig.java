@@ -1197,6 +1197,9 @@ public class AlpakaConfig {
         /** Shows only in chests and the server's menus. */
         public static final int SHOW_CONTAINERS = 2;
 
+        /** A button's width and height in GUI pixels, in every style. */
+        public static final int SIZE = 22;
+
         /** The command with its slash, as the player typed it. */
         public String command = "/";
         /** The tooltip's title; the command is shown when this is empty. */
@@ -1204,12 +1207,17 @@ public class AlpakaConfig {
         /** The item drawn on the button, by its id. */
         public String icon = "minecraft:chest";
         /** Offset from the panel edge named by {@link #anchorRight}/{@link #anchorBottom}, in GUI pixels. */
-        public int x = -22;
+        public int x = -SIZE - 4;
         public int y = 0;
         public boolean anchorRight = false;
         public boolean anchorBottom = false;
         /** Where it shows: {@link #SHOW_ALL}, {@link #SHOW_INVENTORY} or {@link #SHOW_CONTAINERS}. */
         public int showIn = SHOW_ALL;
+        /**
+         * The button size the position was laid out for. Files from before every style had
+         * {@link #SIZE} leave it out and read as 18; InventoryButtonLayout.migrate moves those once.
+         */
+        public int grid = 18;
 
         public InventoryButton() {}
 
@@ -1219,16 +1227,19 @@ public class AlpakaConfig {
             this.icon = icon;
             this.x = x;
             this.y = y;
+            this.grid = SIZE;
         }
 
         /** A column of common SkyBlock menus down the left of the panel, for a first start. */
         public static java.util.List<InventoryButton> defaults() {
             java.util.List<InventoryButton> list = new java.util.ArrayList<>();
-            list.add(new InventoryButton("/storage", "Storage", "minecraft:chest", -22, 4));
-            list.add(new InventoryButton("/ec", "Ender Chest", "minecraft:ender_chest", -22, 24));
-            list.add(new InventoryButton("/pets", "Pets", "minecraft:bone", -22, 44));
-            list.add(new InventoryButton("/wardrobe", "Wardrobe", "minecraft:leather_chestplate", -22, 64));
-            list.add(new InventoryButton("/sbmenu", "SkyBlock Menu", "minecraft:nether_star", -22, 84));
+            int x = -SIZE - 4;
+            int step = SIZE + 2;
+            list.add(new InventoryButton("/storage", "Storage", "minecraft:chest", x, 4));
+            list.add(new InventoryButton("/ec", "Ender Chest", "minecraft:ender_chest", x, 4 + step));
+            list.add(new InventoryButton("/pets", "Pets", "minecraft:bone", x, 4 + 2 * step));
+            list.add(new InventoryButton("/wardrobe", "Wardrobe", "minecraft:leather_chestplate", x, 4 + 3 * step));
+            list.add(new InventoryButton("/sbmenu", "SkyBlock Menu", "minecraft:nether_star", x, 4 + 4 * step));
             return list;
         }
     }
@@ -1645,6 +1656,9 @@ public class AlpakaConfig {
         instance.migrateNameTagBackground();
         instance.migrateInventoryHudVisibility();
         instance.migrateWorldAgeHud();
+        // Inventory buttons laid out for 18 px move to where they belong at 22 px; each button
+        // carries the size it was laid out for, so this needs no number either.
+        boolean buttonsMoved = net.alpaka.addons.features.inventorybuttons.InventoryButtonLayout.migrate(instance.inventoryButtons);
 
         for (SlayerType type : SlayerType.values()) {
             if (!instance.slayerBossMap.containsKey(type)) {
@@ -1658,7 +1672,7 @@ public class AlpakaConfig {
             instance.activeItemPresetIndex = -1;
         }
 
-        if (!existedAtStart || sanitized > 0 || migrated) save();
+        if (!existedAtStart || sanitized > 0 || migrated || buttonsMoved) save();
         applyMenuTheme();
     }
 

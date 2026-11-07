@@ -574,14 +574,11 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
             val dx = when (key) { GLFW.GLFW_KEY_LEFT -> -step; GLFW.GLFW_KEY_RIGHT -> step; else -> 0 }
             val dy = when (key) { GLFW.GLFW_KEY_UP -> -step; GLFW.GLFW_KEY_DOWN -> step; else -> 0 }
             if (dx != 0 || dy != 0) {
-                // Moved in stored steps: with the larger vanilla buttons a screen pixel can round
-                // back to the same stored position, and the button wouldn't move. Storing where it
-                // lands then keeps it on the screen and against its nearest edges.
                 val box = box()
-                button.x += dx
-                button.y += dy
                 val p = InventoryButtonLayout.place(button, box, width, height)
-                InventoryButtonLayout.store(button, p[0], p[1], box)
+                InventoryButtonLayout.store(button,
+                    (p[0] + dx).coerceIn(0, width - InventoryButtonLayout.SIZE),
+                    (p[1] + dy).coerceIn(0, height - InventoryButtonLayout.SIZE), box)
                 AlpakaConfig.save()
                 return true
             }

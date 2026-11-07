@@ -9,11 +9,17 @@ import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents
 import net.minecraft.ChatFormatting
 import net.minecraft.client.Minecraft
+import net.minecraft.client.multiplayer.ClientLevel
+import net.minecraft.core.BlockPos
+import net.minecraft.core.Direction
 import net.minecraft.client.gui.Font
 import net.minecraft.client.renderer.item.ItemStackRenderState
 import net.minecraft.client.renderer.texture.OverlayTexture
 import net.minecraft.network.chat.Component
 import net.minecraft.util.ARGB
+import net.minecraft.util.FormattedCharSequence
+import net.minecraft.world.level.ClipContext
+import net.minecraft.world.phys.HitResult
 import com.google.gson.JsonObject
 import com.mojang.serialization.JsonOps
 import net.minecraft.core.component.DataComponents
@@ -69,9 +75,19 @@ object RareDropAnimation {
     private const val GOLD_DEEP = 0xFFA51F
     private const val AMBER = 0xFF7A12
 
-    private class Active(val x: Double, val y: Double, val z: Double, val type: SlayerType, val item: String, val startNanos: Long)
+    /** How far below its spot the item looks for ground to stand on, in blocks. */
+    private const val GROUND_SEARCH = 8
+
+    private class Active(
+        val level: ClientLevel, val x: Double, val y: Double, val z: Double, val item: String, val startNanos: Long,
+    ) {
+        /** The name above the item, built once rather than every frame. */
+        val name: FormattedCharSequence =
+            Component.literal(item).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD).visualOrderText
+    }
 
     private var active: Active? = null
+    private var lastBossLevel: ClientLevel? = null
     private var lastBossPos: Vec3? = null
     private var lastBossSeenAtMs = 0L
     private var testIndex = 0
@@ -83,12 +99,14 @@ object RareDropAnimation {
     fun register() {
         ClientTickEvents.END_CLIENT_TICK.register { client ->
             val level = client.level
+            // A warp or a disconnect ends the animation: its spot belongs to the world it began in.
+            if (active?.level !== level) active = null
             if (level == null) {
-                active = null
                 lastBossPos = null
                 return@register
             }
             SlayerBossEntityTracker.bossMob(level)?.let {
+                lastBossLevel = level
                 lastBossPos = it.position()
                 lastBossSeenAtMs = System.currentTimeMillis()
             }
@@ -105,13 +123,18 @@ object RareDropAnimation {
         if (!AlpakaConfig.instance.rareDropAnimationEnabled) return
         val headline = type.rngDropItem ?: return
         if (!headline.equals(item, ignoreCase = true)) return
-        val player = Minecraft.getInstance().player ?: return
+        val mc = Minecraft.getInstance()
+        val player = mc.player ?: return
+        val level = mc.level ?: return
 
         val boss = lastBossPos
-        val fresh = boss != null && System.currentTimeMillis() - lastBossSeenAtMs <= BOSS_POSITION_MAX_AGE_MS &&
+        val fresh = boss != null && lastBossLevel === level &&
+            System.currentTimeMillis() - lastBossSeenAtMs <= BOSS_POSITION_MAX_AGE_MS &&
             boss.distanceToSqr(player.position()) <= BOSS_POSITION_MAX_DISTANCE_SQ
-        val at = if (fresh) boss!! else inFrontOfPlayer() ?: return
-        start(at, type, headline)
+        // A flying boss (the Voidgloom, a leaping Sven) dies in the air; the item stands on the ground
+        // below, where its ring belongs.
+        val at = if (fresh) onGround(level, boss!!) else inFrontOfPlayer() ?: return
+        start(level, at, headline)
     }
 
     /**
@@ -121,26 +144,60 @@ object RareDropAnimation {
     @JvmStatic
     fun test() {
         val mc = Minecraft.getInstance()
-        if (mc.level == null || mc.player == null) return
+        val level = mc.level
+        if (level == null || mc.player == null) {
+            net.alpaka.addons.features.notification.AlpakaNotifications.send("Rare Drop Animation",
+                "Join a world to test the animation: it plays in the world, in front of you.")
+            return
+        }
         val types = SlayerType.entries.filter { it.rngDropItem != null }
         val type = types[testIndex % types.size]
         testIndex++
         mc.gui.setScreen(null)
         val at = inFrontOfPlayer() ?: return
-        start(at, type, type.rngDropItem!!)
+        start(level, at, type.rngDropItem!!)
     }
 
-    private fun start(at: Vec3, type: SlayerType, item: String) {
-        active = Active(at.x, at.y, at.z, type, item, System.nanoTime())
+    private fun start(level: ClientLevel, at: Vec3, item: String) {
+        active = Active(level, at.x, at.y, at.z, item, System.nanoTime())
     }
 
-    /** On the ground a few blocks ahead of the player, the way they are facing. */
+    /**
+     * On the ground a few blocks ahead of the player, the way they are facing; closer when a wall is
+     * in the way, so the item is never inside or behind it.
+     */
     private fun inFrontOfPlayer(): Vec3? {
-        val player = Minecraft.getInstance().player ?: return null
+        val mc = Minecraft.getInstance()
+        val player = mc.player ?: return null
+        val level = mc.level ?: return null
         val look = player.lookAngle
         val flat = Vec3(look.x, 0.0, look.z)
         val dir = if (flat.lengthSqr() < 1e-4) Vec3(0.0, 0.0, 1.0) else flat.normalize()
-        return player.position().add(dir.scale(FRONT_DISTANCE))
+        val eye = player.eyePosition
+        val hit = level.clip(ClipContext(eye, eye.add(dir.scale(FRONT_DISTANCE)), ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player))
+        val distance = if (hit.type == HitResult.Type.MISS) FRONT_DISTANCE
+        else (hit.location.distanceTo(eye) - 0.8).coerceAtLeast(1.5)
+        val spot = player.position().add(dir.scale(distance))
+        return onGround(level, Vec3(spot.x, eye.y, spot.z), fallback = spot)
+    }
+
+    /**
+     * The top of the first solid block at or below [pos], searched [GROUND_SEARCH] blocks down; the
+     * [fallback] (or [pos] itself) when there is none that close, over the void or a deep drop.
+     */
+    private fun onGround(level: ClientLevel, pos: Vec3, fallback: Vec3 = pos): Vec3 {
+        val cursor = BlockPos.MutableBlockPos(pos.x, pos.y, pos.z)
+        for (i in 0..GROUND_SEARCH) {
+            val shape = level.getBlockState(cursor).getCollisionShape(level, cursor)
+            if (!shape.isEmpty) {
+                val top = cursor.y + shape.max(Direction.Axis.Y)
+                // Inside a block that reaches above the starting point: no free ground found.
+                if (top > pos.y + 0.01 && i == 0) return fallback
+                return Vec3(pos.x, top, pos.z)
+            }
+            cursor.move(Direction.DOWN)
+        }
+        return fallback
     }
 
     /**
@@ -187,6 +244,10 @@ object RareDropAnimation {
         }
         val mc = Minecraft.getInstance()
         val level = mc.level ?: return
+        if (level !== anim.level) {
+            active = null
+            return
+        }
         val size = cfg.rareDropAnimationSize.coerceIn(0.5f, 2.5f)
 
         val pop = easeOutBack((t / POP_SECONDS).coerceIn(0f, 1f))
@@ -227,7 +288,7 @@ object RareDropAnimation {
         // The item's name above it, once it has popped up.
         val nameAlpha = ((t - 0.45f) / 0.35f).coerceIn(0f, 1f) * smooth(fade)
         if (nameAlpha > 0.02f) {
-            val text = Component.literal(anim.item).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD).visualOrderText
+            val text = anim.name
             val font = mc.font
             val width = font.width(text)
             val textScale = 0.03f * size

@@ -211,6 +211,14 @@ public final class MarketStats {
 
     private record Tile(String label, String value, int valueColor, String sub, int subColor) {}
 
+    // drawAuctionStats' memo, render thread only.
+    private static List<PriceHistory.Point> statsSource;
+    private static PriceHistory.Range statsRange;
+    private static RangeStats statsMemo;
+    private static List<PriceHistory.Point> hourSource;
+    private static ZoneId hourZone;
+    private static int hourMemo = -1;
+
     public static void drawAuctionStats(GuiGraphicsExtractor graphics, Font font, String tag, Double price,
                                         PriceHistory.Range range, int x, int y, int w, int h) {
         panel(graphics, x, y, w, h);
@@ -223,8 +231,21 @@ public final class MarketStats {
         PriceHistory.Result week = PriceHistory.get(MarketKind.AUCTION_HOUSE, tag, PriceHistory.Range.WEEK);
         boolean summaryLoading = summary.state() == PriceHistory.State.LOADING;
         boolean historyLoading = history.points().isEmpty() && history.state() == PriceHistory.State.LOADING;
-        RangeStats stats = rangeStats(history.points(), range);
-        int hour = busiestHour(week.points(), ZoneId.systemDefault());
+        // Both are worked out again only when a history is replaced by a new answer; the panel is
+        // drawn every frame from the same lists.
+        if (history.points() != statsSource || range != statsRange) {
+            statsSource = history.points();
+            statsRange = range;
+            statsMemo = rangeStats(statsSource, range);
+        }
+        RangeStats stats = statsMemo;
+        ZoneId zone = ZoneId.systemDefault();
+        if (week.points() != hourSource || !zone.equals(hourZone)) {
+            hourSource = week.points();
+            hourZone = zone;
+            hourMemo = busiestHour(hourSource, zone);
+        }
+        int hour = hourMemo;
 
         List<Tile> tiles = new ArrayList<>();
         // The lowest BIN, and what this auction asks over it.

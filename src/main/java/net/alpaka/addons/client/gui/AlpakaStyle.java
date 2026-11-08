@@ -1,5 +1,7 @@
 package net.alpaka.addons.client.gui;
 
+import java.util.HashMap;
+import java.util.Map;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 
@@ -605,18 +607,60 @@ public final class AlpakaStyle {
     public static String ellipsize(Font font, String text, int maxW) {
         if (text == null || maxW <= 0) return "";
         if (GuiFont.width(font, text) <= maxW) return text;
+        Fit key = new Fit(text, maxW, false);
+        String cached = cachedFit(font, key);
+        if (cached != null) return cached;
         String dots = "…";
         int end = text.length();
         while (end > 0 && GuiFont.width(font, text.substring(0, end) + dots) > maxW) end--;
-        return text.substring(0, end).trim() + dots;
+        return rememberFit(key, text.substring(0, end).trim() + dots);
     }
 
     /** The end of a text that fits the width - the part being typed stays in view. */
     private static String clipLeft(Font font, String text, int maxW) {
         if (GuiFont.width(font, text) <= maxW) return text;
+        Fit key = new Fit(text, maxW, true);
+        String cached = cachedFit(font, key);
+        if (cached != null) return cached;
         int start = 0;
         while (start < text.length() && GuiFont.width(font, text.substring(start)) > maxW) start++;
-        return text.substring(start);
+        return rememberFit(key, text.substring(start));
+    }
+
+    /** A cut text: the text, the width and which end was kept. */
+    private record Fit(String text, int maxW, boolean keepEnd) {}
+
+    /**
+     * Cut texts, by text and width. Cutting one measures it once per character removed, and the
+     * same labels are cut to the same widths every frame (market rows, chest value lines, inventory
+     * buttons, text fields). Only overflowing texts land here. A width depends on the font, the menu
+     * font setting and the loaded glyphs, so the map is dropped when the font or {@link
+     * GuiFont#style()} differs and after every resource reload. Render thread only.
+     */
+    private static final Map<Fit, String> FITS = new HashMap<>();
+    private static Font fitsFont;
+    private static net.minecraft.network.chat.Style fitsStyle;
+
+    private static String cachedFit(Font font, Fit key) {
+        net.minecraft.network.chat.Style style = GuiFont.style();
+        if (font != fitsFont || style != fitsStyle) {
+            FITS.clear();
+            fitsFont = font;
+            fitsStyle = style;
+        }
+        return FITS.get(key);
+    }
+
+    private static String rememberFit(Fit key, String result) {
+        // A text field being typed into adds one entry per value.
+        if (FITS.size() >= 1024) FITS.clear();
+        FITS.put(key, result);
+        return result;
+    }
+
+    /** Clears the cut texts once the glyphs may have changed; called from the client's reload listener. */
+    public static void onResourcesReloaded() {
+        FITS.clear();
     }
 
     /** The config's slider track: a hairline, the accent up to the knob, and a round knob. */

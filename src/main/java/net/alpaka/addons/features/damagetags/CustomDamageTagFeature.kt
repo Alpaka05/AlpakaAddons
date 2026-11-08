@@ -20,7 +20,9 @@ import net.minecraft.network.chat.Style
 import net.minecraft.util.ARGB
 import net.minecraft.util.FormattedCharSequence
 import net.minecraft.util.Mth
+import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.decoration.ArmorStand
+import net.minecraft.world.level.entity.EntityTypeTest
 import java.util.Locale
 import kotlin.math.sin
 
@@ -212,9 +214,11 @@ object CustomDamageTagFeature {
      */
     private fun nearSlayerBoss(level: ClientLevel, splash: ArmorStand): Boolean {
         val box = splash.boundingBox.inflate(BOSS_RADIUS_XZ, BOSS_RADIUS_Y, BOSS_RADIUS_XZ)
-        return level.getEntitiesOfClass(ArmorStand::class.java, box) { stand ->
-            isBossTag(stand.id, stand.customName ?: return@getEntitiesOfClass false)
-        }.isNotEmpty()
+        // Stops at the first boss tag instead of collecting every match.
+        return level.hasEntities(ARMOR_STANDS, box) { stand ->
+            val name = stand.customName
+            name != null && isBossTag(stand.id, name)
+        }
     }
 
     /**
@@ -231,6 +235,8 @@ object CustomDamageTagFeature {
         bossTags.put(id, BossTag(name, boss))
         return boss
     }
+
+    private val ARMOR_STANDS: EntityTypeTest<Entity, ArmorStand> = EntityTypeTest.forClass(ArmorStand::class.java)
 
     private class BossTag(val name: Component, val boss: Boolean)
     private val bossTags = EntityCache<BossTag>()

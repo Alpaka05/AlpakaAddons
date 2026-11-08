@@ -49,7 +49,8 @@ public final class ExperimentSolver {
 
     enum Game { CHRONOMATRON, ULTRASEQUENCER, SUPERPAIRS }
 
-    private static AbstractContainerMenu menu;
+    /** Weak: a menu's slots lead to the player and the world, which must not outlive a disconnect. */
+    private static java.lang.ref.WeakReference<AbstractContainerMenu> menu = new java.lang.ref.WeakReference<>(null);
     /** The game in {@link #menu}, or null when that menu holds none. */
     private static Session session;
 
@@ -66,8 +67,8 @@ public final class ExperimentSolver {
         if (!AlpakaConfig.instance.experimentSolverEnabled) return null;
         if (!(Minecraft.getInstance().gui.screen() instanceof ContainerScreen screen)) return null;
         if (screen.getMenu() != changed) return null;
-        if (changed != menu) {
-            menu = changed;
+        if (changed != menu.get()) {
+            menu = new java.lang.ref.WeakReference<>(changed);
             Game game = gameOf(screen.getTitle().getString());
             session = game != null ? new Session(game) : null;
         }
@@ -108,7 +109,8 @@ public final class ExperimentSolver {
     /** Draws the highlight behind a slot's item. */
     public static void extractSlotBackground(ContainerScreen screen, GuiGraphicsExtractor graphics, Slot slot) {
         Session current = current(screen.getMenu());
-        if (current == null || slot.container != menu.slots.get(0).container) return;
+        // A session is only handed out for the screen's own menu, which is the remembered one.
+        if (current == null || slot.container != screen.getMenu().slots.get(0).container) return;
         int color = current.highlight(slot.index, slot.getItem());
         if (color != 0) graphics.fill(slot.x, slot.y, slot.x + 16, slot.y + 16, color);
     }
@@ -116,7 +118,7 @@ public final class ExperimentSolver {
     /** The item to draw in a slot: the remembered one where the game has hidden it again. */
     public static ItemStack displayed(ContainerScreen screen, Slot slot, ItemStack actual) {
         Session current = current(screen.getMenu());
-        if (current == null || slot.container != menu.slots.get(0).container) return actual;
+        if (current == null || slot.container != screen.getMenu().slots.get(0).container) return actual;
         return current.displayed(slot.index, actual);
     }
 

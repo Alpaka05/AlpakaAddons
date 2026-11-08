@@ -43,9 +43,14 @@ final class Json {
         }
     }
 
-    /** The element as a number when it is a numeric primitive, NaN otherwise ("N/A", true, objects). */
+    /** The element as a number, numbers sent as strings included; NaN for anything else ("N/A", true, objects). */
     static double num(JsonElement e) {
-        return e != null && e.isJsonPrimitive() && e.getAsJsonPrimitive().isNumber() ? e.getAsDouble() : Double.NaN;
+        if (e == null || !e.isJsonPrimitive()) return Double.NaN;
+        try {
+            return e.getAsDouble();
+        } catch (NumberFormatException | UnsupportedOperationException ex) {
+            return Double.NaN;
+        }
     }
 
     static double num(JsonElement root, String path, double fallback) {

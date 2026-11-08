@@ -35,6 +35,7 @@ class ReleaseNotesTest {
         val body = """[
             {"tag_name": "2.0.0-beta.1", "draft": true, "prerelease": true},
             {"tag_name": "2.0.0-alpha.2", "draft": false, "prerelease": true},
+            {"tag_name": "2.0.0-alpha.1", "draft": false, "prerelease": false},
             {"tag_name": "1.4.0", "draft": false, "prerelease": false}
         ]"""
         assertEquals("1.4.0", ReleaseNotes.pick(body, false)?.get("tag_name")?.asString)

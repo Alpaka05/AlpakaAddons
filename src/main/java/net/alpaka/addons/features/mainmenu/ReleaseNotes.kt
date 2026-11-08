@@ -109,7 +109,9 @@ object ReleaseNotes {
             .map { it.asJsonObject }
             .firstOrNull { r ->
                 r.get("draft")?.takeIf { it.isJsonPrimitive }?.asBoolean != true &&
-                    (preReleases || r.get("prerelease")?.takeIf { it.isJsonPrimitive }?.asBoolean != true)
+                    (preReleases || (r.get("prerelease")?.takeIf { it.isJsonPrimitive }?.asBoolean != true &&
+                        r.get("tag_name")?.takeIf { it.isJsonPrimitive }?.asString
+                            ?.let { net.alpaka.addons.utils.ReleaseVersion.parse(it)?.isPreRelease } != true))
             }
 
     private fun read(body: String, preReleases: Boolean): Notes? {

@@ -174,6 +174,11 @@ public final class ChestValuePanel {
     private static final Valuation NONE = new Valuation(null, Double.NaN, false, null);
     /** Valuations by the item's data, worked out once per price list: a chest is mostly the same items. */
     private static final Map<CustomData, Valuation> VALUES = new HashMap<>();
+    /**
+     * The same, by the data object itself, in front of {@link #VALUES}: a hit there still hashes the
+     * item's whole tag, and the same stacks are valued again every quarter second. Cleared with it.
+     */
+    private static final Map<CustomData, Valuation> VALUES_BY_OBJECT = new java.util.IdentityHashMap<>();
     private static long valuesKey = Long.MIN_VALUE;
 
     private static final ItemValue.Prices PRICES = ItemPrices::quote;
@@ -190,8 +195,14 @@ public final class ChestValuePanel {
     };
 
     private static Valuation value(CustomData custom) {
+        Valuation same = VALUES_BY_OBJECT.get(custom);
+        if (same != null) return same;
+        if (VALUES_BY_OBJECT.size() > 4096) VALUES_BY_OBJECT.clear();
         Valuation cached = VALUES.get(custom);
-        if (cached != null) return cached;
+        if (cached != null) {
+            VALUES_BY_OBJECT.put(custom, cached);
+            return cached;
+        }
         Valuation v = NONE;
         JsonElement json = NbtOps.INSTANCE.convertTo(JsonOps.INSTANCE, ItemData.view(custom));
         if (json.isJsonObject() && json.getAsJsonObject().has("id")) {
@@ -206,8 +217,12 @@ public final class ChestValuePanel {
             }
         }
         // A menu full of changing buttons must not grow this without end.
-        if (VALUES.size() > 4096) VALUES.clear();
+        if (VALUES.size() > 4096) {
+            VALUES.clear();
+            VALUES_BY_OBJECT.clear();
+        }
         VALUES.put(custom, v);
+        VALUES_BY_OBJECT.put(custom, v);
         return v;
     }
 
@@ -217,6 +232,7 @@ public final class ChestValuePanel {
         if (key == valuesKey) return;
         valuesKey = key;
         VALUES.clear();
+        VALUES_BY_OBJECT.clear();
         dirty = true;
     }
 

@@ -52,6 +52,10 @@ import java.util.Map;
  * menu's design.
  */
 public class ProfileDashboardScreen extends Screen {
+    /** Compiled once: these run per row, every frame the page is on. */
+    private static final java.util.regex.Pattern CAMEL_HUMP = java.util.regex.Pattern.compile("([a-z])([A-Z])");
+    private static final java.util.regex.Pattern BACKPACK_KEY = java.util.regex.Pattern.compile("backpack_\\d+");
+
 
     // ---- Pages ----------------------------------------------------------------------------------
 
@@ -207,6 +211,13 @@ public class ProfileDashboardScreen extends Screen {
     @Override
     public void onClose() {
         if (this.minecraft != null) this.minecraft.gui.setScreen(parent);
+    }
+
+    @Override
+    public void removed() {
+        super.removed();
+        // The built items hold the profile's JSON; nothing needs them while no dashboard is open.
+        InventoryItems.forget();
     }
 
     private static ProfileSession session(String player) {
@@ -1428,7 +1439,7 @@ public class ProfileDashboardScreen extends Screen {
         count(pests, "Total", total);
         for (var e : Json.obj(r, "farmingWeight.pests").entrySet()) {
             if (e.getValue().isJsonPrimitive() && e.getValue().getAsDouble() > 0) {
-                pests.add(row(ProfileData.title(e.getKey().replaceAll("([a-z])([A-Z])", "$1_$2")), Coins.full(e.getValue().getAsDouble())));
+                pests.add(row(ProfileData.title(CAMEL_HUMP.matcher(e.getKey()).replaceAll("$1_$2")), Coins.full(e.getValue().getAsDouble())));
             }
         }
         add(cards, "Pests Killed", pests);
@@ -2643,7 +2654,7 @@ public class ProfileDashboardScreen extends Screen {
     /** The backpacks the profile has, in the order of their slots in the Storage menu. */
     private static List<String> backpacks(ProfileData d) {
         List<String> out = new ArrayList<>();
-        for (String name : d.inventories.keySet()) if (name.matches("backpack_\\d+")) out.add(name);
+        for (String name : d.inventories.keySet()) if (BACKPACK_KEY.matcher(name).matches()) out.add(name);
         out.sort(java.util.Comparator.comparingInt(n -> Integer.parseInt(n.substring("backpack_".length()))));
         return out;
     }

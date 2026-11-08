@@ -138,6 +138,11 @@ public final class HideMobDeathsFeature {
 
     private record ZeroHealthVerdict(Component name, boolean zero) {}
 
+    /** On a world change or disconnect: the stands of the old world are gone, so are their verdicts. */
+    public static void forgetNames() {
+        ZERO_HEALTH_BY_ID.clear();
+    }
+
     private static final Int2ObjectOpenHashMap<ZeroHealthVerdict> ZERO_HEALTH_BY_ID = new Int2ObjectOpenHashMap<>();
     private static final int ZERO_HEALTH_CACHE_LIMIT = 2048;
 

@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.garden
 
+import net.alpaka.addons.utils.EntityColors
 import net.alpaka.addons.utils.ItemData
 import com.mojang.blaze3d.platform.InputConstants
 import net.alpaka.addons.client.AlpakaKeyBinds
@@ -112,7 +113,7 @@ object PestFinder {
      * Ids of the entities that make up the pests the client has loaded, to whether each is the
      * stand wearing the pest's head (whose own body is then left undrawn, see [isPestHead]).
      */
-    private val outlined = HashMap<Int, Boolean>()
+    private val outlined = EntityColors()
 
     /** Reads the plot names off the desk's menu every this many ticks while it is open. */
     private const val MENU_READ_TICKS = 10
@@ -308,7 +309,7 @@ object PestFinder {
             if (entity is ArmorStand) {
                 if (!entity.getItemBySlot(EquipmentSlot.HEAD).`is`(Items.PLAYER_HEAD)) continue
                 if (abs(entity.id - tag.id) <= PART_ID_SPREAD) {
-                    outlined[entity.id] = true
+                    outlined.put(entity.id, 1)
                     foundHead = true
                 }
                 if (nearestHead == null || entity.distanceToSqr(tag) < nearestHead.distanceToSqr(tag)) nearestHead = entity
@@ -318,15 +319,15 @@ object PestFinder {
         }
         if (foundHead) return
         when {
-            nearestHead != null -> outlined[nearestHead.id] = true
-            mob != null -> outlined[mob.id] = false
+            nearestHead != null -> outlined.put(nearestHead.id, 1)
+            mob != null -> outlined.put(mob.id, 0)
         }
     }
 
     /** Called from EntityRendererMixin: the outline on the pests. */
     @JvmStatic
     fun applyOutline(entity: Entity, state: EntityRenderState) {
-        if (!highlighting() || !outlined.containsKey(entity.id)) return
+        if (!highlighting() || !outlined.has(entity.id)) return
         state.outlineColor = (AlpakaConfig.instance.pestFinderHighlightColor and 0xFFFFFF).takeIf { it != 0 } ?: 0x010101
     }
 
@@ -335,7 +336,7 @@ object PestFinder {
      * a pest's head, whose body is then left out so the outline sits on the head alone.
      */
     @JvmStatic
-    fun isPestHead(entity: Entity): Boolean = highlighting() && outlined[entity.id] == true
+    fun isPestHead(entity: Entity): Boolean = highlighting() && outlined.has(entity.id) && outlined.get(entity.id) == 1
 
     private fun highlighting(): Boolean {
         if (outlined.isEmpty()) return false

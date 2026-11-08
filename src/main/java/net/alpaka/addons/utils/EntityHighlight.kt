@@ -67,7 +67,7 @@ object EntityHighlight {
 
     /** Draws a box around the hitbox of each entity in [targets] (entity id to ARGB color). */
     @JvmStatic
-    fun submitHitboxes(context: LevelRenderContext, targets: Map<Int, Int>) {
+    fun submitHitboxes(context: LevelRenderContext, targets: EntityColors) {
         val mc = Minecraft.getInstance()
         val level = mc.level ?: return
         val partialTick = mc.deltaTracker.getGameTimeDeltaPartialTick(false)
@@ -75,9 +75,9 @@ object EntityHighlight {
 
         // Worked out now, relative to the camera in double precision; the geometry is built later
         // in the frame, and far from the origin a float cannot hold an absolute position finely.
-        val boxes = ArrayList<Pair<AABB, Int>>(targets.size)
-        for ((id, color) in targets) {
-            val entity = level.getEntity(id) ?: continue
+        val boxes = ArrayList<Pair<AABB, Int>>(targets.size())
+        targets.forEach { id, color ->
+            val entity = level.getEntity(id) ?: return@forEach
             val pos = entity.getPosition(partialTick)
             val box = entity.boundingBox
                 .move(pos.x - entity.x - camera.x, pos.y - entity.y - camera.y, pos.z - entity.z - camera.z)

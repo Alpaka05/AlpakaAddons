@@ -143,6 +143,13 @@ public final class RagnarockFeature {
             seconds = -1;
             return message;
         }
+        // Action bars come several times a second everywhere; one without the word cannot match,
+        // so it takes the no-match path below without splitting the message into pieces.
+        if (!message.getString().contains("CASTING")) {
+            if (seconds > 0) countdownEndedAt = System.currentTimeMillis();
+            seconds = -1;
+            return message;
+        }
         List<Piece> pieces = new ArrayList<>();
         message.visit((style, text) -> {
             pieces.add(new Piece(style, text));

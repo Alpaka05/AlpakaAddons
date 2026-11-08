@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.dungeonmobs
 
+import net.alpaka.addons.utils.EntityColors
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.features.slayer.BossHighlightRenderState
 import net.alpaka.addons.utils.AlpakaPerf
@@ -51,7 +52,7 @@ object StarredMobsHighlight {
     private var rescanIn = 0
 
     /** Entity id to ARGB highlight color, for this tick. */
-    private val targets = HashMap<Int, Int>()
+    private val targets = EntityColors()
 
     /** Ids of the mobs found under starred name tags by the last scan. */
     private val starredIds = HashSet<Int>()
@@ -118,7 +119,7 @@ object StarredMobsHighlight {
         val color = cfg.starredMobsHighlightColor
         for (id in starredIds) {
             val mob = level.getEntity(id) as? LivingEntity ?: continue
-            if (!mob.isRemoved && mob.isAlive && player.hasLineOfSight(mob)) targets[id] = color
+            if (!mob.isRemoved && mob.isAlive && player.hasLineOfSight(mob)) targets.put(id, color)
         }
     }
 
@@ -174,14 +175,15 @@ object StarredMobsHighlight {
 
     private fun isNpc(player: Player): Boolean = player.uuid.version() == 2
 
-    /** The highlight color of [entity] this tick, or null when it has none. */
-    private fun colorOf(entity: Entity): Int? = if (targets.isEmpty()) null else targets[entity.id]
+    /** Whether [entity] has a highlight color this tick; its color is then [targets]' value for it. */
+    private fun highlighted(entity: Entity): Boolean = !targets.isEmpty() && targets.has(entity.id)
 
     /** Called from EntityRendererMixin after Boss Highlight: the outline style. */
     @JvmStatic
     fun applyOutline(entity: Entity, state: EntityRenderState) {
         if (style != EntityHighlight.STYLE_OUTLINE) return
-        EntityHighlight.outline(state, colorOf(entity) ?: return)
+        if (!highlighted(entity)) return
+        EntityHighlight.outline(state, targets.get(entity.id))
     }
 
     /**
@@ -191,7 +193,8 @@ object StarredMobsHighlight {
     @JvmStatic
     fun applyOverlay(entity: Entity, state: BossHighlightRenderState) {
         if (style != EntityHighlight.STYLE_OVERLAY) return
-        EntityHighlight.overlay(state, colorOf(entity) ?: return)
+        if (!highlighted(entity)) return
+        EntityHighlight.overlay(state, targets.get(entity.id))
     }
 
     /** Whether [entity] is the name tag of a mob without a star, to be left undrawn. */

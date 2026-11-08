@@ -30,6 +30,12 @@ final class InventoryItems {
     /** By the item's JSON, which stays the same object for as long as its inventory is shown. */
     private static final Map<JsonElement, Built> STACKS = new IdentityHashMap<>();
 
+    /** Drops the built items and looks, once the dashboard is closed. Render thread only. */
+    static void forget() {
+        STACKS.clear();
+        LOOKS.clear();
+    }
+
     /** The item to draw, or empty while its look is still on its way. Render thread only. */
     static ItemStack stack(JsonElement item) {
         ItemStack base = base(item);

@@ -191,10 +191,8 @@ object FarmingHudRenderer {
     /**
      * The rows, each behind its own toggle. [preview] fills them with sample figures for the editor.
      *
-     * Grouped by topic, with a small gap between groups: how fast you farm, the pests, the crop
-     * milestone, and what happens on the Garden. The short rows come first and the long ones (crop
-     * icons, visitor count and timer, contest crops) sit together at the bottom, so the panel's
-     * right edge does not jump in and out from row to row.
+     * Grouped by topic, with a small gap between groups: the crop milestone, the pests, how fast
+     * you farm, and what happens on the Garden.
      */
     private fun buildRows(preview: Boolean, now: Long): List<Line> {
         val cfg = AlpakaConfig.instance
@@ -202,57 +200,8 @@ object FarmingHudRenderer {
 
         if (cfg.farmingHudShowTitle) rows.add(Line("§lFarming", "", COLOR_TITLE, spansColumns = true))
 
-        // Speed.
-        var group = rows.size
-        if (cfg.farmingHudShowBps) {
-            val bps = if (preview) 19.85 else FarmingTracker.blocksPerSecond(now)
-            rows.add(Line("BPS", bps?.let { String.format(Locale.ROOT, "%.2f", it) } ?: "-", COLOR_VALUE))
-        }
-        if (cfg.farmingHudShowXpPerHour) {
-            val perHour = if (preview) 412_800.0 else FarmingTracker.xpPerHour(now)
-            rows.add(
-                if (!preview && perHour == null && FarmingTracker.xpNeedsSkillWidget) {
-                    Line("XP/hr", "Skills Widget Off", COLOR_WARN)
-                } else {
-                    Line("XP/hr", perHour?.let { formatNumber(it.roundToLong()) } ?: "-", COLOR_VALUE)
-                },
-            )
-        }
-
-        markGroup(rows, group)
-
-        // Pests.
-        group = rows.size
-        if (cfg.farmingHudShowPestCooldown) {
-            val left = if (preview) 118_000L else FarmingTracker.pestCooldownLeftMs(now)
-            rows.add(
-                when {
-                    !preview && FarmingTracker.maxPests -> Line("Pest CD", "Max Pests", COLOR_BAD)
-                    left == null && !preview && !FarmingTracker.hasPestWidget -> Line("Pest CD", "Tab Widget Off", COLOR_WARN)
-                    // Not known until the widget shows a cooldown or pests have spawned once.
-                    left == null -> Line("Pest CD", "-", COLOR_VALUE)
-                    left <= 0L -> Line("Pest CD", "Ready", COLOR_GOOD)
-                    else -> Line("Pest CD", formatDuration(left), COLOR_VALUE)
-                }
-            )
-        }
-
-        if (cfg.farmingHudShowRepellent) {
-            val left = if (preview) 2_712_000L else FarmingTracker.repellentLeftMs(now)
-            rows.add(
-                if (left == null) {
-                    Line("Repellent", "None", COLOR_BAD)
-                } else {
-                    val max = if (preview || cfg.farmingRepellentMax) " (Max)" else ""
-                    Line("Repellent", formatDuration(left) + max, COLOR_GOOD)
-                }
-            )
-        }
-
-        markGroup(rows, group)
-
         // Crop milestone.
-        group = rows.size
+        var group = rows.size
         val milestone = if (preview) FarmingParse.Milestone("Mushroom", 25, 48.7) else FarmingTracker.milestone
         val noMilestoneWidget = !preview && !FarmingTracker.hasMilestoneWidget
         // The crop and its tier go in front of the Next Tier row; the Milestone row only shows the
@@ -290,6 +239,55 @@ object FarmingHudRenderer {
                         Line("Next Tier", eta?.let { "$tier in ${formatDuration(it)}" } ?: tier, COLOR_VALUE, leadIcon = milestone.crop)
                     }
                 }
+            )
+        }
+
+        markGroup(rows, group)
+
+        // Pests.
+        group = rows.size
+        if (cfg.farmingHudShowPestCooldown) {
+            val left = if (preview) 118_000L else FarmingTracker.pestCooldownLeftMs(now)
+            rows.add(
+                when {
+                    !preview && FarmingTracker.maxPests -> Line("Pest CD", "Max Pests", COLOR_BAD)
+                    left == null && !preview && !FarmingTracker.hasPestWidget -> Line("Pest CD", "Tab Widget Off", COLOR_WARN)
+                    // Not known until the widget shows a cooldown or pests have spawned once.
+                    left == null -> Line("Pest CD", "-", COLOR_VALUE)
+                    left <= 0L -> Line("Pest CD", "Ready", COLOR_GOOD)
+                    else -> Line("Pest CD", formatDuration(left), COLOR_VALUE)
+                }
+            )
+        }
+
+        if (cfg.farmingHudShowRepellent) {
+            val left = if (preview) 2_712_000L else FarmingTracker.repellentLeftMs(now)
+            rows.add(
+                if (left == null) {
+                    Line("Repellent", "None", COLOR_BAD)
+                } else {
+                    val max = if (preview || cfg.farmingRepellentMax) " (Max)" else ""
+                    Line("Repellent", formatDuration(left) + max, COLOR_GOOD)
+                }
+            )
+        }
+
+        markGroup(rows, group)
+
+        // Speed.
+        group = rows.size
+        if (cfg.farmingHudShowBps) {
+            val bps = if (preview) 19.85 else FarmingTracker.blocksPerSecond(now)
+            rows.add(Line("BPS", bps?.let { String.format(Locale.ROOT, "%.2f", it) } ?: "-", COLOR_VALUE))
+        }
+        if (cfg.farmingHudShowXpPerHour) {
+            val perHour = if (preview) 412_800.0 else FarmingTracker.xpPerHour(now)
+            rows.add(
+                if (!preview && perHour == null && FarmingTracker.xpNeedsSkillWidget) {
+                    Line("XP/hr", "Skills Widget Off", COLOR_WARN)
+                } else {
+                    Line("XP/hr", perHour?.let { formatNumber(it.roundToLong()) } ?: "-", COLOR_VALUE)
+                },
             )
         }
 

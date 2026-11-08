@@ -902,8 +902,10 @@ public class ProfileDashboardScreen extends Screen {
         }
         long since = now - 30 * ProfileHistory.DAY;
         List<Milestone> out = new ArrayList<>();
+        // Newest first: past the first one that is too old, all the rest are too.
         for (Milestone m : milestoneAll) {
-            if (m.timeMs() >= since) out.add(m);
+            if (m.timeMs() < since) break;
+            out.add(m);
         }
         return out;
     }

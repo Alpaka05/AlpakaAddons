@@ -160,7 +160,9 @@ object FirePitFeature {
         val camX = camera.x
         val camY = camera.y
         val camZ = camera.z
-        val tint = Tint(AlpakaConfig.instance.blazeFirePitColor)
+        val argb = AlpakaConfig.instance.blazeFirePitColor
+        // The same tint every frame until the color setting changes.
+        val tint = lastTint?.takeIf { lastTintArgb == argb } ?: Tint(argb).also { lastTint = it; lastTintArgb = argb }
         context.submitNodeCollector().submitCustomGeometry(poseStack, RenderTypes.debugQuads()) { pose, buffer ->
             for (column in columns) {
                 drawColumn(buffer, pose, tint, column.pos, fadeIn(now - column.bornMs), column.openSides, camX, camY, camZ)
@@ -256,6 +258,9 @@ object FirePitFeature {
     }
 
     /** An ARGB config color split into 0..1 channels. */
+    private var lastTint: Tint? = null
+    private var lastTintArgb = 0
+
     private class Tint(argb: Int) {
         val r = (argb ushr 16 and 0xFF) / 255.0f
         val g = (argb ushr 8 and 0xFF) / 255.0f

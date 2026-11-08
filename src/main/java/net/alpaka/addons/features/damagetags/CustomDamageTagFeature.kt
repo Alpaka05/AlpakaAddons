@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.damagetags
 
+import net.alpaka.addons.client.gui.AlpakaStyle
 import com.mojang.blaze3d.vertex.PoseStack
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.features.slayer.SlayerBossNameTag
@@ -119,6 +120,14 @@ object CustomDamageTagFeature {
         var gradient: FormattedCharSequence? = null
         var gradientStart = 0
         var gradientEnd = 0
+
+        /**
+         * The text's width and the font generation it was measured in. The gradient only colors the
+         * characters, which never changes a width, so it is measured once per tag and again only
+         * after a resource reload changed the glyphs.
+         */
+        var width = 0
+        var widthGeneration = -1
     }
 
     private val tags = ArrayDeque<Tag>()
@@ -280,8 +289,7 @@ object CustomDamageTagFeature {
             val start = if (tag.crit) cfg.customDamageTagCritStart else cfg.customDamageTagNormalStart
             val end = if (tag.crit) cfg.customDamageTagCritEnd else cfg.customDamageTagNormalEnd
             // A still gradient is the same every frame, so it is built once per tag and again only when
-            // a color changes. The width is still measured every frame: a resource reload can change
-            // the glyphs.
+            // a color changes.
             val sequence = if (cfg.customDamageTagFlowingGradient) {
                 gradient(text, start, end, time)
             } else {
@@ -289,7 +297,12 @@ object CustomDamageTagFeature {
                 if (built != null && tag.gradientStart == start && tag.gradientEnd == end) built
                 else gradient(text, start, end, null).also { tag.gradient = it; tag.gradientStart = start; tag.gradientEnd = end }
             }
-            val width = font.width(sequence)
+            val generation = AlpakaStyle.fontGeneration
+            if (tag.widthGeneration != generation) {
+                tag.width = font.width(sequence)
+                tag.widthGeneration = generation
+            }
+            val width = tag.width
 
             poseStack.pushPose()
             poseStack.translate(

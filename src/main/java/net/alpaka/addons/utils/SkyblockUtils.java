@@ -58,7 +58,8 @@ public class SkyblockUtils {
         }
 
         skyblockCheckedAtMs = now;
-        cachedForLevel = level == null ? null : new java.lang.ref.WeakReference<>(level);
+        // A new reference only for a new level, not on every refresh.
+        if (level != cachedLevel) cachedForLevel = level == null ? null : new java.lang.ref.WeakReference<>(level);
         cachedOnSkyblock = computeOnSkyblock();
         return cachedOnSkyblock;
     }
@@ -86,7 +87,8 @@ public class SkyblockUtils {
         }
 
         gardenCheckedAtMs = now;
-        gardenCachedForLevel = level == null ? null : new java.lang.ref.WeakReference<>(level);
+        // A new reference only for a new level, not on every refresh.
+        if (level != cachedLevel) gardenCachedForLevel = level == null ? null : new java.lang.ref.WeakReference<>(level);
         cachedOnGarden = computeOnGarden();
         return cachedOnGarden;
     }
@@ -128,7 +130,8 @@ public class SkyblockUtils {
         }
 
         endIslandCheckedAtMs = now;
-        endIslandCachedForLevel = level == null ? null : new java.lang.ref.WeakReference<>(level);
+        // A new reference only for a new level, not on every refresh.
+        if (level != cachedLevel) endIslandCachedForLevel = level == null ? null : new java.lang.ref.WeakReference<>(level);
         cachedOnEndIsland = computeOnEndIsland();
         return cachedOnEndIsland;
     }
@@ -225,7 +228,8 @@ public class SkyblockUtils {
         sidebarReadAtMs = now;
         // The remembered rows belong to the old world's scoreboard.
         if (level != cachedLevel) SIDEBAR_ROWS.clear();
-        cachedSidebarLevel = level == null ? null : new java.lang.ref.WeakReference<>(level);
+        // A new reference only for a new level, not on every refresh.
+        if (level != cachedLevel) cachedSidebarLevel = level == null ? null : new java.lang.ref.WeakReference<>(level);
         cachedSidebarLines = readSidebarLines();
         return cachedSidebarLines;
     }
@@ -409,7 +413,7 @@ public class SkyblockUtils {
         }
         tabReadAtMs = now;
         if (connection != cachedConnection) TAB_CLEAN.clear();
-        cachedTabConnection = new java.lang.ref.WeakReference<>(connection);
+        if (connection != cachedConnection) cachedTabConnection = new java.lang.ref.WeakReference<>(connection);
         cachedTabLines = readTabListLines(mc);
         return cachedTabLines;
     }

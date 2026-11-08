@@ -1,6 +1,7 @@
 package net.alpaka.addons.features.enchantments;
 
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.utils.ItemData;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
@@ -13,8 +14,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 
 import java.lang.ref.WeakReference;
-import java.util.IdentityHashMap;
-import java.util.Map;
 
 /**
  * In SkyBlock's anvil, once one enchanted book is in, the books in the inventory it can be combined
@@ -34,11 +33,6 @@ public final class AnvilCombineHelper {
     private static final int RIGHT_SLOT = 33;
     private static final int CHEST_SLOTS = 54;
 
-    /**
-     * Enchantments per custom data, so the 36 inventory slots don't copy their tag every frame.
-     * Custom data is immutable, so its identity stands for its contents; dropped with the screen.
-     */
-    private static final Map<CustomData, CompoundTag> CACHE = new IdentityHashMap<>();
     /** Weak, so a closed chest screen (and through its menu the world) is not kept alive. */
     private static WeakReference<AbstractContainerScreen<?>> cachedScreen = new WeakReference<>(null);
     /** Whether {@link #cachedScreen} is the anvil; a screen's title never changes, so it is read once, not per slot. */
@@ -49,7 +43,6 @@ public final class AnvilCombineHelper {
         if (!AlpakaConfig.instance.anvilCombineHelperEnabled) return;
         if (!(slot.container instanceof Inventory) || !(screen instanceof ContainerScreen)) return;
         if (screen != cachedScreen.get()) {
-            CACHE.clear();
             cachedScreen = new WeakReference<>(screen);
             cachedIsAnvil = "Anvil".equals(screen.getTitle().getString());
         }
@@ -94,7 +87,7 @@ public final class AnvilCombineHelper {
         if (stack.isEmpty()) return null;
         CustomData data = stack.get(DataComponents.CUSTOM_DATA);
         if (data == null || data.isEmpty()) return null;
-        if (CACHE.size() > 256) CACHE.clear();
-        return CACHE.computeIfAbsent(data, CustomData::copyTag);
+        // Read in place, never changed: no copy per slot and frame.
+        return ItemData.view(data);
     }
 }

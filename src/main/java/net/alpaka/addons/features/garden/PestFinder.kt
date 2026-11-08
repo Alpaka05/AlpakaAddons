@@ -336,7 +336,7 @@ object PestFinder {
      * a pest's head, whose body is then left out so the outline sits on the head alone.
      */
     @JvmStatic
-    fun isPestHead(entity: Entity): Boolean = highlighting() && outlined.has(entity.id) && outlined.get(entity.id) == 1
+    fun isPestHead(entity: Entity): Boolean = highlighting() && outlined.getOr(entity.id, -1) == 1
 
     private fun highlighting(): Boolean {
         if (outlined.isEmpty()) return false

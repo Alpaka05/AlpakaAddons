@@ -20,7 +20,6 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(EntityRenderer.class)
 public class EntityRendererMixin<T extends Entity, S extends EntityRenderState> {
@@ -30,12 +29,11 @@ public class EntityRendererMixin<T extends Entity, S extends EntityRenderState> 
      * living-entity override calls up to here and then applies the entity's own attribute scale on
      * top, which is the right order for a cosmetic factor on the vanilla footprint.
      */
-    @Inject(method = "getShadowRadius", at = @At("RETURN"), cancellable = true)
-    private void alpaka$scalePlayerShadow(S state, CallbackInfoReturnable<Float> cir) {
+    @ModifyReturnValue(method = "getShadowRadius", at = @At("RETURN"))
+    private float alpaka$scalePlayerShadow(float radius, S state) {
+        // A return-value hook makes no callback object per entity and frame, nor a boxed Float.
         float factor = PlayerScaleFeature.shadowFactor(state);
-        if (factor != 1.0f) {
-            cir.setReturnValue(cir.getReturnValueF() * factor);
-        }
+        return factor != 1.0f ? radius * factor : radius;
     }
 
     // The rule hooks below run per entity and frame, so they are only counted; timing each would

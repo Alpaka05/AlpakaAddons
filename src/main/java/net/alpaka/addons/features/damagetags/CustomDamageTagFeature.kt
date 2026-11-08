@@ -7,6 +7,7 @@ import net.alpaka.addons.features.slayer.SlayerType
 import net.alpaka.addons.utils.AlpakaPerf
 import net.alpaka.addons.utils.DungeonState
 import net.alpaka.addons.utils.EntityCache
+import net.alpaka.addons.utils.ExpiringIds
 import net.alpaka.addons.utils.SkyblockUtils
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext
@@ -119,7 +120,8 @@ object CustomDamageTagFeature {
     }
 
     private val tags = ArrayDeque<Tag>()
-    private val seen = HashMap<Int, Long>()
+    /** Splash stands already looked at, for [SEEN_MEMORY_MS]; expired from the oldest, not walked whole. */
+    private val seen = ExpiringIds()
 
     @JvmStatic
     fun register() {
@@ -177,7 +179,7 @@ object CustomDamageTagFeature {
         val lifetime = cfg.customDamageTagDurationMs.toLong()
         // Guarded so a tick with nothing to sweep, nearly all of them, builds no predicate or iterator.
         if (tags.isNotEmpty()) tags.removeAll { now - it.bornMs > lifetime }
-        if (seen.isNotEmpty()) seen.entries.removeIf { now - it.value > SEEN_MEMORY_MS }
+        if (!seen.isEmpty()) seen.expire(now, SEEN_MEMORY_MS)
 
         val level = mc.level
         if (!cfg.customDamageTagsEnabled || level == null || !SkyblockUtils.isOnSkyblock()) return
@@ -189,9 +191,9 @@ object CustomDamageTagFeature {
 
         for (entity in level.entitiesForRendering()) {
             if (entity !is ArmorStand || entity.tickCount > MAX_DETECT_AGE_TICKS) continue
-            if (seen.containsKey(entity.id)) continue
+            if (seen.contains(entity.id)) continue
             val splash = DamageTagFeature.parseSplash(entity) ?: continue
-            seen[entity.id] = now
+            seen.add(entity.id, now)
             // Only Show Crit Damage still applies: a hidden non-crit gets no replacement either.
             if (!splash.crit && cfg.onlyCritDamageEnabled) continue
             // Hypixel's own splash stays hidden either way; these only decide whether ours is drawn.

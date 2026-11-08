@@ -26,6 +26,11 @@ public final class EntityColors {
         return map.get(id);
     }
 
+    /** The value for {@code id}, or {@code fallback} when it has none: one lookup instead of two. */
+    public int getOr(int id, int fallback) {
+        return map.getOrDefault(id, fallback);
+    }
+
     public boolean isEmpty() {
         return map.isEmpty();
     }

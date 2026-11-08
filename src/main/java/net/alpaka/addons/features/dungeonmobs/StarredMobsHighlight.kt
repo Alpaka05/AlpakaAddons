@@ -89,6 +89,7 @@ object StarredMobsHighlight {
         targets.clear()
         starredIds.clear()
         hiddenTags.clear()
+        starredTags.clear()
         hideNames = false
         rescanIn = 0
     }
@@ -112,6 +113,7 @@ object StarredMobsHighlight {
             rescanIn = RESCAN_TICKS
             rescan(level, player)
             if (hiddenTags.size() > 512) hiddenTags.clear()
+            if (starredTags.size() > 512) starredTags.clear()
         }
 
         // Only mobs the player can see: the outline glow is drawn through walls, and highlighting a
@@ -133,11 +135,25 @@ object StarredMobsHighlight {
                 continue
             }
             if (entity !is ArmorStand || !entity.isAlive || !entity.hasCustomName()) continue
-            val name = entity.customName?.string ?: continue
-            if (!StarredMobs.isStarredTag(name)) continue
+            val name = entity.customName ?: continue
+            if (!isStarred(entity.id, name)) continue
             mobUnder(level, entity, player)?.let { starredIds.add(it.id) }
         }
     }
+
+    /**
+     * [StarredMobs.isStarredTag] for a stand's name, kept with the name object it was read from: the
+     * rescan reads every named stand, and most of them keep their name between rescans.
+     */
+    private fun isStarred(id: Int, name: Component): Boolean {
+        val cached = starredTags.get(id)
+        if (cached != null && cached.first === name) return cached.second
+        val starred = StarredMobs.isStarredTag(name.string)
+        starredTags.put(id, name to starred)
+        return starred
+    }
+
+    private val starredTags = EntityCache<Pair<Component, Boolean>>()
 
     /**
      * The mob a name tag floats over. Hypixel spawns a mob's name tag straight after the mob, so the

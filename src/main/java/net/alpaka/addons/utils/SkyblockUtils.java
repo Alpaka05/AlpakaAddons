@@ -223,6 +223,8 @@ public class SkyblockUtils {
         }
 
         sidebarReadAtMs = now;
+        // The remembered rows belong to the old world's scoreboard.
+        if (level != cachedLevel) SIDEBAR_ROWS.clear();
         cachedSidebarLevel = level == null ? null : new java.lang.ref.WeakReference<>(level);
         cachedSidebarLines = readSidebarLines();
         return cachedSidebarLines;
@@ -239,15 +241,48 @@ public class SkyblockUtils {
             if (objective == null) return List.of();
 
             List<String> lines = new ArrayList<>();
-            lines.add(cleanColor(objective.getDisplayName().getString()));
+            Component title = objective.getDisplayName();
+            if (title != sidebarTitle) {
+                sidebarTitle = title;
+                sidebarTitleText = cleanColor(title.getString());
+            }
+            lines.add(sidebarTitleText);
 
             for (PlayerScoreEntry entry : scoreboard.listPlayerScores(objective)) {
-                lines.add(cleanColor(lineText(scoreboard, entry)));
+                lines.add(cleanLine(scoreboard, entry));
             }
+            if (SIDEBAR_ROWS.size() > 256) SIDEBAR_ROWS.clear();
             return lines;
         } catch (Exception e) {
             return List.of();
         }
+    }
+
+    /**
+     * One row's text as it was last read, with the components it was read from. Hypixel sends a new
+     * component whenever it changes a row, so while all of them are the same objects the cleaned
+     * text is too; that saves three flattenings and a strip per row per tick in a slayer fight.
+     */
+    private record SidebarRow(Component prefix, Component display, Component suffix, String text) {}
+
+    private static final java.util.Map<String, SidebarRow> SIDEBAR_ROWS = new java.util.HashMap<>();
+    private static Component sidebarTitle;
+    private static String sidebarTitleText = "";
+
+    /** {@code cleanColor(lineText(...))}, reused while the row's components stay the same. */
+    private static String cleanLine(Scoreboard scoreboard, PlayerScoreEntry entry) {
+        PlayerTeam team = scoreboard.getPlayersTeam(entry.owner());
+        Component prefix = team != null ? team.getPlayerPrefix() : null;
+        Component suffix = team != null ? team.getPlayerSuffix() : null;
+        // The entry's own display; without one the name is the owner string, which is the key.
+        Component display = entry.display();
+        SidebarRow row = SIDEBAR_ROWS.get(entry.owner());
+        if (row != null && row.prefix() == prefix && row.display() == display && row.suffix() == suffix) {
+            return row.text();
+        }
+        String text = cleanColor(lineText(scoreboard, entry));
+        SIDEBAR_ROWS.put(entry.owner(), new SidebarRow(prefix, display, suffix, text));
+        return text;
     }
 
     /**
@@ -373,6 +408,7 @@ public class SkyblockUtils {
             return cachedTabLines;
         }
         tabReadAtMs = now;
+        if (connection != cachedConnection) TAB_CLEAN.clear();
         cachedTabConnection = new java.lang.ref.WeakReference<>(connection);
         cachedTabLines = readTabListLines(mc);
         return cachedTabLines;
@@ -383,6 +419,9 @@ public class SkyblockUtils {
     /** Weak: the connection holds the level and every entity in it, long after a disconnect. */
     private static java.lang.ref.WeakReference<Object> cachedTabConnection = null;
 
+    /** The cleaned text of each tab line component seen lately; client thread only. */
+    private static final java.util.IdentityHashMap<Component, String> TAB_CLEAN = new java.util.IdentityHashMap<>();
+
     /** Builds the snapshot. Callers want {@link #getTabListLines()}, which shares one per tick. */
     private static List<String> readTabListLines(Minecraft mc) {
         try {
@@ -390,8 +429,16 @@ public class SkyblockUtils {
             for (var info : mc.player.connection.getListedOnlinePlayers()) {
                 Component name = info.getTabListDisplayName();
                 if (name == null) continue;
-                lines.add(cleanColor(name.getString()));
+                // A changed tab line is a new component, so the cleaned text is kept per object.
+                String text = TAB_CLEAN.get(name);
+                if (text == null) {
+                    text = cleanColor(name.getString());
+                    TAB_CLEAN.put(name, text);
+                }
+                lines.add(text);
             }
+            // Lines that changed leave their old component behind; past a bound the map starts over.
+            if (TAB_CLEAN.size() > 4 * lines.size() + 64) TAB_CLEAN.clear();
             // A read-only view rather than a copy; nothing else holds the list.
             return java.util.Collections.unmodifiableList(lines);
         } catch (Exception ignored) {

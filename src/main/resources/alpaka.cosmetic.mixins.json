@@ -41,6 +41,7 @@
     "NameTagSubmitMixin",
     "ParticleEngineMixin",
     "PictureInPictureRendererMixin",
+    "PreparedFrameSkyMixin",
     "ScreenEffectRendererMixin",
     "SkyRendererMixin",
     "SoundEngineMixin",

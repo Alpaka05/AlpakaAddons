@@ -3,13 +3,16 @@ package net.alpaka.addons.mixin;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.alpaka.addons.features.chat.ChatBlurFeature;
+import net.alpaka.addons.features.sky.SkyEffectsFeature;
 import net.minecraft.client.gui.render.GuiRenderer;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.CameraType;
 import org.joml.Matrix4fc;
 import org.spongepowered.asm.mixin.Mixin;
+import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 import net.alpaka.addons.config.AlpakaConfig;
 
 @Mixin(GameRenderer.class)
@@ -54,5 +57,22 @@ public class GameRendererMixin {
         } finally {
             ChatBlurFeature.setInFramePass(false);
         }
+    }
+
+    /**
+     * Sky Effects: the world's projection this frame, with view bobbing, hurt shake and FOV in it,
+     * as the world is drawn with it. The clouds need it to find where a direction lay on the
+     * screen in the last frame.
+     */
+    @ModifyArg(
+        method = "renderLevel",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/client/renderer/ProjectionMatrixBuffer;getBuffer(Lorg/joml/Matrix4f;)Lcom/mojang/blaze3d/buffers/GpuBufferSlice;"
+        )
+    )
+    private Matrix4f alpaka$levelProjection(Matrix4f projection) {
+        SkyEffectsFeature.levelProjection(projection);
+        return projection;
     }
 }

@@ -38,7 +38,7 @@ class DisableAllFeaturesTest {
             // General
             "allowApiCalls", "updateNotificationsEnabled", "customEscapeMenuEnabled", "customMainMenuEnabled",
             // Visuals
-            "fullbrightEnabled", "skyEffectsEnabled", "cleanBlazeEnabled", "blazeFirePitsEnabled", "stopBlazeSpinning",
+            "fullbrightEnabled", "cleanBlazeEnabled", "blazeFirePitsEnabled", "stopBlazeSpinning",
             "hideHurtOverlayEnabled", "hideMobDeathsEnabled", "hideVisualClutter", "hideEntityFire", "firstPersonFireStatic",
             "nameTagTextShadow", "showOwnNameTag", "renderHandInThirdPerson", "smoothPerspectiveEnabled",
             "disableFrontPerspective", "zoomEnabled", "containerBgFadeInEnabled", "inventorySnowEnabled",

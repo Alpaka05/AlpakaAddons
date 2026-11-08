@@ -509,7 +509,7 @@ public class AlpakaConfigRegistry {
                 "zoom optifine spyglass binoculars magnify fov camera scroll hold"));
 
         OPTIONS.add(ConfigOption.keybind("zoom_key", "Key",
-                "The key to hold for zooming. C by default.",
+                "The key to hold for zooming. Unbound by default.",
                 ConfigCategory.VISUALS,
                 () -> net.alpaka.addons.features.zoom.ZoomFeature.ZOOM_KEY,
                 "zoom optifine"));
@@ -2478,26 +2478,26 @@ public class AlpakaConfigRegistry {
                     "auction house ah auctions browser bin bid custom menu gui redesign cards market"));
 
             OPTIONS.add(new ConfigOption("auction_house_hotkeys", "Enable Hotkeys",
-                    "Number keys open the first nine auctions or press the numbered buttons, Shift and a number picks a category, the arrow keys turn the page, / or Ctrl+F searches and Backspace goes back; the keys can be changed below. One click per key press.",
+                    "Number keys open the first nine auctions or press the numbered buttons, Shift and a number picks a category, / or Ctrl+F searches, and the keys below turn the page and go back once you bind them. One click per key press.",
                     ConfigCategory.SKYBLOCK,
                     () -> AlpakaConfig.instance.auctionHouseHotkeysEnabled,
                     v -> { AlpakaConfig.instance.auctionHouseHotkeysEnabled = v; AlpakaConfig.save(); },
                     "auction house ah hotkeys keys keyboard shortcuts number keys quick buy category page search"));
 
             OPTIONS.add(ConfigOption.keybind("auction_house_previous_page_key", "Previous Page Key",
-                    "Turns to the previous page. Left Arrow by default.",
+                    "Turns to the previous page. Unbound by default.",
                     ConfigCategory.SKYBLOCK,
                     () -> net.alpaka.addons.features.market.MarketKeys.AUCTION_HOUSE.previousPage(),
                     "auction house ah hotkeys previous page left arrow"));
 
             OPTIONS.add(ConfigOption.keybind("auction_house_next_page_key", "Next Page Key",
-                    "Turns to the next page. Right Arrow by default.",
+                    "Turns to the next page. Unbound by default.",
                     ConfigCategory.SKYBLOCK,
                     () -> net.alpaka.addons.features.market.MarketKeys.AUCTION_HOUSE.nextPage(),
                     "auction house ah hotkeys next page right arrow"));
 
             OPTIONS.add(ConfigOption.keybind("auction_house_back_key", "Back Key",
-                    "Goes back to the menu before. Backspace by default.",
+                    "Goes back to the menu before. Unbound by default.",
                     ConfigCategory.SKYBLOCK,
                     () -> net.alpaka.addons.features.market.MarketKeys.AUCTION_HOUSE.back(),
                     "auction house ah hotkeys back go back return backspace"));
@@ -2509,13 +2509,13 @@ public class AlpakaConfigRegistry {
                     "auction house ah hotkeys search find query slash"));
 
             OPTIONS.add(ConfigOption.keybind("auction_house_create_auction_key", "Create Auction Key",
-                    "Presses Create Auction in Manage Auctions. C by default.",
+                    "Presses Create Auction in Manage Auctions. Unbound by default.",
                     ConfigCategory.SKYBLOCK,
                     () -> net.alpaka.addons.features.market.MarketKeys.AUCTION_HOUSE.createAuction(),
                     "auction house ah hotkeys create auction sell manage"));
 
             OPTIONS.add(ConfigOption.keybind("auction_house_reset_settings_key", "Reset Settings Key",
-                    "Presses Reset Settings, which clears the sort and filters. R by default.",
+                    "Presses Reset Settings, which clears the sort and filters. Unbound by default.",
                     ConfigCategory.SKYBLOCK,
                     () -> net.alpaka.addons.features.market.MarketKeys.AUCTION_HOUSE.resetSettings(),
                     "auction house ah hotkeys reset settings sort filters clear"));
@@ -2528,26 +2528,26 @@ public class AlpakaConfigRegistry {
                     "bazaar bz buy sell order offer instant custom menu gui redesign prices market"));
 
             OPTIONS.add(new ConfigOption("bazaar_hotkeys", "Enable Hotkeys",
-                    "Number keys open the first nine products or press the numbered buttons, Shift and a number picks a category, the arrow keys turn the page, / or Ctrl+F searches and Backspace goes back; the keys can be changed below. One click per key press.",
+                    "Number keys open the first nine products or press the numbered buttons, Shift and a number picks a category, / or Ctrl+F searches, and the keys below turn the page and go back once you bind them. One click per key press.",
                     ConfigCategory.SKYBLOCK,
                     () -> AlpakaConfig.instance.bazaarHotkeysEnabled,
                     v -> { AlpakaConfig.instance.bazaarHotkeysEnabled = v; AlpakaConfig.save(); },
                     "bazaar bz hotkeys keys keyboard shortcuts number keys instant buy sell category page search"));
 
             OPTIONS.add(ConfigOption.keybind("bazaar_previous_page_key", "Previous Page Key",
-                    "Turns to the previous page. Left Arrow by default.",
+                    "Turns to the previous page. Unbound by default.",
                     ConfigCategory.SKYBLOCK,
                     () -> net.alpaka.addons.features.market.MarketKeys.BAZAAR.previousPage(),
                     "bazaar bz hotkeys previous page left arrow"));
 
             OPTIONS.add(ConfigOption.keybind("bazaar_next_page_key", "Next Page Key",
-                    "Turns to the next page. Right Arrow by default.",
+                    "Turns to the next page. Unbound by default.",
                     ConfigCategory.SKYBLOCK,
                     () -> net.alpaka.addons.features.market.MarketKeys.BAZAAR.nextPage(),
                     "bazaar bz hotkeys next page right arrow"));
 
             OPTIONS.add(ConfigOption.keybind("bazaar_back_key", "Back Key",
-                    "Goes back to the menu before. Backspace by default.",
+                    "Goes back to the menu before. Unbound by default.",
                     ConfigCategory.SKYBLOCK,
                     () -> net.alpaka.addons.features.market.MarketKeys.BAZAAR.back(),
                     "bazaar bz hotkeys back go back return backspace"));

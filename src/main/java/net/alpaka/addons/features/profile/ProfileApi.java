@@ -284,6 +284,12 @@ public final class ProfileApi {
     }
 
     private static void send(String url, CompletableFuture<JsonElement> future) {
+        // Requests were spaced out; Network Features switched off meanwhile stops the ones not sent yet.
+        if (!allowed()) {
+            CACHE.remove(url);
+            future.completeExceptionally(new NetworkOff());
+            return;
+        }
         HttpRequest request = HttpRequest.newBuilder(URI.create(url))
                 .timeout(Duration.ofSeconds(30))
                 .header("User-Agent", "AlpakaAddons/" + ModVersion.mod())

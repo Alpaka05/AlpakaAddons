@@ -229,7 +229,10 @@ public final class ItemValuePopup {
         CustomData custom = item.get(DataComponents.CUSTOM_DATA);
         if (custom != null) {
             JsonElement json = NbtOps.INSTANCE.convertTo(JsonOps.INSTANCE, custom.copyTag());
-            if (json.isJsonObject() && json.getAsJsonObject().has("id")) return json.getAsJsonObject();
+            // Only a SkyBlock id (a string); anything else under "id" is another server's, found by name.
+            if (json.isJsonObject() && json.getAsJsonObject().get("id") instanceof JsonPrimitive id && id.isString()) {
+                return json.getAsJsonObject();
+            }
         }
         return null;
     }

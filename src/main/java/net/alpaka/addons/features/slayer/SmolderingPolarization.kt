@@ -24,6 +24,9 @@ object SmolderingPolarization {
 
     private var ticks = 0
 
+    /** Whether the Bear line was off on the last tick, so nothing was read. */
+    private var hidden = true
+
     /** The time as the tab list last showed it, e.g. "1h 12m"; null while the effect is not listed. */
     @JvmStatic
     var shownTime: String? = null
@@ -36,13 +39,17 @@ object SmolderingPolarization {
 
     private fun tick(mc: Minecraft) {
         val cfg = AlpakaConfig.instance
-        // Only while the Bear line can show; the tab list is read anew on the first tick it can.
+        val due = ++ticks % READ_INTERVAL_TICKS == 0
+        // Only read while the Bear line can show. The counter keeps running so the read phase stays
+        // the same, and the first tick after the line is switched on reads at once, so the line shows
+        // the same value it would have if the tab list had been read all along.
         if (!cfg.slayerHudEnabled || !cfg.slayerHudShowBear) {
             shownTime = null
-            ticks = 0
+            hidden = true
             return
         }
-        if (ticks++ % READ_INTERVAL_TICKS != 0) return
+        if (!due && !hidden) return
+        hidden = false
         if (mc.player == null || !SkyblockUtils.isOnSkyblock()) {
             shownTime = null
             return

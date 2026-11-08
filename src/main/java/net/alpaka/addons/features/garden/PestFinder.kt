@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.garden
 
+import net.alpaka.addons.utils.ItemData
 import com.mojang.blaze3d.platform.InputConstants
 import net.alpaka.addons.client.AlpakaKeyBinds
 import net.alpaka.addons.client.AlpakaKeyCategory
@@ -211,7 +212,7 @@ object PestFinder {
         if (data == null) return false
         if (data !== cachedData) {
             cachedData = data
-            val id = data.copyTag().getStringOr("id", "")
+            val id = ItemData.view(data).getStringOr("id", "")
             cachedIsVacuum = id.endsWith("VACUUM") || id.startsWith("INFINI_VACUUM")
         }
         return cachedIsVacuum

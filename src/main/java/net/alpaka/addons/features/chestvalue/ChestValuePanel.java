@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.chestvalue;
 
+import net.alpaka.addons.utils.ItemData;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.blaze3d.platform.cursor.CursorTypes;
@@ -192,7 +193,7 @@ public final class ChestValuePanel {
         Valuation cached = VALUES.get(custom);
         if (cached != null) return cached;
         Valuation v = NONE;
-        JsonElement json = NbtOps.INSTANCE.convertTo(JsonOps.INSTANCE, custom.copyTag());
+        JsonElement json = NbtOps.INSTANCE.convertTo(JsonOps.INSTANCE, ItemData.view(custom));
         if (json.isJsonObject() && json.getAsJsonObject().has("id")) {
             JsonObject data = json.getAsJsonObject();
             String id = data.get("id").getAsString();

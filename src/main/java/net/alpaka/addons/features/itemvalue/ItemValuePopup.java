@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.itemvalue;
 
+import net.alpaka.addons.utils.ItemData;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.blaze3d.platform.cursor.CursorTypes;
@@ -227,7 +228,7 @@ public final class ItemValuePopup {
     private static JsonObject skyblockData(ItemStack item) {
         CustomData custom = item.get(DataComponents.CUSTOM_DATA);
         if (custom != null) {
-            JsonElement json = NbtOps.INSTANCE.convertTo(JsonOps.INSTANCE, custom.copyTag());
+            JsonElement json = NbtOps.INSTANCE.convertTo(JsonOps.INSTANCE, ItemData.view(custom));
             if (json.isJsonObject() && json.getAsJsonObject().has("id")) return json.getAsJsonObject();
         }
         return null;

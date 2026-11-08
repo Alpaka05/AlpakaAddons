@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.market;
 
+import net.alpaka.addons.utils.ItemData;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -107,7 +108,7 @@ public final class LowestBin {
         if (stack.isEmpty()) return null;
         CustomData data = stack.get(DataComponents.CUSTOM_DATA);
         if (data == null) return null;
-        net.minecraft.nbt.CompoundTag nbt = data.copyTag();
+        net.minecraft.nbt.CompoundTag nbt = ItemData.view(data);
         String id = nbt.getStringOr("id", "");
         if (id.isEmpty()) return null;
         String petInfo = nbt.getStringOr("petInfo", "");

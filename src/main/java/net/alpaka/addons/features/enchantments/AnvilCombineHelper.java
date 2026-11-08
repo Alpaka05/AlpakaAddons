@@ -12,6 +12,7 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 
+import java.lang.ref.WeakReference;
 import java.util.IdentityHashMap;
 import java.util.Map;
 
@@ -38,7 +39,8 @@ public final class AnvilCombineHelper {
      * Custom data is immutable, so its identity stands for its contents; dropped with the screen.
      */
     private static final Map<CustomData, CompoundTag> CACHE = new IdentityHashMap<>();
-    private static AbstractContainerScreen<?> cachedScreen;
+    /** Weak, so a closed chest screen (and through its menu the world) is not kept alive. */
+    private static WeakReference<AbstractContainerScreen<?>> cachedScreen = new WeakReference<>(null);
     /** Whether {@link #cachedScreen} is the anvil; a screen's title never changes, so it is read once, not per slot. */
     private static boolean cachedIsAnvil;
 
@@ -46,9 +48,9 @@ public final class AnvilCombineHelper {
     public static void extractSlotBackground(AbstractContainerScreen<?> screen, GuiGraphicsExtractor graphics, Slot slot) {
         if (!AlpakaConfig.instance.anvilCombineHelperEnabled) return;
         if (!(slot.container instanceof Inventory) || !(screen instanceof ContainerScreen)) return;
-        if (screen != cachedScreen) {
+        if (screen != cachedScreen.get()) {
             CACHE.clear();
-            cachedScreen = screen;
+            cachedScreen = new WeakReference<>(screen);
             cachedIsAnvil = "Anvil".equals(screen.getTitle().getString());
         }
         if (!cachedIsAnvil) return;

@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.ragnarock;
 
+import net.alpaka.addons.utils.ItemData;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
@@ -233,7 +234,7 @@ public final class RagnarockFeature {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return false;
         CustomData data = mc.player.getMainHandItem().get(DataComponents.CUSTOM_DATA);
-        return data != null && ITEM_ID.equals(data.copyTag().getStringOr("id", ""));
+        return data != null && ITEM_ID.equals(ItemData.view(data).getStringOr("id", ""));
     }
 
     /** The action bar rebuilt piece by piece with its styles, minus the characters in [start, end). */

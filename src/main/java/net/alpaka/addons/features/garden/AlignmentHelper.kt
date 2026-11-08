@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.garden
 
+import net.alpaka.addons.utils.ItemData
 import com.mojang.blaze3d.platform.InputConstants
 import net.alpaka.addons.client.AlpakaKeyBinds
 import net.alpaka.addons.client.AlpakaKeyCategory
@@ -176,7 +177,7 @@ object AlignmentHelper {
         if (stack.isEmpty) return false
         if (stack.`is`(ItemTags.HOES)) return true
         val data = stack.get(DataComponents.CUSTOM_DATA) ?: return false
-        return isFarmingToolId(data.copyTag().getStringOr("id", ""))
+        return isFarmingToolId(ItemData.view(data).getStringOr("id", ""))
     }
 
     /**

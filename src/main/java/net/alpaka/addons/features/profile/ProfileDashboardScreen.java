@@ -845,27 +845,68 @@ public class ProfileDashboardScreen extends Screen {
 
     /** The level-ups of the last 30 days, newest first, read off the history of every level there is. */
     private List<Milestone> milestones(ProfileData d, long now) {
-        List<Milestone> out = new ArrayList<>();
-        long since = now - 30 * ProfileHistory.DAY;
+        // The session hands out the same series list until its data changes, so the level-ups of
+        // all time are only worked out again then; the 30 days are still cut every frame.
+        List<String> metrics = new ArrayList<>();
+        List<java.util.function.DoubleToIntFunction> levels = new ArrayList<>();
+        List<String> names = new ArrayList<>();
         for (ProfileData.Level s : d.skills) {
             int max = s.maxLevel();
-            levelUps(out, Metrics.SKILL + s.id(), s.name(), since, xp -> (int) Levels.skill(s.id(), xp, max));
+            metrics.add(Metrics.SKILL + s.id());
+            names.add(s.name());
+            levels.add(xp -> (int) Levels.skill(s.id(), xp, max));
         }
-        levelUps(out, Metrics.CATACOMBS, "Catacombs", since, xp -> (int) Math.min(50, Levels.catacombs(xp)));
+        metrics.add(Metrics.CATACOMBS);
+        names.add("Catacombs");
+        levels.add(xp -> (int) Math.min(50, Levels.catacombs(xp)));
         for (ProfileData.Level c : d.classes) {
-            levelUps(out, Metrics.CLASS + c.id(), c.name(), since, xp -> (int) Math.min(50, Levels.catacombs(xp)));
+            metrics.add(Metrics.CLASS + c.id());
+            names.add(c.name());
+            levels.add(xp -> (int) Math.min(50, Levels.catacombs(xp)));
         }
-        levelUps(out, Metrics.SB_LEVEL, "SkyBlock Level", since, level -> (int) Math.floor(level));
-        out.sort((a, b) -> Long.compare(b.timeMs(), a.timeMs()));
+        metrics.add(Metrics.SB_LEVEL);
+        names.add("SkyBlock Level");
+        levels.add(level -> (int) Math.floor(level));
+
+        List<List<ProfileHistory.Point>> series = new ArrayList<>(metrics.size());
+        for (String metric : metrics) series.add(session.series(metric));
+        if (d != milestoneData || !sameLists(series, milestoneSeries)) {
+            List<Milestone> all = new ArrayList<>();
+            for (int i = 0; i < metrics.size(); i++) {
+                levelUps(all, series.get(i), metrics.get(i), names.get(i), levels.get(i));
+            }
+            all.sort((a, b) -> Long.compare(b.timeMs(), a.timeMs()));
+            milestoneData = d;
+            milestoneSeries = series;
+            milestoneAll = all;
+        }
+        long since = now - 30 * ProfileHistory.DAY;
+        List<Milestone> out = new ArrayList<>();
+        for (Milestone m : milestoneAll) {
+            if (m.timeMs() >= since) out.add(m);
+        }
         return out;
     }
 
-    private void levelUps(List<Milestone> out, String metric, String name, long since, java.util.function.DoubleToIntFunction level) {
-        List<ProfileHistory.Point> points = session.series(metric);
+    private ProfileData milestoneData;
+    private List<List<ProfileHistory.Point>> milestoneSeries = List.of();
+    private List<Milestone> milestoneAll = List.of();
+
+    private static boolean sameLists(List<List<ProfileHistory.Point>> a, List<List<ProfileHistory.Point>> b) {
+        if (a.size() != b.size()) return false;
+        for (int i = 0; i < a.size(); i++) {
+            if (a.get(i) != b.get(i)) return false;
+        }
+        return true;
+    }
+
+    /** Every level-up in one metric's history, at any time. */
+    private static void levelUps(List<Milestone> out, List<ProfileHistory.Point> points, String metric, String name,
+                                 java.util.function.DoubleToIntFunction level) {
         int previous = Integer.MIN_VALUE;
         for (ProfileHistory.Point p : points) {
             int now = level.applyAsInt(p.value());
-            if (previous != Integer.MIN_VALUE && now > previous && p.timeMs() >= since) {
+            if (previous != Integer.MIN_VALUE && now > previous) {
                 String text = now - previous == 1 ? name + " " + now : name + " " + previous + " → " + now;
                 out.add(new Milestone(p.timeMs(), text, metric));
             }

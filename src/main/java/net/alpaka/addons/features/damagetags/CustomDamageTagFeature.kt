@@ -13,6 +13,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
 import net.minecraft.client.multiplayer.ClientLevel
+import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.Style
 import net.minecraft.util.ARGB
 import net.minecraft.util.FormattedCharSequence
@@ -143,6 +144,7 @@ object CustomDamageTagFeature {
     fun reset() {
         tags.clear()
         seen.clear()
+        bossTags.clear()
     }
 
     /**
@@ -208,10 +210,28 @@ object CustomDamageTagFeature {
     private fun nearSlayerBoss(level: ClientLevel, splash: ArmorStand): Boolean {
         val box = splash.boundingBox.inflate(BOSS_RADIUS_XZ, BOSS_RADIUS_Y, BOSS_RADIUS_XZ)
         return level.getEntitiesOfClass(ArmorStand::class.java, box) { stand ->
-            val name = SkyblockUtils.cleanColor(stand.customName?.string ?: return@getEntitiesOfClass false)
-            SlayerBossNameTag.isBoss(name, SLAYER_BOSS_NAMES) || DEMON_NAMES.any { name.contains(it) }
+            isBossTag(stand.id, stand.customName ?: return@getEntitiesOfClass false)
         }.isNotEmpty()
     }
+
+    /**
+     * Whether a stand's name is a slayer boss or demon tag, remembered with the name object it was
+     * read from: in an AoE fight the same stands sit in every splash's box, and a name only changes
+     * when the server sends a new object. Client thread only; cleared on a world change.
+     */
+    private fun isBossTag(id: Int, name: Component): Boolean {
+        val cached = bossTags[id]
+        if (cached != null && cached.name === name) return cached.boss
+        val text = SkyblockUtils.cleanColor(name.string)
+        val boss = SlayerBossNameTag.isBoss(text, SLAYER_BOSS_NAMES) || DEMON_NAMES.any { text.contains(it) }
+        if (bossTags.size >= BOSS_TAG_CACHE_LIMIT) bossTags.clear()
+        bossTags[id] = BossTag(name, boss)
+        return boss
+    }
+
+    private class BossTag(val name: Component, val boss: Boolean)
+    private val bossTags = HashMap<Int, BossTag>()
+    private const val BOSS_TAG_CACHE_LIMIT = 1024
 
     private fun add(tag: Tag) {
         if (tags.size >= MAX_TAGS) tags.removeFirst()

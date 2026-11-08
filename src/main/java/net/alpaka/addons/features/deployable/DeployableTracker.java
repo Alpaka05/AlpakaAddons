@@ -16,6 +16,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.ResolvableProfile;
 
+import java.lang.ref.WeakReference;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -59,17 +60,25 @@ public final class DeployableTracker {
     private static final Map<Integer, Deployable> FLARE_BY_ID = new HashMap<>();
     /** Above this many remembered stands the map is cleared rather than grown without end. */
     private static final int FLARE_CACHE_LIMIT = 512;
-    private static ClientLevel cachedLevel = null;
+    /** Weak, so the world left behind is not kept alive until the next scan. */
+    private static WeakReference<ClientLevel> cachedLevel = new WeakReference<>(null);
 
     /**
-     * Each stand's name with its color codes gone, kept with the name object it was read from. Every
-     * stand in range is read every tick, and a name only changes when the server sends a new one,
-     * which is a new object; the text depends on the name alone. Client thread only.
+     * What each stand's name says, kept with the name object it was read from. Every stand in range
+     * is read every tick, and a name only changes when the server sends a new one, which is a new
+     * object; everything below depends on the name alone. Client thread only.
      */
-    private static final Int2ObjectOpenHashMap<CleanName> CLEAN_NAMES = new Int2ObjectOpenHashMap<>();
-    private static final int CLEAN_NAME_CACHE_LIMIT = 1024;
+    private static final Int2ObjectOpenHashMap<Tag> TAGS = new Int2ObjectOpenHashMap<>();
+    private static final int TAG_CACHE_LIMIT = 1024;
 
-    private record CleanName(Component name, String text) {}
+    private enum TagKind { TOTEM, BLACK_HOLE, STACKED, TIMED, NONE }
+
+    /**
+     * One name tag, read once. {@code type}/{@code seconds}: the timed tag ("Plasmaflux 52s"), also
+     * the time on a black hole (-1 while it shows none). {@code owner}: the last word of an owner
+     * line, else null. {@code remaining}: the seconds of a totem's "Remaining:" line, else -1.
+     */
+    private record Tag(Component name, TagKind kind, Deployable type, int seconds, String owner, int remaining) {}
 
     /** A deployable in range and its time left. */
     public record Active(Deployable type, int secondsLeft) {}
@@ -95,13 +104,13 @@ public final class DeployableTracker {
             active = List.of();
             return;
         }
-        if (level != cachedLevel || FLARE_BY_ID.size() > FLARE_CACHE_LIMIT) {
+        if (level != cachedLevel.get() || FLARE_BY_ID.size() > FLARE_CACHE_LIMIT) {
             FLARE_BY_ID.clear();
-            CLEAN_NAMES.clear();
-            cachedLevel = level;
+            TAGS.clear();
+            cachedLevel = new WeakReference<>(level);
         }
         // Stands that are gone are never taken out one by one; past the limit the whole map goes.
-        if (CLEAN_NAMES.size() > CLEAN_NAME_CACHE_LIMIT) CLEAN_NAMES.clear();
+        if (TAGS.size() > TAG_CACHE_LIMIT) TAGS.clear();
 
         EnumMap<Deployable.Family, Active> best = new EnumMap<>(Deployable.Family.class);
         List<ArmorStand> totems = new ArrayList<>();
@@ -114,24 +123,16 @@ public final class DeployableTracker {
             int seconds;
             Component name = stand.getCustomName();
             if (name != null) {
-                String text = cleanName(stand, name);
-                if (text.equals(Deployable.TOTEM_OF_CORRUPTION.displayName)) {
-                    totems.add(stand);
-                    continue;
+                Tag tag = tagOf(stand, name);
+                switch (tag.kind()) {
+                    case TOTEM -> { totems.add(stand); continue; }
+                    case BLACK_HOLE -> { blackHoles.add(stand); continue; }
+                    case STACKED -> { stacked.add(stand); continue; }
+                    case NONE -> { continue; }
+                    case TIMED -> { }
                 }
-                if (text.startsWith(Deployable.BLACK_HOLE.displayName)) {
-                    blackHoles.add(stand);
-                    continue;
-                }
-                if (text.startsWith("Remaining: ") || OWNER_TAG.matcher(text).matches()) {
-                    stacked.add(stand);
-                    continue;
-                }
-                Matcher m = TIMED_TAG.matcher(text);
-                if (!m.matches()) continue;
-                type = Deployable.fromTagName(m.group(1));
-                if (type == null) continue;
-                seconds = Integer.parseInt(m.group(2));
+                type = tag.type();
+                seconds = tag.seconds();
             } else {
                 type = flareOf(stand);
                 if (type == null) continue;
@@ -157,9 +158,9 @@ public final class DeployableTracker {
         for (ArmorStand hole : blackHoles) {
             if (hole.distanceToSqr(player) > square(Deployable.BLACK_HOLE.range)) continue;
             if (!ownedBy(hole, stacked, me)) continue;
-            Matcher m = TIMED_TAG.matcher(cleanName(hole, hole.getCustomName()));
+            Tag tag = tagOf(hole, hole.getCustomName());
             // For about a second after it is placed the tag is just "Black Hole", with no time yet.
-            int seconds = m.matches() ? Integer.parseInt(m.group(2)) : Deployable.BLACK_HOLE.durationSeconds;
+            int seconds = tag.seconds() >= 0 ? tag.seconds() : Deployable.BLACK_HOLE.durationSeconds;
             if (seconds > 0) offer(best, Deployable.BLACK_HOLE, seconds);
         }
 
@@ -178,12 +179,8 @@ public final class DeployableTracker {
     private static boolean ownedBy(ArmorStand main, List<ArmorStand> stacked, String me) {
         for (ArmorStand stand : stacked) {
             if (stand.distanceToSqr(main) > STACK_REACH * STACK_REACH) continue;
-            Matcher m = OWNER_TAG.matcher(cleanName(stand, stand.getCustomName()));
-            if (!m.matches()) continue;
-            // The name may carry a rank in front ("[MVP+] Name"), so only its last word counts.
-            String owner = m.group(1).trim();
-            int space = owner.lastIndexOf(' ');
-            if (owner.substring(space + 1).equals(me)) return true;
+            String owner = tagOf(stand, stand.getCustomName()).owner();
+            if (owner != null && owner.equals(me)) return true;
         }
         return false;
     }
@@ -192,10 +189,8 @@ public final class DeployableTracker {
     private static int totemSeconds(ArmorStand totem, List<ArmorStand> stacked) {
         for (ArmorStand stand : stacked) {
             if (stand.distanceToSqr(totem) > STACK_REACH * STACK_REACH) continue;
-            Matcher m = TOTEM_REMAINING.matcher(cleanName(stand, stand.getCustomName()));
-            if (!m.matches()) continue;
-            int minutes = m.group(1) == null ? 0 : Integer.parseInt(m.group(1));
-            return minutes * 60 + Integer.parseInt(m.group(2));
+            int remaining = tagOf(stand, stand.getCustomName()).remaining();
+            if (remaining >= 0) return remaining;
         }
         return 0;
     }
@@ -208,14 +203,49 @@ public final class DeployableTracker {
         return false;
     }
 
-    /** A stand's name without color codes, as {@link SkyblockUtils#cleanColor} gives it; see {@link #CLEAN_NAMES}. */
-    private static String cleanName(ArmorStand stand, Component name) {
+    /** What a stand's name tag says; see {@link #TAGS}. */
+    private static Tag tagOf(ArmorStand stand, Component name) {
         int id = stand.getId();
-        CleanName cached = CLEAN_NAMES.get(id);
-        if (cached != null && cached.name() == name) return cached.text();
-        String text = SkyblockUtils.cleanColor(name.getString());
-        CLEAN_NAMES.put(id, new CleanName(name, text));
-        return text;
+        Tag cached = TAGS.get(id);
+        if (cached != null && cached.name() == name) return cached;
+        Tag tag = parse(name, SkyblockUtils.cleanColor(name.getString()));
+        TAGS.put(id, tag);
+        return tag;
+    }
+
+    /** Reads one name tag (color codes gone) the way the scan used to read it every tick. */
+    private static Tag parse(Component name, String text) {
+        Matcher owner = OWNER_TAG.matcher(text);
+        // The name may carry a rank in front ("[MVP+] Name"), so only its last word counts.
+        String ownerWord = null;
+        if (owner.matches()) {
+            String full = owner.group(1).trim();
+            ownerWord = full.substring(full.lastIndexOf(' ') + 1);
+        }
+        Matcher remainingMatch = TOTEM_REMAINING.matcher(text);
+        int remaining = -1;
+        if (remainingMatch.matches()) {
+            int minutes = remainingMatch.group(1) == null ? 0 : Integer.parseInt(remainingMatch.group(1));
+            remaining = minutes * 60 + Integer.parseInt(remainingMatch.group(2));
+        }
+        Matcher timed = TIMED_TAG.matcher(text);
+        boolean isTimed = timed.matches();
+        int seconds = isTimed ? Integer.parseInt(timed.group(2)) : -1;
+
+        TagKind kind;
+        Deployable type = null;
+        if (text.equals(Deployable.TOTEM_OF_CORRUPTION.displayName)) {
+            kind = TagKind.TOTEM;
+        } else if (text.startsWith(Deployable.BLACK_HOLE.displayName)) {
+            kind = TagKind.BLACK_HOLE;
+        } else if (text.startsWith("Remaining: ") || ownerWord != null) {
+            kind = TagKind.STACKED;
+        } else if (isTimed && (type = Deployable.fromTagName(timed.group(1))) != null) {
+            kind = TagKind.TIMED;
+        } else {
+            kind = TagKind.NONE;
+        }
+        return new Tag(name, kind, type, seconds, ownerWord, remaining);
     }
 
     private static double square(int blocks) {

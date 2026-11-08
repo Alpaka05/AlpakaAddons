@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.etherwarp;
 
+import net.alpaka.addons.utils.ItemData;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.sound.CustomSoundFeature;
 import net.alpaka.addons.utils.SkyblockUtils;
@@ -223,7 +224,7 @@ public final class EtherwarpOverlayFeature {
         CustomData data = stack.get(DataComponents.CUSTOM_DATA);
         if (data == null) return 0;
         if (data != cachedTunedData) {
-            cachedTuned = data.copyTag().getInt(TUNED_TRANSMISSION_KEY).orElse(0);
+            cachedTuned = ItemData.view(data).getInt(TUNED_TRANSMISSION_KEY).orElse(0);
             cachedTunedData = data;
         }
         return cachedTuned;

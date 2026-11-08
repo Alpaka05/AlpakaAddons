@@ -80,10 +80,11 @@ public final class MaxEnchantColorFeature {
         List<int[]> ranges = found.ranges();
         if (ranges.isEmpty()) return line;
 
-        // Flatten into one style per character, resolving legacy § codes inside the text, so the
-        // ranges found on the plain text line up however Hypixel split the line.
+        // Flatten into runs of one style each, resolving legacy § codes inside the text, so the
+        // ranges found on the plain text line up however Hypixel split the line. Runs rather than a
+        // style per character: the output only depends on where the style changes.
         StringBuilder text = new StringBuilder();
-        List<Style> styles = new ArrayList<>();
+        List<Run> runs = new ArrayList<>();
         line.visit((style, part) -> {
             Style current = style;
             for (int i = 0; i < part.length(); i++) {
@@ -95,28 +96,60 @@ public final class MaxEnchantColorFeature {
                     i++;
                     continue;
                 }
+                int at = text.length();
                 text.append(c);
-                styles.add(current);
+                Run last = runs.isEmpty() ? null : runs.get(runs.size() - 1);
+                if (last != null && last.end == at && last.style.equals(current)) last.end = at + 1;
+                else runs.add(new Run(at, at + 1, current));
             }
             return Optional.empty();
         }, Style.EMPTY);
 
+        String flat = text.toString();
         // A stray § the strip above left in place would shift the ranges; find them again then.
-        if (!text.toString().equals(plain)) ranges = maxedRanges(text.toString(), ultimates);
+        if (!flat.equals(plain)) ranges = maxedRanges(flat, ultimates);
         if (ranges.isEmpty()) return line;
-        for (int[] range : ranges) {
-            for (int i = range[0]; i < range[1]; i++) styles.set(i, styles.get(i).withColor(color));
-        }
 
+        // Cut the runs at the range edges, color the parts inside a range, and join neighbours that
+        // end up with the same style: the same pieces the per-character version produced.
         MutableComponent out = Component.empty();
-        int start = 0;
-        for (int i = 1; i <= text.length(); i++) {
-            if (i == text.length() || !styles.get(i).equals(styles.get(start))) {
-                out.append(Component.literal(text.substring(start, i)).withStyle(styles.get(start)));
-                start = i;
+        int pendingStart = 0;
+        Style pending = null;
+        int r = 0;
+        for (Run run : runs) {
+            int at = run.start;
+            while (at < run.end) {
+                while (r < ranges.size() && ranges.get(r)[1] <= at) r++;
+                boolean inside = r < ranges.size() && ranges.get(r)[0] <= at;
+                int to = inside ? Math.min(run.end, ranges.get(r)[1])
+                        : r < ranges.size() ? Math.min(run.end, ranges.get(r)[0]) : run.end;
+                Style style = inside ? run.style.withColor(color) : run.style;
+                if (pending == null) {
+                    pending = style;
+                    pendingStart = at;
+                } else if (!pending.equals(style)) {
+                    out.append(Component.literal(flat.substring(pendingStart, at)).withStyle(pending));
+                    pending = style;
+                    pendingStart = at;
+                }
+                at = to;
             }
         }
+        if (pending != null) out.append(Component.literal(flat.substring(pendingStart)).withStyle(pending));
         return out;
+    }
+
+    /** Characters {@code start..end} of the flattened line, all in one style. */
+    private static final class Run {
+        final int start;
+        int end;
+        final Style style;
+
+        Run(int start, int end, Style style) {
+            this.start = start;
+            this.end = end;
+            this.style = style;
+        }
     }
 
     /** The plain text of a line and its maxed ranges, worked out once per distinct line. */

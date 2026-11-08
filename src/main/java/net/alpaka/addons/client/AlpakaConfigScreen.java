@@ -1440,9 +1440,16 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         if (this.minecraft != null) this.minecraft.gui.setScreen(this.parent);
     }
 
-    /** A drag the screen never saw end must not leave saves deferred for the rest of the session. */
+    /**
+     * A drag the screen never saw end must not leave saves deferred for the rest of the session, and
+     * a text field still focused when the screen is replaced (disconnect, quit) is only saved on blur.
+     */
     @Override
     public void removed() {
+        if (focusedText != null) {
+            focusedText = null;
+            AlpakaConfig.save();
+        }
         draggedSlider = null;
         listeningKey = null;
         AlpakaConfig.endDeferredSaves();

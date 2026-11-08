@@ -315,14 +315,30 @@ public final class ChestValuePanel {
         if (!player) {
             ItemLore lore = item.get(DataComponents.LORE);
             if (lore != null) {
-                List<String> lines = new ArrayList<>(lore.lines().size());
-                for (Component line : lore.lines()) lines.add(SkyblockUtils.cleanColor(line.getString()));
-                long stored = ChestValue.sackCount(lines);
+                long stored = sackCount(lore);
                 if (stored >= 0) return (int) Math.min(stored, Integer.MAX_VALUE);
             }
         }
         return item.getCount();
     }
+
+    /**
+     * {@link ChestValue#sackCount} of a lore, kept by the lore object: the menu is read four times a
+     * second and its items' lore rarely changes, while reading it means flattening every line.
+     * Lore components are immutable. Client thread only.
+     */
+    private static long sackCount(ItemLore lore) {
+        Long known = SACK_COUNTS.get(lore);
+        if (known != null) return known;
+        List<String> lines = new ArrayList<>(lore.lines().size());
+        for (Component line : lore.lines()) lines.add(SkyblockUtils.cleanColor(line.getString()));
+        long stored = ChestValue.sackCount(lines);
+        if (SACK_COUNTS.size() >= 512) SACK_COUNTS.clear();
+        SACK_COUNTS.put(lore, stored);
+        return stored;
+    }
+
+    private static final Map<ItemLore, Long> SACK_COUNTS = new java.util.IdentityHashMap<>();
 
     /**
      * The last baseline sum and what it was worked out from. It only changes with the baseline or
@@ -563,14 +579,23 @@ public final class ChestValuePanel {
     }
 
     private static List<Row> rows() {
+        // The same rows every frame until the summary is rebuilt or the unpriced group is folded.
+        if (summary == rowsOf && unpricedOpen == rowsOpen && rowsCache != null) return rowsCache;
         List<Row> out = new ArrayList<>();
         for (Entry e : summary.priced()) out.add(new Row(e, false));
         if (!summary.unpriced().isEmpty()) {
             out.add(new Row(null, true));
             if (unpricedOpen) for (Entry e : summary.unpriced()) out.add(new Row(e, false));
         }
-        return out;
+        rowsOf = summary;
+        rowsOpen = unpricedOpen;
+        rowsCache = java.util.Collections.unmodifiableList(out);
+        return rowsCache;
     }
+
+    private static ChestValue.Summary rowsOf;
+    private static boolean rowsOpen;
+    private static List<Row> rowsCache;
 
     private static int contentHeight(List<Row> rows) {
         int height = 4;
@@ -762,34 +787,52 @@ public final class ChestValuePanel {
         ModernGuiUtils.centeredText(graphics, font, GuiFont.text(label), x + w / 2, y + 3, color);
     }
 
+    /** One part of the bar: an item (null for everything else together), its value and its color. */
+    private record Part(Entry entry, double amount, int color) {}
+
+    /**
+     * The bar's parts: the top items each get a part, the rest one gray part together. Worked out
+     * again only when the order by value or the colors change, not every frame.
+     */
+    private static List<Part> parts(List<Entry> byValue, Map<Entry, Integer> colors) {
+        if (byValue == partsByValue && colors == partsColors && partsCache != null) return partsCache;
+        List<Part> parts = new ArrayList<>();
+        double rest = 0;
+        for (int i = 0; i < byValue.size(); i++) {
+            Entry e = byValue.get(i);
+            if (i < PALETTE.length) parts.add(new Part(e, e.total(), colors.get(e)));
+            else rest += e.total();
+        }
+        if (rest > 0) parts.add(new Part(null, rest, OTHER));
+        partsByValue = byValue;
+        partsColors = colors;
+        partsCache = parts;
+        return parts;
+    }
+
+    private static List<Entry> partsByValue;
+    private static Map<Entry, Integer> partsColors;
+    private static List<Part> partsCache;
+
     /** The bar split by the most valuable items' shares; the rest together in gray. Returns a tooltip for the part under the mouse. */
     private static String drawBar(GuiGraphicsExtractor graphics, int x, int y, int w, Map<Entry, Integer> colors, int mx, int my) {
         ModernGuiUtils.drawRoundedRect(graphics, x, y, w, BAR_H, BAR_H / 2, AlpakaStyle.LINE);
         double total = summary.total();
-        List<Entry> byValue = byValue();
-        // The top items each get a part, the rest one gray part together.
-        List<Object[]> parts = new ArrayList<>();
-        double rest = 0;
-        for (int i = 0; i < byValue.size(); i++) {
-            Entry e = byValue.get(i);
-            if (i < PALETTE.length) parts.add(new Object[] {e, e.total(), colors.get(e)});
-            else rest += e.total();
-        }
-        if (rest > 0) parts.add(new Object[] {null, rest, OTHER});
+        List<Part> parts = parts(byValue(), colors);
 
         String tip = null;
         boolean overBar = AlpakaStyle.inside(mx, my, x, y - 3, w, BAR_H + 6);
         int at = x;
         double sum = 0;
         for (int i = 0; i < parts.size(); i++) {
-            Object[] p = parts.get(i);
-            sum += (double) p[1];
+            Part p = parts.get(i);
+            sum += p.amount();
             int end = x + (int) Math.round(w * Math.min(1.0, sum / total));
             int sx = at + (i > 0 ? 1 : 0);
             int sw = end - sx;
             at = end;
             if (sw <= 0) continue;
-            int color = (int) p[2];
+            int color = p.color();
             boolean first = i == 0;
             boolean last = i == parts.size() - 1;
             if ((first || last) && sw >= BAR_H) {
@@ -801,8 +844,8 @@ public final class ChestValuePanel {
                 ModernGuiUtils.drawRect(graphics, sx, y, sw, BAR_H, color);
             }
             if (overBar && mx >= sx - 1 && mx < sx + sw) {
-                Entry e = (Entry) p[0];
-                double amount = (double) p[1];
+                Entry e = p.entry();
+                double amount = p.amount();
                 String name = e == null ? "Everything else" : (e.count > 1 ? e.count + "× " : "") + e.name;
                 tip = name + ": " + Coins.compact(amount) + ", " + percent(amount / total) + " of the total.";
                 if (e != null) pointed = e;

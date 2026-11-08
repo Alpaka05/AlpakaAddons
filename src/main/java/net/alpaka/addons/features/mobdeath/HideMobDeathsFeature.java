@@ -87,9 +87,13 @@ public final class HideMobDeathsFeature {
         }
 
         AABB around = new AABB(x, y, z, x, y, z).inflate(SMOKE_MARGIN);
-        return !level.getEntitiesOfClass(LivingEntity.class, around,
-                living -> isDyingMob(living) && living.getBoundingBox().inflate(SMOKE_MARGIN).contains(x, y, z)).isEmpty();
+        // Stops at the first dying mob instead of collecting every one.
+        return level.hasEntities(LIVING, around,
+                living -> isDyingMob(living) && living.getBoundingBox().inflate(SMOKE_MARGIN).contains(x, y, z));
     }
+
+    private static final net.minecraft.world.level.entity.EntityTypeTest<Entity, LivingEntity> LIVING =
+            net.minecraft.world.level.entity.EntityTypeTest.forClass(LivingEntity.class);
 
     /** The client is about to drop this entity; keep its spot if it died, for smoke arriving late. */
     public static void onEntityRemoved(Entity entity) {

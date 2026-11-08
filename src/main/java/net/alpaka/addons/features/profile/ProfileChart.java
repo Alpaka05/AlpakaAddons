@@ -53,17 +53,20 @@ public final class ProfileChart {
         // answer only changes when the list is replaced or the range's start passes a point, so it is
         // kept until one of those happens.
         Visible kept = VISIBLE.get(points);
-        if (kept != null && kept.range == range && from <= kept.minIncluded && from > kept.maxExcluded) return kept.result;
+        if (kept != null && kept.range == range && from <= kept.minIncluded
+                && (!kept.anyExcluded || from > kept.maxExcluded)) return kept.result;
 
         List<ProfileHistory.Point> in = new ArrayList<>();
         long minIncluded = Long.MAX_VALUE;
         long maxExcluded = Long.MIN_VALUE;
+        boolean anyExcluded = false;
         for (ProfileHistory.Point p : points) {
             if (p.timeMs() >= from) {
                 in.add(p);
                 minIncluded = Math.min(minIncluded, p.timeMs());
             } else {
                 maxExcluded = Math.max(maxExcluded, p.timeMs());
+                anyExcluded = true;
             }
         }
         List<ProfileHistory.Point> out;
@@ -80,15 +83,16 @@ public final class ProfileChart {
         }
         List<ProfileHistory.Point> result = java.util.Collections.unmodifiableList(out);
         if (VISIBLE.size() >= 64) VISIBLE.clear();
-        VISIBLE.put(points, new Visible(range, minIncluded, maxExcluded, result));
+        VISIBLE.put(points, new Visible(range, minIncluded, maxExcluded, anyExcluded, result));
         return result;
     }
 
     /**
      * A {@link #visible} answer and when it stays right: while the range's start is at most the
-     * oldest point in it and past the newest point left out. Render thread only.
+     * oldest point in it and past the newest point left out (if any was). Render thread only.
      */
-    private record Visible(Range range, long minIncluded, long maxExcluded, List<ProfileHistory.Point> result) {}
+    private record Visible(Range range, long minIncluded, long maxExcluded, boolean anyExcluded,
+                           List<ProfileHistory.Point> result) {}
 
     private static final java.util.Map<List<ProfileHistory.Point>, Visible> VISIBLE = new java.util.IdentityHashMap<>();
 

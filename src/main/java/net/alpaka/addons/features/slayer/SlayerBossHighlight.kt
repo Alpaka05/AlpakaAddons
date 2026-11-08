@@ -1,5 +1,7 @@
 package net.alpaka.addons.features.slayer
 
+import net.minecraft.network.chat.Component
+import net.alpaka.addons.utils.EntityCache
 import net.alpaka.addons.utils.EntityColors
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.utils.AlpakaPerf
@@ -186,14 +188,35 @@ object SlayerBossHighlight {
     private fun readAttunement(level: ClientLevel, mob: LivingEntity): Any? {
         val box = mob.boundingBox.inflate(TAG_SLACK, 0.0, TAG_SLACK).expandTowards(0.0, TAG_STACK_HEIGHT, 0.0)
         for (stand in level.getEntitiesOfClass(ArmorStand::class.java, box) { it.hasCustomName() }) {
-            val raw = stand.customName?.string ?: continue
-            if (SkyblockUtils.containsIgnoringFormatting(raw, "IMMUNE")) return IMMUNE
-            for (attunement in Attunement.entries) {
-                if (SkyblockUtils.containsIgnoringFormatting(raw, attunement.name)) return attunement
-            }
+            val name = stand.customName ?: continue
+            val said = tagSays(stand.id, name)
+            if (said !== NOTHING) return said
         }
         return null
     }
+
+    /** No attunement or immunity in a tag; kept apart from null, which [tagVerdicts] uses for "not read". */
+    private val NOTHING = Any()
+
+    /**
+     * What one stand's name says: [IMMUNE], an [Attunement] (the first in their order), or [NOTHING].
+     * Kept with the name object it was read from, as the tags are read every tick of a Blaze fight
+     * and a name only changes when the server sends a new one. Client thread only.
+     */
+    private fun tagSays(id: Int, name: Component): Any {
+        val cached = tagVerdicts.get(id)
+        if (cached != null && cached.first === name) return cached.second
+        val raw = name.string
+        val said: Any = when {
+            SkyblockUtils.containsIgnoringFormatting(raw, "IMMUNE") -> IMMUNE
+            else -> Attunement.entries.firstOrNull { SkyblockUtils.containsIgnoringFormatting(raw, it.name) } ?: NOTHING
+        }
+        if (tagVerdicts.size() >= 256) tagVerdicts.clear()
+        tagVerdicts.put(id, name to said)
+        return said
+    }
+
+    private val tagVerdicts = EntityCache<Pair<Component, Any>>()
 
     /** The attunement's color with the configured color's alpha, or the configured color itself. */
     private fun attunementColor(tag: Any?, fallback: Int, cfg: AlpakaConfig): Int {

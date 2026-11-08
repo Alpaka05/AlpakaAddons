@@ -2,6 +2,8 @@ package net.alpaka.addons.client;
 
 import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.features.inventoryhud.InventoryHudFeature;
+import net.alpaka.addons.features.dungeon.terminal.TerminalKind;
+import net.alpaka.addons.features.dungeon.terminal.TerminalPractice;
 import net.alpaka.addons.features.slayer.SlayerDropTracker;
 import net.alpaka.addons.utils.AlpakaDiagnostics;
 import net.alpaka.addons.features.sound.CustomSoundFeature;
@@ -48,6 +50,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.slayer.SmolderingPolarization.register();
         net.alpaka.addons.features.slayer.HamRadio.register();
         DevScreenshotTour.register();
+        DevClutterBenchmark.register();
         SlayerDropTracker.registerEvents();
         DeployableTracker.registerEvents();
         net.alpaka.addons.features.slayer.SkyblockProfileTracker.INSTANCE.register();
@@ -141,6 +144,24 @@ public class AlpakaClient implements ClientModInitializer {
                                 com.mojang.brigadier.arguments.StringArgumentType.getString(context, "player"))))
                 );
             }
+
+            // "/alpakaterminal [terminal] [ping]": terminal practice, anywhere. A random terminal each
+            // round without a name; the ping holds every click back that long, as a slow connection
+            // would. Everything stays on the client.
+            var terminal = ClientCommands.literal("alpakaterminal")
+                .executes(context -> openTerminalPractice(null, 0));
+            String[][] terminals = {
+                {"random", null}, {"panes", "PANES"}, {"rubix", "RUBIX"}, {"numbers", "NUMBERS"},
+                {"startswith", "STARTS_WITH"}, {"selectall", "SELECT_ALL"}, {"melody", "MELODY"}};
+            for (String[] entry : terminals) {
+                TerminalKind kind = entry[1] == null ? null : TerminalKind.valueOf(entry[1]);
+                terminal.then(ClientCommands.literal(entry[0])
+                    .executes(context -> openTerminalPractice(kind, 0))
+                    .then(ClientCommands.argument("ping", com.mojang.brigadier.arguments.IntegerArgumentType.integer(0, TerminalPractice.MAX_PING_MS))
+                        .executes(context -> openTerminalPractice(kind,
+                                com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "ping")))));
+            }
+            dispatcher.register(terminal);
 
             /** Prints what the mod currently detects - Skyblock, island, sidebar - into chat. */
             dispatcher.register(ClientCommands.literal("alpakadebug")
@@ -546,6 +567,16 @@ public class AlpakaClient implements ClientModInitializer {
         } else {
             SlayerDropTracker.sendModMessage("§7No personal best recorded for §e" + label + "§7.");
         }
+    }
+
+    /** Opens terminal practice; {@code kind} null deals a random terminal each round. */
+    private static int openTerminalPractice(TerminalKind kind, int pingMs) {
+        Minecraft.getInstance().execute(() -> {
+            if (!TerminalPractice.open(kind, pingMs)) {
+                SlayerDropTracker.sendModMessage("§cJoin a world first to practise terminals.");
+            }
+        });
+        return 1;
     }
 
     /** Opens the config screen, optionally with a search term already applied. */

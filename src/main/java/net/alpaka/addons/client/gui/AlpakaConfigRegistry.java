@@ -306,15 +306,9 @@ public class AlpakaConfigRegistry {
                                 v -> { AlpakaConfig.instance.cleanBlazeLightning = v; AlpakaConfig.save(); }),
                         new ConfigOption.ToggleEntry("Name Tags",
                                 () -> AlpakaConfig.instance.cleanBlazeNameTags,
-                                v -> { AlpakaConfig.instance.cleanBlazeNameTags = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Wrong Dagger Messages",
-                                () -> AlpakaConfig.instance.cleanBlazeWrongDaggerChat,
-                                v -> { AlpakaConfig.instance.cleanBlazeWrongDaggerChat = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Damage Messages",
-                                () -> AlpakaConfig.instance.cleanBlazeDamageChat,
-                                v -> { AlpakaConfig.instance.cleanBlazeDamageChat = v; AlpakaConfig.save(); })
+                                v -> { AlpakaConfig.instance.cleanBlazeNameTags = v; AlpakaConfig.save(); })
                 ),
-                "blaze flame smoke angry villager lava drip particles potion effect swirl enchant enchanting glyph ender portal witch spell attunement dust ashen spirit crystal auric hellion shield fire burning overlay fireball projectile lightning bolt flash thunder nametag name tag health smoldering miniboss demon chat message wrong dagger strike damage true damage beam reduced clean hide"));
+                "blaze flame smoke angry villager lava drip particles potion effect swirl enchant enchanting glyph ender portal witch spell attunement dust ashen spirit crystal auric hellion shield fire burning overlay fireball projectile lightning bolt flash thunder nametag name tag health smoldering miniboss demon clean hide"));
 
         OPTIONS.add(new ConfigOption("stop_blaze_spinning", "Stop Blaze Spinning",
                 "Stops blaze rods from spinning around blaze mobs.",
@@ -372,12 +366,54 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.hideMobDeathSmoke = v; AlpakaConfig.save(); },
                 "hide mob death smoke poof particles cloud puff"));
 
-        OPTIONS.add(new ConfigOption("hide_explosions", "Hide Explosions",
-                "Hides the flash, smoke and debris of explosions.",
+        OPTIONS.add(new ConfigOption("hide_visual_clutter", "Hide Visual Clutter",
+                "Hides effects that only cost frames: explosions, falling blocks, block particles, hit sparks, fireworks, experience orbs and dying dragons.",
                 ConfigCategory.VISUALS,
-                () -> AlpakaConfig.instance.hideExplosions,
-                v -> { AlpakaConfig.instance.hideExplosions = v; AlpakaConfig.save(); },
+                () -> AlpakaConfig.instance.hideVisualClutter,
+                v -> { AlpakaConfig.instance.hideVisualClutter = v; AlpakaConfig.save(); },
+                "hide visual clutter performance fps lag particles effects explosions falling blocks fireworks orbs dragon"));
+        OPTIONS.add(new ConfigOption("hide_clutter_explosions", "Explosions",
+                "The flash, smoke and debris of explosions, like Hyperion, Bonzo's Staff, TNT and creepers.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.clutterExplosions,
+                v -> { AlpakaConfig.instance.clutterExplosions = v; AlpakaConfig.save(); },
                 "hide explosion explosions explode tnt creeper hyperion wither impact implosion bonzo particles flash cloud smoke"));
+        OPTIONS.add(new ConfigOption("hide_clutter_falling_blocks", "Falling Blocks",
+                "Blocks flying through the air, like the gold of Molten Wave. What they hit is decided by the server either way.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.clutterFallingBlocks,
+                v -> { AlpakaConfig.instance.clutterFallingBlocks = v; AlpakaConfig.save(); },
+                "hide falling blocks block entity sand gravel molten wave midas staff seismic wave debris"));
+        OPTIONS.add(new ConfigOption("hide_clutter_block_break", "Block Break Particles",
+                "The bits that fly off broken and mined blocks, yours and everyone else's. The cracks on the block stay.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.clutterBlockBreak,
+                v -> { AlpakaConfig.instance.clutterBlockBreak = v; AlpakaConfig.save(); },
+                "hide block break breaking particles mining farming garden crops terrain dig destroy"));
+        OPTIONS.add(new ConfigOption("hide_clutter_hit_particles", "Hit Particles",
+                "The sparks of critical and enchanted hits, and the sparkle trail behind fully drawn arrows.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.clutterHitParticles,
+                v -> { AlpakaConfig.instance.clutterHitParticles = v; AlpakaConfig.save(); },
+                "hide hit particles crit critical enchanted sparks magic stars arrow trail terminator"));
+        OPTIONS.add(new ConfigOption("hide_clutter_fireworks", "Fireworks",
+                "The bursts of firework rockets, with their sound.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.clutterFireworks,
+                v -> { AlpakaConfig.instance.clutterFireworks = v; AlpakaConfig.save(); },
+                "hide fireworks firework rocket burst explosion stars sparkle"));
+        OPTIONS.add(new ConfigOption("hide_clutter_experience_orbs", "Experience Orbs",
+                "Experience orbs on the ground, like the ones from Experience Bottles. The experience still counts.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.clutterExperienceOrbs,
+                v -> { AlpakaConfig.instance.clutterExperienceOrbs = v; AlpakaConfig.save(); },
+                "hide experience orbs xp exp bottle orb green"));
+        OPTIONS.add(new ConfigOption("hide_clutter_dragon_death", "Dragon Death",
+                "A dying Ender Dragon with its light rays and explosions, in the End and in Master Mode 7.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.clutterDragonDeath,
+                v -> { AlpakaConfig.instance.clutterDragonDeath = v; AlpakaConfig.save(); },
+                "hide ender dragon death animation rays beams light explosion end m7 wither king"));
 
         OPTIONS.add(new ConfigOption("Hide Fire Overlay", ConfigCategory.VISUALS));
 
@@ -865,6 +901,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.messageFilterEnabled = v; AlpakaConfig.save(); },
                 "message filter hide spam chat block remove clean hypixel skyblock"));
 
+        OPTIONS.add(new ConfigOption("message_filter_custom", "Custom Filters",
+                "Your own filters: paste a copied message and pick whether it must match exactly, at the start, anywhere, or as a regex.",
+                ConfigCategory.VISUALS,
+                "Edit Filters",
+                parent -> Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.client.MessageFilterScreen(parent)),
+                "message filter custom own add copied message regex starts with contains equals exact hide block list"));
+
         OPTIONS.add(new ConfigOption("message_filter_types", "Hidden Messages",
                 "Which messages the filter hides.",
                 ConfigCategory.VISUALS,
@@ -899,11 +942,14 @@ public class AlpakaConfigRegistry {
                         new ConfigOption.ToggleEntry("Stash Reminders",
                                 () -> AlpakaConfig.instance.messageFilterStash,
                                 v -> { AlpakaConfig.instance.messageFilterStash = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Event Rewards",
+                                () -> AlpakaConfig.instance.messageFilterEventRewards,
+                                v -> { AlpakaConfig.instance.messageFilterEventRewards = v; AlpakaConfig.save(); }),
                         new ConfigOption.ToggleEntry("Sacks",
                                 () -> AlpakaConfig.instance.messageFilterSacks,
                                 v -> { AlpakaConfig.instance.messageFilterSacks = v; AlpakaConfig.save(); })
                 ),
-                "message filter hidden empty blank lines welcome guild gexp event exp kill combo grandma wolf profile id join reward bundle seasonal autopet pet rule fire sale community shop watchdog ban announcement stash stashed items materials pick up reminder sacks sack items added removed"));
+                "message filter hidden empty blank lines welcome guild gexp event exp kill combo grandma wolf profile id join reward bundle seasonal autopet pet rule fire sale community shop watchdog ban announcement stash stashed items materials pick up reminder event rewards unclaimed claim deleted sacks sack items added removed"));
 
         OPTIONS.add(new ConfigOption("message_filter_dungeon", "Dungeon Messages",
                 "Which dungeon messages the filter hides during a Catacombs run.",
@@ -945,12 +991,33 @@ public class AlpakaConfigRegistry {
                 ),
                 "message filter dungeon dungeons catacombs mort ready countdown class buff ambience pickup superboom revive stone wither essence orb fairy key door blessing not possible damage ability abilities heal tether cooldown mana puzzle quiz oruo end run team bonus"));
 
-        OPTIONS.add(new ConfigOption("message_filter_custom", "Custom Filters",
-                "Your own filters: paste a copied message and pick whether it must match exactly, at the start, anywhere, or as a regex.",
+        OPTIONS.add(new ConfigOption("message_filter_slayer", "Slayer Messages",
+                "Which slayer messages the filter hides. The Blaze ones only in the Blaze slayer's zones.",
                 ConfigCategory.VISUALS,
-                "Edit Filters",
-                parent -> Minecraft.getInstance().gui.setScreen(new net.alpaka.addons.client.MessageFilterScreen(parent)),
-                "message filter custom own add copied message regex starts with contains equals exact hide block list"));
+                java.util.List.of(
+                        new ConfigOption.ToggleEntry("Quest & Boss Slain",
+                                () -> AlpakaConfig.instance.messageFilterSlayerQuest,
+                                v -> { AlpakaConfig.instance.messageFilterSlayerQuest = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Radio Signal",
+                                () -> AlpakaConfig.instance.messageFilterSlayerRadio,
+                                v -> { AlpakaConfig.instance.messageFilterSlayerRadio = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Level-Ups",
+                                () -> AlpakaConfig.instance.messageFilterSlayerLevelUp,
+                                v -> { AlpakaConfig.instance.messageFilterSlayerLevelUp = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Kill Healing",
+                                () -> AlpakaConfig.instance.messageFilterSlayerHealing,
+                                v -> { AlpakaConfig.instance.messageFilterSlayerHealing = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Sunshade Drop",
+                                () -> AlpakaConfig.instance.messageFilterSlayerSunshade,
+                                v -> { AlpakaConfig.instance.messageFilterSlayerSunshade = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Blaze Wrong Dagger",
+                                () -> AlpakaConfig.instance.messageFilterBlazeWrongDagger,
+                                v -> { AlpakaConfig.instance.messageFilterBlazeWrongDagger = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Blaze Damage",
+                                () -> AlpakaConfig.instance.messageFilterBlazeDamage,
+                                v -> { AlpakaConfig.instance.messageFilterBlazeDamage = v; AlpakaConfig.save(); })
+                ),
+                "message filter slayer chat spam quest started complete boss slain slay combat xp radio signal enjoyer level up lvl healing heal hp sunshade netherrack rare drop blaze wrong dagger attunement strike damage true damage beam hellion shield reduced hide"));
 
         OPTIONS.add(new ConfigOption("mention_notification", "Chat Mentions",
                 "Slides in a notification when somebody says your name in chat.",
@@ -2149,35 +2216,6 @@ public class AlpakaConfigRegistry {
 
 
 
-        OPTIONS.add(new ConfigOption("hide_slayer_chat", "Hide Slayer Chat Spam",
-                "Hides Hypixel's slayer quest, level-up and radio messages.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.hideSlayerChatMessages,
-                v -> { AlpakaConfig.instance.hideSlayerChatMessages = v; AlpakaConfig.save(); },
-                "hide slayer chat spam quest complete started radio level up messages"));
-
-        OPTIONS.add(new ConfigOption("hide_slayer_chat_parts", "Hide Slayer Chat Parts",
-                "Pick what Hide Slayer Chat Spam hides.",
-                ConfigCategory.SKYBLOCK,
-                java.util.List.of(
-                        new ConfigOption.ToggleEntry("Quest & Boss Slain",
-                                () -> AlpakaConfig.instance.hideSlayerChatQuest,
-                                v -> { AlpakaConfig.instance.hideSlayerChatQuest = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Radio Signal",
-                                () -> AlpakaConfig.instance.hideSlayerChatRadio,
-                                v -> { AlpakaConfig.instance.hideSlayerChatRadio = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Level-Ups",
-                                () -> AlpakaConfig.instance.hideSlayerChatLevelUp,
-                                v -> { AlpakaConfig.instance.hideSlayerChatLevelUp = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Kill Healing",
-                                () -> AlpakaConfig.instance.hideSlayerChatHealing,
-                                v -> { AlpakaConfig.instance.hideSlayerChatHealing = v; AlpakaConfig.save(); }),
-                        new ConfigOption.ToggleEntry("Sunshade Drop",
-                                () -> AlpakaConfig.instance.hideSlayerChatSunshade,
-                                v -> { AlpakaConfig.instance.hideSlayerChatSunshade = v; AlpakaConfig.save(); })
-                ),
-                "slayer chat spam quest started complete boss slain slay combat xp radio signal enjoyer level up lvl healing heal hp sunshade netherrack rare drop hide"));
-
         OPTIONS.add(new ConfigOption("Slayer Boss Timer", ConfigCategory.SKYBLOCK));
 
 
@@ -2766,6 +2804,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.experimentSolverLaterColor = v; AlpakaConfig.save(); },
                 "experiment solver after following second highlight color colour picker"));
 
+        OPTIONS.add(new ConfigOption("experiment_solver_prevent_misclicks", "Prevent Misclicks",
+                "Ignores clicks on a wrong block in Chronomatron and Ultrasequencer, so a misclick doesn't end the game.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.experimentSolverPreventMisclicks,
+                v -> { AlpakaConfig.instance.experimentSolverPreventMisclicks = v; AlpakaConfig.save(); },
+                "experiment solver prevent misclicks missclick wrong click block ignore chronomatron ultrasequencer"));
+
         OPTIONS.add(new ConfigOption("Damage Display", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("only_crit_damage", "Only Show Crit Damage",
@@ -3203,6 +3248,13 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.commandWheelToggleMode,
                 v -> { AlpakaConfig.instance.commandWheelToggleMode = v; AlpakaConfig.save(); },
                 "quick command wheel toggle hold press release click open mode keybind"));
+
+        OPTIONS.add(new ConfigOption("command_wheel_hover_sound", "Hover Sound",
+                "Plays the hotbar swap sound when you aim at another command.",
+                ConfigCategory.SOUND_MISC,
+                () -> AlpakaConfig.instance.commandWheelHoverSound,
+                v -> { AlpakaConfig.instance.commandWheelHoverSound = v; AlpakaConfig.save(); },
+                "quick command wheel hover sound click tick hotbar swap select aim audio"));
 
         OPTIONS.add(new ConfigOption("command_shortcuts", "Command Shortcuts",
                 "Short aliases for commands, such as /v for /visit (/v Steve still works), and keys that run a command.",
@@ -3694,11 +3746,12 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("terminal_custom_gui", "Custom Terminal GUI",
                 "Shows terminals in a larger, cleaner window with the solution drawn in. Needs Terminal Solvers on, "
                         + "and opens only for the terminals ticked under Terminals. Only the clicks you make are sent, "
-                        + "unchanged; a click the Terminal Solvers guards ignore is not sent at all.",
+                        + "unchanged; a click the Terminal Solvers guards ignore is not sent at all. "
+                        + "Practice anywhere with /alpakaterminal [terminal] [ping]; nothing is sent while you practice.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.terminalCustomGui,
                 v -> { AlpakaConfig.instance.terminalCustomGui = v; AlpakaConfig.save(); },
-                "dungeon f7 m7 terminal custom gui window screen bigger larger clean odin grid"));
+                "dungeon f7 m7 terminal custom gui window screen bigger larger clean odin grid practice simulator termsim"));
 
         OPTIONS.add(new ConfigOption("terminal_gui_scale", "GUI Size",
                 "How large the cells of the custom window are. It shrinks to fit the screen.",

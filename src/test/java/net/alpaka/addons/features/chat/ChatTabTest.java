@@ -34,8 +34,22 @@ class ChatTabTest {
             "[NPC] Maddox: Your quest is ready                   | NPC",
             "[NPC] Kat: I'm currently taking care of your pet!   | NPC",
             "[MVP+] Someone: [NPC] Maddox: fake                  | ALL",
+            "-----------------------------------------------------\\n[MVP++] Leader has invited you to join their party! | PARTY",
+            "Guild > [MVP++] Someone [Lemon]: -----\\n[MVP+] Other has invited you to join their party! | GUILD",
     })
     void sortsLinesOntoTheirTab(String text, ChatTab tab) {
-        assertEquals(tab, ChatTab.classify(text.strip()));
+        assertEquals(tab, ChatTab.classify(text.strip().replace("\\n", "\n")));
+    }
+
+    /** Only Hypixel's own invite stays on every tab, not one a player pasted into a channel. */
+    @ParameterizedTest(name = "{0} -> {1}")
+    @CsvSource(delimiter = '|', value = {
+            "[MVP++] Leader has invited you to join their party!                       | true",
+            "-----------------------------------------------------\\n[MVP++] Leader has invited you to join their party! | true",
+            "Guild > [MVP++] Someone [Lemon]: -----\\n[MVP+] Other has invited you to join their party! | false",
+            "[MVP+] Someone: Leader has invited you to join their party!               | false",
+    })
+    void onlyRealInvitesAreUrgent(String text, boolean urgent) {
+        assertEquals(urgent, ChatTab.isUrgent(text.strip().replace("\\n", "\n")));
     }
 }

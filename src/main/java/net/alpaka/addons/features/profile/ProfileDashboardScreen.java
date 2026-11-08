@@ -55,26 +55,36 @@ public class ProfileDashboardScreen extends Screen {
 
     // ---- Pages ----------------------------------------------------------------------------------
 
+    /**
+     * The sidebar's pages. Where SkyBlock has an item that stands for a page (the Maddox Batphone
+     * for slayers, a backpack for inventories), the row wears it, drawn as the NotEnoughUpdates
+     * repository has it; until that is in, or with Network Features off, the plain item instead.
+     * Pages whose menu in SkyBlock already shows a plain item (Skills, Collections, Bestiary)
+     * keep that one.
+     */
     enum Page {
-        OVERVIEW("Overview", Items.NETHER_STAR),
-        SKILLS("Skills", Items.DIAMOND_SWORD),
-        DUNGEONS("Dungeons", Items.WITHER_SKELETON_SKULL),
-        SLAYERS("Slayers", Items.ROTTEN_FLESH),
-        NETWORTH("Networth", Items.GOLD_INGOT),
-        INVENTORY("Inventories", Items.CHEST),
-        PETS("Pets", Items.BONE),
-        COLLECTIONS("Collections", Items.PAINTING),
-        BESTIARY("Bestiary", Items.WRITABLE_BOOK),
-        MUSEUM("Museum", Items.ARMOR_STAND),
-        RIFT("Rift", Items.ENDER_EYE),
-        CHOCOLATE("Rabbits", Items.COCOA_BEANS);
+        OVERVIEW("Overview", Items.NETHER_STAR, "SKYBLOCK_MENU"),
+        SKILLS("Skills", Items.DIAMOND_SWORD, null),
+        DUNGEONS("Dungeons", Items.WITHER_SKELETON_SKULL, "MASTER_SKULL_TIER_7"),
+        SLAYERS("Slayers", Items.ROTTEN_FLESH, "AATROX_BATPHONE"),
+        NETWORTH("Networth", Items.GOLD_INGOT, "PIGGY_BANK"),
+        INVENTORY("Inventories", Items.CHEST, "JUMBO_BACKPACK"),
+        PETS("Pets", Items.BONE, null),
+        COLLECTIONS("Collections", Items.PAINTING, null),
+        BESTIARY("Bestiary", Items.WRITABLE_BOOK, null),
+        MUSEUM("Museum", Items.ARMOR_STAND, null),
+        RIFT("Rift", Items.ENDER_EYE, "RIFT_PRISM"),
+        CHOCOLATE("Rabbits", Items.COCOA_BEANS, "RABBIT_HAT");
 
         final String title;
         final Item icon;
+        /** The SkyBlock item's id, or null where the plain item is the right one. */
+        final String skyblockIcon;
 
-        Page(String title, Item icon) {
+        Page(String title, Item icon, String skyblockIcon) {
             this.title = title;
             this.icon = icon;
+            this.skyblockIcon = skyblockIcon;
         }
     }
 
@@ -101,6 +111,8 @@ public class ProfileDashboardScreen extends Screen {
     private static final int HEADER_H = AlpakaStyle.HEADER_H;
     private static final int PAD = AlpakaStyle.PAD;
     private static final int SIDE_W = 116;
+    /** The sidebar folded down to its icons: a 16-pixel item in a row with a little room either side. */
+    private static final int SIDE_W_COLLAPSED = 32;
     private static final int SIDE_ROW_H = 20;
     private static final int CHIP_H = 12;
     private static final int[] PALETTE = {0xFF5CE1F0, 0xFFFFB347, 0xFF5BE38A, 0xFFB388FF, 0xFFFF6B9A, 0xFFFFE066,
@@ -119,6 +131,8 @@ public class ProfileDashboardScreen extends Screen {
     private long caretFrom = 0L;
     private boolean profileMenuOpen = false;
     private float indicatorY = Float.NaN;
+    /** How far the sidebar is folded, 0 open to 1 down to its icons; starts where it was left. */
+    private float sideFold = AlpakaConfig.instance.profileSidebarCollapsed ? 1.0f : 0.0f;
 
     private final List<Hit> hits = new ArrayList<>();
     private final List<Runnable> overlays = new ArrayList<>();
@@ -276,12 +290,16 @@ public class ProfileDashboardScreen extends Screen {
 
         drawHeader(graphics, x, y, w);
         AlpakaStyle.headerLine(graphics, x, y, w);
-        drawSidebar(graphics, x, y + HEADER_H, h - HEADER_H, deltaSec);
-        ModernGuiUtils.drawRect(graphics, x + SIDE_W, y + HEADER_H + 6, 1, h - HEADER_H - 12, AlpakaStyle.LINE);
+        float foldTarget = AlpakaConfig.instance.profileSidebarCollapsed ? 1.0f : 0.0f;
+        sideFold = PloppAnimation.interpolate(sideFold, foldTarget, deltaSec, 16.0f);
+        if (Math.abs(sideFold - foldTarget) < 0.002f) sideFold = foldTarget;
+        int sideW = Math.round(SIDE_W + (SIDE_W_COLLAPSED - SIDE_W) * sideFold);
+        drawSidebar(graphics, x, y + HEADER_H, sideW, h - HEADER_H, deltaSec);
+        ModernGuiUtils.drawRect(graphics, x + sideW, y + HEADER_H + 6, 1, h - HEADER_H - 12, AlpakaStyle.LINE);
 
-        clipX = x + SIDE_W + 1;
+        clipX = x + sideW + 1;
         clipY = y + HEADER_H;
-        clipW = w - SIDE_W - 1;
+        clipW = w - sideW - 1;
         clipH = h - HEADER_H - 4;
         // A search is a view of its own, and every new query starts at the top.
         String detail = searching() ? "\u0000search:" + itemSearch.getText() : skillDetail;
@@ -489,25 +507,51 @@ public class ProfileDashboardScreen extends Screen {
 
     // ---- Sidebar --------------------------------------------------------------------------------
 
-    private void drawSidebar(GuiGraphicsExtractor graphics, int x, int y, int h, float deltaSec) {
+    private void drawSidebar(GuiGraphicsExtractor graphics, int x, int y, int sideW, int h, float deltaSec) {
         int rowX = x + 4;
-        int rowW = SIDE_W - 8;
+        int rowW = sideW - 8;
+        // Fully open, or on its way to or from its icons: names, the search and the footer only
+        // show where they fit, so nothing spills over the page while the sidebar slides.
+        boolean open = sideW == SIDE_W;
+        boolean folded = AlpakaConfig.instance.profileSidebarCollapsed;
         int pages = Page.values().length;
 
         // On a small window the footer gives way first, then the rows get slimmer. The label stays:
         // the item search opens from it.
         int footerH = 30;
-        boolean footer = h >= 12 + pages * 17 + footerH + 12;
+        boolean footer = open && h >= 12 + pages * 17 + footerH + 12;
         int rowH = Math.max(14, Math.min(SIDE_ROW_H, (h - 10 - 12 - (footer ? footerH : 0)) / pages - 1));
         int rowY = y + 8;
-        if (itemSearchOpen || !itemSearch.isEmpty()) {
+
+        // The arrow that folds the sidebar down to its icons and opens it again: at the end of the
+        // label's line, or alone in the middle while folded.
+        int arrow = 12;
+        int ax = open ? rowX + rowW - arrow : rowX + (rowW - arrow) / 2;
+        int ay = rowY - 3;
+        boolean hoverArrow = AlpakaStyle.inside(mx, my, ax, ay, arrow, arrow) && !profileMenuOpen;
+        AlpakaStyle.chevronButton(graphics, ax, ay, arrow, !folded, hoverArrow, true);
+        hits.add(new Hit(ax, ay, arrow, arrow, () -> {
+            AlpakaConfig.instance.profileSidebarCollapsed = !AlpakaConfig.instance.profileSidebarCollapsed;
+            AlpakaConfig.save();
+            if (AlpakaConfig.instance.profileSidebarCollapsed) {
+                // The field has no room in the slim sidebar, so the search goes with it.
+                itemSearch.setText("");
+                itemSearchOpen = false;
+                itemSearchFocused = false;
+            }
+        }));
+        if (hoverArrow) tip("sidefold", folded ? "Show the page names." : "Fold the sidebar down to its icons.");
+
+        if (!open) {
+            // No label or search while folded or sliding.
+        } else if (itemSearchOpen || !itemSearch.isEmpty()) {
             // The search through every item the profile owns, where the label was.
             int fh = 14;
             int fy = rowY - 3;
             boolean hoverField = AlpakaStyle.inside(mx, my, rowX, fy, rowW, fh) && !profileMenuOpen;
-            AlpakaStyle.textField(graphics, this.font, rowX, fy, rowW, fh, itemSearch.getText(), "Search Items",
+            AlpakaStyle.textField(graphics, this.font, rowX, fy, rowW - arrow - 2, fh, itemSearch.getText(), "Search Items",
                     itemSearchFocused, hoverField, itemCaretFrom);
-            hits.add(new Hit(rowX, fy, rowW, fh, () -> {
+            hits.add(new Hit(rowX, fy, rowW - arrow - 2, fh, () -> {
                 itemSearchFocused = true;
                 itemCaretFrom = System.currentTimeMillis();
             }));
@@ -541,9 +585,20 @@ public class ProfileDashboardScreen extends Screen {
             if (hover && p != page) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, rowH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
             // Items only at their full 16 pixels: scaled down, the game's nearest-neighbour sampling
             // drops rows and columns unevenly and they turn blotchy. Rows too slim for that go without.
-            boolean icons = rowH >= 18;
-            if (icons) icon(graphics, p.icon, rowX + 5, rowY + (rowH - 16) / 2, 1.0f);
-            text(graphics, p.title, rowX + (icons ? 27 : 10), rowY + (rowH - 8) / 2, p == page || hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
+            // Folded, the icons are all there is, so they stay even in slim rows.
+            boolean icons = rowH >= 18 || !open;
+            int ix = rowX + Math.min(5, (rowW - 16) / 2);
+            if (icons) {
+                ItemStack skyblock = p.skyblockIcon == null ? ItemStack.EMPTY : ItemIcons.forItem(p.skyblockIcon, null);
+                if (!skyblock.isEmpty()) stackIcon(graphics, skyblock, ix, rowY + (rowH - 16) / 2, 1.0f);
+                else icon(graphics, p.icon, ix, rowY + (rowH - 16) / 2, 1.0f);
+            }
+            int tx = rowX + (icons ? 27 : 10);
+            if (tx + textW(p.title) <= rowX + rowW - 2) {
+                text(graphics, p.title, tx, rowY + (rowH - 8) / 2, p == page || hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
+            } else if (hover) {
+                tip(p, p.title);
+            }
             Page target = p;
             hits.add(new Hit(rowX, rowY, rowW, rowH, () -> {
                 page = target;
@@ -1091,23 +1146,25 @@ public class ProfileDashboardScreen extends Screen {
             String name = l.name();
             text(graphics, name, tx, cy + 7, isSelectedClass ? ink(ProfileChart.UP) : AlpakaStyle.TEXT_SOFT);
             if (opens) text(graphics, "›", tx + textW(name) + 4, cy + 7, hover ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
-            // Once maxed, the XP past the cap counts on as an overflow level, with its own bar.
-            // In it, a gold MAX stands before the number and the bar runs in a soft chroma on a gold
-            // track, so a maxed skill reads as maxed at a glance rather than as one under way.
+            // Every bar means the way to the next level. A maxed one fills in chroma rather than the
+            // accent, which may be gold too; the XP past the cap counts on as an overflow level, its
+            // whole number beside a MAX badge at the card's edge.
             Levels.Overflow over = l.overflow();
             if (over != null) {
-                String level = String.format(Locale.US, "%.2f", over.exact());
-                int lx = tx + tw - textW(level);
-                text(graphics, level, lx, cy + 7, AlpakaStyle.TEXT);
-                String max = "MAX";
-                text(graphics, max, lx - 5 - textW(max), cy + 7, ink(GOLD));
-                chromaBar(graphics, tx, cy + 19, tw, 3, over.progress());
-                text(graphics, "Max " + l.maxLevel() + " · " + Coins.compact(over.xpCurrent()) + " / " + Coins.compact(over.xpForNext()),
+                maxBadge(graphics, String.valueOf(over.level()), tx + tw, cy + 7);
+                maxedBar(graphics, tx, cy + 19, tw, 3, over.progress());
+                text(graphics, Math.round(Math.floor(over.progress() * 100)) + "% to " + (over.level() + 1) + " · "
+                                + Coins.compact(over.xpCurrent()) + " / " + Coins.compact(over.xpForNext()),
                         tx, cy + 25, AlpakaStyle.TEXT_MUTED);
             } else {
-                String level = l.maxed() ? "MAX " + l.level() : l.level() + " / " + l.maxLevel();
-                text(graphics, level, tx + tw - textW(level), cy + 7, l.maxed() ? ink(GOLD) : AlpakaStyle.TEXT);
-                bar(graphics, tx, cy + 19, tw, 3, l.progress(), l.maxed() ? ink(GOLD) : AlpakaStyle.accent());
+                if (l.maxed()) {
+                    maxBadge(graphics, String.valueOf(l.level()), tx + tw, cy + 7);
+                    maxedBar(graphics, tx, cy + 19, tw, 3, 1);
+                } else {
+                    String level = l.level() + " / " + l.maxLevel();
+                    text(graphics, level, tx + tw - textW(level), cy + 7, AlpakaStyle.TEXT);
+                    bar(graphics, tx, cy + 19, tw, 3, l.progress(), AlpakaStyle.accent());
+                }
                 String xp = l.maxed() ? Coins.compact(l.xp()) + " XP" : Coins.compact(l.xpCurrent()) + " / " + Coins.compact(l.xpForNext());
                 text(graphics, xp, tx, cy + 25, AlpakaStyle.TEXT_MUTED);
             }
@@ -1141,7 +1198,7 @@ public class ProfileDashboardScreen extends Screen {
     }
 
     /**
-     * The class average as a card like the classes': once every class is maxed, a gold MAX and the
+     * The class average as a card like the classes': once every class is maxed, a MAX badge and the
      * way to the next whole average in chroma, as an overflow level; before, the way to 50.
      */
     private void averageCard(GuiGraphicsExtractor graphics, List<ProfileData.Level> classes, double average, int cx, int cy, int cw, int ch) {
@@ -1155,11 +1212,12 @@ public class ProfileDashboardScreen extends Screen {
         text(graphics, "Class Average", tx, cy + 7, AlpakaStyle.TEXT_SOFT);
         String level = String.format(Locale.US, "%.2f", average);
         if (maxed) {
-            int lx = tx + tw - textW(level);
-            text(graphics, level, lx, cy + 7, AlpakaStyle.TEXT);
-            text(graphics, "MAX", lx - 5 - textW("MAX"), cy + 7, ink(GOLD));
-            chromaBar(graphics, tx, cy + 19, tw, 3, average - Math.floor(average));
-            text(graphics, "Max 50 · all " + all + " classes", tx, cy + 25, AlpakaStyle.TEXT_MUTED);
+            int whole = (int) Math.floor(average);
+            double progress = average - whole;
+            maxBadge(graphics, String.valueOf(whole), tx + tw, cy + 7);
+            maxedBar(graphics, tx, cy + 19, tw, 3, progress);
+            text(graphics, Math.round(Math.floor(progress * 100)) + "% to " + (whole + 1) + " · all " + all + " classes",
+                    tx, cy + 25, AlpakaStyle.TEXT_MUTED);
         } else {
             String shown = level + " / 50";
             text(graphics, shown, tx + tw - textW(shown), cy + 7, AlpakaStyle.TEXT);
@@ -1217,10 +1275,9 @@ public class ProfileDashboardScreen extends Screen {
     private static Tile skillTile(ProfileData d, String id, String name) {
         ProfileData.Level l = skill(d, id);
         Levels.Overflow over = l == null ? null : l.overflow();
-        String value = l == null ? "—" : over != null ? String.format(Locale.US, "%.2f", over.exact())
-                : l.maxed() ? "MAX " + l.level() : String.valueOf(l.level());
-        String note = l == null ? null : over != null ? "Max " + l.maxLevel() + ", overflow"
-                : l.maxed() ? null : Math.round(l.progress() * 100) + "% to " + (l.level() + 1);
+        String value = l == null ? "—" : String.valueOf(over != null ? over.level() : l.level());
+        String note = l == null ? null : over != null ? "Maxed · " + (int) Math.floor(over.progress() * 100) + "% to " + (over.level() + 1)
+                : l.maxed() ? "Maxed" : Math.round(l.progress() * 100) + "% to " + (l.level() + 1);
         return new Tile(Metrics.SKILL + id, name, value, note);
     }
 
@@ -1875,13 +1932,16 @@ public class ProfileDashboardScreen extends Screen {
             if (icon != null) icon(graphics, icon, x + 4, y + 3, 2.0f);
             int tx = x + 42;
             text(graphics, s.name(), tx, y + 7, AlpakaStyle.TEXT_SOFT);
-            String level = s.maxed() ? "MAX " + s.level() : "Level " + s.level();
+            String level = "Level " + s.level();
             int levelX = tx + textW(s.name()) + 8;
             text(graphics, level, levelX, y + 7, s.maxed() ? ink(GOLD) : AlpakaStyle.TEXT);
+            int levelEnd = levelX + textW(level);
+            if (s.maxed()) levelEnd = maxBadge(graphics, levelEnd + 5, y + 7);
             int right = x + w - 8;
             String xp = s.maxed() ? Coins.full(s.xp()) + " XP" : Coins.compact(s.xpForNext()) + " XP to " + (s.level() + 1);
-            if (levelX + textW(level) + 12 + textW(xp) < right) text(graphics, xp, right - textW(xp), y + 7, AlpakaStyle.TEXT_MUTED);
-            bar(graphics, tx, y + 19, w - 42 - 8, 3, s.progress(), s.maxed() ? ink(GOLD) : AlpakaStyle.accent());
+            if (levelEnd + 12 + textW(xp) < right) text(graphics, xp, right - textW(xp), y + 7, AlpakaStyle.TEXT_MUTED);
+            if (s.maxed()) maxedBar(graphics, tx, y + 19, w - 42 - 8, 3, 1);
+            else bar(graphics, tx, y + 19, w - 42 - 8, 3, s.progress(), AlpakaStyle.accent());
 
             // The kills of each tier, as far as the boss has tiers, and the recent pace.
             int tiers = s.id().equals("zombie") || s.id().equals("vampire") || s.kills()[4] > 0 ? 5 : 4;
@@ -2270,12 +2330,14 @@ public class ProfileDashboardScreen extends Screen {
             int tx = cx + 40;
             int tw = cw - 40 - 6;
             boolean all = done == list.size();
-            String count = all ? "MAX" : done + " / " + list.size();
-            text(graphics, count, tx + tw - textW(count), cy + 7, all ? ink(GOLD) : AlpakaStyle.TEXT_MUTED);
+            String count = done + " / " + list.size();
+            int countW = all ? badgeW() : textW(count);
+            if (all) maxBadge(graphics, tx + tw - countW, cy + 7);
+            else text(graphics, count, tx + tw - countW, cy + 7, AlpakaStyle.TEXT_MUTED);
             String name = ProfileData.title(category);
-            text(graphics, AlpakaStyle.ellipsize(this.font, name, tw - 8 - textW(count)), tx, cy + 7, AlpakaStyle.TEXT_SOFT);
+            text(graphics, AlpakaStyle.ellipsize(this.font, name, tw - 8 - countW), tx, cy + 7, AlpakaStyle.TEXT_SOFT);
             double progress = maxTiers == 0 ? 0 : tiers / (double) maxTiers;
-            bar(graphics, tx, cy + 19, tw, 2, progress, all ? ink(GOLD) : AlpakaStyle.accent());
+            levelBar(graphics, tx, cy + 19, tw, 2, progress, all);
             text(graphics, (int) Math.floor(progress * 100) + "% of tiers", tx, cy + 24, AlpakaStyle.TEXT_MUTED);
             hit(cx, cy, cw, ch, () -> skillDetail = category);
             if (hover) tip(category, name + ": " + done + " of " + list.size() + " collections maxed. Click for them.");
@@ -2314,13 +2376,13 @@ public class ProfileDashboardScreen extends Screen {
             if (!icon.isEmpty()) stackIcon(graphics, icon, cx + 3, cy + 3, 2.0f);
             int tx = cx + 40;
             int tw = cw - 40 - 6;
-            String tier = c.maxed() ? "MAX" : c.tier() == 0 ? "—" : roman(c.tier());
-            int tierColor = c.maxed() ? ink(GOLD) : c.tier() == 0 ? AlpakaStyle.DIVIDER : AlpakaStyle.TEXT;
-            text(graphics, tier, tx + tw - textW(tier), cy + 7, tierColor);
-            text(graphics, AlpakaStyle.ellipsize(this.font, c.name() == null ? c.id() : c.name(), tw - 8 - textW(tier)), tx, cy + 7,
+            String tier = c.tier() == 0 ? "—" : roman(c.tier());
+            int tierW = c.maxed() ? maxedTier(graphics, tier, tx + tw, cy + 7) : textW(tier);
+            if (!c.maxed()) text(graphics, tier, tx + tw - tierW, cy + 7, c.tier() == 0 ? AlpakaStyle.DIVIDER : AlpakaStyle.TEXT);
+            text(graphics, AlpakaStyle.ellipsize(this.font, c.name() == null ? c.id() : c.name(), tw - 8 - tierW), tx, cy + 7,
                     c.amount() > 0 ? AlpakaStyle.TEXT_SOFT : AlpakaStyle.TEXT_MUTED);
             double progress = c.maxed() ? 1 : c.nextAt() > c.prevAt() ? (c.amount() - c.prevAt()) / (double) (c.nextAt() - c.prevAt()) : 0;
-            bar(graphics, tx, cy + 19, tw, 2, progress, c.maxed() ? ink(GOLD) : AlpakaStyle.accent());
+            levelBar(graphics, tx, cy + 19, tw, 2, progress, c.maxed());
             String amount = Coins.compact(c.amount()) + (c.maxed() || c.nextAt() <= 0 ? "" : " / " + Coins.compact(c.nextAt()));
             text(graphics, amount, tx, cy + 24, AlpakaStyle.TEXT_MUTED);
             if (hover) {
@@ -2413,10 +2475,12 @@ public class ProfileDashboardScreen extends Screen {
             int tx = cx + 40;
             int tw = cw - 40 - 6;
             boolean done = island.maxed() == island.families().size();
-            String count = done ? "MAX" : island.maxed() + " / " + island.families().size();
-            text(graphics, count, tx + tw - textW(count), cy + 7, done ? ink(GOLD) : AlpakaStyle.TEXT_MUTED);
-            text(graphics, AlpakaStyle.ellipsize(this.font, island.name(), tw - 8 - textW(count)), tx, cy + 7, AlpakaStyle.TEXT_SOFT);
-            bar(graphics, tx, cy + 19, tw, 2, island.progress(), done ? ink(GOLD) : AlpakaStyle.accent());
+            String count = island.maxed() + " / " + island.families().size();
+            int countW = done ? badgeW() : textW(count);
+            if (done) maxBadge(graphics, tx + tw - countW, cy + 7);
+            else text(graphics, count, tx + tw - countW, cy + 7, AlpakaStyle.TEXT_MUTED);
+            text(graphics, AlpakaStyle.ellipsize(this.font, island.name(), tw - 8 - countW), tx, cy + 7, AlpakaStyle.TEXT_SOFT);
+            levelBar(graphics, tx, cy + 19, tw, 2, island.progress(), done);
             text(graphics, (int) Math.floor(island.progress() * 100) + "% of tiers", tx, cy + 24, AlpakaStyle.TEXT_MUTED);
             String name = island.name();
             hit(cx, cy, cw, ch, () -> skillDetail = name);
@@ -2447,13 +2511,13 @@ public class ProfileDashboardScreen extends Screen {
             }
             int tx = cx + 40;
             int tw = cw - 40 - 6;
-            String tier = f.maxed() ? "MAX" : f.tier() == 0 ? "—" : roman(f.tier());
-            int tierColor = f.maxed() ? ink(GOLD) : f.tier() == 0 ? AlpakaStyle.DIVIDER : AlpakaStyle.TEXT;
-            text(graphics, tier, tx + tw - textW(tier), cy + 7, tierColor);
-            text(graphics, AlpakaStyle.ellipsize(this.font, f.def().name(), tw - 8 - textW(tier)), tx, cy + 7,
+            String tier = f.tier() == 0 ? "—" : roman(f.tier());
+            int tierW = f.maxed() ? maxedTier(graphics, tier, tx + tw, cy + 7) : textW(tier);
+            if (!f.maxed()) text(graphics, tier, tx + tw - tierW, cy + 7, f.tier() == 0 ? AlpakaStyle.DIVIDER : AlpakaStyle.TEXT);
+            text(graphics, AlpakaStyle.ellipsize(this.font, f.def().name(), tw - 8 - tierW), tx, cy + 7,
                     f.kills() > 0 ? AlpakaStyle.TEXT_SOFT : AlpakaStyle.TEXT_MUTED);
             double progress = f.maxed() ? 1 : (f.kills() - f.prevAt()) / (double) (f.nextAt() - f.prevAt());
-            bar(graphics, tx, cy + 19, tw, 2, progress, f.maxed() ? ink(GOLD) : AlpakaStyle.accent());
+            levelBar(graphics, tx, cy + 19, tw, 2, progress, f.maxed());
             String kills = Coins.full(f.kills()) + (f.maxed() ? "" : " / " + Coins.full(f.nextAt()));
             text(graphics, kills, tx, cy + 24, AlpakaStyle.TEXT_MUTED);
             if (hover) {
@@ -3078,14 +3142,16 @@ public class ProfileDashboardScreen extends Screen {
             int tx = cx + 40;
             int tw = cw - 40 - 6;
             boolean done = !special && c.donated() == c.entries().size();
-            String amount = special ? Coins.full(m.special().size()) : done ? "MAX" : c.donated() + " / " + c.entries().size();
-            text(graphics, amount, tx + tw - textW(amount), cy + 7, done ? ink(GOLD) : AlpakaStyle.TEXT_MUTED);
-            text(graphics, AlpakaStyle.ellipsize(this.font, name, tw - 8 - textW(amount)), tx, cy + 7, AlpakaStyle.TEXT_SOFT);
+            String amount = special ? Coins.full(m.special().size()) : c.donated() + " / " + c.entries().size();
+            int amountW = done ? badgeW() : textW(amount);
+            if (done) maxBadge(graphics, tx + tw - amountW, cy + 7);
+            else text(graphics, amount, tx + tw - amountW, cy + 7, AlpakaStyle.TEXT_MUTED);
+            text(graphics, AlpakaStyle.ellipsize(this.font, name, tw - 8 - amountW), tx, cy + 7, AlpakaStyle.TEXT_SOFT);
             if (special) {
                 // Special items have no end, so no bar either.
                 text(graphics, "no limit", tx, cy + 24, AlpakaStyle.TEXT_MUTED);
             } else {
-                bar(graphics, tx, cy + 19, tw, 2, c.progress(), done ? ink(GOLD) : AlpakaStyle.accent());
+                levelBar(graphics, tx, cy + 19, tw, 2, c.progress(), done);
                 text(graphics, (int) Math.floor(c.progress() * 100) + "% donated", tx, cy + 24, AlpakaStyle.TEXT_MUTED);
             }
             hit(cx, cy, cw, ch, () -> skillDetail = id);
@@ -3310,7 +3376,10 @@ public class ProfileDashboardScreen extends Screen {
             String name = ProfileData.title(rarity);
             text(graphics, name, x + 8, ry, color);
             boolean done = of != null && found >= of;
-            if (barW > 20) bar(graphics, barX, ry + 3, barW, 2, of == null || of == 0 ? 0 : found / (double) of, done ? ink(GOLD) : color);
+            if (barW > 20) {
+                if (done) maxedBar(graphics, barX, ry + 3, barW, 2, 1);
+                else bar(graphics, barX, ry + 3, barW, 2, of == null || of == 0 ? 0 : found / (double) of, color);
+            }
             String amount = of == null ? String.valueOf(found) : found + " / " + of;
             text(graphics, amount, barX + barW + countW - textW(amount) - 4, ry, done ? ink(GOLD) : AlpakaStyle.TEXT);
             String total = Coins.full(seen) + " found";
@@ -3632,22 +3701,91 @@ public class ProfileDashboardScreen extends Screen {
     private static final int GOLD = 0xFFFFC94D;
 
     /**
-     * The chroma of an overflow bar at a point on screen: a soft rainbow drifting slowly to the
-     * right, pale enough to sit with the menu's pink and gold.
+     * A maxed level: its whole number in gold beside a MAX badge, the badge at the card's right
+     * edge {@code right}, so the badges line up whatever the numbers' widths.
+     */
+    private void maxBadge(GuiGraphicsExtractor graphics, String level, int right, int y) {
+        int px = right - badgeW();
+        maxBadge(graphics, px, y);
+        text(graphics, level, px - 5 - textW(level), y, ink(GOLD));
+    }
+
+    /** A maxed tier: the gold MAX badge at the right edge with the tier before it; returns the width both take. */
+    private int maxedTier(GuiGraphicsExtractor graphics, String tier, int right, int y) {
+        maxBadge(graphics, tier, right, y);
+        return badgeW() + 5 + textW(tier);
+    }
+
+    /** The gold MAX badge with its left edge at {@code x}, on a text line at {@code y}; returns its right edge. */
+    private int maxBadge(GuiGraphicsExtractor graphics, int x, int y) {
+        int pw = badgeW();
+        ModernGuiUtils.drawRoundedRect(graphics, x, y - 2, pw, 11, 3, ink(GOLD));
+        text(graphics, "MAX", x + 3, y, ink(0xFF1A1A1A));
+        return x + pw;
+    }
+
+    private int badgeW() {
+        return textW("MAX") + 6;
+    }
+
+    /** A progress bar: in the accent while under way, in chroma once maxed. */
+    private static void levelBar(GuiGraphicsExtractor graphics, int x, int y, int w, int h, double progress, boolean maxed) {
+        if (maxed) maxedBar(graphics, x, y, w, h, progress);
+        else bar(graphics, x, y, w, h, progress, AlpakaStyle.accent());
+    }
+
+    /**
+     * The chroma of a maxed bar at a point on screen: a soft rainbow drifting slowly to the right.
+     * It sets maxed bars apart from the accent, which the player may have set to gold.
      */
     private static int chroma(int x) {
         double t = System.currentTimeMillis() / 6000.0;
         float hue = (float) ((t - x / 220.0) % 1.0 + 1.0) % 1.0f;
-        return ink(0xFF000000 | (java.awt.Color.HSBtoRGB(hue, 0.32f, 0.95f) & 0xFFFFFF));
+        return ink(0xFF000000 | (java.awt.Color.HSBtoRGB(hue, 0.45f, 0.95f) & 0xFFFFFF));
     }
 
-    /** A level bar in overflow: a gold track for the cap reached, filled in chroma towards the next level. */
-    private static void chromaBar(GuiGraphicsExtractor graphics, int x, int y, int w, int h, double progress) {
+    /**
+     * A maxed level's bar: on the usual track, so where the fill ends stays plain, filled in chroma,
+     * with a soft light running over it now and then.
+     */
+    private static void maxedBar(GuiGraphicsExtractor graphics, int x, int y, int w, int h, double progress) {
         int radius = Math.max(0, h / 2);
-        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, radius, MarketIcons.fade(ink(GOLD), 0.35f));
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, radius, AlpakaStyle.TRACK);
         int fw = (int) Math.round(Math.max(0, Math.min(1, progress)) * w);
-        for (int sx = 0; sx < fw; sx += 2) {
-            graphics.fill(x + sx, y, x + Math.min(fw, sx + 2), y + h, chroma(x + sx));
+        if (fw <= 0) return;
+        // Rounded ends from the first and last colour, and the columns between in 2 px steps.
+        int end = Math.max(1, Math.min(fw, 2));
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, Math.max(end * 2, h), h, radius, chroma(x));
+        ModernGuiUtils.drawRoundedRect(graphics, x + fw - Math.max(end * 2, h), y, Math.max(end * 2, h), h, radius, chroma(x + fw - 1));
+        for (int sx = end; sx < fw - end; sx += 2) {
+            graphics.fill(x + sx, y, x + Math.min(fw - end, sx + 2), y + h, chroma(x + sx));
+        }
+        shine(graphics, x, y, fw, h);
+    }
+
+    /** How often the light runs over the gold bars, how long one pass takes, and how wide it is. */
+    private static final long SHINE_PERIOD_MS = 6000;
+    private static final double SHINE_SWEEP_MS = 1200;
+    private static final int SHINE_HALF = 22;
+
+    /**
+     * The light over a gold bar's fill. Each pass starts a little later the further right and down
+     * the bar sits, so it travels over the cards together instead of flashing on all at once. The
+     * end columns are left out so the bar's rounded ends stay round.
+     */
+    private static void shine(GuiGraphicsExtractor graphics, int x, int y, int fw, int h) {
+        if (fw <= 2) return;
+        long delay = (long) ((x + 2L * y) * 1.5);
+        long local = Math.floorMod(System.currentTimeMillis() - delay, SHINE_PERIOD_MS);
+        if (local > SHINE_SWEEP_MS) return;
+        double pos = -SHINE_HALF + (fw + 2.0 * SHINE_HALF) * (local / SHINE_SWEEP_MS);
+        int from = Math.max(1, (int) Math.floor(pos - SHINE_HALF));
+        int to = Math.min(fw - 1, (int) Math.ceil(pos + SHINE_HALF));
+        for (int sx = from; sx < to; sx++) {
+            double d = 1 - Math.abs(sx + 0.5 - pos) / SHINE_HALF;
+            if (d <= 0) continue;
+            int alpha = (int) Math.round(d * d * 0.6 * 255);
+            graphics.fill(x + sx, y, x + sx + 1, y + h, ink((alpha << 24) | 0xFFFFFF));
         }
     }
 

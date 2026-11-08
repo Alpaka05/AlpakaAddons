@@ -212,27 +212,23 @@ public class AlpakaConfig {
     public boolean cleanBlazeLightning = true;
     /** Off by default: the health on blaze name tags is what a grinder watches. */
     public boolean cleanBlazeNameTags = false;
-    /** "Strike using the ... attunement on your dagger!" lines in the Blaze zones. */
-    public boolean cleanBlazeWrongDaggerChat = true;
-    /** "Your hit was reduced by Hellion Shield!" and "You took ... damage from ..." in the Blaze zones. */
-    public boolean cleanBlazeDamageChat = true;
+    /** Legacy, before the Message Filter took over the Blaze chat lines. Read once by {@link #migrateTo3} and then cleared. */
+    public Boolean cleanBlazeWrongDaggerChat = null;
+    public Boolean cleanBlazeDamageChat = null;
     /** During the player's own Blaze slayer boss, a glowing column over each fire pit block. */
     public boolean blazeFirePitsEnabled = false;
     /** ARGB color of the fire pit column; its alpha scales the column's own fade. Default hot red-orange. */
     public int blazeFirePitColor = 0xFFFF4714;
     /**
-     * Hides Hypixel's slayer chatter - quest started/complete, level-ups, the radio lines.
-     *
-     * Used to be part of cleanBlazeEnabled, which forced a choice between the blaze effects and a
-     * quiet chat. Defaults to true so that split changes nothing for anyone who had clean blaze on.
+     * Legacy, from when Hide Slayer Chat Spam was a feature of its own; its groups are the Message
+     * Filter's Slayer Messages now. Read once by {@link #migrateTo3} and then cleared.
      */
-    public boolean hideSlayerChatMessages = false;
-    /** Which groups of slayer chatter hideSlayerChatMessages hides. All on, as before the split. */
-    public boolean hideSlayerChatQuest = true;
-    public boolean hideSlayerChatRadio = true;
-    public boolean hideSlayerChatLevelUp = true;
-    public boolean hideSlayerChatHealing = true;
-    public boolean hideSlayerChatSunshade = true;
+    public Boolean hideSlayerChatMessages = null;
+    public Boolean hideSlayerChatQuest = null;
+    public Boolean hideSlayerChatRadio = null;
+    public Boolean hideSlayerChatLevelUp = null;
+    public Boolean hideSlayerChatHealing = null;
+    public Boolean hideSlayerChatSunshade = null;
     public boolean stopBlazeSpinning = true;
     /** Hides the red hurt flash on mobs and players. Cosmetic only, the hit itself is untouched. */
     public boolean hideHurtOverlayEnabled = false;
@@ -240,8 +236,27 @@ public class AlpakaConfig {
     public boolean hideMobDeathsEnabled = false;
     /** With Hide Mob Deaths: also no puff of smoke when the server removes the body. */
     public boolean hideMobDeathSmoke = false;
-    /** Hides explosion particles, server smoke puffs and explosion debris. Cosmetic only. */
-    public boolean hideExplosions = false;
+    /**
+     * Hide Visual Clutter, the master switch over the effects below. It was Hide Explosions, so an
+     * older file's value still turns it on (and {@link #migrateTo4} keeps such a file to explosions).
+     * Cosmetic only.
+     */
+    @SerializedName(value = "hideVisualClutter", alternate = "hideExplosions")
+    public boolean hideVisualClutter = false;
+    /** Explosion particles, server smoke puffs and explosion debris. */
+    public boolean clutterExplosions = true;
+    /** Falling block entities are never added. */
+    public boolean clutterFallingBlocks = true;
+    /** The particles of broken and mined blocks. */
+    public boolean clutterBlockBreak = true;
+    /** Critical and enchanted hit sparks, and the crit trail of arrows. */
+    public boolean clutterHitParticles = true;
+    /** Firework rocket bursts. */
+    public boolean clutterFireworks = true;
+    /** Experience orbs are never added. */
+    public boolean clutterExperienceOrbs = true;
+    /** A dying Ender Dragon, its light rays and its death explosions. */
+    public boolean clutterDragonDeath = true;
     /** Hides the flames on burning mobs, players and yourself in third person. Cosmetic only. */
     public boolean hideEntityFire = false;
     /** Opacity of the fire covering the screen while you burn in first person, 0..1; 1 is vanilla, 0 hides it. */
@@ -447,12 +462,11 @@ public class AlpakaConfig {
      * Whether the mod may contact anything over the network ("Network Features").
      *
      * Everything else in this mod works from what the client already has. This is the one setting
-     * that lets it reach outside, for four things: a public endpoint describing the running election
-     * (no API key, no player named, the same answer for everybody), the main menu's player
-     * count, an ordinary status ping to mc.hypixel.net like the server list sends, the update
-     * check against the mod's public GitHub releases, and the main menu's What's New card, which
-     * reads the newest of those releases' notes. Off means no
-     * request is made and nothing derived from one is used. The JSON key keeps its old name.
+     * that lets it reach outside; the README's "What it contacts" lists every service it is used
+     * for (Hypixel's public resources and Bazaar, SkyCofl, the NEU repository, the Profile
+     * Dashboard's Elite, Soopy and SkyKings, the main menu's status ping, GitHub releases). Off
+     * means no request is made and nothing derived from one is used. The JSON key keeps its old
+     * name.
      */
     public boolean allowApiCalls = false;
     /** A chat line on joining a world when a newer release is on GitHub. Needs allowApiCalls. */
@@ -733,6 +747,8 @@ public class AlpakaConfig {
     public int terminalMelodyColor = 0xFFFF55FF;
     /** Background of the custom terminal GUI. */
     public int terminalGuiBackgroundColor = 0xE0101014;
+    /** Terminal practice: best time per terminal in ms, keyed "PANES", or "PANES@150" with a simulated ping. */
+    public Map<String, Long> terminalPracticeBestMs = new HashMap<>();
 
     /** Master switch of the F7/M7 device solvers ("Device Solvers"); they use the Solvers colors. */
     public boolean deviceSolversEnabled = false;
@@ -911,6 +927,7 @@ public class AlpakaConfig {
     public boolean messageFilterFireSale = true;
     public boolean messageFilterWatchdog = true;
     public boolean messageFilterStash = true;
+    public boolean messageFilterEventRewards = true;
     public boolean messageFilterSacks = true;
     /** Dungeon chatter, only hidden inside a Catacombs run; one switch per group. */
     public boolean messageFilterDungeonPrepare = true;
@@ -924,6 +941,19 @@ public class AlpakaConfig {
     public boolean messageFilterDungeonAbility = true;
     public boolean messageFilterDungeonPuzzle = true;
     public boolean messageFilterDungeonEnd = true;
+    /**
+     * Slayer chatter; one switch per group. Hidden from the chat log only, after every listener has
+     * read it, since the slayer tracking needs the same lines (see SlayerChatFilter).
+     */
+    public boolean messageFilterSlayerQuest = true;
+    public boolean messageFilterSlayerRadio = true;
+    public boolean messageFilterSlayerLevelUp = true;
+    public boolean messageFilterSlayerHealing = true;
+    public boolean messageFilterSlayerSunshade = true;
+    /** "Strike using the ... attunement on your dagger!", only in the Blaze zones. */
+    public boolean messageFilterBlazeWrongDagger = true;
+    /** "Your hit was reduced by Hellion Shield!" and "You took ... damage from ...", only in the Blaze zones. */
+    public boolean messageFilterBlazeDamage = true;
     /** The player's own filters, made in the Message Filter's sub menu. */
     public java.util.List<net.alpaka.addons.features.chat.CustomMessageFilter> messageFilterCustom = new java.util.ArrayList<>();
     /** All / Party / Guild / PMs tabs above the chat input. */
@@ -974,6 +1004,8 @@ public class AlpakaConfig {
     public boolean experimentSolverEnabled = false;
     public int experimentSolverNextColor = 0xA055FF55;
     public int experimentSolverLaterColor = 0x70FFFF55;
+    /** Clicks on a wrong block in Chronomatron or Ultrasequencer are dropped instead of ending the game. */
+    public boolean experimentSolverPreventMisclicks = false;
     /**
      * One long row of twenty hearts in place of the two short ones, the hunger bar and the armor bar,
      * neither of which SkyBlock needs; absorption hearts sit on the row above it.
@@ -1064,6 +1096,8 @@ public class AlpakaConfig {
     public float chestValueY = -1f;
     /** /alpakaprofile opens the Profile Dashboard; see ProfileDashboardScreen. Needs allowApiCalls. */
     public boolean profileDashboardEnabled = true;
+    /** The dashboard's sidebar folded down to its icons; flipped from the sidebar itself, not an option of the menu. */
+    public boolean profileSidebarCollapsed = false;
     /**
      * The player's own SkyKings API key, for SkyKings' daily history in the dashboard's graphs.
      * Empty for none. Each player makes their own; the mod never ships one (SkyKings asks that keys
@@ -1089,6 +1123,9 @@ public class AlpakaConfig {
      * opens it, a click runs a command, and pressing the key again closes it.
      */
     public boolean commandWheelToggleMode = false;
+
+    /** Plays the hotbar swap sound whenever the aim moves onto another command of the wheel. */
+    public boolean commandWheelHoverSound = true;
 
     /**
      * The mod's keys, by key mapping name ("key.alpaka.zoom") to the bound key's name
@@ -1671,7 +1708,9 @@ public class AlpakaConfig {
      */
     private static final java.util.List<java.util.function.Consumer<AlpakaConfig>> MIGRATIONS = java.util.List.of(
             AlpakaConfig::migrateTo1,
-            AlpakaConfig::migrateTo2
+            AlpakaConfig::migrateTo2,
+            AlpakaConfig::migrateTo3,
+            AlpakaConfig::migrateTo4
     );
 
     /** The settings layout this version writes. A file with a lower number gets the steps it has not had. */
@@ -1692,6 +1731,50 @@ public class AlpakaConfig {
         if (chatHistoryLimit > 5000) {
             chatHistoryLimit = 5000;
         }
+    }
+
+    /**
+     * Layout 2 to 3: Hide Slayer Chat Spam and Clean Blaze's two chat switches became the Message
+     * Filter's Slayer Messages. A group that was not hidden before stays visible; one that was keeps
+     * its switch on; a field missing next to the others was on by default. A fresh install, or a file from before these fields, has none of them and keeps
+     * the defaults: Clean Blaze being off by default must not switch the Blaze lines off for it.
+     */
+    private void migrateTo3() {
+        if (hideSlayerChatMessages == null && hideSlayerChatQuest == null && hideSlayerChatRadio == null
+                && hideSlayerChatLevelUp == null && hideSlayerChatHealing == null && hideSlayerChatSunshade == null
+                && cleanBlazeWrongDaggerChat == null && cleanBlazeDamageChat == null) return;
+        boolean slayerOn = !Boolean.FALSE.equals(hideSlayerChatMessages);
+        messageFilterSlayerQuest = slayerOn && !Boolean.FALSE.equals(hideSlayerChatQuest);
+        messageFilterSlayerRadio = slayerOn && !Boolean.FALSE.equals(hideSlayerChatRadio);
+        messageFilterSlayerLevelUp = slayerOn && !Boolean.FALSE.equals(hideSlayerChatLevelUp);
+        messageFilterSlayerHealing = slayerOn && !Boolean.FALSE.equals(hideSlayerChatHealing);
+        messageFilterSlayerSunshade = slayerOn && !Boolean.FALSE.equals(hideSlayerChatSunshade);
+        // Clean Blaze's chat lines only went while Clean Blaze itself was on.
+        messageFilterBlazeWrongDagger = cleanBlazeEnabled && !Boolean.FALSE.equals(cleanBlazeWrongDaggerChat);
+        messageFilterBlazeDamage = cleanBlazeEnabled && !Boolean.FALSE.equals(cleanBlazeDamageChat);
+        hideSlayerChatMessages = null;
+        hideSlayerChatQuest = null;
+        hideSlayerChatRadio = null;
+        hideSlayerChatLevelUp = null;
+        hideSlayerChatHealing = null;
+        hideSlayerChatSunshade = null;
+        cleanBlazeWrongDaggerChat = null;
+        cleanBlazeDamageChat = null;
+    }
+
+    /**
+     * Layout 3 to 4: Hide Explosions became Hide Visual Clutter, with more effects than explosions.
+     * Whoever had Hide Explosions on keeps exactly that; the new effects wait to be switched on.
+     */
+    private void migrateTo4() {
+        if (!hideVisualClutter) return;
+        clutterExplosions = true;
+        clutterFallingBlocks = false;
+        clutterBlockBreak = false;
+        clutterHitParticles = false;
+        clutterFireworks = false;
+        clutterExperienceOrbs = false;
+        clutterDragonDeath = false;
     }
 
     /**
@@ -1844,11 +1927,10 @@ public class AlpakaConfig {
         this.cleanBlazeEnabled = false;
         this.blazeFirePitsEnabled = false;
         this.slayerBossHighlightEnabled = false;
-        this.hideSlayerChatMessages = false;
         this.stopBlazeSpinning = false;
         this.hideHurtOverlayEnabled = false;
         this.hideMobDeathsEnabled = false;
-        this.hideExplosions = false;
+        this.hideVisualClutter = false;
         this.hideEntityFire = false;
         this.firstPersonFireStatic = false;
         this.showOwnNameTag = false;
@@ -1859,6 +1941,7 @@ public class AlpakaConfig {
         this.customSoundsEnabled = false;
         this.customSoundButtonClick = false;
         this.customSoundHotbarScroll = false;
+        this.commandWheelHoverSound = false;
         this.customSoundRareDrop = false;
         this.customSoundNotification = false;
         this.customSoundPlayerHurt = false;

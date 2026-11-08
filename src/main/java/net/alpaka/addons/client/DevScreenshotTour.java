@@ -141,6 +141,7 @@ public final class DevScreenshotTour {
             screen("config-menu-font", () -> AlpakaConfigScreen.openOn("Design", "Menu Font").withChoiceOpen()),
             screen("config-world", () -> AlpakaConfigScreen.openOn("World", "Block Overlay")),
             screen("config-world-sky", () -> AlpakaConfigScreen.openOn("World", "Sky Effects")),
+            screen("config-world-clutter", () -> AlpakaConfigScreen.openOn("World", "Hide Visual Clutter")),
             screen("config-dungeon", () -> AlpakaConfigScreen.openOn("Dungeon", "Solvers")),
             // Further down Solvers' settings: the Water Board ones below the puzzle list.
             new Stop("config-dungeon-water-board", () -> scroll(0.75, 0.6, -6), () -> true, 30),
@@ -501,6 +502,9 @@ public final class DevScreenshotTour {
                     net.alpaka.addons.features.dungeon.terminal.TerminalKind.SELECT_ALL)),
             screen("terminal-gui-melody", () -> net.alpaka.addons.features.dungeon.terminal.TerminalScreen.preview(
                     net.alpaka.addons.features.dungeon.terminal.TerminalKind.MELODY)),
+            // Terminal practice ("/alpakaterminal"): a dealt terminal with the timer in the header.
+            new Stop("terminal-practice-rubix", () -> net.alpaka.addons.features.dungeon.terminal.TerminalPractice.open(
+                    net.alpaka.addons.features.dungeon.terminal.TerminalKind.RUBIX, 0), () -> true, 30),
             // The same terminals in the vanilla chest, with the Terminal Solvers overlay (the default
             // mode). Switched on for the tour only; not saved.
             new Stop(null, () -> AlpakaConfig.instance.terminalSolversEnabled = true, () -> true, 1),

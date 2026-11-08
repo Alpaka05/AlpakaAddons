@@ -3,6 +3,7 @@ package net.alpaka.addons.features.profile;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import net.alpaka.addons.AlpakaAddons;
+import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.utils.ModVersion;
 
 import java.net.URI;
@@ -27,7 +28,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * running Bingo event come from Hypixel's public resources, which need no key either.
  *
  * Answers are kept for a minute, so flipping pages costs nothing, and requests are spaced out to
- * stay well inside Elite's limit of 20 at a time. Only used while Network Features is on.
+ * stay well inside Elite's limit of 20 at a time. Only used while Network Features is on: every
+ * request of the dashboard goes through here, and with the switch off each one fails at once,
+ * without anything sent.
  */
 public final class ProfileApi {
     private ProfileApi() {}
@@ -48,6 +51,18 @@ public final class ProfileApi {
         NotFound(String message) {
             super(message, null, false, false);
         }
+    }
+
+    /** Thrown into a future, without asking anyone, while Network Features is off. */
+    public static final class NetworkOff extends RuntimeException {
+        NetworkOff() {
+            super("Network Features is off.", null, false, false);
+        }
+    }
+
+    /** Whether the player allows the mod to go online; the README promises nothing is sent otherwise. */
+    static boolean allowed() {
+        return AlpakaConfig.instance.allowApiCalls;
     }
 
     /** An answer and how long it may be handed out again, after which it is dropped. */
@@ -139,6 +154,7 @@ public final class ProfileApi {
      * player's own key; nearly three megabytes, so kept for half an hour.
      */
     static CompletableFuture<JsonElement> skykingsUser(String uuid, String key) {
+        if (!allowed()) return CompletableFuture.failedFuture(new NetworkOff());
         String url = SKYKINGS + "/leaderboard/user?uuid=" + uuid;
         long now = System.currentTimeMillis();
         Cached cached = CACHE.get(url);
@@ -204,6 +220,7 @@ public final class ProfileApi {
 
     /** A file of the NEU item repository, as text; see {@link PetIcons}. */
     static CompletableFuture<String> neuItem(String url) {
+        if (!allowed()) return CompletableFuture.failedFuture(new NetworkOff());
         // Not spaced out like Elite's requests: GitHub serves these files from its CDN, and a page
         // of pets asks for dozens at once.
         CompletableFuture<String> future = new CompletableFuture<>();
@@ -242,6 +259,8 @@ public final class ProfileApi {
     }
 
     private static CompletableFuture<JsonElement> get(String url, long freshMs, long spacingMs) {
+        // Before the cache too, and nothing is kept, so the switch turned on later loads afresh.
+        if (!allowed()) return CompletableFuture.failedFuture(new NetworkOff());
         long now = System.currentTimeMillis();
         Cached cached = CACHE.get(url);
         if (cached != null && freshMs > 0 && now - cached.at() < freshMs && !cached.future().isCompletedExceptionally()) {

@@ -151,7 +151,7 @@ public final class Boulder extends PuzzleSolver {
         long boxes = 0L;
         for (int i = 0; i < BoulderBoard.CELLS; i++) {
             BlockPos low = f.toWorld(BoulderBoard.centreX(BoulderBoard.col(i)), BoulderBoard.BOX_Y, BoulderBoard.centreZ(BoulderBoard.row(i)));
-            if (!level.hasChunk(low.getX() >> 4, low.getZ() >> 4)) return UNREADABLE;
+            if (!level.getChunkSource().hasChunk(low.getX() >> 4, low.getZ() >> 4)) return UNREADABLE;
             boolean planks = level.getBlockState(low).is(BlockTags.PLANKS);
             boolean filled = !level.getBlockState(low.atY(BoulderBoard.BOX_CHECK_Y)).isAir();
             if (planks != filled) return UNREADABLE;

@@ -639,7 +639,7 @@ public final class WaterBoard extends PuzzleSolver {
     private static WaterBoardLayout.View view(ClientLevel level, RoomFrame frame) {
         return (rx, y, rz) -> {
             BlockPos pos = frame.toWorld(rx, y, rz);
-            if (!level.hasChunk(pos.getX() >> 4, pos.getZ() >> 4)) return Cell.UNLOADED;
+            if (!level.getChunkSource().hasChunk(pos.getX() >> 4, pos.getZ() >> 4)) return Cell.UNLOADED;
             return cellOf(level.getBlockState(pos));
         };
     }

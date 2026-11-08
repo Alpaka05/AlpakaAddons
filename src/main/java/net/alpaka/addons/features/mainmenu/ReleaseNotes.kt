@@ -63,7 +63,7 @@ object ReleaseNotes {
             .header("Accept", "application/vnd.github+json")
             .GET()
             .build()
-        client.sendAsync(request, HttpResponse.BodyHandlers.ofString()).whenComplete { response, error ->
+        client.sendAsync(request, HttpResponse.BodyHandlers.ofString()).orTimeout(60, java.util.concurrent.TimeUnit.SECONDS).whenComplete { response, error ->
             val read = try {
                 if (error == null && response?.statusCode() == 200) read(response.body()) else {
                     AlpakaAddons.LOGGER.warn("Could not load the release notes ({})",

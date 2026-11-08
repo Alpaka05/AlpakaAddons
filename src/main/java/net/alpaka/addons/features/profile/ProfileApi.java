@@ -169,7 +169,7 @@ public final class ProfileApi {
                 .header("Authorization", key)
                 .GET()
                 .build();
-        keyedClient().sendAsync(request, HttpResponse.BodyHandlers.ofString()).whenComplete((response, error) -> {
+        keyedClient().sendAsync(request, HttpResponse.BodyHandlers.ofString()).orTimeout(60, java.util.concurrent.TimeUnit.SECONDS).whenComplete((response, error) -> {
             if (error != null || response == null) {
                 CACHE.remove(url);
                 future.completeExceptionally(error != null ? error : new IllegalStateException("no response"));
@@ -230,7 +230,7 @@ public final class ProfileApi {
                     .header("User-Agent", "AlpakaAddons/" + ModVersion.mod())
                     .GET()
                     .build();
-            client().sendAsync(request, HttpResponse.BodyHandlers.ofString()).whenComplete((response, error) -> {
+            client().sendAsync(request, HttpResponse.BodyHandlers.ofString()).orTimeout(60, java.util.concurrent.TimeUnit.SECONDS).whenComplete((response, error) -> {
                 if (error != null || response == null) {
                     future.completeExceptionally(error != null ? error : new IllegalStateException("no response"));
                 } else if (response.statusCode() == 404) {
@@ -290,7 +290,7 @@ public final class ProfileApi {
                 .header("Accept", "application/json")
                 .GET()
                 .build();
-        client().sendAsync(request, HttpResponse.BodyHandlers.ofString()).whenComplete((response, error) -> {
+        client().sendAsync(request, HttpResponse.BodyHandlers.ofString()).orTimeout(60, java.util.concurrent.TimeUnit.SECONDS).whenComplete((response, error) -> {
             if (error != null || response == null) {
                 AlpakaAddons.LOGGER.debug("Profile request to {} failed: {}", url, error);
                 CACHE.remove(url);

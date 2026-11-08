@@ -189,7 +189,7 @@ object UpdateChecker {
             .build()
 
         checking = true
-        client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+        client.sendAsync(request, HttpResponse.BodyHandlers.ofString()).orTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
             .whenComplete { response, error ->
                 checking = false
                 try {

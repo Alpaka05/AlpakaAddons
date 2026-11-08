@@ -27,6 +27,8 @@ object FarmingHudRenderer {
     private const val LABEL_GAP = 5
     private const val GLYPH_HEIGHT = 9
     private const val REBUILD_INTERVAL_MS = 250L
+    /** Extra space between two groups of rows. */
+    private const val GROUP_GAP = 3
 
     /**
      * The smallest a crop icon is drawn, in GUI pixels. The real size is the next one at which each
@@ -52,7 +54,7 @@ object FarmingHudRenderer {
     /**
      * One row; the title alone spans both columns. A row with [icons] draws them after its value:
      * the Contest line's crops. [leadIcon] is a crop drawn in front of the value, in
-     * place of its name: the Milestone line's.
+     * place of its name: the Next Tier line's.
      */
     private data class Line(
         val label: String,
@@ -61,6 +63,8 @@ object FarmingHudRenderer {
         val spansColumns: Boolean = false,
         val icons: List<String> = emptyList(),
         val leadIcon: String? = null,
+        /** The first row of a group: drawn a little apart from the row above. */
+        val gapAbove: Boolean = false,
     )
 
     private class Layout(
@@ -101,6 +105,8 @@ object FarmingHudRenderer {
         if (cfg.farmingHudShowPestCooldown) mask = mask or (1 shl 4)
         if (cfg.farmingHudShowRepellent) mask = mask or (1 shl 5)
         if (cfg.farmingHudShowContest) mask = mask or (1 shl 6)
+        if (cfg.farmingHudShowVisitors) mask = mask or (1 shl 7)
+        if (cfg.farmingHudShowBps) mask = mask or (1 shl 8)
         return mask
     }
 
@@ -154,6 +160,7 @@ object FarmingHudRenderer {
                 valueXs[index] = valueX
                 val hasIcons = row.leadIcon != null || row.icons.isNotEmpty()
                 heights[index] = if (hasIcons) maxOf(LINE_HEIGHT, iconWidth) else LINE_HEIGHT
+                if (row.gapAbove) top += GROUP_GAP
                 tops[index] = top
                 top += heights[index]
                 val textX = if (row.leadIcon != null) valueX + iconWidth + LEAD_ICON_GAP else valueX
@@ -181,61 +188,64 @@ object FarmingHudRenderer {
         return built
     }
 
-    /** The rows, each behind its own toggle. [preview] fills them with sample figures for the editor. */
+    /**
+     * The rows, each behind its own toggle. [preview] fills them with sample figures for the editor.
+     *
+     * Grouped by topic, with a small gap between groups: the crop milestone, the pests, how fast
+     * you farm, and what happens on the Garden.
+     */
     private fun buildRows(preview: Boolean, now: Long): List<Line> {
         val cfg = AlpakaConfig.instance
-        val rows = ArrayList<Line>(7)
+        val rows = ArrayList<Line>(9)
 
         if (cfg.farmingHudShowTitle) rows.add(Line("§lFarming", "", COLOR_TITLE, spansColumns = true))
 
-        if (cfg.farmingHudShowXpPerHour) {
-            val perHour = if (preview) 412_800.0 else FarmingTracker.xpPerHour(now)
-            rows.add(
-                if (!preview && perHour == null && FarmingTracker.xpNeedsSkillWidget) {
-                    Line("XP/hr", "Skills Widget Off", COLOR_WARN)
-                } else {
-                    Line("XP/hr", perHour?.let { formatNumber(it.roundToLong()) } ?: "-", COLOR_VALUE)
-                },
-            )
-        }
-
+        // Crop milestone.
+        var group = rows.size
         val milestone = if (preview) FarmingParse.Milestone("Mushroom", 25, 48.7) else FarmingTracker.milestone
         val noMilestoneWidget = !preview && !FarmingTracker.hasMilestoneWidget
-        if (cfg.farmingHudShowMilestone) {
+        // The crop and its tier go in front of the Next Tier row; the Milestone row only shows the
+        // progress. With one of the two switched off, the other one carries the crop.
+        val showProgress = cfg.farmingHudShowMilestone
+        val showNext = cfg.farmingHudShowMilestoneEta
+        if (showProgress) {
             val crops = if (preview) 389_285L to 800_000L else FarmingTracker.milestoneCrops()
             rows.add(
                 when {
                     noMilestoneWidget -> Line("Milestone", "Tab Widget Off", COLOR_WARN)
                     milestone == null -> Line("Milestone", "-", COLOR_VALUE)
-                    milestone.maxed -> Line("Milestone", "${milestone.tier} (Max)", COLOR_GOOD, leadIcon = milestone.crop)
-                    // In crops once the Crop Milestones menu has been opened, as a percentage before.
-                    crops != null -> Line(
-                        "Milestone",
-                        "${milestone.tier}: ${formatNumber(crops.first)}/${formatShort(crops.second)}",
-                        COLOR_VALUE,
-                        leadIcon = milestone.crop,
-                    )
-                    else -> Line(
-                        "Milestone",
-                        String.format(Locale.ROOT, "%d: %.1f%%", milestone.tier, milestone.percent),
-                        COLOR_VALUE,
-                        leadIcon = milestone.crop,
-                    )
+                    milestone.maxed -> if (showNext) Line("Milestone", "Maxed", COLOR_GOOD)
+                        else Line("Milestone", "${milestone.tier} (Max)", COLOR_GOOD, leadIcon = milestone.crop)
+                    else -> {
+                        // In crops once the Crop Milestones menu has been opened, as a percentage before.
+                        val progress = if (crops != null) "${formatNumber(crops.first)}/${formatShort(crops.second)}"
+                            else String.format(Locale.ROOT, "%.1f%%", milestone.percent)
+                        if (showNext) Line("Milestone", progress, COLOR_VALUE)
+                        else Line("Milestone", "${milestone.tier + 1} · $progress", COLOR_VALUE, leadIcon = milestone.crop)
+                    }
                 }
             )
         }
 
-        if (cfg.farmingHudShowMilestoneEta) {
+        if (showNext) {
             val eta = if (preview) 2_538_000L else FarmingTracker.milestoneEtaMs()
             rows.add(
                 when {
                     noMilestoneWidget -> Line("Next Tier", "Tab Widget Off", COLOR_WARN)
-                    milestone?.maxed == true -> Line("Next Tier", "Maxed", COLOR_GOOD)
-                    else -> Line("Next Tier", eta?.let(::formatDuration) ?: "-", COLOR_VALUE)
+                    milestone == null -> Line("Next Tier", "-", COLOR_VALUE)
+                    milestone.maxed -> Line("Next Tier", "${milestone.tier} (Max)", COLOR_GOOD, leadIcon = milestone.crop)
+                    else -> {
+                        val tier = (milestone.tier + 1).toString()
+                        Line("Next Tier", eta?.let { "$tier in ${formatDuration(it)}" } ?: tier, COLOR_VALUE, leadIcon = milestone.crop)
+                    }
                 }
             )
         }
 
+        markGroup(rows, group)
+
+        // Pests.
+        group = rows.size
         if (cfg.farmingHudShowPestCooldown) {
             val left = if (preview) 118_000L else FarmingTracker.pestCooldownLeftMs(now)
             rows.add(
@@ -262,9 +272,55 @@ object FarmingHudRenderer {
             )
         }
 
+        markGroup(rows, group)
+
+        // Speed.
+        group = rows.size
+        if (cfg.farmingHudShowBps) {
+            val bps = if (preview) 19.85 else FarmingTracker.blocksPerSecond(now)
+            rows.add(Line("BPS", bps?.let { String.format(Locale.ROOT, "%.2f", it) } ?: "-", COLOR_VALUE))
+        }
+        if (cfg.farmingHudShowXpPerHour) {
+            val perHour = if (preview) 412_800.0 else FarmingTracker.xpPerHour(now)
+            rows.add(
+                if (!preview && perHour == null && FarmingTracker.xpNeedsSkillWidget) {
+                    Line("XP/hr", "Skills Widget Off", COLOR_WARN)
+                } else {
+                    Line("XP/hr", perHour?.let { formatNumber(it.roundToLong()) } ?: "-", COLOR_VALUE)
+                },
+            )
+        }
+
+        markGroup(rows, group)
+
+        // The Garden.
+        group = rows.size
+        if (cfg.farmingHudShowVisitors) rows.add(visitorLine(preview, now))
         if (cfg.farmingHudShowContest) rows.add(contestLine(preview, now))
+        markGroup(rows, group)
 
         return rows
+    }
+
+    /** Puts a gap above the group that starts at [first], when it has rows and is not the first. */
+    private fun markGroup(rows: MutableList<Line>, first: Int) {
+        if (first == 0 || first >= rows.size) return
+        if (rows[first - 1].spansColumns) return
+        rows[first] = rows[first].copy(gapAbove = true)
+    }
+
+    /** How many visitors wait and when the next one comes, or that the queue is full. */
+    private fun visitorLine(preview: Boolean, now: Long): Line {
+        if (preview) return Line("Visitors", "3 (Next 4m 12s)", COLOR_VALUE)
+        val count = FarmingTracker.visitorCount
+        if (!FarmingTracker.hasVisitorTimer) {
+            return if (count == null) Line("Visitors", "Tab Widget Off", COLOR_WARN) else Line("Visitors", count.toString(), COLOR_VALUE)
+        }
+        if (FarmingTracker.visitorsLocked) return Line("Visitors", "Not Unlocked", COLOR_LABEL)
+        // Hypixel says when the queue is full, so this needs no queue size (Max Occupancy raises it).
+        if (FarmingTracker.visitorQueueFull) return Line("Visitors", count?.let { "$it (Full)" } ?: "Full", COLOR_BAD)
+        val next = FarmingTracker.nextVisitorLeftMs(now)?.let(::formatDuration) ?: FarmingTracker.visitorTimeText ?: "-"
+        return Line("Visitors", if (count == null) "Next $next" else "$count (Next $next)", COLOR_VALUE)
     }
 
     /** The running or next Jacob's Contest: when, and its crops as their items. */

@@ -2042,25 +2042,27 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Farming HUD", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("farming_hud_enabled", "Farming HUD",
-                "Shows your farming stats on the Garden: XP per hour, crop milestone, pest cooldown, repellent and the next Jacob's Contest.",
+                "Shows your farming stats on the Garden: crop milestone, pest cooldown, repellent, blocks per second, XP per hour, visitors and the next Jacob's Contest.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.farmingHudEnabled,
                 v -> { AlpakaConfig.instance.farmingHudEnabled = v; AlpakaConfig.save(); },
-                "farming hud garden xp per hour crop milestone tier eta pest cooldown repellent jacob contest crops"));
+                "farming hud garden bps blocks per second xp per hour crop milestone tier eta pest cooldown repellent visitors visitor timer queue jacob contest crops"));
 
         OPTIONS.add(new ConfigOption("farming_hud_lines", "Shown Lines",
-                "Pick which lines the HUD shows. Milestone and pest cooldown need the Crop Milestones and Pests tab widgets; open /cropmilestones once to see the milestone in crops.",
+                "Pick which lines the HUD shows. Milestone, pest cooldown and visitors need the Crop Milestones, Pests and Visitors tab widgets; open /cropmilestones once to see the milestone in crops.",
                 ConfigCategory.SKYBLOCK,
                 java.util.List.of(
                         toggle("Title", c -> c.farmingHudShowTitle, (c, v) -> c.farmingHudShowTitle = v),
-                        toggle("Farming XP per Hour", c -> c.farmingHudShowXpPerHour, (c, v) -> c.farmingHudShowXpPerHour = v),
                         toggle("Crop Milestone", c -> c.farmingHudShowMilestone, (c, v) -> c.farmingHudShowMilestone = v),
                         toggle("Time to Next Milestone", c -> c.farmingHudShowMilestoneEta, (c, v) -> c.farmingHudShowMilestoneEta = v),
                         toggle("Pest Cooldown", c -> c.farmingHudShowPestCooldown, (c, v) -> c.farmingHudShowPestCooldown = v),
                         toggle("Pest Repellent", c -> c.farmingHudShowRepellent, (c, v) -> c.farmingHudShowRepellent = v),
+                        toggle("Blocks per Second", c -> c.farmingHudShowBps, (c, v) -> c.farmingHudShowBps = v),
+                        toggle("Farming XP per Hour", c -> c.farmingHudShowXpPerHour, (c, v) -> c.farmingHudShowXpPerHour = v),
+                        toggle("Visitors", c -> c.farmingHudShowVisitors, (c, v) -> c.farmingHudShowVisitors = v),
                         toggle("Next Jacob's Contest", c -> c.farmingHudShowContest, (c, v) -> c.farmingHudShowContest = v)
                 ),
-                "farming hud lines toggle show hide title xp per hour crop milestone eta next tier pest cooldown repellent jacob contest crops"));
+                "farming hud lines toggle show hide title bps blocks per second xp per hour crop milestone eta next tier pest cooldown repellent visitors visitor timer jacob contest crops"));
 
         OPTIONS.add(new ConfigOption("Pest Finder", ConfigCategory.SKYBLOCK));
 

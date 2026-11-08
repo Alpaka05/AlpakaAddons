@@ -970,12 +970,22 @@ public class AlpakaConfig {
     /** In SkyBlock's anvil, books that combine with the one put in are highlighted. */
     public boolean anvilCombineHelperEnabled = false;
     public int anvilCombineHelperColor = 0x8055FF55;
-    /** Slots in SkyBlock menus marked the way Item Search marks what it found: the summoned pet, unfinished level tasks. */
+    /** Slots in SkyBlock menus marked the way Item Search marks what it found: ready ones in one color, missing ones in another. */
     public boolean menuHighlightsEnabled = true;
     public boolean menuHighlightActivePet = true;
-    public int menuHighlightActivePetColor = 0x5055FF55;
     public boolean menuHighlightUnfinishedTasks = true;
-    public int menuHighlightUnfinishedTasksColor = 0x50FF5555;
+    public boolean menuHighlightAuctions = true;
+    public boolean menuHighlightBazaarOrders = true;
+    public boolean menuHighlightCroesus = true;
+    public boolean menuHighlightJacobContests = true;
+    public boolean menuHighlightSlayerRewards = true;
+    public boolean menuHighlightCommissions = true;
+    public boolean menuHighlightChocolateFactory = true;
+    public boolean menuHighlightPowerStones = true;
+    public boolean menuHighlightComposterUpgrades = true;
+    public boolean menuHighlightDisabledPerks = true;
+    public int menuHighlightReadyColor = 0x5055FF55;
+    public int menuHighlightMissingColor = 0x50FF5555;
     /** Chronomatron, Ultrasequencer and Superpairs: what to click next is highlighted. */
     public boolean experimentSolverEnabled = false;
     public int experimentSolverNextColor = 0xA055FF55;

@@ -2423,39 +2423,109 @@ public class AlpakaConfigRegistry {
                 "ignore filler glass pane black empty menu click misclick pick up gui inventory skyblock"));
 
         OPTIONS.add(new ConfigOption("menu_highlights", "Menu Highlights",
-                "Marks slots in SkyBlock menus the way Item Search marks what it found: your summoned pet in the Pets menu, and the tasks you haven't finished in the SkyBlock Leveling guide.",
+                "Marks slots in SkyBlock menus the way Item Search marks what it found: what is ready to collect or switched on in one color, what is missing or unfinished in another.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.menuHighlightsEnabled,
                 v -> { AlpakaConfig.instance.menuHighlightsEnabled = v; AlpakaConfig.save(); },
-                "menu highlights highlight mark slot outline pets pet summoned active current skyblock level leveling guide tasks unfinished incomplete missing"));
+                "menu highlights highlight mark slot outline pets skyblock level leveling tasks auctions bazaar orders croesus jacob contests slayer rewards commissions chocolate factory power stones composter heart of the mountain forest perks"));
 
         OPTIONS.add(new ConfigOption("menu_highlight_active_pet", "Active Pet",
-                "Marks the pet you have summoned in the Pets menu.",
+                "Your summoned pet in the Pets menu.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.menuHighlightActivePet,
                 v -> { AlpakaConfig.instance.menuHighlightActivePet = v; AlpakaConfig.save(); },
                 "menu highlights pets pet summoned active current despawn"));
 
-        OPTIONS.add(ConfigOption.color("menu_highlight_active_pet_color", "Active Pet Color",
-                "Color of the summoned pet's mark.",
-                ConfigCategory.SKYBLOCK,
-                c -> c.menuHighlightActivePetColor,
-                v -> { AlpakaConfig.instance.menuHighlightActivePetColor = v; AlpakaConfig.save(); },
-                "menu highlights pet color colour picker"));
-
         OPTIONS.add(new ConfigOption("menu_highlight_unfinished_tasks", "Unfinished Level Tasks",
-                "Marks the tasks and categories you haven't finished yet in the SkyBlock Leveling guide (/sblevels).",
+                "Tasks and categories you haven't finished in the SkyBlock Leveling guide (/sblevels).",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.menuHighlightUnfinishedTasks,
                 v -> { AlpakaConfig.instance.menuHighlightUnfinishedTasks = v; AlpakaConfig.save(); },
                 "menu highlights skyblock level leveling guide sblevels tasks unfinished incomplete missing xp"));
 
-        OPTIONS.add(ConfigOption.color("menu_highlight_unfinished_tasks_color", "Unfinished Task Color",
-                "Color of the unfinished tasks' mark.",
+        OPTIONS.add(new ConfigOption("menu_highlight_auctions", "Sold and Expired Auctions",
+                "In Manage Auctions: sold auctions as ready, expired ones as missing.",
                 ConfigCategory.SKYBLOCK,
-                c -> c.menuHighlightUnfinishedTasksColor,
-                v -> { AlpakaConfig.instance.menuHighlightUnfinishedTasksColor = v; AlpakaConfig.save(); },
-                "menu highlights unfinished task color colour picker red"));
+                () -> AlpakaConfig.instance.menuHighlightAuctions,
+                v -> { AlpakaConfig.instance.menuHighlightAuctions = v; AlpakaConfig.save(); },
+                "menu highlights auction house ah manage auctions sold expired claim"));
+
+        OPTIONS.add(new ConfigOption("menu_highlight_bazaar_orders", "Filled Bazaar Orders",
+                "Buy orders and sell offers that are completely filled.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.menuHighlightBazaarOrders,
+                v -> { AlpakaConfig.instance.menuHighlightBazaarOrders = v; AlpakaConfig.save(); },
+                "menu highlights bazaar bz orders offers filled claim"));
+
+        OPTIONS.add(new ConfigOption("menu_highlight_croesus", "Unopened Croesus Chests",
+                "Dungeon and Kuudra runs at Croesus and Vesuvius whose chests you haven't opened.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.menuHighlightCroesus,
+                v -> { AlpakaConfig.instance.menuHighlightCroesus = v; AlpakaConfig.save(); },
+                "menu highlights croesus vesuvius dungeon kuudra chests unopened loot rewards"));
+
+        OPTIONS.add(new ConfigOption("menu_highlight_jacob_contests", "Unclaimed Jacob's Contests",
+                "Farming contests whose rewards you haven't claimed.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.menuHighlightJacobContests,
+                v -> { AlpakaConfig.instance.menuHighlightJacobContests = v; AlpakaConfig.save(); },
+                "menu highlights jacob farming contest contests claim rewards medals garden"));
+
+        OPTIONS.add(new ConfigOption("menu_highlight_slayer_rewards", "Slayer Level Rewards",
+                "Slayer level rewards you can claim.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.menuHighlightSlayerRewards,
+                v -> { AlpakaConfig.instance.menuHighlightSlayerRewards = v; AlpakaConfig.save(); },
+                "menu highlights slayer lvl level rewards claim maddox"));
+
+        OPTIONS.add(new ConfigOption("menu_highlight_commissions", "Completed Commissions",
+                "Commissions you have finished and can turn in.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.menuHighlightCommissions,
+                v -> { AlpakaConfig.instance.menuHighlightCommissions = v; AlpakaConfig.save(); },
+                "menu highlights commissions completed mining dwarven mines forge claim"));
+
+        OPTIONS.add(new ConfigOption("menu_highlight_chocolate_factory", "Chocolate Factory Rewards",
+                "Chocolate Factory milestones with rewards to claim.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.menuHighlightChocolateFactory,
+                v -> { AlpakaConfig.instance.menuHighlightChocolateFactory = v; AlpakaConfig.save(); },
+                "menu highlights chocolate factory hoppity milestones unclaimed rewards"));
+
+        OPTIONS.add(new ConfigOption("menu_highlight_power_stones", "Unlearned Power Stones",
+                "Power stones in the Power Stones Guide you haven't learned.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.menuHighlightPowerStones,
+                v -> { AlpakaConfig.instance.menuHighlightPowerStones = v; AlpakaConfig.save(); },
+                "menu highlights power stones guide learned accessory bag magical power"));
+
+        OPTIONS.add(new ConfigOption("menu_highlight_composter_upgrades", "Composter Upgrades",
+                "Composter upgrades you can buy now.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.menuHighlightComposterUpgrades,
+                v -> { AlpakaConfig.instance.menuHighlightComposterUpgrades = v; AlpakaConfig.save(); },
+                "menu highlights composter upgrades garden upgrade"));
+
+        OPTIONS.add(new ConfigOption("menu_highlight_disabled_perks", "Disabled HotM and HotF Perks",
+                "Perks you switched off in the Heart of the Mountain and the Heart of the Forest.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.menuHighlightDisabledPerks,
+                v -> { AlpakaConfig.instance.menuHighlightDisabledPerks = v; AlpakaConfig.save(); },
+                "menu highlights heart of the mountain forest hotm hotf perks disabled"));
+
+        OPTIONS.add(ConfigOption.color("menu_highlight_ready_color", "Ready Color",
+                "Things to collect, finished, or switched on.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.menuHighlightReadyColor,
+                v -> { AlpakaConfig.instance.menuHighlightReadyColor = v; AlpakaConfig.save(); },
+                "menu highlights ready claim done active color colour picker green"));
+
+        OPTIONS.add(ConfigOption.color("menu_highlight_missing_color", "Missing Color",
+                "Things missing, unfinished, expired or switched off.",
+                ConfigCategory.SKYBLOCK,
+                c -> c.menuHighlightMissingColor,
+                v -> { AlpakaConfig.instance.menuHighlightMissingColor = v; AlpakaConfig.save(); },
+                "menu highlights missing unfinished expired disabled color colour picker red"));
 
         OPTIONS.add(new ConfigOption("Resource Pack", ConfigCategory.SKYBLOCK));
 

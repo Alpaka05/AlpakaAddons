@@ -510,6 +510,8 @@ public class AlpakaConfig {
     public boolean exactSkillXpEnabled = false;
     /** The XP shortened ("1.95M/4.3M"): the last digits are only an estimate anyway. */
     public boolean exactSkillXpRounded = false;
+    /** Hypixel's SKILL LEVEL UP message in the chat when a maxed skill reaches its next overflow level. */
+    public boolean exactSkillXpLevelUpMessage = true;
 
     // Deployable timer: the strongest deployable of each family in range, with its time left.
     public boolean deployableTimerEnabled = false;

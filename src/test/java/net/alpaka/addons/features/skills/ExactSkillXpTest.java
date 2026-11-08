@@ -10,6 +10,8 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 class ExactSkillXpTest {
@@ -138,5 +140,27 @@ class ExactSkillXpTest {
         int to = gain.indexOf("/0") + 2;
         Component out = ExactSkillXp.replace(pieces, from, to, " 60 (5,183,244/7,600,000");
         assertEquals("+1,528.6 Combat 60 (5,183,244/7,600,000)", out.getString());
+    }
+
+    @Test
+    void anOverflowLevelUpIsOneLevelOnTheSameCap() {
+        // The first gain after a world change has nothing to compare with.
+        assertFalse(ExactSkillXp.leveledUp("combat", 60, 102));
+        assertFalse(ExactSkillXp.leveledUp("combat", 60, 102));
+        assertTrue(ExactSkillXp.leveledUp("combat", 60, 103));
+        // A jump of more than one level, or a changed cap, is another profile.
+        assertFalse(ExactSkillXp.leveledUp("combat", 60, 110));
+        assertFalse(ExactSkillXp.leveledUp("combat", 50, 111));
+        ExactSkillXp.reset();
+        assertFalse(ExactSkillXp.leveledUp("combat", 60, 112));
+    }
+
+    @Test
+    void theLevelUpMessageIsHypixels() {
+        List<String> lines = ExactSkillXp.levelUpLines("Combat", 102, 103);
+        assertEquals(3, lines.size());
+        assertEquals("§3§l" + "▬".repeat(64), lines.get(0));
+        assertEquals("  §r§b§lSKILL LEVEL UP §3Combat §8102➜§3103", lines.get(1));
+        assertEquals(lines.get(0), lines.get(2));
     }
 }

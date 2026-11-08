@@ -7,9 +7,11 @@ import net.alpaka.addons.features.tablist.TabListParser;
 import net.alpaka.addons.mixin.PlayerTabOverlayAccessor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.PlayerInfo;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
+import net.minecraft.sounds.SoundEvents;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -36,6 +38,9 @@ import java.util.regex.Pattern;
  * "+12.5 Farming 60 (5,183,244/7,600,000)". This needs no tab list: the "/0" already says the
  * skill is maxed, and the cap is the skill's own (CAPS), unless the tab list shows a lower one
  * ("Farming 50: MAX" before Anita's perks). This XP is exact, so the rounded format only shortens it.
+ *
+ * Hypixel says nothing when an overflow level is reached, so with the level-up option on the chat
+ * gets Hypixel's own SKILL LEVEL UP message for it, with the level-up sound (see {@link #levelUpLines}).
  *
  * Only what is drawn changes (see HudOverlayMessageMixin): every feature that reads the action bar
  * through Fabric's message events still gets Hypixel's own text.
@@ -70,6 +75,12 @@ public final class ExactSkillXp {
     /** "+12.5 Farming (5,183,244/0)" of a maxed skill; group 1 the skill, group 2 the XP past the cap. */
     private static final Pattern MAXED_GAIN = Pattern.compile("\\+[\\d.,]+ ([A-Z][a-z]+) \\(([\\d,]+(?:\\.\\d+)?)/0\\)");
 
+    /** The overflow level last shown per skill, with the cap it was counted from. */
+    private record Reached(int cap, int level) {
+    }
+
+    private static final Map<String, Reached> REACHED = new HashMap<>();
+
     /** The cap per skill as the tab list last showed it maxed; the widget doesn't always list every skill. */
     private static final Map<String, Integer> CAP = new HashMap<>();
 
@@ -81,6 +92,7 @@ public final class ExactSkillXp {
     public static void reset() {
         SEEN.clear();
         CAP.clear();
+        REACHED.clear();
     }
 
     /** The action bar as it is drawn: with XP in place of the percentage when the feature is on. */
@@ -129,11 +141,47 @@ public final class ExactSkillXp {
         }
         Levels.Overflow over = overflow(skill, cap, pastCap);
         if (over == null) return unchanged;
+        if (leveledUp(skill, cap, over.level()) && AlpakaConfig.instance.exactSkillXpLevelUpMessage) {
+            announce(m.group(1), over.level() - 1, over.level());
+        }
         // The level goes behind the skill's name, the way to the next in the parentheses:
         // " 60 (5,183,244/7,600,000" in place of " (5,183,244/0".
         String shown = " " + over.level() + " (" + format(over.xpCurrent(), Math.round(over.xpForNext()),
                 AlpakaConfig.instance.exactSkillXpRounded);
         return replace(pieces, m.end(1), m.end(2) + 2, shown);
+    }
+
+    /**
+     * Whether {@code level} is one above the overflow level shown last for this skill. Only one: no
+     * single gain is worth a whole overflow level (7.6M and up), so a bigger jump is a profile
+     * switch without a world change, and so is a cap that changed in between. The first gain after
+     * a world change has nothing to compare with.
+     */
+    static boolean leveledUp(String skill, int cap, int level) {
+        Reached last = REACHED.put(skill, new Reached(cap, level));
+        return last != null && last.cap() == cap && level == last.level() + 1;
+    }
+
+    /** Hypixel's border above and below a level-up message. */
+    private static final String BORDER = "§3§l" + "▬".repeat(64);
+
+    /**
+     * Hypixel's SKILL LEVEL UP message, line by line as Hypixel sends it, for an overflow level:
+     * the border, "SKILL LEVEL UP Combat 102➜103", the border. Hypixel lists the rewards between;
+     * an overflow level has none.
+     */
+    static List<String> levelUpLines(String skill, int from, int to) {
+        return List.of(BORDER, "  §r§b§lSKILL LEVEL UP §3" + skill + " §8" + from + "➜§3" + to, BORDER);
+    }
+
+    /** Puts the level-up message in the chat and plays the level-up sound; nothing goes to the server. */
+    private static void announce(String skill, int from, int to) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.gui == null) return;
+        for (String line : levelUpLines(skill, from, to)) {
+            mc.gui.hud.getChat().addClientSystemMessage(Component.literal(line));
+        }
+        mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.PLAYER_LEVELUP, 1.0f, 1.0f));
     }
 
     /**

@@ -2701,6 +2701,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.exactSkillXpRounded = v; AlpakaConfig.save(); },
                 "exact skill xp rounded round short shorten compact abbreviate million k m"));
 
+        OPTIONS.add(new ConfigOption("exact_skill_xp_level_up_message", "Overflow Level Up Message",
+                "Shows Hypixel's SKILL LEVEL UP message with its sound when a maxed skill reaches its next overflow level, like Combat 102➜103.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.exactSkillXpLevelUpMessage,
+                v -> { AlpakaConfig.instance.exactSkillXpLevelUpMessage = v; AlpakaConfig.save(); },
+                "exact skill xp overflow level up message chat announce notification sound max maxed"));
+
         OPTIONS.add(new ConfigOption("deployable_timer", "Deployable Timer",
                 "Shows the deployables in range with the time they have left: power orbs and flares, mining lanterns, the Umberella, your Totem of Corruption and your Black Hole. Move it in the HUD editor.",
                 ConfigCategory.SKYBLOCK,

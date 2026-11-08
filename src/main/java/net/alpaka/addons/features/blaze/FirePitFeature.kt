@@ -174,7 +174,8 @@ object FirePitFeature {
     /** The columns for [pits], in its order; null when the set changed since. */
     private var drawn: List<Column>? = null
 
-    private val SIDES = arrayOf(Direction.NORTH, Direction.SOUTH, Direction.WEST, Direction.EAST)
+    /** In Direction.Plane.HORIZONTAL's order, the order the walls have always been drawn in. */
+    private val SIDES = arrayOf(Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST)
 
     private fun buildColumns(): List<Column> {
         val out = ArrayList<Column>(pits.size)
@@ -212,15 +213,14 @@ object FirePitFeature {
         val top = TOP_ALPHA * tint.a * fade
         quad(buffer, pose, tint, x0, y0, z0, x0, y0, z1, x1, y0, z1, x1, y0, z0, top, top, top, top)
 
-        // In Direction.Plane.HORIZONTAL's order, as before: north, east, south, west.
-        for (side in Direction.Plane.HORIZONTAL) {
-            if (openSides and (1 shl SIDES.indexOf(side)) == 0) continue
-            when (side) {
-                Direction.NORTH -> wall(buffer, pose, tint, x0, z0, x1, z0, y0, y1, floor)
-                Direction.SOUTH -> wall(buffer, pose, tint, x0, z1, x1, z1, y0, y1, floor)
-                Direction.WEST -> wall(buffer, pose, tint, x0, z0, x0, z1, y0, y1, floor)
-                Direction.EAST -> wall(buffer, pose, tint, x1, z0, x1, z1, y0, y1, floor)
-                else -> {}
+        // North, east, south, west: Direction.Plane.HORIZONTAL's order, as the walls were always drawn.
+        for (i in 0..3) {
+            if (openSides and (1 shl i) == 0) continue
+            when (i) {
+                0 -> wall(buffer, pose, tint, x0, z0, x1, z0, y0, y1, floor)
+                1 -> wall(buffer, pose, tint, x1, z0, x1, z1, y0, y1, floor)
+                2 -> wall(buffer, pose, tint, x0, z1, x1, z1, y0, y1, floor)
+                else -> wall(buffer, pose, tint, x0, z0, x0, z1, y0, y1, floor)
             }
         }
     }

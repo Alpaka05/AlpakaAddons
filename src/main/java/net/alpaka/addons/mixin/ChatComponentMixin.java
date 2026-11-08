@@ -536,17 +536,24 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
      * hidden cursor that moves with the camera.
      */
     @Unique
+    private final Matrix3x2f alpaka$scratchMatrix = new Matrix3x2f();
+    @Unique
+    private final Vector2f alpaka$scratchVector = new Vector2f();
+
+    @Unique
     private GuiMessage alpaka$messageUnderMouse(GuiGraphicsExtractor graphics, float offset, int chatBottom, int width,
                                                 int lineHeight, float boxLines) {
         if (!this.alpaka$foreground || !ChatCopyFeature.isEnabled() || ChatPeekFeature.isPeeking()) return null;
         if (!(this.minecraft.gui.screen() instanceof ChatScreen) || lineHeight <= 0) return null;
-        Vector2f mouse = new Vector2f(this.alpaka$mouseX, this.alpaka$mouseY);
         // The box stays put while the lines scroll inside it; the row is read in the lines' own place.
-        Vector2f inBox = new Matrix3x2f(graphics.pose()).invert().transformPosition(new Vector2f(mouse));
+        // Kept scratch objects rather than new ones every frame; render thread only.
+        Vector2f inBox = this.alpaka$scratchMatrix.set(graphics.pose()).invert()
+                .transformPosition(this.alpaka$scratchVector.set(this.alpaka$mouseX, this.alpaka$mouseY));
         if (inBox.x < -4 || inBox.x > width + 8 || inBox.y > chatBottom || inBox.y < chatBottom - boxLines * lineHeight) {
             return null;
         }
-        Vector2f inLines = new Matrix3x2f(graphics.pose()).translate(0.0f, offset).invert().transformPosition(mouse);
+        Vector2f inLines = this.alpaka$scratchMatrix.set(graphics.pose()).translate(0.0f, offset).invert()
+                .transformPosition(this.alpaka$scratchVector.set(this.alpaka$mouseX, this.alpaka$mouseY));
         int index = this.chatScrollbarPos + Mth.floor((chatBottom - inLines.y) / lineHeight);
         if (index < 0 || index >= this.trimmedMessages.size()) return null;
         return this.trimmedMessages.get(index).parent();

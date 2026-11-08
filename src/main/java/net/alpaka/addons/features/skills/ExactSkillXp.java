@@ -49,11 +49,11 @@ public final class ExactSkillXp {
     private ExactSkillXp() {
     }
 
-    /** "+12.5 Farming (45.32%)"; group 1 the skill, group 2 the percentage without the sign. */
     private static final Optional<Boolean> FOUND = Optional.of(Boolean.TRUE);
     private static final net.minecraft.network.chat.FormattedText.ContentConsumer<Boolean> HAS_PLUS =
             part -> part.indexOf('+') >= 0 ? FOUND : Optional.empty();
 
+    /** "+12.5 Farming (45.32%)"; group 1 the skill, group 2 the percentage without the sign. */
     private static final Pattern GAIN = Pattern.compile("\\+[\\d.,]+ ([A-Z][a-z]+) \\(([\\d.]+)%\\)");
 
     /** The skills Levels has a table for (Hunting uses the normal one); anything new keeps its percentage. */

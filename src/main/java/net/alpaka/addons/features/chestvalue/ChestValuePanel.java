@@ -197,7 +197,8 @@ public final class ChestValuePanel {
     private static Valuation value(CustomData custom) {
         Valuation same = VALUES_BY_OBJECT.get(custom);
         if (same != null) return same;
-        if (VALUES_BY_OBJECT.size() > 4096) VALUES_BY_OBJECT.clear();
+        // Only the open menu's stacks need to be in here; refreshed menus bring new objects each time.
+        if (VALUES_BY_OBJECT.size() > 512) VALUES_BY_OBJECT.clear();
         Valuation cached = VALUES.get(custom);
         if (cached != null) {
             VALUES_BY_OBJECT.put(custom, cached);

@@ -218,6 +218,7 @@ public class ProfileDashboardScreen extends Screen {
         super.removed();
         // The built items hold the profile's JSON; nothing needs them while no dashboard is open.
         InventoryItems.forget();
+        ProfileChart.forgetVisible();
     }
 
     private static ProfileSession session(String player) {

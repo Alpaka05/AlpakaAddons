@@ -661,7 +661,14 @@ public final class AlpakaStyle {
     /** Clears the cut texts once the glyphs may have changed; called from the client's reload listener. */
     public static void onResourcesReloaded() {
         FITS.clear();
+        fontGeneration++;
     }
+
+    /**
+     * Counts resource reloads, after the fonts: a width measured and kept elsewhere is only good for
+     * the generation it was measured in.
+     */
+    public static int fontGeneration = 0;
 
     /** The config's slider track: a hairline, the accent up to the knob, and a round knob. */
     public static void sliderTrack(GuiGraphicsExtractor graphics, int x, int y, int w, double norm, boolean hover, boolean dragging) {

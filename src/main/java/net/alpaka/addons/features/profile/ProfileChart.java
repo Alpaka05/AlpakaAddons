@@ -79,7 +79,7 @@ public final class ProfileChart {
             if (out.get(out.size() - 1) != in.get(in.size() - 1)) out.set(out.size() - 1, in.get(in.size() - 1));
         }
         List<ProfileHistory.Point> result = java.util.Collections.unmodifiableList(out);
-        if (VISIBLE.size() >= 256) VISIBLE.clear();
+        if (VISIBLE.size() >= 64) VISIBLE.clear();
         VISIBLE.put(points, new Visible(range, minIncluded, maxExcluded, result));
         return result;
     }
@@ -91,6 +91,11 @@ public final class ProfileChart {
     private record Visible(Range range, long minIncluded, long maxExcluded, List<ProfileHistory.Point> result) {}
 
     private static final java.util.Map<List<ProfileHistory.Point>, Visible> VISIBLE = new java.util.IdentityHashMap<>();
+
+    /** Drops the kept answers and the histories they hold, once the dashboard is closed. */
+    static void forgetVisible() {
+        VISIBLE.clear();
+    }
 
     /** The change over the points: the last minus the first; NaN with fewer than two. */
     static double change(List<ProfileHistory.Point> points) {

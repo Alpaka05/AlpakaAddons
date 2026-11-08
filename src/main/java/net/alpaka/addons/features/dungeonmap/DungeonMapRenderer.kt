@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.dungeonmap
 
+import net.alpaka.addons.client.gui.AlpakaStyle
 import com.mojang.blaze3d.platform.NativeImage
 import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.blaze3d.textures.FilterMode
@@ -202,7 +203,7 @@ object DungeonMapRenderer {
         val room = if (editing) PREVIEW_ROOMS[1] else DungeonRooms.here
         val name = if (inBoss) bossName(DungeonState.floor) else room?.name ?: return
         val secrets = room?.takeIf { !inBoss && it.secrets > 0 }?.let {
-            "${(if (editing) PREVIEW_FOUND[it.name] else DungeonRooms.found(it)) ?: "?"}/${it.secrets}"
+            secretsText((if (editing) PREVIEW_FOUND[it.name] else DungeonRooms.found(it)), it.secrets)
         }
         val font = Minecraft.getInstance().font
         val style = textStyle()
@@ -217,13 +218,46 @@ object DungeonMapRenderer {
         drawText(g, font, fit(font, name, nameEnd - PADDING, style), PADDING, PADDING + 1, color, style)
     }
 
-    /** [text], cut short with an ellipsis if it is wider than [width]. */
-    private fun fit(font: Font, text: String, width: Int, style: Style): String {
-        if (textWidth(font, text, style) <= width) return text
-        var end = text.length
-        while (end > 0 && textWidth(font, text.substring(0, end) + "…", style) > width) end--
-        return text.substring(0, end).trimEnd() + "…"
+    /** "3/7", built again only when a number changes: the header is drawn every frame. */
+    private fun secretsText(found: Any?, total: Int): String {
+        if (found != secretsFound || total != secretsTotal || secretsLast == null) {
+            secretsFound = found
+            secretsTotal = total
+            secretsLast = "${found ?: "?"}/$total"
+        }
+        return secretsLast!!
     }
+
+    private var secretsFound: Any? = null
+    private var secretsTotal = 0
+    private var secretsLast: String? = null
+
+    /** [text], cut short with an ellipsis if it is wider than [width]; the last answer is kept, as the header asks every frame. */
+    private fun fit(font: Font, text: String, width: Int, style: Style): String {
+        val generation = AlpakaStyle.fontGeneration
+        if (text == fitText && width == fitWidth && style === fitStyle && font === fitFont && generation == fitGeneration) {
+            return fitResult!!
+        }
+        val result = if (textWidth(font, text, style) <= width) text else {
+            var end = text.length
+            while (end > 0 && textWidth(font, text.substring(0, end) + "…", style) > width) end--
+            text.substring(0, end).trimEnd() + "…"
+        }
+        fitText = text
+        fitWidth = width
+        fitStyle = style
+        fitFont = font
+        fitGeneration = generation
+        fitResult = result
+        return result
+    }
+
+    private var fitText: String? = null
+    private var fitWidth = 0
+    private var fitStyle: Style? = null
+    private var fitFont: Font? = null
+    private var fitGeneration = 0
+    private var fitResult: String? = null
 
     private fun bossName(floor: String?) = when (floor?.drop(1)) {
         "" -> "The Watcher"

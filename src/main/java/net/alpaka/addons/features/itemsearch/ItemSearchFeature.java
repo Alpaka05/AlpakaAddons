@@ -8,6 +8,7 @@ import net.alpaka.addons.features.slayer.SlayerDropTracker;
 import net.alpaka.addons.mixin.AbstractContainerScreenAccessor;
 import net.alpaka.addons.utils.SkyblockUtils;
 import net.alpaka.addons.utils.TextInputFocus;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
@@ -50,6 +51,7 @@ public final class ItemSearchFeature {
             }
         });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> ItemSearchStore.flush());
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> ItemSearchStore.onStopping());
 
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
             if (!(screen instanceof AbstractContainerScreen<?> container)) {

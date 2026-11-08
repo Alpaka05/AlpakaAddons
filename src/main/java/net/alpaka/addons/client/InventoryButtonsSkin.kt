@@ -42,15 +42,17 @@ object InventoryButtonsSkin {
             when (kind) { PRIMARY -> ButtonKind.PRIMARY; DANGER -> ButtonKind.DANGER; else -> ButtonKind.PLAIN })
     }
 
+    /** The shared field with its real caret and selection; returns how far the text is scrolled. */
     fun textField(graphics: GuiGraphicsExtractor, font: Font, x: Int, y: Int, w: Int, h: Int,
-                  text: String, placeholder: String, focused: Boolean, hover: Boolean) {
-        AlpakaStyle.textField(graphics, font, x, y, w, h, text, placeholder, focused, hover, 0L)
-    }
+                  text: net.alpaka.addons.client.gui.EditableText, placeholder: String, focused: Boolean, hover: Boolean,
+                  caretFrom: Long): Int =
+        AlpakaStyle.textField(graphics, font, x, y, w, h, text, placeholder, focused, hover, caretFrom)
 
     /** A row of a list: lighter on hover, lighter still while selected. */
     fun row(graphics: GuiGraphicsExtractor, x: Int, y: Int, w: Int, h: Int, hover: Boolean, selected: Boolean) {
         ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, AlpakaStyle.ROW_RADIUS,
             if (selected) AlpakaStyle.ROW_SELECTED else if (hover) AlpakaStyle.ROW_HOVER else AlpakaStyle.ROW)
+        if (selected) AlpakaStyle.selectionMark(graphics, x, y, h)
     }
 
     /** The well the icon grid sits in. */

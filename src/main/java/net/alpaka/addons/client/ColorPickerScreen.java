@@ -333,7 +333,8 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         slider(graphics, l, 1, "Opacity", a / 255.0f, AlpakaStyle.ROW_SELECTED, 0xFF000000 | rgb, mouseX, mouseY, drag == Drag.OPACITY);
 
         // Presets, the current one ringed, and the plus after the last one.
-        AlpakaStyle.groupLabel(graphics, this.font, "Presets", l.rightX(), l.presetLabelY());
+        // A label of the same weight as Brightness and Opacity above it.
+        graphics.text(this.font, GuiFont.text("Presets"), l.rightX(), l.presetLabelY(), AlpakaStyle.TEXT_SOFT, false);
         int slots = slotCount();
         boolean alreadyPreset = isPreset(currentColor());
         int hovered = -1;
@@ -547,6 +548,22 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
     public boolean keyPressed(KeyEvent event) {
         if (hexFocused) {
             int key = event.key();
+            // A color copied from anywhere: its hex digits, with or without the #.
+            if (event.isPaste()) {
+                String clip = this.minecraft == null ? null : this.minecraft.keyboardHandler.getClipboard();
+                if (clip != null) {
+                    StringBuilder digits = new StringBuilder("#");
+                    for (char c : clip.trim().toCharArray()) {
+                        if (Character.digit(c, 16) >= 0 && digits.length() < 9) digits.append(c);
+                    }
+                    if (digits.length() > 1) {
+                        hexInput = digits.toString();
+                        tryParseHexInput();
+                    }
+                }
+                caretFrom = System.currentTimeMillis();
+                return true;
+            }
             if (key == GLFW.GLFW_KEY_BACKSPACE) {
                 if (!hexInput.isEmpty()) {
                     hexInput = hexInput.substring(0, hexInput.length() - 1);

@@ -229,7 +229,7 @@ public final class PriceGraph {
         int sw = GuiFont.width(font, source);
         int sx = px + (pw - sw) / 2;
         boolean hoverSource = AlpakaStyle.inside(mx, my, sx - 2, py + ph + 1, sw + 4, 11);
-        graphics.text(font, GuiFont.text(source), sx, py + ph + 3, hoverSource ? AlpakaStyle.accent() : AlpakaStyle.DIVIDER, false);
+        graphics.text(font, GuiFont.text(source), sx, py + ph + 3, hoverSource ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED, false);
         String page = PriceHistory.pageUrl(tag);
         clicks.add(sx - 2, py + ph + 1, sw + 4, 11, () -> openSource(page),
                 "Prices provided by SkyCofl. Click to open " + page.replace("https://", "") + ".");

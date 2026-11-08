@@ -962,11 +962,11 @@ public final class ChestValuePanel {
         String shown = AlpakaStyle.ellipsize(font, source, room);
         int sw = GuiFont.width(font, shown);
         int sx = x + w - PAD - sw;
-        graphics.text(font, GuiFont.text(shown), sx, ty, AlpakaStyle.DIVIDER, false);
+        graphics.text(font, GuiFont.text(shown), sx, ty, AlpakaStyle.TEXT_MUTED, false);
         if (!narrow && !waiting()) {
             String slots = summary.stacks() == 1 ? "1 slot" : summary.stacks() + " slots";
             if (GuiFont.width(font, slots) + 8 < sx - (x + PAD)) {
-                graphics.text(font, GuiFont.text(slots), x + PAD, ty, AlpakaStyle.DIVIDER, false);
+                graphics.text(font, GuiFont.text(slots), x + PAD, ty, AlpakaStyle.TEXT_MUTED, false);
             }
         }
         if (AlpakaStyle.inside(mx, my, sx - 2, y + 1, sw + 4, FOOTER_H - 1)) {

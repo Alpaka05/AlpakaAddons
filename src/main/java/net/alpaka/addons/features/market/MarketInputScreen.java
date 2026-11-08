@@ -264,14 +264,8 @@ public class MarketInputScreen extends SignEditScreen {
 
         AlpakaStyle.panel(graphics, x, y, w, h);
 
-        // Header: what is asked, and a close button.
-        AlpakaStyle.title(graphics, this.font, AlpakaStyle.ellipsize(this.font, speedCap ? "Rancher's Boots Speed Cap" : prompt.heading(context, menuTitle), w - 50), x + PAD + 2, y);
-        int closeX = x + w - PAD - 16;
-        int closeY = y + (HEADER_H - 16) / 2;
-        boolean hoverClose = AlpakaStyle.inside(mouseX, mouseY, closeX, closeY, 16, 16);
-        if (hoverClose) ModernGuiUtils.drawRoundedRect(graphics, closeX, closeY, 16, 16, AlpakaStyle.FIELD_RADIUS, MarketIcons.fade(AlpakaStyle.DANGER, 0.2f));
-        MarketIcons.draw(graphics, MarketIcons.Glyph.CLOSE, closeX + 4, closeY + 4, 8, hoverClose ? AlpakaStyle.DANGER : AlpakaStyle.TEXT_MUTED);
-        hits.add(new Hit(closeX, closeY, 16, 16, mx -> cancel(), true));
+        // Header: what is asked. Closing is the Cancel button's, as in every dialog of the mod.
+        AlpakaStyle.title(graphics, this.font, AlpakaStyle.ellipsize(this.font, speedCap ? "Rancher's Boots Speed Cap" : prompt.heading(context, menuTitle), w - PAD * 2 - 4), x + PAD + 2, y);
         AlpakaStyle.headerLine(graphics, x, y, w);
 
         // The field; with suggestions open it is drawn last, as the top of one box with the list.
@@ -311,7 +305,7 @@ public class MarketInputScreen extends SignEditScreen {
         hits.add(new Hit(cancelX, cy, cancelW, bh, mx -> cancel(), true));
         hits.add(new Hit(confirmX, cy, confirmW, bh, mx -> confirm(), true));
         graphics.text(this.font, GuiFont.text("Enter to confirm · Esc to cancel"), x + PAD + 2, cy + (bh - 8) / 2,
-                AlpakaStyle.DIVIDER, false);
+                AlpakaStyle.TEXT_MUTED, false);
 
         if (list != null) {
             // Over everything drawn so far, the buttons' text included.
@@ -447,7 +441,7 @@ public class MarketInputScreen extends SignEditScreen {
             drawMatch(graphics, s, tx, ry + (SUGGESTION_H - 8) / 2, room, lit);
             if (!hint.isEmpty()) {
                 graphics.text(this.font, GuiFont.text(hint), rx + rw - 6 - GuiFont.width(this.font, hint), ry + (SUGGESTION_H - 8) / 2,
-                        lit ? AlpakaStyle.TEXT_MUTED : AlpakaStyle.DIVIDER, false);
+                        lit ? AlpakaStyle.TEXT_SOFT : AlpakaStyle.TEXT_MUTED, false);
             }
             // Only the part of a row that shows takes a click.
             int top = Math.max(ry, listY);
@@ -478,7 +472,7 @@ public class MarketInputScreen extends SignEditScreen {
         // How many there are, where not all show at once.
         String count = suggestions.size() > rows ? (moreMatches ? suggestions.size() + "+" : String.valueOf(suggestions.size())) + " items" : "";
         int countW = count.isEmpty() ? 0 : GuiFont.width(this.font, count) + 10;
-        graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, footer, w - 16 - countW)), x + 8, footerY, AlpakaStyle.DIVIDER, false);
+        graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, footer, w - 16 - countW)), x + 8, footerY, AlpakaStyle.TEXT_MUTED, false);
         if (!count.isEmpty()) {
             graphics.text(this.font, GuiFont.text(count), x + w - 8 - GuiFont.width(this.font, count), footerY, AlpakaStyle.TEXT_MUTED, false);
         }
@@ -541,13 +535,24 @@ public class MarketInputScreen extends SignEditScreen {
         int accent = AlpakaStyle.accent();
         int h = FIELD_H + below;
         ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, 6, AlpakaStyle.FIELD);
-        ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, h, 6, full ? MarketIcons.fade(AlpakaStyle.DANGER, 0.8f) : AlpakaStyle.accentDim());
+        // Focus shows as every text field shows it, the accent line along the bottom; the outline only
+        // flashes red when the field is full.
+        if (full) ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, h, 6, MarketIcons.fade(AlpakaStyle.DANGER, 0.8f));
         // The focus line along the field's bottom, which with the list open is where the list begins.
-        int lineInset = below > 0 ? 1 : 6;
-        ModernGuiUtils.drawRect(graphics, x + lineInset, y + FIELD_H - 1, w - 2 * lineInset, 1, full ? AlpakaStyle.DANGER : accent);
+        int lineInset = below > 0 ? 1 : 3;
+        ModernGuiUtils.drawRect(graphics, x + lineInset, y + FIELD_H - 1, w - 2 * lineInset, 1, full ? AlpakaStyle.DANGER : AlpakaStyle.accentIndicator());
 
         int iconSize = 10;
-        MarketIcons.draw(graphics, MarketIcons.Glyph.PROMPT, x + 8, y + (FIELD_H - iconSize) / 2f, iconSize, accent);
+        // What the field takes, as its icon: a search, coins, a time. Not a right chevron, which in
+        // every window means "leads somewhere".
+        MarketIcons.Glyph glyph = switch (prompt.type()) {
+            case SEARCH -> MarketIcons.Glyph.SEARCH;
+            case PRICE -> MarketIcons.Glyph.COIN;
+            case DURATION -> MarketIcons.Glyph.CLOCK;
+            case AMOUNT -> MarketIcons.Glyph.BOX;
+            default -> MarketIcons.Glyph.PROMPT;
+        };
+        MarketIcons.draw(graphics, glyph, x + 8, y + (FIELD_H - iconSize) / 2f, iconSize, AlpakaStyle.accentIndicator());
         int textX = 24;
         int tx = x + textX;
         int ty = y + (FIELD_H - 8) / 2;
@@ -669,7 +674,7 @@ public class MarketInputScreen extends SignEditScreen {
         if (note != null) graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, note, x + w - sourceW - 6 - cx)), cx, y + 3, AlpakaStyle.TEXT_MUTED, false);
         // SkyCofl asks to be named where its prices show.
         if (AlpakaConfig.instance.allowApiCalls) {
-            graphics.text(this.font, GuiFont.text(source), x + w - 2 - sourceW, y + 3, AlpakaStyle.DIVIDER, false);
+            graphics.text(this.font, GuiFont.text(source), x + w - 2 - sourceW, y + 3, AlpakaStyle.TEXT_MUTED, false);
         }
     }
 

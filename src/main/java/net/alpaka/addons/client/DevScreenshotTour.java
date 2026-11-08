@@ -987,7 +987,8 @@ public final class DevScreenshotTour {
 
     private static void begin(Minecraft mc, int index) {
         // Any value other than "1" picks the stops whose picture starts with it, so a change to one
-        // screen can be looked at without the whole tour: ALPAKA_SCREENSHOT_TOUR=config.
+        // screen can be looked at without the whole tour: ALPAKA_SCREENSHOT_TOUR=config. Several
+        // prefixes go comma-separated: ALPAKA_SCREENSHOT_TOUR=config,color-picker.
         String only = System.getenv(ENV);
         if (only != null && !only.equals("1")) {
             // A stop without a picture sets up the ones after it, the world for instance, so it runs
@@ -1002,15 +1003,22 @@ public final class DevScreenshotTour {
     /** Whether this run takes the named picture: every picture, or those the filter picks. */
     private static boolean shoots(String shot) {
         String only = System.getenv(ENV);
-        return only == null || only.equals("1") || shot.startsWith(only);
+        return only == null || only.equals("1") || matches(shot, only);
+    }
+
+    private static boolean matches(String shot, String only) {
+        for (String prefix : only.split(",")) {
+            if (!prefix.isEmpty() && shot.startsWith(prefix)) return true;
+        }
+        return false;
     }
 
     private static boolean picked(int index, String only) {
         String shot = STOPS.get(index).shot();
-        if (shot != null) return shot.startsWith(only);
+        if (shot != null) return matches(shot, only);
         for (int later = index + 1; later < STOPS.size(); later++) {
             String laterShot = STOPS.get(later).shot();
-            if (laterShot != null && laterShot.startsWith(only)) return true;
+            if (laterShot != null && matches(laterShot, only)) return true;
         }
         return false;
     }

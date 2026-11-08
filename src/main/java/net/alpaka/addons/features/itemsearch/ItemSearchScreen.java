@@ -46,7 +46,8 @@ public class ItemSearchScreen extends Screen {
     private static final int GAP = 2;
     private static final int FOOTER_H = 20;
     private static final int SORT_W = 86;
-    private static final int DONE_W = 50;
+    /** The close cross, as the other windows that only show things have it. */
+    private static final int DONE_W = 16;
     /** How many places the tooltip names before it sums up the rest. */
     private static final int MAX_PLACES = 8;
 
@@ -58,6 +59,9 @@ public class ItemSearchScreen extends Screen {
     private final EditableText input = new EditableText(64);
     private ItemSearchSource category = lastCategory;
     private ItemSearchResults.Sort sort = lastSort;
+    private final net.alpaka.addons.client.gui.ChoicePopover sortList = new net.alpaka.addons.client.gui.ChoicePopover();
+    private static final String[] SORT_NAMES = java.util.Arrays.stream(ItemSearchResults.Sort.values())
+            .map(s -> s.label).toArray(String[]::new);
 
     private List<ItemSearchResults.Entry> all = List.of();
     private List<ItemSearchResults.Entry> shown = List.of();
@@ -171,57 +175,35 @@ public class ItemSearchScreen extends Screen {
 
         drawField(graphics, f, mouseX, mouseY);
         boolean hoverSort = inside(mouseX, mouseY, f.sortX, f.buttonY, SORT_W, AlpakaStyle.BUTTON_H);
-        AlpakaStyle.button(graphics, this.font, f.sortX, f.buttonY, SORT_W, AlpakaStyle.BUTTON_H,
-                "Sort: " + sort.label, hoverSort, AlpakaStyle.ButtonKind.PLAIN);
+        // A select field like every other choice of the mod, its list floating under it.
+        AlpakaStyle.selectField(graphics, this.font, f.sortX, f.buttonY, SORT_W, AlpakaStyle.BUTTON_H,
+                "Sort: " + sort.label, sortList.isOpen(), hoverSort && !sortList.isOpen());
         boolean hoverDone = inside(mouseX, mouseY, f.doneX, f.buttonY, DONE_W, AlpakaStyle.BUTTON_H);
-        AlpakaStyle.button(graphics, this.font, f.doneX, f.buttonY, DONE_W, AlpakaStyle.BUTTON_H, "Done", hoverDone,
-                AlpakaStyle.ButtonKind.PRIMARY);
+        AlpakaStyle.closeButton(graphics, f.doneX, f.buttonY + (AlpakaStyle.BUTTON_H - DONE_W) / 2, DONE_W, hoverDone);
 
         drawSidebar(graphics, f, mouseX, mouseY);
         ItemSearchResults.Entry hovered = drawGrid(graphics, f, mouseX, mouseY, deltaSec);
         drawFooter(graphics, f, hovered);
 
+        sortList.draw(graphics, this.font, SORT_NAMES, sort.ordinal(), mouseX, mouseY);
         AlpakaStyle.endOpen(graphics, pushed);
-        if (hovered != null) graphics.setComponentTooltipForNextFrame(this.font, tooltip(hovered), mouseX, mouseY);
-        else if (hoverSort) AlpakaStyle.tooltip(graphics, this.font, this.width, this.height, mouseX, mouseY,
+        if (hovered != null && !sortList.covers(mouseX, mouseY)) graphics.setComponentTooltipForNextFrame(this.font, tooltip(hovered), mouseX, mouseY);
+        else if (hoverSort && !sortList.isOpen()) AlpakaStyle.tooltip(graphics, this.font, this.width, this.height, mouseX, mouseY,
                 sort == ItemSearchResults.Sort.VALUE && !AlpakaConfig.instance.allowApiCalls
-                        ? "Value needs Network Features, which are off." : "Click to change the order.");
+                        ? "Value needs Network Features, which are off." : "How the items are ordered.");
     }
 
     private void drawField(GuiGraphicsExtractor graphics, Frame f, int mouseX, int mouseY) {
-        int x = f.fieldX;
-        int y = f.buttonY;
-        int w = f.fieldW;
-        int h = AlpakaStyle.BUTTON_H;
-        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, AlpakaStyle.FIELD_RADIUS, AlpakaStyle.FIELD);
-        ModernGuiUtils.drawRect(graphics, x + 3, y + h - 1, w - 6, 1, AlpakaStyle.accent());
-        int textY = y + (h - 8) / 2;
-        String text = input.getText();
-        if (text.isEmpty()) {
-            graphics.text(this.font, GuiFont.text("Search your items..."), x + 7, textY, AlpakaStyle.TEXT_MUTED, false);
-        }
-        int start = visibleStart(text, w - 10);
-        graphics.enableScissor(x + 2, y, x + w - 2, y + h);
-        if (input.hasSelection()) {
-            int sx = x + 5 + GuiFont.width(this.font, text.substring(start, Math.max(input.getSelectionStart(), start)));
-            int ex = x + 5 + GuiFont.width(this.font, text.substring(start, Math.max(input.getSelectionEnd(), start)));
-            ModernGuiUtils.drawRect(graphics, sx, textY - 1, ex - sx, 10, AlpakaStyle.accentDim());
-        }
-        graphics.text(this.font, GuiFont.text(text.substring(start)), x + 5, textY, AlpakaStyle.TEXT, false);
-        if ((System.currentTimeMillis() - caretFrom) / 500 % 2 == 0) {
-            int caretX = x + 5 + GuiFont.width(this.font, text.substring(start, Math.max(start, input.getCaret())));
-            ModernGuiUtils.drawRect(graphics, caretX, textY - 1, 1, 10, AlpakaStyle.TEXT);
-        }
-        graphics.disableScissor();
+        // The search field every window has; here it always has the focus.
+        int[] clear = AlpakaStyle.searchClearBox(f.fieldX, f.buttonY, f.fieldW, AlpakaStyle.BUTTON_H);
+        boolean hoverClear = !input.isEmpty() && inside(mouseX, mouseY, clear[0], clear[1], clear[2], clear[2]);
+        fieldScroll = AlpakaStyle.searchField(graphics, this.font, f.fieldX, f.buttonY, f.fieldW, AlpakaStyle.BUTTON_H, input,
+                "Search your items…", true, false, hoverClear, caretFrom);
     }
 
-    /** The first character shown, so the caret stays inside the field. */
-    private int visibleStart(String text, int maxWidth) {
-        int start = 0;
-        int caret = input.getCaret();
-        while (start < caret && GuiFont.width(this.font, text.substring(start, caret)) > maxWidth) start++;
-        return start;
-    }
+    /** How far the field's text is scrolled, for placing the caret on a click. */
+    private int fieldScroll = 0;
+
 
     /** The height of a row down the side: roomy where the window is tall, tighter where it is not, so all of them fit. */
     private static int sideRowH(Frame f) {
@@ -248,7 +230,9 @@ public class ItemSearchScreen extends Screen {
             ModernGuiUtils.drawRoundedRect(graphics, x, y, SIDE_W, rowH - 2, AlpakaStyle.ROW_RADIUS,
                     selected ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW);
         }
-        int textX = x + 6;
+        if (selected) AlpakaStyle.selectionMark(graphics, x, y, rowH - 2);
+        // Every name starts in one column, "All" too, which has no icon in front of it.
+        int textX = x + 21;
         if (source != null) {
             float iconScale = (rowH - 4) / 16f;
             graphics.pose().pushMatrix();
@@ -262,7 +246,7 @@ public class ItemSearchScreen extends Screen {
         int countW = GuiFont.width(this.font, countText);
         int textY = y + (rowH - 2 - 8) / 2;
         graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, label, x + SIDE_W - 8 - countW - textX)),
-                textX, textY, selected ? AlpakaStyle.accent() : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT, false);
+                textX, textY, selected || hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT, false);
         graphics.text(this.font, GuiFont.text(countText), x + SIDE_W - 5 - countW, textY, AlpakaStyle.TEXT_MUTED, false);
     }
 
@@ -398,6 +382,17 @@ public class ItemSearchScreen extends Screen {
         int my = (int) event.y();
         Frame f = frame();
 
+        if (sortList.isOpen()) {
+            int picked = sortList.click(mx, my);
+            if (picked >= 0) {
+                AlpakaStyle.click();
+                sort = ItemSearchResults.Sort.values()[picked];
+                targetScrollY = 0;
+                return true;
+            }
+            // A click on the field itself only closes the list again.
+            if (inside(mx, my, f.sortX, f.buttonY, SORT_W, AlpakaStyle.BUTTON_H)) return true;
+        }
         if (inside(mx, my, f.doneX, f.buttonY, DONE_W, AlpakaStyle.BUTTON_H)) {
             AlpakaStyle.click();
             onClose();
@@ -405,14 +400,20 @@ public class ItemSearchScreen extends Screen {
         }
         if (inside(mx, my, f.sortX, f.buttonY, SORT_W, AlpakaStyle.BUTTON_H)) {
             AlpakaStyle.click();
-            sort = sort.next();
+            sortList.toggle(this.font, SORT_NAMES, f.sortX, f.buttonY, SORT_W, AlpakaStyle.BUTTON_H, this.width, this.height);
+            return true;
+        }
+        int[] clear = AlpakaStyle.searchClearBox(f.fieldX, f.buttonY, f.fieldW, AlpakaStyle.BUTTON_H);
+        if (!input.isEmpty() && inside(mx, my, clear[0], clear[1], clear[2], clear[2])) {
+            AlpakaStyle.click();
+            input.setText("");
+            caretFrom = System.currentTimeMillis();
             targetScrollY = 0;
             return true;
         }
         if (inside(mx, my, f.fieldX, f.buttonY, f.fieldW, AlpakaStyle.BUTTON_H)) {
             caretFrom = System.currentTimeMillis();
-            int offset = GuiFont.width(this.font, input.getText().substring(0, visibleStart(input.getText(), f.fieldW - 10)));
-            input.setCaretFromX(mx - f.fieldX - 5 + offset, s -> GuiFont.width(this.font, s));
+            input.setCaretFromX(mx - f.fieldX - AlpakaStyle.SEARCH_TEXT_INSET + fieldScroll, s -> GuiFont.width(this.font, s));
             return true;
         }
 
@@ -494,6 +495,8 @@ public class ItemSearchScreen extends Screen {
 
     @Override
     public boolean charTyped(CharacterEvent event) {
+        // Typing goes nowhere while the Sort list is open; the list has the keyboard.
+        if (sortList.isOpen()) return true;
         int codePoint = event.codepoint();
         if (Character.isBmpCodePoint(codePoint) && input.insert((char) codePoint)) {
             caretFrom = System.currentTimeMillis();
@@ -505,6 +508,15 @@ public class ItemSearchScreen extends Screen {
     @Override
     public boolean keyPressed(KeyEvent event) {
         int key = event.key();
+        // The open Sort list has the keyboard first: nothing beneath it opens or closes.
+        if (sortList.isOpen()) {
+            int next = sortList.keyPressed(key, sort.ordinal());
+            if (next >= 0) {
+                sort = ItemSearchResults.Sort.values()[next];
+                targetScrollY = 0;
+            }
+            return true;
+        }
         if (key == GLFW.GLFW_KEY_ESCAPE) {
             onClose();
             return true;

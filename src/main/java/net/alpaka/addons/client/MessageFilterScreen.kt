@@ -32,6 +32,20 @@ class MessageFilterScreen(private val parent: Screen) : Screen(GuiFont.text("Cus
     private val input = EditableText(MAX_TEXT)
     private var inputFocused = true
     private var newMode = CustomMessageFilter.Mode.EQUALS
+
+    /** The comparison list, and whose comparison it sets: a filter's row, or -1 for the new one's. */
+    private val modeList = net.alpaka.addons.client.gui.ChoicePopover()
+    private var modeTarget = -1
+
+    private fun setMode(mode: CustomMessageFilter.Mode) {
+        val target = filters.getOrNull(modeTarget)
+        if (modeTarget >= 0 && target != null) {
+            target.mode = mode
+            AlpakaConfig.save()
+        } else {
+            newMode = mode
+        }
+    }
     /** The filter being edited in the field, or -1 while the field makes a new one. */
     private var editing = -1
 
@@ -129,11 +143,15 @@ class MessageFilterScreen(private val parent: Screen) : Screen(GuiFont.text("Cus
 
         drawField(graphics, f, mouseX, mouseY)
         val hoverMode = inside(mouseX, mouseY, modeBtnX(f), f.inputY, MODE_W, AlpakaStyle.BUTTON_H)
-        AlpakaStyle.button(graphics, this.font, modeBtnX(f), f.inputY, MODE_W, AlpakaStyle.BUTTON_H, newMode.label, hoverMode, ButtonKind.PLAIN)
-        if (hoverMode) hoverHint = "Click to change how the text is compared."
+        AlpakaStyle.selectField(graphics, this.font, modeBtnX(f), f.inputY, MODE_W, AlpakaStyle.BUTTON_H, newMode.label,
+            modeList.isOpen() && modeTarget < 0, hoverMode && !modeList.isOpen())
+        if (hoverMode) hoverHint = "How the text is compared."
         val hoverAdd = inside(mouseX, mouseY, addBtnX(f), f.inputY, ADD_W, AlpakaStyle.BUTTON_H)
         AlpakaStyle.button(graphics, this.font, addBtnX(f), f.inputY, ADD_W, AlpakaStyle.BUTTON_H,
             if (editing >= 0) "Save" else "Add", hoverAdd, ButtonKind.PRIMARY)
+
+        val currentMode = if (modeTarget >= 0) filters.getOrNull(modeTarget)?.mode ?: newMode else newMode
+        modeList.draw(graphics, this.font, MODE_NAMES, currentMode.ordinal, mouseX, mouseY)
 
         AlpakaStyle.endOpen(graphics, pushed)
         net.alpaka.addons.features.notification.AlpakaNotifications.renderOverScreen(graphics)
@@ -149,7 +167,7 @@ class MessageFilterScreen(private val parent: Screen) : Screen(GuiFont.text("Cus
                 hovered -> AlpakaStyle.ROW_HOVER
                 else -> AlpakaStyle.ROW
             })
-        if (selected) ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, ITEM_H, AlpakaStyle.CARD_RADIUS, AlpakaStyle.accentDim())
+        if (selected) AlpakaStyle.selectionMark(graphics, x, y, ITEM_H)
 
         val switchY = y + (ITEM_H - SWITCH_H) / 2
         AlpakaStyle.toggle(graphics, x + 6, switchY, SWITCH_W, SWITCH_H, if (filter.enabled) 1f else 0f)
@@ -172,8 +190,9 @@ class MessageFilterScreen(private val parent: Screen) : Screen(GuiFont.text("Cus
 
         val modeX = rowModeX(x, w)
         val modeHover = inList && inside(mouseX, mouseY, modeX, btnY, ROW_MODE_W, SMALL_BTN)
-        AlpakaStyle.button(graphics, this.font, modeX, btnY, ROW_MODE_W, SMALL_BTN, filter.mode.label, modeHover, ButtonKind.PLAIN)
-        if (modeHover) hoverHint = "Click to change. ${filter.mode.hint}"
+        AlpakaStyle.selectField(graphics, this.font, modeX, btnY, ROW_MODE_W, SMALL_BTN, filter.mode.label,
+            modeList.isOpen() && modeTarget == index, modeHover && !modeList.isOpen())
+        if (modeHover) hoverHint = filter.mode.hint
 
         val caseX = rowCaseX(x, w)
         val caseHover = inList && inside(mouseX, mouseY, caseX, btnY, SMALL_BTN, SMALL_BTN)
@@ -183,7 +202,7 @@ class MessageFilterScreen(private val parent: Screen) : Screen(GuiFont.text("Cus
         }
         if (filter.ignoreCase && !caseHover) {
             val gw = GuiFont.width(this.font, "Aa")
-            graphics.text(this.font, GuiFont.text("Aa"), caseX + (SMALL_BTN - gw) / 2, btnY + (SMALL_BTN - 8) / 2, AlpakaStyle.accent(), false)
+            graphics.text(this.font, GuiFont.text("Aa"), caseX + (SMALL_BTN - gw) / 2, btnY + (SMALL_BTN - 8) / 2, AlpakaStyle.accentText(), false)
         } else {
             AlpakaStyle.iconButton(graphics, this.font, caseX, btnY, SMALL_BTN, "Aa", caseHover, true, false)
         }
@@ -207,8 +226,8 @@ class MessageFilterScreen(private val parent: Screen) : Screen(GuiFont.text("Cus
         val w = f.inputW
         val h = AlpakaStyle.BUTTON_H
         val hovered = inside(mouseX, mouseY, x, y, w, h)
-        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, AlpakaStyle.FIELD_RADIUS, if (hovered && !inputFocused) AlpakaStyle.ROW_HOVER else AlpakaStyle.FIELD)
-        ModernGuiUtils.drawRect(graphics, x + 3, y + h - 1, w - 6, 1, if (inputFocused) AlpakaStyle.accent() else AlpakaStyle.LINE)
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, AlpakaStyle.FIELD_RADIUS, if (hovered && !inputFocused) AlpakaStyle.fieldHover() else AlpakaStyle.FIELD)
+        ModernGuiUtils.drawRect(graphics, x + 3, y + h - 1, w - 6, 1, if (inputFocused) AlpakaStyle.accentIndicator() else AlpakaStyle.LINE)
 
         val textY = y + (h - 8) / 2
         val text = input.text
@@ -260,6 +279,15 @@ class MessageFilterScreen(private val parent: Screen) : Screen(GuiFont.text("Cus
         val mouseY = event.y().toInt()
         val f = frame()
 
+        // The comparison list has the click first: a mode picks, anywhere else closes it.
+        if (modeList.isOpen()) {
+            val picked = modeList.click(event.x(), event.y())
+            if (picked >= 0) {
+                playPloppSound()
+                setMode(CustomMessageFilter.Mode.entries[picked])
+            }
+            return true
+        }
         if (inside(mouseX, mouseY, doneX(f), doneY(f), DONE_W, AlpakaStyle.BUTTON_H)) {
             playPloppSound()
             onClose()
@@ -275,7 +303,8 @@ class MessageFilterScreen(private val parent: Screen) : Screen(GuiFont.text("Cus
         }
         if (inside(mouseX, mouseY, modeBtnX(f), f.inputY, MODE_W, AlpakaStyle.BUTTON_H)) {
             playPloppSound()
-            newMode = newMode.next()
+            modeTarget = -1
+            modeList.toggle(this.font, MODE_NAMES, modeBtnX(f), f.inputY, MODE_W, AlpakaStyle.BUTTON_H, this.width, this.height)
             return true
         }
         if (inside(mouseX, mouseY, addBtnX(f), f.inputY, ADD_W, AlpakaStyle.BUTTON_H)) {
@@ -297,7 +326,10 @@ class MessageFilterScreen(private val parent: Screen) : Screen(GuiFont.text("Cus
                         if (editing == i) stopEditing() else if (editing > i) editing--
                     }
                     inside(mouseX, mouseY, rowCaseX(x, w), btnY, SMALL_BTN, SMALL_BTN) -> filter.ignoreCase = !filter.ignoreCase
-                    inside(mouseX, mouseY, rowModeX(x, w), btnY, ROW_MODE_W, SMALL_BTN) -> filter.mode = filter.mode.next()
+                    inside(mouseX, mouseY, rowModeX(x, w), btnY, ROW_MODE_W, SMALL_BTN) -> {
+                        modeTarget = i
+                        modeList.toggle(this.font, MODE_NAMES, rowModeX(x, w), btnY, ROW_MODE_W, SMALL_BTN, this.width, this.height)
+                    }
                     mouseX <= x + 6 + SWITCH_W + 4 -> filter.enabled = !filter.enabled
                     // The row itself: edit it in the field, or stop editing when it is already there.
                     editing == i -> stopEditing()
@@ -349,6 +381,8 @@ class MessageFilterScreen(private val parent: Screen) : Screen(GuiFont.text("Cus
     }
 
     override fun charTyped(event: CharacterEvent): Boolean {
+        // Typing goes nowhere while the comparison list is open; the list has the keyboard.
+        if (modeList.isOpen()) return true
         if (inputFocused) {
             val codePoint = event.codepoint()
             if (Character.isBmpCodePoint(codePoint)) input.insert(codePoint.toChar())
@@ -359,6 +393,13 @@ class MessageFilterScreen(private val parent: Screen) : Screen(GuiFont.text("Cus
     }
 
     override fun keyPressed(event: KeyEvent): Boolean {
+        // The open comparison list has the keyboard first.
+        if (modeList.isOpen()) {
+            val current = (if (modeTarget >= 0) filters.getOrNull(modeTarget)?.mode else null) ?: newMode
+            val next = modeList.keyPressed(event.key(), current.ordinal)
+            if (next >= 0) setMode(CustomMessageFilter.Mode.entries[next])
+            return true
+        }
         if (inputFocused) {
             when (event.key()) {
                 GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> {
@@ -386,16 +427,18 @@ class MessageFilterScreen(private val parent: Screen) : Screen(GuiFont.text("Cus
         private const val MIN_H = 200
         /** Space kept free around the window, as the config screen keeps. */
         private const val MARGIN = 8
-        private const val DONE_W = 56
+        private const val DONE_W = AlpakaStyle.DONE_W
         private const val MODE_W = 76
         private const val ADD_W = 50
 
-        private const val ITEM_H = 24
-        private const val ITEM_GAP = 3
-        private const val SMALL_BTN = 16
+        private const val ITEM_H = AlpakaStyle.CARD_H
+        private const val ITEM_GAP = AlpakaStyle.CARD_GAP
+        private const val SMALL_BTN = AlpakaStyle.ICON_BTN
         private const val ROW_MODE_W = 70
-        private const val SWITCH_W = 20
-        private const val SWITCH_H = 11
+        private const val SWITCH_W = AlpakaStyle.TOGGLE_W
+        private const val SWITCH_H = AlpakaStyle.TOGGLE_H
+
+        private val MODE_NAMES = CustomMessageFilter.Mode.entries.map { it.label }.toTypedArray()
 
         /** Long enough for any chat line Hypixel sends, and for a regex written around one. */
         private const val MAX_TEXT = 512

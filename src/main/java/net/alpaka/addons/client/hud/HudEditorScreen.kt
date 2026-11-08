@@ -419,7 +419,7 @@ class HudEditorScreen(private val parent: Screen?) : Screen(GuiFont.text("HUD Ed
         /** The config menu's header height, so the bar matches every other window's header. */
         const val BAR_H = AlpakaStyle.HEADER_H
         const val HEADER_BOTTOM = BAR_Y + BAR_H + 4 + STATUS_H + 2
-        const val DONE_W = 44
+        const val DONE_W = AlpakaStyle.DONE_W
         const val RESET_W = 40
         const val RESET_ALL_W = 52
     }

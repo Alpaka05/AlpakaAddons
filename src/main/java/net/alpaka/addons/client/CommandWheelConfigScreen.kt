@@ -2,6 +2,7 @@ package net.alpaka.addons.client
 
 import net.alpaka.addons.client.gui.AlpakaStyle
 import net.alpaka.addons.client.gui.AlpakaStyle.ButtonKind
+import net.alpaka.addons.client.gui.EditableText
 import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.features.wheel.CommandWheelPages
@@ -25,7 +26,7 @@ import kotlin.math.min
  * that is full hands the command on to the next one (see [CommandWheelPages]).
  *
  * The row above the list picks which wheel is edited: the shared one, or the own wheel of a
- * Skyblock profile. The profile in play can get one there, starting as a copy of the shared wheel,
+ * SkyBlock profile. The profile in play can get one there, starting as a copy of the shared wheel,
  * and a profile's wheel can be dropped again, after which that profile opens the shared one.
  *
  * Drawn with [AlpakaStyle], the config menu's look: slim rows that light up on hover, their move
@@ -38,7 +39,9 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
     /** Whether the list of wheels is open below its field. */
     private var wheelPickerOpen = false
 
-    private var newCommandInput: String = "/"
+    /** The new command being typed: a full text field, with a caret that moves, selection and paste. */
+    private val newCommandInput = EditableText(35).apply { setText("/") }
+    private var inputScroll = 0
     private var inputFocused: Boolean = false
 
     /** Where a new command goes: -1 for "Auto", a page index, or the page count for "New page". */
@@ -95,7 +98,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
         val listY = wheelRowY + AlpakaStyle.BUTTON_H + 8
         val listW = winW - 2 * (AlpakaStyle.PAD + 4)
 
-        val buttonsW = PAGE_BTN_W + ADD_W + RESET_W + 12
+        val buttonsW = PAGE_BTN_W + ADD_W + 6
         val split = listW < MIN_INPUT_W + 6 + buttonsW
         val bottom = winY + winH - AlpakaStyle.PAD - AlpakaStyle.BUTTON_H
         val inputY = if (split) bottom - AlpakaStyle.BUTTON_H - 6 else bottom
@@ -270,21 +273,23 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
                 rowX + 20, ghostY + (ITEM_H - 8) / 2, AlpakaStyle.TEXT, false)
         }
 
-        // Footer: new command, target page, add, reset.
+        // Footer: new command, target page, add. Reset sits in the header beside Done, where every
+        // window keeps its actions for the whole window.
         ModernGuiUtils.drawRect(graphics, f.winX + AlpakaStyle.PAD, f.inputY - 8, f.winW - AlpakaStyle.PAD * 2, 1, AlpakaStyle.LINE)
         val hoverInput = inside(mouseX, mouseY, inputX(f), f.inputY, f.inputW, AlpakaStyle.BUTTON_H)
         AlpakaStyle.textField(graphics, this.font, inputX(f), f.inputY, f.inputW, AlpakaStyle.BUTTON_H,
-            newCommandInput, "/command", inputFocused, hoverInput, caretFrom)
+            newCommandInput, "/command", inputFocused, hoverInput, caretFrom).also { inputScroll = it }
 
         val buttonsY = f.buttonsY
         AlpakaStyle.selectField(graphics, this.font, pageBtnX(f), buttonsY, PAGE_BTN_W, AlpakaStyle.BUTTON_H,
-            addTargetLabel(addTargetPage, pages.size), pagePickerOpen)
+            addTargetLabel(addTargetPage, pages.size), pagePickerOpen,
+            !wheelPickerOpen && inside(mouseX, mouseY, pageBtnX(f), buttonsY, PAGE_BTN_W, AlpakaStyle.BUTTON_H))
 
         val hoverAdd = inside(mouseX, mouseY, addBtnX(f), buttonsY, ADD_W, AlpakaStyle.BUTTON_H)
         AlpakaStyle.button(graphics, this.font, addBtnX(f), buttonsY, ADD_W, AlpakaStyle.BUTTON_H, "Add", hoverAdd, ButtonKind.PRIMARY)
 
-        val hoverReset = inside(mouseX, mouseY, resetBtnX(f), buttonsY, RESET_W, AlpakaStyle.BUTTON_H)
-        AlpakaStyle.button(graphics, this.font, resetBtnX(f), buttonsY, RESET_W, AlpakaStyle.BUTTON_H,
+        val hoverReset = inside(mouseX, mouseY, resetBtnX(f), doneY(f), RESET_W, AlpakaStyle.BUTTON_H)
+        AlpakaStyle.button(graphics, this.font, resetBtnX(f), doneY(f), RESET_W, AlpakaStyle.BUTTON_H,
             "Reset", hoverReset, ButtonKind.DANGER)
 
         if (pagePickerOpen) drawPagePicker(graphics, f, pages.size, mouseX, mouseY)
@@ -339,7 +344,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
 
     private fun wheelHint(): String = when {
         wheel != null -> "Opens on ${CommandWheelPages.profileName(wheel!!)} instead of the shared wheel."
-        CommandWheelPages.currentProfileKey() == null -> "Join Skyblock to give a profile its own wheel."
+        CommandWheelPages.currentProfileKey() == null -> "Join SkyBlock to give a profile its own wheel."
         else -> "Opens on every profile without its own wheel."
     }
 
@@ -356,7 +361,8 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
     private fun drawWheelRow(graphics: GuiGraphicsExtractor, f: Frame, mouseX: Int, mouseY: Int) {
         val y = f.wheelRowY
         val fieldW = wheelFieldW(f)
-        AlpakaStyle.selectField(graphics, this.font, f.listX, y, fieldW, AlpakaStyle.BUTTON_H, wheelName(wheel), wheelPickerOpen)
+        AlpakaStyle.selectField(graphics, this.font, f.listX, y, fieldW, AlpakaStyle.BUTTON_H, wheelName(wheel), wheelPickerOpen,
+            !pagePickerOpen && inside(mouseX, mouseY, f.listX, y, fieldW, AlpakaStyle.BUTTON_H))
 
         var hintRight = f.listX + f.listW
         val action = wheelActionLabel()
@@ -444,14 +450,16 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
     }
 
     /**
-     * The picker's box: x, y, width, height. It starts where the field starts and ends just above
-     * it, as wide as the field or as its longest name needs, whichever is more.
+     * The picker's box: x, y, width, height. It ends just above the field, as wide as the field or
+     * as its longest name needs, whichever is more, and right-aligned with the field like every
+     * list that floats, so a wide one never runs over the Add button beside it.
      */
     private fun pagePickerBox(f: Frame, pageCount: Int): IntArray {
         val h = pickerRows(f, pageCount) * AlpakaStyle.ROW_H + 2 * PICKER_PAD
         val widest = pickerTargets(pageCount).maxOf { GuiFont.width(this.font, addTargetLabel(it, pageCount)) }
         val w = maxOf(PAGE_BTN_W, widest + 2 * PICKER_PAD + 24)
-        return intArrayOf(pageBtnX(f), f.buttonsY - 4 - h, w, h)
+        val x = maxOf(f.winX + AlpakaStyle.PAD, pageBtnX(f) + PAGE_BTN_W - w)
+        return intArrayOf(x, f.buttonsY - 4 - h, w, h)
     }
 
     /** Opens the picker scrolled so the page chosen now is in view. */
@@ -505,7 +513,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
     private fun inputX(f: Frame) = f.listX
     private fun pageBtnX(f: Frame) = f.buttonsX
     private fun addBtnX(f: Frame) = pageBtnX(f) + PAGE_BTN_W + 6
-    private fun resetBtnX(f: Frame) = addBtnX(f) + ADD_W + 6
+    private fun resetBtnX(f: Frame) = doneX(f) - 6 - RESET_W
 
     /** For the screenshot tour: the middle of the page field, to open its list. */
     fun devPagePickerPoint(): IntArray {
@@ -516,7 +524,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
     /** For the screenshot tour: the middle of the Reset button, to click it as a player would. */
     fun devResetPoint(): IntArray {
         val f = frame()
-        return intArrayOf(resetBtnX(f) + RESET_W / 2, f.buttonsY + AlpakaStyle.BUTTON_H / 2)
+        return intArrayOf(resetBtnX(f) + RESET_W / 2, doneY(f) + AlpakaStyle.BUTTON_H / 2)
     }
     private fun delBtnX(rowX: Int, rowW: Int) = rowX + rowW - SMALL_BTN - 3
     private fun nextBtnX(rowX: Int, rowW: Int) = delBtnX(rowX, rowW) - SMALL_BTN - 4
@@ -577,10 +585,11 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
         if (inside(mouseX, mouseY, inputX(f), f.inputY, f.inputW, AlpakaStyle.BUTTON_H)) {
             inputFocused = true
             caretFrom = System.currentTimeMillis()
+            newCommandInput.setCaretFromX(mouseX - inputX(f) - 5 + inputScroll) { GuiFont.width(this.font, it) }
             return true
         }
+        inputFocused = false
         if (mouseY in f.buttonsY until (f.buttonsY + AlpakaStyle.BUTTON_H)) {
-            inputFocused = false
             if (mouseX in pageBtnX(f)..(pageBtnX(f) + PAGE_BTN_W)) {
                 playPloppSound()
                 openPagePicker(f, pages.size)
@@ -590,18 +599,16 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
                 addCurrentInput()
                 return true
             }
-            if (mouseX in resetBtnX(f)..(resetBtnX(f) + RESET_W)) {
-                playPloppSound()
-                // Reset wipes every command, so it asks first, in the dialog every such action uses.
-                this.minecraft?.gui?.setScreen(AlpakaConfirmScreen(this, "Reset Command Wheel",
-                    "Replaces every command on this wheel with the default set. This cannot be undone.", "Reset", true) {
-                    CommandWheelPages.reset(wheel)
-                    addTargetPage = -1
-                })
-                return true
-            }
-        } else {
-            inputFocused = false
+        }
+        if (inside(mouseX, mouseY, resetBtnX(f), doneY(f), RESET_W, AlpakaStyle.BUTTON_H)) {
+            playPloppSound()
+            // Reset wipes every command, so it asks first, in the dialog every such action uses.
+            this.minecraft?.gui?.setScreen(AlpakaConfirmScreen(this, "Reset Command Wheel",
+                "Replaces every command on this wheel with the default set. This cannot be undone.", "Reset", true) {
+                CommandWheelPages.reset(wheel)
+                addTargetPage = -1
+            })
+            return true
         }
 
         // List rows.
@@ -683,7 +690,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
     }
 
     private fun addCurrentInput() {
-        var trimmed = newCommandInput.trim()
+        var trimmed = newCommandInput.text.trim()
         if (trimmed.isEmpty() || trimmed == "/") return
         if (!trimmed.startsWith("/")) trimmed = "/$trimmed"
 
@@ -694,7 +701,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
             // "New page" has been used up; the next command should join it rather than open another.
             if (addTargetPage >= CommandWheelPages.pageCount(wheel)) addTargetPage = CommandWheelPages.pageCount(wheel) - 1
         }
-        newCommandInput = "/"
+        newCommandInput.setText("/")
     }
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
@@ -715,9 +722,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
     override fun charTyped(event: CharacterEvent): Boolean {
         if (inputFocused) {
             val codePoint = event.codepoint()
-            if (codePoint >= 32 && codePoint != 127 && newCommandInput.length < 35) {
-                newCommandInput += codePoint.toChar()
-            }
+            if (codePoint >= 32 && codePoint != 127 && Character.isBmpCodePoint(codePoint)) newCommandInput.insert(codePoint.toChar())
             caretFrom = System.currentTimeMillis()
             return true
         }
@@ -725,25 +730,48 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
     }
 
     override fun keyPressed(event: KeyEvent): Boolean {
-        if ((pagePickerOpen || wheelPickerOpen) && event.key() == GLFW.GLFW_KEY_ESCAPE) {
-            pagePickerOpen = false
-            wheelPickerOpen = false
+        // An open list owns the keyboard, as every list of the mod does: Up and Down step its
+        // choice, Enter and Escape close it.
+        if (pagePickerOpen || wheelPickerOpen) {
+            val key = event.key()
+            if (key == GLFW.GLFW_KEY_UP || key == GLFW.GLFW_KEY_DOWN) {
+                val step = if (key == GLFW.GLFW_KEY_UP) -1 else 1
+                if (pagePickerOpen) {
+                    val pageCount = CommandWheelPages.pages(wheel).size
+                    val targets = pickerTargets(pageCount)
+                    val index = (targets.indexOf(addTargetPage).coerceAtLeast(0) + step).coerceIn(0, targets.size - 1)
+                    addTargetPage = targets[index]
+                    val rows = pickerRows(frame(), pageCount)
+                    if (index < pickerScroll) pickerScroll = index
+                    if (index >= pickerScroll + rows) pickerScroll = index - rows + 1
+                } else {
+                    val choices = wheelChoices()
+                    val index = (choices.indexOf(wheel).coerceAtLeast(0) + step).coerceIn(0, choices.size - 1)
+                    if (choices[index] != wheel) showWheel(choices[index])
+                }
+                return true
+            }
+            if (key == GLFW.GLFW_KEY_ESCAPE || key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) {
+                pagePickerOpen = false
+                wheelPickerOpen = false
+            }
             return true
         }
         if (inputFocused) {
             when (event.key()) {
-                GLFW.GLFW_KEY_BACKSPACE -> {
-                    if (newCommandInput.isNotEmpty()) newCommandInput = newCommandInput.substring(0, newCommandInput.length - 1)
-                    return true
-                }
                 GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> {
                     addCurrentInput()
                     return true
                 }
                 GLFW.GLFW_KEY_ESCAPE -> {
                     inputFocused = false
+                    newCommandInput.clearSelection()
                     return true
                 }
+            }
+            if (newCommandInput.keyPressed(event.key(), event.hasControlDownWithQuirk(), event.hasShiftDown())) {
+                caretFrom = System.currentTimeMillis()
+                return true
             }
         }
         return super.keyPressed(event)
@@ -756,7 +784,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
         private const val MIN_H = 180
         /** Space kept free around the window, as the config screen keeps. */
         private const val MARGIN = 8
-        private const val DONE_W = 44
+        private const val DONE_W = AlpakaStyle.DONE_W
         private const val MIN_INPUT_W = 110
         private const val PAGE_BTN_W = 62
         private const val ADD_W = 40
@@ -766,10 +794,10 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
         private const val PICKER_PAD = 4
 
         private const val PAGE_HEADER_H = 17
-        private const val ITEM_H = 20
-        private const val ITEM_GAP = 3
+        private const val ITEM_H = AlpakaStyle.CARD_H
+        private const val ITEM_GAP = AlpakaStyle.CARD_GAP
         private const val PAGE_GAP = 6
-        private const val SMALL_BTN = 14
+        private const val SMALL_BTN = AlpakaStyle.ICON_BTN
 
         /** How far the mouse has to travel after a press before a row starts to follow it. */
         private const val DRAG_THRESHOLD = 4.0

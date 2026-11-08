@@ -1,6 +1,7 @@
 package net.alpaka.addons.client
 
 import net.alpaka.addons.client.InventoryButtonsSkin as Skin
+import net.alpaka.addons.client.gui.AlpakaStyle
 import net.alpaka.addons.client.gui.EditableText
 import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.config.AlpakaConfig
@@ -45,6 +46,9 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
     }
 
     private enum class Field { NONE, COMMAND, LABEL, SEARCH }
+
+    private val previewList = net.alpaka.addons.client.gui.ChoicePopover()
+    private val showInList = net.alpaka.addons.client.gui.ChoicePopover()
 
     private val buttons: MutableList<InventoryButton>
         get() = AlpakaConfig.instance.inventoryButtons ?: ArrayList<InventoryButton>().also { AlpakaConfig.instance.inventoryButtons = it }
@@ -127,6 +131,7 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
 
     private fun select(button: InventoryButton?) {
         commitText()
+        showInList.close()
         selected = button
         focus = Field.NONE
         if (button != null) {
@@ -226,7 +231,7 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
         for (button in buttons) {
             val p = InventoryButtonLayout.place(button, box, width, height)
             InventoryButtonsFeature.drawButton(graphics, button, p[0], p[1], button === hovered)
-            if (button === selected) Skin.outline(graphics, p[0] - 2, p[1] - 2, InventoryButtonLayout.SIZE + 4, InventoryButtonLayout.SIZE + 4, Skin.accent())
+            if (button === selected) Skin.outline(graphics, p[0] - 2, p[1] - 2, InventoryButtonLayout.SIZE + 4, InventoryButtonLayout.SIZE + 4, AlpakaStyle.accentIndicator())
         }
 
         if (dragging == null) panelLeft = selected?.let { InventoryButtonLayout.place(it, box, width, height)[0] + InventoryButtonLayout.SIZE / 2 > width / 2 } ?: false
@@ -266,13 +271,28 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
 
         val cx = contentX()
         val cw = contentW()
-        Skin.label(graphics, font, "Preview", cx, previewY() + 5)
-        Skin.button(graphics, font, fieldX(), previewY(), fieldW(), Skin.BUTTON_H, preview.label,
-            inside(mx, my, fieldX(), previewY(), fieldW(), Skin.BUTTON_H), Skin.PLAIN)
+        if (previewLabelled()) Skin.label(graphics, font, "Preview", cx, previewY() + 5, AlpakaStyle.TEXT_SOFT)
+        val listOpen = previewList.isOpen() || showInList.isOpen()
+        // Without room for its label, the field says what it is itself, as Item Search's "Sort: …" does.
+        val previewValue = if (previewLabelled()) preview.label else "View: " + preview.label
+        AlpakaStyle.selectField(graphics, font, previewFieldX(), previewY(), previewFieldW(), Skin.BUTTON_H, previewValue,
+            previewList.isOpen(), !listOpen && inside(mx, my, previewFieldX(), previewY(), previewFieldW(), Skin.BUTTON_H))
 
         val button = selected
         if (button == null) drawList(graphics, mx, my, cx, cw) else drawEdit(graphics, button, mx, my, cx, cw)
+
+        previewList.draw(graphics, font, PREVIEW_NAMES, preview.ordinal, mx.toInt(), my.toInt())
+        showInList.draw(graphics, font, SHOW_IN, button?.showIn?.coerceIn(0, SHOW_IN.size - 1) ?: 0, mx.toInt(), my.toInt())
     }
+
+    /**
+     * The Preview row has a shorter label than the rows below, so its field starts sooner. On a
+     * narrow panel the label goes and the field takes the whole width, so "Large Chest" still fits;
+     * its list says what it is.
+     */
+    private fun previewLabelled() = contentW() >= 140
+    private fun previewFieldX() = contentX() + if (previewLabelled()) GuiFont.width(font, "Preview") + 6 else 0
+    private fun previewFieldW() = contentX() + contentW() - previewFieldX()
 
     private fun drawList(graphics: GuiGraphicsExtractor, mx: Double, my: Double, cx: Int, cw: Int) {
         val top = listY()
@@ -296,29 +316,40 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
 
         val hint = "Drag to move. Shift: no snapping."
         Skin.label(graphics, font, if (GuiFont.width(font, hint) <= cw) hint else "Drag to move.", cx, hintY())
-        Skin.button(graphics, font, cx, addY(), cw, Skin.BUTTON_H, "+ Add Button", inside(mx, my, cx, addY(), cw, Skin.BUTTON_H), Skin.PRIMARY)
+        // Adding to a list is a plain button, as in every editor; the accent stays with Done.
+        Skin.button(graphics, font, cx, addY(), cw, Skin.BUTTON_H, "+ Add Button", inside(mx, my, cx, addY(), cw, Skin.BUTTON_H), Skin.PLAIN)
     }
 
     private fun drawEdit(graphics: GuiGraphicsExtractor, button: InventoryButton, mx: Double, my: Double, cx: Int, cw: Int) {
         val backHover = inside(mx, my, cx, backY(), cw - DELETE_W - 4, Skin.BUTTON_H)
-        Skin.label(graphics, font, "‹ Back", cx, backY() + 5, if (backHover) Skin.accent() else Skin.TEXT_MUTED)
+        // Back to the list: the menu's own left chevron, not a text glyph.
+        val backColor = if (backHover) AlpakaStyle.TEXT else Skin.TEXT_MUTED
+        AlpakaStyle.sideChevron(graphics, cx + 2, backY() + Skin.BUTTON_H / 2, true, backColor)
+        Skin.label(graphics, font, "Back", cx + 8, backY() + 5, backColor)
         val delX = cx + cw - DELETE_W
-        Skin.button(graphics, font, delX, backY(), DELETE_W, Skin.BUTTON_H, "✕", inside(mx, my, delX, backY(), DELETE_W, Skin.BUTTON_H), Skin.DANGER)
+        // The bin every editor deletes with; a cross would read as closing the panel.
+        AlpakaStyle.trashButton(graphics, delX + (DELETE_W - AlpakaStyle.ICON_BTN) / 2, backY() + (Skin.BUTTON_H - AlpakaStyle.ICON_BTN) / 2,
+            AlpakaStyle.ICON_BTN, inside(mx, my, delX, backY(), DELETE_W, Skin.BUTTON_H))
 
         val fx = fieldX()
         val fw = fieldW()
-        Skin.label(graphics, font, "Command", cx, commandY() + 5)
-        Skin.textField(graphics, font, fx, commandY(), fw, Skin.BUTTON_H, commandText.text, "/command",
-            focus == Field.COMMAND, inside(mx, my, fx, commandY(), fw, Skin.BUTTON_H))
-        Skin.label(graphics, font, "Tooltip", cx, labelY() + 5)
-        Skin.textField(graphics, font, fx, labelY(), fw, Skin.BUTTON_H, labelText.text, "Optional",
-            focus == Field.LABEL, inside(mx, my, fx, labelY(), fw, Skin.BUTTON_H))
-        Skin.label(graphics, font, "Show In", cx, showInY() + 5)
-        Skin.button(graphics, font, fx, showInY(), fw, Skin.BUTTON_H, SHOW_IN[button.showIn.coerceIn(0, SHOW_IN.size - 1)],
-            inside(mx, my, fx, showInY(), fw, Skin.BUTTON_H), Skin.PLAIN)
-        Skin.label(graphics, font, "Icon", cx, searchY() + 5)
-        Skin.textField(graphics, font, fx, searchY(), fw, Skin.BUTTON_H, searchText.text, "Search",
-            focus == Field.SEARCH, inside(mx, my, fx, searchY(), fw, Skin.BUTTON_H))
+        Skin.label(graphics, font, "Command", cx, commandY() + 5, AlpakaStyle.TEXT_SOFT)
+        val commandScroll = Skin.textField(graphics, font, fx, commandY(), fw, Skin.BUTTON_H, commandText, "/command",
+            focus == Field.COMMAND, inside(mx, my, fx, commandY(), fw, Skin.BUTTON_H), caretFrom)
+        Skin.label(graphics, font, "Tooltip", cx, labelY() + 5, AlpakaStyle.TEXT_SOFT)
+        val labelScroll = Skin.textField(graphics, font, fx, labelY(), fw, Skin.BUTTON_H, labelText, "Optional",
+            focus == Field.LABEL, inside(mx, my, fx, labelY(), fw, Skin.BUTTON_H), caretFrom)
+        Skin.label(graphics, font, "Show In", cx, showInY() + 5, AlpakaStyle.TEXT_SOFT)
+        AlpakaStyle.selectField(graphics, font, fx, showInY(), fw, Skin.BUTTON_H, SHOW_IN[button.showIn.coerceIn(0, SHOW_IN.size - 1)],
+            showInList.isOpen(), !previewList.isOpen() && !showInList.isOpen() && inside(mx, my, fx, showInY(), fw, Skin.BUTTON_H))
+        // The icon search is the search field every window has, across the panel right over the
+        // icons it filters, so it needs no label of its own.
+        val clear = AlpakaStyle.searchClearBox(cx, searchY(), cw, Skin.BUTTON_H)
+        val searchScroll = AlpakaStyle.searchField(graphics, font, cx, searchY(), cw, Skin.BUTTON_H, searchText, "Search Icons",
+            focus == Field.SEARCH, inside(mx, my, cx, searchY(), cw, Skin.BUTTON_H),
+            !searchText.isEmpty && inside(mx, my, clear[0], clear[1], clear[2], clear[2]), caretFrom)
+        // Only the focused field scrolls; a click that places the caret needs its offset.
+        focusedScroll = commandScroll + labelScroll + searchScroll
 
         // The icon grid.
         val gy = gridY()
@@ -340,8 +371,13 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
                 val x = gx + c * CELL
                 val y = gy + 2 + r * CELL
                 val hover = inside(mx, my, x, y, CELL, CELL)
-                if (id == button.icon) graphics.fill(x, y, x + CELL, y + CELL, Skin.accent() and 0x00FFFFFF or 0x55000000)
-                else if (hover) graphics.fill(x, y, x + CELL, y + CELL, 0x30FFFFFF)
+                // The theme's own selected and hover fills, the chosen one ringed in the accent.
+                if (id == button.icon) {
+                    net.alpaka.addons.client.gui.ModernGuiUtils.drawRoundedRect(graphics, x, y, CELL, CELL, AlpakaStyle.FIELD_RADIUS, AlpakaStyle.ROW_SELECTED)
+                    net.alpaka.addons.client.gui.ModernGuiUtils.drawRoundedOutline(graphics, x, y, CELL, CELL, AlpakaStyle.FIELD_RADIUS, AlpakaStyle.accentIndicator())
+                } else if (hover) {
+                    net.alpaka.addons.client.gui.ModernGuiUtils.drawRoundedRect(graphics, x, y, CELL, CELL, AlpakaStyle.FIELD_RADIUS, AlpakaStyle.fieldHover())
+                }
                 if (hover) hoveredIcon = id
                 InventoryButtonsFeature.drawIcon(graphics, id, x + 1, y + 1)
             }
@@ -374,7 +410,7 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
         val my = event.y()
         if (event.button() != 0) return super.mouseClicked(event, isDoubleClick)
 
-        if (inPanel(mx, my)) {
+        if (inPanel(mx, my) || previewList.isOpen() || showInList.isOpen()) {
             panelClick(mx, my)
             return true
         }
@@ -397,6 +433,25 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
     }
 
     private fun panelClick(mx: Double, my: Double) {
+        // An open list takes the click: an entry picks, anywhere else closes it.
+        if (previewList.isOpen()) {
+            val picked = previewList.click(mx, my)
+            if (picked >= 0) {
+                Skin.click()
+                preview = Preview.entries[picked]
+            }
+            return
+        }
+        if (showInList.isOpen()) {
+            val picked = showInList.click(mx, my)
+            val target = selected
+            if (picked >= 0 && target != null) {
+                Skin.click()
+                target.showIn = picked
+                AlpakaConfig.save()
+            }
+            return
+        }
         val previousFocus = focus
         focus = Field.NONE
         if (inside(mx, my, doneX(), doneY(), DONE_W, Skin.BUTTON_H)) {
@@ -404,9 +459,9 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
             onClose()
             return
         }
-        if (inside(mx, my, fieldX(), previewY(), fieldW(), Skin.BUTTON_H)) {
+        if (inside(mx, my, previewFieldX(), previewY(), previewFieldW(), Skin.BUTTON_H)) {
             Skin.click()
-            preview = Preview.entries[(preview.ordinal + 1) % Preview.entries.size]
+            previewList.toggle(font, PREVIEW_NAMES, previewFieldX(), previewY(), previewFieldW(), Skin.BUTTON_H, width, height)
             return
         }
         val cx = contentX()
@@ -443,11 +498,17 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
         when {
             inside(mx, my, fx, commandY(), fw, Skin.BUTTON_H) -> focusField(Field.COMMAND, commandText, mx - fx - 4, previousFocus)
             inside(mx, my, fx, labelY(), fw, Skin.BUTTON_H) -> focusField(Field.LABEL, labelText, mx - fx - 4, previousFocus)
-            inside(mx, my, fx, searchY(), fw, Skin.BUTTON_H) -> focusField(Field.SEARCH, searchText, mx - fx - 4, previousFocus)
+            !searchText.isEmpty && AlpakaStyle.searchClearBox(cx, searchY(), cw, Skin.BUTTON_H).let { inside(mx, my, it[0], it[1], it[2], it[2]) } -> {
+                Skin.click()
+                searchText.setText("")
+                afterEdit()
+                // Straight on to typing the next search.
+                focus = Field.SEARCH
+            }
+            inside(mx, my, cx, searchY(), cw, Skin.BUTTON_H) -> focusField(Field.SEARCH, searchText, mx - cx - AlpakaStyle.SEARCH_TEXT_INSET + 1, previousFocus)
             inside(mx, my, fx, showInY(), fw, Skin.BUTTON_H) -> {
                 Skin.click()
-                button.showIn = (button.showIn + 1) % SHOW_IN.size
-                AlpakaConfig.save()
+                showInList.toggle(font, SHOW_IN, fx, showInY(), fw, Skin.BUTTON_H, width, height)
             }
             inside(mx, my, cx, gridY(), cw, gridH()) -> {
                 val cols = gridCols()
@@ -468,9 +529,10 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
 
     private fun focusField(field: Field, text: EditableText, localX: Double, previousFocus: Field) {
         focus = field
+        caretFrom = System.currentTimeMillis()
         // A click into a field that already had the focus places the caret; the first one selects
         // nothing and puts it at the end, ready to type on.
-        if (previousFocus == field) text.setCaretFromX(localX.toInt()) { GuiFont.width(font, it) }
+        if (previousFocus == field) text.setCaretFromX(localX.toInt() - 1 + focusedScroll) { GuiFont.width(font, it) }
         else text.keyPressed(GLFW.GLFW_KEY_END, false, false)
     }
 
@@ -539,10 +601,30 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
 
     private fun afterEdit() {
         commitText()
+        caretFrom = System.currentTimeMillis()
     }
+
+    /** When the caret last moved, so it shows solid while typing, and how far the focused field is scrolled. */
+    private var caretFrom = 0L
+    private var focusedScroll = 0
 
     override fun keyPressed(event: KeyEvent): Boolean {
         val key = event.key()
+        // An open list has the keyboard first: the arrows step its choice, not the selected button.
+        if (previewList.isOpen()) {
+            val next = previewList.keyPressed(key, preview.ordinal)
+            if (next >= 0) preview = Preview.entries[next]
+            return true
+        }
+        if (showInList.isOpen()) {
+            val target = selected
+            val next = showInList.keyPressed(key, target?.showIn ?: 0)
+            if (next >= 0 && target != null) {
+                target.showIn = next
+                AlpakaConfig.save()
+            }
+            return true
+        }
         val text = focusedText()
         if (text != null) {
             when (key) {
@@ -599,13 +681,14 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
     companion object {
         private val CHEST_LOCATION: Identifier = Identifier.withDefaultNamespace("textures/gui/container/generic_54.png")
         private val SHOW_IN = arrayOf("All", "Inventory", "Chests")
-        private val LABELS = listOf("Preview", "Command", "Tooltip", "Show In", "Icon")
+        private val PREVIEW_NAMES = Preview.entries.map { it.label }.toTypedArray()
+        private val LABELS = listOf("Preview", "Command", "Tooltip", "Show In")
 
         private const val IMAGE_W = 176
         private const val MARGIN = 6
         private const val PANEL_W = 168
         private const val PANEL_MAX_H = 320
-        private const val DONE_W = 44
+        private const val DONE_W = AlpakaStyle.DONE_W
         private const val DELETE_W = 18
         private const val ROW_STEP = 22
         private const val LIST_ROW = 20

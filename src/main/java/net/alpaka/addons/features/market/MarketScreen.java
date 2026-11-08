@@ -465,7 +465,7 @@ public class MarketScreen extends ContainerScreen {
         int by = y + (HEADER_H - button) / 2;
         int closeX = right - button;
         boolean hoverClose = AlpakaStyle.inside(mx, my, closeX, by, button, button);
-        glyphButton(graphics, closeX, by, button, MarketIcons.Glyph.CLOSE, hoverClose, AlpakaStyle.DANGER);
+        AlpakaStyle.closeButton(graphics, closeX, by, button, hoverClose);
         hits.add(new Hit(closeX, by, button, button, (b, s) -> onClose(), true));
         if (hoverClose) tip("close", "Close");
         right = closeX - 4;
@@ -488,7 +488,7 @@ public class MarketScreen extends ContainerScreen {
             int sy = y + (HEADER_H - sh) / 2;
             boolean hover = AlpakaStyle.inside(mx, my, sx, sy, sw, sh);
             boolean active = m.query != null && !m.query.isEmpty();
-            ModernGuiUtils.drawRoundedRect(graphics, sx, sy, sw, sh, sh / 2, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.FIELD);
+            ModernGuiUtils.drawRoundedRect(graphics, sx, sy, sw, sh, sh / 2, hover ? AlpakaStyle.fieldHover() : AlpakaStyle.FIELD);
             if (active) ModernGuiUtils.drawRoundedOutline(graphics, sx, sy, sw, sh, sh / 2, AlpakaStyle.accentDim());
             else if (hover) ModernGuiUtils.drawRoundedOutline(graphics, sx, sy, sw, sh, sh / 2, AlpakaStyle.LINE);
             MarketIcons.draw(graphics, MarketIcons.Glyph.SEARCH, sx + 7, sy + 4.5f, 9, active || hover ? accent : AlpakaStyle.TEXT_MUTED);
@@ -635,7 +635,7 @@ public class MarketScreen extends ContainerScreen {
                         case TIER -> MarketIcons.Glyph.TIER;
                         default -> MarketIcons.Glyph.BIN;
                     };
-                    MarketIcons.draw(graphics, glyph, rowX + 7, rowY + (filterH - 9) / 2f, 9, hover ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
+                    MarketIcons.draw(graphics, glyph, rowX + 7, rowY + (filterH - 9) / 2f, 9, hover ? AlpakaStyle.accentIndicator() : AlpakaStyle.TEXT_MUTED);
                 }
                 if (compact) {
                     graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, value, rowW - 33)), rowX + 21, rowY + 4,
@@ -646,7 +646,7 @@ public class MarketScreen extends ContainerScreen {
                             hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT, false);
                 }
                 AlpakaStyle.sideChevron(graphics, rowX + rowW - 6, rowY + filterH / 2, false,
-                        hover ? AlpakaStyle.accent() : AlpakaStyle.DIVIDER);
+                        hover ? AlpakaStyle.accentText() : AlpakaStyle.TEXT_MUTED);
                 if (visible(rowY, filterH, clipY, clipH)) {
                     int s = slot;
                     hits.add(new Hit(rowX, Math.max(rowY, clipY), rowW, filterH, (b, sh) -> click(s, b, sh), false));
@@ -724,7 +724,7 @@ public class MarketScreen extends ContainerScreen {
         boolean hover = inClip && AlpakaStyle.inside(mx, my, rowX, rowY, rowW, rowH);
         if (hover) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, rowH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
         if (glyph != null) {
-            MarketIcons.draw(graphics, glyph, rowX + 7, rowY + (rowH - 9) / 2f, 9, hover ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
+            MarketIcons.draw(graphics, glyph, rowX + 7, rowY + (rowH - 9) / 2f, 9, hover ? AlpakaStyle.accentIndicator() : AlpakaStyle.TEXT_MUTED);
         } else if (item != null) {
             sideItem(graphics, item, rowX, rowY, rowH);
         }
@@ -938,7 +938,7 @@ public class MarketScreen extends ContainerScreen {
         switch (info == null ? LoreInfo.Type.GENERIC : info.type) {
             case AUCTION -> auctionLines(graphics, info, tx, py, tw, alpha, reserve);
             case PRODUCT -> productLines(graphics, info, tx, py, tw, alpha);
-            case ORDER -> orderLines(graphics, info, tx, py, tw, alpha);
+            case ORDER -> orderLines(graphics, info, tx, py, tw, alpha, reserve);
             default -> genericLines(graphics, stack, info, tx, py, tw, alpha, compact ? 1 : 2, reserve);
         }
 
@@ -1025,16 +1025,22 @@ public class MarketScreen extends ContainerScreen {
         return lx + GuiFont.width(this.font, text);
     }
 
-    private void orderLines(GuiGraphicsExtractor graphics, LoreInfo info, int tx, int py, int tw, float alpha) {
+    private void orderLines(GuiGraphicsExtractor graphics, LoreInfo info, int tx, int py, int tw, float alpha, int reserve) {
         int ly = py + 16;
         int lx = tx;
+        // The amount and price end before the key's badge at the end of the line, cut if need be.
+        int lineEnd = tx + tw - reserve - 2;
         if (info.amount != null) {
             String amount = Coins.full(info.amount) + "x";
             graphics.text(this.font, GuiFont.text(amount), lx, ly, MarketIcons.fade(AlpakaStyle.TEXT_SOFT, alpha), false);
             lx += GuiFont.width(this.font, amount) + 6;
         }
         if (info.unitPrice != null) {
-            graphics.text(this.font, GuiFont.text(Coins.compact(info.unitPrice) + " each"), lx, ly, MarketIcons.fade(MarketInk.ink(COIN), alpha), false);
+            // "each" goes first when the line is short; the number is what matters.
+            String price = Coins.compact(info.unitPrice) + " each";
+            if (GuiFont.width(this.font, price) > lineEnd - lx) price = Coins.compact(info.unitPrice);
+            price = AlpakaStyle.ellipsize(this.font, price, lineEnd - lx);
+            graphics.text(this.font, GuiFont.text(price), lx, ly, MarketIcons.fade(MarketInk.ink(COIN), alpha), false);
         }
         float ratio = info.fillRatio();
         if (ratio >= 0) {
@@ -1312,6 +1318,9 @@ public class MarketScreen extends ContainerScreen {
         MarketMenu.Slot s = plain(slot);
         String name = s.name().toLowerCase(Locale.ROOT);
         String id = s.itemId();
+        // A plain "Cancel" only backs out of the question and keeps everything as it was, so it is
+        // not shown as dangerous; cancelling an order that exists ("Cancel Order") still is.
+        if (name.equals("cancel") || name.equals("go back")) return TileKind.PLAIN;
         if (name.startsWith("cancel") || id.equals("red_terracotta") || id.equals("barrier")) return TileKind.DANGER;
         // Selling the inventory or the sacks asks "Are you sure?": the other button is the yes.
         if (plainTitle.equals("Are you sure?")) return TileKind.PRIMARY;
@@ -1765,7 +1774,7 @@ public class MarketScreen extends ContainerScreen {
             int cy = y + 18 + (i / 9) * CELL + (i >= 27 ? 4 : 0);
             boolean hover = AlpakaStyle.inside(mouseX, mouseY, cx, cy, CELL - 1, CELL - 1);
             ModernGuiUtils.drawRoundedRect(graphics, cx, cy, CELL - 1, CELL - 1, AlpakaStyle.FIELD_RADIUS,
-                    hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.FIELD);
+                    hover ? AlpakaStyle.fieldHover() : AlpakaStyle.FIELD);
             ItemStack stack = stack(slot);
             if (!stack.isEmpty()) {
                 graphics.item(stack, cx, cy);
@@ -1851,6 +1860,13 @@ public class MarketScreen extends ContainerScreen {
         }
         Component dots = GuiFont.text("…");
         FormattedText cut = this.font.substrByWidth(restyled, Math.max(0, maxW - this.font.width(dots)));
+        // No space left hanging between the last word and the dots ("Hay …"), as AlpakaStyle.ellipsize cuts.
+        String plain = cut.getString();
+        String trimmed = plain.replaceAll("[\\s,;:.]+$", "");
+        if (trimmed.length() < plain.length()) {
+            int drop = this.font.width(GuiFont.text(plain.substring(trimmed.length())));
+            cut = this.font.substrByWidth(restyled, Math.max(0, this.font.width(cut) - drop));
+        }
         graphics.text(this.font, Language.getInstance().getVisualOrder(cut), x, y, color, false);
         graphics.text(this.font, dots, x + this.font.width(cut), y, AlpakaStyle.TEXT_MUTED & 0x00FFFFFF | (color & 0xFF000000), false);
     }

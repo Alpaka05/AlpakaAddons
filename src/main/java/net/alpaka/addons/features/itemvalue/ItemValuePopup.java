@@ -809,7 +809,7 @@ public final class ItemValuePopup {
         String shown = AlpakaStyle.ellipsize(font, source, room);
         int sw = GuiFont.width(font, shown);
         int sx = x + w - PAD - sw;
-        graphics.text(font, GuiFont.text(shown), sx, by + 3, AlpakaStyle.DIVIDER, false);
+        graphics.text(font, GuiFont.text(shown), sx, by + 3, AlpakaStyle.TEXT_MUTED, false);
         if (AlpakaStyle.inside(mx, my, sx - 2, by, sw + 4, bh)) {
             tip = "Bazaar prices from Hypixel, lowest BINs from SkyCofl. Asked for again every few minutes while this is open.";
             hoverTip("source");

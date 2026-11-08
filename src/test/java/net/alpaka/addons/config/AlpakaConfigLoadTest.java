@@ -139,6 +139,27 @@ class AlpakaConfigLoadTest {
     }
 
     @Test
+    void anExistingFileKeepsTheKeysThatUsedToBeDefaults() throws IOException {
+        AlpakaConfig had = load("{\"configVersion\": 4, \"keyBindsImported\": true,"
+                + " \"keyBinds\": {\"key.alpaka.ah_back\": \"key.keyboard.unknown\"}}");
+        assertEquals("key.keyboard.c", had.keyBinds.get("key.alpaka.zoom"), "Zoom stays on C");
+        assertEquals("key.keyboard.left", had.keyBinds.get("key.alpaka.bz_previous_page"));
+        assertEquals("key.keyboard.unknown", had.keyBinds.get("key.alpaka.ah_back"), "a key the player unbound stays unbound");
+
+        assertEquals("key.keyboard.right", load("{\"configVersion\": 5, \"keyBindsImported\": true,"
+                + " \"keyBinds\": {\"key.alpaka.zoom\": \"key.keyboard.right\"}}").keyBinds.get("key.alpaka.zoom"),
+                "a migrated file is not migrated again");
+        assertTrue(load("{\"configVersion\": 5, \"keyBindsImported\": true}").keyBinds.isEmpty());
+    }
+
+    @Test
+    void aFreshInstallStartsWithEveryKeyUnbound() throws IOException {
+        AlpakaConfig.load(store());
+        assertTrue(AlpakaConfig.instance.keyBinds.isEmpty());
+        assertFalse(AlpakaConfig.instance.zoomEnabled);
+    }
+
+    @Test
     void hideExplosionsBecomesHideVisualClutterWithOnlyExplosions() throws IOException {
         AlpakaConfig had = load("{\"configVersion\": 3, \"hideExplosions\": true}");
         assertTrue(had.hideVisualClutter, "the old switch turns the new feature on");

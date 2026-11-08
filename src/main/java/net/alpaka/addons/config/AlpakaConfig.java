@@ -1710,7 +1710,8 @@ public class AlpakaConfig {
             AlpakaConfig::migrateTo1,
             AlpakaConfig::migrateTo2,
             AlpakaConfig::migrateTo3,
-            AlpakaConfig::migrateTo4
+            AlpakaConfig::migrateTo4,
+            AlpakaConfig::migrateTo5
     );
 
     /** The settings layout this version writes. A file with a lower number gets the steps it has not had. */
@@ -1775,6 +1776,30 @@ public class AlpakaConfig {
         clutterFireworks = false;
         clutterExperienceOrbs = false;
         clutterDragonDeath = false;
+    }
+
+    /** The keys that had a default before every key of the mod started unbound, with that default. */
+    private static final Map<String, String> FORMER_DEFAULT_KEYS = Map.of(
+            "key.alpaka.zoom", "key.keyboard.c",
+            "key.alpaka.ah_previous_page", "key.keyboard.left",
+            "key.alpaka.ah_next_page", "key.keyboard.right",
+            "key.alpaka.ah_back", "key.keyboard.backspace",
+            "key.alpaka.ah_create_auction", "key.keyboard.c",
+            "key.alpaka.ah_reset_settings", "key.keyboard.r",
+            "key.alpaka.bz_previous_page", "key.keyboard.left",
+            "key.alpaka.bz_next_page", "key.keyboard.right",
+            "key.alpaka.bz_back", "key.keyboard.backspace"
+    );
+
+    /**
+     * Layout 4 to 5: every key of the mod starts unbound. A key on its default is saved as no entry,
+     * so an existing file would lose Zoom on C and the market keys; it gets the old default written
+     * down instead. A fresh install has nothing to keep, and a file whose keys were never taken over
+     * from options.txt gets them from there.
+     */
+    private void migrateTo5() {
+        if (!existedAtStart || !keyBindsImported) return;
+        FORMER_DEFAULT_KEYS.forEach(keyBinds::putIfAbsent);
     }
 
     /**

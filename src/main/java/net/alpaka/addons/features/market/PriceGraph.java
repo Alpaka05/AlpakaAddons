@@ -416,7 +416,6 @@ public final class PriceGraph {
         return best;
     }
 
-    /** At most {@code max} points, each an average of the ones it stands for. */
     /**
      * {@link #downsample} with its {@link #scale} and {@link #trend}, kept while the history is the
      * same list: a history is replaced, never changed, when a new answer comes in, and the graph is
@@ -439,6 +438,7 @@ public final class PriceGraph {
     private static double[] memoScale;
     private static double[] memoTrend;
 
+    /** At most {@code max} points, each an average of the ones it stands for. */
     static List<PriceHistory.Point> downsample(List<PriceHistory.Point> points, int max) {
         if (points.size() <= max) return points;
         List<PriceHistory.Point> out = new ArrayList<>(max);

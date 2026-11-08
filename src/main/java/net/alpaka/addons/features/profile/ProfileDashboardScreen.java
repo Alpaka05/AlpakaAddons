@@ -914,7 +914,6 @@ public class ProfileDashboardScreen extends Screen {
     private List<List<ProfileHistory.Point>> milestoneSeries = List.of();
     private List<Milestone> milestoneAll = List.of();
 
-
     /** Every level-up in one metric's history, at any time. */
     private static void levelUps(List<Milestone> out, List<ProfileHistory.Point> points, String metric, String name,
                                  java.util.function.DoubleToIntFunction level) {

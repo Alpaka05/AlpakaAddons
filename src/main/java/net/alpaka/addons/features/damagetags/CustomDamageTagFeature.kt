@@ -172,8 +172,9 @@ object CustomDamageTagFeature {
         val cfg = AlpakaConfig.instance
         val now = System.currentTimeMillis()
         val lifetime = cfg.customDamageTagDurationMs.toLong()
-        tags.removeAll { now - it.bornMs > lifetime }
-        seen.entries.removeIf { now - it.value > SEEN_MEMORY_MS }
+        // Guarded so a tick with nothing to sweep, nearly all of them, builds no predicate or iterator.
+        if (tags.isNotEmpty()) tags.removeAll { now - it.bornMs > lifetime }
+        if (seen.isNotEmpty()) seen.entries.removeIf { now - it.value > SEEN_MEMORY_MS }
 
         val level = mc.level
         if (!cfg.customDamageTagsEnabled || level == null || !SkyblockUtils.isOnSkyblock()) return

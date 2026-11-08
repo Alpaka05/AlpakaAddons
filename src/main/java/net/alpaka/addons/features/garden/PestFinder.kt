@@ -271,7 +271,11 @@ object PestFinder {
         pestTags.clear()
         for (entity in level.entitiesForRendering()) {
             if (entity !is ArmorStand || !entity.isAlive || !entity.hasCustomName()) continue
-            val name = SkyblockUtils.cleanColor(entity.customName?.string ?: continue)
+            val raw = entity.customName?.string ?: continue
+            // Stripping codes only takes characters away, so a tag without either mark in its raw
+            // text has none after it either; that skips the stripping for every damage number.
+            if (!raw.contains(PEST_SYMBOL) && raw.indexOf('❤') < 0) continue
+            val name = SkyblockUtils.cleanColor(raw)
             if (!isPestTag(name)) continue
             pestTags.add(entity.id)
             addBody(level, entity)

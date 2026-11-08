@@ -1,6 +1,7 @@
 package net.alpaka.addons.features.deployable;
 
 import com.mojang.authlib.properties.Property;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.utils.SkyblockUtils;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -60,6 +61,16 @@ public final class DeployableTracker {
     private static final int FLARE_CACHE_LIMIT = 512;
     private static ClientLevel cachedLevel = null;
 
+    /**
+     * Each stand's name with its color codes gone, kept with the name object it was read from. Every
+     * stand in range is read every tick, and a name only changes when the server sends a new one,
+     * which is a new object; the text depends on the name alone. Client thread only.
+     */
+    private static final Int2ObjectOpenHashMap<CleanName> CLEAN_NAMES = new Int2ObjectOpenHashMap<>();
+    private static final int CLEAN_NAME_CACHE_LIMIT = 1024;
+
+    private record CleanName(Component name, String text) {}
+
     /** A deployable in range and its time left. */
     public record Active(Deployable type, int secondsLeft) {}
 
@@ -86,8 +97,11 @@ public final class DeployableTracker {
         }
         if (level != cachedLevel || FLARE_BY_ID.size() > FLARE_CACHE_LIMIT) {
             FLARE_BY_ID.clear();
+            CLEAN_NAMES.clear();
             cachedLevel = level;
         }
+        // Stands that are gone are never taken out one by one; past the limit the whole map goes.
+        if (CLEAN_NAMES.size() > CLEAN_NAME_CACHE_LIMIT) CLEAN_NAMES.clear();
 
         EnumMap<Deployable.Family, Active> best = new EnumMap<>(Deployable.Family.class);
         List<ArmorStand> totems = new ArrayList<>();
@@ -100,7 +114,7 @@ public final class DeployableTracker {
             int seconds;
             Component name = stand.getCustomName();
             if (name != null) {
-                String text = SkyblockUtils.cleanColor(name.getString());
+                String text = cleanName(stand, name);
                 if (text.equals(Deployable.TOTEM_OF_CORRUPTION.displayName)) {
                     totems.add(stand);
                     continue;
@@ -143,7 +157,7 @@ public final class DeployableTracker {
         for (ArmorStand hole : blackHoles) {
             if (hole.distanceToSqr(player) > square(Deployable.BLACK_HOLE.range)) continue;
             if (!ownedBy(hole, stacked, me)) continue;
-            Matcher m = TIMED_TAG.matcher(SkyblockUtils.cleanColor(hole.getCustomName().getString()));
+            Matcher m = TIMED_TAG.matcher(cleanName(hole, hole.getCustomName()));
             // For about a second after it is placed the tag is just "Black Hole", with no time yet.
             int seconds = m.matches() ? Integer.parseInt(m.group(2)) : Deployable.BLACK_HOLE.durationSeconds;
             if (seconds > 0) offer(best, Deployable.BLACK_HOLE, seconds);
@@ -164,7 +178,7 @@ public final class DeployableTracker {
     private static boolean ownedBy(ArmorStand main, List<ArmorStand> stacked, String me) {
         for (ArmorStand stand : stacked) {
             if (stand.distanceToSqr(main) > STACK_REACH * STACK_REACH) continue;
-            Matcher m = OWNER_TAG.matcher(SkyblockUtils.cleanColor(stand.getCustomName().getString()));
+            Matcher m = OWNER_TAG.matcher(cleanName(stand, stand.getCustomName()));
             if (!m.matches()) continue;
             // The name may carry a rank in front ("[MVP+] Name"), so only its last word counts.
             String owner = m.group(1).trim();
@@ -178,7 +192,7 @@ public final class DeployableTracker {
     private static int totemSeconds(ArmorStand totem, List<ArmorStand> stacked) {
         for (ArmorStand stand : stacked) {
             if (stand.distanceToSqr(totem) > STACK_REACH * STACK_REACH) continue;
-            Matcher m = TOTEM_REMAINING.matcher(SkyblockUtils.cleanColor(stand.getCustomName().getString()));
+            Matcher m = TOTEM_REMAINING.matcher(cleanName(stand, stand.getCustomName()));
             if (!m.matches()) continue;
             int minutes = m.group(1) == null ? 0 : Integer.parseInt(m.group(1));
             return minutes * 60 + Integer.parseInt(m.group(2));
@@ -192,6 +206,16 @@ public final class DeployableTracker {
             if (line.contains("Mineshaft")) return true;
         }
         return false;
+    }
+
+    /** A stand's name without color codes, as {@link SkyblockUtils#cleanColor} gives it; see {@link #CLEAN_NAMES}. */
+    private static String cleanName(ArmorStand stand, Component name) {
+        int id = stand.getId();
+        CleanName cached = CLEAN_NAMES.get(id);
+        if (cached != null && cached.name() == name) return cached.text();
+        String text = SkyblockUtils.cleanColor(name.getString());
+        CLEAN_NAMES.put(id, new CleanName(name, text));
+        return text;
     }
 
     private static double square(int blocks) {

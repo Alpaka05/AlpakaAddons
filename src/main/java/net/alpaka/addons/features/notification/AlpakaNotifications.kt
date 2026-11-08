@@ -259,8 +259,9 @@ object AlpakaNotifications {
     private fun draw(graphics: GuiGraphicsExtractor) {
         val mc = Minecraft.getInstance()
         val now = System.currentTimeMillis()
-        // Pruned before the early return, so expired notices leave even while nothing is drawn.
-        synchronized(active) { active.removeAll { now >= it.retireAtMs } }
+        // Pruned before the early return, so expired notices leave even while nothing is drawn. With
+        // none up, which is nearly every frame, there is nothing to sweep.
+        synchronized(active) { if (active.isNotEmpty()) active.removeAll { now >= it.retireAtMs } }
         // A screen that hosts notices draws them over itself instead, so they are seen above it.
         if (mc.gui.screen() is NoticeHost) return
         if (mc.gui.hud.isHidden() || mc.level == null) return
@@ -307,7 +308,7 @@ object AlpakaNotifications {
 
         val snapshot: List<Notice>
         synchronized(active) {
-            active.removeAll { now >= it.retireAtMs }
+            if (active.isNotEmpty()) active.removeAll { now >= it.retireAtMs }
             if (active.isEmpty()) return
             snapshot = ArrayList(active)
         }

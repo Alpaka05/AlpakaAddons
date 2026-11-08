@@ -129,6 +129,8 @@ object SlayerChatFilter {
     fun shouldCancelChatMessage(rawMessage: String): Boolean {
         val config = AlpakaConfig.instance
         if (!config.messageFilterEnabled) return false
+        // Asked for every chat line: with every slayer group switched off, nothing is worth stripping.
+        if (GROUPS.none { it.enabled(config) }) return false
 
         val cleanText = SlayerDropTracker.cleanColor(rawMessage).trim()
         if (cleanText.isEmpty() || SENDER.containsMatchIn(cleanText)) return false

@@ -169,8 +169,11 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
         // Cancelling here rather than in a receive event is deliberate for both of these: this runs
         // downstream of every listener, so the message is kept out of the visible log while the
         // slayer tracking that reads it still sees it.
+        // The filter's own switch is read here too, so the message is not flattened to a String
+        // for every line of chat while the filter is off.
         if (SlayerDropTracker.shouldHideDropMessage(component)
-                || SlayerChatFilter.shouldCancelChatMessage(component.getString())) {
+                || (AlpakaConfig.instance.messageFilterEnabled
+                    && SlayerChatFilter.shouldCancelChatMessage(component.getString()))) {
             ci.cancel();
             return;
         }

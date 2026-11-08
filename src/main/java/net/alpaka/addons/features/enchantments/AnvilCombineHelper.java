@@ -39,16 +39,19 @@ public final class AnvilCombineHelper {
      */
     private static final Map<CustomData, CompoundTag> CACHE = new IdentityHashMap<>();
     private static AbstractContainerScreen<?> cachedScreen;
+    /** Whether {@link #cachedScreen} is the anvil; a screen's title never changes, so it is read once, not per slot. */
+    private static boolean cachedIsAnvil;
 
     /** Draws the highlight behind a slot's item; called for every slot, inside the menu's frame. */
     public static void extractSlotBackground(AbstractContainerScreen<?> screen, GuiGraphicsExtractor graphics, Slot slot) {
         if (!AlpakaConfig.instance.anvilCombineHelperEnabled) return;
         if (!(slot.container instanceof Inventory) || !(screen instanceof ContainerScreen)) return;
-        if (!"Anvil".equals(screen.getTitle().getString())) return;
         if (screen != cachedScreen) {
             CACHE.clear();
             cachedScreen = screen;
+            cachedIsAnvil = "Anvil".equals(screen.getTitle().getString());
         }
+        if (!cachedIsAnvil) return;
 
         CompoundTag wanted = wanted(screen.getMenu());
         if (wanted == null) return;

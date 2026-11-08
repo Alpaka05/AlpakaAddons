@@ -1,6 +1,7 @@
 package net.alpaka.addons.features.deployable
 
 import java.util.EnumMap
+import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.client.gui.HudPanel
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.features.market.ItemIcons
@@ -10,6 +11,7 @@ import net.minecraft.client.gui.Font
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.ChatScreen
 import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.Style
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import kotlin.math.ceil
@@ -104,10 +106,37 @@ object DeployableTimerHudRenderer {
         graphics.pose().popMatrix()
     }
 
+    /**
+     * The time texts built lately, by seconds left, and the font style they were built in. A line
+     * changes once a second but is drawn every frame (and measured again for the blur), so each text
+     * is built once rather than as a new component, with its own layout pass, every frame. A handful
+     * of slots, reused in turn, is more than the families that can be in range at once.
+     */
+    private const val TIME_TEXT_SLOTS = 8
+    private val timeTextSeconds = IntArray(TIME_TEXT_SLOTS) { -1 }
+    private val timeTextValues = arrayOfNulls<Component>(TIME_TEXT_SLOTS)
+    private var timeTextNext = 0
+    private var timeTextsStyle: Style? = null
+
     private fun timeText(active: DeployableTracker.Active): Component {
         val cfg = AlpakaConfig.instance
-        return HudPanel.text(Component.literal(Deployable.formatTime(active.secondsLeft())),
-            cfg.smoothOn(cfg.deployableTimerHudSmoothFont))
+        val smooth = cfg.smoothOn(cfg.deployableTimerHudSmoothFont)
+        // HudPanel.text adds nothing but this style, so it and the seconds decide the text.
+        val style = if (smooth) GuiFont.style() else Style.EMPTY
+        if (style != timeTextsStyle) {
+            timeTextSeconds.fill(-1)
+            timeTextValues.fill(null)
+            timeTextsStyle = style
+        }
+        val seconds = active.secondsLeft()
+        for (i in 0 until TIME_TEXT_SLOTS) {
+            if (timeTextSeconds[i] == seconds) timeTextValues[i]?.let { return it }
+        }
+        val text = HudPanel.text(Component.literal(Deployable.formatTime(seconds)), smooth)
+        timeTextSeconds[timeTextNext] = seconds
+        timeTextValues[timeTextNext] = text
+        timeTextNext = (timeTextNext + 1) % TIME_TEXT_SLOTS
+        return text
     }
 
     /** Unscaled width of the widest line, for the editor's box. */

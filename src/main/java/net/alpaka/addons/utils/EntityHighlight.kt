@@ -98,14 +98,38 @@ object EntityHighlight {
         val x1 = box.maxX.toFloat()
         val y1 = box.maxY.toFloat()
         val z1 = box.maxZ.toFloat()
+        // Spelled out rather than looped over floatArrayOf(...): that allocated five arrays per box
+        // per frame. Same edges in the same order.
+        xBar(buffer, pose, color, x0, x1, y0, z0)
+        xBar(buffer, pose, color, x0, x1, y0, z1)
+        zBar(buffer, pose, color, z0, z1, y0, x0)
+        zBar(buffer, pose, color, z0, z1, y0, x1)
+        xBar(buffer, pose, color, x0, x1, y1, z0)
+        xBar(buffer, pose, color, x0, x1, y1, z1)
+        zBar(buffer, pose, color, z0, z1, y1, x0)
+        zBar(buffer, pose, color, z0, z1, y1, x1)
+        yBar(buffer, pose, color, y0, y1, x0, z0)
+        yBar(buffer, pose, color, y0, y1, x0, z1)
+        yBar(buffer, pose, color, y0, y1, x1, z0)
+        yBar(buffer, pose, color, y0, y1, x1, z1)
+    }
+
+    /** The edge along x at height [y] and depth [z]. */
+    private fun xBar(buffer: VertexConsumer, pose: PoseStack.Pose, color: Int, x0: Float, x1: Float, y: Float, z: Float) {
         val e = EDGE
-        for (y in floatArrayOf(y0, y1)) {
-            for (z in floatArrayOf(z0, z1)) bar(buffer, pose, color, x0 - e, y - e, z - e, x1 + e, y + e, z + e)
-            for (x in floatArrayOf(x0, x1)) bar(buffer, pose, color, x - e, y - e, z0 - e, x + e, y + e, z1 + e)
-        }
-        for (x in floatArrayOf(x0, x1)) {
-            for (z in floatArrayOf(z0, z1)) bar(buffer, pose, color, x - e, y0 - e, z - e, x + e, y1 + e, z + e)
-        }
+        bar(buffer, pose, color, x0 - e, y - e, z - e, x1 + e, y + e, z + e)
+    }
+
+    /** The edge along z at height [y] and side [x]. */
+    private fun zBar(buffer: VertexConsumer, pose: PoseStack.Pose, color: Int, z0: Float, z1: Float, y: Float, x: Float) {
+        val e = EDGE
+        bar(buffer, pose, color, x - e, y - e, z0 - e, x + e, y + e, z1 + e)
+    }
+
+    /** The edge along y at side [x] and depth [z]. */
+    private fun yBar(buffer: VertexConsumer, pose: PoseStack.Pose, color: Int, y0: Float, y1: Float, x: Float, z: Float) {
+        val e = EDGE
+        bar(buffer, pose, color, x - e, y0 - e, z - e, x + e, y1 + e, z + e)
     }
 
     /** A solid cuboid from (ax, ay, az) to (bx, by, bz): six faces. */

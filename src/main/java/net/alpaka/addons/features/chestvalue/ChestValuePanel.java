@@ -53,6 +53,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * The Chest Value panel: a column beside the open menu - a chest on the island, a backpack, an
@@ -230,9 +231,21 @@ public final class ChestValuePanel {
     private static boolean applies(Screen s) {
         if (!(s instanceof AbstractContainerScreen<?>) || s instanceof MarketScreen || s instanceof CreativeModeInventoryScreen) return false;
         if (s instanceof InventoryScreen) return true;
-        String title = SkyblockUtils.cleanColor(s.getTitle().getString()).trim();
+        String title = plainTitle(s.getTitle());
         if ("Storage".equals(title)) return false;
         return !SkyblockUtils.isOnSkyblock() || ChestValue.holdsOwnItems(title);
+    }
+
+    /** The last title read and its plain text: asked every frame, and a menu's title stays the same object. */
+    private static Component plainTitleOf = null;
+    private static String plainTitle = "";
+
+    private static String plainTitle(Component title) {
+        if (title != plainTitleOf) {
+            plainTitle = SkyblockUtils.cleanColor(title.getString()).trim();
+            plainTitleOf = title;
+        }
+        return plainTitle;
     }
 
     private static boolean includesInventory(AbstractContainerScreen<?> c) {
@@ -293,13 +306,25 @@ public final class ChestValuePanel {
         return item.getCount();
     }
 
+    /**
+     * The last baseline sum and what it was worked out from. It only changes with the baseline or
+     * the valuations, and each lookup hashes the item's whole data, so it is not redone every frame.
+     */
+    private static List<Held> baselineSumOf = null;
+    private static long baselineSumKey = Long.MIN_VALUE;
+    private static double baselineSum = 0;
+
     /** What the menu held when it opened, at today's prices. */
     private static double baselineTotal() {
+        if (baseline == baselineSumOf && valuesKey == baselineSumKey) return baselineSum;
         double sum = 0;
         for (Held h : baseline) {
             Valuation v = value(h.data());
             if (!Double.isNaN(v.each())) sum += v.each() * h.count();
         }
+        baselineSumOf = baseline;
+        baselineSumKey = valuesKey;
+        baselineSum = sum;
         return sum;
     }
 
@@ -496,13 +521,28 @@ public final class ChestValuePanel {
         return true;
     }
 
+    /** The priced lines by value and their colors: sorted once per summary, not every frame. */
+    private static Summary byValueOf = null;
+    private static List<Entry> byValue = List.of();
+    private static Map<Entry, Integer> colorsByValue = Map.of();
+
+    private static List<Entry> byValue() {
+        if (byValueOf != summary) {
+            List<Entry> sorted = new ArrayList<>(summary.priced());
+            sorted.sort(ChestValue.comparator(Sort.VALUE));
+            Map<Entry, Integer> out = new IdentityHashMap<>();
+            for (int i = 0; i < sorted.size(); i++) out.put(sorted.get(i), i < PALETTE.length ? PALETTE[i] : OTHER);
+            byValue = sorted;
+            colorsByValue = out;
+            byValueOf = summary;
+        }
+        return byValue;
+    }
+
     /** The colors of the most valuable items, by value whatever the list's order. */
     private static Map<Entry, Integer> colors() {
-        Map<Entry, Integer> out = new IdentityHashMap<>();
-        List<Entry> byValue = new ArrayList<>(summary.priced());
-        byValue.sort(ChestValue.comparator(Sort.VALUE));
-        for (int i = 0; i < byValue.size(); i++) out.put(byValue.get(i), i < PALETTE.length ? PALETTE[i] : OTHER);
-        return out;
+        byValue();
+        return colorsByValue;
     }
 
     private static List<Row> rows() {
@@ -709,8 +749,7 @@ public final class ChestValuePanel {
     private static String drawBar(GuiGraphicsExtractor graphics, int x, int y, int w, Map<Entry, Integer> colors, int mx, int my) {
         ModernGuiUtils.drawRoundedRect(graphics, x, y, w, BAR_H, BAR_H / 2, AlpakaStyle.LINE);
         double total = summary.total();
-        List<Entry> byValue = new ArrayList<>(summary.priced());
-        byValue.sort(ChestValue.comparator(Sort.VALUE));
+        List<Entry> byValue = byValue();
         // The top items each get a part, the rest one gray part together.
         List<Object[]> parts = new ArrayList<>();
         double rest = 0;
@@ -885,8 +924,12 @@ public final class ChestValuePanel {
             String listed = ItemIcons.name(e.id);
             if (listed != null) return listed;
         }
-        return e.name.replaceAll("^\\[Lvl \\d+\\]\\s*", "").replaceAll("[✪➊➋➌➍➎]", "").trim();
+        return STAR_MARKS.matcher(PET_LEVEL.matcher(e.name).replaceAll("")).replaceAll("").trim();
     }
+
+    /** Compiled once: {@code String.replaceAll} compiles its pattern on every call, and this runs per row per frame. */
+    private static final Pattern PET_LEVEL = Pattern.compile("^\\[Lvl \\d+\\]\\s*");
+    private static final Pattern STAR_MARKS = Pattern.compile("[✪➊➋➌➍➎]");
 
     private static void drawUnpricedHeading(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int h,
                                             boolean hover, boolean narrow) {

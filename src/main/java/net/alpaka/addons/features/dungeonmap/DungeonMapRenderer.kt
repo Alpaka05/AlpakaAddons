@@ -21,7 +21,6 @@ import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.client.resources.DefaultPlayerSkin
 import net.minecraft.network.chat.Component
-import net.minecraft.network.chat.FormattedText
 import net.minecraft.network.chat.Style
 import net.minecraft.resources.Identifier
 import net.minecraft.world.entity.player.PlayerSkin
@@ -361,11 +360,27 @@ object DungeonMapRenderer {
         if (AlpakaConfig.instance.smoothOn(AlpakaConfig.instance.dungeonMapSmoothFont)) GuiFont.style() else Style.EMPTY
 
     private fun textWidth(font: Font, text: String, style: Style) =
-        if (style.isEmpty) font.width(text) else font.width(FormattedText.of(text, style))
+        if (style.isEmpty) font.width(text) else font.width(styled(text, style))
 
     private fun drawText(g: GuiGraphicsExtractor, font: Font, text: String, x: Int, y: Int, color: Int, style: Style) {
         if (style.isEmpty) g.text(font, text, x, y, color, true)
-        else g.text(font, Component.literal(text).withStyle(style), x, y, color, true)
+        else g.text(font, styled(text, style), x, y, color, true)
+    }
+
+    /** The style [styledText] was built in; GuiFont hands out one instance per font and size. */
+    private var styledStyle: Style? = null
+    private val styledText = HashMap<String, Component>()
+
+    /**
+     * [text] in [style], kept while the style stays: room labels, names and the header are drawn
+     * every frame but change rarely. Emptied when the style changes, and bounded.
+     */
+    private fun styled(text: String, style: Style): Component {
+        if (style !== styledStyle || styledText.size > 256) {
+            styledText.clear()
+            styledStyle = style
+        }
+        return styledText.getOrPut(text) { Component.literal(text).withStyle(style) }
     }
 
     private fun previewOwnSkin(): PlayerSkin = Minecraft.getInstance().player?.skin ?: profileSkin.get()
@@ -505,7 +520,8 @@ object DungeonMapRenderer {
          * drawn without labels leaves both out.
          */
         fun updateMap(snapshot: DungeonMapSnapshot, palette: IntArray, cover: IntArray? = null, coverRevision: Int = 0) {
-            if (revision == snapshot.revision && palette.contentEquals(lastPalette) && coverRevision == lastCover) return
+            // The palettes are two fixed arrays, so the same array means the same colors.
+            if (revision == snapshot.revision && palette === lastPalette && coverRevision == lastCover) return
             val colors = snapshot.colors ?: return
             val inks = snapshot.inks ?: return
             val (current, image) = image() ?: return

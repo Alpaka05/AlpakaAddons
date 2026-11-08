@@ -770,9 +770,13 @@ public final class ItemValuePopup {
         String id = data != null && data.has("id") ? data.get("id").getAsString() : idByName();
         String listed = id == null || id.equals("PET") ? null : ItemIcons.name(id);
         if (listed != null) return listed;
-        return SkyblockUtils.cleanColor(stack.getHoverName().getString())
-                .replaceAll("^\\[Lvl \\d+\\]\\s*", "").replaceAll("[✪➊➋➌➍➎]", "").trim();
+        String name = SkyblockUtils.cleanColor(stack.getHoverName().getString());
+        return STAR_MARKS.matcher(PET_LEVEL.matcher(name).replaceAll("")).replaceAll("").trim();
     }
+
+    /** Compiled once: {@code String.replaceAll} compiles its pattern on every call. */
+    private static final java.util.regex.Pattern PET_LEVEL = java.util.regex.Pattern.compile("^\\[Lvl \\d+\\]\\s*");
+    private static final java.util.regex.Pattern STAR_MARKS = java.util.regex.Pattern.compile("[✪➊➋➌➍➎]");
 
     private static Part basePart() {
         if (breakdown == null) return null;

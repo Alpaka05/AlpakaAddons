@@ -16,8 +16,9 @@ import kotlin.math.ceil
  * Draws the running boss time while a slayer boss is up.
  *
  * Unlike the session HUD this is deliberately not cached on a timer: the whole point is a clock that
- * visibly runs, so the text is rebuilt every frame. It stays one short line for that reason - a
- * per-frame rebuild is only cheap because there is so little of it.
+ * visibly runs, so the time is formatted every frame, and its text rebuilt whenever that changes.
+ * It stays one short line for that reason - a per-frame rebuild is only cheap because there is so
+ * little of it.
  */
 object SlayerTimerHudRenderer {
 
@@ -48,6 +49,26 @@ object SlayerTimerHudRenderer {
         val built = HudPanel.text(Component.literal(LABEL), smooth)
         labelStyle = style
         labelText = built
+        return built
+    }
+
+    /**
+     * The time as drawn, kept while its text and font stay the same: it only changes every tenth of
+     * a second, and the editor's width and the HUD draw both ask for it every frame.
+     */
+    private var timeKey: String? = null
+    private var timeStyle: Style? = null
+    private var timeText: Component? = null
+
+    private fun timeComponent(elapsed: Long, smooth: Boolean): Component {
+        val text = SlayerTimer.format(elapsed)
+        val style = if (smooth) GuiFont.style() else Style.EMPTY
+        val cached = timeText
+        if (cached != null && text == timeKey && style == timeStyle) return cached
+        val built = HudPanel.text(Component.literal(text), smooth)
+        timeKey = text
+        timeStyle = style
+        timeText = built
         return built
     }
 
@@ -99,7 +120,7 @@ object SlayerTimerHudRenderer {
         val cfg = AlpakaConfig.instance
         val smooth = cfg.smoothOn(cfg.slayerTimerHudSmoothFont)
         val label = label(smooth)
-        val time = HudPanel.text(Component.literal(SlayerTimer.format(elapsed)), smooth)
+        val time = timeComponent(elapsed, smooth)
         val timeX = font.width(label) + LABEL_GAP
         val blurred = cfg.blurOn(cfg.slayerTimerHudBlur)
         if (blurred) HudPanel.aroundText(graphics, timeX + font.width(time), GLYPH_HEIGHT, scale)
@@ -114,7 +135,7 @@ object SlayerTimerHudRenderer {
         val elapsed = if (preview) 42_300L else SlayerTimer.displayMs() ?: 0L
         val smooth = AlpakaConfig.instance.smoothOn(AlpakaConfig.instance.slayerTimerHudSmoothFont)
         return font.width(label(smooth)) + LABEL_GAP +
-            font.width(HudPanel.text(Component.literal(SlayerTimer.format(elapsed)), smooth))
+            font.width(timeComponent(elapsed, smooth))
     }
 
     fun height(scale: Float): Int = ceil(GLYPH_HEIGHT * scale).toDouble().toInt()

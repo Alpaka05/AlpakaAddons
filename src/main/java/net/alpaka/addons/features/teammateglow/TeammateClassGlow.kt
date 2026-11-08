@@ -44,7 +44,7 @@ object TeammateClassGlow {
     }
 
     private fun tick(mc: Minecraft) {
-        if (!AlpakaConfig.instance.teammateClassGlowEnabled || !SkyblockUtils.isOnSkyblock() || !DungeonState.inDungeon()) {
+        if (!AlpakaConfig.instance.teammateClassGlowEnabled || !DungeonState.inDungeon() || !SkyblockUtils.isOnSkyblock()) {
             if (colors.isNotEmpty()) colors.clear()
             readIn = 0
             return

@@ -182,6 +182,8 @@ public final class VisitorBazaarFeature {
     }
 
     private static String strip(String text) {
+        // Asked for every tooltip frame and every inventory slot; most names carry no codes.
+        if (text.indexOf('§') < 0) return text.trim();
         return FORMATTING.matcher(text).replaceAll("").trim();
     }
 }

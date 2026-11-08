@@ -130,7 +130,8 @@ object CleanBlazeFeature {
     fun shouldHideEntity(entity: Entity): Boolean {
         if (entity is SmallFireball) return AlpakaConfig.instance.cleanBlazeFireballs && active()
         if (entity is LightningBolt) return hideLightning()
-        if (!entity.hasCustomName() || !AlpakaConfig.instance.cleanBlazeNameTags || !active()) return false
+        // The setting before the entity: this runs for every entity on every frame.
+        if (!AlpakaConfig.instance.cleanBlazeNameTags || !entity.hasCustomName() || !active()) return false
         val customName = entity.customName ?: return false
         return SkyblockUtils.containsIgnoringFormatting(customName.string, "Smoldering Blaze")
     }

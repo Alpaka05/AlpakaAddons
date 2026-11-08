@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.slayer
 
+import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.mixin.PlayerTabOverlayAccessor
 import net.alpaka.addons.utils.SkyblockUtils
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
@@ -34,7 +35,14 @@ object SmolderingPolarization {
     }
 
     private fun tick(mc: Minecraft) {
-        if (++ticks % READ_INTERVAL_TICKS != 0) return
+        val cfg = AlpakaConfig.instance
+        // Only while the Bear line can show; the tab list is read anew on the first tick it can.
+        if (!cfg.slayerHudEnabled || !cfg.slayerHudShowBear) {
+            shownTime = null
+            ticks = 0
+            return
+        }
+        if (ticks++ % READ_INTERVAL_TICKS != 0) return
         if (mc.player == null || !SkyblockUtils.isOnSkyblock()) {
             shownTime = null
             return

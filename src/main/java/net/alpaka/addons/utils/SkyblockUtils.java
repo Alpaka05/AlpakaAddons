@@ -198,7 +198,8 @@ public class SkyblockUtils {
 
     private static long sidebarReadAtMs = 0L;
     private static List<String> cachedSidebarLines = List.of();
-    private static Object cachedSidebarLevel = null;
+    /** Weak for the same reason as {@link #cachedForLevel}: it must not keep a left world alive. */
+    private static java.lang.ref.WeakReference<Object> cachedSidebarLevel = null;
 
     /**
      * The sidebar's lines with color codes stripped, title first, at most one scoreboard walk per
@@ -216,12 +217,13 @@ public class SkyblockUtils {
         Object level = mc.level;
 
         long now = System.currentTimeMillis();
-        if (level == cachedSidebarLevel && now - sidebarReadAtMs < SIDEBAR_CACHE_MS) {
+        Object cachedLevel = cachedSidebarLevel == null ? null : cachedSidebarLevel.get();
+        if (level == cachedLevel && now - sidebarReadAtMs < SIDEBAR_CACHE_MS) {
             return cachedSidebarLines;
         }
 
         sidebarReadAtMs = now;
-        cachedSidebarLevel = level;
+        cachedSidebarLevel = level == null ? null : new java.lang.ref.WeakReference<>(level);
         cachedSidebarLines = readSidebarLines();
         return cachedSidebarLines;
     }
@@ -274,17 +276,39 @@ public class SkyblockUtils {
      */
     public static String cleanColor(String input) {
         if (input == null) return "";
-        return COLOR_PATTERN.matcher(input).replaceAll("").trim();
+        // Walked by hand rather than with a regex: this is reached per sidebar line, per chat line
+        // and per entity name from render hooks, and most of those strings carry no code at all -
+        // they now come back without a Matcher or a copy being made.
+        int first = input.indexOf('§');
+        if (first < 0) return input.trim();
+
+        int length = input.length();
+        StringBuilder out = new StringBuilder(length);
+        out.append(input, 0, first);
+        int i = first;
+        while (i < length) {
+            char c = input.charAt(i);
+            if (c == '§' && i + 1 < length) {
+                char next = input.charAt(i + 1);
+                // The same as the "§." this replaced: '.' takes any one code point but a line
+                // terminator, so a code character outside the BMP is dropped whole.
+                if (!isLineTerminator(next)) {
+                    boolean pair = Character.isHighSurrogate(next) && i + 2 < length
+                            && Character.isLowSurrogate(input.charAt(i + 2));
+                    i += pair ? 3 : 2;
+                    continue;
+                }
+            }
+            out.append(c);
+            i++;
+        }
+        return out.toString().trim();
     }
 
-    /**
-     * The formatting codes {@link #cleanColor} strips, compiled once.
-     *
-     * {@code String.replaceAll} compiles its pattern on every single call, which is invisible until
-     * the caller sits in a render hook - this one is reached per sidebar line and, through
-     * {@code DamageTagFeature}, per entity per frame.
-     */
-    private static final java.util.regex.Pattern COLOR_PATTERN = java.util.regex.Pattern.compile("§.");
+    /** The characters a regex '.' does not match without DOTALL. */
+    private static boolean isLineTerminator(char c) {
+        return c == '\n' || c == '\r' || c == '\u0085' || c == '\u2028' || c == '\u2029';
+    }
 
     /**
      * Whether {@code needle} appears in {@code text} once formatting codes are ignored, without
@@ -344,18 +368,20 @@ public class SkyblockUtils {
 
         Object connection = mc.player.connection;
         long now = System.currentTimeMillis();
-        if (connection == cachedTabConnection && now - tabReadAtMs < SIDEBAR_CACHE_MS) {
+        Object cachedConnection = cachedTabConnection == null ? null : cachedTabConnection.get();
+        if (connection == cachedConnection && now - tabReadAtMs < SIDEBAR_CACHE_MS) {
             return cachedTabLines;
         }
         tabReadAtMs = now;
-        cachedTabConnection = connection;
+        cachedTabConnection = new java.lang.ref.WeakReference<>(connection);
         cachedTabLines = readTabListLines(mc);
         return cachedTabLines;
     }
 
     private static long tabReadAtMs = 0L;
     private static List<String> cachedTabLines = List.of();
-    private static Object cachedTabConnection = null;
+    /** Weak: the connection holds the level and every entity in it, long after a disconnect. */
+    private static java.lang.ref.WeakReference<Object> cachedTabConnection = null;
 
     /** Builds the snapshot. Callers want {@link #getTabListLines()}, which shares one per tick. */
     private static List<String> readTabListLines(Minecraft mc) {
@@ -366,7 +392,8 @@ public class SkyblockUtils {
                 if (name == null) continue;
                 lines.add(cleanColor(name.getString()));
             }
-            return List.copyOf(lines);
+            // A read-only view rather than a copy; nothing else holds the list.
+            return java.util.Collections.unmodifiableList(lines);
         } catch (Exception ignored) {
             return List.of();
         }

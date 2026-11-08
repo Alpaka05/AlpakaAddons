@@ -157,7 +157,9 @@ public final class TabListParser {
 
     /** The text without color codes. */
     public static String plain(Component text) {
-        return FORMATTING.matcher(text.getString()).replaceAll("");
+        String string = text.getString();
+        // Most rows carry their colors as styles, not codes; those need no matcher at all.
+        return string.indexOf('§') < 0 ? string : FORMATTING.matcher(string).replaceAll("");
     }
 
     /**

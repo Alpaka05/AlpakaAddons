@@ -43,6 +43,11 @@ final class Json {
         }
     }
 
+    /** The element as a number when it is a numeric primitive, NaN otherwise ("N/A", true, objects). */
+    static double num(JsonElement e) {
+        return e != null && e.isJsonPrimitive() && e.getAsJsonPrimitive().isNumber() ? e.getAsDouble() : Double.NaN;
+    }
+
     static double num(JsonElement root, String path, double fallback) {
         double v = num(root, path);
         return Double.isNaN(v) ? fallback : v;

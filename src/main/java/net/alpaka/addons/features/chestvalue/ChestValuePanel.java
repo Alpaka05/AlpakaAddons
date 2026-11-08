@@ -2,6 +2,7 @@ package net.alpaka.addons.features.chestvalue;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import com.mojang.blaze3d.platform.cursor.CursorTypes;
 import com.mojang.serialization.JsonOps;
 import net.alpaka.addons.client.gui.AlpakaStyle;
@@ -192,9 +193,10 @@ public final class ChestValuePanel {
         if (cached != null) return cached;
         Valuation v = NONE;
         JsonElement json = NbtOps.INSTANCE.convertTo(JsonOps.INSTANCE, custom.copyTag());
-        if (json.isJsonObject() && json.getAsJsonObject().has("id")) {
+        // Other servers can store anything under "id"; only a SkyBlock id (a plain string) is priced.
+        if (json.isJsonObject() && json.getAsJsonObject().get("id") instanceof JsonPrimitive idValue && idValue.isString()) {
             JsonObject data = json.getAsJsonObject();
-            String id = data.get("id").getAsString();
+            String id = idValue.getAsString();
             if (!IGNORED.contains(id)) {
                 ItemValue.Breakdown b = ItemValue.of(data, PRICES, CATALOG);
                 double each = b.total();

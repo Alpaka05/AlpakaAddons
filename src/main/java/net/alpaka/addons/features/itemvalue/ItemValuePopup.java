@@ -2,6 +2,7 @@ package net.alpaka.addons.features.itemvalue;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import com.mojang.blaze3d.platform.cursor.CursorTypes;
 import com.mojang.serialization.JsonOps;
 import net.alpaka.addons.client.gui.AlpakaStyle;
@@ -767,7 +768,7 @@ public final class ItemValuePopup {
 
     /** The item's own name for its graph: Hypixel's, without the reforge, stars or pet level the item's name carries. */
     private static String baseTitle() {
-        String id = data != null && data.has("id") ? data.get("id").getAsString() : idByName();
+        String id = data != null && data.get("id") instanceof JsonPrimitive idValue ? idValue.getAsString() : idByName();
         String listed = id == null || id.equals("PET") ? null : ItemIcons.name(id);
         if (listed != null) return listed;
         return SkyblockUtils.cleanColor(stack.getHoverName().getString())

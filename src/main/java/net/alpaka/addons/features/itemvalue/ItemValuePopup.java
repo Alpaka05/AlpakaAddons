@@ -772,8 +772,16 @@ public final class ItemValuePopup {
         String listed = id == null || id.equals("PET") ? null : ItemIcons.name(id);
         if (listed != null) return listed;
         String name = SkyblockUtils.cleanColor(stack.getHoverName().getString());
-        return STAR_MARKS.matcher(PET_LEVEL.matcher(name).replaceAll("")).replaceAll("").trim();
+        // The same item's name every frame while the graph is open: stripped once per name.
+        if (!name.equals(bareSource)) {
+            bareSource = name;
+            bareTitle = STAR_MARKS.matcher(PET_LEVEL.matcher(name).replaceAll("")).replaceAll("").trim();
+        }
+        return bareTitle;
     }
+
+    private static String bareSource;
+    private static String bareTitle;
 
     /** Compiled once: {@code String.replaceAll} compiles its pattern on every call. */
     private static final java.util.regex.Pattern PET_LEVEL = java.util.regex.Pattern.compile("^\\[Lvl \\d+\\]\\s*");

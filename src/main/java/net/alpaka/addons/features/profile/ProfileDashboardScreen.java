@@ -857,37 +857,45 @@ public class ProfileDashboardScreen extends Screen {
     /** The level-ups of the last 30 days, newest first, read off the history of every level there is. */
     private List<Milestone> milestones(ProfileData d, long now) {
         // The session hands out the same series list until its data changes, so the level-ups of
-        // all time are only worked out again then; the 30 days are still cut every frame.
-        List<String> metrics = new ArrayList<>();
-        List<java.util.function.DoubleToIntFunction> levels = new ArrayList<>();
-        List<String> names = new ArrayList<>();
-        for (ProfileData.Level s : d.skills) {
-            int max = s.maxLevel();
-            metrics.add(Metrics.SKILL + s.id());
-            names.add(s.name());
-            levels.add(xp -> (int) Levels.skill(s.id(), xp, max));
+        // all time are only worked out again then; the 30 days are still cut every frame. Which
+        // metrics there are depends on the profile alone, so that list is made once per profile.
+        if (d != milestoneData) {
+            milestoneData = d;
+            milestoneMetrics = new ArrayList<>();
+            milestoneNames = new ArrayList<>();
+            milestoneLevels = new ArrayList<>();
+            for (ProfileData.Level s : d.skills) {
+                int max = s.maxLevel();
+                milestoneMetrics.add(Metrics.SKILL + s.id());
+                milestoneNames.add(s.name());
+                milestoneLevels.add(xp -> (int) Levels.skill(s.id(), xp, max));
+            }
+            milestoneMetrics.add(Metrics.CATACOMBS);
+            milestoneNames.add("Catacombs");
+            milestoneLevels.add(xp -> (int) Math.min(50, Levels.catacombs(xp)));
+            for (ProfileData.Level c : d.classes) {
+                milestoneMetrics.add(Metrics.CLASS + c.id());
+                milestoneNames.add(c.name());
+                milestoneLevels.add(xp -> (int) Math.min(50, Levels.catacombs(xp)));
+            }
+            milestoneMetrics.add(Metrics.SB_LEVEL);
+            milestoneNames.add("SkyBlock Level");
+            milestoneLevels.add(level -> (int) Math.floor(level));
+            milestoneSeries = List.of();
         }
-        metrics.add(Metrics.CATACOMBS);
-        names.add("Catacombs");
-        levels.add(xp -> (int) Math.min(50, Levels.catacombs(xp)));
-        for (ProfileData.Level c : d.classes) {
-            metrics.add(Metrics.CLASS + c.id());
-            names.add(c.name());
-            levels.add(xp -> (int) Math.min(50, Levels.catacombs(xp)));
-        }
-        metrics.add(Metrics.SB_LEVEL);
-        names.add("SkyBlock Level");
-        levels.add(level -> (int) Math.floor(level));
 
-        List<List<ProfileHistory.Point>> series = new ArrayList<>(metrics.size());
-        for (String metric : metrics) series.add(session.series(metric));
-        if (d != milestoneData || !sameLists(series, milestoneSeries)) {
+        boolean same = milestoneSeries.size() == milestoneMetrics.size();
+        for (int i = 0; same && i < milestoneMetrics.size(); i++) {
+            same = session.series(milestoneMetrics.get(i)) == milestoneSeries.get(i);
+        }
+        if (!same) {
+            List<List<ProfileHistory.Point>> series = new ArrayList<>(milestoneMetrics.size());
+            for (String metric : milestoneMetrics) series.add(session.series(metric));
             List<Milestone> all = new ArrayList<>();
-            for (int i = 0; i < metrics.size(); i++) {
-                levelUps(all, series.get(i), metrics.get(i), names.get(i), levels.get(i));
+            for (int i = 0; i < milestoneMetrics.size(); i++) {
+                levelUps(all, series.get(i), milestoneMetrics.get(i), milestoneNames.get(i), milestoneLevels.get(i));
             }
             all.sort((a, b) -> Long.compare(b.timeMs(), a.timeMs()));
-            milestoneData = d;
             milestoneSeries = series;
             milestoneAll = all;
         }
@@ -900,16 +908,12 @@ public class ProfileDashboardScreen extends Screen {
     }
 
     private ProfileData milestoneData;
+    private List<String> milestoneMetrics = List.of();
+    private List<String> milestoneNames = List.of();
+    private List<java.util.function.DoubleToIntFunction> milestoneLevels = List.of();
     private List<List<ProfileHistory.Point>> milestoneSeries = List.of();
     private List<Milestone> milestoneAll = List.of();
 
-    private static boolean sameLists(List<List<ProfileHistory.Point>> a, List<List<ProfileHistory.Point>> b) {
-        if (a.size() != b.size()) return false;
-        for (int i = 0; i < a.size(); i++) {
-            if (a.get(i) != b.get(i)) return false;
-        }
-        return true;
-    }
 
     /** Every level-up in one metric's history, at any time. */
     private static void levelUps(List<Milestone> out, List<ProfileHistory.Point> points, String metric, String name,

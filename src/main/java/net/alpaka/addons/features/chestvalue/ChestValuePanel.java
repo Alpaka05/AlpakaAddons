@@ -925,8 +925,17 @@ public final class ChestValuePanel {
             String listed = ItemIcons.name(e.id);
             if (listed != null) return listed;
         }
-        return STAR_MARKS.matcher(PET_LEVEL.matcher(e.name).replaceAll("")).replaceAll("").trim();
+        String bare = BARE_NAMES.get(e.name);
+        if (bare == null) {
+            bare = STAR_MARKS.matcher(PET_LEVEL.matcher(e.name).replaceAll("")).replaceAll("").trim();
+            if (BARE_NAMES.size() >= 512) BARE_NAMES.clear();
+            BARE_NAMES.put(e.name, bare);
+        }
+        return bare;
     }
+
+    /** Names without pet level and stars, by the name: the same rows are labelled every frame. Render thread only. */
+    private static final java.util.Map<String, String> BARE_NAMES = new java.util.HashMap<>();
 
     /** Compiled once: {@code String.replaceAll} compiles its pattern on every call, and this runs per row per frame. */
     private static final Pattern PET_LEVEL = Pattern.compile("^\\[Lvl \\d+\\]\\s*");

@@ -91,6 +91,8 @@ object FirePitFeature {
     fun register() {
         ClientTickEvents.END_CLIENT_TICK.register { tick(it) }
         LevelRenderEvents.COLLECT_SUBMITS.register { context ->
+            // Nothing to draw on nearly every frame: skip the timing too.
+            if (pits.isEmpty()) return@register
             val t = AlpakaPerf.begin(AlpakaPerf.Section.LEVEL_OVERLAYS)
             try {
                 submit(context)

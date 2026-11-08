@@ -136,6 +136,8 @@ object CustomDamageTagFeature {
             }
         }
         LevelRenderEvents.COLLECT_SUBMITS.register { context ->
+            // Nothing to draw on nearly every frame: skip the timing too.
+            if (tags.isEmpty()) return@register
             val t = AlpakaPerf.begin(AlpakaPerf.Section.DAMAGE_TAGS)
             try {
                 submit(context)

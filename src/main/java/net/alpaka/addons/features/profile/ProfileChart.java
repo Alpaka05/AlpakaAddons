@@ -49,18 +49,48 @@ public final class ProfileChart {
     /** The points inside the range, at most {@link #MAX_POINTS}, each the last of the ones it stands for. */
     static List<ProfileHistory.Point> visible(List<ProfileHistory.Point> points, Range range, long now) {
         long from = range.fromMs(now);
+        // The dashboard asks for the same histories every frame (graph, tiles, sparklines). The
+        // answer only changes when the list is replaced or the range's start passes a point, so it is
+        // kept until one of those happens.
+        Visible kept = VISIBLE.get(points);
+        if (kept != null && kept.range == range && from <= kept.minIncluded && from > kept.maxExcluded) return kept.result;
+
         List<ProfileHistory.Point> in = new ArrayList<>();
-        for (ProfileHistory.Point p : points) if (p.timeMs() >= from) in.add(p);
-        if (in.size() <= MAX_POINTS) return in;
-        List<ProfileHistory.Point> out = new ArrayList<>(MAX_POINTS);
-        double step = in.size() / (double) MAX_POINTS;
-        for (int i = 0; i < MAX_POINTS; i++) {
-            int last = Math.min(in.size() - 1, (int) Math.floor((i + 1) * step) - 1);
-            out.add(in.get(Math.max(0, last)));
+        long minIncluded = Long.MAX_VALUE;
+        long maxExcluded = Long.MIN_VALUE;
+        for (ProfileHistory.Point p : points) {
+            if (p.timeMs() >= from) {
+                in.add(p);
+                minIncluded = Math.min(minIncluded, p.timeMs());
+            } else {
+                maxExcluded = Math.max(maxExcluded, p.timeMs());
+            }
         }
-        if (out.get(out.size() - 1) != in.get(in.size() - 1)) out.set(out.size() - 1, in.get(in.size() - 1));
-        return out;
+        List<ProfileHistory.Point> out;
+        if (in.size() <= MAX_POINTS) {
+            out = in;
+        } else {
+            out = new ArrayList<>(MAX_POINTS);
+            double step = in.size() / (double) MAX_POINTS;
+            for (int i = 0; i < MAX_POINTS; i++) {
+                int last = Math.min(in.size() - 1, (int) Math.floor((i + 1) * step) - 1);
+                out.add(in.get(Math.max(0, last)));
+            }
+            if (out.get(out.size() - 1) != in.get(in.size() - 1)) out.set(out.size() - 1, in.get(in.size() - 1));
+        }
+        List<ProfileHistory.Point> result = java.util.Collections.unmodifiableList(out);
+        if (VISIBLE.size() >= 256) VISIBLE.clear();
+        VISIBLE.put(points, new Visible(range, minIncluded, maxExcluded, result));
+        return result;
     }
+
+    /**
+     * A {@link #visible} answer and when it stays right: while the range's start is at most the
+     * oldest point in it and past the newest point left out. Render thread only.
+     */
+    private record Visible(Range range, long minIncluded, long maxExcluded, List<ProfileHistory.Point> result) {}
+
+    private static final java.util.Map<List<ProfileHistory.Point>, Visible> VISIBLE = new java.util.IdentityHashMap<>();
 
     /** The change over the points: the last minus the first; NaN with fewer than two. */
     static double change(List<ProfileHistory.Point> points) {

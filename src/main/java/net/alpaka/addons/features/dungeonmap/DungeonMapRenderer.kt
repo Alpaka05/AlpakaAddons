@@ -211,7 +211,7 @@ object DungeonMapRenderer {
         // The count sits at the right edge, the name takes the rest of the line.
         var nameEnd = PADDING + 128
         if (secrets != null) {
-            nameEnd -= textWidth(font, secrets, style)
+            nameEnd -= secretsWidth(font, secrets, style)
             drawText(g, font, secrets, nameEnd, PADDING + 1, ModernGuiUtils.lerpColor(color, 0xFF000000.toInt(), 0.25f), style)
             nameEnd -= 6
         }
@@ -227,6 +227,26 @@ object DungeonMapRenderer {
         }
         return secretsLast!!
     }
+
+    /** The width of [secretsText]'s string, kept while the string, font and style stay the same. */
+    private fun secretsWidth(font: Font, text: String, style: Style): Int {
+        val generation = AlpakaStyle.fontGeneration
+        if (text !== secretsWidthOf || style !== secretsWidthStyle || font !== secretsWidthFont
+            || generation != secretsWidthGeneration) {
+            secretsWidthOf = text
+            secretsWidthStyle = style
+            secretsWidthFont = font
+            secretsWidthGeneration = generation
+            secretsWidthValue = textWidth(font, text, style)
+        }
+        return secretsWidthValue
+    }
+
+    private var secretsWidthOf: String? = null
+    private var secretsWidthStyle: Style? = null
+    private var secretsWidthFont: Font? = null
+    private var secretsWidthGeneration = -1
+    private var secretsWidthValue = 0
 
     private var secretsFound: Any? = null
     private var secretsTotal = 0

@@ -1,5 +1,7 @@
 package net.alpaka.addons.features.garden
 
+import net.minecraft.network.chat.Component
+import net.alpaka.addons.utils.EntityCache
 import net.alpaka.addons.utils.EntityColors
 import net.alpaka.addons.utils.ItemData
 import com.mojang.blaze3d.platform.InputConstants
@@ -273,16 +275,30 @@ object PestFinder {
         pestTags.clear()
         for (entity in level.entitiesForRendering()) {
             if (entity !is ArmorStand || !entity.isAlive || !entity.hasCustomName()) continue
-            val raw = entity.customName?.string ?: continue
-            // Stripping codes only takes characters away, so a tag without either mark in its raw
-            // text has none after it either; that skips the stripping for every damage number.
-            if (!raw.contains(PEST_SYMBOL) && raw.indexOf('❤') < 0) continue
-            val name = SkyblockUtils.cleanColor(raw)
-            if (!isPestTag(name)) continue
+            val name = entity.customName ?: continue
+            if (!isPestName(entity.id, name)) continue
             pestTags.add(entity.id)
             addBody(level, entity)
         }
     }
+
+    /**
+     * [isPestTag] for a stand's name, kept with the name object it was read from: the rescan reads
+     * every named stand four times a second, and a name only changes when the server sends a new one.
+     */
+    private fun isPestName(id: Int, name: Component): Boolean {
+        val cached = pestNames.get(id)
+        if (cached != null && cached.first === name) return cached.second
+        val raw = name.string
+        // Stripping codes only takes characters away, so a tag without either mark in its raw
+        // text has none after it either; that skips the stripping for every damage number.
+        val pest = (raw.contains(PEST_SYMBOL) || raw.indexOf('❤') >= 0) && isPestTag(SkyblockUtils.cleanColor(raw))
+        if (pestNames.size() >= 512) pestNames.clear()
+        pestNames.put(id, name to pest)
+        return pest
+    }
+
+    private val pestNames = EntityCache<Pair<Component, Boolean>>()
 
     /** Whether a name tag is a pest's: the pest symbol, or a pest's name with a health number. */
     private fun isPestTag(name: String): Boolean =

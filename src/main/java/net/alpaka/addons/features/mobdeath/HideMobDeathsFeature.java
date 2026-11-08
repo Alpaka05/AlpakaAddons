@@ -99,7 +99,8 @@ public final class HideMobDeathsFeature {
         while (REMOVED.size() > 64) REMOVED.pollFirst();
     }
 
-    private static boolean smokeEnabled() {
+    /** Cheap gate for the entity-removal hook, so it skips the id lookup while the smoke option is off. */
+    public static boolean smokeEnabled() {
         return AlpakaConfig.instance.hideMobDeathsEnabled && AlpakaConfig.instance.hideMobDeathSmoke;
     }
 

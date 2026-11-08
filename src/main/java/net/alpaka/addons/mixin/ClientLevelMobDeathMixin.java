@@ -14,6 +14,7 @@ public class ClientLevelMobDeathMixin {
 
     @Inject(method = "removeEntity", at = @At("HEAD"))
     private void alpaka$rememberRemovedBody(int id, Entity.RemovalReason reason, CallbackInfo ci) {
+        if (!HideMobDeathsFeature.smokeEnabled()) return;
         Entity entity = ((ClientLevel) (Object) this).getEntity(id);
         if (entity != null) {
             HideMobDeathsFeature.onEntityRemoved(entity);

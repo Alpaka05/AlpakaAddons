@@ -27,8 +27,8 @@ import java.util.Optional
  * A release whose version is higher than the running one, and which carries a jar for the
  * Minecraft version the game is running. Drafts are skipped. Pre-releases (marked so on GitHub, or
  * tagged like `2.0.0-beta.1`) are offered only on the "Pre-Releases" stream
- * ([AlpakaConfig.updateStream]); on "Releases" a tester of the next version still hears of the
- * release itself, just not of the next beta. Releases are built per Minecraft version
+ * ([AlpakaConfig.updateStream]), or when the running build is a pre-release itself, so a player
+ * on the alpha hears of the next alpha or beta. Releases are built per Minecraft version
  * (`alpaka-1.2.22-mc26.2.jar`), and a release with no jar for this game is one the player cannot
  * install, so it is not announced. A jar built for 26.2 is for every 26.2.x (see [jarSuffixes]).
  *
@@ -179,7 +179,9 @@ object UpdateChecker {
             return
         }
         val jarSuffixes = jarSuffixes(ModVersion.minecraft())
-        val preReleases = stream() == 1
+        // Someone already running a pre-release (the alpha, a beta) is told of the next one too,
+        // or a tester would never hear of the fixes before the release itself.
+        val preReleases = stream() == 1 || current.isPreRelease
 
         val request = HttpRequest.newBuilder(URI.create(ENDPOINT))
             .timeout(Duration.ofSeconds(10))

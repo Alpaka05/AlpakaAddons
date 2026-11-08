@@ -2066,6 +2066,8 @@ public class AlpakaConfig {
         this.oldMasterStarsEnabled = false;
         this.cacheResourcePackEnabled = false;
         this.zoomEnabled = false;
+        this.commandShortcutsEnabled = false;
+        this.inventoryButtonsEnabled = false;
         this.dungeonSolversEnabled = false;
         this.terminalSolversEnabled = false;
         this.terminalCustomGui = false;

@@ -99,7 +99,7 @@ public final class ConfigTree {
             "starred_mobs_highlight", "teammate_class_glow",
             // Visuals
             "fullbright", "clean_blaze", "blaze_fire_pits", "hide_hurt_overlay", "hide_mob_deaths",
-            "hide_explosions",
+            "hide_visual_clutter",
             "hide_inventory_effects",
             "render_hand_third_person", "smooth_perspective", "disable_front_perspective", "zoom",
             "sky_effects",
@@ -201,7 +201,7 @@ public final class ConfigTree {
                             "custom_sound_notification", "custom_sound_player_hurt", "custom_sound_successful_hit",
                             "custom_sound_zombie_remedy", "custom_sound_blaze_death", "custom_sound_low_hp_heartbeat"}},
             {{"Visuals"},
-                    {"World", "fullbright", "sky_effects", "block_overlay_enabled", "hide_hurt_overlay", "hide_mob_deaths", "hide_explosions",
+                    {"World", "fullbright", "sky_effects", "block_overlay_enabled", "hide_hurt_overlay", "hide_mob_deaths", "hide_visual_clutter",
                             "#Hide Fire Overlay", "#Nametags", "render_hand_third_person", "smooth_perspective", "disable_front_perspective", "zoom"},
                     {"Interface", "inventory_hud_enabled", "player_model_enabled", "performance_hud_enabled", "container_bg_opacity",
                             "hide_inventory_effects",

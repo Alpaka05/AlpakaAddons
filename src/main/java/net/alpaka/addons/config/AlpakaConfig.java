@@ -236,8 +236,27 @@ public class AlpakaConfig {
     public boolean hideMobDeathsEnabled = false;
     /** With Hide Mob Deaths: also no puff of smoke when the server removes the body. */
     public boolean hideMobDeathSmoke = false;
-    /** Hides explosion particles, server smoke puffs and explosion debris. Cosmetic only. */
-    public boolean hideExplosions = false;
+    /**
+     * Hide Visual Clutter, the master switch over the effects below. It was Hide Explosions, so an
+     * older file's value still turns it on (and {@link #migrateTo4} keeps such a file to explosions).
+     * Cosmetic only.
+     */
+    @SerializedName(value = "hideVisualClutter", alternate = "hideExplosions")
+    public boolean hideVisualClutter = false;
+    /** Explosion particles, server smoke puffs and explosion debris. */
+    public boolean clutterExplosions = true;
+    /** Falling block entities are never added. */
+    public boolean clutterFallingBlocks = true;
+    /** The particles of broken and mined blocks. */
+    public boolean clutterBlockBreak = true;
+    /** Critical and enchanted hit sparks, and the crit trail of arrows. */
+    public boolean clutterHitParticles = true;
+    /** Firework rocket bursts. */
+    public boolean clutterFireworks = true;
+    /** Experience orbs are never added. */
+    public boolean clutterExperienceOrbs = true;
+    /** A dying Ender Dragon, its light rays and its death explosions. */
+    public boolean clutterDragonDeath = true;
     /** Hides the flames on burning mobs, players and yourself in third person. Cosmetic only. */
     public boolean hideEntityFire = false;
     /** Opacity of the fire covering the screen while you burn in first person, 0..1; 1 is vanilla, 0 hides it. */
@@ -1688,7 +1707,8 @@ public class AlpakaConfig {
     private static final java.util.List<java.util.function.Consumer<AlpakaConfig>> MIGRATIONS = java.util.List.of(
             AlpakaConfig::migrateTo1,
             AlpakaConfig::migrateTo2,
-            AlpakaConfig::migrateTo3
+            AlpakaConfig::migrateTo3,
+            AlpakaConfig::migrateTo4
     );
 
     /** The settings layout this version writes. A file with a lower number gets the steps it has not had. */
@@ -1738,6 +1758,21 @@ public class AlpakaConfig {
         hideSlayerChatSunshade = null;
         cleanBlazeWrongDaggerChat = null;
         cleanBlazeDamageChat = null;
+    }
+
+    /**
+     * Layout 3 to 4: Hide Explosions became Hide Visual Clutter, with more effects than explosions.
+     * Whoever had Hide Explosions on keeps exactly that; the new effects wait to be switched on.
+     */
+    private void migrateTo4() {
+        if (!hideVisualClutter) return;
+        clutterExplosions = true;
+        clutterFallingBlocks = false;
+        clutterBlockBreak = false;
+        clutterHitParticles = false;
+        clutterFireworks = false;
+        clutterExperienceOrbs = false;
+        clutterDragonDeath = false;
     }
 
     /**
@@ -1893,7 +1928,7 @@ public class AlpakaConfig {
         this.stopBlazeSpinning = false;
         this.hideHurtOverlayEnabled = false;
         this.hideMobDeathsEnabled = false;
-        this.hideExplosions = false;
+        this.hideVisualClutter = false;
         this.hideEntityFire = false;
         this.firstPersonFireStatic = false;
         this.showOwnNameTag = false;

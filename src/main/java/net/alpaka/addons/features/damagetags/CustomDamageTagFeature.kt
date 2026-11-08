@@ -6,6 +6,7 @@ import net.alpaka.addons.features.slayer.SlayerBossNameTag
 import net.alpaka.addons.features.slayer.SlayerType
 import net.alpaka.addons.utils.AlpakaPerf
 import net.alpaka.addons.utils.DungeonState
+import net.alpaka.addons.utils.EntityCache
 import net.alpaka.addons.utils.SkyblockUtils
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext
@@ -220,17 +221,17 @@ object CustomDamageTagFeature {
      * when the server sends a new object. Client thread only; cleared on a world change.
      */
     private fun isBossTag(id: Int, name: Component): Boolean {
-        val cached = bossTags[id]
+        val cached = bossTags.get(id)
         if (cached != null && cached.name === name) return cached.boss
         val text = SkyblockUtils.cleanColor(name.string)
         val boss = SlayerBossNameTag.isBoss(text, SLAYER_BOSS_NAMES) || DEMON_NAMES.any { text.contains(it) }
-        if (bossTags.size >= BOSS_TAG_CACHE_LIMIT) bossTags.clear()
-        bossTags[id] = BossTag(name, boss)
+        if (bossTags.size() >= BOSS_TAG_CACHE_LIMIT) bossTags.clear()
+        bossTags.put(id, BossTag(name, boss))
         return boss
     }
 
     private class BossTag(val name: Component, val boss: Boolean)
-    private val bossTags = HashMap<Int, BossTag>()
+    private val bossTags = EntityCache<BossTag>()
     private const val BOSS_TAG_CACHE_LIMIT = 1024
 
     private fun add(tag: Tag) {

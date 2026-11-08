@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.dungeonmobs
 
+import net.alpaka.addons.utils.EntityCache
 import net.alpaka.addons.utils.EntityColors
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.features.slayer.BossHighlightRenderState
@@ -67,7 +68,7 @@ object StarredMobsHighlight {
      * Name tag stand id to whether it is hidden, together with the name it was decided for. Hypixel
      * sets a new name whenever the health changes, so a stale entry is told by the name object.
      */
-    private val hiddenTags = HashMap<Int, Pair<Component, Boolean>>()
+    private val hiddenTags = EntityCache<Pair<Component, Boolean>>()
 
     @JvmStatic
     fun register() {
@@ -110,7 +111,7 @@ object StarredMobsHighlight {
         if (--rescanIn <= 0) {
             rescanIn = RESCAN_TICKS
             rescan(level, player)
-            if (hiddenTags.size > 512) hiddenTags.clear()
+            if (hiddenTags.size() > 512) hiddenTags.clear()
         }
 
         // Only mobs the player can see: the outline glow is drawn through walls, and highlighting a
@@ -202,10 +203,10 @@ object StarredMobsHighlight {
     fun shouldHideEntity(entity: Entity): Boolean {
         if (!hideNames || entity !is ArmorStand || !entity.isInvisible) return false
         val name = entity.customName ?: return false
-        val cached = hiddenTags[entity.id]
+        val cached = hiddenTags.get(entity.id)
         if (cached != null && cached.first === name) return cached.second
         val hide = StarredMobs.isPlainMobTag(name.string)
-        hiddenTags[entity.id] = name to hide
+        hiddenTags.put(entity.id, name to hide)
         return hide
     }
 }

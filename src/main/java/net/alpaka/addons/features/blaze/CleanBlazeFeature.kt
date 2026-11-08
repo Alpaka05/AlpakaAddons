@@ -75,6 +75,9 @@ object CleanBlazeFeature {
 
     @JvmStatic
     fun shouldCancelParticle(options: ParticleOptions): Boolean {
+        // Every particle the game makes comes through here; with the feature off nothing below can
+        // say yes, so skip the type checks.
+        if (!AlpakaConfig.instance.cleanBlazeEnabled) return false
         val type = options.type
         if (type === ParticleTypes.FLAME || type === ParticleTypes.SMALL_FLAME ||
             type === ParticleTypes.SMOKE || type === ParticleTypes.LARGE_SMOKE ||

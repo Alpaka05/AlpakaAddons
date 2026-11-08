@@ -21,9 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -57,7 +55,7 @@ public final class DeployableTracker {
     private static final double STACK_REACH = 3.0;
 
     /** What one stand is, worked out once per stand; null means it is not a flare. */
-    private static final Map<Integer, Deployable> FLARE_BY_ID = new HashMap<>();
+    private static final Int2ObjectOpenHashMap<Deployable> FLARE_BY_ID = new Int2ObjectOpenHashMap<>();
     /** Above this many remembered stands the map is cleared rather than grown without end. */
     private static final int FLARE_CACHE_LIMIT = 512;
     /** Weak, so the world left behind is not kept alive until the next scan. */

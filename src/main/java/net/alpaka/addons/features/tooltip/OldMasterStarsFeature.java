@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.tooltip;
 
+import net.minecraft.network.chat.FormattedText;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
 import net.minecraft.ChatFormatting;
@@ -30,6 +31,11 @@ public final class OldMasterStarsFeature {
     private static final int FIRST_MASTER = 0x278A;
     private static final int LAST_MASTER = 0x278E;
 
+    private static final Optional<Boolean> FOUND = Optional.of(Boolean.TRUE);
+    /** {@link #hasMasterNumber} on each part of a name; the numbers are single chars, so parts can't split one. */
+    private static final FormattedText.ContentConsumer<Boolean> HAS_MASTER_NUMBER =
+            part -> hasMasterNumber(part) ? FOUND : Optional.empty();
+
     public static void register() {
         ItemTooltipCallback.EVENT.register((stack, context, flag, lines) -> {
             if (isEnabled() && !lines.isEmpty()) {
@@ -48,7 +54,8 @@ public final class OldMasterStarsFeature {
     }
 
     static Component convert(Component name) {
-        if (!hasMasterNumber(name.getString())) return name;
+        // Asked every frame for the held item's name: look for the number without building a string.
+        if (name.visit(HAS_MASTER_NUMBER).isEmpty()) return name;
 
         // Flatten into one style per character, resolving any legacy § codes inside the text so the
         // stars can be recoloured one by one however Hypixel happened to split the name.

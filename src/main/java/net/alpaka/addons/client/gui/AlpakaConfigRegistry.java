@@ -133,6 +133,14 @@ public class AlpakaConfigRegistry {
         // settings; see registerHudStyleToggles.
         OPTIONS.add(new ConfigOption("HUD Style", ConfigCategory.GENERAL));
 
+        OPTIONS.add(new ConfigOption("hud_blur_strength", "Blur Strength",
+                "How strongly the world is blurred behind every blurred panel, the command wheel's included.",
+                ConfigCategory.GENERAL,
+                () -> AlpakaConfig.instance.chatBlurStrength,
+                v -> { AlpakaConfig.instance.chatBlurStrength = v; AlpakaConfig.save(); },
+                0.0f, 100.0f, val -> val == 0.0f ? "Off (0%)" : String.format(Locale.ROOT, "%.0f%%", val),
+                "blur strength radius amount intensity frosted glass background lighter clearer sharp"));
+
         OPTIONS.add(new ConfigOption("hud_blur_all", "Blur",
                 "Main switch for the blurred panels behind the HUDs, chat and scoreboard included. Each HUD also has its own Blur switch.",
                 ConfigCategory.GENERAL,
@@ -146,14 +154,6 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.hudSmoothFontAll,
                 v -> { AlpakaConfig.instance.hudSmoothFontAll = v; AlpakaConfig.save(); GuiFont.refreshChat(); },
                 "smooth font menu font typeface text nunito hud all main own settings"));
-
-        OPTIONS.add(new ConfigOption("hud_blur_strength", "Blur Strength",
-                "How strongly the world is blurred behind every blurred panel, the command wheel's included.",
-                ConfigCategory.GENERAL,
-                () -> AlpakaConfig.instance.chatBlurStrength,
-                v -> { AlpakaConfig.instance.chatBlurStrength = v; AlpakaConfig.save(); },
-                0.0f, 100.0f, val -> val == 0.0f ? "Off (0%)" : String.format(Locale.ROOT, "%.0f%%", val),
-                "blur strength radius amount intensity frosted glass background lighter clearer sharp"));
 
         OPTIONS.add(ConfigOption.color("menu_accent_color", "Menu Accent Color",
                 "The highlight color of every Alpaka menu.",

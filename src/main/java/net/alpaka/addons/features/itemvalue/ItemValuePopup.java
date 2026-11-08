@@ -341,9 +341,8 @@ public final class ItemValuePopup {
         Font font = mc.font;
         int screenW = graphics.guiWidth();
         int screenH = graphics.guiHeight();
-        double[] cursor = cursor();
-        int mx = (int) Math.floor(cursor[0]);
-        int my = (int) Math.floor(cursor[1]);
+        int mx = (int) Math.floor(cursorX());
+        int my = (int) Math.floor(cursorY());
         hits.clear();
 
         graphShown = approach(graphShown, graphOpen ? 1f : 0f, deltaSec * 7f);
@@ -863,8 +862,7 @@ public final class ItemValuePopup {
     /** Whether the mouse is over the open popup in this menu, which then hides what is under it. */
     public static boolean coversMouse(Screen in) {
         if (screen == null || in != screen || panelW <= 0) return false;
-        double[] cursor = cursor();
-        return AlpakaStyle.inside(cursor[0], cursor[1], panelX, panelY, panelW, panelH);
+        return AlpakaStyle.inside(cursorX(), cursorY(), panelX, panelY, panelW, panelH);
     }
 
     /**
@@ -924,9 +922,15 @@ public final class ItemValuePopup {
     }
 
     /** The cursor in GUI pixels. */
-    private static double[] cursor() {
+    // The cursor in GUI coordinates, one axis at a time: asked several times every frame, so no array.
+    private static double cursorX() {
         Minecraft mc = Minecraft.getInstance();
-        return new double[] {mc.mouseHandler.getScaledXPos(mc.getWindow()), mc.mouseHandler.getScaledYPos(mc.getWindow())};
+        return mc.mouseHandler.getScaledXPos(mc.getWindow());
+    }
+
+    private static double cursorY() {
+        Minecraft mc = Minecraft.getInstance();
+        return mc.mouseHandler.getScaledYPos(mc.getWindow());
     }
 
     private static float approach(float current, float target, float step) {

@@ -75,20 +75,23 @@ object EntityHighlight {
 
         // Worked out now, relative to the camera in double precision; the geometry is built later
         // in the frame, and far from the origin a float cannot hold an absolute position finely.
-        val boxes = ArrayList<Pair<AABB, Int>>(targets.size())
+        val boxes = ArrayList<Hitbox>(targets.size())
         targets.forEach { id, color ->
             val entity = level.getEntity(id) ?: return@forEach
             val pos = entity.getPosition(partialTick)
             val box = entity.boundingBox
                 .move(pos.x - entity.x - camera.x, pos.y - entity.y - camera.y, pos.z - entity.z - camera.z)
-            boxes.add(box to color)
+            boxes.add(Hitbox(box, color))
         }
         if (boxes.isEmpty()) return
 
         context.submitNodeCollector().submitCustomGeometry(context.poseStack(), RenderTypes.debugQuads()) { pose, buffer ->
-            for ((box, color) in boxes) drawBox(buffer, pose, box, color)
+            for (hitbox in boxes) drawBox(buffer, pose, hitbox.box, hitbox.color)
         }
     }
+
+    /** One box to draw and its color, unboxed (a Pair would box the color on every entity and frame). */
+    private class Hitbox(val box: AABB, val color: Int)
 
     /** The twelve edges of [box], each as a thin bar. */
     private fun drawBox(buffer: VertexConsumer, pose: PoseStack.Pose, box: AABB, color: Int) {

@@ -50,6 +50,10 @@ public final class ExactSkillXp {
     }
 
     /** "+12.5 Farming (45.32%)"; group 1 the skill, group 2 the percentage without the sign. */
+    private static final Optional<Boolean> FOUND = Optional.of(Boolean.TRUE);
+    private static final net.minecraft.network.chat.FormattedText.ContentConsumer<Boolean> HAS_PLUS =
+            part -> part.indexOf('+') >= 0 ? FOUND : Optional.empty();
+
     private static final Pattern GAIN = Pattern.compile("\\+[\\d.,]+ ([A-Z][a-z]+) \\(([\\d.]+)%\\)");
 
     /** The skills Levels has a table for (Hunting uses the normal one); anything new keeps its percentage. */
@@ -98,6 +102,9 @@ public final class ExactSkillXp {
     /** The action bar as it is drawn: with XP in place of the percentage when the feature is on. */
     public static Component rewrite(Component message) {
         if (message == null || !AlpakaConfig.instance.exactSkillXpEnabled) return message;
+        // Both patterns start with a '+'; most action bars (health, mana, defense) have none, and a
+        // single character cannot be split across parts, so they are passed on without being taken apart.
+        if (message.visit(HAS_PLUS).isEmpty()) return message;
         List<Piece> pieces = new ArrayList<>();
         message.visit((style, text) -> {
             pieces.add(new Piece(style, text));

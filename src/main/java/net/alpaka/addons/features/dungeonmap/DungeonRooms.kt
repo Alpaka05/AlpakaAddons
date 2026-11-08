@@ -5,6 +5,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.Level
+import net.minecraft.world.level.chunk.status.ChunkStatus
 import net.minecraft.world.level.block.Block
 import java.io.InputStreamReader
 import java.util.IdentityHashMap
@@ -82,9 +83,11 @@ object DungeonRooms {
             val x = cellCenter(cell % 6)
             val z = cellCenter(cell / 6)
             // The client level claims to have every chunk; its chunk cache knows which arrived.
-            if (!level.chunkSource.hasChunk(x shr 4, z shr 4)) continue
+            // Looked up once for the column rather than once per block of it; inside the build height
+            // the chunk answers exactly what the level would.
+            val chunk = level.chunkSource.getChunk(x shr 4, z shr 4, ChunkStatus.FULL, false) ?: continue
             val (core, roof) = core { y ->
-                val block = level.getBlockState(pos.set(x, y, z)).block
+                val block = chunk.getBlockState(pos.set(x, y, z)).block
                 blockIds.getOrPut(block) { BuiltInRegistries.BLOCK.getKey(block).toString() }
             }
             recognize(cell, table[core] ?: continue, roof)

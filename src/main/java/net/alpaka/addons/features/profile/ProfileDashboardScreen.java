@@ -626,7 +626,8 @@ public class ProfileDashboardScreen extends Screen {
             String url = ProfileApi.ELITE_SITE + session.playerName + (d != null && d.profileName != null ? "/" + d.profileName : "");
             hits.add(new Hit(x + PAD - 2, fy + 10, sw + 4, 11, () -> openLink("Open Elite", url)));
             if (hoverSource) {
-                tip("source", "Profile data from Elite (elitebot.dev), which reads it from Hypixel; the history from Elite and "
+                tip("source", "Profile data from Elite (elitebot.dev), which reads it from Hypixel; the Rift's inventories from Hypixel "
+                        + "through the AlpakaAddons API (api.alpaka.yt); the history from Elite and "
                         + "Soopy (soopy.dev), pet heads, the Bestiary, the Museum and Hoppity's rabbits from the NEU repository. Soopy works networth out differently, so its "
                         + "older networth is scaled to match Elite's."
                         + (skykings ? " With your key, SkyKings' daily history too" + (session.skykingsNote != null
@@ -2672,7 +2673,7 @@ public class ProfileDashboardScreen extends Screen {
 
     private int invContent(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
         return switch (invTab) {
-            case INVENTORY -> playerInventory(graphics, d, x, y, w);
+            case INVENTORY -> playerInventory(graphics, "Inventory", "inventory", "armor", "equipment", true, x, y, w);
             case ENDER_CHEST -> pagedSections(graphics, "ender_chest", "Page", x, y, w);
             case BACKPACKS -> backpackSections(graphics, d, x, y, w);
             case WARDROBE -> wardrobe(graphics, d, x, y, w);
@@ -2798,10 +2799,11 @@ public class ProfileDashboardScreen extends Screen {
     }
 
     /** The inventory as the game shows it: armor and equipment beside the three rows, the hotbar below. */
-    private int playerInventory(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
-        JsonElement inv = session.inventory("inventory");
-        JsonElement armor = session.inventory("armor");
-        JsonElement equipment = session.inventory("equipment");
+    private int playerInventory(GuiGraphicsExtractor graphics, String title, String invName, String armorName, String equipmentName,
+                                boolean centered, int x, int y, int w) {
+        JsonElement inv = session.inventory(invName);
+        JsonElement armor = session.inventory(armorName);
+        JsonElement equipment = session.inventory(equipmentName);
         // Twice the size when there is room, in the middle of the page, as the game's own screen.
         slotScale = 16 + 11 * SLOT * 2 + 8 * 2 <= w ? 2 : 1;
         int slot = SLOT * slotScale;
@@ -2809,15 +2811,17 @@ public class ProfileDashboardScreen extends Screen {
         int cw = 16 + sideW + 9 * slot;
         int h = 22 + 4 * slot + 6 * slotScale + 8;
         x += (w - cw) / 2;
-        y = middle(y, h);
+        if (centered) y = middle(y, h);
         card(graphics, x, y, cw, h);
-        text(graphics, "Inventory", x + 8, y + 7, AlpakaStyle.TEXT);
+        text(graphics, title, x + 8, y + 7, AlpakaStyle.TEXT);
         int gy = y + 22;
         if (armor != null) slots(graphics, Json.obj(armor, "items"), List.of("3", "2", "1", "0"), x + 8, gy, 1);
         if (equipment != null) slots(graphics, Json.obj(equipment, "items"), List.of("0", "1", "2", "3"), x + 8 + slot, gy, 1);
         int mx0 = x + 8 + sideW;
         if (inv == null) {
-            ProfileChart.message(graphics, this.font, "Loading…", mx0, gy, 9 * slot, 4 * slot);
+            boolean failed = session.inventoryState(invName) == ProfileSession.State.FAILED;
+            ProfileChart.message(graphics, this.font, failed ? "Couldn't load. Click to try again." : "Loading…", mx0, gy, 9 * slot, 4 * slot);
+            if (failed) hit(mx0, gy, 9 * slot, 4 * slot, session::retryFailed);
             slotScale = 1;
             return y + h;
         }
@@ -2906,8 +2910,11 @@ public class ProfileDashboardScreen extends Screen {
 
     /** One inventory in pages of 45 slots, such as the Ender Chest; pages with nothing in them are left out. */
     private int pagedSections(GuiGraphicsExtractor graphics, String name, String label, int x, int y, int w) {
+        return pagedSections(graphics, name, label, slotsOf(session.data, name), x, y, w);
+    }
+
+    private int pagedSections(GuiGraphicsExtractor graphics, String name, String label, int slots, int x, int y, int w) {
         JsonElement inv = session.inventory(name);
-        int slots = slotsOf(session.data, name);
         if (inv == null) return flow(graphics, List.of(new Section(label + " 1", null, name, range(0, Math.min(45, slots)))), x, y, w);
         com.google.gson.JsonObject items = Json.obj(inv, "items");
         List<Section> sections = new ArrayList<>();
@@ -3315,7 +3322,28 @@ public class ProfileDashboardScreen extends Screen {
         count(stacks, "Croak Stacks", Json.num(r, "croakStacks"));
         count(stacks, "Siren Statue Kills", Json.num(r, "sirenStatueKills"));
         add(cards, "Stats", stacks);
-        return cards(graphics, cards, x, y, w);
+        y = cards(graphics, cards, x, y, w) + 12;
+        return riftInventories(graphics, x, y, w);
+    }
+
+    /**
+     * The Rift's inventory and Ender Chest. Elite doesn't hand them out, so they come from Hypixel
+     * through the AlpakaAddons API, which asks Mojang who the player is first.
+     */
+    private int riftInventories(GuiGraphicsExtractor graphics, int x, int y, int w) {
+        session.inventory(ProfileSession.RIFT + "inventory");
+        if (session.riftProblem != null) {
+            int end = note(graphics, session.riftProblem, x, y, w);
+            if (session.riftState == ProfileSession.State.FAILED) {
+                hit(x, y, w, end - y, session::retryFailed);
+                if (hover(x, y, w, end - y)) tip("rift.retry", "Click to try again.");
+            }
+            return end;
+        }
+        y = playerInventory(graphics, "Rift Inventory", "rift_inventory", "rift_armor", "rift_equipment", false, x, y, w) + 8;
+        JsonElement chest = session.inventory("rift_ender_chest");
+        int slots = chest == null ? 45 : Json.obj(chest, "items").size();
+        return pagedSections(graphics, "rift_ender_chest", "Rift Ender Chest · Page", slots, x, y, w);
     }
 
     // ---- Rabbits (Chocolate Factory) ------------------------------------------------------------

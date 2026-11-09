@@ -44,17 +44,66 @@ public final class AnvilCombineHelper {
         if (!(slot.container instanceof Inventory) || !(screen instanceof ContainerScreen)) return;
         if (screen != cachedScreen.get()) {
             cachedScreen = new WeakReference<>(screen);
+            // A new menu: nothing of the last one's inputs carries over.
+            wantedValid = false;
+            wantedLeft = null;
+            wantedRight = null;
+            wantedTag = null;
+            MATCHES.clear();
             cachedIsAnvil = "Anvil".equals(screen.getTitle().getString());
         }
         if (!cachedIsAnvil) return;
 
-        CompoundTag wanted = wanted(screen.getMenu());
+        CompoundTag wanted = wantedMemo(screen.getMenu());
         if (wanted == null) return;
-        CompoundTag have = enchantments(slot.getItem());
-        if (wanted.equals(have)) {
+        if (matches(wanted, slot.getItem())) {
             graphics.fill(slot.x, slot.y, slot.x + 16, slot.y + 16, AlpakaConfig.instance.anvilCombineHelperColor);
         }
     }
+
+    /**
+     * {@link #wanted} for the anvil's two inputs, worked out again only when one of them changes:
+     * every inventory slot asks for it, every frame. It depends on the inputs' data alone, and an
+     * item's data is replaced, never changed, so its object stands for its contents.
+     */
+    private static CompoundTag wantedMemo(AbstractContainerMenu menu) {
+        if (menu.slots.size() < CHEST_SLOTS) return null;
+        CustomData left = dataOf(menu.slots.get(LEFT_SLOT).getItem());
+        CustomData right = dataOf(menu.slots.get(RIGHT_SLOT).getItem());
+        if (wantedValid && left == wantedLeft && right == wantedRight) return wantedTag;
+        wantedLeft = left;
+        wantedRight = right;
+        wantedTag = wanted(menu);
+        wantedValid = true;
+        MATCHES.clear();
+        return wantedTag;
+    }
+
+    /** Whether the item holds exactly the wanted enchantments, kept per item data while the wanted ones stay. */
+    private static boolean matches(CompoundTag wanted, ItemStack stack) {
+        CustomData data = dataOf(stack);
+        if (data == null) return wanted.equals(enchantments(stack));
+        Boolean known = MATCHES.get(data);
+        if (known != null) return known;
+        boolean match = wanted.equals(enchantments(stack));
+        if (MATCHES.size() >= 256) MATCHES.clear();
+        MATCHES.put(data, match);
+        return match;
+    }
+
+    /** The item's custom data as {@link #tag} reads it, or null when {@link #tag} would give null. */
+    private static CustomData dataOf(ItemStack stack) {
+        if (stack.isEmpty()) return null;
+        CustomData data = stack.get(DataComponents.CUSTOM_DATA);
+        return data == null || data.isEmpty() ? null : data;
+    }
+
+    // Render thread only (slot backgrounds).
+    private static boolean wantedValid;
+    private static CustomData wantedLeft;
+    private static CustomData wantedRight;
+    private static CompoundTag wantedTag;
+    private static final java.util.Map<CustomData, Boolean> MATCHES = new java.util.IdentityHashMap<>();
 
     /** The enchantments of the one book in the anvil, or null if there is none or both sides are filled. */
     private static CompoundTag wanted(AbstractContainerMenu menu) {

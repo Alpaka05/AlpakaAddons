@@ -148,10 +148,28 @@ public final class VisitorBazaarFeature {
         int count = 0;
         for (int i = 0; i < inventory.getContainerSize(); i++) {
             ItemStack stack = inventory.getItem(i);
-            if (!stack.isEmpty() && item.equals(strip(stack.getHoverName().getString()))) count += stack.getCount();
+            if (!stack.isEmpty() && item.equals(plainName(stack.getHoverName()))) count += stack.getCount();
         }
         return count;
     }
+
+    /**
+     * An item name without its codes, kept per name object on the client thread: the hovered offer
+     * counts the whole inventory every tooltip frame, and a name only changes as a new object.
+     * Tooltips built on background threads work it out directly.
+     */
+    private static String plainName(Component name) {
+        if (!Minecraft.getInstance().isSameThread()) return strip(name.getString());
+        String plain = PLAIN_NAMES.get(name);
+        if (plain == null) {
+            plain = strip(name.getString());
+            if (PLAIN_NAMES.size() >= 256) PLAIN_NAMES.clear();
+            PLAIN_NAMES.put(name, plain);
+        }
+        return plain;
+    }
+
+    private static final java.util.Map<Component, String> PLAIN_NAMES = new java.util.IdentityHashMap<>();
 
     /** The required items of an Accept Offer that lacks items, or null for any other item. */
     static List<Required> offer(String name, List<String> lore) {

@@ -1,5 +1,6 @@
 package net.alpaka.addons.mixin;
 
+import net.alpaka.addons.config.AlpakaConfig;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import net.alpaka.addons.features.perspective.SmoothPerspectiveFeature;
 import net.alpaka.addons.features.zoom.ZoomFeature;
@@ -50,28 +51,43 @@ public abstract class CameraMixin {
             return;
         }
 
+        // Off: what update() below would do anyway, without working out the eye every frame first.
+        if (!AlpakaConfig.instance.smoothPerspectiveEnabled) {
+            SmoothPerspectiveFeature.reset();
+            return;
+        }
+
         CameraType type = Minecraft.getInstance().options.getCameraType();
         float partialTick = getCameraEntityPartialTicks(deltaTracker);
 
         // The eye, built the way vanilla builds it before moving a detached camera back. Read from
-        // the entity rather than position(), which other mods wrap.
-        Vec3 eye = new Vec3(
-                Mth.lerp(partialTick, camEntity.xo, camEntity.getX()),
-                Mth.lerp(partialTick, camEntity.yo, camEntity.getY()) + Mth.lerp(partialTick, this.eyeHeightOld, this.eyeHeight),
-                Mth.lerp(partialTick, camEntity.zo, camEntity.getZ()));
+        // the entity rather than position(), which other mods wrap. Kept as numbers; a Vec3 is only
+        // made when the camera is actually moved.
+        double eyeX = Mth.lerp(partialTick, camEntity.xo, camEntity.getX());
+        double eyeY = Mth.lerp(partialTick, camEntity.yo, camEntity.getY()) + Mth.lerp(partialTick, this.eyeHeightOld, this.eyeHeight);
+        double eyeZ = Mth.lerp(partialTick, camEntity.zo, camEntity.getZ());
         float liveYaw = camEntity.getViewYRot(partialTick);
         float livePitch = camEntity.getViewXRot(partialTick);
 
         // What vanilla shows now, as distance and offsets from the live view. Its distance already
         // stops short of walls, so the glide never ends further out than vanilla would.
-        float targetDistance = type.isFirstPerson() ? 0.0f : (float) this.position.distanceTo(eye);
+        float targetDistance;
+        if (type.isFirstPerson()) {
+            targetDistance = 0.0f;
+        } else {
+            // Vec3.distanceTo, written out.
+            double dx = eyeX - this.position.x;
+            double dy = eyeY - this.position.y;
+            double dz = eyeZ - this.position.z;
+            targetDistance = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+        }
         float targetYaw = type.isMirrored() ? 180.0f : 0.0f;
         float targetPitch = type.isMirrored() ? -2.0f * livePitch : 0.0f;
 
         SmoothPerspectiveFeature.Pose pose = SmoothPerspectiveFeature.update(type, targetDistance, targetYaw, targetPitch);
         if (pose == null) return;
 
-        setPosition(eye);
+        setPosition(new Vec3(eyeX, eyeY, eyeZ));
         setRotation(liveYaw + pose.yawOffset(), livePitch + pose.pitchOffset());
         // Vanilla's own sweep, so the camera stops at a wall instead of passing into it.
         if (pose.distance() > 0.0f) move(-getMaxZoom(pose.distance()), 0.0f, 0.0f);

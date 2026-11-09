@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.dungeonmap
 
+import net.alpaka.addons.client.gui.TextWidths
 import net.alpaka.addons.client.gui.AlpakaStyle
 import com.mojang.blaze3d.platform.NativeImage
 import com.mojang.blaze3d.systems.RenderSystem
@@ -186,7 +187,7 @@ object DungeonMapRenderer {
                 else g.fill(cx - half, cy - half, cx + half, cy + half, 0xFF202020.toInt())
                 if (!spot.self && spot.name != null) {
                     val name = spot.name
-                    g.text(mc.font, name, cx - mc.font.width(name) / 2, cy + half + 2, if (big) color else 0xFFE8EEEE.toInt(), true)
+                    g.text(mc.font, name, cx - TextWidths.of(mc.font, name) / 2, cy + half + 2, if (big) color else 0xFFE8EEEE.toInt(), true)
                 }
             }
         } finally {
@@ -414,7 +415,8 @@ object DungeonMapRenderer {
         if (AlpakaConfig.instance.smoothOn(AlpakaConfig.instance.dungeonMapSmoothFont)) GuiFont.style() else Style.EMPTY
 
     private fun textWidth(font: Font, text: String, style: Style) =
-        if (style.isEmpty) font.width(text) else font.width(styled(text, style))
+        // Room names, the header and teammates are the same texts frame after frame: kept widths.
+        if (style.isEmpty) TextWidths.of(font, text) else TextWidths.of(font, styled(text, style))
 
     private fun drawText(g: GuiGraphicsExtractor, font: Font, text: String, x: Int, y: Int, color: Int, style: Style) {
         if (style.isEmpty) g.text(font, text, x, y, color, true)

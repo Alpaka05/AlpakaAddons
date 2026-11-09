@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.deployable
 
+import net.alpaka.addons.client.gui.TextWidths
 import java.util.EnumMap
 import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.client.gui.HudPanel
@@ -141,7 +142,7 @@ object DeployableTimerHudRenderer {
 
     /** Unscaled width of the widest line, for the editor's box. */
     fun width(font: Font, shown: List<DeployableTracker.Active>): Int =
-        ICON_SIZE + ICON_GAP + (shown.maxOfOrNull { font.width(timeText(it)) } ?: 0)
+        ICON_SIZE + ICON_GAP + (shown.maxOfOrNull { TextWidths.of(font, timeText(it)) } ?: 0)
 
     private fun unscaledHeight(lines: Int): Int = lines * LINE_HEIGHT - LINE_GAP
 

@@ -225,7 +225,9 @@ public class HudMixin implements ChatOverHud.Late {
     )
     private void alpaka$centerScoreboardFooter(GuiGraphicsExtractor graphics, Font font, Component line, int x, int y, int color, boolean shadow,
                                                Operation<Void> original, @Local(name = "width") int width) {
-        if (ScoreboardFooterFeature.isFooter(line)) x = ScoreboardFooterFeature.centeredX(x, width, font.width(line));
+        if (ScoreboardFooterFeature.isFooter(line)) x = ScoreboardFooterFeature.centeredX(x, width,
+                // The bare footer is one kept component; a font wrapper around it is new every frame.
+                line == ScoreboardFooterFeature.FOOTER ? net.alpaka.addons.client.gui.TextWidths.of(font, line) : font.width(line));
         original.call(graphics, font, line, x, y, color, shadow);
     }
 }

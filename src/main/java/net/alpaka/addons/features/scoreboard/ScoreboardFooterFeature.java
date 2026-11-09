@@ -15,7 +15,7 @@ import net.minecraft.network.chat.Component;
 public final class ScoreboardFooterFeature {
 
     /** Built once; the line is drawn every frame and never changes. */
-    private static final Component FOOTER = AlpakaGradient.of("AlpakaAddons");
+    public static final Component FOOTER = AlpakaGradient.of("AlpakaAddons");
 
     private ScoreboardFooterFeature() {}
 

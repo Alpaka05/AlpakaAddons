@@ -452,14 +452,15 @@ public final class CustomTabFeature {
     /** A bar after a row's text, and the text that follows it. */
     private static void drawBar(GuiGraphicsExtractor graphics, Font font, TabListParser.Line line, int x, int y) {
         TabListParser.Bar bar = line.bar();
-        int x0 = x + CustomTabLayout.barX(font.width(line.text()));
+        // The layout's rows are kept between rebuilds, so their widths can be too.
+        int x0 = x + CustomTabLayout.barX(net.alpaka.addons.client.gui.TextWidths.of(font, line.text()));
         int y0 = y + CustomTabLayout.BAR_TOP;
         int x1 = x0 + CustomTabLayout.BAR_W;
         int y1 = y0 + CustomTabLayout.BAR_H;
         graphics.fill(x0, y0, x1, y1, BAR_TRACK);
         int filled = Math.round(CustomTabLayout.BAR_W * Math.max(0.0f, Math.min(1.0f, bar.fraction())));
         if (filled > 0) graphics.fill(x0, y0, x0 + filled, y1, bar.color());
-        if (font.width(line.after()) > 0) {
+        if (net.alpaka.addons.client.gui.TextWidths.of(font, line.after()) > 0) {
             graphics.text(font, line.after(), x1 + CustomTabLayout.BAR_GAP, y, 0xFFFFFFFF, HudPanel.TEXT_SHADOW);
         }
     }

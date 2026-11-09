@@ -179,6 +179,19 @@ public final class ItemSearchStore {
         FILES.execute(() -> write(file, GSON.toJson(root)));
     }
 
+    /** On quitting: writes what changed and waits a moment for the file thread, a daemon the exit would cut off. */
+    public static void onStopping() {
+        flush();
+        // The file thread runs one job at a time, so an empty job after the write finishes after it.
+        try {
+            FILES.submit(() -> { }).get(3_000L, java.util.concurrent.TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (java.util.concurrent.ExecutionException | java.util.concurrent.TimeoutException e) {
+            // Not done in time; nothing more to do on the way out.
+        }
+    }
+
     /** "account/profile" for the player in play, or null when the profile is not known yet. */
     private static String owner() {
         Minecraft mc = Minecraft.getInstance();

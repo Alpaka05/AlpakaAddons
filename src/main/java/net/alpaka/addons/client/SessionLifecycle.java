@@ -56,6 +56,7 @@ public final class SessionLifecycle {
         net.alpaka.addons.features.party.PartyCommandsFeature.dismiss();
         net.alpaka.addons.features.commands.WarpCooldownQueue.onDisconnect();
         InventoryHudFeature.reset();
+        net.alpaka.addons.features.tablist.CustomTabFeature.reset();
         FirePitFeature.reset();
         net.alpaka.addons.features.damagetags.CustomDamageTagFeature.reset();
         net.alpaka.addons.utils.DungeonState.reset();

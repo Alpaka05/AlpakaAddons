@@ -192,7 +192,7 @@ public final class ItemTags {
                 .GET()
                 .build();
         HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()
-                .sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .sendAsync(request, HttpResponse.BodyHandlers.ofString()).orTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
                 .whenComplete((response, error) -> {
                     try {
                         if (error != null || response == null || response.statusCode() != 200) {

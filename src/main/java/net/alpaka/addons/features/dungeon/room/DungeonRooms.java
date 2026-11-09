@@ -290,7 +290,7 @@ public final class DungeonRooms {
         return new RoofView() {
             @Override
             public boolean hasChunk(int chunkX, int chunkZ) {
-                return level.hasChunk(chunkX, chunkZ);
+                return level.getChunkSource().hasChunk(chunkX, chunkZ);
             }
 
             @Override

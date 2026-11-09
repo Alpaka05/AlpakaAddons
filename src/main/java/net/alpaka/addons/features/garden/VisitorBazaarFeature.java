@@ -93,23 +93,26 @@ public final class VisitorBazaarFeature {
         ItemLore lore = stack.get(DataComponents.LORE);
         // The hovered offer is asked for every tooltip frame; its name and lore objects only change
         // when the server sends the item again, and the answer depends on them alone.
-        if (name == offerName && lore == offerLore) return offerResult;
+        LastOffer last = lastOffer;
+        if (last != null && name == last.name() && lore == last.lore()) return last.result();
         List<Required> result = null;
         if (ACCEPT_OFFER.equals(strip(name.getString())) && lore != null) {
             List<String> lines = new ArrayList<>(lore.lines().size());
             for (Component line : lore.lines()) lines.add(line.getString());
             result = offer(name.getString(), lines);
         }
-        offerName = name;
-        offerLore = lore;
-        offerResult = result;
+        lastOffer = new LastOffer(name, lore, result);
         return result;
     }
 
-    // offer(ItemStack)'s last answer and what it was read from; client thread only.
-    private static Component offerName;
-    private static ItemLore offerLore;
-    private static List<Required> offerResult;
+    /**
+     * offer(ItemStack)'s last answer and what it was read from, as one object in one volatile field:
+     * vanilla also builds tooltips on background threads (search trees), so the three parts must
+     * never be seen half replaced.
+     */
+    private record LastOffer(Component name, ItemLore lore, List<Required> result) {}
+
+    private static volatile LastOffer lastOffer;
 
     private static boolean onIronman() {
         LocalPlayer player = Minecraft.getInstance().player;

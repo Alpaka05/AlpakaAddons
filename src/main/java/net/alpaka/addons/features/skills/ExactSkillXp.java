@@ -257,8 +257,16 @@ public final class ExactSkillXp {
         return capInTab(tabLines(), skill);
     }
 
+    /**
+     * The tab line patterns per skill, compiled once: they are needed for every skill XP action bar,
+     * several a second while farming or mining. Only skills in SKILLS get here in the game.
+     */
+    private static final Map<String, Pattern> CAP_LINES = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final Map<String, Pattern> LEVEL_LINES = new java.util.concurrent.ConcurrentHashMap<>();
+
     static Integer capInTab(List<String> lines, String skill) {
-        Pattern line = Pattern.compile("(?:^|\\s)" + Pattern.quote(skill) + " (\\d{1,3}): MAX");
+        Pattern line = CAP_LINES.computeIfAbsent(skill,
+                k -> Pattern.compile("(?:^|\\s)" + Pattern.quote(k) + " (\\d{1,3}): MAX"));
         for (String text : lines) {
             Matcher m = line.matcher(text);
             if (m.find()) return Integer.parseInt(m.group(1));
@@ -272,7 +280,8 @@ public final class ExactSkillXp {
      * ("Mining 60: MAX") has no next level, so it counts as none.
      */
     static Integer levelInTab(List<String> lines, String skill) {
-        Pattern line = Pattern.compile("(?:^|\\s)" + Pattern.quote(skill) + " (\\d{1,3}): (?!MAX)");
+        Pattern line = LEVEL_LINES.computeIfAbsent(skill,
+                k -> Pattern.compile("(?:^|\\s)" + Pattern.quote(k) + " (\\d{1,3}): (?!MAX)"));
         for (String text : lines) {
             Matcher m = line.matcher(text);
             if (m.find()) return Integer.parseInt(m.group(1));

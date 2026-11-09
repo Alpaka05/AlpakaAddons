@@ -345,10 +345,6 @@ object SlayerTimer {
     }
 
     /**
-     * A duration as the slayer community quotes boss times: seconds with one decimal below a
-     * minute, minutes and seconds above it.
-     */
-    /**
      * What [format] depends on: two times with the same key are written the same way. Lets the HUD
      * build its text only when the key moves on.
      */
@@ -358,6 +354,10 @@ object SlayerTimer {
         else -> 1_000_000L + ms / 1000L
     }
 
+    /**
+     * A duration as the slayer community quotes boss times: seconds with one decimal below a
+     * minute, minutes and seconds above it.
+     */
     fun format(ms: Long): String {
         // Locale.ROOT, not the system default: on a German machine the default renders the decimal
         // as a comma, which lands next to figures like "1,284,500" that use the comma as a thousands

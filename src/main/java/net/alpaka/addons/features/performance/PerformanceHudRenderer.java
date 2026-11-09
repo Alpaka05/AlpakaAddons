@@ -125,11 +125,13 @@ public final class PerformanceHudRenderer {
 
     private static float drawPart(GuiGraphicsExtractor graphics, Font font, Style style, boolean shadow, float x,
                                   boolean first, String label, RollingValue rolling, long now) {
-        String text = first ? label : "  " + label;
-        RollingValue.text(graphics, font, text, style, LABEL, 1.0f, x, 0.0f, shadow);
-        x += RollingValue.width(font, text, style);
+        String text = first ? label : SPACED.computeIfAbsent(label, l -> "  " + l);
+        x += RollingValue.label(graphics, font, text, style, LABEL, x, shadow);
         return x + rolling.draw(graphics, font, style, x, now, shadow);
     }
+
+    /** "  FPS " and the like, built once rather than on every frame of a roll. */
+    private static final java.util.Map<String, String> SPACED = new java.util.HashMap<>();
 
     private static boolean anyPartShown() {
         AlpakaConfig cfg = AlpakaConfig.instance;

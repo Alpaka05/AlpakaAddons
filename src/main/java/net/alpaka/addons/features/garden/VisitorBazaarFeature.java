@@ -88,13 +88,28 @@ public final class VisitorBazaarFeature {
     }
 
     private static List<Required> offer(ItemStack stack) {
-        if (stack.isEmpty() || !ACCEPT_OFFER.equals(strip(stack.getHoverName().getString()))) return null;
+        if (stack.isEmpty()) return null;
+        Component name = stack.getHoverName();
         ItemLore lore = stack.get(DataComponents.LORE);
-        if (lore == null) return null;
-        List<String> lines = new ArrayList<>(lore.lines().size());
-        for (Component line : lore.lines()) lines.add(line.getString());
-        return offer(stack.getHoverName().getString(), lines);
+        // The hovered offer is asked for every tooltip frame; its name and lore objects only change
+        // when the server sends the item again, and the answer depends on them alone.
+        if (name == offerName && lore == offerLore) return offerResult;
+        List<Required> result = null;
+        if (ACCEPT_OFFER.equals(strip(name.getString())) && lore != null) {
+            List<String> lines = new ArrayList<>(lore.lines().size());
+            for (Component line : lore.lines()) lines.add(line.getString());
+            result = offer(name.getString(), lines);
+        }
+        offerName = name;
+        offerLore = lore;
+        offerResult = result;
+        return result;
     }
+
+    // offer(ItemStack)'s last answer and what it was read from; client thread only.
+    private static Component offerName;
+    private static ItemLore offerLore;
+    private static List<Required> offerResult;
 
     private static boolean onIronman() {
         LocalPlayer player = Minecraft.getInstance().player;

@@ -194,6 +194,13 @@ public final class ItemMotionBlurFeature {
         float opacity = Mth.clamp(config.itemMotionBlurOpacity, 0.0f, 1.0f);
         Frame[] frames = history.snapshot();
 
+        // Whether each layer can be ghosted depends on its quads alone, so it is checked once here
+        // rather than again for every step of the trail.
+        boolean[] ghostable = new boolean[poses.length];
+        for (int layer = 0; layer < poses.length; layer++) {
+            ghostable[layer] = usesVanillaSheets(currentSubmits.get(layer).quads());
+        }
+
         try {
             // Oldest ghost first, so that with blending the newer, stronger copies land on top.
             for (int step = steps; step >= 1; step--) {
@@ -203,10 +210,10 @@ public final class ItemMotionBlurFeature {
                     continue;
                 }
                 for (int layer = 0; layer < poses.length; layer++) {
-                    ItemFeatureRenderer.Submit submit = currentSubmits.get(layer);
-                    if (!usesVanillaSheets(submit.quads())) {
+                    if (!ghostable[layer]) {
                         continue;
                     }
+                    ItemFeatureRenderer.Submit submit = currentSubmits.get(layer);
                     if (!samplePose(frames, sampleTime, layer, GHOST_STACK.last())) {
                         continue;
                     }

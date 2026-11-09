@@ -19,26 +19,32 @@ this server. Not affiliated with Hypixel.
   the Profile Dashboard shows of that player, in one request: who they are (name and skin, from
   Mojang), the SkyBlock profiles they are on, and of one profile the parts of the player's own
   member data listed in `Dashboard.MEMBER_FIELDS`, the two things its co-op shares (collection tiers
-  unlocked, minions crafted) and its garden (`Dashboard.GARDEN_FIELDS`). The profile is the one
-  named with `?profile=<id>`, else the one the player has selected. `?fresh=1` is the dashboard's
-  Refresh button: the cached answer is then only used if it is very young (see below).
-- `GET /v1/museum/<uuid>/<profile id>` answers with what that player donated to the museum of one
-  profile (`Dashboard.MUSEUM_FIELDS`), which Hypixel hands out apart from the profile.
+  unlocked, minions crafted), its garden (`Dashboard.GARDEN_FIELDS`) and what the player donated to
+  its museum (`Dashboard.MUSEUM_FIELDS`). The profile is the one named with `?profile=<id>`, else
+  the one the player has selected. `?fresh=1` is the dashboard's Refresh button: the cached answer
+  is then only used if it is very young (see below). `?hint=<id>` names the profile the mod showed
+  last time, which only makes the answer faster.
 - `GET /` and `GET /health` say what it is and that it runs.
 
-Behind these are three of Hypixel's endpoints, `/v2/skyblock/profiles`, `/garden` and `/museum`.
+Behind this are three of Hypixel's endpoints, `/v2/skyblock/profiles`, `/garden` and `/museum`.
+The garden and the museum belong to a profile, and which profile is shown only follows from the
+profiles; so that they need not wait for those, they are asked for alongside on a guess: the profile
+named, the one chosen the last time this player was looked up, or the mod's hint. Whose a UUID is
+is asked of Mojang alongside too. A profile not cached then takes as long as Hypixel's slowest
+answer, about a second, instead of the sum of them.
+
 Co-op members' data and everything no page draws is left out, and there is no way to get Hypixel's
 answer as it is: this is the dashboard's backend, not a copy of Hypixel's API. A new dashboard page
 adds its fields to the lists in `Dashboard`. The mod works levels, totals and the networth out
 itself (`HypixelProfile` and `Networth` in the mod), so the server never has to know the game's
-tables. Answers are sent gzipped to a client that asks for it; a big profile is about a megabyte of
-text and half of that packed.
+tables. Answers are sent gzipped to a client that asks for it; a big profile with a full museum is
+about two megabytes of text and one packed.
 
 Within Hypixel's [API policy](https://developer.hypixel.net/policies): nothing is fetched unless a
 player opens a profile; answers are cached for an hour, as Hypixel suggests (a player's own profile
 for 3 minutes; with Refresh at least 5 minutes, the own 1 minute), in at most about 48 MB; a name's
 account is remembered for 6 hours; each player may cause at most 45 new requests to Hypixel in
-5 minutes, where a profile not cached takes three (90 requests in all, cached ones included);
+5 minutes, where a profile not cached takes three (60 requests in all, cached ones included);
 answers over 16 MB are refused; and the last 15 requests of the key's budget are never spent. It
 keeps nothing about who asked for what, and isn't offered to other developers.
 

@@ -150,6 +150,34 @@ public final class ProfileHistory {
         return out;
     }
 
+    /**
+     * The profile of a player the dashboard last looked at, or null if it never did: the id of the
+     * profile whose newest snapshot is the latest. {@code player} is a UUID without dashes, or a name.
+     */
+    public static synchronized String lastProfile(String player) {
+        return lastProfile(entries(), player);
+    }
+
+    static String lastProfile(Map<String, Entry> entries, String player) {
+        if (player == null) return null;
+        String best = null;
+        long newest = Long.MIN_VALUE;
+        for (Map.Entry<String, Entry> e : entries.entrySet()) {
+            // "uuid:profile"
+            int cut = e.getKey().indexOf(':');
+            Entry entry = e.getValue();
+            if (cut <= 0 || entry.points.isEmpty()) continue;
+            boolean byUuid = e.getKey().substring(0, cut).equalsIgnoreCase(player);
+            if (!byUuid && (entry.player == null || !entry.player.equalsIgnoreCase(player))) continue;
+            long t = entry.points.get(entry.points.size() - 1).t();
+            if (t > newest) {
+                newest = t;
+                best = e.getKey().substring(cut + 1);
+            }
+        }
+        return best;
+    }
+
     /** How many snapshots there are of this profile. */
     public static synchronized int size(String uuid, String profileId) {
         Entry entry = entries().get(key(uuid, profileId));

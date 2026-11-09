@@ -25,7 +25,8 @@ class ApiTest {
     private static final String KIWI = "22222222222222222222222222222222";
 
     private final AtomicLong now = new AtomicLong(1_000_000L);
-    private final List<String> asked = new ArrayList<>();
+    /** What Hypixel was asked; the garden and the museum are asked from threads of their own. */
+    private final List<String> asked = java.util.Collections.synchronizedList(new ArrayList<>());
     /** Server ids Mojang was told a player joined, by username. */
     private final Map<String, String> joined = new HashMap<>();
     private int status = 200;
@@ -148,7 +149,6 @@ class ApiTest {
     void nothingWithoutAToken() {
         assertEquals(401, get("/v1/dashboard/" + PLAYER, Map.of()).status());
         assertEquals(401, get("/v1/dashboard/" + PLAYER, Map.of("Authorization", "Bearer made-up")).status());
-        assertEquals(401, get("/v1/museum/" + PLAYER + "/" + APPLE, Map.of()).status());
         assertTrue(asked.isEmpty());
         assertEquals(0, lookups);
     }
@@ -186,8 +186,14 @@ class ApiTest {
         // The garden of that profile, cut down the same way.
         assertTrue(body.contains("\"garden\":{\"garden_experience\":150,\"unlocked_plots_ids\":[\"beginner_1\"],"
                 + "\"commission_data\":{\"total_completed\":7,\"unique_npcs_served\":2}}"), body);
-        assertEquals(List.of("/v2/skyblock/profiles?uuid=" + PLAYER,
-                "/v2/skyblock/garden?profile=11111111-1111-1111-1111-111111111111"), asked);
+        // And what the player donated to its museum, not what the co-op did.
+        assertTrue(body.contains("\"museum\":{\"value\":9,\"appraisal\":true,"
+                + "\"items\":{\"SWORD\":{\"donated_time\":1,\"items\":{\"type\":0,\"data\":\"MMM\"}}},\"special\":[]}"), body);
+        assertFalse(body.contains("BOW"), body);
+        assertEquals(java.util.Set.of("/v2/skyblock/profiles?uuid=" + PLAYER,
+                "/v2/skyblock/garden?profile=11111111-1111-1111-1111-111111111111",
+                "/v2/skyblock/museum?profile=11111111-1111-1111-1111-111111111111"), java.util.Set.copyOf(asked));
+        assertEquals(3, asked.size());
     }
 
     @Test
@@ -197,10 +203,11 @@ class ApiTest {
         assertEquals(200, r.status(), r.body());
         assertTrue(r.body().contains("\"profile\":{\"profile_id\":\"" + KIWI + "\",\"cute_name\":\"Kiwi\""), r.body());
         assertTrue(r.body().contains("\"coin_purse\":1"), r.body());
-        // The other profile comes out of the same answer of Hypixel's; only its garden is new.
+        // The other profile comes out of the same answer of Hypixel's; only its garden and museum are new.
         get("/v1/dashboard/" + PLAYER, auth);
         assertEquals(1, asked.stream().filter(p -> p.contains("profiles")).count());
         assertEquals(2, asked.stream().filter(p -> p.contains("garden")).count());
+        assertEquals(2, asked.stream().filter(p -> p.contains("museum")).count());
         // An id the player has no profile with falls back to the selected one.
         assertTrue(get("/v1/dashboard/" + PLAYER + "?profile=" + "9".repeat(32), auth).body().contains("\"profile\":{\"profile_id\":\"" + APPLE + "\""));
     }
@@ -209,7 +216,7 @@ class ApiTest {
     void aPlayerWithoutSkyBlockGetsNoProfile() {
         Api.Response r = get("/v1/dashboard/" + LEFT, auth());
         assertEquals(200, r.status(), r.body());
-        assertTrue(r.body().contains("\"profiles\":[],\"profile\":null,\"garden\":null"), r.body());
+        assertTrue(r.body().contains("\"profiles\":[],\"profile\":null,\"garden\":null,\"museum\":null"), r.body());
         assertEquals(1, asked.size());
     }
 
@@ -245,16 +252,16 @@ class ApiTest {
         assertEquals("MISS", first.headers().get("X-Cache"));
         assertEquals(String.valueOf(now.get()), first.headers().get("X-Fetched-At"));
         get("/v1/dashboard/" + OTHER, auth);
-        assertEquals(4, asked.size());
+        assertEquals(6, asked.size());
 
         now.addAndGet(Api.OWN_MAX_AGE_MS + 1);
         assertEquals("HIT", get("/v1/dashboard/" + OTHER, auth).headers().get("X-Cache"));
         assertEquals("MISS", get("/v1/dashboard/" + PLAYER, auth).headers().get("X-Cache"));
-        assertEquals(6, asked.size());
+        assertEquals(9, asked.size());
 
         now.addAndGet(Api.MAX_AGE_MS);
         assertEquals("MISS", get("/v1/dashboard/" + OTHER, auth).headers().get("X-Cache"));
-        assertEquals(8, asked.size());
+        assertEquals(12, asked.size());
     }
 
     @Test
@@ -282,7 +289,7 @@ class ApiTest {
         // That there is none is remembered like a garden would be.
         gardenStatus = 200;
         assertTrue(get("/v1/dashboard/" + PLAYER, auth).body().contains("\"garden\":null"));
-        assertEquals(2, asked.size());
+        assertEquals(3, asked.size());
         // A garden Hypixel failed to hand out is asked for again with the next look.
         gardenStatus = 500;
         assertTrue(get("/v1/dashboard/" + OTHER, auth).body().contains("\"garden\":null"));
@@ -291,19 +298,33 @@ class ApiTest {
     }
 
     @Test
-    void theMuseumIsThePlayersOwnPart() {
-        Map<String, String> auth = auth();
-        Api.Response r = get("/v1/museum/" + PLAYER + "/" + APPLE, auth);
+    void someoneWhoDonatedNothingHasAnEmptyMuseum() {
+        Api.Response r = get("/v1/dashboard/" + OTHER, auth());
         assertEquals(200, r.status(), r.body());
-        assertTrue(r.body().contains("\"museum\":{\"value\":9,\"appraisal\":true,"
-                + "\"items\":{\"SWORD\":{\"donated_time\":1,\"items\":{\"type\":0,\"data\":\"MMM\"}}},\"special\":[]}"), r.body());
-        assertFalse(r.body().contains("BOW"), r.body());
-        assertEquals(List.of("/v2/skyblock/museum?profile=11111111-1111-1111-1111-111111111111"), asked);
-        assertEquals("HIT", get("/v1/museum/" + PLAYER + "/" + APPLE, auth).headers().get("X-Cache"));
-        // Someone who donated nothing has an empty museum.
-        assertTrue(get("/v1/museum/" + OTHER + "/" + APPLE, auth).body().contains("\"museum\":{}"));
-        assertEquals(400, get("/v1/museum/" + PLAYER, auth).status());
-        assertEquals(400, get("/v1/museum/Alpakaa/" + APPLE, auth).status());
+        assertTrue(r.body().contains("\"museum\":{}"), r.body());
+    }
+
+    @Test
+    void theGardenAndMuseumAreAskedForOnAGuessOfTheProfile() {
+        Map<String, String> auth = auth();
+        // The mod's hint was right: three requests, none twice.
+        assertEquals(200, get("/v1/dashboard/" + PLAYER + "?hint=" + APPLE, auth).status());
+        assertEquals(3, asked.size());
+
+        // A while later the profile chosen last time is the guess, whatever the mod hints at.
+        now.addAndGet(Api.OWN_MAX_AGE_MS + 1);
+        asked.clear();
+        assertEquals(200, get("/v1/dashboard/" + PLAYER + "?hint=" + KIWI, auth).status());
+        assertEquals(3, asked.size());
+        assertFalse(asked.toString().contains("22222222"), asked.toString());
+
+        // A wrong hint for a player not seen before is put right: the selected profile comes with its own.
+        asked.clear();
+        Api.Response r = get("/v1/dashboard/" + OTHER + "?hint=" + KIWI, auth);
+        assertTrue(r.body().contains("\"cute_name\":\"Apple\",\"selected\":true"), r.body());
+        assertTrue(r.body().contains("\"garden\":{\"garden_experience\":150"), r.body());
+        assertEquals(5, asked.size());
+        assertEquals(2, asked.stream().filter(p -> p.contains("garden")).count());
     }
 
     @Test
@@ -313,21 +334,18 @@ class ApiTest {
         assertEquals(404, get("/v1/skyblock/museum/" + PLAYER, auth).status());
         assertEquals(404, get("/v2/skyblock/profiles", auth).status());
         assertEquals(404, get("/v1/garden/" + APPLE, auth).status());
+        assertEquals(404, get("/v1/museum/" + PLAYER + "/" + APPLE, auth).status());
         assertTrue(asked.isEmpty());
     }
 
     @Test
     void aPlayerCantSpendTheKey() {
         Map<String, String> auth = auth();
-        // A profile not seen before takes two requests to Hypixel; forty-five are a player's in five minutes.
-        for (int i = 0; i < 22; i++) {
+        // A profile not seen before takes three requests to Hypixel; forty-five are a player's in five minutes.
+        for (int i = 0; i < 15; i++) {
             assertEquals(200, get("/v1/dashboard/" + String.format("%032x", i), auth).status());
         }
-        assertEquals(44, asked.size());
-        // The last one goes to the profile, which is then shown without its garden.
-        Api.Response last = get("/v1/dashboard/" + String.format("%032x", 50), auth);
-        assertEquals(200, last.status());
-        assertTrue(last.body().contains("\"garden\":null"));
+        assertEquals(45, asked.size());
         Api.Response refused = get("/v1/dashboard/" + String.format("%032x", 99), auth);
         assertEquals(429, refused.status());
         assertNotNull(refused.headers().get("Retry-After"));
@@ -340,7 +358,10 @@ class ApiTest {
     void theKeysLastRequestsAreKept() {
         Map<String, String> auth = auth();
         remaining = Api.KEY_RESERVE - 1;
-        assertEquals(200, get("/v1/dashboard/" + PLAYER, auth).status());
+        // The profile still came; its garden and museum would have gone into the reserve.
+        Api.Response first = get("/v1/dashboard/" + PLAYER, auth);
+        assertEquals(200, first.status());
+        assertTrue(first.body().contains("\"garden\":null,\"museum\":null"), first.body());
         Api.Response busy = get("/v1/dashboard/" + OTHER, auth);
         assertEquals(503, busy.status());
         assertNotNull(busy.headers().get("Retry-After"));
@@ -362,10 +383,11 @@ class ApiTest {
         assertTrue(key.body().contains("Hypixel key"), key.body());
         status = 500;
         assertEquals(502, get("/v1/dashboard/" + PLAYER, auth).status());
-        assertEquals(502, get("/v1/museum/" + PLAYER + "/" + APPLE, auth).status());
         status = 200;
-        assertEquals("MISS", get("/v1/dashboard/" + PLAYER, auth).headers().get("X-Cache"));
-        assertEquals("MISS", get("/v1/museum/" + PLAYER + "/" + APPLE, auth).headers().get("X-Cache"));
+        Api.Response ok = get("/v1/dashboard/" + PLAYER, auth);
+        assertEquals("MISS", ok.headers().get("X-Cache"));
+        // Nor was the museum's refusal kept: it is there now.
+        assertTrue(ok.body().contains("\"museum\":{\"value\":9"), ok.body());
     }
 
     @Test

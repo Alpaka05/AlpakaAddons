@@ -43,9 +43,8 @@ class ProfileApiNetworkOffTest {
     @Test
     void noRequestGoesOut() {
         String uuid = "8f16f5a695d3468392aed51c1a5bb037";
-        failsAtOnce(AlpakaApi.dashboard("Alpakaa", null, false));
-        failsAtOnce(AlpakaApi.dashboard(uuid, "p1", true));
-        failsAtOnce(AlpakaApi.museum(uuid, "p1", false));
+        failsAtOnce(AlpakaApi.dashboard("Alpakaa", null, null, false));
+        failsAtOnce(AlpakaApi.dashboard(uuid, "p1", null, true));
         failsAtOnce(ProfileApi.soopyHistory(uuid, "p1", 0));
         failsAtOnce(ProfileApi.skykingsUser(uuid, "<token>"));
         failsAtOnce(ProfileApi.bingo());

@@ -54,11 +54,15 @@ final class AlpakaApi {
     /**
      * A player and one of their SkyBlock profiles, as Hypixel has them: who they are, the profiles
      * they are on, and of one profile - {@code profileId}, or the selected one for null - the
-     * player's own data, what its co-op shares, and its garden. {@code player} is a name or a UUID.
+     * player's own data, what its co-op shares, its garden and what the player gave its museum.
+     * {@code player} is a name or a UUID.
+     *
+     * {@code hint} is the profile shown the last time, if any: the API can then ask Hypixel for
+     * that profile's garden and museum while it still waits for the profiles, instead of after.
      * {@code fresh} is the Refresh button: the API then asks Hypixel again if its answer is more
      * than a minute old.
      */
-    static CompletableFuture<JsonElement> dashboard(String player, String profileId, boolean fresh) {
+    static CompletableFuture<JsonElement> dashboard(String player, String profileId, String hint, boolean fresh) {
         if (!ProfileApi.allowed()) return CompletableFuture.failedFuture(new ProfileApi.NetworkOff());
         if (!player.matches("[A-Za-z0-9_-]{1,36}")) {
             return CompletableFuture.failedFuture(new ProfileApi.NotFound("\"" + player + "\" is no Minecraft name."));
@@ -68,15 +72,12 @@ final class AlpakaApi {
         if (profileId != null) {
             path.append(next).append("profile=").append(profileId.replace("-", ""));
             next = '&';
+        } else if (hint != null && hint.matches("[0-9a-fA-F-]{32,36}")) {
+            path.append(next).append("hint=").append(hint.replace("-", ""));
+            next = '&';
         }
         if (fresh) path.append(next).append("fresh=1");
         return get(path.toString(), true);
-    }
-
-    /** What a player donated to the museum of one of their profiles. */
-    static CompletableFuture<JsonElement> museum(String uuid, String profileId, boolean fresh) {
-        if (!ProfileApi.allowed()) return CompletableFuture.failedFuture(new ProfileApi.NetworkOff());
-        return get("/v1/museum/" + uuid.replace("-", "") + "/" + profileId.replace("-", "") + (fresh ? "?fresh=1" : ""), true);
     }
 
     private static CompletableFuture<JsonElement> get(String path, boolean mayLogInAgain) {

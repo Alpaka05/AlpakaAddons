@@ -16,8 +16,7 @@ import java.util.function.LongSupplier;
  * player ever reaches this server, and a challenge works once only (see {@link Challenges}).
  *
  * Logged in, a player may ask for what the Profile Dashboard shows of a player
- * ({@code /v1/dashboard/<name or uuid>}) and of their museum ({@code /v1/museum/<uuid>/<profile>}).
- * It is fetched from Hypixel with the server's key only when asked for, cut down to the dashboard's
+ * ({@code /v1/dashboard/<name or uuid>}). It is fetched from Hypixel with the server's key only when asked for, cut down to the dashboard's
  * fields ({@link Dashboard}), cached, and limited per player, so the key's budget can't be spent by
  * one of them. It is not a copy of Hypixel's API: there is no way to ask for Hypixel's answer as it
  * is. Nothing is fetched on its own and nothing is kept about who asked for what.
@@ -133,8 +132,8 @@ final class Api {
         this.cache = new ResponseCache(CACHE_CHARS, clock);
         // Ten challenges, so ten logins, per address in ten minutes; a player logs in once per game start.
         this.logins = new RateLimit(10, 10 * 60_000L, clock);
-        // Opening a profile takes two requests; ninety in five minutes is a busy player.
-        this.requests = new RateLimit(90, 5 * 60_000L, clock);
+        // Opening a profile takes one request; sixty in five minutes is a busy player.
+        this.requests = new RateLimit(60, 5 * 60_000L, clock);
         // Of those, at most forty-five may go to Hypixel - a profile not cached takes three - which
         // is under a sixth of the key's 300.
         this.fetches = new RateLimit(45, 5 * 60_000L, clock);
@@ -152,7 +151,6 @@ final class Api {
         if (path.equals("/v1/auth/challenge")) return challenge(r);
         if (path.equals("/v1/auth")) return login(r);
         if (path.startsWith("/v1/dashboard/")) return dashboard(r, path.substring("/v1/dashboard/".length()));
-        if (path.startsWith("/v1/museum/")) return museum(r, path.substring("/v1/museum/".length()));
         return Response.error(404, "Not found");
     }
 
@@ -201,9 +199,18 @@ final class Api {
         }
     }
 
+    /** What Hypixel hands out apart from a profile: its garden and the player's part of its museum, as JSON or null. */
+    private record Extras(String garden, String museum) {}
+
     /**
      * A player with their profiles and the dashboard's data of one of them: the one named with
      * {@code ?profile=}, else the selected one. {@code ?fresh=1} is the dashboard's Refresh.
+     *
+     * Hypixel is asked three things for it: the profiles, and the chosen profile's garden and
+     * museum. Which profile is chosen only shows in the profiles, so the other two would have to
+     * wait for them. They are asked for alongside wherever a good guess can be made: the profile
+     * named, the one chosen the last time this player was looked up, or the one the mod last
+     * showed ({@code ?hint=}). A wrong guess costs two requests and is put right at once.
      */
     private Response dashboard(Request r, String rest) {
         String player = player(r);
@@ -222,12 +229,19 @@ final class Api {
             CompletableFuture<Accounts.Account> alongside = direct == null ? null
                     : CompletableFuture.supplyAsync(() -> owner(direct), Thread::startVirtualThread);
             long maxAge = maxAge(uuid.equals(player), "1".equals(r.param("fresh")));
+            String wanted = Ids.uuid(r.param("profile"));
 
             ResponseCache.Entry index = cache.get("profiles/" + uuid, maxAge);
             boolean hit = index != null;
-            if (index == null) index = loadProfiles(uuid, player);
+            String guess = null;
+            CompletableFuture<Extras> early = null;
+            if (index == null) {
+                ResponseCache.Entry last = cache.get("profiles/" + uuid, Long.MAX_VALUE);
+                guess = wanted != null ? wanted : last != null ? pick(last.body(), null) : Ids.uuid(r.param("hint"));
+                if (guess != null) early = extras(uuid, guess, maxAge, player);
+                index = loadProfiles(uuid, player);
+            }
 
-            String wanted = Ids.uuid(r.param("profile"));
             String id = pick(index.body(), wanted);
             ResponseCache.Entry profile = id == null ? null : cache.get("profile/" + uuid + "/" + id, Long.MAX_VALUE);
             if (id != null && (profile == null || profile.fetchedAt() < index.fetchedAt())) {
@@ -237,16 +251,19 @@ final class Api {
                 id = pick(index.body(), wanted);
                 profile = id == null ? null : cache.get("profile/" + uuid + "/" + id, Long.MAX_VALUE);
             }
-            String garden = id == null ? null : garden(id, maxAge, player);
+            Extras extras = id == null ? new Extras(null, null)
+                    : (early != null && id.equals(guess) ? early : extras(uuid, id, maxAge, player)).join();
             Accounts.Account account = alongside != null ? alongside.join() : named;
             if (account == null) return Response.error(404, "No Minecraft account with that UUID");
 
-            StringBuilder body = new StringBuilder(256 + (profile == null ? 0 : profile.body().length()));
+            int size = 256 + (profile == null ? 0 : profile.body().length()) + (extras.museum() == null ? 0 : extras.museum().length());
+            StringBuilder body = new StringBuilder(size);
             body.append("{\"success\":true,\"fetchedAt\":").append(index.fetchedAt());
             body.append(",\"player\":").append(Json.write(accountJson(account)));
             body.append(",\"profiles\":").append(index.body());
             body.append(",\"profile\":").append(profile == null ? "null" : profile.body());
-            body.append(",\"garden\":").append(garden == null ? "null" : garden);
+            body.append(",\"garden\":").append(extras.garden() == null ? "null" : extras.garden());
+            body.append(",\"museum\":").append(extras.museum() == null ? "null" : extras.museum());
             body.append('}');
             return answer(body.toString(), hit, index.fetchedAt());
         } catch (Refusal refusal) {
@@ -254,39 +271,32 @@ final class Api {
         }
     }
 
-    /** What the player with this UUID donated to the museum of one profile. */
-    private Response museum(Request r, String rest) {
-        String player = player(r);
-        if (player == null) return Response.error(401, "Log in first");
-        int slash = rest.indexOf('/');
-        String uuid = slash < 0 ? null : Ids.uuid(rest.substring(0, slash));
-        String profile = slash < 0 ? null : Ids.uuid(rest.substring(slash + 1));
-        if (uuid == null || profile == null) return Response.error(400, "Not a UUID and a profile id");
-        if (!requests.tryUse(player)) {
-            return Response.error(429, "Too many requests").with("Retry-After", String.valueOf(requests.retryAfterSeconds(player)));
-        }
-        long maxAge = maxAge(uuid.equals(player), "1".equals(r.param("fresh")));
+    /** A profile's garden and the player's museum on it, each asked for on a thread of its own. */
+    private CompletableFuture<Extras> extras(String uuid, String profile, long maxAge, String player) {
+        CompletableFuture<String> garden = CompletableFuture.supplyAsync(() -> garden(profile, maxAge, player), Thread::startVirtualThread);
+        CompletableFuture<String> museum = CompletableFuture.supplyAsync(() -> museum(uuid, profile, maxAge, player), Thread::startVirtualThread);
+        return garden.thenCombine(museum, Extras::new);
+    }
+
+    /**
+     * What the player donated to a profile's museum as JSON - an empty object for nothing - or null
+     * when Hypixel doesn't hand it out right now: a profile is worth showing without it.
+     */
+    private String museum(String uuid, String profile, long maxAge, String player) {
         String key = "museum/" + profile + "/" + uuid;
         ResponseCache.Entry cached = cache.get(key, maxAge);
-        boolean hit = cached != null;
+        if (cached != null) return cached.body();
         try {
-            if (cached == null) {
-                Upstream.Result result = fetch("/v2/skyblock/museum?profile=" + Ids.dashed(profile), player);
-                String museum;
-                try {
-                    museum = Dashboard.museum(result.body(), uuid);
-                } catch (IllegalArgumentException e) {
-                    System.err.println("Hypixel's museum answer couldn't be read: " + e.getMessage());
-                    return Response.error(502, "Hypixel's answer couldn't be read");
-                }
-                cache.put(key, 200, museum);
-                cached = cache.get(key, Long.MAX_VALUE);
-                if (cached == null) cached = new ResponseCache.Entry(200, museum, clock.getAsLong());
-            }
+            Upstream.Result result = fetch("/v2/skyblock/museum?profile=" + Ids.dashed(profile), player);
+            String museum = Dashboard.museum(result.body(), uuid);
+            cache.put(key, 200, museum);
+            return museum;
         } catch (Refusal refusal) {
-            return refusal.response;
+            return null;
+        } catch (RuntimeException e) {
+            System.err.println("Hypixel's museum answer couldn't be read: " + e.getMessage());
+            return null;
         }
-        return answer("{\"success\":true,\"fetchedAt\":" + cached.fetchedAt() + ",\"museum\":" + cached.body() + "}", hit, cached.fetchedAt());
     }
 
     private static long maxAge(boolean own, boolean refresh) {
@@ -386,7 +396,7 @@ final class Api {
             // Hypixel answers 404 for a profile that never had a garden; that is worth remembering.
             if (refusal.response.status() == 404) cache.put(key, 404, "");
             return null;
-        } catch (IllegalArgumentException e) {
+        } catch (RuntimeException e) {
             System.err.println("Hypixel's garden answer couldn't be read: " + e.getMessage());
             return null;
         }

@@ -51,7 +51,7 @@ public final class ProfileSession {
     private volatile JsonElement answer;
     /** Every inventory of the profile on show, by name; the museum joins them when it arrives. */
     private volatile Map<String, JsonElement> inventories = Map.of();
-    /** How asking for the museum went; null before it was asked for. */
+    /** Whether the museum came with the profile on show; null before the profile is there. */
     private volatile State museumState;
     /**
      * Counts up whenever what the networth is made of changes - another profile, a refresh, the
@@ -126,7 +126,11 @@ public final class ProfileSession {
         CompletableFuture<JsonElement> bingo = ProfileApi.bingo().exceptionally(e -> null);
         // By UUID once it is known: a name can change hands, and the API needn't ask Mojang again.
         String player = uuid != null ? uuid : query;
-        AlpakaApi.dashboard(player, wantedProfile, fresh).thenCombine(bingo, (first, event) -> {
+        // The profile shown the last time is most likely the one shown now, which lets the API ask
+        // Hypixel for everything at once. With Network Features off nothing is asked, so nothing is looked up.
+        String hint = wantedProfile != null || !ProfileApi.allowed() ? null
+                : profileId != null ? profileId : ProfileHistory.lastProfile(player);
+        AlpakaApi.dashboard(player, wantedProfile, hint, fresh).thenCombine(bingo, (first, event) -> {
             readAccount(HypixelProfile.account(first), event, System.currentTimeMillis());
             return first;
         }).thenCompose(first -> {
@@ -136,7 +140,7 @@ public final class ProfileSession {
             // The API answers with the profile the player has selected, which is the one wanted
             // unless that is a Bingo profile no longer shown.
             if (id.equals(Json.str(first, "profile.profile_id"))) return CompletableFuture.completedFuture(first);
-            return AlpakaApi.dashboard(player, id, fresh);
+            return AlpakaApi.dashboard(player, id, null, fresh);
         }).whenComplete((loaded, failure) -> {
             refreshing = false;
             if (failure != null) {
@@ -151,18 +155,28 @@ public final class ProfileSession {
             // Whichever profile came is the one on show, should the one asked for be gone.
             profileId = sent;
             try {
-                Map<String, JsonElement> read = HypixelProfile.inventories(loaded, (name, e) ->
-                        net.alpaka.addons.AlpakaAddons.LOGGER.warn("Profile Dashboard: couldn't read {} of {}: {}", name, playerName, e.toString()));
-                // A refresh keeps the museum and the networth on show until their new ones are there.
+                java.util.function.BiConsumer<String, Exception> unreadable = (name, e) ->
+                        net.alpaka.addons.AlpakaAddons.LOGGER.warn("Profile Dashboard: couldn't read {} of {}: {}", name, playerName, e.toString());
+                Map<String, JsonElement> read = HypixelProfile.inventories(loaded, unreadable);
+                // The museum comes with the profile, unless Hypixel didn't hand it out this time.
+                boolean museumCame = Json.at(loaded, "museum") != null;
+                if (museumCame) {
+                    com.google.gson.JsonObject museum = HypixelProfile.museum(loaded, unreadable);
+                    if (!Json.obj(museum, "items").isEmpty()) read.put("museum", museum);
+                }
+                // A refresh keeps the networth on show until the new one is worked out, and the
+                // museum if this answer came without it.
                 ProfileData shown = data;
                 boolean same = shown != null && profileId.equals(shown.profileId);
-                JsonElement museum = same ? inventories.get("museum") : null;
+                JsonElement kept = same && !museumCame ? inventories.get("museum") : null;
+                if (kept != null) read.put("museum", kept);
                 if (!same) forgetProfile();
-                if (museum != null) read.put("museum", museum);
                 answer = loaded;
                 inventories = read;
-                worthWanted.incrementAndGet();
+                museumState = museumCame ? State.READY : State.FAILED;
                 show();
+                // Only now, with the new profile on show: a networth begun on the old one is dropped.
+                worthWanted.incrementAndGet();
             } catch (RuntimeException e) {
                 // An answer shaped unlike what is expected must not leave the dashboard on Loading.
                 fail(e);
@@ -171,7 +185,6 @@ public final class ProfileSession {
             error = null;
             state = State.READY;
             ProfileData parsed = data;
-            loadMuseum(parsed, fresh);
             loadSoopyHistory(parsed);
             loadSkyKings(parsed);
         });
@@ -619,21 +632,21 @@ public final class ProfileSession {
             };
 
     /**
-     * Works the networth out once everything it is made of is there: the profile, its museum (or
-     * the knowledge that it can't be had), the prices and Hypixel's item list. Called every frame
-     * the dashboard is open; a few comparisons when there is nothing to do. Prices that change
+     * Works the networth out once everything it is made of is there: the profile with its museum,
+     * the prices and Hypixel's item list. Called every frame the dashboard is open; a few
+     * comparisons when there is nothing to do. Prices that change
      * afterwards leave the number as it is - it would only flicker - until the profile is read again.
      */
     public void sync() {
         syncSkyKings();
-        ProfileData d = data;
-        if (d == null || state != State.READY || networthRunning) return;
         int wanted = worthWanted.get();
         if (worthDone == wanted) return;
-        if (museumState == null || museumState == State.LOADING) return;
+        // Asked for from the first frame, so the prices load while the profile does. Asking for a
+        // name is what makes the item list load.
         net.alpaka.addons.features.itemvalue.ItemPrices.refresh();
-        // Asking for a name is what makes the item list load.
         net.alpaka.addons.features.market.ItemIcons.name("DIAMOND");
+        ProfileData d = data;
+        if (d == null || state != State.READY || networthRunning) return;
         if (net.alpaka.addons.features.itemvalue.ItemPrices.failed()) {
             // Without prices there is nothing to add up; what was shown before stays.
             if (networth == null) networthState = State.FAILED;
@@ -704,8 +717,8 @@ public final class ProfileSession {
     public static final String RIFT = "rift_";
 
     /**
-     * An inventory's contents by its name; null when the profile has no such inventory, or for the
-     * museum while it loads. They all come with the profile, so none is waited for.
+     * An inventory's contents by its name; null when the profile has no such inventory. They all
+     * come with the profile, so none is waited for.
      */
     public JsonElement inventory(String name) {
         return data == null ? null : inventories.get(name);
@@ -724,39 +737,10 @@ public final class ProfileSession {
         return "Hypixel lists no Rift inventories for this profile. Is its Inventory API on?";
     }
 
-    /** What the player donated to the museum of the profile on show, which Hypixel hands out apart from the profile. */
-    private void loadMuseum(ProfileData parsed, boolean fresh) {
-        if (parsed == null) return;
-        String id = parsed.profileId;
-        museumState = State.LOADING;
-        AlpakaApi.museum(parsed.uuid, id, fresh).whenComplete((loaded, failure) -> {
-            if (!id.equals(profileId)) return;
-            if (failure != null) {
-                net.alpaka.addons.AlpakaAddons.LOGGER.warn("Profile Dashboard: museum of {} failed: {}", playerName, failure.toString());
-                museumState = State.FAILED;
-                return;
-            }
-            try {
-                com.google.gson.JsonObject museum = HypixelProfile.museum(loaded, (name, e) ->
-                        net.alpaka.addons.AlpakaAddons.LOGGER.warn("Profile Dashboard: couldn't read a museum item: {}", e.toString()));
-                Map<String, JsonElement> all = new java.util.LinkedHashMap<>(inventories);
-                if (Json.obj(museum, "items").isEmpty()) all.remove("museum");
-                else all.put("museum", museum);
-                inventories = all;
-                // The networth counts the museum, so it is worked out again with it.
-                worthWanted.incrementAndGet();
-                show();
-                museumState = State.READY;
-            } catch (RuntimeException e) {
-                net.alpaka.addons.AlpakaAddons.LOGGER.warn("Profile Dashboard: couldn't read the museum", e);
-                museumState = State.FAILED;
-            }
-        });
-    }
-
     /** Lets the museum, the networth and the collections be asked for again after they failed. */
     public void retryFailed() {
-        if (museumState == State.FAILED) loadMuseum(data, false);
+        // The museum comes with the profile: asking for the profile again asks for it again.
+        if (museumState == State.FAILED) refresh();
         if (networthState == State.FAILED) {
             networthState = null;
             worthWanted.incrementAndGet();

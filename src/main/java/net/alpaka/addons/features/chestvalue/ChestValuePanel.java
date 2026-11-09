@@ -818,8 +818,9 @@ public final class ChestValuePanel {
             int tint = color == null || color == OTHER ? AlpakaStyle.TEXT_MUTED : color;
             ModernGuiUtils.drawRoundedRect(graphics, x + 4, y + 1, shareW, h - 2, AlpakaStyle.ROW_RADIUS, MarketIcons.fade(tint, 0.13f));
         }
-        if (linked) ModernGuiUtils.drawRoundedRect(graphics, x + 4, y + 3, 2, h - 6, 1, AlpakaStyle.accent());
-        else if (color != null && color != OTHER) ModernGuiUtils.drawRoundedRect(graphics, x + 4, y + 5, 2, h - 10, 1, color);
+        // The line's color in the chart, as a dot like Item Value's; the lighter row alone says which
+        // line the mouse or the chart points at.
+        if (color != null && color != OTHER) ModernGuiUtils.drawRoundedRect(graphics, x + 3, y + (h - 4) / 2, 4, 4, 2, color);
 
         // Far enough in that a three-digit amount on the icon stays clear of the color mark.
         int ix = x + PAD + 3;

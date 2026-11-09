@@ -52,7 +52,6 @@ object InventoryButtonsSkin {
     fun row(graphics: GuiGraphicsExtractor, x: Int, y: Int, w: Int, h: Int, hover: Boolean, selected: Boolean) {
         ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, AlpakaStyle.ROW_RADIUS,
             if (selected) AlpakaStyle.ROW_SELECTED else if (hover) AlpakaStyle.ROW_HOVER else AlpakaStyle.ROW)
-        if (selected) AlpakaStyle.selectionMark(graphics, x, y, h)
     }
 
     /** The well the icon grid sits in. */

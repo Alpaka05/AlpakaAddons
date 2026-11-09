@@ -422,8 +422,9 @@ public class MarketInputScreen extends SignEditScreen {
             if (hover && moved) highlight = i;
             boolean lit = i == highlight;
             if (lit) {
-                ModernGuiUtils.drawRoundedRect(graphics, rx, ry, rw, SUGGESTION_H, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW_SELECTED);
-                ModernGuiUtils.drawRoundedRect(graphics, rx, ry + 5, 2, SUGGESTION_H - 10, 1, accent);
+                // The list lies on the field's own color, so the row the keys or the mouse are on is
+                // the field's hover shade: a clear step lighter in every theme.
+                ModernGuiUtils.drawRoundedRect(graphics, rx, ry, rw, SUGGESTION_H, AlpakaStyle.ROW_RADIUS, AlpakaStyle.fieldHover());
             }
             // The item itself, by its tag; a recent search no list knows keeps a clock.
             ItemStack icon = ItemIcons.forItem(ItemTags.suggestionTag(s.name(), context), s.name());
@@ -693,7 +694,6 @@ public class MarketInputScreen extends SignEditScreen {
             if (moved && AlpakaStyle.inside(mouseX, mouseY, x, ry, w, SPEED_ROW_H)) speedHighlight = i;
             boolean hover = i == speedHighlight;
             ModernGuiUtils.drawRoundedRect(graphics, x, ry, w, SPEED_ROW_H, AlpakaStyle.ROW_RADIUS, hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW);
-            if (hover) ModernGuiUtils.drawRoundedRect(graphics, x, ry + 4, 2, SPEED_ROW_H - 8, 1, accent);
             // The crops' items, overlapping a little so four fit.
             int ix = x + 5;
             for (String crop : group.crops()) {

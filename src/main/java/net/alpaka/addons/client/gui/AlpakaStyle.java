@@ -8,7 +8,8 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
  * itself, the color picker, the command wheel editor, the HUD editor's bar and the confirmation
  * dialog - so they read as parts of one menu: a dark rounded panel with a soft shadow that pops
  * open, a hairline under the header, slim rows that only show a background on hover, the accent
- * for whatever is active, and the menu font without shadows.
+ * for whatever is active, and the menu font without shadows. What is selected in a list is named
+ * in the accent color, with its dot ({@link #listDot}), as the config's sidebar does it.
  *
  * Hover goes one step lighter: a setting row from the panel to {@link #ROW}, a card from
  * {@link #ROW} to {@link #ROW_HOVER}; buttons, which sit on rows themselves, go to
@@ -311,12 +312,13 @@ public final class AlpakaStyle {
     }
 
     /**
-     * What marks the selected entry of a list in every window: a short bar in the accent at its left
-     * edge, on the row's own lighter background.
+     * The small dot in front of a list's entry, as the config's sidebar has it. What is selected is
+     * said the sidebar's way in every list of the mod: the entry's dot and name in the accent color
+     * ({@link #accentText}). Never a bar at the row's edge and never a pill behind the selected row;
+     * a background belongs to the mouse (hover) and to cards.
      */
-    public static void selectionMark(GuiGraphicsExtractor graphics, int x, int y, int h) {
-        int inset = Math.max(3, h / 4);
-        ModernGuiUtils.drawRoundedRect(graphics, x, y + inset, 2, h - inset * 2, 1, accentIndicator());
+    public static void listDot(GuiGraphicsExtractor graphics, int x, int y, int color) {
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, 2, 2, 1, color);
     }
 
     /** A field's background while the mouse is on it: a step lighter than the field itself. */
@@ -605,15 +607,16 @@ public final class AlpakaStyle {
     }
 
     /**
-     * One name of an open choice list, marked the way every list marks its selected entry: the
-     * current choice on the lighter row with the accent bar at its edge.
+     * One name of an open choice list, said the way the config's sidebar says it: a dot and the
+     * name, both in the accent color for the current choice. The row under the mouse turns lighter.
      */
     public static void choiceEntry(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int h,
                                    String name, boolean current, boolean hover) {
-        if (current || hover) ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, ROW_RADIUS, current ? ROW_SELECTED : ROW);
-        if (current) selectionMark(graphics, x, y, h);
-        int color = current || hover ? TEXT : TEXT_SOFT;
-        graphics.text(font, GuiFont.text(ellipsize(font, name, w - 20)), x + 10, y + (h - 8) / 2, color, false);
+        if (hover) ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, ROW_RADIUS, ROW);
+        int color = current ? accentTextOn(hover ? ROW : PANEL) : hover ? TEXT : TEXT_SOFT;
+        int ty = y + (h - 8) / 2;
+        listDot(graphics, x + 5, ty + 3, color);
+        graphics.text(font, GuiFont.text(ellipsize(font, name, w - 17)), x + 11, ty, color, false);
     }
 
     /**

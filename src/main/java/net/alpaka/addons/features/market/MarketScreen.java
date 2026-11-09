@@ -140,9 +140,6 @@ public class MarketScreen extends ContainerScreen {
     private final Map<ItemStack, Integer> rarityCache = new IdentityHashMap<>();
 
     private final Map<Integer, Float> hoverProgress = new HashMap<>();
-    /** The selected category's marker, gliding to its row. */
-    private float indicatorY = Float.NaN;
-    private int indicatorColor = 0;
     private final Scroll contentScroll = new Scroll();
     private final Scroll sideScroll = new Scroll();
 
@@ -260,8 +257,6 @@ public class MarketScreen extends ContainerScreen {
     /** Takes over from the page it replaces, so turning a page doesn't look like a new window. */
     private void continueFrom(MarketScreen previous) {
         continued = true;
-        indicatorY = previous.indicatorY;
-        indicatorColor = previous.indicatorColor;
         sideScroll.current = previous.sideScroll.current;
         sideScroll.target = previous.sideScroll.target;
     }
@@ -565,34 +560,15 @@ public class MarketScreen extends ContainerScreen {
         if (!m.categories.isEmpty()) {
             rowY = groupStart(graphics, "Categories", x, rowY, w, compact, first);
             first = false;
-            float targetY = Float.NaN;
-            int targetColor = 0;
-            int at = rowY;
-            for (MarketMenu.Category category : m.categories) {
-                if (category.selected()) {
-                    targetY = at;
-                    targetColor = category.kind().color;
-                }
-                at += rowH + 1;
-            }
-            // The marker glides from the category it was on, also across a page change.
-            if (!Float.isNaN(targetY)) {
-                if (Float.isNaN(indicatorY)) indicatorY = targetY;
-                indicatorY = PloppAnimation.interpolate(indicatorY, targetY, deltaSec, 16.0f);
-                indicatorColor = indicatorColor == 0 ? targetColor : ModernGuiUtils.lerpColor(indicatorColor, targetColor, Math.min(1f, deltaSec * 12f));
-                int iy = Math.round(indicatorY);
-                ModernGuiUtils.drawRoundedRect(graphics, rowX, iy, rowW, rowH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW_SELECTED);
-                ModernGuiUtils.drawRoundedRect(graphics, rowX, iy + 4, 2, rowH - 8, 1, indicatorColor);
-            }
             for (MarketMenu.Category category : m.categories) {
                 boolean hover = inClip && AlpakaStyle.inside(mx, my, rowX, rowY, rowW, rowH);
-                if (hover && !category.selected()) {
-                    ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, rowH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
-                }
+                if (hover) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, rowH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
                 // Hypixel's own item for the category, as the other buttons show theirs.
                 int slot = category.slot();
                 sideItem(graphics, stack(slot), rowX, rowY, rowH);
-                int text = category.selected() || hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
+                // The open category is named in its own color, the one Hypixel gives it; nothing
+                // behind it and nothing at its edge.
+                int text = category.selected() ? MarketInk.ink(category.kind().color) : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
                 int nameW = rowW - 26;
                 int categoryKey = nextCategoryKey(slot);
                 // The keys show while Shift is held, the one that picks a category with a number.

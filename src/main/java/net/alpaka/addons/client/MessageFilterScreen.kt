@@ -167,7 +167,7 @@ class MessageFilterScreen(private val parent: Screen) : Screen(GuiFont.text("Cus
                 hovered -> AlpakaStyle.ROW_HOVER
                 else -> AlpakaStyle.ROW
             })
-        if (selected) AlpakaStyle.selectionMark(graphics, x, y, ITEM_H)
+        if (selected) ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, ITEM_H, AlpakaStyle.CARD_RADIUS, AlpakaStyle.accentDim())
 
         val switchY = y + (ITEM_H - SWITCH_H) / 2
         AlpakaStyle.toggle(graphics, x + 6, switchY, SWITCH_W, SWITCH_H, if (filter.enabled) 1f else 0f)

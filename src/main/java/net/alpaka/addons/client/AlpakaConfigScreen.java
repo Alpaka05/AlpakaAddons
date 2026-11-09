@@ -59,7 +59,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     private static final int PAD = AlpakaStyle.PAD;
     private static final int LINE_H = 9;
     private static final int GROUP_LABEL_H = 13;
-    private static final int SECTION_ROW_H = 14;
+    private static final int SECTION_ROW_H = 13;
     private static final int FEATURE_ROW_H = AlpakaStyle.CARD_H;
     private static final int FEATURE_ROW_GAP = AlpakaStyle.CARD_GAP;
     private static final int SETTING_ROW_H = 16;
@@ -390,12 +390,12 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
 
     /** The sidebar: as wide as its longest section name needs, the rest going to the features. */
     private int fullSidebarW() {
-        return Math.max(76, Math.min(104, (int) (fullPanelW() * 0.19)));
+        return Math.max(84, Math.min(104, (int) (fullPanelW() * 0.19)));
     }
 
     /** The features' column: wide enough that most names fit beside their switch uncut. */
     private int fullFeatureColumnW() {
-        return (int) ((fullPanelW() - fullSidebarW()) * 0.45);
+        return (int) ((fullPanelW() - fullSidebarW()) * 0.46);
     }
 
     /** Setup mode's width: the settings column alone, a little wider than in the full menu. */
@@ -661,7 +661,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     private void drawSidebar(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w, int h, float deltaSec) {
         // The HUD editor's button sits in the bottom corner, below the sections, so it is one
         // click away whichever section is open.
-        int footerH = AlpakaStyle.BUTTON_H + PAD + 4;
+        int footerH = AlpakaStyle.BUTTON_H + PAD + 9;
         drawHudEditorButton(graphics, mouseX, mouseY, x, y + h - AlpakaStyle.BUTTON_H - PAD, w);
 
         int clipY = y + 4;
@@ -706,18 +706,12 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             for (ConfigTree.Section section : group.sections) {
                 boolean selected = !searching() && section == selectedSection;
                 boolean hover = inside(mouseX, mouseY, x, rowY, w, SECTION_ROW_H) && inside(mouseX, mouseY, x, clipY, w, clipH);
-                int color = selected || hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
-                // The same marks as the feature list: a lighter row on hover, and the selected one
-                // with the accent bar at its edge.
-                int pillX = x + PAD - 3;
-                int pillW = w - PAD * 2 + 6;
-                if (selected || hover) {
-                    ModernGuiUtils.drawRoundedRect(graphics, pillX, rowY, pillW, SECTION_ROW_H, AlpakaStyle.ROW_RADIUS,
-                            selected ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW);
-                }
-                if (selected) AlpakaStyle.selectionMark(graphics, pillX, rowY, SECTION_ROW_H);
-                String label = ellipsize(section.title, pillW - 12);
-                graphics.text(this.font, GuiFont.text(label), x + PAD + 4, rowY + (SECTION_ROW_H - 8) / 2, color, false);
+                // How every list of the mod says what is selected: its dot and its name in the
+                // accent color, nothing behind it and nothing at its edge.
+                int color = selected ? AlpakaStyle.accentText() : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
+                String label = ellipsize(section.title, w - PAD - 14);
+                AlpakaStyle.listDot(graphics, x + PAD + 1, rowY + 5, color);
+                graphics.text(this.font, GuiFont.text(label), x + PAD + 7, rowY + 2, color, false);
                 if (visible(rowY, SECTION_ROW_H, clipY, clipH)) {
                     hits.add(new Hit(x, Math.max(rowY, clipY), w, SECTION_ROW_H, (mx, my) -> {
                         if (searching()) {
@@ -739,8 +733,9 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     }
 
     private void drawHudEditorButton(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w) {
-        int bx = x + PAD - 3;
-        int bw = w - PAD * 2 + 6;
+        int bx = x + PAD;
+        int bw = w - PAD * 2;
+        ModernGuiUtils.drawRect(graphics, bx, y - 9, bw, 1, AlpakaStyle.LINE);
         boolean hover = inside(mouseX, mouseY, bx, y, bw, AlpakaStyle.BUTTON_H);
         AlpakaStyle.button(graphics, this.font, bx, y, bw, AlpakaStyle.BUTTON_H,
                 ellipsize("HUD Editor", bw - 8), hover, AlpakaStyle.ButtonKind.PLAIN);
@@ -790,7 +785,6 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                 boolean hover = inside(mouseX, mouseY, rowX, rowY, rowW, FEATURE_ROW_H) && inside(mouseX, mouseY, x, clipY, w, clipH);
                 int background = selected ? AlpakaStyle.ROW_SELECTED : hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW;
                 ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, FEATURE_ROW_H, AlpakaStyle.CARD_RADIUS, background);
-                if (selected) AlpakaStyle.selectionMark(graphics, rowX, rowY, FEATURE_ROW_H);
 
                 // The chevron, which says the feature has settings, keeps its place whether drawn or
                 // not, so every switch lines up.
@@ -817,9 +811,8 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                     }));
                 }
 
-                // The accent bar says which one is selected; the name stays in the text color, so the
-                // accent keeps meaning "on" in the switches beside it.
-                int titleColor = AlpakaStyle.TEXT;
+                // The selected feature's name in the accent color, as the sidebar names its section.
+                int titleColor = selected ? AlpakaStyle.accentTextOn(AlpakaStyle.ROW_SELECTED) : AlpakaStyle.TEXT;
                 // A "feature" that is only a dangerous action (Reset All Settings) says so by its
                 // name in the danger color, as its button does.
                 if (onlyDangerous(feature)) titleColor = hover || selected ? AlpakaStyle.DANGER : AlpakaStyle.DANGER_SOFT;
@@ -1191,13 +1184,14 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                 continue;
             }
             int midY = y + PRESET_CARD_H / 2;
+            // The active preset's card takes a breath of the accent, and its number the accent itself.
+            int accent = AlpakaStyle.accentIndicator();
             ModernGuiUtils.drawRoundedRect(graphics, rowX, y, rowW, PRESET_CARD_H, AlpakaStyle.ROW_RADIUS,
-                    active ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW);
-            if (active) AlpakaStyle.selectionMark(graphics, rowX, y, PRESET_CARD_H);
+                    active ? ModernGuiUtils.lerpColor(AlpakaStyle.ROW, accent, 0.12f) | 0xFF000000 : AlpakaStyle.ROW);
 
             String number = String.valueOf(i + 1);
             int numberX = rowX + 9 - GuiFont.width(this.font, number) / 2;
-            graphics.text(this.font, GuiFont.text(number), numberX, midY - 4, active ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_MUTED, false);
+            graphics.text(this.font, GuiFont.text(number), numberX, midY - 4, active ? AlpakaStyle.accentTextOn(AlpakaStyle.ROW) : AlpakaStyle.TEXT_MUTED, false);
 
             // From the right: delete, Save, Load; the name field takes what is left.
             int right = rowX + rowW - 3;

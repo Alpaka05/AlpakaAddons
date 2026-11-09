@@ -226,13 +226,13 @@ public class ItemSearchScreen extends Screen {
                              int mouseX, int mouseY) {
         boolean selected = source == category;
         boolean hover = inside(mouseX, mouseY, x, y, SIDE_W, rowH - 2);
-        if (selected || hover) {
-            ModernGuiUtils.drawRoundedRect(graphics, x, y, SIDE_W, rowH - 2, AlpakaStyle.ROW_RADIUS,
-                    selected ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW);
-        }
-        if (selected) AlpakaStyle.selectionMark(graphics, x, y, rowH - 2);
-        // Every name starts in one column, "All" too, which has no icon in front of it.
+        if (hover) ModernGuiUtils.drawRoundedRect(graphics, x, y, SIDE_W, rowH - 2, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
+        // The picked place is named in the accent color, as the config's sidebar names its section.
+        int color = selected ? AlpakaStyle.accentTextOn(hover ? AlpakaStyle.ROW : AlpakaStyle.PANEL)
+                : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
+        // Every name starts in one column, "All" too, which has a dot where the others have an icon.
         int textX = x + 21;
+        if (source == null) AlpakaStyle.listDot(graphics, x + 10, y + (rowH - 2 - 8) / 2 + 3, color);
         if (source != null) {
             float iconScale = (rowH - 4) / 16f;
             graphics.pose().pushMatrix();
@@ -246,7 +246,7 @@ public class ItemSearchScreen extends Screen {
         int countW = GuiFont.width(this.font, countText);
         int textY = y + (rowH - 2 - 8) / 2;
         graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, label, x + SIDE_W - 8 - countW - textX)),
-                textX, textY, selected || hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT, false);
+                textX, textY, color, false);
         graphics.text(this.font, GuiFont.text(countText), x + SIDE_W - 5 - countW, textY, AlpakaStyle.TEXT_MUTED, false);
     }
 

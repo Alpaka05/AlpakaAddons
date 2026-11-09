@@ -130,7 +130,6 @@ public class ProfileDashboardScreen extends Screen {
     private boolean searchFocused = false;
     private long caretFrom = 0L;
     private boolean profileMenuOpen = false;
-    private float indicatorY = Float.NaN;
     /** How far the sidebar is folded, 0 open to 1 down to its icons; starts where it was left. */
     private float sideFold = AlpakaConfig.instance.profileSidebarCollapsed ? 1.0f : 0.0f;
 
@@ -479,13 +478,9 @@ public class ProfileDashboardScreen extends Screen {
         for (ProfileSession.ProfileRef r : refs) {
             boolean current = r.id().equals(session.profileId);
             boolean hover = AlpakaStyle.inside(mx, my, px + 4, ry, mw - 8, rowH);
-            if (hover || current) {
-                ModernGuiUtils.drawRoundedRect(graphics, px + 4, ry, mw - 8, rowH, AlpakaStyle.ROW_RADIUS,
-                        current ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW);
-            }
-            if (current) AlpakaStyle.selectionMark(graphics, px + 4, ry, rowH);
             String label = (r.name() == null ? "?" : r.name()) + (r.gameMode() == null ? "" : "  " + ProfileData.title(r.gameMode()));
-            text(graphics, label, px + 11, ry + 4, current || hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
+            // The list every select field opens: a dot and the name, in the accent for the shown one.
+            AlpakaStyle.choiceEntry(graphics, this.font, px + 4, ry, mw - 8, rowH, label, current, hover);
             if (r.selected()) {
                 String tag = "Active";
                 text(graphics, tag, px + mw - 10 - textW(tag), ry + 4, AlpakaStyle.TEXT_MUTED);
@@ -612,17 +607,15 @@ public class ProfileDashboardScreen extends Screen {
         sideScroll = Math.max(0, Math.min(sideScrollMax, sideScroll));
         rowY -= sideScroll;
 
-        float targetY = rowY + page.ordinal() * (rowH + 1);
-        if (Float.isNaN(indicatorY)) indicatorY = targetY;
-        indicatorY = PloppAnimation.interpolate(indicatorY, targetY, deltaSec, 16.0f);
-        int iy = Math.round(indicatorY);
         graphics.enableScissor(x, rowsTop - 2, x + sideW, rowsBottom);
-        ModernGuiUtils.drawRoundedRect(graphics, rowX, iy, rowW, rowH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW_SELECTED);
-        AlpakaStyle.selectionMark(graphics, rowX, iy, rowH);
 
         for (Page p : Page.values()) {
             boolean hover = AlpakaStyle.inside(mx, my, rowX, rowY, rowW, rowH) && !profileMenuOpen;
-            if (hover && p != page) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, rowH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
+            if (hover) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, rowH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
+            // The page on show is named in the accent color, as the config's sidebar names its
+            // section; nothing behind it and nothing at its edge.
+            int color = p == page ? AlpakaStyle.accentTextOn(hover ? AlpakaStyle.ROW : AlpakaStyle.PANEL)
+                    : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
             // Items only at their full 16 pixels: scaled down, the game's nearest-neighbour sampling
             // drops rows and columns unevenly and they turn blotchy. Rows too slim for that go without.
             // Folded, the icons are all there is, so they stay even in slim rows.
@@ -634,10 +627,15 @@ public class ProfileDashboardScreen extends Screen {
                 else icon(graphics, p.icon, ix, rowY + (rowH - 16) / 2, 1.0f);
             }
             int tx = rowX + (icons ? 27 : 10);
-            if (tx + textW(p.title) <= rowX + rowW - 2) {
-                text(graphics, p.title, tx, rowY + (rowH - 8) / 2, p == page || hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
-            } else if (hover) {
-                tip(p, p.title);
+            boolean named = tx + textW(p.title) <= rowX + rowW - 2;
+            if (named) {
+                // Without icons the rows are the sidebar's own: a dot, then the name.
+                if (!icons) AlpakaStyle.listDot(graphics, rowX + 4, rowY + (rowH - 8) / 2 + 3, color);
+                text(graphics, p.title, tx, rowY + (rowH - 8) / 2, color);
+            } else {
+                // Folded down to its icons there is no name to color, so the page's icon is ringed.
+                if (p == page) ModernGuiUtils.drawRoundedOutline(graphics, rowX, rowY, rowW, rowH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.accentIndicator());
+                if (hover) tip(p, p.title);
             }
             Page target = p;
             if (rowY + rowH > rowsTop && rowY < rowsBottom) hits.add(new Hit(rowX, Math.max(rowY, rowsTop), rowW,
@@ -798,7 +796,6 @@ public class ProfileDashboardScreen extends Screen {
         }
         int h = 20;
         ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, AlpakaStyle.CARD_RADIUS, MarketIcons.fade(AlpakaStyle.accent(), 0.12f));
-        ModernGuiUtils.drawRoundedRect(graphics, x, y + 5, 2, h - 10, 1, AlpakaStyle.accentIndicator());
         String lead = "Since your last visit " + Metrics.ago(before.t()) + ": ";
         String body = parts.isEmpty() ? "nothing changed yet." : String.join("  ·  ", parts);
         text(graphics, lead, x + 8, y + 6, AlpakaStyle.TEXT_SOFT);
@@ -969,10 +966,9 @@ public class ProfileDashboardScreen extends Screen {
             boolean clickable = t.metric() != null && Metrics.hasHistory(t.metric());
             boolean hover = clickable && hover(tx, ty, tw, th);
             boolean isSelected = clickable && t.metric().equals(selected != null ? selected : defaultMetric(page));
-            // Selected the way every list of the mod marks it: the lighter card with the accent bar.
-            ModernGuiUtils.drawRoundedRect(graphics, tx, ty, tw, th, AlpakaStyle.CARD_RADIUS,
-                    isSelected ? AlpakaStyle.ROW_SELECTED : hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
-            if (isSelected) AlpakaStyle.selectionMark(graphics, tx, ty, th);
+            // The card whose graph shows is ringed in the accent.
+            ModernGuiUtils.drawRoundedRect(graphics, tx, ty, tw, th, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
+            if (isSelected) ModernGuiUtils.drawRoundedOutline(graphics, tx, ty, tw, th, AlpakaStyle.CARD_RADIUS, MarketIcons.fade(AlpakaStyle.accentIndicator(), 0.8f));
             text(graphics, AlpakaStyle.ellipsize(this.font, t.label(), tw - 12), tx + 7, ty + 6, AlpakaStyle.TEXT_MUTED);
             value(graphics, t.value(), tx + 7, ty + 18, tw - 14);
             if (clickable && session.historyProblem() != null) {
@@ -1178,9 +1174,8 @@ public class ProfileDashboardScreen extends Screen {
             int cy = y + (i / cols) * (ch + 4);
             String metric = prefix + l.id();
             boolean hover = hover(cx, cy, cw, ch);
-            ModernGuiUtils.drawRoundedRect(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS,
-                    metric.equals(selected) ? AlpakaStyle.ROW_SELECTED : hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
-            if (metric.equals(selected)) AlpakaStyle.selectionMark(graphics, cx, cy, ch);
+            ModernGuiUtils.drawRoundedRect(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
+            if (metric.equals(selected)) ModernGuiUtils.drawRoundedOutline(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, MarketIcons.fade(AlpakaStyle.accentIndicator(), 0.8f));
             Item icon = SKILL_ICONS.get(l.id());
             // At twice its size: a whole multiple keeps every texel on whole screen pixels.
             if (icon != null) icon(graphics, icon, cx + 4, cy + 3, 2.0f);
@@ -1972,9 +1967,8 @@ public class ProfileDashboardScreen extends Screen {
         for (ProfileData.Slayer s : d.slayers) {
             String metric = Metrics.SLAYER + s.id();
             boolean hover = hover(x, y, w, rowH);
-            ModernGuiUtils.drawRoundedRect(graphics, x, y, w, rowH, AlpakaStyle.CARD_RADIUS,
-                    metric.equals(selected) ? AlpakaStyle.ROW_SELECTED : hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
-            if (metric.equals(selected)) AlpakaStyle.selectionMark(graphics, x, y, rowH);
+            ModernGuiUtils.drawRoundedRect(graphics, x, y, w, rowH, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
+            if (metric.equals(selected)) ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, rowH, AlpakaStyle.CARD_RADIUS, MarketIcons.fade(AlpakaStyle.accentIndicator(), 0.8f));
             Item icon = SKILL_ICONS.get(s.id());
             if (icon != null) icon(graphics, icon, x + 4, y + 3, 2.0f);
             int tx = x + 42;

@@ -637,7 +637,6 @@ public final class ItemValuePopup {
         boolean selected = row.part() != null && graphOpen && (graphPart == null ? row.group() == Group.BASE && row.heading()
                 : row.part() == graphPart);
         if (hover) ModernGuiUtils.drawRoundedRect(graphics, x + 4, y, w - 8, h, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
-        if (selected) ModernGuiUtils.drawRoundedRect(graphics, x + 4, y + 2, 2, h - 4, 1, AlpakaStyle.accent());
         int ty = y + (h - 8) / 2;
         int color = color(row.group());
 

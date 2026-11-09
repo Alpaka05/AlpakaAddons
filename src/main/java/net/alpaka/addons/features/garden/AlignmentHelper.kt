@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.garden
 
+import net.alpaka.addons.client.gui.TextWidths
 import net.alpaka.addons.utils.ItemData
 import com.mojang.blaze3d.platform.InputConstants
 import net.alpaka.addons.client.AlpakaKeyBinds
@@ -175,8 +176,9 @@ object AlignmentHelper {
     private var shownPitch: String? = null
 
     private fun line(graphics: GuiGraphicsExtractor, mc: Minecraft, label: String, value: String, cx: Int, y: Int) {
-        val labelWidth = mc.font.width(label)
-        val x = cx - (labelWidth + mc.font.width(value)) / 2
+        // Kept widths: the labels never change and the angles only when the view moves.
+        val labelWidth = TextWidths.of(mc.font, label)
+        val x = cx - (labelWidth + TextWidths.of(mc.font, value)) / 2
         graphics.text(mc.font, label, x, y, LABEL_COLOR)
         graphics.text(mc.font, value, x + labelWidth, y, TEXT_COLOR)
     }

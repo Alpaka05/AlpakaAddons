@@ -100,7 +100,7 @@ public final class TerminalOverlay {
         String label = frameSolution.kind() == TerminalKind.NUMBERS ? null : frameSolution.label(index);
         if (label != null) {
             Font font = Minecraft.getInstance().font;
-            int x = slot.x + 8 - font.width(label) / 2;
+            int x = slot.x + 8 - net.alpaka.addons.client.gui.TextWidths.of(font, label) / 2;
             int y = slot.y + 8 - font.lineHeight / 2;
             graphics.text(font, label, x, y, LABEL_COLOR, true);
         }

@@ -210,6 +210,9 @@ public final class ItemMotionBlurFeature {
                     continue;
                 }
                 int older = olderFrame(frames, sampleTime);
+                if (older < 0) {
+                    continue; // The history does not reach back this far: no layer gets a ghost.
+                }
                 for (int layer = 0; layer < poses.length; layer++) {
                     if (!ghostable[layer]) {
                         continue;

@@ -265,9 +265,27 @@ public final class EtherwarpOverlayFeature {
         double tMaxZ = Math.abs((z + Math.max(stepZ, 0) - start.z) * invZ);
 
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        // The ray crosses a chunk border only now and then, so the chunk is looked up again only
+        // there. Read the way level.getBlockState reads: void air outside the world's bounds, and
+        // the level's (possibly empty) chunk inside them.
+        net.minecraft.world.level.chunk.LevelChunk chunk = null;
+        int chunkX = Integer.MIN_VALUE;
+        int chunkZ = Integer.MIN_VALUE;
         for (int i = 0; i < MAX_STEPS; i++) {
             pos.set(x, y, z);
-            BlockState state = level.getBlockState(pos);
+            BlockState state;
+            if (!level.isInValidBounds(pos)) {
+                state = net.minecraft.world.level.block.Blocks.VOID_AIR.defaultBlockState();
+            } else {
+                int cx = x >> 4;
+                int cz = z >> 4;
+                if (chunk == null || cx != chunkX || cz != chunkZ) {
+                    chunk = level.getChunk(cx, cz);
+                    chunkX = cx;
+                    chunkZ = cz;
+                }
+                state = chunk.getBlockState(pos);
+            }
             if ((flagsOf(state.getBlock()) & PASSABLE) == 0) {
                 return hit(level, pos.immutable(), state);
             }

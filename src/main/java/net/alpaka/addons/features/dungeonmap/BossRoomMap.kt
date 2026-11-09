@@ -31,6 +31,11 @@ object BossRoomMap {
         val sampled = if (cfg.dungeonMapSmoothMarkers) margin else 0
         val result = buffer.also { it.fill(0) }
         val pos = BlockPos.MutableBlockPos()
+        // Neighbouring samples mostly fall in the same chunk: the last lookup (missing or not) is
+        // kept for this sampling only.
+        var lastChunkX = Int.MIN_VALUE
+        var lastChunkZ = Int.MIN_VALUE
+        var lastChunk: net.minecraft.world.level.chunk.LevelChunk? = null
         // At most 96x96 samples every half second bound the work even in the large F7 arena. Looking
         // near the player's feet keeps the ceiling from covering the floor on indoor boss maps.
         for (row in -sampled until steps + sampled) for (column in -sampled until steps + sampled) {
@@ -39,7 +44,14 @@ object BossRoomMap {
             pos.set(x, feet, z)
             // The client level claims to have every chunk; its chunk cache knows which arrived.
             // Looked up once for the column rather than once per block of it.
-            val chunk = level.chunkSource.getChunk(x shr 4, z shr 4, ChunkStatus.FULL, false) ?: continue
+            val cx = x shr 4
+            val cz = z shr 4
+            if (cx != lastChunkX || cz != lastChunkZ) {
+                lastChunkX = cx
+                lastChunkZ = cz
+                lastChunk = level.chunkSource.getChunk(cx, cz, ChunkStatus.FULL, false)
+            }
+            val chunk = lastChunk ?: continue
             var color = 0
             for (y in feet + 1 downTo feet - 8) {
                 pos.set(x, y, z)

@@ -182,7 +182,7 @@ public class HudMixin implements ChatOverHud.Late {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/world/item/ItemStack;getHoverName()Lnet/minecraft/network/chat/Component;")
     )
     private Component alpaka$oldMasterStars(ItemStack stack, Operation<Component> original) {
-        return OldMasterStarsFeature.apply(original.call(stack));
+        return OldMasterStarsFeature.applyHeld(original.call(stack));
     }
 
     /**

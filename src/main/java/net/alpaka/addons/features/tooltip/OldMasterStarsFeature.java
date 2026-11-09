@@ -53,6 +53,24 @@ public final class OldMasterStarsFeature {
         return isEnabled() ? convert(name) : name;
     }
 
+    /**
+     * {@link #apply} for the held item's name above the hotbar, asked every frame. The name is the
+     * item's stored component, so the last answer is kept for that object; the tooltip goes through
+     * {@link #apply}, as its name is a new component every frame.
+     */
+    public static Component applyHeld(Component name) {
+        if (!isEnabled()) return name;
+        if (name == heldName && heldResult != null) return heldResult;
+        Component result = convert(name);
+        heldName = name;
+        heldResult = result;
+        return result;
+    }
+
+    // applyHeld's last answer; the HUD draws on the client thread only.
+    private static Component heldName;
+    private static Component heldResult;
+
     static Component convert(Component name) {
         // Asked every frame for the held item's name: look for the number without building a string.
         if (name.visit(HAS_MASTER_NUMBER).isEmpty()) return name;

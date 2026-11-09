@@ -15,6 +15,7 @@
     "AbstractSignEditScreenAccessor",
     "AbstractContainerScreenAccessor",
     "CustomDataAccessor",
+    "FontManagerOptionsMixin",
     "AbstractRecipeBookScreenAccessor",
     "AbstractContainerScreenMixin",
     "AbstractContainerScreenVisitorMixin",

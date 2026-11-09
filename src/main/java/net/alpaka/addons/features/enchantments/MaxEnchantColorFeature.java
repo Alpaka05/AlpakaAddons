@@ -53,14 +53,45 @@ public final class MaxEnchantColorFeature {
     private static final Map<String, Found> FOUND = new ConcurrentHashMap<>();
     private static final Map<String, Found> FOUND_ULTIMATES = new ConcurrentHashMap<>();
 
+    /**
+     * Results by the line object, in front of {@link #FOUND}: an item's lore lines are the same
+     * component objects every frame, so a line already done needs neither its text read nor its
+     * styles rebuilt. Only on the client thread; cleared when the color or the Ultimates switch
+     * changes, the only settings the result depends on.
+     */
+    private static final Map<Component, Component> KEPT = new java.util.IdentityHashMap<>();
+    private static int keptRgb = -1;
+    private static boolean keptUltimates;
+
     public static void register() {
         ItemTooltipCallback.EVENT.register((stack, context, flag, lines) -> {
             AlpakaConfig config = AlpakaConfig.instance;
             if (!config.maxEnchantColorEnabled) return;
-            TextColor color = TextColor.fromRgb(config.maxEnchantColor & 0xFFFFFF);
+            int rgb = config.maxEnchantColor & 0xFFFFFF;
+            TextColor color = TextColor.fromRgb(rgb);
+            boolean ultimates = config.maxEnchantColorUltimate;
+            boolean keep = net.minecraft.client.Minecraft.getInstance().isSameThread();
+            if (keep && (rgb != keptRgb || ultimates != keptUltimates)) {
+                KEPT.clear();
+                keptRgb = rgb;
+                keptUltimates = ultimates;
+            }
             // Line 0 is the item's name.
             for (int i = 1; i < lines.size(); i++) {
-                lines.set(i, recolor(lines.get(i), color, config.maxEnchantColorUltimate));
+                Component line = lines.get(i);
+                if (!keep) {
+                    lines.set(i, recolor(line, color, ultimates));
+                    continue;
+                }
+                Component done = KEPT.get(line);
+                if (done == null) {
+                    done = recolor(line, color, ultimates);
+                    if (KEPT.size() >= 512) KEPT.clear();
+                    KEPT.put(line, done);
+                }
+                // A recolored line is handed out as a shallow copy, so another mod appending to the
+                // tooltip's line in place cannot pile up on the kept one.
+                lines.set(i, done == line ? line : done.copy());
             }
         });
     }

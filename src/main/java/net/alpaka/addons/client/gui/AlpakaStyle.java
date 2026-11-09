@@ -635,7 +635,7 @@ public final class AlpakaStyle {
      * same labels are cut to the same widths every frame (market rows, chest value lines, inventory
      * buttons, text fields). Only overflowing texts land here. A width depends on the font, the menu
      * font setting and the loaded glyphs, so the map is dropped when the font or {@link
-     * GuiFont#style()} differs and after every resource reload. Render thread only.
+     * GuiFont#style()} differs and after every resource reload or font option change. Render thread only.
      */
     private static final Map<Fit, String> FITS = new HashMap<>();
     private static Font fitsFont;
@@ -658,15 +658,18 @@ public final class AlpakaStyle {
         return result;
     }
 
-    /** Clears the cut texts once the glyphs may have changed; called from the client's reload listener. */
+    /**
+     * Clears the cut texts once the glyphs may have changed: called from the client's reload
+     * listener and when the font options (Force Unicode Font, glyph variants) change.
+     */
     public static void onResourcesReloaded() {
         FITS.clear();
         fontGeneration++;
     }
 
     /**
-     * Counts resource reloads, after the fonts: a width measured and kept elsewhere is only good for
-     * the generation it was measured in.
+     * Counts glyph changes (resource reloads, after the fonts, and font option changes): a width
+     * measured and kept elsewhere is only good for the generation it was measured in.
      */
     public static int fontGeneration = 0;
 

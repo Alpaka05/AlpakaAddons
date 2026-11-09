@@ -12,7 +12,7 @@ import java.util.Map;
  * Text widths measured once and kept: HUDs draw the same labels every frame (room names, the
  * scoreboard footer, timers, tab bars), and measuring walks every glyph each time. A width only
  * changes with the font or its glyphs, so everything is dropped when the font object or {@link
- * AlpakaStyle#fontGeneration} (bumped after each resource reload) changes.
+ * AlpakaStyle#fontGeneration} (bumped after each resource reload and font option change) changes.
  *
  * Components are kept by object, so only pass ones that are themselves kept and never changed
  * (cached components); strings are kept by value. Off the render thread nothing is kept.

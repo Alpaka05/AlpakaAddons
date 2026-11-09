@@ -20,6 +20,12 @@ final class Ids {
         return PLAIN.matcher(s).matches() ? s : null;
     }
 
+    /** A UUID without dashes as Hypixel writes profile ids: 8-4-4-4-12. */
+    static String dashed(String plain) {
+        return plain.substring(0, 8) + "-" + plain.substring(8, 12) + "-" + plain.substring(12, 16) + "-"
+                + plain.substring(16, 20) + "-" + plain.substring(20);
+    }
+
     static boolean username(String raw) {
         return raw != null && USERNAME.matcher(raw).matches();
     }

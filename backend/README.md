@@ -1,8 +1,8 @@
 # AlpakaAddons API
 
-The server behind `https://api.alpaka.yt`: the Profile Dashboard's way to Hypixel's API. Hypixel's
-API needs a key, and a key may never ship in a mod, so it stays here and the mod asks this server.
-Not affiliated with Hypixel.
+The server behind `https://api.alpaka.yt`: where the Profile Dashboard gets its profiles from.
+Hypixel's API needs a key, and a key may never ship in a mod, so it stays here and the mod asks
+this server. Not affiliated with Hypixel.
 
 ## What it does
 
@@ -15,20 +15,32 @@ Not affiliated with Hypixel.
   for 12 hours. The player's access token never reaches this server. The one-time id is what keeps
   the owner of some other server from logging in here as the players who join theirs: their server
   id is that server's hash, which this server never handed out.
-- `GET /v1/dashboard/<uuid>` with `Authorization: Bearer <token>` answers with what the Profile
-  Dashboard shows of that player from Hypixel's `/v2/skyblock/profiles`: each profile's id, name,
-  mode and whether it is selected, and of the player's own member data only the fields in
-  `Dashboard.MEMBER_FIELDS` (today the Rift's inventories). Co-op members' data and everything else
-  is left out, and there is no way to get Hypixel's answer as it is: this is the dashboard's
-  backend, not a copy of Hypixel's API. A new dashboard page adds its fields there.
+- `GET /v1/dashboard/<name or uuid>` with `Authorization: Bearer <token>` answers with everything
+  the Profile Dashboard shows of that player, in one request: who they are (name and skin, from
+  Mojang), the SkyBlock profiles they are on, and of one profile the parts of the player's own
+  member data listed in `Dashboard.MEMBER_FIELDS`, the two things its co-op shares (collection tiers
+  unlocked, minions crafted) and its garden (`Dashboard.GARDEN_FIELDS`). The profile is the one
+  named with `?profile=<id>`, else the one the player has selected. `?fresh=1` is the dashboard's
+  Refresh button: the cached answer is then only used if it is very young (see below).
+- `GET /v1/museum/<uuid>/<profile id>` answers with what that player donated to the museum of one
+  profile (`Dashboard.MUSEUM_FIELDS`), which Hypixel hands out apart from the profile.
 - `GET /` and `GET /health` say what it is and that it runs.
+
+Behind these are three of Hypixel's endpoints, `/v2/skyblock/profiles`, `/garden` and `/museum`.
+Co-op members' data and everything no page draws is left out, and there is no way to get Hypixel's
+answer as it is: this is the dashboard's backend, not a copy of Hypixel's API. A new dashboard page
+adds its fields to the lists in `Dashboard`. The mod works levels, totals and the networth out
+itself (`HypixelProfile` and `Networth` in the mod), so the server never has to know the game's
+tables. Answers are sent gzipped to a client that asks for it; a big profile is about a megabyte of
+text and half of that packed.
 
 Within Hypixel's [API policy](https://developer.hypixel.net/policies): nothing is fetched unless a
 player opens a profile; answers are cached for an hour, as Hypixel suggests (a player's own profile
-for 10 minutes), in at most about 48 MB; each player may cause at most 20 new requests to Hypixel
-in 5 minutes (60 requests in all, cached ones included); answers over 16 MB are refused; and the
-last 15 requests of the key's budget are never spent. It keeps nothing about who asked for what,
-and isn't offered to other developers.
+for 3 minutes; with Refresh at least 5 minutes, the own 1 minute), in at most about 48 MB; a name's
+account is remembered for 6 hours; each player may cause at most 45 new requests to Hypixel in
+5 minutes, where a profile not cached takes three (90 requests in all, cached ones included);
+answers over 16 MB are refused; and the last 15 requests of the key's budget are never spent. It
+keeps nothing about who asked for what, and isn't offered to other developers.
 
 ## Build and run
 

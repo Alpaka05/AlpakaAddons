@@ -33,8 +33,13 @@ final class ResponseCache {
     }
 
     synchronized void put(String key, int status, String body) {
+        put(key, status, body, clock.getAsLong());
+    }
+
+    /** Keeps an answer as fetched at {@code fetchedAt}, for the parts of one answer kept under several keys. */
+    synchronized void put(String key, int status, String body, long fetchedAt) {
         if (body.length() > maxChars) return;
-        Entry old = entries.put(key, new Entry(status, body, clock.getAsLong()));
+        Entry old = entries.put(key, new Entry(status, body, fetchedAt));
         if (old != null) chars -= old.body().length();
         chars += body.length();
         Iterator<Map.Entry<String, Entry>> eldest = entries.entrySet().iterator();

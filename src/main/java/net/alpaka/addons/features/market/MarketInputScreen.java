@@ -432,7 +432,7 @@ public class MarketInputScreen extends SignEditScreen {
                 graphics.item(icon, rx + 6, ry + (SUGGESTION_H - 16) / 2);
             } else {
                 MarketIcons.Glyph glyph = s.recent() ? MarketIcons.Glyph.CLOCK : MarketIcons.Glyph.BOX;
-                MarketIcons.draw(graphics, glyph, rx + 9, ry + (SUGGESTION_H - 10) / 2f, 10, lit ? accent : AlpakaStyle.TEXT_MUTED);
+                MarketIcons.draw(graphics, glyph, rx + 9, ry + (SUGGESTION_H - 10) / 2f, 10, lit ? AlpakaStyle.accentIndicator() : AlpakaStyle.TEXT_MUTED);
             }
 
             int tx = rx + 27;
@@ -461,8 +461,7 @@ public class MarketInputScreen extends SignEditScreen {
             int trackH = listH - 4;
             int thumbH = Math.max(12, trackH * listH / (suggestions.size() * SUGGESTION_H));
             int thumbY = trackY + Math.round((trackH - thumbH) * (offset / (float) listScrollMax));
-            ModernGuiUtils.drawRoundedRect(graphics, x + w - 6, trackY, 3, trackH, 1, AlpakaStyle.ROW);
-            ModernGuiUtils.drawRoundedRect(graphics, x + w - 6, thumbY, 3, thumbH, 1, inList ? accent : AlpakaStyle.accentDim());
+            AlpakaStyle.scrollThumb(graphics, x + w - 5, thumbY, thumbH, inList);
         }
 
         String footer = AlpakaConfig.instance.allowApiCalls
@@ -491,7 +490,11 @@ public class MarketInputScreen extends SignEditScreen {
     /** A suggestion's name with the parts that matched lit in the accent. */
     private void drawMatch(GuiGraphicsExtractor graphics, Suggestion s, int x, int y, int room, boolean lit) {
         String name = s.name();
-        int base = lit ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
+        // The row the keys or the mouse are on is the one Enter takes: its whole name in the accent,
+        // as every list names what is chosen. In the other rows the part that matched stands out by
+        // brightness alone, so the accent keeps that one meaning.
+        int base = lit ? AlpakaStyle.accentTextOn(AlpakaStyle.fieldHover()) : AlpakaStyle.TEXT_SOFT;
+        int match = lit ? base : AlpakaStyle.TEXT;
         if (GuiFont.width(this.font, name) > room) {
             graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, name, room)), x, y, base, false);
             return;
@@ -505,7 +508,7 @@ public class MarketInputScreen extends SignEditScreen {
             int from = Math.max(at, Math.min(name.length(), r[i]));
             int to = Math.max(from, Math.min(name.length(), r[i + 1]));
             if (from > at) text.append(GuiFont.text(name.substring(at, from)).withColor(base));
-            if (to > from) text.append(GuiFont.text(name.substring(from, to)).withColor(AlpakaStyle.accent()));
+            if (to > from) text.append(GuiFont.text(name.substring(from, to)).withColor(match));
             at = to;
         }
         if (at < name.length()) text.append(GuiFont.text(name.substring(at)).withColor(base));
@@ -706,11 +709,13 @@ public class MarketInputScreen extends SignEditScreen {
             int speedW = GuiFont.width(this.font, hint + speed);
             int ty = ry + (SPEED_ROW_H - 8) / 2;
             String names = String.join(", ", group.crops());
+            // The row Enter takes is named in the accent, crops and speed alike.
+            int chosen = AlpakaStyle.accentTextOn(AlpakaStyle.ROW_SELECTED);
             graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, names, x + w - 8 - speedW - 6 - tx)), tx, ty,
-                    hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT, false);
+                    hover ? chosen : AlpakaStyle.TEXT_SOFT, false);
             int sx = x + w - 8 - speedW;
             if (hover) graphics.text(this.font, GuiFont.text(hint), sx, ty, AlpakaStyle.TEXT_MUTED, false);
-            graphics.text(this.font, GuiFont.text(speed), x + w - 8 - GuiFont.width(this.font, speed), ty, hover ? accent : AlpakaStyle.TEXT, false);
+            graphics.text(this.font, GuiFont.text(speed), x + w - 8 - GuiFont.width(this.font, speed), ty, hover ? chosen : AlpakaStyle.TEXT, false);
             int index = i;
             hits.add(new Hit(x, ry, w, SPEED_ROW_H, mx -> chooseSpeed(index), true));
             ry += SPEED_ROW_H + 2;

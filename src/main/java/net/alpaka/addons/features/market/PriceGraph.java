@@ -81,7 +81,7 @@ public final class PriceGraph {
             boolean hover = AlpakaStyle.inside(mx, my, cx, y + 5, cw, CHIP_H);
             int bg = selected ? MarketIcons.fade(AlpakaStyle.accent(), hover ? 0.35f : 0.24f) : hover ? AlpakaStyle.ROW_SELECTED : 0;
             if (bg != 0) ModernGuiUtils.drawRoundedRect(graphics, cx, y + 5, cw, CHIP_H, CHIP_H / 2, bg);
-            int color = selected ? AlpakaStyle.accent() : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_MUTED;
+            int color = selected ? AlpakaStyle.accentTextOnTint(AlpakaStyle.ROW, hover ? 0.35f : 0.24f) : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_MUTED;
             graphics.text(font, GuiFont.text(r.chip), cx + 5, y + 7, color, false);
             clicks.add(cx, y + 5, cw, CHIP_H, () -> {
                 AlpakaConfig.instance.marketPriceHistoryRange = r.ordinal();

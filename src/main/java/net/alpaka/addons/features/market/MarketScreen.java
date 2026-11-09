@@ -483,13 +483,9 @@ public class MarketScreen extends ContainerScreen {
             int sy = y + (HEADER_H - sh) / 2;
             boolean hover = AlpakaStyle.inside(mx, my, sx, sy, sw, sh);
             boolean active = m.query != null && !m.query.isEmpty();
-            ModernGuiUtils.drawRoundedRect(graphics, sx, sy, sw, sh, sh / 2, hover ? AlpakaStyle.fieldHover() : AlpakaStyle.FIELD);
-            if (active) ModernGuiUtils.drawRoundedOutline(graphics, sx, sy, sw, sh, sh / 2, AlpakaStyle.accentDim());
-            else if (hover) ModernGuiUtils.drawRoundedOutline(graphics, sx, sy, sw, sh, sh / 2, AlpakaStyle.LINE);
-            MarketIcons.draw(graphics, MarketIcons.Glyph.SEARCH, sx + 7, sy + 4.5f, 9, active || hover ? accent : AlpakaStyle.TEXT_MUTED);
-            String text = active ? m.query : "Search " + (kind == MarketKind.BAZAAR ? "the Bazaar" : "auctions") + "…";
-            graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, text, sw - 26)), sx + 20, sy + 5,
-                    active ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_MUTED, false);
+            // The search field every window has; a click opens the market's input to type into.
+            AlpakaStyle.searchFieldShown(graphics, this.font, sx, sy, sw, sh, active ? m.query : "",
+                    "Search " + (kind == MarketKind.BAZAAR ? "the Bazaar" : "auctions") + "…", hover);
             hits.add(new Hit(sx, sy, sw, sh, (b, s) -> click(search, b, s), false));
             if (hover) hoveredStack = stack(search);
             right = sx - 8;
@@ -763,7 +759,7 @@ public class MarketScreen extends ContainerScreen {
             int trackH = ch - 12;
             int thumbH = Math.max(16, (int) (trackH * (ch / (double) (ch + contentScroll.max))));
             int thumbY = cy + 6 + (int) ((trackH - thumbH) * (contentScroll.current / contentScroll.max));
-            ModernGuiUtils.drawRoundedRect(graphics, cx + cw - 4, thumbY, 2, thumbH, 1, inClip ? AlpakaStyle.TEXT_MUTED : AlpakaStyle.DIVIDER);
+            AlpakaStyle.scrollThumb(graphics, cx + cw - 4, thumbY, thumbH, inClip);
         }
         graphics.disableScissor();
         updateHover(deltaSec);

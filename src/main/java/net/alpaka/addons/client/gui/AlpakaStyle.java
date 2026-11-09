@@ -315,10 +315,29 @@ public final class AlpakaStyle {
      * The small dot in front of a list's entry, as the config's sidebar has it. What is selected is
      * said the sidebar's way in every list of the mod: the entry's dot and name in the accent color
      * ({@link #accentText}). Never a bar at the row's edge and never a pill behind the selected row;
-     * a background belongs to the mouse (hover) and to cards.
+     * a background belongs to the mouse (hover) and to cards. A card that is selected - a metric, a
+     * filter being edited, an icon - is ringed with {@link #selectedOutline}.
      */
     public static void listDot(GuiGraphicsExtractor graphics, int x, int y, int color) {
         ModernGuiUtils.drawRoundedRect(graphics, x, y, 2, 2, 1, color);
+    }
+
+    /** The card form of "selected": a ring in the accent round the card, the same one everywhere. */
+    public static void selectedOutline(GuiGraphicsExtractor graphics, int x, int y, int w, int h, int radius) {
+        ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, h, radius, accentIndicator());
+    }
+
+    /**
+     * The accent as a text color on a surface tinted with the accent itself, such as a selected
+     * chip: readable against the tint as it looks over {@code base}.
+     */
+    public static int accentTextOnTint(int base, float tint) {
+        return accentTextOn(ModernGuiUtils.lerpColor(base | 0xFF000000, accent() | 0xFF000000, tint));
+    }
+
+    /** A scroll bar's thumb: slim and gray, never in the accent, which is kept for what is chosen. */
+    public static void scrollThumb(GuiGraphicsExtractor graphics, int x, int y, int h, boolean active) {
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, 2, h, 1, active ? TEXT_MUTED : DIVIDER);
     }
 
     /** A field's background while the mouse is on it: a step lighter than the field itself. */
@@ -550,6 +569,23 @@ public final class AlpakaStyle {
             closeButton(graphics, box[0], box[1], box[2], clearHover);
         }
         return scroll;
+    }
+
+    /**
+     * The search field where it only shows a search and a click opens the place to type it (the
+     * market's header): the same box, magnifier and line, the line and the magnifier in the accent
+     * while a search is set.
+     */
+    public static void searchFieldShown(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int h,
+                                        String text, String placeholder, boolean hover) {
+        boolean set = text != null && !text.isEmpty();
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, FIELD_RADIUS, hover ? fieldHover() : FIELD);
+        ModernGuiUtils.drawRect(graphics, x + 3, y + h - 1, w - 6, 1, set ? accentIndicator() : LINE);
+        float glyph = 8f;
+        net.alpaka.addons.features.market.MarketIcons.draw(graphics, net.alpaka.addons.features.market.MarketIcons.Glyph.SEARCH,
+                x + 6, y + (h - glyph) / 2f, glyph, set ? accentIndicator() : TEXT_MUTED);
+        graphics.text(font, GuiFont.text(ellipsize(font, set ? text : placeholder, w - SEARCH_TEXT_INSET - 5)),
+                x + SEARCH_TEXT_INSET, y + (h - 8) / 2, set ? TEXT : TEXT_MUTED, false);
     }
 
     /** The clear cross of a search field: x, y and size of its square. */

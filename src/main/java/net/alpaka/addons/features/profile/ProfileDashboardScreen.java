@@ -468,7 +468,13 @@ public class ProfileDashboardScreen extends Screen {
     private void drawProfileMenu(GuiGraphicsExtractor graphics, int x, int y, int w) {
         List<ProfileSession.ProfileRef> refs = session.profiles;
         int rowH = 16;
-        int mw = Math.max(profileChipW, 130);
+        // Wide enough for the longest name with the "Active" tag after it, so the two never meet.
+        int widest = 0;
+        for (ProfileSession.ProfileRef r : refs) {
+            String name = (r.name() == null ? "?" : r.name()) + (r.gameMode() == null ? "" : "  " + ProfileData.title(r.gameMode()));
+            widest = Math.max(widest, textW(name));
+        }
+        int mw = Math.max(Math.max(profileChipW, 130), widest + textW("Active") + 44);
         int mh = refs.size() * rowH + 8;
         int px = profileChipX;
         int py = y + HEADER_H - 4;
@@ -536,7 +542,10 @@ public class ProfileDashboardScreen extends Screen {
         // the item search opens from it.
         int footerH = 30;
         boolean footer = open && h >= 12 + pages * 17 + footerH + 12;
-        int rowH = Math.max(14, Math.min(SIDE_ROW_H, (h - 10 - 12 - (footer ? footerH : 0)) / pages - 1));
+        // Open and without room for icons, the rows are as slim as the config sidebar's, so every
+        // page fits on the smallest window; folded to icons they keep the height an icon needs.
+        int rowsRoom = h - 8 - 12 - (footer ? footerH + 2 : PAD);
+        int rowH = Math.max(open ? 12 : 14, Math.min(SIDE_ROW_H, rowsRoom / pages - 1));
         int rowY = y + 8;
 
         // The arrow that folds the sidebar down to its icons and opens it again: at the end of the
@@ -601,7 +610,7 @@ public class ProfileDashboardScreen extends Screen {
         // On the smallest windows the rows can need more than the sidebar's height: then the list
         // scrolls on its own, under the mouse, and what does not fit is cut at the panel's edge.
         int rowsTop = rowY;
-        int rowsBottom = y + h - (footer ? footerH : 0) - 2;
+        int rowsBottom = y + h - (footer ? footerH + 2 : PAD);
         sideRect = new int[] {x, rowsTop, sideW, rowsBottom - rowsTop};
         sideScrollMax = Math.max(0, pages * (rowH + 1) + 2 - (rowsBottom - rowsTop));
         sideScroll = Math.max(0, Math.min(sideScrollMax, sideScroll));
@@ -626,15 +635,16 @@ public class ProfileDashboardScreen extends Screen {
                 if (!skyblock.isEmpty()) stackIcon(graphics, skyblock, ix, rowY + (rowH - 16) / 2, 1.0f);
                 else icon(graphics, p.icon, ix, rowY + (rowH - 16) / 2, 1.0f);
             }
-            int tx = rowX + (icons ? 27 : 10);
+            // Without icons, dot and name sit where the config sidebar has them.
+            int tx = rowX + (icons ? 27 : 11);
             boolean named = tx + textW(p.title) <= rowX + rowW - 2;
             if (named) {
                 // Without icons the rows are the sidebar's own: a dot, then the name.
-                if (!icons) AlpakaStyle.listDot(graphics, rowX + 4, rowY + (rowH - 8) / 2 + 3, color);
+                if (!icons) AlpakaStyle.listDot(graphics, rowX + 5, rowY + (rowH - 8) / 2 + 3, color);
                 text(graphics, p.title, tx, rowY + (rowH - 8) / 2, color);
             } else {
                 // Folded down to its icons there is no name to color, so the page's icon is ringed.
-                if (p == page) ModernGuiUtils.drawRoundedOutline(graphics, rowX, rowY, rowW, rowH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.accentIndicator());
+                if (p == page) AlpakaStyle.selectedOutline(graphics, rowX, rowY, rowW, rowH, AlpakaStyle.ROW_RADIUS);
                 if (hover) tip(p, p.title);
             }
             Page target = p;
@@ -968,7 +978,7 @@ public class ProfileDashboardScreen extends Screen {
             boolean isSelected = clickable && t.metric().equals(selected != null ? selected : defaultMetric(page));
             // The card whose graph shows is ringed in the accent.
             ModernGuiUtils.drawRoundedRect(graphics, tx, ty, tw, th, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
-            if (isSelected) ModernGuiUtils.drawRoundedOutline(graphics, tx, ty, tw, th, AlpakaStyle.CARD_RADIUS, MarketIcons.fade(AlpakaStyle.accentIndicator(), 0.8f));
+            if (isSelected) AlpakaStyle.selectedOutline(graphics, tx, ty, tw, th, AlpakaStyle.CARD_RADIUS);
             text(graphics, AlpakaStyle.ellipsize(this.font, t.label(), tw - 12), tx + 7, ty + 6, AlpakaStyle.TEXT_MUTED);
             value(graphics, t.value(), tx + 7, ty + 18, tw - 14);
             if (clickable && session.historyProblem() != null) {
@@ -1030,7 +1040,7 @@ public class ProfileDashboardScreen extends Screen {
             boolean hover = hover(cx, y + 5, cw, CHIP_H);
             int bg = selected ? MarketIcons.fade(AlpakaStyle.accent(), hover ? 0.35f : 0.24f) : hover ? AlpakaStyle.ROW_SELECTED : 0;
             if (bg != 0) ModernGuiUtils.drawRoundedRect(graphics, cx, y + 5, cw, CHIP_H, CHIP_H / 2, bg);
-            text(graphics, r.chip, cx + 5, y + 7, selected ? AlpakaStyle.accent() : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_MUTED);
+            text(graphics, r.chip, cx + 5, y + 7, selected ? AlpakaStyle.accentTextOnTint(AlpakaStyle.ROW, hover ? 0.35f : 0.24f) : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_MUTED);
             hit(cx, y + 5, cw, CHIP_H, () -> range = r);
             chipsRight = cx - 2;
         }
@@ -1175,7 +1185,7 @@ public class ProfileDashboardScreen extends Screen {
             String metric = prefix + l.id();
             boolean hover = hover(cx, cy, cw, ch);
             ModernGuiUtils.drawRoundedRect(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
-            if (metric.equals(selected)) ModernGuiUtils.drawRoundedOutline(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, MarketIcons.fade(AlpakaStyle.accentIndicator(), 0.8f));
+            if (metric.equals(selected)) AlpakaStyle.selectedOutline(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS);
             Item icon = SKILL_ICONS.get(l.id());
             // At twice its size: a whole multiple keeps every texel on whole screen pixels.
             if (icon != null) icon(graphics, icon, cx + 4, cy + 3, 2.0f);
@@ -1968,7 +1978,7 @@ public class ProfileDashboardScreen extends Screen {
             String metric = Metrics.SLAYER + s.id();
             boolean hover = hover(x, y, w, rowH);
             ModernGuiUtils.drawRoundedRect(graphics, x, y, w, rowH, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
-            if (metric.equals(selected)) ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, rowH, AlpakaStyle.CARD_RADIUS, MarketIcons.fade(AlpakaStyle.accentIndicator(), 0.8f));
+            if (metric.equals(selected)) AlpakaStyle.selectedOutline(graphics, x, y, w, rowH, AlpakaStyle.CARD_RADIUS);
             Item icon = SKILL_ICONS.get(s.id());
             if (icon != null) icon(graphics, icon, x + 4, y + 3, 2.0f);
             int tx = x + 42;
@@ -2203,7 +2213,7 @@ public class ProfileDashboardScreen extends Screen {
             if (cy > clipY + clipH + 40 || cy + ch < clipY - 40) continue;
             boolean hover = hover(cx, cy, cw, ch);
             ModernGuiUtils.drawRoundedRect(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
-            if (p.active()) ModernGuiUtils.drawRoundedOutline(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, MarketIcons.fade(AlpakaStyle.accent(), 0.8f));
+            if (p.active()) AlpakaStyle.selectedOutline(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS);
             // The pet's head, in the skin it wears, as the game shows it; a placeholder while it loads.
             ItemStack head = PetIcons.icon(p);
             // Twice the size of an item, so the head can be made out; a whole multiple stays sharp.
@@ -2218,7 +2228,7 @@ public class ProfileDashboardScreen extends Screen {
             text(graphics, level, tx + tw - textW(level), cy + 9, p.level() >= p.maxLevel() ? ink(GOLD) : AlpakaStyle.TEXT_SOFT);
             text(graphics, AlpakaStyle.ellipsize(this.font, p.name(), tw - 6 - textW(level)), tx, cy + 9, ink(ProfileData.rarityColor(p.tier())));
             String held = p.active() ? "Active" + (p.heldItem() == null ? "" : " · " + heldItem(p.heldItem())) : p.heldItem() == null ? "" : heldItem(p.heldItem());
-            text(graphics, AlpakaStyle.ellipsize(this.font, held, tw), tx, cy + 21, p.active() ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
+            text(graphics, AlpakaStyle.ellipsize(this.font, held, tw), tx, cy + 21, p.active() ? AlpakaStyle.accentTextOn(AlpakaStyle.ROW) : AlpakaStyle.TEXT_MUTED);
             if (p.level() < p.maxLevel()) bar(graphics, tx, cy + ch - 5, tw, 1, p.progress(), MarketIcons.fade(AlpakaStyle.accent(), 0.7f));
             if (hover) {
                 tip(p, petTip(p));
@@ -2701,7 +2711,7 @@ public class ProfileDashboardScreen extends Screen {
             boolean hover = hover(cx, cy, cw, 15);
             int bg = selected ? MarketIcons.fade(AlpakaStyle.accent(), hover ? 0.35f : 0.24f) : hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW;
             ModernGuiUtils.drawRoundedRect(graphics, cx, cy, cw, 15, 7, bg);
-            text(graphics, t.title, cx + 7, cy + 4, selected ? AlpakaStyle.accent() : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
+            text(graphics, t.title, cx + 7, cy + 4, selected ? AlpakaStyle.accentTextOnTint(AlpakaStyle.PANEL, hover ? 0.35f : 0.24f) : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
             hit(cx, cy, cw, 15, () -> invTab = t);
             cx += cw + 4;
         }
@@ -3027,7 +3037,7 @@ public class ProfileDashboardScreen extends Screen {
                 int sy = pyTop + 22;
                 boolean isWorn = set == equipped;
                 String label = String.valueOf(set);
-                text(graphics, label, sx + (SLOT - 1 - textW(label)) / 2, sy, isWorn ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
+                text(graphics, label, sx + (SLOT - 1 - textW(label)) / 2, sy, isWorn ? AlpakaStyle.accentTextOn(AlpakaStyle.ROW) : AlpakaStyle.TEXT_MUTED);
                 int py = sy + 10;
                 for (int p = 0; p < 4; p++) {
                     JsonElement item = isWorn ? wornItems.get(wornKey.apply(p)) : items.get(key.apply(set, p));

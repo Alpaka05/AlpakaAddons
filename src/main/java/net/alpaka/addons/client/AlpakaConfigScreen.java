@@ -724,7 +724,10 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                 rowY += SECTION_ROW_H;
             }
             if (i < groups.size() - 1) {
-                ModernGuiUtils.drawRect(graphics, x + PAD, rowY + 4, w - PAD * 2, 1, AlpakaStyle.LINE);
+                // Not where the list fades out at the bottom: half faded, right over the line above
+                // the HUD Editor button, it read as that line drawn twice.
+                boolean underFade = sidebarScroll.offset() + 1 < sidebarScroll.max && rowY + 4 >= clipY + clipH - 10;
+                if (!underFade) ModernGuiUtils.drawRect(graphics, x + PAD, rowY + 4, w - PAD * 2, 1, AlpakaStyle.LINE);
                 rowY += 9;
             }
         }

@@ -666,7 +666,7 @@ public final class ItemValuePopup {
             right -= 24;
         }
 
-        int labelColor = selected ? AlpakaStyle.accent() : !row.priced() ? AlpakaStyle.TEXT_MUTED
+        int labelColor = selected ? AlpakaStyle.accentTextOn(hover ? AlpakaStyle.ROW : AlpakaStyle.PANEL) : !row.priced() ? AlpakaStyle.TEXT_MUTED
                 : row.child() ? AlpakaStyle.TEXT_SOFT : AlpakaStyle.TEXT;
         String label = row.parts() > 1 ? row.label() + " (" + row.parts() + ")" : row.label();
         graphics.text(font, GuiFont.text(AlpakaStyle.ellipsize(font, label, right - labelX)), labelX, ty, labelColor, false);
@@ -790,7 +790,7 @@ public final class ItemValuePopup {
         int by = y + (HISTORY_ROW_H - bh) / 2 + 1;
         boolean hover = AlpakaStyle.inside(mx, my, bx, by, bw, bh);
         if (hover) ModernGuiUtils.drawRoundedRect(graphics, bx, by, bw, bh, AlpakaStyle.FIELD_RADIUS, AlpakaStyle.ROW_SELECTED);
-        int color = graphOpen ? AlpakaStyle.accent() : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
+        int color = graphOpen ? AlpakaStyle.accentTextOn(hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.PANEL) : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
         AlpakaStyle.chevron(graphics, bx + 7, by + bh / 2, graphOpen, color);
         graphics.text(font, GuiFont.text(label), bx + 14, by + 3, color, false);
         hits.add(new Hit(bx, by, bw, bh, () -> {

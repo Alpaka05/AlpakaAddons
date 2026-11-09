@@ -232,7 +232,7 @@ public class ItemSearchScreen extends Screen {
                 : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
         // Every name starts in one column, "All" too, which has a dot where the others have an icon.
         int textX = x + 21;
-        if (source == null) AlpakaStyle.listDot(graphics, x + 10, y + (rowH - 2 - 8) / 2 + 3, color);
+        if (source == null) AlpakaStyle.listDot(graphics, textX - 6, y + (rowH - 2 - 8) / 2 + 3, color);
         if (source != null) {
             float iconScale = (rowH - 4) / 16f;
             graphics.pose().pushMatrix();

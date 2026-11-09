@@ -374,7 +374,7 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
                 // The theme's own selected and hover fills, the chosen one ringed in the accent.
                 if (id == button.icon) {
                     net.alpaka.addons.client.gui.ModernGuiUtils.drawRoundedRect(graphics, x, y, CELL, CELL, AlpakaStyle.FIELD_RADIUS, AlpakaStyle.ROW_SELECTED)
-                    net.alpaka.addons.client.gui.ModernGuiUtils.drawRoundedOutline(graphics, x, y, CELL, CELL, AlpakaStyle.FIELD_RADIUS, AlpakaStyle.accentIndicator())
+                    AlpakaStyle.selectedOutline(graphics, x, y, CELL, CELL, AlpakaStyle.FIELD_RADIUS)
                 } else if (hover) {
                     net.alpaka.addons.client.gui.ModernGuiUtils.drawRoundedRect(graphics, x, y, CELL, CELL, AlpakaStyle.FIELD_RADIUS, AlpakaStyle.fieldHover())
                 }

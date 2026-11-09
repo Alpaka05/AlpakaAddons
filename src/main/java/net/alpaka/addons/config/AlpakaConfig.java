@@ -466,7 +466,7 @@ public class AlpakaConfig {
      * Everything else in this mod works from what the client already has. This is the one setting
      * that lets it reach outside; the README's "What it contacts" lists every service it is used
      * for (Hypixel's public resources and Bazaar, SkyCofl, the NEU repository, the Profile
-     * Dashboard's Elite, Soopy and SkyKings, the main menu's status ping, GitHub releases). Off
+     * Dashboard's AlpakaAddons API, Soopy and SkyKings, the main menu's status ping, GitHub releases). Off
      * means no request is made and nothing derived from one is used. The JSON key keeps its old
      * name.
      */

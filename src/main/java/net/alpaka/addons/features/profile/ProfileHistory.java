@@ -20,8 +20,8 @@ import java.util.concurrent.CompletableFuture;
 /**
  * The dashboard's own record of how a profile grew: a snapshot of its numbers each time it was
  * looked at. Nothing is asked for in the background while playing: that would be polling a
- * player's data, which Hypixel's API policy rules out. Elite keeps a
- * history of skills only; networth, Catacombs, slayers and everything else come from here.
+ * player's data, which Hypixel's API policy rules out. What other sites kept of
+ * the past (Soopy, SkyKings) is added to it in the graphs.
  *
  * Kept in {@code config/alpaka-profile-history.json}, one entry per player and profile. Recent
  * snapshots are kept close together, older ones thinned to one a day, so a year of play stays a

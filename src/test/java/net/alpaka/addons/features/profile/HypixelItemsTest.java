@@ -2,14 +2,12 @@ package net.alpaka.addons.features.profile;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Base64;
-import java.util.Map;
 import java.util.zip.GZIPOutputStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -18,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class HypixelItemsTest {
     /** Writes NBT the way Hypixel's inventories are: a root compound holding the list "i". */
-    private static final class Nbt {
+    static final class Nbt {
         final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         final DataOutputStream out = new DataOutputStream(bytes);
 
@@ -48,7 +46,7 @@ class HypixelItemsTest {
     }
 
     /** Two slots: the Time Gun with lore and an enchantment, and an empty one. */
-    private static String riftInventory() throws IOException {
+    static String riftInventory() throws IOException {
         Nbt n = new Nbt();
         n.begin(10, "");
         n.begin(9, "i");
@@ -92,8 +90,40 @@ class HypixelItemsTest {
         return n.base64();
     }
 
+    /** An inventory of one slot, holding an item with this SkyBlock id and name. */
+    static String oneItem(String id, String name) throws IOException {
+        Nbt n = new Nbt();
+        n.begin(10, "");
+        n.begin(9, "i");
+        n.out.writeByte(10);
+        n.out.writeInt(1);
+        n.begin(2, "id").out.writeShort(1);
+        n.begin(1, "Count").out.writeByte(1);
+        n.begin(10, "tag");
+        n.begin(10, "display");
+        n.string("Name", name);
+        n.end();
+        n.begin(10, "ExtraAttributes");
+        n.string("id", id);
+        n.end();
+        n.end();
+        n.end();
+        n.end();
+        return n.base64();
+    }
+
+    /** A tool as the tool kits keep it: its SkyBlock data alone, without the item around it. */
+    static String bareTool(String id) throws IOException {
+        Nbt n = new Nbt();
+        n.begin(10, "");
+        n.string("id", id);
+        n.begin(3, "rarity_upgrades").out.writeInt(1);
+        n.end();
+        return n.base64();
+    }
+
     @Test
-    void itemsInElitesShape() throws IOException {
+    void itemsAsThePagesReadThem() throws IOException {
         JsonObject inv = HypixelItems.inventory(riftInventory());
         JsonObject items = Json.obj(inv, "items");
         assertEquals(2, items.size());
@@ -106,27 +136,27 @@ class HypixelItemsTest {
         assertEquals("1", Json.str(gun, "attributes.rarity_upgrades"));
         assertEquals("eyJ0ZXh0dXJlcyI6e319", Json.str(gun, "attributes.skin_texture"));
         assertEquals("abc-123", Json.str(gun, "uuid"));
+        // The SkyBlock data whole, nested parts as they are: what Item Value prices the item from.
+        assertEquals("TIME_GUN", Json.str(gun, "data.id"));
+        assertEquals(5, Json.num(gun, "data.enchantments.sharpness", 0));
+        assertEquals(1, Json.num(gun, "data.rarity_upgrades", 0));
         assertTrue(items.get("1").isJsonNull());
         assertTrue(InventoryItems.present(gun));
         assertTrue(!InventoryItems.present(items.get("1")));
     }
 
     @Test
-    void theRiftOfTheRightProfileAndMember() throws IOException {
-        String data = riftInventory();
-        JsonElement answer = JsonParser.parseString("""
-                {"success": true, "profiles": [
-                  {"profile_id": "11111111-1111-1111-1111-111111111111", "members": {"8f16f5a695d3468392aed51c1a5bb037": {"rift": {"inventory": {
-                    "inv_contents": {"type": 0, "data": "%1$s"}}}}}},
-                  {"profile_id": "b135fa76-a529-48f8-9fc8-7be8ab8e45b4", "members": {
-                    "0123456789abcdef0123456789abcdef": {"rift": {"inventory": {"inv_contents": {"type": 0, "data": "%1$s"}}}},
-                    "8f16f5a695d3468392aed51c1a5bb037": {"rift": {"inventory": {
-                      "inv_contents": {"type": 0, "data": "%1$s"}, "ender_chest_contents": {"type": 0, "data": "%1$s"}}}}}}]}
-                """.formatted(data));
-        Map<String, JsonElement> rift = ProfileSession.riftInventories(answer, "b135fa76a52948f89fc87be8ab8e45b4", "8f16f5a695d3468392aed51c1a5bb037");
-        assertEquals(java.util.Set.of("rift_inventory", "rift_ender_chest"), rift.keySet());
-        assertEquals("TIME_GUN", Json.str(Json.obj(rift.get("rift_inventory"), "items").get("0"), "skyblockId"));
-        assertTrue(ProfileSession.riftInventories(answer, "b135fa76a52948f89fc87be8ab8e45b4", "ffffffffffffffffffffffffffffffff").isEmpty());
+    void aSingleItemComesWithOrWithoutTheItemAroundIt() throws IOException {
+        JsonElement piece = HypixelItems.single(oneItem("WISE_DRAGON_HELMET", "§6Wise Dragon Helmet"));
+        assertEquals("WISE_DRAGON_HELMET", Json.str(piece, "skyblockId"));
+        assertEquals("§6Wise Dragon Helmet", Json.str(piece, "name"));
+        // A tool kit's tool has no name or lore, only its data.
+        JsonElement tool = HypixelItems.single(bareTool("CACTUS_KNIFE_3"));
+        assertEquals("CACTUS_KNIFE_3", Json.str(tool, "skyblockId"));
+        assertEquals(null, Json.str(tool, "name"));
+        assertEquals("1", Json.str(tool, "attributes.rarity_upgrades"));
+        assertEquals(1, Json.num(tool, "data.rarity_upgrades", 0));
+        assertTrue(HypixelItems.single(new Nbt().begin(10, "").end().base64()).isJsonNull());
     }
 
     @Test

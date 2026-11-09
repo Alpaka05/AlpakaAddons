@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ProfileDataTest {
 
-    /** Cut down from a real answer of Elite's /profile endpoint. */
+    /** A profile in the shape {@link HypixelProfile} makes of Hypixel's data, cut down to what is read here. */
     private static final String MEMBER = """
             {"profileId":"p1","playerUuid":"u1","profileName":"Apple",
              "api":{"inventories":true,"collections":true,"skills":true},
@@ -72,7 +72,7 @@ class ProfileDataTest {
         assertEquals(1234, d.secretsFound);
         // Only mage played: its exact level over all five classes.
         assertEquals(Levels.catacombsOverflow(118899330.3).exact() / 5, d.classAverageOverflow, 1e-9);
-        // Slayers in the game's order; Elite's xpForNext is what is still missing.
+        // Slayers in the game's order; xpForNext is what is still missing.
         assertEquals("enderman", d.slayers.get(0).id());
         assertEquals(599995, d.slayers.get(0).xpForNext());
         // Pets by rarity, then level.
@@ -102,7 +102,7 @@ class ProfileDataTest {
         List<ProfileData.Collection> list = data().collections(resources);
         assertEquals(2, list.size());
         assertTrue(list.get(0).maxed());
-        // Without a tier from Elite it is worked out from the amount.
+        // Without a tier on record it is worked out from the amount.
         ProfileData.Collection carrot = list.get(1);
         assertEquals(1, carrot.tier());
         assertEquals(250, carrot.nextAt());
@@ -115,18 +115,6 @@ class ProfileDataTest {
         raw.getAsJsonObject("collectionTiers").addProperty("WHEAT", 1);
         ProfileData.Collection wheat = new ProfileData(raw, "Someone").collections(stale).get(0);
         assertEquals(2, wheat.tier());
-    }
-
-    @Test
-    void eliteSkillHistoryBecomesSeriesWithAnAverage() {
-        JsonElement graph = JsonParser.parseString("""
-                [{"timestamp":1000,"skillsApi":true,"skills":{"farming":55172425,"mining":50,"runecrafting":94450}},
-                 {"timestamp":2000,"skillsApi":false,"skills":{"farming":1}}]""");
-        Map<String, List<ProfileHistory.Point>> series = ProfileSession.skillSeries(List.of(graph), Map.of("farming", 60));
-        assertEquals(1, series.get(Metrics.SKILL + "farming").size());
-        assertEquals(1_000_000L, series.get(Metrics.SKILL + "farming").get(0).timeMs());
-        // Farming 50 and Mining 1; Runecrafting does not count towards the average.
-        assertEquals(25.5, series.get(Metrics.SKILL_AVG).get(0).value(), 1e-9);
     }
 
     @Test

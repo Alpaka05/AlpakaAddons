@@ -13,7 +13,7 @@ import java.util.concurrent.CompletableFuture;
  * The Bestiary as the game's menu has it: islands, the mob families on each, and the tier a profile
  * reached in every family.
  *
- * Elite only has the kills per mob ({@code stats.bestiary.mobKills}, "ghast_85": 1902); which mobs
+ * Hypixel only has the kills per mob ({@code stats.bestiary.mobKills}, "ghast_85": 1902); which mobs
  * make up a family, how many kills each tier takes and where a family caps come from the NEU
  * repository's {@code constants/bestiary.json}, as in the other profile viewers.
  */

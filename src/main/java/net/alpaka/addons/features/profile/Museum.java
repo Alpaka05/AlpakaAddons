@@ -15,8 +15,8 @@ import java.util.Map;
  * The Museum as the game's menu has it: its categories, the items and armor sets each holds, and
  * which of them a profile donated.
  *
- * Elite hands out the donated items as the member's {@code museum} inventory, armor sets split
- * into their pieces. Items taken out of the museum stay in it, marked {@code museum_borrowing}:
+ * The donated items come as the member's {@code museum} inventory ({@link HypixelProfile#museum}),
+ * armor sets split into their pieces. Items taken out of the museum stay in it, marked {@code museum_borrowing}:
  * they still count as donated, as in the game, while the networth's museum category leaves them out. What the categories hold, which pieces make up a set and which items count as
  * donated with a better one come from the NEU repository's {@code constants/museum.json}, as in the
  * other profile viewers. What is donated but in none of the categories is a special item.

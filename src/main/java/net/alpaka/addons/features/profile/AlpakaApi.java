@@ -15,9 +15,9 @@ import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * The AlpakaAddons API at api.alpaka.yt: Hypixel's API through a server of the mod's own, for what
- * Elite doesn't hand out, such as the Rift's inventories. Hypixel's API needs a key that may never
- * ship in a mod, so the key stays on that server (see {@code backend/} in the repository).
+ * The AlpakaAddons API at api.alpaka.yt: where the Profile Dashboard gets a profile from. It asks
+ * Hypixel's API, which needs a key that may never ship in a mod, so the key stays on that server
+ * (see {@code backend/} in the repository) and the server hands out what the dashboard shows.
  *
  * Logging in works as joining a server does: the API hands out a one-time challenge, the game tells
  * Mojang's session server that the player joins a server with that id, and the API asks Mojang
@@ -52,12 +52,31 @@ final class AlpakaApi {
     }
 
     /**
-     * What the dashboard shows of a player from Hypixel: their SkyBlock profiles in the shape of
-     * Hypixel's {@code /v2/skyblock/profiles}, with only the player's own member data and of that only
-     * the fields the dashboard draws (the Rift's inventories).
+     * A player and one of their SkyBlock profiles, as Hypixel has them: who they are, the profiles
+     * they are on, and of one profile - {@code profileId}, or the selected one for null - the
+     * player's own data, what its co-op shares, and its garden. {@code player} is a name or a UUID.
+     * {@code fresh} is the Refresh button: the API then asks Hypixel again if its answer is more
+     * than a minute old.
      */
-    static CompletableFuture<JsonElement> dashboard(String uuid) {
-        return get("/v1/dashboard/" + uuid.replace("-", ""), true);
+    static CompletableFuture<JsonElement> dashboard(String player, String profileId, boolean fresh) {
+        if (!ProfileApi.allowed()) return CompletableFuture.failedFuture(new ProfileApi.NetworkOff());
+        if (!player.matches("[A-Za-z0-9_-]{1,36}")) {
+            return CompletableFuture.failedFuture(new ProfileApi.NotFound("\"" + player + "\" is no Minecraft name."));
+        }
+        StringBuilder path = new StringBuilder("/v1/dashboard/").append(player.replace("-", ""));
+        char next = '?';
+        if (profileId != null) {
+            path.append(next).append("profile=").append(profileId.replace("-", ""));
+            next = '&';
+        }
+        if (fresh) path.append(next).append("fresh=1");
+        return get(path.toString(), true);
+    }
+
+    /** What a player donated to the museum of one of their profiles. */
+    static CompletableFuture<JsonElement> museum(String uuid, String profileId, boolean fresh) {
+        if (!ProfileApi.allowed()) return CompletableFuture.failedFuture(new ProfileApi.NetworkOff());
+        return get("/v1/museum/" + uuid.replace("-", "") + "/" + profileId.replace("-", "") + (fresh ? "?fresh=1" : ""), true);
     }
 
     private static CompletableFuture<JsonElement> get(String path, boolean mayLogInAgain) {
@@ -150,15 +169,38 @@ final class AlpakaApi {
                 .header("User-Agent", "AlpakaAddons/" + ModVersion.mod())
                 .header("Authorization", "Bearer " + bearer)
                 .header("Accept", "application/json")
+                // A profile is a megabyte or two of text, a third of that packed.
+                .header("Accept-Encoding", "gzip")
                 .GET()
                 .build();
-        return client().sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenApply(response -> {
-            JsonElement body = parse(response.body());
+        return client().sendAsync(request, HttpResponse.BodyHandlers.ofByteArray())
+                .orTimeout(60, java.util.concurrent.TimeUnit.SECONDS).thenApply(response -> {
+            JsonElement body = parse(text(response));
+            if (response.statusCode() == 404) throw new ProfileApi.NotFound(notFound(body));
             if (response.statusCode() != 200 || !Json.bool(body, "success")) {
                 throw new Refused(response.statusCode(), reason(response.statusCode(), body));
             }
             return body;
         });
+    }
+
+    /** The answer's text, unpacked if it came packed. */
+    private static String text(HttpResponse<byte[]> response) {
+        byte[] bytes = response.body();
+        boolean gzip = response.headers().firstValue("Content-Encoding").map(e -> e.contains("gzip")).orElse(false);
+        if (gzip) {
+            try (java.util.zip.GZIPInputStream in = new java.util.zip.GZIPInputStream(new java.io.ByteArrayInputStream(bytes))) {
+                bytes = in.readAllBytes();
+            } catch (java.io.IOException e) {
+                return "";
+            }
+        }
+        return new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    private static String notFound(JsonElement body) {
+        String cause = Json.str(body, "cause");
+        return cause == null ? "Not found." : cause + ".";
     }
 
     private static JsonElement parse(String body) {
@@ -172,7 +214,12 @@ final class AlpakaApi {
     /** The API's or Hypixel's reason, in words for the player. */
     private static String reason(int status, JsonElement body) {
         String cause = Json.str(body, "cause");
+        if (cause != null && cause.contains("Hypixel key")) {
+            return "The AlpakaAddons API can't reach Hypixel right now: its API key isn't working.";
+        }
+        if (cause != null && cause.startsWith("Too many")) return "Too many profiles opened in a short time. Try again in a few minutes.";
         if (status == 429 || status == 503) return "The AlpakaAddons API is busy. Try again in a minute.";
+        if (cause != null && cause.startsWith("Hypixel")) return cause + ". Try again in a minute.";
         return "The AlpakaAddons API answered " + status + (cause != null ? ": " + cause : ".");
     }
 }

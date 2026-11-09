@@ -4,7 +4,7 @@ import java.util.List;
 
 /**
  * The Crimson Isle's Trophy Fish: their names, rarities, where they are caught and their heads in
- * each tier, in the order of the rarities as Odger's menu has them. Elite keys the counts by the
+ * each tier, in the order of the rarities as Odger's menu has them. Hypixel keys the counts by the
  * lowercase id, {@code blobfish_gold}.
  *
  * Names, descriptions and head textures as SkyCrypt lists them (SkyCrypt-Backend,

@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Items from a player's inventories, as Elite hands them out - SkyBlock id, name, lore, count,
+ * Items from a player's inventories, as {@link HypixelItems} reads them - SkyBlock id, name, lore, count,
  * enchantments and attributes - turned into what the dashboard draws: the item as the game shows
  * it, and its tooltip as Hypixel wrote it.
  *
@@ -64,6 +64,8 @@ final class InventoryItems {
     static List<Component> tooltip(JsonElement item) {
         List<Component> lines = new ArrayList<>();
         String name = Json.str(item, "name");
+        // A tool kit's tools come without a name; Hypixel's item list has it.
+        if (name == null && Json.str(item, "skyblockId") != null) name = ItemIcons.name(Json.str(item, "skyblockId"));
         lines.add(Component.literal(name == null ? "" : name));
         for (JsonElement line : Json.arr(item, "lore")) {
             if (line.isJsonPrimitive()) lines.add(Component.literal(line.getAsString()));
@@ -71,7 +73,7 @@ final class InventoryItems {
         return lines;
     }
 
-    /** Whether a slot holds an item at all; Elite lists empty slots as null. */
+    /** Whether a slot holds an item at all; empty slots are listed as null. */
     static boolean present(JsonElement item) {
         return item != null && item.isJsonObject();
     }

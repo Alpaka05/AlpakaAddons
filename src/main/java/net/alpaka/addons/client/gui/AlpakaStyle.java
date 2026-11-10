@@ -4,12 +4,13 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /**
- * The mod's one design language, the config menu's, for every window it draws - the config menu
- * itself, the color picker, the command wheel editor, the HUD editor's bar and the confirmation
- * dialog - so they read as parts of one menu: a dark rounded panel with a soft shadow that pops
- * open, a hairline under the header, slim rows that only show a background on hover, the accent
- * for whatever is active, and the menu font without shadows. What is selected in a list is named
- * in the accent color, with its dot ({@link #listDot}), as the config's sidebar does it.
+ * The mod's one design language, the config menu's, for every window the mod draws - the config
+ * menu, its dialogs and editors, the HUD editor's bar, Item Search, the Profile and the Market - so
+ * they read as parts of one menu: a dark rounded panel with a soft shadow that pops open, a
+ * hairline under the header, slim rows that only show a background on hover, the accent for
+ * whatever is chosen or on, and the menu font without shadows. Lists name what is selected, in the
+ * accent color with its dot ({@link #listDot}), as the config's sidebar does; cards ring it
+ * ({@link #selectedOutline}). Never a bar at a row's edge, never a pill behind the selected row.
  *
  * Hover goes one step lighter: a setting row from the panel to {@link #ROW}, a card from
  * {@link #ROW} to {@link #ROW_HOVER}; buttons, which sit on rows themselves, go to
@@ -167,7 +168,12 @@ public final class AlpakaStyle {
      */
     public enum ButtonKind { PLAIN, PRIMARY, DANGER }
 
-    /** The player's accent color: what is selected, focused or about to happen. */
+    /**
+     * The player's accent color. It is only for what is chosen or switched on: the selected entry's
+     * name, the ring round a selected card, switches, primary buttons, progress. Text and marks
+     * take it through {@link #accentText}, {@link #accentTextOn} and {@link #accentIndicator},
+     * which keep it readable in every theme.
+     */
     public static int accent() {
         return ModernGuiUtils.getAccentColor();
     }
@@ -202,7 +208,7 @@ public final class AlpakaStyle {
 
     /**
      * The accent for a mark that says something is on - a switch, a slider's fill, a focus line, the
-     * selection bar: the accent where it stands out from the window at 3:1, else the closest shade of
+     * ring round a selected card: the accent where it stands out from the window at 3:1, else the closest shade of
      * it that does, else the soft text color (pure black on OLED).
      */
     public static int accentIndicator() {
@@ -236,7 +242,10 @@ public final class AlpakaStyle {
         return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
     }
 
-    /** The accent, dimmed: a focused outline, a text selection. */
+    /**
+     * The accent, dimmed: the selection in a text field and the outline of a row being dragged.
+     * Never the mark of a selected row or card.
+     */
     public static int accentDim() {
         return ModernGuiUtils.getAccentDimColor();
     }

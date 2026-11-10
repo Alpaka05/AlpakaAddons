@@ -201,10 +201,15 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(GuiFont.
         } else {
             val shortcut = keys[row.index]
             val capturing = capturingKey == row.index
-            val label = if (capturing) "Press a Key..." else CommandShortcuts.keyLabel(shortcut)
+            val label = if (capturing) "Press a Key" else CommandShortcuts.keyLabel(shortcut)
             val shown = AlpakaStyle.ellipsize(this.font, label, leftW - 8)
             if (capturing) {
-                AlpakaStyle.button(graphics, this.font, fieldX, fieldY, leftW, FIELD_H, shown, true, ButtonKind.PRIMARY)
+                // Waiting for a key looks as it does in the config: the field with its line and
+                // "Press a Key" in the accent.
+                ModernGuiUtils.drawRoundedRect(graphics, fieldX, fieldY, leftW, FIELD_H, AlpakaStyle.FIELD_RADIUS, AlpakaStyle.FIELD)
+                ModernGuiUtils.drawRect(graphics, fieldX + 3, fieldY + FIELD_H - 1, leftW - 6, 1, AlpakaStyle.accentIndicator())
+                graphics.text(this.font, GuiFont.text(shown), fieldX + 5, fieldY + (FIELD_H - 8) / 2,
+                    AlpakaStyle.accentTextOn(AlpakaStyle.FIELD), false)
             } else {
                 // Set off from the row like the fields beside it, since it sits on the same row color.
                 ModernGuiUtils.drawRoundedRect(graphics, fieldX, fieldY, leftW, FIELD_H, AlpakaStyle.FIELD_RADIUS,
@@ -214,7 +219,8 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(GuiFont.
                     if (shortcut.key.isNullOrEmpty()) AlpakaStyle.TEXT_MUTED else AlpakaStyle.TEXT, false)
             }
         }
-        // Only the first of two equal aliases or keys counts; the later one is underlined red.
+        // Only the first of two equal aliases or keys counts. Both are underlined red, so it shows
+        // what clashes with what; the section's help line says which one runs.
         if (duplicate != null) {
             ModernGuiUtils.drawRect(graphics, fieldX + 3, fieldY + FIELD_H - 1, leftW - 6, 1, AlpakaStyle.DANGER)
             // The red line alone doesn't say why; the mouse on the field does.

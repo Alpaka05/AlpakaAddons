@@ -203,7 +203,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
         if (wheel != null && !CommandWheelPages.hasOwnWheel(wheel!!)) wheel = null
         val f = frame()
         val pages = CommandWheelPages.pages(wheel)
-        val accent = ModernGuiUtils.getAccentColor()
+        val accent = AlpakaStyle.accentIndicator()
 
         AlpakaStyle.panel(graphics, f.winX, f.winY, f.winW, f.winH)
         AlpakaStyle.header(graphics, this.font, "Command Wheel", f.winX, f.winY, f.winW)
@@ -243,7 +243,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
                     ModernGuiUtils.drawRoundedOutline(graphics, rowX, y, rowW, row.height, AlpakaStyle.CARD_RADIUS,
                         if (active) accent else AlpakaStyle.DIVIDER)
                     ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text("Drop here for a new page"), rowX + rowW / 2, y + (row.height - 8) / 2,
-                        if (active) accent else AlpakaStyle.TEXT_MUTED)
+                        if (active) AlpakaStyle.accentTextOn(AlpakaStyle.PANEL) else AlpakaStyle.TEXT_MUTED)
                 }
             }
         }

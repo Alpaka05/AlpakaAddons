@@ -517,6 +517,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     private int nameExpandX;
     private int nameExpandY;
     private int nameExpandBg;
+    private int nameExpandColor;
     private int nameExpandRight;
 
     /** The hovered feature's whole name over its row, on a pill of the row's color that reaches just past it. */
@@ -527,7 +528,8 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         // At least to the row's end, so a switch is either fully there or fully covered.
         int w = Math.min(Math.max(textW + 8, nameExpandRight - x), this.width - 4 - x);
         ModernGuiUtils.drawRoundedRect(graphics, x, nameExpandY + 2, w, FEATURE_ROW_H - 4, AlpakaStyle.ROW_RADIUS, nameExpandBg);
-        graphics.text(this.font, GuiFont.text(name), nameExpandX, nameExpandY + (FEATURE_ROW_H - 8) / 2, AlpakaStyle.TEXT, false);
+        // In the row's own color: the accent of the selected feature, the red of a dangerous one.
+        graphics.text(this.font, GuiFont.text(name), nameExpandX, nameExpandY + (FEATURE_ROW_H - 8) / 2, nameExpandColor, false);
     }
 
     private Object hoveredTipThisFrame = null;
@@ -840,6 +842,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                     nameExpandX = rowX + 8;
                     nameExpandY = rowY;
                     nameExpandBg = background;
+                    nameExpandColor = titleColor;
                     nameExpandRight = rowX + rowW;
                 }
             }

@@ -312,6 +312,8 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
             val name = if (b.label.isNullOrBlank()) InventoryButtonsFeature.displayCommand(b.command) else b.label
             Skin.label(graphics, font, Skin.ellipsize(font, name, cw - 26), cx + 22, ry + 5, Skin.TEXT)
         }
+        // Soft edges where the list goes on, as every scrolling list has them.
+        AlpakaStyle.scrollFades(graphics, cx, top, cw, h, listScroll > 0, listScroll + visible < buttons.size)
         graphics.disableScissor()
 
         val hint = "Drag to move. Shift: no snapping."

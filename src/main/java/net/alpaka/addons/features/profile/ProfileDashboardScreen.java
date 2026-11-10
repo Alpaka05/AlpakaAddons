@@ -375,8 +375,10 @@ public class ProfileDashboardScreen extends Screen {
             String label = profileName + modeMark(s);
             int cw = textW(label) + 20;
             boolean hover = AlpakaStyle.inside(mx, my, tx, ty - 3, cw, 14) && !profileMenuOpen;
-            // The select field every choice of the mod is, slim to sit beside the player's name.
-            AlpakaStyle.selectField(graphics, this.font, tx, ty - 3, cw, 14, label, profileMenuOpen, hover);
+            // The select field every choice of the mod is, slim to sit beside the player's name;
+            // with a single profile there is nothing to choose, and it is just named.
+            if (s.profiles.size() > 1) AlpakaStyle.selectField(graphics, this.font, tx, ty - 3, cw, 14, label, profileMenuOpen, hover);
+            else text(graphics, label, tx + 4, ty, AlpakaStyle.TEXT_SOFT);
             profileChipX = tx;
             profileChipW = cw;
             if (s.profiles.size() > 1) {
@@ -396,11 +398,11 @@ public class ProfileDashboardScreen extends Screen {
         String refresh = s.refreshing ? "Refreshing…" : "Refresh";
         int rw = textW(refresh) + 14;
         int rx = bx - 6 - rw;
-        boolean hoverRefresh = AlpakaStyle.inside(mx, my, rx, by, rw, size);
+        boolean hoverRefresh = AlpakaStyle.inside(mx, my, rx, by - 1, rw, AlpakaStyle.BUTTON_H);
         AlpakaStyle.button(graphics, this.font, rx, by - 1, rw, AlpakaStyle.BUTTON_H, refresh, hoverRefresh, AlpakaStyle.ButtonKind.PLAIN,
                 s.state == ProfileSession.State.READY && !s.refreshing);
         if (s.state == ProfileSession.State.READY && !s.refreshing) {
-            headerHit(rx, by, rw, size, s::refresh);
+            headerHit(rx, by - 1, rw, AlpakaStyle.BUTTON_H, s::refresh);
             if (hoverRefresh) {
                 ProfileData shown = s.data;
                 String fresh = shown != null && shown.lastUpdated > 0 ? "Updated " + Metrics.ago(shown.lastUpdated * 1000L) + ". " : "";
@@ -802,8 +804,9 @@ public class ProfileDashboardScreen extends Screen {
             parts.add(Metrics.delta(key, b - a) + " " + label);
         }
         int h = 20;
-        // A note, not something chosen: a plain lighter card, the accent wash being a switched-on chip's.
-        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, AlpakaStyle.CARD_RADIUS, AlpakaStyle.ROW_SELECTED);
+        // A note, not something chosen: a quiet card with a hairline edge.
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, AlpakaStyle.CARD_RADIUS, AlpakaStyle.ROW);
+        ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, h, AlpakaStyle.CARD_RADIUS, AlpakaStyle.LINE);
         String lead = "Since your last visit " + Metrics.ago(before.t()) + ": ";
         String body = parts.isEmpty() ? "nothing changed yet." : String.join("  ·  ", parts);
         text(graphics, lead, x + 8, y + 6, AlpakaStyle.TEXT_SOFT);
@@ -1742,7 +1745,7 @@ public class ProfileDashboardScreen extends Screen {
                 if (tier[t] > 0) best = t;
             }
             boolean hover = hover(cx, cy, cw, ch);
-            ModernGuiUtils.drawRoundedRect(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW_SELECTED);
+            ModernGuiUtils.drawRoundedRect(graphics, cx, cy, cw, ch, AlpakaStyle.CARD_RADIUS, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
             ItemStack head = trophyHead(f.heads()[Math.max(0, best)]);
             // At twice its size, so the head's pixels stay whole and it reads at a glance.
             if (head != null) stackIcon(graphics, head, cx + 3, cy + 3, 2.0f);
@@ -3732,7 +3735,8 @@ public class ProfileDashboardScreen extends Screen {
     private int note(GuiGraphicsExtractor graphics, String text, int x, int y, int w) {
         List<net.minecraft.network.chat.FormattedText> lines = GuiFont.splitLines(this.font, text, w - 20);
         int h = lines.size() * 10 + 12;
-        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, AlpakaStyle.CARD_RADIUS, AlpakaStyle.ROW_SELECTED);
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, AlpakaStyle.CARD_RADIUS, AlpakaStyle.ROW);
+        ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, h, AlpakaStyle.CARD_RADIUS, AlpakaStyle.LINE);
         int ly = y + 7;
         for (net.minecraft.network.chat.FormattedText line : lines) {
             graphics.text(this.font, net.minecraft.locale.Language.getInstance().getVisualOrder(line), x + 10, ly, AlpakaStyle.TEXT_SOFT, false);

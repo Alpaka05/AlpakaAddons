@@ -200,12 +200,14 @@ class MessageFilterScreen(private val parent: Screen) : Screen(GuiFont.text("Cus
             hoverHint = if (filter.ignoreCase) "Ignores upper and lower case. Click to match case exactly."
                 else "Matches case exactly. Click to ignore upper and lower case."
         }
-        if (filter.ignoreCase && !caseHover) {
-            val gw = GuiFont.width(this.font, "Aa")
-            graphics.text(this.font, GuiFont.text("Aa"), caseX + (SMALL_BTN - gw) / 2, btnY + (SMALL_BTN - 8) / 2, AlpakaStyle.accentTextOn(AlpakaStyle.ROW), false)
-        } else {
-            AlpakaStyle.iconButton(graphics, this.font, caseX, btnY, SMALL_BTN, "Aa", caseHover, true, false)
-        }
+        // A switch like every chip that can be on: the accent wash and name while it ignores case,
+        // under the mouse too, so its state shows while it is being clicked.
+        val caseOn = filter.ignoreCase
+        val caseBg = if (caseOn) AlpakaStyle.chipOnFill(caseHover) else if (caseHover) AlpakaStyle.ROW_SELECTED else 0
+        if (caseBg != 0) ModernGuiUtils.drawRoundedRect(graphics, caseX, btnY, SMALL_BTN, SMALL_BTN, AlpakaStyle.ROW_RADIUS, caseBg)
+        val caseColor = if (caseOn) AlpakaStyle.chipOnText(AlpakaStyle.ROW, caseHover) else if (caseHover) AlpakaStyle.TEXT else AlpakaStyle.TEXT_MUTED
+        val gw = GuiFont.width(this.font, "Aa")
+        graphics.text(this.font, GuiFont.text("Aa"), caseX + (SMALL_BTN - gw) / 2, btnY + (SMALL_BTN - 8) / 2, caseColor, false)
 
         // The bin stays out of the way until the row is hovered, as in the command wheel editor.
         if (hovered) {

@@ -335,6 +335,23 @@ public final class AlpakaStyle {
         return accentTextOn(ModernGuiUtils.lerpColor(base | 0xFF000000, accent() | 0xFF000000, tint));
     }
 
+    /**
+     * The fill of a chip or small button that is switched on (a graph's range, a tab, a view
+     * toggle): a wash of the accent, a little stronger under the mouse. Chips in a row of choices
+     * are pills; a toggle that stands as a button has {@link #ROW_RADIUS}.
+     */
+    public static int chipOnFill(boolean hover) {
+        return (accent() & 0x00FFFFFF) | (hover ? 0x59000000 : 0x3D000000);
+    }
+
+    /**
+     * The label of such a chip, on {@code base}: the accent in a shade that reads on the wash. The
+     * mouse changes only the fill, never the label, so a chip that is on stays in the accent.
+     */
+    public static int chipOnText(int base, boolean hover) {
+        return accentTextOnTint(base, hover ? 0.35f : 0.24f);
+    }
+
     /** A scroll bar's thumb: slim and gray, never in the accent, which is kept for what is chosen. */
     public static void scrollThumb(GuiGraphicsExtractor graphics, int x, int y, int h, boolean active) {
         ModernGuiUtils.drawRoundedRect(graphics, x, y, 2, h, 1, active ? TEXT_MUTED : DIVIDER);

@@ -562,9 +562,10 @@ public class MarketScreen extends ContainerScreen {
                 // Hypixel's own item for the category, as the other buttons show theirs.
                 int slot = category.slot();
                 sideItem(graphics, stack(slot), rowX, rowY, rowH);
-                // The open category is named in its own color, the one Hypixel gives it; nothing
-                // behind it and nothing at its edge.
-                int text = category.selected() ? MarketInk.ink(category.kind().color) : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
+                // The open category is named in the accent, as every list names what is selected;
+                // nothing behind it and nothing at its edge.
+                int text = category.selected() ? AlpakaStyle.accentTextOn(hover ? AlpakaStyle.ROW : AlpakaStyle.PANEL)
+                        : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
                 int nameW = rowW - 26;
                 int categoryKey = nextCategoryKey(slot);
                 // The keys show while Shift is held, the one that picks a category with a number.
@@ -618,7 +619,7 @@ public class MarketScreen extends ContainerScreen {
                             hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT, false);
                 }
                 AlpakaStyle.sideChevron(graphics, rowX + rowW - 6, rowY + filterH / 2, false,
-                        hover ? AlpakaStyle.accentText() : AlpakaStyle.TEXT_MUTED);
+                        hover ? AlpakaStyle.accentIndicator() : AlpakaStyle.TEXT_MUTED);
                 if (visible(rowY, filterH, clipY, clipH)) {
                     int s = slot;
                     hits.add(new Hit(rowX, Math.max(rowY, clipY), rowW, filterH, (b, sh) -> click(s, b, sh), false));
@@ -1286,13 +1287,19 @@ public class MarketScreen extends ContainerScreen {
         return ch;
     }
 
+    /** Whether the tile only backs out of a question: a plain "Cancel" or "Go Back". */
+    private boolean backsOut(int slot) {
+        String name = plain(slot).name().toLowerCase(Locale.ROOT);
+        return name.equals("cancel") || name.equals("go back");
+    }
+
     private TileKind tileKind(int slot) {
         MarketMenu.Slot s = plain(slot);
         String name = s.name().toLowerCase(Locale.ROOT);
         String id = s.itemId();
         // A plain "Cancel" only backs out of the question and keeps everything as it was, so it is
         // not shown as dangerous; cancelling an order that exists ("Cancel Order") still is.
-        if (name.equals("cancel") || name.equals("go back")) return TileKind.PLAIN;
+        if (backsOut(slot)) return TileKind.PLAIN;
         if (name.startsWith("cancel") || id.equals("red_terracotta") || id.equals("barrier")) return TileKind.DANGER;
         // Selling the inventory or the sacks asks "Are you sure?": the other button is the yes.
         if (plainTitle.equals("Are you sure?")) return TileKind.PRIMARY;
@@ -1325,10 +1332,12 @@ public class MarketScreen extends ContainerScreen {
         if (hover) hoverTarget(slot);
         float hv = hoverProgress.getOrDefault(slot, 0f);
         TileKind kind = tileKind(slot);
+        // Backing out keeps everything as it was, so it is drawn plain, not in Hypixel's red.
+        boolean backsOut = backsOut(slot);
         int tint = switch (kind) {
             case PRIMARY -> AlpakaStyle.accent();
             case DANGER -> AlpakaStyle.DANGER;
-            default -> rarity(stack);
+            default -> backsOut ? AlpakaStyle.TEXT_MUTED : rarity(stack);
         };
 
         int bg = ModernGuiUtils.lerpColor(AlpakaStyle.ROW, AlpakaStyle.ROW_HOVER, hv);
@@ -1351,7 +1360,12 @@ public class MarketScreen extends ContainerScreen {
         GuiItemFade.end();
 
         int textAlpha = Math.round(alpha * 255) << 24;
-        styledCentered(graphics, stack.getHoverName(), iconCx, py + 48, w - 10, 0x00FFFFFF | textAlpha);
+        if (backsOut) {
+            int plainColor = ModernGuiUtils.lerpColor(AlpakaStyle.TEXT_SOFT, AlpakaStyle.TEXT, hv);
+            styledCentered(graphics, GuiFont.text(plain(slot).name()), iconCx, py + 48, w - 10, (plainColor & 0x00FFFFFF) | textAlpha);
+        } else {
+            styledCentered(graphics, stack.getHoverName(), iconCx, py + 48, w - 10, 0x00FFFFFF | textAlpha);
+        }
         int ly = py + 61;
         int lines = 0;
         if (info != null) {
@@ -1720,10 +1734,10 @@ public class MarketScreen extends ContainerScreen {
 
     private void footButton(GuiGraphicsExtractor graphics, int x, int y, int w, MarketIcons.Glyph glyph, String label,
                             boolean hover, boolean active) {
-        int accent = AlpakaStyle.accent();
-        int bg = active ? MarketIcons.fade(accent, hover ? 0.35f : 0.22f) : hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW;
+        // A toggle like every chip that can be on: the shared wash, its label staying in the accent.
+        int bg = active ? AlpakaStyle.chipOnFill(hover) : hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW;
         ModernGuiUtils.drawRoundedRect(graphics, x, y, w, 16, AlpakaStyle.ROW_RADIUS, bg);
-        int color = active ? (hover ? AlpakaStyle.TEXT : accent) : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
+        int color = active ? AlpakaStyle.chipOnText(AlpakaStyle.PANEL, hover) : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
         MarketIcons.draw(graphics, glyph, x + 6, y + 4, 8, color);
         graphics.text(this.font, GuiFont.text(label), x + 18, y + 4, color, false);
     }

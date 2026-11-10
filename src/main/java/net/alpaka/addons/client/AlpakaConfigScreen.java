@@ -1187,10 +1187,10 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                 continue;
             }
             int midY = y + PRESET_CARD_H / 2;
-            // The active preset's card takes a breath of the accent, and its number the accent itself.
-            int accent = AlpakaStyle.accentIndicator();
-            ModernGuiUtils.drawRoundedRect(graphics, rowX, y, rowW, PRESET_CARD_H, AlpakaStyle.ROW_RADIUS,
-                    active ? ModernGuiUtils.lerpColor(AlpakaStyle.ROW, accent, 0.12f) | 0xFF000000 : AlpakaStyle.ROW);
+            // The active preset is a selected card like any other: the shared ring, and its number
+            // in the accent.
+            ModernGuiUtils.drawRoundedRect(graphics, rowX, y, rowW, PRESET_CARD_H, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
+            if (active) AlpakaStyle.selectedOutline(graphics, rowX, y, rowW, PRESET_CARD_H, AlpakaStyle.ROW_RADIUS);
 
             String number = String.valueOf(i + 1);
             int numberX = rowX + 9 - GuiFont.width(this.font, number) / 2;

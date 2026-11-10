@@ -387,7 +387,7 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
             val trackH = gh - 4
             val thumbH = maxOf(8, trackH * rows / totalRows)
             val thumbY = gy + 2 + (trackH - thumbH) * iconScroll / maxOf(1, totalRows - rows)
-            graphics.fill(cx + cw - 3, thumbY, cx + cw - 1, thumbY + thumbH, Skin.LINE)
+            AlpakaStyle.scrollThumb(graphics, cx + cw - 3, thumbY, thumbH, true)
         }
         if (hoveredIcon != null) {
             graphics.setTooltipForNextFrame(GuiFont.text(InventoryButtonIcons.name(hoveredIcon)), mx.toInt(), my.toInt())

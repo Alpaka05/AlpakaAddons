@@ -283,7 +283,7 @@ public class ItemSearchScreen extends Screen {
             boolean hover = inGrid && inside(mouseX, mouseY, x, y, CELL, CELL);
             if (hover) hovered = entry;
             ModernGuiUtils.drawRoundedRect(graphics, x, y, CELL, CELL, AlpakaStyle.FIELD_RADIUS,
-                    hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW);
+                    hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW);
             graphics.item(entry.stack, x + 2, y + 2);
             if (entry.total > 1) drawCount(graphics, ItemSearchMenus.shortCount(entry.total), x, y);
         }

@@ -79,9 +79,9 @@ public final class PriceGraph {
             int cx = chipsRight - cw;
             boolean selected = r == range;
             boolean hover = AlpakaStyle.inside(mx, my, cx, y + 5, cw, CHIP_H);
-            int bg = selected ? MarketIcons.fade(AlpakaStyle.accent(), hover ? 0.35f : 0.24f) : hover ? AlpakaStyle.ROW_SELECTED : 0;
+            int bg = selected ? AlpakaStyle.chipOnFill(hover) : hover ? AlpakaStyle.ROW_SELECTED : 0;
             if (bg != 0) ModernGuiUtils.drawRoundedRect(graphics, cx, y + 5, cw, CHIP_H, CHIP_H / 2, bg);
-            int color = selected ? AlpakaStyle.accentTextOnTint(AlpakaStyle.ROW, hover ? 0.35f : 0.24f) : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_MUTED;
+            int color = selected ? AlpakaStyle.chipOnText(AlpakaStyle.ROW, hover) : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_MUTED;
             graphics.text(font, GuiFont.text(r.chip), cx + 5, y + 7, color, false);
             clicks.add(cx, y + 5, cw, CHIP_H, () -> {
                 AlpakaConfig.instance.marketPriceHistoryRange = r.ordinal();
@@ -229,7 +229,7 @@ public final class PriceGraph {
         int sw = GuiFont.width(font, source);
         int sx = px + (pw - sw) / 2;
         boolean hoverSource = AlpakaStyle.inside(mx, my, sx - 2, py + ph + 1, sw + 4, 11);
-        graphics.text(font, GuiFont.text(source), sx, py + ph + 3, hoverSource ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED, false);
+        graphics.text(font, GuiFont.text(source), sx, py + ph + 3, hoverSource ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_MUTED, false);
         String page = PriceHistory.pageUrl(tag);
         clicks.add(sx - 2, py + ph + 1, sw + 4, 11, () -> openSource(page),
                 "Prices provided by SkyCofl. Click to open " + page.replace("https://", "") + ".");

@@ -202,7 +202,7 @@ class MessageFilterScreen(private val parent: Screen) : Screen(GuiFont.text("Cus
         }
         if (filter.ignoreCase && !caseHover) {
             val gw = GuiFont.width(this.font, "Aa")
-            graphics.text(this.font, GuiFont.text("Aa"), caseX + (SMALL_BTN - gw) / 2, btnY + (SMALL_BTN - 8) / 2, AlpakaStyle.accentText(), false)
+            graphics.text(this.font, GuiFont.text("Aa"), caseX + (SMALL_BTN - gw) / 2, btnY + (SMALL_BTN - 8) / 2, AlpakaStyle.accentTextOn(AlpakaStyle.ROW), false)
         } else {
             AlpakaStyle.iconButton(graphics, this.font, caseX, btnY, SMALL_BTN, "Aa", caseHover, true, false)
         }

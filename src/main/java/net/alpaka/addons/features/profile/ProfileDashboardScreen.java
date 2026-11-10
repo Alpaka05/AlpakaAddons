@@ -375,11 +375,8 @@ public class ProfileDashboardScreen extends Screen {
             String label = profileName + modeMark(s);
             int cw = textW(label) + 20;
             boolean hover = AlpakaStyle.inside(mx, my, tx, ty - 3, cw, 14) && !profileMenuOpen;
-            int bg = profileMenuOpen ? MarketIcons.fade(AlpakaStyle.accent(), 0.3f) : hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW;
-            ModernGuiUtils.drawRoundedRect(graphics, tx, ty - 3, cw, 14, 7, bg);
-            text(graphics, label, tx + 7, ty, profileMenuOpen || hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
-            // It opens a list, so it points down and up like every select field.
-            AlpakaStyle.verticalChevron(graphics, tx + cw - 7, ty + 4, profileMenuOpen, AlpakaStyle.TEXT_MUTED);
+            // The select field every choice of the mod is, slim to sit beside the player's name.
+            AlpakaStyle.selectField(graphics, this.font, tx, ty - 3, cw, 14, label, profileMenuOpen, hover);
             profileChipX = tx;
             profileChipW = cw;
             if (s.profiles.size() > 1) {
@@ -672,7 +669,7 @@ public class ProfileDashboardScreen extends Screen {
         String source = "Data Sources";
         int sw = textW(source);
         boolean hoverSource = AlpakaStyle.inside(mx, my, x + PAD - 2, fy + 10, sw + 4, 11);
-        text(graphics, source, x + PAD, fy + 12, hoverSource ? AlpakaStyle.accentText() : AlpakaStyle.TEXT_MUTED);
+        text(graphics, source, x + PAD, fy + 12, hoverSource ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_MUTED);
         if (session.playerName != null) {
             String url = ProfileApi.ELITE_SITE + session.playerName + (d != null && d.profileName != null ? "/" + d.profileName : "");
             hits.add(new Hit(x + PAD - 2, fy + 10, sw + 4, 11, () -> openLink("Open Elite", url)));
@@ -805,7 +802,8 @@ public class ProfileDashboardScreen extends Screen {
             parts.add(Metrics.delta(key, b - a) + " " + label);
         }
         int h = 20;
-        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, AlpakaStyle.CARD_RADIUS, MarketIcons.fade(AlpakaStyle.accent(), 0.12f));
+        // A note, not something chosen: a plain lighter card, the accent wash being a switched-on chip's.
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, AlpakaStyle.CARD_RADIUS, AlpakaStyle.ROW_SELECTED);
         String lead = "Since your last visit " + Metrics.ago(before.t()) + ": ";
         String body = parts.isEmpty() ? "nothing changed yet." : String.join("  ·  ", parts);
         text(graphics, lead, x + 8, y + 6, AlpakaStyle.TEXT_SOFT);
@@ -872,7 +870,7 @@ public class ProfileDashboardScreen extends Screen {
             String title = g.name() + " " + (g.level() + 1);
             text(graphics, title, x + 8, ry + 3, AlpakaStyle.TEXT_SOFT);
             String eta = Double.isNaN(g.days()) ? Coins.compact(g.missing()) + " XP to go" : "in " + Metrics.duration(g.days());
-            text(graphics, eta, x + w - 8 - textW(eta), ry + 3, Double.isNaN(g.days()) ? AlpakaStyle.TEXT_MUTED : AlpakaStyle.accent());
+            text(graphics, eta, x + w - 8 - textW(eta), ry + 3, Double.isNaN(g.days()) ? AlpakaStyle.TEXT_MUTED : AlpakaStyle.TEXT_SOFT);
             bar(graphics, x + 8, ry + 14, w - 16, 3, g.progress(), AlpakaStyle.accent());
             String metric = g.metric();
             hit(x + 3, ry, w - 6, rowH - 1, () -> chosen.put(Page.OVERVIEW, metric));
@@ -1022,7 +1020,7 @@ public class ProfileDashboardScreen extends Screen {
             String value = Metrics.format(metric, last);
             String level = Metrics.levelNote(metric, last, maxLevel);
             if (level != null) value += "  ·  " + level;
-            text(graphics, value, x + 8 + textW(title) + 8, y + 7, AlpakaStyle.accent());
+            text(graphics, value, x + 8 + textW(title) + 8, y + 7, AlpakaStyle.TEXT);
         }
         // Without SkyKings' history no graph at all: a few scattered points would only mislead.
         String problem = session.historyProblem();
@@ -1038,9 +1036,9 @@ public class ProfileDashboardScreen extends Screen {
             int cx = chipsRight - cw;
             boolean selected = r == range;
             boolean hover = hover(cx, y + 5, cw, CHIP_H);
-            int bg = selected ? MarketIcons.fade(AlpakaStyle.accent(), hover ? 0.35f : 0.24f) : hover ? AlpakaStyle.ROW_SELECTED : 0;
+            int bg = selected ? AlpakaStyle.chipOnFill(hover) : hover ? AlpakaStyle.ROW_SELECTED : 0;
             if (bg != 0) ModernGuiUtils.drawRoundedRect(graphics, cx, y + 5, cw, CHIP_H, CHIP_H / 2, bg);
-            text(graphics, r.chip, cx + 5, y + 7, selected ? AlpakaStyle.accentTextOnTint(AlpakaStyle.ROW, hover ? 0.35f : 0.24f) : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_MUTED);
+            text(graphics, r.chip, cx + 5, y + 7, selected ? AlpakaStyle.chipOnText(AlpakaStyle.ROW, hover) : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_MUTED);
             hit(cx, y + 5, cw, CHIP_H, () -> range = r);
             chipsRight = cx - 2;
         }
@@ -1943,7 +1941,7 @@ public class ProfileDashboardScreen extends Screen {
             text(graphics, runs, cx + cellW - 5 - textW(runs), cy + 3, played ? AlpakaStyle.TEXT : AlpakaStyle.DIVIDER);
             long best = f.fastestSPlus() > 0 ? f.fastestSPlus() : f.fastestS();
             String time = best > 0 ? Metrics.clock(best) : "—";
-            text(graphics, time, cx + 5, cy + 18, best > 0 ? (f.fastestSPlus() > 0 ? AlpakaStyle.accent() : AlpakaStyle.TEXT_SOFT) : AlpakaStyle.DIVIDER);
+            text(graphics, time, cx + 5, cy + 18, best > 0 ? (f.fastestSPlus() > 0 ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT) : AlpakaStyle.TEXT_MUTED);
             if (hover(cx + 1, cy, cellW - 2, 31) && played) {
                 tip(f, f.label() + ": " + Coins.full(f.completions()) + " completions, best score " + f.bestScore()
                         + (f.fastestSPlus() > 0 ? ", fastest S+ " + Metrics.clock(f.fastestSPlus()) : "")
@@ -2709,9 +2707,9 @@ public class ProfileDashboardScreen extends Screen {
             }
             boolean selected = t == invTab;
             boolean hover = hover(cx, cy, cw, 15);
-            int bg = selected ? MarketIcons.fade(AlpakaStyle.accent(), hover ? 0.35f : 0.24f) : hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW;
+            int bg = selected ? AlpakaStyle.chipOnFill(hover) : hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW;
             ModernGuiUtils.drawRoundedRect(graphics, cx, cy, cw, 15, 7, bg);
-            text(graphics, t.title, cx + 7, cy + 4, selected ? AlpakaStyle.accentTextOnTint(AlpakaStyle.PANEL, hover ? 0.35f : 0.24f) : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
+            text(graphics, t.title, cx + 7, cy + 4, selected ? AlpakaStyle.chipOnText(AlpakaStyle.PANEL, hover) : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
             hit(cx, cy, cw, 15, () -> invTab = t);
             cx += cw + 4;
         }
@@ -3044,8 +3042,7 @@ public class ProfileDashboardScreen extends Screen {
                     slot(graphics, item, sx, py + p * SLOT);
                 }
                 if (isWorn) {
-                    ModernGuiUtils.drawRoundedOutline(graphics, sx - 2, py - 2, SLOT + 3, 4 * SLOT + 3, 3,
-                            MarketIcons.fade(AlpakaStyle.accent(), 0.8f));
+                    AlpakaStyle.selectedOutline(graphics, sx - 2, py - 2, SLOT + 3, 4 * SLOT + 3, 3);
                 }
             }
         }
@@ -3735,7 +3732,7 @@ public class ProfileDashboardScreen extends Screen {
     private int note(GuiGraphicsExtractor graphics, String text, int x, int y, int w) {
         List<net.minecraft.network.chat.FormattedText> lines = GuiFont.splitLines(this.font, text, w - 20);
         int h = lines.size() * 10 + 12;
-        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, AlpakaStyle.CARD_RADIUS, MarketIcons.fade(AlpakaStyle.accent(), 0.10f));
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, AlpakaStyle.CARD_RADIUS, AlpakaStyle.ROW_SELECTED);
         int ly = y + 7;
         for (net.minecraft.network.chat.FormattedText line : lines) {
             graphics.text(this.font, net.minecraft.locale.Language.getInstance().getVisualOrder(line), x + 10, ly, AlpakaStyle.TEXT_SOFT, false);

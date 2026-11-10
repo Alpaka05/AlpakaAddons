@@ -23,7 +23,7 @@ object InventoryButtonsSkin {
 
     val TEXT: Int get() = AlpakaStyle.TEXT
     val TEXT_MUTED: Int get() = AlpakaStyle.TEXT_MUTED
-    val LINE: Int get() = AlpakaStyle.DIVIDER
+    val LINE: Int get() = AlpakaStyle.LINE
 
     fun accent(): Int = AlpakaStyle.accent()
 

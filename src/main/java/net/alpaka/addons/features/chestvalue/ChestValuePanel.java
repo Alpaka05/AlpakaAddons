@@ -696,11 +696,10 @@ public final class ChestValuePanel {
     /** A small switch: dark, lighter on hover, in the accent while on. */
     private static void chip(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, String label, boolean hover,
                              boolean on, boolean enabled) {
-        int bg = on ? (AlpakaStyle.accent() & 0x00FFFFFF) | (hover ? 0x59000000 : 0x33000000)
-                : hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW;
-        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, CHIP_H, AlpakaStyle.FIELD_RADIUS, bg);
+        int bg = on ? AlpakaStyle.chipOnFill(hover) : hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW;
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, CHIP_H, AlpakaStyle.ROW_RADIUS, bg);
         if (label.isEmpty()) return;
-        int color = !enabled ? AlpakaStyle.TEXT_MUTED : on ? (hover ? AlpakaStyle.TEXT : AlpakaStyle.accent())
+        int color = !enabled ? AlpakaStyle.TEXT_MUTED : on ? AlpakaStyle.chipOnText(AlpakaStyle.PANEL, hover)
                 : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
         ModernGuiUtils.centeredText(graphics, font, GuiFont.text(label), x + w / 2, y + 3, color);
     }

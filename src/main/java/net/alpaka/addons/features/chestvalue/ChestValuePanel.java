@@ -698,11 +698,10 @@ public final class ChestValuePanel {
     /** A small switch: dark, lighter on hover, in the accent while on. */
     private static void chip(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, String label, boolean hover,
                              boolean on, boolean enabled) {
-        int bg = on ? (AlpakaStyle.accent() & 0x00FFFFFF) | (hover ? 0x59000000 : 0x33000000)
-                : hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW;
-        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, CHIP_H, AlpakaStyle.FIELD_RADIUS, bg);
+        int bg = on ? AlpakaStyle.chipOnFill(hover) : hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW;
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, CHIP_H, AlpakaStyle.ROW_RADIUS, bg);
         if (label.isEmpty()) return;
-        int color = !enabled ? AlpakaStyle.TEXT_MUTED : on ? (hover ? AlpakaStyle.TEXT : AlpakaStyle.accent())
+        int color = !enabled ? AlpakaStyle.TEXT_MUTED : on ? AlpakaStyle.chipOnText(AlpakaStyle.PANEL, hover)
                 : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
         ModernGuiUtils.centeredText(graphics, font, GuiFont.text(label), x + w / 2, y + 3, color);
     }
@@ -820,8 +819,9 @@ public final class ChestValuePanel {
             int tint = color == null || color == OTHER ? AlpakaStyle.TEXT_MUTED : color;
             ModernGuiUtils.drawRoundedRect(graphics, x + 4, y + 1, shareW, h - 2, AlpakaStyle.ROW_RADIUS, MarketIcons.fade(tint, 0.13f));
         }
-        if (linked) ModernGuiUtils.drawRoundedRect(graphics, x + 4, y + 3, 2, h - 6, 1, AlpakaStyle.accent());
-        else if (color != null && color != OTHER) ModernGuiUtils.drawRoundedRect(graphics, x + 4, y + 5, 2, h - 10, 1, color);
+        // The line's color in the chart, as a dot like Item Value's; the lighter row alone says which
+        // line the mouse or the chart points at.
+        if (color != null && color != OTHER) ModernGuiUtils.drawRoundedRect(graphics, x + 3, y + (h - 4) / 2, 4, 4, 2, color);
 
         // Far enough in that a three-digit amount on the icon stays clear of the color mark.
         int ix = x + PAD + 3;
@@ -964,11 +964,11 @@ public final class ChestValuePanel {
         String shown = AlpakaStyle.ellipsize(font, source, room);
         int sw = GuiFont.width(font, shown);
         int sx = x + w - PAD - sw;
-        graphics.text(font, GuiFont.text(shown), sx, ty, AlpakaStyle.DIVIDER, false);
+        graphics.text(font, GuiFont.text(shown), sx, ty, AlpakaStyle.TEXT_MUTED, false);
         if (!narrow && !waiting()) {
             String slots = summary.stacks() == 1 ? "1 slot" : summary.stacks() + " slots";
             if (GuiFont.width(font, slots) + 8 < sx - (x + PAD)) {
-                graphics.text(font, GuiFont.text(slots), x + PAD, ty, AlpakaStyle.DIVIDER, false);
+                graphics.text(font, GuiFont.text(slots), x + PAD, ty, AlpakaStyle.TEXT_MUTED, false);
             }
         }
         if (AlpakaStyle.inside(mx, my, sx - 2, y + 1, sw + 4, FOOTER_H - 1)) {

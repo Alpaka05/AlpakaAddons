@@ -641,7 +641,6 @@ public final class ItemValuePopup {
         boolean selected = row.part() != null && graphOpen && (graphPart == null ? row.group() == Group.BASE && row.heading()
                 : row.part() == graphPart);
         if (hover) ModernGuiUtils.drawRoundedRect(graphics, x + 4, y, w - 8, h, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
-        if (selected) ModernGuiUtils.drawRoundedRect(graphics, x + 4, y + 2, 2, h - 4, 1, AlpakaStyle.accent());
         int ty = y + (h - 8) / 2;
         int color = color(row.group());
 
@@ -671,7 +670,7 @@ public final class ItemValuePopup {
             right -= 24;
         }
 
-        int labelColor = selected ? AlpakaStyle.accent() : !row.priced() ? AlpakaStyle.TEXT_MUTED
+        int labelColor = selected ? AlpakaStyle.accentTextOn(hover ? AlpakaStyle.ROW : AlpakaStyle.PANEL) : !row.priced() ? AlpakaStyle.TEXT_MUTED
                 : row.child() ? AlpakaStyle.TEXT_SOFT : AlpakaStyle.TEXT;
         String label = row.parts() > 1 ? row.label() + " (" + row.parts() + ")" : row.label();
         graphics.text(font, GuiFont.text(AlpakaStyle.ellipsize(font, label, right - labelX)), labelX, ty, labelColor, false);
@@ -795,7 +794,7 @@ public final class ItemValuePopup {
         int by = y + (HISTORY_ROW_H - bh) / 2 + 1;
         boolean hover = AlpakaStyle.inside(mx, my, bx, by, bw, bh);
         if (hover) ModernGuiUtils.drawRoundedRect(graphics, bx, by, bw, bh, AlpakaStyle.FIELD_RADIUS, AlpakaStyle.ROW_SELECTED);
-        int color = graphOpen ? AlpakaStyle.accent() : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
+        int color = graphOpen ? AlpakaStyle.accentTextOn(hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.PANEL) : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
         AlpakaStyle.chevron(graphics, bx + 7, by + bh / 2, graphOpen, color);
         graphics.text(font, GuiFont.text(label), bx + 14, by + 3, color, false);
         hits.add(new Hit(bx, by, bw, bh, () -> {
@@ -813,7 +812,7 @@ public final class ItemValuePopup {
         String shown = AlpakaStyle.ellipsize(font, source, room);
         int sw = GuiFont.width(font, shown);
         int sx = x + w - PAD - sw;
-        graphics.text(font, GuiFont.text(shown), sx, by + 3, AlpakaStyle.DIVIDER, false);
+        graphics.text(font, GuiFont.text(shown), sx, by + 3, AlpakaStyle.TEXT_MUTED, false);
         if (AlpakaStyle.inside(mx, my, sx - 2, by, sw + 4, bh)) {
             tip = "Bazaar prices from Hypixel, lowest BINs from SkyCofl. Asked for again every few minutes while this is open.";
             hoverTip("source");

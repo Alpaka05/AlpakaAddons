@@ -140,9 +140,6 @@ public class MarketScreen extends ContainerScreen {
     private final Map<ItemStack, Integer> rarityCache = new IdentityHashMap<>();
 
     private final Map<Integer, Float> hoverProgress = new HashMap<>();
-    /** The selected category's marker, gliding to its row. */
-    private float indicatorY = Float.NaN;
-    private int indicatorColor = 0;
     private final Scroll contentScroll = new Scroll();
     private final Scroll sideScroll = new Scroll();
 
@@ -260,8 +257,6 @@ public class MarketScreen extends ContainerScreen {
     /** Takes over from the page it replaces, so turning a page doesn't look like a new window. */
     private void continueFrom(MarketScreen previous) {
         continued = true;
-        indicatorY = previous.indicatorY;
-        indicatorColor = previous.indicatorColor;
         sideScroll.current = previous.sideScroll.current;
         sideScroll.target = previous.sideScroll.target;
     }
@@ -465,7 +460,7 @@ public class MarketScreen extends ContainerScreen {
         int by = y + (HEADER_H - button) / 2;
         int closeX = right - button;
         boolean hoverClose = AlpakaStyle.inside(mx, my, closeX, by, button, button);
-        glyphButton(graphics, closeX, by, button, MarketIcons.Glyph.CLOSE, hoverClose, AlpakaStyle.DANGER);
+        AlpakaStyle.closeButton(graphics, closeX, by, button, hoverClose);
         hits.add(new Hit(closeX, by, button, button, (b, s) -> onClose(), true));
         if (hoverClose) tip("close", "Close");
         right = closeX - 4;
@@ -488,13 +483,9 @@ public class MarketScreen extends ContainerScreen {
             int sy = y + (HEADER_H - sh) / 2;
             boolean hover = AlpakaStyle.inside(mx, my, sx, sy, sw, sh);
             boolean active = m.query != null && !m.query.isEmpty();
-            ModernGuiUtils.drawRoundedRect(graphics, sx, sy, sw, sh, sh / 2, hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.FIELD);
-            if (active) ModernGuiUtils.drawRoundedOutline(graphics, sx, sy, sw, sh, sh / 2, AlpakaStyle.accentDim());
-            else if (hover) ModernGuiUtils.drawRoundedOutline(graphics, sx, sy, sw, sh, sh / 2, AlpakaStyle.LINE);
-            MarketIcons.draw(graphics, MarketIcons.Glyph.SEARCH, sx + 7, sy + 4.5f, 9, active || hover ? accent : AlpakaStyle.TEXT_MUTED);
-            String text = active ? m.query : "Search " + (kind == MarketKind.BAZAAR ? "the Bazaar" : "auctions") + "…";
-            graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, text, sw - 26)), sx + 20, sy + 5,
-                    active ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_MUTED, false);
+            // The search field every window has; a click opens the market's input to type into.
+            AlpakaStyle.searchFieldShown(graphics, this.font, sx, sy, sw, sh, active ? m.query : "",
+                    "Search " + (kind == MarketKind.BAZAAR ? "the Bazaar" : "auctions") + "…", hover);
             hits.add(new Hit(sx, sy, sw, sh, (b, s) -> click(search, b, s), false));
             if (hover) hoveredStack = stack(search);
             right = sx - 8;
@@ -565,34 +556,16 @@ public class MarketScreen extends ContainerScreen {
         if (!m.categories.isEmpty()) {
             rowY = groupStart(graphics, "Categories", x, rowY, w, compact, first);
             first = false;
-            float targetY = Float.NaN;
-            int targetColor = 0;
-            int at = rowY;
-            for (MarketMenu.Category category : m.categories) {
-                if (category.selected()) {
-                    targetY = at;
-                    targetColor = category.kind().color;
-                }
-                at += rowH + 1;
-            }
-            // The marker glides from the category it was on, also across a page change.
-            if (!Float.isNaN(targetY)) {
-                if (Float.isNaN(indicatorY)) indicatorY = targetY;
-                indicatorY = PloppAnimation.interpolate(indicatorY, targetY, deltaSec, 16.0f);
-                indicatorColor = indicatorColor == 0 ? targetColor : ModernGuiUtils.lerpColor(indicatorColor, targetColor, Math.min(1f, deltaSec * 12f));
-                int iy = Math.round(indicatorY);
-                ModernGuiUtils.drawRoundedRect(graphics, rowX, iy, rowW, rowH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW_SELECTED);
-                ModernGuiUtils.drawRoundedRect(graphics, rowX, iy + 4, 2, rowH - 8, 1, indicatorColor);
-            }
             for (MarketMenu.Category category : m.categories) {
                 boolean hover = inClip && AlpakaStyle.inside(mx, my, rowX, rowY, rowW, rowH);
-                if (hover && !category.selected()) {
-                    ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, rowH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
-                }
+                if (hover) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, rowH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
                 // Hypixel's own item for the category, as the other buttons show theirs.
                 int slot = category.slot();
                 sideItem(graphics, stack(slot), rowX, rowY, rowH);
-                int text = category.selected() || hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
+                // The open category is named in the accent, as every list names what is selected;
+                // nothing behind it and nothing at its edge.
+                int text = category.selected() ? AlpakaStyle.accentTextOn(hover ? AlpakaStyle.ROW : AlpakaStyle.PANEL)
+                        : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
                 int nameW = rowW - 26;
                 int categoryKey = nextCategoryKey(slot);
                 // The keys show while Shift is held, the one that picks a category with a number.
@@ -635,7 +608,7 @@ public class MarketScreen extends ContainerScreen {
                         case TIER -> MarketIcons.Glyph.TIER;
                         default -> MarketIcons.Glyph.BIN;
                     };
-                    MarketIcons.draw(graphics, glyph, rowX + 7, rowY + (filterH - 9) / 2f, 9, hover ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
+                    MarketIcons.draw(graphics, glyph, rowX + 7, rowY + (filterH - 9) / 2f, 9, hover ? AlpakaStyle.accentIndicator() : AlpakaStyle.TEXT_MUTED);
                 }
                 if (compact) {
                     graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, value, rowW - 33)), rowX + 21, rowY + 4,
@@ -646,7 +619,7 @@ public class MarketScreen extends ContainerScreen {
                             hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT, false);
                 }
                 AlpakaStyle.sideChevron(graphics, rowX + rowW - 6, rowY + filterH / 2, false,
-                        hover ? AlpakaStyle.accent() : AlpakaStyle.DIVIDER);
+                        hover ? AlpakaStyle.accentIndicator() : AlpakaStyle.TEXT_MUTED);
                 if (visible(rowY, filterH, clipY, clipH)) {
                     int s = slot;
                     hits.add(new Hit(rowX, Math.max(rowY, clipY), rowW, filterH, (b, sh) -> click(s, b, sh), false));
@@ -724,7 +697,7 @@ public class MarketScreen extends ContainerScreen {
         boolean hover = inClip && AlpakaStyle.inside(mx, my, rowX, rowY, rowW, rowH);
         if (hover) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, rowH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
         if (glyph != null) {
-            MarketIcons.draw(graphics, glyph, rowX + 7, rowY + (rowH - 9) / 2f, 9, hover ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
+            MarketIcons.draw(graphics, glyph, rowX + 7, rowY + (rowH - 9) / 2f, 9, hover ? AlpakaStyle.accentIndicator() : AlpakaStyle.TEXT_MUTED);
         } else if (item != null) {
             sideItem(graphics, item, rowX, rowY, rowH);
         }
@@ -787,7 +760,7 @@ public class MarketScreen extends ContainerScreen {
             int trackH = ch - 12;
             int thumbH = Math.max(16, (int) (trackH * (ch / (double) (ch + contentScroll.max))));
             int thumbY = cy + 6 + (int) ((trackH - thumbH) * (contentScroll.current / contentScroll.max));
-            ModernGuiUtils.drawRoundedRect(graphics, cx + cw - 4, thumbY, 2, thumbH, 1, inClip ? AlpakaStyle.TEXT_MUTED : AlpakaStyle.DIVIDER);
+            AlpakaStyle.scrollThumb(graphics, cx + cw - 4, thumbY, thumbH, inClip);
         }
         graphics.disableScissor();
         updateHover(deltaSec);
@@ -938,7 +911,7 @@ public class MarketScreen extends ContainerScreen {
         switch (info == null ? LoreInfo.Type.GENERIC : info.type) {
             case AUCTION -> auctionLines(graphics, info, tx, py, tw, alpha, reserve);
             case PRODUCT -> productLines(graphics, info, tx, py, tw, alpha);
-            case ORDER -> orderLines(graphics, info, tx, py, tw, alpha);
+            case ORDER -> orderLines(graphics, info, tx, py, tw, alpha, reserve);
             default -> genericLines(graphics, stack, info, tx, py, tw, alpha, compact ? 1 : 2, reserve);
         }
 
@@ -1025,16 +998,22 @@ public class MarketScreen extends ContainerScreen {
         return lx + GuiFont.width(this.font, text);
     }
 
-    private void orderLines(GuiGraphicsExtractor graphics, LoreInfo info, int tx, int py, int tw, float alpha) {
+    private void orderLines(GuiGraphicsExtractor graphics, LoreInfo info, int tx, int py, int tw, float alpha, int reserve) {
         int ly = py + 16;
         int lx = tx;
+        // The amount and price end before the key's badge at the end of the line, cut if need be.
+        int lineEnd = tx + tw - reserve - 2;
         if (info.amount != null) {
             String amount = Coins.full(info.amount) + "x";
             graphics.text(this.font, GuiFont.text(amount), lx, ly, MarketIcons.fade(AlpakaStyle.TEXT_SOFT, alpha), false);
             lx += GuiFont.width(this.font, amount) + 6;
         }
         if (info.unitPrice != null) {
-            graphics.text(this.font, GuiFont.text(Coins.compact(info.unitPrice) + " each"), lx, ly, MarketIcons.fade(MarketInk.ink(COIN), alpha), false);
+            // "each" goes first when the line is short; the number is what matters.
+            String price = Coins.compact(info.unitPrice) + " each";
+            if (GuiFont.width(this.font, price) > lineEnd - lx) price = Coins.compact(info.unitPrice);
+            price = AlpakaStyle.ellipsize(this.font, price, lineEnd - lx);
+            graphics.text(this.font, GuiFont.text(price), lx, ly, MarketIcons.fade(MarketInk.ink(COIN), alpha), false);
         }
         float ratio = info.fillRatio();
         if (ratio >= 0) {
@@ -1308,10 +1287,19 @@ public class MarketScreen extends ContainerScreen {
         return ch;
     }
 
+    /** Whether the tile only backs out of a question: a plain "Cancel" or "Go Back". */
+    private boolean backsOut(int slot) {
+        String name = plain(slot).name().toLowerCase(Locale.ROOT);
+        return name.equals("cancel") || name.equals("go back");
+    }
+
     private TileKind tileKind(int slot) {
         MarketMenu.Slot s = plain(slot);
         String name = s.name().toLowerCase(Locale.ROOT);
         String id = s.itemId();
+        // A plain "Cancel" only backs out of the question and keeps everything as it was, so it is
+        // not shown as dangerous; cancelling an order that exists ("Cancel Order") still is.
+        if (backsOut(slot)) return TileKind.PLAIN;
         if (name.startsWith("cancel") || id.equals("red_terracotta") || id.equals("barrier")) return TileKind.DANGER;
         // Selling the inventory or the sacks asks "Are you sure?": the other button is the yes.
         if (plainTitle.equals("Are you sure?")) return TileKind.PRIMARY;
@@ -1344,10 +1332,12 @@ public class MarketScreen extends ContainerScreen {
         if (hover) hoverTarget(slot);
         float hv = hoverProgress.getOrDefault(slot, 0f);
         TileKind kind = tileKind(slot);
+        // Backing out keeps everything as it was, so it is drawn plain, not in Hypixel's red.
+        boolean backsOut = backsOut(slot);
         int tint = switch (kind) {
             case PRIMARY -> AlpakaStyle.accent();
             case DANGER -> AlpakaStyle.DANGER;
-            default -> rarity(stack);
+            default -> backsOut ? AlpakaStyle.TEXT_MUTED : rarity(stack);
         };
 
         int bg = ModernGuiUtils.lerpColor(AlpakaStyle.ROW, AlpakaStyle.ROW_HOVER, hv);
@@ -1370,7 +1360,12 @@ public class MarketScreen extends ContainerScreen {
         GuiItemFade.end();
 
         int textAlpha = Math.round(alpha * 255) << 24;
-        styledCentered(graphics, stack.getHoverName(), iconCx, py + 48, w - 10, 0x00FFFFFF | textAlpha);
+        if (backsOut) {
+            int plainColor = ModernGuiUtils.lerpColor(AlpakaStyle.TEXT_SOFT, AlpakaStyle.TEXT, hv);
+            styledCentered(graphics, GuiFont.text(plain(slot).name()), iconCx, py + 48, w - 10, (plainColor & 0x00FFFFFF) | textAlpha);
+        } else {
+            styledCentered(graphics, stack.getHoverName(), iconCx, py + 48, w - 10, 0x00FFFFFF | textAlpha);
+        }
         int ly = py + 61;
         int lines = 0;
         if (info != null) {
@@ -1739,10 +1734,10 @@ public class MarketScreen extends ContainerScreen {
 
     private void footButton(GuiGraphicsExtractor graphics, int x, int y, int w, MarketIcons.Glyph glyph, String label,
                             boolean hover, boolean active) {
-        int accent = AlpakaStyle.accent();
-        int bg = active ? MarketIcons.fade(accent, hover ? 0.35f : 0.22f) : hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW;
+        // A toggle like every chip that can be on: the shared wash, its label staying in the accent.
+        int bg = active ? AlpakaStyle.chipOnFill(hover) : hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW;
         ModernGuiUtils.drawRoundedRect(graphics, x, y, w, 16, AlpakaStyle.ROW_RADIUS, bg);
-        int color = active ? (hover ? AlpakaStyle.TEXT : accent) : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
+        int color = active ? AlpakaStyle.chipOnText(AlpakaStyle.PANEL, hover) : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
         MarketIcons.draw(graphics, glyph, x + 6, y + 4, 8, color);
         graphics.text(this.font, GuiFont.text(label), x + 18, y + 4, color, false);
     }
@@ -1765,7 +1760,7 @@ public class MarketScreen extends ContainerScreen {
             int cy = y + 18 + (i / 9) * CELL + (i >= 27 ? 4 : 0);
             boolean hover = AlpakaStyle.inside(mouseX, mouseY, cx, cy, CELL - 1, CELL - 1);
             ModernGuiUtils.drawRoundedRect(graphics, cx, cy, CELL - 1, CELL - 1, AlpakaStyle.FIELD_RADIUS,
-                    hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.FIELD);
+                    hover ? AlpakaStyle.fieldHover() : AlpakaStyle.FIELD);
             ItemStack stack = stack(slot);
             if (!stack.isEmpty()) {
                 graphics.item(stack, cx, cy);
@@ -1851,6 +1846,13 @@ public class MarketScreen extends ContainerScreen {
         }
         Component dots = GuiFont.text("…");
         FormattedText cut = this.font.substrByWidth(restyled, Math.max(0, maxW - this.font.width(dots)));
+        // No space left hanging between the last word and the dots ("Hay …"), as AlpakaStyle.ellipsize cuts.
+        String plain = cut.getString();
+        String trimmed = plain.replaceAll("[\\s,;:.]+$", "");
+        if (trimmed.length() < plain.length()) {
+            int drop = this.font.width(GuiFont.text(plain.substring(trimmed.length())));
+            cut = this.font.substrByWidth(restyled, Math.max(0, this.font.width(cut) - drop));
+        }
         graphics.text(this.font, Language.getInstance().getVisualOrder(cut), x, y, color, false);
         graphics.text(this.font, dots, x + this.font.width(cut), y, AlpakaStyle.TEXT_MUTED & 0x00FFFFFF | (color & 0xFF000000), false);
     }

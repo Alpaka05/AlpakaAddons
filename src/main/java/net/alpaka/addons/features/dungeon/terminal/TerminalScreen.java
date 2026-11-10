@@ -337,7 +337,7 @@ public class TerminalScreen extends ContainerScreen {
         graphics.text(this.font, GuiFont.text(kind.displayName()), x, textY, palette.text(), false);
         x += GuiFont.width(this.font, kind.displayName());
         if (argument != null) {
-            graphics.text(this.font, GuiFont.text(argument), x + 6, textY, AlpakaStyle.accent(), false);
+            graphics.text(this.font, GuiFont.text(argument), x + 6, textY, AlpakaStyle.accentTextOn(palette.background()), false);
         }
 
         TerminalGuiLayout.Rect close = closeButton(l);
@@ -380,7 +380,7 @@ public class TerminalScreen extends ContainerScreen {
         int color;
         if (practice.solved()) {
             text = "Solved in " + seconds(practice.elapsedMs(now)) + (practice.newBest() ? "  New Best!" : "");
-            color = AlpakaStyle.accent();
+            color = AlpakaStyle.accentTextOn(palette.background());
         } else {
             text = seconds(practice.elapsedMs(now)) + (best >= 0 ? "  Best " + seconds(best) : "");
             color = palette.mutedText();

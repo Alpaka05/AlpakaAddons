@@ -222,7 +222,7 @@ class HudEditorScreen(private val parent: Screen?) : Screen(GuiFont.text("HUD Ed
         }
 
         val guideColor = when {
-            element === selected -> ModernGuiUtils.getAccentColor()
+            element === selected -> AlpakaStyle.accentIndicator()
             isHovered -> AlpakaStyle.TEXT
             disabled -> AlpakaStyle.DIVIDER
             else -> GUIDE_COLOR
@@ -239,7 +239,7 @@ class HudEditorScreen(private val parent: Screen?) : Screen(GuiFont.text("HUD Ed
         val pillY = if (box.y0 - LABEL_GAP - 4 >= HEADER_BOTTOM) box.y0 - LABEL_GAP - 4 else box.y1 + 3
         ModernGuiUtils.drawRoundedRect(graphics, pillX, pillY, pillW, LABEL_H, LABEL_H / 2, PILL_COLOR)
         graphics.text(this.font, GuiFont.text(label), pillX + 6, pillY + (LABEL_H - 8) / 2,
-            if (element === selected) ModernGuiUtils.getAccentColor() else AlpakaStyle.TEXT, false)
+            if (element === selected) AlpakaStyle.accentTextOn(AlpakaStyle.PANEL) else AlpakaStyle.TEXT, false)
     }
 
     private fun statusLine(): String {
@@ -419,7 +419,7 @@ class HudEditorScreen(private val parent: Screen?) : Screen(GuiFont.text("HUD Ed
         /** The config menu's header height, so the bar matches every other window's header. */
         const val BAR_H = AlpakaStyle.HEADER_H
         const val HEADER_BOTTOM = BAR_Y + BAR_H + 4 + STATUS_H + 2
-        const val DONE_W = 44
+        const val DONE_W = AlpakaStyle.DONE_W
         const val RESET_W = 40
         const val RESET_ALL_W = 52
     }

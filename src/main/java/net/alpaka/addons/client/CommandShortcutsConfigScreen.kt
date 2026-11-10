@@ -2,6 +2,7 @@ package net.alpaka.addons.client
 
 import net.alpaka.addons.client.gui.AlpakaStyle
 import net.alpaka.addons.client.gui.AlpakaStyle.ButtonKind
+import net.alpaka.addons.client.gui.EditableText
 import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.config.AlpakaConfig
@@ -103,7 +104,8 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(GuiFont.
     }
 
     // Cell positions within a row, shared by drawing and clicking.
-    private fun leftW(kind: Kind) = if (kind == Kind.KEY) KEY_W else ALIAS_W
+    // One width for both sections, so the arrows and the commands line up down the whole window.
+    private fun leftW(@Suppress("UNUSED_PARAMETER") kind: Kind) = KEY_W
     private fun commandX(rowX: Int, kind: Kind) = rowX + leftW(kind) + ARROW_W
     private fun delX(rowX: Int, rowW: Int) = rowX + rowW - SMALL_BTN - 3
     private fun commandW(rowX: Int, rowW: Int, kind: Kind) = delX(rowX, rowW) - 6 - commandX(rowX, kind)
@@ -145,40 +147,45 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(GuiFont.
 
         val rowX = f.listX
         val rowW = f.listW
+        duplicateTip = null
         val aliasDupes = duplicateAliases()
         val keyDupes = duplicateKeys()
         for (row in rows) {
             val y = f.listY + row.y - scrollY.toInt()
             if (y + row.height < f.listY || y > f.listY + f.listH) continue
             when (row.kind) {
-                Kind.SECTION -> AlpakaStyle.groupLabel(graphics, this.font, row.text, rowX + 4, y + 8)
-                Kind.HINT -> graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, row.text, rowW - 8)),
-                    rowX + 4, y + 1, AlpakaStyle.TEXT_SOFT, false)
+                // The heading a step brighter than the hint under it, so the two read as title and text.
+                Kind.SECTION -> graphics.text(this.font, GuiFont.text(row.text), rowX + 4, y + 8, AlpakaStyle.TEXT_SOFT, false)
+                // While two entries clash, the section's help line says so, in the error color.
+                Kind.HINT -> {
+                    val clash = clashMessage(row.index, if (row.index == 0) aliasDupes else keyDupes)
+                    graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, clash ?: row.text, rowW - 8)),
+                        rowX + 4, y + 1, if (clash != null) AlpakaStyle.DANGER_SOFT else AlpakaStyle.TEXT_MUTED, false)
+                }
                 Kind.ALIAS, Kind.KEY -> drawEntryRow(graphics, row, rowX, y, rowW, mouseX, mouseY, inList,
-                    if (row.kind == Kind.ALIAS) row.index in aliasDupes else row.index in keyDupes)
+                    if (row.kind == Kind.ALIAS) aliasDupes[row.index] else keyDupes[row.index])
                 Kind.ADD_ALIAS, Kind.ADD_KEY -> {
+                    // The same full-width button the config menu adds a preset with.
                     val hovered = inList && inside(mouseX, mouseY, rowX, y, rowW, row.height)
-                    val accent = ModernGuiUtils.getAccentColor()
-                    ModernGuiUtils.drawRoundedOutline(graphics, rowX, y, rowW, row.height, AlpakaStyle.CARD_RADIUS,
-                        if (hovered) accent else AlpakaStyle.DIVIDER)
-                    val label = if (row.kind == Kind.ADD_ALIAS) "Add Alias" else "Add Key Shortcut"
-                    val color = if (hovered) accent else AlpakaStyle.TEXT_MUTED
-                    val lw = GuiFont.width(this.font, label)
-                    val cx = rowX + rowW / 2
-                    AlpakaStyle.plus(graphics, (cx - lw / 2 - 6).toFloat(), y + row.height / 2f, 3f, color)
-                    graphics.text(this.font, GuiFont.text(label), cx - lw / 2 + 2, y + (row.height - 8) / 2, color, false)
+                    val label = if (row.kind == Kind.ADD_ALIAS) "+ Add Alias" else "+ Add Key Shortcut"
+                    AlpakaStyle.button(graphics, this.font, rowX, y, rowW, row.height, label, hovered, ButtonKind.PLAIN)
                 }
             }
         }
         AlpakaStyle.scrollFades(graphics, f.listX, f.listY, f.listW, f.listH, scrollY > 0.5, scrollY < maxScrollY - 0.5)
         graphics.disableScissor()
 
+        duplicateTip?.let { AlpakaStyle.tooltip(graphics, this.font, this.width, this.height, mouseX, mouseY, it) }
+
         AlpakaStyle.endOpen(graphics, pushed)
         net.alpaka.addons.features.notification.AlpakaNotifications.renderOverScreen(graphics)
     }
 
+    /** Why the duplicate field under the mouse is marked red, shown as its tooltip; null when none is. */
+    private var duplicateTip: String? = null
+
     private fun drawEntryRow(graphics: GuiGraphicsExtractor, row: Row, x: Int, y: Int, w: Int, mouseX: Int, mouseY: Int,
-                             inList: Boolean, duplicate: Boolean) {
+                             inList: Boolean, duplicate: Boolean?) {
         val hovered = inList && inside(mouseX, mouseY, x, y, w, row.height)
         ModernGuiUtils.drawRoundedRect(graphics, x, y, w, row.height, AlpakaStyle.CARD_RADIUS, if (hovered) AlpakaStyle.ROW_HOVER else AlpakaStyle.ROW)
 
@@ -189,33 +196,48 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(GuiFont.
         if (row.kind == Kind.ALIAS) {
             val alias = aliases[row.index]
             val focused = focusKind == Kind.ALIAS && focusIndex == row.index && focusColumn == 0
-            AlpakaStyle.textField(graphics, this.font, fieldX, fieldY, leftW, FIELD_H, alias.alias, "/alias", focused, hoverLeft, caretFrom)
+            if (focused) editorScroll = AlpakaStyle.textField(graphics, this.font, fieldX, fieldY, leftW, FIELD_H, editor, "/alias", true, hoverLeft, caretFrom)
+            else AlpakaStyle.textField(graphics, this.font, fieldX, fieldY, leftW, FIELD_H, alias.alias, "/alias", false, hoverLeft, caretFrom)
         } else {
             val shortcut = keys[row.index]
             val capturing = capturingKey == row.index
-            val label = if (capturing) "Press a Key..." else CommandShortcuts.keyLabel(shortcut)
+            val label = if (capturing) "Press a Key" else CommandShortcuts.keyLabel(shortcut)
             val shown = AlpakaStyle.ellipsize(this.font, label, leftW - 8)
             if (capturing) {
-                AlpakaStyle.button(graphics, this.font, fieldX, fieldY, leftW, FIELD_H, shown, true, ButtonKind.PRIMARY)
+                // Waiting for a key looks as it does in the config: the field with its line and
+                // "Press a Key" in the accent.
+                ModernGuiUtils.drawRoundedRect(graphics, fieldX, fieldY, leftW, FIELD_H, AlpakaStyle.FIELD_RADIUS, AlpakaStyle.FIELD)
+                ModernGuiUtils.drawRect(graphics, fieldX + 3, fieldY + FIELD_H - 1, leftW - 6, 1, AlpakaStyle.accentIndicator())
+                graphics.text(this.font, GuiFont.text(shown), fieldX + 5, fieldY + (FIELD_H - 8) / 2,
+                    AlpakaStyle.accentTextOn(AlpakaStyle.FIELD), false)
             } else {
                 // Set off from the row like the fields beside it, since it sits on the same row color.
                 ModernGuiUtils.drawRoundedRect(graphics, fieldX, fieldY, leftW, FIELD_H, AlpakaStyle.FIELD_RADIUS,
-                    if (hoverLeft) AlpakaStyle.ROW_SELECTED else AlpakaStyle.FIELD)
-                ModernGuiUtils.centeredText(graphics, this.font, GuiFont.text(shown), fieldX + leftW / 2, fieldY + (FIELD_H - 8) / 2,
-                    if (shortcut.key.isNullOrEmpty()) AlpakaStyle.TEXT_MUTED else AlpakaStyle.TEXT)
+                    if (hoverLeft) AlpakaStyle.fieldHover() else AlpakaStyle.FIELD)
+                // Left-aligned at the text fields' inset, like the aliases above it.
+                graphics.text(this.font, GuiFont.text(shown), fieldX + 5, fieldY + (FIELD_H - 8) / 2,
+                    if (shortcut.key.isNullOrEmpty()) AlpakaStyle.TEXT_MUTED else AlpakaStyle.TEXT, false)
             }
         }
-        // Only the first of two equal aliases or keys counts; the later one is underlined red.
-        if (duplicate) ModernGuiUtils.drawRect(graphics, fieldX + 3, fieldY + FIELD_H - 1, leftW - 6, 1, AlpakaStyle.DANGER)
+        // Only the first of two equal aliases or keys counts. Both are underlined red, so it shows
+        // what clashes with what; the section's help line says which one runs.
+        if (duplicate != null) {
+            ModernGuiUtils.drawRect(graphics, fieldX + 3, fieldY + FIELD_H - 1, leftW - 6, 1, AlpakaStyle.DANGER)
+            // The red line alone doesn't say why; the mouse on the field does.
+            val what = if (row.kind == Kind.ALIAS) "alias" else "key"
+            if (hoverLeft) duplicateTip = if (duplicate) "This $what is used again below. This one applies, the other does not."
+                else "This $what is already used above. Only the first one applies."
+        }
 
-        AlpakaStyle.sideChevron(graphics, x + leftW(row.kind) + ARROW_W / 2, fieldY + FIELD_H / 2, false, AlpakaStyle.TEXT_MUTED)
+        AlpakaStyle.mapsTo(graphics, x + leftW(row.kind) + ARROW_W / 2, fieldY + FIELD_H / 2, AlpakaStyle.TEXT_MUTED)
 
         val cmdX = commandX(x, row.kind)
         val cmdW = commandW(x, w, row.kind)
         val command = if (row.kind == Kind.ALIAS) aliases[row.index].command else keys[row.index].command
         val cmdFocused = focusKind == row.kind && focusIndex == row.index && focusColumn == 1
-        AlpakaStyle.textField(graphics, this.font, cmdX, fieldY, cmdW, FIELD_H, command, "/command",
-            cmdFocused, inList && inside(mouseX, mouseY, cmdX, fieldY, cmdW, FIELD_H), caretFrom)
+        val cmdHover = inList && inside(mouseX, mouseY, cmdX, fieldY, cmdW, FIELD_H)
+        if (cmdFocused) editorScroll = AlpakaStyle.textField(graphics, this.font, cmdX, fieldY, cmdW, FIELD_H, editor, "/command", true, cmdHover, caretFrom)
+        else AlpakaStyle.textField(graphics, this.font, cmdX, fieldY, cmdW, FIELD_H, command, "/command", false, cmdHover, caretFrom)
 
         val dx = delX(x, w)
         val btnY = y + (row.height - SMALL_BTN) / 2
@@ -223,24 +245,30 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(GuiFont.
     }
 
     /** Alias rows that repeat an earlier alias, which therefore never apply. */
-    private fun duplicateAliases(): Set<Int> {
-        val seen = HashSet<String>()
-        val dupes = HashSet<Int>()
-        aliases.forEachIndexed { i, a ->
-            val name = CommandShortcuts.aliasName(a.alias)
-            if (name.isNotEmpty() && !seen.add(name)) dupes.add(i)
-        }
-        return dupes
-    }
+    private fun duplicateAliases(): Map<Int, Boolean> =
+        clashes(aliases.map { CommandShortcuts.aliasName(it.alias) })
 
     /** Key rows bound to the same keys as an earlier one. */
-    private fun duplicateKeys(): Set<Int> {
-        val seen = HashSet<String>()
-        val dupes = HashSet<Int>()
-        keys.forEachIndexed { i, k ->
-            if (!k.key.isNullOrEmpty() && !seen.add(k.key + "|" + (k.modifiers and CommandShortcuts.MODIFIER_MASK))) dupes.add(i)
-        }
-        return dupes
+    /** What the section's help line says while entries clash, or null when none do. */
+    private fun clashMessage(section: Int, clashes: Map<Int, Boolean>): String? {
+        val first = clashes.entries.filter { it.value }.minOfOrNull { it.key } ?: return null
+        return if (section == 0) "\"${aliases[first].alias}\" is used twice; the first one runs."
+            else "${CommandShortcuts.keyLabel(keys[first])} is used twice; the first one runs."
+    }
+
+    private fun duplicateKeys(): Map<Int, Boolean> =
+        clashes(keys.map { if (it.key.isNullOrEmpty()) "" else it.key + "|" + (it.modifiers and CommandShortcuts.MODIFIER_MASK) })
+
+    /**
+     * Every row whose name another row shares, both of them, so the player sees what clashes with
+     * what; the value says whether the row is the first of its name, the one that applies.
+     */
+    private fun clashes(names: List<String>): Map<Int, Boolean> {
+        val result = HashMap<Int, Boolean>()
+        names.withIndex().filter { it.value.isNotEmpty() }.groupBy { it.value }.values
+            .filter { it.size > 1 }
+            .forEach { group -> group.forEachIndexed { n, item -> result[item.index] = n == 0 } }
+        return result
     }
 
     // ------------------------------------------------------------------ input
@@ -258,6 +286,8 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(GuiFont.
             return true
         }
 
+        // Which cell was being edited, so a click back into it only moves the caret.
+        clickedWhileEditing = if (focusKind != null) Triple(focusKind, focusIndex, focusColumn) else null
         endEditing()
         if (!inside(mouseX, mouseY, f.listX, f.listY, f.listW, f.listH)) return super.mouseClicked(event, isDoubleClick)
 
@@ -289,14 +319,14 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(GuiFont.
                             save()
                         }
                         inside(mouseX, mouseY, rowX + 3, fieldY, leftW(row.kind) - 3, FIELD_H) -> {
-                            if (row.kind == Kind.ALIAS) focus(Kind.ALIAS, row.index, 0)
+                            if (row.kind == Kind.ALIAS) focusAt(Kind.ALIAS, row.index, 0, mouseX - (rowX + 3))
                             else {
                                 playPloppSound()
                                 capturingKey = row.index
                             }
                         }
                         inside(mouseX, mouseY, commandX(rowX, row.kind), fieldY, commandW(rowX, rowW, row.kind), FIELD_H) ->
-                            focus(row.kind, row.index, 1)
+                            focusAt(row.kind, row.index, 1, mouseX - commandX(rowX, row.kind))
                     }
                 }
                 else -> {}
@@ -311,6 +341,37 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(GuiFont.
         focusKind = kind
         focusIndex = index
         focusColumn = column
+        // The cell's text goes into the editor, which brings the caret, selection and clipboard
+        // every text field of the mod has; each change is written straight back to the cell.
+        editor.setText(focusedText ?: "")
+        editor.setCaret(editor.text.length)
+    }
+
+    private val editor = EditableText(MAX_LEN)
+    /** How far the focused cell's text is scrolled, for placing the caret on a click. */
+    private var editorScroll = 0
+    /** The cell that was being edited when the current click came in, if any. */
+    private var clickedWhileEditing: Triple<Kind?, Int, Int>? = null
+
+    /**
+     * A click into a cell: into the one being edited it moves the caret to where it landed; into
+     * another it starts editing that one, the caret at the end, ready to type on.
+     */
+    private fun focusAt(kind: Kind, index: Int, column: Int, localX: Int) {
+        val again = clickedWhileEditing == Triple(kind, index, column)
+        focus(kind, index, column)
+        if (again) editor.setCaretFromX(localX - 5 + editorScroll) { GuiFont.width(this.font, it) }
+    }
+
+    /** Writes the editor back to the focused cell; an alias stays a single word. */
+    private fun syncEditor() {
+        if (focusKind == Kind.ALIAS && focusColumn == 0 && editor.text.contains(' ')) {
+            val caret = editor.caret
+            val before = editor.text.substring(0, caret).count { it == ' ' }
+            editor.setText(editor.text.replace(" ", ""))
+            editor.setCaret(caret - before)
+        }
+        focusedText = editor.text
     }
 
     private fun endEditing() {
@@ -336,11 +397,12 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(GuiFont.
         }
 
     private fun insert(typed: String) {
-        val current = focusedText ?: return
+        if (focusedText == null) return
         // An alias is a single word: spaces would never match the first word of a command.
         val clean = if (focusKind == Kind.ALIAS && focusColumn == 0) typed.replace(" ", "") else typed
-        val filtered = clean.filter { it.code >= 32 && it.code != 127 && it != '§' }
-        focusedText = (current + filtered).take(MAX_LEN)
+        clean.filter { it.code >= 32 && it.code != 127 && it != '§' }.forEach { editor.insert(it) }
+        syncEditor()
+        caretFrom = System.currentTimeMillis()
     }
 
     override fun charTyped(event: CharacterEvent): Boolean {
@@ -378,13 +440,8 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(GuiFont.
         }
         if (focusKind != null) {
             when {
-                event.key() == GLFW.GLFW_KEY_BACKSPACE -> {
-                    val current = focusedText ?: ""
-                    if (current.isNotEmpty()) focusedText = current.substring(0, current.length - 1)
-                    return true
-                }
                 event.isPaste -> {
-                    insert(this.minecraft?.keyboardHandler?.clipboard ?: "")
+                    insert((this.minecraft?.keyboardHandler?.clipboard ?: "").lineSequence().firstOrNull() ?: "")
                     return true
                 }
                 event.key() == GLFW.GLFW_KEY_TAB -> {
@@ -398,6 +455,11 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(GuiFont.
                     endEditing()
                     return true
                 }
+            }
+            // Backspace, Delete, the arrows, Home and End, selecting, copy and cut.
+            if (editor.keyPressed(event.key(), event.hasControlDownWithQuirk(), event.hasShiftDown())) {
+                syncEditor()
+                caretFrom = System.currentTimeMillis()
             }
             return true
         }
@@ -433,18 +495,17 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(GuiFont.
         private const val MIN_H = 180
         /** Space kept free around the window, as the config screen keeps. */
         private const val MARGIN = 8
-        private const val DONE_W = 44
+        private const val DONE_W = AlpakaStyle.DONE_W
 
         private const val SECTION_H = 19
         private const val HINT_H = 13
         private const val SECTION_GAP = 6
-        private const val ITEM_H = 20
-        private const val ITEM_GAP = 3
+        private const val ITEM_H = AlpakaStyle.CARD_H
+        private const val ITEM_GAP = AlpakaStyle.CARD_GAP
         private const val FIELD_H = 16
-        private const val ALIAS_W = 72
         private const val KEY_W = 92
         private const val ARROW_W = 14
-        private const val SMALL_BTN = 14
+        private const val SMALL_BTN = AlpakaStyle.ICON_BTN
 
         /** As long as a chat command may be. */
         private const val MAX_LEN = 256

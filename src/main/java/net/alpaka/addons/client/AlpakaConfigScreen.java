@@ -60,22 +60,24 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     private static final int LINE_H = 9;
     private static final int GROUP_LABEL_H = 13;
     private static final int SECTION_ROW_H = 13;
-    private static final int FEATURE_ROW_H = 20;
-    private static final int FEATURE_ROW_GAP = 3;
+    private static final int FEATURE_ROW_H = AlpakaStyle.CARD_H;
+    private static final int FEATURE_ROW_GAP = AlpakaStyle.CARD_GAP;
     private static final int SETTING_ROW_H = 16;
     private static final int SLIDER_ROW_H = 24;
     private static final int ACTION_ROW_H = 18;
     /** Space above and below a full-width button, so a hovered row next to it doesn't merge with it into one box. */
     private static final int ACTION_GAP = 2;
-    private static final int TOGGLE_W = 16;
-    private static final int TOGGLE_H = 9;
+    private static final int TOGGLE_W = AlpakaStyle.TOGGLE_W;
+    private static final int TOGGLE_H = AlpakaStyle.TOGGLE_H;
     private static final int SWATCH_W = 16;
     private static final int SWATCH_H = 9;
     private static final int TEXT_FIELD_W = 76;
-    private static final int CHOICE_FIELD_W = 84;
+    private static final int CHOICE_FIELD_W = 76;
     private static final int KEY_FIELD_W = 76;
     private static final int PREVIEW_LABEL_H = 12;
     private static final int PREVIEW_PAD = 5;
+    /** How far an open list sits in from the row it belongs to. */
+    private static final int LIST_INDENT = 8;
     private static final int MAX_TEXT_OPTION_LENGTH = 32;
     private static final int MAX_SEARCH_LENGTH = 35;
     private static final int PRESET_CARD_H = 20;
@@ -106,7 +108,13 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     private ConfigTree.Feature selectedFeature;
 
     /** Whether the details panel shows the feature's description; one choice for every feature. */
-    private boolean descriptionOpen = true;
+    private boolean descriptionOpen = false;
+    /** How tall the selected feature's settings were last frame, and for which feature. */
+    private int settingsHeight = 0;
+    private ConfigTree.Feature settingsHeightFor = null;
+
+    /** How many lines of a feature's description show at least before it is opened. */
+    private static final int DESCRIPTION_LINES = 3;
 
     /**
      * Dropdowns opened in the details panel. Every list starts folded each time the config opens,
@@ -303,6 +311,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     }
 
     private void selectSection(ConfigTree.Section section) {
+        if (section != selectedSection) revealSection = true;
         selectedSection = section;
         if (!isViewmodelSection()) setupMode = false;
         selectedFeature = section.features.isEmpty() ? null : section.features.get(0);
@@ -318,6 +327,13 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
 
     /** Set when a feature was chosen from outside the list, which then scrolls it into view. */
     private boolean revealSelected = false;
+    /** Set when the section changed, so the sidebar scrolls it into view if it is out of sight. */
+    private boolean revealSection = false;
+    /**
+     * Characters typed in the first moments after opening are dropped: they belong to the key press
+     * that opened the menu, and would otherwise start a search with that key's letter.
+     */
+    private static final long TYPE_TO_SEARCH_GUARD_MS = 200L;
 
     /**
      * The search results for the text in {@link #listedFor}. The tree and every title and keyword in
@@ -359,6 +375,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             List<ConfigTree.Feature> found = listedFeatures();
             if (!found.contains(selectedFeature)) selectFirstResult();
         } else if (selectedFeature != null) {
+            if (selectedSection != selectedFeature.section) revealSection = true;
             selectedSection = selectedFeature.section;
         }
         featureScroll.reset();
@@ -486,13 +503,33 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             hoveredSince = now;
         }
         if (hoveredTip != null && now - hoveredSince >= TOOLTIP_DELAY_MS && draggedSlider == null) {
-            AlpakaStyle.tooltip(graphics, this.font, this.width, this.height, mouseX, mouseY, hoveredTipText);
+            if (hoveredTip instanceof ConfigTree.Feature) drawExpandedName(graphics, hoveredTipText);
+            else AlpakaStyle.tooltip(graphics, this.font, this.width, this.height, mouseX, mouseY, hoveredTipText);
         }
 
         AlpakaStyle.endOpen(graphics, scaling);
 
         // Notices over the menu, where the HUD would hide them behind it.
         net.alpaka.addons.features.notification.AlpakaNotifications.renderOverScreen(graphics);
+    }
+
+    /** Where the hovered feature's cut name starts, and its row's background, for drawing it in full. */
+    private int nameExpandX;
+    private int nameExpandY;
+    private int nameExpandBg;
+    private int nameExpandColor;
+    private int nameExpandRight;
+
+    /** The hovered feature's whole name over its row, on a pill of the row's color that reaches just past it. */
+    private void drawExpandedName(GuiGraphicsExtractor graphics, String name) {
+        graphics.nextStratum();
+        int textW = GuiFont.width(this.font, name);
+        int x = nameExpandX - 4;
+        // At least to the row's end, so a switch is either fully there or fully covered.
+        int w = Math.min(Math.max(textW + 8, nameExpandRight - x), this.width - 4 - x);
+        ModernGuiUtils.drawRoundedRect(graphics, x, nameExpandY + 2, w, FEATURE_ROW_H - 4, AlpakaStyle.ROW_RADIUS, nameExpandBg);
+        // In the row's own color: the accent of the selected feature, the red of a dangerous one.
+        graphics.text(this.font, GuiFont.text(name), nameExpandX, nameExpandY + (FEATURE_ROW_H - 8) / 2, nameExpandColor, false);
     }
 
     private Object hoveredTipThisFrame = null;
@@ -532,8 +569,20 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             }
         } else if (selectedFeature != null) {
             int room = detailW - PAD * 2 - 4 - (setupButton ? SETUP_BTN_W + 6 : 0);
+            int tx = detailX + PAD + 2;
+            // A search mixes features of every section, so the header says which one this is from.
+            if (searching() && selectedFeature.section != null) {
+                String section = selectedFeature.section.title;
+                int sectionW = GuiFont.width(this.font, section);
+                if (sectionW + 14 < room / 2) {
+                    graphics.text(this.font, GuiFont.text(section), tx, y + (HEADER_H - 8) / 2, AlpakaStyle.TEXT_MUTED, false);
+                    AlpakaStyle.chevron(graphics, tx + sectionW + 6, y + HEADER_H / 2, false, AlpakaStyle.TEXT_MUTED);
+                    tx += sectionW + 13;
+                    room -= sectionW + 13;
+                }
+            }
             String name = ellipsize(selectedFeature.title, room);
-            AlpakaStyle.title(graphics, this.font, name, detailX + PAD + 2, y);
+            AlpakaStyle.title(graphics, this.font, name, tx, y);
         }
         if (setupButton) {
             int bx = detailX + detailW - PAD - SETUP_BTN_W;
@@ -585,72 +634,30 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         graphics.text(this.font, title, x + PAD, y + 8, AlpakaStyle.TEXT, false);
         drawVersion(graphics, x + PAD, y + 22, featX + 4 - 6);
 
-        // Search: a pill over the feature column.
+        // Search: the search field every window has, over the feature column.
         int sx = featX + 4;
         int sw = featW - 8;
         int sh = 18;
         int sy = y + (HEADER_H - sh) / 2;
         boolean hover = inside(mouseX, mouseY, sx, sy, sw, sh);
-        ModernGuiUtils.drawRoundedRect(graphics, sx, sy, sw, sh, sh / 2, AlpakaStyle.FIELD);
-        if (searchFocused) ModernGuiUtils.drawRoundedOutline(graphics, sx, sy, sw, sh, sh / 2, AlpakaStyle.accentDim());
-        else if (hover) ModernGuiUtils.drawRoundedOutline(graphics, sx, sy, sw, sh, sh / 2, AlpakaStyle.LINE);
-
-        int tx = sx + 9;
-        int ty = sy + (sh - 8) / 2;
-        int iconX = sx + sw - 16;
-        // The text keeps clear of the icon: cut with an ellipsis at rest, scrolled to the caret
-        // while typing.
-        int room = iconX - 4 - tx;
-        searchScrollPx = 0;
-        if (search.isEmpty() && !searchFocused) {
-            graphics.text(this.font, GuiFont.text("Search…"), tx, ty, AlpakaStyle.TEXT_MUTED, false);
-        } else if (!searchFocused) {
-            graphics.text(this.font, GuiFont.text(ellipsize(search.getText(), room)), tx, ty, AlpakaStyle.TEXT, false);
-        } else {
-            String text = search.getText();
-            int caretPx = GuiFont.width(this.font, text.substring(0, search.getCaret()));
-            searchScrollPx = Math.max(0, caretPx - room + 1);
-            int ox = tx - searchScrollPx;
-            graphics.enableScissor(tx, sy, tx + room + 1, sy + sh);
-            if (search.hasSelection()) {
-                int from = ox + GuiFont.width(this.font, text.substring(0, search.getSelectionStart()));
-                int to = ox + GuiFont.width(this.font, text.substring(0, search.getSelectionEnd()));
-                ModernGuiUtils.drawRect(graphics, from, ty - 1, to - from, 10, AlpakaStyle.accentDim());
-            }
-            graphics.text(this.font, GuiFont.text(text), ox, ty, AlpakaStyle.TEXT, false);
-            if ((System.currentTimeMillis() - caretBlinkFrom) / 500 % 2 == 0) {
-                ModernGuiUtils.drawRect(graphics, ox + caretPx, ty - 1, 1, 10, AlpakaStyle.TEXT);
-            }
-            graphics.disableScissor();
-        }
+        int[] clear = AlpakaStyle.searchClearBox(sx, sy, sw, sh);
+        boolean hoverClear = !search.isEmpty() && inside(mouseX, mouseY, clear[0], clear[1], clear[2], clear[2]);
+        searchScrollPx = AlpakaStyle.searchField(graphics, this.font, sx, sy, sw, sh, search, "Type to search…",
+                searchFocused, hover, hoverClear, caretBlinkFrom);
         // The field first, the clear button after: the later hit is the one on top.
         int scrolled = searchScrollPx;
+        int tx = sx + AlpakaStyle.SEARCH_TEXT_INSET;
         hits.add(Hit.quiet(sx, sy, sw, sh, (mx, my) -> {
             searchFocused = true;
             caretBlinkFrom = System.currentTimeMillis();
             search.setCaretFromX((int) mx - tx + scrolled, s -> GuiFont.width(this.font, s));
         }));
         if (!search.isEmpty()) {
-            boolean hoverClear = inside(mouseX, mouseY, iconX - 3, sy + 2, 14, 14);
-            // Just the cross, lit in the accent on hover; a box around it crowds the slim field.
-            int gw = GuiFont.width(this.font, "✕");
-            graphics.text(this.font, GuiFont.text("✕"), iconX - 3 + (14 - gw) / 2, sy + 5,
-                    hoverClear ? ModernGuiUtils.getAccentColor() : AlpakaStyle.TEXT_MUTED, false);
-            hits.add(new Hit(iconX - 3, sy + 2, 14, 14, (mx, my) -> {
+            hits.add(new Hit(clear[0], clear[1], clear[2], clear[2], (mx, my) -> {
                 search.setText("");
                 onSearchChanged();
             }));
-        } else {
-            drawSearchIcon(graphics, iconX + 2, sy + 4, searchFocused ? ModernGuiUtils.getAccentColor() : AlpakaStyle.TEXT_MUTED);
         }
-    }
-
-    /** A magnifying glass: a ring of four short strokes and a handle, from plain fills. */
-    private static void drawSearchIcon(GuiGraphicsExtractor graphics, int x, int y, int color) {
-        ModernGuiUtils.drawRoundedOutline(graphics, x, y, 7, 7, 3, color);
-        ModernGuiUtils.drawRect(graphics, x + 6, y + 6, 1, 1, color);
-        ModernGuiUtils.drawRect(graphics, x + 7, y + 7, 1, 1, color);
-        ModernGuiUtils.drawRect(graphics, x + 8, y + 8, 1, 1, color);
     }
 
     private void drawSidebar(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w, int h, float deltaSec) {
@@ -667,6 +674,29 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             contentH += GROUP_LABEL_H + groups.get(i).sections.size() * SECTION_ROW_H + (i < groups.size() - 1 ? 9 : 0);
         }
         sidebarScroll.max = Math.max(0, contentH - clipH);
+        if (revealSection && selectedSection != null) {
+            revealSection = false;
+            // Where the section's row sits in the list, to bring it into view if it is out of sight.
+            int top = 2;
+            int groupTop = 0;
+            for (int i = 0; i < groups.size(); i++) {
+                groupTop = top;
+                top += GROUP_LABEL_H;
+                int index = groups.get(i).sections.indexOf(selectedSection);
+                if (index >= 0) {
+                    top += index * SECTION_ROW_H;
+                    break;
+                }
+                top += groups.get(i).sections.size() * SECTION_ROW_H + 9;
+            }
+            // Scrolled so the list starts at the section's group label wherever that keeps the
+            // section in view, so no label or row is left cut in half at the top.
+            boolean out = top < sidebarScroll.target || top + SECTION_ROW_H > sidebarScroll.target + clipH;
+            if (out) {
+                sidebarScroll.target = top + SECTION_ROW_H + 4 - groupTop <= clipH ? groupTop
+                        : top + SECTION_ROW_H + 4 - clipH;
+            }
+        }
         sidebarScroll.update(deltaSec);
 
         graphics.enableScissor(x, clipY, x + w, clipY + clipH);
@@ -678,9 +708,11 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             for (ConfigTree.Section section : group.sections) {
                 boolean selected = !searching() && section == selectedSection;
                 boolean hover = inside(mouseX, mouseY, x, rowY, w, SECTION_ROW_H) && inside(mouseX, mouseY, x, clipY, w, clipH);
-                int color = selected ? ModernGuiUtils.getAccentColor() : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
+                // How every list of the mod says what is selected: its dot and its name in the
+                // accent color, nothing behind it and nothing at its edge.
+                int color = selected ? AlpakaStyle.accentText() : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
                 String label = ellipsize(section.title, w - PAD - 14);
-                ModernGuiUtils.drawRoundedRect(graphics, x + PAD + 1, rowY + 5, 2, 2, 1, color);
+                AlpakaStyle.listDot(graphics, x + PAD + 1, rowY + 5, color);
                 graphics.text(this.font, GuiFont.text(label), x + PAD + 7, rowY + 2, color, false);
                 if (visible(rowY, SECTION_ROW_H, clipY, clipH)) {
                     hits.add(new Hit(x, Math.max(rowY, clipY), w, SECTION_ROW_H, (mx, my) -> {
@@ -694,7 +726,10 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                 rowY += SECTION_ROW_H;
             }
             if (i < groups.size() - 1) {
-                ModernGuiUtils.drawRect(graphics, x + PAD, rowY + 4, w - PAD * 2, 1, AlpakaStyle.LINE);
+                // Not where the list fades out at the bottom: half faded, right over the line above
+                // the HUD Editor button, it read as that line drawn twice.
+                boolean underFade = sidebarScroll.offset() + 1 < sidebarScroll.max && rowY + 4 >= clipY + clipH - 10;
+                if (!underFade) ModernGuiUtils.drawRect(graphics, x + PAD, rowY + 4, w - PAD * 2, 1, AlpakaStyle.LINE);
                 rowY += 9;
             }
         }
@@ -725,8 +760,15 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             int index = features.indexOf(selectedFeature);
             if (index >= 0) {
                 int top = index * (FEATURE_ROW_H + FEATURE_ROW_GAP);
-                featureScroll.target = Math.max(0, top - clipH / 2 + FEATURE_ROW_H);
-                featureScroll.current = Math.max(0, Math.min(featureScroll.max, featureScroll.target));
+                boolean inView = top >= featureScroll.target && top + FEATURE_ROW_H + 4 <= featureScroll.target + clipH;
+                if (!inView) {
+                    // Opened on a feature, the list jumps there, centred; stepping with the arrow
+                    // keys only scrolls as far as the next row needs, and glides.
+                    boolean opening = System.currentTimeMillis() - openTimeMs < 300;
+                    featureScroll.target = opening ? Math.max(0, top - clipH / 2 + FEATURE_ROW_H)
+                            : top < featureScroll.target ? top : top + FEATURE_ROW_H + 6 - clipH;
+                    if (opening) featureScroll.current = Math.max(0, Math.min(featureScroll.max, featureScroll.target));
+                }
             }
         }
         featureScroll.update(deltaSec);
@@ -749,12 +791,17 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                 int background = selected ? AlpakaStyle.ROW_SELECTED : hover ? AlpakaStyle.ROW_HOVER : AlpakaStyle.ROW;
                 ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, FEATURE_ROW_H, AlpakaStyle.CARD_RADIUS, background);
 
-                // The dots keep their place whether drawn or not, so every switch lines up.
+                // The chevron, which says the feature has settings, keeps its place whether drawn or
+                // not, so every switch lines up.
                 int right = rowX + rowW - 6;
-                if (!feature.panelOptions().isEmpty()) {
-                    drawDots(graphics, right - 1, rowY + (FEATURE_ROW_H - 7) / 2, selected ? AlpakaStyle.TEXT_SOFT : AlpakaStyle.TEXT_MUTED);
+                // An action-only row opens the confirm dialog, not settings: no chevron, and its
+                // name gets the room.
+                boolean action = onlyDangerous(feature);
+                if (!feature.panelOptions().isEmpty() && !action) {
+                    AlpakaStyle.chevron(graphics, right - 2, rowY + FEATURE_ROW_H / 2, false,
+                            selected || hover ? AlpakaStyle.TEXT_SOFT : AlpakaStyle.TEXT_MUTED);
                 }
-                right -= 7;
+                if (!action) right -= 8;
                 int toggleX = right - TOGGLE_W;
                 int toggleY = rowY + (FEATURE_ROW_H - TOGGLE_H) / 2;
                 // The row first, its switch after: the later hit is the one on top.
@@ -769,25 +816,40 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                     }));
                 }
 
-                int titleColor = selected ? ModernGuiUtils.getAccentColor() : AlpakaStyle.TEXT;
-                int titleW = (feature.hasToggle() ? toggleX : right) - (rowX + 8) - 6;
+                // The selected feature's name in the accent color, as the sidebar names its section.
+                int titleColor = selected ? AlpakaStyle.accentTextOn(AlpakaStyle.ROW_SELECTED) : AlpakaStyle.TEXT;
+                // A "feature" that is only a dangerous action (Reset All Settings) says so by its
+                // name in the danger color, as its button does.
+                if (onlyDangerous(feature)) titleColor = hover || selected ? AlpakaStyle.DANGER : AlpakaStyle.DANGER_SOFT;
+                int titleW = (feature.hasToggle() ? toggleX : right) - (rowX + 8) - 4;
                 String shownTitle = ellipsize(feature.title, titleW);
                 graphics.text(this.font, GuiFont.text(shownTitle), rowX + 8, rowY + (FEATURE_ROW_H - 8) / 2, titleColor, false);
-                // A name cut short shows in full as a tooltip.
-                if (hover && !shownTitle.equals(feature.title)) {
+                // In search results, the section it comes from after the name, where there is room.
+                if (searching() && feature.section != null) {
+                    int after = rowX + 8 + GuiFont.width(this.font, shownTitle) + 6;
+                    int room = (feature.hasToggle() ? toggleX : right) - 6 - after;
+                    String section = feature.section.title;
+                    if (shownTitle.equals(feature.title) && GuiFont.width(this.font, section) <= room) {
+                        graphics.text(this.font, GuiFont.text(section), after, rowY + (FEATURE_ROW_H - 8) / 2, AlpakaStyle.TEXT_MUTED, false);
+                    }
+                }
+                // A name cut short shows in full where it is, the row's own background growing to
+                // the right under it, rather than as a tooltip over the settings.
+                // Only with the mouse on the name itself, so the switch beside it stays in sight.
+                if (hover && mouseX < (feature.hasToggle() ? toggleX - 3 : right) && !shownTitle.equals(feature.title)) {
                     hoveredTipThisFrame = feature;
                     hoveredTipTextThisFrame = feature.title;
+                    nameExpandX = rowX + 8;
+                    nameExpandY = rowY;
+                    nameExpandBg = background;
+                    nameExpandColor = titleColor;
+                    nameExpandRight = rowX + rowW;
                 }
             }
             rowY += FEATURE_ROW_H + FEATURE_ROW_GAP;
         }
         AlpakaStyle.scrollFades(graphics, x, clipY, w, clipH, featureScroll.offset() > 0, featureScroll.offset() + 1 < featureScroll.max);
         graphics.disableScissor();
-    }
-
-    /** The "more settings" mark: three dots stacked. */
-    private static void drawDots(GuiGraphicsExtractor graphics, int x, int y, int color) {
-        for (int i = 0; i < 3; i++) ModernGuiUtils.drawRect(graphics, x, y + i * 3, 1, 1, color);
     }
 
     private void drawDetails(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w, int h, float deltaSec) {
@@ -821,27 +883,46 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             rowY += SETTING_ROW_H;
         }
 
-        // Description, folded away on request.
+        // The description, as a paragraph under the header; a click folds it to its first line, and
+        // that choice holds for every feature.
         String description = feature.description == null ? "" : feature.description;
         if (!description.isEmpty()) {
-            boolean hover = inside(mouseX, mouseY, rowX, rowY, rowW, SETTING_ROW_H) && inside(mouseX, mouseY, x, clipY, w, clipH);
-            if (hover) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, SETTING_ROW_H, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
-            graphics.text(this.font, GuiFont.text("Description"), rowX + 4, rowY + 4, AlpakaStyle.TEXT, false);
-            AlpakaStyle.chevron(graphics, rowX + rowW - 8, rowY + 8, descriptionOpen, AlpakaStyle.TEXT_SOFT);
-            if (visible(rowY, SETTING_ROW_H, clipY, clipH)) {
-                hits.add(new Hit(rowX, Math.max(rowY, clipY), rowW, SETTING_ROW_H, (mx, my) -> descriptionOpen = !descriptionOpen));
-            }
-            rowY += SETTING_ROW_H;
-            if (descriptionOpen) {
-                for (FormattedText line : GuiFont.splitLines(this.font, description, rowW - 8)) {
-                    graphics.text(this.font, Language.getInstance().getVisualOrder(line), rowX + 4, rowY + 1, AlpakaStyle.TEXT_MUTED, false);
-                    rowY += LINE_H + 1;
+            List<FormattedText> lines = GuiFont.splitLines(this.font, description, rowW - 18);
+            // At most three lines at first, so the settings start high enough to be seen; a click
+            // shows the rest.
+            // More where the settings below leave the room (measured last frame), so a feature with
+            // few settings never hides its description behind a click.
+            int fits = settingsHeightFor == feature ? (clipH - settingsHeight - 12) / (LINE_H + 1) : 0;
+            int limit = Math.max(DESCRIPTION_LINES, fits);
+            boolean foldable = lines.size() > limit;
+            int shownLines = descriptionOpen || !foldable ? lines.size() : limit;
+            int blockH = shownLines * (LINE_H + 1) + 5;
+            boolean hover = foldable && inside(mouseX, mouseY, rowX, rowY, rowW, blockH) && inside(mouseX, mouseY, x, clipY, w, clipH);
+            if (hover) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, blockH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
+            int lineY = rowY + 3;
+            for (int i = 0; i < shownLines; i++) {
+                FormattedText line = lines.get(i);
+                if (i == shownLines - 1 && shownLines < lines.size()) {
+                    // The last line shown says there is more.
+                    String cut = line.getString().replaceAll("[\\s,;:.]+$", "") + "…";
+                    graphics.text(this.font, GuiFont.text(ellipsize(cut, rowW - 18)), rowX + 4, lineY, AlpakaStyle.TEXT_MUTED, false);
+                } else {
+                    graphics.text(this.font, Language.getInstance().getVisualOrder(line), rowX + 4, lineY, AlpakaStyle.TEXT_MUTED, false);
                 }
-                rowY += 5;
+                lineY += LINE_H + 1;
             }
+            if (foldable) {
+                // Down while there is more to show, up once it is all there: it unfolds in place.
+                AlpakaStyle.verticalChevron(graphics, rowX + rowW - 7, rowY + 7, descriptionOpen, hover ? AlpakaStyle.TEXT_SOFT : AlpakaStyle.TEXT_MUTED);
+                if (visible(rowY, blockH, clipY, clipH)) {
+                    hits.add(new Hit(rowX, Math.max(rowY, clipY), rowW, blockH, (mx, my) -> descriptionOpen = !descriptionOpen));
+                }
+            }
+            rowY += blockH + 4;
         }
 
         List<ConfigOption> options = feature.panelOptions();
+        int settingsTop = rowY;
         if (options.isEmpty()) {
             graphics.text(this.font, GuiFont.text("No further settings."), rowX + 4, rowY + 4, AlpakaStyle.TEXT_MUTED, false);
             rowY += SETTING_ROW_H;
@@ -850,6 +931,8 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             rowY = drawSetting(graphics, mouseX, mouseY, option, rowX, rowY, rowW, x, w, clipY, clipH, deltaSec);
         }
 
+        settingsHeight = rowY - settingsTop;
+        settingsHeightFor = feature;
         // rowY - startY is the content's height whatever the scroll; adding the offset again made the
         // limit grow with every turn of the wheel, until the column scrolled away into emptiness.
         detailScroll.max = Math.max(0, rowY - startY + 6 - clipH);
@@ -918,8 +1001,10 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                 int valueW = GuiFont.width(this.font, value);
                 drawLabel(graphics, option.getTitle(), rowX + 4, labelY, right - valueW - 8 - (rowX + 4));
                 graphics.text(this.font, GuiFont.text(value), right - valueW, labelY, AlpakaStyle.TEXT, false);
-                int trackX = rowX + 4;
-                int trackW = rowW - 8;
+                // Inset by the knob's radius, so the knob at either end lines up with the label and
+                // with the switches above and below instead of poking past them.
+                int trackX = rowX + 7;
+                int trackW = rowW - 14;
                 int trackY = rowY + 17;
                 AlpakaStyle.sliderTrack(graphics, trackX, trackY, trackW, option.getSliderNormalizedValue(),
                         hover, draggedSlider == option);
@@ -959,27 +1044,37 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                 int countW = GuiFont.width(this.font, count);
                 drawLabel(graphics, option.getTitle(), rowX + 4, labelY, right - countW - 20 - (rowX + 4));
                 graphics.text(this.font, GuiFont.text(count), right - 12 - countW, labelY, AlpakaStyle.TEXT_MUTED, false);
-                AlpakaStyle.chevron(graphics, right - 4, rowY + 8, open, AlpakaStyle.TEXT_SOFT);
+                // It unfolds in place, so it points down and up like a select field, not right.
+                AlpakaStyle.verticalChevron(graphics, right - 4, rowY + 8, open, hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
                 if (shown) {
                     hits.add(new Hit(rowX, hitY, rowW, rowH, (mx, my) -> {
-                        if (!expanded.remove(option)) expanded.add(option);
+                        if (!expanded.remove(option)) {
+                            expanded.add(option);
+                            revealList = option;
+                        }
                     }));
                 }
                 if (open) {
                     int entryY = rowY + rowH;
                     for (ConfigOption.ToggleEntry entry : option.getEntries()) {
-                        boolean entryHover = inside(mouseX, mouseY, rowX, entryY, rowW, SETTING_ROW_H) && inside(mouseX, mouseY, colX, clipY, colW, clipH);
-                        if (entryHover) ModernGuiUtils.drawRoundedRect(graphics, rowX, entryY, rowW, SETTING_ROW_H, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
-                        ModernGuiUtils.drawRect(graphics, rowX + 6, entryY, 1, SETTING_ROW_H, AlpakaStyle.LINE);
-                        int entryLabelW = right - TOGGLE_W - 8 - (rowX + 14);
-                        graphics.text(this.font, GuiFont.text(ellipsize(entry.getLabel(), entryLabelW)), rowX + 14, entryY + 4,
+                        boolean entryHover = inside(mouseX, mouseY, rowX + LIST_INDENT, entryY, rowW - LIST_INDENT, SETTING_ROW_H) && inside(mouseX, mouseY, colX, clipY, colW, clipH);
+                        // Indented under the row they belong to, as an open choice list is.
+                        if (entryHover) ModernGuiUtils.drawRoundedRect(graphics, rowX + LIST_INDENT, entryY, rowW - LIST_INDENT, SETTING_ROW_H, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
+                        int entryLabelW = right - TOGGLE_W - 8 - (rowX + LIST_INDENT + 6);
+                        String entryLabel = ellipsize(entry.getLabel(), entryLabelW);
+                        graphics.text(this.font, GuiFont.text(entryLabel), rowX + LIST_INDENT + 6, entryY + 4,
                                 entry.get() ? AlpakaStyle.TEXT_SOFT : AlpakaStyle.TEXT_MUTED, false);
+                        if (entryHover && !entryLabel.equals(entry.getLabel())) {
+                            hoveredTipThisFrame = entry;
+                            hoveredTipTextThisFrame = entry.getLabel();
+                        }
                         drawToggle(graphics, right - TOGGLE_W, entryY + (SETTING_ROW_H - TOGGLE_H) / 2, entry.get() ? 1.0f : 0.0f);
                         if (visible(entryY, SETTING_ROW_H, clipY, clipH)) {
-                            hits.add(new Hit(rowX, Math.max(entryY, clipY), rowW, SETTING_ROW_H, (mx, my) -> entry.toggle()));
+                            hits.add(new Hit(rowX + LIST_INDENT, Math.max(entryY, clipY), rowW - LIST_INDENT, SETTING_ROW_H, (mx, my) -> entry.toggle()));
                         }
                         entryY += SETTING_ROW_H;
                     }
+                    revealOpened(option, rowY, entryY + 2, clipY, clipH);
                     return entryY + 2;
                 }
             }
@@ -1034,14 +1129,14 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                 }
                 boolean fieldHover = hover && inside(mouseX, mouseY, fieldX, fieldY, fieldW, fieldH);
                 ModernGuiUtils.drawRoundedRect(graphics, fieldX, fieldY, fieldW, fieldH, AlpakaStyle.FIELD_RADIUS,
-                        fieldHover && !listening ? AlpakaStyle.ROW_HOVER : AlpakaStyle.FIELD);
+                        fieldHover && !listening ? AlpakaStyle.fieldHover() : AlpakaStyle.FIELD);
                 ModernGuiUtils.drawRect(graphics, fieldX + 3, fieldY + fieldH - 1, fieldW - 6, 1,
-                        listening ? ModernGuiUtils.getAccentColor() : AlpakaStyle.LINE);
+                        listening ? AlpakaStyle.accentIndicator() : AlpakaStyle.LINE);
                 String value;
                 int color;
                 if (listening) {
                     value = "Press a Key";
-                    color = ModernGuiUtils.getAccentColor();
+                    color = AlpakaStyle.accentText();
                 } else if (mapping.isUnbound()) {
                     value = "Not Bound";
                     color = AlpakaStyle.TEXT_MUTED;
@@ -1085,7 +1180,6 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                             int colX, int colW, int clipY, int clipH) {
         AlpakaConfig config = AlpakaConfig.instance;
         List<AlpakaConfig.ItemPreset> presets = config.itemPresets;
-        int accent = ModernGuiUtils.getAccentColor();
         boolean inColumn = inside(mouseX, mouseY, colX, clipY, colW, clipH);
         int y = rowY;
         for (int i = 0; i < presets.size(); i++) {
@@ -1096,13 +1190,14 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                 continue;
             }
             int midY = y + PRESET_CARD_H / 2;
-            ModernGuiUtils.drawRoundedRect(graphics, rowX, y, rowW, PRESET_CARD_H, AlpakaStyle.ROW_RADIUS,
-                    active ? ModernGuiUtils.lerpColor(AlpakaStyle.ROW, accent, 0.12f) | 0xFF000000 : AlpakaStyle.ROW);
-            if (active) ModernGuiUtils.drawRoundedRect(graphics, rowX, y + 4, 2, PRESET_CARD_H - 8, 1, accent);
+            // The active preset is a selected card like any other: the shared ring, and its number
+            // in the accent.
+            ModernGuiUtils.drawRoundedRect(graphics, rowX, y, rowW, PRESET_CARD_H, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
+            if (active) AlpakaStyle.selectedOutline(graphics, rowX, y, rowW, PRESET_CARD_H, AlpakaStyle.ROW_RADIUS);
 
             String number = String.valueOf(i + 1);
             int numberX = rowX + 9 - GuiFont.width(this.font, number) / 2;
-            graphics.text(this.font, GuiFont.text(number), numberX, midY - 4, active ? accent : AlpakaStyle.TEXT_MUTED, false);
+            graphics.text(this.font, GuiFont.text(number), numberX, midY - 4, active ? AlpakaStyle.accentTextOn(AlpakaStyle.ROW) : AlpakaStyle.TEXT_MUTED, false);
 
             // From the right: delete, Save, Load; the name field takes what is left.
             int right = rowX + rowW - 3;
@@ -1113,9 +1208,9 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             int loadX = saveX - 2 - loadW;
             int buttonY = midY - PRESET_BUTTON_H / 2;
             int fieldX = rowX + 17;
-            // Every name field ends at the same place, a word's width short of Load, but never so
-            // early that a name has no room left.
-            int fieldGap = GuiFont.width(this.font, "Active") + 16;
+            // Every name field ends a little short of Load, but never so early that a name has no
+            // room left.
+            int fieldGap = 6;
             int fieldEnd = Math.max(fieldX + PRESET_MIN_FIELD_W, loadX - fieldGap);
             int fieldW = Math.max(20, fieldEnd - fieldX);
             ConfigOption nameField = presetNameField(i);
@@ -1210,26 +1305,46 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         int fieldX = right - fieldW;
         if (hover) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, rowH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
         drawLabel(graphics, option.getTitle(), rowX + 4, rowY + 4, fieldX - 8 - (rowX + 4));
-        AlpakaStyle.selectField(graphics, this.font, fieldX, rowY + 2, fieldW, rowH - 4, names[current], open);
+        AlpakaStyle.selectField(graphics, this.font, fieldX, rowY + 2, fieldW, rowH - 4, names[current], open, hover);
         if (visible(rowY, rowH, clipY, clipH)) {
-            hits.add(new Hit(rowX, Math.max(rowY, clipY), rowW, rowH, (mx, my) -> openChoice = open ? null : option));
+            hits.add(new Hit(rowX, Math.max(rowY, clipY), rowW, rowH, (mx, my) -> {
+                openChoice = clickedWithChoiceOpen == option ? null : option;
+                if (openChoice != null) revealList = option;
+            }));
         }
         int y = rowY + rowH;
         if (!open) return y;
 
         for (int i = 0; i < names.length; i++) {
             int index = i;
-            boolean entryHover = inside(mouseX, mouseY, rowX, y, rowW, SETTING_ROW_H) && inside(mouseX, mouseY, colX, clipY, colW, clipH);
-            AlpakaStyle.choiceEntry(graphics, this.font, rowX, y, rowW, SETTING_ROW_H, names[i], i == current, entryHover);
+            boolean entryHover = inside(mouseX, mouseY, rowX + LIST_INDENT, y, rowW - LIST_INDENT, SETTING_ROW_H) && inside(mouseX, mouseY, colX, clipY, colW, clipH);
+            AlpakaStyle.choiceEntry(graphics, this.font, rowX + LIST_INDENT, y, rowW - LIST_INDENT, SETTING_ROW_H, names[i], i == current, entryHover);
             if (visible(y, SETTING_ROW_H, clipY, clipH)) {
-                hits.add(new Hit(rowX, Math.max(y, clipY), rowW, SETTING_ROW_H, (mx, my) -> {
+                hits.add(new Hit(rowX + LIST_INDENT, Math.max(y, clipY), rowW - LIST_INDENT, SETTING_ROW_H, (mx, my) -> {
                     option.setFloat(index);
-                    openChoice = null;
                 }));
             }
             y += SETTING_ROW_H;
         }
+        revealOpened(option, rowY, y + 2, clipY, clipH);
         return y + 2;
+    }
+
+    /** The choice list that was open when the current click came in, which the click has closed. */
+    private ConfigOption clickedWithChoiceOpen = null;
+
+    /** The list just opened, if it still has to be scrolled into view. */
+    private ConfigOption revealList = null;
+
+    /**
+     * Scrolls the settings so a list that was just opened shows in full - or as much of it as fits,
+     * its row kept at the top - instead of opening out of sight below the column's edge.
+     */
+    private void revealOpened(ConfigOption option, int top, int bottom, int clipY, int clipH) {
+        if (revealList != option) return;
+        revealList = null;
+        int overflow = bottom - (clipY + clipH) + 4;
+        if (overflow > 0) detailScroll.by(Math.min(overflow, top - clipY));
     }
 
     private void drawLabel(GuiGraphicsExtractor graphics, String label, int x, int y, int maxW) {
@@ -1302,6 +1417,10 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
 
         ConfigOption previousText = focusedText;
         focusedText = null;
+        // An open choice list closes on any click that isn't on it; its own row toggles it again.
+        ConfigOption previousChoice = openChoice;
+        openChoice = null;
+        clickedWithChoiceOpen = previousChoice;
         if (previousText != null) AlpakaConfig.save();
         boolean wasSearching = searchFocused;
         searchFocused = false;
@@ -1366,6 +1485,16 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             caretBlinkFrom = System.currentTimeMillis();
             return true;
         }
+        // Typing with nothing focused starts a search, so finding a setting never needs a click.
+        int codePoint = event.codepoint();
+        if (listeningKey == null && Character.isLetterOrDigit(codePoint) && Character.isBmpCodePoint(codePoint)
+                && System.currentTimeMillis() - openTimeMs > TYPE_TO_SEARCH_GUARD_MS) {
+            searchFocused = true;
+            search.setText("");
+            if (search.insert((char) codePoint)) onSearchChanged();
+            caretBlinkFrom = System.currentTimeMillis();
+            return true;
+        }
         return super.charTyped(event);
     }
 
@@ -1383,6 +1512,9 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             return true;
         }
         if (event.hasControlDownWithQuirk() && key == org.lwjgl.glfw.GLFW.GLFW_KEY_F) {
+            if (focusedText != null) AlpakaConfig.save();
+            focusedText = null;
+            openChoice = null;
             searchFocused = true;
             caretBlinkFrom = System.currentTimeMillis();
             search.selectAll();
@@ -1414,13 +1546,45 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                 AlpakaConfig.save();
                 return true;
             }
+            // Every other key belongs to the field while it is being typed into; Space must never
+            // switch the feature behind it.
+            return true;
         }
         if (openChoice != null && key == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE) {
             openChoice = null;
             return true;
         }
+        // Up and Down walk the feature list, the search results included; Enter switches the
+        // selected feature on or off once the search box has let go of the keyboard.
+        if (key == org.lwjgl.glfw.GLFW.GLFW_KEY_UP || key == org.lwjgl.glfw.GLFW.GLFW_KEY_DOWN) {
+            int direction = key == org.lwjgl.glfw.GLFW.GLFW_KEY_UP ? -1 : 1;
+            if (focusedText != null) return true;
+            // An open choice list takes the arrows: they step its value, which applies at once.
+            if (openChoice != null) {
+                String[] names = openChoice.getChoices();
+                int next = Math.max(0, Math.min(names.length - 1, openChoice.getChoiceIndex() + direction));
+                openChoice.setFloat(next);
+                return true;
+            }
+            stepListed(direction);
+            return true;
+        }
+        if (openChoice != null && (key == org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER || key == org.lwjgl.glfw.GLFW.GLFW_KEY_KP_ENTER)) {
+            openChoice = null;
+            return true;
+        }
         if (searchFocused) {
             if (key == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE) {
+                // The first Escape empties the search, the next one closes the menu.
+                if (!search.isEmpty()) {
+                    search.setText("");
+                    onSearchChanged();
+                }
+                searchFocused = false;
+                search.clearSelection();
+                return true;
+            }
+            if (key == org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER || key == org.lwjgl.glfw.GLFW.GLFW_KEY_KP_ENTER) {
                 searchFocused = false;
                 search.clearSelection();
                 return true;
@@ -1432,7 +1596,38 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                 return true;
             }
         }
+        if (searchFocused) return super.keyPressed(event);
+        if ((key == org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER || key == org.lwjgl.glfw.GLFW.GLFW_KEY_KP_ENTER
+                || key == org.lwjgl.glfw.GLFW.GLFW_KEY_SPACE) && selectedFeature != null && selectedFeature.hasToggle()) {
+            AlpakaStyle.click();
+            selectedFeature.master.toggleBool();
+            return true;
+        }
+        if (key == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE && searching()) {
+            search.setText("");
+            onSearchChanged();
+            return true;
+        }
         return super.keyPressed(event);
+    }
+
+    /** Whether the feature has no switch and nothing but actions that go through the confirm dialog. */
+    private static boolean onlyDangerous(ConfigTree.Feature feature) {
+        if (feature.hasToggle() || feature.panelOptions().isEmpty()) return false;
+        for (ConfigOption option : feature.panelOptions()) {
+            if (option.getType() != ConfigOption.Type.ACTION || option.isColor() || !option.isDangerous()) return false;
+        }
+        return true;
+    }
+
+    /** Selects the feature above or below the selected one in the middle column, and scrolls to it. */
+    private void stepListed(int direction) {
+        List<ConfigTree.Feature> features = listedFeatures();
+        if (features.isEmpty()) return;
+        int index = features.indexOf(selectedFeature);
+        int next = index < 0 ? 0 : Math.max(0, Math.min(features.size() - 1, index + direction));
+        selectFeature(features.get(next));
+        revealSelected = true;
     }
 
     @Override

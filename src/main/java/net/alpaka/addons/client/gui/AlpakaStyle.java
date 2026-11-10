@@ -4,11 +4,13 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /**
- * The mod's one design language, the config menu's, for every window it draws - the config menu
- * itself, the color picker, the command wheel editor, the HUD editor's bar and the confirmation
- * dialog - so they read as parts of one menu: a dark rounded panel with a soft shadow that pops
- * open, a hairline under the header, slim rows that only show a background on hover, the accent
- * for whatever is active, and the menu font without shadows.
+ * The mod's one design language, the config menu's, for every window the mod draws - the config
+ * menu, its dialogs and editors, the HUD editor's bar, Item Search, the Profile and the Market - so
+ * they read as parts of one menu: a dark rounded panel with a soft shadow that pops open, a
+ * hairline under the header, slim rows that only show a background on hover, the accent for
+ * whatever is chosen or on, and the menu font without shadows. Lists name what is selected, in the
+ * accent color with its dot ({@link #listDot}), as the config's sidebar does; cards ring it
+ * ({@link #selectedOutline}). Never a bar at a row's edge, never a pill behind the selected row.
  *
  * Hover goes one step lighter: a setting row from the panel to {@link #ROW}, a card from
  * {@link #ROW} to {@link #ROW_HOVER}; buttons, which sit on rows themselves, go to
@@ -30,7 +32,7 @@ public final class AlpakaStyle {
     public static int ROW = 0xFF1E1E1E;
     public static int ROW_HOVER = 0xFF242424;
     public static int ROW_SELECTED = 0xFF2A2A2A;
-    public static int FIELD = 0xFF1F1F1F;
+    public static int FIELD = 0xFF282828;
     public static int TEXT = 0xFFEDEDED;
     public static int TEXT_SOFT = 0xFFBDBDBD;
     public static int TEXT_MUTED = 0xFF7C7C7C;
@@ -68,17 +70,17 @@ public final class AlpakaStyle {
         //     backdrop     panel        line         divider      row          row hover    row selected field
         //     text         text soft    text muted   track        toggle off   knob off     tooltip      knob ring
         //     preview      danger       danger soft
-        DARK(0x80000000, 0xFF131313, 0xFF262626, 0xFF3A3A3A, 0xFF1E1E1E, 0xFF242424, 0xFF2A2A2A, 0xFF1F1F1F,
+        DARK(0x80000000, 0xFF131313, 0xFF262626, 0xFF3A3A3A, 0xFF1E1E1E, 0xFF242424, 0xFF2A2A2A, 0xFF282828,
                 0xFFEDEDED, 0xFFBDBDBD, 0xFF7C7C7C, 0xFF3A3A3A, 0xFF6E6E6E, 0xFF8A8A8A, 0xFF1A1A1A, 0xFFEDEDED,
                 0xFF0D0D0D, 0xFFE5534B, 0xFFC9726C),
-        LIGHT(0x66000000, 0xFFF3F3F5, 0xFFDEDEE2, 0xFFC6C6CC, 0xFFE7E7EA, 0xFFE0E0E4, 0xFFD6D6DB, 0xFFE9E9EC,
-                0xFF1C1C21, 0xFF46464D, 0xFF85858D, 0xFFC6C6CC, 0xFF9C9CA3, 0xFF8A8A91, 0xFFFFFFFF, 0xFFFFFFFF,
+        LIGHT(0x66000000, 0xFFF3F3F5, 0xFFDEDEE2, 0xFFC6C6CC, 0xFFE7E7EA, 0xFFE1E1E5, 0xFFD3D3D9, 0xFFFFFFFF,
+                0xFF1C1C21, 0xFF46464D, 0xFF6C6C74, 0xFFC6C6CC, 0xFF9C9CA3, 0xFF8A8A91, 0xFFFFFFFF, 0xFFFFFFFF,
                 0xFF2B2B2B, 0xFFD23B32, 0xFFC0564F),
-        OLED(0xB0000000, 0xFF000000, 0xFF1A1A1A, 0xFF2C2C2C, 0xFF0D0D0D, 0xFF141414, 0xFF1B1B1B, 0xFF0F0F0F,
+        OLED(0xB0000000, 0xFF000000, 0xFF1A1A1A, 0xFF2C2C2C, 0xFF0D0D0D, 0xFF141414, 0xFF1B1B1B, 0xFF1C1C1C,
                 0xFFEDEDED, 0xFFBDBDBD, 0xFF7C7C7C, 0xFF2E2E2E, 0xFF6E6E6E, 0xFF8A8A8A, 0xFF0A0A0A, 0xFFEDEDED,
                 0xFF000000, 0xFFE5534B, 0xFFC9726C),
         // Espresso browns with cream text, like the coffee themes of code editors.
-        CAPPUCCINO(0x80000000, 0xFF2B211C, 0xFF3D3029, 0xFF54443A, 0xFF362A24, 0xFF3E3129, 0xFF47392F, 0xFF382C25,
+        CAPPUCCINO(0x80000000, 0xFF2B211C, 0xFF3D3029, 0xFF54443A, 0xFF362A24, 0xFF3E3129, 0xFF47392F, 0xFF46372F,
                 0xFFF3E6D8, 0xFFD2BFAB, 0xFF9C8676, 0xFF54443A, 0xFF8A7464, 0xFFA48D7C, 0xFF32271F, 0xFFF3E6D8,
                 0xFF1A1411, 0xFFE5674F, 0xFFC98370);
 
@@ -137,11 +139,41 @@ public final class AlpakaStyle {
     /** Corner radius of fields: text, choices, the hex code. */
     public static final int FIELD_RADIUS = 3;
     public static final int TOOLTIP_DELAY_MS = 450;
+    /** A switch, the same size in every window. */
+    public static final int TOGGLE_W = 16;
+    public static final int TOGGLE_H = 9;
+    /** A card in a list - a feature, a filter, a command - and the gap between two of them. */
+    public static final int CARD_H = 20;
+    public static final int CARD_GAP = 3;
+    /** A glyph button on a card: delete, move, case. */
+    public static final int ICON_BTN = 14;
+    /** The header's closing button, Done, in every window that has one. */
+    public static final int DONE_W = 48;
 
-    /** The three kinds of button: plain, the one that confirms, and the one that destroys. */
+    /** A button as wide as its label needs, but never narrower than {@code minW}. */
+    public static int buttonWidth(Font font, String label, int minW) {
+        return Math.max(minW, GuiFont.width(font, label) + 20);
+    }
+
+    /**
+     * The three kinds of button: plain, the one that confirms, and the one that destroys.
+     *
+     * Where they go, in every window: a window that saves as it goes (the editors) closes with
+     * Done, the primary button at the right end of its header, with whatever acts on the whole
+     * window (Reset) just left of it. A dialog that hands back a value or asks a question (the
+     * color picker, the market's input, the confirm dialog) ends in a footer pair: Cancel on the
+     * left, its primary action on the right. A window that only shows things (the profile, the
+     * market, Item Search) closes with the gray cross of {@link #closeButton}. DANGER is for what
+     * asks through the confirm dialog first; a reset that can still be cancelled is PLAIN.
+     */
     public enum ButtonKind { PLAIN, PRIMARY, DANGER }
 
-    /** The player's accent color: what is selected, focused or about to happen. */
+    /**
+     * The player's accent color. It is only for what is chosen or switched on: the selected entry's
+     * name, the ring round a selected card, switches, primary buttons, progress. Text and marks
+     * take it through {@link #accentText}, {@link #accentTextOn} and {@link #accentIndicator},
+     * which keep it readable in every theme.
+     */
     public static int accent() {
         return ModernGuiUtils.getAccentColor();
     }
@@ -157,7 +189,63 @@ public final class AlpakaStyle {
         net.minecraft.client.gui.components.AbstractWidget.playButtonClickSound(mc.getSoundManager());
     }
 
-    /** The accent, dimmed: a focused outline, a text selection. */
+    /**
+     * The accent as a text color on the window: {@link #accentTextOn} the panel.
+     */
+    public static int accentText() {
+        return accentTextOn(PANEL);
+    }
+
+    /**
+     * The accent as a text color on this background: the accent itself where it reads at 4.5:1,
+     * otherwise the same hue made darker (on a light window) or lighter (on a dark one) until it
+     * does, so a player's teal stays teal on Light instead of turning gray. Only where no shade of
+     * it gets there, the text color.
+     */
+    public static int accentTextOn(int background) {
+        return readable(accent() | 0xFF000000, background | 0xFF000000, 4.5, TEXT);
+    }
+
+    /**
+     * The accent for a mark that says something is on - a switch, a slider's fill, a focus line, the
+     * ring round a selected card: the accent where it stands out from the window at 3:1, else the closest shade of
+     * it that does, else the soft text color (pure black on OLED).
+     */
+    public static int accentIndicator() {
+        return readable(accent() | 0xFF000000, PANEL | 0xFF000000, 3.0, TEXT_SOFT);
+    }
+
+    /** The color, stepped toward black or white until it reaches the contrast; the fallback if it never does. */
+    private static int readable(int color, int background, double target, int fallback) {
+        if (contrast(color, background) >= target) return color;
+        boolean darken = luminance(background) > 0.4;
+        int c = color;
+        for (int step = 0; step < 20; step++) {
+            c = ModernGuiUtils.lerpColor(c, darken ? 0xFF000000 : 0xFFFFFFFF, 0.08f) | 0xFF000000;
+            if (contrast(c, background) >= target) return c;
+        }
+        return fallback;
+    }
+
+    private static double luminance(int argb) {
+        double[] c = new double[3];
+        for (int i = 0; i < 3; i++) {
+            double v = ((argb >> (16 - i * 8)) & 0xFF) / 255.0;
+            c[i] = v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+        }
+        return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+    }
+
+    private static double contrast(int a, int b) {
+        double la = luminance(a);
+        double lb = luminance(b);
+        return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+    }
+
+    /**
+     * The accent, dimmed: the selection in a text field and the outline of a row being dragged.
+     * Never the mark of a selected row or card.
+     */
     public static int accentDim() {
         return ModernGuiUtils.getAccentDimColor();
     }
@@ -232,6 +320,57 @@ public final class AlpakaStyle {
         return headerY + (HEADER_H - BUTTON_H) / 2;
     }
 
+    /**
+     * The small dot in front of a list's entry, as the config's sidebar has it. What is selected is
+     * said the sidebar's way in every list of the mod: the entry's dot and name in the accent color
+     * ({@link #accentText}). Never a bar at the row's edge and never a pill behind the selected row;
+     * a background belongs to the mouse (hover) and to cards. A card that is selected - a metric, a
+     * filter being edited, an icon - is ringed with {@link #selectedOutline}.
+     */
+    public static void listDot(GuiGraphicsExtractor graphics, int x, int y, int color) {
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, 2, 2, 1, color);
+    }
+
+    /** The card form of "selected": a ring in the accent round the card, the same one everywhere. */
+    public static void selectedOutline(GuiGraphicsExtractor graphics, int x, int y, int w, int h, int radius) {
+        ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, h, radius, accentIndicator());
+    }
+
+    /**
+     * The accent as a text color on a surface tinted with the accent itself, such as a selected
+     * chip: readable against the tint as it looks over {@code base}.
+     */
+    public static int accentTextOnTint(int base, float tint) {
+        return accentTextOn(ModernGuiUtils.lerpColor(base | 0xFF000000, accent() | 0xFF000000, tint));
+    }
+
+    /**
+     * The fill of a chip or small button that is switched on (a graph's range, a tab, a view
+     * toggle): a wash of the accent, a little stronger under the mouse. Chips in a row of choices
+     * are pills; a toggle that stands as a button has {@link #ROW_RADIUS}.
+     */
+    public static int chipOnFill(boolean hover) {
+        return (accent() & 0x00FFFFFF) | (hover ? 0x59000000 : 0x3D000000);
+    }
+
+    /**
+     * The label of such a chip, on {@code base}: the accent in a shade that reads on the wash. The
+     * mouse changes only the fill, never the label, so a chip that is on stays in the accent.
+     */
+    public static int chipOnText(int base, boolean hover) {
+        return accentTextOnTint(base, hover ? 0.35f : 0.24f);
+    }
+
+    /** A scroll bar's thumb: slim and gray, never in the accent, which is kept for what is chosen. */
+    public static void scrollThumb(GuiGraphicsExtractor graphics, int x, int y, int h, boolean active) {
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, 2, h, 1, active ? TEXT_MUTED : DIVIDER);
+    }
+
+    /** A field's background while the mouse is on it: a step lighter than the field itself. */
+    public static int fieldHover() {
+        return ModernGuiUtils.lerpColor(FIELD, TEXT, 0.06f) | 0xFF000000;
+    }
+
     /** A small label over a group of controls, as the config's sidebar labels its categories. */
     public static void groupLabel(GuiGraphicsExtractor graphics, Font font, String label, int x, int y) {
         graphics.text(font, GuiFont.text(label), x, y, TEXT_MUTED, false);
@@ -262,7 +401,8 @@ public final class AlpakaStyle {
         switch (kind) {
             case PRIMARY -> {
                 background = (accent & 0x00FFFFFF) | (hover ? 0x59000000 : 0x33000000);
-                text = hover ? TEXT : accent;
+                // Readable on the tinted fill as it actually looks over the window.
+                text = hover ? TEXT : accentTextOn(ModernGuiUtils.lerpColor(PANEL, accent | 0xFF000000, 0.2f));
             }
             case DANGER -> {
                 background = hover ? (DANGER & 0x00FFFFFF) | 0x40000000 : ROW;
@@ -285,10 +425,21 @@ public final class AlpakaStyle {
                     danger ? (DANGER & 0x00FFFFFF) | 0x33000000 : ROW_SELECTED);
         }
         int color = !enabled ? DIVIDER
-                : hover ? (danger ? DANGER : ModernGuiUtils.getAccentColor())
+                : hover ? (danger ? DANGER : accentIndicator())
                 : TEXT_MUTED;
         int gw = GuiFont.width(font, glyph);
         graphics.text(font, GuiFont.text(glyph), x + (size - gw) / 2, y + (size - 8) / 2, color, false);
+    }
+
+    /**
+     * The close button of a window that has no Done: a cross, gray until hovered, then in the text
+     * color on a soft square. Not red - closing loses nothing, and red is kept for what does.
+     */
+    public static void closeButton(GuiGraphicsExtractor graphics, int x, int y, int size, boolean hover) {
+        if (hover) ModernGuiUtils.drawRoundedRect(graphics, x, y, size, size, FIELD_RADIUS, ROW_SELECTED);
+        float g = size * 0.5f;
+        net.alpaka.addons.features.market.MarketIcons.draw(graphics, net.alpaka.addons.features.market.MarketIcons.Glyph.CLOSE,
+                x + (size - g) / 2f, y + (size - g) / 2f, g, hover ? TEXT : TEXT_MUTED);
     }
 
     /**
@@ -318,7 +469,7 @@ public final class AlpakaStyle {
      */
     public static void pasteButton(GuiGraphicsExtractor graphics, int x, int y, int size, boolean hover) {
         if (hover) ModernGuiUtils.drawRoundedRect(graphics, x, y, size, size, FIELD_RADIUS, ROW_SELECTED);
-        int color = hover ? ModernGuiUtils.getAccentColor() : TEXT_MUTED;
+        int color = hover ? accentIndicator() : TEXT_MUTED;
         int cx = x + size / 2;
         int cy = y + size / 2;
         // The clip on top, the board round it, then three lines of text on the board.
@@ -338,7 +489,7 @@ public final class AlpakaStyle {
     public static void chevronButton(GuiGraphicsExtractor graphics, int x, int y, int size, boolean left,
                                      boolean hover, boolean enabled) {
         if (hover && enabled) ModernGuiUtils.drawRoundedRect(graphics, x, y, size, size, FIELD_RADIUS, ROW_SELECTED);
-        int color = !enabled ? DIVIDER : hover ? ModernGuiUtils.getAccentColor() : TEXT_MUTED;
+        int color = !enabled ? DIVIDER : hover ? accentIndicator() : TEXT_MUTED;
         sideChevron(graphics, x + size / 2, y + size / 2, left, color);
     }
 
@@ -348,8 +499,8 @@ public final class AlpakaStyle {
      */
     public static void textField(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int h,
                                  String text, String placeholder, boolean focused, boolean hover, long caretFrom) {
-        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, FIELD_RADIUS, hover && !focused ? ROW_HOVER : FIELD);
-        ModernGuiUtils.drawRect(graphics, x + 3, y + h - 1, w - 6, 1, focused ? ModernGuiUtils.getAccentColor() : LINE);
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, FIELD_RADIUS, hover && !focused ? fieldHover() : FIELD);
+        ModernGuiUtils.drawRect(graphics, x + 3, y + h - 1, w - 6, 1, focused ? accentIndicator() : LINE);
         int ty = y + (h - 8) / 2;
         boolean empty = text.isEmpty();
         String shown = empty && !focused ? placeholder : text;
@@ -363,11 +514,118 @@ public final class AlpakaStyle {
     }
 
     /**
+     * The text field for an {@link EditableText}: the same box as {@link #textField}, with the
+     * caret where it really is and the selection shown, scrolled so the caret stays in view.
+     * Returns how far the text is scrolled left, which a click needs to place the caret.
+     */
+    public static int textField(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int h,
+                                EditableText input, String placeholder, boolean focused, boolean hover, long caretFrom) {
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, FIELD_RADIUS, hover && !focused ? fieldHover() : FIELD);
+        ModernGuiUtils.drawRect(graphics, x + 3, y + h - 1, w - 6, 1, focused ? accentIndicator() : LINE);
+        int ty = y + (h - 8) / 2;
+        String text = input.getText();
+        if (text.isEmpty() && !focused) {
+            graphics.text(font, GuiFont.text(ellipsize(font, placeholder, w - 10)), x + 5, ty, TEXT_MUTED, false);
+            return 0;
+        }
+        if (!focused) {
+            graphics.text(font, GuiFont.text(ellipsize(font, text, w - 10)), x + 5, ty, TEXT, false);
+            return 0;
+        }
+        int room = w - 10;
+        int caretPx = GuiFont.width(font, text.substring(0, input.getCaret()));
+        int scroll = Math.max(0, caretPx - room + 1);
+        int ox = x + 5 - scroll;
+        graphics.enableScissor(x + 2, y, x + w - 2, y + h);
+        if (input.hasSelection()) {
+            int from = ox + GuiFont.width(font, text.substring(0, input.getSelectionStart()));
+            int to = ox + GuiFont.width(font, text.substring(0, input.getSelectionEnd()));
+            ModernGuiUtils.drawRect(graphics, from, ty - 1, to - from, 10, accentDim());
+        }
+        graphics.text(font, GuiFont.text(text), ox, ty, TEXT, false);
+        if ((System.currentTimeMillis() - caretFrom) / 500 % 2 == 0) ModernGuiUtils.drawRect(graphics, ox + caretPx, ty - 1, 1, 10, TEXT);
+        graphics.disableScissor();
+        return scroll;
+    }
+
+    /** Where a search field's text starts, after its magnifier. */
+    public static final int SEARCH_TEXT_INSET = 18;
+
+    /**
+     * The search field, one for every window: a text field with the magnifier at its left - gray,
+     * in the accent while it has the focus - and, once there is text, the cross at its right that
+     * clears it ({@link #searchClearBox}). Returns how far the text is scrolled, for placing the
+     * caret on a click.
+     */
+    public static int searchField(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int h,
+                                  EditableText input, String placeholder, boolean focused, boolean hover,
+                                  boolean clearHover, long caretFrom) {
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, FIELD_RADIUS, hover && !focused ? fieldHover() : FIELD);
+        ModernGuiUtils.drawRect(graphics, x + 3, y + h - 1, w - 6, 1, focused ? accentIndicator() : LINE);
+        float glyph = 8f;
+        net.alpaka.addons.features.market.MarketIcons.draw(graphics, net.alpaka.addons.features.market.MarketIcons.Glyph.SEARCH,
+                x + 6, y + (h - glyph) / 2f, glyph, focused ? accentIndicator() : TEXT_MUTED);
+        boolean clear = !input.isEmpty();
+        int tx = x + SEARCH_TEXT_INSET;
+        int room = w - SEARCH_TEXT_INSET - (clear ? h : 5);
+        int ty = y + (h - 8) / 2;
+        String text = input.getText();
+        int scroll = 0;
+        if (text.isEmpty() && !focused) {
+            graphics.text(font, GuiFont.text(ellipsize(font, placeholder, room)), tx, ty, TEXT_MUTED, false);
+        } else if (!focused) {
+            graphics.text(font, GuiFont.text(ellipsize(font, text, room)), tx, ty, TEXT, false);
+        } else {
+            int caretPx = GuiFont.width(font, text.substring(0, input.getCaret()));
+            scroll = Math.max(0, caretPx - room + 1);
+            int ox = tx - scroll;
+            graphics.enableScissor(tx, y, tx + room + 1, y + h);
+            if (input.hasSelection()) {
+                int from = ox + GuiFont.width(font, text.substring(0, input.getSelectionStart()));
+                int to = ox + GuiFont.width(font, text.substring(0, input.getSelectionEnd()));
+                ModernGuiUtils.drawRect(graphics, from, ty - 1, to - from, 10, accentDim());
+            }
+            if (text.isEmpty()) graphics.text(font, GuiFont.text(ellipsize(font, placeholder, room)), tx, ty, TEXT_MUTED, false);
+            else graphics.text(font, GuiFont.text(text), ox, ty, TEXT, false);
+            if ((System.currentTimeMillis() - caretFrom) / 500 % 2 == 0) ModernGuiUtils.drawRect(graphics, ox + caretPx, ty - 1, 1, 10, TEXT);
+            graphics.disableScissor();
+        }
+        if (clear) {
+            int[] box = searchClearBox(x, y, w, h);
+            closeButton(graphics, box[0], box[1], box[2], clearHover);
+        }
+        return scroll;
+    }
+
+    /**
+     * The search field where it only shows a search and a click opens the place to type it (the
+     * market's header): the same box, magnifier and line, the line and the magnifier in the accent
+     * while a search is set.
+     */
+    public static void searchFieldShown(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int h,
+                                        String text, String placeholder, boolean hover) {
+        boolean set = text != null && !text.isEmpty();
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, FIELD_RADIUS, hover ? fieldHover() : FIELD);
+        ModernGuiUtils.drawRect(graphics, x + 3, y + h - 1, w - 6, 1, set ? accentIndicator() : LINE);
+        float glyph = 8f;
+        net.alpaka.addons.features.market.MarketIcons.draw(graphics, net.alpaka.addons.features.market.MarketIcons.Glyph.SEARCH,
+                x + 6, y + (h - glyph) / 2f, glyph, set ? accentIndicator() : TEXT_MUTED);
+        graphics.text(font, GuiFont.text(ellipsize(font, set ? text : placeholder, w - SEARCH_TEXT_INSET - 5)),
+                x + SEARCH_TEXT_INSET, y + (h - 8) / 2, set ? TEXT : TEXT_MUTED, false);
+    }
+
+    /** The clear cross of a search field: x, y and size of its square. */
+    public static int[] searchClearBox(int x, int y, int w, int h) {
+        int size = Math.min(14, h - 4);
+        return new int[] {x + w - size - 2, y + (h - size) / 2, size};
+    }
+
+    /**
      * A slim switch: a rounded outline with a dot that slides across, gray when off and in the
      * accent color when on.
      */
     public static void toggle(GuiGraphicsExtractor graphics, int x, int y, int w, int h, float progress) {
-        int accent = ModernGuiUtils.getAccentColor();
+        int accent = accentIndicator();
         int outline = ModernGuiUtils.lerpColor(TOGGLE_OFF, accent, progress);
         int knob = ModernGuiUtils.lerpColor(TOGGLE_KNOB_OFF, accent, progress);
         ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, h / 2,
@@ -385,27 +643,48 @@ public final class AlpakaStyle {
      */
     public static void selectField(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int h,
                                    String value, boolean open) {
-        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, FIELD_RADIUS, FIELD);
-        graphics.text(font, GuiFont.text(ellipsize(font, value, w - 16)), x + 4, y + (h - 8) / 2, TEXT, false);
-        chevron(graphics, x + w - 6, y + h / 2, open, TEXT_SOFT);
+        selectField(graphics, font, x, y, w, h, value, open, false);
     }
 
     /**
-     * One name of an open choice list: on one unbroken line down the list, the current choice
-     * marked on it and named in the accent.
+     * The select field, lighter while the mouse is on it. Its chevron points down while closed and
+     * up while open, so it never looks like the right-pointing chevron that leads somewhere else.
+     */
+    public static void selectField(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int h,
+                                   String value, boolean open, boolean hover) {
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, FIELD_RADIUS, hover && !open ? fieldHover() : FIELD);
+        graphics.text(font, GuiFont.text(ellipsize(font, value, w - 16)), x + 4, y + (h - 8) / 2, TEXT, false);
+        verticalChevron(graphics, x + w - 6, y + h / 2, open, open || hover ? TEXT : TEXT_SOFT);
+    }
+
+    /** A small chevron pointing up or down, the select field's. */
+    public static void verticalChevron(GuiGraphicsExtractor graphics, int cx, int cy, boolean up, int color) {
+        net.alpaka.addons.features.wheel.WheelMesh mesh = new net.alpaka.addons.features.wheel.WheelMesh(1.0f / guiScale());
+        float s = 2.5f;
+        float t = 1.1f;
+        float d = up ? -1 : 1;
+        stroke(mesh, cx - s, cy - d * s / 2, cx, cy + d * s / 2, t, color);
+        stroke(mesh, cx, cy + d * s / 2, cx + s, cy - d * s / 2, t, color);
+        mesh.submit(graphics);
+    }
+
+    /**
+     * One name of an open choice list, said the way the config's sidebar says it: a dot and the
+     * name, both in the accent color for the current choice. The row under the mouse turns lighter.
      */
     public static void choiceEntry(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int h,
                                    String name, boolean current, boolean hover) {
         if (hover) ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, ROW_RADIUS, ROW);
-        ModernGuiUtils.drawRect(graphics, x + 6, y, 1, h, LINE);
-        if (current) ModernGuiUtils.drawRect(graphics, x + 6, y + 2, 1, h - 4, ModernGuiUtils.getAccentColor());
-        int color = current ? ModernGuiUtils.getAccentColor() : hover ? TEXT : TEXT_SOFT;
-        graphics.text(font, GuiFont.text(ellipsize(font, name, w - 24)), x + 14, y + (h - 8) / 2, color, false);
+        int color = current ? accentTextOn(hover ? ROW : PANEL) : hover ? TEXT : TEXT_SOFT;
+        int ty = y + (h - 8) / 2;
+        listDot(graphics, x + 5, ty + 3, color);
+        graphics.text(font, GuiFont.text(ellipsize(font, name, w - 17)), x + 11, ty, color, false);
     }
 
     /**
-     * A small chevron, pointing down when open and right when closed: two smooth strokes as quads,
-     * so the diagonals stay clean at every GUI scale instead of stepping pixel by pixel.
+     * A small chevron, pointing right - "leads somewhere", a feature with settings - or down. Only
+     * for that; what unfolds in place or opens a list uses {@link #verticalChevron}. Two smooth
+     * strokes as quads, so the diagonals stay clean at every GUI scale.
      */
     public static void chevron(GuiGraphicsExtractor graphics, int cx, int cy, boolean open, int color) {
         net.alpaka.addons.features.wheel.WheelMesh mesh = new net.alpaka.addons.features.wheel.WheelMesh(1.0f / guiScale());
@@ -418,6 +697,19 @@ public final class AlpakaStyle {
             stroke(mesh, cx - s / 2, cy - s, cx + s / 2, cy, t, color);
             stroke(mesh, cx + s / 2, cy, cx - s / 2, cy + s, t, color);
         }
+        mesh.submit(graphics);
+    }
+
+    /**
+     * A thin arrow pointing right, for "this becomes that" between two fields (an alias and its
+     * command): a line with a small head, so it never reads as the chevron that leads somewhere.
+     */
+    public static void mapsTo(GuiGraphicsExtractor graphics, int cx, int cy, int color) {
+        net.alpaka.addons.features.wheel.WheelMesh mesh = new net.alpaka.addons.features.wheel.WheelMesh(1.0f / guiScale());
+        float t = 1.0f;
+        stroke(mesh, cx - 3.5f, cy, cx + 3.0f, cy, t, color);
+        stroke(mesh, cx + 0.8f, cy - 2.3f, cx + 3.2f, cy, t, color);
+        stroke(mesh, cx + 0.8f, cy + 2.3f, cx + 3.2f, cy, t, color);
         mesh.submit(graphics);
     }
 
@@ -460,7 +752,7 @@ public final class AlpakaStyle {
      */
     public static void resetButton(GuiGraphicsExtractor graphics, int x, int y, int size, boolean hover) {
         if (hover) ModernGuiUtils.drawRoundedRect(graphics, x, y, size, size, FIELD_RADIUS, ROW_SELECTED);
-        int color = hover ? ModernGuiUtils.getAccentColor() : TEXT_MUTED;
+        int color = hover ? accentIndicator() : TEXT_MUTED;
         int scale = guiScale();
         net.alpaka.addons.features.wheel.WheelMesh mesh = new net.alpaka.addons.features.wheel.WheelMesh(1.0f / scale);
         float cx = x + size / 2.0f;
@@ -595,7 +887,7 @@ public final class AlpakaStyle {
      */
     public static void scrollFades(GuiGraphicsExtractor graphics, int x, int y, int w, int h,
                                    boolean above, boolean below) {
-        int fade = 6;
+        int fade = 10;
         int clear = PANEL & 0x00FFFFFF;
         if (above) graphics.fillGradient(x, y, x + w, y + fade, PANEL, clear);
         if (below) graphics.fillGradient(x, y + h - fade, x + w, y + h, clear, PANEL);
@@ -621,7 +913,7 @@ public final class AlpakaStyle {
 
     /** The config's slider track: a hairline, the accent up to the knob, and a round knob. */
     public static void sliderTrack(GuiGraphicsExtractor graphics, int x, int y, int w, double norm, boolean hover, boolean dragging) {
-        int accent = ModernGuiUtils.getAccentColor();
+        int accent = accentIndicator();
         int knobX = x + (int) Math.round(Math.max(0.0, Math.min(1.0, norm)) * w);
         ModernGuiUtils.drawRect(graphics, x, y, w, 1, TRACK);
         ModernGuiUtils.drawRect(graphics, x, y, knobX - x, 1, accent);

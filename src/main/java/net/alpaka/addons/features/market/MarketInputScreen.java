@@ -264,14 +264,8 @@ public class MarketInputScreen extends SignEditScreen {
 
         AlpakaStyle.panel(graphics, x, y, w, h);
 
-        // Header: what is asked, and a close button.
-        AlpakaStyle.title(graphics, this.font, AlpakaStyle.ellipsize(this.font, speedCap ? "Rancher's Boots Speed Cap" : prompt.heading(context, menuTitle), w - 50), x + PAD + 2, y);
-        int closeX = x + w - PAD - 16;
-        int closeY = y + (HEADER_H - 16) / 2;
-        boolean hoverClose = AlpakaStyle.inside(mouseX, mouseY, closeX, closeY, 16, 16);
-        if (hoverClose) ModernGuiUtils.drawRoundedRect(graphics, closeX, closeY, 16, 16, AlpakaStyle.FIELD_RADIUS, MarketIcons.fade(AlpakaStyle.DANGER, 0.2f));
-        MarketIcons.draw(graphics, MarketIcons.Glyph.CLOSE, closeX + 4, closeY + 4, 8, hoverClose ? AlpakaStyle.DANGER : AlpakaStyle.TEXT_MUTED);
-        hits.add(new Hit(closeX, closeY, 16, 16, mx -> cancel(), true));
+        // Header: what is asked. Closing is the Cancel button's, as in every dialog of the mod.
+        AlpakaStyle.title(graphics, this.font, AlpakaStyle.ellipsize(this.font, speedCap ? "Rancher's Boots Speed Cap" : prompt.heading(context, menuTitle), w - PAD * 2 - 4), x + PAD + 2, y);
         AlpakaStyle.headerLine(graphics, x, y, w);
 
         // The field; with suggestions open it is drawn last, as the top of one box with the list.
@@ -311,7 +305,7 @@ public class MarketInputScreen extends SignEditScreen {
         hits.add(new Hit(cancelX, cy, cancelW, bh, mx -> cancel(), true));
         hits.add(new Hit(confirmX, cy, confirmW, bh, mx -> confirm(), true));
         graphics.text(this.font, GuiFont.text("Enter to confirm · Esc to cancel"), x + PAD + 2, cy + (bh - 8) / 2,
-                AlpakaStyle.DIVIDER, false);
+                AlpakaStyle.TEXT_MUTED, false);
 
         if (list != null) {
             // Over everything drawn so far, the buttons' text included.
@@ -428,8 +422,9 @@ public class MarketInputScreen extends SignEditScreen {
             if (hover && moved) highlight = i;
             boolean lit = i == highlight;
             if (lit) {
-                ModernGuiUtils.drawRoundedRect(graphics, rx, ry, rw, SUGGESTION_H, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW_SELECTED);
-                ModernGuiUtils.drawRoundedRect(graphics, rx, ry + 5, 2, SUGGESTION_H - 10, 1, accent);
+                // The list lies on the field's own color, so the row the keys or the mouse are on is
+                // the field's hover shade: a clear step lighter in every theme.
+                ModernGuiUtils.drawRoundedRect(graphics, rx, ry, rw, SUGGESTION_H, AlpakaStyle.ROW_RADIUS, AlpakaStyle.fieldHover());
             }
             // The item itself, by its tag; a recent search no list knows keeps a clock.
             ItemStack icon = ItemIcons.forItem(ItemTags.suggestionTag(s.name(), context), s.name());
@@ -437,7 +432,7 @@ public class MarketInputScreen extends SignEditScreen {
                 graphics.item(icon, rx + 6, ry + (SUGGESTION_H - 16) / 2);
             } else {
                 MarketIcons.Glyph glyph = s.recent() ? MarketIcons.Glyph.CLOCK : MarketIcons.Glyph.BOX;
-                MarketIcons.draw(graphics, glyph, rx + 9, ry + (SUGGESTION_H - 10) / 2f, 10, lit ? accent : AlpakaStyle.TEXT_MUTED);
+                MarketIcons.draw(graphics, glyph, rx + 9, ry + (SUGGESTION_H - 10) / 2f, 10, lit ? AlpakaStyle.accentIndicator() : AlpakaStyle.TEXT_MUTED);
             }
 
             int tx = rx + 27;
@@ -447,7 +442,7 @@ public class MarketInputScreen extends SignEditScreen {
             drawMatch(graphics, s, tx, ry + (SUGGESTION_H - 8) / 2, room, lit);
             if (!hint.isEmpty()) {
                 graphics.text(this.font, GuiFont.text(hint), rx + rw - 6 - GuiFont.width(this.font, hint), ry + (SUGGESTION_H - 8) / 2,
-                        lit ? AlpakaStyle.TEXT_MUTED : AlpakaStyle.DIVIDER, false);
+                        lit ? AlpakaStyle.TEXT_SOFT : AlpakaStyle.TEXT_MUTED, false);
             }
             // Only the part of a row that shows takes a click.
             int top = Math.max(ry, listY);
@@ -466,8 +461,7 @@ public class MarketInputScreen extends SignEditScreen {
             int trackH = listH - 4;
             int thumbH = Math.max(12, trackH * listH / (suggestions.size() * SUGGESTION_H));
             int thumbY = trackY + Math.round((trackH - thumbH) * (offset / (float) listScrollMax));
-            ModernGuiUtils.drawRoundedRect(graphics, x + w - 6, trackY, 3, trackH, 1, AlpakaStyle.ROW);
-            ModernGuiUtils.drawRoundedRect(graphics, x + w - 6, thumbY, 3, thumbH, 1, inList ? accent : AlpakaStyle.accentDim());
+            AlpakaStyle.scrollThumb(graphics, x + w - 5, thumbY, thumbH, inList);
         }
 
         String footer = AlpakaConfig.instance.allowApiCalls
@@ -478,7 +472,7 @@ public class MarketInputScreen extends SignEditScreen {
         // How many there are, where not all show at once.
         String count = suggestions.size() > rows ? (moreMatches ? suggestions.size() + "+" : String.valueOf(suggestions.size())) + " items" : "";
         int countW = count.isEmpty() ? 0 : GuiFont.width(this.font, count) + 10;
-        graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, footer, w - 16 - countW)), x + 8, footerY, AlpakaStyle.DIVIDER, false);
+        graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, footer, w - 16 - countW)), x + 8, footerY, AlpakaStyle.TEXT_MUTED, false);
         if (!count.isEmpty()) {
             graphics.text(this.font, GuiFont.text(count), x + w - 8 - GuiFont.width(this.font, count), footerY, AlpakaStyle.TEXT_MUTED, false);
         }
@@ -496,7 +490,11 @@ public class MarketInputScreen extends SignEditScreen {
     /** A suggestion's name with the parts that matched lit in the accent. */
     private void drawMatch(GuiGraphicsExtractor graphics, Suggestion s, int x, int y, int room, boolean lit) {
         String name = s.name();
-        int base = lit ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT;
+        // The row the keys or the mouse are on is the one Enter takes: its whole name in the accent,
+        // as every list names what is chosen. In the other rows the part that matched stands out by
+        // brightness alone, so the accent keeps that one meaning.
+        int base = lit ? AlpakaStyle.accentTextOn(AlpakaStyle.fieldHover()) : AlpakaStyle.TEXT_SOFT;
+        int match = lit ? base : AlpakaStyle.TEXT;
         if (GuiFont.width(this.font, name) > room) {
             graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, name, room)), x, y, base, false);
             return;
@@ -510,7 +508,7 @@ public class MarketInputScreen extends SignEditScreen {
             int from = Math.max(at, Math.min(name.length(), r[i]));
             int to = Math.max(from, Math.min(name.length(), r[i + 1]));
             if (from > at) text.append(GuiFont.text(name.substring(at, from)).withColor(base));
-            if (to > from) text.append(GuiFont.text(name.substring(from, to)).withColor(AlpakaStyle.accent()));
+            if (to > from) text.append(GuiFont.text(name.substring(from, to)).withColor(match));
             at = to;
         }
         if (at < name.length()) text.append(GuiFont.text(name.substring(at)).withColor(base));
@@ -541,13 +539,24 @@ public class MarketInputScreen extends SignEditScreen {
         int accent = AlpakaStyle.accent();
         int h = FIELD_H + below;
         ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, 6, AlpakaStyle.FIELD);
-        ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, h, 6, full ? MarketIcons.fade(AlpakaStyle.DANGER, 0.8f) : AlpakaStyle.accentDim());
+        // Focus shows as every text field shows it, the accent line along the bottom; the outline only
+        // flashes red when the field is full.
+        if (full) ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, h, 6, MarketIcons.fade(AlpakaStyle.DANGER, 0.8f));
         // The focus line along the field's bottom, which with the list open is where the list begins.
-        int lineInset = below > 0 ? 1 : 6;
-        ModernGuiUtils.drawRect(graphics, x + lineInset, y + FIELD_H - 1, w - 2 * lineInset, 1, full ? AlpakaStyle.DANGER : accent);
+        int lineInset = below > 0 ? 1 : 3;
+        ModernGuiUtils.drawRect(graphics, x + lineInset, y + FIELD_H - 1, w - 2 * lineInset, 1, full ? AlpakaStyle.DANGER : AlpakaStyle.accentIndicator());
 
         int iconSize = 10;
-        MarketIcons.draw(graphics, MarketIcons.Glyph.PROMPT, x + 8, y + (FIELD_H - iconSize) / 2f, iconSize, accent);
+        // What the field takes, as its icon: a search, coins, a time. Not a right chevron, which in
+        // every window means "leads somewhere".
+        MarketIcons.Glyph glyph = switch (prompt.type()) {
+            case SEARCH -> MarketIcons.Glyph.SEARCH;
+            case PRICE -> MarketIcons.Glyph.COIN;
+            case DURATION -> MarketIcons.Glyph.CLOCK;
+            case AMOUNT -> MarketIcons.Glyph.BOX;
+            default -> MarketIcons.Glyph.PROMPT;
+        };
+        MarketIcons.draw(graphics, glyph, x + 8, y + (FIELD_H - iconSize) / 2f, iconSize, AlpakaStyle.accentIndicator());
         int textX = 24;
         int tx = x + textX;
         int ty = y + (FIELD_H - 8) / 2;
@@ -669,7 +678,7 @@ public class MarketInputScreen extends SignEditScreen {
         if (note != null) graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, note, x + w - sourceW - 6 - cx)), cx, y + 3, AlpakaStyle.TEXT_MUTED, false);
         // SkyCofl asks to be named where its prices show.
         if (AlpakaConfig.instance.allowApiCalls) {
-            graphics.text(this.font, GuiFont.text(source), x + w - 2 - sourceW, y + 3, AlpakaStyle.DIVIDER, false);
+            graphics.text(this.font, GuiFont.text(source), x + w - 2 - sourceW, y + 3, AlpakaStyle.TEXT_MUTED, false);
         }
     }
 
@@ -688,7 +697,6 @@ public class MarketInputScreen extends SignEditScreen {
             if (moved && AlpakaStyle.inside(mouseX, mouseY, x, ry, w, SPEED_ROW_H)) speedHighlight = i;
             boolean hover = i == speedHighlight;
             ModernGuiUtils.drawRoundedRect(graphics, x, ry, w, SPEED_ROW_H, AlpakaStyle.ROW_RADIUS, hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW);
-            if (hover) ModernGuiUtils.drawRoundedRect(graphics, x, ry + 4, 2, SPEED_ROW_H - 8, 1, accent);
             // The crops' items, overlapping a little so four fit.
             int ix = x + 5;
             for (String crop : group.crops()) {
@@ -701,11 +709,13 @@ public class MarketInputScreen extends SignEditScreen {
             int speedW = GuiFont.width(this.font, hint + speed);
             int ty = ry + (SPEED_ROW_H - 8) / 2;
             String names = String.join(", ", group.crops());
+            // The row Enter takes is named in the accent, crops and speed alike.
+            int chosen = AlpakaStyle.accentTextOn(AlpakaStyle.ROW_SELECTED);
             graphics.text(this.font, GuiFont.text(AlpakaStyle.ellipsize(this.font, names, x + w - 8 - speedW - 6 - tx)), tx, ty,
-                    hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT, false);
+                    hover ? chosen : AlpakaStyle.TEXT_SOFT, false);
             int sx = x + w - 8 - speedW;
             if (hover) graphics.text(this.font, GuiFont.text(hint), sx, ty, AlpakaStyle.TEXT_MUTED, false);
-            graphics.text(this.font, GuiFont.text(speed), x + w - 8 - GuiFont.width(this.font, speed), ty, hover ? accent : AlpakaStyle.TEXT, false);
+            graphics.text(this.font, GuiFont.text(speed), x + w - 8 - GuiFont.width(this.font, speed), ty, hover ? chosen : AlpakaStyle.TEXT, false);
             int index = i;
             hits.add(new Hit(x, ry, w, SPEED_ROW_H, mx -> chooseSpeed(index), true));
             ry += SPEED_ROW_H + 2;

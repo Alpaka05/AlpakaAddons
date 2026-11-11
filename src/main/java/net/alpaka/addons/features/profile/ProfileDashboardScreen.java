@@ -668,7 +668,18 @@ public class ProfileDashboardScreen extends Screen {
             }));
             rowY += rowH + 1;
         }
-        if (!footer) return;
+        if (!footer) {
+            // Without the footer (folded, or a short window), a globe at the bottom opens the same sites.
+            int size = 14;
+            int gx = rowX + (rowW - size) / 2;
+            int gy = y + h - size - 6;
+            if (session.playerName == null || gy < rowY + 2) return;
+            boolean hoverGlobe = AlpakaStyle.inside(mx, my, gx, gy, size, size) && !menuOpen;
+            AlpakaStyle.globeButton(graphics, gx, gy, size, hoverGlobe);
+            hits.add(new Hit(gx, gy, size, size, () -> openSourceMenu(gx, gy)));
+            if (hoverGlobe) tip("source", sourcesTip());
+            return;
+        }
 
         // At the bottom: how fresh the numbers are, and where they come from.
         int fy = y + h - footerH;
@@ -676,7 +687,6 @@ public class ProfileDashboardScreen extends Screen {
         if (d != null && d.lastUpdated > 0) {
             text(graphics, "Updated " + Metrics.ago(d.lastUpdated * 1000L), x + PAD, fy, AlpakaStyle.TEXT_MUTED);
         }
-        boolean skykings = !AlpakaConfig.instance.skykingsApiKey.isBlank();
         String source = "Data Sources";
         int sw = textW(source);
         boolean hoverSource = AlpakaStyle.inside(mx, my, x + PAD - 2, fy + 10, sw + 4, 11) && !menuOpen;
@@ -684,22 +694,28 @@ public class ProfileDashboardScreen extends Screen {
         if (session.playerName != null) {
             int sx = x + PAD - 2;
             int sy = fy + 10;
-            hits.add(new Hit(sx, sy, sw + 4, 11, () -> {
-                sourceMenuX = sx;
-                sourceMenuY = sy;
-                sourceMenu = true;
-                menuOpen = true;
-            }));
-            if (hoverSource) {
-                tip("source", "Profile data from Elite (elitebot.dev), which reads it from Hypixel; the history from Elite and "
+            hits.add(new Hit(sx, sy, sw + 4, 11, () -> openSourceMenu(sx, sy)));
+            if (hoverSource) tip("source", sourcesTip());
+        }
+    }
+
+    /** Opens the list of sites above the given point. */
+    private void openSourceMenu(int x, int y) {
+        sourceMenuX = x;
+        sourceMenuY = y;
+        sourceMenu = true;
+        menuOpen = true;
+    }
+
+    private String sourcesTip() {
+        boolean skykings = !AlpakaConfig.instance.skykingsApiKey.isBlank();
+        return "Profile data from Elite (elitebot.dev), which reads it from Hypixel; the history from Elite and "
                         + "Soopy (soopy.dev), pet heads, the Bestiary, the Museum and Hoppity's rabbits from the NEU repository. Soopy works networth out differently, so its "
                         + "older networth is scaled to match Elite's."
                         + (skykings ? " With your key, SkyKings' daily history too" + (session.skykingsNote != null
                                 && !session.skykingsNote.equals("loading") ? ": " + session.skykingsNote : ".")
                                 : " A SkyKings API key in the config adds SkyKings' daily history.")
-                        + " Not affiliated with Hypixel. Click to open this profile on Elite, SkyCrypt or SkyKings.");
-            }
-        }
+                        + " Not affiliated with Hypixel. Click to open this profile on Elite, SkyCrypt or SkyKings.";
     }
 
     // ---- Content --------------------------------------------------------------------------------

@@ -914,9 +914,12 @@ public class AlpakaConfigRegistry {
                                 v -> { AlpakaConfig.instance.messageFilterEventRewards = v; AlpakaConfig.save(); }),
                         new ConfigOption.ToggleEntry("Sacks",
                                 () -> AlpakaConfig.instance.messageFilterSacks,
-                                v -> { AlpakaConfig.instance.messageFilterSacks = v; AlpakaConfig.save(); })
+                                v -> { AlpakaConfig.instance.messageFilterSacks = v; AlpakaConfig.save(); }),
+                        new ConfigOption.ToggleEntry("Sky Mall",
+                                () -> AlpakaConfig.instance.messageFilterSkyMall,
+                                v -> { AlpakaConfig.instance.messageFilterSkyMall = v; AlpakaConfig.save(); })
                 ),
-                "message filter hidden empty blank lines welcome guild gexp event exp kill combo grandma wolf profile id join reward bundle seasonal autopet pet rule fire sale community shop watchdog ban announcement stash stashed items materials pick up reminder event rewards unclaimed claim deleted sacks sack items added removed"));
+                "message filter hidden empty blank lines welcome guild gexp event exp kill combo grandma wolf profile id join reward bundle seasonal autopet pet rule fire sale community shop watchdog ban announcement stash stashed items materials pick up reminder event rewards unclaimed claim deleted sacks sack items added removed sky mall skymall buff new day hotm mining perk"));
 
         OPTIONS.add(new ConfigOption("message_filter_dungeon", "Dungeon Messages",
                 "Which dungeon messages the filter hides during a Catacombs run.",

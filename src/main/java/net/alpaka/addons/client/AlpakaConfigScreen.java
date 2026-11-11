@@ -290,6 +290,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         if (openTimeMs == 0L) openTimeMs = System.currentTimeMillis();
         lastFrameMs = System.currentTimeMillis();
         ellipsized.clear();
+        descriptionLinesText = null;
     }
 
     // ---- Selection ------------------------------------------------------------------------------
@@ -833,8 +834,8 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             }
             rowY += SETTING_ROW_H;
             if (descriptionOpen) {
-                for (FormattedText line : GuiFont.splitLines(this.font, description, rowW - 8)) {
-                    graphics.text(this.font, Language.getInstance().getVisualOrder(line), rowX + 4, rowY + 1, AlpakaStyle.TEXT_MUTED, false);
+                for (net.minecraft.util.FormattedCharSequence line : descriptionLines(description, rowW - 8)) {
+                    graphics.text(this.font, line, rowX + 4, rowY + 1, AlpakaStyle.TEXT_MUTED, false);
                     rowY += LINE_H + 1;
                 }
                 rowY += 5;
@@ -1250,6 +1251,36 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         return y + h > clipY && y < clipY + clipH;
     }
 
+    /** The open description's lines and what they were wrapped for; see {@link #descriptionLines}. */
+    private String descriptionLinesText;
+    private int descriptionLinesWidth;
+    private Style descriptionLinesStyle;
+    private Language descriptionLinesLanguage;
+    private List<net.minecraft.util.FormattedCharSequence> descriptionLines = List.of();
+
+    /**
+     * The description word-wrapped to the width, as it is drawn. An open description used to be
+     * wrapped anew every frame, though it only changes with the feature, the column's width, the
+     * menu font or the language; init() drops it with the other measurements.
+     */
+    private List<net.minecraft.util.FormattedCharSequence> descriptionLines(String description, int maxW) {
+        Style style = GuiFont.style();
+        Language language = Language.getInstance();
+        if (!description.equals(descriptionLinesText) || maxW != descriptionLinesWidth
+                || style != descriptionLinesStyle || language != descriptionLinesLanguage) {
+            List<net.minecraft.util.FormattedCharSequence> lines = new ArrayList<>();
+            for (FormattedText line : GuiFont.splitLines(this.font, description, maxW)) {
+                lines.add(language.getVisualOrder(line));
+            }
+            descriptionLines = lines;
+            descriptionLinesText = description;
+            descriptionLinesWidth = maxW;
+            descriptionLinesStyle = style;
+            descriptionLinesLanguage = language;
+        }
+        return descriptionLines;
+    }
+
     /** A label and the width it was cut to: the key for {@link #ellipsized}. */
     private record Fit(String text, int maxW) {
     }
@@ -1440,9 +1471,16 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         if (this.minecraft != null) this.minecraft.gui.setScreen(this.parent);
     }
 
-    /** A drag the screen never saw end must not leave saves deferred for the rest of the session. */
+    /**
+     * A drag the screen never saw end must not leave saves deferred for the rest of the session, and
+     * a text field still focused when the screen is replaced (disconnect, quit) is only saved on blur.
+     */
     @Override
     public void removed() {
+        if (focusedText != null) {
+            focusedText = null;
+            AlpakaConfig.save();
+        }
         draggedSlider = null;
         listeningKey = null;
         AlpakaConfig.endDeferredSaves();

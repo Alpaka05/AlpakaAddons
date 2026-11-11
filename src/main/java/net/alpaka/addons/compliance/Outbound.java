@@ -83,6 +83,10 @@ public final class Outbound {
     public static final long QUICK_JOIN_FLOOR_MS = 30_000L;
     private static long lastQuickJoinAtMs = Long.MIN_VALUE / 2;
 
+    /** The least time between two party chat answers, however many requests come in. */
+    public static final long PARTY_ANSWER_FLOOR_MS = 2_000L;
+    private static long lastPartyAnswerAtMs = Long.MIN_VALUE / 2;
+
     private Outbound() {}
 
     /**
@@ -97,7 +101,14 @@ public final class Outbound {
         if (cleaned.isEmpty()) return false;
 
         long now = System.currentTimeMillis();
+        // An answer to a party member is only ever a party chat line, and no caller can send more
+        // than one every PARTY_ANSWER_FLOOR_MS.
+        if (cause == Cause.PARTY_CHAT_REQUEST) {
+            if (!cleaned.startsWith("pc ")) return false;
+            if (now - lastPartyAnswerAtMs < PARTY_ANSWER_FLOOR_MS) return false;
+        }
         if (cleaned.equals(lastCommand) && now - lastSentAtMs < REPEAT_MS) return false;
+        if (cause == Cause.PARTY_CHAT_REQUEST) lastPartyAnswerAtMs = now;
         lastCommand = cleaned;
         lastSentAtMs = now;
 

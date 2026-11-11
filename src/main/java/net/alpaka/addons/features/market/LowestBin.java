@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.market;
 
+import net.alpaka.addons.utils.ItemData;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -10,6 +11,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
@@ -77,12 +79,24 @@ public final class LowestBin {
     private static void tick(Minecraft mc) {
         if (mc.player == null || !(mc.gui.screen() instanceof AbstractContainerScreen<?> screen)) return;
         if (!(screen.getMenu() instanceof ChestMenu menu) || menu.slots.size() <= ITEM_SLOT) return;
-        String title = SkyblockUtils.cleanColor(screen.getTitle().getString()).trim();
-        if (!title.equals("Create BIN Auction") && !title.equals("Create Auction")) return;
+        if (!isCreateAuction(screen.getTitle())) return;
         Item item = itemOf(menu.getSlot(ITEM_SLOT).getItem());
         // Without an item in the slot yet, Hypixel shows a button there that asks for one.
         selling = item;
         sellingSeenMs = System.currentTimeMillis();
+    }
+
+    /** The last menu title read and whether it creates an auction: read every tick, and a title stays the same object. */
+    private static Component createTitle = null;
+    private static boolean createTitleMatches = false;
+
+    private static boolean isCreateAuction(Component title) {
+        if (title != createTitle) {
+            String plain = SkyblockUtils.cleanColor(title.getString()).trim();
+            createTitleMatches = plain.equals("Create BIN Auction") || plain.equals("Create Auction");
+            createTitle = title;
+        }
+        return createTitleMatches;
     }
 
     /** The item being put up for auction, or null if no auction is being created. */
@@ -94,7 +108,7 @@ public final class LowestBin {
         if (stack.isEmpty()) return null;
         CustomData data = stack.get(DataComponents.CUSTOM_DATA);
         if (data == null) return null;
-        net.minecraft.nbt.CompoundTag nbt = data.copyTag();
+        net.minecraft.nbt.CompoundTag nbt = ItemData.view(data);
         String id = nbt.getStringOr("id", "");
         if (id.isEmpty()) return null;
         String petInfo = nbt.getStringOr("petInfo", "");
@@ -147,7 +161,7 @@ public final class LowestBin {
                 .header("User-Agent", "AlpakaAddons/" + ModVersion.mod())
                 .GET()
                 .build();
-        client().sendAsync(request, HttpResponse.BodyHandlers.ofString()).whenComplete((response, error) -> {
+        client().sendAsync(request, HttpResponse.BodyHandlers.ofString()).orTimeout(60, java.util.concurrent.TimeUnit.SECONDS).whenComplete((response, error) -> {
             long now = System.currentTimeMillis();
             try {
                 if (error != null || response == null) {

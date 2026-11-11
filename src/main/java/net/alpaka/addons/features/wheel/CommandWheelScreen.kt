@@ -6,6 +6,7 @@ import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.client.gui.PloppAnimation
 import net.alpaka.addons.features.commands.TypedCommands
+import net.alpaka.addons.features.sound.CustomSoundFeature
 import net.alpaka.addons.features.wheel.WheelMesh.Companion.TAU
 import net.alpaka.addons.features.wheel.WheelMesh.Companion.lerpColor
 import net.alpaka.addons.features.wheel.WheelMesh.Companion.scaleAlpha
@@ -398,7 +399,10 @@ class CommandWheelScreen(
 
         val layout = layout(count)
         // Aiming at a page arrow is not aiming at the wheel, so nothing lights up behind it.
+        val previousIndex = selectedIndex
         selectedIndex = if (hoveredArrow >= 0) -1 else pick(layout, mouseX, mouseY, count)
+        // A tick each time the aim lands on another command, not when it leaves the wheel.
+        if (selectedIndex >= 0 && selectedIndex != previousIndex) CustomSoundFeature.playCommandWheelHoverSound()
 
         if (selectedIndex >= 0) {
             // The wedge points at the selected segment's centre line rather than at the mouse, so it

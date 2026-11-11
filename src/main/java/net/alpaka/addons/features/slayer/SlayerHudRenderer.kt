@@ -183,10 +183,12 @@ object SlayerHudRenderer {
             // throwaway string per row per rebuild.
             // Measured as the Components that are drawn, so a row in the menu font is measured in it.
             labelTexts = Array(rows.size) { HudPanel.text(Component.literal(rows[it].label), smoothFont) }
+            // Each label measured once, for the column and for its own end below.
+            val labelEnds = IntArray(rows.size) { font.width(labelTexts[it]) }
             var labelMax = 0
             for (index in rows.indices) {
                 if (rows[index].spansColumns) continue
-                val measured = font.width(labelTexts[index])
+                val measured = labelEnds[index]
                 if (measured > labelMax) labelMax = measured
             }
             labelWidth = if (labelMax > 0) labelMax + LABEL_GAP else 0
@@ -196,7 +198,7 @@ object SlayerHudRenderer {
             var widest = 0
             for (index in rows.indices) {
                 val row = rows[index]
-                val labelEnd = font.width(labelTexts[index])
+                val labelEnd = labelEnds[index]
                 val valueX = if (row.spansColumns) labelEnd + TITLE_GAP else labelWidth
                 valueXs[index] = valueX
                 val valueText = if (row.value.isNotEmpty()) HudPanel.text(Component.literal(row.value), smoothFont) else null

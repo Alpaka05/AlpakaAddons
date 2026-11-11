@@ -38,8 +38,8 @@ class DisableAllFeaturesTest {
             // General
             "allowApiCalls", "updateNotificationsEnabled", "customEscapeMenuEnabled", "customMainMenuEnabled",
             // Visuals
-            "fullbrightEnabled", "skyEffectsEnabled", "cleanBlazeEnabled", "blazeFirePitsEnabled", "stopBlazeSpinning",
-            "hideHurtOverlayEnabled", "hideMobDeathsEnabled", "hideEntityFire", "firstPersonFireStatic",
+            "fullbrightEnabled", "cleanBlazeEnabled", "blazeFirePitsEnabled", "stopBlazeSpinning",
+            "hideHurtOverlayEnabled", "hideMobDeathsEnabled", "hideVisualClutter", "hideEntityFire", "firstPersonFireStatic",
             "nameTagTextShadow", "showOwnNameTag", "renderHandInThirdPerson", "smoothPerspectiveEnabled",
             "disableFrontPerspective", "zoomEnabled", "containerBgFadeInEnabled", "inventorySnowEnabled",
             "scrollableTooltipsEnabled", "persistentItemNameEnabled", "oldMasterStarsEnabled",
@@ -52,7 +52,7 @@ class DisableAllFeaturesTest {
             // SkyBlock
             "visitorBazaarEnabled",
             "slayerDropTrackerEnabled", "hideHypixelDropMessage", "slayerRngDropGuildChatEnabled",
-            "hideSlayerChatMessages", "bossSpawnAlertEnabled", "bossCocoonAlertEnabled", "slayerTimerEnabled",
+            "bossSpawnAlertEnabled", "bossCocoonAlertEnabled", "slayerTimerEnabled",
             "slayerHudEnabled", "farmingHudEnabled", "worldAgeJoinMessageEnabled", "partyInvitePromptEnabled",
             "cacheResourcePackEnabled", "guildPrefixEnabled", "bridgeBotFormatterEnabled", "ragnarockEnabled",
             "onlyCritDamageEnabled", "ignoreFillerPanesEnabled", "deployableTimerEnabled", "dungeonMapEnabled", "leapMenuEnabled", "customAuctionHouseEnabled", "customBazaarEnabled",
@@ -65,7 +65,7 @@ class DisableAllFeaturesTest {
             "rareDropAnimationEnabled",
             // Utility and sounds
             "exactSkillXpEnabled",
-            "alwaysSprintEnabled", "keepCursorPositionEnabled", "customSoundsEnabled", "muteVanillaSoundsInBlazeSlayer",
+            "alwaysSprintEnabled", "keepCursorPositionEnabled", "commandShortcutsEnabled", "inventoryButtonsEnabled", "customSoundsEnabled", "muteVanillaSoundsInBlazeSlayer",
             "customSoundButtonClick", "customSoundHotbarScroll", "customSoundInventoryOpenClose",
             "customSoundInventoryClick", "customSoundRareDrop", "customSoundNotification",
             "customSoundPlayerHurt", "customSoundBlazeDeath", "customSoundZombieRemedy",

@@ -8,8 +8,8 @@ import org.lwjgl.glfw.GLFW;
 
 /**
  * The keys that move around a market screen, one set for each market, bound in the settings under
- * its Custom screen. They only act inside the market screen; see MarketScreen.hotkeyTarget. The
- * number keys, "/" and Ctrl+F stay fixed.
+ * its Custom screen, all unbound until the player picks a key. They only act inside the market
+ * screen; see MarketScreen.hotkeyTarget. The number keys, "/" and Ctrl+F stay fixed.
  */
 public final class MarketKeys {
     private MarketKeys() {}
@@ -24,16 +24,16 @@ public final class MarketKeys {
 
     public static void register() {
         AUCTION_HOUSE = new Set(
-                key("auction_house", "key.alpaka.ah_previous_page", GLFW.GLFW_KEY_LEFT),
-                key("auction_house", "key.alpaka.ah_next_page", GLFW.GLFW_KEY_RIGHT),
-                key("auction_house", "key.alpaka.ah_back", GLFW.GLFW_KEY_BACKSPACE),
+                key("auction_house", "key.alpaka.ah_previous_page", GLFW.GLFW_KEY_UNKNOWN),
+                key("auction_house", "key.alpaka.ah_next_page", GLFW.GLFW_KEY_UNKNOWN),
+                key("auction_house", "key.alpaka.ah_back", GLFW.GLFW_KEY_UNKNOWN),
                 key("auction_house", "key.alpaka.ah_search", GLFW.GLFW_KEY_UNKNOWN),
-                key("auction_house", "key.alpaka.ah_create_auction", GLFW.GLFW_KEY_C),
-                key("auction_house", "key.alpaka.ah_reset_settings", GLFW.GLFW_KEY_R));
+                key("auction_house", "key.alpaka.ah_create_auction", GLFW.GLFW_KEY_UNKNOWN),
+                key("auction_house", "key.alpaka.ah_reset_settings", GLFW.GLFW_KEY_UNKNOWN));
         BAZAAR = new Set(
-                key("bazaar", "key.alpaka.bz_previous_page", GLFW.GLFW_KEY_LEFT),
-                key("bazaar", "key.alpaka.bz_next_page", GLFW.GLFW_KEY_RIGHT),
-                key("bazaar", "key.alpaka.bz_back", GLFW.GLFW_KEY_BACKSPACE),
+                key("bazaar", "key.alpaka.bz_previous_page", GLFW.GLFW_KEY_UNKNOWN),
+                key("bazaar", "key.alpaka.bz_next_page", GLFW.GLFW_KEY_UNKNOWN),
+                key("bazaar", "key.alpaka.bz_back", GLFW.GLFW_KEY_UNKNOWN),
                 key("bazaar", "key.alpaka.bz_search", GLFW.GLFW_KEY_UNKNOWN),
                 null, null);
     }

@@ -45,6 +45,12 @@ public final class CustomMessageFilter {
     private transient boolean compiledIgnoreCase;
     private transient boolean invalid;
 
+    // The text as compared, stripped and maybe lower-cased, kept until the text or the case switch
+    // changes; every filter is asked about every chat line. Not saved.
+    private transient String wanted;
+    private transient String wantedFrom;
+    private transient boolean wantedIgnoreCase;
+
     public CustomMessageFilter() {
     }
 
@@ -66,13 +72,9 @@ public final class CustomMessageFilter {
             Pattern pattern = pattern();
             return pattern != null && pattern.matcher(message).find();
         }
-        String wanted = SkyblockUtils.cleanColor(text);
+        String wanted = wanted();
         if (wanted.isEmpty()) return false;
-        String haystack = message;
-        if (ignoreCase) {
-            wanted = wanted.toLowerCase(Locale.ROOT);
-            haystack = haystack.toLowerCase(Locale.ROOT);
-        }
+        String haystack = ignoreCase ? message.toLowerCase(Locale.ROOT) : message;
         return switch (mode) {
             case EQUALS -> haystack.equals(wanted);
             case STARTS_WITH -> haystack.startsWith(wanted);
@@ -85,6 +87,16 @@ public final class CustomMessageFilter {
     /** False only for a regex that does not compile; the sub menu marks such a filter. */
     public boolean isValid() {
         return mode != Mode.REGEX || text == null || text.isBlank() || pattern() != null;
+    }
+
+    private String wanted() {
+        if (wanted == null || !text.equals(wantedFrom) || ignoreCase != wantedIgnoreCase) {
+            wantedFrom = text;
+            wantedIgnoreCase = ignoreCase;
+            String clean = SkyblockUtils.cleanColor(text);
+            wanted = ignoreCase ? clean.toLowerCase(Locale.ROOT) : clean;
+        }
+        return wanted;
     }
 
     private Pattern pattern() {

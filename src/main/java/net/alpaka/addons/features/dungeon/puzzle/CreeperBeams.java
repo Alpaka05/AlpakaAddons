@@ -199,7 +199,7 @@ public final class CreeperBeams extends PuzzleSolver {
         int h = RoomFrame.HALF;
         for (int cx = (centre.getX() - h) >> 4; cx <= (centre.getX() + h) >> 4; cx++) {
             for (int cz = (centre.getZ() - h) >> 4; cz <= (centre.getZ() + h) >> 4; cz++) {
-                if (!level.hasChunk(cx, cz)) return false;
+                if (!level.getChunkSource().hasChunk(cx, cz)) return false;
             }
         }
         return true;

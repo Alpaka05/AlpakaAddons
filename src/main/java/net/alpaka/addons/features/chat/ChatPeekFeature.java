@@ -5,11 +5,11 @@ import com.mojang.blaze3d.platform.Window;
 import net.alpaka.addons.client.AlpakaKeyCategory;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.client.AlpakaKeyBinds;
+import net.alpaka.addons.utils.TextInputFocus;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.ChatComponent;
-import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.util.Mth;
@@ -80,20 +80,22 @@ public final class ChatPeekFeature {
     }
 
     private static boolean isKeyHeld(Minecraft mc) {
+        // The key first: this runs every frame, and the checks below walk the menu's widgets.
+        if (!PEEK_KEY.isHeld(mc.getWindow())) return false;
         Screen screen = mc.gui.screen();
         if (screen != null) {
             if (!AlpakaConfig.instance.chatPeekInMenus) return false;
             // The chat screen shows the real thing.
             if (screen instanceof ChatScreen) return false;
             // A letter typed into a search box or an anvil should not also pop the chat open.
-            if (screen.getFocused() instanceof EditBox box && box.canConsumeInput()) return false;
+            if (TextInputFocus.isTyping(screen)) return false;
             // The mod's own settings screens type into fields of their own, which the check above
             // cannot see: Cmd+F to search the config, or an F in a hex color, opened the chat.
             if (screen instanceof net.alpaka.addons.client.AlpakaConfigScreen
                     || screen instanceof net.alpaka.addons.client.ColorPickerScreen
                     || screen instanceof net.alpaka.addons.client.CommandWheelConfigScreen) return false;
         }
-        return PEEK_KEY.isHeld(mc.getWindow());
+        return true;
     }
 
     /**

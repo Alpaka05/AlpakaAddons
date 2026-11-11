@@ -44,9 +44,16 @@ class MessageFilterFeatureTest {
             "(This totals 3 types of materials stashed!)                            | STASH",
             ">>> CLICK HERE to pick them up! <<<                                    | STASH",
             ">>> CLICK HERE to pick it up! <<<                                      | STASH",
+            "          You have 4 unclaimed event rewards!                          | EVENT_REWARDS",
+            "You have 1 unclaimed event reward!                                     | EVENT_REWARDS",
+            ">>> CLICK HERE to claim! <<<                                           | EVENT_REWARDS",
+            "Event rewards are deleted after 10 SkyBlock years!                     | EVENT_REWARDS",
             "[Sacks] +11 items. (Last 7s.)                                          | SACKS",
             "[Sacks] -1 item. (Last 5s.)                                            | SACKS",
             "[Sacks] +2,111 items, -4 items. (Last 30s.)                            | SACKS",
+            "New day! Your Sky Mall buff changed!                                   | SKY_MALL",
+            "You can disable this messaging by toggling Sky Mall in your /hotm!     | SKY_MALL",
+            "New buff: -20% Pickaxe Ability cooldowns.                              | SKY_MALL_BUFF",
     })
     void recognizesSpam(String text, Kind kind) {
         assertEquals(kind, MessageFilterFeature.classify(text.strip()));
@@ -63,6 +70,8 @@ class MessageFilterFeatureTest {
             "Guild > Someone: ♨ And 3 more!",
             "Someone: You have 2 items stashed away!",
             "[MVP+] Someone: [Sacks] +11 items. (Last 7s.)",
+            "[MVP+] Someone: New day! Your Sky Mall buff changed!",
+            "Party > Someone: New buff: -20% Pickaxe Ability cooldowns.",
     })
     void leavesOtherLinesAlone(String text) {
         assertNull(MessageFilterFeature.classify(text));
@@ -85,6 +94,21 @@ class MessageFilterFeatureTest {
         assertTrue(MessageFilterFeature.isHidden(Kind.REWARD_BUNDLE_HINT, true, 50));
         assertFalse(MessageFilterFeature.isHidden(Kind.REWARD_BUNDLE_HINT, true, MessageFilterFeature.HINT_WINDOW_MS + 1));
         assertFalse(MessageFilterFeature.isHidden(Kind.REWARD_BUNDLE_HINT, false, 50));
+    }
+
+    @Test
+    void skyMallBuffOnlyRightAfterTheNewDayLine() {
+        assertTrue(MessageFilterFeature.isHidden(Kind.SKY_MALL_BUFF, true, 50));
+        assertFalse(MessageFilterFeature.isHidden(Kind.SKY_MALL_BUFF, true, MessageFilterFeature.HINT_WINDOW_MS + 1));
+        assertFalse(MessageFilterFeature.isHidden(Kind.SKY_MALL_BUFF, false, 50));
+    }
+
+    @Test
+    void skyMallNoticeInOneMessage() {
+        assertEquals(Kind.SKY_MALL, MessageFilterFeature.classify(
+                "New day! Your Sky Mall buff changed!\nNew buff: Gain +100 ⸕ Mining Speed.\n"
+                        + "You can disable this messaging by toggling Sky Mall in your /hotm!"));
+        assertNull(MessageFilterFeature.classify("Something else\nNew buff: Gain +100 ⸕ Mining Speed."));
     }
 
     @Test
@@ -125,6 +149,16 @@ class MessageFilterFeatureTest {
         assertEquals(Kind.STASH, MessageFilterFeature.classify(
                 "You have 2 items stashed away!\n                >>> CLICK HERE to pick them up! <<<"));
         assertNull(MessageFilterFeature.classify("You have 2 items stashed away!\nSomeone: hi"));
+    }
+
+    @Test
+    void eventRewardsReminderInOneMessage() {
+        assertEquals(Kind.EVENT_REWARDS, MessageFilterFeature.classify(
+                "          You have 4 unclaimed event rewards!\n"
+                        + "                >>> CLICK HERE to claim! <<<\n"
+                        + "     Event rewards are deleted after 10 SkyBlock years!"));
+        assertNull(MessageFilterFeature.classify("You have 4 unclaimed event rewards!\nSomeone: hi"));
+        assertNull(MessageFilterFeature.classify("Someone: >>> CLICK HERE to claim! <<<"));
     }
 
     /** Color-stripped dungeon lines (from SkyHanni's DungeonChatFilter) and the group each is in. */

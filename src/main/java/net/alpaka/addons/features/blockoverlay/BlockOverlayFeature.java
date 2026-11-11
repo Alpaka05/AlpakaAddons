@@ -67,6 +67,11 @@ public class BlockOverlayFeature {
         }
         lastRenderTime = now;
 
+        // Before the colors are worked out: with both passes off there is nothing to color.
+        final boolean drawFill = AlpakaConfig.instance.blockFillEnabled;
+        final boolean drawOutline = AlpakaConfig.instance.blockOutlineEnabled;
+        if (!drawFill && !drawOutline) return;
+
         float fadeInFactor = 1.0f;
         if (AlpakaConfig.instance.blockFadeInEnabled) {
             long elapsed = now - targetStartTime;
@@ -105,10 +110,6 @@ public class BlockOverlayFeature {
             fillB = (AlpakaConfig.instance.blockFillColor & 0xFF) / 255.0f;
         }
         fillA = (((AlpakaConfig.instance.blockFillColor >> 24) & 0xFF) / 255.0f) * fadeInFactor;
-
-        final boolean drawFill = AlpakaConfig.instance.blockFillEnabled;
-        final boolean drawOutline = AlpakaConfig.instance.blockOutlineEnabled;
-        if (!drawFill && !drawOutline) return;
 
         // Read now rather than inside the callback: the callback runs later in the frame, and the
         // values used there should be the ones the render type below was chosen with.

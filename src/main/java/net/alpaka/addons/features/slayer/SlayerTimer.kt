@@ -345,6 +345,16 @@ object SlayerTimer {
     }
 
     /**
+     * What [format] depends on: two times with the same key are written the same way. Lets the HUD
+     * build its text only when the key moves on.
+     */
+    fun formatKey(ms: Long): Long = when {
+        ms < 0L -> ms // its own key; never shared with a non-negative time, whose keys are 0 and up
+        ms < 60_000L -> (ms + 50L) / 100L
+        else -> 1_000_000L + ms / 1000L
+    }
+
+    /**
      * A duration as the slayer community quotes boss times: seconds with one decimal below a
      * minute, minutes and seconds above it.
      */
@@ -352,7 +362,14 @@ object SlayerTimer {
         // Locale.ROOT, not the system default: on a German machine the default renders the decimal
         // as a comma, which lands next to figures like "1,284,500" that use the comma as a thousands
         // separator. The mod's text is English throughout, so the separator should be too.
-        if (ms < 60_000L) return String.format(java.util.Locale.ROOT, "%.1fs", ms / 1000.0)
+        if (ms < 60_000L) {
+            // The HUD asks every frame; for whole non-negative milliseconds "%.1f" of ms / 1000 is the
+            // tenths rounded half up, written out here without a Formatter (SlayerTimerFormatTest
+            // checks every value against String.format).
+            if (ms < 0L) return String.format(java.util.Locale.ROOT, "%.1fs", ms / 1000.0)
+            val tenths = (ms + 50L) / 100L
+            return "${tenths / 10L}.${tenths % 10L}s"
+        }
         val totalSeconds = ms / 1000L
         return String.format(java.util.Locale.ROOT, "%dm %02ds", totalSeconds / 60L, totalSeconds % 60L)
     }

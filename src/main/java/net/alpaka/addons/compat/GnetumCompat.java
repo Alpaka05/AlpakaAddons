@@ -104,11 +104,24 @@ public final class GnetumCompat {
      */
     public static void deferUnderlay(GuiElementRenderState state) {
         DEFERRED_UNDERLAY.add(state);
+        mayHoldUnderlay = true;
     }
+
+    /**
+     * False only while nothing was deferred since the set last emptied. {@link #takeUnderlay} runs
+     * for every GUI element of every frame, and without Gnetum nothing is ever deferred; a plain
+     * field read there is cheaper than asking the weak set, which polls its reference queue first.
+     */
+    private static boolean mayHoldUnderlay;
 
     /** Whether this element, now added outside Gnetum's pass, was deferred for the layer under the HUD. */
     public static boolean takeUnderlay(GuiElementRenderState state) {
-        return !DEFERRED_UNDERLAY.isEmpty() && !isDeferring() && DEFERRED_UNDERLAY.remove(state);
+        if (!mayHoldUnderlay) return false;
+        if (DEFERRED_UNDERLAY.isEmpty()) {
+            mayHoldUnderlay = false;
+            return false;
+        }
+        return !isDeferring() && DEFERRED_UNDERLAY.remove(state);
     }
 
     private static boolean resolve() {

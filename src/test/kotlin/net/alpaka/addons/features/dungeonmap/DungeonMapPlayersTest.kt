@@ -168,8 +168,8 @@ class DungeonMapPlayersTest {
     fun `boss terrain is sampled with a margin around the view`() {
         val view = BossMapProjection(0.0, 0.0, 128)
         assertEquals(192, BossMapProjection.TEXTURE)
-        // Sample -16 sits 32 px left of the view, the last one 32 px right of it.
-        assertEquals(-31f, view.mapX(view.worldX(-BossMapProjection.MARGIN).toDouble()))
+        // One sample per pixel: sample -32 sits 32 px left of the view, the last one 32 px right of it.
+        assertEquals(-32f, view.mapX(view.worldX(-BossMapProjection.MARGIN).toDouble()))
         assertEquals(159f, view.mapX(view.worldX(BossMapProjection.STEPS + BossMapProjection.MARGIN - 1).toDouble()))
     }
 }

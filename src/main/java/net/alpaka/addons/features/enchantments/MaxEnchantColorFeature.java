@@ -11,7 +11,9 @@ import net.minecraft.network.chat.TextColor;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -36,6 +38,21 @@ public final class MaxEnchantColorFeature {
     private static final Pattern ALL_PATTERN = pattern(
             Stream.concat(Enchants.NORMAL.keySet().stream(), Enchants.ULTIMATE.keySet().stream()));
 
+    /** A lore line as read: its plain text and the maxed enchantments found in it. */
+    private record Found(String plain, List<int[]> ranges) {
+    }
+
+    /**
+     * Results by the line's text, one map per Ultimates setting. A tooltip is built again every frame
+     * from the same lore, and the stripping and the long pattern are the costly part; the same lines
+     * keep coming, so they are looked for once. Cleared when full rather than kept in order, which
+     * is enough for a hovered item's few dozen lines. Concurrent, as other mods build tooltips off
+     * the render thread too.
+     */
+    private static final int CACHE_LIMIT = 1024;
+    private static final Map<String, Found> FOUND = new ConcurrentHashMap<>();
+    private static final Map<String, Found> FOUND_ULTIMATES = new ConcurrentHashMap<>();
+
     public static void register() {
         ItemTooltipCallback.EVENT.register((stack, context, flag, lines) -> {
             AlpakaConfig config = AlpakaConfig.instance;
@@ -58,14 +75,16 @@ public final class MaxEnchantColorFeature {
 
     /** The line with every maxed enchantment in {@code color}, or the line itself if it has none. */
     static Component recolor(Component line, TextColor color, boolean ultimates) {
-        String plain = ChatFormatting.stripFormatting(line.getString());
-        List<int[]> ranges = maxedRanges(plain, ultimates);
+        Found found = find(line.getString(), ultimates);
+        String plain = found.plain();
+        List<int[]> ranges = found.ranges();
         if (ranges.isEmpty()) return line;
 
-        // Flatten into one style per character, resolving legacy § codes inside the text, so the
-        // ranges found on the plain text line up however Hypixel split the line.
+        // Flatten into runs of one style each, resolving legacy § codes inside the text, so the
+        // ranges found on the plain text line up however Hypixel split the line. Runs rather than a
+        // style per character: the output only depends on where the style changes.
         StringBuilder text = new StringBuilder();
-        List<Style> styles = new ArrayList<>();
+        List<Run> runs = new ArrayList<>();
         line.visit((style, part) -> {
             Style current = style;
             for (int i = 0; i < part.length(); i++) {
@@ -77,28 +96,73 @@ public final class MaxEnchantColorFeature {
                     i++;
                     continue;
                 }
+                int at = text.length();
                 text.append(c);
-                styles.add(current);
+                Run last = runs.isEmpty() ? null : runs.get(runs.size() - 1);
+                if (last != null && last.end == at && last.style.equals(current)) last.end = at + 1;
+                else runs.add(new Run(at, at + 1, current));
             }
             return Optional.empty();
         }, Style.EMPTY);
 
+        String flat = text.toString();
         // A stray § the strip above left in place would shift the ranges; find them again then.
-        if (!text.toString().equals(plain)) ranges = maxedRanges(text.toString(), ultimates);
+        if (!flat.equals(plain)) ranges = maxedRanges(flat, ultimates);
         if (ranges.isEmpty()) return line;
-        for (int[] range : ranges) {
-            for (int i = range[0]; i < range[1]; i++) styles.set(i, styles.get(i).withColor(color));
-        }
 
+        // Cut the runs at the range edges, color the parts inside a range, and join neighbours that
+        // end up with the same style: the same pieces the per-character version produced.
         MutableComponent out = Component.empty();
-        int start = 0;
-        for (int i = 1; i <= text.length(); i++) {
-            if (i == text.length() || !styles.get(i).equals(styles.get(start))) {
-                out.append(Component.literal(text.substring(start, i)).withStyle(styles.get(start)));
-                start = i;
+        int pendingStart = 0;
+        Style pending = null;
+        int r = 0;
+        for (Run run : runs) {
+            int at = run.start;
+            while (at < run.end) {
+                while (r < ranges.size() && ranges.get(r)[1] <= at) r++;
+                boolean inside = r < ranges.size() && ranges.get(r)[0] <= at;
+                int to = inside ? Math.min(run.end, ranges.get(r)[1])
+                        : r < ranges.size() ? Math.min(run.end, ranges.get(r)[0]) : run.end;
+                Style style = inside ? run.style.withColor(color) : run.style;
+                if (pending == null) {
+                    pending = style;
+                    pendingStart = at;
+                } else if (!pending.equals(style)) {
+                    out.append(Component.literal(flat.substring(pendingStart, at)).withStyle(pending));
+                    pending = style;
+                    pendingStart = at;
+                }
+                at = to;
             }
         }
+        if (pending != null) out.append(Component.literal(flat.substring(pendingStart)).withStyle(pending));
         return out;
+    }
+
+    /** Characters {@code start..end} of the flattened line, all in one style. */
+    private static final class Run {
+        final int start;
+        int end;
+        final Style style;
+
+        Run(int start, int end, Style style) {
+            this.start = start;
+            this.end = end;
+            this.style = style;
+        }
+    }
+
+    /** The plain text of a line and its maxed ranges, worked out once per distinct line. */
+    private static Found find(String raw, boolean ultimates) {
+        Map<String, Found> cache = ultimates ? FOUND_ULTIMATES : FOUND;
+        Found found = cache.get(raw);
+        if (found != null) return found;
+        String plain = ChatFormatting.stripFormatting(raw);
+        List<int[]> ranges = maxedRanges(plain, ultimates);
+        found = new Found(plain, ranges.isEmpty() ? List.of() : ranges);
+        if (cache.size() >= CACHE_LIMIT) cache.clear();
+        cache.put(raw, found);
+        return found;
     }
 
     /** Start and end of each "Name Level" in a plain lore line whose level is the highest there is. */

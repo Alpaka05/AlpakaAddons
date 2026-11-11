@@ -9,6 +9,19 @@ public final class Coins {
     private Coins() {}
 
     private static final DecimalFormatSymbols US = DecimalFormatSymbols.getInstance(Locale.US);
+
+    /**
+     * The few fixed formats, built once per thread: the market screens format many numbers every
+     * frame, and a DecimalFormat is costly to build but not safe to share between threads.
+     */
+    private static final ThreadLocal<DecimalFormat> ONE_DECIMAL = format("0.#");
+    private static final ThreadLocal<DecimalFormat> TWO_DECIMALS = format("0.##");
+    private static final ThreadLocal<DecimalFormat> WHOLE = format("0");
+    private static final ThreadLocal<DecimalFormat> GROUPED = format("#,##0.#");
+
+    private static ThreadLocal<DecimalFormat> format(String pattern) {
+        return ThreadLocal.withInitial(() -> new DecimalFormat(pattern, US));
+    }
     /** One part of a time; a number too long to be a time is skipped whole rather than overflowing parseLong. */
     private static final java.util.regex.Pattern TIME_PART = java.util.regex.Pattern.compile("(?<!\\d)(\\d{1,6})\\s*([dhms])");
 
@@ -71,7 +84,7 @@ public final class Coins {
     public static String compact(double value) {
         double abs = Math.abs(value);
         // Each unit ends where rounding would write it as 1000 of itself: 999,700 is "1M", not "1000k".
-        if (abs < 999.95) return trim(new DecimalFormat("0.#", US).format(value));
+        if (abs < 999.95) return trim(ONE_DECIMAL.get().format(value));
         if (abs < 999_500) return scaled(value / 1e3) + "k";
         if (abs < 999_500_000) return scaled(value / 1e6) + "M";
         return scaled(value / 1e9) + "B";
@@ -80,8 +93,8 @@ public final class Coins {
     /** Three significant digits: 1.25, 12.5, 125. */
     private static String scaled(double value) {
         double abs = Math.abs(value);
-        String pattern = abs < 10 ? "0.##" : abs < 100 ? "0.#" : "0";
-        return trim(new DecimalFormat(pattern, US).format(value));
+        DecimalFormat format = (abs < 10 ? TWO_DECIMALS : abs < 100 ? ONE_DECIMAL : WHOLE).get();
+        return trim(format.format(value));
     }
 
     private static String trim(String text) {
@@ -90,7 +103,7 @@ public final class Coins {
 
     /** The full amount with thousands separators and at most one decimal: "1,500,000". */
     public static String full(double value) {
-        return new DecimalFormat("#,##0.#", US).format(value);
+        return GROUPED.get().format(value);
     }
 
     /**

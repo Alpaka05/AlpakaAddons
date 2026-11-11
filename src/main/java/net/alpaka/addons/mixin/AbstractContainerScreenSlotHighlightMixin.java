@@ -3,6 +3,7 @@ package net.alpaka.addons.mixin;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import net.alpaka.addons.features.enchantments.AnvilCombineHelper;
 import net.alpaka.addons.features.enchantments.ExperimentSolver;
+import net.alpaka.addons.features.itemsearch.ItemSearchHighlight;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
@@ -15,7 +16,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Slot highlights and remembered items for the Anvil Combine Helper and the Experiment Solver.
+ * Slot highlights and remembered items for the Anvil Combine Helper and the Experiment Solver, and
+ * Item Search's mark on the item it found.
  * The highlight is drawn before the slot's item, so the item stays on top of it.
  */
 @Mixin(AbstractContainerScreen.class)
@@ -24,6 +26,7 @@ public abstract class AbstractContainerScreenSlotHighlightMixin {
     private void alpaka$slotBackground(GuiGraphicsExtractor graphics, Slot slot, int mouseX, int mouseY, CallbackInfo ci) {
         AbstractContainerScreen<?> screen = (AbstractContainerScreen<?>) (Object) this;
         AnvilCombineHelper.extractSlotBackground(screen, graphics, slot);
+        ItemSearchHighlight.drawSlot(graphics, slot);
         if (screen instanceof ContainerScreen chest) ExperimentSolver.extractSlotBackground(chest, graphics, slot);
     }
 
@@ -34,8 +37,21 @@ public abstract class AbstractContainerScreenSlotHighlightMixin {
         return ExperimentSolver.displayed(chest, slot, actual);
     }
 
-    @Inject(method = "slotClicked", at = @At("HEAD"))
+    /** A wrong click in an experiment is dropped here, before it reaches the server. */
+    @Inject(method = "slotClicked", at = @At("HEAD"), cancellable = true)
     private void alpaka$slotClicked(Slot slot, int slotId, int button, ContainerInput input, CallbackInfo ci) {
-        if (slot != null) ExperimentSolver.onSlotClicked(((AbstractContainerScreen<?>) (Object) this).getMenu(), slotId);
+        if (slot == null) return;
+        var menu = ((AbstractContainerScreen<?>) (Object) this).getMenu();
+        if (ExperimentSolver.isMisclick(menu, slotId)) {
+            ci.cancel();
+            return;
+        }
+        ExperimentSolver.onSlotClicked(menu, slotId);
+    }
+
+    /** The Slot Highlight's marks, also behind the item, so it and the tooltip stay on top. */
+    @Inject(method = "extractSlot", at = @At("HEAD"))
+    private void alpaka$slotHighlight(GuiGraphicsExtractor graphics, Slot slot, int mouseX, int mouseY, CallbackInfo ci) {
+        net.alpaka.addons.features.slothighlight.SlotHighlight.drawSlot((AbstractContainerScreen<?>) (Object) this, graphics, slot);
     }
 }

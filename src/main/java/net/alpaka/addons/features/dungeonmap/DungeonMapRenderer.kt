@@ -1,5 +1,7 @@
 package net.alpaka.addons.features.dungeonmap
 
+import net.alpaka.addons.client.gui.TextWidths
+import net.alpaka.addons.client.gui.AlpakaStyle
 import com.mojang.blaze3d.platform.NativeImage
 import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.blaze3d.textures.FilterMode
@@ -21,7 +23,6 @@ import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.client.renderer.texture.DynamicTexture
 import net.minecraft.client.resources.DefaultPlayerSkin
 import net.minecraft.network.chat.Component
-import net.minecraft.network.chat.FormattedText
 import net.minecraft.network.chat.Style
 import net.minecraft.resources.Identifier
 import net.minecraft.world.entity.player.PlayerSkin
@@ -186,7 +187,7 @@ object DungeonMapRenderer {
                 else g.fill(cx - half, cy - half, cx + half, cy + half, 0xFF202020.toInt())
                 if (!spot.self && spot.name != null) {
                     val name = spot.name
-                    g.text(mc.font, name, cx - mc.font.width(name) / 2, cy + half + 2, if (big) color else 0xFFE8EEEE.toInt(), true)
+                    g.text(mc.font, name, cx - TextWidths.of(mc.font, name) / 2, cy + half + 2, if (big) color else 0xFFE8EEEE.toInt(), true)
                 }
             }
         } finally {
@@ -203,7 +204,7 @@ object DungeonMapRenderer {
         val room = if (editing) PREVIEW_ROOMS[1] else DungeonRooms.here
         val name = if (inBoss) bossName(DungeonState.floor) else room?.name ?: return
         val secrets = room?.takeIf { !inBoss && it.secrets > 0 }?.let {
-            "${(if (editing) PREVIEW_FOUND[it.name] else DungeonRooms.found(it)) ?: "?"}/${it.secrets}"
+            secretsText((if (editing) PREVIEW_FOUND[it.name] else DungeonRooms.found(it)), it.secrets)
         }
         val font = Minecraft.getInstance().font
         val style = textStyle()
@@ -211,20 +212,73 @@ object DungeonMapRenderer {
         // The count sits at the right edge, the name takes the rest of the line.
         var nameEnd = PADDING + 128
         if (secrets != null) {
-            nameEnd -= textWidth(font, secrets, style)
+            nameEnd -= secretsWidth(font, secrets, style)
             drawText(g, font, secrets, nameEnd, PADDING + 1, ModernGuiUtils.lerpColor(color, 0xFF000000.toInt(), 0.25f), style)
             nameEnd -= 6
         }
         drawText(g, font, fit(font, name, nameEnd - PADDING, style), PADDING, PADDING + 1, color, style)
     }
 
-    /** [text], cut short with an ellipsis if it is wider than [width]. */
-    private fun fit(font: Font, text: String, width: Int, style: Style): String {
-        if (textWidth(font, text, style) <= width) return text
-        var end = text.length
-        while (end > 0 && textWidth(font, text.substring(0, end) + "…", style) > width) end--
-        return text.substring(0, end).trimEnd() + "…"
+    /** "3/7", built again only when a number changes: the header is drawn every frame. */
+    private fun secretsText(found: Any?, total: Int): String {
+        if (found != secretsFound || total != secretsTotal || secretsLast == null) {
+            secretsFound = found
+            secretsTotal = total
+            secretsLast = "${found ?: "?"}/$total"
+        }
+        return secretsLast!!
     }
+
+    /** The width of [secretsText]'s string, kept while the string, font and style stay the same. */
+    private fun secretsWidth(font: Font, text: String, style: Style): Int {
+        val generation = AlpakaStyle.fontGeneration
+        if (text !== secretsWidthOf || style !== secretsWidthStyle || font !== secretsWidthFont
+            || generation != secretsWidthGeneration) {
+            secretsWidthOf = text
+            secretsWidthStyle = style
+            secretsWidthFont = font
+            secretsWidthGeneration = generation
+            secretsWidthValue = textWidth(font, text, style)
+        }
+        return secretsWidthValue
+    }
+
+    private var secretsWidthOf: String? = null
+    private var secretsWidthStyle: Style? = null
+    private var secretsWidthFont: Font? = null
+    private var secretsWidthGeneration = -1
+    private var secretsWidthValue = 0
+
+    private var secretsFound: Any? = null
+    private var secretsTotal = 0
+    private var secretsLast: String? = null
+
+    /** [text], cut short with an ellipsis if it is wider than [width]; the last answer is kept, as the header asks every frame. */
+    private fun fit(font: Font, text: String, width: Int, style: Style): String {
+        val generation = AlpakaStyle.fontGeneration
+        if (text == fitText && width == fitWidth && style === fitStyle && font === fitFont && generation == fitGeneration) {
+            return fitResult!!
+        }
+        val result = if (textWidth(font, text, style) <= width) text else {
+            var end = text.length
+            while (end > 0 && textWidth(font, text.substring(0, end) + "…", style) > width) end--
+            text.substring(0, end).trimEnd() + "…"
+        }
+        fitText = text
+        fitWidth = width
+        fitStyle = style
+        fitFont = font
+        fitGeneration = generation
+        fitResult = result
+        return result
+    }
+
+    private var fitText: String? = null
+    private var fitWidth = 0
+    private var fitStyle: Style? = null
+    private var fitFont: Font? = null
+    private var fitGeneration = 0
+    private var fitResult: String? = null
 
     private fun bossName(floor: String?) = when (floor?.drop(1)) {
         "" -> "The Watcher"
@@ -270,8 +324,7 @@ object DungeonMapRenderer {
     /** The editor's sample arena: a square room with four pillars. */
     private fun bossPreview(g: GuiGraphicsExtractor) {
         val cfg = AlpakaConfig.instance
-        val custom = cfg.dungeonMapCustomColors
-        bossPreviewTexture.upload(if (custom) bossPreviewAlpaka else bossPreviewBlocks, if (custom) 1 else 2)
+        bossPreviewTexture.upload(bossPreviewBlocks, 1)
         bossPreviewTexture.draw(g)
         if (cfg.dungeonMapPlayers) {
             drawPlayer(g, 80f, 45f, -111f, false, "Teammate", previewTeammateSkin, "Healer")
@@ -279,7 +332,6 @@ object DungeonMapRenderer {
         }
     }
 
-    private val bossPreviewAlpaka by lazy { bossPreviewPixels(DungeonMapColors.BOSS_WALL, DungeonMapColors.BOSS_FLOOR) }
     private val bossPreviewBlocks by lazy {
         bossPreviewPixels(MapColor.STONE.calculateARGBColor(MapColor.Brightness.HIGH),
             MapColor.STONE.calculateARGBColor(MapColor.Brightness.NORMAL))
@@ -361,11 +413,28 @@ object DungeonMapRenderer {
         if (AlpakaConfig.instance.smoothOn(AlpakaConfig.instance.dungeonMapSmoothFont)) GuiFont.style() else Style.EMPTY
 
     private fun textWidth(font: Font, text: String, style: Style) =
-        if (style.isEmpty) font.width(text) else font.width(FormattedText.of(text, style))
+        // Room names, the header and teammates are the same texts frame after frame: kept widths.
+        if (style.isEmpty) TextWidths.of(font, text) else TextWidths.of(font, styled(text, style))
 
     private fun drawText(g: GuiGraphicsExtractor, font: Font, text: String, x: Int, y: Int, color: Int, style: Style) {
         if (style.isEmpty) g.text(font, text, x, y, color, true)
-        else g.text(font, Component.literal(text).withStyle(style), x, y, color, true)
+        else g.text(font, styled(text, style), x, y, color, true)
+    }
+
+    /** The style [styledText] was built in; GuiFont hands out one instance per font and size. */
+    private var styledStyle: Style? = null
+    private val styledText = HashMap<String, Component>()
+
+    /**
+     * [text] in [style], kept while the style stays: room labels, names and the header are drawn
+     * every frame but change rarely. Emptied when the style changes, and bounded.
+     */
+    private fun styled(text: String, style: Style): Component {
+        if (style !== styledStyle || styledText.size > 256) {
+            styledText.clear()
+            styledStyle = style
+        }
+        return styledText.getOrPut(text) { Component.literal(text).withStyle(style) }
     }
 
     private fun previewOwnSkin(): PlayerSkin = Minecraft.getInstance().player?.skin ?: profileSkin.get()
@@ -387,7 +456,7 @@ object DungeonMapRenderer {
             BossMapProjection(it.x.coerceIn(projection.centerX - reach, projection.centerX + reach),
                 it.z.coerceIn(projection.centerZ - reach, projection.centerZ + reach), projection.span)
         } else projection
-        val edge = -2f * BossMapProjection.MARGIN
+        val edge = -BossMapProjection.MARGIN.toFloat()
         g.pose().pushMatrix()
         g.pose().translate(view.mapX(projection.centerX) - 64f + edge, view.mapY(projection.centerZ) - 64f + edge)
         bossTexture.upload(pixels, BossRoomMap.revision)
@@ -505,7 +574,8 @@ object DungeonMapRenderer {
          * drawn without labels leaves both out.
          */
         fun updateMap(snapshot: DungeonMapSnapshot, palette: IntArray, cover: IntArray? = null, coverRevision: Int = 0) {
-            if (revision == snapshot.revision && palette.contentEquals(lastPalette) && coverRevision == lastCover) return
+            // The palettes are two fixed arrays, so the same array means the same colors.
+            if (revision == snapshot.revision && palette === lastPalette && coverRevision == lastCover) return
             val colors = snapshot.colors ?: return
             val inks = snapshot.inks ?: return
             val (current, image) = image() ?: return

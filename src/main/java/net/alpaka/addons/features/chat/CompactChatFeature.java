@@ -140,7 +140,7 @@ public final class CompactChatFeature {
     }
 
     private static boolean isFoldable(String text) {
-        String plain = COLOR_CODES.matcher(text).replaceAll("");
+        String plain = text.indexOf('§') < 0 ? text : COLOR_CODES.matcher(text).replaceAll("");
         if (plain.isBlank()) return false;
         return !SEPARATOR.matcher(plain).matches();
     }

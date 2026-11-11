@@ -78,6 +78,8 @@ public final class WarpCooldownQueue {
     public static void onDisconnect() {
         held = null;
         lastTyped = null;
+        // The grace after leaving SkyBlock covers a server switch within Hypixel, not another server.
+        onSkyblockAtMs = Long.MIN_VALUE / 2;
     }
 
     /**
@@ -139,7 +141,14 @@ public final class WarpCooldownQueue {
 
     private static void tick() {
         if (SkyblockUtils.isOnSkyblock()) onSkyblockAtMs = System.currentTimeMillis();
-        if (held == null || System.currentTimeMillis() < sendAtMs) return;
+        if (held == null) return;
+        // Switched off (or Disable All) while a command waited: it is dropped, not sent.
+        if (!isEnabled()) {
+            held = null;
+            lastTyped = null;
+            return;
+        }
+        if (System.currentTimeMillis() < sendAtMs) return;
         String command = held;
         held = null;
         Outbound.command(command, Outbound.Cause.QUEUED_CHAT_INPUT);

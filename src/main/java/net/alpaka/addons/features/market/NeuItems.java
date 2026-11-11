@@ -104,7 +104,7 @@ final class NeuItems {
             return;
         }
         String file = URLEncoder.encode(names.get(index), StandardCharsets.UTF_8).replace("+", "%20");
-        HTTP.sendAsync(request(REPO + "items/" + file + ".json"), HttpResponse.BodyHandlers.ofString())
+        HTTP.sendAsync(request(REPO + "items/" + file + ".json"), HttpResponse.BodyHandlers.ofString()).orTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
                 .whenComplete((response, error) -> {
                     try {
                         if (error != null || response == null || (response.statusCode() != 200 && response.statusCode() != 404)) {
@@ -139,7 +139,7 @@ final class NeuItems {
         // Long.MAX_VALUE while the list is on its way.
         if (waitUntil != null && System.currentTimeMillis() < waitUntil) return;
         PENDING.put("#shards", Long.MAX_VALUE);
-        HTTP.sendAsync(request(REPO + "constants/bazaarstocks.json"), HttpResponse.BodyHandlers.ofString())
+        HTTP.sendAsync(request(REPO + "constants/bazaarstocks.json"), HttpResponse.BodyHandlers.ofString()).orTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
                 .whenComplete((response, error) -> {
                     try {
                         if (error != null || response == null || response.statusCode() != 200) {

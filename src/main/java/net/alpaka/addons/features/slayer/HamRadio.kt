@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.slayer
 
+import net.alpaka.addons.utils.ItemData
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.utils.SkyblockUtils
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
@@ -53,7 +54,7 @@ object HamRadio {
             return
         }
         val radio = player.inventory.nonEquipmentItems.firstOrNull { stack ->
-            !stack.isEmpty && stack.get(DataComponents.CUSTOM_DATA)?.copyTag()?.getStringOr("id", "") == ITEM_ID
+            !stack.isEmpty && ItemData.id(stack) == ITEM_ID
         }
         inInventory = radio != null
         nearby = radio?.get(DataComponents.LORE)?.lines()?.let { lines ->

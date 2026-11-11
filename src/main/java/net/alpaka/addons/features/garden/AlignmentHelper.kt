@@ -1,5 +1,7 @@
 package net.alpaka.addons.features.garden
 
+import net.alpaka.addons.client.gui.TextWidths
+import net.alpaka.addons.utils.ItemData
 import com.mojang.blaze3d.platform.InputConstants
 import net.alpaka.addons.client.AlpakaKeyBinds
 import net.alpaka.addons.client.AlpakaKeyCategory
@@ -152,13 +154,31 @@ object AlignmentHelper {
 
         val cx = graphics.guiWidth() / 2
         val top = graphics.guiHeight() / 2 + BELOW_CROSSHAIR
-        line(graphics, mc, "Yaw ", formatYaw(player.yRot), cx, top)
-        line(graphics, mc, "Pitch ", formatPitch(player.xRot), cx, top + LINE_HEIGHT)
+        // Formatted again only when the angle moved: String.format every frame for an angle that
+        // mostly stands still while farming.
+        val yaw = player.yRot
+        if (yaw.toRawBits() != shownYawBits || shownYaw == null) {
+            shownYawBits = yaw.toRawBits()
+            shownYaw = formatYaw(yaw)
+        }
+        val pitch = player.xRot
+        if (pitch.toRawBits() != shownPitchBits || shownPitch == null) {
+            shownPitchBits = pitch.toRawBits()
+            shownPitch = formatPitch(pitch)
+        }
+        line(graphics, mc, "Yaw ", shownYaw!!, cx, top)
+        line(graphics, mc, "Pitch ", shownPitch!!, cx, top + LINE_HEIGHT)
     }
 
+    private var shownYawBits = 0
+    private var shownYaw: String? = null
+    private var shownPitchBits = 0
+    private var shownPitch: String? = null
+
     private fun line(graphics: GuiGraphicsExtractor, mc: Minecraft, label: String, value: String, cx: Int, y: Int) {
-        val labelWidth = mc.font.width(label)
-        val x = cx - (labelWidth + mc.font.width(value)) / 2
+        // Kept widths: the labels never change and the angles only when the view moves.
+        val labelWidth = TextWidths.of(mc.font, label)
+        val x = cx - (labelWidth + TextWidths.of(mc.font, value)) / 2
         graphics.text(mc.font, label, x, y, LABEL_COLOR)
         graphics.text(mc.font, value, x + labelWidth, y, TEXT_COLOR)
     }
@@ -171,11 +191,12 @@ object AlignmentHelper {
     @JvmStatic
     fun formatPitch(pitch: Float): String = String.format(Locale.ROOT, "%.2f", pitch.toDouble())
 
-    private fun isFarmingTool(stack: ItemStack): Boolean {
+    @JvmStatic
+    fun isFarmingTool(stack: ItemStack): Boolean {
         if (stack.isEmpty) return false
         if (stack.`is`(ItemTags.HOES)) return true
         val data = stack.get(DataComponents.CUSTOM_DATA) ?: return false
-        return isFarmingToolId(data.copyTag().getStringOr("id", ""))
+        return isFarmingToolId(ItemData.view(data).getStringOr("id", ""))
     }
 
     /**

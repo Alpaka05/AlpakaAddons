@@ -130,7 +130,7 @@ public final class PriceHistory {
                 .header("User-Agent", "AlpakaAddons/" + ModVersion.mod())
                 .GET()
                 .build();
-        client().sendAsync(request, HttpResponse.BodyHandlers.ofString()).whenComplete((response, error) -> {
+        client().sendAsync(request, HttpResponse.BodyHandlers.ofString()).orTimeout(60, java.util.concurrent.TimeUnit.SECONDS).whenComplete((response, error) -> {
             try {
                 long now = System.currentTimeMillis();
                 if (error != null || response == null) {
@@ -325,7 +325,7 @@ public final class PriceHistory {
                 .header("User-Agent", "AlpakaAddons/" + ModVersion.mod())
                 .GET()
                 .build();
-        client().sendAsync(request, HttpResponse.BodyHandlers.ofString()).whenComplete((response, error) -> {
+        client().sendAsync(request, HttpResponse.BodyHandlers.ofString()).orTimeout(60, java.util.concurrent.TimeUnit.SECONDS).whenComplete((response, error) -> {
             long now = System.currentTimeMillis();
             try {
                 if (error == null && response != null && response.statusCode() == 200) {

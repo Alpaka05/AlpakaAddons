@@ -246,12 +246,15 @@ public final class StoragePreviewFeature {
         return java.util.Optional.of(new StoragePreviewTooltip(content));
     }
 
-    /** "account/profile" for the player in play; null outside a world. */
+    /**
+     * "account/profile" for the player in play; null outside a world, and before Hypixel has named
+     * the profile: pages kept under no name would show in whichever profile is played next.
+     */
     private static String profileId(Minecraft mc) {
         if (mc.getConnection() == null || mc.getUser() == null) return null;
         String account = mc.getUser().getProfileId().toString();
         String profileName = SkyblockProfileTracker.INSTANCE.currentFor(account);
-        return account + "/" + (profileName != null ? profileName : "unknown-profile");
+        return profileName == null ? null : account + "/" + profileName;
     }
 
     /** The current account and profile's pages, loaded from the file the first time; null outside a world. */

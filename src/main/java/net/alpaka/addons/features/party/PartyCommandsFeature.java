@@ -165,7 +165,11 @@ public final class PartyCommandsFeature {
         autoRequest = null;
         if (!isEnabled() || !answersDirectly(command)) return;
         String answer = command.answer(request);
-        if (answer != null) Outbound.command(answer, Outbound.Cause.PARTY_CHAT_REQUEST);
+        // The gap counts from the answer sent too, as Outbound does, so a request that came 2 s after
+        // the last one but would be sent less than 2 s after its answer is turned away here, up front.
+        if (answer != null && Outbound.command(answer, Outbound.Cause.PARTY_CHAT_REQUEST)) {
+            lastAutoAtMs = System.currentTimeMillis();
+        }
     }
 
     /** Whether a request is up and its keys should answer. Clears one that has run out. */

@@ -1444,15 +1444,17 @@ public class ProfileDashboardScreen extends Screen {
         double total = Json.sum(r, "farmingWeight.pests");
         count(pests, "Total", total);
         for (var e : Json.obj(r, "farmingWeight.pests").entrySet()) {
-            if (e.getValue().isJsonPrimitive() && e.getValue().getAsDouble() > 0) {
-                pests.add(row(ProfileData.title(CAMEL_HUMP.matcher(e.getKey()).replaceAll("$1_$2")), Coins.full(e.getValue().getAsDouble())));
+            double n = Json.num(e.getValue());
+            if (n > 0) {
+                pests.add(row(ProfileData.title(CAMEL_HUMP.matcher(e.getKey()).replaceAll("$1_$2")), Coins.full(n)));
             }
         }
         add(cards, "Pests Killed", pests);
 
         List<String[]> bonus = new ArrayList<>();
         for (var e : Json.obj(r, "farmingWeight.bonusWeight").entrySet()) {
-            if (e.getValue().isJsonPrimitive()) bonus.add(row(e.getKey(), String.format(Locale.US, "%.2f", e.getValue().getAsDouble())));
+            double n = Json.num(e.getValue());
+            if (!Double.isNaN(n)) bonus.add(row(e.getKey(), String.format(Locale.US, "%.2f", n)));
         }
         add(cards, "Bonus Weight", bonus);
         return cards;
@@ -1507,7 +1509,8 @@ public class ProfileDashboardScreen extends Screen {
         count(glacite, "Fossils Donated", Json.num(r, "stats.mining.glacite.fossilsDonatedCount", 0));
         count(glacite, "Fossil Dust", Json.num(r, "stats.mining.glacite.fossilDust", 0));
         for (var e : Json.obj(r, "stats.mining.glacite.corpsesLooted").entrySet()) {
-            if (e.getValue().isJsonPrimitive()) count(glacite, ProfileData.title(e.getKey()) + " Corpses", e.getValue().getAsDouble());
+            double n = Json.num(e.getValue());
+            if (!Double.isNaN(n)) count(glacite, ProfileData.title(e.getKey()) + " Corpses", n);
         }
         add(cards, "Glacite Tunnels", glacite);
 
@@ -1683,8 +1686,9 @@ public class ProfileDashboardScreen extends Screen {
         // Elite's personal bests are the logs of each tree's contest and two NPCs' own records.
         List<String[]> bests = new ArrayList<>();
         for (var e : Json.obj(r, "stats.foraging.personalBests").entrySet()) {
-            if (!e.getValue().isJsonPrimitive()) continue;
-            bests.add(row(ProfileData.title(e.getKey().toLowerCase(Locale.ROOT)), Coins.full(e.getValue().getAsDouble())));
+            double n = Json.num(e.getValue());
+            if (Double.isNaN(n)) continue;
+            bests.add(row(ProfileData.title(e.getKey().toLowerCase(Locale.ROOT)), Coins.full(n)));
         }
         add(cards, "Personal Bests", bests);
         return cards;
@@ -1958,8 +1962,48 @@ public class ProfileDashboardScreen extends Screen {
             }
         }
         y += h;
+        y = essence(graphics, d, x, y + 6, w);
         String metric = metricFor(Page.DUNGEONS);
         return chartCard(graphics, metric, 0, x, y + 6, w, 130);
+    }
+
+    /** Every essence the game has, so one the player has none of shows as none rather than missing. */
+    private static final List<String> ESSENCES = List.of("WITHER", "UNDEAD", "DRAGON", "DIAMOND", "GOLD", "ICE", "SPIDER", "CRIMSON", "FOREST");
+
+    /** The essence the player holds, most first, each with its item; Elite keys them "WITHER", "GOLD", ... */
+    private int essence(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
+        Map<String, Double> amounts = new LinkedHashMap<>();
+        for (String id : ESSENCES) amounts.put(id, 0.0);
+        for (var e : Json.obj(d.raw, "stats.miscStats.essence").entrySet()) {
+            if (e.getValue().isJsonPrimitive()) amounts.put(e.getKey().toUpperCase(Locale.ROOT), e.getValue().getAsDouble());
+        }
+        List<Map.Entry<String, Double>> sorted = new ArrayList<>(amounts.entrySet());
+        sorted.sort((a, b) -> Double.compare(b.getValue(), a.getValue()));
+
+        int cellH = 20;
+        int cols = Math.max(1, Math.min(sorted.size(), (w - 16) / 96));
+        int cellW = (w - 16) / cols;
+        int rows = (sorted.size() + cols - 1) / cols;
+        int h = 24 + rows * (cellH + 2) + 4;
+        card(graphics, x, y, w, h);
+        text(graphics, "Essence", x + 8, y + 7, AlpakaStyle.TEXT);
+        for (int i = 0; i < sorted.size(); i++) {
+            String id = sorted.get(i).getKey();
+            double amount = sorted.get(i).getValue();
+            String name = ProfileData.title(id.toLowerCase(Locale.ROOT));
+            int cx = x + 8 + (i % cols) * cellW;
+            int cy = y + 22 + (i / cols) * (cellH + 2);
+            boolean has = amount > 0;
+            ModernGuiUtils.drawRoundedRect(graphics, cx + 1, cy, cellW - 2, cellH, AlpakaStyle.ROW_RADIUS,
+                    has ? AlpakaStyle.ROW_HOVER : MarketIcons.fade(AlpakaStyle.ROW_HOVER, 0.5f));
+            stackIcon(graphics, ItemIcons.forItem("ESSENCE_" + id, name + " Essence"), cx + 3, cy + 2, 1.0f);
+            String value = Coins.compact(amount);
+            int vx = cx + cellW - 6 - textW(value);
+            text(graphics, AlpakaStyle.ellipsize(this.font, name, vx - cx - 26), cx + 22, cy + 6, has ? AlpakaStyle.TEXT_SOFT : AlpakaStyle.TEXT_MUTED);
+            text(graphics, value, vx, cy + 6, has ? AlpakaStyle.TEXT : AlpakaStyle.DIVIDER);
+            if (hover(cx + 1, cy, cellW - 2, cellH)) tip("essence:" + id, name + " Essence: " + Coins.full(amount) + ".");
+        }
+        return y + h;
     }
 
     // ---- Slayers --------------------------------------------------------------------------------
@@ -3620,11 +3664,12 @@ public class ProfileDashboardScreen extends Screen {
             }
         }
         for (var e : Json.obj(d.raw, "sacks").entrySet()) {
-            if (!e.getValue().isJsonPrimitive() || e.getValue().getAsDouble() <= 0) continue;
+            double n = Json.num(e.getValue());
+            if (!(n > 0)) continue;
             String id = e.getKey();
             String title = ItemIcons.name(id);
             index.add(new Found("§f" + (title != null ? title : ProfileData.title(id)), haystack(title, id), "Sacks",
-                    (int) Math.min(Integer.MAX_VALUE, e.getValue().getAsDouble()), null, id, null, null));
+                    (int) Math.min(Integer.MAX_VALUE, n), null, id, null, null));
         }
         Runnable pets = opener(Page.PETS, null, null);
         for (ProfileData.Pet p : d.pets) {

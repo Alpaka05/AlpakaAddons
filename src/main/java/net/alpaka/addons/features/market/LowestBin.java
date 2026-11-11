@@ -161,7 +161,7 @@ public final class LowestBin {
                 .header("User-Agent", "AlpakaAddons/" + ModVersion.mod())
                 .GET()
                 .build();
-        client().sendAsync(request, HttpResponse.BodyHandlers.ofString()).whenComplete((response, error) -> {
+        client().sendAsync(request, HttpResponse.BodyHandlers.ofString()).orTimeout(60, java.util.concurrent.TimeUnit.SECONDS).whenComplete((response, error) -> {
             long now = System.currentTimeMillis();
             try {
                 if (error != null || response == null) {

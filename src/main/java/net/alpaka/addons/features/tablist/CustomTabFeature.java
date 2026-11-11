@@ -66,6 +66,12 @@ public final class CustomTabFeature {
     public static final String[] LAYOUT_NAMES = {"Side by Side", "Stacked"};
 
     private static boolean toggledOpen = false;
+
+    /** A tab list toggled open is closed again when the connection ends. */
+    public static void reset() {
+        toggledOpen = false;
+    }
+
     /** The menu the list was last decided for, and whether the list was up as that menu opened. */
     private static Screen menu = null;
     private static boolean carriedIntoMenu = false;

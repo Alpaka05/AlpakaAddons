@@ -2492,13 +2492,6 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.menuHighlightChocolateFactory = v; AlpakaConfig.save(); },
                 "menu highlights chocolate factory hoppity milestones unclaimed rewards"));
 
-        OPTIONS.add(new ConfigOption("menu_highlight_power_stones", "Unlearned Power Stones",
-                "Power stones in the Power Stones Guide you haven't learned.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.menuHighlightPowerStones,
-                v -> { AlpakaConfig.instance.menuHighlightPowerStones = v; AlpakaConfig.save(); },
-                "menu highlights power stones guide learned accessory bag magical power"));
-
         OPTIONS.add(new ConfigOption("menu_highlight_composter_upgrades", "Composter Upgrades",
                 "Composter upgrades you can buy now.",
                 ConfigCategory.SKYBLOCK,

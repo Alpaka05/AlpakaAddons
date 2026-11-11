@@ -981,7 +981,6 @@ public class AlpakaConfig {
     public boolean menuHighlightSlayerRewards = true;
     public boolean menuHighlightCommissions = true;
     public boolean menuHighlightChocolateFactory = true;
-    public boolean menuHighlightPowerStones = true;
     public boolean menuHighlightComposterUpgrades = true;
     public int menuHighlightReadyColor = 0x5055FF55;
     public int menuHighlightMissingColor = 0x50FF5555;

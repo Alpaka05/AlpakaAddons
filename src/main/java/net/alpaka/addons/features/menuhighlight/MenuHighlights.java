@@ -83,9 +83,6 @@ public final class MenuHighlights {
         CHOCOLATE_FACTORY("Chocolate Factory",
                 c -> c.menuHighlightChocolateFactory,
                 item -> item.hasLine(UNCLAIMED_REWARDS) ? Mark.READY : Mark.NONE),
-        POWER_STONES("Power Stones Guide",
-                c -> c.menuHighlightPowerStones,
-                item -> item.hasLine("Learned: Not Yet ✖") ? Mark.MISSING : Mark.NONE),
         COMPOSTER_UPGRADES("Composter Upgrades",
                 c -> c.menuHighlightComposterUpgrades,
                 item -> item.hasLine("Click to upgrade!") ? Mark.READY : Mark.NONE);

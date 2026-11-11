@@ -69,7 +69,6 @@ class MenuHighlightsTest {
         assertEquals(Mark.READY, Place.SLAYER_REWARDS.mark(item("LVL 5", "Click to claim rewards!")));
         assertEquals(Mark.READY, Place.COMMISSIONS.mark(item("Commission #1", "Mithril Miner", "COMPLETED")));
         assertEquals(Mark.READY, Place.CHOCOLATE_FACTORY.mark(item("Chocolate Milestones", "You have 2 unclaimed rewards!")));
-        assertEquals(Mark.MISSING, Place.POWER_STONES.mark(item("Bloody", "Learned: Not Yet ✖")));
         assertEquals(Mark.READY, Place.COMPOSTER_UPGRADES.mark(item("Speed", "Click to upgrade!")));
     }
 }

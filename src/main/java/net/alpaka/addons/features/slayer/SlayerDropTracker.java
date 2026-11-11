@@ -338,6 +338,11 @@ public class SlayerDropTracker {
             SlayerType boss = SlayerQuestDetector.INSTANCE.currentOrRecent();
             if (boss != null && isInRift()) boss = SlayerType.VAMPIRE;
             if (boss != null) SlayerKillLog.INSTANCE.onDrop(boss, loggedDrop.group("item"), string);
+            // Ahead of the tracker's switch too: the animation is a cosmetic of its own.
+            if (boss != null) {
+                String item = DROP_ITEM_PREFIX.matcher(loggedDrop.group("item").trim()).replaceFirst("").trim();
+                net.alpaka.addons.features.cosmetics.RareDropAnimation.onSlayerDrop(boss, item);
+            }
         }
 
         if (!AlpakaConfig.instance.slayerDropTrackerEnabled) return;

@@ -104,7 +104,7 @@ object AuraFeature {
         renderType()
     }
 
-    private fun renderType(): RenderType {
+    internal fun renderType(): RenderType {
         renderType?.let { return it }
         val pipeline = RenderPipelinesAccessor.`alpaka$register`(
             RenderPipeline.builder()

@@ -129,6 +129,19 @@ public class AlpakaConfig {
     public float auraSpeed = 1.0f;
     /** How strongly the aura glows, in percent. */
     public float auraBrightness = 80.0f;
+    /**
+     * A slayer's rarest drop pops up as a big spinning item in a golden glow where the boss died.
+     * Drawn by this client only. Off by default while it is being tried out.
+     */
+    public boolean rareDropAnimationEnabled = false;
+    /** How big the item and its glow are, as a factor. */
+    public float rareDropAnimationSize = 1.0f;
+    /** How long the animation stays, in seconds. */
+    public float rareDropAnimationDuration = 6.0f;
+    /** A rising chime as the item pops up, heard only by this client. */
+    public boolean rareDropAnimationSound = true;
+    /** Each slayer's own color mixed into the gold. */
+    public boolean rareDropAnimationSlayerColors = true;
 
     // Player scale. The model is drawn stretched or shrunk per axis, in the world only; the hitbox,
     // eye height, camera and reach are untouched, and nothing is sent, so nobody else sees it.
@@ -1969,6 +1982,7 @@ public class AlpakaConfig {
         this.customNameTagEnabled = false;
         this.chromaHatEnabled = false;
         this.auraEnabled = false;
+        this.rareDropAnimationEnabled = false;
         this.playerScaleEnabled = false;
         this.fullbrightEnabled = false;
         this.inventorySnowEnabled = false;

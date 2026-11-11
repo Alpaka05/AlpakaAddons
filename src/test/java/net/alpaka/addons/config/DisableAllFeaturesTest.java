@@ -62,6 +62,7 @@ class DisableAllFeaturesTest {
             "dungeonDoorHighlight",
             // Cosmetics
             "customNameTagEnabled", "chromaHatEnabled", "playerScaleEnabled", "customDamageTagsEnabled",
+            "rareDropAnimationEnabled",
             // Utility and sounds
             "exactSkillXpEnabled",
             "alwaysSprintEnabled", "keepCursorPositionEnabled", "commandShortcutsEnabled", "inventoryButtonsEnabled", "customSoundsEnabled", "muteVanillaSoundsInBlazeSlayer",

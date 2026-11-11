@@ -89,6 +89,7 @@ public class AlpakaClient implements ClientModInitializer {
         AlpakaKeyBinds.finishRegistration();
         net.alpaka.addons.features.blaze.FirePitFeature.register();
         net.alpaka.addons.features.cosmetics.AuraFeature.register();
+        net.alpaka.addons.features.cosmetics.RareDropAnimation.register();
         net.alpaka.addons.features.slayer.SlayerBossHighlight.register();
         net.alpaka.addons.features.damagetags.CustomDamageTagFeature.register();
         net.alpaka.addons.utils.DungeonState.register();

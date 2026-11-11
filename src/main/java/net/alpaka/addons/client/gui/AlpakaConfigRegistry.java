@@ -3183,6 +3183,52 @@ public class AlpakaConfigRegistry {
                         "Puts all three axes of your player scale back to 1.00x. This cannot be undone.",
                         "Reset", true));
 
+        OPTIONS.add(new ConfigOption("Rare Drop Animation", ConfigCategory.COSMETICS));
+
+        OPTIONS.add(new ConfigOption("rare_drop_animation", "Rare Drop Animation",
+                "A slayer's rarest drop pops up big and spinning in a golden glow where the boss died. Only you can see it.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.rareDropAnimationEnabled,
+                v -> { AlpakaConfig.instance.rareDropAnimationEnabled = v; AlpakaConfig.save(); },
+                "rare drop animation rng slayer archfiend dice warden heart judgement core overflux primordial eye gold glow spin pop cosmetic"));
+
+        OPTIONS.add(new ConfigOption("rare_drop_animation_test", "Test Animation",
+                "Closes the menu and plays the animation in front of you, with each slayer's drop in turn. Nothing is sent to the server.",
+                ConfigCategory.COSMETICS,
+                "Test Animation",
+                parent -> net.alpaka.addons.features.cosmetics.RareDropAnimation.test(),
+                "rare drop animation test preview try play"));
+
+        OPTIONS.add(new ConfigOption("rare_drop_animation_size", "Size",
+                "How big the item and its glow are.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.rareDropAnimationSize,
+                v -> { AlpakaConfig.instance.rareDropAnimationSize = v; AlpakaConfig.save(); },
+                0.5f, 2.0f, val -> String.format(Locale.ROOT, "%.2fx", val),
+                "rare drop animation size scale big small"));
+
+        OPTIONS.add(new ConfigOption("rare_drop_animation_duration", "Duration",
+                "How long the item stays before it fades away.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.rareDropAnimationDuration,
+                v -> { AlpakaConfig.instance.rareDropAnimationDuration = v; AlpakaConfig.save(); },
+                3.0f, 12.0f, val -> String.format(Locale.ROOT, "%.1f s", val),
+                "rare drop animation duration time long short seconds"));
+
+        OPTIONS.add(new ConfigOption("rare_drop_animation_sound", "Sound",
+                "Plays a rising chime as the item pops up. Only you hear it.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.rareDropAnimationSound,
+                v -> { AlpakaConfig.instance.rareDropAnimationSound = v; AlpakaConfig.save(); },
+                "rare drop animation sound chime bell ding audio"));
+
+        OPTIONS.add(new ConfigOption("rare_drop_animation_slayer_colors", "Slayer Colors",
+                "Mixes each slayer's own color into the gold, like purple for Enderman and green for Zombie.",
+                ConfigCategory.COSMETICS,
+                () -> AlpakaConfig.instance.rareDropAnimationSlayerColors,
+                v -> { AlpakaConfig.instance.rareDropAnimationSlayerColors = v; AlpakaConfig.save(); },
+                "rare drop animation slayer colors colour accent tint purple green red orange"));
+
         OPTIONS.add(new ConfigOption("Damage Tags", ConfigCategory.COSMETICS));
 
         OPTIONS.add(new ConfigOption("custom_damage_tags", "Custom Damage Tags",

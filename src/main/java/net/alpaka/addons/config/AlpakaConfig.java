@@ -983,7 +983,6 @@ public class AlpakaConfig {
     public boolean menuHighlightChocolateFactory = true;
     public boolean menuHighlightPowerStones = true;
     public boolean menuHighlightComposterUpgrades = true;
-    public boolean menuHighlightDisabledPerks = true;
     public int menuHighlightReadyColor = 0x5055FF55;
     public int menuHighlightMissingColor = 0x50FF5555;
     /** Chronomatron, Ultrasequencer and Superpairs: what to click next is highlighted. */

@@ -31,10 +31,9 @@ class MenuHighlightsTest {
         assertEquals(Place.CROESUS, MenuHighlights.placeOf("(2/3) Croesus"));
         assertEquals(Place.CROESUS, MenuHighlights.placeOf("Vesuvius"));
         assertEquals(Place.SLAYER_REWARDS, MenuHighlights.placeOf("Zombie Slayer LVL Rewards"));
-        assertEquals(Place.HOTX_PERKS, MenuHighlights.placeOf("Heart of the Forest"));
+        assertNull(MenuHighlights.placeOf("Heart of the Forest"));
         assertNull(MenuHighlights.placeOf("Pet Sitter"));
         assertNull(MenuHighlights.placeOf("SkyBlock Menu"));
-        assertNull(MenuHighlights.placeOf("Reset Heart of the Mountain"));
     }
 
     @Test
@@ -72,7 +71,5 @@ class MenuHighlightsTest {
         assertEquals(Mark.READY, Place.CHOCOLATE_FACTORY.mark(item("Chocolate Milestones", "You have 2 unclaimed rewards!")));
         assertEquals(Mark.MISSING, Place.POWER_STONES.mark(item("Bloody", "Learned: Not Yet ✖")));
         assertEquals(Mark.READY, Place.COMPOSTER_UPGRADES.mark(item("Speed", "Click to upgrade!")));
-        assertEquals(Mark.MISSING, Place.HOTX_PERKS.mark(item("Mining Speed", "DISABLED")));
-        assertEquals(Mark.NONE, Place.HOTX_PERKS.mark(item("Mining Speed", "ENABLED")));
     }
 }

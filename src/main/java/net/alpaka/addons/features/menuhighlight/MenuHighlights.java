@@ -88,10 +88,7 @@ public final class MenuHighlights {
                 item -> item.hasLine("Learned: Not Yet ✖") ? Mark.MISSING : Mark.NONE),
         COMPOSTER_UPGRADES("Composter Upgrades",
                 c -> c.menuHighlightComposterUpgrades,
-                item -> item.hasLine("Click to upgrade!") ? Mark.READY : Mark.NONE),
-        HOTX_PERKS("Heart of the (?:Mountain|Forest)",
-                c -> c.menuHighlightDisabledPerks,
-                item -> item.hasLine("DISABLED") ? Mark.MISSING : Mark.NONE);
+                item -> item.hasLine("Click to upgrade!") ? Mark.READY : Mark.NONE);
 
         private final Pattern title;
         private final Predicate<AlpakaConfig> enabled;

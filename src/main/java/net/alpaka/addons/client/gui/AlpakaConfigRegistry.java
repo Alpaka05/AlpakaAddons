@@ -2506,13 +2506,6 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.menuHighlightComposterUpgrades = v; AlpakaConfig.save(); },
                 "menu highlights composter upgrades garden upgrade"));
 
-        OPTIONS.add(new ConfigOption("menu_highlight_disabled_perks", "Disabled HotM and HotF Perks",
-                "Perks you switched off in the Heart of the Mountain and the Heart of the Forest.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.menuHighlightDisabledPerks,
-                v -> { AlpakaConfig.instance.menuHighlightDisabledPerks = v; AlpakaConfig.save(); },
-                "menu highlights heart of the mountain forest hotm hotf perks disabled"));
-
         OPTIONS.add(ConfigOption.color("menu_highlight_ready_color", "Ready Color",
                 "Things to collect, finished, or switched on.",
                 ConfigCategory.SKYBLOCK,

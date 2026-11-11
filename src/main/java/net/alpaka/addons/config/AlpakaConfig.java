@@ -971,19 +971,19 @@ public class AlpakaConfig {
     public boolean anvilCombineHelperEnabled = false;
     public int anvilCombineHelperColor = 0x8055FF55;
     /** Slots in SkyBlock menus marked the way Item Search marks what it found: ready ones in one color, missing ones in another. */
-    public boolean menuHighlightsEnabled = true;
-    public boolean menuHighlightActivePet = true;
-    public boolean menuHighlightUnfinishedTasks = true;
-    public boolean menuHighlightAuctions = true;
-    public boolean menuHighlightBazaarOrders = true;
-    public boolean menuHighlightCroesus = true;
-    public boolean menuHighlightJacobContests = true;
-    public boolean menuHighlightSlayerRewards = true;
-    public boolean menuHighlightCommissions = true;
-    public boolean menuHighlightChocolateFactory = true;
-    public boolean menuHighlightComposterUpgrades = true;
-    public int menuHighlightReadyColor = 0x5055FF55;
-    public int menuHighlightMissingColor = 0x50FF5555;
+    public boolean slotHighlightEnabled = true;
+    public boolean slotHighlightActivePet = true;
+    public boolean slotHighlightUnfinishedTasks = true;
+    public boolean slotHighlightAuctions = true;
+    public boolean slotHighlightBazaarOrders = true;
+    public boolean slotHighlightCroesus = true;
+    public boolean slotHighlightJacobContests = true;
+    public boolean slotHighlightSlayerRewards = true;
+    public boolean slotHighlightCommissions = true;
+    public boolean slotHighlightChocolateFactory = true;
+    public boolean slotHighlightComposterUpgrades = true;
+    public int slotHighlightReadyColor = 0x5055FF55;
+    public int slotHighlightMissingColor = 0x50FF5555;
     /** Chronomatron, Ultrasequencer and Superpairs: what to click next is highlighted. */
     public boolean experimentSolverEnabled = false;
     public int experimentSolverNextColor = 0xA055FF55;
@@ -1950,7 +1950,7 @@ public class AlpakaConfig {
         this.storagePreviewEnabled = false;
         this.maxEnchantColorEnabled = false;
         this.anvilCombineHelperEnabled = false;
-        this.menuHighlightsEnabled = false;
+        this.slotHighlightEnabled = false;
         this.experimentSolverEnabled = false;
         this.mentionNotificationEnabled = false;
         this.itemMotionBlurEnabled = false;

@@ -2422,96 +2422,96 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.ignoreFillerPanesEnabled = v; AlpakaConfig.save(); },
                 "ignore filler glass pane black empty menu click misclick pick up gui inventory skyblock"));
 
-        OPTIONS.add(new ConfigOption("menu_highlights", "Menu Highlights",
+        OPTIONS.add(new ConfigOption("slot_highlight", "Slot Highlight",
                 "Marks slots in SkyBlock menus the way Item Search marks what it found: what is ready to collect or switched on in one color, what is missing or unfinished in another.",
                 ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.menuHighlightsEnabled,
-                v -> { AlpakaConfig.instance.menuHighlightsEnabled = v; AlpakaConfig.save(); },
-                "menu highlights highlight mark slot outline pets skyblock level leveling tasks auctions bazaar orders croesus jacob contests slayer rewards commissions chocolate factory power stones composter heart of the mountain forest perks"));
+                () -> AlpakaConfig.instance.slotHighlightEnabled,
+                v -> { AlpakaConfig.instance.slotHighlightEnabled = v; AlpakaConfig.save(); },
+                "slot highlight highlight mark slot outline pets skyblock level leveling tasks auctions bazaar orders croesus jacob contests slayer rewards commissions chocolate factory power stones composter heart of the mountain forest perks"));
 
-        OPTIONS.add(new ConfigOption("menu_highlight_active_pet", "Active Pet",
+        OPTIONS.add(new ConfigOption("slot_highlight_active_pet", "Active Pet",
                 "Your summoned pet in the Pets menu.",
                 ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.menuHighlightActivePet,
-                v -> { AlpakaConfig.instance.menuHighlightActivePet = v; AlpakaConfig.save(); },
-                "menu highlights pets pet summoned active current despawn"));
+                () -> AlpakaConfig.instance.slotHighlightActivePet,
+                v -> { AlpakaConfig.instance.slotHighlightActivePet = v; AlpakaConfig.save(); },
+                "slot highlight pets pet summoned active current despawn"));
 
-        OPTIONS.add(new ConfigOption("menu_highlight_unfinished_tasks", "Unfinished Level Tasks",
+        OPTIONS.add(new ConfigOption("slot_highlight_unfinished_tasks", "Unfinished Level Tasks",
                 "Tasks and categories you haven't finished in the SkyBlock Leveling guide (/sblevels).",
                 ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.menuHighlightUnfinishedTasks,
-                v -> { AlpakaConfig.instance.menuHighlightUnfinishedTasks = v; AlpakaConfig.save(); },
-                "menu highlights skyblock level leveling guide sblevels tasks unfinished incomplete missing xp"));
+                () -> AlpakaConfig.instance.slotHighlightUnfinishedTasks,
+                v -> { AlpakaConfig.instance.slotHighlightUnfinishedTasks = v; AlpakaConfig.save(); },
+                "slot highlight skyblock level leveling guide sblevels tasks unfinished incomplete missing xp"));
 
-        OPTIONS.add(new ConfigOption("menu_highlight_auctions", "Sold and Expired Auctions",
+        OPTIONS.add(new ConfigOption("slot_highlight_auctions", "Sold and Expired Auctions",
                 "In Manage Auctions: sold auctions as ready, expired ones as missing.",
                 ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.menuHighlightAuctions,
-                v -> { AlpakaConfig.instance.menuHighlightAuctions = v; AlpakaConfig.save(); },
-                "menu highlights auction house ah manage auctions sold expired claim"));
+                () -> AlpakaConfig.instance.slotHighlightAuctions,
+                v -> { AlpakaConfig.instance.slotHighlightAuctions = v; AlpakaConfig.save(); },
+                "slot highlight auction house ah manage auctions sold expired claim"));
 
-        OPTIONS.add(new ConfigOption("menu_highlight_bazaar_orders", "Filled Bazaar Orders",
+        OPTIONS.add(new ConfigOption("slot_highlight_bazaar_orders", "Filled Bazaar Orders",
                 "Buy orders and sell offers that are completely filled.",
                 ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.menuHighlightBazaarOrders,
-                v -> { AlpakaConfig.instance.menuHighlightBazaarOrders = v; AlpakaConfig.save(); },
-                "menu highlights bazaar bz orders offers filled claim"));
+                () -> AlpakaConfig.instance.slotHighlightBazaarOrders,
+                v -> { AlpakaConfig.instance.slotHighlightBazaarOrders = v; AlpakaConfig.save(); },
+                "slot highlight bazaar bz orders offers filled claim"));
 
-        OPTIONS.add(new ConfigOption("menu_highlight_croesus", "Unopened Croesus Chests",
+        OPTIONS.add(new ConfigOption("slot_highlight_croesus", "Unopened Croesus Chests",
                 "Dungeon and Kuudra runs at Croesus and Vesuvius whose chests you haven't opened.",
                 ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.menuHighlightCroesus,
-                v -> { AlpakaConfig.instance.menuHighlightCroesus = v; AlpakaConfig.save(); },
-                "menu highlights croesus vesuvius dungeon kuudra chests unopened loot rewards"));
+                () -> AlpakaConfig.instance.slotHighlightCroesus,
+                v -> { AlpakaConfig.instance.slotHighlightCroesus = v; AlpakaConfig.save(); },
+                "slot highlight croesus vesuvius dungeon kuudra chests unopened loot rewards"));
 
-        OPTIONS.add(new ConfigOption("menu_highlight_jacob_contests", "Unclaimed Jacob's Contests",
+        OPTIONS.add(new ConfigOption("slot_highlight_jacob_contests", "Unclaimed Jacob's Contests",
                 "Farming contests whose rewards you haven't claimed.",
                 ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.menuHighlightJacobContests,
-                v -> { AlpakaConfig.instance.menuHighlightJacobContests = v; AlpakaConfig.save(); },
-                "menu highlights jacob farming contest contests claim rewards medals garden"));
+                () -> AlpakaConfig.instance.slotHighlightJacobContests,
+                v -> { AlpakaConfig.instance.slotHighlightJacobContests = v; AlpakaConfig.save(); },
+                "slot highlight jacob farming contest contests claim rewards medals garden"));
 
-        OPTIONS.add(new ConfigOption("menu_highlight_slayer_rewards", "Slayer Level Rewards",
+        OPTIONS.add(new ConfigOption("slot_highlight_slayer_rewards", "Slayer Level Rewards",
                 "Slayer level rewards you can claim.",
                 ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.menuHighlightSlayerRewards,
-                v -> { AlpakaConfig.instance.menuHighlightSlayerRewards = v; AlpakaConfig.save(); },
-                "menu highlights slayer lvl level rewards claim maddox"));
+                () -> AlpakaConfig.instance.slotHighlightSlayerRewards,
+                v -> { AlpakaConfig.instance.slotHighlightSlayerRewards = v; AlpakaConfig.save(); },
+                "slot highlight slayer lvl level rewards claim maddox"));
 
-        OPTIONS.add(new ConfigOption("menu_highlight_commissions", "Completed Commissions",
+        OPTIONS.add(new ConfigOption("slot_highlight_commissions", "Completed Commissions",
                 "Commissions you have finished and can turn in.",
                 ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.menuHighlightCommissions,
-                v -> { AlpakaConfig.instance.menuHighlightCommissions = v; AlpakaConfig.save(); },
-                "menu highlights commissions completed mining dwarven mines forge claim"));
+                () -> AlpakaConfig.instance.slotHighlightCommissions,
+                v -> { AlpakaConfig.instance.slotHighlightCommissions = v; AlpakaConfig.save(); },
+                "slot highlight commissions completed mining dwarven mines forge claim"));
 
-        OPTIONS.add(new ConfigOption("menu_highlight_chocolate_factory", "Chocolate Factory Rewards",
+        OPTIONS.add(new ConfigOption("slot_highlight_chocolate_factory", "Chocolate Factory Rewards",
                 "Chocolate Factory milestones with rewards to claim.",
                 ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.menuHighlightChocolateFactory,
-                v -> { AlpakaConfig.instance.menuHighlightChocolateFactory = v; AlpakaConfig.save(); },
-                "menu highlights chocolate factory hoppity milestones unclaimed rewards"));
+                () -> AlpakaConfig.instance.slotHighlightChocolateFactory,
+                v -> { AlpakaConfig.instance.slotHighlightChocolateFactory = v; AlpakaConfig.save(); },
+                "slot highlight chocolate factory hoppity milestones unclaimed rewards"));
 
-        OPTIONS.add(new ConfigOption("menu_highlight_composter_upgrades", "Composter Upgrades",
+        OPTIONS.add(new ConfigOption("slot_highlight_composter_upgrades", "Composter Upgrades",
                 "Composter upgrades you can buy now.",
                 ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.menuHighlightComposterUpgrades,
-                v -> { AlpakaConfig.instance.menuHighlightComposterUpgrades = v; AlpakaConfig.save(); },
-                "menu highlights composter upgrades garden upgrade"));
+                () -> AlpakaConfig.instance.slotHighlightComposterUpgrades,
+                v -> { AlpakaConfig.instance.slotHighlightComposterUpgrades = v; AlpakaConfig.save(); },
+                "slot highlight composter upgrades garden upgrade"));
 
-        OPTIONS.add(ConfigOption.color("menu_highlight_ready_color", "Ready Color",
+        OPTIONS.add(ConfigOption.color("slot_highlight_ready_color", "Ready Color",
                 "Things to collect, finished, or switched on.",
                 ConfigCategory.SKYBLOCK,
-                c -> c.menuHighlightReadyColor,
-                v -> { AlpakaConfig.instance.menuHighlightReadyColor = v; AlpakaConfig.save(); },
-                "menu highlights ready claim done active color colour picker green"));
+                c -> c.slotHighlightReadyColor,
+                v -> { AlpakaConfig.instance.slotHighlightReadyColor = v; AlpakaConfig.save(); },
+                "slot highlight ready claim done active color colour picker green"));
 
-        OPTIONS.add(ConfigOption.color("menu_highlight_missing_color", "Missing Color",
+        OPTIONS.add(ConfigOption.color("slot_highlight_missing_color", "Missing Color",
                 "Things missing, unfinished, expired or switched off.",
                 ConfigCategory.SKYBLOCK,
-                c -> c.menuHighlightMissingColor,
-                v -> { AlpakaConfig.instance.menuHighlightMissingColor = v; AlpakaConfig.save(); },
-                "menu highlights missing unfinished expired disabled color colour picker red"));
+                c -> c.slotHighlightMissingColor,
+                v -> { AlpakaConfig.instance.slotHighlightMissingColor = v; AlpakaConfig.save(); },
+                "slot highlight missing unfinished expired disabled color colour picker red"));
 
         OPTIONS.add(new ConfigOption("Resource Pack", ConfigCategory.SKYBLOCK));
 

@@ -1,4 +1,4 @@
-package net.alpaka.addons.features.menuhighlight;
+package net.alpaka.addons.features.slothighlight;
 
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.utils.SkyblockUtils;
@@ -29,8 +29,8 @@ import java.util.regex.Pattern;
  * The titles and lore lines are the ones SkyHanni, Skyblocker and Firmament read for the same
  * highlights.
  */
-public final class MenuHighlights {
-    private MenuHighlights() {}
+public final class SlotHighlight {
+    private SlotHighlight() {}
 
     /** What a slot's mark means. */
     enum Mark { NONE, READY, MISSING }
@@ -54,37 +54,37 @@ public final class MenuHighlights {
     /** One menu: its title, whether the player wants it, and what each item gets. */
     enum Place {
         ACTIVE_PET("(?:\\(\\d+/\\d+\\) )?Pets(?:: \".*\")?(?: \\(\\d+/\\d+\\))? ?",
-                c -> c.menuHighlightActivePet,
+                c -> c.slotHighlightActivePet,
                 item -> isActivePet(item.petInfo(), item.lore()) ? Mark.READY : Mark.NONE),
         LEVEL_TASKS("(?:\\(\\d+/\\d+\\) )?(?:.*Guide ➜.*|Tasks ➜ .*|Skill Related Tasks|Essence Shop ➜.*|Complete Dungeons ➜.*"
                 + "|(?:Core|Event|Miscellaneous|Slaying|Mining|Fishing|Story|Dungeon) ➜ .*)",
-                c -> c.menuHighlightUnfinishedTasks,
+                c -> c.slotHighlightUnfinishedTasks,
                 // Slot 4 holds the menu's overview, never a task.
                 item -> item.slot() != 4 && isUnfinishedTask(item.name(), item.lore()) ? Mark.MISSING : Mark.NONE),
         AUCTIONS("Manage Auctions",
-                c -> c.menuHighlightAuctions,
+                c -> c.slotHighlightAuctions,
                 item -> item.hasLine("Status: Sold!") ? Mark.READY
                         : item.hasLine("Status: Expired!") ? Mark.MISSING : Mark.NONE),
         BAZAAR_ORDERS("(?:Your|Co-op) Bazaar Orders",
-                c -> c.menuHighlightBazaarOrders,
+                c -> c.slotHighlightBazaarOrders,
                 item -> item.hasLine(FILLED_ORDER) ? Mark.READY : Mark.NONE),
         CROESUS("(?:\\(\\d+/\\d+\\) )?(?:Croesus|Vesuvius)",
-                c -> c.menuHighlightCroesus,
+                c -> c.slotHighlightCroesus,
                 item -> isUnopenedRun(item) ? Mark.READY : Mark.NONE),
         JACOB_CONTESTS("Jacob's Farming Contests",
-                c -> c.menuHighlightJacobContests,
+                c -> c.slotHighlightJacobContests,
                 item -> item.lastLine().equals("Click to claim reward!") ? Mark.READY : Mark.NONE),
         SLAYER_REWARDS(".*Slayer LVL Rewards",
-                c -> c.menuHighlightSlayerRewards,
+                c -> c.slotHighlightSlayerRewards,
                 item -> item.lastLine().equals("Click to claim rewards!") ? Mark.READY : Mark.NONE),
         COMMISSIONS("Commissions",
-                c -> c.menuHighlightCommissions,
+                c -> c.slotHighlightCommissions,
                 item -> item.lore().stream().anyMatch(line -> line.contains("COMPLETED")) ? Mark.READY : Mark.NONE),
         CHOCOLATE_FACTORY("Chocolate Factory",
-                c -> c.menuHighlightChocolateFactory,
+                c -> c.slotHighlightChocolateFactory,
                 item -> item.hasLine(UNCLAIMED_REWARDS) ? Mark.READY : Mark.NONE),
         COMPOSTER_UPGRADES("Composter Upgrades",
-                c -> c.menuHighlightComposterUpgrades,
+                c -> c.slotHighlightComposterUpgrades,
                 item -> item.hasLine("Click to upgrade!") ? Mark.READY : Mark.NONE);
 
         private final Pattern title;
@@ -134,7 +134,7 @@ public final class MenuHighlights {
     /** Called for every slot as it is drawn, before its item, so the item and tooltip stay on top. */
     public static void drawSlot(AbstractContainerScreen<?> screen, GuiGraphicsExtractor graphics, Slot slot) {
         AlpakaConfig config = AlpakaConfig.instance;
-        if (!config.menuHighlightsEnabled) return;
+        if (!config.slotHighlightEnabled) return;
         if (slot.container instanceof Inventory) return;
         if (screen != cachedScreen) {
             cachedScreen = screen;
@@ -148,7 +148,7 @@ public final class MenuHighlights {
         if (stack.isEmpty()) return;
         Mark mark = marks.computeIfAbsent(stack, s -> place.mark(itemOf(slot.getContainerSlot(), s)));
         if (mark == Mark.NONE) return;
-        SlotMark.draw(graphics, slot, mark == Mark.READY ? config.menuHighlightReadyColor : config.menuHighlightMissingColor);
+        SlotMark.draw(graphics, slot, mark == Mark.READY ? config.slotHighlightReadyColor : config.slotHighlightMissingColor);
     }
 
     /**

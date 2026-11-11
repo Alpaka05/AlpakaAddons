@@ -39,9 +39,9 @@ public abstract class AbstractContainerScreenSlotHighlightMixin {
         if (slot != null) ExperimentSolver.onSlotClicked(((AbstractContainerScreen<?>) (Object) this).getMenu(), slotId);
     }
 
-    /** The Menu Highlights' marks, also behind the item, so it and the tooltip stay on top. */
+    /** The Slot Highlight's marks, also behind the item, so it and the tooltip stay on top. */
     @Inject(method = "extractSlot", at = @At("HEAD"))
-    private void alpaka$menuHighlight(GuiGraphicsExtractor graphics, Slot slot, int mouseX, int mouseY, CallbackInfo ci) {
-        net.alpaka.addons.features.menuhighlight.MenuHighlights.drawSlot((AbstractContainerScreen<?>) (Object) this, graphics, slot);
+    private void alpaka$slotHighlight(GuiGraphicsExtractor graphics, Slot slot, int mouseX, int mouseY, CallbackInfo ci) {
+        net.alpaka.addons.features.slothighlight.SlotHighlight.drawSlot((AbstractContainerScreen<?>) (Object) this, graphics, slot);
     }
 }

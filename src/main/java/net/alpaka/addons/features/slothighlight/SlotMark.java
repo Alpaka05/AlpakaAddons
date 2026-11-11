@@ -1,4 +1,4 @@
-package net.alpaka.addons.features.menuhighlight;
+package net.alpaka.addons.features.slothighlight;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.world.inventory.Slot;

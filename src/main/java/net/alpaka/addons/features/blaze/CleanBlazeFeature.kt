@@ -3,10 +3,12 @@ package net.alpaka.addons.features.blaze
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.features.slayer.SlayerSessionTracker
 import net.alpaka.addons.features.slayer.SlayerType
+import net.alpaka.addons.utils.EntityCache
 import net.alpaka.addons.utils.SkyblockUtils
 import net.minecraft.client.Minecraft
 import net.minecraft.client.renderer.entity.state.EntityRenderState
 import net.minecraft.core.particles.ParticleOptions
+import net.minecraft.network.chat.Component
 import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.LightningBolt
@@ -75,6 +77,9 @@ object CleanBlazeFeature {
 
     @JvmStatic
     fun shouldCancelParticle(options: ParticleOptions): Boolean {
+        // Every particle the game makes comes through here; with the feature off nothing below can
+        // say yes, so skip the type checks.
+        if (!AlpakaConfig.instance.cleanBlazeEnabled) return false
         val type = options.type
         if (type === ParticleTypes.FLAME || type === ParticleTypes.SMALL_FLAME ||
             type === ParticleTypes.SMOKE || type === ParticleTypes.LARGE_SMOKE ||
@@ -115,9 +120,25 @@ object CleanBlazeFeature {
     private fun isDemon(entity: Entity): Boolean {
         if (entity !is LivingEntity || entity is ArmorStand) return false
         val tag = Minecraft.getInstance().level?.getEntity(entity.id + 1) as? ArmorStand ?: return false
-        val raw = tag.customName?.string ?: return false
-        return DEMON_NAMES.any { SkyblockUtils.containsIgnoringFormatting(raw, it) }
+        val name = tag.customName ?: return false
+        val cached = demonTags.get(tag.id)
+        if (cached != null && cached.first === name) return cached.second
+        val raw = name.string
+        val demon = DEMON_NAMES.any { SkyblockUtils.containsIgnoringFormatting(raw, it) }
+        if (demonTags.size() >= TAG_CACHE_LIMIT) demonTags.clear()
+        demonTags.put(tag.id, name to demon)
+        return demon
     }
+
+    /**
+     * Verdicts on name tags, kept with the name object they were read from. Both checks run per
+     * entity and frame in a Blaze fight, and a name only changes when the server sends a new object,
+     * so the answer depends on that object alone; the identity check also keeps a reused id from
+     * another world from getting an old answer. Render thread only.
+     */
+    private val demonTags = EntityCache<Pair<Component, Boolean>>()
+    private val smolderingTags = EntityCache<Pair<Component, Boolean>>()
+    private const val TAG_CACHE_LIMIT = 512
 
     /** A part of Clean Blaze, but anywhere on SkyBlock: blazes spin outside the slayer zones too. */
     @JvmStatic
@@ -130,9 +151,15 @@ object CleanBlazeFeature {
     fun shouldHideEntity(entity: Entity): Boolean {
         if (entity is SmallFireball) return AlpakaConfig.instance.cleanBlazeFireballs && active()
         if (entity is LightningBolt) return hideLightning()
-        if (!entity.hasCustomName() || !AlpakaConfig.instance.cleanBlazeNameTags || !active()) return false
+        // The setting before the entity: this runs for every entity on every frame.
+        if (!AlpakaConfig.instance.cleanBlazeNameTags || !entity.hasCustomName() || !active()) return false
         val customName = entity.customName ?: return false
-        return SkyblockUtils.containsIgnoringFormatting(customName.string, "Smoldering Blaze")
+        val cached = smolderingTags.get(entity.id)
+        if (cached != null && cached.first === customName) return cached.second
+        val hide = SkyblockUtils.containsIgnoringFormatting(customName.string, "Smoldering Blaze")
+        if (smolderingTags.size() >= TAG_CACHE_LIMIT) smolderingTags.clear()
+        smolderingTags.put(entity.id, customName to hide)
+        return hide
     }
 
     /** Lightning in the Blaze zones: the bolt itself and the sky flash it causes. The thunder stays. */

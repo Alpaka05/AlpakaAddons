@@ -13,6 +13,7 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.resources.Identifier;
 import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 
@@ -49,13 +50,17 @@ public class ScreenEffectRendererMixin {
      * The pose is only turned about its vertical axis after that translate, and a move along the
      * vertical axis gives the same result before or after such a turn.
      */
+    @Unique
+    private static final Matrix4f ALPAKA$PLACED = new Matrix4f();
+
     @WrapOperation(method = "buildFireQuad", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/ScreenEffectRenderer;buildSpriteQuad(Lcom/mojang/blaze3d/vertex/VertexConsumer;Lorg/joml/Matrix4f;Lnet/minecraft/client/renderer/texture/TextureAtlasSprite;FFFFFI)V"))
     private static void alpaka$buildFireQuad(VertexConsumer builder, Matrix4f pose, TextureAtlasSprite sprite,
                                              float x0, float y0, float x1, float y1, float z, int color,
                                              Operation<Void> original) {
         float drop = FireOverlayFeature.firstPersonFireDrop();
-        Matrix4f placed = drop != 0.0f ? new Matrix4f(pose).translate(0.0f, drop, 0.0f) : pose;
+        // Into a kept matrix: the quad's vertices are written before this returns. Render thread only.
+        Matrix4f placed = drop != 0.0f ? ALPAKA$PLACED.set(pose).translate(0.0f, drop, 0.0f) : pose;
         int faded = FireOverlayFeature.firstPersonFireColor(color);
         if (FireOverlayFeature.staticFirstPersonFire()) {
             buildQuad(builder, placed, x0, y0, x1, y1, z, 1.0f, FireOverlayFeature.firstFrameV(sprite), 0.0f, 0.0f, faded);

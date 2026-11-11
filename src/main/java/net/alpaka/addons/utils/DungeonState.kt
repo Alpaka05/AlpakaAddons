@@ -59,7 +59,8 @@ object DungeonState {
             return
         }
         val found = SkyblockUtils.getSidebarLines().firstNotNullOfOrNull { line ->
-            FLOOR.find(SkyblockUtils.cleanColor(line))?.groups?.get("floor")?.value
+            // The sidebar lines come without color codes already.
+            if (!line.contains("The Catacombs")) null else FLOOR.find(line)?.groups?.get("floor")?.value
         }
         // Kept once known: a sidebar briefly redrawing without the line does not end the run.
         if (found != null) floor = found

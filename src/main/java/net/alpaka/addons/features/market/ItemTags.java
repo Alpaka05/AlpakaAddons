@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.market;
 
+import net.alpaka.addons.utils.ItemData;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -57,7 +58,7 @@ public final class ItemTags {
     public static Tag of(ItemStack stack, String plainName, MarketKind kind) {
         CustomData data = stack.get(DataComponents.CUSTOM_DATA);
         if (data != null) {
-            net.minecraft.nbt.CompoundTag nbt = data.copyTag();
+            net.minecraft.nbt.CompoundTag nbt = ItemData.view(data);
             String id = nbt.getStringOr("id", "");
             if (!id.isEmpty()) {
                 String tag = expand(id, nbt.getStringOr("petInfo", ""));

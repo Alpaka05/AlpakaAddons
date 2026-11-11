@@ -90,6 +90,9 @@ object AuraFeature {
 
     private var renderType: RenderType? = null
 
+    private val rightScratch = Vector3f()
+    private val upScratch = Vector3f()
+
     @JvmStatic
     fun register() {
         LevelRenderEvents.COLLECT_SUBMITS.register { submit(it) }
@@ -154,8 +157,15 @@ object AuraFeature {
         val ox = (feet.x - camera.pos.x).toFloat()
         val oy = (feet.y - camera.pos.y).toFloat()
         val oz = (feet.z - camera.pos.z).toFloat()
-        val right = camera.orientation.transform(Vector3f(1f, 0f, 0f))
-        val up = camera.orientation.transform(Vector3f(0f, 1f, 0f))
+        // Into kept vectors, read out straight away, as the geometry is built later in the frame.
+        val right = camera.orientation.transform(rightScratch.set(1f, 0f, 0f))
+        val rightX = right.x
+        val rightY = right.y
+        val rightZ = right.z
+        val up = camera.orientation.transform(upScratch.set(0f, 1f, 0f))
+        val upX = up.x
+        val upY = up.y
+        val upZ = up.z
 
         val effect = cfg.auraEffect.coerceIn(0, EFFECT_NAMES.size - 1)
         val frame = AuraFrame(
@@ -165,7 +175,7 @@ object AuraFeature {
         val strength = (cfg.auraBrightness / 100f).coerceIn(0.05f, 1f)
 
         context.submitNodeCollector().submitCustomGeometry(context.poseStack(), renderType()) { pose, buffer ->
-            val canvas = AuraCanvas(pose, buffer, ox, oy, oz, right.x, right.y, right.z, up.x, up.y, up.z, strength)
+            val canvas = AuraCanvas(pose, buffer, ox, oy, oz, rightX, rightY, rightZ, upX, upY, upZ, strength)
             when (effect) {
                 EFFECT_SPIRIT_ORBS -> AuraEffects.spiritOrbs(canvas, frame)
                 EFFECT_TWIN_HELIX -> AuraEffects.twinHelix(canvas, frame)

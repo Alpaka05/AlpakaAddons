@@ -64,12 +64,12 @@ object SlayerMenuXpReader {
         }
         if (screen === lastScannedScreen) return
 
+        // Marked before the title check as well as before the work: a menu's title never changes,
+        // so any other menu is only looked at once, and a menu whose slots never resolve cannot make
+        // this run every tick for as long as it stays open.
+        lastScannedScreen = screen
         val title = SkyblockUtils.cleanColor(screen.title.string)
         if (MENU_TITLE_MARKERS.none { title.contains(it, ignoreCase = true) }) return
-
-        // Marked scanned before doing the work, so a menu whose slots never resolve cannot make this
-        // run every tick for as long as it stays open.
-        lastScannedScreen = screen
         scan(screen, title)
     }
 

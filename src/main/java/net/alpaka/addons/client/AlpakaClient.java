@@ -50,6 +50,14 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.slayer.HamRadio.register();
         DevScreenshotTour.register();
         DevClutterBenchmark.register();
+        // After the fonts, so cut labels measured with the old glyphs are dropped once the new ones are in.
+        net.minecraft.resources.Identifier fitsReload = net.minecraft.resources.Identifier.fromNamespaceAndPath("alpaka", "text_fits");
+        net.fabricmc.fabric.api.resource.v1.ResourceLoader resources =
+                net.fabricmc.fabric.api.resource.v1.ResourceLoader.get(net.minecraft.server.packs.PackType.CLIENT_RESOURCES);
+        resources.registerReloadListener(fitsReload,
+                (net.minecraft.server.packs.resources.ResourceManagerReloadListener) manager ->
+                        net.alpaka.addons.client.gui.AlpakaStyle.onResourcesReloaded());
+        resources.addListenerOrdering(net.fabricmc.fabric.api.resource.v1.reloader.ResourceReloaderKeys.Client.FONTS, fitsReload);
         SlayerDropTracker.registerEvents();
         DeployableTracker.registerEvents();
         net.alpaka.addons.features.slayer.SkyblockProfileTracker.INSTANCE.register();

@@ -270,7 +270,8 @@ public class SlayerDropTracker {
 
     public static String cleanColor(String text) {
         if (text == null) return "";
-        return COLOR_PATTERN.matcher(text).replaceAll("");
+        // Runs on every chat line; one without a code needs no matcher.
+        return text.indexOf('§') < 0 ? text : COLOR_PATTERN.matcher(text).replaceAll("");
     }
 
     private static Component getDropComponent(Component component, String text) {
@@ -330,7 +331,8 @@ public class SlayerDropTracker {
 
         // Also ahead of the tracker's switch: the slayer log has no switch of its own.
         Matcher loggedDrop = DROP_PATTERN.matcher(string);
-        if (loggedDrop.matches()) {
+        boolean isDrop = loggedDrop.matches();
+        if (isDrop) {
             // Only with a quest up, unlike the tracker below, which files any Rift drop under the
             // Vampire: a log line claiming a boss drop has to come from a slayer being run.
             SlayerType boss = SlayerQuestDetector.INSTANCE.currentOrRecent();
@@ -355,9 +357,9 @@ public class SlayerDropTracker {
         // inflates, so it only ever matched players who had the boost. See xpForTier.
         if (RNG_METER_PATTERN.matcher(string).matches()) return;
 
-        // Check drop message
-        Matcher dropMatcher = DROP_PATTERN.matcher(string);
-        if (dropMatcher.matches()) {
+        // Check drop message, with the match already made for the slayer log above.
+        Matcher dropMatcher = loggedDrop;
+        if (isDrop) {
             SlayerType activeBoss = isInRift() ? SlayerType.VAMPIRE : SlayerQuestDetector.INSTANCE.currentOrRecent();
             if (activeBoss == null) {
                 // Not on a slayer - this was a drop from farming, mining, a dungeon, etc.

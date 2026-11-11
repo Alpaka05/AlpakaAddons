@@ -3,6 +3,7 @@ package net.alpaka.addons.features.dungeonmap
 import net.alpaka.addons.config.AlpakaConfig
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
+import net.minecraft.world.level.chunk.status.ChunkStatus
 import net.minecraft.world.level.material.MapColor
 import kotlin.math.floor
 
@@ -30,6 +31,11 @@ object BossRoomMap {
         val sampled = if (cfg.dungeonMapSmoothMarkers) margin else 0
         val result = buffer.also { it.fill(0) }
         val pos = BlockPos.MutableBlockPos()
+        // Neighbouring samples mostly fall in the same chunk: the last lookup (missing or not) is
+        // kept for this sampling only.
+        var lastChunkX = Int.MIN_VALUE
+        var lastChunkZ = Int.MIN_VALUE
+        var lastChunk: net.minecraft.world.level.chunk.LevelChunk? = null
         // At most 96x96 samples every half second bound the work even in the large F7 arena. Looking
         // near the player's feet keeps the ceiling from covering the floor on indoor boss maps.
         for (row in -sampled until steps + sampled) for (column in -sampled until steps + sampled) {
@@ -37,11 +43,20 @@ object BossRoomMap {
             val z = view.worldZ(row)
             pos.set(x, feet, z)
             // The client level claims to have every chunk; its chunk cache knows which arrived.
-            if (!level.chunkSource.hasChunk(x shr 4, z shr 4)) continue
+            // Looked up once for the column rather than once per block of it.
+            val cx = x shr 4
+            val cz = z shr 4
+            if (cx != lastChunkX || cz != lastChunkZ) {
+                lastChunkX = cx
+                lastChunkZ = cz
+                lastChunk = level.chunkSource.getChunk(cx, cz, ChunkStatus.FULL, false)
+            }
+            val chunk = lastChunk ?: continue
             var color = 0
             for (y in feet + 1 downTo feet - 8) {
                 pos.set(x, y, z)
-                val state = level.getBlockState(pos)
+                // What level.getBlockState gives: out of the build height both read as air.
+                val state = chunk.getBlockState(pos)
                 if (state.isAir) continue
                 val mapColor = state.getMapColor(level, pos)
                 if (mapColor == MapColor.NONE) continue
@@ -58,8 +73,18 @@ object BossRoomMap {
         }
         pixels = result
         projection = view
-        revision++
+        // A new revision makes the renderer rewrite and upload the whole texture; standing still in
+        // an arena that does not change, the samples come out the same every time.
+        if (!hasPrevious || !result.contentEquals(previous)) {
+            result.copyInto(previous)
+            hasPrevious = true
+            revision++
+        }
     }
+
+    /** The samples behind the current revision, to tell whether a new sampling changed anything. */
+    private val previous = IntArray(BossMapProjection.TEXTURE * BossMapProjection.TEXTURE)
+    private var hasPrevious = false
 
     /** Whether the player has walked far enough from the last sampling to need the next one early. */
     fun drifted(client: Minecraft): Boolean {
@@ -72,6 +97,7 @@ object BossRoomMap {
     fun reset() {
         pixels = null
         projection = null
+        hasPrevious = false
         revision++
     }
 }

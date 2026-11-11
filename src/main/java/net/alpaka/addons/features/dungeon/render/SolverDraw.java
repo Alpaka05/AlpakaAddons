@@ -167,16 +167,15 @@ public final class SolverDraw {
         }
         // Opaque lines write depth like terrain; translucent ones must not, or they would hide
         // each other where they cross.
+        // Both lists are new for this frame and nothing else holds them, so they serve as the copies.
         if (!opaque.isEmpty()) {
-            List<Line> snapshot = List.copyOf(opaque);
             out.submitCustomGeometry(poseStack, RenderTypes.lines(), (pose, buffer) -> {
-                for (Line line : snapshot) line(buffer, pose, line, camX, camY, camZ);
+                for (Line line : opaque) line(buffer, pose, line, camX, camY, camZ);
             });
         }
         if (!translucent.isEmpty()) {
-            List<Line> snapshot = List.copyOf(translucent);
             out.submitCustomGeometry(poseStack, RenderTypes.linesTranslucent(), (pose, buffer) -> {
-                for (Line line : snapshot) line(buffer, pose, line, camX, camY, camZ);
+                for (Line line : translucent) line(buffer, pose, line, camX, camY, camZ);
             });
         }
         if (!labels.isEmpty()) submitLabels(out.order(1), poseStack, camera);

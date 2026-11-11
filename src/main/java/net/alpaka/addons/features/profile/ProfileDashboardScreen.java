@@ -52,6 +52,10 @@ import java.util.Map;
  * menu's design.
  */
 public class ProfileDashboardScreen extends Screen {
+    /** Compiled once: these run per row, every frame the page is on. */
+    private static final java.util.regex.Pattern CAMEL_HUMP = java.util.regex.Pattern.compile("([a-z])([A-Z])");
+    private static final java.util.regex.Pattern BACKPACK_KEY = java.util.regex.Pattern.compile("backpack_\\d+");
+
 
     // ---- Pages ----------------------------------------------------------------------------------
 
@@ -207,6 +211,14 @@ public class ProfileDashboardScreen extends Screen {
     @Override
     public void onClose() {
         if (this.minecraft != null) this.minecraft.gui.setScreen(parent);
+    }
+
+    @Override
+    public void removed() {
+        super.removed();
+        // The built items hold the profile's JSON; nothing needs them while no dashboard is open.
+        InventoryItems.forget();
+        ProfileChart.forgetVisible();
     }
 
     private static ProfileSession session(String player) {
@@ -845,27 +857,73 @@ public class ProfileDashboardScreen extends Screen {
 
     /** The level-ups of the last 30 days, newest first, read off the history of every level there is. */
     private List<Milestone> milestones(ProfileData d, long now) {
-        List<Milestone> out = new ArrayList<>();
+        // The session hands out the same series list until its data changes, so the level-ups of
+        // all time are only worked out again then; the 30 days are still cut every frame. Which
+        // metrics there are depends on the profile alone, so that list is made once per profile.
+        if (d != milestoneData) {
+            milestoneData = d;
+            milestoneMetrics = new ArrayList<>();
+            milestoneNames = new ArrayList<>();
+            milestoneLevels = new ArrayList<>();
+            for (ProfileData.Level s : d.skills) {
+                int max = s.maxLevel();
+                milestoneMetrics.add(Metrics.SKILL + s.id());
+                milestoneNames.add(s.name());
+                milestoneLevels.add(xp -> (int) Levels.skill(s.id(), xp, max));
+            }
+            milestoneMetrics.add(Metrics.CATACOMBS);
+            milestoneNames.add("Catacombs");
+            milestoneLevels.add(xp -> (int) Math.min(50, Levels.catacombs(xp)));
+            for (ProfileData.Level c : d.classes) {
+                milestoneMetrics.add(Metrics.CLASS + c.id());
+                milestoneNames.add(c.name());
+                milestoneLevels.add(xp -> (int) Math.min(50, Levels.catacombs(xp)));
+            }
+            milestoneMetrics.add(Metrics.SB_LEVEL);
+            milestoneNames.add("SkyBlock Level");
+            milestoneLevels.add(level -> (int) Math.floor(level));
+            milestoneSeries = List.of();
+        }
+
+        boolean same = milestoneSeries.size() == milestoneMetrics.size();
+        for (int i = 0; same && i < milestoneMetrics.size(); i++) {
+            same = session.series(milestoneMetrics.get(i)) == milestoneSeries.get(i);
+        }
+        if (!same) {
+            List<List<ProfileHistory.Point>> series = new ArrayList<>(milestoneMetrics.size());
+            for (String metric : milestoneMetrics) series.add(session.series(metric));
+            List<Milestone> all = new ArrayList<>();
+            for (int i = 0; i < milestoneMetrics.size(); i++) {
+                levelUps(all, series.get(i), milestoneMetrics.get(i), milestoneNames.get(i), milestoneLevels.get(i));
+            }
+            all.sort((a, b) -> Long.compare(b.timeMs(), a.timeMs()));
+            milestoneSeries = series;
+            milestoneAll = all;
+        }
         long since = now - 30 * ProfileHistory.DAY;
-        for (ProfileData.Level s : d.skills) {
-            int max = s.maxLevel();
-            levelUps(out, Metrics.SKILL + s.id(), s.name(), since, xp -> (int) Levels.skill(s.id(), xp, max));
+        List<Milestone> out = new ArrayList<>();
+        // Newest first: past the first one that is too old, all the rest are too.
+        for (Milestone m : milestoneAll) {
+            if (m.timeMs() < since) break;
+            out.add(m);
         }
-        levelUps(out, Metrics.CATACOMBS, "Catacombs", since, xp -> (int) Math.min(50, Levels.catacombs(xp)));
-        for (ProfileData.Level c : d.classes) {
-            levelUps(out, Metrics.CLASS + c.id(), c.name(), since, xp -> (int) Math.min(50, Levels.catacombs(xp)));
-        }
-        levelUps(out, Metrics.SB_LEVEL, "SkyBlock Level", since, level -> (int) Math.floor(level));
-        out.sort((a, b) -> Long.compare(b.timeMs(), a.timeMs()));
         return out;
     }
 
-    private void levelUps(List<Milestone> out, String metric, String name, long since, java.util.function.DoubleToIntFunction level) {
-        List<ProfileHistory.Point> points = session.series(metric);
+    private ProfileData milestoneData;
+    private List<String> milestoneMetrics = List.of();
+    private List<String> milestoneNames = List.of();
+    private List<java.util.function.DoubleToIntFunction> milestoneLevels = List.of();
+    private List<List<ProfileHistory.Point>> milestoneSeries = List.of();
+    private List<Milestone> milestoneAll = List.of();
+
+    /** Every level-up in one metric's history, at any time. */
+    private static void levelUps(List<Milestone> out, List<ProfileHistory.Point> points, String metric, String name,
+                                 java.util.function.DoubleToIntFunction level) {
         int previous = Integer.MIN_VALUE;
         for (ProfileHistory.Point p : points) {
             int now = level.applyAsInt(p.value());
-            if (previous != Integer.MIN_VALUE && now > previous && p.timeMs() >= since) {
+            if (previous != Integer.MIN_VALUE && now > previous) {
                 String text = now - previous == 1 ? name + " " + now : name + " " + previous + " → " + now;
                 out.add(new Milestone(p.timeMs(), text, metric));
             }
@@ -1388,7 +1446,7 @@ public class ProfileDashboardScreen extends Screen {
         for (var e : Json.obj(r, "farmingWeight.pests").entrySet()) {
             double n = Json.num(e.getValue());
             if (n > 0) {
-                pests.add(row(ProfileData.title(e.getKey().replaceAll("([a-z])([A-Z])", "$1_$2")), Coins.full(n)));
+                pests.add(row(ProfileData.title(CAMEL_HUMP.matcher(e.getKey()).replaceAll("$1_$2")), Coins.full(n)));
             }
         }
         add(cards, "Pests Killed", pests);
@@ -2646,7 +2704,7 @@ public class ProfileDashboardScreen extends Screen {
     /** The backpacks the profile has, in the order of their slots in the Storage menu. */
     private static List<String> backpacks(ProfileData d) {
         List<String> out = new ArrayList<>();
-        for (String name : d.inventories.keySet()) if (name.matches("backpack_\\d+")) out.add(name);
+        for (String name : d.inventories.keySet()) if (BACKPACK_KEY.matcher(name).matches()) out.add(name);
         out.sort(java.util.Comparator.comparingInt(n -> Integer.parseInt(n.substring("backpack_".length()))));
         return out;
     }

@@ -293,9 +293,20 @@ public class ConfigOption {
         setFloat(val);
     }
 
+    /** The last value {@link #getFormattedValue} formatted without a formatter, and its text. */
+    private float defaultFormattedFor = Float.NaN;
+    private String defaultFormatted;
+
     public String getFormattedValue() {
-        if (formatter != null) return formatter.apply(getFloat());
-        return String.format(Locale.ROOT, "%.1f", getFloat());
+        float value = getFloat();
+        if (formatter != null) return formatter.apply(value);
+        // Asked for every frame the slider is on screen; the text only changes with the value.
+        // Compared by bits, so -0.0 and 0.0 keep their own texts.
+        if (defaultFormatted == null || Float.floatToRawIntBits(value) != Float.floatToRawIntBits(defaultFormattedFor)) {
+            defaultFormatted = String.format(Locale.ROOT, "%.1f", value);
+            defaultFormattedFor = value;
+        }
+        return defaultFormatted;
     }
 
     // Action

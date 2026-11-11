@@ -82,6 +82,8 @@ object FarmingParse {
     data class MenuMilestone(val crop: String, val tier: Int, val current: Long, val needed: Long, val percent: Double)
 
     fun xpGain(actionBar: String): XpGain? {
+        // Every action bar anywhere comes through here; the pattern needs this text, so skip it first.
+        if (!actionBar.contains(" Farming (")) return null
         val match = XP_GAIN.find(actionBar) ?: return null
         val gained = number(match.groupValues[1]) ?: return null
         val progress = match.groupValues[2].trim()

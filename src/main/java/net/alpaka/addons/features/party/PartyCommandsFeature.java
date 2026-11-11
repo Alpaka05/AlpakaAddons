@@ -100,7 +100,11 @@ public final class PartyCommandsFeature {
 
     static void onChat(Component message) {
         if (!isEnabled()) return;
-        for (String line : SkyblockUtils.cleanColor(message.getString()).split("\n")) {
+        String raw = message.getString();
+        // Every request holds a '!', and stripping color codes only removes characters, so a message
+        // without one is turned away before the strip and the split, as nearly every message is.
+        if (raw.indexOf('!') < 0) return;
+        for (String line : SkyblockUtils.cleanColor(raw).split("\n")) {
             PartyChatCommand request = PartyChatCommand.parse(line);
             if (request == null) continue;
             PartyCommand command = PartyCommand.byAlias(request.name());

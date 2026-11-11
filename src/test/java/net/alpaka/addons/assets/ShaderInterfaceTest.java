@@ -40,6 +40,24 @@ class ShaderInterfaceTest {
     private static final Pattern LINE_COMMENT = Pattern.compile("//[^\\n]*");
 
     @Test
+    void shadersDoNotRedeclareBuiltInNoiseFunctions() throws IOException {
+        // Apple's OpenGL compiler rejects our scalar helpers when they share GLSL's noise1..4 names.
+        Pattern builtInNoise = Pattern.compile("\\b\\w+\\s+noise[1-4]\\s*\\([^)]*\\)\\s*[;{]");
+        List<String> rejected = new ArrayList<>();
+        try (Stream<Path> files = Files.walk(SHADERS)) {
+            for (Path file : (Iterable<Path>) files::iterator) {
+                String name = file.getFileName().toString();
+                if (!name.endsWith(".vsh") && !name.endsWith(".fsh") && !name.endsWith(".glsl")) continue;
+                Matcher declaration = builtInNoise.matcher(withoutComments(Files.readString(file)));
+                while (declaration.find()) {
+                    rejected.add(SHADERS.relativize(file) + ": " + declaration.group());
+                }
+            }
+        }
+        assertEquals(List.of(), rejected, "Custom noise functions must not redeclare GLSL built-ins.");
+    }
+
+    @Test
     void shadersHandOverSingleVectorsOnly() throws IOException {
         List<String> rejected = new ArrayList<>();
         int declarations = 0;

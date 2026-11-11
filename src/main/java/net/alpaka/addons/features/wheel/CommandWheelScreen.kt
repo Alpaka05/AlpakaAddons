@@ -1,11 +1,12 @@
 package net.alpaka.addons.features.wheel
 
-import net.alpaka.addons.compliance.Outbound
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.client.gui.AlpakaStyle
 import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.client.gui.PloppAnimation
+import net.alpaka.addons.features.commands.TypedCommands
+import net.alpaka.addons.features.sound.CustomSoundFeature
 import net.alpaka.addons.features.wheel.WheelMesh.Companion.TAU
 import net.alpaka.addons.features.wheel.WheelMesh.Companion.lerpColor
 import net.alpaka.addons.features.wheel.WheelMesh.Companion.scaleAlpha
@@ -205,13 +206,13 @@ class CommandWheelScreen(
     /**
      * Sends the selected command, once, and closes the wheel. The only thing the wheel ever sends:
      * one command per explicit release or click, nothing on hover, timers or events, and never a
-     * sequence of commands.
+     * sequence of commands. It goes past Shorten Warp and Warp Cooldown like a typed command.
      */
     private fun runSelectedAndClose() {
         if (selectedIndex in commands.indices) {
             var command = commands[selectedIndex]
             if (command.startsWith("/")) command = command.substring(1)
-            Outbound.command(command, Outbound.Cause.WHEEL)
+            TypedCommands.sendPicked(command)
         }
         close()
     }
@@ -398,7 +399,10 @@ class CommandWheelScreen(
 
         val layout = layout(count)
         // Aiming at a page arrow is not aiming at the wheel, so nothing lights up behind it.
+        val previousIndex = selectedIndex
         selectedIndex = if (hoveredArrow >= 0) -1 else pick(layout, mouseX, mouseY, count)
+        // A tick each time the aim lands on another command, not when it leaves the wheel.
+        if (selectedIndex >= 0 && selectedIndex != previousIndex) CustomSoundFeature.playCommandWheelHoverSound()
 
         if (selectedIndex >= 0) {
             // The wedge points at the selected segment's centre line rather than at the mouse, so it

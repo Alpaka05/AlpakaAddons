@@ -8,7 +8,9 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VisitorBazaarFeatureTest {
     private static final List<String> MISSING_COCOA = List.of(
@@ -76,5 +78,19 @@ class VisitorBazaarFeatureTest {
     @Test
     void opensTheFirstItemWhenTheInventoryHoldsEverything() {
         assertEquals(new Pick("Enchanted Hay Bale", 1280), VisitorBazaarFeature.pick(TWO, item -> 5000));
+    }
+
+    @Test
+    void readsAnIronmanProfileFromTheTabList() {
+        assertTrue(VisitorBazaarFeature.isIronman(List.of("Info", "Profile: Kiwi ♲"), "Alpaka05"));
+        assertTrue(VisitorBazaarFeature.isIronman(List.of("[312] Alpaka05 ♲"), "Alpaka05"));
+    }
+
+    @Test
+    void aNormalProfileIsNoIronman() {
+        assertFalse(VisitorBazaarFeature.isIronman(List.of("Profile: Kiwi", "[312] Alpaka05"), "Alpaka05"));
+        // Someone else on the island playing Ironman doesn't make the own profile one.
+        assertFalse(VisitorBazaarFeature.isIronman(List.of("Profile: Kiwi", "[188] Notch ♲", "[312] Alpaka05"), "Alpaka05"));
+        assertFalse(VisitorBazaarFeature.isIronman(List.of("[188] Alpaka05x ♲", "[312] Alpaka05"), "Alpaka05"));
     }
 }

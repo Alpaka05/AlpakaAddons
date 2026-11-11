@@ -71,6 +71,18 @@ class MarketParsingTest {
     }
 
     @Test
+    void readsADecimalCommaAsAPoint() {
+        assertEquals(1_500_000.0, Coins.parseInput("1,5m"));
+        assertEquals(2_250.0, Coins.parseInput("2,25k"));
+        assertEquals(1.5, Coins.parseInput("1,5"));
+        assertEquals(2_500_000_000.0, Coins.parseInput("2,5B"));
+        // Three digits after a comma separate thousands.
+        assertEquals(1_500_000.0, Coins.parseInput("1,500,000"));
+        assertEquals(1_500.0, Coins.parseInput("1,500"));
+        assertEquals(1_500_000.0, Coins.parseInput("1,500k"));
+    }
+
+    @Test
     void writesCoinsShort() {
         assertEquals("950", Coins.compact(950));
         assertEquals("5.3", Coins.compact(5.3));
@@ -86,6 +98,8 @@ class MarketParsingTest {
         assertEquals(5 * 3600 + 3 * 60 + 12, Coins.seconds("5h 3m 12s"));
         assertEquals(86_400 + 2 * 3600, Coins.seconds("1d 2h"));
         assertEquals(-1, Coins.seconds("Soon!"));
+        // Too long to be a time: skipped, not thrown.
+        assertEquals(-1, Coins.seconds("99999999999999999999s"));
     }
 
     // ---- Lore -----------------------------------------------------------------------------------

@@ -11,6 +11,7 @@ import net.alpaka.addons.mixin.DownloadedPackSourceAccessor;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.client.resources.server.DownloadedPackSource;
 import net.minecraft.client.resources.server.PackReloadConfig;
 import net.minecraft.client.resources.server.ServerPackManager;
@@ -71,8 +72,18 @@ public final class ServerPackCache {
         return AlpakaConfig.instance.cacheResourcePackEnabled;
     }
 
-    private static boolean isHypixel(ServerData server) {
-        return server != null && server.ip != null && server.ip.toLowerCase(Locale.ROOT).contains("hypixel.net");
+    /**
+     * Whether the server is Hypixel, by its exact host: "mc.hypixel.net:25565" is, a look-alike such
+     * as "hypixel.net.example.com" is not, so no other server's pack gets kept and loaded at startup.
+     */
+    static boolean isHypixel(ServerData server) {
+        return server != null && server.ip != null && isHypixelHost(server.ip);
+    }
+
+    static boolean isHypixelHost(String ip) {
+        String host = ServerAddress.parseString(ip.trim()).getHost().toLowerCase(Locale.ROOT);
+        if (host.endsWith(".")) host = host.substring(0, host.length() - 1);
+        return host.equals("hypixel.net") || host.endsWith(".hypixel.net");
     }
 
     /**

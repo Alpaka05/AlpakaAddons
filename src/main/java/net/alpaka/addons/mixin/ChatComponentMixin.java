@@ -22,7 +22,6 @@ import net.alpaka.addons.features.chat.CompactChatFeature;
 import net.alpaka.addons.features.chat.ScreenshotMessageFeature;
 import net.alpaka.addons.features.chat.SmoothChatFeature;
 import net.alpaka.addons.features.guild.GuildPrefixFormatter;
-import net.alpaka.addons.features.blaze.CleanBlazeFeature;
 import net.alpaka.addons.features.slayer.SlayerChatFilter;
 import net.alpaka.addons.features.slayer.SlayerDropTracker;
 import net.alpaka.addons.utils.AlpakaPerf;
@@ -170,9 +169,11 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
         // Cancelling here rather than in a receive event is deliberate for both of these: this runs
         // downstream of every listener, so the message is kept out of the visible log while the
         // slayer tracking that reads it still sees it.
+        // The filter's own switch is read here too, so the message is not flattened to a String
+        // for every line of chat while the filter is off.
         if (SlayerDropTracker.shouldHideDropMessage(component)
-                || SlayerChatFilter.shouldCancelChatMessage(component.getString())
-                || CleanBlazeFeature.shouldHideChat(component.getString())) {
+                || (AlpakaConfig.instance.messageFilterEnabled
+                    && SlayerChatFilter.shouldCancelChatMessage(component.getString()))) {
             ci.cancel();
             return;
         }
@@ -535,17 +536,24 @@ public abstract class ChatComponentMixin implements AlpakaChatScroll {
      * hidden cursor that moves with the camera.
      */
     @Unique
+    private final Matrix3x2f alpaka$scratchMatrix = new Matrix3x2f();
+    @Unique
+    private final Vector2f alpaka$scratchVector = new Vector2f();
+
+    @Unique
     private GuiMessage alpaka$messageUnderMouse(GuiGraphicsExtractor graphics, float offset, int chatBottom, int width,
                                                 int lineHeight, float boxLines) {
         if (!this.alpaka$foreground || !ChatCopyFeature.isEnabled() || ChatPeekFeature.isPeeking()) return null;
         if (!(this.minecraft.gui.screen() instanceof ChatScreen) || lineHeight <= 0) return null;
-        Vector2f mouse = new Vector2f(this.alpaka$mouseX, this.alpaka$mouseY);
         // The box stays put while the lines scroll inside it; the row is read in the lines' own place.
-        Vector2f inBox = new Matrix3x2f(graphics.pose()).invert().transformPosition(new Vector2f(mouse));
+        // Kept scratch objects rather than new ones every frame; render thread only.
+        Vector2f inBox = this.alpaka$scratchMatrix.set(graphics.pose()).invert()
+                .transformPosition(this.alpaka$scratchVector.set(this.alpaka$mouseX, this.alpaka$mouseY));
         if (inBox.x < -4 || inBox.x > width + 8 || inBox.y > chatBottom || inBox.y < chatBottom - boxLines * lineHeight) {
             return null;
         }
-        Vector2f inLines = new Matrix3x2f(graphics.pose()).translate(0.0f, offset).invert().transformPosition(mouse);
+        Vector2f inLines = this.alpaka$scratchMatrix.set(graphics.pose()).translate(0.0f, offset).invert()
+                .transformPosition(this.alpaka$scratchVector.set(this.alpaka$mouseX, this.alpaka$mouseY));
         int index = this.chatScrollbarPos + Mth.floor((chatBottom - inLines.y) / lineHeight);
         if (index < 0 || index >= this.trimmedMessages.size()) return null;
         return this.trimmedMessages.get(index).parent();

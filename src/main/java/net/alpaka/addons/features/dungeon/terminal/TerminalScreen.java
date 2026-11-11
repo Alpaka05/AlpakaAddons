@@ -23,6 +23,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
@@ -54,6 +55,12 @@ import java.util.List;
  *
  * "Classic" in the header hands this terminal to the vanilla chest, the overlay's look, until the
  * game restarts.
+ *
+ * <h2>Practice</h2>
+ *
+ * With a {@link TerminalPractice} the same window plays a simulated terminal on a local chest: a
+ * click goes to the practice instead of the server, closing does not close any container on the
+ * server, and the header shows the time instead of Classic.
  */
 public class TerminalScreen extends ContainerScreen {
 
@@ -73,8 +80,10 @@ public class TerminalScreen extends ContainerScreen {
     private final String plainTitle;
     private final String argument;
     private final Inventory inventory;
-    /** The terminal this window belongs to; null in a preview, which never sends anything. */
+    /** The terminal this window belongs to; null in a preview or practice, which never send anything. */
     private final TerminalSession session;
+    /** Terminal practice, which takes the clicks instead of the server; null otherwise. */
+    private final TerminalPractice practice;
     private final TerminalGuiInput input = new TerminalGuiInput();
     /**
      * The last stack seen in each slot. A click puts the item on the cursor until the server
@@ -83,7 +92,7 @@ public class TerminalScreen extends ContainerScreen {
     private final ItemStack[] shown = new ItemStack[TerminalSolution.MAX_SLOTS];
 
     // A preview solves its local chest itself, the way a session would.
-    private final TerminalSession.State previewState = new TerminalSession.State();
+    private final TerminalSession.State previewState;
     private List<TerminalItem> previewItems = List.of();
     private TerminalSolution previewSolution;
     private long previewSignature = Long.MIN_VALUE;
@@ -103,13 +112,15 @@ public class TerminalScreen extends ContainerScreen {
     private long tipSince = 0L;
 
     private TerminalScreen(ChestMenu menu, Inventory inventory, Component title, TerminalKind kind, String plainTitle,
-                           TerminalSession session) {
+                           TerminalSession session, TerminalPractice practice) {
         super(menu, inventory, title);
         this.kind = kind;
         this.plainTitle = plainTitle;
         this.argument = TerminalGuiText.argument(kind, plainTitle);
         this.inventory = inventory;
         this.session = session;
+        this.practice = practice;
+        this.previewState = practice != null ? practice.state() : new TerminalSession.State();
     }
 
     /**
@@ -134,7 +145,7 @@ public class TerminalScreen extends ContainerScreen {
         Screen open = mc.gui.screen();
         mc.player.containerMenu = menu;
         TerminalSession session = TerminalSession.open(kind, menu, plain);
-        TerminalScreen screen = new TerminalScreen(menu, mc.player.getInventory(), title, kind, plain, session);
+        TerminalScreen screen = new TerminalScreen(menu, mc.player.getInventory(), title, kind, plain, session, null);
         if (open instanceof TerminalScreen previous && previous.kind == kind && session.continued()) {
             screen.continueFrom(previous);
         }
@@ -170,13 +181,21 @@ public class TerminalScreen extends ContainerScreen {
 
     /** A preview on {@code menu}, which is not the player's open menu, so no click could go anywhere. */
     static TerminalScreen preview(ChestMenu menu, Inventory inventory, String title, TerminalKind kind) {
-        return new TerminalScreen(menu, inventory, Component.literal(title), kind, title, null);
+        return new TerminalScreen(menu, inventory, Component.literal(title), kind, title, null, null);
+    }
+
+    /** Terminal practice on {@code menu}, a local chest that is not the player's open menu. */
+    static TerminalScreen practice(ChestMenu menu, Inventory inventory, String title, TerminalKind kind,
+                                   TerminalPractice practice) {
+        return new TerminalScreen(menu, inventory, Component.literal(title), kind, title, null, practice);
     }
 
     // ---- The terminal as it is now --------------------------------------------------------------
 
     private TerminalSolution solution() {
         if (session != null) return session.solution();
+        // Practice shows the solution as a run would: only where that terminal's solver is on.
+        if (practice != null && !kind.enabled()) return TerminalSolution.empty(kind);
         solvePreview();
         return previewSolution;
     }
@@ -253,6 +272,7 @@ public class TerminalScreen extends ContainerScreen {
             String text = TerminalGuiText.refusal(verdict);
             if (text != null) note = Math.max(note, GuiFont.width(this.font, text));
         }
+        if (practice != null) note = Math.max(note, GuiFont.width(this.font, "Solved in 99.99 s  New Best!"));
         return width + 10 + note + 8 + BUTTON + 4 + BUTTON + TerminalGuiLayout.PAD;
     }
 
@@ -277,6 +297,7 @@ public class TerminalScreen extends ContainerScreen {
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         long now = Util.getMillis();
+        if (practice != null) practice.update(now);
         TerminalSettings settings = TerminalSettings.current();
         TerminalGuiPalette palette = TerminalGuiPalette.current();
         TerminalSolution solution = solution();
@@ -322,9 +343,16 @@ public class TerminalScreen extends ContainerScreen {
         TerminalGuiLayout.Rect close = closeButton(l);
         TerminalGuiLayout.Rect classic = classicButton(l);
         boolean hoverClose = close.contains(mouseX, mouseY);
-        boolean hoverClassic = classic.contains(mouseX, mouseY);
-        glyphButton(graphics, classic, MarketIcons.Glyph.CLASSIC, hoverClassic, palette, false);
+        boolean hoverClassic = practice == null && classic.contains(mouseX, mouseY);
+        if (practice == null) glyphButton(graphics, classic, MarketIcons.Glyph.CLASSIC, hoverClassic, palette, false);
         glyphButton(graphics, close, MarketIcons.Glyph.CLOSE, hoverClose, palette, true);
+        if (practice != null) {
+            drawPracticeStatus(graphics, close, textY, palette, now);
+            ModernGuiUtils.drawRect(graphics, panel.x() + TerminalGuiLayout.PAD, panel.y() + TerminalGuiLayout.HEADER_H - 1,
+                    panel.w() - 2 * TerminalGuiLayout.PAD, 1, palette.neutral(0x24));
+            if (hoverClose) return "Close";
+            return null;
+        }
 
         // A refused click explains itself for a moment, after the fact.
         String note = TerminalGuiText.refusal(refusedVerdict);
@@ -342,6 +370,28 @@ public class TerminalScreen extends ContainerScreen {
         if (hoverClose) return "Close";
         if (hoverClassic) return "Classic View: show Hypixel's own chest for this terminal instead, until you restart the game.";
         return null;
+    }
+
+    /** Practice: the time so far and the best, or once solved the final time, right of the title. */
+    private void drawPracticeStatus(GuiGraphicsExtractor graphics, TerminalGuiLayout.Rect close, int textY,
+                                    TerminalGuiPalette palette, long now) {
+        long best = practice.bestMs(kind);
+        String text;
+        int color;
+        if (practice.solved()) {
+            text = "Solved in " + seconds(practice.elapsedMs(now)) + (practice.newBest() ? "  New Best!" : "");
+            color = AlpakaStyle.accent();
+        } else {
+            text = seconds(practice.elapsedMs(now)) + (best >= 0 ? "  Best " + seconds(best) : "");
+            color = palette.mutedText();
+        }
+        if (practice.pingMs() > 0) text = practice.pingMs() + " ms  " + text;
+        int w = GuiFont.width(this.font, text);
+        graphics.text(this.font, GuiFont.text(text), close.x() - 8 - w, textY, color, false);
+    }
+
+    private static String seconds(long ms) {
+        return String.format(java.util.Locale.ROOT, "%.2f s", ms / 1000.0);
     }
 
     private void glyphButton(GuiGraphicsExtractor graphics, TerminalGuiLayout.Rect r, MarketIcons.Glyph glyph,
@@ -501,7 +551,7 @@ public class TerminalScreen extends ContainerScreen {
                 onClose();
                 return true;
             }
-            if (classicButton(l).contains(event.x(), event.y())) {
+            if (practice == null && classicButton(l).contains(event.x(), event.y())) {
                 AlpakaStyle.click();
                 input.reset();
                 classicPressed = true;
@@ -558,8 +608,14 @@ public class TerminalScreen extends ContainerScreen {
      * sends for it, and the session hears of it only once it really went out.
      */
     private void send(TerminalGuiInput.Click click) {
-        if (click == null || session == null) return;
+        if (click == null) return;
         long now = Util.getMillis();
+        if (practice != null) {
+            // Practice: the click goes to the simulated terminal and nowhere else.
+            practice.click(click.slot(), click.button(), now);
+            return;
+        }
+        if (session == null) return;
         TerminalClicks.Verdict verdict = TerminalClicks.check(session, click.slot(), click.button(), now);
         if (verdict != TerminalClicks.Verdict.ALLOW) {
             refused(click.slot(), verdict, now);
@@ -591,6 +647,31 @@ public class TerminalScreen extends ContainerScreen {
         CLASSIC.add(kind);
         input.reset();
         if (this.minecraft != null) this.minecraft.gui.setScreen(new ContainerScreen(menu, inventory, getTitle()));
+    }
+
+    @Override
+    protected void containerTick() {
+        super.containerTick();
+        if (practice != null) practice.nextIfDue(Util.getMillis());
+    }
+
+    /** Practice closes only the window: vanilla's close would tell the server a container closed. */
+    @Override
+    public void onClose() {
+        if (practice != null) {
+            if (this.minecraft != null) this.minecraft.gui.setScreen(null);
+            return;
+        }
+        super.onClose();
+    }
+
+    /**
+     * Never a vanilla slot click: every click this window sends goes through {@link #send}. Nothing
+     * here calls vanilla's mouse handling, so this only matters should something still reach it -
+     * in practice it would otherwise click the player's own inventory on the server.
+     */
+    @Override
+    protected void slotClicked(Slot slot, int slotId, int button, ContainerInput input) {
     }
 
     @Override

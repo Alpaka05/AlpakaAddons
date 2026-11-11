@@ -57,7 +57,7 @@ import java.util.Locale;
  * events that are not a plain click on a drawn control are swallowed, so nothing reaches the
  * invisible vanilla slots underneath. Keys close the menu, and with Enable Hotkeys on press its
  * buttons: 1 to 9 the numbered auctions, products and actions, Shift with a number a category,
- * the arrows the page, / or Ctrl+F the search, Backspace the way back.
+ * / or Ctrl+F the search, and the page and back keys once bound in the settings.
  *
  * "Classic View" in the footer switches back to the vanilla chest for that market until the game
  * restarts, in case Hypixel shows something this screen does not lay out well.
@@ -228,11 +228,17 @@ public class MarketScreen extends ContainerScreen {
      * menu. Returns false, leaving it to vanilla, for any chest that is not a market's.
      */
     public static boolean tryOpen(MenuType<?> type, Minecraft mc, int containerId, Component title) {
-        if (mc.player == null || !isChest(type)) return false;
+        if (mc.player == null || !isChest(type)) {
+            Markets.vanillaMenuOpening(containerId, null);
+            return false;
+        }
         String plain = SkyblockUtils.cleanColor(title.getString());
         MarketKind kind = MarketTitles.classify(plain, Markets.navigationContext(mc.gui.screen()));
         if (kind != null) Markets.menuOpened(plain);
-        if (kind == null || !Markets.skinned(kind)) return false;
+        if (kind == null || !Markets.skinned(kind)) {
+            Markets.vanillaMenuOpening(containerId, kind);
+            return false;
+        }
         if (!(type.create(containerId, mc.player.getInventory()) instanceof ChestMenu menu)) return false;
 
         MarketScreen screen = new MarketScreen(menu, mc.player.getInventory(), title, kind);
@@ -2006,9 +2012,8 @@ public class MarketScreen extends ContainerScreen {
 
     /**
      * The slot a key presses: 1 to 9 the numbered actions or auctions, Shift with 1 to 9 the
-     * categories, Ctrl or Cmd with F the search, and the market's own keys (MarketKeys): the arrows
-     * the page, Backspace the way back, C Create Auction, R Reset Settings, unless rebound in the
-     * settings.
+     * categories, Ctrl or Cmd with F the search, and the market's own keys (MarketKeys) for page,
+     * back, search, Create Auction and Reset Settings, once the player bound them in the settings.
      */
     private Integer hotkeyTarget(KeyEvent event) {
         if (model == null) return null;

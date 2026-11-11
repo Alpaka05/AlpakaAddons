@@ -26,8 +26,8 @@ import java.util.Arrays;
  *
  * Closing the chat goes back to All, unless "Keep Tab After Closing Chat" is on; then the HUD chat
  * stays filtered too, and a chip where the tab row sits says so. It used to stay filtered silently,
- * hiding slayer and drop lines with nothing on screen to explain where they went. The mod's own
- * lines and party invites show on every tab.
+ * hiding slayer and drop lines with nothing on screen to explain where they went. A party invite
+ * shows on every tab for the 60 seconds it can be accepted, then only on Party.
  *
  * Optionally a plain message typed on a channel tab is sent to that channel, with /pc, /gc or /r in
  * front. That is its own toggle and off by default, so a tab is only ever a view unless asked for.
@@ -137,7 +137,22 @@ public final class ChatTabsFeature {
         // channel, so they sort to All like any other unclaimed line rather than following the
         // player onto every tab.
         int tab = TAB_OF.computeIfAbsent(message, ChatTabsFeature::tabOf);
-        return tab == URGENT || tab == active.ordinal();
+        if (tab == URGENT) {
+            // Once the invite has run out it is just a party notice. A tab that is already up keeps
+            // showing it until the next re-layout; switching tabs drops it.
+            if (inviteStillOpen(message)) return true;
+            tab = ChatTab.PARTY.ordinal();
+        }
+        return tab == active.ordinal();
+    }
+
+    /** How long Hypixel lets a party invite be accepted, in GUI ticks. */
+    private static final int INVITE_TICKS = 60 * 20;
+
+    private static boolean inviteStillOpen(GuiMessage message) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.gui == null) return false;
+        return minecraft.gui.hud.getGuiTicks() - message.addedTime() < INVITE_TICKS;
     }
 
     /**
@@ -256,7 +271,7 @@ public final class ChatTabsFeature {
         Component label = chipOf(active);
         int y1 = graphics.guiHeight() - BOTTOM_GAP;
         int y0 = y1 - TAB_HEIGHT;
-        int width = font.width(label) + TAB_PAD * 2;
+        int width = net.alpaka.addons.client.gui.TextWidths.of(font, label) + TAB_PAD * 2;
         drawTab(graphics, LEFT, y0, width, mc.options.getBackgroundColor(Integer.MIN_VALUE), true, false);
         graphics.text(font, label, LEFT + TAB_PAD, y0 + LABEL_TOP, AlpakaStyle.TEXT, true);
     }
@@ -336,7 +351,8 @@ public final class ChatTabsFeature {
     private static Component labelOf(ChatTab tab) {
         checkChatFont();
         int i = tab.ordinal();
-        int count = unread[i];
+        // With Show Count off the tabs still count, so switching it back on shows what came in.
+        int count = AlpakaConfig.instance.chatTabsShowCount ? unread[i] : 0;
         Component cached = LABELS[i];
         if (cached != null && LABEL_COUNTS[i] == count) return cached;
         MutableComponent label = Component.literal(tab.label);
@@ -365,7 +381,8 @@ public final class ChatTabsFeature {
         for (ChatTab tab : TABS) {
             if (!isShown(tab)) continue;
             Component label = labelOf(tab);
-            int width = font.width(label) + TAB_PAD * 2;
+            // Labels are kept components (rebuilt when a count or the chat font changes), so their widths are kept too.
+            int width = net.alpaka.addons.client.gui.TextWidths.of(font, label) + TAB_PAD * 2;
             boolean selected = tab == active;
             boolean hovered = mouseX >= x && mouseX < x + width && mouseY >= y0 && mouseY < y1;
 
@@ -387,7 +404,7 @@ public final class ChatTabsFeature {
         int x = LEFT;
         for (ChatTab tab : TABS) {
             if (!isShown(tab)) continue;
-            int width = font.width(labelOf(tab)) + TAB_PAD * 2;
+            int width = net.alpaka.addons.client.gui.TextWidths.of(font, labelOf(tab)) + TAB_PAD * 2;
             if (mouseX >= x && mouseX < x + width) {
                 select(tab);
                 return true;

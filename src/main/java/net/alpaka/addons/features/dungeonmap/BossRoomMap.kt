@@ -50,6 +50,11 @@ object BossRoomMap {
         val result = buffer.also { it.fill(0) }
         heights.fill(NOTHING)
         val pos = BlockPos.MutableBlockPos()
+        // Neighbouring columns mostly fall in the same chunk: the last lookup (missing or not) is
+        // kept for this sampling only.
+        var lastChunkX = Int.MIN_VALUE
+        var lastChunkZ = Int.MIN_VALUE
+        var lastChunk: LevelChunk? = null
         // At most 192x192 columns every half second, each read straight from its chunk section and
         // skipping empty sections, bound the work even in the large F7 arena.
         for (row in -sampled until steps + sampled) for (column in -sampled until steps + sampled) {
@@ -57,9 +62,16 @@ object BossRoomMap {
             val z = view.worldZ(row)
             val cell = column + margin
             val north = heights[cell]
-            // The client level claims to have every chunk; its chunk cache knows which arrived.
-            val chunk = if (level.chunkSource.hasChunk(x shr 4, z shr 4))
-                level.chunkSource.getChunk(x shr 4, z shr 4, ChunkStatus.FULL, false) else null
+            // The client level claims to have every chunk; its chunk cache knows which arrived
+            // (null for one that hasn't).
+            val cx = x shr 4
+            val cz = z shr 4
+            if (cx != lastChunkX || cz != lastChunkZ) {
+                lastChunkX = cx
+                lastChunkZ = cz
+                lastChunk = level.chunkSource.getChunk(cx, cz, ChunkStatus.FULL, false)
+            }
+            val chunk = lastChunk
             val y = if (chunk == null) NOTHING else surface(chunk, x, z, feet, pos)
             heights[cell] = y
             if (y == NOTHING) continue
@@ -67,8 +79,18 @@ object BossRoomMap {
         }
         pixels = result
         projection = view
-        revision++
+        // A new revision makes the renderer rewrite and upload the whole texture; standing still in
+        // an arena that does not change, the samples come out the same every time.
+        if (!hasPrevious || !result.contentEquals(previous)) {
+            result.copyInto(previous)
+            hasPrevious = true
+            revision++
+        }
     }
+
+    /** The samples behind the current revision, to tell whether a new sampling changed anything. */
+    private val previous = IntArray(BossMapProjection.TEXTURE * BossMapProjection.TEXTURE)
+    private var hasPrevious = false
 
     /**
      * The top block of the column as seen from the player's level. Starting a few blocks above the
@@ -140,6 +162,7 @@ object BossRoomMap {
         pixels = null
         projection = null
         groundY = Int.MIN_VALUE
+        hasPrevious = false
         revision++
     }
 }

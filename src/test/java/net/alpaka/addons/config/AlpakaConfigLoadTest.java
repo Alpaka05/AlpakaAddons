@@ -115,6 +115,73 @@ class AlpakaConfigLoadTest {
     }
 
     @Test
+    void slayerChatSwitchesMoveToTheMessageFilter() throws IOException {
+        AlpakaConfig off = load("{\"configVersion\": 2, \"hideSlayerChatMessages\": false, \"hideSlayerChatQuest\": true,"
+                + " \"cleanBlazeEnabled\": true, \"cleanBlazeDamageChat\": false}");
+        assertFalse(off.messageFilterSlayerQuest, "Hide Slayer Chat Spam was off");
+        assertFalse(off.messageFilterSlayerRadio, "Hide Slayer Chat Spam was off");
+        assertTrue(off.messageFilterBlazeWrongDagger);
+        assertFalse(off.messageFilterBlazeDamage);
+        assertNull(off.hideSlayerChatMessages, "legacy field cleared");
+        assertNull(off.cleanBlazeDamageChat, "legacy field cleared");
+
+        AlpakaConfig on = load("{\"configVersion\": 2, \"hideSlayerChatRadio\": false, \"cleanBlazeEnabled\": false}");
+        assertTrue(on.messageFilterSlayerQuest, "fields missing next to old ones were on by default");
+        assertFalse(on.messageFilterSlayerRadio);
+        assertFalse(on.messageFilterBlazeWrongDagger, "Clean Blaze was off");
+
+        AlpakaConfig fresh = load("{\"configVersion\": 2, \"cleanBlazeEnabled\": false}");
+        assertTrue(fresh.messageFilterBlazeDamage, "without any old chat field the defaults stay");
+        assertTrue(fresh.messageFilterSlayerQuest);
+
+        assertTrue(load("{\"configVersion\": 3, \"hideSlayerChatQuest\": false}").messageFilterSlayerQuest,
+                "a migrated file is not migrated again");
+    }
+
+    @Test
+    void anExistingFileKeepsTheKeysThatUsedToBeDefaults() throws IOException {
+        AlpakaConfig had = load("{\"configVersion\": 4, \"keyBindsImported\": true,"
+                + " \"keyBinds\": {\"key.alpaka.ah_back\": \"key.keyboard.unknown\"}}");
+        assertEquals("key.keyboard.c", had.keyBinds.get("key.alpaka.zoom"), "Zoom stays on C");
+        assertEquals("key.keyboard.left", had.keyBinds.get("key.alpaka.bz_previous_page"));
+        assertEquals("key.keyboard.unknown", had.keyBinds.get("key.alpaka.ah_back"), "a key the player unbound stays unbound");
+
+        assertEquals("key.keyboard.right", load("{\"configVersion\": 5, \"keyBindsImported\": true,"
+                + " \"keyBinds\": {\"key.alpaka.zoom\": \"key.keyboard.right\"}}").keyBinds.get("key.alpaka.zoom"),
+                "a migrated file is not migrated again");
+        assertTrue(load("{\"configVersion\": 5, \"keyBindsImported\": true}").keyBinds.isEmpty());
+    }
+
+    @Test
+    void aFreshInstallStartsWithEveryKeyUnbound() throws IOException {
+        AlpakaConfig.load(store());
+        assertTrue(AlpakaConfig.instance.keyBinds.isEmpty());
+        assertFalse(AlpakaConfig.instance.zoomEnabled);
+    }
+
+    @Test
+    void hideExplosionsBecomesHideVisualClutterWithOnlyExplosions() throws IOException {
+        AlpakaConfig had = load("{\"configVersion\": 3, \"hideExplosions\": true}");
+        assertTrue(had.hideVisualClutter, "the old switch turns the new feature on");
+        assertTrue(had.clutterExplosions);
+        assertFalse(had.clutterFallingBlocks, "nothing hides that was not hidden before");
+        assertFalse(had.clutterBlockBreak);
+        assertFalse(had.clutterHitParticles);
+        assertFalse(had.clutterFireworks);
+        assertFalse(had.clutterExperienceOrbs);
+        assertFalse(had.clutterDragonDeath);
+        assertTrue(saved().contains("\"hideVisualClutter\": true"));
+
+        AlpakaConfig hadNot = load("{\"configVersion\": 3, \"hideExplosions\": false}");
+        assertFalse(hadNot.hideVisualClutter);
+        assertTrue(hadNot.clutterFallingBlocks, "switched on later, it comes with every effect");
+        assertTrue(hadNot.clutterDragonDeath);
+
+        AlpakaConfig later = load("{\"configVersion\": 4, \"hideVisualClutter\": true, \"clutterFallingBlocks\": true}");
+        assertTrue(later.clutterFallingBlocks, "a choice made after the step stays");
+    }
+
+    @Test
     void aFileFromANewerVersionGetsNoStepsAndKeepsItsNumber() throws IOException {
         JsonObject newer = new JsonObject();
         newer.addProperty("configVersion", 99);
@@ -158,6 +225,27 @@ class AlpakaConfigLoadTest {
         File[] kept = dir.toFile().listFiles((d, name) -> name.startsWith("alpaka.json.corrupt-"));
         assertNotNull(kept);
         assertEquals(1, kept.length, "the damaged file is kept aside");
+    }
+
+    @Test
+    void interFromBefore131MovesToPoppinsOnce() throws IOException {
+        // 1.3.0 and older: Inter was the default, and there was no chatHistoryLimit yet.
+        AlpakaConfig config = load("{\"menuFont\": 1}");
+        assertEquals(2, config.menuFont);
+        assertTrue(config.menuFontNunitoApplied);
+
+        // Picked again afterwards: it stays.
+        config.menuFont = 1;
+        AlpakaConfig.save();
+        assertEquals(1, load(saved()).menuFont);
+    }
+
+    @Test
+    void interChosenIn131OrLaterStays() throws IOException {
+        // 1.3.1 and 1.4.0 already defaulted to Poppins, so Inter there was the player's choice.
+        AlpakaConfig config = load("{\"menuFont\": 1, \"chatHistoryLimit\": 1000}");
+        assertEquals(1, config.menuFont);
+        assertTrue(config.menuFontNunitoApplied);
     }
 
     @Test

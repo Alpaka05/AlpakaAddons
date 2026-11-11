@@ -1,7 +1,9 @@
 package net.alpaka.addons.features.itemvalue;
 
+import net.alpaka.addons.utils.ItemData;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import com.mojang.blaze3d.platform.cursor.CursorTypes;
 import com.mojang.serialization.JsonOps;
 import net.alpaka.addons.client.gui.AlpakaStyle;
@@ -227,8 +229,11 @@ public final class ItemValuePopup {
     private static JsonObject skyblockData(ItemStack item) {
         CustomData custom = item.get(DataComponents.CUSTOM_DATA);
         if (custom != null) {
-            JsonElement json = NbtOps.INSTANCE.convertTo(JsonOps.INSTANCE, custom.copyTag());
-            if (json.isJsonObject() && json.getAsJsonObject().has("id")) return json.getAsJsonObject();
+            JsonElement json = NbtOps.INSTANCE.convertTo(JsonOps.INSTANCE, ItemData.view(custom));
+            // Only a SkyBlock id (a string); anything else under "id" is another server's, found by name.
+            if (json.isJsonObject() && json.getAsJsonObject().get("id") instanceof JsonPrimitive id && id.isString()) {
+                return json.getAsJsonObject();
+            }
         }
         return null;
     }
@@ -340,9 +345,8 @@ public final class ItemValuePopup {
         Font font = mc.font;
         int screenW = graphics.guiWidth();
         int screenH = graphics.guiHeight();
-        double[] cursor = cursor();
-        int mx = (int) Math.floor(cursor[0]);
-        int my = (int) Math.floor(cursor[1]);
+        int mx = (int) Math.floor(cursorX());
+        int my = (int) Math.floor(cursorY());
         hits.clear();
 
         graphShown = approach(graphShown, graphOpen ? 1f : 0f, deltaSec * 7f);
@@ -767,12 +771,24 @@ public final class ItemValuePopup {
 
     /** The item's own name for its graph: Hypixel's, without the reforge, stars or pet level the item's name carries. */
     private static String baseTitle() {
-        String id = data != null && data.has("id") ? data.get("id").getAsString() : idByName();
+        String id = data != null && data.get("id") instanceof JsonPrimitive idValue ? idValue.getAsString() : idByName();
         String listed = id == null || id.equals("PET") ? null : ItemIcons.name(id);
         if (listed != null) return listed;
-        return SkyblockUtils.cleanColor(stack.getHoverName().getString())
-                .replaceAll("^\\[Lvl \\d+\\]\\s*", "").replaceAll("[✪➊➋➌➍➎]", "").trim();
+        String name = SkyblockUtils.cleanColor(stack.getHoverName().getString());
+        // The same item's name every frame while the graph is open: stripped once per name.
+        if (!name.equals(bareSource)) {
+            bareSource = name;
+            bareTitle = STAR_MARKS.matcher(PET_LEVEL.matcher(name).replaceAll("")).replaceAll("").trim();
+        }
+        return bareTitle;
     }
+
+    private static String bareSource;
+    private static String bareTitle;
+
+    /** Compiled once: {@code String.replaceAll} compiles its pattern on every call. */
+    private static final java.util.regex.Pattern PET_LEVEL = java.util.regex.Pattern.compile("^\\[Lvl \\d+\\]\\s*");
+    private static final java.util.regex.Pattern STAR_MARKS = java.util.regex.Pattern.compile("[✪➊➋➌➍➎]");
 
     private static Part basePart() {
         if (breakdown == null) return null;
@@ -850,8 +866,7 @@ public final class ItemValuePopup {
     /** Whether the mouse is over the open popup in this menu, which then hides what is under it. */
     public static boolean coversMouse(Screen in) {
         if (screen == null || in != screen || panelW <= 0) return false;
-        double[] cursor = cursor();
-        return AlpakaStyle.inside(cursor[0], cursor[1], panelX, panelY, panelW, panelH);
+        return AlpakaStyle.inside(cursorX(), cursorY(), panelX, panelY, panelW, panelH);
     }
 
     /**
@@ -911,9 +926,15 @@ public final class ItemValuePopup {
     }
 
     /** The cursor in GUI pixels. */
-    private static double[] cursor() {
+    // The cursor in GUI coordinates, one axis at a time: asked several times every frame, so no array.
+    private static double cursorX() {
         Minecraft mc = Minecraft.getInstance();
-        return new double[] {mc.mouseHandler.getScaledXPos(mc.getWindow()), mc.mouseHandler.getScaledYPos(mc.getWindow())};
+        return mc.mouseHandler.getScaledXPos(mc.getWindow());
+    }
+
+    private static double cursorY() {
+        Minecraft mc = Minecraft.getInstance();
+        return mc.mouseHandler.getScaledYPos(mc.getWindow());
     }
 
     private static float approach(float current, float target, float step) {

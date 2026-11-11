@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.mobdeath;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.mixin.LivingEntityDeadAccessor;
 import net.alpaka.addons.utils.SkyblockUtils;
@@ -86,9 +87,13 @@ public final class HideMobDeathsFeature {
         }
 
         AABB around = new AABB(x, y, z, x, y, z).inflate(SMOKE_MARGIN);
-        return !level.getEntitiesOfClass(LivingEntity.class, around,
-                living -> isDyingMob(living) && living.getBoundingBox().inflate(SMOKE_MARGIN).contains(x, y, z)).isEmpty();
+        // Stops at the first dying mob instead of collecting every one.
+        return level.hasEntities(LIVING, around,
+                living -> isDyingMob(living) && living.getBoundingBox().inflate(SMOKE_MARGIN).contains(x, y, z));
     }
+
+    private static final net.minecraft.world.level.entity.EntityTypeTest<Entity, LivingEntity> LIVING =
+            net.minecraft.world.level.entity.EntityTypeTest.forClass(LivingEntity.class);
 
     /** The client is about to drop this entity; keep its spot if it died, for smoke arriving late. */
     public static void onEntityRemoved(Entity entity) {
@@ -98,7 +103,8 @@ public final class HideMobDeathsFeature {
         while (REMOVED.size() > 64) REMOVED.pollFirst();
     }
 
-    private static boolean smokeEnabled() {
+    /** Cheap gate for the entity-removal hook, so it skips the id lookup while the smoke option is off. */
+    public static boolean smokeEnabled() {
         return AlpakaConfig.instance.hideMobDeathsEnabled && AlpakaConfig.instance.hideMobDeathSmoke;
     }
 
@@ -115,8 +121,34 @@ public final class HideMobDeathsFeature {
         Entity owner = stand.level().getEntity(stand.getId() - 1);
         if (owner instanceof LivingEntity living && !(owner instanceof ArmorStand) && isDyingMob(living)) return true;
         Component name = stand.getCustomName();
-        return name != null && readsZeroHealth(name.getString());
+        return name != null && readsZeroHealth(stand.getId(), name);
     }
+
+    /**
+     * {@link #readsZeroHealth(String)} for a stand's name, remembered with the name object it was read
+     * from. This runs for every named stand on every frame, and a name only changes when the server
+     * sends a new one, which is a new object; the answer depends on the name alone, so the id is only
+     * where it is kept. Render thread only.
+     */
+    private static boolean readsZeroHealth(int standId, Component name) {
+        ZeroHealthVerdict cached = ZERO_HEALTH_BY_ID.get(standId);
+        if (cached != null && cached.name() == name) return cached.zero();
+        boolean zero = readsZeroHealth(name.getString());
+        // Removed stands are never taken out one by one; past the limit the whole map goes.
+        if (ZERO_HEALTH_BY_ID.size() >= ZERO_HEALTH_CACHE_LIMIT) ZERO_HEALTH_BY_ID.clear();
+        ZERO_HEALTH_BY_ID.put(standId, new ZeroHealthVerdict(name, zero));
+        return zero;
+    }
+
+    private record ZeroHealthVerdict(Component name, boolean zero) {}
+
+    /** On a world change or disconnect: the stands of the old world are gone, so are their verdicts. */
+    public static void forgetNames() {
+        ZERO_HEALTH_BY_ID.clear();
+    }
+
+    private static final Int2ObjectOpenHashMap<ZeroHealthVerdict> ZERO_HEALTH_BY_ID = new Int2ObjectOpenHashMap<>();
+    private static final int ZERO_HEALTH_CACHE_LIMIT = 2048;
 
     /** Whether a SkyBlock mob nametag (color codes already stripped) shows no health left. */
     static boolean readsZeroHealth(String name) {

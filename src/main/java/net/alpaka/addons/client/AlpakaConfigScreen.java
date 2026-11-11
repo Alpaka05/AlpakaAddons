@@ -108,8 +108,11 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     /** Whether the details panel shows the feature's description; one choice for every feature. */
     private boolean descriptionOpen = true;
 
-    /** Dropdowns folded shut in the details panel. Open by default, so nothing is hidden until asked. */
-    private final Set<ConfigOption> collapsed = new HashSet<>();
+    /**
+     * Dropdowns opened in the details panel. Every list starts folded each time the config opens,
+     * so a long list of switches doesn't push the rest of the feature's settings out of view.
+     */
+    private final Set<ConfigOption> expanded = new HashSet<>();
 
     private ConfigOption focusedText = null;
     /**
@@ -287,6 +290,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         if (openTimeMs == 0L) openTimeMs = System.currentTimeMillis();
         lastFrameMs = System.currentTimeMillis();
         ellipsized.clear();
+        descriptionLinesText = null;
     }
 
     // ---- Selection ------------------------------------------------------------------------------
@@ -830,8 +834,8 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             }
             rowY += SETTING_ROW_H;
             if (descriptionOpen) {
-                for (FormattedText line : GuiFont.splitLines(this.font, description, rowW - 8)) {
-                    graphics.text(this.font, Language.getInstance().getVisualOrder(line), rowX + 4, rowY + 1, AlpakaStyle.TEXT_MUTED, false);
+                for (net.minecraft.util.FormattedCharSequence line : descriptionLines(description, rowW - 8)) {
+                    graphics.text(this.font, line, rowX + 4, rowY + 1, AlpakaStyle.TEXT_MUTED, false);
                     rowY += LINE_H + 1;
                 }
                 rowY += 5;
@@ -885,7 +889,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         // the y returned is exactly what drawing it would have returned.
         if (!shown) {
             int blockH = rowH;
-            if (option.getType() == ConfigOption.Type.DROPDOWN && !collapsed.contains(option)) {
+            if (option.getType() == ConfigOption.Type.DROPDOWN && expanded.contains(option)) {
                 blockH = rowH + option.getEntries().size() * SETTING_ROW_H + 2;
             } else if (option.getType() == ConfigOption.Type.SLIDER && option.getChoices() != null && openChoice == option) {
                 blockH = rowH + option.getChoices().length * SETTING_ROW_H + 2;
@@ -950,7 +954,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                 }
             }
             case DROPDOWN -> {
-                boolean open = !collapsed.contains(option);
+                boolean open = expanded.contains(option);
                 if (hover) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, rowH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
                 String count = option.getEnabledEntryCount() + "/" + option.getEntryCount();
                 int countW = GuiFont.width(this.font, count);
@@ -959,7 +963,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                 AlpakaStyle.chevron(graphics, right - 4, rowY + 8, open, AlpakaStyle.TEXT_SOFT);
                 if (shown) {
                     hits.add(new Hit(rowX, hitY, rowW, rowH, (mx, my) -> {
-                        if (!collapsed.remove(option)) collapsed.add(option);
+                        if (!expanded.remove(option)) expanded.add(option);
                     }));
                 }
                 if (open) {
@@ -1247,6 +1251,36 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         return y + h > clipY && y < clipY + clipH;
     }
 
+    /** The open description's lines and what they were wrapped for; see {@link #descriptionLines}. */
+    private String descriptionLinesText;
+    private int descriptionLinesWidth;
+    private Style descriptionLinesStyle;
+    private Language descriptionLinesLanguage;
+    private List<net.minecraft.util.FormattedCharSequence> descriptionLines = List.of();
+
+    /**
+     * The description word-wrapped to the width, as it is drawn. An open description used to be
+     * wrapped anew every frame, though it only changes with the feature, the column's width, the
+     * menu font or the language; init() drops it with the other measurements.
+     */
+    private List<net.minecraft.util.FormattedCharSequence> descriptionLines(String description, int maxW) {
+        Style style = GuiFont.style();
+        Language language = Language.getInstance();
+        if (!description.equals(descriptionLinesText) || maxW != descriptionLinesWidth
+                || style != descriptionLinesStyle || language != descriptionLinesLanguage) {
+            List<net.minecraft.util.FormattedCharSequence> lines = new ArrayList<>();
+            for (FormattedText line : GuiFont.splitLines(this.font, description, maxW)) {
+                lines.add(language.getVisualOrder(line));
+            }
+            descriptionLines = lines;
+            descriptionLinesText = description;
+            descriptionLinesWidth = maxW;
+            descriptionLinesStyle = style;
+            descriptionLinesLanguage = language;
+        }
+        return descriptionLines;
+    }
+
     /** A label and the width it was cut to: the key for {@link #ellipsized}. */
     private record Fit(String text, int maxW) {
     }
@@ -1437,9 +1471,16 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         if (this.minecraft != null) this.minecraft.gui.setScreen(this.parent);
     }
 
-    /** A drag the screen never saw end must not leave saves deferred for the rest of the session. */
+    /**
+     * A drag the screen never saw end must not leave saves deferred for the rest of the session, and
+     * a text field still focused when the screen is replaced (disconnect, quit) is only saved on blur.
+     */
     @Override
     public void removed() {
+        if (focusedText != null) {
+            focusedText = null;
+            AlpakaConfig.save();
+        }
         draggedSlider = null;
         listeningKey = null;
         AlpakaConfig.endDeferredSaves();

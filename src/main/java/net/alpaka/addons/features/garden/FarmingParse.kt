@@ -1,0 +1,209 @@
+package net.alpaka.addons.features.garden
+
+/**
+ * Reads the farming figures out of Hypixel's text: the tab list's Garden widgets, the action bar's
+ * skill XP and the Pest Repellent chat message. Pure string work, kept apart from the game so the
+ * tests can feed it captured lines.
+ */
+object FarmingParse {
+
+    /** "+12.5 Farming (45.3%)" or "+12.5 Farming (123,456/200,000)" in the action bar. */
+    private val XP_GAIN = Regex("\\+([\\d,.]+) Farming \\(([^)]*)\\)")
+    private val XP_PROGRESS = Regex("([\\d,.]+)/([\\d,.]+[kKmMbB]?)")
+    private val XP_PERCENT = Regex("^([\\d.]+)%$")
+
+    /**
+     * The Farming level in the tab list's Skills widget: " Farming 50: 42.1%", or on the widget's own
+     * title line when it shows just one skill ("Skills: Farming 50: 42.1%").
+     */
+    private val SKILL_LEVEL = Regex("(?:^|\\s)Farming (\\d+): ")
+
+    /** " Wheat 15: 45.2%" or " Wheat 46: MAX" in the Crop Milestones widget. */
+    private val MILESTONE = Regex("^\\s*([A-Za-z][A-Za-z ]*?) (\\d+): (?:([\\d.]+)%|(MAX))")
+
+    /**
+     * A crop in the Jacob's Contest widget: " ○ Wheat", or the boosted one with the Farming Fortune
+     * icon, which can come through as nothing ("  Mushroom"). Checked against [CROPS] so no other
+     * line of the widget passes for a crop.
+     */
+    private val CONTEST_CROP = Regex("^\\s*(?:[○☘]\\s*)?([A-Za-z][A-Za-z ]*[A-Za-z])")
+
+    private val CROPS = setOf(
+        "Wheat", "Carrot", "Potato", "Pumpkin", "Melon", "Mushroom", "Cactus", "Sugar Cane", "Nether Wart",
+        "Cocoa Beans", "Moonflower", "Sunflower", "Wild Rose",
+    )
+
+    /**
+     * "YUM! Pests will now spawn 2x less while you break crops for the next 60m!". Anchored like
+     * [PEST_SPAWN], so a player typing it in chat neither sets the timer nor, with a huge number,
+     * throws inside the chat packet handler (which disconnects).
+     */
+    private val REPELLENT_CHAT = Regex("^\\w+! Pests will now spawn (\\d{1,3})x less while you break crops for the next (\\d{1,4})m")
+
+    /**
+     * "YUCK! 3 ൠ Pests have spawned in Plot - 19!", "GROSS! A ൠ Pest has spawned in The Barn!".
+     * Anchored at the start, so a player quoting it ("From [MVP+] Name: YUCK! ...") does not count.
+     */
+    private val PEST_SPAWN = Regex("^\\w+! .*Pests? ha(?:s|ve) spawned in (?:Plot - .+|The Barn)!")
+
+    /**
+     * The Visitors widget's title: "Visitors: (3)". The optional "/10" is there in case Hypixel ever
+     * shows the queue size, which the Max Occupancy upgrade raises from 5 up to 10.
+     */
+    private val VISITOR_COUNT = Regex("^\\s*Visitors: \\((\\d{1,3})(?:/\\d{1,3})?\\)")
+    /** " Next Visitor: 11m", " Next Visitor: Queue Full!" or " Next Visitor: Not Unlocked!". */
+    private val NEXT_VISITOR = Regex("^\\s*Next Visitor: (.+)$")
+
+    /** The crop's own item in the Crop Milestones menu: "Mushroom 25". */
+    private val MENU_NAME = Regex("^([A-Za-z][A-Za-z ]*?) (\\d+)$")
+    /** "Progress to Tier 26: 48.7%", followed by "389,285/800k". */
+    private val MENU_PROGRESS = Regex("^Progress to Tier (\\d+): ([\\d.]+)%")
+    private val MENU_AMOUNT = Regex("^([\\d,.]+[kKmMbB]?)/([\\d,.]+[kKmMbB]?)")
+
+    /** One part of a time; a number too long to be a time is skipped whole rather than overflowing toLong. */
+    private val DURATION_PART =Regex("(?<!\\d)(\\d{1,6})\\s*([dhms])")
+
+    /** One Farming gain in the action bar: the progress either as [current]/[needed] or as [percent]. */
+    data class XpGain(
+        val gained: Double,
+        val progress: String,
+        val current: Double?,
+        val needed: String?,
+        val percent: Double? = null,
+    )
+
+    data class Milestone(val crop: String, val tier: Int, val percent: Double?) {
+        val maxed: Boolean get() = percent == null
+    }
+
+    data class Repellent(val factor: Int, val minutes: Int)
+
+    /** One crop's progress to its next tier as the Crop Milestones menu shows it. */
+    data class MenuMilestone(val crop: String, val tier: Int, val current: Long, val needed: Long, val percent: Double)
+
+    fun xpGain(actionBar: String): XpGain? {
+        // Every action bar anywhere comes through here; the pattern needs this text, so skip it first.
+        if (!actionBar.contains(" Farming (")) return null
+        val match = XP_GAIN.find(actionBar) ?: return null
+        val gained = number(match.groupValues[1]) ?: return null
+        val progress = match.groupValues[2].trim()
+        val fraction = XP_PROGRESS.find(progress)
+        val percent = if (fraction == null) XP_PERCENT.find(progress)?.let { number(it.groupValues[1]) } else null
+        return XpGain(gained, progress, fraction?.let { number(it.groupValues[1]) }, fraction?.groupValues?.get(2), percent)
+    }
+
+    /** The Farming level from the tab list's Skills widget; null when the widget does not show it. */
+    fun farmingLevel(lines: List<String>): Int? =
+        lines.firstNotNullOfOrNull { SKILL_LEVEL.find(it)?.groupValues?.get(1)?.toIntOrNull() }
+
+    /**
+     * The lines of one tab list widget after its title, or null when the list has no such widget.
+     * Hypixel indents a widget's lines and starts the next widget, or a new column, unindented.
+     */
+    fun widget(lines: List<String>, title: String): List<String>? {
+        val start = lines.indexOfFirst { it.trim().startsWith(title) }
+        if (start < 0) return null
+        val body = ArrayList<String>()
+        for (index in start + 1 until lines.size) {
+            val line = lines[index]
+            if (line.isBlank() || !Character.isWhitespace(line[0])) break
+            body.add(line)
+        }
+        return body
+    }
+
+    /** What follows the widget's title on its own line: "Jacob's Contest: 12m" gives "12m". */
+    fun widgetTitleValue(lines: List<String>, title: String): String? =
+        lines.firstOrNull { it.trim().startsWith(title) }?.trim()?.substring(title.length)?.trim()
+
+    /** The value of a "Name: value" line in a widget, e.g. "Cooldown" in the Pests widget. */
+    fun field(body: List<String>, name: String): String? {
+        val prefix = "$name:"
+        return body.firstOrNull { it.trim().startsWith(prefix) }?.trim()?.substring(prefix.length)?.trim()
+    }
+
+    fun milestone(body: List<String>): Milestone? {
+        for (line in body) {
+            val match = MILESTONE.find(line) ?: continue
+            val tier = match.groupValues[2].toIntOrNull() ?: continue
+            val percent = if (match.groups[4] != null) null else match.groupValues[3].toDoubleOrNull() ?: continue
+            return Milestone(match.groupValues[1].trim(), tier, percent)
+        }
+        return null
+    }
+
+    fun contestCrops(body: List<String>): List<String> =
+        body.mapNotNull { line -> CONTEST_CROP.find(line)?.groupValues?.get(1)?.trim()?.takeIf { it in CROPS } }
+
+    /** How many visitors are waiting, from the Visitors widget; null when the tab does not show it. */
+    fun visitorCount(lines: List<String>): Int? =
+        lines.firstNotNullOfOrNull { VISITOR_COUNT.find(it)?.groupValues?.get(1)?.toIntOrNull() }
+
+    /** What the tab list says after "Next Visitor:"; null when it has no such line. */
+    fun nextVisitor(lines: List<String>): String? =
+        lines.firstNotNullOfOrNull { NEXT_VISITOR.find(it)?.groupValues?.get(1)?.trim() }
+
+    fun repellent(chat: String): Repellent? {
+        val match = REPELLENT_CHAT.find(chat) ?: return null
+        val factor = match.groupValues[1].toIntOrNull() ?: return null
+        val minutes = match.groupValues[2].toIntOrNull() ?: return null
+        return Repellent(factor, minutes)
+    }
+
+    fun pestSpawned(chat: String): Boolean = PEST_SPAWN.containsMatchIn(chat)
+
+    /**
+     * Reads one crop's item in the Crop Milestones menu: its name and lore lines, colors stripped.
+     * Null for anything else in the menu, and for a maxed crop, which has no next tier.
+     */
+    fun menuMilestone(name: String, lore: List<String>): MenuMilestone? {
+        val title = MENU_NAME.find(name.trim()) ?: return null
+        val crop = title.groupValues[1]
+        if (crop !in CROPS) return null
+        // A number that does not parse is not a milestone item; it must not throw while the menu is drawn.
+        val tier = title.groupValues[2].toIntOrNull() ?: return null
+        for (index in lore.indices) {
+            val progress = MENU_PROGRESS.find(lore[index].trim()) ?: continue
+            // The first "Progress to Tier" is the next tier; a later one is the way to the last.
+            if (progress.groupValues[1].toIntOrNull() != tier + 1) return null
+            val amount = lore.getOrNull(index + 1)?.trim()?.let { MENU_AMOUNT.find(it) } ?: return null
+            val current = amount(amount.groupValues[1]) ?: return null
+            val needed = amount(amount.groupValues[2]) ?: return null
+            val percent = progress.groupValues[2].toDoubleOrNull() ?: return null
+            return MenuMilestone(crop, tier, current, needed, percent)
+        }
+        return null
+    }
+
+    /** "389,285", "800k", "20.2M" as a whole number. */
+    fun amount(text: String): Long? {
+        val suffix = text.lastOrNull()?.lowercaseChar()
+        val factor = when (suffix) {
+            'k' -> 1_000.0
+            'm' -> 1_000_000.0
+            'b' -> 1_000_000_000.0
+            else -> 1.0
+        }
+        val digits = if (factor == 1.0) text else text.dropLast(1)
+        return number(digits)?.let { Math.round(it * factor) }
+    }
+
+    /** "1h 12m", "4m 30s" or "45s" as milliseconds; null when there is no time in it. */
+    fun durationMs(text: String): Long? {
+        var total = 0L
+        var found = false
+        for (part in DURATION_PART.findAll(text)) {
+            found = true
+            val value = part.groupValues[1].toLong()
+            total += when (part.groupValues[2]) {
+                "d" -> value * 86_400_000L
+                "h" -> value * 3_600_000L
+                "m" -> value * 60_000L
+                else -> value * 1_000L
+            }
+        }
+        return if (found) total else null
+    }
+
+    private fun number(text: String): Double? = text.replace(",", "").toDoubleOrNull()
+}

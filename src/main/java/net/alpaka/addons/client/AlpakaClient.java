@@ -2,6 +2,8 @@ package net.alpaka.addons.client;
 
 import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.features.inventoryhud.InventoryHudFeature;
+import net.alpaka.addons.features.dungeon.terminal.TerminalKind;
+import net.alpaka.addons.features.dungeon.terminal.TerminalPractice;
 import net.alpaka.addons.features.slayer.SlayerDropTracker;
 import net.alpaka.addons.utils.AlpakaDiagnostics;
 import net.alpaka.addons.features.sound.CustomSoundFeature;
@@ -37,7 +39,6 @@ public class AlpakaClient implements ClientModInitializer {
         // precompiles vanilla's; see BlockOverlayRenderTypes.
         net.alpaka.addons.features.blockoverlay.BlockOverlayRenderTypes.init();
         net.alpaka.addons.client.gui.AlpakaGuiPipelines.init();
-        net.alpaka.addons.features.sky.SkyEffectsFeature.init();
         net.alpaka.addons.features.chat.ChatBlurFeature.init();
         net.alpaka.addons.features.viewmodel.HandItemStarlightFeature.init();
         net.alpaka.addons.features.cosmetics.AuraFeature.init();
@@ -48,6 +49,15 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.slayer.SmolderingPolarization.register();
         net.alpaka.addons.features.slayer.HamRadio.register();
         DevScreenshotTour.register();
+        DevClutterBenchmark.register();
+        // After the fonts, so cut labels measured with the old glyphs are dropped once the new ones are in.
+        net.minecraft.resources.Identifier fitsReload = net.minecraft.resources.Identifier.fromNamespaceAndPath("alpaka", "text_fits");
+        net.fabricmc.fabric.api.resource.v1.ResourceLoader resources =
+                net.fabricmc.fabric.api.resource.v1.ResourceLoader.get(net.minecraft.server.packs.PackType.CLIENT_RESOURCES);
+        resources.registerReloadListener(fitsReload,
+                (net.minecraft.server.packs.resources.ResourceManagerReloadListener) manager ->
+                        net.alpaka.addons.client.gui.AlpakaStyle.onResourcesReloaded());
+        resources.addListenerOrdering(net.fabricmc.fabric.api.resource.v1.reloader.ResourceReloaderKeys.Client.FONTS, fitsReload);
         SlayerDropTracker.registerEvents();
         DeployableTracker.registerEvents();
         net.alpaka.addons.features.slayer.SkyblockProfileTracker.INSTANCE.register();
@@ -57,6 +67,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(
                 client -> net.alpaka.addons.config.AlpakaStats.tick());
         net.alpaka.addons.features.market.MarketKeys.register();
+        net.alpaka.addons.features.market.Markets.register();
         ZoomFeature.register();
         net.alpaka.addons.features.chat.ChatPeekFeature.register();
         // Before ChatOverHud, which hands the player list over as it stands after this replaced it.
@@ -67,6 +78,8 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.chestvalue.ChestValueFeature.register();
         net.alpaka.addons.features.itemsearch.ItemSearchFeature.register();
         net.alpaka.addons.features.garden.PestFinder.register();
+        net.alpaka.addons.features.garden.AlignmentHelper.register();
+        net.alpaka.addons.features.garden.FarmingTracker.INSTANCE.register();
         net.alpaka.addons.features.chat.ScreenshotPreview.register();
         CommandWheelFeature.register();
         net.alpaka.addons.features.shortcuts.CommandShortcuts.register();
@@ -81,6 +94,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.utils.DungeonState.register();
         net.alpaka.addons.features.dungeonmap.DungeonMapFeature.register();
         net.alpaka.addons.features.dungeonmobs.StarredMobsHighlight.register();
+        net.alpaka.addons.features.teammateglow.TeammateClassGlow.register();
         // After DungeonState, so a chat line that starts the boss room has been seen by it first.
         net.alpaka.addons.features.dungeon.DungeonSolvers.register();
         net.alpaka.addons.features.leapmenu.LeapMenu.register();
@@ -99,7 +113,6 @@ public class AlpakaClient implements ClientModInitializer {
         WorldAgeFeature.registerEvents();
         net.alpaka.addons.features.performance.PerformanceStats.register();
         net.alpaka.addons.features.market.LowestBin.register();
-        net.alpaka.addons.features.profile.ProfileTracker.register();
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             // Every alias takes an optional search term: "/aa" opens the config as before, and
@@ -138,6 +151,24 @@ public class AlpakaClient implements ClientModInitializer {
                                 com.mojang.brigadier.arguments.StringArgumentType.getString(context, "player"))))
                 );
             }
+
+            // "/alpakaterminal [terminal] [ping]": terminal practice, anywhere. A random terminal each
+            // round without a name; the ping holds every click back that long, as a slow connection
+            // would. Everything stays on the client.
+            var terminal = ClientCommands.literal("alpakaterminal")
+                .executes(context -> openTerminalPractice(null, 0));
+            String[][] terminals = {
+                {"random", null}, {"panes", "PANES"}, {"rubix", "RUBIX"}, {"numbers", "NUMBERS"},
+                {"startswith", "STARTS_WITH"}, {"selectall", "SELECT_ALL"}, {"melody", "MELODY"}};
+            for (String[] entry : terminals) {
+                TerminalKind kind = entry[1] == null ? null : TerminalKind.valueOf(entry[1]);
+                terminal.then(ClientCommands.literal(entry[0])
+                    .executes(context -> openTerminalPractice(kind, 0))
+                    .then(ClientCommands.argument("ping", com.mojang.brigadier.arguments.IntegerArgumentType.integer(0, TerminalPractice.MAX_PING_MS))
+                        .executes(context -> openTerminalPractice(kind,
+                                com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "ping")))));
+            }
+            dispatcher.register(terminal);
 
             /** Prints what the mod currently detects - Skyblock, island, sidebar - into chat. */
             dispatcher.register(ClientCommands.literal("alpakadebug")
@@ -543,6 +574,16 @@ public class AlpakaClient implements ClientModInitializer {
         } else {
             SlayerDropTracker.sendModMessage("§7No personal best recorded for §e" + label + "§7.");
         }
+    }
+
+    /** Opens terminal practice; {@code kind} null deals a random terminal each round. */
+    private static int openTerminalPractice(TerminalKind kind, int pingMs) {
+        Minecraft.getInstance().execute(() -> {
+            if (!TerminalPractice.open(kind, pingMs)) {
+                SlayerDropTracker.sendModMessage("§cJoin a world first to practise terminals.");
+            }
+        });
+        return 1;
     }
 
     /** Opens the config screen, optionally with a search term already applied. */

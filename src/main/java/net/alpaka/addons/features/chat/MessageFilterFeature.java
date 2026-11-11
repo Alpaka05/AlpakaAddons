@@ -46,8 +46,23 @@ public final class MessageFilterFeature {
         WATCHDOG,
         /** "You have 2 items stashed away!" with its "CLICK HERE to pick them up!" line. */
         STASH,
+        /**
+         * "You have 4 unclaimed event rewards!" with its "CLICK HERE to claim!" line and the
+         * "Event rewards are deleted after 10 SkyBlock years!" warning.
+         */
+        EVENT_REWARDS,
         /** "[Sacks] +11 items. (Last 7s.)", the summary of what went into or out of the sacks. */
-        SACKS
+        SACKS,
+        /**
+         * The Sky Mall notice every SkyBlock day: "New day! Your Sky Mall buff changed!" and "You can
+         * disable this messaging by toggling Sky Mall in your /hotm!".
+         */
+        SKY_MALL,
+        /**
+         * "New buff: -20% Pickaxe Ability cooldowns." - only hidden right after a {@link #SKY_MALL}
+         * line, since the wording alone is too plain to be sure it is the Sky Mall's.
+         */
+        SKY_MALL_BUFF
     }
 
     /** The groups of dungeon chatter, as SkyHanni splits them; each has its own switch. */
@@ -107,9 +122,23 @@ public final class MessageFilterFeature {
             "^You have [\\d,]+ (?:item|material)s? stashed away!$"
                     + "|^\\(This totals [\\d,]+ types? of (?:item|material)s? stashed!\\)$"
                     + "|^>>> CLICK HERE to pick (?:them|it) up! <<<$");
+    /**
+     * The lines of the unclaimed event rewards reminder, centered with spaces like the stash
+     * reminder and handled the same way.
+     */
+    private static final Pattern EVENT_REWARDS_LINE = Pattern.compile(
+            "^You have [\\d,]+ unclaimed event rewards?!$"
+                    + "|^>>> CLICK HERE to claim! <<<$"
+                    + "|^Event rewards are deleted after [\\d,]+ SkyBlock years?!$");
     /** "[Sacks] +11 items. (Last 7s.)", "[Sacks] +2,111 items, -4 items. (Last 30s.)". */
     private static final Pattern SACKS = Pattern.compile(
             "^\\[Sacks\\] [+-][\\d,]+ items?(?:, -[\\d,]+ items?)?\\. \\(Last [\\d,]+s\\.\\)$");
+
+    /** The two fixed lines of the daily Sky Mall notice. */
+    private static final Pattern SKY_MALL = Pattern.compile(
+            "^New day! Your Sky Mall buff changed!$"
+                    + "|^You can disable this messaging by toggling Sky Mall in your /hotm!$");
+    private static final Pattern SKY_MALL_BUFF = Pattern.compile("^New buff: .+$");
 
     /**
      * A player's name, maybe with a rank in front. Free parts at the start of a dungeon pattern are
@@ -213,10 +242,14 @@ public final class MessageFilterFeature {
      */
     static final int WATCHDOG_MAX_LINES = 10;
 
-    /** How long after a reward reminder its "Talk to the..." line still counts as part of it. */
+    /**
+     * How long after a reward reminder its "Talk to the..." line, or after the Sky Mall's "New day!"
+     * its "New buff" line, still counts as part of it.
+     */
     static final long HINT_WINDOW_MS = 3_000L;
 
     private static long lastRewardReminderMs = Long.MIN_VALUE / 2;
+    private static long lastSkyMallMs = Long.MIN_VALUE / 2;
     private static int watchdogLinesLeft = 0;
 
     public static void register() {
@@ -241,7 +274,9 @@ public final class MessageFilterFeature {
 
         long now = System.currentTimeMillis();
         if (kind == Kind.REWARD_BUNDLE) lastRewardReminderMs = now;
-        return isHidden(kind, switchFor(kind, config), now - lastRewardReminderMs)
+        if (kind == Kind.SKY_MALL) lastSkyMallMs = now;
+        long sinceLead = now - (kind == Kind.SKY_MALL_BUFF ? lastSkyMallMs : lastRewardReminderMs);
+        return isHidden(kind, switchFor(kind, config), sinceLead)
                 || matchesCustom(text, config.messageFilterCustom);
     }
 
@@ -280,8 +315,12 @@ public final class MessageFilterFeature {
         if (AUTOPET.matcher(text).matches()) return Kind.AUTOPET;
         if (FIRE_SALE.matcher(text).matches()) return Kind.FIRE_SALE;
         if (text.startsWith(WATCHDOG_HEADER)) return Kind.WATCHDOG;
-        if (isStashReminder(text)) return Kind.STASH;
+        if (allLinesMatch(text, STASH_LINE)) return Kind.STASH;
+        if (allLinesMatch(text, EVENT_REWARDS_LINE)) return Kind.EVENT_REWARDS;
         if (SACKS.matcher(text).matches()) return Kind.SACKS;
+        if (SKY_MALL.matcher(text).matches()) return Kind.SKY_MALL;
+        if (SKY_MALL_BUFF.matcher(text).matches()) return Kind.SKY_MALL_BUFF;
+        if (isSkyMallBlock(text)) return Kind.SKY_MALL;
         return null;
     }
 
@@ -293,19 +332,40 @@ public final class MessageFilterFeature {
         return null;
     }
 
-    private static boolean isStashReminder(String text) {
-        for (String line : text.split("\n")) {
+    /**
+     * The whole Sky Mall notice in one message: it starts with "New day!" and every other line is
+     * one of its lines, so the buff line is only taken along when the header is there.
+     */
+    private static boolean isSkyMallBlock(String text) {
+        if (text.indexOf('\n') < 0) return false;
+        String[] lines = text.strip().split("\n");
+        if (!lines[0].strip().equals("New day! Your Sky Mall buff changed!")) return false;
+        for (String line : lines) {
             String trimmed = line.strip();
-            if (!trimmed.isEmpty() && !STASH_LINE.matcher(trimmed).matches()) return false;
+            if (!trimmed.isEmpty() && !SKY_MALL.matcher(trimmed).matches() && !SKY_MALL_BUFF.matcher(trimmed).matches()) {
+                return false;
+            }
         }
         return true;
     }
 
-    /** Whether a line of this kind is hidden, given its switch and the time since the last reward reminder. */
-    static boolean isHidden(Kind kind, boolean switchOn, long msSinceRewardReminder) {
+    /** Whether every non-blank line of the message, trimmed, matches the pattern. */
+    private static boolean allLinesMatch(String text, Pattern pattern) {
+        for (String line : text.split("\n")) {
+            String trimmed = line.strip();
+            if (!trimmed.isEmpty() && !pattern.matcher(trimmed).matches()) return false;
+        }
+        return true;
+    }
+
+    /**
+     * Whether a line of this kind is hidden, given its switch and, for a line that only counts right
+     * after another (the reward hint, the Sky Mall buff), the time since that one.
+     */
+    static boolean isHidden(Kind kind, boolean switchOn, long msSinceLead) {
         if (!switchOn) return false;
-        return kind != Kind.REWARD_BUNDLE_HINT
-                || (msSinceRewardReminder >= 0 && msSinceRewardReminder <= HINT_WINDOW_MS);
+        boolean followsLead = kind == Kind.REWARD_BUNDLE_HINT || kind == Kind.SKY_MALL_BUFF;
+        return !followsLead || (msSinceLead >= 0 && msSinceLead <= HINT_WINDOW_MS);
     }
 
     private static boolean switchFor(Kind kind, AlpakaConfig config) {
@@ -320,7 +380,9 @@ public final class MessageFilterFeature {
             case FIRE_SALE -> config.messageFilterFireSale;
             case WATCHDOG -> config.messageFilterWatchdog;
             case STASH -> config.messageFilterStash;
+            case EVENT_REWARDS -> config.messageFilterEventRewards;
             case SACKS -> config.messageFilterSacks;
+            case SKY_MALL, SKY_MALL_BUFF -> config.messageFilterSkyMall;
         };
     }
 

@@ -2,7 +2,9 @@ package net.alpaka.addons.features.market;
 
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.utils.SkyblockUtils;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 
 /** Where the market screens are switched on, and which market the player is in at the moment. */
 public final class Markets {
@@ -46,7 +48,34 @@ public final class Markets {
     public static MarketKind context(Screen screen) {
         if (screen instanceof MarketScreen market) return market.kind;
         if (screen instanceof MarketInputScreen input) return input.context();
+        if (screen instanceof AbstractContainerScreen<?> chest && vanillaKind != null
+                && chest.getMenu().containerId == vanillaMenuId) {
+            return vanillaKind;
+        }
         return null;
+    }
+
+    /**
+     * A market menu left to vanilla's chest screen, by the id of its chest: without the custom
+     * screens that is every one, and the sign input still has to know which market its search is
+     * for. -1 while the last menu opened was no market's.
+     */
+    private static int vanillaMenuId = -1;
+    private static MarketKind vanillaKind = null;
+
+    /** Notes a chest opening in vanilla's screen: a market's when {@code kind} is set, else none. */
+    static void vanillaMenuOpening(int containerId, MarketKind kind) {
+        vanillaMenuId = kind == null ? -1 : containerId;
+        vanillaKind = kind;
+    }
+
+    /** Lets a market menu shown in vanilla's chest screen count as left when it closes, as {@link MarketScreen} does. */
+    public static void register() {
+        ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
+            if (!(screen instanceof AbstractContainerScreen<?> chest) || screen instanceof MarketScreen) return;
+            MarketKind kind = context(chest);
+            if (kind != null) ScreenEvents.remove(screen).register(s -> left(kind));
+        });
     }
 
     /** How long after a market menu closed its market still counts as where the player is. */
@@ -116,6 +145,29 @@ public final class Markets {
 
     static java.util.List<String> recentSearches(MarketKind kind) {
         java.util.LinkedList<String> list = kind == null ? null : RECENT_SEARCHES.get(kind);
+        return list == null ? java.util.List.of() : java.util.List.copyOf(list);
+    }
+
+    // ---- Recent prices --------------------------------------------------------------------------
+
+    private static final int MAX_RECENT_PRICES = 5;
+    private static final java.util.Map<MarketKind, java.util.LinkedList<Double>> RECENT_PRICES =
+            new java.util.EnumMap<>(MarketKind.class);
+
+    /**
+     * Remembers a confirmed price for this session, newest first, so the next one is a click away:
+     * selling the same item several times in a row asks for the same price each time.
+     */
+    static void rememberPrice(MarketKind kind, double coins) {
+        if (kind == null || !(coins > 0)) return;
+        java.util.LinkedList<Double> list = RECENT_PRICES.computeIfAbsent(kind, k -> new java.util.LinkedList<>());
+        list.remove(coins);
+        list.addFirst(coins);
+        while (list.size() > MAX_RECENT_PRICES) list.removeLast();
+    }
+
+    static java.util.List<Double> recentPrices(MarketKind kind) {
+        java.util.LinkedList<Double> list = kind == null ? null : RECENT_PRICES.get(kind);
         return list == null ? java.util.List.of() : java.util.List.copyOf(list);
     }
 }

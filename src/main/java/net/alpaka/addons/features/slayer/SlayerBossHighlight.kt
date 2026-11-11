@@ -1,5 +1,8 @@
 package net.alpaka.addons.features.slayer
 
+import net.minecraft.network.chat.Component
+import net.alpaka.addons.utils.EntityCache
+import net.alpaka.addons.utils.EntityColors
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.utils.AlpakaPerf
 import net.alpaka.addons.utils.EntityHighlight
@@ -71,7 +74,7 @@ object SlayerBossHighlight {
     private var rescanIn = 0
 
     /** Entity id to ARGB highlight color, for this tick. */
-    private val targets = HashMap<Int, Int>()
+    private val targets = EntityColors()
 
     /** [AlpakaConfig.slayerBossHighlightStyle], taken once per tick with [targets]. */
     private var style = EntityHighlight.STYLE_OUTLINE
@@ -118,7 +121,7 @@ object SlayerBossHighlight {
         if (mobs.isEmpty()) return
 
         if (SlayerQuestDetector.currentOrRecent() != SlayerType.BLAZE) {
-            for (mob in mobs) targets[mob.id] = color
+            for (mob in mobs) targets.put(mob.id, color)
             return
         }
         for (mob in mobs) {
@@ -126,7 +129,7 @@ object SlayerBossHighlight {
             // time; whatever says IMMUNE is not worth looking at right now.
             val tag = readAttunement(level, mob)
             if (tag == IMMUNE) continue
-            targets[mob.id] = attunementColor(tag, color, cfg)
+            targets.put(mob.id, attunementColor(tag, color, cfg))
         }
     }
 
@@ -185,14 +188,35 @@ object SlayerBossHighlight {
     private fun readAttunement(level: ClientLevel, mob: LivingEntity): Any? {
         val box = mob.boundingBox.inflate(TAG_SLACK, 0.0, TAG_SLACK).expandTowards(0.0, TAG_STACK_HEIGHT, 0.0)
         for (stand in level.getEntitiesOfClass(ArmorStand::class.java, box) { it.hasCustomName() }) {
-            val raw = stand.customName?.string ?: continue
-            if (SkyblockUtils.containsIgnoringFormatting(raw, "IMMUNE")) return IMMUNE
-            for (attunement in Attunement.entries) {
-                if (SkyblockUtils.containsIgnoringFormatting(raw, attunement.name)) return attunement
-            }
+            val name = stand.customName ?: continue
+            val said = tagSays(stand.id, name)
+            if (said !== NOTHING) return said
         }
         return null
     }
+
+    /** No attunement or immunity in a tag; kept apart from null, which [tagVerdicts] uses for "not read". */
+    private val NOTHING = Any()
+
+    /**
+     * What one stand's name says: [IMMUNE], an [Attunement] (the first in their order), or [NOTHING].
+     * Kept with the name object it was read from, as the tags are read every tick of a Blaze fight
+     * and a name only changes when the server sends a new one. Client thread only.
+     */
+    private fun tagSays(id: Int, name: Component): Any {
+        val cached = tagVerdicts.get(id)
+        if (cached != null && cached.first === name) return cached.second
+        val raw = name.string
+        val said: Any = when {
+            SkyblockUtils.containsIgnoringFormatting(raw, "IMMUNE") -> IMMUNE
+            else -> Attunement.entries.firstOrNull { SkyblockUtils.containsIgnoringFormatting(raw, it.name) } ?: NOTHING
+        }
+        if (tagVerdicts.size() >= 256) tagVerdicts.clear()
+        tagVerdicts.put(id, name to said)
+        return said
+    }
+
+    private val tagVerdicts = EntityCache<Pair<Component, Any>>()
 
     /** The attunement's color with the configured color's alpha, or the configured color itself. */
     private fun attunementColor(tag: Any?, fallback: Int, cfg: AlpakaConfig): Int {
@@ -200,8 +224,8 @@ object SlayerBossHighlight {
         return (fallback and 0xFF000000.toInt()) or tag.rgb
     }
 
-    /** The highlight color of [entity] this tick, or null when it has none. */
-    private fun colorOf(entity: Entity): Int? = if (targets.isEmpty()) null else targets[entity.id]
+    /** Whether [entity] has a highlight color this tick; its color is then [targets]' value for it. */
+    private fun highlighted(entity: Entity): Boolean = !targets.isEmpty() && targets.has(entity.id)
 
     /**
      * Called from EntityRendererMixin once vanilla has extracted an entity's render state: gives a
@@ -210,8 +234,8 @@ object SlayerBossHighlight {
     @JvmStatic
     fun applyOutline(entity: Entity, state: EntityRenderState) {
         if (style != EntityHighlight.STYLE_OUTLINE) return
-        val color = colorOf(entity) ?: return
-        EntityHighlight.outline(state, color)
+        if (!highlighted(entity)) return
+        EntityHighlight.outline(state, targets.get(entity.id))
     }
 
     /**
@@ -221,11 +245,10 @@ object SlayerBossHighlight {
      */
     @JvmStatic
     fun applyOverlay(entity: Entity, state: BossHighlightRenderState) {
-        val color = if (style == EntityHighlight.STYLE_OVERLAY) colorOf(entity) else null
-        if (color == null) {
+        if (style != EntityHighlight.STYLE_OVERLAY || !highlighted(entity)) {
             state.`alpaka$setHighlight`(0, 0.0f)
             return
         }
-        EntityHighlight.overlay(state, color)
+        EntityHighlight.overlay(state, targets.get(entity.id))
     }
 }

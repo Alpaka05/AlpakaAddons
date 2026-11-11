@@ -14,10 +14,21 @@ final class Json {
 
     /** The element at a dotted path such as "stats.dungeons.floors", or null. */
     static JsonElement at(JsonElement root, String path) {
+        // Walked part by part instead of split: the dashboard reads hundreds of paths every frame.
+        // The same parts as split("\\.") gives: trailing empty parts are dropped, "" is one part.
+        int end = path.length();
+        while (end > 0 && path.charAt(end - 1) == '.') end--;
         JsonElement current = root;
-        for (String part : path.split("\\.")) {
-            if (current == null || !current.isJsonObject()) return null;
-            current = current.getAsJsonObject().get(part);
+        int start = 0;
+        if (end > 0 || path.isEmpty()) {
+            while (true) {
+                int dot = path.indexOf('.', start);
+                int partEnd = dot < 0 || dot > end ? end : dot;
+                if (current == null || !current.isJsonObject()) return null;
+                current = current.getAsJsonObject().get(path.substring(start, partEnd));
+                if (partEnd >= end) break;
+                start = partEnd + 1;
+            }
         }
         return current == null || current.isJsonNull() ? null : current;
     }
@@ -35,6 +46,16 @@ final class Json {
     /** A number at the path; numbers sent as strings ("52029215") count too. NaN when there is none. */
     static double num(JsonElement root, String path) {
         JsonElement e = at(root, path);
+        if (e == null || !e.isJsonPrimitive()) return Double.NaN;
+        try {
+            return e.getAsDouble();
+        } catch (NumberFormatException | UnsupportedOperationException ex) {
+            return Double.NaN;
+        }
+    }
+
+    /** The element as a number, numbers sent as strings included; NaN for anything else ("N/A", true, objects). */
+    static double num(JsonElement e) {
         if (e == null || !e.isJsonPrimitive()) return Double.NaN;
         try {
             return e.getAsDouble();

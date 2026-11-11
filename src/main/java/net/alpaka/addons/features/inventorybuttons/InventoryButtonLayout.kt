@@ -1,6 +1,8 @@
 package net.alpaka.addons.features.inventorybuttons
 
 import net.alpaka.addons.config.AlpakaConfig.InventoryButton
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /**
  * Where an inventory button sits on the screen, and how a position on the screen is stored.
@@ -12,8 +14,14 @@ import net.alpaka.addons.config.AlpakaConfig.InventoryButton
  * above it. Kept apart from Minecraft so it can be tested on its own.
  */
 object InventoryButtonLayout {
-    /** A button's width and height, a slot's size. */
-    const val SIZE = 18
+    /**
+     * A button's width and height, the same in every look: room for vanilla's button frame around
+     * a 16 px item, which is drawn at its own size in the middle, never scaled up.
+     */
+    const val SIZE = InventoryButton.SIZE
+
+    /** The size buttons were laid out for before every look had [SIZE]: a slot's size. */
+    const val OLD_SIZE = 18
 
     /** A container's panel on the screen, in GUI pixels. */
     data class Box(val left: Int, val top: Int, val width: Int, val height: Int) {
@@ -35,11 +43,85 @@ object InventoryButtonLayout {
     /** Stores a top-left corner on the screen in [button], against the panel edges nearest to it. */
     @JvmStatic
     fun store(button: InventoryButton, screenX: Int, screenY: Int, box: Box) {
-        button.anchorRight = screenX + SIZE / 2 > box.left + box.width / 2
-        button.anchorBottom = screenY + SIZE / 2 > box.top + box.height / 2
-        button.x = screenX - if (button.anchorRight) box.right else box.left
-        button.y = screenY - if (button.anchorBottom) box.bottom else box.top
+        store(button, screenX, screenY, box, SIZE)
+        button.grid = SIZE
     }
+
+    private fun store(button: InventoryButton, x: Int, y: Int, box: Box, size: Int) {
+        button.anchorRight = x + size / 2 > box.left + box.width / 2
+        button.anchorBottom = y + size / 2 > box.top + box.height / 2
+        button.x = x - if (button.anchorRight) box.right else box.left
+        button.y = y - if (button.anchorBottom) box.bottom else box.top
+    }
+
+    /** The player's inventory panel, which old layouts are converted against. */
+    private val INVENTORY = Box(0, 0, 176, 166)
+
+    /**
+     * Moves buttons laid out for [OLD_SIZE] to where they belong at [SIZE], once, when the settings
+     * load. Returns whether anything changed.
+     *
+     * The buttons spread out by the size ratio, so buttons that didn't overlap before don't now,
+     * and a row or column spreads as a whole from one panel edge. Spreading each button from its
+     * own anchor would pull the left half of a row above the panel to the right and the right half
+     * to the left, into each other. A row above or below the panel spreads from the panel's left
+     * edge and away from the panel; a column beside it spreads down from the top edge and away
+     * from its side.
+     */
+    @JvmStatic
+    fun migrate(buttons: List<InventoryButton>?): Boolean {
+        if (buttons == null || buttons.none { it.grid != SIZE }) return false
+        val box = INVENTORY
+        val k = SIZE.toFloat() / OLD_SIZE
+        val moved = buttons.map { button ->
+            if (button.grid == SIZE) return@map null
+            val b = oldPlace(button, box)
+            val o = origin(button, b, box, buttons)
+            intArrayOf(
+                (o[0] + (b[0] - o[0]) * k).roundToInt(),
+                (o[1] + (b[1] - o[1]) * k).roundToInt(),
+            )
+        }
+        for ((i, button) in buttons.withIndex()) {
+            val p = moved[i] ?: continue
+            store(button, p[0], p[1], box, SIZE)
+            button.grid = SIZE
+        }
+        return true
+    }
+
+    private fun oldPlace(button: InventoryButton, box: Box): IntArray = intArrayOf(
+        (if (button.anchorRight) box.right else box.left) + button.x,
+        (if (button.anchorBottom) box.bottom else box.top) + button.y,
+    )
+
+    /** The panel corner an old [button], at [b], spreads out from; see [migrate]. */
+    private fun origin(button: InventoryButton, b: IntArray, box: Box, buttons: List<InventoryButton>): IntArray {
+        val nearX = if (b[0] + OLD_SIZE / 2 < box.left + box.width / 2) box.left else box.right
+        val nearY = if (b[1] + OLD_SIZE / 2 < box.top + box.height / 2) box.top else box.bottom
+        val beside = besidePanel(b, box)
+        val aboveOrBelow = aboveOrBelowPanel(b, box)
+        if (beside || aboveOrBelow) {
+            return intArrayOf(if (beside) nearX else box.left, if (aboveOrBelow) nearY else box.top)
+        }
+        // Off a corner of the panel: part of a column if a button beside the panel is above or
+        // below it, part of a row if one above or below the panel is next to it.
+        var inColumn = false
+        var inRow = false
+        for (other in buttons) {
+            if (other === button) continue
+            val ob = oldPlace(other, box)
+            if (abs(ob[0] - b[0]) < OLD_SIZE && besidePanel(ob, box)) inColumn = true
+            if (abs(ob[1] - b[1]) < OLD_SIZE && aboveOrBelowPanel(ob, box)) inRow = true
+        }
+        return intArrayOf(if (inColumn) nearX else box.left, if (inRow) nearY else box.top)
+    }
+
+    /** Left or right of the panel, level with some part of it. */
+    private fun besidePanel(b: IntArray, box: Box): Boolean = b[1] + OLD_SIZE > box.top && b[1] < box.bottom
+
+    /** Above or below the panel, or over it, in line with some part of it across. */
+    private fun aboveOrBelowPanel(b: IntArray, box: Box): Boolean = b[0] + OLD_SIZE > box.left && b[0] < box.right
 
     /**
      * Snaps a dragged corner to what is near it, each axis on its own: the panel's edges, just

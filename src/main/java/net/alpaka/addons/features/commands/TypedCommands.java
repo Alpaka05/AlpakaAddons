@@ -7,8 +7,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 
 /**
- * Commands the player types into chat, on their way out: Shorten Warp and Warp Cooldown
- * get to look at each before it is sent.
+ * Commands the player sends by hand, typed into chat or picked on the command wheel, on their way
+ * out: Shorten Warp and Warp Cooldown get to look at each before it is sent, so "/barn" on the
+ * wheel does what it does in chat.
  */
 public final class TypedCommands {
 
@@ -26,6 +27,17 @@ public final class TypedCommands {
         if (rewritten == null) return false;
         Outbound.command(rewritten, Outbound.Cause.CHAT_INPUT);
         return true;
+    }
+
+    /**
+     * A command picked on the command wheel, without its slash: sent once, in the form Shorten Warp
+     * makes of it, or held by Warp Cooldown like a typed one.
+     */
+    public static void sendPicked(String command) {
+        String rewritten = shortened(command);
+        String outgoing = rewritten != null ? rewritten : command;
+        if (WarpCooldownQueue.onTyped(outgoing)) return;
+        Outbound.command(outgoing, Outbound.Cause.WHEEL);
     }
 
     /** The warp Shorten Warp makes of a command, or null. */

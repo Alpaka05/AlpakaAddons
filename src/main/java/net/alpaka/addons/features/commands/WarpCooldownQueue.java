@@ -26,9 +26,10 @@ import java.util.regex.Pattern;
  *   <li>Any other command Hypixel refuses with the message above is held for the time the message
  *       names, counted from the world change, and the refusal is hidden.</li>
  * </ul>
- * Only a command the player typed and sent with Enter is ever held, only the latest one, and only
- * once: a command that is refused again after waiting is left as refused. Joining another server or
- * leaving drops whatever is held, since that warp was meant for the server left behind.
+ * Only a command the player typed and sent with Enter, or picked on the command wheel, is ever
+ * held, only the latest one, and only once: a command that is refused again after waiting is left
+ * as refused. Joining another server or leaving drops whatever is held, since that warp was meant
+ * for the server left behind.
  */
 public final class WarpCooldownQueue {
 
@@ -44,8 +45,9 @@ public final class WarpCooldownQueue {
     /** The commands that warp; "/warp isle" and the ones Shorten Warp makes as well. */
     private static final Set<String> WARP_COMMANDS = Set.of("warp", "is", "hub", "warpforge", "garden");
 
+    /** Hypixel's refusal; the digits are bounded so a mangled line cannot overflow parseLong. */
     static final Pattern REFUSAL = Pattern.compile(
-            "^You may only use this command after (?<seconds>\\d+)s on the server!$");
+            "^You may only use this command after (?<seconds>\\d{1,6})s on the server!$");
 
     private static long worldChangedAtMs = 0L;
     private static String held = null;
@@ -76,11 +78,13 @@ public final class WarpCooldownQueue {
     public static void onDisconnect() {
         held = null;
         lastTyped = null;
+        // The grace after leaving SkyBlock covers a server switch within Hypixel, not another server.
+        onSkyblockAtMs = Long.MIN_VALUE / 2;
     }
 
     /**
-     * A command the player just sent with Enter, without its slash. True when it was held, and must
-     * not be sent now.
+     * A command the player just sent with Enter or picked on the command wheel, without its slash.
+     * True when it was held, and must not be sent now.
      */
     public static boolean onTyped(String command) {
         long now = System.currentTimeMillis();
@@ -137,7 +141,14 @@ public final class WarpCooldownQueue {
 
     private static void tick() {
         if (SkyblockUtils.isOnSkyblock()) onSkyblockAtMs = System.currentTimeMillis();
-        if (held == null || System.currentTimeMillis() < sendAtMs) return;
+        if (held == null) return;
+        // Switched off (or Disable All) while a command waited: it is dropped, not sent.
+        if (!isEnabled()) {
+            held = null;
+            lastTyped = null;
+            return;
+        }
+        if (System.currentTimeMillis() < sendAtMs) return;
         String command = held;
         held = null;
         Outbound.command(command, Outbound.Cause.QUEUED_CHAT_INPUT);

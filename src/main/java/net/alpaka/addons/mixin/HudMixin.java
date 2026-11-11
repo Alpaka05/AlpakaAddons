@@ -84,6 +84,12 @@ public class HudMixin implements ChatOverHud.Late {
         } finally {
             AlpakaPerf.end(AlpakaPerf.Section.HUD_SLAYER, t);
         }
+        t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_FARMING);
+        try {
+            net.alpaka.addons.features.garden.FarmingHudRenderer.render(graphicsExtractor, deltaTracker);
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.HUD_FARMING, t);
+        }
         t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_SLAYER_TIMER);
         try {
             SlayerTimerHudRenderer.render(graphicsExtractor, deltaTracker);
@@ -97,6 +103,7 @@ public class HudMixin implements ChatOverHud.Late {
             AlpakaPerf.end(AlpakaPerf.Section.HUD_DEPLOYABLE_TIMER, t);
         }
         RagnarockFeature.render(graphicsExtractor);
+        net.alpaka.addons.features.garden.AlignmentHelper.render(graphicsExtractor);
         t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_INVENTORY);
         try {
             InventoryHudRenderer.render(graphicsExtractor, deltaTracker);
@@ -175,7 +182,7 @@ public class HudMixin implements ChatOverHud.Late {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/world/item/ItemStack;getHoverName()Lnet/minecraft/network/chat/Component;")
     )
     private Component alpaka$oldMasterStars(ItemStack stack, Operation<Component> original) {
-        return OldMasterStarsFeature.apply(original.call(stack));
+        return OldMasterStarsFeature.applyHeld(original.call(stack));
     }
 
     /**
@@ -218,7 +225,9 @@ public class HudMixin implements ChatOverHud.Late {
     )
     private void alpaka$centerScoreboardFooter(GuiGraphicsExtractor graphics, Font font, Component line, int x, int y, int color, boolean shadow,
                                                Operation<Void> original, @Local(name = "width") int width) {
-        if (ScoreboardFooterFeature.isFooter(line)) x = ScoreboardFooterFeature.centeredX(x, width, font.width(line));
+        if (ScoreboardFooterFeature.isFooter(line)) x = ScoreboardFooterFeature.centeredX(x, width,
+                // The bare footer is one kept component; a font wrapper around it is new every frame.
+                line == ScoreboardFooterFeature.FOOTER ? net.alpaka.addons.client.gui.TextWidths.of(font, line) : font.width(line));
         original.call(graphics, font, line, x, y, color, shadow);
     }
 }

@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.etherwarp;
 
+import net.alpaka.addons.utils.ItemData;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.features.sound.CustomSoundFeature;
 import net.alpaka.addons.utils.SkyblockUtils;
@@ -223,7 +224,7 @@ public final class EtherwarpOverlayFeature {
         CustomData data = stack.get(DataComponents.CUSTOM_DATA);
         if (data == null) return 0;
         if (data != cachedTunedData) {
-            cachedTuned = data.copyTag().getInt(TUNED_TRANSMISSION_KEY).orElse(0);
+            cachedTuned = ItemData.view(data).getInt(TUNED_TRANSMISSION_KEY).orElse(0);
             cachedTunedData = data;
         }
         return cachedTuned;
@@ -264,9 +265,27 @@ public final class EtherwarpOverlayFeature {
         double tMaxZ = Math.abs((z + Math.max(stepZ, 0) - start.z) * invZ);
 
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+        // The ray crosses a chunk border only now and then, so the chunk is looked up again only
+        // there. Read the way level.getBlockState reads: void air outside the world's bounds, and
+        // the level's (possibly empty) chunk inside them.
+        net.minecraft.world.level.chunk.LevelChunk chunk = null;
+        int chunkX = Integer.MIN_VALUE;
+        int chunkZ = Integer.MIN_VALUE;
         for (int i = 0; i < MAX_STEPS; i++) {
             pos.set(x, y, z);
-            BlockState state = level.getBlockState(pos);
+            BlockState state;
+            if (!level.isInValidBounds(pos)) {
+                state = net.minecraft.world.level.block.Blocks.VOID_AIR.defaultBlockState();
+            } else {
+                int cx = x >> 4;
+                int cz = z >> 4;
+                if (chunk == null || cx != chunkX || cz != chunkZ) {
+                    chunk = level.getChunk(cx, cz);
+                    chunkX = cx;
+                    chunkZ = cz;
+                }
+                state = chunk.getBlockState(pos);
+            }
             if ((flagsOf(state.getBlock()) & PASSABLE) == 0) {
                 return hit(level, pos.immutable(), state);
             }

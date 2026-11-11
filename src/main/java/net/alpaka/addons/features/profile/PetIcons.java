@@ -11,9 +11,12 @@ import net.minecraft.world.item.ItemStack;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -35,10 +38,13 @@ public final class PetIcons {
     private static final Gson GSON = new Gson();
 
     /** Head textures by NEU id ("GOLDEN_DRAGON;4", "PET_SKIN_GOLDEN_DRAGON_ANCIENT"); "" for none. */
-    private static Map<String, String> textures;
+    private static volatile Map<String, String> textures;
     /** The built heads, by texture. */
     private static final Map<String, ItemStack> STACKS = new ConcurrentHashMap<>();
     private static final Map<String, Boolean> ASKED = new ConcurrentHashMap<>();
+    private static final AtomicBoolean SAVE_PENDING = new AtomicBoolean();
+    private static final Object SAVE_LOCK = new Object();
+    private static final long SAVE_DELAY_MS = 2_000L;
 
     /**
      * The pet's head: the skin's when it wears one, else the pet's own. Null while it is being
@@ -81,7 +87,7 @@ public final class PetIcons {
     }
 
     /** What is known about this id: its texture, "" for none, or null while it is asked for. */
-    private static synchronized String known(String id) {
+    private static String known(String id) {
         return textures().get(id);
     }
 
@@ -110,32 +116,52 @@ public final class PetIcons {
         return m.find() ? m.group(1) : null;
     }
 
-    private static synchronized void remember(String id, String texture) {
+    private static void remember(String id, String texture) {
         textures().put(id, texture);
-        CompletableFuture.runAsync(PetIcons::save);
-    }
-
-    private static synchronized Map<String, String> textures() {
-        if (textures == null) {
-            textures = new ConcurrentHashMap<>();
-            try {
-                String json = AtomicJsonFile.read(file());
-                if (json != null) {
-                    Map<String, String> loaded = GSON.fromJson(json, new TypeToken<Map<String, String>>() {}.getType());
-                    if (loaded != null) textures.putAll(loaded);
-                }
-            } catch (IOException | JsonParseException e) {
-                AlpakaAddons.LOGGER.warn("Couldn't read the pet heads; asking for them again", e);
-            }
+        // A page of pets brings dozens of answers within a second; they share one save shortly after
+        // instead of each writing the whole file.
+        if (SAVE_PENDING.compareAndSet(false, true)) {
+            CompletableFuture.delayedExecutor(SAVE_DELAY_MS, TimeUnit.MILLISECONDS).execute(PetIcons::save);
         }
-        return textures;
     }
 
-    private static synchronized void save() {
-        try {
-            AtomicJsonFile.write(file(), GSON.toJson(textures));
-        } catch (IOException e) {
-            AlpakaAddons.LOGGER.warn("Couldn't save the pet heads", e);
+    /**
+     * The known textures, read from the file the first time. Asked for per pet per frame on the
+     * render thread, so once loaded it is handed out without taking the lock.
+     */
+    private static Map<String, String> textures() {
+        Map<String, String> loaded = textures;
+        if (loaded != null) return loaded;
+        synchronized (PetIcons.class) {
+            if (textures == null) {
+                Map<String, String> fresh = new ConcurrentHashMap<>();
+                try {
+                    String json = AtomicJsonFile.read(file());
+                    if (json != null) {
+                        Map<String, String> fromFile = GSON.fromJson(json, new TypeToken<Map<String, String>>() {}.getType());
+                        if (fromFile != null) fresh.putAll(fromFile);
+                    }
+                } catch (IOException | JsonParseException e) {
+                    AlpakaAddons.LOGGER.warn("Couldn't read the pet heads; asking for them again", e);
+                }
+                textures = fresh;
+            }
+            return textures;
+        }
+    }
+
+    /**
+     * Writes a snapshot of the textures, in the background. Only the writes share a lock, as two at
+     * once would share the temporary file; the render thread never waits on it.
+     */
+    private static void save() {
+        SAVE_PENDING.set(false);
+        synchronized (SAVE_LOCK) {
+            try {
+                AtomicJsonFile.write(file(), GSON.toJson(new HashMap<>(textures())));
+            } catch (IOException e) {
+                AlpakaAddons.LOGGER.warn("Couldn't save the pet heads", e);
+            }
         }
     }
 

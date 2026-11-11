@@ -3,7 +3,7 @@
   "id": "alpaka",
   "version": "${version}",
   "name": "Alpaka Addons",
-  "description": "Client-side quality-of-life for Hypixel SkyBlock: slayer tracking, a better chat, movable HUDs and a cleaner look. Sends nothing on your behalf.",
+  "description": "Client-side quality-of-life for Hypixel SkyBlock: slayer tracking, a better chat, movable HUDs and a cleaner look. Not affiliated with Hypixel.",
   "authors": [
     "Alpaka05"
   ],

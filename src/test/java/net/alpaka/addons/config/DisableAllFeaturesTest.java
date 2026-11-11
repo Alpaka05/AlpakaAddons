@@ -38,8 +38,8 @@ class DisableAllFeaturesTest {
             // General
             "allowApiCalls", "updateNotificationsEnabled", "customEscapeMenuEnabled", "customMainMenuEnabled",
             // Visuals
-            "fullbrightEnabled", "skyEffectsEnabled", "cleanBlazeEnabled", "blazeFirePitsEnabled", "stopBlazeSpinning",
-            "hideHurtOverlayEnabled", "hideMobDeathsEnabled", "hideEntityFire", "firstPersonFireStatic",
+            "fullbrightEnabled", "cleanBlazeEnabled", "blazeFirePitsEnabled", "stopBlazeSpinning",
+            "hideHurtOverlayEnabled", "hideMobDeathsEnabled", "hideVisualClutter", "hideEntityFire", "firstPersonFireStatic",
             "nameTagTextShadow", "showOwnNameTag", "renderHandInThirdPerson", "smoothPerspectiveEnabled",
             "disableFrontPerspective", "zoomEnabled", "containerBgFadeInEnabled", "inventorySnowEnabled",
             "scrollableTooltipsEnabled", "persistentItemNameEnabled", "oldMasterStarsEnabled",
@@ -52,18 +52,19 @@ class DisableAllFeaturesTest {
             // SkyBlock
             "visitorBazaarEnabled",
             "slayerDropTrackerEnabled", "hideHypixelDropMessage", "slayerRngDropGuildChatEnabled",
-            "hideSlayerChatMessages", "bossSpawnAlertEnabled", "bossCocoonAlertEnabled", "slayerTimerEnabled",
-            "slayerHudEnabled", "worldAgeJoinMessageEnabled", "partyInvitePromptEnabled",
+            "bossSpawnAlertEnabled", "bossCocoonAlertEnabled", "slayerTimerEnabled",
+            "slayerHudEnabled", "farmingHudEnabled", "worldAgeJoinMessageEnabled", "partyInvitePromptEnabled",
             "cacheResourcePackEnabled", "guildPrefixEnabled", "bridgeBotFormatterEnabled", "ragnarockEnabled",
             "onlyCritDamageEnabled", "ignoreFillerPanesEnabled", "deployableTimerEnabled", "dungeonMapEnabled", "leapMenuEnabled", "customAuctionHouseEnabled", "customBazaarEnabled",
             "marketPriceHistoryEnabled", "customSignInputEnabled", "chestValueEnabled",
-            "starredMobsHighlightEnabled",
+            "starredMobsHighlightEnabled", "teammateClassGlowEnabled",
             "dungeonSolversEnabled", "terminalSolversEnabled", "terminalCustomGui", "deviceSolversEnabled",
             "dungeonDoorHighlight",
             // Cosmetics
             "customNameTagEnabled", "chromaHatEnabled", "playerScaleEnabled", "customDamageTagsEnabled",
             // Utility and sounds
-            "alwaysSprintEnabled", "keepCursorPositionEnabled", "customSoundsEnabled", "muteVanillaSoundsInBlazeSlayer",
+            "exactSkillXpEnabled",
+            "alwaysSprintEnabled", "keepCursorPositionEnabled", "commandShortcutsEnabled", "inventoryButtonsEnabled", "customSoundsEnabled", "muteVanillaSoundsInBlazeSlayer",
             "customSoundButtonClick", "customSoundHotbarScroll", "customSoundInventoryOpenClose",
             "customSoundInventoryClick", "customSoundRareDrop", "customSoundNotification",
             "customSoundPlayerHurt", "customSoundBlazeDeath", "customSoundZombieRemedy",
@@ -100,20 +101,20 @@ class DisableAllFeaturesTest {
             "itemSwingTranslationDisabled", "itemSwingAlwaysFinishEnabled",
             // Wide Health Bar, Always Sprint, Price History
             "wideHealthBarCentered", "wideHealthBarAbsorption", "alwaysSprintIgnoreGarden",
-            "marketPriceHistoryRange",
+            "marketPriceHistoryRange", "exactSkillXpRounded",
             // Chest Value: whether it shows, and how
             "chestValueShown", "chestValueIncludeInventory", "chestValueSide", "chestValueSort",
             "chestValueX", "chestValueY",
             // Dungeon solvers: each puzzle, terminal and device has its own switch under its master
             "solveThreeWeirdos", "solveQuiz", "solveTicTacToe", "solveHigherOrLower", "solveCreeperBeams",
             "solveTeleportMaze", "solveWaterBoard", "solveBoulder", "solveIceFill", "solveIcePath",
-            "waterBoardFastSolutions",
+            "waterBoardFastSolutions", "waterBoardLineToLever",
             "dungeonSolverLabels", "solvePanesTerminal", "solveRubixTerminal", "solveNumbersTerminal",
             "solveStartsWithTerminal", "solveSelectAllTerminal", "solveMelodyTerminal", "terminalHideOtherItems",
             "terminalPredictClicks", "terminalBlockWrongClicks", "terminalFirstClickGuard", "terminalRateGuard",
             "solveSimonSays", "solveArrowAlign", "solveLightsDevice", "solveSharpshooter",
             // HUD style: how things look, like the fonts and colors
-            "hudBlurAll", "hudSmoothFontAll", "slayerHudBlur", "slayerHudSmoothFont", "slayerTimerHudBlur",
+            "hudBlurAll", "hudSmoothFontAll", "slayerHudBlur", "slayerHudSmoothFont", "farmingHudBlur", "farmingHudSmoothFont", "slayerTimerHudBlur",
             "slayerTimerHudSmoothFont", "performanceHudBlur", "performanceHudSmoothFont", "inventoryHudBlur",
             "notificationBlur", "notificationSmoothFont", "menuFontInChat", "menuFontInScoreboard",
             // Values

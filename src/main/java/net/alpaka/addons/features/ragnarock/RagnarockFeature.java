@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.ragnarock;
 
+import net.alpaka.addons.utils.ItemData;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
@@ -125,12 +126,27 @@ public final class RagnarockFeature {
         } else {
             while (end < text.length() && Character.isWhitespace(text.charAt(end))) end++;
         }
-        int secs = m.group(1) != null ? Integer.parseInt(m.group(1)) : 0;
+        int secs = 0;
+        if (m.group(1) != null) {
+            // An action bar with a number too long for an int is not the cast; leave it alone.
+            try {
+                secs = Integer.parseInt(m.group(1));
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
         return new Match(start, end, secs);
     }
 
     private static Component onActionBar(Component message) {
         if (!AlpakaConfig.instance.ragnarockEnabled) {
+            seconds = -1;
+            return message;
+        }
+        // Action bars come several times a second everywhere; one without the word cannot match,
+        // so it takes the no-match path below without splitting the message into pieces.
+        if (!message.getString().contains("CASTING")) {
+            if (seconds > 0) countdownEndedAt = System.currentTimeMillis();
             seconds = -1;
             return message;
         }
@@ -225,7 +241,7 @@ public final class RagnarockFeature {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return false;
         CustomData data = mc.player.getMainHandItem().get(DataComponents.CUSTOM_DATA);
-        return data != null && ITEM_ID.equals(data.copyTag().getStringOr("id", ""));
+        return data != null && ITEM_ID.equals(ItemData.view(data).getStringOr("id", ""));
     }
 
     /** The action bar rebuilt piece by piece with its styles, minus the characters in [start, end). */

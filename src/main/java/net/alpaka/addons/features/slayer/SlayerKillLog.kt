@@ -394,6 +394,13 @@ object SlayerKillLog {
             return
         } catch (e: Exception) {
             pending = null
+            // Files that were written before one failed must not get their lines again on the retry.
+            val partial = (e.cause ?: e) as? LogFiles.PartialWrite
+            if (partial != null) {
+                val written = java.util.Collections.newSetFromMap(java.util.IdentityHashMap<Row, Boolean>())
+                written.addAll(partial.written)
+                unwritten.removeAll { it in written }
+            }
             AlpakaAddons.LOGGER.warn("Could not write the slayer log; {} lines are kept for the next try",
                 unwritten.size, e.cause ?: e)
             nextAttemptMs = System.currentTimeMillis() + RETRY_PAUSE_MS
@@ -496,14 +503,29 @@ object SlayerKillLog {
             }
         }
 
-        /** Appends the rows to their month's file of their kind, one write per file. */
+        /** A write where some files failed; [written] are the rows that did reach their file. */
+        class PartialWrite(val written: List<Row>, cause: Throwable) : java.io.IOException(cause.message, cause)
+
+        /**
+         * Appends the rows to their month's file of their kind, one write per file. A file that
+         * can't be written (open in a spreadsheet that locks it) does not stop the others; the
+         * failure is thrown as [PartialWrite] at the end, naming the rows that were written.
+         */
         fun append(folder: File, machine: String, rows: List<Row>) {
             if (!folder.isDirectory) java.nio.file.Files.createDirectories(folder.toPath())
+            val written = ArrayList<Row>()
+            var failure: Throwable? = null
             for ((key, group) in rows.groupBy { it.kind to it.month }) {
                 val (kind, month) = key
-                val file = resolve(folder, kind, month, machine)
-                write(file, kind, group.joinToString("") { it.line + "\r\n" })
+                try {
+                    val file = resolve(folder, kind, month, machine)
+                    write(file, kind, group.joinToString("") { it.line + "\r\n" })
+                    written.addAll(group)
+                } catch (e: Exception) {
+                    if (failure == null) failure = e else failure.addSuppressed(e)
+                }
             }
+            failure?.let { throw PartialWrite(written, it) }
         }
 
         /**

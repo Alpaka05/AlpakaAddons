@@ -45,9 +45,8 @@ public class ZoomFeature {
         ZOOM_KEY = AlpakaKeyBinds.register(new KeyMapping(
                 "key.alpaka.zoom",
                 InputConstants.Type.KEYSYM,
-                // C, as players know it from OptiFine. Vanilla also uses C, but only for saving a
-                // hotbar in creative mode.
-                GLFW.GLFW_KEY_C,
+                // Unbound until the player picks a key, like every key of the mod.
+                GLFW.GLFW_KEY_UNKNOWN,
                 net.alpaka.addons.client.AlpakaKeyCategory.CATEGORY
         ));
 

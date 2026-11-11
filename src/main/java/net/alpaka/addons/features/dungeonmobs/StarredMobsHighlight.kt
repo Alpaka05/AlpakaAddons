@@ -1,5 +1,7 @@
 package net.alpaka.addons.features.dungeonmobs
 
+import net.alpaka.addons.utils.EntityCache
+import net.alpaka.addons.utils.EntityColors
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.features.slayer.BossHighlightRenderState
 import net.alpaka.addons.utils.AlpakaPerf
@@ -28,6 +30,8 @@ import net.minecraft.world.phys.AABB
  * the mob is the one just below it, found the way Boss Highlight finds a slayer boss under its
  * owner line. Minibosses are player NPCs, also known by name, as Skyblocker does.
  *
+ * Only mobs in the player's line of sight are highlighted, never one behind a wall.
+ *
  * Only during the clear: in the boss room the starred mobs are gone and the boss has its own
  * features. Nothing runs outside a dungeon.
  */
@@ -49,7 +53,7 @@ object StarredMobsHighlight {
     private var rescanIn = 0
 
     /** Entity id to ARGB highlight color, for this tick. */
-    private val targets = HashMap<Int, Int>()
+    private val targets = EntityColors()
 
     /** Ids of the mobs found under starred name tags by the last scan. */
     private val starredIds = HashSet<Int>()
@@ -64,7 +68,7 @@ object StarredMobsHighlight {
      * Name tag stand id to whether it is hidden, together with the name it was decided for. Hypixel
      * sets a new name whenever the health changes, so a stale entry is told by the name object.
      */
-    private val hiddenTags = HashMap<Int, Pair<Component, Boolean>>()
+    private val hiddenTags = EntityCache<Pair<Component, Boolean>>()
 
     @JvmStatic
     fun register() {
@@ -85,6 +89,7 @@ object StarredMobsHighlight {
         targets.clear()
         starredIds.clear()
         hiddenTags.clear()
+        starredTags.clear()
         hideNames = false
         rescanIn = 0
     }
@@ -107,13 +112,17 @@ object StarredMobsHighlight {
         if (--rescanIn <= 0) {
             rescanIn = RESCAN_TICKS
             rescan(level, player)
-            if (hiddenTags.size > 512) hiddenTags.clear()
+            if (hiddenTags.size() > 512) hiddenTags.clear()
+            if (starredTags.size() > 512) starredTags.clear()
         }
 
+        // Only mobs the player can see: the outline glow is drawn through walls, and highlighting a
+        // mob behind one is the mob ESP Hypixel bans. Checked every tick, so a mob lights up as it
+        // comes into view and goes dark behind the next corner.
         val color = cfg.starredMobsHighlightColor
         for (id in starredIds) {
             val mob = level.getEntity(id) as? LivingEntity ?: continue
-            if (!mob.isRemoved && mob.isAlive) targets[id] = color
+            if (!mob.isRemoved && mob.isAlive && player.hasLineOfSight(mob)) targets.put(id, color)
         }
     }
 
@@ -126,11 +135,25 @@ object StarredMobsHighlight {
                 continue
             }
             if (entity !is ArmorStand || !entity.isAlive || !entity.hasCustomName()) continue
-            val name = entity.customName?.string ?: continue
-            if (!StarredMobs.isStarredTag(name)) continue
+            val name = entity.customName ?: continue
+            if (!isStarred(entity.id, name)) continue
             mobUnder(level, entity, player)?.let { starredIds.add(it.id) }
         }
     }
+
+    /**
+     * [StarredMobs.isStarredTag] for a stand's name, kept with the name object it was read from: the
+     * rescan reads every named stand, and most of them keep their name between rescans.
+     */
+    private fun isStarred(id: Int, name: Component): Boolean {
+        val cached = starredTags.get(id)
+        if (cached != null && cached.first === name) return cached.second
+        val starred = StarredMobs.isStarredTag(name.string)
+        starredTags.put(id, name to starred)
+        return starred
+    }
+
+    private val starredTags = EntityCache<Pair<Component, Boolean>>()
 
     /**
      * The mob a name tag floats over. Hypixel spawns a mob's name tag straight after the mob, so the
@@ -169,14 +192,15 @@ object StarredMobsHighlight {
 
     private fun isNpc(player: Player): Boolean = player.uuid.version() == 2
 
-    /** The highlight color of [entity] this tick, or null when it has none. */
-    private fun colorOf(entity: Entity): Int? = if (targets.isEmpty()) null else targets[entity.id]
+    /** Whether [entity] has a highlight color this tick; its color is then [targets]' value for it. */
+    private fun highlighted(entity: Entity): Boolean = !targets.isEmpty() && targets.has(entity.id)
 
     /** Called from EntityRendererMixin after Boss Highlight: the outline style. */
     @JvmStatic
     fun applyOutline(entity: Entity, state: EntityRenderState) {
         if (style != EntityHighlight.STYLE_OUTLINE) return
-        EntityHighlight.outline(state, colorOf(entity) ?: return)
+        if (!highlighted(entity)) return
+        EntityHighlight.outline(state, targets.get(entity.id))
     }
 
     /**
@@ -186,7 +210,8 @@ object StarredMobsHighlight {
     @JvmStatic
     fun applyOverlay(entity: Entity, state: BossHighlightRenderState) {
         if (style != EntityHighlight.STYLE_OVERLAY) return
-        EntityHighlight.overlay(state, colorOf(entity) ?: return)
+        if (!highlighted(entity)) return
+        EntityHighlight.overlay(state, targets.get(entity.id))
     }
 
     /** Whether [entity] is the name tag of a mob without a star, to be left undrawn. */
@@ -194,10 +219,10 @@ object StarredMobsHighlight {
     fun shouldHideEntity(entity: Entity): Boolean {
         if (!hideNames || entity !is ArmorStand || !entity.isInvisible) return false
         val name = entity.customName ?: return false
-        val cached = hiddenTags[entity.id]
+        val cached = hiddenTags.get(entity.id)
         if (cached != null && cached.first === name) return cached.second
         val hide = StarredMobs.isPlainMobTag(name.string)
-        hiddenTags[entity.id] = name to hide
+        hiddenTags.put(entity.id, name to hide)
         return hide
     }
 }

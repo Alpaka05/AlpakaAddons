@@ -125,11 +125,13 @@ public final class PerformanceHudRenderer {
 
     private static float drawPart(GuiGraphicsExtractor graphics, Font font, Style style, boolean shadow, float x,
                                   boolean first, String label, RollingValue rolling, long now) {
-        String text = first ? label : "  " + label;
-        RollingValue.text(graphics, font, text, style, LABEL, 1.0f, x, 0.0f, shadow);
-        x += RollingValue.width(font, text, style);
+        String text = first ? label : SPACED.computeIfAbsent(label, l -> "  " + l);
+        x += RollingValue.label(graphics, font, text, style, LABEL, x, shadow);
         return x + rolling.draw(graphics, font, style, x, now, shadow);
     }
+
+    /** "  FPS " and the like, built once rather than on every frame of a roll. */
+    private static final java.util.Map<String, String> SPACED = new java.util.HashMap<>();
 
     private static boolean anyPartShown() {
         AlpakaConfig cfg = AlpakaConfig.instance;
@@ -162,7 +164,7 @@ public final class PerformanceHudRenderer {
         graphics.pose().scale(scale, scale);
         AlpakaConfig cfg = AlpakaConfig.instance;
         if (cfg.blurOn(cfg.performanceHudBlur)) {
-            HudPanel.aroundText(graphics, font.width(text), 9, scale);
+            HudPanel.aroundText(graphics, width(font, text), 9, scale);
         }
         Style style = cfg.smoothOn(cfg.performanceHudSmoothFont) ? GuiFont.style() : Style.EMPTY;
         if (!drawRolling(graphics, font, style, HudPanel.TEXT_SHADOW)) {
@@ -171,8 +173,27 @@ public final class PerformanceHudRenderer {
         graphics.pose().popMatrix();
     }
 
+    /**
+     * The text's width, measured once per text: the text is cached and rebuilt only when a number
+     * changes, but it was measured again every frame (twice with blur on).
+     */
+    private static int width(Font font, Component text) {
+        if (text != widthOf || font != widthFont || widthGeneration != net.alpaka.addons.client.gui.AlpakaStyle.fontGeneration) {
+            widthOf = text;
+            widthFont = font;
+            widthGeneration = net.alpaka.addons.client.gui.AlpakaStyle.fontGeneration;
+            measuredWidth = font.width(text);
+        }
+        return measuredWidth;
+    }
+
+    private static Component widthOf;
+    private static Font widthFont;
+    private static int widthGeneration;
+    private static int measuredWidth;
+
     public static int getWidth(Font font, float scale) {
-        return anyPartShown() ? (int) Math.ceil(font.width(text()) * scale) : 0;
+        return anyPartShown() ? (int) Math.ceil(width(font, text()) * scale) : 0;
     }
 
     public static int getHeight(float scale) {

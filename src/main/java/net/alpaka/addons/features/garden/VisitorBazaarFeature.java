@@ -2,6 +2,7 @@ package net.alpaka.addons.features.garden;
 
 import net.alpaka.addons.compliance.Outbound;
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.utils.SkyblockUtils;
 import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -27,11 +28,16 @@ import java.util.regex.Pattern;
  * Hypixel doesn't mark which of several required items is missing, so the inventory is counted:
  * the click opens the first item the inventory doesn't hold enough of, and only moves on to the next
  * once that one is complete.
+ *
+ * An Ironman profile can't use the bazaar, so there the click opens the item's recipe instead.
  */
 public final class VisitorBazaarFeature {
     static final String ACCEPT_OFFER = "Accept Offer";
     static final String ITEMS_REQUIRED = "Items Required:";
     static final String MISSING = "Missing items to accept!";
+
+    /** The symbol Hypixel puts after an Ironman profile's name and the player's own in the tab list. */
+    static final String IRONMAN = "♲";
 
     private static final Pattern FORMATTING = Pattern.compile("§.");
     /** The amount Hypixel writes after the item, such as " x13" or " x1,280". */
@@ -53,8 +59,13 @@ public final class VisitorBazaarFeature {
             Pick pick = pick(offer, VisitorBazaarFeature::inInventory);
             // With several items the line says which one the click opens.
             String target = offer.size() > 1 ? ": " + pick.item() : "";
-            lines.add(Component.literal("Click to Open Bazaar Page" + target).withStyle(ChatFormatting.YELLOW)
-                    .append(Component.literal(" (copies " + pick.amount() + ")").withStyle(ChatFormatting.DARK_GRAY)));
+            if (onIronman()) {
+                lines.add(Component.literal("Click to Open Recipe" + target).withStyle(ChatFormatting.YELLOW)
+                        .append(Component.literal(" (" + pick.amount() + " needed)").withStyle(ChatFormatting.DARK_GRAY)));
+            } else {
+                lines.add(Component.literal("Click to Open Bazaar Page" + target).withStyle(ChatFormatting.YELLOW)
+                        .append(Component.literal(" (copies " + pick.amount() + ")").withStyle(ChatFormatting.DARK_GRAY)));
+            }
         });
     }
 
@@ -67,18 +78,66 @@ public final class VisitorBazaarFeature {
         List<Required> offer = offer(slot.getItem());
         if (offer == null) return false;
         Pick pick = pick(offer, VisitorBazaarFeature::inInventory);
-        Minecraft.getInstance().keyboardHandler.setClipboard(Integer.toString(pick.amount()));
-        Outbound.command("bz " + pick.item(), Outbound.Cause.MENU_CLICK);
+        if (onIronman()) {
+            Outbound.command("recipe " + pick.item(), Outbound.Cause.MENU_CLICK);
+        } else {
+            Minecraft.getInstance().keyboardHandler.setClipboard(Integer.toString(pick.amount()));
+            Outbound.command("bz " + pick.item(), Outbound.Cause.MENU_CLICK);
+        }
         return true;
     }
 
     private static List<Required> offer(ItemStack stack) {
-        if (stack.isEmpty() || !ACCEPT_OFFER.equals(strip(stack.getHoverName().getString()))) return null;
+        if (stack.isEmpty()) return null;
+        Component name = stack.getHoverName();
         ItemLore lore = stack.get(DataComponents.LORE);
-        if (lore == null) return null;
-        List<String> lines = new ArrayList<>(lore.lines().size());
-        for (Component line : lore.lines()) lines.add(line.getString());
-        return offer(stack.getHoverName().getString(), lines);
+        // The hovered offer is asked for every tooltip frame; its name and lore objects only change
+        // when the server sends the item again, and the answer depends on them alone.
+        LastOffer last = lastOffer;
+        if (last != null && name == last.name() && lore == last.lore()) return last.result();
+        List<Required> result = null;
+        if (ACCEPT_OFFER.equals(strip(name.getString())) && lore != null) {
+            List<String> lines = new ArrayList<>(lore.lines().size());
+            for (Component line : lore.lines()) lines.add(line.getString());
+            result = offer(name.getString(), lines);
+        }
+        lastOffer = new LastOffer(name, lore, result);
+        return result;
+    }
+
+    /**
+     * offer(ItemStack)'s last answer and what it was read from, as one object in one volatile field:
+     * vanilla also builds tooltips on background threads (search trees), so the three parts must
+     * never be seen half replaced.
+     */
+    private record LastOffer(Component name, ItemLore lore, List<Required> result) {}
+
+    private static volatile LastOffer lastOffer;
+
+    private static boolean onIronman() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        return player != null && isIronman(SkyblockUtils.getTabListLines(), player.getGameProfile().name());
+    }
+
+    /**
+     * Whether the tab list shows an Ironman profile: its "Profile:" line, or the player's own entry
+     * ("[312] Name ♲"), carries the Ironman symbol.
+     */
+    static boolean isIronman(List<String> tabLines, String playerName) {
+        for (String line : tabLines) {
+            if (!line.contains(IRONMAN)) continue;
+            if (line.startsWith("Profile:")) return true;
+            int at = line.indexOf(playerName);
+            int end = at + playerName.length();
+            // The whole name, not the start of a longer one ("Ab" in "Abc").
+            boolean whole = at >= 0 && (end == line.length() || !isNameChar(line.charAt(end)));
+            if (whole && line.indexOf(IRONMAN, end) >= end) return true;
+        }
+        return false;
+    }
+
+    private static boolean isNameChar(char c) {
+        return Character.isLetterOrDigit(c) || c == '_';
     }
 
     /** How many of an item, by its plain name, the player's inventory holds. */
@@ -89,10 +148,28 @@ public final class VisitorBazaarFeature {
         int count = 0;
         for (int i = 0; i < inventory.getContainerSize(); i++) {
             ItemStack stack = inventory.getItem(i);
-            if (!stack.isEmpty() && item.equals(strip(stack.getHoverName().getString()))) count += stack.getCount();
+            if (!stack.isEmpty() && item.equals(plainName(stack.getHoverName()))) count += stack.getCount();
         }
         return count;
     }
+
+    /**
+     * An item name without its codes, kept per name object on the client thread: the hovered offer
+     * counts the whole inventory every tooltip frame, and a name only changes as a new object.
+     * Tooltips built on background threads work it out directly.
+     */
+    private static String plainName(Component name) {
+        if (!Minecraft.getInstance().isSameThread()) return strip(name.getString());
+        String plain = PLAIN_NAMES.get(name);
+        if (plain == null) {
+            plain = strip(name.getString());
+            if (PLAIN_NAMES.size() >= 256) PLAIN_NAMES.clear();
+            PLAIN_NAMES.put(name, plain);
+        }
+        return plain;
+    }
+
+    private static final java.util.Map<Component, String> PLAIN_NAMES = new java.util.IdentityHashMap<>();
 
     /** The required items of an Accept Offer that lacks items, or null for any other item. */
     static List<Required> offer(String name, List<String> lore) {
@@ -141,6 +218,8 @@ public final class VisitorBazaarFeature {
     }
 
     private static String strip(String text) {
+        // Asked for every tooltip frame and every inventory slot; most names carry no codes.
+        if (text.indexOf('§') < 0) return text.trim();
         return FORMATTING.matcher(text).replaceAll("").trim();
     }
 }

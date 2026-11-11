@@ -25,12 +25,12 @@ public abstract class KeyboardInputMixin extends ClientInput {
     private void alpaka$alwaysSprint(CallbackInfo ci) {
         if (!AlpakaConfig.instance.alwaysSprintEnabled) return;
         if (net.minecraft.client.Minecraft.getInstance().options.toggleSprint().get()) return;
+        Input keys = this.keyPresses;
+        // The keys first: the Garden check is the expensive one, and only matters while walking.
+        if (!keys.forward() || keys.sprint()) return;
         if (AlpakaConfig.instance.alwaysSprintIgnoreGarden
                 && net.alpaka.addons.utils.SkyblockUtils.isOnGarden()) return;
-        Input keys = this.keyPresses;
-        if (keys.forward() && !keys.sprint()) {
-            this.keyPresses = new Input(keys.forward(), keys.backward(), keys.left(), keys.right(),
-                    keys.jump(), keys.shift(), true);
-        }
+        this.keyPresses = new Input(keys.forward(), keys.backward(), keys.left(), keys.right(),
+                keys.jump(), keys.shift(), true);
     }
 }

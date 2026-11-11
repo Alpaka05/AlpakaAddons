@@ -67,7 +67,7 @@ object EntityHighlight {
 
     /** Draws a box around the hitbox of each entity in [targets] (entity id to ARGB color). */
     @JvmStatic
-    fun submitHitboxes(context: LevelRenderContext, targets: Map<Int, Int>) {
+    fun submitHitboxes(context: LevelRenderContext, targets: EntityColors) {
         val mc = Minecraft.getInstance()
         val level = mc.level ?: return
         val partialTick = mc.deltaTracker.getGameTimeDeltaPartialTick(false)
@@ -75,20 +75,23 @@ object EntityHighlight {
 
         // Worked out now, relative to the camera in double precision; the geometry is built later
         // in the frame, and far from the origin a float cannot hold an absolute position finely.
-        val boxes = ArrayList<Pair<AABB, Int>>(targets.size)
-        for ((id, color) in targets) {
-            val entity = level.getEntity(id) ?: continue
+        val boxes = ArrayList<Hitbox>(targets.size())
+        targets.forEach { id, color ->
+            val entity = level.getEntity(id) ?: return@forEach
             val pos = entity.getPosition(partialTick)
             val box = entity.boundingBox
                 .move(pos.x - entity.x - camera.x, pos.y - entity.y - camera.y, pos.z - entity.z - camera.z)
-            boxes.add(box to color)
+            boxes.add(Hitbox(box, color))
         }
         if (boxes.isEmpty()) return
 
         context.submitNodeCollector().submitCustomGeometry(context.poseStack(), RenderTypes.debugQuads()) { pose, buffer ->
-            for ((box, color) in boxes) drawBox(buffer, pose, box, color)
+            for (hitbox in boxes) drawBox(buffer, pose, hitbox.box, hitbox.color)
         }
     }
+
+    /** One box to draw and its color, unboxed (a Pair would box the color on every entity and frame). */
+    private class Hitbox(val box: AABB, val color: Int)
 
     /** The twelve edges of [box], each as a thin bar. */
     private fun drawBox(buffer: VertexConsumer, pose: PoseStack.Pose, box: AABB, color: Int) {
@@ -98,14 +101,38 @@ object EntityHighlight {
         val x1 = box.maxX.toFloat()
         val y1 = box.maxY.toFloat()
         val z1 = box.maxZ.toFloat()
+        // Spelled out rather than looped over floatArrayOf(...): that allocated five arrays per box
+        // per frame. Same edges in the same order.
+        xBar(buffer, pose, color, x0, x1, y0, z0)
+        xBar(buffer, pose, color, x0, x1, y0, z1)
+        zBar(buffer, pose, color, z0, z1, y0, x0)
+        zBar(buffer, pose, color, z0, z1, y0, x1)
+        xBar(buffer, pose, color, x0, x1, y1, z0)
+        xBar(buffer, pose, color, x0, x1, y1, z1)
+        zBar(buffer, pose, color, z0, z1, y1, x0)
+        zBar(buffer, pose, color, z0, z1, y1, x1)
+        yBar(buffer, pose, color, y0, y1, x0, z0)
+        yBar(buffer, pose, color, y0, y1, x0, z1)
+        yBar(buffer, pose, color, y0, y1, x1, z0)
+        yBar(buffer, pose, color, y0, y1, x1, z1)
+    }
+
+    /** The edge along x at height [y] and depth [z]. */
+    private fun xBar(buffer: VertexConsumer, pose: PoseStack.Pose, color: Int, x0: Float, x1: Float, y: Float, z: Float) {
         val e = EDGE
-        for (y in floatArrayOf(y0, y1)) {
-            for (z in floatArrayOf(z0, z1)) bar(buffer, pose, color, x0 - e, y - e, z - e, x1 + e, y + e, z + e)
-            for (x in floatArrayOf(x0, x1)) bar(buffer, pose, color, x - e, y - e, z0 - e, x + e, y + e, z1 + e)
-        }
-        for (x in floatArrayOf(x0, x1)) {
-            for (z in floatArrayOf(z0, z1)) bar(buffer, pose, color, x - e, y0 - e, z - e, x + e, y1 + e, z + e)
-        }
+        bar(buffer, pose, color, x0 - e, y - e, z - e, x1 + e, y + e, z + e)
+    }
+
+    /** The edge along z at height [y] and side [x]. */
+    private fun zBar(buffer: VertexConsumer, pose: PoseStack.Pose, color: Int, z0: Float, z1: Float, y: Float, x: Float) {
+        val e = EDGE
+        bar(buffer, pose, color, x - e, y - e, z0 - e, x + e, y + e, z1 + e)
+    }
+
+    /** The edge along y at side [x] and depth [z]. */
+    private fun yBar(buffer: VertexConsumer, pose: PoseStack.Pose, color: Int, y0: Float, y1: Float, x: Float, z: Float) {
+        val e = EDGE
+        bar(buffer, pose, color, x - e, y0 - e, z - e, x + e, y1 + e, z + e)
     }
 
     /** A solid cuboid from (ax, ay, az) to (bx, by, bz): six faces. */

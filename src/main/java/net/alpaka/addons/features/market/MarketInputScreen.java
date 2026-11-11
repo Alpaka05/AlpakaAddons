@@ -4,6 +4,7 @@ import net.alpaka.addons.client.gui.AlpakaStyle;
 import net.alpaka.addons.client.gui.EditableText;
 import net.alpaka.addons.client.gui.GuiFont;
 import net.alpaka.addons.client.gui.ModernGuiUtils;
+import net.alpaka.addons.compat.MacOSInputFixesCompat;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.mixin.AbstractSignEditScreenAccessor;
 import net.alpaka.addons.utils.SkyblockUtils;
@@ -34,7 +35,8 @@ import java.util.List;
  * broken at a space (see {@link SignPrompt#split}) - so the lines are always ones a player could
  * have typed into the vanilla sign. A price or an amount goes in plain digits, "4000000" for "4m"
  * (see {@link SignPrompt#answer}). Cancel and Escape empty the answer first, which Hypixel takes as
- * no answer. The chips only fill the field; the player still confirms.
+ * no answer. The chips only fill the field; the player still confirms. The paste button, the
+ * Lowest BIN prices and the recent prices confirm at once, as the player's click.
  */
 public class MarketInputScreen extends SignEditScreen {
     private static final int HEADER_H = AlpakaStyle.HEADER_H;
@@ -218,14 +220,17 @@ public class MarketInputScreen extends SignEditScreen {
         return !chips().isEmpty();
     }
 
-    /** What the chips put into the field: recent searches, or common amounts and suffixes. */
+    /**
+     * What the chips put into the field: recent searches, common amounts, or the prices confirmed
+     * last (their labels; {@link #drawChips} confirms those on click).
+     */
     private List<String> chips() {
         return switch (prompt.type()) {
             case SEARCH -> Markets.recentSearches(context);
             // Stack sizes make sense for the Bazaar's orders; an amount elsewhere, coins for the
             // bank say, gets no suggestions.
             case AMOUNT -> context == MarketKind.BAZAAR ? List.of("64", "160", "640", "1k") : List.of();
-            case PRICE -> List.of("k", "m", "b");
+            case PRICE -> Markets.recentPrices(context).stream().map(MarketInputScreen::priceLabel).toList();
             default -> List.of();
         };
     }
@@ -601,32 +606,37 @@ public class MarketInputScreen extends SignEditScreen {
     }
 
     private void drawChips(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w) {
-        boolean suffixes = prompt.type() == SignPrompt.Type.PRICE;
+        boolean prices = prompt.type() == SignPrompt.Type.PRICE;
+        List<Double> recentPrices = prices ? Markets.recentPrices(context) : List.of();
         String label = switch (prompt.type()) {
-            case SEARCH -> "Recent";
-            case PRICE -> "Add";
+            case SEARCH, PRICE -> "Recent";
             default -> "Quick";
         };
         graphics.text(this.font, GuiFont.text(label), x + 2, y + 3, AlpakaStyle.TEXT_MUTED, false);
         int cx = x + GuiFont.width(this.font, label) + 10;
-        for (String chip : chips()) {
+        List<String> chips = chips();
+        for (int i = 0; i < chips.size(); i++) {
+            String chip = chips.get(i);
             String shown = AlpakaStyle.ellipsize(this.font, chip, 80);
             int cw = GuiFont.width(this.font, shown) + 12;
             if (cx + cw > x + w) break;
             boolean hover = AlpakaStyle.inside(mouseX, mouseY, cx, y, cw, CHIP_H);
             ModernGuiUtils.drawRoundedRect(graphics, cx, y, cw, CHIP_H, CHIP_H / 2, hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW);
-            graphics.text(this.font, GuiFont.text(shown), cx + 6, y + 3, hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT, false);
-            hits.add(new Hit(cx, y, cw, CHIP_H, mx -> {
-                if (suffixes) append(chip);
-                else replace(chip);
-            }, true));
+            graphics.text(this.font, GuiFont.text(shown), cx + 6, y + 3, hover ? (prices ? MarketInk.ink(COIN) : AlpakaStyle.TEXT) : AlpakaStyle.TEXT_SOFT, false);
+            if (prices) {
+                double coins = recentPrices.get(i);
+                hits.add(new Hit(cx, y, cw, CHIP_H, mx -> choosePrice(coins), true));
+            } else {
+                hits.add(new Hit(cx, y, cw, CHIP_H, mx -> replace(chip), true));
+            }
             cx += cw + 4;
         }
     }
 
     /**
      * The row of prices taken from the item's lowest BIN: that price and a little under it, each
-     * one click into the field. Says why instead where there is no price to offer.
+     * one click to put it in the field and confirm it. Says why instead where there is no price to
+     * offer.
      */
     private void drawLowestBin(GuiGraphicsExtractor graphics, int mouseX, int mouseY, int x, int y, int w) {
         String label = "Lowest BIN";
@@ -650,7 +660,7 @@ public class MarketInputScreen extends SignEditScreen {
                         boolean hover = AlpakaStyle.inside(mouseX, mouseY, cx, y, cw, CHIP_H);
                         ModernGuiUtils.drawRoundedRect(graphics, cx, y, cw, CHIP_H, CHIP_H / 2, hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW);
                         graphics.text(this.font, GuiFont.text(chip.label()), cx + 6, y + 3, hover ? MarketInk.ink(COIN) : AlpakaStyle.TEXT_SOFT, false);
-                        hits.add(new Hit(cx, y, cw, CHIP_H, mx -> replace(Coins.full(chip.coins())), true));
+                        hits.add(new Hit(cx, y, cw, CHIP_H, mx -> choosePrice(chip.coins()), true));
                         cx += cw + 4;
                     }
                 }
@@ -702,6 +712,22 @@ public class MarketInputScreen extends SignEditScreen {
         }
     }
 
+    /** A recent price's chip: short, but exact below 1,000, where a Bazaar price has decimals. */
+    private static String priceLabel(double coins) {
+        return coins < 1000 ? Coins.plain(coins, true) : Coins.compact(coins);
+    }
+
+    /**
+     * Puts a price (Lowest BIN or recent) in the field and confirms it, as the paste button does. If
+     * it does not fit the sign the field flashes and nothing is sent.
+     */
+    private void choosePrice(double coins) {
+        String value = coins == Math.rint(coins) ? Coins.full(coins) : Coins.plain(coins, true);
+        replace(value);
+        if (text().equals(value)) confirm();
+        else fullAtMs = System.currentTimeMillis();
+    }
+
     /** Sets a speed row's speed: into the field, then confirmed as if typed and Enter pressed. */
     private void chooseSpeed(int index) {
         if (index < 0 || index >= RancherSpeeds.GROUPS.size()) return;
@@ -717,18 +743,10 @@ public class MarketInputScreen extends SignEditScreen {
         edit(() -> input.setText(value));
     }
 
-    /** Puts a suffix at the end of the amount, replacing one that is already there. */
-    private void append(String suffix) {
-        String text = text().trim();
-        if (!text.isEmpty() && Character.isLetter(text.charAt(text.length() - 1))) text = text.substring(0, text.length() - 1);
-        if (text.isEmpty()) return;
-        String value = text + suffix;
-        edit(() -> input.setText(value));
-    }
-
     /**
      * Puts the clipboard's first line in the field, as Ctrl+V would, and confirms it. Nothing is
-     * sent if the clipboard is empty or does not fit the sign; the field then shows why.
+     * sent if the clipboard is empty or does not fit the sign; the field then flashes and keeps
+     * what it had.
      */
     private void pasteAndConfirm() {
         String clip = Minecraft.getInstance().keyboardHandler.getClipboard();
@@ -762,6 +780,10 @@ public class MarketInputScreen extends SignEditScreen {
         }
         closing = true;
         if (prompt.type() == SignPrompt.Type.SEARCH) Markets.rememberSearch(context, text());
+        if (prompt.type() == SignPrompt.Type.PRICE) {
+            Double coins = Coins.parseInput(text());
+            if (coins != null) Markets.rememberPrice(context, coins);
+        }
         close(answer);
     }
 
@@ -824,6 +846,9 @@ public class MarketInputScreen extends SignEditScreen {
     @Override
     public boolean keyPressed(KeyEvent event) {
         boolean open = dropdownOpen() && !suggestions.isEmpty();
+        // On a Mac, MacOS Input Fixes hands Escape over twice; acting on both would close the list
+        // and then cancel the whole bar with a single press.
+        if (MacOSInputFixesCompat.isDiscardedCopy(event.key())) return true;
         if (event.isEscape()) {
             // The first Escape closes the list, the next one the bar.
             if (dropdownOpen()) {
@@ -884,6 +909,22 @@ public class MarketInputScreen extends SignEditScreen {
     @Override
     public void onClose() {
         cancel();
+    }
+
+    /**
+     * Vanilla closes the editor through its Done path once the sign is gone or the player is too far
+     * from it, and mods that hook Done write into the lines then (see {@link #close}). The bar checks
+     * the same things itself and cancels instead. Done is private, so this replaces vanilla's check
+     * in tick rather than overriding Done.
+     */
+    @Override
+    public void tick() {
+        net.minecraft.client.player.LocalPlayer player = this.minecraft.player;
+        if (player == null || this.sign.isRemoved() || this.sign.playerIsTooFarAwayToEdit(player.getUUID())) {
+            cancel();
+            return;
+        }
+        super.tick();
     }
 
     // ---- For the screenshot tour ----------------------------------------------------------------

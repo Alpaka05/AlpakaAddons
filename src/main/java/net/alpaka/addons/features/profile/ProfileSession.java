@@ -21,7 +21,8 @@ public final class ProfileSession {
 
     public enum State { LOADING, READY, FAILED }
 
-    public record ProfileRef(String id, String name, String gameMode, boolean selected) {}
+    /** A profile of the player's; {@code members} counts who is still on it, so above 1 it is a co-op. */
+    public record ProfileRef(String id, String name, String gameMode, boolean selected, int members) {}
 
     /** What was asked for: a name or a UUID. */
     public final String query;
@@ -117,9 +118,16 @@ public final class ProfileSession {
                 fail(new IllegalStateException("Elite sent no profile."));
                 return;
             }
-            ProfileData parsed = new ProfileData(object, playerName);
-            ProfileHistory.record(parsed);
-            if (own) previousVisit = ProfileHistory.visit(parsed);
+            ProfileData parsed;
+            try {
+                parsed = new ProfileData(object, playerName);
+                ProfileHistory.record(parsed);
+                if (own) previousVisit = ProfileHistory.visit(parsed);
+            } catch (RuntimeException e) {
+                // An answer shaped unlike what is expected must not leave the dashboard on Loading.
+                fail(e);
+                return;
+            }
             data = parsed;
             error = null;
             state = State.READY;
@@ -139,25 +147,45 @@ public final class ProfileSession {
 
     /**
      * The account's profiles worth showing, the selected one first and the others by name, as the
-     * game's profile menu has them. A Bingo profile only counts while a Bingo event runs: once it
-     * is over the profile is a leftover nobody looks at again. Should that leave nothing, everything
-     * is shown after all.
+     * game's profile menu has them. Elite keeps every profile it ever saw: one the player deleted
+     * comes back {@code deleted}, and one they left or were kicked from still lists them as a
+     * member, only no longer {@code active}. Neither is in the game's menu any more, so neither is
+     * here. A Bingo profile only counts while a Bingo event runs: once it is over the profile is a
+     * leftover nobody looks at again. Should that leave nothing, the Bingo ones are shown after all.
      */
     static List<ProfileRef> profiles(JsonElement account, JsonElement bingoEvent, long now) {
         boolean bingoRunning = bingoEvent != null
                 && Json.num(bingoEvent, "start", Double.MAX_VALUE) <= now && now <= Json.num(bingoEvent, "end", 0);
+        String uuid = Json.str(account, "id");
         List<ProfileRef> all = new ArrayList<>();
         List<ProfileRef> shown = new ArrayList<>();
         for (JsonElement p : Json.arr(account, "profiles")) {
             String id = Json.str(p, "profileId");
-            if (id == null || Json.bool(p, "wasRemoved")) continue;
-            ProfileRef ref = new ProfileRef(id, Json.str(p, "profileName"), Json.str(p, "gameMode"), Json.bool(p, "selected"));
+            if (id == null || Json.bool(p, "wasRemoved") || Json.bool(p, "deleted") || leftBy(p, uuid)) continue;
+            int members = 0;
+            for (JsonElement m : Json.arr(p, "members")) {
+                JsonElement active = m.isJsonObject() ? m.getAsJsonObject().get("active") : null;
+                if (active == null || !active.isJsonPrimitive() || active.getAsBoolean()) members++;
+            }
+            ProfileRef ref = new ProfileRef(id, Json.str(p, "profileName"), Json.str(p, "gameMode"), Json.bool(p, "selected"), members);
             all.add(ref);
             if (bingoRunning || !"bingo".equals(ref.gameMode())) shown.add(ref);
         }
         List<ProfileRef> refs = shown.isEmpty() ? all : shown;
         refs.sort(Comparator.comparing((ProfileRef r) -> !r.selected()).thenComparing(r -> r.name() == null ? "" : r.name()));
         return List.copyOf(refs);
+    }
+
+    /** Whether the player is still listed on the profile but no longer one of its members. */
+    private static boolean leftBy(JsonElement profile, String uuid) {
+        if (uuid == null) return false;
+        for (JsonElement m : Json.arr(profile, "members")) {
+            if (uuid.equals(Json.str(m, "uuid"))) {
+                JsonElement active = m.isJsonObject() ? m.getAsJsonObject().get("active") : null;
+                return active != null && active.isJsonPrimitive() && !active.getAsBoolean();
+            }
+        }
+        return false;
     }
 
     private String pickProfile() {
@@ -337,7 +365,8 @@ public final class ProfileSession {
             put(m, Metrics.NETWORTH, Json.num(p, "networth"), true);
             double kuudra = 0;
             for (var k : Json.obj(p, "kuudra").entrySet()) {
-                if (!k.getKey().startsWith("highest_wave") && k.getValue().isJsonPrimitive()) kuudra += k.getValue().getAsDouble();
+                double n = Json.num(k.getValue());
+                if (!k.getKey().startsWith("highest_wave") && !Double.isNaN(n)) kuudra += n;
             }
             if (kuudra > 0) m.put(Metrics.KUUDRA, kuudra);
             put(m, Metrics.TROPHY_FISH, Json.num(p, "trophy_fish.total_caught"), true);
@@ -429,9 +458,8 @@ public final class ProfileSession {
                     put(last, Metrics.CLASS + c, Json.num(e, "dungeons.class_levels." + c + ".xp"), false);
                 }
                 for (var skill : Json.obj(e, "skills").entrySet()) {
-                    if (skill.getValue().isJsonPrimitive()) {
-                        put(last, Metrics.SKILL + skill.getKey(), skill.getValue().getAsDouble(), true);
-                    }
+                    double xp = Json.num(skill.getValue());
+                    if (!Double.isNaN(xp)) put(last, Metrics.SKILL + skill.getKey(), xp, true);
                 }
             } else if (!"NoChange".equals(type)) {
                 continue;
@@ -519,8 +547,8 @@ public final class ProfileSession {
                 int counted = 0;
                 double levels = 0;
                 for (var e : skills.entrySet()) {
-                    if (!e.getValue().isJsonPrimitive()) continue;
-                    double xp = e.getValue().getAsDouble();
+                    double xp = Json.num(e.getValue());
+                    if (Double.isNaN(xp)) continue;
                     out.computeIfAbsent(Metrics.SKILL + e.getKey(), k -> new ArrayList<>()).add(new ProfileHistory.Point(t, xp));
                     if (e.getKey().equals("runecrafting") || e.getKey().equals("social")) continue;
                     levels += Math.floor(Levels.skill(e.getKey(), xp, maxLevels.getOrDefault(e.getKey(), 60)));

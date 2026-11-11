@@ -121,6 +121,8 @@ public final class DevScreenshotTour {
             screen("config-chat-peek-key", () -> AlpakaConfigScreen.openOn("Chat", "Chat Peek")),
             screen("config-zoom-key", () -> AlpakaConfigScreen.openOn("World", "Zoom")),
             screen("config-chest-value-key", () -> AlpakaConfigScreen.openOn("Markets", "Chest Value")),
+            screen("config-alignment-helper", () -> AlpakaConfigScreen.openOn("Garden", "Alignment Helper")),
+            screen("config-slot-highlight", () -> AlpakaConfigScreen.openOn("Tools", "Slot Highlight")),
             screen("config-damage-tags", () -> AlpakaConfigScreen.openOn("Cosmetics", "Custom Damage Tags")),
             screen("config-aura", () -> AlpakaConfigScreen.openOn("Cosmetics", "Aura")),
             screen("config-search", () -> new AlpakaConfigScreen(null, "blaze")),
@@ -139,8 +141,11 @@ public final class DevScreenshotTour {
             screen("config-tooltips", () -> AlpakaConfigScreen.openOn("Interface", "Scrollable Tooltips")),
             screen("config-menu-font", () -> AlpakaConfigScreen.openOn("Design", "Menu Font").withChoiceOpen()),
             screen("config-world", () -> AlpakaConfigScreen.openOn("World", "Block Overlay")),
-            screen("config-world-sky", () -> AlpakaConfigScreen.openOn("World", "Sky Effects")),
+            screen("config-world-clutter", () -> AlpakaConfigScreen.openOn("World", "Hide Visual Clutter")),
             screen("config-dungeon", () -> AlpakaConfigScreen.openOn("Dungeon", "Solvers")),
+            // Further down Solvers' settings: the Water Board ones below the puzzle list.
+            new Stop("config-dungeon-water-board", () -> scroll(0.75, 0.6, -6), () -> true, 30),
+            screen("config-dungeon-teammate-glow", () -> AlpakaConfigScreen.openOn("Dungeon", "Teammate Class Glow")),
             screen("config-dungeon-terminals", () -> AlpakaConfigScreen.openOn("Dungeon", "Terminal Solvers")),
             screen("config-viewmodel", () -> AlpakaConfigScreen.openOn("Viewmodel", "Viewmodel Modifiers")),
             // The wheel turned on over the settings in several goes, well past their end: the column
@@ -272,7 +277,8 @@ public final class DevScreenshotTour {
             profile("profile-networth", "Refraction", "NETWORTH"),
             profile("profile-pets", "Refraction", "PETS"),
             profile("profile-collections", "Refraction", "COLLECTIONS"),
-            profile("profile-more", "Refraction", "MORE"),
+            profile("profile-rift", "Refraction", "RIFT"),
+            profile("profile-chocolate", "Refraction", "CHOCOLATE"),
             profile("profile-midgame", "TimeDeo", "OVERVIEW"),
             new Stop("profile-midgame-lower", () -> Minecraft.getInstance().gui.setScreen(
                     net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenScrolled("TimeDeo", "OVERVIEW")), () -> true, 30),
@@ -365,6 +371,11 @@ public final class DevScreenshotTour {
                     () -> true, 10),
             new Stop("profile-page-mining-lower", () -> Minecraft.getInstance().gui.setScreen(
                     net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenSkill("Alpakaa", "mining", true)), () -> true, 30),
+            // The Museum with its items, which need a world for their icons, and one category.
+            profile("profile-museum", "Alpakaa", "MUSEUM"),
+            new Stop("profile-museum-combat", () -> Minecraft.getInstance().gui.setScreen(
+                    net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenDetail("Alpakaa", "MUSEUM", "combat")), () -> true, 120),
+            new Stop("profile-museum-tip", () -> placeMouse(0.36, 0.3), () -> true, 15),
             new Stop("profile-page-pets-missing", () -> Minecraft.getInstance().gui.setScreen(
                     net.alpaka.addons.features.profile.ProfileDashboardScreen.devOpenScrolled("Alpakaa", "PETS")), () -> true, 120),
             new Stop("profile-page-acc-missing", () -> {
@@ -491,6 +502,9 @@ public final class DevScreenshotTour {
                     net.alpaka.addons.features.dungeon.terminal.TerminalKind.SELECT_ALL)),
             screen("terminal-gui-melody", () -> net.alpaka.addons.features.dungeon.terminal.TerminalScreen.preview(
                     net.alpaka.addons.features.dungeon.terminal.TerminalKind.MELODY)),
+            // Terminal practice ("/alpakaterminal"): a dealt terminal with the timer in the header.
+            new Stop("terminal-practice-rubix", () -> net.alpaka.addons.features.dungeon.terminal.TerminalPractice.open(
+                    net.alpaka.addons.features.dungeon.terminal.TerminalKind.RUBIX, 0), () -> true, 30),
             // The same terminals in the vanilla chest, with the Terminal Solvers overlay (the default
             // mode). Switched on for the tour only; not saved.
             new Stop(null, () -> AlpakaConfig.instance.terminalSolversEnabled = true, () -> true, 1),
@@ -741,15 +755,28 @@ public final class DevScreenshotTour {
             // A Water Board room as far as the solver reads it, turned (its clay in the north-east
             // corner) and in an F7 run by the sidebar: from the water lever with the board in a start
             // state, then with a fourth door closed, which has no solution, then from the board
-            // looking back. Then back where the player stood, out of the run.
+            // looking back. Then back where the player stood, out of the run. Three doors close only
+            // once the player is in the room, after the solver read them all open, as real runs had it.
             new Stop(null, () -> waterBoardRoom(true), () -> net.alpaka.addons.utils.DungeonState.inDungeon(), 60),
-            new Stop("dungeon-water-board", () -> {}, () -> true, 5),
+            new Stop("dungeon-water-board", () -> {
+                for (int door = 0; door < 5; door += 2) waterBoardDoor(door, true);
+            }, () -> true, 30),
             new Stop("dungeon-water-board-four-doors", () -> waterBoardDoor(1, true), () -> true, 30),
             new Stop("dungeon-water-board-back", () -> {
                 waterBoardDoor(1, false);
                 waterBoardStand(15.5, 22.5, net.minecraft.core.Direction.NORTH);
             }, () -> true, 40),
             new Stop(null, () -> waterBoardRoom(false), () -> true, 20),
+            // Teammate Class Glow on the player in third person, glowing the way Hypixel makes dungeon
+            // teammates glow: first in the team color (white without a team), then as a Healer.
+            new Stop(null, () -> teammateGlow(true), () -> net.alpaka.addons.utils.DungeonState.inDungeon(), 40),
+            new Stop("dungeon-teammate-glow-rank", () -> {}, () -> true, 5),
+            new Stop("dungeon-teammate-glow-class", () -> {
+                AlpakaConfig.instance.teammateClassGlowEnabled = true;
+                net.alpaka.addons.features.teammateglow.TeammateClassGlow.remember(List.of(new net.alpaka.addons.features.dungeonmap.PartyMember(
+                        Minecraft.getInstance().player.getGameProfile().name(), "Healer")));
+            }, () -> true, 10),
+            new Stop(null, () -> teammateGlow(false), () -> true, 20),
             screen("viewmodel-setup", () -> AlpakaConfigScreen.openOn("Viewmodel", "Viewmodel Modifiers").inSetupMode()),
             screen("viewmodel-setup-swing", () -> AlpakaConfigScreen.openOn("Viewmodel", "Swing").inSetupMode()),
             new Stop("viewmodel-setup-swinging", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 1),
@@ -769,30 +796,6 @@ public final class DevScreenshotTour {
             // swing also tells the server, which only Outbound may.
             new Stop("starlight-unlit-swing", net.alpaka.addons.features.viewmodel.SwingPreview::swing, () -> true, 3),
             new Stop(null, () -> AlpakaConfig.instance.itemLightingDisabled = false, () -> true, 1),
-            // Sky Effects, without the HUD: the Overworld at night looking north at the aurora and
-            // in the morning towards the sun, the Nether's firestorm above its roof and the End's
-            // nebula; most twice, to see them move. Then back where the player stood, as they were.
-            new Stop(null, () -> skyAt("overworld", 0.5, 120.0, 18000L, 180.0f, -20.0f), () -> true, 40),
-            new Stop("sky-overworld-night", () -> {}, () -> true, 5),
-            new Stop("sky-overworld-night-later", () -> {}, () -> true, 40),
-            new Stop("sky-overworld-day", () -> skyAt("overworld", 0.5, 120.0, 2000L, -90.0f, -30.0f), () -> true, 40),
-            new Stop(null, () -> skyAt("the_nether", 0.5, 140.0, -1L, 30.0f, -15.0f), () -> inDimension(net.minecraft.world.level.Level.NETHER), 60),
-            new Stop("sky-nether", () -> {}, () -> true, 5),
-            new Stop("sky-nether-later", () -> {}, () -> true, 40),
-            new Stop("sky-nether-up", () -> Minecraft.getInstance().player.setXRot(-65.0f), () -> true, 10),
-            // Far out from the main island: within reach of the dragon its boss bar fogs the sky
-            // away, and vanilla draws none.
-            new Stop(null, () -> skyAt("the_end", 1000.5, 100.0, -1L, 0.0f, -10.0f), () -> inDimension(net.minecraft.world.level.Level.END), 60),
-            new Stop("sky-end", () -> {}, () -> true, 5),
-            new Stop("sky-end-up", () -> Minecraft.getInstance().player.setXRot(-60.0f), () -> true, 10),
-            // SkyBlock's End island, which Hypixel sends as an Overworld: the End's sky comes from the
-            // sidebar's zone line alone. At noon, where the Overworld's clouds and blue fog would show.
-            new Stop(null, () -> {
-                skyAt("overworld", 0.5, 120.0, 6000L, 0.0f, -10.0f);
-                endIslandSidebar(true);
-            }, () -> inDimension(net.minecraft.world.level.Level.OVERWORLD), 40),
-            new Stop("sky-end-island", () -> {}, () -> true, 5),
-            new Stop(null, DevScreenshotTour::skyDone, () -> inDimension(net.minecraft.world.level.Level.OVERWORLD), 20),
             // The fire pit preview has to be on a tick before the clay arrives, as in a real fight.
             new Stop(null, DevScreenshotTour::firePitPreview, () -> true, 5),
             new Stop("fire-pits", DevScreenshotTour::placeFirePits, () -> true, 30),
@@ -1163,41 +1166,6 @@ public final class DevScreenshotTour {
     }
 
     /**
-     * Sky Effects on and the HUD off, and the player flying high in this dimension, looking this
-     * way, at this time of day (-1 leaves the time alone).
-     */
-    private static void skyAt(String dimension, double x, double y, long dayTime, float yaw, float pitch) {
-        Minecraft mc = Minecraft.getInstance();
-        AlpakaConfig.instance.skyEffectsEnabled = true;
-        if (!mc.gui.hud.isHidden()) mc.gui.hud.toggle();
-        java.util.UUID id = mc.player.getUUID();
-        net.minecraft.client.server.IntegratedServer server = mc.getSingleplayerServer();
-        if (server == null) return;
-        server.execute(() -> {
-            net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayer(id);
-            if (player == null) return;
-            if (beforeSky == null) {
-                beforeSky = new SkyReturn(player.gameMode(), player.getX(), player.getY(), player.getZ(),
-                        player.getYRot(), player.getXRot(), player.level().getOverworldClockTime());
-            }
-            player.setGameMode(GameType.CREATIVE);
-            player.getAbilities().flying = true;
-            player.onUpdateAbilities();
-            net.minecraft.commands.CommandSourceStack source = server.createCommandSourceStack();
-            if (dayTime >= 0) server.getCommands().performPrefixedCommand(source, "time set " + dayTime);
-            server.getCommands().performPrefixedCommand(source, "weather clear");
-            server.getCommands().performPrefixedCommand(source, String.format(java.util.Locale.ROOT,
-                    "execute in minecraft:%s run tp @a %.1f %.1f 0.5 %.1f %.1f", dimension, x, y, yaw, pitch));
-        });
-    }
-
-    /** In this dimension, with the terrain screen gone. */
-    private static boolean inDimension(net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension) {
-        Minecraft mc = Minecraft.getInstance();
-        return mc.level != null && mc.player != null && mc.level.dimension() == dimension && mc.gui.screen() == null;
-    }
-
-    /**
      * The tour's sidebar zone line reads "⏣ The End", as on SkyBlock's End island, or its dungeon
      * again. The space needs a team prefix: score holder names cannot hold one.
      */
@@ -1219,39 +1187,6 @@ public final class DevScreenshotTour {
             for (String command : commands) {
                 server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), command);
             }
-        });
-    }
-
-    /** Where the player stood, in which game mode and at what time, before the sky stops. */
-    private record SkyReturn(GameType mode, double x, double y, double z, float yRot, float xRot, long time) {}
-
-    private static SkyReturn beforeSky = null;
-
-    /**
-     * Back in the Overworld where the player was, as they were and at the time it was, with the HUD
-     * on and Sky Effects off - and without the advancement toasts the trip brought.
-     */
-    private static void skyDone() {
-        Minecraft mc = Minecraft.getInstance();
-        AlpakaConfig.instance.skyEffectsEnabled = false;
-        if (mc.gui.hud.isHidden()) mc.gui.hud.toggle();
-        mc.gui.toastManager().clear();
-        java.util.UUID id = mc.player.getUUID();
-        net.minecraft.client.server.IntegratedServer server = mc.getSingleplayerServer();
-        if (server == null) return;
-        server.execute(() -> {
-            net.minecraft.server.level.ServerPlayer player = server.getPlayerList().getPlayer(id);
-            SkyReturn back = beforeSky;
-            beforeSky = null;
-            if (player == null || back == null) return;
-            player.setGameMode(back.mode());
-            player.getAbilities().flying = false;
-            player.onUpdateAbilities();
-            net.minecraft.commands.CommandSourceStack source = server.createCommandSourceStack();
-            server.getCommands().performPrefixedCommand(source, "time set " + back.time() % 24000L);
-            server.getCommands().performPrefixedCommand(source, String.format(java.util.Locale.ROOT,
-                    "execute in minecraft:overworld run tp @a %.3f %.3f %.3f %.1f %.1f",
-                    back.x(), back.y(), back.z(), back.yRot(), back.xRot()));
         });
     }
 
@@ -1390,8 +1325,9 @@ public final class DevScreenshotTour {
     /**
      * Builds the room and puts the player at its water lever, in an F7 run by the sidebar, or takes
      * them back where they were and out of the run. Only what the solver reads is built: a floor,
-     * the roof's middle and its clay corner, the seven levers, the five doors with 0, 2 and 4 closed,
-     * and a board with layout 1's blocks where they start.
+     * the roof's middle and its clay corner, the seven levers, the five doors all open (real runs
+     * read them so on entering; the first stop closes 0, 2 and 4), and a board with layout 1's
+     * blocks where they start.
      */
     private static void waterBoardRoom(boolean build) {
         Minecraft mc = Minecraft.getInstance();
@@ -1464,7 +1400,7 @@ public final class DevScreenshotTour {
                     net.minecraft.world.level.block.FaceAttachedHorizontalDirectionalBlock.FACE,
                     net.minecraft.world.level.block.state.properties.AttachFace.FLOOR), 2);
         }
-        for (int door = 0; door < 5; door++) waterBoardDoor(level, door, door % 2 == 0);
+        for (int door = 0; door < 5; door++) waterBoardDoor(level, door, false);
     }
 
     private static net.minecraft.world.level.block.state.BlockState waterBoardMaterial(net.alpaka.addons.features.dungeon.puzzle.WaterBoardLever lever) {
@@ -1500,6 +1436,44 @@ public final class DevScreenshotTour {
         float yaw = WATER_BOARD.toWorld(facing).toYRot();
         server.execute(() -> server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), String.format(java.util.Locale.ROOT,
                 "execute in minecraft:overworld run tp @a %.3f %.3f %.3f %.1f %.1f", at.x, at.y, at.z, yaw, 8.0f)));
+    }
+
+    /**
+     * The player in third person in an F7 run by the sidebar, glowing through the Glowing effect the
+     * way Hypixel makes dungeon teammates glow; or all of that undone, out of the run.
+     */
+    private static void teammateGlow(boolean on) {
+        Minecraft mc = Minecraft.getInstance();
+        net.minecraft.client.server.IntegratedServer server = mc.getSingleplayerServer();
+        if (server == null || mc.player == null) return;
+        mc.gui.setScreen(null);
+        mc.gui.hud.getChat().clearMessages(false);
+        AlpakaConfig.instance.inventoryHudEnabled = false;
+        AlpakaConfig.instance.teammateClassGlowEnabled = false;
+        String[] commands = on ? new String[]{
+                "team add tourdungeon",
+                "team modify tourdungeon prefix {text:\" ⏣ The Catacombs (F7)\",color:\"red\"}",
+                "team join tourdungeon §9",
+                "scoreboard players set §9 tour 7",
+                "effect give @a minecraft:glowing infinite 0 true",
+        } : new String[]{
+                "effect clear @a minecraft:glowing",
+                "scoreboard players reset §9 tour",
+                "team remove tourdungeon",
+        };
+        server.execute(() -> {
+            for (String command : commands) {
+                server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), command);
+            }
+        });
+        if (on) {
+            mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+            mc.player.setXRot(18.0f);
+        } else {
+            mc.options.setCameraType(CameraType.FIRST_PERSON);
+            net.alpaka.addons.features.teammateglow.TeammateClassGlow.reset();
+            net.alpaka.addons.utils.DungeonState.reset();
+        }
     }
 
     /** The aura in third person, facing away from the fire pits, nothing else on screen. */

@@ -78,8 +78,18 @@ public enum ChatTab {
                     + "|Guild (?:Name|MOTD|Level|Quest|Experience)"
                     + ")");
 
-    /** A party invite waiting for the player: never filtered away, whatever tab is up. */
-    private static final Pattern PARTY_INVITE = Pattern.compile(NAME + " has invited you to join their party");
+    /**
+     * A party invite waiting for the player: shown on every tab while it can still be accepted.
+     * Anchored, so a player who pastes an invite into guild or party chat does not get that line
+     * onto every tab as well.
+     */
+    private static final Pattern PARTY_INVITE = Pattern.compile("^" + NAME + " has invited you to join their party");
+
+    /**
+     * The dashed rule Hypixel puts above and below its boxed notices, invites among them. It would
+     * otherwise stand in front of the notice and keep the anchored patterns from seeing it.
+     */
+    private static final Pattern LEADING_RULE = Pattern.compile("^[-▬]{10,}\\s*");
 
     /** The tab a message belongs on besides All. Never returns null; a line nobody claims is ALL. */
     public static ChatTab classify(Component message) {
@@ -88,6 +98,7 @@ public enum ChatTab {
 
     /** {@link #classify(Component)} for color-stripped, trimmed text. */
     public static ChatTab classify(String text) {
+        text = withoutLeadingRule(text);
         if (text.isEmpty()) return ALL;
         if (PARTY_CHAT.matcher(text).find()) return PARTY;
         if (GUILD_CHAT.matcher(text).find()) return GUILD;
@@ -103,10 +114,17 @@ public enum ChatTab {
 
     /** Whether a line must stay visible on every tab: an invite the player has to answer. */
     public static boolean isUrgent(String text) {
-        return PARTY_INVITE.matcher(text).find();
+        return PARTY_INVITE.matcher(withoutLeadingRule(text)).find();
+    }
+
+    private static String withoutLeadingRule(String text) {
+        // Classified per chat line; only a line starting with a rule character can lose anything.
+        if (text.isEmpty() || (text.charAt(0) != '-' && text.charAt(0) != '▬')) return text;
+        return LEADING_RULE.matcher(text).replaceFirst("");
     }
 
     static String strip(String raw) {
+        if (raw.indexOf('§') < 0) return raw.trim();
         return COLOR_CODES.matcher(raw).replaceAll("").trim();
     }
 }

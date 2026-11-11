@@ -30,6 +30,12 @@ final class InventoryItems {
     /** By the item's JSON, which stays the same object for as long as its inventory is shown. */
     private static final Map<JsonElement, Built> STACKS = new IdentityHashMap<>();
 
+    /** Drops the built items and looks, once the dashboard is closed. Render thread only. */
+    static void forget() {
+        STACKS.clear();
+        LOOKS.clear();
+    }
+
     /** The item to draw, or empty while its look is still on its way. Render thread only. */
     static ItemStack stack(JsonElement item) {
         ItemStack base = base(item);
@@ -44,20 +50,40 @@ final class InventoryItems {
         return stack;
     }
 
-    private static ItemStack base(JsonElement item) {
+    /** What an item's look is found by: its head texture, or else its id and plain name. */
+    private record Look(String texture, String id, String name) {}
+
+    /**
+     * Looks by the item's JSON, like {@link #STACKS}: read once rather than every frame, where the
+     * name's color codes were stripped again for every slot shown.
+     */
+    private static final Map<JsonElement, Look> LOOKS = new IdentityHashMap<>();
+
+    private static Look look(JsonElement item) {
+        Look look = LOOKS.get(item);
+        if (look != null) return look;
         String texture = Json.str(item, "attributes.skin_texture");
-        if (texture != null && !texture.isBlank()) {
+        look = texture != null && !texture.isBlank()
+                ? new Look(texture, null, null)
+                : new Look(null, Json.str(item, "skyblockId"), SkyblockUtils.cleanColor(Json.str(item, "name")));
+        if (LOOKS.size() > 4000) LOOKS.clear();
+        LOOKS.put(item, look);
+        return look;
+    }
+
+    private static ItemStack base(JsonElement item) {
+        Look look = look(item);
+        if (look.texture() != null) {
             Built built = STACKS.get(item);
             if (built != null) return built.base();
             try {
-                return ItemIcons.head(texture);
+                return ItemIcons.head(look.texture());
             } catch (RuntimeException notBoundYet) {
                 // Items only get their components once a world is joined.
                 return ItemStack.EMPTY;
             }
         }
-        String id = Json.str(item, "skyblockId");
-        return ItemIcons.forItem(id, SkyblockUtils.cleanColor(Json.str(item, "name")));
+        return ItemIcons.forItem(look.id(), look.name());
     }
 
     /** The tooltip: the name and the lore, in Hypixel's own colors. */

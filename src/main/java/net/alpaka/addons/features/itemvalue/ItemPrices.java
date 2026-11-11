@@ -163,7 +163,10 @@ public final class ItemPrices {
                 }
                 boolean gzip = response.headers().firstValue("Content-Encoding").map(e -> e.contains("gzip")).orElse(false);
                 T data;
-                try (InputStream raw = response.body();
+                InputStream stream = response.body();
+                // The request timeout ends with the headers; a body that stalls is closed under the reader.
+                closeLater(stream);
+                try (InputStream raw = stream;
                      InputStream body = gzip ? new GZIPInputStream(raw) : raw;
                      Reader reader = new InputStreamReader(body, StandardCharsets.UTF_8)) {
                     data = parser.parse(reader);
@@ -183,6 +186,20 @@ public final class ItemPrices {
             }
         });
     }
+
+    /** Closes a download's body after {@link #BODY_TIMEOUT_MINUTES}; closing a finished one does nothing. */
+    public static void closeLater(InputStream stream) {
+        java.util.concurrent.CompletableFuture.delayedExecutor(BODY_TIMEOUT_MINUTES, java.util.concurrent.TimeUnit.MINUTES)
+                .execute(() -> {
+                    try {
+                        stream.close();
+                    } catch (IOException ignored) {
+                        // Already closed.
+                    }
+                });
+    }
+
+    static final long BODY_TIMEOUT_MINUTES = 2;
 
     private static void fail(Source<?> source, String why) {
         AlpakaAddons.LOGGER.warn("Could not load {} from {} ({})", source.what, source.url, why);

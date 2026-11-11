@@ -328,11 +328,11 @@ public class AlpakaConfigRegistry {
                 "hide mob death smoke poof particles cloud puff"));
 
         OPTIONS.add(new ConfigOption("hide_visual_clutter", "Hide Visual Clutter",
-                "Hides effects that only cost frames: explosions, falling blocks, block particles, hit sparks, fireworks, experience orbs and dying dragons.",
+                "Hides effects that only cost frames: explosions, falling blocks, block particles, hit sparks, fireworks, experience orbs, dying dragons and stuck arrows.",
                 ConfigCategory.VISUALS,
                 () -> AlpakaConfig.instance.hideVisualClutter,
                 v -> { AlpakaConfig.instance.hideVisualClutter = v; AlpakaConfig.save(); },
-                "hide visual clutter performance fps lag particles effects explosions falling blocks fireworks orbs dragon"));
+                "hide visual clutter performance fps lag particles effects explosions falling blocks fireworks orbs dragon arrows"));
         OPTIONS.add(new ConfigOption("hide_clutter_explosions", "Explosions",
                 "The flash, smoke and debris of explosions, like Hyperion, Bonzo's Staff, TNT and creepers.",
                 ConfigCategory.VISUALS,
@@ -375,6 +375,12 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.clutterDragonDeath,
                 v -> { AlpakaConfig.instance.clutterDragonDeath = v; AlpakaConfig.save(); },
                 "hide ender dragon death animation rays beams light explosion end m7 wither king"));
+        OPTIONS.add(new ConfigOption("hide_clutter_attached_arrows", "Attached Arrows",
+                "Arrows stuck in players and in the ground. Arrows in flight stay.",
+                ConfigCategory.VISUALS,
+                () -> AlpakaConfig.instance.clutterAttachedArrows,
+                v -> { AlpakaConfig.instance.clutterAttachedArrows = v; AlpakaConfig.save(); },
+                "hide attached stuck arrows arrow body player ground wall block bow pincushion"));
 
         OPTIONS.add(new ConfigOption("Hide Fire Overlay", ConfigCategory.VISUALS));
 

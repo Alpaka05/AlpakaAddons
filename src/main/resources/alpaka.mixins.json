@@ -13,6 +13,7 @@
     "MenuScreensMixin",
     "LocalPlayerSignMixin",
     "AbstractSignEditScreenAccessor",
+    "AbstractArrowInGroundAccessor",
     "AbstractContainerScreenAccessor",
     "CustomDataAccessor",
     "FontManagerOptionsMixin",

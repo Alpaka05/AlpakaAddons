@@ -5,6 +5,7 @@
   "plugin": "net.alpaka.addons.compat.OptionalHooksPlugin",
   "client": [
     "AbstractArrowClutterMixin",
+    "ArrowLayerClutterMixin",
     "AbstractContainerMenuSlotSetMixin",
     "AbstractContainerScreenStoragePreviewMixin",
     "AbstractContainerScreenSlotHighlightMixin",

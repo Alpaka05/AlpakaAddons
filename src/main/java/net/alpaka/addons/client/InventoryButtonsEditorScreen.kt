@@ -71,6 +71,8 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
     private var pressX = 0.0
     private var pressY = 0.0
     private var moved = false
+    /** The rest of the row the dragged button was picked up from, to centre again once it is gone. */
+    private var leftRow: List<InventoryButton> = emptyList()
     private var snappedX = false
     private var snappedY = false
 
@@ -390,6 +392,10 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
             pressX = mx
             pressY = my
             moved = false
+            val positions = buttons.map { InventoryButtonLayout.place(it, box(), width, height) }
+            val row = InventoryButtonLayout.rowOf(positions, buttons.indexOf(hit)).map { buttons[it] }
+            // Only from an end of the row: taken from the middle, the gap stays for the next one.
+            leftRow = if (row.first() === hit || row.last() === hit) row.filter { it !== hit } else emptyList()
             return true
         }
         select(null)
@@ -499,14 +505,45 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
 
     override fun mouseReleased(event: MouseButtonEvent): Boolean {
         if (dragging != null && event.button() == 0) {
-            if (moved) AlpakaConfig.save()
+            if (moved) {
+                if (!event.hasShiftDown()) centerRows(dragging!!)
+                AlpakaConfig.save()
+            }
             dragging = null
+            leftRow = emptyList()
             moved = false
             snappedX = false
             snappedY = false
             return true
         }
         return super.mouseReleased(event)
+    }
+
+    /**
+     * Centres the row [dropped] was put into above or below the panel, and the row it was taken
+     * from, so a row has as much room on its left as on its right.
+     */
+    private fun centerRows(dropped: InventoryButton) {
+        val box = box()
+        fun center(row: List<InventoryButton>) {
+            val positions = buttons.map { InventoryButtonLayout.place(it, box, width, height) }
+            val indices = row.map { buttons.indexOf(it) }.filter { it >= 0 }
+            if (indices.isEmpty()) return
+            val shift = InventoryButtonLayout.centerShift(positions, indices, box)
+            if (shift == 0) return
+            for (i in indices) {
+                InventoryButtonLayout.store(buttons[i], positions[i][0] + shift, positions[i][1], box)
+            }
+        }
+        val remaining = leftRow
+        if (remaining.isNotEmpty()) {
+            val positions = buttons.map { InventoryButtonLayout.place(it, box, width, height) }
+            // The rest of the old row, unless the button went straight back into it.
+            val again = InventoryButtonLayout.rowOf(positions, buttons.indexOf(remaining[0])).map { buttons[it] }
+            if (dropped !in again) center(again)
+        }
+        val positions = buttons.map { InventoryButtonLayout.place(it, box, width, height) }
+        center(InventoryButtonLayout.rowOf(positions, buttons.indexOf(dropped)).map { buttons[it] })
     }
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {

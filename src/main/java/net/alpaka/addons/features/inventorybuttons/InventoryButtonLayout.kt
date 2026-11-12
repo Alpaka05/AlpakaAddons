@@ -157,6 +157,42 @@ object InventoryButtonLayout {
         return best
     }
 
+    /**
+     * The buttons, by index into [positions] (top-left corners), that sit in one row with the one at
+     * [index]: at the same height, each next to the one before with no more than a small gap.
+     * Sorted left to right.
+     */
+    @JvmStatic
+    fun rowOf(positions: List<IntArray>, index: Int): List<Int> {
+        val y = positions[index][1]
+        val level = positions.indices.filter { positions[it][1] == y }.sortedBy { positions[it][0] }
+        val at = level.indexOf(index)
+        var first = at
+        var last = at
+        while (first > 0 && adjacent(positions[level[first - 1]], positions[level[first]])) first--
+        while (last < level.size - 1 && adjacent(positions[level[last]], positions[level[last + 1]])) last++
+        return level.subList(first, last + 1)
+    }
+
+    private fun adjacent(left: IntArray, right: IntArray): Boolean = right[0] - (left[0] + SIZE) <= GAP + 2
+
+    /**
+     * How far [row] (indices into [positions], from [rowOf]) has to move across to be centred on
+     * the panel: as much room left of it as right of it. 0 for a single button, which may sit
+     * anywhere on purpose, and for a row that isn't above or below the panel.
+     */
+    @JvmStatic
+    fun centerShift(positions: List<IntArray>, row: List<Int>, box: Box): Int {
+        if (row.size < 2) return 0
+        val left = row.minOf { positions[it][0] }
+        val right = row.maxOf { positions[it][0] } + SIZE
+        val y = positions[row[0]][1]
+        val outside = y + SIZE <= box.top || y >= box.bottom
+        val across = right > box.left && left < box.right
+        if (!outside || !across) return 0
+        return box.left + (box.width - (right - left)) / 2 - left
+    }
+
     /** How close, in GUI pixels, a dragged button has to come to a line to snap to it. */
     const val SNAP_RANGE = 4
 

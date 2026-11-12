@@ -144,4 +144,35 @@ class InventoryButtonLayoutTest {
         assertEquals(listOf("skyblock:ASPECT_OF_THE_VOID"), InventoryButtonIcons.search(all, "aspect void"))
         assertEquals("HYPERION", InventoryButtonIcons.path("skyblock:HYPERION"))
     }
+
+    @Test
+    fun `a row above the panel is centred on it`() {
+        val step = InventoryButtonLayout.SIZE + InventoryButtonLayout.GAP
+        // Three buttons flush with the panel's left edge, above it.
+        val y = inventory.top - InventoryButtonLayout.SIZE - InventoryButtonLayout.GAP
+        val positions = (0 until 3).map { intArrayOf(inventory.left + it * step, y) }
+        val row = InventoryButtonLayout.rowOf(positions, 1)
+        assertEquals(listOf(0, 1, 2), row)
+        val shift = InventoryButtonLayout.centerShift(positions, row, inventory)
+        val left = positions[0][0] + shift
+        val right = positions[2][0] + shift + InventoryButtonLayout.SIZE
+        assertEquals(left - inventory.left, inventory.right - right)
+    }
+
+    @Test
+    fun `a button further along is not part of the row`() {
+        val y = inventory.bottom + InventoryButtonLayout.GAP
+        val positions = listOf(intArrayOf(160, y), intArrayOf(184, y), intArrayOf(260, y))
+        assertEquals(listOf(0, 1), InventoryButtonLayout.rowOf(positions, 0))
+        assertEquals(listOf(2), InventoryButtonLayout.rowOf(positions, 2))
+    }
+
+    @Test
+    fun `a single button and a column beside the panel stay where they are`() {
+        val above = listOf(intArrayOf(inventory.left, inventory.top - 30))
+        assertEquals(0, InventoryButtonLayout.centerShift(above, listOf(0), inventory))
+        // Two buttons side by side left of the panel, level with it.
+        val beside = listOf(intArrayOf(100, 80), intArrayOf(124, 80))
+        assertEquals(0, InventoryButtonLayout.centerShift(beside, listOf(0, 1), inventory))
+    }
 }

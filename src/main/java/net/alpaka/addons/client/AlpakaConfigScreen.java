@@ -115,6 +115,11 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     private final Set<ConfigOption> expanded = new HashSet<>();
 
     private ConfigOption focusedText = null;
+    /** The text, caret and selection of {@link #focusedText} while it is edited; written back on every change. */
+    private EditableText textEdit = null;
+    /** The text setting that was being edited when the current click came in, and whether Shift was held. */
+    private ConfigOption textBeforeClick = null;
+    private boolean clickShift = false;
     /**
      * The name fields of the preset cards, one per preset by position, so typing into one goes
      * through the same path as every other text setting. Grown as presets are added.
@@ -629,7 +634,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         hits.add(Hit.quiet(sx, sy, sw, sh, (mx, my) -> {
             searchFocused = true;
             caretBlinkFrom = System.currentTimeMillis();
-            search.setCaretFromX((int) mx - tx + scrolled, s -> GuiFont.width(this.font, s));
+            search.setCaretFromX((int) mx - tx + scrolled, s -> GuiFont.width(this.font, s), clickShift);
         }));
         if (!search.isEmpty()) {
             boolean hoverClear = inside(mouseX, mouseY, iconX - 3, sy + 2, 14, 14);
@@ -1003,14 +1008,9 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                 drawLabel(graphics, option.getTitle(), rowX + 4, labelY, fieldX - 8 - (rowX + 4));
                 boolean focused = focusedText == option;
                 boolean fieldHover = inside(mouseX, mouseY, fieldX, rowY + 2, fieldW, rowH - 4);
-                AlpakaStyle.textField(graphics, this.font, fieldX, rowY + 2, fieldW, rowH - 4, option.getShownText(),
-                        option.getPlaceholder(), focused, fieldHover, caretBlinkFrom);
+                drawTextOption(graphics, option, fieldX, rowY + 2, fieldW, rowH - 4, focused, fieldHover);
                 if (shown) {
-                    hits.add(Hit.quiet(rowX, hitY, rowW, rowH, (mx, my) -> {
-                        focusedText = option;
-                        searchFocused = false;
-                        caretBlinkFrom = System.currentTimeMillis();
-                    }));
+                    hits.add(Hit.quiet(rowX, hitY, rowW, rowH, (mx, my) -> focusText(option, fieldX, fieldW, mx)));
                 }
             }
             case KEYBIND -> {
@@ -1121,8 +1121,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             int fieldW = Math.max(20, fieldEnd - fieldX);
             ConfigOption nameField = presetNameField(i);
             boolean fieldHover = inColumn && inside(mouseX, mouseY, fieldX, y + 4, fieldW, PRESET_CARD_H - 8);
-            AlpakaStyle.textField(graphics, this.font, fieldX, y + 4, fieldW, PRESET_CARD_H - 8, nameField.getText(),
-                    nameField.getPlaceholder(), focusedText == nameField, fieldHover, caretBlinkFrom);
+            drawTextOption(graphics, nameField, fieldX, y + 4, fieldW, PRESET_CARD_H - 8, focusedText == nameField, fieldHover);
 
             boolean loadHover = inColumn && inside(mouseX, mouseY, loadX, buttonY, loadW, PRESET_BUTTON_H);
             boolean saveHover = inColumn && inside(mouseX, mouseY, saveX, buttonY, saveW, PRESET_BUTTON_H);
@@ -1136,11 +1135,8 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             AlpakaStyle.trashButton(graphics, deleteX, midY - PRESET_ICON / 2, PRESET_ICON, deleteHover);
 
             int hitY = Math.max(y, clipY);
-            hits.add(Hit.quiet(fieldX, Math.max(y + 4, clipY), fieldW, PRESET_CARD_H - 8, (mx, my) -> {
-                focusedText = nameField;
-                searchFocused = false;
-                caretBlinkFrom = System.currentTimeMillis();
-            }));
+            hits.add(Hit.quiet(fieldX, Math.max(y + 4, clipY), fieldW, PRESET_CARD_H - 8,
+                    (mx, my) -> focusText(nameField, fieldX, fieldW, mx)));
             hits.add(new Hit(loadX, hitY, loadW, PRESET_CARD_H, (mx, my) -> config.loadPreset(index)));
             hits.add(new Hit(saveX, hitY, saveW, PRESET_CARD_H, (mx, my) -> this.minecraft.gui.setScreen(
                     new AlpakaConfirmScreen(this, "Save to " + config.presetName(index),
@@ -1161,9 +1157,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         if (visible(y, ACTION_ROW_H, clipY, clipH)) {
             hits.add(new Hit(rowX, Math.max(y, clipY), rowW, ACTION_ROW_H, (mx, my) -> {
                 config.addPreset();
-                focusedText = presetNameField(config.itemPresets.size() - 1);
-                searchFocused = false;
-                caretBlinkFrom = System.currentTimeMillis();
+                focusText(presetNameField(config.itemPresets.size() - 1), 0, 0, Double.NaN);
             }));
         }
         y += ACTION_ROW_H + 4;
@@ -1332,6 +1326,8 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         double my = event.y();
 
         ConfigOption previousText = focusedText;
+        textBeforeClick = focusedText;
+        clickShift = event.hasShiftDown();
         focusedText = null;
         if (previousText != null) AlpakaConfig.save();
         boolean wasSearching = searchFocused;
@@ -1382,13 +1378,43 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         return true;
     }
 
+    /** A text setting's field: the caret and selection while it is edited, a secret masked. */
+    private void drawTextOption(GuiGraphicsExtractor graphics, ConfigOption option, int x, int y, int w, int h,
+                                boolean focused, boolean hover) {
+        if (focused && textEdit != null) {
+            AlpakaStyle.textField(graphics, this.font, x, y, w, h, textEdit, option.getEditingMask(textEdit.getText()),
+                    option.getPlaceholder(), true, hover, caretBlinkFrom);
+        } else {
+            AlpakaStyle.textField(graphics, this.font, x, y, w, h, option.getShownText(), option.getPlaceholder(),
+                    false, hover, caretBlinkFrom);
+        }
+    }
+
+    /**
+     * Starts editing a text setting, or moves the caret of the one being edited to the click (Shift
+     * selects up to it). A click beside the field, on its label, starts with the caret at the end.
+     */
+    private void focusText(ConfigOption option, int fieldX, int fieldW, double mouseX) {
+        boolean wasEditing = textBeforeClick == option && textEdit != null;
+        if (!wasEditing) {
+            textEdit = new EditableText(option.getMaxLength());
+            textEdit.setText(option.getText());
+        }
+        focusedText = option;
+        searchFocused = false;
+        caretBlinkFrom = System.currentTimeMillis();
+        // A secret at rest shows a shortened mask, so a first click there cannot be mapped to a character.
+        boolean onField = !Double.isNaN(mouseX) && mouseX >= fieldX && mouseX < fieldX + fieldW;
+        if (onField && (wasEditing || !option.isSecret())) {
+            AlpakaStyle.clickTextField(this.font, textEdit, option.getEditingMask(textEdit.getText()), fieldX, fieldW,
+                    mouseX, wasEditing, clickShift);
+        }
+    }
+
     @Override
     public boolean charTyped(CharacterEvent event) {
         if (focusedText != null) {
-            int codePoint = event.codepoint();
-            if (codePoint >= 32 && codePoint != 127 && focusedText.getText().length() < focusedText.getMaxLength()) {
-                focusedText.setText(focusedText.getText() + (char) codePoint);
-            }
+            if (textEdit.insert(event.codepoint())) focusedText.setText(textEdit.getText());
             caretBlinkFrom = System.currentTimeMillis();
             return true;
         }
@@ -1420,23 +1446,12 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
             return true;
         }
         if (focusedText != null) {
-            // Pasting is how a key or a name usually arrives; the first line of the clipboard,
-            // cut to what the field takes.
-            if (event.isPaste()) {
-                String clip = this.minecraft == null ? null : this.minecraft.keyboardHandler.getClipboard();
-                if (clip != null) {
-                    int newline = clip.indexOf('\n');
-                    if (newline >= 0) clip = clip.substring(0, newline);
-                    clip = clip.replace("\r", "").replace("\t", " ").trim();
-                    String joined = focusedText.getText() + clip;
-                    focusedText.setText(joined.substring(0, Math.min(joined.length(), focusedText.getMaxLength())));
-                    caretBlinkFrom = System.currentTimeMillis();
-                }
-                return true;
-            }
-            if (key == org.lwjgl.glfw.GLFW.GLFW_KEY_BACKSPACE) {
-                String current = focusedText.getText();
-                if (!current.isEmpty()) focusedText.setText(current.substring(0, current.length() - 1));
+            // Arrows, Home and End, selecting with Shift, select all, copy, cut, paste (the first
+            // line of the clipboard, cut to what the field takes) and undo, as in any text field.
+            String before = textEdit.getText();
+            if (textEdit.keyPressed(event)) {
+                if (!textEdit.getText().equals(before)) focusedText.setText(textEdit.getText());
+                caretBlinkFrom = System.currentTimeMillis();
                 return true;
             }
             if (key == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE || key == org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER
@@ -1457,7 +1472,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                 return true;
             }
             String before = search.getText();
-            if (search.keyPressed(key, event.hasControlDownWithQuirk(), event.hasShiftDown())) {
+            if (search.keyPressed(event)) {
                 if (!search.getText().equals(before)) onSearchChanged();
                 caretBlinkFrom = System.currentTimeMillis();
                 return true;

@@ -892,7 +892,7 @@ public class MarketInputScreen extends SignEditScreen {
             return true;
         }
         boolean[] handled = {false};
-        edit(() -> handled[0] = input.keyPressed(event.key(), event.hasControlDownWithQuirk(), event.hasShiftDown()));
+        edit(() -> handled[0] = input.keyPressed(event));
         return handled[0];
     }
 

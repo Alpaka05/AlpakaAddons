@@ -131,6 +131,9 @@ public class ProfileDashboardScreen extends Screen {
     private long openTimeMs = 0L;
     private long lastFrameMs = System.currentTimeMillis();
     private final EditableText search = new EditableText(16);
+    /** The click being handled, so a text field's hit can put the caret under it, and the field edited before it. */
+    private MouseButtonEvent click = null;
+    private EditableText clickFrom = null;
     private boolean searchFocused = false;
     private long caretFrom = 0L;
     private boolean profileMenuOpen = false;
@@ -428,9 +431,10 @@ public class ProfileDashboardScreen extends Screen {
         int sx = rx - 8 - sw;
         if (sx > tx + 90) {
             boolean hoverSearch = AlpakaStyle.inside(mx, my, sx, by - 1, sw, AlpakaStyle.BUTTON_H);
-            AlpakaStyle.textField(graphics, this.font, sx, by - 1, sw, AlpakaStyle.BUTTON_H, search.getText(), "Look up a player",
+            AlpakaStyle.textField(graphics, this.font, sx, by - 1, sw, AlpakaStyle.BUTTON_H, search, null, "Look up a player",
                     searchFocused, hoverSearch, caretFrom);
             headerHit(sx, by - 1, sw, AlpakaStyle.BUTTON_H, () -> {
+                if (click != null) AlpakaStyle.clickTextField(this.font, search, null, sx, sw, click.x(), clickFrom == search, click.hasShiftDown());
                 searchFocused = true;
                 caretFrom = System.currentTimeMillis();
             });
@@ -561,9 +565,13 @@ public class ProfileDashboardScreen extends Screen {
             int fh = 14;
             int fy = rowY - 3;
             boolean hoverField = AlpakaStyle.inside(mx, my, rowX, fy, rowW, fh) && !profileMenuOpen;
-            AlpakaStyle.textField(graphics, this.font, rowX, fy, rowW - arrow - 2, fh, itemSearch.getText(), "Search Items",
+            AlpakaStyle.textField(graphics, this.font, rowX, fy, rowW - arrow - 2, fh, itemSearch, null, "Search Items",
                     itemSearchFocused, hoverField, itemCaretFrom);
             hits.add(new Hit(rowX, fy, rowW - arrow - 2, fh, () -> {
+                if (click != null) {
+                    AlpakaStyle.clickTextField(this.font, itemSearch, null, rowX, rowW - arrow - 2, click.x(),
+                            clickFrom == itemSearch, click.hasShiftDown());
+                }
                 itemSearchFocused = true;
                 itemCaretFrom = System.currentTimeMillis();
             }));
@@ -4121,6 +4129,8 @@ public class ProfileDashboardScreen extends Screen {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         if (event.button() != 0) return true;
+        click = event;
+        clickFrom = searchFocused ? search : itemSearchFocused ? itemSearch : null;
         searchFocused = false;
         itemSearchFocused = false;
         if (itemSearch.isEmpty()) itemSearchOpen = false;
@@ -4172,7 +4182,7 @@ public class ProfileDashboardScreen extends Screen {
                 if (itemSearch.isEmpty()) itemSearchOpen = false;
                 return true;
             }
-            itemSearch.keyPressed(event.key(), event.hasControlDownWithQuirk(), event.hasShiftDown());
+            itemSearch.keyPressed(event);
             itemCaretFrom = System.currentTimeMillis();
             return true;
         }
@@ -4185,7 +4195,7 @@ public class ProfileDashboardScreen extends Screen {
                 lookUp();
                 return true;
             }
-            search.keyPressed(event.key(), event.hasControlDownWithQuirk(), event.hasShiftDown());
+            search.keyPressed(event);
             caretFrom = System.currentTimeMillis();
             return true;
         }

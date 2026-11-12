@@ -365,6 +365,63 @@ public final class AlpakaStyle {
     }
 
     /**
+     * A text field being edited: as above, with the caret where it really is and the selection
+     * marked, scrolled so the caret stays in view. At rest it is the plain field.
+     *
+     * @param shown what to draw for the text, one character for each of its characters (a secret's
+     *              mask); null draws the text itself.
+     */
+    public static void textField(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int h,
+                                 EditableText edit, String shown, String placeholder, boolean focused, boolean hover,
+                                 long caretFrom) {
+        String text = shownText(edit, shown);
+        if (!focused) {
+            textField(graphics, font, x, y, w, h, text, placeholder, false, hover, caretFrom);
+            return;
+        }
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, FIELD_RADIUS, FIELD);
+        ModernGuiUtils.drawRect(graphics, x + 3, y + h - 1, w - 6, 1, ModernGuiUtils.getAccentColor());
+        int ty = y + (h - 8) / 2;
+        int tx = x + 5;
+        int room = w - 10;
+        int ox = tx - fieldScroll(font, text, edit.getCaret(), room);
+        graphics.enableScissor(tx - 1, y, tx + room + 1, y + h);
+        if (edit.hasSelection()) {
+            int from = ox + GuiFont.width(font, text.substring(0, edit.getSelectionStart()));
+            int to = ox + GuiFont.width(font, text.substring(0, edit.getSelectionEnd()));
+            ModernGuiUtils.drawRect(graphics, from, ty - 1, to - from, 10, accentDim());
+        }
+        graphics.text(font, GuiFont.text(text), ox, ty, TEXT, false);
+        if ((System.currentTimeMillis() - caretFrom) / 500 % 2 == 0) {
+            ModernGuiUtils.drawRect(graphics, ox + GuiFont.width(font, text.substring(0, edit.getCaret())), ty - 1, 1, 10, TEXT);
+        }
+        graphics.disableScissor();
+    }
+
+    /**
+     * Puts the caret of a field drawn with {@link #textField(GuiGraphicsExtractor, Font, int, int, int, int,
+     * EditableText, String, String, boolean, boolean, long)} under the mouse; with {@code extend}
+     * (Shift held) the selection runs to it instead. {@code wasFocused} says whether the field was
+     * being edited when it was clicked, since a field at rest is drawn unscrolled.
+     */
+    public static void clickTextField(Font font, EditableText edit, String shown, int x, int w, double mouseX,
+                                      boolean wasFocused, boolean extend) {
+        String text = shownText(edit, shown);
+        int scroll = wasFocused ? fieldScroll(font, text, edit.getCaret(), w - 10) : 0;
+        edit.setCaretFromX((int) mouseX - (x + 5) + scroll,
+                s -> GuiFont.width(font, text.substring(0, Math.min(s.length(), text.length()))), extend && wasFocused);
+    }
+
+    private static String shownText(EditableText edit, String shown) {
+        return shown != null && shown.length() == edit.getText().length() ? shown : edit.getText();
+    }
+
+    /** How far the text is scrolled left so the caret stays inside {@code room}. */
+    private static int fieldScroll(Font font, String text, int caret, int room) {
+        return Math.max(0, GuiFont.width(font, text.substring(0, Math.min(caret, text.length()))) - room + 1);
+    }
+
+    /**
      * A slim switch: a rounded outline with a dot that slides across, gray when off and in the
      * accent color when on.
      */

@@ -120,6 +120,8 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
     /** The text setting that was being edited when the current click came in, and whether Shift was held. */
     private ConfigOption textBeforeClick = null;
     private boolean clickShift = false;
+    /** Where each text setting's field was drawn last frame, for the screenshot tour. */
+    private final java.util.Map<String, int[]> devTextFields = new java.util.HashMap<>();
     /**
      * The name fields of the preset cards, one per preset by position, so typing into one goes
      * through the same path as every other text setting. Grown as presets are added.
@@ -1009,6 +1011,7 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
                 boolean focused = focusedText == option;
                 boolean fieldHover = inside(mouseX, mouseY, fieldX, rowY + 2, fieldW, rowH - 4);
                 drawTextOption(graphics, option, fieldX, rowY + 2, fieldW, rowH - 4, focused, fieldHover);
+                devTextFields.put(option.getId(), new int[] {fieldX, rowY + 2, fieldW, rowH - 4});
                 if (shown) {
                     hits.add(Hit.quiet(rowX, hitY, rowW, rowH, (mx, my) -> focusText(option, fieldX, fieldW, mx)));
                 }
@@ -1376,6 +1379,13 @@ public class AlpakaConfigScreen extends Screen implements net.alpaka.addons.clie
         else if (mouseX < featX) sidebarScroll.by(-scrollY * 20);
         else featureScroll.by(-scrollY * 24);
         return true;
+    }
+
+    /** For the screenshot tour: a point this far across the field of the text setting with this id. */
+    public int[] devTextFieldPoint(String optionId, double fraction) {
+        int[] r = devTextFields.get(optionId);
+        if (r == null) return new int[] {0, 0};
+        return new int[] {r[0] + (int) (r[2] * fraction), r[1] + r[3] / 2};
     }
 
     /** A text setting's field: the caret and selection while it is edited, a secret masked. */

@@ -512,6 +512,12 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
     private fun addBtnX(f: Frame) = pageBtnX(f) + PAGE_BTN_W + 6
     private fun resetBtnX(f: Frame) = addBtnX(f) + ADD_W + 6
 
+    /** For the screenshot tour: a point this far across the new command's field. */
+    fun devInputPoint(fraction: Double): IntArray {
+        val f = frame()
+        return intArrayOf(inputX(f) + (f.inputW * fraction).toInt(), f.inputY + AlpakaStyle.BUTTON_H / 2)
+    }
+
     /** For the screenshot tour: the middle of the page field, to open its list. */
     fun devPagePickerPoint(): IntArray {
         val f = frame()

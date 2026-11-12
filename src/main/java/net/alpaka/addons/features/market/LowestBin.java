@@ -104,7 +104,8 @@ public final class LowestBin {
         return System.currentTimeMillis() - sellingSeenMs < ITEM_FOR_MS ? selling : null;
     }
 
-    static Item itemOf(ItemStack stack) {
+    /** The item's SkyCofl tag and, for a pet, its rarity; null for one SkyCofl can't name. */
+    public static Item itemOf(ItemStack stack) {
         if (stack.isEmpty()) return null;
         CustomData data = stack.get(DataComponents.CUSTOM_DATA);
         if (data == null) return null;

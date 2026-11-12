@@ -107,79 +107,71 @@ internal object AuraEffects {
     }
 
     /**
-     * Two strands of light wound around the body like a DNA helix, beaded with lights that pulse in a
-     * wave running up the strands, faint rungs between them, and a bright surge that keeps climbing
-     * from the feet to above the head.
+     * Digital rain: columns of glyphs falling around the body on a slowly turning cylinder. Each
+     * column is led by a bright, almost white glyph and trails a tail that darkens to deep green; the
+     * rain moves a whole glyph at a time, like a terminal scrolling, and the glyphs in the tail keep
+     * changing. Where a column reaches the ground it flashes, and now and then a scan line sweeps up
+     * the body.
      */
-    fun twinHelix(c: AuraCanvas, f: AuraFrame) {
+    fun matrix(c: AuraCanvas, f: AuraFrame) {
         val t = f.time
-        val radius = 0.68f * f.size
-        val top = f.height + 0.2f
-        val turns = 1.75f
-        val p = FloatArray(3)
-        val q = FloatArray(3)
+        val s = f.size
+        val radius = 0.74f * s
+        val pitch = 0.19f * s
+        val glyphW = 0.14f * s
+        val glyphH = 0.18f * s
+        val top = f.height + 0.4f * s
+        val rows = max(4, (top / pitch).toInt())
+        val columns = 16
+        val turn = t * 0.12f
 
-        c.ring(0.04f, radius, 0.05f * f.size, f.color(0f), 0.4f)
-        c.ring(top, radius * 0.75f, 0.035f * f.size, f.color(1f), 0.3f)
+        c.flatArc(0.03f, radius, 0.05f * s, f.color(0.35f), 0.5f, segments = 64)
+        c.flatArc(0.03f, radius * 0.55f, 0.03f * s, f.color(0.7f), 0.3f, segments = 48)
 
-        for (s in 0 until 2) {
-            val offset = s * Math.PI.toFloat()
-            c.beginRibbon()
-            val points = 44
-            for (i in 0..points) {
-                val k = i.toFloat() / points
-                helix(k, s, t, radius, top, turns, offset, p)
-                val ends = sqrt(sin(k * Math.PI.toFloat()))
-                c.point(p[0], p[1], p[2], 0.08f * f.size, f.color(k * 0.85f + s * 0.15f), 0.65f * ends)
-            }
-            c.endRibbon()
+        for (col in 0 until columns) {
+            val id = col * 7
+            val a = col * TAU / columns + turn + (hash(id) - 0.5f) * 0.25f
+            val r = radius * (0.9f + 0.2f * hash(id + 1))
+            val x = cos(a) * r
+            val z = sin(a) * r
+            // Rows per second, how long the tail is, and a pause below the ground before it falls again.
+            val speed = 6f + 6f * hash(id + 2)
+            val length = 6 + (hash(id + 3) * 8).toInt()
+            val cycle = rows + length + (hash(id + 4) * 12).toInt()
+            val pos = t * speed + hash(id + 5) * cycle
+            val loop = floor(pos / cycle).toInt()
+            val head = (pos - loop * cycle).toInt()
 
-            // The surge climbing the strand, with a short streak below it.
-            val surge = fract(t * 0.42f + s * 0.5f)
-            c.beginRibbon()
-            for (i in 0..10) {
-                val k = surge - i * 0.012f
-                if (k < 0f) break
-                helix(k, s, t, radius, top, turns, offset, p)
-                c.point(p[0], p[1], p[2], 0.14f * f.size * (1f - i / 10f), f.color(k), 0.8f * (1f - i / 10f))
-            }
-            c.endRibbon()
-            helix(surge, s, t, radius, top, turns, offset, p)
-            val surgeFade = sin(surge * Math.PI.toFloat())
-            c.sprite(p[0], p[1], p[2], 0.45f * f.size, f.color(surge), 0.8f * surgeFade)
-            c.sprite(p[0], p[1], p[2], 0.7f * f.size, f.color(surge), 0.4f * surgeFade, sparkle = true, spin = t * 2f)
-        }
-
-        val beads = 12
-        for (b in 0 until beads) {
-            val k = (b + 0.5f) / beads
-            for (s in 0 until 2) {
-                val offset = s * Math.PI.toFloat()
-                helix(k, s, t, radius, top, turns, offset, p)
-                val wave = 0.5f + 0.5f * sin(t * 4f - k * 10f + offset)
-                c.sprite(p[0], p[1], p[2], 0.19f * f.size * (0.7f + 0.6f * wave), f.color(k * 0.85f + s * 0.15f),
-                    0.45f + 0.55f * wave)
-            }
-            if (b % 3 == 1) {
-                helix(k, 0, t, radius, top, turns, 0f, p)
-                helix(k, 1, t, radius, top, turns, Math.PI.toFloat(), q)
-                c.beginRibbon()
-                for (i in 0..8) {
-                    val m = i / 8f
-                    c.point(p[0] + (q[0] - p[0]) * m, p[1] + (q[1] - p[1]) * m, p[2] + (q[2] - p[2]) * m,
-                        0.03f * f.size, f.color(k), 0.3f)
+            for (k in 0 until length) {
+                val row = head - k
+                if (row < 0 || row >= rows) continue
+                val y = top - (row + 0.5f) * pitch
+                // Every glyph changes now and then, each at its own pace.
+                val flicker = floor(t * (1.5f + 3f * hash(id * 13 + row)) + hash(id * 31 + row * 3) * 7f).toInt()
+                val glyph = (hash(col * 7919 + row * 104_729 + flicker * 31 + loop * 613) * 256f).toInt()
+                if (k == 0) {
+                    c.sprite(x, y, z, 0.4f * s, f.color(0.15f), 0.4f)
+                    c.glyph(x, y, z, glyphW * 1.1f, glyphH * 1.1f, mix(f.color(0f), 0xFFFFFF, 0.3f), 1f, glyph)
+                } else {
+                    val age = k.toFloat() / length
+                    c.glyph(x, y, z, glyphW, glyphH, f.color(0.15f + 0.85f * age), (1f - age).pow(1.1f), glyph)
                 }
-                c.endRibbon()
+            }
+
+            // The head landing: a short flash on the ground at the foot of the column.
+            val landed = head - rows
+            if (landed in 0..2) {
+                val fade = 1f - landed / 3f
+                c.sprite(x, 0.05f, z, 0.4f * s, f.color(0.2f), 0.6f * fade)
+                c.flatArc(0.03f, 0.12f * s * (1f + landed), 0.03f * s, f.color(0.2f), 0.5f * fade, segments = 12)
             }
         }
-    }
 
-    private fun helix(k: Float, strand: Int, t: Float, radius: Float, top: Float, turns: Float, offset: Float, out: FloatArray) {
-        val angle = k * turns * TAU - t * 1.6f + offset
-        val r = radius * (0.88f + 0.12f * sin(k * TAU + t + strand))
-        out[0] = cos(angle) * r
-        out[1] = 0.04f + k * (top - 0.04f)
-        out[2] = sin(angle) * r
+        // The scan line, rising from the feet to above the head every few seconds.
+        val scan = fract(t / 3.2f)
+        val scanFade = sin(scan * Math.PI.toFloat())
+        c.ring(scan * top, radius * 1.05f, 0.04f * s, f.color(0.1f), 0.55f * scanFade, segments = 56)
+        c.ring(scan * top, radius * 1.05f, 0.16f * s, f.color(0.4f), 0.18f * scanFade, segments = 56)
     }
 
     /**

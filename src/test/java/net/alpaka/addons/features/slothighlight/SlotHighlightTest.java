@@ -71,4 +71,32 @@ class SlotHighlightTest {
         assertEquals(Mark.READY, Place.CHOCOLATE_FACTORY.mark(item("Chocolate Milestones", "You have 2 unclaimed rewards!")));
         assertEquals(Mark.READY, Place.COMPOSTER_UPGRADES.mark(item("Speed", "Click to upgrade!")));
     }
+
+    @Test
+    void bestiaryTitles() {
+        assertEquals(Place.BESTIARY, SlotHighlight.placeOf("Bestiary"));
+        assertEquals(Place.BESTIARY, SlotHighlight.placeOf("(1/2) Bestiary ➜ The Catacombs"));
+        assertEquals(Place.BESTIARY, SlotHighlight.placeOf("Bestiary ➜ Spider's Den"));
+        // Shared with the leveling guide's titles: both rules run there.
+        assertEquals(List.of(Place.LEVEL_TASKS, Place.BESTIARY), Place.allOf("Fishing ➜ Spooky"));
+    }
+
+    @Test
+    void unfinishedBestiary() {
+        // Islands and categories.
+        assertTrue(SlotHighlight.isUnfinishedBestiary(List.of("Families Found: 100%", "Families Completed: 60%")));
+        assertFalse(SlotHighlight.isUnfinishedBestiary(List.of("Families Found: 100%", "Families Completed: 100%")));
+        assertTrue(SlotHighlight.isUnfinishedBestiary(List.of("Families Completed", "━━━━━━━━━━━━         6/10")));
+        assertFalse(SlotHighlight.isUnfinishedBestiary(List.of("Families Completed", "━━━━━━━━━━━━━━━━━━━━ 10/10")));
+        // Families.
+        assertTrue(SlotHighlight.isUnfinishedBestiary(List.of("Kills: 1,234", "Overall Progress: 55.2%", "  1,234/10,000")));
+        assertFalse(SlotHighlight.isUnfinishedBestiary(List.of("Kills: 10,000", "Overall Progress: 100% (MAX!)")));
+        assertTrue(SlotHighlight.isUnfinishedBestiary(List.of("Progress to Tier XV: 57.1%")));
+        assertTrue(SlotHighlight.isUnfinishedBestiary(List.of("You haven't unlocked this Family yet!")));
+        // The menu's switch and other buttons.
+        assertFalse(SlotHighlight.isUnfinishedBestiary(List.of("Overall Progress: HIDDEN")));
+        assertFalse(SlotHighlight.isUnfinishedBestiary(List.of("Click to view!")));
+        assertEquals(Mark.MISSING, Place.BESTIARY.mark(item("Zombie VII", "Overall Progress: 30%")));
+        assertEquals(Mark.NONE, Place.BESTIARY.mark(new Item(4, "Bestiary", List.of("Families Completed: 40%"), null)));
+    }
 }

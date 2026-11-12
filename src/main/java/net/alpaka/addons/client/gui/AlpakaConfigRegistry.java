@@ -2434,7 +2434,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.slotHighlightEnabled,
                 v -> { AlpakaConfig.instance.slotHighlightEnabled = v; AlpakaConfig.save(); },
-                "slot highlight highlight mark slot outline pets skyblock level leveling tasks auctions bazaar orders croesus jacob contests slayer rewards commissions chocolate factory power stones composter heart of the mountain forest perks"));
+                "slot highlight highlight mark slot outline pets skyblock level leveling tasks auctions bazaar orders croesus jacob contests slayer rewards commissions chocolate factory power stones composter bestiary heart of the mountain forest perks"));
 
         OPTIONS.add(new ConfigOption("slot_highlight_active_pet", "Active Pet",
                 "Your summoned pet in the Pets menu.",
@@ -2505,6 +2505,13 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.slotHighlightComposterUpgrades,
                 v -> { AlpakaConfig.instance.slotHighlightComposterUpgrades = v; AlpakaConfig.save(); },
                 "slot highlight composter upgrades garden upgrade"));
+
+        OPTIONS.add(new ConfigOption("slot_highlight_bestiary", "Unfinished Bestiary",
+                "Bestiary islands and mob families you haven't completed yet.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slotHighlightBestiary,
+                v -> { AlpakaConfig.instance.slotHighlightBestiary = v; AlpakaConfig.save(); },
+                "slot highlight bestiary be families family mobs islands unfinished incomplete maxed tier kills"));
 
         OPTIONS.add(ConfigOption.color("slot_highlight_ready_color", "Ready Color",
                 "Things to collect, finished, or switched on.",

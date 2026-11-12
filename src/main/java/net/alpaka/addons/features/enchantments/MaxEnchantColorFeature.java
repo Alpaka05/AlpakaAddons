@@ -7,12 +7,14 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
+import net.minecraft.util.Mth;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.IntFunction;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -57,12 +59,34 @@ public final class MaxEnchantColorFeature {
         ItemTooltipCallback.EVENT.register((stack, context, flag, lines) -> {
             AlpakaConfig config = AlpakaConfig.instance;
             if (!config.maxEnchantColorEnabled) return;
-            TextColor color = TextColor.fromRgb(config.maxEnchantColor & 0xFFFFFF);
+            boolean ultimates = config.maxEnchantColorUltimate;
             // Line 0 is the item's name.
+            if (config.maxEnchantColorChroma) {
+                // The tooltip is built again every frame, so the hues move along by themselves.
+                double shift = System.currentTimeMillis() / 1000.0 * CHROMA_CYCLES_PER_SECOND;
+                for (int i = 1; i < lines.size(); i++) {
+                    int line = i;
+                    lines.set(i, recolor(lines.get(i), ultimates, at -> chroma(shift, line, at), true));
+                }
+                return;
+            }
+            TextColor color = TextColor.fromRgb(config.maxEnchantColor & 0xFFFFFF);
             for (int i = 1; i < lines.size(); i++) {
-                lines.set(i, recolor(lines.get(i), color, config.maxEnchantColorUltimate));
+                lines.set(i, recolor(lines.get(i), color, ultimates));
             }
         });
+    }
+
+    /** One full rainbow cycle every two seconds, like the block overlay's chroma. */
+    private static final double CHROMA_CYCLES_PER_SECOND = 0.5;
+    /** Characters per rainbow across a line; each line starts a little further on, so the bands run diagonally. */
+    private static final double CHROMA_CHARS_PER_CYCLE = 30.0;
+    private static final double CHROMA_LINE_OFFSET = 2.0;
+
+    /** The chroma color of character {@code at} on tooltip line {@code line}, moving to the right over time. */
+    static TextColor chroma(double shift, int line, int at) {
+        double hue = (at + line * CHROMA_LINE_OFFSET) / CHROMA_CHARS_PER_CYCLE - shift;
+        return TextColor.fromRgb(Mth.hsvToRgb((float) (hue - Math.floor(hue)), 0.8f, 1.0f) & 0xFFFFFF);
     }
 
     /** Longest names first, so "Luck of the Sea" wins over "Luck". */
@@ -75,6 +99,14 @@ public final class MaxEnchantColorFeature {
 
     /** The line with every maxed enchantment in {@code color}, or the line itself if it has none. */
     static Component recolor(Component line, TextColor color, boolean ultimates) {
+        return recolor(line, ultimates, at -> color, false);
+    }
+
+    /**
+     * The line with every maxed enchantment colored by {@code colorAt}, which gets the character's
+     * index in the line; {@code perChar} asks it for every character instead of once per stretch.
+     */
+    static Component recolor(Component line, boolean ultimates, IntFunction<TextColor> colorAt, boolean perChar) {
         Found found = find(line.getString(), ultimates);
         String plain = found.plain();
         List<int[]> ranges = found.ranges();
@@ -121,9 +153,9 @@ public final class MaxEnchantColorFeature {
             while (at < run.end) {
                 while (r < ranges.size() && ranges.get(r)[1] <= at) r++;
                 boolean inside = r < ranges.size() && ranges.get(r)[0] <= at;
-                int to = inside ? Math.min(run.end, ranges.get(r)[1])
+                int to = inside ? (perChar ? at + 1 : Math.min(run.end, ranges.get(r)[1]))
                         : r < ranges.size() ? Math.min(run.end, ranges.get(r)[0]) : run.end;
-                Style style = inside ? run.style.withColor(color) : run.style;
+                Style style = inside ? run.style.withColor(colorAt.apply(at)) : run.style;
                 if (pending == null) {
                     pending = style;
                     pendingStart = at;

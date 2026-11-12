@@ -1006,6 +1006,8 @@ public class AlpakaConfig {
     /** Enchantments at their highest level are drawn in {@link #maxEnchantColor} in tooltips. */
     public boolean maxEnchantColorEnabled = false;
     public int maxEnchantColor = 0xFFFFAA00;
+    /** Maxed enchantments in moving rainbow colors instead of {@link #maxEnchantColor}. */
+    public boolean maxEnchantColorChroma = false;
     /** Ultimate enchantments too, which Hypixel already marks with bold pink. */
     public boolean maxEnchantColorUltimate = false;
     /** In SkyBlock's anvil, books that combine with the one put in are highlighted. */

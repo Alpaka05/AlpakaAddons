@@ -67,6 +67,20 @@ class MaxEnchantColorFeatureTest {
     }
 
     @Test
+    void chromaColorsEachMaxedCharacterOnItsOwn() {
+        Component line = Component.literal("Sharpness VII, Smite VI").withStyle(ChatFormatting.BLUE);
+        Component out = MaxEnchantColorFeature.recolor(line, false,
+                at -> MaxEnchantColorFeature.chroma(0.0, 1, at), true);
+        assertEquals("Sharpness VII, Smite VI", out.getString());
+        List<TextColor> colors = colors(out);
+        for (int i = 0; i < "Sharpness VII".length(); i++) {
+            assertEquals(MaxEnchantColorFeature.chroma(0.0, 1, i), colors.get(i));
+        }
+        assertTrue(!colors.get(0).equals(colors.get(5)));
+        assertEquals(BLUE, colors.get("Sharpness VII, ".length()));
+    }
+
+    @Test
     void untouchedLineIsReturnedAsIs() {
         Component line = Component.literal("Sharpness V").withStyle(ChatFormatting.BLUE);
         assertSame(line, MaxEnchantColorFeature.recolor(line, GOLD, false));

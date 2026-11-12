@@ -2826,11 +2826,18 @@ public class AlpakaConfigRegistry {
                 "enchantments enchants max maxed level highest color colour tooltip lore sharpness perfect"));
 
         OPTIONS.add(ConfigOption.color("max_enchant_color_value", "Max Level Color",
-                "Color of maxed enchantments.",
+                "Color of maxed enchantments, used while Chroma is off.",
                 ConfigCategory.SKYBLOCK,
                 c -> c.maxEnchantColor,
                 v -> { AlpakaConfig.instance.maxEnchantColor = v; AlpakaConfig.save(); },
                 "enchantments enchants max maxed level color colour picker tooltip"));
+
+        OPTIONS.add(new ConfigOption("max_enchant_color_chroma", "Chroma",
+                "Maxed enchantments cycle through the colors of the rainbow instead.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.maxEnchantColorChroma,
+                v -> { AlpakaConfig.instance.maxEnchantColorChroma = v; AlpakaConfig.save(); },
+                "enchantments enchants max maxed chroma rainbow rgb color cycle tooltip"));
 
         OPTIONS.add(new ConfigOption("max_enchant_color_ultimate", "Include Ultimate Enchants",
                 "Maxed ultimate enchantments get the color too instead of their pink.",

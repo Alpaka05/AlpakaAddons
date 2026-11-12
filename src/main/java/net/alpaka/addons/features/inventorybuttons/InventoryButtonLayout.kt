@@ -125,23 +125,38 @@ object InventoryButtonLayout {
 
     /**
      * Snaps a dragged corner to what is near it, each axis on its own: the panel's edges, just
-     * outside them, and the other buttons - lined up with one, or right next to it. Returns the
-     * corner, then 1 or 0 for whether x and y snapped, for the guides.
+     * outside them, and the other buttons - lined up with one, or right next to it. Above or below
+     * the panel a button snaps to the columns of [rowColumns] instead of the panel's edges, so a
+     * full row ends as far from the right edge as it starts from the left. Returns the corner, then
+     * 1 or 0 for whether x and y snapped, for the guides.
      */
     @JvmStatic
     fun snap(x: Int, y: Int, box: Box, others: List<IntArray>, range: Int = SNAP_RANGE): IntArray {
-        val xs = ArrayList<Int>()
         val ys = ArrayList<Int>()
         // Flush with an edge inside the panel, or just outside it with a gap.
-        xs += listOf(box.left, box.right - SIZE, box.left - SIZE - GAP, box.right + GAP)
         ys += listOf(box.top, box.bottom - SIZE, box.top - SIZE - GAP, box.bottom + GAP)
-        for (o in others) {
-            xs += listOf(o[0], o[0] - SIZE - GAP, o[0] + SIZE + GAP)
-            ys += listOf(o[1], o[1] - SIZE - GAP, o[1] + SIZE + GAP)
-        }
-        val sx = nearest(x, xs, range)
+        for (o in others) ys += listOf(o[1], o[1] - SIZE - GAP, o[1] + SIZE + GAP)
         val sy = nearest(y, ys, range)
-        return intArrayOf(sx ?: x, sy ?: y, if (sx != null) 1 else 0, if (sy != null) 1 else 0)
+
+        val ny = sy ?: y
+        val xs = ArrayList<Int>()
+        xs += listOf(box.left - SIZE - GAP, box.right + GAP)
+        if (ny + SIZE <= box.top || ny >= box.bottom) xs += rowColumns(box) else xs += listOf(box.left, box.right - SIZE)
+        for (o in others) xs += listOf(o[0], o[0] - SIZE - GAP, o[0] + SIZE + GAP)
+        val sx = nearest(x, xs, range)
+        return intArrayOf(sx ?: x, ny, if (sx != null) 1 else 0, if (sy != null) 1 else 0)
+    }
+
+    /**
+     * The left edges of a row of buttons above or below [box]: as many as fit across it with [GAP]
+     * between them, the space left over split evenly between both ends (7 buttons and 5 px on
+     * each side for a 176 px panel).
+     */
+    @JvmStatic
+    fun rowColumns(box: Box): List<Int> {
+        val count = maxOf(1, (box.width + GAP) / (SIZE + GAP))
+        val inset = (box.width - (count * SIZE + (count - 1) * GAP)) / 2
+        return List(count) { box.left + inset + it * (SIZE + GAP) }
     }
 
     private fun nearest(value: Int, candidates: List<Int>, range: Int): Int? {
@@ -155,42 +170,6 @@ object InventoryButtonLayout {
             }
         }
         return best
-    }
-
-    /**
-     * The buttons, by index into [positions] (top-left corners), that sit in one row with the one at
-     * [index]: at the same height, each next to the one before with no more than a small gap.
-     * Sorted left to right.
-     */
-    @JvmStatic
-    fun rowOf(positions: List<IntArray>, index: Int): List<Int> {
-        val y = positions[index][1]
-        val level = positions.indices.filter { positions[it][1] == y }.sortedBy { positions[it][0] }
-        val at = level.indexOf(index)
-        var first = at
-        var last = at
-        while (first > 0 && adjacent(positions[level[first - 1]], positions[level[first]])) first--
-        while (last < level.size - 1 && adjacent(positions[level[last]], positions[level[last + 1]])) last++
-        return level.subList(first, last + 1)
-    }
-
-    private fun adjacent(left: IntArray, right: IntArray): Boolean = right[0] - (left[0] + SIZE) <= GAP + 2
-
-    /**
-     * How far [row] (indices into [positions], from [rowOf]) has to move across to be centred on
-     * the panel: as much room left of it as right of it. 0 for a single button, which may sit
-     * anywhere on purpose, and for a row that isn't above or below the panel.
-     */
-    @JvmStatic
-    fun centerShift(positions: List<IntArray>, row: List<Int>, box: Box): Int {
-        if (row.size < 2) return 0
-        val left = row.minOf { positions[it][0] }
-        val right = row.maxOf { positions[it][0] } + SIZE
-        val y = positions[row[0]][1]
-        val outside = y + SIZE <= box.top || y >= box.bottom
-        val across = right > box.left && left < box.right
-        if (!outside || !across) return 0
-        return box.left + (box.width - (right - left)) / 2 - left
     }
 
     /** How close, in GUI pixels, a dragged button has to come to a line to snap to it. */

@@ -63,10 +63,15 @@ public final class MaxEnchantColorFeature {
             // Line 0 is the item's name.
             if (config.maxEnchantColorChroma) {
                 // The tooltip is built again every frame, so the hues move along by themselves.
-                double shift = System.currentTimeMillis() / 1000.0 * CHROMA_CYCLES_PER_SECOND;
+                // Clamped here, so a hand-edited config cannot push them out of the sliders' range.
+                float speed = Mth.clamp(config.maxEnchantChromaSpeed, 0.1f, 3.0f);
+                float size = Mth.clamp(config.maxEnchantChromaSize, 5.0f, 100.0f);
+                float saturation = Mth.clamp(config.maxEnchantChromaSaturation, 0.0f, 100.0f) / 100.0f;
+                double shift = System.currentTimeMillis() / 1000.0 * CHROMA_CYCLES_PER_SECOND * speed;
                 for (int i = 1; i < lines.size(); i++) {
                     int line = i;
-                    lines.set(i, recolor(lines.get(i), ultimates, at -> chroma(shift, line, at), true));
+                    lines.set(i, recolor(lines.get(i), ultimates,
+                            at -> chroma(shift, line, at, size, saturation), true));
                 }
                 return;
             }
@@ -77,16 +82,18 @@ public final class MaxEnchantColorFeature {
         });
     }
 
-    /** One full rainbow cycle every two seconds, like the block overlay's chroma. */
+    /** One full rainbow cycle every two seconds at 1x, like the block overlay's chroma. */
     private static final double CHROMA_CYCLES_PER_SECOND = 0.5;
-    /** Characters per rainbow across a line; each line starts a little further on, so the bands run diagonally. */
-    private static final double CHROMA_CHARS_PER_CYCLE = 30.0;
+    /** Each line starts this many characters further on, so the bands run diagonally. */
     private static final double CHROMA_LINE_OFFSET = 2.0;
 
-    /** The chroma color of character {@code at} on tooltip line {@code line}, moving to the right over time. */
-    static TextColor chroma(double shift, int line, int at) {
-        double hue = (at + line * CHROMA_LINE_OFFSET) / CHROMA_CHARS_PER_CYCLE - shift;
-        return TextColor.fromRgb(Mth.hsvToRgb((float) (hue - Math.floor(hue)), 0.8f, 1.0f) & 0xFFFFFF);
+    /**
+     * The chroma color of character {@code at} on tooltip line {@code line}, moving to the right
+     * over time; one rainbow spans {@code size} characters.
+     */
+    static TextColor chroma(double shift, int line, int at, float size, float saturation) {
+        double hue = (at + line * CHROMA_LINE_OFFSET) / size - shift;
+        return TextColor.fromRgb(Mth.hsvToRgb((float) (hue - Math.floor(hue)), saturation, 1.0f) & 0xFFFFFF);
     }
 
     /** Longest names first, so "Luck of the Sea" wins over "Luck". */

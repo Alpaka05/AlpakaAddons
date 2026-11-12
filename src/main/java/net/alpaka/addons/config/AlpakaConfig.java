@@ -1271,6 +1271,8 @@ public class AlpakaConfig {
         public boolean anchorBottom = false;
         /** Where it shows: {@link #SHOW_ALL}, {@link #SHOW_INVENTORY} or {@link #SHOW_CONTAINERS}. */
         public int showIn = SHOW_ALL;
+        /** Whether the command only runs on a second click right after the first, against a warp by mistake. */
+        public boolean doubleClick = false;
         /**
          * The button size the position was laid out for. Files from before every style had
          * {@link #SIZE} leave it out and read as 18; InventoryButtonLayout.migrate moves those once.

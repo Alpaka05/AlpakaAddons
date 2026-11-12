@@ -1006,14 +1006,8 @@ public class AlpakaConfig {
     /** Enchantments at their highest level are drawn in {@link #maxEnchantColor} in tooltips. */
     public boolean maxEnchantColorEnabled = false;
     public int maxEnchantColor = 0xFFFFAA00;
-    /** Maxed enchantments in moving rainbow colors instead of {@link #maxEnchantColor}. */
-    public boolean maxEnchantColorChroma = false;
-    /** Rainbow cycles per two seconds. */
-    public float maxEnchantChromaSpeed = 1.0f;
-    /** Characters one full rainbow spans; smaller packs more colors into a word. */
-    public float maxEnchantChromaSize = 30.0f;
-    /** How strong the rainbow colors are, in percent; low values fade toward white. */
-    public float maxEnchantChromaSaturation = 80.0f;
+    /** Maxed enchantments in moving rainbow colors instead of {@link #maxEnchantColor}; set in its picker. */
+    public Chroma maxEnchantChroma = new Chroma();
     /** Ultimate enchantments too, which Hypixel already marks with bold pink. */
     public boolean maxEnchantColorUltimate = false;
     /** In SkyBlock's anvil, books that combine with the one put in are highlighted. */

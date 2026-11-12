@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.enchantments;
 
+import net.alpaka.addons.config.Chroma;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
@@ -69,12 +70,13 @@ class MaxEnchantColorFeatureTest {
     @Test
     void chromaColorsEachMaxedCharacterOnItsOwn() {
         Component line = Component.literal("Sharpness VII, Smite VI").withStyle(ChatFormatting.BLUE);
+        Chroma chroma = new Chroma();
         Component out = MaxEnchantColorFeature.recolor(line, false,
-                at -> MaxEnchantColorFeature.chroma(0.0, 1, at, 30f, 0.8f), true);
+                at -> MaxEnchantColorFeature.chroma(chroma, 0.0, 1, at), true);
         assertEquals("Sharpness VII, Smite VI", out.getString());
         List<TextColor> colors = colors(out);
         for (int i = 0; i < "Sharpness VII".length(); i++) {
-            assertEquals(MaxEnchantColorFeature.chroma(0.0, 1, i, 30f, 0.8f), colors.get(i));
+            assertEquals(MaxEnchantColorFeature.chroma(chroma, 0.0, 1, i), colors.get(i));
         }
         assertTrue(!colors.get(0).equals(colors.get(5)));
         assertEquals(BLUE, colors.get("Sharpness VII, ".length()));

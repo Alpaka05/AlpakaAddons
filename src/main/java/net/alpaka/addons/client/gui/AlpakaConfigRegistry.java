@@ -2826,42 +2826,12 @@ public class AlpakaConfigRegistry {
                 "enchantments enchants max maxed level highest color colour tooltip lore sharpness perfect"));
 
         OPTIONS.add(ConfigOption.color("max_enchant_color_value", "Max Level Color",
-                "Color of maxed enchantments, used while Chroma is off.",
+                "Color of maxed enchantments. Switch on Chroma in the picker for a moving rainbow instead.",
                 ConfigCategory.SKYBLOCK,
                 c -> c.maxEnchantColor,
                 v -> { AlpakaConfig.instance.maxEnchantColor = v; AlpakaConfig.save(); },
-                "enchantments enchants max maxed level color colour picker tooltip"));
-
-        OPTIONS.add(new ConfigOption("max_enchant_color_chroma", "Chroma",
-                "Maxed enchantments cycle through the colors of the rainbow instead.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.maxEnchantColorChroma,
-                v -> { AlpakaConfig.instance.maxEnchantColorChroma = v; AlpakaConfig.save(); },
-                "enchantments enchants max maxed chroma rainbow rgb color cycle tooltip"));
-
-        OPTIONS.add(new ConfigOption("max_enchant_chroma_speed", "Chroma Speed",
-                "How fast the rainbow moves. Chroma only.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.maxEnchantChromaSpeed,
-                v -> { AlpakaConfig.instance.maxEnchantChromaSpeed = v; AlpakaConfig.save(); },
-                0.1f, 3.0f, val -> String.format(Locale.ROOT, "%.2fx", val),
-                "enchantments enchants chroma rainbow speed fast slow"));
-
-        OPTIONS.add(new ConfigOption("max_enchant_chroma_size", "Chroma Size",
-                "How many letters one full rainbow spans. Smaller puts more colors into a word. Chroma only.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.maxEnchantChromaSize,
-                v -> { AlpakaConfig.instance.maxEnchantChromaSize = v; AlpakaConfig.save(); },
-                5.0f, 100.0f, val -> String.format(Locale.ROOT, "%d letters", Math.round(val)),
-                "enchantments enchants chroma rainbow size width length wave"));
-
-        OPTIONS.add(new ConfigOption("max_enchant_chroma_saturation", "Chroma Saturation",
-                "How strong the rainbow colors are. Lower values fade toward white. Chroma only.",
-                ConfigCategory.SKYBLOCK,
-                () -> AlpakaConfig.instance.maxEnchantChromaSaturation,
-                v -> { AlpakaConfig.instance.maxEnchantChromaSaturation = v; AlpakaConfig.save(); },
-                0.0f, 100.0f, val -> String.format(Locale.ROOT, "%.0f%%", val),
-                "enchantments enchants chroma rainbow saturation strength pastel vivid"));
+                "enchantments enchants max maxed level color colour picker tooltip chroma rainbow rgb")
+                .withChroma(c -> c.maxEnchantChroma, true));
 
         OPTIONS.add(new ConfigOption("max_enchant_color_ultimate", "Include Ultimate Enchants",
                 "Maxed ultimate enchantments get the color too instead of their pink.",

@@ -1,13 +1,13 @@
 package net.alpaka.addons.features.enchantments;
 
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.config.Chroma;
 import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
-import net.minecraft.util.Mth;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -61,17 +61,13 @@ public final class MaxEnchantColorFeature {
             if (!config.maxEnchantColorEnabled) return;
             boolean ultimates = config.maxEnchantColorUltimate;
             // Line 0 is the item's name.
-            if (config.maxEnchantColorChroma) {
+            Chroma chroma = config.maxEnchantChroma;
+            if (chroma != null && chroma.enabled) {
                 // The tooltip is built again every frame, so the hues move along by themselves.
-                // Clamped here, so a hand-edited config cannot push them out of the sliders' range.
-                float speed = Mth.clamp(config.maxEnchantChromaSpeed, 0.1f, 3.0f);
-                float size = Mth.clamp(config.maxEnchantChromaSize, 5.0f, 100.0f);
-                float saturation = Mth.clamp(config.maxEnchantChromaSaturation, 0.0f, 100.0f) / 100.0f;
-                double shift = System.currentTimeMillis() / 1000.0 * CHROMA_CYCLES_PER_SECOND * speed;
+                double shift = chroma.shift(System.currentTimeMillis());
                 for (int i = 1; i < lines.size(); i++) {
                     int line = i;
-                    lines.set(i, recolor(lines.get(i), ultimates,
-                            at -> chroma(shift, line, at, size, saturation), true));
+                    lines.set(i, recolor(lines.get(i), ultimates, at -> chroma(chroma, shift, line, at), true));
                 }
                 return;
             }
@@ -82,18 +78,12 @@ public final class MaxEnchantColorFeature {
         });
     }
 
-    /** One full rainbow cycle every two seconds at 1x, like the block overlay's chroma. */
-    private static final double CHROMA_CYCLES_PER_SECOND = 0.5;
-    /** Each line starts this many characters further on, so the bands run diagonally. */
+    /** Each line starts this many letters further on, so the rainbow's bands run diagonally. */
     private static final double CHROMA_LINE_OFFSET = 2.0;
 
-    /**
-     * The chroma color of character {@code at} on tooltip line {@code line}, moving to the right
-     * over time; one rainbow spans {@code size} characters.
-     */
-    static TextColor chroma(double shift, int line, int at, float size, float saturation) {
-        double hue = (at + line * CHROMA_LINE_OFFSET) / size - shift;
-        return TextColor.fromRgb(Mth.hsvToRgb((float) (hue - Math.floor(hue)), saturation, 1.0f) & 0xFFFFFF);
+    /** The chroma color of letter {@code at} on tooltip line {@code line}. */
+    static TextColor chroma(Chroma chroma, double shift, int line, int at) {
+        return TextColor.fromRgb(chroma.rgb(shift, at + line * CHROMA_LINE_OFFSET));
     }
 
     /** Longest names first, so "Luck of the Sea" wins over "Luck". */

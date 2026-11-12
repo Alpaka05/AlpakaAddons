@@ -157,6 +157,9 @@ public final class DevScreenshotTour {
             new Stop(null, () -> scroll(0.97, 0.5, -10), () -> true, 10),
             new Stop("config-viewmodel-scrolled-end", () -> scroll(0.97, 0.5, -10), () -> true, 30),
             screen("color-picker", () -> new ColorPickerScreen(null, "Accent Color", 0xFF29B6B2, 0xFF00E5FF, color -> {})),
+            // A picker whose option offers a rainbow, once with Chroma off and once with it on.
+            screen("color-picker-chroma-off", () -> chromaPicker(false)),
+            screen("color-picker-chroma-on", () -> chromaPicker(true)),
             screen("wheel-editor", () -> new CommandWheelConfigScreen(new CustomMainMenuScreen())),
             new Stop("shortcuts-editor", () -> {
                 AlpakaConfig.instance.commandAliases = new java.util.ArrayList<>(List.of(
@@ -896,6 +899,14 @@ public final class DevScreenshotTour {
     private static int ticks = 0;
     private static int stop = -1;
     private static boolean done = false;
+
+    /** The Max Level Color picker on a copy of its chroma, so nothing the tour shows is saved. */
+    private static ColorPickerScreen chromaPicker(boolean on) {
+        net.alpaka.addons.config.Chroma chroma = new net.alpaka.addons.config.Chroma();
+        chroma.enabled = on;
+        return new ColorPickerScreen(null, "Max Level Color", 0xFFFFAA00, 0xFFFFAA00, color -> {},
+                new ColorPickerScreen.ChromaSpec(chroma, new net.alpaka.addons.config.Chroma(), true));
+    }
 
     /** A focused map tour uses the normal HUD editor and only changes this dev client's config. */
     private static HudEditorScreen dungeonMapPreview(boolean both, boolean transparent) {

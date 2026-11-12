@@ -110,8 +110,7 @@ internal object AuraEffects {
      * Digital rain: columns of glyphs falling around the body on a slowly turning cylinder. Each
      * column is led by a bright, almost white glyph and trails a tail that darkens to deep green; the
      * rain moves a whole glyph at a time, like a terminal scrolling, and the glyphs in the tail keep
-     * changing. Where a column reaches the ground it flashes, and now and then a scan line sweeps up
-     * the body.
+     * changing. Where a column reaches the ground it flashes.
      */
     fun matrix(c: AuraCanvas, f: AuraFrame) {
         val t = f.time
@@ -124,9 +123,6 @@ internal object AuraEffects {
         val rows = max(4, (top / pitch).toInt())
         val columns = 16
         val turn = t * 0.12f
-
-        c.flatArc(0.03f, radius, 0.05f * s, f.color(0.35f), 0.5f, segments = 64)
-        c.flatArc(0.03f, radius * 0.55f, 0.03f * s, f.color(0.7f), 0.3f, segments = 48)
 
         for (col in 0 until columns) {
             val id = col * 7
@@ -163,15 +159,8 @@ internal object AuraEffects {
             if (landed in 0..2) {
                 val fade = 1f - landed / 3f
                 c.sprite(x, 0.05f, z, 0.4f * s, f.color(0.2f), 0.6f * fade)
-                c.flatArc(0.03f, 0.12f * s * (1f + landed), 0.03f * s, f.color(0.2f), 0.5f * fade, segments = 12)
             }
         }
-
-        // The scan line, rising from the feet to above the head every few seconds.
-        val scan = fract(t / 3.2f)
-        val scanFade = sin(scan * Math.PI.toFloat())
-        c.ring(scan * top, radius * 1.05f, 0.04f * s, f.color(0.1f), 0.55f * scanFade, segments = 56)
-        c.ring(scan * top, radius * 1.05f, 0.16f * s, f.color(0.4f), 0.18f * scanFade, segments = 56)
     }
 
     /**

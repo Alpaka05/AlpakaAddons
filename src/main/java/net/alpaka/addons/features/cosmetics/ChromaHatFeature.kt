@@ -111,8 +111,8 @@ object ChromaHatFeature {
     /** The three brightness steps of the woven strips, cycling around the hat. */
     private val STRIP_SHADES = floatArrayOf(1.0f, 0.86f, 0.93f)
 
-    /** Full turns of the rainbow around the hat per second, at speed 1. */
-    private const val HUE_TURNS_PER_SECOND = 0.25
+    /** The rainbow's saturation for the hat being drawn, from its Chroma; set by [emit]. */
+    private var rainbowSaturation = 0.9f
 
     /** Whether the hat belongs on this render state: the feature is on and it is the local player. */
     @JvmStatic
@@ -137,8 +137,10 @@ object ChromaHatFeature {
         val cfg = AlpakaConfig.instance
         val alpha = (cfg.chromaHatOpacity / 100f).coerceIn(0.05f, 1f)
         val size = cfg.chromaHatSize
-        val time = (System.currentTimeMillis() % 3_600_000L) / 1000.0 * cfg.chromaHatSpeed
-        val hueShift = time * HUE_TURNS_PER_SECOND
+        val chroma = cfg.chromaHatChroma
+        // Kept within an hour, so the shift stays small; the hue only needs its fraction.
+        val hueShift = chroma.shift(System.currentTimeMillis() % 3_600_000L)
+        rainbowSaturation = chroma.saturation01()
 
         val plainRgb = cfg.chromaHatColor and 0xFFFFFF
         val vertexLight = if (rainbow) FULL_BRIGHT else light
@@ -236,7 +238,7 @@ object ChromaHatFeature {
         val edge1 = Vector3f()
         val edge2 = Vector3f()
         if (rainbow) {
-            for (i in 0..SEGMENTS) SEGMENT_RGB[i] = Mth.hsvToRgb(fract(i.toDouble() / SEGMENTS + hueShift), 0.9f, 1.0f)
+            for (i in 0..SEGMENTS) SEGMENT_RGB[i] = Mth.hsvToRgb(fract(i.toDouble() / SEGMENTS + hueShift), rainbowSaturation, 1.0f)
         }
         for (p in 0 until profile.size - 1) {
             val a = profile[p]

@@ -3,6 +3,7 @@ package net.alpaka.addons.features.damagetags
 import net.alpaka.addons.client.gui.AlpakaStyle
 import com.mojang.blaze3d.vertex.PoseStack
 import net.alpaka.addons.config.AlpakaConfig
+import net.alpaka.addons.config.Chroma
 import net.alpaka.addons.features.slayer.SlayerBossNameTag
 import net.alpaka.addons.features.slayer.SlayerType
 import net.alpaka.addons.utils.AlpakaPerf
@@ -290,7 +291,11 @@ object CustomDamageTagFeature {
             val end = if (tag.crit) cfg.customDamageTagCritEnd else cfg.customDamageTagNormalEnd
             // A still gradient is the same every frame, so it is built once per tag and again only when
             // a color changes.
-            val sequence = if (cfg.customDamageTagFlowingGradient) {
+            val chroma = if (tag.crit) cfg.customDamageTagCritChroma else cfg.customDamageTagNormalChroma
+            val sequence = if (chroma != null && chroma.enabled) {
+                // A rainbow along the number instead of the gradient; it moves, so it is built every frame.
+                rainbow(text, chroma, chroma.shift(now))
+            } else if (cfg.customDamageTagFlowingGradient) {
                 gradient(text, start, end, time)
             } else {
                 val built = tag.gradient
@@ -331,6 +336,18 @@ object CustomDamageTagFeature {
      * tag ever hold other characters, it has to go back through visualOrderText. The styles are worked out up
      * front, so the width pass and the later draw see the same ones.
      */
+    /** The number with each character in [chroma]'s rainbow, which moves along it over time. */
+    private fun rainbow(text: String, chroma: Chroma, shift: Double): FormattedCharSequence {
+        val count = text.length
+        val styles = Array(count) { index -> Style.EMPTY.withColor(chroma.rgb(shift, index.toDouble())) }
+        return FormattedCharSequence { sink ->
+            for (i in 0 until count) {
+                if (!sink.accept(i, styles[i], text[i].code)) return@FormattedCharSequence false
+            }
+            true
+        }
+    }
+
     private fun gradient(text: String, start: Int, end: Int, time: Double?): FormattedCharSequence {
         val count = text.length
         val styles = Array(count) { index ->

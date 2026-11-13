@@ -11,6 +11,7 @@ import net.alpaka.addons.client.gui.Hsv;
 import net.alpaka.addons.client.gui.ModernGuiUtils;
 import net.alpaka.addons.client.gui.RoundedImageRenderState;
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.config.Chroma;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.render.TextureSetup;
@@ -37,6 +38,10 @@ import static net.alpaka.addons.client.gui.AlpakaStyle.inside;
  * player's own, then a plus that saves the color now as one more. Nothing is applied until
  * Save; Escape or Cancel leave the option as it was, and Reset in the header goes back to the
  * option's default.
+ *
+ * An option that offers a rainbow ({@code ConfigOption.withChroma}) also has a Chroma switch in
+ * the header. While it is on, the point runs round the wheel the way the rainbow moves, and the
+ * sliders on the right set its speed, saturation and, for a rainbow along text, its size.
  */
 public class ColorPickerScreen extends Screen implements net.alpaka.addons.client.gui.NoticeHost {
     private final Screen parent;
@@ -54,7 +59,18 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
     /** What the mouse is dragging: the wheel, one of the sliders, or nothing. */
     private Drag drag = Drag.NONE;
 
-    private enum Drag { NONE, WHEEL, BRIGHTNESS, OPACITY }
+    private enum Drag { NONE, WHEEL, BRIGHTNESS, OPACITY, SPEED, SATURATION, SIZE }
+
+    /**
+     * The rainbow an option offers: the one in the live config, which Save writes into, its default
+     * for Reset, and whether it runs along text (which adds the Size slider).
+     */
+    public record ChromaSpec(Chroma live, Chroma defaults, boolean spread) {
+    }
+
+    /** The option's rainbow, or null for a plain color; {@link #chroma} is the copy being edited. */
+    private final ChromaSpec chromaSpec;
+    private final Chroma chroma;
 
     private String hexInput = "";
     private boolean hexFocused = false;
@@ -87,10 +103,17 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
     }
 
     public ColorPickerScreen(Screen parent, String title, int initialColor, Integer defaultColor, Consumer<Integer> onSave) {
+        this(parent, title, initialColor, defaultColor, onSave, null);
+    }
+
+    public ColorPickerScreen(Screen parent, String title, int initialColor, Integer defaultColor, Consumer<Integer> onSave,
+                             ChromaSpec chromaSpec) {
         super(GuiFont.text(title));
         this.parent = parent;
         this.onSave = onSave;
         this.defaultColor = defaultColor;
+        this.chromaSpec = chromaSpec;
+        this.chroma = chromaSpec == null ? null : chromaSpec.live().copy();
         setColor(initialColor);
         syncHexFromColor();
     }
@@ -115,6 +138,20 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
 
     private int currentColor() {
         return (a << 24) | rgb;
+    }
+
+    private boolean chromaOn() {
+        return chroma != null && chroma.enabled;
+    }
+
+    /** Whether anything differs from the option's default, which is when Reset shows. */
+    private boolean differsFromDefault() {
+        if (defaultColor != null && currentColor() != defaultColor) return true;
+        return chroma != null && !chroma.sameAs(chromaSpec.defaults());
+    }
+
+    private boolean canReset() {
+        return defaultColor != null && differsFromDefault();
     }
 
     private String hexOf() {
@@ -238,6 +275,8 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
     private static final int FIELD_H = 16;
     private static final int PREVIEW_W = 28;
     private static final int RESET_W = 40;
+    private static final int TOGGLE_W = 16;
+    private static final int TOGGLE_H = 9;
 
     /** The header's Reset button sits centred in the header, as every header button does. */
     private static int headerButtonY(Layout l) {
@@ -280,6 +319,9 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         int hexX() { return rightX + PREVIEW_W + 6; }
         int hexW() { return rightX + rightW - hexX(); }
         int sliderLabelY(int i) { return bodyY + FIELD_H + 8 + i * SLIDER_ROW_H; }
+        /** The Chroma switch sits in the header left of Reset, whose place it keeps free. */
+        int chromaToggleX() { return resetX - 10 - TOGGLE_W; }
+        int chromaToggleY() { return y + (AlpakaStyle.HEADER_H - TOGGLE_H) / 2; }
         int trackY(int i) { return sliderLabelY(i) + 17; }
         // The track's round ends reach 3 px past its ends, so it is inset to stay in the column.
         int trackX() { return rightX + 3; }
@@ -300,8 +342,20 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         AlpakaStyle.panel(graphics, l.x(), l.y(), l.w(), l.h());
         AlpakaStyle.header(graphics, this.font, this.title.getString(), l.x(), l.y(), l.w());
 
-        // Reset, in the header: only while the color differs from the default.
-        if (defaultColor != null && currentColor() != defaultColor) {
+        // The Chroma switch, for options that offer a rainbow, with its name in front.
+        if (chroma != null) {
+            int tx = l.chromaToggleX();
+            int ty = l.chromaToggleY();
+            String label = "Chroma";
+            int labelW = GuiFont.width(this.font, label);
+            boolean hoverToggle = overChromaToggle(l, mouseX, mouseY);
+            graphics.text(this.font, GuiFont.text(label), tx - 6 - labelW, ty + (TOGGLE_H - 8) / 2,
+                    hoverToggle || chroma.enabled ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT, false);
+            AlpakaStyle.toggle(graphics, tx, ty, TOGGLE_W, TOGGLE_H, chroma.enabled ? 1.0f : 0.0f);
+        }
+
+        // Reset, in the header: only while something differs from the default.
+        if (canReset()) {
             boolean hover = inside(mouseX, mouseY, l.resetX(), headerButtonY(l), RESET_W, AlpakaStyle.BUTTON_H);
             AlpakaStyle.button(graphics, this.font, l.resetX(), headerButtonY(l), RESET_W, AlpakaStyle.BUTTON_H, "Reset", hover, ButtonKind.PLAIN);
         }
@@ -309,6 +363,12 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         // The wheel, darkened as far as the brightness is down, and a ring where the color sits on it.
         int ws = l.wheelSize();
         drawWheel(graphics, l.wheelX(), l.wheelY(), ws);
+        if (chromaOn()) {
+            drawChroma(graphics, l, mouseX, mouseY);
+            AlpakaStyle.endOpen(graphics, pushed);
+            net.alpaka.addons.features.notification.AlpakaNotifications.renderOverScreen(graphics);
+            return;
+        }
         int shade = Math.round((1.0f - hsv.val()) * 255.0f);
         if (shade > 0) ModernGuiUtils.drawRoundedRect(graphics, l.wheelX(), l.wheelY(), ws, ws, ws / 2, shade << 24);
         ModernGuiUtils.drawRoundedOutline(graphics, l.wheelX() - 1, l.wheelY() - 1, ws + 2, ws + 2, ws / 2 + 1, AlpakaStyle.LINE);
@@ -368,11 +428,7 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
             hoverSince = System.currentTimeMillis();
         }
 
-        // Cancel and Save.
-        boolean hoverCancel = inside(mouseX, mouseY, l.cancelX(), l.btnY(), l.btnW(), AlpakaStyle.BUTTON_H);
-        boolean hoverSave = inside(mouseX, mouseY, l.saveX(), l.btnY(), l.btnW(), AlpakaStyle.BUTTON_H);
-        AlpakaStyle.button(graphics, this.font, l.cancelX(), l.btnY(), l.btnW(), AlpakaStyle.BUTTON_H, "Cancel", hoverCancel, ButtonKind.PLAIN);
-        AlpakaStyle.button(graphics, this.font, l.saveX(), l.btnY(), l.btnW(), AlpakaStyle.BUTTON_H, "Save", hoverSave, ButtonKind.PRIMARY);
+        drawButtons(graphics, l, mouseX, mouseY);
 
         AlpakaStyle.endOpen(graphics, pushed);
         if (hoveredSlot >= PRESETS.length && System.currentTimeMillis() - hoverSince >= AlpakaStyle.TOOLTIP_DELAY_MS) {
@@ -385,21 +441,92 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         net.alpaka.addons.features.notification.AlpakaNotifications.renderOverScreen(graphics);
     }
 
+    /** Cancel and Save. */
+    private void drawButtons(GuiGraphicsExtractor graphics, Layout l, int mouseX, int mouseY) {
+        boolean hoverCancel = inside(mouseX, mouseY, l.cancelX(), l.btnY(), l.btnW(), AlpakaStyle.BUTTON_H);
+        boolean hoverSave = inside(mouseX, mouseY, l.saveX(), l.btnY(), l.btnW(), AlpakaStyle.BUTTON_H);
+        AlpakaStyle.button(graphics, this.font, l.cancelX(), l.btnY(), l.btnW(), AlpakaStyle.BUTTON_H, "Cancel", hoverCancel, ButtonKind.PLAIN);
+        AlpakaStyle.button(graphics, this.font, l.saveX(), l.btnY(), l.btnW(), AlpakaStyle.BUTTON_H, "Save", hoverSave, ButtonKind.PRIMARY);
+    }
+
+    /**
+     * The picker with Chroma on: the point runs round the wheel as the rainbow moves, at its
+     * saturation, the preview shows the color of the moment, and the sliders set the rainbow.
+     */
+    private void drawChroma(GuiGraphicsExtractor graphics, Layout l, int mouseX, int mouseY) {
+        double shift = chroma.shift(System.currentTimeMillis());
+        float hue = chroma.hue(shift, 0.0);
+        float sat = chroma.saturation01();
+        int now = chroma.rgb(shift, 0.0);
+        ModernGuiUtils.drawRoundedOutline(graphics, l.wheelX() - 1, l.wheelY() - 1, l.wheelSize() + 2, l.wheelSize() + 2,
+                l.wheelSize() / 2 + 1, AlpakaStyle.LINE);
+        double angle = hue * 2.0 * Math.PI;
+        float knobX = (float) (l.wheelCx() + Math.cos(angle) * sat * l.wheelR());
+        float knobY = (float) (l.wheelCy() - Math.sin(angle) * sat * l.wheelR());
+        AlpakaStyle.knob(graphics, knobX, knobY, 11, now);
+
+        // The preview, and in place of the hex code a few letters in the rainbow, as text shows it.
+        AlpakaStyle.swatch(graphics, l.rightX(), l.bodyY(), PREVIEW_W, FIELD_H, 0xFF000000 | now);
+        AlpakaStyle.textField(graphics, this.font, l.hexX(), l.bodyY(), l.hexW(), FIELD_H, "", "", false, false, 0L);
+        String sample = "Chroma";
+        int tx = l.hexX() + 5;
+        int ty = l.bodyY() + (FIELD_H - 8) / 2;
+        for (int i = 0; i < sample.length(); i++) {
+            String letter = sample.substring(i, i + 1);
+            graphics.text(this.font, GuiFont.text(letter), tx, ty, 0xFF000000 | chroma.rgb(shift, i), false);
+            tx += GuiFont.width(this.font, letter);
+        }
+
+        float speedNorm = (chroma.speed() - Chroma.MIN_SPEED) / (Chroma.MAX_SPEED - Chroma.MIN_SPEED);
+        slider(graphics, l, 0, "Speed", String.format(Locale.ROOT, "%.2fx", chroma.speed()), speedNorm,
+                mouseX, mouseY, drag == Drag.SPEED);
+        int pure = new Hsv(hue, 1.0f, 1.0f).rgb();
+        slider(graphics, l, 1, "Saturation", sat, 0xFFFFFFFF, pure, mouseX, mouseY, drag == Drag.SATURATION, now);
+        if (chromaSpec.spread()) {
+            float sizeNorm = (chroma.size() - Chroma.MIN_SIZE) / (Chroma.MAX_SIZE - Chroma.MIN_SIZE);
+            slider(graphics, l, 2, "Size", Math.round(chroma.size()) + " letters", sizeNorm,
+                    mouseX, mouseY, drag == Drag.SIZE);
+        }
+        drawButtons(graphics, l, mouseX, mouseY);
+    }
+
+    /** A plain slider row: its name, its value, and the config's accent track. */
+    private void slider(GuiGraphicsExtractor graphics, Layout l, int row, String label, String shown, float norm,
+                        int mouseX, int mouseY, boolean dragging) {
+        int labelY = l.sliderLabelY(row);
+        graphics.text(this.font, GuiFont.text(label), l.rightX(), labelY + 4, AlpakaStyle.TEXT_SOFT, false);
+        int valueW = GuiFont.width(this.font, shown);
+        graphics.text(this.font, GuiFont.text(shown), l.rightX() + l.rightW() - valueW, labelY + 4, AlpakaStyle.TEXT, false);
+        AlpakaStyle.sliderTrack(graphics, l.trackX(), l.trackY(row), l.trackW(), norm, overSlider(l, row, mouseX, mouseY), dragging);
+    }
+
     private void slider(GuiGraphicsExtractor graphics, Layout l, int row, String label, float value,
                         int from, int to, int mouseX, int mouseY, boolean dragging) {
+        slider(graphics, l, row, label, value, from, to, mouseX, mouseY, dragging, rgb);
+    }
+
+    private void slider(GuiGraphicsExtractor graphics, Layout l, int row, String label, float value,
+                        int from, int to, int mouseX, int mouseY, boolean dragging, int knobColor) {
         int labelY = l.sliderLabelY(row);
         String shown = Math.round(value * 100.0f) + "%";
         graphics.text(this.font, GuiFont.text(label), l.rightX(), labelY + 4, AlpakaStyle.TEXT_SOFT, false);
         int valueW = GuiFont.width(this.font, shown);
         graphics.text(this.font, GuiFont.text(shown), l.rightX() + l.rightW() - valueW, labelY + 4, AlpakaStyle.TEXT, false);
         boolean hover = overSlider(l, row, mouseX, mouseY);
-        AlpakaStyle.gradientTrack(graphics, l.trackX(), l.trackY(row), l.trackW(), from, to, value, rgb, hover, dragging);
+        AlpakaStyle.gradientTrack(graphics, l.trackX(), l.trackY(row), l.trackW(), from, to, value, knobColor, hover, dragging);
     }
 
     // ---- Input ----------------------------------------------------------------------------------
 
     private static boolean overWheel(Layout l, double mouseX, double mouseY) {
         return Math.hypot(mouseX - l.wheelCx(), mouseY - l.wheelCy()) <= l.wheelR() + 3;
+    }
+
+    private boolean overChromaToggle(Layout l, double mouseX, double mouseY) {
+        if (chroma == null) return false;
+        int labelW = GuiFont.width(this.font, "Chroma");
+        return inside(mouseX, mouseY, l.chromaToggleX() - 6 - labelW - 2, l.chromaToggleY() - 4,
+                labelW + 6 + TOGGLE_W + 6, TOGGLE_H + 8);
     }
 
     private static boolean overSlider(Layout l, int row, double mouseX, double mouseY) {
@@ -411,7 +538,7 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         double mouseX = event.x();
         double mouseY = event.y();
         Layout l = Layout.of(this.width, this.height);
-        if (event.button() == 1) {
+        if (event.button() == 1 && !chromaOn()) {
             for (int i = PRESETS.length; i < slotCount(); i++) {
                 if (inside(mouseX, mouseY, l.swatchX(i) - 2, l.swatchY(i) - 2, SWATCH + 4, SWATCH + 4)) {
                     AlpakaStyle.click();
@@ -425,12 +552,29 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         boolean wasHex = hexFocused;
         hexFocused = false;
 
-        if (defaultColor != null && currentColor() != defaultColor
-                && inside(mouseX, mouseY, l.resetX(), headerButtonY(l), RESET_W, AlpakaStyle.BUTTON_H)) {
+        if (canReset() && inside(mouseX, mouseY, l.resetX(), headerButtonY(l), RESET_W, AlpakaStyle.BUTTON_H)) {
             AlpakaStyle.click();
             setColor(defaultColor);
             syncHexFromColor();
+            if (chroma != null) chroma.set(chromaSpec.defaults());
             return true;
+        }
+
+        if (overChromaToggle(l, mouseX, mouseY)) {
+            AlpakaStyle.click();
+            chroma.enabled = !chroma.enabled;
+            return true;
+        }
+
+        if (chromaOn()) {
+            if (overSlider(l, 0, mouseX, mouseY)) drag = Drag.SPEED;
+            else if (overSlider(l, 1, mouseX, mouseY)) drag = Drag.SATURATION;
+            else if (chromaSpec.spread() && overSlider(l, 2, mouseX, mouseY)) drag = Drag.SIZE;
+            if (drag != Drag.NONE) {
+                dragTo(l, mouseX, mouseY);
+                return true;
+            }
+            return clickButtons(l, mouseX, mouseY) || super.mouseClicked(event, doubleClick);
         }
 
         if (inside(mouseX, mouseY, l.hexX(), l.bodyY(), l.hexW(), FIELD_H)) {
@@ -471,6 +615,10 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
             return true;
         }
 
+        return clickButtons(l, mouseX, mouseY) || super.mouseClicked(event, doubleClick);
+    }
+
+    private boolean clickButtons(Layout l, double mouseX, double mouseY) {
         if (inside(mouseX, mouseY, l.saveX(), l.btnY(), l.btnW(), AlpakaStyle.BUTTON_H)) {
             save();
             return true;
@@ -480,7 +628,7 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
             onClose();
             return true;
         }
-        return super.mouseClicked(event, doubleClick);
+        return false;
     }
 
     @Override
@@ -521,6 +669,12 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
                 a = (int) Math.round(sliderNorm(l, mouseX) * 255.0);
                 syncHexFromColor();
             }
+            // Rounded to the steps the values are shown in, so a saved value reads as shown.
+            case SPEED -> chroma.speed = Math.round(
+                    (Chroma.MIN_SPEED + sliderNorm(l, mouseX) * (Chroma.MAX_SPEED - Chroma.MIN_SPEED)) * 20.0) / 20.0f;
+            case SATURATION -> chroma.saturation = Math.round(sliderNorm(l, mouseX) * 100.0);
+            case SIZE -> chroma.size = Math.round(
+                    Chroma.MIN_SIZE + sliderNorm(l, mouseX) * (Chroma.MAX_SIZE - Chroma.MIN_SIZE));
             default -> {}
         }
     }
@@ -571,6 +725,8 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
 
     private void save() {
         AlpakaStyle.click();
+        // The rainbow first: the color's setter saves the config, which then carries both.
+        if (chroma != null) chromaSpec.live().set(chroma);
         onSave.accept(currentColor());
         onClose();
     }

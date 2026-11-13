@@ -1,6 +1,7 @@
 package net.alpaka.addons.features.enchantments;
 
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.config.Chroma;
 import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -13,6 +14,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.IntFunction;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -57,12 +59,31 @@ public final class MaxEnchantColorFeature {
         ItemTooltipCallback.EVENT.register((stack, context, flag, lines) -> {
             AlpakaConfig config = AlpakaConfig.instance;
             if (!config.maxEnchantColorEnabled) return;
-            TextColor color = TextColor.fromRgb(config.maxEnchantColor & 0xFFFFFF);
+            boolean ultimates = config.maxEnchantColorUltimate;
             // Line 0 is the item's name.
+            Chroma chroma = config.maxEnchantChroma;
+            if (chroma != null && chroma.enabled) {
+                // The tooltip is built again every frame, so the hues move along by themselves.
+                double shift = chroma.shift(System.currentTimeMillis());
+                for (int i = 1; i < lines.size(); i++) {
+                    int line = i;
+                    lines.set(i, recolor(lines.get(i), ultimates, at -> chroma(chroma, shift, line, at), true));
+                }
+                return;
+            }
+            TextColor color = TextColor.fromRgb(config.maxEnchantColor & 0xFFFFFF);
             for (int i = 1; i < lines.size(); i++) {
-                lines.set(i, recolor(lines.get(i), color, config.maxEnchantColorUltimate));
+                lines.set(i, recolor(lines.get(i), color, ultimates));
             }
         });
+    }
+
+    /** Each line starts this many letters further on, so the rainbow's bands run diagonally. */
+    private static final double CHROMA_LINE_OFFSET = 2.0;
+
+    /** The chroma color of letter {@code at} on tooltip line {@code line}. */
+    static TextColor chroma(Chroma chroma, double shift, int line, int at) {
+        return TextColor.fromRgb(chroma.rgb(shift, at + line * CHROMA_LINE_OFFSET));
     }
 
     /** Longest names first, so "Luck of the Sea" wins over "Luck". */
@@ -75,6 +96,14 @@ public final class MaxEnchantColorFeature {
 
     /** The line with every maxed enchantment in {@code color}, or the line itself if it has none. */
     static Component recolor(Component line, TextColor color, boolean ultimates) {
+        return recolor(line, ultimates, at -> color, false);
+    }
+
+    /**
+     * The line with every maxed enchantment colored by {@code colorAt}, which gets the character's
+     * index in the line; {@code perChar} asks it for every character instead of once per stretch.
+     */
+    static Component recolor(Component line, boolean ultimates, IntFunction<TextColor> colorAt, boolean perChar) {
         Found found = find(line.getString(), ultimates);
         String plain = found.plain();
         List<int[]> ranges = found.ranges();
@@ -121,9 +150,9 @@ public final class MaxEnchantColorFeature {
             while (at < run.end) {
                 while (r < ranges.size() && ranges.get(r)[1] <= at) r++;
                 boolean inside = r < ranges.size() && ranges.get(r)[0] <= at;
-                int to = inside ? Math.min(run.end, ranges.get(r)[1])
+                int to = inside ? (perChar ? at + 1 : Math.min(run.end, ranges.get(r)[1]))
                         : r < ranges.size() ? Math.min(run.end, ranges.get(r)[0]) : run.end;
-                Style style = inside ? run.style.withColor(color) : run.style;
+                Style style = inside ? run.style.withColor(colorAt.apply(at)) : run.style;
                 if (pending == null) {
                     pending = style;
                     pendingStart = at;

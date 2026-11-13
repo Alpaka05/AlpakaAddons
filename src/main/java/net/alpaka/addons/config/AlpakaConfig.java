@@ -1283,6 +1283,11 @@ public class AlpakaConfig {
         /** Where it shows: {@link #SHOW_ALL}, {@link #SHOW_INVENTORY} or {@link #SHOW_CONTAINERS}. */
         public int showIn = SHOW_ALL;
         /**
+         * How many clicks in quick succession run the command: 1, 2, 3 or 5. More than one keeps a
+         * stray click from warping the player by mistake.
+         */
+        public int clicks = 1;
+        /**
          * The button size the position was laid out for. Files from before every style had
          * {@link #SIZE} leave it out and read as 18; InventoryButtonLayout.migrate moves those once.
          */

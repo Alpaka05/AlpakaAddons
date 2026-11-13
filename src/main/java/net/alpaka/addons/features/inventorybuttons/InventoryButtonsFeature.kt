@@ -38,6 +38,18 @@ object InventoryButtonsFeature {
     /** The button the last press landed on, so its release is kept from the screen too. */
     private var pressConsumed = false
 
+    /** The button being clicked towards its [InventoryButton.clicks], how often so far, and when last. */
+    private var counting: InventoryButton? = null
+    private var counted = 0
+    private var countedAt = 0L
+
+    /** How long, in ms, a button waits for its next click before the count starts over. */
+    private const val CLICK_GAP_MS = 500L
+
+    /** The click counts a button can ask for, in the order the editor offers them. */
+    @JvmField
+    val CLICK_CHOICES = intArrayOf(1, 2, 3, 5)
+
     @JvmStatic
     fun register() {
         ScreenEvents.AFTER_INIT.register { _, screen, _, _ ->
@@ -49,7 +61,7 @@ object InventoryButtonsFeature {
                 if (event.button() != 0) return@register true
                 val button = buttonAt(s as AbstractContainerScreen<*>, event.x(), event.y()) ?: return@register true
                 pressConsumed = true
-                run(button)
+                click(button)
                 false
             }
             ScreenMouseEvents.allowMouseRelease(screen).register { _, _ ->
@@ -216,6 +228,31 @@ object InventoryButtonsFeature {
         }
     }
 
+    /**
+     * A click on [button]. A button that asks for several clicks runs only on the last of them,
+     * each within [CLICK_GAP_MS] of the one before; until then the clicks are only counted, so a
+     * stray click can't warp.
+     */
+    private fun click(button: InventoryButton) {
+        val now = System.currentTimeMillis()
+        val count = if (counting === button && now - countedAt <= CLICK_GAP_MS) counted + 1 else 1
+        if (count >= button.clicks.coerceAtLeast(1)) {
+            counting = null
+            counted = 0
+            run(button)
+            return
+        }
+        counting = button
+        counted = count
+        countedAt = now
+    }
+
+    /** How many more clicks [button] needs to run right now. */
+    private fun clicksLeft(button: InventoryButton): Int {
+        val done = if (counting === button && System.currentTimeMillis() - countedAt <= CLICK_GAP_MS) counted else 0
+        return button.clicks.coerceAtLeast(1) - done
+    }
+
     private fun tooltip(button: InventoryButton): List<Component> {
         val command = displayCommand(button.command)
         val lines = ArrayList<Component>()
@@ -224,6 +261,14 @@ object InventoryButtonsFeature {
         } else {
             lines.add(Component.literal(button.label))
             lines.add(Component.literal(command).withStyle(ChatFormatting.GRAY))
+        }
+        if (button.clicks > 1) {
+            val left = clicksLeft(button)
+            lines.add(when {
+                left == button.clicks -> Component.literal("Click ${button.clicks}x to run").withStyle(ChatFormatting.DARK_GRAY)
+                left == 1 -> Component.literal("Click again to run").withStyle(ChatFormatting.YELLOW)
+                else -> Component.literal("Click $left more times").withStyle(ChatFormatting.YELLOW)
+            })
         }
         return lines
     }

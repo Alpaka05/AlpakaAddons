@@ -111,7 +111,8 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
     private fun commandY() = backY() + ROW_STEP
     private fun labelY() = commandY() + ROW_STEP
     private fun showInY() = labelY() + ROW_STEP
-    private fun searchY() = showInY() + ROW_STEP
+    private fun clicksY() = showInY() + ROW_STEP
+    private fun searchY() = clicksY() + ROW_STEP
     private fun fieldX() = contentX() + labelW()
     private fun fieldW() = contentW() - labelW()
     /** The labels' column: as wide as the widest label in the menu font, which differs by font. */
@@ -316,6 +317,9 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
         Skin.label(graphics, font, "Show In", cx, showInY() + 5)
         Skin.button(graphics, font, fx, showInY(), fw, Skin.BUTTON_H, SHOW_IN[button.showIn.coerceIn(0, SHOW_IN.size - 1)],
             inside(mx, my, fx, showInY(), fw, Skin.BUTTON_H), Skin.PLAIN)
+        Skin.label(graphics, font, "Clicks", cx, clicksY() + 5)
+        Skin.button(graphics, font, fx, clicksY(), fw, Skin.BUTTON_H, "${button.clicks}x",
+            inside(mx, my, fx, clicksY(), fw, Skin.BUTTON_H), Skin.PLAIN)
         Skin.label(graphics, font, "Icon", cx, searchY() + 5)
         Skin.textField(graphics, font, fx, searchY(), fw, Skin.BUTTON_H, searchText.text, "Search",
             focus == Field.SEARCH, inside(mx, my, fx, searchY(), fw, Skin.BUTTON_H))
@@ -447,6 +451,13 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
             inside(mx, my, fx, showInY(), fw, Skin.BUTTON_H) -> {
                 Skin.click()
                 button.showIn = (button.showIn + 1) % SHOW_IN.size
+                AlpakaConfig.save()
+            }
+            inside(mx, my, fx, clicksY(), fw, Skin.BUTTON_H) -> {
+                Skin.click()
+                // The next of 1x, 2x, 3x, 5x; a count from an edited file starts over at 1x.
+                val choices = InventoryButtonsFeature.CLICK_CHOICES
+                button.clicks = choices[(choices.indexOf(button.clicks) + 1) % choices.size]
                 AlpakaConfig.save()
             }
             inside(mx, my, cx, gridY(), cw, gridH()) -> {
@@ -599,7 +610,7 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
     companion object {
         private val CHEST_LOCATION: Identifier = Identifier.withDefaultNamespace("textures/gui/container/generic_54.png")
         private val SHOW_IN = arrayOf("All", "Inventory", "Chests")
-        private val LABELS = listOf("Preview", "Command", "Tooltip", "Show In", "Icon")
+        private val LABELS = listOf("Preview", "Command", "Tooltip", "Show In", "Clicks", "Icon")
 
         private const val IMAGE_W = 176
         private const val MARGIN = 6

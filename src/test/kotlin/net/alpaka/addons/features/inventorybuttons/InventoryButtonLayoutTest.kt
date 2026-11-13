@@ -59,6 +59,26 @@ class InventoryButtonLayoutTest {
     }
 
     @Test
+    fun `a full row above the panel leaves the same room at both ends`() {
+        val columns = InventoryButtonLayout.rowColumns(inventory)
+        assertEquals(7, columns.size)
+        val start = columns.first() - inventory.left
+        val end = inventory.right - (columns.last() + InventoryButtonLayout.SIZE)
+        assertEquals(start, end)
+        assertEquals(5, start)
+        // Dropped near the panel's left edge above it, a button goes to the first column.
+        val y = inventory.top - InventoryButtonLayout.SIZE - InventoryButtonLayout.GAP
+        val s = InventoryButtonLayout.snap(inventory.left + 2, y, inventory, emptyList())
+        assertEquals(columns.first(), s[0])
+    }
+
+    @Test
+    fun `over the panel a button still snaps flush with its edge`() {
+        val s = InventoryButtonLayout.snap(inventory.left + 2, 100, inventory, emptyList())
+        assertEquals(inventory.left, s[0])
+    }
+
+    @Test
     fun `nothing near means no snap`() {
         val s = InventoryButtonLayout.snap(20, 20, inventory, emptyList())
         assertArrayEquals(intArrayOf(20, 20, 0, 0), s)

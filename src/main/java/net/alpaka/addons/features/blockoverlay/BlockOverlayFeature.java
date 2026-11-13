@@ -81,35 +81,21 @@ public class BlockOverlayFeature {
             fadeInFactor = progress * progress;
         }
 
-        // Resolved once and shared by both passes. It used to be worked out separately for the
-        // outline and the fill, which ran the HSB conversion twice a frame and allocated a
-        // three-float array each time for the same color.
-        boolean chromaEnabled = AlpakaConfig.instance.blockChromaEnabled;
-        int chromaRgb = chromaEnabled ? chromaRgb(AlpakaConfig.instance.blockChromaSpeed) : 0;
+        // Resolved once and shared by both passes. A color in Chroma takes the rainbow's color of
+        // the moment and keeps its own alpha.
+        AlpakaConfig cfg = AlpakaConfig.instance;
+        int outlineRgb = rgbOf(cfg.blockOutlineColor, cfg.blockOutlineChroma, now);
+        int fillRgb = rgbOf(cfg.blockFillColor, cfg.blockFillChroma, now);
 
-        final float outlineR, outlineG, outlineB, outlineA;
-        if (chromaEnabled) {
-            outlineR = ((chromaRgb >> 16) & 0xFF) / 255.0f;
-            outlineG = ((chromaRgb >> 8) & 0xFF) / 255.0f;
-            outlineB = (chromaRgb & 0xFF) / 255.0f;
-        } else {
-            outlineR = ((AlpakaConfig.instance.blockOutlineColor >> 16) & 0xFF) / 255.0f;
-            outlineG = ((AlpakaConfig.instance.blockOutlineColor >> 8) & 0xFF) / 255.0f;
-            outlineB = (AlpakaConfig.instance.blockOutlineColor & 0xFF) / 255.0f;
-        }
-        outlineA = (((AlpakaConfig.instance.blockOutlineColor >> 24) & 0xFF) / 255.0f) * fadeInFactor;
+        final float outlineR = ((outlineRgb >> 16) & 0xFF) / 255.0f;
+        final float outlineG = ((outlineRgb >> 8) & 0xFF) / 255.0f;
+        final float outlineB = (outlineRgb & 0xFF) / 255.0f;
+        final float outlineA = (((cfg.blockOutlineColor >> 24) & 0xFF) / 255.0f) * fadeInFactor;
 
-        final float fillR, fillG, fillB, fillA;
-        if (chromaEnabled) {
-            fillR = ((chromaRgb >> 16) & 0xFF) / 255.0f;
-            fillG = ((chromaRgb >> 8) & 0xFF) / 255.0f;
-            fillB = (chromaRgb & 0xFF) / 255.0f;
-        } else {
-            fillR = ((AlpakaConfig.instance.blockFillColor >> 16) & 0xFF) / 255.0f;
-            fillG = ((AlpakaConfig.instance.blockFillColor >> 8) & 0xFF) / 255.0f;
-            fillB = (AlpakaConfig.instance.blockFillColor & 0xFF) / 255.0f;
-        }
-        fillA = (((AlpakaConfig.instance.blockFillColor >> 24) & 0xFF) / 255.0f) * fadeInFactor;
+        final float fillR = ((fillRgb >> 16) & 0xFF) / 255.0f;
+        final float fillG = ((fillRgb >> 8) & 0xFF) / 255.0f;
+        final float fillB = (fillRgb & 0xFF) / 255.0f;
+        final float fillA = (((cfg.blockFillColor >> 24) & 0xFF) / 255.0f) * fadeInFactor;
 
         // Read now rather than inside the callback: the callback runs later in the frame, and the
         // values used there should be the ones the render type below was chosen with.
@@ -134,14 +120,10 @@ public class BlockOverlayFeature {
         poseStack.popPose();
     }
 
-    /** One full rainbow cycle every two seconds at 1x. */
-    private static final double CHROMA_CYCLES_PER_SECOND = 0.5;
-
-    /** The current chroma color as packed RGB. Returned packed so nothing has to be allocated. */
-    private static int chromaRgb(float speed) {
-        double timeSec = (double) System.currentTimeMillis() / 1000.0 * CHROMA_CYCLES_PER_SECOND * speed;
-        float hue = (float) (timeSec % 1.0);
-        return java.awt.Color.HSBtoRGB(hue, 1.0f, 1.0f);
+    /** The color's RGB, or the rainbow's of the moment while its Chroma is on. */
+    private static int rgbOf(int color, net.alpaka.addons.config.Chroma chroma, long now) {
+        if (chroma == null || !chroma.enabled) return color & 0xFFFFFF;
+        return chroma.rgb(chroma.shift(now), 0.0);
     }
 
     private static VoxelShape cachedShape = null;

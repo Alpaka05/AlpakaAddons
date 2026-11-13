@@ -55,7 +55,7 @@ class ChromaHatLayer(parent: RenderLayerParent<AvatarRenderState, PlayerModel>) 
         // the cutout terrain. The item-target type does not have that problem but has the opposite
         // one - the hat then shows through the leaves like an x-ray - which is worse. Anyone who
         // wants the hat to hold up against foliage sets the opacity to 100%.
-        val rainbow = AlpakaConfig.instance.chromaHatRainbow
+        val rainbow = AlpakaConfig.instance.chromaHatChroma.enabled
         val opaque = AlpakaConfig.instance.chromaHatOpacity >= 100f
         val renderType = when {
             opaque -> RenderTypes.entitySolid(ChromaHatFeature.TEXTURE)

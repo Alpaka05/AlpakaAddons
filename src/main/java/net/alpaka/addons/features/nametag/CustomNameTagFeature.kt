@@ -47,10 +47,10 @@ import kotlin.math.sin
  */
 object CustomNameTagFeature {
 
+    // The rainbow is the Gradient effect with Chroma switched on in its colors' pickers.
     const val COLOR_VANILLA = 0
-    const val COLOR_RAINBOW = 1
-    const val COLOR_GRADIENT = 2
-    const val COLOR_PULSE = 3
+    const val COLOR_GRADIENT = 1
+    const val COLOR_PULSE = 2
 
     const val MOTION_NONE = 0
     const val MOTION_WAVE = 1
@@ -59,7 +59,7 @@ object CustomNameTagFeature {
 
     /** Names for the config slider, indexed by the COLOR_* constants. */
     @JvmField
-    val COLOR_MODE_NAMES = arrayOf("Vanilla", "Rainbow", "Gradient", "Pulse")
+    val COLOR_MODE_NAMES = arrayOf("Vanilla", "Gradient", "Pulse")
 
     /** Names for the config slider, indexed by the MOTION_* constants. */
     @JvmField
@@ -268,13 +268,11 @@ object CustomNameTagFeature {
     private fun effectColor(cfg: AlpakaConfig, glyph: Glyph, index: Int, count: Int, time: Double): Int? {
         if (!glyph.ownName && !cfg.nameTagColorWholeTag) return null
         val position = if (count > 1) index.toFloat() / (count - 1) else 0f
-        return when (cfg.nameTagColorMode) {
-            COLOR_RAINBOW -> {
-                // A whole spectrum across the name, drifting sideways over time.
-                val hue = fract(time * 0.12 + position * 0.75)
-                Mth.hsvToRgb(hue.toFloat(), 0.85f, 1.0f) and RGB_MASK
-            }
+        return when (cfg.nameTagColorEffect) {
             COLOR_GRADIENT -> {
+                val chroma = cfg.nameTagChroma
+                // With Chroma, a rainbow across the letters, drifting sideways over time.
+                if (chroma != null && chroma.enabled) return chroma.rgbNow(index.toDouble())
                 // The two colors swap ends slowly, so the gradient appears to flow along the tag.
                 val mix = 0.5f + 0.5f * sin(time * 1.5 + position * Math.PI).toFloat()
                 lerpRgb(cfg.nameTagGradientStart, cfg.nameTagGradientEnd, mix)

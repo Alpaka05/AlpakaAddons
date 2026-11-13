@@ -124,6 +124,8 @@ public final class DevScreenshotTour {
             screen("config-alignment-helper", () -> AlpakaConfigScreen.openOn("Garden", "Alignment Helper")),
             screen("config-slot-highlight", () -> AlpakaConfigScreen.openOn("Tools", "Slot Highlight")),
             screen("config-damage-tags", () -> AlpakaConfigScreen.openOn("Cosmetics", "Custom Damage Tags")),
+            screen("config-sensei-hat", () -> AlpakaConfigScreen.openOn("Cosmetics", "Sensei Hat")),
+            screen("config-name-tag", () -> AlpakaConfigScreen.openOn("Cosmetics", "Custom Name Tag")),
             screen("config-aura", () -> AlpakaConfigScreen.openOn("Cosmetics", "Aura")),
             screen("config-search", () -> new AlpakaConfigScreen(null, "blaze")),
             screen("config-inventory-hud", () -> AlpakaConfigScreen.openOn("Interface", "Inventory HUD")),

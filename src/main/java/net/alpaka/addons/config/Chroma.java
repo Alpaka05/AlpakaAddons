@@ -27,6 +27,14 @@ public final class Chroma {
     public Chroma() {
     }
 
+    /** A chroma with its own defaults, for an option whose rainbow should start out different. */
+    public Chroma(boolean enabled, float speed, float size, float saturation) {
+        this.enabled = enabled;
+        this.speed = speed;
+        this.size = size;
+        this.saturation = saturation;
+    }
+
     public Chroma copy() {
         Chroma c = new Chroma();
         c.set(this);

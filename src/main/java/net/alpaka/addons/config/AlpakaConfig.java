@@ -80,8 +80,15 @@ public class AlpakaConfig {
     // sees them - and both apply to the player's own model in third person.
     /** Draw the player's own name tag with effects instead of vanilla's (which never shows it). */
     public boolean customNameTagEnabled = false;
-    /** Index into {@code CustomNameTagFeature.COLOR_MODE_NAMES}: vanilla, rainbow, gradient, pulse. */
-    public int nameTagColorMode = 1;
+    /** Index into {@code CustomNameTagFeature.COLOR_MODE_NAMES}: vanilla, gradient, pulse. */
+    public int nameTagColorEffect = 1;
+    /** The Gradient effect as a moving rainbow instead of its two colors; set in their pickers. */
+    public Chroma nameTagChroma = new Chroma(true, 0.25f, 13.0f, 85.0f);
+    /**
+     * Legacy, from when Rainbow was a color effect of its own (0 vanilla, 1 rainbow, 2 gradient,
+     * 3 pulse); it is Gradient with Chroma now. Read once by {@link #migrateChroma} and then cleared.
+     */
+    public Integer nameTagColorMode = null;
     /** Index into {@code CustomNameTagFeature.MOTION_MODE_NAMES}: none, wave, bounce, shake. */
     public int nameTagMotionMode = 1;
     /** Apply the color effect to the rank prefix as well, not only to the name itself. */
@@ -102,16 +109,19 @@ public class AlpakaConfig {
     public int nameTagGradientStart = 0xFF55FFFF;
     public int nameTagGradientEnd = 0xFFFF55FF;
 
-    /** A translucent sensei hat on the player's own head. Plain straw by default; see chromaHatRainbow. */
+    /** A translucent sensei hat on the player's own head. Plain straw by default; see chromaHatChroma. */
     public boolean chromaHatEnabled = false;
-    /** Rainbow colors sweeping around the hat, self-lit, instead of the plain color. */
-    public boolean chromaHatRainbow = false;
+    /** Rainbow colors sweeping around the hat, self-lit, instead of the plain color; set in its picker. */
+    public Chroma chromaHatChroma = new Chroma(false, 0.5f, 30.0f, 90.0f);
+    /** Legacy, before the chroma moved into the hat color's picker. Read once by {@link #migrateChroma} and then cleared. */
+    public Boolean chromaHatRainbow = null;
     /** Color of the plain hat. Default: straw. */
     public int chromaHatColor = 0xFFC8A65A;
     /** Hat opacity in percent. */
     public float chromaHatOpacity = 55.0f;
     public float chromaHatSize = 1.0f;
-    public float chromaHatSpeed = 1.0f;
+    /** Legacy, see {@link #chromaHatRainbow}. */
+    public Float chromaHatSpeed = null;
     /** Raises (positive) or lowers the hat from where it rests on the head, in blocks. */
     public float chromaHatHeightOffset = 0.0f;
 
@@ -575,6 +585,9 @@ public class AlpakaConfig {
     public int customDamageTagNormalEnd = 0xFF9FB4D0;
     public int customDamageTagCritStart = 0xFFFFE15A;
     public int customDamageTagCritEnd = 0xFFFF4A3A;
+    /** Normal hits and crits as a moving rainbow instead of their gradients; set in their pickers. */
+    public Chroma customDamageTagNormalChroma = new Chroma(false, 1.0f, 10.0f, 80.0f);
+    public Chroma customDamageTagCritChroma = new Chroma(false, 1.0f, 10.0f, 80.0f);
 
     // Block Overlay options
     public boolean blockOverlayEnabled = false;
@@ -583,8 +596,12 @@ public class AlpakaConfig {
     public boolean blockOutlineEnabled = true;
     public float blockOutlineThickness = 2.0f;
     public int blockOutlineColor = 0xFF0000FF; // Default blue
-    public boolean blockChromaEnabled = false;
-    public float blockChromaSpeed = 1.0f;
+    /** The outline and the fill as a moving rainbow instead of their colors; set in their pickers. */
+    public Chroma blockOutlineChroma = new Chroma(false, 1.0f, 30.0f, 100.0f);
+    public Chroma blockFillChroma = new Chroma(false, 1.0f, 30.0f, 100.0f);
+    /** Legacy, from when one Chroma switch and speed covered both. Read once by {@link #migrateChroma} and then cleared. */
+    public Boolean blockChromaEnabled = null;
+    public Float blockChromaSpeed = null;
     public boolean blockIgnoreDepth = false;
     public boolean blockIgnorePlants = false;
     public boolean blockFillEnabled = false;
@@ -1714,6 +1731,7 @@ public class AlpakaConfig {
         // Settings that were replaced keep the other pattern: a legacy field, read once and then
         // cleared, so it needs no number.
         instance.migrateNameTagBackground();
+        boolean chromaMoved = instance.migrateChroma();
         instance.migrateInventoryHudVisibility();
         instance.migrateWorldAgeHud();
         // Inventory buttons laid out for 18 px move to where they belong at 22 px; each button
@@ -1732,7 +1750,7 @@ public class AlpakaConfig {
             instance.activeItemPresetIndex = -1;
         }
 
-        if (!existedAtStart || sanitized > 0 || migrated || buttonsMoved) save();
+        if (!existedAtStart || sanitized > 0 || migrated || buttonsMoved || chromaMoved) save();
         applyMenuTheme();
     }
 
@@ -1857,6 +1875,56 @@ public class AlpakaConfig {
     }
 
     /** Hide Name Tag Background became a color; hiding is now zero opacity. */
+    /**
+     * The chroma switches and speeds that lived beside their colors moved into the color pickers.
+     * Each old setting carries over to the same look: the speeds are converted, since the pickers
+     * count full rainbows per two seconds. Returns whether anything moved, so the file is written
+     * without the old fields.
+     */
+    private boolean migrateChroma() {
+        boolean moved = blockChromaEnabled != null || blockChromaSpeed != null || chromaHatRainbow != null
+                || chromaHatSpeed != null || nameTagColorMode != null;
+        if (blockChromaEnabled != null || blockChromaSpeed != null) {
+            boolean on = Boolean.TRUE.equals(blockChromaEnabled);
+            float speed = blockChromaSpeed != null ? blockChromaSpeed : 1.0f;
+            for (Chroma c : new Chroma[] {blockOutlineChroma, blockFillChroma}) {
+                c.enabled = on;
+                c.speed = clampSpeed(speed);
+            }
+            blockChromaEnabled = null;
+            blockChromaSpeed = null;
+        }
+        if (chromaHatRainbow != null || chromaHatSpeed != null) {
+            chromaHatChroma.enabled = Boolean.TRUE.equals(chromaHatRainbow);
+            // The hat turned 0.25 rainbows a second at 1x.
+            chromaHatChroma.speed = clampSpeed((chromaHatSpeed != null ? chromaHatSpeed : 1.0f) * 0.5f);
+            chromaHatRainbow = null;
+            chromaHatSpeed = null;
+        }
+        if (nameTagColorMode != null) {
+            switch (nameTagColorMode) {
+                case 0 -> nameTagColorEffect = 0;
+                case 1 -> {
+                    nameTagColorEffect = 1;
+                    nameTagChroma.enabled = true;
+                    // The rainbow moved 0.12 rainbows a second at 1x Animation Speed.
+                    nameTagChroma.speed = clampSpeed(nameTagAnimationSpeed * 0.24f);
+                }
+                case 2 -> {
+                    nameTagColorEffect = 1;
+                    nameTagChroma.enabled = false;
+                }
+                default -> nameTagColorEffect = 2;
+            }
+            nameTagColorMode = null;
+        }
+        return moved;
+    }
+
+    private static float clampSpeed(float speed) {
+        return Math.max(Chroma.MIN_SPEED, Math.min(Chroma.MAX_SPEED, speed));
+    }
+
     private void migrateNameTagBackground() {
         if (hideNameTagBackground == null) return;
         if (hideNameTagBackground) nameTagBackgroundColor = 0;

@@ -1828,11 +1828,12 @@ public class AlpakaConfigRegistry {
                 "outline thickness line width border size frame"));
 
         OPTIONS.add(ConfigOption.color("block_outline_color", "Outline Color",
-                "The outline color.",
+                "The outline color. Switch on Chroma in the picker to cycle it through the rainbow.",
                 ConfigCategory.BLOCK_OVERLAY,
                 c -> c.blockOutlineColor,
                 v -> { AlpakaConfig.instance.blockOutlineColor = v; AlpakaConfig.save(); },
-                "block outline color picker rgb alpha cyan red blue"));
+                "block outline color picker rgb alpha cyan red blue chroma rainbow cycle")
+                .withChroma(c -> c.blockOutlineChroma, false));
 
         OPTIONS.add(new ConfigOption("Fill", ConfigCategory.BLOCK_OVERLAY));
 
@@ -1844,11 +1845,12 @@ public class AlpakaConfigRegistry {
                 "block fill solid transparent face shading color block fill"));
 
         OPTIONS.add(ConfigOption.color("block_fill_color", "Fill Color",
-                "The fill color, transparency included.",
+                "The fill color, transparency included. Switch on Chroma in the picker to cycle it through the rainbow.",
                 ConfigCategory.BLOCK_OVERLAY,
                 c -> c.blockFillColor,
                 v -> { AlpakaConfig.instance.blockFillColor = v; AlpakaConfig.save(); },
-                "block fill color picker rgb alpha transparency tint"));
+                "block fill color picker rgb alpha transparency tint chroma rainbow cycle")
+                .withChroma(c -> c.blockFillChroma, false));
 
         OPTIONS.add(new ConfigOption("Animation", ConfigCategory.BLOCK_OVERLAY));
 
@@ -1866,21 +1868,6 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.blockFadeInDurationMs = Math.round(v); AlpakaConfig.save(); },
                 50.0f, 1000.0f, val -> String.format(Locale.ROOT, "%d ms", Math.round(val)),
                 "block fade in duration speed time ms transition overlay fade in duration"));
-
-        OPTIONS.add(new ConfigOption("block_chroma_enabled", "Chroma Colors",
-                "Cycles the overlay through the colors of the rainbow.",
-                ConfigCategory.BLOCK_OVERLAY,
-                () -> AlpakaConfig.instance.blockChromaEnabled,
-                v -> { AlpakaConfig.instance.blockChromaEnabled = v; AlpakaConfig.save(); },
-                "chroma rgb rainbow color cycle gradient block chroma rgb effect"));
-
-        OPTIONS.add(new ConfigOption("block_chroma_speed", "Chroma Speed",
-                "How fast the rainbow cycles.",
-                ConfigCategory.BLOCK_OVERLAY,
-                () -> AlpakaConfig.instance.blockChromaSpeed,
-                v -> { AlpakaConfig.instance.blockChromaSpeed = v; AlpakaConfig.save(); },
-                0.1f, 2.0f, val -> String.format(Locale.ROOT, "%.2fx", val),
-                "chroma speed rainbow velocity rgb cycle"));
 
         OPTIONS.add(new ConfigOption("Filters", ConfigCategory.BLOCK_OVERLAY));
 
@@ -2911,10 +2898,10 @@ public class AlpakaConfigRegistry {
                 "name tag nametag own player third person f5 cosmetic animation norisk"));
 
         OPTIONS.add(new ConfigOption("name_tag_color_mode", "Color Effect",
-                "Vanilla keeps Hypixel's colors. Rainbow, Gradient and Pulse recolor the letters.",
+                "Vanilla keeps Hypixel's colors. Gradient runs between the two Gradient colors, or a rainbow with Chroma on in their picker. Pulse makes the letters throb.",
                 ConfigCategory.COSMETICS,
-                () -> (float) AlpakaConfig.instance.nameTagColorMode,
-                v -> { AlpakaConfig.instance.nameTagColorMode = Math.round(v); AlpakaConfig.save(); },
+                () -> (float) AlpakaConfig.instance.nameTagColorEffect,
+                v -> { AlpakaConfig.instance.nameTagColorEffect = Math.round(v); AlpakaConfig.save(); },
                 0.0f, (float) (CustomNameTagFeature.COLOR_MODE_NAMES.length - 1),
                 val -> CustomNameTagFeature.COLOR_MODE_NAMES[Math.round(val)],
                 "name tag color rainbow chroma gradient pulse effect mode").choices(CustomNameTagFeature.COLOR_MODE_NAMES));
@@ -2996,18 +2983,20 @@ public class AlpakaConfigRegistry {
                 "name tag background backdrop opacity dark box darkening letters"));
 
         OPTIONS.add(ConfigOption.color("name_tag_gradient_start_color", "Gradient Start Color",
-                "The gradient's start color.",
+                "The gradient's start color. Chroma in the picker turns the gradient into a rainbow.",
                 ConfigCategory.COSMETICS,
                 c -> c.nameTagGradientStart,
                 v -> { AlpakaConfig.instance.nameTagGradientStart = v; AlpakaConfig.save(); },
-                "name tag gradient color start first picker"));
+                "name tag gradient color start first picker chroma rainbow")
+                .withChroma(c -> c.nameTagChroma, true));
 
         OPTIONS.add(ConfigOption.color("name_tag_gradient_end_color", "Gradient End Color",
-                "The gradient's end color.",
+                "The gradient's end color. Chroma in the picker turns the gradient into a rainbow.",
                 ConfigCategory.COSMETICS,
                 c -> c.nameTagGradientEnd,
                 v -> { AlpakaConfig.instance.nameTagGradientEnd = v; AlpakaConfig.save(); },
-                "name tag gradient color end second picker"));
+                "name tag gradient color end second picker chroma rainbow")
+                .withChroma(c -> c.nameTagChroma, true));
 
         OPTIONS.add(new ConfigOption("Sensei Hat", ConfigCategory.COSMETICS));
 
@@ -3018,19 +3007,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.chromaHatEnabled = v; AlpakaConfig.save(); },
                 "chroma hat sensei samurai kasa jingasa cosmetic head straw"));
 
-        OPTIONS.add(new ConfigOption("chroma_hat_rainbow", "Chroma Colors",
-                "Sweeps rainbow colors around the hat, glowing in the dark. When off, the hat keeps its plain color.",
-                ConfigCategory.COSMETICS,
-                () -> AlpakaConfig.instance.chromaHatRainbow,
-                v -> { AlpakaConfig.instance.chromaHatRainbow = v; AlpakaConfig.save(); },
-                "chroma hat rainbow colors glow emissive"));
-
         OPTIONS.add(ConfigOption.color("chroma_hat_color", "Hat Color",
-                "The plain hat's color, used while Chroma Colors is off.",
+                "The hat's color. Switch on Chroma in the picker for rainbow colors sweeping around it, glowing in the dark.",
                 ConfigCategory.COSMETICS,
                 c -> c.chromaHatColor,
                 v -> { AlpakaConfig.instance.chromaHatColor = v; AlpakaConfig.save(); },
-                "chroma hat color straw plain picker"));
+                "chroma hat color straw plain picker rainbow glow emissive speed")
+                .withChroma(c -> c.chromaHatChroma, false));
 
         OPTIONS.add(new ConfigOption("chroma_hat_opacity", "Hat Opacity",
                 "How solid the hat looks.",
@@ -3055,14 +3038,6 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.chromaHatHeightOffset = v; AlpakaConfig.save(); },
                 -0.3f, 0.3f, val -> String.format(Locale.ROOT, "%+.2f blocks", val),
                 "chroma hat height offset raise lower float sit position"));
-
-        OPTIONS.add(new ConfigOption("chroma_hat_speed", "Chroma Speed",
-                "How fast the rainbow spins around the hat. Chroma Colors only.",
-                ConfigCategory.COSMETICS,
-                () -> AlpakaConfig.instance.chromaHatSpeed,
-                v -> { AlpakaConfig.instance.chromaHatSpeed = v; AlpakaConfig.save(); },
-                0.2f, 3.0f, val -> String.format(Locale.ROOT, "%.2fx", val),
-                "chroma hat color speed rainbow spin fast slow hat color speed"));
 
         OPTIONS.add(new ConfigOption("Aura", ConfigCategory.COSMETICS));
 
@@ -3313,32 +3288,36 @@ public class AlpakaConfigRegistry {
                 "damage tag dungeon catacombs boss room floor hide master mode damage tags in dungeons show never whole run").choices(CustomDamageTagFeature.DUNGEON_MODE_NAMES));
 
         OPTIONS.add(ConfigOption.color("custom_damage_tag_normal_start", "Normal Hit Start Color",
-                "The start color of a normal hit's gradient.",
+                "The start color of a normal hit's gradient. Chroma in the picker turns the gradient into a rainbow.",
                 ConfigCategory.COSMETICS,
                 c -> c.customDamageTagNormalStart,
                 v -> { AlpakaConfig.instance.customDamageTagNormalStart = v; AlpakaConfig.save(); },
-                "damage tag gradient color picker normal start first"));
+                "damage tag gradient color picker normal start first chroma rainbow")
+                .withChroma(c -> c.customDamageTagNormalChroma, true));
 
         OPTIONS.add(ConfigOption.color("custom_damage_tag_normal_end", "Normal Hit End Color",
-                "The end color of a normal hit's gradient.",
+                "The end color of a normal hit's gradient. Chroma in the picker turns the gradient into a rainbow.",
                 ConfigCategory.COSMETICS,
                 c -> c.customDamageTagNormalEnd,
                 v -> { AlpakaConfig.instance.customDamageTagNormalEnd = v; AlpakaConfig.save(); },
-                "damage tag gradient color picker normal end last"));
+                "damage tag gradient color picker normal end last chroma rainbow")
+                .withChroma(c -> c.customDamageTagNormalChroma, true));
 
         OPTIONS.add(ConfigOption.color("custom_damage_tag_crit_start", "Crit Start Color",
-                "The start color of a crit's gradient.",
+                "The start color of a crit's gradient. Chroma in the picker turns the gradient into a rainbow.",
                 ConfigCategory.COSMETICS,
                 c -> c.customDamageTagCritStart,
                 v -> { AlpakaConfig.instance.customDamageTagCritStart = v; AlpakaConfig.save(); },
-                "damage tag gradient color picker crit start first"));
+                "damage tag gradient color picker crit start first chroma rainbow")
+                .withChroma(c -> c.customDamageTagCritChroma, true));
 
         OPTIONS.add(ConfigOption.color("custom_damage_tag_crit_end", "Crit End Color",
-                "The end color of a crit's gradient.",
+                "The end color of a crit's gradient. Chroma in the picker turns the gradient into a rainbow.",
                 ConfigCategory.COSMETICS,
                 c -> c.customDamageTagCritEnd,
                 v -> { AlpakaConfig.instance.customDamageTagCritEnd = v; AlpakaConfig.save(); },
-                "damage tag gradient color picker crit end last"));
+                "damage tag gradient color picker crit end last chroma rainbow")
+                .withChroma(c -> c.customDamageTagCritChroma, true));
 
         // --- 7. SOUND & UTILITY ---
 

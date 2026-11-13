@@ -24,6 +24,7 @@ import net.minecraft.resources.Identifier;
 public final class BlockOverlayRenderTypes {
 
     private static RenderType noDepthQuads;
+    private static RenderType noDepthLines;
 
     private BlockOverlayRenderTypes() {}
 
@@ -33,6 +34,7 @@ public final class BlockOverlayRenderTypes {
      */
     public static void init() {
         noDepthQuads();
+        noDepthLines();
     }
 
     /** Position-color quads with the depth test switched off - the overlay seen through walls. */
@@ -49,6 +51,21 @@ public final class BlockOverlayRenderTypes {
                 RenderSetup.builder(pipeline).sortOnUpload().createRenderSetup());
         }
         return noDepthQuads;
+    }
+
+    /** Vanilla's world lines with the depth test switched off - outlines seen through walls. */
+    public static RenderType noDepthLines() {
+        if (noDepthLines == null) {
+            RenderPipeline pipeline = RenderPipelinesAccessor.alpaka$register(
+                RenderPipeline.builder(RenderPipelinesAccessor.alpaka$linesSnippet())
+                    .withLocation(Identifier.fromNamespaceAndPath("alpaka", "pipeline/lines_no_depth"))
+                    .withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, false))
+                    .build());
+            noDepthLines = RenderTypeInvoker.alpaka$create(
+                "alpaka_lines_no_depth",
+                RenderSetup.builder(pipeline).createRenderSetup());
+        }
+        return noDepthLines;
     }
 
     /** The render type for the current settings: vanilla's debug quads, or the see-through copy. */

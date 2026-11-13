@@ -7,46 +7,38 @@ import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.utils.ModVersion;
 
 import java.net.URI;
-import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Where the dashboard's data comes from.
+ * What the dashboard asks other sites for, beside the profile itself.
  *
- * Hypixel's own API wants a key every player would have to make and paste, so the profile comes
- * from Elite (api.elitebot.dev), which reads it from Hypixel and hands it out without one, already
- * worked out: levels, networth, pets. Elite also keeps a history of every profile's skill XP, and
- * Soopy (api.soopy.dev) one of networth, SkyBlock level, Catacombs, slayers and skills going back
- * years, which gives the graphs their past from the first look. The collection tiers and the
- * running Bingo event come from Hypixel's public resources, which need no key either.
+ * The profile comes from Hypixel through the AlpakaAddons API ({@link AlpakaApi}). Here is the
+ * rest: the history other sites kept - Soopy (api.soopy.dev) one of networth, SkyBlock level,
+ * Catacombs, slayers and skills going back years, SkyKings one a day for the players it tracks -
+ * which gives the graphs their past from the first look; the collection tiers and the running
+ * Bingo event from Hypixel's public resources, which need no key; and files of the NEU repository.
  *
- * Answers are kept for a minute, so flipping pages costs nothing, and requests are spaced out to
- * stay well inside Elite's limit of 20 at a time. Only used while Network Features is on: every
- * request of the dashboard goes through here, and with the switch off each one fails at once,
- * without anything sent.
+ * Answers are kept for a while, so flipping pages costs nothing, and requests are spaced out. Only
+ * used while Network Features is on: every request of the dashboard checks {@link #allowed}, and
+ * with the switch off each one fails at once, without anything sent.
  */
 public final class ProfileApi {
     private ProfileApi() {}
 
-    static final String ELITE = "https://api.elitebot.dev";
     static final String SOOPY = "https://api.soopy.dev";
     static final String SKYKINGS = "https://api.skykings.net";
     static final String HYPIXEL_RESOURCES = "https://api.hypixel.net/v2/resources/skyblock";
-    /** Where the dashboard's footer links to, as the source of the numbers. */
-    public static final String ELITE_SITE = "https://elitebot.dev/@";
-
     private static final long FRESH_MS = 60_000L;
-    /** The least time between two requests; a page load takes four. */
+    /** The least time between two requests. */
     private static final long SPACING_MS = 250L;
 
-    /** Thrown into a future when Elite says a player or profile doesn't exist. */
+    /** Thrown into a future when a player, a profile or a file doesn't exist. */
     public static final class NotFound extends RuntimeException {
         NotFound(String message) {
             super(message, null, false, false);
@@ -91,7 +83,7 @@ public final class ProfileApi {
 
     /**
      * Keeps an answer, first dropping every one past its time. Without that the cache would grow with
-     * every player looked at, and a networth alone is over a megabyte. A dropped request still in
+     * every player looked at, and SkyKings' history alone is megabytes. A dropped request still in
      * flight completes for whoever already holds it.
      */
     private static void keep(String url, Cached cached) {
@@ -100,40 +92,9 @@ public final class ProfileApi {
         CACHE.put(url, cached);
     }
 
-    /**
-     * How long an answer asked for with {@code freshMs} can still be handed out: at least a minute,
-     * as a member asked for fresh is handed out to the next ordinary ask within that time.
-     */
+    /** How long an answer asked for with {@code freshMs} can still be handed out: at least a minute. */
     private static long keepMs(long freshMs) {
         return Math.max(freshMs, FRESH_MS);
-    }
-
-    /** The account with its profiles; {@code player} is a name or a UUID. */
-    static CompletableFuture<JsonElement> account(String player) {
-        return get(ELITE + "/account/" + encode(player), FRESH_MS);
-    }
-
-    /** One member of one profile, everything about them. */
-    static CompletableFuture<JsonElement> member(String uuid, String profileId, boolean fresh) {
-        return get(ELITE + "/profile/" + uuid + "/" + profileId, fresh ? 0 : FRESH_MS);
-    }
-
-    /** The networth with every item that makes it up; over a megabyte, so only asked for on its page. */
-    static CompletableFuture<JsonElement> networth(String uuid, String profileId) {
-        return get(ELITE + "/profile/" + uuid + "/" + profileId + "/networth", 5 * FRESH_MS);
-    }
-
-    /**
-     * Elite's skill XP history: 29 days ending {@code daysBack} days ago at the latest, the most
-     * it hands out per request.
-     */
-    static CompletableFuture<JsonElement> skillGraph(String uuid, String profileId, int daysBack) {
-        String url = ELITE + "/graph/" + uuid + "/" + profileId + "/skills?days=29";
-        if (daysBack > 0) {
-            long from = System.currentTimeMillis() / 1000L - (long) (daysBack + 29) * 86_400L;
-            url += "&from=" + from;
-        }
-        return get(url, 10 * FRESH_MS);
     }
 
     /**
@@ -143,7 +104,7 @@ public final class ProfileApi {
      */
     static CompletableFuture<JsonElement> soopyHistory(String uuid, String profileId, int page) {
         // The first page "realtime", as Soopy's own site asks for it: Soopy reads the profile now
-        // and adds that as its newest snapshot, which is what lines its networth up with Elite's.
+        // and adds that as its newest snapshot, which is what lines its networth up with the dashboard's.
         String url = SOOPY + "/skyblock/stathistory/" + uuid + "/" + profileId + "/" + page + (page == 0 ? "/realtime" : "");
         return get(url, 10 * FRESH_MS);
     }
@@ -202,17 +163,6 @@ public final class ProfileApi {
         return future;
     }
 
-    /**
-     * One of a member's inventories with every item in it - name, lore, enchantments, attributes -
-     * by the id the profile lists it under. Spaced further apart than the other requests: opening
-     * the backpacks asks for nearly twenty at once, and Elite allows twenty in ten seconds.
-     */
-    static CompletableFuture<JsonElement> inventory(String uuid, String profileId, String inventoryId) {
-        return get(ELITE + "/profile/" + uuid + "/" + profileId + "/inventories/" + inventoryId, 5 * FRESH_MS, INVENTORY_SPACING_MS);
-    }
-
-    private static final long INVENTORY_SPACING_MS = 550L;
-
     /** The current or last Bingo event, with its start and end. */
     static CompletableFuture<JsonElement> bingo() {
         return get(HYPIXEL_RESOURCES + "/bingo", 60 * FRESH_MS);
@@ -221,8 +171,8 @@ public final class ProfileApi {
     /** A file of the NEU item repository, as text; see {@link PetIcons}. */
     static CompletableFuture<String> neuItem(String url) {
         if (!allowed()) return CompletableFuture.failedFuture(new NetworkOff());
-        // Not spaced out like Elite's requests: GitHub serves these files from its CDN, and a page
-        // of pets asks for dozens at once.
+        // Not spaced out like the other requests: GitHub serves these files from its CDN, and a
+        // page of pets asks for dozens at once.
         CompletableFuture<String> future = new CompletableFuture<>();
         CompletableFuture.runAsync(() -> {
             HttpRequest request = HttpRequest.newBuilder(URI.create(url))
@@ -250,10 +200,6 @@ public final class ProfileApi {
         return get(HYPIXEL_RESOURCES + "/collections", 6 * 60 * FRESH_MS);
     }
 
-    private static String encode(String part) {
-        return URLEncoder.encode(part, StandardCharsets.UTF_8).replace("+", "%20");
-    }
-
     private static CompletableFuture<JsonElement> get(String url, long freshMs) {
         return get(url, freshMs, SPACING_MS);
     }
@@ -271,10 +217,6 @@ public final class ProfileApi {
         long delay = reserveSlot(now, spacingMs);
         CompletableFuture.delayedExecutor(delay, java.util.concurrent.TimeUnit.MILLISECONDS).execute(() -> send(url, future));
         return future;
-    }
-
-    private static synchronized long reserveSlot(long now) {
-        return reserveSlot(now, SPACING_MS);
     }
 
     private static synchronized long reserveSlot(long now, long spacingMs) {
@@ -306,15 +248,15 @@ public final class ProfileApi {
             int status = response.statusCode();
             if (status == 404) {
                 // Not worth asking again a moment later, so it stays cached like an answer.
-                future.completeExceptionally(new NotFound(notFoundMessage(response.body())));
+                future.completeExceptionally(new NotFound("Not found."));
                 return;
             }
             if (status < 200 || status >= 300) {
                 AlpakaAddons.LOGGER.debug("Profile request to {} answered {}", url, status);
                 CACHE.remove(url);
                 future.completeExceptionally(new IllegalStateException(status == 429
-                        ? "Elite is busy (too many requests). Try again in a minute."
-                        : "Elite answered " + status + "."));
+                        ? "Too many requests. Try again in a minute."
+                        : "Answered " + status + "."));
                 return;
             }
             try {
@@ -324,24 +266,5 @@ public final class ProfileApi {
                 future.completeExceptionally(parse);
             }
         });
-    }
-
-    /** Elite's reason, such as "Minecraft account not found", or a plain one. */
-    private static String notFoundMessage(String body) {
-        try {
-            JsonElement root = JsonParser.parseString(body);
-            var errors = Json.arr(root, "errors.generalErrors");
-            if (!errors.isEmpty()) return errors.get(0).getAsString() + ".";
-            String message = Json.str(root, "message");
-            if (message != null && !message.isBlank() && !message.startsWith("One or more")) return message;
-        } catch (RuntimeException ignored) {
-            // Not JSON; the plain message below says enough.
-        }
-        return "Not found.";
-    }
-
-    /** Forgets everything, for the refresh button. */
-    static void forget(String uuid) {
-        CACHE.keySet().removeIf(url -> url.contains(uuid));
     }
 }

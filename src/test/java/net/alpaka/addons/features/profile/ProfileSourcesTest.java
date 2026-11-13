@@ -76,10 +76,10 @@ class ProfileSourcesTest {
     }
 
     @Test
-    void soopyNetworthIsScaledToElitesOrLeftOut() {
+    void soopyNetworthIsScaledToTheDashboardsOrLeftOut() {
         List<ProfileHistory.Point> soopy = List.of(new ProfileHistory.Point(1_000, 100), new ProfileHistory.Point(9_000_000, 180));
         Map<String, List<ProfileHistory.Point>> series = new java.util.HashMap<>(Map.of(Metrics.NETWORTH, soopy));
-        // Soopy's snapshot from this look says 180 where Elite says 260: everything scales by 260/180.
+        // Soopy's snapshot from this look says 180 where the dashboard says 260: everything scales by 260/180.
         ProfileSession.calibrateNetworth(series, 260, 9_000_000);
         assertEquals(260.0, series.get(Metrics.NETWORTH).get(1).value(), 1e-9);
         assertEquals(100 * 260 / 180.0, series.get(Metrics.NETWORTH).get(0).value(), 1e-9);

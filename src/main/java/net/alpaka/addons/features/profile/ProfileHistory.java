@@ -20,8 +20,8 @@ import java.util.concurrent.CompletableFuture;
 /**
  * The dashboard's own record of how a profile grew: a snapshot of its numbers each time it was
  * looked at. Nothing is asked for in the background while playing: that would be polling a
- * player's data, which Hypixel's API policy rules out. Elite keeps a
- * history of skills only; networth, Catacombs, slayers and everything else come from here.
+ * player's data, which Hypixel's API policy rules out. What other sites kept of
+ * the past (Soopy, SkyKings) is added to it in the graphs.
  *
  * Kept in {@code config/alpaka-profile-history.json}, one entry per player and profile. Recent
  * snapshots are kept close together, older ones thinned to one a day, so a year of play stays a
@@ -148,6 +148,34 @@ public final class ProfileHistory {
             if (v != null && !v.isNaN()) out.add(new Point(s.t(), v));
         }
         return out;
+    }
+
+    /**
+     * The profile of a player the dashboard last looked at, or null if it never did: the id of the
+     * profile whose newest snapshot is the latest. {@code player} is a UUID without dashes, or a name.
+     */
+    public static synchronized String lastProfile(String player) {
+        return lastProfile(entries(), player);
+    }
+
+    static String lastProfile(Map<String, Entry> entries, String player) {
+        if (player == null) return null;
+        String best = null;
+        long newest = Long.MIN_VALUE;
+        for (Map.Entry<String, Entry> e : entries.entrySet()) {
+            // "uuid:profile"
+            int cut = e.getKey().indexOf(':');
+            Entry entry = e.getValue();
+            if (cut <= 0 || entry.points.isEmpty()) continue;
+            boolean byUuid = e.getKey().substring(0, cut).equalsIgnoreCase(player);
+            if (!byUuid && (entry.player == null || !entry.player.equalsIgnoreCase(player))) continue;
+            long t = entry.points.get(entry.points.size() - 1).t();
+            if (t > newest) {
+                newest = t;
+                best = e.getKey().substring(cut + 1);
+            }
+        }
+        return best;
     }
 
     /** How many snapshots there are of this profile. */

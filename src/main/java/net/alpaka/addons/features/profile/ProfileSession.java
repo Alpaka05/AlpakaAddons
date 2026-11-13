@@ -12,10 +12,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
 /**
- * Everything the dashboard knows about one player, filled in the background: the account and its
- * profiles first, then the chosen profile, then Elite's skill history and - when their pages are
- * opened - the networth's items and the collection tiers. The screen reads it every frame and never
- * waits for it.
+ * Everything the dashboard knows about one player, filled in the background: the player, their
+ * profiles and the chosen profile in one answer of the AlpakaAddons API, which reads them from
+ * Hypixel; then the profile's museum, the networth once prices are there, and the history other
+ * sites kept. The screen reads it every frame and never waits for it.
  */
 public final class ProfileSession {
 
@@ -46,18 +46,31 @@ public final class ProfileSession {
     public volatile JsonElement networth;
     public volatile State collectionsState;
     public volatile JsonElement collections;
-    /** The inventories asked for so far, by name, and how asking went; filled as their tabs are opened. */
-    private final Map<String, JsonElement> inventories = new java.util.concurrent.ConcurrentHashMap<>();
-    private final Map<String, State> inventoryStates = new java.util.concurrent.ConcurrentHashMap<>();
 
-    /** Elite's skill history, by metric id; filled in after the profile. */
-    private volatile Map<String, List<ProfileHistory.Point>> eliteSeries = Map.of();
+    /** The API's answer the profile on show was read from, kept to read it again once more is known. */
+    private volatile JsonElement answer;
+    /** Every inventory of the profile on show, by name; the museum joins them when it arrives. */
+    private volatile Map<String, JsonElement> inventories = Map.of();
+    /** Whether the museum came with the profile on show; null before the profile is there. */
+    private volatile State museumState;
+    /**
+     * Counts up whenever what the networth is made of changes - another profile, a refresh, the
+     * museum arriving - and which of those states the networth on show was worked out from.
+     */
+    private final java.util.concurrent.atomic.AtomicInteger worthWanted = new java.util.concurrent.atomic.AtomicInteger(1);
+    private volatile int worthDone;
+    private volatile boolean networthRunning;
+
     /** Soopy's stat history, by metric id; filled in page by page after the profile. */
     private volatile Map<String, List<ProfileHistory.Point>> soopySeries = Map.of();
+    /** Soopy's pages so far and when the first was asked for, to line its networth up again later. */
+    private volatile List<JsonElement> soopyPages = List.of();
+    private volatile long soopyAskedAt;
     /** Whether Soopy's pages are still coming in. */
     public volatile boolean historyLoading;
     /** SkyKings' history, by metric id, when the player set a key. */
     private volatile Map<String, List<ProfileHistory.Point>> skykingsSeries = Map.of();
+    private volatile JsonElement skykingsAnswer;
     /** What came of asking SkyKings, for the source note: null without a key. */
     public volatile String skykingsNote;
     /** Whether SkyKings' history of the profile on show has arrived. */
@@ -80,62 +93,124 @@ public final class ProfileSession {
         if (id == null || id.equals(profileId) || state == State.LOADING) return;
         profileId = id;
         data = null;
-        networth = null;
-        networthState = null;
+        forgetProfile();
         state = State.LOADING;
         load(id, false);
     }
 
-    /** Asks Elite again, past the minute answers are kept. */
+    /** Asks for the profile again; the API then asks Hypixel again unless it just did. */
     public void refresh() {
         if (refreshing || state == State.LOADING) return;
         refreshing = true;
-        if (uuid != null) ProfileApi.forget(uuid);
+        load(profileId, true);
+    }
+
+    /** Drops what belongs to the profile on show, before another takes its place. */
+    private void forgetProfile() {
+        answer = null;
+        inventories = Map.of();
+        museumState = null;
         networth = null;
         networthState = null;
-        load(profileId, true);
+        worthWanted.incrementAndGet();
+        soopyPages = List.of();
+        soopySeries = Map.of();
+        skykingsAnswer = null;
+        skykingsSeries = Map.of();
+        skykingsReady = false;
     }
 
     private void load(String wantedProfile, boolean fresh) {
         // The Bingo event decides which Bingo profiles are still worth listing; without an answer
         // none are, which is right outside an event.
         CompletableFuture<JsonElement> bingo = ProfileApi.bingo().exceptionally(e -> null);
-        ProfileApi.account(query).thenCombine(bingo, (account, event) -> {
-            readAccount(account, event, System.currentTimeMillis());
-            return account;
-        }).thenCompose(account -> {
+        // By UUID once it is known: a name can change hands, and the API needn't ask Mojang again.
+        String player = uuid != null ? uuid : query;
+        // The profile shown the last time is most likely the one shown now, which lets the API ask
+        // Hypixel for everything at once. With Network Features off nothing is asked, so nothing is looked up.
+        String hint = wantedProfile != null || !ProfileApi.allowed() ? null
+                : profileId != null ? profileId : ProfileHistory.lastProfile(player);
+        AlpakaApi.dashboard(player, wantedProfile, hint, fresh).thenCombine(bingo, (first, event) -> {
+            readAccount(HypixelProfile.account(first), event, System.currentTimeMillis());
+            return first;
+        }).thenCompose(first -> {
             String id = wantedProfile != null ? wantedProfile : pickProfile();
             if (id == null) throw new ProfileApi.NotFound(playerName + " has no SkyBlock profiles.");
             profileId = id;
-            return ProfileApi.member(uuid, id, fresh);
-        }).whenComplete((member, failure) -> {
+            // The API answers with the profile the player has selected, which is the one wanted
+            // unless that is a Bingo profile no longer shown.
+            if (id.equals(Json.str(first, "profile.profile_id"))) return CompletableFuture.completedFuture(first);
+            return AlpakaApi.dashboard(player, id, null, fresh);
+        }).whenComplete((loaded, failure) -> {
             refreshing = false;
             if (failure != null) {
                 fail(failure);
                 return;
             }
-            if (!(member instanceof JsonObject object)) {
-                fail(new IllegalStateException("Elite sent no profile."));
+            String sent = Json.str(loaded, "profile.profile_id");
+            if (sent == null || Json.at(loaded, "profile.member") == null) {
+                fail(new IllegalStateException("The AlpakaAddons API sent no profile."));
                 return;
             }
-            ProfileData parsed;
+            // Whichever profile came is the one on show, should the one asked for be gone.
+            profileId = sent;
             try {
-                parsed = new ProfileData(object, playerName);
-                ProfileHistory.record(parsed);
-                if (own) previousVisit = ProfileHistory.visit(parsed);
+                java.util.function.BiConsumer<String, Exception> unreadable = (name, e) ->
+                        net.alpaka.addons.AlpakaAddons.LOGGER.warn("Profile Dashboard: couldn't read {} of {}: {}", name, playerName, e.toString());
+                Map<String, JsonElement> read = HypixelProfile.inventories(loaded, unreadable);
+                // The museum comes with the profile, unless Hypixel didn't hand it out this time.
+                boolean museumCame = Json.at(loaded, "museum") != null;
+                if (museumCame) {
+                    com.google.gson.JsonObject museum = HypixelProfile.museum(loaded, unreadable);
+                    if (!Json.obj(museum, "items").isEmpty()) read.put("museum", museum);
+                }
+                // A refresh keeps the networth on show until the new one is worked out, and the
+                // museum if this answer came without it.
+                ProfileData shown = data;
+                boolean same = shown != null && profileId.equals(shown.profileId);
+                JsonElement kept = same && !museumCame ? inventories.get("museum") : null;
+                if (kept != null) read.put("museum", kept);
+                if (!same) forgetProfile();
+                answer = loaded;
+                inventories = read;
+                museumState = museumCame ? State.READY : State.FAILED;
+                show();
+                // Only now, with the new profile on show: a networth begun on the old one is dropped.
+                worthWanted.incrementAndGet();
             } catch (RuntimeException e) {
                 // An answer shaped unlike what is expected must not leave the dashboard on Loading.
                 fail(e);
                 return;
             }
-            data = parsed;
             error = null;
             state = State.READY;
-            version++;
-            loadSkillHistory(parsed);
+            ProfileData parsed = data;
             loadSoopyHistory(parsed);
             loadSkyKings(parsed);
         });
+    }
+
+    /**
+     * Reads the profile on show out of the API's answer again, with whatever has arrived since -
+     * the museum, the networth - and puts it on show. A profile is a few milliseconds to read.
+     */
+    private synchronized void show() {
+        JsonElement loaded = answer;
+        if (loaded == null) return;
+        com.google.gson.JsonObject model = HypixelProfile.model(loaded, inventories);
+        JsonElement worth = networth;
+        if (worth != null) {
+            com.google.gson.JsonObject totals = new com.google.gson.JsonObject();
+            totals.addProperty("normal", Json.num(worth, "normal", 0));
+            totals.addProperty("liquid", Json.num(worth, "liquid", 0));
+            model.add("networth", totals);
+        }
+        ProfileData parsed = new ProfileData(model, playerName);
+        // Both merge with what the look a moment ago left, so a second reading only adds to it.
+        ProfileHistory.record(parsed);
+        if (own) previousVisit = ProfileHistory.visit(parsed);
+        data = parsed;
+        version++;
     }
 
     private void readAccount(JsonElement account, JsonElement bingoEvent, long now) {
@@ -147,10 +222,9 @@ public final class ProfileSession {
 
     /**
      * The account's profiles worth showing, the selected one first and the others by name, as the
-     * game's profile menu has them. Elite keeps every profile it ever saw: one the player deleted
-     * comes back {@code deleted}, and one they left or were kicked from still lists them as a
-     * member, only no longer {@code active}. Neither is in the game's menu any more, so neither is
-     * here. A Bingo profile only counts while a Bingo event runs: once it is over the profile is a
+     * game's profile menu has them. A profile marked {@code deleted} or {@code wasRemoved}, or one
+     * the player is listed on but no longer {@code active}, is not in the game's menu any more, so
+     * it is not here either; the API leaves those out already. A Bingo profile only counts while a Bingo event runs: once it is over the profile is a
      * leftover nobody looks at again. Should that leave nothing, the Bingo ones are shown after all.
      */
     static List<ProfileRef> profiles(JsonElement account, JsonElement bingoEvent, long now) {
@@ -199,47 +273,16 @@ public final class ProfileSession {
 
     private void fail(Throwable failure) {
         Throwable cause = failure instanceof CompletionException && failure.getCause() != null ? failure.getCause() : failure;
-        if (cause instanceof ProfileApi.NotFound) {
+        if (cause instanceof ProfileApi.NotFound || cause instanceof AlpakaApi.Refused) {
             error = cause.getMessage();
         } else if (cause instanceof java.net.http.HttpTimeoutException || cause instanceof java.net.ConnectException
                 || cause instanceof java.io.IOException) {
-            error = "Couldn't reach Elite. Check your connection and try again.";
+            error = "Couldn't reach the AlpakaAddons API. Check your connection and try again.";
         } else {
             error = cause.getMessage() == null ? "Something went wrong loading the profile." : cause.getMessage();
         }
         // A failed refresh keeps showing what was there.
         if (data == null) state = State.FAILED;
-    }
-
-    /** Elite hands out its history 29 days at a time; this many stretches make about a year. */
-    private static final int ELITE_STRETCHES = 13;
-
-    /**
-     * Elite's skill history, 29 days at a time from now backwards, each stretch showing as it
-     * arrives. Elite often has the months Soopy is missing: it records a profile whenever anyone
-     * looks it up there, and many mods do. Two empty stretches in a row are taken as the start of
-     * what Elite knows.
-     */
-    private void loadSkillHistory(ProfileData parsed) {
-        Map<String, Integer> maxLevels = new HashMap<>();
-        for (ProfileData.Level s : parsed.skills) maxLevels.put(s.id(), s.maxLevel());
-        loadSkillStretch(parsed, maxLevels, 0, 0, new ArrayList<>());
-    }
-
-    private void loadSkillStretch(ProfileData parsed, Map<String, Integer> maxLevels, int stretch, int emptyInARow,
-                                  List<JsonElement> answers) {
-        String id = parsed.profileId;
-        ProfileApi.skillGraph(parsed.uuid, id, stretch * 29).whenComplete((answer, failure) -> {
-            if (!id.equals(profileId)) return;
-            boolean empty = failure != null || answer == null || !answer.isJsonArray() || answer.getAsJsonArray().isEmpty();
-            if (!empty) {
-                answers.add(answer);
-                eliteSeries = skillSeries(answers, maxLevels);
-                version++;
-            }
-            int nextEmpty = empty ? emptyInARow + 1 : 0;
-            if (stretch + 1 < ELITE_STRETCHES && nextEmpty < 2) loadSkillStretch(parsed, maxLevels, stretch + 1, nextEmpty, answers);
-        });
     }
 
     /**
@@ -284,7 +327,8 @@ public final class ProfileSession {
             }
             try {
                 Map<String, List<ProfileHistory.Point>> series = skykingsSeries(answer, parsed.profileName, gameMode);
-                calibrateSkyKingsNetworth(series, parsed.networth, System.currentTimeMillis());
+                calibrateSkyKingsNetworth(series, worth(), System.currentTimeMillis());
+                skykingsAnswer = answer;
                 skykingsSeries = series;
                 skykingsNote = series.isEmpty() ? "SkyKings has no history of this profile." : null;
                 skykingsReady = !series.isEmpty();
@@ -329,8 +373,8 @@ public final class ProfileSession {
     /**
      * SkyKings' snapshots of one profile as series by metric id. Its profiles go by name and type,
      * not by id; the type tells apart, say, a normal Kiwi from an Ironman Kiwi. The skill average is
-     * left to Elite: SkyKings has no Hunting, and an average of different skills would jump where
-     * the two meet.
+     * left to the dashboard's own snapshots: SkyKings has no Hunting, and an average of different
+     * skills would jump where the two meet.
      */
     static Map<String, List<ProfileHistory.Point>> skykingsSeries(JsonElement answer, String profileName, String gameMode) {
         Map<String, List<ProfileHistory.Point>> out = new HashMap<>();
@@ -377,21 +421,21 @@ public final class ProfileSession {
     }
 
     /**
-     * SkyKings' networth comes close to Elite's but not quite (79B against 84B), so it is scaled the
-     * same way as Soopy's: by its newest snapshot against Elite's number now. SkyKings looks once a
+     * SkyKings works networth out its own way, so it is scaled the same way as Soopy's: by its
+     * newest snapshot against the networth worked out here now. SkyKings looks once a
      * day, so a snapshot up to three days old still stands for now; prices move less than the two
      * calculations differ. An older one would carry real growth into the factor, and then the
      * networth is left out.
      */
-    static void calibrateSkyKingsNetworth(Map<String, List<ProfileHistory.Point>> series, double eliteNow, long now) {
+    static void calibrateSkyKingsNetworth(Map<String, List<ProfileHistory.Point>> series, double worthNow, long now) {
         List<ProfileHistory.Point> networth = series.get(Metrics.NETWORTH);
         if (networth == null || networth.isEmpty()) return;
         ProfileHistory.Point last = networth.get(networth.size() - 1);
-        if (!(eliteNow > 0) || !(last.value() > 0) || now - last.timeMs() > 3 * ProfileHistory.DAY) {
+        if (!(worthNow > 0) || !(last.value() > 0) || now - last.timeMs() > 3 * ProfileHistory.DAY) {
             series.remove(Metrics.NETWORTH);
             return;
         }
-        double factor = eliteNow / last.value();
+        double factor = worthNow / last.value();
         List<ProfileHistory.Point> scaled = new ArrayList<>(networth.size());
         for (ProfileHistory.Point p : networth) scaled.add(new ProfileHistory.Point(p.timeMs(), p.value() * factor));
         series.put(Metrics.NETWORTH, scaled);
@@ -417,7 +461,9 @@ public final class ProfileSession {
             if (more) {
                 pages.add(answer);
                 Map<String, List<ProfileHistory.Point>> series = soopySeries(pages);
-                calibrateNetworth(series, parsed.networth, askedAt);
+                calibrateNetworth(series, worth(), askedAt);
+                soopyPages = List.copyOf(pages);
+                soopyAskedAt = askedAt;
                 soopySeries = series;
                 version++;
             }
@@ -473,23 +519,23 @@ public final class ProfileSession {
     }
 
     /**
-     * Soopy works networth out its own way, and lands well apart from Elite: 179B where Elite says
-     * 259B for the same profile at the same moment. Put into one graph as they are, the switch from
-     * one to the other reads as a jump that never happened. So Soopy's networth is scaled by how the
-     * two compare now - its "realtime" snapshot from this very look against Elite's number - which
-     * keeps the history's shape and lands it on Elite's. Without a snapshot of Soopy's from this
+     * Soopy works networth out its own way, and lands well apart from the dashboard's: every
+     * profile viewer prices items differently. Put into one graph as they are, the switch from one
+     * to the other reads as a jump that never happened. So Soopy's networth is scaled by how the
+     * two compare now - its "realtime" snapshot from this very look against the number worked out
+     * here - which keeps the history's shape and lands it on the dashboard's. Without a snapshot of Soopy's from this
      * look there is nothing to compare with, and its networth is left out.
      */
-    static void calibrateNetworth(Map<String, List<ProfileHistory.Point>> series, double eliteNow, long askedAt) {
+    static void calibrateNetworth(Map<String, List<ProfileHistory.Point>> series, double worthNow, long askedAt) {
         List<ProfileHistory.Point> networth = series.get(Metrics.NETWORTH);
         if (networth == null || networth.isEmpty()) return;
         ProfileHistory.Point now = null;
         for (ProfileHistory.Point p : networth) if (p.timeMs() >= askedAt - 10 * 60_000L) now = p;
-        if (now == null || !(eliteNow > 0) || !(now.value() > 0)) {
+        if (now == null || !(worthNow > 0) || !(now.value() > 0)) {
             series.remove(Metrics.NETWORTH);
             return;
         }
-        double factor = eliteNow / now.value();
+        double factor = worthNow / now.value();
         List<ProfileHistory.Point> scaled = new ArrayList<>(networth.size());
         for (ProfileHistory.Point p : networth) scaled.add(new ProfileHistory.Point(p.timeMs(), p.value() * factor));
         series.put(Metrics.NETWORTH, scaled);
@@ -534,37 +580,9 @@ public final class ProfileSession {
         into.put(metric, value);
     }
 
-    /** Elite's graph answers as series by metric id, the skill average worked out for each point. */
-    static Map<String, List<ProfileHistory.Point>> skillSeries(List<JsonElement> answers, Map<String, Integer> maxLevels) {
-        Map<String, List<ProfileHistory.Point>> out = new HashMap<>();
-        for (JsonElement answer : answers) {
-            if (answer == null || !answer.isJsonArray()) continue;
-            for (JsonElement point : answer.getAsJsonArray()) {
-                if (!Json.bool(point, "skillsApi")) continue;
-                long t = (long) Json.num(point, "timestamp", 0) * 1000L;
-                if (t <= 0) continue;
-                JsonObject skills = Json.obj(point, "skills");
-                int counted = 0;
-                double levels = 0;
-                for (var e : skills.entrySet()) {
-                    double xp = Json.num(e.getValue());
-                    if (Double.isNaN(xp)) continue;
-                    out.computeIfAbsent(Metrics.SKILL + e.getKey(), k -> new ArrayList<>()).add(new ProfileHistory.Point(t, xp));
-                    if (e.getKey().equals("runecrafting") || e.getKey().equals("social")) continue;
-                    levels += Math.floor(Levels.skill(e.getKey(), xp, maxLevels.getOrDefault(e.getKey(), 60)));
-                    counted++;
-                }
-                if (counted > 0) {
-                    out.computeIfAbsent(Metrics.SKILL_AVG, k -> new ArrayList<>()).add(new ProfileHistory.Point(t, levels / counted));
-                }
-            }
-        }
-        return out;
-    }
-
     /**
      * One metric over time for the profile on show: the dashboard's own snapshots together with
-     * Elite's skill history and Soopy's stat history, oldest first.
+     * Soopy's and SkyKings' history, oldest first.
      */
     public synchronized List<ProfileHistory.Point> series(String metric) {
         ProfileData d = data;
@@ -575,11 +593,10 @@ public final class ProfileSession {
         }
         return seriesCache.computeIfAbsent(metric, m -> {
             List<ProfileHistory.Point> merged = new ArrayList<>(ProfileHistory.series(d.uuid, d.profileId, m));
-            merged.addAll(eliteSeries.getOrDefault(m, List.of()));
             merged.addAll(soopySeries.getOrDefault(m, List.of()));
             merged.addAll(skykingsSeries.getOrDefault(m, List.of()));
             merged.sort(Comparator.comparingLong(ProfileHistory.Point::timeMs));
-            // Elite and the snapshots often looked at almost the same moment; one point is enough.
+            // The sources often looked at almost the same moment; one point is enough.
             List<ProfileHistory.Point> out = new ArrayList<>(merged.size());
             for (ProfileHistory.Point p : merged) {
                 if (!out.isEmpty() && p.timeMs() - out.get(out.size() - 1).timeMs() < 5 * 60_000L) {
@@ -592,58 +609,143 @@ public final class ProfileSession {
         });
     }
 
-    /** The networth's items, asked for on the first look at its page. */
-    public JsonElement networth() {
+    /** The networth of the profile on show, 0 until it is worked out. */
+    private double worth() {
         ProfileData d = data;
-        if (d != null && networthState == null) {
-            networthState = State.LOADING;
-            String id = d.profileId;
-            ProfileApi.networth(d.uuid, id).whenComplete((answer, failure) -> {
-                if (!id.equals(profileId)) return;
-                networth = answer;
-                networthState = failure == null ? State.READY : State.FAILED;
-            });
+        return d == null ? 0 : d.networth;
+    }
+
+    /** The prices and Hypixel's item list, as the Item Value breakdown uses them. */
+    private static final net.alpaka.addons.features.itemvalue.ItemValue.Prices PRICES =
+            net.alpaka.addons.features.itemvalue.ItemPrices::quote;
+    private static final net.alpaka.addons.features.itemvalue.ItemValue.Catalog CATALOG =
+            new net.alpaka.addons.features.itemvalue.ItemValue.Catalog() {
+                @Override
+                public String name(String id) {
+                    return net.alpaka.addons.features.market.ItemIcons.name(id);
+                }
+
+                @Override
+                public net.alpaka.addons.features.market.ItemIcons.Upgrades upgrades(String id) {
+                    return net.alpaka.addons.features.market.ItemIcons.upgrades(id);
+                }
+            };
+
+    /**
+     * Works the networth out once everything it is made of is there: the profile with its museum,
+     * the prices and Hypixel's item list. Called every frame the dashboard is open; a few
+     * comparisons when there is nothing to do. Prices that change
+     * afterwards leave the number as it is - it would only flicker - until the profile is read again.
+     */
+    public void sync() {
+        syncSkyKings();
+        int wanted = worthWanted.get();
+        if (worthDone == wanted) return;
+        // Asked for from the first frame, so the prices load while the profile does. Asking for a
+        // name is what makes the item list load.
+        net.alpaka.addons.features.itemvalue.ItemPrices.refresh();
+        net.alpaka.addons.features.market.ItemIcons.name("DIAMOND");
+        ProfileData d = data;
+        if (d == null || state != State.READY || networthRunning) return;
+        if (net.alpaka.addons.features.itemvalue.ItemPrices.failed()) {
+            // Without prices there is nothing to add up; what was shown before stays.
+            if (networth == null) networthState = State.FAILED;
+            return;
         }
-        return networth;
+        if (net.alpaka.addons.features.itemvalue.ItemPrices.loading() || net.alpaka.addons.features.market.ItemIcons.loading()) {
+            if (networth == null) networthState = State.LOADING;
+            return;
+        }
+        networthRunning = true;
+        if (networth == null) networthState = State.LOADING;
+        String id = d.profileId;
+        JsonElement loaded = answer;
+        Map<String, JsonElement> held = inventories;
+        CompletableFuture.supplyAsync(() -> Networth.of(d.raw, Json.at(loaded, "profile.member.currencies.essence"), held, PRICES, CATALOG))
+                .whenComplete((worth, failure) -> {
+                    networthRunning = false;
+                    // What it was made of has changed meanwhile: the next frame starts over.
+                    if (!id.equals(profileId) || worthWanted.get() != wanted) return;
+                    // Not again every frame, whether it worked or not: only once something changes.
+                    worthDone = wanted;
+                    if (failure != null) {
+                        net.alpaka.addons.AlpakaAddons.LOGGER.warn("Profile Dashboard: couldn't work out the networth", failure);
+                        if (networth == null) networthState = State.FAILED;
+                        return;
+                    }
+                    networth = worth;
+                    networthState = State.READY;
+                    try {
+                        show();
+                        recalibrate();
+                    } catch (RuntimeException e) {
+                        net.alpaka.addons.AlpakaAddons.LOGGER.warn("Profile Dashboard: couldn't show the networth", e);
+                    }
+                });
     }
 
     /**
-     * An inventory's contents by its name, asked for the first time it is wanted; null while it
-     * loads, when it failed, or when the profile has no such inventory.
+     * Lines Soopy's and SkyKings' networth up with the one worked out here, which arrives after
+     * their history may already have; until then there is nothing to scale them by.
+     */
+    private void recalibrate() {
+        ProfileData d = data;
+        if (d == null) return;
+        List<JsonElement> pages = soopyPages;
+        if (!pages.isEmpty()) {
+            Map<String, List<ProfileHistory.Point>> series = soopySeries(pages);
+            calibrateNetworth(series, d.networth, soopyAskedAt);
+            soopySeries = series;
+        }
+        JsonElement skykings = skykingsAnswer;
+        if (skykings != null) {
+            String mode = null;
+            for (ProfileRef r : profiles) if (r.id().equals(d.profileId)) mode = r.gameMode();
+            Map<String, List<ProfileHistory.Point>> series = skykingsSeries(skykings, d.profileName, mode);
+            calibrateSkyKingsNetworth(series, d.networth, System.currentTimeMillis());
+            skykingsSeries = series;
+        }
+        version++;
+    }
+
+    /** The networth's breakdown; null while it is worked out, see {@link #sync}. */
+    public JsonElement networth() {
+        return networth;
+    }
+
+    /** The prefix of the Rift's inventories among the others: "rift_inventory", "rift_ender_chest". */
+    public static final String RIFT = "rift_";
+
+    /**
+     * An inventory's contents by its name; null when the profile has no such inventory. They all
+     * come with the profile, so none is waited for.
      */
     public JsonElement inventory(String name) {
-        ProfileData d = data;
-        if (d == null) return null;
-        ProfileData.InventoryRef ref = d.inventories.get(name);
-        if (ref == null) return null;
-        String key = d.profileId + "/" + name;
-        JsonElement known = inventories.get(key);
-        if (known != null) return known;
-        if (inventoryStates.putIfAbsent(key, State.LOADING) == null) {
-            ProfileApi.inventory(d.uuid, d.profileId, ref.id()).whenComplete((answer, failure) -> {
-                if (failure == null && answer != null) {
-                    inventories.put(key, answer);
-                    inventoryStates.put(key, State.READY);
-                } else {
-                    inventoryStates.put(key, State.FAILED);
-                    net.alpaka.addons.AlpakaAddons.LOGGER.warn("Profile Dashboard: inventory {} of {} failed: {}", name, playerName,
-                            failure == null ? "no answer" : failure.toString());
-                }
-            });
-        }
-        return null;
+        return data == null ? null : inventories.get(name);
     }
 
-    /** How asking for an inventory went; null before it was asked for. */
+    /** How asking for an inventory went; null when the profile has none of that name. */
     public State inventoryState(String name) {
-        ProfileData d = data;
-        return d == null ? null : inventoryStates.get(d.profileId + "/" + name);
+        if (data == null) return null;
+        if (name.equals("museum")) return museumState;
+        return inventories.containsKey(name) ? State.READY : null;
     }
 
-    /** Lets the networth and the collections be asked for again after they failed. */
+    /** Why the Rift's inventories aren't there, for the page; null when they are. */
+    public String riftProblem() {
+        if (data == null || inventories.containsKey(RIFT + "inventory") || inventories.containsKey(RIFT + "ender_chest")) return null;
+        return "Hypixel lists no Rift inventories for this profile. Is its Inventory API on?";
+    }
+
+    /** Lets the museum, the networth and the collections be asked for again after they failed. */
     public void retryFailed() {
-        inventoryStates.values().removeIf(s -> s == State.FAILED);
-        if (networthState == State.FAILED) networthState = null;
+        // The museum comes with the profile: asking for the profile again asks for it again.
+        if (museumState == State.FAILED) refresh();
+        if (networthState == State.FAILED) {
+            networthState = null;
+            worthWanted.incrementAndGet();
+            net.alpaka.addons.features.itemvalue.ItemPrices.retry();
+        }
         if (collectionsState == State.FAILED) collectionsState = null;
     }
 

@@ -49,4 +49,25 @@ class ProfileHistoryTest {
         ProfileHistory.thin(points, now);
         assertEquals(once, points.size());
     }
+
+    @Test
+    void theProfileLookedAtLastIsRemembered() {
+        ProfileHistory.Entry peach = new ProfileHistory.Entry();
+        peach.player = "Alpakaa";
+        peach.points.add(new ProfileHistory.Snapshot(1_000, java.util.Map.of()));
+        peach.points.add(new ProfileHistory.Snapshot(9_000, java.util.Map.of()));
+        ProfileHistory.Entry kiwi = new ProfileHistory.Entry();
+        kiwi.player = "Alpakaa";
+        kiwi.points.add(new ProfileHistory.Snapshot(5_000, java.util.Map.of()));
+        ProfileHistory.Entry other = new ProfileHistory.Entry();
+        other.player = "Someone";
+        other.points.add(new ProfileHistory.Snapshot(99_000, java.util.Map.of()));
+        java.util.Map<String, ProfileHistory.Entry> entries = java.util.Map.of(
+                "8f16:b135", peach, "8f16:93ea", kiwi, "0123:cafe", other, "8f16:empty", new ProfileHistory.Entry());
+        // By UUID or by name, whichever was typed; the one with the newest look wins.
+        assertEquals("b135", ProfileHistory.lastProfile(entries, "8F16"));
+        assertEquals("b135", ProfileHistory.lastProfile(entries, "alpakaa"));
+        assertEquals("cafe", ProfileHistory.lastProfile(entries, "Someone"));
+        assertEquals(null, ProfileHistory.lastProfile(entries, "Nobody"));
+    }
 }

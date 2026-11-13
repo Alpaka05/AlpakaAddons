@@ -10,9 +10,9 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * One member of one SkyBlock profile, as the dashboard shows it: read once from Elite's answer into
- * plain fields, so drawing a frame never touches JSON. The answer itself stays at hand in
- * {@link #raw} for the cards that only show a value or two.
+ * One member of one SkyBlock profile, as the dashboard shows it: read once from what
+ * {@link HypixelProfile} made of Hypixel's data into plain fields, so drawing a frame never touches
+ * JSON. That profile itself stays at hand in {@link #raw} for the cards that only show a value or two.
  */
 public final class ProfileData {
 
@@ -36,7 +36,7 @@ public final class ProfileData {
 
     public record Floor(String label, boolean master, int completions, long fastestS, long fastestSPlus, int bestScore) {}
 
-    /** A slayer boss. Elite's {@code xpForNext} is the XP still missing to the next level. */
+    /** A slayer boss. {@code xpForNext} is the XP still missing to the next level. */
     public record Slayer(String id, String name, int level, int maxLevel, double xp, double xpForNext, double progress, int[] kills) {
         public boolean maxed() {
             return level >= maxLevel || xpForNext <= 0;
@@ -55,7 +55,7 @@ public final class ProfileData {
         }
     }
 
-    /** One of the member's inventories as the profile lists it: its id to ask Elite for, its name and size. */
+    /** One of the member's inventories as the profile lists it: its id, its name and size. */
     public record InventoryRef(String id, String name, int slots, JsonObject metadata) {}
 
     public final JsonObject raw;
@@ -65,7 +65,7 @@ public final class ProfileData {
     public final String playerName;
     public final String profileId;
     public final String profileName;
-    /** Seconds since the epoch at which Elite last read the profile from Hypixel. */
+    /** Seconds since the epoch at which the profile was last read from Hypixel. */
     public final long lastUpdated;
 
     public final double networth;

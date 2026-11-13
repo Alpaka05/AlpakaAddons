@@ -2775,11 +2775,11 @@ public class AlpakaConfigRegistry {
         OPTIONS.add(new ConfigOption("Profile", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("profile_dashboard", "Profile Dashboard",
-                "/alpakaprofile opens a dashboard of your SkyBlock profile: networth, skills, dungeons, slayers, pets and collections, with graphs of your progress. /alpakaprofile <name> shows another player. Data from Elite; needs Network Features.",
+                "/alpakaprofile opens a dashboard of your SkyBlock profile: networth, skills, dungeons, slayers, pets and collections, with graphs of your progress. /alpakaprofile <name> shows another player. Data from Hypixel's API; needs Network Features.",
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.profileDashboardEnabled,
                 v -> { AlpakaConfig.instance.profileDashboardEnabled = v; AlpakaConfig.save(); },
-                "profile dashboard stats statistics networth skills dungeons catacombs slayer pets collections graph progress history viewer pv elite command"));
+                "profile dashboard stats statistics networth skills dungeons catacombs slayer pets collections graph progress history viewer pv command"));
 
         OPTIONS.add(new ConfigOption("profile_dashboard_open", "Open Dashboard",
                 "Opens the dashboard on your own profile, as /alpakaprofile does.",

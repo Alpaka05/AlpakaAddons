@@ -43,8 +43,9 @@ import java.util.Map;
  * The Profile Dashboard, opened with /alpakaprofile: a SkyBlock profile at a glance - networth,
  * skills, dungeons, slayers, pets, collections and the rest - with graphs of how each grew.
  *
- * The numbers come from Elite ({@link ProfileApi}); the graphs from Elite's skill history and the
- * dashboard's own snapshots ({@link ProfileHistory}). Any player can be looked up from the search
+ * The numbers come from Hypixel through the AlpakaAddons API ({@link AlpakaApi}), read into what
+ * the pages show by {@link HypixelProfile}; the graphs from the history other sites kept
+ * ({@link ProfileApi}) and the dashboard's own snapshots ({@link ProfileHistory}). Any player can be looked up from the search
  * field; the player's own profile also remembers the last visit, so the overview can say what
  * changed since.
  *
@@ -288,7 +289,7 @@ public class ProfileDashboardScreen extends Screen {
         float deltaSec = Math.min(0.1f, (now - lastFrameMs) / 1000.0f);
         lastFrameMs = now;
 
-        session.syncSkyKings();
+        session.sync();
         int x = panelX();
         int y = panelY();
         int w = panelW();
@@ -420,7 +421,7 @@ public class ProfileDashboardScreen extends Screen {
             if (hoverRefresh) {
                 ProfileData shown = s.data;
                 String fresh = shown != null && shown.lastUpdated > 0 ? "Updated " + Metrics.ago(shown.lastUpdated * 1000L) + ". " : "";
-                tip("refresh", fresh + "Asks Elite for the profile again; Elite reads it from Hypixel every few minutes at most.");
+                tip("refresh", fresh + "Asks Hypixel for the profile again, at most once a minute.");
             }
         }
 
@@ -500,7 +501,7 @@ public class ProfileDashboardScreen extends Screen {
         }
     }
 
-    /** The player's face: from the skin Elite names, or the game's own profile for the player. */
+    /** The player's face: from the skin the API names, or the game's own profile for the player. */
     private ResolvableProfile face() {
         ProfileSession s = session;
         String key = s.skinHash != null ? s.skinHash : s.own ? "own" : null;
@@ -634,18 +635,16 @@ public class ProfileDashboardScreen extends Screen {
         int sw = textW(source);
         boolean hoverSource = AlpakaStyle.inside(mx, my, x + PAD - 2, fy + 10, sw + 4, 11);
         text(graphics, source, x + PAD, fy + 12, hoverSource ? AlpakaStyle.accent() : AlpakaStyle.DIVIDER);
-        if (session.playerName != null) {
-            String url = ProfileApi.ELITE_SITE + session.playerName + (d != null && d.profileName != null ? "/" + d.profileName : "");
-            hits.add(new Hit(x + PAD - 2, fy + 10, sw + 4, 11, () -> openLink("Open Elite", url)));
-            if (hoverSource) {
-                tip("source", "Profile data from Elite (elitebot.dev), which reads it from Hypixel; the history from Elite and "
-                        + "Soopy (soopy.dev), pet heads, the Bestiary, the Museum and Hoppity's rabbits from the NEU repository. Soopy works networth out differently, so its "
-                        + "older networth is scaled to match Elite's."
-                        + (skykings ? " With your key, SkyKings' daily history too" + (session.skykingsNote != null
-                                && !session.skykingsNote.equals("loading") ? ": " + session.skykingsNote : ".")
-                                : " A SkyKings API key in the config adds SkyKings' daily history.")
-                        + " Not affiliated with Hypixel. Click to open this profile on Elite.");
-            }
+        if (session.playerName != null && hoverSource) {
+            tip("source", "Profile data from Hypixel's API, through the AlpakaAddons API (api.alpaka.yt). The networth is worked "
+                    + "out here, with the Bazaar's prices from Hypixel and the lowest BINs from SkyCofl, as Item Value does it. "
+                    + "The history comes from Soopy (soopy.dev); pet heads, the Bestiary, the Museum, crop milestones and "
+                    + "Hoppity's rabbits from the NEU repository; Farming Weight by Elite's formula (elitebot.dev). Soopy works "
+                    + "networth out differently, so its older networth is scaled to match."
+                    + (skykings ? " With your key, SkyKings' daily history too" + (session.skykingsNote != null
+                            && !session.skykingsNote.equals("loading") ? ": " + session.skykingsNote : ".")
+                            : " A SkyKings API key in the config adds SkyKings' daily history.")
+                    + " Not affiliated with Hypixel.");
         }
     }
 
@@ -656,7 +655,7 @@ public class ProfileDashboardScreen extends Screen {
         ProfileSession s = session;
         if (!AlpakaConfig.instance.allowApiCalls) {
             int h = clipH - 2 * PAD;
-            ProfileChart.message(graphics, this.font, "The dashboard loads profiles from Elite, so it needs Network Features.", x, y, w, h / 2);
+            ProfileChart.message(graphics, this.font, "The dashboard loads profiles from Hypixel's API, so it needs Network Features.", x, y, w, h / 2);
             int bw = 150;
             int bx = x + (w - bw) / 2;
             int by = y + h / 2 + 4;
@@ -706,7 +705,7 @@ public class ProfileDashboardScreen extends Screen {
         };
     }
 
-    /** Cards where the page will be, softly pulsing, while Elite answers. */
+    /** Cards where the page will be, softly pulsing, while the profile loads. */
     private void drawLoading(GuiGraphicsExtractor graphics, int x, int y, int w, int h, long now) {
         float pulse = 0.5f + 0.5f * (float) Math.sin(now / 280.0);
         int color = ModernGuiUtils.lerpColor(AlpakaStyle.ROW, AlpakaStyle.ROW_HOVER, pulse);
@@ -726,7 +725,7 @@ public class ProfileDashboardScreen extends Screen {
         y = sinceLastVisit(graphics, d, x, y, w);
 
         List<Tile> tiles = new ArrayList<>();
-        tiles.add(new Tile(Metrics.NETWORTH, "Networth", d.networth > 0 ? Coins.compact(d.networth) : "API off", null));
+        tiles.add(new Tile(Metrics.NETWORTH, "Networth", networthText(d), null));
         tiles.add(new Tile(Metrics.SB_LEVEL, "SkyBlock Level", String.format(Locale.US, "%.2f", d.skyblockLevel), null));
         tiles.add(new Tile(Metrics.SKILL_AVG, "Skill Average", d.skillsApi ? String.format(Locale.US, "%.2f", d.skillAverage) : "API off", null));
         tiles.add(new Tile(Metrics.CATACOMBS, "Catacombs", String.format(Locale.US, "%.2f", Levels.catacombs(d.catacombs.xp())), null));
@@ -1075,7 +1074,7 @@ public class ProfileDashboardScreen extends Screen {
 
     /**
      * The first of these with something to draw in the range, or the first of all: on a first look
-     * the networth has no history yet, but Elite's skill history usually does.
+     * the networth has no history yet, but another of them may.
      */
     private String firstWithHistory(String... metrics) {
         long now = System.currentTimeMillis();
@@ -1290,7 +1289,7 @@ public class ProfileDashboardScreen extends Screen {
     /** The skills that open a page of their own from the Skills page. */
     private static final List<String> SKILL_PAGES = List.of("farming", "mining", "combat", "foraging", "fishing");
 
-    /** The Garden's crops: their key in Elite's garden data, their name, and how they look. */
+    /** The Garden's crops: their key in the garden data, their name, and how they look. */
     private static final String[][] CROPS = {
             {"wheat", "Wheat"}, {"carrot", "Carrot"}, {"potato", "Potato"}, {"pumpkin", "Pumpkin"},
             {"melon", "Melon"}, {"mushroom", "Mushroom"}, {"cocoaBeans", "Cocoa Beans"}, {"cactus", "Cactus"},
@@ -1375,11 +1374,11 @@ public class ProfileDashboardScreen extends Screen {
             icon(graphics, CROP_ICONS.get(key), cx + 4, cy + 5, 2.0f);
             int tx = cx + 42;
             int tw = cw - 42 - 8;
-            int milestone = (int) Json.num(r, "garden.cropMilestoneLevels." + key, 0);
-            String level = "Milestone " + milestone;
+            double amount = Json.num(r, "garden.crops." + key, 0);
+            int milestone = GardenTables.milestone(name, amount);
+            String level = milestone < 0 ? "Milestone …" : "Milestone " + milestone;
             text(graphics, AlpakaStyle.ellipsize(this.font, name, tw - textW(level) - 6), tx, cy + 7, AlpakaStyle.TEXT_SOFT);
             text(graphics, level, tx + tw - textW(level), cy + 7, AlpakaStyle.TEXT);
-            double amount = Json.num(r, "garden.crops." + key, 0);
             text(graphics, Coins.compact(amount), tx, cy + 19, AlpakaStyle.TEXT);
             double weight = Json.num(r, "farmingWeight.cropWeight." + name, 0);
             String wt = String.format(Locale.US, "%.1f weight", weight);
@@ -1465,8 +1464,7 @@ public class ProfileDashboardScreen extends Screen {
         JsonElement r = d.raw;
         List<Tile> tiles = new ArrayList<>();
         tiles.add(skillTile(d, "mining", "Mining"));
-        // Elite's Heart of the Mountain tier stays at 1 for profiles past Hypixel's skill tree
-        // rework; Peak of the Mountain is right for everyone.
+        // A profile that never opened the Heart of the Mountain has no tier to show.
         if (Json.num(r, "stats.mining.experience", 0) > 0) {
             tiles.add(new Tile(null, "Heart of the Mountain", "Tier " + (int) Json.num(r, "stats.mining.hotmLevel", 0), null));
         } else {
@@ -1526,11 +1524,11 @@ public class ProfileDashboardScreen extends Screen {
 
     // ---- Combat ----------------------------------------------------------------------------------
 
-    /** The Dojo's tests by Elite's id, with the names the Dojo gives them. */
+    /** The Dojo's tests by Hypixel's id, with the names the Dojo gives them. */
     private static final String[][] DOJO_TESTS = {
             {"mob_kb", "Force"}, {"wall_jump", "Stamina"}, {"archer", "Mastery"}, {"sword_swap", "Discipline"},
             {"snake", "Swiftness"}, {"lock_head", "Control"}, {"fireball", "Tenacity"}};
-    /** Kuudra's tiers by Elite's id, lowest first. */
+    /** Kuudra's tiers by Hypixel's id, lowest first. */
     private static final String[][] KUUDRA_TIERS = {
             {"none", "Basic"}, {"hot", "Hot"}, {"burning", "Burning"}, {"fiery", "Fiery"}, {"infernal", "Infernal"}};
 
@@ -1683,7 +1681,7 @@ public class ProfileDashboardScreen extends Screen {
         if (ability != null) forest.add(row("Axe Ability", ProfileData.title(ability)));
         add(cards, "Galatea", forest);
 
-        // Elite's personal bests are the logs of each tree's contest and two NPCs' own records.
+        // The personal bests are the logs of each tree's contest and two NPCs' own records.
         List<String[]> bests = new ArrayList<>();
         for (var e : Json.obj(r, "stats.foraging.personalBests").entrySet()) {
             double n = Json.num(e.getValue());
@@ -2079,11 +2077,17 @@ public class ProfileDashboardScreen extends Screen {
     private List<Part> parts = List.of();
     private List<Valuable> valuables = List.of();
 
+    /** The networth, or what it is waiting for: it is worked out after the profile arrived, once prices are there. */
+    private String networthText(ProfileData d) {
+        if (d.networth > 0) return Coins.compact(d.networth);
+        return session.networthState == ProfileSession.State.FAILED ? "—" : "…";
+    }
+
     private int networth(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
         List<Tile> tiles = new ArrayList<>();
-        tiles.add(new Tile(Metrics.NETWORTH, "Networth", Coins.compact(d.networth), null));
+        tiles.add(new Tile(Metrics.NETWORTH, "Networth", networthText(d), null));
         // Plain cards: the history has next to nothing for these.
-        tiles.add(new Tile(null, "Liquid", Coins.compact(d.liquidNetworth), "sells right away"));
+        tiles.add(new Tile(null, "Liquid", d.networth > 0 ? Coins.compact(d.liquidNetworth) : networthText(d), "can be sold as it is"));
         tiles.add(new Tile(null, "Purse", Coins.compact(d.purse), null));
         tiles.add(coop(session)
                 ? new Tile(null, "Bank", Coins.compact(d.bank) + " / " + Coins.compact(d.personalBank), "co-op / personal")
@@ -2099,7 +2103,7 @@ public class ProfileDashboardScreen extends Screen {
             boolean failed = session.networthState == ProfileSession.State.FAILED;
             int h = 40;
             card(graphics, x, y, w, h);
-            ProfileChart.message(graphics, this.font, failed ? "Couldn't load the breakdown. Click to try again." : "Loading the breakdown…", x, y, w, h);
+            ProfileChart.message(graphics, this.font, failed ? "Couldn't load the prices. Click to try again." : "Working out the networth…", x, y, w, h);
             if (failed) hit(x, y, w, h, session::retryFailed);
             return y + h;
         }
@@ -2770,7 +2774,7 @@ public class ProfileDashboardScreen extends Screen {
 
     private int invContent(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
         return switch (invTab) {
-            case INVENTORY -> playerInventory(graphics, d, x, y, w);
+            case INVENTORY -> playerInventory(graphics, "Inventory", "inventory", "armor", "equipment", true, x, y, w);
             case ENDER_CHEST -> pagedSections(graphics, "ender_chest", "Page", x, y, w);
             case BACKPACKS -> backpackSections(graphics, d, x, y, w);
             case WARDROBE -> wardrobe(graphics, d, x, y, w);
@@ -2896,10 +2900,11 @@ public class ProfileDashboardScreen extends Screen {
     }
 
     /** The inventory as the game shows it: armor and equipment beside the three rows, the hotbar below. */
-    private int playerInventory(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
-        JsonElement inv = session.inventory("inventory");
-        JsonElement armor = session.inventory("armor");
-        JsonElement equipment = session.inventory("equipment");
+    private int playerInventory(GuiGraphicsExtractor graphics, String title, String invName, String armorName, String equipmentName,
+                                boolean centered, int x, int y, int w) {
+        JsonElement inv = session.inventory(invName);
+        JsonElement armor = session.inventory(armorName);
+        JsonElement equipment = session.inventory(equipmentName);
         // Twice the size when there is room, in the middle of the page, as the game's own screen.
         slotScale = 16 + 11 * SLOT * 2 + 8 * 2 <= w ? 2 : 1;
         int slot = SLOT * slotScale;
@@ -2907,15 +2912,17 @@ public class ProfileDashboardScreen extends Screen {
         int cw = 16 + sideW + 9 * slot;
         int h = 22 + 4 * slot + 6 * slotScale + 8;
         x += (w - cw) / 2;
-        y = middle(y, h);
+        if (centered) y = middle(y, h);
         card(graphics, x, y, cw, h);
-        text(graphics, "Inventory", x + 8, y + 7, AlpakaStyle.TEXT);
+        text(graphics, title, x + 8, y + 7, AlpakaStyle.TEXT);
         int gy = y + 22;
         if (armor != null) slots(graphics, Json.obj(armor, "items"), List.of("3", "2", "1", "0"), x + 8, gy, 1);
         if (equipment != null) slots(graphics, Json.obj(equipment, "items"), List.of("0", "1", "2", "3"), x + 8 + slot, gy, 1);
         int mx0 = x + 8 + sideW;
         if (inv == null) {
-            ProfileChart.message(graphics, this.font, "Loading…", mx0, gy, 9 * slot, 4 * slot);
+            boolean failed = session.inventoryState(invName) == ProfileSession.State.FAILED;
+            ProfileChart.message(graphics, this.font, failed ? "Couldn't load. Click to try again." : "Loading…", mx0, gy, 9 * slot, 4 * slot);
+            if (failed) hit(mx0, gy, 9 * slot, 4 * slot, session::retryFailed);
             slotScale = 1;
             return y + h;
         }
@@ -3004,8 +3011,11 @@ public class ProfileDashboardScreen extends Screen {
 
     /** One inventory in pages of 45 slots, such as the Ender Chest; pages with nothing in them are left out. */
     private int pagedSections(GuiGraphicsExtractor graphics, String name, String label, int x, int y, int w) {
+        return pagedSections(graphics, name, label, slotsOf(session.data, name), x, y, w);
+    }
+
+    private int pagedSections(GuiGraphicsExtractor graphics, String name, String label, int slots, int x, int y, int w) {
         JsonElement inv = session.inventory(name);
-        int slots = slotsOf(session.data, name);
         if (inv == null) return flow(graphics, List.of(new Section(label + " 1", null, name, range(0, Math.min(45, slots)))), x, y, w);
         com.google.gson.JsonObject items = Json.obj(inv, "items");
         List<Section> sections = new ArrayList<>();
@@ -3179,7 +3189,9 @@ public class ProfileDashboardScreen extends Screen {
 
     private int museum(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
         if (!Json.bool(d.raw, "api.museum")) return apiOff(graphics, "Museum", x, y, w);
-        if (!d.inventories.containsKey("museum")) return note(graphics, "Nothing donated to the museum yet.", x, y, w);
+        if (!d.inventories.containsKey("museum") && session.inventoryState("museum") == ProfileSession.State.READY) {
+            return note(graphics, "Nothing donated to the museum yet, or its API is switched off.", x, y, w);
+        }
         Museum.Repo repo = Museum.repo();
         // The museum inventory rather than the networth's museum category: only it still lists the
         // items taken out, which count as donated all the same.
@@ -3365,7 +3377,7 @@ public class ProfileDashboardScreen extends Screen {
 
     // ---- Rift -----------------------------------------------------------------------------------
 
-    /** The Timecharms by Elite's id, in the order the Rift hands them out. */
+    /** The Timecharms by Hypixel's id, in the order the Rift hands them out. */
     private static final String[][] TIMECHARMS = {
             {"wyldly_supreme", "Supreme Timecharm"}, {"mirrored", "Mirrorverse Timecharm"},
             {"chicken_n_egg", "Chicken N Egg Timecharm"}, {"citizen", "SkyBlock Citizen Timecharm"},
@@ -3400,7 +3412,6 @@ public class ProfileDashboardScreen extends Screen {
         List<String[]> progress = new ArrayList<>();
         count(progress, "Eyes Unlocked", Json.arr(r, "unlockedEyes").size());
         count(progress, "Areas Unlocked", Json.arr(r, "lifetimePurchasedBoundaries").size());
-        count(progress, "Portals", Json.num(r, "totalPortals"));
         if (Json.bool(r, "consumedPrism")) progress.add(row("Rift Prism", "Consumed"));
         if (Json.bool(r, "unlockedRiftCatPet")) progress.add(row("Montezuma Pet", "Unlocked"));
         add(cards, "Progress", progress);
@@ -3408,12 +3419,20 @@ public class ProfileDashboardScreen extends Screen {
         List<String[]> stacks = new ArrayList<>();
         count(stacks, "Lifetime Motes", Json.num(r, "lifetimeMotesEarned"));
         count(stacks, "Motes Orbs Picked Up", Json.num(r, "motesOrbPickup"));
-        count(stacks, "McGrubber's Burgers", Json.num(r, "maxBurgers"));
         count(stacks, "Grubber Stacks", Json.num(r, "grubberStacks"));
-        count(stacks, "Croak Stacks", Json.num(r, "croakStacks"));
-        count(stacks, "Siren Statue Kills", Json.num(r, "sirenStatueKills"));
         add(cards, "Stats", stacks);
-        return cards(graphics, cards, x, y, w);
+        y = cards(graphics, cards, x, y, w) + 12;
+        return riftInventories(graphics, x, y, w);
+    }
+
+    /** The Rift's inventory and Ender Chest, which come with the profile like every other inventory. */
+    private int riftInventories(GuiGraphicsExtractor graphics, int x, int y, int w) {
+        String problem = session.riftProblem();
+        if (problem != null) return note(graphics, problem, x, y, w);
+        y = playerInventory(graphics, "Rift Inventory", "rift_inventory", "rift_armor", "rift_equipment", false, x, y, w) + 8;
+        JsonElement chest = session.inventory("rift_ender_chest");
+        int slots = chest == null ? 45 : Json.obj(chest, "items").size();
+        return pagedSections(graphics, "rift_ender_chest", "Rift Ender Chest · Page", slots, x, y, w);
     }
 
     // ---- Rabbits (Chocolate Factory) ------------------------------------------------------------
@@ -3428,7 +3447,11 @@ public class ProfileDashboardScreen extends Screen {
         Map<String, Integer> all = Hoppity.rabbits();
         int collection = 0;
         if (all != null) for (int n : all.values()) collection += n;
-        double unique = Json.sum(c, "uniqueRabbits");
+        // By rarity once Hoppity's list is there; until then every rabbit the profile names counts.
+        int[][] found = Hoppity.found(Json.obj(c, "rabbits"));
+        double unique = 0;
+        if (found == null) unique = Json.obj(c, "rabbits").size();
+        else for (int n : found[0]) unique += n;
 
         List<Tile> tiles = new ArrayList<>();
         // Plain cards: the page has no graph.
@@ -3437,7 +3460,7 @@ public class ProfileDashboardScreen extends Screen {
         tiles.add(new Tile(null, "Chocolate", Coins.compact(Json.num(c, "chocolate", 0)), null));
         tiles.add(new Tile(null, "Unique Rabbits", Coins.full(unique) + (collection > 0 ? " / " + collection : ""), null));
         y = tiles(graphics, tiles, x, y, w, 4) + 6;
-        y = rabbits(graphics, c, all, x, y, w) + 6;
+        y = rabbits(graphics, found, all, x, y, w) + 6;
 
         List<Card> cards = new ArrayList<>();
         List<String[]> factory = new ArrayList<>();
@@ -3455,7 +3478,7 @@ public class ProfileDashboardScreen extends Screen {
     }
 
     /** Hoppity's collection by rarity: the rabbits found of each, and how often one turned up. */
-    private int rabbits(GuiGraphicsExtractor graphics, JsonElement c, Map<String, Integer> all, int x, int y, int w) {
+    private int rabbits(GuiGraphicsExtractor graphics, int[][] counts, Map<String, Integer> all, int x, int y, int w) {
         int rowH = 13;
         int h = 24 + Hoppity.RARITIES.length * rowH + 2;
         card(graphics, x, y, w, h);
@@ -3471,8 +3494,8 @@ public class ProfileDashboardScreen extends Screen {
         int ry = y + 22;
         for (int i = 0; i < Hoppity.RARITIES.length; i++) {
             String rarity = Hoppity.RARITIES[i];
-            int found = (int) Json.num(c, "uniqueRabbits." + rarity, 0);
-            int seen = (int) Json.num(c, "totalRabbits." + rarity, 0);
+            int found = counts == null ? 0 : counts[0][i];
+            int seen = counts == null ? 0 : counts[1][i];
             Integer of = all == null ? null : all.get(rarity);
             int color = ink(RARITY_COLORS[i]);
             String name = ProfileData.title(rarity);
@@ -4023,13 +4046,6 @@ public class ProfileDashboardScreen extends Screen {
             case YEAR -> "year";
             case ALL -> "whole history";
         };
-    }
-
-    private void openLink(String title, String url) {
-        Minecraft mc = Minecraft.getInstance();
-        mc.gui.setScreen(new net.alpaka.addons.client.AlpakaConfirmScreen(this, title,
-                "Opens this profile in your browser: " + url, "Open", false,
-                () -> net.minecraft.util.Util.getPlatform().openUri(url)));
     }
 
     private void lookUp() {

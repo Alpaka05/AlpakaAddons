@@ -269,7 +269,7 @@ public final class DevScreenshotTour {
                     () -> true, 10),
             new Stop("confirm-quick-commands-after-reset", () -> click(((AlpakaConfirmScreen) screen()).devConfirmPoint()),
                     () -> true, 30),
-            // The Profile Dashboard on real profiles from Elite, every page, a mid-game one and a name that does not exist.
+            // The Profile Dashboard on real profiles, every page, a mid-game one and a name that does not exist.
             profile("profile-overview", "Refraction", "OVERVIEW"),
             profile("profile-skills", "Refraction", "SKILLS"),
             profile("profile-dungeons", "Refraction", "DUNGEONS"),

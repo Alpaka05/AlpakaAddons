@@ -5,7 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 /**
- * Reading Elite's profile answers without a crash when a field is missing. A profile with an API
+ * Reading a profile's JSON without a crash when a field is missing. A profile with an API
  * switched off, or one that never touched a part of the game, simply leaves fields out; every read
  * here falls back to zero, empty or null instead.
  */

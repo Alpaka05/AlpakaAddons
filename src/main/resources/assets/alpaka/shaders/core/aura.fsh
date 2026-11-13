@@ -24,6 +24,8 @@ out vec4 fragColor;
 //   u in 2..3 - a four-pointed sparkle, the same glow with two thin rays crossing it.
 //   u from 4  - a puff of cloud: not light but matter. The whole part of u above 4 picks the puff's
 //               own pattern (u = 4 + 2 * seed + 0..1), so no two puffs look alike.
+//   u below 0 - a glyph of digital rain, its strokes picked by the glyph's number
+//               (u = -2 - 2 * glyph + 0..1).
 //
 // Blended premultiplied: the color is light added to the scene, and a little alpha darkens what is
 // behind the glow, so it keeps its contrast against a bright sky instead of washing out.
@@ -81,9 +83,66 @@ void cloud() {
     fragColor = vec4(color * alpha, alpha);
 }
 
+// The strokes a glyph is made of, as line segments (x0, y0, x1, y1) in a box from -1 to 1: the
+// outline and middle of a seven-segment digit, a centre stem and three slants. Each glyph switches on
+// its own mix of them, which reads as an alphabet of its own rather than as letters or digits.
+const vec4 STROKES[12] = vec4[12](
+    vec4(-0.8, 0.9, 0.8, 0.9),
+    vec4(-0.8, 0.0, 0.8, 0.0),
+    vec4(-0.8, -0.9, 0.8, -0.9),
+    vec4(-0.8, 0.9, -0.8, 0.0),
+    vec4(-0.8, 0.0, -0.8, -0.9),
+    vec4(0.8, 0.9, 0.8, 0.0),
+    vec4(0.8, 0.0, 0.8, -0.9),
+    vec4(0.0, 0.9, 0.0, 0.0),
+    vec4(0.0, 0.0, 0.0, -0.9),
+    vec4(0.8, 0.9, -0.6, -0.9),
+    vec4(0.0, 0.0, 0.8, -0.9),
+    vec4(-0.6, 0.5, -0.1, 0.3)
+);
+
+float strokeDistance(vec2 p, vec4 s) {
+    vec2 a = s.xy;
+    vec2 ba = s.zw - a;
+    float h = clamp(dot(p - a, ba) / dot(ba, ba), 0.0, 1.0);
+    return length(p - a - ba * h);
+}
+
+// A glyph of digital rain: sharp strokes in a soft glow that fades out before the quad's edge.
+// The glyph's number is read through floor(u / 2), which stays the same over the whole quad
+// (u runs from -2 - 2n to -1 - 2n), so no column of pixels at its edge picks up a neighbour's strokes.
+void glyph() {
+    float cell = floor(texCoord.x * 0.5);
+    float seed = -1.0 - cell;
+    vec2 local = vec2(texCoord.x - 2.0 * cell, texCoord.y);
+    vec2 p = (local - 0.5) * 2.6;
+    float d = 10.0;
+    for (int i = 0; i < 12; i++) {
+        bool on = hash12(vec2(seed * 1.37 + 3.1, float(i) * 7.7)) < 0.36 || i == int(mod(seed * 5.0, 12.0));
+        if (on) {
+            d = min(d, strokeDistance(p, STROKES[i]));
+        }
+    }
+    vec2 fromCenter = abs(local - 0.5) * 2.0;
+    float fade = 1.0 - smoothstep(0.65, 1.0, max(fromCenter.x, fromCenter.y));
+    float line = exp(-d * d * 70.0);
+    float halo = exp(-d * d * 5.0) * 0.5 * fade;
+    float glow = line + halo;
+    if (glow * fade < 0.003) {
+        discard;
+    }
+    float strength = vertexColor.a;
+    vec3 color = vertexColor.rgb * glow * 1.4 + vec3(line * 0.08);
+    fragColor = vec4(color * strength, min(glow * strength * 0.55, 1.0));
+}
+
 void main() {
     if (texCoord.x > 3.5) {
         cloud();
+        return;
+    }
+    if (texCoord.x < -0.5) {
+        glyph();
         return;
     }
     bool sparkle = texCoord.x > 1.5;

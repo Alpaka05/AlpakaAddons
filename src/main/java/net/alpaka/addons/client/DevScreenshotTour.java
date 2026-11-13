@@ -802,7 +802,7 @@ public final class DevScreenshotTour {
             // Every aura effect in third person, each after a moment to get going.
             new Stop(null, DevScreenshotTour::auraPreview, () -> true, 5),
             new Stop("aura-spirit-orbs", () -> AlpakaConfig.instance.auraEffect = 0, () -> true, 20),
-            new Stop("aura-twin-helix", () -> AlpakaConfig.instance.auraEffect = 1, () -> true, 20),
+            new Stop("aura-matrix", () -> AlpakaConfig.instance.auraEffect = 1, () -> true, 20),
             new Stop("aura-arcane-sigil", () -> AlpakaConfig.instance.auraEffect = 2, () -> true, 20),
             new Stop("aura-inferno", () -> AlpakaConfig.instance.auraEffect = 3, () -> true, 20),
             new Stop("aura-galaxy", () -> AlpakaConfig.instance.auraEffect = 4, () -> true, 20),
@@ -820,6 +820,7 @@ public final class DevScreenshotTour {
             new Stop("aura-night-galaxy", () -> AlpakaConfig.instance.auraEffect = 4, () -> true, 20),
             new Stop("aura-night-inferno", () -> AlpakaConfig.instance.auraEffect = 3, () -> true, 20),
             new Stop("aura-night-storm", () -> AlpakaConfig.instance.auraEffect = 6, () -> true, 20),
+            new Stop("aura-night-matrix", () -> AlpakaConfig.instance.auraEffect = 1, () -> true, 20),
             new Stop(null, () -> {
                 AlpakaConfig.instance.auraEnabled = false;
                 AlpakaConfig.instance.auraColorMode = 0;

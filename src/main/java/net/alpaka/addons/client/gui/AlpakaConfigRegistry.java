@@ -3120,16 +3120,16 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.COSMETICS,
                 () -> AlpakaConfig.instance.auraEnabled,
                 v -> { AlpakaConfig.instance.auraEnabled = v; AlpakaConfig.save(); },
-                "aura effect glow particles orbs helix sigil magic circle fire flames galaxy stars fireflies storm lightning cosmetic third person f5"));
+                "aura effect glow particles orbs matrix digital rain code sigil magic circle fire flames galaxy stars fireflies storm lightning cosmetic third person f5"));
 
         OPTIONS.add(new ConfigOption("aura_effect", "Effect",
-                "Which aura you wear: orbiting spirits, a helix, a magic circle, flames, a galaxy, fireflies or lightning.",
+                "Which aura you wear: orbiting spirits, digital rain, a magic circle, flames, a galaxy, fireflies or lightning.",
                 ConfigCategory.COSMETICS,
                 () -> (float) AlpakaConfig.instance.auraEffect,
                 v -> { AlpakaConfig.instance.auraEffect = Math.round(v); AlpakaConfig.save(); },
                 0.0f, (float) (AuraFeature.EFFECT_NAMES.length - 1),
                 val -> AuraFeature.EFFECT_NAMES[Math.round(val)],
-                "aura effect type style spirit orbs twin helix arcane sigil inferno galaxy fireflies storm").choices(AuraFeature.EFFECT_NAMES));
+                "aura effect type style spirit orbs matrix digital rain code arcane sigil inferno galaxy fireflies storm").choices(AuraFeature.EFFECT_NAMES));
 
         OPTIONS.add(new ConfigOption("aura_color_mode", "Colors",
                 "Effect Colors keeps each effect's own colors. Custom blends between the two colors below.",

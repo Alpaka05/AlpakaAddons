@@ -117,7 +117,7 @@ public class AlpakaConfig {
 
     /** An animated aura of light around the player's own model in third person. */
     public boolean auraEnabled = false;
-    /** Index into {@code AuraFeature.EFFECT_NAMES}: spirit orbs, helix, sigil, inferno, galaxy, fireflies, storm. */
+    /** Index into {@code AuraFeature.EFFECT_NAMES}: spirit orbs, matrix, sigil, inferno, galaxy, fireflies, storm. */
     public int auraEffect = 0;
     /** Index into {@code AuraFeature.COLOR_MODE_NAMES}: the effect's own colors, rainbow, or the two below. */
     public int auraColorMode = 0;

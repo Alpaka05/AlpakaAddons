@@ -251,7 +251,42 @@ public final class DevScreenshotTour {
                 config.activeItemPresetIndex = 0;
                 Minecraft.getInstance().gui.setScreen(AlpakaConfigScreen.openOn("Viewmodel", "Presets"));
             }, () -> true, 30),
-            screen("confirm-config-player-scale", () -> AlpakaConfigScreen.openOn("Cosmetics", "Player Scale")),
+            // Editing a text setting: a click puts the caret where it lands, typing goes in there,
+            // Shift+Left selects, Ctrl+A selects all, typing replaces the selection, Ctrl+Z undoes.
+            new Stop(null, () -> {
+                AlpakaConfig.instance.bridgeBotName = "CultureGround";
+                Minecraft.getInstance().gui.setScreen(AlpakaConfigScreen.openOn("Social", "Bridge Bot Formatter"));
+            }, () -> true, 30),
+            new Stop("textedit-config-click", () -> click(((AlpakaConfigScreen) screen()).devTextFieldPoint("bridge_bot_name", 0.4)),
+                    () -> true, 2),
+            new Stop("textedit-config-type", () -> type("XY"), () -> true, 2),
+            new Stop("textedit-config-shift-left", () -> {
+                key(org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT, org.lwjgl.glfw.GLFW.GLFW_MOD_SHIFT);
+                key(org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT, org.lwjgl.glfw.GLFW.GLFW_MOD_SHIFT);
+                key(org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT, org.lwjgl.glfw.GLFW.GLFW_MOD_SHIFT);
+            }, () -> true, 2),
+            new Stop("textedit-config-home", () -> key(org.lwjgl.glfw.GLFW.GLFW_KEY_HOME, 0), () -> true, 2),
+            new Stop("textedit-config-select-all", () -> key(org.lwjgl.glfw.GLFW.GLFW_KEY_A, org.lwjgl.glfw.GLFW.GLFW_MOD_CONTROL),
+                    () -> true, 2),
+            new Stop("textedit-config-replace", () -> type("Bot"), () -> true, 2),
+            new Stop("textedit-config-undo", () -> key(org.lwjgl.glfw.GLFW.GLFW_KEY_Z, org.lwjgl.glfw.GLFW.GLFW_MOD_CONTROL),
+                    () -> true, 2),
+            new Stop(null, () -> {
+                key(org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE, 0);
+                AlpakaConfig.instance.bridgeBotName = "";
+                java.util.List<java.util.List<String>> pages = new java.util.ArrayList<>();
+                pages.add(new java.util.ArrayList<>(java.util.List.of("/hub")));
+                AlpakaConfig.instance.commandWheelPages = pages;
+                Minecraft.getInstance().gui.setScreen(new CommandWheelConfigScreen(new CustomMainMenuScreen()));
+            }, () -> true, 30),
+            new Stop(null, () -> {
+                click(((CommandWheelConfigScreen) screen()).devInputPoint(0.5));
+                type("warp garden");
+                key(org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT, org.lwjgl.glfw.GLFW.GLFW_MOD_CONTROL);
+            }, () -> true, 2),
+            new Stop("textedit-wheel-word-select", () -> key(org.lwjgl.glfw.GLFW.GLFW_KEY_RIGHT,
+                    org.lwjgl.glfw.GLFW.GLFW_MOD_CONTROL | org.lwjgl.glfw.GLFW.GLFW_MOD_SHIFT), () -> true, 2),
+            screen("confirm-config-player-scale",() -> AlpakaConfigScreen.openOn("Cosmetics", "Player Scale")),
             new Stop("confirm-dialog-player-scale", () -> trigger("player_scale_reset"), () -> true, 30),
             // Quick commands with one of the player's own: Reset asks, Cancel keeps it, Reset for
             // real puts the default set back and returns to the editor.
@@ -872,6 +907,16 @@ public final class DevScreenshotTour {
     private static void scroll(double x, double y, double amount) {
         net.minecraft.client.gui.screens.Screen screen = screen();
         if (screen != null) screen.mouseScrolled(screen.width * x, screen.height * y, 0, amount);
+    }
+
+    /** A key press on the open screen, with these GLFW modifier bits held. */
+    private static void key(int key, int modifiers) {
+        screen().keyPressed(new net.minecraft.client.input.KeyEvent(key, 0, modifiers));
+    }
+
+    /** Typing this text into the open screen, one character at a time. */
+    private static void type(String text) {
+        text.codePoints().forEach(c -> screen().charTyped(new net.minecraft.client.input.CharacterEvent(c)));
     }
 
     /** A left click at this point of the open screen, as the player's mouse would deliver it. */

@@ -6,6 +6,7 @@ import com.mojang.blaze3d.textures.FilterMode;
 import net.alpaka.addons.client.gui.AlpakaGuiElementSink;
 import net.alpaka.addons.client.gui.AlpakaStyle;
 import net.alpaka.addons.client.gui.AlpakaStyle.ButtonKind;
+import net.alpaka.addons.client.gui.EditableText;
 import net.alpaka.addons.client.gui.GuiFont;
 import net.alpaka.addons.client.gui.Hsv;
 import net.alpaka.addons.client.gui.ModernGuiUtils;
@@ -56,7 +57,8 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
 
     private enum Drag { NONE, WHEEL, BRIGHTNESS, OPACITY }
 
-    private String hexInput = "";
+    /** The hex code's text, caret and selection; only '#' and hex digits go in. */
+    private final EditableText hexInput = new EditableText(9).filter(c -> c == '#' || Character.digit(c, 16) >= 0);
     private boolean hexFocused = false;
     private long caretFrom = 0L;
     private long openTimeMs = 0L;
@@ -122,11 +124,11 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
     }
 
     private void syncHexFromColor() {
-        if (!hexFocused) this.hexInput = hexOf();
+        if (!hexFocused) this.hexInput.setText(hexOf());
     }
 
     private void tryParseHexInput() {
-        String clean = hexInput.trim().replace("#", "");
+        String clean = hexInput.getText().trim().replace("#", "");
         try {
             if (clean.length() == 6) {
                 long val = Long.parseLong(clean, 16);
@@ -324,7 +326,7 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         AlpakaStyle.swatch(graphics, l.rightX(), l.bodyY(), PREVIEW_W, FIELD_H, currentColor());
         boolean hoverHex = inside(mouseX, mouseY, l.hexX(), l.bodyY(), l.hexW(), FIELD_H);
         AlpakaStyle.textField(graphics, this.font, l.hexX(), l.bodyY(), l.hexW(), FIELD_H,
-                hexInput, "#RRGGBB", hexFocused, hoverHex, caretFrom);
+                hexInput, null, "#RRGGBB", hexFocused, hoverHex, caretFrom);
 
         // Brightness runs from black to the color at full brightness; opacity from the window's own
         // color, which is what a see-through color shows over, to the color itself.
@@ -436,8 +438,9 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         if (inside(mouseX, mouseY, l.hexX(), l.bodyY(), l.hexW(), FIELD_H)) {
             if (!wasHex) {
                 AlpakaStyle.click();
-                hexInput = hexOf();
+                hexInput.setText(hexOf());
             }
+            AlpakaStyle.clickTextField(this.font, hexInput, null, l.hexX(), l.hexW(), event.x(), wasHex, event.hasShiftDown());
             hexFocused = true;
             caretFrom = System.currentTimeMillis();
             return true;
@@ -532,11 +535,7 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
     @Override
     public boolean charTyped(CharacterEvent event) {
         if (hexFocused) {
-            char c = (char) event.codepoint();
-            if ((c == '#' || Character.digit(c, 16) >= 0) && hexInput.length() < 9) {
-                hexInput += c;
-                tryParseHexInput();
-            }
+            if (hexInput.insert(event.codepoint())) tryParseHexInput();
             caretFrom = System.currentTimeMillis();
             return true;
         }
@@ -547,11 +546,9 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
     public boolean keyPressed(KeyEvent event) {
         if (hexFocused) {
             int key = event.key();
-            if (key == GLFW.GLFW_KEY_BACKSPACE) {
-                if (!hexInput.isEmpty()) {
-                    hexInput = hexInput.substring(0, hexInput.length() - 1);
-                    tryParseHexInput();
-                }
+            String before = hexInput.getText();
+            if (hexInput.keyPressed(event)) {
+                if (!hexInput.getText().equals(before)) tryParseHexInput();
                 caretFrom = System.currentTimeMillis();
                 return true;
             }

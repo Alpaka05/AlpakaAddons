@@ -2,6 +2,7 @@ package net.alpaka.addons.client
 
 import net.alpaka.addons.client.gui.AlpakaStyle
 import net.alpaka.addons.client.gui.AlpakaStyle.ButtonKind
+import net.alpaka.addons.client.gui.EditableText
 import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.features.wheel.CommandWheelPages
@@ -38,7 +39,11 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
     /** Whether the list of wheels is open below its field. */
     private var wheelPickerOpen = false
 
-    private var newCommandInput: String = "/"
+    /** The new command's text, caret and selection. */
+    private val input = EditableText(35).also { it.setText("/") }
+    private var newCommandInput: String
+        get() = input.text
+        set(value) = input.setText(value)
     private var inputFocused: Boolean = false
 
     /** Where a new command goes: -1 for "Auto", a page index, or the page count for "New page". */
@@ -274,7 +279,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
         ModernGuiUtils.drawRect(graphics, f.winX + AlpakaStyle.PAD, f.inputY - 8, f.winW - AlpakaStyle.PAD * 2, 1, AlpakaStyle.LINE)
         val hoverInput = inside(mouseX, mouseY, inputX(f), f.inputY, f.inputW, AlpakaStyle.BUTTON_H)
         AlpakaStyle.textField(graphics, this.font, inputX(f), f.inputY, f.inputW, AlpakaStyle.BUTTON_H,
-            newCommandInput, "/command", inputFocused, hoverInput, caretFrom)
+            input, null, "/command", inputFocused, hoverInput, caretFrom)
 
         val buttonsY = f.buttonsY
         AlpakaStyle.selectField(graphics, this.font, pageBtnX(f), buttonsY, PAGE_BTN_W, AlpakaStyle.BUTTON_H,
@@ -507,6 +512,12 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
     private fun addBtnX(f: Frame) = pageBtnX(f) + PAGE_BTN_W + 6
     private fun resetBtnX(f: Frame) = addBtnX(f) + ADD_W + 6
 
+    /** For the screenshot tour: a point this far across the new command's field. */
+    fun devInputPoint(fraction: Double): IntArray {
+        val f = frame()
+        return intArrayOf(inputX(f) + (f.inputW * fraction).toInt(), f.inputY + AlpakaStyle.BUTTON_H / 2)
+    }
+
     /** For the screenshot tour: the middle of the page field, to open its list. */
     fun devPagePickerPoint(): IntArray {
         val f = frame()
@@ -575,6 +586,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
 
         // Bottom row: the field, and the buttons on the same line or the one below it.
         if (inside(mouseX, mouseY, inputX(f), f.inputY, f.inputW, AlpakaStyle.BUTTON_H)) {
+            AlpakaStyle.clickTextField(this.font, input, null, inputX(f), f.inputW, event.x(), inputFocused, event.hasShiftDown())
             inputFocused = true
             caretFrom = System.currentTimeMillis()
             return true
@@ -714,10 +726,7 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
 
     override fun charTyped(event: CharacterEvent): Boolean {
         if (inputFocused) {
-            val codePoint = event.codepoint()
-            if (codePoint >= 32 && codePoint != 127 && newCommandInput.length < 35) {
-                newCommandInput += codePoint.toChar()
-            }
+            input.insert(event.codepoint())
             caretFrom = System.currentTimeMillis()
             return true
         }
@@ -731,11 +740,11 @@ class CommandWheelConfigScreen(private val parent: Screen) : Screen(GuiFont.text
             return true
         }
         if (inputFocused) {
+            if (input.keyPressed(event)) {
+                caretFrom = System.currentTimeMillis()
+                return true
+            }
             when (event.key()) {
-                GLFW.GLFW_KEY_BACKSPACE -> {
-                    if (newCommandInput.isNotEmpty()) newCommandInput = newCommandInput.substring(0, newCommandInput.length - 1)
-                    return true
-                }
                 GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> {
                     addCurrentInput()
                     return true

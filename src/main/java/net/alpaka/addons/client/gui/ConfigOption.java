@@ -506,4 +506,15 @@ public class ConfigOption {
         String end = text.length() > 8 ? text.substring(text.length() - 4) : "";
         return "•".repeat(Math.min(10, text.length() - end.length())) + end;
     }
+
+    /**
+     * What the field shows while the text is being edited: for a secret, one dot for each hidden
+     * character, so the caret and the selection land on the right characters; null for any other
+     * text, which shows as it is.
+     */
+    public String getEditingMask(String text) {
+        if (!secret || text.isEmpty()) return null;
+        int hidden = text.length() > 8 ? text.length() - 4 : text.length();
+        return "•".repeat(hidden) + text.substring(hidden);
+    }
 }

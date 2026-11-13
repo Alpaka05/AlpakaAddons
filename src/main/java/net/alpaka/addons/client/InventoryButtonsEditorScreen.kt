@@ -1,6 +1,7 @@
 package net.alpaka.addons.client
 
 import net.alpaka.addons.client.InventoryButtonsSkin as Skin
+import net.alpaka.addons.client.gui.AlpakaStyle
 import net.alpaka.addons.client.gui.EditableText
 import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.config.AlpakaConfig
@@ -55,6 +56,8 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
     private val commandText = EditableText(256)
     private val labelText = EditableText(64)
     private val searchText = EditableText(40)
+    /** Whether Shift was held for the click being handled, which selects up to it in a focused field. */
+    private var clickShift = false
     private var focus = Field.NONE
 
     /** The picker's full list as last searched; it grows once SkyBlock's items have loaded. */
@@ -308,16 +311,16 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
         val fx = fieldX()
         val fw = fieldW()
         Skin.label(graphics, font, "Command", cx, commandY() + 5)
-        Skin.textField(graphics, font, fx, commandY(), fw, Skin.BUTTON_H, commandText.text, "/command",
+        Skin.textField(graphics, font, fx, commandY(), fw, Skin.BUTTON_H, commandText, "/command",
             focus == Field.COMMAND, inside(mx, my, fx, commandY(), fw, Skin.BUTTON_H))
         Skin.label(graphics, font, "Tooltip", cx, labelY() + 5)
-        Skin.textField(graphics, font, fx, labelY(), fw, Skin.BUTTON_H, labelText.text, "Optional",
+        Skin.textField(graphics, font, fx, labelY(), fw, Skin.BUTTON_H, labelText, "Optional",
             focus == Field.LABEL, inside(mx, my, fx, labelY(), fw, Skin.BUTTON_H))
         Skin.label(graphics, font, "Show In", cx, showInY() + 5)
         Skin.button(graphics, font, fx, showInY(), fw, Skin.BUTTON_H, SHOW_IN[button.showIn.coerceIn(0, SHOW_IN.size - 1)],
             inside(mx, my, fx, showInY(), fw, Skin.BUTTON_H), Skin.PLAIN)
         Skin.label(graphics, font, "Icon", cx, searchY() + 5)
-        Skin.textField(graphics, font, fx, searchY(), fw, Skin.BUTTON_H, searchText.text, "Search",
+        Skin.textField(graphics, font, fx, searchY(), fw, Skin.BUTTON_H, searchText, "Search",
             focus == Field.SEARCH, inside(mx, my, fx, searchY(), fw, Skin.BUTTON_H))
 
         // The icon grid.
@@ -373,6 +376,7 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
         val mx = event.x()
         val my = event.y()
         if (event.button() != 0) return super.mouseClicked(event, isDoubleClick)
+        clickShift = event.hasShiftDown()
 
         if (inPanel(mx, my)) {
             panelClick(mx, my)
@@ -441,9 +445,9 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
         val fx = fieldX()
         val fw = fieldW()
         when {
-            inside(mx, my, fx, commandY(), fw, Skin.BUTTON_H) -> focusField(Field.COMMAND, commandText, mx - fx - 4, previousFocus)
-            inside(mx, my, fx, labelY(), fw, Skin.BUTTON_H) -> focusField(Field.LABEL, labelText, mx - fx - 4, previousFocus)
-            inside(mx, my, fx, searchY(), fw, Skin.BUTTON_H) -> focusField(Field.SEARCH, searchText, mx - fx - 4, previousFocus)
+            inside(mx, my, fx, commandY(), fw, Skin.BUTTON_H) -> focusField(Field.COMMAND, commandText, fx, fw, mx, previousFocus)
+            inside(mx, my, fx, labelY(), fw, Skin.BUTTON_H) -> focusField(Field.LABEL, labelText, fx, fw, mx, previousFocus)
+            inside(mx, my, fx, searchY(), fw, Skin.BUTTON_H) -> focusField(Field.SEARCH, searchText, fx, fw, mx, previousFocus)
             inside(mx, my, fx, showInY(), fw, Skin.BUTTON_H) -> {
                 Skin.click()
                 button.showIn = (button.showIn + 1) % SHOW_IN.size
@@ -466,12 +470,15 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
         }
     }
 
-    private fun focusField(field: Field, text: EditableText, localX: Double, previousFocus: Field) {
+    private fun focusField(field: Field, text: EditableText, fieldX: Int, fieldW: Int, mouseX: Double, previousFocus: Field) {
         focus = field
-        // A click into a field that already had the focus places the caret; the first one selects
-        // nothing and puts it at the end, ready to type on.
-        if (previousFocus == field) text.setCaretFromX(localX.toInt()) { GuiFont.width(font, it) }
-        else text.keyPressed(GLFW.GLFW_KEY_END, false, false)
+        // A click into a field that already had the focus places the caret (Shift selects up to
+        // it); the first one selects nothing and puts it at the end, ready to type on.
+        if (previousFocus == field) {
+            AlpakaStyle.clickTextField(font, text, null, fieldX, fieldW, mouseX, true, clickShift)
+        } else {
+            text.keyPressed(GLFW.GLFW_KEY_END, false, false)
+        }
     }
 
     override fun mouseDragged(event: MouseButtonEvent, deltaX: Double, deltaY: Double): Boolean {
@@ -561,7 +568,7 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
                     return true
                 }
             }
-            if (text.keyPressed(key, event.hasControlDownWithQuirk(), event.hasShiftDown())) {
+            if (text.keyPressed(event)) {
                 afterEdit()
                 return true
             }

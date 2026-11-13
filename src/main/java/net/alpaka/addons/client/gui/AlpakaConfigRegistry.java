@@ -2722,6 +2722,56 @@ public class AlpakaConfigRegistry {
                 val -> CHEST_VALUE_SIDES[Math.round(val)],
                 "chest value side left right position place").choices(CHEST_VALUE_SIDES));
 
+        OPTIONS.add(new ConfigOption("price_tooltip", "Price Tooltip",
+                "Writes what a SkyBlock item costs under its tooltip: its lowest BIN and average price on the Auction House, its Bazaar buy and sell price, and its Item Value. Prices from Hypixel and SkyCofl; needs Network Features.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.priceTooltipEnabled,
+                v -> { AlpakaConfig.instance.priceTooltipEnabled = v; AlpakaConfig.save(); },
+                "price tooltip lore lowest bin lbin average avg median bazaar buy sell instant item value worth coins auction hotkey hold shift"));
+
+        OPTIONS.add(ConfigOption.keybind("price_tooltip_key", "Key",
+                "The key that shows the prices while held, or switches them on and off, as Show says. Unbound by default.",
+                ConfigCategory.SKYBLOCK,
+                () -> net.alpaka.addons.features.itemvalue.PriceTooltipFeature.KEY,
+                "price tooltip key hold toggle"));
+
+        OPTIONS.add(new ConfigOption("price_tooltip_mode", "Show",
+                "Whether the prices are always in the tooltip, only while the key is held, or switched on and off with the key.",
+                ConfigCategory.SKYBLOCK,
+                () -> (float) AlpakaConfig.instance.priceTooltipMode,
+                v -> { AlpakaConfig.instance.priceTooltipMode = Math.round(v); AlpakaConfig.save(); },
+                0.0f, (float) (net.alpaka.addons.features.itemvalue.PriceTooltipFeature.MODES.length - 1),
+                val -> net.alpaka.addons.features.itemvalue.PriceTooltipFeature.MODES[Math.round(val)],
+                "price tooltip show always hold held toggle key mode").choices(net.alpaka.addons.features.itemvalue.PriceTooltipFeature.MODES));
+
+        OPTIONS.add(new ConfigOption("price_tooltip_lowest_bin", "Lowest BIN",
+                "The cheapest Buy It Now of the item on the Auction House right now.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.priceTooltipLowestBin,
+                v -> { AlpakaConfig.instance.priceTooltipLowestBin = v; AlpakaConfig.save(); },
+                "price tooltip lowest bin lbin cheapest auction"));
+
+        OPTIONS.add(new ConfigOption("price_tooltip_average", "Average Price",
+                "What the item sold for on the Auction House over the last day, on average.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.priceTooltipAverage,
+                v -> { AlpakaConfig.instance.priceTooltipAverage = v; AlpakaConfig.save(); },
+                "price tooltip average avg mean sold auction day"));
+
+        OPTIONS.add(new ConfigOption("price_tooltip_bazaar", "Bazaar Prices",
+                "The instant buy and instant sell price of a Bazaar product.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.priceTooltipBazaar,
+                v -> { AlpakaConfig.instance.priceTooltipBazaar = v; AlpakaConfig.save(); },
+                "price tooltip bazaar buy sell instant"));
+
+        OPTIONS.add(new ConfigOption("price_tooltip_item_value", "Item Value",
+                "What the item is worth with its enchantments, stars, gemstones and upgrades, where they add to it.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.priceTooltipItemValue,
+                v -> { AlpakaConfig.instance.priceTooltipItemValue = v; AlpakaConfig.save(); },
+                "price tooltip item value worth networth enchantments stars gemstones upgrades"));
+
         OPTIONS.add(new ConfigOption("Profile", ConfigCategory.SKYBLOCK));
 
         OPTIONS.add(new ConfigOption("profile_dashboard", "Profile Dashboard",

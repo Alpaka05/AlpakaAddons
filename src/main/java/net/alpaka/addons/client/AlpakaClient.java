@@ -75,6 +75,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.chat.ChatOverHud.register();
         net.alpaka.addons.features.chat.ChatSearchFeature.register();
         net.alpaka.addons.features.itemvalue.ItemValueFeature.register();
+        net.alpaka.addons.features.itemvalue.PriceTooltipFeature.register();
         net.alpaka.addons.features.chestvalue.ChestValueFeature.register();
         net.alpaka.addons.features.itemsearch.ItemSearchFeature.register();
         net.alpaka.addons.features.garden.PestFinder.register();

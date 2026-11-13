@@ -85,7 +85,12 @@ public final class SlotHighlight {
                 item -> item.hasLine(UNCLAIMED_REWARDS) ? Mark.READY : Mark.NONE),
         COMPOSTER_UPGRADES("Composter Upgrades",
                 c -> c.slotHighlightComposterUpgrades,
-                item -> item.hasLine("Click to upgrade!") ? Mark.READY : Mark.NONE);
+                item -> item.hasLine("Click to upgrade!") ? Mark.READY : Mark.NONE),
+        // "Fishing ➜ …" is shared with the leveling guide's titles; each rule only reads its own lines.
+        BESTIARY("(?:\\(\\d+/\\d+\\) )?(?:Bestiary(?: ➜ .+)?|Fishing ➜ .+)",
+                c -> c.slotHighlightBestiary,
+                // Slot 4 holds the menu's overview, never an island or family.
+                item -> item.slot() != 4 && isUnfinishedBestiary(item.lore()) ? Mark.MISSING : Mark.NONE);
 
         private final Pattern title;
         private final Predicate<AlpakaConfig> enabled;
@@ -102,11 +107,18 @@ public final class SlotHighlight {
         }
 
         static Place of(String title) {
+            List<Place> places = allOf(title);
+            return places.isEmpty() ? null : places.getFirst();
+        }
+
+        /** Every place whose title fits; a few titles ("Fishing ➜ …") belong to more than one menu. */
+        static List<Place> allOf(String title) {
             String clean = SkyblockUtils.cleanColor(title);
+            List<Place> places = new ArrayList<>(1);
             for (Place place : values()) {
-                if (place.title.matcher(clean).matches()) return place;
+                if (place.title.matcher(clean).matches()) places.add(place);
             }
-            return null;
+            return places;
         }
     }
 
@@ -126,10 +138,20 @@ public final class SlotHighlight {
     /** A Kuudra run in Vesuvius, which has no "not opened" line, only its tier. */
     private static final Pattern KUUDRA_TIER = Pattern.compile("(?:Basic|Hot|Burning|Fiery|Infernal) Tier");
 
+    /** A bestiary family's progress towards its last tier; "100% (MAX!)" when it is maxed. */
+    private static final Pattern OVERALL_PROGRESS = Pattern.compile("Overall Progress: (\\d{1,3}(?:\\.\\d+)?)%.*");
+
+    /** Shown on a family instead of the overall progress when that is switched off, gone once it is maxed. */
+    private static final Pattern TIER_PROGRESS = Pattern.compile("Progress to Tier [\\dIVXLC]+: [\\d.]+%");
+
+    /** An island's or category's completed families, as a percentage or as the bar's "6/10" below it. */
+    private static final Pattern FAMILIES_COMPLETED = Pattern.compile("\\s*Families Completed:? ?(?:(\\d{1,3}(?:\\.\\d+)?)%)?.*");
+    private static final Pattern BAR_COUNT = Pattern.compile(".*?([\\d,]+)/([\\d,]+)$");
+
     /** Each stack's mark, worked out once; a stack is replaced, not changed, when a slot changes. */
     private static final Map<ItemStack, Mark> marks = new WeakHashMap<>();
     private static AbstractContainerScreen<?> cachedScreen;
-    private static Place cachedPlace;
+    private static List<Place> cachedPlaces = List.of();
 
     /** Called for every slot as it is drawn, before its item, so the item and tooltip stay on top. */
     public static void drawSlot(AbstractContainerScreen<?> screen, GuiGraphicsExtractor graphics, Slot slot) {
@@ -138,17 +160,49 @@ public final class SlotHighlight {
         if (slot.container instanceof Inventory) return;
         if (screen != cachedScreen) {
             cachedScreen = screen;
-            cachedPlace = Place.of(screen.getTitle().getString());
+            cachedPlaces = Place.allOf(screen.getTitle().getString());
             marks.clear();
         }
-        Place place = cachedPlace;
-        if (place == null || !place.enabled.test(config)) return;
+        if (cachedPlaces.isEmpty()) return;
 
         ItemStack stack = slot.getItem();
         if (stack.isEmpty()) return;
-        Mark mark = marks.computeIfAbsent(stack, s -> place.mark(itemOf(slot.getContainerSlot(), s)));
+        Mark mark = marks.computeIfAbsent(stack, s -> markOf(config, cachedPlaces, itemOf(slot.getContainerSlot(), s)));
         if (mark == Mark.NONE) return;
         SlotMark.draw(graphics, slot, mark == Mark.READY ? config.slotHighlightReadyColor : config.slotHighlightMissingColor);
+    }
+
+    /** The first mark one of the menu's switched-on places gives the item. */
+    private static Mark markOf(AlpakaConfig config, List<Place> places, Item item) {
+        for (Place place : places) {
+            if (!place.enabled.test(config)) continue;
+            Mark mark = place.mark(item);
+            if (mark != Mark.NONE) return mark;
+        }
+        return Mark.NONE;
+    }
+
+    /**
+     * A bestiary island or category with families left to complete, or a family that isn't maxed:
+     * not found yet, short of 100% overall progress, or still showing progress to its next tier.
+     */
+    static boolean isUnfinishedBestiary(List<String> lore) {
+        for (int i = 0; i < lore.size(); i++) {
+            String line = lore.get(i);
+            if (line.equals("You haven't unlocked this Family yet!")) return true;
+            if (TIER_PROGRESS.matcher(line).matches()) return true;
+            Matcher overall = OVERALL_PROGRESS.matcher(line);
+            if (overall.matches()) return Double.parseDouble(overall.group(1)) < 100;
+            Matcher families = FAMILIES_COMPLETED.matcher(line);
+            if (families.matches()) {
+                if (families.group(1) != null) return Double.parseDouble(families.group(1)) < 100;
+                Matcher bar = i + 1 < lore.size() ? BAR_COUNT.matcher(lore.get(i + 1)) : null;
+                if (bar != null && bar.matches()) {
+                    return Long.parseLong(bar.group(1).replace(",", "")) < Long.parseLong(bar.group(2).replace(",", ""));
+                }
+            }
+        }
+        return false;
     }
 
     /**

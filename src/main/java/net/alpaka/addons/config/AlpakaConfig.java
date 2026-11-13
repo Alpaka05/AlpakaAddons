@@ -1023,6 +1023,7 @@ public class AlpakaConfig {
     public boolean slotHighlightCommissions = true;
     public boolean slotHighlightChocolateFactory = true;
     public boolean slotHighlightComposterUpgrades = true;
+    public boolean slotHighlightBestiary = true;
     public int slotHighlightReadyColor = 0x5055FF55;
     public int slotHighlightMissingColor = 0x50FF5555;
     /** Chronomatron, Ultrasequencer and Superpairs: what to click next is highlighted. */

@@ -93,6 +93,7 @@ public final class ProfileSession {
         if (uuid != null) ProfileApi.forget(uuid);
         networth = null;
         networthState = null;
+        riftState = null;
         load(profileId, true);
     }
 
@@ -614,6 +615,7 @@ public final class ProfileSession {
     public JsonElement inventory(String name) {
         ProfileData d = data;
         if (d == null) return null;
+        if (name.startsWith(RIFT)) return rift(d).get(name);
         ProfileData.InventoryRef ref = d.inventories.get(name);
         if (ref == null) return null;
         String key = d.profileId + "/" + name;
@@ -637,12 +639,79 @@ public final class ProfileSession {
     /** How asking for an inventory went; null before it was asked for. */
     public State inventoryState(String name) {
         ProfileData d = data;
+        if (d != null && name.startsWith(RIFT)) return riftFor != null && riftFor.equals(d.profileId) ? riftState : null;
         return d == null ? null : inventoryStates.get(d.profileId + "/" + name);
+    }
+
+    // ---- Rift inventories, from Hypixel through the AlpakaAddons API -----------------------------
+
+    /** The prefix of the Rift's inventories among the others: "rift_inventory", "rift_ender_chest". */
+    public static final String RIFT = "rift_";
+    /** Hypixel's names for them in {@code members.<uuid>.rift.inventory}, by the names used here. */
+    private static final String[][] RIFT_INVENTORIES = {{"rift_inventory", "inv_contents"}, {"rift_armor", "inv_armor"},
+            {"rift_equipment", "equipment_contents"}, {"rift_ender_chest", "ender_chest_contents"}};
+
+    private volatile String riftFor;
+    private volatile Map<String, JsonElement> rift = Map.of();
+    public volatile State riftState;
+    /** Why the Rift's inventories aren't there, for the page; null while they load or once they are. */
+    public volatile String riftProblem;
+
+    /**
+     * The Rift's inventories of the profile on show, asked for the first time they are wanted.
+     * Elite doesn't hand them out, so they come from Hypixel through the AlpakaAddons API.
+     */
+    private Map<String, JsonElement> rift(ProfileData d) {
+        String id = d.profileId;
+        if (id == null) return Map.of();
+        if (!id.equals(riftFor) || riftState == null) {
+            riftFor = id;
+            rift = Map.of();
+            riftProblem = null;
+            riftState = State.LOADING;
+            String member = d.uuid.replace("-", "");
+            AlpakaApi.dashboard(member).whenComplete((answer, failure) -> {
+                if (!id.equals(riftFor)) return;
+                if (failure != null) {
+                    Throwable cause = failure instanceof java.util.concurrent.CompletionException && failure.getCause() != null ? failure.getCause() : failure;
+                    riftProblem = cause instanceof AlpakaApi.Refused r ? r.getMessage() : "The AlpakaAddons API can't be reached right now.";
+                    riftState = State.FAILED;
+                    net.alpaka.addons.AlpakaAddons.LOGGER.warn("Profile Dashboard: Rift inventories failed: {}", cause.toString());
+                    return;
+                }
+                rift = riftInventories(answer, id, member);
+                if (rift.isEmpty()) riftProblem = "Hypixel lists no Rift inventories for this profile. Is its Inventory API on?";
+                riftState = State.READY;
+            });
+        }
+        return rift;
+    }
+
+    /** The Rift's inventories of one member of one profile in Hypixel's answer, in Elite's item shape. */
+    static Map<String, JsonElement> riftInventories(JsonElement answer, String profileId, String member) {
+        String wanted = profileId.replace("-", "");
+        Map<String, JsonElement> out = new HashMap<>();
+        for (JsonElement p : Json.arr(answer, "profiles")) {
+            String pid = Json.str(p, "profile_id");
+            if (pid == null || !pid.replace("-", "").equalsIgnoreCase(wanted)) continue;
+            JsonElement inventory = Json.at(Json.obj(p, "members").get(member), "rift.inventory");
+            for (String[] names : RIFT_INVENTORIES) {
+                String data = Json.str(inventory, names[1] + ".data");
+                if (data == null) continue;
+                try {
+                    out.put(names[0], HypixelItems.inventory(data));
+                } catch (java.io.IOException | RuntimeException e) {
+                    net.alpaka.addons.AlpakaAddons.LOGGER.warn("Profile Dashboard: couldn't read {}: {}", names[1], e.toString());
+                }
+            }
+        }
+        return Map.copyOf(out);
     }
 
     /** Lets the networth and the collections be asked for again after they failed. */
     public void retryFailed() {
         inventoryStates.values().removeIf(s -> s == State.FAILED);
+        if (riftState == State.FAILED) riftState = null;
         if (networthState == State.FAILED) networthState = null;
         if (collectionsState == State.FAILED) collectionsState = null;
     }

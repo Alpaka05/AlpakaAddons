@@ -143,6 +143,7 @@ When a server offers a resource pack, the mod's pack cache answers it the way Mi
 - **SkyCofl** (sky.coflnet.com): auction prices and price history, for Item Value, the Auction House price suggestions and the market graphs. Requests name the item, never you.
 - **The NotEnoughUpdates repository** on GitHub: item looks, pet heads and the lists behind the Bestiary, Museum, skill trees and rabbits.
 - **For the Profile Dashboard**, only when you open it on a player: **Elite** (api.elitebot.dev) for the profile itself, **Soopy** (api.soopy.dev) for its history, and **SkyKings** (api.skykings.net) only if you entered your own SkyKings key. They are asked for the player you look up, by name or UUID.
+- **The AlpakaAddons API** (api.alpaka.yt), only when you open a player's Rift page in the Profile Dashboard: the mod's own server, which asks Hypixel's API with a key that stays on that server (its code is in `backend/`), and answers only with what the dashboard shows of the player you look up. To log in, the API hands out a one-time id, the game tells Mojang's session server that you join a server with that id, the way joining any server works, and the API asks Mojang whether you did. Your access token only goes to Mojang, never to the API. The API keeps its answers for an hour (your own profile for 10 minutes) and nothing about who asked for what; it is reached through Cloudflare, which sees your address and the request like any website's host.
 - **GitHub**, with "Update Check" on: once per start, whether a newer release is out. Only after you click Install and confirm does it download that release's jar from GitHub, check it against GitHub's checksum and swap it in when you close the game.
 
 Player heads load their skins from Mojang, as everywhere in Minecraft. With "Allow Network Features" off, the mod makes none of these requests.
@@ -164,7 +165,7 @@ Found a bug or have an idea? Open an [issue](https://github.com/Alpaka05/AlpakaA
 ./gradlew build -Pdeploy_target=none
 ```
 
-The jar ends up in `build/libs`. `deploy_target` in `gradle.properties` can also copy it straight into a Modrinth App or OneClient profile.
+The jar ends up in `build/libs`. The AlpakaAddons API behind the Profile Dashboard's Rift page is a build of its own in `backend/`: `./gradlew -p backend build`. `deploy_target` in `gradle.properties` can also copy it straight into a Modrinth App or OneClient profile.
 
 ### Versions
 

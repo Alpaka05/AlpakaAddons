@@ -261,6 +261,26 @@ public final class ItemValuePopup {
         }
     };
 
+    /**
+     * What one of this item is worth with everything on it, as the popup adds it up: the item, its
+     * stars, enchantments, gemstones, reforge and the rest. NaN when nothing on it has a price, for an
+     * item without SkyBlock data, or with Network Features off. Item Search uses it for its values.
+     */
+    public static double worthOf(ItemStack item) {
+        if (!AlpakaConfig.instance.allowApiCalls || item == null || item.isEmpty()) return Double.NaN;
+        JsonObject source = skyblockData(item);
+        if (source == null) return Double.NaN;
+        ItemValue.Breakdown b = ItemValue.of(source, PRICES, CATALOG);
+        boolean anyPriced = false;
+        for (Part part : b.parts()) anyPriced |= part.priced();
+        return anyPriced ? b.total() : Double.NaN;
+    }
+
+    /** A key that changes whenever {@link #worthOf} could give another answer: new prices, the item list, the settings. */
+    public static long worthVersion() {
+        return ((long) ItemPrices.version() << 8) | (AlpakaConfig.instance.itemValueBazaarPrice << 1) | (ItemIcons.ready() ? 1 : 0);
+    }
+
     /** Works the breakdown out again when prices, the item list or the settings changed. */
     private static void update() {
         if (!AlpakaConfig.instance.allowApiCalls) return;
@@ -272,7 +292,7 @@ public final class ItemValuePopup {
             source = new JsonObject();
             source.addProperty("id", id);
         }
-        long key = ((long) ItemPrices.version() << 8) | (AlpakaConfig.instance.itemValueBazaarPrice << 1) | (ItemIcons.ready() ? 1 : 0);
+        long key = worthVersion();
         if (key == computedFor && breakdown != null) return;
         computedFor = key;
         breakdown = ItemValue.of(source, PRICES, CATALOG);

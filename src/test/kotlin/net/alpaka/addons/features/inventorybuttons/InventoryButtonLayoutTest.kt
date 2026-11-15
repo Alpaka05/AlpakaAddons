@@ -50,26 +50,47 @@ class InventoryButtonLayoutTest {
 
     @Test
     fun `snapping lines a button up just outside the panel and next to another`() {
-        val left = inventory.left - InventoryButtonLayout.SIZE - InventoryButtonLayout.GAP
-        val s = InventoryButtonLayout.snap(left + 3, 90, inventory, listOf(intArrayOf(left, 70)))
+        val left = inventory.left - InventoryButtonLayout.SIZE - InventoryButtonLayout.GAP_X
+        val below = 70 + InventoryButtonLayout.SIZE + InventoryButtonLayout.GAP_Y
+        val s = InventoryButtonLayout.snap(left + 3, below - 3, inventory, listOf(intArrayOf(left, 70)))
         assertEquals(left, s[0])
-        assertEquals(70 + InventoryButtonLayout.SIZE + InventoryButtonLayout.GAP, s[1])
+        assertEquals(below, s[1])
         assertEquals(1, s[2])
         assertEquals(1, s[3])
     }
 
     @Test
-    fun `a full row above the panel leaves the same room at both ends`() {
-        val columns = InventoryButtonLayout.rowColumns(inventory)
-        assertEquals(7, columns.size)
-        val start = columns.first() - inventory.left
-        val end = inventory.right - (columns.last() + InventoryButtonLayout.SIZE)
-        assertEquals(start, end)
-        assertEquals(5, start)
-        // Dropped near the panel's left edge above it, a button goes to the first column.
-        val y = inventory.top - InventoryButtonLayout.SIZE - InventoryButtonLayout.GAP
-        val s = InventoryButtonLayout.snap(inventory.left + 2, y, inventory, emptyList())
-        assertEquals(columns.first(), s[0])
+    fun `a full row and a full column end flush with the inventory`() {
+        val size = InventoryButtonLayout.SIZE
+        // Six side by side from the left edge end at the right edge.
+        assertEquals(inventory.width, 6 * size + 5 * InventoryButtonLayout.GAP_X)
+        // Six stacked from the top edge end at the bottom edge.
+        assertEquals(inventory.height, 6 * size + 5 * InventoryButtonLayout.GAP_Y)
+    }
+
+    @Test
+    fun `a button snapped next to the last of five above the panel ends at its right edge`() {
+        val step = InventoryButtonLayout.SIZE + InventoryButtonLayout.GAP_X
+        val y = inventory.top - InventoryButtonLayout.SIZE - InventoryButtonLayout.GAP_Y
+        val row = (0 until 5).map { intArrayOf(inventory.left + it * step, y) }
+        val s = InventoryButtonLayout.snap(inventory.left + 5 * step + 2, y, inventory, row)
+        assertEquals(inventory.right - InventoryButtonLayout.SIZE, s[0])
+    }
+
+    @Test
+    fun `a 22 px row and column keep their places in the grid`() {
+        // A row flush with the left edge above the panel, and the old default column beside it.
+        fun button(x: Int, y: Int) = InventoryButton().also { it.x = x; it.y = y; it.grid = 22 }
+        val row = (0 until 3).map { button(it * 24, -24) }
+        val column = (0 until 3).map { button(-26, 4 + it * 24) }
+        assertTrue(InventoryButtonLayout.migrate(row + column))
+        val size = InventoryButtonLayout.SIZE
+        val r = row.map { InventoryButtonLayout.place(it, inventory, 480, 270) }
+        assertEquals(listOf(0, 30, 60), r.map { it[0] - inventory.left })
+        assertEquals(inventory.top - size - InventoryButtonLayout.GAP_Y, r[0][1])
+        val c = column.map { InventoryButtonLayout.place(it, inventory, 480, 270) }
+        assertEquals(inventory.left - size - InventoryButtonLayout.GAP_X, c[0][0])
+        assertEquals(listOf(4, 32, 60), c.map { it[1] - inventory.top })
     }
 
     @Test
@@ -80,8 +101,8 @@ class InventoryButtonLayoutTest {
 
     @Test
     fun `nothing near means no snap`() {
-        val s = InventoryButtonLayout.snap(20, 20, inventory, emptyList())
-        assertArrayEquals(intArrayOf(20, 20, 0, 0), s)
+        val s = InventoryButtonLayout.snap(20, 10, inventory, emptyList())
+        assertArrayEquals(intArrayOf(20, 10, 0, 0), s)
     }
 
     /** A button as a settings file from before the 22 px buttons has it. */
@@ -93,9 +114,9 @@ class InventoryButtonLayoutTest {
         it.grid = InventoryButtonLayout.OLD_SIZE
     }
 
-    private fun assertNoOverlap(buttons: List<InventoryButton>, box: Box) {
+    private fun assertNoOverlap(buttons: List<InventoryButton>, box: Box, screenH: Int = 270) {
         val size = InventoryButtonLayout.SIZE
-        val places = buttons.map { InventoryButtonLayout.place(it, box, 480, 270) }
+        val places = buttons.map { InventoryButtonLayout.place(it, box, 480, screenH) }
         for (i in places.indices) for (j in i + 1 until places.size) {
             val a = places[i]
             val b = places[j]
@@ -114,10 +135,13 @@ class InventoryButtonLayoutTest {
             oldButton(-96, -20, true), oldButton(-76, -20, true),
         )
         assertTrue(InventoryButtonLayout.migrate(buttons))
-        assertNoOverlap(buttons, inventory)
+        // Two rows of today's buttons need 56 px above the panel; the smallest screen (480 by 270)
+        // leaves 52, so this looks at one a little taller.
+        val box = Box(152, 62, 176, 166)
+        assertNoOverlap(buttons, box, 290)
         for (b in buttons) {
             assertEquals(InventoryButtonLayout.SIZE, b.grid)
-            assertTrue(InventoryButtonLayout.place(b, inventory, 480, 270)[1] + InventoryButtonLayout.SIZE <= inventory.top)
+            assertTrue(InventoryButtonLayout.place(b, box, 480, 290)[1] + InventoryButtonLayout.SIZE <= box.top)
         }
         assertFalse(InventoryButtonLayout.migrate(buttons), "moved only once")
     }

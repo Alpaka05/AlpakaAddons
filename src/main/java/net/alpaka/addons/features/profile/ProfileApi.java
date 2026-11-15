@@ -169,6 +169,14 @@ public final class ProfileApi {
     }
 
     /** The current or last Bingo event, with its start and end. */
+    /**
+     * Once the game is up: renews the AlpakaAddons API login of a player who used the dashboard
+     * before, so opening it doesn't wait for the login. See {@code AlpakaApi.warmUp}.
+     */
+    public static void warmUpLogin() {
+        AlpakaApi.warmUp();
+    }
+
     static CompletableFuture<JsonElement> bingo() {
         return get(HYPIXEL_RESOURCES + "/bingo", 60 * FRESH_MS);
     }

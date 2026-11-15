@@ -23,8 +23,10 @@ import java.util.concurrent.CompletableFuture;
  * Mojang's session server that the player joins a server with that id, and the API asks Mojang
  * whether they did. The player's access token
  * only ever goes to Mojang, never to the API. The API then hands out a token of its own for half a
- * day. Only used from the Profile Dashboard, while Network Features is on, and only for a profile
- * someone opened.
+ * day, which is kept on disk for the account it belongs to, so a game started again within that time
+ * needs no new login. Only used from the Profile Dashboard, while Network Features is on, and only
+ * for a profile someone opened; the one exception is {@link #warmUp}, which renews the login of a
+ * player who used the dashboard before, once the game is up, so the next opening doesn't wait for it.
  */
 final class AlpakaApi {
     private AlpakaApi() {}
@@ -80,6 +82,36 @@ final class AlpakaApi {
         return get(path.toString(), true);
     }
 
+    /**
+     * What the player gave a profile's museum, as the API hands it out apart from the dashboard:
+     * {@code {"museum": {...}}}, with null for a museum Hypixel didn't hand out. The dashboard's
+     * request has the API ask Hypixel for it already, so it is mostly there by the time this asks.
+     */
+    static CompletableFuture<JsonElement> museum(String playerUuid, String profileId, boolean fresh) {
+        if (!ProfileApi.allowed()) return CompletableFuture.failedFuture(new ProfileApi.NetworkOff());
+        String player = playerUuid == null ? "" : playerUuid.replace("-", "");
+        String profile = profileId == null ? "" : profileId.replace("-", "");
+        if (!player.matches("[0-9a-fA-F]{32}") || !profile.matches("[0-9a-fA-F]{32}")) {
+            return CompletableFuture.failedFuture(new ProfileApi.NotFound("No such profile."));
+        }
+        return get("/v1/museum/" + player + "/" + profile + (fresh ? "?fresh=1" : ""), true);
+    }
+
+    /**
+     * Renews the login in the background when the game is up, for a player who has logged in to the
+     * API before (a login is kept on disk) and whose login ran out: the dashboard then opens without
+     * the second it takes. Nothing happens for anyone who never opened the dashboard, or with
+     * Network Features off.
+     */
+    static void warmUp() {
+        if (!ProfileApi.allowed()) return;
+        CompletableFuture.runAsync(() -> {
+            Saved saved = readSaved();
+            if (saved == null || !saved.uuid.equals(currentUuid())) return;
+            token().exceptionally(e -> null);
+        });
+    }
+
     private static CompletableFuture<JsonElement> get(String path, boolean mayLogInAgain) {
         return token().thenCompose(t -> send(path, t)).exceptionallyCompose(e -> {
             Throwable cause = e instanceof java.util.concurrent.CompletionException && e.getCause() != null ? e.getCause() : e;
@@ -95,12 +127,28 @@ final class AlpakaApi {
     private static synchronized void forgetToken() {
         token = null;
         tokenUntil = 0L;
+        tokenUuid = null;
+        java.io.File file = savedFile();
+        if (file.exists() && !file.delete()) AlpakaAddons.LOGGER.debug("AlpakaAddons API: couldn't delete the saved login");
     }
 
     /** The API's token, logging in first when there is none or it is about to run out. */
     private static synchronized CompletableFuture<String> token() {
         String known = token;
+        String account = currentUuid();
+        // Another account was switched to (a launcher can do that between two games): its own login.
+        if (known != null && account != null && !account.equals(tokenUuid)) known = null;
         if (known != null && System.currentTimeMillis() < tokenUntil) return CompletableFuture.completedFuture(known);
+        if (!savedRead) {
+            savedRead = true;
+            Saved saved = readSaved();
+            if (saved != null && saved.uuid.equals(account) && System.currentTimeMillis() < saved.until) {
+                token = saved.token;
+                tokenUntil = saved.until;
+                tokenUuid = saved.uuid;
+                return CompletableFuture.completedFuture(saved.token);
+            }
+        }
         if (login != null && !login.isDone()) return login;
         login = CompletableFuture.supplyAsync(AlpakaApi::logIn);
         return login;
@@ -135,12 +183,60 @@ final class AlpakaApi {
         String t = Json.str(body, "token");
         if (response.statusCode() != 200 || t == null) throw new Refused(response.statusCode(), reason(response.statusCode(), body));
         long seconds = (long) Json.num(body, "expiresIn", 3600);
+        String uuid = user.getProfileId() == null ? null : user.getProfileId().toString().replace("-", "");
         synchronized (AlpakaApi.class) {
             token = t;
             // A few minutes early, so a token never runs out on the way.
             tokenUntil = System.currentTimeMillis() + Math.max(60, seconds - 300) * 1000L;
+            tokenUuid = uuid;
+            if (uuid != null) save(new Saved(uuid, t, tokenUntil));
         }
         return t;
+    }
+
+    // ---- The login on disk ----------------------------------------------------------------------
+
+    /** The account the token belongs to, and the login read from disk once. */
+    private static volatile String tokenUuid;
+    private static boolean savedRead;
+
+    /** A login kept for the next game: whose it is, the token, and until when it is used. */
+    private record Saved(String uuid, String token, long until) {}
+
+    private static java.io.File savedFile() {
+        return net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("alpaka-api-login.json").toFile();
+    }
+
+    /** The game's account, as the API names it: its UUID without dashes. */
+    static String currentUuid() {
+        User user = Minecraft.getInstance().getUser();
+        return user == null || user.getProfileId() == null ? null : user.getProfileId().toString().replace("-", "");
+    }
+
+    private static Saved readSaved() {
+        try {
+            String json = net.alpaka.addons.config.AtomicJsonFile.read(savedFile());
+            if (json == null) return null;
+            JsonElement saved = JsonParser.parseString(json);
+            String uuid = Json.str(saved, "uuid");
+            String t = Json.str(saved, "token");
+            long until = (long) Json.num(saved, "until", 0);
+            return uuid == null || t == null ? null : new Saved(uuid, t, until);
+        } catch (java.io.IOException | RuntimeException e) {
+            return null;
+        }
+    }
+
+    private static void save(Saved saved) {
+        com.google.gson.JsonObject json = new com.google.gson.JsonObject();
+        json.addProperty("uuid", saved.uuid());
+        json.addProperty("token", saved.token());
+        json.addProperty("until", saved.until());
+        try {
+            net.alpaka.addons.config.AtomicJsonFile.write(savedFile(), json.toString());
+        } catch (java.io.IOException e) {
+            AlpakaAddons.LOGGER.debug("AlpakaAddons API: couldn't keep the login: {}", e.toString());
+        }
     }
 
     private static String challenge() {

@@ -39,6 +39,8 @@ public final class ProfileHistory {
     static final class Entry {
         String player;
         String profile;
+        /** When a look last found this the player's selected profile; 0 for never. */
+        long selectedAt;
         List<Snapshot> points = new ArrayList<>();
         /** When the dashboard was last opened on this profile, and the numbers then. */
         long lastViewed;
@@ -162,6 +164,10 @@ public final class ProfileHistory {
         if (player == null) return null;
         String best = null;
         long newest = Long.MIN_VALUE;
+        // The profile last seen selected in the game is the one the API will pick; one only looked
+        // at in the dashboard since is not.
+        String selected = null;
+        long selectedAt = 0;
         for (Map.Entry<String, Entry> e : entries.entrySet()) {
             // "uuid:profile"
             int cut = e.getKey().indexOf(':');
@@ -174,8 +180,23 @@ public final class ProfileHistory {
                 newest = t;
                 best = e.getKey().substring(cut + 1);
             }
+            if (entry.selectedAt > selectedAt) {
+                selectedAt = entry.selectedAt;
+                selected = e.getKey().substring(cut + 1);
+            }
         }
-        return best;
+        return selected != null ? selected : best;
+    }
+
+    /** Notes that a look found this the player's selected profile, for {@link #lastProfile}. */
+    public static synchronized void selected(String uuid, String profileId) {
+        if (uuid == null || profileId == null) return;
+        Entry entry = entries().get(key(uuid, profileId));
+        // Only a profile with a history: one never shown has nothing to remember it by.
+        if (entry == null || entry.points.isEmpty()) return;
+        entry.selectedAt = System.currentTimeMillis();
+        dirty = true;
+        saveAsync();
     }
 
     /** How many snapshots there are of this profile. */

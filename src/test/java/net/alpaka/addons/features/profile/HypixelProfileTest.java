@@ -70,11 +70,10 @@ class HypixelProfileTest {
                      "jacobs_contest": {"perks": {"double_drops": 4, "farming_level_cap": 3},
                        "unique_brackets": {"gold": ["INK_SACK:3"], "diamond": ["WHEAT", "INK_SACK:3"], "silver": ["CACTUS"]},
                        "personal_bests": {"INK_SACK:3": 900},
-                       "contests": {
-                         "1:1_1:WHEAT": {"collected": 500, "claimed_position": 1, "claimed_participants": 100},
-                         "1:1_2:INK_SACK:3": {"collected": 200, "claimed_medal": "gold"},
-                         "1:1_3:WHEAT": {"collected": 50},
-                         "1:1_4:WHEAT": {"collected": 400, "claimed_position": 90, "claimed_participants": 100}}},
+                       "contest_summary": {
+                         "WHEAT": {"participations": 2, "diamond": 1},
+                         "INK_SACK:3": {"participations": 1, "gold": 1},
+                         "NOT_A_CROP": {"participations": 9, "gold": 9}}},
                      "skill_tree": {"experience": {"mining": 12000}, "tokens_spent": {"mountain": 7},
                        "selected_ability": {"mining": "pickobulus"},
                        "nodes": {"mining": {"mining_speed": 50, "toggle_mining_speed": false, "core_of_the_mountain": 3}}},
@@ -217,9 +216,8 @@ class HypixelProfileTest {
     @Test
     void jacobsContestsCountByCropAndMedal() throws IOException {
         JsonObject model = model();
-        // The contest with fifty collected was no participation.
+        // As the API counted them, by crop; what isn't a crop doesn't count.
         assertEquals(3, Json.num(model, "jacob.participations", 0));
-        // First of a hundred is the best two percent; a claimed medal is taken as it is; 90th is none.
         assertEquals(1, Json.num(model, "jacob.earnedMedals.diamond", 0));
         assertEquals(1, Json.num(model, "jacob.earnedMedals.gold", 0));
         assertEquals(0, Json.num(model, "jacob.earnedMedals.bronze", 0));
@@ -228,8 +226,6 @@ class HypixelProfileTest {
         assertEquals(2, Json.num(model, "jacob.stats.crops.Wheat.participations", 0));
         assertEquals(1, Json.num(model, "jacob.stats.crops.CocoaBeans.medals.gold", 0));
         assertEquals(4, Json.num(model, "jacob.perks.doubleDrops", 0));
-        assertEquals("diamond", HypixelProfile.medal(JsonParser.parseString("{\"claimed_position\": 2, \"claimed_participants\": 100}")));
-        assertNull(HypixelProfile.medal(JsonParser.parseString("{\"collected\": 5}")));
     }
 
     @Test

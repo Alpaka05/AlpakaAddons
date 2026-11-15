@@ -29,6 +29,10 @@ public class AlpakaClient implements ClientModInitializer {
         // see AlpakaConfigRegistry.clampStoredValues for why not here.
         net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.CLIENT_STARTED.register(
                 client -> net.alpaka.addons.client.gui.AlpakaConfigRegistry.clampStoredValues());
+        // A player who used the Profile Dashboard before gets its login renewed in the background,
+        // so the first opening doesn't wait for it.
+        net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.CLIENT_STARTED.register(
+                client -> net.alpaka.addons.features.profile.ProfileApi.warmUpLogin());
         net.alpaka.addons.config.AlpakaStats.load();
         net.alpaka.addons.AlpakaAddons.LOGGER.info("Alpaka Addons {} loaded", net.alpaka.addons.utils.ModVersion.mod());
         // Has to run here, before the game first scans its resource packs, so the cached server

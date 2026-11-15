@@ -109,7 +109,8 @@ public class ProfileDashboardScreen extends Screen {
         }
     };
     private static final int SESSIONS_KEPT = 5;
-    private static final long SESSION_KEEP_MS = 5 * 60_000L;
+    /** A quarter of an hour: the API keeps the own profile ten minutes, so reopening sooner shows nothing older. */
+    private static final long SESSION_KEEP_MS = 15 * 60_000L;
 
     private record KeptSession(ProfileSession session, long at) {}
 
@@ -694,7 +695,13 @@ public class ProfileDashboardScreen extends Screen {
         int fy = y + h - footerH;
         ProfileData d = session.data;
         if (d != null && d.lastUpdated > 0) {
-            text(graphics, "Updated " + Metrics.ago(d.lastUpdated * 1000L), x + PAD, fy, AlpakaStyle.TEXT_MUTED);
+            String updated = "Updated " + Metrics.ago(d.lastUpdated * 1000L);
+            // What is on show stays when asking again failed (or the kept profile, when the new one
+            // didn't come); the reason is a hover away.
+            String failed = session.refreshing ? null : session.error;
+            if (failed != null) updated += " · Couldn't refresh";
+            text(graphics, updated, x + PAD, fy, AlpakaStyle.TEXT_MUTED);
+            if (failed != null && AlpakaStyle.inside(mx, my, x + PAD - 2, fy - 2, textW(updated) + 4, 11)) tip("refresh-failed", failed);
         }
         String source = "Data Sources";
         int sw = textW(source);

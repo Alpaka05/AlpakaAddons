@@ -69,5 +69,10 @@ class ProfileHistoryTest {
         assertEquals("b135", ProfileHistory.lastProfile(entries, "alpakaa"));
         assertEquals("cafe", ProfileHistory.lastProfile(entries, "Someone"));
         assertEquals(null, ProfileHistory.lastProfile(entries, "Nobody"));
+        // The profile last found selected in the game wins over one only looked at since.
+        kiwi.selectedAt = 2_000;
+        assertEquals("93ea", ProfileHistory.lastProfile(entries, "8F16"));
+        peach.selectedAt = 3_000;
+        assertEquals("b135", ProfileHistory.lastProfile(entries, "alpakaa"));
     }
 }

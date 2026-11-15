@@ -429,47 +429,25 @@ final class HypixelProfile {
 
     static final String[] MEDALS = {"bronze", "silver", "gold", "platinum", "diamond"};
 
-    /**
-     * The medal a contest ended with: the one claimed, or the one the place among the participants
-     * earns. Null for a contest without a medal or one never claimed.
-     */
-    static String medal(JsonElement contest) {
-        String claimed = Json.str(contest, "claimed_medal");
-        if (claimed != null) return claimed;
-        double position = Json.num(contest, "claimed_position");
-        double participants = Json.num(contest, "claimed_participants");
-        if (Double.isNaN(position) || Double.isNaN(participants)) return null;
-        if (position <= Math.floor(participants * 0.02)) return "diamond";
-        if (position <= Math.floor(participants * 0.05)) return "platinum";
-        if (position <= Math.floor(participants * 0.1)) return "gold";
-        if (position <= Math.floor(participants * 0.3)) return "silver";
-        if (position <= Math.floor(participants * 0.6)) return "bronze";
-        return null;
-    }
-
-    /** Fewer crops than this in a contest don't count as taking part, as Jacob doesn't count them. */
-    private static final int CONTEST_MINIMUM = 100;
-
     private static JsonObject jacob(JsonElement m) {
         JsonElement j = Json.at(m, "jacobs_contest");
         Map<String, int[]> medalsByCrop = new LinkedHashMap<>();
         Map<String, Integer> contestsByCrop = new LinkedHashMap<>();
         int[] earned = new int[MEDALS.length];
         int participations = 0;
-        for (var e : Json.obj(j, "contests").entrySet()) {
-            // "275:12_3:CARROT_ITEM": the year, the month and day, and the crop, whose id may hold a colon itself.
-            String key = e.getKey();
-            int first = key.indexOf(':');
-            int second = first < 0 ? -1 : key.indexOf(':', first + 1);
-            String[] crop = second < 0 ? null : crop(key.substring(second + 1));
-            if (crop == null || Json.num(e.getValue(), "collected", 0) < CONTEST_MINIMUM) continue;
-            participations++;
-            contestsByCrop.merge(crop[2], 1, Integer::sum);
-            String medal = medal(e.getValue());
+        // Counted by the API already, by the crop as the contest names it ("INK_SACK:3"): every
+        // contest is a hundred bytes, and a farmer has taken part in a thousand of them.
+        for (var e : Json.obj(j, "contest_summary").entrySet()) {
+            String[] crop = crop(e.getKey());
+            int count = (int) Json.num(e.getValue(), "participations", 0);
+            if (crop == null || count <= 0) continue;
+            participations += count;
+            contestsByCrop.merge(crop[2], count, Integer::sum);
             for (int i = 0; i < MEDALS.length; i++) {
-                if (!MEDALS[i].equals(medal)) continue;
-                earned[i]++;
-                medalsByCrop.computeIfAbsent(crop[2], k -> new int[MEDALS.length])[i]++;
+                int medals = (int) Json.num(e.getValue(), MEDALS[i], 0);
+                if (medals <= 0) continue;
+                earned[i] += medals;
+                medalsByCrop.computeIfAbsent(crop[2], k -> new int[MEDALS.length])[i] += medals;
             }
         }
         JsonObject out = new JsonObject();

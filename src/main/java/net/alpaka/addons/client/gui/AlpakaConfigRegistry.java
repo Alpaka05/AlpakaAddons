@@ -2434,7 +2434,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.slotHighlightEnabled,
                 v -> { AlpakaConfig.instance.slotHighlightEnabled = v; AlpakaConfig.save(); },
-                "slot highlight highlight mark slot outline pets skyblock level leveling tasks auctions bazaar orders croesus jacob contests slayer rewards commissions chocolate factory power stones composter heart of the mountain forest perks"));
+                "slot highlight highlight mark slot outline pets skyblock level leveling tasks rng meter auctions bazaar orders croesus jacob contests slayer rewards commissions chocolate factory power stones composter heart of the mountain forest perks"));
 
         OPTIONS.add(new ConfigOption("slot_highlight_active_pet", "Active Pet",
                 "Your summoned pet in the Pets menu.",
@@ -2484,6 +2484,13 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.slotHighlightSlayerRewards,
                 v -> { AlpakaConfig.instance.slotHighlightSlayerRewards = v; AlpakaConfig.save(); },
                 "slot highlight slayer lvl level rewards claim maddox"));
+
+        OPTIONS.add(new ConfigOption("slot_highlight_rng_meter", "RNG Meter",
+                "The drop each RNG Meter is filling up for as ready, Catacombs floors with no drop picked as missing.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slotHighlightRngMeter,
+                v -> { AlpakaConfig.instance.slotHighlightRngMeter = v; AlpakaConfig.save(); },
+                "slot highlight rng meter selected drop catacombs dungeon floor slayer nucleus experimentation"));
 
         OPTIONS.add(new ConfigOption("slot_highlight_commissions", "Completed Commissions",
                 "Commissions you have finished and can turn in.",

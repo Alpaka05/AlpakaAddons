@@ -1020,6 +1020,7 @@ public class AlpakaConfig {
     public boolean slotHighlightCroesus = true;
     public boolean slotHighlightJacobContests = true;
     public boolean slotHighlightSlayerRewards = true;
+    public boolean slotHighlightRngMeter = true;
     public boolean slotHighlightCommissions = true;
     public boolean slotHighlightChocolateFactory = true;
     public boolean slotHighlightComposterUpgrades = true;

@@ -66,7 +66,6 @@ final class Dashboard {
             // The skill pages.
             "jacobs_contest.medals_inv",
             "jacobs_contest.perks",
-            "jacobs_contest.contests",
             "jacobs_contest.unique_brackets",
             "jacobs_contest.personal_bests",
             "garden_player_data.copper",
@@ -189,13 +188,77 @@ final class Dashboard {
             put(data, "members", new Json.Num(String.valueOf(active)));
             put(data, "bank", profile.get("banking") instanceof Map<?, ?> banking ? banking.get("balance") : null);
             data.put("coop", coop);
-            data.put("member", keep(member, MEMBER_FIELDS));
+            Map<String, Object> kept = keep(member, MEMBER_FIELDS);
+            // Every contest the player took part in is a hundred bytes; the dashboard only counts them.
+            Object contests = member.get("jacobs_contest") instanceof Map<?, ?> jacob ? jacob.get("contests") : null;
+            if (contests instanceof Map<?, ?> all) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> jacob = (Map<String, Object>) kept.computeIfAbsent("jacobs_contest", k -> new LinkedHashMap<String, Object>());
+                jacob.put("contest_summary", contestSummary(all));
+            }
+            data.put("member", kept);
 
             out.add(new Profile(id.replace("-", ""), profile.get("cute_name") instanceof String name ? name : null,
                     profile.get("game_mode") instanceof String mode ? mode : null, Boolean.TRUE.equals(profile.get("selected")),
                     active, Json.write(data)));
         }
         return out;
+    }
+
+    /** The medals of Jacob's contests, worst first. */
+    static final List<String> MEDALS = List.of("bronze", "silver", "gold", "platinum", "diamond");
+    /** Fewer crops than this in a contest don't count as taking part, as Jacob doesn't count them. */
+    static final int CONTEST_MINIMUM = 100;
+
+    /**
+     * The contests a player took part in, counted by crop: {@code {"WHEAT": {"participations": 12,
+     * "gold": 3, ...}}}, keyed by the crop as Hypixel names it in the contest ("INK_SACK:3").
+     */
+    static Map<String, Object> contestSummary(Map<?, ?> contests) {
+        Map<String, Map<String, Integer>> byCrop = new java.util.TreeMap<>();
+        for (Map.Entry<?, ?> e : contests.entrySet()) {
+            // "275:12_3:CARROT_ITEM": the year, the month and day, and the crop, whose id may hold a colon itself.
+            if (!(e.getKey() instanceof String key) || !(e.getValue() instanceof Map<?, ?> contest)) continue;
+            int first = key.indexOf(':');
+            int second = first < 0 ? -1 : key.indexOf(':', first + 1);
+            if (second < 0 || number(contest.get("collected")) < CONTEST_MINIMUM) continue;
+            Map<String, Integer> crop = byCrop.computeIfAbsent(key.substring(second + 1), k -> new LinkedHashMap<>());
+            crop.merge("participations", 1, Integer::sum);
+            String medal = medal(contest);
+            if (medal != null) crop.merge(medal, 1, Integer::sum);
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        byCrop.forEach((crop, counts) -> {
+            Map<String, Object> written = new LinkedHashMap<>();
+            counts.forEach((k, v) -> written.put(k, new Json.Num(String.valueOf(v))));
+            out.put(crop, written);
+        });
+        return out;
+    }
+
+    /** The medal a contest brought: the one claimed, else the one its place is worth; null for none. */
+    static String medal(Map<?, ?> contest) {
+        if (contest.get("claimed_medal") instanceof String claimed && MEDALS.contains(claimed)) return claimed;
+        double position = number(contest.get("claimed_position"));
+        double participants = number(contest.get("claimed_participants"));
+        if (Double.isNaN(position) || Double.isNaN(participants)) return null;
+        if (position <= Math.floor(participants * 0.02)) return "diamond";
+        if (position <= Math.floor(participants * 0.05)) return "platinum";
+        if (position <= Math.floor(participants * 0.1)) return "gold";
+        if (position <= Math.floor(participants * 0.3)) return "silver";
+        if (position <= Math.floor(participants * 0.6)) return "bronze";
+        return null;
+    }
+
+    private static double number(Object value) {
+        if (value instanceof Json.Num n) {
+            try {
+                return Double.parseDouble(n.text());
+            } catch (NumberFormatException e) {
+                return Double.NaN;
+            }
+        }
+        return value instanceof Number n ? n.doubleValue() : Double.NaN;
     }
 
     /** Whether a member's data is all that is left of them on the profile. */

@@ -16,10 +16,14 @@ import java.util.function.LongSupplier;
  * player ever reaches this server, and a challenge works once only (see {@link Challenges}).
  *
  * Logged in, a player may ask for what the Profile Dashboard shows of a player
- * ({@code /v1/dashboard/<name or uuid>}). It is fetched from Hypixel with the server's key only when asked for, cut down to the dashboard's
+ * ({@code /v1/dashboard/<name or uuid>}) and a profile's museum ({@code /v1/museum/<uuid>/<profile>}).
+ * It is fetched from Hypixel with the server's key only when asked for, cut down to the dashboard's
  * fields ({@link Dashboard}), cached, and limited per player, so the key's budget can't be spent by
  * one of them. It is not a copy of Hypixel's API: there is no way to ask for Hypixel's answer as it
  * is. Nothing is fetched on its own and nothing is kept about who asked for what.
+ *
+ * Without a login there is the Bazaar's prices ({@code /v1/bazaar}), Hypixel's public list cut
+ * down to what the mod prices items with; it needs no key.
  */
 final class Api {
     record Request(String method, String path, String query, Map<String, String> headers, String ip) {
@@ -86,12 +90,17 @@ final class Api {
     static final long MAX_AGE_MS = 60 * 60_000L;
     /** With the dashboard's Refresh, another player's answer may be this young at the least. */
     static final long REFRESH_AGE_MS = 5 * 60_000L;
-    /** A player's own profile may be fresher, since they just changed it in the game. */
-    static final long OWN_MAX_AGE_MS = 3 * 60_000L;
+    /**
+     * A player's own profile may be fresher, since they just changed it in the game; reopening the
+     * dashboard within this time costs no trip to Hypixel. Refresh is there for the newest.
+     */
+    static final long OWN_MAX_AGE_MS = 10 * 60_000L;
     /** With the dashboard's Refresh, their own may be this young; Hypixel's answer hardly changes faster. */
     static final long OWN_REFRESH_AGE_MS = 60_000L;
     /** A name keeps its account, and an account its skin, this long. */
     static final long ACCOUNT_AGE_MS = 6 * 60 * 60_000L;
+    /** The Bazaar moves by the minute; Hypixel updates its list about that often. */
+    static final long BAZAAR_AGE_MS = 60_000L;
     /** About 48 MB of answers; the service runs with a 512 MB heap. */
     static final long CACHE_CHARS = 48_000_000L;
 
@@ -101,6 +110,8 @@ final class Api {
     private final SessionCheck mojang;
     private final Accounts accounts;
     private final Upstream hypixel;
+    /** Hypixel's public resources, asked without the key. */
+    private final Upstream resources;
     private final LongSupplier clock;
     private final Sessions sessions;
     private final Challenges challenges;
@@ -108,7 +119,10 @@ final class Api {
     private final RateLimit logins;
     private final RateLimit requests;
     private final RateLimit fetches;
+    private final RateLimit bazaarAsks;
     private final Map<String, CompletableFuture<Upstream.Result>> inFlight = new ConcurrentHashMap<>();
+    /** Museums on their way from Hypixel, by cache key: the mod asks for one right after the dashboard started it. */
+    private final Map<String, CompletableFuture<String>> museums = new ConcurrentHashMap<>();
     /** Accounts by UUID and by name in lower case; the least recently asked for go first. */
     private final Map<String, Known> known = java.util.Collections.synchronizedMap(new java.util.LinkedHashMap<>(256, 0.75f, true) {
         @Override
@@ -122,21 +136,25 @@ final class Api {
     /** An account, or the knowledge that there is none ({@code account} null), and when that was learned. */
     private record Known(Accounts.Account account, long at) {}
 
-    Api(SessionCheck mojang, Accounts accounts, Upstream hypixel, LongSupplier clock) {
+    /** {@code tokenSecret} signs the login tokens; kept across restarts, so are the logins. */
+    Api(SessionCheck mojang, Accounts accounts, Upstream hypixel, Upstream resources, byte[] tokenSecret, LongSupplier clock) {
         this.mojang = mojang;
         this.accounts = accounts;
         this.hypixel = hypixel;
+        this.resources = resources;
         this.clock = clock;
-        this.sessions = new Sessions(clock);
+        this.sessions = new Sessions(tokenSecret, clock);
         this.challenges = new Challenges(clock);
         this.cache = new ResponseCache(CACHE_CHARS, clock);
         // Ten challenges, so ten logins, per address in ten minutes; a player logs in once per game start.
         this.logins = new RateLimit(10, 10 * 60_000L, clock);
-        // Opening a profile takes one request; sixty in five minutes is a busy player.
+        // Opening a profile takes two requests, the dashboard and its museum; sixty in five minutes is a busy player.
         this.requests = new RateLimit(60, 5 * 60_000L, clock);
         // Of those, at most forty-five may go to Hypixel - a profile not cached takes three - which
         // is under a sixth of the key's 300.
         this.fetches = new RateLimit(45, 5 * 60_000L, clock);
+        // The mod asks for the Bazaar every few minutes while prices are on screen.
+        this.bazaarAsks = new RateLimit(30, 5 * 60_000L, clock);
     }
 
     Response handle(Request r) {
@@ -151,6 +169,8 @@ final class Api {
         if (path.equals("/v1/auth/challenge")) return challenge(r);
         if (path.equals("/v1/auth")) return login(r);
         if (path.startsWith("/v1/dashboard/")) return dashboard(r, path.substring("/v1/dashboard/".length()));
+        if (path.startsWith("/v1/museum/")) return museum(r, path.substring("/v1/museum/".length()));
+        if (path.equals("/v1/bazaar")) return bazaar(r);
         return Response.error(404, "Not found");
     }
 
@@ -199,9 +219,6 @@ final class Api {
         }
     }
 
-    /** What Hypixel hands out apart from a profile: its garden and the player's part of its museum, as JSON or null. */
-    private record Extras(String garden, String museum) {}
-
     /**
      * A player with their profiles and the dashboard's data of one of them: the one named with
      * {@code ?profile=}, else the selected one. {@code ?fresh=1} is the dashboard's Refresh.
@@ -211,6 +228,10 @@ final class Api {
      * wait for them. They are asked for alongside wherever a good guess can be made: the profile
      * named, the one chosen the last time this player was looked up, or the one the mod last
      * showed ({@code ?hint=}). A wrong guess costs two requests and is put right at once.
+     *
+     * The museum isn't in the answer: it is as big as the rest of it together and only one page
+     * and the networth need it, so the profile is on screen first and the mod asks for the museum
+     * right after ({@link #museum(Request, String)}), which by then is on its way or here already.
      */
     private Response dashboard(Request r, String rest) {
         String player = player(r);
@@ -234,7 +255,7 @@ final class Api {
             ResponseCache.Entry index = cache.get("profiles/" + uuid, maxAge);
             boolean hit = index != null;
             String guess = null;
-            CompletableFuture<Extras> early = null;
+            CompletableFuture<String> early = null;
             if (index == null) {
                 ResponseCache.Entry last = cache.get("profiles/" + uuid, Long.MAX_VALUE);
                 guess = wanted != null ? wanted : last != null ? pick(last.body(), null) : Ids.uuid(r.param("hint"));
@@ -251,19 +272,18 @@ final class Api {
                 id = pick(index.body(), wanted);
                 profile = id == null ? null : cache.get("profile/" + uuid + "/" + id, Long.MAX_VALUE);
             }
-            Extras extras = id == null ? new Extras(null, null)
+            String garden = id == null ? null
                     : (early != null && id.equals(guess) ? early : extras(uuid, id, maxAge, player)).join();
             Accounts.Account account = alongside != null ? alongside.join() : named;
             if (account == null) return Response.error(404, "No Minecraft account with that UUID");
 
-            int size = 256 + (profile == null ? 0 : profile.body().length()) + (extras.museum() == null ? 0 : extras.museum().length());
+            int size = 256 + (profile == null ? 0 : profile.body().length()) + (garden == null ? 0 : garden.length());
             StringBuilder body = new StringBuilder(size);
             body.append("{\"success\":true,\"fetchedAt\":").append(index.fetchedAt());
             body.append(",\"player\":").append(Json.write(accountJson(account)));
             body.append(",\"profiles\":").append(index.body());
             body.append(",\"profile\":").append(profile == null ? "null" : profile.body());
-            body.append(",\"garden\":").append(extras.garden() == null ? "null" : extras.garden());
-            body.append(",\"museum\":").append(extras.museum() == null ? "null" : extras.museum());
+            body.append(",\"garden\":").append(garden == null ? "null" : garden);
             body.append('}');
             return answer(body.toString(), hit, index.fetchedAt());
         } catch (Refusal refusal) {
@@ -271,11 +291,90 @@ final class Api {
         }
     }
 
-    /** A profile's garden and the player's museum on it, each asked for on a thread of its own. */
-    private CompletableFuture<Extras> extras(String uuid, String profile, long maxAge, String player) {
-        CompletableFuture<String> garden = CompletableFuture.supplyAsync(() -> garden(profile, maxAge, player), Thread::startVirtualThread);
-        CompletableFuture<String> museum = CompletableFuture.supplyAsync(() -> museum(uuid, profile, maxAge, player), Thread::startVirtualThread);
-        return garden.thenCombine(museum, Extras::new);
+    /**
+     * A profile's garden and the player's museum on it, each asked for on a thread of its own; the
+     * garden comes back, the museum goes into the cache for the mod's next request.
+     */
+    private CompletableFuture<String> extras(String uuid, String profile, long maxAge, String player) {
+        museumLater(uuid, profile, maxAge, player);
+        return CompletableFuture.supplyAsync(() -> garden(profile, maxAge, player), Thread::startVirtualThread);
+    }
+
+    /** Starts asking for a museum unless it is cached or already coming; what is coming, or null. */
+    private CompletableFuture<String> museumLater(String uuid, String profile, long maxAge, String player) {
+        String key = "museum/" + profile + "/" + uuid;
+        if (cache.get(key, maxAge) != null) return null;
+        CompletableFuture<String> mine = new CompletableFuture<>();
+        CompletableFuture<String> running = museums.putIfAbsent(key, mine);
+        if (running != null) return running;
+        Thread.startVirtualThread(() -> {
+            try {
+                mine.complete(museum(uuid, profile, maxAge, player));
+            } catch (RuntimeException e) {
+                mine.completeExceptionally(e);
+            } finally {
+                museums.remove(key, mine);
+            }
+        });
+        return mine;
+    }
+
+    /**
+     * What a player gave a profile's museum: {@code {"success":true,"museum":{...}}}, with null for
+     * a museum Hypixel doesn't hand out right now. Asked for by the mod right after the dashboard,
+     * which has started on it already; {@code ?fresh=1} is the dashboard's Refresh.
+     */
+    private Response museum(Request r, String rest) {
+        String player = player(r);
+        if (player == null) return Response.error(401, "Log in first");
+        int slash = rest.indexOf('/');
+        String uuid = slash < 0 ? null : Ids.uuid(rest.substring(0, slash));
+        String profile = slash < 0 ? null : Ids.uuid(rest.substring(slash + 1));
+        if (uuid == null || profile == null) return Response.error(400, "Not a UUID and a profile id");
+        if (!requests.tryUse(player)) {
+            return Response.error(429, "Too many requests").with("Retry-After", String.valueOf(requests.retryAfterSeconds(player)));
+        }
+        long maxAge = maxAge(uuid.equals(player), "1".equals(r.param("fresh")));
+        String key = "museum/" + profile + "/" + uuid;
+        ResponseCache.Entry cached = cache.get(key, maxAge);
+        String museum;
+        boolean hit = cached != null;
+        if (hit) {
+            museum = cached.body();
+        } else {
+            CompletableFuture<String> coming = museumLater(uuid, profile, maxAge, player);
+            // Cached between the two looks: there is nothing coming, it is here.
+            ResponseCache.Entry now = coming == null ? cache.get(key, Long.MAX_VALUE) : null;
+            museum = coming != null ? coming.join() : now == null ? null : now.body();
+        }
+        String body = "{\"success\":true,\"museum\":" + (museum == null ? "null" : museum) + "}";
+        return new Response(200, "application/json", body, Map.of("X-Cache", hit ? "HIT" : "MISS"));
+    }
+
+    /**
+     * The Bazaar's instant prices, Hypixel's public list cut down to them; one request to Hypixel a
+     * minute at the most, however many ask. An older list stands in while Hypixel can't be reached.
+     */
+    private Response bazaar(Request r) {
+        String ip = r.ip() == null ? "?" : r.ip();
+        if (!bazaarAsks.tryUse(ip)) {
+            return Response.error(429, "Too many requests").with("Retry-After", String.valueOf(bazaarAsks.retryAfterSeconds(ip)));
+        }
+        ResponseCache.Entry cached = cache.get("bazaar", BAZAAR_AGE_MS);
+        if (cached != null) return answer(cached.body(), true, cached.fetchedAt()).with("Cache-Control", "public, max-age=60");
+        try {
+            Upstream.Result result = shared(resources, "/v2/skyblock/bazaar");
+            String prices = result.status() == 200 ? Bazaar.prices(result.body()) : null;
+            if (prices != null) {
+                cache.put("bazaar", 200, prices);
+                return answer(prices, false, clock.getAsLong()).with("Cache-Control", "public, max-age=60");
+            }
+            System.err.println("Hypixel's Bazaar answered " + result.status() + " without prices");
+        } catch (IOException | RuntimeException e) {
+            System.err.println("Hypixel's Bazaar couldn't be read: " + e);
+        }
+        ResponseCache.Entry old = cache.get("bazaar", Long.MAX_VALUE);
+        return old != null ? answer(old.body(), true, old.fetchedAt()) : Response.error(502, "Hypixel's Bazaar can't be reached");
     }
 
     /**
@@ -416,7 +515,7 @@ final class Api {
         }
         Upstream.Result result;
         try {
-            result = shared(pathAndQuery);
+            result = shared(hypixel, pathAndQuery);
         } catch (IOException e) {
             throw new Refusal(Response.error(502, "Hypixel can't be reached"));
         }
@@ -430,7 +529,7 @@ final class Api {
     }
 
     /** One request to Hypixel per address at a time: two people opening the same profile share it. */
-    private Upstream.Result shared(String pathAndQuery) throws IOException {
+    private Upstream.Result shared(Upstream upstream, String pathAndQuery) throws IOException {
         CompletableFuture<Upstream.Result> mine = new CompletableFuture<>();
         CompletableFuture<Upstream.Result> running = inFlight.putIfAbsent(pathAndQuery, mine);
         if (running != null) {
@@ -441,8 +540,9 @@ final class Api {
             }
         }
         try {
-            Upstream.Result result = hypixel.get(pathAndQuery);
-            if (result.remaining() >= 0) {
+            Upstream.Result result = upstream.get(pathAndQuery);
+            // Only what the key was used for counts against its budget.
+            if (upstream == hypixel && result.remaining() >= 0) {
                 keyRemaining = result.remaining();
                 keyResetAt = clock.getAsLong() + Math.max(0, result.resetSeconds()) * 1000L;
             }
@@ -458,9 +558,5 @@ final class Api {
 
     private static Response answer(String body, boolean hit, long fetchedAt) {
         return new Response(200, "application/json", body, Map.of("X-Cache", hit ? "HIT" : "MISS", "X-Fetched-At", String.valueOf(fetchedAt)));
-    }
-
-    int sessions() {
-        return sessions.size();
     }
 }

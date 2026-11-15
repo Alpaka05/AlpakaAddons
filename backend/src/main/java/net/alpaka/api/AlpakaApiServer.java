@@ -31,6 +31,8 @@ import java.util.regex.Pattern;
  *   <li>{@code ALPAKA_API_BIND} and {@code ALPAKA_API_PORT}, default 127.0.0.1:8787;</li>
  *   <li>{@code ALPAKA_HYPIXEL_KEY_FILE}, the file holding the Hypixel API key, default
  *       {@code ~/.config/alpaka-api/hypixel.key}. The key is read from there and never logged.</li>
+ *   <li>{@code ALPAKA_TOKEN_SECRET_FILE}, the secret the login tokens are signed with, default
+ *       {@code ~/.config/alpaka-api/token.secret}; made on the first start if it isn't there.</li>
  * </ul>
  */
 public final class AlpakaApiServer {
@@ -48,14 +50,37 @@ public final class AlpakaApiServer {
         String key = Files.readString(keyFile).trim();
         if (key.isEmpty()) throw new IllegalStateException("No Hypixel API key in " + keyFile);
 
+        Path secretFile = Path.of(env("ALPAKA_TOKEN_SECRET_FILE", System.getProperty("user.home") + "/.config/alpaka-api/token.secret"));
+
         HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
-        Api api = new Api(mojang(client), accounts(client), hypixel(client, key), System::currentTimeMillis);
+        Api api = new Api(mojang(client), accounts(client), hypixel(client, key), hypixel(client, null), tokenSecret(secretFile),
+                System::currentTimeMillis);
 
         HttpServer server = HttpServer.create(new InetSocketAddress(bind, port), 64);
         server.createContext("/", exchange -> serve(api, exchange));
         server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
         server.start();
         System.out.println("AlpakaAddons API listening on " + bind + ":" + port);
+    }
+
+    /**
+     * The secret the login tokens are signed with: read from the file, or made and written there
+     * on the first start, readable by this user only. Kept, so a restart doesn't log everyone out.
+     */
+    static byte[] tokenSecret(Path file) throws IOException {
+        if (Files.exists(file)) {
+            byte[] secret = java.util.Base64.getDecoder().decode(Files.readString(file).trim());
+            if (secret.length >= 32) return secret;
+            throw new IllegalStateException("The token secret in " + file + " is too short");
+        }
+        byte[] secret = new byte[32];
+        new java.security.SecureRandom().nextBytes(secret);
+        Files.createDirectories(file.toAbsolutePath().getParent());
+        Path temp = Files.createTempFile(file.toAbsolutePath().getParent(), "token", ".tmp",
+                java.nio.file.attribute.PosixFilePermissions.asFileAttribute(java.nio.file.attribute.PosixFilePermissions.fromString("rw-------")));
+        Files.writeString(temp, java.util.Base64.getEncoder().encodeToString(secret) + "\n");
+        Files.move(temp, file, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+        return secret;
     }
 
     private static String env(String name, String fallback) {
@@ -177,10 +202,13 @@ public final class AlpakaApiServer {
         };
     }
 
+    /** Hypixel's API with the key, or without one ({@code key} null) for its public resources. */
     private static Api.Upstream hypixel(HttpClient client, String key) {
         return pathAndQuery -> {
-            HttpResponse<java.io.InputStream> response = sendStream(client, HttpRequest.newBuilder(URI.create("https://api.hypixel.net" + pathAndQuery))
-                    .timeout(Duration.ofSeconds(20)).header("API-Key", key).header("User-Agent", USER_AGENT).GET().build());
+            HttpRequest.Builder request = HttpRequest.newBuilder(URI.create("https://api.hypixel.net" + pathAndQuery))
+                    .timeout(Duration.ofSeconds(20)).header("User-Agent", USER_AGENT).GET();
+            if (key != null) request.header("API-Key", key);
+            HttpResponse<java.io.InputStream> response = sendStream(client, request.build());
             int remaining = (int) number(response, "ratelimit-remaining", -1);
             long reset = number(response, "ratelimit-reset", 0);
             byte[] bytes;

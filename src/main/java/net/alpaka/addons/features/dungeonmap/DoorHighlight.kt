@@ -3,6 +3,7 @@ package net.alpaka.addons.features.dungeonmap
 import com.mojang.blaze3d.vertex.PoseStack
 import com.mojang.blaze3d.vertex.VertexConsumer
 import net.alpaka.addons.config.AlpakaConfig
+import net.alpaka.addons.features.blockoverlay.BlockOverlayRenderTypes
 import net.alpaka.addons.utils.AlpakaPerf
 import net.alpaka.addons.utils.DungeonState
 import net.alpaka.addons.utils.SkyblockUtils
@@ -11,7 +12,6 @@ import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents
 import net.minecraft.client.Minecraft
-import net.minecraft.client.renderer.rendertype.RenderTypes
 import net.minecraft.core.BlockPos
 
 /**
@@ -19,8 +19,8 @@ import net.minecraft.core.BlockPos
  * one. A door is drawn until its blocks are gone.
  *
  * Which doors are wither or blood doors comes from the Magical Map, which draws them black and
- * red between two rooms; whether the team holds a key comes from the chat. Both boxes are
- * depth-tested like any block, so a door is only marked where it can be seen.
+ * red between two rooms; whether the team holds a key comes from the chat. Fill and outline are
+ * drawn through walls, so the next door can be found from anywhere in the room.
  */
 object DoorHighlight {
     /** A door between two cells, by its block in the middle of the doorway at floor height. */
@@ -31,6 +31,7 @@ object DoorHighlight {
     private val WITHER_OPENED = Regex("""^(?:\[[^\]]+] )?\w{1,16} opened a WITHER door!$""")
     private const val BLOOD_OPENED = "The BLOOD DOOR has been opened!"
     private const val FLOOR = 69
+    private const val LINE_WIDTH = 3.5f
 
     var doors: List<Door> = emptyList()
         private set
@@ -135,10 +136,10 @@ object DoorHighlight {
         val colors = shown.map { if (if (it.blood) bloodKey else witherKeys > 0) cfg.dungeonDoorOpenableColor else cfg.dungeonDoorLockedColor }
         val poseStack = context.poseStack()
         val out = context.submitNodeCollector()
-        out.submitCustomGeometry(poseStack, RenderTypes.debugFilledBox()) { pose, buffer ->
+        out.submitCustomGeometry(poseStack, BlockOverlayRenderTypes.noDepthQuads()) { pose, buffer ->
             shown.forEachIndexed { i, door -> box(door, camX, camY, camZ) { x0, y0, z0, x1, y1, z1 -> fill(buffer, pose, colors[i], x0, y0, z0, x1, y1, z1) } }
         }
-        out.submitCustomGeometry(poseStack, RenderTypes.lines()) { pose, buffer ->
+        out.submitCustomGeometry(poseStack, BlockOverlayRenderTypes.noDepthLines()) { pose, buffer ->
             shown.forEachIndexed { i, door ->
                 val opaque = colors[i] or (0xFF shl 24)
                 box(door, camX, camY, camZ) { x0, y0, z0, x1, y1, z1 -> edges(buffer, pose, opaque, x0, y0, z0, x1, y1, z1) }
@@ -159,7 +160,7 @@ object DoorHighlight {
 
     private fun fill(buffer: VertexConsumer, pose: PoseStack.Pose, argb: Int,
                      x0: Float, y0: Float, z0: Float, x1: Float, y1: Float, z1: Float) {
-        // The debug box type does not cull faces, so one winding per side is enough.
+        // The see-through quad type does not cull faces, so one winding per side is enough.
         quad(buffer, pose, argb, x0, y0, z0, x1, y0, z0, x1, y0, z1, x0, y0, z1)
         quad(buffer, pose, argb, x0, y1, z0, x0, y1, z1, x1, y1, z1, x1, y1, z0)
         quad(buffer, pose, argb, x0, y0, z0, x0, y1, z0, x1, y1, z0, x1, y0, z0)
@@ -198,8 +199,8 @@ object DoorHighlight {
         nx /= length
         ny /= length
         nz /= length
-        buffer.addVertex(pose, x0, y0, z0).setColor(argb).setNormal(pose, nx, ny, nz).setLineWidth(2f)
-        buffer.addVertex(pose, x1, y1, z1).setColor(argb).setNormal(pose, nx, ny, nz).setLineWidth(2f)
+        buffer.addVertex(pose, x0, y0, z0).setColor(argb).setNormal(pose, nx, ny, nz).setLineWidth(LINE_WIDTH)
+        buffer.addVertex(pose, x1, y1, z1).setColor(argb).setNormal(pose, nx, ny, nz).setLineWidth(LINE_WIDTH)
     }
 
     @JvmStatic

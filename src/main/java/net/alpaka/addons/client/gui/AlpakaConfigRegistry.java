@@ -1400,7 +1400,7 @@ public class AlpakaConfigRegistry {
 
         OPTIONS.add(new ConfigOption("Door Highlight", ConfigCategory.DUNGEON));
         OPTIONS.add(new ConfigOption("dungeon_door_highlight", "Door Highlight",
-                "Marks wither and blood doors during the clear: red while nobody has the key, green once your team has one. Only where you can see the door.", ConfigCategory.DUNGEON,
+                "Marks wither and blood doors during the clear: red while nobody has the key, green once your team has one. Shown through walls.", ConfigCategory.DUNGEON,
                 () -> AlpakaConfig.instance.dungeonDoorHighlight,
                 v -> { AlpakaConfig.instance.dungeonDoorHighlight = v; AlpakaConfig.save(); },
                 "dungeon door highlight wither blood key door esp"));

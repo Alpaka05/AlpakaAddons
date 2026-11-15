@@ -2434,7 +2434,7 @@ public class AlpakaConfigRegistry {
                 ConfigCategory.SKYBLOCK,
                 () -> AlpakaConfig.instance.slotHighlightEnabled,
                 v -> { AlpakaConfig.instance.slotHighlightEnabled = v; AlpakaConfig.save(); },
-                "slot highlight highlight mark slot outline pets skyblock level leveling tasks rng meter auctions bazaar orders croesus jacob contests slayer rewards commissions chocolate factory power stones composter heart of the mountain forest perks"));
+                "slot highlight highlight mark slot outline pets skyblock level leveling tasks auctions bazaar orders croesus jacob contests slayer rewards commissions chocolate factory power stones composter heart of the mountain forest perks"));
 
         OPTIONS.add(new ConfigOption("slot_highlight_active_pet", "Active Pet",
                 "Your summoned pet in the Pets menu.",

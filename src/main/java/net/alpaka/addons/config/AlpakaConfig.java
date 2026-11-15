@@ -335,6 +335,10 @@ public class AlpakaConfig {
     public int menuTheme = 0;
     /** The player's own presets in the color picker, ARGB, oldest first; shared by every color option. */
     public java.util.List<Integer> customColorPresets = new java.util.ArrayList<>();
+    /** The player's own gradient presets, shown in pickers set to Gradient; oldest first. */
+    public java.util.List<GradientPreset> customGradientPresets = new java.util.ArrayList<>();
+    /** The player's own rainbow presets (speed, size, saturation), shown in pickers set to Chroma. */
+    public java.util.List<Chroma> customChromaPresets = new java.util.ArrayList<>();
     /**
      * Index into {@code GuiFont.NAMES}: the typeface the Alpaka menus are written in. 0 is the
      * vanilla pixel font; the default is Poppins.

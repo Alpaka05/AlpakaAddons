@@ -13,6 +13,7 @@ import net.alpaka.addons.client.gui.ModernGuiUtils;
 import net.alpaka.addons.client.gui.RoundedImageRenderState;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.config.Chroma;
+import net.alpaka.addons.config.GradientPreset;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.render.TextureSetup;
@@ -43,9 +44,10 @@ import static net.alpaka.addons.client.gui.AlpakaStyle.inside;
  * An option that offers more than one color ({@code ConfigOption.withGradient},
  * {@code ConfigOption.withChroma}) has its modes on top of the right column: Solid, Gradient and
  * Chroma, only those it offers. In Gradient both colors sit on the wheel and next to the hex code,
- * and whichever is picked out is the one the wheel, the sliders and the presets change. In Chroma
- * the point runs round the wheel the way the rainbow moves, and the sliders set its speed,
- * saturation and, for a rainbow along text, its size.
+ * and whichever is picked out is the one the wheel and the sliders change. In Chroma the point
+ * runs round the wheel the way the rainbow moves, and the sliders set its speed, saturation and,
+ * for a rainbow along text, its size. Each mode has presets of its own: a gradient preset sets
+ * both colors, a Chroma preset the whole rainbow.
  */
 public class ColorPickerScreen extends Screen implements net.alpaka.addons.client.gui.NoticeHost {
     private final Screen parent;
@@ -257,44 +259,212 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
     }
 
     // ---- Presets --------------------------------------------------------------------------------
+    //
+    // Each mode has presets of its own: colors for Solid, gradients for Gradient and rainbows for
+    // Chroma. The row shows only the mode that is on, so a preset always sets the whole of that
+    // mode (a gradient both its colors, a rainbow its speed, size and saturation) and never half of
+    // another one.
 
-    private static java.util.List<Integer> customPresets() {
+    private static final GradientPreset[] GRADIENT_PRESETS = {
+            new GradientPreset(0xFF55FFFF, 0xFFFF55FF), // Cyan to pink
+            new GradientPreset(0xFFFFE15A, 0xFFFF4A3A), // Gold to red
+            new GradientPreset(0xFF29B6F6, 0xFF00E676), // Blue to green
+            new GradientPreset(0xFFAB47BC, 0xFFFF4081), // Purple to pink
+            new GradientPreset(0xFFFFEA00, 0xFFFF9800), // Yellow to orange
+            new GradientPreset(0xFF00E5FF, 0xFF29B6B2), // Cyan to teal
+            new GradientPreset(0xFFFF9800, 0xFFFF1744), // Orange to red
+            new GradientPreset(0xFF5C6BC0, 0xFFAB47BC), // Indigo to purple
+            new GradientPreset(0xFF00E676, 0xFFFFEA00), // Green to yellow
+            new GradientPreset(0xFFFFFFFF, 0xFF9FB4D0), // White to steel
+    };
+
+    private static final Chroma[] CHROMA_PRESETS = {
+            new Chroma(true, 1.0f, 30.0f, 80.0f),  // The default
+            new Chroma(true, 0.5f, 30.0f, 45.0f),  // Slow pastel
+            new Chroma(true, 2.0f, 15.0f, 100.0f), // Fast and vivid
+            new Chroma(true, 0.25f, 60.0f, 85.0f), // Calm and wide
+            new Chroma(true, 1.0f, 8.0f, 90.0f),   // Tight bands
+    };
+
+    private static AlpakaConfig cfg() {
         AlpakaConfig cfg = AlpakaConfig.instance;
         if (cfg.customColorPresets == null) cfg.customColorPresets = new java.util.ArrayList<>();
-        return cfg.customColorPresets;
+        if (cfg.customGradientPresets == null) cfg.customGradientPresets = new java.util.ArrayList<>();
+        if (cfg.customChromaPresets == null) cfg.customChromaPresets = new java.util.ArrayList<>();
+        return cfg;
     }
 
-    /** The built-in presets, then the player's own. */
-    private static int slotCount() {
-        return PRESETS.length + customPresets().size();
+    /** How many presets the mode now has built in, before the player's own. */
+    private int builtInCount() {
+        return switch (mode()) {
+            case SOLID -> PRESETS.length;
+            case GRADIENT -> GRADIENT_PRESETS.length;
+            case CHROMA -> CHROMA_PRESETS.length;
+        };
     }
 
-    private static int slotColor(int i) {
-        return i < PRESETS.length ? PRESETS[i] : customPresets().get(i - PRESETS.length);
+    /** The player's own presets of the mode now. */
+    private java.util.List<?> customList() {
+        return switch (mode()) {
+            case SOLID -> cfg().customColorPresets;
+            case GRADIENT -> cfg().customGradientPresets;
+            case CHROMA -> cfg().customChromaPresets;
+        };
     }
 
-    private boolean isPreset(int color) {
+    /** The built-in presets of the mode now, then the player's own. */
+    private int slotCount() {
+        return builtInCount() + customList().size();
+    }
+
+    private int solidAt(int i) {
+        return i < PRESETS.length ? PRESETS[i] : cfg().customColorPresets.get(i - PRESETS.length);
+    }
+
+    private GradientPreset gradientAt(int i) {
+        return i < GRADIENT_PRESETS.length ? GRADIENT_PRESETS[i] : cfg().customGradientPresets.get(i - GRADIENT_PRESETS.length);
+    }
+
+    private Chroma chromaAt(int i) {
+        return i < CHROMA_PRESETS.length ? CHROMA_PRESETS[i] : cfg().customChromaPresets.get(i - CHROMA_PRESETS.length);
+    }
+
+    /** Whether the slot holds exactly what the picker shows now, which rings it. */
+    private boolean slotIsCurrent(int i) {
+        return switch (mode()) {
+            case SOLID -> solidAt(i) == currentColor();
+            case GRADIENT -> {
+                GradientPreset g = gradientAt(i);
+                yield g.start == startColor() && g.end == endColor();
+            }
+            case CHROMA -> sameRainbow(chromaAt(i), chroma);
+        };
+    }
+
+    /** Two rainbows look the same; the size counts only where the picker has its slider. */
+    private boolean sameRainbow(Chroma a, Chroma b) {
+        return a.speed() == b.speed() && a.saturation01() == b.saturation01()
+                && (!chromaSpec.spread() || a.size() == b.size());
+    }
+
+    private boolean currentIsPreset() {
         for (int i = 0; i < slotCount(); i++) {
-            if (slotColor(i) == color) return true;
+            if (slotIsCurrent(i)) return true;
         }
         return false;
     }
 
+    /** Puts a preset into the picker: the color, both colors of a gradient, or the whole rainbow. */
+    private void applySlot(int i) {
+        switch (mode()) {
+            case SOLID -> {
+                setColor(solidAt(i));
+                syncHexFromColor();
+            }
+            case GRADIENT -> {
+                GradientPreset g = gradientAt(i);
+                editingEnd = false;
+                setColor(g.start);
+                otherStop = g.end;
+                syncHexFromColor();
+            }
+            case CHROMA -> {
+                Chroma c = chromaAt(i);
+                chroma.speed = c.speed();
+                chroma.saturation = c.saturation01() * 100.0f;
+                chroma.size = c.size();
+            }
+        }
+    }
+
     /**
-     * Saves the color now as a preset. It is kept at once, whether the picker is then saved or
-     * cancelled: the presets are a palette of their own, not part of the option being edited.
+     * Saves what the picker shows now as a preset of its mode. It is kept at once, whether the
+     * picker is then saved or cancelled: the presets are a palette of their own, not part of the
+     * option being edited.
      */
     private void addCurrentAsPreset() {
-        if (isPreset(currentColor())) return;
-        java.util.List<Integer> custom = customPresets();
-        while (custom.size() >= MAX_CUSTOM) custom.remove(0);
-        custom.add(currentColor());
+        if (currentIsPreset()) return;
+        switch (mode()) {
+            case SOLID -> addCapped(cfg().customColorPresets, currentColor());
+            case GRADIENT -> addCapped(cfg().customGradientPresets, new GradientPreset(startColor(), endColor()));
+            case CHROMA -> {
+                Chroma saved = chroma.copy();
+                saved.enabled = true;
+                addCapped(cfg().customChromaPresets, saved);
+            }
+        }
         AlpakaConfig.save();
     }
 
-    private static void removeCustomPreset(int slot) {
-        customPresets().remove(slot - PRESETS.length);
+    private static <T> void addCapped(java.util.List<T> list, T entry) {
+        while (list.size() >= MAX_CUSTOM) list.remove(0);
+        list.add(entry);
+    }
+
+    private void removeCustomPreset(int slot) {
+        customList().remove(slot - builtInCount());
         AlpakaConfig.save();
+    }
+
+    /**
+     * A preset as a round swatch showing what it sets: one color, the gradient from left to right,
+     * or the rainbow moving across it at the preset's speed and saturation.
+     */
+    private void drawSlot(GuiGraphicsExtractor graphics, int i, int x, int y) {
+        switch (mode()) {
+            case SOLID -> ModernGuiUtils.drawRoundedRect(graphics, x, y, SWATCH, SWATCH, (SWATCH + 1) / 2, solidAt(i));
+            case GRADIENT -> {
+                GradientPreset g = gradientAt(i);
+                roundSwatch(graphics, x, y, t -> lerpArgb(g.start, g.end, t));
+            }
+            case CHROMA -> {
+                Chroma c = chromaAt(i);
+                double shift = c.shift(System.currentTimeMillis());
+                // Across a dozen letters, as on text, so a tight rainbow shows more bands than a
+                // wide one; without text, one whole rainbow.
+                double across = chromaSpec.spread() ? 12.0 : c.size();
+                roundSwatch(graphics, x, y, t -> 0xFF000000 | c.rgb(shift, t * across));
+            }
+        }
+    }
+
+    /** A round swatch filled left to right by {@code colorAt}, as thin vertical bands of the circle. */
+    private static void roundSwatch(GuiGraphicsExtractor graphics, int x, int y,
+                                    java.util.function.DoubleToIntFunction colorAt) {
+        int bands = 16;
+        float r = SWATCH / 2.0f;
+        float cx = x + r;
+        float cy = y + r;
+        float feather = 1.0f / Math.max(1, Minecraft.getInstance().getWindow().getGuiScale());
+        net.alpaka.addons.features.wheel.WheelMesh mesh = new net.alpaka.addons.features.wheel.WheelMesh(feather);
+        for (int b = 0; b < bands; b++) {
+            float t0 = b / (float) bands;
+            float t1 = (b + 1) / (float) bands;
+            float x0 = x + t0 * SWATCH;
+            float x1 = x + t1 * SWATCH;
+            float h0 = (float) Math.sqrt(Math.max(0.0f, r * r - (x0 - cx) * (x0 - cx)));
+            float h1 = (float) Math.sqrt(Math.max(0.0f, r * r - (x1 - cx) * (x1 - cx)));
+            int c0 = colorAt.applyAsInt(t0);
+            int c1 = colorAt.applyAsInt(t1);
+            mesh.quad(x0, cy - h0, c0, x0, cy + h0, c0, x1, cy + h1, c1, x1, cy - h1, c1);
+        }
+        mesh.submit(graphics);
+    }
+
+    private static int lerpArgb(int from, int to, double t) {
+        int a = (int) Math.round(((from >>> 24) & 0xFF) * (1 - t) + ((to >>> 24) & 0xFF) * t);
+        int r = (int) Math.round(((from >> 16) & 0xFF) * (1 - t) + ((to >> 16) & 0xFF) * t);
+        int g = (int) Math.round(((from >> 8) & 0xFF) * (1 - t) + ((to >> 8) & 0xFF) * t);
+        int b = (int) Math.round((from & 0xFF) * (1 - t) + (to & 0xFF) * t);
+        return (a << 24) | (r << 16) | (g << 8) | b;
+    }
+
+    private String presetNoun() {
+        return switch (mode()) {
+            case SOLID -> "color";
+            case GRADIENT -> "gradient";
+            case CHROMA -> "rainbow";
+        };
     }
 
     // ---- The wheel's picture --------------------------------------------------------------------
@@ -376,10 +546,10 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
      * Chroma, which has no single color to type), the sliders and the presets.
      */
     private record Layout(int x, int y, int w, int h, int bodyY, int top, int wheelX, int wheelY, int wheelSize,
-                          int rightX, int rightW, int rowH, boolean hexRow, boolean twoStops, int btnY, int saveX,
-                          int cancelX, int btnW, int resetX) {
+                          int rightX, int rightW, int rowH, boolean hexRow, boolean twoStops, int sliderRows,
+                          int btnY, int saveX, int cancelX, int btnW, int resetX) {
 
-        static Layout of(int width, int height, boolean modeRow, Mode mode) {
+        static Layout of(int width, int height, boolean modeRow, Mode mode, boolean spread) {
             int w = Math.max(280, Math.min(PREF_W, width - 16));
             int h = Math.max(180, Math.min(PREF_H, height - 16));
             int x = (width - w) / 2;
@@ -399,7 +569,7 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
             int resetX = x + w - AlpakaStyle.PAD - RESET_W;
             return new Layout(x, y, w, h, bodyY, top, wheelX, wheelY, wheelSize, rightX, rightW,
                     modeRow ? SLIDER_ROW_H_COMPACT : SLIDER_ROW_H, mode != Mode.CHROMA, mode == Mode.GRADIENT,
-                    btnY, saveX, cancelX, btnW, resetX);
+                    mode == Mode.CHROMA && spread ? 3 : 2, btnY, saveX, cancelX, btnW, resetX);
         }
 
         double wheelCx() { return wheelX + wheelSize / 2.0; }
@@ -410,7 +580,7 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         int hexX() { return rightX + (twoStops ? 2 * STOP_W + 4 : PREVIEW_W) + 6; }
         int hexW() { return rightX + rightW - hexX(); }
         int sliderLabelY(int i) { return top + (hexRow ? FIELD_H + 8 : 0) + i * rowH; }
-        int presetLabelY() { return sliderLabelY(2) + 6; }
+        int presetLabelY() { return sliderLabelY(sliderRows) + 6; }
         int trackY(int i) { return sliderLabelY(i) + 17; }
         // The track's round ends reach 3 px past its ends, so it is inset to stay in the column.
         int trackX() { return rightX + 3; }
@@ -420,7 +590,7 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
     }
 
     private Layout layout() {
-        return Layout.of(this.width, this.height, modes.size() > 1, mode());
+        return Layout.of(this.width, this.height, modes.size() > 1, mode(), chromaSpec != null && chromaSpec.spread());
     }
 
     // ---- Drawing --------------------------------------------------------------------------------
@@ -449,6 +619,7 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         if (chromaOn()) {
             drawChroma(graphics, l, mouseX, mouseY);
             AlpakaStyle.endOpen(graphics, pushed);
+            presetTooltip(graphics, mouseX, mouseY);
             net.alpaka.addons.features.notification.AlpakaNotifications.renderOverScreen(graphics);
             return;
         }
@@ -492,41 +663,7 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         slider(graphics, l, 0, "Brightness", hsv.val(), 0xFF000000, full, mouseX, mouseY, drag == Drag.BRIGHTNESS);
         slider(graphics, l, 1, "Opacity", a / 255.0f, AlpakaStyle.ROW_SELECTED, 0xFF000000 | rgb, mouseX, mouseY, drag == Drag.OPACITY);
 
-        // Presets, the current one ringed, and the plus after the last one.
-        AlpakaStyle.groupLabel(graphics, this.font, "Presets", l.rightX(), l.presetLabelY());
-        int slots = slotCount();
-        boolean alreadyPreset = isPreset(currentColor());
-        int hovered = -1;
-        for (int i = 0; i <= slots; i++) {
-            int sx = l.swatchX(i);
-            int sy = l.swatchY(i);
-            boolean hover = inside(mouseX, mouseY, sx - 2, sy - 2, SWATCH + 4, SWATCH + 4);
-            if (hover) hovered = i;
-            int round = (SWATCH + 1) / 2;
-            if (i == slots) {
-                // The plus: a dashed circle, an empty slot to fill, muted while the color is a
-                // preset already.
-                int line = alreadyPreset ? AlpakaStyle.DIVIDER : hover ? accent : AlpakaStyle.TEXT_MUTED;
-                if (hover && !alreadyPreset) {
-                    ModernGuiUtils.drawRoundedRect(graphics, sx, sy, SWATCH, SWATCH, round, AlpakaStyle.ROW_HOVER);
-                }
-                float cx = sx + SWATCH / 2.0f;
-                float cy = sy + SWATCH / 2.0f;
-                AlpakaStyle.dashedCircle(graphics, cx, cy, SWATCH / 2.0f, 10, line);
-                AlpakaStyle.plus(graphics, cx, cy, 3.0f, line);
-                continue;
-            }
-            boolean current = slotColor(i) == currentColor();
-            if (current || hover) {
-                ModernGuiUtils.drawRoundedOutline(graphics, sx - 2, sy - 2, SWATCH + 4, SWATCH + 4, round + 2,
-                        current ? accent : AlpakaStyle.TEXT_MUTED);
-            }
-            ModernGuiUtils.drawRoundedRect(graphics, sx, sy, SWATCH, SWATCH, round, slotColor(i));
-        }
-        if (hovered != hoveredSlot) {
-            hoveredSlot = hovered;
-            hoverSince = System.currentTimeMillis();
-        }
+        drawPresets(graphics, l, mouseX, mouseY);
 
         drawButtons(graphics, l, mouseX, mouseY);
 
@@ -539,12 +676,7 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
                 }
             }
         }
-        if (hoveredSlot >= PRESETS.length && System.currentTimeMillis() - hoverSince >= AlpakaStyle.TOOLTIP_DELAY_MS) {
-            String tip = hoveredSlot < slots ? "Right-click to remove this preset."
-                    : alreadyPreset ? "This color is a preset already."
-                    : "Save the current color as a preset.";
-            AlpakaStyle.tooltip(graphics, this.font, this.width, this.height, mouseX, mouseY, tip);
-        }
+        presetTooltip(graphics, mouseX, mouseY);
         // Notices over the window, as over the config menu.
         net.alpaka.addons.features.notification.AlpakaNotifications.renderOverScreen(graphics);
     }
@@ -611,6 +743,72 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         return null;
     }
 
+    /** The presets of the mode now, the current one ringed, and the plus after the last one. */
+    private void drawPresets(GuiGraphicsExtractor graphics, Layout l, int mouseX, int mouseY) {
+        int accent = ModernGuiUtils.getAccentColor();
+        AlpakaStyle.groupLabel(graphics, this.font, "Presets", l.rightX(), l.presetLabelY());
+        int slots = slotCount();
+        boolean alreadyPreset = currentIsPreset();
+        int hovered = -1;
+        for (int i = 0; i <= slots; i++) {
+            int sx = l.swatchX(i);
+            int sy = l.swatchY(i);
+            boolean hover = inside(mouseX, mouseY, sx - 2, sy - 2, SWATCH + 4, SWATCH + 4);
+            if (hover) hovered = i;
+            int round = (SWATCH + 1) / 2;
+            if (i == slots) {
+                // The plus: a dashed circle, an empty slot to fill, muted while what the picker
+                // shows is a preset already.
+                int line = alreadyPreset ? AlpakaStyle.DIVIDER : hover ? accent : AlpakaStyle.TEXT_MUTED;
+                if (hover && !alreadyPreset) {
+                    ModernGuiUtils.drawRoundedRect(graphics, sx, sy, SWATCH, SWATCH, round, AlpakaStyle.ROW_HOVER);
+                }
+                float cx = sx + SWATCH / 2.0f;
+                float cy = sy + SWATCH / 2.0f;
+                AlpakaStyle.dashedCircle(graphics, cx, cy, SWATCH / 2.0f, 10, line);
+                AlpakaStyle.plus(graphics, cx, cy, 3.0f, line);
+                continue;
+            }
+            boolean current = slotIsCurrent(i);
+            if (current || hover) {
+                ModernGuiUtils.drawRoundedOutline(graphics, sx - 2, sy - 2, SWATCH + 4, SWATCH + 4, round + 2,
+                        current ? accent : AlpakaStyle.TEXT_MUTED);
+            }
+            drawSlot(graphics, i, sx, sy);
+        }
+        if (hovered != hoveredSlot) {
+            hoveredSlot = hovered;
+            hoverSince = System.currentTimeMillis();
+        }
+    }
+
+    private void presetTooltip(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+        if (hoveredSlot < builtInCount() || System.currentTimeMillis() - hoverSince < AlpakaStyle.TOOLTIP_DELAY_MS) return;
+        String noun = presetNoun();
+        String tip = hoveredSlot < slotCount() ? "Right-click to remove this preset."
+                : currentIsPreset() ? "This " + noun + " is a preset already."
+                : "Save the current " + noun + " as a preset.";
+        AlpakaStyle.tooltip(graphics, this.font, this.width, this.height, mouseX, mouseY, tip);
+    }
+
+    /** A click on a preset or the plus; true when it hit one. */
+    private boolean clickPresets(Layout l, double mouseX, double mouseY) {
+        for (int i = 0; i <= slotCount(); i++) {
+            if (inside(mouseX, mouseY, l.swatchX(i) - 2, l.swatchY(i) - 2, SWATCH + 4, SWATCH + 4)) {
+                if (i == slotCount()) {
+                    if (currentIsPreset()) return true;
+                    AlpakaStyle.click();
+                    addCurrentAsPreset();
+                    return true;
+                }
+                AlpakaStyle.click();
+                applySlot(i);
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** Cancel and Save. */
     private void drawButtons(GuiGraphicsExtractor graphics, Layout l, int mouseX, int mouseY) {
         boolean hoverCancel = inside(mouseX, mouseY, l.cancelX(), l.btnY(), l.btnW(), AlpakaStyle.BUTTON_H);
@@ -643,6 +841,7 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
             slider(graphics, l, 2, "Size", Math.round(chroma.size()) + " letters", sizeNorm,
                     mouseX, mouseY, drag == Drag.SIZE);
         }
+        drawPresets(graphics, l, mouseX, mouseY);
         drawButtons(graphics, l, mouseX, mouseY);
     }
 
@@ -687,8 +886,8 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         double mouseX = event.x();
         double mouseY = event.y();
         Layout l = layout();
-        if (event.button() == 1 && !chromaOn()) {
-            for (int i = PRESETS.length; i < slotCount(); i++) {
+        if (event.button() == 1) {
+            for (int i = builtInCount(); i < slotCount(); i++) {
                 if (inside(mouseX, mouseY, l.swatchX(i) - 2, l.swatchY(i) - 2, SWATCH + 4, SWATCH + 4)) {
                     AlpakaStyle.click();
                     removeCustomPreset(i);
@@ -731,7 +930,8 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
                 dragTo(l, mouseX, mouseY);
                 return true;
             }
-            return clickButtons(l, mouseX, mouseY) || super.mouseClicked(event, doubleClick);
+            return clickPresets(l, mouseX, mouseY) || clickButtons(l, mouseX, mouseY)
+                    || super.mouseClicked(event, doubleClick);
         }
 
         if (l.twoStops()) {
@@ -756,20 +956,7 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         }
         syncHexFromColor();
 
-        for (int i = 0; i <= slotCount(); i++) {
-            if (inside(mouseX, mouseY, l.swatchX(i) - 2, l.swatchY(i) - 2, SWATCH + 4, SWATCH + 4)) {
-                if (i == slotCount()) {
-                    if (isPreset(currentColor())) return true;
-                    AlpakaStyle.click();
-                    addCurrentAsPreset();
-                    return true;
-                }
-                AlpakaStyle.click();
-                setColor(slotColor(i));
-                syncHexFromColor();
-                return true;
-            }
-        }
+        if (clickPresets(l, mouseX, mouseY)) return true;
 
         if (overOtherStop(l, mouseX, mouseY)) {
             // The gradient's other point: picked out, and dragged from where it sits.

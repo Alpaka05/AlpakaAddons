@@ -188,6 +188,29 @@ public final class ProfileHistory {
         return selected != null ? selected : best;
     }
 
+    /** The players looked up before, by name, the last looked at first; for completing names. */
+    public static synchronized java.util.List<String> players() {
+        return players(entries());
+    }
+
+    static java.util.List<String> players(Map<String, Entry> entries) {
+        Map<String, Long> newest = new HashMap<>();
+        Map<String, String> names = new HashMap<>();
+        for (Entry entry : entries.values()) {
+            if (entry.player == null || entry.points.isEmpty()) continue;
+            String key = entry.player.toLowerCase(java.util.Locale.ROOT);
+            long t = entry.points.get(entry.points.size() - 1).t();
+            if (t >= newest.getOrDefault(key, Long.MIN_VALUE)) {
+                newest.put(key, t);
+                names.put(key, entry.player);
+            }
+        }
+        java.util.List<String> out = new ArrayList<>(names.keySet());
+        out.sort((a, b) -> Long.compare(newest.get(b), newest.get(a)));
+        out.replaceAll(names::get);
+        return out;
+    }
+
     /** Notes that a look found this the player's selected profile, for {@link #lastProfile}. */
     public static synchronized void selected(String uuid, String profileId) {
         if (uuid == null || profileId == null) return;

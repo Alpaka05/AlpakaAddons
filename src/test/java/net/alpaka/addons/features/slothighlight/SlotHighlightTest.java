@@ -37,6 +37,16 @@ class SlotHighlightTest {
     }
 
     @Test
+    void rngMeter() {
+        assertEquals(Place.RNG_METER, SlotHighlight.placeOf("Catacombs RNG Meter"));
+        assertEquals(Place.RNG_METER, SlotHighlight.placeOf("Revenant Horror RNG Meter"));
+        assertEquals(Place.RNG_METER, SlotHighlight.placeOf("RNG Meter"));
+        assertEquals(Mark.READY, Place.RNG_METER.mark(item("Necron's Handle", "Odds: 0.0091%", "SELECTED")));
+        assertEquals(Mark.MISSING, Place.RNG_METER.mark(item("RNG Meter", "Catacombs (F7)", "You don't have an RNG drop selected for this floor!")));
+        assertEquals(Mark.NONE, Place.RNG_METER.mark(item("Wither Catalyst", "Click to select!")));
+    }
+
+    @Test
     void activePetFromPetInfoOrLore() {
         assertTrue(SlotHighlight.isActivePet("{\"type\":\"RABBIT\",\"active\":true,\"tier\":\"LEGENDARY\"}", List.of()));
         assertTrue(SlotHighlight.isActivePet(null, List.of("Click to despawn!")));

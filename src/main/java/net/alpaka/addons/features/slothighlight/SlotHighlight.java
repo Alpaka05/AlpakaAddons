@@ -77,6 +77,12 @@ public final class SlotHighlight {
         SLAYER_REWARDS(".*Slayer LVL Rewards",
                 c -> c.slotHighlightSlayerRewards,
                 item -> item.lastLine().equals("Click to claim rewards!") ? Mark.READY : Mark.NONE),
+        // The drop the meter is filling up for, and Catacombs floors that have none picked.
+        RNG_METER("(?:.* )?RNG Meter",
+                c -> c.slotHighlightRngMeter,
+                item -> item.lore().stream().anyMatch(line -> line.contains("SELECTED")) ? Mark.READY
+                        : item.lore().stream().anyMatch(line -> line.contains("You don't have an RNG drop")) ? Mark.MISSING
+                        : Mark.NONE),
         COMMISSIONS("Commissions",
                 c -> c.slotHighlightCommissions,
                 item -> item.lore().stream().anyMatch(line -> line.contains("COMPLETED")) ? Mark.READY : Mark.NONE),

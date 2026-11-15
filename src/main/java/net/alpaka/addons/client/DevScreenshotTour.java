@@ -3,7 +3,6 @@ package net.alpaka.addons.client;
 import net.alpaka.addons.AlpakaAddons;
 import net.alpaka.addons.client.hud.HudEditorScreen;
 import net.alpaka.addons.config.AlpakaConfig;
-import net.alpaka.addons.features.chat.ScreenshotPreview;
 import net.alpaka.addons.features.mainmenu.CustomMainMenuScreen;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.CameraType;
@@ -131,7 +130,6 @@ public final class DevScreenshotTour {
             screen("config-hud-style", () -> AlpakaConfigScreen.openOn("Design", "HUD Style")),
             screen("config-better-chat", () -> AlpakaConfigScreen.openOn("Chat", "Better Chat")),
             screen("config-style-timer", () -> AlpakaConfigScreen.openOn("Slayer", "Slayer Boss Timer")),
-            screen("config-screenshot", () -> AlpakaConfigScreen.openOn("Chat", "Better Screenshots")),
             screen("config-reset-all", () -> AlpakaConfigScreen.openOn("Main", "Reset All Settings")),
             screen("config-notification", () -> AlpakaConfigScreen.openOn("Main", "Notifications")),
             new Stop("config-notification-test", () -> net.alpaka.addons.features.notification.AlpakaNotifications.send("Test Notification",
@@ -339,16 +337,6 @@ public final class DevScreenshotTour {
             new Stop("custom-tab-plain", () -> customTab(0, false), () -> true, 20),
             new Stop(null, () -> net.alpaka.addons.features.tablist.CustomTabFeature.devShow(null), () -> true, 2),
             new Stop("world-hud", DevScreenshotTour::showHuds, () -> true, 30),
-            // The screenshot preview of the picture just taken: resting in the corner, then mid-shrink.
-            // A run that leaves out world-hud never gets its picture, so these two pass then.
-            new Stop(null, () -> {}, () -> !shoots("world-hud") || tourShot("world-hud").isFile(), 2),
-            new Stop(null, () -> {
-                if (!shoots("world-hud")) return;
-                ScreenshotPreview.devFreezeAt(1150.0f);
-                ScreenshotPreview.show(tourShot("world-hud"));
-            }, () -> !shoots("world-hud") || ScreenshotPreview.isOnScreen(), 2),
-            new Stop("screenshot-preview", () -> {}, () -> true, 2),
-            new Stop("screenshot-preview-shrink", () -> ScreenshotPreview.devFreezeAt(120.0f), () -> true, 2),
             // The pets with their heads and skins, which only exist once a world is loaded; then the
             // Skills page with the item icons.
             profile("profile-pets-in-world", "Refraction", "PETS"),
@@ -419,7 +407,6 @@ public final class DevScreenshotTour {
                 placeMouse(0.02, 0.02);
             }, () -> true, 200),
             new Stop("profile-page-acc-tooltip", () -> placeMouse(0.40, 0.55), () -> true, 20),
-            new Stop(null, () -> ScreenshotPreview.devFreezeAt(-1.0f), () -> true, 5),
             // The Auction House and the Bazaar in the market screens, on chests filled locally.
             screen("market-ah-main", net.alpaka.addons.features.market.MarketPreview::auctionHouse),
             screen("market-ah-browser", net.alpaka.addons.features.market.MarketPreview::auctionBrowser),
@@ -747,18 +734,6 @@ public final class DevScreenshotTour {
                 Minecraft.getInstance().gui.hud.getChat().resetChatScroll();
                 Minecraft.getInstance().gui.setScreen(null);
             }, () -> true, 5),
-            // A screenshot's preview mid-shrink, then resting in the corner.
-            new Stop(null, () -> {
-                Minecraft mc = Minecraft.getInstance();
-                Screenshot.grab(mc.gameDirectory, "preview-source.png", mc.gameRenderer.mainRenderTarget(), 1,
-                        message -> mc.execute(() -> mc.gui.hud.getChat().addClientSystemMessage(message)));
-            }, () -> true, 3),
-            new Stop(null, () -> {}, () -> net.alpaka.addons.features.chat.ScreenshotPreview.isOnScreen(), 2),
-            new Stop("shot-preview-flash", () -> net.alpaka.addons.features.chat.ScreenshotPreview.devFreezeAt(60), () -> true, 40),
-            new Stop("shot-preview-shrink", () -> net.alpaka.addons.features.chat.ScreenshotPreview.devFreezeAt(200), () -> true, 40),
-            new Stop("shot-preview-settle", () -> net.alpaka.addons.features.chat.ScreenshotPreview.devFreezeAt(420), () -> true, 40),
-            new Stop("shot-preview-exit", () -> net.alpaka.addons.features.chat.ScreenshotPreview.devFreezeAt(650 + 3000 + 250), () -> true, 40),
-            new Stop("shot-preview-corner", () -> net.alpaka.addons.features.chat.ScreenshotPreview.devFreezeAt(-1), () -> true, 40),
             new Stop("chat-share", () -> net.alpaka.addons.features.slayer.SlayerDropTracker.devShareSample(), () -> true, 10),
             new Stop("font-chat-scoreboard", DevScreenshotTour::fontInChatAndScoreboard, () -> true, 20),
             new Stop("third-person", DevScreenshotTour::thirdPerson, () -> true, 40),
@@ -1033,10 +1008,6 @@ public final class DevScreenshotTour {
         begin(mc, stop + 1);
     }
 
-    private static java.io.File tourShot(String name) {
-        return Minecraft.getInstance().gameDirectory.toPath().resolve("screenshots/tour-" + name + ".png").toFile();
-    }
-
     private static void begin(Minecraft mc, int index) {
         // Any value other than "1" picks the stops whose picture starts with it, so a change to one
         // screen can be looked at without the whole tour: ALPAKA_SCREENSHOT_TOUR=config.
@@ -1049,12 +1020,6 @@ public final class DevScreenshotTour {
         stop = index;
         ticks = 0;
         if (index < STOPS.size()) STOPS.get(index).action().run();
-    }
-
-    /** Whether this run takes the named picture: every picture, or those the filter picks. */
-    private static boolean shoots(String shot) {
-        String only = System.getenv(ENV);
-        return only == null || only.equals("1") || shot.startsWith(only);
     }
 
     private static boolean picked(int index, String only) {

@@ -104,7 +104,7 @@ public final class ConfigTree {
             "render_hand_third_person", "smooth_perspective", "disable_front_perspective", "zoom",
             "container_bg_opacity", "inventory_snow", "scrollable_tooltips", "persistent_item_name", "old_master_stars", "storage_preview", "wide_health_bar",
             "better_chat", "chat_search", "chat_copy", "expand_chat_history", "compact_chat", "message_filter",
-            "mention_notification", "chat_peek", "better_screenshot_message", "chat_tabs",
+            "mention_notification", "chat_peek", "chat_tabs",
             "player_model_enabled", "performance_hud_enabled", "inventory_hud_enabled", "custom_tab", "dungeon_map_enabled", "dungeon_door_highlight", "leap_menu_enabled",
             // Item viewmodel: the adjustments are the modifiers' own settings
             "item_size_feature", "item_starlight", "item_motion_blur", "item_viewmodel_reset",
@@ -206,7 +206,7 @@ public final class ConfigTree {
                             "hide_inventory_effects",
                             "scrollable_tooltips", "persistent_item_name", "old_master_stars", "storage_preview", "wide_health_bar", "custom_tab", "#Scoreboard"},
                     {"Chat", "better_chat", "chat_tabs", "chat_search", "chat_copy", "chat_peek", "compact_chat",
-                            "message_filter", "expand_chat_history", "mention_notification", "better_screenshot_message"},
+                            "message_filter", "expand_chat_history", "mention_notification"},
                     {"Viewmodel", "item_size_feature", "#Swing Customizations", "item_starlight", "item_motion_blur",
                             "#Viewmodel Presets", "item_viewmodel_reset"},
                     {"Cosmetics", "custom_name_tag", "custom_damage_tags", "chroma_hat", "aura", "player_scale", "rare_drop_animation", "inventory_snow"}},

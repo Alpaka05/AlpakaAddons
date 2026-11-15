@@ -2485,6 +2485,13 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.slotHighlightSlayerRewards = v; AlpakaConfig.save(); },
                 "slot highlight slayer lvl level rewards claim maddox"));
 
+        OPTIONS.add(new ConfigOption("slot_highlight_rng_meter", "RNG Meter",
+                "The drop each RNG Meter is filling up for as ready, Catacombs floors with no drop picked as missing.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.slotHighlightRngMeter,
+                v -> { AlpakaConfig.instance.slotHighlightRngMeter = v; AlpakaConfig.save(); },
+                "slot highlight rng meter selected drop catacombs dungeon floor slayer nucleus experimentation"));
+
         OPTIONS.add(new ConfigOption("slot_highlight_commissions", "Completed Commissions",
                 "Commissions you have finished and can turn in.",
                 ConfigCategory.SKYBLOCK,

@@ -59,7 +59,7 @@ public final class AlpakaStyle {
      * The Menu Theme's choices as the list shows them, light to dark. The config saves a theme's
      * place in {@link Theme} instead, so reordering the list never changes a saved choice.
      */
-    public static final String[] THEME_NAMES = {"Light", "Dark", "OLED", "Cappuccino"};
+    public static final String[] THEME_NAMES = {"Light", "Dark", "OLED", "Alpaka"};
 
     /**
      * The looks a menu can have: the dark one it always had, a light one, one of pure black for
@@ -80,7 +80,7 @@ public final class AlpakaStyle {
                 0xFFEDEDED, 0xFFBDBDBD, 0xFF7C7C7C, 0xFF2E2E2E, 0xFF6E6E6E, 0xFF8A8A8A, 0xFF0A0A0A, 0xFFEDEDED,
                 0xFF000000, 0xFFE5534B, 0xFFC9726C),
         // Espresso browns with cream text, like the coffee themes of code editors.
-        CAPPUCCINO(0x80000000, 0xFF2B211C, 0xFF3D3029, 0xFF54443A, 0xFF362A24, 0xFF3E3129, 0xFF47392F, 0xFF382C25,
+        ALPAKA(0x80000000, 0xFF2B211C, 0xFF3D3029, 0xFF54443A, 0xFF362A24, 0xFF3E3129, 0xFF47392F, 0xFF382C25,
                 0xFFF3E6D8, 0xFFD2BFAB, 0xFF9C8676, 0xFF54443A, 0xFF8A7464, 0xFFA48D7C, 0xFF32271F, 0xFFF3E6D8,
                 0xFF1A1411, 0xFFE5674F, 0xFFC98370);
 
@@ -91,7 +91,7 @@ public final class AlpakaStyle {
         }
 
         /** The themes in the order of {@link #THEME_NAMES}. */
-        public static final Theme[] MENU_ORDER = {LIGHT, DARK, OLED, CAPPUCCINO};
+        public static final Theme[] MENU_ORDER = {LIGHT, DARK, OLED, ALPAKA};
 
         /** The theme saved under this index, the dark one for anything unknown. */
         public static Theme of(int index) {

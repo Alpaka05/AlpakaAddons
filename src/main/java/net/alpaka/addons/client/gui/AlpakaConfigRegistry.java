@@ -126,7 +126,7 @@ public class AlpakaConfigRegistry {
                 v -> { AlpakaConfig.instance.menuTheme = AlpakaStyle.Theme.MENU_ORDER[Math.round(v)].ordinal(); AlpakaConfig.save(); AlpakaConfig.applyMenuTheme(); },
                 0.0f, (float) (AlpakaStyle.THEME_NAMES.length - 1),
                 val -> AlpakaStyle.THEME_NAMES[Math.round(val)],
-                "menu theme look mode dark light white bright oled black amoled night day appearance gui colors cappuccino coffee brown espresso mocha warm").choices(AlpakaStyle.THEME_NAMES));
+                "menu theme look mode dark light white bright oled black amoled night day appearance gui colors alpaka cappuccino coffee brown espresso mocha warm").choices(AlpakaStyle.THEME_NAMES));
 
         // How the HUDs look, chat and scoreboard included: main switches for the blurred panel and
         // the menu font, and the one blur strength they share. Each HUD's own switches sit in its

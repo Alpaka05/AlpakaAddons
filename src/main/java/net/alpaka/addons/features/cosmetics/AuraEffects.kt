@@ -107,7 +107,9 @@ internal object AuraEffects {
     }
 
     /**
-     * Digital rain: columns of glyphs falling around the body on a slowly turning cylinder. Each
+     * Digital rain: columns of glyphs falling around the body on a slowly turning cylinder. The glyphs
+     * lie in the cylinder's surface, facing out, so the rain forms a ring around the player rather
+     * than a wall towards the camera. Each
      * column is led by a bright, almost white glyph and trails a tail that darkens to deep green; the
      * rain moves a whole glyph at a time, like a terminal scrolling, and the glyphs in the tail keep
      * changing. Where a column reaches the ground it flashes.
@@ -121,15 +123,17 @@ internal object AuraEffects {
         val glyphH = 0.18f * s
         val top = f.height + 0.4f * s
         val rows = max(4, (top / pitch).toInt())
-        val columns = 16
+        val columns = 20
         val turn = t * 0.12f
 
         for (col in 0 until columns) {
             val id = col * 7
-            val a = col * TAU / columns + turn + (hash(id) - 0.5f) * 0.25f
-            val r = radius * (0.9f + 0.2f * hash(id + 1))
-            val x = cos(a) * r
-            val z = sin(a) * r
+            val a = col * TAU / columns + turn
+            val x = cos(a) * radius
+            val z = sin(a) * radius
+            // Along the circle, so the glyph lies in the cylinder.
+            val tx = -sin(a)
+            val tz = cos(a)
             // Rows per second, how long the tail is, and a pause below the ground before it falls again.
             val speed = 6f + 6f * hash(id + 2)
             val length = 6 + (hash(id + 3) * 8).toInt()
@@ -147,10 +151,10 @@ internal object AuraEffects {
                 val glyph = (hash(col * 7919 + row * 104_729 + flicker * 31 + loop * 613) * 256f).toInt()
                 if (k == 0) {
                     c.sprite(x, y, z, 0.4f * s, f.color(0.15f), 0.4f)
-                    c.glyph(x, y, z, glyphW * 1.1f, glyphH * 1.1f, mix(f.color(0f), 0xFFFFFF, 0.3f), 1f, glyph)
+                    c.glyph(x, y, z, glyphW * 1.1f, glyphH * 1.1f, tx, tz, mix(f.color(0f), 0xFFFFFF, 0.3f), 1f, glyph)
                 } else {
                     val age = k.toFloat() / length
-                    c.glyph(x, y, z, glyphW, glyphH, f.color(0.15f + 0.85f * age), (1f - age).pow(1.1f), glyph)
+                    c.glyph(x, y, z, glyphW, glyphH, tx, tz, f.color(0.15f + 0.85f * age), (1f - age).pow(1.1f), glyph)
                 }
             }
 
@@ -235,7 +239,7 @@ internal object AuraEffects {
 
         c.flatArc(0.03f, base, 0.55f * s, f.color(0.35f), 0.3f, segments = 40)
 
-        val columns = 16
+        val columns = 20
         val puffs = 9
         for (col in 0 until columns) {
             val angle0 = col * TAU / columns + t * 0.12f + (hash(col * 3) - 0.5f) * 0.3f

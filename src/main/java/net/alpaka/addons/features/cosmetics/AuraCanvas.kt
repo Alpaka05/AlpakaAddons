@@ -89,26 +89,29 @@ internal class AuraCanvas(
     }
 
     /**
-     * A camera-facing glowing glyph at (x, y, z), [width] by [height] blocks, like a character of
-     * digital rain. The shader draws its strokes; [glyph] (0..255) picks which ones, so the same
+     * A glowing glyph at (x, y, z), [width] by [height] blocks, like a character of digital rain.
+     * Unlike the sprites it does not turn to the camera: it stands upright, its width along the
+     * ground direction ([dirX], [dirZ], of length 1), so glyphs placed around a circle with the
+     * circle's tangent as direction form a real cylinder, seen edge-on at its sides and from behind
+     * through the back. The shader draws its strokes; [glyph] (0..255) picks which ones, so the same
      * number always gives the same character.
      */
-    fun glyph(x: Float, y: Float, z: Float, width: Float, height: Float, rgb: Int, alpha: Float, glyph: Int) {
+    fun glyph(x: Float, y: Float, z: Float, width: Float, height: Float, dirX: Float, dirZ: Float,
+              rgb: Int, alpha: Float, glyph: Int) {
         val a = alphaByte(alpha)
         if (a == 0 || width <= 0f || height <= 0f) return
-        val hw = width * 0.5f
+        val ax = dirX * width * 0.5f
+        val az = dirZ * width * 0.5f
         val hh = height * 0.5f
-        val ax = rightX * hw; val ay = rightY * hw; val az = rightZ * hw
-        val bx = upX * hh; val by = upY * hh; val bz = upZ * hh
         val px = ox + x
         val py = oy + y
         val pz = oz + z
         val color = ARGB.color(a, rgb)
         val u0 = -2f - 2f * (glyph and 255)
-        vertex(px - ax - bx, py - ay - by, pz - az - bz, u0, 0f, color)
-        vertex(px + ax - bx, py + ay - by, pz + az - bz, u0 + 1f, 0f, color)
-        vertex(px + ax + bx, py + ay + by, pz + az + bz, u0 + 1f, 1f, color)
-        vertex(px - ax + bx, py - ay + by, pz - az + bz, u0, 1f, color)
+        vertex(px - ax, py - hh, pz - az, u0, 0f, color)
+        vertex(px + ax, py - hh, pz + az, u0 + 1f, 0f, color)
+        vertex(px + ax, py + hh, pz + az, u0 + 1f, 1f, color)
+        vertex(px - ax, py + hh, pz - az, u0, 1f, color)
     }
 
     // A ribbon's points, collected between beginRibbon and endRibbon. Kept and regrown rather than

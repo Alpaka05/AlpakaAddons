@@ -39,9 +39,12 @@ import static net.alpaka.addons.client.gui.AlpakaStyle.inside;
  * Save; Escape or Cancel leave the option as it was, and Reset in the header goes back to the
  * option's default.
  *
- * An option that offers a rainbow ({@code ConfigOption.withChroma}) also has a Chroma switch in
- * the header. While it is on, the point runs round the wheel the way the rainbow moves, and the
- * sliders on the right set its speed, saturation and, for a rainbow along text, its size.
+ * An option that offers more than one color ({@code ConfigOption.withGradient},
+ * {@code ConfigOption.withChroma}) has its modes on top of the right column: Solid, Gradient and
+ * Chroma, only those it offers. In Gradient both colors sit on the wheel and next to the hex code,
+ * and whichever is picked out is the one the wheel, the sliders and the presets change. In Chroma
+ * the point runs round the wheel the way the rainbow moves, and the sliders set its speed,
+ * saturation and, for a rainbow along text, its size.
  */
 public class ColorPickerScreen extends Screen implements net.alpaka.addons.client.gui.NoticeHost {
     private final Screen parent;
@@ -71,6 +74,34 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
     /** The option's rainbow, or null for a plain color; {@link #chroma} is the copy being edited. */
     private final ChromaSpec chromaSpec;
     private final Chroma chroma;
+
+    /**
+     * The second color of an option that can be a gradient: its end color now and by default,
+     * whether the gradient is on now and by default, and what takes both on Save.
+     */
+    public record GradientSpec(int end, int defaultEnd, boolean on, boolean defaultOn,
+                               java.util.function.BiConsumer<Boolean, Integer> onSave) {
+    }
+
+    private enum Mode {
+        SOLID("Solid"), GRADIENT("Gradient"), CHROMA("Chroma");
+
+        final String label;
+
+        Mode(String label) { this.label = label; }
+    }
+
+    /** The option's gradient, or null; the edited state is {@link #gradientOn} and the two stops. */
+    private final GradientSpec gradientSpec;
+    private boolean gradientOn;
+    /**
+     * In Gradient, the color not picked out: the end while the start is edited, and the other way
+     * round. The picked-out one is the color the wheel and the sliders work on ({@link #rgb}).
+     */
+    private int otherStop;
+    private boolean editingEnd = false;
+    /** The modes this option offers, in the order the row shows them. */
+    private final java.util.List<Mode> modes = new java.util.ArrayList<>();
 
     private String hexInput = "";
     private boolean hexFocused = false;
@@ -108,12 +139,25 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
 
     public ColorPickerScreen(Screen parent, String title, int initialColor, Integer defaultColor, Consumer<Integer> onSave,
                              ChromaSpec chromaSpec) {
+        this(parent, title, initialColor, defaultColor, onSave, chromaSpec, null);
+    }
+
+    public ColorPickerScreen(Screen parent, String title, int initialColor, Integer defaultColor, Consumer<Integer> onSave,
+                             ChromaSpec chromaSpec, GradientSpec gradientSpec) {
         super(GuiFont.text(title));
         this.parent = parent;
         this.onSave = onSave;
         this.defaultColor = defaultColor;
         this.chromaSpec = chromaSpec;
         this.chroma = chromaSpec == null ? null : chromaSpec.live().copy();
+        this.gradientSpec = gradientSpec;
+        this.gradientOn = gradientSpec != null && gradientSpec.on();
+        this.otherStop = gradientSpec == null ? 0 : gradientSpec.end();
+        if (gradientSpec != null || chromaSpec != null) {
+            modes.add(Mode.SOLID);
+            if (gradientSpec != null) modes.add(Mode.GRADIENT);
+            if (chromaSpec != null) modes.add(Mode.CHROMA);
+        }
         setColor(initialColor);
         syncHexFromColor();
     }
@@ -144,9 +188,45 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         return chroma != null && chroma.enabled;
     }
 
+    private Mode mode() {
+        if (chromaOn()) return Mode.CHROMA;
+        return gradientSpec != null && gradientOn ? Mode.GRADIENT : Mode.SOLID;
+    }
+
+    private void setMode(Mode next) {
+        if (chroma != null) chroma.enabled = next == Mode.CHROMA;
+        if (next == Mode.CHROMA) return;
+        if (gradientSpec != null) gradientOn = next == Mode.GRADIENT;
+        // Solid is the start color, so that is what stays under the wheel.
+        if (next == Mode.SOLID) selectStop(false);
+    }
+
+    /** The option's own color, the gradient's start. */
+    private int startColor() {
+        return editingEnd ? otherStop : currentColor();
+    }
+
+    private int endColor() {
+        return editingEnd ? currentColor() : otherStop;
+    }
+
+    /** Picks out the gradient's start or end for the wheel and the sliders. */
+    private void selectStop(boolean end) {
+        if (end == editingEnd) return;
+        int now = currentColor();
+        setColor(otherStop);
+        otherStop = now;
+        editingEnd = end;
+        hexFocused = false;
+        syncHexFromColor();
+    }
+
     /** Whether anything differs from the option's default, which is when Reset shows. */
     private boolean differsFromDefault() {
-        if (defaultColor != null && currentColor() != defaultColor) return true;
+        if (defaultColor != null && startColor() != defaultColor) return true;
+        if (gradientSpec != null && (gradientOn != gradientSpec.defaultOn() || endColor() != gradientSpec.defaultEnd())) {
+            return true;
+        }
         return chroma != null && !chroma.sameAs(chromaSpec.defaults());
     }
 
@@ -272,11 +352,15 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
     private static final int MAX_WHEEL = 148;
     private static final int SWATCH = 13;
     private static final int SLIDER_ROW_H = 28;
+    /** With the mode row above them the rows sit closer, so two rows of presets still fit. */
+    private static final int SLIDER_ROW_H_COMPACT = 24;
+    /** The mode row: the names, a line under them, and the gap to what follows. */
+    private static final int MODE_H = 18;
+    /** Each of a gradient's two colors beside the hex code. */
+    private static final int STOP_W = 20;
     private static final int FIELD_H = 16;
     private static final int PREVIEW_W = 28;
     private static final int RESET_W = 40;
-    private static final int TOGGLE_W = 16;
-    private static final int TOGGLE_H = 9;
 
     /** The header's Reset button sits centred in the header, as every header button does. */
     private static int headerButtonY(Layout l) {
@@ -285,49 +369,56 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
 
     /**
      * Where everything goes, shared by drawing and input. The wheel takes the left side down to the
-     * window's bottom edge, beside the Cancel and Save buttons, which sit to the right of it.
+     * window's bottom edge, beside the Cancel and Save buttons, which sit to the right of it. The
+     * right column starts with the mode row when the option has modes, then the hex row (none in
+     * Chroma, which has no single color to type), the sliders and the presets.
      */
-    private record Layout(int x, int y, int w, int h, int bodyY, int wheelX, int wheelY, int wheelSize,
-                          int rightX, int rightW, int presetLabelY, int btnY, int saveX, int cancelX,
-                          int btnW, int resetX) {
+    private record Layout(int x, int y, int w, int h, int bodyY, int top, int wheelX, int wheelY, int wheelSize,
+                          int rightX, int rightW, int rowH, boolean hexRow, boolean twoStops, int btnY, int saveX,
+                          int cancelX, int btnW, int resetX) {
 
-        static Layout of(int width, int height) {
+        static Layout of(int width, int height, boolean modeRow, Mode mode) {
             int w = Math.max(280, Math.min(PREF_W, width - 16));
             int h = Math.max(180, Math.min(PREF_H, height - 16));
             int x = (width - w) / 2;
             int y = (height - h) / 2;
             int bodyY = y + AlpakaStyle.HEADER_H + 10;
+            int top = bodyY + (modeRow ? MODE_H : 0);
             int bottom = y + h - AlpakaStyle.PAD - 4;
             int wheelSize = Math.max(64, Math.min(MAX_WHEEL, Math.min(bottom - bodyY, w * 2 / 5)));
             int wheelX = x + AlpakaStyle.PAD + 6;
             int wheelY = bodyY + (bottom - bodyY - wheelSize) / 2;
             int rightX = wheelX + wheelSize + 18;
             int rightW = x + w - AlpakaStyle.PAD - 6 - rightX;
-            int presetLabelY = bodyY + FIELD_H + 8 + 2 * SLIDER_ROW_H + 6;
             int btnY = y + h - AlpakaStyle.BUTTON_H - AlpakaStyle.PAD;
             int btnW = 64;
             int saveX = x + w - AlpakaStyle.PAD - btnW;
             int cancelX = saveX - btnW - 6;
             int resetX = x + w - AlpakaStyle.PAD - RESET_W;
-            return new Layout(x, y, w, h, bodyY, wheelX, wheelY, wheelSize, rightX, rightW, presetLabelY,
+            return new Layout(x, y, w, h, bodyY, top, wheelX, wheelY, wheelSize, rightX, rightW,
+                    modeRow ? SLIDER_ROW_H_COMPACT : SLIDER_ROW_H, mode != Mode.CHROMA, mode == Mode.GRADIENT,
                     btnY, saveX, cancelX, btnW, resetX);
         }
 
         double wheelCx() { return wheelX + wheelSize / 2.0; }
         double wheelCy() { return wheelY + wheelSize / 2.0; }
         double wheelR() { return wheelSize / 2.0; }
-        int hexX() { return rightX + PREVIEW_W + 6; }
+        /** Left of the hex code: the color now, or a gradient's start and end side by side. */
+        int stopX(boolean end) { return rightX + (end ? STOP_W + 4 : 0); }
+        int hexX() { return rightX + (twoStops ? 2 * STOP_W + 4 : PREVIEW_W) + 6; }
         int hexW() { return rightX + rightW - hexX(); }
-        int sliderLabelY(int i) { return bodyY + FIELD_H + 8 + i * SLIDER_ROW_H; }
-        /** The Chroma switch sits in the header left of Reset, whose place it keeps free. */
-        int chromaToggleX() { return resetX - 10 - TOGGLE_W; }
-        int chromaToggleY() { return y + (AlpakaStyle.HEADER_H - TOGGLE_H) / 2; }
+        int sliderLabelY(int i) { return top + (hexRow ? FIELD_H + 8 : 0) + i * rowH; }
+        int presetLabelY() { return sliderLabelY(2) + 6; }
         int trackY(int i) { return sliderLabelY(i) + 17; }
         // The track's round ends reach 3 px past its ends, so it is inset to stay in the column.
         int trackX() { return rightX + 3; }
         int trackW() { return rightW - 6; }
         int swatchX(int i) { return rightX + (i % PRESETS_PER_ROW) * (rightW - SWATCH) / (PRESETS_PER_ROW - 1); }
-        int swatchY(int i) { return presetLabelY + 12 + (i / PRESETS_PER_ROW) * (SWATCH + 6); }
+        int swatchY(int i) { return presetLabelY() + 12 + (i / PRESETS_PER_ROW) * (SWATCH + 6); }
+    }
+
+    private Layout layout() {
+        return Layout.of(this.width, this.height, modes.size() > 1, mode());
     }
 
     // ---- Drawing --------------------------------------------------------------------------------
@@ -336,23 +427,13 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
     public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         AlpakaStyle.backdrop(graphics, this.width, this.height);
         boolean pushed = AlpakaStyle.beginOpen(graphics, openTimeMs, this.width, this.height);
-        Layout l = Layout.of(this.width, this.height);
+        Layout l = layout();
         int accent = ModernGuiUtils.getAccentColor();
 
         AlpakaStyle.panel(graphics, l.x(), l.y(), l.w(), l.h());
         AlpakaStyle.header(graphics, this.font, this.title.getString(), l.x(), l.y(), l.w());
 
-        // The Chroma switch, for options that offer a rainbow, with its name in front.
-        if (chroma != null) {
-            int tx = l.chromaToggleX();
-            int ty = l.chromaToggleY();
-            String label = "Chroma";
-            int labelW = GuiFont.width(this.font, label);
-            boolean hoverToggle = overChromaToggle(l, mouseX, mouseY);
-            graphics.text(this.font, GuiFont.text(label), tx - 6 - labelW, ty + (TOGGLE_H - 8) / 2,
-                    hoverToggle || chroma.enabled ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT, false);
-            AlpakaStyle.toggle(graphics, tx, ty, TOGGLE_W, TOGGLE_H, chroma.enabled ? 1.0f : 0.0f);
-        }
+        drawModes(graphics, l, mouseX, mouseY);
 
         // Reset, in the header: only while something differs from the default.
         if (canReset()) {
@@ -372,18 +453,35 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         int shade = Math.round((1.0f - hsv.val()) * 255.0f);
         if (shade > 0) ModernGuiUtils.drawRoundedRect(graphics, l.wheelX(), l.wheelY(), ws, ws, ws / 2, shade << 24);
         ModernGuiUtils.drawRoundedOutline(graphics, l.wheelX() - 1, l.wheelY() - 1, ws + 2, ws + 2, ws / 2 + 1, AlpakaStyle.LINE);
-        double angle = hsv.hue() * 2.0 * Math.PI;
-        float knobX = (float) (l.wheelCx() + Math.cos(angle) * hsv.sat() * l.wheelR());
-        float knobY = (float) (l.wheelCy() - Math.sin(angle) * hsv.sat() * l.wheelR());
+        float[] knob = wheelPoint(l, hsv.hue(), hsv.sat());
         boolean hoverWheel = overWheel(l, mouseX, mouseY);
-        AlpakaStyle.knob(graphics, knobX, knobY, hoverWheel || drag == Drag.WHEEL ? 12 : 11, rgb);
+        if (mode() == Mode.GRADIENT) {
+            // The other color as a smaller point, joined to this one by a dotted line, so both ends
+            // of the gradient show where they sit; a click on it picks it out.
+            Hsv other = Hsv.of(otherStop & 0x00FFFFFF, new Hsv(0.0f, 0.0f, 1.0f));
+            float[] o = wheelPoint(l, other.hue(), other.sat());
+            int dots = Math.max(2, (int) (Math.hypot(o[0] - knob[0], o[1] - knob[1]) / 7.0));
+            for (int i = 1; i < dots; i++) {
+                float t = i / (float) dots;
+                int dx = Math.round(knob[0] + (o[0] - knob[0]) * t);
+                int dy = Math.round(knob[1] + (o[1] - knob[1]) * t);
+                ModernGuiUtils.drawRoundedRect(graphics, dx - 1, dy - 1, 2, 2, 1, 0xCCFFFFFF);
+            }
+            AlpakaStyle.knob(graphics, o[0], o[1], overOtherStop(l, mouseX, mouseY) ? 10 : 9, otherStop | 0xFF000000);
+        }
+        AlpakaStyle.knob(graphics, knob[0], knob[1], hoverWheel || drag == Drag.WHEEL ? 12 : 11, rgb);
 
         // The color now, and its hex code to type into. hexInput mirrors the color whenever the field
         // is not being typed in (syncHexFromColor runs after every change and on leaving the field),
         // so it is drawn as it is rather than formatted anew every frame.
-        AlpakaStyle.swatch(graphics, l.rightX(), l.bodyY(), PREVIEW_W, FIELD_H, currentColor());
-        boolean hoverHex = inside(mouseX, mouseY, l.hexX(), l.bodyY(), l.hexW(), FIELD_H);
-        AlpakaStyle.textField(graphics, this.font, l.hexX(), l.bodyY(), l.hexW(), FIELD_H,
+        if (l.twoStops()) {
+            drawStop(graphics, l, false, mouseX, mouseY);
+            drawStop(graphics, l, true, mouseX, mouseY);
+        } else {
+            AlpakaStyle.swatch(graphics, l.rightX(), l.top(), PREVIEW_W, FIELD_H, currentColor());
+        }
+        boolean hoverHex = inside(mouseX, mouseY, l.hexX(), l.top(), l.hexW(), FIELD_H);
+        AlpakaStyle.textField(graphics, this.font, l.hexX(), l.top(), l.hexW(), FIELD_H,
                 hexInput, "#RRGGBB", hexFocused, hoverHex, caretFrom);
 
         // Brightness runs from black to the color at full brightness; opacity from the window's own
@@ -431,6 +529,14 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         drawButtons(graphics, l, mouseX, mouseY);
 
         AlpakaStyle.endOpen(graphics, pushed);
+        if (l.twoStops()) {
+            for (boolean end : new boolean[] {false, true}) {
+                if (inside(mouseX, mouseY, l.stopX(end), l.top(), STOP_W, FIELD_H)) {
+                    AlpakaStyle.tooltip(graphics, this.font, this.width, this.height, mouseX, mouseY,
+                            end ? "End color" : "Start color");
+                }
+            }
+        }
         if (hoveredSlot >= PRESETS.length && System.currentTimeMillis() - hoverSince >= AlpakaStyle.TOOLTIP_DELAY_MS) {
             String tip = hoveredSlot < slots ? "Right-click to remove this preset."
                     : alreadyPreset ? "This color is a preset already."
@@ -439,6 +545,68 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         }
         // Notices over the window, as over the config menu.
         net.alpaka.addons.features.notification.AlpakaNotifications.renderOverScreen(graphics);
+    }
+
+    private float[] wheelPoint(Layout l, float hue, float sat) {
+        double angle = hue * 2.0 * Math.PI;
+        return new float[] {(float) (l.wheelCx() + Math.cos(angle) * sat * l.wheelR()),
+                (float) (l.wheelCy() - Math.sin(angle) * sat * l.wheelR())};
+    }
+
+    /** Whether the mouse is on the gradient's other point on the wheel, which a click picks out. */
+    private boolean overOtherStop(Layout l, double mouseX, double mouseY) {
+        if (mode() != Mode.GRADIENT) return false;
+        Hsv other = Hsv.of(otherStop & 0x00FFFFFF, new Hsv(0.0f, 0.0f, 1.0f));
+        float[] o = wheelPoint(l, other.hue(), other.sat());
+        return Math.hypot(mouseX - o[0], mouseY - o[1]) <= 6.0;
+    }
+
+    /** One of a gradient's colors beside the hex code, ringed in the accent while it is picked out. */
+    private void drawStop(GuiGraphicsExtractor graphics, Layout l, boolean end, int mouseX, int mouseY) {
+        int sx = l.stopX(end);
+        int sy = l.top();
+        boolean picked = end == editingEnd;
+        boolean hover = inside(mouseX, mouseY, sx, sy, STOP_W, FIELD_H);
+        if (picked || hover) {
+            ModernGuiUtils.drawRoundedOutline(graphics, sx - 2, sy - 2, STOP_W + 4, FIELD_H + 4, 4,
+                    picked ? ModernGuiUtils.getAccentColor() : AlpakaStyle.TEXT_MUTED);
+        }
+        AlpakaStyle.swatch(graphics, sx, sy, STOP_W, FIELD_H, end ? endColor() : startColor());
+    }
+
+    /**
+     * The modes on top of the right column, as the config lists its choices: a dot and the name,
+     * both in the accent for the mode that is on.
+     */
+    private void drawModes(GuiGraphicsExtractor graphics, Layout l, int mouseX, int mouseY) {
+        if (modes.size() < 2) return;
+        int accent = ModernGuiUtils.getAccentColor();
+        int cx = l.rightX();
+        for (Mode m : modes) {
+            int w = modeWidth(m);
+            boolean on = m == mode();
+            boolean hover = inside(mouseX, mouseY, cx - 3, l.bodyY() - 4, w + 6, 16);
+            ModernGuiUtils.drawRoundedRect(graphics, cx, l.bodyY() + 1, 5, 5, 2, on ? accent : hover ? AlpakaStyle.TEXT_MUTED : AlpakaStyle.DIVIDER);
+            graphics.text(this.font, GuiFont.text(m.label), cx + 9, l.bodyY(), on ? accent : hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT, false);
+            cx += w + 14;
+        }
+        ModernGuiUtils.drawRect(graphics, l.rightX(), l.bodyY() + 12, l.rightW(), 1, AlpakaStyle.LINE);
+    }
+
+    private int modeWidth(Mode m) {
+        return 9 + GuiFont.width(this.font, m.label);
+    }
+
+    /** The mode under the mouse in the mode row, or null. */
+    private Mode modeAt(Layout l, double mouseX, double mouseY) {
+        if (modes.size() < 2) return null;
+        int cx = l.rightX();
+        for (Mode m : modes) {
+            int w = modeWidth(m);
+            if (inside(mouseX, mouseY, cx - 3, l.bodyY() - 4, w + 6, 16)) return m;
+            cx += w + 14;
+        }
+        return null;
     }
 
     /** Cancel and Save. */
@@ -451,7 +619,7 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
 
     /**
      * The picker with Chroma on: the point runs round the wheel as the rainbow moves, at its
-     * saturation, the preview shows the color of the moment, and the sliders set the rainbow.
+     * saturation, and the sliders set the rainbow.
      */
     private void drawChroma(GuiGraphicsExtractor graphics, Layout l, int mouseX, int mouseY) {
         double shift = chroma.shift(System.currentTimeMillis());
@@ -460,22 +628,8 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         int now = chroma.rgb(shift, 0.0);
         ModernGuiUtils.drawRoundedOutline(graphics, l.wheelX() - 1, l.wheelY() - 1, l.wheelSize() + 2, l.wheelSize() + 2,
                 l.wheelSize() / 2 + 1, AlpakaStyle.LINE);
-        double angle = hue * 2.0 * Math.PI;
-        float knobX = (float) (l.wheelCx() + Math.cos(angle) * sat * l.wheelR());
-        float knobY = (float) (l.wheelCy() - Math.sin(angle) * sat * l.wheelR());
-        AlpakaStyle.knob(graphics, knobX, knobY, 11, now);
-
-        // The preview, and in place of the hex code a few letters in the rainbow, as text shows it.
-        AlpakaStyle.swatch(graphics, l.rightX(), l.bodyY(), PREVIEW_W, FIELD_H, 0xFF000000 | now);
-        AlpakaStyle.textField(graphics, this.font, l.hexX(), l.bodyY(), l.hexW(), FIELD_H, "", "", false, false, 0L);
-        String sample = "Chroma";
-        int tx = l.hexX() + 5;
-        int ty = l.bodyY() + (FIELD_H - 8) / 2;
-        for (int i = 0; i < sample.length(); i++) {
-            String letter = sample.substring(i, i + 1);
-            graphics.text(this.font, GuiFont.text(letter), tx, ty, 0xFF000000 | chroma.rgb(shift, i), false);
-            tx += GuiFont.width(this.font, letter);
-        }
+        float[] knob = wheelPoint(l, hue, sat);
+        AlpakaStyle.knob(graphics, knob[0], knob[1], 11, now);
 
         float speedNorm = (chroma.speed() - Chroma.MIN_SPEED) / (Chroma.MAX_SPEED - Chroma.MIN_SPEED);
         slider(graphics, l, 0, "Speed", String.format(Locale.ROOT, "%.2fx", chroma.speed()), speedNorm,
@@ -522,22 +676,15 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
         return Math.hypot(mouseX - l.wheelCx(), mouseY - l.wheelCy()) <= l.wheelR() + 3;
     }
 
-    private boolean overChromaToggle(Layout l, double mouseX, double mouseY) {
-        if (chroma == null) return false;
-        int labelW = GuiFont.width(this.font, "Chroma");
-        return inside(mouseX, mouseY, l.chromaToggleX() - 6 - labelW - 2, l.chromaToggleY() - 4,
-                labelW + 6 + TOGGLE_W + 6, TOGGLE_H + 8);
-    }
-
     private static boolean overSlider(Layout l, int row, double mouseX, double mouseY) {
-        return inside(mouseX, mouseY, l.rightX() - 4, l.sliderLabelY(row), l.rightW() + 8, SLIDER_ROW_H);
+        return inside(mouseX, mouseY, l.rightX() - 4, l.sliderLabelY(row), l.rightW() + 8, l.rowH());
     }
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         double mouseX = event.x();
         double mouseY = event.y();
-        Layout l = Layout.of(this.width, this.height);
+        Layout l = layout();
         if (event.button() == 1 && !chromaOn()) {
             for (int i = PRESETS.length; i < slotCount(); i++) {
                 if (inside(mouseX, mouseY, l.swatchX(i) - 2, l.swatchY(i) - 2, SWATCH + 4, SWATCH + 4)) {
@@ -554,15 +701,23 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
 
         if (canReset() && inside(mouseX, mouseY, l.resetX(), headerButtonY(l), RESET_W, AlpakaStyle.BUTTON_H)) {
             AlpakaStyle.click();
+            editingEnd = false;
             setColor(defaultColor);
             syncHexFromColor();
             if (chroma != null) chroma.set(chromaSpec.defaults());
+            if (gradientSpec != null) {
+                gradientOn = gradientSpec.defaultOn();
+                otherStop = gradientSpec.defaultEnd();
+            }
             return true;
         }
 
-        if (overChromaToggle(l, mouseX, mouseY)) {
-            AlpakaStyle.click();
-            chroma.enabled = !chroma.enabled;
+        Mode clickedMode = modeAt(l, mouseX, mouseY);
+        if (clickedMode != null) {
+            if (clickedMode != mode()) {
+                AlpakaStyle.click();
+                setMode(clickedMode);
+            }
             return true;
         }
 
@@ -577,7 +732,17 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
             return clickButtons(l, mouseX, mouseY) || super.mouseClicked(event, doubleClick);
         }
 
-        if (inside(mouseX, mouseY, l.hexX(), l.bodyY(), l.hexW(), FIELD_H)) {
+        if (l.twoStops()) {
+            for (boolean end : new boolean[] {false, true}) {
+                if (inside(mouseX, mouseY, l.stopX(end) - 2, l.top() - 2, STOP_W + 4, FIELD_H + 4)) {
+                    if (end != editingEnd) AlpakaStyle.click();
+                    selectStop(end);
+                    return true;
+                }
+            }
+        }
+
+        if (inside(mouseX, mouseY, l.hexX(), l.top(), l.hexW(), FIELD_H)) {
             if (!wasHex) {
                 AlpakaStyle.click();
                 hexInput = hexOf();
@@ -603,6 +768,13 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
             }
         }
 
+        if (overOtherStop(l, mouseX, mouseY)) {
+            // The gradient's other point: picked out, and dragged from where it sits.
+            AlpakaStyle.click();
+            selectStop(!editingEnd);
+            drag = Drag.WHEEL;
+            return true;
+        }
         if (overWheel(l, mouseX, mouseY)) {
             drag = Drag.WHEEL;
         } else if (overSlider(l, 0, mouseX, mouseY)) {
@@ -634,7 +806,7 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
     @Override
     public boolean mouseDragged(MouseButtonEvent event, double deltaX, double deltaY) {
         if (drag != Drag.NONE) {
-            dragTo(Layout.of(this.width, this.height), event.x(), event.y());
+            dragTo(layout(), event.x(), event.y());
             return true;
         }
         return super.mouseDragged(event, deltaX, deltaY);
@@ -725,9 +897,11 @@ public class ColorPickerScreen extends Screen implements net.alpaka.addons.clien
 
     private void save() {
         AlpakaStyle.click();
-        // The rainbow first: the color's setter saves the config, which then carries both.
+        // The rainbow and the gradient first: the color's setter saves the config, which then
+        // carries them all.
         if (chroma != null) chromaSpec.live().set(chroma);
-        onSave.accept(currentColor());
+        if (gradientSpec != null) gradientSpec.onSave().accept(gradientOn, endColor());
+        onSave.accept(startColor());
         onClose();
     }
 

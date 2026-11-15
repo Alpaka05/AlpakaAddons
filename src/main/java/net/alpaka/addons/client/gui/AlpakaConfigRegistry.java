@@ -2898,13 +2898,13 @@ public class AlpakaConfigRegistry {
                 "name tag nametag own player third person f5 cosmetic animation norisk"));
 
         OPTIONS.add(new ConfigOption("name_tag_color_mode", "Color Effect",
-                "Vanilla keeps Hypixel's colors. Gradient runs between the two Gradient colors, or a rainbow with Chroma on in their picker. Pulse makes the letters throb.",
+                "Vanilla keeps Hypixel's colors. Custom uses Name Tag Color, one color, a gradient or a rainbow as set in its picker. Pulse makes the letters throb.",
                 ConfigCategory.COSMETICS,
                 () -> (float) AlpakaConfig.instance.nameTagColorEffect,
                 v -> { AlpakaConfig.instance.nameTagColorEffect = Math.round(v); AlpakaConfig.save(); },
                 0.0f, (float) (CustomNameTagFeature.COLOR_MODE_NAMES.length - 1),
                 val -> CustomNameTagFeature.COLOR_MODE_NAMES[Math.round(val)],
-                "name tag color rainbow chroma gradient pulse effect mode").choices(CustomNameTagFeature.COLOR_MODE_NAMES));
+                "name tag color rainbow chroma gradient custom solid pulse effect mode").choices(CustomNameTagFeature.COLOR_MODE_NAMES));
 
         OPTIONS.add(new ConfigOption("name_tag_motion_mode", "Letter Motion",
                 "Wave makes the letters bob one after another, Bounce hops the whole tag, Shake jitters.",
@@ -2982,20 +2982,14 @@ public class AlpakaConfigRegistry {
                 0.0f, 100.0f, val -> val == 0.0f ? "Off (0%)" : String.format(Locale.ROOT, "%.0f%%", val),
                 "name tag background backdrop opacity dark box darkening letters"));
 
-        OPTIONS.add(ConfigOption.color("name_tag_gradient_start_color", "Gradient Start Color",
-                "The gradient's start color. Chroma in the picker turns the gradient into a rainbow.",
+        OPTIONS.add(ConfigOption.color("name_tag_color", "Name Tag Color",
+                "The color Custom draws the tag in. Its picker makes it one color, a gradient or a moving rainbow.",
                 ConfigCategory.COSMETICS,
                 c -> c.nameTagGradientStart,
                 v -> { AlpakaConfig.instance.nameTagGradientStart = v; AlpakaConfig.save(); },
-                "name tag gradient color start first picker chroma rainbow")
-                .withChroma(c -> c.nameTagChroma, true));
-
-        OPTIONS.add(ConfigOption.color("name_tag_gradient_end_color", "Gradient End Color",
-                "The gradient's end color. Chroma in the picker turns the gradient into a rainbow.",
-                ConfigCategory.COSMETICS,
-                c -> c.nameTagGradientEnd,
-                v -> { AlpakaConfig.instance.nameTagGradientEnd = v; AlpakaConfig.save(); },
-                "name tag gradient color end second picker chroma rainbow")
+                "name tag color gradient start end solid picker chroma rainbow")
+                .withGradient(c -> c.nameTagGradientEnd, v -> AlpakaConfig.instance.nameTagGradientEnd = v,
+                        c -> c.nameTagGradient, v -> AlpakaConfig.instance.nameTagGradient = v)
                 .withChroma(c -> c.nameTagChroma, true));
 
         OPTIONS.add(new ConfigOption("Sensei Hat", ConfigCategory.COSMETICS));
@@ -3287,36 +3281,24 @@ public class AlpakaConfigRegistry {
                 val -> CustomDamageTagFeature.DUNGEON_MODE_NAMES[Math.round(val)],
                 "damage tag dungeon catacombs boss room floor hide master mode damage tags in dungeons show never whole run").choices(CustomDamageTagFeature.DUNGEON_MODE_NAMES));
 
-        OPTIONS.add(ConfigOption.color("custom_damage_tag_normal_start", "Normal Hit Start Color",
-                "The start color of a normal hit's gradient. Chroma in the picker turns the gradient into a rainbow.",
+        OPTIONS.add(ConfigOption.color("custom_damage_tag_normal_color", "Normal Hit Color",
+                "The color of a normal hit. Its picker makes it one color, a gradient or a moving rainbow.",
                 ConfigCategory.COSMETICS,
                 c -> c.customDamageTagNormalStart,
                 v -> { AlpakaConfig.instance.customDamageTagNormalStart = v; AlpakaConfig.save(); },
-                "damage tag gradient color picker normal start first chroma rainbow")
+                "damage tag color gradient picker normal start end solid chroma rainbow")
+                .withGradient(c -> c.customDamageTagNormalEnd, v -> AlpakaConfig.instance.customDamageTagNormalEnd = v,
+                        c -> c.customDamageTagNormalGradient, v -> AlpakaConfig.instance.customDamageTagNormalGradient = v)
                 .withChroma(c -> c.customDamageTagNormalChroma, true));
 
-        OPTIONS.add(ConfigOption.color("custom_damage_tag_normal_end", "Normal Hit End Color",
-                "The end color of a normal hit's gradient. Chroma in the picker turns the gradient into a rainbow.",
-                ConfigCategory.COSMETICS,
-                c -> c.customDamageTagNormalEnd,
-                v -> { AlpakaConfig.instance.customDamageTagNormalEnd = v; AlpakaConfig.save(); },
-                "damage tag gradient color picker normal end last chroma rainbow")
-                .withChroma(c -> c.customDamageTagNormalChroma, true));
-
-        OPTIONS.add(ConfigOption.color("custom_damage_tag_crit_start", "Crit Start Color",
-                "The start color of a crit's gradient. Chroma in the picker turns the gradient into a rainbow.",
+        OPTIONS.add(ConfigOption.color("custom_damage_tag_crit_color", "Crit Color",
+                "The color of a crit. Its picker makes it one color, a gradient or a moving rainbow.",
                 ConfigCategory.COSMETICS,
                 c -> c.customDamageTagCritStart,
                 v -> { AlpakaConfig.instance.customDamageTagCritStart = v; AlpakaConfig.save(); },
-                "damage tag gradient color picker crit start first chroma rainbow")
-                .withChroma(c -> c.customDamageTagCritChroma, true));
-
-        OPTIONS.add(ConfigOption.color("custom_damage_tag_crit_end", "Crit End Color",
-                "The end color of a crit's gradient. Chroma in the picker turns the gradient into a rainbow.",
-                ConfigCategory.COSMETICS,
-                c -> c.customDamageTagCritEnd,
-                v -> { AlpakaConfig.instance.customDamageTagCritEnd = v; AlpakaConfig.save(); },
-                "damage tag gradient color picker crit end last chroma rainbow")
+                "damage tag color gradient picker crit start end solid chroma rainbow")
+                .withGradient(c -> c.customDamageTagCritEnd, v -> AlpakaConfig.instance.customDamageTagCritEnd = v,
+                        c -> c.customDamageTagCritGradient, v -> AlpakaConfig.instance.customDamageTagCritGradient = v)
                 .withChroma(c -> c.customDamageTagCritChroma, true));
 
         // --- 7. SOUND & UTILITY ---

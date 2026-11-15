@@ -47,7 +47,7 @@ import kotlin.math.sin
  */
 object CustomNameTagFeature {
 
-    // The rainbow is the Gradient effect with Chroma switched on in its colors' pickers.
+    // Custom draws Name Tag Color as its picker sets it: one color, a gradient or a rainbow.
     const val COLOR_VANILLA = 0
     const val COLOR_GRADIENT = 1
     const val COLOR_PULSE = 2
@@ -59,7 +59,7 @@ object CustomNameTagFeature {
 
     /** Names for the config slider, indexed by the COLOR_* constants. */
     @JvmField
-    val COLOR_MODE_NAMES = arrayOf("Vanilla", "Gradient", "Pulse")
+    val COLOR_MODE_NAMES = arrayOf("Vanilla", "Custom", "Pulse")
 
     /** Names for the config slider, indexed by the MOTION_* constants. */
     @JvmField
@@ -273,6 +273,7 @@ object CustomNameTagFeature {
                 val chroma = cfg.nameTagChroma
                 // With Chroma, a rainbow across the letters, drifting sideways over time.
                 if (chroma != null && chroma.enabled) return chroma.rgbNow(index.toDouble())
+                if (!cfg.nameTagGradient) return cfg.nameTagGradientStart and 0xFFFFFF
                 // The two colors swap ends slowly, so the gradient appears to flow along the tag.
                 val mix = 0.5f + 0.5f * sin(time * 1.5 + position * Math.PI).toFloat()
                 lerpRgb(cfg.nameTagGradientStart, cfg.nameTagGradientEnd, mix)

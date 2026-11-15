@@ -162,6 +162,9 @@ public final class DevScreenshotTour {
             // A picker whose option offers a rainbow, once with Chroma off and once with it on.
             screen("color-picker-chroma-off", () -> chromaPicker(false)),
             screen("color-picker-chroma-on", () -> chromaPicker(true)),
+            screen("color-picker-gradient", () -> new ColorPickerScreen(null, "Name Tag Color", 0xFF55FFFF, 0xFF55FFFF, color -> {},
+                    new ColorPickerScreen.ChromaSpec(new net.alpaka.addons.config.Chroma(), new net.alpaka.addons.config.Chroma(), true),
+                    new ColorPickerScreen.GradientSpec(0xFFFF55FF, 0xFFFF55FF, true, true, (on, end) -> {}))),
             screen("wheel-editor", () -> new CommandWheelConfigScreen(new CustomMainMenuScreen())),
             new Stop("shortcuts-editor", () -> {
                 AlpakaConfig.instance.commandAliases = new java.util.ArrayList<>(List.of(

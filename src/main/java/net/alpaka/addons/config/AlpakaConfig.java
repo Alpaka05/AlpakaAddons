@@ -105,9 +105,11 @@ public class AlpakaConfig {
     /** Extra height above vanilla's position, in blocks. Negative brings the tag down. */
     public float nameTagHeightOffset = 0.0f;
     public float nameTagAnimationSpeed = 1.0f;
-    /** The two ends of the gradient color mode. */
+    /** The name tag's color: one color, or a gradient from start to end when nameTagGradient is on. */
     public int nameTagGradientStart = 0xFF55FFFF;
     public int nameTagGradientEnd = 0xFFFF55FF;
+    /** Gradient or Solid in the Name Tag Color picker; Solid uses the start color alone. */
+    public boolean nameTagGradient = true;
 
     /** A translucent sensei hat on the player's own head. Plain straw by default; see chromaHatChroma. */
     public boolean chromaHatEnabled = false;
@@ -585,7 +587,10 @@ public class AlpakaConfig {
     public int customDamageTagNormalEnd = 0xFF9FB4D0;
     public int customDamageTagCritStart = 0xFFFFE15A;
     public int customDamageTagCritEnd = 0xFFFF4A3A;
-    /** Normal hits and crits as a moving rainbow instead of their gradients; set in their pickers. */
+    /** Gradient or Solid in the hit colors' pickers; Solid uses the start color alone. */
+    public boolean customDamageTagNormalGradient = true;
+    public boolean customDamageTagCritGradient = true;
+    /** Normal hits and crits as a moving rainbow instead of their colors; set in their pickers. */
     public Chroma customDamageTagNormalChroma = new Chroma(false, 1.0f, 10.0f, 80.0f);
     public Chroma customDamageTagCritChroma = new Chroma(false, 1.0f, 10.0f, 80.0f);
 

@@ -590,6 +590,17 @@ public final class AlpakaStyle {
         ModernGuiUtils.drawRoundedOutline(graphics, x, y, w, h, radius, DIVIDER);
     }
 
+    /** A swatch for a gradient: the start color on the left running into the end color on the right. */
+    public static void gradientSwatch(GuiGraphicsExtractor graphics, int x, int y, int w, int h, int from, int to) {
+        swatch(graphics, x, y, w, h, from);
+        // Inset by the hairline, so the square quad stays inside the swatch's rounded corners.
+        int c0 = from | 0xFF000000;
+        int c1 = to | 0xFF000000;
+        net.alpaka.addons.features.wheel.WheelMesh mesh = new net.alpaka.addons.features.wheel.WheelMesh(1.0f / guiScale());
+        mesh.quad(x + 1, y + 1, c0, x + 1, y + h - 1, c0, x + w - 1, y + h - 1, c1, x + w - 1, y + 1, c1);
+        mesh.submit(graphics);
+    }
+
     /**
      * Soft edges for a scrolling area: the window's color fading out over a few pixels at the top
      * and the bottom of the clip, so a row cut by the edge reads as scrolled away, not broken off.

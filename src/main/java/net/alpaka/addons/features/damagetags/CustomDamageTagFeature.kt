@@ -288,7 +288,9 @@ object CustomDamageTagFeature {
 
             val text = tag.text
             val start = if (tag.crit) cfg.customDamageTagCritStart else cfg.customDamageTagNormalStart
-            val end = if (tag.crit) cfg.customDamageTagCritEnd else cfg.customDamageTagNormalEnd
+            // Solid in the picker is a gradient from the start color to itself.
+            val gradientOn = if (tag.crit) cfg.customDamageTagCritGradient else cfg.customDamageTagNormalGradient
+            val end = if (!gradientOn) start else if (tag.crit) cfg.customDamageTagCritEnd else cfg.customDamageTagNormalEnd
             // A still gradient is the same every frame, so it is built once per tag and again only when
             // a color changes.
             val chroma = if (tag.crit) cfg.customDamageTagCritChroma else cfg.customDamageTagNormalChroma
@@ -336,10 +338,13 @@ object CustomDamageTagFeature {
      * tag ever hold other characters, it has to go back through visualOrderText. The styles are worked out up
      * front, so the width pass and the later draw see the same ones.
      */
-    /** The number with each character in [chroma]'s rainbow, which moves along it over time. */
-    private fun rainbow(text: String, chroma: Chroma, shift: Double): FormattedCharSequence {
+    private fun gradient(text: String, start: Int, end: Int, time: Double?): FormattedCharSequence {
         val count = text.length
-        val styles = Array(count) { index -> Style.EMPTY.withColor(chroma.rgb(shift, index.toDouble())) }
+        val styles = Array(count) { index ->
+            var position = if (count > 1) index.toFloat() / (count - 1) else 0f
+            if (time != null) position = (position + 0.35f * sin(time * 3.0 + index * 0.6).toFloat()).coerceIn(0f, 1f)
+            Style.EMPTY.withColor(lerpRgb(start, end, position))
+        }
         return FormattedCharSequence { sink ->
             for (i in 0 until count) {
                 if (!sink.accept(i, styles[i], text[i].code)) return@FormattedCharSequence false
@@ -348,13 +353,10 @@ object CustomDamageTagFeature {
         }
     }
 
-    private fun gradient(text: String, start: Int, end: Int, time: Double?): FormattedCharSequence {
+    /** The number with each character in [chroma]'s rainbow, which moves along it over time. */
+    private fun rainbow(text: String, chroma: Chroma, shift: Double): FormattedCharSequence {
         val count = text.length
-        val styles = Array(count) { index ->
-            var position = if (count > 1) index.toFloat() / (count - 1) else 0f
-            if (time != null) position = (position + 0.35f * sin(time * 3.0 + index * 0.6).toFloat()).coerceIn(0f, 1f)
-            Style.EMPTY.withColor(lerpRgb(start, end, position))
-        }
+        val styles = Array(count) { index -> Style.EMPTY.withColor(chroma.rgb(shift, index.toDouble())) }
         return FormattedCharSequence { sink ->
             for (i in 0 until count) {
                 if (!sink.accept(i, styles[i], text[i].code)) return@FormattedCharSequence false

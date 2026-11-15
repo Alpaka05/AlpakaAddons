@@ -4,6 +4,7 @@ import net.alpaka.addons.features.cosmetics.AuraCanvas.Companion.TAU
 import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -121,7 +122,7 @@ internal object AuraEffects {
         val pitch = 0.19f * s
         val glyphW = 0.14f * s
         val glyphH = 0.18f * s
-        val top = f.height + 0.4f * s
+        val top = f.height + 0.55f * s
         val rows = max(4, (top / pitch).toInt())
         val columns = 20
         val turn = t * 0.12f
@@ -141,20 +142,25 @@ internal object AuraEffects {
             val pos = t * speed + hash(id + 5) * cycle
             val loop = floor(pos / cycle).toInt()
             val head = (pos - loop * cycle).toInt()
+            // Where this fall comes into view: a new height every time, up to five rows below the
+            // top, so the upper edge of the rain is ragged instead of one straight cut.
+            val start = min((hash(id * 17 + loop * 7) * 6f).toInt(), rows - 2)
 
             for (k in 0 until length) {
                 val row = head - k
-                if (row < 0 || row >= rows) continue
+                if (row < start || row >= rows) continue
                 val y = top - (row + 0.5f) * pitch
+                // The first two glyphs of a fall fade in rather than appear at full strength.
+                val enter = when (row - start) { 0 -> 0.35f; 1 -> 0.7f; else -> 1f }
                 // Every glyph changes now and then, each at its own pace.
                 val flicker = floor(t * (1.5f + 3f * hash(id * 13 + row)) + hash(id * 31 + row * 3) * 7f).toInt()
                 val glyph = (hash(col * 7919 + row * 104_729 + flicker * 31 + loop * 613) * 256f).toInt()
                 if (k == 0) {
-                    c.sprite(x, y, z, 0.4f * s, f.color(0.15f), 0.4f)
-                    c.glyph(x, y, z, glyphW * 1.1f, glyphH * 1.1f, tx, tz, mix(f.color(0f), 0xFFFFFF, 0.3f), 1f, glyph)
+                    c.sprite(x, y, z, 0.4f * s, f.color(0.15f), 0.4f * enter)
+                    c.glyph(x, y, z, glyphW * 1.1f, glyphH * 1.1f, tx, tz, mix(f.color(0f), 0xFFFFFF, 0.3f), enter, glyph)
                 } else {
                     val age = k.toFloat() / length
-                    c.glyph(x, y, z, glyphW, glyphH, tx, tz, f.color(0.15f + 0.85f * age), (1f - age).pow(1.1f), glyph)
+                    c.glyph(x, y, z, glyphW, glyphH, tx, tz, f.color(0.15f + 0.85f * age), enter * (1f - age).pow(1.1f), glyph)
                 }
             }
 

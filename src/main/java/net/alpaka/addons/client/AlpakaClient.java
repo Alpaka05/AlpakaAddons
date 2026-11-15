@@ -75,6 +75,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.chat.ChatOverHud.register();
         net.alpaka.addons.features.chat.ChatSearchFeature.register();
         net.alpaka.addons.features.itemvalue.ItemValueFeature.register();
+        net.alpaka.addons.features.itemvalue.PriceTooltipFeature.register();
         net.alpaka.addons.features.chestvalue.ChestValueFeature.register();
         net.alpaka.addons.features.itemsearch.ItemSearchFeature.register();
         net.alpaka.addons.features.garden.PestFinder.register();
@@ -144,7 +145,7 @@ public class AlpakaClient implements ClientModInitializer {
             );
 
             // The Profile Dashboard: the player's own profile, or another player's by name.
-            for (String alias : new String[]{"alpakaprofile", "aprofile", "ap"}) {
+            for (String alias : new String[]{"alpakaprofile", "aprofile", "ad"}) {
                 dispatcher.register(ClientCommands.literal(alias)
                     .executes(context -> openProfile(null))
                     .then(ClientCommands.argument("player", com.mojang.brigadier.arguments.StringArgumentType.word())

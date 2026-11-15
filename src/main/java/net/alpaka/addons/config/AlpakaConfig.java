@@ -1044,6 +1044,7 @@ public class AlpakaConfig {
     public boolean slotHighlightCroesus = true;
     public boolean slotHighlightJacobContests = true;
     public boolean slotHighlightSlayerRewards = true;
+    public boolean slotHighlightRngMeter = true;
     public boolean slotHighlightCommissions = true;
     public boolean slotHighlightChocolateFactory = true;
     public boolean slotHighlightComposterUpgrades = true;
@@ -1132,6 +1133,17 @@ public class AlpakaConfig {
     public boolean itemSearchEnabled = true;
     /** The Chest Value panel beside a menu: what everything in it is worth; see ChestValuePanel. Needs allowApiCalls. */
     public boolean chestValueEnabled = false;
+    /** Price Tooltip: prices written under SkyBlock items' tooltips; see PriceTooltipFeature. Needs allowApiCalls. */
+    public boolean priceTooltipEnabled = false;
+    /** When they show, an index into PriceTooltipFeature.MODES: always, while its key is held, switched by its key. */
+    public int priceTooltipMode = 0;
+    /** Whether they are switched on, for the toggle mode. */
+    public boolean priceTooltipShown = true;
+    /** Which lines the tooltip gets. */
+    public boolean priceTooltipLowestBin = true;
+    public boolean priceTooltipAverage = true;
+    public boolean priceTooltipBazaar = true;
+    public boolean priceTooltipItemValue = true;
     /** Whether the panel is showing: its key switches it, and it stays so from menu to menu until pressed again. */
     public boolean chestValueShown = false;
     /** Whether a chest's panel counts the player's own inventory below it too. */
@@ -2111,6 +2123,7 @@ public class AlpakaConfig {
         this.itemSearchEnabled = false;
         this.itemValueEnabled = false;
         this.chestValueEnabled = false;
+        this.priceTooltipEnabled = false;
         this.profileDashboardEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;

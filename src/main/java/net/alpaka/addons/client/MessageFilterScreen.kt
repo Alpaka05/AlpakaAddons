@@ -371,7 +371,7 @@ class MessageFilterScreen(private val parent: Screen) : Screen(GuiFont.text("Cus
                     return true
                 }
             }
-            if (input.keyPressed(event.key(), event.hasControlDownWithQuirk(), event.hasShiftDown())) {
+            if (input.keyPressed(event)) {
                 caretFrom = System.currentTimeMillis()
                 return true
             }

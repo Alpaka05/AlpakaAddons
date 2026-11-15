@@ -515,7 +515,7 @@ public class ItemSearchScreen extends Screen {
             if (!list.isEmpty()) go(list.get(0));
             return true;
         }
-        if (input.keyPressed(key, event.hasControlDownWithQuirk(), event.hasShiftDown())) {
+        if (input.keyPressed(event)) {
             caretFrom = System.currentTimeMillis();
             targetScrollY = 0;
             return true;

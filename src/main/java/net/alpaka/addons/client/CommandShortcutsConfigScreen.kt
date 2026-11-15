@@ -2,6 +2,7 @@ package net.alpaka.addons.client
 
 import net.alpaka.addons.client.gui.AlpakaStyle
 import net.alpaka.addons.client.gui.AlpakaStyle.ButtonKind
+import net.alpaka.addons.client.gui.EditableText
 import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.client.gui.ModernGuiUtils
 import net.alpaka.addons.config.AlpakaConfig
@@ -39,6 +40,11 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(GuiFont.
     private var focusKind: Kind? = null
     private var focusIndex = -1
     private var focusColumn = 0
+    /** The text, caret and selection of the focused cell while it is edited; written back on every change. */
+    private var edit: EditableText? = null
+    /** The cell that was being edited when the current click came in, and whether Shift was held. */
+    private var clickedFrom: Triple<Kind?, Int, Int>? = null
+    private var clickShift = false
 
     /** The key row waiting for a key press, or -1. */
     private var capturingKey = -1
@@ -189,7 +195,7 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(GuiFont.
         if (row.kind == Kind.ALIAS) {
             val alias = aliases[row.index]
             val focused = focusKind == Kind.ALIAS && focusIndex == row.index && focusColumn == 0
-            AlpakaStyle.textField(graphics, this.font, fieldX, fieldY, leftW, FIELD_H, alias.alias, "/alias", focused, hoverLeft, caretFrom)
+            drawField(graphics, fieldX, fieldY, leftW, alias.alias, "/alias", focused, hoverLeft)
         } else {
             val shortcut = keys[row.index]
             val capturing = capturingKey == row.index
@@ -214,12 +220,20 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(GuiFont.
         val cmdW = commandW(x, w, row.kind)
         val command = if (row.kind == Kind.ALIAS) aliases[row.index].command else keys[row.index].command
         val cmdFocused = focusKind == row.kind && focusIndex == row.index && focusColumn == 1
-        AlpakaStyle.textField(graphics, this.font, cmdX, fieldY, cmdW, FIELD_H, command, "/command",
-            cmdFocused, inList && inside(mouseX, mouseY, cmdX, fieldY, cmdW, FIELD_H), caretFrom)
+        drawField(graphics, cmdX, fieldY, cmdW, command, "/command", cmdFocused,
+            inList && inside(mouseX, mouseY, cmdX, fieldY, cmdW, FIELD_H))
 
         val dx = delX(x, w)
         val btnY = y + (row.height - SMALL_BTN) / 2
         AlpakaStyle.trashButton(graphics, dx, btnY, SMALL_BTN, inList && inside(mouseX, mouseY, dx, btnY, SMALL_BTN, SMALL_BTN))
+    }
+
+    /** A text cell: the caret and selection while it is edited. */
+    private fun drawField(graphics: GuiGraphicsExtractor, x: Int, y: Int, w: Int, text: String, placeholder: String,
+                          focused: Boolean, hover: Boolean) {
+        val e = edit
+        if (focused && e != null) AlpakaStyle.textField(graphics, this.font, x, y, w, FIELD_H, e, null, placeholder, true, hover, caretFrom)
+        else AlpakaStyle.textField(graphics, this.font, x, y, w, FIELD_H, text, placeholder, false, hover, caretFrom)
     }
 
     /** Alias rows that repeat an earlier alias, which therefore never apply. */
@@ -258,6 +272,8 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(GuiFont.
             return true
         }
 
+        clickedFrom = if (focusKind != null) Triple(focusKind, focusIndex, focusColumn) else null
+        clickShift = event.hasShiftDown()
         endEditing()
         if (!inside(mouseX, mouseY, f.listX, f.listY, f.listW, f.listH)) return super.mouseClicked(event, isDoubleClick)
 
@@ -289,14 +305,14 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(GuiFont.
                             save()
                         }
                         inside(mouseX, mouseY, rowX + 3, fieldY, leftW(row.kind) - 3, FIELD_H) -> {
-                            if (row.kind == Kind.ALIAS) focus(Kind.ALIAS, row.index, 0)
+                            if (row.kind == Kind.ALIAS) focus(Kind.ALIAS, row.index, 0, rowX + 3, leftW(row.kind) - 3, event.x())
                             else {
                                 playPloppSound()
                                 capturingKey = row.index
                             }
                         }
                         inside(mouseX, mouseY, commandX(rowX, row.kind), fieldY, commandW(rowX, rowW, row.kind), FIELD_H) ->
-                            focus(row.kind, row.index, 1)
+                            focus(row.kind, row.index, 1, commandX(rowX, row.kind), commandW(rowX, rowW, row.kind), event.x())
                     }
                 }
                 else -> {}
@@ -306,11 +322,23 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(GuiFont.
         return true
     }
 
-    private fun focus(kind: Kind, index: Int, column: Int) {
+    /**
+     * Starts editing a cell, or moves the caret of the one being edited to the click at
+     * [mouseX] (Shift selects up to it). Without a click the caret starts at the end.
+     */
+    private fun focus(kind: Kind, index: Int, column: Int, fieldX: Int = 0, fieldW: Int = 0, mouseX: Double = Double.NaN) {
         caretFrom = System.currentTimeMillis()
+        val wasEditing = edit != null && clickedFrom == Triple(kind, index, column)
         focusKind = kind
         focusIndex = index
         focusColumn = column
+        if (!wasEditing) {
+            // An alias is a single word: spaces would never match the first word of a command.
+            val alias = kind == Kind.ALIAS && column == 0
+            edit = EditableText(MAX_LEN).filter { it >= 32 && it != 127 && it != '§'.code && !(alias && it == ' '.code) }
+                .also { it.setText(focusedText ?: "") }
+        }
+        if (!mouseX.isNaN()) AlpakaStyle.clickTextField(this.font, edit, null, fieldX, fieldW, mouseX, wasEditing, clickShift)
     }
 
     private fun endEditing() {
@@ -335,13 +363,6 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(GuiFont.
             }
         }
 
-    private fun insert(typed: String) {
-        val current = focusedText ?: return
-        // An alias is a single word: spaces would never match the first word of a command.
-        val clean = if (focusKind == Kind.ALIAS && focusColumn == 0) typed.replace(" ", "") else typed
-        val filtered = clean.filter { it.code >= 32 && it.code != 127 && it != '§' }
-        focusedText = (current + filtered).take(MAX_LEN)
-    }
 
     override fun charTyped(event: CharacterEvent): Boolean {
         if (swallowChar) {
@@ -349,7 +370,9 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(GuiFont.
             return true
         }
         if (focusKind != null) {
-            insert(String(Character.toChars(event.codepoint())))
+            val e = edit ?: return true
+            if (e.insert(event.codepoint())) focusedText = e.text
+            caretFrom = System.currentTimeMillis()
             return true
         }
         return super.charTyped(event)
@@ -377,16 +400,16 @@ class CommandShortcutsConfigScreen(private val parent: Screen) : Screen(GuiFont.
             return true
         }
         if (focusKind != null) {
+            val e = edit
+            if (e != null) {
+                val before = e.text
+                if (e.keyPressed(event)) {
+                    if (e.text != before) focusedText = e.text
+                    caretFrom = System.currentTimeMillis()
+                    return true
+                }
+            }
             when {
-                event.key() == GLFW.GLFW_KEY_BACKSPACE -> {
-                    val current = focusedText ?: ""
-                    if (current.isNotEmpty()) focusedText = current.substring(0, current.length - 1)
-                    return true
-                }
-                event.isPaste -> {
-                    insert(this.minecraft?.keyboardHandler?.clipboard ?: "")
-                    return true
-                }
                 event.key() == GLFW.GLFW_KEY_TAB -> {
                     // From an alias on to its command; from a command, out of the field.
                     if (focusKind == Kind.ALIAS && focusColumn == 0) focus(Kind.ALIAS, focusIndex, 1)

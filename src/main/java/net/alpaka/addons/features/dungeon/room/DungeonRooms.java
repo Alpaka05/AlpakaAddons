@@ -141,7 +141,7 @@ public final class DungeonRooms {
 
     /** In a run, on SkyBlock, and not yet in the floor's boss room. */
     private static boolean inRunOutsideBoss() {
-        return SkyblockUtils.isOnSkyblock() && DungeonState.inDungeon() && !inBossRoom();
+        return DungeonState.inDungeon() && SkyblockUtils.isOnSkyblock() && !inBossRoom();
     }
 
     /**
@@ -164,7 +164,8 @@ public final class DungeonRooms {
         if (floor == null || floor.length() < 2) return false;
         int number;
         try {
-            number = Integer.parseInt(floor.substring(1));
+            // Parsed in place: this runs a few times every tick of a run.
+            number = Integer.parseInt(floor, 1, floor.length(), 10);
         } catch (NumberFormatException e) {
             return false;
         }

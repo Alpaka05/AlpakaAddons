@@ -293,9 +293,20 @@ public class ConfigOption {
         setFloat(val);
     }
 
+    /** The last value {@link #getFormattedValue} formatted without a formatter, and its text. */
+    private float defaultFormattedFor = Float.NaN;
+    private String defaultFormatted;
+
     public String getFormattedValue() {
-        if (formatter != null) return formatter.apply(getFloat());
-        return String.format(Locale.ROOT, "%.1f", getFloat());
+        float value = getFloat();
+        if (formatter != null) return formatter.apply(value);
+        // Asked for every frame the slider is on screen; the text only changes with the value.
+        // Compared by bits, so -0.0 and 0.0 keep their own texts.
+        if (defaultFormatted == null || Float.floatToRawIntBits(value) != Float.floatToRawIntBits(defaultFormattedFor)) {
+            defaultFormatted = String.format(Locale.ROOT, "%.1f", value);
+            defaultFormattedFor = value;
+        }
+        return defaultFormatted;
     }
 
     // Action
@@ -494,5 +505,16 @@ public class ConfigOption {
         if (!secret || text.isEmpty()) return text;
         String end = text.length() > 8 ? text.substring(text.length() - 4) : "";
         return "•".repeat(Math.min(10, text.length() - end.length())) + end;
+    }
+
+    /**
+     * What the field shows while the text is being edited: for a secret, one dot for each hidden
+     * character, so the caret and the selection land on the right characters; null for any other
+     * text, which shows as it is.
+     */
+    public String getEditingMask(String text) {
+        if (!secret || text.isEmpty()) return null;
+        int hidden = text.length() > 8 ? text.length() - 4 : text.length();
+        return "•".repeat(hidden) + text.substring(hidden);
     }
 }

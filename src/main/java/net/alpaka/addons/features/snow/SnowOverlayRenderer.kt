@@ -480,7 +480,7 @@ object SnowOverlayRenderer {
             // Between 20 and 55 degrees off vertical.
             val tilt = 0.35f + random.nextFloat() * 0.6f
             val pace = (60.0f + random.nextFloat() * 45.0f) * scale
-            for (side in intArrayOf(-1, 1)) {
+            for (side in -1..1 step 2) {
                 addSplashDrop(x, ground, side * sin(tilt) * pace, -cos(tilt) * pace,
                     0.3f + random.nextFloat() * 0.2f, alpha)
             }

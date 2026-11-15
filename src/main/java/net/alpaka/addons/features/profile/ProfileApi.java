@@ -34,6 +34,11 @@ public final class ProfileApi {
     static final String SOOPY = "https://api.soopy.dev";
     static final String SKYKINGS = "https://api.skykings.net";
     static final String HYPIXEL_RESOURCES = "https://api.hypixel.net/v2/resources/skyblock";
+    /** The sites the dashboard's footer offers to open the profile on. */
+    public static final String ELITE_SITE = "https://elitebot.dev/@";
+    public static final String SKYCRYPT_SITE = "https://sky.shiiyu.moe/stats/";
+    public static final String SKYKINGS_SITE = "https://skykings.net/profilestats/";
+
     private static final long FRESH_MS = 60_000L;
     /** The least time between two requests. */
     private static final long SPACING_MS = 250L;

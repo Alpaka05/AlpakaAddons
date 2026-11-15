@@ -64,7 +64,6 @@ public final class ItemSearchFeature {
             }
             ItemSearchTracker.onMenuOpened();
             ScreenEvents.remove(screen).register(s -> ItemSearchTracker.onMenuClosed(s.getTitle(), container.getMenu()));
-            ScreenEvents.afterExtract(screen).register((s, graphics, mx, my, delta) -> ItemSearchHighlight.drawSlots(container, graphics));
             // In a menu the key searches for the item under the mouse.
             ScreenKeyboardEvents.allowKeyPress(screen).register((s, event) -> !KEY.matches(event) || !keyPressed(s));
             ScreenMouseEvents.allowMouseClick(screen).register((s, event) -> !KEY.matchesMouse(event) || !keyPressed(s));

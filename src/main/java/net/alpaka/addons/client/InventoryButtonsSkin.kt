@@ -1,6 +1,7 @@
 package net.alpaka.addons.client
 
 import net.alpaka.addons.client.gui.AlpakaStyle
+import net.alpaka.addons.client.gui.EditableText
 import net.alpaka.addons.client.gui.AlpakaStyle.ButtonKind
 import net.alpaka.addons.client.gui.GuiFont
 import net.alpaka.addons.client.gui.ModernGuiUtils
@@ -45,6 +46,12 @@ object InventoryButtonsSkin {
     fun textField(graphics: GuiGraphicsExtractor, font: Font, x: Int, y: Int, w: Int, h: Int,
                   text: String, placeholder: String, focused: Boolean, hover: Boolean) {
         AlpakaStyle.textField(graphics, font, x, y, w, h, text, placeholder, focused, hover, 0L)
+    }
+
+    /** As above, with the caret and selection of the text being edited. */
+    fun textField(graphics: GuiGraphicsExtractor, font: Font, x: Int, y: Int, w: Int, h: Int,
+                  text: EditableText, placeholder: String, focused: Boolean, hover: Boolean) {
+        AlpakaStyle.textField(graphics, font, x, y, w, h, text, null, placeholder, focused, hover, 0L)
     }
 
     /** A row of a list: lighter on hover, lighter still while selected. */

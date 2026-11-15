@@ -194,6 +194,13 @@ public final class ItemMotionBlurFeature {
         float opacity = Mth.clamp(config.itemMotionBlurOpacity, 0.0f, 1.0f);
         Frame[] frames = history.snapshot();
 
+        // Whether each layer can be ghosted depends on its quads alone, so it is checked once here
+        // rather than again for every step of the trail.
+        boolean[] ghostable = new boolean[poses.length];
+        for (int layer = 0; layer < poses.length; layer++) {
+            ghostable[layer] = usesVanillaSheets(currentSubmits.get(layer).quads());
+        }
+
         try {
             // Oldest ghost first, so that with blending the newer, stronger copies land on top.
             for (int step = steps; step >= 1; step--) {
@@ -202,12 +209,16 @@ public final class ItemMotionBlurFeature {
                 if (alpha <= 0.0f) {
                     continue;
                 }
+                int older = olderFrame(frames, sampleTime);
+                if (older < 0) {
+                    continue; // The history does not reach back this far: no layer gets a ghost.
+                }
                 for (int layer = 0; layer < poses.length; layer++) {
-                    ItemFeatureRenderer.Submit submit = currentSubmits.get(layer);
-                    if (!usesVanillaSheets(submit.quads())) {
+                    if (!ghostable[layer]) {
                         continue;
                     }
-                    if (!samplePose(frames, sampleTime, layer, GHOST_STACK.last())) {
+                    ItemFeatureRenderer.Submit submit = currentSubmits.get(layer);
+                    if (!samplePose(frames, older, sampleTime, layer, GHOST_STACK.last())) {
                         continue;
                     }
                     pendingGhostAlpha = alpha;
@@ -223,17 +234,29 @@ public final class ItemMotionBlurFeature {
     }
 
     /**
-     * Writes the pose of {@code layer} at {@code time} into {@code out}, interpolated between the
-     * two recorded frames around it. False when the history does not reach back that far - a
-     * ghost that would have to be guessed is better left out than piled onto the oldest frame.
+     * The recorded frame at or just before {@code time}, or -1 when the history does not reach back
+     * that far. The same for every layer, so a trail step looks it up once.
      */
-    private static boolean samplePose(Frame[] frames, long time, int layer, PoseStack.Pose out) {
+    private static int olderFrame(Frame[] frames, long time) {
         if (frames.length == 0 || time < frames[0].nanos) {
-            return false;
+            return -1;
         }
         int older = frames.length - 1;
         while (older > 0 && frames[older].nanos > time) {
             older--;
+        }
+        return older;
+    }
+
+    /**
+     * Writes the pose of {@code layer} at {@code time} into {@code out}, interpolated between the
+     * two recorded frames around it ({@code older} from {@link #olderFrame}). False when the history
+     * does not reach back that far - a ghost that would have to be guessed is better left out than
+     * piled onto the oldest frame.
+     */
+    private static boolean samplePose(Frame[] frames, int older, long time, int layer, PoseStack.Pose out) {
+        if (older < 0) {
+            return false;
         }
         Frame a = frames[older];
         if (older == frames.length - 1 || a.nanos == time) {

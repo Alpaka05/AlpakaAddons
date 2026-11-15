@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.itemsearch;
 
+import net.alpaka.addons.utils.ItemData;
 import net.alpaka.addons.AlpakaAddons;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.alpaka.addons.utils.SkyblockUtils;
@@ -180,7 +181,7 @@ public final class ItemSearchTracker {
     static String skyblockId(ItemStack stack) {
         CustomData data = stack.get(DataComponents.CUSTOM_DATA);
         if (data == null) return null;
-        String id = data.copyTag().getStringOr("id", "");
+        String id = ItemData.view(data).getStringOr("id", "");
         return id.isEmpty() ? null : id;
     }
 
@@ -188,7 +189,7 @@ public final class ItemSearchTracker {
     static String uuid(ItemStack stack) {
         CustomData data = stack.get(DataComponents.CUSTOM_DATA);
         if (data == null) return null;
-        String uuid = data.copyTag().getStringOr("uuid", "");
+        String uuid = ItemData.view(data).getStringOr("uuid", "");
         return uuid.isEmpty() ? null : uuid;
     }
 

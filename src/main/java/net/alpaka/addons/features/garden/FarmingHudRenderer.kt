@@ -138,10 +138,12 @@ object FarmingHudRenderer {
             Layout(emptyList(), 0, 0, IntArray(0), emptyArray(), emptyArray(), IntArray(0), IntArray(0), IntArray(0), IntArray(0), iconSize)
         } else {
             val labelTexts = Array(rows.size) { HudPanel.text(Component.literal(rows[it].label), smoothFont) }
+            // Each label measured once, for the column and for its own end below.
+            val labelEnds = IntArray(rows.size) { font.width(labelTexts[it]) }
             var labelMax = 0
             for (index in rows.indices) {
                 if (rows[index].spansColumns) continue
-                labelMax = maxOf(labelMax, font.width(labelTexts[index]))
+                labelMax = maxOf(labelMax, labelEnds[index])
             }
             val labelWidth = if (labelMax > 0) labelMax + LABEL_GAP else 0
             val valueXs = IntArray(rows.size)
@@ -155,7 +157,7 @@ object FarmingHudRenderer {
             var widest = 0
             for (index in rows.indices) {
                 val row = rows[index]
-                val labelEnd = font.width(labelTexts[index])
+                val labelEnd = labelEnds[index]
                 val valueX = if (row.spansColumns) labelEnd + LABEL_GAP else labelWidth
                 valueXs[index] = valueX
                 val hasIcons = row.leadIcon != null || row.icons.isNotEmpty()

@@ -192,12 +192,19 @@ object ChromaHatFeature {
     }
 
     /**
-     * Color of a vertex: its position around the brim in turns, a shade multiplier, an alpha byte. A
-     * plain function rather than a lambda, so the four calls per quad box none of their arguments.
+     * The rainbow's color at each segment edge for the hat being emitted. Every ring shares them, so
+     * they are worked out once per hat instead of four times per quad. Only touched on the render
+     * thread, one hat at a time.
      */
-    private fun colorAt(rainbow: Boolean, plainRgb: Int, hueShift: Double, turns: Double, shade: Float, a: Int): Int =
-        if (rainbow) ARGB.color(a, ARGB.scaleRGB(Mth.hsvToRgb(fract(turns + hueShift), 0.9f, 1.0f), shade))
-        else ARGB.color(a, ARGB.scaleRGB(plainRgb, shade))
+    private val SEGMENT_RGB = IntArray(SEGMENTS + 1)
+
+    /**
+     * Color of a vertex: the segment edge it sits on around the brim, a shade multiplier, an alpha
+     * byte. A plain function rather than a lambda, so the four calls per quad box none of their
+     * arguments.
+     */
+    private fun colorAt(rainbow: Boolean, plainRgb: Int, segment: Int, shade: Float, a: Int): Int =
+        ARGB.color(a, ARGB.scaleRGB(if (rainbow) SEGMENT_RGB[segment] else plainRgb, shade))
 
     /**
      * Sweeps the profile around the y axis and stitches consecutive rings into quads.
@@ -228,6 +235,9 @@ object ChromaHatFeature {
         val p11 = Vector3f()
         val edge1 = Vector3f()
         val edge2 = Vector3f()
+        if (rainbow) {
+            for (i in 0..SEGMENTS) SEGMENT_RGB[i] = Mth.hsvToRgb(fract(i.toDouble() / SEGMENTS + hueShift), 0.9f, 1.0f)
+        }
         for (p in 0 until profile.size - 1) {
             val a = profile[p]
             val b = profile[p + 1]
@@ -254,12 +264,10 @@ object ChromaHatFeature {
                 val ny = nAxial
                 val nz = (MID_SIN[i] * nRadial).toFloat()
 
-                val turns0 = i.toDouble() / SEGMENTS
-                val turns1 = (i + 1).toDouble() / SEGMENTS
-                val c00 = colorAt(rainbow, plainRgb, hueShift, turns0, a.shade * strip, alphaA)
-                val c01 = colorAt(rainbow, plainRgb, hueShift, turns1, a.shade * strip, alphaA)
-                val c10 = colorAt(rainbow, plainRgb, hueShift, turns0, b.shade * strip, alphaB)
-                val c11 = colorAt(rainbow, plainRgb, hueShift, turns1, b.shade * strip, alphaB)
+                val c00 = colorAt(rainbow, plainRgb, i, a.shade * strip, alphaA)
+                val c01 = colorAt(rainbow, plainRgb, i + 1, a.shade * strip, alphaA)
+                val c10 = colorAt(rainbow, plainRgb, i, b.shade * strip, alphaB)
+                val c11 = colorAt(rainbow, plainRgb, i + 1, b.shade * strip, alphaB)
 
                 val u0 = i.toFloat() / SEGMENTS
                 val u1 = (i + 1).toFloat() / SEGMENTS

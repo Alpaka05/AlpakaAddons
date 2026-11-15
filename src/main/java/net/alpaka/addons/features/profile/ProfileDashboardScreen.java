@@ -53,6 +53,10 @@ import java.util.Map;
  * menu's design.
  */
 public class ProfileDashboardScreen extends Screen {
+    /** Compiled once: these run per row, every frame the page is on. */
+    private static final java.util.regex.Pattern CAMEL_HUMP = java.util.regex.Pattern.compile("([a-z])([A-Z])");
+    private static final java.util.regex.Pattern BACKPACK_KEY = java.util.regex.Pattern.compile("backpack_\\d+");
+
 
     // ---- Pages ----------------------------------------------------------------------------------
 
@@ -128,9 +132,15 @@ public class ProfileDashboardScreen extends Screen {
     private long openTimeMs = 0L;
     private long lastFrameMs = System.currentTimeMillis();
     private final EditableText search = new EditableText(16);
+    /** The click being handled, so a text field's hit can put the caret under it, and the field edited before it. */
+    private MouseButtonEvent click = null;
+    private EditableText clickFrom = null;
     private boolean searchFocused = false;
     private long caretFrom = 0L;
-    private boolean profileMenuOpen = false;
+    /** A popover is open: the profile list, or the sites from the footer when {@link #sourceMenu}. */
+    private boolean menuOpen = false;
+    private boolean sourceMenu = false;
+    private int sourceMenuX, sourceMenuY;
     private float indicatorY = Float.NaN;
     /** How far the sidebar is folded, 0 open to 1 down to its icons; starts where it was left. */
     private float sideFold = AlpakaConfig.instance.profileSidebarCollapsed ? 1.0f : 0.0f;
@@ -208,6 +218,14 @@ public class ProfileDashboardScreen extends Screen {
     @Override
     public void onClose() {
         if (this.minecraft != null) this.minecraft.gui.setScreen(parent);
+    }
+
+    @Override
+    public void removed() {
+        super.removed();
+        // The built items hold the profile's JSON; nothing needs them while no dashboard is open.
+        InventoryItems.forget();
+        ProfileChart.forgetVisible();
     }
 
     private static ProfileSession session(String player) {
@@ -328,7 +346,8 @@ public class ProfileDashboardScreen extends Screen {
 
         for (Runnable overlay : overlays) overlay.run();
         menuHitsFrom = hits.size();
-        if (profileMenuOpen) drawProfileMenu(graphics, x, y, w);
+        if (menuOpen && sourceMenu) drawSourceMenu(graphics);
+        else if (menuOpen) drawProfileMenu(graphics, x, y, w);
 
         if (hoveredTipKey != lastTipKey) {
             lastTipKey = hoveredTipKey;
@@ -376,15 +395,19 @@ public class ProfileDashboardScreen extends Screen {
         if (profileName != null) {
             String label = profileName + modeMark(s);
             int cw = textW(label) + 20;
-            boolean hover = AlpakaStyle.inside(mx, my, tx, ty - 3, cw, 14) && !profileMenuOpen;
-            int bg = profileMenuOpen ? MarketIcons.fade(AlpakaStyle.accent(), 0.3f) : hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW;
+            boolean hover = AlpakaStyle.inside(mx, my, tx, ty - 3, cw, 14) && !menuOpen;
+            boolean chipOpen = menuOpen && !sourceMenu;
+            int bg = chipOpen ? MarketIcons.fade(AlpakaStyle.accent(), 0.3f) : hover ? AlpakaStyle.ROW_SELECTED : AlpakaStyle.ROW;
             ModernGuiUtils.drawRoundedRect(graphics, tx, ty - 3, cw, 14, 7, bg);
-            text(graphics, label, tx + 7, ty, profileMenuOpen || hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
-            AlpakaStyle.chevron(graphics, tx + cw - 7, ty + 4, profileMenuOpen, AlpakaStyle.TEXT_MUTED);
+            text(graphics, label, tx + 7, ty, chipOpen || hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
+            AlpakaStyle.chevron(graphics, tx + cw - 7, ty + 4, chipOpen, AlpakaStyle.TEXT_MUTED);
             profileChipX = tx;
             profileChipW = cw;
             if (s.profiles.size() > 1) {
-                headerHit(tx, ty - 3, cw, 14, () -> profileMenuOpen = !profileMenuOpen);
+                headerHit(tx, ty - 3, cw, 14, () -> {
+                    menuOpen = !menuOpen;
+                    sourceMenu = false;
+                });
                 if (hover) tip("profiles", "Switch to another of " + name + "'s profiles.");
             }
         }
@@ -417,9 +440,10 @@ public class ProfileDashboardScreen extends Screen {
         int sx = rx - 8 - sw;
         if (sx > tx + 90) {
             boolean hoverSearch = AlpakaStyle.inside(mx, my, sx, by - 1, sw, AlpakaStyle.BUTTON_H);
-            AlpakaStyle.textField(graphics, this.font, sx, by - 1, sw, AlpakaStyle.BUTTON_H, search.getText(), "Look up a player",
+            AlpakaStyle.textField(graphics, this.font, sx, by - 1, sw, AlpakaStyle.BUTTON_H, search, null, "Look up a player",
                     searchFocused, hoverSearch, caretFrom);
             headerHit(sx, by - 1, sw, AlpakaStyle.BUTTON_H, () -> {
+                if (click != null) AlpakaStyle.clickTextField(this.font, search, null, sx, sw, click.x(), clickFrom == search, click.hasShiftDown());
                 searchFocused = true;
                 caretFrom = System.currentTimeMillis();
             });
@@ -482,8 +506,47 @@ public class ProfileDashboardScreen extends Screen {
             }
             String id = r.id();
             hits.add(new Hit(px + 4, ry, mw - 8, rowH, () -> {
-                profileMenuOpen = false;
+                menuOpen = false;
                 session.switchProfile(id);
+            }));
+            ry += rowH;
+        }
+    }
+
+    /** The sites the footer's "Data Sources" offers to open the profile on. */
+    private void drawSourceMenu(GuiGraphicsExtractor graphics) {
+        String player = session.playerName;
+        if (player == null) {
+            menuOpen = false;
+            return;
+        }
+        ProfileData d = session.data;
+        String profile = d != null && d.profileName != null ? d.profileName : null;
+        String[][] sites = {
+            {"Elite", ProfileApi.ELITE_SITE + player + (profile != null ? "/" + profile : "")},
+            {"SkyCrypt", ProfileApi.SKYCRYPT_SITE + player + (profile != null ? "/" + profile : "")},
+            {"SkyKings", ProfileApi.SKYKINGS_SITE + player},
+        };
+        int rowH = 16;
+        int mw = 0;
+        for (String[] site : sites) mw = Math.max(mw, textW("Open on " + site[0]));
+        mw += 22;
+        int mh = sites.length * rowH + 8;
+        int px = sourceMenuX;
+        int py = Math.max(4, sourceMenuY - mh - 2);
+        graphics.nextStratum();
+        AlpakaStyle.popover(graphics, px, py, mw, mh);
+        int ry = py + 4;
+        for (String[] site : sites) {
+            boolean hover = AlpakaStyle.inside(mx, my, px + 4, ry, mw - 8, rowH);
+            if (hover) ModernGuiUtils.drawRoundedRect(graphics, px + 4, ry, mw - 8, rowH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
+            text(graphics, "Open on " + site[0], px + 11, ry + 4, hover ? AlpakaStyle.TEXT : AlpakaStyle.TEXT_SOFT);
+            String title = "Open " + site[0];
+            String url = site[1];
+            hits.add(new Hit(px + 4, ry, mw - 8, rowH, () -> {
+                menuOpen = false;
+                sourceMenu = false;
+                openLink(title, url);
             }));
             ry += rowH;
         }
@@ -529,7 +592,7 @@ public class ProfileDashboardScreen extends Screen {
         int arrow = 12;
         int ax = open ? rowX + rowW - arrow : rowX + (rowW - arrow) / 2;
         int ay = rowY - 3;
-        boolean hoverArrow = AlpakaStyle.inside(mx, my, ax, ay, arrow, arrow) && !profileMenuOpen;
+        boolean hoverArrow = AlpakaStyle.inside(mx, my, ax, ay, arrow, arrow) && !menuOpen;
         AlpakaStyle.chevronButton(graphics, ax, ay, arrow, !folded, hoverArrow, true);
         hits.add(new Hit(ax, ay, arrow, arrow, () -> {
             AlpakaConfig.instance.profileSidebarCollapsed = !AlpakaConfig.instance.profileSidebarCollapsed;
@@ -549,10 +612,14 @@ public class ProfileDashboardScreen extends Screen {
             // The search through every item the profile owns, where the label was.
             int fh = 14;
             int fy = rowY - 3;
-            boolean hoverField = AlpakaStyle.inside(mx, my, rowX, fy, rowW, fh) && !profileMenuOpen;
-            AlpakaStyle.textField(graphics, this.font, rowX, fy, rowW - arrow - 2, fh, itemSearch.getText(), "Search Items",
+            boolean hoverField = AlpakaStyle.inside(mx, my, rowX, fy, rowW, fh) && !menuOpen;
+            AlpakaStyle.textField(graphics, this.font, rowX, fy, rowW - arrow - 2, fh, itemSearch, null, "Search Items",
                     itemSearchFocused, hoverField, itemCaretFrom);
             hits.add(new Hit(rowX, fy, rowW - arrow - 2, fh, () -> {
+                if (click != null) {
+                    AlpakaStyle.clickTextField(this.font, itemSearch, null, rowX, rowW - arrow - 2, click.x(),
+                            clickFrom == itemSearch, click.hasShiftDown());
+                }
                 itemSearchFocused = true;
                 itemCaretFrom = System.currentTimeMillis();
             }));
@@ -561,7 +628,7 @@ public class ProfileDashboardScreen extends Screen {
             // The magnifier just after the label opens the item search in its place.
             int gx = x + PAD + textW("Profile") + 4;
             int gy = rowY - 2;
-            boolean hoverGlass = AlpakaStyle.inside(mx, my, gx - 2, gy - 1, 13, 12) && !profileMenuOpen;
+            boolean hoverGlass = AlpakaStyle.inside(mx, my, gx - 2, gy - 1, 13, 12) && !menuOpen;
             MarketIcons.draw(graphics, MarketIcons.Glyph.SEARCH, gx, gy + 1, 8, hoverGlass ? AlpakaStyle.accent() : AlpakaStyle.TEXT_MUTED);
             hits.add(new Hit(gx - 2, gy - 1, 13, 12, () -> {
                 itemSearchOpen = true;
@@ -582,7 +649,7 @@ public class ProfileDashboardScreen extends Screen {
         ModernGuiUtils.drawRoundedRect(graphics, rowX, iy + 4, 2, rowH - 8, 1, AlpakaStyle.accent());
 
         for (Page p : Page.values()) {
-            boolean hover = AlpakaStyle.inside(mx, my, rowX, rowY, rowW, rowH) && !profileMenuOpen;
+            boolean hover = AlpakaStyle.inside(mx, my, rowX, rowY, rowW, rowH) && !menuOpen;
             if (hover && p != page) ModernGuiUtils.drawRoundedRect(graphics, rowX, rowY, rowW, rowH, AlpakaStyle.ROW_RADIUS, AlpakaStyle.ROW);
             // Items only at their full 16 pixels: scaled down, the game's nearest-neighbour sampling
             // drops rows and columns unevenly and they turn blotchy. Rows too slim for that go without.
@@ -610,7 +677,18 @@ public class ProfileDashboardScreen extends Screen {
             }));
             rowY += rowH + 1;
         }
-        if (!footer) return;
+        if (!footer) {
+            // Without the footer (folded, or a short window), a globe at the bottom opens the same sites.
+            int size = 14;
+            int gx = rowX + (rowW - size) / 2;
+            int gy = y + h - size - 6;
+            if (session.playerName == null || gy < rowY + 2) return;
+            boolean hoverGlobe = AlpakaStyle.inside(mx, my, gx, gy, size, size) && !menuOpen;
+            AlpakaStyle.globeButton(graphics, gx, gy, size, hoverGlobe);
+            hits.add(new Hit(gx, gy, size, size, () -> openSourceMenu(gx, gy)));
+            if (hoverGlobe) tip("source", sourcesTip());
+            return;
+        }
 
         // At the bottom: how fresh the numbers are, and where they come from.
         int fy = y + h - footerH;
@@ -618,22 +696,37 @@ public class ProfileDashboardScreen extends Screen {
         if (d != null && d.lastUpdated > 0) {
             text(graphics, "Updated " + Metrics.ago(d.lastUpdated * 1000L), x + PAD, fy, AlpakaStyle.TEXT_MUTED);
         }
-        boolean skykings = !AlpakaConfig.instance.skykingsApiKey.isBlank();
         String source = "Data Sources";
         int sw = textW(source);
-        boolean hoverSource = AlpakaStyle.inside(mx, my, x + PAD - 2, fy + 10, sw + 4, 11);
+        boolean hoverSource = AlpakaStyle.inside(mx, my, x + PAD - 2, fy + 10, sw + 4, 11) && !menuOpen;
         text(graphics, source, x + PAD, fy + 12, hoverSource ? AlpakaStyle.accent() : AlpakaStyle.DIVIDER);
-        if (session.playerName != null && hoverSource) {
-            tip("source", "Profile data from Hypixel's API, through the AlpakaAddons API (api.alpaka.yt). The networth is worked "
-                    + "out here, with the Bazaar's prices from Hypixel and the lowest BINs from SkyCofl, as Item Value does it. "
-                    + "The history comes from Soopy (soopy.dev); pet heads, the Bestiary, the Museum, crop milestones and "
-                    + "Hoppity's rabbits from the NEU repository; Farming Weight by Elite's formula (elitebot.dev). Soopy works "
-                    + "networth out differently, so its older networth is scaled to match."
-                    + (skykings ? " With your key, SkyKings' daily history too" + (session.skykingsNote != null
-                            && !session.skykingsNote.equals("loading") ? ": " + session.skykingsNote : ".")
-                            : " A SkyKings API key in the config adds SkyKings' daily history.")
-                    + " Not affiliated with Hypixel.");
+        if (session.playerName != null) {
+            int sx = x + PAD - 2;
+            int sy = fy + 10;
+            hits.add(new Hit(sx, sy, sw + 4, 11, () -> openSourceMenu(sx, sy)));
+            if (hoverSource) tip("source", sourcesTip());
         }
+    }
+
+    /** Opens the list of sites above the given point. */
+    private void openSourceMenu(int x, int y) {
+        sourceMenuX = x;
+        sourceMenuY = y;
+        sourceMenu = true;
+        menuOpen = true;
+    }
+
+    private String sourcesTip() {
+        boolean skykings = !AlpakaConfig.instance.skykingsApiKey.isBlank();
+        return "Profile data from Hypixel's API, through the AlpakaAddons API (api.alpaka.yt). The networth is worked "
+                + "out here, with the Bazaar's prices from Hypixel and the lowest BINs from SkyCofl, as Item Value does it. "
+                + "The history comes from Soopy (soopy.dev); pet heads, the Bestiary, the Museum, crop milestones and "
+                + "Hoppity's rabbits from the NEU repository; Farming Weight by Elite's formula (elitebot.dev). Soopy works "
+                + "networth out differently, so its older networth is scaled to match."
+                + (skykings ? " With your key, SkyKings' daily history too" + (session.skykingsNote != null
+                        && !session.skykingsNote.equals("loading") ? ": " + session.skykingsNote : ".")
+                        : " A SkyKings API key in the config adds SkyKings' daily history.")
+                + " Not affiliated with Hypixel. Click to open this profile on Elite, SkyCrypt or SkyKings.";
     }
 
     // ---- Content --------------------------------------------------------------------------------
@@ -844,27 +937,73 @@ public class ProfileDashboardScreen extends Screen {
 
     /** The level-ups of the last 30 days, newest first, read off the history of every level there is. */
     private List<Milestone> milestones(ProfileData d, long now) {
-        List<Milestone> out = new ArrayList<>();
+        // The session hands out the same series list until its data changes, so the level-ups of
+        // all time are only worked out again then; the 30 days are still cut every frame. Which
+        // metrics there are depends on the profile alone, so that list is made once per profile.
+        if (d != milestoneData) {
+            milestoneData = d;
+            milestoneMetrics = new ArrayList<>();
+            milestoneNames = new ArrayList<>();
+            milestoneLevels = new ArrayList<>();
+            for (ProfileData.Level s : d.skills) {
+                int max = s.maxLevel();
+                milestoneMetrics.add(Metrics.SKILL + s.id());
+                milestoneNames.add(s.name());
+                milestoneLevels.add(xp -> (int) Levels.skill(s.id(), xp, max));
+            }
+            milestoneMetrics.add(Metrics.CATACOMBS);
+            milestoneNames.add("Catacombs");
+            milestoneLevels.add(xp -> (int) Math.min(50, Levels.catacombs(xp)));
+            for (ProfileData.Level c : d.classes) {
+                milestoneMetrics.add(Metrics.CLASS + c.id());
+                milestoneNames.add(c.name());
+                milestoneLevels.add(xp -> (int) Math.min(50, Levels.catacombs(xp)));
+            }
+            milestoneMetrics.add(Metrics.SB_LEVEL);
+            milestoneNames.add("SkyBlock Level");
+            milestoneLevels.add(level -> (int) Math.floor(level));
+            milestoneSeries = List.of();
+        }
+
+        boolean same = milestoneSeries.size() == milestoneMetrics.size();
+        for (int i = 0; same && i < milestoneMetrics.size(); i++) {
+            same = session.series(milestoneMetrics.get(i)) == milestoneSeries.get(i);
+        }
+        if (!same) {
+            List<List<ProfileHistory.Point>> series = new ArrayList<>(milestoneMetrics.size());
+            for (String metric : milestoneMetrics) series.add(session.series(metric));
+            List<Milestone> all = new ArrayList<>();
+            for (int i = 0; i < milestoneMetrics.size(); i++) {
+                levelUps(all, series.get(i), milestoneMetrics.get(i), milestoneNames.get(i), milestoneLevels.get(i));
+            }
+            all.sort((a, b) -> Long.compare(b.timeMs(), a.timeMs()));
+            milestoneSeries = series;
+            milestoneAll = all;
+        }
         long since = now - 30 * ProfileHistory.DAY;
-        for (ProfileData.Level s : d.skills) {
-            int max = s.maxLevel();
-            levelUps(out, Metrics.SKILL + s.id(), s.name(), since, xp -> (int) Levels.skill(s.id(), xp, max));
+        List<Milestone> out = new ArrayList<>();
+        // Newest first: past the first one that is too old, all the rest are too.
+        for (Milestone m : milestoneAll) {
+            if (m.timeMs() < since) break;
+            out.add(m);
         }
-        levelUps(out, Metrics.CATACOMBS, "Catacombs", since, xp -> (int) Math.min(50, Levels.catacombs(xp)));
-        for (ProfileData.Level c : d.classes) {
-            levelUps(out, Metrics.CLASS + c.id(), c.name(), since, xp -> (int) Math.min(50, Levels.catacombs(xp)));
-        }
-        levelUps(out, Metrics.SB_LEVEL, "SkyBlock Level", since, level -> (int) Math.floor(level));
-        out.sort((a, b) -> Long.compare(b.timeMs(), a.timeMs()));
         return out;
     }
 
-    private void levelUps(List<Milestone> out, String metric, String name, long since, java.util.function.DoubleToIntFunction level) {
-        List<ProfileHistory.Point> points = session.series(metric);
+    private ProfileData milestoneData;
+    private List<String> milestoneMetrics = List.of();
+    private List<String> milestoneNames = List.of();
+    private List<java.util.function.DoubleToIntFunction> milestoneLevels = List.of();
+    private List<List<ProfileHistory.Point>> milestoneSeries = List.of();
+    private List<Milestone> milestoneAll = List.of();
+
+    /** Every level-up in one metric's history, at any time. */
+    private static void levelUps(List<Milestone> out, List<ProfileHistory.Point> points, String metric, String name,
+                                 java.util.function.DoubleToIntFunction level) {
         int previous = Integer.MIN_VALUE;
         for (ProfileHistory.Point p : points) {
             int now = level.applyAsInt(p.value());
-            if (previous != Integer.MIN_VALUE && now > previous && p.timeMs() >= since) {
+            if (previous != Integer.MIN_VALUE && now > previous) {
                 String text = now - previous == 1 ? name + " " + now : name + " " + previous + " → " + now;
                 out.add(new Milestone(p.timeMs(), text, metric));
             }
@@ -1387,7 +1526,7 @@ public class ProfileDashboardScreen extends Screen {
         for (var e : Json.obj(r, "farmingWeight.pests").entrySet()) {
             double n = Json.num(e.getValue());
             if (n > 0) {
-                pests.add(row(ProfileData.title(e.getKey().replaceAll("([a-z])([A-Z])", "$1_$2")), Coins.full(n)));
+                pests.add(row(ProfileData.title(CAMEL_HUMP.matcher(e.getKey()).replaceAll("$1_$2")), Coins.full(n)));
             }
         }
         add(cards, "Pests Killed", pests);
@@ -1902,8 +2041,48 @@ public class ProfileDashboardScreen extends Screen {
             }
         }
         y += h;
+        y = essence(graphics, d, x, y + 6, w);
         String metric = metricFor(Page.DUNGEONS);
         return chartCard(graphics, metric, 0, x, y + 6, w, 130);
+    }
+
+    /** Every essence the game has, so one the player has none of shows as none rather than missing. */
+    private static final List<String> ESSENCES = List.of("WITHER", "UNDEAD", "DRAGON", "DIAMOND", "GOLD", "ICE", "SPIDER", "CRIMSON", "FOREST");
+
+    /** The essence the player holds, most first, each with its item; Elite keys them "WITHER", "GOLD", ... */
+    private int essence(GuiGraphicsExtractor graphics, ProfileData d, int x, int y, int w) {
+        Map<String, Double> amounts = new LinkedHashMap<>();
+        for (String id : ESSENCES) amounts.put(id, 0.0);
+        for (var e : Json.obj(d.raw, "stats.miscStats.essence").entrySet()) {
+            if (e.getValue().isJsonPrimitive()) amounts.put(e.getKey().toUpperCase(Locale.ROOT), e.getValue().getAsDouble());
+        }
+        List<Map.Entry<String, Double>> sorted = new ArrayList<>(amounts.entrySet());
+        sorted.sort((a, b) -> Double.compare(b.getValue(), a.getValue()));
+
+        int cellH = 20;
+        int cols = Math.max(1, Math.min(sorted.size(), (w - 16) / 96));
+        int cellW = (w - 16) / cols;
+        int rows = (sorted.size() + cols - 1) / cols;
+        int h = 24 + rows * (cellH + 2) + 4;
+        card(graphics, x, y, w, h);
+        text(graphics, "Essence", x + 8, y + 7, AlpakaStyle.TEXT);
+        for (int i = 0; i < sorted.size(); i++) {
+            String id = sorted.get(i).getKey();
+            double amount = sorted.get(i).getValue();
+            String name = ProfileData.title(id.toLowerCase(Locale.ROOT));
+            int cx = x + 8 + (i % cols) * cellW;
+            int cy = y + 22 + (i / cols) * (cellH + 2);
+            boolean has = amount > 0;
+            ModernGuiUtils.drawRoundedRect(graphics, cx + 1, cy, cellW - 2, cellH, AlpakaStyle.ROW_RADIUS,
+                    has ? AlpakaStyle.ROW_HOVER : MarketIcons.fade(AlpakaStyle.ROW_HOVER, 0.5f));
+            stackIcon(graphics, ItemIcons.forItem("ESSENCE_" + id, name + " Essence"), cx + 3, cy + 2, 1.0f);
+            String value = Coins.compact(amount);
+            int vx = cx + cellW - 6 - textW(value);
+            text(graphics, AlpakaStyle.ellipsize(this.font, name, vx - cx - 26), cx + 22, cy + 6, has ? AlpakaStyle.TEXT_SOFT : AlpakaStyle.TEXT_MUTED);
+            text(graphics, value, vx, cy + 6, has ? AlpakaStyle.TEXT : AlpakaStyle.DIVIDER);
+            if (hover(cx + 1, cy, cellW - 2, cellH)) tip("essence:" + id, name + " Essence: " + Coins.full(amount) + ".");
+        }
+        return y + h;
     }
 
     // ---- Slayers --------------------------------------------------------------------------------
@@ -2610,7 +2789,7 @@ public class ProfileDashboardScreen extends Screen {
     /** The backpacks the profile has, in the order of their slots in the Storage menu. */
     private static List<String> backpacks(ProfileData d) {
         List<String> out = new ArrayList<>();
-        for (String name : d.inventories.keySet()) if (name.matches("backpack_\\d+")) out.add(name);
+        for (String name : d.inventories.keySet()) if (BACKPACK_KEY.matcher(name).matches()) out.add(name);
         out.sort(java.util.Comparator.comparingInt(n -> Integer.parseInt(n.substring("backpack_".length()))));
         return out;
     }
@@ -3905,18 +4084,18 @@ public class ProfileDashboardScreen extends Screen {
 
     /** Whether the mouse is on this area, and inside the content where the content is drawn. */
     private boolean hover(int x, int y, int w, int h) {
-        if (profileMenuOpen) return false;
+        if (menuOpen) return false;
         if (clipping && !AlpakaStyle.inside(mx, my, clipX, clipY, clipW, clipH)) return false;
         if (clipping && !drawingPin && my >= pinTop && my < pinBottom) return false;
         return AlpakaStyle.inside(mx, my, x, y, w, h);
     }
 
     private int clippedMouseX() {
-        return profileMenuOpen || !AlpakaStyle.inside(mx, my, clipX, clipY, clipW, clipH) ? -10000 : mx;
+        return menuOpen || !AlpakaStyle.inside(mx, my, clipX, clipY, clipW, clipH) ? -10000 : mx;
     }
 
     private int clippedMouseY() {
-        return profileMenuOpen || !AlpakaStyle.inside(mx, my, clipX, clipY, clipW, clipH) ? -10000 : my;
+        return menuOpen || !AlpakaStyle.inside(mx, my, clipX, clipY, clipW, clipH) ? -10000 : my;
     }
 
     /** A click area in the content: only the part of it that is in view. */
@@ -3950,6 +4129,13 @@ public class ProfileDashboardScreen extends Screen {
         };
     }
 
+    private void openLink(String title, String url) {
+        Minecraft mc = Minecraft.getInstance();
+        mc.gui.setScreen(new net.alpaka.addons.client.AlpakaConfirmScreen(this, title,
+                "Opens this profile in your browser: " + url, "Open", false,
+                () -> net.minecraft.util.Util.getPlatform().openUri(url)));
+    }
+
     private void lookUp() {
         String name = search.getText().trim();
         if (!name.matches("[A-Za-z0-9_]{1,16}")) return;
@@ -3960,7 +4146,7 @@ public class ProfileDashboardScreen extends Screen {
         itemSearchOpen = false;
         searchIndex = List.of();
         searchIndexKey = null;
-        profileMenuOpen = false;
+        menuOpen = false;
         faceFor = null;
         chosen.clear();
         breakdownFor = null;
@@ -4039,10 +4225,12 @@ public class ProfileDashboardScreen extends Screen {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         if (event.button() != 0) return true;
+        click = event;
+        clickFrom = searchFocused ? search : itemSearchFocused ? itemSearch : null;
         searchFocused = false;
         itemSearchFocused = false;
         if (itemSearch.isEmpty()) itemSearchOpen = false;
-        if (profileMenuOpen) {
+        if (menuOpen) {
             // Only the list takes the click; anywhere else, the chip included, closes it.
             for (int i = hits.size() - 1; i >= menuHitsFrom; i--) {
                 Hit hit = hits.get(i);
@@ -4052,7 +4240,7 @@ public class ProfileDashboardScreen extends Screen {
                     return true;
                 }
             }
-            profileMenuOpen = false;
+            menuOpen = false;
             return true;
         }
         for (int i = hits.size() - 1; i >= 0; i--) {
@@ -4068,7 +4256,7 @@ public class ProfileDashboardScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        if (scrollY != 0 && !profileMenuOpen && AlpakaStyle.inside(mouseX, mouseY, clipX, clipY, clipW, clipH)) scroll.by(-scrollY * 24);
+        if (scrollY != 0 && !menuOpen && AlpakaStyle.inside(mouseX, mouseY, clipX, clipY, clipW, clipH)) scroll.by(-scrollY * 24);
         return true;
     }
 
@@ -4090,7 +4278,7 @@ public class ProfileDashboardScreen extends Screen {
                 if (itemSearch.isEmpty()) itemSearchOpen = false;
                 return true;
             }
-            itemSearch.keyPressed(event.key(), event.hasControlDownWithQuirk(), event.hasShiftDown());
+            itemSearch.keyPressed(event);
             itemCaretFrom = System.currentTimeMillis();
             return true;
         }
@@ -4103,12 +4291,12 @@ public class ProfileDashboardScreen extends Screen {
                 lookUp();
                 return true;
             }
-            search.keyPressed(event.key(), event.hasControlDownWithQuirk(), event.hasShiftDown());
+            search.keyPressed(event);
             caretFrom = System.currentTimeMillis();
             return true;
         }
-        if (event.isEscape() && profileMenuOpen) {
-            profileMenuOpen = false;
+        if (event.isEscape() && menuOpen) {
+            menuOpen = false;
             return true;
         }
         if (event.isEscape() && searching()) {

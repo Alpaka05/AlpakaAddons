@@ -271,7 +271,7 @@ public final class ChatTabsFeature {
         Component label = chipOf(active);
         int y1 = graphics.guiHeight() - BOTTOM_GAP;
         int y0 = y1 - TAB_HEIGHT;
-        int width = font.width(label) + TAB_PAD * 2;
+        int width = net.alpaka.addons.client.gui.TextWidths.of(font, label) + TAB_PAD * 2;
         drawTab(graphics, LEFT, y0, width, mc.options.getBackgroundColor(Integer.MIN_VALUE), true, false);
         graphics.text(font, label, LEFT + TAB_PAD, y0 + LABEL_TOP, AlpakaStyle.TEXT, true);
     }
@@ -381,7 +381,8 @@ public final class ChatTabsFeature {
         for (ChatTab tab : TABS) {
             if (!isShown(tab)) continue;
             Component label = labelOf(tab);
-            int width = font.width(label) + TAB_PAD * 2;
+            // Labels are kept components (rebuilt when a count or the chat font changes), so their widths are kept too.
+            int width = net.alpaka.addons.client.gui.TextWidths.of(font, label) + TAB_PAD * 2;
             boolean selected = tab == active;
             boolean hovered = mouseX >= x && mouseX < x + width && mouseY >= y0 && mouseY < y1;
 
@@ -403,7 +404,7 @@ public final class ChatTabsFeature {
         int x = LEFT;
         for (ChatTab tab : TABS) {
             if (!isShown(tab)) continue;
-            int width = font.width(labelOf(tab)) + TAB_PAD * 2;
+            int width = net.alpaka.addons.client.gui.TextWidths.of(font, labelOf(tab)) + TAB_PAD * 2;
             if (mouseX >= x && mouseX < x + width) {
                 select(tab);
                 return true;

@@ -102,7 +102,17 @@ public final class CustomTabFeature {
     /** The scale the cached layout is drawn at: the chosen one, or smaller where it would not fit. */
     private static float cachedScale = 1.0f;
     private static long cachedAtMs = 0L;
-    private static String cachedKey = "";
+    // What the cached layout was built for. Compared field by field: the list is drawn every frame,
+    // and a key string built from these would be a new string per frame.
+    private static int cachedScreenWidth;
+    private static int cachedScreenHeight;
+    private static float cachedChosenScale;
+    private static float cachedGuiScale;
+    private static boolean cachedSmooth;
+    private static int cachedFont;
+    private static boolean cachedStacked;
+    private static boolean cachedHideAdverts;
+    private static boolean cachedSectionBoxes;
 
     private CustomTabFeature() {}
 
@@ -325,13 +335,21 @@ public final class CustomTabFeature {
     private static CustomTabLayout layout(PlayerTabOverlay tabList, int screenWidth, int screenHeight) {
         float guiScale = (float) Minecraft.getInstance().getWindow().getGuiScale();
         float scale = crisp(AlpakaConfig.instance.customTabScale, guiScale, false);
+        // scale is lowered below when the list has to fit; the key is the one asked for.
+        float chosenScale = scale;
         boolean smooth = AlpakaConfig.instance.smoothOn(AlpakaConfig.instance.customTabSmoothFont);
         boolean stacked = AlpakaConfig.instance.customTabLayout == 1;
         boolean hideAdverts = AlpakaConfig.instance.customTabHideAds;
-        String key = screenWidth + "x" + screenHeight + "@" + scale + "x" + guiScale + "/" + smooth + GuiFont.selectedIndex()
-                + "/" + stacked + "/" + hideAdverts + "/" + AlpakaConfig.instance.customTabSectionBoxes;
+        int font = GuiFont.selectedIndex();
+        boolean sectionBoxes = AlpakaConfig.instance.customTabSectionBoxes;
         long now = System.currentTimeMillis();
-        if (cached != null && key.equals(cachedKey) && now - cachedAtMs < REBUILD_MS) return cached;
+        if (cached != null && now - cachedAtMs < REBUILD_MS
+                && screenWidth == cachedScreenWidth && screenHeight == cachedScreenHeight
+                && Float.compare(scale, cachedChosenScale) == 0 && Float.compare(guiScale, cachedGuiScale) == 0
+                && smooth == cachedSmooth && font == cachedFont && stacked == cachedStacked
+                && hideAdverts == cachedHideAdverts && sectionBoxes == cachedSectionBoxes) {
+            return cached;
+        }
 
         PlayerTabOverlayAccessor accessor = (PlayerTabOverlayAccessor) tabList;
         List<Component> slots = new ArrayList<>();
@@ -385,7 +403,15 @@ public final class CustomTabFeature {
         cached = layout;
         cachedScale = scale;
         cachedAtMs = now;
-        cachedKey = key;
+        cachedScreenWidth = screenWidth;
+        cachedScreenHeight = screenHeight;
+        cachedChosenScale = chosenScale;
+        cachedGuiScale = guiScale;
+        cachedSmooth = smooth;
+        cachedFont = font;
+        cachedStacked = stacked;
+        cachedHideAdverts = hideAdverts;
+        cachedSectionBoxes = sectionBoxes;
         return cached;
     }
 
@@ -432,14 +458,15 @@ public final class CustomTabFeature {
     /** A bar after a row's text, and the text that follows it. */
     private static void drawBar(GuiGraphicsExtractor graphics, Font font, TabListParser.Line line, int x, int y) {
         TabListParser.Bar bar = line.bar();
-        int x0 = x + CustomTabLayout.barX(font.width(line.text()));
+        // The layout's rows are kept between rebuilds, so their widths can be too.
+        int x0 = x + CustomTabLayout.barX(net.alpaka.addons.client.gui.TextWidths.of(font, line.text()));
         int y0 = y + CustomTabLayout.BAR_TOP;
         int x1 = x0 + CustomTabLayout.BAR_W;
         int y1 = y0 + CustomTabLayout.BAR_H;
         graphics.fill(x0, y0, x1, y1, BAR_TRACK);
         int filled = Math.round(CustomTabLayout.BAR_W * Math.max(0.0f, Math.min(1.0f, bar.fraction())));
         if (filled > 0) graphics.fill(x0, y0, x0 + filled, y1, bar.color());
-        if (font.width(line.after()) > 0) {
+        if (net.alpaka.addons.client.gui.TextWidths.of(font, line.after()) > 0) {
             graphics.text(font, line.after(), x1 + CustomTabLayout.BAR_GAP, y, 0xFFFFFFFF, HudPanel.TEXT_SHADOW);
         }
     }

@@ -49,6 +49,11 @@ internal object AuraEffects {
             val phase = i * TAU / orbs
             val tilt = 0.5f + 0.28f * sin(t * 0.37f + i * 1.7f)
             val node = t * 0.33f + phase * 1.3f
+            // The same for every point of this orb and its trail: worked out once, not per point.
+            val st = sin(tilt)
+            val ct = cos(tilt)
+            val sn = sin(node)
+            val cn = cos(node)
             val centerY = f.height * (0.5f + 0.08f * sin(t * 0.8f + phase))
             val theta = t * speed + phase
             val tone = i.toFloat() / (orbs - 1)
@@ -57,7 +62,7 @@ internal object AuraEffects {
             c.beginRibbon()
             for (k in 0..trail) {
                 val back = k.toFloat() / trail
-                orbit(theta - back * trailSpan, tilt, node, radius, centerY, p)
+                orbit(theta - back * trailSpan, st, ct, sn, cn, radius, centerY, p)
                 val fade = (1f - back).pow(1.6f)
                 c.point(p[0], p[1], p[2], 0.21f * f.size * (1f - back).pow(0.7f),
                     f.color(tone * 0.7f + back * 0.3f), 0.85f * fade)
@@ -68,7 +73,7 @@ internal object AuraEffects {
             val life = 1.1f
             for (j in 0 until 7) {
                 val age = fract(t / life + j / 7f + i * 0.31f)
-                orbit(theta - age * life * speed, tilt, node, radius, centerY, p)
+                orbit(theta - age * life * speed, st, ct, sn, cn, radius, centerY, p)
                 val seed = i * 31 + j * 7 + floor(t / life + j / 7f + i * 0.31f).toInt() * 101
                 val dx = (hash(seed) - 0.5f) * 0.3f * age
                 val dz = (hash(seed + 1) - 0.5f) * 0.3f * age
@@ -78,7 +83,7 @@ internal object AuraEffects {
             }
 
             // The orb itself: a wide halo, a star that slowly turns, a white-hot core.
-            orbit(theta, tilt, node, radius, centerY, p)
+            orbit(theta, st, ct, sn, cn, radius, centerY, p)
             val pulse = 0.85f + 0.15f * sin(t * 6f + phase)
             val tint = f.color(tone * 0.7f)
             c.sprite(p[0], p[1], p[2], 0.5f * f.size * pulse, tint, 0.7f)
@@ -87,14 +92,15 @@ internal object AuraEffects {
         }
     }
 
-    /** A point on a circle of [radius] tilted by [tilt] and turned by [node] about the vertical. */
-    private fun orbit(theta: Float, tilt: Float, node: Float, radius: Float, centerY: Float, out: FloatArray) {
+    /**
+     * A point on a circle of [radius] tilted by an angle and turned by a node angle about the vertical,
+     * given as their sines and cosines ([st], [ct], [sn], [cn]), which the caller works out once per orb.
+     */
+    private fun orbit(theta: Float, st: Float, ct: Float, sn: Float, cn: Float, radius: Float, centerY: Float, out: FloatArray) {
         val x = cos(theta) * radius
         val z0 = sin(theta) * radius
-        val y = z0 * sin(tilt)
-        val z = z0 * cos(tilt)
-        val cn = cos(node)
-        val sn = sin(node)
+        val y = z0 * st
+        val z = z0 * ct
         out[0] = x * cn - z * sn
         out[1] = centerY + y
         out[2] = x * sn + z * cn
@@ -293,6 +299,10 @@ internal object AuraEffects {
         // edge-on whenever its raised side swings round to face the camera.
         val tilt = 0.18f + 0.07f * sin(t * 0.31f)
         val node = t * 0.18f
+        val sinT = sin(tilt)
+        val cosT = cos(tilt)
+        val sinN = sin(node)
+        val cosN = cos(node)
         val spin = t * 0.5f
         val inner = 0.42f * s
         val reach = 1.0f * s
@@ -304,7 +314,7 @@ internal object AuraEffects {
             for (i in 0..points) {
                 val k = i.toFloat() / points
                 val rr = inner + reach * k
-                disk(rr, arm * Math.PI.toFloat() + k * 3.2f + spin, 0f, tilt, node, centerY, p)
+                disk(rr, arm * Math.PI.toFloat() + k * 3.2f + spin, 0f, sinT, cosT, sinN, cosN, centerY, p)
                 c.point(p[0], p[1], p[2], 0.32f * s * (1f - 0.5f * k), f.color(k), 0.32f * sin(k * Math.PI.toFloat()).pow(0.6f))
             }
             c.endRibbon()
@@ -321,7 +331,7 @@ internal object AuraEffects {
             val wobble = sin(t * (0.6f + hash(st * 4 + 3)) + st) * 0.05f
             val angle = arm + k * 3.2f + scatter + spin + wobble
             val lift = (hash(st * 4 + 2) - 0.5f) * 0.16f * s * (1f - 0.6f * k)
-            disk(rr, angle, lift, tilt, node, centerY, p)
+            disk(rr, angle, lift, sinT, cosT, sinN, cosN, centerY, p)
             val big = hash(st * 4 + 3) > 0.82f
             val twinkle = 0.55f + 0.45f * sin(t * (4f + 5f * hash(st)) + st * 1.7f)
             val size = (if (big) 0.26f else 0.09f + 0.07f * hash(st * 9)) * s
@@ -330,14 +340,18 @@ internal object AuraEffects {
         }
     }
 
-    /** A point at [radius] and [angle] in the tilted galaxy disk, [lift] above its plane. */
-    private fun disk(radius: Float, angle: Float, lift: Float, tilt: Float, node: Float, centerY: Float, out: FloatArray) {
+    /**
+     * A point at [radius] and [angle] in the tilted galaxy disk, [lift] above its plane. The tilt and
+     * node come as their sines and cosines, worked out once per frame by the caller.
+     */
+    private fun disk(radius: Float, angle: Float, lift: Float, sinT: Float, cosT: Float, sinN: Float, cosN: Float,
+                     centerY: Float, out: FloatArray) {
         val x = cos(angle) * radius
         val z0 = sin(angle) * radius
-        val y = z0 * sin(tilt) + lift * cos(tilt)
-        val z = z0 * cos(tilt) - lift * sin(tilt)
-        val cn = cos(node)
-        val sn = sin(node)
+        val y = z0 * sinT + lift * cosT
+        val z = z0 * cosT - lift * sinT
+        val cn = cosN
+        val sn = sinN
         out[0] = x * cn - z * sn
         out[1] = centerY + y
         out[2] = x * sn + z * cn

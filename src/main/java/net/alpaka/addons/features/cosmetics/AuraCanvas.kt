@@ -89,13 +89,24 @@ internal class AuraCanvas(
     }
 
     // A ribbon's points, collected between beginRibbon and endRibbon. Kept and regrown rather than
-    // allocated per ribbon: an effect draws dozens of them every frame.
+    // allocated per ribbon: an effect draws dozens of them every frame. The arrays live in the
+    // companion, as a canvas is made per player per frame and only one ribbon is ever being built.
     private var count = 0
-    private var xs = FloatArray(64)
-    private var ys = FloatArray(64)
-    private var zs = FloatArray(64)
-    private var widths = FloatArray(64)
-    private var colors = IntArray(64)
+    private var xs: FloatArray
+        get() = scratchXs
+        set(v) { scratchXs = v }
+    private var ys: FloatArray
+        get() = scratchYs
+        set(v) { scratchYs = v }
+    private var zs: FloatArray
+        get() = scratchZs
+        set(v) { scratchZs = v }
+    private var widths: FloatArray
+        get() = scratchWidths
+        set(v) { scratchWidths = v }
+    private var colors: IntArray
+        get() = scratchColors
+        set(v) { scratchColors = v }
 
     fun beginRibbon() {
         count = 0
@@ -239,5 +250,12 @@ internal class AuraCanvas(
 
     companion object {
         const val TAU = (Math.PI * 2).toFloat()
+
+        // Render thread only; see the ribbon accessors above.
+        private var scratchXs = FloatArray(64)
+        private var scratchYs = FloatArray(64)
+        private var scratchZs = FloatArray(64)
+        private var scratchWidths = FloatArray(64)
+        private var scratchColors = IntArray(64)
     }
 }

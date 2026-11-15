@@ -1,6 +1,7 @@
 package net.alpaka.addons.features.clutter;
 
 import net.alpaka.addons.config.AlpakaConfig;
+import net.alpaka.addons.mixin.AbstractArrowInGroundAccessor;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleType;
 import net.minecraft.core.particles.ParticleTypes;
@@ -8,11 +9,13 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
+import net.minecraft.world.entity.projectile.arrow.AbstractArrow;
+import net.minecraft.world.entity.projectile.arrow.ThrownTrident;
 
 /**
  * Hides effects that cost frames and tell the player nothing: explosions, falling blocks, the
  * terrain particles of broken blocks, the sparks of critical hits, firework bursts, experience
- * orbs and the Ender Dragon's death. Each has its own switch under the feature's master switch.
+ * orbs, the Ender Dragon's death and arrows stuck in players and blocks. Each has its own switch under the feature's master switch.
  * It started as Hide Explosions, which is why its master field still reads that name from older
  * files.
  *
@@ -126,16 +129,36 @@ public final class HideVisualClutterFeature {
         return on(AlpakaConfig.instance.clutterFireworks);
     }
 
-    // Ender Dragon death -----------------------------------------------------------------------
+    // Entities that are not drawn ---------------------------------------------------------------
 
     /**
      * A dying Ender Dragon (the End's, and the Wither King's in Master Mode 7): it rises for ten
      * seconds while light rays grow out of it and explosions go off around it. The whole dying
      * dragon is skipped; the boss is dead by then, its loot and score are server side.
+     *
+     * An arrow stuck in a block: it lies there for a minute, and a fight with bows leaves dozens.
+     * Only drawing is skipped, the entity stays, and an arrow in flight is always drawn. Tridents
+     * are left alone, a stuck one is a weapon waiting to be picked up or to return.
      */
     public static boolean shouldHideEntity(Entity entity) {
-        return entity instanceof EnderDragon dragon && isDying(dragon) && on(AlpakaConfig.instance.clutterDragonDeath);
+        AlpakaConfig config = AlpakaConfig.instance;
+        if (!config.hideVisualClutter) return false;
+        if (entity instanceof AbstractArrow arrow) {
+            return config.clutterAttachedArrows && !(arrow instanceof ThrownTrident)
+                    && ((AbstractArrowInGroundAccessor) arrow).alpaka$isInGround();
+        }
+        return entity instanceof EnderDragon dragon && config.clutterDragonDeath && isDying(dragon);
     }
+
+    /**
+     * The arrows stuck in a player's body, which vanilla keeps on them for a while after every hit
+     * and which pile up into a pincushion in a bow fight. They only ever show on players.
+     */
+    public static boolean shouldHideStuckArrows() {
+        return on(AlpakaConfig.instance.clutterAttachedArrows);
+    }
+
+    // Ender Dragon death -----------------------------------------------------------------------
 
     /** The explosions vanilla spawns around a dying dragon on the client, in its last second. */
     public static boolean shouldHideDragonDeathParticles() {

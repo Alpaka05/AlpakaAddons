@@ -88,6 +88,12 @@ final class HypixelProfile {
         festivals.addProperty("fishingFestivalSharksKilled", Json.num(m, "leveling.fishing_festival_sharks_killed", 0));
         festivals.addProperty("miningFiestaOresMined", Json.num(m, "leveling.mining_fiesta_ores_mined", 0));
         misc.add("festivals", festivals);
+        // What the Essence card shows: the amount held of each, as Elite lists it ("WITHER": 4).
+        JsonObject essence = new JsonObject();
+        for (var e : Json.obj(m, "currencies.essence").entrySet()) {
+            essence.addProperty(e.getKey().toUpperCase(Locale.ROOT), Json.num(e.getValue(), "current", 0));
+        }
+        misc.add("essence", essence);
         stats.add("miscStats", misc);
 
         JsonObject accessories = new JsonObject();

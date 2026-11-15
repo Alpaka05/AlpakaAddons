@@ -49,7 +49,7 @@ public class DamageTagFeature {
      * splashes that did not crit.
      */
     public static boolean shouldHideNameTag(Entity entity) {
-        // Cheapest first. This runs for every loaded entity on every frame, before culling, and
+        // Cheapest first. This runs for every visible entity on every frame, and
         // nearly none of them is a young armor stand.
         if (!(entity instanceof ArmorStand stand) || stand.tickCount > MAX_TAG_AGE_TICKS) return false;
         AlpakaConfig cfg = AlpakaConfig.instance;

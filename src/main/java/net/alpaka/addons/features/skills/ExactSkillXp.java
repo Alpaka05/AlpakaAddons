@@ -49,6 +49,10 @@ public final class ExactSkillXp {
     private ExactSkillXp() {
     }
 
+    private static final Optional<Boolean> FOUND = Optional.of(Boolean.TRUE);
+    private static final net.minecraft.network.chat.FormattedText.ContentConsumer<Boolean> HAS_PLUS =
+            part -> part.indexOf('+') >= 0 ? FOUND : Optional.empty();
+
     /** "+12.5 Farming (45.32%)"; group 1 the skill, group 2 the percentage without the sign. */
     private static final Pattern GAIN = Pattern.compile("\\+[\\d.,]+ ([A-Z][a-z]+) \\(([\\d.]+)%\\)");
 
@@ -98,6 +102,9 @@ public final class ExactSkillXp {
     /** The action bar as it is drawn: with XP in place of the percentage when the feature is on. */
     public static Component rewrite(Component message) {
         if (message == null || !AlpakaConfig.instance.exactSkillXpEnabled) return message;
+        // Both patterns start with a '+'; most action bars (health, mana, defense) have none, and a
+        // single character cannot be split across parts, so they are passed on without being taken apart.
+        if (message.visit(HAS_PLUS).isEmpty()) return message;
         List<Piece> pieces = new ArrayList<>();
         message.visit((style, text) -> {
             pieces.add(new Piece(style, text));
@@ -250,8 +257,16 @@ public final class ExactSkillXp {
         return capInTab(tabLines(), skill);
     }
 
+    /**
+     * The tab line patterns per skill, compiled once: they are needed for every skill XP action bar,
+     * several a second while farming or mining. Only skills in SKILLS get here in the game.
+     */
+    private static final Map<String, Pattern> CAP_LINES = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final Map<String, Pattern> LEVEL_LINES = new java.util.concurrent.ConcurrentHashMap<>();
+
     static Integer capInTab(List<String> lines, String skill) {
-        Pattern line = Pattern.compile("(?:^|\\s)" + Pattern.quote(skill) + " (\\d{1,3}): MAX");
+        Pattern line = CAP_LINES.computeIfAbsent(skill,
+                k -> Pattern.compile("(?:^|\\s)" + Pattern.quote(k) + " (\\d{1,3}): MAX"));
         for (String text : lines) {
             Matcher m = line.matcher(text);
             if (m.find()) return Integer.parseInt(m.group(1));
@@ -265,7 +280,8 @@ public final class ExactSkillXp {
      * ("Mining 60: MAX") has no next level, so it counts as none.
      */
     static Integer levelInTab(List<String> lines, String skill) {
-        Pattern line = Pattern.compile("(?:^|\\s)" + Pattern.quote(skill) + " (\\d{1,3}): (?!MAX)");
+        Pattern line = LEVEL_LINES.computeIfAbsent(skill,
+                k -> Pattern.compile("(?:^|\\s)" + Pattern.quote(k) + " (\\d{1,3}): (?!MAX)"));
         for (String text : lines) {
             Matcher m = line.matcher(text);
             if (m.find()) return Integer.parseInt(m.group(1));

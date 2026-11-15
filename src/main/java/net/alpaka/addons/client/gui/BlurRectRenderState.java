@@ -103,20 +103,22 @@ public record BlurRectRenderState(
         float reach = shadowPx / (float) MAX_SHADOW_PX;
         float strength = shadowPx > 0 ? SHADOW_ALPHA : 0.0f;
 
-        float[][] corners = {
-                {x0 - grow, y0 - grow, -halfW - growPx, -halfH - growPx},
-                {x0 - grow, y1 + grow, -halfW - growPx, halfH + growPx},
-                {x1 + grow, y1 + grow, halfW + growPx, halfH + growPx},
-                {x1 + grow, y0 - grow, halfW + growPx, -halfH - growPx},
-        };
-        for (float[] c : corners) {
-            consumer.addVertexWith2DPose(pose, c[0], c[1])
-                    .setColor(color)
-                    .setUv(c[2], c[3])
-                    .setUv1(widthPx, heightPx)
-                    .setUv2(radiusPx, 0)
-                    .setNormal(reach, strength, opacity);
-        }
+        // One call per corner rather than a loop over a table of them: every panel, the chat's and
+        // each HUD's, builds its quad every frame, and the table was five arrays each time.
+        corner(consumer, pose, x0 - grow, y0 - grow, -halfW - growPx, -halfH - growPx, color, widthPx, heightPx, radiusPx, reach, strength, opacity);
+        corner(consumer, pose, x0 - grow, y1 + grow, -halfW - growPx, halfH + growPx, color, widthPx, heightPx, radiusPx, reach, strength, opacity);
+        corner(consumer, pose, x1 + grow, y1 + grow, halfW + growPx, halfH + growPx, color, widthPx, heightPx, radiusPx, reach, strength, opacity);
+        corner(consumer, pose, x1 + grow, y0 - grow, halfW + growPx, -halfH - growPx, color, widthPx, heightPx, radiusPx, reach, strength, opacity);
+    }
+
+    private static void corner(VertexConsumer consumer, Matrix3x2fc pose, float x, float y, float localX, float localY,
+                               int color, int widthPx, int heightPx, int radiusPx, float reach, float strength, float opacity) {
+        consumer.addVertexWith2DPose(pose, x, y)
+                .setColor(color)
+                .setUv(localX, localY)
+                .setUv1(widthPx, heightPx)
+                .setUv2(radiusPx, 0)
+                .setNormal(reach, strength, opacity);
     }
 
     /** The screen area an element in this layout covers, its shadow included. */

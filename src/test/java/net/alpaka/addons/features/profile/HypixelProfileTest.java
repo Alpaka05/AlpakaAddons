@@ -300,6 +300,8 @@ class HypixelProfileTest {
         assertEquals(2, Json.arr(model, "stats.rift.foundCats").size());
         assertTrue(Json.bool(model, "stats.rift.unlockedRiftCatPet"));
         assertEquals(9, Json.num(model, "stats.rift.motesPurse", 0));
+        // The Essence card's amounts, keyed as Elite keyed them.
+        assertEquals(4, Json.num(model, "stats.miscStats.essence.WITHER", 0));
 
         assertEquals(5000, Json.num(model, "chocolateFactory.totalChocolate", 0));
         assertEquals(2, Json.num(model, "chocolateFactory.prestige", 0));

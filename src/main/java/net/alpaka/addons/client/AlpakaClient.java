@@ -39,7 +39,6 @@ public class AlpakaClient implements ClientModInitializer {
         // precompiles vanilla's; see BlockOverlayRenderTypes.
         net.alpaka.addons.features.blockoverlay.BlockOverlayRenderTypes.init();
         net.alpaka.addons.client.gui.AlpakaGuiPipelines.init();
-        net.alpaka.addons.features.sky.SkyEffectsFeature.init();
         net.alpaka.addons.features.chat.ChatBlurFeature.init();
         net.alpaka.addons.features.viewmodel.HandItemStarlightFeature.init();
         net.alpaka.addons.features.cosmetics.AuraFeature.init();
@@ -51,6 +50,14 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.slayer.HamRadio.register();
         DevScreenshotTour.register();
         DevClutterBenchmark.register();
+        // After the fonts, so cut labels measured with the old glyphs are dropped once the new ones are in.
+        net.minecraft.resources.Identifier fitsReload = net.minecraft.resources.Identifier.fromNamespaceAndPath("alpaka", "text_fits");
+        net.fabricmc.fabric.api.resource.v1.ResourceLoader resources =
+                net.fabricmc.fabric.api.resource.v1.ResourceLoader.get(net.minecraft.server.packs.PackType.CLIENT_RESOURCES);
+        resources.registerReloadListener(fitsReload,
+                (net.minecraft.server.packs.resources.ResourceManagerReloadListener) manager ->
+                        net.alpaka.addons.client.gui.AlpakaStyle.onResourcesReloaded());
+        resources.addListenerOrdering(net.fabricmc.fabric.api.resource.v1.reloader.ResourceReloaderKeys.Client.FONTS, fitsReload);
         SlayerDropTracker.registerEvents();
         DeployableTracker.registerEvents();
         net.alpaka.addons.features.slayer.SkyblockProfileTracker.INSTANCE.register();
@@ -68,6 +75,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.chat.ChatOverHud.register();
         net.alpaka.addons.features.chat.ChatSearchFeature.register();
         net.alpaka.addons.features.itemvalue.ItemValueFeature.register();
+        net.alpaka.addons.features.itemvalue.PriceTooltipFeature.register();
         net.alpaka.addons.features.chestvalue.ChestValueFeature.register();
         net.alpaka.addons.features.itemsearch.ItemSearchFeature.register();
         net.alpaka.addons.features.garden.PestFinder.register();
@@ -82,6 +90,7 @@ public class AlpakaClient implements ClientModInitializer {
         AlpakaKeyBinds.finishRegistration();
         net.alpaka.addons.features.blaze.FirePitFeature.register();
         net.alpaka.addons.features.cosmetics.AuraFeature.register();
+        net.alpaka.addons.features.cosmetics.RareDropAnimation.register();
         net.alpaka.addons.features.slayer.SlayerBossHighlight.register();
         net.alpaka.addons.features.damagetags.CustomDamageTagFeature.register();
         net.alpaka.addons.utils.DungeonState.register();
@@ -136,7 +145,7 @@ public class AlpakaClient implements ClientModInitializer {
             );
 
             // The Profile Dashboard: the player's own profile, or another player's by name.
-            for (String alias : new String[]{"alpakaprofile", "aprofile", "ap"}) {
+            for (String alias : new String[]{"alpakaprofile", "aprofile", "ad"}) {
                 dispatcher.register(ClientCommands.literal(alias)
                     .executes(context -> openProfile(null))
                     .then(ClientCommands.argument("player", com.mojang.brigadier.arguments.StringArgumentType.word())

@@ -52,6 +52,8 @@ object DoorHighlight {
             }
         }
         LevelRenderEvents.COLLECT_SUBMITS.register { context ->
+            // Every frame everywhere; nothing to time without a door.
+            if (doors.isEmpty()) return@register
             val t = AlpakaPerf.begin(AlpakaPerf.Section.LEVEL_OVERLAYS)
             try {
                 submit(context)

@@ -1,11 +1,14 @@
 package net.alpaka.addons.features.damagetags
 
+import net.alpaka.addons.client.gui.AlpakaStyle
 import com.mojang.blaze3d.vertex.PoseStack
 import net.alpaka.addons.config.AlpakaConfig
 import net.alpaka.addons.features.slayer.SlayerBossNameTag
 import net.alpaka.addons.features.slayer.SlayerType
 import net.alpaka.addons.utils.AlpakaPerf
 import net.alpaka.addons.utils.DungeonState
+import net.alpaka.addons.utils.EntityCache
+import net.alpaka.addons.utils.ExpiringIds
 import net.alpaka.addons.utils.SkyblockUtils
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext
@@ -13,11 +16,14 @@ import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.Font
 import net.minecraft.client.multiplayer.ClientLevel
+import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.Style
 import net.minecraft.util.ARGB
 import net.minecraft.util.FormattedCharSequence
 import net.minecraft.util.Mth
+import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.decoration.ArmorStand
+import net.minecraft.world.level.entity.EntityTypeTest
 import java.util.Locale
 import kotlin.math.sin
 
@@ -114,10 +120,19 @@ object CustomDamageTagFeature {
         var gradient: FormattedCharSequence? = null
         var gradientStart = 0
         var gradientEnd = 0
+
+        /**
+         * The text's width and the font generation it was measured in. The gradient only colors the
+         * characters, which never changes a width, so it is measured once per tag and again only
+         * after a resource reload changed the glyphs.
+         */
+        var width = 0
+        var widthGeneration = -1
     }
 
     private val tags = ArrayDeque<Tag>()
-    private val seen = HashMap<Int, Long>()
+    /** Splash stands already looked at, for [SEEN_MEMORY_MS]; expired from the oldest, not walked whole. */
+    private val seen = ExpiringIds()
 
     @JvmStatic
     fun register() {
@@ -130,6 +145,8 @@ object CustomDamageTagFeature {
             }
         }
         LevelRenderEvents.COLLECT_SUBMITS.register { context ->
+            // Nothing to draw on nearly every frame: skip the timing too.
+            if (tags.isEmpty()) return@register
             val t = AlpakaPerf.begin(AlpakaPerf.Section.DAMAGE_TAGS)
             try {
                 submit(context)
@@ -143,6 +160,7 @@ object CustomDamageTagFeature {
     fun reset() {
         tags.clear()
         seen.clear()
+        bossTags.clear()
     }
 
     /**
@@ -172,8 +190,9 @@ object CustomDamageTagFeature {
         val cfg = AlpakaConfig.instance
         val now = System.currentTimeMillis()
         val lifetime = cfg.customDamageTagDurationMs.toLong()
-        tags.removeAll { now - it.bornMs > lifetime }
-        seen.entries.removeIf { now - it.value > SEEN_MEMORY_MS }
+        // Guarded so a tick with nothing to sweep, nearly all of them, builds no predicate or iterator.
+        if (tags.isNotEmpty()) tags.removeAll { now - it.bornMs > lifetime }
+        if (!seen.isEmpty()) seen.expire(now, SEEN_MEMORY_MS)
 
         val level = mc.level
         if (!cfg.customDamageTagsEnabled || level == null || !SkyblockUtils.isOnSkyblock()) return
@@ -185,9 +204,9 @@ object CustomDamageTagFeature {
 
         for (entity in level.entitiesForRendering()) {
             if (entity !is ArmorStand || entity.tickCount > MAX_DETECT_AGE_TICKS) continue
-            if (seen.containsKey(entity.id)) continue
+            if (seen.contains(entity.id)) continue
             val splash = DamageTagFeature.parseSplash(entity) ?: continue
-            seen[entity.id] = now
+            seen.add(entity.id, now)
             // Only Show Crit Damage still applies: a hidden non-crit gets no replacement either.
             if (!splash.crit && cfg.onlyCritDamageEnabled) continue
             // Hypixel's own splash stays hidden either way; these only decide whether ours is drawn.
@@ -206,11 +225,33 @@ object CustomDamageTagFeature {
      */
     private fun nearSlayerBoss(level: ClientLevel, splash: ArmorStand): Boolean {
         val box = splash.boundingBox.inflate(BOSS_RADIUS_XZ, BOSS_RADIUS_Y, BOSS_RADIUS_XZ)
-        return level.getEntitiesOfClass(ArmorStand::class.java, box) { stand ->
-            val name = SkyblockUtils.cleanColor(stand.customName?.string ?: return@getEntitiesOfClass false)
-            SlayerBossNameTag.isBoss(name, SLAYER_BOSS_NAMES) || DEMON_NAMES.any { name.contains(it) }
-        }.isNotEmpty()
+        // Stops at the first boss tag instead of collecting every match.
+        return level.hasEntities(ARMOR_STANDS, box) { stand ->
+            val name = stand.customName
+            name != null && isBossTag(stand.id, name)
+        }
     }
+
+    /**
+     * Whether a stand's name is a slayer boss or demon tag, remembered with the name object it was
+     * read from: in an AoE fight the same stands sit in every splash's box, and a name only changes
+     * when the server sends a new object. Client thread only; cleared on a world change.
+     */
+    private fun isBossTag(id: Int, name: Component): Boolean {
+        val cached = bossTags.get(id)
+        if (cached != null && cached.name === name) return cached.boss
+        val text = SkyblockUtils.cleanColor(name.string)
+        val boss = SlayerBossNameTag.isBoss(text, SLAYER_BOSS_NAMES) || DEMON_NAMES.any { text.contains(it) }
+        if (bossTags.size() >= BOSS_TAG_CACHE_LIMIT) bossTags.clear()
+        bossTags.put(id, BossTag(name, boss))
+        return boss
+    }
+
+    private val ARMOR_STANDS: EntityTypeTest<Entity, ArmorStand> = EntityTypeTest.forClass(ArmorStand::class.java)
+
+    private class BossTag(val name: Component, val boss: Boolean)
+    private val bossTags = EntityCache<BossTag>()
+    private const val BOSS_TAG_CACHE_LIMIT = 1024
 
     private fun add(tag: Tag) {
         if (tags.size >= MAX_TAGS) tags.removeFirst()
@@ -248,8 +289,7 @@ object CustomDamageTagFeature {
             val start = if (tag.crit) cfg.customDamageTagCritStart else cfg.customDamageTagNormalStart
             val end = if (tag.crit) cfg.customDamageTagCritEnd else cfg.customDamageTagNormalEnd
             // A still gradient is the same every frame, so it is built once per tag and again only when
-            // a color changes. The width is still measured every frame: a resource reload can change
-            // the glyphs.
+            // a color changes.
             val sequence = if (cfg.customDamageTagFlowingGradient) {
                 gradient(text, start, end, time)
             } else {
@@ -257,7 +297,12 @@ object CustomDamageTagFeature {
                 if (built != null && tag.gradientStart == start && tag.gradientEnd == end) built
                 else gradient(text, start, end, null).also { tag.gradient = it; tag.gradientStart = start; tag.gradientEnd = end }
             }
-            val width = font.width(sequence)
+            val generation = AlpakaStyle.fontGeneration
+            if (tag.widthGeneration != generation) {
+                tag.width = font.width(sequence)
+                tag.widthGeneration = generation
+            }
+            val width = tag.width
 
             poseStack.pushPose()
             poseStack.translate(

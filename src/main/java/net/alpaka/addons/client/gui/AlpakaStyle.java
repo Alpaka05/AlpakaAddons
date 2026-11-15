@@ -1,5 +1,7 @@
 package net.alpaka.addons.client.gui;
 
+import java.util.HashMap;
+import java.util.Map;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 
@@ -57,7 +59,7 @@ public final class AlpakaStyle {
      * The Menu Theme's choices as the list shows them, light to dark. The config saves a theme's
      * place in {@link Theme} instead, so reordering the list never changes a saved choice.
      */
-    public static final String[] THEME_NAMES = {"Light", "Dark", "OLED", "Cappuccino"};
+    public static final String[] THEME_NAMES = {"Light", "Dark", "OLED", "Alpaka"};
 
     /**
      * The looks a menu can have: the dark one it always had, a light one, one of pure black for
@@ -78,7 +80,7 @@ public final class AlpakaStyle {
                 0xFFEDEDED, 0xFFBDBDBD, 0xFF7C7C7C, 0xFF2E2E2E, 0xFF6E6E6E, 0xFF8A8A8A, 0xFF0A0A0A, 0xFFEDEDED,
                 0xFF000000, 0xFFE5534B, 0xFFC9726C),
         // Espresso browns with cream text, like the coffee themes of code editors.
-        CAPPUCCINO(0x80000000, 0xFF2B211C, 0xFF3D3029, 0xFF54443A, 0xFF362A24, 0xFF3E3129, 0xFF47392F, 0xFF382C25,
+        ALPAKA(0x80000000, 0xFF2B211C, 0xFF3D3029, 0xFF54443A, 0xFF362A24, 0xFF3E3129, 0xFF47392F, 0xFF382C25,
                 0xFFF3E6D8, 0xFFD2BFAB, 0xFF9C8676, 0xFF54443A, 0xFF8A7464, 0xFFA48D7C, 0xFF32271F, 0xFFF3E6D8,
                 0xFF1A1411, 0xFFE5674F, 0xFFC98370);
 
@@ -89,7 +91,7 @@ public final class AlpakaStyle {
         }
 
         /** The themes in the order of {@link #THEME_NAMES}. */
-        public static final Theme[] MENU_ORDER = {LIGHT, DARK, OLED, CAPPUCCINO};
+        public static final Theme[] MENU_ORDER = {LIGHT, DARK, OLED, ALPAKA};
 
         /** The theme saved under this index, the dark one for anything unknown. */
         public static Theme of(int index) {
@@ -312,6 +314,45 @@ public final class AlpakaStyle {
         ModernGuiUtils.drawRect(graphics, cx + 1, cy - 1, 1, 4, color);
     }
 
+    /** A globe drawn in pixels, row by row, for {@link #globeButton}. */
+    private static final String[] GLOBE = {
+        "...#####...",
+        "..#..#..#..",
+        ".#..#.#..#.",
+        "#...#.#...#",
+        "#...#.#...#",
+        "###########",
+        "#...#.#...#",
+        "#...#.#...#",
+        ".#..#.#..#.",
+        "..#..#..#..",
+        "...#####...",
+    };
+
+    /**
+     * A web button: a small globe in the same thin lines as {@link #trashButton}, gray until
+     * hovered, then in the accent color on a soft square.
+     */
+    public static void globeButton(GuiGraphicsExtractor graphics, int x, int y, int size, boolean hover) {
+        if (hover) ModernGuiUtils.drawRoundedRect(graphics, x, y, size, size, FIELD_RADIUS, ROW_SELECTED);
+        int color = hover ? ModernGuiUtils.getAccentColor() : TEXT_MUTED;
+        int ox = x + (size - GLOBE[0].length()) / 2;
+        int oy = y + (size - GLOBE.length) / 2;
+        for (int row = 0; row < GLOBE.length; row++) {
+            String line = GLOBE[row];
+            int col = 0;
+            while (col < line.length()) {
+                if (line.charAt(col) != '#') {
+                    col++;
+                    continue;
+                }
+                int start = col;
+                while (col < line.length() && line.charAt(col) == '#') col++;
+                ModernGuiUtils.drawRect(graphics, ox + start, oy + row, col - start, 1, color);
+            }
+        }
+    }
+
     /**
      * A paste button: a small clipboard in the same thin lines as {@link #trashButton}, gray until
      * hovered, then in the accent color on a soft square.
@@ -360,6 +401,63 @@ public final class AlpakaStyle {
             int caretX = x + 5 + GuiFont.width(font, clipped);
             ModernGuiUtils.drawRect(graphics, caretX, ty - 1, 1, 10, TEXT);
         }
+    }
+
+    /**
+     * A text field being edited: as above, with the caret where it really is and the selection
+     * marked, scrolled so the caret stays in view. At rest it is the plain field.
+     *
+     * @param shown what to draw for the text, one character for each of its characters (a secret's
+     *              mask); null draws the text itself.
+     */
+    public static void textField(GuiGraphicsExtractor graphics, Font font, int x, int y, int w, int h,
+                                 EditableText edit, String shown, String placeholder, boolean focused, boolean hover,
+                                 long caretFrom) {
+        String text = shownText(edit, shown);
+        if (!focused) {
+            textField(graphics, font, x, y, w, h, text, placeholder, false, hover, caretFrom);
+            return;
+        }
+        ModernGuiUtils.drawRoundedRect(graphics, x, y, w, h, FIELD_RADIUS, FIELD);
+        ModernGuiUtils.drawRect(graphics, x + 3, y + h - 1, w - 6, 1, ModernGuiUtils.getAccentColor());
+        int ty = y + (h - 8) / 2;
+        int tx = x + 5;
+        int room = w - 10;
+        int ox = tx - fieldScroll(font, text, edit.getCaret(), room);
+        graphics.enableScissor(tx - 1, y, tx + room + 1, y + h);
+        if (edit.hasSelection()) {
+            int from = ox + GuiFont.width(font, text.substring(0, edit.getSelectionStart()));
+            int to = ox + GuiFont.width(font, text.substring(0, edit.getSelectionEnd()));
+            ModernGuiUtils.drawRect(graphics, from, ty - 1, to - from, 10, accentDim());
+        }
+        graphics.text(font, GuiFont.text(text), ox, ty, TEXT, false);
+        if ((System.currentTimeMillis() - caretFrom) / 500 % 2 == 0) {
+            ModernGuiUtils.drawRect(graphics, ox + GuiFont.width(font, text.substring(0, edit.getCaret())), ty - 1, 1, 10, TEXT);
+        }
+        graphics.disableScissor();
+    }
+
+    /**
+     * Puts the caret of a field drawn with {@link #textField(GuiGraphicsExtractor, Font, int, int, int, int,
+     * EditableText, String, String, boolean, boolean, long)} under the mouse; with {@code extend}
+     * (Shift held) the selection runs to it instead. {@code wasFocused} says whether the field was
+     * being edited when it was clicked, since a field at rest is drawn unscrolled.
+     */
+    public static void clickTextField(Font font, EditableText edit, String shown, int x, int w, double mouseX,
+                                      boolean wasFocused, boolean extend) {
+        String text = shownText(edit, shown);
+        int scroll = wasFocused ? fieldScroll(font, text, edit.getCaret(), w - 10) : 0;
+        edit.setCaretFromX((int) mouseX - (x + 5) + scroll,
+                s -> GuiFont.width(font, text.substring(0, Math.min(s.length(), text.length()))), extend && wasFocused);
+    }
+
+    private static String shownText(EditableText edit, String shown) {
+        return shown != null && shown.length() == edit.getText().length() ? shown : edit.getText();
+    }
+
+    /** How far the text is scrolled left so the caret stays inside {@code room}. */
+    private static int fieldScroll(Font font, String text, int caret, int room) {
+        return Math.max(0, GuiFont.width(font, text.substring(0, Math.min(caret, text.length()))) - room + 1);
     }
 
     /**
@@ -605,19 +703,71 @@ public final class AlpakaStyle {
     public static String ellipsize(Font font, String text, int maxW) {
         if (text == null || maxW <= 0) return "";
         if (GuiFont.width(font, text) <= maxW) return text;
+        Fit key = new Fit(text, maxW, false);
+        String cached = cachedFit(font, key);
+        if (cached != null) return cached;
         String dots = "…";
         int end = text.length();
         while (end > 0 && GuiFont.width(font, text.substring(0, end) + dots) > maxW) end--;
-        return text.substring(0, end).trim() + dots;
+        return rememberFit(key, text.substring(0, end).trim() + dots);
     }
 
     /** The end of a text that fits the width - the part being typed stays in view. */
     private static String clipLeft(Font font, String text, int maxW) {
         if (GuiFont.width(font, text) <= maxW) return text;
+        Fit key = new Fit(text, maxW, true);
+        String cached = cachedFit(font, key);
+        if (cached != null) return cached;
         int start = 0;
         while (start < text.length() && GuiFont.width(font, text.substring(start)) > maxW) start++;
-        return text.substring(start);
+        return rememberFit(key, text.substring(start));
     }
+
+    /** A cut text: the text, the width and which end was kept. */
+    private record Fit(String text, int maxW, boolean keepEnd) {}
+
+    /**
+     * Cut texts, by text and width. Cutting one measures it once per character removed, and the
+     * same labels are cut to the same widths every frame (market rows, chest value lines, inventory
+     * buttons, text fields). Only overflowing texts land here. A width depends on the font, the menu
+     * font setting and the loaded glyphs, so the map is dropped when the font or {@link
+     * GuiFont#style()} differs and after every resource reload or font option change. Render thread only.
+     */
+    private static final Map<Fit, String> FITS = new HashMap<>();
+    private static Font fitsFont;
+    private static net.minecraft.network.chat.Style fitsStyle;
+
+    private static String cachedFit(Font font, Fit key) {
+        net.minecraft.network.chat.Style style = GuiFont.style();
+        if (font != fitsFont || style != fitsStyle) {
+            FITS.clear();
+            fitsFont = font;
+            fitsStyle = style;
+        }
+        return FITS.get(key);
+    }
+
+    private static String rememberFit(Fit key, String result) {
+        // A text field being typed into adds one entry per value.
+        if (FITS.size() >= 1024) FITS.clear();
+        FITS.put(key, result);
+        return result;
+    }
+
+    /**
+     * Clears the cut texts once the glyphs may have changed: called from the client's reload
+     * listener and when the font options (Force Unicode Font, glyph variants) change.
+     */
+    public static void onResourcesReloaded() {
+        FITS.clear();
+        fontGeneration++;
+    }
+
+    /**
+     * Counts glyph changes (resource reloads, after the fonts, and font option changes): a width
+     * measured and kept elsewhere is only good for the generation it was measured in.
+     */
+    public static int fontGeneration = 0;
 
     /** The config's slider track: a hairline, the accent up to the knob, and a round knob. */
     public static void sliderTrack(GuiGraphicsExtractor graphics, int x, int y, int w, double norm, boolean hover, boolean dragging) {

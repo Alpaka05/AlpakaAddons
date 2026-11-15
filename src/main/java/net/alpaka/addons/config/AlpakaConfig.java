@@ -75,15 +75,6 @@ public class AlpakaConfig {
     /** What those share buttons post: 0 the tracker's own line, 1 Hypixel's drop message as it came. */
     public int slayerShareMessage = 0;
     public boolean fullbrightEnabled = false;
-    /** Sky Effects: animated skies, drawn by this client only. Each sky has its own switch. */
-    public boolean skyEffectsEnabled = false;
-    public boolean skyEffectsNether = true;
-    public boolean skyEffectsOverworld = true;
-    public boolean skyEffectsEnd = true;
-    /** How strongly the effects show, 0.1..1; at 1 the skies are drawn in full. */
-    public float skyEffectsIntensity = 1.0f;
-    /** How fast they move, 0.25..3; 1 is the designed pace. */
-    public float skyEffectsSpeed = 1.0f;
 
     // Cosmetics. All are drawn by this client for this client only - nothing is sent, nobody else
     // sees them - and both apply to the player's own model in third person.
@@ -138,6 +129,19 @@ public class AlpakaConfig {
     public float auraSpeed = 1.0f;
     /** How strongly the aura glows, in percent. */
     public float auraBrightness = 80.0f;
+    /**
+     * A slayer's rarest drop pops up as a big spinning item in a golden glow where the boss died.
+     * Drawn by this client only. Off by default while it is being tried out.
+     */
+    public boolean rareDropAnimationEnabled = false;
+    /** How big the item and its glow are, as a factor. */
+    public float rareDropAnimationSize = 1.0f;
+    /** How long the animation stays, in seconds. */
+    public float rareDropAnimationDuration = 6.0f;
+    /** A rising chime as the item pops up, heard only by this client. */
+    public boolean rareDropAnimationSound = true;
+    /** Each slayer's own color mixed into the gold. */
+    public boolean rareDropAnimationSlayerColors = true;
 
     // Player scale. The model is drawn stretched or shrunk per axis, in the world only; the hitbox,
     // eye height, camera and reach are untouched, and nothing is sent, so nobody else sees it.
@@ -257,6 +261,8 @@ public class AlpakaConfig {
     public boolean clutterExperienceOrbs = true;
     /** A dying Ender Dragon, its light rays and its death explosions. */
     public boolean clutterDragonDeath = true;
+    /** Arrows stuck in players and in blocks. */
+    public boolean clutterAttachedArrows = true;
     /** Hides the flames on burning mobs, players and yourself in third person. Cosmetic only. */
     public boolean hideEntityFire = false;
     /** Opacity of the fire covering the screen while you burn in first person, 0..1; 1 is vanilla, 0 hides it. */
@@ -933,6 +939,7 @@ public class AlpakaConfig {
     public boolean messageFilterStash = true;
     public boolean messageFilterEventRewards = true;
     public boolean messageFilterSacks = true;
+    public boolean messageFilterSkyMall = true;
     /** Dungeon chatter, only hidden inside a Catacombs run; one switch per group. */
     public boolean messageFilterDungeonPrepare = true;
     public boolean messageFilterDungeonStart = true;
@@ -1004,6 +1011,21 @@ public class AlpakaConfig {
     /** In SkyBlock's anvil, books that combine with the one put in are highlighted. */
     public boolean anvilCombineHelperEnabled = false;
     public int anvilCombineHelperColor = 0x8055FF55;
+    /** Slots in SkyBlock menus marked the way Item Search marks what it found: ready ones in one color, missing ones in another. */
+    public boolean slotHighlightEnabled = true;
+    public boolean slotHighlightActivePet = true;
+    public boolean slotHighlightUnfinishedTasks = true;
+    public boolean slotHighlightAuctions = true;
+    public boolean slotHighlightBazaarOrders = true;
+    public boolean slotHighlightCroesus = true;
+    public boolean slotHighlightJacobContests = true;
+    public boolean slotHighlightSlayerRewards = true;
+    public boolean slotHighlightRngMeter = true;
+    public boolean slotHighlightCommissions = true;
+    public boolean slotHighlightChocolateFactory = true;
+    public boolean slotHighlightComposterUpgrades = true;
+    public int slotHighlightReadyColor = 0x5055FF55;
+    public int slotHighlightMissingColor = 0x50FF5555;
     /** Chronomatron, Ultrasequencer and Superpairs: what to click next is highlighted. */
     public boolean experimentSolverEnabled = false;
     public int experimentSolverNextColor = 0xA055FF55;
@@ -1087,6 +1109,17 @@ public class AlpakaConfig {
     public boolean itemSearchEnabled = true;
     /** The Chest Value panel beside a menu: what everything in it is worth; see ChestValuePanel. Needs allowApiCalls. */
     public boolean chestValueEnabled = false;
+    /** Price Tooltip: prices written under SkyBlock items' tooltips; see PriceTooltipFeature. Needs allowApiCalls. */
+    public boolean priceTooltipEnabled = false;
+    /** When they show, an index into PriceTooltipFeature.MODES: always, while its key is held, switched by its key. */
+    public int priceTooltipMode = 0;
+    /** Whether they are switched on, for the toggle mode. */
+    public boolean priceTooltipShown = true;
+    /** Which lines the tooltip gets. */
+    public boolean priceTooltipLowestBin = true;
+    public boolean priceTooltipAverage = true;
+    public boolean priceTooltipBazaar = true;
+    public boolean priceTooltipItemValue = true;
     /** Whether the panel is showing: its key switches it, and it stays so from menu to menu until pressed again. */
     public boolean chestValueShown = false;
     /** Whether a chest's panel counts the player's own inventory below it too. */
@@ -1961,9 +1994,9 @@ public class AlpakaConfig {
         this.customNameTagEnabled = false;
         this.chromaHatEnabled = false;
         this.auraEnabled = false;
+        this.rareDropAnimationEnabled = false;
         this.playerScaleEnabled = false;
         this.fullbrightEnabled = false;
-        this.skyEffectsEnabled = false;
         this.inventorySnowEnabled = false;
         this.containerBgFadeInEnabled = false;
         this.hideInventoryEffects = false;
@@ -2015,6 +2048,7 @@ public class AlpakaConfig {
         this.itemSearchEnabled = false;
         this.itemValueEnabled = false;
         this.chestValueEnabled = false;
+        this.priceTooltipEnabled = false;
         this.profileDashboardEnabled = false;
         this.worldAgeJoinMessageEnabled = false;
         this.onlyCritDamageEnabled = false;
@@ -2056,6 +2090,7 @@ public class AlpakaConfig {
         this.storagePreviewEnabled = false;
         this.maxEnchantColorEnabled = false;
         this.anvilCombineHelperEnabled = false;
+        this.slotHighlightEnabled = false;
         this.experimentSolverEnabled = false;
         this.mentionNotificationEnabled = false;
         this.itemMotionBlurEnabled = false;

@@ -20,6 +20,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.inventory.Slot;
@@ -125,7 +126,7 @@ public final class StoragePreviewFeature {
             leavePage();
             return;
         }
-        String key = pageKey(SkyblockUtils.cleanColor(screen.getTitle().getString()));
+        String key = titleKey(screen.getTitle());
         if (key == null) {
             leavePage();
             return;
@@ -192,6 +193,20 @@ public final class StoragePreviewFeature {
         }
     }
 
+    /** The last title read and what it said: a menu's title stays the same object while it is open, and is read every tick. */
+    private static Component keyTitle = null;
+    private static String keyOfTitle = null;
+    private static Component plainTitleOf = null;
+    private static String plainTitle = "";
+
+    private static String titleKey(Component title) {
+        if (title != keyTitle) {
+            keyOfTitle = pageKey(SkyblockUtils.cleanColor(title.getString()));
+            keyTitle = title;
+        }
+        return keyOfTitle;
+    }
+
     /** "ec2" for "Ender Chest (2/9)", "bp3" for "Jumbo Backpack (Slot #3)", else null. */
     static String pageKey(String title) {
         Matcher ec = ENDER_CHEST_TITLE.matcher(title);
@@ -217,7 +232,12 @@ public final class StoragePreviewFeature {
     public static java.util.Optional<TooltipComponent> tooltipImage(AbstractContainerScreen<?> screen, ItemStack stack,
                                                                     java.util.Optional<TooltipComponent> original) {
         if (!isEnabled() || original.isPresent() || !SkyblockUtils.isOnSkyblock()) return original;
-        if (!"Storage".equals(SkyblockUtils.cleanColor(screen.getTitle().getString()).trim())) return original;
+        Component title = screen.getTitle();
+        if (title != plainTitleOf) {
+            plainTitle = SkyblockUtils.cleanColor(title.getString()).trim();
+            plainTitleOf = title;
+        }
+        if (!"Storage".equals(plainTitle)) return original;
         String key = iconKey(SkyblockUtils.cleanColor(stack.getHoverName().getString()).trim());
         if (key == null) return original;
         Map<String, List<ItemStack>> profile = currentProfile();

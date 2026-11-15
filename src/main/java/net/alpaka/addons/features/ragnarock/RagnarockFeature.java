@@ -1,5 +1,6 @@
 package net.alpaka.addons.features.ragnarock;
 
+import net.alpaka.addons.utils.ItemData;
 import net.alpaka.addons.config.AlpakaConfig;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
@@ -142,6 +143,13 @@ public final class RagnarockFeature {
             seconds = -1;
             return message;
         }
+        // Action bars come several times a second everywhere; one without the word cannot match,
+        // so it takes the no-match path below without splitting the message into pieces.
+        if (!message.getString().contains("CASTING")) {
+            if (seconds > 0) countdownEndedAt = System.currentTimeMillis();
+            seconds = -1;
+            return message;
+        }
         List<Piece> pieces = new ArrayList<>();
         message.visit((style, text) -> {
             pieces.add(new Piece(style, text));
@@ -233,7 +241,7 @@ public final class RagnarockFeature {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return false;
         CustomData data = mc.player.getMainHandItem().get(DataComponents.CUSTOM_DATA);
-        return data != null && ITEM_ID.equals(data.copyTag().getStringOr("id", ""));
+        return data != null && ITEM_ID.equals(ItemData.view(data).getStringOr("id", ""));
     }
 
     /** The action bar rebuilt piece by piece with its styles, minus the characters in [start, end). */

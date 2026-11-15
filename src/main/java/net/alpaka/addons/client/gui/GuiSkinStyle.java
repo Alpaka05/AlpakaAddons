@@ -51,12 +51,16 @@ public final class GuiSkinStyle {
 
     /** The color the preview is blitted in. The texture is premultiplied, which a tint of full alpha suits. */
     public static int color(PictureInPictureRenderState state, int vanilla) {
+        // Every picture-in-picture blit asks, and only the main menu's avatar is ever styled. A lookup
+        // in the empty map would still hash the state, and render states are records hashed by value.
+        if (STYLED.isEmpty()) return vanilla;
         Style style = STYLED.get(state);
         return style == null ? vanilla : style.color();
     }
 
     /** The pose the preview is blitted with: vanilla's, moved by the fraction of a pixel. */
     public static Matrix3x2fc pose(PictureInPictureRenderState state, Matrix3x2fc vanilla) {
+        if (STYLED.isEmpty()) return vanilla;
         Style style = STYLED.get(state);
         if (style == null || (style.offsetX() == 0.0f && style.offsetY() == 0.0f)) return vanilla;
         return new Matrix3x2f(vanilla).translate(style.offsetX(), style.offsetY());

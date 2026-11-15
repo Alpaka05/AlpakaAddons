@@ -17,8 +17,6 @@ object DungeonMapColors {
     const val CLEARED = 0xFFFFFFFF.toInt()
     const val COMPLETE = 0xFF55E68B.toInt()
     const val FAILED = 0xFFFF5555.toInt()
-    const val BOSS_FLOOR = 0xFF687981.toInt()
-    const val BOSS_WALL = 0xFFB8C5CC.toInt()
 
     /** Indexed by [DungeonMapInk] ordinal; [DungeonMapInk.ORIGINAL] keeps the map's own color. */
     val BY_INK = intArrayOf(0, ROOM, ENTRANCE, PUZZLE, TRAP, MINIBOSS, FAIRY, BLOOD, UNKNOWN, WITHER_DOOR,

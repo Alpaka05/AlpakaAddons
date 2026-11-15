@@ -47,7 +47,7 @@ public final class ItemPrices {
     public record Quote(double price, MarketKind market) {}
 
     /** A Bazaar product's prices, NaN where nobody is selling or buying. */
-    record Product(double buy, double sell) {}
+    public record Product(double buy, double sell) {}
 
     /** One of the two lists: its contents once loaded, and when to ask again. */
     private static final class Source<T> {
@@ -99,6 +99,12 @@ public final class ItemPrices {
      */
     public static Quote quote(String id) {
         return quote(id, BAZAAR.data, LOWEST_BINS.data, AlpakaConfig.instance.itemValueBazaarPrice == 1);
+    }
+
+    /** The Bazaar's instant buy and sell price of a product; null for an item not sold there or while the list loads. */
+    public static Product bazaar(String id) {
+        Map<String, Product> bazaar = BAZAAR.data;
+        return id == null || bazaar == null ? null : bazaar.get(id);
     }
 
     static Quote quote(String id, Map<String, Product> bazaar, Map<String, Double> bins, boolean sellSide) {

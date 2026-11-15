@@ -46,7 +46,7 @@ import kotlin.math.exp
 object AuraFeature {
 
     const val EFFECT_SPIRIT_ORBS = 0
-    const val EFFECT_TWIN_HELIX = 1
+    const val EFFECT_MATRIX = 1
     const val EFFECT_ARCANE_SIGIL = 2
     const val EFFECT_INFERNO = 3
     const val EFFECT_GALAXY = 4
@@ -55,7 +55,7 @@ object AuraFeature {
 
     /** Names for the effect dropdown, indexed by the EFFECT_* constants. */
     @JvmField
-    val EFFECT_NAMES = arrayOf("Spirit Orbs", "Twin Helix", "Arcane Sigil", "Inferno", "Galaxy", "Fireflies", "Storm")
+    val EFFECT_NAMES = arrayOf("Spirit Orbs", "Matrix", "Arcane Sigil", "Inferno", "Galaxy", "Fireflies", "Storm")
 
     const val COLORS_EFFECT = 0
     const val COLORS_RAINBOW = 1
@@ -67,12 +67,12 @@ object AuraFeature {
 
     /**
      * Each effect's own colors, as a gradient from 0 to 1. What a point of an effect means by its
-     * gradient position differs per effect: the height on the helix, the age of a flame, the distance
+     * gradient position differs per effect: the age of a glyph in the rain, the age of a flame, the distance
      * from a galaxy's center.
      */
     private val PALETTES = arrayOf(
         intArrayOf(0x6FE8FF, 0xA77BFF, 0xFF7AD9), // Spirit Orbs: cyan, violet, pink
-        intArrayOf(0x47FFC2, 0x3FA9FF, 0xB06BFF), // Twin Helix: mint to blue to purple
+        intArrayOf(0xE6FFE8, 0x4DFF7A, 0x13B347, 0x0A6B2A), // Matrix: white-green head to deep green tail
         intArrayOf(0xFFE7A0, 0xFFC23D, 0xFF8A2B), // Arcane Sigil: gold
         intArrayOf(0xFFF6C8, 0xFFC13A, 0xFF6A1A, 0xC8162E), // Inferno: white-hot to deep red
         intArrayOf(0xFFF1D6, 0x9FC4FF, 0x8A5CFF, 0xFF6FD8), // Galaxy: warm core, blue and violet arms
@@ -178,7 +178,7 @@ object AuraFeature {
             val canvas = AuraCanvas(pose, buffer, ox, oy, oz, rightX, rightY, rightZ, upX, upY, upZ, strength)
             when (effect) {
                 EFFECT_SPIRIT_ORBS -> AuraEffects.spiritOrbs(canvas, frame)
-                EFFECT_TWIN_HELIX -> AuraEffects.twinHelix(canvas, frame)
+                EFFECT_MATRIX -> AuraEffects.matrix(canvas, frame)
                 EFFECT_ARCANE_SIGIL -> AuraEffects.arcaneSigil(canvas, frame)
                 EFFECT_INFERNO -> AuraEffects.inferno(canvas, frame)
                 EFFECT_GALAXY -> AuraEffects.galaxy(canvas, frame)

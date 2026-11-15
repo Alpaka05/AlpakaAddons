@@ -4,6 +4,7 @@ import net.alpaka.addons.features.cosmetics.AuraCanvas.Companion.TAU
 import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -107,79 +108,69 @@ internal object AuraEffects {
     }
 
     /**
-     * Two strands of light wound around the body like a DNA helix, beaded with lights that pulse in a
-     * wave running up the strands, faint rungs between them, and a bright surge that keeps climbing
-     * from the feet to above the head.
+     * Digital rain: columns of glyphs falling around the body on a slowly turning cylinder. The glyphs
+     * lie in the cylinder's surface, facing out, so the rain forms a ring around the player rather
+     * than a wall towards the camera. Each
+     * column is led by a bright, almost white glyph and trails a tail that darkens to deep green; the
+     * rain moves a whole glyph at a time, like a terminal scrolling, and the glyphs in the tail keep
+     * changing. Where a column reaches the ground it flashes.
      */
-    fun twinHelix(c: AuraCanvas, f: AuraFrame) {
+    fun matrix(c: AuraCanvas, f: AuraFrame) {
         val t = f.time
-        val radius = 0.68f * f.size
-        val top = f.height + 0.2f
-        val turns = 1.75f
-        val p = FloatArray(3)
-        val q = FloatArray(3)
+        val s = f.size
+        val radius = 0.74f * s
+        val pitch = 0.19f * s
+        val glyphW = 0.14f * s
+        val glyphH = 0.18f * s
+        val top = f.height + 0.55f * s
+        val rows = max(4, (top / pitch).toInt())
+        val columns = 20
+        val turn = t * 0.12f
 
-        c.ring(0.04f, radius, 0.05f * f.size, f.color(0f), 0.4f)
-        c.ring(top, radius * 0.75f, 0.035f * f.size, f.color(1f), 0.3f)
+        for (col in 0 until columns) {
+            val id = col * 7
+            val a = col * TAU / columns + turn
+            val x = cos(a) * radius
+            val z = sin(a) * radius
+            // Along the circle, so the glyph lies in the cylinder.
+            val tx = -sin(a)
+            val tz = cos(a)
+            // Rows per second, how long the tail is, and a pause below the ground before it falls again.
+            val speed = 6f + 6f * hash(id + 2)
+            val length = 6 + (hash(id + 3) * 8).toInt()
+            val cycle = rows + length + (hash(id + 4) * 12).toInt()
+            val pos = t * speed + hash(id + 5) * cycle
+            val loop = floor(pos / cycle).toInt()
+            val head = (pos - loop * cycle).toInt()
+            // Where this fall comes into view: a new height every time, up to five rows below the
+            // top, so the upper edge of the rain is ragged instead of one straight cut.
+            val start = min((hash(id * 17 + loop * 7) * 6f).toInt(), rows - 2)
 
-        for (s in 0 until 2) {
-            val offset = s * Math.PI.toFloat()
-            c.beginRibbon()
-            val points = 44
-            for (i in 0..points) {
-                val k = i.toFloat() / points
-                helix(k, s, t, radius, top, turns, offset, p)
-                val ends = sqrt(sin(k * Math.PI.toFloat()))
-                c.point(p[0], p[1], p[2], 0.08f * f.size, f.color(k * 0.85f + s * 0.15f), 0.65f * ends)
-            }
-            c.endRibbon()
-
-            // The surge climbing the strand, with a short streak below it.
-            val surge = fract(t * 0.42f + s * 0.5f)
-            c.beginRibbon()
-            for (i in 0..10) {
-                val k = surge - i * 0.012f
-                if (k < 0f) break
-                helix(k, s, t, radius, top, turns, offset, p)
-                c.point(p[0], p[1], p[2], 0.14f * f.size * (1f - i / 10f), f.color(k), 0.8f * (1f - i / 10f))
-            }
-            c.endRibbon()
-            helix(surge, s, t, radius, top, turns, offset, p)
-            val surgeFade = sin(surge * Math.PI.toFloat())
-            c.sprite(p[0], p[1], p[2], 0.45f * f.size, f.color(surge), 0.8f * surgeFade)
-            c.sprite(p[0], p[1], p[2], 0.7f * f.size, f.color(surge), 0.4f * surgeFade, sparkle = true, spin = t * 2f)
-        }
-
-        val beads = 12
-        for (b in 0 until beads) {
-            val k = (b + 0.5f) / beads
-            for (s in 0 until 2) {
-                val offset = s * Math.PI.toFloat()
-                helix(k, s, t, radius, top, turns, offset, p)
-                val wave = 0.5f + 0.5f * sin(t * 4f - k * 10f + offset)
-                c.sprite(p[0], p[1], p[2], 0.19f * f.size * (0.7f + 0.6f * wave), f.color(k * 0.85f + s * 0.15f),
-                    0.45f + 0.55f * wave)
-            }
-            if (b % 3 == 1) {
-                helix(k, 0, t, radius, top, turns, 0f, p)
-                helix(k, 1, t, radius, top, turns, Math.PI.toFloat(), q)
-                c.beginRibbon()
-                for (i in 0..8) {
-                    val m = i / 8f
-                    c.point(p[0] + (q[0] - p[0]) * m, p[1] + (q[1] - p[1]) * m, p[2] + (q[2] - p[2]) * m,
-                        0.03f * f.size, f.color(k), 0.3f)
+            for (k in 0 until length) {
+                val row = head - k
+                if (row < start || row >= rows) continue
+                val y = top - (row + 0.5f) * pitch
+                // The first two glyphs of a fall fade in rather than appear at full strength.
+                val enter = when (row - start) { 0 -> 0.35f; 1 -> 0.7f; else -> 1f }
+                // Every glyph changes now and then, each at its own pace.
+                val flicker = floor(t * (1.5f + 3f * hash(id * 13 + row)) + hash(id * 31 + row * 3) * 7f).toInt()
+                val glyph = (hash(col * 7919 + row * 104_729 + flicker * 31 + loop * 613) * 256f).toInt()
+                if (k == 0) {
+                    c.sprite(x, y, z, 0.4f * s, f.color(0.15f), 0.4f * enter)
+                    c.glyph(x, y, z, glyphW * 1.1f, glyphH * 1.1f, tx, tz, mix(f.color(0f), 0xFFFFFF, 0.3f), enter, glyph)
+                } else {
+                    val age = k.toFloat() / length
+                    c.glyph(x, y, z, glyphW, glyphH, tx, tz, f.color(0.15f + 0.85f * age), enter * (1f - age).pow(1.1f), glyph)
                 }
-                c.endRibbon()
+            }
+
+            // The head landing: a short flash on the ground at the foot of the column.
+            val landed = head - rows
+            if (landed in 0..2) {
+                val fade = 1f - landed / 3f
+                c.sprite(x, 0.05f, z, 0.4f * s, f.color(0.2f), 0.6f * fade)
             }
         }
-    }
-
-    private fun helix(k: Float, strand: Int, t: Float, radius: Float, top: Float, turns: Float, offset: Float, out: FloatArray) {
-        val angle = k * turns * TAU - t * 1.6f + offset
-        val r = radius * (0.88f + 0.12f * sin(k * TAU + t + strand))
-        out[0] = cos(angle) * r
-        out[1] = 0.04f + k * (top - 0.04f)
-        out[2] = sin(angle) * r
     }
 
     /**
@@ -254,7 +245,7 @@ internal object AuraEffects {
 
         c.flatArc(0.03f, base, 0.55f * s, f.color(0.35f), 0.3f, segments = 40)
 
-        val columns = 16
+        val columns = 20
         val puffs = 9
         for (col in 0 until columns) {
             val angle0 = col * TAU / columns + t * 0.12f + (hash(col * 3) - 0.5f) * 0.3f

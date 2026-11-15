@@ -145,7 +145,7 @@ public class AlpakaClient implements ClientModInitializer {
             );
 
             // The Profile Dashboard: the player's own profile, or another player's by name.
-            for (String alias : new String[]{"alpakaprofile", "aprofile", "ap"}) {
+            for (String alias : new String[]{"alpakaprofile", "aprofile", "ad"}) {
                 dispatcher.register(ClientCommands.literal(alias)
                     .executes(context -> openProfile(null))
                     .then(ClientCommands.argument("player", com.mojang.brigadier.arguments.StringArgumentType.word())

@@ -56,6 +56,11 @@ public final class AlpakaApiServer {
         Api api = new Api(mojang(client), accounts(client), hypixel(client, key), hypixel(client, null), tokenSecret(secretFile),
                 System::currentTimeMillis);
 
+        // cloudflared keeps a connection to this server open for reuse up to 90 s; the JDK's server
+        // closes an idle one after 30. A request cloudflared sends on a connection just as it is
+        // closed here is lost, and Cloudflare answers it with a bare 502. Idle for longer here than
+        // there, a connection is only ever closed by cloudflared.
+        if (System.getProperty(IDLE_PROPERTY) == null) System.setProperty(IDLE_PROPERTY, String.valueOf(IDLE_SECONDS));
         HttpServer server = HttpServer.create(new InetSocketAddress(bind, port), 64);
         server.createContext("/", exchange -> serve(api, exchange));
         server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
@@ -83,6 +88,10 @@ public final class AlpakaApiServer {
         return secret;
     }
 
+    private static final String IDLE_PROPERTY = "sun.net.httpserver.idleInterval";
+    /** Longer than cloudflared's 90 s keep-alive; see {@link #main}. */
+    static final long IDLE_SECONDS = 180;
+
     private static String env(String name, String fallback) {
         String v = System.getenv(name);
         return v == null || v.isBlank() ? fallback : v;
@@ -100,8 +109,10 @@ public final class AlpakaApiServer {
             try {
                 response = api.handle(new Api.Request(exchange.getRequestMethod(), exchange.getRequestURI().getPath(),
                         exchange.getRequestURI().getRawQuery(), headers, ip));
-            } catch (RuntimeException e) {
-                System.err.println("Request failed: " + e);
+            } catch (RuntimeException | StackOverflowError | OutOfMemoryError e) {
+                // Logged by where it went, not by whom. Without an answer the connection would just be
+                // dropped, which Cloudflare turns into a 502 that says nothing.
+                System.err.println("Request to " + route(exchange.getRequestURI().getPath()) + " failed: " + e);
                 response = Api.Response.error(500, "Something went wrong");
             }
             byte[] body = response.body().getBytes(StandardCharsets.UTF_8);
@@ -120,6 +131,15 @@ public final class AlpakaApiServer {
                 out.write(body);
             }
         }
+    }
+
+    /** The route a path belongs to, without the player or profile in it: "/v1/dashboard/*". */
+    static String route(String path) {
+        if (path == null) return "?";
+        for (String prefix : new String[] {"/v1/dashboard/", "/v1/museum/"}) {
+            if (path.startsWith(prefix)) return prefix + "*";
+        }
+        return path.length() > 40 ? path.substring(0, 40) + "…" : path;
     }
 
     /** Answers smaller than this aren't worth packing. */

@@ -13,6 +13,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 /**
  * The AlpakaAddons API at api.alpaka.yt: where the Profile Dashboard gets a profile from. It asks
@@ -36,12 +37,36 @@ final class AlpakaApi {
     /** Thrown for an answer the API gave on purpose, with its reason for the player. */
     static final class Refused extends RuntimeException {
         final int status;
+        /** Whether the answer came from the way to the API (Cloudflare) rather than from the API itself. */
+        final boolean onTheWay;
 
         Refused(int status, String message) {
+            this(status, message, false);
+        }
+
+        Refused(int status, String message, boolean onTheWay) {
             super(message);
             this.status = status;
+            this.onTheWay = onTheWay;
         }
     }
+
+    /**
+     * Whether an answer came from Cloudflare in front of the API rather than from the API: the API
+     * answers everything with {@code "success"} in JSON, Cloudflare's 502 and its kin are a page.
+     */
+    static boolean onTheWay(int status, JsonElement body) {
+        boolean api = body != null && body.isJsonObject() && body.getAsJsonObject().has("success");
+        return status >= 500 && !api;
+    }
+
+    /** What a failure on the way to the API is, for the player. */
+    static String onTheWayReason(int status) {
+        return "Couldn't get through to the AlpakaAddons API just now (" + status + "). Try again in a moment.";
+    }
+
+    /** How long to wait before the one retry of a request that failed on the way. */
+    private static final long RETRY_MS = 400L;
 
     private static HttpClient client;
     private static volatile String token;
@@ -113,15 +138,43 @@ final class AlpakaApi {
     }
 
     private static CompletableFuture<JsonElement> get(String path, boolean mayLogInAgain) {
+        return get(path, mayLogInAgain, true);
+    }
+
+    private static CompletableFuture<JsonElement> get(String path, boolean mayLogInAgain, boolean mayRetry) {
         return token().thenCompose(t -> send(path, t)).exceptionallyCompose(e -> {
             Throwable cause = e instanceof java.util.concurrent.CompletionException && e.getCause() != null ? e.getCause() : e;
             if (mayLogInAgain && cause instanceof Refused r && r.status == 401) {
-                // The server was restarted and forgot the login: once more with a new one.
+                // The login was refused (its secret changed, or it ran out on the way): once more with a new one.
                 forgetToken();
-                return get(path, false);
+                return get(path, false, mayRetry);
+            }
+            // Lost on the way - Cloudflare couldn't pass it on, or the connection broke - and the
+            // request only reads: once more, a moment later, before the player sees anything.
+            boolean lost = cause instanceof Refused r ? r.onTheWay
+                    : cause instanceof java.io.IOException && !(cause instanceof java.net.http.HttpTimeoutException);
+            if (mayRetry && lost) {
+                Executor later = CompletableFuture.delayedExecutor(RETRY_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
+                return CompletableFuture.supplyAsync(() -> null, later).thenCompose(x -> get(path, mayLogInAgain, false));
             }
             return CompletableFuture.failedFuture(cause);
         });
+    }
+
+    /** A request of the login, sent once more after a failure on the way, as {@link #get} does. */
+    private static HttpResponse<String> sendLogin(HttpRequest request) throws java.io.IOException, InterruptedException {
+        HttpResponse<String> first;
+        try {
+            first = client().send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+        } catch (java.net.http.HttpTimeoutException e) {
+            throw e;
+        } catch (java.io.IOException e) {
+            Thread.sleep(RETRY_MS);
+            return client().send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+        }
+        if (!onTheWay(first.statusCode(), parse(first.body()))) return first;
+        Thread.sleep(RETRY_MS);
+        return client().send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
     }
 
     private static synchronized void forgetToken() {
@@ -174,7 +227,7 @@ final class AlpakaApi {
                 .build();
         HttpResponse<String> response;
         try {
-            response = client().send(request, HttpResponse.BodyHandlers.ofString());
+            response = sendLogin(request);
         } catch (Exception e) {
             if (e instanceof InterruptedException) Thread.currentThread().interrupt();
             throw new Refused(0, "The AlpakaAddons API can't be reached right now.");
@@ -247,7 +300,7 @@ final class AlpakaApi {
                 .build();
         HttpResponse<String> response;
         try {
-            response = client().send(request, HttpResponse.BodyHandlers.ofString());
+            response = sendLogin(request);
         } catch (Exception e) {
             if (e instanceof InterruptedException) Thread.currentThread().interrupt();
             throw new Refused(0, "The AlpakaAddons API can't be reached right now.");
@@ -273,6 +326,9 @@ final class AlpakaApi {
         return client().sendAsync(request, HttpResponse.BodyHandlers.ofByteArray())
                 .orTimeout(60, java.util.concurrent.TimeUnit.SECONDS).thenApply(response -> {
             JsonElement body = parse(text(response));
+            if (onTheWay(response.statusCode(), body)) {
+                throw new Refused(response.statusCode(), onTheWayReason(response.statusCode()), true);
+            }
             if (response.statusCode() == 404) throw new ProfileApi.NotFound(notFound(body));
             if (response.statusCode() != 200 || !Json.bool(body, "success")) {
                 throw new Refused(response.statusCode(), reason(response.statusCode(), body));
@@ -309,7 +365,8 @@ final class AlpakaApi {
     }
 
     /** The API's or Hypixel's reason, in words for the player. */
-    private static String reason(int status, JsonElement body) {
+    static String reason(int status, JsonElement body) {
+        if (onTheWay(status, body)) return onTheWayReason(status);
         String cause = Json.str(body, "cause");
         if (cause != null && cause.contains("Hypixel key")) {
             return "The AlpakaAddons API can't reach Hypixel right now: its API key isn't working.";

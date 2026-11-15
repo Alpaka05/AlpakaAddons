@@ -550,6 +550,15 @@ class ApiTest {
     }
 
     @Test
+    void errorsAreLoggedByRouteNotByPlayer() {
+        assertEquals("/v1/dashboard/*", AlpakaApiServer.route("/v1/dashboard/Alpakaa"));
+        assertEquals("/v1/museum/*", AlpakaApiServer.route("/v1/museum/" + PLAYER + "/" + APPLE));
+        assertEquals("/v1/bazaar", AlpakaApiServer.route("/v1/bazaar"));
+        // Idle longer than cloudflared's 90 s keep-alive, so it never reuses a connection closed here.
+        assertTrue(AlpakaApiServer.IDLE_SECONDS > 90);
+    }
+
+    @Test
     void jsonGoesThroughUnchanged() {
         String text = "{\"a\":[1,-2.5e3,true,false,null],\"b\":\"q\\\"\\\\\\n\\u00e9\",\"c\":{}}";
         assertEquals("{\"a\":[1,-2.5e3,true,false,null],\"b\":\"q\\\"\\\\\\n\u00e9\",\"c\":{}}", Json.write(Json.parse(text)));

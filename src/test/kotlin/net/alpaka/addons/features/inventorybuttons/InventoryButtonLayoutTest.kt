@@ -62,35 +62,50 @@ class InventoryButtonLayoutTest {
     @Test
     fun `a full row and a full column end flush with the inventory`() {
         val size = InventoryButtonLayout.SIZE
-        // Six side by side from the left edge end at the right edge.
-        assertEquals(inventory.width, 6 * size + 5 * InventoryButtonLayout.GAP_X)
-        // Six stacked from the top edge end at the bottom edge.
-        assertEquals(inventory.height, 6 * size + 5 * InventoryButtonLayout.GAP_Y)
+        assertEquals(7, InventoryButtonLayout.columns(inventory))
+        assertEquals(inventory.left, InventoryButtonLayout.columnX(inventory, 0))
+        assertEquals(inventory.right, InventoryButtonLayout.columnX(inventory, 6) + size)
+        assertEquals(inventory.bottom, InventoryButtonLayout.rowY(inventory, 6) + size)
+        // Every gap across is 3 or 4 px, and the columns beside the panel keep 4 px to it.
+        val gaps = (0 until 6).map { InventoryButtonLayout.columnX(inventory, it + 1) - InventoryButtonLayout.columnX(inventory, it) - size }
+        assertTrue(gaps.all { it == 3 || it == 4 }, gaps.toString())
+        assertEquals(inventory.left - size - 4, InventoryButtonLayout.columnX(inventory, -1))
+        assertEquals(inventory.right + 4, InventoryButtonLayout.columnX(inventory, 7))
     }
 
     @Test
-    fun `a button snapped next to the last of five above the panel ends at its right edge`() {
-        val step = InventoryButtonLayout.SIZE + InventoryButtonLayout.GAP_X
+    fun `a button dropped at the end of a row above the panel ends at its right edge`() {
         val y = inventory.top - InventoryButtonLayout.SIZE - InventoryButtonLayout.GAP_Y
-        val row = (0 until 5).map { intArrayOf(inventory.left + it * step, y) }
-        val s = InventoryButtonLayout.snap(inventory.left + 5 * step + 2, y, inventory, row)
+        val s = InventoryButtonLayout.snap(inventory.right - InventoryButtonLayout.SIZE - 2, y, inventory, emptyList())
         assertEquals(inventory.right - InventoryButtonLayout.SIZE, s[0])
     }
 
     @Test
-    fun `a 22 px row and column keep their places in the grid`() {
-        // A row flush with the left edge above the panel, and the old default column beside it.
-        fun button(x: Int, y: Int) = InventoryButton().also { it.x = x; it.y = y; it.grid = 22 }
-        val row = (0 until 3).map { button(it * 24, -24) }
-        val column = (0 until 3).map { button(-26, 4 + it * 24) }
-        assertTrue(InventoryButtonLayout.migrate(row + column))
-        val size = InventoryButtonLayout.SIZE
-        val r = row.map { InventoryButtonLayout.place(it, inventory, 480, 270) }
-        assertEquals(listOf(0, 30, 60), r.map { it[0] - inventory.left })
-        assertEquals(inventory.top - size - InventoryButtonLayout.GAP_Y, r[0][1])
-        val c = column.map { InventoryButtonLayout.place(it, inventory, 480, 270) }
-        assertEquals(inventory.left - size - InventoryButtonLayout.GAP_X, c[0][0])
-        assertEquals(listOf(4, 32, 60), c.map { it[1] - inventory.top })
+    fun `older rows and columns land in the same cells of the new grid`() {
+        fun button(grid: Int, x: Int, y: Int) = InventoryButton().also { it.x = x; it.y = y; it.grid = grid }
+        // A row of seven flush with the left edge above the panel, and the default column beside it,
+        // as the 22 px buttons had them, and the same row as the 26 px buttons had it, 5 px in.
+        val row22 = (0 until 7).map { button(22, it * 24, -24) }
+        val column22 = (0 until 3).map { button(22, -26, 4 + it * 24) }
+        val row26 = (0 until 6).map { button(26, 5 + it * 30, -56) }
+        // The 22 px row of seven after its move to 26 px: the last one past the right edge.
+        val row26wide = (0 until 7).map { button(26, it * 30, -84) }
+        assertTrue(InventoryButtonLayout.migrate(row22 + column22 + row26 + row26wide))
+        assertEquals(
+            (0 until 7).map { InventoryButtonLayout.columnX(inventory, it) },
+            row26wide.map { InventoryButtonLayout.place(it, inventory, 480, 400)[0] },
+        )
+        val cols = (0 until 7).map { InventoryButtonLayout.columnX(inventory, it) }
+        val r = row22.map { InventoryButtonLayout.place(it, inventory, 480, 270) }
+        assertEquals(cols, r.map { it[0] })
+        assertTrue(r.all { it[1] == InventoryButtonLayout.rowY(inventory, -1) })
+        val c = column22.map { InventoryButtonLayout.place(it, inventory, 480, 270) }
+        assertTrue(c.all { it[0] == InventoryButtonLayout.columnX(inventory, -1) })
+        assertEquals((0 until 3).map { InventoryButtonLayout.rowY(inventory, it) }, c.map { it[1] })
+        val r26 = row26.map { InventoryButtonLayout.place(it, inventory, 480, 270) }
+        assertEquals(cols.take(6), r26.map { it[0] })
+        assertTrue(r26.all { it[1] == InventoryButtonLayout.rowY(inventory, -2) })
+        assertNoOverlap(row22 + column22 + row26, inventory)
     }
 
     @Test
@@ -101,8 +116,9 @@ class InventoryButtonLayoutTest {
 
     @Test
     fun `nothing near means no snap`() {
-        val s = InventoryButtonLayout.snap(20, 10, inventory, emptyList())
-        assertArrayEquals(intArrayOf(20, 10, 0, 0), s)
+        // The grid's columns go on across the whole screen; 11 is halfway between two of them.
+        val s = InventoryButtonLayout.snap(11, 10, inventory, emptyList())
+        assertArrayEquals(intArrayOf(11, 10, 0, 0), s)
     }
 
     /** A button as a settings file from before the 22 px buttons has it. */
@@ -135,13 +151,10 @@ class InventoryButtonLayoutTest {
             oldButton(-96, -20, true), oldButton(-76, -20, true),
         )
         assertTrue(InventoryButtonLayout.migrate(buttons))
-        // Two rows of today's buttons need 56 px above the panel; the smallest screen (480 by 270)
-        // leaves 52, so this looks at one a little taller.
-        val box = Box(152, 62, 176, 166)
-        assertNoOverlap(buttons, box, 290)
+        assertNoOverlap(buttons, inventory)
         for (b in buttons) {
             assertEquals(InventoryButtonLayout.SIZE, b.grid)
-            assertTrue(InventoryButtonLayout.place(b, box, 480, 290)[1] + InventoryButtonLayout.SIZE <= box.top)
+            assertTrue(InventoryButtonLayout.place(b, inventory, 480, 270)[1] + InventoryButtonLayout.SIZE <= inventory.top)
         }
         assertFalse(InventoryButtonLayout.migrate(buttons), "moved only once")
     }

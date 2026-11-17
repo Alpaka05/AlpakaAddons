@@ -171,11 +171,11 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
         // Down the left of the panel, under the last button there, or the first free spot of that column.
         val taken = buttons.map { InventoryButtonLayout.place(it, box, width, height) }
         var y = box.top
-        while (taken.any { it[0] == box.left - InventoryButtonLayout.SIZE - InventoryButtonLayout.GAP_X && it[1] == y } &&
+        while (taken.any { it[0] == InventoryButtonLayout.columnX(box, -1) && it[1] == y } &&
             y + InventoryButtonLayout.SIZE < height) {
             y += InventoryButtonLayout.SIZE + InventoryButtonLayout.GAP_Y
         }
-        InventoryButtonLayout.store(button, box.left - InventoryButtonLayout.SIZE - InventoryButtonLayout.GAP_X, y, box)
+        InventoryButtonLayout.store(button, InventoryButtonLayout.columnX(box, -1), y, box)
         buttons.add(button)
         AlpakaConfig.save()
         select(button)

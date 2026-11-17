@@ -1,7 +1,7 @@
 package net.alpaka.addons.features.inventorybuttons
 
 import net.alpaka.addons.config.AlpakaConfig.InventoryButton
-import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /**
  * Where an inventory button sits on the screen, and how a position on the screen is stored.
@@ -11,19 +11,20 @@ import kotlin.math.abs
  * is taller than the player's inventory, and both are centred - so a button beside the player's own
  * slots, which are always at the bottom, keeps its place next to them, and one above a chest stays
  * above it. Kept apart from Minecraft so it can be tested on its own.
+ *
+ * Buttons snap to a grid that ends flush with the player's inventory (176 by 166) on every side.
+ * Down, seven buttons 2 px apart fill its height exactly (7 * 22 + 6 * 2 = 166). Across no whole
+ * gap does that for a size that isn't too big, so seven columns are spread evenly over its width,
+ * 3 or 4 px apart, and the grid carries on past both sides at the same pace.
  */
 object InventoryButtonLayout {
     /**
      * A button's width and height, the same in every look: room for vanilla's button frame around
      * a 16 px item, which is drawn at its own size in the middle, never scaled up.
-     *
-     * Picked with [GAP_X] and [GAP_Y] so buttons end flush with the player's inventory (176 by
-     * 166) on both sides: six side by side fill its width (6 * 26 + 5 * 4 = 176), six stacked fill
-     * its height (6 * 26 + 5 * 2 = 166). No one gap does both for any size from 18 up.
      */
     const val SIZE = InventoryButton.SIZE
 
-    /** The space left between two buttons side by side, and between a button and the panel's side. */
+    /** The space between a button and the panel's side: where the grid's columns next to it fall. */
     const val GAP_X = 4
 
     /** The space left between two buttons one above the other, and between a button and the panel's top or bottom. */
@@ -32,8 +33,8 @@ object InventoryButtonLayout {
     /** The size buttons were laid out for before every look had a common size: a slot's size. */
     const val OLD_SIZE = 18
 
-    /** The space old layouts left between two buttons, at every earlier size. */
-    private const val OLD_GAP = 2
+    /** The smallest gap two columns may have, for how many fit across a panel. */
+    private const val MIN_GAP_X = 3
 
     /** A container's panel on the screen, in GUI pixels. */
     data class Box(val left: Int, val top: Int, val width: Int, val height: Int) {
@@ -57,6 +58,7 @@ object InventoryButtonLayout {
     fun store(button: InventoryButton, screenX: Int, screenY: Int, box: Box) {
         store(button, screenX, screenY, box, SIZE)
         button.grid = SIZE
+        button.layout = InventoryButton.LAYOUT
     }
 
     private fun store(button: InventoryButton, x: Int, y: Int, box: Box, size: Int) {
@@ -66,109 +68,113 @@ object InventoryButtonLayout {
         button.y = y - if (button.anchorBottom) box.bottom else box.top
     }
 
+    /** How many columns of the grid fit across [box]: seven for the inventory and chests. */
+    @JvmStatic
+    fun columns(box: Box): Int = maxOf(1, (box.width + MIN_GAP_X) / (SIZE + MIN_GAP_X))
+
+    /**
+     * The left edge of column [i] of the grid: 0 is flush with the panel's left edge, the last of
+     * [columns] flush with its right edge, the ones between spread evenly, and the grid goes on at
+     * the same pace on both sides, so column -1 sits [GAP_X] left of the panel.
+     */
+    @JvmStatic
+    fun columnX(box: Box, i: Int): Int {
+        val n = columns(box)
+        if (n < 2) return box.left + i * (SIZE + GAP_X)
+        return box.left + (i * (box.width - SIZE).toFloat() / (n - 1)).roundToInt()
+    }
+
+    /** The top edge of row [i] of the grid, counted from the panel's top edge, [GAP_Y] apart. */
+    @JvmStatic
+    fun rowY(box: Box, i: Int): Int = box.top + i * (SIZE + GAP_Y)
+
     /** The player's inventory panel, which old layouts are converted against. */
     private val INVENTORY = Box(0, 0, 176, 166)
 
     /**
-     * Moves buttons laid out for an earlier size ([InventoryButton.grid]: [OLD_SIZE] or 22) to where
-     * they belong at [SIZE], once, when the settings load. Returns whether anything changed.
+     * Moves buttons from an older grid ([InventoryButton.layout]) onto today's, once, when the
+     * settings load. Returns whether anything changed.
      *
-     * Each button keeps its place in the grid: a button that was the third in a row is the third
-     * in the row at the new size and gaps, so buttons that didn't overlap before don't now, and a
-     * row that sat flush with the panel still does. A row or column spreads as a whole from one
-     * panel edge; spreading each button from its own anchor would pull the left half of a row above
-     * the panel to the right and the right half to the left, into each other. A row above or below
-     * the panel spreads from the panel's left edge and away from the panel; a column beside it
-     * spreads down from the top edge and away from its side.
+     * Each button goes to the cell of the new grid that matches its place in the old one: the third
+     * in a row over the panel is the third column, the first beside the panel's left edge is column
+     * -1, the second above it row -2. A row that ran a little past the panel's edge in the old grid
+     * moves along instead of onto a button that is already in that cell.
      */
     @JvmStatic
     fun migrate(buttons: List<InventoryButton>?): Boolean {
-        if (buttons == null || buttons.none { it.grid != SIZE }) return false
+        if (buttons == null || buttons.none { it.layout != InventoryButton.LAYOUT }) return false
         val box = INVENTORY
-        val moved = buttons.map { button ->
-            if (button.grid == SIZE) return@map null
+        val n = columns(box)
+        val rows = (box.height + GAP_Y) / (SIZE + GAP_Y)
+        class Cell(val button: InventoryButton, val oldX: Int, var col: Int, val row: Int)
+        val cells = buttons.filter { it.layout != InventoryButton.LAYOUT }.map { button ->
             val old = oldSize(button)
             val b = oldPlace(button, box)
-            val o = origin(button, b, box, buttons)
-            intArrayOf(spread(b[0], o[0], old, SIZE + GAP_X), spread(b[1], o[1], old, SIZE + GAP_Y))
+            val row = cell(b[1], old, box.top, box.bottom, oldStepY(button), rows)
+            // A row above or below the panel counts its places from the left edge, also where the
+            // bigger old buttons pushed its last one past the right edge.
+            val col = if (row !in 0 until rows && b[0] >= box.left) ((b[0] - box.left).toFloat() / oldStepX(button)).roundToInt()
+                else cell(b[0], old, box.left, box.right, oldStepX(button), n)
+            Cell(button, b[0], col, row)
         }
-        for ((i, button) in buttons.withIndex()) {
-            val p = moved[i] ?: continue
-            store(button, p[0], p[1], box, SIZE)
-            button.grid = SIZE
+        // Buttons in one row keep their order, one cell apart at least.
+        for (row in cells.groupBy { it.row }.values) {
+            var last = Int.MIN_VALUE
+            for (c in row.sortedBy { it.oldX }) {
+                if (last != Int.MIN_VALUE && c.col <= last) c.col = last + 1
+                last = c.col
+            }
+        }
+        for (c in cells) {
+            store(c.button, columnX(box, c.col), rowY(box, c.row), box, SIZE)
+            c.button.grid = SIZE
+            c.button.layout = InventoryButton.LAYOUT
         }
         return true
+    }
+
+    /**
+     * The cell along one axis an old button at [b], of size [old], falls into: counted from the
+     * panel's near edge for one before it ([start]) or after it ([end]), so its gap to the panel
+     * stays one gap, and from [start] over the panel itself, where there are [count] cells.
+     */
+    private fun cell(b: Int, old: Int, start: Int, end: Int, step: Int, count: Int): Int = when {
+        b + old <= start -> -1 - maxOf(0, ((start - (b + old) - MIN_GAP_X).toFloat() / step).roundToInt())
+        b >= end -> count + maxOf(0, ((b - end - MIN_GAP_X).toFloat() / step).roundToInt())
+        else -> ((b - start).toFloat() / step).roundToInt().coerceIn(0, count - 1)
     }
 
     /** The size [button] was laid out for; anything unknown counts as [OLD_SIZE]. */
     private fun oldSize(button: InventoryButton): Int = if (button.grid in OLD_SIZE until 64) button.grid else OLD_SIZE
 
-    /**
-     * One coordinate of an old button at [b], of size [old], moved away from the panel edge [o]
-     * by whole steps of the new grid: as many steps of [newStep] as it was steps of the old one
-     * away, plus whatever was left over, unscaled. A button before the edge (left of or above it)
-     * counts from its far side, so its gap to the panel stays the gap it had.
-     */
-    private fun spread(b: Int, o: Int, old: Int, newStep: Int): Int {
-        val oldStep = old + OLD_GAP
-        if (b >= o) {
-            val d = b - o
-            return o + d / oldStep * newStep + d % oldStep
-        }
-        val e = o - (b + old)
-        if (e < 0) return o - SIZE + (b + old - o)
-        return o - (e / oldStep * newStep + e % oldStep) - SIZE
-    }
+    /** How far apart the old grid put two buttons side by side: 2 px gaps, 4 px for the 26 px buttons. */
+    private fun oldStepX(button: InventoryButton): Int = oldSize(button) + if (button.grid == 26) 4 else 2
+
+    /** How far apart the old grid put two buttons one above the other: always 2 px gaps. */
+    private fun oldStepY(button: InventoryButton): Int = oldSize(button) + 2
 
     private fun oldPlace(button: InventoryButton, box: Box): IntArray = intArrayOf(
         (if (button.anchorRight) box.right else box.left) + button.x,
         (if (button.anchorBottom) box.bottom else box.top) + button.y,
     )
 
-    /** The panel corner an old [button], at [b], spreads out from; see [migrate]. */
-    private fun origin(button: InventoryButton, b: IntArray, box: Box, buttons: List<InventoryButton>): IntArray {
-        val old = oldSize(button)
-        val nearX = if (b[0] + old / 2 < box.left + box.width / 2) box.left else box.right
-        val nearY = if (b[1] + old / 2 < box.top + box.height / 2) box.top else box.bottom
-        val beside = besidePanel(b, old, box)
-        val aboveOrBelow = aboveOrBelowPanel(b, old, box)
-        if (beside || aboveOrBelow) {
-            return intArrayOf(if (beside) nearX else box.left, if (aboveOrBelow) nearY else box.top)
-        }
-        // Off a corner of the panel: part of a column if a button beside the panel is above or
-        // below it, part of a row if one above or below the panel is next to it.
-        var inColumn = false
-        var inRow = false
-        for (other in buttons) {
-            if (other === button) continue
-            val ob = oldPlace(other, box)
-            val os = oldSize(other)
-            if (abs(ob[0] - b[0]) < old && besidePanel(ob, os, box)) inColumn = true
-            if (abs(ob[1] - b[1]) < old && aboveOrBelowPanel(ob, os, box)) inRow = true
-        }
-        return intArrayOf(if (inColumn) nearX else box.left, if (inRow) nearY else box.top)
-    }
-
-    /** Left or right of the panel, level with some part of it. */
-    private fun besidePanel(b: IntArray, size: Int, box: Box): Boolean = b[1] + size > box.top && b[1] < box.bottom
-
-    /** Above or below the panel, or over it, in line with some part of it across. */
-    private fun aboveOrBelowPanel(b: IntArray, size: Int, box: Box): Boolean = b[0] + size > box.left && b[0] < box.right
-
     /**
-     * Snaps a dragged corner to what is near it, each axis on its own: the panel's edges, just
-     * outside them, and the other buttons - lined up with one, or right next to it. Returns the
-     * corner, then 1 or 0 for whether x and y snapped, for the guides.
+     * Snaps a dragged corner to what is near it, each axis on its own. Across: the grid's columns
+     * ([columnX]), and lined up with another button. Down: the panel's edges and just outside them,
+     * and the other buttons - lined up with one, or right above or below it. Returns the corner,
+     * then 1 or 0 for whether x and y snapped, for the guides.
      */
     @JvmStatic
     fun snap(x: Int, y: Int, box: Box, others: List<IntArray>, range: Int = SNAP_RANGE): IntArray {
         val xs = ArrayList<Int>()
         val ys = ArrayList<Int>()
-        // Flush with an edge inside the panel, or just outside it with a gap.
-        xs += listOf(box.left, box.right - SIZE, box.left - SIZE - GAP_X, box.right + GAP_X)
+        // The column under the corner and its neighbours, wherever on the screen it is.
+        val step = (box.width - SIZE).toFloat() / maxOf(1, columns(box) - 1)
+        val near = ((x - box.left) / step).roundToInt()
+        for (i in near - 1..near + 1) xs += columnX(box, i)
         ys += listOf(box.top, box.bottom - SIZE, box.top - SIZE - GAP_Y, box.bottom + GAP_Y)
         for (o in others) {
-            xs += listOf(o[0], o[0] - SIZE - GAP_X, o[0] + SIZE + GAP_X)
+            xs += o[0]
             ys += listOf(o[1], o[1] - SIZE - GAP_Y, o[1] + SIZE + GAP_Y)
         }
         val sx = nearest(x, xs, range)

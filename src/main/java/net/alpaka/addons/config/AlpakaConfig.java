@@ -1256,7 +1256,7 @@ public class AlpakaConfig {
         public static final int SHOW_CONTAINERS = 2;
 
         /** A button's width and height in GUI pixels, in every style. */
-        public static final int SIZE = 26;
+        public static final int SIZE = 22;
 
         /** The command with its slash, as the player typed it. */
         public String command = "/";
@@ -1272,11 +1272,19 @@ public class AlpakaConfig {
         /** Where it shows: {@link #SHOW_ALL}, {@link #SHOW_INVENTORY} or {@link #SHOW_CONTAINERS}. */
         public int showIn = SHOW_ALL;
         /**
-         * The button size the position was laid out for. Files from before every style had a common
-         * size leave it out and read as 18, later ones say 22; InventoryButtonLayout.migrate moves
-         * anything but {@link #SIZE} once.
+         * The button size the position was laid out for: 18 for files from before every style had a
+         * common size (they leave it out), then 22, briefly 26. InventoryButtonLayout.migrate reads
+         * it to move a button from an older {@link #layout}.
          */
         public int grid = 18;
+        /**
+         * The grid the position was laid out on: 0 for files from before the field,
+         * {@link #LAYOUT} for today's. InventoryButtonLayout.migrate moves anything older once.
+         */
+        public int layout = 0;
+
+        /** Today's grid: 22 px buttons, seven evenly spread across the panel, 2 px apart down it. */
+        public static final int LAYOUT = 2;
 
         public InventoryButton() {}
 
@@ -1287,12 +1295,13 @@ public class AlpakaConfig {
             this.x = x;
             this.y = y;
             this.grid = SIZE;
+            this.layout = LAYOUT;
         }
 
         /** A column of common SkyBlock menus down the left of the panel, for a first start. */
         public static java.util.List<InventoryButton> defaults() {
             java.util.List<InventoryButton> list = new java.util.ArrayList<>();
-            // The editor's gaps: 4 beside the panel, 2 between buttons stacked (InventoryButtonLayout).
+            // The editor's grid: 4 px beside the panel, 2 px between buttons stacked (InventoryButtonLayout).
             int x = -SIZE - 4;
             int step = SIZE + 2;
             list.add(new InventoryButton("/storage", "Storage", "minecraft:chest", x, 0));

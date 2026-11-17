@@ -88,7 +88,8 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
 
     private fun panelW() = minOf(PANEL_W, maxOf(120, (width - IMAGE_W) / 2 - 12))
     private fun panelH() = minOf(height - 2 * MARGIN, PANEL_MAX_H)
-    private fun panelX() = if (panelLeft) MARGIN else width - MARGIN - panelW()
+    private fun panelX() = panelX(panelLeft)
+    private fun panelX(left: Boolean) = if (left) MARGIN else width - MARGIN - panelW()
     private fun panelY() = (height - panelH()) / 2
     private fun inPanel(mx: Double, my: Double) =
         mx >= panelX() && mx < panelX() + panelW() && my >= panelY() && my < panelY() + panelH()
@@ -232,7 +233,7 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
             if (button === selected) Skin.outline(graphics, p[0] - 2, p[1] - 2, InventoryButtonLayout.SIZE + 4, InventoryButtonLayout.SIZE + 4, Skin.accent())
         }
 
-        if (dragging == null) panelLeft = selected?.let { InventoryButtonLayout.place(it, box, width, height)[0] + InventoryButtonLayout.SIZE / 2 > width / 2 } ?: false
+        if (dragging == null && cover(!panelLeft, box) < cover(panelLeft, box)) panelLeft = !panelLeft
         drawPanel(graphics, mx, my)
 
         if (hovered != null) {
@@ -241,6 +242,25 @@ class InventoryButtonsEditorScreen @JvmOverloads constructor(
             lines.add(GuiFont.text(InventoryButtonsFeature.displayCommand(hovered.command)))
             graphics.setTooltipForNextFrame(font, lines, java.util.Optional.empty(), mouseX, mouseY)
         }
+    }
+
+    /**
+     * How much the panel would hide on the [left] or right side: the picked button above all, then
+     * every other button under it. The panel stays where it is unless the other side hides less, so
+     * it doesn't jump across when nothing is in its way.
+     */
+    private fun cover(left: Boolean, box: Box): Int {
+        val x = panelX(left)
+        val w = panelW()
+        val y = panelY()
+        val h = panelH()
+        val s = InventoryButtonLayout.SIZE
+        var score = 0
+        for (button in buttons) {
+            val p = InventoryButtonLayout.place(button, box, width, height)
+            if (p[0] < x + w && p[0] + s > x && p[1] < y + h && p[1] + s > y) score += if (button === selected) 1000 else 1
+        }
+        return score
     }
 
     /** The container as the game draws it, so the buttons can be placed against the real thing. */

@@ -39,10 +39,13 @@ class SlotHighlightTest {
     @Test
     void rngMeter() {
         assertEquals(Place.RNG_METER, SlotHighlight.placeOf("Catacombs RNG Meter"));
+        // The menu listing every floor is "Meters", plural.
+        assertEquals(Place.RNG_METER, SlotHighlight.placeOf("Catacombs RNG Meters"));
+        assertEquals(Place.RNG_METER, SlotHighlight.placeOf("(2/2) Experimentation Table RNG"));
         assertEquals(Place.RNG_METER, SlotHighlight.placeOf("Revenant Horror RNG Meter"));
         assertEquals(Place.RNG_METER, SlotHighlight.placeOf("RNG Meter"));
         assertEquals(Mark.READY, Place.RNG_METER.mark(item("Necron's Handle", "Odds: 0.0091%", "SELECTED")));
-        assertEquals(Mark.MISSING, Place.RNG_METER.mark(item("RNG Meter", "Catacombs (F7)", "You don't have an RNG drop selected for this floor!")));
+        assertEquals(Mark.MISSING, Place.RNG_METER.mark(item("Catacombs (F5) RNG Meter", "You don't have an RNG drop", "selected. Choose one to start")));
         assertEquals(Mark.NONE, Place.RNG_METER.mark(item("Wither Catalyst", "Click to select!")));
     }
 

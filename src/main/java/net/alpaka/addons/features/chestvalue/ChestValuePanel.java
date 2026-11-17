@@ -134,6 +134,10 @@ public final class ChestValuePanel {
     /** In a menu of sacks, valuing what they hold: the sacks never seen opened, by the name they show. */
     private static boolean contents = false;
     private static List<String> unseenSacks = List.of();
+    /** The menu slots of those sacks, marked in the menu so it is plain which to open. */
+    private static List<Integer> unseenSlots = List.of();
+    /** Whether the notice is pointed at, which marks those slots more strongly. */
+    private static boolean noticeHovered = false;
     /** How many sacks were counted from what was seen in them. */
     private static int sacksCounted = 0;
     /** Whether the remembered sacks are still being read from disk. */
@@ -348,6 +352,7 @@ public final class ChestValuePanel {
             return;
         }
         unseenSacks = List.of();
+        unseenSlots = List.of();
         boolean inventoryScreen = c instanceof InventoryScreen;
         boolean withInventory = includesInventory(c);
         List<Stack> stacks = new ArrayList<>();
@@ -394,6 +399,8 @@ public final class ChestValuePanel {
         }
         List<Stack> stacks = new ArrayList<>();
         List<String> unseen = new ArrayList<>();
+        List<Integer> unseenAt = new ArrayList<>();
+        Set<String> unseenKeys = new HashSet<>();
         Set<String> counted = new HashSet<>();
         boolean any = false;
         List<Slot> slots = c.getMenu().slots;
@@ -406,10 +413,18 @@ public final class ChestValuePanel {
             String sack = SkyblockUtils.cleanColor(item.getHoverName().getString()).trim();
             if (!ChestValue.isSack(sack)) continue;
             String key = ChestValue.sackKey(sack);
-            if (!counted.add(key)) continue;
+            // A second sack of a kind already counted shares its contents; one of a kind not seen is marked too.
+            if (!counted.add(key)) {
+                if (unseenKeys.contains(key)) unseenAt.add(i);
+                continue;
+            }
             List<ItemSearchStore.Container> in = seen.get(key);
             if (in == null) {
-                if (!sacksLoading) unseen.add(SACK_SIZE.matcher(sack).replaceFirst(""));
+                if (!sacksLoading) {
+                    unseen.add(SACK_SIZE.matcher(sack).replaceFirst(""));
+                    unseenKeys.add(key);
+                    unseenAt.add(i);
+                }
                 continue;
             }
             for (ItemSearchStore.Container container : in) {
@@ -427,6 +442,7 @@ public final class ChestValuePanel {
         }
         anyItems = any;
         unseenSacks = List.copyOf(unseen);
+        unseenSlots = List.copyOf(unseenAt);
         sacksCounted = counted.size() - unseen.size();
         summary = ChestValue.of(stacks, Sort.of(AlpakaConfig.instance.chestValueSort));
         // What moves in and out of the sacks is not seen here, so there is no change since opening.
@@ -504,6 +520,7 @@ public final class ChestValuePanel {
         baseline = null;
         contents = false;
         unseenSacks = List.of();
+        unseenSlots = List.of();
         sacksCounted = 0;
         sacksLoading = false;
         scroll = scrollTarget = 0;
@@ -579,6 +596,7 @@ public final class ChestValuePanel {
         int w = panelW;
         hits.clear();
         pointed = null;
+        noticeHovered = false;
         String tip = null;
 
         scroll += (scrollTarget - scroll) * Math.min(1.0, deltaSec * 16.0);
@@ -1234,42 +1252,26 @@ public final class ChestValuePanel {
         }
     }
 
-    /** Most lines the notice of unopened sacks takes; the rest of the names go into "and N more". */
-    private static final int NOTICE_LINES = 3;
     private static List<String> noticeOf = null;
     private static int noticeW = -1;
     private static boolean noticeNarrow;
     private static List<FormattedText> noticeCache = List.of();
 
     /**
-     * Which sacks to open, wrapped to the panel: "Open to count: Dungeon Sack, Rune Sack". As many
-     * names as fit in a few lines, the rest counted. Worked out again only when the list or the
-     * width changes.
+     * The notice that some sacks were never opened: only how many, as the sacks themselves are
+     * marked in the menu, which says where they are faster than a list of names could.
      */
     private static List<FormattedText> notice(Font font, int w, boolean narrow) {
         if (!contents || unseenSacks.isEmpty()) return List.of();
         if (unseenSacks == noticeOf && w == noticeW && narrow == noticeNarrow) return noticeCache;
-        int room = w - 2 * PAD - 6;
-        List<FormattedText> lines;
-        if (narrow) {
-            int n = unseenSacks.size();
-            lines = GuiFont.splitLines(font, "Open " + n + (n == 1 ? " sack" : " sacks"), room);
-        } else {
-            int shown = unseenSacks.size();
-            while (true) {
-                StringBuilder text = new StringBuilder("Open to count: ");
-                text.append(String.join(", ", unseenSacks.subList(0, shown)));
-                if (shown < unseenSacks.size()) text.append(" and ").append(unseenSacks.size() - shown).append(" more");
-                lines = GuiFont.splitLines(font, text.toString(), room);
-                if (lines.size() <= NOTICE_LINES || shown <= 1) break;
-                shown--;
-            }
-        }
+        int n = unseenSacks.size();
+        String text = narrow ? "Open " + n + " marked"
+                : n == 1 ? "Open the marked sack once to count it." : "Open the " + n + " marked sacks once to count them.";
         noticeOf = unseenSacks;
         noticeW = w;
         noticeNarrow = narrow;
-        noticeCache = lines;
-        return lines;
+        noticeCache = GuiFont.splitLines(font, text, w - 2 * PAD - 6);
+        return noticeCache;
     }
 
     /** The notice of sacks never opened, above the list. Returns a tooltip when pointed at. */
@@ -1280,6 +1282,7 @@ public final class ChestValuePanel {
         int by = y + 1;
         int bh = h - 4;
         boolean hover = AlpakaStyle.inside(mx, my, bx, by, bw, bh);
+        noticeHovered = hover;
         ModernGuiUtils.drawRoundedRect(graphics, bx, by, bw, bh, AlpakaStyle.ROW_RADIUS, MarketIcons.fade(COIN, hover ? 0.16f : 0.10f));
         int ly = by + 4;
         for (FormattedText line : lines) {
@@ -1288,8 +1291,8 @@ public final class ChestValuePanel {
         }
         if (!hover) return null;
         hoverTip("unseen");
-        return "What a sack holds is learned when you open it once; Hypixel's [Sacks] messages keep it up to date after that. "
-                + "Not opened yet: " + String.join(", ", unseenSacks) + ". Until then they count nothing.";
+        return "Not opened yet: " + String.join(", ", unseenSacks) + ". What a sack holds is learned when you open it once; "
+                + "Hypixel's [Sacks] messages keep it up to date after that.";
     }
 
     /** The bottom line: how many slots are counted, and where the prices come from, as SkyCofl asks. */
@@ -1326,10 +1329,22 @@ public final class ChestValuePanel {
 
     /** The slots of the line under the mouse, lit in its color, so it is clear where that item lies. */
     private static void drawSlotHighlights(GuiGraphicsExtractor graphics, AbstractContainerScreen<?> c, Map<Entry, Integer> colors) {
-        if (pointed == null) return;
         AbstractContainerScreenAccessor a = (AbstractContainerScreenAccessor) c;
         int left = a.alpaka$leftPos();
         int top = a.alpaka$topPos();
+        // The sacks never opened, marked in the menu itself, more strongly while the notice is pointed at.
+        if (contents && !unseenSlots.isEmpty()) {
+            List<Slot> all = c.getMenu().slots;
+            for (int index : unseenSlots) {
+                if (index < 0 || index >= all.size()) continue;
+                Slot slot = all.get(index);
+                int sx = left + slot.x;
+                int sy = top + slot.y;
+                graphics.fill(sx, sy, sx + 16, sy + 16, MarketIcons.fade(COIN, noticeHovered ? 0.45f : 0.22f));
+                graphics.outline(sx - 1, sy - 1, 18, 18, COIN);
+            }
+        }
+        if (pointed == null) return;
         Integer own = colors.get(pointed);
         int color = own == null || own == OTHER ? AlpakaStyle.accent() : own;
         List<Slot> slots = c.getMenu().slots;

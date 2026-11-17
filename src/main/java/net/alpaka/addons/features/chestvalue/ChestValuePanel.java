@@ -18,6 +18,7 @@ import net.alpaka.addons.features.chestvalue.ChestValue.Summary;
 import net.alpaka.addons.features.itemvalue.ItemPrices;
 import net.alpaka.addons.features.itemvalue.ItemValue;
 import net.alpaka.addons.features.itemvalue.ItemValuePopup;
+import net.alpaka.addons.features.itemsearch.ItemSearchMenus;
 import net.alpaka.addons.features.itemsearch.ItemSearchSource;
 import net.alpaka.addons.features.itemsearch.ItemSearchStore;
 import net.alpaka.addons.features.market.Coins;
@@ -412,7 +413,8 @@ public final class ChestValuePanel {
             any = true;
             String sack = SkyblockUtils.cleanColor(item.getHoverName().getString()).trim();
             if (!ChestValue.isSack(sack)) continue;
-            String key = ChestValue.sackKey(sack);
+            Map<String, String> learned = AlpakaConfig.instance.chestValueSackMenus;
+            String key = ChestValue.menuKey(sack, learned == null ? Map.of() : learned);
             // A second sack of a kind already counted shares its contents; one of a kind not seen is marked too.
             if (!counted.add(key)) {
                 if (unseenKeys.contains(key)) unseenAt.add(i);
@@ -450,6 +452,43 @@ public final class ChestValuePanel {
     }
 
     private static final Pattern SACK_SIZE = Pattern.compile("^(?:Small|Medium|Large|Jumbo) ");
+
+    /** The sack last clicked in a menu of sacks, and when: the menu opened next is that sack's. */
+    private static String clickedSack = null;
+    private static long clickedAt = 0L;
+    private static final long SACK_OPEN_MS = 5_000L;
+
+    /** A click in a menu of sacks: remembers the sack under the mouse, to learn which menu it opens. */
+    static void noteClick(Screen s) {
+        if (!AlpakaConfig.instance.chestValueEnabled || !(s instanceof AbstractContainerScreen<?> c) || !listsSacks(s)) return;
+        Slot slot = ((AbstractContainerScreenAccessor) c).alpaka$hoveredSlot();
+        if (slot == null || slot.container instanceof Inventory || !slot.hasItem()) return;
+        String name = SkyblockUtils.cleanColor(slot.getItem().getHoverName().getString()).trim();
+        if (!ChestValue.isSack(name)) return;
+        clickedSack = name;
+        clickedAt = System.currentTimeMillis();
+    }
+
+    /**
+     * A menu opened: right after a sack was clicked, it is that sack's own menu, whose name can differ
+     * from the sack's ("Dwarven Sack" opens the "Dwarven Mines Sack"). Kept, so the sack is found by it.
+     */
+    static void menuOpened(Screen s) {
+        if (clickedSack == null) return;
+        String sack = clickedSack;
+        if (System.currentTimeMillis() - clickedAt > SACK_OPEN_MS) {
+            clickedSack = null;
+            return;
+        }
+        ItemSearchMenus.Menu menu = ItemSearchMenus.parseTitle(SkyblockUtils.cleanColor(s.getTitle().getString()).trim());
+        if (menu == null || menu.source() != ItemSearchSource.SACKS) return;
+        clickedSack = null;
+        String key = ChestValue.sackKey(sack);
+        String opens = ChestValue.sackKey(menu.label());
+        if (AlpakaConfig.instance.chestValueSackMenus == null) AlpakaConfig.instance.chestValueSackMenus = new HashMap<>();
+        if (opens.equals(AlpakaConfig.instance.chestValueSackMenus.put(key, opens))) return;
+        AlpakaConfig.save();
+    }
 
     /**
      * How many of the item a slot stands for: the stack's own count, or in a sack what its lore says

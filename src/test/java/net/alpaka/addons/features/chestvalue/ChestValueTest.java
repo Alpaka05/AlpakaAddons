@@ -134,7 +134,7 @@ class ChestValueTest {
 
     @Test
     void tellsTheMenusThatListSacks() {
-        for (String title : List.of("Sack of Sacks", "Sacks", "Sacks (2/2)"))
+        for (String title : List.of("Sack of Sacks", "Sacks", "Sacks (2/2)", "(1/2) Sack of Sacks"))
             assertTrue(ChestValue.listsSacks(title), title);
         for (String title : List.of("Mining Sack", "Gemstones Sack (1/2)", "Chest", "Large Sack of Sacks"))
             assertFalse(ChestValue.listsSacks(title), title);
@@ -151,6 +151,9 @@ class ChestValueTest {
         assertEquals(ChestValue.sackKey("Enchanted Agronomy Sack"), ChestValue.sackKey("Large Enchanted Agronomy Sack"));
         assertEquals(ChestValue.sackKey("Runes Sack"), ChestValue.sackKey("Rune Sack"));
         assertFalse(ChestValue.sackKey("Mining Sack").equals(ChestValue.sackKey("Enchanted Mining Sack")));
+        assertEquals(ChestValue.sackKey("Dwarven Mines Sack"), ChestValue.menuKey("Large Dwarven Sack", java.util.Map.of()));
+        assertEquals("trophy fishing sack", ChestValue.menuKey("Bronze Trophy Fishing Sack",
+                java.util.Map.of("bronze trophy fishing sack", "trophy fishing sack")));
     }
 
     @Test

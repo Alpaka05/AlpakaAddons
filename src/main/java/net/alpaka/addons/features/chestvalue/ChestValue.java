@@ -92,7 +92,7 @@ public final class ChestValue {
     }
 
     /** "Sack of Sacks" and the "Sacks" menu, the menus that list the sacks themselves rather than what is in them. */
-    private static final Pattern SACK_OVERVIEW = Pattern.compile("^(?:Sack of Sacks|Sacks)(?: \\(\\d+/\\d+\\))?$");
+    private static final Pattern SACK_OVERVIEW = Pattern.compile("^(?:\\(\\d+/\\d+\\) )?(?:Sack of Sacks|Sacks)(?: \\(\\d+/\\d+\\))?$");
 
     /** Whether a menu lists the player's sacks, whose contents the panel can add up instead. */
     public static boolean listsSacks(String title) {
@@ -122,6 +122,22 @@ public final class ChestValue {
             out.append(word);
         }
         return out.toString();
+    }
+
+    /**
+     * Sacks whose menu has a name of its own, by {@link #sackKey}: the Dwarven Sack opens as the
+     * "Dwarven Mines Sack". Others are learned when the player opens a sack from the Sack of Sacks.
+     */
+    private static final Map<String, String> KNOWN_MENUS = Map.of("dwarven sack", "dwarven mine sack");
+
+    /**
+     * The {@link #sackKey} of the menu a sack opens: what was learned for it, a known one, or its own.
+     */
+    public static String menuKey(String sackName, Map<String, String> learned) {
+        String key = sackKey(sackName);
+        String menu = learned.get(key);
+        if (menu != null) return menu;
+        return KNOWN_MENUS.getOrDefault(key, key);
     }
 
     private static final Pattern GEM = Pattern.compile("^(Rough|Flawed|Fine|Flawless|Perfect) (\\w+) Gemstone$");

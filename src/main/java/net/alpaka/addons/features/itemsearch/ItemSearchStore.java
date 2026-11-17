@@ -119,6 +119,15 @@ public final class ItemSearchStore {
         return containers.values();
     }
 
+    /**
+     * Everything remembered for the profile in play, or null while its file is still being read: for
+     * callers on every frame, which would rather wait a moment than hold the game up.
+     */
+    public static Collection<Container> allIfLoaded() {
+        if (preview) return containers.values();
+        return ensureLoaded(false) ? containers.values() : null;
+    }
+
     /** For the screenshot tour: shows these containers, in memory only, until the game restarts. */
     public static void devPreview(Collection<Container> list) {
         preview = true;
@@ -165,7 +174,7 @@ public final class ItemSearchStore {
         // Starts reading the profile's file as soon as the profile is known, and takes it in once
         // read, so the first look at the items rarely has to wait for the disk. Only while the
         // feature is on, so a player who doesn't use it never has the file read.
-        if (ItemSearchTracker.active()) ensureLoaded(false);
+        if (ItemSearchTracker.tracksSacks()) ensureLoaded(false);
     }
 
     /** Writes what changed now, as when leaving the server. */

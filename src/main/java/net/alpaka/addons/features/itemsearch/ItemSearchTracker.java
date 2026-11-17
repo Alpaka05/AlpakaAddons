@@ -51,6 +51,14 @@ public final class ItemSearchTracker {
         return AlpakaConfig.instance.itemSearchEnabled && SkyblockUtils.isOnSkyblock();
     }
 
+    /**
+     * Whether the sacks are remembered: for Item Search, and for Chest Value, which adds up what they
+     * hold in the Sack of Sacks even when Item Search is switched off.
+     */
+    static boolean tracksSacks() {
+        return active() || (AlpakaConfig.instance.chestValueEnabled && SkyblockUtils.isOnSkyblock());
+    }
+
     /** A block right-clicked: remembered when it is a chest on the player's own island. */
     static void onUseBlock(BlockPos pos, BlockState state) {
         if (!active() || !(state.getBlock() instanceof ChestBlock)) return;
@@ -90,8 +98,11 @@ public final class ItemSearchTracker {
 
     /** A menu closed: its contents are saved if it is one Item Search knows. */
     static void onMenuClosed(Component title, AbstractContainerMenu menu) {
-        if (!active()) return;
+        if (!tracksSacks()) return;
         String text = SkyblockUtils.cleanColor(title.getString()).trim();
+        ItemSearchMenus.Menu parsed = ItemSearchMenus.parseTitle(text);
+        // With only Chest Value on, the sacks are all that is kept.
+        if (!active() && (parsed == null || parsed.source() != ItemSearchSource.SACKS)) return;
         List<Slot> slots = new ArrayList<>();
         for (Slot slot : menu.slots) {
             if (!(slot.container instanceof Inventory)) slots.add(slot);
@@ -100,7 +111,6 @@ public final class ItemSearchTracker {
         int filled = 0;
         for (Slot slot : slots) if (!slot.getItem().isEmpty()) filled++;
 
-        ItemSearchMenus.Menu parsed = ItemSearchMenus.parseTitle(text);
         boolean chest = parsed == null && pendingChest != null && now - pendingChestAt < CHEST_WAIT_MS && isChestTitle(title, text);
         AlpakaAddons.LOGGER.info("Item Search: closed \"{}\" ({} slots, {} filled) -> {}{}", text, slots.size(), filled,
                 parsed != null ? parsed : chest ? "island chest " + pendingChest : "not tracked",
@@ -228,7 +238,7 @@ public final class ItemSearchTracker {
      * line each. Each change is added to the item in the sack it names, where that sack has been seen.
      */
     static void onChat(Component message) {
-        if (!active()) return;
+        if (!tracksSacks()) return;
         String text = SkyblockUtils.cleanColor(message.getString());
         if (!text.startsWith("[Sacks]")) return;
         List<Component> hovers = new ArrayList<>();

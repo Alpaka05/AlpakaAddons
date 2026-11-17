@@ -64,6 +64,28 @@ public final class DevScreenshotTour {
             screen("leap-menu-settings", () -> AlpakaConfigScreen.openOnOption(null, "leap_menu_enabled")),
             screen("leap-menu-map", () -> leapMenuPreview(true)),
             screen("leap-menu-buttons", () -> leapMenuPreview(false))
+    ) : "sack-value".equals(System.getenv(ENV)) ? List.of(
+            // Chest Value in the Sack of Sacks: what the sacks hold, from Item Search's made-up sacks,
+            // with the two never opened named above the list; a line pointed at, lighting up its sack;
+            // then the sacks themselves, as the Contents switch has it.
+            new Stop(null, DevScreenshotTour::enterWorld,
+                    () -> Minecraft.getInstance().player != null && Minecraft.getInstance().gui.screen() == null, 100),
+            new Stop(null, () -> {
+                AlpakaConfig.instance.chestValueEnabled = true;
+                AlpakaConfig.instance.chestValueSackContents = true;
+                net.alpaka.addons.features.itemsearch.ItemSearchPreview.screen(null);
+                Minecraft.getInstance().gui.setScreen(net.alpaka.addons.features.itemvalue.ItemValuePreview.sackOfSacks());
+                net.alpaka.addons.features.chestvalue.ChestValueFeature.devShow();
+                placeMouse(0.5, 0.97);
+            }, net.alpaka.addons.features.itemvalue.ItemValuePreview::settled, 40),
+            new Stop("sack-value-contents", () -> {}, () -> true, 10),
+            new Stop("sack-value-line", () -> placeMouseAt(net.alpaka.addons.features.chestvalue.ChestValuePanel.devRowPoint(0)),
+                    () -> true, 20),
+            new Stop("sack-value-sacks", () -> {
+                placeMouse(0.5, 0.97);
+                AlpakaConfig.instance.chestValueSackContents = false;
+            }, () -> true, 10),
+            new Stop(null, () -> AlpakaConfig.instance.chestValueSackContents = true, () -> true, 1)
     ) : "dungeon-map".equals(System.getenv(ENV)) ? List.of(
             screen("dungeon-map-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_enabled")),
             screen("dungeon-map-player-settings", () -> AlpakaConfigScreen.openOnOption(null, "dungeon_map_player_icons")),

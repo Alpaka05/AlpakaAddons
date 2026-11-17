@@ -91,6 +91,60 @@ public final class ChestValue {
         return -1;
     }
 
+    /** "Sack of Sacks" and the "Sacks" menu, the menus that list the sacks themselves rather than what is in them. */
+    private static final Pattern SACK_OVERVIEW = Pattern.compile("^(?:Sack of Sacks|Sacks)(?: \\(\\d+/\\d+\\))?$");
+
+    /** Whether a menu lists the player's sacks, whose contents the panel can add up instead. */
+    public static boolean listsSacks(String title) {
+        return SACK_OVERVIEW.matcher(title.trim()).matches();
+    }
+
+    /** Whether a slot of such a menu is a sack, by its name: "Large Mining Sack", "Dungeon Sack". */
+    public static boolean isSack(String name) {
+        String n = name.trim();
+        return n.endsWith(" Sack") && !n.equals("Sack of Sacks");
+    }
+
+    private static final Pattern SACK_SIZE = Pattern.compile("^(?:Small|Medium|Large|Jumbo) ");
+
+    /**
+     * What a sack and its menu have in common, to find what was seen in it: the sack in the Sack of
+     * Sacks is "Large Gemstone Sack", its menu "Gemstones Sack". Size gone, each word without its
+     * plural "s", lower case: "gemstone sack" for both.
+     */
+    public static String sackKey(String name) {
+        String n = SACK_SIZE.matcher(name.trim()).replaceFirst("");
+        StringBuilder out = new StringBuilder();
+        for (String word : n.toLowerCase(java.util.Locale.ROOT).split("\\s+")) {
+            if (word.isEmpty()) continue;
+            if (word.length() > 3 && word.endsWith("s")) word = word.substring(0, word.length() - 1);
+            if (!out.isEmpty()) out.append(' ');
+            out.append(word);
+        }
+        return out.toString();
+    }
+
+    private static final Pattern GEM = Pattern.compile("^(Rough|Flawed|Fine|Flawless|Perfect) (\\w+) Gemstone$");
+
+    /**
+     * The SkyBlock id of one quality of a gemstone, by the name a sack's line is remembered under:
+     * "Fine Ruby Gemstone" is FINE_RUBY_GEM. A gemstone sack shows each gemstone once with every
+     * quality in its lore, so the slot's own id is only right for one of them. Null for other names.
+     */
+    public static String gemId(String name) {
+        Matcher m = GEM.matcher(name.trim());
+        if (!m.matches()) return null;
+        return (m.group(1) + "_" + m.group(2) + "_GEM").toUpperCase(java.util.Locale.ROOT);
+    }
+
+    private static final Pattern RUNE_LEVEL = Pattern.compile(" (I{1,3})$");
+
+    /** The level a rune sack's line names at its end, "Blood Rune II" is 2; 0 for no level. */
+    public static int runeLevel(String name) {
+        Matcher m = RUNE_LEVEL.matcher(name.trim());
+        return m.find() ? m.group(1).length() : 0;
+    }
+
     /** The same item from one or more slots, as one line of the list. */
     public static final class Entry {
         public final String id;

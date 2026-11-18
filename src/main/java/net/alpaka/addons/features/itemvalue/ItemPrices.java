@@ -108,6 +108,14 @@ public final class ItemPrices {
         return quote(id, BAZAAR.data, LOWEST_BINS.data, AlpakaConfig.instance.itemValueBazaarPrice == 1);
     }
 
+    /**
+     * Like {@link #quote(String)}, but at the Bazaar side the caller picks rather than Item Value's:
+     * the Profit Tracker has a setting of its own.
+     */
+    public static Quote quote(String id, boolean sellSide) {
+        return quote(id, BAZAAR.data, LOWEST_BINS.data, sellSide);
+    }
+
     /** The Bazaar's instant buy and sell price of a product; null for an item not sold there or while the list loads. */
     public static Product bazaar(String id) {
         Map<String, Product> bazaar = BAZAAR.data;

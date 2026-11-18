@@ -90,6 +90,12 @@ public class HudMixin implements ChatOverHud.Late {
         } finally {
             AlpakaPerf.end(AlpakaPerf.Section.HUD_FARMING, t);
         }
+        t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_PROFIT_TRACKER);
+        try {
+            net.alpaka.addons.features.profittracker.ProfitTrackerHudRenderer.render(graphicsExtractor, deltaTracker);
+        } finally {
+            AlpakaPerf.end(AlpakaPerf.Section.HUD_PROFIT_TRACKER, t);
+        }
         t = AlpakaPerf.begin(AlpakaPerf.Section.HUD_SLAYER_TIMER);
         try {
             SlayerTimerHudRenderer.render(graphicsExtractor, deltaTracker);

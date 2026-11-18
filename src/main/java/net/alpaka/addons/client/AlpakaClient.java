@@ -86,6 +86,7 @@ public class AlpakaClient implements ClientModInitializer {
         net.alpaka.addons.features.garden.PestFinder.register();
         net.alpaka.addons.features.garden.AlignmentHelper.register();
         net.alpaka.addons.features.garden.FarmingTracker.INSTANCE.register();
+        net.alpaka.addons.features.profittracker.ProfitTracker.INSTANCE.register();
         CommandWheelFeature.register();
         net.alpaka.addons.features.shortcuts.CommandShortcuts.register();
         net.alpaka.addons.features.inventorybuttons.InventoryButtonsFeature.register();
@@ -278,6 +279,8 @@ public class AlpakaClient implements ClientModInitializer {
                         return 1;
                     }))
             );
+
+            net.alpaka.addons.features.profittracker.ProfitCommands.register(dispatcher);
 
             dispatcher.register(ClientCommands.literal("alpakaslayer")
                 .executes(context -> {

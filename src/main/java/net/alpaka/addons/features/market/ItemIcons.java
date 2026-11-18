@@ -102,7 +102,8 @@ public final class ItemIcons {
      * rarity of every accessory outside the Rift.
      */
     record Catalog(Map<String, Info> byName, Map<String, Info> byId, Set<String> ids, Set<String> vanillaIds,
-                   Map<String, String> names, Map<String, Upgrades> upgrades, Map<String, String> accessories) {
+                   Map<String, String> names, Map<String, Upgrades> upgrades, Map<String, String> accessories,
+                   Map<String, String> idsByName, Map<String, Double> npcPrices) {
         /**
          * Whether the item with SkyCofl's tag is a plain Minecraft item - Diamond Sword, Oak Planks -
          * rather than one of SkyBlock's own. Those cannot be auctioned. A tag Hypixel does not list
@@ -241,6 +242,22 @@ public final class ItemIcons {
         return loaded == null || id == null ? null : loaded.names().get(id);
     }
 
+    /**
+     * The id of the item with this name, as chat and the sack messages write it ("Revenant Flesh"),
+     * any case; null while the list loads or for a name it does not know.
+     */
+    public static String idForName(String name) {
+        Catalog loaded = catalog();
+        return loaded == null || name == null ? null : loaded.idsByName().get(name.trim().toLowerCase(Locale.ROOT));
+    }
+
+    /** What an NPC pays for one of the item, or NaN for one NPCs do not buy or while the list loads. */
+    public static double npcPrice(String id) {
+        Catalog loaded = catalog();
+        Double price = loaded == null || id == null ? null : loaded.npcPrices().get(id);
+        return price == null ? Double.NaN : price;
+    }
+
     /** Every accessory outside the Rift with its rarity, by id; null while the list loads. */
     public static Map<String, String> accessories() {
         Catalog loaded = catalog();
@@ -356,7 +373,11 @@ public final class ItemIcons {
         Map<String, String> names = new HashMap<>();
         Map<String, Upgrades> upgrades = new HashMap<>();
         Map<String, String> accessories = new HashMap<>();
-        if (!root.isJsonObject() || !root.getAsJsonObject().has("items")) return new Catalog(map, byId, ids, vanilla, names, upgrades, accessories);
+        Map<String, String> idsByName = new HashMap<>();
+        Map<String, Double> npcPrices = new HashMap<>();
+        if (!root.isJsonObject() || !root.getAsJsonObject().has("items")) {
+            return new Catalog(map, byId, ids, vanilla, names, upgrades, accessories, idsByName, npcPrices);
+        }
         for (JsonElement element : root.getAsJsonObject().getAsJsonArray("items")) {
             if (!element.isJsonObject()) continue;
             JsonObject o = element.getAsJsonObject();
@@ -368,6 +389,10 @@ public final class ItemIcons {
                 ids.add(id);
                 if (isVanilla(id, material, damage, o.has("museum") && o.get("museum").getAsBoolean())) vanilla.add(id);
                 if (!name.isEmpty()) names.put(id, name);
+                if (o.has("npc_sell_price") && o.get("npc_sell_price").isJsonPrimitive()) {
+                    double npc = o.get("npc_sell_price").getAsDouble();
+                    if (npc > 0) npcPrices.put(id, npc);
+                }
                 Upgrades up = upgrades(o);
                 if (up != null) upgrades.put(id, up);
                 // The Rift's accessories only count in the Rift, and none of the profile viewers list them.
@@ -375,6 +400,13 @@ public final class ItemIcons {
                     String tier = string(o, "tier");
                     accessories.put(id, tier.isEmpty() ? "COMMON" : tier);
                 }
+            }
+            // Several items can share a name ("Cactus" is a block and a head); a SkyBlock item wins
+            // over a plain one, the first of each kind over later ones.
+            if (!id.isEmpty() && !name.isEmpty()) {
+                String lower = name.toLowerCase(Locale.ROOT);
+                String had = idsByName.get(lower);
+                if (had == null || (vanilla.contains(had) && !vanilla.contains(id))) idsByName.put(lower, id);
             }
             if (name.isEmpty() || material.isEmpty()) continue;
             String skin = null;
@@ -389,7 +421,7 @@ public final class ItemIcons {
             map.putIfAbsent(name.toLowerCase(Locale.ROOT), info);
             if (!id.isEmpty()) byId.put(id, info);
         }
-        return new Catalog(map, byId, ids, vanilla, names, upgrades, accessories);
+        return new Catalog(map, byId, ids, vanilla, names, upgrades, accessories, idsByName, npcPrices);
     }
 
     /** An item's star, dungeon conversion and gemstone slot costs and its own enchantments; null without any. */

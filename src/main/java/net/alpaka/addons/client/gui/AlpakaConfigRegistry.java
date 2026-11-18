@@ -25,6 +25,8 @@ import java.util.stream.Collectors;
 public class AlpakaConfigRegistry {
     private static final List<ConfigOption> OPTIONS = new ArrayList<>();
     private static final String[] CHEST_VALUE_SIDES = {"Left", "Right"};
+    private static final String[] PROFIT_SCOPES = {"Session", "All Time"};
+    private static final String[] PROFIT_PRICE_SIDES = {"Instant Sell", "Sell Offer"};
     private static final java.util.Map<ConfigCategory, List<ConfigOption>> CATEGORY_CACHE = new java.util.EnumMap<>(ConfigCategory.class);
     private static final String[] BOSS_MAP_MODES = {"Arena Map", "Saved Map", "Both", "Hidden"};
     private static final String[] PLAYER_ICONS = {"Heads", "Upright Heads", "Arrows"};
@@ -1946,6 +1948,73 @@ public class AlpakaConfigRegistry {
                         toggle("Next Jacob's Contest", c -> c.farmingHudShowContest, (c, v) -> c.farmingHudShowContest = v)
                 ),
                 "farming hud lines toggle show hide title bps blocks per second xp per hour crop milestone eta next tier pest cooldown repellent visitors visitor timer jacob contest crops"));
+
+        OPTIONS.add(new ConfigOption("Profit Tracker", ConfigCategory.SKYBLOCK));
+
+        OPTIONS.add(new ConfigOption("profit_tracker", "Profit Tracker",
+                "Counts what you earn and keeps each activity apart: every slayer boss, fishing, Diana, pests, farming, "
+                        + "dragons, dungeons, and each island for everything else. Saved per profile, also as CSV files.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.profitTrackerEnabled,
+                v -> { AlpakaConfig.instance.profitTrackerEnabled = v; AlpakaConfig.save(); },
+                "profit tracker money coins per hour loot drops slayer fishing diana mythological pests farming dragon dungeon csv export session"));
+
+        OPTIONS.add(ConfigOption.keybind("profit_tracker_key", "Key",
+                "Shows or hides the Profit Tracker. It keeps counting while hidden. Unbound by default.",
+                ConfigCategory.SKYBLOCK,
+                () -> net.alpaka.addons.features.profittracker.ProfitTracker.TOGGLE_KEY,
+                "profit tracker toggle show hide"));
+
+        OPTIONS.add(new ConfigOption("profit_tracker_scope", "Show",
+                "This session's figures, or everything since you started tracking. Both are always saved.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.profitTrackerSessionOnly ? 0.0f : 1.0f,
+                v -> { AlpakaConfig.instance.profitTrackerSessionOnly = Math.round(v) == 0; AlpakaConfig.save(); },
+                0.0f, 1.0f,
+                val -> PROFIT_SCOPES[Math.round(val)],
+                "profit tracker session total all time scope display mode")
+                .choices(PROFIT_SCOPES));
+
+        OPTIONS.add(new ConfigOption("profit_tracker_price_side", "Bazaar Price",
+                "What Bazaar items are worth: what you get selling them instantly, or with a sell offer.",
+                ConfigCategory.SKYBLOCK,
+                () -> (float) AlpakaConfig.instance.profitTrackerPriceSide,
+                v -> { AlpakaConfig.instance.profitTrackerPriceSide = Math.round(v); AlpakaConfig.save(); },
+                0.0f, 1.0f,
+                val -> PROFIT_PRICE_SIDES[Math.round(val)],
+                "profit tracker bazaar price instant sell offer buy order source")
+                .choices(PROFIT_PRICE_SIDES));
+
+        OPTIONS.add(new ConfigOption("profit_tracker_prefer_npc", "Prefer NPC Price",
+                "Counts an item at what an NPC pays wherever that is more than the market price.",
+                ConfigCategory.SKYBLOCK,
+                () -> AlpakaConfig.instance.profitTrackerPreferNpc,
+                v -> { AlpakaConfig.instance.profitTrackerPreferNpc = v; AlpakaConfig.save(); },
+                "profit tracker npc sell price merchant"));
+
+        OPTIONS.add(new ConfigOption("profit_tracker_max_lines", "Item Lines",
+                "How many items are listed; the rest are summed up in one line.",
+                ConfigCategory.SKYBLOCK,
+                () -> (float) AlpakaConfig.instance.profitTrackerMaxLines,
+                v -> { AlpakaConfig.instance.profitTrackerMaxLines = Math.round(v); AlpakaConfig.save(); },
+                3.0f, 20.0f,
+                val -> Integer.toString(Math.round(val)),
+                "profit tracker item lines rows count max limit"));
+
+        OPTIONS.add(new ConfigOption("profit_tracker_open_folder", "CSV Files",
+                "Opens the folder with profit-log.csv (every gain as it happened) and profit-summary.csv (the totals per activity).",
+                ConfigCategory.SKYBLOCK,
+                "Open Folder",
+                parent -> net.alpaka.addons.features.profittracker.ProfitCommands.openFolder(),
+                "profit tracker csv export excel spreadsheet file folder log summary"));
+
+        OPTIONS.add(new ConfigOption("profit_tracker_reset_session", "Reset Session",
+                "Clears this session's figures of the activity the tracker shows. All-time figures and the CSV log stay.",
+                ConfigCategory.SKYBLOCK,
+                "Reset Session",
+                parent -> net.alpaka.addons.features.profittracker.ProfitTracker.INSTANCE.reset(false, false),
+                "profit tracker reset session clear restart")
+                .confirm("Reset Session", "Clear this session's figures of the activity the Profit Tracker shows?", "Reset", false));
 
         OPTIONS.add(new ConfigOption("Pest Finder", ConfigCategory.SKYBLOCK));
 
@@ -3871,6 +3940,10 @@ public class AlpakaConfigRegistry {
                 () -> AlpakaConfig.instance.farmingHudBlur, v -> AlpakaConfig.instance.farmingHudBlur = v);
         styleToggle("farming_hud_smooth_font", "Smooth Font", ConfigCategory.SKYBLOCK, false,
                 () -> AlpakaConfig.instance.farmingHudSmoothFont, v -> AlpakaConfig.instance.farmingHudSmoothFont = v);
+        styleToggle("profit_tracker_blur", "Blur", ConfigCategory.SKYBLOCK, true,
+                () -> AlpakaConfig.instance.profitTrackerBlur, v -> AlpakaConfig.instance.profitTrackerBlur = v);
+        styleToggle("profit_tracker_smooth_font", "Smooth Font", ConfigCategory.SKYBLOCK, false,
+                () -> AlpakaConfig.instance.profitTrackerSmoothFont, v -> AlpakaConfig.instance.profitTrackerSmoothFont = v);
         styleToggle("slayer_timer_blur", "Blur", ConfigCategory.SKYBLOCK, true,
                 () -> AlpakaConfig.instance.slayerTimerHudBlur, v -> AlpakaConfig.instance.slayerTimerHudBlur = v);
         styleToggle("slayer_timer_smooth_font", "Smooth Font", ConfigCategory.SKYBLOCK, false,
